@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 	"time"
@@ -111,6 +113,74 @@ func TestComposeEndToEnd(t *testing.T) {
 		if env.RunID != runID {
 			t.Fatalf("runID[%d] = %q, want %q", i+1, env.RunID, runID)
 		}
+	}
+}
+
+// TestComposeWithShellHooks proves the declarative shell-hooks wiring: a valid
+// hooks.json at HooksPath composes, loads once, and a session prompt still
+// round-trips (the hook is inert for this no-tool stream). Driven by the shell
+// runner, not a JS host or node — replacing the deleted compose_hooks
+// integration test.
+func TestComposeWithShellHooks(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	cwd := t.TempDir()
+	hooksDir := t.TempDir()
+	hooksPath := filepath.Join(hooksDir, "hooks.json")
+	if err := os.WriteFile(hooksPath, []byte(
+		`[{"event":"PreToolUse","toolName":"Bash","command":"echo '{\"decision\":\"block\"}'"}]`,
+	), 0o644); err != nil {
+		t.Fatalf("write hooks.json: %v", err)
+	}
+
+	comp, err := Compose(ctx, ComposeOptions{
+		DataDir:       t.TempDir(),
+		CWD:           cwd,
+		Model:         ai.Model{ID: "test-model", Provider: "test-provider", ContextWindow: 128_000},
+		ThinkingLevel: agentloop.ThinkingOff,
+		HooksPath:     hooksPath,
+		FakeStream:    helloWorldStream(),
+	})
+	if err != nil {
+		t.Fatalf("Compose: %v", err)
+	}
+	defer comp.Stop()
+
+	sess, err := comp.Repo.Create(ctx, session.JsonlSessionCreateOptions{CWD: cwd})
+	if err != nil {
+		t.Fatalf("Create session: %v", err)
+	}
+	facade := comp.NewSessionFacade(sess.GetMetadata().ID)
+	result, err := facade.Prompt(ctx, compat.PromptInput{Text: "hi"})
+	if err != nil {
+		t.Fatalf("Prompt: %v", err)
+	}
+	if got := result.Message.Content[0].Text; got != "helloworld" {
+		t.Fatalf("result text = %q, want helloworld", got)
+	}
+}
+
+// TestComposeRejectsMalformedHooks proves Compose surfaces a malformed
+// hooks.json instead of silently ignoring it.
+func TestComposeRejectsMalformedHooks(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	hooksPath := filepath.Join(t.TempDir(), "hooks.json")
+	if err := os.WriteFile(hooksPath, []byte(`{ not valid json`), 0o644); err != nil {
+		t.Fatalf("write hooks.json: %v", err)
+	}
+
+	_, err := Compose(ctx, ComposeOptions{
+		DataDir:    t.TempDir(),
+		CWD:        t.TempDir(),
+		Model:      ai.Model{ID: "test-model", Provider: "test-provider", ContextWindow: 128_000},
+		HooksPath:  hooksPath,
+		FakeStream: helloWorldStream(),
+	})
+	if err == nil {
+		t.Fatalf("Compose accepted malformed hooks.json, want error")
 	}
 }
 

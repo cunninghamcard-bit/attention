@@ -11,11 +11,11 @@ import (
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/cunninghamcard-bit/Attention/internal/app"
 	"github.com/cunninghamcard-bit/Attention/internal/config"
-	"github.com/cunninghamcard-bit/Attention/internal/plugin"
 	"github.com/cunninghamcard-bit/Attention/internal/server"
 )
 
@@ -29,7 +29,7 @@ func runServe(ctx context.Context, args []string) error {
 	dataDir := fs.String("data-dir", "", "engine data dir (default: agent config dir)")
 	modelID := fs.String("model", "claude-sonnet-4-5", "model ID")
 	apiKey := fs.String("api-key", "", "API key override for the selected model's provider")
-	bundledPlugins := fs.String("bundled-plugins", "", "bundled plugins dir (dev: plugins)")
+	hooksPath := fs.String("hooks", "", "declarative shell-hooks file (default: <agentDir>/hooks.json)")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
@@ -75,11 +75,10 @@ func runServe(ctx context.Context, args []string) error {
 		engineDir = cfg.AgentDir
 	}
 
-	// 插件注册表：用户目录 <agentDir>/plugins（捆绑目录随发版形态后定，
-	// dev 下可用 --bundled-plugins 指仓内 plugins）。
-	plugins, err := plugin.NewRegistry(*bundledPlugins, cfg.AgentDir)
-	if err != nil {
-		return fmt.Errorf("plugin registry: %w", err)
+	// 声明式 shell-hooks 文件：默认 <agentDir>/hooks.json，可用 --hooks 覆盖。
+	hooksFile := *hooksPath
+	if hooksFile == "" {
+		hooksFile = filepath.Join(cfg.AgentDir, "hooks.json")
 	}
 
 	settings := cfg.Settings
@@ -90,7 +89,7 @@ func runServe(ctx context.Context, args []string) error {
 		Model:              model,
 		ThinkingLevel:      defaultThinkingLevel(settings),
 		Provider:           prov,
-		Plugins:            plugins,
+		HooksPath:          hooksFile,
 		ShellPath:          settingsString(settings, "shellPath"),
 		ShellCommandPrefix: settingsString(settings, "shellCommandPrefix"),
 	})
@@ -111,10 +110,6 @@ func runServe(ctx context.Context, args []string) error {
 		Bus:        comp.Bus,
 		Queue:      comp.Queue,
 		Repo:       comp.Repo,
-		Plugins:    plugins,
-	}
-	if comp.ExtCommands != nil { // typed-nil 不入接口
-		srvOpts.ExtCommands = comp.ExtCommands
 	}
 	srv, err := server.Start(ctx, srvOpts)
 	if err != nil {

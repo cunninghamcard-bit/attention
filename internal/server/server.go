@@ -14,7 +14,6 @@ import (
 	"sync"
 
 	"github.com/cunninghamcard-bit/Attention/internal/backend"
-	"github.com/cunninghamcard-bit/Attention/internal/plugin"
 	"github.com/cunninghamcard-bit/Attention/internal/protocol"
 	"github.com/cunninghamcard-bit/Attention/internal/session"
 )
@@ -28,8 +27,6 @@ type Options struct {
 	Bus         backend.NotifyBus
 	Queue       backend.JobQueue
 	Repo        session.JsonlSessionRepoAPI
-	Plugins     *plugin.Registry
-	ExtCommands ExtCommandDispatcher
 	Logger      *slog.Logger
 }
 
@@ -106,10 +103,6 @@ func (s *Server) routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/sessions/{id}/cancel", s.handleCancel)
 	mux.HandleFunc("POST /v1/sessions/{id}/ui-resolve", s.handleUIResolve)
 	mux.HandleFunc("GET /v1/sessions/{id}/events", s.handleEventsNoBuffer)
-	mux.HandleFunc("GET /v1/plugins", s.handleListPlugins)
-	mux.HandleFunc("POST /v1/plugins/{id}/enabled", s.handleSetPluginEnabled)
-	mux.HandleFunc("POST /v1/ext/command", s.handleExtCommand)
-	mux.HandleFunc("GET /plugins/{id}/{asset...}", s.handleStaticPluginAsset)
 	if s.opts.FrontendDir != "" {
 		mux.HandleFunc("GET /{asset...}", s.handleFrontendAsset)
 	}
@@ -136,7 +129,7 @@ func (s *Server) handleEventsNoBuffer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleFrontendAsset(w http.ResponseWriter, r *http.Request) {
-	if isAPIPath(r.URL.Path) || isPluginStaticPath(r.URL.Path) {
+	if isAPIPath(r.URL.Path) {
 		http.NotFound(w, r)
 		return
 	}
@@ -178,10 +171,6 @@ func (s *Server) authorized(r *http.Request) bool {
 
 func isAPIPath(path string) bool {
 	return path == "/v1" || strings.HasPrefix(path, "/v1/")
-}
-
-func isPluginStaticPath(path string) bool {
-	return path == "/plugins" || strings.HasPrefix(path, "/plugins/")
 }
 
 func serveFrontendFile(

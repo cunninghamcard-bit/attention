@@ -9,12 +9,37 @@ with the server-form bindings (Postgres / Redis / object store) removed.
 
 - `cmd/along` — headless CLI entry (print / json / rpc modes).
 - `internal/**` — the engine: agent loop, AI providers, sessions, tools,
-  pipeline, hooks, plugins, the local event store + control-plane HTTP (REST+SSE).
-- `plugins/**` — bundled example plugins (hello-world, session-list, todo).
+  pipeline, hooks, the local event store + control-plane HTTP (REST+SSE).
 
 Excluded on purpose (server form): `backend/pg`, `backend/redis`, `store/pg`,
 `envhost`. The local bindings (`backend/local`) are kept, so it runs fully
 self-contained on one machine.
+
+## Extending the engine
+
+This is a **headless engine**. UI lives in a separate app; the engine itself
+loads **no in-process plugin code**. Extension is declarative + out-of-process,
+the way coding agents (Crush / Claude Code / Antigravity) do it:
+
+- **Hooks** — `hooks.json` declares shell commands that fire on lifecycle
+  events and return a JSON `{decision}` on stdout. `PreToolUse` (block / rewrite
+  a tool call) and `PostToolUse` (rewrite output / stop the batch) are live;
+  `UserPromptSubmit` / `Stop` / `SubagentStop` are accepted but inert until their
+  emit sites land. Point the CLI at one with `--hooks` (defaults to
+  `<agentDir>/hooks.json`). Implementation: `internal/hook/shellhooks.go`.
+- **Skills** — markdown capability packs.
+- **Tools** — built-in tools are compiled Go (`internal/tool/builtin`); external
+  tools belong behind MCP (planned), not an in-engine code host.
+
+Example `hooks.json`:
+
+```json
+[
+  { "event": "PreToolUse", "toolName": "bash", "command": "./hooks/guard.sh", "timeoutMs": 5000 }
+]
+```
+`guard.sh` reads the event JSON on stdin and prints e.g.
+`{"decision":"block","reason":"destructive command"}` to deny the call.
 
 ## Build & run
 
