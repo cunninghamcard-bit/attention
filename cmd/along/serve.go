@@ -16,6 +16,7 @@ import (
 
 	"github.com/cunninghamcard-bit/Attention/internal/app"
 	"github.com/cunninghamcard-bit/Attention/internal/config"
+	"github.com/cunninghamcard-bit/Attention/internal/plugin"
 	"github.com/cunninghamcard-bit/Attention/internal/server"
 )
 
@@ -30,6 +31,7 @@ func runServe(ctx context.Context, args []string) error {
 	modelID := fs.String("model", "claude-sonnet-4-5", "model ID")
 	apiKey := fs.String("api-key", "", "API key override for the selected model's provider")
 	hooksPath := fs.String("hooks", "", "declarative shell-hooks file (default: <agentDir>/hooks.json)")
+	bundledPlugins := fs.String("bundled-plugins", "", "bundled plugins dir for discovery (UI loads them; engine never executes plugin code)")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
@@ -81,6 +83,13 @@ func runServe(ctx context.Context, args []string) error {
 		hooksFile = filepath.Join(cfg.AgentDir, "hooks.json")
 	}
 
+	// 声明式插件注册表：扫描捆绑目录 + <agentDir>/plugins 读 manifest，供前端发现/启停/取资源。
+	// 引擎只读元数据与静态资源，绝不执行插件代码（无 node 宿主）。
+	plugins, err := plugin.NewRegistry(*bundledPlugins, cfg.AgentDir)
+	if err != nil {
+		return fmt.Errorf("load plugin registry: %w", err)
+	}
+
 	settings := cfg.Settings
 	comp, err := app.Compose(ctx, app.ComposeOptions{
 		DataDir:            engineDir,
@@ -110,6 +119,7 @@ func runServe(ctx context.Context, args []string) error {
 		Bus:        comp.Bus,
 		Queue:      comp.Queue,
 		Repo:       comp.Repo,
+		Plugins:    plugins,
 	}
 	srv, err := server.Start(ctx, srvOpts)
 	if err != nil {

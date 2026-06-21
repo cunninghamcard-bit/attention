@@ -30,6 +30,11 @@ the way coding agents (Crush / Claude Code / Antigravity) do it:
 - **Skills** — markdown capability packs.
 - **Tools** — built-in tools are compiled Go (`internal/tool/builtin`); external
   tools belong behind MCP (planned), not an in-engine code host.
+- **Plugin discovery (declarative only)** — the engine serves a plugin registry
+  over REST (`GET /v1/plugins`, `POST /v1/plugins/{id}/enabled`,
+  `GET /plugins/{id}/{asset…}`) so a separate UI app can list, toggle, and load
+  plugin assets. The engine only reads manifests and serves static files — it
+  **never executes plugin code** (no node host, no in-process plugin runtime).
 
 Example `hooks.json`:
 
