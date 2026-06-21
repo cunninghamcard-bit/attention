@@ -113,8 +113,14 @@ func TestEnvFileSystemOperations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CanonicalPath returned error: %v", err)
 	}
-	if canonical != filepath.Join(root, "dir", "file.txt") {
-		t.Fatalf("CanonicalPath = %q", canonical)
+	// CanonicalPath resolves symlinks (e.g. macOS /var -> /private/var), so
+	// resolve the expected path the same way before comparing.
+	wantCanonical := filepath.Join(root, "dir", "file.txt")
+	if resolved, e := filepath.EvalSymlinks(wantCanonical); e == nil {
+		wantCanonical = resolved
+	}
+	if canonical != wantCanonical {
+		t.Fatalf("CanonicalPath = %q, want %q", canonical, wantCanonical)
 	}
 
 	exists, err := env.Exists(ctx, "missing.txt")

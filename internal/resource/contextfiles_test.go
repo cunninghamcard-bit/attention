@@ -91,6 +91,20 @@ func TestLoadReturnsDiagnosticsForUnreadableContextCandidate(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("Load() = %#v, want %#v", got, want)
 	}
+	// On case-insensitive filesystems (macOS APFS) the loader probes both
+	// "AGENTS.md" and "AGENTS.MD", which resolve to the same file -> two warnings
+	// for one candidate. Dedupe by lower-cased path to count distinct files.
+	seen := map[string]bool{}
+	unique := diagnostics[:0]
+	for _, d := range diagnostics {
+		k := strings.ToLower(d.Path)
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		unique = append(unique, d)
+	}
+	diagnostics = unique
 	if len(diagnostics) != 1 {
 		t.Fatalf("diagnostics len = %d, want 1: %#v", len(diagnostics), diagnostics)
 	}
