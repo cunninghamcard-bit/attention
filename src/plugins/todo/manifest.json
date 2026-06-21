@@ -1,0 +1,13 @@
+{
+  "id": "todo",
+  "name": "Todo",
+  "version": "0.1.0",
+  "minAppVersion": "0.1.0",
+  "main": "main.js",
+  "contributions": {
+    "session": "host.mjs"
+  },
+  "views": [{ "type": "todo", "name": "Todo" }],
+  "activation": ["onView:todo"],
+  "capabilities": []
+}

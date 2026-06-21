@@ -1,0 +1,10 @@
+{
+  "id": "fixture-plugin",
+  "name": "Fixture Plugin",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "contributions": {
+    "session": "session.mjs",
+    "engine": "engine.mjs"
+  }
+}
