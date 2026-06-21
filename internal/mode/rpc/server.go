@@ -37,7 +37,6 @@ type commandTarget interface {
 	AbortRetry()
 	ExecuteBash(context.Context, string) (orchestrator.BashResult, error)
 	AbortBash()
-	ExportHTML(context.Context, string) (string, error)
 	NewSession(context.Context, string) (bool, error)
 	SwitchSession(context.Context, string) (bool, error)
 	Fork(context.Context, string) (string, bool, error)
@@ -215,7 +214,6 @@ type command struct {
 	Command            string       `json:"command"`
 	Name               string       `json:"name"`
 	Enabled            bool         `json:"enabled"`
-	OutputPath         string       `json:"outputPath"`
 	CustomInstructions string       `json:"customInstructions"`
 	ParentSession      string       `json:"parentSession"`
 	SessionPath        string       `json:"sessionPath"`
@@ -312,7 +310,7 @@ func commandContent(message string, images []imageInput) []ai.ContentBlock {
 }
 
 // handlers maps a command type to its handler, returning the response to emit
-// or nil for async commands (prompt). Deferred pi commands (fork, export_html,
+// or nil for async commands (prompt). Deferred pi commands (fork,
 // new_session, extension_ui_*) slot in here as one row each.
 var handlers = map[string]func(*server, context.Context, command) *response{
 	"prompt":                  (*server).handlePrompt,
@@ -333,7 +331,6 @@ var handlers = map[string]func(*server, context.Context, command) *response{
 	"abort_retry":             (*server).handleAbortRetry,
 	"bash":                    (*server).handleBash,
 	"abort_bash":              (*server).handleAbortBash,
-	"export_html":             (*server).handleExportHTML,
 	"new_session":             (*server).handleNewSession,
 	"switch_session":          (*server).handleSwitchSession,
 	"fork":                    (*server).handleFork,
@@ -583,16 +580,6 @@ func (s *server) handleAbortBash(_ context.Context, cmd command) *response {
 	return success(cmd.ID, "abort_bash", nil)
 }
 
-func (s *server) handleExportHTML(ctx context.Context, cmd command) *response {
-	// pi calls session.exportToHtml(command.outputPath) and returns { path }:
-	// .agents/references/pi/packages/coding-agent/src/modes/rpc/rpc-mode.ts:568-571.
-	path, err := s.target.ExportHTML(ctx, cmd.OutputPath)
-	if err != nil {
-		return failure(cmd.ID, "export_html", err.Error())
-	}
-	return success(cmd.ID, "export_html", exportHTMLJSON{Path: path})
-}
-
 func (s *server) handleNewSession(ctx context.Context, cmd command) *response {
 	// pi passes optional parentSession through runtimeHost.newSession and
 	// returns {cancelled}:
@@ -791,10 +778,6 @@ type cycleModelJSON struct {
 
 type thinkingLevelJSON struct {
 	Level string `json:"level"`
-}
-
-type exportHTMLJSON struct {
-	Path string `json:"path"`
 }
 
 type sessionReplacementJSON struct {

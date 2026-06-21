@@ -815,32 +815,6 @@ func TestServeBashResponseShapeAndCommandField(t *testing.T) {
 	}
 }
 
-func TestServeExportHTMLReturnsPathAndParsesOutputPath(t *testing.T) {
-	target := &fakeTarget{exportHTMLPath: "/tmp/session.html"}
-	stdin := strings.NewReader(`{"id":"e","type":"export_html","outputPath":"exports/session.html"}` + "\n")
-
-	var out bytes.Buffer
-	if err := serve(context.Background(), target, stdin, &out); err != nil {
-		t.Fatalf("serve: %v", err)
-	}
-	if target.exportHTMLCalls != 1 || target.exportHTMLOutputPath != "exports/session.html" {
-		t.Fatalf(
-			"ExportHTML calls/outputPath = %d/%q, want 1/exports/session.html",
-			target.exportHTMLCalls,
-			target.exportHTMLOutputPath,
-		)
-	}
-
-	resp := splitLines(t, out.String())[0]
-	if resp["success"] != true || resp["command"] != "export_html" {
-		t.Fatalf("export_html response = %v", resp)
-	}
-	data := resp["data"].(map[string]any)
-	if data["path"] != "/tmp/session.html" {
-		t.Fatalf("export_html data = %v, want path", data)
-	}
-}
-
 func TestServeAbortBashReturnsSuccessNoData(t *testing.T) {
 	target := &fakeTarget{}
 	stdin := strings.NewReader(`{"id":"a","type":"abort_bash"}` + "\n")
@@ -1487,10 +1461,6 @@ type fakeTarget struct {
 	bashCommand            string
 	bashResult             orchestrator.BashResult
 	bashErr                error
-	exportHTMLCalls        int
-	exportHTMLOutputPath   string
-	exportHTMLPath         string
-	exportHTMLErr          error
 	newSessionCalls        int
 	parentSession          string
 	newSessionCancelled    bool
@@ -1574,12 +1544,6 @@ func (f *fakeTarget) ExecuteBash(_ context.Context, command string) (orchestrato
 
 func (f *fakeTarget) AbortBash() {
 	f.abortBashCalls++
-}
-
-func (f *fakeTarget) ExportHTML(_ context.Context, outputPath string) (string, error) {
-	f.exportHTMLCalls++
-	f.exportHTMLOutputPath = outputPath
-	return f.exportHTMLPath, f.exportHTMLErr
 }
 
 func (f *fakeTarget) NewSession(_ context.Context, parentSession string) (bool, error) {

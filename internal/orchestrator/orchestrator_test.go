@@ -2,12 +2,10 @@ package orchestrator
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -21,11 +19,9 @@ import (
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
 	"github.com/cunninghamcard-bit/Attention/internal/auth"
 	"github.com/cunninghamcard-bit/Attention/internal/config"
-	"github.com/cunninghamcard-bit/Attention/internal/execenv/local"
 	"github.com/cunninghamcard-bit/Attention/internal/hook"
 	"github.com/cunninghamcard-bit/Attention/internal/message"
 	"github.com/cunninghamcard-bit/Attention/internal/provider"
-	"github.com/cunninghamcard-bit/Attention/internal/render"
 	"github.com/cunninghamcard-bit/Attention/internal/resource"
 	"github.com/cunninghamcard-bit/Attention/internal/session"
 	"github.com/cunninghamcard-bit/Attention/internal/tool"
@@ -2515,177 +2511,6 @@ func TestLastAssistantTextSkipsAbortedEmptyAndConcatenatesText(t *testing.T) {
 	if text != "first second" {
 		t.Fatalf("LastAssistantText = %q, want first second", text)
 	}
-}
-
-func TestExportHTMLDefaultPathWritesTimestampedFileUnderSessionCWD(t *testing.T) {
-	ctx := context.Background()
-	o, _ := newTestOrchestrator(t, nil)
-	if _, err := o.session.AppendMessage(ctx, ai.Message{
-		Role:    ai.RoleUser,
-		Content: []ai.ContentBlock{{Type: ai.ContentText, Text: "hello export"}},
-	}); err != nil {
-		t.Fatalf("AppendMessage: %v", err)
-	}
-
-	path, err := o.ExportHTML(ctx, "")
-	if err != nil {
-		t.Fatalf("ExportHTML: %v", err)
-	}
-
-	metadata := o.session.GetMetadata()
-	if filepath.Dir(path) != metadata.CWD {
-		t.Fatalf("ExportHTML path dir = %q, want session cwd %q", filepath.Dir(path), metadata.CWD)
-	}
-	pattern := regexp.MustCompile(`^session-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.html$`)
-	if !pattern.MatchString(filepath.Base(path)) {
-		t.Fatalf("ExportHTML basename = %q, want timestamped session html", filepath.Base(path))
-	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("ReadFile exported html: %v", err)
-	}
-	if !strings.Contains(exportedSessionData(t, data), "hello export") {
-		t.Fatalf("exported session data missing message: %s", data)
-	}
-}
-
-func TestExportHTMLExplicitOutputPathRelativeToSessionCWD(t *testing.T) {
-	ctx := context.Background()
-	o, _ := newTestOrchestrator(t, nil)
-	metadata := o.session.GetMetadata()
-	o.execEnv = local.New(metadata.CWD)
-	if _, err := o.session.AppendMessage(ctx, ai.Message{
-		Role:    ai.RoleAssistant,
-		Content: []ai.ContentBlock{{Type: ai.ContentText, Text: "written by exec env"}},
-	}); err != nil {
-		t.Fatalf("AppendMessage: %v", err)
-	}
-
-	path, err := o.ExportHTML(ctx, filepath.Join("exports", "custom.html"))
-	if err != nil {
-		t.Fatalf("ExportHTML: %v", err)
-	}
-
-	wantPath := filepath.Join(metadata.CWD, "exports", "custom.html")
-	if path != wantPath {
-		t.Fatalf("ExportHTML path = %q, want %q", path, wantPath)
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("ReadFile exported html: %v", err)
-	}
-	if !strings.Contains(exportedSessionData(t, data), "written by exec env") {
-		t.Fatalf("exported session data missing message: %s", data)
-	}
-}
-
-func TestExportHTMLSessionDataPreRendersToolCallAndResult(t *testing.T) {
-	ctx := context.Background()
-	repo := session.NewJsonlSessionRepo(t.TempDir())
-	cwd := t.TempDir()
-	var resultArgsSeen bool
-
-	o, err := New(ctx, NewOptions{
-		Repo:          repo,
-		CreateOptions: session.JsonlSessionCreateOptions{CWD: cwd},
-		ModelID:       "initial-model",
-		Provider:      testProviderRegistry(testModel("initial-model")),
-		ThinkingLevel: agentloop.ThinkingOff,
-		Tools: []extension.ToolDefinition{
-			{
-				Name:        "grep",
-				Description: "Search files",
-				Execute: func(
-					context.Context,
-					extension.ToolCall,
-					tool.UpdateCallback,
-					extension.ExtensionContext,
-				) (tool.Result, error) {
-					return tool.Result{}, nil
-				},
-				RenderCall: func(input extension.ToolCallRenderInput) []render.Block {
-					pattern, _ := input.Args["pattern"].(string)
-					path, _ := input.Args["path"].(string)
-					return []render.Block{render.Text("grep " + strconv.Quote(pattern) + " in " + path)}
-				},
-				RenderResult: func(input extension.ToolResultRenderInput) []render.Block {
-					pattern, _ := input.Args["pattern"].(string)
-					path, _ := input.Args["path"].(string)
-					if pattern == "alpha" && path == "src" {
-						resultArgsSeen = true
-					}
-					return []render.Block{
-						render.Group("a.txt", []render.Block{
-							render.StyledText("2: "+pattern, "match"),
-						}),
-					}
-				},
-			},
-		},
-	})
-	if err != nil {
-		t.Fatalf("New: %v", err)
-	}
-
-	if _, err := o.session.AppendMessage(ctx, ai.Message{
-		Role: ai.RoleAssistant,
-		Content: []ai.ContentBlock{{
-			Type:       ai.ContentToolCall,
-			ToolCallID: "call-1",
-			ToolName:   "grep",
-			Arguments: map[string]any{
-				"pattern": "alpha",
-				"path":    "src",
-			},
-		}},
-	}); err != nil {
-		t.Fatalf("AppendMessage tool call: %v", err)
-	}
-	if _, err := o.session.AppendMessage(ctx, ai.Message{
-		Role:       ai.RoleToolResult,
-		ToolCallID: "call-1",
-		ToolName:   "grep",
-		Content:    []ai.ContentBlock{{Type: ai.ContentText, Text: "a.txt:2: alpha"}},
-		Details: map[string]any{
-			"matches": []any{
-				map[string]any{"path": "a.txt", "line": 2, "text": "alpha"},
-			},
-		},
-	}); err != nil {
-		t.Fatalf("AppendMessage tool result: %v", err)
-	}
-
-	data, err := o.exportHTMLSessionData()
-	if err != nil {
-		t.Fatalf("exportHTMLSessionData: %v", err)
-	}
-	rendered := data.RenderedTools["call-1"]
-	if len(rendered.CallBlocks) != 1 || rendered.CallBlocks[0].Text != `grep "alpha" in src` {
-		t.Fatalf("CallBlocks = %#v, want grep call from args", rendered.CallBlocks)
-	}
-	if !resultArgsSeen {
-		t.Fatal("result renderer did not receive args indexed by toolCallID")
-	}
-	if len(rendered.ResultBlocks) != 1 || rendered.ResultBlocks[0].Label != "a.txt" {
-		t.Fatalf("ResultBlocks = %#v, want grouped result for a.txt", rendered.ResultBlocks)
-	}
-}
-
-// exportedSessionData extracts and base64-decodes the embedded session-data JSON
-// from a pi-style exported HTML file. The viewer renders messages client-side
-// from this blob, so message text is not inlined in the HTML.
-func exportedSessionData(t *testing.T, html []byte) string {
-	t.Helper()
-	m := regexp.MustCompile(`(?s)<script id="session-data" type="application/json">(.*?)</script>`).FindSubmatch(html)
-	if m == nil {
-		t.Fatalf("exported html missing session-data script: %s", html)
-	}
-	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(m[1])))
-	if err != nil {
-		t.Fatalf("decode session-data base64: %v", err)
-	}
-	return string(decoded)
 }
 
 func TestSessionStatsCountsMessagesToolCallsUsageAndCost(t *testing.T) {
