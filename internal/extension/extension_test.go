@@ -55,36 +55,6 @@ func TestLoadRegistersHandlerAfterFactorySuccessAndEmitFires(t *testing.T) {
 	}
 }
 
-func TestNoopUIContextDoesNotPanicAndReturnsUnavailableErrors(t *testing.T) {
-	ui := NoopUIContext{}
-
-	gotSelect, err := ui.Select("pick", []string{"one"})
-	if gotSelect != -1 || !errors.Is(err, ErrNoInteractiveUI) {
-		t.Fatalf("Select = %d, %v; want -1, ErrNoInteractiveUI", gotSelect, err)
-	}
-
-	gotConfirm, err := ui.Confirm("continue")
-	if gotConfirm || !errors.Is(err, ErrNoInteractiveUI) {
-		t.Fatalf("Confirm = %v, %v; want false, ErrNoInteractiveUI", gotConfirm, err)
-	}
-
-	gotInput, err := ui.Input("name")
-	if gotInput != "" || !errors.Is(err, ErrNoInteractiveUI) {
-		t.Fatalf("Input = %q, %v; want empty, ErrNoInteractiveUI", gotInput, err)
-	}
-
-	gotEditor, err := ui.Editor("edit", "draft")
-	if gotEditor != "" || !errors.Is(err, ErrNoInteractiveUI) {
-		t.Fatalf("Editor = %q, %v; want empty, ErrNoInteractiveUI", gotEditor, err)
-	}
-
-	ui.Notify("ignored")
-	ui.SetStatus("branch", "main")
-	ui.SetWidget("diff", []string{"one", "two"})
-	ui.SetTitle("title")
-	ui.SetEditorText("text")
-}
-
 func TestLoadUsesFreshExtensionContextPerEmit(t *testing.T) {
 	registry := hook.NewRegistry()
 	var providerCalls int

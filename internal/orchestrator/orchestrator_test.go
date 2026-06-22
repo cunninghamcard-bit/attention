@@ -2796,47 +2796,6 @@ func TestDispatchCommandRoutesToRegisteredHandler(t *testing.T) {
 	}
 }
 
-func TestExtensionContextUsesSetUIContext(t *testing.T) {
-	o, _ := newTestOrchestrator(t, nil)
-	ui := &recordingUIContext{}
-
-	o.SetUIContext(ui)
-	extCtx := o.extensionContext(context.Background())
-
-	if extCtx.UI != ui {
-		t.Fatalf("extension UI = %T, want set context", extCtx.UI)
-	}
-	extCtx.UI.Notify("hello")
-	if ui.notifications != 1 {
-		t.Fatalf("Notify calls = %d, want 1", ui.notifications)
-	}
-}
-
-func TestExtensionContextUsesNoopUIContextByDefault(t *testing.T) {
-	o, _ := newTestOrchestrator(t, nil)
-	extCtx := o.extensionContext(context.Background())
-
-	if extCtx.UI == nil {
-		t.Fatal("extension UI is nil")
-	}
-	extCtx.UI.Notify("ignored")
-
-	gotSelect, err := extCtx.UI.Select("pick", []string{"one"})
-	if gotSelect != -1 || !errors.Is(err, extension.ErrNoInteractiveUI) {
-		t.Fatalf("Select = %d, %v; want -1, ErrNoInteractiveUI", gotSelect, err)
-	}
-
-	gotConfirm, err := extCtx.UI.Confirm("continue")
-	if gotConfirm || !errors.Is(err, extension.ErrNoInteractiveUI) {
-		t.Fatalf("Confirm = %v, %v; want false, ErrNoInteractiveUI", gotConfirm, err)
-	}
-
-	gotInput, err := extCtx.UI.Input("name")
-	if gotInput != "" || !errors.Is(err, extension.ErrNoInteractiveUI) {
-		t.Fatalf("Input = %q, %v; want empty, ErrNoInteractiveUI", gotInput, err)
-	}
-}
-
 func TestExtensionContextModelRegistryAndIsAborted(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	models := []ai.Model{
@@ -3390,38 +3349,6 @@ func newTestOrchestratorWithModels(
 	}
 	return o
 }
-
-type recordingUIContext struct {
-	notifications int
-}
-
-func (ui *recordingUIContext) Select(string, []string) (int, error) {
-	return 0, nil
-}
-
-func (ui *recordingUIContext) Confirm(string) (bool, error) {
-	return true, nil
-}
-
-func (ui *recordingUIContext) Input(string) (string, error) {
-	return "value", nil
-}
-
-func (ui *recordingUIContext) Editor(string, string) (string, error) {
-	return "value", nil
-}
-
-func (ui *recordingUIContext) Notify(string) {
-	ui.notifications++
-}
-
-func (ui *recordingUIContext) SetStatus(string, string) {}
-
-func (ui *recordingUIContext) SetWidget(string, []string) {}
-
-func (ui *recordingUIContext) SetTitle(string) {}
-
-func (ui *recordingUIContext) SetEditorText(string) {}
 
 type recordingHarness struct {
 	promptCalls         int

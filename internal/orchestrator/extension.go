@@ -181,21 +181,12 @@ func copyFloatPtr(value *float64) *float64 {
 	return &copied
 }
 
-// SetUIContext sets the interactive UI used by extension callbacks.
-func (o *Orchestrator) SetUIContext(ui extension.UIContext) {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	o.ui = ui
-}
-
 func (o *Orchestrator) extensionContext(ctx context.Context) extension.ExtensionContext {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
 	return extension.ExtensionContext{
-		UI:      o.extensionUI(),
-		HasUI:   o.hasUI(),
 		Cwd:     o.extensionCwd(),
 		Session: readonlySessionView{session: o.session},
 		ModelRegistry: func() []extension.ModelInfo {
@@ -271,26 +262,11 @@ func extensionModelInfos(models []ai.Model) []extension.ModelInfo {
 	return infos
 }
 
-func (o *Orchestrator) extensionUI() extension.UIContext {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	if o.ui != nil {
-		return o.ui
-	}
-	return extension.NoopUIContext{}
-}
-
 func runExtensionShutdown() {
 	extensionShutdownMu.RLock()
 	callback := extensionShutdownCallback
 	extensionShutdownMu.RUnlock()
 	callback()
-}
-
-func (o *Orchestrator) hasUI() bool {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	return o.ui != nil
 }
 
 func (o *Orchestrator) extensionCwd() string {

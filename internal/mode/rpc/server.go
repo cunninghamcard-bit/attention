@@ -11,7 +11,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/cunninghamcard-bit/Attention/internal/extension"
 	"github.com/cunninghamcard-bit/Attention/internal/orchestrator"
 	"github.com/cunninghamcard-bit/Attention/internal/agentloop"
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
@@ -53,7 +52,6 @@ type commandTarget interface {
 	Messages() []ai.Message
 	ResolveModel(ctx context.Context, provider, modelID string) (ai.Model, bool)
 	AvailableModels(context.Context) []ai.Model
-	SetUIContext(extension.UIContext)
 }
 
 // Serve runs the bidirectional rpc protocol (pi modes/rpc/rpc-mode.ts):
@@ -65,16 +63,12 @@ func Serve(ctx context.Context, orch *orchestrator.Orchestrator) error {
 
 func serve(ctx context.Context, target commandTarget, stdin io.Reader, stdout io.Writer) (err error) {
 	s := &server{
-		target:    target,
-		writer:    newJSONLineWriter(stdout),
-		pendingUI: map[string]chan uiResponse{},
+		target: target,
+		writer: newJSONLineWriter(stdout),
 	}
-	target.SetUIContext(newRPCUIContext(ctx, s))
 	cancel := func() {}
 	defer func() {
 		_ = target.NotifySessionShutdown(context.WithoutCancel(ctx), "quit")
-		target.SetUIContext(nil)
-		s.closeUIRequests()
 		s.wg.Wait() // let in-flight prompts finish streaming events...
 		cancel()    // ...then unsubscribe
 		if flushErr := s.writer.Flush(); flushErr != nil {
@@ -94,13 +88,9 @@ func serve(ctx context.Context, target commandTarget, stdin io.Reader, stdout io
 }
 
 type server struct {
-	target    commandTarget
-	writer    *jsonLineWriter
-	wg        sync.WaitGroup
-	uiMu      sync.Mutex
-	pendingUI map[string]chan uiResponse
-	nextUIID  uint64
-	uiClosed  bool
+	target commandTarget
+	writer *jsonLineWriter
+	wg     sync.WaitGroup
 }
 
 // write serializes one JSON line. The writer is mutex-guarded, so concurrent
@@ -139,8 +129,8 @@ func (s *server) readCommands(ctx context.Context, stdin io.Reader) error {
 			return ctx.Err()
 		case line := <-lines:
 			// pi dispatches every input line as an unawaited async handler
-			// (rpc-mode.ts:760-762), so abort/abort_bash/extension_ui_response
-			// stay processable while a blocking command (bash, compact) runs.
+			// (rpc-mode.ts:760-762), so abort/abort_bash stay processable while a
+			// blocking command (bash, compact) runs.
 			s.wg.Go(func() { s.dispatch(ctx, line) })
 		case err := <-readErr:
 			// stdin closed: pi shuts down on input end (rpc-mode.ts:754).
@@ -167,19 +157,6 @@ func (s *server) dispatch(ctx context.Context, line []byte) {
 		s.write(failure("", "undefined", "Unknown command: undefined"))
 		return
 	}
-	if envelope.Type == "extension_ui_response" {
-		// pi routes extension_ui_response to the pending request before command
-		// handling:
-		// .agents/references/pi/packages/coding-agent/src/modes/rpc/rpc-mode.ts:718-732.
-		var resp uiResponse
-		if err := json.Unmarshal(line, &resp); err != nil {
-			s.write(failure("", "parse", fmt.Sprintf("Failed to parse command: %s", err)))
-			return
-		}
-		s.deliverUIResponse(resp)
-		return
-	}
-
 	var cmd command
 	if err := json.Unmarshal(line, &cmd); err != nil {
 		// pi: error(undefined, "parse", ...) (rpc-mode.ts:707).
@@ -316,7 +293,7 @@ func commandContent(message string, images []imageInput) []ai.ContentBlock {
 
 // handlers maps a command type to its handler, returning the response to emit
 // or nil for async commands (prompt). Deferred pi commands (fork,
-// new_session, extension_ui_*) slot in here as one row each.
+// new_session) slot in here as one row each.
 var handlers = map[string]func(*server, context.Context, command) *response{
 	"prompt":                  (*server).handlePrompt,
 	"steer":                   (*server).handleSteer,

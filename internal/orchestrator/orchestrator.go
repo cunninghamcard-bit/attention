@@ -60,7 +60,6 @@ type Orchestrator struct {
 	contextFiles        []resource.ContextFile
 	diagnostics         []resource.ResourceDiagnostic
 	execEnv             execenv.ExecutionEnv
-	ui                  extension.UIContext
 
 	mu                        sync.Mutex
 	phase                     phase

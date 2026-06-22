@@ -12,28 +12,6 @@ import (
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
 )
 
-// UIContext provides read/write interaction with extension UI hosts.
-// It keeps pi's serializable RPC UI set and intentionally omits pure-TUI
-// methods/accessors that pi's RPC mode no-ops or downgrades to fallbacks:
-// .agents/references/pi/packages/coding-agent/src/core/extensions/types.ts:124-215
-// .agents/references/pi/packages/coding-agent/src/modes/rpc/rpc-mode.ts:162-164
-// .agents/references/pi/packages/coding-agent/src/modes/rpc/rpc-mode.ts:178-193
-// .agents/references/pi/packages/coding-agent/src/modes/rpc/rpc-mode.ts:206-214
-// .agents/references/pi/packages/coding-agent/src/modes/rpc/rpc-mode.ts:227-235
-// .agents/references/pi/packages/coding-agent/src/modes/rpc/rpc-mode.ts:247-250
-// .agents/references/pi/packages/coding-agent/src/modes/rpc/rpc-mode.ts:272-309
-type UIContext interface {
-	Select(prompt string, options []string) (int, error)
-	Confirm(prompt string) (bool, error)
-	Input(prompt string) (string, error)
-	Editor(title, prefill string) (string, error)
-	Notify(msg string)
-	SetStatus(key, text string)
-	SetWidget(key string, lines []string)
-	SetTitle(title string)
-	SetEditorText(text string)
-}
-
 // ReadonlySessionView provides read-only access to session state.
 // The concrete type is defined by the caller; this package only needs
 // a narrow read-only surface.
@@ -71,8 +49,6 @@ type ModelInfo struct {
 // ExtensionContext carries the runtime context that extension handlers can
 // access through the ContextFactory wrapper.
 type ExtensionContext struct {
-	UI                 UIContext
-	HasUI              bool
 	Cwd                string
 	Session            ReadonlySessionView
 	ModelRegistry      func() []ModelInfo
