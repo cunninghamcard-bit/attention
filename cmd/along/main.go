@@ -56,6 +56,13 @@ func run(ctx context.Context) error {
 	modelID := fs.String("model", "claude-sonnet-4-5", "model ID")
 	mode := fs.String("mode", "print", "output mode: print, json, or rpc")
 	apiKey := fs.String("api-key", "", "API key override for the selected model's provider (highest priority, not persisted)")
+	// Session-selection flags, ported from pi (main.ts createSessionManager) and
+	// adapted for a headless kernel. See session_flags.go for headless semantics.
+	sessionFlag := fs.String("session", "", "resume a specific session by path or id")
+	continueFlag := fs.Bool("continue", false, "resume the most recent session for the current directory")
+	resumeFlag := fs.Bool("resume", false, "resume the most recent session (headless has no interactive picker)")
+	sessionIDFlag := fs.String("session-id", "", "resume the session with this id, or create it if absent")
+	noSessionFlag := fs.Bool("no-session", false, "use an ephemeral, non-persisted session")
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
@@ -63,6 +70,16 @@ func run(ctx context.Context) error {
 		return err
 	}
 	if err := validateMode(*mode); err != nil {
+		return err
+	}
+	sessFlags := sessionFlags{
+		session:   *sessionFlag,
+		cont:      *continueFlag,
+		resume:    *resumeFlag,
+		sessionID: *sessionIDFlag,
+		noSession: *noSessionFlag,
+	}
+	if err := validateSessionFlags(sessFlags); err != nil {
 		return err
 	}
 
@@ -109,9 +126,22 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	cwd, err := os.Getwd()
+	procCWD, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get current directory: %w", err)
+	}
+
+	repo := session.NewJsonlSessionRepo(root)
+	// Resolve the session target before building the cwd-dependent runtime: a
+	// resumed session may carry a different recorded CWD than the process, and
+	// for headless we load context files / system prompt against that CWD.
+	plan, err := resolveSessionPlan(ctx, repo, procCWD, sessFlags)
+	if err != nil {
+		return err
+	}
+	cwd := plan.cwd
+	if cwd == "" {
+		cwd = procCWD
 	}
 
 	settings := cfg.Settings
@@ -161,9 +191,10 @@ func run(ctx context.Context) error {
 	// a no-op (LoadShellHooks returns nil,nil).
 	hooksPath := filepath.Join(cfg.AgentDir, "hooks.json")
 
-	orch, err := orchestrator.New(ctx, orchestrator.NewOptions{
-		Repo:            session.NewJsonlSessionRepo(root),
-		CreateOptions:   session.JsonlSessionCreateOptions{CWD: cwd},
+	// Shared option fields, identical between the New and Open constructor
+	// paths. Only Repo/CreateOptions/Metadata/Session differ per plan, so they
+	// are applied below rather than duplicated here.
+	common := orchestratorCommonOptions{
 		ModelID:         *modelID,
 		Provider:        prov,
 		Settings:        settings,
@@ -178,7 +209,9 @@ func run(ctx context.Context) error {
 		Diagnostics:     resourceDiagnostics,
 		ExecutionEnv:    env,
 		Tools:           builtin.NewCodingTools(env, shellCommandPrefix),
-	})
+	}
+
+	orch, err := buildOrchestrator(ctx, repo, plan, common)
 	if err != nil {
 		return fmt.Errorf("create orchestrator: %w", err)
 	}
