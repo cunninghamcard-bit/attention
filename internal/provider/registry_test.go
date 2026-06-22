@@ -446,13 +446,3 @@ func TestSetRuntimeAPIKeyPassesThroughToResolver(t *testing.T) {
 	New(ai.BuiltinModels(), missingAuth{}).SetRuntimeAPIKey("anthropic", "x")
 	New(ai.BuiltinModels(), nil).SetRuntimeAPIKey("anthropic", "x")
 }
-
-//go:fix inline
-func strPtr(value string) *string {
-	return new(value)
-}
-
-//go:fix inline
-func boolPtr(value bool) *bool {
-	return new(value)
-}

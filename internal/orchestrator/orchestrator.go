@@ -1188,54 +1188,6 @@ func (o *Orchestrator) ReloadSettings(ctx context.Context) error {
 	return nil
 }
 
-func (o *Orchestrator) reloadResources(ctx context.Context) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	o.mu.Lock()
-	previous := resourcesSnapshot(o.skills, o.promptTemplates)
-	cwd := o.cwd
-	promptPaths := append([]string(nil), o.promptPaths...)
-	skillPaths := append([]string(nil), o.skillPaths...)
-	o.mu.Unlock()
-
-	agentDir, err := o.resolveAgentDir()
-	if err != nil {
-		return fmt.Errorf("orchestrator: resolve agent dir for reload: %w", err)
-	}
-	base, err := loadBaseResources(cwd, agentDir, promptPaths, skillPaths)
-	if err != nil {
-		return err
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	templates, templateCollisions := resource.DedupePromptTemplates(base.promptTemplates)
-
-	o.mu.Lock()
-	o.promptTemplates = templates
-	o.skills = append([]resource.Skill(nil), base.skills...)
-	o.diagnostics = append(o.diagnostics, base.diagnostics...)
-	o.diagnostics = append(o.diagnostics, templateCollisions...)
-	o.mu.Unlock()
-
-	if err := o.discoverExtensionResources(ctx, cwd, "reload"); err != nil {
-		return err
-	}
-
-	o.mu.Lock()
-	current := o.rebuildSystemPromptLocked(cwd)
-	o.mu.Unlock()
-
-	// pi AgentHarness.setResources emits resources_update after replacing
-	// skills and promptTemplates:
-	// .agents/references/pi/packages/agent/src/harness/agent-harness.ts:907-913.
-	o.emitResourcesUpdate(ctx, current, previous)
-	return nil
-}
-
 func loadBaseResources(
 	cwd string,
 	agentDir string,
@@ -1268,17 +1220,6 @@ func loadBaseResources(
 		return out, fmt.Errorf("orchestrator: reload skills: %w", err)
 	}
 	return out, nil
-}
-
-func (o *Orchestrator) rebuildSystemPromptLocked(cwd string) ResourcesSnapshot {
-	cfg := runtimeConfig{
-		systemPrompt: o.customSystemPrompt,
-		contextFiles: append([]resource.ContextFile(nil), o.contextFiles...),
-		skills:       append([]resource.Skill(nil), o.skills...),
-	}
-	toolDefs := append([]extension.ToolDefinition(nil), o.toolDefs...)
-	o.systemPrompt, o.systemPromptOptions = buildSystemPrompt(cfg, cwd, toolDefs)
-	return resourcesSnapshot(o.skills, o.promptTemplates)
 }
 
 func (o *Orchestrator) persistGlobalSetting(path []string, value any) {

@@ -1361,14 +1361,6 @@ func metadataIDs(metadata []Metadata) []string {
 	return ids
 }
 
-func sortStrings(values []string) {
-	for i := 1; i < len(values); i++ {
-		for j := i; j > 0 && values[j] < values[j-1]; j-- {
-			values[j], values[j-1] = values[j-1], values[j]
-		}
-	}
-}
-
 func assertSessionErrorCode(t *testing.T, err error, code ErrorCode) {
 	t.Helper()
 	sessionErr, ok := err.(*Error)

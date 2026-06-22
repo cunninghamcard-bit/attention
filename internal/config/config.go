@@ -115,16 +115,8 @@ func SessionDir() (string, error) {
 	return filepath.Join(agentDir, sessionsDir), nil
 }
 
-func ModelsJSONPath() (string, error) {
-	return agentPath(modelsJSONFile)
-}
-
 func AuthJSONPath() (string, error) {
 	return agentPath(authJSONFile)
-}
-
-func SettingsPath() (string, error) {
-	return agentPath(settingsFile)
 }
 
 func ResolveValue(v string) string {

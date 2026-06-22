@@ -76,10 +76,6 @@ func NewResolver(store Store) *Resolver {
 	}
 }
 
-func EnvVars(provider string) []string {
-	return copyEnvVars(ProviderEnv[provider])
-}
-
 func (r *Resolver) Resolve(ctx context.Context, provider string) (Credential, error) {
 	if provider == "" {
 		return Credential{}, fmt.Errorf("provider is required")

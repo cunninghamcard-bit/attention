@@ -82,40 +82,10 @@ func WithHTTPClient(client *http.Client) Option {
 	}
 }
 
-func WithAuthorizeURL(rawURL string) Option {
-	return func(cfg *config) {
-		cfg.authorizeURL = rawURL
-	}
-}
-
-func WithTokenURL(rawURL string) Option {
-	return func(cfg *config) {
-		cfg.tokenURL = rawURL
-	}
-}
-
 func WithCallbackAddress(host string, port int) Option {
 	return func(cfg *config) {
 		cfg.callbackListenHost = host
 		cfg.callbackPort = port
-	}
-}
-
-func WithCallbackPublicHost(host string) Option {
-	return func(cfg *config) {
-		cfg.callbackPublicHost = host
-	}
-}
-
-func WithCallbackPath(path string) Option {
-	return func(cfg *config) {
-		cfg.callbackPath = path
-	}
-}
-
-func WithOriginator(originator string) Option {
-	return func(cfg *config) {
-		cfg.originator = originator
 	}
 }
 

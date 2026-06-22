@@ -275,19 +275,6 @@ func completeStream(msg *ai.Message) agentloop.StreamFunc {
 	}
 }
 
-func errorStream(err error) agentloop.StreamFunc {
-	return func(
-		context.Context,
-		ai.Model,
-		ai.Context,
-		ai.SimpleStreamOptions,
-	) *ai.AssistantMessageEventStream {
-		return ai.NewAssistantMessageEventStream(func(yield func(*ai.StreamEvent, error) bool) {
-			yield(nil, err)
-		})
-	}
-}
-
 func textMessage(role ai.Role, text string) ai.Message {
 	return ai.Message{
 		Role:    role,

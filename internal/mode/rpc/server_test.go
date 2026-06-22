@@ -1406,16 +1406,6 @@ func awaitStringResult(t *testing.T, ch <-chan stringResult) stringResult {
 	}
 }
 
-//go:fix inline
-func stringPtr(value string) *string {
-	return new(value)
-}
-
-//go:fix inline
-func boolPtr(value bool) *bool {
-	return new(value)
-}
-
 func assertTextImageContent(t *testing.T, content []ai.ContentBlock, text, data, mimeType string) {
 	t.Helper()
 

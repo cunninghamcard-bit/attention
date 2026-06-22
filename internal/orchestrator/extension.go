@@ -23,21 +23,6 @@ var (
 	extensionShutdownCallback = func() {}
 )
 
-// SetExtensionShutdown sets the process-level callback exposed as
-// ExtensionContext.Shutdown.
-//
-// TODO(orchestrator): rpc/CLI can wire this to quit like pi shutdown():
-// .agents/references/pi/packages/coding-agent/src/core/extensions/types.ts:319-320.
-func SetExtensionShutdown(callback func()) {
-	if callback == nil {
-		callback = func() {}
-	}
-
-	extensionShutdownMu.Lock()
-	defer extensionShutdownMu.Unlock()
-	extensionShutdownCallback = callback
-}
-
 func (o *Orchestrator) bindExtensionCommands(ext extension.Extension) error {
 	for name, def := range ext.Commands {
 		if _, exists := o.commands[name]; exists {
