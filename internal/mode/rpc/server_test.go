@@ -16,6 +16,7 @@ import (
 	"github.com/cunninghamcard-bit/Attention/internal/agentloop"
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
 	"github.com/cunninghamcard-bit/Attention/internal/resource"
+	"github.com/cunninghamcard-bit/Attention/internal/session"
 )
 
 func TestServeWritesResponsesWithoutHeader(t *testing.T) {
@@ -778,60 +779,83 @@ func TestServeRetryAndCompactionToggleCommandsOmitData(t *testing.T) {
 	}
 }
 
-func TestServeBashResponseShapeAndCommandField(t *testing.T) {
+func TestServeNavigateTreeResponseShape(t *testing.T) {
 	target := &fakeTarget{
-		bashResult: orchestrator.BashResult{
-			Output:         "partial\n",
-			Cancelled:      true,
-			Truncated:      true,
-			FullOutputPath: "/tmp/full.log",
+		navResult: orchestrator.NavResult{
+			Cancelled:  true,
+			EditorText: "branch summary",
 		},
 	}
-	stdin := strings.NewReader(`{"id":"b","type":"bash","command":"sleep 10"}` + "\n")
+	stdin := strings.NewReader(
+		`{"id":"nt","type":"navigate_tree","entryId":"entry-9","summarize":true,` +
+			`"customInstructions":"focus","replaceInstructions":true,"label":"main"}` + "\n",
+	)
 
 	var out bytes.Buffer
 	if err := serve(context.Background(), target, stdin, &out); err != nil {
 		t.Fatalf("serve: %v", err)
 	}
-	if target.executeBashCalls != 1 || target.bashCommand != "sleep 10" {
+	if target.navigateTreeCalls != 1 || target.navTarget != "entry-9" {
 		t.Fatalf(
-			"ExecuteBash calls/command = %d/%q, want 1/sleep 10",
-			target.executeBashCalls,
-			target.bashCommand,
+			"NavigateTree calls/target = %d/%q, want 1/entry-9",
+			target.navigateTreeCalls,
+			target.navTarget,
 		)
+	}
+	wantOpts := orchestrator.NavOptions{
+		Summarize:           true,
+		CustomInstructions:  "focus",
+		ReplaceInstructions: true,
+		Label:               "main",
+	}
+	if target.navOpts != wantOpts {
+		t.Fatalf("NavigateTree opts = %#v, want %#v", target.navOpts, wantOpts)
 	}
 
 	resp := splitLines(t, out.String())[0]
-	if resp["success"] != true || resp["command"] != "bash" {
-		t.Fatalf("bash response = %v", resp)
+	if resp["success"] != true || resp["command"] != "navigate_tree" {
+		t.Fatalf("navigate_tree response = %v", resp)
 	}
 	data := resp["data"].(map[string]any)
-	if data["output"] != "partial\n" ||
-		data["exitCode"] != nil ||
-		data["cancelled"] != true ||
-		data["truncated"] != true ||
-		data["fullOutputPath"] != "/tmp/full.log" {
-		t.Fatalf("bash data = %v", data)
+	if data["cancelled"] != true || data["editorText"] != "branch summary" {
+		t.Fatalf("navigate_tree data = %v", data)
 	}
 }
 
-func TestServeAbortBashReturnsSuccessNoData(t *testing.T) {
+func TestServeReloadReturnsSuccessNoData(t *testing.T) {
 	target := &fakeTarget{}
-	stdin := strings.NewReader(`{"id":"a","type":"abort_bash"}` + "\n")
+	stdin := strings.NewReader(`{"id":"r","type":"reload"}` + "\n")
 
 	var out bytes.Buffer
 	if err := serve(context.Background(), target, stdin, &out); err != nil {
 		t.Fatalf("serve: %v", err)
 	}
-	if target.abortBashCalls != 1 {
-		t.Fatalf("AbortBash calls = %d, want 1", target.abortBashCalls)
+	if target.reloadCalls != 1 {
+		t.Fatalf("ReloadSettings calls = %d, want 1", target.reloadCalls)
 	}
 	resp := splitLines(t, out.String())[0]
-	if resp["success"] != true || resp["command"] != "abort_bash" {
-		t.Fatalf("abort_bash response = %v", resp)
+	if resp["success"] != true || resp["command"] != "reload" {
+		t.Fatalf("reload response = %v", resp)
 	}
 	if _, ok := resp["data"]; ok {
-		t.Fatalf("abort_bash response included data: %v", resp)
+		t.Fatalf("reload response included data: %v", resp)
+	}
+}
+
+func TestServeReloadSettingsErrorIsFailure(t *testing.T) {
+	target := &fakeTarget{reloadErr: errors.New("busy")}
+	stdin := strings.NewReader(`{"id":"r","type":"reload"}` + "\n")
+
+	var out bytes.Buffer
+	if err := serve(context.Background(), target, stdin, &out); err != nil {
+		t.Fatalf("serve: %v", err)
+	}
+	resp := splitLines(t, out.String())[0]
+	if resp["success"] != false || resp["command"] != "reload" {
+		t.Fatalf("reload response = %v, want failure", resp)
+	}
+	if resp["error"] != "busy" {
+		t.Fatalf("reload error = %v, want busy", resp["error"])
 	}
 }
 
@@ -1446,11 +1470,13 @@ type fakeTarget struct {
 	lastAssistantOK        bool
 	abortCalls             int
 	abortRetryCalls        int
-	abortBashCalls         int
-	executeBashCalls       int
-	bashCommand            string
-	bashResult             orchestrator.BashResult
-	bashErr                error
+	navigateTreeCalls      int
+	navTarget              string
+	navOpts                orchestrator.NavOptions
+	navResult              orchestrator.NavResult
+	navErr                 error
+	reloadCalls            int
+	reloadErr              error
 	newSessionCalls        int
 	parentSession          string
 	newSessionCancelled    bool
@@ -1526,14 +1552,20 @@ func (f *fakeTarget) AbortRetry() {
 	f.abortRetryCalls++
 }
 
-func (f *fakeTarget) ExecuteBash(_ context.Context, command string) (orchestrator.BashResult, error) {
-	f.executeBashCalls++
-	f.bashCommand = command
-	return f.bashResult, f.bashErr
+func (f *fakeTarget) NavigateTree(
+	_ context.Context,
+	target session.EntryID,
+	opts orchestrator.NavOptions,
+) (orchestrator.NavResult, error) {
+	f.navigateTreeCalls++
+	f.navTarget = string(target)
+	f.navOpts = opts
+	return f.navResult, f.navErr
 }
 
-func (f *fakeTarget) AbortBash() {
-	f.abortBashCalls++
+func (f *fakeTarget) ReloadSettings(context.Context) error {
+	f.reloadCalls++
+	return f.reloadErr
 }
 
 func (f *fakeTarget) NewSession(_ context.Context, parentSession string) (bool, error) {

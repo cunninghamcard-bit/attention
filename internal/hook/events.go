@@ -1,7 +1,6 @@
 package hook
 
 import (
-	"context"
 	"time"
 
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
@@ -21,7 +20,6 @@ const (
 	EventSessionBeforeFork     = "session_before_fork"
 	EventSessionBeforeCompact  = "session_before_compact"
 	EventSessionBeforeTree     = "session_before_tree"
-	EventUserBash              = "user_bash"
 	EventResourcesDiscover     = "resources_discover"
 	// EventMessageEnd is a decision hook emitted by the harness through
 	// Registry.Handlers so replacements are chained locally.
@@ -314,63 +312,6 @@ type SessionBeforeTreeResult struct {
 }
 
 func (r SessionBeforeTreeResult) Cancelled() bool { return r.Cancel }
-
-// BashExecOptions mirrors pi's BashOperations exec options with ctx carrying
-// AbortSignal cancellation:
-// .agents/references/pi/packages/coding-agent/src/core/tools/bash.ts:48-57.
-type BashExecOptions struct {
-	OnData  func(string)
-	Timeout time.Duration
-	Env     map[string]string
-}
-
-// BashOperations lets native user_bash handlers route execution through an
-// extension backend instead of along's local shell.
-//
-// pi: .agents/references/pi/packages/coding-agent/src/core/tools/bash.ts:40-58.
-type BashOperations interface {
-	Exec(
-		ctx context.Context,
-		command string,
-		cwd string,
-		opts BashExecOptions,
-	) (BashOpResult, error)
-}
-
-// BashOpResult is the result returned by BashOperations.Exec.
-type BashOpResult struct {
-	ExitCode *int
-}
-
-// BashResult is the out-of-band bash result shape exposed to user_bash hooks.
-type BashResult struct {
-	Output         string
-	ExitCode       *int
-	Cancelled      bool
-	Truncated      bool
-	FullOutputPath string
-}
-
-// UserBashEvent is emitted before a user bash command runs.
-type UserBashEvent struct {
-	Type               string
-	Command            string
-	ExcludeFromContext bool
-	CWD                string
-}
-
-// UserBashEventResult allows hook to replace or reroute bash execution.
-//
-// pi's user_bash result supports operations?: BashOperations and result?:
-// BashResult:
-// .agents/references/pi/packages/coding-agent/src/core/extensions/types.ts:990-995.
-//
-// Native Go handlers are fully supported here; see pi BashOperations exec:
-// .agents/references/pi/packages/coding-agent/src/core/tools/bash.ts:40-58.
-type UserBashEventResult struct {
-	Result     *BashResult
-	Operations BashOperations
-}
 
 // ResourcesDiscoverEvent is emitted after session startup so extensions can
 // provide extra resource paths.

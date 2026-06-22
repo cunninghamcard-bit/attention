@@ -735,50 +735,28 @@ func TestSlashCommandsPrependsBuiltinsAndAggregatesExtensionTemplatesAndSkills(t
 
 	got := o.SlashCommands()
 	wantBuiltinNames := []string{
-		"settings",
 		"model",
-		"scoped-models",
-		"export",
-		"import",
-		"share",
-		"copy",
 		"name",
 		"session",
-		"changelog",
-		"hotkeys",
 		"fork",
 		"clone",
 		"tree",
-		"login",
-		"logout",
 		"new",
 		"compact",
 		"resume",
 		"reload",
-		"quit",
 	}
 	wantBuiltinDescriptions := []string{
-		"Open settings menu",
 		"Select model (opens selector UI)",
-		"Enable/disable models for Ctrl+P cycling",
-		"Export session (HTML default, or specify path: .html/.jsonl)",
-		"Import and resume a session from a JSONL file",
-		"Share session as a secret GitHub gist",
-		"Copy last agent message to clipboard",
 		"Set session display name",
 		"Show session info and stats",
-		"Show changelog entries",
-		"Show all keyboard shortcuts",
 		"Create a new fork from a previous user message",
 		"Duplicate the current session at the current position",
 		"Navigate session tree (switch branches)",
-		"Configure provider authentication",
-		"Remove provider authentication",
 		"Start a new session",
 		"Manually compact the session context",
 		"Resume a different session",
 		"Reload keybindings, extensions, skills, prompts, and themes",
-		"Quit along",
 	}
 	if len(wantBuiltinNames) != len(wantBuiltinDescriptions) {
 		t.Fatalf("test setup mismatch: names %d descriptions %d", len(wantBuiltinNames), len(wantBuiltinDescriptions))
@@ -895,8 +873,8 @@ func TestSlashCommandsHonorsEnableSkillCommandsSetting(t *testing.T) {
 			}
 
 			got := o.SlashCommands()
-			if !hasSlashCommandNamed(got, "settings") {
-				t.Fatalf("SlashCommands missing builtin settings: %#v", got)
+			if !hasSlashCommandNamed(got, "model") {
+				t.Fatalf("SlashCommands missing builtin model: %#v", got)
 			}
 			if !hasSlashCommandNamed(got, "deploy") {
 				t.Fatalf("SlashCommands missing prompt template deploy: %#v", got)

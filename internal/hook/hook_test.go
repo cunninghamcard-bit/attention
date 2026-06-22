@@ -163,17 +163,17 @@ func TestEmitFirstReturnsFirstResultAndStops(t *testing.T) {
 	r := NewRegistry()
 	var secondCalled bool
 
-	r.On("user_bash", func(_ context.Context, _ any) (any, error) {
-		return UserBashEventResult{}, nil
+	r.On("session_before_fork", func(_ context.Context, _ any) (any, error) {
+		return SessionBeforeForkResult{}, nil
 	})
-	r.On("user_bash", func(_ context.Context, _ any) (any, error) {
+	r.On("session_before_fork", func(_ context.Context, _ any) (any, error) {
 		secondCalled = true
-		return UserBashEventResult{}, nil
+		return SessionBeforeForkResult{}, nil
 	})
 
-	// pi's emitUserBash returns the FIRST non-undefined handler result and
+	// pi's EmitFirst returns the FIRST non-undefined handler result and
 	// skips all remaining handlers (runner.ts:829-856).
-	result, err := r.EmitFirst(context.Background(), UserBashEvent{Type: "user_bash"})
+	result, err := r.EmitFirst(context.Background(), SessionBeforeForkEvent{Type: "session_before_fork"})
 	if err != nil {
 		t.Fatalf("EmitFirst error = %v", err)
 	}

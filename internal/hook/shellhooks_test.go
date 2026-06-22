@@ -706,37 +706,6 @@ func TestShellHooksSessionBeforeTree(t *testing.T) {
 	}
 }
 
-func TestShellHooksUserBash(t *testing.T) {
-	requirePOSIX(t)
-	// user_bash drives EmitFirst in the orchestrator; assert the concrete
-	// UserBashEventResult with a Result (Operations is a Go interface, stays nil).
-	reg := registerEcho(t, "user_bash",
-		`echo '{"output":"hello","exitCode":0}'`)
-	res, err := reg.EmitFirst(context.Background(), UserBashEvent{
-		Type:    EventUserBash,
-		Command: "echo hi",
-	})
-	if err != nil {
-		t.Fatalf("EmitFirst: %v", err)
-	}
-	r, ok := res.(UserBashEventResult)
-	if !ok {
-		t.Fatalf("result type = %T, want hook.UserBashEventResult", res)
-	}
-	if r.Result == nil {
-		t.Fatalf("Result = nil, want populated BashResult")
-	}
-	if r.Result.Output != "hello" {
-		t.Fatalf("Output = %q, want hello", r.Result.Output)
-	}
-	if r.Result.ExitCode == nil || *r.Result.ExitCode != 0 {
-		t.Fatalf("ExitCode = %v, want 0", r.Result.ExitCode)
-	}
-	if r.Operations != nil {
-		t.Fatalf("Operations = %v, want nil (interface cannot come from JSON)", r.Operations)
-	}
-}
-
 func TestShellHooksResourcesDiscover(t *testing.T) {
 	requirePOSIX(t)
 	reg := registerEcho(t, "resources_discover",

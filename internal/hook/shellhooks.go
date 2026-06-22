@@ -120,13 +120,6 @@ type shellHookDecision struct {
 	ReplaceInstructions *bool                `json:"replaceInstructions,omitempty"`
 	Label               *string              `json:"label,omitempty"`
 
-	// user_bash.
-	Output         string `json:"output,omitempty"`
-	ExitCode       *int   `json:"exitCode,omitempty"`
-	Cancelled      bool   `json:"cancelled,omitempty"`
-	Truncated      bool   `json:"truncated,omitempty"`
-	FullOutputPath string `json:"fullOutputPath,omitempty"`
-
 	// resources_discover.
 	SkillPaths  []string `json:"skillPaths,omitempty"`
 	PromptPaths []string `json:"promptPaths,omitempty"`
@@ -162,7 +155,6 @@ var decisionEvents = map[string]bool{
 	EventSessionBeforeFork:     true,
 	EventSessionBeforeCompact:  true,
 	EventSessionBeforeTree:     true,
-	EventUserBash:              true,
 	EventResourcesDiscover:     true,
 }
 
@@ -197,7 +189,6 @@ var eventAliases = map[string]string{
 	EventSessionBeforeFork:     EventSessionBeforeFork,
 	EventSessionBeforeCompact:  EventSessionBeforeCompact,
 	EventSessionBeforeTree:     EventSessionBeforeTree,
-	EventUserBash:              EventUserBash,
 	EventResourcesDiscover:     EventResourcesDiscover,
 
 	// Native notification events.
@@ -359,8 +350,6 @@ func (r *ShellHooksRunner) makeHandler(h resolvedHook, sessionID string) Handler
 			return sessionBeforeCompactResultFrom(decision), nil
 		case EventSessionBeforeTree:
 			return sessionBeforeTreeResultFrom(decision), nil
-		case EventUserBash:
-			return userBashResultFrom(decision), nil
 		case EventResourcesDiscover:
 			return resourcesDiscoverResultFrom(decision), nil
 		default:
@@ -590,23 +579,6 @@ func sessionBeforeTreeResultFrom(d shellHookDecision) SessionBeforeTreeResult {
 		ReplaceInstructions: d.ReplaceInstructions,
 		Label:               d.Label,
 	}
-}
-
-// userBashResultFrom builds the CONCRETE UserBashEventResult emitUserBash
-// type-asserts (bash.go). Only Result is populatable from JSON; Operations is a
-// Go interface (BashOperations) that cannot come from JSON and is left nil.
-func userBashResultFrom(d shellHookDecision) UserBashEventResult {
-	res := UserBashEventResult{}
-	if d.Output != "" || d.ExitCode != nil || d.Cancelled || d.Truncated || d.FullOutputPath != "" {
-		res.Result = &BashResult{
-			Output:         d.Output,
-			ExitCode:       d.ExitCode,
-			Cancelled:      d.Cancelled,
-			Truncated:      d.Truncated,
-			FullOutputPath: d.FullOutputPath,
-		}
-	}
-	return res
 }
 
 // resourcesDiscoverResultFrom builds the CONCRETE ResourcesDiscoverResult the

@@ -13,7 +13,6 @@ import (
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
 	"github.com/cunninghamcard-bit/Attention/internal/config"
 	"github.com/cunninghamcard-bit/Attention/internal/execenv"
-	"github.com/cunninghamcard-bit/Attention/internal/hook"
 	"github.com/cunninghamcard-bit/Attention/internal/message"
 	"github.com/cunninghamcard-bit/Attention/internal/provider"
 	"github.com/cunninghamcard-bit/Attention/internal/resource"
@@ -268,8 +267,6 @@ type AbortResult struct {
 	ClearedFollowUp []message.AgentMessage
 	ClearedNextTurn []message.AgentMessage
 }
-
-type BashResult = hook.BashResult
 
 // SlashCommand is a prompt-invokable command exposed to rpc get_commands.
 type SlashCommand struct {

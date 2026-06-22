@@ -16,6 +16,7 @@ import (
 	"github.com/cunninghamcard-bit/Attention/internal/agentloop"
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
 	"github.com/cunninghamcard-bit/Attention/internal/resource"
+	"github.com/cunninghamcard-bit/Attention/internal/session"
 )
 
 // commandTarget is the orchestrator surface the bidirectional rpc server drives.
@@ -35,12 +36,12 @@ type commandTarget interface {
 	SetAutoCompaction(bool)
 	SetAutoRetry(bool)
 	AbortRetry()
-	ExecuteBash(context.Context, string) (orchestrator.BashResult, error)
-	AbortBash()
 	NewSession(context.Context, string) (bool, error)
 	SwitchSession(context.Context, string) (bool, error)
 	Fork(context.Context, string) (string, bool, error)
 	Clone(context.Context) (bool, error)
+	NavigateTree(context.Context, session.EntryID, orchestrator.NavOptions) (orchestrator.NavResult, error)
+	ReloadSettings(context.Context) error
 	ForkMessages() []orchestrator.ForkMessage
 	NotifySessionShutdown(context.Context, string) error
 	SetSessionName(context.Context, string) error
@@ -211,13 +212,17 @@ type command struct {
 	ModelID            string       `json:"modelId"`
 	Level              string       `json:"level"`
 	Mode               string       `json:"mode"`
-	Command            string       `json:"command"`
 	Name               string       `json:"name"`
 	Enabled            bool         `json:"enabled"`
 	CustomInstructions string       `json:"customInstructions"`
 	ParentSession      string       `json:"parentSession"`
 	SessionPath        string       `json:"sessionPath"`
 	EntryID            string       `json:"entryId"`
+	// navigate_tree options (mirror orchestrator.NavOptions). EntryID above is
+	// the target entry; CustomInstructions above is reused for the branch summary.
+	Summarize           bool `json:"summarize"`
+	ReplaceInstructions bool `json:"replaceInstructions"`
+	Label               string `json:"label"`
 }
 
 type imageInput struct {
@@ -329,12 +334,12 @@ var handlers = map[string]func(*server, context.Context, command) *response{
 	"set_auto_compaction":     (*server).handleSetAutoCompaction,
 	"set_auto_retry":          (*server).handleSetAutoRetry,
 	"abort_retry":             (*server).handleAbortRetry,
-	"bash":                    (*server).handleBash,
-	"abort_bash":              (*server).handleAbortBash,
 	"new_session":             (*server).handleNewSession,
 	"switch_session":          (*server).handleSwitchSession,
 	"fork":                    (*server).handleFork,
 	"clone":                   (*server).handleClone,
+	"navigate_tree":           (*server).handleNavigateTree,
+	"reload":                  (*server).handleReload,
 	"get_fork_messages":       (*server).handleGetForkMessages,
 	"get_available_models":    (*server).handleGetAvailableModels,
 	"get_last_assistant_text": (*server).handleGetLastAssistantText,
@@ -563,21 +568,29 @@ func (s *server) handleAbortRetry(_ context.Context, cmd command) *response {
 	return success(cmd.ID, "abort_retry", nil)
 }
 
-func (s *server) handleBash(ctx context.Context, cmd command) *response {
-	// pi calls session.executeBash(command.command) and returns the BashResult:
-	// .agents/references/pi/packages/coding-agent/src/modes/rpc/rpc-mode.ts:549-552.
-	result, err := s.target.ExecuteBash(ctx, cmd.Command)
+func (s *server) handleNavigateTree(ctx context.Context, cmd command) *response {
+	// Navigate the session tree to the target entry, mirroring orchestrator
+	// NavOptions (summarize/customInstructions/replaceInstructions/label) and
+	// returning the NavResult (cancelled + optional editor text).
+	result, err := s.target.NavigateTree(ctx, session.EntryID(cmd.EntryID), orchestrator.NavOptions{
+		Summarize:           cmd.Summarize,
+		CustomInstructions:  cmd.CustomInstructions,
+		ReplaceInstructions: cmd.ReplaceInstructions,
+		Label:               cmd.Label,
+	})
 	if err != nil {
-		return failure(cmd.ID, "bash", err.Error())
+		return failure(cmd.ID, "navigate_tree", err.Error())
 	}
-	return success(cmd.ID, "bash", bashResultJSONFromOrchestrator(result))
+	return success(cmd.ID, "navigate_tree", navResultJSONFromOrchestrator(result))
 }
 
-func (s *server) handleAbortBash(_ context.Context, cmd command) *response {
-	// pi calls session.abortBash() and returns success with no data:
-	// .agents/references/pi/packages/coding-agent/src/modes/rpc/rpc-mode.ts:554-557.
-	s.target.AbortBash()
-	return success(cmd.ID, "abort_bash", nil)
+func (s *server) handleReload(ctx context.Context, cmd command) *response {
+	// Reload keybindings, extensions, skills, prompts, and themes via the
+	// orchestrator and return success with no data.
+	if err := s.target.ReloadSettings(ctx); err != nil {
+		return failure(cmd.ID, "reload", err.Error())
+	}
+	return success(cmd.ID, "reload", nil)
 }
 
 func (s *server) handleNewSession(ctx context.Context, cmd command) *response {
@@ -836,21 +849,16 @@ func sourceInfoJSONFromResource(info resource.SourceInfo) sourceInfoJSON {
 	}
 }
 
-type bashResultJSON struct {
-	Output         string `json:"output"`
-	ExitCode       *int   `json:"exitCode"`
-	Cancelled      bool   `json:"cancelled"`
-	Truncated      bool   `json:"truncated"`
-	FullOutputPath string `json:"fullOutputPath,omitempty"`
+// navResultJSON mirrors orchestrator.NavResult (harness.NavigationResult).
+type navResultJSON struct {
+	Cancelled  bool   `json:"cancelled"`
+	EditorText string `json:"editorText,omitempty"`
 }
 
-func bashResultJSONFromOrchestrator(result orchestrator.BashResult) bashResultJSON {
-	return bashResultJSON{
-		Output:         result.Output,
-		ExitCode:       result.ExitCode,
-		Cancelled:      result.Cancelled,
-		Truncated:      result.Truncated,
-		FullOutputPath: result.FullOutputPath,
+func navResultJSONFromOrchestrator(result orchestrator.NavResult) navResultJSON {
+	return navResultJSON{
+		Cancelled:  result.Cancelled,
+		EditorText: result.EditorText,
 	}
 }
 

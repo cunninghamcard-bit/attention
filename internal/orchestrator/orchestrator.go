@@ -66,7 +66,6 @@ type Orchestrator struct {
 	phase                     phase
 	idleCh                    chan struct{}
 	activeCancel              context.CancelFunc
-	bashAbort                 *bashAbortHandle
 	pendingWrites             []pendingWrite
 	steerQueue                []message.AgentMessage
 	followUpQueue             []message.AgentMessage
