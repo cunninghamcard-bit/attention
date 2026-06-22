@@ -1,18 +1,15 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/cunninghamcard-bit/Attention/internal/execenv/local"
 	"github.com/cunninghamcard-bit/Attention/internal/extension"
-	"github.com/cunninghamcard-bit/Attention/internal/session"
 )
 
 // toolDef builds a minimal named ToolDefinition for selection tests.
@@ -26,6 +23,11 @@ func names(defs []extension.ToolDefinition) []string {
 		out = append(out, d.Name)
 	}
 	return out
+}
+
+// toolThunk wraps a fixed tool set as the all-set thunk selectTools expects.
+func toolThunk(defs []extension.ToolDefinition) func() []extension.ToolDefinition {
+	return func() []extension.ToolDefinition { return defs }
 }
 
 func TestSelectTools(t *testing.T) {
@@ -87,7 +89,7 @@ func TestSelectTools(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := selectTools(tt.sel, base, all)
+			got, err := selectTools(tt.sel, base, toolThunk(all))
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
 					t.Fatalf("error = %v, want substring %q", err, tt.wantErr)
@@ -106,7 +108,7 @@ func TestSelectTools(t *testing.T) {
 
 func TestSelectToolsUnknownErrorListsAvailable(t *testing.T) {
 	all := []extension.ToolDefinition{toolDef("read"), toolDef("grep")}
-	_, err := selectTools(toolSelection{tools: []string{"bogus"}}, all, all)
+	_, err := selectTools(toolSelection{tools: []string{"bogus"}}, all, toolThunk(all))
 	if err == nil {
 		t.Fatal("expected error for unknown tool")
 	}
@@ -249,47 +251,44 @@ func TestBaseAndAllToolSets(t *testing.T) {
 	}
 }
 
-// TestResolveSessionPlanForkSetsParent verifies --fork produces a planFork whose
-// CreateOptions records the source session path as the parent.
-func TestResolveSessionPlanForkSetsParent(t *testing.T) {
-	srcPath := filepath.Join(t.TempDir(), "source.jsonl")
-	if err := os.WriteFile(srcPath, []byte("{}\n"), 0o600); err != nil {
-		t.Fatalf("write source: %v", err)
-	}
-	lister := stubLister{}
+// TestBoolFlagRegistersLongAndAlias confirms boolFlag binds the long name and
+// the short alias to the same target with the expected default and usage.
+func TestBoolFlagRegistersLongAndAlias(t *testing.T) {
+	fs := flag.NewFlagSet("t", flag.ContinueOnError)
+	p := new(bool)
+	boolFlag(fs, p, "no-tools", "nt", "disable all tools")
 
-	plan, err := resolveSessionPlan(context.Background(), lister, "/work", sessionFlags{fork: srcPath})
-	if err != nil {
-		t.Fatalf("resolveSessionPlan: %v", err)
+	if got := fs.Lookup("no-tools"); got == nil || got.Usage != "disable all tools" || got.DefValue != "false" {
+		t.Fatalf("no-tools flag = %+v", got)
 	}
-	if plan.kind != planFork {
-		t.Fatalf("kind = %v, want planFork", plan.kind)
+	if got := fs.Lookup("nt"); got == nil || got.Usage != "alias for --no-tools" {
+		t.Fatalf("nt alias = %+v", got)
 	}
-	if plan.createOptions.ParentSessionPath != srcPath {
-		t.Fatalf("ParentSessionPath = %q, want %q", plan.createOptions.ParentSessionPath, srcPath)
+	if err := fs.Parse([]string{"-nt"}); err != nil {
+		t.Fatalf("parse: %v", err)
 	}
-	if plan.cwd != "/work" {
-		t.Fatalf("cwd = %q, want /work", plan.cwd)
+	if !*p {
+		t.Fatal("setting the alias should set the shared target")
 	}
 }
 
-// TestResolveSessionPlanForkByID resolves a fork source given as a partial id.
-func TestResolveSessionPlanForkByID(t *testing.T) {
-	cwd := "/work"
-	lister := stubLister{
-		scoped: map[string][]session.Metadata{
-			cwd: {meta("abc123", cwd, time.Time{})},
-		},
-		all: []session.Metadata{meta("abc123", cwd, time.Time{})},
+// TestStringFlagRegistersLongAndAlias confirms stringFlag binds the long name
+// and the short alias to the same target with the expected default and usage.
+func TestStringFlagRegistersLongAndAlias(t *testing.T) {
+	fs := flag.NewFlagSet("t", flag.ContinueOnError)
+	p := new(string)
+	stringFlag(fs, p, "tools", "t", "", "comma-separated allowlist of tool names to enable")
+
+	if got := fs.Lookup("tools"); got == nil || got.Usage != "comma-separated allowlist of tool names to enable" || got.DefValue != "" {
+		t.Fatalf("tools flag = %+v", got)
 	}
-	plan, err := resolveSessionPlan(context.Background(), lister, cwd, sessionFlags{fork: "abc"})
-	if err != nil {
-		t.Fatalf("resolveSessionPlan: %v", err)
+	if got := fs.Lookup("t"); got == nil || got.Usage != "alias for --tools" {
+		t.Fatalf("t alias = %+v", got)
 	}
-	if plan.kind != planFork {
-		t.Fatalf("kind = %v, want planFork", plan.kind)
+	if err := fs.Parse([]string{"-t", "grep,find"}); err != nil {
+		t.Fatalf("parse: %v", err)
 	}
-	if plan.createOptions.ParentSessionPath != filepath.Join("/sessions", "abc123.jsonl") {
-		t.Fatalf("ParentSessionPath = %q", plan.createOptions.ParentSessionPath)
+	if *p != "grep,find" {
+		t.Fatalf("alias value = %q, want grep,find", *p)
 	}
 }

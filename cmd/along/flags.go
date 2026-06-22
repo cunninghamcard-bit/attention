@@ -3,13 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
-	"path/filepath"
 	"runtime/debug"
 	"sort"
 	"strings"
 
 	"github.com/cunninghamcard-bit/Attention/internal/agentloop"
+	"github.com/cunninghamcard-bit/Attention/internal/config"
 	"github.com/cunninghamcard-bit/Attention/internal/execenv"
 	"github.com/cunninghamcard-bit/Attention/internal/extension"
 	"github.com/cunninghamcard-bit/Attention/internal/tool/builtin"
@@ -36,6 +35,20 @@ func (r *repeatableFlag) Set(value string) error {
 	return nil
 }
 
+// boolFlag registers a bool flag under its long name and a short alias in one
+// call, binding both to the same target so either spelling sets it.
+func boolFlag(fs *flag.FlagSet, p *bool, name, alias, usage string) {
+	fs.BoolVar(p, name, false, usage)
+	fs.BoolVar(p, alias, false, "alias for --"+name)
+}
+
+// stringFlag registers a string flag under its long name and a short alias in
+// one call, binding both to the same target so either spelling sets it.
+func stringFlag(fs *flag.FlagSet, p *string, name, alias, value, usage string) {
+	fs.StringVar(p, name, value, usage)
+	fs.StringVar(p, alias, value, "alias for --"+name)
+}
+
 // toolSelection holds the parsed tool-related flags. Precedence (highest first):
 // noTools > noBuiltinTools > (tools allowlist | default base) then excludeTools
 // is applied last to whatever base survived.
@@ -50,31 +63,32 @@ type toolSelection struct {
 //
 //   - base is the default tool set used when no --tools allowlist is given
 //     (NewCodingTools in main).
-//   - all is the full built-in set (NewAllTools) that --tools selects from, so
-//     read-only tools like grep/find/ls are reachable via the allowlist.
+//   - all is a thunk for the full built-in set (NewAllTools) that --tools
+//     selects from, so read-only tools like grep/find/ls are reachable via the
+//     allowlist. It is only invoked when an allowlist is actually given, so the
+//     full set is not built on the common path.
 //
-// Precedence: --no-tools clears everything; --no-builtin-tools drops the
-// built-in base (no extension tools exist today, so this is also empty);
-// otherwise the base is either the --tools allowlist filtered from `all` or the
-// default base; finally --exclude-tools removes named tools from that result.
-// An unknown tool name in --tools is an error.
+// Precedence: --no-tools (or --no-builtin-tools, which is equivalent today since
+// all tools are built-in) clears everything; otherwise the base is either the
+// --tools allowlist filtered from `all` or the default base; finally
+// --exclude-tools removes named tools from that result. An unknown tool name in
+// --tools is an error.
 func selectTools(
 	sel toolSelection,
 	base []extension.ToolDefinition,
-	all []extension.ToolDefinition,
+	all func() []extension.ToolDefinition,
 ) ([]extension.ToolDefinition, error) {
-	if sel.noTools {
-		return []extension.ToolDefinition{}, nil
-	}
-	if sel.noBuiltinTool {
-		// All tools today are built-in; dropping built-ins leaves nothing.
+	// All tools today are built-in, so dropping built-ins leaves nothing —
+	// identical to --no-tools.
+	if sel.noTools || sel.noBuiltinTool {
 		return []extension.ToolDefinition{}, nil
 	}
 
 	result := base
 	if len(sel.tools) > 0 {
-		byName := make(map[string]extension.ToolDefinition, len(all))
-		for _, def := range all {
+		allTools := all()
+		byName := make(map[string]extension.ToolDefinition, len(allTools))
+		for _, def := range allTools {
 			byName[def.Name] = def
 		}
 		allowed := make([]extension.ToolDefinition, 0, len(sel.tools))
@@ -85,7 +99,7 @@ func selectTools(
 			}
 			def, ok := byName[name]
 			if !ok {
-				return nil, fmt.Errorf("unknown tool %q (available: %s)", name, strings.Join(toolNames(all), ", "))
+				return nil, fmt.Errorf("unknown tool %q (available: %s)", name, strings.Join(toolNames(allTools), ", "))
 			}
 			allowed = append(allowed, def)
 		}
@@ -122,6 +136,16 @@ func toolNames(defs []extension.ToolDefinition) []string {
 	return names
 }
 
+// baseToolSet is the default tool set when no tool flags constrain it.
+func baseToolSet(env execenv.ExecutionEnv, shellCommandPrefix string) []extension.ToolDefinition {
+	return builtin.NewCodingTools(env, shellCommandPrefix)
+}
+
+// allToolSet is the full tool set used as the --tools allowlist source.
+func allToolSet(env execenv.ExecutionEnv, shellCommandPrefix string) []extension.ToolDefinition {
+	return builtin.NewAllTools(env, shellCommandPrefix)
+}
+
 // splitCommaList parses a comma-separated flag value into trimmed, non-empty
 // entries, mirroring pi's args.ts handling of --tools/--exclude-tools.
 func splitCommaList(value string) []string {
@@ -144,25 +168,20 @@ func splitCommaList(value string) []string {
 // high, so the kernel validates against what it can honor.
 var validThinkingLevels = []string{"low", "medium", "high"}
 
-// validateThinkingLevel checks a --thinking value against the supported levels.
-func validateThinkingLevel(level string) (agentloop.ThinkingLevel, error) {
-	for _, valid := range validThinkingLevels {
-		if level == valid {
-			return agentloop.ThinkingLevel(level), nil
-		}
-	}
-	return "", fmt.Errorf("invalid thinking level %q (want %s)", level, strings.Join(validThinkingLevels, ", "))
-}
-
 // resolveThinkingLevel maps the --thinking flag value to a ThinkingLevel. An
 // empty value means "not set" and resolves to the empty level, which lets the
-// orchestrator fall back to its settings/default. A non-empty invalid value is
-// an error.
+// orchestrator fall back to its settings/default. A non-empty value is
+// validated against the supported levels; an unsupported value is an error.
 func resolveThinkingLevel(value string) (agentloop.ThinkingLevel, error) {
 	if value == "" {
 		return "", nil
 	}
-	return validateThinkingLevel(value)
+	for _, valid := range validThinkingLevels {
+		if value == valid {
+			return agentloop.ThinkingLevel(value), nil
+		}
+	}
+	return "", fmt.Errorf("invalid thinking level %q (want %s)", value, strings.Join(validThinkingLevels, ", "))
 }
 
 // validateName rejects an explicitly-set but empty --name value, mirroring pi's
@@ -197,22 +216,7 @@ func resolveSessionDir(flagValue, defaultRoot string) (string, error) {
 	if strings.TrimSpace(flagValue) == "" {
 		return defaultRoot, nil
 	}
-	return expandTilde(flagValue)
-}
-
-// expandTilde expands a leading "~" / "~/" to the user's home directory.
-func expandTilde(path string) (string, error) {
-	if path != "~" && !strings.HasPrefix(path, "~/") && !strings.HasPrefix(path, "~\\") {
-		return path, nil
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	if path == "~" {
-		return home, nil
-	}
-	return filepath.Join(home, path[2:]), nil
+	return config.ExpandTildePath(flagValue)
 }
 
 // versionString returns the kernel version, preferring the module version
@@ -224,14 +228,4 @@ func versionString() string {
 		}
 	}
 	return VERSION
-}
-
-// baseToolSet is the default tool set when no tool flags constrain it.
-func baseToolSet(env execenv.ExecutionEnv, shellCommandPrefix string) []extension.ToolDefinition {
-	return builtin.NewCodingTools(env, shellCommandPrefix)
-}
-
-// allToolSet is the full tool set used as the --tools allowlist source.
-func allToolSet(env execenv.ExecutionEnv, shellCommandPrefix string) []extension.ToolDefinition {
-	return builtin.NewAllTools(env, shellCommandPrefix)
 }

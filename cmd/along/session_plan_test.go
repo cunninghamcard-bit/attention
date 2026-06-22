@@ -138,12 +138,13 @@ func TestValidateSessionFlags(t *testing.T) {
 func TestMostRecentSession(t *testing.T) {
 	now := time.Now()
 	cwd := "/work"
+	// The repo returns List results newest-first; the stub mirrors that ordering.
 	lister := stubLister{
 		scoped: map[string][]session.Metadata{
 			cwd: {
-				meta("old", cwd, now.Add(-2*time.Hour)),
 				meta("newest", cwd, now),
 				meta("mid", cwd, now.Add(-1*time.Hour)),
+				meta("old", cwd, now.Add(-2*time.Hour)),
 			},
 		},
 	}
@@ -281,8 +282,8 @@ func TestResolveSessionPlanContinue(t *testing.T) {
 	now := time.Now()
 	lister := stubLister{scoped: map[string][]session.Metadata{
 		cwd: {
-			meta("old", cwd, now.Add(-time.Hour)),
 			meta("new", cwd, now),
+			meta("old", cwd, now.Add(-time.Hour)),
 		},
 	}}
 	plan, err := resolveSessionPlan(context.Background(), lister, cwd, sessionFlags{cont: true})
@@ -303,8 +304,8 @@ func TestResolveSessionPlanResumeDegradesToMostRecent(t *testing.T) {
 	now := time.Now()
 	lister := stubLister{scoped: map[string][]session.Metadata{
 		cwd: {
-			meta("a", cwd, now.Add(-time.Hour)),
 			meta("b", cwd, now),
+			meta("a", cwd, now.Add(-time.Hour)),
 		},
 	}}
 	plan, err := resolveSessionPlan(context.Background(), lister, cwd, sessionFlags{resume: true})
@@ -363,5 +364,50 @@ func TestResolveSessionPlanListError(t *testing.T) {
 	_, err := resolveSessionPlan(context.Background(), lister, "/work", sessionFlags{cont: true})
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("error = %v, want %v", err, wantErr)
+	}
+}
+
+// TestResolveSessionPlanForkSetsParent verifies --fork produces a planFork whose
+// CreateOptions records the source session path as the parent.
+func TestResolveSessionPlanForkSetsParent(t *testing.T) {
+	srcPath := filepath.Join(t.TempDir(), "source.jsonl")
+	if err := os.WriteFile(srcPath, []byte("{}\n"), 0o600); err != nil {
+		t.Fatalf("write source: %v", err)
+	}
+	lister := stubLister{}
+
+	plan, err := resolveSessionPlan(context.Background(), lister, "/work", sessionFlags{fork: srcPath})
+	if err != nil {
+		t.Fatalf("resolveSessionPlan: %v", err)
+	}
+	if plan.kind != planFork {
+		t.Fatalf("kind = %v, want planFork", plan.kind)
+	}
+	if plan.createOptions.ParentSessionPath != srcPath {
+		t.Fatalf("ParentSessionPath = %q, want %q", plan.createOptions.ParentSessionPath, srcPath)
+	}
+	if plan.cwd != "/work" {
+		t.Fatalf("cwd = %q, want /work", plan.cwd)
+	}
+}
+
+// TestResolveSessionPlanForkByID resolves a fork source given as a partial id.
+func TestResolveSessionPlanForkByID(t *testing.T) {
+	cwd := "/work"
+	lister := stubLister{
+		scoped: map[string][]session.Metadata{
+			cwd: {meta("abc123", cwd, time.Time{})},
+		},
+		all: []session.Metadata{meta("abc123", cwd, time.Time{})},
+	}
+	plan, err := resolveSessionPlan(context.Background(), lister, cwd, sessionFlags{fork: "abc"})
+	if err != nil {
+		t.Fatalf("resolveSessionPlan: %v", err)
+	}
+	if plan.kind != planFork {
+		t.Fatalf("kind = %v, want planFork", plan.kind)
+	}
+	if plan.createOptions.ParentSessionPath != filepath.Join("/sessions", "abc123.jsonl") {
+		t.Fatalf("ParentSessionPath = %q", plan.createOptions.ParentSessionPath)
 	}
 }

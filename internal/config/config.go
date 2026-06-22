@@ -93,7 +93,7 @@ func Load(ctx context.Context) (Config, error) {
 
 func AgentDir() (string, error) {
 	if envDir := os.Getenv(EnvAgentDir); envDir != "" {
-		return expandTildePath(envDir)
+		return ExpandTildePath(envDir)
 	}
 
 	homeDir, err := os.UserHomeDir()
@@ -105,7 +105,7 @@ func AgentDir() (string, error) {
 
 func SessionDir() (string, error) {
 	if envDir := os.Getenv(EnvSessionDir); envDir != "" {
-		return expandTildePath(envDir)
+		return ExpandTildePath(envDir)
 	}
 
 	agentDir, err := AgentDir()
@@ -137,7 +137,10 @@ func agentPath(name string) (string, error) {
 	return filepath.Join(agentDir, name), nil
 }
 
-func expandTildePath(path string) (string, error) {
+// ExpandTildePath expands a leading "~" / "~/" / "~\" to the user's home
+// directory and cleans the result; a path without a leading tilde is cleaned
+// and returned unchanged.
+func ExpandTildePath(path string) (string, error) {
 	if path != "~" && !strings.HasPrefix(path, "~/") && !strings.HasPrefix(path, `~\`) {
 		return filepath.Clean(path), nil
 	}

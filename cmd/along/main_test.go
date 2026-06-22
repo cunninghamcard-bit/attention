@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cunninghamcard-bit/Attention/internal/orchestrator"
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
 	"github.com/cunninghamcard-bit/Attention/internal/config"
+	"github.com/cunninghamcard-bit/Attention/internal/orchestrator"
 )
 
 func TestBuildProviderResolvesCustomModelFromModelsJSON(t *testing.T) {
@@ -304,4 +304,3 @@ func TestSettingsStringSliceCopiesStringSlice(t *testing.T) {
 		t.Fatal("settingsStringSlice returned original backing array")
 	}
 }
-

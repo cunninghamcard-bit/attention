@@ -17,6 +17,7 @@ import (
 	"github.com/cunninghamcard-bit/Attention/internal/auth"
 	"github.com/cunninghamcard-bit/Attention/internal/config"
 	"github.com/cunninghamcard-bit/Attention/internal/execenv/local"
+	"github.com/cunninghamcard-bit/Attention/internal/extension"
 	printmode "github.com/cunninghamcard-bit/Attention/internal/mode/print"
 	rpcmode "github.com/cunninghamcard-bit/Attention/internal/mode/rpc"
 	"github.com/cunninghamcard-bit/Attention/internal/obs"
@@ -63,37 +64,37 @@ func run(ctx context.Context) error {
 	// Thinking level.
 	thinkingFlag := fs.String("thinking", "", "thinking level: low, medium, or high")
 	// Tools.
-	toolsFlag := fs.String("tools", "", "comma-separated allowlist of tool names to enable")
-	fs.StringVar(toolsFlag, "t", "", "alias for --tools")
-	excludeToolsFlag := fs.String("exclude-tools", "", "comma-separated denylist of tool names to disable")
-	fs.StringVar(excludeToolsFlag, "xt", "", "alias for --exclude-tools")
-	noToolsFlag := fs.Bool("no-tools", false, "disable all tools")
-	fs.BoolVar(noToolsFlag, "nt", false, "alias for --no-tools")
-	noBuiltinToolsFlag := fs.Bool("no-builtin-tools", false, "disable built-in tools")
-	fs.BoolVar(noBuiltinToolsFlag, "nbt", false, "alias for --no-builtin-tools")
+	toolsFlag := new(string)
+	stringFlag(fs, toolsFlag, "tools", "t", "", "comma-separated allowlist of tool names to enable")
+	excludeToolsFlag := new(string)
+	stringFlag(fs, excludeToolsFlag, "exclude-tools", "xt", "", "comma-separated denylist of tool names to disable")
+	noToolsFlag := new(bool)
+	boolFlag(fs, noToolsFlag, "no-tools", "nt", "disable all tools")
+	noBuiltinToolsFlag := new(bool)
+	boolFlag(fs, noBuiltinToolsFlag, "no-builtin-tools", "nbt", "disable built-in tools")
 	// Session directory.
 	sessionDirFlag := fs.String("session-dir", "", "directory for session storage and lookup")
 	// Resources.
 	var skillFlag repeatableFlag
 	fs.Var(&skillFlag, "skill", "load a skill file or directory (can be used multiple times)")
-	noSkillsFlag := fs.Bool("no-skills", false, "disable skills discovery and loading")
-	fs.BoolVar(noSkillsFlag, "ns", false, "alias for --no-skills")
+	noSkillsFlag := new(bool)
+	boolFlag(fs, noSkillsFlag, "no-skills", "ns", "disable skills discovery and loading")
 	var promptTemplateFlag repeatableFlag
 	fs.Var(&promptTemplateFlag, "prompt-template", "load a prompt template file or directory (can be used multiple times)")
-	noPromptTemplatesFlag := fs.Bool("no-prompt-templates", false, "disable prompt template discovery and loading")
-	fs.BoolVar(noPromptTemplatesFlag, "np", false, "alias for --no-prompt-templates")
-	noContextFilesFlag := fs.Bool("no-context-files", false, "disable AGENTS.md and CLAUDE.md discovery and loading")
-	fs.BoolVar(noContextFilesFlag, "nc", false, "alias for --no-context-files")
+	noPromptTemplatesFlag := new(bool)
+	boolFlag(fs, noPromptTemplatesFlag, "no-prompt-templates", "np", "disable prompt template discovery and loading")
+	noContextFilesFlag := new(bool)
+	boolFlag(fs, noContextFilesFlag, "no-context-files", "nc", "disable AGENTS.md and CLAUDE.md discovery and loading")
 	// Session name / fork.
-	nameFlag := fs.String("name", "", "set session display name")
-	fs.StringVar(nameFlag, "n", "", "alias for --name")
+	nameFlag := new(string)
+	stringFlag(fs, nameFlag, "name", "n", "", "set session display name")
 	forkFlag := fs.String("fork", "", "fork a session file or partial id into a new session")
 	// Early-exit flags.
 	listModelsFlag := fs.Bool("list-models", false, "list available models and exit")
-	versionFlag := fs.Bool("version", false, "show version number and exit")
-	fs.BoolVar(versionFlag, "v", false, "alias for --version")
+	versionFlag := new(bool)
+	boolFlag(fs, versionFlag, "version", "v", "show version number and exit")
 	// Session-selection flags, ported from pi (main.ts createSessionManager) and
-	// adapted for a headless kernel. See session_flags.go for headless semantics.
+	// adapted for a headless kernel. See session_plan.go for headless semantics.
 	sessionFlag := fs.String("session", "", "resume a specific session by path or id")
 	continueFlag := fs.Bool("continue", false, "resume the most recent session for the current directory")
 	resumeFlag := fs.Bool("resume", false, "resume the most recent session (headless has no interactive picker)")
@@ -274,7 +275,8 @@ func run(ctx context.Context) error {
 	hooksPath := filepath.Join(cfg.AgentDir, "hooks.json")
 
 	// Tool selection: --no-tools/--no-builtin-tools/--tools/--exclude-tools.
-	// Precedence and base sets are handled in selectTools (cli_flags.go).
+	// Precedence and base sets are handled in selectTools (flags.go). The full
+	// tool set is passed as a thunk so it is only built when --tools is given.
 	tools, err := selectTools(
 		toolSelection{
 			tools:         splitCommaList(*toolsFlag),
@@ -283,7 +285,7 @@ func run(ctx context.Context) error {
 			noBuiltinTool: *noBuiltinToolsFlag,
 		},
 		baseToolSet(env, shellCommandPrefix),
-		allToolSet(env, shellCommandPrefix),
+		func() []extension.ToolDefinition { return allToolSet(env, shellCommandPrefix) },
 	)
 	if err != nil {
 		return err

@@ -6,13 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cunninghamcard-bit/Attention/internal/agentloop"
-	"github.com/cunninghamcard-bit/Attention/internal/config"
-	"github.com/cunninghamcard-bit/Attention/internal/execenv"
-	"github.com/cunninghamcard-bit/Attention/internal/extension"
-	"github.com/cunninghamcard-bit/Attention/internal/orchestrator"
-	"github.com/cunninghamcard-bit/Attention/internal/provider"
-	"github.com/cunninghamcard-bit/Attention/internal/resource"
 	"github.com/cunninghamcard-bit/Attention/internal/session"
 )
 
@@ -79,76 +72,63 @@ type sessionPlan struct {
 //   - --fork creates a brand-new session forked from a source; it cannot be
 //     combined with any session-resume/-selection flag.
 func validateSessionFlags(f sessionFlags) error {
-	if f.fork != "" {
+	// selectors are the resume/select flags, in precedence order. Each owning
+	// flag below forbids being combined with any of these that is set.
+	selectors := []struct {
+		name string
+		set  bool
+	}{
+		{"--session", f.session != ""},
+		{"--continue", f.cont},
+		{"--resume", f.resume},
+		{"--session-id", f.sessionID != ""},
+		{"--no-session", f.noSession},
+	}
+
+	// conflictsWith reports the names of the selector flags (other than `owner`)
+	// that are set, so an owning flag can list what it collides with.
+	conflictsWith := func(owner string) []string {
 		var conflicts []string
-		if f.session != "" {
-			conflicts = append(conflicts, "--session")
+		for _, s := range selectors {
+			if s.name == owner {
+				continue
+			}
+			if s.set {
+				conflicts = append(conflicts, s.name)
+			}
 		}
-		if f.cont {
-			conflicts = append(conflicts, "--continue")
-		}
-		if f.resume {
-			conflicts = append(conflicts, "--resume")
-		}
-		if f.sessionID != "" {
-			conflicts = append(conflicts, "--session-id")
-		}
-		if f.noSession {
-			conflicts = append(conflicts, "--no-session")
-		}
-		if len(conflicts) > 0 {
+		return conflicts
+	}
+
+	if f.fork != "" {
+		if conflicts := conflictsWith(""); len(conflicts) > 0 {
 			return fmt.Errorf("--fork cannot be combined with %s", strings.Join(conflicts, ", "))
 		}
 	}
 
 	if f.sessionID != "" {
-		var conflicts []string
-		if f.session != "" {
-			conflicts = append(conflicts, "--session")
-		}
-		if f.cont {
-			conflicts = append(conflicts, "--continue")
-		}
-		if f.resume {
-			conflicts = append(conflicts, "--resume")
-		}
-		if f.noSession {
-			conflicts = append(conflicts, "--no-session")
-		}
-		if len(conflicts) > 0 {
+		if conflicts := conflictsWith("--session-id"); len(conflicts) > 0 {
 			return fmt.Errorf("--session-id cannot be combined with %s", strings.Join(conflicts, ", "))
 		}
 	}
 
 	if f.noSession {
-		var conflicts []string
-		if f.session != "" {
-			conflicts = append(conflicts, "--session")
-		}
-		if f.cont {
-			conflicts = append(conflicts, "--continue")
-		}
-		if f.resume {
-			conflicts = append(conflicts, "--resume")
-		}
-		if len(conflicts) > 0 {
+		if conflicts := conflictsWith("--no-session"); len(conflicts) > 0 {
 			return fmt.Errorf("--no-session cannot be combined with %s", strings.Join(conflicts, ", "))
 		}
 	}
 
 	// --session, --continue, --resume select a single target; only one may win.
-	var selectors []string
-	if f.session != "" {
-		selectors = append(selectors, "--session")
+	var exclusive []string
+	for _, name := range []string{"--session", "--continue", "--resume"} {
+		for _, s := range selectors {
+			if s.name == name && s.set {
+				exclusive = append(exclusive, name)
+			}
+		}
 	}
-	if f.cont {
-		selectors = append(selectors, "--continue")
-	}
-	if f.resume {
-		selectors = append(selectors, "--resume")
-	}
-	if len(selectors) > 1 {
-		return fmt.Errorf("%s are mutually exclusive", strings.Join(selectors, ", "))
+	if len(exclusive) > 1 {
+		return fmt.Errorf("%s are mutually exclusive", strings.Join(exclusive, ", "))
 	}
 
 	return nil
@@ -336,8 +316,8 @@ func matchSessionID(
 }
 
 // mostRecentSession returns the newest session for cwd by Modified time. The
-// repo already sorts List results newest-first, but we select the max
-// explicitly so the logic is correct regardless of repo ordering.
+// repo already returns List results newest-first (internal/session/repo.go
+// sorts by Modified descending), so the first element is the most recent.
 func mostRecentSession(
 	ctx context.Context,
 	repo sessionLister,
@@ -350,119 +330,11 @@ func mostRecentSession(
 	if len(sessions) == 0 {
 		return session.Metadata{}, fmt.Errorf("no session to continue for %s", cwd)
 	}
-	best := sessions[0]
-	for _, meta := range sessions[1:] {
-		if meta.Modified.After(best.Modified) {
-			best = meta
-		}
-	}
-	return best, nil
+	return sessions[0], nil
 }
 
 // isExistingFile reports whether value names an existing regular file.
 func isExistingFile(value string) bool {
 	info, err := os.Stat(value)
 	return err == nil && !info.IsDir()
-}
-
-// orchestratorCommonOptions holds the orchestrator option fields that are
-// identical across the New and Open constructor paths. Factoring them here
-// avoids restating the ~15 shared fields once per constructor; applyTo copies
-// them into the concrete NewOptions/OpenOptions just before the call.
-type orchestratorCommonOptions struct {
-	ModelID            string
-	ModelProvider      string
-	Provider           *provider.Registry
-	Settings           config.Settings
-	SettingsManager    *config.Manager
-	HooksPath          string
-	SystemPrompt       string
-	AppendSystemPrompt string
-	ThinkingLevel      agentloop.ThinkingLevel
-	PromptTemplates    []resource.PromptTemplate
-	Skills             []resource.Skill
-	PromptPaths        []string
-	SkillPaths         []string
-	AgentDir           string
-	ContextFiles       []resource.ContextFile
-	Diagnostics        []resource.ResourceDiagnostic
-	ExecutionEnv       execenv.ExecutionEnv
-	Tools              []extension.ToolDefinition
-}
-
-func (c orchestratorCommonOptions) newOptions() orchestrator.NewOptions {
-	return orchestrator.NewOptions{
-		ModelID:            c.ModelID,
-		ModelProvider:      c.ModelProvider,
-		Provider:           c.Provider,
-		Settings:           c.Settings,
-		SettingsManager:    c.SettingsManager,
-		HooksPath:          c.HooksPath,
-		SystemPrompt:       c.SystemPrompt,
-		AppendSystemPrompt: c.AppendSystemPrompt,
-		ThinkingLevel:      c.ThinkingLevel,
-		PromptTemplates:    c.PromptTemplates,
-		Skills:             c.Skills,
-		PromptPaths:        c.PromptPaths,
-		SkillPaths:         c.SkillPaths,
-		AgentDir:           c.AgentDir,
-		ContextFiles:       c.ContextFiles,
-		Diagnostics:        c.Diagnostics,
-		ExecutionEnv:       c.ExecutionEnv,
-		Tools:              c.Tools,
-	}
-}
-
-func (c orchestratorCommonOptions) openOptions() orchestrator.OpenOptions {
-	return orchestrator.OpenOptions{
-		ModelID:            c.ModelID,
-		ModelProvider:      c.ModelProvider,
-		Provider:           c.Provider,
-		Settings:           c.Settings,
-		SettingsManager:    c.SettingsManager,
-		HooksPath:          c.HooksPath,
-		SystemPrompt:       c.SystemPrompt,
-		AppendSystemPrompt: c.AppendSystemPrompt,
-		ThinkingLevel:      c.ThinkingLevel,
-		PromptTemplates:    c.PromptTemplates,
-		Skills:             c.Skills,
-		PromptPaths:        c.PromptPaths,
-		SkillPaths:         c.SkillPaths,
-		AgentDir:           c.AgentDir,
-		ContextFiles:       c.ContextFiles,
-		Diagnostics:        c.Diagnostics,
-		ExecutionEnv:       c.ExecutionEnv,
-		Tools:              c.Tools,
-	}
-}
-
-// buildOrchestrator dispatches to the orchestrator constructor selected by the
-// resolved plan:
-//   - planNew      -> orchestrator.New with repo + CreateOptions (fresh session)
-//   - planOpen     -> orchestrator.Open with repo + Metadata (resume)
-//   - planEphemeral-> orchestrator.New with a pre-built in-memory Session, which
-//     causes New to skip repo.Create entirely (nothing is persisted).
-func buildOrchestrator(
-	ctx context.Context,
-	repo *session.JsonlSessionRepo,
-	plan sessionPlan,
-	common orchestratorCommonOptions,
-) (*orchestrator.Orchestrator, error) {
-	switch plan.kind {
-	case planOpen:
-		opts := common.openOptions()
-		opts.Repo = repo
-		opts.Metadata = plan.metadata
-		return orchestrator.Open(ctx, opts)
-	case planEphemeral:
-		opts := common.newOptions()
-		opts.Session = plan.ephemeral
-		return orchestrator.New(ctx, opts)
-	default: // planNew, planFork — both create a fresh session; planFork's
-		// CreateOptions carries ParentSessionPath so the header records the fork.
-		opts := common.newOptions()
-		opts.Repo = repo
-		opts.CreateOptions = plan.createOptions
-		return orchestrator.New(ctx, opts)
-	}
 }
