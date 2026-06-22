@@ -21,6 +21,27 @@ func TestValidateToolArgumentsReturnsErrorForNonObjectCoercedArgs(t *testing.T) 
 	}
 }
 
+func TestValidateToolArgumentsCompilesGoTypedRequiredSlice(t *testing.T) {
+	// Regression: builtin tool definitions build their schema as a Go map with
+	// "required": []string{...}. Feeding that raw to the jsonschema compiler
+	// failed with `invalid jsonType []string`; compileSchema must JSON-normalize
+	// it first. This is the exact shape that broke real tool calls end-to-end.
+	params := map[string]any{
+		"type":     "object",
+		"required": []string{"path"},
+		"properties": map[string]any{
+			"path": map[string]any{"type": "string"},
+		},
+	}
+	if _, err := ValidateToolArguments("read", params, map[string]any{"path": "x.go"}); err != nil {
+		t.Fatalf("ValidateToolArguments with []string required = %v, want nil", err)
+	}
+	// The requirement is still enforced after normalization.
+	if _, err := ValidateToolArguments("read", params, map[string]any{}); err == nil {
+		t.Fatal("ValidateToolArguments missing required path = nil, want error")
+	}
+}
+
 func TestCoercePrimitiveByType(t *testing.T) {
 	tests := []struct {
 		name     string

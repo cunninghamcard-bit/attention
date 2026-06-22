@@ -451,8 +451,17 @@ func compileSchema(params map[string]any) (*jsonschema.Schema, error) {
 	if cached, ok := schemaCache.Load(key); ok {
 		return cached.(*jsonschema.Schema), nil
 	}
+	// Normalize to JSON-native types before compiling: the params map may carry
+	// Go-typed values (e.g. "required": []string{...} from a tool definition)
+	// that the jsonschema compiler rejects as invalid JSON types
+	// ("invalid jsonType []string"). Round-tripping through JSON turns []string
+	// into []any, map[string]string into map[string]any, etc.
+	var doc any
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return nil, err
+	}
 	c := jsonschema.NewCompiler()
-	if err := c.AddResource("urn:tool", params); err != nil {
+	if err := c.AddResource("urn:tool", doc); err != nil {
 		return nil, err
 	}
 	sch, err := c.Compile("urn:tool")
