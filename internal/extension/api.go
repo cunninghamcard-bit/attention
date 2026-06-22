@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
-	"github.com/cunninghamcard-bit/Attention/internal/render"
 	"github.com/cunninghamcard-bit/Attention/internal/resource"
 	"github.com/cunninghamcard-bit/Attention/internal/tool"
 )
@@ -47,58 +46,6 @@ type ToolResult = tool.Result
 // ToolUpdateCallback publishes incremental tool updates.
 type ToolUpdateCallback = tool.UpdateCallback
 
-// ToolCallRenderInput is the input to a tool's CALL (in-progress) renderer,
-// shown before the result is available. Mirrors pi's renderCall(args, ...).
-type ToolCallRenderInput struct {
-	Args             map[string]any
-	ToolCallID       string
-	CWD              string
-	ExecutionStarted bool
-	ArgsComplete     bool
-	Expanded         bool
-	ShowImages       bool
-	IsError          bool
-	State            any
-	LastBlocks       []render.Block
-}
-
-// ToolResultRenderInput is the input to a tool's RESULT renderer. Mirrors pi's
-// renderResult(result, options, ...); Args is the originating call's arguments.
-type ToolResultRenderInput struct {
-	Args             map[string]any
-	Result           RenderResult
-	ToolCallID       string
-	CWD              string
-	ExecutionStarted bool
-	ArgsComplete     bool
-	Expanded         bool
-	Partial          bool
-	ShowImages       bool
-	IsError          bool
-	State            any
-	LastBlocks       []render.Block
-}
-
-// RenderResult carries a finished (or partial) tool result for rendering.
-// Details may be a map[string]any after a JSON round-trip through session storage.
-type RenderResult struct {
-	Content []ai.ContentBlock
-	Details any
-	IsError bool
-}
-
-// ToolCallRenderer / ToolResultRenderer turn render inputs into neutral render
-// blocks. Split to mirror pi's separate renderCall/renderResult functions.
-type ToolCallRenderer func(ToolCallRenderInput) []render.Block
-type ToolResultRenderer func(ToolResultRenderInput) []render.Block
-
-type ToolRenderShell string
-
-const (
-	ToolRenderShellDefault ToolRenderShell = "default"
-	ToolRenderShellSelf    ToolRenderShell = "self"
-)
-
 // ToolDefinition is the single tool definition shape used by both builtin tools
 // and extension-registered tools (pi: core/extensions/types.ts ToolDefinition).
 // The orchestrator wraps it into an tool.Tool for the harness.
@@ -114,13 +61,7 @@ type ToolDefinition struct {
 	Parameters       map[string]any
 	PrepareArgs      func(map[string]any) map[string]any
 	ExecutionMode    ToolExecutionMode
-	RenderShell      ToolRenderShell
 	Execute          func(context.Context, ToolCall, ToolUpdateCallback, ExtensionContext) (ToolResult, error)
-	// RenderCall / RenderResult convert tool calls/results into neutral render
-	// blocks for frontends (HTML export, GUI). Optional; nil -> frontend uses a
-	// generic fallback. Split to mirror pi's renderCall/renderResult.
-	RenderCall   ToolCallRenderer
-	RenderResult ToolResultRenderer
 }
 
 // CommandDefinition describes a slash-command registered by an extension.

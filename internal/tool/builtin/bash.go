@@ -13,7 +13,6 @@ import (
 	"github.com/cunninghamcard-bit/Attention/internal/extension"
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
 	"github.com/cunninghamcard-bit/Attention/internal/execenv"
-	"github.com/cunninghamcard-bit/Attention/internal/render"
 	"github.com/cunninghamcard-bit/Attention/internal/tool"
 )
 
@@ -69,8 +68,6 @@ func NewBashTool(env execenv.ExecutionEnv, commandPrefix string) extension.ToolD
 		Parameters:    schema[bashToolArgs](),
 		Label:         "bash",
 		PromptSnippet: "Run a bash command and return its output",
-		RenderCall:    bashRenderCall,
-		RenderResult:  bashRenderResult,
 		Execute: func(ctx context.Context, call extension.ToolCall, onUpdate tool.UpdateCallback, _ extension.ExtensionContext) (tool.Result, error) {
 			return executeBash(ctx, env, commandPrefix, call.Args, onUpdate), nil
 		},
@@ -104,29 +101,6 @@ func shellEnv() map[string]string {
 		return map[string]string{pathKey: binDir}
 	}
 	return map[string]string{pathKey: binDir + string(os.PathListSeparator) + current}
-}
-
-func bashRenderCall(input extension.ToolCallRenderInput) []render.Block {
-	cmd := argString(input.Args, "command")
-	if cmd == "" {
-		return nil
-	}
-	return []render.Block{render.Code(cmd, "shell")}
-}
-
-func bashRenderResult(input extension.ToolResultRenderInput) []render.Block {
-	out := toolOutputText(input.Result.Content)
-	blocks := outputCodeBlocks(out, "console", 5, input.Expanded)
-	var d bashToolDetails
-	if decodeDetails(input.Result.Details, &d) {
-		if d.Truncation != nil && d.Truncation.Truncated {
-			blocks = append(blocks, render.Badge("output truncated", "muted"))
-		}
-		if d.FullOutputPath != "" {
-			blocks = append(blocks, render.Badge("full output saved", "muted"))
-		}
-	}
-	return blocks
 }
 
 func executeBash(

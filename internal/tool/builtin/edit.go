@@ -8,7 +8,6 @@ import (
 
 	"github.com/cunninghamcard-bit/Attention/internal/extension"
 	"github.com/cunninghamcard-bit/Attention/internal/execenv"
-	"github.com/cunninghamcard-bit/Attention/internal/render"
 	"github.com/cunninghamcard-bit/Attention/internal/tool"
 )
 
@@ -51,34 +50,10 @@ func NewEditTool(env execenv.ExecutionEnv) extension.ToolDefinition {
 		PromptSnippet: "Replace exact text regions in a file (one or more edits)",
 		PrepareArgs:   prepareEditArgs,
 		ExecutionMode: tool.Sequential,
-		RenderShell:   extension.ToolRenderShellSelf,
-		RenderCall:    editRenderCall,
-		RenderResult:  editRenderResult,
 		Execute: func(ctx context.Context, call extension.ToolCall, _ tool.UpdateCallback, _ extension.ExtensionContext) (tool.Result, error) {
 			return executeEdit(ctx, env, call.Args), nil
 		},
 	}
-}
-
-func editRenderCall(input extension.ToolCallRenderInput) []render.Block {
-	path := argString(input.Args, "file_path", "path")
-	if path == "" {
-		return nil
-	}
-	return []render.Block{render.Text("edit " + path)}
-}
-
-func editRenderResult(input extension.ToolResultRenderInput) []render.Block {
-	var d editToolDetails
-	if decodeDetails(input.Result.Details, &d) && d.Diff != "" {
-		return []render.Block{render.Diff(d.Diff)}
-	}
-
-	out := toolOutputText(input.Result.Content)
-	if out == "" {
-		return nil
-	}
-	return []render.Block{render.Text(out)}
 }
 
 // prepareEditArgs normalizes tool input before execution: it parses an edits

@@ -57,11 +57,6 @@ func TestBuiltinToolPresets(t *testing.T) {
 			}
 		})
 	}
-
-	editTool := builtin.NewEditTool(env)
-	if editTool.RenderShell != extension.ToolRenderShellSelf {
-		t.Fatalf("edit RenderShell = %q, want self", editTool.RenderShell)
-	}
 }
 
 func TestReadTool(t *testing.T) {

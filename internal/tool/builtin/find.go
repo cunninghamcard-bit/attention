@@ -9,7 +9,6 @@ import (
 
 	"github.com/cunninghamcard-bit/Attention/internal/extension"
 	"github.com/cunninghamcard-bit/Attention/internal/execenv"
-	"github.com/cunninghamcard-bit/Attention/internal/render"
 	"github.com/cunninghamcard-bit/Attention/internal/tool"
 )
 
@@ -40,39 +39,10 @@ func NewFindTool(env execenv.ExecutionEnv) extension.ToolDefinition {
 		Parameters:    schema[findToolArgs](),
 		Label:         "find",
 		PromptSnippet: "Find files by glob pattern",
-		RenderCall:    findRenderCall,
-		RenderResult:  findRenderResult,
 		Execute: func(ctx context.Context, call extension.ToolCall, _ tool.UpdateCallback, _ extension.ExtensionContext) (tool.Result, error) {
 			return executeFind(ctx, env, call.Args), nil
 		},
 	}
-}
-
-func findRenderCall(input extension.ToolCallRenderInput) []render.Block {
-	pattern := argString(input.Args, "pattern")
-	if pattern == "" {
-		return nil
-	}
-	text := "find " + pattern
-	if path := argString(input.Args, "path"); path != "" {
-		text += " in " + path
-	}
-	return []render.Block{render.Text(text)}
-}
-
-func findRenderResult(input extension.ToolResultRenderInput) []render.Block {
-	out := toolOutputText(input.Result.Content)
-	blocks := outputCodeBlocks(out, "", 20, input.Expanded)
-	var d findToolDetails
-	if decodeDetails(input.Result.Details, &d) {
-		if d.ResultLimitReached > 0 {
-			blocks = append(blocks, render.Badge(fmt.Sprintf("result limit %d reached", d.ResultLimitReached), "warning"))
-		}
-		if d.Truncation != nil && d.Truncation.Truncated {
-			blocks = append(blocks, render.Badge("output truncated", "muted"))
-		}
-	}
-	return blocks
 }
 
 func executeFind(ctx context.Context, env execenv.ExecutionEnv, args map[string]any) tool.Result {

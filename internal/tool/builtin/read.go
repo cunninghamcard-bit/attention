@@ -3,7 +3,6 @@ package builtin
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -13,7 +12,6 @@ import (
 	"github.com/cunninghamcard-bit/Attention/internal/extension"
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
 	"github.com/cunninghamcard-bit/Attention/internal/execenv"
-	"github.com/cunninghamcard-bit/Attention/internal/render"
 	"github.com/cunninghamcard-bit/Attention/internal/tool"
 	"golang.org/x/text/unicode/norm"
 )
@@ -54,63 +52,9 @@ func NewReadTool(env execenv.ExecutionEnv) extension.ToolDefinition {
 		Parameters:    schema[readToolArgs](),
 		Label:         "read",
 		PromptSnippet: "Read a file's contents",
-		RenderCall:    readRenderCall,
-		RenderResult:  readRenderResult,
 		Execute: func(ctx context.Context, call extension.ToolCall, _ tool.UpdateCallback, extCtx extension.ExtensionContext) (tool.Result, error) {
 			return executeRead(ctx, env, call.Args, extCtx), nil
 		},
-	}
-}
-
-func readRenderCall(input extension.ToolCallRenderInput) []render.Block {
-	path := argString(input.Args, "file_path", "path")
-	if path == "" {
-		return nil
-	}
-	header := "read " + path
-	offset, hasOffset := renderIntArg(input.Args, "offset")
-	limit, hasLimit := renderIntArg(input.Args, "limit")
-	if hasOffset || hasLimit {
-		start := 1
-		if hasOffset {
-			start = offset
-		}
-		header += fmt.Sprintf(":%d", start)
-		if hasLimit {
-			header += fmt.Sprintf("-%d", start+limit-1)
-		}
-	}
-	return []render.Block{render.Text(header)}
-}
-
-func readRenderResult(input extension.ToolResultRenderInput) []render.Block {
-	blocks := toolOutputImages(input.Result.Content)
-	out := toolOutputText(input.Result.Content)
-	lang := languageFromPath(argString(input.Args, "file_path", "path"))
-	blocks = append(blocks, outputCodeBlocks(out, lang, 10, input.Expanded)...)
-	var d readToolDetails
-	if decodeDetails(input.Result.Details, &d) && d.Truncation != nil && d.Truncation.Truncated {
-		blocks = append(blocks, render.Badge("output truncated", "muted"))
-	}
-	return blocks
-}
-
-func renderIntArg(args map[string]any, key string) (int, bool) {
-	switch value := args[key].(type) {
-	case int:
-		return value, true
-	case int64:
-		return int(value), true
-	case float64:
-		return int(value), true
-	case json.Number:
-		n, err := value.Int64()
-		if err != nil {
-			return 0, false
-		}
-		return int(n), true
-	default:
-		return 0, false
 	}
 }
 

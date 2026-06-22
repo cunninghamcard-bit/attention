@@ -8,7 +8,6 @@ import (
 
 	"github.com/cunninghamcard-bit/Attention/internal/extension"
 	"github.com/cunninghamcard-bit/Attention/internal/execenv"
-	"github.com/cunninghamcard-bit/Attention/internal/render"
 	"github.com/cunninghamcard-bit/Attention/internal/tool"
 )
 
@@ -37,35 +36,10 @@ func NewLsTool(env execenv.ExecutionEnv) extension.ToolDefinition {
 		Parameters:    schema[lsToolArgs](),
 		Label:         "ls",
 		PromptSnippet: "List directory contents",
-		RenderCall:    lsRenderCall,
-		RenderResult:  lsRenderResult,
 		Execute: func(ctx context.Context, call extension.ToolCall, _ tool.UpdateCallback, _ extension.ExtensionContext) (tool.Result, error) {
 			return executeLs(ctx, env, call.Args), nil
 		},
 	}
-}
-
-func lsRenderCall(input extension.ToolCallRenderInput) []render.Block {
-	path := argString(input.Args, "path")
-	if path == "" {
-		path = "."
-	}
-	return []render.Block{render.Text("ls " + path)}
-}
-
-func lsRenderResult(input extension.ToolResultRenderInput) []render.Block {
-	out := toolOutputText(input.Result.Content)
-	blocks := outputCodeBlocks(out, "", 20, input.Expanded)
-	var d lsToolDetails
-	if decodeDetails(input.Result.Details, &d) {
-		if d.EntryLimitReached > 0 {
-			blocks = append(blocks, render.Badge(fmt.Sprintf("entry limit %d reached", d.EntryLimitReached), "warning"))
-		}
-		if d.Truncation != nil && d.Truncation.Truncated {
-			blocks = append(blocks, render.Badge("output truncated", "muted"))
-		}
-	}
-	return blocks
 }
 
 func executeLs(ctx context.Context, env execenv.ExecutionEnv, args map[string]any) tool.Result {

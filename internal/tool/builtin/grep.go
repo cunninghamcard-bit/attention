@@ -12,7 +12,6 @@ import (
 
 	"github.com/cunninghamcard-bit/Attention/internal/extension"
 	"github.com/cunninghamcard-bit/Attention/internal/execenv"
-	"github.com/cunninghamcard-bit/Attention/internal/render"
 	"github.com/cunninghamcard-bit/Attention/internal/tool"
 )
 
@@ -89,8 +88,6 @@ func NewGrepTool(env execenv.ExecutionEnv) extension.ToolDefinition {
 		Parameters:    schema[grepToolArgs](),
 		Label:         "grep",
 		PromptSnippet: "Search file contents for a pattern",
-		RenderCall:    grepRenderCall,
-		RenderResult:  grepRenderResult,
 		Execute: func(ctx context.Context, call extension.ToolCall, _ tool.UpdateCallback, _ extension.ExtensionContext) (tool.Result, error) {
 			return executeGrep(ctx, env, call.Args), nil
 		},
@@ -242,50 +239,6 @@ func executeGrep(ctx context.Context, env execenv.ExecutionEnv, args map[string]
 		output += "\n\n[" + strings.Join(notices, ". ") + "]"
 	}
 	return textResult(output, details)
-}
-
-func grepRenderCall(input extension.ToolCallRenderInput) []render.Block {
-	pattern, ok := input.Args["pattern"].(string)
-	if !ok {
-		return nil
-	}
-	text := fmt.Sprintf("grep %q", pattern)
-	if path, ok := input.Args["path"].(string); ok && path != "" {
-		text += " in " + path
-	}
-	return []render.Block{render.Text(text)}
-}
-
-func grepRenderResult(input extension.ToolResultRenderInput) []render.Block {
-	var d grepToolDetails
-	if !decodeDetails(input.Result.Details, &d) || len(d.Matches) == 0 {
-		return nil
-	}
-	blocks := []render.Block{}
-	i := 0
-	for i < len(d.Matches) {
-		path := d.Matches[i].Path
-		lines := []render.Block{}
-		for i < len(d.Matches) && d.Matches[i].Path == path {
-			m := d.Matches[i]
-			lines = append(lines, render.StyledText(fmt.Sprintf("%d: %s", m.Line, m.Text), "match"))
-			i++
-		}
-		blocks = append(blocks, render.Group(path, lines))
-	}
-	if d.MatchLimitReached > 0 {
-		blocks = append(
-			blocks,
-			render.Badge(fmt.Sprintf("match limit %d reached", d.MatchLimitReached), "warning"),
-		)
-	}
-	if d.LinesTruncated {
-		blocks = append(blocks, render.Badge("some lines truncated", "muted"))
-	}
-	if d.Truncation != nil && d.Truncation.Truncated {
-		blocks = append(blocks, render.Badge("output truncated", "muted"))
-	}
-	return blocks
 }
 
 func newRGOutputCapture(limit int, cancel context.CancelFunc) *rgOutputCapture {

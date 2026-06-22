@@ -7,7 +7,6 @@ import (
 
 	"github.com/cunninghamcard-bit/Attention/internal/extension"
 	"github.com/cunninghamcard-bit/Attention/internal/execenv"
-	"github.com/cunninghamcard-bit/Attention/internal/render"
 	"github.com/cunninghamcard-bit/Attention/internal/tool"
 )
 
@@ -26,38 +25,10 @@ func NewWriteTool(env execenv.ExecutionEnv) extension.ToolDefinition {
 		Label:         "write",
 		PromptSnippet: "Create or overwrite a file with the given content",
 		ExecutionMode: tool.Sequential,
-		RenderCall:    writeRenderCall,
-		RenderResult:  writeRenderResult,
 		Execute: func(ctx context.Context, call extension.ToolCall, _ tool.UpdateCallback, _ extension.ExtensionContext) (tool.Result, error) {
 			return executeWrite(ctx, env, call.Args), nil
 		},
 	}
-}
-
-func writeRenderCall(input extension.ToolCallRenderInput) []render.Block {
-	path := argString(input.Args, "file_path", "path")
-	if path == "" {
-		return nil
-	}
-	blocks := []render.Block{render.Text("write " + path)}
-	content := argString(input.Args, "content")
-	if content != "" {
-		blocks = append(blocks, outputCodeBlocks(
-			content,
-			languageFromPath(path),
-			10,
-			input.Expanded,
-		)...)
-	}
-	return blocks
-}
-
-func writeRenderResult(input extension.ToolResultRenderInput) []render.Block {
-	out := toolOutputText(input.Result.Content)
-	if out == "" {
-		return nil
-	}
-	return []render.Block{render.Text(out)}
 }
 
 func executeWrite(ctx context.Context, env execenv.ExecutionEnv, args map[string]any) tool.Result {
