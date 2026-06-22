@@ -14,7 +14,19 @@ import (
 	"testing"
 
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
+	"github.com/cunninghamcard-bit/Attention/internal/message"
 )
+
+// textOf returns the concatenated text of an ai.Message's text content blocks.
+func textOf(m ai.Message) string {
+	var b strings.Builder
+	for _, c := range m.Content {
+		if c.Type == ai.ContentText {
+			b.WriteString(c.Text)
+		}
+	}
+	return b.String()
+}
 
 // writeScript writes an executable shell script and returns a command string
 // that runs it via the path. Using `sh <path>` keeps it portable.
@@ -349,10 +361,69 @@ func TestShellHooksBeforeAgentStartNoOpinion(t *testing.T) {
 	}
 }
 
+func TestShellHooksBeforeAgentStartInjectsMessage(t *testing.T) {
+	requirePOSIX(t)
+	// Declaratively inject a message at agent start.
+	reg := registerEcho(t, "before_agent_start",
+		`echo '{"messages":[{"role":"user","text":"injected note"}]}'`)
+	h := firstHandler(t, reg, EventBeforeAgentStart)
+	res, err := h(context.Background(), BeforeAgentStartEvent{Type: EventBeforeAgentStart})
+	if err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	r, ok := res.(BeforeAgentStartResult)
+	if !ok {
+		t.Fatalf("result type = %T, want hook.BeforeAgentStartResult", res)
+	}
+	if len(r.Messages) != 1 {
+		t.Fatalf("Messages = %#v, want 1 message", r.Messages)
+	}
+	// The harness keeps only message.AgentMessage values (prompt.go:153-157); a
+	// raw map is dropped. The element must be a concrete ai.Message that also
+	// satisfies message.AgentMessage.
+	msg, ok := r.Messages[0].(ai.Message)
+	if !ok {
+		t.Fatalf("Messages[0] type = %T, want ai.Message", r.Messages[0])
+	}
+	if _, ok := r.Messages[0].(message.AgentMessage); !ok {
+		t.Fatalf("Messages[0] does not satisfy message.AgentMessage")
+	}
+	if msg.Role != ai.RoleUser {
+		t.Fatalf("Role = %q, want %q", msg.Role, ai.RoleUser)
+	}
+	if got := textOf(msg); got != "injected note" {
+		t.Fatalf("text = %q, want %q", got, "injected note")
+	}
+	if msg.Timestamp == 0 {
+		t.Fatalf("Timestamp = 0, want a default UnixMilli timestamp")
+	}
+}
+
+// TestShellHooksMessageRoleCoercion proves "system" (which ai.Role lacks)
+// coerces to RoleUser, and that an explicit "content" array is honored.
+func TestShellHooksMessageRoleCoercion(t *testing.T) {
+	requirePOSIX(t)
+	reg := registerEcho(t, "before_agent_start",
+		`echo '{"messages":[{"role":"system","text":"x"}]}'`)
+	h := firstHandler(t, reg, EventBeforeAgentStart)
+	res, err := h(context.Background(), BeforeAgentStartEvent{Type: EventBeforeAgentStart})
+	if err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	r := res.(BeforeAgentStartResult)
+	if len(r.Messages) != 1 {
+		t.Fatalf("Messages = %#v, want 1 message", r.Messages)
+	}
+	msg := r.Messages[0].(ai.Message)
+	if msg.Role != ai.RoleUser {
+		t.Fatalf("Role = %q, want %q (system coerces to user)", msg.Role, ai.RoleUser)
+	}
+}
+
 func TestShellHooksContext(t *testing.T) {
 	requirePOSIX(t)
 	reg := registerEcho(t, "context",
-		`echo '{"messages":[{"role":"user"}]}'`)
+		`echo '{"messages":[{"role":"user","text":"ctx note"}]}'`)
 	h := firstHandler(t, reg, EventContext)
 	res, err := h(context.Background(), ContextEvent{Type: EventContext})
 	if err != nil {
@@ -364,6 +435,21 @@ func TestShellHooksContext(t *testing.T) {
 	}
 	if len(r.Messages) != 1 {
 		t.Fatalf("Messages = %#v, want 1 message", r.Messages)
+	}
+	// fromAnySlice keeps only message.AgentMessage values; a raw map is dropped.
+	// The element must be a concrete ai.Message carrying the text.
+	msg, ok := r.Messages[0].(ai.Message)
+	if !ok {
+		t.Fatalf("Messages[0] type = %T, want ai.Message", r.Messages[0])
+	}
+	if _, ok := r.Messages[0].(message.AgentMessage); !ok {
+		t.Fatalf("Messages[0] does not satisfy message.AgentMessage")
+	}
+	if msg.Role != ai.RoleUser {
+		t.Fatalf("Role = %q, want %q", msg.Role, ai.RoleUser)
+	}
+	if got := textOf(msg); got != "ctx note" {
+		t.Fatalf("text = %q, want %q", got, "ctx note")
 	}
 }
 
@@ -393,7 +479,7 @@ func TestShellHooksInput(t *testing.T) {
 func TestShellHooksBeforeProviderRequest(t *testing.T) {
 	requirePOSIX(t)
 	reg := registerEcho(t, "before_provider_request",
-		`echo '{"streamOptions":{"temperature":0.5}}'`)
+		`echo '{"streamOptions":{"temperature":0.5,"maxTokens":128}}'`)
 	h := firstHandler(t, reg, EventBeforeProviderRequest)
 	res, err := h(context.Background(), BeforeProviderRequestEvent{Type: EventBeforeProviderRequest})
 	if err != nil {
@@ -405,6 +491,31 @@ func TestShellHooksBeforeProviderRequest(t *testing.T) {
 	}
 	if r.StreamOptions == nil {
 		t.Fatalf("StreamOptions = nil, want decoded value")
+	}
+	// applyStreamOptionsPatch recognizes only ai.SimpleStreamOptions /
+	// hook.StreamOptionsPatch; a raw map no-ops. Prove the concrete patch type.
+	patch, ok := r.StreamOptions.(StreamOptionsPatch)
+	if !ok {
+		t.Fatalf("StreamOptions type = %T, want hook.StreamOptionsPatch", r.StreamOptions)
+	}
+	if patch.Temperature == nil || *patch.Temperature != 0.5 {
+		t.Fatalf("Temperature = %v, want 0.5", patch.Temperature)
+	}
+	if patch.MaxTokens == nil || *patch.MaxTokens != 128 {
+		t.Fatalf("MaxTokens = %v, want 128", patch.MaxTokens)
+	}
+}
+
+func TestShellHooksBeforeProviderRequestNoOpinion(t *testing.T) {
+	requirePOSIX(t)
+	reg := registerEcho(t, "before_provider_request", `exit 0`)
+	h := firstHandler(t, reg, EventBeforeProviderRequest)
+	res, err := h(context.Background(), BeforeProviderRequestEvent{Type: EventBeforeProviderRequest})
+	if err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if res != nil {
+		t.Fatalf("result = %#v, want nil (no opinion)", res)
 	}
 }
 
@@ -429,8 +540,11 @@ func TestShellHooksBeforeProviderPayload(t *testing.T) {
 
 func TestShellHooksMessageEnd(t *testing.T) {
 	requirePOSIX(t)
+	// The harness requires the replacement to carry the SAME role as the
+	// streamed message (sameMessageEndRole), so an assistant turn is replaced
+	// with role:"assistant".
 	reg := registerEcho(t, "message_end",
-		`echo '{"message":{"role":"assistant"}}'`)
+		`echo '{"message":{"role":"assistant","text":"rewritten"}}'`)
 	h := firstHandler(t, reg, EventMessageEnd)
 	res, err := h(context.Background(), MessageEndEvent{Type: EventMessageEnd})
 	if err != nil {
@@ -442,6 +556,34 @@ func TestShellHooksMessageEnd(t *testing.T) {
 	}
 	if r.Message == nil {
 		t.Fatalf("Message = nil, want decoded value")
+	}
+	// resultAgentMessage does value.(message.AgentMessage); a raw map fails.
+	// The decoded value must be a concrete ai.Message satisfying it.
+	msg, ok := r.Message.(ai.Message)
+	if !ok {
+		t.Fatalf("Message type = %T, want ai.Message", r.Message)
+	}
+	if _, ok := r.Message.(message.AgentMessage); !ok {
+		t.Fatalf("Message does not satisfy message.AgentMessage")
+	}
+	if msg.Role != ai.RoleAssistant {
+		t.Fatalf("Role = %q, want %q", msg.Role, ai.RoleAssistant)
+	}
+	if got := textOf(msg); got != "rewritten" {
+		t.Fatalf("text = %q, want %q", got, "rewritten")
+	}
+}
+
+func TestShellHooksMessageEndNoOpinion(t *testing.T) {
+	requirePOSIX(t)
+	reg := registerEcho(t, "message_end", `exit 0`)
+	h := firstHandler(t, reg, EventMessageEnd)
+	res, err := h(context.Background(), MessageEndEvent{Type: EventMessageEnd})
+	if err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if res != nil {
+		t.Fatalf("result = %#v, want nil (no opinion => no change)", res)
 	}
 }
 

@@ -478,22 +478,26 @@ func toolResultPatchFrom(d shellHookDecision) ToolResultPatch {
 
 // beforeAgentStartResultFrom builds the CONCRETE BeforeAgentStartResult
 // emitBeforeAgentStart type-asserts (prompt.go). systemPrompt replaces the
-// running system prompt; messages are decoded generically (the harness keeps
-// only those that are message.AgentMessage — raw JSON cannot satisfy that, so
-// in practice systemPrompt is the load-bearing field here).
+// running system prompt; messages are decoded into concrete ai.Message VALUES
+// (which implement message.AgentMessage via ai.Message.IsAgentMessage). The
+// harness keeps only []any elements that satisfy message.AgentMessage
+// (prompt.go:153-157), so a raw map[string]any would be dropped — decoding to
+// ai.Message is what makes injected messages survive.
 func beforeAgentStartResultFrom(d shellHookDecision) BeforeAgentStartResult {
 	return BeforeAgentStartResult{
-		Messages:     rawMessageSlice(d.Messages),
+		Messages:     decodeHookMessages(d.Messages),
 		SystemPrompt: d.SystemPrompt,
 	}
 }
 
 // contextResultFrom builds the CONCRETE ContextResult TransformContext
 // type-asserts (prompt.go). Only a non-nil Messages slice is treated as a
-// change by the harness.
+// change by the harness; fromAnySlice (prompt.go:1024-1032) keeps only
+// message.AgentMessage values, so we decode into concrete ai.Message values
+// (not raw maps, which would be dropped).
 func contextResultFrom(d shellHookDecision) ContextResult {
 	return ContextResult{
-		Messages: rawMessageSlice(d.Messages),
+		Messages: decodeHookMessages(d.Messages),
 	}
 }
 
@@ -510,14 +514,17 @@ func inputResultFrom(d shellHookDecision) InputResult {
 
 // beforeProviderRequestResultFrom builds the CONCRETE
 // BeforeProviderRequestResult emitBeforeProviderRequest type-asserts
-// (prompt.go). StreamOptions is decoded generically; applyStreamOptionsPatch
-// only recognizes ai.SimpleStreamOptions / hook.StreamOptionsPatch concrete
-// values, so a raw decode is a no-op patch unless the consumer is extended —
-// the type match itself is what this proves.
+// (prompt.go). applyStreamOptionsPatch (prompt.go:844-872) switches only on
+// concrete ai.SimpleStreamOptions / hook.StreamOptionsPatch values; a raw
+// map[string]any no-ops. So we decode d.StreamOptions into a concrete
+// StreamOptionsPatch (its pointer fields make a partial JSON patch
+// unambiguous). On empty/invalid input StreamOptions stays nil (no change).
 func beforeProviderRequestResultFrom(d shellHookDecision) BeforeProviderRequestResult {
-	return BeforeProviderRequestResult{
-		StreamOptions: rawAny(d.StreamOptions),
+	res := BeforeProviderRequestResult{}
+	if patch, ok := decodeStreamOptionsPatch(d.StreamOptions); ok {
+		res.StreamOptions = patch
 	}
+	return res
 }
 
 // beforeProviderPayloadResultFrom builds the CONCRETE BeforeProviderPayloadResult
@@ -529,13 +536,19 @@ func beforeProviderPayloadResultFrom(d shellHookDecision) BeforeProviderPayloadR
 }
 
 // messageEndResultFrom builds the CONCRETE MessageEndResult
-// emitMessageEndChain type-asserts (prompt.go). Message is decoded generically;
-// the harness keeps it only if it is a message.AgentMessage, so a raw decode is
-// inert there — the type match is what this proves.
+// emitMessageEndChain type-asserts (prompt.go). resultAgentMessage does
+// value.(message.AgentMessage), so a raw map[string]any fails and the original
+// message is kept. We decode into a concrete ai.Message value (which satisfies
+// message.AgentMessage). NOTE: the harness requires the replacement to carry
+// the SAME role as the streamed message (sameMessageEndRole, prompt.go), so a
+// hook replacing an assistant turn must emit role:"assistant". When the decode
+// yields no message, Message stays nil (no change).
 func messageEndResultFrom(d shellHookDecision) MessageEndResult {
-	return MessageEndResult{
-		Message: rawAny(d.Message),
+	res := MessageEndResult{}
+	if msg, ok := decodeHookMessage(d.Message); ok {
+		res.Message = msg
 	}
+	return res
 }
 
 // sessionBeforeSwitchResultFrom builds the CONCRETE SessionBeforeSwitchResult
@@ -606,16 +619,137 @@ func resourcesDiscoverResultFrom(d shellHookDecision) ResourcesDiscoverResult {
 	}
 }
 
-// rawMessageSlice decodes a raw JSON array into a []any, one element per message.
-func rawMessageSlice(raw json.RawMessage) []any {
+// hookMessageJSON is the per-message wire shape a hook command prints for the
+// before_agent_start / context / message_end events. It is deliberately lax:
+//
+//	{"role": "user", "text": "hi"}
+//	{"role": "assistant", "content": [{"type":"text","text":"rewritten"}]}
+//
+// "text" is sugar for a single text content block; "content" (when present) is
+// decoded into ai.ContentBlock values. timestamp is optional.
+type hookMessageJSON struct {
+	Role      string            `json:"role"`
+	Text      string            `json:"text"`
+	Content   []ai.ContentBlock `json:"content"`
+	Timestamp int64             `json:"timestamp"`
+}
+
+// decodeHookMessage unmarshals one per-message JSON object into a concrete
+// ai.Message. ai.Message implements message.AgentMessage (ai.Message
+// .IsAgentMessage), so the value survives the harness type assertions that drop
+// raw maps.
+//
+// Rules:
+//   - role defaults to RoleUser. ai.Role has no system role (RoleUser /
+//     RoleAssistant / RoleToolResult only), so "system" is coerced to RoleUser.
+//   - a top-level "text" string is sugar for one ContentText block; an explicit
+//     "content" array takes precedence and a "text" block is appended after it
+//     so both can be supplied (content first, text sugar last).
+//   - Timestamp defaults to time.Now().UnixMilli() when zero.
+//
+// Returns (zero, false) when raw is empty or the message carries neither text
+// nor content (nothing to inject).
+func decodeHookMessage(raw json.RawMessage) (ai.Message, bool) {
+	if len(raw) == 0 {
+		return ai.Message{}, false
+	}
+	var m hookMessageJSON
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return ai.Message{}, false
+	}
+
+	blocks := append([]ai.ContentBlock(nil), m.Content...)
+	if m.Text != "" {
+		blocks = append(blocks, ai.ContentBlock{Type: ai.ContentText, Text: m.Text})
+	}
+	if len(blocks) == 0 {
+		return ai.Message{}, false
+	}
+
+	msg := ai.Message{
+		Role:      hookRole(m.Role),
+		Content:   blocks,
+		Timestamp: m.Timestamp,
+	}
+	if msg.Timestamp == 0 {
+		msg.Timestamp = time.Now().UnixMilli()
+	}
+	return msg, true
+}
+
+// decodeHookMessages unmarshals a JSON array of per-message objects, decodes
+// each into an ai.Message, and collects the VALUES into a []any (so each
+// element satisfies message.AgentMessage). Returns nil when raw is empty or no
+// element decoded, so "no opinion" stays a no-change: a nil Messages slice must
+// not be treated as a change by the harness.
+func decodeHookMessages(raw json.RawMessage) []any {
 	if len(raw) == 0 {
 		return nil
 	}
-	var msgs []any
-	if err := json.Unmarshal(raw, &msgs); err != nil {
+	var elems []json.RawMessage
+	if err := json.Unmarshal(raw, &elems); err != nil {
 		return nil
 	}
-	return msgs
+	var out []any
+	for _, e := range elems {
+		if msg, ok := decodeHookMessage(e); ok {
+			out = append(out, msg)
+		}
+	}
+	return out
+}
+
+// hookRole maps a hook's role string onto an ai.Role. ai.Role has no system
+// role, so "system" (and any unrecognized value) coerces to RoleUser.
+func hookRole(role string) ai.Role {
+	switch ai.Role(strings.TrimSpace(role)) {
+	case ai.RoleAssistant:
+		return ai.RoleAssistant
+	case ai.RoleToolResult:
+		return ai.RoleToolResult
+	default:
+		// "user", "system" (no system role exists), "" and anything else.
+		return ai.RoleUser
+	}
+}
+
+// decodeStreamOptionsPatch unmarshals d.StreamOptions into a concrete
+// hook.StreamOptionsPatch (the only patch shape applyStreamOptionsPatch
+// recognizes besides ai.SimpleStreamOptions). Its pointer fields keep a partial
+// JSON object unambiguous (an omitted key stays a nil pointer = leave alone).
+// Returns ok=false when raw is empty, invalid, or carries no set fields, so an
+// empty/invalid patch leaves StreamOptions nil (no change).
+func decodeStreamOptionsPatch(raw json.RawMessage) (StreamOptionsPatch, bool) {
+	if len(raw) == 0 {
+		return StreamOptionsPatch{}, false
+	}
+	var patch StreamOptionsPatch
+	if err := json.Unmarshal(raw, &patch); err != nil {
+		return StreamOptionsPatch{}, false
+	}
+	if streamOptionsPatchEmpty(patch) {
+		return StreamOptionsPatch{}, false
+	}
+	return patch, true
+}
+
+// streamOptionsPatchEmpty reports whether no field of the patch is set, i.e.
+// applying it would change nothing.
+func streamOptionsPatchEmpty(p StreamOptionsPatch) bool {
+	return p.Temperature == nil &&
+		p.MaxTokens == nil &&
+		p.APIKey == nil &&
+		p.Transport == nil &&
+		p.CacheRetention == nil &&
+		p.SessionID == nil &&
+		!p.ClearHeaders &&
+		p.Headers == nil &&
+		p.Timeout == nil &&
+		p.MaxRetries == nil &&
+		!p.ClearMetadata &&
+		p.Metadata == nil &&
+		p.Reasoning == nil &&
+		p.ThinkingBudgets == nil
 }
 
 // rawAny decodes a raw JSON value into an any.
