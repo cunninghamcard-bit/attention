@@ -334,14 +334,21 @@ func run(ctx context.Context) error {
 	obs.Time("orchestrator create")
 	obs.Report(os.Stderr)
 
-	if err := runPromptMode(ctx, *mode, orch, prompts); err != nil {
-		if closeErr := orch.Close(); closeErr != nil {
-			return errors.Join(err, fmt.Errorf("close orchestrator: %w", closeErr))
+	runErr := runPromptMode(ctx, *mode, orch, prompts)
+	// pi disposes on EVERY exit path, emitting session_shutdown so extension and
+	// hook shutdown handlers run (agent-harness.ts / print-mode finally). rpc mode
+	// already emits session_shutdown in serve()'s defer, so only the print/json
+	// (non-rpc) one-shot path needs it here — guard on the mode to avoid a double
+	// emit. ctx may already be cancelled by a signal (NotifyContext above), so use
+	// context.WithoutCancel to let shutdown handlers run anyway.
+	if shutdownErr := shutdownOrchestrator(ctx, *mode, orch); shutdownErr != nil {
+		if runErr != nil {
+			return errors.Join(runErr, shutdownErr)
 		}
-		return err
+		return shutdownErr
 	}
-	if err := orch.Close(); err != nil {
-		return fmt.Errorf("close orchestrator: %w", err)
+	if runErr != nil {
+		return runErr
 	}
 	if err := ctx.Err(); err != nil {
 		return err
@@ -426,6 +433,31 @@ func runPromptMode(
 	default:
 		return validateMode(mode)
 	}
+}
+
+// shutdownTarget is the orchestrator surface used on the one-shot exit path.
+type shutdownTarget interface {
+	NotifySessionShutdown(context.Context, string) error
+	Close() error
+}
+
+// shutdownOrchestrator runs the print/json (non-rpc) exit path: it emits
+// session_shutdown before Close so extension/hook shutdown handlers run for
+// one-shot runs, mirroring pi's dispose-on-every-exit-path behaviour. rpc mode
+// already emits session_shutdown in serve()'s defer, so it is skipped here to
+// avoid a double emit. The shutdown ctx is detached because the run ctx may
+// already be cancelled by a signal.
+func shutdownOrchestrator(ctx context.Context, mode string, orch shutdownTarget) error {
+	var shutdownErr error
+	if mode != "rpc" {
+		if err := orch.NotifySessionShutdown(context.WithoutCancel(ctx), "quit"); err != nil {
+			shutdownErr = fmt.Errorf("shutdown orchestrator: %w", err)
+		}
+	}
+	if err := orch.Close(); err != nil {
+		return errors.Join(shutdownErr, fmt.Errorf("close orchestrator: %w", err))
+	}
+	return shutdownErr
 }
 
 func buildProvider(ctx context.Context, cfg config.Config) (*provider.Registry, error) {
