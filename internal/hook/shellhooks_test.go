@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
@@ -259,5 +260,469 @@ func TestLoadShellHooksUnknownEventErrors(t *testing.T) {
 	hooks := writeHooks(t, dir, `[{"event":"NopeEvent","command":"true"}]`)
 	if _, err := LoadShellHooks(hooks); err == nil {
 		t.Fatalf("LoadShellHooks accepted unknown event, want error")
+	}
+}
+
+// requirePOSIX skips on Windows where these tests cannot run a POSIX shell.
+func requirePOSIX(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("shell hooks test requires a POSIX shell")
+	}
+}
+
+// registerEcho loads a single-hook hooks.json whose command echoes body and
+// returns the registry. event is the hooks.json event name (native or alias).
+func registerEcho(t *testing.T, event, body string) *Registry {
+	t.Helper()
+	dir := t.TempDir()
+	cmd := writeScript(t, dir, "h.sh", body)
+	hooks := writeHooks(t, dir,
+		`[{"event":"`+event+`","command":"`+cmd+`"}]`)
+	return loadAndRegister(t, hooks)
+}
+
+// firstHandler returns the single handler registered for eventType, failing if
+// there is not exactly one — the shell-hooks runner registers one handler per
+// rule, and the decision emit sites drive handlers directly (not Emit) for the
+// per-handler-loop events, so the tests call the handler the same way.
+func firstHandler(t *testing.T, reg *Registry, eventType string) Handler {
+	t.Helper()
+	handlers := reg.Handlers(eventType)
+	if len(handlers) != 1 {
+		t.Fatalf("handlers for %q = %d, want 1", eventType, len(handlers))
+	}
+	return handlers[0]
+}
+
+// --- DECISION events: assert the EXACT concrete result type + value. ---
+
+func TestShellHooksBeforeAgentStart(t *testing.T) {
+	requirePOSIX(t)
+	// before_agent_start via the SessionStart alias; replace the system prompt.
+	reg := registerEcho(t, "SessionStart",
+		`echo '{"systemPrompt":"REPLACED"}'`)
+	h := firstHandler(t, reg, EventBeforeAgentStart)
+
+	res, err := h(context.Background(), BeforeAgentStartEvent{
+		Type:         EventBeforeAgentStart,
+		Prompt:       "hi",
+		SystemPrompt: "ORIGINAL",
+	})
+	if err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	r, ok := res.(BeforeAgentStartResult)
+	if !ok {
+		t.Fatalf("result type = %T, want hook.BeforeAgentStartResult", res)
+	}
+	if r.SystemPrompt == nil || *r.SystemPrompt != "REPLACED" {
+		t.Fatalf("SystemPrompt = %v, want REPLACED", r.SystemPrompt)
+	}
+}
+
+func TestShellHooksBeforeAgentStartNativeName(t *testing.T) {
+	requirePOSIX(t)
+	// The native event name is accepted directly too.
+	reg := registerEcho(t, "before_agent_start",
+		`echo '{"systemPrompt":"X"}'`)
+	h := firstHandler(t, reg, EventBeforeAgentStart)
+	res, err := h(context.Background(), BeforeAgentStartEvent{Type: EventBeforeAgentStart})
+	if err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if r, ok := res.(BeforeAgentStartResult); !ok || r.SystemPrompt == nil || *r.SystemPrompt != "X" {
+		t.Fatalf("result = %#v, want BeforeAgentStartResult{SystemPrompt:X}", res)
+	}
+}
+
+func TestShellHooksBeforeAgentStartNoOpinion(t *testing.T) {
+	requirePOSIX(t)
+	reg := registerEcho(t, "before_agent_start", `exit 0`)
+	h := firstHandler(t, reg, EventBeforeAgentStart)
+	res, err := h(context.Background(), BeforeAgentStartEvent{Type: EventBeforeAgentStart})
+	if err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if res != nil {
+		t.Fatalf("result = %#v, want nil (no opinion)", res)
+	}
+}
+
+func TestShellHooksContext(t *testing.T) {
+	requirePOSIX(t)
+	reg := registerEcho(t, "context",
+		`echo '{"messages":[{"role":"user"}]}'`)
+	h := firstHandler(t, reg, EventContext)
+	res, err := h(context.Background(), ContextEvent{Type: EventContext})
+	if err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	r, ok := res.(ContextResult)
+	if !ok {
+		t.Fatalf("result type = %T, want hook.ContextResult", res)
+	}
+	if len(r.Messages) != 1 {
+		t.Fatalf("Messages = %#v, want 1 message", r.Messages)
+	}
+}
+
+func TestShellHooksInput(t *testing.T) {
+	requirePOSIX(t)
+	// input via the UserPromptSubmit alias; transform the prompt text.
+	reg := registerEcho(t, "UserPromptSubmit",
+		`echo '{"action":"transform","text":"clean"}'`)
+	h := firstHandler(t, reg, EventInput)
+	res, err := h(context.Background(), InputEvent{
+		Type:   EventInput,
+		Text:   "dirty",
+		Source: "interactive",
+	})
+	if err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	r, ok := res.(InputResult)
+	if !ok {
+		t.Fatalf("result type = %T, want hook.InputResult", res)
+	}
+	if r.Action != "transform" || r.Text != "clean" {
+		t.Fatalf("InputResult = %#v, want {transform clean}", r)
+	}
+}
+
+func TestShellHooksBeforeProviderRequest(t *testing.T) {
+	requirePOSIX(t)
+	reg := registerEcho(t, "before_provider_request",
+		`echo '{"streamOptions":{"temperature":0.5}}'`)
+	h := firstHandler(t, reg, EventBeforeProviderRequest)
+	res, err := h(context.Background(), BeforeProviderRequestEvent{Type: EventBeforeProviderRequest})
+	if err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	r, ok := res.(BeforeProviderRequestResult)
+	if !ok {
+		t.Fatalf("result type = %T, want hook.BeforeProviderRequestResult", res)
+	}
+	if r.StreamOptions == nil {
+		t.Fatalf("StreamOptions = nil, want decoded value")
+	}
+}
+
+func TestShellHooksBeforeProviderPayload(t *testing.T) {
+	requirePOSIX(t)
+	reg := registerEcho(t, "before_provider_payload",
+		`echo '{"payload":{"k":"v"}}'`)
+	h := firstHandler(t, reg, EventBeforeProviderPayload)
+	res, err := h(context.Background(), BeforeProviderPayloadEvent{Type: EventBeforeProviderPayload})
+	if err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	r, ok := res.(BeforeProviderPayloadResult)
+	if !ok {
+		t.Fatalf("result type = %T, want hook.BeforeProviderPayloadResult", res)
+	}
+	m, ok := r.Payload.(map[string]any)
+	if !ok || m["k"] != "v" {
+		t.Fatalf("Payload = %#v, want map{k:v}", r.Payload)
+	}
+}
+
+func TestShellHooksMessageEnd(t *testing.T) {
+	requirePOSIX(t)
+	reg := registerEcho(t, "message_end",
+		`echo '{"message":{"role":"assistant"}}'`)
+	h := firstHandler(t, reg, EventMessageEnd)
+	res, err := h(context.Background(), MessageEndEvent{Type: EventMessageEnd})
+	if err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	r, ok := res.(MessageEndResult)
+	if !ok {
+		t.Fatalf("result type = %T, want hook.MessageEndResult", res)
+	}
+	if r.Message == nil {
+		t.Fatalf("Message = nil, want decoded value")
+	}
+}
+
+func TestShellHooksToolResultContentPatch(t *testing.T) {
+	requirePOSIX(t)
+	// content override + isError patch (no block) on tool_result.
+	reg := registerEcho(t, "PostToolUse",
+		`echo '{"content":[{"type":"text","text":"scrubbed"}],"isError":true}'`)
+	h := firstHandler(t, reg, EventToolResult)
+	res, err := h(context.Background(), ToolResultEvent{
+		Type:     EventToolResult,
+		ToolName: "Bash",
+		Content:  []ai.ContentBlock{{Type: ai.ContentText, Text: "secret"}},
+	})
+	if err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	patch, ok := res.(ToolResultPatch)
+	if !ok {
+		t.Fatalf("result type = %T, want hook.ToolResultPatch", res)
+	}
+	if len(patch.Content) != 1 || patch.Content[0].Text != "scrubbed" {
+		t.Fatalf("Content = %#v, want [scrubbed]", patch.Content)
+	}
+	if patch.IsError == nil || !*patch.IsError {
+		t.Fatalf("IsError = %v, want true", patch.IsError)
+	}
+	if patch.Terminate != nil {
+		t.Fatalf("Terminate = %v, want nil (no block)", patch.Terminate)
+	}
+}
+
+func TestShellHooksSessionBeforeSwitch(t *testing.T) {
+	requirePOSIX(t)
+	reg := registerEcho(t, "session_before_switch", `echo '{"cancel":true}'`)
+	res, err := reg.Emit(context.Background(), SessionBeforeSwitchEvent{Type: EventSessionBeforeSwitch})
+	if err != nil {
+		t.Fatalf("Emit: %v", err)
+	}
+	r, ok := res.(SessionBeforeSwitchResult)
+	if !ok {
+		t.Fatalf("result type = %T, want hook.SessionBeforeSwitchResult", res)
+	}
+	if !r.Cancel {
+		t.Fatalf("Cancel = false, want true")
+	}
+}
+
+func TestShellHooksSessionBeforeFork(t *testing.T) {
+	requirePOSIX(t)
+	reg := registerEcho(t, "session_before_fork",
+		`echo '{"cancel":false,"skipConversationRestore":true}'`)
+	res, err := reg.Emit(context.Background(), SessionBeforeForkEvent{Type: EventSessionBeforeFork})
+	if err != nil {
+		t.Fatalf("Emit: %v", err)
+	}
+	r, ok := res.(SessionBeforeForkResult)
+	if !ok {
+		t.Fatalf("result type = %T, want hook.SessionBeforeForkResult", res)
+	}
+	if r.Cancel {
+		t.Fatalf("Cancel = true, want false")
+	}
+	if !r.SkipConversationRestore {
+		t.Fatalf("SkipConversationRestore = false, want true")
+	}
+}
+
+func TestShellHooksSessionBeforeCompact(t *testing.T) {
+	requirePOSIX(t)
+	// PreCompact alias maps to session_before_compact; cancel compaction.
+	reg := registerEcho(t, "PreCompact", `echo '{"cancel":true}'`)
+	res, err := reg.Emit(context.Background(), SessionBeforeCompactEvent{Type: EventSessionBeforeCompact})
+	if err != nil {
+		t.Fatalf("Emit: %v", err)
+	}
+	r, ok := res.(SessionBeforeCompactResult)
+	if !ok {
+		t.Fatalf("result type = %T, want hook.SessionBeforeCompactResult", res)
+	}
+	if !r.Cancel {
+		t.Fatalf("Cancel = false, want true")
+	}
+}
+
+func TestShellHooksSessionBeforeCompactOverride(t *testing.T) {
+	requirePOSIX(t)
+	reg := registerEcho(t, "session_before_compact",
+		`echo '{"compaction":{"summary":"S","tokensBefore":42}}'`)
+	res, err := reg.Emit(context.Background(), SessionBeforeCompactEvent{Type: EventSessionBeforeCompact})
+	if err != nil {
+		t.Fatalf("Emit: %v", err)
+	}
+	r, ok := res.(SessionBeforeCompactResult)
+	if !ok {
+		t.Fatalf("result type = %T, want hook.SessionBeforeCompactResult", res)
+	}
+	if r.Compaction == nil || r.Compaction.Summary != "S" || r.Compaction.TokensBefore != 42 {
+		t.Fatalf("Compaction = %#v, want {S 42}", r.Compaction)
+	}
+}
+
+func TestShellHooksSessionBeforeTree(t *testing.T) {
+	requirePOSIX(t)
+	reg := registerEcho(t, "session_before_tree",
+		`echo '{"cancel":false,"summary":{"summary":"branch"}}'`)
+	res, err := reg.Emit(context.Background(), SessionBeforeTreeEvent{Type: EventSessionBeforeTree})
+	if err != nil {
+		t.Fatalf("Emit: %v", err)
+	}
+	r, ok := res.(SessionBeforeTreeResult)
+	if !ok {
+		t.Fatalf("result type = %T, want hook.SessionBeforeTreeResult", res)
+	}
+	if r.Cancel {
+		t.Fatalf("Cancel = true, want false")
+	}
+	if r.Summary == nil || r.Summary.Summary != "branch" {
+		t.Fatalf("Summary = %#v, want {branch}", r.Summary)
+	}
+}
+
+func TestShellHooksUserBash(t *testing.T) {
+	requirePOSIX(t)
+	// user_bash drives EmitFirst in the orchestrator; assert the concrete
+	// UserBashEventResult with a Result (Operations is a Go interface, stays nil).
+	reg := registerEcho(t, "user_bash",
+		`echo '{"output":"hello","exitCode":0}'`)
+	res, err := reg.EmitFirst(context.Background(), UserBashEvent{
+		Type:    EventUserBash,
+		Command: "echo hi",
+	})
+	if err != nil {
+		t.Fatalf("EmitFirst: %v", err)
+	}
+	r, ok := res.(UserBashEventResult)
+	if !ok {
+		t.Fatalf("result type = %T, want hook.UserBashEventResult", res)
+	}
+	if r.Result == nil {
+		t.Fatalf("Result = nil, want populated BashResult")
+	}
+	if r.Result.Output != "hello" {
+		t.Fatalf("Output = %q, want hello", r.Result.Output)
+	}
+	if r.Result.ExitCode == nil || *r.Result.ExitCode != 0 {
+		t.Fatalf("ExitCode = %v, want 0", r.Result.ExitCode)
+	}
+	if r.Operations != nil {
+		t.Fatalf("Operations = %v, want nil (interface cannot come from JSON)", r.Operations)
+	}
+}
+
+func TestShellHooksResourcesDiscover(t *testing.T) {
+	requirePOSIX(t)
+	reg := registerEcho(t, "resources_discover",
+		`echo '{"skillPaths":["/a"],"promptPaths":["/b"],"themePaths":["/c"]}'`)
+	h := firstHandler(t, reg, EventResourcesDiscover)
+	res, err := h(context.Background(), ResourcesDiscoverEvent{Type: EventResourcesDiscover})
+	if err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	r, ok := res.(ResourcesDiscoverResult)
+	if !ok {
+		t.Fatalf("result type = %T, want hook.ResourcesDiscoverResult", res)
+	}
+	if len(r.SkillPaths) != 1 || r.SkillPaths[0] != "/a" {
+		t.Fatalf("SkillPaths = %#v, want [/a]", r.SkillPaths)
+	}
+	if len(r.PromptPaths) != 1 || r.PromptPaths[0] != "/b" {
+		t.Fatalf("PromptPaths = %#v, want [/b]", r.PromptPaths)
+	}
+	if len(r.ThemePaths) != 1 || r.ThemePaths[0] != "/c" {
+		t.Fatalf("ThemePaths = %#v, want [/c]", r.ThemePaths)
+	}
+}
+
+// --- NOTIFICATION events: command runs (sees event JSON on stdin) and the
+// handler returns (nil, nil). ---
+
+// notifyEventCase pairs a notification event name/native-type with a constructed
+// event carrying a recognizable field so the stdin capture can assert it.
+type notifyEventCase struct {
+	name      string // hooks.json event name
+	nativeKey string // native event type registered
+	event     any    // constructed event with a probe field
+	probe     string // substring expected in the captured stdin JSON
+}
+
+func TestShellHooksNotificationEventsRunWithStdin(t *testing.T) {
+	requirePOSIX(t)
+
+	cases := []notifyEventCase{
+		{
+			name:      "agent_start",
+			nativeKey: EventAgentStart,
+			event:     AgentStartEvent{Type: EventAgentStart},
+			probe:     `"Type":"agent_start"`,
+		},
+		{
+			name:      "Stop",
+			nativeKey: EventSettled,
+			event:     SettledEvent{Type: EventSettled, NextTurnCount: 3},
+			probe:     `"NextTurnCount":3`,
+		},
+		{
+			name:      "SubagentStop",
+			nativeKey: EventAgentEnd,
+			event:     AgentEndEvent{Type: EventAgentEnd},
+			probe:     `"Type":"agent_end"`,
+		},
+		{
+			name:      "turn_start",
+			nativeKey: EventTurnStart,
+			event:     TurnStartEvent{Type: EventTurnStart, TurnIndex: 7},
+			probe:     `"TurnIndex":7`,
+		},
+		{
+			name:      "tool_execution_end",
+			nativeKey: EventToolExecutionEnd,
+			event:     ToolExecutionEndEvent{Type: EventToolExecutionEnd, ToolName: "Bash"},
+			probe:     `"ToolName":"Bash"`,
+		},
+		{
+			name:      "model_select",
+			nativeKey: EventModelSelect,
+			event:     ModelSelectEvent{Type: EventModelSelect, Source: "set"},
+			probe:     `"Source":"set"`,
+		},
+		{
+			name:      "session_start",
+			nativeKey: EventSessionStart,
+			event:     SessionStartEvent{Type: EventSessionStart, Reason: "boot"},
+			probe:     `"Reason":"boot"`,
+		},
+		{
+			name:      "abort",
+			nativeKey: EventAbort,
+			event:     AbortEvent{Type: EventAbort},
+			probe:     `"Type":"abort"`,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			capture := filepath.Join(dir, "stdin.json")
+			// Notification command writes its stdin to a file and prints nothing.
+			cmd := writeScript(t, dir, "notify.sh", `cat > `+capture)
+			hooks := writeHooks(t, dir,
+				`[{"event":"`+tc.name+`","command":"`+cmd+`"}]`)
+			reg := loadAndRegister(t, hooks)
+
+			h := firstHandler(t, reg, tc.nativeKey)
+			res, err := h(context.Background(), tc.event)
+			if err != nil {
+				t.Fatalf("handler: %v", err)
+			}
+			if res != nil {
+				t.Fatalf("notification result = %#v, want nil", res)
+			}
+
+			data, err := os.ReadFile(capture)
+			if err != nil {
+				t.Fatalf("read stdin capture: %v", err)
+			}
+			if !strings.Contains(string(data), tc.probe) {
+				t.Fatalf("stdin %q does not contain probe %q", string(data), tc.probe)
+			}
+		})
+	}
+}
+
+// TestShellHooksInertEventRegisters proves a queue_update hook still loads and
+// registers (forward-compat) even though it can never fire — the runner warns at
+// registration but does not error.
+func TestShellHooksInertQueueUpdateRegisters(t *testing.T) {
+	requirePOSIX(t)
+	reg := registerEcho(t, "queue_update", `echo '{}'`)
+	if !reg.HasHandlers(EventQueueUpdate) {
+		t.Fatalf("queue_update handler not registered")
 	}
 }
