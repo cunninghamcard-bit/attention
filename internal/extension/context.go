@@ -65,7 +65,6 @@ type ExtensionContext struct {
 	SetThinkingLevel func(context.Context, ThinkingLevel) error
 	Steer            func(context.Context, UserInput) error
 	FollowUp         func(context.Context, UserInput) error
-	RunWhenIdle      func(func(context.Context) error)
 	WaitForIdle      func(context.Context) error
 	Shutdown         func()
 	NewSession       func(context.Context, string) error

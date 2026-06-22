@@ -57,6 +57,26 @@ func (o *Orchestrator) registerEventHandlers(registry *hook.Registry) {
 			return nil, nil
 		})
 	}
+
+	// Per-turn settle: pi's harness flushes pending session writes and emits a
+	// save_point{hadPendingMutations} at every turn_end, then emits settled once
+	// at agent_end (agent-harness.ts:484-535). The harness emits TurnEndEvent per
+	// turn (harness/prompt.go:212-219), so this handler fires once per turn,
+	// flushing mid-run config-change writes (model/thinking level) instead of
+	// deferring them to end-of-run where an interrupted run would lose them.
+	registry.On(hook.EventTurnEnd, func(ctx context.Context, _ any) (any, error) {
+		// Read len under a short lock then release before flushing:
+		// flushPendingWrites locks o.mu itself, so holding it here would
+		// deadlock. Mirrors the end-of-run pattern in Prompt. The settle ctx is
+		// detached so an aborting turn still persists queued writes.
+		o.mu.Lock()
+		hadPending := len(o.pendingWrites) > 0
+		o.mu.Unlock()
+		settleCtx := context.WithoutCancel(ctx)
+		_ = o.flushPendingWrites(settleCtx)
+		o.emitSavePoint(settleCtx, hadPending)
+		return nil, nil
+	})
 }
 
 func (o *Orchestrator) publish(ev Event) {

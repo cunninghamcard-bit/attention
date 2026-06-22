@@ -145,20 +145,29 @@ func TestPromptAppendsNextTurnAfterUserMessage(t *testing.T) {
 }
 
 func TestPromptPublishesSavePointAndSettledOwnEvents(t *testing.T) {
+	// recordingHarness emits no turn_end hook events, so the per-turn settle
+	// handler (events.go) never fires here — this exercises the end-of-run
+	// residual path only. Post-divergence the end-of-run block emits a
+	// save_point ONLY when the final flush had residual pending writes (a
+	// config change queued after the last turn_end); settled always fires once.
 	tests := []struct {
 		name            string
 		mutateDuringRun bool
-		wantHadPending  bool
+		wantSavePoint   bool
 	}{
 		{
+			// No pending mutations: no residual flush, so no end-of-run
+			// save_point — only settled is emitted.
 			name:            "no pending mutations",
 			mutateDuringRun: false,
-			wantHadPending:  false,
+			wantSavePoint:   false,
 		},
 		{
+			// A mid-run config change is queued after the (absent) last
+			// turn_end, so the residual flush emits a final save_point.
 			name:            "pending mutations",
 			mutateDuringRun: true,
-			wantHadPending:  true,
+			wantSavePoint:   true,
 		},
 	}
 
@@ -195,27 +204,30 @@ func TestPromptPublishesSavePointAndSettledOwnEvents(t *testing.T) {
 				t.Fatalf("Prompt: %v", err)
 			}
 
-			if len(*events) != 2 {
-				t.Fatalf("own events = %d, want 2: %#v", len(*events), *events)
+			wantSavePointCount := 0
+			if tt.wantSavePoint {
+				wantSavePointCount = 1
 			}
-			savePoint := (*events)[0]
-			settled := (*events)[1]
-			if savePoint.Type != EventSavePoint || savePoint.HadPendingMutations != tt.wantHadPending {
-				t.Fatalf("save_point = %#v, want hadPending %t", savePoint, tt.wantHadPending)
+			wantOwnEvents := wantSavePointCount + 1 // + settled
+			if len(*events) != wantOwnEvents {
+				t.Fatalf("own events = %d, want %d: %#v", len(*events), wantOwnEvents, *events)
+			}
+			settled := (*events)[len(*events)-1]
+			if tt.wantSavePoint {
+				savePoint := (*events)[0]
+				if savePoint.Type != EventSavePoint || !savePoint.HadPendingMutations {
+					t.Fatalf("save_point = %#v, want hadPending true", savePoint)
+				}
 			}
 			if settled.Type != EventSettled || settled.NextTurnCount != 1 {
 				t.Fatalf("settled = %#v, want nextTurnCount 1", settled)
 			}
 
-			if len(*savePointHooks) != 1 {
-				t.Fatalf("save_point hooks = %d, want 1", len(*savePointHooks))
+			if len(*savePointHooks) != wantSavePointCount {
+				t.Fatalf("save_point hooks = %d, want %d", len(*savePointHooks), wantSavePointCount)
 			}
-			if (*savePointHooks)[0].HadPendingMutations != tt.wantHadPending {
-				t.Fatalf(
-					"save_point hook hadPending = %t, want %t",
-					(*savePointHooks)[0].HadPendingMutations,
-					tt.wantHadPending,
-				)
+			if tt.wantSavePoint && !(*savePointHooks)[0].HadPendingMutations {
+				t.Fatalf("save_point hook hadPending = false, want true")
 			}
 			if len(*settledHooks) != 1 {
 				t.Fatalf("settled hooks = %d, want 1", len(*settledHooks))
@@ -227,6 +239,118 @@ func TestPromptPublishesSavePointAndSettledOwnEvents(t *testing.T) {
 				)
 			}
 		})
+	}
+}
+
+// TestPerTurnSettleFlushesConfigChangePerTurnEnd is the FIX C proof: the
+// turn_end hook handler (events.go) must run a settle at EVERY turn_end —
+// flushing pending config-change writes per turn and emitting save_point per
+// turn — rather than deferring the flush and collapsing save_point to a single
+// end-of-run boundary (pi agent-harness.ts:484-535). A mid-run thinking-level
+// change queued before the second turn must be persisted by the time that
+// second turn ends, and settled must still fire exactly once at end-of-run.
+func TestPerTurnSettleFlushesConfigChangePerTurnEnd(t *testing.T) {
+	ctx := context.Background()
+	o, _ := newTestOrchestrator(t, nil)
+
+	savePointHooks := recordSavePointEvents(t, o)
+	settledHooks := recordSettledEvents(t, o)
+	events := subscribeEventsOfType(o, EventSavePoint, EventSettled)
+
+	// persistedAfterSecondTurn records whether the queued thinking-level change
+	// was already flushed to the session by the moment the SECOND turn_end
+	// settle completes — proving per-turn persistence, not end-of-run deferral.
+	var persistedAfterSecondTurn int
+
+	rec := &recordingHarness{
+		promptResult: ai.Message{
+			Role:    ai.RoleAssistant,
+			Content: []ai.ContentBlock{{Type: ai.ContentText, Text: "ok"}},
+		},
+		onPrompt: func(ctx context.Context) {
+			// The real harness emits a TurnEndEvent per turn
+			// (harness/prompt.go:212-219); drive two turns here so the
+			// registered handler runs its settle twice.
+
+			// Turn 1: no pending config changes queued yet.
+			if _, err := o.hooks.Emit(ctx, hook.TurnEndEvent{
+				Type:      hook.EventTurnEnd,
+				TurnIndex: 0,
+			}); err != nil {
+				t.Fatalf("emit turn_end 1: %v", err)
+			}
+
+			// Mid-run: queue a thinking-level change. phase != idle during the
+			// run, so SetThinkingLevel appends to o.pendingWrites instead of
+			// persisting immediately.
+			if err := o.SetThinkingLevel(ctx, agentloop.ThinkingHigh); err != nil {
+				t.Fatalf("SetThinkingLevel during run: %v", err)
+			}
+			if got := len(entriesOfType(o, "thinking_level_change")); got != 0 {
+				t.Fatalf("thinking_level_change persisted before turn_end 2 = %d, want 0", got)
+			}
+
+			// Turn 2: the settle must flush the queued change to the session.
+			if _, err := o.hooks.Emit(ctx, hook.TurnEndEvent{
+				Type:      hook.EventTurnEnd,
+				TurnIndex: 1,
+			}); err != nil {
+				t.Fatalf("emit turn_end 2: %v", err)
+			}
+			persistedAfterSecondTurn = len(entriesOfType(o, "thinking_level_change"))
+		},
+	}
+	o.harness = rec
+
+	if _, err := o.Prompt(ctx, PromptInput{Text: "go"}); err != nil {
+		t.Fatalf("Prompt: %v", err)
+	}
+
+	// (ii) The config change was persisted by the end of the SECOND turn, not
+	// deferred to end-of-run.
+	if persistedAfterSecondTurn != 1 {
+		t.Fatalf(
+			"thinking_level_change persisted by 2nd turn_end = %d, want 1 (per-turn flush)",
+			persistedAfterSecondTurn,
+		)
+	}
+
+	// (i) save_point fired per turn — at least twice (turn 1 + turn 2), not once.
+	// The end-of-run residual flush adds no extra save_point here because the
+	// second turn already drained pendingWrites.
+	if len(*savePointHooks) < 2 {
+		t.Fatalf("save_point hooks = %d, want >= 2 (per-turn)", len(*savePointHooks))
+	}
+	if len(*savePointHooks) != 2 {
+		t.Fatalf("save_point hooks = %d, want exactly 2 (no double-emit for a turn)", len(*savePointHooks))
+	}
+	// Turn 1 had nothing pending; turn 2 had the queued thinking-level change.
+	if (*savePointHooks)[0].HadPendingMutations {
+		t.Fatalf("save_point[0] hadPending = true, want false (turn 1 had no pending writes)")
+	}
+	if !(*savePointHooks)[1].HadPendingMutations {
+		t.Fatalf("save_point[1] hadPending = false, want true (turn 2 flushed the queued change)")
+	}
+
+	var savePointEvents, settledEvents int
+	for _, ev := range *events {
+		switch ev.Type {
+		case EventSavePoint:
+			savePointEvents++
+		case EventSettled:
+			settledEvents++
+		}
+	}
+	if savePointEvents != 2 {
+		t.Fatalf("published save_point events = %d, want 2", savePointEvents)
+	}
+
+	// (iii) settled fires exactly once, at end-of-run.
+	if settledEvents != 1 {
+		t.Fatalf("published settled events = %d, want 1", settledEvents)
+	}
+	if len(*settledHooks) != 1 {
+		t.Fatalf("settled hooks = %d, want 1", len(*settledHooks))
 	}
 }
 
@@ -1571,12 +1695,21 @@ func TestSubscribeTranslatesLifecycleEvents(t *testing.T) {
 			if _, err := o.hooks.Emit(ctx, tt.event); err != nil {
 				t.Fatalf("Emit: %v", err)
 			}
-			if len(events) != 1 {
-				t.Fatalf("events len = %d, want 1", len(events))
+			// turn_end now also drives the per-turn settle handler, which
+			// publishes a save_point event as a side effect; find the
+			// translated lifecycle event among what was published rather than
+			// requiring exactly one.
+			var got Event
+			found := false
+			for _, ev := range events {
+				if ev.Type == tt.wantType {
+					got = ev
+					found = true
+					break
+				}
 			}
-			got := events[0]
-			if got.Type != tt.wantType {
-				t.Fatalf("event type = %q, want %q", got.Type, tt.wantType)
+			if !found {
+				t.Fatalf("no %q event published, got %#v", tt.wantType, events)
 			}
 			if (got.Message != nil) != tt.wantMessage {
 				t.Fatalf("event message present = %t, want %t", got.Message != nil, tt.wantMessage)

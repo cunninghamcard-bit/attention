@@ -167,6 +167,86 @@ func TestRunPromptModeRejectsUnknownModeBeforeDispatch(t *testing.T) {
 	}
 }
 
+// fakeShutdownTarget records the one-shot exit-path calls so the print/json
+// shutdown sequence can be asserted without a real orchestrator.
+type fakeShutdownTarget struct {
+	shutdownCalls    int
+	shutdownReason   string
+	shutdownCtxAlive bool
+	closeCalls       int
+	shutdownErr      error
+	closeErr         error
+}
+
+func (f *fakeShutdownTarget) NotifySessionShutdown(ctx context.Context, reason string) error {
+	f.shutdownCalls++
+	f.shutdownReason = reason
+	// The run ctx may already be cancelled by a signal; shutdownOrchestrator
+	// detaches it with context.WithoutCancel so handlers still run.
+	f.shutdownCtxAlive = ctx.Err() == nil
+	return f.shutdownErr
+}
+
+func (f *fakeShutdownTarget) Close() error {
+	f.closeCalls++
+	return f.closeErr
+}
+
+func TestShutdownOrchestratorEmitsSessionShutdownOnPrintExit(t *testing.T) {
+	// FIX B: the print/json one-shot path must deliver session_shutdown before
+	// Close so extension/hook shutdown handlers run for non-rpc runs. The ctx is
+	// already cancelled (as a signal would leave it); shutdown must still fire.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	target := &fakeShutdownTarget{}
+	if err := shutdownOrchestrator(ctx, "print", target); err != nil {
+		t.Fatalf("shutdownOrchestrator: %v", err)
+	}
+	if target.shutdownCalls != 1 {
+		t.Fatalf("shutdown calls = %d, want 1", target.shutdownCalls)
+	}
+	if target.shutdownReason != "quit" {
+		t.Fatalf("shutdown reason = %q, want quit", target.shutdownReason)
+	}
+	if !target.shutdownCtxAlive {
+		t.Fatal("shutdown ctx was cancelled, want detached via context.WithoutCancel")
+	}
+	if target.closeCalls != 1 {
+		t.Fatalf("close calls = %d, want 1", target.closeCalls)
+	}
+}
+
+func TestShutdownOrchestratorSkipsSessionShutdownForRPC(t *testing.T) {
+	// rpc mode already emits session_shutdown in serve()'s defer, so the
+	// one-shot path must NOT emit it again (avoid a double emit) but must still
+	// Close the orchestrator.
+	target := &fakeShutdownTarget{}
+	if err := shutdownOrchestrator(context.Background(), "rpc", target); err != nil {
+		t.Fatalf("shutdownOrchestrator: %v", err)
+	}
+	if target.shutdownCalls != 0 {
+		t.Fatalf("shutdown calls = %d, want 0 (rpc emits in serve defer)", target.shutdownCalls)
+	}
+	if target.closeCalls != 1 {
+		t.Fatalf("close calls = %d, want 1", target.closeCalls)
+	}
+}
+
+func TestShutdownOrchestratorJoinsShutdownAndCloseErrors(t *testing.T) {
+	shutdownErr := errors.New("shutdown boom")
+	closeErr := errors.New("close boom")
+	target := &fakeShutdownTarget{shutdownErr: shutdownErr, closeErr: closeErr}
+
+	err := shutdownOrchestrator(context.Background(), "print", target)
+	if err == nil {
+		t.Fatal("shutdownOrchestrator error = nil, want joined errors")
+	}
+	if !errors.Is(err, shutdownErr) || !errors.Is(err, closeErr) {
+		t.Fatalf("error = %v, want both shutdown and close errors", err)
+	}
+}
+
 func TestSettingsStringSliceCoercesJSONArray(t *testing.T) {
 	settings := config.Settings{
 		"paths": []any{"a", 1, "b", false, "c"},

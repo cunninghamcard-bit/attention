@@ -950,16 +950,21 @@ func (o *Orchestrator) Prompt(ctx context.Context, input PromptInput) (PromptRes
 	} else if promptErr == nil && msg.StopReason != ai.StopReasonError {
 		o.resetRetryAttempt()
 	}
+	// Per-turn save_point/flush is now owned by the turn_end handler
+	// (events.go), mirroring pi which flushes + emits save_point at every
+	// turn_end and settled once at agent_end (agent-harness.ts:483-535). This
+	// end-of-run flush is a safety net for anything queued AFTER the last
+	// turn_end (e.g. at agent_end); a final save_point is emitted only if that
+	// residual flush actually had pending writes, so save_point is never emitted
+	// twice for the same turn.
 	o.mu.Lock()
-	hadPendingMutations := len(o.pendingWrites) > 0
+	hadResidualMutations := len(o.pendingWrites) > 0
 	o.mu.Unlock()
 	settleCtx := context.WithoutCancel(ctx)
 	flushErr := o.flushPendingWrites(settleCtx)
-	// pi emits save_point after each turn_end flush and settled after agent_end:
-	// .agents/references/pi/packages/agent/src/harness/agent-harness.ts:483-510.
-	// along flushes pending writes once per Prompt run, so these own-events are
-	// emitted around the end-of-run flush/finishRun boundary instead.
-	o.emitSavePoint(settleCtx, hadPendingMutations)
+	if hadResidualMutations {
+		o.emitSavePoint(settleCtx, true)
+	}
 	o.finishRun()
 	o.mu.Lock()
 	nextTurnCount := len(o.nextTurnQueue)
@@ -1646,9 +1651,12 @@ func drainAll(queue *[]message.AgentMessage) []message.AgentMessage {
 }
 
 func (o *Orchestrator) flushPendingWrites(ctx context.Context) error {
-	// TODO(orchestrator): per-turn settle, see 07 §13. The current harness has
-	// no settle callback after all turn_end handlers, so Phase 5 flushes at
-	// end-of-run rather than registering a turn_end hook handler.
+	// Per-turn settle: a turn_end hook handler (events.go) calls this at every
+	// turn_end so mid-run config-change writes persist per turn, matching pi's
+	// flushPendingSessionWrites at each turn_end (agent-harness.ts:484-535).
+	// Messages persist eagerly at MessageEnd (harness/prompt.go) and are
+	// intentionally NOT routed through pendingWrites — only config changes
+	// (model/thinking level) are queued here. Callers must not hold o.mu.
 	o.mu.Lock()
 	defer o.mu.Unlock()
 

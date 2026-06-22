@@ -218,9 +218,6 @@ func (o *Orchestrator) extensionContext(ctx context.Context) extension.Extension
 		FollowUp: func(ctx context.Context, input extension.UserInput) error {
 			return o.FollowUp(ctx, UserInput{Text: input.Text})
 		},
-		RunWhenIdle: func(func(context.Context) error) {
-			// TODO(orchestrator): RunWhenIdle exact contract, see 07 §13.
-		},
 		WaitForIdle: o.WaitForIdle,
 		Shutdown:    runExtensionShutdown,
 		NewSession: func(ctx context.Context, parentSession string) error {
