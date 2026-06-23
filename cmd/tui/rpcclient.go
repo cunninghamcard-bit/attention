@@ -96,6 +96,23 @@ type rawEvent struct {
 	Command string `json:"command"`
 	Success bool   `json:"success"`
 	Error   string `json:"error"`
+
+	// response data (get_state: server.go handleGetState → stateJSON). Only the
+	// model sub-object is consumed; other state fields are ignored.
+	Data *responseData `json:"data"`
+}
+
+// responseData is the subset of a command response's `data` object the viewer
+// reads. get_state returns stateJSON with an optional `model` (ai.Model, whose
+// JSON carries `id` and `provider` — ai/model.go:30-33).
+type responseData struct {
+	Model *modelInfo `json:"model"`
+}
+
+// modelInfo mirrors the consumed fields of ai.Model (ai/model.go:29-33).
+type modelInfo struct {
+	ID       string `json:"id"`
+	Provider string `json:"provider"`
 }
 
 // ---- Typed events delivered to the TUI -------------------------------------
@@ -114,6 +131,7 @@ const (
 	EvAgentEnd // run finished (agent_end)
 	EvSettled
 	EvResponse // ack of a command (e.g. prompt)
+	EvState    // get_state response: kernel's resolved model/provider
 	EvKernelExit
 	EvError // transport/decode error
 )
@@ -126,17 +144,17 @@ type Event struct {
 	ToolArgs   string // pretty one-line args (for EvToolStart)
 	ToolResult string // result summary (for EvToolEnd)
 	IsError    bool
+	Model      string // EvState: model id
+	Provider   string // EvState: provider name
 }
 
-// NewRPCClient spawns `alongPath --mode rpc --model <model> --api-key <key>`
-// and starts a background reader that forwards typed events on c.Events.
+// NewRPCClient spawns `alongPath --mode rpc` and starts a background reader
+// that forwards typed events on c.Events. The kernel owns model+key selection:
+// it resolves the model from settings.defaultModel and the API key from the
+// provider's env var (e.g. DEEPSEEK_API_KEY), so the viewer passes neither.
 // The caller owns shutdown via Close.
-func NewRPCClient(alongPath, model, apiKey string) (*RPCClient, error) {
-	args := []string{"--mode", "rpc", "--model", model}
-	if apiKey != "" {
-		args = append(args, "--api-key", apiKey)
-	}
-	cmd := exec.Command(alongPath, args...)
+func NewRPCClient(alongPath string) (*RPCClient, error) {
+	cmd := exec.Command(alongPath, "--mode", "rpc")
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -236,6 +254,15 @@ func classify(ev *rawEvent) Event {
 		if !ev.Success && ev.Error != "" {
 			return Event{Kind: EvError, Text: ev.Command + ": " + ev.Error}
 		}
+		// get_state carries the kernel's resolved model/provider; surface it so
+		// the status bar can display the kernel's actual model.
+		if ev.Command == "get_state" && ev.Data != nil && ev.Data.Model != nil {
+			return Event{
+				Kind:     EvState,
+				Model:    ev.Data.Model.ID,
+				Provider: ev.Data.Model.Provider,
+			}
+		}
 		return Event{Kind: EvResponse, Text: ev.Command}
 
 	default:
@@ -255,6 +282,25 @@ func (c *RPCClient) SendPrompt(text string) error {
 		"id":      id,
 		"type":    "prompt",
 		"message": text,
+	}
+	c.encMu.Lock()
+	defer c.encMu.Unlock()
+	return c.enc.Encode(cmd) // json.Encoder appends the newline delimiter
+}
+
+// SendGetState writes a get_state command: {"id":..,"type":"get_state"}. The
+// kernel replies with a response whose data carries the resolved model/provider
+// (server.go handleGetState), which classify surfaces as EvState.
+// The encoder is mutex-guarded so concurrent sends never interleave a line.
+func (c *RPCClient) SendGetState() error {
+	c.idMu.Lock()
+	c.nextID++
+	id := fmt.Sprintf("s%d", c.nextID)
+	c.idMu.Unlock()
+
+	cmd := map[string]any{
+		"id":   id,
+		"type": "get_state",
 	}
 	c.encMu.Lock()
 	defer c.encMu.Unlock()

@@ -14,6 +14,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
@@ -34,18 +35,20 @@ type model struct {
 	input  textinput.Model
 	rpc    *RPCClient
 
-	layout    Layout
-	width     int
-	height    int
-	running   bool // a turn is in flight
-	quitting  bool
-	modelName string
+	layout       Layout
+	width        int
+	height       int
+	running      bool // a turn is in flight
+	quitting     bool
+	modelName    string
+	providerName string
 }
 
 // newModel builds the root model with a fresh glamour renderer and a focused
 // textinput. The rpc client is attached separately so View renders an empty
-// chat even before the kernel produces any output.
-func newModel(rpc *RPCClient, modelName string) *model {
+// chat even before the kernel produces any output. The model name starts as a
+// placeholder; it is learned from the kernel's get_state response (EvState).
+func newModel(rpc *RPCClient) *model {
 	renderer, _ := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
 		glamour.WithWordWrap(80),
@@ -62,11 +65,17 @@ func newModel(rpc *RPCClient, modelName string) *model {
 		status:    StatusModel{},
 		input:     ti,
 		rpc:       rpc,
-		modelName: modelName,
+		modelName: "…",
 	}
 }
 
 func (m *model) Init() tea.Cmd {
+	// Arm the event pump, then ask the kernel for its current state so the
+	// status bar can display the model/provider the kernel actually resolved
+	// (from settings.defaultModel + the provider env var).
+	if err := m.rpc.SendGetState(); err != nil {
+		m.chat.AppendWarning("get_state failed: " + err.Error())
+	}
 	return m.waitForEvent()
 }
 
@@ -241,6 +250,13 @@ func (m *model) handleEvent(ev Event) (tea.Model, tea.Cmd) {
 		// Do not re-arm the pump; the channel is closed.
 		return m, nil
 
+	case EvState:
+		// The kernel's get_state response carries the resolved model/provider.
+		if ev.Model != "" {
+			m.modelName = ev.Model
+		}
+		m.providerName = ev.Provider
+
 	case EvSession, EvResponse, EvOther:
 		// Acknowledged; nothing to render.
 	}
@@ -305,9 +321,10 @@ func (m *model) View() tea.View {
 	}
 
 	statusBar := m.status.Render(StatusRenderInput{
-		ModelName: m.modelName,
-		Running:   m.running,
-		Messages:  m.chat.Messages,
+		ProviderName: m.providerName,
+		ModelName:    m.modelName,
+		Running:      m.running,
+		Messages:     m.chat.Messages,
 	})
 
 	var b strings.Builder
@@ -346,23 +363,28 @@ func (m *model) inputView() string {
 }
 
 func main() {
-	alongPath := flag.String("along-path", "/tmp/along", "path to the along kernel binary")
-	modelName := flag.String("model", "claude-sonnet-4-5", "model id passed to the kernel")
-	apiKey := flag.String("api-key", "", "API key forwarded to the kernel (--api-key)")
+	alongPath := flag.String("along-path", "along", "along kernel binary: a bare name is found on PATH (after `go install ./cmd/along`), or pass an explicit path")
 	flag.Parse()
 
-	if _, err := os.Stat(*alongPath); err != nil {
-		fmt.Fprintf(os.Stderr, "along binary not found at %s: %v\n", *alongPath, err)
+	// A bare name (no path separator) is looked up on PATH; an explicit path is used as-is.
+	alongBin := *alongPath
+	if !strings.ContainsRune(alongBin, '/') {
+		if resolved, lookErr := exec.LookPath(alongBin); lookErr == nil {
+			alongBin = resolved
+		}
+	}
+	if _, err := os.Stat(alongBin); err != nil {
+		fmt.Fprintf(os.Stderr, "along kernel binary not found (%q): %v\nbuild it with `go install ./cmd/along` (ensure $(go env GOPATH)/bin is on PATH), or pass --along-path\n", *alongPath, err)
 		os.Exit(1)
 	}
 
-	rpc, err := NewRPCClient(*alongPath, *modelName, *apiKey)
+	rpc, err := NewRPCClient(alongBin)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to start kernel: %v\n", err)
 		os.Exit(1)
 	}
 
-	m := newModel(rpc, *modelName)
+	m := newModel(rpc)
 	p := tea.NewProgram(m, tea.WithContext(context.Background()))
 	if _, err := p.Run(); err != nil {
 		rpc.Close()

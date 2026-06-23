@@ -13,3 +13,4 @@ go.work.sum
 .DS_Store
 .idea/
 .vscode/
+/bin/

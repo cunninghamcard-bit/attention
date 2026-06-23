@@ -154,6 +154,21 @@ func run(ctx context.Context) error {
 		printModels(os.Stdout, prov.All())
 		return nil
 	}
+	// pi reads a default model from settings (settings key `defaultModel`,
+	// settings-manager.ts:83 + main.ts:386 getDefaultModel()): when --model was
+	// not explicitly passed, settings.defaultModel (if non-empty) overrides the
+	// hardcoded fallback. An explicit --model always wins.
+	modelExplicit := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "model" {
+			modelExplicit = true
+		}
+	})
+	if !modelExplicit {
+		if def := settingsString(cfg.Settings, "defaultModel"); def != "" {
+			*modelID = def
+		}
+	}
 	if err := resolveModelWithProvider(prov, *modelID, *providerFlag); err != nil {
 		return err
 	}
