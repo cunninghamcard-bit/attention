@@ -114,8 +114,9 @@ type wireAssistantEvent struct {
 
 // wireGetState is the get_state response data we read.
 type wireGetState struct {
-	Model     *wireModel `json:"model"`
-	SessionID string     `json:"sessionId"`
+	Model       *wireModel `json:"model"`
+	SessionID   string     `json:"sessionId"`
+	SessionFile string     `json:"sessionFile"`
 }
 
 type wireModel struct {
@@ -134,6 +135,34 @@ type wireCommand struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Source      string `json:"source"`
+}
+
+// wireForkMessages is the get_fork_messages response data: forkable user
+// messages as {entryId,text}.
+type wireForkMessages struct {
+	Messages []wireForkMessage `json:"messages"`
+}
+
+type wireForkMessage struct {
+	EntryID string `json:"entryId"`
+	Text    string `json:"text"`
+}
+
+// wireEntries is the get_entries response data: navigable session entries as
+// {entryId,label}.
+type wireEntries struct {
+	Entries []wireEntry `json:"entries"`
+}
+
+type wireEntry struct {
+	EntryID string `json:"entryId"`
+	Label   string `json:"label"`
+}
+
+// wireFork is the fork response data: the forked prompt text plus a cancelled flag.
+type wireFork struct {
+	Text      string `json:"text"`
+	Cancelled bool   `json:"cancelled"`
 }
 
 // wireToolResult mirrors internal/tool.Result on the wire. tool.Result has NO
@@ -606,6 +635,120 @@ func (a *rpcAgent) SetSessionName(name string) (string, error) {
 		return "", errors.New(resp.Error)
 	}
 	return fmt.Sprintf("Set session name to %q.", name), nil
+}
+
+// --- interactive picker actions (fork / resume / tree) ---
+//
+// These back the /fork, /resume, and /tree slash commands: each fetches the
+// kernel's selectable data, then on selection sends the action rpc. All are
+// bounded by builtinActionTimeout so a slow kernel can't wedge the UI.
+
+// PickerItem is one selectable row in an interactive picker: an opaque id sent
+// back to the kernel on selection, plus a human label shown in the list.
+type PickerItem struct {
+	ID    string
+	Label string
+}
+
+// ForkMessages fetches the forkable user messages (get_fork_messages). Each
+// item's ID is the entry id; Label is the message text.
+func (a *rpcAgent) ForkMessages() ([]PickerItem, error) {
+	resp, err := a.requestTimeout("get_fork_messages", map[string]any{}, builtinActionTimeout)
+	if err != nil {
+		return nil, err
+	}
+	if !resp.Success {
+		return nil, errors.New(resp.Error)
+	}
+	var data wireForkMessages
+	if err := json.Unmarshal(resp.Data, &data); err != nil {
+		return nil, err
+	}
+	items := make([]PickerItem, 0, len(data.Messages))
+	for _, m := range data.Messages {
+		items = append(items, PickerItem{ID: m.EntryID, Label: m.Text})
+	}
+	return items, nil
+}
+
+// Fork forks the session at the given entry id (fork). It returns the forked
+// prompt text (the kernel replaces the session) and the cancelled flag.
+func (a *rpcAgent) Fork(entryID string) (text string, cancelled bool, err error) {
+	resp, e := a.requestTimeout("fork", map[string]any{"entryId": entryID}, builtinActionTimeout)
+	if e != nil {
+		return "", false, e
+	}
+	if !resp.Success {
+		return "", false, errors.New(resp.Error)
+	}
+	var data wireFork
+	if err := json.Unmarshal(resp.Data, &data); err != nil {
+		return "", false, err
+	}
+	return data.Text, data.Cancelled, nil
+}
+
+// SessionFile returns the current session's on-disk file path from get_state.
+// It is queried fresh so it reflects session switches/forks.
+func (a *rpcAgent) SessionFile() (string, error) {
+	resp, err := a.requestTimeout("get_state", map[string]any{}, builtinActionTimeout)
+	if err != nil {
+		return "", err
+	}
+	if !resp.Success {
+		return "", errors.New(resp.Error)
+	}
+	var state wireGetState
+	if err := json.Unmarshal(resp.Data, &state); err != nil {
+		return "", err
+	}
+	return state.SessionFile, nil
+}
+
+// SwitchSession switches the kernel to the session at the given file path
+// (switch_session). The kernel replaces the session on success.
+func (a *rpcAgent) SwitchSession(path string) error {
+	resp, err := a.requestTimeout("switch_session", map[string]any{"sessionPath": path}, builtinActionTimeout)
+	if err != nil {
+		return err
+	}
+	if !resp.Success {
+		return errors.New(resp.Error)
+	}
+	return nil
+}
+
+// Entries fetches the current session's navigable entries (get_entries). Each
+// item's ID is the entry id; Label is a short text/summary preview.
+func (a *rpcAgent) Entries() ([]PickerItem, error) {
+	resp, err := a.requestTimeout("get_entries", map[string]any{}, builtinActionTimeout)
+	if err != nil {
+		return nil, err
+	}
+	if !resp.Success {
+		return nil, errors.New(resp.Error)
+	}
+	var data wireEntries
+	if err := json.Unmarshal(resp.Data, &data); err != nil {
+		return nil, err
+	}
+	items := make([]PickerItem, 0, len(data.Entries))
+	for _, e := range data.Entries {
+		items = append(items, PickerItem{ID: e.EntryID, Label: e.Label})
+	}
+	return items, nil
+}
+
+// NavigateTree navigates the session tree to the given entry id (navigate_tree).
+func (a *rpcAgent) NavigateTree(entryID string) error {
+	resp, err := a.requestTimeout("navigate_tree", map[string]any{"entryId": entryID}, builtinActionTimeout)
+	if err != nil {
+		return err
+	}
+	if !resp.Success {
+		return errors.New(resp.Error)
+	}
+	return nil
 }
 
 // RebuildWithModel is a no-op: the kernel owns model selection.

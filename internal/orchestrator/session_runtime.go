@@ -21,6 +21,13 @@ type ForkMessage struct {
 	Text    string
 }
 
+// EntrySummary is the navigable-entry shape behind rpc get_entries: an entry id
+// plus a short human label for a tree-navigation picker.
+type EntrySummary struct {
+	EntryID string
+	Label   string
+}
+
 type rebindOptions struct {
 	recoverState      bool
 	replacementReason string
@@ -186,6 +193,72 @@ func (o *Orchestrator) ForkMessages() []ForkMessage {
 		}
 	}
 	return messages
+}
+
+// Entries lists the current branch's entries as navigation targets for rpc
+// get_entries. Each carries the entry id plus a short label derived from the
+// entry (user/assistant text preview, or a type-based fallback). It mirrors
+// ForkMessages' branch walk but keeps every entry, not just user messages, so
+// the tree-navigation picker can jump to any point in the conversation.
+func (o *Orchestrator) Entries() []EntrySummary {
+	o.mu.Lock()
+	current := o.session
+	o.mu.Unlock()
+	if current == nil {
+		return []EntrySummary{}
+	}
+
+	branch, err := current.GetBranch(nil)
+	if err != nil {
+		return []EntrySummary{}
+	}
+	entries := []EntrySummary{}
+	for _, entry := range branch {
+		label := entryNavLabel(entry)
+		if label == "" {
+			continue
+		}
+		entries = append(entries, EntrySummary{EntryID: string(entry.ID), Label: label})
+	}
+	return entries
+}
+
+// entryNavLabel builds a short, single-line label for a navigable session entry.
+func entryNavLabel(entry session.SessionEntry) string {
+	const maxLen = 80
+	var label string
+	switch entry.Type {
+	case "message":
+		if msg, ok := message.AsAIMessage(entry.Message); ok {
+			text := extractUserMessageText(msg.Content)
+			switch msg.Role {
+			case ai.RoleUser:
+				label = "you: " + text
+			case ai.RoleAssistant:
+				label = "assistant: " + text
+			case ai.RoleToolResult:
+				// Tool results are not useful navigation targets on their own.
+				return ""
+			default:
+				label = text
+			}
+		}
+	case "compaction":
+		label = "compaction: " + entry.Summary
+	case "branch_summary":
+		label = "branch summary: " + entry.Summary
+	default:
+		label = entry.Type
+	}
+	label = strings.Join(strings.Fields(label), " ")
+	if label == "" {
+		return ""
+	}
+	runes := []rune(label)
+	if len(runes) > maxLen {
+		label = string(runes[:maxLen-1]) + "…"
+	}
+	return label
 }
 
 func (o *Orchestrator) sessionRuntimeSnapshot() (

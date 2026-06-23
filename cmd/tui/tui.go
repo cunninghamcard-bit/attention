@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -65,6 +66,10 @@ type model struct {
 	// Branch popup state (shown on status bar click).
 	branchPopup *branchPopupState
 
+	// Item picker popup state, reused for /fork, /resume, and /tree. Modeled on
+	// branchPopupState; the kind field routes Enter to the matching kernel rpc.
+	itemPicker *itemPickerState
+
 	// Unified search popup for slash commands and history.
 	searchPopup *searchPopupState
 
@@ -90,6 +95,46 @@ type branchPopupState struct {
 	active    string   // the currently active branch
 	height    int      // popup height (number of visible items)
 	scrollOff int      // scroll offset when more branches than height
+}
+
+// pickerKind selects which kernel action an item picker drives on Enter.
+type pickerKind string
+
+const (
+	pickerFork   pickerKind = "fork"   // /fork — select a user message to fork from
+	pickerResume pickerKind = "resume" // /resume — select another session to switch to
+	pickerTree   pickerKind = "tree"   // /tree — select an entry to navigate to
+)
+
+// itemPickerState manages the generic {id,label} list popup behind /fork,
+// /resume, and /tree. It mirrors branchPopupState's selected/height/scrollOff
+// navigation contract exactly; kind routes Enter to the matching kernel rpc and
+// title labels the popup header.
+type itemPickerState struct {
+	kind      pickerKind
+	title     string       // popup header text
+	items     []PickerItem // {id,label} rows
+	selected  int          // currently selected index
+	height    int          // popup height (number of visible items)
+	scrollOff int          // scroll offset when more items than height
+}
+
+// newItemPicker opens an item picker over the given rows. The popup height is
+// capped at 8 like the branch popup. An empty list is rejected by the caller
+// (which shows an honest empty-state notice instead).
+func (m *model) newItemPicker(kind pickerKind, title string, items []PickerItem) {
+	popupHeight := len(items)
+	if popupHeight > 8 {
+		popupHeight = 8
+	}
+	m.itemPicker = &itemPickerState{
+		kind:      kind,
+		title:     title,
+		items:     items,
+		selected:  0,
+		height:    popupHeight,
+		scrollOff: 0,
+	}
 }
 
 // newBranchPopup creates a new branch popup with the list of git branches.
@@ -463,6 +508,37 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Handle item picker popup (/fork, /resume, /tree). Mirrors branchPopup.
+	if m.itemPicker != nil {
+		switch key.Code {
+		case tea.KeyEsc:
+			m.itemPicker = nil
+			return m, nil
+		case tea.KeyEnter:
+			return m.handleItemPickerSelect()
+		case tea.KeyUp:
+			if m.itemPicker.selected > 0 {
+				m.itemPicker.selected--
+				if m.itemPicker.selected < m.itemPicker.scrollOff {
+					m.itemPicker.scrollOff--
+				}
+			}
+			return m, nil
+		case tea.KeyDown:
+			if m.itemPicker.selected < len(m.itemPicker.items)-1 {
+				m.itemPicker.selected++
+				if m.itemPicker.selected >= m.itemPicker.scrollOff+m.itemPicker.height {
+					m.itemPicker.scrollOff++
+				}
+			}
+			return m, nil
+		default:
+			// Any other key dismisses the popup
+			m.itemPicker = nil
+			return m, nil
+		}
+	}
+
 	// Esc / Ctrl+C: dismiss completion, cancel agent, or quit.
 	switch {
 	case key.Code == tea.KeyEsc:
@@ -773,6 +849,13 @@ func (m *model) View() tea.View {
 		b.WriteString("\n")
 	}
 
+	// Render item picker popup (/fork, /resume, /tree) if open.
+	if m.itemPicker != nil {
+		popupView := m.renderItemPicker()
+		b.WriteString(popupView)
+		b.WriteString("\n")
+	}
+
 	b.WriteString(hr)
 	b.WriteString("\n")
 	b.WriteString(statusBar)
@@ -994,6 +1077,9 @@ func (m *model) messageViewportHeight() int {
 	if m.branchPopup != nil {
 		availableHeight -= m.branchPopup.height + 6
 	}
+	if m.itemPicker != nil {
+		availableHeight -= m.itemPicker.height + 6
+	}
 	if availableHeight < 1 {
 		return 1
 	}
@@ -1196,6 +1282,70 @@ func (m *model) handleBranchSelect() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// handleItemPickerSelect runs the kernel action for the selected picker item.
+// It routes by the picker's kind to the matching rpcAgent method, reports the
+// outcome as a chat notice, and refreshes diff stats. For /fork, the forked
+// prompt text is placed back in the input box like pi did so the user can
+// re-run or edit it.
+func (m *model) handleItemPickerSelect() (tea.Model, tea.Cmd) {
+	picker := m.itemPicker
+	if picker == nil || len(picker.items) == 0 {
+		m.itemPicker = nil
+		return m, nil
+	}
+	item := picker.items[picker.selected]
+	m.itemPicker = nil
+
+	agent, ok := m.cfg.Agent.(*rpcAgent)
+	if !ok {
+		m.chatModel.AppendWarning("Picker is not available (no kernel backend)")
+		return m, nil
+	}
+
+	switch picker.kind {
+	case pickerFork:
+		text, cancelled, err := agent.Fork(item.ID)
+		if err != nil {
+			m.chatModel.AppendWarning(fmt.Sprintf("/fork failed: %v", err))
+			return m, nil
+		}
+		if cancelled {
+			m.chatModel.AppendNotice("Fork cancelled.")
+			return m, nil
+		}
+		// The kernel replaced the session at the fork point. Put the forked prompt
+		// text in the input box so the user can re-run or edit it, like pi did.
+		if text != "" {
+			m.inputModel.SetText(text)
+		}
+		m.chatModel.AppendNotice("Forked the session. The selected prompt is in the input box.")
+		m.refreshDiffStats()
+		return m, nil
+
+	case pickerResume:
+		if err := agent.SwitchSession(item.ID); err != nil {
+			m.chatModel.AppendWarning(fmt.Sprintf("/resume failed: %v", err))
+			return m, nil
+		}
+		m.chatModel.AppendNotice(fmt.Sprintf("Switched to session %s.", item.Label))
+		m.refreshDiffStats()
+		return m, nil
+
+	case pickerTree:
+		if err := agent.NavigateTree(item.ID); err != nil {
+			m.chatModel.AppendWarning(fmt.Sprintf("/tree failed: %v", err))
+			return m, nil
+		}
+		m.chatModel.AppendNotice(fmt.Sprintf("Navigated to: %s", item.Label))
+		m.refreshDiffStats()
+		return m, nil
+
+	default:
+		m.chatModel.AppendWarning(fmt.Sprintf("Unknown picker action %q", picker.kind))
+		return m, nil
+	}
+}
+
 // resetCtrlCCount is a tea.Cmd that resets the Ctrl+C counter after a delay.
 func resetCtrlCCount(m *model) tea.Cmd {
 	return func() tea.Msg {
@@ -1220,8 +1370,8 @@ func (m *model) handleResetCtrlCCount() (tea.Model, tea.Cmd) {
 // "/<name> <args>", looks <name> up VERBATIM, and routes by the command's source:
 //
 //   - builtin: invoked via the matching rpc action (new/compact/clone/reload/
-//     model/session/name). fork/tree/resume need interactive selectors the viewer
-//     lacks, so they surface an honest "not available" notice instead of faking it.
+//     model/session/name). fork/tree/resume open an interactive item picker
+//     (modeled on the branch popup) that drives the corresponding rpc on select.
 //   - skill / prompt / extension: submitted as a prompt with the FULL verbatim
 //     "/..." text so the kernel expands and runs it.
 //   - not found: the standard "Unknown command" warning.
@@ -1268,8 +1418,8 @@ func (m *model) handleSlashCommand(text string) (tea.Model, tea.Cmd) {
 }
 
 // dispatchBuiltin runs a kernel builtin slash command by its verbatim name.
-// Actions needing an interactive selector the viewer lacks (fork/tree/resume)
-// surface an honest notice instead of fake-dispatching.
+// Actions needing an interactive selector (fork/tree/resume) open an item
+// picker that drives the corresponding rpc when the user selects a row.
 func (m *model) dispatchBuiltin(name, args string) (tea.Model, tea.Cmd) {
 	agent, ok := m.cfg.Agent.(*rpcAgent)
 	if !ok {
@@ -1307,9 +1457,12 @@ func (m *model) dispatchBuiltin(name, args string) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		notice, err = agent.SetSessionName(args)
-	case "fork", "tree", "resume":
-		m.chatModel.AppendWarning(fmt.Sprintf("/%s needs an interactive selector — not available in the viewer yet", name))
-		return m, nil
+	case "fork":
+		return m.openForkPicker(agent)
+	case "resume":
+		return m.openResumePicker(agent)
+	case "tree":
+		return m.openTreePicker(agent)
 	default:
 		m.chatModel.AppendWarning(fmt.Sprintf("/%s is not supported in the viewer yet", name))
 		return m, nil
@@ -1321,6 +1474,88 @@ func (m *model) dispatchBuiltin(name, args string) (tea.Model, tea.Cmd) {
 	}
 	m.chatModel.AppendNotice(notice)
 	return m, nil
+}
+
+// openForkPicker fetches the forkable user messages and opens the fork picker.
+// An empty list (nothing to fork) shows an honest notice instead.
+func (m *model) openForkPicker(agent *rpcAgent) (tea.Model, tea.Cmd) {
+	items, err := agent.ForkMessages()
+	if err != nil {
+		m.chatModel.AppendWarning(fmt.Sprintf("/fork failed: %v", err))
+		return m, nil
+	}
+	if len(items) == 0 {
+		m.chatModel.AppendNotice("Nothing to fork — no user messages yet.")
+		return m, nil
+	}
+	m.newItemPicker(pickerFork, "Fork from message (Enter to fork, Esc to close)", items)
+	return m, nil
+}
+
+// openResumePicker scans the current session's directory for other *.jsonl
+// session files and opens the resume picker. The current session file is
+// skipped. An empty list (no other sessions) shows an honest notice instead.
+func (m *model) openResumePicker(agent *rpcAgent) (tea.Model, tea.Cmd) {
+	current, err := agent.SessionFile()
+	if err != nil {
+		m.chatModel.AppendWarning(fmt.Sprintf("/resume failed: %v", err))
+		return m, nil
+	}
+	if current == "" {
+		m.chatModel.AppendNotice("No session file on disk — cannot list sessions.")
+		return m, nil
+	}
+	items := listSessionFiles(current)
+	if len(items) == 0 {
+		m.chatModel.AppendNotice("No other sessions to resume.")
+		return m, nil
+	}
+	m.newItemPicker(pickerResume, "Resume session (Enter to switch, Esc to close)", items)
+	return m, nil
+}
+
+// openTreePicker fetches the session's navigable entries and opens the tree
+// picker. An empty list shows an honest notice instead.
+func (m *model) openTreePicker(agent *rpcAgent) (tea.Model, tea.Cmd) {
+	items, err := agent.Entries()
+	if err != nil {
+		m.chatModel.AppendWarning(fmt.Sprintf("/tree failed: %v", err))
+		return m, nil
+	}
+	if len(items) == 0 {
+		m.chatModel.AppendNotice("Nothing to navigate — the session has no entries yet.")
+		return m, nil
+	}
+	m.newItemPicker(pickerTree, "Navigate tree (Enter to jump, Esc to close)", items)
+	return m, nil
+}
+
+// listSessionFiles scans the directory of currentFile for sibling *.jsonl
+// session files, skipping currentFile itself. Each item's ID is the absolute
+// path (sent to switch_session) and Label is the filename.
+func listSessionFiles(currentFile string) []PickerItem {
+	dir := filepath.Dir(currentFile)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	currentBase := filepath.Base(currentFile)
+	var items []PickerItem
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasSuffix(name, ".jsonl") || name == currentBase {
+			continue
+		}
+		items = append(items, PickerItem{
+			ID:    filepath.Join(dir, name),
+			Label: strings.TrimSuffix(name, ".jsonl"),
+		})
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].Label < items[j].Label })
+	return items
 }
 
 func (m *model) shouldShowSlashCommandPopup() bool {
@@ -1613,6 +1848,88 @@ func (m *model) renderBranchPopup() string {
 
 	// Show scroll indicator if needed
 	if len(popup.branches) > popup.height {
+		scrollStyle := lipgloss.NewStyle().Background(bg).Foreground(dimFg)
+		b.WriteString(scrollStyle.Render("  ↑↓ scroll"))
+	}
+
+	return style.Render(b.String())
+}
+
+// renderItemPicker renders the generic {id,label} list popup behind /fork,
+// /resume, and /tree. It mirrors renderBranchPopup's layout (thick border,
+// centered header, selected-row highlight, scroll indicator).
+func (m *model) renderItemPicker() string {
+	if m.itemPicker == nil {
+		return ""
+	}
+
+	popup := m.itemPicker
+	bg := lipgloss.Color("236")
+	border := lipgloss.Color("240")
+	selected := lipgloss.Color("33")
+	dimFg := lipgloss.Color("243")
+
+	style := lipgloss.NewStyle().
+		Background(bg).
+		Foreground(lipgloss.Color("252")).
+		Border(lipgloss.ThickBorder(), true, true, true, true).
+		BorderForeground(border).
+		Width(m.width - 10)
+
+	popupWidth := m.width - 10
+
+	var b strings.Builder
+	b.WriteString("\n")
+
+	// Header.
+	header := lipgloss.NewStyle().
+		Background(bg).
+		Foreground(lipgloss.Color("252")).
+		Bold(true).
+		Width(popupWidth).
+		Align(lipgloss.Center).
+		Render(popup.title)
+	b.WriteString(header)
+	b.WriteString("\n")
+
+	// Render visible items.
+	items := popup.items
+	height := popup.height
+	scrollOff := popup.scrollOff
+
+	if len(items) > height {
+		items = items[scrollOff : scrollOff+height]
+	}
+
+	for i, item := range items {
+		actualIndex := i + scrollOff
+		isSelected := actualIndex == popup.selected
+
+		label := item.Label
+		if popupWidth > 4 {
+			label = clipRunes(label, popupWidth-4)
+		}
+
+		var line string
+		if isSelected {
+			line = "> " + label
+		} else {
+			line = "  " + label
+		}
+
+		var lineStyle lipgloss.Style
+		if isSelected {
+			lineStyle = lipgloss.NewStyle().Background(selected).Foreground(lipgloss.Color("15"))
+		} else {
+			lineStyle = lipgloss.NewStyle().Background(bg).Foreground(dimFg)
+		}
+
+		b.WriteString(lineStyle.Width(popupWidth).Render(line))
+		b.WriteString("\n")
+	}
+
+	// Show scroll indicator if needed.
+	if len(popup.items) > popup.height {
 		scrollStyle := lipgloss.NewStyle().Background(bg).Foreground(dimFg)
 		b.WriteString(scrollStyle.Render("  ↑↓ scroll"))
 	}

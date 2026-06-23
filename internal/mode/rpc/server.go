@@ -42,6 +42,7 @@ type commandTarget interface {
 	NavigateTree(context.Context, session.EntryID, orchestrator.NavOptions) (orchestrator.NavResult, error)
 	ReloadSettings(context.Context) error
 	ForkMessages() []orchestrator.ForkMessage
+	Entries() []orchestrator.EntrySummary
 	NotifySessionShutdown(context.Context, string) error
 	SetSessionName(context.Context, string) error
 	LastAssistantText() (string, bool)
@@ -318,6 +319,7 @@ var handlers = map[string]func(*server, context.Context, command) *response{
 	"navigate_tree":           (*server).handleNavigateTree,
 	"reload":                  (*server).handleReload,
 	"get_fork_messages":       (*server).handleGetForkMessages,
+	"get_entries":             (*server).handleGetEntries,
 	"get_available_models":    (*server).handleGetAvailableModels,
 	"get_last_assistant_text": (*server).handleGetLastAssistantText,
 	"get_session_stats":       (*server).handleGetSessionStats,
@@ -622,6 +624,18 @@ func (s *server) handleGetForkMessages(_ context.Context, cmd command) *response
 	return success(cmd.ID, "get_fork_messages", forkMessagesJSON{Messages: out})
 }
 
+func (s *server) handleGetEntries(_ context.Context, cmd command) *response {
+	// Mirror get_fork_messages: return the current branch's navigable entries as
+	// {entries:[{entryId,label}]} so a tree-navigation picker has data to drive
+	// navigate_tree.
+	entries := s.target.Entries()
+	out := make([]entrySummaryJSON, 0, len(entries))
+	for _, entry := range entries {
+		out = append(out, entrySummaryJSON{EntryID: entry.EntryID, Label: entry.Label})
+	}
+	return success(cmd.ID, "get_entries", entriesJSON{Entries: out})
+}
+
 func (s *server) handleGetAvailableModels(ctx context.Context, cmd command) *response {
 	return success(cmd.ID, "get_available_models", availableModelsJSON{Models: s.target.AvailableModels(ctx)})
 }
@@ -786,6 +800,15 @@ type forkMessagesJSON struct {
 type forkMessageJSON struct {
 	EntryID string `json:"entryId"`
 	Text    string `json:"text"`
+}
+
+type entriesJSON struct {
+	Entries []entrySummaryJSON `json:"entries"`
+}
+
+type entrySummaryJSON struct {
+	EntryID string `json:"entryId"`
+	Label   string `json:"label"`
 }
 
 type lastAssistantTextJSON struct {
