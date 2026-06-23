@@ -35,8 +35,13 @@ type CompleteResult struct {
 }
 
 // Complete returns completion candidates for the given input.
-// It analyzes the input and returns all matching options for commands, skills, and specs.
-func Complete(input string, skills []Skill, workDir string) *CompleteResult {
+//
+// The command list (commands) is the kernel's get_commands result, used VERBATIM
+// as the SINGLE source of truth — completion matches "/<prefix>" against the
+// kernel command names. Since that list already includes skills (source=="skill"),
+// builtins, prompts and extensions, no separate skill matching is needed for the
+// slash list. specs (file-backed /run, /plan) still scan workDir.
+func Complete(input string, commands []CommandInfo, workDir string) *CompleteResult {
 	if input == "" {
 		return &CompleteResult{}
 	}
@@ -53,11 +58,8 @@ func Complete(input string, skills []Skill, workDir string) *CompleteResult {
 
 	switch completionType {
 	case CompletionTypeCommand:
-		// For command completion, include both built-in commands and skills
-		candidates = append(candidates, matchingCommands(input)...)
-		candidates = append(candidates, matchingSkills(input, skills)...)
-	case CompletionTypeSkill:
-		candidates = matchingSkills(input, skills)
+		// Match against the kernel command list (the single source of truth).
+		candidates = append(candidates, matchingCommands(input, commands)...)
 	case CompletionTypeSpec:
 		// For /run <arg> and /plan <arg>, show spec completions.
 		candidates = matchingSpecs(input, workDir)
@@ -66,7 +68,7 @@ func Complete(input string, skills []Skill, workDir string) *CompleteResult {
 	// For /plan <arg>, also include command completions like /plan resume
 	// (both spec and command completions are valid after "/plan ")
 	if strings.HasPrefix(input, "/plan ") {
-		candidates = append(candidates, matchingCommands(input)...)
+		candidates = append(candidates, matchingCommands(input, commands)...)
 	}
 
 	// Deduplicate by Text (specs and commands may overlap).
@@ -138,53 +140,31 @@ func detectCompletionType(input string) CompletionType {
 	return CompletionTypeNone
 }
 
-// matchingCommands returns all command candidates matching the prefix.
-func matchingCommands(prefix string) []CompletionCandidate {
+// matchingCommands returns all command candidates from the kernel command list
+// (the single source of truth) matching the prefix. Each kernel command name is
+// presented in its slash form "/<name>" VERBATIM (e.g. "/compact", "/skill:review").
+func matchingCommands(prefix string, commands []CommandInfo) []CompletionCandidate {
 	prefixLower := strings.ToLower(prefix)
 
 	var candidates []CompletionCandidate
 
-	// Check against slash commands
-	for _, cmd := range slashCommands {
-		cmdLower := strings.ToLower(cmd)
+	for _, c := range commands {
+		text := "/" + c.Name
+		cmdLower := strings.ToLower(text)
 		// Match if command starts with prefix
 		if strings.HasPrefix(cmdLower, prefixLower) {
 			// If prefix has a trailing space (e.g., "/plan "), only match commands
-			// that have more content after that space (e.g., "/plan resume")
-			// Don't match "/plan" alone since that's just the command name
+			// that have more content after that space (e.g., "/plan resume").
 			if strings.HasSuffix(prefix, " ") {
-				// Check if there's actually something after the space in the command
-				// e.g., prefix="/plan " should match "/plan resume" but not "/plan"
 				afterPrefix := cmdLower[len(prefixLower):]
 				if afterPrefix == "" {
-					// Command ends at the space (e.g., "/plan"), skip it
 					continue
 				}
 			}
-			desc := slashCommandDesc(cmd)
 			candidates = append(candidates, CompletionCandidate{
-				Text:        cmd,
-				Description: desc,
+				Text:        text,
+				Description: c.Description,
 				Type:        CompletionTypeCommand,
-			})
-		}
-	}
-
-	return candidates
-}
-
-// matchingSkills returns all skill candidates matching the prefix.
-func matchingSkills(prefix string, skills []Skill) []CompletionCandidate {
-	prefix = strings.ToLower(strings.TrimPrefix(prefix, "/"))
-
-	var candidates []CompletionCandidate
-
-	for _, skill := range skills {
-		if strings.HasPrefix(strings.ToLower(skill.Name), prefix) {
-			candidates = append(candidates, CompletionCandidate{
-				Text:        "/" + skill.Name,
-				Description: skill.Description,
-				Type:        CompletionTypeSkill,
 			})
 		}
 	}

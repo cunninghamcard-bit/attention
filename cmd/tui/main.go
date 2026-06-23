@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 // appVersion is the viewer version reported in the status bar.
@@ -55,9 +56,22 @@ func run(alongPath string) error {
 		ProviderName: agent.ResolvedProvider,
 		ThemeName:    "",
 	}
-	// Populate the sidebar's Skills section + slash/@ completion from the kernel
-	// (get_commands → entries with source=="skill"). Non-fatal: nil on error.
-	cfg.Skills = agent.FetchSkills()
+	// Fetch the kernel's command list ONCE. This is the single source of truth:
+	// cfg.Commands feeds slash-command completion + dispatch verbatim, and the
+	// source=="skill" subset (with the "skill:" prefix stripped) feeds the
+	// sidebar's Skills section. Non-fatal: empty/nil on error.
+	cmds := agent.FetchCommands()
+	cfg.Commands = cmds
+	for _, c := range cmds {
+		if c.Source != "skill" {
+			continue
+		}
+		cfg.Skills = append(cfg.Skills, Skill{
+			Name:        strings.TrimPrefix(c.Name, "skill:"),
+			Description: c.Description,
+			Source:      "user",
+		})
+	}
 
 	return Run(ctx, cfg)
 }

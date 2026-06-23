@@ -59,6 +59,10 @@ type InputModel struct {
 	HistoryIdx int
 
 	// Dependencies (set by root model).
+	// Commands is the kernel's command list (get_commands), the SINGLE source of
+	// truth for slash-command completion. Skills feeds the sidebar's bare-name
+	// Skills section only.
+	Commands  []CommandInfo
 	Skills    []Skill
 	SkillDirs []string
 	WorkDir   string
@@ -66,11 +70,13 @@ type InputModel struct {
 	input textinput.Model
 }
 
-// NewInputModel creates an InputModel with initial state.
-func NewInputModel(history []HistoryEntry, skills []Skill, skillDirs []string, workDir string) InputModel {
+// NewInputModel creates an InputModel with initial state. commands is the
+// kernel command list used for slash-command completion (the single source).
+func NewInputModel(history []HistoryEntry, commands []CommandInfo, skills []Skill, skillDirs []string, workDir string) InputModel {
 	im := InputModel{
 		History:    history,
 		HistoryIdx: -1,
+		Commands:   commands,
 		Skills:     skills,
 		SkillDirs:  skillDirs,
 		WorkDir:    workDir,
@@ -189,18 +195,14 @@ func (im *InputModel) SetText(text string) {
 	im.syncFromInput()
 }
 
-// AllCommandNames returns a sorted list of all command names: built-in + skills.
+// AllCommandNames returns a sorted list of all slash command names from the
+// kernel command list (the single source of truth), in their verbatim slash
+// form (e.g. "/compact", "/skill:review").
 func (im *InputModel) AllCommandNames() []string {
 	seen := make(map[string]bool)
 	var cmds []string
-	for _, cmd := range slashCommands {
-		if !seen[cmd] {
-			seen[cmd] = true
-			cmds = append(cmds, cmd)
-		}
-	}
-	for _, skill := range im.Skills {
-		name := "/" + skill.Name
+	for _, c := range im.Commands {
+		name := "/" + c.Name
 		if !seen[name] {
 			seen[name] = true
 			cmds = append(cmds, name)
@@ -294,114 +296,6 @@ func isLineEndKey(key tea.Key) bool {
 	return key.Code == tea.KeyEnd ||
 		(key.Code == 'e' && key.Mod == tea.ModCtrl) ||
 		key.Code == 0x05
-}
-
-// slashCommands is the list of available slash commands for autocomplete.
-// Skill subcommands (/skill-list, /skill-load, /skill-create) are handled
-// as args to /skills and omitted from the top-level list to keep it concise.
-var slashCommands = []string{
-	"/help",
-	"/clear",
-	"/model",
-	"/session",
-	"/context",
-	"/branch",
-	"/compact",
-	"/subagents",
-	"/history",
-	"/login",
-	"/commit",
-	"/plan",
-	"/run",
-	"/skills",
-	"/theme",
-	"/ping",
-	"/rtk",
-	"/mcp",
-	"/restart",
-	"/exit",
-	"/quit",
-}
-
-// slashCommandDesc returns the description for a slash command.
-func slashCommandDesc(cmd string) string {
-	switch cmd {
-	case "/help":
-		return "Show help"
-	case "/clear":
-		return "Clear conversation"
-	case "/model":
-		return "Show or switch model"
-	case "/session":
-		return "Show session info"
-	case "/context":
-		return "Show context usage"
-	case "/branch":
-		return "Manage branches"
-	case "/compact":
-		return "Compact context"
-	case "/subagents":
-		return "Show subagents"
-	case "/rtk":
-		return "Output compaction stats"
-	case "/mcp":
-		return "List MCP servers and tool status"
-	case "/history":
-		return "Command history"
-	case "/login":
-		return "Configure API keys (codex, openai, anthropic, gemini)"
-	case "/commit":
-		return "Create commit from staged changes"
-	case "/plan":
-		return "Start PDD planning session"
-	case "/run":
-		return "Execute a spec with task agent"
-	case "/theme":
-		return "Switch theme or list themes"
-	case "/skills":
-		return "List skills (create, load)"
-	case "/skill-list":
-		return "List all loaded skills"
-	case "/skill-load":
-		return "Reload skills from disk"
-	case "/skill-create":
-		return "Create a new skill"
-	case "/ping":
-		return "Test LLM connectivity"
-	case "/restart":
-		return "Restart pi process"
-	case "/exit", "/quit":
-		return "Exit"
-	default:
-		return ""
-	}
-}
-
-// completeSlashCommand returns the best matching slash command for the current input.
-// Only suggests completions when at least 2 characters have been typed after '/'.
-func completeSlashCommand(input string) string {
-	if !strings.HasPrefix(input, "/") || len(input) < 3 {
-		return ""
-	}
-	prefix := strings.ToLower(input)
-	for _, cmd := range slashCommands {
-		if strings.HasPrefix(cmd, prefix) && cmd != prefix {
-			return cmd
-		}
-	}
-	return ""
-}
-
-// matchingSlashCommands returns all slash commands matching the given prefix.
-func matchingSlashCommands(input string) []string {
-	prefix := strings.ToLower(input)
-	var matches []string
-	for _, cmd := range slashCommands {
-		if strings.HasPrefix(cmd, prefix) {
-			matches = append(matches, cmd)
-		}
-	}
-	return matches
 }
 
 // isUserInput returns true if the string represents genuine user keyboard input.

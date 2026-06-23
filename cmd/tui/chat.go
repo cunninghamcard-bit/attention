@@ -69,24 +69,21 @@ func (c *ChatModel) renderWelcome() string {
 	lines := []string{
 		face,
 		"",
-		accent.Render("  Welcome to pi-go.sh") + dim.Render(" — your AI coding agent"),
+		accent.Render("  Attention") + dim.Render(" — agent viewer (kernel over rpc)"),
 		"",
 		dim.Render("  Ask me anything or describe a task:"),
 		dim.Render("    - ") + dim.Render(`"research this codebase and explain the architecture"`),
 		dim.Render("    - ") + dim.Render(`"fix the failing test in auth_test.go"`),
 		dim.Render("    - ") + dim.Render(`"add error handling to the upload endpoint"`),
 		dim.Render("    - ") + dim.Render(`"explain how the session middleware works"`),
-		dim.Render("    - ") + dim.Render(`"refactor this function to use channels"`),
 		"",
-		dim.Render("  Commands: ") +
-			cmd.Render("/help") + dim.Render(" ") +
-			cmd.Render("/commit") + dim.Render(" ") +
-			cmd.Render("/plan") + dim.Render(" ") +
-			cmd.Render("/run") + dim.Render(" ") +
-			cmd.Render("/subagents") + dim.Render(" ") +
-			cmd.Render("/ping"),
-		dim.Render("  Press ") + cmd.Render("Tab") + dim.Render(" to cycle commands, ") +
+		// Don't hardcode a command list here — commands come from the kernel.
+		// Type "/" to open the completion popup populated from get_commands.
+		dim.Render("  Type ") + cmd.Render("/") + dim.Render(" for commands · ") +
 			cmd.Render("@") + dim.Render(" to mention files"),
+		dim.Render("  ") + cmd.Render("PgUp/PgDn") + dim.Render(" scroll · ") +
+			cmd.Render("Esc") + dim.Render(" stop a turn · ") +
+			cmd.Render("Ctrl+C") + dim.Render(" quit"),
 	}
 	return strings.Join(lines, "\n")
 }
@@ -158,6 +155,16 @@ func (c *ChatModel) AppendWarning(text string) {
 		role:      "assistant",
 		content:   text,
 		isWarning: true,
+	})
+	c.Scroll = 0
+}
+
+// AppendNotice adds a plain assistant message (no warning styling). Used by the
+// builtin slash-command dispatcher to report an action's outcome in the chat.
+func (c *ChatModel) AppendNotice(text string) {
+	c.Messages = append(c.Messages, message{
+		role:    "assistant",
+		content: text,
 	})
 	c.Scroll = 0
 }

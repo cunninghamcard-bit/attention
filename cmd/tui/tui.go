@@ -244,9 +244,10 @@ func searchPopupListHeight(itemCount int) int {
 	return height
 }
 
-// allSearchCandidates returns all slash command candidates for the search popup.
+// allSearchCandidates returns all slash command candidates for the search popup,
+// built from the kernel command list (the single source of truth).
 func (m *model) allSearchCandidates() []CompletionCandidate {
-	return allSlashCommandCandidates(m.inputModel.Skills)
+	return allSlashCommandCandidates(m.cfg.Commands)
 }
 
 // filterSearch filters items by search query (case-insensitive substring on Text).
@@ -299,7 +300,7 @@ func Run(ctx context.Context, cfg Config) error {
 		cfg:          cfg,
 		ctx:          ctx,
 		cancel:       cancel,
-		inputModel:   NewInputModel(history, cfg.Skills, nil, ""),
+		inputModel:   NewInputModel(history, cfg.Commands, cfg.Skills, nil, ""),
 		chatModel:    NewChatModel(renderer),
 		statusModel:  StatusModel{},
 		themeManager: tm,
@@ -1204,16 +1205,111 @@ func (m *model) handleResetCtrlCCount() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleSlashCommand handles a submitted "/..." line. The slash-command
-// execution subsystem (run/plan/commit/login/ping/skills/etc.) is cut from this
-// viewer in Phase 1, so this is a no-op that clears the input and surfaces an
-// "unknown command" notice. Completion candidates are still offered (so the
-// popup lists commands), but selecting one does not dispatch any behavior.
+// handleSlashCommand dispatches a submitted "/..." line against the kernel
+// command list (m.cfg.Commands — the single source of truth). It parses
+// "/<name> <args>", looks <name> up VERBATIM, and routes by the command's source:
+//
+//   - builtin: invoked via the matching rpc action (new/compact/clone/reload/
+//     model/session/name). fork/tree/resume need interactive selectors the viewer
+//     lacks, so they surface an honest "not available" notice instead of faking it.
+//   - skill / prompt / extension: submitted as a prompt with the FULL verbatim
+//     "/..." text so the kernel expands and runs it.
+//   - not found: the standard "Unknown command" warning.
 func (m *model) handleSlashCommand(text string) (tea.Model, tea.Cmd) {
 	m.inputModel.Clear()
 	m.searchPopup = nil
-	cmd := strings.TrimSpace(text)
-	m.chatModel.AppendWarning(fmt.Sprintf("Unknown command: %s", cmd))
+
+	trimmed := strings.TrimSpace(text)
+	// Parse "/<name> <args>" — name is the first whitespace-delimited token
+	// (sans leading slash), args is the remainder.
+	body := strings.TrimPrefix(trimmed, "/")
+	name := body
+	args := ""
+	if i := strings.IndexAny(body, " \t"); i >= 0 {
+		name = body[:i]
+		args = strings.TrimSpace(body[i+1:])
+	}
+
+	// Look the command up VERBATIM in the kernel command list.
+	var found *CommandInfo
+	for i := range m.cfg.Commands {
+		if m.cfg.Commands[i].Name == name {
+			found = &m.cfg.Commands[i]
+			break
+		}
+	}
+	if found == nil {
+		m.chatModel.AppendWarning(fmt.Sprintf("Unknown command: %s", trimmed))
+		return m, nil
+	}
+
+	switch found.Source {
+	case "skill", "prompt", "extension":
+		// The kernel expands and runs these. Submit the FULL verbatim "/..." text
+		// (e.g. "/skill:review") so ExpandSkillCommand / prompt expansion fires.
+		return m.submitPrompt(trimmed, nil)
+	case "builtin":
+		return m.dispatchBuiltin(name, args)
+	default:
+		// Unknown source: be honest rather than guess.
+		m.chatModel.AppendWarning(fmt.Sprintf("/%s has an unsupported command source %q", name, found.Source))
+		return m, nil
+	}
+}
+
+// dispatchBuiltin runs a kernel builtin slash command by its verbatim name.
+// Actions needing an interactive selector the viewer lacks (fork/tree/resume)
+// surface an honest notice instead of fake-dispatching.
+func (m *model) dispatchBuiltin(name, args string) (tea.Model, tea.Cmd) {
+	agent, ok := m.cfg.Agent.(*rpcAgent)
+	if !ok {
+		m.chatModel.AppendWarning(fmt.Sprintf("/%s is not available (no kernel backend)", name))
+		return m, nil
+	}
+
+	var (
+		notice string
+		err    error
+	)
+	switch name {
+	case "new":
+		notice, err = agent.NewSession()
+	case "compact":
+		notice, err = agent.Compact()
+	case "clone":
+		notice, err = agent.Clone()
+	case "reload":
+		notice, err = agent.Reload()
+	case "model":
+		var id, provider string
+		notice, id, provider, err = agent.CycleModel()
+		if err == nil && id != "" {
+			m.cfg.ModelName = id
+			if provider != "" {
+				m.cfg.ProviderName = provider
+			}
+		}
+	case "session":
+		notice, err = agent.SessionStats()
+	case "name":
+		if args == "" {
+			m.chatModel.AppendWarning("Usage: /name <session name>")
+			return m, nil
+		}
+		notice, err = agent.SetSessionName(args)
+	case "fork", "tree", "resume":
+		m.chatModel.AppendWarning(fmt.Sprintf("/%s needs an interactive selector — not available in the viewer yet", name))
+		return m, nil
+	default:
+		m.chatModel.AppendWarning(fmt.Sprintf("/%s is not supported in the viewer yet", name))
+		return m, nil
+	}
+
+	if err != nil {
+		m.chatModel.AppendWarning(fmt.Sprintf("/%s failed: %v", name, err))
+		return m, nil
+	}
+	m.chatModel.AppendNotice(notice)
 	return m, nil
 }
 
@@ -1391,51 +1487,22 @@ func (m *model) renderSearchPopup(width int) string {
 	return popupStyle.Render(b.String())
 }
 
-func (m *model) slashCommandCandidates(prefix string) []CompletionCandidate {
-	skills := m.inputModel.Skills
-
-	if prefix == "/" {
-		return allSlashCommandCandidates(skills)
-	}
-
-	result := Complete(prefix, skills, m.inputModel.WorkDir)
-	if result == nil || len(result.Candidates) == 0 {
-		return nil
-	}
-
-	candidates := make([]CompletionCandidate, 0, len(result.Candidates))
-	for _, candidate := range result.Candidates {
-		if candidate.Type == CompletionTypeCommand || candidate.Type == CompletionTypeSkill {
-			candidates = append(candidates, candidate)
-		}
-	}
-	return candidates
-}
-
-func allSlashCommandCandidates(skills []Skill) []CompletionCandidate {
+// allSlashCommandCandidates builds the full candidate list from the kernel
+// command list (the single source of truth), presenting each command name in
+// its verbatim slash form (e.g. "/compact", "/skill:review").
+func allSlashCommandCandidates(commands []CommandInfo) []CompletionCandidate {
 	seen := make(map[string]bool)
-	candidates := make([]CompletionCandidate, 0, len(slashCommands)+len(skills))
-	for _, cmd := range slashCommands {
-		if seen[cmd] {
+	candidates := make([]CompletionCandidate, 0, len(commands))
+	for _, c := range commands {
+		text := "/" + c.Name
+		if seen[text] {
 			continue
 		}
-		seen[cmd] = true
+		seen[text] = true
 		candidates = append(candidates, CompletionCandidate{
-			Text:        cmd,
-			Description: slashCommandDesc(cmd),
+			Text:        text,
+			Description: c.Description,
 			Type:        CompletionTypeCommand,
-		})
-	}
-	for _, skill := range skills {
-		cmd := "/" + skill.Name
-		if seen[cmd] {
-			continue
-		}
-		seen[cmd] = true
-		candidates = append(candidates, CompletionCandidate{
-			Text:        cmd,
-			Description: skill.Description,
-			Type:        CompletionTypeSkill,
 		})
 	}
 	sort.Slice(candidates, func(i, j int) bool {

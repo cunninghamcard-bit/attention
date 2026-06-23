@@ -52,9 +52,13 @@ type Config struct {
 	ThemeName    string
 	// TokenTracker tracks daily token usage for the status bar. May be nil.
 	TokenTracker TokenTracker
+	// Commands is the kernel's full command list (get_commands), used VERBATIM
+	// as the SINGLE source of truth for slash-command completion and dispatch.
+	// There is no hardcoded command list; this is it. May be empty/nil.
+	Commands []CommandInfo
 	// Skills are the agent skills exposed by the kernel, populated from the
 	// kernel via the get_commands rpc (entries with source=="skill"). They feed
-	// the sidebar's Skills section and slash/@ completion. May be empty/nil.
+	// the sidebar's Skills section (bare-name display only). May be empty/nil.
 	Skills []Skill
 }
 
