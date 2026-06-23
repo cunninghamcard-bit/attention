@@ -316,14 +316,20 @@ func matchingFiles(prefix string, workDir string) []CompletionCandidate {
 // fuzzyMatchPath checks if all parts of the query appear in order in the path.
 func fuzzyMatchPath(path, query string) bool {
 	pi := 0
-	for qi := 0; qi < len(query) && pi < len(path); qi++ {
+	for qi := 0; qi < len(query); qi++ {
+		// Out of path before consuming the whole query -> no match. (The old
+		// `pi < len(path)` loop guard exited early and then returned true, so a
+		// query like "makef" matched "go.sum" off its trailing 'm' alone.)
+		if pi >= len(path) {
+			return false
+		}
 		idx := strings.IndexByte(path[pi:], query[qi])
 		if idx < 0 {
 			return false
 		}
 		pi += idx + 1
 	}
-	return pi <= len(path)
+	return true
 }
 
 // findMentionAtCursor finds the @mention prefix at the cursor position.

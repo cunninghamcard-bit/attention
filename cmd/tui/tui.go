@@ -206,13 +206,14 @@ func listGitBranches(workDir string) []string {
 // searchPopupState is a unified search window for slash commands and history.
 // The mode determines what items are shown and how they are selected.
 type searchPopupState struct {
-	mode      searchMode   // "commands" or "history"
-	entries   []SearchItem // all items (commands or history entries)
-	filtered  []SearchItem // filtered by search query
-	selected  int          // currently selected index in filtered list
-	search    string       // current search query
-	height    int          // popup height (number of visible items)
-	scrollOff int          // scroll offset when more entries than height
+	mode         searchMode   // "commands", "history", or "mention"
+	entries      []SearchItem // all items (commands or history entries)
+	filtered     []SearchItem // filtered by search query
+	selected     int          // currently selected index in filtered list
+	search       string       // current search query
+	height       int          // popup height (number of visible items)
+	scrollOff    int          // scroll offset when more entries than height
+	mentionStart int          // char index of '@' for mention mode (-1 otherwise)
 }
 
 // searchMode determines what the popup displays.
@@ -221,6 +222,7 @@ type searchMode string
 const (
 	searchModeCommands searchMode = "commands"
 	searchModeHistory  searchMode = "history"
+	searchModeMention  searchMode = "mention"
 )
 
 // SearchItem represents an item in the search popup (command or history entry).
@@ -233,8 +235,27 @@ type SearchItem struct {
 func (m *model) newSearchPopup(mode searchMode) {
 	var items []SearchItem
 	var popupHeight int
+	mentionStart := -1
 
 	switch mode {
+	case searchModeMention:
+		// @file completion: find the @prefix at the cursor and list matching
+		// files (CompleteMention) under the working dir.
+		start, prefix := findMentionAtCursor(m.inputModel.Text, m.inputModel.CursorPos)
+		if start < 0 {
+			m.searchPopup = nil
+			return
+		}
+		for _, c := range CompleteMention(prefix, m.cwd()).Candidates {
+			items = append(items, SearchItem{Text: c.Text, Description: c.Description})
+		}
+		if len(items) == 0 {
+			m.searchPopup = nil
+			return
+		}
+		mentionStart = start
+		popupHeight = searchPopupListHeight(len(items))
+
 	case searchModeCommands:
 		// Get all slash command candidates.
 		allCandidates := m.allSearchCandidates()
@@ -266,14 +287,28 @@ func (m *model) newSearchPopup(mode searchMode) {
 	}
 
 	m.searchPopup = &searchPopupState{
-		mode:      mode,
-		entries:   items,
-		filtered:  items,
-		selected:  0,
-		search:    "",
-		height:    popupHeight,
-		scrollOff: 0,
+		mode:         mode,
+		entries:      items,
+		filtered:     items,
+		selected:     0,
+		search:       "",
+		height:       popupHeight,
+		scrollOff:    0,
+		mentionStart: mentionStart,
 	}
+}
+
+// insertMention replaces the @prefix at sp.mentionStart..cursor with the chosen
+// file path, e.g. "@io" -> "@internal/io/foo.go ". Cursor lands at the end (the
+// common case is mentioning at the end of the line).
+func (m *model) insertMention(sp *searchPopupState, path string) {
+	runes := []rune(m.inputModel.Text)
+	start := sp.mentionStart
+	cursor := m.inputModel.CursorPos
+	if start < 0 || start > len(runes) || cursor > len(runes) || cursor < start {
+		return
+	}
+	m.inputModel.SetText(string(runes[:start]) + "@" + path + " " + string(runes[cursor:]))
 }
 
 func searchPopupListHeight(itemCount int) int {
@@ -644,14 +679,21 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// stale item.
 	if m.inputModel.Text != prevText {
 		wasCommands := m.searchPopup != nil && m.searchPopup.mode == searchModeCommands
-		if m.shouldShowSlashCommandPopup() {
+		wasMention := m.searchPopup != nil && m.searchPopup.mode == searchModeMention
+		atStart, _ := findMentionAtCursor(m.inputModel.Text, m.inputModel.CursorPos)
+		switch {
+		case m.shouldShowSlashCommandPopup():
 			if wasCommands || m.searchPopup == nil {
 				m.newSearchPopup(searchModeCommands)
 				if m.searchPopup != nil && len(m.searchPopup.filtered) == 0 {
 					m.searchPopup = nil
 				}
 			}
-		} else if wasCommands {
+		case atStart >= 0 && (wasMention || m.searchPopup == nil):
+			// An @mention is at the cursor: open/rebuild the file picker
+			// (newSearchPopup clears it if there are no matching files).
+			m.newSearchPopup(searchModeMention)
+		case wasCommands || wasMention:
 			m.searchPopup = nil
 		}
 	}
@@ -691,10 +733,13 @@ func (m *model) handleSearchPopupKey(key tea.Key) bool {
 		// popup. The input line is the single source of truth.
 		if len(sp.filtered) > 0 && sp.selected < len(sp.filtered) {
 			item := sp.filtered[sp.selected]
-			if sp.mode == searchModeHistory {
+			switch sp.mode {
+			case searchModeHistory:
 				m.inputModel.SetText(item.Text)
 				m.inputModel.HistoryIdx = -1
-			} else {
+			case searchModeMention:
+				m.insertMention(sp, item.Text)
+			default:
 				m.inputModel.SetText(item.Text + " ")
 			}
 			m.searchPopup = nil
@@ -706,6 +751,14 @@ func (m *model) handleSearchPopupKey(key tea.Key) bool {
 			if len(sp.filtered) > 0 && sp.selected < len(sp.filtered) {
 				m.inputModel.SetText(sp.filtered[sp.selected].Text)
 				m.inputModel.HistoryIdx = -1
+			}
+			m.searchPopup = nil
+			return true
+		}
+		if sp.mode == searchModeMention {
+			// Mention: Enter accepts the highlighted file into the @prefix.
+			if len(sp.filtered) > 0 && sp.selected < len(sp.filtered) {
+				m.insertMention(sp, sp.filtered[sp.selected].Text)
 			}
 			m.searchPopup = nil
 			return true
