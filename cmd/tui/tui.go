@@ -566,15 +566,21 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// Delegate all other keys to InputModel.
 	prevText := m.inputModel.Text
 	cmd := m.inputModel.HandleKey(msg)
-	// Reset search popup when input text changes (slash commands mode).
+	// Keep the commands popup in sync with the input line (single source of
+	// truth): rebuild it from the new input text on every change, and close it
+	// when nothing matches so Enter submits the line instead of accepting a
+	// stale item.
 	if m.inputModel.Text != prevText {
-		if m.searchPopup != nil && m.searchPopup.mode == searchModeCommands {
-			if !m.shouldShowSlashCommandPopup() {
-				m.searchPopup = nil
+		wasCommands := m.searchPopup != nil && m.searchPopup.mode == searchModeCommands
+		if m.shouldShowSlashCommandPopup() {
+			if wasCommands || m.searchPopup == nil {
+				m.newSearchPopup(searchModeCommands)
+				if m.searchPopup != nil && len(m.searchPopup.filtered) == 0 {
+					m.searchPopup = nil
+				}
 			}
-		}
-		if m.searchPopup == nil && m.shouldShowSlashCommandPopup() {
-			m.newSearchPopup(searchModeCommands)
+		} else if wasCommands {
+			m.searchPopup = nil
 		}
 	}
 	return m, cmd
@@ -609,57 +615,61 @@ func (m *model) handleSearchPopupKey(key tea.Key) bool {
 		}
 		return true
 	case tea.KeyTab:
-		if len(sp.filtered) == 0 {
-			return true
-		}
-		if key.Mod == tea.ModShift {
-			if sp.selected > 0 {
-				sp.selected--
-			} else {
-				// Wrap to last item on Shift+Tab from first.
-				sp.selected = len(sp.filtered) - 1
-			}
-		} else {
-			// Tab advances; stays at last item (no wrap).
-			if sp.selected < len(sp.filtered)-1 {
-				sp.selected++
-			}
-		}
-		sp.scrollOff = max(0, sp.selected-sp.height+1)
-		return true
-	case tea.KeyEnter:
+		// Tab COMPLETES the selected item into the input box, then closes the
+		// popup. The input line is the single source of truth.
 		if len(sp.filtered) > 0 && sp.selected < len(sp.filtered) {
 			item := sp.filtered[sp.selected]
-			switch sp.mode {
-			case searchModeCommands:
-				m.inputModel.SetText(item.Text + " ")
-				m.searchPopup = nil
-			case searchModeHistory:
+			if sp.mode == searchModeHistory {
 				m.inputModel.SetText(item.Text)
 				m.inputModel.HistoryIdx = -1
-				m.searchPopup = nil
+			} else {
+				m.inputModel.SetText(item.Text + " ")
 			}
+			m.searchPopup = nil
 		}
 		return true
+	case tea.KeyEnter:
+		if sp.mode == searchModeHistory {
+			// History: Enter inserts the entry into the input (does not submit).
+			if len(sp.filtered) > 0 && sp.selected < len(sp.filtered) {
+				m.inputModel.SetText(sp.filtered[sp.selected].Text)
+				m.inputModel.HistoryIdx = -1
+			}
+			m.searchPopup = nil
+			return true
+		}
+		// Commands: Enter SUBMITS the typed line. Let the key flow to the input
+		// model (-> InputSubmitMsg -> handleSlashCommand). Do NOT accept a
+		// highlighted item here — that was the "/zzzbogus picks /clone" bug.
+		return false
 	case tea.KeyEsc:
 		m.searchPopup = nil
 		return true
 	case tea.KeyBackspace:
-		if len(sp.search) > 0 {
-			sp.search = sp.search[:len(sp.search)-1]
-			sp.filterSearch()
-		} else {
-			// If search is empty, close popup on backspace
-			m.searchPopup = nil
-		}
-		return true
-	default:
-		// Type to search (only for printable single characters).
-		if key.Text != "" && len(key.Text) == 1 && key.Mod == 0 {
-			sp.search += key.Text
-			sp.filterSearch()
+		if sp.mode == searchModeHistory {
+			if len(sp.search) > 0 {
+				sp.search = sp.search[:len(sp.search)-1]
+				sp.filterSearch()
+			} else {
+				m.searchPopup = nil
+			}
 			return true
 		}
+		// Commands: backspace edits the INPUT; the input-change handler
+		// re-filters the popup from the new input text.
+		return false
+	default:
+		if sp.mode == searchModeHistory {
+			// History keeps its own type-to-search field.
+			if key.Text != "" && len(key.Text) == 1 && key.Mod == 0 {
+				sp.search += key.Text
+				sp.filterSearch()
+				return true
+			}
+			return false
+		}
+		// Commands: printable chars flow to the input box (single source); the
+		// input-change handler rebuilds + re-filters the popup from the text.
 		return false
 	}
 }
