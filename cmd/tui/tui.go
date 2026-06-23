@@ -14,6 +14,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/glamour"
+	"github.com/mattn/go-runewidth"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -608,11 +609,6 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		// If no history, fall through to input model for inline history nav.
-	}
-
-	// Handle unified search popup keys (slash commands or history).
-	if m.handleSearchPopupKey(key) {
-		return m, nil
 	}
 
 	// Scroll keys stay in root model.
@@ -1760,14 +1756,15 @@ func clipRunes(s string, width int) string {
 	if width <= 0 {
 		return ""
 	}
-	runes := []rune(s)
-	if len(runes) <= width {
+	// Measure by DISPLAY WIDTH (CJK/East-Asian glyphs occupy 2 columns), not rune
+	// count, so wide-character labels don't overflow their column budget.
+	if runewidth.StringWidth(s) <= width {
 		return s
 	}
 	if width <= 3 {
-		return string(runes[:width])
+		return runewidth.Truncate(s, width, "")
 	}
-	return string(runes[:width-3]) + "..."
+	return runewidth.Truncate(s, width, "...")
 }
 
 // renderBranchPopup renders the branch list popup.
