@@ -261,6 +261,24 @@ func (c *RPCClient) SendPrompt(text string) error {
 	return c.enc.Encode(cmd) // json.Encoder appends the newline delimiter
 }
 
+// Abort writes an abort command: {"id":..,"type":"abort"}. The kernel cancels
+// the in-flight turn and emits agent_end, which the TUI uses to clear running.
+// The encoder is mutex-guarded so concurrent sends never interleave a line.
+func (c *RPCClient) Abort() error {
+	c.idMu.Lock()
+	c.nextID++
+	id := fmt.Sprintf("a%d", c.nextID)
+	c.idMu.Unlock()
+
+	cmd := map[string]any{
+		"id":   id,
+		"type": "abort",
+	}
+	c.encMu.Lock()
+	defer c.encMu.Unlock()
+	return c.enc.Encode(cmd) // json.Encoder appends the newline delimiter
+}
+
 // Close ends the session. Closing stdin makes the kernel's command reader hit
 // EOF and shut down cleanly (server.go:137); Kill is the backstop.
 func (c *RPCClient) Close() {

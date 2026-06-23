@@ -69,24 +69,17 @@ func (c *ChatModel) renderWelcome() string {
 	lines := []string{
 		face,
 		"",
-		accent.Render("  Welcome to pi-go.sh") + dim.Render(" — your AI coding agent"),
+		accent.Render("  Attention — agent viewer (rpc)"),
 		"",
-		dim.Render("  Ask me anything or describe a task:"),
+		dim.Render("  Ask the agent anything or describe a task:"),
 		dim.Render("    - ") + dim.Render(`"research this codebase and explain the architecture"`),
 		dim.Render("    - ") + dim.Render(`"fix the failing test in auth_test.go"`),
 		dim.Render("    - ") + dim.Render(`"add error handling to the upload endpoint"`),
-		dim.Render("    - ") + dim.Render(`"explain how the session middleware works"`),
-		dim.Render("    - ") + dim.Render(`"refactor this function to use channels"`),
 		"",
-		dim.Render("  Commands: ") +
-			cmd.Render("/help") + dim.Render(" ") +
-			cmd.Render("/commit") + dim.Render(" ") +
-			cmd.Render("/plan") + dim.Render(" ") +
-			cmd.Render("/run") + dim.Render(" ") +
-			cmd.Render("/subagents") + dim.Render(" ") +
-			cmd.Render("/ping"),
-		dim.Render("  Press ") + cmd.Render("Tab") + dim.Render(" to cycle commands, ") +
-			cmd.Render("@") + dim.Render(" to mention files"),
+		dim.Render("  ") +
+			cmd.Render("PgUp/PgDn") + dim.Render(" or wheel to scroll · ") +
+			cmd.Render("Esc") + dim.Render(" to stop a turn · ") +
+			cmd.Render("Ctrl+C") + dim.Render(" to quit"),
 	}
 	return strings.Join(lines, "\n")
 }

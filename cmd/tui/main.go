@@ -97,6 +97,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
 
+	case tea.MouseWheelMsg:
+		// Mouse wheel scrolls the transcript (works while running too).
+		switch msg.Button {
+		case tea.MouseWheelUp:
+			m.chat.ScrollUp(3, m.height)
+		case tea.MouseWheelDown:
+			m.chat.ScrollDown(3)
+		}
+		return m, nil
+
 	case rpcEventMsg:
 		return m.handleEvent(msg.ev)
 	}
@@ -120,8 +130,38 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	}
 
-	// While a turn runs, ignore editing keys (viewer is read-only mid-turn).
+	// Scroll keys work always, even mid-turn, so you can read back while the
+	// agent streams. availableHeight mirrors View (m.height - 6); pageSize is
+	// one line shy of a full page for overlap.
+	availableHeight := m.height - 6
+	if availableHeight < 1 {
+		availableHeight = 1
+	}
+	pageSize := max(1, availableHeight-1)
+	switch key.Code {
+	case tea.KeyPgUp:
+		m.chat.ScrollUp(pageSize, m.height)
+		return m, nil
+	case tea.KeyPgDown:
+		m.chat.ScrollDown(pageSize)
+		return m, nil
+	case tea.KeyUp:
+		m.chat.ScrollUp(1, m.height)
+		return m, nil
+	case tea.KeyDown:
+		m.chat.ScrollDown(1)
+		return m, nil
+	}
+
+	// While a turn runs, the viewer is read-only except for Esc (abort).
 	if m.running {
+		if key.Code == tea.KeyEsc {
+			if err := m.rpc.Abort(); err != nil {
+				m.chat.AppendWarning("abort failed: " + err.Error())
+			} else {
+				m.chat.AppendWarning("(aborting…)")
+			}
+		}
 		return m, nil
 	}
 
@@ -291,6 +331,7 @@ func (m *model) View() tea.View {
 		}
 	}
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion // enable click/release/wheel events
 	return v
 }
 
