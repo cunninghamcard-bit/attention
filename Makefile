@@ -1,6 +1,8 @@
 # Run the headless kernel + the TUI viewer.
-# The kernel resolves the model from ~/.along/agent/settings.json ("defaultModel")
-# and the API key from the provider's env var, e.g.:  export DEEPSEEK_API_KEY=sk-...
+# The kernel resolves everything from ~/.along/agent config:
+#   - model from settings.json ("defaultModel")
+#   - key   from models.json ("apiKey"), or a provider env var (e.g. DEEPSEEK_API_KEY)
+# With both configured, `make run` needs no flags and no env.
 BIN := $(CURDIR)/bin
 
 .PHONY: kernel tui run clean
