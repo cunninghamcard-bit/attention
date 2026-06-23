@@ -299,7 +299,7 @@ func Run(ctx context.Context, cfg Config) error {
 		cfg:          cfg,
 		ctx:          ctx,
 		cancel:       cancel,
-		inputModel:   NewInputModel(history, nil, nil, ""),
+		inputModel:   NewInputModel(history, cfg.Skills, nil, ""),
 		chatModel:    NewChatModel(renderer),
 		statusModel:  StatusModel{},
 		themeManager: tm,
@@ -798,6 +798,7 @@ func (m *model) View() tea.View {
 			LoadingItems: m.loadingItems,
 			MatrixLines:  "",
 			StatusLine:   "",
+			Skills:       m.cfg.Skills,
 		}
 		sidebar := RenderSidebar(sidebarInput)
 		final = lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, sidebar)

@@ -52,6 +52,10 @@ type Config struct {
 	ThemeName    string
 	// TokenTracker tracks daily token usage for the status bar. May be nil.
 	TokenTracker TokenTracker
+	// Skills are the agent skills exposed by the kernel, populated from the
+	// kernel via the get_commands rpc (entries with source=="skill"). They feed
+	// the sidebar's Skills section and slash/@ completion. May be empty/nil.
+	Skills []Skill
 }
 
 // CompactStatsProvider provides compaction statistics for TUI display.

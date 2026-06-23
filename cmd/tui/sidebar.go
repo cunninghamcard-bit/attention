@@ -33,8 +33,9 @@ type SidebarRenderInput struct {
 	Messages     []message
 	ActiveTool   string
 	LoadingItems map[string]bool
-	MatrixLines  string // pre-rendered matrix rain (2 lines)
-	StatusLine   string // status text shown above matrix
+	MatrixLines  string  // pre-rendered matrix rain (2 lines)
+	StatusLine   string  // status text shown above matrix
+	Skills       []Skill // skills section; nil/empty = hidden
 }
 
 // RenderSidebar renders the right sidebar panel.
@@ -152,7 +153,28 @@ func RenderSidebar(in SidebarRenderInput) string {
 	}
 	lines = append(lines, "")
 
-	// --- Agents / Skills / MCP-Tools sections removed (services cut in Phase 1) ---
+	// --- Agents / MCP-Tools sections removed (services cut in Phase 1) ---
+
+	// --- Skills section ---
+	// Faithful port of pi-go's sidebar.go Skills section (yellow bold
+	// "Skills [N]" heading), adapted to the local Skill type and extended to
+	// list each skill name so the loaded skills are visible.
+	if len(in.Skills) > 0 {
+		skillsHeading := lipgloss.NewStyle().Foreground(lipgloss.Color("#f9e2af")).Bold(true) // Mocha yellow
+		lines = append(lines, skillsHeading.Render(fmt.Sprintf("  Skills [%d]", len(in.Skills))))
+		for _, s := range in.Skills {
+			name := s.Name
+			maxName := innerW - 4 // room for "  · " prefix
+			if maxName < 6 {
+				maxName = 6
+			}
+			if len(name) > maxName {
+				name = name[:maxName-1] + "…"
+			}
+			lines = append(lines, dim.Render("  · "+name))
+		}
+		lines = append(lines, "")
+	}
 
 	// --- Loading section ---
 	if in.LoadingItems != nil {

@@ -55,6 +55,9 @@ func run(alongPath string) error {
 		ProviderName: agent.ResolvedProvider,
 		ThemeName:    "",
 	}
+	// Populate the sidebar's Skills section + slash/@ completion from the kernel
+	// (get_commands → entries with source=="skill"). Non-fatal: nil on error.
+	cfg.Skills = agent.FetchSkills()
 
 	return Run(ctx, cfg)
 }

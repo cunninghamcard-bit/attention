@@ -10,7 +10,9 @@ import (
 	"io"
 	"iter"
 	"os/exec"
+	"strings"
 	"sync"
+	"time"
 
 	adkmodel "google.golang.org/adk/model"
 	"google.golang.org/adk/session"
@@ -119,6 +121,19 @@ type wireGetState struct {
 type wireModel struct {
 	ID       string `json:"id"`
 	Provider string `json:"provider"`
+}
+
+// wireGetCommands is the get_commands response data we read. Each command
+// carries a source ("extension"/"prompt"/"skill"); skills are the entries with
+// source=="skill".
+type wireGetCommands struct {
+	Commands []wireCommand `json:"commands"`
+}
+
+type wireCommand struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Source      string `json:"source"`
 }
 
 // wireToolResult mirrors internal/tool.Result on the wire. tool.Result has NO
@@ -405,6 +420,36 @@ func (a *rpcAgent) CreateSession(ctx context.Context) (string, error) {
 	return a.resolvedSessionID, nil
 }
 
+// FetchSkills asks the kernel for its commands (get_commands) and returns the
+// subset that are skills (source=="skill") as []Skill. Skill commands surface
+// when enableSkillCommands is true (the default). It tolerates errors and an
+// empty/absent skill set by returning nil, and is bounded by a short timeout so
+// startup never blocks indefinitely on a slow/unresponsive kernel.
+func (a *rpcAgent) FetchSkills() []Skill {
+	resp, err := a.requestTimeout("get_commands", map[string]any{}, 5*time.Second)
+	if err != nil || !resp.Success || len(resp.Data) == 0 {
+		return nil
+	}
+	var cmds wireGetCommands
+	if err := json.Unmarshal(resp.Data, &cmds); err != nil {
+		return nil
+	}
+	var skills []Skill
+	for _, c := range cmds.Commands {
+		if c.Source != "skill" {
+			continue
+		}
+		skills = append(skills, Skill{
+			// The kernel names skill commands "skill:<name>"; strip the prefix so
+			// the dedicated Skills section shows the bare name (pi-go's intent).
+			Name:        strings.TrimPrefix(c.Name, "skill:"),
+			Description: c.Description,
+			Source:      "user",
+		})
+	}
+	return skills
+}
+
 // RebuildWithModel is a no-op: the kernel owns model selection.
 func (a *rpcAgent) RebuildWithModel(llm adkmodel.LLM) error { return nil }
 
@@ -455,6 +500,43 @@ func (a *rpcAgent) request(typ string, extra map[string]any) (rpcResponse, error
 		return resp, nil
 	case <-a.closed:
 		return rpcResponse{}, fmt.Errorf("rpc: kernel exited before response to %q", typ)
+	}
+}
+
+// requestTimeout is request with an upper bound on how long it waits for the
+// id-matched response, so a non-fatal/optional probe (e.g. get_commands at
+// startup) can't wedge the boot path if the kernel is slow to answer.
+func (a *rpcAgent) requestTimeout(typ string, extra map[string]any, timeout time.Duration) (rpcResponse, error) {
+	id := a.allocID()
+	ch := make(chan rpcResponse, 1)
+
+	a.mu.Lock()
+	a.pending[id] = ch
+	a.mu.Unlock()
+
+	cmd := map[string]any{"type": typ, "id": id}
+	for k, v := range extra {
+		cmd[k] = v
+	}
+	if err := a.send(cmd); err != nil {
+		a.mu.Lock()
+		delete(a.pending, id)
+		a.mu.Unlock()
+		return rpcResponse{}, err
+	}
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case resp := <-ch:
+		return resp, nil
+	case <-a.closed:
+		return rpcResponse{}, fmt.Errorf("rpc: kernel exited before response to %q", typ)
+	case <-timer.C:
+		a.mu.Lock()
+		delete(a.pending, id)
+		a.mu.Unlock()
+		return rpcResponse{}, fmt.Errorf("rpc: timeout waiting for response to %q", typ)
 	}
 }
 
