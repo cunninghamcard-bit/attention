@@ -577,6 +577,10 @@ export class Workspace extends Events {
     return new WorkspaceLayoutSerializer().serialize(this);
   }
 
+  async readWorkspaceFile(): Promise<WorkspaceLayout> {
+    return (await this.app.workspaceLayouts.readWorkspaceFile()) ?? {};
+  }
+
   async saveLayout(): Promise<WorkspaceLayout | undefined> {
     if (!this.layoutReady) return undefined;
     return this.app.workspaceLayouts.saveCurrentLayout();
