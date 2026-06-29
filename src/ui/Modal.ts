@@ -5,6 +5,7 @@ import { Scope } from "../hotkeys/Scope";
 import { Platform } from "../platform/Platform";
 import { ButtonComponent } from "./Setting";
 import { setIcon } from "./Icon";
+import { registerActiveCloseable, unregisterActiveCloseable } from "./ActiveCloseableRegistry";
 
 export interface HistoryHandler {
   onHistoryBack(): void;
@@ -142,6 +143,7 @@ export class Modal extends Component implements HistoryHandler {
     this.app.keymap.pushScope(this.scope);
     activeWindow.document.body.appendChild(this.containerEl);
     pushOpenModal(this);
+    registerActiveCloseable(this);
     void this.onOpen();
     this.containerEl.classList.toggle("mod-dim", this.dimBackground);
     this.bgEl.style.opacity = this.dimBackground ? this.bgOpacity : "0";
@@ -158,6 +160,7 @@ export class Modal extends Component implements HistoryHandler {
     this.onClose();
     this.closeCallback?.();
     removeOpenModal(this);
+    unregisterActiveCloseable(this);
     if (this.shouldRestoreSelection) restoreSelection(this.selection);
     if (modalWindow && modalWindow !== window) modalWindow.removeEventListener("beforeunload", this.onWindowClose);
     this.selection = null;

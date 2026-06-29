@@ -1,6 +1,7 @@
 import { JSDOM } from "jsdom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { closeTopActiveCloseable, getActiveCloseables, registerActiveCloseable, unregisterActiveCloseable } from "./ActiveCloseableRegistry";
 import { Menu, MenuItem } from "./Menu";
 
 let dom: JSDOM | null = null;
@@ -20,6 +21,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  while (closeTopActiveCloseable()) {
+    // Drain Obsidian's active closeable stack between isolated DOM tests.
+  }
   vi.useRealTimers();
   vi.unstubAllGlobals();
   dom?.window.close();
@@ -238,6 +242,33 @@ describe("Menu Obsidian behavior", () => {
     menu.onHistoryBack();
 
     expect(menu.dom.parentElement).toBeNull();
+  });
+
+  it("participates in Obsidian's LIFO active closeable stack", () => {
+    const first = new Menu(document);
+    const second = new Menu(document);
+    first.addItem((item) => item.setTitle("First"));
+    second.addItem((item) => item.setTitle("Second"));
+
+    first.showAtPosition({ x: 10, y: 20 });
+    second.showAtPosition({ x: 30, y: 40 });
+
+    expect(getActiveCloseables()).toEqual([second]);
+
+    const synthetic = { close: vi.fn(() => unregisterActiveCloseable(synthetic)) };
+    registerActiveCloseable(first);
+    registerActiveCloseable(synthetic);
+
+    expect(getActiveCloseables()).toEqual([second, first, synthetic]);
+    expect(closeTopActiveCloseable()).toBe(true);
+    expect(synthetic.close).toHaveBeenCalledTimes(1);
+    expect(getActiveCloseables()).toEqual([second, first]);
+
+    unregisterActiveCloseable(second);
+    expect(closeTopActiveCloseable()).toBe(true);
+
+    expect(first.dom.isConnected).toBe(false);
+    expect(getActiveCloseables()).toEqual([]);
   });
 
   it("hides only the owning submenu when a submenu item is clicked", () => {

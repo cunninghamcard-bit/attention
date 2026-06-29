@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { App } from "../app/App";
 import { Scope } from "../hotkeys/Scope";
 import { Platform } from "../platform/Platform";
+import { closeTopActiveCloseable, getActiveCloseables } from "../ui/ActiveCloseableRegistry";
+import { Modal } from "../ui/Modal";
 import { AbstractInputSuggest } from "./AbstractInputSuggest";
 
 let dom: JSDOM | null = null;
@@ -94,6 +96,7 @@ describe("AbstractInputSuggest", () => {
     expect(app.pushedScopes).toEqual([suggest.scope]);
     expect(app.poppedScopes).toEqual([suggest.scope]);
     expect(document.body.querySelectorAll(".suggestion-container")).toHaveLength(1);
+    expect(getActiveCloseables()).toEqual([suggest]);
 
     suggest.suggestions.setSuggestions(["apple"]);
     suggest.close();
@@ -103,6 +106,32 @@ describe("AbstractInputSuggest", () => {
     expect(app.poppedScopes).toEqual([suggest.scope, suggest.scope, suggest.scope]);
     expect(document.body.querySelector(".suggestion-container")).toBeNull();
     expect(suggest.suggestions.length).toBe(0);
+    expect(getActiveCloseables()).toEqual([]);
+  });
+
+  it("registers popover suggestions and modals in the same mobile back closeable stack", () => {
+    const app = createApp();
+    const input = inputEl();
+    const suggest = new FruitSuggest(app, input);
+    const modal = new Modal(app);
+
+    suggest.open();
+    modal.open();
+
+    expect(getActiveCloseables()).toEqual([suggest, modal]);
+    expect(Modal.getOpenModals()).toEqual([modal]);
+
+    expect(closeTopActiveCloseable()).toBe(true);
+
+    expect(getActiveCloseables()).toEqual([suggest]);
+    expect(modal.containerEl.isConnected).toBe(false);
+    expect(suggest.isOpen).toBe(true);
+
+    expect(closeTopActiveCloseable()).toBe(true);
+
+    expect(getActiveCloseables()).toEqual([]);
+    expect(suggest.isOpen).toBe(false);
+    expect(Modal.getOpenModals()).toEqual([]);
   });
 
   it("opens from a focused input and applies the Obsidian default limit", () => {

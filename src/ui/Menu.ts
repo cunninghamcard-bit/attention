@@ -3,6 +3,7 @@ import { getActiveDocument } from "../dom/ActiveDocument";
 import { setIcon as renderIcon } from "./Icon";
 import type { HistoryHandler } from "./Modal";
 import { setTooltip as setElementTooltip } from "./Popover";
+import { registerActiveCloseable, unregisterActiveCloseable } from "./ActiveCloseableRegistry";
 
 export interface MenuPositionDef {
   x: number;
@@ -275,6 +276,7 @@ export class Menu extends Component implements HistoryHandler {
 
     if (this.dom.parentElement !== doc.body) doc.body.appendChild(this.dom);
     if (this.bgEl.parentElement !== doc.body) doc.body.appendChild(this.bgEl);
+    registerActiveCloseable(this);
     this.positionDom(position, doc);
     this.registerOutsideHandlers(doc);
     (doc.defaultView ?? window).setTimeout(() => void this.load());
@@ -291,6 +293,7 @@ export class Menu extends Component implements HistoryHandler {
     this.closeSubmenu();
     this.dom.remove();
     this.bgEl.remove();
+    unregisterActiveCloseable(this);
     if (!this.parentMenu) getOpenTopMenus(this.shownDoc ?? this.doc).delete(this);
     this.shownDoc = null;
     this.parentEl?.classList.remove("has-active-menu");

@@ -2,11 +2,10 @@ import type { App } from "../app/App";
 import { getActiveDocument } from "../dom/ActiveDocument";
 import { Scope } from "../hotkeys/Scope";
 import { Platform } from "../platform/Platform";
+import { registerActiveCloseable, unregisterActiveCloseable } from "../ui/ActiveCloseableRegistry";
 import { SuggestChooser, type SuggestOwner } from "./SuggestModal";
 
 export type { ISuggestOwner } from "./SuggestModal";
-
-const openPopoverSuggests: PopoverSuggest<unknown>[] = [];
 
 export abstract class PopoverSuggest<T> implements SuggestOwner<T> {
   isOpen = false;
@@ -45,7 +44,7 @@ export abstract class PopoverSuggest<T> implements SuggestOwner<T> {
     this.isOpen = true;
     this.app.keymap.pushScope(this.scope);
     this.attachDom(ownerDocument);
-    pushOpenPopoverSuggest(this);
+    registerActiveCloseable(this);
   }
 
   close(): void {
@@ -56,7 +55,7 @@ export abstract class PopoverSuggest<T> implements SuggestOwner<T> {
     this.isOpen = false;
     this.suggestions.setSuggestions([]);
     this.detachDom();
-    removeOpenPopoverSuggest(this);
+    unregisterActiveCloseable(this);
   }
 
   reposition(rect: DOMRect | Pick<DOMRect, "left" | "right" | "top" | "bottom">, direction: "auto" | "ltr" | "rtl" = "auto"): void {
@@ -134,16 +133,6 @@ export abstract class PopoverSuggest<T> implements SuggestOwner<T> {
       });
     }
   }
-}
-
-function pushOpenPopoverSuggest(suggest: PopoverSuggest<unknown>): void {
-  removeOpenPopoverSuggest(suggest);
-  openPopoverSuggests.push(suggest);
-}
-
-function removeOpenPopoverSuggest(suggest: PopoverSuggest<unknown>): void {
-  const index = openPopoverSuggests.indexOf(suggest);
-  if (index !== -1) openPopoverSuggests.splice(index, 1);
 }
 
 function positionSuggestion(
