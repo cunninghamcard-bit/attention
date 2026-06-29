@@ -104,6 +104,18 @@ describe("FileSystemAdapter", () => {
     expect(adapter.resolvePath("/tmp/not-in-this-vault.png")).toBeNull();
   });
 
+  it("resolves descendant full paths through indexed real paths", async () => {
+    const realFolder = path.join(basePath, "Actual Folder");
+    await fs.mkdir(realFolder, { recursive: true });
+    (adapter as unknown as { files: Map<string, { path: string; realpath: string; type: "folder" }> }).files.set("Linked", {
+      path: "Linked",
+      realpath: realFolder,
+      type: "folder",
+    });
+
+    expect(adapter.getFullPath("Linked/Child.md")).toBe(path.join(realFolder, "Child.md"));
+  });
+
   it("moves local trash into root .trash using basename and Obsidian duplicate numbering", async () => {
     await adapter.write(".trash/Name.md", "existing");
     await adapter.write("Folder/Name.md", "next");

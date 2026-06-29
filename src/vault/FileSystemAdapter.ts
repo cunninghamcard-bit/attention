@@ -102,9 +102,24 @@ export class FileSystemAdapter extends DataAdapter {
   }
 
   getFullPath(path: string): string {
+    const realPath = this.getRealPath(path);
+    return isFullFilesystemPath(realPath) ? realPath : this.getFullRealPath(realPath);
+  }
+
+  private getFullRealPath(path: string): string {
     const base = this.basePath.replace(/[\\/]+$/, "");
     const vaultPath = normalizeVaultPath(path);
     return vaultPath ? `${base}/${vaultPath}` : base;
+  }
+
+  private getRealPath(path: string): string {
+    const normalized = normalizeVaultPath(path);
+    for (let parentPath: string | null = normalized; parentPath; parentPath = getParentVaultPath(parentPath)) {
+      const entry = this.files.get(parentPath);
+      if (!entry) continue;
+      return `${entry.realpath}${normalized.slice(parentPath.length)}`;
+    }
+    return normalized;
   }
 
   override getName(): string {
@@ -558,6 +573,11 @@ function normalizeVaultPath(path: string): string {
   return path.replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/+/g, "/").replace(/\/$/, "");
 }
 
+function getParentVaultPath(path: string): string | null {
+  const index = path.lastIndexOf("/");
+  return index === -1 ? null : path.slice(0, index);
+}
+
 function decodeFileUrlOrPath(urlOrPath: string): string | null {
   if (urlOrPath.startsWith("file://") || urlOrPath.startsWith(Platform.resourcePathPrefix)) {
     try {
@@ -571,6 +591,10 @@ function decodeFileUrlOrPath(urlOrPath: string): string | null {
 
 function normalizeFilesystemPath(path: string): string {
   return path.replace(/\\/g, "/").replace(/\/+$/, "");
+}
+
+function isFullFilesystemPath(path: string): boolean {
+  return path.startsWith("/") || path.startsWith("//") || /^[A-Za-z]:\//.test(path);
 }
 
 function pathToFileUrl(path: string): string {
