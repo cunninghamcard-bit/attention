@@ -279,6 +279,18 @@ describe("WorkspaceLeaf", () => {
     expect(leaf.backHistory).toEqual([]);
   });
 
+  it("deduplicates history with Obsidian's JSON view-state order semantics", async () => {
+    const app = new App(document.createElement("div"));
+    app.viewRegistry.registerView("history-recording-test", (leaf) => new HistoryRecordingView(leaf));
+    const leaf = app.workspace.getLeaf();
+
+    await leaf.setViewState({ type: "history-recording-test", state: { a: 1, b: 2 }, active: true });
+    await leaf.setViewState({ type: "history-recording-test", state: { b: 2, a: 1 }, active: true });
+    await leaf.setViewState({ type: "history-recording-test", state: { a: 1, b: 2 }, active: true });
+
+    expect(leaf.backHistory).toHaveLength(2);
+  });
+
   it("does not record history when materializing a same-type DeferredView", async () => {
     const app = new App(document.createElement("div"));
     app.viewRegistry.registerView("history-recording-test", (leaf) => new HistoryRecordingView(leaf));

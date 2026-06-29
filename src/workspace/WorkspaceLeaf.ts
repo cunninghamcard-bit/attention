@@ -844,21 +844,11 @@ function cloneStatePayload<T>(state: T): T {
 }
 
 function isEquivalentViewState(a: InternalViewState, b: InternalViewState): boolean {
-  return a.type === b.type && stableStringify(a.state ?? {}) === stableStringify(b.state ?? {});
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 function isSyncState(state: unknown): boolean {
   return !!state && typeof state === "object" && (state as { sync?: unknown }).sync === true;
-}
-
-function stableStringify(value: unknown): string {
-  if (value == null || typeof value !== "object") return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map((item) => stableStringify(item)).join(",")}]`;
-  const object = value as Record<string, unknown>;
-  return `{${Object.keys(object)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${stableStringify(object[key])}`)
-    .join(",")}}`;
 }
 
 function mergeEphemeralState(primary: unknown, secondary: unknown): unknown {
