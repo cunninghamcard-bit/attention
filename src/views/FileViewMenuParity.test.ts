@@ -7,6 +7,7 @@ import { FileView } from "./FileView";
 
 class BasicFileView extends FileView {
   unloadedFiles: string[] = [];
+  failOnLoad = false;
 
   getViewType(): string {
     return "basic-file-view-menu-test";
@@ -14,6 +15,10 @@ class BasicFileView extends FileView {
 
   override async onUnloadFile(file: TAbstractFile): Promise<void> {
     this.unloadedFiles.push(file.path);
+  }
+
+  override async onLoadFile(): Promise<void> {
+    if (this.failOnLoad) throw new Error("load failed");
   }
 }
 
@@ -98,5 +103,22 @@ describe("FileView menu parity", () => {
     await app.vault.rename(file, "Renamed.md");
 
     expect(layoutChange).toHaveBeenCalled();
+  });
+
+  it("clears its file when onLoadFile fails", async () => {
+    const app = new App(document.createElement("div"));
+    const file = await app.vault.create("Broken.md", "broken");
+    app.viewRegistry.registerView("basic-file-view-menu-test", (leaf) => new BasicFileView(leaf));
+    const leaf = app.workspace.getLeaf();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await leaf.setViewState({ type: "basic-file-view-menu-test", active: true });
+    const view = leaf.view as BasicFileView;
+    view.failOnLoad = true;
+
+    await expect(view.loadFile(file)).resolves.toBe(true);
+
+    expect(view.file).toBeNull();
+    expect(error).toHaveBeenCalledWith(expect.any(Error));
   });
 });

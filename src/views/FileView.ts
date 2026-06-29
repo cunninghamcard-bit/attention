@@ -3,6 +3,7 @@ import { Menu } from "../ui/Menu";
 import { TFile, type TAbstractFile, type TFolder } from "../vault/TAbstractFile";
 import type { InternalViewStateResult, ViewStateResult } from "./View";
 import { EmptyView } from "./EmptyView";
+import { Notice } from "../ui/Notice";
 
 export type TFileLike = TFile;
 
@@ -66,8 +67,16 @@ export class FileView extends ItemView {
     if (previousFile?.path === file?.path) return false;
     if (previousFile) await this.onUnloadFile(previousFile);
     this.file = null;
-    this.file = file;
-    if (file) await this.onLoadFile(file);
+    if (file) {
+      try {
+        this.file = file;
+        await this.onLoadFile(file);
+      } catch (error) {
+        this.file = null;
+        new Notice(`Failed to load file: ${file.path}`);
+        console.error(error);
+      }
+    }
     this.updateHeader();
     this.workspaceEventsAfterFileChange();
     return true;
