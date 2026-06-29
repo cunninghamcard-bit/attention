@@ -19,7 +19,6 @@ type SidebarRenderInput struct {
 	Height       int
 	Eyes         string
 	Mascot       string // full 3-line mascot face (mutually exclusive with Eyes)
-	Mode         string
 	ProviderName string
 	ModelName    string
 	GitBranch    string
@@ -130,28 +129,15 @@ func RenderSidebar(in SidebarRenderInput) string {
 		lines = append(lines, "")
 	}
 
-	// --- Mode section ---
-	lines = append(lines, heading.Render("  Mode"))
-	mode := in.Mode
-	if mode == "" {
-		mode = "chat"
-	}
-	if mode == "plan" {
-		modeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#fab387"))
-		lines = append(lines, modeStyle.Render("  [plan]"))
-	} else {
-		lines = append(lines, dim.Render("  ["+mode+"]"))
-	}
-
-	// Status
 	if in.Running {
+		lines = append(lines, heading.Render("  Status"))
 		if in.ActiveTool != "" {
 			lines = append(lines, dim.Render("  ⚡ "+in.ActiveTool))
 		} else {
 			lines = append(lines, dim.Render("  thinking..."))
 		}
+		lines = append(lines, "")
 	}
-	lines = append(lines, "")
 
 	// --- Agents / MCP-Tools sections removed (services cut in Phase 1) ---
 

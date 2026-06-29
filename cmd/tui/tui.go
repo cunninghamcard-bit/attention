@@ -43,7 +43,6 @@ type model struct {
 
 	// Agent state.
 	running     bool
-	mode        string             // "chat" or "plan" — shown in status bar
 	agentCh     chan agentMsg      // channel for receiving agent events
 	agentCancel context.CancelFunc // cancels the active agent response without quitting the TUI
 
@@ -67,8 +66,8 @@ type model struct {
 	// Branch popup state (shown on status bar click).
 	branchPopup *branchPopupState
 
-	// Item picker popup state, reused for /fork, /resume, and /tree. Modeled on
-	// branchPopupState; the kind field routes Enter to the matching kernel rpc.
+	// Item picker popup state, reused by builtin commands that need a selector.
+	// Modeled on branchPopupState; kind routes Enter to the matching kernel rpc.
 	itemPicker *itemPickerState
 
 	// Unified search popup for slash commands and history.
@@ -105,6 +104,7 @@ const (
 	pickerFork   pickerKind = "fork"   // /fork — select a user message to fork from
 	pickerResume pickerKind = "resume" // /resume — select another session to switch to
 	pickerTree   pickerKind = "tree"   // /tree — select an entry to navigate to
+	pickerModel  pickerKind = "model"  // /model — select a configured kernel model
 )
 
 // itemPickerState manages the generic {id,label} list popup behind /fork,
@@ -544,7 +544,7 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Handle item picker popup (/fork, /resume, /tree). Mirrors branchPopup.
+	// Handle item picker popup. Mirrors branchPopup.
 	if m.itemPicker != nil {
 		switch key.Code {
 		case tea.KeyEsc:
@@ -898,7 +898,7 @@ func (m *model) View() tea.View {
 		b.WriteString("\n")
 	}
 
-	// Render item picker popup (/fork, /resume, /tree) if open.
+	// Render item picker popup if open.
 	if m.itemPicker != nil {
 		popupView := m.renderItemPicker()
 		b.WriteString(popupView)
@@ -925,7 +925,6 @@ func (m *model) View() tea.View {
 			Width:        sidebarWidth,
 			Height:       m.height,
 			Mascot:       m.mascot(),
-			Mode:         m.mode,
 			ProviderName: m.providerDisplayName(),
 			ModelName:    m.cfg.ModelName,
 			GitBranch:    m.statusModel.GitBranch,
@@ -982,6 +981,7 @@ func drainTerminalResponses() {
 }
 
 const startupProgressBarWidth = 8
+const startupProductName = "Attention"
 
 func renderStartupMatrixLine(phase int, appVersion string, loadingItems map[string]bool, loadingTotal int) string {
 	versionSuffix := ""
@@ -992,7 +992,7 @@ func renderStartupMatrixLine(phase int, appVersion string, loadingItems map[stri
 	detail := renderStartupDetail(loadingItems)
 	width := 48
 	if width < 1 || len(matrixRunes) == 0 {
-		return "Loading Pi" + versionSuffix + progress + detail + " .."
+		return "Loading " + startupProductName + versionSuffix + progress + detail + " .."
 	}
 	bright := lipgloss.NewStyle().Foreground(lipgloss.Color("#94e2d5")).Bold(true)
 	mid := lipgloss.NewStyle().Foreground(lipgloss.Color("#89b4fa"))
@@ -1006,7 +1006,7 @@ func renderStartupMatrixLine(phase int, appVersion string, loadingItems map[stri
 	}
 
 	var b strings.Builder
-	b.WriteString(accent.Render("Loading Pi" + versionSuffix + progress + detail + strings.Repeat(".", dotCount)))
+	b.WriteString(accent.Render("Loading " + startupProductName + versionSuffix + progress + detail + strings.Repeat(".", dotCount)))
 	b.WriteString(" ")
 	for i := 0; i < width; i++ {
 		r := matrixRunes[(i+phase*7)%len(matrixRunes)]
@@ -1255,16 +1255,11 @@ func countUntrackedLines(cwd string) int {
 // statusRenderInput builds the StatusRenderInput from the current model state.
 func (m *model) statusRenderInput() StatusRenderInput {
 	var rc *runCycleInfo
-	mode := m.mode
-	if mode == "" {
-		mode = "chat"
-	}
 	hostName, _ := os.Hostname()
 	return StatusRenderInput{
 		ProviderName: m.providerDisplayName(),
 		ModelName:    m.cfg.ModelName,
 		Running:      m.running,
-		Mode:         mode,
 		Eyes:         m.eyes(),
 		Messages:     m.chatModel.Messages,
 		TokenTracker: m.cfg.TokenTracker,
@@ -1389,6 +1384,22 @@ func (m *model) handleItemPickerSelect() (tea.Model, tea.Cmd) {
 		m.refreshDiffStats()
 		return m, nil
 
+	case pickerModel:
+		provider, id, ok := parseModelPickerID(item.ID)
+		if !ok {
+			m.chatModel.AppendWarning(fmt.Sprintf("/model failed: invalid model selection %q", item.Label))
+			return m, nil
+		}
+		notice, id, provider, err := agent.SetModel(provider, id)
+		if err != nil {
+			m.chatModel.AppendWarning(fmt.Sprintf("/model failed: %v", err))
+			return m, nil
+		}
+		m.cfg.ModelName = id
+		m.cfg.ProviderName = provider
+		m.chatModel.AppendNotice(notice)
+		return m, nil
+
 	default:
 		m.chatModel.AppendWarning(fmt.Sprintf("Unknown picker action %q", picker.kind))
 		return m, nil
@@ -1419,7 +1430,7 @@ func (m *model) handleResetCtrlCCount() (tea.Model, tea.Cmd) {
 // "/<name> <args>", looks <name> up VERBATIM, and routes by the command's source:
 //
 //   - builtin: invoked via the matching rpc action (new/compact/clone/reload/
-//     model/session/name). fork/tree/resume open an interactive item picker
+//     session/name). model/fork/tree/resume open an interactive item picker
 //     (modeled on the branch popup) that drives the corresponding rpc on select.
 //   - skill / prompt / extension: submitted as a prompt with the FULL verbatim
 //     "/..." text so the kernel expands and runs it.
@@ -1467,7 +1478,7 @@ func (m *model) handleSlashCommand(text string) (tea.Model, tea.Cmd) {
 }
 
 // dispatchBuiltin runs a kernel builtin slash command by its verbatim name.
-// Actions needing an interactive selector (fork/tree/resume) open an item
+// Actions needing an interactive selector (model/fork/tree/resume) open an item
 // picker that drives the corresponding rpc when the user selects a row.
 func (m *model) dispatchBuiltin(name, args string) (tea.Model, tea.Cmd) {
 	agent, ok := m.cfg.Agent.(*rpcAgent)
@@ -1490,14 +1501,7 @@ func (m *model) dispatchBuiltin(name, args string) (tea.Model, tea.Cmd) {
 	case "reload":
 		notice, err = agent.Reload()
 	case "model":
-		var id, provider string
-		notice, id, provider, err = agent.CycleModel()
-		if err == nil && id != "" {
-			m.cfg.ModelName = id
-			if provider != "" {
-				m.cfg.ProviderName = provider
-			}
-		}
+		return m.openModelPicker(agent)
 	case "session":
 		notice, err = agent.SessionStats()
 	case "name":
@@ -1577,6 +1581,62 @@ func (m *model) openTreePicker(agent *rpcAgent) (tea.Model, tea.Cmd) {
 	}
 	m.newItemPicker(pickerTree, "Navigate tree (Enter to jump, Esc to close)", items)
 	return m, nil
+}
+
+// openModelPicker fetches configured models from the kernel and opens the model
+// picker. An empty list means the kernel has no switchable model inventory.
+func (m *model) openModelPicker(agent *rpcAgent) (tea.Model, tea.Cmd) {
+	items, err := agent.AvailableModels()
+	if err != nil {
+		m.chatModel.AppendWarning(fmt.Sprintf("/model failed: %v", err))
+		return m, nil
+	}
+	if len(items) == 0 {
+		m.chatModel.AppendNotice("No models are available from the kernel.")
+		return m, nil
+	}
+	m.newItemPicker(pickerModel, "Switch model (Enter to switch, Esc to close)", items)
+	return m, nil
+}
+
+const modelPickerSeparator = "\t"
+
+func modelPickerItems(models []wireModel) []PickerItem {
+	items := make([]PickerItem, 0, len(models))
+	for _, model := range models {
+		if model.ID == "" || model.Provider == "" {
+			continue
+		}
+		items = append(items, PickerItem{
+			ID:    model.Provider + modelPickerSeparator + model.ID,
+			Label: modelPickerLabel(model),
+		})
+	}
+	return items
+}
+
+func parseModelPickerID(value string) (provider, id string, ok bool) {
+	provider, id, ok = strings.Cut(value, modelPickerSeparator)
+	return provider, id, ok && provider != "" && id != ""
+}
+
+func modelPickerLabel(model wireModel) string {
+	name := model.Name
+	if name == "" {
+		name = model.ID
+	}
+	return fmt.Sprintf("%s (%s)", name, model.Provider)
+}
+
+func modelSwitchNotice(model wireModel) string {
+	return fmt.Sprintf("Switched model to %s (%s).", modelPickerName(model), model.Provider)
+}
+
+func modelPickerName(model wireModel) string {
+	if model.Name != "" {
+		return model.Name
+	}
+	return model.ID
 }
 
 // listSessionFiles scans the directory of currentFile for sibling *.jsonl
