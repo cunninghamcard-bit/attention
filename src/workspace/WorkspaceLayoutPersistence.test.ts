@@ -39,6 +39,16 @@ describe("WorkspaceLayoutPersistence", () => {
     await expect(app.vault.readJson(app.workspaceLayouts.getWorkspaceFilePath())).resolves.toEqual(layout);
   });
 
+  it("does not emit a non-original layout-saved event when saving workspace layout", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const trigger = vi.spyOn(app.workspace, "trigger");
+
+    await app.workspaceLayouts.saveCurrentLayout();
+
+    expect(trigger.mock.calls.map(([name]) => name)).not.toContain("layout-saved");
+  });
+
   it("uses workspace-mobile.json for mobile workspace layout", async () => {
     document.body.classList.add("is-mobile");
     const app = new App(document.createElement("div"));
@@ -134,10 +144,12 @@ describe("WorkspaceLayoutPersistence", () => {
     const app = new App(document.createElement("div"));
     await app.ready;
     const layout = app.workspaceLayouts.serializer.serialize(app.workspace);
+    const trigger = vi.spyOn(app.workspace, "trigger");
     await app.vault.writeJson(app.workspaceLayouts.getWorkspaceFilePath(), layout);
 
     await expect(app.workspaceLayouts.restoreSavedLayout()).resolves.toEqual(layout);
     expect(app.workspaceLayouts.getLastSavedLayout()).toEqual(layout);
+    expect(trigger.mock.calls.map(([name]) => name)).not.toContain("layout-restored");
   });
 
   it("keeps lastOpenFiles out of getLayout but appends them when saving the workspace file", async () => {

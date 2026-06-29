@@ -13,7 +13,6 @@ export class WorkspaceLayoutPersistence {
     if (this.app.workspace.recentFilePaths.length > 0) layout.lastOpenFiles = [...this.app.workspace.recentFilePaths];
     this.lastSaved = layout;
     await this.writeWorkspaceFile(layout);
-    this.app.workspace.trigger("layout-saved", layout);
     return layout;
   }
 
@@ -25,7 +24,6 @@ export class WorkspaceLayoutPersistence {
 
   async restoreSavedLayout(): Promise<WorkspaceLayout | null> {
     const layout = await this.app.workspace.loadLayout();
-    if (layout && Object.keys(layout).length > 0) this.app.workspace.trigger("layout-restored", layout);
     return layout;
   }
 
