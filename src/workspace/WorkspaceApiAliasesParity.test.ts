@@ -19,6 +19,6 @@ describe("Workspace Obsidian API aliases", () => {
     vi.spyOn(app.workspace, "isLayoutReady").mockReturnValue(true);
     app.workspace.addRecentFile(file);
 
-    expect(app.workspace.getRecentFiles()[0]).toBe(file);
+    expect(app.workspace.getRecentFiles()[0]).toBe(file.path);
   });
 });

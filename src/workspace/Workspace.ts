@@ -1424,7 +1424,7 @@ export class Workspace extends Events {
     return this.recentFileTracker.getLastOpenFiles();
   }
 
-  getRecentFiles(options?: RecentFilesOptions): TFile[] {
+  getRecentFiles(options?: RecentFilesOptions): string[] {
     return this.recentFileTracker.getRecentFiles(options);
   }
 

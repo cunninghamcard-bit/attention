@@ -65,7 +65,10 @@ export class QuickSwitcherController {
       showNonImageAttachments: this.options.showAttachments,
       showImages: this.options.showAttachments,
       maxCount: 10,
-    }).map((file) => ({ type: "file", file }));
+    }).flatMap((path) => {
+      const file = this.app.vault.getFileByPath(path);
+      return file ? [{ type: "file", file } as QuickSwitcherItem] : [];
+    });
   }
 
   getUnresolvedItems(): QuickSwitcherItem[] {

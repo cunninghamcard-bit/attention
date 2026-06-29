@@ -77,10 +77,8 @@ export class RecentFileTracker {
     });
   }
 
-  getRecentFiles(options: RecentFilesOptions = {}): TFile[] {
-    return this.getRecentFilePaths(options)
-      .map((path) => this.vault.getFileByPath(path))
-      .filter((file): file is TFile => file instanceof TFile);
+  getRecentFiles(options: RecentFilesOptions = {}): string[] {
+    return this.getRecentFilePaths(options);
   }
 
   getRecentFilePaths(options: RecentFilesOptions = {}): string[] {

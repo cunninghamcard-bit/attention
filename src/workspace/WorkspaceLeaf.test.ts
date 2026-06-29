@@ -1136,7 +1136,7 @@ describe("WorkspaceLeaf", () => {
     await app.fileManager.renameFile(files[0], "One Renamed.md");
 
     expect(app.workspace.recentFilePaths).toEqual(["Four.pdf", "Three.png", "Two.canvas", "One Renamed.md"]);
-    expect(app.workspace.getRecentFiles().map((file) => file.path)).toEqual(["Two.canvas", "One Renamed.md"]);
+    expect(app.workspace.getRecentFiles()).toEqual(["Two.canvas", "One Renamed.md"]);
     expect(app.workspace.getLastOpenFiles()).toEqual(["Four.pdf", "Three.png", "Two.canvas", "One Renamed.md"]);
   });
 });
