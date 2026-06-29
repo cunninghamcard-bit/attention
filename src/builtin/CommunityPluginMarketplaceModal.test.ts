@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
 import { Plugin } from "../plugin/Plugin";
 import { PluginSettingTab } from "../plugin/PluginSettingTab";
 import type { PluginManifestInput } from "../plugin/PluginManifest";
+import { closeTopActiveCloseable, getActiveCloseables } from "../ui/ActiveCloseableRegistry";
 import { CommunityPluginMarketplaceModal } from "./CommunityPluginMarketplaceModal";
 
 class MarketplaceTestPlugin extends Plugin {
@@ -27,6 +28,12 @@ describe("CommunityPluginMarketplaceModal", () => {
     Object.defineProperty(window, "open", { configurable: true, value: vi.fn() });
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
     document.querySelectorAll(".modal-container, .notice").forEach((el) => el.remove());
+  });
+
+  afterEach(() => {
+    while (closeTopActiveCloseable()) {
+      // Drain Obsidian's active closeable stack between marketplace tests.
+    }
   });
 
   it("opens a searchable marketplace modal and installs/enables a plugin", async () => {
@@ -174,6 +181,33 @@ describe("CommunityPluginMarketplaceModal", () => {
     expect(modal.contentEl.querySelector(".community-modal-search-results")?.textContent).toContain("Beta Plugin");
     expect(modal.contentEl.querySelector(".community-modal-search-results")?.textContent).not.toContain("Alpha Plugin");
     expect(modal.contentEl.querySelector(".community-modal-details")?.textContent).toContain("Selected detail");
+  });
+
+  it("returns from selected plugin details through the active closeable stack", () => {
+    const app = new App(document.createElement("div"));
+    app.pluginMarketplace.registerEntry({ manifest: { id: "alpha", name: "Alpha Plugin", version: "1.0.0", description: "Alpha detail" } });
+    app.pluginMarketplace.registerEntry({ manifest: { id: "beta", name: "Beta Plugin", version: "1.0.0", description: "Beta detail" } });
+    const modal = new CommunityPluginMarketplaceModal(app);
+    modal.open();
+
+    expect(modal.contentEl.querySelector(".community-modal-details")?.textContent).toContain("Alpha detail");
+    expect(getActiveCloseables()).toHaveLength(2);
+
+    expect(closeTopActiveCloseable()).toBe(true);
+
+    expect(modal.containerEl.isConnected).toBe(true);
+    expect(modal.contentEl.querySelector(".community-modal-details")).toBeNull();
+    expect(modal.contentEl.querySelector(".community-item.is-selected")).toBeNull();
+    expect(getActiveCloseables()).toEqual([modal]);
+
+    modal.contentEl.querySelector<HTMLButtonElement>('[data-plugin-id="beta"]')?.click();
+
+    expect(modal.contentEl.querySelector(".community-modal-details")?.textContent).toContain("Beta detail");
+    expect(getActiveCloseables()).toHaveLength(2);
+
+    modal.close();
+
+    expect(getActiveCloseables()).toEqual([]);
   });
 
   it("sets the search query from a missing auto-open plugin id instead of selecting the first item", () => {

@@ -2,6 +2,7 @@ import type { App } from "../app/App";
 import { Modal } from "../ui/Modal";
 import { Menu } from "../ui/Menu";
 import { Notice } from "../ui/Notice";
+import { registerActiveCloseable, unregisterActiveCloseable, type ActiveCloseable } from "../ui/ActiveCloseableRegistry";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import type { MarketplacePluginEntry } from "../plugin/PluginMarketplace";
 
@@ -17,6 +18,8 @@ export class CommunityPluginMarketplaceModal extends Modal {
   private catalogLoading = false;
   private catalogError: string | null = null;
   private autoOpenRequested = false;
+  private detailClosed = false;
+  private selectedItemCloseable: ActiveCloseable | null = null;
 
   constructor(app: App) {
     super(app);
@@ -31,12 +34,23 @@ export class CommunityPluginMarketplaceModal extends Modal {
   }
 
   onClose(): void {
+    this.unregisterSelectedItemCloseable();
     window.localStorage?.setItem("communityPluginSortOrder", this.sort);
+  }
+
+  override onEscapeKey(event: KeyboardEvent): void {
+    if (this.selectedItemCloseable) {
+      event.preventDefault();
+      this.returnToGridView();
+      return;
+    }
+    super.onEscapeKey(event);
   }
 
   setAutoOpen(pluginId: string): this {
     this.selectedId = pluginId;
     this.autoOpenRequested = true;
+    this.detailClosed = false;
     return this;
   }
 
@@ -53,19 +67,24 @@ export class CommunityPluginMarketplaceModal extends Modal {
     let selectedEntry = this.selectedId ? this.app.pluginMarketplace.getEntry(this.selectedId) : null;
     if (this.selectedId && !selectedEntry) {
       this.selectedId = null;
+      this.unregisterSelectedItemCloseable();
     }
-    if (!this.selectedId && !this.autoOpenRequested) {
+    if (!this.selectedId && !this.autoOpenRequested && !this.detailClosed) {
       this.selectedId = entries[0]?.manifest.id ?? null;
       selectedEntry = entries[0] ?? null;
     }
     this.renderSidebar(entries);
     if (selectedEntry) {
+      this.detailClosed = false;
       if (!this.detailEl.parentElement) this.contentEl.appendChild(this.detailEl);
       this.renderDetail(selectedEntry);
-    } else if (this.autoOpenRequested) {
+      this.registerSelectedItemCloseable();
+    } else if (this.autoOpenRequested || this.detailClosed) {
+      this.unregisterSelectedItemCloseable();
       this.detailEl.replaceChildren();
       this.detailEl.remove();
     } else {
+      this.unregisterSelectedItemCloseable();
       this.renderDetail(null);
     }
   }
@@ -210,11 +229,41 @@ export class CommunityPluginMarketplaceModal extends Modal {
     updatedEl.textContent = entry.updatedAt ? `Updated ${entry.updatedAt}` : "";
     itemEl.append(nameEl, authorEl, downloadsEl, updatedEl, descEl);
     itemEl.addEventListener("click", () => {
-      this.selectedId = manifest.id;
-      this.autoOpenRequested = false;
-      this.render();
+      this.selectItem(manifest.id);
     });
     parentEl.appendChild(itemEl);
+  }
+
+  private selectItem(id: string | null): void {
+    if (id === null) {
+      this.returnToGridView();
+      return;
+    }
+    this.selectedId = id;
+    this.autoOpenRequested = false;
+    this.detailClosed = false;
+    this.render();
+  }
+
+  private returnToGridView(): void {
+    this.unregisterSelectedItemCloseable();
+    this.selectedId = null;
+    this.autoOpenRequested = false;
+    this.detailClosed = true;
+    this.render();
+  }
+
+  private registerSelectedItemCloseable(): void {
+    this.selectedItemCloseable ??= {
+      close: () => this.returnToGridView(),
+    };
+    registerActiveCloseable(this.selectedItemCloseable);
+  }
+
+  private unregisterSelectedItemCloseable(): void {
+    if (!this.selectedItemCloseable) return;
+    unregisterActiveCloseable(this.selectedItemCloseable);
+    this.selectedItemCloseable = null;
   }
 
   private renderDetail(entry: MarketplacePluginEntry | null): void {
