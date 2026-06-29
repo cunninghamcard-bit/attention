@@ -80,8 +80,8 @@ describe("MarkdownView public API parity", () => {
 
     expectSvgIcon(getSearchButton(view, "Previous match"));
     expectSvgIcon(getSearchButton(view, "Next match"));
-    expectSvgIcon(view.containerEl.querySelector<HTMLElement>("button[aria-label='Show reading view']"));
-    expectSvgIcon(view.containerEl.querySelector<HTMLElement>("button[aria-label='Use live preview'], button[aria-label='Use source mode']"));
+    expectSvgIcon(view.containerEl.querySelector<HTMLElement>("button[aria-label='Switch to reading view']"));
+    expect(view.containerEl.querySelector("button.markdown-toggle-source-mode")).toBeNull();
     expectSvgIcon(view.metadataContainerEl.querySelector<HTMLElement>(".metadata-properties-heading .collapse-icon"));
     expectSvgIcon(view.metadataContainerEl.querySelector<HTMLElement>(".metadata-add-button .text-button-icon"));
     expectSvgIcon(view.metadataContainerEl.querySelector<HTMLElement>(".metadata-property-icon"));

@@ -3,7 +3,7 @@ import { App } from "../app/App";
 import { editorLivePreviewField } from "../editor/EditorStateField";
 import { MarkdownPreviewRenderer } from "../markdown/MarkdownPreviewRenderer";
 import type { MarkdownPostProcessor } from "../markdown/MarkdownRenderer";
-import type { Menu } from "../ui/Menu";
+import { Menu } from "../ui/Menu";
 import type { TFile } from "../vault/TAbstractFile";
 import { MarkdownView } from "./MarkdownView";
 
@@ -188,6 +188,9 @@ describe("MarkdownView property key input", () => {
     expect(view.previewContainerEl.hidden).toBe(false);
     expect(view.editorContainerEl.style.display).toBe("");
     expect(view.previewContainerEl.style.display).toBe("none");
+    expect(view.actionsEl.querySelectorAll(".markdown-toggle-view")).toHaveLength(1);
+    expect(view.actionsEl.querySelector(".markdown-toggle-source-mode")).toBeNull();
+    expect(view.modeButtonEl.getAttribute("aria-label")).toBe("Switch to reading view");
     expect(view.sourceMode.cmEditor).toBe(view.editor);
     expect(view.inlineTitleEl.parentElement).toBe(view.editorViewHost.sizerEl);
     expect(view.metadataContainerEl.parentElement).toBe(view.editorViewHost.sizerEl);
@@ -234,10 +237,21 @@ describe("MarkdownView property key input", () => {
     expect(view.canShowProperties()).toBe(false);
     expect(view.metadataContainerEl.hidden).toBe(true);
 
+    const sourcePaneMenu = new Menu();
+    view.onPaneMenu(sourcePaneMenu, "more-options");
+    sourcePaneMenu.showAtPosition({ x: 1, y: 1 });
+    expect(findMenuItem("Toggle reading view")).not.toBeNull();
+    expect(findMenuItem("Toggle source mode")).not.toBeNull();
+    findMenuItem("Toggle source mode").click();
+    await vi.waitFor(() => {
+      expect(view.getSourceMode()).toBe("live");
+    });
+    sourcePaneMenu.hide();
+
     view.setMode("preview");
     await view.previewMode.renderer.whenIdle();
     expect(view.currentMode).toBe(view.previewMode);
-    expect(view.getState()).toMatchObject({ mode: "preview", source: true });
+    expect(view.getState()).toMatchObject({ mode: "preview", source: false });
     expect(view.containerEl.dataset.mode).toBe("preview");
     expect(view.contentEl.dataset.mode).toBe("preview");
     expect(view.containerEl.classList.contains("is-read-mode")).toBe(true);
@@ -251,6 +265,14 @@ describe("MarkdownView property key input", () => {
     expect(view.previewContainerEl.hidden).toBe(false);
     expect(view.editorContainerEl.style.display).toBe("none");
     expect(view.previewContainerEl.style.display).toBe("");
+    expect(view.modeButtonEl.getAttribute("aria-label")).toBe("Switch to edit view");
+    const previewPaneMenu = new Menu();
+    view.onPaneMenu(previewPaneMenu, "more-options");
+    previewPaneMenu.showAtPosition({ x: 1, y: 1 });
+    expect(findMenuItem("Toggle reading view")).not.toBeNull();
+    expect([...document.body.querySelectorAll<HTMLElement>(".menu-item-title")]
+      .some((element) => element.textContent?.trim() === "Toggle source mode")).toBe(false);
+    previewPaneMenu.hide();
     expect(view.previewContainerEl.classList.contains("markdown-reading-view")).toBe(true);
     expect(view.inlineTitleEl.parentElement).toBe(view.previewMode.renderer.header?.el);
     expect(view.metadataContainerEl.parentElement).toBe(view.previewMode.renderer.header?.el);

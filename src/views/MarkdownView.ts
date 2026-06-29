@@ -90,7 +90,6 @@ export class MarkdownView extends TextFileView {
   readonly previewContainerEl: HTMLElement;
   readonly previewRendererEl: HTMLElement;
   readonly modeButtonEl: HTMLButtonElement;
-  readonly sourceModeButtonEl: HTMLButtonElement;
   backlinks: EmbeddedBacklinks | null = null;
   readonly editorViewHost: EditorViewHost;
   private readonly documentSearchContainerEl: HTMLElement;
@@ -191,15 +190,8 @@ export class MarkdownView extends TextFileView {
     this.modeButtonEl.addEventListener("click", () => {
       this.setMode(this.getMode() === "preview" ? "source" : "preview");
     });
-    this.sourceModeButtonEl = document.createElement("button");
-    this.sourceModeButtonEl.className = "view-action clickable-icon markdown-toggle-source-mode";
-    this.sourceModeButtonEl.type = "button";
-    this.sourceModeButtonEl.addEventListener("click", () => {
-      this.setSourceMode(this.getSourceMode() === "source" ? "live" : "source");
-    });
-    this.actionsEl.append(this.sourceModeButtonEl, this.modeButtonEl);
+    this.actionsEl.append(this.modeButtonEl);
     this.updateModeButton();
-    this.updateSourceModeButton();
   }
 
   getViewType(): string {
@@ -281,6 +273,29 @@ export class MarkdownView extends TextFileView {
 
   setSourceMode(mode: MarkdownSourceMode): void {
     void this.setMode("source", mode === "source");
+  }
+
+  override onPaneMenu(menu: Menu, source?: string): void {
+    super.onPaneMenu(menu, source);
+    const mode = this.getMode();
+    menu.addItem((item) => item
+      .setSection("pane")
+      .setTitle("Toggle reading view")
+      .setIcon("lucide-book-open")
+      .setChecked(mode === "preview")
+      .onClick(() => {
+        void this.setMode(mode === "preview" ? "source" : "preview");
+      }));
+    if (mode === "source") {
+      menu.addItem((item) => item
+        .setSection("pane")
+        .setTitle("Toggle source mode")
+        .setIcon("lucide-code-2")
+        .setChecked(this.getSourceMode() === "source")
+        .onClick(() => {
+          this.setSourceMode(this.getSourceMode() === "source" ? "live" : "source");
+        }));
+    }
   }
 
   private activateMode(mode: MarkdownViewModeComponent): void {
@@ -1293,7 +1308,6 @@ export class MarkdownView extends TextFileView {
     this.contentEl.classList.toggle("mod-preview", isPreview);
     this.syncModeClasses();
     this.updateModeButton();
-    this.updateSourceModeButton();
     this.updatePropertiesInDocument();
     this.updateLineNumbers();
 
@@ -2837,23 +2851,12 @@ export class MarkdownView extends TextFileView {
   }
 
   private updateModeButton(): void {
-    const nextMode = this.getMode() === "preview" ? "source" : "preview";
-    const icon = this.getMode() === "preview" ? "lucide-file-code" : "lucide-book-open";
-    const label = nextMode === "preview" ? "Show reading view" : "Show source mode";
+    const isPreview = this.getMode() === "preview";
+    const icon = isPreview ? "lucide-edit-3" : "lucide-book-open";
+    const label = isPreview ? "Switch to edit view" : "Switch to reading view";
     setIcon(this.modeButtonEl, icon);
     this.modeButtonEl.title = label;
     this.modeButtonEl.setAttribute("aria-label", label);
-  }
-
-  private updateSourceModeButton(): void {
-    const sourceMode = this.getSourceMode();
-    const nextSourceMode = sourceMode === "source" ? "live" : "source";
-    this.sourceModeButtonEl.hidden = this.getMode() !== "source";
-    const icon = sourceMode === "source" ? "lucide-code-2" : "lucide-eye";
-    const label = nextSourceMode === "source" ? "Use source mode" : "Use live preview";
-    setIcon(this.sourceModeButtonEl, icon);
-    this.sourceModeButtonEl.title = label;
-    this.sourceModeButtonEl.setAttribute("aria-label", label);
   }
 
   private focusLine(line: number): void {
