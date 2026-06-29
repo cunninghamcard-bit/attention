@@ -21,4 +21,16 @@ describe("Workspace Obsidian API aliases", () => {
 
     expect(app.workspace.getRecentFiles()[0]).toBe(file.path);
   });
+
+  it("exposes isAttached as Obsidian's workspace item membership check", async () => {
+    const app = new App(document.createElement("div"));
+    const leaf = app.workspace.getLeaf();
+
+    expect(app.workspace.isAttached(leaf)).toBe(true);
+
+    await leaf.detach();
+
+    expect(app.workspace.isAttached(leaf)).toBe(false);
+    expect(app.workspace.isAttached(null)).toBe(false);
+  });
 });

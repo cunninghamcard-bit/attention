@@ -2434,7 +2434,7 @@ export class Workspace extends Events {
     return Boolean(leaf?.view instanceof ItemView);
   }
 
-  private isAttached<T extends WorkspaceItem>(item: T | null | undefined): item is T {
+  isAttached<T extends WorkspaceItem>(item: T | null | undefined): item is T {
     if (!item) return false;
     const root = item.getRoot();
     return root === this.leftSplit || root === this.rootSplit || root === this.floatingSplit || root === this.rightSplit;
