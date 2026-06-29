@@ -1397,7 +1397,8 @@ export class Workspace extends Events {
   registerHoverLinkSource(source: HoverLinkSource): void;
   registerHoverLinkSource(idOrSource: string | HoverLinkSource, source?: HoverLinkSourceConfig): void {
     const normalized = typeof idOrSource === "string" ? { id: idOrSource, ...(source ?? { display: idOrSource }) } : idOrSource;
-    this.hoverLinkSources.register(normalized);
+    if (typeof idOrSource === "string") this.hoverLinkSources.register(idOrSource, source ?? { display: idOrSource });
+    else this.hoverLinkSources.register(idOrSource);
     this.trigger("hover-link-source-change", normalized);
   }
 

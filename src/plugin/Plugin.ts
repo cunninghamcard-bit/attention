@@ -129,11 +129,14 @@ export class Plugin extends Component {
   registerHoverLinkSource(id: string, info: HoverLinkSourceConfig): void;
   registerHoverLinkSource(source: HoverLinkSource): void;
   registerHoverLinkSource(idOrSource: string | HoverLinkSource, info?: HoverLinkSourceConfig): void {
-    const source = typeof idOrSource === "string"
-      ? { id: idOrSource, display: info?.display ?? idOrSource, defaultMod: info?.defaultMod }
-      : idOrSource;
-    this.app.workspace.registerHoverLinkSource(source.id, { display: source.display, defaultMod: source.defaultMod });
-    this.register(() => this.app.workspace.unregisterHoverLinkSource(source.id));
+    if (typeof idOrSource === "string") {
+      this.app.workspace.registerHoverLinkSource(idOrSource, info ?? { display: idOrSource });
+      this.register(() => this.app.workspace.unregisterHoverLinkSource(idOrSource));
+      return;
+    }
+
+    this.app.workspace.registerHoverLinkSource(idOrSource);
+    this.register(() => this.app.workspace.unregisterHoverLinkSource(idOrSource.id));
   }
 
   registerFileMenu(handler: (menu: Menu, file: TAbstractFile, source: string, leaf?: WorkspaceLeaf) => void): void {
