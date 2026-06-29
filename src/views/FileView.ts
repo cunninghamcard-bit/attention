@@ -1,7 +1,8 @@
 import { ItemView } from "./ItemView";
 import { Menu } from "../ui/Menu";
-import { TFile, type TFolder } from "../vault/TAbstractFile";
+import { TFile, type TAbstractFile, type TFolder } from "../vault/TAbstractFile";
 import type { InternalViewStateResult, ViewStateResult } from "./View";
+import { EmptyView } from "./EmptyView";
 
 export type TFileLike = TFile;
 
@@ -22,6 +23,9 @@ export class FileView extends ItemView {
     await super.onOpen();
     this.registerEvent(this.app.vault.on<[TFile, string]>("rename", (file, oldPath) => {
       if (file === this.file) void this.onRename(file, oldPath);
+    }));
+    this.registerEvent(this.app.vault.on<[TAbstractFile]>("delete", (file) => {
+      void this.onDelete(file);
     }));
   }
 
@@ -73,6 +77,18 @@ export class FileView extends ItemView {
   async onUnloadFile(_file: TFile): Promise<void> {}
   async onRename(_file: TFile, _oldPath?: string): Promise<void> {
     this.updateHeader();
+  }
+
+  async onDelete(file: TAbstractFile): Promise<void> {
+    if (file !== this.file) return;
+    if (this.allowNoFile) await this.loadFile(null);
+    else {
+      const leaf = this.leaf;
+      if (leaf.history.backHistory.length > 0) await leaf.history.back();
+      else await leaf.open(null);
+      if (leaf.view instanceof EmptyView && leaf.parent?.children.length && leaf.parent.children.length > 1) leaf.detach();
+    }
+    this.app.workspace.onLayoutChange();
   }
 
   async setState(state: unknown, result?: ViewStateResult): Promise<void> {

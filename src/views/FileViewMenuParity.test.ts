@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
 import { Menu } from "../ui/Menu";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
@@ -51,5 +51,37 @@ describe("FileView menu parity", () => {
     expect(view.unloadedFiles).toEqual(["Close.md"]);
     expect(view.file).toBeNull();
     expect(view.contentEl.children).toHaveLength(0);
+  });
+
+  it("responds when its current file is deleted", async () => {
+    const app = new App(document.createElement("div"));
+    const file = await app.vault.create("Deleted.md", "deleted");
+    app.viewRegistry.registerView("basic-file-view-menu-test", (leaf) => new BasicFileView(leaf));
+    const leaf = app.workspace.getLeaf();
+    const sibling = app.workspace.createNewTab();
+    if (!sibling) throw new Error("Expected sibling tab");
+
+    await leaf.setViewState({ type: "basic-file-view-menu-test", active: true });
+    await (leaf.view as BasicFileView).loadFile(file);
+    await app.vault.delete(file, false);
+
+    await vi.waitFor(() => expect(app.workspace.getLeafById(leaf.id)).toBeNull());
+    expect(app.workspace.getLeafById(sibling.id)).toBe(sibling);
+  });
+
+  it("keeps allowNoFile views open when their current file is deleted", async () => {
+    const app = new App(document.createElement("div"));
+    const file = await app.vault.create("Allow Empty.md", "deleted");
+    app.viewRegistry.registerView("basic-file-view-menu-test", (leaf) => new BasicFileView(leaf));
+    const leaf = app.workspace.getLeaf();
+
+    await leaf.setViewState({ type: "basic-file-view-menu-test", active: true });
+    const view = leaf.view as BasicFileView;
+    view.allowNoFile = true;
+    await view.loadFile(file);
+    await app.vault.delete(file, false);
+
+    await vi.waitFor(() => expect(view.file).toBeNull());
+    expect(leaf.view).toBe(view);
   });
 });
