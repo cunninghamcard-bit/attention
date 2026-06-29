@@ -121,6 +121,26 @@ describe("Workspace public API parity", () => {
     expect(activeEditor?.hoverPopover).toBeNull();
   });
 
+  it("registers operator function display configs by id like Obsidian", () => {
+    const app = new App(document.createElement("div"));
+    const first = [{ funcName: "contains", display: "contains", inverseDisplay: "does not contain" }];
+    const replacement = [{ funcName: "matches", display: "matches", inverseDisplay: "does not match" }];
+
+    expect(Object.keys(app.workspace.operatorFuncConfigs)).toEqual([]);
+
+    app.workspace.registerOperatorFuncConfigs("bases", first);
+
+    expect(app.workspace.operatorFuncConfigs.bases).toBe(first);
+
+    app.workspace.registerOperatorFuncConfigs("bases", replacement);
+
+    expect(app.workspace.operatorFuncConfigs.bases).toBe(replacement);
+
+    app.workspace.unregisterOperatorFuncConfigs("bases");
+
+    expect(app.workspace.operatorFuncConfigs.bases).toBeUndefined();
+  });
+
   it("keeps View.getState as the view payload and lets WorkspaceLeaf wrap it", async () => {
     const app = new App(document.createElement("div"));
     app.viewRegistry.registerView("stateful-public-api-test", (leaf) => new StatefulView(leaf));

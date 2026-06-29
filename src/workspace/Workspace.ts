@@ -96,6 +96,12 @@ export interface WorkspaceUndoHistoryEntry {
   leafHistory?: LeafHistorySnapshot;
 }
 
+export interface OperatorFuncConfig {
+  funcName: string;
+  display: string;
+  inverseDisplay: string;
+}
+
 export class Workspace extends Events {
   readonly containerEl: HTMLElement;
   readonly leftSidebarToggleButtonEl: HTMLElement;
@@ -109,6 +115,7 @@ export class Workspace extends Events {
   readonly dragManager = new WorkspaceDragManager();
   readonly hoverLinkSources = new HoverLinkSourceRegistry();
   readonly editorSuggest = new EditorSuggestManager();
+  readonly operatorFuncConfigs: Record<string, OperatorFuncConfig[]> = Object.create(null);
   activeLeaf: WorkspaceLeaf | null = null;
   activeTabGroup: WorkspaceActiveTabGroup | null = null;
   lastTabGroupStacked = false;
@@ -1169,6 +1176,14 @@ export class Workspace extends Events {
     this.editorExtensions = this.editorExtensions.filter((item) => item !== extension);
     this.editorExtensionHost.unregister(extension);
     this.updateOptions();
+  }
+
+  registerOperatorFuncConfigs(id: string, configs: OperatorFuncConfig[]): void {
+    this.operatorFuncConfigs[id] = configs;
+  }
+
+  unregisterOperatorFuncConfigs(id: string): void {
+    delete this.operatorFuncConfigs[id];
   }
 
   updateOptions(): void {
