@@ -58,6 +58,7 @@ export function registerAppProtocolHandlers(app: App): void {
   });
 
   app.uriRouter.registerAction("hook-get-address", async ({ params }) => {
+    if (!app.vault.getConfig("uriCallbacks")) return;
     const file = app.workspace.getActiveFile();
     if (!file) {
       app.workspace.handleXErrorCallback(params, "NotFound", "No file is open at the moment");

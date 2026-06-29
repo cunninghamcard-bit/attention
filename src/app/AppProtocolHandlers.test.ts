@@ -113,4 +113,21 @@ describe("App protocol handlers", () => {
     expect(errorUrl.searchParams.get("errorCode")).toBe("NotFound");
     expect(errorUrl.searchParams.get("errorMessage")).toBe("No file is open at the moment");
   });
+
+  it("ignores hook-get-address while URI callbacks are disabled", async () => {
+    const app = new App(document.createElement("div"));
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const open = vi.fn();
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    Object.defineProperty(window, "open", { configurable: true, value: open });
+
+    const file = await app.vault.create("Disabled.md", "disabled");
+    await app.workspace.openFile(file, { active: true });
+    await app.uriRouter.handleUri("obsidian://hook-get-address");
+    await app.workspace.activeLeaf?.setViewState({ type: "empty", active: true });
+    await app.uriRouter.handleUri(`obsidian://hook-get-address?${new URLSearchParams({ "x-error": "callback://error" })}`);
+
+    expect(writeText).not.toHaveBeenCalled();
+    expect(open).not.toHaveBeenCalled();
+  });
 });
