@@ -10,6 +10,7 @@ import type { InternalViewState, InternalViewStateResult, View, ViewState } from
 import { EmptyView } from "../views/EmptyView";
 import { UnknownView } from "../views/UnknownView";
 import { DeferredView } from "../views/DeferredView";
+import { FileView } from "../views/FileView";
 import type { DragDropResult, DragSource, FileDragSource, LinkDragSource } from "../drag/DragManager";
 import { WorkspaceTabs } from "./WorkspaceTabs";
 import { parseLinktext } from "../metadata/Linkpath";
@@ -209,7 +210,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
     return {
       type: view.getViewType(),
       state: view.getState(),
-      icon: view.icon,
+      icon: view.getIcon?.() || view.icon || undefined,
       title: view.getDisplayText().trim() || undefined,
       ...(this.pinned ? { pinned: true } : {}),
     };
@@ -360,8 +361,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
     const extension = file.extension ?? file.path.split(".").pop() ?? "";
     const currentType = this.view?.getViewType();
     let type = this.app.viewRegistry.getTypeByExtension(extension);
-    const currentFileView = this.view as ({ canAcceptExtension?: (extension: string) => boolean } | null);
-    if (currentType && currentFileView?.canAcceptExtension?.(extension)) type = currentType;
+    if (currentType && this.view instanceof FileView && this.view.canAcceptExtension(extension)) type = currentType;
     if (!type) {
       const opener = this.app as unknown as { openWithDefaultApp?: (path: string) => void | Promise<void> };
       await opener.openWithDefaultApp?.(file.path);
@@ -601,11 +601,12 @@ export class WorkspaceLeaf extends WorkspaceItem {
   setGroupMember(leaf: WorkspaceLeaf): void;
   setGroupMember(leaf: WorkspaceLeaf | null, options?: { layout?: boolean }): void;
   setGroupMember(leaf: WorkspaceLeaf | null, options: { layout?: boolean } = {}): void {
+    if (leaf === this) return;
     if (!leaf) {
       this.setGroup(null, options);
       return;
     }
-    if (!leaf.group) leaf.setGroup(crypto.randomUUID(), { layout: false });
+    if (!leaf.group) leaf.setGroup(createLeafGroupId(), { layout: false });
     this.setGroup(leaf.group, options);
   }
 
@@ -776,6 +777,12 @@ class WorkspaceLeafHistoryController implements WorkspaceLeafHistory {
 function normalizeLeafGroup(group: string | WorkspaceLeaf | null | undefined): string | null {
   if (!group) return null;
   return group instanceof WorkspaceLeaf ? group.group ?? group.id : group;
+}
+
+function createLeafGroupId(length = 16): string {
+  const id: string[] = [];
+  for (let i = 0; i < length; i += 1) id.push(Math.floor(16 * Math.random()).toString(16));
+  return id.join("");
 }
 
 function normalizeHistoryPushState(leaf: WorkspaceLeaf, state: LeafHistoryState | InternalViewState | null, eState: unknown): LeafHistoryState | null {

@@ -115,6 +115,26 @@ class RebuildableView extends View {
   }
 }
 
+class DynamicIconView extends View {
+  getViewType(): string {
+    return "dynamic-icon-test";
+  }
+
+  override getIcon(): string {
+    return "lucide-duck";
+  }
+}
+
+class PlainAcceptingView extends View {
+  getViewType(): string {
+    return "plain-accepting-test";
+  }
+
+  canAcceptExtension(_extension: string): boolean {
+    return true;
+  }
+}
+
 class HistoryRecordingView extends View {
   navigation = true;
   receivedState: unknown = null;
@@ -376,6 +396,16 @@ describe("WorkspaceLeaf", () => {
     expect(leaf.view.getState()).toEqual({ answer: 42 });
   });
 
+  it("serializes view state icons from getIcon like Obsidian", async () => {
+    const app = new App(document.createElement("div"));
+    app.viewRegistry.registerView("dynamic-icon-test", (leaf) => new DynamicIconView(leaf));
+    const leaf = app.workspace.getLeaf();
+
+    await leaf.setViewState({ type: "dynamic-icon-test", active: true });
+
+    expect(leaf.getViewState().icon).toBe("lucide-duck");
+  });
+
   it("detaches and unloads a view before calling onClose", async () => {
     const app = new App(document.createElement("div"));
     let instance: CloseOrderView | null = null;
@@ -534,8 +564,30 @@ describe("WorkspaceLeaf", () => {
 
     expect(sourceLeaf.group).toBeTruthy();
     expect(sourceLeaf.group).toBe(groupedLeaf.group);
+    expect(sourceLeaf.group).toMatch(/^[0-9a-f]{16}$/);
     expect(sourceLeaf.group).not.toBe(sourceLeaf.id);
     expect(app.workspace.getGroupLeaves(sourceLeaf.group)).toEqual([sourceLeaf, groupedLeaf]);
+  });
+
+  it("ignores setGroupMember when the target leaf is itself", () => {
+    const app = new App(document.createElement("div"));
+    const leaf = app.workspace.getLeaf();
+
+    leaf.setGroupMember(leaf);
+
+    expect(leaf.group).toBeNull();
+  });
+
+  it("only reuses a current view type for openFile when the view is a FileView", async () => {
+    const app = new App(document.createElement("div"));
+    app.viewRegistry.registerView("plain-accepting-test", (leaf) => new PlainAcceptingView(leaf));
+    const file = await app.vault.create("Real Markdown.md", "real");
+    const leaf = app.workspace.getLeaf();
+
+    await leaf.setViewState({ type: "plain-accepting-test", active: true });
+    await leaf.openFile(file, { active: true });
+
+    expect(leaf.view).toBeInstanceOf(MarkdownView);
   });
 
   it("syncs grouped FileViews when sync is false and suppresses it when sync is true", async () => {
