@@ -174,6 +174,16 @@ describe("Workspace public API parity", () => {
     await expect(app.uriRouter.handleUri("obsidian://plugin-action")).resolves.toBe(false);
   });
 
+  it("unregisters a workspace protocol handler by action when no handler is passed", async () => {
+    const app = new App(document.createElement("div"));
+    const handler = vi.fn();
+
+    app.workspace.registerObsidianProtocolHandler("plugin-action", handler);
+    app.workspace.unregisterObsidianProtocolHandler("plugin-action");
+
+    await expect(app.uriRouter.handleUri("obsidian://plugin-action")).resolves.toBe(false);
+  });
+
   it("keeps View.getState as the view payload and lets WorkspaceLeaf wrap it", async () => {
     const app = new App(document.createElement("div"));
     app.viewRegistry.registerView("stateful-public-api-test", (leaf) => new StatefulView(leaf));

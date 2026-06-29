@@ -31,7 +31,7 @@ import { ItemView } from "../views/ItemView";
 import { FileView } from "../views/FileView";
 import { MarkdownView } from "../views/MarkdownView";
 import { DeferredView } from "../views/DeferredView";
-import { parseObsidianUri, toObsidianProtocolData, type ObsidianProtocolData, type ObsidianProtocolHandler, type UriHandler } from "../protocol/UriRouter";
+import { parseObsidianUri, toObsidianProtocolData, type ObsidianProtocolData, type ObsidianProtocolHandler } from "../protocol/UriRouter";
 import type { Menu } from "../ui/Menu";
 import { setIcon } from "../ui/Icon";
 import { Notice } from "../ui/Notice";
@@ -149,7 +149,7 @@ export class Workspace extends Events {
   readonly undoHistory: WorkspaceUndoHistoryEntry[] = [];
   readonly layoutItemQueue: WorkspaceItem[] = [];
   private lastActiveFile: TFile | null = null;
-  private protocolHandlers = new Map<string, Map<ObsidianProtocolHandler, UriHandler>>();
+  private protocolHandlers = new Map<string, ObsidianProtocolHandler>();
   private uriHookRegistered = false;
   private appUrlOpenListener: { remove?: () => void } | null = null;
   private _layoutReady = false;
@@ -1372,20 +1372,19 @@ export class Workspace extends Events {
 
   registerObsidianProtocolHandler(action: string, handler: ObsidianProtocolHandler): void {
     if (this.protocolHandlers.has(action)) throw new Error(`Action "${action}" is already registered as a handler.`);
-    const wrapped: UriHandler = (context) => handler(toObsidianProtocolData(context));
-    this.app.uriRouter.registerAction(action, wrapped);
-    this.protocolHandlers.set(action, new Map([[handler, wrapped]]));
+    this.app.uriRouter.registerAction(action, (context) => {
+      const protocolHandler = this.protocolHandlers.get(action);
+      if (protocolHandler) return protocolHandler(toObsidianProtocolData(context));
+    });
+    this.protocolHandlers.set(action, handler);
   }
 
   unregisterObsidianProtocolHandler(action: string, handler?: ObsidianProtocolHandler): void {
-    const handlers = this.protocolHandlers.get(action);
-    if (!handlers) return;
-    const wrapped = handler ? handlers?.get(handler) : undefined;
-    if (handler && !wrapped) return;
-    this.app.uriRouter.unregisterAction(action, wrapped);
-    if (handler) handlers?.delete(handler);
-    else handlers?.clear();
-    if (handlers?.size === 0) this.protocolHandlers.delete(action);
+    const registeredHandler = this.protocolHandlers.get(action);
+    if (!registeredHandler) return;
+    if (handler && registeredHandler !== handler) return;
+    this.protocolHandlers.delete(action);
+    this.app.uriRouter.unregisterAction(action);
   }
 
   handleXCallback(params: URLSearchParams, file: TFile): boolean {
