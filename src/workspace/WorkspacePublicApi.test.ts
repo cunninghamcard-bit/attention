@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
 import { View, type ViewState } from "../views/View";
 import { MarkdownView } from "../views/MarkdownView";
+import { DeferredView } from "../views/DeferredView";
 import { Menu } from "../ui/Menu";
 import { Tasks } from "../app/QuitEvent";
 import { WorkspaceWindow } from "./WorkspaceWindow";
@@ -419,6 +420,41 @@ describe("Workspace public API parity", () => {
     expect(sideLeaf).toBe(leaf);
     expect(leaf.isDeferred).toBe(true);
     expect(app.workspace.getLeavesOfType("plain-public-api-test")).toEqual([leaf]);
+  });
+
+  it("does not materialize deferred leaves on view registry rebuild events", async () => {
+    const app = new App(document.createElement("div"));
+    let created = 0;
+    app.viewRegistry.registerView("plain-public-api-test", (leaf) => {
+      created += 1;
+      return new PlainView(leaf);
+    });
+    const leaf = app.workspace.getLeaf();
+
+    leaf.setDeferredViewState({
+      type: "plain-public-api-test",
+      state: { answer: 42 },
+      icon: "lucide-file",
+      title: "Deferred plain",
+    });
+
+    expect(leaf.view).toBeInstanceOf(DeferredView);
+    expect(created).toBe(0);
+
+    app.viewRegistry.unregisterView("plain-public-api-test");
+
+    expect(leaf.view).toBeInstanceOf(DeferredView);
+    expect(leaf.isDeferred).toBe(true);
+    expect(created).toBe(0);
+
+    app.viewRegistry.registerView("plain-public-api-test", (nextLeaf) => {
+      created += 1;
+      return new PlainView(nextLeaf);
+    });
+
+    expect(leaf.view).toBeInstanceOf(DeferredView);
+    expect(leaf.isDeferred).toBe(true);
+    expect(created).toBe(0);
   });
 
   it("prepares side leaves without revealing the sidedock when reveal is false", async () => {

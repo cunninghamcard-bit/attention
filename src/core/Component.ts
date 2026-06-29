@@ -7,7 +7,7 @@ export class Component {
   _children: Component[] = [];
   _events: Array<() => void> = [];
 
-  load(): void | Promise<void> {
+  load(): void | Promise<unknown> {
     if (this._loaded) return;
     this._loaded = true;
     const promises: unknown[] = [];
@@ -17,7 +17,7 @@ export class Component {
       const childResult = child.load();
       if (childResult) promises.push(childResult);
     }
-    if (promises.length > 0) return Promise.all(promises).then(() => {});
+    if (promises.length > 0) return Promise.all(promises);
   }
 
   unload(): void {

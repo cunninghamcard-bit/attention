@@ -76,7 +76,7 @@ describe("Component lifecycle", () => {
     const loaded = parent.load();
 
     expect(loaded).toBeInstanceOf(Promise);
-    await loaded;
+    await expect(loaded).resolves.toEqual([true, [{ ok: true }]]);
     expect(log).toEqual(["parent:load", "child:load"]);
   });
 

@@ -30,6 +30,7 @@ import { normalizeViewStatePayload, type InternalViewState } from "../views/View
 import { ItemView } from "../views/ItemView";
 import { FileView } from "../views/FileView";
 import { MarkdownView } from "../views/MarkdownView";
+import { DeferredView } from "../views/DeferredView";
 import { toObsidianProtocolData, type ObsidianProtocolHandler, type UriHandler } from "../protocol/UriRouter";
 import type { Menu } from "../ui/Menu";
 import { setIcon } from "../ui/Icon";
@@ -1091,7 +1092,10 @@ export class Workspace extends Events {
   }
 
   private rebuildLeavesOfType(type: string): void {
-    for (const leaf of this.getLeavesOfType(type)) void leaf.rebuildView();
+    for (const leaf of this.getLeavesOfType(type)) {
+      if (leaf.view instanceof DeferredView) continue;
+      void leaf.rebuildView();
+    }
   }
 
   private onFileRename(file: TFile, oldPath: string): void {
