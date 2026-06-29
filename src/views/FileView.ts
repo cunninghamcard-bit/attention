@@ -119,7 +119,7 @@ export class FileView extends ItemView {
       if (result) result.history = true;
       if (internalResult) internalResult.layout = true;
     }
-    if (hasFileState && !this.file && !this.allowNoFile && internalResult) {
+    if (!this.file && !this.allowNoFile && internalResult) {
       internalResult.close = true;
     }
     const isSync = state && typeof state === "object" && Boolean((state as { sync?: unknown }).sync);
