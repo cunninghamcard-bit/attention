@@ -207,6 +207,22 @@ describe("Workspace public API parity", () => {
     expect(leaf.getViewState()).toMatchObject({ pinned: true });
   });
 
+  it("only applies setViewState ephemeral state when the payload is truthy", async () => {
+    const app = new App(document.createElement("div"));
+    app.viewRegistry.registerView("plain-public-api-test", (leaf) => new PlainView(leaf));
+    const leaf = app.workspace.getLeaf();
+
+    await leaf.setViewState({ type: "plain-public-api-test", active: true });
+    leaf.setEphemeralState({ keep: true });
+    await leaf.setViewState(leaf.getViewState(), null, { history: false });
+
+    expect(leaf.getEphemeralState()).toEqual({ keep: true });
+
+    await leaf.setViewState(leaf.getViewState(), { focus: true }, { history: false });
+
+    expect(leaf.getEphemeralState()).toEqual({ focus: true });
+  });
+
   it("keeps public ViewState aligned with Obsidian's plugin-facing shape", () => {
     const app = new App(document.createElement("div"));
     const leaf = app.workspace.getLeaf();

@@ -306,7 +306,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
         else if (group == null) this.setGroupMember(null);
         else this.setGroup(group, { layout: false });
       }
-      if (ephemeralState !== undefined) this.setEphemeralState(ephemeralState);
+      if (ephemeralState) this.setEphemeralState(ephemeralState);
       if (
         options.popstate
         || state.popstate === true
