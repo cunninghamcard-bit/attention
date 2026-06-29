@@ -620,6 +620,38 @@ describe("community plugin lifecycle", () => {
     expect(app.viewRegistry.getTypeByExtension("pluginview")).toBeUndefined();
   });
 
+  it("routes plugin-owned file extensions through the registered view type", async () => {
+    const app = new App(document.createElement("div"));
+    app.pluginSecurity.setCommunityPluginsEnabled(true);
+    await app.pluginInstaller.install({
+      manifest: {
+        id: "view-plugin",
+        name: "View Plugin",
+        version: "1.0.0",
+      },
+      entry: "plugins/view-plugin/main.js",
+      factory: (pluginApp, pluginManifest) => new ViewRegistrationPlugin(pluginApp, pluginManifest),
+    });
+    await app.pluginInstaller.enable("view-plugin");
+    const file = await app.vault.create("Custom.pluginview", "plugin view payload");
+
+    const leaf = await app.workspace.openFile(file, { active: true });
+
+    expect(leaf.view).toBeInstanceOf(PluginRegisteredView);
+    expect(leaf.view.getViewType()).toBe("plugin-view");
+    expect(app.workspace.getLeavesOfType("plugin-view")).toContain(leaf);
+
+    await app.pluginInstaller.disable("view-plugin", true);
+    const openWithDefaultApp = vi.fn();
+    (app as unknown as { openWithDefaultApp: (path: string) => void }).openWithDefaultApp = openWithDefaultApp;
+
+    await app.workspace.openFile(file, { active: true });
+
+    expect(app.viewRegistry.getTypeByExtension("pluginview")).toBeUndefined();
+    expect(app.workspace.getLeavesOfType("plugin-view")).toHaveLength(0);
+    expect(openWithDefaultApp).toHaveBeenCalledWith("Custom.pluginview");
+  });
+
   it("restores unknown plugin view leaves when the registering plugin loads", async () => {
     const app = new App(document.createElement("div"));
     app.pluginSecurity.setCommunityPluginsEnabled(true);
