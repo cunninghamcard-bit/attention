@@ -18,7 +18,7 @@ export class EditableFileView extends FileView {
   }
 
   override onPaneMenu(menu: Menu, source?: string): void {
-    super.onPaneMenu(menu, source);
+    this.onFilePaneMenu(menu, source);
     const file = this.file;
     if (!file) return;
     menu

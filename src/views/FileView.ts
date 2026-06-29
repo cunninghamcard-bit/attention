@@ -44,6 +44,11 @@ export class FileView extends ItemView {
   }
 
   override onPaneMenu(menu: Menu, source?: string): void {
+    this.onFilePaneMenu(menu, source);
+    this.triggerFileMenu(menu, source);
+  }
+
+  protected onFilePaneMenu(menu: Menu, source?: string): void {
     super.onPaneMenu(menu, source);
   }
 
