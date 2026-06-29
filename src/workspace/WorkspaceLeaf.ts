@@ -122,6 +122,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
 
   override on(name: "pinned-change", callback: (pinned: boolean) => any, ctx?: any): EventRef;
   override on(name: "group-change", callback: (group: string) => any, ctx?: any): EventRef;
+  override on(name: "history-change", callback: () => any, ctx?: any): EventRef;
   override on<TArgs extends unknown[]>(name: string, callback: (...args: TArgs) => any, ctx?: object): EventRef<TArgs>;
   override on<TArgs extends unknown[]>(name: string, callback: (...args: TArgs) => any, ctx?: object): EventRef<TArgs> {
     return super.on(name, callback, ctx);
