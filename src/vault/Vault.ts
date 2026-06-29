@@ -22,6 +22,7 @@ export interface VaultAdapter {
   stat?(path: string): Promise<VaultAdapterStat | null>;
   read(path: string): Promise<string>;
   readBinary?(path: string): Promise<ArrayBuffer>;
+  getName?(): string;
   getResourcePath?(path: string): string;
   getFullPath?(path: string): string;
   resolvePath?(urlOrPath: string): string | null;
@@ -106,7 +107,7 @@ export class Vault extends Events {
   }
 
   getName(): string {
-    return "Vault";
+    return this.adapter?.getName?.() ?? "Vault";
   }
 
   getRoot(): TFolder {

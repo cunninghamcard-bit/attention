@@ -86,6 +86,11 @@ describe("Vault config JSON helpers", () => {
 });
 
 describe("Vault public file API", () => {
+  it("uses the adapter name as the vault name", () => {
+    expect(new Vault(new InMemoryAdapter()).getName()).toBe("In-memory");
+    expect(new Vault().getName()).toBe("Vault");
+  });
+
   it("exposes Obsidian-style path existence and validation helpers", async () => {
     const vault = new Vault();
 
