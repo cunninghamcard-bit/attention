@@ -18,6 +18,7 @@ export interface InternalViewState extends Omit<ViewState, "state" | "group"> {
   group?: string | WorkspaceLeaf | null;
   icon?: string;
   title?: string;
+  popstate?: boolean;
 }
 
 export interface ViewStateResult {

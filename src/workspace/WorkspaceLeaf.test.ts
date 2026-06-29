@@ -115,6 +115,26 @@ class RebuildableView extends View {
   }
 }
 
+class HistoryRecordingView extends View {
+  navigation = true;
+  receivedState: unknown = null;
+
+  getViewType(): string {
+    return "history-recording-test";
+  }
+
+  async setState(state: unknown, result?: ViewStateResult): Promise<void> {
+    this.receivedState = state;
+    if (result) result.history = true;
+  }
+
+  getState(): Record<string, unknown> {
+    return this.receivedState && typeof this.receivedState === "object" && !Array.isArray(this.receivedState)
+      ? this.receivedState as Record<string, unknown>
+      : {};
+  }
+}
+
 class MenuCountingView extends View {
   tabMenus = 0;
   paneMenus = 0;
@@ -221,6 +241,43 @@ describe("WorkspaceLeaf", () => {
     await leaf.setViewState({ type: "no-history-test", state: { step: 2 }, active: true });
 
     expect(leaf.canGoBack()).toBe(false);
+  });
+
+  it("does not record history for popstate view state updates", async () => {
+    const app = new App(document.createElement("div"));
+    app.viewRegistry.registerView("history-recording-test", (leaf) => new HistoryRecordingView(leaf));
+    const leaf = app.workspace.getLeaf();
+
+    await leaf.setViewState({ type: "history-recording-test", state: { step: 1 }, active: true });
+    await leaf.setViewState({
+      type: "history-recording-test",
+      state: { step: 2 },
+      active: true,
+      popstate: true,
+    });
+
+    expect(leaf.backHistory).toEqual([]);
+  });
+
+  it("does not record history when materializing a same-type DeferredView", async () => {
+    const app = new App(document.createElement("div"));
+    app.viewRegistry.registerView("history-recording-test", (leaf) => new HistoryRecordingView(leaf));
+    const leaf = app.workspace.getLeaf();
+
+    await leaf.setViewState({
+      type: "history-recording-test",
+      state: { step: 1 },
+      active: true,
+      icon: "lucide-file",
+      title: "Deferred history",
+    });
+
+    expect(leaf.isDeferred).toBe(true);
+
+    await leaf.loadIfDeferred();
+
+    expect(leaf.view).toBeInstanceOf(HistoryRecordingView);
+    expect(leaf.backHistory).toEqual([]);
   });
 
   it("keeps deferred view state unloaded until loadIfDeferred is called", async () => {

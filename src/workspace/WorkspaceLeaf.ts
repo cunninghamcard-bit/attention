@@ -306,7 +306,13 @@ export class WorkspaceLeaf extends WorkspaceItem {
         else this.setGroup(group, { layout: false });
       }
       if (ephemeralState !== undefined) this.setEphemeralState(ephemeralState);
-      if (options.popstate || options.history === false || isSyncState(state.state)) result.history = false;
+      if (
+        options.popstate
+        || state.popstate === true
+        || options.history === false
+        || isSyncState(state.state)
+        || (wasDeferredView && !typeChanged)
+      ) result.history = false;
       if (options.layout === false) result.layout = false;
       else if (options.layout === true) result.layout = true;
 
