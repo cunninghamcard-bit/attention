@@ -148,7 +148,7 @@ export class WorkspaceTabs extends WorkspaceParent {
     else this.currentTab = this.children.indexOf(previousActiveTab);
   }
 
-  selectTabIndex(index: number, _activate = true): void {
+  selectTabIndex(index: number, _activate = true, persist = true): void {
     if (this.children.length === 0) return;
     const nextTab = Math.max(0, Math.min(index, this.children.length - 1));
     const changed = this.currentTab !== nextTab;
@@ -159,8 +159,10 @@ export class WorkspaceTabs extends WorkspaceParent {
       this.children[this.currentTab]?.containerEl.classList.remove("is-hidden");
       this.scrollIntoView(this.currentTab);
     }
-    this.workspace.requestSaveLayout();
-    this.workspace.requestResize();
+    if (persist) {
+      this.workspace.requestSaveLayout();
+      this.workspace.requestResize();
+    }
   }
 
   selectTab(leaf: WorkspaceLeaf, _activate = true): void {

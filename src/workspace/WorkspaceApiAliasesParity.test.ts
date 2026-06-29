@@ -33,4 +33,20 @@ describe("Workspace Obsidian API aliases", () => {
     expect(app.workspace.isAttached(leaf)).toBe(false);
     expect(app.workspace.isAttached(null)).toBe(false);
   });
+
+  it("does not persist layout merely because active leaf changes", async () => {
+    const app = new App(document.createElement("div"));
+    const first = app.workspace.getLeaf();
+    const second = app.workspace.createNewTab();
+    if (!second) throw new Error("Expected a second tab leaf");
+    app.workspace.markLayoutReady();
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
+    app.workspace.requestSaveLayout.cancel();
+    const saveLayout = vi.spyOn(app.workspace, "requestSaveLayout");
+
+    app.workspace.setActiveLeaf(first);
+    app.workspace.setActiveLeaf(second);
+
+    expect(saveLayout).not.toHaveBeenCalled();
+  });
 });

@@ -907,7 +907,7 @@ export class Workspace extends Events {
     leaf.activeTime = Date.now();
     if (leaf.parent instanceof WorkspaceTabs) {
       const index = leaf.parent.children.indexOf(leaf);
-      if (index !== -1 && leaf.parent.currentTab !== index) leaf.parent.selectTabIndex(index, false);
+      if (index !== -1 && leaf.parent.currentTab !== index) leaf.parent.selectTabIndex(index, false, false);
       leaf.parent.containerEl.classList.add("mod-active");
       leaf.parent.updateTabDisplay();
     } else if (leaf.parent instanceof MobileDrawer) {
@@ -925,7 +925,6 @@ export class Workspace extends Events {
     if (shouldFocus) this.focusLeaf(leaf);
     this.updateMobileVisibleTabGroup();
     this.requestActiveLeafEvents();
-    this.requestSaveLayout();
   }
 
   private focusLeaf(leaf: WorkspaceLeaf): void {
