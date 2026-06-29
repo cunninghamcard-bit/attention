@@ -514,7 +514,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
   }
 
   private emitHistoryChange(): void {
-    this.trigger("history-change", this);
+    this.trigger("history-change");
     this.workspace.trigger("history-change", this);
   }
 

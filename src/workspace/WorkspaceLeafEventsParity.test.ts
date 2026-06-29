@@ -9,8 +9,9 @@ describe("WorkspaceLeaf event parity", () => {
     const leaf = await app.workspace.openFile(first, { active: true });
     const seen: string[] = [];
 
-    leaf.on("history-change", () => {
+    leaf.on<[...unknown[]]>("history-change", (...args) => {
       seen.push("history-change");
+      expect(args).toEqual([]);
     });
 
     await leaf.openFile(second, { active: true });
