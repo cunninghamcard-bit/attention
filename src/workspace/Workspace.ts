@@ -26,7 +26,7 @@ import { getActiveDocument, getActiveWindow, setActiveWindow } from "../dom/Acti
 import { setChildrenInPlace } from "../dom/dom";
 import { WorkspaceItem } from "./WorkspaceItem";
 import type { WorkspaceLayout, WorkspaceLayoutNode } from "./WorkspaceLayout";
-import { normalizeViewStatePayload, type InternalViewState } from "../views/View";
+import type { InternalViewState } from "../views/View";
 import { Platform } from "../platform/Platform";
 import { ItemView } from "../views/ItemView";
 import { FileView } from "../views/FileView";
@@ -326,7 +326,7 @@ export class Workspace extends Events {
     });
   }
 
-  getSideLeaf(sideSplit: WorkspaceSidePane, split?: boolean): WorkspaceLeaf {
+  getSideLeaf(sideSplit: WorkspaceSidePane, split?: boolean): WorkspaceLeaf | null {
     const ownerDocument = sideSplit.containerEl.ownerDocument;
     if (sideSplit instanceof MobileDrawer) {
       const leaf = new WorkspaceLeaf(this, undefined, ownerDocument);
@@ -335,7 +335,7 @@ export class Workspace extends Events {
       return leaf;
     }
 
-    if (split || sideSplit.children.length === 0 || !(sideSplit.children[0] instanceof WorkspaceTabs)) {
+    if (split) {
       const tabs = new WorkspaceTabs(this, undefined, ownerDocument);
       const leaf = new WorkspaceLeaf(this, undefined, ownerDocument);
       tabs.appendChild(leaf, false);
@@ -343,9 +343,16 @@ export class Workspace extends Events {
       return leaf;
     }
 
-    const tabs = sideSplit.children[0] as WorkspaceTabs;
+    if (sideSplit.children.length === 0) {
+      sideSplit.appendChild(new WorkspaceTabs(this, undefined, ownerDocument));
+    }
+
+    const parent = sideSplit.children[0];
+    if (!(parent instanceof WorkspaceParent)) return null;
+
     const leaf = new WorkspaceLeaf(this, undefined, ownerDocument);
-    tabs.appendChild(leaf, false);
+    if (parent instanceof WorkspaceTabs) parent.appendChild(leaf, false);
+    else parent.insertChild(parent.children.length, leaf);
     return leaf;
   }
 
@@ -360,18 +367,20 @@ export class Workspace extends Events {
   async ensureSideLeaf(
     type: string,
     side: "left" | "right",
-    options: { active?: boolean; split?: boolean; reveal?: boolean; state?: unknown } = {},
+    options?: { active?: boolean; split?: boolean; reveal?: boolean | null; state?: unknown } | null,
   ): Promise<WorkspaceLeaf> {
+    const opts = options || {};
     const leaf = this.getLeavesOfType(type)[0]
-      ?? (side === "left" ? this.getLeftLeaf(options.split)! : this.getRightLeaf(options.split)!);
-    const reveal = options.reveal ?? true;
-    if (options.active || reveal) await leaf.loadIfDeferred();
-    const shouldSetViewState = options.state !== undefined || leaf.view?.getViewType() !== type;
+      ?? (side === "left" ? this.getLeftLeaf(opts.split) : this.getRightLeaf(opts.split));
+    if (!leaf) throw new Error(`Unable to create ${side} side leaf for "${type}".`);
+    const reveal = opts.reveal === undefined ? true : opts.reveal;
+    if (opts.active || reveal) await leaf.loadIfDeferred();
+    const shouldSetViewState = Boolean(opts.state) || leaf.view?.getViewType() !== type;
     if (shouldSetViewState) {
-      await leaf.setViewState({ type, state: normalizeViewStatePayload(options.state), active: options.active === true });
+      await leaf.setViewState({ type, state: opts.state } as InternalViewState);
     }
     if (reveal) await this.revealLeaf(leaf);
-    if (options.active) this.setActiveLeaf(leaf);
+    if (opts.active) this.setActiveLeaf(leaf, { focus: true });
     return leaf;
   }
 

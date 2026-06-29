@@ -7,6 +7,8 @@ import { Menu } from "../ui/Menu";
 import { Tasks } from "../app/QuitEvent";
 import { WorkspaceWindow } from "./WorkspaceWindow";
 import type { OpenViewState } from "./Workspace";
+import { WorkspaceLeaf } from "./WorkspaceLeaf";
+import { WorkspaceSplit } from "./WorkspaceSplit";
 
 class PlainView extends View {
   resizeCount = 0;
@@ -467,6 +469,99 @@ describe("Workspace public API parity", () => {
     expect(sideLeaf.getRoot()).toBe(app.workspace.rightSplit);
     expect(app.workspace.rightSplit.collapsed).toBe(true);
     expect(app.workspace.containerEl.classList.contains("is-right-sidedock-open")).toBe(false);
+  });
+
+  it("keeps existing side view state when ensureSideLeaf receives a falsy state", async () => {
+    const app = new App(document.createElement("div"));
+    app.viewRegistry.registerView("stateful-public-api-test", (leaf) => new StatefulView(leaf));
+    const leaf = await app.workspace.ensureSideLeaf("stateful-public-api-test", "right", {
+      reveal: false,
+      state: { answer: 42 },
+    });
+    const view = leaf.view as StatefulView;
+
+    await app.workspace.ensureSideLeaf("stateful-public-api-test", "right", {
+      active: true,
+      reveal: false,
+      state: null,
+    });
+
+    expect(view.getState()).toEqual({ answer: 42 });
+    expect(app.workspace.activeLeaf).toBe(leaf);
+  });
+
+  it("activates ensured side leaves outside of setViewState", async () => {
+    const app = new App(document.createElement("div"));
+    app.viewRegistry.registerView("plain-public-api-test", (leaf) => new PlainView(leaf));
+    const setViewState = vi.spyOn(WorkspaceLeaf.prototype, "setViewState");
+
+    try {
+      const leaf = await app.workspace.ensureSideLeaf("plain-public-api-test", "right", { active: true, reveal: false });
+      const viewState = leaf.getViewState() as unknown as Record<string, unknown>;
+
+      expect(setViewState).toHaveBeenCalledWith({ type: "plain-public-api-test", state: undefined });
+      expect(setViewState.mock.calls[0]?.[0]).not.toHaveProperty("active");
+      expect(viewState).not.toHaveProperty("active");
+      expect(app.workspace.activeLeaf).toBe(leaf);
+    } finally {
+      setViewState.mockRestore();
+    }
+  });
+
+  it("passes raw null state through ensureSideLeaf when the side view type changes", async () => {
+    const app = new App(document.createElement("div"));
+    app.viewRegistry.registerView("stateful-public-api-test", (leaf) => new StatefulView(leaf));
+    const setViewState = vi.spyOn(WorkspaceLeaf.prototype, "setViewState");
+
+    try {
+      await app.workspace.ensureSideLeaf("stateful-public-api-test", "right", {
+        reveal: false,
+        state: null,
+      });
+
+      expect(setViewState).toHaveBeenCalledWith({ type: "stateful-public-api-test", state: null });
+    } finally {
+      setViewState.mockRestore();
+    }
+  });
+
+  it("treats null reveal as falsy when ensuring deferred side leaves", async () => {
+    const app = new App(document.createElement("div"));
+    app.viewRegistry.registerView("plain-public-api-test", (leaf) => new PlainView(leaf));
+    const leaf = app.workspace.getLeaf();
+    leaf.setDeferredViewState({
+      type: "plain-public-api-test",
+      state: {},
+      icon: "lucide-file",
+      title: "Deferred plain",
+    });
+
+    const ensured = await app.workspace.ensureSideLeaf("plain-public-api-test", "right", {
+      reveal: null,
+    });
+
+    expect(ensured).toBe(leaf);
+    expect(leaf.isDeferred).toBe(true);
+  });
+
+  it("accepts null options for ensureSideLeaf like Obsidian's options fallback", async () => {
+    const app = new App(document.createElement("div"));
+    app.viewRegistry.registerView("plain-public-api-test", (leaf) => new PlainView(leaf));
+
+    const leaf = await app.workspace.ensureSideLeaf("plain-public-api-test", "right", null);
+
+    expect(leaf.view).toBeInstanceOf(PlainView);
+  });
+
+  it("inserts side leaves into an existing side WorkspaceParent", () => {
+    const app = new App(document.createElement("div"));
+    const split = new WorkspaceSplit(app.workspace, "vertical");
+    app.workspace.rightSplit.appendChild(split);
+
+    const leaf = app.workspace.getRightLeaf(false);
+
+    expect(leaf?.parent).toBe(split);
+    expect(app.workspace.rightSplit.children).toEqual([split]);
   });
 
   it("duplicates leaves into tab, split, and popout targets while preserving view state", async () => {
