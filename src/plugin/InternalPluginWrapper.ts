@@ -57,7 +57,7 @@ export class InternalPluginWrapper extends Component {
     for (const entry of this.cliHandlers) this.addedCliHandlers.push(this.app.registerCliHandler(entry.id, entry.description, entry.flags, entry.handler, this.definition.id));
 
     await this.definition.onEnable?.(this.app, this);
-    if (userInitiated) await this.definition.onUserEnable?.(this.app, this);
+    if (userInitiated) this.definition.onUserEnable?.(this.app, this);
     this.load();
     this.manager.requestSaveConfig();
     this.manager.trigger("change", this);
@@ -68,8 +68,8 @@ export class InternalPluginWrapper extends Component {
     if (!this.enabled) return;
     this.enabled = false;
 
-    await this.definition.onDisable?.(this.app, this);
-    if (userInitiated) await this.definition.onUserDisable?.(this.app, this);
+    this.definition.onDisable?.(this.app, this);
+    if (userInitiated) this.definition.onUserDisable?.(this.app, this);
 
     for (const command of this.commands) {
       this.app.commands.removeCommand(command.id);
