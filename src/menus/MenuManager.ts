@@ -316,8 +316,15 @@ async function insertWikilink(app: App, editor: Editor, view: View): Promise<voi
     editor.setCursor(editor.offsetToPos(start + 2 + selection.length));
     return;
   }
-  const sourceEl = (view as { sourceTextAreaEl?: unknown }).sourceTextAreaEl;
-  await app.workspace.editorSuggest.trigger(editor, sourceEl instanceof HTMLElement ? sourceEl : view.containerEl, true);
+  const targetEl = getEditorSuggestTarget(view);
+  if (targetEl) await app.workspace.editorSuggest.trigger(editor, targetEl, true);
+}
+
+function getEditorSuggestTarget(view: View): HTMLElement | null {
+  if (view instanceof MarkdownView) return view.editorViewHost.contentEl;
+  const candidate = (view as View & { editorViewHost?: { contentEl?: unknown } }).editorViewHost?.contentEl;
+  if (candidate instanceof HTMLElement) return candidate;
+  return view.containerEl instanceof HTMLElement ? view.containerEl : null;
 }
 
 function insertMarkdownLink(editor: Editor): void {
