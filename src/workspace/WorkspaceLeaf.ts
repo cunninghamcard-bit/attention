@@ -619,10 +619,8 @@ export class WorkspaceLeaf extends WorkspaceItem {
     this.pinned = shouldPin;
     this.updateHeader();
     this.trigger("group-change", this.group ?? "");
-    this.workspace.trigger("group-change", this);
     if (pinnedChanged) {
       this.trigger("pinned-change", this.pinned);
-      this.workspace.trigger("pinned-change", this);
     }
     if (options.layout !== false) this.workspace.requestUpdateLayout();
   }
@@ -639,7 +637,6 @@ export class WorkspaceLeaf extends WorkspaceItem {
     }
     this.updateHeader();
     this.trigger("pinned-change", this.pinned);
-    this.workspace.trigger("pinned-change", this);
     if (options.layout !== false) this.workspace.requestSaveLayout();
   }
 

@@ -331,7 +331,7 @@ describe("Workspace public API parity", () => {
     expect(seen).toContain("quit");
   });
 
-  it("emits WorkspaceLeaf pinned and group events with public payloads", () => {
+  it("emits pinned and group changes from WorkspaceLeaf without workspace rebroadcasts", () => {
     const app = new App(document.createElement("div"));
     const leaf = app.workspace.getLeaf();
     const pinned: boolean[] = [];
@@ -349,8 +349,8 @@ describe("Workspace public API parity", () => {
 
     expect(pinned).toEqual([true]);
     expect(groups).toEqual(["linked-pane"]);
-    expect(workspacePinned).toEqual([leaf]);
-    expect(workspaceGroups).toEqual([leaf]);
+    expect(workspacePinned).toEqual([]);
+    expect(workspaceGroups).toEqual([]);
   });
 
   it("exposes official WorkspaceLeaf deferred, hover popover, and resize hooks", async () => {
