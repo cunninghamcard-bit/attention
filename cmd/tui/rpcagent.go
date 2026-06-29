@@ -10,11 +10,9 @@ import (
 	"io"
 	"iter"
 	"os/exec"
-	"strings"
 	"sync"
 	"time"
 
-	adkmodel "google.golang.org/adk/model"
 	"google.golang.org/adk/session"
 	"google.golang.org/genai"
 )
@@ -122,6 +120,11 @@ type wireGetState struct {
 type wireModel struct {
 	ID       string `json:"id"`
 	Provider string `json:"provider"`
+	Name     string `json:"name"`
+}
+
+type wireAvailableModels struct {
+	Models []wireModel `json:"models"`
 }
 
 // wireGetCommands is the get_commands response data we read. Each command
@@ -484,26 +487,6 @@ func (a *rpcAgent) FetchCommands() []CommandInfo {
 	return out
 }
 
-// FetchSkills returns the skill subset of FetchCommands (source=="skill") as
-// []Skill, stripping the "skill:" prefix for the sidebar's bare-name display.
-// This is display-only; the slash-command path uses FetchCommands verbatim.
-func (a *rpcAgent) FetchSkills() []Skill {
-	var skills []Skill
-	for _, c := range a.FetchCommands() {
-		if c.Source != "skill" {
-			continue
-		}
-		skills = append(skills, Skill{
-			// The kernel names skill commands "skill:<name>"; strip the prefix so
-			// the dedicated Skills section shows the bare name (pi-go's intent).
-			Name:        strings.TrimPrefix(c.Name, "skill:"),
-			Description: c.Description,
-			Source:      "user",
-		})
-	}
-	return skills
-}
-
 // --- builtin command actions ---
 //
 // Each maps a kernel builtin slash command to its rpc command and summarizes the
@@ -567,30 +550,42 @@ func (a *rpcAgent) Reload() (string, error) {
 	return "Reloaded keybindings, extensions, skills, prompts, and themes.", nil
 }
 
-// CycleModel advances the kernel to the next model and returns a notice plus the
-// new model id/provider so the caller can update the displayed model. When the
-// kernel reports no cycle (single model), newID/newProvider are empty.
-func (a *rpcAgent) CycleModel() (notice, newID, newProvider string, err error) {
-	resp, e := a.requestTimeout("cycle_model", map[string]any{}, builtinActionTimeout)
+// AvailableModels returns the kernel's configured models as picker rows.
+func (a *rpcAgent) AvailableModels() ([]PickerItem, error) {
+	resp, err := a.requestTimeout("get_available_models", map[string]any{}, builtinActionTimeout)
+	if err != nil {
+		return nil, err
+	}
+	if !resp.Success {
+		return nil, errors.New(resp.Error)
+	}
+	var data wireAvailableModels
+	if err := json.Unmarshal(resp.Data, &data); err != nil {
+		return nil, err
+	}
+	return modelPickerItems(data.Models), nil
+}
+
+// SetModel switches the kernel to the selected provider/model pair.
+func (a *rpcAgent) SetModel(provider, modelID string) (notice, newID, newProvider string, err error) {
+	resp, e := a.requestTimeout("set_model", map[string]any{
+		"provider": provider,
+		"modelId":  modelID,
+	}, builtinActionTimeout)
 	if e != nil {
 		return "", "", "", e
 	}
 	if !resp.Success {
 		return "", "", "", errors.New(resp.Error)
 	}
-	// A null data payload means the kernel did not cycle (e.g. only one model).
-	if len(resp.Data) == 0 || string(resp.Data) == "null" {
-		return "Only one model is configured; nothing to cycle.", "", "", nil
+	var model wireModel
+	if err := json.Unmarshal(resp.Data, &model); err != nil {
+		return "", "", "", err
 	}
-	var data struct {
-		Model wireModel `json:"model"`
+	if model.ID == "" || model.Provider == "" {
+		return "", "", "", errors.New("rpc: set_model returned incomplete model")
 	}
-	if err := json.Unmarshal(resp.Data, &data); err != nil {
-		return "Switched model.", "", "", nil
-	}
-	id, provider := data.Model.ID, data.Model.Provider
-	notice = fmt.Sprintf("Switched model to %s (%s).", id, provider)
-	return notice, id, provider, nil
+	return modelSwitchNotice(model), model.ID, model.Provider, nil
 }
 
 // SessionStats summarizes get_session_stats into a one-line notice.
@@ -750,12 +745,6 @@ func (a *rpcAgent) NavigateTree(entryID string) error {
 	}
 	return nil
 }
-
-// RebuildWithModel is a no-op: the kernel owns model selection.
-func (a *rpcAgent) RebuildWithModel(llm adkmodel.LLM) error { return nil }
-
-// RebuildWithInstruction is a no-op: the kernel owns the system instruction.
-func (a *rpcAgent) RebuildWithInstruction(instruction string) error { return nil }
 
 // --- command plumbing ---
 

@@ -30,7 +30,6 @@ type StatusRenderInput struct {
 	ProviderName string
 	ModelName    string
 	Running      bool
-	Mode         string       // "chat" or "plan"
 	Eyes         string       // mood eyes e.g. "◕ ◕"
 	Messages     []message    // for context estimate
 	TokenTracker TokenTracker // may be nil
@@ -101,21 +100,10 @@ func (s *StatusModel) Render(in StatusRenderInput) string {
 
 	var parts []string
 
-	// Mode indicator: [chat] or [plan], with spinner verb when running.
-	mode := in.Mode
-	if mode == "" {
-		mode = "chat"
-	}
-	if mode == "plan" {
-		modeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#fab387")) // Mocha peach
-		parts = append(parts, modeStyle.Render(fmt.Sprintf(" [%s]", paddedStatusMode(mode))))
-	} else {
+	// Running indicator.
+	if in.Running && s.ActiveTool == "" {
 		verbStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#89b4fa")) // Mocha blue
-		if in.Running && s.ActiveTool == "" {
-			parts = append(parts, verbStyle.Render(fmt.Sprintf(" [%s]", spinnerVerb())))
-		} else {
-			parts = append(parts, verbStyle.Render(fmt.Sprintf(" [%s]", paddedStatusMode(mode))))
-		}
+		parts = append(parts, verbStyle.Render(fmt.Sprintf(" [%s]", spinnerVerb())))
 	}
 
 	// Provider | Model.

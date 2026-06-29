@@ -5,7 +5,6 @@ import (
 	"context"
 	"iter"
 
-	adkmodel "google.golang.org/adk/model"
 	"google.golang.org/adk/session"
 )
 
@@ -19,10 +18,6 @@ type AgentBackend interface {
 	RunStreaming(ctx context.Context, sessionID string, userMessage string) iter.Seq2[*session.Event, error]
 	// CreateSession creates a new session and returns its ID.
 	CreateSession(ctx context.Context) (string, error)
-	// RebuildWithModel recreates the agent's runner with a new LLM.
-	RebuildWithModel(llm adkmodel.LLM) error
-	// RebuildWithInstruction recreates the agent's runner with a new system instruction.
-	RebuildWithInstruction(instruction string) error
 }
 
 // Skill is a minimal local stand-in for pi-go's extension.Skill. The slash
