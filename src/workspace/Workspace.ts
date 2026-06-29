@@ -31,9 +31,10 @@ import { ItemView } from "../views/ItemView";
 import { FileView } from "../views/FileView";
 import { MarkdownView } from "../views/MarkdownView";
 import { DeferredView } from "../views/DeferredView";
-import { toObsidianProtocolData, type ObsidianProtocolHandler, type UriHandler } from "../protocol/UriRouter";
+import { parseObsidianUri, toObsidianProtocolData, type ObsidianProtocolData, type ObsidianProtocolHandler, type UriHandler } from "../protocol/UriRouter";
 import type { Menu } from "../ui/Menu";
 import { setIcon } from "../ui/Icon";
+import { Notice } from "../ui/Notice";
 
 interface WorkspaceActiveEditor extends MarkdownFileInfo {
   editor: Editor;
@@ -103,6 +104,27 @@ export interface OperatorFuncConfig {
   inverseDisplay: string;
 }
 
+interface UriHookWindow extends Window {
+  OBS_ACT?: ObsidianProtocolData | ((data: ObsidianProtocolData) => void) | null;
+  Capacitor?: { Plugins?: { App?: AppUrlOpenBridge } };
+  electron?: AppUrlOpenBridge;
+}
+
+interface AppUrlOpenBridge {
+  addListener?: (
+    name: "appUrlOpen",
+    callback: (event: { url?: string } | string) => void,
+  ) => { remove?: () => void } | Promise<{ remove?: () => void }>;
+}
+
+function getAppUrlOpenBridge(win: UriHookWindow): AppUrlOpenBridge | undefined {
+  return win.Capacitor?.Plugins?.App ?? win.electron;
+}
+
+function isPromiseLike<T>(value: T | Promise<T> | undefined): value is Promise<T> {
+  return Boolean(value && typeof (value as Promise<T>).then === "function");
+}
+
 export class Workspace extends Events {
   readonly containerEl: HTMLElement;
   readonly leftSidebarToggleButtonEl: HTMLElement;
@@ -129,6 +151,8 @@ export class Workspace extends Events {
   readonly layoutItemQueue: WorkspaceItem[] = [];
   private lastActiveFile: TFile | null = null;
   private protocolHandlers = new Map<string, Map<ObsidianProtocolHandler, UriHandler>>();
+  private uriHookRegistered = false;
+  private appUrlOpenListener: { remove?: () => void } | null = null;
   private _layoutReady = false;
   private onLayoutReadyCallbacks: LayoutReadyCallbackRecord[] | null = [];
   private layoutReadyCallbacksPromise: Promise<void> = Promise.resolve();
@@ -1279,6 +1303,47 @@ export class Workspace extends Events {
 
   unregisterOperatorFuncConfigs(id: string): void {
     delete this.operatorFuncConfigs[id];
+  }
+
+  registerUriHook(): void {
+    if (this.uriHookRegistered) return;
+    this.uriHookRegistered = true;
+    const ownerWindow = this.containerEl.ownerDocument.defaultView ?? window;
+    const hookWindow = ownerWindow as UriHookWindow;
+    const pendingAction = hookWindow.OBS_ACT;
+    const handleAction = (data?: ObsidianProtocolData | null): void => {
+      if (!data) return;
+      console.log("Received URL action", data);
+      (this.getFocusedContainer() as { focus?: () => void }).focus?.();
+      void this.app.uriRouter.handleProtocolData(data).then((handled) => {
+        if (!handled && data.action) new Notice(`Invalid URI action "${data.action}"`);
+      });
+    };
+
+    hookWindow.OBS_ACT = handleAction;
+    if (pendingAction && typeof pendingAction !== "function") handleAction(pendingAction);
+
+    const bridge = getAppUrlOpenBridge(hookWindow);
+    const listener = bridge?.addListener?.("appUrlOpen", (event) => {
+      const uri = typeof event === "string" ? event : event?.url;
+      if (!uri) return;
+      const data = parseObsidianUri(uri);
+      if (!data) return;
+      const vault = data.vault;
+      if (vault && vault.toLowerCase() !== this.app.vault.getName().toLowerCase()) {
+        ownerWindow.sessionStorage.setItem("obsidian-uri", uri);
+        ownerWindow.location.reload();
+        return;
+      }
+      handleAction(data);
+    });
+    if (isPromiseLike(listener)) {
+      void listener.then((resolved) => {
+        this.appUrlOpenListener = resolved;
+      });
+    } else {
+      this.appUrlOpenListener = listener ?? null;
+    }
   }
 
   updateOptions(): void {

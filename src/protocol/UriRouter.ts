@@ -27,19 +27,55 @@ export class UriRouter {
   }
 
   async handleUri(uri: string): Promise<boolean> {
-    const url = new URL(uri);
-    const action = url.hostname || url.pathname.replace(/^\//, "");
+    const data = parseObsidianUri(uri);
+    if (!data) return false;
+    return this.handleProtocolData(data);
+  }
+
+  async handleProtocolData(data: ObsidianProtocolData): Promise<boolean> {
+    const action = data.action;
     const handler = this.handlers.get(action);
     if (!handler) return false;
-    await handler(createUriHandlerContext(action, url.searchParams));
+    await handler(createUriHandlerContextFromData(data));
     return true;
   }
+}
+
+export function parseObsidianUri(uri: string): ObsidianProtocolData | null {
+  let url: URL;
+  try {
+    url = new URL(uri);
+  } catch {
+    return null;
+  }
+  const action = url.hostname || url.pathname.replace(/^\//, "");
+  if (!action) return null;
+  return createProtocolData(action, url.searchParams);
 }
 
 function createUriHandlerContext(action: string, params: URLSearchParams): UriHandlerContext {
   const context: UriHandlerContext = { action, params };
   for (const [key, value] of params.entries()) context[key] = value === "" ? "true" : value;
   return context;
+}
+
+function createUriHandlerContextFromData(data: ObsidianProtocolData): UriHandlerContext {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(data)) {
+    if (key === "action") continue;
+    params.set(key, value === "true" ? "" : value);
+  }
+  const context = createUriHandlerContext(data.action, params);
+  for (const [key, value] of Object.entries(data)) {
+    if (key !== "action") context[key] = value;
+  }
+  return context;
+}
+
+function createProtocolData(action: string, params: URLSearchParams): ObsidianProtocolData {
+  const data: ObsidianProtocolData = { action };
+  for (const [key, value] of params.entries()) data[key] = value === "" ? "true" : value;
+  return data;
 }
 
 export function toObsidianProtocolData(context: UriHandlerContext): ObsidianProtocolData {

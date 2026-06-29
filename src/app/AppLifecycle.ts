@@ -30,6 +30,7 @@ export class AppLifecycle {
     await this.runOpeningBehavior();
     if (!this.app.workspace.isLayoutReady()) this.app.workspace.markLayoutReady();
     await this.app.workspace.waitForLayoutReadyCallbacks();
+    this.app.workspace.registerUriHook();
     this.app.workspace.trigger("app-loaded");
   }
 
@@ -52,6 +53,8 @@ export class AppLifecycle {
 
   private async runOpeningBehavior(): Promise<void> {
     const behavior = this.app.vault.getConfig<string>("openBehavior") ?? "";
+    const pendingUrlAction = (window as { OBS_ACT?: unknown }).OBS_ACT;
+    if (pendingUrlAction && typeof pendingUrlAction !== "function") return;
     if (!behavior) return;
     if (behavior === "new") {
       await this.app.fileManager.createAndOpenMarkdownFile("");
