@@ -52,6 +52,11 @@ export class FileView extends ItemView {
     super.onPaneMenu(menu, source);
   }
 
+  override async onClose(): Promise<void> {
+    this.contentEl.empty();
+    await this.loadFile(null);
+  }
+
   async loadFile(file: TFile | null): Promise<boolean> {
     const previousFile = this.file;
     if (previousFile?.path === file?.path) return false;

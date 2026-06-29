@@ -6,8 +6,14 @@ import type { TAbstractFile } from "../vault/TAbstractFile";
 import { FileView } from "./FileView";
 
 class BasicFileView extends FileView {
+  unloadedFiles: string[] = [];
+
   getViewType(): string {
     return "basic-file-view-menu-test";
+  }
+
+  override async onUnloadFile(file: TAbstractFile): Promise<void> {
+    this.unloadedFiles.push(file.path);
   }
 }
 
@@ -27,5 +33,23 @@ describe("FileView menu parity", () => {
     (leaf.view as BasicFileView).onPaneMenu(new Menu(), "more-options");
 
     expect(calls).toEqual([{ file, source: "more-options", leaf }]);
+  });
+
+  it("unloads and clears its current file when closed", async () => {
+    const app = new App(document.createElement("div"));
+    const file = await app.vault.create("Close.md", "close");
+    app.viewRegistry.registerView("basic-file-view-menu-test", (leaf) => new BasicFileView(leaf));
+    const leaf = app.workspace.getLeaf();
+
+    await leaf.setViewState({ type: "basic-file-view-menu-test", active: true });
+    const view = leaf.view as BasicFileView;
+    await view.loadFile(file);
+    view.contentEl.createDiv("stale-content");
+
+    await leaf.setViewState({ type: "empty", active: true });
+
+    expect(view.unloadedFiles).toEqual(["Close.md"]);
+    expect(view.file).toBeNull();
+    expect(view.contentEl.children).toHaveLength(0);
   });
 });
