@@ -1,4 +1,5 @@
 import { DataAdapter, type DataAdapterWatchHandler, type DataWriteOptions, type ListedFiles, type Stat } from "./DataAdapter";
+import { Platform } from "../platform/Platform";
 
 type FileSystemModule = {
   access(path: string): Promise<void>;
@@ -115,11 +116,17 @@ export class FileSystemAdapter extends DataAdapter {
   }
 
   getFilePath(path: string): string {
-    return this.getFullPath(path);
+    return pathToFileUrl(this.getFullPath(path));
   }
 
   getResourcePath(path: string): string {
-    return `file://${encodeURI(this.getFullPath(path))}`;
+    const normalized = normalizeVaultPath(path);
+    const entry = this.files.get(normalized);
+    const version = entry?.type === "file" && entry.mtime ? entry.mtime : Date.now();
+    let resourcePath = this.getFilePath(normalized);
+    if (resourcePath.startsWith("file:///")) resourcePath = resourcePath.substring(8);
+    else if (resourcePath.startsWith("file://")) resourcePath = `%5C%5C${resourcePath.substring(7)}`;
+    return `${Platform.resourcePathPrefix}${resourcePath}?${version}`;
   }
 
   resolvePath(urlOrPath: string): string | null {
@@ -552,7 +559,7 @@ function normalizeVaultPath(path: string): string {
 }
 
 function decodeFileUrlOrPath(urlOrPath: string): string | null {
-  if (urlOrPath.startsWith("file://")) {
+  if (urlOrPath.startsWith("file://") || urlOrPath.startsWith(Platform.resourcePathPrefix)) {
     try {
       return decodeURIComponent(new URL(urlOrPath).pathname);
     } catch {
@@ -564,4 +571,14 @@ function decodeFileUrlOrPath(urlOrPath: string): string | null {
 
 function normalizeFilesystemPath(path: string): string {
   return path.replace(/\\/g, "/").replace(/\/+$/, "");
+}
+
+function pathToFileUrl(path: string): string {
+  const normalized = path.replace(/\\/g, "/");
+  if (normalized.startsWith("//")) return `file://${encodeFileUrlPath(normalized.slice(2))}`;
+  return `file://${encodeFileUrlPath(normalized.startsWith("/") ? normalized : `/${normalized}`)}`;
+}
+
+function encodeFileUrlPath(path: string): string {
+  return path.split("/").map((segment) => /^[A-Za-z]:$/.test(segment) ? segment : encodeURIComponent(segment)).join("/");
 }

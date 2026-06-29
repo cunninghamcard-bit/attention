@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InMemoryAdapter } from "./DataAdapter";
 import { FileSystemAdapter } from "./FileSystemAdapter";
+import { Platform } from "../platform/Platform";
 
 type TestFsModule = {
   mkdir(path: string, options: { recursive: boolean }): Promise<void>;
@@ -94,6 +95,9 @@ describe("FileSystemAdapter", () => {
 
     const resourcePath = adapter.getResourcePath("Folder/Image.png");
 
+    expect(resourcePath.startsWith(Platform.resourcePathPrefix)).toBe(true);
+    expect(resourcePath).toMatch(/\?\d+$/);
+    expect(adapter.getFilePath("Folder/Image.png")).toMatch(/^file:\/\//);
     expect(adapter.resolvePath(resourcePath)).toBe("Folder/Image.png");
     expect(adapter.resolvePath(`${resourcePath}?123`)).toBe("Folder/Image.png");
     expect(adapter.resolvePath(path.join(basePath, "Folder/Image.png"))).toBe("Folder/Image.png");
