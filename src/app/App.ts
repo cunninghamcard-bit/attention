@@ -79,6 +79,7 @@ import { QueryEngine } from "../query/QueryEngine";
 import { BasesRegistry } from "../bases/BasesRegistry";
 import { BasesFunctionRegistry } from "../bases/BasesFunctionRegistry";
 import { MobileToolbar } from "../mobile/MobileToolbar";
+import { MobileBackButtonController } from "../mobile/MobileBackButton";
 import { AppDom } from "./AppDom";
 import { writeClipboardText } from "../dom/Clipboard";
 import { ProgressBar } from "../ui/ProgressBar";
@@ -180,6 +181,7 @@ export class App {
   readonly popoutManager: WorkspaceServices["popoutManager"];
   readonly mobileWorkspace: WorkspaceServices["mobileWorkspace"];
   readonly mobileToolbar: MobileToolbar;
+  readonly mobileBackButton: MobileBackButtonController;
   readonly hoverPreview: WorkspaceServices["hoverPreview"];
   readonly themes = new ThemeManager(this);
   readonly customCss = new CustomCss(this);
@@ -225,6 +227,7 @@ export class App {
     this.windowManager = this.services.windowManager;
     this.popoutManager = this.services.popoutManager;
     this.mobileWorkspace = this.services.mobileWorkspace;
+    this.mobileBackButton = new MobileBackButtonController(this);
     this.mobileToolbar = new MobileToolbar(this);
     this.mobileToolbar.attachListeners();
     this.hoverPreview = this.services.hoverPreview;

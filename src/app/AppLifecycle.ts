@@ -22,6 +22,7 @@ export class AppLifecycle {
     await this.app.pluginInstaller.initialize();
     await this.app.vault.load();
     this.app.hotkeys.registerListeners();
+    this.app.mobileBackButton.attach();
     this.app.metadataTypeManager.registerListeners();
     await this.app.metadataCache.initialize();
     this.app.metadataCache.showIndexingNotice();
@@ -41,6 +42,7 @@ export class AppLifecycle {
 
   async unload(): Promise<void> {
     await this.save();
+    this.app.mobileBackButton.detach();
     this.app.hotkeys.unregisterListeners();
     this.app.metadataTypeManager.unregisterListeners();
     this.app.vault.unload();

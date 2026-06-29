@@ -141,6 +141,7 @@ export * from "./window/PopoutManager";
 export * from "./mobile/MobileDrawer";
 export * from "./mobile/MobileWorkspace";
 export * from "./mobile/MobileToolbar";
+export * from "./mobile/MobileBackButton";
 export * from "./hover/HoverPreviewController";
 export * from "./storage/JsonStore";
 export * from "./storage/FileSystemJsonStoreAdapter";
