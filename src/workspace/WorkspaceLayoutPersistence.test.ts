@@ -158,7 +158,8 @@ describe("WorkspaceLayoutPersistence", () => {
     await app.ready;
     const file = await app.vault.create("Recent.md", "# Recent");
 
-    await app.workspace.setLayout({ lastOpenFiles: [file.path] });
+    await app.workspaceLayouts.writeWorkspaceFile({ lastOpenFiles: [file.path] });
+    await app.workspace.loadLayout();
 
     expect(app.workspace.getActiveFile()).toBe(file);
   });

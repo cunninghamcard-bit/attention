@@ -24,11 +24,8 @@ export class WorkspaceLayoutPersistence {
   }
 
   async restoreSavedLayout(): Promise<WorkspaceLayout | null> {
-    const layout = await this.loadSavedLayout();
-    if (layout) {
-      await this.app.workspace.setLayout(layout);
-      this.app.workspace.trigger("layout-restored", layout);
-    }
+    const layout = await this.app.workspace.loadLayout();
+    if (layout && Object.keys(layout).length > 0) this.app.workspace.trigger("layout-restored", layout);
     return layout;
   }
 

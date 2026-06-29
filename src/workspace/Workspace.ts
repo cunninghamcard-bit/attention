@@ -626,8 +626,14 @@ export class Workspace extends Events {
   }
 
   async loadLayout(): Promise<WorkspaceLayout | null> {
-    const layout = await this.app.workspaceLayouts.restoreSavedLayout();
-    if (!this.layoutReady) this.markLayoutReady();
+    const layout = await this.app.workspaceLayouts.loadSavedLayout();
+    if (!layout) {
+      if (!this.layoutReady) this.markLayoutReady();
+      return null;
+    }
+    if (Object.prototype.hasOwnProperty.call(layout, "lastOpenFiles")) this.recentFileTracker.load(layout.lastOpenFiles);
+    await this.setLayout(layout);
+    this.fireLayoutReady();
     return layout;
   }
 
@@ -668,7 +674,6 @@ export class Workspace extends Events {
 
   async setLayout(layout: WorkspaceLayout): Promise<void> {
     this.layoutReady = false;
-    if (Object.prototype.hasOwnProperty.call(layout, "lastOpenFiles")) this.recentFileTracker.load(layout.lastOpenFiles);
     if (layout.main) await this.replaceSplitFromLayout(this.rootSplit, layout.main);
     else {
       const leaf = this.createDefaultMainLayout();
@@ -695,7 +700,6 @@ export class Workspace extends Events {
     const activeId = layout.active ?? layout.activeLeafId;
     const activeLeaf = activeId ? this.getLeafById(activeId) : this.getMostRecentLeaf();
     if (activeLeaf) this.setActiveLeaf(activeLeaf);
-    this.fireLayoutReady();
     await Promise.all(this.getVisibleLeaves().map((leaf) => leaf.loadIfDeferred()));
     this.layoutReady = true;
     this.onLayoutChange();
@@ -2388,7 +2392,7 @@ export class Workspace extends Events {
 
   onLayoutReady(callback: () => any, pluginId?: string | null): void {
     const callbackPluginId = pluginId === undefined ? this.app.pluginInstaller.loadingPluginId : pluginId;
-    if (this.layoutReady || this.onLayoutReadyCallbacks === null) {
+    if (this.onLayoutReadyCallbacks === null) {
       callback();
       return;
     }
@@ -2499,7 +2503,9 @@ function createMicrotaskWorkspaceRequest(fn: () => void): () => void {
 }
 
 function nextLayoutReadyCallbackTurn(): Promise<void> {
-  return Promise.resolve();
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, 0);
+  });
 }
 
 function isFileBackedLeaf(leaf: WorkspaceLeaf): boolean {

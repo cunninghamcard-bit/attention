@@ -25,7 +25,7 @@ describe("AppLifecycle opening behavior", () => {
 
   it("keeps restored layout for the last opened behavior", async () => {
     const app = new App(document.createElement("div"));
-    const restore = vi.spyOn(app.workspaceLayouts, "restoreSavedLayout").mockResolvedValue(null);
+    const restore = vi.spyOn(app.workspace, "loadLayout").mockResolvedValue(null);
     app.vault.setConfig("openBehavior", "");
 
     await app.ready;

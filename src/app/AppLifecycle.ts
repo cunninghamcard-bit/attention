@@ -26,7 +26,7 @@ export class AppLifecycle {
     this.app.metadataTypeManager.registerListeners();
     await this.app.metadataCache.initialize();
     this.app.metadataCache.showIndexingNotice();
-    await this.app.workspaceLayouts.restoreSavedLayout();
+    await this.app.workspace.loadLayout();
     await this.runOpeningBehavior();
     if (!this.app.workspace.isLayoutReady()) this.app.workspace.markLayoutReady();
     await this.app.workspace.waitForLayoutReadyCallbacks();
