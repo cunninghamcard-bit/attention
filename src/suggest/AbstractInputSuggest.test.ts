@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { App } from "../app/App";
 import { Scope } from "../hotkeys/Scope";
+import { Platform } from "../platform/Platform";
 import { AbstractInputSuggest } from "./AbstractInputSuggest";
 
 let dom: JSDOM | null = null;
@@ -44,22 +45,30 @@ class FruitSuggest extends AbstractInputSuggest<string> {
   }
 }
 
-function createApp(): App {
+interface TestApp extends App {
+  pushedScopes: Scope[];
+  poppedScopes: Scope[];
+}
+
+function createApp(): TestApp {
   const scope = new Scope(null);
-  const pushed: Scope[] = [];
+  const pushedScopes: Scope[] = [];
+  const poppedScopes: Scope[] = [];
   return {
     scope,
+    pushedScopes,
+    poppedScopes,
     keymap: {
-      pushed,
       pushScope(next: Scope) {
-        pushed.push(next);
+        pushedScopes.push(next);
       },
       popScope(next: Scope) {
-        const index = pushed.lastIndexOf(next);
-        if (index !== -1) pushed.splice(index, 1);
+        poppedScopes.push(next);
+        const index = pushedScopes.lastIndexOf(next);
+        if (index !== -1) pushedScopes.splice(index, 1);
       },
     },
-  } as unknown as App;
+  } as unknown as TestApp;
 }
 
 function inputEl(): HTMLInputElement {
@@ -69,6 +78,33 @@ function inputEl(): HTMLInputElement {
 }
 
 describe("AbstractInputSuggest", () => {
+  it("keeps PopoverSuggest scope registration paired across close and repeated open", () => {
+    const app = createApp();
+    const suggest = new FruitSuggest(app, inputEl());
+    suggest.values = ["apple"];
+
+    suggest.close();
+
+    expect(app.pushedScopes).toEqual([]);
+    expect(app.poppedScopes).toEqual([suggest.scope]);
+
+    suggest.open();
+    suggest.open();
+
+    expect(app.pushedScopes).toEqual([suggest.scope]);
+    expect(app.poppedScopes).toEqual([suggest.scope]);
+    expect(document.body.querySelectorAll(".suggestion-container")).toHaveLength(1);
+
+    suggest.suggestions.setSuggestions(["apple"]);
+    suggest.close();
+    suggest.close();
+
+    expect(app.pushedScopes).toEqual([]);
+    expect(app.poppedScopes).toEqual([suggest.scope, suggest.scope, suggest.scope]);
+    expect(document.body.querySelector(".suggestion-container")).toBeNull();
+    expect(suggest.suggestions.length).toBe(0);
+  });
+
   it("opens from a focused input and applies the Obsidian default limit", () => {
     const app = createApp();
     const input = inputEl();
@@ -82,6 +118,52 @@ describe("AbstractInputSuggest", () => {
 
     expect(suggest.isOpen).toBe(true);
     expect([...document.body.querySelectorAll(".suggestion-item")].map((el) => el.textContent)).toEqual(["apple", "apricot"]);
+  });
+
+  it("updates suggestions immediately on non-iOS focus", () => {
+    const originalIos = Platform.isIosApp;
+    Platform.isIosApp = false;
+    try {
+      const input = inputEl();
+      const suggest = new FruitSuggest(createApp(), input);
+      suggest.values = ["apple"];
+      input.value = "a";
+
+      input.focus();
+
+      expect(suggest.isOpen).toBe(true);
+      expect(document.body.querySelector(".suggestion-item")?.textContent).toBe("apple");
+    } finally {
+      Platform.isIosApp = originalIos;
+    }
+  });
+
+  it("defers focus suggestions on iOS until the next tick", () => {
+    vi.useFakeTimers();
+    const originalIos = Platform.isIosApp;
+    Platform.isIosApp = true;
+    try {
+      const input = inputEl();
+      const suggest = new FruitSuggest(createApp(), input);
+      suggest.values = ["apple"];
+      input.value = "a";
+
+      input.focus();
+
+      expect(suggest.isOpen).toBe(false);
+      expect(document.body.querySelector(".suggestion-item")).toBeNull();
+
+      vi.advanceTimersByTime(50);
+      expect(suggest.isOpen).toBe(false);
+      vi.advanceTimersByTime(10);
+
+      expect(suggest.isOpen).toBe(true);
+      expect(document.body.querySelector(".suggestion-item")?.textContent).toBe("apple");
+      suggest.close();
+    } finally {
+      Platform.isIosApp = originalIos;
+      vi.useRealTimers();
+    }
   });
 
   it("closes when suggestions become empty", () => {

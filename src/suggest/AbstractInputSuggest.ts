@@ -6,6 +6,8 @@ import { SuggestChooser, type SuggestOwner } from "./SuggestModal";
 
 export type { ISuggestOwner } from "./SuggestModal";
 
+const openPopoverSuggests: PopoverSuggest<unknown>[] = [];
+
 export abstract class PopoverSuggest<T> implements SuggestOwner<T> {
   isOpen = false;
   readonly scope: Scope;
@@ -39,13 +41,11 @@ export abstract class PopoverSuggest<T> implements SuggestOwner<T> {
   }
 
   open(ownerDocument: Document = this.suggestEl.ownerDocument): void {
-    if (this.isOpen) {
-      if (this.suggestEl.ownerDocument !== ownerDocument) this.attachDom(ownerDocument);
-      return;
-    }
+    if (this.isOpen) return;
     this.isOpen = true;
     this.app.keymap.pushScope(this.scope);
     this.attachDom(ownerDocument);
+    pushOpenPopoverSuggest(this);
   }
 
   close(): void {
@@ -56,6 +56,7 @@ export abstract class PopoverSuggest<T> implements SuggestOwner<T> {
     this.isOpen = false;
     this.suggestions.setSuggestions([]);
     this.detachDom();
+    removeOpenPopoverSuggest(this);
   }
 
   reposition(rect: DOMRect | Pick<DOMRect, "left" | "right" | "top" | "bottom">, direction: "auto" | "ltr" | "rtl" = "auto"): void {
@@ -133,6 +134,16 @@ export abstract class PopoverSuggest<T> implements SuggestOwner<T> {
       });
     }
   }
+}
+
+function pushOpenPopoverSuggest(suggest: PopoverSuggest<unknown>): void {
+  removeOpenPopoverSuggest(suggest);
+  openPopoverSuggests.push(suggest);
+}
+
+function removeOpenPopoverSuggest(suggest: PopoverSuggest<unknown>): void {
+  const index = openPopoverSuggests.indexOf(suggest);
+  if (index !== -1) openPopoverSuggests.splice(index, 1);
 }
 
 function positionSuggestion(
@@ -235,6 +246,10 @@ export abstract class AbstractInputSuggest<T> extends PopoverSuggest<T> {
   }
 
   onInputFocus(): void {
+    if (Platform.isIosApp) {
+      deferUntilMobileResizeSettles(this.textInputEl.ownerDocument.defaultView ?? window, () => this.onInputChange());
+      return;
+    }
     this.onInputChange();
   }
 
@@ -301,5 +316,26 @@ function isActiveElement(el: HTMLElement): boolean {
 }
 
 function isShown(el: HTMLElement): boolean {
-  return el.isConnected && el.ownerDocument.defaultView?.getComputedStyle(el).display !== "none";
+  const win = el.ownerDocument.defaultView ?? window;
+  const style = win.getComputedStyle(el);
+  return el.isConnected && style.display !== "none" && style.visibility !== "hidden";
+}
+
+function deferUntilMobileResizeSettles(win: Window, callback: () => void): void {
+  const started = Date.now();
+  let lastWidth = win.innerWidth;
+  let lastHeight = win.innerHeight;
+  const poll = (): void => {
+    const width = win.innerWidth;
+    const height = win.innerHeight;
+    const changed = width !== lastWidth || height !== lastHeight;
+    lastWidth = width;
+    lastHeight = height;
+    if (!changed || Date.now() - started >= 500) {
+      win.setTimeout(callback, 10);
+      return;
+    }
+    win.setTimeout(poll, 50);
+  };
+  win.setTimeout(poll, 50);
 }
