@@ -312,6 +312,32 @@ describe("Vault public file API", () => {
     await expect(vault.read(vault.getFileByPath("Archive/Thread/Sub/b.md")!)).resolves.toBe("B");
   });
 
+  it("does not delete or trash the vault root", async () => {
+    const adapter = {
+      read: vi.fn(async () => ""),
+      write: vi.fn(async () => {}),
+      delete: vi.fn(async () => {}),
+      list: vi.fn(async () => []),
+      remove: vi.fn(async () => {}),
+      rmdir: vi.fn(async () => {}),
+      trashSystem: vi.fn(async () => true),
+      trashLocal: vi.fn(async () => {}),
+    };
+    const vault = new Vault(adapter);
+
+    await vault.delete(vault.getRoot(), true);
+    await vault.trash(vault.getRoot(), true);
+    await vault.trash(vault.getRoot(), false);
+
+    expect(vault.getAbstractFileByPath("/")).toBe(vault.getRoot());
+    expect(vault.getRoot().deleted).toBe(false);
+    expect(adapter.delete).not.toHaveBeenCalled();
+    expect(adapter.remove).not.toHaveBeenCalled();
+    expect(adapter.rmdir).not.toHaveBeenCalled();
+    expect(adapter.trashSystem).not.toHaveBeenCalled();
+    expect(adapter.trashLocal).not.toHaveBeenCalled();
+  });
+
   it("backs DataAdapter-style stat and append APIs through the in-memory adapter", async () => {
     const adapter = new InMemoryAdapter();
     const vault = new Vault(adapter);

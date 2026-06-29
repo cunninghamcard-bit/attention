@@ -606,6 +606,7 @@ export class Vault extends Events {
   }
 
   async delete(file: TAbstractFile, force = false): Promise<void> {
+    if (file === this.root) return;
     if (this.usesAdapterEvents()) {
       this.invalidateCachedReadTree(file);
       if (file instanceof TFolder && this.adapter?.rmdir) await this.adapter.rmdir(file.path, force);
@@ -627,6 +628,7 @@ export class Vault extends Events {
   }
 
   async trash(file: TAbstractFile, system: boolean): Promise<void> {
+    if (file === this.root) return;
     if (system && this.adapter?.trashSystem && await this.adapter.trashSystem(file.path)) {
       if (this.usesAdapterEvents()) return;
       this.removeAfterExternalTrash(file);
