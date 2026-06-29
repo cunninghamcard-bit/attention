@@ -36,7 +36,7 @@ export class RecentFileTracker {
     return [...this.lastOpenFiles];
   }
 
-  collect(file: TFile): void {
+  collect(file: { path: string }): void {
     if (this.lastOpenFiles[0] === file.path) return;
     const counts: Record<RecentFileKind, number> = { md: 0, canvas: 0, image: 0, other: 0 };
     const next = [file.path];
@@ -56,8 +56,8 @@ export class RecentFileTracker {
     this.workspace.requestSaveLayout();
   }
 
-  addRecentFile(file: TAbstractFile): void {
-    if (!this.workspace.isLayoutReady() || !(file instanceof TFile)) return;
+  addRecentFile(file: TAbstractFile | { path: string }): void {
+    if (!this.workspace.isLayoutReady() || !hasPath(file)) return;
     this.collect(file);
     this.workspace.requestSaveLayout();
   }
@@ -119,4 +119,8 @@ function getExtension(path: string): string {
   const filename = path.split("/").pop() ?? "";
   const index = filename.lastIndexOf(".");
   return index === -1 ? "" : filename.slice(index + 1).toLowerCase();
+}
+
+function hasPath(value: unknown): value is { path: string } {
+  return Boolean(value && typeof value === "object" && typeof (value as { path?: unknown }).path === "string");
 }

@@ -22,6 +22,15 @@ describe("Workspace Obsidian API aliases", () => {
     expect(app.workspace.getRecentFiles()[0]).toBe(file.path);
   });
 
+  it("collects recent file entries by path without requiring a TFile instance", () => {
+    const app = new App(document.createElement("div"));
+
+    vi.spyOn(app.workspace, "isLayoutReady").mockReturnValue(true);
+    app.workspace.recentFileTracker.addRecentFile({ path: "Duck.md" });
+
+    expect(app.workspace.getRecentFiles()[0]).toBe("Duck.md");
+  });
+
   it("returns recent file paths even when the vault no longer has the file", () => {
     const app = new App(document.createElement("div"));
 
