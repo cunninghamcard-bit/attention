@@ -1,0 +1,63 @@
+import { describe, expect, it, vi } from "vitest";
+import { Events, type EventRef } from "./Events";
+
+describe("Events", () => {
+  it("returns opaque public event refs and triggers handlers with ctx", () => {
+    const events = new Events();
+    const ctx = { value: 0 };
+    function handler(this: typeof ctx, amount: number): void {
+      this.value += amount;
+    }
+
+    const ref: EventRef<[number]> = events.on("inc", handler, ctx);
+
+    expect(typeof ref).toBe("object");
+
+    events.trigger("inc", 2);
+
+    expect(ctx.value).toBe(2);
+  });
+
+  it("removes handlers by original function, by event name, and by ref", () => {
+    const events = new Events();
+    const log: string[] = [];
+    const first = () => log.push("first");
+    const second = () => log.push("second");
+    const firstRef = events.on("event", first);
+    events.on("event", second);
+
+    events.off("event", first);
+    events.trigger("event");
+
+    expect(log).toEqual(["second"]);
+
+    events.offref(firstRef);
+    events.off("event");
+    events.trigger("event");
+
+    expect(log).toEqual(["second"]);
+  });
+
+  it("triggers a snapshot of listeners and rethrows listener errors asynchronously", () => {
+    vi.useFakeTimers();
+    try {
+      const events = new Events();
+      const thrown = new Error("boom");
+      const log: string[] = [];
+      const second = () => log.push("second");
+      events.on("event", () => {
+        log.push("first");
+        events.off("event", second);
+        throw thrown;
+      });
+      events.on("event", second);
+
+      events.trigger("event");
+
+      expect(log).toEqual(["first", "second"]);
+      expect(() => vi.runOnlyPendingTimers()).toThrow(thrown);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

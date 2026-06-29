@@ -1,0 +1,509 @@
+import { Modal } from "../ui/Modal";
+import type { App } from "../app/App";
+import { Platform } from "../platform/Platform";
+
+export interface Instruction {
+  command: string;
+  purpose: string;
+}
+
+export type PromptInstruction = Instruction;
+
+export interface FuzzyMatch {
+  matches: Array<[number, number]>;
+  score: number;
+}
+
+export interface FuzzySuggestion<T> {
+  match: FuzzyMatch;
+  item: T;
+}
+
+export interface ISuggestOwner<T> {
+  renderSuggestion(value: T, el: HTMLElement): void;
+  selectSuggestion(value: T, event: MouseEvent | KeyboardEvent): void;
+}
+
+export interface SuggestOwner<T> extends ISuggestOwner<T> {
+  onSelectedChange(value: T, event: MouseEvent | KeyboardEvent | null): void;
+}
+
+export abstract class SuggestModal<T> extends Modal {
+  limit = 100;
+  emptyStateText = "No results found";
+  isOpen = false;
+  readonly inputEl: HTMLInputElement;
+  readonly clearButtonEl: HTMLElement;
+  readonly ctaEl: HTMLElement;
+  readonly resultContainerEl: HTMLElement;
+  readonly instructionsEl: HTMLElement;
+  readonly chooser: SuggestChooser<T>;
+
+  constructor(app: App) {
+    super(app);
+    this.modalEl.classList.remove("modal");
+    this.modalEl.classList.add("prompt");
+    this.modalEl.replaceChildren();
+
+    const doc = this.containerEl.ownerDocument;
+    const inputContainerEl = doc.createElement("div");
+    inputContainerEl.className = "prompt-input-container";
+    if (Platform.isPhone) inputContainerEl.classList.add("mod-raised");
+
+    this.inputEl = doc.createElement("input");
+    this.inputEl.className = "prompt-input";
+    this.inputEl.type = "text";
+    this.inputEl.autocapitalize = "off";
+    this.inputEl.spellcheck = false;
+    this.inputEl.enterKeyHint = Platform.isAndroidApp ? "enter" : "done";
+
+    this.ctaEl = doc.createElement("div");
+    this.ctaEl.className = "prompt-input-cta";
+
+    this.clearButtonEl = doc.createElement("div");
+    this.clearButtonEl.className = "search-input-clear-button";
+    this.clearButtonEl.addEventListener("mousedown", (event) => event.preventDefault());
+    this.clearButtonEl.addEventListener("click", () => {
+      if (this.inputEl.value !== "") {
+        this.inputEl.value = "";
+        this.inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+      } else {
+        this.close();
+      }
+    });
+
+    inputContainerEl.append(this.inputEl, this.ctaEl, this.clearButtonEl);
+
+    this.resultContainerEl = doc.createElement("div");
+    this.resultContainerEl.className = "prompt-results";
+
+    this.instructionsEl = doc.createElement("div");
+    this.instructionsEl.className = "prompt-instructions";
+
+    this.modalEl.append(inputContainerEl, this.resultContainerEl);
+    this.chooser = new SuggestChooser(this, this.resultContainerEl);
+
+    this.inputEl.addEventListener("input", () => this.onInput());
+    this.registerScopeNavigation();
+  }
+
+  setPlaceholder(text: string): void {
+    this.inputEl.placeholder = text;
+  }
+
+  setInstructions(instructions: Instruction[]): void {
+    this.instructionsEl.replaceChildren();
+    if (instructions.length === 0) {
+      this.instructionsEl.remove();
+      return;
+    }
+
+    for (const instruction of instructions) {
+      const doc = this.containerEl.ownerDocument;
+      const instructionEl = doc.createElement("div");
+      instructionEl.className = "prompt-instruction";
+      const commandEl = doc.createElement("span");
+      commandEl.className = "prompt-instruction-command";
+      commandEl.textContent = instruction.command;
+      const purposeEl = doc.createElement("span");
+      purposeEl.textContent = instruction.purpose;
+      instructionEl.append(commandEl, purposeEl);
+      this.instructionsEl.appendChild(instructionEl);
+    }
+
+    this.modalEl.appendChild(this.instructionsEl);
+  }
+
+  onOpen(): void {
+    this.isOpen = true;
+    this.inputEl.value = "";
+    this.inputEl.focus();
+    this.updateSuggestions();
+  }
+
+  onClose(): void {
+    this.isOpen = false;
+  }
+
+  onInput(): void {
+    this.updateSuggestions();
+  }
+
+  updateSuggestions(): void {
+    const query = this.inputEl.value;
+    const suggestions = this.getSuggestions(query);
+    if (Array.isArray(suggestions)) {
+      this.applySuggestions(suggestions);
+      return;
+    }
+    void suggestions.then((resolved) => this.applySuggestions(resolved));
+  }
+
+  private applySuggestions(suggestions: T[]): void {
+    if (suggestions && suggestions.length > 0) {
+      const limited = this.limit > 0 ? suggestions.slice(0, this.limit) : suggestions;
+      this.chooser.setSuggestions(limited);
+    } else {
+      this.onNoSuggestion();
+    }
+  }
+
+  onNoSuggestion(): void {
+    this.chooser.setSuggestions(null);
+    this.chooser.addMessage(this.emptyStateText);
+  }
+
+  selectSuggestion(value: T, event: MouseEvent | KeyboardEvent): void {
+    this.app.keymap.updateModifiers(event);
+    this.close();
+    this.isOpen = false;
+    this.onChooseSuggestion(value, event);
+  }
+
+  selectActiveSuggestion(event: KeyboardEvent): void {
+    this.chooser.useSelectedItem(event);
+  }
+
+  private registerScopeNavigation(): void {
+    this.scope.register([], "ArrowDown", (event) => {
+      if (event.isComposing) return;
+      this.chooser.moveSelectedItem(1, event);
+      return false;
+    });
+    this.scope.register([], "ArrowUp", (event) => {
+      if (event.isComposing) return;
+      this.chooser.moveSelectedItem(-1, event);
+      return false;
+    });
+    this.scope.register([], "PageDown", (event) => {
+      if (event.isComposing) return;
+      this.chooser.moveSelectedItem(this.chooser.getVisibleItemCount(), event, false);
+      return false;
+    });
+    this.scope.register([], "PageUp", (event) => {
+      if (event.isComposing) return;
+      this.chooser.moveSelectedItem(-this.chooser.getVisibleItemCount(), event, false);
+      return false;
+    });
+    this.scope.register([], "Home", (event) => {
+      this.chooser.setSelectedItem(0, event);
+      return false;
+    });
+    this.scope.register([], "End", (event) => {
+      this.chooser.setSelectedItem(this.chooser.length - 1, event);
+      return false;
+    });
+    this.scope.register([], "Enter", (event) => {
+      if (event.isComposing) return;
+      return this.chooser.useSelectedItem(event) ? false : undefined;
+    });
+    if (Platform.isMacOS || Platform.isIosApp) {
+      this.scope.register(["Ctrl"], "p", (event) => {
+        if (event.isComposing) return;
+        this.chooser.moveSelectedItem(-1, event);
+        return false;
+      });
+      this.scope.register(["Ctrl"], "n", (event) => {
+        if (event.isComposing) return;
+        this.chooser.moveSelectedItem(1, event);
+        return false;
+      });
+    }
+  }
+
+  abstract getSuggestions(query: string): T[] | Promise<T[]>;
+  abstract renderSuggestion(value: T, el: HTMLElement): void;
+  abstract onChooseSuggestion(value: T, event: MouseEvent | KeyboardEvent): void;
+  onSelectedChange(_value: T, _event: MouseEvent | KeyboardEvent | null): void {}
+}
+
+export class SuggestChooser<T> {
+  protected values: T[] = [];
+  protected suggestionEls: HTMLElement[] = [];
+  selectedItem = 0;
+  selectOnHover = true;
+
+  constructor(readonly owner: SuggestOwner<T>, readonly containerEl: HTMLElement) {}
+
+  get length(): number {
+    return this.values.length;
+  }
+
+  setSuggestions(values: T[] | null): void {
+    this.containerEl.replaceChildren();
+    this.values = values ?? [];
+    this.suggestionEls = [];
+    if (!values) return;
+
+    for (const value of values) this.addSuggestion(value);
+    this.setSelectedItem(0, null);
+  }
+
+  getSelectedElement(): HTMLElement | null {
+    return this.suggestionEls[this.selectedItem] ?? null;
+  }
+
+  getSelectedValue(): T | null {
+    return this.values[this.selectedItem] ?? null;
+  }
+
+  shouldSelectOnHover(value: boolean): this {
+    this.selectOnHover = value;
+    return this;
+  }
+
+  addSuggestion(value: T): void {
+    const itemEl = this.containerEl.ownerDocument.createElement("div");
+    itemEl.className = "suggestion-item";
+    this.owner.renderSuggestion(value, itemEl);
+    itemEl.addEventListener("click", (event) => this.onSuggestionClick(event, itemEl));
+    itemEl.addEventListener("auxclick", (event) => this.onSuggestionClick(event, itemEl));
+    itemEl.addEventListener("mousemove", (event) => {
+      if (this.selectOnHover) this.setSelectedItem(this.suggestionEls.indexOf(itemEl), event);
+    });
+    this.containerEl.appendChild(itemEl);
+    this.suggestionEls.push(itemEl);
+  }
+
+  addMessage(message: string): void {
+    const emptyEl = this.containerEl.ownerDocument.createElement("div");
+    emptyEl.className = "suggestion-empty";
+    emptyEl.textContent = message;
+    this.containerEl.appendChild(emptyEl);
+  }
+
+  getVisibleItemCount(): number {
+    const first = this.suggestionEls[0];
+    if (!first) return 1;
+    const itemHeight = first.getBoundingClientRect().height || 1;
+    const containerHeight = this.containerEl.getBoundingClientRect().height || itemHeight;
+    return Math.max(1, Math.floor(containerHeight / itemHeight));
+  }
+
+  moveSelectedItem(delta: number, event: KeyboardEvent, wrap = true): void {
+    if (this.values.length === 0) return;
+    let index = this.selectedItem + delta;
+    if (wrap) index = (index + this.values.length) % this.values.length;
+    else index = Math.max(0, Math.min(this.values.length - 1, index));
+    this.setSelectedItem(index, event);
+  }
+
+  setSelectedItem(index: number, event: MouseEvent | KeyboardEvent | null): void {
+    if (this.values.length === 0) return;
+    let next = index;
+    if (next < 0) next = this.values.length - 1;
+    else if (next >= this.values.length) next = 0;
+    this.forceSetSelectedItem(next, event);
+  }
+
+  forceSetSelectedItem(index: number, event: MouseEvent | KeyboardEvent | null): void {
+    const oldEl = this.suggestionEls[this.selectedItem];
+    oldEl?.classList.remove("is-selected");
+    this.selectedItem = index;
+    const newEl = this.suggestionEls[index];
+    newEl?.classList.add("is-selected");
+    if (newEl && !(event instanceof MouseEvent) && typeof newEl.scrollIntoView === "function") {
+      newEl.scrollIntoView({ block: "nearest" });
+    }
+    this.owner.onSelectedChange(this.values[index], event);
+  }
+
+  private onSuggestionClick(event: MouseEvent, itemEl: HTMLElement): void {
+    if (event.defaultPrevented) return;
+    event.preventDefault();
+    this.setSelectedItem(this.suggestionEls.indexOf(itemEl), event);
+    this.useSelectedItem(event);
+  }
+
+  useSelectedItem(event: MouseEvent | KeyboardEvent): boolean {
+    const value = this.values[this.selectedItem];
+    if (value === undefined) return false;
+    this.owner.selectSuggestion(value, event);
+    return true;
+  }
+}
+
+export interface GroupedSuggestion {
+  group: string;
+}
+
+export class GroupedSuggestChooser<T extends GroupedSuggestion> extends SuggestChooser<T> {
+  override setSuggestions(values: T[] | null): void {
+    this.containerEl.replaceChildren();
+    this.values = values ?? [];
+    this.suggestionEls = [];
+    if (!values) return;
+
+    let currentGroup = "";
+    let groupEl: HTMLElement | null = null;
+    for (const value of values) {
+      if (!groupEl || value.group !== currentGroup) {
+        currentGroup = value.group;
+        groupEl = this.containerEl.ownerDocument.createElement("div");
+        groupEl.className = "suggestion-group";
+        groupEl.dataset.group = value.group;
+        this.containerEl.appendChild(groupEl);
+      }
+      const itemEl = this.containerEl.ownerDocument.createElement("div");
+      itemEl.className = "suggestion-item";
+      this.owner.renderSuggestion(value, itemEl);
+      itemEl.addEventListener("click", (event) => this.onGroupedSuggestionClick(event, itemEl));
+      itemEl.addEventListener("auxclick", (event) => this.onGroupedSuggestionClick(event, itemEl));
+      itemEl.addEventListener("mousemove", (event) => {
+        if (this.selectOnHover) this.setSelectedItem(this.suggestionEls.indexOf(itemEl), event);
+      });
+      groupEl.appendChild(itemEl);
+      this.suggestionEls.push(itemEl);
+    }
+    this.setSelectedItem(0, null);
+  }
+
+  private onGroupedSuggestionClick(event: MouseEvent, itemEl: HTMLElement): void {
+    if (event.defaultPrevented) return;
+    event.preventDefault();
+    this.setSelectedItem(this.suggestionEls.indexOf(itemEl), event);
+    this.useSelectedItem(event);
+  }
+}
+
+export abstract class FuzzySuggestModal<T> extends SuggestModal<FuzzySuggestion<T>> {
+  abstract getItems(): T[];
+  abstract getItemText(item: T): string;
+  abstract onChooseItem(item: T, event: MouseEvent | KeyboardEvent): void;
+
+  sortSuggestions(suggestions: FuzzySuggestion<T>[]): void {
+    sortFuzzySuggestions(suggestions);
+  }
+
+  getSuggestions(query: string): FuzzySuggestion<T>[] {
+    const fuzzyQuery = prepareFuzzyQuery(query.trim());
+    const suggestions: FuzzySuggestion<T>[] = [];
+    for (const item of this.getItems()) {
+      const match = fuzzyMatch(fuzzyQuery, this.getItemText(item));
+      if (match) suggestions.push({ match, item });
+    }
+    this.sortSuggestions(suggestions);
+    return suggestions;
+  }
+
+  renderSuggestion(value: FuzzySuggestion<T>, el: HTMLElement): void {
+    renderFuzzyText(el, this.getItemText(value.item), value.match);
+  }
+
+  onChooseSuggestion(value: FuzzySuggestion<T>, event: MouseEvent | KeyboardEvent): void {
+    this.onChooseItem(value.item, event);
+  }
+}
+
+export interface PreparedFuzzyQuery {
+  query: string;
+  tokens: string[];
+  fuzzy: string[];
+}
+
+export function prepareFuzzyQuery(query: string): PreparedFuzzyQuery {
+  const normalized = query.toLowerCase();
+  return {
+    query,
+    tokens: tokenize(normalized),
+    fuzzy: [...normalized].filter((char) => !/\s/.test(char)),
+  };
+}
+
+function tokenize(query: string): string[] {
+  const tokens: string[] = [];
+  let token = "";
+  for (const char of query) {
+    if (/\s|[\u2000-\u206F\u2E00-\u2E7F\\'!"#$%&()*+,\-.\/:;<=>?@\[\]^_`{|}~]/u.test(char)) {
+      if (token) tokens.push(token);
+      token = "";
+    } else if (/[\u0F00-\u0FFF\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f]/u.test(char)) {
+      if (token) tokens.push(token);
+      tokens.push(char);
+      token = "";
+    } else {
+      token += char;
+    }
+  }
+  if (token) tokens.push(token);
+  return tokens;
+}
+
+export function fuzzyMatch(query: PreparedFuzzyQuery, text: string): FuzzyMatch | null {
+  if (!query.query) return { score: 0, matches: [] };
+  return tokenMatch(query.tokens, query.query, text, false) ?? tokenMatch(query.fuzzy, query.query, text, true);
+}
+
+function tokenMatch(parts: string[], originalQuery: string, text: string, fuzzy: boolean): FuzzyMatch | null {
+  const haystack = text.toLowerCase();
+  const matches: Array<[number, number]> = [];
+  let cursor = 0;
+
+  for (const part of parts) {
+    if (!part) continue;
+    if (fuzzy) {
+      const index = haystack.indexOf(part, cursor);
+      if (index === -1) return null;
+      matches.push([index, index + part.length]);
+      cursor = index + part.length;
+    } else {
+      const index = haystack.indexOf(part, cursor);
+      if (index === -1) return null;
+      matches.push([index, index + part.length]);
+      cursor = index + part.length;
+    }
+  }
+
+  const merged = mergeMatches(matches);
+  return { matches: merged, score: scoreMatch(originalQuery, text, merged, fuzzy) };
+}
+
+function mergeMatches(matches: Array<[number, number]>): Array<[number, number]> {
+  const merged: Array<[number, number]> = [];
+  for (const match of matches) {
+    const previous = merged[merged.length - 1];
+    if (previous && match[0] <= previous[1]) previous[1] = Math.max(previous[1], match[1]);
+    else merged.push([...match]);
+  }
+  return merged;
+}
+
+function scoreMatch(query: string, text: string, matches: Array<[number, number]>, fuzzy: boolean): number {
+  if (matches.length === 0) return 0;
+  const first = matches[0][0];
+  const last = matches[matches.length - 1][1];
+  const span = last - first;
+  const boundaryBonus = matches.reduce((score, [start]) => score + (start === 0 || /[\s:./_-]/.test(text[start - 1] ?? "") ? 8 : 0), 0);
+  return 1000
+    + boundaryBonus
+    - first * 3
+    - matches.length * 20
+    - Math.max(0, span - query.length) * 2
+    - text.length / 100
+    - (fuzzy ? 50 : 0);
+}
+
+export function sortFuzzySuggestions<T>(suggestions: FuzzySuggestion<T>[]): void {
+  suggestions.sort((a, b) => b.match.score - a.match.score);
+}
+
+export function renderFuzzyText(el: HTMLElement, text: string, match: FuzzyMatch | null, offset = 0): void {
+  if (!match || match.matches.length === 0) {
+    el.appendChild(document.createTextNode(text));
+    return;
+  }
+
+  let cursor = 0;
+  for (const [rawStart, rawEnd] of match.matches) {
+    const start = Math.max(0, rawStart + offset);
+    const end = Math.max(0, rawEnd + offset);
+    if (end <= 0 || start >= text.length) continue;
+    if (start > cursor) el.appendChild(document.createTextNode(text.slice(cursor, start)));
+    const highlight = document.createElement("span");
+    highlight.className = "suggestion-highlight";
+    highlight.textContent = text.slice(Math.max(cursor, start), Math.min(text.length, end));
+    el.appendChild(highlight);
+    cursor = Math.min(text.length, end);
+  }
+  if (cursor < text.length) el.appendChild(document.createTextNode(text.slice(cursor)));
+}

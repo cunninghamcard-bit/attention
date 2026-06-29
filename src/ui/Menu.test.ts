@@ -1,0 +1,267 @@
+import { JSDOM } from "jsdom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { Menu, MenuItem } from "./Menu";
+
+let dom: JSDOM | null = null;
+
+beforeEach(() => {
+  dom = new JSDOM("<!doctype html><html><body><button id=\"anchor\"></button></body></html>", { pretendToBeVisual: true });
+  vi.stubGlobal("window", dom.window);
+  vi.stubGlobal("document", dom.window.document);
+  vi.stubGlobal("HTMLElement", dom.window.HTMLElement);
+  vi.stubGlobal("Node", dom.window.Node);
+  vi.stubGlobal("MouseEvent", dom.window.MouseEvent);
+  vi.stubGlobal("KeyboardEvent", dom.window.KeyboardEvent);
+  Object.defineProperty(dom.window.HTMLElement.prototype, "scrollIntoView", {
+    configurable: true,
+    value: vi.fn(),
+  });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+  dom?.window.close();
+  dom = null;
+});
+
+function titles(menu: Menu): string[] {
+  return [...menu.dom.querySelectorAll<HTMLElement>(".menu-item-title")].map((el) => el.textContent ?? "");
+}
+
+describe("Menu Obsidian behavior", () => {
+  it("constructs Obsidian's menu shell and renders items only when shown", () => {
+    const menu = new Menu(document);
+
+    expect([...menu.dom.children].map((child) => child.className)).toEqual(["menu-grabber", "menu-scroll"]);
+    expect(menu.dom.getAttribute("role")).toBeNull();
+    expect(menu.selected).toBe(-1);
+    expect(menu.useNativeMenu).toBe(Menu.useNativeMenu);
+    expect(menu.grabberEl.parentElement).toBe(menu.dom);
+    expect(menu.scrollEl.parentElement).toBe(menu.dom);
+    expect(menu.bgEl.className).toBe("suggestion-bg");
+    expect(menu.bgEl.style.opacity).toBe("0");
+
+    menu.addItem((item) => item.setTitle("Open").setIcon("lucide-file"));
+
+    expect(menu.scrollEl.querySelector(".menu-item")).toBeNull();
+
+    menu.showAtPosition({ x: 10, y: 20 });
+    const itemEl = menu.dom.querySelector<HTMLElement>(".menu-item");
+
+    expect(menu.dom.parentElement).toBe(document.body);
+    expect(menu.bgEl.parentElement).toBe(document.body);
+    expect(itemEl?.querySelector(".menu-item-accelerator")).toBeNull();
+  });
+
+  it("inherits static native menu default for new menu instances", () => {
+    const previous = Menu.useNativeMenu;
+    try {
+      Menu.useNativeMenu = true;
+      const menu = new Menu(document);
+
+      expect(menu.useNativeMenu).toBe(true);
+
+      menu.addItem((item) => item.setTitle("Native"));
+      menu.showAtPosition({ x: 10, y: 20 });
+
+      expect(menu.dom.classList.contains("mod-native-menu")).toBe(true);
+    } finally {
+      Menu.useNativeMenu = previous;
+    }
+  });
+
+  it("sorts explicit sections before the default section and inserts separators", () => {
+    const menu = new Menu(document);
+    menu.addSections(["navigation", "action", "danger"]);
+    menu.addItem((item) => item.setTitle("Delete").setSection("danger"));
+    menu.addItem((item) => item.setTitle("Open").setSection("navigation"));
+    menu.addItem((item) => item.setTitle("Copy").setSection("action"));
+    menu.addItem((item) => item.setTitle("Default"));
+
+    menu.showAtPosition({ x: 10, y: 20 });
+
+    expect(titles(menu)).toEqual(["Open", "Copy", "Delete", "Default"]);
+    expect(menu.dom.querySelectorAll(".menu-separator")).toHaveLength(3);
+  });
+
+  it("uses event.doc when showing a menu from a popout document event", () => {
+    const popout = new JSDOM("<!doctype html><html><body></body></html>", { pretendToBeVisual: true });
+    try {
+      const menu = new Menu(document);
+      const event = new MouseEvent("contextmenu", { clientX: 30, clientY: 40 });
+      Object.defineProperty(event, "doc", { value: popout.window.document });
+      menu.addItem((item) => item.setTitle("Popout"));
+
+      menu.showAtMouseEvent(event);
+
+      expect(menu.dom.parentElement).toBe(popout.window.document.body);
+      expect(menu.bgEl.parentElement).toBe(popout.window.document.body);
+    } finally {
+      popout.window.close();
+    }
+  });
+
+  it("moves configured section prefixes into a submenu", () => {
+    const menu = new Menu(document);
+    menu
+      .addSections(["action.copy", "action.paste", "danger"])
+      .setSectionSubmenu("action", { title: "Actions", icon: "lucide-copy" });
+    menu.addItem((item) => item.setTitle("Paste").setSection("action.paste"));
+    menu.addItem((item) => item.setTitle("Delete").setSection("danger"));
+    menu.addItem((item) => item.setTitle("Copy").setSection("action.copy"));
+
+    menu.showAtPosition({ x: 10, y: 20 });
+
+    expect(titles(menu)).toEqual(["Actions", "Delete"]);
+    expect(menu.dom.querySelector(".menu-item-icon svg.lucide-copy")).not.toBeNull();
+    const submenuItem = menu.items.find((item): item is MenuItem => item instanceof MenuItem && !!item.submenu);
+    const submenu = submenuItem?.submenu;
+    expect(submenu && titles(submenu)).toEqual(["Copy", "Paste"]);
+    expect(submenu?.parentMenu).toBeNull();
+
+    if (!submenuItem) throw new Error("missing submenu item");
+    menu.openSubmenu(submenuItem);
+
+    expect(submenu?.parentMenu).toBe(menu);
+  });
+
+  it("treats checked state as a separate check icon and supports active alias", () => {
+    const menu = new Menu(document);
+    menu.addItem((item) => item.setTitle("Pinned").setIcon("lucide-pin").setActive(true));
+    menu.showAtPosition({ x: 10, y: 20 });
+
+    const itemEl = menu.dom.querySelector<HTMLElement>(".menu-item");
+    const iconEl = itemEl?.querySelector<HTMLElement>(".menu-item-icon:not(.mod-checked)");
+
+    expect(iconEl?.querySelector("svg")?.classList.contains("lucide-pin")).toBe(true);
+    expect(itemEl?.querySelector(".menu-item-icon.mod-checked")).not.toBeNull();
+    expect(itemEl?.classList.contains("mod-checked")).toBe(true);
+  });
+
+  it("supports null checked state without rendering a checkbox", () => {
+    const menu = new Menu(document);
+    menu.addItem((item) => item.setTitle("Tri-state").setChecked(true).setChecked(null));
+    menu.showAtPosition({ x: 10, y: 20 });
+
+    const item = menu.items.find((candidate): candidate is MenuItem => candidate instanceof MenuItem);
+    const itemEl = menu.dom.querySelector<HTMLElement>(".menu-item");
+
+    expect(item?.checked).toBeNull();
+    expect(itemEl?.classList.contains("mod-checked")).toBe(false);
+    expect(itemEl?.querySelector(".menu-item-icon.mod-checked")).toBeNull();
+  });
+
+  it("does not mutate a menu after it has been shown", () => {
+    const menu = new Menu(document);
+    menu.addItem((item) => item.setTitle("Initial"));
+    menu.showAtPosition({ x: 10, y: 20 });
+
+    menu.addItem((item) => item.setTitle("Late"));
+    menu.addSeparator();
+
+    expect(titles(menu)).toEqual(["Initial"]);
+    expect(menu.dom.querySelector(".menu-separator")).toBeNull();
+  });
+
+  it("fires onHide once and clears parent active state", async () => {
+    const parent = document.querySelector<HTMLElement>("#anchor");
+    if (!parent) throw new Error("missing parent");
+    const onHide = vi.fn();
+    const menu = new Menu(document);
+    menu.addItem((item) => item.setTitle("Close"));
+    expect(menu.onHide(onHide)).toBeUndefined();
+    menu.setParentElement(parent).showAtPosition({ x: 10, y: 20 });
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    expect(menu._loaded).toBe(true);
+    expect(parent.classList.contains("has-active-menu")).toBe(true);
+    expect(menu.dom.parentElement).toBe(document.body);
+    expect(parent.querySelector(".menu")).toBeNull();
+
+    menu.hide();
+    menu.hide();
+
+    expect(menu._loaded).toBe(false);
+    expect(onHide).toHaveBeenCalledTimes(1);
+    expect(parent.classList.contains("has-active-menu")).toBe(false);
+  });
+
+  it("skips disabled items during keyboard navigation and activates the selected item", () => {
+    const onClick = vi.fn();
+    const menu = new Menu(document);
+    menu.addItem((item) => item.setTitle("Disabled").setDisabled(true));
+    menu.addItem((item) => item.setTitle("Enabled").onClick(onClick));
+    menu.showAtPosition({ x: 10, y: 20 });
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(menu.dom.isConnected).toBe(false);
+  });
+
+  it("defers Menu.forEvent display so callers can add items before it opens", () => {
+    vi.useFakeTimers();
+    const anchor = document.querySelector<HTMLElement>("#anchor");
+    if (!anchor) throw new Error("missing anchor");
+    let menu: Menu | null = null;
+    const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 30, clientY: 40 });
+
+    anchor.addEventListener("contextmenu", (evt) => {
+      menu = Menu.forEvent(evt);
+      menu.addItem((item) => item.setTitle("Deferred"));
+      expect(Menu.forEvent(evt)).toBe(menu);
+    });
+
+    anchor.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(menu?.dom.parentElement).toBeNull();
+
+    vi.runOnlyPendingTimers();
+
+    expect(menu?.dom.parentElement).toBe(document.body);
+    expect(titles(menu!)).toEqual(["Deferred"]);
+  });
+
+  it("closes through the HistoryHandler path and exposes official void close", () => {
+    const menu = new Menu(document);
+    menu.addItem((item) => item.setTitle("History"));
+    menu.showAtPosition({ x: 10, y: 20 });
+
+    expect(menu.close()).toBeUndefined();
+    expect(menu.dom.parentElement).toBeNull();
+
+    menu.showAtPosition({ x: 10, y: 20 });
+    menu.onHistoryBack();
+
+    expect(menu.dom.parentElement).toBeNull();
+  });
+
+  it("hides only the owning submenu when a submenu item is clicked", () => {
+    const onClick = vi.fn();
+    const menu = new Menu(document);
+    let submenu: Menu | null = null;
+    menu.addItem((item) => {
+      item.setTitle("More");
+      submenu = item.setSubmenu();
+      submenu.addItem((child) => child.setTitle("Child").onClick(onClick));
+    });
+    menu.showAtPosition({ x: 10, y: 20 });
+    const parentItem = menu.items.find((item): item is MenuItem => item instanceof MenuItem && item.submenu !== null);
+    if (!parentItem || !submenu) throw new Error("missing submenu");
+
+    menu.openSubmenu(parentItem);
+    const childItem = submenu.items.find((item): item is MenuItem => item instanceof MenuItem);
+    if (!childItem) throw new Error("missing submenu child");
+
+    childItem.handleEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(submenu.dom.isConnected).toBe(false);
+    expect(menu.dom.isConnected).toBe(true);
+    expect(menu.currentSubmenu).toBeNull();
+  });
+});
