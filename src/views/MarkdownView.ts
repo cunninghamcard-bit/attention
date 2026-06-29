@@ -8,7 +8,7 @@ import type { FoldInfo } from "../markdown/FoldManager";
 import { SimpleEditor, type Editor, type EditorPosition } from "../editor/Editor";
 import { EditorViewHost } from "../editor/EditorView";
 import { editorEditorField, editorInfoField, editorLivePreviewField } from "../editor/EditorStateField";
-import type { EditorExtension } from "../editor/EditorExtension";
+import { normalizeEditorExtensions, type EditorExtension } from "../editor/EditorExtension";
 import {
   insertFrontmatterProperty,
   deleteFrontmatterProperties,
@@ -1382,10 +1382,7 @@ export class MarkdownView extends TextFileView {
       { id: "editor-info-field", source: "core", value: editorInfoField.init(() => this) },
       { id: "editor-live-preview-field", source: "core", value: editorLivePreviewField.init(() => livePreview) },
       ...(livePreview ? [{ id: "live-preview-plugin", source: "core", value: { type: "live-preview-plugin" } }] : []),
-      ...this.app.workspace.editorExtensionHost.getActiveExtensions({
-        viewType: this.getViewType(),
-        sourcePath: this.file?.path,
-      }),
+      ...this.app.workspace.editorExtensions.flatMap((extension) => normalizeEditorExtensions(extension, "plugin")),
     ];
   }
 

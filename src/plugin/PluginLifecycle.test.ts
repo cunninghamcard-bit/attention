@@ -835,6 +835,7 @@ describe("community plugin lifecycle", () => {
 
     await app.pluginInstaller.enable("editor-extension");
 
+    expect(app.workspace.editorExtensions).toContain(instance?.extension);
     expect(hostEl?.dataset.extensionCount).toBe("4");
     expect(view.editorViewHost.getExtensions().at(-1)?.source).toBe("plugin");
     expect(hostEl?.classList.contains("plugin-editor-extension")).toBe(true);
@@ -861,6 +862,7 @@ describe("community plugin lifecycle", () => {
 
     await app.pluginInstaller.disable("editor-extension", true);
 
+    expect(app.workspace.editorExtensions).not.toContain(instance?.extension);
     expect(hostEl?.dataset.extensionCount).toBe("0");
     expect(hostEl?.classList.contains("plugin-editor-extension")).toBe(false);
     expect(hostEl?.dataset.pluginViewPlugin).toBe("destroyed");

@@ -20,7 +20,6 @@ import type { Editor } from "../editor/Editor";
 import type { MarkdownFileInfo } from "../editor/EditorStateField";
 import { EditorSuggestManager } from "../suggest/EditorSuggest";
 import { TFile, type TAbstractFile } from "../vault/TAbstractFile";
-import { EditorExtensionHost } from "../editor/EditorExtension";
 import { DynamicScope } from "../hotkeys/Scope";
 import { getActiveDocument, getActiveWindow, setActiveWindow } from "../dom/ActiveDocument";
 import { setChildrenInPlace } from "../dom/dom";
@@ -148,7 +147,6 @@ export class Workspace extends Events {
   readonly recentFileTracker: RecentFileTracker;
   editorExtensions: unknown[] = [];
   readonly undoHistory: WorkspaceUndoHistoryEntry[] = [];
-  readonly editorExtensionHost = new EditorExtensionHost();
   readonly layoutItemQueue: WorkspaceItem[] = [];
   private lastActiveFile: TFile | null = null;
   private protocolHandlers = new Map<string, Map<ObsidianProtocolHandler, UriHandler>>();
@@ -1303,13 +1301,11 @@ export class Workspace extends Events {
 
   registerEditorExtension(extension: unknown): void {
     this.editorExtensions.push(extension);
-    this.editorExtensionHost.register(extension, "plugin");
     this.updateOptions();
   }
 
   unregisterEditorExtension(extension: unknown): void {
     this.editorExtensions = this.editorExtensions.filter((item) => item !== extension);
-    this.editorExtensionHost.unregister(extension);
     this.updateOptions();
   }
 

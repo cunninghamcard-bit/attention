@@ -67,7 +67,7 @@ export class EditorExtensionRegistry {
   private extensions: Array<{ original: unknown; source: string }> = [];
 
   register(extension: EditorExtension | unknown, source = "core"): EditorExtension {
-    const normalized = normalizeExtensions(extension, source);
+    const normalized = normalizeEditorExtensions(extension, source);
     this.extensions.push({ original: extension, source });
     return normalized[0] ?? { source, value: undefined };
   }
@@ -75,12 +75,12 @@ export class EditorExtensionRegistry {
   unregister(extension: EditorExtension | unknown): void {
     this.extensions = this.extensions.filter((item) => {
       if (item.original === extension) return false;
-      return !normalizeExtensions(item.original, item.source).some((current) => current === extension || current.value === extension);
+      return !normalizeEditorExtensions(item.original, item.source).some((current) => current === extension || current.value === extension);
     });
   }
 
   getExtensions(_context?: EditorExtensionContext): readonly EditorExtension[] {
-    return this.extensions.flatMap((item) => normalizeExtensions(item.original, item.source));
+    return this.extensions.flatMap((item) => normalizeEditorExtensions(item.original, item.source));
   }
 }
 
@@ -107,11 +107,11 @@ function isEditorExtension(value: unknown): value is EditorExtension {
     && ("id" in value || "source" in value);
 }
 
-function normalizeExtensions(extension: unknown, source: string): EditorExtension[] {
+export function normalizeEditorExtensions(extension: unknown, source: string): EditorExtension[] {
   if (extension === null || extension === undefined || extension === false) return [];
-  if (Array.isArray(extension)) return extension.flatMap((item) => normalizeExtensions(item, source));
+  if (Array.isArray(extension)) return extension.flatMap((item) => normalizeEditorExtensions(item, source));
   if (!isEditorExtension(extension)) return [{ source, value: extension }];
-  const nested = normalizeExtensions(extension.value, extension.source ?? source);
+  const nested = normalizeEditorExtensions(extension.value, extension.source ?? source);
   if (nested.length === 0) return [{ id: extension.id, source: extension.source ?? source, value: extension.value }];
   return nested.map((item) => ({
     ...item,
