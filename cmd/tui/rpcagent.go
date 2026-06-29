@@ -114,8 +114,9 @@ type wireAssistantEvent struct {
 
 // wireGetState is the get_state response data we read.
 type wireGetState struct {
-	Model     *wireModel `json:"model"`
-	SessionID string     `json:"sessionId"`
+	Model       *wireModel `json:"model"`
+	SessionID   string     `json:"sessionId"`
+	SessionFile string     `json:"sessionFile"`
 }
 
 type wireModel struct {
@@ -134,6 +135,34 @@ type wireCommand struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Source      string `json:"source"`
+}
+
+// wireForkMessages is the get_fork_messages response data: forkable user
+// messages as {entryId,text}.
+type wireForkMessages struct {
+	Messages []wireForkMessage `json:"messages"`
+}
+
+type wireForkMessage struct {
+	EntryID string `json:"entryId"`
+	Text    string `json:"text"`
+}
+
+// wireEntries is the get_entries response data: navigable session entries as
+// {entryId,label}.
+type wireEntries struct {
+	Entries []wireEntry `json:"entries"`
+}
+
+type wireEntry struct {
+	EntryID string `json:"entryId"`
+	Label   string `json:"label"`
+}
+
+// wireFork is the fork response data: the forked prompt text plus a cancelled flag.
+type wireFork struct {
+	Text      string `json:"text"`
+	Cancelled bool   `json:"cancelled"`
 }
 
 // wireToolResult mirrors internal/tool.Result on the wire. tool.Result has NO
@@ -420,12 +449,22 @@ func (a *rpcAgent) CreateSession(ctx context.Context) (string, error) {
 	return a.resolvedSessionID, nil
 }
 
-// FetchSkills asks the kernel for its commands (get_commands) and returns the
-// subset that are skills (source=="skill") as []Skill. Skill commands surface
-// when enableSkillCommands is true (the default). It tolerates errors and an
-// empty/absent skill set by returning nil, and is bounded by a short timeout so
-// startup never blocks indefinitely on a slow/unresponsive kernel.
-func (a *rpcAgent) FetchSkills() []Skill {
+// CommandInfo is one kernel command entry from get_commands, used VERBATIM as
+// the single source of truth for slash-command completion and dispatch. Name is
+// the kernel's exact command name (e.g. "compact", "skill:review"); Source is
+// the kernel's classification ("builtin"/"prompt"/"skill"/"extension").
+type CommandInfo struct {
+	Name        string
+	Description string
+	Source      string
+}
+
+// FetchCommands asks the kernel for its full command list (get_commands) and
+// returns every entry VERBATIM. This is the ONE command source: completion
+// matches against these names and dispatch routes by these sources. It tolerates
+// errors by returning nil and is bounded by a short timeout so startup never
+// blocks indefinitely on a slow/unresponsive kernel.
+func (a *rpcAgent) FetchCommands() []CommandInfo {
 	resp, err := a.requestTimeout("get_commands", map[string]any{}, 5*time.Second)
 	if err != nil || !resp.Success || len(resp.Data) == 0 {
 		return nil
@@ -434,8 +473,23 @@ func (a *rpcAgent) FetchSkills() []Skill {
 	if err := json.Unmarshal(resp.Data, &cmds); err != nil {
 		return nil
 	}
-	var skills []Skill
+	out := make([]CommandInfo, 0, len(cmds.Commands))
 	for _, c := range cmds.Commands {
+		out = append(out, CommandInfo{
+			Name:        c.Name,
+			Description: c.Description,
+			Source:      c.Source,
+		})
+	}
+	return out
+}
+
+// FetchSkills returns the skill subset of FetchCommands (source=="skill") as
+// []Skill, stripping the "skill:" prefix for the sidebar's bare-name display.
+// This is display-only; the slash-command path uses FetchCommands verbatim.
+func (a *rpcAgent) FetchSkills() []Skill {
+	var skills []Skill
+	for _, c := range a.FetchCommands() {
 		if c.Source != "skill" {
 			continue
 		}
@@ -448,6 +502,253 @@ func (a *rpcAgent) FetchSkills() []Skill {
 		})
 	}
 	return skills
+}
+
+// --- builtin command actions ---
+//
+// Each maps a kernel builtin slash command to its rpc command and summarizes the
+// outcome as a one-line notice for the chat. All are bounded by a timeout so a
+// slow/unresponsive kernel can't wedge the UI.
+
+const builtinActionTimeout = 30 * time.Second
+
+// NewSession asks the kernel to start a fresh session.
+func (a *rpcAgent) NewSession() (string, error) {
+	resp, err := a.requestTimeout("new_session", map[string]any{}, builtinActionTimeout)
+	if err != nil {
+		return "", err
+	}
+	if !resp.Success {
+		return "", errors.New(resp.Error)
+	}
+	return "Started a new session.", nil
+}
+
+// Compact asks the kernel to manually compact the session context.
+func (a *rpcAgent) Compact() (string, error) {
+	resp, err := a.requestTimeout("compact", map[string]any{}, builtinActionTimeout)
+	if err != nil {
+		return "", err
+	}
+	if !resp.Success {
+		return "", errors.New(resp.Error)
+	}
+	var data struct {
+		TokensBefore int `json:"tokensBefore"`
+	}
+	_ = json.Unmarshal(resp.Data, &data)
+	if data.TokensBefore > 0 {
+		return fmt.Sprintf("Compacted the session context (was %d tokens).", data.TokensBefore), nil
+	}
+	return "Compacted the session context.", nil
+}
+
+// Clone duplicates the current session at the current position.
+func (a *rpcAgent) Clone() (string, error) {
+	resp, err := a.requestTimeout("clone", map[string]any{}, builtinActionTimeout)
+	if err != nil {
+		return "", err
+	}
+	if !resp.Success {
+		return "", errors.New(resp.Error)
+	}
+	return "Cloned the current session.", nil
+}
+
+// Reload reloads keybindings, extensions, skills, prompts, and themes.
+func (a *rpcAgent) Reload() (string, error) {
+	resp, err := a.requestTimeout("reload", map[string]any{}, builtinActionTimeout)
+	if err != nil {
+		return "", err
+	}
+	if !resp.Success {
+		return "", errors.New(resp.Error)
+	}
+	return "Reloaded keybindings, extensions, skills, prompts, and themes.", nil
+}
+
+// CycleModel advances the kernel to the next model and returns a notice plus the
+// new model id/provider so the caller can update the displayed model. When the
+// kernel reports no cycle (single model), newID/newProvider are empty.
+func (a *rpcAgent) CycleModel() (notice, newID, newProvider string, err error) {
+	resp, e := a.requestTimeout("cycle_model", map[string]any{}, builtinActionTimeout)
+	if e != nil {
+		return "", "", "", e
+	}
+	if !resp.Success {
+		return "", "", "", errors.New(resp.Error)
+	}
+	// A null data payload means the kernel did not cycle (e.g. only one model).
+	if len(resp.Data) == 0 || string(resp.Data) == "null" {
+		return "Only one model is configured; nothing to cycle.", "", "", nil
+	}
+	var data struct {
+		Model wireModel `json:"model"`
+	}
+	if err := json.Unmarshal(resp.Data, &data); err != nil {
+		return "Switched model.", "", "", nil
+	}
+	id, provider := data.Model.ID, data.Model.Provider
+	notice = fmt.Sprintf("Switched model to %s (%s).", id, provider)
+	return notice, id, provider, nil
+}
+
+// SessionStats summarizes get_session_stats into a one-line notice.
+func (a *rpcAgent) SessionStats() (string, error) {
+	resp, err := a.requestTimeout("get_session_stats", map[string]any{}, builtinActionTimeout)
+	if err != nil {
+		return "", err
+	}
+	if !resp.Success {
+		return "", errors.New(resp.Error)
+	}
+	var s struct {
+		SessionID     string `json:"sessionId"`
+		UserMessages  int    `json:"userMessages"`
+		TotalMessages int    `json:"totalMessages"`
+		Tokens        struct {
+			Total int `json:"total"`
+		} `json:"tokens"`
+		ContextUsage *struct {
+			Percent float64 `json:"percent"`
+		} `json:"contextUsage"`
+	}
+	if err := json.Unmarshal(resp.Data, &s); err != nil {
+		return "Session stats unavailable.", nil
+	}
+	notice := fmt.Sprintf("Session %s — %d messages (%d from you), %d tokens",
+		s.SessionID, s.TotalMessages, s.UserMessages, s.Tokens.Total)
+	if s.ContextUsage != nil {
+		notice += fmt.Sprintf(", context %.0f%% used", s.ContextUsage.Percent)
+	}
+	return notice + ".", nil
+}
+
+// SetSessionName sets the session display name. An empty name is rejected by the
+// kernel; the caller is expected to issue a usage notice before calling.
+func (a *rpcAgent) SetSessionName(name string) (string, error) {
+	resp, err := a.requestTimeout("set_session_name", map[string]any{"name": name}, builtinActionTimeout)
+	if err != nil {
+		return "", err
+	}
+	if !resp.Success {
+		return "", errors.New(resp.Error)
+	}
+	return fmt.Sprintf("Set session name to %q.", name), nil
+}
+
+// --- interactive picker actions (fork / resume / tree) ---
+//
+// These back the /fork, /resume, and /tree slash commands: each fetches the
+// kernel's selectable data, then on selection sends the action rpc. All are
+// bounded by builtinActionTimeout so a slow kernel can't wedge the UI.
+
+// PickerItem is one selectable row in an interactive picker: an opaque id sent
+// back to the kernel on selection, plus a human label shown in the list.
+type PickerItem struct {
+	ID    string
+	Label string
+}
+
+// ForkMessages fetches the forkable user messages (get_fork_messages). Each
+// item's ID is the entry id; Label is the message text.
+func (a *rpcAgent) ForkMessages() ([]PickerItem, error) {
+	resp, err := a.requestTimeout("get_fork_messages", map[string]any{}, builtinActionTimeout)
+	if err != nil {
+		return nil, err
+	}
+	if !resp.Success {
+		return nil, errors.New(resp.Error)
+	}
+	var data wireForkMessages
+	if err := json.Unmarshal(resp.Data, &data); err != nil {
+		return nil, err
+	}
+	items := make([]PickerItem, 0, len(data.Messages))
+	for _, m := range data.Messages {
+		items = append(items, PickerItem{ID: m.EntryID, Label: m.Text})
+	}
+	return items, nil
+}
+
+// Fork forks the session at the given entry id (fork). It returns the forked
+// prompt text (the kernel replaces the session) and the cancelled flag.
+func (a *rpcAgent) Fork(entryID string) (text string, cancelled bool, err error) {
+	resp, e := a.requestTimeout("fork", map[string]any{"entryId": entryID}, builtinActionTimeout)
+	if e != nil {
+		return "", false, e
+	}
+	if !resp.Success {
+		return "", false, errors.New(resp.Error)
+	}
+	var data wireFork
+	if err := json.Unmarshal(resp.Data, &data); err != nil {
+		return "", false, err
+	}
+	return data.Text, data.Cancelled, nil
+}
+
+// SessionFile returns the current session's on-disk file path from get_state.
+// It is queried fresh so it reflects session switches/forks.
+func (a *rpcAgent) SessionFile() (string, error) {
+	resp, err := a.requestTimeout("get_state", map[string]any{}, builtinActionTimeout)
+	if err != nil {
+		return "", err
+	}
+	if !resp.Success {
+		return "", errors.New(resp.Error)
+	}
+	var state wireGetState
+	if err := json.Unmarshal(resp.Data, &state); err != nil {
+		return "", err
+	}
+	return state.SessionFile, nil
+}
+
+// SwitchSession switches the kernel to the session at the given file path
+// (switch_session). The kernel replaces the session on success.
+func (a *rpcAgent) SwitchSession(path string) error {
+	resp, err := a.requestTimeout("switch_session", map[string]any{"sessionPath": path}, builtinActionTimeout)
+	if err != nil {
+		return err
+	}
+	if !resp.Success {
+		return errors.New(resp.Error)
+	}
+	return nil
+}
+
+// Entries fetches the current session's navigable entries (get_entries). Each
+// item's ID is the entry id; Label is a short text/summary preview.
+func (a *rpcAgent) Entries() ([]PickerItem, error) {
+	resp, err := a.requestTimeout("get_entries", map[string]any{}, builtinActionTimeout)
+	if err != nil {
+		return nil, err
+	}
+	if !resp.Success {
+		return nil, errors.New(resp.Error)
+	}
+	var data wireEntries
+	if err := json.Unmarshal(resp.Data, &data); err != nil {
+		return nil, err
+	}
+	items := make([]PickerItem, 0, len(data.Entries))
+	for _, e := range data.Entries {
+		items = append(items, PickerItem{ID: e.EntryID, Label: e.Label})
+	}
+	return items, nil
+}
+
+// NavigateTree navigates the session tree to the given entry id (navigate_tree).
+func (a *rpcAgent) NavigateTree(entryID string) error {
+	resp, err := a.requestTimeout("navigate_tree", map[string]any{"entryId": entryID}, builtinActionTimeout)
+	if err != nil {
+		return err
+	}
+	if !resp.Success {
+		return errors.New(resp.Error)
+	}
+	return nil
 }
 
 // RebuildWithModel is a no-op: the kernel owns model selection.

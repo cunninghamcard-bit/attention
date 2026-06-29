@@ -657,6 +657,34 @@ func TestServeGetForkMessagesResponseShape(t *testing.T) {
 	}
 }
 
+func TestServeGetEntriesResponseShape(t *testing.T) {
+	target := &fakeTarget{
+		entries: []orchestrator.EntrySummary{
+			{EntryID: "entry-1", Label: "you: hello"},
+			{EntryID: "entry-2", Label: "assistant: hi there"},
+		},
+	}
+	stdin := strings.NewReader(`{"id":"ge","type":"get_entries"}` + "\n")
+
+	var out bytes.Buffer
+	if err := serve(context.Background(), target, stdin, &out); err != nil {
+		t.Fatalf("serve: %v", err)
+	}
+	resp := splitLines(t, out.String())[0]
+	if resp["success"] != true || resp["command"] != "get_entries" {
+		t.Fatalf("get_entries response = %v", resp)
+	}
+	data := resp["data"].(map[string]any)
+	entries := data["entries"].([]any)
+	if len(entries) != 2 {
+		t.Fatalf("entries len = %d, want 2", len(entries))
+	}
+	first := entries[0].(map[string]any)
+	if first["entryId"] != "entry-1" || first["label"] != "you: hello" {
+		t.Fatalf("first entry = %v, want entry-1/you: hello", first)
+	}
+}
+
 func TestServeGetCommandsResponseShape(t *testing.T) {
 	target := &fakeTarget{
 		slashCommands: []orchestrator.SlashCommand{
@@ -1030,6 +1058,7 @@ type fakeTarget struct {
 	cloneCancelled         bool
 	cloneErr               error
 	forkMessages           []orchestrator.ForkMessage
+	entries                []orchestrator.EntrySummary
 	shutdownCalls          int
 	shutdownReason         string
 	waitIdleCalls          int
@@ -1124,6 +1153,10 @@ func (f *fakeTarget) Clone(context.Context) (bool, error) {
 
 func (f *fakeTarget) ForkMessages() []orchestrator.ForkMessage {
 	return append([]orchestrator.ForkMessage(nil), f.forkMessages...)
+}
+
+func (f *fakeTarget) Entries() []orchestrator.EntrySummary {
+	return append([]orchestrator.EntrySummary(nil), f.entries...)
 }
 
 func (f *fakeTarget) NotifySessionShutdown(_ context.Context, reason string) error {

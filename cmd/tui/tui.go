@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/glamour"
+	"github.com/mattn/go-runewidth"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -65,6 +67,10 @@ type model struct {
 	// Branch popup state (shown on status bar click).
 	branchPopup *branchPopupState
 
+	// Item picker popup state, reused for /fork, /resume, and /tree. Modeled on
+	// branchPopupState; the kind field routes Enter to the matching kernel rpc.
+	itemPicker *itemPickerState
+
 	// Unified search popup for slash commands and history.
 	searchPopup *searchPopupState
 
@@ -90,6 +96,46 @@ type branchPopupState struct {
 	active    string   // the currently active branch
 	height    int      // popup height (number of visible items)
 	scrollOff int      // scroll offset when more branches than height
+}
+
+// pickerKind selects which kernel action an item picker drives on Enter.
+type pickerKind string
+
+const (
+	pickerFork   pickerKind = "fork"   // /fork — select a user message to fork from
+	pickerResume pickerKind = "resume" // /resume — select another session to switch to
+	pickerTree   pickerKind = "tree"   // /tree — select an entry to navigate to
+)
+
+// itemPickerState manages the generic {id,label} list popup behind /fork,
+// /resume, and /tree. It mirrors branchPopupState's selected/height/scrollOff
+// navigation contract exactly; kind routes Enter to the matching kernel rpc and
+// title labels the popup header.
+type itemPickerState struct {
+	kind      pickerKind
+	title     string       // popup header text
+	items     []PickerItem // {id,label} rows
+	selected  int          // currently selected index
+	height    int          // popup height (number of visible items)
+	scrollOff int          // scroll offset when more items than height
+}
+
+// newItemPicker opens an item picker over the given rows. The popup height is
+// capped at 8 like the branch popup. An empty list is rejected by the caller
+// (which shows an honest empty-state notice instead).
+func (m *model) newItemPicker(kind pickerKind, title string, items []PickerItem) {
+	popupHeight := len(items)
+	if popupHeight > 8 {
+		popupHeight = 8
+	}
+	m.itemPicker = &itemPickerState{
+		kind:      kind,
+		title:     title,
+		items:     items,
+		selected:  0,
+		height:    popupHeight,
+		scrollOff: 0,
+	}
 }
 
 // newBranchPopup creates a new branch popup with the list of git branches.
@@ -160,13 +206,14 @@ func listGitBranches(workDir string) []string {
 // searchPopupState is a unified search window for slash commands and history.
 // The mode determines what items are shown and how they are selected.
 type searchPopupState struct {
-	mode      searchMode   // "commands" or "history"
-	entries   []SearchItem // all items (commands or history entries)
-	filtered  []SearchItem // filtered by search query
-	selected  int          // currently selected index in filtered list
-	search    string       // current search query
-	height    int          // popup height (number of visible items)
-	scrollOff int          // scroll offset when more entries than height
+	mode         searchMode   // "commands", "history", or "mention"
+	entries      []SearchItem // all items (commands or history entries)
+	filtered     []SearchItem // filtered by search query
+	selected     int          // currently selected index in filtered list
+	search       string       // current search query
+	height       int          // popup height (number of visible items)
+	scrollOff    int          // scroll offset when more entries than height
+	mentionStart int          // char index of '@' for mention mode (-1 otherwise)
 }
 
 // searchMode determines what the popup displays.
@@ -175,6 +222,7 @@ type searchMode string
 const (
 	searchModeCommands searchMode = "commands"
 	searchModeHistory  searchMode = "history"
+	searchModeMention  searchMode = "mention"
 )
 
 // SearchItem represents an item in the search popup (command or history entry).
@@ -187,8 +235,27 @@ type SearchItem struct {
 func (m *model) newSearchPopup(mode searchMode) {
 	var items []SearchItem
 	var popupHeight int
+	mentionStart := -1
 
 	switch mode {
+	case searchModeMention:
+		// @file completion: find the @prefix at the cursor and list matching
+		// files (CompleteMention) under the working dir.
+		start, prefix := findMentionAtCursor(m.inputModel.Text, m.inputModel.CursorPos)
+		if start < 0 {
+			m.searchPopup = nil
+			return
+		}
+		for _, c := range CompleteMention(prefix, m.cwd()).Candidates {
+			items = append(items, SearchItem{Text: c.Text, Description: c.Description})
+		}
+		if len(items) == 0 {
+			m.searchPopup = nil
+			return
+		}
+		mentionStart = start
+		popupHeight = searchPopupListHeight(len(items))
+
 	case searchModeCommands:
 		// Get all slash command candidates.
 		allCandidates := m.allSearchCandidates()
@@ -220,14 +287,28 @@ func (m *model) newSearchPopup(mode searchMode) {
 	}
 
 	m.searchPopup = &searchPopupState{
-		mode:      mode,
-		entries:   items,
-		filtered:  items,
-		selected:  0,
-		search:    "",
-		height:    popupHeight,
-		scrollOff: 0,
+		mode:         mode,
+		entries:      items,
+		filtered:     items,
+		selected:     0,
+		search:       "",
+		height:       popupHeight,
+		scrollOff:    0,
+		mentionStart: mentionStart,
 	}
+}
+
+// insertMention replaces the @prefix at sp.mentionStart..cursor with the chosen
+// file path, e.g. "@io" -> "@internal/io/foo.go ". Cursor lands at the end (the
+// common case is mentioning at the end of the line).
+func (m *model) insertMention(sp *searchPopupState, path string) {
+	runes := []rune(m.inputModel.Text)
+	start := sp.mentionStart
+	cursor := m.inputModel.CursorPos
+	if start < 0 || start > len(runes) || cursor > len(runes) || cursor < start {
+		return
+	}
+	m.inputModel.SetText(string(runes[:start]) + "@" + path + " " + string(runes[cursor:]))
 }
 
 func searchPopupListHeight(itemCount int) int {
@@ -244,9 +325,10 @@ func searchPopupListHeight(itemCount int) int {
 	return height
 }
 
-// allSearchCandidates returns all slash command candidates for the search popup.
+// allSearchCandidates returns all slash command candidates for the search popup,
+// built from the kernel command list (the single source of truth).
 func (m *model) allSearchCandidates() []CompletionCandidate {
-	return allSlashCommandCandidates(m.inputModel.Skills)
+	return allSlashCommandCandidates(m.cfg.Commands)
 }
 
 // filterSearch filters items by search query (case-insensitive substring on Text).
@@ -299,7 +381,7 @@ func Run(ctx context.Context, cfg Config) error {
 		cfg:          cfg,
 		ctx:          ctx,
 		cancel:       cancel,
-		inputModel:   NewInputModel(history, cfg.Skills, nil, ""),
+		inputModel:   NewInputModel(history, cfg.Commands, cfg.Skills, nil, ""),
 		chatModel:    NewChatModel(renderer),
 		statusModel:  StatusModel{},
 		themeManager: tm,
@@ -462,6 +544,37 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Handle item picker popup (/fork, /resume, /tree). Mirrors branchPopup.
+	if m.itemPicker != nil {
+		switch key.Code {
+		case tea.KeyEsc:
+			m.itemPicker = nil
+			return m, nil
+		case tea.KeyEnter:
+			return m.handleItemPickerSelect()
+		case tea.KeyUp:
+			if m.itemPicker.selected > 0 {
+				m.itemPicker.selected--
+				if m.itemPicker.selected < m.itemPicker.scrollOff {
+					m.itemPicker.scrollOff--
+				}
+			}
+			return m, nil
+		case tea.KeyDown:
+			if m.itemPicker.selected < len(m.itemPicker.items)-1 {
+				m.itemPicker.selected++
+				if m.itemPicker.selected >= m.itemPicker.scrollOff+m.itemPicker.height {
+					m.itemPicker.scrollOff++
+				}
+			}
+			return m, nil
+		default:
+			// Any other key dismisses the popup
+			m.itemPicker = nil
+			return m, nil
+		}
+	}
+
 	// Esc / Ctrl+C: dismiss completion, cancel agent, or quit.
 	switch {
 	case key.Code == tea.KeyEsc:
@@ -533,11 +646,6 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		// If no history, fall through to input model for inline history nav.
 	}
 
-	// Handle unified search popup keys (slash commands or history).
-	if m.handleSearchPopupKey(key) {
-		return m, nil
-	}
-
 	// Scroll keys stay in root model.
 	switch key.Code {
 	case tea.KeyPgUp:
@@ -565,15 +673,28 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// Delegate all other keys to InputModel.
 	prevText := m.inputModel.Text
 	cmd := m.inputModel.HandleKey(msg)
-	// Reset search popup when input text changes (slash commands mode).
+	// Keep the commands popup in sync with the input line (single source of
+	// truth): rebuild it from the new input text on every change, and close it
+	// when nothing matches so Enter submits the line instead of accepting a
+	// stale item.
 	if m.inputModel.Text != prevText {
-		if m.searchPopup != nil && m.searchPopup.mode == searchModeCommands {
-			if !m.shouldShowSlashCommandPopup() {
-				m.searchPopup = nil
+		wasCommands := m.searchPopup != nil && m.searchPopup.mode == searchModeCommands
+		wasMention := m.searchPopup != nil && m.searchPopup.mode == searchModeMention
+		atStart, _ := findMentionAtCursor(m.inputModel.Text, m.inputModel.CursorPos)
+		switch {
+		case m.shouldShowSlashCommandPopup():
+			if wasCommands || m.searchPopup == nil {
+				m.newSearchPopup(searchModeCommands)
+				if m.searchPopup != nil && len(m.searchPopup.filtered) == 0 {
+					m.searchPopup = nil
+				}
 			}
-		}
-		if m.searchPopup == nil && m.shouldShowSlashCommandPopup() {
-			m.newSearchPopup(searchModeCommands)
+		case atStart >= 0 && (wasMention || m.searchPopup == nil):
+			// An @mention is at the cursor: open/rebuild the file picker
+			// (newSearchPopup clears it if there are no matching files).
+			m.newSearchPopup(searchModeMention)
+		case wasCommands || wasMention:
+			m.searchPopup = nil
 		}
 	}
 	return m, cmd
@@ -608,57 +729,72 @@ func (m *model) handleSearchPopupKey(key tea.Key) bool {
 		}
 		return true
 	case tea.KeyTab:
-		if len(sp.filtered) == 0 {
-			return true
-		}
-		if key.Mod == tea.ModShift {
-			if sp.selected > 0 {
-				sp.selected--
-			} else {
-				// Wrap to last item on Shift+Tab from first.
-				sp.selected = len(sp.filtered) - 1
-			}
-		} else {
-			// Tab advances; stays at last item (no wrap).
-			if sp.selected < len(sp.filtered)-1 {
-				sp.selected++
-			}
-		}
-		sp.scrollOff = max(0, sp.selected-sp.height+1)
-		return true
-	case tea.KeyEnter:
+		// Tab COMPLETES the selected item into the input box, then closes the
+		// popup. The input line is the single source of truth.
 		if len(sp.filtered) > 0 && sp.selected < len(sp.filtered) {
 			item := sp.filtered[sp.selected]
 			switch sp.mode {
-			case searchModeCommands:
-				m.inputModel.SetText(item.Text + " ")
-				m.searchPopup = nil
 			case searchModeHistory:
 				m.inputModel.SetText(item.Text)
 				m.inputModel.HistoryIdx = -1
-				m.searchPopup = nil
+			case searchModeMention:
+				m.insertMention(sp, item.Text)
+			default:
+				m.inputModel.SetText(item.Text + " ")
 			}
+			m.searchPopup = nil
 		}
 		return true
+	case tea.KeyEnter:
+		if sp.mode == searchModeHistory {
+			// History: Enter inserts the entry into the input (does not submit).
+			if len(sp.filtered) > 0 && sp.selected < len(sp.filtered) {
+				m.inputModel.SetText(sp.filtered[sp.selected].Text)
+				m.inputModel.HistoryIdx = -1
+			}
+			m.searchPopup = nil
+			return true
+		}
+		if sp.mode == searchModeMention {
+			// Mention: Enter accepts the highlighted file into the @prefix.
+			if len(sp.filtered) > 0 && sp.selected < len(sp.filtered) {
+				m.insertMention(sp, sp.filtered[sp.selected].Text)
+			}
+			m.searchPopup = nil
+			return true
+		}
+		// Commands: Enter SUBMITS the typed line. Let the key flow to the input
+		// model (-> InputSubmitMsg -> handleSlashCommand). Do NOT accept a
+		// highlighted item here — that was the "/zzzbogus picks /clone" bug.
+		return false
 	case tea.KeyEsc:
 		m.searchPopup = nil
 		return true
 	case tea.KeyBackspace:
-		if len(sp.search) > 0 {
-			sp.search = sp.search[:len(sp.search)-1]
-			sp.filterSearch()
-		} else {
-			// If search is empty, close popup on backspace
-			m.searchPopup = nil
-		}
-		return true
-	default:
-		// Type to search (only for printable single characters).
-		if key.Text != "" && len(key.Text) == 1 && key.Mod == 0 {
-			sp.search += key.Text
-			sp.filterSearch()
+		if sp.mode == searchModeHistory {
+			if len(sp.search) > 0 {
+				sp.search = sp.search[:len(sp.search)-1]
+				sp.filterSearch()
+			} else {
+				m.searchPopup = nil
+			}
 			return true
 		}
+		// Commands: backspace edits the INPUT; the input-change handler
+		// re-filters the popup from the new input text.
+		return false
+	default:
+		if sp.mode == searchModeHistory {
+			// History keeps its own type-to-search field.
+			if key.Text != "" && len(key.Text) == 1 && key.Mod == 0 {
+				sp.search += key.Text
+				sp.filterSearch()
+				return true
+			}
+			return false
+		}
+		// Commands: printable chars flow to the input box (single source); the
+		// input-change handler rebuilds + re-filters the popup from the text.
 		return false
 	}
 }
@@ -758,6 +894,13 @@ func (m *model) View() tea.View {
 	// Render branch popup if open.
 	if m.branchPopup != nil {
 		popupView := m.renderBranchPopup()
+		b.WriteString(popupView)
+		b.WriteString("\n")
+	}
+
+	// Render item picker popup (/fork, /resume, /tree) if open.
+	if m.itemPicker != nil {
+		popupView := m.renderItemPicker()
 		b.WriteString(popupView)
 		b.WriteString("\n")
 	}
@@ -983,6 +1126,9 @@ func (m *model) messageViewportHeight() int {
 	if m.branchPopup != nil {
 		availableHeight -= m.branchPopup.height + 6
 	}
+	if m.itemPicker != nil {
+		availableHeight -= m.itemPicker.height + 6
+	}
 	if availableHeight < 1 {
 		return 1
 	}
@@ -1185,6 +1331,70 @@ func (m *model) handleBranchSelect() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// handleItemPickerSelect runs the kernel action for the selected picker item.
+// It routes by the picker's kind to the matching rpcAgent method, reports the
+// outcome as a chat notice, and refreshes diff stats. For /fork, the forked
+// prompt text is placed back in the input box like pi did so the user can
+// re-run or edit it.
+func (m *model) handleItemPickerSelect() (tea.Model, tea.Cmd) {
+	picker := m.itemPicker
+	if picker == nil || len(picker.items) == 0 {
+		m.itemPicker = nil
+		return m, nil
+	}
+	item := picker.items[picker.selected]
+	m.itemPicker = nil
+
+	agent, ok := m.cfg.Agent.(*rpcAgent)
+	if !ok {
+		m.chatModel.AppendWarning("Picker is not available (no kernel backend)")
+		return m, nil
+	}
+
+	switch picker.kind {
+	case pickerFork:
+		text, cancelled, err := agent.Fork(item.ID)
+		if err != nil {
+			m.chatModel.AppendWarning(fmt.Sprintf("/fork failed: %v", err))
+			return m, nil
+		}
+		if cancelled {
+			m.chatModel.AppendNotice("Fork cancelled.")
+			return m, nil
+		}
+		// The kernel replaced the session at the fork point. Put the forked prompt
+		// text in the input box so the user can re-run or edit it, like pi did.
+		if text != "" {
+			m.inputModel.SetText(text)
+		}
+		m.chatModel.AppendNotice("Forked the session. The selected prompt is in the input box.")
+		m.refreshDiffStats()
+		return m, nil
+
+	case pickerResume:
+		if err := agent.SwitchSession(item.ID); err != nil {
+			m.chatModel.AppendWarning(fmt.Sprintf("/resume failed: %v", err))
+			return m, nil
+		}
+		m.chatModel.AppendNotice(fmt.Sprintf("Switched to session %s.", item.Label))
+		m.refreshDiffStats()
+		return m, nil
+
+	case pickerTree:
+		if err := agent.NavigateTree(item.ID); err != nil {
+			m.chatModel.AppendWarning(fmt.Sprintf("/tree failed: %v", err))
+			return m, nil
+		}
+		m.chatModel.AppendNotice(fmt.Sprintf("Navigated to: %s", item.Label))
+		m.refreshDiffStats()
+		return m, nil
+
+	default:
+		m.chatModel.AppendWarning(fmt.Sprintf("Unknown picker action %q", picker.kind))
+		return m, nil
+	}
+}
+
 // resetCtrlCCount is a tea.Cmd that resets the Ctrl+C counter after a delay.
 func resetCtrlCCount(m *model) tea.Cmd {
 	return func() tea.Msg {
@@ -1204,17 +1414,197 @@ func (m *model) handleResetCtrlCCount() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleSlashCommand handles a submitted "/..." line. The slash-command
-// execution subsystem (run/plan/commit/login/ping/skills/etc.) is cut from this
-// viewer in Phase 1, so this is a no-op that clears the input and surfaces an
-// "unknown command" notice. Completion candidates are still offered (so the
-// popup lists commands), but selecting one does not dispatch any behavior.
+// handleSlashCommand dispatches a submitted "/..." line against the kernel
+// command list (m.cfg.Commands — the single source of truth). It parses
+// "/<name> <args>", looks <name> up VERBATIM, and routes by the command's source:
+//
+//   - builtin: invoked via the matching rpc action (new/compact/clone/reload/
+//     model/session/name). fork/tree/resume open an interactive item picker
+//     (modeled on the branch popup) that drives the corresponding rpc on select.
+//   - skill / prompt / extension: submitted as a prompt with the FULL verbatim
+//     "/..." text so the kernel expands and runs it.
+//   - not found: the standard "Unknown command" warning.
 func (m *model) handleSlashCommand(text string) (tea.Model, tea.Cmd) {
 	m.inputModel.Clear()
 	m.searchPopup = nil
-	cmd := strings.TrimSpace(text)
-	m.chatModel.AppendWarning(fmt.Sprintf("Unknown command: %s", cmd))
+
+	trimmed := strings.TrimSpace(text)
+	// Parse "/<name> <args>" — name is the first whitespace-delimited token
+	// (sans leading slash), args is the remainder.
+	body := strings.TrimPrefix(trimmed, "/")
+	name := body
+	args := ""
+	if i := strings.IndexAny(body, " \t"); i >= 0 {
+		name = body[:i]
+		args = strings.TrimSpace(body[i+1:])
+	}
+
+	// Look the command up VERBATIM in the kernel command list.
+	var found *CommandInfo
+	for i := range m.cfg.Commands {
+		if m.cfg.Commands[i].Name == name {
+			found = &m.cfg.Commands[i]
+			break
+		}
+	}
+	if found == nil {
+		m.chatModel.AppendWarning(fmt.Sprintf("Unknown command: %s", trimmed))
+		return m, nil
+	}
+
+	switch found.Source {
+	case "skill", "prompt", "extension":
+		// The kernel expands and runs these. Submit the FULL verbatim "/..." text
+		// (e.g. "/skill:review") so ExpandSkillCommand / prompt expansion fires.
+		return m.submitPrompt(trimmed, nil)
+	case "builtin":
+		return m.dispatchBuiltin(name, args)
+	default:
+		// Unknown source: be honest rather than guess.
+		m.chatModel.AppendWarning(fmt.Sprintf("/%s has an unsupported command source %q", name, found.Source))
+		return m, nil
+	}
+}
+
+// dispatchBuiltin runs a kernel builtin slash command by its verbatim name.
+// Actions needing an interactive selector (fork/tree/resume) open an item
+// picker that drives the corresponding rpc when the user selects a row.
+func (m *model) dispatchBuiltin(name, args string) (tea.Model, tea.Cmd) {
+	agent, ok := m.cfg.Agent.(*rpcAgent)
+	if !ok {
+		m.chatModel.AppendWarning(fmt.Sprintf("/%s is not available (no kernel backend)", name))
+		return m, nil
+	}
+
+	var (
+		notice string
+		err    error
+	)
+	switch name {
+	case "new":
+		notice, err = agent.NewSession()
+	case "compact":
+		notice, err = agent.Compact()
+	case "clone":
+		notice, err = agent.Clone()
+	case "reload":
+		notice, err = agent.Reload()
+	case "model":
+		var id, provider string
+		notice, id, provider, err = agent.CycleModel()
+		if err == nil && id != "" {
+			m.cfg.ModelName = id
+			if provider != "" {
+				m.cfg.ProviderName = provider
+			}
+		}
+	case "session":
+		notice, err = agent.SessionStats()
+	case "name":
+		if args == "" {
+			m.chatModel.AppendWarning("Usage: /name <session name>")
+			return m, nil
+		}
+		notice, err = agent.SetSessionName(args)
+	case "fork":
+		return m.openForkPicker(agent)
+	case "resume":
+		return m.openResumePicker(agent)
+	case "tree":
+		return m.openTreePicker(agent)
+	default:
+		m.chatModel.AppendWarning(fmt.Sprintf("/%s is not supported in the viewer yet", name))
+		return m, nil
+	}
+
+	if err != nil {
+		m.chatModel.AppendWarning(fmt.Sprintf("/%s failed: %v", name, err))
+		return m, nil
+	}
+	m.chatModel.AppendNotice(notice)
 	return m, nil
+}
+
+// openForkPicker fetches the forkable user messages and opens the fork picker.
+// An empty list (nothing to fork) shows an honest notice instead.
+func (m *model) openForkPicker(agent *rpcAgent) (tea.Model, tea.Cmd) {
+	items, err := agent.ForkMessages()
+	if err != nil {
+		m.chatModel.AppendWarning(fmt.Sprintf("/fork failed: %v", err))
+		return m, nil
+	}
+	if len(items) == 0 {
+		m.chatModel.AppendNotice("Nothing to fork — no user messages yet.")
+		return m, nil
+	}
+	m.newItemPicker(pickerFork, "Fork from message (Enter to fork, Esc to close)", items)
+	return m, nil
+}
+
+// openResumePicker scans the current session's directory for other *.jsonl
+// session files and opens the resume picker. The current session file is
+// skipped. An empty list (no other sessions) shows an honest notice instead.
+func (m *model) openResumePicker(agent *rpcAgent) (tea.Model, tea.Cmd) {
+	current, err := agent.SessionFile()
+	if err != nil {
+		m.chatModel.AppendWarning(fmt.Sprintf("/resume failed: %v", err))
+		return m, nil
+	}
+	if current == "" {
+		m.chatModel.AppendNotice("No session file on disk — cannot list sessions.")
+		return m, nil
+	}
+	items := listSessionFiles(current)
+	if len(items) == 0 {
+		m.chatModel.AppendNotice("No other sessions to resume.")
+		return m, nil
+	}
+	m.newItemPicker(pickerResume, "Resume session (Enter to switch, Esc to close)", items)
+	return m, nil
+}
+
+// openTreePicker fetches the session's navigable entries and opens the tree
+// picker. An empty list shows an honest notice instead.
+func (m *model) openTreePicker(agent *rpcAgent) (tea.Model, tea.Cmd) {
+	items, err := agent.Entries()
+	if err != nil {
+		m.chatModel.AppendWarning(fmt.Sprintf("/tree failed: %v", err))
+		return m, nil
+	}
+	if len(items) == 0 {
+		m.chatModel.AppendNotice("Nothing to navigate — the session has no entries yet.")
+		return m, nil
+	}
+	m.newItemPicker(pickerTree, "Navigate tree (Enter to jump, Esc to close)", items)
+	return m, nil
+}
+
+// listSessionFiles scans the directory of currentFile for sibling *.jsonl
+// session files, skipping currentFile itself. Each item's ID is the absolute
+// path (sent to switch_session) and Label is the filename.
+func listSessionFiles(currentFile string) []PickerItem {
+	dir := filepath.Dir(currentFile)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	currentBase := filepath.Base(currentFile)
+	var items []PickerItem
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasSuffix(name, ".jsonl") || name == currentBase {
+			continue
+		}
+		items = append(items, PickerItem{
+			ID:    filepath.Join(dir, name),
+			Label: strings.TrimSuffix(name, ".jsonl"),
+		})
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].Label < items[j].Label })
+	return items
 }
 
 func (m *model) shouldShowSlashCommandPopup() bool {
@@ -1391,51 +1781,22 @@ func (m *model) renderSearchPopup(width int) string {
 	return popupStyle.Render(b.String())
 }
 
-func (m *model) slashCommandCandidates(prefix string) []CompletionCandidate {
-	skills := m.inputModel.Skills
-
-	if prefix == "/" {
-		return allSlashCommandCandidates(skills)
-	}
-
-	result := Complete(prefix, skills, m.inputModel.WorkDir)
-	if result == nil || len(result.Candidates) == 0 {
-		return nil
-	}
-
-	candidates := make([]CompletionCandidate, 0, len(result.Candidates))
-	for _, candidate := range result.Candidates {
-		if candidate.Type == CompletionTypeCommand || candidate.Type == CompletionTypeSkill {
-			candidates = append(candidates, candidate)
-		}
-	}
-	return candidates
-}
-
-func allSlashCommandCandidates(skills []Skill) []CompletionCandidate {
+// allSlashCommandCandidates builds the full candidate list from the kernel
+// command list (the single source of truth), presenting each command name in
+// its verbatim slash form (e.g. "/compact", "/skill:review").
+func allSlashCommandCandidates(commands []CommandInfo) []CompletionCandidate {
 	seen := make(map[string]bool)
-	candidates := make([]CompletionCandidate, 0, len(slashCommands)+len(skills))
-	for _, cmd := range slashCommands {
-		if seen[cmd] {
+	candidates := make([]CompletionCandidate, 0, len(commands))
+	for _, c := range commands {
+		text := "/" + c.Name
+		if seen[text] {
 			continue
 		}
-		seen[cmd] = true
+		seen[text] = true
 		candidates = append(candidates, CompletionCandidate{
-			Text:        cmd,
-			Description: slashCommandDesc(cmd),
+			Text:        text,
+			Description: c.Description,
 			Type:        CompletionTypeCommand,
-		})
-	}
-	for _, skill := range skills {
-		cmd := "/" + skill.Name
-		if seen[cmd] {
-			continue
-		}
-		seen[cmd] = true
-		candidates = append(candidates, CompletionCandidate{
-			Text:        cmd,
-			Description: skill.Description,
-			Type:        CompletionTypeSkill,
 		})
 	}
 	sort.Slice(candidates, func(i, j int) bool {
@@ -1448,14 +1809,15 @@ func clipRunes(s string, width int) string {
 	if width <= 0 {
 		return ""
 	}
-	runes := []rune(s)
-	if len(runes) <= width {
+	// Measure by DISPLAY WIDTH (CJK/East-Asian glyphs occupy 2 columns), not rune
+	// count, so wide-character labels don't overflow their column budget.
+	if runewidth.StringWidth(s) <= width {
 		return s
 	}
 	if width <= 3 {
-		return string(runes[:width])
+		return runewidth.Truncate(s, width, "")
 	}
-	return string(runes[:width-3]) + "..."
+	return runewidth.Truncate(s, width, "...")
 }
 
 // renderBranchPopup renders the branch list popup.
@@ -1536,6 +1898,88 @@ func (m *model) renderBranchPopup() string {
 
 	// Show scroll indicator if needed
 	if len(popup.branches) > popup.height {
+		scrollStyle := lipgloss.NewStyle().Background(bg).Foreground(dimFg)
+		b.WriteString(scrollStyle.Render("  ↑↓ scroll"))
+	}
+
+	return style.Render(b.String())
+}
+
+// renderItemPicker renders the generic {id,label} list popup behind /fork,
+// /resume, and /tree. It mirrors renderBranchPopup's layout (thick border,
+// centered header, selected-row highlight, scroll indicator).
+func (m *model) renderItemPicker() string {
+	if m.itemPicker == nil {
+		return ""
+	}
+
+	popup := m.itemPicker
+	bg := lipgloss.Color("236")
+	border := lipgloss.Color("240")
+	selected := lipgloss.Color("33")
+	dimFg := lipgloss.Color("243")
+
+	style := lipgloss.NewStyle().
+		Background(bg).
+		Foreground(lipgloss.Color("252")).
+		Border(lipgloss.ThickBorder(), true, true, true, true).
+		BorderForeground(border).
+		Width(m.width - 10)
+
+	popupWidth := m.width - 10
+
+	var b strings.Builder
+	b.WriteString("\n")
+
+	// Header.
+	header := lipgloss.NewStyle().
+		Background(bg).
+		Foreground(lipgloss.Color("252")).
+		Bold(true).
+		Width(popupWidth).
+		Align(lipgloss.Center).
+		Render(popup.title)
+	b.WriteString(header)
+	b.WriteString("\n")
+
+	// Render visible items.
+	items := popup.items
+	height := popup.height
+	scrollOff := popup.scrollOff
+
+	if len(items) > height {
+		items = items[scrollOff : scrollOff+height]
+	}
+
+	for i, item := range items {
+		actualIndex := i + scrollOff
+		isSelected := actualIndex == popup.selected
+
+		label := item.Label
+		if popupWidth > 4 {
+			label = clipRunes(label, popupWidth-4)
+		}
+
+		var line string
+		if isSelected {
+			line = "> " + label
+		} else {
+			line = "  " + label
+		}
+
+		var lineStyle lipgloss.Style
+		if isSelected {
+			lineStyle = lipgloss.NewStyle().Background(selected).Foreground(lipgloss.Color("15"))
+		} else {
+			lineStyle = lipgloss.NewStyle().Background(bg).Foreground(dimFg)
+		}
+
+		b.WriteString(lineStyle.Width(popupWidth).Render(line))
+		b.WriteString("\n")
+	}
+
+	// Show scroll indicator if needed.
+	if len(popup.items) > popup.height {
 		scrollStyle := lipgloss.NewStyle().Background(bg).Foreground(dimFg)
 		b.WriteString(scrollStyle.Render("  ↑↓ scroll"))
 	}

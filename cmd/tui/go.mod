@@ -12,6 +12,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.24
 	github.com/muesli/reflow v0.3.0
 	google.golang.org/adk v1.4.0
+	google.golang.org/genai v1.61.0
 )
 
 require (
@@ -64,7 +65,6 @@ require (
 	golang.org/x/term v0.43.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	google.golang.org/api v0.279.0 // indirect
-	google.golang.org/genai v1.61.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260511170946-3700d4141b60 // indirect
 	google.golang.org/grpc v1.81.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
