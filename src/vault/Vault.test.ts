@@ -316,6 +316,41 @@ describe("Vault public file API", () => {
     await expect(Promise.all([first, second])).resolves.toEqual(["1", "2"]);
     await expect(vault.read(file)).resolves.toBe("2");
   });
+
+  it("uses adapter process with Obsidian's saving and immediate cache contract", async () => {
+    const data = new Map<string, string>();
+    const read = vi.fn(async (path: string) => data.get(path) ?? "");
+    const callerImmediate = vi.fn();
+    let activeFile: { saving: boolean } | null = null;
+    let savingDuringImmediate = false;
+    const process = vi.fn(async (path: string, updater: (text: string) => string, options?: DataWriteOptions) => {
+      options?.immediate?.();
+      savingDuringImmediate = activeFile?.saving ?? false;
+      const next = updater(data.get(path) ?? "");
+      data.set(path, next);
+      return next;
+    });
+    const adapter = {
+      read,
+      write: async (path: string, value: string) => { data.set(path, value); },
+      delete: async (path: string) => { data.delete(path); },
+      list: async () => [],
+      process,
+    };
+    const vault = new Vault(adapter);
+    const file = await vault.create("Counter.md", "one");
+    activeFile = file;
+
+    await expect(vault.process(file, (text) => `${text}!`, { immediate: callerImmediate, mtime: 25 })).resolves.toBe("one!");
+
+    expect(process).toHaveBeenCalledTimes(1);
+    expect(savingDuringImmediate).toBe(true);
+    expect(file.saving).toBe(false);
+    expect(callerImmediate).not.toHaveBeenCalled();
+    await expect(vault.cachedRead(file)).resolves.toBe("one!");
+    expect(read).not.toHaveBeenCalled();
+    expect(file.stat).toEqual({ ctime: file.stat.ctime, mtime: 25, size: 4 });
+  });
 });
 
 describe("Vault setup and save config", () => {

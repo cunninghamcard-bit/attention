@@ -562,6 +562,27 @@ export class Vault extends Events {
   }
 
   async process(file: TFile, updater: (data: string) => string, options?: DataWriteOptions): Promise<string> {
+    if (this.adapter?.process) {
+      const previousSaving = file.saving;
+      file.saving = true;
+      try {
+        const writeOptions = withImmediate(options, () => file.cache(null));
+        const next = await this.adapter.process(file.path, updater, writeOptions);
+        file.cache(next);
+        if (this.usesAdapterEvents()) {
+          await this.refreshFileStat(file);
+          return next;
+        }
+        this.data.set(file.path, next);
+        this.binaryData.delete(file.path);
+        this.updateFileStat(file, textSize(next), options);
+        this.trigger("modify", file);
+        return next;
+      } finally {
+        file.saving = previousSaving;
+      }
+    }
+
     const path = file.path;
     const previous = this.processQueues.get(path) ?? Promise.resolve();
     const task = previous.catch(() => undefined).then(async () => {
@@ -1113,13 +1134,9 @@ function toArrayBuffer(data: Uint8Array): ArrayBuffer {
 }
 
 function withImmediate(options: DataWriteOptions | undefined, immediate: () => void): DataWriteOptions {
-  const previousImmediate = options?.immediate;
   return {
     ...options,
-    immediate: () => {
-      immediate();
-      previousImmediate?.();
-    },
+    immediate,
   };
 }
 
