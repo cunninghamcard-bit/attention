@@ -24,7 +24,7 @@ import { EditorExtensionHost } from "../editor/EditorExtension";
 import { DynamicScope } from "../hotkeys/Scope";
 import { getActiveDocument, getActiveWindow, setActiveWindow } from "../dom/ActiveDocument";
 import { setChildrenInPlace } from "../dom/dom";
-import type { WorkspaceItem } from "./WorkspaceItem";
+import { WorkspaceItem } from "./WorkspaceItem";
 import type { WorkspaceLayout, WorkspaceLayoutNode } from "./WorkspaceLayout";
 import { normalizeViewStatePayload, type InternalViewState } from "../views/View";
 import { ItemView } from "../views/ItemView";
@@ -883,19 +883,49 @@ export class Workspace extends Events {
     );
   }
 
-  iterateAllLeaves(callback: (leaf: WorkspaceLeaf) => void): void {
-    this.rootSplit.iterateLeaves(callback);
-    this.leftSplit.iterateLeaves(callback);
-    this.rightSplit.iterateLeaves(callback);
-    this.floatingSplit.iterateLeaves(callback);
+  iterateAllLeaves(callback: (leaf: WorkspaceLeaf) => boolean | void): void {
+    this.iterateLeaves(this.rootSplit, callback);
+    this.iterateLeaves(this.leftSplit, callback);
+    this.iterateLeaves(this.rightSplit, callback);
+    this.iterateLeaves(this.floatingSplit, callback);
   }
 
-  iterateLeaves(callback: (leaf: WorkspaceLeaf) => void): void {
-    this.iterateAllLeaves(callback);
+  iterateLeaves(callback: (leaf: WorkspaceLeaf) => boolean | void): boolean;
+  iterateLeaves(root: WorkspaceItem | WorkspaceItem[], callback: (leaf: WorkspaceLeaf) => boolean | void): boolean;
+  iterateLeaves(callback: (leaf: WorkspaceLeaf) => boolean | void, root: WorkspaceItem | WorkspaceItem[]): boolean;
+  iterateLeaves(
+    rootOrCallback: WorkspaceItem | WorkspaceItem[] | ((leaf: WorkspaceLeaf) => boolean | void),
+    callbackOrRoot?: ((leaf: WorkspaceLeaf) => boolean | void) | WorkspaceItem | WorkspaceItem[],
+  ): boolean {
+    let roots: WorkspaceItem | WorkspaceItem[];
+    let callback: (leaf: WorkspaceLeaf) => boolean | void;
+    if (typeof rootOrCallback === "function") {
+      callback = rootOrCallback;
+      roots = callbackOrRoot instanceof WorkspaceItem || Array.isArray(callbackOrRoot)
+        ? callbackOrRoot
+        : [this.rootSplit, this.leftSplit, this.rightSplit, this.floatingSplit];
+    } else {
+      roots = rootOrCallback;
+      callback = callbackOrRoot as (leaf: WorkspaceLeaf) => boolean | void;
+    }
+    const items = Array.isArray(roots) ? roots : [roots];
+    const visit = (item: WorkspaceItem): boolean => {
+      if (item instanceof WorkspaceLeaf) return Boolean(callback(item));
+      if (item instanceof WorkspaceParent) {
+        for (const child of item.children) {
+          if (visit(child)) return true;
+        }
+      }
+      return false;
+    };
+    for (const item of items) {
+      if (visit(item)) return true;
+    }
+    return false;
   }
 
-  iterateRootLeaves(callback: (leaf: WorkspaceLeaf) => void): void {
-    this.rootSplit.iterateLeaves(callback);
+  iterateRootLeaves(callback: (leaf: WorkspaceLeaf) => boolean | void): void {
+    this.iterateLeaves(this.rootSplit, callback);
   }
 
   getLeavesOfType(type: string): WorkspaceLeaf[] {
@@ -1081,15 +1111,21 @@ export class Workspace extends Events {
     return true;
   }
 
-  iterateTabs(roots: WorkspaceItem[] | WorkspaceItem, callback: (tabs: WorkspaceTabs) => void): void {
+  iterateTabs(roots: WorkspaceItem[] | WorkspaceItem, callback: (tabs: WorkspaceTabs) => boolean | void): boolean {
     const items = Array.isArray(roots) ? roots : [roots];
-    const visit = (item: WorkspaceItem): void => {
-      if (item instanceof WorkspaceTabs) callback(item);
+    const visit = (item: WorkspaceItem): boolean => {
+      if (item instanceof WorkspaceTabs && callback(item)) return true;
       if (item instanceof WorkspaceSplit || item instanceof WorkspaceTabs) {
-        for (const child of item.children) visit(child);
+        for (const child of item.children) {
+          if (visit(child)) return true;
+        }
       }
+      return false;
     };
-    for (const item of items) visit(item);
+    for (const item of items) {
+      if (visit(item)) return true;
+    }
+    return false;
   }
 
   private rebuildLeavesOfType(type: string): void {
