@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
+import type { ObsidianProtocolData } from "../protocol/UriRouter";
 
 describe("AppLifecycle opening behavior", () => {
   beforeEach(() => {
@@ -14,6 +15,12 @@ describe("AppLifecycle opening behavior", () => {
       },
     });
     Object.defineProperty(window, "focus", { configurable: true, value: () => {} });
+    delete (window as { OBS_ACT?: unknown }).OBS_ACT;
+  });
+
+  afterEach(() => {
+    delete (window as { OBS_ACT?: unknown }).OBS_ACT;
+    vi.restoreAllMocks();
   });
 
   it("keeps restored layout for the last opened behavior", async () => {
@@ -37,6 +44,24 @@ describe("AppLifecycle opening behavior", () => {
 
     expect(app.vault.getFileByPath("Inbox/Untitled.md")).not.toBeNull();
     expect(app.workspace.activeEditor?.file?.path).toBe("Inbox/Untitled.md");
+  });
+
+  it("skips opening behavior and replays pending URL action during startup", async () => {
+    const pending: ObsidianProtocolData = { action: "plugin-action", source: "startup" };
+    (window as { OBS_ACT?: ObsidianProtocolData }).OBS_ACT = pending;
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const app = new App(document.createElement("div"));
+    const handler = vi.fn();
+    app.workspace.registerObsidianProtocolHandler("plugin-action", handler);
+    app.vault.setConfig("openBehavior", "new");
+    app.vault.setConfig("newFileLocation", "folder");
+    app.vault.setConfig("newFileFolderPath", "Inbox");
+
+    await app.ready;
+
+    expect(app.vault.getFileByPath("Inbox/Untitled.md")).toBeNull();
+    expect(handler).toHaveBeenCalledWith(pending);
+    expect(typeof (window as { OBS_ACT?: unknown }).OBS_ACT).toBe("function");
   });
 
   it("keeps daily opening behavior inactive when the scoped Daily Notes plugin is disabled", async () => {
