@@ -128,6 +128,16 @@ describe("Vault public file API", () => {
     await expect(vault.create("Bad:Name.md", "bad")).rejects.toThrow("File name cannot contain");
   });
 
+  it("normalizes vault paths with Obsidian's space and NFC rules", async () => {
+    const vault = new Vault();
+    const file = await vault.create("Notes/No\u00a0Break/e\u0301.md", "body");
+
+    await expect(vault.exists("")).resolves.toBe(true);
+    await expect(vault.exists("///")).resolves.toBe(true);
+    expect(file.path).toBe("Notes/No Break/é.md");
+    expect(vault.getFileByPath("Notes/No Break/é.md")).toBe(file);
+  });
+
   it("exposes Obsidian-style vault, parent, root, and folder tree metadata", async () => {
     const vault = new Vault();
 

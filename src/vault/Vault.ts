@@ -1084,7 +1084,8 @@ function normalizeFolderPath(path: string): string {
 }
 
 function normalizeVaultPath(path: string): string {
-  return path.replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/+/g, "/").replace(/\/$/, "");
+  const normalized = path.replace(/[\\/]+/g, "/").replace(/^\/+|\/+$/g, "");
+  return (normalized === "" ? "/" : normalized).replace(/[\u00a0\u202f]/g, " ").normalize("NFC");
 }
 
 function normalizeJsonPath(path: string): string {

@@ -103,13 +103,13 @@ export class FileSystemAdapter extends DataAdapter {
 
   getFullPath(path: string): string {
     const realPath = this.getRealPath(path);
-    return isFullFilesystemPath(realPath) ? realPath : this.getFullRealPath(realPath);
+    return realPath !== "/" && isFullFilesystemPath(realPath) ? realPath : this.getFullRealPath(realPath);
   }
 
   private getFullRealPath(path: string): string {
     const base = this.basePath.replace(/[\\/]+$/, "");
     const vaultPath = normalizeVaultPath(path);
-    return vaultPath ? `${base}/${vaultPath}` : base;
+    return vaultPath === "/" ? base : `${base}/${vaultPath}`;
   }
 
   private getRealPath(path: string): string {
@@ -570,7 +570,8 @@ async function loadFileSystemModule(): Promise<FileSystemModule> {
 }
 
 function normalizeVaultPath(path: string): string {
-  return path.replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/+/g, "/").replace(/\/$/, "");
+  const normalized = path.replace(/[\\/]+/g, "/").replace(/^\/+|\/+$/g, "");
+  return (normalized === "" ? "/" : normalized).replace(/[\u00a0\u202f]/g, " ").normalize("NFC");
 }
 
 function getParentVaultPath(path: string): string | null {

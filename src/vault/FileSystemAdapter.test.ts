@@ -104,6 +104,16 @@ describe("FileSystemAdapter", () => {
     expect(adapter.resolvePath("/tmp/not-in-this-vault.png")).toBeNull();
   });
 
+  it("normalizes filesystem adapter paths with Obsidian's space and NFC rules", async () => {
+    await adapter.write("Folder/No\u202fBreak/e\u0301.md", "body");
+
+    expect(adapter.getFullPath("")).toBe(basePath);
+    expect(adapter.getFullPath("/")).toBe(basePath);
+    expect(adapter.getFullPath("///")).toBe(basePath);
+    expect(adapter.getFullPath("Folder/No Break/é.md")).toBe(path.join(basePath, "Folder", "No Break", "é.md"));
+    expect(await adapter.exists("Folder/No Break/é.md", true)).toBe(true);
+  });
+
   it("resolves descendant full paths through indexed real paths", async () => {
     const realFolder = path.join(basePath, "Actual Folder");
     await fs.mkdir(realFolder, { recursive: true });
