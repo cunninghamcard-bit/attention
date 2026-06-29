@@ -1171,6 +1171,10 @@ export class Workspace extends Events {
     return view instanceof ctor ? view : null;
   }
 
+  getActiveLeafOfViewType<T>(ctor: abstract new (...args: any[]) => T): T | null {
+    return this.getActiveViewOfType(ctor);
+  }
+
   registerEditorExtension(extension: unknown): void {
     this.editorExtensions.push(extension);
     this.editorExtensionHost.register(extension, "plugin");
@@ -1268,6 +1272,10 @@ export class Workspace extends Events {
 
   getRecentFiles(options?: RecentFilesOptions): TFile[] {
     return this.recentFileTracker.getRecentFiles(options);
+  }
+
+  addRecentFile(file: TFile): void {
+    this.recentFileTracker.addRecentFile(file);
   }
 
   onQuickPreview(file: TFile, data: string): void {
