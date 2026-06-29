@@ -1267,16 +1267,13 @@ export class MarkdownView extends TextFileView {
     const isSource = this.currentMode === this.editMode;
     const isPreview = this.currentMode === this.previewMode;
     const sourceMode = this.getSourceMode();
-    this.editorContainerEl.hidden = !isSource;
-    this.previewContainerEl.hidden = !isPreview;
     this.contentEl.classList.toggle("mod-source", isSource);
     this.contentEl.classList.toggle("mod-preview", isPreview);
     this.containerEl.dataset.mode = this.getMode();
     this.contentEl.dataset.mode = this.getMode();
     this.editorContainerEl.classList.toggle("is-live-preview", sourceMode === "live");
-    this.editorContainerEl.classList.toggle("is-source-mode", sourceMode === "source");
-    this.sourceTextAreaEl.classList.toggle("is-live-preview", sourceMode === "live");
-    this.sourceTextAreaEl.classList.toggle("is-source-mode", sourceMode === "source");
+    this.editorContainerEl.style.display = isSource ? "" : "none";
+    this.previewContainerEl.style.display = isPreview ? "" : "none";
     this.updateModeButton();
     this.updateSourceModeButton();
     this.updatePropertiesInDocument();
@@ -3319,16 +3316,17 @@ export class MarkdownEditView implements MarkdownViewModeComponent {
   }
 
   hide(): void {
-    this.owner.editorContainerEl.hidden = true;
+    this.owner.sourceTextAreaEl.onscroll = null;
+    this.owner.editorContainerEl.style.display = "none";
   }
 
   show(): void {
+    this.owner.editorContainerEl.style.display = "";
     const sizerEl = this.owner.editorViewHost.sizerEl;
     sizerEl.prepend(this.owner.metadataContainerEl);
     sizerEl.prepend(this.owner.inlineTitleEl);
     this.owner.editorViewHost.contentEl.appendChild(this.owner.sourceTextAreaEl);
     sizerEl.appendChild(this.owner.backlinksEl);
-    this.owner.editorContainerEl.hidden = false;
     this.owner.sourceTextAreaEl.onscroll = () => this.owner.syncScroll();
   }
 
@@ -3387,13 +3385,14 @@ class MarkdownReadingMode implements MarkdownViewModeComponent {
   }
 
   hide(): void {
-    this.owner.previewContainerEl.hidden = true;
+    this.owner.previewRendererEl.onscroll = null;
+    this.owner.previewContainerEl.style.display = "none";
   }
 
   show(): void {
+    this.owner.previewContainerEl.style.display = "";
     this.renderer.header?.el.append(this.owner.inlineTitleEl, this.owner.metadataContainerEl);
     this.renderer.footer?.el.appendChild(this.owner.backlinksEl);
-    this.owner.previewContainerEl.hidden = false;
     this.owner.previewRendererEl.onscroll = () => this.owner.syncScroll();
   }
 
