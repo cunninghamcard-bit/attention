@@ -27,6 +27,7 @@ import { setChildrenInPlace } from "../dom/dom";
 import { WorkspaceItem } from "./WorkspaceItem";
 import type { WorkspaceLayout, WorkspaceLayoutNode } from "./WorkspaceLayout";
 import { normalizeViewStatePayload, type InternalViewState } from "../views/View";
+import { Platform } from "../platform/Platform";
 import { ItemView } from "../views/ItemView";
 import { FileView } from "../views/FileView";
 import { MarkdownView } from "../views/MarkdownView";
@@ -250,6 +251,7 @@ export class Workspace extends Events {
       setActiveWindow(window);
       this.rootSplit.onFocus();
     });
+    this.installBrowserHistoryNavigation(ownerDocument.defaultView ?? window);
     this.registerClipboardEvents(window);
 
     if (mobile) {
@@ -2170,6 +2172,23 @@ export class Workspace extends Events {
     return this.getMostRecentLeaf(this.getFocusedContainer())
       ?? this.getMostRecentLeafAcrossAllRoots()
       ?? this.createLeafInParent(this.rootSplit, 0);
+  }
+
+  private installBrowserHistoryNavigation(ownerWindow: Window): void {
+    ownerWindow.addEventListener("popstate", (event) => {
+      event.preventDefault();
+    });
+    ownerWindow.history.forward = () => this.activeLeaf?.history.forward();
+    ownerWindow.history.back = () => this.activeLeaf?.history.back();
+    ownerWindow.history.go = (delta?: number) => this.activeLeaf?.history.go(delta ?? 0);
+    if (!Platform.isLinux) {
+      ownerWindow.addEventListener("mousedown", (event) => {
+        if (event.button !== 3 && event.button !== 4) return;
+        event.preventDefault();
+        event.stopPropagation();
+        void (event.button === 3 ? ownerWindow.history.back() : ownerWindow.history.forward());
+      }, { capture: true });
+    }
   }
 
   updateTitle(): void {
