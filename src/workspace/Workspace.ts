@@ -581,6 +581,10 @@ export class Workspace extends Events {
     return (await this.app.workspaceLayouts.readWorkspaceFile()) ?? {};
   }
 
+  iterateCodeMirrors(callback: (codeMirror: unknown) => unknown): void {
+    void callback;
+  }
+
   async saveLayout(): Promise<WorkspaceLayout | undefined> {
     if (!this.layoutReady) return undefined;
     return this.app.workspaceLayouts.saveCurrentLayout();
