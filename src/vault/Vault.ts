@@ -593,7 +593,7 @@ export class Vault extends Events {
     const task = previous.catch(() => undefined).then(async () => {
       const current = await this.read(file);
       const next = updater(current);
-      if (next !== current) await this.modify(file, next, options);
+      await this.modify(file, next, options);
       return next;
     });
     this.processQueues.set(path, task);

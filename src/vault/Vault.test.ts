@@ -371,6 +371,18 @@ describe("Vault public file API", () => {
     await expect(vault.read(file)).resolves.toBe("2");
   });
 
+  it("runs no-op Vault process updates through the write path", async () => {
+    const vault = new Vault();
+    const file = await vault.create("Noop.md", "same", { ctime: 1, mtime: 2 });
+    const modified: string[] = [];
+    vault.on("modify", (item) => modified.push(item.path));
+
+    await expect(vault.process(file, (data) => data, { mtime: 3 })).resolves.toBe("same");
+
+    expect(modified).toEqual(["Noop.md"]);
+    expect(file.stat).toEqual({ ctime: 1, mtime: 3, size: 4 });
+  });
+
   it("uses adapter process with Obsidian's saving and immediate cache contract", async () => {
     const data = new Map<string, string>();
     const read = vi.fn(async (path: string) => data.get(path) ?? "");
