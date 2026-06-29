@@ -92,9 +92,8 @@ export class RecentFileTracker {
     };
     const files: string[] = [];
     for (const path of this.lastOpenFiles) {
-      const file = this.vault.getFileByPath(path);
-      if (!file || !this.isVisibleKind(this.getKind(path), merged)) continue;
-      files.push(file.path);
+      if (!this.isVisibleKind(this.getKind(path), merged)) continue;
+      files.push(path);
       if (files.length >= merged.maxCount) break;
     }
     return files;

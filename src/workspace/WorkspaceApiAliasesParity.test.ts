@@ -22,6 +22,15 @@ describe("Workspace Obsidian API aliases", () => {
     expect(app.workspace.getRecentFiles()[0]).toBe(file.path);
   });
 
+  it("returns recent file paths even when the vault no longer has the file", () => {
+    const app = new App(document.createElement("div"));
+
+    app.workspace.recentFilePaths = ["Missing.md", "Board.canvas", "Image.png", "Sound.mp3"];
+
+    expect(app.workspace.getRecentFiles()).toEqual(["Missing.md", "Board.canvas"]);
+    expect(app.workspace.getLastOpenFiles()).toEqual(["Missing.md", "Board.canvas", "Image.png", "Sound.mp3"]);
+  });
+
   it("exposes isAttached as Obsidian's workspace item membership check", async () => {
     const app = new App(document.createElement("div"));
     const leaf = app.workspace.getLeaf();
