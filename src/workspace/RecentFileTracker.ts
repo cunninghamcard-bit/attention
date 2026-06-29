@@ -29,11 +29,11 @@ export class RecentFileTracker {
   }
 
   load(paths: string[] | null | undefined): void {
-    this.lastOpenFiles = Array.isArray(paths) ? paths.filter((path): path is string => typeof path === "string") : [];
+    this.lastOpenFiles = paths ?? [];
   }
 
   serialize(): string[] {
-    return [...this.lastOpenFiles];
+    return this.lastOpenFiles;
   }
 
   collect(file: { path: string }): void {
@@ -51,7 +51,7 @@ export class RecentFileTracker {
   }
 
   onFileOpen(activeFile: TFile | null, previousFile: TFile | null): void {
-    if (!this.workspace.isLayoutReady() || !previousFile || previousFile === activeFile) return;
+    if (!this.workspace.isLayoutReady() || !previousFile) return;
     this.collect(previousFile);
     this.workspace.requestSaveLayout();
   }
@@ -63,7 +63,7 @@ export class RecentFileTracker {
   }
 
   onRename(file: TAbstractFile, oldPath: string): void {
-    if (!this.workspace.isLayoutReady() || !(file instanceof TFile)) return;
+    if (!this.workspace.isLayoutReady()) return;
     this.lastOpenFiles = this.lastOpenFiles.map((path) => path === oldPath ? file.path : path);
     this.workspace.requestSaveLayout();
   }
