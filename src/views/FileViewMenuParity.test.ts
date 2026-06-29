@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
 import { Menu } from "../ui/Menu";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
-import type { TAbstractFile } from "../vault/TAbstractFile";
+import { TFile, type TAbstractFile } from "../vault/TAbstractFile";
 import { FileView } from "./FileView";
 
 class BasicFileView extends FileView {
@@ -120,5 +120,22 @@ describe("FileView menu parity", () => {
 
     expect(view.file).toBeNull();
     expect(error).toHaveBeenCalledWith(expect.any(Error));
+  });
+
+  it("reloads same-path files when the TFile identity changes", async () => {
+    const app = new App(document.createElement("div"));
+    const file = await app.vault.create("Same.md", "same");
+    app.viewRegistry.registerView("basic-file-view-menu-test", (leaf) => new BasicFileView(leaf));
+    const leaf = app.workspace.getLeaf();
+
+    await leaf.setViewState({ type: "basic-file-view-menu-test", active: true });
+    const view = leaf.view as BasicFileView;
+    await view.loadFile(file);
+    const replacement = new TFile(app.vault, file.path, file.stat, file.parent);
+
+    await expect(view.loadFile(replacement)).resolves.toBe(true);
+
+    expect(view.unloadedFiles).toEqual(["Same.md"]);
+    expect(view.file).toBe(replacement);
   });
 });

@@ -64,7 +64,7 @@ export class FileView extends ItemView {
 
   async loadFile(file: TFile | null): Promise<boolean> {
     const previousFile = this.file;
-    if (previousFile?.path === file?.path) return false;
+    if (previousFile === file) return false;
     if (previousFile) await this.onUnloadFile(previousFile);
     this.file = null;
     if (file) {
