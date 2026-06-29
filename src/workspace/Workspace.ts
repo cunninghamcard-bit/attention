@@ -150,6 +150,7 @@ export class Workspace extends Events {
   override on(name: "resize", callback: () => any, ctx?: any): EventRef;
   override on(name: "active-leaf-change", callback: (leaf: WorkspaceLeaf | null) => any, ctx?: any): EventRef;
   override on(name: "file-open", callback: (file: TFile | null) => any, ctx?: any): EventRef;
+  override on(name: "layout-ready", callback: () => any, ctx?: any): EventRef;
   override on(name: "layout-change", callback: () => any, ctx?: any): EventRef;
   override on(name: "window-frame-change", callback: () => any, ctx?: any): EventRef;
   override on(name: "window-open", callback: (win: WorkspaceWindow, window: Window) => any, ctx?: any): EventRef;
@@ -2196,12 +2197,13 @@ export class Workspace extends Events {
     }
   }
 
-  onLayoutReady(callback: () => any, pluginId: string | null = null): void {
+  onLayoutReady(callback: () => any, pluginId?: string | null): void {
+    const callbackPluginId = pluginId === undefined ? this.app.pluginInstaller.loadingPluginId : pluginId;
     if (this.layoutReady || this.onLayoutReadyCallbacks === null) {
       callback();
       return;
     }
-    this.onLayoutReadyCallbacks.push({ pluginId, callback });
+    this.onLayoutReadyCallbacks.push({ pluginId: callbackPluginId, callback });
   }
 
   isLayoutReady(): boolean {
