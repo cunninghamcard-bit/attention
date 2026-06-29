@@ -216,6 +216,19 @@ describe("Vault public file API", () => {
     expect(file.stat).toEqual({ ctime: 10, mtime: 50, size: 3 });
   });
 
+  it("reads raw adapter text by normalized path without TFile caching or BOM stripping", async () => {
+    const read = vi.fn(async () => "\ufeffraw");
+    const vault = new Vault({
+      read,
+      write: async () => {},
+      delete: async () => {},
+      list: async () => [],
+    });
+
+    await expect(vault.readRaw("/Raw\\e\u0301.md/")).resolves.toBe("\ufeffraw");
+    expect(read).toHaveBeenCalledWith("Raw/é.md");
+  });
+
   it("caches cachedRead results until file content or path changes", async () => {
     const data = new Map<string, string>();
     const read = vi.fn(async (path: string) => data.get(path) ?? "");

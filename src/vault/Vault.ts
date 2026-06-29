@@ -322,6 +322,10 @@ export class Vault extends Events {
     return text;
   }
 
+  async readRaw(path: string): Promise<string> {
+    return this.adapter?.read(normalizeVaultPath(path)) ?? "";
+  }
+
   async cachedRead(file: TFile): Promise<string> {
     const cached = file.getCachedData();
     if (cached !== undefined) return cached;
