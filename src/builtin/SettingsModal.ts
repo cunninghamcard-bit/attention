@@ -24,11 +24,12 @@ export class SettingsModal extends Modal {
     this.renderer = new SettingsRenderer(this.app, this.contentEl, (tab) => {
       this.updateModalTitle(tab);
       this.onTabOpen?.(tab);
-    });
+    }, () => this.updateModalTitle());
     this.renderer.render(this.preferredTabId);
   }
 
   onClose(): void {
+    this.renderer?.close();
     this.renderer = null;
     this.updateModalTitle();
     this.onModalClose?.();

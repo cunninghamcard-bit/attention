@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
 import type { SettingDefinitionItem } from "../app/SettingTab";
 import { Plugin } from "../plugin/Plugin";
 import { PluginSettingTab } from "../plugin/PluginSettingTab";
+import { closeTopActiveCloseable, getActiveCloseables } from "../ui/ActiveCloseableRegistry";
 import { SettingsModal } from "./SettingsModal";
 import { SettingsRenderer } from "./SettingsRenderer";
 
@@ -37,6 +38,12 @@ describe("Settings DOM parity", () => {
     vi.restoreAllMocks();
     setupBrowserState();
     document.body.replaceChildren();
+  });
+
+  afterEach(() => {
+    while (closeTopActiveCloseable()) {
+      // Drain Obsidian's mobile back closeable stack between isolated settings tests.
+    }
   });
 
   it("uses the modal content element as the vertical tabs container", () => {
@@ -97,6 +104,36 @@ describe("Settings DOM parity", () => {
     expect(navEl?.querySelector(".vertical-tab-nav-item-title")?.textContent).toBe("DOM Plugin");
     expect(navEl?.querySelector(".vertical-tab-nav-item-chevron svg")).not.toBeNull();
     expect(tab.containerEl.parentElement).toBe(renderer.contentContainerEl);
+  });
+
+  it("registers the active settings tab above the settings modal in the closeable stack", () => {
+    const app = new App(document.createElement("div"));
+    const plugin = new EmptyPlugin(app, { id: "closeable-plugin", name: "Closeable Plugin", version: "1.0.0" });
+    const tab = new PluginSettingTab(app, plugin);
+    app.setting.addSettingTab(tab);
+    const modal = new SettingsModal(app, "closeable-plugin");
+
+    modal.open();
+
+    expect(getActiveCloseables()).toHaveLength(2);
+    expect(tab.containerEl.parentElement).toBe(modal.contentEl.querySelector(".vertical-tab-content-container"));
+
+    expect(closeTopActiveCloseable()).toBe(true);
+
+    expect(modal.containerEl.isConnected).toBe(true);
+    expect(modal.titleEl.textContent).toBe("Settings");
+    expect(tab.containerEl.parentElement).toBeNull();
+    expect(tab.navEl?.classList.contains("is-active")).toBe(false);
+    expect(getActiveCloseables()).toEqual([modal]);
+
+    modal.openTabById("closeable-plugin");
+
+    expect(tab.containerEl.parentElement).toBe(modal.contentEl.querySelector(".vertical-tab-content-container"));
+    expect(getActiveCloseables()).toHaveLength(2);
+
+    modal.close();
+
+    expect(getActiveCloseables()).toEqual([]);
   });
 
   it("filters setting navigation from the header search box", () => {

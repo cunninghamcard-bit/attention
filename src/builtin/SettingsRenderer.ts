@@ -3,6 +3,7 @@ import type { SettingTab } from "../app/SettingRegistry";
 import { CorePluginSettingTab, PluginSettingTab } from "../plugin/PluginSettingTab";
 import { setIcon } from "../ui/Icon";
 import { SearchComponent } from "../ui/Setting";
+import { registerActiveCloseable, unregisterActiveCloseable, type ActiveCloseable } from "../ui/ActiveCloseableRegistry";
 
 export type SettingsSectionId = "options" | "core-plugins" | "community-plugins";
 
@@ -18,12 +19,14 @@ export class SettingsRenderer {
   readonly communityPluginTabHeaderGroup: HTMLElement;
   readonly communityPluginTabContainer: HTMLElement;
   private activeTab: SettingTab | null = null;
+  private activeTabCloseable: ActiveCloseable | null = null;
   private query = "";
 
   constructor(
     readonly app: App,
     parent: HTMLElement,
     readonly onTabOpen?: (tab: SettingTab) => void,
+    readonly onTabClose?: () => void,
   ) {
     if (parent.classList.contains("vertical-tabs-container")) {
       this.containerEl = parent;
@@ -56,6 +59,7 @@ export class SettingsRenderer {
   }
 
   render(preferredTabId?: string): void {
+    this.unregisterActiveTabCloseable();
     this.activeTab = null;
     this.tabContainer.replaceChildren();
     this.corePluginTabContainer.replaceChildren();
@@ -88,6 +92,7 @@ export class SettingsRenderer {
   }
 
   openSettingTab(tab: SettingTab): void {
+    this.unregisterActiveTabCloseable();
     const previous = this.activeTab;
     if (previous && previous !== tab) {
       previous.navEl?.classList.remove("is-active");
@@ -103,6 +108,14 @@ export class SettingsRenderer {
     if (!tab.displayDeclarative?.()) tab.display?.();
     tab.setQuery?.(this.query);
     this.onTabOpen?.(tab);
+    this.activeTabCloseable = {
+      close: () => this.closeActiveTab(),
+    };
+    registerActiveCloseable(this.activeTabCloseable);
+  }
+
+  close(): void {
+    this.closeActiveTab();
   }
 
   setQuery(query: string): void {
@@ -125,10 +138,18 @@ export class SettingsRenderer {
   private closeActiveTab(): void {
     const tab = this.activeTab;
     if (!tab) return;
+    this.unregisterActiveTabCloseable();
     tab.navEl?.classList.remove("is-active");
     this.contentContainerEl.replaceChildren();
     tab.hide?.();
     this.activeTab = null;
+    this.onTabClose?.();
+  }
+
+  private unregisterActiveTabCloseable(): void {
+    if (!this.activeTabCloseable) return;
+    unregisterActiveCloseable(this.activeTabCloseable);
+    this.activeTabCloseable = null;
   }
 
   private renderHeaders(): void {
