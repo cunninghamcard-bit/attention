@@ -141,6 +141,36 @@ describe("Workspace public API parity", () => {
     expect(app.workspace.operatorFuncConfigs.bases).toBeUndefined();
   });
 
+  it("keeps workspace protocol handler registration atomic and scoped", async () => {
+    const app = new App(document.createElement("div"));
+    const first = vi.fn();
+    const second = vi.fn();
+    const external = vi.fn();
+
+    app.workspace.registerObsidianProtocolHandler("plugin-action", first);
+
+    expect(() => app.workspace.registerObsidianProtocolHandler("plugin-action", second)).toThrow(
+      'Action "plugin-action" is already registered as a handler.',
+    );
+
+    await expect(app.uriRouter.handleUri("obsidian://plugin-action?source=first")).resolves.toBe(true);
+    expect(first).toHaveBeenCalledWith({ action: "plugin-action", source: "first" });
+    expect(second).not.toHaveBeenCalled();
+
+    app.workspace.unregisterObsidianProtocolHandler("plugin-action", second);
+    await expect(app.uriRouter.handleUri("obsidian://plugin-action?source=still-first")).resolves.toBe(true);
+    expect(first).toHaveBeenLastCalledWith({ action: "plugin-action", source: "still-first" });
+
+    app.uriRouter.registerAction("external-action", external);
+    app.workspace.unregisterObsidianProtocolHandler("external-action");
+
+    await expect(app.uriRouter.handleUri("obsidian://external-action?ok=true")).resolves.toBe(true);
+    expect(external).toHaveBeenCalledTimes(1);
+
+    app.workspace.unregisterObsidianProtocolHandler("plugin-action", first);
+    await expect(app.uriRouter.handleUri("obsidian://plugin-action")).resolves.toBe(false);
+  });
+
   it("keeps View.getState as the view payload and lets WorkspaceLeaf wrap it", async () => {
     const app = new App(document.createElement("div"));
     app.viewRegistry.registerView("stateful-public-api-test", (leaf) => new StatefulView(leaf));

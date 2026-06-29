@@ -1195,16 +1195,17 @@ export class Workspace extends Events {
   }
 
   registerObsidianProtocolHandler(action: string, handler: ObsidianProtocolHandler): void {
+    if (this.protocolHandlers.has(action)) throw new Error(`Action "${action}" is already registered as a handler.`);
     const wrapped: UriHandler = (context) => handler(toObsidianProtocolData(context));
-    let handlers = this.protocolHandlers.get(action);
-    if (!handlers) this.protocolHandlers.set(action, (handlers = new Map()));
-    handlers.set(handler, wrapped);
     this.app.uriRouter.registerAction(action, wrapped);
+    this.protocolHandlers.set(action, new Map([[handler, wrapped]]));
   }
 
   unregisterObsidianProtocolHandler(action: string, handler?: ObsidianProtocolHandler): void {
     const handlers = this.protocolHandlers.get(action);
+    if (!handlers) return;
     const wrapped = handler ? handlers?.get(handler) : undefined;
+    if (handler && !wrapped) return;
     this.app.uriRouter.unregisterAction(action, wrapped);
     if (handler) handlers?.delete(handler);
     else handlers?.clear();
