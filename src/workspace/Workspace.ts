@@ -618,9 +618,13 @@ export class Workspace extends Events {
     void callback;
   }
 
-  async saveLayout(): Promise<WorkspaceLayout | undefined> {
-    if (!this.layoutReady) return undefined;
-    return this.app.workspaceLayouts.saveCurrentLayout();
+  async saveLayout(): Promise<void> {
+    if (!this.layoutReady) return;
+    try {
+      await this.app.workspaceLayouts.saveCurrentLayout();
+    } catch {
+      // Obsidian swallows workspace layout write failures.
+    }
   }
 
   async loadLayout(): Promise<WorkspaceLayout | null> {

@@ -39,6 +39,17 @@ describe("WorkspaceLayoutPersistence", () => {
     await expect(app.vault.readJson(app.workspaceLayouts.getWorkspaceFilePath())).resolves.toEqual(layout);
   });
 
+  it("keeps workspace saveLayout void and swallows write failures", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+
+    await expect(app.workspace.saveLayout()).resolves.toBeUndefined();
+
+    vi.spyOn(app.workspaceLayouts, "writeWorkspaceFile").mockRejectedValueOnce(new Error("disk full"));
+
+    await expect(app.workspace.saveLayout()).resolves.toBeUndefined();
+  });
+
   it("does not emit a non-original layout-saved event when saving workspace layout", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
