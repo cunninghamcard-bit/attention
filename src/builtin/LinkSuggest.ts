@@ -93,7 +93,7 @@ export class LinkSuggest extends EditorSuggest<LinkFileSuggestion> {
   }
 
   private async applyToMarkdownView(view: MarkdownView, value: LinkFileSuggestion, context: LinkSuggestContext, replacement: LinkSuggestionReplacement): Promise<void> {
-    const source = view.sourceTextAreaEl.value;
+    const source = view.editor.getValue();
     const lineOffset = offsetAtLine(source, context.start.line);
     const replacementEdit = {
       start: lineOffset + replacement.start,

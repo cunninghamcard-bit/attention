@@ -26,14 +26,14 @@ describe("TagSuggest", () => {
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    view.sourceTextAreaEl.setSelectionRange("Tag #proj".length, "Tag #proj".length);
+    view.selectRange("Tag #proj".length, "Tag #proj".length);
     view.editor.setCursor({ line: 0, ch: "Tag #proj".length });
 
-    await app.workspace.editorSuggest.trigger(view.editor, view.sourceTextAreaEl);
+    await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl);
     expect(document.body.querySelector(".suggestion-highlight")?.textContent).toBe("proj");
-    await app.workspace.editorSuggest.trigger(view.editor, view.sourceTextAreaEl, new KeyboardEvent("keydown", { key: "Tab" }));
+    await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl, new KeyboardEvent("keydown", { key: "Tab" }));
 
-    expect(view.sourceTextAreaEl.value).toBe("Tag #project/");
+    expect(view.editor.getValue()).toBe("Tag #project/");
   });
 
   it("enters full tag suggestions with a trailing space", async () => {
@@ -46,13 +46,13 @@ describe("TagSuggest", () => {
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    view.sourceTextAreaEl.setSelectionRange("Tag #proj".length, "Tag #proj".length);
+    view.selectRange("Tag #proj".length, "Tag #proj".length);
     view.editor.setCursor({ line: 0, ch: "Tag #proj".length });
 
-    await app.workspace.editorSuggest.trigger(view.editor, view.sourceTextAreaEl);
-    await app.workspace.editorSuggest.trigger(view.editor, view.sourceTextAreaEl, new KeyboardEvent("keydown", { key: "Enter" }));
+    await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl);
+    await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl, new KeyboardEvent("keydown", { key: "Enter" }));
 
-    expect(view.sourceTextAreaEl.value).toBe("Tag #project/beta ");
+    expect(view.editor.getValue()).toBe("Tag #project/beta ");
   });
 
   it("does not trigger when the next character is another hash", async () => {
@@ -65,10 +65,10 @@ describe("TagSuggest", () => {
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    view.sourceTextAreaEl.setSelectionRange("Tag #proj".length, "Tag #proj".length);
+    view.selectRange("Tag #proj".length, "Tag #proj".length);
     view.editor.setCursor({ line: 0, ch: "Tag #proj".length });
 
-    await app.workspace.editorSuggest.trigger(view.editor, view.sourceTextAreaEl);
+    await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl);
 
     expect(document.body.querySelector(".suggestion-container")).toBeNull();
   });

@@ -57,7 +57,7 @@ export class NoteComposerController {
     if (!view) return;
     const source = view.getViewData();
     const lines = source.split(/\r?\n/);
-    const cursor = offsetToPosition(source, view.sourceTextAreaEl.selectionStart);
+    const cursor = view.editor.getCursor("from");
     const line = lines[cursor.line] ?? "";
     const heading = /^(#{1,6})\s+(.+)$/.exec(line);
     if (!heading) return;
@@ -326,10 +326,6 @@ export function createNoteComposerPluginDefinition(): InternalPluginDefinition {
   };
 }
 
-function offsetToPosition(value: string, offset: number): { line: number; ch: number } {
-  const before = value.slice(0, Math.max(0, Math.min(value.length, offset))).split(/\r?\n/);
-  return { line: before.length - 1, ch: before[before.length - 1]?.length ?? 0 };
-}
 
 function lineOffset(lines: string[], line: number): number {
   let offset = 0;

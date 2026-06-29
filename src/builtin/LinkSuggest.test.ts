@@ -26,14 +26,14 @@ describe("LinkSuggest", () => {
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    view.sourceTextAreaEl.focus();
-    view.sourceTextAreaEl.setSelectionRange("Link [[Tar".length, "Link [[Tar".length);
+    view.editorViewHost.contentEl.focus();
+    view.selectRange("Link [[Tar".length, "Link [[Tar".length);
     view.editor.setCursor({ line: 0, ch: "Link [[Tar".length });
 
-    await app.workspace.editorSuggest.trigger(view.editor, view.sourceTextAreaEl);
-    await app.workspace.editorSuggest.trigger(view.editor, view.sourceTextAreaEl, new KeyboardEvent("keydown", { key: "Enter" }));
+    await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl);
+    await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl, new KeyboardEvent("keydown", { key: "Enter" }));
 
-    expect(view.sourceTextAreaEl.value).toBe("Link [[../Notes/Target|Target]]");
+    expect(view.editor.getValue()).toBe("Link [[../Notes/Target|Target]]");
   });
 
   it("uses markdown links only in markdown context when the setting is enabled", async () => {
@@ -48,13 +48,13 @@ describe("LinkSuggest", () => {
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    view.sourceTextAreaEl.setSelectionRange("Link [[Alias".length, "Link [[Alias".length);
+    view.selectRange("Link [[Alias".length, "Link [[Alias".length);
     view.editor.setCursor({ line: 0, ch: "Link [[Alias".length });
 
-    await app.workspace.editorSuggest.trigger(view.editor, view.sourceTextAreaEl);
-    await app.workspace.editorSuggest.trigger(view.editor, view.sourceTextAreaEl, new KeyboardEvent("keydown", { key: "Enter" }));
+    await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl);
+    await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl, new KeyboardEvent("keydown", { key: "Enter" }));
 
-    expect(view.sourceTextAreaEl.value).toBe("Link [Alias](../Notes/Target.md)");
+    expect(view.editor.getValue()).toBe("Link [Alias](../Notes/Target.md)");
   });
 
   it("writes missing same-file block ids in the same editor edit", async () => {
@@ -67,12 +67,12 @@ describe("LinkSuggest", () => {
     await leaf.openFile(file, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
     const cursor = "Paragraph block\n\nLink [[Note#^Para".length;
-    view.sourceTextAreaEl.setSelectionRange(cursor, cursor);
+    view.selectRange(cursor, cursor);
     view.editor.setCursor({ line: 2, ch: "Link [[Note#^Para".length });
 
-    await app.workspace.editorSuggest.trigger(view.editor, view.sourceTextAreaEl);
-    await app.workspace.editorSuggest.trigger(view.editor, view.sourceTextAreaEl, new KeyboardEvent("keydown", { key: "Enter" }));
+    await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl);
+    await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl, new KeyboardEvent("keydown", { key: "Enter" }));
 
-    expect(view.sourceTextAreaEl.value).toMatch(/^Paragraph block \^[a-f0-9]{6}\n\nLink \[\[Note#\^[a-f0-9]{6}\]\]$/);
+    expect(view.editor.getValue()).toMatch(/^Paragraph block \^[a-f0-9]{6}\n\nLink \[\[Note#\^[a-f0-9]{6}\]\]$/);
   });
 });

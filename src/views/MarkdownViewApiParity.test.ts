@@ -44,8 +44,8 @@ describe("MarkdownView public API parity", () => {
     getSearchButton(view, "Next match").click();
     await Promise.resolve();
     expect(countEl.textContent).toBe("2/2");
-    expect(view.sourceTextAreaEl.selectionStart).toBe("Alpha beta ".length);
-    expect(view.sourceTextAreaEl.selectionEnd).toBe("Alpha beta alpha".length);
+    expect(view.editor.posToOffset(view.editor.getCursor("from"))).toBe("Alpha beta ".length);
+    expect(view.editor.posToOffset(view.editor.getCursor("to"))).toBe("Alpha beta alpha".length);
   });
 
   it("uses the same search panel for replace mode and edits through the view buffer", async () => {
@@ -108,13 +108,13 @@ describe("MarkdownView public API parity", () => {
 
     expect(view.getViewData()).toBe("");
     expect(view.editor.getValue()).toBe("");
-    expect(view.sourceTextAreaEl.value).toBe("");
+    expect(view.editor.getValue()).toBe("");
     expect(view.previewRendererEl.textContent).not.toContain("Body text");
 
     await view.setMode("source");
 
     expect(view.getViewData()).toBe("");
-    expect(view.sourceTextAreaEl.value).toBe("");
+    expect(view.editor.getValue()).toBe("");
   });
 });
 

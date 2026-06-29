@@ -37,13 +37,13 @@ describe("MarkdownView drag and drop", () => {
       editorDropCount += 1;
     });
 
-    view.sourceTextAreaEl.setSelectionRange("Links:".length, "Links:".length);
+    view.selectRange("Links:".length, "Links:".length);
     setDragSource(app, { type: "files", files: [target, image] });
 
     const event = dropIntoEditor(view);
 
     expect(event.defaultPrevented).toBe(true);
-    expect(view.sourceTextAreaEl.value).toBe("Links:[[Target]]\n![[image]]");
+    expect(view.editor.getValue()).toBe("Links:[[Target]]\n![[image]]");
     expect(editorDropCount).toBe(0);
   });
 
@@ -58,7 +58,7 @@ describe("MarkdownView drag and drop", () => {
       editorChangeCount += 1;
     });
 
-    view.sourceTextAreaEl.setSelectionRange("Draft".length, "Draft".length);
+    view.selectRange("Draft".length, "Draft".length);
     view.insertText(" update");
 
     expect(editorChangeCount).toBe(1);
@@ -70,7 +70,7 @@ describe("MarkdownView drag and drop", () => {
     const current = await app.vault.create("Current.md", "Alpha\nOmega");
     const target = await app.vault.create("Target.md", "target");
     const view = await openMarkdownView(app, current);
-    view.sourceTextAreaEl.setSelectionRange(0, 0);
+    view.selectRange(0, 0);
     view.editor.posAtCoords = vi.fn(() => ({ line: 1, ch: 0 }));
 
     setDragSource(app, { type: "file", file: target });
@@ -78,7 +78,7 @@ describe("MarkdownView drag and drop", () => {
 
     expect(event.defaultPrevented).toBe(true);
     expect(view.editor.posAtCoords).toHaveBeenCalledWith({ x: 80, y: 40 });
-    expect(view.sourceTextAreaEl.value).toBe("Alpha\n[[Target]]Omega");
+    expect(view.editor.getValue()).toBe("Alpha\n[[Target]]Omega");
   });
 
   it("uses a dragged link file subpath and keeps unresolved links as raw linktext", async () => {
@@ -89,12 +89,12 @@ describe("MarkdownView drag and drop", () => {
 
     setDragSource(app, { type: "link", file: target, linktext: "Target#Section|Alias", sourcePath: current.path });
     dropIntoEditor(view);
-    expect(view.sourceTextAreaEl.value).toBe("[[Target#Section]]");
+    expect(view.editor.getValue()).toBe("[[Target#Section]]");
 
-    view.sourceTextAreaEl.setSelectionRange(view.sourceTextAreaEl.value.length, view.sourceTextAreaEl.value.length);
+    view.selectRange(view.editor.getValue().length, view.editor.getValue().length);
     setDragSource(app, { type: "link", linktext: "Missing#Section", sourcePath: current.path });
     dropIntoEditor(view);
-    expect(view.sourceTextAreaEl.value).toBe("[[Target#Section]]Missing#Section");
+    expect(view.editor.getValue()).toBe("[[Target#Section]]Missing#Section");
   });
 
   it("converts heading and bookmark drag sources with the reverse-engineered subpath rules", async () => {
@@ -105,15 +105,15 @@ describe("MarkdownView drag and drop", () => {
 
     setDragSource(app, { type: "heading", file: target, heading: { heading: "A:# bad [[x]] %% tag" } });
     dropIntoEditor(view);
-    expect(view.sourceTextAreaEl.value).toBe("[[Target#A bad x tag]]");
+    expect(view.editor.getValue()).toBe("[[Target#A bad x tag]]");
 
-    view.sourceTextAreaEl.setSelectionRange(view.sourceTextAreaEl.value.length, view.sourceTextAreaEl.value.length);
+    view.selectRange(view.editor.getValue().length, view.editor.getValue().length);
     setDragSource(app, {
       type: "bookmarks",
       items: [{ item: { type: "file", path: target.path, subpath: "#Section", title: "Nice title" } }],
     });
     dropIntoEditor(view);
-    expect(view.sourceTextAreaEl.value).toBe("[[Target#A bad x tag]][[Target#Section|Nice title]]");
+    expect(view.editor.getValue()).toBe("[[Target#A bad x tag]][[Target#Section|Nice title]]");
   });
 
   it("sets source dragover dropEffect only when the effect is allowed", async () => {
@@ -174,14 +174,14 @@ describe("MarkdownView drag and drop", () => {
 
     expect(event.defaultPrevented).toBe(true);
     expect(editorDropCount).toBe(1);
-    expect(view.sourceTextAreaEl.value).toBe("**bold**");
+    expect(view.editor.getValue()).toBe("**bold**");
   });
 
   it("uses editor drop coordinates for external markdown drops", async () => {
     const app = new App(document.createElement("div"));
     const current = await app.vault.create("Current.md", "Alpha\nOmega");
     const view = await openMarkdownView(app, current);
-    view.sourceTextAreaEl.setSelectionRange(0, 0);
+    view.selectRange(0, 0);
     view.editor.posAtCoords = vi.fn(() => ({ line: 1, ch: 5 }));
 
     clearDragSource(app);
@@ -193,20 +193,20 @@ describe("MarkdownView drag and drop", () => {
 
     expect(event.defaultPrevented).toBe(true);
     expect(view.editor.posAtCoords).toHaveBeenCalledWith({ x: 120, y: 64 });
-    expect(view.sourceTextAreaEl.value).toBe("Alpha\nOmega**bold**");
+    expect(view.editor.getValue()).toBe("Alpha\nOmega**bold**");
   });
 
   it("falls back to textarea coordinates when the editor has no posAtCoords", async () => {
     const app = new App(document.createElement("div"));
     const current = await app.vault.create("Current.md", "Alpha\nOmega");
     const view = await openMarkdownView(app, current);
-    view.sourceTextAreaEl.setSelectionRange(0, 0);
-    view.sourceTextAreaEl.style.fontSize = "10px";
-    view.sourceTextAreaEl.style.lineHeight = "20px";
-    view.sourceTextAreaEl.style.padding = "0";
-    Object.defineProperty(view.sourceTextAreaEl, "scrollTop", { configurable: true, value: 0 });
-    Object.defineProperty(view.sourceTextAreaEl, "scrollLeft", { configurable: true, value: 0 });
-    view.sourceTextAreaEl.getBoundingClientRect = () => ({
+    view.selectRange(0, 0);
+    view.editorViewHost.contentEl.style.fontSize = "10px";
+    view.editorViewHost.contentEl.style.lineHeight = "20px";
+    view.editorViewHost.contentEl.style.padding = "0";
+    Object.defineProperty(view.editorViewHost.scrollerEl, "scrollTop", { configurable: true, value: 0 });
+    Object.defineProperty(view.editorViewHost.scrollerEl, "scrollLeft", { configurable: true, value: 0 });
+    view.editorViewHost.contentEl.getBoundingClientRect = () => ({
       x: 0,
       y: 0,
       left: 0,
@@ -226,7 +226,7 @@ describe("MarkdownView drag and drop", () => {
     });
 
     expect(event.defaultPrevented).toBe(true);
-    expect(view.sourceTextAreaEl.value).toBe("Alpha\nOmega**bold**");
+    expect(view.editor.getValue()).toBe("Alpha\nOmega**bold**");
   });
 
   it("converts external HTML drops when autoConvertHtml is enabled", async () => {
@@ -243,7 +243,7 @@ describe("MarkdownView drag and drop", () => {
     });
 
     expect(event.defaultPrevented).toBe(true);
-    expect(view.sourceTextAreaEl.value).toBe("### Title\n\nHello **world**");
+    expect(view.editor.getValue()).toBe("### Title\n\nHello **world**");
   });
 
   it("uses the Obsidian HTML marker guard only when plain text is present", async () => {
@@ -260,7 +260,7 @@ describe("MarkdownView drag and drop", () => {
       }),
     });
     expect(guarded.defaultPrevented).toBe(false);
-    expect(view.sourceTextAreaEl.value).toBe("");
+    expect(view.editor.getValue()).toBe("");
 
     const converted = dropIntoEditor(view, {
       dataTransfer: createDropDataTransfer({
@@ -268,7 +268,7 @@ describe("MarkdownView drag and drop", () => {
       }),
     });
     expect(converted.defaultPrevented).toBe(true);
-    expect(view.sourceTextAreaEl.value).toBe("Rich");
+    expect(view.editor.getValue()).toBe("Rich");
   });
 
   it("detaches long HTML data images, saves them as attachments, and inserts embeds asynchronously", async () => {
@@ -287,9 +287,9 @@ describe("MarkdownView drag and drop", () => {
     });
 
     expect(event.defaultPrevented).toBe(true);
-    expect(view.sourceTextAreaEl.value).toBe("Before\n\nAfter");
+    expect(view.editor.getValue()).toBe("Before\n\nAfter");
     await vi.waitFor(() => {
-      expect(view.sourceTextAreaEl.value).toMatch(/^Before\n\nAfter!\[\[Pasted image \d{14}]]\n\n$/);
+      expect(view.editor.getValue()).toMatch(/^Before\n\nAfter!\[\[Pasted image \d{14}]]\n\n$/);
     });
     expect(saveAttachment).toHaveBeenCalledWith("Pasted image", "png", expect.any(ArrayBuffer), current);
     expect(app.vault.getFiles().some((file) => /^Pasted image \d{14}\.png$/.test(file.path))).toBe(true);
@@ -309,7 +309,7 @@ describe("MarkdownView drag and drop", () => {
     });
 
     expect(event.defaultPrevented).toBe(false);
-    expect(view.sourceTextAreaEl.value).toBe("");
+    expect(view.editor.getValue()).toBe("");
   });
 
   it("converts external URI drops and leaves plain text alone", async () => {
@@ -324,22 +324,23 @@ describe("MarkdownView drag and drop", () => {
         "text/plain": "Example page",
       }),
     });
-    expect(view.sourceTextAreaEl.value).toBe("[Example page](https://example.com/page)");
+    expect(view.editor.getValue()).toBe("[Example page](https://example.com/page)");
 
-    view.sourceTextAreaEl.setSelectionRange(view.sourceTextAreaEl.value.length, view.sourceTextAreaEl.value.length);
+    view.selectRange(view.editor.getValue().length, view.editor.getValue().length);
     dropIntoEditor(view, {
       dataTransfer: createDropDataTransfer({
         "text/uri-list": "https://example.com/image.png",
         "text/plain": "Example image",
       }),
     });
-    expect(view.sourceTextAreaEl.value).toBe("[Example page](https://example.com/page)![Example image](https://example.com/image.png)");
+    expect(view.editor.getValue()).toBe("[Example page](https://example.com/page)![Example image](https://example.com/image.png)");
 
-    view.sourceTextAreaEl.value = "";
-    view.sourceTextAreaEl.setSelectionRange(0, 0);
+    view.setViewData("");
+    view.editor.setValue("");
+    view.selectRange(0, 0);
     const plainEvent = dropIntoEditor(view, { dataTransfer: createDropDataTransfer({ "text/plain": "plain" }) });
     expect(plainEvent.defaultPrevented).toBe(false);
-    expect(view.sourceTextAreaEl.value).toBe("");
+    expect(view.editor.getValue()).toBe("");
   });
 
   it("uses the first .webloc or .url filename for URI drops without plain text", async () => {
@@ -357,7 +358,7 @@ describe("MarkdownView drag and drop", () => {
     });
 
     expect(event.defaultPrevented).toBe(true);
-    expect(view.sourceTextAreaEl.value).toBe("Example Site");
+    expect(view.editor.getValue()).toBe("Example Site");
     expect(arrayBuffer).not.toHaveBeenCalled();
   });
 
@@ -372,7 +373,7 @@ describe("MarkdownView drag and drop", () => {
 
     expect(event.defaultPrevented).toBe(true);
     await vi.waitFor(() => {
-      expect(view.sourceTextAreaEl.value).toBe("![[image]]");
+      expect(view.editor.getValue()).toBe("![[image]]");
     });
     expect(app.vault.getFileByPath("image.png")).not.toBeNull();
   });
@@ -388,7 +389,7 @@ describe("MarkdownView drag and drop", () => {
 
     expect(event.defaultPrevented).toBe(true);
     await vi.waitFor(() => {
-      expect(view.sourceTextAreaEl.value).toMatch(/^!\[\[Pasted image \d{14}]]$/);
+      expect(view.editor.getValue()).toMatch(/^!\[\[Pasted image \d{14}]]$/);
     });
     expect(app.vault.getFiles().some((file) => /^Pasted image \d{14}\.png$/.test(file.path))).toBe(true);
   });
@@ -406,7 +407,7 @@ describe("MarkdownView drag and drop", () => {
     });
 
     await vi.waitFor(() => {
-      expect(view.sourceTextAreaEl.value).toBe("![photo.png](file:///tmp/photo.png)");
+      expect(view.editor.getValue()).toBe("![photo.png](file:///tmp/photo.png)");
     });
     expect(app.vault.getFileByPath("photo.png")).toBeNull();
   });

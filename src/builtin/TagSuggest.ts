@@ -46,7 +46,7 @@ export class TagSuggest extends EditorSuggest<TagSuggestion> {
     const activeEditor = this.app.workspace.activeEditor;
     const activeView = activeEditor instanceof MarkdownView ? activeEditor : this.app.workspace.getActiveViewOfType(MarkdownView);
     if (activeView instanceof MarkdownView) {
-      const lineOffset = offsetAtLine(activeView.sourceTextAreaEl.value, context.start.line);
+      const lineOffset = offsetAtLine(activeView.editor.getValue(), context.start.line);
       const start = lineOffset + context.start.ch;
       activeView.applyTextEdits([{ start, end: lineOffset + context.end.ch, text }], start + text.length);
       this.close();

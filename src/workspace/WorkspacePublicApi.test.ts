@@ -310,7 +310,7 @@ describe("Workspace public API parity", () => {
     app.workspace.trigger("files-menu", new Menu(), [file], "file-explorer-context-menu", leaf);
     app.workspace.trigger("url-menu", new Menu(), "https://example.com");
     app.workspace.trigger("css-change");
-    view.sourceTextAreaEl.setSelectionRange(view.sourceTextAreaEl.value.length, view.sourceTextAreaEl.value.length);
+    view.selectRange(view.editor.getValue().length, view.editor.getValue().length);
     view.insertText("!");
     const popoutLeaf = app.workspace.openPopoutLeaf();
     const workspaceWindow = popoutLeaf.getContainer();

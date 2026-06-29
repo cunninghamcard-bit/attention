@@ -87,7 +87,6 @@ export class MarkdownView extends TextFileView {
   readonly inlineTitleEl: HTMLElement;
   readonly metadataContainerEl: HTMLElement;
   readonly backlinksEl: HTMLElement;
-  readonly sourceTextAreaEl: HTMLTextAreaElement;
   readonly previewContainerEl: HTMLElement;
   readonly previewRendererEl: HTMLElement;
   readonly modeButtonEl: HTMLButtonElement;
@@ -151,24 +150,19 @@ export class MarkdownView extends TextFileView {
     this.register(this.editor.onChange((_editor, origin) => this.handleEditorDocumentChange(origin)));
     this.register(this.editor.onSelectionChange(() => this.handleEditorSelectionChange()));
     this.editorViewHost.scrollerEl.addEventListener("contextmenu", (event) => this.handleSourceViewportContextMenu(event));
-    this.editorViewHost.contentEl.addEventListener("paste", (event) => void this.handleSourcePaste(event));
-    this.editorViewHost.contentEl.addEventListener("dragover", (event) => this.handleSourceDragOver(event));
-    this.editorViewHost.contentEl.addEventListener("drop", (event) => void this.handleSourceDrop(event));
+    this.editorViewHost.contentEl.addEventListener("paste", (event) => void this.handleSourcePaste(event), { capture: true });
+    this.editorViewHost.contentEl.addEventListener("dragover", (event) => this.handleSourceDragOver(event), { capture: true });
+    this.editorViewHost.contentEl.addEventListener("drop", (event) => void this.handleSourceDrop(event), { capture: true });
     this.sourceMode = { cmEditor: this.editor };
-    this.sourceTextAreaEl = document.createElement("textarea");
-    this.sourceTextAreaEl.className = "markdown-source-input";
-    this.sourceTextAreaEl.spellcheck = true;
-    this.sourceTextAreaEl.addEventListener("focus", () => this.syncActiveEditor());
-    this.sourceTextAreaEl.addEventListener("keydown", (event) => void this.handleEditorSuggest(event));
-    this.sourceTextAreaEl.addEventListener("input", () => this.handleSourceInput());
-    this.sourceTextAreaEl.addEventListener("keyup", (event) => void this.handleSourceKeyup(event));
-    this.sourceTextAreaEl.addEventListener("mouseup", () => this.handleSourceSelectionChange());
-    this.sourceTextAreaEl.addEventListener("select", () => this.handleSourceSelectionChange());
-    this.sourceTextAreaEl.addEventListener("contextmenu", (event) => this.handleSourceContextMenu(event));
-    this.sourceTextAreaEl.addEventListener("mousemove", (event) => this.handleSourceHover(event));
-    this.sourceTextAreaEl.addEventListener("mouseleave", () => {
+    this.editorViewHost.contentEl.addEventListener("keydown", (event) => void this.handleEditorSuggest(event));
+    this.editorViewHost.contentEl.addEventListener("keyup", (event) => void this.handleSourceKeyup(event));
+    this.editorViewHost.contentEl.addEventListener("mouseup", () => this.handleSourceSelectionChange());
+    this.editorViewHost.contentEl.addEventListener("contextmenu", (event) => this.handleSourceContextMenu(event));
+    this.editorViewHost.contentEl.addEventListener("mousemove", (event) => this.handleSourceHover(event));
+    this.editorViewHost.contentEl.addEventListener("mouseleave", () => {
       this.lastHoveredEditorLink = null;
     });
+    this.editorViewHost.contentEl.addEventListener("focus", () => this.syncActiveEditor());
     this.backlinksEl = document.createElement("div");
     this.backlinksEl.className = "embedded-backlinks";
     this.backlinksEl.hidden = true;
@@ -188,8 +182,7 @@ export class MarkdownView extends TextFileView {
     const defaultMode = this.app.vault.getConfig("defaultViewMode");
     this.currentMode = defaultMode === "preview" ? this.previewMode : this.editMode;
     for (const mode of Object.values(this.modes)) mode.hide();
-    this.containerEl.dataset.mode = this.getMode();
-    this.contentEl.dataset.mode = this.getMode();
+    this.syncModeClasses();
     this.currentMode.show();
 
     this.modeButtonEl = document.createElement("button");
@@ -554,9 +547,7 @@ export class MarkdownView extends TextFileView {
   }
 
   getSelection(): string {
-    const start = this.sourceTextAreaEl.selectionStart;
-    const end = this.sourceTextAreaEl.selectionEnd;
-    return this.sourceTextAreaEl.value.slice(start, end);
+    return this.editor.getSelection();
   }
 
   insertText(text: string): void {
@@ -579,7 +570,7 @@ export class MarkdownView extends TextFileView {
   insertTagAtCursor(): void {
     const source = this.editor.getValue();
     const start = this.editor.posToOffset(this.editor.getCursor("from"));
-    this.sourceTextAreaEl.value = source;
+    this.syncSourceValue(source);
     this.applyTextEdits([{ start, end: start, text: "#" }], start + 1);
   }
 
@@ -607,7 +598,7 @@ export class MarkdownView extends TextFileView {
       const start = lineStarts[lineNo] ?? source.length;
       edits.push({ start, end: start + line.length, text });
     }
-    this.sourceTextAreaEl.value = source;
+    this.syncSourceValue(source);
     this.applyTextEdits(edits, lineStarts[from.line] ?? 0);
   }
 
@@ -633,7 +624,7 @@ export class MarkdownView extends TextFileView {
         start = word.start;
         end = word.end;
       } else {
-        this.sourceTextAreaEl.value = source;
+        this.syncSourceValue(source);
         this.applyTextEdits([{ start, end, text: "%%  %%" }], start + 3);
         return;
       }
@@ -641,17 +632,17 @@ export class MarkdownView extends TextFileView {
     const selection = source.slice(start, end);
     if (selection.startsWith("%% ") && selection.endsWith(" %%") && selection.length >= 6) {
       const text = selection.slice(3, -3);
-      this.sourceTextAreaEl.value = source;
+      this.syncSourceValue(source);
       this.applyTextEdits([{ start, end, text }], start, start + text.length);
       return;
     }
     if (source.slice(start - 3, start) === "%% " && source.slice(end, end + 3) === " %%") {
-      this.sourceTextAreaEl.value = source;
+      this.syncSourceValue(source);
       this.applyTextEdits([{ start: start - 3, end: end + 3, text: selection }], start - 3, end - 3);
       return;
     }
     const text = `%% ${selection} %%`;
-    this.sourceTextAreaEl.value = source;
+    this.syncSourceValue(source);
     this.applyTextEdits([{ start, end, text }], start + 3, start + 3 + selection.length);
   }
 
@@ -672,7 +663,7 @@ export class MarkdownView extends TextFileView {
       .replace(/%%\s?([\s\S]*?)\s?%%/g, "$1")
       .replace(/\*([^*\n]+)\*/g, "$1")
       .replace(/_([^_\n]+)_/g, "$1");
-    this.sourceTextAreaEl.value = source;
+    this.syncSourceValue(source);
     this.applyTextEdits([{ start, end, text: cleared }], start, start + cleared.length);
   }
 
@@ -686,7 +677,7 @@ export class MarkdownView extends TextFileView {
         return { start: row.start, end: row.start + row.quoteLength, text: "" };
       })
       .filter((edit): edit is { start: number; end: number; text: string } => edit !== null);
-    this.sourceTextAreaEl.value = ctx.source;
+    this.syncSourceValue(ctx.source);
     this.applyTextEdits(edits, ctx.lineStarts[ctx.fromLine] ?? 0);
   }
 
@@ -699,7 +690,7 @@ export class MarkdownView extends TextFileView {
       end: row.start + row.list.markerLength,
       text: `${row.list.prefix}${shouldAdd ? "- " : ""}`,
     }));
-    this.sourceTextAreaEl.value = ctx.source;
+    this.syncSourceValue(ctx.source);
     this.applyTextEdits(edits, ctx.lineStarts[ctx.fromLine] ?? 0);
   }
 
@@ -712,7 +703,7 @@ export class MarkdownView extends TextFileView {
       end: row.start + row.list.markerLength,
       text: `${row.list.prefix}${shouldAdd ? "1. " : ""}`,
     }));
-    this.sourceTextAreaEl.value = ctx.source;
+    this.syncSourceValue(ctx.source);
     this.applyTextEdits(edits, ctx.lineStarts[ctx.fromLine] ?? 0);
   }
 
@@ -734,7 +725,7 @@ export class MarkdownView extends TextFileView {
       else if (mode === 3) text = cycle ? base : `${base}[ ] `;
       return { start: row.start, end: row.start + row.list.markerLength, text };
     });
-    this.sourceTextAreaEl.value = ctx.source;
+    this.syncSourceValue(ctx.source);
     this.applyTextEdits(edits, ctx.lineStarts[ctx.fromLine] ?? 0);
   }
 
@@ -748,7 +739,7 @@ export class MarkdownView extends TextFileView {
     if (!hasSelection && lineBeforeCursor.trim() === "") {
       const text = "\n> [!NOTE] Title\n> Contents\n";
       const noteStart = cursorOffset + text.indexOf("NOTE");
-      this.sourceTextAreaEl.value = ctx.source;
+      this.syncSourceValue(ctx.source);
       this.applyTextEdits([{ start: cursorOffset, end: this.editor.posToOffset(to), text }], noteStart, noteStart + 4);
       return;
     }
@@ -766,7 +757,7 @@ export class MarkdownView extends TextFileView {
       edits.push({ start: nextStart, end: nextStart, text: "\n" });
     }
     const noteStart = firstStart + firstText.indexOf("NOTE");
-    this.sourceTextAreaEl.value = ctx.source;
+    this.syncSourceValue(ctx.source);
     this.applyTextEdits(edits, noteStart, noteStart + 4);
   }
 
@@ -784,7 +775,7 @@ export class MarkdownView extends TextFileView {
     const start = this.editor.posToOffset(from);
     const end = this.editor.posToOffset(this.editor.getCursor("to"));
     const text = `${from.ch > 0 ? "\n\n" : "\n"}---\n`;
-    this.sourceTextAreaEl.value = source;
+    this.syncSourceValue(source);
     this.applyTextEdits([{ start, end, text }], start + text.length);
   }
 
@@ -795,7 +786,7 @@ export class MarkdownView extends TextFileView {
     const ref = `[^${id}]`;
     const trailingNewlines = source.match(/\n*$/)?.[0].length ?? 0;
     const separator = "\n".repeat(2 - Math.min(trailingNewlines, 2));
-    this.sourceTextAreaEl.value = source;
+    this.syncSourceValue(source);
     this.applyTextEdits(
       [
         { start: source.length, end: source.length, text: `${separator}${ref}: \n` },
@@ -817,7 +808,7 @@ export class MarkdownView extends TextFileView {
       prefix = "\n\n";
     }
     const text = `${prefix}| | |\n| --- | --- |\n| | |\n`;
-    this.sourceTextAreaEl.value = source;
+    this.syncSourceValue(source);
     this.applyTextEdits([{ start, end: start, text }], start + prefix.length + 1);
   }
 
@@ -831,23 +822,20 @@ export class MarkdownView extends TextFileView {
       const removable = row.line.startsWith("\t") ? 1 : Math.min(row.line.match(/^ {1,4}/)?.[0].length ?? 0, 4);
       return removable > 0 ? [{ start: row.start, end: row.start + removable, text: "" }] : [];
     });
-    this.sourceTextAreaEl.value = ctx.source;
+    this.syncSourceValue(ctx.source);
     this.applyTextEdits(edits, ctx.lineStarts[ctx.fromLine] ?? 0);
   }
 
   replaceSelection(text: string): void {
-    const source = this.sourceTextAreaEl.value;
-    const start = this.sourceTextAreaEl.selectionStart;
-    const end = this.sourceTextAreaEl.selectionEnd;
+    const source = this.editor.getValue();
+    const start = this.getSourceSelectionStart();
+    const end = this.getSourceSelectionEnd();
     const next = `${source.slice(0, start)}${text}${source.slice(end)}`;
-    this.sourceTextAreaEl.value = next;
     super.setViewData(next);
     this.editor.setValue(next);
     const cursor = start + text.length;
-    this.sourceTextAreaEl.setSelectionRange(cursor, cursor);
-    this.editor.setCursor(offsetToPosition(next, cursor));
+    this.setSourceSelectionRange(cursor, cursor);
     this.triggerEditorContentChange();
-    this.handleSourceSelectionChange();
     this.scheduleSave();
   }
 
@@ -855,7 +843,7 @@ export class MarkdownView extends TextFileView {
     const source = this.editor.getValue();
     const start = this.editor.posToOffset(this.editor.getCursor("from"));
     const end = this.editor.posToOffset(this.editor.getCursor("to"));
-    this.sourceTextAreaEl.value = source;
+    this.syncSourceValue(source);
     this.applyTextEdits([{ start, end, text }], start + relativeSelectionStart, start + relativeSelectionEnd);
   }
 
@@ -870,7 +858,7 @@ export class MarkdownView extends TextFileView {
         end = word.end;
       } else {
         const text = `${marker}${marker}`;
-        this.sourceTextAreaEl.value = source;
+        this.syncSourceValue(source);
         this.applyTextEdits([{ start, end, text }], start + marker.length);
         return;
       }
@@ -880,12 +868,12 @@ export class MarkdownView extends TextFileView {
     for (const candidate of markers) {
       if (selection.startsWith(candidate) && selection.endsWith(candidate) && selection.length >= candidate.length * 2) {
         const text = selection.slice(candidate.length, selection.length - candidate.length);
-        this.sourceTextAreaEl.value = source;
+        this.syncSourceValue(source);
         this.applyTextEdits([{ start, end, text }], start, start + text.length);
         return;
       }
       if (source.slice(start - candidate.length, start) === candidate && source.slice(end, end + candidate.length) === candidate) {
-        this.sourceTextAreaEl.value = source;
+        this.syncSourceValue(source);
         this.applyTextEdits([{ start: start - candidate.length, end: end + candidate.length, text: selection }], start - candidate.length, end - candidate.length);
         return;
       }
@@ -896,7 +884,7 @@ export class MarkdownView extends TextFileView {
     const contentEnd = Math.max(contentStart, end - trailing);
     const content = source.slice(contentStart, contentEnd);
     const text = `${marker}${content}${marker}`;
-    this.sourceTextAreaEl.value = source;
+    this.syncSourceValue(source);
     this.applyTextEdits([{ start: contentStart, end: contentEnd, text }], contentStart + marker.length, contentStart + marker.length + content.length);
   }
 
@@ -969,7 +957,7 @@ export class MarkdownView extends TextFileView {
     const start = ctx.lineStarts[ctx.fromLine] ?? 0;
     const end = (ctx.lineStarts[ctx.toLine] ?? ctx.source.length) + (ctx.lines[ctx.toLine] ?? "").length;
     const shift = open.length + 1;
-    this.sourceTextAreaEl.value = ctx.source;
+    this.syncSourceValue(ctx.source);
     this.applyTextEdits(
       [
         { start, end: start, text: `${open}\n` },
@@ -983,7 +971,7 @@ export class MarkdownView extends TextFileView {
   private applyLineIndent(text: string): void {
     const ctx = this.getSelectedLineContext();
     const edits = this.getSelectedRows(ctx).map((row) => ({ start: row.start, end: row.start, text }));
-    this.sourceTextAreaEl.value = ctx.source;
+    this.syncSourceValue(ctx.source);
     this.applyTextEdits(edits, (ctx.lineStarts[ctx.fromLine] ?? 0) + text.length);
   }
 
@@ -994,7 +982,7 @@ export class MarkdownView extends TextFileView {
   }
 
   applyTextEdits(edits: Array<{ start: number; end: number; text: string }>, selectionStart: number, selectionEnd = selectionStart): void {
-    const source = this.sourceTextAreaEl.value;
+    const source = this.editor.getValue();
     const sorted = [...edits]
       .filter((edit) => edit.start <= edit.end)
       .sort((a, b) => b.start - a.start);
@@ -1004,15 +992,12 @@ export class MarkdownView extends TextFileView {
       const end = Math.max(start, Math.min(next.length, edit.end));
       next = `${next.slice(0, start)}${edit.text}${next.slice(end)}`;
     }
-    this.sourceTextAreaEl.value = next;
     super.setViewData(next);
     this.editor.setValue(next);
     const from = Math.max(0, Math.min(next.length, selectionStart));
     const to = Math.max(from, Math.min(next.length, selectionEnd));
-    this.sourceTextAreaEl.setSelectionRange(from, to);
-    this.editor.setSelection(offsetToPosition(next, from), offsetToPosition(next, to));
+    this.setSourceSelectionRange(from, to);
     this.triggerEditorContentChange();
-    this.handleSourceSelectionChange();
     this.scheduleSave();
   }
 
@@ -1025,7 +1010,7 @@ export class MarkdownView extends TextFileView {
     this.metadataDisplayOrder = null;
     this.setViewData(updated.text);
     this.editor.setValue(updated.text);
-    this.sourceTextAreaEl.value = updated.text;
+    this.syncSourceValue(updated.text);
     checkbox.checked = updated.checked;
     if (updated.checked) checkbox.setAttribute("checked", "");
     else checkbox.removeAttribute("checked");
@@ -1044,13 +1029,49 @@ export class MarkdownView extends TextFileView {
     this.updateDocumentSearchMatches();
   }
 
+  syncSourceValue(data: string): void {
+    if (this.editor.getValue() !== data) this.editor.setValue(data);
+    else this.editorViewHost.renderDocument();
+  }
+
+  private focusSourceEditor(): void {
+    this.editor.focus();
+    this.editorViewHost.contentEl.focus();
+    this.syncActiveEditor();
+  }
+
+  private getSourceSelectionOffsets(): { start: number; end: number } {
+    const anchorOffset = this.editor.posToOffset(this.editor.getCursor("anchor"));
+    const headOffset = this.editor.posToOffset(this.editor.getCursor("head"));
+    return {
+      start: Math.min(anchorOffset, headOffset),
+      end: Math.max(anchorOffset, headOffset),
+    };
+  }
+
+  private getSourceSelectionStart(): number {
+    return this.getSourceSelectionOffsets().start;
+  }
+
+  private getSourceSelectionEnd(): number {
+    return this.getSourceSelectionOffsets().end;
+  }
+
+  private setSourceSelectionRange(start: number, end: number): void {
+    const source = this.editor.getValue();
+    const from = Math.max(0, Math.min(source.length, start));
+    const to = Math.max(from, Math.min(source.length, end));
+    this.editor.setSelection(offsetToPosition(source, from), offsetToPosition(source, to));
+    this.emitEditorSelectionChange(from, to);
+  }
+
   selectRange(start: number, end: number): void {
     void this.setMode("source");
-    const source = this.sourceTextAreaEl.value;
+    const source = this.editor.getValue();
     const from = Math.max(0, start);
     const to = Math.max(0, end);
-    this.sourceTextAreaEl.focus();
-    this.sourceTextAreaEl.setSelectionRange(from, to);
+    this.focusSourceEditor();
+    this.setSourceSelectionRange(from, to);
     this.editor.setSelection(offsetToPosition(source, from), offsetToPosition(source, to));
     this.handleSourceSelectionChange();
   }
@@ -1266,26 +1287,34 @@ export class MarkdownView extends TextFileView {
     this.renderProperties();
     const isSource = this.currentMode === this.editMode;
     const isPreview = this.currentMode === this.previewMode;
-    const sourceMode = this.getSourceMode();
-    this.contentEl.classList.toggle("mod-source", isSource);
-    this.contentEl.classList.toggle("mod-preview", isPreview);
-    this.containerEl.dataset.mode = this.getMode();
-    this.contentEl.dataset.mode = this.getMode();
-    this.editorContainerEl.classList.toggle("is-live-preview", sourceMode === "live");
     this.editorContainerEl.style.display = isSource ? "" : "none";
     this.previewContainerEl.style.display = isPreview ? "" : "none";
+    this.contentEl.classList.toggle("mod-source", isSource);
+    this.contentEl.classList.toggle("mod-preview", isPreview);
+    this.syncModeClasses();
     this.updateModeButton();
     this.updateSourceModeButton();
     this.updatePropertiesInDocument();
     this.updateLineNumbers();
 
     if (isSource) {
-      if (this.sourceTextAreaEl.value !== this.editor.getValue()) this.sourceTextAreaEl.value = this.editor.getValue();
       this.editMode.show();
       return;
     }
 
     if (isPreview) this.previewMode.render();
+  }
+
+  private syncModeClasses(): void {
+    const mode = this.getMode();
+    const isPreview = this.currentMode === this.previewMode;
+    const isLivePreview = this.currentMode === this.editMode && this.getSourceMode() === "live";
+    this.containerEl.dataset.mode = mode;
+    this.contentEl.dataset.mode = mode;
+    this.containerEl.classList.toggle("is-read-mode", isPreview);
+    this.editorContainerEl.classList.toggle("is-live-preview", isLivePreview);
+    this.editorContainerEl.setAttribute("aria-hidden", String(isPreview));
+    this.previewContainerEl.setAttribute("aria-hidden", String(!isPreview));
   }
 
   canShowProperties(): boolean {
@@ -1475,7 +1504,7 @@ export class MarkdownView extends TextFileView {
 
   private canFocusInlineTitleForRename(): boolean {
     if (this.inlineTitleEl.hidden || !this.inlineTitleEl.isConnected) return false;
-    if (this.currentMode === this.editMode) return this.sourceTextAreaEl.scrollTop < 0.5;
+    if (this.currentMode === this.editMode) return this.editorViewHost.scrollerEl.scrollTop < 0.5;
     return this.previewRendererEl.scrollTop < 0.5;
   }
 
@@ -1894,9 +1923,8 @@ export class MarkdownView extends TextFileView {
     showSourceEl.appendChild(labelEl);
     showSourceEl.addEventListener("click", () => {
       this.setMode("source");
-      this.sourceTextAreaEl.focus();
-      this.sourceTextAreaEl.setSelectionRange(0, 0);
-      this.editor.setCursor({ line: 0, ch: 0 });
+      this.focusSourceEditor();
+      this.setSourceSelectionRange(0, 0);
     });
     errorEl.append(titleEl, showSourceEl);
     return errorEl;
@@ -2027,7 +2055,7 @@ export class MarkdownView extends TextFileView {
     this.metadataDisplayOrder = null;
     this.setViewData(next);
     this.editor.setValue(next);
-    if (this.sourceTextAreaEl.value !== next) this.sourceTextAreaEl.value = next;
+    this.syncSourceValue(next);
     this.app.workspace.trigger("property-change", this.file.path, propertyId, value);
     this.triggerEditorContentChange();
     this.scheduleSave();
@@ -2042,7 +2070,7 @@ export class MarkdownView extends TextFileView {
     this.selectedMetadataKeys.clear();
     this.setViewData(next);
     this.editor.setValue(next);
-    if (this.sourceTextAreaEl.value !== next) this.sourceTextAreaEl.value = next;
+    this.syncSourceValue(next);
     this.app.workspace.trigger("property-change", this.file.path, propertyId, value);
     this.triggerEditorContentChange();
     this.scheduleSave();
@@ -2071,7 +2099,7 @@ export class MarkdownView extends TextFileView {
     this.selectedMetadataKeys.delete(oldId);
     this.setViewData(next);
     this.editor.setValue(next);
-    if (this.sourceTextAreaEl.value !== next) this.sourceTextAreaEl.value = next;
+    this.syncSourceValue(next);
     this.app.workspace.trigger("property-change", this.file.path, oldId, null);
     this.app.workspace.trigger("property-change", this.file.path, newId, parsed.values[newId] ?? null);
     this.triggerEditorContentChange();
@@ -2086,7 +2114,7 @@ export class MarkdownView extends TextFileView {
     this.metadataDisplayOrder = null;
     this.setViewData(next);
     this.editor.setValue(next);
-    if (this.sourceTextAreaEl.value !== next) this.sourceTextAreaEl.value = next;
+    this.syncSourceValue(next);
     this.app.workspace.trigger("property-reorder", this.file.path, propertyId, targetIndex);
     this.triggerEditorContentChange();
     this.scheduleSave();
@@ -2110,7 +2138,7 @@ export class MarkdownView extends TextFileView {
     this.metadataDisplayOrder = null;
     this.setViewData(next);
     this.editor.setValue(next);
-    if (this.sourceTextAreaEl.value !== next) this.sourceTextAreaEl.value = next;
+    this.syncSourceValue(next);
     this.pendingEmptyProperty = false;
     this.selectedMetadataKeys.clear();
     this.app.workspace.trigger("properties-clear", this.file.path);
@@ -2145,11 +2173,11 @@ export class MarkdownView extends TextFileView {
 
   private focusAfterMetadata(): void {
     this.editorContainerEl.focus();
-    this.sourceTextAreaEl.focus();
+    this.focusSourceEditor();
   }
 
   private focusBeforeMetadata(): void {
-    this.sourceTextAreaEl.focus();
+    this.focusSourceEditor();
   }
 
   private focusAdjacentProperty(propertyId: string, direction: -1 | 1): void {
@@ -2271,7 +2299,7 @@ export class MarkdownView extends TextFileView {
     this.metadataDisplayOrder = null;
     this.setViewData(next);
     this.editor.setValue(next);
-    if (this.sourceTextAreaEl.value !== next) this.sourceTextAreaEl.value = next;
+    this.syncSourceValue(next);
     this.app.workspace.trigger("properties-paste", this.file.path, properties);
     this.triggerEditorContentChange();
     this.scheduleSave();
@@ -2285,7 +2313,7 @@ export class MarkdownView extends TextFileView {
     for (const id of propertyIds) this.selectedMetadataKeys.delete(id);
     this.setViewData(next);
     this.editor.setValue(next);
-    if (this.sourceTextAreaEl.value !== next) this.sourceTextAreaEl.value = next;
+    this.syncSourceValue(next);
     this.app.workspace.trigger("properties-delete", this.file.path, propertyIds);
     this.triggerEditorContentChange();
     this.scheduleSave();
@@ -2301,7 +2329,7 @@ export class MarkdownView extends TextFileView {
     const next = update(this.getViewData());
     this.setViewData(next);
     this.editor.setValue(next);
-    if (this.sourceTextAreaEl.value !== next) this.sourceTextAreaEl.value = next;
+    this.syncSourceValue(next);
     this.triggerEditorContentChange();
     this.scheduleSave();
     this.renderProperties();
@@ -2315,41 +2343,30 @@ export class MarkdownView extends TextFileView {
 
   private handleEditorDocumentChange(_origin?: string): void {
     const data = this.editor.getValue();
-    if (data === super.getViewData()) {
-      if (this.sourceTextAreaEl.value !== data) this.sourceTextAreaEl.value = data;
-      return;
-    }
+    this.editorViewHost.renderDocument();
+    if (data === super.getViewData()) return;
     this.metadataDisplayOrder = null;
-    if (this.sourceTextAreaEl.value !== data) this.sourceTextAreaEl.value = data;
     super.setViewData(data);
     const cursorOffset = this.editor.posToOffset(this.editor.getCursor());
-    this.sourceTextAreaEl.setSelectionRange(cursorOffset, cursorOffset);
+    this.setSourceSelectionRange(cursorOffset, cursorOffset);
     this.triggerEditorContentChange();
-    this.handleSourceSelectionChange();
     this.scheduleSave();
   }
 
   private handleEditorSelectionChange(): void {
     if (this.editor.listSelections().length !== 1) return;
-    const anchorOffset = this.editor.posToOffset(this.editor.getCursor("anchor"));
-    const headOffset = this.editor.posToOffset(this.editor.getCursor("head"));
-    const start = Math.min(anchorOffset, headOffset);
-    const end = Math.max(anchorOffset, headOffset);
-    if (this.sourceTextAreaEl.value !== this.editor.getValue()) this.sourceTextAreaEl.value = this.editor.getValue();
-    this.sourceTextAreaEl.setSelectionRange(start, end);
+    const { start, end } = this.getSourceSelectionOffsets();
     this.emitEditorSelectionChange(start, end);
   }
 
   private handleSourceInput(): void {
-    const data = this.sourceTextAreaEl.value;
+    const data = this.editor.getValue();
     this.metadataDisplayOrder = null;
     super.setViewData(data);
-    this.editor.setValue(data);
-    this.editor.setCursor(offsetToPosition(data, this.sourceTextAreaEl.selectionStart));
     this.triggerEditorContentChange();
     this.handleSourceSelectionChange();
     this.scheduleSave();
-    void this.app.workspace.editorSuggest.trigger(this.editor, this.sourceTextAreaEl);
+    void this.app.workspace.editorSuggest.trigger(this.editor, this.editorViewHost.contentEl);
   }
 
   private async handleSourceKeyup(event: KeyboardEvent): Promise<void> {
@@ -2358,19 +2375,15 @@ export class MarkdownView extends TextFileView {
   }
 
   private async handleEditorSuggest(event: KeyboardEvent): Promise<void> {
-    this.editor.setCursor(offsetToPosition(this.sourceTextAreaEl.value, this.sourceTextAreaEl.selectionStart));
-    await this.app.workspace.editorSuggest.trigger(this.editor, this.sourceTextAreaEl, event);
-    if (this.sourceTextAreaEl.value !== this.editor.getValue()) {
-      this.sourceTextAreaEl.value = this.editor.getValue();
+    await this.app.workspace.editorSuggest.trigger(this.editor, this.editorViewHost.contentEl, event);
+    if (super.getViewData() !== this.editor.getValue()) {
       super.setViewData(this.editor.getValue());
       this.scheduleSave();
     }
   }
 
   private handleSourceSelectionChange(): void {
-    const start = this.sourceTextAreaEl.selectionStart;
-    const end = this.sourceTextAreaEl.selectionEnd;
-    this.editor.setSelection(offsetToPosition(this.sourceTextAreaEl.value, start), offsetToPosition(this.sourceTextAreaEl.value, end));
+    const { start, end } = this.getSourceSelectionOffsets();
     this.emitEditorSelectionChange(start, end);
   }
 
@@ -2383,11 +2396,9 @@ export class MarkdownView extends TextFileView {
 
   private syncSourceSelectionToEditor(): void {
     if (this.editor.listSelections().length > 1) return;
-    const source = this.sourceTextAreaEl.value;
-    this.editor.setSelection(
-      offsetToPosition(source, this.sourceTextAreaEl.selectionStart),
-      offsetToPosition(source, this.sourceTextAreaEl.selectionEnd),
-    );
+    const source = this.editor.getValue();
+    const { start, end } = this.getSourceSelectionOffsets();
+    this.editor.setSelection(offsetToPosition(source, start), offsetToPosition(source, end));
   }
 
   private handleSourceContextMenu(event: MouseEvent): void {
@@ -2413,7 +2424,7 @@ export class MarkdownView extends TextFileView {
     if (markdown !== null) {
       event.preventDefault();
       this.replaceSelection(markdown);
-      this.sourceTextAreaEl.focus();
+      this.focusSourceEditor();
       return;
     }
 
@@ -2458,7 +2469,7 @@ export class MarkdownView extends TextFileView {
 
       this.setDropInsertionPoint(event);
       this.replaceSelection(markdown);
-      this.sourceTextAreaEl.focus();
+      this.focusSourceEditor();
       event.preventDefault();
       return;
     }
@@ -2466,39 +2477,39 @@ export class MarkdownView extends TextFileView {
     if (event.defaultPrevented) return;
     this.app.workspace.trigger("editor-drop", event, this.editor, this);
     if (event.defaultPrevented) return;
-
     let markdown: string | null = null;
     if (!event.shiftKey) markdown = this.getExternalDataTransferMarkdown(event.dataTransfer);
+    if (markdown !== null || hasDataTransferAttachmentFiles(event.dataTransfer)) event.preventDefault();
     if (markdown === null) markdown = await this.handleExternalDropIntoEditor(event);
     if (markdown === null) return;
 
     this.setDropInsertionPoint(event);
     this.replaceSelection(markdown);
-    this.sourceTextAreaEl.focus();
-    event.preventDefault();
+    this.focusSourceEditor();
   }
 
   private setDropInsertionPoint(event: DragEvent): void {
     const position = this.editor.posAtCoords?.({ x: event.clientX, y: event.clientY })
-      ?? this.getTextAreaPositionAtCoords(event.clientX, event.clientY);
+      ?? this.getEditorPositionAtCoords(event.clientX, event.clientY);
     if (!position) return;
     const cursor = this.clampEditorPosition(position);
     this.editor.setCursor(cursor);
-    this.sourceTextAreaEl.setSelectionRange(this.editor.posToOffset(cursor), this.editor.posToOffset(cursor));
+    const offset = this.editor.posToOffset(cursor);
+    this.setSourceSelectionRange(offset, offset);
   }
 
-  private getTextAreaPositionAtCoords(clientX: number, clientY: number): EditorPosition | null {
-    const rect = this.sourceTextAreaEl.getBoundingClientRect();
+  private getEditorPositionAtCoords(clientX: number, clientY: number): EditorPosition | null {
+    const rect = this.editorViewHost.contentEl.getBoundingClientRect();
     if (rect.width === 0 && rect.height === 0) return null;
 
-    const style = getComputedStyle(this.sourceTextAreaEl);
+    const style = getComputedStyle(this.editorViewHost.contentEl);
     const fontSize = parseCssPixels(style.fontSize, 16);
     const lineHeight = parseCssPixels(style.lineHeight, fontSize * 1.4);
-    const charWidth = measureTextAreaCharacterWidth(this.sourceTextAreaEl, style, fontSize);
+    const charWidth = measureEditorCharacterWidth(this.editorViewHost.contentEl, style, fontSize);
     const left = rect.left + parseCssPixels(style.paddingLeft, 0) + parseCssPixels(style.borderLeftWidth, 0);
     const top = rect.top + parseCssPixels(style.paddingTop, 0) + parseCssPixels(style.borderTopWidth, 0);
-    const line = Math.floor((clientY - top + this.sourceTextAreaEl.scrollTop) / lineHeight);
-    const ch = Math.floor((clientX - left + this.sourceTextAreaEl.scrollLeft) / charWidth);
+    const line = Math.floor((clientY - top + this.editorViewHost.scrollerEl.scrollTop) / lineHeight);
+    const ch = Math.floor((clientX - left + this.editorViewHost.scrollerEl.scrollLeft) / charWidth);
     return { line, ch };
   }
 
@@ -2644,7 +2655,7 @@ export class MarkdownView extends TextFileView {
     const inserted = imported.map((file) => `!${this.app.fileManager.generateMarkdownLink(file, this.file?.path ?? "")}`);
     if (!inserted.length) return;
     this.replaceSelection(inserted.join("\n\n"));
-    this.sourceTextAreaEl.focus();
+    this.focusSourceEditor();
   }
 
   private async saveDetachedHtmlImages(images: DetachedHtmlImage[]): Promise<void> {
@@ -2661,7 +2672,7 @@ export class MarkdownView extends TextFileView {
   private insertAttachmentEmbed(file: TFile, appendSpacing = false): void {
     const embed = `!${this.app.fileManager.generateMarkdownLink(file, this.file?.path ?? "")}${appendSpacing ? "\n\n" : ""}`;
     this.replaceSelection(embed);
-    this.sourceTextAreaEl.focus();
+    this.focusSourceEditor();
   }
 
   private tryPasteUrl(event: ClipboardEvent, payload: string): boolean {
@@ -2734,7 +2745,7 @@ export class MarkdownView extends TextFileView {
       event,
       source: "editor",
       hoverParent: this,
-      targetEl: this.sourceTextAreaEl,
+      targetEl: this.editorViewHost.contentEl,
       linktext: hit.linktext,
       sourcePath: this.file?.path ?? "",
       state: { line: hit.line, start: hit.start, end: hit.end },
@@ -2766,8 +2777,8 @@ export class MarkdownView extends TextFileView {
           id: hit.id,
           start: { line: hit.line, ch: hit.start },
           end: { line: hit.line, ch: hit.end },
-          definitionStart: offsetToPosition(this.sourceTextAreaEl.value, footnote.position.start.offset - 1),
-          definitionEnd: offsetToPosition(this.sourceTextAreaEl.value, footnote.position.end.offset),
+          definitionStart: offsetToPosition(this.editor.getValue(), footnote.position.start.offset - 1),
+          definitionEnd: offsetToPosition(this.editor.getValue(), footnote.position.end.offset),
         },
       };
     }
@@ -2809,18 +2820,18 @@ export class MarkdownView extends TextFileView {
   }
 
   private findHoveredSourceToken(event: MouseEvent): SourceTokenHit | null {
-    const rect = this.sourceTextAreaEl.getBoundingClientRect();
-    const style = getComputedStyle(this.sourceTextAreaEl);
+    const rect = this.editorViewHost.contentEl.getBoundingClientRect();
+    const style = getComputedStyle(this.editorViewHost.contentEl);
     const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.4 || 20;
     const fontSize = parseFloat(style.fontSize) || 14;
     const charWidth = fontSize * 0.58;
     const paddingLeft = parseFloat(style.paddingLeft) || 0;
     const paddingTop = parseFloat(style.paddingTop) || 0;
-    const x = event.clientX - rect.left + this.sourceTextAreaEl.scrollLeft - paddingLeft;
-    const y = event.clientY - rect.top + this.sourceTextAreaEl.scrollTop - paddingTop;
+    const x = event.clientX - rect.left + this.editorViewHost.scrollerEl.scrollLeft - paddingLeft;
+    const y = event.clientY - rect.top + this.editorViewHost.scrollerEl.scrollTop - paddingTop;
     const line = Math.max(0, Math.floor(y / lineHeight));
     const ch = Math.max(0, Math.floor(x / charWidth));
-    const textLine = this.sourceTextAreaEl.value.split(/\r?\n/)[line];
+    const textLine = this.editor.getValue().split(/\r?\n/)[line];
     if (!textLine) return null;
     return findLinkAt(textLine, ch, line) ?? findExternalRefLinkAt(textLine, ch, line) ?? findTagAt(textLine, ch, line) ?? findFootrefAt(textLine, ch, line);
   }
@@ -2852,11 +2863,11 @@ export class MarkdownView extends TextFileView {
     let offset = 0;
     for (let index = 0; index < clamped; index += 1) offset += lines[index].length + 1;
     this.setMode("source");
-    this.sourceTextAreaEl.focus();
-    this.sourceTextAreaEl.setSelectionRange(offset, offset);
+    this.focusSourceEditor();
+    this.setSourceSelectionRange(offset, offset);
     this.handleSourceSelectionChange();
-    const lineHeight = parseFloat(getComputedStyle(this.sourceTextAreaEl).lineHeight) || 20;
-    this.sourceTextAreaEl.scrollTop = Math.max(0, clamped * lineHeight - this.sourceTextAreaEl.clientHeight / 3);
+    const lineHeight = parseFloat(getComputedStyle(this.editorViewHost.contentEl).lineHeight) || 20;
+    this.editorViewHost.scrollerEl.scrollTop = Math.max(0, clamped * lineHeight - this.editorViewHost.scrollerEl.clientHeight / 3);
   }
 
   private selectLineRange(line: number, start: number, end: number): void {
@@ -2869,12 +2880,12 @@ export class MarkdownView extends TextFileView {
     const from = offset + Math.max(0, Math.min(start, lineText.length));
     const to = offset + Math.max(0, Math.min(end, lineText.length));
     this.setMode("source");
-    this.sourceTextAreaEl.focus();
-    this.sourceTextAreaEl.setSelectionRange(from, to);
+    this.focusSourceEditor();
+    this.setSourceSelectionRange(from, to);
     this.editor.setCursor(offsetToPosition(source, to));
     this.handleSourceSelectionChange();
-    const lineHeight = parseFloat(getComputedStyle(this.sourceTextAreaEl).lineHeight) || 20;
-    this.sourceTextAreaEl.scrollTop = Math.max(0, clampedLine * lineHeight - this.sourceTextAreaEl.clientHeight / 3);
+    const lineHeight = parseFloat(getComputedStyle(this.editorViewHost.contentEl).lineHeight) || 20;
+    this.editorViewHost.scrollerEl.scrollTop = Math.max(0, clampedLine * lineHeight - this.editorViewHost.scrollerEl.clientHeight / 3);
   }
 
   private getSubpathLine(subpath: string): number | null {
@@ -3300,7 +3311,7 @@ export class MarkdownEditView implements MarkdownViewModeComponent {
 
   set(data: string, _clear = false): void {
     this.owner.editor.setValue(data);
-    if (this.owner.sourceTextAreaEl.value !== data) this.owner.sourceTextAreaEl.value = data;
+    this.owner.syncSourceValue(data);
   }
 
   getSelection(): string {
@@ -3316,7 +3327,6 @@ export class MarkdownEditView implements MarkdownViewModeComponent {
   }
 
   hide(): void {
-    this.owner.sourceTextAreaEl.onscroll = null;
     this.owner.editorContainerEl.style.display = "none";
   }
 
@@ -3325,9 +3335,8 @@ export class MarkdownEditView implements MarkdownViewModeComponent {
     const sizerEl = this.owner.editorViewHost.sizerEl;
     sizerEl.prepend(this.owner.metadataContainerEl);
     sizerEl.prepend(this.owner.inlineTitleEl);
-    this.owner.editorViewHost.contentEl.appendChild(this.owner.sourceTextAreaEl);
+    this.owner.editorViewHost.renderDocument();
     sizerEl.appendChild(this.owner.backlinksEl);
-    this.owner.sourceTextAreaEl.onscroll = () => this.owner.syncScroll();
   }
 
   onResize(): void {}
@@ -3341,11 +3350,11 @@ export class MarkdownEditView implements MarkdownViewModeComponent {
   }
 
   getScroll(): number {
-    return this.owner.sourceTextAreaEl.scrollTop;
+    return this.owner.editorViewHost.scrollerEl.scrollTop;
   }
 
   applyScroll(scroll: number): void {
-    this.owner.sourceTextAreaEl.scrollTop = scroll;
+    this.owner.editorViewHost.scrollerEl.scrollTop = scroll;
   }
 
   beforeUnload(): void {}
@@ -3667,7 +3676,7 @@ function parseCssPixels(value: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function measureTextAreaCharacterWidth(textarea: HTMLTextAreaElement, style: CSSStyleDeclaration, fallbackFontSize: number): number {
+function measureEditorCharacterWidth(element: HTMLElement, style: CSSStyleDeclaration, fallbackFontSize: number): number {
   const probe = document.createElement("span");
   probe.textContent = "mmmmmmmmmm";
   probe.style.position = "absolute";
@@ -3678,7 +3687,7 @@ function measureTextAreaCharacterWidth(textarea: HTMLTextAreaElement, style: CSS
   probe.style.fontWeight = style.fontWeight;
   probe.style.fontStyle = style.fontStyle;
   probe.style.letterSpacing = style.letterSpacing;
-  textarea.ownerDocument.body.appendChild(probe);
+  element.ownerDocument.body.appendChild(probe);
   const width = probe.getBoundingClientRect().width / 10;
   probe.remove();
   return width > 0 ? width : Math.max(1, fallbackFontSize * 0.6);

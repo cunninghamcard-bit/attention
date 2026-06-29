@@ -182,6 +182,8 @@ describe("MarkdownView property key input", () => {
     expect(view.containerEl.classList.contains("is-live-preview")).toBe(false);
     expect(view.editorContainerEl.parentElement).toBe(view.contentEl);
     expect(view.previewContainerEl.parentElement).toBe(view.contentEl);
+    expect(view.editorContainerEl.getAttribute("aria-hidden")).toBe("false");
+    expect(view.previewContainerEl.getAttribute("aria-hidden")).toBe("true");
     expect(view.editorContainerEl.hidden).toBe(false);
     expect(view.previewContainerEl.hidden).toBe(false);
     expect(view.editorContainerEl.style.display).toBe("");
@@ -197,7 +199,14 @@ describe("MarkdownView property key input", () => {
     expect(view.editorViewHost.sizerEl.classList.contains("cm-sizer")).toBe(true);
     expect(view.editorViewHost.contentContainerEl.classList.contains("cm-contentContainer")).toBe(true);
     expect(view.editorViewHost.contentEl.classList.contains("cm-content")).toBe(true);
-    expect(view.sourceTextAreaEl.parentElement).toBe(view.editorViewHost.contentEl);
+    expect(view.editorContainerEl.querySelector("textarea.markdown-source-input")).toBeNull();
+    expect(view.contentEl.querySelector("textarea.markdown-source-input")).toBeNull();
+    expect([...view.editorViewHost.contentEl.querySelectorAll(".cm-line")].map((line) => line.textContent)).toEqual([
+      "---",
+      "status: open",
+      "---",
+      "Body",
+    ]);
     expect(view.editorViewHost.getStateField(editorLivePreviewField)).toBe(true);
     expect(view.editorViewHost.dom.dataset.livePreview).toBe("true");
     expect(view.previewMode.renderer.header).not.toBeNull();
@@ -205,7 +214,7 @@ describe("MarkdownView property key input", () => {
     expect(view.editorContainerEl.classList.contains("cm-s-obsidian")).toBe(true);
     expect(view.editorContainerEl.classList.contains("mod-cm6")).toBe(true);
     expect(view.editorContainerEl.classList.contains("is-live-preview")).toBe(true);
-    expect(view.sourceTextAreaEl.classList.contains("is-live-preview")).toBe(false);
+    expect(view.editorContainerEl.querySelector("textarea.markdown-source-input")).toBeNull();
 
     view.setMode("source", true);
     expect(view.currentMode).toBe(view.editMode);
@@ -215,7 +224,7 @@ describe("MarkdownView property key input", () => {
     expect(view.containerEl.classList.contains("is-live-preview")).toBe(false);
     expect(view.editorContainerEl.classList.contains("is-source-mode")).toBe(false);
     expect(view.editorContainerEl.classList.contains("is-live-preview")).toBe(false);
-    expect(view.sourceTextAreaEl.classList.contains("is-live-preview")).toBe(false);
+    expect(view.editorContainerEl.querySelector("textarea.markdown-source-input")).toBeNull();
     expect(view.editorContainerEl.parentElement).toBe(view.contentEl);
     expect(view.previewContainerEl.parentElement).toBe(view.contentEl);
     expect(view.editorContainerEl.style.display).toBe("");
@@ -231,11 +240,13 @@ describe("MarkdownView property key input", () => {
     expect(view.getState()).toMatchObject({ mode: "preview", source: true });
     expect(view.containerEl.dataset.mode).toBe("preview");
     expect(view.contentEl.dataset.mode).toBe("preview");
-    expect(view.containerEl.classList.contains("is-read-mode")).toBe(false);
+    expect(view.containerEl.classList.contains("is-read-mode")).toBe(true);
     expect(view.containerEl.classList.contains("is-source-mode")).toBe(false);
     expect(view.containerEl.classList.contains("is-live-preview")).toBe(false);
     expect(view.editorContainerEl.parentElement).toBe(view.contentEl);
     expect(view.previewContainerEl.parentElement).toBe(view.contentEl);
+    expect(view.editorContainerEl.getAttribute("aria-hidden")).toBe("true");
+    expect(view.previewContainerEl.getAttribute("aria-hidden")).toBe("false");
     expect(view.editorContainerEl.hidden).toBe(false);
     expect(view.previewContainerEl.hidden).toBe(false);
     expect(view.editorContainerEl.style.display).toBe("none");
@@ -262,13 +273,15 @@ describe("MarkdownView property key input", () => {
     expect(view.containerEl.classList.contains("is-live-preview")).toBe(false);
     expect(view.editorContainerEl.parentElement).toBe(view.contentEl);
     expect(view.previewContainerEl.parentElement).toBe(view.contentEl);
+    expect(view.editorContainerEl.getAttribute("aria-hidden")).toBe("false");
+    expect(view.previewContainerEl.getAttribute("aria-hidden")).toBe("true");
     expect(view.editorContainerEl.style.display).toBe("");
     expect(view.previewContainerEl.style.display).toBe("none");
     expect(view.inlineTitleEl.parentElement).toBe(view.editorViewHost.sizerEl);
     expect(view.metadataContainerEl.parentElement).toBe(view.editorViewHost.sizerEl);
     expect(view.backlinksEl.parentElement).toBe(view.editorViewHost.sizerEl);
     expect(view.editorContainerEl.classList.contains("is-live-preview")).toBe(true);
-    expect(view.sourceTextAreaEl.classList.contains("is-live-preview")).toBe(false);
+    expect(view.editorContainerEl.querySelector("textarea.markdown-source-input")).toBeNull();
     expect(view.editorViewHost.getStateField(editorLivePreviewField)).toBe(true);
     expect(view.editorViewHost.dom.dataset.livePreview).toBe("true");
     expect(view.canShowProperties()).toBe(true);
@@ -317,15 +330,15 @@ describe("MarkdownView property key input", () => {
       (menu as Menu).addItem((item) => item.setTitle("Plugin action"));
     });
 
-    view.sourceTextAreaEl.focus();
-    view.sourceTextAreaEl.setSelectionRange(0, 5);
-    view.sourceTextAreaEl.dispatchEvent(new Event("select", { bubbles: true }));
+    view.editorViewHost.contentEl.focus();
+    view.selectRange(0, 5);
+    view.editorViewHost.contentEl.dispatchEvent(new Event("select", { bubbles: true }));
 
     expect(selectionEvents).toEqual([{ editor: view.editor, view }]);
     expect(view.editor.getCursor()).toEqual({ line: 0, ch: 5 });
 
     const menuEventObject = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 12 });
-    view.sourceTextAreaEl.dispatchEvent(menuEventObject);
+    view.editorViewHost.contentEl.dispatchEvent(menuEventObject);
 
     expect(menuEvent).toEqual({ editor: view.editor, view });
     expect(menuEventObject.defaultPrevented).toBe(true);
@@ -369,28 +382,28 @@ describe("MarkdownView property key input", () => {
     const { view } = await openPropertyNote("See [[Target]]");
 
     const menuEventObject = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 52, clientY: 1 });
-    view.sourceTextAreaEl.dispatchEvent(menuEventObject);
+    view.editorViewHost.contentEl.dispatchEvent(menuEventObject);
 
     expect(menuEventObject.defaultPrevented).toBe(true);
     findMenuItem("Edit link").click();
 
     expect(view.editor.getSelection()).toBe("[[Target]]");
-    expect(view.sourceTextAreaEl.selectionStart).toBe(4);
-    expect(view.sourceTextAreaEl.selectionEnd).toBe(14);
+    expect(view.editor.posToOffset(view.editor.getCursor("from"))).toBe(4);
+    expect(view.editor.posToOffset(view.editor.getCursor("to"))).toBe(14);
   });
 
   it("adds editor tag context actions when source contextmenu hits a tag", async () => {
     const { view } = await openPropertyNote("Task #project/today");
 
     const menuEventObject = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 62, clientY: 1 });
-    view.sourceTextAreaEl.dispatchEvent(menuEventObject);
+    view.editorViewHost.contentEl.dispatchEvent(menuEventObject);
 
     expect(menuEventObject.defaultPrevented).toBe(true);
     findMenuItem("Edit tag").click();
 
     expect(view.editor.getSelection()).toBe("project/today");
-    expect(view.sourceTextAreaEl.selectionStart).toBe("Task #".length);
-    expect(view.sourceTextAreaEl.selectionEnd).toBe("Task #project/today".length);
+    expect(view.editor.posToOffset(view.editor.getCursor("from"))).toBe("Task #".length);
+    expect(view.editor.posToOffset(view.editor.getCursor("to"))).toBe("Task #project/today".length);
   });
 
   it("adds editor footref context actions that remove the reference and note definition", async () => {
@@ -398,13 +411,13 @@ describe("MarkdownView property key input", () => {
     await app.metadataCache.computeFileMetadata(file);
 
     const menuEventObject = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 42, clientY: 1 });
-    view.sourceTextAreaEl.dispatchEvent(menuEventObject);
+    view.editorViewHost.contentEl.dispatchEvent(menuEventObject);
 
     expect(menuEventObject.defaultPrevented).toBe(true);
     findMenuItem("Delete footref and note").click();
 
     expect(view.getViewData()).toBe("Text \n\nNext");
-    expect(view.sourceTextAreaEl.value).toBe("Text \n\nNext");
+    expect(view.editor.getValue()).toBe("Text \n\nNext");
   });
 
   it("adds editor external reference link actions through metadata cache", async () => {
@@ -417,7 +430,7 @@ describe("MarkdownView property key input", () => {
     app.workspace.on("url-menu", urlMenu);
 
     const menuEventObject = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 100, clientY: 1 });
-    view.sourceTextAreaEl.dispatchEvent(menuEventObject);
+    view.editorViewHost.contentEl.dispatchEvent(menuEventObject);
 
     expect(menuEventObject.defaultPrevented).toBe(true);
     expect(document.body.textContent).not.toContain("Edit link");
@@ -461,8 +474,8 @@ describe("MarkdownView property key input", () => {
     view.editor.replaceRange("updated", { line: 0, ch: 0 }, { line: 0, ch: 5 }, "+plugin");
 
     expect(view.getViewData()).toBe("updated\nbody");
-    expect(view.sourceTextAreaEl.value).toBe("updated\nbody");
-    expect(view.sourceTextAreaEl.selectionStart).toBe("updated".length);
+    expect(view.editor.getValue()).toBe("updated\nbody");
+    expect(view.editor.posToOffset(view.editor.getCursor("from"))).toBe("updated".length);
     expect(changes).toEqual([{ editor: view.editor, owner: view }]);
 
     await view.save();
@@ -477,14 +490,14 @@ describe("MarkdownView property key input", () => {
 
     view.editor.setSelection({ line: 0, ch: 1 }, { line: 0, ch: 4 });
 
-    expect(view.sourceTextAreaEl.selectionStart).toBe(1);
-    expect(view.sourceTextAreaEl.selectionEnd).toBe(4);
+    expect(view.editor.posToOffset(view.editor.getCursor("from"))).toBe(1);
+    expect(view.editor.posToOffset(view.editor.getCursor("to"))).toBe(4);
     expect(selectionEvents).toEqual([{ editor: view.editor, owner: view }]);
 
     view.editor.setCursor({ line: 1, ch: 2 });
 
-    expect(view.sourceTextAreaEl.selectionStart).toBe("alpha\nbo".length);
-    expect(view.sourceTextAreaEl.selectionEnd).toBe("alpha\nbo".length);
+    expect(view.editor.posToOffset(view.editor.getCursor("from"))).toBe("alpha\nbo".length);
+    expect(view.editor.posToOffset(view.editor.getCursor("to"))).toBe("alpha\nbo".length);
     expect(selectionEvents).toEqual([
       { editor: view.editor, owner: view },
       { editor: view.editor, owner: view },
@@ -497,7 +510,7 @@ describe("MarkdownView property key input", () => {
     app.workspace.on("editor-paste", (_event, editor, eventView) => {
       events.push({ editor, view: eventView });
     });
-    view.sourceTextAreaEl.setSelectionRange(0, 5);
+    view.selectRange(0, 5);
     const clipboard = createClipboardData();
     clipboard.setData("text/plain", "https://example.com");
     const pasteEvent = dispatchClipboardEvent(view.editorViewHost.contentEl, "paste", clipboard);
@@ -506,12 +519,12 @@ describe("MarkdownView property key input", () => {
     expect(pasteEvent.defaultPrevented).toBe(true);
     expect(view.getViewData()).toBe("[Alpha](https://example.com) beta");
     expect(view.editor.getValue()).toBe("[Alpha](https://example.com) beta");
-    expect(view.sourceTextAreaEl.value).toBe("[Alpha](https://example.com) beta");
+    expect(view.editor.getValue()).toBe("[Alpha](https://example.com) beta");
   });
 
   it("wraps selected text with URL schemes accepted by new URL", async () => {
     const { view } = await openPropertyNote("Alpha beta");
-    view.sourceTextAreaEl.setSelectionRange(0, 5);
+    view.selectRange(0, 5);
     const clipboard = createClipboardData();
     clipboard.setData("text/plain", "mailto:x@y.com");
 
@@ -523,7 +536,7 @@ describe("MarkdownView property key input", () => {
 
   it("does not trim URL paste payloads before link wrapping", async () => {
     const { view } = await openPropertyNote("Alpha beta");
-    view.sourceTextAreaEl.setSelectionRange(0, 5);
+    view.selectRange(0, 5);
     const clipboard = createClipboardData();
     clipboard.setData("text/plain", " https://example.com");
 
@@ -535,7 +548,7 @@ describe("MarkdownView property key input", () => {
 
   it("passes data-transfer markdown payloads through URL selection wrapping first", async () => {
     const { view } = await openPropertyNote("Alpha beta");
-    view.sourceTextAreaEl.setSelectionRange(0, 5);
+    view.selectRange(0, 5);
     const clipboard = createClipboardData();
     clipboard.setData("text/uri-list", "https://example.com");
 
@@ -565,7 +578,7 @@ describe("MarkdownView property key input", () => {
     app.workspace.on("editor-paste", (event) => {
       (event as ClipboardEvent).preventDefault();
     });
-    view.sourceTextAreaEl.setSelectionRange(0, 5);
+    view.selectRange(0, 5);
     const clipboard = createClipboardData();
     clipboard.setData("text/plain", "https://example.com");
     const pasteEvent = dispatchClipboardEvent(view.editorViewHost.contentEl, "paste", clipboard);
@@ -576,7 +589,7 @@ describe("MarkdownView property key input", () => {
 
   it("inserts a bare URL through the default paste path without a source selection", async () => {
     const { view } = await openPropertyNote("Alpha ");
-    view.sourceTextAreaEl.setSelectionRange(6, 6);
+    view.selectRange(6, 6);
     const clipboard = createClipboardData();
     clipboard.setData("text/plain", "https://example.com");
     const pasteEvent = dispatchClipboardEvent(view.editorViewHost.contentEl, "paste", clipboard);
@@ -587,7 +600,7 @@ describe("MarkdownView property key input", () => {
 
   it("uses normal paste insertion when selected text spans multiple lines", async () => {
     const { view } = await openPropertyNote("Alpha\nbeta");
-    view.sourceTextAreaEl.setSelectionRange(0, 10);
+    view.selectRange(0, 10);
     const clipboard = createClipboardData();
     clipboard.setData("text/plain", "https://example.com");
     const pasteEvent = dispatchClipboardEvent(view.editorViewHost.contentEl, "paste", clipboard);
@@ -598,7 +611,7 @@ describe("MarkdownView property key input", () => {
 
   it("pastes text/markdown before URL selection wrapping", async () => {
     const { view } = await openPropertyNote("Alpha");
-    view.sourceTextAreaEl.setSelectionRange(0, 5);
+    view.selectRange(0, 5);
     const clipboard = createClipboardData();
     clipboard.setData("text/plain", "https://example.com");
     clipboard.setData("text/markdown", "**bold**");
@@ -848,7 +861,7 @@ describe("MarkdownView property key input", () => {
 
     expect(view.getViewData()).toBe("- [x] Todo\n- [-] Maybe");
     expect(view.editor.getValue()).toBe("- [x] Todo\n- [-] Maybe");
-    expect(view.sourceTextAreaEl.value).toBe("- [x] Todo\n- [-] Maybe");
+    expect(view.editor.getValue()).toBe("- [x] Todo\n- [-] Maybe");
     await view.previewMode.renderer.whenIdle();
     expect(view.previewMode.renderer.text).toBe("- [x] Todo\n- [-] Maybe");
 
@@ -973,7 +986,7 @@ describe("MarkdownView property key input", () => {
     view.metadataContainerEl.querySelector<HTMLButtonElement>(".metadata-show-source-button")?.click();
 
     expect(view.getMode()).toBe("source");
-    expect(view.sourceTextAreaEl.selectionStart).toBe(0);
+    expect(view.editor.posToOffset(view.editor.getCursor("from"))).toBe(0);
   });
 });
 
