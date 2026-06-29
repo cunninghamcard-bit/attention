@@ -323,7 +323,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
     await this.openInternal(null);
   }
 
-  async open(view: View): Promise<View> {
+  async open(view: View | null): Promise<View> {
     return this.openInternal(view);
   }
 

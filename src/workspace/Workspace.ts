@@ -596,8 +596,38 @@ export class Workspace extends Events {
     return layout;
   }
 
+  async clearLayout(): Promise<void> {
+    this.layoutReady = false;
+    this.requestLayoutChangeEvents.cancel();
+
+    const leaves: WorkspaceLeaf[] = [];
+    this.iterateAllLeaves((leaf) => {
+      leaves.push(leaf);
+    });
+    await Promise.all(leaves.map((leaf) => leaf.open(null)));
+
+    for (const child of [...this.floatingSplit.children]) {
+      if (child instanceof WorkspaceWindow) child.close();
+    }
+
+    this.activeLeaf?.containerEl.classList.remove("mod-active");
+    this.activeLeaf?.tabHeaderEl.classList.remove("mod-active");
+    this.activeTabGroup?.containerEl.classList.remove("mod-active");
+    this.activeLeaf = null;
+    this.activeTabGroup = null;
+    this._activeEditor = null;
+
+    this.clearChildren(this.leftSplit, { detach: false });
+    this.clearChildren(this.rootSplit, { detach: false });
+    this.clearChildren(this.rightSplit, { detach: false });
+    this.clearChildren(this.floatingSplit, { detach: false });
+    this.floatingSplit.closePopout();
+    this.layoutItemQueue.length = 0;
+  }
+
   async changeLayout(layout: WorkspaceLayout): Promise<void> {
     if (!this.layoutReady) return;
+    await this.clearLayout();
     await this.setLayout(layout);
   }
 
@@ -798,12 +828,15 @@ export class Workspace extends Events {
     return null;
   }
 
-  private clearChildren(item: WorkspaceSplit | WorkspaceTabs | MobileDrawer): void {
+  private clearChildren(item: WorkspaceSplit | WorkspaceTabs | MobileDrawer, options: { detach?: boolean } = {}): void {
     if (item instanceof MobileDrawer) {
       item.clear();
       return;
     }
-    for (const child of [...item.children]) child.detach();
+    for (const child of [...item.children]) {
+      if (options.detach === false) this.releaseLayoutItem(child);
+      else child.detach();
+    }
     item.children = [];
     if (item instanceof WorkspaceTabs) {
       item.tabsInnerEl.replaceChildren();
@@ -818,6 +851,15 @@ export class Workspace extends Events {
     } else {
       setChildrenInPlace(item.containerEl, [item.resizeHandleEl]);
     }
+  }
+
+  private releaseLayoutItem(item: WorkspaceItem): void {
+    if (item instanceof WorkspaceParent) {
+      for (const child of [...item.children]) this.releaseLayoutItem(child);
+      item.children = [];
+    }
+    item.setParent(null);
+    item.containerEl.remove();
   }
 
   setActiveLeaf(leaf: WorkspaceLeaf | undefined | null, options: boolean | { focus?: boolean } = {}, focus = false): void {
