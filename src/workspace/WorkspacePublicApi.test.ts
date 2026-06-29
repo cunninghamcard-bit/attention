@@ -102,7 +102,7 @@ describe("Workspace public API parity", () => {
 
     expect(app.workspace.layoutReady).toBe(true);
     expect(callbacks).toEqual([]);
-    await Promise.resolve();
+    await app.workspace.waitForLayoutReadyCallbacks();
     expect(callbacks).toEqual(["queued"]);
 
     app.workspace.onLayoutReady(() => callbacks.push("immediate"));

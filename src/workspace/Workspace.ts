@@ -2389,13 +2389,21 @@ export class Workspace extends Events {
 
   private async flushLayoutReadyCallbacks(callbacks: LayoutReadyCallbackRecord[]): Promise<void> {
     for (const { pluginId, callback } of callbacks) {
+      await nextLayoutReadyCallbackTurn();
       try {
-        await callback();
+        const result = callback();
+        if (isPromiseLike(result)) {
+          void result.catch((error: unknown) => this.reportLayoutReadyCallbackError(pluginId, error));
+        }
       } catch (error) {
-        if (pluginId) console.error(`Plugin ${pluginId} failed in onLayoutReady callback`, error);
-        else console.error(error);
+        this.reportLayoutReadyCallbackError(pluginId, error);
       }
     }
+  }
+
+  private reportLayoutReadyCallbackError(pluginId: string | null, error: unknown): void {
+    if (pluginId) console.error(`Plugin ${pluginId} failed in onLayoutReady callback`, error);
+    else console.error(error);
   }
 
   private findUndoHistoryRoot(rootId: string): WorkspaceSplit | MobileDrawer {
@@ -2453,6 +2461,10 @@ function createMicrotaskWorkspaceRequest(fn: () => void): () => void {
     if (typeof queueMicrotask === "function") queueMicrotask(run);
     else window.setTimeout(run, 0);
   };
+}
+
+function nextLayoutReadyCallbackTurn(): Promise<void> {
+  return Promise.resolve();
 }
 
 function isFileBackedLeaf(leaf: WorkspaceLeaf): boolean {
