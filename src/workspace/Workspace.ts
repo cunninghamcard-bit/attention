@@ -695,9 +695,11 @@ export class Workspace extends Events {
     const activeId = layout.active ?? layout.activeLeafId;
     const activeLeaf = activeId ? this.getLeafById(activeId) : this.getMostRecentLeaf();
     if (activeLeaf) this.setActiveLeaf(activeLeaf);
+    this.fireLayoutReady();
     await Promise.all(this.getVisibleLeaves().map((leaf) => leaf.loadIfDeferred()));
-    this.markLayoutReady();
+    this.layoutReady = true;
     this.onLayoutChange();
+    this.requestActiveLeafEvents();
   }
 
   getLeafById(id: string | undefined): WorkspaceLeaf | null {
@@ -2403,7 +2405,13 @@ export class Workspace extends Events {
 
   markLayoutReady(): void {
     if (this.layoutReady) return;
+    this.fireLayoutReady();
     this.layoutReady = true;
+    this.requestActiveLeafEvents();
+  }
+
+  private fireLayoutReady(): void {
+    if (this.onLayoutReadyCallbacks === null) return;
     this.trigger("layout-ready");
     const callbacks = this.onLayoutReadyCallbacks ?? [];
     this.onLayoutReadyCallbacks = null;
@@ -2412,7 +2420,6 @@ export class Workspace extends Events {
         void this.flushLayoutReadyCallbacks(callbacks).then(resolve, resolve);
       });
     });
-    this.requestActiveLeafEvents();
   }
 
   private async flushLayoutReadyCallbacks(callbacks: LayoutReadyCallbackRecord[]): Promise<void> {
