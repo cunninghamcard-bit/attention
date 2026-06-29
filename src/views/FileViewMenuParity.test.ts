@@ -84,4 +84,19 @@ describe("FileView menu parity", () => {
     await vi.waitFor(() => expect(view.file).toBeNull());
     expect(leaf.view).toBe(view);
   });
+
+  it("updates layout when its current file is renamed", async () => {
+    const app = new App(document.createElement("div"));
+    const file = await app.vault.create("Rename.md", "rename");
+    app.viewRegistry.registerView("basic-file-view-menu-test", (leaf) => new BasicFileView(leaf));
+    const leaf = app.workspace.getLeaf();
+    const layoutChange = vi.spyOn(app.workspace, "onLayoutChange");
+
+    await leaf.setViewState({ type: "basic-file-view-menu-test", active: true });
+    await (leaf.view as BasicFileView).loadFile(file);
+    layoutChange.mockClear();
+    await app.vault.rename(file, "Renamed.md");
+
+    expect(layoutChange).toHaveBeenCalled();
+  });
 });

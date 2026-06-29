@@ -75,8 +75,11 @@ export class FileView extends ItemView {
 
   async onLoadFile(_file: TFile): Promise<void> {}
   async onUnloadFile(_file: TFile): Promise<void> {}
-  async onRename(_file: TFile, _oldPath?: string): Promise<void> {
+  async onRename(file: TFile, _oldPath?: string): Promise<void> {
+    if (file !== this.file) return;
     this.updateHeader();
+    this.app.workspace.onLayoutChange();
+    this.leaf.updateHeader();
   }
 
   async onDelete(file: TAbstractFile): Promise<void> {
