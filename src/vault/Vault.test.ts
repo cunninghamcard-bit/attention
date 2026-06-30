@@ -31,6 +31,15 @@ describe("Vault attachment paths", () => {
     expect(vault.getFolderByPath("Attachments")).not.toBeNull();
   });
 
+  it("picks available attachment paths with case-insensitive collisions", async () => {
+    const vault = new Vault();
+    await vault.create("Image.png", "");
+
+    const path = await vault.getAvailablePathForAttachments("image", "png");
+
+    expect(path).toBe("image 1.png");
+  });
+
   it("resolves current-folder attachment paths from the source file", async () => {
     const vault = new Vault();
     const source = await vault.create("Notes/Source.md", "");

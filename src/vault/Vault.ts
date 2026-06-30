@@ -699,7 +699,7 @@ export class Vault extends Events {
     const base = suffix && path.endsWith(suffix) ? path.slice(0, -suffix.length) : path;
     let candidate = `${base}${suffix}`;
     let index = 1;
-    while (this.files.has(candidate)) {
+    while (this.getAbstractFileByPathInsensitive(candidate)) {
       candidate = `${base} ${index}${suffix}`;
       index += 1;
     }
