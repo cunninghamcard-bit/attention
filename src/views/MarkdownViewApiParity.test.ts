@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
+import { Scope } from "../hotkeys/Scope";
 import type { TFile } from "../vault/TAbstractFile";
 import { MarkdownView } from "./MarkdownView";
 
@@ -26,6 +27,18 @@ describe("MarkdownView public API parity", () => {
     const { file, view } = await openMarkdown("# hi");
 
     expect(view.getFile()).toBe(file);
+  });
+
+  it("replaces and restores the MarkdownView scope", async () => {
+    const { view } = await openMarkdown("# hi");
+    const initialScope = view.scope;
+    const nextScope = new Scope(null);
+
+    view.replaceScope(nextScope);
+    expect(view.scope).toBe(nextScope);
+
+    view.replaceScope(null);
+    expect(view.scope).toBe(initialScope);
   });
 
   it("exposes hoverPopover and an Obsidian-style document search panel", async () => {

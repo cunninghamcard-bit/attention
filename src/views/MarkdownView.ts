@@ -34,6 +34,7 @@ import { Component } from "../core/Component";
 import type { App } from "../app/App";
 import type { LinkGraphEdge } from "../metadata/LinkGraph";
 import { getAttachmentFilesFromDataTransfer, hasDataTransferAttachmentFiles, splitAttachmentFilename, type AttachmentImportFile } from "../app/AttachmentImport";
+import type { Scope } from "../hotkeys/Scope";
 
 export type MarkdownViewModeType = "source" | "preview";
 export type MarkdownMode = MarkdownViewModeType;
@@ -83,6 +84,7 @@ export class MarkdownView extends TextFileView {
   showBacklinks = false;
   editor: Editor = new SimpleEditor();
   hoverPopover: HoverPopover | null = null;
+  readonly initialScope: Scope | null;
   readonly editorContainerEl: HTMLElement;
   readonly inlineTitleEl: HTMLElement;
   readonly metadataContainerEl: HTMLElement;
@@ -112,6 +114,7 @@ export class MarkdownView extends TextFileView {
 
   constructor(...args: ConstructorParameters<typeof TextFileView>) {
     super(...args);
+    this.initialScope = this.scope;
     this.preview = new MarkdownPreviewView(this);
     this.contentEl.classList.add("markdown-view", "show-properties");
     this.inlineTitleEl = document.createElement("div");
@@ -196,6 +199,10 @@ export class MarkdownView extends TextFileView {
 
   getViewType(): string {
     return MarkdownView.VIEW_TYPE;
+  }
+
+  replaceScope(scope?: Scope | null): void {
+    this.scope = scope ?? this.initialScope;
   }
 
   getFile(): TFile | null {
