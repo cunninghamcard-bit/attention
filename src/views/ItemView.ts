@@ -152,7 +152,8 @@ export class ItemView extends View {
   }
 
   addAction(icon: string, title: string, callback: (event: MouseEvent) => unknown): HTMLElement {
-    const button = createEl("button", "clickable-icon view-action");
+    const button = this.containerEl.ownerDocument.createElement("button");
+    button.className = "clickable-icon view-action";
     setTooltip(button, title);
     button.addEventListener("mousedown", (event) => event.preventDefault());
     button.addEventListener("click", (event) => {
@@ -187,7 +188,8 @@ export class ItemView extends View {
   }
 
   private createNavButton(title: string, icon: string, direction: -1 | 1): HTMLElement {
-    const button = createEl("button", "clickable-icon");
+    const button = this.containerEl.ownerDocument.createElement("button");
+    button.className = "clickable-icon";
     setIcon(button, icon);
     setTooltip(button, title);
     button.setAttribute("aria-disabled", "true");

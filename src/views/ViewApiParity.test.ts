@@ -287,6 +287,21 @@ describe("View public API parity", () => {
     await vi.waitFor(() => expect(duplicateGo).toHaveBeenCalledWith(2));
   });
 
+  it("creates ItemView chrome inside the leaf owner document", async () => {
+    const ownerDocument = document.implementation.createHTMLDocument("Owner");
+    const app = new App(ownerDocument.body.appendChild(ownerDocument.createElement("div")));
+    app.viewRegistry.registerView("owner-document-item-view-api", (leaf) => new ActionItemView(leaf));
+    const leaf = app.workspace.getLeaf();
+
+    await leaf.setViewState({ type: "owner-document-item-view-api", active: true });
+    const view = leaf.view as ActionItemView;
+    const action = view.addAction("lucide-star", "Star", () => {});
+
+    expect(view.backButtonEl.ownerDocument).toBe(ownerDocument);
+    expect(view.forwardButtonEl.ownerDocument).toBe(ownerDocument);
+    expect(action.ownerDocument).toBe(ownerDocument);
+  });
+
   it("lets sidebar ItemViews participate in pin/link tab menus while disabling sidebar split-right", async () => {
     document.body.querySelectorAll(".menu").forEach((el) => el.remove());
     const app = new App(document.body.appendChild(document.createElement("div")));
