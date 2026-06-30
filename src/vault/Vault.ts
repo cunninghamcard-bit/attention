@@ -218,9 +218,12 @@ export class Vault extends Events {
   }
 
   getFolderByPath(path: string): TFolder | null {
-    if (path === "" || path === "/") return this.root;
     const file = this.getAbstractFileByPath(path);
     return file instanceof TFolder ? file : null;
+  }
+
+  private getParentFolderByPath(path: string): TFolder | null {
+    return path ? this.getFolderByPath(path) : this.root;
   }
 
   getAllLoadedFiles(): TAbstractFile[] {
@@ -730,7 +733,7 @@ export class Vault extends Events {
 
   private attachToParent(file: TAbstractFile): void {
     if (file === this.root) return;
-    const parent = this.getFolderByPath(file.parentPath);
+    const parent = this.getParentFolderByPath(file.parentPath);
     if (!parent) return;
     file.parent = parent;
     if (!parent.children.includes(file)) {
@@ -895,7 +898,7 @@ export class Vault extends Events {
   }
 
   private detachFromParent(file: TAbstractFile): void {
-    const parent = this.getFolderByPath(file.parentPath);
+    const parent = this.getParentFolderByPath(file.parentPath);
     if (parent) parent.children = parent.children.filter((child) => child !== file);
     file.parent = null;
   }

@@ -80,7 +80,7 @@ async function resolveProtocolNewFile(app: App, params: URLSearchParams): Promis
     if (existing) return existing;
 
     const folderPath = parentPath(filePath);
-    let folder = folderPath ? app.vault.getAbstractFileByPathInsensitive(folderPath) : app.vault.getFolderByPath("");
+    let folder = folderPath ? app.vault.getAbstractFileByPathInsensitive(folderPath) : app.vault.getRoot();
     if (folderPath && !folder) folder = await app.vault.createFolder(folderPath);
     if (!(folder instanceof TFolder) && folderPath) return null;
 

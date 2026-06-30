@@ -174,6 +174,8 @@ describe("Vault public file API", () => {
     expect(vault.root.vault).toBe(vault);
     expect(vault.root.parent).toBeNull();
     expect(vault.root.isRoot()).toBe(true);
+    expect(vault.getFolderByPath("/")).toBe(vault.root);
+    expect(vault.getFolderByPath("")).toBeNull();
 
     const folder = await vault.createFolder("Notes");
     const file = await vault.create("Notes/Today.md", "body");
