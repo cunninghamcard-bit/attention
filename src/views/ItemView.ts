@@ -6,6 +6,7 @@ import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
 import type { DragDropResult, DragSource } from "../drag/DragManager";
 import { Keymap } from "../hotkeys/Keymap";
 import { Platform } from "../platform/Platform";
+import { setTooltip } from "../ui/Popover";
 
 export class ItemView extends View {
   readonly headerEl: HTMLElement;
@@ -152,8 +153,7 @@ export class ItemView extends View {
 
   addAction(icon: string, title: string, callback: (event: MouseEvent) => unknown): HTMLElement {
     const button = createEl("button", "clickable-icon view-action");
-    button.title = title;
-    button.setAttribute("aria-label", title);
+    setTooltip(button, title);
     button.addEventListener("mousedown", (event) => event.preventDefault());
     button.addEventListener("click", (event) => {
       if (event.button === 0 || event.button === 1) callback(event);
@@ -189,8 +189,7 @@ export class ItemView extends View {
   private createNavButton(title: string, icon: string, direction: -1 | 1): HTMLElement {
     const button = createEl("button", "clickable-icon");
     setIcon(button, icon);
-    button.title = title;
-    button.setAttribute("aria-label", title);
+    setTooltip(button, title);
     button.setAttribute("aria-disabled", "true");
     button.addEventListener("click", (event) => {
       if (event.button === 2) return;

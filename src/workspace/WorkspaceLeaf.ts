@@ -14,7 +14,7 @@ import { FileView } from "../views/FileView";
 import type { DragDropResult, DragSource, FileDragSource, LinkDragSource } from "../drag/DragManager";
 import { WorkspaceTabs } from "./WorkspaceTabs";
 import { parseLinktext } from "../metadata/Linkpath";
-import type { HoverPopover } from "../ui/Popover";
+import { setTooltip, type HoverPopover } from "../ui/Popover";
 
 export interface LeafHistoryState {
   title?: string;
@@ -110,8 +110,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
     this.tabHeaderStatusContainerEl = createDiv("workspace-tab-header-status-container", inner);
     this.tabHeaderCloseEl = createDiv("workspace-tab-header-inner-close-button", inner);
     setIcon(this.tabHeaderCloseEl, "lucide-x");
-    this.tabHeaderCloseEl.title = "Close";
-    this.tabHeaderCloseEl.setAttribute("aria-label", "Close");
+    setTooltip(this.tabHeaderCloseEl, "Close");
     this.tabHeaderCloseEl.addEventListener("click", (event) => {
       event.stopPropagation();
       this.closeFromTabHeader();
@@ -552,8 +551,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
     setIcon(this.tabHeaderInnerIconEl, this.getIcon());
     this.tabHeaderInnerTitleEl.textContent = displayText;
     this.tabHeaderEl.dataset.type = type;
-    this.tabHeaderEl.title = displayText;
-    this.tabHeaderEl.setAttribute("aria-label", displayText);
+    setTooltip(this.tabHeaderEl, truncateTooltipText(displayText, 100), { delay: 300 });
     this.tabHeaderEl.classList.toggle("is-loading", this.isDeferred);
     this.tabHeaderEl.classList.toggle("mod-unknown", type === "unknown");
     this.updateLinkedTabStatus();
@@ -571,8 +569,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
       if (!groupEl) {
         groupEl = createDiv("workspace-tab-header-status-icon mod-linked");
         this.tabHeaderStatusContainerEl.prepend(groupEl);
-        groupEl.title = "Unlink tab";
-        groupEl.setAttribute("aria-label", "Unlink tab");
+        setTooltip(groupEl, "Unlink tab");
         groupEl.addEventListener("click", (event) => {
           event.stopPropagation();
           for (const leaf of this.workspace.getGroupLeaves(this.group)) leaf.unhighlight();
@@ -601,8 +598,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
       if (!pinnedEl) {
         pinnedEl = createDiv("workspace-tab-header-status-icon mod-pinned");
         setIcon(pinnedEl, "lucide-pin");
-        pinnedEl.title = "Unpin";
-        pinnedEl.setAttribute("aria-label", "Unpin");
+        setTooltip(pinnedEl, "Unpin");
         pinnedEl.addEventListener("click", (event) => {
           event.stopPropagation();
           this.setPinned(false);
@@ -841,6 +837,10 @@ function displayTextFromViewState(state: InternalViewState): string {
     if (typeof file === "string" && file) return file.split("/").pop()?.replace(/\.[^.]+$/, "") ?? file;
   }
   return state.type === "empty" ? "New tab" : state.type;
+}
+
+function truncateTooltipText(text: string, maxLength: number): string {
+  return text.length <= maxLength ? text : `${text.slice(0, Math.max(0, maxLength - 3))}...`;
 }
 
 function isEnteringElement(event: MouseEvent, element: HTMLElement): boolean {

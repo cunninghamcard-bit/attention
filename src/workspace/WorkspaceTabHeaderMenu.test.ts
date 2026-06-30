@@ -421,6 +421,13 @@ describe("WorkspaceLeaf tab header menu", () => {
     leaf.updateHeader();
 
     expect(leaf.tabHeaderEl.querySelector(".workspace-tab-header-status-icon.mod-pinned")).toBe(pinnedIcon);
+    expect(leaf.tabHeaderEl.getAttribute("aria-label")).toBe(leaf.getDisplayText());
+    expect(leaf.tabHeaderEl.dataset.tooltipDelay).toBe("300");
+    expect(leaf.tabHeaderEl.hasAttribute("title")).toBe(false);
+    expect(leaf.tabHeaderCloseEl.getAttribute("aria-label")).toBe("Close");
+    expect(leaf.tabHeaderCloseEl.hasAttribute("title")).toBe(false);
+    expect(pinnedIcon.getAttribute("aria-label")).toBe("Unpin");
+    expect(pinnedIcon.hasAttribute("title")).toBe(false);
     expect(leaf.tabHeaderCloseEl.style.display).toBe("none");
 
     pinnedIcon.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));

@@ -234,6 +234,10 @@ describe("View public API parity", () => {
     const action = view.addAction("lucide-star", "Star", () => {});
 
     expect(view.actionsEl.firstElementChild).toBe(action);
+    expect(action.getAttribute("aria-label")).toBe("Star");
+    expect(action.hasAttribute("title")).toBe(false);
+    expect(view.backButtonEl.getAttribute("aria-label")).toBe("Back");
+    expect(view.backButtonEl.hasAttribute("title")).toBe(false);
     expect(view.backButtonEl.getAttribute("aria-disabled")).toBe("true");
 
     leaf.backHistory.push({ state: { type: "empty" } });
