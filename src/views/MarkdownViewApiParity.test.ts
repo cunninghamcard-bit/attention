@@ -119,6 +119,12 @@ describe("MarkdownView public API parity", () => {
 
     view.triggerClickableToken({ type: "internal-link", text: "Target" });
     await vi.waitFor(() => expect(openLinkText).toHaveBeenCalledWith("Target", "Note.md", undefined));
+    openLinkText.mockClear();
+
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, clientX: 8, clientY: 1 });
+    view.editorViewHost.contentEl.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(true);
+    await vi.waitFor(() => expect(openLinkText).toHaveBeenCalledWith("Target", "Note.md", false));
 
     const open = vi.fn();
     Object.defineProperty(window, "open", { configurable: true, value: open });

@@ -161,6 +161,8 @@ export class MarkdownView extends TextFileView {
     this.editorViewHost.contentEl.addEventListener("keydown", (event) => void this.handleEditorSuggest(event));
     this.editorViewHost.contentEl.addEventListener("keyup", (event) => void this.handleSourceKeyup(event));
     this.editorViewHost.contentEl.addEventListener("mouseup", () => this.handleSourceSelectionChange());
+    this.editorViewHost.contentEl.addEventListener("click", (event) => this.handleSourceClick(event));
+    this.editorViewHost.contentEl.addEventListener("mousedown", (event) => this.handleSourceClick(event));
     this.editorViewHost.contentEl.addEventListener("contextmenu", (event) => this.handleSourceContextMenu(event));
     this.editorViewHost.contentEl.addEventListener("mousemove", (event) => this.handleSourceHover(event));
     this.editorViewHost.contentEl.addEventListener("mouseleave", () => {
@@ -2530,6 +2532,15 @@ export class MarkdownView extends TextFileView {
     event.preventDefault();
     this.syncActiveEditor();
     this.app.menus.createEditorMenu(this.editor, this, this.getEditorMenuContext(event)).showAtMouseEvent(event);
+  }
+
+  private handleSourceClick(event: MouseEvent): void {
+    if (this.getMode() !== "source") return;
+    if (!(event.type === "click" && event.button === 0) && !(event.type === "mousedown" && event.button === 1)) return;
+    const token = this.findHoveredSourceToken(event);
+    if (!token || token.type === "footref") return;
+    this.triggerClickableToken(token, Keymap.isModEvent(event));
+    event.preventDefault();
   }
 
   private async handleSourcePaste(event: ClipboardEvent): Promise<void> {
