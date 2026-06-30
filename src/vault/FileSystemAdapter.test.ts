@@ -182,6 +182,7 @@ describe("FileSystemAdapter", () => {
 
   it("renames and permanently removes filesystem entries", async () => {
     await adapter.write("Old.md", "old");
+    await adapter.mkdir("Folder");
     await adapter.rename("Old.md", "Folder/New.md");
 
     expect(await adapter.exists("Old.md")).toBe(false);
@@ -190,6 +191,14 @@ describe("FileSystemAdapter", () => {
     await adapter.remove("Folder/New.md");
     expect(await adapter.exists("Folder/New.md")).toBe(false);
     await expect(fs.readFile(path.join(basePath, "Folder", "New.md"), "utf8")).rejects.toThrow();
+  });
+
+  it("lets rename reject when the destination parent is missing", async () => {
+    await adapter.write("Old.md", "old");
+
+    await expect(adapter.rename("Old.md", "Missing/New.md")).rejects.toThrow();
+
+    expect(await adapter.exists("Old.md")).toBe(true);
   });
 
   it("copies folders recursively into existing destination folders", async () => {

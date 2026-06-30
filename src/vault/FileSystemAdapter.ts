@@ -271,11 +271,9 @@ export class FileSystemAdapter extends DataAdapter {
   async rename(path: string, newPath: string): Promise<void> {
     if (path === newPath) return;
     if (await this.renameDestinationExists(path, newPath)) throw new Error("Destination file already exists!");
-    const { fs, path: pathModule } = await this.loadDesktopModules();
+    const { fs } = await this.loadDesktopModules();
     await this.primePath(path);
-    const destination = this.getFullPath(newPath);
-    await fs.mkdir(pathModule.dirname(destination), { recursive: true });
-    await fs.rename(this.getFullPath(path), destination);
+    await fs.rename(this.getFullPath(path), this.getFullPath(newPath));
     this.renameIndexedEntries(path, newPath);
   }
 
