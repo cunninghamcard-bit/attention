@@ -354,6 +354,30 @@ describe("Vault public file API", () => {
     expect(vault.getMarkdownFiles().map((file) => file.path)).toEqual(["Root.md", "Folder/a.md", "Folder/Sub/c.md"]);
   });
 
+  it("iterates files with Markdown content and empty non-Markdown content", async () => {
+    const vault = new Vault();
+    const note = await vault.create("Note.md", "Body");
+    const text = await vault.create("Attachment.txt", "Plain");
+    note.cache("Cached body");
+    const cachedRead = vi.spyOn(vault, "cachedRead");
+    const read = vi.spyOn(vault, "read");
+
+    const cachedEntries = [];
+    for await (const entry of vault.iterateFiles([note, text], true)) cachedEntries.push({ path: entry.file.path, content: entry.content });
+
+    expect(cachedEntries).toEqual([{ path: "Note.md", content: "Cached body" }, { path: "Attachment.txt", content: "" }]);
+    expect(cachedRead).toHaveBeenCalledWith(note);
+    expect(read).not.toHaveBeenCalled();
+
+    cachedRead.mockClear();
+    const uncachedEntries = [];
+    for await (const entry of vault.iterateFiles([note], false)) uncachedEntries.push({ path: entry.file.path, content: entry.content });
+
+    expect(uncachedEntries).toEqual([{ path: "Note.md", content: "Body" }]);
+    expect(read).toHaveBeenCalledWith(note);
+    expect(cachedRead).not.toHaveBeenCalled();
+  });
+
   it("prevents copy destinations that only differ by case", async () => {
     const vault = new Vault();
     const file = await vault.create("Image.md", "image");
