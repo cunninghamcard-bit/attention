@@ -474,6 +474,31 @@ describe("WorkspaceSplit", () => {
     expect(app.workspace.activeLeaf).toBe(secondLeaf);
   });
 
+  it("exposes Obsidian drop target helpers and mutates the drop direction rect", async () => {
+    const app = new App(document.body.appendChild(document.createElement("div")));
+    await app.ready;
+    const tabs = app.workspace.rootSplit.children[0];
+    if (!(tabs instanceof WorkspaceTabs)) throw new Error("Expected default tabs");
+    const leaf = tabs.children[0];
+    if (!(leaf instanceof WorkspaceLeaf)) throw new Error("Expected default leaf");
+    setRect(app.workspace.rootSplit.containerEl, { x: 0, y: 0, width: 300, height: 180 });
+    setRect(tabs.containerEl, { x: 0, y: 0, width: 300, height: 180 });
+    setRect(leaf.containerEl, { x: 0, y: 0, width: 300, height: 180 });
+    const dataTransfer = createDataTransfer();
+
+    const location = app.workspace.getDropLocation(createDragEvent("dragover", dataTransfer, 4, 90));
+    const target = app.workspace.recursiveGetTarget(createDragEvent("dragover", dataTransfer, 4, 90), app.workspace.rootSplit);
+    const rect = new DOMRect(0, 0, 300, 180);
+    const side = app.workspace.getDropDirection(createDragEvent("dragover", dataTransfer, 4, 90), rect, [], leaf);
+
+    expect(location).toBe(tabs);
+    expect(target).toBe(tabs);
+    expect(side).toBe("left");
+    expect(rect.x).toBe(0);
+    expect(rect.width).toBe(100);
+    expect(rect.height).toBe(180);
+  });
+
   it("follows original child-order hit testing for overlapping drop locations", async () => {
     const app = new App(document.body.appendChild(document.createElement("div")));
     await app.ready;

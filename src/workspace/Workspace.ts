@@ -1835,7 +1835,7 @@ export class Workspace extends Events {
 
   private getLeafDropTargetFromEvent(event: DragEvent): WorkspaceDropTarget | null {
     const x = event.clientX;
-    const item = this.getDropLocationFromEvent(event);
+    const item = this.getDropLocation(event);
     if (!item) return null;
     if (item === this.leftSplit || item === this.rightSplit) {
       if (!(item instanceof WorkspaceParent)) return null;
@@ -1886,34 +1886,34 @@ export class Workspace extends Events {
     };
   }
 
-  private getDropLocationFromEvent(event: DragEvent): WorkspaceItem | null {
+  getDropLocation(event: DragEvent): WorkspaceItem | null {
     const eventWindow = getDragEventWindow(event);
     const mainWindow = this.rootSplit.containerEl.ownerDocument.defaultView ?? window;
     if (eventWindow !== mainWindow) {
       for (const child of this.floatingSplit.children) {
-        if (child instanceof WorkspaceWindow && child.win === eventWindow) return this.recursiveGetDropTarget(event, child);
+        if (child instanceof WorkspaceWindow && child.win === eventWindow) return this.recursiveGetTarget(event, child);
       }
     }
     if (eventInsideElement(event, this.leftRibbon.containerEl) || eventInsideElement(event, this.leftSidebarToggleButtonEl)) return this.leftSplit;
     if (eventInsideElement(event, this.rightRibbon.containerEl) || eventInsideElement(event, this.rightSidebarToggleButtonEl)) return this.rightSplit;
-    const leftTarget = this.leftSplit.children.length > 0 ? this.recursiveGetDropTarget(event, this.leftSplit) : null;
+    const leftTarget = this.leftSplit.children.length > 0 ? this.recursiveGetTarget(event, this.leftSplit) : null;
     if (eventInsideElement(event, this.leftSplit.containerEl)) {
       return this.leftSplit.children.length === 0 ? this.leftSplit : leftTarget;
     }
     if (leftTarget) return leftTarget;
-    const rightTarget = this.rightSplit.children.length > 0 ? this.recursiveGetDropTarget(event, this.rightSplit) : null;
+    const rightTarget = this.rightSplit.children.length > 0 ? this.recursiveGetTarget(event, this.rightSplit) : null;
     if (eventInsideElement(event, this.rightSplit.containerEl)) {
       return this.rightSplit.children.length === 0 ? this.rightSplit : rightTarget;
     }
     if (rightTarget) return rightTarget;
-    const rootTarget = this.recursiveGetDropTarget(event, this.rootSplit);
+    const rootTarget = this.recursiveGetTarget(event, this.rootSplit);
     if (eventInsideElement(event, this.rootSplit.containerEl) || rootTarget) return rootTarget;
     return null;
   }
 
-  private recursiveGetDropTarget(event: DragEvent, parent: WorkspaceParent): WorkspaceItem | null {
+  recursiveGetTarget(event: DragEvent, parent: WorkspaceParent): WorkspaceItem | null {
     for (const child of parent.children) {
-      const nestedTarget = child instanceof WorkspaceParent ? this.recursiveGetDropTarget(event, child) : null;
+      const nestedTarget = child instanceof WorkspaceParent ? this.recursiveGetTarget(event, child) : null;
       if (!eventInsideElement(event, child.containerEl) && !nestedTarget) continue;
       if (child instanceof WorkspaceTabs) return child;
       if (child instanceof WorkspaceParent) return nestedTarget;
@@ -1943,31 +1943,70 @@ export class Workspace extends Events {
     options: { blockedSides?: ReadonlySet<WorkspaceDropTarget["side"]>; item?: WorkspaceItem } = {},
   ): WorkspaceDropTarget["side"] {
     const item = options.item ?? (leaf.parent instanceof WorkspaceTabs ? leaf.parent : leaf);
-    const rect = item.containerEl.getBoundingClientRect();
+    const sourceRect = item.containerEl.getBoundingClientRect();
+    const rect = new DOMRect(sourceRect.x, sourceRect.y, sourceRect.width, sourceRect.height);
+    return this.getDropDirection(event, rect, options.blockedSides, item);
+  }
+
+  getDropDirection(
+    event: DragEvent,
+    rect: DOMRect,
+    blockedSides?: Iterable<WorkspaceDropTarget["side"]>,
+    item?: WorkspaceItem,
+  ): WorkspaceDropTarget["side"] {
     if (rect.width <= 0 || rect.height <= 0) return "center";
     const x = event.clientX;
     const y = event.clientY;
-    const candidates: Array<{ side: WorkspaceDropTarget["side"]; distance: number }> = [
-      { side: "left", distance: (x - rect.left) / rect.width },
-      { side: "right", distance: (rect.right - x) / rect.width },
-      { side: "top", distance: (y - rect.top) / rect.height },
-      { side: "bottom", distance: (rect.bottom - y) / rect.height },
-    ];
-    candidates.sort((a, b) => a.distance - b.distance);
-    const blockedSides = options.blockedSides;
-    for (const candidate of candidates) {
-      if (candidate.distance >= 0.33) return "center";
-      if (blockedSides?.has(candidate.side)) continue;
-      if (item instanceof WorkspaceTabs && item.isStacked && (candidate.side === "left" || candidate.side === "right") && !pointInRect(x, y, item.tabHeaderContainerEl.getBoundingClientRect())) {
-        return "center";
-      }
-      if (item instanceof WorkspaceTabs && candidate.side === "top") {
-        const headerRect = item.tabHeaderContainerEl.getBoundingClientRect();
-        if (headerRect.height > 0 && y > headerRect.top + headerRect.height / 3) return "center";
-      }
-      return candidate.side;
+    const blocked = new Set(blockedSides ?? []);
+    if (item instanceof WorkspaceTabs && item.isStacked && !pointInRect(x, y, item.tabHeaderContainerEl.getBoundingClientRect())) {
+      blocked.add("left");
+      blocked.add("right");
     }
-    return "center";
+
+    const leftDistance = Math.abs(x - rect.x) / rect.width;
+    const topDistance = Math.abs(y - rect.y) / rect.height;
+    const rightDistance = Math.abs(x - (rect.x + rect.width)) / rect.width;
+    const bottomDistance = Math.abs(y - (rect.y + rect.height)) / rect.height;
+    let side: WorkspaceDropTarget["side"] = "center";
+    let distance = 1;
+
+    if (topDistance < 0.33 && topDistance < distance && !blocked.has("top")) {
+      distance = topDistance;
+      if (item instanceof WorkspaceTabs) {
+        const headerRect = item.tabHeaderContainerEl.getBoundingClientRect();
+        if (!item.isStacked && pointInRect(x, y, headerRect)) distance = 0;
+        if (y - rect.y <= headerRect.height / 3) side = "top";
+        else {
+          side = "center";
+          if (item.isStacked) distance = 1;
+        }
+      } else {
+        side = "top";
+      }
+    }
+    if (leftDistance < 0.33 && leftDistance < distance && !blocked.has("left")) {
+      distance = leftDistance;
+      side = "left";
+    }
+    if (rightDistance < 0.33 && rightDistance < distance && !blocked.has("right")) {
+      distance = rightDistance;
+      side = "right";
+    }
+    if (bottomDistance < 0.33 && bottomDistance < distance && !blocked.has("bottom")) {
+      side = "bottom";
+    }
+
+    const size = Math.max((side === "left" || side === "right" ? rect.width : rect.height) / 3, 40);
+    if (side === "left") rect.width = size;
+    else if (side === "top") rect.height = size;
+    else if (side === "right") {
+      rect.x += rect.width - size;
+      rect.width = size;
+    } else if (side === "bottom") {
+      rect.y += rect.height - size;
+      rect.height = size;
+    }
+    return side;
   }
 
   private getDropOverlayRect(event: DragEvent, leaf: WorkspaceLeaf, side: WorkspaceDropTarget["side"], item: WorkspaceItem = leaf): DOMRect | null {
