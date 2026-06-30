@@ -235,11 +235,22 @@ describe("Obsidian popout and tab list DOM", () => {
     const second = new WorkspaceLeaf(app.workspace);
     tabs.appendChild(second, false);
     app.workspace.setActiveLeaf(first);
+    const setActiveLeaf = vi.spyOn(app.workspace, "setActiveLeaf");
 
     second.tabHeaderEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
     expect(tabs.currentTab).toBe(1);
     expect(app.workspace.activeLeaf).toBe(second);
+    expect(setActiveLeaf).toHaveBeenCalledWith(second, { focus: true });
+
+    tabs.removeChild(second);
+    tabs.insertChild(1, second, false);
+    app.workspace.setActiveLeaf(first);
+    setActiveLeaf.mockClear();
+    second.tabHeaderEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+    expect(setActiveLeaf).toHaveBeenCalledOnce();
+    expect(setActiveLeaf).toHaveBeenCalledWith(second, { focus: true });
   });
 
   it("loads deferred leaves when tab headers are stacked with leaf containers", async () => {

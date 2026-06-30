@@ -63,13 +63,14 @@ export class WorkspaceTabs extends WorkspaceParent {
     this.tabHeaderContainerEl = createDiv("workspace-tab-header-container", this.containerEl);
     this.tabsInnerEl = createDiv("workspace-tab-header-container-inner", this.tabHeaderContainerEl);
     this.tabsInnerEl.addEventListener("wheel", (event) => this.handleTabHeaderWheel(event), { passive: false });
+    this.tabsInnerEl.addEventListener("click", (event) => this.onTabHeaderClick(event));
     this.tabHeaderContainerEl.addEventListener("mouseleave", () => this.unlockTabWidths());
     this.newTabButtonEl = createDiv("workspace-tab-header-new-tab", this.tabHeaderContainerEl);
     this.newTabButtonIconEl = createSpan("clickable-icon", this.newTabButtonEl);
     setIcon(this.newTabButtonIconEl, "lucide-plus");
     this.newTabButtonEl.title = "New tab";
     this.newTabButtonIconEl.setAttribute("aria-label", "New tab");
-    this.newTabButtonEl.addEventListener("click", () => {
+    this.newTabButtonIconEl.addEventListener("click", () => {
       const leaf = new WorkspaceLeaf(this.workspace, undefined, this.containerEl.ownerDocument);
       this.appendChild(leaf);
       this.selectTabIndex(this.children.length - 1);
@@ -108,13 +109,6 @@ export class WorkspaceTabs extends WorkspaceParent {
     else this.tabsInnerEl.appendChild(child.tabHeaderEl);
 
     child.updateHeader();
-    child.tabHeaderEl.addEventListener("click", () => {
-      const childIndex = this.children.indexOf(child);
-      if (childIndex !== -1) {
-        this.selectTabIndex(childIndex);
-        this.workspace.setActiveLeaf(child, { focus: true });
-      }
-    });
 
     if (this.children.length === 1) this.currentTab = 0;
     else if (clamped <= this.currentTab) this.currentTab += 1;
@@ -291,12 +285,23 @@ export class WorkspaceTabs extends WorkspaceParent {
         .setChecked(index === this.currentTab)
         .setIcon(child.getIcon())
         .onClick(() => {
-          this.selectTab(child);
           this.workspace.setActiveLeaf(child);
         }));
     }
     const rect = this.tabListIconEl.getBoundingClientRect();
     menu.setParentElement(this.tabListIconEl).showAtPosition({ x: rect.x, y: rect.bottom, width: rect.width, overlap: true, left: true });
+  }
+
+  private onTabHeaderClick(event: MouseEvent): void {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const headerEl = target.closest(".workspace-tab-header");
+    if (!(headerEl instanceof HTMLElement) || !this.tabsInnerEl.contains(headerEl)) return;
+    const index = this.tabHeaderEls.indexOf(headerEl);
+    const child = this.children[index];
+    if (!(child instanceof WorkspaceLeaf)) return;
+    this.selectTabIndex(index);
+    this.workspace.setActiveLeaf(child, { focus: true });
   }
 
   private handleTabHeaderDrop(event: DragEvent, source: DragSource | null, hovering: boolean): DragDropResult {

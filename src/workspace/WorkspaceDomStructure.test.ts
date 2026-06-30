@@ -295,6 +295,11 @@ describe("Obsidian workspace DOM structure", () => {
     expect(tabs.tabsInnerEl.className).toBe("workspace-tab-header-container-inner");
     expect(tabs.newTabButtonEl.firstElementChild?.tagName).toBe("SPAN");
     expect(tabs.newTabButtonEl.firstElementChild?.classList.contains("clickable-icon")).toBe(true);
+    const childCount = tabs.children.length;
+    tabs.newTabButtonEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    expect(tabs.children).toHaveLength(childCount);
+    tabs.newTabButtonIconEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    expect(tabs.children).toHaveLength(childCount + 1);
     expect(tabs.tabListEl.firstElementChild?.tagName).toBe("SPAN");
     expect(tabs.tabsContainerEl.parentElement).toBe(tabs.containerEl);
 
