@@ -190,6 +190,16 @@ describe("Vault public file API", () => {
     expect(file.toString()).toBe("Notes/Today.md");
     expect(file.deleted).toBe(false);
     expect(file.saving).toBe(false);
+    expect(vault.getDirectParent(folder)).toBe(vault.root);
+    expect(vault.getDirectParent(file)).toBe(folder);
+    expect(folder.children).toContain(file);
+
+    vault.removeChild(file);
+    expect(file.parent).toBeNull();
+    expect(folder.children).not.toContain(file);
+
+    vault.addChild(file);
+    expect(file.parent).toBe(folder);
     expect(folder.children).toContain(file);
 
     await vault.rename(folder, "Archive");

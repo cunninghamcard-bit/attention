@@ -114,6 +114,29 @@ export class Vault extends Events {
     return this.root;
   }
 
+  getDirectParent(file: TAbstractFile): TFolder | null {
+    const index = file.path.lastIndexOf("/");
+    if (index === -1) return this.root;
+    const parent = this.files.get(file.path.slice(0, index));
+    return parent instanceof TFolder ? parent : null;
+  }
+
+  addChild(file: TAbstractFile): void {
+    const previous = file.parent;
+    const parent = this.getDirectParent(file);
+    if (!parent || parent === previous) return;
+    if (previous) previous.children = previous.children.filter((child) => child !== file);
+    parent.children.push(file);
+    file.parent = parent;
+  }
+
+  removeChild(file: TAbstractFile): void {
+    const parent = file.parent;
+    if (!parent) return;
+    parent.children = parent.children.filter((child) => child !== file);
+    file.parent = null;
+  }
+
   async setupConfig(): Promise<void> {
     if (!this.canPersistConfig()) return;
     await this.ensureConfigDir();
@@ -760,11 +783,10 @@ export class Vault extends Events {
 
   private attachToParent(file: TAbstractFile): void {
     if (file === this.root) return;
-    const parent = this.getParentFolderByPath(file.parentPath);
+    const parent = this.getDirectParent(file);
     if (!parent) return;
-    file.parent = parent;
     if (!parent.children.includes(file)) {
-      parent.children.push(file);
+      this.addChild(file);
       parent.children.sort((a, b) => {
         const folderDelta = Number(b instanceof TFolder) - Number(a instanceof TFolder);
         return folderDelta || a.name.localeCompare(b.name);
@@ -925,9 +947,7 @@ export class Vault extends Events {
   }
 
   private detachFromParent(file: TAbstractFile): void {
-    const parent = this.getParentFolderByPath(file.parentPath);
-    if (parent) parent.children = parent.children.filter((child) => child !== file);
-    file.parent = null;
+    this.removeChild(file);
   }
 
   private removeAfterExternalTrash(file: TAbstractFile): void {
