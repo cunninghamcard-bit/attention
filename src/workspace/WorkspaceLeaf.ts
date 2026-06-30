@@ -152,7 +152,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
 
   openTabHeaderMenu(event: MouseEvent, parentEl: HTMLElement = this.tabHeaderEl): Menu {
     event.preventDefault();
-    const menu = new Menu(parentEl.ownerDocument).addSections(["title", "close", "pane", "open", "action", "find", "info", "info.copy", "view", "view.linked", "system", "", "danger"]);
+    const menu = Menu.forEvent(event).addSections(["title", "close", "pane", "open", "action", "find", "info", "info.copy", "view", "view.linked", "system", "", "danger"]);
     menu.setSectionSubmenu("info.copy", { title: "Copy path", icon: "lucide-copy" });
     menu.setSectionSubmenu("view.linked", { title: "Open linked view", icon: "lucide-link" });
     if (Platform.isPhone) {
@@ -170,7 +170,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
       this.view?.onPaneMenu(menu, this.workspace.isInSidebar(this) ? "sidebar-context-menu" : "tab-header");
       this.workspace.trigger("leaf-menu", menu, this);
     }
-    menu.setParentElement(parentEl).showAtMouseEvent(event);
+    menu.setParentElement(parentEl);
     return menu;
   }
 

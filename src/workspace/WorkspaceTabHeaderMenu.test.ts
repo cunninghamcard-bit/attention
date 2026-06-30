@@ -47,8 +47,9 @@ function firstLeaf(tabs: WorkspaceTabs): WorkspaceLeaf {
   return leaf;
 }
 
-function openHeaderMenu(leaf: WorkspaceLeaf): HTMLElement {
+async function openHeaderMenu(leaf: WorkspaceLeaf): Promise<HTMLElement> {
   leaf.tabHeaderEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 11, clientY: 13 }));
+  await vi.waitFor(() => expect(document.body.querySelector(".menu")).toBeTruthy());
   const menu = document.body.querySelector<HTMLElement>(".menu");
   if (!menu) throw new Error("Expected menu");
   return menu;
@@ -127,7 +128,7 @@ describe("WorkspaceLeaf tab header menu", () => {
     });
     const onOpenTabHeaderMenu = vi.spyOn(leaf, "onOpenTabHeaderMenu");
 
-    const menu = openHeaderMenu(leaf);
+    const menu = await openHeaderMenu(leaf);
     const titles = menuTitles(menu);
 
     expect(onOpenTabHeaderMenu).toHaveBeenCalled();
@@ -156,7 +157,7 @@ describe("WorkspaceLeaf tab header menu", () => {
     tabs.appendChild(pinned, false);
     pinned.setPinned(true);
 
-    openHeaderMenu(leaf);
+    await openHeaderMenu(leaf);
     clickMenuItem("Close others");
 
     expect(tabs.children).toContain(leaf);
@@ -172,7 +173,7 @@ describe("WorkspaceLeaf tab header menu", () => {
     const second = new WorkspaceLeaf(app.workspace);
     tabs.appendChild(second, false);
 
-    openHeaderMenu(leaf);
+    await openHeaderMenu(leaf);
     clickMenuItem("Pin");
     expect(leaf.pinned).toBe(true);
     expect(leaf.tabHeaderEl.classList.contains("has-active-menu")).toBe(false);
@@ -201,7 +202,7 @@ describe("WorkspaceLeaf tab header menu", () => {
       _menu.addItem((item) => item.setSection("action").setTitle("Plugin action"));
     });
 
-    const menu = openHeaderMenu(leaf);
+    const menu = await openHeaderMenu(leaf);
     const titles = menuTitles(menu);
 
     expect(titles).toContain("Rename");
@@ -225,7 +226,7 @@ describe("WorkspaceLeaf tab header menu", () => {
     await leaf.open(view);
     await view.loadFile(file);
 
-    openHeaderMenu(leaf);
+    await openHeaderMenu(leaf);
     clickMenuItem("Rename");
     const modal = await waitForModal();
     const input = modal.querySelector<HTMLTextAreaElement>("textarea.rename-textarea");

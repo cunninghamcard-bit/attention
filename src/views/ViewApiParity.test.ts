@@ -491,6 +491,7 @@ describe("View public API parity", () => {
     const onStartLink = vi.spyOn(app.workspace, "onStartLink").mockImplementation(() => {});
 
     leaf.openTabHeaderMenu(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    await vi.waitFor(() => expect(document.body.querySelector(".menu")).toBeTruthy());
     [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
       .find((item) => item.textContent?.includes("Link tab"))
       ?.click();
@@ -503,6 +504,7 @@ describe("View public API parity", () => {
     const moveLeafToPopout = vi.spyOn(app.workspace, "moveLeafToPopout").mockReturnValue(undefined);
 
     leaf.openTabHeaderMenu(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    await vi.waitFor(() => expect(document.body.querySelector(".menu")).toBeTruthy());
     [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
       .find((item) => item.textContent?.includes("Move to new window"))
       ?.click();

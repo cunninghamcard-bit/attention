@@ -553,6 +553,7 @@ describe("WorkspaceLeaf", () => {
 
       await leaf.setViewState({ type: "rebuildable-test", state: { value: 1 }, active: true });
       leaf.openTabHeaderMenu(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+      await vi.waitFor(() => expect(document.body.querySelector(".menu")).toBeTruthy());
 
       const titleItem = document.body.querySelector<HTMLElement>(".menu-item[data-section='title']");
       expect(titleItem?.classList.contains("is-label")).toBe(true);
