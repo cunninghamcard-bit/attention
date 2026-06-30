@@ -19,6 +19,7 @@ export class WorkspaceRibbon {
   readonly items: WorkspaceRibbonItem[] = [];
   private readonly workspace: Workspace | null;
   private actions = new Map<string, HTMLElement>();
+  private draggingItemId: string | null = null;
 
   constructor(parentOrWorkspace: HTMLElement | Workspace, side: "left" | "right" = "left") {
     this.workspace = "requestSaveLayout" in parentOrWorkspace ? parentOrWorkspace : null;
@@ -33,6 +34,7 @@ export class WorkspaceRibbon {
 
   addRibbonItemButton(id: string, icon: string, title: string, callback: (event: MouseEvent) => unknown): HTMLElement {
     const button = this.makeRibbonItemButton(icon, title, callback);
+    this.installRibbonItemDrag(button, id);
     const existing = this.items.find((item) => item.id === id);
     if (existing) {
       existing.icon = icon;
@@ -45,6 +47,51 @@ export class WorkspaceRibbon {
     this.actions.set(id, button);
     this.onChange(false);
     return button;
+  }
+
+  private installRibbonItemDrag(button: HTMLElement, id: string): void {
+    button.draggable = true;
+    button.addEventListener("dragstart", (event) => {
+      this.draggingItemId = id;
+      event.dataTransfer?.setData("application/x-obsidian-ribbon-action", id);
+      event.dataTransfer?.setData("text/plain", id);
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+    });
+    button.addEventListener("dragover", (event) => {
+      const draggedId = this.getDraggedRibbonItemId(event);
+      if (!draggedId || draggedId === id) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+    });
+    button.addEventListener("drop", (event) => {
+      const draggedId = this.getDraggedRibbonItemId(event);
+      if (!draggedId || draggedId === id) return;
+      event.preventDefault();
+      const rect = button.getBoundingClientRect();
+      this.moveRibbonItem(draggedId, id, event.clientY > rect.top + rect.height / 2);
+    });
+    button.addEventListener("dragend", () => {
+      this.draggingItemId = null;
+    });
+  }
+
+  private getDraggedRibbonItemId(event: DragEvent): string | null {
+    const id = event.dataTransfer?.getData("application/x-obsidian-ribbon-action") || event.dataTransfer?.getData("text/plain") || this.draggingItemId;
+    return id && this.items.some((item) => item.id === id) ? id : null;
+  }
+
+  private moveRibbonItem(draggedId: string, targetId: string, afterTarget: boolean): void {
+    const from = this.items.findIndex((item) => item.id === draggedId);
+    if (from === -1) return;
+    const [item] = this.items.splice(from, 1);
+    let to = this.items.findIndex((entry) => entry.id === targetId);
+    if (to === -1) {
+      this.items.splice(from, 0, item);
+      return;
+    }
+    if (afterTarget) to += 1;
+    this.items.splice(to, 0, item);
+    this.onChange(true);
   }
 
   private makeRibbonItemButton(icon: string, title: string, callback: (event: MouseEvent) => unknown): HTMLElement {
