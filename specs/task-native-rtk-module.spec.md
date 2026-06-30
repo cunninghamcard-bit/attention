@@ -128,23 +128,23 @@ Scenario: streaming sanitizer mutates partial bash output
   And known RTK hook warnings are removed before RPC/TUI publication
 
 Scenario: rtk verify command reports runtime status
-  Test: TestRTKVerifyCommandReturnsRuntimeStatus
-  Given Phase 2 command results are available
+  Test: TestRTKVerifyCommandNotifiesRuntimeStatus
+  Given Phase 2 command notifications are available
   When `/rtk verify` is dispatched
-  Then the command result reports whether RTK is available
-  And the result includes the resolved RTK executable path when available
+  Then the command notification reports whether RTK is available
+  And the notification includes the resolved RTK executable path when available
 
 Scenario: rtk set rejects invalid config path
   Test: TestRTKSetCommandRejectsInvalidPath
   Given the user dispatches `/rtk set unknown.path on`
   When the RTK command handler runs
-  Then it returns a warning-level command result
+  Then it sends a warning-level command notification
   And the config file is not changed
 
 Scenario: rtk stats and clear-stats use in-memory metrics
   Test: TestRTKStatsAndClearStatsCommandsUseMetrics
   Given RTK compaction has tracked saved characters
   When `/rtk stats` is dispatched
-  Then the command result reports saved character counts
+  Then the command notification reports saved character counts
   When `/rtk clear-stats` is dispatched
   Then later `/rtk stats` reports no data

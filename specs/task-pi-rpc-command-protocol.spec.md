@@ -13,11 +13,14 @@ modules such as RTK without adding RTK-specific TUI behavior.
 
 ## Decisions
 
-- Add `extension.CommandResult` with `Message string` and `Level string`.
-- Change `extension.CommandDefinition.Handler` to return `(*extension.CommandResult, error)`.
-- Empty or invalid command result levels normalize to `info`.
+- Keep `extension.CommandDefinition.Handler` as `func(context.Context, []string, ExtensionContext) error`.
+- Add `ExtensionContext.Notify(message, level string)` for Pi-style user-visible command feedback.
+- Add `orchestrator.CommandNotification` with `Message string` and `Level string`.
+- `Orchestrator.DispatchCommand` returns collected command notifications plus an error.
+- Empty or invalid command notification levels normalize to `info`.
 - Add RPC command type `dispatch_command` with fields `name` and `args`.
 - RPC parses `args` exactly once with the existing Pi-style command argument parser before calling `Orchestrator.DispatchCommand`.
+- RPC `dispatch_command` returns optional `notifications` data when handlers emit notifications.
 - `source=="extension"` in the TUI calls RPC `dispatch_command`.
 - `source=="builtin"` keeps existing builtin-specific RPC actions.
 - `source=="prompt"` and `source=="skill"` continue submitting the full slash line as a prompt.
@@ -42,29 +45,31 @@ modules such as RTK without adding RTK-specific TUI behavior.
 - Tool execution event mutation.
 - Native RTK module.
 - Interactive command UIs.
+- Asynchronous UI event streaming for slash-command feedback.
 
 ## Completion Criteria
 
 Scenario: RPC executes extension command
-  Test: TestServeDispatchCommandExecutesExtensionCommand
+  Test: TestDispatchCommandRoutesToRegisteredHandler
   Given `get_commands` includes an extension command named "run"
   When RPC receives `dispatch_command` with name "run"
   Then `Orchestrator.DispatchCommand` executes the registered handler
   And RPC returns success
 
-Scenario: command result is returned to RPC
-  Test: TestServeDispatchCommandReturnsCommandResult
-  Given an extension command returns message "RTK available" with level "info"
+Scenario: command notifications are returned to RPC
+  Test: TestServeDispatchCommandReturnsNotifications
+  Given an extension command calls `Notify("RTK available", "info")`
   When RPC dispatches that command
-  Then the response data contains the same message
-  And the response data contains level "info"
+  Then the response data contains a notification with message "RTK available"
+  And the notification level is "info"
 
 Scenario: quoted args are parsed once
-  Test: TestServeDispatchCommandParsesQuotedArgsOnce
+  Test: TestServeDispatchCommandParsesQuotedArgsOnceAndAllowsNoNotification
   Given an extension command records its received args
   When RPC dispatches it with args `set mode "suggest mode"`
   Then the handler receives exactly `["set", "mode", "suggest mode"]`
   And no later layer reparses the args
+  And RPC success does not require a notification
 
 Scenario: handler error returns RPC failure
   Test: TestServeDispatchCommandHandlerErrorReturnsFailure
