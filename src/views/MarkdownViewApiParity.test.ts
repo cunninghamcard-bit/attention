@@ -22,6 +22,12 @@ describe("MarkdownView public API parity", () => {
     });
   });
 
+  it("exposes the current file through getFile", async () => {
+    const { file, view } = await openMarkdown("# hi");
+
+    expect(view.getFile()).toBe(file);
+  });
+
   it("exposes hoverPopover and an Obsidian-style document search panel", async () => {
     const { view } = await openMarkdown("Alpha beta alpha");
 

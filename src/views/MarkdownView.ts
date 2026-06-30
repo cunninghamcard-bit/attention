@@ -198,6 +198,10 @@ export class MarkdownView extends TextFileView {
     return MarkdownView.VIEW_TYPE;
   }
 
+  getFile(): TFile | null {
+    return this.file;
+  }
+
   canAcceptExtension(extension: string): boolean {
     return extension === "md";
   }
