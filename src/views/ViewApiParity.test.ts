@@ -170,6 +170,26 @@ describe("View public API parity", () => {
     expect(view.getState()).toEqual({});
   });
 
+  it("exposes FileView syncState and receiveSyncState like Obsidian", async () => {
+    const app = new App(document.createElement("div"));
+    app.viewRegistry.registerView("lifecycle-file-view-api", (leaf) => new LifecycleFileView(leaf));
+    app.viewRegistry.registerExtensions(["sync"], "lifecycle-file-view-api");
+    const sourceLeaf = app.workspace.getLeaf();
+    const targetLeaf = app.workspace.getLeaf("tab");
+    const file = await app.vault.create("Folder/Shared.sync", "Body");
+
+    sourceLeaf.setGroup("file-view-sync");
+    targetLeaf.setGroup("file-view-sync");
+    await sourceLeaf.setViewState({ type: "lifecycle-file-view-api", state: { file: file.path }, active: true });
+    await targetLeaf.setViewState({ type: "lifecycle-file-view-api", active: false });
+
+    (sourceLeaf.view as LifecycleFileView).syncState();
+
+    await vi.waitFor(() => {
+      expect((targetLeaf.view as LifecycleFileView).file).toBe(file);
+    });
+  });
+
   it("renders FileView parent breadcrumbs into the ItemView title parent", async () => {
     const app = new App(document.createElement("div"));
     const leaf = app.workspace.getLeaf();

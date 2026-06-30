@@ -1287,7 +1287,7 @@ export class MarkdownView extends TextFileView {
     if (Object.prototype.hasOwnProperty.call(viewState, "scroll")) this.scroll = viewState.scroll;
   }
 
-  protected override async receiveSyncState(source: MarkdownView): Promise<void> {
+  override async receiveSyncState(source: MarkdownView): Promise<void> {
     const eState = normalizeViewStatePayload(source.getEphemeralState());
     if (source.file && source.file !== this.file) {
       await this.leaf.openFile(source.file, { eState });

@@ -202,7 +202,7 @@ export class FileView extends ItemView {
     await this.app.workspace.getLeaf(false).openFile(file, { active: true, state: { mode: "source" }, eState: { rename: "all" } });
   }
 
-  protected syncState(): void {
+  syncState(): void {
     const group = this.leaf.group;
     if (!group) return;
     for (const leaf of this.app.workspace.getGroupLeaves(group)) {
@@ -212,7 +212,7 @@ export class FileView extends ItemView {
     }
   }
 
-  protected async receiveSyncState(source: FileView): Promise<void> {
+  async receiveSyncState(source: FileView): Promise<void> {
     if (!source.file || source.file === this.file) return;
     await this.leaf.openFile(source.file);
   }
