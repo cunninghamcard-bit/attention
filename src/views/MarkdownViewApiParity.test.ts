@@ -83,6 +83,31 @@ describe("MarkdownView public API parity", () => {
     expect(view.metadataHasFocus()).toBe(true);
   });
 
+  it("exposes Obsidian-style focus shifting around metadata", async () => {
+    const app = new App(document.body.appendChild(document.createElement("div")));
+    await app.ready;
+    const file = await app.vault.create("Note.md", "---\ntitle: Focus\nstatus: open\n---\nBody");
+    const leaf = app.workspace.getLeaf();
+    await leaf.openFile(file, { active: true, state: { mode: "source" } });
+    const view = leaf.view as MarkdownView;
+
+    view.editor.setCursor(4, 4);
+    view.shiftFocusAfter();
+    expect(view.editor.getCursor()).toEqual({ line: 0, ch: 0 });
+
+    view.shiftFocusBefore();
+    expect(view.metadataHasFocus()).toBe(true);
+    expect(document.activeElement).toBe(view.metadataContainerEl.querySelectorAll(".metadata-property").item(1));
+
+    view.shiftFocusBefore();
+    expect(document.activeElement).toBe(view.inlineTitleEl);
+
+    await view.setMode("preview");
+    await view.previewMode.renderer.whenIdle();
+    view.shiftFocusAfter();
+    expect(document.activeElement).toBe(view.previewMode.renderer.previewEl);
+  });
+
   it("exposes hoverPopover and an Obsidian-style document search panel", async () => {
     const { view } = await openMarkdown("Alpha beta alpha");
 

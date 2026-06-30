@@ -1371,6 +1371,27 @@ export class MarkdownView extends TextFileView {
     return active instanceof HTMLElement && this.metadataContainerEl.contains(active);
   }
 
+  shiftFocusAfter(): void {
+    if (this.currentMode === this.editMode) {
+      this.focusSourceEditor();
+      this.setSourceSelectionRange(0, 0);
+      return;
+    }
+    this.previewMode.renderer.previewEl.tabIndex = -1;
+    this.previewMode.renderer.previewEl.focus({ preventScroll: true });
+  }
+
+  shiftFocusBefore(): void {
+    if (this.canShowProperties() && !this.metadataHasFocus()) {
+      const target =
+        [...this.metadataContainerEl.querySelectorAll<HTMLElement>(".metadata-property")].at(-1) ??
+        this.metadataContainerEl.querySelector<HTMLElement>(".metadata-properties-heading");
+      target?.focus({ preventScroll: true });
+      return;
+    }
+    if (!this.inlineTitleEl.hidden && this.inlineTitleEl.isConnected) this.inlineTitleEl.focus({ preventScroll: true });
+  }
+
   private updatePropertiesInDocument(): void {
     const propertiesInDocument = this.app.vault.getConfig<string>("propertiesInDocument") ?? "visible";
     const showProperties = this.canShowProperties();
@@ -2218,12 +2239,11 @@ export class MarkdownView extends TextFileView {
   }
 
   private focusAfterMetadata(): void {
-    this.editorContainerEl.focus();
-    this.focusSourceEditor();
+    this.shiftFocusAfter();
   }
 
   private focusBeforeMetadata(): void {
-    this.focusSourceEditor();
+    this.shiftFocusBefore();
   }
 
   private focusAdjacentProperty(propertyId: string, direction: -1 | 1): void {
