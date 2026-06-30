@@ -843,6 +843,9 @@ describe("Workspace public API parity", () => {
         return openedWindow;
       },
     });
+    const forward = vi.spyOn(window.history, "forward").mockImplementation(() => {});
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    const go = vi.spyOn(window.history, "go").mockImplementation(() => {});
     try {
       const workspaceWindow = app.workspace.openPopout({ x: 10, y: 20, size: { width: 320, height: 500 } });
 
@@ -853,8 +856,17 @@ describe("Workspace public API parity", () => {
       expect(calls[0]).toContain("width=600");
       expect(calls[0]).toContain("height=600");
       expect(popoutDocument.head.querySelector("base")?.href).toBe(window.location.href);
+      workspaceWindow.win.history.forward();
+      workspaceWindow.win.history.back();
+      workspaceWindow.win.history.go(2);
+      expect(forward).toHaveBeenCalledOnce();
+      expect(back).toHaveBeenCalledOnce();
+      expect(go).toHaveBeenCalledWith(2);
       expect((openedWindow as Window & { app?: App }).app).toBe(app);
     } finally {
+      forward.mockRestore();
+      back.mockRestore();
+      go.mockRestore();
       Object.defineProperty(window, "open", { configurable: true, value: originalOpen });
     }
   });

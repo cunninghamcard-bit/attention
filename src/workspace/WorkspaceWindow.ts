@@ -49,6 +49,7 @@ export class WorkspaceWindow extends WorkspaceRoot {
     this.doc = win.document;
     installDomExtensions(win as Window & typeof globalThis);
     this.installAnimationFrameFallback();
+    this.installPopoutDocumentBootstrap();
     (this.win as Window & { app?: unknown }).app = this.workspace.app;
     this.type = "window";
     this.setDirection(state.direction ?? "vertical");
@@ -176,6 +177,23 @@ export class WorkspaceWindow extends WorkspaceRoot {
     if (!this.win.cancelAnimationFrame) {
       this.win.cancelAnimationFrame = parentWin.cancelAnimationFrame?.bind(parentWin) ?? ((handle) => this.win.clearTimeout(handle));
     }
+  }
+
+  private installPopoutDocumentBootstrap(): void {
+    const parentWin = this.workspace.app.dom.appContainerEl.ownerDocument.defaultView ?? window;
+    if (this.win === parentWin) return;
+    if (!this.doc.head.querySelector("base")) {
+      const baseEl = this.doc.createElement("base");
+      baseEl.href = parentWin.location.href;
+      this.doc.head.appendChild(baseEl);
+    }
+    const popoutWin = this.win as Window & { history?: History };
+    if (!popoutWin.history || popoutWin.history === parentWin.history) {
+      Object.defineProperty(popoutWin, "history", { configurable: true, value: Object.create(parentWin.history) as History });
+    }
+    popoutWin.history.forward = () => parentWin.history.forward();
+    popoutWin.history.back = () => parentWin.history.back();
+    popoutWin.history.go = (delta?: number) => parentWin.history.go(delta);
   }
 
   override onFocus(): void {
