@@ -54,6 +54,7 @@ export interface MarkdownSubView {
   applyScroll(scroll: number): void;
   get(): string;
   set(data: string, clear?: boolean): void;
+  getSelection(): string;
 }
 
 interface MarkdownViewModeComponent extends MarkdownSubView {
@@ -592,7 +593,7 @@ export class MarkdownView extends TextFileView {
   }
 
   getSelection(): string {
-    return this.editor.getSelection();
+    return this.currentMode.getSelection();
   }
 
   triggerClickableToken(
@@ -3492,6 +3493,10 @@ class MarkdownReadingMode implements MarkdownViewModeComponent {
     this.renderer.setSourcePath(this.owner.file?.path ?? "");
     if (clear) this.renderer.clear();
     this.renderer.set(data);
+  }
+
+  getSelection(): string {
+    return this.owner.previewRendererEl.ownerDocument.getSelection()?.toString() ?? "";
   }
 
   getFoldInfo(): FoldInfo {

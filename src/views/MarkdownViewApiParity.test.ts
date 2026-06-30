@@ -130,6 +130,25 @@ describe("MarkdownView public API parity", () => {
     expect(openGlobalSearch).toHaveBeenCalledWith("tag:#todo");
   });
 
+  it("gets selection from the active markdown mode", async () => {
+    const { app, view } = await openMarkdown("Alpha beta");
+    document.body.appendChild(app.containerEl);
+
+    view.editor.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 5 });
+    expect(view.getSelection()).toBe("Alpha");
+
+    await view.setMode("preview");
+    await view.previewMode.renderer.whenIdle();
+
+    const selection = document.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(view.previewMode.renderer.sizerEl);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+
+    expect(view.getSelection()).toContain("Alpha beta");
+  });
+
   it("exposes hoverPopover and an Obsidian-style document search panel", async () => {
     const { view } = await openMarkdown("Alpha beta alpha");
 
