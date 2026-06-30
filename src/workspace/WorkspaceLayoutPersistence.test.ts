@@ -60,6 +60,16 @@ describe("WorkspaceLayoutPersistence", () => {
     expect(trigger.mock.calls.map(([name]) => name)).not.toContain("layout-saved");
   });
 
+  it("exposes Obsidian's deserializeLayout entry point for layout nodes", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+
+    const item = await app.workspace.deserializeLayout({ id: "restored-leaf", type: "leaf", state: { type: "empty" } });
+
+    expect(item).toBeInstanceOf(WorkspaceLeaf);
+    expect(item?.id).toBe("restored-leaf");
+  });
+
   it("uses workspace-mobile.json for mobile workspace layout", async () => {
     document.body.classList.add("is-mobile");
     const app = new App(document.createElement("div"));

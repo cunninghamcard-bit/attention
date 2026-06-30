@@ -106,7 +106,8 @@ export function setIcon(parent: HTMLElement, icon: string): SVGSVGElement | null
   const normalizedIcon = normalizeIconName(icon);
   const definition = getIconDefinition(normalizedIcon);
   const firstChild = parent.firstChild;
-  if (firstChild instanceof SVGSVGElement && firstChild.classList.contains(icon)) return firstChild;
+  const SVG = parent.ownerDocument.defaultView?.SVGSVGElement;
+  if (SVG && firstChild instanceof SVG && firstChild.classList.contains(icon)) return firstChild;
   firstChild?.remove();
   if (!definition) return null;
 

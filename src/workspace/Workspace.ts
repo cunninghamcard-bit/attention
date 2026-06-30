@@ -774,6 +774,13 @@ export class Workspace extends Events {
     }
   }
 
+  async deserializeLayout(node: WorkspaceLayoutNode, side?: "root" | "left" | "right" | null): Promise<WorkspaceItem | null> {
+    const ownerDocument = side === "left"
+      ? this.leftSplit.containerEl.ownerDocument
+      : side === "right" ? this.rightSplit.containerEl.ownerDocument : this.rootSplit.containerEl.ownerDocument;
+    return this.deserializeLayoutNode(node, side === "left" || side === "right" ? side : undefined, ownerDocument);
+  }
+
   private async deserializeLayoutNode(
     node: WorkspaceLayoutNode,
     side?: "left" | "right",
