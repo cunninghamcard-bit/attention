@@ -8,10 +8,10 @@ import (
 	"maps"
 	"sync"
 
-	"github.com/cunninghamcard-bit/Attention/internal/extension"
-	"github.com/cunninghamcard-bit/Attention/internal/harness"
 	"github.com/cunninghamcard-bit/Attention/internal/agentloop"
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
+	"github.com/cunninghamcard-bit/Attention/internal/extension"
+	"github.com/cunninghamcard-bit/Attention/internal/harness"
 	"github.com/cunninghamcard-bit/Attention/internal/message"
 	"github.com/cunninghamcard-bit/Attention/internal/provider"
 	"github.com/cunninghamcard-bit/Attention/internal/resource"
@@ -200,6 +200,7 @@ func (o *Orchestrator) extensionContext(ctx context.Context) extension.Extension
 		HasPendingMessages: o.hasPendingMessages,
 		GetContextUsage:    o.contextUsage,
 		GetSystemPrompt:    o.systemPromptText,
+		Notify:             func(string, string) {},
 		Abort: func(ctx context.Context) error {
 			_, err := o.Abort(ctx)
 			return err

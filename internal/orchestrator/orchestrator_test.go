@@ -13,12 +13,12 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/cunninghamcard-bit/Attention/internal/extension"
-	"github.com/cunninghamcard-bit/Attention/internal/harness"
 	"github.com/cunninghamcard-bit/Attention/internal/agentloop"
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
 	"github.com/cunninghamcard-bit/Attention/internal/auth"
 	"github.com/cunninghamcard-bit/Attention/internal/config"
+	"github.com/cunninghamcard-bit/Attention/internal/extension"
+	"github.com/cunninghamcard-bit/Attention/internal/harness"
 	"github.com/cunninghamcard-bit/Attention/internal/hook"
 	"github.com/cunninghamcard-bit/Attention/internal/message"
 	"github.com/cunninghamcard-bit/Attention/internal/provider"
@@ -2903,10 +2903,16 @@ func TestDispatchCommandRoutesToRegisteredHandler(t *testing.T) {
 			Path: "commands",
 			Factory: func(api extension.ExtensionAPI) error {
 				api.RegisterCommand("run", extension.CommandDefinition{
-					Handler: func(_ context.Context, args []string, extCtx extension.ExtensionContext) error {
+					Handler: func(
+						_ context.Context,
+						args []string,
+						extCtx extension.ExtensionContext,
+					) error {
 						gotArgs = append([]string(nil), args...)
 						gotModel = extCtx.Model()
 						gotIdle = extCtx.IsIdle()
+						extCtx.Notify("ran", "info")
+						extCtx.Notify("warned", "warning")
 						return nil
 					},
 				})
@@ -2915,8 +2921,15 @@ func TestDispatchCommandRoutesToRegisteredHandler(t *testing.T) {
 		},
 	})
 
-	if err := o.DispatchCommand(ctx, "run", []string{"a", "b"}); err != nil {
+	notifications, err := o.DispatchCommand(ctx, "run", []string{"a", "b"})
+	if err != nil {
 		t.Fatalf("DispatchCommand: %v", err)
+	}
+	if !reflect.DeepEqual(notifications, []CommandNotification{
+		{Message: "ran", Level: "info"},
+		{Message: "warned", Level: "warning"},
+	}) {
+		t.Fatalf("DispatchCommand notifications = %#v", notifications)
 	}
 	if !reflect.DeepEqual(gotArgs, []string{"a", "b"}) {
 		t.Fatalf("args = %v, want [a b]", gotArgs)
@@ -3003,7 +3016,11 @@ func TestDuplicateCommandNameFailsAssembly(t *testing.T) {
 				Path: "first",
 				Factory: func(api extension.ExtensionAPI) error {
 					api.RegisterCommand("same", extension.CommandDefinition{
-						Handler: func(context.Context, []string, extension.ExtensionContext) error {
+						Handler: func(
+							context.Context,
+							[]string,
+							extension.ExtensionContext,
+						) error {
 							return nil
 						},
 					})
@@ -3014,7 +3031,11 @@ func TestDuplicateCommandNameFailsAssembly(t *testing.T) {
 				Path: "second",
 				Factory: func(api extension.ExtensionAPI) error {
 					api.RegisterCommand("same", extension.CommandDefinition{
-						Handler: func(context.Context, []string, extension.ExtensionContext) error {
+						Handler: func(
+							context.Context,
+							[]string,
+							extension.ExtensionContext,
+						) error {
 							return nil
 						},
 					})

@@ -273,6 +273,11 @@ type PromptResult struct {
 	Handled bool
 }
 
+type CommandNotification struct {
+	Message string
+	Level   string
+}
+
 // AbortResult reports whether an active context was canceled and what
 // transient queue state was discarded.
 type AbortResult struct {

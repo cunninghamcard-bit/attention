@@ -11,9 +11,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/cunninghamcard-bit/Attention/internal/orchestrator"
 	"github.com/cunninghamcard-bit/Attention/internal/agentloop"
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
+	"github.com/cunninghamcard-bit/Attention/internal/orchestrator"
 	"github.com/cunninghamcard-bit/Attention/internal/resource"
 	"github.com/cunninghamcard-bit/Attention/internal/session"
 )
@@ -47,6 +47,7 @@ type commandTarget interface {
 	SetSessionName(context.Context, string) error
 	LastAssistantText() (string, bool)
 	SlashCommands() []orchestrator.SlashCommand
+	DispatchCommand(context.Context, string, []string) ([]orchestrator.CommandNotification, error)
 	WaitForIdle(context.Context) error
 	Snapshot() orchestrator.Snapshot
 	SessionStats() orchestrator.SessionStats
@@ -195,11 +196,12 @@ type command struct {
 	CustomInstructions string       `json:"customInstructions"`
 	ParentSession      string       `json:"parentSession"`
 	SessionPath        string       `json:"sessionPath"`
+	Args               string       `json:"args"`
 	EntryID            string       `json:"entryId"`
 	// navigate_tree options (mirror orchestrator.NavOptions). EntryID above is
 	// the target entry; CustomInstructions above is reused for the branch summary.
-	Summarize           bool `json:"summarize"`
-	ReplaceInstructions bool `json:"replaceInstructions"`
+	Summarize           bool   `json:"summarize"`
+	ReplaceInstructions bool   `json:"replaceInstructions"`
 	Label               string `json:"label"`
 }
 
@@ -325,6 +327,7 @@ var handlers = map[string]func(*server, context.Context, command) *response{
 	"get_session_stats":       (*server).handleGetSessionStats,
 	"set_session_name":        (*server).handleSetSessionName,
 	"get_commands":            (*server).handleGetCommands,
+	"dispatch_command":        (*server).handleDispatchCommand,
 }
 
 // handlePrompt is async (pi rpc-mode.ts:389): emit success once preflight
@@ -676,6 +679,22 @@ func (s *server) handleGetCommands(_ context.Context, cmd command) *response {
 	return success(cmd.ID, "get_commands", slashCommandsJSON{Commands: out})
 }
 
+func (s *server) handleDispatchCommand(ctx context.Context, cmd command) *response {
+	name := strings.TrimSpace(cmd.Name)
+	if name == "" {
+		return failure(cmd.ID, "dispatch_command", `command not found: ""`)
+	}
+	notifications, err := s.target.DispatchCommand(ctx, name, resource.ParseCommandArgs(cmd.Args))
+	if err != nil {
+		return failure(cmd.ID, "dispatch_command", err.Error())
+	}
+	data := commandNotificationsJSONFromOrchestrator(notifications)
+	if len(data.Notifications) == 0 {
+		return success(cmd.ID, "dispatch_command", nil)
+	}
+	return success(cmd.ID, "dispatch_command", data)
+}
+
 func parseThinkingLevel(level string) (agentloop.ThinkingLevel, error) {
 	switch agentloop.ThinkingLevel(level) {
 	case agentloop.ThinkingOff, agentloop.ThinkingMinimal, agentloop.ThinkingLow,
@@ -819,6 +838,15 @@ type slashCommandsJSON struct {
 	Commands []slashCommandJSON `json:"commands"`
 }
 
+type commandNotificationsJSON struct {
+	Notifications []commandNotificationJSON `json:"notifications"`
+}
+
+type commandNotificationJSON struct {
+	Message string `json:"message"`
+	Level   string `json:"level"`
+}
+
 type slashCommandJSON struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description,omitempty"`
@@ -838,6 +866,31 @@ func slashCommandJSONFromOrchestrator(command orchestrator.SlashCommand) slashCo
 		Description: command.Description,
 		Source:      command.Source,
 		SourceInfo:  sourceInfoJSONFromResource(command.SourceInfo),
+	}
+}
+
+func commandNotificationsJSONFromOrchestrator(
+	notifications []orchestrator.CommandNotification,
+) commandNotificationsJSON {
+	out := make([]commandNotificationJSON, 0, len(notifications))
+	for _, notification := range notifications {
+		if notification.Message == "" {
+			continue
+		}
+		out = append(out, commandNotificationJSON{
+			Message: notification.Message,
+			Level:   normalizeCommandNotificationLevel(notification.Level),
+		})
+	}
+	return commandNotificationsJSON{Notifications: out}
+}
+
+func normalizeCommandNotificationLevel(level string) string {
+	switch level {
+	case "warning", "error":
+		return level
+	default:
+		return "info"
 	}
 }
 
