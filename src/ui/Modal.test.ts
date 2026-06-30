@@ -21,6 +21,15 @@ class RecordingModal extends Modal {
   }
 }
 
+class WindowCloseModal extends Modal {
+  windowCloseCount = 0;
+
+  override onWindowClose(): void {
+    this.windowCloseCount += 1;
+    super.onWindowClose();
+  }
+}
+
 describe("Modal Obsidian base behavior", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -186,6 +195,20 @@ describe("Modal Obsidian base behavior", () => {
     expect(modal.sawSelfInOpenStackOnClose).toBe(true);
     expect(callback).toHaveBeenCalledTimes(1);
     expect(Modal.getOpenModals()).not.toContain(modal);
+  });
+
+  it("keeps Obsidian's overridable window-close and animation hooks", async () => {
+    const app = new App(document.createElement("div"));
+    const modal = new WindowCloseModal(app);
+
+    await expect(modal.animateOpen()).resolves.toBeUndefined();
+    await expect(modal.animateClose()).resolves.toBeUndefined();
+
+    modal.open();
+    modal.onWindowClose();
+
+    expect(modal.windowCloseCount).toBe(1);
+    expect(modal.containerEl.parentElement).toBeNull();
   });
 
   it("closes from the close button, unprevented backdrop clicks, and history back", () => {

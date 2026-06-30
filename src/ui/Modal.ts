@@ -47,11 +47,11 @@ export class Modal extends Component implements HistoryHandler {
   private closeCallback: (() => any) | null = null;
   private win: Window | null = null;
   private selection: SavedSelection | null = null;
-  private readonly onWindowClose = () => this.close();
 
   constructor(app: App) {
     super();
     this.app = app;
+    this.onWindowClose = this.onWindowClose.bind(this);
     const doc = getActiveDocument();
     this.containerEl = doc.createElement("div");
     this.containerEl.className = "modal-container";
@@ -169,6 +169,18 @@ export class Modal extends Component implements HistoryHandler {
 
   onOpen(): Promise<void> | void {}
   onClose(): void {}
+
+  animateOpen(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  animateClose(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  onWindowClose(): void {
+    this.close();
+  }
 
   onHistoryBack(): void {
     this.close();
