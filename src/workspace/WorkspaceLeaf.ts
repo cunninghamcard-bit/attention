@@ -638,14 +638,10 @@ export class WorkspaceLeaf extends WorkspaceItem {
         if (leaf !== this && leaf.group === nextGroup && leaf.pinned) shouldPin = true;
       });
     }
-    const pinnedChanged = shouldPin !== this.pinned;
+    this.setPinned(shouldPin, { layout: options.layout });
     this.group = nextGroup;
-    this.pinned = shouldPin;
-    this.updateHeader();
     this.trigger("group-change", this.group ?? "");
-    if (pinnedChanged) {
-      this.trigger("pinned-change", this.pinned);
-    }
+    this.updateHeader();
     if (options.layout !== false) this.workspace.requestUpdateLayout();
   }
 
@@ -658,7 +654,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
     if (options.layout !== false) this.workspace.requestSaveLayout();
     if (this.group) {
       this.workspace.iterateAllLeaves((leaf) => {
-        if (leaf !== this && leaf.group === this.group) leaf.setPinned(pinned, { layout: false });
+        if (leaf !== this && leaf.group === this.group && leaf.pinned !== pinned) leaf.setPinned(pinned, { layout: false });
       });
     }
   }

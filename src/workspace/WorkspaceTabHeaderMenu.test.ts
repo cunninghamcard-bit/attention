@@ -442,6 +442,21 @@ describe("WorkspaceLeaf tab header menu", () => {
     expect(leaf.tabHeaderCloseEl.style.display).toBe("");
   });
 
+  it("routes group changes through the pinned-change contract first", async () => {
+    const app = new App(document.body.appendChild(document.createElement("div")));
+    await app.ready;
+    const leaf = firstLeaf(rootTabs(app));
+    const events: string[] = [];
+    const saveLayout = vi.spyOn(app.workspace, "requestSaveLayout");
+    leaf.on("pinned-change", (pinned) => events.push(`pinned:${pinned}`));
+    leaf.on("group-change", (group) => events.push(`group:${group}`));
+
+    leaf.setGroup("group-event-order");
+
+    expect(events).toEqual(["pinned:false", "group:group-event-order"]);
+    expect(saveLayout).toHaveBeenCalledOnce();
+  });
+
   it("routes view header more-options through pane menu and leaf-menu hooks", async () => {
     const app = new App(document.body.appendChild(document.createElement("div")));
     await app.ready;

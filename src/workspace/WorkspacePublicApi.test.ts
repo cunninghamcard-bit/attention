@@ -375,7 +375,7 @@ describe("Workspace public API parity", () => {
     expect(leaf.setPinned(true)).toBeUndefined();
     expect(leaf.setGroup("linked-pane")).toBeUndefined();
 
-    expect(pinned).toEqual([true]);
+    expect(pinned).toEqual([true, true]);
     expect(groups).toEqual(["linked-pane"]);
     expect(workspacePinned).toEqual([]);
     expect(workspaceGroups).toEqual([]);
