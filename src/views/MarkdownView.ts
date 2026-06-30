@@ -595,6 +595,32 @@ export class MarkdownView extends TextFileView {
     return this.editor.getSelection();
   }
 
+  triggerClickableToken(
+    token: { type: string; text?: string; linktext?: string; href?: string },
+    target?: boolean | string,
+  ): void {
+    if (token.type === "internal-link") {
+      const linktext = token.text ?? token.linktext;
+      if (linktext) setTimeout(() => void this.app.workspace.openLinkText(linktext, this.file?.path ?? "", target as never), 100);
+      return;
+    }
+    if (token.type === "external-link" || token.type === "external-ref-link") {
+      const href = token.href ?? token.text ?? token.linktext;
+      if (!href) return;
+      if (target === true) window.open(href, "tab");
+      else if (target === false || target == null) window.open(href);
+      else window.open(href, target);
+      return;
+    }
+    if (token.type === "tag") {
+      const text = token.text ?? token.linktext;
+      if (!text) return;
+      const tag = text.startsWith("#") ? text : `#${text}`;
+      const plugin = this.app.internalPlugins.getEnabledPluginById<{ openGlobalSearch?: (query: string) => void }>("global-search");
+      plugin?.openGlobalSearch?.(`tag:${tag}`);
+    }
+  }
+
   insertText(text: string): void {
     this.replaceSelection(text);
   }

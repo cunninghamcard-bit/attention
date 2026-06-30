@@ -112,6 +112,24 @@ describe("MarkdownView public API parity", () => {
     expect(document.activeElement).toBe(view.previewMode.renderer.previewEl);
   });
 
+  it("routes clickable tokens through Obsidian-style handlers", async () => {
+    const { app, view } = await openMarkdown("[[Target]] #todo");
+    const openLinkText = vi.spyOn(app.workspace, "openLinkText").mockResolvedValue();
+
+    view.triggerClickableToken({ type: "internal-link", text: "Target" });
+    await vi.waitFor(() => expect(openLinkText).toHaveBeenCalledWith("Target", "Note.md", undefined));
+
+    const open = vi.fn();
+    Object.defineProperty(window, "open", { configurable: true, value: open });
+    view.triggerClickableToken({ type: "external-link", href: "https://example.com" }, "pane");
+    expect(open).toHaveBeenCalledWith("https://example.com", "pane");
+
+    const openGlobalSearch = vi.fn();
+    vi.spyOn(app.internalPlugins, "getEnabledPluginById").mockReturnValue({ openGlobalSearch } as never);
+    view.triggerClickableToken({ type: "tag", text: "todo" });
+    expect(openGlobalSearch).toHaveBeenCalledWith("tag:#todo");
+  });
+
   it("exposes hoverPopover and an Obsidian-style document search panel", async () => {
     const { view } = await openMarkdown("Alpha beta alpha");
 
