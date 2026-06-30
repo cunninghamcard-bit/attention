@@ -188,6 +188,17 @@ describe("FileSystemAdapter", () => {
     await expect(fs.readFile(path.join(basePath, "Folder", "New.md"), "utf8")).rejects.toThrow();
   });
 
+  it("copies folders recursively into existing destination folders", async () => {
+    await adapter.write("Thread/a.md", "A");
+    await adapter.write("Thread/Sub/b.md", "B");
+    await adapter.mkdir("Archive/Thread");
+
+    await adapter.copy("Thread", "Archive/Thread");
+
+    expect(await adapter.read("Archive/Thread/a.md")).toBe("A");
+    expect(await adapter.read("Archive/Thread/Sub/b.md")).toBe("B");
+  });
+
   it("prevents rename destination collisions while allowing case-only renames", async () => {
     await adapter.write("Folder/Name.md", "one");
     await adapter.write("Folder/Other.md", "two");

@@ -3,6 +3,7 @@ import { Platform } from "../platform/Platform";
 
 type FileSystemModule = {
   access(path: string): Promise<void>;
+  copyFile(path: string, newPath: string): Promise<void>;
   mkdir(path: string, options?: { recursive?: boolean }): Promise<void>;
   readFile(path: string, encoding: "utf8"): Promise<string>;
   readFile(path: string): Promise<Uint8Array>;
@@ -279,8 +280,9 @@ export class FileSystemAdapter extends DataAdapter {
   }
 
   override async copy(path: string, newPath: string): Promise<void> {
-    if (await this.exists(newPath)) throw new Error(`File already exists: ${newPath}`);
-    await this.writeBinary(newPath, await this.readBinary(path));
+    const { fs, path: pathModule } = await this.loadDesktopModules();
+    await this.copyRecursive(this.getFullPath(path), this.getFullPath(newPath), fs, pathModule);
+    await this.reconcileInternalFile(newPath);
   }
 
   async remove(path: string): Promise<void> {
@@ -376,6 +378,20 @@ export class FileSystemAdapter extends DataAdapter {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  private async copyRecursive(sourcePath: string, destinationPath: string, fs: FileSystemModule, pathModule: PathModule): Promise<void> {
+    const stat = await fs.stat(sourcePath);
+    if (stat.isFile()) {
+      if (await this.existsFullPath(destinationPath, fs)) throw new Error(`File already exists: ${destinationPath}`);
+      await fs.copyFile(sourcePath, destinationPath);
+      return;
+    }
+    if (!stat.isDirectory()) return;
+    await fs.mkdir(destinationPath, { recursive: true });
+    for (const entry of await fs.readdir(sourcePath, { withFileTypes: true })) {
+      await this.copyRecursive(pathModule.join(sourcePath, entry.name), pathModule.join(destinationPath, entry.name), fs, pathModule);
     }
   }
 
