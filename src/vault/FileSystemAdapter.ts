@@ -255,7 +255,6 @@ export class FileSystemAdapter extends DataAdapter {
   async list(path: string): Promise<ListedFiles> {
     const modules = await this.loadDesktopModules();
     const root = this.getFullPath(path);
-    if (!await this.existsFullPath(root, modules.fs)) return { files: [], folders: [] };
 
     const result: ListedFiles = { files: [], folders: [] };
     const entries = await modules.fs.readdir(root, { withFileTypes: true });

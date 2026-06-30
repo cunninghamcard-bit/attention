@@ -60,6 +60,10 @@ describe("FileSystemAdapter", () => {
     expect(folderListed.folders.sort()).toEqual(["Folder/Sub"]);
   });
 
+  it("lets missing folder list calls reject like desktop readdir", async () => {
+    await expect(adapter.list("Missing")).rejects.toThrow();
+  });
+
   it("keeps in-memory adapter list results non-recursive", async () => {
     const memory = new InMemoryAdapter();
 
