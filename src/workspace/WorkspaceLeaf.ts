@@ -652,16 +652,15 @@ export class WorkspaceLeaf extends WorkspaceItem {
   setPinned(pinned: boolean): void;
   setPinned(pinned: boolean, options?: { layout?: boolean }): void;
   setPinned(pinned: boolean, options: { layout?: boolean } = {}): void {
-    if (this.pinned === pinned) return;
     this.pinned = pinned;
+    this.trigger("pinned-change", this.pinned);
+    this.updateHeader();
+    if (options.layout !== false) this.workspace.requestSaveLayout();
     if (this.group) {
       this.workspace.iterateAllLeaves((leaf) => {
         if (leaf !== this && leaf.group === this.group) leaf.setPinned(pinned, { layout: false });
       });
     }
-    this.updateHeader();
-    this.trigger("pinned-change", this.pinned);
-    if (options.layout !== false) this.workspace.requestSaveLayout();
   }
 
   canPin(): boolean {

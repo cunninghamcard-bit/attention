@@ -413,13 +413,19 @@ describe("WorkspaceLeaf tab header menu", () => {
     await app.ready;
     const tabs = rootTabs(app);
     const leaf = firstLeaf(tabs);
+    const pinnedEvents: boolean[] = [];
+    leaf.on("pinned-change", (pinned) => pinnedEvents.push(pinned));
+    const saveLayout = vi.spyOn(app.workspace, "requestSaveLayout");
 
+    leaf.setPinned(true);
     leaf.setPinned(true);
     const pinnedIcon = leaf.tabHeaderEl.querySelector<HTMLElement>(".workspace-tab-header-status-icon.mod-pinned");
     if (!pinnedIcon) throw new Error("Expected pinned status icon");
 
     leaf.updateHeader();
 
+    expect(pinnedEvents).toEqual([true, true]);
+    expect(saveLayout).toHaveBeenCalledTimes(2);
     expect(leaf.tabHeaderEl.querySelector(".workspace-tab-header-status-icon.mod-pinned")).toBe(pinnedIcon);
     expect(leaf.tabHeaderEl.getAttribute("aria-label")).toBe(leaf.getDisplayText());
     expect(leaf.tabHeaderEl.dataset.tooltipDelay).toBe("300");
