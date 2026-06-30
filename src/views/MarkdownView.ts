@@ -597,7 +597,7 @@ export class MarkdownView extends TextFileView {
   }
 
   triggerClickableToken(
-    token: { type: string; text?: string; linktext?: string; href?: string },
+    token: { type: string; text?: string; linktext?: string; href?: string; id?: string },
     target?: boolean | string,
   ): void {
     if (token.type === "internal-link") {
@@ -606,7 +606,7 @@ export class MarkdownView extends TextFileView {
       return;
     }
     if (token.type === "external-link" || token.type === "external-ref-link") {
-      const href = token.href ?? token.text ?? token.linktext;
+      const href = this.getClickableTokenHref(token);
       if (!href) return;
       if (target === true) window.open(href, "tab");
       else if (target === false || target == null) window.open(href);
@@ -620,6 +620,12 @@ export class MarkdownView extends TextFileView {
       const plugin = this.app.internalPlugins.getEnabledPluginById<{ openGlobalSearch?: (query: string) => void }>("global-search");
       plugin?.openGlobalSearch?.(`tag:${tag}`);
     }
+  }
+
+  getClickableTokenHref(token: { type: string; text?: string; linktext?: string; href?: string; id?: string }): string | null {
+    if (token.type === "external-link") return token.href ?? token.text ?? token.linktext ?? null;
+    if (token.type === "external-ref-link") return this.getExternalRefLinkHref(token.text ?? token.id ?? "");
+    return null;
   }
 
   insertText(text: string): void {

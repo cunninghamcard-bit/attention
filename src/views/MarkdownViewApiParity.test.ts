@@ -113,7 +113,8 @@ describe("MarkdownView public API parity", () => {
   });
 
   it("routes clickable tokens through Obsidian-style handlers", async () => {
-    const { app, view } = await openMarkdown("[[Target]] #todo");
+    const { app, file, view } = await openMarkdown("[[Target]] [Docs][docs] #todo\n\n[docs]: https://example.com");
+    await app.metadataCache.computeFileMetadata(file);
     const openLinkText = vi.spyOn(app.workspace, "openLinkText").mockResolvedValue();
 
     view.triggerClickableToken({ type: "internal-link", text: "Target" });
@@ -121,8 +122,9 @@ describe("MarkdownView public API parity", () => {
 
     const open = vi.fn();
     Object.defineProperty(window, "open", { configurable: true, value: open });
-    view.triggerClickableToken({ type: "external-link", href: "https://example.com" }, "pane");
+    view.triggerClickableToken({ type: "external-ref-link", text: "docs" }, "pane");
     expect(open).toHaveBeenCalledWith("https://example.com", "pane");
+    expect(view.getClickableTokenHref({ type: "external-ref-link", id: "docs" })).toBe("https://example.com");
 
     const openGlobalSearch = vi.fn();
     vi.spyOn(app.internalPlugins, "getEnabledPluginById").mockReturnValue({ openGlobalSearch } as never);
