@@ -378,6 +378,29 @@ describe("Vault public file API", () => {
     expect(cachedRead).not.toHaveBeenCalled();
   });
 
+  it("generates Markdown and Canvas file content from iterable inputs", async () => {
+    const vault = new Vault();
+    const note = await vault.create("Note.md", "Body");
+    const canvas = await vault.create("Board.canvas", "{}");
+    const text = await vault.create("Attachment.txt", "Plain");
+    note.cache("Cached note");
+    canvas.cache("Cached canvas");
+    const cachedRead = vi.spyOn(vault, "cachedRead");
+    const read = vi.spyOn(vault, "read");
+
+    const entries = [];
+    for await (const entry of vault.generateFiles([note, canvas, text], true)) entries.push({ path: entry.file.path, content: entry.content });
+
+    expect(entries).toEqual([
+      { path: "Note.md", content: "Cached note" },
+      { path: "Board.canvas", content: "Cached canvas" },
+      { path: "Attachment.txt", content: "" },
+    ]);
+    expect(cachedRead).toHaveBeenCalledWith(note);
+    expect(cachedRead).toHaveBeenCalledWith(canvas);
+    expect(read).not.toHaveBeenCalled();
+  });
+
   it("prevents copy destinations that only differ by case", async () => {
     const vault = new Vault();
     const file = await vault.create("Image.md", "image");

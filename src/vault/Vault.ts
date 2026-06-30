@@ -720,6 +720,14 @@ export class Vault extends Events {
     }
   }
 
+  async *generateFiles(files: Iterable<TFile> | AsyncIterable<TFile>, useCache = false): AsyncGenerator<{ file: TFile; content: string }> {
+    for await (const file of files) {
+      let content = "";
+      if (file.extension === "md" || file.extension === "canvas") content = useCache ? await this.cachedRead(file) : await this.read(file);
+      yield { file, content };
+    }
+  }
+
   getAllFolders(includeRoot = false): TFolder[] {
     return [...this.files.values()].filter((file): file is TFolder => file instanceof TFolder && (includeRoot || file !== this.root));
   }
