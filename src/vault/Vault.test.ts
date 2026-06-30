@@ -329,6 +329,25 @@ describe("Vault public file API", () => {
     await expect(vault.read(vault.getFileByPath("Archive/Thread/Sub/b.md")!)).resolves.toBe("B");
   });
 
+  it("prevents copy destinations that only differ by case", async () => {
+    const vault = new Vault();
+    const file = await vault.create("Image.md", "image");
+
+    await expect(vault.copy(file, "image.md")).rejects.toThrow("File already exists");
+  });
+
+  it("copies folder contents into an existing destination folder", async () => {
+    const vault = new Vault();
+    const folder = await vault.createFolder("Thread");
+    await vault.create("Thread/a.md", "A");
+    const target = await vault.createFolder("Archive/Thread");
+
+    const copied = await vault.copy(folder, "Archive/Thread");
+
+    expect(copied).toBe(target);
+    await expect(vault.read(vault.getFileByPath("Archive/Thread/a.md")!)).resolves.toBe("A");
+  });
+
   it("does not delete or trash the vault root", async () => {
     const adapter = {
       read: vi.fn(async () => ""),

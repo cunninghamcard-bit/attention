@@ -658,9 +658,10 @@ export class Vault extends Events {
 
   async copy<T extends TAbstractFile>(file: T, newPath: string): Promise<T> {
     const normalized = file instanceof TFolder ? normalizeFolderPath(newPath) : normalizeFilePath(newPath);
-    if (!normalized || this.files.has(normalized)) throw new Error(`File already exists: ${normalized}`);
+    const existing = this.getAbstractFileByPathInsensitive(normalized);
+    if (!normalized || (existing && !(file instanceof TFolder && existing instanceof TFolder))) throw new Error(`File already exists: ${normalized}`);
     if (file instanceof TFolder) {
-      const folder = await this.createFolder(normalized);
+      const folder = existing instanceof TFolder ? existing : await this.createFolder(normalized);
       for (const child of file.children) await this.copy(child, `${folder.path}/${child.name}`);
       return folder as unknown as T;
     }
