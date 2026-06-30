@@ -709,8 +709,7 @@ export class Vault extends Events {
   async getAvailablePathForAttachments(filename: string, extension: string, sourceFile?: TFile | null): Promise<string> {
     const configuredPath = this.getConfig<string>("attachmentFolderPath") ?? "/";
     const folderPath = this.resolveAttachmentFolderPath(configuredPath, sourceFile ?? null);
-    const base = filename.replace(/[\\/:*?"<>|]/g, "-").replace(/\s+/g, " ").trim() || "Recording";
-    const clippedBase = base.slice(0, 250);
+    const clippedBase = sanitizeAttachmentName(filename).slice(0, 250);
     const normalizedExtension = extension.replace(/^\./, "");
     if (!folderPath) return this.getAvailablePath(clippedBase, normalizedExtension);
 
@@ -1096,6 +1095,10 @@ function normalizeVaultPath(path: string): string {
 
 function normalizeJsonPath(path: string): string {
   return normalizeVaultPath(path);
+}
+
+function sanitizeAttachmentName(filename: string): string {
+  return normalizeVaultPath(filename).replace(/([:#|^\\\r\n]|%%|\[\[|]])/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function createFileStats(size: number, options?: DataWriteOptions, previous?: FileStats): FileStats {

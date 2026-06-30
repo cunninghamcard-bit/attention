@@ -9,7 +9,15 @@ describe("Vault attachment paths", () => {
 
     const path = await vault.getAvailablePathForAttachments("Pasted:image", "png");
 
-    expect(path).toBe("Pasted-image.png");
+    expect(path).toBe("Pasted image.png");
+  });
+
+  it("sanitizes attachment names like Obsidian link subpaths", async () => {
+    const vault = new Vault();
+
+    const path = await vault.getAvailablePathForAttachments("[[Daily]]%%:#|^\n", "png");
+
+    expect(path).toBe("Daily.png");
   });
 
   it("creates configured attachment folders and picks an available path", async () => {
