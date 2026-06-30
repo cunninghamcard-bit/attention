@@ -155,6 +155,18 @@ describe("Vault public file API", () => {
     expect(vault.getFileByPath("Notes/No Break/é.md")).toBe(file);
   });
 
+  it("throws when creating an existing folder but still ensures file parents", async () => {
+    const vault = new Vault();
+    const folder = await vault.createFolder("Notes");
+
+    await expect(vault.createFolder("Notes")).rejects.toThrow("Folder already exists.");
+    const nested = await vault.create("Notes/Sub/Today.md", "body");
+
+    expect(vault.getFolderByPath("Notes")).toBe(folder);
+    expect(vault.getFolderByPath("Notes/Sub")).not.toBeNull();
+    expect(nested.path).toBe("Notes/Sub/Today.md");
+  });
+
   it("exposes Obsidian-style vault, parent, root, and folder tree metadata", async () => {
     const vault = new Vault();
 

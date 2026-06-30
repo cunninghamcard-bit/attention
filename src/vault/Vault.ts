@@ -238,7 +238,7 @@ export class Vault extends Events {
     const existingPath = this.pathExistsForCreate(path);
     if (this.files.has(path) || (typeof existingPath === "boolean" ? existingPath : await existingPath)) throw new Error("File already exists.");
     const parentPath = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
-    if (parentPath && !this.files.has(parentPath)) await this.createFolder(parentPath);
+    if (parentPath && !this.files.has(parentPath)) await this.ensureFolder(parentPath);
     if (this.adapter) await this.adapter.write(path, data, options);
     if (this.usesAdapterEvents()) {
       const file = this.getFileByPath(path);
@@ -263,7 +263,7 @@ export class Vault extends Events {
     const existingPath = this.pathExistsForCreate(path);
     if (this.files.has(path) || (typeof existingPath === "boolean" ? existingPath : await existingPath)) throw new Error("File already exists.");
     const parentPath = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
-    if (parentPath && !this.files.has(parentPath)) await this.createFolder(parentPath);
+    if (parentPath && !this.files.has(parentPath)) await this.ensureFolder(parentPath);
     if (this.adapter?.writeBinary) await this.adapter.writeBinary(path, data, options);
     else if (this.adapter) await this.adapter.write(path, new TextDecoder().decode(data), options);
     if (this.usesAdapterEvents()) {
@@ -288,11 +288,19 @@ export class Vault extends Events {
     const normalized = normalizeVaultPath(path);
     this.checkPath(normalized);
     const existingPath = this.pathExistsForCreate(normalized);
-    if ((typeof existingPath === "boolean" ? existingPath : await existingPath) && !this.getFolderByPath(normalized)) throw new Error("Folder already exists.");
-    const existing = this.getFolderByPath(normalized);
-    if (existing) return existing;
+    if (typeof existingPath === "boolean" ? existingPath : await existingPath) throw new Error("Folder already exists.");
+    return this.createFolderAtPath(normalized);
+  }
+
+  private async ensureFolder(path: string): Promise<TFolder> {
+    const folder = this.getFolderByPath(path);
+    if (folder) return folder;
+    return this.createFolderAtPath(path);
+  }
+
+  private async createFolderAtPath(normalized: string): Promise<TFolder> {
     const parentPath = normalized.includes("/") ? normalized.slice(0, normalized.lastIndexOf("/")) : "";
-    if (parentPath && !this.files.has(parentPath)) await this.createFolder(parentPath);
+    if (parentPath && !this.files.has(parentPath)) await this.ensureFolder(parentPath);
     if (this.adapter?.mkdir) await this.adapter.mkdir(normalized);
     if (this.usesAdapterEvents()) {
       const folder = this.getFolderByPath(normalized);
