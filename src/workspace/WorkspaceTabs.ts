@@ -2,6 +2,7 @@ import { createDiv, createSpan } from "../dom/dom";
 import type { DragDropResult, DragSource, FileDragSource, FilesDragSource, LinkDragSource } from "../drag/DragManager";
 import { setIcon } from "../ui/Icon";
 import { Menu } from "../ui/Menu";
+import { Platform } from "../platform/Platform";
 import { TFile } from "../vault/TAbstractFile";
 import { WorkspaceParent } from "./WorkspaceParent";
 import type { Workspace } from "./Workspace";
@@ -199,6 +200,7 @@ export class WorkspaceTabs extends WorkspaceParent {
   }
 
   setStacked(stacked: boolean, layout = true): void {
+    if (!Platform.canStackTabs) stacked = false;
     if (this.isStacked === stacked) return;
     this.isStacked = stacked;
     this.containerEl.classList.toggle("mod-stacked", stacked);

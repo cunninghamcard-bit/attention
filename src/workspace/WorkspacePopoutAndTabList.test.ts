@@ -3,6 +3,7 @@ import { App } from "../app/App";
 import type { DragSource } from "../drag/DragManager";
 import type { TFile } from "../vault/TAbstractFile";
 import { installPopoutBodyClassSync } from "../app/BodyClasses";
+import { Platform } from "../platform/Platform";
 import { WorkspaceLeaf } from "./WorkspaceLeaf";
 import { WorkspaceTabs } from "./WorkspaceTabs";
 import { WorkspaceWindow } from "./WorkspaceWindow";
@@ -197,6 +198,20 @@ describe("Obsidian popout and tab list DOM", () => {
     expect(tabs.containerEl.classList.contains("mod-stacked")).toBe(false);
     expect(Array.from(tabs.tabsInnerEl.children)).toEqual([first.tabHeaderEl, second.tabHeaderEl]);
     expect(Array.from(tabs.tabsContainerEl.children)).toEqual([first.containerEl, second.containerEl]);
+  });
+
+  it("does not enable stacked tabs when the platform disallows it", () => {
+    const app = new App(document.createElement("div"));
+    const tabs = new WorkspaceTabs(app.workspace);
+    const descriptor = Object.getOwnPropertyDescriptor(Platform, "canStackTabs");
+    try {
+      Object.defineProperty(Platform, "canStackTabs", { configurable: true, value: false });
+      tabs.setStacked(true, false);
+      expect(tabs.isStacked).toBe(false);
+      expect(tabs.containerEl.classList.contains("mod-stacked")).toBe(false);
+    } finally {
+      if (descriptor) Object.defineProperty(Platform, "canStackTabs", descriptor);
+    }
   });
 
   it("activates a tab header click outside selectTabIndex itself", async () => {
