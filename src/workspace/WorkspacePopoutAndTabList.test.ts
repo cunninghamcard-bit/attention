@@ -214,6 +214,17 @@ describe("Obsidian popout and tab list DOM", () => {
     }
   });
 
+  it("creates a tab group from an existing leaf through the official helper", () => {
+    const app = new App(document.createElement("div"));
+    const leaf = new WorkspaceLeaf(app.workspace);
+
+    const tabs = WorkspaceTabs.createFrom(app.workspace, leaf);
+
+    expect(tabs.children).toEqual([leaf]);
+    expect(leaf.parent).toBe(tabs);
+    expect(tabs.tabsContainerEl.contains(leaf.containerEl)).toBe(true);
+  });
+
   it("activates a tab header click outside selectTabIndex itself", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;

@@ -49,6 +49,12 @@ export class WorkspaceTabs extends WorkspaceParent {
   readonly tabListIconEl: HTMLElement;
   readonly tabsContainerEl: HTMLElement;
 
+  static createFrom(workspace: Workspace, leaf: WorkspaceLeaf): WorkspaceTabs {
+    const tabs = new WorkspaceTabs(workspace);
+    tabs.insertChild(0, leaf);
+    return tabs;
+  }
+
   constructor(workspace: Workspace, id?: string, ownerDocument?: Document) {
     super(workspace, id, ownerDocument);
     this.autoManageDOM = false;

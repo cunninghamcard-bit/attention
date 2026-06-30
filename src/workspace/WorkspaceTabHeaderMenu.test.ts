@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
 import { Menu, MenuItem } from "../ui/Menu";
 import { EditableFileView } from "../views/EditableFileView";
@@ -125,10 +125,12 @@ describe("WorkspaceLeaf tab header menu", () => {
       seenMenu = menu;
       seenLeaf = menuLeaf;
     });
+    const onOpenTabHeaderMenu = vi.spyOn(leaf, "onOpenTabHeaderMenu");
 
     const menu = openHeaderMenu(leaf);
     const titles = menuTitles(menu);
 
+    expect(onOpenTabHeaderMenu).toHaveBeenCalled();
     expect(seenMenu).not.toBeNull();
     expect(seenLeaf).toBe(leaf);
     expect(leaf.tabHeaderEl.classList.contains("has-active-menu")).toBe(true);

@@ -93,7 +93,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
     this.tabHeaderEl.setAttribute("role", "tab");
     this.tabHeaderEl.draggable = true;
     this.tabHeaderEl.addEventListener("dragstart", (event) => this.workspace.onDragLeaf(event, this));
-    this.tabHeaderEl.addEventListener("contextmenu", (event) => this.openTabHeaderMenu(event));
+    this.tabHeaderEl.addEventListener("contextmenu", (event) => this.onOpenTabHeaderMenu(event));
     this.tabHeaderEl.addEventListener("mousedown", (event) => {
       if (event.button === 1) event.preventDefault();
     });
@@ -144,6 +144,10 @@ export class WorkspaceLeaf extends WorkspaceItem {
   override on<TArgs extends unknown[]>(name: string, callback: (...args: TArgs) => any, ctx?: object): EventRef<TArgs>;
   override on<TArgs extends unknown[]>(name: string, callback: (...args: TArgs) => any, ctx?: object): EventRef<TArgs> {
     return super.on(name, callback, ctx);
+  }
+
+  onOpenTabHeaderMenu(event: MouseEvent, parentEl: HTMLElement = this.tabHeaderEl): Menu {
+    return this.openTabHeaderMenu(event, parentEl);
   }
 
   openTabHeaderMenu(event: MouseEvent, parentEl: HTMLElement = this.tabHeaderEl): Menu {
