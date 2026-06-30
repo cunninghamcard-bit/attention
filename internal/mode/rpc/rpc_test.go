@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cunninghamcard-bit/Attention/internal/orchestrator"
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
+	"github.com/cunninghamcard-bit/Attention/internal/orchestrator"
 	"github.com/cunninghamcard-bit/Attention/internal/session"
 )
 
@@ -93,6 +93,64 @@ func TestRunWritesSessionHeaderAndEventLines(t *testing.T) {
 	}
 	if !reflect.DeepEqual(gotTypes, wantTypes) {
 		t.Fatalf("event types = %v, want %v", gotTypes, wantTypes)
+	}
+}
+
+func TestCompletionCriteriaRPCSerializesMutatedToolExecutionEvents(t *testing.T) {
+	runner := &fakeRunner{}
+	runner.promptFunc = func(_ context.Context, input orchestrator.PromptInput) (orchestrator.PromptResult, error) {
+		if input.Text != "prompt" {
+			t.Fatalf("prompt input text = %q, want prompt", input.Text)
+		}
+		if runner.subscriber == nil {
+			t.Fatal("subscriber was not registered before Prompt")
+		}
+		runner.subscriber(orchestrator.Event{
+			Type:          orchestrator.EventToolExecutionUpdate,
+			ToolCallID:    "call-1",
+			ToolName:      "bash",
+			Args:          map[string]any{"command": "pwd"},
+			PartialResult: map[string]any{"stdout": "mutated partial"},
+		})
+		runner.subscriber(orchestrator.Event{
+			Type:       orchestrator.EventToolExecutionEnd,
+			ToolCallID: "call-1",
+			ToolName:   "bash",
+			Result:     map[string]any{"stdout": "mutated final"},
+			IsError:    true,
+		})
+		return orchestrator.PromptResult{Message: assistantMessage("done")}, nil
+	}
+
+	var out bytes.Buffer
+	if err := run(context.Background(), runner, []string{"prompt"}, &out); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	lines := strings.Split(strings.TrimSuffix(out.String(), "\n"), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("line count = %d, want session header plus 2 events: %q", len(lines), out.String())
+	}
+
+	update := unmarshalLine(t, lines[1])
+	if update["type"] != orchestrator.EventToolExecutionUpdate ||
+		update["toolCallId"] != "call-1" ||
+		update["toolName"] != "bash" {
+		t.Fatalf("tool_execution_update ids = %v", update)
+	}
+	updatePartial := update["partialResult"].(map[string]any)
+	if updatePartial["stdout"] != "mutated partial" {
+		t.Fatalf("tool_execution_update partialResult = %v", updatePartial)
+	}
+
+	end := unmarshalLine(t, lines[2])
+	if end["type"] != orchestrator.EventToolExecutionEnd ||
+		end["toolCallId"] != "call-1" ||
+		end["toolName"] != "bash" {
+		t.Fatalf("tool_execution_end ids = %v", end)
+	}
+	endResult := end["result"].(map[string]any)
+	if endResult["stdout"] != "mutated final" || end["isError"] != true {
+		t.Fatalf("tool_execution_end result/isError = %v/%v", endResult, end["isError"])
 	}
 }
 

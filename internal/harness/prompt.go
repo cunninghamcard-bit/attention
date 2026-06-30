@@ -243,23 +243,25 @@ func (h *Harness) createTrackingEventSink(ctx context.Context, _ TurnState) (*ev
 			return err
 
 		case agentloop.ToolExecutionUpdate:
-			_, err := h.cfg.Hooks.Emit(ctx, hook.ToolExecutionUpdateEvent{
+			ev := hook.ToolExecutionUpdateEvent{
 				Type:          hook.EventToolExecutionUpdate,
 				ToolCallId:    event.ToolCallID,
 				ToolName:      event.ToolName,
 				Args:          event.Args,
 				PartialResult: event.PartialResult,
-			})
+			}
+			_, err := h.cfg.Hooks.Emit(ctx, &ev)
 			return err
 
 		case agentloop.ToolExecutionEnd:
-			_, err := h.cfg.Hooks.Emit(ctx, hook.ToolExecutionEndEvent{
+			ev := hook.ToolExecutionEndEvent{
 				Type:       hook.EventToolExecutionEnd,
 				ToolCallId: event.ToolCallID,
 				ToolName:   event.ToolName,
 				Result:     event.Result,
 				IsError:    event.IsError,
-			})
+			}
+			_, err := h.cfg.Hooks.Emit(ctx, &ev)
 			return err
 		}
 		return nil

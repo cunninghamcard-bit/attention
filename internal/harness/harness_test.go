@@ -723,6 +723,77 @@ func TestEventSinkForwardsAllEventTypes(t *testing.T) {
 	}
 }
 
+func TestEventSinkToolExecutionUpdateEndUseMutableEvents(t *testing.T) {
+	stub := newStubSession()
+	reg := hook.NewRegistry()
+
+	reg.On(hook.EventToolExecutionStart, func(_ context.Context, event any) (any, error) {
+		if _, ok := event.(*hook.ToolExecutionStartEvent); ok {
+			t.Fatal("tool_execution_start got pointer, want value notification")
+		}
+		if _, ok := event.(hook.ToolExecutionStartEvent); !ok {
+			t.Fatalf("tool_execution_start event type = %T, want value", event)
+		}
+		return nil, nil
+	})
+	reg.On(hook.EventToolExecutionUpdate, func(_ context.Context, event any) (any, error) {
+		ev, ok := event.(*hook.ToolExecutionUpdateEvent)
+		if !ok {
+			t.Fatalf("tool_execution_update event type = %T, want pointer", event)
+		}
+		ev.PartialResult = map[string]any{"stdout": "mutated partial"}
+		return nil, nil
+	})
+	reg.On(hook.EventToolExecutionUpdate, func(_ context.Context, event any) (any, error) {
+		ev := event.(*hook.ToolExecutionUpdateEvent)
+		partial := ev.PartialResult.(map[string]any)
+		if partial["stdout"] != "mutated partial" {
+			t.Fatalf("partialResult = %#v, want mutated partial", ev.PartialResult)
+		}
+		return nil, nil
+	})
+	reg.On(hook.EventToolExecutionEnd, func(_ context.Context, event any) (any, error) {
+		ev, ok := event.(*hook.ToolExecutionEndEvent)
+		if !ok {
+			t.Fatalf("tool_execution_end event type = %T, want pointer", event)
+		}
+		ev.Result = map[string]any{"stdout": "mutated final"}
+		ev.IsError = true
+		return nil, nil
+	})
+	reg.On(hook.EventToolExecutionEnd, func(_ context.Context, event any) (any, error) {
+		ev := event.(*hook.ToolExecutionEndEvent)
+		result := ev.Result.(map[string]any)
+		if result["stdout"] != "mutated final" || !ev.IsError {
+			t.Fatalf("end event = %#v, want mutated result and isError", ev)
+		}
+		return nil, nil
+	})
+
+	h := New(HarnessConfig{Session: stub, Hooks: reg})
+	emit := h.createEventSink(context.Background(), testState())
+	events := []agentloop.Event{
+		{Type: agentloop.ToolExecutionStart, ToolCallID: "tc1", ToolName: "test"},
+		{
+			Type:          agentloop.ToolExecutionUpdate,
+			ToolCallID:    "tc1",
+			ToolName:      "test",
+			PartialResult: map[string]any{"stdout": "original partial"},
+		},
+		{
+			Type:       agentloop.ToolExecutionEnd,
+			ToolCallID: "tc1",
+			ToolName:   "test",
+			Result:     map[string]any{"stdout": "original final"},
+		},
+	}
+	for _, event := range events {
+		if err := emit(event); err != nil {
+			t.Fatalf("emit %s: %v", event.Type, err)
+		}
+	}
+}
+
 func TestEventSinkTurnEventsIncludeIndexAndTimestamp(t *testing.T) {
 	stub := newStubSession()
 	reg := hook.NewRegistry()

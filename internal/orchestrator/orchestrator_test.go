@@ -13,12 +13,12 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/cunninghamcard-bit/Attention/internal/extension"
-	"github.com/cunninghamcard-bit/Attention/internal/harness"
 	"github.com/cunninghamcard-bit/Attention/internal/agentloop"
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
 	"github.com/cunninghamcard-bit/Attention/internal/auth"
 	"github.com/cunninghamcard-bit/Attention/internal/config"
+	"github.com/cunninghamcard-bit/Attention/internal/extension"
+	"github.com/cunninghamcard-bit/Attention/internal/harness"
 	"github.com/cunninghamcard-bit/Attention/internal/hook"
 	"github.com/cunninghamcard-bit/Attention/internal/message"
 	"github.com/cunninghamcard-bit/Attention/internal/provider"
@@ -1724,6 +1724,226 @@ func TestSubscribeTranslatesLifecycleEvents(t *testing.T) {
 				t.Fatal("event delta did not preserve the hook stream event")
 			}
 		})
+	}
+}
+
+func TestCompletionCriteriaToolExecutionUpdateMutationPublishesFinalEvent(t *testing.T) {
+	ctx := context.Background()
+	patched := map[string]any{"stdout": "patched"}
+	o, _ := newTestOrchestrator(t, []ExtensionSource{{
+		Path: "mutate-update",
+		Factory: func(api extension.ExtensionAPI) error {
+			api.On(hook.EventToolExecutionUpdate, func(_ context.Context, event any, _ extension.ExtensionContext) (any, error) {
+				event.(*hook.ToolExecutionUpdateEvent).PartialResult = patched
+				return nil, nil
+			})
+			return nil
+		},
+	}})
+
+	var got []Event
+	cancel := o.Subscribe(func(ev Event) {
+		if ev.Type == EventToolExecutionUpdate {
+			got = append(got, ev)
+		}
+	})
+	defer cancel()
+
+	ev := hook.ToolExecutionUpdateEvent{
+		Type:          hook.EventToolExecutionUpdate,
+		ToolCallId:    "call-1",
+		ToolName:      "bash",
+		Args:          map[string]any{"command": "pwd"},
+		PartialResult: map[string]any{"stdout": "original"},
+	}
+	_, err := o.hooks.Emit(ctx, &ev)
+	if err != nil {
+		t.Fatalf("Emit: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("published updates = %d, want 1: %#v", len(got), got)
+	}
+	if !reflect.DeepEqual(got[0].PartialResult, patched) {
+		t.Fatalf("PartialResult = %#v, want %#v", got[0].PartialResult, patched)
+	}
+}
+
+func TestCompletionCriteriaToolExecutionEndMutationPublishesFinalEvent(t *testing.T) {
+	ctx := context.Background()
+	patchedResult := map[string]any{"stdout": "scrubbed"}
+	o, _ := newTestOrchestrator(t, []ExtensionSource{{
+		Path: "mutate-end",
+		Factory: func(api extension.ExtensionAPI) error {
+			api.On(hook.EventToolExecutionEnd, func(_ context.Context, event any, _ extension.ExtensionContext) (any, error) {
+				ev := event.(*hook.ToolExecutionEndEvent)
+				ev.Result = patchedResult
+				ev.IsError = true
+				return nil, nil
+			})
+			return nil
+		},
+	}})
+
+	var got []Event
+	cancel := o.Subscribe(func(ev Event) {
+		if ev.Type == EventToolExecutionEnd {
+			got = append(got, ev)
+		}
+	})
+	defer cancel()
+
+	ev := hook.ToolExecutionEndEvent{
+		Type:       hook.EventToolExecutionEnd,
+		ToolCallId: "call-1",
+		ToolName:   "bash",
+		Result:     map[string]any{"stdout": "original"},
+		IsError:    false,
+	}
+	_, err := o.hooks.Emit(ctx, &ev)
+	if err != nil {
+		t.Fatalf("Emit: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("published ends = %d, want 1: %#v", len(got), got)
+	}
+	if !reflect.DeepEqual(got[0].Result, patchedResult) || !got[0].IsError {
+		t.Fatalf("published end = %#v, want patched result and isError", got[0])
+	}
+}
+
+func TestCompletionCriteriaToolExecutionMutationHandlersComposeAndErrorsDoNotBlockPublish(t *testing.T) {
+	ctx := context.Background()
+	hookErr := errors.New("patch failed")
+	var secondSawFirst bool
+	o, _ := newTestOrchestrator(t, []ExtensionSource{{
+		Path: "compose-update",
+		Factory: func(api extension.ExtensionAPI) error {
+			api.On(hook.EventToolExecutionUpdate, func(_ context.Context, event any, _ extension.ExtensionContext) (any, error) {
+				event.(*hook.ToolExecutionUpdateEvent).PartialResult = map[string]any{"stage": "first"}
+				return nil, nil
+			})
+			api.On(hook.EventToolExecutionUpdate, func(_ context.Context, event any, _ extension.ExtensionContext) (any, error) {
+				e := event.(*hook.ToolExecutionUpdateEvent)
+				partial, _ := e.PartialResult.(map[string]any)
+				secondSawFirst = partial["stage"] == "first"
+				e.PartialResult = map[string]any{"stage": "second"}
+				return nil, nil
+			})
+			api.On(hook.EventToolExecutionUpdate, func(context.Context, any, extension.ExtensionContext) (any, error) {
+				return nil, hookErr
+			})
+			return nil
+		},
+	}})
+	var reported []error
+	o.hooks.OnHandlerError = func(_ string, err error) {
+		reported = append(reported, err)
+	}
+
+	var got []Event
+	cancel := o.Subscribe(func(ev Event) {
+		if ev.Type == EventToolExecutionUpdate {
+			got = append(got, ev)
+		}
+	})
+	defer cancel()
+
+	ev := hook.ToolExecutionUpdateEvent{
+		Type:          hook.EventToolExecutionUpdate,
+		ToolCallId:    "call-1",
+		ToolName:      "bash",
+		PartialResult: map[string]any{"stage": "original"},
+	}
+	_, err := o.hooks.Emit(ctx, &ev)
+	if err != nil {
+		t.Fatalf("Emit: %v", err)
+	}
+	if !secondSawFirst {
+		t.Fatal("second handler did not see first handler patch")
+	}
+	if len(reported) != 1 || !errors.Is(reported[0], hookErr) {
+		t.Fatalf("reported errors = %v, want hookErr", reported)
+	}
+	if len(got) != 1 {
+		t.Fatalf("published updates = %d, want 1: %#v", len(got), got)
+	}
+	partial, _ := got[0].PartialResult.(map[string]any)
+	if partial["stage"] != "second" {
+		t.Fatalf("published partial = %#v, want second", got[0].PartialResult)
+	}
+}
+
+func TestCompletionCriteriaToolExecutionPublisherRunsAfterNativeHandlers(t *testing.T) {
+	ctx := context.Background()
+	o, _ := newTestOrchestrator(t, []ExtensionSource{{
+		Path: "publisher-last",
+		Factory: func(api extension.ExtensionAPI) error {
+			api.On(hook.EventToolExecutionStart, func(context.Context, any, extension.ExtensionContext) (any, error) {
+				return nil, nil
+			})
+			api.On(hook.EventToolExecutionUpdate, func(_ context.Context, event any, _ extension.ExtensionContext) (any, error) {
+				event.(*hook.ToolExecutionUpdateEvent).PartialResult = map[string]any{"stdout": "mutated partial"}
+				return nil, nil
+			})
+			api.On(hook.EventToolExecutionEnd, func(_ context.Context, event any, _ extension.ExtensionContext) (any, error) {
+				ev := event.(*hook.ToolExecutionEndEvent)
+				ev.Result = map[string]any{"stdout": "mutated final"}
+				ev.IsError = true
+				return nil, nil
+			})
+			return nil
+		},
+	}})
+
+	var got []Event
+	cancel := o.Subscribe(func(ev Event) {
+		switch ev.Type {
+		case EventToolExecutionStart, EventToolExecutionUpdate, EventToolExecutionEnd:
+			got = append(got, ev)
+		}
+	})
+	defer cancel()
+
+	startArgs := map[string]any{"command": "pwd"}
+	start := hook.ToolExecutionStartEvent{
+		Type:       hook.EventToolExecutionStart,
+		ToolCallId: "call-1",
+		ToolName:   "bash",
+		Args:       startArgs,
+	}
+	update := hook.ToolExecutionUpdateEvent{
+		Type:          hook.EventToolExecutionUpdate,
+		ToolCallId:    "call-1",
+		ToolName:      "bash",
+		Args:          startArgs,
+		PartialResult: map[string]any{"stdout": "original partial"},
+	}
+	end := hook.ToolExecutionEndEvent{
+		Type:       hook.EventToolExecutionEnd,
+		ToolCallId: "call-1",
+		ToolName:   "bash",
+		Result:     map[string]any{"stdout": "original final"},
+		IsError:    false,
+	}
+	for _, event := range []any{start, &update, &end} {
+		if _, err := o.hooks.Emit(ctx, event); err != nil {
+			t.Fatalf("Emit %T: %v", event, err)
+		}
+	}
+
+	if len(got) != 3 {
+		t.Fatalf("published tool execution events = %d, want 3: %#v", len(got), got)
+	}
+	if got[0].Type != EventToolExecutionStart || !reflect.DeepEqual(got[0].Args, startArgs) {
+		t.Fatalf("start event = %#v, want original args", got[0])
+	}
+	partial := got[1].PartialResult.(map[string]any)
+	if got[1].Type != EventToolExecutionUpdate || partial["stdout"] != "mutated partial" {
+		t.Fatalf("update event = %#v, want mutated partial", got[1])
+	}
+	result := got[2].Result.(map[string]any)
+	if got[2].Type != EventToolExecutionEnd || result["stdout"] != "mutated final" || !got[2].IsError {
+		t.Fatalf("end event = %#v, want mutated result and isError true", got[2])
 	}
 }
 
