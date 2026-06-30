@@ -1366,6 +1366,11 @@ export class MarkdownView extends TextFileView {
     return propertiesInDocument === "visible" && (this.currentMode !== this.editMode || this.getSourceMode() !== "source");
   }
 
+  metadataHasFocus(): boolean {
+    const active = this.metadataContainerEl.ownerDocument.activeElement;
+    return active instanceof HTMLElement && this.metadataContainerEl.contains(active);
+  }
+
   private updatePropertiesInDocument(): void {
     const propertiesInDocument = this.app.vault.getConfig<string>("propertiesInDocument") ?? "visible";
     const showProperties = this.canShowProperties();

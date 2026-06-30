@@ -68,6 +68,21 @@ describe("MarkdownView public API parity", () => {
     expect((splitLeaf?.view as MarkdownView | undefined)?.getMode()).toBe("preview");
   });
 
+  it("reports whether markdown metadata has focus", async () => {
+    const app = new App(document.body.appendChild(document.createElement("div")));
+    await app.ready;
+    const file = await app.vault.create("Note.md", "---\ntitle: Focus\n---\nBody");
+    const leaf = app.workspace.getLeaf();
+    await leaf.openFile(file, { active: true, state: { mode: "source" } });
+    const view = leaf.view as MarkdownView;
+
+    expect(view.metadataHasFocus()).toBe(false);
+
+    view.metadataContainerEl.focus();
+
+    expect(view.metadataHasFocus()).toBe(true);
+  });
+
   it("exposes hoverPopover and an Obsidian-style document search panel", async () => {
     const { view } = await openMarkdown("Alpha beta alpha");
 
