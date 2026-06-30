@@ -108,6 +108,20 @@ describe("View public API parity", () => {
     expect(() => view.onResize()).not.toThrow();
   });
 
+  it("matches Obsidian side tooltip placement for sidebar views", async () => {
+    const app = new App(document.createElement("div"));
+    app.viewRegistry.registerView("basic-view-api", (leaf) => new BasicView(leaf));
+    app.viewRegistry.registerView("action-item-view-api", (leaf) => new ActionItemView(leaf));
+
+    const mainView = new BasicView(app.workspace.getLeaf());
+    const leftLeaf = await app.workspace.ensureSideLeaf("basic-view-api", "left", { active: true, reveal: true });
+    const rightLeaf = await app.workspace.ensureSideLeaf("action-item-view-api", "right", { active: true, reveal: true });
+
+    expect(mainView.getSideTooltipPlacement()).toBeUndefined();
+    expect(leftLeaf.view?.getSideTooltipPlacement()).toBe("right");
+    expect(rightLeaf.view?.getSideTooltipPlacement()).toBe("left");
+  });
+
   it("keeps base View state as an Obsidian-style no-op by default", async () => {
     const app = new App(document.createElement("div"));
     const leaf = app.workspace.getLeaf();

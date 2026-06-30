@@ -60,6 +60,11 @@ export class View extends Component {
     return this.icon || "lucide-file";
   }
 
+  getSideTooltipPlacement(): "left" | "right" | undefined {
+    const side = (this.leaf.getRoot() as { side?: "left" | "right" }).side;
+    return side === "left" ? "right" : side === "right" ? "left" : undefined;
+  }
+
   onResize(): void {}
 
   async open(parent: HTMLElement): Promise<void> {
