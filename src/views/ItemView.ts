@@ -10,6 +10,7 @@ import { Platform } from "../platform/Platform";
 export class ItemView extends View {
   readonly headerEl: HTMLElement;
   readonly headerLeftEl: HTMLElement;
+  readonly leftSidebarToggleEl: HTMLElement | null = null;
   readonly navButtonsEl: HTMLElement;
   readonly titleContainerEl: HTMLElement;
   readonly titleParentEl: HTMLElement;
@@ -26,6 +27,16 @@ export class ItemView extends View {
     super(leaf);
     this.headerEl = createDiv("view-header", this.containerEl);
     this.headerLeftEl = createDiv("view-header-left", this.headerEl);
+    if (Platform.isMobile) {
+      this.leftSidebarToggleEl = createEl("button", "view-action clickable-icon mod-left-split-toggle mod-raised sidebar-toggle-button mod-left", this.headerLeftEl);
+      this.leftSidebarToggleEl.title = "Toggle left sidebar";
+      this.leftSidebarToggleEl.setAttribute("aria-label", "Toggle left sidebar");
+      setIcon(this.leftSidebarToggleEl, "sidebar-toggle-button-icon");
+      this.leftSidebarToggleEl.addEventListener("click", () => {
+        navigator.vibrate?.(100);
+        this.app.workspace.leftSplit.toggle("left");
+      });
+    }
     this.navButtonsEl = createDiv("view-header-nav-buttons", this.headerLeftEl);
     this.backButtonEl = this.createNavButton("Back", "lucide-arrow-left", -1);
     this.forwardButtonEl = this.createNavButton("Forward", "lucide-arrow-right", 1);

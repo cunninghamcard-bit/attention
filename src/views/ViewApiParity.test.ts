@@ -354,6 +354,29 @@ describe("View public API parity", () => {
     }
   });
 
+  it("adds the mobile left sidebar toggle to ItemView headers", async () => {
+    const previousMobile = Platform.isMobile;
+    Platform.isMobile = true;
+    try {
+      const app = new App(document.body.appendChild(document.createElement("div")));
+      app.viewRegistry.registerView("action-item-view-api", (leaf) => new ActionItemView(leaf));
+      const leaf = app.workspace.getLeaf();
+
+      await leaf.setViewState({ type: "action-item-view-api", active: true });
+      const view = leaf.view as ActionItemView;
+
+      expect(view.leftSidebarToggleEl?.className).toContain("mod-left-split-toggle");
+      expect(view.headerLeftEl.firstElementChild).toBe(view.leftSidebarToggleEl);
+
+      app.workspace.leftSplit.collapse();
+      view.leftSidebarToggleEl?.click();
+
+      expect(app.workspace.leftSplit.collapsed).toBe(false);
+    } finally {
+      Platform.isMobile = previousMobile;
+    }
+  });
+
   it("expands the right split from phone more-options contextmenu", async () => {
     const previousPhone = Platform.isPhone;
     Platform.isPhone = true;
