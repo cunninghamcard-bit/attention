@@ -185,13 +185,8 @@ export class FileView extends ItemView {
     menu.addItem((item) => item
       .setSection("action-primary")
       .setTitle("New note")
-      .setIcon("lucide-file-plus")
+      .setIcon("lucide-edit")
       .onClick(() => void this.createBreadcrumbNote(folder)));
-    menu.addItem((item) => item
-      .setSection("action-primary")
-      .setTitle("New folder")
-      .setIcon("lucide-folder-plus")
-      .onClick(() => void this.app.fileManager.createNewFolder(folder)));
     menu.setParentElement(parentEl);
     this.app.workspace.trigger("file-menu", menu, folder, "file-explorer-context-menu", this.leaf);
     menu.showAtMouseEvent(event);

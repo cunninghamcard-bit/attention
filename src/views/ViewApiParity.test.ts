@@ -218,6 +218,10 @@ describe("View public API parity", () => {
     subBreadcrumb.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
 
     expect(seenMenus).toContain("Folder/Sub:file-explorer-context-menu:true");
+    const menuTitles = Array.from(document.body.querySelectorAll<HTMLElement>(".menu-item-title")).map((el) => el.textContent);
+    expect(menuTitles).toContain("New note");
+    expect(menuTitles).not.toContain("New folder");
+    expect(document.body.querySelector(".menu-item-icon svg.lucide-edit")).not.toBeNull();
   });
 
   it("keeps ItemView header actions and navigation state in sync", async () => {
