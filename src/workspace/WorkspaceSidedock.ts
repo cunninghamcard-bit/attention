@@ -2,6 +2,10 @@ import { WorkspaceSplit } from "./WorkspaceSplit";
 import { setIcon } from "../ui/Icon";
 import type { Workspace } from "./Workspace";
 import type { WorkspaceItem } from "./WorkspaceItem";
+import { Menu } from "../ui/Menu";
+import { Notice } from "../ui/Notice";
+import { setTooltip } from "../ui/Popover";
+import { writeClipboardText } from "../dom/Clipboard";
 
 const SIDEDOCK_MIN_WIDTH = 200;
 
@@ -124,6 +128,10 @@ export class WorkspaceSidedock extends WorkspaceSplit {
     nameEl.className = "workspace-drawer-vault-name";
     const vault = this.workspace.app.vault as { getName?: () => string; name?: string };
     nameEl.textContent = vault.getName?.() ?? vault.name ?? "Obsidian";
+    const updateTooltip = () => setTooltip(nameEl, this.getVaultProfileTooltip(), { placement: "top", delay: 300 });
+    updateTooltip();
+    switcherEl.addEventListener("mouseover", updateTooltip);
+    switcherEl.addEventListener("contextmenu", (event) => this.openVaultProfileMenu(event));
 
     switcherEl.append(iconEl, nameEl);
 
@@ -146,6 +154,39 @@ export class WorkspaceSidedock extends WorkspaceSplit {
 
     profileEl.append(switcherEl, actionsEl);
     return profileEl;
+  }
+
+  private getVaultProfileTooltip(): string {
+    const vault = this.workspace.app.vault;
+    const root = vault.getRoot();
+    const adapter = vault.adapter as { getBasePath?: () => string };
+    const basePath = adapter.getBasePath?.() ?? "";
+    const files = root.getFileCount();
+    const folders = root.getFolderCount();
+    const countText = `${files} ${files === 1 ? "file" : "files"}, ${folders} ${folders === 1 ? "folder" : "folders"}`;
+    return basePath ? `${basePath}\n\n${countText}` : countText;
+  }
+
+  private openVaultProfileMenu(event: MouseEvent): void {
+    event.preventDefault();
+    const menu = Menu.forEvent(event);
+    const adapter = this.workspace.app.vault.adapter as { getBasePath?: () => string };
+    const basePath = adapter.getBasePath?.() ?? "";
+    menu.addSections(["open", "action"]);
+    menu.addItem((item) => item
+      .setSection("open")
+      .setTitle("Show in folder")
+      .setIcon("lucide-arrow-up-right")
+      .onClick(() => void this.workspace.app.showInFolder("")));
+    menu.addItem((item) => item
+      .setSection("action")
+      .setTitle("Copy path")
+      .setIcon("lucide-clipboard")
+      .setDisabled(!basePath)
+      .onClick(() => {
+        void writeClipboardText(basePath);
+        new Notice("Copied");
+      }));
   }
 
   private onSidedockResizeStart(event: MouseEvent): void {

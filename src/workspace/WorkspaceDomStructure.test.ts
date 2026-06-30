@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
 import { AppDom } from "../app/AppDom";
 import { MobileDrawer } from "../mobile/MobileDrawer";
@@ -146,6 +146,46 @@ describe("Obsidian workspace DOM structure", () => {
     expect(leftSplit.collapsed).toBe(true);
     leftSplit.toggle();
     expect(leftSplit.collapsed).toBe(false);
+  });
+
+  it("wires the desktop vault profile tooltip and context menu", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    await app.vault.createFolder("Folder");
+    await app.vault.create("Folder/Note.md", "Body");
+    (app.vault.adapter as { getBasePath?: () => string }).getBasePath = () => "/Users/example/Vault";
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
+    const showInFolder = vi.spyOn(app, "showInFolder").mockResolvedValue(undefined);
+    const leftSplit = app.workspace.leftSplit;
+    if (!(leftSplit instanceof WorkspaceSidedock)) throw new Error("Expected desktop left sidedock");
+    const switcherEl = leftSplit.containerEl.querySelector<HTMLElement>(".workspace-drawer-vault-switcher");
+    const nameEl = leftSplit.containerEl.querySelector<HTMLElement>(".workspace-drawer-vault-name");
+    if (!switcherEl || !nameEl) throw new Error("Expected vault profile");
+
+    switcherEl.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+
+    expect(nameEl.getAttribute("aria-label")).toContain("/Users/example/Vault");
+    expect(nameEl.getAttribute("aria-label")).toContain("1 file, 1 folder");
+
+    switcherEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 20 }));
+    await vi.waitFor(() => expect(document.body.querySelector(".menu")).toBeTruthy());
+    const menuTitles = Array.from(document.body.querySelectorAll<HTMLElement>(".menu-item-title"));
+    const showTitle = menuTitles.find((el) => el.textContent === "Show in folder");
+    const copyTitle = menuTitles.find((el) => el.textContent === "Copy path");
+    if (!showTitle || !copyTitle) throw new Error("Expected vault profile menu items");
+
+    showTitle.closest<HTMLElement>(".menu-item")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(showInFolder).toHaveBeenCalledWith("");
+
+    switcherEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 20 }));
+    await vi.waitFor(() => expect(document.body.querySelector(".menu")).toBeTruthy());
+    const copyMenuTitle = Array.from(document.body.querySelectorAll<HTMLElement>(".menu-item-title")).find((el) => el.textContent === "Copy path");
+    copyMenuTitle?.closest<HTMLElement>(".menu-item")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    await vi.waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith("/Users/example/Vault"));
   });
 
   it("clamps sidedock resizing to Obsidian's workspace-relative bounds", async () => {
