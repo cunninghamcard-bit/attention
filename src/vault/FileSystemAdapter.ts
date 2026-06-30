@@ -10,6 +10,7 @@ type FileSystemModule = {
   readdir(path: string, options: { withFileTypes: true }): Promise<DirEntry[]>;
   rename(oldPath: string, newPath: string): Promise<void>;
   rm(path: string, options?: { force?: boolean; maxRetries?: number; recursive?: boolean }): Promise<void>;
+  rmdir(path: string): Promise<void>;
   stat(path: string): Promise<FileSystemStat>;
   unlink(path: string): Promise<void>;
   utimes(path: string, atime: Date, mtime: Date): Promise<void>;
@@ -293,7 +294,8 @@ export class FileSystemAdapter extends DataAdapter {
 
   async rmdir(path: string, recursive = false): Promise<void> {
     const { fs } = await this.loadDesktopModules();
-    await fs.rm(this.getFullPath(path), { maxRetries: 5, recursive });
+    if (recursive) await fs.rm(this.getFullPath(path), { maxRetries: 5, recursive: true });
+    else await fs.rmdir(this.getFullPath(path));
     await this.reconcileInternalFile(path);
   }
 

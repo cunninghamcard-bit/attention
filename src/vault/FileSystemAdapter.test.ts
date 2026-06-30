@@ -199,6 +199,14 @@ describe("FileSystemAdapter", () => {
     expect(await adapter.read("Archive/Thread/Sub/b.md")).toBe("B");
   });
 
+  it("removes empty folders with non-recursive rmdir", async () => {
+    await adapter.mkdir("Empty");
+
+    await adapter.rmdir("Empty");
+
+    expect(await adapter.exists("Empty")).toBe(false);
+  });
+
   it("prevents rename destination collisions while allowing case-only renames", async () => {
     await adapter.write("Folder/Name.md", "one");
     await adapter.write("Folder/Other.md", "two");
