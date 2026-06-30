@@ -416,6 +416,50 @@ describe("Workspace public API parity", () => {
     expect(instance?.resizeCount).toBe(1);
   });
 
+  it("forwards leaf ResizeObserver changes to the active view and disconnects on detach", async () => {
+    const resizeObserverDescriptor = Object.getOwnPropertyDescriptor(window, "ResizeObserver");
+    let callback: ResizeObserverCallback | null = null;
+    let disconnected = false;
+    class FakeResizeObserver {
+      constructor(cb: ResizeObserverCallback) {
+        callback = cb;
+      }
+
+      observe(): void {}
+
+      disconnect(): void {
+        disconnected = true;
+      }
+    }
+    Object.defineProperty(window, "ResizeObserver", { configurable: true, value: FakeResizeObserver });
+    const app = new App(document.createElement("div"));
+    if (resizeObserverDescriptor) Object.defineProperty(window, "ResizeObserver", resizeObserverDescriptor);
+    else delete (window as typeof window & { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+    try {
+      let instance: PlainView | null = null;
+      app.viewRegistry.registerView("plain-public-api-test", (leaf) => {
+        instance = new PlainView(leaf);
+        return instance;
+      });
+      const leaf = app.workspace.getLeaf();
+      await leaf.setViewState({ type: "plain-public-api-test", state: {} });
+      Object.defineProperty(leaf.containerEl, "offsetWidth", { configurable: true, value: 320 });
+      Object.defineProperty(leaf.containerEl, "offsetHeight", { configurable: true, value: 180 });
+
+      callback?.([{ target: leaf.containerEl } as unknown as ResizeObserverEntry], {} as ResizeObserver);
+      await new Promise((resolve) => setTimeout(resolve, 25));
+
+      expect(instance?.resizeCount).toBe(1);
+
+      leaf.detach();
+
+      expect(disconnected).toBe(true);
+    } finally {
+      if (resizeObserverDescriptor) Object.defineProperty(window, "ResizeObserver", resizeObserverDescriptor);
+      else delete (window as typeof window & { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+    }
+  });
+
   it("creates a leaf in a split parent at the requested index", () => {
     const app = new App(document.createElement("div"));
     const originalFirst = app.workspace.rootSplit.children[0];

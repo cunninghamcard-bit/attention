@@ -70,6 +70,10 @@ export class WorkspaceLeaf extends WorkspaceItem {
   hoverPopover: HoverPopover | null = null;
   private deferredViewState: InternalViewState | null = null;
   private deferredEphemeralState: unknown;
+  private resizeObserver: ResizeObserver | null = null;
+  private resizeTimer: ReturnType<typeof setTimeout> | null = null;
+  private width = 0;
+  private height = 0;
   readonly tabHeaderEl: HTMLElement;
   readonly tabHeaderInnerIconEl: HTMLElement;
   readonly tabHeaderInnerTitleEl: HTMLElement;
@@ -118,6 +122,19 @@ export class WorkspaceLeaf extends WorkspaceItem {
 
     this.emptyView = new EmptyView(this);
     this.view = this.emptyView;
+    const ResizeObserverCtor = this.containerEl.ownerDocument.defaultView?.ResizeObserver ?? globalThis.ResizeObserver;
+    if (ResizeObserverCtor) {
+      this.resizeObserver = new ResizeObserverCtor((entries) => {
+        if (!entries.some((entry) => entry.target === this.containerEl)) return;
+        const width = this.containerEl.offsetWidth;
+        const height = this.containerEl.offsetHeight;
+        if (width === this.width && height === this.height) return;
+        this.width = width;
+        this.height = height;
+        this.queueResize();
+      });
+      this.resizeObserver.observe(this.containerEl);
+    }
     void this.view.open(this.containerEl).then(() => this.updateHeader());
   }
 
@@ -661,6 +678,14 @@ export class WorkspaceLeaf extends WorkspaceItem {
     this.view?.onResize();
   }
 
+  private queueResize(): void {
+    if (this.resizeTimer) return;
+    this.resizeTimer = setTimeout(() => {
+      this.resizeTimer = null;
+      this.onResize();
+    }, 20);
+  }
+
   highlight(): void {
     this.containerEl.classList.add("is-highlighted");
   }
@@ -675,6 +700,12 @@ export class WorkspaceLeaf extends WorkspaceItem {
     const group = this.group;
     const view = this.view;
     const shouldRemoveTabHeader = !(this.parent instanceof WorkspaceTabs);
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+    if (this.resizeTimer) {
+      clearTimeout(this.resizeTimer);
+      this.resizeTimer = null;
+    }
     if (group) for (const leaf of this.workspace.getGroupLeaves(group)) leaf.unhighlight();
     if (view) this.workspace.pushUndoHistory(this, parentId, rootId);
     this.view = this.emptyView;
