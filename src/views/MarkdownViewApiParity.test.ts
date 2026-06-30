@@ -41,6 +41,33 @@ describe("MarkdownView public API parity", () => {
     expect(view.scope).toBe(initialScope);
   });
 
+  it("exposes Obsidian mode toggle APIs including mod-click split behavior", async () => {
+    const { app, view } = await openMarkdown("Body text");
+
+    view.toggleMode();
+    await vi.waitFor(() => expect(view.getMode()).toBe("preview"));
+    await vi.waitFor(() => expect(view.leaf.working).toBe(false));
+
+    view.updateButtons();
+    expect(view.modeButtonEl.getAttribute("aria-label")).toBe("Switch to edit view");
+
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    await view.onSwitchView(click);
+
+    expect(click.defaultPrevented).toBe(true);
+    expect(view.getMode()).toBe("source");
+
+    const modClick = new MouseEvent("click", { bubbles: true, cancelable: true, ctrlKey: true });
+    await view.onSwitchView(modClick);
+    const markdownLeaves = app.workspace.getLeavesOfType("markdown");
+    const splitLeaf = markdownLeaves.find((leaf) => leaf !== view.leaf);
+
+    expect(modClick.defaultPrevented).toBe(true);
+    expect(splitLeaf).not.toBeUndefined();
+    expect(splitLeaf?.view).toBeInstanceOf(MarkdownView);
+    expect((splitLeaf?.view as MarkdownView | undefined)?.getMode()).toBe("preview");
+  });
+
   it("exposes hoverPopover and an Obsidian-style document search panel", async () => {
     const { view } = await openMarkdown("Alpha beta alpha");
 

@@ -35,6 +35,7 @@ import type { App } from "../app/App";
 import type { LinkGraphEdge } from "../metadata/LinkGraph";
 import { getAttachmentFilesFromDataTransfer, hasDataTransferAttachmentFiles, splitAttachmentFilename, type AttachmentImportFile } from "../app/AttachmentImport";
 import type { Scope } from "../hotkeys/Scope";
+import { Keymap } from "../hotkeys/Keymap";
 
 export type MarkdownViewModeType = "source" | "preview";
 export type MarkdownMode = MarkdownViewModeType;
@@ -190,9 +191,7 @@ export class MarkdownView extends TextFileView {
     this.modeButtonEl = document.createElement("button");
     this.modeButtonEl.className = "view-action clickable-icon markdown-toggle-view";
     this.modeButtonEl.type = "button";
-    this.modeButtonEl.addEventListener("click", () => {
-      this.setMode(this.getMode() === "preview" ? "source" : "preview");
-    });
+    this.modeButtonEl.addEventListener("click", (event) => void this.onSwitchView(event));
     this.actionsEl.append(this.modeButtonEl);
     this.updateModeButton();
   }
@@ -219,6 +218,26 @@ export class MarkdownView extends TextFileView {
 
   getSourceMode(): MarkdownSourceMode {
     return this.editMode.getSourceMode();
+  }
+
+  toggleMode(): void {
+    const viewState = this.leaf.getViewState();
+    viewState.state = { ...(viewState.state ?? {}), mode: this.getMode() === "preview" ? "source" : "preview" };
+    void this.leaf.setViewState(viewState, { focus: true });
+  }
+
+  async onSwitchView(event: MouseEvent): Promise<void> {
+    event.preventDefault();
+    const state = this.getState();
+    state.mode = this.getMode() === "preview" ? "source" : "preview";
+    let leaf = this.leaf;
+    const viewState = { type: MarkdownView.VIEW_TYPE, state };
+    if (Keymap.isModEvent(event)) {
+      leaf = this.app.workspace.createLeafBySplit(this.leaf);
+      await leaf.setViewState({ ...viewState, active: true, group: this.leaf }, { focus: true });
+      return;
+    }
+    await leaf.setViewState(viewState, { focus: true });
   }
 
   getState(): MarkdownViewState {
@@ -295,7 +314,7 @@ export class MarkdownView extends TextFileView {
       .setIcon("lucide-book-open")
       .setChecked(mode === "preview")
       .onClick(() => {
-        void this.setMode(mode === "preview" ? "source" : "preview");
+        this.toggleMode();
       }));
     if (mode === "source") {
       menu.addItem((item) => item
@@ -2859,6 +2878,10 @@ export class MarkdownView extends TextFileView {
   }
 
   private updateModeButton(): void {
+    this.updateButtons();
+  }
+
+  updateButtons(): void {
     const isPreview = this.getMode() === "preview";
     const icon = isPreview ? "lucide-edit-3" : "lucide-book-open";
     const label = isPreview ? "Switch to edit view" : "Switch to reading view";

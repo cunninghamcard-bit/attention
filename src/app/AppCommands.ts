@@ -449,7 +449,7 @@ export function registerAppCommands(app: App): void {
     checkCallback: (checking) => {
       const view = app.workspace.activeLeaf?.view;
       if (!(view instanceof MarkdownView)) return false;
-      if (!checking) view.setMode(view.getMode() === "preview" ? "source" : "preview");
+      if (!checking) view.toggleMode();
       return true;
     },
   });
