@@ -3933,7 +3933,7 @@ function findLinkAt(textLine: string, ch: number, line: number): SourceLinkHit |
     const end = start + match[0].length;
     const href = match[2];
     if (ch >= start && ch <= end) {
-      return /^https?:/i.test(href)
+      return isExternalUrl(href)
         ? { type: "external-link", linktext: href, href, line, start, end }
         : { type: "internal-link", linktext: href, line, start, end };
     }

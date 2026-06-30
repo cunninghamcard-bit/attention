@@ -128,6 +128,8 @@ describe("MarkdownView public API parity", () => {
 
     const open = vi.fn();
     Object.defineProperty(window, "open", { configurable: true, value: open });
+    view.triggerClickableToken({ type: "external-link", text: "mailto:x@example.com" });
+    expect(open).toHaveBeenCalledWith("mailto:x@example.com");
     view.triggerClickableToken({ type: "external-ref-link", text: "docs" }, "pane");
     expect(open).toHaveBeenCalledWith("https://example.com", "pane");
     expect(view.getClickableTokenHref({ type: "external-ref-link", id: "docs" })).toBe("https://example.com");
