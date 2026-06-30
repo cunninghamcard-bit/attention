@@ -220,6 +220,28 @@ describe("Obsidian workspace DOM structure", () => {
     expect(visibleButton.style.display).toBe("");
   });
 
+  it("opens the Obsidian ribbon context menu for hidden actions and hiding the ribbon", async () => {
+    const app = new App(document.body.appendChild(document.createElement("div")));
+    await app.ready;
+    const button = app.workspace.leftRibbon.addRibbonIcon("lucide-star", "Toggle action", () => {}, "toggle-action");
+
+    app.workspace.leftRibbon.containerEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+    const actionItem = [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
+      .find((item) => item.textContent?.includes("Toggle action"));
+    const hideRibbonItem = [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
+      .find((item) => item.textContent?.includes("Hide ribbon"));
+
+    expect(actionItem?.classList.contains("mod-checked")).toBe(true);
+    actionItem?.click();
+
+    expect(button.style.display).toBe("none");
+    expect((app.workspace.leftRibbon.serialize().hiddenItems as Record<string, boolean>)["toggle-action"]).toBe(true);
+
+    hideRibbonItem?.click();
+
+    expect(app.vault.getConfig("showRibbon")).toBe(false);
+  });
+
   it("uses the original tabs, leaf, and item view node contract", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;

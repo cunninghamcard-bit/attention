@@ -1,5 +1,6 @@
 import { createEl } from "../dom/dom";
 import { setIcon } from "../ui/Icon";
+import { Menu } from "../ui/Menu";
 import type { Workspace } from "./Workspace";
 
 interface WorkspaceRibbonItem {
@@ -27,6 +28,7 @@ export class WorkspaceRibbon {
       this.actionsEl = createEl("div", "side-dock-actions", this.containerEl);
       this.settingsEl = createEl("div", "side-dock-settings", this.containerEl);
     }
+    this.containerEl.addEventListener("contextmenu", (event) => this.onContextMenu(event));
   }
 
   addRibbonItemButton(id: string, icon: string, title: string, callback: (event: MouseEvent) => unknown): HTMLElement {
@@ -125,5 +127,29 @@ export class WorkspaceRibbon {
     }
     this.actionsEl?.replaceChildren(...buttons);
     if (persist) this.workspace?.requestSaveLayout();
+  }
+
+  private onContextMenu(event: MouseEvent): void {
+    if (event.target !== this.containerEl) return;
+    event.preventDefault();
+    const menu = new Menu(this.containerEl.ownerDocument);
+    for (const item of this.items) {
+      if (!item.buttonEl) continue;
+      menu.addItem((menuItem) => menuItem
+        .setSection("order")
+        .setTitle(item.title)
+        .setIcon(item.icon)
+        .setChecked(!item.hidden)
+        .onClick(() => {
+          item.hidden = !item.hidden;
+          this.onChange(true);
+        }));
+    }
+    menu.addItem((item) => item
+      .setSection("ribbon")
+      .setTitle("Hide ribbon")
+      .setIcon("lucide-panel-left-close")
+      .onClick(() => this.workspace?.app.vault.setConfig("showRibbon", false)));
+    menu.showAtMouseEvent(event);
   }
 }
