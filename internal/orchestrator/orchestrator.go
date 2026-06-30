@@ -368,7 +368,6 @@ func assemble(ctx context.Context, s harness.Session, cfg runtimeConfig) (*Orche
 	}
 
 	hooks := hook.NewRegistry()
-	o.registerEventHandlers(hooks)
 
 	// Declarative shell hooks: a hooks.json file maps lifecycle events to shell
 	// commands. A missing/empty file is a no-op (LoadShellHooks returns nil,nil).
@@ -448,6 +447,8 @@ func assemble(ctx context.Context, s harness.Session, cfg runtimeConfig) (*Orche
 			})
 		}
 	}
+
+	o.registerEventHandlers(hooks)
 
 	model, err := resolveRuntimeModel(prov, modelProvider, modelID, cfg.model, cfg.provider == nil)
 	if err != nil {
