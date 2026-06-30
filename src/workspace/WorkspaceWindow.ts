@@ -48,6 +48,7 @@ export class WorkspaceWindow extends WorkspaceRoot {
     this.win = win;
     this.doc = win.document;
     installDomExtensions(win as Window & typeof globalThis);
+    this.installAnimationFrameFallback();
     (this.win as Window & { app?: unknown }).app = this.workspace.app;
     this.type = "window";
     this.setDirection(state.direction ?? "vertical");
@@ -156,11 +157,25 @@ export class WorkspaceWindow extends WorkspaceRoot {
     this.workspace.trigger("window-close", this, this.win);
   }
 
+  override detach(): void {
+    this.close();
+  }
+
   private createDiv(className: string, parentEl: HTMLElement): HTMLElement {
     const el = this.doc.createElement("div");
     el.className = className;
     parentEl.appendChild(el);
     return el;
+  }
+
+  private installAnimationFrameFallback(): void {
+    const parentWin = this.workspace.app.dom.appContainerEl.ownerDocument.defaultView ?? window;
+    if (!this.win.requestAnimationFrame) {
+      this.win.requestAnimationFrame = parentWin.requestAnimationFrame?.bind(parentWin) ?? ((callback) => this.win.setTimeout(() => callback(Date.now()), 16));
+    }
+    if (!this.win.cancelAnimationFrame) {
+      this.win.cancelAnimationFrame = parentWin.cancelAnimationFrame?.bind(parentWin) ?? ((handle) => this.win.clearTimeout(handle));
+    }
   }
 
   override onFocus(): void {

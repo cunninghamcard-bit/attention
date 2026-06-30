@@ -768,6 +768,23 @@ describe("Workspace public API parity", () => {
     expect(source.getRoot()).toBe(app.workspace.rootSplit);
   });
 
+  it("detaches WorkspaceWindow through the popout close path", () => {
+    const app = new App(document.createElement("div"));
+    const popoutLeaf = app.workspace.openPopoutLeaf();
+    const workspaceWindow = popoutLeaf.getContainer();
+    if (!(workspaceWindow instanceof WorkspaceWindow)) throw new Error("Expected WorkspaceWindow");
+    let closed = false;
+    app.workspace.on("window-close", (closedWindow) => {
+      closed = closedWindow === workspaceWindow;
+    });
+
+    workspaceWindow.detach();
+
+    expect(closed).toBe(true);
+    expect(app.workspace.floatingSplit.children).not.toContain(workspaceWindow);
+    expect(workspaceWindow.appContainerEl.isConnected).toBe(false);
+  });
+
   it("defaults moveLeafToPopout size and zoom from the source leaf", async () => {
     const app = new App(document.createElement("div"));
     const file = await app.vault.create("Move defaults.md", "move");
