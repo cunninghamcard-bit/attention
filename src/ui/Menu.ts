@@ -493,12 +493,14 @@ export class Menu extends Component implements HistoryHandler {
     };
     const onKeyDown = (event: KeyboardEvent) => this.handleKeydown(event);
     win.addEventListener("keydown", onKeyDown);
-    win.setTimeout(() => {
+    const pointerTimer = win.setTimeout(() => {
+      if (typeof win.addEventListener !== "function") return;
       win.addEventListener("mousedown", onPointer);
       win.addEventListener("click", onPointer);
       win.addEventListener("contextmenu", onPointer);
     });
     this.outsideCleanup = () => {
+      win.clearTimeout(pointerTimer);
       win.removeEventListener("mousedown", onPointer);
       win.removeEventListener("click", onPointer);
       win.removeEventListener("contextmenu", onPointer);
