@@ -179,6 +179,15 @@ type wireToolResult struct {
 	IsError bool `json:"IsError"`
 }
 
+type commandDispatchResult struct {
+	Notifications []commandNotification `json:"notifications"`
+}
+
+type commandNotification struct {
+	Message string `json:"message"`
+	Level   string `json:"level"`
+}
+
 // NewRPCAgent spawns `alongPath --mode rpc`, starts the stdout reader, and
 // captures the resolved model/provider/session via an initial get_state.
 func NewRPCAgent(alongPath string) (*rpcAgent, error) {
@@ -630,6 +639,27 @@ func (a *rpcAgent) SetSessionName(name string) (string, error) {
 		return "", errors.New(resp.Error)
 	}
 	return fmt.Sprintf("Set session name to %q.", name), nil
+}
+
+func (a *rpcAgent) DispatchCommand(name, args string) (commandDispatchResult, error) {
+	resp, err := a.requestTimeout("dispatch_command", map[string]any{
+		"name": name,
+		"args": args,
+	}, builtinActionTimeout)
+	if err != nil {
+		return commandDispatchResult{}, err
+	}
+	if !resp.Success {
+		return commandDispatchResult{}, errors.New(resp.Error)
+	}
+	if len(resp.Data) == 0 {
+		return commandDispatchResult{}, nil
+	}
+	var result commandDispatchResult
+	if err := json.Unmarshal(resp.Data, &result); err != nil {
+		return commandDispatchResult{}, err
+	}
+	return result, nil
 }
 
 // --- interactive picker actions (fork / resume / tree) ---

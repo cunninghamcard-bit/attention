@@ -58,6 +58,7 @@ type ExtensionContext struct {
 	HasPendingMessages func() bool
 	GetContextUsage    func() *ContextUsage
 	GetSystemPrompt    func() string
+	Notify             func(message string, level string)
 
 	Abort            func(context.Context) error
 	Compact          func(context.Context) error

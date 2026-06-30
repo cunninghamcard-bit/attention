@@ -5,14 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
 
-	"github.com/cunninghamcard-bit/Attention/internal/extension"
-	"github.com/cunninghamcard-bit/Attention/internal/orchestrator"
 	"github.com/cunninghamcard-bit/Attention/internal/agentloop"
 	"github.com/cunninghamcard-bit/Attention/internal/ai"
+	"github.com/cunninghamcard-bit/Attention/internal/extension"
+	"github.com/cunninghamcard-bit/Attention/internal/orchestrator"
 	"github.com/cunninghamcard-bit/Attention/internal/resource"
 	"github.com/cunninghamcard-bit/Attention/internal/session"
 )
@@ -885,6 +886,127 @@ func TestServeReloadSettingsErrorIsFailure(t *testing.T) {
 	}
 }
 
+func TestServeDispatchCommandParsesQuotedArgsOnceAndAllowsNoNotification(t *testing.T) {
+	target := &fakeTarget{}
+	stdin := strings.NewReader(
+		`{"id":"d","type":"dispatch_command","name":"run","args":"one \"two three\" 'four five'"}` + "\n",
+	)
+
+	var out bytes.Buffer
+	if err := serve(context.Background(), target, stdin, &out); err != nil {
+		t.Fatalf("serve: %v", err)
+	}
+	if target.dispatchCommandCalls != 1 || target.dispatchCommandName != "run" {
+		t.Fatalf(
+			"DispatchCommand calls/name = %d/%q, want 1/run",
+			target.dispatchCommandCalls,
+			target.dispatchCommandName,
+		)
+	}
+	if !slices.Equal(target.dispatchCommandArgs, []string{"one", "two three", "four five"}) {
+		t.Fatalf("DispatchCommand args = %#v", target.dispatchCommandArgs)
+	}
+	resp := splitLines(t, out.String())[0]
+	if resp["success"] != true || resp["command"] != "dispatch_command" {
+		t.Fatalf("dispatch_command response = %v", resp)
+	}
+	if _, ok := resp["data"]; ok {
+		t.Fatalf("dispatch_command no-result response included data: %v", resp)
+	}
+}
+
+func TestServeDispatchCommandHandlerErrorReturnsFailure(t *testing.T) {
+	target := &fakeTarget{dispatchCommandErr: errors.New("nope")}
+	stdin := strings.NewReader(`{"id":"d","type":"dispatch_command","name":"run"}` + "\n")
+
+	var out bytes.Buffer
+	if err := serve(context.Background(), target, stdin, &out); err != nil {
+		t.Fatalf("serve: %v", err)
+	}
+	resp := splitLines(t, out.String())[0]
+	if resp["success"] != false || resp["command"] != "dispatch_command" {
+		t.Fatalf("dispatch_command response = %v, want failure", resp)
+	}
+	if resp["error"] != "nope" {
+		t.Fatalf("dispatch_command error = %v, want nope", resp["error"])
+	}
+}
+
+func TestServeDispatchCommandUnknownCommandReturnsFailure(t *testing.T) {
+	target := &fakeTarget{dispatchCommandErr: errors.New(`orchestrator: command "missing" not found`)}
+	stdin := strings.NewReader(`{"id":"d","type":"dispatch_command","name":"missing"}` + "\n")
+
+	var out bytes.Buffer
+	if err := serve(context.Background(), target, stdin, &out); err != nil {
+		t.Fatalf("serve: %v", err)
+	}
+	resp := splitLines(t, out.String())[0]
+	if resp["success"] != false || resp["command"] != "dispatch_command" {
+		t.Fatalf("dispatch_command response = %v, want failure", resp)
+	}
+	if !strings.Contains(resp["error"].(string), "not found") {
+		t.Fatalf("dispatch_command error = %v, want command not found", resp["error"])
+	}
+}
+
+func TestServeDispatchCommandReturnsNotifications(t *testing.T) {
+	tests := []struct {
+		name  string
+		level string
+		want  string
+	}{
+		{name: "warning", level: "warning", want: "warning"},
+		{name: "empty", level: "", want: "info"},
+		{name: "invalid", level: "critical", want: "info"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			target := &fakeTarget{
+				dispatchCommandNotifications: []orchestrator.CommandNotification{
+					{Message: "finished", Level: tt.level},
+				},
+			}
+			stdin := strings.NewReader(`{"id":"d","type":"dispatch_command","name":"run"}` + "\n")
+
+			var out bytes.Buffer
+			if err := serve(context.Background(), target, stdin, &out); err != nil {
+				t.Fatalf("serve: %v", err)
+			}
+			resp := splitLines(t, out.String())[0]
+			if resp["success"] != true || resp["command"] != "dispatch_command" {
+				t.Fatalf("dispatch_command response = %v", resp)
+			}
+			data := resp["data"].(map[string]any)
+			notifications := data["notifications"].([]any)
+			if len(notifications) != 1 {
+				t.Fatalf("notifications len = %d, want 1: %v", len(notifications), notifications)
+			}
+			notification := notifications[0].(map[string]any)
+			if notification["message"] != "finished" || notification["level"] != tt.want {
+				t.Fatalf("notification = %v, want level %q", notification, tt.want)
+			}
+		})
+	}
+}
+
+func TestServeDispatchCommandEmptyNameReturnsFailure(t *testing.T) {
+	target := &fakeTarget{}
+	stdin := strings.NewReader(`{"id":"d","type":"dispatch_command"}` + "\n")
+
+	var out bytes.Buffer
+	if err := serve(context.Background(), target, stdin, &out); err != nil {
+		t.Fatalf("serve: %v", err)
+	}
+	resp := splitLines(t, out.String())[0]
+	if resp["success"] != false || resp["command"] != "dispatch_command" {
+		t.Fatalf("dispatch_command response = %v, want failure", resp)
+	}
+	if !strings.Contains(resp["error"].(string), "not found") {
+		t.Fatalf("dispatch_command error = %v, want command not found", resp["error"])
+	}
+}
+
 func TestServeQueueModeCommandsOmitDataAndCallSetters(t *testing.T) {
 	target := &fakeTarget{}
 	stdin := strings.NewReader(
@@ -1009,70 +1131,75 @@ func assertTextImageContent(t *testing.T, content []ai.ContentBlock, text, data,
 }
 
 type fakeTarget struct {
-	mu                     sync.Mutex
-	subscriber             func(orchestrator.Event)
-	canceled               bool
-	snapshot               orchestrator.Snapshot
-	promptFunc             func(context.Context, orchestrator.PromptInput) (orchestrator.PromptResult, error)
-	promptCalls            int
-	promptInputs           []orchestrator.PromptInput
-	steerCalls             int
-	steerInputs            []orchestrator.UserInput
-	followUpCalls          int
-	followUpInputs         []orchestrator.UserInput
-	setModelCalls          int
-	thinkingCalls          int
-	cycleModelResult       orchestrator.ModelCycleResult
-	cycleModelOK           bool
-	cycleModelCalls        int
-	cycleThinkingLevel     agentloop.ThinkingLevel
-	cycleThinkingOK        bool
-	cycleThinkingCalls     int
-	sessionName            string
-	setSessionNameCalls    int
-	lastAssistantText      string
-	lastAssistantOK        bool
-	abortCalls             int
-	abortRetryCalls        int
-	navigateTreeCalls      int
-	navTarget              string
-	navOpts                orchestrator.NavOptions
-	navResult              orchestrator.NavResult
-	navErr                 error
-	reloadCalls            int
-	reloadErr              error
-	newSessionCalls        int
-	parentSession          string
-	newSessionCancelled    bool
-	newSessionErr          error
-	switchSessionCalls     int
-	sessionPath            string
-	switchCancelled        bool
-	switchSessionErr       error
-	forkCalls              int
-	forkEntryID            string
-	forkText               string
-	forkCancelled          bool
-	forkErr                error
-	cloneCalls             int
-	cloneCancelled         bool
-	cloneErr               error
-	forkMessages           []orchestrator.ForkMessage
-	entries                []orchestrator.EntrySummary
-	shutdownCalls          int
-	shutdownReason         string
-	waitIdleCalls          int
-	compactCalls           int
-	sessionStats           orchestrator.SessionStats
-	slashCommands          []orchestrator.SlashCommand
-	setSteeringModeCalls   int
-	steeringMode           orchestrator.QueueMode
-	setFollowUpModeCalls   int
-	followUpMode           orchestrator.QueueMode
-	setAutoRetryCalls      int
-	autoRetryEnabled       bool
-	setAutoCompactionCalls int
-	autoCompactionEnabled  bool
+	mu                           sync.Mutex
+	subscriber                   func(orchestrator.Event)
+	canceled                     bool
+	snapshot                     orchestrator.Snapshot
+	promptFunc                   func(context.Context, orchestrator.PromptInput) (orchestrator.PromptResult, error)
+	promptCalls                  int
+	promptInputs                 []orchestrator.PromptInput
+	steerCalls                   int
+	steerInputs                  []orchestrator.UserInput
+	followUpCalls                int
+	followUpInputs               []orchestrator.UserInput
+	setModelCalls                int
+	thinkingCalls                int
+	cycleModelResult             orchestrator.ModelCycleResult
+	cycleModelOK                 bool
+	cycleModelCalls              int
+	cycleThinkingLevel           agentloop.ThinkingLevel
+	cycleThinkingOK              bool
+	cycleThinkingCalls           int
+	sessionName                  string
+	setSessionNameCalls          int
+	lastAssistantText            string
+	lastAssistantOK              bool
+	abortCalls                   int
+	abortRetryCalls              int
+	navigateTreeCalls            int
+	navTarget                    string
+	navOpts                      orchestrator.NavOptions
+	navResult                    orchestrator.NavResult
+	navErr                       error
+	reloadCalls                  int
+	reloadErr                    error
+	newSessionCalls              int
+	parentSession                string
+	newSessionCancelled          bool
+	newSessionErr                error
+	switchSessionCalls           int
+	sessionPath                  string
+	switchCancelled              bool
+	switchSessionErr             error
+	forkCalls                    int
+	forkEntryID                  string
+	forkText                     string
+	forkCancelled                bool
+	forkErr                      error
+	cloneCalls                   int
+	cloneCancelled               bool
+	cloneErr                     error
+	forkMessages                 []orchestrator.ForkMessage
+	entries                      []orchestrator.EntrySummary
+	shutdownCalls                int
+	shutdownReason               string
+	waitIdleCalls                int
+	compactCalls                 int
+	sessionStats                 orchestrator.SessionStats
+	slashCommands                []orchestrator.SlashCommand
+	dispatchCommandCalls         int
+	dispatchCommandName          string
+	dispatchCommandArgs          []string
+	dispatchCommandNotifications []orchestrator.CommandNotification
+	dispatchCommandErr           error
+	setSteeringModeCalls         int
+	steeringMode                 orchestrator.QueueMode
+	setFollowUpModeCalls         int
+	followUpMode                 orchestrator.QueueMode
+	setAutoRetryCalls            int
+	autoRetryEnabled             bool
+	setAutoCompactionCalls       int
+	autoCompactionEnabled        bool
 }
 
 func (f *fakeTarget) Subscribe(fn func(orchestrator.Event)) func() {
@@ -1222,6 +1349,17 @@ func (f *fakeTarget) LastAssistantText() (string, bool) {
 
 func (f *fakeTarget) SlashCommands() []orchestrator.SlashCommand {
 	return append([]orchestrator.SlashCommand(nil), f.slashCommands...)
+}
+
+func (f *fakeTarget) DispatchCommand(
+	_ context.Context,
+	name string,
+	args []string,
+) ([]orchestrator.CommandNotification, error) {
+	f.dispatchCommandCalls++
+	f.dispatchCommandName = name
+	f.dispatchCommandArgs = append([]string(nil), args...)
+	return append([]orchestrator.CommandNotification(nil), f.dispatchCommandNotifications...), f.dispatchCommandErr
 }
 
 func (f *fakeTarget) WaitForIdle(context.Context) error {

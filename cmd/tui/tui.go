@@ -1432,8 +1432,9 @@ func (m *model) handleResetCtrlCCount() (tea.Model, tea.Cmd) {
 //   - builtin: invoked via the matching rpc action (new/compact/clone/reload/
 //     session/name). model/fork/tree/resume open an interactive item picker
 //     (modeled on the branch popup) that drives the corresponding rpc on select.
-//   - skill / prompt / extension: submitted as a prompt with the FULL verbatim
-//     "/..." text so the kernel expands and runs it.
+//   - skill / prompt: submitted as a prompt with the FULL verbatim "/..." text
+//     so the kernel expands and runs it.
+//   - extension: invoked through the kernel command dispatcher over rpc.
 //   - not found: the standard "Unknown command" warning.
 func (m *model) handleSlashCommand(text string) (tea.Model, tea.Cmd) {
 	m.inputModel.Clear()
@@ -1464,10 +1465,12 @@ func (m *model) handleSlashCommand(text string) (tea.Model, tea.Cmd) {
 	}
 
 	switch found.Source {
-	case "skill", "prompt", "extension":
+	case "skill", "prompt":
 		// The kernel expands and runs these. Submit the FULL verbatim "/..." text
 		// (e.g. "/skill:review") so ExpandSkillCommand / prompt expansion fires.
 		return m.submitPrompt(trimmed, nil)
+	case "extension":
+		return m.dispatchExtensionCommand(name, args)
 	case "builtin":
 		return m.dispatchBuiltin(name, args)
 	default:
@@ -1475,6 +1478,35 @@ func (m *model) handleSlashCommand(text string) (tea.Model, tea.Cmd) {
 		m.chatModel.AppendWarning(fmt.Sprintf("/%s has an unsupported command source %q", name, found.Source))
 		return m, nil
 	}
+}
+
+type extensionCommandDispatcher interface {
+	DispatchCommand(name, args string) (commandDispatchResult, error)
+}
+
+func (m *model) dispatchExtensionCommand(name, args string) (tea.Model, tea.Cmd) {
+	agent, ok := m.cfg.Agent.(extensionCommandDispatcher)
+	if !ok {
+		m.chatModel.AppendWarning(fmt.Sprintf("/%s is not available (no kernel backend)", name))
+		return m, nil
+	}
+	result, err := agent.DispatchCommand(name, args)
+	if err != nil {
+		m.chatModel.AppendWarning(fmt.Sprintf("/%s failed: %v", name, err))
+		return m, nil
+	}
+	for _, notification := range result.Notifications {
+		if notification.Message == "" {
+			continue
+		}
+		switch notification.Level {
+		case "warning", "error":
+			m.chatModel.AppendWarning(notification.Message)
+		default:
+			m.chatModel.AppendNotice(notification.Message)
+		}
+	}
+	return m, nil
 }
 
 // dispatchBuiltin runs a kernel builtin slash command by its verbatim name.

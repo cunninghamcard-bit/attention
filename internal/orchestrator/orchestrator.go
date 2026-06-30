@@ -1426,17 +1426,44 @@ func (o *Orchestrator) NavigateTree(
 	return result, nil
 }
 
-func (o *Orchestrator) DispatchCommand(ctx context.Context, name string, args []string) error {
+func (o *Orchestrator) DispatchCommand(
+	ctx context.Context,
+	name string,
+	args []string,
+) ([]CommandNotification, error) {
 	o.mu.Lock()
 	def, ok := o.commands[name]
 	o.mu.Unlock()
 	if !ok {
-		return fmt.Errorf("orchestrator: command %q not found", name)
+		return nil, fmt.Errorf("orchestrator: command %q not found", name)
 	}
 	if def.Handler == nil {
-		return fmt.Errorf("orchestrator: command %q has no handler", name)
+		return nil, fmt.Errorf("orchestrator: command %q has no handler", name)
 	}
-	return def.Handler(ctx, append([]string(nil), args...), o.extensionContext(ctx))
+	extCtx := o.extensionContext(ctx)
+	var notifications []CommandNotification
+	extCtx.Notify = func(message, level string) {
+		if message == "" {
+			return
+		}
+		notifications = append(notifications, CommandNotification{
+			Message: message,
+			Level:   normalizeCommandNotificationLevel(level),
+		})
+	}
+	if err := def.Handler(ctx, append([]string(nil), args...), extCtx); err != nil {
+		return nil, err
+	}
+	return notifications, nil
+}
+
+func normalizeCommandNotificationLevel(level string) string {
+	switch level {
+	case "warning", "error":
+		return level
+	default:
+		return "info"
+	}
 }
 
 func (o *Orchestrator) beginRun(
