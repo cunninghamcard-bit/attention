@@ -337,10 +337,21 @@ describe("Vault public file API", () => {
     Vault.recurseChildren(folder, (file) => seen.push(file.path));
     const copied = await vault.copy(folder, "Archive/Thread");
 
-    expect(seen).toEqual(["Thread/Sub", "Thread/Sub/b.md", "Thread/a.md"]);
+    expect(seen).toEqual(["Thread", "Thread/a.md", "Thread/Sub", "Thread/Sub/b.md"]);
     expect(copied.path).toBe("Archive/Thread");
     await expect(vault.read(vault.getFileByPath("Archive/Thread/a.md")!)).resolves.toBe("A");
     await expect(vault.read(vault.getFileByPath("Archive/Thread/Sub/b.md")!)).resolves.toBe("B");
+  });
+
+  it("lists files through Obsidian's tree traversal order", async () => {
+    const vault = new Vault();
+    await vault.create("Root.md", "");
+    await vault.create("Folder/a.md", "");
+    await vault.create("Folder/Sub/b.txt", "");
+    await vault.create("Folder/Sub/c.md", "");
+
+    expect(vault.getFiles().map((file) => file.path)).toEqual(["Root.md", "Folder/a.md", "Folder/Sub/c.md", "Folder/Sub/b.txt"]);
+    expect(vault.getMarkdownFiles().map((file) => file.path)).toEqual(["Root.md", "Folder/a.md", "Folder/Sub/c.md"]);
   });
 
   it("prevents copy destinations that only differ by case", async () => {

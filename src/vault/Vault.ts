@@ -687,18 +687,29 @@ export class Vault extends Events {
   }
 
   static recurseChildren(root: TFolder, cb: (file: TAbstractFile) => unknown): void {
-    for (const child of root.children) {
-      cb(child);
-      if (child instanceof TFolder) Vault.recurseChildren(child, cb);
+    const stack: TAbstractFile[] = [root];
+    while (stack.length > 0) {
+      const file = stack.pop();
+      if (!file) continue;
+      cb(file);
+      if (file instanceof TFolder) stack.push(...file.children);
     }
   }
 
   getMarkdownFiles(): TFile[] {
-    return [...this.files.values()].filter((file): file is TFile => file instanceof TFile && file.extension === "md");
+    const files: TFile[] = [];
+    Vault.recurseChildren(this.root, (file) => {
+      if (file instanceof TFile && file.extension === "md") files.push(file);
+    });
+    return files;
   }
 
   getFiles(): TFile[] {
-    return [...this.files.values()].filter((file): file is TFile => file instanceof TFile);
+    const files: TFile[] = [];
+    Vault.recurseChildren(this.root, (file) => {
+      if (file instanceof TFile) files.push(file);
+    });
+    return files;
   }
 
   getAllFolders(includeRoot = false): TFolder[] {
