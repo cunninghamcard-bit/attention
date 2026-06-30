@@ -1287,6 +1287,8 @@ export class MarkdownView extends TextFileView {
     const viewState = { ...state as Record<string, unknown> } as {
       focus?: unknown;
       focusMetadata?: unknown;
+      focusOnMobile?: unknown;
+      cursor?: unknown;
       line?: unknown;
       match?: unknown;
       matchStart?: unknown;
@@ -1312,6 +1314,9 @@ export class MarkdownView extends TextFileView {
       const end = Number(viewState.matchEnd);
       if (Number.isFinite(line) && Number.isFinite(start) && Number.isFinite(end)) this.selectLineRange(line, start, end);
       else if (Number.isFinite(line)) this.focusLine(line);
+    }
+    if (this.currentMode === this.editMode && this.applyCursorEphemeralState(viewState.cursor)) {
+      if (viewState.focus) this.focusSourceEditor();
     }
     this.currentMode.setEphemeralState(viewState);
     if (Object.prototype.hasOwnProperty.call(viewState, "scroll")) this.scroll = viewState.scroll;
@@ -1390,6 +1395,26 @@ export class MarkdownView extends TextFileView {
       return;
     }
     if (!this.inlineTitleEl.hidden && this.inlineTitleEl.isConnected) this.inlineTitleEl.focus({ preventScroll: true });
+  }
+
+  private applyCursorEphemeralState(cursor: unknown): boolean {
+    const from = this.getEphemeralCursorPosition(cursor, "from") ?? this.getEphemeralCursorPosition(cursor, "anchor") ?? this.getEphemeralCursorPosition(cursor);
+    if (!from) return false;
+    const to = this.getEphemeralCursorPosition(cursor, "to") ?? this.getEphemeralCursorPosition(cursor, "head");
+    if (to) this.editor.setSelection(from, to);
+    else this.editor.setCursor(from);
+    this.handleSourceSelectionChange();
+    return true;
+  }
+
+  private getEphemeralCursorPosition(cursor: unknown, key?: string): { line: number; ch: number } | null {
+    const value = key && cursor && typeof cursor === "object" ? (cursor as Record<string, unknown>)[key] : cursor;
+    if (!value || typeof value !== "object") return null;
+    const position = value as { line?: unknown; ch?: unknown };
+    const line = Number(position.line);
+    const ch = Number(position.ch);
+    if (!Number.isFinite(line) || !Number.isFinite(ch)) return null;
+    return { line, ch };
   }
 
   private updatePropertiesInDocument(): void {

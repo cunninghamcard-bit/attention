@@ -95,6 +95,10 @@ describe("MarkdownView public API parity", () => {
     view.shiftFocusAfter();
     expect(view.editor.getCursor()).toEqual({ line: 0, ch: 0 });
 
+    view.editor.setCursor(4, 4);
+    view.setEphemeralState({ focus: true, focusOnMobile: true, cursor: { from: { line: 0, ch: 1 } } });
+    expect(view.editor.getCursor()).toEqual({ line: 0, ch: 1 });
+
     view.shiftFocusBefore();
     expect(view.metadataHasFocus()).toBe(true);
     expect(document.activeElement).toBe(view.metadataContainerEl.querySelectorAll(".metadata-property").item(1));
