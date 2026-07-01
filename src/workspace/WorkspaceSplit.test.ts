@@ -144,12 +144,14 @@ describe("WorkspaceSplit", () => {
     Object.defineProperty(fourth.containerEl, "offsetWidth", { configurable: true, value: 260 });
 
     split.onChildResizeStart(first, new MouseEvent("mousedown", { button: 0, clientX: 0 }));
-    window.dispatchEvent(new MouseEvent("mousemove", { button: 0, clientX: 100 }));
+    const moveEvent = new MouseEvent("mousemove", { button: 0, clientX: 100, cancelable: true });
+    window.dispatchEvent(moveEvent);
 
     expect(first.containerEl.style.width).toBe("400px");
     expect(second.containerEl.style.width).toBe("200px");
     expect(third.containerEl.style.width).toBe("200px");
     expect(fourth.containerEl.style.width).toBe("220px");
+    expect(moveEvent.defaultPrevented).toBe(true);
 
     window.dispatchEvent(new MouseEvent("mouseup"));
   });

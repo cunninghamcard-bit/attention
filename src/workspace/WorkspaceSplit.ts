@@ -52,6 +52,7 @@ export class WorkspaceSplit extends WorkspaceParent {
     const move = (moveEvent: MouseEvent) => {
       const position = this.direction === "vertical" ? moveEvent.clientX : moveEvent.clientY;
       this.resizeItemsByDiff(index, position - startPosition, startSizes);
+      moveEvent.preventDefault();
     };
     const up = () => {
       this.containerEl.ownerDocument.body.classList.remove("is-grabbing");
