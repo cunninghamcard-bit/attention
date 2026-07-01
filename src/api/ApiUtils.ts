@@ -77,7 +77,8 @@ export interface FrontMatterInfo {
   exists: boolean;
   frontmatter: string;
   contentStart: number;
-  contentEnd: number;
+  from: number;
+  to: number;
 }
 
 export interface SubpathResult {
@@ -373,13 +374,20 @@ export function getAllTags(cache: CachedMetadata | null | undefined): string[] |
 }
 
 export function getFrontMatterInfo(content: string): FrontMatterInfo {
-  const match = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n)?/.exec(content);
-  if (!match) return { exists: false, frontmatter: "", contentStart: 0, contentEnd: 0 };
+  const startMatch = /^---(\r?\n)/g.exec(content);
+  if (!startMatch) return { exists: false, frontmatter: "", contentStart: 0, from: 0, to: 0 };
+  const from = startMatch[0].length;
+  const endPattern = /---(\r?\n|$)/g;
+  endPattern.lastIndex = from;
+  const endMatch = endPattern.exec(content);
+  if (!endMatch) return { exists: false, frontmatter: "", contentStart: 0, from: 0, to: 0 };
+  const to = endMatch.index;
   return {
     exists: true,
-    frontmatter: match[1] ?? "",
-    contentStart: 0,
-    contentEnd: match[0].length,
+    frontmatter: content.slice(from, to),
+    contentStart: endPattern.lastIndex,
+    from,
+    to,
   };
 }
 

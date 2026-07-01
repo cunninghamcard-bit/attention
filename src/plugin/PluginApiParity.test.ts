@@ -695,9 +695,18 @@ describe("Obsidian plugin API parity", () => {
       frontmatter,
     })).toEqual(["#alpha", "#beta", "#beta", "#inline"]);
     expect(module.getAllTags({})).toEqual([]);
-    expect(module.getFrontMatterInfo("---\na: 1\n---\nBody")).toMatchObject({
+    expect(module.getFrontMatterInfo("---\na: 1\n---\nBody")).toEqual({
       exists: true,
-      frontmatter: "a: 1",
+      frontmatter: "a: 1\n",
+      from: 4,
+      to: 9,
+      contentStart: 13,
+    });
+    expect(module.getFrontMatterInfo("Body")).toEqual({
+      exists: false,
+      frontmatter: "",
+      from: 0,
+      to: 0,
       contentStart: 0,
     });
 
