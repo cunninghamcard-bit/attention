@@ -37,6 +37,18 @@ describe("Workspace event parity", () => {
     expect(seen).toEqual(["event", "queued", "late"]);
   });
 
+  it("routes main window resize events through the workspace resize request", async () => {
+    const app = new App(document.createElement("div"));
+    const resize = vi.fn();
+    app.workspace.on("resize", resize);
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    const before = resize.mock.calls.length;
+
+    window.dispatchEvent(new Event("resize"));
+
+    await vi.waitFor(() => expect(resize.mock.calls.length).toBeGreaterThan(before));
+  });
+
   it("associates queued layout-ready callback failures with the loading plugin", async () => {
     const app = new App(document.createElement("div"));
     const error = new Error("layout failed");

@@ -72,8 +72,8 @@ export class WorkspaceSidedock extends WorkspaceSplit {
     const ribbon = this.side === "left" ? this.workspace.leftRibbon : this.workspace.rightRibbon;
     ribbon.setCollapsedState(true);
     if (this.workspace.activeLeaf && this.workspace.activeLeaf.getRoot() === this) {
-      const fallback = this.workspace.getMostRecentRootLeaf();
-      if (fallback) this.workspace.setActiveLeaf(fallback);
+      const fallback = this.workspace.getMostRecentLeaf(this.workspace.rootSplit);
+      if (fallback) this.workspace.setActiveLeaf(fallback, { focus: true });
     }
     this.workspace.requestSaveLayout();
     if (this.workspace.rootSplit.children.length > 0) this.workspace.updateFrameless();

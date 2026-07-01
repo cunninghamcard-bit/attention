@@ -242,15 +242,18 @@ export class Workspace extends Events {
     if (this.rightSplit instanceof WorkspaceSidedock) this.rightSplit.updateEmptyState();
     this.leftRibbon.addRibbonSettingButton("app:open-settings", "lucide-settings", "Open settings", () => this.app.setting.open());
     this.floatingSplit = new WorkspaceFloating(this, undefined, ownerDocument);
+    const ownerWindow = ownerDocument.defaultView ?? window;
     this.app.viewRegistry.on<[string]>("view-registered", (type) => this.rebuildLeavesOfType(type));
     this.app.viewRegistry.on<[string]>("view-unregistered", (type) => this.rebuildLeavesOfType(type));
     this.app.vault.on<[TFile, string]>("rename", (file, oldPath) => this.onFileRename(file, oldPath));
-    window.addEventListener("focus", () => {
-      setActiveWindow(window);
+    ownerWindow.addEventListener("resize", this.requestResize.bind(this));
+    ownerWindow.addEventListener("focus", () => {
+      setActiveWindow(ownerWindow);
       this.rootSplit.onFocus();
     });
-    this.installBrowserHistoryNavigation(ownerDocument.defaultView ?? window);
-    this.registerClipboardEvents(window);
+    if (Platform.isDesktopApp) ownerWindow.addEventListener("fullscreenchange", () => this.updateFrameless());
+    this.installBrowserHistoryNavigation(ownerWindow);
+    this.registerClipboardEvents(ownerWindow);
 
     if (mobile) {
       this.leftRibbon.containerEl.remove();

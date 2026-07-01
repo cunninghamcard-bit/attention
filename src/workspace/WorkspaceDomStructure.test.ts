@@ -161,6 +161,16 @@ describe("Obsidian workspace DOM structure", () => {
     }
   });
 
+  it("refreshes frameless state when the desktop window fullscreen state changes", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const updateFrameless = vi.spyOn(app.workspace, "updateFrameless");
+
+    window.dispatchEvent(new Event("fullscreenchange"));
+
+    expect(updateFrameless).toHaveBeenCalledOnce();
+  });
+
   it("lays out the desktop workspace shell in Obsidian order", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
@@ -237,6 +247,23 @@ describe("Obsidian workspace DOM structure", () => {
     expect(leftSplit.collapsed).toBe(true);
     leftSplit.toggle();
     expect(leftSplit.collapsed).toBe(false);
+  });
+
+  it("focuses the most recent root leaf when collapsing the active sidedock", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const rootLeaf = app.workspace.getMostRecentLeaf(app.workspace.rootSplit);
+    const leftSplit = app.workspace.leftSplit;
+    if (!(leftSplit instanceof WorkspaceSidedock) || !rootLeaf) throw new Error("Expected desktop root and sidedock");
+    const sideLeaf = app.workspace.getLeftLeaf();
+    if (!sideLeaf) throw new Error("Expected side leaf");
+    app.workspace.setActiveLeaf(sideLeaf);
+    const setActiveLeaf = vi.spyOn(app.workspace, "setActiveLeaf");
+
+    leftSplit.collapse();
+
+    expect(setActiveLeaf).toHaveBeenCalledWith(rootLeaf, { focus: true });
+    expect(app.workspace.activeLeaf).toBe(rootLeaf);
   });
 
   it("wires the desktop vault profile tooltip and context menu", async () => {
