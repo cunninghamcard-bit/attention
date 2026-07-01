@@ -65,6 +65,40 @@ describe("MarkdownPreviewRenderer", () => {
     owner.unload();
   });
 
+  it("runs later postprocessors before waiting for earlier async postprocessors", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const owner = new Component();
+    owner.load();
+    const container = document.createElement("div");
+    const order: string[] = [];
+    let resolveFirst: (() => void) | undefined;
+    let renderPromise: Promise<void> | null = null;
+    const first: MarkdownPostProcessor = () => {
+      order.push("first");
+      return new Promise<void>((resolve) => {
+        resolveFirst = resolve;
+      });
+    };
+    const second: MarkdownPostProcessor = () => {
+      order.push("second");
+    };
+    MarkdownPreviewRenderer.registerPostProcessor(first, 0);
+    MarkdownPreviewRenderer.registerPostProcessor(second, 1);
+    try {
+      renderPromise = MarkdownRenderer.render(app, "Body", container, "note.md", owner);
+      await vi.waitFor(() => expect(order).toEqual(["first", "second"]));
+      resolveFirst?.();
+      await renderPromise;
+    } finally {
+      resolveFirst?.();
+      await renderPromise?.catch(() => {});
+      MarkdownPreviewRenderer.unregisterPostProcessor(first);
+      MarkdownPreviewRenderer.unregisterPostProcessor(second);
+      owner.unload();
+    }
+  });
+
   it("applies preview CSS classes from cssclasses frontmatter only", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;

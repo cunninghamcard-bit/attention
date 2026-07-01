@@ -177,7 +177,7 @@ export abstract class MarkdownRenderer extends MarkdownRenderChild implements Ma
         el: section,
         replace: (source) => options.replace ? options.replace(source, section) : null,
       };
-      await this.postProcessors.run(section, sectionContext);
+      this.postProcessors.run(section, sectionContext);
       options.onSectionPostProcess?.(section, sectionContext);
     }
     await Promise.all(context.promises);

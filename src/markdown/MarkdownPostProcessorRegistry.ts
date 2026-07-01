@@ -5,6 +5,10 @@ export interface OrderedMarkdownPostProcessor {
   processor: MarkdownPostProcessor;
 }
 
+type MarkdownPostProcessorRunContext = MarkdownPostProcessorContext & {
+  promises: Promise<void>[];
+};
+
 export class MarkdownPostProcessorRegistry {
   private processors: OrderedMarkdownPostProcessor[] = [];
 
@@ -18,8 +22,11 @@ export class MarkdownPostProcessorRegistry {
     this.processors = this.processors.filter((item) => item.processor !== processor);
   }
 
-  async run(element: HTMLElement, context: MarkdownPostProcessorContext): Promise<void> {
-    for (const item of this.processors) await item.processor(element, context);
+  run(element: HTMLElement, context: MarkdownPostProcessorRunContext): void {
+    for (const item of this.processors) {
+      const result = item.processor(element, context);
+      if (result && typeof result.then === "function") context.promises.push(result);
+    }
   }
 
   clear(): void {
