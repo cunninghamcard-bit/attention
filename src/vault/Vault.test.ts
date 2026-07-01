@@ -90,6 +90,31 @@ describe("Vault config JSON helpers", () => {
     await expect(vault.readConfigJson("daily-notes")).resolves.toBeNull();
   });
 
+  it("returns null only for missing adapter JSON and undefined for broken reads", async () => {
+    const missing = Object.assign(new Error("missing"), { code: "ENOENT" });
+    const missingVault = new Vault({
+      read: vi.fn(async () => { throw missing; }),
+      write: vi.fn(async () => {}),
+      delete: vi.fn(async () => {}),
+      list: vi.fn(async () => []),
+    });
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const brokenVault = new Vault({
+      read: vi.fn(async () => "not-json"),
+      write: vi.fn(async () => {}),
+      delete: vi.fn(async () => {}),
+      list: vi.fn(async () => []),
+    });
+
+    try {
+      await expect(missingVault.readJson("missing.json")).resolves.toBeNull();
+      await expect(brokenVault.readJson("broken.json")).resolves.toBeUndefined();
+      expect(consoleError).toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   it("routes plugin data through the same config JSON root", async () => {
     const store = new JsonStore();
     const vault = new Vault(undefined, undefined, store);
@@ -351,6 +376,28 @@ describe("Vault public file API", () => {
     expect(copied.path).toBe("Archive/Thread");
     await expect(vault.read(vault.getFileByPath("Archive/Thread/a.md")!)).resolves.toBe("A");
     await expect(vault.read(vault.getFileByPath("Archive/Thread/Sub/b.md")!)).resolves.toBe("B");
+  });
+
+  it("delegates file copies to adapters that expose Obsidian's copy primitive", async () => {
+    const data = new Map<string, string>();
+    const copy = vi.fn(async (from: string, to: string) => {
+      data.set(to, data.get(from) ?? "");
+    });
+    const adapter = {
+      read: vi.fn(async (path: string) => data.get(path) ?? ""),
+      write: vi.fn(async (path: string, value: string) => { data.set(path, value); }),
+      delete: vi.fn(async () => {}),
+      list: vi.fn(async () => []),
+      copy,
+    };
+    const vault = new Vault(adapter);
+    const file = await vault.create("Source.md", "Body");
+
+    const copied = await vault.copy(file, "Copied.md");
+
+    expect(copy).toHaveBeenCalledWith("Source.md", "Copied.md");
+    expect(copied.path).toBe("Copied.md");
+    await expect(vault.read(copied)).resolves.toBe("Body");
   });
 
   it("lists files through Obsidian's tree traversal order", async () => {

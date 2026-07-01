@@ -61,6 +61,42 @@ describe("App public plugin API", () => {
     expect(app.isDarkMode()).toBe(false);
   });
 
+  it("uses Obsidian's document title and localStorage JSON semantics", () => {
+    const previousTitle = document.title;
+    const previousLocalStorage = Object.getOwnPropertyDescriptor(window, "localStorage");
+    const values = new Map<string, string>();
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value),
+        removeItem: (key: string) => values.delete(key),
+        clear: () => values.clear(),
+      },
+    });
+
+    try {
+      document.title = "Obsidian Canary";
+      const app = new App(document.createElement("div"));
+
+      expect(app.getAppTitle()).toBe("Obsidian Canary");
+      expect(app.getAppTitle("Daily")).toBe("Daily - Obsidian Canary");
+
+      app.saveLocalStorage("recent", ["open"]);
+      expect(app.loadLocalStorage("recent")).toEqual(["open"]);
+
+      values.set(`${app.appId}-broken`, "not-json");
+      expect(app.loadLocalStorage("broken")).toBeNull();
+
+      app.saveLocalStorage("recent", false);
+      expect(app.loadLocalStorage("recent")).toBeNull();
+    } finally {
+      document.title = previousTitle;
+      if (previousLocalStorage) Object.defineProperty(window, "localStorage", previousLocalStorage);
+      else delete (window as Window & { localStorage?: Storage }).localStorage;
+    }
+  });
+
   it("exposes the Obsidian App theme facade over AppearanceManager", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
@@ -235,6 +271,7 @@ describe("App public plugin API", () => {
     const previousElectron = (globalThis as { electron?: unknown }).electron;
     const previousMobile = Platform.isMobile;
     Object.defineProperty(window, "open", { configurable: true, value: windowOpen });
+    await app.ready;
     (app.vault as unknown as { adapter: TestFileSystemAdapter }).adapter = adapter;
     (globalThis as { electron?: unknown }).electron = { shell: { showItemInFolder } };
 

@@ -126,6 +126,7 @@ export interface CliHandlerRegistration {
 
 export class App {
   readonly appId = "obsidian-reconstructed";
+  readonly title = document.title || "Obsidian";
   readonly frameDom: FrameDom;
   readonly dom: AppDom;
   readonly containerEl: HTMLElement;
@@ -264,7 +265,7 @@ export class App {
   }
 
   getAppTitle(title = ""): string {
-    return title ? `${title} - Obsidian` : "Obsidian";
+    return title ? `${title} - ${this.title}` : this.title;
   }
 
   getObsidianUrl(file: TFile): string {
@@ -451,13 +452,13 @@ export class App {
     try {
       return JSON.parse(value) as T;
     } catch {
-      return value as T;
+      return null;
     }
   }
 
   saveLocalStorage<T = unknown>(key: string, value: T | null | undefined): void {
     const storageKey = this.getLocalStorageKey(key);
-    if (value == null) {
+    if (!value) {
       localStorageFallback.delete(storageKey);
       getBrowserStorage()?.removeItem(storageKey);
       return;

@@ -403,7 +403,7 @@ export class Vault extends Events {
     return `${this.configDir}/${name}.json`;
   }
 
-  readConfigJson<T = unknown>(name: string): Promise<T | null> {
+  readConfigJson<T = unknown>(name: string): Promise<T | null | undefined> {
     return this.readJson<T>(this.getConfigFile(name));
   }
 
@@ -415,7 +415,7 @@ export class Vault extends Events {
     return this.deleteJson(this.getConfigFile(name));
   }
 
-  async readJson<T = unknown>(path: string): Promise<T | null> {
+  async readJson<T = unknown>(path: string): Promise<T | null | undefined> {
     const normalized = normalizeJsonPath(path);
     if (this.jsonStore) return this.jsonStore.read<T>(this.toJsonStoreName(normalized));
     if (!this.adapter) return null;
@@ -424,7 +424,7 @@ export class Vault extends Events {
     } catch (error) {
       if (isNotFoundError(error)) return null;
       console.error("failed to read JSON", normalized, error);
-      return null;
+      return undefined;
     }
   }
 
@@ -488,7 +488,7 @@ export class Vault extends Events {
     }
   }
 
-  async readPluginData<T = unknown>(pluginDir: string): Promise<T | null> {
+  async readPluginData<T = unknown>(pluginDir: string): Promise<T | null | undefined> {
     if (this.jsonStore || this.adapter) return this.readJson<T>(`${pluginDir}/data.json`);
     return this.pluginData?.load<T>(pluginDir) ?? null;
   }
@@ -700,6 +700,13 @@ export class Vault extends Events {
       return folder as unknown as T;
     }
     if (file instanceof TFile) {
+      if (this.adapter?.copy) {
+        await this.adapter.copy(file.path, normalized);
+        if (!this.usesAdapterEvents()) this.handleAdapterCreate(normalized, "file");
+        const copied = this.getFileByPath(normalized);
+        if (!copied) throw new Error(`Adapter did not copy file: ${normalized}`);
+        return copied as unknown as T;
+      }
       const options = { ctime: file.stat.ctime, mtime: file.stat.mtime };
       const copied = this.binaryData.has(file.path)
         ? await this.createBinary(normalized, await this.readBinary(file), options)
