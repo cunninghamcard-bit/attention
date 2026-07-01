@@ -442,7 +442,7 @@ export class ToggleComponent extends ValueComponent<boolean> {
     this.inputEl.type = "checkbox";
     this.inputEl.tabIndex = 0;
     this.toggleEl.appendChild(this.inputEl);
-    this.inputEl.addEventListener("change", () => this.onInputChange());
+    this.inputEl.addEventListener("change", () => this.onClick());
   }
 
   override setDisabled(disabled: boolean): this {
@@ -458,7 +458,6 @@ export class ToggleComponent extends ValueComponent<boolean> {
   setValue(value: boolean): this {
     if (this.on === value) return this;
     this.on = value;
-    this.inputEl.checked = value;
     this.toggleEl.classList.toggle("is-enabled", value);
     this.changeCallback?.(value);
     return this;
@@ -475,21 +474,9 @@ export class ToggleComponent extends ValueComponent<boolean> {
   }
 
   onClick(): void {
-    if (this.disabled) {
-      this.inputEl.checked = this.on;
-      return;
-    }
+    if (this.disabled) return;
     navigator.vibrate?.(100);
     this.setValue(!this.getValue());
-  }
-
-  private onInputChange(): void {
-    if (this.disabled) {
-      this.inputEl.checked = this.on;
-      return;
-    }
-    navigator.vibrate?.(100);
-    this.setValue(this.inputEl.checked);
   }
 
   onChange(callback: (value: boolean) => unknown): this {

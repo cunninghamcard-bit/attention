@@ -32,6 +32,7 @@ describe("FilesSettingTab", () => {
     const toggle = findSetting(tab.containerEl, "URI callbacks")?.querySelector<HTMLInputElement>('input[type="checkbox"]');
     expect(toggle).not.toBeNull();
     expect(toggle?.checked).toBe(false);
+    expect(findSetting(tab.containerEl, "URI callbacks")?.querySelector(".checkbox-container")?.classList.contains("is-enabled")).toBe(false);
 
     toggle!.checked = true;
     toggle!.dispatchEvent(new Event("change"));
@@ -40,7 +41,7 @@ describe("FilesSettingTab", () => {
 
     tab.display();
     const rerenderedToggle = findSetting(tab.containerEl, "URI callbacks")?.querySelector<HTMLInputElement>('input[type="checkbox"]');
-    expect(rerenderedToggle?.checked).toBe(true);
+    expect(findSetting(tab.containerEl, "URI callbacks")?.querySelector(".checkbox-container")?.classList.contains("is-enabled")).toBe(true);
 
     rerenderedToggle!.checked = false;
     rerenderedToggle!.dispatchEvent(new Event("change"));

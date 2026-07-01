@@ -371,7 +371,7 @@ describe("PluginSettingTab", () => {
     expect(tab.settingItems).toHaveLength(2);
     expect(host.querySelector(".setting-group.chat-settings")).not.toBeNull();
     expect(host.querySelector(".setting-group.agent-list.setting-list.mod-reorderable")).not.toBeNull();
-    expect(settingRow(host, "Enabled").querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).toBe(true);
+    expect(settingRow(host, "Enabled").querySelector(".checkbox-container")?.classList.contains("is-enabled")).toBe(true);
     expect(settingRow(host, "Name").querySelector<HTMLInputElement>("input")?.value).toBe("Ada");
     expect(settingRow(host, "Mode").querySelector<HTMLSelectElement>("select")?.value).toBe("careful");
     expect(settingRow(host, "Prompt").querySelector<HTMLTextAreaElement>("textarea")?.rows).toBe(3);

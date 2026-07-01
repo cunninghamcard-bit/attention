@@ -116,6 +116,7 @@ describe("Setting components", () => {
     toggle.setValue(true);
     expect(toggle.getValue()).toBe(true);
     expect(toggle.toggleEl.classList.contains("is-enabled")).toBe(true);
+    expect(toggle.inputEl.checked).toBe(false);
     expect(callback).toHaveBeenCalledWith(true);
 
     toggle.setValue(true);
