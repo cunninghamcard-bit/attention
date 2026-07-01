@@ -52,6 +52,18 @@ describe("Events", () => {
     expect(log).toEqual(["second"]);
   });
 
+  it("stores listener refs under Obsidian's runtime _ table", () => {
+    const events = new Events();
+    const ref = events.on("event", () => {});
+    const runtime = events as Events & { _: Record<string, EventRef[]> };
+
+    expect(runtime._.event).toEqual([ref]);
+
+    events.offref(ref);
+
+    expect(runtime._.event).toBeUndefined();
+  });
+
   it("matches Obsidian by ignoring missing event refs", () => {
     const events = new Events();
 
