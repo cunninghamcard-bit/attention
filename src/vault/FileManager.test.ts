@@ -57,9 +57,14 @@ describe("FileManager", () => {
     expect(app.fileManager.canCreateFileWithExt("excalidraw")).toBe(true);
     expect(app.fileManager.getNewFileParent("Notes/Source.md", "Sketch.excalidraw")).toBe(folder);
 
+    app.fileManager.registerFileParentCreator(".map", () => folder);
+    expect(app.fileManager.canCreateFileWithExt(".map")).toBe(true);
+    expect(app.fileManager.canCreateFileWithExt("map")).toBe(false);
+
     app.fileManager.unregisterFileCreator("excalidraw");
 
     expect(app.fileManager.canCreateFileWithExt("excalidraw")).toBe(false);
+    expect(app.fileManager.canCreateFileWithExt(".map")).toBe(true);
   });
 
   it("creates files with explicit extension and initial data", async () => {

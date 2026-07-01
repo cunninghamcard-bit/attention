@@ -15,16 +15,15 @@ export class FileManager {
   }
 
   registerFileParentCreator(extension: string, creator: (sourcePath: string) => TFolder): void {
-    this.fileParentCreatorByType[normalizeRegisteredExtension(extension) || "md"] = creator;
+    this.fileParentCreatorByType[extension] = creator;
   }
 
   unregisterFileCreator(extension: string): void {
-    delete this.fileParentCreatorByType[normalizeRegisteredExtension(extension) || "md"];
+    delete this.fileParentCreatorByType[extension];
   }
 
   canCreateFileWithExt(extension = "md"): boolean {
-    const normalized = normalizeRegisteredExtension(extension) || "md";
-    return normalized in this.fileParentCreatorByType;
+    return Object.prototype.hasOwnProperty.call(this.fileParentCreatorByType, extension || "md");
   }
 
   getNewFileParent(sourcePath = "", newFilePath = ""): TFolder {
