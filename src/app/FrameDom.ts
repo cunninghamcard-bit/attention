@@ -7,6 +7,14 @@ export interface FrameDomOptions {
   win?: Window;
 }
 
+interface FrameElectronWindow {
+  webContents?: { getZoomFactor?: () => number };
+  isFullScreen?: () => boolean;
+  isMaximized?: () => boolean;
+  setWindowButtonPosition?: (position: { x: number; y: number }) => void;
+  setTrafficLightPosition?: (position: { x: number; y: number }) => void;
+}
+
 export class FrameDom {
   readonly win: Window;
   readonly doc: Document;
@@ -50,10 +58,23 @@ export class FrameDom {
 
   updateStatus(): void {
     const body = this.doc.body;
-    const win = this.win as Window & { isMaximized?: () => boolean; zoomFactor?: number };
-    body.classList.toggle("is-fullscreen", Boolean(this.doc.fullscreenElement));
-    body.classList.toggle("is-maximized", Boolean(win.isMaximized?.()));
-    body.style.setProperty("--zoom-factor", String(win.zoomFactor ?? 1));
+    const win = this.win as Window & { electronWindow?: FrameElectronWindow; isMaximized?: () => boolean; titlebarStyle?: string; zoomFactor?: number };
+    const electronWindow = win.electronWindow;
+    const zoomFactor = electronWindow?.webContents?.getZoomFactor?.() ?? win.zoomFactor ?? 1;
+    body.classList.toggle("is-fullscreen", Boolean(electronWindow?.isFullScreen?.() ?? this.doc.fullscreenElement));
+    body.classList.toggle("is-maximized", Boolean(electronWindow?.isMaximized?.() ?? win.isMaximized?.()));
+    body.style.setProperty("--zoom-factor", String(zoomFactor));
+    const setTrafficLightPosition = electronWindow?.setWindowButtonPosition ?? electronWindow?.setTrafficLightPosition;
+    if (!setTrafficLightPosition || win.titlebarStyle !== "hidden" || !body.classList.contains("mod-macos")) return;
+    const style = this.win.getComputedStyle(body);
+    const offsetX = parseCssNumber(style.getPropertyValue("--traffic-lights-offset-x"), 40);
+    let offsetY = parseCssNumber(style.getPropertyValue("--traffic-lights-offset-y"), 40);
+    if (offsetY === 0) offsetY = 40;
+    const position = (offset: number) => {
+      const value = Math.floor((offset * zoomFactor) / 2 - 8);
+      return value < -5 ? 0 : value;
+    };
+    setTrafficLightPosition.call(electronWindow, { x: position(offsetX) + 2, y: position(offsetY) });
   }
 
   remove(): void {
@@ -69,4 +90,9 @@ export class FrameDom {
     setIcon(button, icon);
     return button;
   }
+}
+
+function parseCssNumber(value: string, fallback: number): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }

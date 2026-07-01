@@ -70,6 +70,46 @@ describe("Obsidian workspace DOM structure", () => {
     expect(app.dom.appContainerEl.previousElementSibling).toBe(app.frameDom.titleBarEl);
   });
 
+  it("syncs macOS traffic-light position from Obsidian frame CSS variables", async () => {
+    const win = window as Window & {
+      electronWindow?: {
+        webContents: { getZoomFactor: () => number };
+        isFullScreen: () => boolean;
+        isMaximized: () => boolean;
+        setTrafficLightPosition: (position: { x: number; y: number }) => void;
+      };
+      titlebarStyle?: string;
+    };
+    const previousElectronWindow = win.electronWindow;
+    const previousTitlebarStyle = win.titlebarStyle;
+    const setTrafficLightPosition = vi.fn();
+    win.electronWindow = {
+      webContents: { getZoomFactor: () => 1.5 },
+      isFullScreen: () => true,
+      isMaximized: () => true,
+      setTrafficLightPosition,
+    };
+    win.titlebarStyle = "hidden";
+    document.body.classList.add("mod-macos");
+    document.body.style.setProperty("--traffic-lights-offset-x", "40px");
+    document.body.style.setProperty("--traffic-lights-offset-y", "0px");
+    try {
+      const app = new App(document.body);
+      await app.ready;
+      app.frameDom.updateStatus();
+
+      expect(document.body.classList.contains("is-fullscreen")).toBe(true);
+      expect(document.body.classList.contains("is-maximized")).toBe(true);
+      expect(document.body.style.getPropertyValue("--zoom-factor")).toBe("1.5");
+      expect(setTrafficLightPosition).toHaveBeenLastCalledWith({ x: 24, y: 22 });
+    } finally {
+      win.electronWindow = previousElectronWindow;
+      win.titlebarStyle = previousTitlebarStyle;
+      document.body.style.removeProperty("--traffic-lights-offset-x");
+      document.body.style.removeProperty("--traffic-lights-offset-y");
+    }
+  });
+
   it("lays out the desktop workspace shell in Obsidian order", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;

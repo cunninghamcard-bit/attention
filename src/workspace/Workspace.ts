@@ -2315,7 +2315,7 @@ export class Workspace extends Events {
 
   updateTitle(): void {
     const leaf = this.getMostRecentLeaf(this.rootSplit);
-    document.title = this.app.getAppTitle(leaf?.getDisplayText() ?? "");
+    this.app.dom.appContainerEl.ownerDocument.title = this.app.getAppTitle(leaf?.getDisplayText() ?? "");
   }
 
   private updateMobileVisibleTabGroup(): void {
