@@ -582,11 +582,17 @@ export class Menu extends Component implements HistoryHandler {
     } else if (event.key === "ArrowRight") {
       event.preventDefault();
       const item = this.selected < 0 ? null : this.items[this.selected];
-      if (item instanceof MenuItem) this.openSubmenu(item);
+      if (item instanceof MenuItem) {
+        this.openSubmenu(item);
+        this.currentSubmenu?.select(0);
+      }
     } else if (event.key === "Enter") {
       event.preventDefault();
       const item = this.selected < 0 ? null : this.items[this.selected];
-      if (item instanceof MenuItem) item.handleEvent(event);
+      if (item instanceof MenuItem) {
+        item.handleEvent(event);
+        this.hide();
+      }
     } else if (event.key === "Escape") {
       event.preventDefault();
       this.hide();

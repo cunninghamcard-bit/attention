@@ -249,6 +249,43 @@ describe("Menu Obsidian behavior", () => {
     expect(menu.dom.isConnected).toBe(false);
   });
 
+  it("selects the first submenu item when opening a selected submenu with ArrowRight", () => {
+    const menu = new Menu(document);
+    let submenu: Menu | null = null;
+    menu.addItem((item) => {
+      item.setTitle("More");
+      submenu = item.setSubmenu();
+      submenu.addItem((child) => child.setTitle("Child"));
+      submenu.addItem((child) => child.setTitle("Other"));
+    });
+    menu.showAtPosition({ x: 10, y: 20 });
+    menu.select(0);
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
+
+    expect(menu.currentSubmenu).toBe(submenu);
+    expect(submenu?.selected).toBe(0);
+    expect(submenu?.items[0]?.dom.classList.contains("selected")).toBe(true);
+  });
+
+  it("hides the menu after keyboard Enter triggers a selected submenu item", () => {
+    const menu = new Menu(document);
+    let submenu: Menu | null = null;
+    menu.addItem((item) => {
+      item.setTitle("More");
+      submenu = item.setSubmenu();
+      submenu.addItem((child) => child.setTitle("Child"));
+    });
+    menu.showAtPosition({ x: 10, y: 20 });
+    menu.select(0);
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+
+    expect(menu.dom.isConnected).toBe(false);
+    expect(submenu?.dom.isConnected).toBe(false);
+    expect(menu.currentSubmenu).toBeNull();
+  });
+
   it("defers Menu.forEvent display so callers can add items before it opens", () => {
     vi.useFakeTimers();
     const anchor = document.querySelector<HTMLElement>("#anchor");
