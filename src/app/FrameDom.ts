@@ -8,9 +8,16 @@ export interface FrameDomOptions {
 }
 
 interface FrameElectronWindow {
+  minimizable?: boolean;
+  maximizable?: boolean;
+  closable?: boolean;
   webContents?: { getZoomFactor?: () => number };
   isFullScreen?: () => boolean;
   isMaximized?: () => boolean;
+  minimize?: () => void;
+  maximize?: () => void;
+  unmaximize?: () => void;
+  close?: () => void;
   setWindowButtonPosition?: (position: { x: number; y: number }) => void;
   setTrafficLightPosition?: (position: { x: number; y: number }) => void;
 }
@@ -42,10 +49,26 @@ export class FrameDom {
     this.rightButtonContainerEl = createDiv("titlebar-button-container mod-right", this.titleBarInnerEl);
 
     if (getObsidianPlatformClass(this.win) !== "mod-macos") {
+      const electronWindow = (this.win as Window & { electronWindow?: FrameElectronWindow }).electronWindow;
       this.createTitlebarButton(this.leftButtonContainerEl, "mod-logo", "lucide-gem", "Obsidian");
-      this.createTitlebarButton(this.rightButtonContainerEl, "mod-minimize", "lucide-minus", "Minimize");
-      this.createTitlebarButton(this.rightButtonContainerEl, "mod-maximize", "lucide-maximize-2", "Maximize");
-      this.createTitlebarButton(this.rightButtonContainerEl, "mod-close", "lucide-x", "Close");
+      if (electronWindow?.minimizable !== false) {
+        this.createTitlebarButton(this.rightButtonContainerEl, "mod-minimize", "lucide-minus", "Minimize", () => electronWindow?.minimize?.());
+      }
+      if (electronWindow?.maximizable !== false) {
+        const maximizeButton = this.createTitlebarButton(this.rightButtonContainerEl, "mod-maximize", "lucide-maximize-2", "Maximize", () => {
+          if (electronWindow?.isMaximized?.()) electronWindow.unmaximize?.();
+          else electronWindow?.maximize?.();
+          this.updateMaximizeButton(maximizeButton, electronWindow);
+        });
+        this.updateMaximizeButton(maximizeButton, electronWindow);
+        this.win.addEventListener("resize", () => this.updateMaximizeButton(maximizeButton, electronWindow));
+      }
+      if (electronWindow?.closable !== false) {
+        this.createTitlebarButton(this.rightButtonContainerEl, "mod-close", "lucide-x", "Close", () => {
+          if (electronWindow?.close) electronWindow.close();
+          else this.win.close();
+        });
+      }
     }
 
     this.updateTitle();
@@ -83,12 +106,20 @@ export class FrameDom {
     if (win.frameDom === this) delete win.frameDom;
   }
 
-  private createTitlebarButton(parent: HTMLElement, modifier: string, icon: string, title: string): HTMLElement {
+  private createTitlebarButton(parent: HTMLElement, modifier: string, icon: string, title: string, onClick?: () => void): HTMLElement {
     const button = createDiv(`titlebar-button ${modifier}`, parent);
     button.title = title;
     button.setAttribute("aria-label", title);
     setIcon(button, icon);
+    if (onClick) button.addEventListener("click", onClick);
     return button;
+  }
+
+  private updateMaximizeButton(button: HTMLElement, electronWindow?: FrameElectronWindow): void {
+    const maximized = Boolean(electronWindow?.isMaximized?.());
+    button.title = maximized ? "Restore down" : "Maximize";
+    button.setAttribute("aria-label", button.title);
+    setIcon(button, maximized ? "lucide-copy" : "lucide-maximize-2");
   }
 }
 

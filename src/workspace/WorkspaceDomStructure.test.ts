@@ -110,6 +110,57 @@ describe("Obsidian workspace DOM structure", () => {
     }
   });
 
+  it("wires non-macOS titlebar buttons to Electron window actions", async () => {
+    const previousPlatform = window.navigator.platform;
+    const win = window as Window & {
+      electronWindow?: {
+        minimizable: boolean;
+        maximizable: boolean;
+        closable: boolean;
+        isMaximized: () => boolean;
+        minimize: () => void;
+        maximize: () => void;
+        unmaximize: () => void;
+        close: () => void;
+      };
+    };
+    const previousElectronWindow = win.electronWindow;
+    let maximized = false;
+    const electronWindow = {
+      minimizable: true,
+      maximizable: true,
+      closable: true,
+      isMaximized: () => maximized,
+      minimize: vi.fn(),
+      maximize: vi.fn(() => {
+        maximized = true;
+      }),
+      unmaximize: vi.fn(() => {
+        maximized = false;
+      }),
+      close: vi.fn(),
+    };
+    Object.defineProperty(window.navigator, "platform", { configurable: true, value: "Win32" });
+    win.electronWindow = electronWindow;
+    try {
+      const app = new App(document.createElement("div"));
+      await app.ready;
+
+      app.frameDom.rightButtonContainerEl.querySelector<HTMLElement>(".mod-minimize")?.click();
+      app.frameDom.rightButtonContainerEl.querySelector<HTMLElement>(".mod-maximize")?.click();
+      app.frameDom.rightButtonContainerEl.querySelector<HTMLElement>(".mod-maximize")?.click();
+      app.frameDom.rightButtonContainerEl.querySelector<HTMLElement>(".mod-close")?.click();
+
+      expect(electronWindow.minimize).toHaveBeenCalledOnce();
+      expect(electronWindow.maximize).toHaveBeenCalledOnce();
+      expect(electronWindow.unmaximize).toHaveBeenCalledOnce();
+      expect(electronWindow.close).toHaveBeenCalledOnce();
+    } finally {
+      Object.defineProperty(window.navigator, "platform", { configurable: true, value: previousPlatform });
+      win.electronWindow = previousElectronWindow;
+    }
+  });
+
   it("lays out the desktop workspace shell in Obsidian order", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
