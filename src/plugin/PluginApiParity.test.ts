@@ -686,6 +686,7 @@ describe("Obsidian plugin API parity", () => {
     expect(module.parseFrontMatterAliases(frontmatter)).toEqual(["Alias"]);
     expect(module.parseFrontMatterTags(frontmatter)).toEqual(["#alpha", "#beta"]);
     expect(module.parseFrontMatterStringArray({ cssclasses: "wide" }, "cssclasses")).toEqual(["wide"]);
+    expect(module.getAllTags(null)).toBeNull();
     expect(module.getAllTags({
       tags: [
         { tag: "#beta", position: { start: { line: 0, col: 0, offset: 0 }, end: { line: 0, col: 5, offset: 5 } } },

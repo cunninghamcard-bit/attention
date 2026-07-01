@@ -366,7 +366,8 @@ export function parseFrontMatterTags(frontmatter: unknown): string[] | null {
   return tags.map((tag) => tag.startsWith("#") ? tag : `#${tag}`).filter((tag) => tag.length > 1);
 }
 
-export function getAllTags(cache: CachedMetadata): string[] {
+export function getAllTags(cache: CachedMetadata | null | undefined): string[] | null {
+  if (!cache) return null;
   const tags: string[] = [];
   for (const tag of parseFrontMatterTags(cache.frontmatter) ?? []) tags.push(tag);
   for (const entry of cache.tags ?? []) tags.push(entry.tag);
