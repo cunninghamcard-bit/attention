@@ -55,12 +55,12 @@ export class TFile extends TAbstractFile {
 
   get extension(): string {
     const index = this.name.lastIndexOf(".");
-    return index === -1 ? "" : this.name.slice(index + 1);
+    return index <= 0 || index === this.name.length - 1 ? "" : this.name.slice(index + 1).toLowerCase();
   }
 
   get basename(): string {
     const index = this.name.lastIndexOf(".");
-    return index === -1 ? this.name : this.name.slice(0, index);
+    return index <= 0 || index === this.name.length - 1 ? this.name : this.name.slice(0, index);
   }
 
   getShortName(): string {
