@@ -1,5 +1,4 @@
 import type { EventRef } from "./Events";
-import { unregisterEventRef } from "./EventRefInternal";
 import type { KeymapEventHandler } from "../hotkeys/Scope";
 
 export class Component {
@@ -52,7 +51,7 @@ export class Component {
 
   registerEvent(ref: EventRef): void {
     this.register(() => {
-      unregisterEventRef(ref);
+      (ref as EventRef & { e: { offref(ref: EventRef): void } }).e.offref(ref);
     });
   }
 

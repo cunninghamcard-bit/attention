@@ -141,6 +141,15 @@ describe("Component lifecycle", () => {
     expect(clearIntervalSpy).toHaveBeenCalledWith(intervalId);
   });
 
+  it("matches Obsidian by failing invalid registered event refs during unload", () => {
+    const component = new Component();
+
+    component.load();
+    component.registerEvent(null as never);
+
+    expect(() => component.unload()).toThrow(TypeError);
+  });
+
   it("loads community Plugin children after its async onload has completed", async () => {
     const app = new App(document.createElement("div"));
     const log: string[] = [];
