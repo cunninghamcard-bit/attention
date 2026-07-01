@@ -240,7 +240,15 @@ export class WorkspaceTabs extends WorkspaceParent {
       }
     });
     this.updateSlidingTabs();
-    if (!this.isStacked && activeLeaf && this.containerEl.isShown()) void activeLeaf.loadIfDeferred();
+    if (!this.isStacked && activeLeaf) {
+      this.tabsInnerEl.style.setProperty("--animation-dur", "0s");
+      const root = this.getRoot();
+      if (root === this.workspace.leftSplit || root === this.workspace.rightSplit) {
+        this.tabsInnerEl.scrollLeft = activeLeaf.tabHeaderEl.clientWidth * this.currentTab;
+      }
+      if (this.containerEl.isShown()) void activeLeaf.loadIfDeferred();
+      this.tabsInnerEl.style.setProperty("--animation-dur", "250ms");
+    }
     if (corrected) {
       this.workspace.requestSaveLayout();
       this.workspace.requestResize();

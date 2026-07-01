@@ -274,6 +274,29 @@ describe("Obsidian popout and tab list DOM", () => {
     secondLoad.mockRestore();
   });
 
+  it("applies Obsidian's visible non-stacked active tab post-step", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const sideLeaf = app.workspace.getLeftLeaf();
+    if (!sideLeaf) throw new Error("Expected side leaf");
+    const tabs = sideLeaf.parent;
+    if (!(tabs instanceof WorkspaceTabs)) throw new Error("Expected side tabs");
+    const second = new WorkspaceLeaf(app.workspace);
+    tabs.appendChild(second, false);
+    const secondIndex = tabs.children.indexOf(second);
+    tabs.selectTabIndex(Math.max(0, secondIndex - 1), false);
+    forceShown(tabs.containerEl);
+    setMetric(second.tabHeaderEl, "clientWidth", 44);
+    const load = vi.spyOn(second, "loadIfDeferred").mockResolvedValue(undefined);
+
+    tabs.selectTabIndex(secondIndex, false);
+
+    expect(tabs.tabsInnerEl.scrollLeft).toBe(44 * secondIndex);
+    expect(tabs.tabsInnerEl.style.getPropertyValue("--animation-dur")).toBe("250ms");
+    expect(load).toHaveBeenCalledOnce();
+    load.mockRestore();
+  });
+
   it("animates non-stacked tab header insertions and removals with width and opacity", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
