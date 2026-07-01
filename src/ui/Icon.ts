@@ -96,7 +96,7 @@ export function getIcon(iconId: string): SVGSVGElement | null {
 }
 
 export function getIconIds(): string[] {
-  return [...new Set([...BUILTIN_ICONS.keys(), ...CUSTOM_ICONS.keys()])];
+  return [...BUILTIN_ICONS.keys(), ...CUSTOM_ICONS.keys()];
 }
 
 export function removeIcon(iconId: string): void {
@@ -134,6 +134,10 @@ interface IconDefinition {
 }
 
 function getIconDefinition(icon: string): IconDefinition | null {
+  if (icon.startsWith("lucide-")) {
+    const builtin = BUILTIN_ICONS.get(icon);
+    return builtin == null ? null : { content: builtin, custom: false };
+  }
   const custom = CUSTOM_ICONS.get(icon);
   if (custom != null) return { content: custom, custom: true };
   const builtin = BUILTIN_ICONS.get(icon);

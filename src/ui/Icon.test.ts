@@ -48,17 +48,19 @@ describe("setIcon", () => {
     expect(getIcon("plugin-gem")).toBeNull();
   });
 
-  it("lets custom icons temporarily override built-ins and restore them on remove", () => {
+  it("does not let custom lucide-prefixed icons override built-in lucide icons", () => {
     addIcon("lucide-plus", '<path d="M50 10 90 90H10Z"/>');
 
     const custom = getIcon("lucide-plus");
-    expect(custom?.getAttribute("viewBox")).toBe("0 0 100 100");
-    expect(custom?.querySelector("path")?.getAttribute("d")).toBe("M50 10 90 90H10Z");
+    expect(custom?.getAttribute("viewBox")).toBe("0 0 24 24");
+    expect(custom?.querySelector("path")?.getAttribute("d")).toBe("M5 12h14");
+    expect(getIconIds().filter((id) => id === "lucide-plus")).toHaveLength(2);
 
     removeIcon("lucide-plus");
     const restored = getIcon("lucide-plus");
     expect(restored?.getAttribute("viewBox")).toBe("0 0 24 24");
     expect(restored?.getAttribute("stroke")).toBe("currentColor");
+    expect(getIconIds().filter((id) => id === "lucide-plus")).toHaveLength(1);
   });
 
   it("uses raw addIcon keys and the raw setIcon argument for no-op checks", () => {
