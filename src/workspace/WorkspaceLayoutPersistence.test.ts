@@ -438,12 +438,15 @@ describe("WorkspaceLayoutPersistence", () => {
   it("debounces workspace save requests and exposes cancel and run controls", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
+    app.workspace.requestSaveLayout.cancel();
     const save = vi.spyOn(app.workspace, "saveLayout");
     vi.useFakeTimers();
     try {
       app.workspace.requestSaveLayout();
 
-      await vi.advanceTimersByTimeAsync(999);
+      await vi.advanceTimersByTimeAsync(500);
+      app.workspace.requestSaveLayout();
+      await vi.advanceTimersByTimeAsync(499);
       expect(save).not.toHaveBeenCalled();
 
       await vi.advanceTimersByTimeAsync(1);
