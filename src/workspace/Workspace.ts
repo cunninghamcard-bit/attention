@@ -2614,6 +2614,7 @@ function createMicrotaskWorkspaceRequest(fn: () => void): () => void {
     queued = true;
     const run = () => {
       queued = false;
+      if (typeof window === "undefined") return;
       fn();
     };
     if (typeof queueMicrotask === "function") queueMicrotask(run);
