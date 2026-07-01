@@ -130,12 +130,7 @@ export function request(request: RequestUrlParam | string, app?: App): Promise<s
 
 export function requestUrl(request: RequestUrlParam | string, app?: App): RequestUrlResponsePromise {
   const rawRequest = typeof request === "string" ? { url: request } : request;
-  const headers = { ...(rawRequest.headers ?? {}) };
-  if (rawRequest.contentType && !Object.keys(headers).some((key) => key.toLowerCase() === "content-type")) {
-    headers["Content-Type"] = rawRequest.contentType;
-  }
-  const normalizedRequest = { ...rawRequest, headers };
-  const responsePromise = requestUrlViaPlatform(normalizedRequest, app).then((response) => {
+  const responsePromise = requestUrlViaPlatform(rawRequest, app).then((response) => {
     if (rawRequest.throw !== false && response.status >= 400) {
       const error = new Error(`Request failed, status ${response.status}`) as RequestUrlError;
       error.status = response.status;
@@ -523,7 +518,7 @@ async function requestUrlViaPlatform(request: RequestUrlParam, app?: App): Promi
 async function requestUrlViaFetch(request: RequestUrlParam): Promise<RequestUrlResponse> {
   const response = await fetch(request.url, {
     method: request.method,
-    headers: request.headers,
+    headers: request.contentType ? { "Content-Type": request.contentType } : undefined,
     body: request.body,
   });
   const arrayBuffer = await response.arrayBuffer();

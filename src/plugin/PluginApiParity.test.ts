@@ -791,6 +791,14 @@ describe("Obsidian plugin API parity", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     });
+
+    await module.requestUrl({
+      url: "https://example.com/headers",
+      headers: { "X-Test": "ignored" },
+    });
+    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
+      headers: undefined,
+    });
   });
 
   it("routes requestUrl through the app shell bridge before fetch fallback", async () => {
@@ -821,9 +829,10 @@ describe("Obsidian plugin API parity", () => {
     expect(nativePayload).toMatchObject({
       url: "https://api.example.test/private",
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      contentType: "application/json",
       body: "{\"ok\":true}",
     });
+    expect((nativePayload as { headers?: unknown }).headers).toBeUndefined();
     expect(response).toMatchObject({
       status: 202,
       headers: { "x-native": "yes" },
