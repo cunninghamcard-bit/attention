@@ -99,7 +99,6 @@ export class WorkspaceLeaf extends WorkspaceItem {
     });
     this.tabHeaderEl.addEventListener("auxclick", (event) => {
       if (event.button !== 1) return;
-      event.preventDefault();
       this.closeFromTabHeader();
     });
     this.tabHeaderEl.addEventListener("mouseover", (event) => this.handleTabHeaderMouseover(event));
@@ -112,7 +111,6 @@ export class WorkspaceLeaf extends WorkspaceItem {
     setIcon(this.tabHeaderCloseEl, "lucide-x");
     setTooltip(this.tabHeaderCloseEl, "Close");
     this.tabHeaderCloseEl.addEventListener("click", (event) => {
-      event.stopPropagation();
       this.closeFromTabHeader();
     });
 

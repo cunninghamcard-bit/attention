@@ -453,6 +453,40 @@ describe("WorkspaceLeaf", () => {
     expect(leaf.view.containerEl.classList.contains("workspace-leaf-content")).toBe(true);
   });
 
+  it("lets the tab close button click bubble like Obsidian", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const leaf = app.workspace.getLeaf();
+    const tabClick = vi.fn();
+    const detach = vi.spyOn(leaf, "detach").mockImplementation(() => {});
+    leaf.tabHeaderEl.addEventListener("click", tabClick);
+
+    const closeClick = new MouseEvent("click", { bubbles: true, cancelable: true });
+    leaf.tabHeaderCloseEl.dispatchEvent(closeClick);
+
+    expect(detach).toHaveBeenCalledOnce();
+    expect(tabClick).toHaveBeenCalledOnce();
+    expect(closeClick.defaultPrevented).toBe(false);
+    detach.mockRestore();
+  });
+
+  it("prevents middle-click default on mousedown, not auxclick", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const leaf = app.workspace.getLeaf();
+    const detach = vi.spyOn(leaf, "detach").mockImplementation(() => {});
+
+    const middleDown = new MouseEvent("mousedown", { button: 1, bubbles: true, cancelable: true });
+    leaf.tabHeaderEl.dispatchEvent(middleDown);
+    const middleAuxClick = new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true });
+    leaf.tabHeaderEl.dispatchEvent(middleAuxClick);
+
+    expect(middleDown.defaultPrevented).toBe(true);
+    expect(middleAuxClick.defaultPrevented).toBe(false);
+    expect(detach).toHaveBeenCalledOnce();
+    detach.mockRestore();
+  });
+
   it("does not await EmptyView-family close before opening the next view", async () => {
     const app = new App(document.createElement("div"));
     let emptyInstance: AsyncEmptyCloseView | null = null;
