@@ -293,10 +293,10 @@ export function arrayBufferToHex(data: ArrayBuffer): string {
 }
 
 export function hexToArrayBuffer(hex: string): ArrayBuffer {
-  const clean = hex.trim();
-  const bytes = new Uint8Array(Math.ceil(clean.length / 2));
+  const length = hex.length / 2;
+  const bytes = new Uint8Array(new ArrayBuffer(length));
   for (let index = 0; index < bytes.length; index += 1) {
-    bytes[index] = Number.parseInt(clean.slice(index * 2, index * 2 + 2).padEnd(2, "0"), 16);
+    bytes[index] = Number.parseInt(hex.substr(index * 2, 2), 16);
   }
   return bytes.buffer;
 }

@@ -613,6 +613,8 @@ describe("Obsidian plugin API parity", () => {
     expect(module.getLinkpath(" Target#Heading | Alias ")).toBe(" Target");
     expect(module.arrayBufferToHex(bytes)).toBe("000f10ff");
     expect(new Uint8Array(module.hexToArrayBuffer("000f10ff"))).toEqual(new Uint8Array(bytes));
+    expect(new Uint8Array(module.hexToArrayBuffer("0ff"))).toEqual(new Uint8Array([0x0f]));
+    expect(new Uint8Array(module.hexToArrayBuffer(" 0f"))).toEqual(new Uint8Array([0x00]));
     expect(module.arrayBufferToBase64(bytes)).toBe("AA8Q/w==");
     expect(new Uint8Array(module.base64ToArrayBuffer("AA8Q/w=="))).toEqual(new Uint8Array(bytes));
     await expect(module.getBlobArrayBuffer(new Blob(["hi"]))).resolves.toEqual(new TextEncoder().encode("hi").buffer);
