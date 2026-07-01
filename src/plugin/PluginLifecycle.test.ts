@@ -329,9 +329,11 @@ describe("community plugin lifecycle", () => {
     expect(record.enabled).toBe(false);
     expect(app.communityPlugins.get("life")?.installed).toBe(true);
 
+    const triggerSpy = vi.spyOn(app.workspace, "trigger");
     await app.pluginInstaller.enable("life");
 
     expect(instance?.didLoad).toBe(true);
+    expect(triggerSpy.mock.calls.some(([event]) => event === "community-plugin-loaded")).toBe(false);
     expect(instance?.sawStyleDuringLoad).toBe(false);
     expect(document.head.querySelector('style[data-obsidian-reconstructed-css="plugin:life"]')).not.toBeNull();
     expect(app.plugins.getPlugin("life")).toBe(instance);
@@ -346,6 +348,7 @@ describe("community plugin lifecycle", () => {
     await app.pluginInstaller.disable("life");
 
     expect(instance?.didUnload).toBe(true);
+    expect(triggerSpy.mock.calls.some(([event]) => event === "community-plugin-unloaded")).toBe(false);
     expect(app.plugins.getPlugin("life")).toBeNull();
     expect(app.commands.findCommand("life:hello")).toBeUndefined();
     expect(app.workspace.leftRibbon.containerEl.querySelector('.side-dock-ribbon-action[aria-label="Run"]')).toBeNull();
@@ -358,17 +361,21 @@ describe("community plugin lifecycle", () => {
     const app = new App(document.createElement("div"));
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const manifest = manifestFor("fail");
+    let failedInstance: FailingPlugin | null = null;
     const pkg: PluginPackage = {
       manifest,
       entry: "plugins/fail/main.js",
-      factory: (pluginApp, pluginManifest) => new FailingPlugin(pluginApp, pluginManifest),
+      factory: (pluginApp, pluginManifest) => {
+        failedInstance = new FailingPlugin(pluginApp, pluginManifest);
+        return failedInstance;
+      },
     };
 
     app.pluginSecurity.setCommunityPluginsEnabled(true);
     await app.pluginInstaller.install(pkg);
     await expect(app.pluginInstaller.enable("fail")).resolves.toBe(false);
 
-    expect(app.plugins.getPlugin("fail")).toBeNull();
+    expect(app.plugins.getPlugin("fail")).toBe(failedInstance);
     expect(app.communityPlugins.get("fail")?.enabled).toBe(false);
     expect(app.communityPlugins.get("fail")?.error).toBe("boom");
     expect(app.plugins.getState("fail")?.error).toBe("boom");

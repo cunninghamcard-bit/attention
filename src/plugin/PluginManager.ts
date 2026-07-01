@@ -35,12 +35,10 @@ export class PluginManager {
       await plugin.loadCSS();
       if (userInitiated) plugin.onUserEnable();
       state.enabled = true;
-      this.app.workspace.trigger("community-plugin-loaded", plugin);
       return plugin;
     } catch (error) {
       state.enabled = false;
       state.error = error instanceof Error ? error.message : String(error);
-      this.plugins.delete(manifest.id);
       this.reportPluginError(plugin, "load", error);
       throw error;
     } finally {
@@ -63,7 +61,6 @@ export class PluginManager {
       plugin.unload();
       this.plugins.delete(id);
       state.enabled = false;
-      this.app.workspace.trigger("community-plugin-unloaded", plugin);
     } catch (error) {
       state.error = error instanceof Error ? error.message : String(error);
       this.reportPluginError(plugin, "unload", error);
