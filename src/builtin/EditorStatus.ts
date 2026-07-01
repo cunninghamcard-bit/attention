@@ -78,10 +78,10 @@ export class EditorStatusController {
     el.style.display = status ? "" : "none";
     if (!status) return;
     el.replaceChildren();
-    const iconEl = document.createElement("span");
+    const iconEl = el.ownerDocument.createElement("span");
     iconEl.className = "status-bar-item-icon";
     iconEl.dataset.icon = STATUS_ICONS[status];
-    const labelEl = document.createElement("span");
+    const labelEl = el.ownerDocument.createElement("span");
     labelEl.className = "status-bar-item-segment";
     labelEl.textContent = STATUS_LABELS[status];
     el.title = STATUS_LABELS[status];

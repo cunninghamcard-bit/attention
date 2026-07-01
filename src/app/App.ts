@@ -103,6 +103,15 @@ export type CliFlags = Record<string, CliFlag>;
 export type CliHandler = (params: CliData) => string | Promise<string>;
 const localStorageFallback = new Map<string, string>();
 
+function installAnimationFrameFallback(win: Window): void {
+  if (!win.requestAnimationFrame) {
+    win.requestAnimationFrame = (callback) => win.setTimeout(() => callback(Date.now()), 16);
+  }
+  if (!win.cancelAnimationFrame) {
+    win.cancelAnimationFrame = (handle) => win.clearTimeout(handle);
+  }
+}
+
 export interface CliHandlerRegistration {
   id: string;
   command: string;
@@ -199,6 +208,7 @@ export class App {
   constructor(parent: HTMLElement = document.body) {
     const doc = parent.ownerDocument;
     const win = doc.defaultView ?? window;
+    installAnimationFrameFallback(win);
     applyObsidianBodyClasses(doc.body, win);
     installFocusBodyClassSync(win);
     syncObsidianConfigBodyClasses(doc.body, this);
