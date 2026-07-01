@@ -157,6 +157,17 @@ describe("Workspace public API parity", () => {
     expect(app.workspace.operatorFuncConfigs.bases).toBeUndefined();
   });
 
+  it("removes only one matching editor extension registration like Obsidian", () => {
+    const app = new App(document.createElement("div"));
+    const extension = {};
+
+    app.workspace.registerEditorExtension(extension);
+    app.workspace.registerEditorExtension(extension);
+    app.workspace.unregisterEditorExtension(extension);
+
+    expect(app.workspace.editorExtensions).toEqual([extension]);
+  });
+
   it("keeps workspace protocol handler registration atomic and scoped", async () => {
     const app = new App(document.createElement("div"));
     const first = vi.fn();

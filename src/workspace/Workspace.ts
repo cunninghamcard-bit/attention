@@ -1327,7 +1327,8 @@ export class Workspace extends Events {
   }
 
   unregisterEditorExtension(extension: unknown): void {
-    this.editorExtensions = this.editorExtensions.filter((item) => item !== extension);
+    const index = this.editorExtensions.indexOf(extension);
+    if (index !== -1) this.editorExtensions.splice(index, 1);
     this.updateOptions();
   }
 
