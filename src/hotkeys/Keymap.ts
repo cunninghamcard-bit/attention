@@ -1,7 +1,13 @@
 import { getActiveDocument } from "../dom/ActiveDocument";
 import { Platform } from "../platform/Platform";
 import type { PaneType } from "../workspace/Workspace";
-import { getModifiers, normalizedKeymapEventFromKeyboardEvent, Scope } from "./Scope";
+import {
+  compileModifiers,
+  decompileModifiers,
+  getModifiers,
+  normalizedKeymapEventFromKeyboardEvent,
+  Scope,
+} from "./Scope";
 
 export interface Hotkey {
   modifiers: string[];
@@ -10,7 +16,7 @@ export interface Hotkey {
 }
 
 export type Modifier = "Mod" | "Ctrl" | "Meta" | "Shift" | "Alt";
-export type UserEvent = MouseEvent | TouchEvent | KeyboardEvent;
+export type UserEvent = MouseEvent | PointerEvent | TouchEvent | KeyboardEvent;
 
 export class Keymap {
   readonly rootScope = new Scope();
@@ -74,7 +80,27 @@ export class Keymap {
   }
 
   updateModifiers(event: KeyboardEvent | MouseEvent): void {
-    this.modifiers = getModifiers(event);
+    this.modifiers = Keymap.getModifiers(event);
+  }
+
+  matchModifiers(modifiers: string): boolean {
+    return this.modifiers === modifiers;
+  }
+
+  hasModifier(modifier: Modifier): boolean {
+    return Keymap.decompileModifiers(this.modifiers).includes(modifier);
+  }
+
+  static getModifiers(event: KeyboardEvent | MouseEvent): string {
+    return getModifiers(event);
+  }
+
+  static compileModifiers(modifiers: string[]): string {
+    return compileModifiers(modifiers);
+  }
+
+  static decompileModifiers(modifiers: string): string[] {
+    return decompileModifiers(modifiers);
   }
 
   static isModifierKey(key: string): boolean {
@@ -89,11 +115,21 @@ export class Keymap {
     return evt.altKey;
   }
 
+  static isMatch(ref: { modifiers: string | null; key: string | null }, event: { modifiers: string; key: string; vkey: string }): boolean {
+    const modifiers = ref.modifiers;
+    const key = ref.key;
+    return (modifiers === null || modifiers === event.modifiers)
+      && (!key || key === event.vkey || Boolean(event.key && key.toLowerCase() === event.key.toLowerCase()));
+  }
+
   static isModEvent(event?: UserEvent | null): false | PaneType {
     if (!event) return false;
-    if (typeof MouseEvent !== "undefined" && event instanceof MouseEvent && event.button === 1) return "tab";
-    if (!(event.metaKey || event.ctrlKey)) return false;
-    if (event.altKey) return event.shiftKey ? "window" : "split";
+    if (
+      typeof MouseEvent !== "undefined" && event instanceof MouseEvent && event.button === 1
+      || typeof PointerEvent !== "undefined" && event instanceof PointerEvent && event.button === 1
+    ) return "tab";
+    if (!Keymap.isModifier(event, "Mod")) return false;
+    if (Keymap.isModifier(event, "Alt")) return Keymap.isModifier(event, "Shift") ? "window" : "split";
     return "tab";
   }
 }

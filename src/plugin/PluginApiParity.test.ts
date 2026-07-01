@@ -345,6 +345,29 @@ describe("Obsidian plugin API parity", () => {
     expect(app.renderContext.hoverPopover).toBeNull();
   });
 
+  it("exposes Obsidian Keymap modifier helpers through the plugin API", () => {
+    const app = new App(document.createElement("div"));
+    const module = createObsidianPluginModule(app);
+    const modKey = Platform.isMacOS ? { metaKey: true } : { ctrlKey: true };
+    const modifiers = module.Keymap.compileModifiers(["Mod", "Shift"]);
+    const event = new KeyboardEvent("keydown", { key: "P", code: "KeyP", shiftKey: true, ...modKey });
+    const keymap = new module.Keymap(null);
+
+    expect(module.Keymap.getModifiers(event)).toBe(modifiers);
+    expect(module.Keymap.decompileModifiers(modifiers)).toEqual(["Mod", "Shift"]);
+
+    keymap.updateModifiers(event);
+    expect(keymap.matchModifiers(modifiers)).toBe(true);
+    expect(keymap.hasModifier("Mod")).toBe(true);
+    expect(module.Keymap.isMatch({ modifiers, key: "p" }, { modifiers, key: "P", vkey: "KeyP" })).toBe(true);
+
+    expect(module.Keymap.isModEvent(new MouseEvent("click", { button: 1 }))).toBe("tab");
+    expect(module.Keymap.isModEvent(new MouseEvent("click", modKey))).toBe("tab");
+    expect(module.Keymap.isModEvent(new MouseEvent("click", { altKey: true, ...modKey }))).toBe("split");
+    expect(module.Keymap.isModEvent(new MouseEvent("click", { altKey: true, shiftKey: true, ...modKey }))).toBe("window");
+    expect(module.Keymap.isModEvent(new MouseEvent("click"))).toBe(false);
+  });
+
   it("exposes a usable DataAdapter on app.vault for plugin raw vault access", async () => {
     const app = new App(document.createElement("div"));
     const adapter = app.vault.adapter;

@@ -106,6 +106,13 @@ export function compileModifiers(modifiers: string[]): string {
     .join(",");
 }
 
+export function decompileModifiers(modifiers: string): string[] {
+  return modifiers
+    .split(",")
+    .map((modifier) => isMacLike() && modifier === "Meta" || !isMacLike() && modifier === "Ctrl" ? "Mod" : modifier)
+    .filter(Boolean);
+}
+
 function normalizeKey(key: string): string {
   return key.toLowerCase();
 }
