@@ -83,7 +83,7 @@ describe("Obsidian API utility parity", () => {
     expect(stringifyYaml({ empty: null })).toBe("empty:\n");
   });
 
-  it("falls back to navigator.language when no app language is configured", () => {
+  it("falls back to Obsidian-supported navigator languages", () => {
     Object.defineProperty(window, "localStorage", {
       configurable: true,
       value: { getItem: () => null },
@@ -93,7 +93,19 @@ describe("Obsidian API utility parity", () => {
       value: "fr-CA",
     });
 
-    expect(getLanguage()).toBe("fr-CA");
+    expect(getLanguage()).toBe("fr");
+
+    Object.defineProperty(window.navigator, "language", {
+      configurable: true,
+      value: "en-GB",
+    });
+    expect(getLanguage()).toBe("en-GB");
+
+    Object.defineProperty(window.navigator, "language", {
+      configurable: true,
+      value: "xx-YY",
+    });
+    expect(getLanguage()).toBe("en");
   });
 });
 

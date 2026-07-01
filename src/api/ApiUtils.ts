@@ -72,6 +72,12 @@ export type DebouncedFunction<T extends (...args: never[]) => unknown> = Debounc
 
 const STRIP_HEADING_RE = /[!"#$%&()*+,.:;<=>?@^`{|}~/\[\]\\\r\n]/g;
 const STRIP_HEADING_FOR_LINK_RE = /([:#|^\\\r\n]|%%|\[\[|\]\])/g;
+const DEFAULT_LANGUAGE = "en";
+const SUPPORTED_LANGUAGES = new Set([
+  "am", "ar", "be", "bn", "ca", "cs", "da", "de", "en", "en-GB", "es", "fa", "fi", "fr", "ga", "he", "hu", "id",
+  "it", "ja", "ka", "kh", "ko", "lv", "ms", "ne", "nl", "no", "pl", "pt", "pt-BR", "ro", "ru", "sk", "sq", "sr",
+  "sv", "th", "tr", "uk", "uz", "vi", "zh", "zh-TW",
+]);
 
 export interface FrontMatterInfo {
   exists: boolean;
@@ -220,8 +226,11 @@ export function stringifyYaml(obj: any): string {
 
 export function getLanguage(): string {
   const localStorageLanguage = typeof localStorage === "undefined" ? null : localStorage.getItem("language");
+  if (localStorageLanguage) return localStorageLanguage;
   const navigatorLanguage = typeof navigator === "undefined" ? "" : navigator.language;
-  return localStorageLanguage || navigatorLanguage || "en";
+  if (SUPPORTED_LANGUAGES.has(navigatorLanguage)) return navigatorLanguage;
+  const baseLanguage = navigatorLanguage.split("-")[0];
+  return SUPPORTED_LANGUAGES.has(baseLanguage) ? baseLanguage : DEFAULT_LANGUAGE;
 }
 
 export function loadMathJax(): Promise<void> {
