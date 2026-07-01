@@ -255,6 +255,16 @@ describe("App public plugin API", () => {
     expect(app.secretStorage.listSecrets()).toContain("api-key");
   });
 
+  it("matches Obsidian's plugin module export shape for runtime-only helpers", () => {
+    const app = new App(document.createElement("div"));
+    const module = createObsidianPluginModule(app);
+
+    expect(module).not.toHaveProperty("app");
+    expect(module).not.toHaveProperty("ConfirmationButton");
+    expect(module).not.toHaveProperty("ConfirmationModal");
+    expect(module.Modal).toBeTypeOf("function");
+  });
+
   it("omits the markdown extension from Obsidian open URLs", async () => {
     const app = new App(document.createElement("div"));
     const note = await app.vault.create("Folder/My Note.md", "body");

@@ -55,7 +55,7 @@ import { BasesView } from "../bases/BasesView";
 import { BasesViewConfig } from "../bases/BasesViewConfig";
 import { BasesEntry, BasesEntryGroup, BasesQueryResult } from "../bases/BasesQueryResult";
 import { QueryController } from "../bases/QueryController";
-import { ConfirmationButton, ConfirmationModal, Modal } from "../ui/Modal";
+import { Modal } from "../ui/Modal";
 import { Notice } from "../ui/Notice";
 import { displayTooltip, HoverPopover, PopoverState, setTooltip } from "../ui/Popover";
 import {
@@ -154,7 +154,6 @@ export type {
 } from "./ApiUtils";
 
 export interface ObsidianPluginModule {
-  app: App;
   App: typeof App;
   Tasks: typeof Tasks;
   Component: typeof Component;
@@ -163,8 +162,6 @@ export interface ObsidianPluginModule {
   PluginSettingTab: typeof PluginSettingTab;
   Notice: typeof Notice;
   Modal: typeof Modal;
-  ConfirmationButton: typeof ConfirmationButton;
-  ConfirmationModal: typeof ConfirmationModal;
   Menu: typeof Menu;
   MenuItem: typeof MenuItem;
   MenuSeparator: typeof MenuSeparator;
@@ -335,7 +332,6 @@ export interface ObsidianPluginModule {
 
 export function createObsidianPluginModule(app: App): ObsidianPluginModule {
   return {
-    app,
     App,
     Tasks,
     Component,
@@ -344,8 +340,6 @@ export function createObsidianPluginModule(app: App): ObsidianPluginModule {
     PluginSettingTab,
     Notice,
     Modal,
-    ConfirmationButton,
-    ConfirmationModal,
     Menu,
     MenuItem,
     MenuSeparator,
