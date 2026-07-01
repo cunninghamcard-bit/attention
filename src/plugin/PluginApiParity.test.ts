@@ -618,6 +618,9 @@ describe("Obsidian plugin API parity", () => {
     expect(module.arrayBufferToBase64(bytes)).toBe("AA8Q/w==");
     expect(new Uint8Array(module.base64ToArrayBuffer("AA8Q/w=="))).toEqual(new Uint8Array(bytes));
     await expect(module.getBlobArrayBuffer(new Blob(["hi"]))).resolves.toEqual(new TextEncoder().encode("hi").buffer);
+    const fallbackBlob = new Blob(["fallback"]);
+    Object.defineProperty(fallbackBlob, "arrayBuffer", { value: undefined });
+    await expect(module.getBlobArrayBuffer(fallbackBlob)).resolves.toEqual(new TextEncoder().encode("fallback").buffer);
   });
 
   it("matches Obsidian debounce Debouncer chaining cancel and run semantics", async () => {

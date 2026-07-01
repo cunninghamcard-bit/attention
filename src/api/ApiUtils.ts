@@ -302,7 +302,13 @@ export function hexToArrayBuffer(hex: string): ArrayBuffer {
 }
 
 export function getBlobArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
-  return blob.arrayBuffer();
+  if (blob.arrayBuffer) return blob.arrayBuffer();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => resolve(event.target?.result as ArrayBuffer);
+    reader.onabort = reader.onerror = reject;
+    reader.readAsArrayBuffer(blob);
+  });
 }
 
 export function getLinkpath(linktext: string): string {
