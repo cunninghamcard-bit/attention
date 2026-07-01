@@ -172,13 +172,13 @@ function renderMatchesFragment(text: string, matches: SearchMatches | null, offs
   if (!matches || matches.length === 0) return doc.createTextNode(text);
   const fragment = doc.createDocumentFragment();
   let cursor = 0;
-  for (const match of matches) {
+  for (let index = 0; cursor < text.length && index < matches.length; index += 1) {
+    const match = matches[index];
     let start = match[0] + offset;
-    let end = match[1] + offset;
+    const end = match[1] + offset;
     if (end <= 0) continue;
     if (start >= text.length) break;
     if (start < 0) start = 0;
-    if (end > text.length) end = text.length;
     if (start !== cursor) fragment.appendChild(doc.createTextNode(text.substring(cursor, start)));
     const highlight = doc.createElement("span");
     highlight.className = "suggestion-highlight";

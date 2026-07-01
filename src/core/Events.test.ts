@@ -19,6 +19,19 @@ describe("Events", () => {
     expect(ctx.value).toBe(2);
   });
 
+  it("matches Obsidian by preserving falsy listener contexts", () => {
+    const events = new Events();
+    let seen: unknown = "unset";
+    function handler(this: unknown): void {
+      seen = this;
+    }
+
+    events.on("event", handler, 0);
+    events.trigger("event");
+
+    expect(seen).toBe(0);
+  });
+
   it("removes handlers by original function, by event name, and by ref", () => {
     const events = new Events();
     const log: string[] = [];

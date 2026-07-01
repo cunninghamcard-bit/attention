@@ -894,6 +894,10 @@ describe("Obsidian plugin API parity", () => {
     module.renderMatches(matchesEl, "Quick Switcher", [[0, 5], [6, 14]]);
     expect(matchesEl.innerHTML).toBe('<span class="suggestion-highlight">Quick</span> <span class="suggestion-highlight">Switcher</span>');
 
+    const overflowMatchesEl = document.createElement("div");
+    module.renderMatches(overflowMatchesEl, "abc", [[0, 99], [1, 2]]);
+    expect(overflowMatchesEl.innerHTML).toBe('<span class="suggestion-highlight">abc</span>');
+
     const resultEl = document.createElement("div");
     module.renderResults(resultEl, "Quick Switcher", fuzzyMatch);
     expect(resultEl.querySelectorAll(".suggestion-highlight")).toHaveLength(2);

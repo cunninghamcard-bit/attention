@@ -9,16 +9,16 @@ interface EventRefRecord<TArgs extends unknown[] = unknown[]> extends EventRef<T
   e: Events;
   name: string;
   fn: EventHandler<TArgs>;
-  ctx?: object;
+  ctx: unknown;
 }
 
 export class Events {
   private handlers = new Map<string, EventRefRecord[]>();
 
-  on<TArgs extends unknown[]>(name: string, handler: EventHandler<TArgs>, ctx?: object): EventRef<TArgs> {
+  on<TArgs extends unknown[]>(name: string, handler: EventHandler<TArgs>, ctx?: unknown): EventRef<TArgs> {
     let bucket = this.handlers.get(name);
     if (!bucket) this.handlers.set(name, (bucket = []));
-    const ref: EventRefRecord<TArgs> = { e: this, name, fn: handler, ...(ctx ? { ctx } : {}) };
+    const ref: EventRefRecord<TArgs> = { e: this, name, fn: handler, ctx };
     bucket.push(ref as EventRefRecord);
     return ref;
   }
