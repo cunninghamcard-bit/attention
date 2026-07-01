@@ -122,6 +122,31 @@ describe("SuggestModal Obsidian chooser behavior", () => {
     expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalled();
   });
 
+  it("uses Obsidian scroll-page boundaries for PageUp and PageDown", () => {
+    const app = new App(document.createElement("div"));
+    const values = Array.from({ length: 10 }, (_, index) => `Item ${index}`);
+    const modal = new RecordingSuggestModal(app, values);
+    modal.chooser.setSuggestions(values);
+    Object.defineProperty(modal.resultContainerEl, "clientHeight", { configurable: true, value: 80 });
+    modal.resultContainerEl.scrollTop = 40;
+    modal.resultContainerEl.style.paddingTop = "0px";
+    for (const itemEl of modal.resultContainerEl.querySelectorAll<HTMLElement>(".suggestion-item")) {
+      Object.defineProperty(itemEl, "clientHeight", { configurable: true, value: 20 });
+    }
+
+    expect(modal.scope.handleKey(new KeyboardEvent("keydown", { key: "PageDown" }))).toBe(false);
+    expect(modal.chooser.selectedItem).toBe(5);
+
+    expect(modal.scope.handleKey(new KeyboardEvent("keydown", { key: "PageDown" }))).toBe(false);
+    expect(modal.chooser.selectedItem).toBe(9);
+
+    expect(modal.scope.handleKey(new KeyboardEvent("keydown", { key: "PageUp" }))).toBe(false);
+    expect(modal.chooser.selectedItem).toBe(2);
+
+    expect(modal.scope.handleKey(new KeyboardEvent("keydown", { key: "PageUp" }))).toBe(false);
+    expect(modal.chooser.selectedItem).toBe(0);
+  });
+
   it("does not move arrow/page selection while composing", () => {
     const app = new App(document.createElement("div"));
     const modal = new RecordingSuggestModal(app, ["Alpha", "Beta"]);

@@ -175,13 +175,11 @@ export abstract class SuggestModal<T> extends Modal {
     });
     this.scope.register([], "PageDown", (event) => {
       if (event.isComposing) return;
-      this.chooser.moveSelectedItem(this.chooser.getVisibleItemCount(), event, false);
-      return false;
+      return this.chooser.pageDown(event);
     });
     this.scope.register([], "PageUp", (event) => {
       if (event.isComposing) return;
-      this.chooser.moveSelectedItem(-this.chooser.getVisibleItemCount(), event, false);
-      return false;
+      return this.chooser.pageUp(event);
     });
     this.scope.register([], "Home", (event) => {
       this.chooser.setSelectedItem(0, event);
@@ -271,11 +269,38 @@ export class SuggestChooser<T> {
   }
 
   getVisibleItemCount(): number {
-    const first = this.suggestionEls[0];
-    if (!first) return 1;
-    const itemHeight = first.getBoundingClientRect().height || 1;
-    const containerHeight = this.containerEl.getBoundingClientRect().height || itemHeight;
-    return Math.max(1, Math.floor(containerHeight / itemHeight));
+    return this.numVisibleItems;
+  }
+
+  get rowHeight(): number {
+    const selectedEl = this.suggestionEls[this.selectedItem] ?? this.suggestionEls[0];
+    return selectedEl?.clientHeight || selectedEl?.getBoundingClientRect().height || 1;
+  }
+
+  get numVisibleItems(): number {
+    return Math.max(1, Math.floor(this.containerEl.clientHeight / this.rowHeight));
+  }
+
+  pageUp(event: KeyboardEvent): false | undefined {
+    if (event.isComposing) return;
+    if (this.values.length === 0) return false;
+    const paddingTop = parseFloat(getComputedStyle(this.containerEl).paddingTop) || 0;
+    const scrollTop = this.containerEl.scrollTop - paddingTop;
+    let index = Math.floor(scrollTop / this.rowHeight);
+    if (this.selectedItem <= index) index -= this.numVisibleItems;
+    this.setSelectedItem(Math.max(0, index), event);
+    return false;
+  }
+
+  pageDown(event: KeyboardEvent): false | undefined {
+    if (event.isComposing) return;
+    if (this.values.length === 0) return false;
+    const paddingTop = parseFloat(getComputedStyle(this.containerEl).paddingTop) || 0;
+    const scrollTop = this.containerEl.scrollTop - paddingTop;
+    let index = Math.floor(scrollTop / this.rowHeight) + this.numVisibleItems - 1;
+    if (this.selectedItem >= index) index += this.numVisibleItems;
+    this.setSelectedItem(Math.min(this.suggestionEls.length - 1, index), event);
+    return false;
   }
 
   moveSelectedItem(delta: number, event: KeyboardEvent, wrap = true): void {

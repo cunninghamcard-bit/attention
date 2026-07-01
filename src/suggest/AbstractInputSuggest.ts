@@ -100,13 +100,11 @@ export abstract class PopoverSuggest<T> implements SuggestOwner<T> {
     });
     this.scope.register([], "PageUp", (event) => {
       if (event.isComposing) return;
-      this.suggestions.moveSelectedItem(-this.suggestions.getVisibleItemCount(), event, false);
-      return false;
+      return this.suggestions.pageUp(event);
     });
     this.scope.register([], "PageDown", (event) => {
       if (event.isComposing) return;
-      this.suggestions.moveSelectedItem(this.suggestions.getVisibleItemCount(), event, false);
-      return false;
+      return this.suggestions.pageDown(event);
     });
     this.scope.register([], "Home", (event) => {
       this.suggestions.setSelectedItem(0, event);
