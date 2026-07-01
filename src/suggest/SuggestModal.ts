@@ -1,6 +1,7 @@
 import { Modal } from "../ui/Modal";
 import type { App } from "../app/App";
 import { Platform } from "../platform/Platform";
+import { fuzzySearch, prepareQuery, renderResults, sortSearchResults, type PreparedQuery, type SearchResult } from "../search/SearchHelpers";
 
 export interface Instruction {
   command: string;
@@ -9,10 +10,7 @@ export interface Instruction {
 
 export type PromptInstruction = Instruction;
 
-export interface FuzzyMatch {
-  matches: Array<[number, number]>;
-  score: number;
-}
+export interface FuzzyMatch extends SearchResult {}
 
 export interface FuzzySuggestion<T> {
   match: FuzzyMatch;
@@ -395,115 +393,20 @@ export abstract class FuzzySuggestModal<T> extends SuggestModal<FuzzySuggestion<
   }
 }
 
-export interface PreparedFuzzyQuery {
-  query: string;
-  tokens: string[];
-  fuzzy: string[];
-}
+export interface PreparedFuzzyQuery extends PreparedQuery {}
 
 export function prepareFuzzyQuery(query: string): PreparedFuzzyQuery {
-  const normalized = query.toLowerCase();
-  return {
-    query,
-    tokens: tokenize(normalized),
-    fuzzy: [...normalized].filter((char) => !/\s/.test(char)),
-  };
-}
-
-function tokenize(query: string): string[] {
-  const tokens: string[] = [];
-  let token = "";
-  for (const char of query) {
-    if (/\s|[\u2000-\u206F\u2E00-\u2E7F\\'!"#$%&()*+,\-.\/:;<=>?@\[\]^_`{|}~]/u.test(char)) {
-      if (token) tokens.push(token);
-      token = "";
-    } else if (/[\u0F00-\u0FFF\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f]/u.test(char)) {
-      if (token) tokens.push(token);
-      tokens.push(char);
-      token = "";
-    } else {
-      token += char;
-    }
-  }
-  if (token) tokens.push(token);
-  return tokens;
+  return prepareQuery(query);
 }
 
 export function fuzzyMatch(query: PreparedFuzzyQuery, text: string): FuzzyMatch | null {
-  if (!query.query) return { score: 0, matches: [] };
-  return tokenMatch(query.tokens, query.query, text, false) ?? tokenMatch(query.fuzzy, query.query, text, true);
-}
-
-function tokenMatch(parts: string[], originalQuery: string, text: string, fuzzy: boolean): FuzzyMatch | null {
-  const haystack = text.toLowerCase();
-  const matches: Array<[number, number]> = [];
-  let cursor = 0;
-
-  for (const part of parts) {
-    if (!part) continue;
-    if (fuzzy) {
-      const index = haystack.indexOf(part, cursor);
-      if (index === -1) return null;
-      matches.push([index, index + part.length]);
-      cursor = index + part.length;
-    } else {
-      const index = haystack.indexOf(part, cursor);
-      if (index === -1) return null;
-      matches.push([index, index + part.length]);
-      cursor = index + part.length;
-    }
-  }
-
-  const merged = mergeMatches(matches);
-  return { matches: merged, score: scoreMatch(originalQuery, text, merged, fuzzy) };
-}
-
-function mergeMatches(matches: Array<[number, number]>): Array<[number, number]> {
-  const merged: Array<[number, number]> = [];
-  for (const match of matches) {
-    const previous = merged[merged.length - 1];
-    if (previous && match[0] <= previous[1]) previous[1] = Math.max(previous[1], match[1]);
-    else merged.push([...match]);
-  }
-  return merged;
-}
-
-function scoreMatch(query: string, text: string, matches: Array<[number, number]>, fuzzy: boolean): number {
-  if (matches.length === 0) return 0;
-  const first = matches[0][0];
-  const last = matches[matches.length - 1][1];
-  const span = last - first;
-  const boundaryBonus = matches.reduce((score, [start]) => score + (start === 0 || /[\s:./_-]/.test(text[start - 1] ?? "") ? 8 : 0), 0);
-  return 1000
-    + boundaryBonus
-    - first * 3
-    - matches.length * 20
-    - Math.max(0, span - query.length) * 2
-    - text.length / 100
-    - (fuzzy ? 50 : 0);
+  return fuzzySearch(query, text);
 }
 
 export function sortFuzzySuggestions<T>(suggestions: FuzzySuggestion<T>[]): void {
-  suggestions.sort((a, b) => b.match.score - a.match.score);
+  sortSearchResults(suggestions);
 }
 
 export function renderFuzzyText(el: HTMLElement, text: string, match: FuzzyMatch | null, offset = 0): void {
-  if (!match || match.matches.length === 0) {
-    el.appendChild(document.createTextNode(text));
-    return;
-  }
-
-  let cursor = 0;
-  for (const [rawStart, rawEnd] of match.matches) {
-    const start = Math.max(0, rawStart + offset);
-    const end = Math.max(0, rawEnd + offset);
-    if (end <= 0 || start >= text.length) continue;
-    if (start > cursor) el.appendChild(document.createTextNode(text.slice(cursor, start)));
-    const highlight = document.createElement("span");
-    highlight.className = "suggestion-highlight";
-    highlight.textContent = text.slice(Math.max(cursor, start), Math.min(text.length, end));
-    el.appendChild(highlight);
-    cursor = Math.min(text.length, end);
-  }
-  if (cursor < text.length) el.appendChild(document.createTextNode(text.slice(cursor)));
+  renderResults(el, text, match, offset);
 }

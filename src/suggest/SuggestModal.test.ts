@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
 import { Platform } from "../platform/Platform";
-import { GroupedSuggestChooser, SuggestChooser, SuggestModal, type SuggestOwner } from "./SuggestModal";
+import { fuzzySearch, prepareQuery } from "../search/SearchHelpers";
+import { FuzzySuggestModal, fuzzyMatch, GroupedSuggestChooser, prepareFuzzyQuery, SuggestChooser, SuggestModal, type SuggestOwner } from "./SuggestModal";
 
 class RecordingSuggestModal extends SuggestModal<string> {
   readonly chosen: Array<{ value: string; event: MouseEvent | KeyboardEvent }> = [];
@@ -26,6 +27,22 @@ class RecordingSuggestModal extends SuggestModal<string> {
   override onSelectedChange(value: string, event: MouseEvent | KeyboardEvent | null): void {
     this.selected.push({ value, event });
   }
+}
+
+class RecordingFuzzySuggestModal extends FuzzySuggestModal<string> {
+  constructor(app: App, readonly values: string[]) {
+    super(app);
+  }
+
+  getItems(): string[] {
+    return this.values;
+  }
+
+  getItemText(item: string): string {
+    return item;
+  }
+
+  onChooseItem(): void {}
 }
 
 describe("SuggestModal Obsidian chooser behavior", () => {
@@ -71,6 +88,25 @@ describe("SuggestModal Obsidian chooser behavior", () => {
     modal.inputEl.dispatchEvent(new Event("input"));
 
     expect([...modal.resultContainerEl.querySelectorAll(".suggestion-item")].map((el) => el.textContent)).toEqual(["Alpha", "Beta"]);
+  });
+
+  it("uses the shared Obsidian fuzzy helpers in FuzzySuggestModal", () => {
+    const app = new App(document.createElement("div"));
+    const modal = new RecordingFuzzySuggestModal(app, ["Quick Switcher", "Quiet Space", "Search files"]);
+    const query = prepareFuzzyQuery("qs");
+
+    expect(fuzzyMatch(query, "Quick Switcher")).toEqual(fuzzySearch(prepareQuery("qs"), "Quick Switcher"));
+
+    const suggestions = modal.getSuggestions(" qs ");
+    const scores = suggestions.map((suggestion) => suggestion.match.score);
+
+    expect(suggestions.map((suggestion) => suggestion.item).sort()).toEqual(["Quick Switcher", "Quiet Space"]);
+    expect(scores).toEqual([...scores].sort((a, b) => b - a));
+
+    const el = document.createElement("div");
+    modal.renderSuggestion(suggestions[0], el);
+
+    expect(el.querySelectorAll(".suggestion-highlight")).toHaveLength(suggestions[0].match.matches.length);
   });
 
   it("wraps keyboard selection and fires onSelectedChange", () => {
