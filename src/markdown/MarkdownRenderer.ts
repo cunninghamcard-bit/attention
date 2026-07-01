@@ -108,7 +108,7 @@ export abstract class MarkdownRenderer extends MarkdownRenderChild implements Ma
           replaceCode: createReplaceCode(internalContext, parent, language),
         };
         const result = processor(source, replacement, codeContext);
-        if (result instanceof Promise) internalContext.promises.push(result);
+        if (result) internalContext.promises.push(result);
       }
     };
   }

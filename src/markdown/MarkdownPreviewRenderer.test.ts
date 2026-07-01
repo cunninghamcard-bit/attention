@@ -99,6 +99,29 @@ describe("MarkdownPreviewRenderer", () => {
     }
   });
 
+  it("waits for code block postprocessor thenables like Obsidian", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const owner = new Component();
+    owner.load();
+    const container = document.createElement("div");
+    let thenCalled = false;
+    const wrapper = MarkdownRenderer.createCodeBlockPostProcessor("thenable", () => ({
+      then(resolve: () => void) {
+        thenCalled = true;
+        resolve();
+      },
+    }) as Promise<void>);
+    MarkdownPreviewRenderer.registerPostProcessor(wrapper);
+    try {
+      await MarkdownRenderer.render(app, "```thenable\nbody\n```", container, "note.md", owner);
+      expect(thenCalled).toBe(true);
+    } finally {
+      MarkdownPreviewRenderer.unregisterPostProcessor(wrapper);
+      owner.unload();
+    }
+  });
+
   it("applies preview CSS classes from cssclasses frontmatter only", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
