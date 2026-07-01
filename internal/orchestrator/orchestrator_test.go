@@ -1223,6 +1223,163 @@ func TestReloadSettingsReloadsResourcesAndPublishesUpdate(t *testing.T) {
 	}
 }
 
+func TestReloadSettingsLoadsNewlyEnabledFilePlugin(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	agentDir := filepath.Join(root, config.AgentDirName)
+	cwd := filepath.Join(root, "project")
+	if err := os.MkdirAll(agentDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(cwd, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := filepath.Join(agentDir, "settings.json")
+	writeSettingsFile(t, settingsPath, `{}`)
+	manager, err := config.NewManager(agentDir, cwd)
+	if err != nil {
+		t.Fatalf("NewManager: %v", err)
+	}
+
+	repo := session.NewJsonlSessionRepo(t.TempDir())
+	o, err := New(ctx, NewOptions{
+		Repo:            repo,
+		CreateOptions:   session.JsonlSessionCreateOptions{CWD: cwd},
+		ModelID:         "initial-model",
+		Provider:        testProviderRegistry(testModel("initial-model")),
+		ThinkingLevel:   agentloop.ThinkingOff,
+		Settings:        manager.Settings(),
+		SettingsManager: manager,
+		AgentDir:        agentDir,
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if hasSlashCommandNamed(o.SlashCommands(), "demo-command") {
+		t.Fatal("demo-command exists before plugin is enabled")
+	}
+
+	pluginRoot := filepath.Join(root, "plugins", "demo-plugin")
+	if err := os.MkdirAll(filepath.Join(pluginRoot, ".attention-plugin"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(pluginRoot, ".attention-plugin", "plugin.json"),
+		[]byte(`{"name":"demo-plugin"}`),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+	writeDiscoveredPrompt(t, filepath.Join(pluginRoot, "commands"), "demo-command", "Use demo command")
+	writePluginHandlerCommand(t, pluginRoot, "handler-command", "Run handler")
+	writeSettingsFile(t, settingsPath, `{"plugins":["demo-plugin"]}`)
+
+	if err := o.ReloadSettings(ctx); err != nil {
+		t.Fatalf("ReloadSettings: %v", err)
+	}
+	if !hasSlashCommandNamed(o.SlashCommands(), "demo-command") {
+		t.Fatalf("SlashCommands missing demo-command after reload: %#v", o.SlashCommands())
+	}
+	handlerCommand := slashCommandNamed(o.SlashCommands(), "handler-command")
+	if handlerCommand == nil ||
+		handlerCommand.Description != "Run handler" ||
+		handlerCommand.ArgumentHint != "[args]" {
+		t.Fatalf("SlashCommands handler-command = %#v, want handler command with metadata", handlerCommand)
+	}
+	notifications, err := o.DispatchCommand(ctx, "handler-command", []string{"one", "two three"})
+	if err != nil {
+		t.Fatalf("DispatchCommand handler-command: %v", err)
+	}
+	if !reflect.DeepEqual(notifications, []CommandNotification{{Message: "handler ok", Level: "warning"}}) {
+		t.Fatalf("DispatchCommand notifications = %#v, want handler notification", notifications)
+	}
+	writePluginHandlerCommand(t, pluginRoot, "bad-command", "Bad handler")
+	if err := o.ReloadSettings(ctx); err != nil {
+		t.Fatalf("ReloadSettings bad command: %v", err)
+	}
+	if _, err := o.DispatchCommand(ctx, "bad-command", nil); err == nil || !strings.Contains(err.Error(), "non-JSON") {
+		t.Fatalf("DispatchCommand bad-command err = %v, want non-JSON error", err)
+	}
+}
+
+func TestReloadSettingsRebuildsToolsWithNewPluginBinDirs(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	agentDir := filepath.Join(root, config.AgentDirName)
+	cwd := filepath.Join(root, "project")
+	if err := os.MkdirAll(agentDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(cwd, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := filepath.Join(agentDir, "settings.json")
+	writeSettingsFile(t, settingsPath, `{}`)
+	manager, err := config.NewManager(agentDir, cwd)
+	if err != nil {
+		t.Fatalf("NewManager: %v", err)
+	}
+
+	var reloadBinDirs [][]string
+	repo := session.NewJsonlSessionRepo(t.TempDir())
+	o, err := New(ctx, NewOptions{
+		Repo:            repo,
+		CreateOptions:   session.JsonlSessionCreateOptions{CWD: cwd},
+		ModelID:         "initial-model",
+		Provider:        testProviderRegistry(testModel("initial-model")),
+		ThinkingLevel:   agentloop.ThinkingOff,
+		Settings:        manager.Settings(),
+		SettingsManager: manager,
+		AgentDir:        agentDir,
+		ToolBuilder: func(binDirs []string) ([]extension.ToolDefinition, error) {
+			reloadBinDirs = append(reloadBinDirs, append([]string(nil), binDirs...))
+			return []extension.ToolDefinition{{
+				Name:          "bash",
+				Description:   "Bash",
+				PromptSnippet: strings.Join(binDirs, string(os.PathListSeparator)),
+				Execute: func(
+					context.Context,
+					extension.ToolCall,
+					tool.UpdateCallback,
+					extension.ExtensionContext,
+				) (tool.Result, error) {
+					return tool.Result{}, nil
+				},
+			}}, nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	pluginRoot := filepath.Join(root, "plugins", "bin-plugin")
+	if err := os.MkdirAll(filepath.Join(pluginRoot, ".attention-plugin"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(pluginRoot, "bin"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(pluginRoot, ".attention-plugin", "plugin.json"),
+		[]byte(`{"name":"bin-plugin"}`),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+	writeSettingsFile(t, settingsPath, `{"plugins":["bin-plugin"]}`)
+
+	if err := o.ReloadSettings(ctx); err != nil {
+		t.Fatalf("ReloadSettings: %v", err)
+	}
+	wantBin := filepath.Join(pluginRoot, "bin")
+	if len(reloadBinDirs) != 1 || !slices.Equal(reloadBinDirs[0], []string{wantBin}) {
+		t.Fatalf("reload bin dirs = %#v, want [[%s]]", reloadBinDirs, wantBin)
+	}
+	if len(o.baseToolDefs) != 1 || !strings.Contains(o.baseToolDefs[0].PromptSnippet, wantBin) {
+		t.Fatalf("baseToolDefs = %#v, want rebuilt tool with plugin bin", o.baseToolDefs)
+	}
+}
+
 func TestReloadSettingsEmitsResourcesDiscoverReasonReload(t *testing.T) {
 	ctx := context.Background()
 	cwd := t.TempDir()
@@ -1586,6 +1743,58 @@ func writeDiscoveredPrompt(t *testing.T, root string, name string, description s
 	return root
 }
 
+func writePluginHandlerCommand(t *testing.T, pluginRoot string, name string, description string) {
+	t.Helper()
+
+	binDir := filepath.Join(pluginRoot, "bin")
+	commandsDir := filepath.Join(pluginRoot, "commands")
+	if err := os.MkdirAll(binDir, 0o700); err != nil {
+		t.Fatalf("mkdir plugin bin: %v", err)
+	}
+	if err := os.MkdirAll(commandsDir, 0o700); err != nil {
+		t.Fatalf("mkdir plugin commands: %v", err)
+	}
+	script := `#!/bin/sh
+payload=$(cat)
+case "$payload" in *'"command_name":"` + name + `"'*) ;; *) echo "bad command"; exit 2;; esac
+test "$1" = "from-json" || exit 3
+test "$ATTENTION_PLUGIN_ROOT" = "$(cd "$(dirname "$0")/.." && pwd)" || exit 4
+test "$(cd "$ATTENTION_PROJECT_DIR" && pwd -P)" = "$(pwd -P)" || { echo "project=$ATTENTION_PROJECT_DIR pwd=$(pwd -P)" >&2; exit 5; }
+case ":$PATH:" in *":$ATTENTION_PLUGIN_ROOT/bin:"*) ;; *) exit 6;; esac
+test -n "$ATTENTION_AGENT_DIR" || exit 7
+test -n "$ALONG_CODING_AGENT_DIR" || exit 8
+`
+	if name == "bad-command" {
+		script += `printf 'not json'
+`
+	} else {
+		script += `printf '{"notifications":[{"level":"warning","message":"handler ok"}]}'
+`
+	}
+	scriptPath := filepath.Join(binDir, name)
+	if err := os.WriteFile(scriptPath, []byte(script), 0o700); err != nil {
+		t.Fatalf("write plugin handler: %v", err)
+	}
+	config := `{
+  "commands": [
+    {
+      "name": "` + name + `",
+      "description": "` + description + `",
+      "argumentHint": "[args]",
+      "handler": {
+        "type": "command",
+        "command": "` + name + `",
+        "args": ["from-json"],
+        "timeout": 8
+      }
+    }
+  ]
+}`
+	if err := os.WriteFile(filepath.Join(commandsDir, "commands.json"), []byte(config), 0o600); err != nil {
+		t.Fatalf("write commands.json: %v", err)
+	}
+}
+
 func assertResourcesDiscoverEvent(t *testing.T, event any, cwd string, reason string) {
 	t.Helper()
 
@@ -1617,12 +1826,16 @@ func hasPromptTemplateNamed(templates []resource.PromptTemplate, name string) bo
 }
 
 func hasSlashCommandNamed(commands []SlashCommand, name string) bool {
+	return slashCommandNamed(commands, name) != nil
+}
+
+func slashCommandNamed(commands []SlashCommand, name string) *SlashCommand {
 	for _, command := range commands {
 		if command.Name == name {
-			return true
+			return &command
 		}
 	}
-	return false
+	return nil
 }
 
 func TestSubscribeTranslatesLifecycleEvents(t *testing.T) {
