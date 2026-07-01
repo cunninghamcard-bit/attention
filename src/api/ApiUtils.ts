@@ -345,7 +345,7 @@ export function parseFrontMatterEntry(frontmatter: unknown, key: string | RegExp
   if (!frontmatter || typeof frontmatter !== "object") return null;
   const entries = Object.entries(frontmatter as Record<string, unknown>);
   const found = typeof key === "string"
-    ? entries.find(([entryKey]) => entryKey.toLowerCase() === key.toLowerCase())
+    ? entries.find(([entryKey]) => entryKey === key)
     : entries.find(([entryKey]) => key.test(entryKey));
   return found ? found[1] : null;
 }
@@ -356,13 +356,14 @@ export function parseFrontMatterStringArray(frontmatter: unknown, key: string | 
 }
 
 export function parseFrontMatterAliases(frontmatter: unknown): string[] | null {
-  return parseFrontMatterStringArray(frontmatter, /^aliases?$/i);
+  const aliases = parseFrontMatterStringArray(frontmatter, /^aliases$/i);
+  return aliases ? aliases.filter(Boolean) : null;
 }
 
 export function parseFrontMatterTags(frontmatter: unknown): string[] | null {
-  const tags = parseFrontMatterStringArray(frontmatter, /^tags?$/i);
+  const tags = parseFrontMatterStringArray(frontmatter, /^tags$/i);
   if (!tags) return null;
-  return tags.map((tag) => tag.startsWith("#") ? tag : `#${tag}`).filter((tag) => tag.length > 1);
+  return tags.filter((tag) => tag.length > 0 && !tag.includes(" ")).map((tag) => tag.startsWith("#") ? tag : `#${tag}`);
 }
 
 export function getAllTags(cache: CachedMetadata | null | undefined): string[] | null {
@@ -476,13 +477,10 @@ function getRangeEnd(position: unknown): unknown {
 }
 
 function coerceStringArray(value: unknown): string[] | null {
-  if (typeof value === "string") {
-    const text = value.trim();
-    return text ? [text] : null;
-  }
-  if (!Array.isArray(value)) return null;
-  const values = value.map((item) => typeof item === "string" ? item.trim() : "").filter(Boolean);
-  return values.length > 0 ? values : null;
+  if (!value) return null;
+  if (typeof value === "string") return [value.trim()];
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string").map((item) => item.trim());
+  return null;
 }
 
 function htmlToString(html: string | HTMLElement | Document | DocumentFragment): string {

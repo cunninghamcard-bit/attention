@@ -680,11 +680,14 @@ describe("Obsidian plugin API parity", () => {
   it("exports frontmatter and HTML utility helpers through the plugin module facade", () => {
     const app = new App(document.createElement("div"));
     const module = createObsidianPluginModule(app);
-    const frontmatter = { aliases: ["Alias"], tags: ["alpha", "#beta"], other: 42 };
+    const frontmatter = { alias: "Ignored", aliases: ["Alias", " "], tag: "ignored", tags: ["alpha", "#beta", "two words", " "], other: 42 };
 
-    expect(module.parseFrontMatterEntry(frontmatter, "OTHER")).toBe(42);
+    expect(module.parseFrontMatterEntry(frontmatter, "OTHER")).toBeNull();
+    expect(module.parseFrontMatterEntry(frontmatter, "other")).toBe(42);
     expect(module.parseFrontMatterAliases(frontmatter)).toEqual(["Alias"]);
     expect(module.parseFrontMatterTags(frontmatter)).toEqual(["#alpha", "#beta"]);
+    expect(module.parseFrontMatterAliases({ alias: "Alias" })).toBeNull();
+    expect(module.parseFrontMatterTags({ tag: "alpha" })).toBeNull();
     expect(module.parseFrontMatterStringArray({ cssclasses: "wide" }, "cssclasses")).toEqual(["wide"]);
     expect(module.getAllTags(null)).toBeNull();
     expect(module.getAllTags({
