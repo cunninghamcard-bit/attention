@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { resetActiveWindow, setActiveWindow } from "../dom/ActiveDocument";
 import { debounce, getLanguage, normalizePath, stringifyYaml } from "./ApiUtils";
 
 describe("Obsidian API utility parity", () => {
@@ -20,6 +21,33 @@ describe("Obsidian API utility parity", () => {
 
       expect(calls).toEqual([2]);
     } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("uses the active window as debounce timer owner", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(0);
+      const firstWindow = fakeTimerWindow(1);
+      const secondWindow = fakeTimerWindow(2);
+      const calls: string[] = [];
+      const debounced = debounce((value: string) => calls.push(value), 100);
+
+      setActiveWindow(firstWindow);
+      debounced("first");
+      expect(firstWindow.setTimeout).toHaveBeenCalledWith(expect.any(Function), 100);
+
+      vi.setSystemTime(100);
+      setActiveWindow(secondWindow);
+      debounced("second");
+
+      expect(firstWindow.clearTimeout).toHaveBeenCalledWith(1);
+      expect(secondWindow.setTimeout).toHaveBeenCalledWith(expect.any(Function), 0);
+      debounced.run();
+      expect(calls).toEqual(["second"]);
+    } finally {
+      resetActiveWindow();
       vi.useRealTimers();
     }
   });
@@ -46,3 +74,11 @@ describe("Obsidian API utility parity", () => {
     expect(getLanguage()).toBe("fr-CA");
   });
 });
+
+function fakeTimerWindow(timerId: number): Window {
+  return {
+    document,
+    setTimeout: vi.fn(() => timerId),
+    clearTimeout: vi.fn(),
+  } as unknown as Window;
+}

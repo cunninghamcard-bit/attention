@@ -6,6 +6,7 @@ import { preprocessHtmlDrop } from "../markdown/HtmlDropPreprocessor";
 import type { CachedMetadata } from "../metadata/MetadataCache";
 import { parseLinktext as parseInternalLinktext } from "../metadata/Linkpath";
 import { compareVersions } from "../utils/Version";
+import { getActiveWindow } from "../dom/ActiveDocument";
 
 export const apiVersion = "1.12.7";
 export const moment = momentFactory;
@@ -150,20 +151,53 @@ export function requestUrl(request: RequestUrlParam | string, app?: App): Reques
 
 export function debounce<T extends unknown[], V>(cb: (...args: T) => V, timeout = 0, resetTimer = false): Debouncer<T, V> {
   let timeoutId: number | null = null;
+  let timerWindow: Window = getActiveWindow();
   let pendingArgs: T | null = null;
   let pendingThis: unknown = null;
+  let delayedUntil = 0;
+  let scheduledUntil = 0;
+  const call = (): V => {
+    const args = pendingArgs as T;
+    const context = pendingThis;
+    pendingArgs = null;
+    pendingThis = null;
+    return cb.apply(context, args);
+  };
+  const flush = (): V | undefined => {
+    if (delayedUntil) {
+      const now = Date.now();
+      if (now < delayedUntil) {
+        timerWindow = getActiveWindow();
+        timeoutId = timerWindow.setTimeout(flush, delayedUntil - now);
+        delayedUntil = 0;
+        return undefined;
+      }
+    }
+    scheduledUntil = 0;
+    timeoutId = null;
+    return call();
+  };
   const debounced = (function (this: unknown, ...args: T) {
     pendingArgs = args;
     pendingThis = this;
-    if (timeoutId !== null && resetTimer) window.clearTimeout(timeoutId);
-    if (timeoutId !== null && !resetTimer) return debounced;
-    timeoutId = window.setTimeout(() => {
-      debounced.run();
-    }, timeout);
+    const now = Date.now();
+    const activeWindow = getActiveWindow();
+    if (timeoutId !== null) {
+      if (resetTimer) delayedUntil = scheduledUntil = now + timeout;
+      else if (timerWindow !== activeWindow && scheduledUntil <= now) {
+        timerWindow.clearTimeout(timeoutId);
+        timerWindow = activeWindow;
+        timeoutId = timerWindow.setTimeout(flush, 0);
+      }
+      return debounced;
+    }
+    timerWindow = activeWindow;
+    scheduledUntil = now + timeout;
+    timeoutId = timerWindow.setTimeout(flush, timeout);
     return debounced;
   }) as Debouncer<T, V>;
   debounced.cancel = () => {
-    if (timeoutId !== null) window.clearTimeout(timeoutId);
+    if (timeoutId !== null) timerWindow.clearTimeout(timeoutId);
     timeoutId = null;
     pendingArgs = null;
     pendingThis = null;
@@ -171,13 +205,9 @@ export function debounce<T extends unknown[], V>(cb: (...args: T) => V, timeout 
   };
   debounced.run = () => {
     if (!pendingArgs) return undefined;
-    if (timeoutId !== null) window.clearTimeout(timeoutId);
+    if (timeoutId !== null) timerWindow.clearTimeout(timeoutId);
     timeoutId = null;
-    const args = pendingArgs;
-    const context = pendingThis;
-    pendingArgs = null;
-    pendingThis = null;
-    return cb.apply(context, args);
+    return call();
   };
   return debounced;
 }
