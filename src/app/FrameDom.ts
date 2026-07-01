@@ -19,6 +19,7 @@ export class FrameDom {
   constructor(doc: Document = document, options: FrameDomOptions = {}) {
     this.doc = doc;
     this.win = options.win ?? doc.defaultView ?? window;
+    (this.win as Window & { frameDom?: FrameDom }).frameDom = this;
     const body = doc.body;
     body.classList.add("is-frameless");
     body.classList.toggle("is-hidden-frameless", options.hidden !== false);
@@ -57,6 +58,8 @@ export class FrameDom {
 
   remove(): void {
     this.titleBarEl.remove();
+    const win = this.win as Window & { frameDom?: FrameDom };
+    if (win.frameDom === this) delete win.frameDom;
   }
 
   private createTitlebarButton(parent: HTMLElement, modifier: string, icon: string, title: string): HTMLElement {

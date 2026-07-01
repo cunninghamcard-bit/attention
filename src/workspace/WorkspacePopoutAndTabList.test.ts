@@ -297,6 +297,71 @@ describe("Obsidian popout and tab list DOM", () => {
     load.mockRestore();
   });
 
+  it("matches Obsidian's macOS tab-strip double-click window action", async () => {
+    const previousMacOS = Platform.isMacOS;
+    const previousDesktopApp = Platform.isDesktopApp;
+    const win = window as Window & {
+      electronWindow?: {
+        isMaximizable: () => boolean;
+        isMaximized: () => boolean;
+        minimize: () => void;
+        maximize: () => void;
+        unmaximize: () => void;
+      };
+      electron?: {
+        remote: {
+          systemPreferences: {
+            getUserDefault: () => string;
+          };
+        };
+      };
+    };
+    const previousElectronWindow = win.electronWindow;
+    const previousElectron = win.electron;
+    let maximized = false;
+    const getUserDefault = vi.fn(() => "Maximize");
+    const electronWindow = {
+      isMaximizable: vi.fn(() => true),
+      isMaximized: vi.fn(() => maximized),
+      minimize: vi.fn(),
+      maximize: vi.fn(() => {
+        maximized = true;
+      }),
+      unmaximize: vi.fn(() => {
+        maximized = false;
+      }),
+    };
+    Platform.isMacOS = true;
+    Platform.isDesktopApp = true;
+    win.electronWindow = electronWindow;
+    win.electron = { remote: { systemPreferences: { getUserDefault } } };
+    try {
+      const app = new App(document.createElement("div"));
+      await app.ready;
+      const tabs = app.workspace.rootSplit.children[0];
+      if (!(tabs instanceof WorkspaceTabs)) throw new Error("Expected root tabs");
+
+      tabs.tabHeaderContainerEl.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, button: 0 }));
+      tabs.tabHeaderContainerEl.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, button: 0 }));
+
+      expect(getUserDefault).toHaveBeenCalledWith("AppleActionOnDoubleClick", "string");
+      expect(electronWindow.maximize).toHaveBeenCalledOnce();
+      expect(electronWindow.unmaximize).toHaveBeenCalledOnce();
+
+      const sideLeaf = app.workspace.getLeftLeaf();
+      if (!sideLeaf) throw new Error("Expected side leaf");
+      sideLeaf.tabHeaderEl.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, button: 0 }));
+
+      expect(electronWindow.maximize).toHaveBeenCalledOnce();
+      expect(electronWindow.unmaximize).toHaveBeenCalledOnce();
+    } finally {
+      Platform.isMacOS = previousMacOS;
+      Platform.isDesktopApp = previousDesktopApp;
+      win.electronWindow = previousElectronWindow;
+      win.electron = previousElectron;
+    }
+  });
+
   it("animates non-stacked tab header insertions and removals with width and opacity", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;

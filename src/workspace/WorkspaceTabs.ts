@@ -61,6 +61,7 @@ export class WorkspaceTabs extends WorkspaceParent {
     this.allowSingleChild = true;
     this.containerEl.classList.add("workspace-tabs");
     this.tabHeaderContainerEl = createDiv("workspace-tab-header-container", this.containerEl);
+    installMacWindowDoubleClickAction(this.tabHeaderContainerEl);
     this.tabsInnerEl = createDiv("workspace-tab-header-container-inner", this.tabHeaderContainerEl);
     this.tabsInnerEl.addEventListener("wheel", (event) => this.handleTabHeaderWheel(event), { passive: false });
     this.tabsInnerEl.addEventListener("click", (event) => this.onTabHeaderClick(event));
@@ -607,4 +608,58 @@ function openInCurrentTabResult(leaf: WorkspaceLeaf): DragDropResult {
     action: "Open in this tab",
     dropEffect: "move",
   };
+}
+
+interface ElectronLikeWindow {
+  isMaximizable?: boolean | (() => boolean);
+  isMaximized?: () => boolean;
+  minimize?: () => void;
+  maximize?: () => void;
+  unmaximize?: () => void;
+}
+
+interface MacDoubleClickWindow extends Window {
+  frameDom?: unknown;
+  electronWindow?: ElectronLikeWindow;
+  electron?: {
+    remote?: {
+      systemPreferences?: {
+        getUserDefault?: (key: string, type: string) => string;
+      };
+    };
+  };
+}
+
+function installMacWindowDoubleClickAction(container: HTMLElement): void {
+  const win = (container.ownerDocument.defaultView ?? window) as MacDoubleClickWindow;
+  if (!Platform.isMacOS || !Platform.isDesktopApp || !win.frameDom) return;
+  container.addEventListener("dblclick", (event) => handleMacWindowDoubleClick(event, win));
+}
+
+function handleMacWindowDoubleClick(event: MouseEvent, win: MacDoubleClickWindow): void {
+  if (event.button !== 0) return;
+  const target = event.target;
+  if (target instanceof HTMLElement && (
+    target.closest(".clickable-icon")
+    || target.closest(".workspace-tab-header-inner-close-button")
+    || (target.closest(".workspace-tab-header") && target.closest(".workspace-split.mod-sidedock"))
+  )) return;
+
+  const electronWindow = win.electronWindow;
+  if (!electronWindow || !isElectronWindowMaximizable(electronWindow)) return;
+  const action = win.electron?.remote?.systemPreferences?.getUserDefault?.("AppleActionOnDoubleClick", "string") ?? "Maximize";
+  if (action === "Minimize") {
+    electronWindow.minimize?.();
+    return;
+  }
+  if (action === "Maximize" || action === "") {
+    if (electronWindow.isMaximized?.()) electronWindow.unmaximize?.();
+    else electronWindow.maximize?.();
+  }
+}
+
+function isElectronWindowMaximizable(electronWindow: ElectronLikeWindow): boolean {
+  return typeof electronWindow.isMaximizable === "function"
+    ? electronWindow.isMaximizable()
+    : electronWindow.isMaximizable !== false;
 }
