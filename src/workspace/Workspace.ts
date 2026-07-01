@@ -1011,10 +1011,9 @@ export class Workspace extends Events {
     let roots: WorkspaceItem | WorkspaceItem[];
     let callback: (leaf: WorkspaceLeaf) => boolean | void;
     if (typeof rootOrCallback === "function") {
+      if (!(callbackOrRoot instanceof WorkspaceItem) && !Array.isArray(callbackOrRoot)) return false;
       callback = rootOrCallback;
-      roots = callbackOrRoot instanceof WorkspaceItem || Array.isArray(callbackOrRoot)
-        ? callbackOrRoot
-        : [this.rootSplit, this.leftSplit, this.rightSplit, this.floatingSplit];
+      roots = callbackOrRoot;
     } else {
       roots = rootOrCallback;
       callback = callbackOrRoot as (leaf: WorkspaceLeaf) => boolean | void;

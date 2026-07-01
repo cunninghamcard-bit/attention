@@ -31,6 +31,19 @@ describe("Workspace traversal parity", () => {
     expect(seen).toEqual([leaf.id]);
   });
 
+  it("does not treat single-callback iterateLeaves as iterateAllLeaves", () => {
+    const app = new App(document.createElement("div"));
+    const seen: string[] = [];
+
+    const stopped = app.workspace.iterateLeaves((item) => {
+      seen.push(item.id);
+      return true;
+    });
+
+    expect(stopped).toBe(false);
+    expect(seen).toEqual([]);
+  });
+
   it("short-circuits iterateTabs and returns false when no tab group matches", () => {
     const app = new App(document.createElement("div"));
     const seen: string[] = [];
