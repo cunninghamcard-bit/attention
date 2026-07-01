@@ -420,6 +420,31 @@ describe("CommandManager plugin command behavior", () => {
     hotkeys.unregisterListeners();
   });
 
+  it("matches Obsidian by handling hotkeys even when the keyboard event is defaultPrevented", () => {
+    const scope = new Scope();
+    const vaultEvents = new Events();
+    const app = { lastEvent: null as Event | null, scope, vault: vaultEvents };
+    const hotkeys = new HotkeyManager(app as never);
+    const commands = new CommandManager(hotkeys, app);
+    Object.assign(app, { commands });
+    const callback = vi.fn();
+    commands.addCommand({
+      id: "open",
+      name: "Open",
+      hotkeys: [{ modifiers: ["Mod"], key: "O" }],
+      callback,
+    });
+    hotkeys.registerListeners();
+
+    const event = modKey("o", { cancelable: true });
+    event.preventDefault();
+
+    expect(scope.handleKey(event)).toBe(false);
+    expect(callback).toHaveBeenCalledTimes(1);
+
+    hotkeys.unregisterListeners();
+  });
+
   it("does not rebake custom hotkey overrides for commands without default hotkeys", () => {
     const scope = new Scope();
     const vaultEvents = new Events();

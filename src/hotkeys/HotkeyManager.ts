@@ -146,7 +146,7 @@ export class HotkeyManager {
   }
 
   private onTrigger(event: KeyboardEvent, keymapEvent?: NormalizedKeymapEvent): false | void {
-    if (!this.app || event.defaultPrevented) return;
+    if (!this.app) return;
     const commands = this.app.commands.getCommands();
     this.bake(commands);
     for (let index = 0; index < this.bakedHotkeys.length; index++) {
