@@ -267,7 +267,8 @@ export class App {
   }
 
   getObsidianUrl(file: TFile): string {
-    return `obsidian://open?vault=${encodeURIComponent(this.vault.getName())}&file=${encodeURIComponent(file.path)}`;
+    const path = file.extension === "md" ? file.path.slice(0, -3) : file.path;
+    return `obsidian://open?vault=${encodeURIComponent(this.vault.getName())}&file=${encodeURIComponent(path)}`;
   }
 
   async copyObsidianUrl(file: TFile): Promise<void> {

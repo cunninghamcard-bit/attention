@@ -15,7 +15,7 @@ export class WorkspaceParent extends WorkspaceItem {
 
   insertChild(index: number, child: WorkspaceItem): void {
     child.setParent(this);
-    const clamped = Math.max(0, Math.min(index, this.children.length));
+    const clamped = index < 0 || index >= this.children.length ? this.children.length : index;
     const before = this.children[clamped]?.containerEl ?? null;
     this.children.splice(clamped, 0, child);
     if (this.autoManageDOM) {

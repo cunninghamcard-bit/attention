@@ -125,6 +125,18 @@ describe("Workspace public API parity", () => {
     expect(activeEditor?.hoverPopover).toBeNull();
   });
 
+  it("exposes sidedock size as Obsidian's public state alias", () => {
+    const app = new App(document.createElement("div"));
+    const leftSplit = app.workspace.leftSplit;
+    if (!("size" in leftSplit)) throw new Error("Expected desktop sidedock");
+    const sidedock = leftSplit as typeof leftSplit & { size: number | null; width: number | null };
+
+    sidedock.size = 420;
+
+    expect(sidedock.width).toBe(420);
+    expect(sidedock.serialize()).toEqual(expect.objectContaining({ width: 420 }));
+  });
+
   it("registers operator function display configs by id like Obsidian", () => {
     const app = new App(document.createElement("div"));
     const first = [{ funcName: "contains", display: "contains", inverseDisplay: "does not contain" }];
@@ -382,7 +394,7 @@ describe("Workspace public API parity", () => {
     const app = new App(document.createElement("div"));
     const leaf = app.workspace.getLeaf();
     const pinned: boolean[] = [];
-    const groups: string[] = [];
+    const groups: Array<string | null> = [];
     const workspacePinned: unknown[] = [];
     const workspaceGroups: unknown[] = [];
 
@@ -393,9 +405,10 @@ describe("Workspace public API parity", () => {
 
     expect(leaf.setPinned(true)).toBeUndefined();
     expect(leaf.setGroup("linked-pane")).toBeUndefined();
+    expect(leaf.setGroup(null)).toBeUndefined();
 
-    expect(pinned).toEqual([true, true]);
-    expect(groups).toEqual(["linked-pane"]);
+    expect(pinned).toEqual([true, true, true]);
+    expect(groups).toEqual(["linked-pane", null]);
     expect(workspacePinned).toEqual([]);
     expect(workspaceGroups).toEqual([]);
   });

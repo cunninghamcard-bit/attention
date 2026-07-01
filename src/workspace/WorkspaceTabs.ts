@@ -97,7 +97,7 @@ export class WorkspaceTabs extends WorkspaceParent {
 
   insertChild(index: number, child: WorkspaceItem, activate = true): void {
     if (!(child instanceof WorkspaceLeaf)) return;
-    const clamped = Math.max(0, Math.min(index, this.children.length));
+    const clamped = index < 0 || index >= this.children.length ? this.children.length : index;
     child.setParent(this);
     this.children.splice(clamped, 0, child);
 

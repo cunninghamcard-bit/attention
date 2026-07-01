@@ -108,7 +108,7 @@ export function requireApiVersion(version: string): boolean {
 }
 
 export function normalizePath(path: string): string {
-  return path
+  const normalizedPath = path
     .replace(/\\/g, "/")
     .replace(/\/+/g, "/")
     .replace(/^\/+/, "")
@@ -116,6 +116,7 @@ export function normalizePath(path: string): string {
     .split("/")
     .filter((part) => part !== "." && part !== "")
     .join("/");
+  return (normalizedPath || "/").normalize("NFC");
 }
 
 export function request(request: RequestUrlParam | string, app?: App): Promise<string> {
@@ -147,7 +148,7 @@ export function requestUrl(request: RequestUrlParam | string, app?: App): Reques
   return responsePromise;
 }
 
-export function debounce<T extends unknown[], V>(cb: (...args: T) => V, timeout = 0, resetTimer = true): Debouncer<T, V> {
+export function debounce<T extends unknown[], V>(cb: (...args: T) => V, timeout = 0, resetTimer = false): Debouncer<T, V> {
   let timeoutId: number | null = null;
   let pendingArgs: T | null = null;
   const debounced = ((...args: T) => {
@@ -181,13 +182,13 @@ export function parseYaml(yaml: string): any {
 }
 
 export function stringifyYaml(obj: any): string {
-  return stringifyYamlSource(obj);
+  return stringifyYamlSource(obj, { nullStr: "", lineWidth: 0, aliasDuplicateObjects: false });
 }
 
 export function getLanguage(): string {
   const localStorageLanguage = typeof localStorage === "undefined" ? null : localStorage.getItem("language");
-  const documentLanguage = typeof document === "undefined" ? "" : document.documentElement.lang;
-  return localStorageLanguage || documentLanguage || "en";
+  const navigatorLanguage = typeof navigator === "undefined" ? "" : navigator.language;
+  return localStorageLanguage || navigatorLanguage || "en";
 }
 
 export function loadMathJax(): Promise<void> {

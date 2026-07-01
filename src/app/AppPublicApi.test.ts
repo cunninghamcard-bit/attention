@@ -196,6 +196,16 @@ describe("App public plugin API", () => {
     expect(app.secretStorage.listSecrets()).toContain("api-key");
   });
 
+  it("omits the markdown extension from Obsidian open URLs", async () => {
+    const app = new App(document.createElement("div"));
+    const note = await app.vault.create("Folder/My Note.md", "body");
+    const image = await app.vault.create("Image.png", "body");
+
+    expect(app.getObsidianUrl(note)).toContain("file=Folder%2FMy%20Note");
+    expect(app.getObsidianUrl(note)).not.toContain(".md");
+    expect(app.getObsidianUrl(image)).toContain("file=Image.png");
+  });
+
   it("validates secret IDs and persists secrets across storage instances", () => {
     const storage = new SecretStorage();
 

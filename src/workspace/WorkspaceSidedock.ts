@@ -35,6 +35,14 @@ export class WorkspaceSidedock extends WorkspaceSplit {
     this.containerEl.style.width = `${this.width}px`;
   }
 
+  get size(): number | null {
+    return this.width;
+  }
+
+  set size(value: number | null) {
+    this.width = value;
+  }
+
   appendChild(child: WorkspaceItem): void {
     super.appendChild(child);
   }
@@ -51,7 +59,7 @@ export class WorkspaceSidedock extends WorkspaceSplit {
   override serialize(): Record<string, unknown> {
     return {
       ...super.serialize(),
-      ...(this.width == null ? {} : { width: this.width }),
+      ...(this.size == null ? {} : { width: this.size }),
       ...(this.collapsed ? { collapsed: true } : {}),
     };
   }

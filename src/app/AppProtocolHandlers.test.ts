@@ -88,7 +88,7 @@ describe("App protocol handlers", () => {
     expect(url.protocol).toBe("callback:");
     expect(url.searchParams.get("token")).toBe("1");
     expect(url.searchParams.get("name")).toBe("Callback");
-    expect(url.searchParams.get("url")).toBe("obsidian://open?vault=In-memory&file=Callback.md");
+    expect(url.searchParams.get("url")).toBe("obsidian://open?vault=In-memory&file=Callback");
   });
 
   it("copies the active file address or opens x-error from hook-get-address", async () => {
@@ -103,7 +103,7 @@ describe("App protocol handlers", () => {
     await app.workspace.openFile(file, { active: true });
     await app.uriRouter.handleUri("obsidian://hook-get-address");
 
-    expect(writeText).toHaveBeenCalledWith("[Address](obsidian://open?vault=In-memory&file=Address.md)");
+    expect(writeText).toHaveBeenCalledWith("[Address](obsidian://open?vault=In-memory&file=Address)");
 
     await app.workspace.activeLeaf?.setViewState({ type: "empty", active: true });
     await app.uriRouter.handleUri(`obsidian://hook-get-address?${new URLSearchParams({ "x-error": "callback://error" })}`);

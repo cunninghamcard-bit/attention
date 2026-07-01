@@ -136,7 +136,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
   }
 
   override on(name: "pinned-change", callback: (pinned: boolean) => any, ctx?: any): EventRef;
-  override on(name: "group-change", callback: (group: string) => any, ctx?: any): EventRef;
+  override on(name: "group-change", callback: (group: string | null) => any, ctx?: any): EventRef;
   override on(name: "history-change", callback: () => any, ctx?: any): EventRef;
   override on<TArgs extends unknown[]>(name: string, callback: (...args: TArgs) => any, ctx?: object): EventRef<TArgs>;
   override on<TArgs extends unknown[]>(name: string, callback: (...args: TArgs) => any, ctx?: object): EventRef<TArgs> {
@@ -539,7 +539,6 @@ export class WorkspaceLeaf extends WorkspaceItem {
 
   private emitHistoryChange(): void {
     this.trigger("history-change");
-    this.workspace.trigger("history-change", this);
   }
 
   updateHeader(): void {
@@ -638,7 +637,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
     }
     this.setPinned(shouldPin, { layout: options.layout });
     this.group = nextGroup;
-    this.trigger("group-change", this.group ?? "");
+    this.trigger("group-change", this.group);
     this.updateHeader();
     if (options.layout !== false) this.workspace.requestUpdateLayout();
   }

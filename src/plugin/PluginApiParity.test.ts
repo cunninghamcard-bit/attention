@@ -568,11 +568,11 @@ describe("Obsidian plugin API parity", () => {
     expect(module.apiVersion).toBe("1.12.7");
     expect(module.requireApiVersion("1.0.0")).toBe(true);
     expect(module.requireApiVersion("99.0.0")).toBe(false);
-    const previousLanguage = document.documentElement.lang;
-    document.documentElement.lang = "zh";
+    const previousLanguage = navigator.language;
+    Object.defineProperty(navigator, "language", { configurable: true, value: "zh" });
     expect(module.getLanguage).toBe(getLanguage);
     expect(module.getLanguage()).toBe("zh");
-    document.documentElement.lang = previousLanguage;
+    Object.defineProperty(navigator, "language", { configurable: true, value: previousLanguage });
     expect(module.parseLinktext(" Target#Heading#Child | Alias ")).toEqual({ path: "Target", subpath: "Heading#Child" });
     expect(module.getLinkpath(" Target#Heading | Alias ")).toBe("Target");
     expect(module.arrayBufferToHex(bytes)).toBe("000f10ff");
@@ -596,18 +596,26 @@ describe("Obsidian plugin API parity", () => {
       expect(debounced("first")).toBe(debounced);
       await vi.advanceTimersByTimeAsync(5);
       expect(debounced("second")).toBe(debounced);
-      await vi.advanceTimersByTimeAsync(9);
-      expect(calls).toEqual([]);
-      await vi.advanceTimersByTimeAsync(1);
-      expect(calls).toEqual(["second"]);
+      await vi.advanceTimersByTimeAsync(5);
+      expect(calls).toEqual(["first"]);
 
       expect(debounced("third").cancel()).toBe(debounced);
       await vi.advanceTimersByTimeAsync(10);
-      expect(calls).toEqual(["second"]);
+      expect(calls).toEqual(["first"]);
 
       debounced("run-now");
       expect(debounced.run()).toBe("ran:run-now");
-      expect(calls).toEqual(["second", "run-now"]);
+      expect(calls).toEqual(["first", "run-now"]);
+
+      const resetCalls: string[] = [];
+      const resetDebounced = module.debounce((value: string) => resetCalls.push(value), 10, true);
+      resetDebounced("first");
+      await vi.advanceTimersByTimeAsync(5);
+      resetDebounced("second");
+      await vi.advanceTimersByTimeAsync(9);
+      expect(resetCalls).toEqual([]);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(resetCalls).toEqual(["second"]);
       expect(debounced.run()).toBeUndefined();
 
       const firstOnly = module.debounce((value: string) => {
@@ -616,7 +624,7 @@ describe("Obsidian plugin API parity", () => {
       expect(firstOnly("first-pending")).toBe(firstOnly);
       expect(firstOnly("ignored-pending")).toBe(firstOnly);
       await vi.advanceTimersByTimeAsync(10);
-      expect(calls).toEqual(["second", "run-now", "first-pending"]);
+      expect(calls).toEqual(["first", "run-now", "first-pending"]);
     } finally {
       vi.useRealTimers();
     }
