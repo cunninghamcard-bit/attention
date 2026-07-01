@@ -61,7 +61,7 @@ describe("Workspace Obsidian API aliases", () => {
     expect(app.workspace.isAttached(null)).toBe(false);
   });
 
-  it("does not persist layout merely because active leaf changes", async () => {
+  it("persists tab selection when active leaf changes across tabs", async () => {
     const app = new App(document.createElement("div"));
     const first = app.workspace.getLeaf();
     const second = app.workspace.createNewTab();
@@ -74,6 +74,6 @@ describe("Workspace Obsidian API aliases", () => {
     app.workspace.setActiveLeaf(first);
     app.workspace.setActiveLeaf(second);
 
-    expect(saveLayout).not.toHaveBeenCalled();
+    expect(saveLayout).toHaveBeenCalled();
   });
 });

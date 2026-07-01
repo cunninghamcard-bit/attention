@@ -943,7 +943,7 @@ export class Workspace extends Events {
     leaf.activeTime = Date.now();
     if (leaf.parent instanceof WorkspaceTabs) {
       const index = leaf.parent.children.indexOf(leaf);
-      if (index !== -1 && leaf.parent.currentTab !== index) leaf.parent.selectTabIndex(index, false, false);
+      if (index !== -1 && leaf.parent.currentTab !== index) leaf.parent.selectTabIndex(index);
       leaf.parent.containerEl.classList.add("mod-active");
       leaf.parent.updateTabDisplay();
     } else if (leaf.parent instanceof MobileDrawer) {
