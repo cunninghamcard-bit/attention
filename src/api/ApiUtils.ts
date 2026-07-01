@@ -151,10 +151,12 @@ export function requestUrl(request: RequestUrlParam | string, app?: App): Reques
 export function debounce<T extends unknown[], V>(cb: (...args: T) => V, timeout = 0, resetTimer = false): Debouncer<T, V> {
   let timeoutId: number | null = null;
   let pendingArgs: T | null = null;
-  const debounced = ((...args: T) => {
+  let pendingThis: unknown = null;
+  const debounced = (function (this: unknown, ...args: T) {
+    pendingArgs = args;
+    pendingThis = this;
     if (timeoutId !== null && resetTimer) window.clearTimeout(timeoutId);
     if (timeoutId !== null && !resetTimer) return debounced;
-    pendingArgs = args;
     timeoutId = window.setTimeout(() => {
       debounced.run();
     }, timeout);
@@ -164,6 +166,7 @@ export function debounce<T extends unknown[], V>(cb: (...args: T) => V, timeout 
     if (timeoutId !== null) window.clearTimeout(timeoutId);
     timeoutId = null;
     pendingArgs = null;
+    pendingThis = null;
     return debounced;
   };
   debounced.run = () => {
@@ -171,8 +174,10 @@ export function debounce<T extends unknown[], V>(cb: (...args: T) => V, timeout 
     if (timeoutId !== null) window.clearTimeout(timeoutId);
     timeoutId = null;
     const args = pendingArgs;
+    const context = pendingThis;
     pendingArgs = null;
-    return cb(...args);
+    pendingThis = null;
+    return cb.apply(context, args);
   };
   return debounced;
 }
@@ -331,11 +336,11 @@ export function parseFrontMatterTags(frontmatter: unknown): string[] | null {
   return tags.map((tag) => tag.startsWith("#") ? tag : `#${tag}`).filter((tag) => tag.length > 1);
 }
 
-export function getAllTags(cache: CachedMetadata): string[] | null {
-  const tags = new Set<string>();
-  for (const entry of cache.tags ?? []) tags.add(entry.tag);
-  for (const tag of parseFrontMatterTags(cache.frontmatter) ?? []) tags.add(tag);
-  return tags.size > 0 ? [...tags].sort() : null;
+export function getAllTags(cache: CachedMetadata): string[] {
+  const tags: string[] = [];
+  for (const tag of parseFrontMatterTags(cache.frontmatter) ?? []) tags.push(tag);
+  for (const entry of cache.tags ?? []) tags.push(entry.tag);
+  return tags;
 }
 
 export function getFrontMatterInfo(content: string): FrontMatterInfo {

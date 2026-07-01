@@ -631,15 +631,15 @@ describe("Obsidian plugin API parity", () => {
       await vi.advanceTimersByTimeAsync(5);
       expect(debounced("second")).toBe(debounced);
       await vi.advanceTimersByTimeAsync(5);
-      expect(calls).toEqual(["first"]);
+      expect(calls).toEqual(["second"]);
 
       expect(debounced("third").cancel()).toBe(debounced);
       await vi.advanceTimersByTimeAsync(10);
-      expect(calls).toEqual(["first"]);
+      expect(calls).toEqual(["second"]);
 
       debounced("run-now");
       expect(debounced.run()).toBe("ran:run-now");
-      expect(calls).toEqual(["first", "run-now"]);
+      expect(calls).toEqual(["second", "run-now"]);
 
       const resetCalls: string[] = [];
       const resetDebounced = module.debounce((value: string) => resetCalls.push(value), 10, true);
@@ -656,9 +656,20 @@ describe("Obsidian plugin API parity", () => {
         calls.push(value);
       }, 10, false);
       expect(firstOnly("first-pending")).toBe(firstOnly);
-      expect(firstOnly("ignored-pending")).toBe(firstOnly);
+      expect(firstOnly("latest-pending")).toBe(firstOnly);
       await vi.advanceTimersByTimeAsync(10);
-      expect(calls).toEqual(["first", "run-now", "first-pending"]);
+      expect(calls).toEqual(["second", "run-now", "latest-pending"]);
+
+      const receiver = {
+        prefix: "ctx",
+        debounced: module.debounce(function (this: { prefix: string }, value: string) {
+          calls.push(`${this.prefix}:${value}`);
+          return `${this.prefix}:${value}`;
+        }, 10),
+      };
+      receiver.debounced("method-first");
+      receiver.debounced("method-second");
+      expect(receiver.debounced.run()).toBe("ctx:method-second");
     } finally {
       vi.useRealTimers();
     }
@@ -674,9 +685,13 @@ describe("Obsidian plugin API parity", () => {
     expect(module.parseFrontMatterTags(frontmatter)).toEqual(["#alpha", "#beta"]);
     expect(module.parseFrontMatterStringArray({ cssclasses: "wide" }, "cssclasses")).toEqual(["wide"]);
     expect(module.getAllTags({
-      tags: [{ tag: "#inline", position: { start: { line: 0, col: 0, offset: 0 }, end: { line: 0, col: 7, offset: 7 } } }],
+      tags: [
+        { tag: "#beta", position: { start: { line: 0, col: 0, offset: 0 }, end: { line: 0, col: 5, offset: 5 } } },
+        { tag: "#inline", position: { start: { line: 0, col: 6, offset: 6 }, end: { line: 0, col: 13, offset: 13 } } },
+      ],
       frontmatter,
-    })).toEqual(["#alpha", "#beta", "#inline"]);
+    })).toEqual(["#alpha", "#beta", "#beta", "#inline"]);
+    expect(module.getAllTags({})).toEqual([]);
     expect(module.getFrontMatterInfo("---\na: 1\n---\nBody")).toMatchObject({
       exists: true,
       frontmatter: "a: 1",

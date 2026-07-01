@@ -7,7 +7,7 @@ describe("Obsidian API utility parity", () => {
     expect(normalizePath("/./Cafe\u0301.md")).toBe("Café.md");
   });
 
-  it("does not reset debounce timers unless requested", () => {
+  it("keeps debounce timers while running the latest pending args", () => {
     vi.useFakeTimers();
     try {
       const calls: number[] = [];
@@ -18,7 +18,7 @@ describe("Obsidian API utility parity", () => {
       debounced(2);
       vi.advanceTimersByTime(50);
 
-      expect(calls).toEqual([1]);
+      expect(calls).toEqual([2]);
     } finally {
       vi.useRealTimers();
     }
