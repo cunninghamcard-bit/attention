@@ -110,13 +110,11 @@ export function requireApiVersion(version: string): boolean {
 
 export function normalizePath(path: string): string {
   const normalizedPath = path
+    .replace(/\u00A0|\u202F/g, " ")
     .replace(/\\/g, "/")
     .replace(/\/+/g, "/")
     .replace(/^\/+/, "")
-    .replace(/\/+$/, "")
-    .split("/")
-    .filter((part) => part !== "." && part !== "")
-    .join("/");
+    .replace(/\/+$/, "");
   return (normalizedPath || "/").normalize("NFC");
 }
 

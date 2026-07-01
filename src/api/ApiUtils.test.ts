@@ -3,9 +3,10 @@ import { resetActiveWindow, setActiveWindow } from "../dom/ActiveDocument";
 import { debounce, getLanguage, normalizePath, stringifyYaml } from "./ApiUtils";
 
 describe("Obsidian API utility parity", () => {
-  it("normalizes empty paths to the vault root and returns NFC text", () => {
+  it("normalizes paths with Obsidian's slash trimming and NFC rules", () => {
     expect(normalizePath("")).toBe("/");
-    expect(normalizePath("/./Cafe\u0301.md")).toBe("Café.md");
+    expect(normalizePath("/./Cafe\u0301.md")).toBe("./Café.md");
+    expect(normalizePath("Folder\u00A0Name//Note.md/")).toBe("Folder Name/Note.md");
   });
 
   it("keeps debounce timers while running the latest pending args", () => {
