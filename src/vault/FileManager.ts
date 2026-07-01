@@ -32,11 +32,7 @@ export class FileManager {
     const creator = this.fileParentCreatorByType[extension];
     if (creator) return creator(sourcePath);
 
-    if (isAttachmentExtension(extension)) {
-      const configuredPath = this.app.vault.getConfig<string>("attachmentFolderPath") ?? "/";
-      return this.getFolderByPathOrVirtual(resolveAttachmentParentPath(configuredPath, sourcePath), true);
-    }
-
+    console.error(`No file creator assigned to create file with extension ${extension}. Falling back to Markdown file creator.`);
     return this.getMarkdownNewFileParent(sourcePath);
   }
 

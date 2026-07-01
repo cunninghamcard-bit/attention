@@ -27,25 +27,22 @@ describe("FileManager", () => {
     expect(file.path).toBe("Inbox/Untitled.md");
   });
 
-  it("uses newFilePath extension to choose note or attachment parent settings", async () => {
+  it("falls back to Markdown parent creation for unregistered extensions", async () => {
     const app = new App(document.createElement("div"));
     await app.vault.create("Notes/Source.md", "");
     app.vault.setConfig("newFileLocation", "folder");
     app.vault.setConfig("newFileFolderPath", "Inbox");
     app.vault.setConfig("attachmentFolderPath", "./assets");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
     expect(app.fileManager.getNewFileParent("Notes/Source.md", "Draft.md").path).toBe("Inbox");
     expect(app.fileManager.getNewFileParent("Notes/Source.md", "Board.canvas").path).toBe("Inbox");
-    expect(app.fileManager.getNewFileParent("Notes/Source.md", "image.png").path).toBe("Notes/assets");
+    expect(app.fileManager.getNewFileParent("Notes/Source.md", "image.png").path).toBe("Inbox");
+    expect(consoleError).toHaveBeenCalledWith("No file creator assigned to create file with extension canvas. Falling back to Markdown file creator.");
+    expect(consoleError).toHaveBeenCalledWith("No file creator assigned to create file with extension png. Falling back to Markdown file creator.");
 
-    app.vault.setConfig("attachmentFolderPath", "Attachments");
-
-    expect(app.fileManager.getNewFileParent("Notes/Source.md", "clip.webm").path).toBe("Attachments");
-
-    await app.vault.create("Attachments.md", "");
-    app.vault.setConfig("attachmentFolderPath", "Attachments.md");
-
-    expect(app.fileManager.getNewFileParent("Notes/Source.md", "image.png")).toBe(app.vault.root);
+    app.vault.setConfig("newFileLocation", "current");
+    expect(app.fileManager.getNewFileParent("Notes/Source.md", "clip.webm").path).toBe("Notes");
   });
 
   it("supports Obsidian's file parent creator registry by extension", async () => {
