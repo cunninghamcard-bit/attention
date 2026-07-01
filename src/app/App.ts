@@ -80,6 +80,8 @@ import { BasesRegistry } from "../bases/BasesRegistry";
 import { BasesFunctionRegistry } from "../bases/BasesFunctionRegistry";
 import { MobileToolbar } from "../mobile/MobileToolbar";
 import { MobileBackButtonController } from "../mobile/MobileBackButton";
+import { Menu } from "../ui/Menu";
+import { Platform } from "../platform/Platform";
 import { AppDom } from "./AppDom";
 import { writeClipboardText } from "../dom/Clipboard";
 import { ProgressBar } from "../ui/ProgressBar";
@@ -253,6 +255,7 @@ export class App {
     this.corePluginsReady = registerCorePlugins(this);
     registerAppProtocolHandlers(this);
     this.registerQuitHook();
+    this.updateUseNativeMenu();
     this.updateInlineTitleDisplay();
     this.updateFloatingNavigationDisplay();
     this.updateAutoFullScreenDisplay();
@@ -290,12 +293,29 @@ export class App {
 
   changeTheme(theme: BaseTheme): void {
     if (!theme) return;
+    this.disableCssTransition();
     this.vault.setConfig("theme", theme);
     this.updateTheme();
+    const win = this.containerEl.ownerDocument.defaultView ?? window;
+    win.setTimeout(() => this.enableCssTransition(), 200);
   }
 
   updateTheme(): void {
     this.appearance.applyBaseTheme(this.vault.getConfig<BaseTheme>("theme") ?? "system");
+  }
+
+  disableCssTransition(): void {
+    this.containerEl.classList.add("no-transition");
+  }
+
+  enableCssTransition(): void {
+    this.containerEl.classList.remove("no-transition");
+  }
+
+  updateUseNativeMenu(): void {
+    let useNativeMenu = this.vault.getConfig<boolean | null>("nativeMenus");
+    if (Platform.isMacOS && useNativeMenu == null) useNativeMenu = true;
+    Menu.useNativeMenu = useNativeMenu === true;
   }
 
   updateAccentColor(): void {
@@ -498,6 +518,7 @@ export class App {
     if (key === "showInlineTitle") this.updateInlineTitleDisplay();
     if (key === "floatingNavigation") this.updateFloatingNavigationDisplay();
     if (key === "autoFullScreen") this.updateAutoFullScreenDisplay();
+    if (key === "nativeMenus") this.updateUseNativeMenu();
   }
 }
 

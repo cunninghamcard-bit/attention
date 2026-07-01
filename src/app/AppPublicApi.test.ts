@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createObsidianPluginModule } from "../api/ObsidianPluginModule";
 import { RenderContext } from "../markdown/RenderContext";
 import { SecretStorage } from "../storage/SecretStorage";
+import { Platform } from "../platform/Platform";
+import { Menu } from "../ui/Menu";
 import { App } from "./App";
 
 describe("App public plugin API", () => {
@@ -19,6 +21,7 @@ describe("App public plugin API", () => {
     document.body.style.removeProperty("--indent-size");
     document.documentElement.style.removeProperty("--interactive-accent");
     document.documentElement.style.removeProperty("font-size");
+    Menu.useNativeMenu = false;
   });
 
   it("exposes the app render context and dark-mode helper", () => {
@@ -37,20 +40,31 @@ describe("App public plugin API", () => {
     expect(app.isDarkMode()).toBe(false);
   });
 
-  it("exposes the Obsidian App theme facade over AppearanceManager", () => {
+  it("exposes the Obsidian App theme facade over AppearanceManager", async () => {
     const app = new App(document.createElement("div"));
+    await app.ready;
     const cssChange = vi.fn();
     app.workspace.on("css-change", cssChange);
 
     expect(app.getTheme()).toBe("moonstone");
 
-    app.changeTheme("obsidian");
+    vi.useFakeTimers();
+    try {
+      app.changeTheme("obsidian");
 
-    expect(app.vault.getConfig("theme")).toBe("obsidian");
-    expect(app.isDarkMode()).toBe(true);
-    expect(app.getTheme()).toBe("obsidian");
-    expect(document.body.classList.contains("theme-dark")).toBe(true);
-    expect(document.body.classList.contains("theme-light")).toBe(false);
+      expect(app.vault.getConfig("theme")).toBe("obsidian");
+      expect(app.isDarkMode()).toBe(true);
+      expect(app.getTheme()).toBe("obsidian");
+      expect(document.body.classList.contains("theme-dark")).toBe(true);
+      expect(document.body.classList.contains("theme-light")).toBe(false);
+      expect(app.containerEl.classList.contains("no-transition")).toBe(true);
+      vi.advanceTimersByTime(199);
+      expect(app.containerEl.classList.contains("no-transition")).toBe(true);
+      vi.advanceTimersByTime(1);
+      expect(app.containerEl.classList.contains("no-transition")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
     expect(cssChange).toHaveBeenCalled();
 
     cssChange.mockClear();
@@ -61,6 +75,30 @@ describe("App public plugin API", () => {
     expect(document.body.classList.contains("theme-light")).toBe(true);
     expect(document.body.classList.contains("theme-dark")).toBe(false);
     expect(cssChange).toHaveBeenCalled();
+  });
+
+  it("syncs native menu config to Menu like Obsidian", async () => {
+    const previousMacOS = Platform.isMacOS;
+    try {
+      Platform.isMacOS = true;
+      const app = new App(document.createElement("div"));
+      await app.ready;
+
+      expect(Menu.useNativeMenu).toBe(true);
+
+      app.vault.setConfig("nativeMenus", false);
+      expect(Menu.useNativeMenu).toBe(false);
+
+      app.vault.setConfig("nativeMenus", true);
+      expect(Menu.useNativeMenu).toBe(true);
+
+      Platform.isMacOS = false;
+      app.vault.setConfig("nativeMenus", null);
+      expect(Menu.useNativeMenu).toBe(false);
+    } finally {
+      Platform.isMacOS = previousMacOS;
+      Menu.useNativeMenu = false;
+    }
   });
 
   it("exposes the Obsidian App accent color facade over body CSS variables", () => {
