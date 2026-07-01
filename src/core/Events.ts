@@ -35,7 +35,7 @@ export class Events {
     else this.handlers.delete(name);
   }
 
-  offref(ref: EventRef): void {
+  offref(ref: EventRef | null | undefined): void {
     if (!ref) return;
     const record = ref as EventRefRecord;
     const bucket = this.handlers.get(record.name);

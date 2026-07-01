@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { unregisterEventRef } from "./EventRefInternal";
 import { Events, type EventRef } from "./Events";
 
 describe("Events", () => {
@@ -43,6 +44,8 @@ describe("Events", () => {
 
     expect(() => events.offref(null as unknown as EventRef)).not.toThrow();
     expect(() => events.offref(undefined as unknown as EventRef)).not.toThrow();
+    expect(() => unregisterEventRef(null)).not.toThrow();
+    expect(() => unregisterEventRef(undefined)).not.toThrow();
   });
 
   it("triggers a snapshot of listeners and rethrows listener errors asynchronously", () => {
