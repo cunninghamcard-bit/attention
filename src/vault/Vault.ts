@@ -268,9 +268,8 @@ export class Vault extends Events {
     if (this.adapter) await this.adapter.write(path, data, options);
     if (this.usesAdapterEvents()) {
       const file = this.getFileByPath(path);
-      if (!file) throw new Error(`Adapter did not create file: ${path}`);
-      await this.refreshFileStat(file);
-      return file;
+      if (file) await this.refreshFileStat(file);
+      return file as TFile;
     }
     const file = new TFile(this, path, createFileStats(textSize(data), options));
     this.files.set(path, file);
@@ -294,9 +293,8 @@ export class Vault extends Events {
     else if (this.adapter) await this.adapter.write(path, new TextDecoder().decode(data), options);
     if (this.usesAdapterEvents()) {
       const file = this.getFileByPath(path);
-      if (!file) throw new Error(`Adapter did not create file: ${path}`);
-      await this.refreshFileStat(file);
-      return file;
+      if (file) await this.refreshFileStat(file);
+      return file as TFile;
     }
     const bytes = copyBytes(data);
     const file = new TFile(this, path, createFileStats(bytes.byteLength, options));
@@ -330,8 +328,7 @@ export class Vault extends Events {
     if (this.adapter?.mkdir) await this.adapter.mkdir(normalized);
     if (this.usesAdapterEvents()) {
       const folder = this.getFolderByPath(normalized);
-      if (!folder) throw new Error(`Adapter did not create folder: ${normalized}`);
-      return folder;
+      return folder as TFolder;
     }
     const folder = new TFolder(this, normalized);
     this.files.set(normalized, folder);

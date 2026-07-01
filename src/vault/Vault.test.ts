@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { JsonStore } from "../storage/JsonStore";
 import { InMemoryAdapter, type DataWriteOptions } from "./DataAdapter";
-import { Vault } from "./Vault";
+import { Vault, type VaultAdapter } from "./Vault";
 
 describe("Vault attachment paths", () => {
   it("always appends the requested extension when picking available paths", () => {
@@ -196,6 +196,25 @@ describe("Vault public file API", () => {
     expect(vault.getFolderByPath("Notes")).toBe(folder);
     expect(vault.getFolderByPath("Notes/Sub")).not.toBeNull();
     expect(nested.path).toBe("Notes/Sub/Today.md");
+  });
+
+  it("returns null when evented adapters do not publish created files or folders", async () => {
+    const adapter: VaultAdapter = {
+      supportsEvents: true,
+      on: vi.fn(() => ({})),
+      exists: vi.fn(async () => false),
+      read: vi.fn(async () => ""),
+      write: vi.fn(async () => {}),
+      writeBinary: vi.fn(async () => {}),
+      delete: vi.fn(async () => {}),
+      mkdir: vi.fn(async () => {}),
+      list: vi.fn(async () => ({ files: [], folders: [] })),
+    };
+    const vault = new Vault(adapter);
+
+    await expect(vault.create("Missing.md", "body")).resolves.toBeNull();
+    await expect(vault.createBinary("Missing.bin", new ArrayBuffer(1))).resolves.toBeNull();
+    await expect(vault.createFolder("Missing")).resolves.toBeNull();
   });
 
   it("exposes Obsidian-style vault, parent, root, and folder tree metadata", async () => {
