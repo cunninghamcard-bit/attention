@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { resetActiveWindow, setActiveWindow } from "../dom/ActiveDocument";
-import { debounce, getLanguage, getLinkpath, normalizePath, parseLinktext, stringifyYaml } from "./ApiUtils";
+import { debounce, getLanguage, getLinkpath, normalizePath, parseLinktext, resolveSubpath, stringifyYaml } from "./ApiUtils";
 
 describe("Obsidian API utility parity", () => {
   it("normalizes paths with Obsidian's slash trimming and NFC rules", () => {
@@ -16,6 +16,18 @@ describe("Obsidian API utility parity", () => {
     });
     expect(parseLinktext("Note|Alias")).toEqual({ path: "Note|Alias", subpath: "" });
     expect(getLinkpath("Note#Heading|Alias")).toBe("Note");
+  });
+
+  it("includes null list on block subpath results", () => {
+    const result = resolveSubpath({
+      blocks: {
+        abc: { id: "abc", position: { start: { offset: 1 }, end: { offset: 2 } } },
+      },
+    } as any, "#^abc");
+
+    expect(result?.type).toBe("block");
+    expect(Object.prototype.hasOwnProperty.call(result, "list")).toBe(true);
+    if (result?.type === "block") expect(result.list).toBeNull();
   });
 
   it("keeps debounce timers while running the latest pending args", () => {

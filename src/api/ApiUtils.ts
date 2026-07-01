@@ -96,7 +96,7 @@ export interface HeadingSubpathResult extends SubpathResult {
 export interface BlockSubpathResult extends SubpathResult {
   type: "block";
   block: { id: string; position?: unknown };
-  list?: { id?: string; position?: unknown } | null;
+  list: { id?: string; position?: unknown } | null;
 }
 
 export interface FootnoteSubpathResult extends SubpathResult {
@@ -414,7 +414,7 @@ function resolveBlockSubpath(cache: CachedMetadata, rawId: string): BlockSubpath
     return {
       type: "block",
       block,
-      ...(list ? { list } : {}),
+      list,
       start: getRangeStart(block.position),
       end: getRangeEnd(block.position),
     };
