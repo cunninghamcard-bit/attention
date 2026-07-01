@@ -43,17 +43,18 @@ export function parseObsidianUri(uri: string): ObsidianProtocolData | null {
   let body = uri.slice(prefix.length);
   const queryIndex = body.indexOf("?");
   const hashIndex = body.indexOf("#", Math.max(0, queryIndex));
+  let query = "";
   if (hashIndex >= 0) {
     data.hash = body.slice(hashIndex + 1);
     body = body.slice(0, hashIndex);
   }
   if (queryIndex >= 0) {
-    const query = body.slice(queryIndex + 1);
+    query = body.slice(queryIndex + 1);
     body = body.slice(0, queryIndex);
-    for (const part of query.split("&")) {
-      const [key, value] = part.split("=");
-      data[decodeURIComponent(key ?? "")] = value === undefined ? "true" : decodeURIComponent(value);
-    }
+  }
+  for (const part of query.split("&")) {
+    const [key, value] = part.split("=");
+    data[decodeURIComponent(key ?? "")] = value === undefined ? "true" : decodeURIComponent(value);
   }
   data.action = body.replace(/\/+$/g, "");
   return data;

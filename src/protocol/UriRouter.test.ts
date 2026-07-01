@@ -15,6 +15,11 @@ describe("parseObsidianUri", () => {
     });
   });
 
+  it("matches Obsidian by adding an empty query key when no query exists", () => {
+    expect(parseObsidianUri("obsidian://open")).toEqual({ action: "open", "": "true" });
+    expect(parseObsidianUri("obsidian://open#Heading")).toEqual({ action: "open", hash: "Heading", "": "true" });
+  });
+
   it("matches Obsidian by parsing obsidian://vault URLs as open actions", () => {
     expect(parseObsidianUri("obsidian://vault/My%20Vault/Folder%2FNested/Note%20A.md")).toEqual({
       action: "open",
