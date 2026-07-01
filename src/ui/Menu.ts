@@ -1,5 +1,6 @@
 import { Component } from "../core/Component";
 import { getActiveDocument } from "../dom/ActiveDocument";
+import { Platform } from "../platform/Platform";
 import { setIcon as renderIcon } from "./Icon";
 import type { HistoryHandler } from "./Modal";
 import { setTooltip as setElementTooltip } from "./Popover";
@@ -275,8 +276,10 @@ export class Menu extends Component implements HistoryHandler {
     this.dom.classList.toggle("mod-native-menu", this.useNativeMenu);
     this.parentEl?.classList.add("has-active-menu");
     this.watchParentElement();
-    if (!this.parentMenu) getOpenTopMenus(doc).add(this);
 
+    if (Platform.isDesktop && this.useNativeMenu && this.showNativeMenu(position, doc)) return this;
+
+    if (!this.parentMenu) getOpenTopMenus(doc).add(this);
     if (this.dom.parentElement !== doc.body) doc.body.appendChild(this.dom);
     if (this.bgEl.parentElement !== doc.body) doc.body.appendChild(this.bgEl);
     registerActiveCloseable(this);
@@ -433,6 +436,26 @@ export class Menu extends Component implements HistoryHandler {
       win.setTimeout(() => menu?.showAtMouseEvent(event));
     }
     return menu;
+  }
+
+  private showNativeMenu(position: MenuPosition, doc: Document): boolean {
+    const win = doc.defaultView ?? window;
+    const bridge = getElectronBridge(win);
+    const remote = bridge?.remote;
+    const buildFromTemplate = remote?.Menu?.buildFromTemplate;
+    if (!buildFromTemplate || !remote.getCurrentWebContents || !remote.getCurrentWindow) return false;
+
+    const nativeMenu = buildFromTemplate(toNativeMenuTemplate(this.items));
+    nativeMenu.on?.("menu-will-close", () => this.hide());
+    const webContents = remote.getCurrentWebContents();
+    const zoom = Math.pow(1.2, webContents.getZoomLevel());
+    nativeMenu.popup({
+      x: Math.round(position.x * zoom),
+      y: Math.round(position.y * zoom),
+      window: remote.getCurrentWindow(),
+      frame: this.showMacWritingTools ? webContents.focusedFrame : undefined,
+    });
+    return true;
   }
 
   private renderSorted(): void {
@@ -612,6 +635,53 @@ export class Menu extends Component implements HistoryHandler {
       index += delta;
     }
   }
+}
+
+interface NativeMenuTemplateItem {
+  label?: string;
+  enabled?: boolean;
+  checked?: boolean | null;
+  type?: "checkbox" | "separator";
+  submenu?: NativeMenuTemplateItem[];
+  click?: (_item?: unknown, _window?: unknown, event?: MouseEventInit) => void;
+}
+
+interface NativeMenu {
+  on?: (name: "menu-will-close", callback: () => void) => void;
+  popup: (options: { x: number; y: number; window: unknown; frame?: unknown }) => void;
+}
+
+interface MenuElectronBridge {
+  remote?: {
+    Menu?: {
+      buildFromTemplate?: (template: NativeMenuTemplateItem[]) => NativeMenu;
+    };
+    getCurrentWebContents?: () => { getZoomLevel: () => number; focusedFrame?: unknown };
+    getCurrentWindow?: () => unknown;
+  };
+}
+
+function getElectronBridge(win: Window & { electron?: MenuElectronBridge }): MenuElectronBridge | null {
+  const host = globalThis as { electron?: MenuElectronBridge };
+  return win.electron ?? host.electron ?? null;
+}
+
+function toNativeMenuTemplate(items: Array<MenuItem | MenuSeparator>): NativeMenuTemplateItem[] {
+  return items.map((item) => {
+    if (item instanceof MenuSeparator) return { type: "separator" };
+    const template: NativeMenuTemplateItem = {
+      label: (item.titleEl.textContent ?? "").replace(/\B&\B/, "&&"),
+      enabled: !item.disabled && !item.dom.classList.contains("is-label"),
+      checked: item.checked,
+      type: typeof item.checked === "boolean" ? "checkbox" : undefined,
+      click: (_item, _window, event) => item.handleEvent(new MouseEvent("click", event)),
+    };
+    if (item.submenu) {
+      item.submenu.sort();
+      template.submenu = toNativeMenuTemplate(item.submenu.items);
+    }
+    return template;
+  });
 }
 
 function eventDocument(event: Event): Document {

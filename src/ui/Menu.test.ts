@@ -76,6 +76,57 @@ describe("Menu Obsidian behavior", () => {
     }
   });
 
+  it("uses Electron native menus without mounting DOM when a native bridge is available", () => {
+    const parent = document.querySelector<HTMLElement>("#anchor");
+    if (!parent) throw new Error("missing parent");
+    const popup = vi.fn();
+    const currentWindow = {};
+    const closeHandlers: Array<() => void> = [];
+    let template: unknown[] = [];
+    const buildFromTemplate = vi.fn((items: unknown[]) => {
+      template = items;
+      return {
+        on: vi.fn((_name: "menu-will-close", callback: () => void) => closeHandlers.push(callback)),
+        popup,
+      };
+    });
+    (window as Window & { electron?: unknown }).electron = {
+      remote: {
+        Menu: { buildFromTemplate },
+        getCurrentWebContents: () => ({ getZoomLevel: () => 0, focusedFrame: "frame" }),
+        getCurrentWindow: () => currentWindow,
+      },
+    };
+    const onClick = vi.fn();
+    const menu = new Menu(document);
+    menu.setParentElement(parent).setUseNativeMenu(true).setShowMacWritingTools(true);
+    menu.addItem((item) => item.setTitle("Checked").setChecked(true).onClick(onClick));
+    menu.addSeparator();
+    menu.addItem((item) => item.setTitle("Disabled").setDisabled(true));
+    menu.addItem((item) => {
+      item.setTitle("More");
+      item.setSubmenu().addItem((child) => child.setTitle("Child"));
+    });
+
+    menu.showAtPosition({ x: 10, y: 20 });
+
+    expect(buildFromTemplate).toHaveBeenCalledOnce();
+    expect(template).toMatchObject([
+      { label: "Checked", enabled: true, checked: true, type: "checkbox" },
+      { type: "separator" },
+      { label: "Disabled", enabled: false },
+      { label: "More", submenu: [{ label: "Child" }] },
+    ]);
+    expect(popup).toHaveBeenCalledWith({ x: 10, y: 20, window: currentWindow, frame: "frame" });
+    expect(menu.dom.parentElement).toBeNull();
+    expect(menu.bgEl.parentElement).toBeNull();
+    expect(parent.classList.contains("has-active-menu")).toBe(true);
+
+    closeHandlers[0]?.();
+
+    expect(parent.classList.contains("has-active-menu")).toBe(false);
+  });
+
   it("sorts explicit sections before the default section and inserts separators", () => {
     const menu = new Menu(document);
     menu.addSections(["navigation", "action", "danger"]);
