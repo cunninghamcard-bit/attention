@@ -22,6 +22,7 @@ import (
 	rpcmode "github.com/cunninghamcard-bit/Attention/internal/mode/rpc"
 	"github.com/cunninghamcard-bit/Attention/internal/obs"
 	"github.com/cunninghamcard-bit/Attention/internal/orchestrator"
+	"github.com/cunninghamcard-bit/Attention/internal/plugin"
 	"github.com/cunninghamcard-bit/Attention/internal/provider"
 	"github.com/cunninghamcard-bit/Attention/internal/resource"
 	"github.com/cunninghamcard-bit/Attention/internal/session"
@@ -50,6 +51,10 @@ func main() {
 
 func run(ctx context.Context) error {
 	obs.Reset()
+
+	if handled, err := runPluginCommand(ctx, os.Args[1:]); handled {
+		return err
+	}
 
 	fs := flag.NewFlagSet("along", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
@@ -282,6 +287,8 @@ func run(ctx context.Context) error {
 		projectContext, contextDiagnostics = resource.LoadContextFiles(cwd, cfg.AgentDir)
 		resourceDiagnostics = append(resourceDiagnostics, contextDiagnostics...)
 	}
+	plugins := plugin.Load(settings, cfg.AgentDir, cwd)
+	resourceDiagnostics = append(resourceDiagnostics, plugins.Diagnostics...)
 	logResourceDiagnostics(os.Stderr, resourceDiagnostics)
 	obs.Time("context/skills/templates load")
 
@@ -299,8 +306,8 @@ func run(ctx context.Context) error {
 			noTools:       *noToolsFlag,
 			noBuiltinTool: *noBuiltinToolsFlag,
 		},
-		baseToolSet(env, shellCommandPrefix),
-		func() []extension.ToolDefinition { return allToolSet(env, shellCommandPrefix) },
+		baseToolSet(env, shellCommandPrefix, plugins.BinDirs...),
+		func() []extension.ToolDefinition { return allToolSet(env, shellCommandPrefix, plugins.BinDirs...) },
 	)
 	if err != nil {
 		return err
@@ -332,6 +339,7 @@ func run(ctx context.Context) error {
 		Diagnostics:        resourceDiagnostics,
 		ExecutionEnv:       env,
 		Tools:              tools,
+		Extensions:         plugins.Sources,
 	}
 
 	orch, err := buildOrchestrator(ctx, repo, plan, common)

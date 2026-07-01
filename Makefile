@@ -7,6 +7,7 @@ BIN := $(CURDIR)/bin
 
 .PHONY: kernel tui run clean
 kernel:
+	mkdir -p $(BIN)
 	go build -o $(BIN)/along ./cmd/along
 tui: kernel
 	cd cmd/tui && go run . --along-path $(BIN)/along

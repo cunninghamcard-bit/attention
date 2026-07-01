@@ -34,6 +34,26 @@ go build -o along ./cmd/along
 go test ./...
 ```
 
+## Plugins
+
+Install a plugin from a git URL or local plugin directory:
+
+```sh
+along plugin install https://github.com/you/plugin.git
+```
+
+The installer copies or clones the plugin into `~/.along/plugins/<name>` and
+adds the plugin name to global settings:
+
+```json
+{
+  "plugins": ["plugin-name"]
+}
+```
+
+Project plugins at `.along/plugins/<name>` override global plugins at
+`~/.along/plugins/<name>`.
+
 Known test failures (all pre-existing at `a4702cc`, none are code regressions):
 - `internal/execenv/local` and `internal/resource` — macOS-only env quirks
   (symlinked `/var`, case-insensitive FS).
