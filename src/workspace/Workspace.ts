@@ -528,8 +528,15 @@ export class Workspace extends Events {
 
   async revealLeaf(leaf: WorkspaceLeaf): Promise<void> {
     const root = leaf.getRoot();
-    if (root === this.leftSplit) this.leftSplit.expand();
-    if (root === this.rightSplit) this.rightSplit.expand();
+    let expanded = false;
+    if (root === this.leftSplit) {
+      expanded = Boolean((this.leftSplit as { collapsed?: boolean }).collapsed);
+      this.leftSplit.expand();
+    }
+    if (root === this.rightSplit) {
+      expanded = Boolean((this.rightSplit as { collapsed?: boolean }).collapsed);
+      this.rightSplit.expand();
+    }
     if (leaf.parent instanceof MobileDrawer) {
       const index = leaf.parent.children.indexOf(leaf);
       if (index !== -1) leaf.parent.selectTabIndex(index);
@@ -539,7 +546,9 @@ export class Workspace extends Events {
     }
     if (leaf.parent instanceof WorkspaceTabs) {
       const index = leaf.parent.children.indexOf(leaf);
+      const tabChanged = index !== -1 && leaf.parent.currentTab !== index;
       if (index !== -1) leaf.parent.selectTabIndex(index, false);
+      if (expanded || tabChanged) leaf.tabHeaderEl.scrollIntoView?.({ block: "nearest", inline: "nearest" });
     }
     leaf.containerEl.focus({ preventScroll: true });
     await leaf.loadIfDeferred();

@@ -354,25 +354,51 @@ describe("WorkspaceLayoutPersistence", () => {
     const saveLayout = vi.spyOn(app.workspace, "requestSaveLayout");
     const closed: WorkspaceWindow[] = [];
     app.workspace.on<[WorkspaceWindow]>("window-close", (win) => closed.push(win));
+    const popoutWindow = popout.win as Window & {
+      electronWindow?: {
+        isMaximized: () => boolean;
+        isMinimized: () => boolean;
+        isFullScreen: () => boolean;
+        getBounds: () => { x: number; y: number; width: number; height: number };
+      };
+    };
+    const previousElectronWindow = popoutWindow.electronWindow;
     Object.defineProperty(window, "screenX", { configurable: true, value: 30 });
     Object.defineProperty(window, "screenY", { configurable: true, value: 40 });
     Object.defineProperty(window, "outerWidth", { configurable: true, value: 900 });
     Object.defineProperty(window, "outerHeight", { configurable: true, value: 700 });
 
-    window.dispatchEvent(new Event("resize"));
+    try {
+      window.dispatchEvent(new Event("resize"));
 
-    expect(popout.x).toBe(30);
-    expect(popout.y).toBe(40);
-    expect(popout.width).toBe(900);
-    expect(popout.height).toBe(700);
-    expect(saveLayout).toHaveBeenCalled();
+      expect(popout.x).toBe(30);
+      expect(popout.y).toBe(40);
+      expect(popout.width).toBe(900);
+      expect(popout.height).toBe(700);
 
-    for (const child of [...popout.children]) child.detach();
+      popoutWindow.electronWindow = {
+        isMaximized: () => false,
+        isMinimized: () => false,
+        isFullScreen: () => false,
+        getBounds: () => ({ x: 130, y: 140, width: 1900, height: 1700 }),
+      };
 
-    expect(app.workspace.floatingSplit.children).not.toContain(popout);
-    expect(closed).toEqual([popout]);
+      window.dispatchEvent(new Event("resize"));
 
-    saveLayout.mockRestore();
+      expect(popout.x).toBe(130);
+      expect(popout.y).toBe(140);
+      expect(popout.width).toBe(1900);
+      expect(popout.height).toBe(1700);
+      expect(saveLayout).toHaveBeenCalled();
+
+      for (const child of [...popout.children]) child.detach();
+
+      expect(app.workspace.floatingSplit.children).not.toContain(popout);
+      expect(closed).toEqual([popout]);
+    } finally {
+      popoutWindow.electronWindow = previousElectronWindow;
+      saveLayout.mockRestore();
+    }
   });
 
   it("sets active document on popout focus and resets it when the active popout closes", async () => {

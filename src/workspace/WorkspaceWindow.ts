@@ -112,6 +112,28 @@ export class WorkspaceWindow extends WorkspaceRoot {
   }
 
   updateSize(): void {
+    const electronWindow = (this.win as Window & {
+      electronWindow?: {
+        isMaximized?: () => boolean;
+        isMinimized?: () => boolean;
+        isFullScreen?: () => boolean;
+        getBounds?: () => { x: number; y: number; width: number; height: number };
+      };
+    }).electronWindow;
+    if (
+      electronWindow?.getBounds
+      && !electronWindow.isMaximized?.()
+      && !electronWindow.isMinimized?.()
+      && !electronWindow.isFullScreen?.()
+    ) {
+      const bounds = electronWindow.getBounds();
+      this.x = bounds.x;
+      this.y = bounds.y;
+      this.width = bounds.width;
+      this.height = bounds.height;
+      this.size = bounds;
+      return;
+    }
     if (this.isMaximized() || this.isMinimized() || this.isFullscreen()) return;
     this.x = this.win.screenX;
     this.y = this.win.screenY;

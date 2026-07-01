@@ -9,6 +9,7 @@ import { WorkspaceWindow } from "./WorkspaceWindow";
 import type { OpenViewState } from "./Workspace";
 import { WorkspaceLeaf } from "./WorkspaceLeaf";
 import { WorkspaceSplit } from "./WorkspaceSplit";
+import { WorkspaceTabs } from "./WorkspaceTabs";
 
 class PlainView extends View {
   resizeCount = 0;
@@ -283,6 +284,24 @@ describe("Workspace public API parity", () => {
     first.containerEl.hide();
 
     expect(app.workspace.getMostRecentLeaf()).toBe(first);
+  });
+
+  it("scrolls the revealed tab header into view when switching tabs", async () => {
+    const app = new App(document.createElement("div"));
+    const first = app.workspace.getLeaf();
+    const second = app.workspace.createNewTab();
+    if (!second) throw new Error("Expected new tab");
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(second.tabHeaderEl, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    if (!(first.parent instanceof WorkspaceTabs) || first.parent !== second.parent) throw new Error("Expected shared tab group");
+    first.parent.selectTabIndex(first.parent.children.indexOf(first), false);
+
+    await app.workspace.revealLeaf(second);
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest", inline: "nearest" });
   });
 
   it("delegates splitLeafOrActive(null) through splitActiveLeaf like Obsidian", () => {
