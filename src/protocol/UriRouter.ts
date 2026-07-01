@@ -29,6 +29,14 @@ export class UriRouter {
 }
 
 export function parseObsidianUri(uri: string): ObsidianProtocolData | null {
+  if (uri.startsWith("obsidian://vault/")) {
+    const [vault = "", ...file] = uri
+      .slice("obsidian://vault/".length)
+      .split("/")
+      .map((part) => decodeURIComponent(part));
+    return { action: "open", vault, file: file.join("/") };
+  }
+
   let url: URL;
   try {
     url = new URL(uri);
