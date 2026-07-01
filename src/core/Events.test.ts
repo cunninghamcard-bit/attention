@@ -38,6 +38,13 @@ describe("Events", () => {
     expect(log).toEqual(["second"]);
   });
 
+  it("matches Obsidian by ignoring missing event refs", () => {
+    const events = new Events();
+
+    expect(() => events.offref(null as unknown as EventRef)).not.toThrow();
+    expect(() => events.offref(undefined as unknown as EventRef)).not.toThrow();
+  });
+
   it("triggers a snapshot of listeners and rethrows listener errors asynchronously", () => {
     vi.useFakeTimers();
     try {
