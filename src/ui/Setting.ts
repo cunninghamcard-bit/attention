@@ -717,6 +717,7 @@ export class SliderComponent extends ValueComponent<number> {
     this.dynamicTooltip = true;
     this.sliderEl.addEventListener("mouseenter", () => this.showTooltip());
     this.sliderEl.addEventListener("mouseleave", () => this.sliderEl.removeAttribute("aria-label"));
+    this.sliderEl.addEventListener("touchend", () => this.sliderEl.removeAttribute("aria-label"));
     return this;
   }
 

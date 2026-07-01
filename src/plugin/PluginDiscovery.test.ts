@@ -133,7 +133,7 @@ describe("PluginLoader discovery", () => {
     await expect(app.pluginInstaller.enable("desktop-only")).resolves.toBe(false);
 
     expect(app.plugins.getPlugin("desktop-only")).toBeNull();
-    expect(app.commands.findCommand("desktop-only:boot")).toBeNull();
+    expect(app.commands.findCommand("desktop-only:boot")).toBeUndefined();
     expect(app.communityPlugins.get("desktop-only")?.enabled).toBe(false);
   });
 
@@ -200,7 +200,7 @@ describe("PluginLoader discovery", () => {
     expect(app.communityPlugins.get("blocked")?.installed).toBe(true);
     expect(app.communityPlugins.get("blocked")?.enabled).toBe(true);
     expect(app.plugins.getPlugin("blocked")).toBeNull();
-    expect(app.commands.findCommand("blocked:boot")).toBeNull();
+    expect(app.commands.findCommand("blocked:boot")).toBeUndefined();
     expect(document.body.querySelector(".modal.mod-trust-folder")).not.toBeNull();
     expect(document.body.textContent).toContain("Do you trust the author of this vault?");
   });
@@ -235,7 +235,7 @@ describe("PluginLoader discovery", () => {
     }));
     await app.ready;
 
-    expect(app.commands.findCommand("trusted:boot")).toBeNull();
+    expect(app.commands.findCommand("trusted:boot")).toBeUndefined();
     clickButton(document.body, "Trust author and enable plugins");
     await flushAsync();
     await flushAsync();
@@ -277,17 +277,17 @@ describe("PluginLoader discovery", () => {
     }));
     await app.ready;
 
-    expect(app.commands.findCommand("toggle:boot")).not.toBeNull();
+    expect(app.commands.findCommand("toggle:boot")).not.toBeUndefined();
 
     await app.pluginInstaller.setCommunityPluginsEnabled(false);
 
-    expect(app.commands.findCommand("toggle:boot")).toBeNull();
+    expect(app.commands.findCommand("toggle:boot")).toBeUndefined();
     await expect(app.jsonStore.read("community-plugins.json")).resolves.toEqual(["toggle"]);
     expect(values.get("enable-plugin-obsidian-reconstructed")).toBe("false");
 
     await app.pluginInstaller.setCommunityPluginsEnabled(true);
 
-    expect(app.commands.findCommand("toggle:boot")).not.toBeNull();
+    expect(app.commands.findCommand("toggle:boot")).not.toBeUndefined();
     await expect(app.jsonStore.read("community-plugins.json")).resolves.toEqual(["toggle"]);
     expect(values.get("enable-plugin-obsidian-reconstructed")).toBe("true");
   });

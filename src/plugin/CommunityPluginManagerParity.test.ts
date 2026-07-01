@@ -188,7 +188,7 @@ describe("community plugin manager facade", () => {
 
     expect(app.pluginInstaller.enabledPlugins.size).toBe(0);
     expect(app.plugins.getPlugin("legacy")).toBeNull();
-    expect(app.commands.findCommand("legacy:boot")).toBeNull();
+    expect(app.commands.findCommand("legacy:boot")).toBeUndefined();
     await expect(app.jsonStore.read("community-plugins.json")).resolves.toEqual([]);
   });
 
@@ -217,7 +217,7 @@ describe("community plugin manager facade", () => {
 
     expect(app.pluginInstaller.enabledPlugins.has("switchable")).toBe(true);
     expect(app.plugins.getPlugin("switchable")).toBeNull();
-    expect(app.commands.findCommand("switchable:boot")).toBeNull();
+    expect(app.commands.findCommand("switchable:boot")).toBeUndefined();
     await expect(app.jsonStore.read("community-plugins.json")).resolves.toEqual(["switchable"]);
 
     await app.pluginInstaller.setEnable(true);

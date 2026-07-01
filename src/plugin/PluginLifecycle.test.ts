@@ -347,7 +347,7 @@ describe("community plugin lifecycle", () => {
 
     expect(instance?.didUnload).toBe(true);
     expect(app.plugins.getPlugin("life")).toBeNull();
-    expect(app.commands.findCommand("life:hello")).toBeNull();
+    expect(app.commands.findCommand("life:hello")).toBeUndefined();
     expect(app.workspace.leftRibbon.containerEl.querySelector('.side-dock-ribbon-action[aria-label="Run"]')).toBeNull();
     expect(document.head.querySelector('style[data-obsidian-reconstructed-css="plugin:life"]')).toBeNull();
     expect(app.communityPlugins.get("life")?.enabled).toBe(false);
@@ -576,7 +576,7 @@ describe("community plugin lifecycle", () => {
     expect(app.plugins.getPlugin("throw-unload")).not.toBeNull();
     expect(app.communityPlugins.get("throw-unload")?.enabled).toBe(false);
     expect(app.communityPlugins.get("throw-unload")?.error).toBe("unload failed");
-    expect(app.commands.findCommand("throw-unload:still-loaded")).toBeNull();
+    expect(app.commands.findCommand("throw-unload:still-loaded")).toBeUndefined();
     await expect(app.jsonStore.read("community-plugins.json")).resolves.toEqual([]);
     expect(document.body.textContent).toContain("Failed to disable plugin throw-unload");
     expect(errorSpy).toHaveBeenCalledWith("Plugin failure: throw-unload", expect.any(Error));
@@ -698,7 +698,7 @@ describe("community plugin lifecycle", () => {
     await app.pluginInstaller.enable("chrome-api");
 
     expect(instance?.removedCommandId).toBe("chrome-api:manual-remove");
-    expect(app.commands.findCommand("chrome-api:manual-remove")).toBeNull();
+    expect(app.commands.findCommand("chrome-api:manual-remove")).toBeUndefined();
     expect(app.hotkeys.getHotkeys("chrome-api:manual-remove")).toBeUndefined();
     expect(app.commands.findCommand("chrome-api:kept")?.name).toBe("Chrome API: Kept");
     expect(app.hotkeys.getDefaultHotkeys("chrome-api:kept")).toEqual([{ modifiers: ["Mod"], key: "k" }]);
@@ -721,7 +721,7 @@ describe("community plugin lifecycle", () => {
     });
     expect(instance?.protocolPayload?.params).toBeUndefined();
     expect(app.cliHandlers.find((handler) => handler.command === "chrome-api")).toMatchObject({
-      description: "Run the Chrome API plugin",
+      description: "[Chrome API]: Run the Chrome API plugin",
       flags: { "dry-run": { description: "Run without changing state" } },
       owner: "chrome-api",
     });
@@ -738,7 +738,7 @@ describe("community plugin lifecycle", () => {
 
     await app.pluginInstaller.disable("chrome-api", true);
 
-    expect(app.commands.findCommand("chrome-api:kept")).toBeNull();
+    expect(app.commands.findCommand("chrome-api:kept")).toBeUndefined();
     expect(app.hotkeys.getDefaultHotkeys("chrome-api:kept")).toBeUndefined();
     expect(instance?.statusEl?.parentElement).toBeNull();
     await expect(app.uriRouter.handleUri("obsidian://chrome-api")).resolves.toBe(false);
@@ -1391,7 +1391,7 @@ describe("community plugin lifecycle", () => {
     await expect(app.pluginInstaller.checkForDeprecations()).resolves.toEqual(["loaded-deprecated"]);
 
     expect(app.plugins.getPlugin("loaded-deprecated")).toBeNull();
-    expect(app.commands.findCommand("loaded-deprecated:hello")).toBeNull();
+    expect(app.commands.findCommand("loaded-deprecated:hello")).toBeUndefined();
     expect(app.communityPlugins.get("loaded-deprecated")?.enabled).toBe(false);
     expect(app.communityPlugins.get("loaded-deprecated")?.error).toContain("has been disabled");
     expect(document.body.textContent).toContain("has been disabled");

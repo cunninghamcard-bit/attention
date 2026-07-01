@@ -51,6 +51,7 @@ import { AppConfigManager } from "../storage/AppConfig";
 import { PluginDataStore } from "../storage/PluginDataStore";
 import { SecretStorage } from "../storage/SecretStorage";
 import { WorkspaceLayoutPersistence } from "../workspace/WorkspaceLayoutPersistence";
+import { FileSystemAdapter } from "../vault/FileSystemAdapter";
 import { AppLifecycle } from "./AppLifecycle";
 import { DiagnosticsManager } from "../diagnostics/DiagnosticsManager";
 import { PluginDevTools } from "../devtools/PluginDevTools";
@@ -277,10 +278,26 @@ export class App {
   }
 
   async openWithDefaultApp(path: string): Promise<void> {
-    window.open(path, "_external");
+    const adapter = this.vault.adapter;
+    if (Platform.isMobile && hasMobileOpenAdapter(adapter)) {
+      await adapter.open(path);
+      return;
+    }
+    window.open(adapter instanceof FileSystemAdapter ? adapter.getFilePath(path) : path, "_external");
   }
 
   async showInFolder(path: string): Promise<void> {
+    const adapter = this.vault.adapter;
+    if (adapter instanceof FileSystemAdapter) {
+      if (!await adapter.exists(path)) {
+        new Notice("File not found");
+        return;
+      }
+      const fullPath = adapter.getFullPath(path);
+      if (showItemInFolder(fullPath, this.containerEl.ownerDocument.defaultView ?? window)) return;
+      window.open(adapter.getFilePath(path), "_external");
+      return;
+    }
     window.open(path, "_external");
   }
 
@@ -558,6 +575,36 @@ function parseCliArgs(args: string[]): CliData {
 function getBrowserStorage(): Storage | null {
   try {
     return globalThis.window?.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function hasMobileOpenAdapter(adapter: unknown): adapter is { open(path: string): Promise<void> | void } {
+  return typeof (adapter as { open?: unknown } | null)?.open === "function";
+}
+
+function showItemInFolder(path: string, win: Window): boolean {
+  const shell = getElectronShell(win);
+  if (!shell?.showItemInFolder) return false;
+  shell.showItemInFolder(path);
+  return true;
+}
+
+function getElectronShell(win: Window): { showItemInFolder?: (path: string) => void } | null {
+  const host = globalThis as {
+    electron?: { shell?: { showItemInFolder?: (path: string) => void } };
+    require?: (moduleName: "electron") => { shell?: { showItemInFolder?: (path: string) => void } };
+  };
+  const electron = (win as Window & { electron?: { shell?: { showItemInFolder?: (path: string) => void } } }).electron
+    ?? host.electron
+    ?? safeRequireElectron(host);
+  return electron?.shell ?? null;
+}
+
+function safeRequireElectron(host: { require?: (moduleName: "electron") => { shell?: { showItemInFolder?: (path: string) => void } } }): { shell?: { showItemInFolder?: (path: string) => void } } | null {
+  try {
+    return host.require?.("electron") ?? null;
   } catch {
     return null;
   }

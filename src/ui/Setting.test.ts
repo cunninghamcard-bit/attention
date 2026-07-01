@@ -201,6 +201,8 @@ describe("Setting components", () => {
     expect(slider.sliderEl.getAttribute("aria-label")).toBe("6px");
     expect(slider.sliderEl.dataset.tooltipPosition).toBe("top");
     expect(slider.sliderEl.hasAttribute("title")).toBe(false);
+    slider.sliderEl.dispatchEvent(new Event("touchend"));
+    expect(slider.sliderEl.hasAttribute("aria-label")).toBe(false);
 
     const parentClick = vi.fn();
     host.addEventListener("click", parentClick);

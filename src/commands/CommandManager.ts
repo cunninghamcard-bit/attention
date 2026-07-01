@@ -90,8 +90,8 @@ export class CommandManager {
     delete this.editorCommands[id];
   }
 
-  findCommand(id: string): Command | null {
-    return this.commands[id] ?? null;
+  findCommand(id: string): Command | undefined {
+    return this.commands[id];
   }
 
   listCommands(): Command[] {

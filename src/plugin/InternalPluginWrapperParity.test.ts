@@ -81,7 +81,7 @@ describe("InternalPluginWrapper Obsidian parity", () => {
     wrapper.init();
     await wrapper.enable();
 
-    expect(app.commands.findCommand("core-async-disable:run")).not.toBeNull();
+    expect(app.commands.findCommand("core-async-disable:run")).not.toBeUndefined();
 
     const disablePromise = wrapper.disable(true).then(() => {
       disableResolved = true;
@@ -90,7 +90,7 @@ describe("InternalPluginWrapper Obsidian parity", () => {
 
     expect(disableResolved).toBe(true);
     expect(wrapper.enabled).toBe(false);
-    expect(app.commands.findCommand("core-async-disable:run")).toBeNull();
+    expect(app.commands.findCommand("core-async-disable:run")).toBeUndefined();
     expect(seen).toEqual(["onDisable", "onUserDisable"]);
 
     finishDisable?.();

@@ -2,9 +2,30 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createObsidianPluginModule } from "../api/ObsidianPluginModule";
 import { RenderContext } from "../markdown/RenderContext";
 import { SecretStorage } from "../storage/SecretStorage";
+import { FileSystemAdapter } from "../vault/FileSystemAdapter";
 import { Platform } from "../platform/Platform";
 import { Menu } from "../ui/Menu";
 import { App } from "./App";
+
+class TestFileSystemAdapter extends FileSystemAdapter {
+  existingPaths = new Set<string>(["Folder/Note.md"]);
+
+  constructor() {
+    super("/vault");
+  }
+
+  override getFilePath(path: string): string {
+    return `file:///vault/${path}`;
+  }
+
+  override getFullPath(path: string): string {
+    return `/vault/${path}`;
+  }
+
+  override async exists(path: string): Promise<boolean> {
+    return this.existingPaths.has(path);
+  }
+}
 
 describe("App public plugin API", () => {
   beforeEach(() => {
@@ -204,6 +225,40 @@ describe("App public plugin API", () => {
     expect(app.getObsidianUrl(note)).toContain("file=Folder%2FMy%20Note");
     expect(app.getObsidianUrl(note)).not.toContain(".md");
     expect(app.getObsidianUrl(image)).toContain("file=Image.png");
+  });
+
+  it("opens filesystem paths through Obsidian desktop and mobile adapter contracts", async () => {
+    const app = new App(document.createElement("div"));
+    const adapter = new TestFileSystemAdapter();
+    const windowOpen = vi.fn();
+    const showItemInFolder = vi.fn();
+    const previousElectron = (globalThis as { electron?: unknown }).electron;
+    const previousMobile = Platform.isMobile;
+    Object.defineProperty(window, "open", { configurable: true, value: windowOpen });
+    (app.vault as unknown as { adapter: TestFileSystemAdapter }).adapter = adapter;
+    (globalThis as { electron?: unknown }).electron = { shell: { showItemInFolder } };
+
+    try {
+      await app.openWithDefaultApp("Folder/Note.md");
+      expect(windowOpen).toHaveBeenCalledWith("file:///vault/Folder/Note.md", "_external");
+
+      await app.showInFolder("Folder/Note.md");
+      expect(showItemInFolder).toHaveBeenCalledWith("/vault/Folder/Note.md");
+
+      await app.showInFolder("Missing.md");
+      expect(showItemInFolder).toHaveBeenCalledTimes(1);
+
+      const mobileOpen = vi.fn();
+      Platform.isMobile = true;
+      (app.vault as unknown as { adapter: { open(path: string): void } }).adapter = { open: mobileOpen };
+      await app.openWithDefaultApp("Mobile.md");
+      expect(mobileOpen).toHaveBeenCalledWith("Mobile.md");
+    } finally {
+      Platform.isMobile = previousMobile;
+      if (previousElectron === undefined) delete (globalThis as { electron?: unknown }).electron;
+      else (globalThis as { electron?: unknown }).electron = previousElectron;
+      document.body.querySelectorAll(".notice").forEach((el) => el.remove());
+    }
   });
 
   it("validates secret IDs and persists secrets across storage instances", () => {

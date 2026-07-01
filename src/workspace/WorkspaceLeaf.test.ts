@@ -957,7 +957,7 @@ describe("WorkspaceLeaf", () => {
     await thirdLeaf.openFile(third, { active: true });
 
     expect(app.commands.findCommand("workspace:goto-tab-4")?.checkCallback?.(true)).toBe(false);
-    expect(app.commands.findCommand("workspace:goto-tab-9")).toBeNull();
+    expect(app.commands.findCommand("workspace:goto-tab-9")).toBeUndefined();
     expect(app.commands.findCommand("workspace:goto-last-tab")?.checkCallback?.(true)).toBe(true);
 
     await app.commands.executeCommandById("workspace:goto-tab-1");

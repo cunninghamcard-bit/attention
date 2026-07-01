@@ -204,7 +204,7 @@ export class Plugin extends Component {
   }
 
   registerCliHandler(command: string, description: string, flags: CliFlags | null, handler: CliHandler): void {
-    const registration = this.app.registerCliHandler(command, description, flags, handler, this.manifest.id);
+    const registration = this.app.registerCliHandler(command, `[${this.manifest.name}]: ${description}`, flags, handler, this.manifest.id);
     this.register(() => this.app.unregisterCliHandler(registration));
   }
 
