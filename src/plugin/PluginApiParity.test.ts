@@ -852,12 +852,13 @@ describe("Obsidian plugin API parity", () => {
       response: { status: 404, text: "missing" },
     });
 
-    await expect(module.requestUrl({ url: "https://example.com/missing", throw: false })).resolves.toMatchObject({
+    const missingResponse = module.requestUrl({ url: "https://example.com/missing", throw: false });
+    await expect(missingResponse).resolves.toMatchObject({
       status: 404,
       text: "missing",
-      json: null,
     });
-    await expect(module.requestUrl({ url: "https://example.com/missing", throw: false }).text).resolves.toBe("missing");
+    await expect(missingResponse.text).resolves.toBe("missing");
+    await expect(missingResponse.json).rejects.toBeInstanceOf(SyntaxError);
   });
 
   it("exports search helper functions for fuzzy/simple matching, sorting, and highlight rendering", () => {

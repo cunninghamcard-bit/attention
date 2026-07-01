@@ -522,14 +522,7 @@ async function requestUrlViaFetch(request: RequestUrlParam): Promise<RequestUrlR
     body: request.body,
   });
   const arrayBuffer = await response.arrayBuffer();
-  const text = new TextDecoder().decode(arrayBuffer);
-  return {
-    status: response.status,
-    headers: Object.fromEntries(response.headers.entries()),
-    arrayBuffer,
-    json: parseJson(text),
-    text,
-  };
+  return createRequestUrlResponse(response.status, Object.fromEntries(response.headers.entries()), arrayBuffer);
 }
 
 function normalizeNativeRequestUrlResponse(response: NativeRequestUrlResponse): RequestUrlResponse {
@@ -537,13 +530,20 @@ function normalizeNativeRequestUrlResponse(response: NativeRequestUrlResponse): 
   const arrayBuffer = response.arrayBuffer
     ? normalizeArrayBuffer(response.arrayBuffer)
     : new TextEncoder().encode(response.text ?? "").buffer;
-  const text = response.text ?? new TextDecoder().decode(arrayBuffer);
+  return createRequestUrlResponse(response.status, headers, arrayBuffer);
+}
+
+function createRequestUrlResponse(status: number, headers: Record<string, string>, arrayBuffer: ArrayBuffer): RequestUrlResponse {
   return {
-    status: response.status,
+    status,
     headers,
     arrayBuffer,
-    json: Object.prototype.hasOwnProperty.call(response, "json") ? response.json : parseJson(text),
-    text,
+    get json() {
+      return JSON.parse(new TextDecoder().decode(arrayBuffer));
+    },
+    get text() {
+      return new TextDecoder().decode(arrayBuffer);
+    },
   };
 }
 
@@ -553,14 +553,6 @@ function normalizeArrayBuffer(data: ArrayBuffer | ArrayBufferView): ArrayBuffer 
   const copy = new Uint8Array(bytes.byteLength);
   copy.set(bytes);
   return copy.buffer;
-}
-
-function parseJson(text: string): any {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
 }
 
 function escapeHtmlAttribute(value: string): string {
