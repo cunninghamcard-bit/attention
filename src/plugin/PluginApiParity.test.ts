@@ -609,8 +609,8 @@ describe("Obsidian plugin API parity", () => {
     expect(module.getLanguage).toBe(getLanguage);
     expect(module.getLanguage()).toBe("zh");
     Object.defineProperty(navigator, "language", { configurable: true, value: previousLanguage });
-    expect(module.parseLinktext(" Target#Heading#Child | Alias ")).toEqual({ path: "Target", subpath: "Heading#Child" });
-    expect(module.getLinkpath(" Target#Heading | Alias ")).toBe("Target");
+    expect(module.parseLinktext(" Target#Heading#Child | Alias ")).toEqual({ path: " Target", subpath: "#Heading#Child | Alias " });
+    expect(module.getLinkpath(" Target#Heading | Alias ")).toBe(" Target");
     expect(module.arrayBufferToHex(bytes)).toBe("000f10ff");
     expect(new Uint8Array(module.hexToArrayBuffer("000f10ff"))).toEqual(new Uint8Array(bytes));
     expect(module.arrayBufferToBase64(bytes)).toBe("AA8Q/w==");

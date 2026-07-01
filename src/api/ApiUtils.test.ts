@@ -1,12 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
 import { resetActiveWindow, setActiveWindow } from "../dom/ActiveDocument";
-import { debounce, getLanguage, normalizePath, stringifyYaml } from "./ApiUtils";
+import { debounce, getLanguage, getLinkpath, normalizePath, parseLinktext, stringifyYaml } from "./ApiUtils";
 
 describe("Obsidian API utility parity", () => {
   it("normalizes paths with Obsidian's slash trimming and NFC rules", () => {
     expect(normalizePath("")).toBe("/");
     expect(normalizePath("/./Cafe\u0301.md")).toBe("./Café.md");
     expect(normalizePath("Folder\u00A0Name//Note.md/")).toBe("Folder Name/Note.md");
+  });
+
+  it("parses linktext with Obsidian's first-hash contract", () => {
+    expect(parseLinktext(" Target#Heading#Child | Alias ")).toEqual({
+      path: " Target",
+      subpath: "#Heading#Child | Alias ",
+    });
+    expect(parseLinktext("Note|Alias")).toEqual({ path: "Note|Alias", subpath: "" });
+    expect(getLinkpath("Note#Heading|Alias")).toBe("Note");
   });
 
   it("keeps debounce timers while running the latest pending args", () => {

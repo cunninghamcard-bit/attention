@@ -4,7 +4,6 @@ import type { App } from "../app/App";
 import { htmlToMarkdown as convertHtmlToMarkdown } from "../markdown/HtmlToMarkdown";
 import { preprocessHtmlDrop } from "../markdown/HtmlDropPreprocessor";
 import type { CachedMetadata } from "../metadata/MetadataCache";
-import { parseLinktext as parseInternalLinktext } from "../metadata/Linkpath";
 import { compareVersions } from "../utils/Version";
 import { getActiveWindow } from "../dom/ActiveDocument";
 
@@ -306,14 +305,15 @@ export function getBlobArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
 }
 
 export function getLinkpath(linktext: string): string {
-  return parseLinktext(linktext).path;
+  const index = linktext.indexOf("#");
+  return index === -1 ? linktext : linktext.substring(0, index);
 }
 
 export function parseLinktext(linktext: string): { path: string; subpath: string } {
-  const parsed = parseInternalLinktext(linktext);
+  const index = linktext.indexOf("#");
   return {
-    path: parsed.path,
-    subpath: parsed.subpath ?? "",
+    path: index === -1 ? linktext : linktext.substring(0, index),
+    subpath: index === -1 ? "" : linktext.substring(index),
   };
 }
 
