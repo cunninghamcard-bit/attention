@@ -123,6 +123,27 @@ describe("FileManager", () => {
     expect(app.fileManager.generateMarkdownLink(note, "Daily/Today.md")).toBe("[[../Notes/Target.md]]");
   });
 
+  it("merges inserted frontmatter into one properties block", async () => {
+    const app = new App(document.createElement("div"));
+    const file = await app.vault.create("Merge.md", "---\ntags:\n  - old\nstatus: draft\n---\nExisting");
+
+    await app.fileManager.insertIntoFile(file, "---\ntags:\n  - new\naliases:\n  - Alias\n---\nIncoming");
+
+    expect(await app.vault.read(file)).toBe([
+      "---",
+      "tags:",
+      "  - old",
+      "  - new",
+      "status: draft",
+      "aliases:",
+      "  - Alias",
+      "---",
+      "Existing",
+      "",
+      "Incoming",
+    ].join("\n"));
+  });
+
   it("moves deleted files to the vault trash folder when trashOption is local", async () => {
     const app = new App(document.createElement("div"));
     app.vault.setConfig("trashOption", "local");

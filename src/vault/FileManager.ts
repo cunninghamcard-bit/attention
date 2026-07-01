@@ -1,6 +1,6 @@
 import type { App } from "../app/App";
 import { getTimestampForPastedImage, type AttachmentImportData, type AttachmentImportFile } from "../app/AttachmentImport";
-import { deleteFrontmatterProperty, parseFrontmatter, renameFrontmatterProperty, updateFrontmatter } from "../properties/Frontmatter";
+import { deleteFrontmatterProperty, mergeFrontmatterValues, parseFrontmatter, renameFrontmatterProperty, serializeFrontmatter, updateFrontmatter } from "../properties/Frontmatter";
 import type { PropertyValue } from "../properties/PropertyTypes";
 import { ConfirmationModal } from "../ui/Modal";
 import type { DataWriteOptions } from "./DataAdapter";
@@ -222,12 +222,16 @@ export class FileManager {
 
   async insertIntoFile(file: TFile, content: string, position: "append" | "prepend" = "append"): Promise<void> {
     await this.app.vault.process(file, (existing) => {
-      const before = position === "prepend" ? content : existing;
-      const after = position === "prepend" ? existing : content;
+      const incoming = parseInsertFrontmatter(content);
+      const current = parseInsertFrontmatter(existing);
+      const before = position === "prepend" ? incoming.body : current.body;
+      const after = position === "prepend" ? current.body : incoming.body;
       const separator = before && after && !`${before.slice(-2)}${after.slice(0, 2)}`.includes("\n\n")
         ? before.endsWith("\n") || after.startsWith("\n") ? "\n" : "\n\n"
         : "";
-      return `${before}${separator}${after}`;
+      const frontmatter = { ...current.values };
+      mergeFrontmatterValues(frontmatter, incoming.values);
+      return `${serializeFrontmatter(frontmatter)}${before}${separator}${after}`;
     });
   }
 
@@ -387,6 +391,12 @@ export class FileManager {
       modal.open();
     });
   }
+}
+
+function parseInsertFrontmatter(source: string): { body: string; values: Record<string, PropertyValue> } {
+  const parsed = parseFrontmatter(source);
+  if (!parsed.valid) return { body: source, values: {} };
+  return { body: parsed.body, values: parsed.values };
 }
 
 class FileRenameModal extends ConfirmationModal {
