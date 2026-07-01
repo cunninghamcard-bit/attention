@@ -276,7 +276,7 @@ describe("Obsidian workspace DOM structure", () => {
       configurable: true,
       value: { writeText: vi.fn().mockResolvedValue(undefined) },
     });
-    const showInFolder = vi.spyOn(app, "showInFolder").mockResolvedValue(undefined);
+    const showInFolder = vi.spyOn(app, "showInFolder").mockImplementation(() => undefined);
     const leftSplit = app.workspace.leftSplit;
     if (!(leftSplit instanceof WorkspaceSidedock)) throw new Error("Expected desktop left sidedock");
     const switcherEl = leftSplit.containerEl.querySelector<HTMLElement>(".workspace-drawer-vault-switcher");

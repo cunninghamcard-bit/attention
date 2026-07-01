@@ -39,7 +39,7 @@ describe("AppCommands Obsidian file operation commands", () => {
     await app.workspace.openFile(file, { active: true });
     const copyUrl = vi.spyOn(app, "copyObsidianUrl").mockResolvedValue(undefined);
     const openDefault = vi.spyOn(app, "openWithDefaultApp").mockResolvedValue(undefined);
-    const showInFolder = vi.spyOn(app, "showInFolder").mockResolvedValue(undefined);
+    const showInFolder = vi.spyOn(app, "showInFolder").mockImplementation(() => undefined);
 
     expect(app.commands.executeCommandById("workspace:copy-url")).toBe(true);
     expect(app.commands.executeCommandById("open-with-default-app:open")).toBe(true);

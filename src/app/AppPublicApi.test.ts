@@ -282,15 +282,16 @@ describe("App public plugin API", () => {
       await app.openWithDefaultApp("Folder/Note.md");
       expect(windowOpen).toHaveBeenCalledWith("file:///vault/Folder/Note.md", "_external");
 
-      await app.showInFolder("Folder/Note.md");
-      expect(showItemInFolder).toHaveBeenCalledWith("/vault/Folder/Note.md");
+      expect(app.showInFolder("Folder/Note.md")).toBeUndefined();
+      await vi.waitFor(() => expect(showItemInFolder).toHaveBeenCalledWith("/vault/Folder/Note.md"));
 
-      await app.showInFolder("Missing.md");
+      expect(app.showInFolder("Missing.md")).toBeUndefined();
+      await vi.waitFor(() => expect(document.body.textContent).toContain("/vault/Missing.md"));
       expect(showItemInFolder).toHaveBeenCalledTimes(1);
 
       Platform.isDesktopApp = false;
       await app.openWithDefaultApp("Web.md");
-      await app.showInFolder("Web.md");
+      expect(app.showInFolder("Web.md")).toBeUndefined();
       expect(windowOpen).toHaveBeenCalledTimes(1);
       expect(showItemInFolder).toHaveBeenCalledTimes(1);
 

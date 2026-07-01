@@ -293,17 +293,18 @@ export class App {
     }
   }
 
-  async showInFolder(path: string): Promise<void> {
+  showInFolder(path: string): void {
     if (!Platform.isDesktopApp) return;
     const adapter = this.vault.adapter;
-    if (adapter instanceof FileSystemAdapter) {
+    if (!(adapter instanceof FileSystemAdapter)) return;
+    const fullPath = adapter.getFullPath(path);
+    void (async () => {
       if (!await adapter.exists(path)) {
-        new Notice("File not found");
+        new Notice(`File not found: ${fullPath}`);
         return;
       }
-      const fullPath = adapter.getFullPath(path);
       showItemInFolder(fullPath, this.containerEl.ownerDocument.defaultView ?? window);
-    }
+    })();
   }
 
   isDarkMode(): boolean {
