@@ -228,6 +228,8 @@ describe("Obsidian plugin API parity", () => {
     await plugin.load();
 
     expect(Object.hasOwn(Plugin.prototype, "onunload")).toBe(false);
+    expect(Object.hasOwn(Plugin.prototype, "onConfigFileChange")).toBe(false);
+    expect(Object.hasOwn(plugin, "onConfigFileChange")).toBe(true);
     expect(plugin.didLoad).toBe(true);
     await expect(plugin.loadData()).resolves.toBeNull();
     expect(plugin.onExternalSettingsChange?.()).toBe("changed");

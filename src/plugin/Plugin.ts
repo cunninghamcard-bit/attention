@@ -16,6 +16,7 @@ import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
 import type { BasesViewRegistration } from "../bases/BasesRegistry";
 import type { BasesFunction, BasesValueType } from "../bases/BasesFunctionRegistry";
 import type { EditorSuggest } from "../suggest/EditorSuggest";
+import { debounce } from "../api/ApiUtils";
 import { MarkdownRenderer, type MarkdownCodeBlockProcessor, type MarkdownPostProcessor } from "../markdown/MarkdownRenderer";
 import { MarkdownPreviewRenderer } from "../markdown/MarkdownPreviewRenderer";
 import { createPluginContext, type PluginContext } from "./PluginContext";
@@ -30,10 +31,11 @@ export class Plugin extends Component {
   settings?: unknown;
   _userDisabled = false;
   _lastDataModifiedTime = 0;
-  private configFileChangeTimer: number | null = null;
+  onConfigFileChange: () => void;
 
   constructor(app: App, manifest: PluginManifestInput) {
     super();
+    this.onConfigFileChange = debounce(this._onConfigFileChange, 50);
     this.app = app;
     this.manifest = normalizePluginManifest(manifest);
     this.ctx = createPluginContext(app);
@@ -60,14 +62,6 @@ export class Plugin extends Component {
     const mtime = Date.now();
     this._lastDataModifiedTime = mtime;
     await this.app.vault.writePluginData(this.manifest.dir, data, { mtime });
-  }
-
-  onConfigFileChange(): void {
-    if (this.configFileChangeTimer !== null) window.clearTimeout(this.configFileChangeTimer);
-    this.configFileChangeTimer = window.setTimeout(() => {
-      this.configFileChangeTimer = null;
-      void this._onConfigFileChange();
-    }, 50);
   }
 
   async getModifiedTime(): Promise<number> {
