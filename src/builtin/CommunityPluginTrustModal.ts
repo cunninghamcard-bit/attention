@@ -1,7 +1,7 @@
 import type { App } from "../app/App";
-import { Modal } from "../ui/Modal";
+import { ConfirmationModal } from "../ui/Modal";
 
-export class CommunityPluginTrustModal extends Modal {
+export class CommunityPluginTrustModal extends ConfirmationModal {
   constructor(app: App) {
     super(app);
     this.modalEl.classList.add("mod-lg", "mod-trust-folder");
@@ -10,7 +10,7 @@ export class CommunityPluginTrustModal extends Modal {
 
   onOpen(): void {
     this.contentEl.replaceChildren();
-    const buttonEl = this.ensureButtonContainer();
+    const buttonEl = this.buttonContainerEl;
     buttonEl.replaceChildren();
 
     this.contentEl.append(

@@ -61,7 +61,6 @@ describe("Modal Obsidian base behavior", () => {
       "modal-header",
       "modal-content",
     ]);
-    expect(modal.buttonEl.parentElement).toBeNull();
     expect([...modal.headerEl.children].map((child) => child.className)).toEqual(["modal-title"]);
     expect(modal.closeButtonEl.parentElement).toBe(modal.modalEl);
     expect(modal.closeButtonEl.querySelector("svg")?.classList.contains("lucide-x")).toBe(true);
@@ -69,23 +68,13 @@ describe("Modal Obsidian base behavior", () => {
     expect(modal.contentEl.textContent).toBe("Body");
   });
 
-  it("keeps the base modal button row detached until compatibility button APIs are used", () => {
+  it("does not expose confirmation button helpers on base Modal", () => {
     const app = new App(document.createElement("div"));
     const modal = new Modal(app);
-    const callback = vi.fn();
 
     expect(modal.modalEl.querySelector(".modal-button-container")).toBeNull();
-
-    modal.addButton("mod-cta", "Run", callback).addCancelButton();
-
-    expect(modal.buttonEl.parentElement).toBe(modal.modalEl);
-    expect([...modal.modalEl.children].map((child) => child.className)).toEqual([
-      "modal-close-button mod-raised clickable-icon",
-      "modal-header",
-      "modal-content",
-      "modal-button-container",
-    ]);
-    expect(modal.buttonEl.querySelector("button")?.textContent).toBe("Run");
+    expect("addButton" in modal).toBe(false);
+    expect("addCancelButton" in modal).toBe(false);
   });
 
   it("respects prevented Escape events and closes on unprevented Escape", () => {
@@ -264,7 +253,7 @@ describe("Modal Obsidian base behavior", () => {
     expect(modal.containerEl.classList.contains("mod-confirmation")).toBe(true);
     expect(modal.modalEl.classList.contains("mod-confirmation")).toBe(false);
     expect(modal.modalEl.classList.contains("mod-danger")).toBe(true);
-    expect(modal.buttonContainerEl).toBe(modal.buttonEl);
+    expect(modal.buttonContainerEl.parentElement).toBe(modal.modalEl);
     expect(document.activeElement).toBe([...modal.buttonContainerEl.querySelectorAll("button")][1]);
 
     const input = modal.buttonContainerEl.querySelector<HTMLInputElement>(".mod-checkbox input");

@@ -1,7 +1,7 @@
 import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import { Setting, SettingGroup } from "../ui/Setting";
-import { Modal } from "../ui/Modal";
+import { ConfirmationModal } from "../ui/Modal";
 import { setIcon } from "../ui/Icon";
 
 export class FilesSettingTab implements SettingTab {
@@ -326,7 +326,7 @@ export class FilesSettingTab implements SettingTab {
   }
 }
 
-class ExcludedFilesModal extends Modal {
+class ExcludedFilesModal extends ConfirmationModal {
   private readonly descEl: HTMLParagraphElement;
   private readonly listEl: HTMLElement;
   private inputEl!: HTMLInputElement;

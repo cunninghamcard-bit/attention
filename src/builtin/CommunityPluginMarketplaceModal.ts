@@ -1,5 +1,5 @@
 import type { App } from "../app/App";
-import { Modal } from "../ui/Modal";
+import { ConfirmationModal, Modal } from "../ui/Modal";
 import { Menu } from "../ui/Menu";
 import { Notice } from "../ui/Notice";
 import { registerActiveCloseable, unregisterActiveCloseable, type ActiveCloseable } from "../ui/ActiveCloseableRegistry";
@@ -56,7 +56,6 @@ export class CommunityPluginMarketplaceModal extends Modal {
 
   render(): void {
     this.contentEl.replaceChildren();
-    this.buttonEl.replaceChildren();
     this.sidebarEl.className = "modal-sidebar";
     this.detailEl.className = "community-modal-details";
     this.contentEl.append(this.sidebarEl, this.detailEl);
@@ -463,7 +462,7 @@ export class CommunityPluginMarketplaceModal extends Modal {
   }
 }
 
-class CommunityPluginDonateModal extends Modal {
+class CommunityPluginDonateModal extends ConfirmationModal {
   constructor(app: App, readonly entry: MarketplacePluginEntry) {
     super(app);
     this.setTitle(`Donate to ${entry.manifest.name}`);
@@ -471,7 +470,7 @@ class CommunityPluginDonateModal extends Modal {
 
   onOpen(): void {
     this.contentEl.replaceChildren();
-    this.buttonEl.replaceChildren();
+    this.buttonContainerEl.replaceChildren();
 
     this.contentEl.append(
       paragraph("If you enjoy this plugin, consider supporting the author."),

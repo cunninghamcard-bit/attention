@@ -1,7 +1,7 @@
 import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import { Setting, SettingGroup } from "../ui/Setting";
-import { Modal } from "../ui/Modal";
+import { ConfirmationModal } from "../ui/Modal";
 import { CommunityPluginMarketplaceModal } from "./CommunityPluginMarketplaceModal";
 import { setIcon } from "../ui/Icon";
 
@@ -221,7 +221,7 @@ export class CommunityPluginsSettingTab implements SettingTab {
   }
 
   private openUninstallModal(pluginId: string): void {
-    const modal = new Modal(this.app)
+    const modal = new ConfirmationModal(this.app)
       .setTitle("Uninstall plugin")
       .setContent("Are you sure you want to uninstall this plugin?")
       .addButton("mod-warning", "Uninstall", async () => {

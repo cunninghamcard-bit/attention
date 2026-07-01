@@ -1,5 +1,5 @@
 import type { App } from "../app/App";
-import { Modal } from "../ui/Modal";
+import { ConfirmationModal } from "../ui/Modal";
 
 export interface PropertyTypeMismatchModalOptions {
   expectedType: string;
@@ -7,7 +7,7 @@ export interface PropertyTypeMismatchModalOptions {
   onUpdate: () => void;
 }
 
-export class PropertyTypeMismatchModal extends Modal {
+export class PropertyTypeMismatchModal extends ConfirmationModal {
   constructor(app: App, options: PropertyTypeMismatchModalOptions) {
     super(app);
     this.setTitle(`Change property type to ${options.expectedType}`);

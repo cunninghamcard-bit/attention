@@ -3,7 +3,7 @@ import type { SettingTab } from "../app/SettingRegistry";
 import type { FileRevision } from "../revisions/RevisionHistory";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../plugin/InternalPluginWrapper";
-import { Modal } from "../ui/Modal";
+import { ConfirmationModal } from "../ui/Modal";
 import { Setting, SettingGroup } from "../ui/Setting";
 import { Notice } from "../ui/Notice";
 import { TFile } from "../vault/TAbstractFile";
@@ -98,7 +98,7 @@ export class FileRecoveryController {
   }
 }
 
-class FileRecoveryModal extends Modal {
+class FileRecoveryModal extends ConfirmationModal {
   private selectedPath = "";
   private selectedRevision: FileRevision | null = null;
   private readonly sidebarEl = document.createElement("div");
@@ -117,7 +117,7 @@ class FileRecoveryModal extends Modal {
 
   private render(): void {
     this.contentEl.replaceChildren();
-    const buttonEl = this.ensureButtonContainer();
+    const buttonEl = this.buttonContainerEl;
     buttonEl.replaceChildren();
     const layoutEl = document.createElement("div");
     layoutEl.className = "sync-history-content";

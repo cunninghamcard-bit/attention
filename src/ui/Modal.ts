@@ -36,7 +36,6 @@ export class Modal extends Component implements HistoryHandler {
   headerEl: HTMLElement;
   titleEl: HTMLElement;
   contentEl: HTMLElement;
-  buttonEl: HTMLElement;
   closeButtonEl: HTMLElement;
   scope = new Scope();
   shouldRestoreSelection = true;
@@ -68,8 +67,6 @@ export class Modal extends Component implements HistoryHandler {
     this.titleEl.className = "modal-title";
     this.contentEl = doc.createElement("div");
     this.contentEl.className = "modal-content";
-    this.buttonEl = doc.createElement("div");
-    this.buttonEl.className = "modal-button-container";
     this.headerEl.append(this.titleEl);
     this.modalEl.append(this.closeButtonEl, this.headerEl, this.contentEl);
     this.containerEl.append(this.bgEl, this.modalEl);
@@ -92,29 +89,6 @@ export class Modal extends Component implements HistoryHandler {
   setContent(content: string | Node): this {
     if (typeof content === "string") this.contentEl.textContent = content;
     else this.contentEl.appendChild(content);
-    return this;
-  }
-
-  addButton(cls: string, text: string, callback: () => void | Promise<void>): this {
-    const buttonContainerEl = this.ensureButtonContainer();
-    const buttonEl = this.containerEl.ownerDocument.createElement("button");
-    buttonEl.className = cls;
-    buttonEl.textContent = text;
-    buttonEl.addEventListener("click", () => {
-      buttonEl.classList.add("mod-loading");
-      void Promise.resolve(callback())
-        .finally(() => buttonEl.classList.remove("mod-loading"));
-    });
-    buttonContainerEl.appendChild(buttonEl);
-    return this;
-  }
-
-  addCancelButton(text = "Cancel"): this {
-    const buttonContainerEl = this.ensureButtonContainer();
-    const buttonEl = this.containerEl.ownerDocument.createElement("button");
-    buttonEl.textContent = text;
-    buttonEl.addEventListener("click", () => this.close());
-    buttonContainerEl.appendChild(buttonEl);
     return this;
   }
 
@@ -194,10 +168,6 @@ export class Modal extends Component implements HistoryHandler {
     if (!event.defaultPrevented) this.close();
   }
 
-  protected ensureButtonContainer(): HTMLElement {
-    if (this.buttonEl.parentElement !== this.modalEl) this.modalEl.appendChild(this.buttonEl);
-    return this.buttonEl;
-  }
 }
 
 export class ConfirmationButton extends ButtonComponent {
@@ -251,7 +221,9 @@ export class ConfirmationModal extends Modal {
   constructor(app: App) {
     super(app);
     this.containerEl.classList.add("mod-confirmation");
-    this.buttonContainerEl = this.ensureButtonContainer();
+    this.buttonContainerEl = this.containerEl.ownerDocument.createElement("div");
+    this.buttonContainerEl.className = "modal-button-container";
+    this.modalEl.appendChild(this.buttonContainerEl);
   }
 
   addClass(cls: string): this {
@@ -305,7 +277,7 @@ export class ConfirmationModal extends Modal {
     return this;
   }
 
-  override addCancelButton(textOrCallback: string | (() => unknown | Promise<unknown>) = "Cancel"): this {
+  addCancelButton(textOrCallback: string | (() => unknown | Promise<unknown>) = "Cancel"): this {
     if (typeof textOrCallback === "string") return this.addButton("mod-cancel", textOrCallback, () => undefined);
     return this.addButton("mod-cancel", "Cancel", () => textOrCallback());
   }

@@ -2,7 +2,7 @@ import type { App } from "../app/App";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../plugin/InternalPluginWrapper";
 import { Notice } from "../ui/Notice";
-import { Modal } from "../ui/Modal";
+import { ConfirmationModal } from "../ui/Modal";
 import { Menu } from "../ui/Menu";
 import { Setting, SettingGroup } from "../ui/Setting";
 import { ItemView } from "../views/ItemView";
@@ -521,7 +521,7 @@ class WebViewerSettingTab implements SettingTab {
   }
 }
 
-class WebViewerClearDataModal extends Modal {
+class WebViewerClearDataModal extends ConfirmationModal {
   constructor(app: App, readonly controller: WebViewerController) {
     super(app);
     this.setTitle("Clear Web viewer data");
@@ -529,7 +529,7 @@ class WebViewerClearDataModal extends Modal {
 
   onOpen(): void {
     this.contentEl.replaceChildren();
-    const buttonEl = this.ensureButtonContainer();
+    const buttonEl = this.buttonContainerEl;
     buttonEl.replaceChildren();
     const descEl = document.createElement("p");
     descEl.textContent = "Choose which local Web viewer browsing data to clear for the active browser session.";

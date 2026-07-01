@@ -2,7 +2,7 @@ import type { App } from "../app/App";
 import { getTimestampForPastedImage, type AttachmentImportData, type AttachmentImportFile } from "../app/AttachmentImport";
 import { deleteFrontmatterProperty, parseFrontmatter, renameFrontmatterProperty, updateFrontmatter } from "../properties/Frontmatter";
 import type { PropertyValue } from "../properties/PropertyTypes";
-import { Modal } from "../ui/Modal";
+import { ConfirmationModal } from "../ui/Modal";
 import type { DataWriteOptions } from "./DataAdapter";
 import { validateRenamePromptName } from "./FileNameValidation";
 import { TAbstractFile, TFile, TFolder } from "./TAbstractFile";
@@ -389,7 +389,7 @@ export class FileManager {
   }
 }
 
-class FileRenameModal extends Modal {
+class FileRenameModal extends ConfirmationModal {
   private readonly inputEl: HTMLTextAreaElement;
 
   constructor(app: App, private readonly file: TAbstractFile) {
@@ -459,7 +459,7 @@ class FileRenameModal extends Modal {
   }
 }
 
-class LinkUpdateConfirmModal extends Modal {
+class LinkUpdateConfirmModal extends ConfirmationModal {
   private resolved = false;
 
   constructor(app: App, linkCount: number, fileCount: number, private readonly resolveChoice: (value: boolean) => void) {
@@ -495,7 +495,7 @@ class LinkUpdateConfirmModal extends Modal {
   }
 }
 
-class DeleteConfirmModal extends Modal {
+class DeleteConfirmModal extends ConfirmationModal {
   private resolved = false;
   private readonly doNotAskAgainEl: HTMLInputElement;
 
@@ -561,7 +561,7 @@ class DeleteConfirmModal extends Modal {
   }
 }
 
-class OrphanAttachmentsModal extends Modal {
+class OrphanAttachmentsModal extends ConfirmationModal {
   private readonly selectedPaths = new Set<string>();
 
   constructor(

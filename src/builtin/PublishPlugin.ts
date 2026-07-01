@@ -1,7 +1,7 @@
 import type { App } from "../app/App";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../plugin/InternalPluginWrapper";
-import { Modal } from "../ui/Modal";
+import { ConfirmationModal } from "../ui/Modal";
 import { Notice } from "../ui/Notice";
 import { TFile } from "../vault/TAbstractFile";
 import type { PublishedFileRecord } from "../publish/PublishService";
@@ -248,7 +248,7 @@ export class PublishController {
   }
 }
 
-class PublishChangesModal extends Modal {
+class PublishChangesModal extends ConfirmationModal {
   private scan: PublishScanResult | null = null;
   private scanning = false;
 
@@ -272,7 +272,7 @@ class PublishChangesModal extends Modal {
 
   private render(): void {
     this.contentEl.replaceChildren();
-    const buttonEl = this.ensureButtonContainer();
+    const buttonEl = this.buttonContainerEl;
     buttonEl.replaceChildren();
 
     this.renderSiteSection();
