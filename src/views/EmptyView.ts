@@ -39,26 +39,27 @@ export class EmptyView extends ItemView {
   protected renderEmptyState(options: EmptyViewStateOptions): void {
     this.contentEl.replaceChildren();
     this.contentEl.classList.add("empty-state");
+    const doc = this.contentEl.ownerDocument;
 
-    const container = document.createElement("div");
+    const container = doc.createElement("div");
     container.className = "empty-state-container";
 
-    const title = document.createElement("div");
+    const title = doc.createElement("div");
     title.className = "empty-state-title";
     title.textContent = options.title;
     container.appendChild(title);
 
     if (options.description) {
-      const description = document.createElement("div");
+      const description = doc.createElement("div");
       description.className = "empty-state-description";
       description.textContent = options.description;
       container.appendChild(description);
     }
 
-    const actionList = document.createElement("div");
+    const actionList = doc.createElement("div");
     actionList.className = "empty-state-action-list";
     for (const action of options.actions) {
-      const button = document.createElement("button");
+      const button = doc.createElement("button");
       button.className = action.danger ? "empty-state-action tappable mod-close" : "empty-state-action tappable";
       button.textContent = action.label;
       button.addEventListener("click", () => void action.run());

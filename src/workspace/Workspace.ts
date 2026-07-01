@@ -2248,7 +2248,69 @@ export class Workspace extends Events {
         event.stopPropagation();
         void (event.button === 3 ? ownerWindow.history.back() : ownerWindow.history.forward());
       }, { capture: true });
+    } else {
+      this.installLinuxMiddleClickPasteGuard(ownerWindow);
     }
+  }
+
+  private installLinuxMiddleClickPasteGuard(ownerWindow: Window): void {
+    ownerWindow.addEventListener("mousedown", (downEvent) => {
+      if (downEvent.button !== 1) return;
+      const runtimeWindow = ownerWindow as Window & typeof globalThis;
+      const doc = ownerWindow.document;
+      const activeElement = doc.activeElement;
+      let shouldPreventPaste = false;
+      const onMouseUp = (upEvent: MouseEvent) => {
+        if (upEvent.button !== 1) return;
+        ownerWindow.removeEventListener("mouseup", onMouseUp);
+        if (downEvent.defaultPrevented || doc.activeElement !== activeElement || shouldPreventPaste) {
+          upEvent.preventDefault();
+          return;
+        }
+        let cleanupTimer: ReturnType<typeof setTimeout>;
+        const cleanup = () => {
+          ownerWindow.removeEventListener("auxclick", onAuxClick);
+          ownerWindow.removeEventListener("paste", onPaste, { capture: true });
+          ownerWindow.clearTimeout(cleanupTimer);
+        };
+        const onAuxClick = (event: MouseEvent) => {
+          if (!event.defaultPrevented) cleanup();
+        };
+        const onPaste = (event: ClipboardEvent) => {
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+        };
+        ownerWindow.addEventListener("auxclick", onAuxClick);
+        ownerWindow.addEventListener("paste", onPaste, { capture: true });
+        cleanupTimer = ownerWindow.setTimeout(cleanup, 100);
+      };
+
+      ownerWindow.addEventListener("mouseup", onMouseUp);
+      if (activeElement instanceof runtimeWindow.HTMLElement && activeElement !== doc.body) {
+        let target: Node | null = downEvent.target instanceof runtimeWindow.Node ? downEvent.target : null;
+        if (target && activeElement.contains(target)) {
+          if (!(activeElement instanceof runtimeWindow.HTMLInputElement)) {
+            while (target && target !== activeElement) {
+              if (target instanceof runtimeWindow.HTMLElement) {
+                if (target.contentEditable === "false") {
+                  shouldPreventPaste = true;
+                  break;
+                }
+                if (target.contentEditable === "true") break;
+                target = target.parentElement;
+              } else {
+                target = target.parentNode;
+              }
+            }
+          }
+        } else {
+          activeElement.blur();
+        }
+      } else {
+        shouldPreventPaste = true;
+      }
+    });
   }
 
   updateTitle(): void {
@@ -2645,7 +2707,7 @@ function getDragEventWindow(event: DragEvent): Window {
 }
 
 function isMobileRuntime(): boolean {
-  return document.body.classList.contains("is-mobile") || navigator.userAgent.includes("Mobile");
+  return Boolean(globalThis.document?.body?.classList.contains("is-mobile") || globalThis.navigator?.userAgent.includes("Mobile"));
 }
 
 function createClipboardEvent(doc: Document, type: "copy" | "paste" | "cut"): ClipboardEvent {

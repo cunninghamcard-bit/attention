@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { App } from "../app/App";
+import { Platform } from "../platform/Platform";
 import { View, type ViewStateResult } from "../views/View";
 
 class BrowserHistoryView extends View {
@@ -56,5 +57,32 @@ describe("Workspace browser history parity", () => {
 
     expect(await historyGo(1)).toBe(true);
     expect(leaf.view.getState()).toEqual({ step: 3 });
+  });
+
+  it("suppresses Linux middle-click paste until auxclick cleanup", async () => {
+    const previousLinux = Platform.isLinux;
+    Platform.isLinux = true;
+    try {
+      const app = new App(document.createElement("div"));
+      await app.ready;
+      const input = document.body.appendChild(document.createElement("input"));
+      input.focus();
+
+      input.dispatchEvent(new MouseEvent("mousedown", { button: 1, bubbles: true, cancelable: true }));
+      window.dispatchEvent(new MouseEvent("mouseup", { button: 1, bubbles: true, cancelable: true }));
+
+      const paste = new Event("paste", { bubbles: true, cancelable: true });
+      window.dispatchEvent(paste);
+
+      expect(paste.defaultPrevented).toBe(true);
+
+      window.dispatchEvent(new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true }));
+      const nextPaste = new Event("paste", { bubbles: true, cancelable: true });
+      window.dispatchEvent(nextPaste);
+
+      expect(nextPaste.defaultPrevented).toBe(false);
+    } finally {
+      Platform.isLinux = previousLinux;
+    }
   });
 });
