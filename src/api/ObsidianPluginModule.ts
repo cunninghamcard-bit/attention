@@ -1,9 +1,7 @@
 import { App } from "../app/App";
-import { Tasks } from "../app/QuitEvent";
-import { SettingPage, SettingTab } from "../app/SettingTab";
+import { SettingTab } from "../app/SettingTab";
 import { Component } from "../core/Component";
 import { Events } from "../core/Events";
-import { createDiv, createEl, createSpan, detach, removeChildren } from "../dom/dom";
 import { Editor } from "../editor/Editor";
 import { editorEditorField, editorInfoField, editorLivePreviewField, editorViewField, livePreviewState } from "../editor/EditorStateField";
 import { Keymap } from "../hotkeys/Keymap";
@@ -15,7 +13,6 @@ import { MarkdownPreviewSection } from "../markdown/MarkdownPreviewSection";
 import { MarkdownPreviewView } from "../markdown/MarkdownPreviewView";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import { iterateCacheRefs, iterateRefs, MetadataCache } from "../metadata/MetadataCache";
-import { WorkspaceMobileDrawer } from "../mobile/MobileDrawer";
 import { Platform } from "../platform/Platform";
 import { Plugin } from "../plugin/Plugin";
 import { PluginSettingTab } from "../plugin/PluginSettingTab";
@@ -75,7 +72,7 @@ import {
   ToggleComponent,
   ValueComponent
 } from "../ui/Setting";
-import { CapacitorAdapter, DataAdapter } from "../vault/DataAdapter";
+import { CapacitorAdapter } from "../vault/DataAdapter";
 import { FileManager } from "../vault/FileManager";
 import { FileSystemAdapter } from "../vault/FileSystemAdapter";
 import { TAbstractFile, TFile, TFolder } from "../vault/TAbstractFile";
@@ -83,7 +80,7 @@ import { Vault } from "../vault/Vault";
 import { EditableFileView } from "../views/EditableFileView";
 import { FileView } from "../views/FileView";
 import { ItemView } from "../views/ItemView";
-import { MarkdownEditView, MarkdownView } from "../views/MarkdownView";
+import { MarkdownView } from "../views/MarkdownView";
 import { TextFileView } from "../views/TextFileView";
 import { View } from "../views/View";
 import { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
@@ -153,7 +150,6 @@ export type {
 
 export interface ObsidianPluginModule {
   App: typeof App;
-  Tasks: typeof Tasks;
   Component: typeof Component;
   Events: typeof Events;
   Plugin: typeof Plugin;
@@ -190,7 +186,6 @@ export interface ObsidianPluginModule {
   BasesEntryGroup: typeof BasesEntryGroup;
   BasesQueryResult: typeof BasesQueryResult;
   QueryController: typeof QueryController;
-  SettingPage: typeof SettingPage;
   SettingTab: typeof SettingTab;
   Setting: typeof Setting;
   ValueComponent: typeof ValueComponent;
@@ -231,14 +226,12 @@ export interface ObsidianPluginModule {
   FileView: typeof FileView;
   EditableFileView: typeof EditableFileView;
   TextFileView: typeof TextFileView;
-  MarkdownEditView: typeof MarkdownEditView;
   MarkdownView: typeof MarkdownView;
   TAbstractFile: typeof TAbstractFile;
   TFile: typeof TFile;
   TFolder: typeof TFolder;
   Vault: typeof Vault;
   CapacitorAdapter: typeof CapacitorAdapter;
-  DataAdapter: typeof DataAdapter;
   FileSystemAdapter: typeof FileSystemAdapter;
   FileManager: typeof FileManager;
   MetadataCache: typeof MetadataCache;
@@ -257,7 +250,6 @@ export interface ObsidianPluginModule {
   WorkspaceSplit: typeof WorkspaceSplit;
   WorkspaceTabs: typeof WorkspaceTabs;
   WorkspaceWindow: typeof WorkspaceWindow;
-  WorkspaceMobileDrawer: typeof WorkspaceMobileDrawer;
   ViewRegistry: typeof ViewRegistry;
   Scope: typeof Scope;
   Keymap: typeof Keymap;
@@ -303,11 +295,6 @@ export interface ObsidianPluginModule {
   stripHeading: typeof stripHeading;
   stripHeadingForLink: typeof stripHeadingForLink;
   stringifyYaml: typeof stringifyYaml;
-  createDiv: typeof createDiv;
-  createEl: typeof createEl;
-  createSpan: typeof createSpan;
-  detach: typeof detach;
-  removeChildren: typeof removeChildren;
   setIcon: typeof setIcon;
   setTooltip: typeof setTooltip;
   displayTooltip: typeof displayTooltip;
@@ -322,7 +309,6 @@ export interface ObsidianPluginModule {
 export function createObsidianPluginModule(app: App): ObsidianPluginModule {
   return {
     App,
-    Tasks,
     Component,
     Events,
     Plugin,
@@ -359,7 +345,6 @@ export function createObsidianPluginModule(app: App): ObsidianPluginModule {
     BasesEntryGroup,
     BasesQueryResult,
     QueryController,
-    SettingPage,
     SettingTab,
     AbstractTextComponent,
     BaseComponent,
@@ -400,14 +385,12 @@ export function createObsidianPluginModule(app: App): ObsidianPluginModule {
     FileView,
     EditableFileView,
     TextFileView,
-    MarkdownEditView,
     MarkdownView,
     TAbstractFile,
     TFile,
     TFolder,
     Vault,
     CapacitorAdapter,
-    DataAdapter,
     FileSystemAdapter,
     FileManager,
     MetadataCache,
@@ -426,7 +409,6 @@ export function createObsidianPluginModule(app: App): ObsidianPluginModule {
     WorkspaceSplit,
     WorkspaceTabs,
     WorkspaceWindow,
-    WorkspaceMobileDrawer,
     ViewRegistry,
     Scope,
     Keymap,
@@ -472,11 +454,6 @@ export function createObsidianPluginModule(app: App): ObsidianPluginModule {
     stripHeading,
     stripHeadingForLink,
     stringifyYaml,
-    createDiv,
-    createEl,
-    createSpan,
-    detach,
-    removeChildren,
     setIcon,
     setTooltip,
     displayTooltip,

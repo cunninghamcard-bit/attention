@@ -39,7 +39,6 @@ import {
   renderMath,
   stringifyYaml,
 } from "../api/ApiUtils";
-import { Tasks } from "../app/QuitEvent";
 import { Component } from "../core/Component";
 import { Keymap } from "../hotkeys/Keymap";
 import { Scope } from "../hotkeys/Scope";
@@ -47,7 +46,6 @@ import { MarkdownPreviewRenderer } from "../markdown/MarkdownPreviewRenderer";
 import { MarkdownPreviewSection } from "../markdown/MarkdownPreviewSection";
 import { MarkdownPreviewView } from "../markdown/MarkdownPreviewView";
 import { iterateCacheRefs, iterateRefs, MetadataCache } from "../metadata/MetadataCache";
-import { MobileDrawer as WorkspaceMobileDrawer } from "../mobile/MobileDrawer";
 import { fuzzySearch, prepareQuery } from "../search/SearchHelpers";
 import { FuzzySuggestModal } from "../suggest/SuggestModal";
 import { addIcon, getIcon, getIconIds, removeIcon } from "../ui/Icon";
@@ -276,6 +274,7 @@ describe("Obsidian plugin API parity", () => {
 
     expect(module.SettingTab).toBe(SettingTab);
     expect(new module.SettingTab(app, app.setting)).toBeInstanceOf(SettingTab);
+    expect("SettingPage" in module).toBe(false);
     expect("SimpleEditor" in module).toBe(false);
   });
 
@@ -285,7 +284,7 @@ describe("Obsidian plugin API parity", () => {
 
     expect(module.App).toBe(App);
     expect(module.CapacitorAdapter).toBe(CapacitorAdapter);
-    expect(module.DataAdapter).toBe(DataAdapter);
+    expect("DataAdapter" in module).toBe(false);
     expect(module.FileSystemAdapter).toBe(FileSystemAdapter);
     expect(module.FileManager).toBe(FileManager);
     expect(module.MetadataCache).toBe(MetadataCache);
@@ -306,17 +305,17 @@ describe("Obsidian plugin API parity", () => {
     expect(module.WorkspaceSplit).toBe(WorkspaceSplit);
     expect(module.WorkspaceTabs).toBe(WorkspaceTabs);
     expect(module.WorkspaceWindow).toBe(WorkspaceWindow);
-    expect(module.WorkspaceMobileDrawer).toBe(WorkspaceMobileDrawer);
+    expect("WorkspaceMobileDrawer" in module).toBe(false);
     expect("EditorViewHost" in module).toBe(false);
-    expect(module.Tasks).toBe(Tasks);
+    expect("Tasks" in module).toBe(false);
     expect(module.MarkdownPreviewRenderer).toBe(MarkdownPreviewRenderer);
     expect(module.MarkdownPreviewSection).toBe(MarkdownPreviewSection);
     expect(module.MarkdownPreviewView).toBe(MarkdownPreviewView);
-    expect(module.MarkdownEditView).toBe(MarkdownEditView);
+    expect("MarkdownEditView" in module).toBe(false);
     expect(module.RenderContext).toBe(RenderContext);
     expect(module.HoverPopover).toBe(HoverPopover);
     expect(module.PopoverState).toBe(PopoverState);
-    expect(module.SettingPage).toBe(SettingPage);
+    expect("SettingPage" in module).toBe(false);
     expect(module.AbstractTextComponent).toBe(AbstractTextComponent);
     expect("DisplayValueComponent" in module).toBe(false);
     expect("ConfirmationButton" in module).toBe(false);

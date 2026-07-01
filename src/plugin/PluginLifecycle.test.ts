@@ -1154,7 +1154,6 @@ describe("community plugin lifecycle", () => {
           Setting,
           MarkdownView,
           TFile,
-          DataAdapter,
           FileSystemAdapter,
           FileManager,
           MetadataCache,
@@ -1162,8 +1161,6 @@ describe("community plugin lifecycle", () => {
           Scope,
           Keymap,
           Platform,
-          createDiv,
-          createSpan,
           setIcon,
           normalizePath,
           debounce,
@@ -1175,9 +1172,11 @@ describe("community plugin lifecycle", () => {
             notice.hide();
             const modal = new Modal(this.app);
             modal.setTitle("API");
-            const settingHost = createDiv("settings-host");
+            const settingHost = document.createElement("div");
+            settingHost.className = "settings-host";
             new Setting(settingHost).setName("API setting");
-            const span = createSpan("api-span");
+            const span = document.createElement("span");
+            span.className = "api-span";
             setIcon(span, "lucide-star");
             let count = 0;
             const debounced = debounce(() => count++, 0);
@@ -1191,7 +1190,6 @@ describe("community plugin lifecycle", () => {
               isMetadataCache: this.app.metadataCache instanceof MetadataCache,
               markdownType: MarkdownView.VIEW_TYPE,
               constructors: {
-                dataAdapter: typeof DataAdapter,
                 fileSystemAdapter: typeof FileSystemAdapter,
                 fuzzySuggestModal: typeof FuzzySuggestModal,
                 scope: typeof Scope,
@@ -1218,7 +1216,6 @@ describe("community plugin lifecycle", () => {
       isMetadataCache: true,
       markdownType: "markdown",
       constructors: {
-        dataAdapter: "function",
         fileSystemAdapter: "function",
         fuzzySuggestModal: "function",
         scope: "function",
