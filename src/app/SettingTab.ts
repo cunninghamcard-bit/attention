@@ -2,7 +2,6 @@ import type { App } from "./App";
 import type { SettingRegistry } from "./SettingRegistry";
 import { FilteredFolderInputSuggest, FullPathFileInputSuggest } from "../suggest/FileInputSuggest";
 import {
-  DisplayValueComponent,
   Setting,
   SettingGroup,
   type ExtraButtonComponent,
@@ -260,6 +259,21 @@ function getStatus(value: "warning" | null | (() => "warning" | null) | undefine
   return typeof value === "function" ? value() : value ?? null;
 }
 
+function setSettingErrorMessage(setting: Setting, text: string | null | undefined): void {
+  const message = text ?? "";
+  let errorEl = setting.infoEl.querySelector<HTMLDivElement>(":scope > .setting-item-error");
+  if (message && !errorEl) {
+    errorEl = setting.infoEl.ownerDocument.createElement("div");
+    errorEl.className = "setting-item-error";
+    setting.infoEl.appendChild(errorEl);
+  }
+  if (errorEl) {
+    errorEl.textContent = message;
+    errorEl.style.display = message ? "" : "none";
+  }
+  setting.settingEl.classList.toggle("is-invalid", message.length > 0);
+}
+
 function getSettingText(value: string | DocumentFragment | undefined): SettingText | undefined {
   return value;
 }
@@ -507,11 +521,16 @@ export const SettingTab: { new(app: App, setting: SettingRegistry): SettingTabRu
     if (desc) setting.setDesc(desc);
     setting.setClass("mod-page");
     setting.settingEl.tabIndex = 0;
-    let displayValue: DisplayValueComponent | null = null;
-    setting.addDisplayValue((display) => {
-      displayValue = display;
-      display.setValue(getDisplayText(definition.displayValue)).setStatus(getStatus(definition.status));
-    });
+    const displayValueEl = group.listEl.ownerDocument.createElement("div");
+    displayValueEl.className = "setting-item-display-value";
+    const updateDisplayValue = () => {
+      const status = getStatus(definition.status);
+      displayValueEl.textContent = getDisplayText(definition.displayValue);
+      displayValueEl.classList.toggle("mod-warning", status === "warning");
+      setting.settingEl.classList.toggle("mod-warning", status === "warning");
+    };
+    setting.controlEl.appendChild(displayValueEl);
+    updateDisplayValue();
     setting.addExtraButton((button) => button.setIcon("lucide-chevron-right"));
     const open = () => this.openPage(definition, path);
     setting.settingEl.addEventListener("click", open);
@@ -527,11 +546,7 @@ export const SettingTab: { new(app: App, setting: SettingRegistry): SettingTabRu
     });
     this.trackDomState({
       disabled: () => false,
-      setDisabled: () => {
-        const status = getStatus(definition.status);
-        setting.settingEl.classList.toggle("mod-warning", status === "warning");
-        displayValue?.setValue(getDisplayText(definition.displayValue)).setStatus(status);
-      },
+      setDisabled: updateDisplayValue,
     });
     setting.settingEl.dataset.settingPageIndex = String(index);
     this.attachListControls(setting, index, list);
@@ -793,7 +808,7 @@ export const SettingTab: { new(app: App, setting: SettingRegistry): SettingTabRu
     void Promise.resolve(control.validate?.(value))
       .then((message) => {
         const error = typeof message === "string" && message.length > 0 ? message : "";
-        setting.setErrorMessage(error);
+        setSettingErrorMessage(setting, error);
         if (error || !persist) return;
         return this.setControlValue(control.key, value);
       })
@@ -801,7 +816,7 @@ export const SettingTab: { new(app: App, setting: SettingRegistry): SettingTabRu
         if (persist) this.refreshDomState();
       })
       .catch((error: unknown) => {
-        setting.setErrorMessage(error instanceof Error ? error.message : String(error));
+        setSettingErrorMessage(setting, error instanceof Error ? error.message : String(error));
       });
   }
 

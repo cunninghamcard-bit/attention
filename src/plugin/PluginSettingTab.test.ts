@@ -3,7 +3,6 @@ import { App } from "../app/App";
 import type { SettingDefinitionItem } from "../app/SettingTab";
 import type { SettingTab } from "../app/SettingRegistry";
 import { SettingsRenderer } from "../builtin/SettingsRenderer";
-import { Setting } from "../ui/Setting";
 import { Plugin } from "./Plugin";
 import { PluginSettingTab } from "./PluginSettingTab";
 
@@ -316,26 +315,6 @@ describe("PluginSettingTab", () => {
 
     expect(plugin.settings).toEqual({ enabled: true, name: "Pi" });
     expect(saveData).toHaveBeenLastCalledWith(plugin.settings);
-  });
-
-  it("creates setting error elements lazily and clears validation state", () => {
-    const container = document.createElement("div");
-    const setting = new Setting(container);
-
-    expect(setting.errorEl).toBeNull();
-
-    setting.setErrorMessage("Required");
-
-    expect(setting.errorEl).not.toBeNull();
-    expect(setting.errorEl?.textContent).toBe("Required");
-    expect(setting.errorEl?.style.display).toBe("");
-    expect(setting.settingEl.classList.contains("is-invalid")).toBe(true);
-
-    setting.setErrorMessage(null);
-
-    expect(setting.errorEl?.textContent).toBe("");
-    expect(setting.errorEl?.style.display).toBe("none");
-    expect(setting.settingEl.classList.contains("is-invalid")).toBe(false);
   });
 
   it("renders declarative plugin settings before falling back to imperative display", async () => {

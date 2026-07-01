@@ -63,7 +63,6 @@ import {
   BaseComponent,
   ButtonComponent,
   ColorComponent,
-  DisplayValueComponent,
   DropdownComponent,
   ExtraButtonComponent,
   MomentFormatComponent,
@@ -209,7 +208,6 @@ export interface ObsidianPluginModule {
   MomentFormatComponent: typeof MomentFormatComponent;
   ExtraButtonComponent: typeof ExtraButtonComponent;
   ColorComponent: typeof ColorComponent;
-  DisplayValueComponent: typeof DisplayValueComponent;
   SettingGroup: typeof SettingGroup;
   BaseComponent: typeof BaseComponent;
   ButtonComponent: typeof ButtonComponent;
@@ -384,7 +382,6 @@ export function createObsidianPluginModule(app: App): ObsidianPluginModule {
     BaseComponent,
     ButtonComponent,
     ColorComponent,
-    DisplayValueComponent,
     DropdownComponent,
     ExtraButtonComponent,
     MomentFormatComponent,

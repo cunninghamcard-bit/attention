@@ -208,6 +208,11 @@ export class ConfirmationButton extends ButtonComponent {
     return this;
   }
 
+  setDestructive(): this {
+    this.buttonEl.classList.add("mod-destructive");
+    return this;
+  }
+
   setCancel(): this {
     this.buttonEl.classList.add("mod-cancel");
     return this;

@@ -71,35 +71,6 @@ export abstract class ValueComponent<T> extends BaseComponent {
   }
 }
 
-export class DisplayValueComponent extends ValueComponent<string> {
-  valueEl: HTMLDivElement;
-
-  constructor(parentEl: HTMLElement) {
-    super();
-    this.valueEl = parentEl.ownerDocument.createElement("div");
-    this.valueEl.className = "setting-item-display-value";
-    parentEl.appendChild(this.valueEl);
-  }
-
-  get displayEl(): HTMLDivElement {
-    return this.valueEl;
-  }
-
-  getValue(): string {
-    return this.valueEl.textContent ?? "";
-  }
-
-  setValue(value: string | null): this {
-    this.valueEl.textContent = value ?? "";
-    return this;
-  }
-
-  setStatus(status: "warning" | null): this {
-    this.valueEl.classList.toggle("mod-warning", status === "warning");
-    return this;
-  }
-}
-
 export class ButtonComponent extends BaseComponent {
   buttonEl: HTMLButtonElement;
   private clickCallback?: (event: MouseEvent) => unknown | Promise<unknown>;
@@ -142,16 +113,6 @@ export class ButtonComponent extends BaseComponent {
 
   setWarning(): this {
     this.buttonEl.classList.add("mod-warning");
-    return this;
-  }
-
-  setDestructive(): this {
-    this.buttonEl.classList.add("mod-destructive");
-    return this;
-  }
-
-  removeDestructive(): this {
-    this.buttonEl.classList.remove("mod-destructive");
     return this;
   }
 
@@ -787,7 +748,6 @@ export class Setting {
   nameEl: HTMLDivElement;
   descEl: HTMLDivElement;
   controlEl: HTMLDivElement;
-  errorEl: HTMLDivElement | null = null;
   components: BaseComponent[] = [];
 
   constructor(parentEl: HTMLElement) {
@@ -805,17 +765,6 @@ export class Setting {
 
   setDesc(text: SettingText): this {
     setContent(this.descEl, text);
-    return this;
-  }
-
-  setErrorMessage(text: string | null | undefined): this {
-    const message = text ?? "";
-    if (message && !this.errorEl) this.errorEl = createDiv(this.infoEl, "setting-item-error");
-    if (this.errorEl) {
-      this.errorEl.textContent = message;
-      setVisible(this.errorEl, message.length > 0);
-    }
-    this.settingEl.classList.toggle("is-invalid", message.length > 0);
     return this;
   }
 
@@ -931,13 +880,6 @@ export class Setting {
 
   addColorPicker(callback: (component: ColorComponent) => unknown): this {
     const component = new ColorComponent(this.controlEl);
-    this.components.push(component);
-    callback(component);
-    return this;
-  }
-
-  addDisplayValue(callback: (component: DisplayValueComponent) => unknown): this {
-    const component = new DisplayValueComponent(this.controlEl);
     this.components.push(component);
     callback(component);
     return this;

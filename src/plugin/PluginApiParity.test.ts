@@ -53,7 +53,7 @@ import { FuzzySuggestModal } from "../suggest/SuggestModal";
 import { addIcon, getIcon, getIconIds, removeIcon } from "../ui/Icon";
 import { Menu } from "../ui/Menu";
 import { ConfirmationButton, ConfirmationModal } from "../ui/Modal";
-import { DisplayValueComponent, SecretComponent } from "../ui/Setting";
+import { SecretComponent } from "../ui/Setting";
 import { HoverPopover, HoverPopoverState, PopoverState } from "../ui/Popover";
 import { CapacitorAdapter, DataAdapter } from "../vault/DataAdapter";
 import { FileManager } from "../vault/FileManager";
@@ -319,7 +319,7 @@ describe("Obsidian plugin API parity", () => {
     expect(module.PopoverState).toBe(PopoverState);
     expect(module.SettingPage).toBe(SettingPage);
     expect(module.AbstractTextComponent).toBe(AbstractTextComponent);
-    expect(module.DisplayValueComponent).toBe(DisplayValueComponent);
+    expect("DisplayValueComponent" in module).toBe(false);
     expect(module.SecretComponent).toBe(SecretComponent);
     expect(module.ConfirmationButton).toBe(ConfirmationButton);
     expect(module.ConfirmationModal).toBe(ConfirmationModal);
