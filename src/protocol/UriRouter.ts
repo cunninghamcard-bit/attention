@@ -12,19 +12,10 @@ export interface UriHandlerContext {
 }
 
 export type UriHandler = (context: UriHandlerContext) => void | Promise<void>;
+export type ObsidianProtocolDispatcher = (data: ObsidianProtocolData) => boolean | Promise<boolean>;
 
 export class UriRouter {
-  private handlers = new Map<string, UriHandler>();
-
-  registerAction(action: string, handler: UriHandler): void {
-    if (this.handlers.has(action)) throw new Error(`Action "${action}" is already registered as a handler.`);
-    this.handlers.set(action, handler);
-  }
-
-  unregisterAction(action: string, handler?: UriHandler): void {
-    if (handler && this.handlers.get(action) !== handler) return;
-    this.handlers.delete(action);
-  }
+  constructor(private readonly dispatch: ObsidianProtocolDispatcher = () => false) {}
 
   async handleUri(uri: string): Promise<boolean> {
     const data = parseObsidianUri(uri);
@@ -33,11 +24,7 @@ export class UriRouter {
   }
 
   async handleProtocolData(data: ObsidianProtocolData): Promise<boolean> {
-    const action = data.action;
-    const handler = this.handlers.get(action);
-    if (!handler) return false;
-    await handler(createUriHandlerContextFromData(data));
-    return true;
+    return Boolean(await this.dispatch(data));
   }
 }
 
@@ -51,25 +38,6 @@ export function parseObsidianUri(uri: string): ObsidianProtocolData | null {
   const action = url.hostname || url.pathname.replace(/^\//, "");
   if (!action) return null;
   return createProtocolData(action, url.searchParams);
-}
-
-function createUriHandlerContext(action: string, params: URLSearchParams): UriHandlerContext {
-  const context: UriHandlerContext = { action, params };
-  for (const [key, value] of params.entries()) context[key] = value === "" ? "true" : value;
-  return context;
-}
-
-function createUriHandlerContextFromData(data: ObsidianProtocolData): UriHandlerContext {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(data)) {
-    if (key === "action") continue;
-    params.set(key, value === "true" ? "" : value);
-  }
-  const context = createUriHandlerContext(data.action, params);
-  for (const [key, value] of Object.entries(data)) {
-    if (key !== "action") context[key] = value;
-  }
-  return context;
 }
 
 function createProtocolData(action: string, params: URLSearchParams): ObsidianProtocolData {

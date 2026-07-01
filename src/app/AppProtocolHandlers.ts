@@ -4,9 +4,11 @@ import { TFile, TFolder } from "../vault/TAbstractFile";
 import type { LeafOpenMode } from "../workspace/Workspace";
 import { readClipboardText, writeClipboardText } from "../dom/Clipboard";
 import { parseLinktext } from "../metadata/Linkpath";
+import type { ObsidianProtocolData } from "../protocol/UriRouter";
 
 export function registerAppProtocolHandlers(app: App): void {
-  app.uriRouter.registerAction("open", async ({ params }) => {
+  app.workspace.registerObsidianProtocolHandler("open", async (data) => {
+    const params = protocolParams(data);
     const linktext = params.get("file");
     if (!linktext) return;
     const parsed = parseLinktext(linktext);
@@ -21,7 +23,8 @@ export function registerAppProtocolHandlers(app: App): void {
     new Notice(`Opened ${file.path}`);
   });
 
-  app.uriRouter.registerAction("search", async ({ params }) => {
+  app.workspace.registerObsidianProtocolHandler("search", async (data) => {
+    const params = protocolParams(data);
     await app.corePluginsReady;
     const query = params.get("query") ?? "";
     const leaf = await app.workspace.ensureSideLeaf("search", "left", { active: true, reveal: true, state: { query } });
@@ -29,11 +32,13 @@ export function registerAppProtocolHandlers(app: App): void {
     view?.focusSearch?.(query);
   });
 
-  app.uriRouter.registerAction("show-release-notes", async ({ params }) => {
+  app.workspace.registerObsidianProtocolHandler("show-release-notes", async (data) => {
+    const params = protocolParams(data);
     await app.showReleaseNotes(params.get("version") ?? "current");
   });
 
-  app.uriRouter.registerAction("new", async ({ params }) => {
+  app.workspace.registerObsidianProtocolHandler("new", async (data) => {
+    const params = protocolParams(data);
     const file = await resolveProtocolNewFile(app, params);
     if (!file) return;
 
@@ -57,7 +62,8 @@ export function registerAppProtocolHandlers(app: App): void {
     app.workspace.handleXCallback(params, file);
   });
 
-  app.uriRouter.registerAction("hook-get-address", async ({ params }) => {
+  app.workspace.registerObsidianProtocolHandler("hook-get-address", async (data) => {
+    const params = protocolParams(data);
     if (!app.vault.getConfig("uriCallbacks")) return;
     const file = app.workspace.getActiveFile();
     if (!file) {
@@ -69,6 +75,14 @@ export function registerAppProtocolHandlers(app: App): void {
       await writeClipboardText(`[${file.basename}](${app.getObsidianUrl(file)})`);
     }
   });
+}
+
+function protocolParams(data: ObsidianProtocolData): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(data)) {
+    if (key !== "action") params.set(key, value === "true" ? "" : value);
+  }
+  return params;
 }
 
 async function resolveProtocolNewFile(app: App, params: URLSearchParams): Promise<TFile | null> {

@@ -39,7 +39,7 @@ describe("Workspace registerUriHook parity", () => {
     expect(typeof (window as { OBS_ACT?: unknown }).OBS_ACT).toBe("function");
   });
 
-  it("routes native appUrlOpen events into the shared URI router", async () => {
+  it("routes native appUrlOpen events into workspace protocol handlers", async () => {
     let appUrlOpen: ((event: { url?: string }) => void) | null = null;
     (window as { electron?: unknown }).electron = {
       addListener: vi.fn((_name: "appUrlOpen", callback: (event: { url?: string }) => void) => {

@@ -161,7 +161,6 @@ describe("Workspace public API parity", () => {
     const app = new App(document.createElement("div"));
     const first = vi.fn();
     const second = vi.fn();
-    const external = vi.fn();
 
     app.workspace.registerObsidianProtocolHandler("plugin-action", first);
 
@@ -176,12 +175,6 @@ describe("Workspace public API parity", () => {
     app.workspace.unregisterObsidianProtocolHandler("plugin-action", second);
     await expect(app.uriRouter.handleUri("obsidian://plugin-action?source=still-first")).resolves.toBe(true);
     expect(first).toHaveBeenLastCalledWith({ action: "plugin-action", source: "still-first" });
-
-    app.uriRouter.registerAction("external-action", external);
-    app.workspace.unregisterObsidianProtocolHandler("external-action");
-
-    await expect(app.uriRouter.handleUri("obsidian://external-action?ok=true")).resolves.toBe(true);
-    expect(external).toHaveBeenCalledTimes(1);
 
     app.workspace.unregisterObsidianProtocolHandler("plugin-action", first);
     await expect(app.uriRouter.handleUri("obsidian://plugin-action")).resolves.toBe(false);

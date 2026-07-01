@@ -12,6 +12,7 @@ import type { SettingTab } from "../app/SettingRegistry";
 import type { WebViewerAddressSuggestion } from "../webviewer/WebViewerAddressSuggest";
 import { WebViewerElementAdapter } from "../webviewer/WebViewerElementAdapter";
 import { setIcon } from "../ui/Icon";
+import type { ObsidianProtocolData } from "../protocol/UriRouter";
 
 const WEBVIEWER_VIEW_TYPE = "webviewer";
 const WEBVIEWER_HISTORY_VIEW_TYPE = "webviewer-history";
@@ -28,11 +29,12 @@ export class WebViewerController {
 
   onEnable(plugin: InternalPluginWrapper): void {
     plugin.addSettingTab(new WebViewerSettingTab(this.app, this));
-    this.app.uriRouter.registerAction("web", (context) => {
-      const url = context.params.get("url") ?? "about:blank";
+    const handler = (data: ObsidianProtocolData) => {
+      const url = data.url ?? "about:blank";
       void this.open(url);
-    });
-    plugin.register(() => this.app.uriRouter.unregisterAction("web"));
+    };
+    this.app.workspace.registerObsidianProtocolHandler("web", handler);
+    plugin.register(() => this.app.workspace.unregisterObsidianProtocolHandler("web", handler));
     const session = this.app.webViewer.getActiveSession();
     this.app.webViewer.bridge.createBrowserSession(session.partition, this.app.webViewer.options.enableAdblocking);
     this.app.workspace.trigger("webviewer-session-ready", session);
