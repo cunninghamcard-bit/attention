@@ -270,12 +270,15 @@ describe("App public plugin API", () => {
     const showItemInFolder = vi.fn();
     const previousElectron = (globalThis as { electron?: unknown }).electron;
     const previousMobile = Platform.isMobile;
+    const previousMobileApp = Platform.isMobileApp;
+    const previousDesktopApp = Platform.isDesktopApp;
     Object.defineProperty(window, "open", { configurable: true, value: windowOpen });
     await app.ready;
     (app.vault as unknown as { adapter: TestFileSystemAdapter }).adapter = adapter;
     (globalThis as { electron?: unknown }).electron = { shell: { showItemInFolder } };
 
     try {
+      Platform.isDesktopApp = true;
       await app.openWithDefaultApp("Folder/Note.md");
       expect(windowOpen).toHaveBeenCalledWith("file:///vault/Folder/Note.md", "_external");
 
@@ -285,13 +288,22 @@ describe("App public plugin API", () => {
       await app.showInFolder("Missing.md");
       expect(showItemInFolder).toHaveBeenCalledTimes(1);
 
+      Platform.isDesktopApp = false;
+      await app.openWithDefaultApp("Web.md");
+      await app.showInFolder("Web.md");
+      expect(windowOpen).toHaveBeenCalledTimes(1);
+      expect(showItemInFolder).toHaveBeenCalledTimes(1);
+
       const mobileOpen = vi.fn();
       Platform.isMobile = true;
+      Platform.isMobileApp = true;
       (app.vault as unknown as { adapter: { open(path: string): void } }).adapter = { open: mobileOpen };
       await app.openWithDefaultApp("Mobile.md");
       expect(mobileOpen).toHaveBeenCalledWith("Mobile.md");
     } finally {
       Platform.isMobile = previousMobile;
+      Platform.isMobileApp = previousMobileApp;
+      Platform.isDesktopApp = previousDesktopApp;
       if (previousElectron === undefined) delete (globalThis as { electron?: unknown }).electron;
       else (globalThis as { electron?: unknown }).electron = previousElectron;
       document.body.querySelectorAll(".notice").forEach((el) => el.remove());

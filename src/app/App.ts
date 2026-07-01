@@ -280,14 +280,17 @@ export class App {
 
   async openWithDefaultApp(path: string): Promise<void> {
     const adapter = this.vault.adapter;
-    if (Platform.isMobile && hasMobileOpenAdapter(adapter)) {
-      await adapter.open(path);
+    if (Platform.isDesktopApp && adapter instanceof FileSystemAdapter) {
+      window.open(adapter.getFilePath(path), "_external");
       return;
     }
-    window.open(adapter instanceof FileSystemAdapter ? adapter.getFilePath(path) : path, "_external");
+    if (Platform.isMobileApp && hasMobileOpenAdapter(adapter)) {
+      await adapter.open(path);
+    }
   }
 
   async showInFolder(path: string): Promise<void> {
+    if (!Platform.isDesktopApp) return;
     const adapter = this.vault.adapter;
     if (adapter instanceof FileSystemAdapter) {
       if (!await adapter.exists(path)) {
@@ -295,11 +298,8 @@ export class App {
         return;
       }
       const fullPath = adapter.getFullPath(path);
-      if (showItemInFolder(fullPath, this.containerEl.ownerDocument.defaultView ?? window)) return;
-      window.open(adapter.getFilePath(path), "_external");
-      return;
+      showItemInFolder(fullPath, this.containerEl.ownerDocument.defaultView ?? window);
     }
-    window.open(path, "_external");
   }
 
   isDarkMode(): boolean {
