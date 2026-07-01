@@ -136,15 +136,19 @@ export interface LinkSuggestion {
   alias?: string;
 }
 
-export function iterateRefs(refs: Reference[], cb: (ref: Reference) => boolean | void): boolean {
+export function iterateRefs(refs: Reference[] | null | undefined, cb: (ref: Reference) => boolean | void): boolean {
+  if (!refs) return false;
   for (const ref of refs) {
     if (cb(ref)) return true;
   }
   return false;
 }
 
-export function iterateCacheRefs(cache: CachedMetadata, cb: (ref: ReferenceCache) => boolean | void): boolean {
-  return iterateRefs([...(cache.links ?? []), ...(cache.embeds ?? [])], cb as (ref: Reference) => boolean | void);
+export function iterateCacheRefs(cache: CachedMetadata | null | undefined, cb: (ref: ReferenceCache) => boolean | void): boolean {
+  return !!cache && (
+    iterateRefs(cache.links, cb as (ref: Reference) => boolean | void)
+    || iterateRefs(cache.embeds, cb as (ref: Reference) => boolean | void)
+  );
 }
 
 export class MetadataCache extends Events {

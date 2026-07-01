@@ -222,6 +222,8 @@ describe("MetadataCache", () => {
 
     const cache = metadataCache.getFileCache(file);
     if (!cache) throw new Error("Expected metadata cache");
+    expect(iterateCacheRefs(null, () => true)).toBe(false);
+    expect(iterateRefs(null, () => true)).toBe(false);
     const cacheRefs: string[] = [];
     const stopped = iterateCacheRefs(cache, (ref) => {
       cacheRefs.push(ref.link);
