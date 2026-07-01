@@ -363,6 +363,14 @@ describe("Obsidian plugin API parity", () => {
     const modifiers = module.Keymap.compileModifiers(["Mod", "Shift"]);
     const event = new KeyboardEvent("keydown", { key: "P", code: "KeyP", shiftKey: true, ...modKey });
     const keymap = new module.Keymap(null);
+    const keymapCtor = module.Keymap as typeof Keymap & { global?: Keymap; init?: () => Keymap };
+
+    keymapCtor.global = undefined;
+    expect(keymapCtor.init).toBeTypeOf("function");
+    const globalKeymap = keymapCtor.init?.();
+    expect(globalKeymap).toBeInstanceOf(Keymap);
+    expect(keymapCtor.init?.()).toBe(globalKeymap);
+    expect(keymapCtor.global).toBe(globalKeymap);
 
     expect(module.Keymap.getModifiers(event)).toBe(modifiers);
     expect(module.Keymap.decompileModifiers(modifiers)).toEqual(["Mod", "Shift"]);

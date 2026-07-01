@@ -19,6 +19,8 @@ export type Modifier = "Mod" | "Ctrl" | "Meta" | "Shift" | "Alt";
 export type UserEvent = MouseEvent | PointerEvent | TouchEvent | KeyboardEvent;
 
 export class Keymap {
+  static global?: Keymap;
+
   readonly rootScope = new Scope();
   scope: Scope = this.rootScope;
   readonly prevScopes: Scope[] = [];
@@ -93,6 +95,10 @@ export class Keymap {
 
   static getModifiers(event: KeyboardEvent | MouseEvent): string {
     return getModifiers(event);
+  }
+
+  static init(): Keymap {
+    return this.global ??= new Keymap();
   }
 
   static compileModifiers(modifiers: string[]): string {
