@@ -62,7 +62,6 @@ export abstract class EditorSuggest<T> extends PopoverSuggest<T> {
     const end = getEditorCursor(editor, "to");
     if (!samePosition(cursor, end)) {
       this.context = null;
-      this.close();
       return false;
     }
 

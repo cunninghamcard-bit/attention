@@ -199,6 +199,21 @@ describe("EditorSuggestManager", () => {
     expect(manager.isShowingSuggestion()).toBe(false);
   });
 
+  it("keeps an open suggest mounted when a direct trigger sees a non-collapsed selection", async () => {
+    const editor = createEditor();
+    const suggest = new TestEditorSuggest(createApp());
+    suggest.onTriggerMock.mockReturnValue(createContext(editor));
+    suggest.get.mockReturnValue(["one"]);
+    await suggest.trigger(editor, { path: "Open.md" }, true);
+    const selectedEditor = createEditor({ from: { line: 0, ch: 1 }, to: { line: 0, ch: 2 } });
+
+    await expect(suggest.trigger(selectedEditor, { path: "Open.md" }, true)).resolves.toBe(false);
+
+    expect(suggest.context).toBeNull();
+    expect(suggest.isOpen).toBe(true);
+    expect(suggest.suggestEl.parentElement).toBe(document.body);
+  });
+
   it("applies the suggest limit before rendering", async () => {
     const manager = new EditorSuggestManager();
     const editor = createEditor();
