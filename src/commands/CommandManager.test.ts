@@ -100,6 +100,7 @@ describe("CommandManager plugin command behavior", () => {
     expect(commands.editorCommands.editor).toBe(commands.findCommand("editor"));
     expect(commands.editorCommands.toolbar).toBe(commands.findCommand("toolbar"));
     expect(commands.findCommand("missing")).toBeUndefined();
+    expect("lastExecuted" in commands).toBe(false);
     expect(Object.keys(commands.commands)).toEqual(["plain", "editor", "toolbar"]);
 
     commands.removeCommand("editor");

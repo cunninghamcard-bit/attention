@@ -39,7 +39,6 @@ export class CommandManager {
   readonly commands: Record<string, Command> = Object.create(null);
   readonly editorCommands: Record<string, Command> = Object.create(null);
   private editorContextProvider: (() => EditorCommandContext | null) | null = null;
-  lastExecuted: Command | null = null;
 
   constructor(
     private readonly hotkeyManager?: HotkeyManager,
@@ -122,7 +121,6 @@ export class CommandManager {
   executeCommand(command: Command, event?: Event): boolean {
     if (this.app) this.app.lastEvent = event ?? null;
     try {
-      this.lastExecuted = command;
       runCommandCallback(command);
       return true;
     } catch (error) {
