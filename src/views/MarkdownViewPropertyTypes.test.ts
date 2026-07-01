@@ -31,6 +31,7 @@ describe("MarkdownView property type menu", () => {
     rowEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, clientX: 10, clientY: 10 }));
     const propertyTypeItem = findMenuItem(document.body, "Property type");
     propertyTypeItem.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+    await new Promise((resolve) => window.setTimeout(resolve, 250));
     findMenuItem(document.body, "Number").click();
 
     expect(app.metadataTypeManager.getAssignedWidget("rating")).toBe("number");

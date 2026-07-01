@@ -120,6 +120,7 @@ describe("MarkdownView property key input", () => {
     if (!headingEl) throw new Error("missing metadata heading after expand");
     headingEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
     findMenuItem("Sort").dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+    await new Promise((resolve) => window.setTimeout(resolve, 250));
     findMenuItem("Sort properties A to Z").click();
 
     expect(getPropertyKeys(view)).toEqual(["a1", "A2", "z10"]);

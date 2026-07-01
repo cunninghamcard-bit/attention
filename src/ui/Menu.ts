@@ -182,6 +182,8 @@ export class Menu extends Component implements HistoryHandler {
   private shown = false;
   private hiding = false;
   private outsideCleanup: (() => void) | null = null;
+  private parentElementCleanup: (() => void) | null = null;
+  private submenuOpenTimer: ReturnType<typeof setTimeout> | null = null;
   private shownDoc: Document | null = null;
 
   constructor(doc: Document = getActiveDocument()) {
@@ -272,6 +274,7 @@ export class Menu extends Component implements HistoryHandler {
     this.dom.style.position = "fixed";
     this.dom.classList.toggle("mod-native-menu", this.useNativeMenu);
     this.parentEl?.classList.add("has-active-menu");
+    this.watchParentElement();
     if (!this.parentMenu) getOpenTopMenus(doc).add(this);
 
     if (this.dom.parentElement !== doc.body) doc.body.appendChild(this.dom);
@@ -289,6 +292,8 @@ export class Menu extends Component implements HistoryHandler {
     this.unload();
     this.outsideCleanup?.();
     this.outsideCleanup = null;
+    this.parentElementCleanup?.();
+    this.parentElementCleanup = null;
     this.unselect();
     this.closeSubmenu();
     this.dom.remove();
@@ -374,7 +379,8 @@ export class Menu extends Component implements HistoryHandler {
         if (item instanceof MenuItem) {
           this.select(index);
           if (openSubmenu) this.openSubmenu(item);
-          else if (item.submenu) this.openSubmenu(item);
+          else if (item.submenu) this.openSubmenuSoon(item);
+          else this.closeSubmenu();
         }
         return;
       }
@@ -401,6 +407,7 @@ export class Menu extends Component implements HistoryHandler {
   openSubmenu(item: MenuItem): void {
     if (item.disabled || !item.submenu) return;
     if (this.currentSubmenu === item.submenu) return;
+    this.clearSubmenuOpenTimer();
     this.closeSubmenu();
     this.currentSubmenu = item.submenu;
     item.submenu.parentMenu = this;
@@ -409,6 +416,7 @@ export class Menu extends Component implements HistoryHandler {
   }
 
   closeSubmenu(): void {
+    this.clearSubmenuOpenTimer();
     const submenu = this.currentSubmenu;
     if (!submenu) return;
     this.currentSubmenu = null;
@@ -441,6 +449,34 @@ export class Menu extends Component implements HistoryHandler {
         groupEl.appendChild(item.dom);
       }
     }
+  }
+
+  private openSubmenuSoon(item: MenuItem): void {
+    if (item.disabled || !item.submenu || this.currentSubmenu === item.submenu) return;
+    this.clearSubmenuOpenTimer();
+    const win = item.dom.ownerDocument.defaultView ?? window;
+    this.submenuOpenTimer = win.setTimeout(() => {
+      this.submenuOpenTimer = null;
+      this.openSubmenu(item);
+    }, 250);
+  }
+
+  private clearSubmenuOpenTimer(): void {
+    if (!this.submenuOpenTimer) return;
+    (this.doc.defaultView ?? window).clearTimeout(this.submenuOpenTimer);
+    this.submenuOpenTimer = null;
+  }
+
+  private watchParentElement(): void {
+    this.parentElementCleanup?.();
+    this.parentElementCleanup = null;
+    const parentEl = this.parentEl;
+    if (!parentEl) return;
+    const win = parentEl.ownerDocument.defaultView ?? window;
+    const interval = win.setInterval(() => {
+      if (!isMenuParentShown(parentEl)) this.hide();
+    }, 500);
+    this.parentElementCleanup = () => win.clearInterval(interval);
   }
 
   private createSectionSubmenuItem(prefix: string, ordered: Array<MenuItem | MenuSeparator>, rendered: Map<string, MenuItem>): MenuItem {
@@ -575,6 +611,13 @@ export class Menu extends Component implements HistoryHandler {
 function eventDocument(event: Event): Document {
   const target = event.target as Node | null;
   return target?.ownerDocument ?? getActiveDocument();
+}
+
+function isMenuParentShown(el: Element): boolean {
+  if (!el.ownerDocument.body.contains(el)) return false;
+  if ("hidden" in el && (el as HTMLElement).hidden) return false;
+  const maybeShown = el as Element & { isShown?: () => boolean };
+  return typeof maybeShown.isShown === "function" ? maybeShown.isShown() : true;
 }
 
 function getOpenTopMenus(doc: Document): Set<Menu> {

@@ -131,6 +131,28 @@ describe("Menu Obsidian behavior", () => {
     expect(submenu?.parentMenu).toBe(menu);
   });
 
+  it("delays submenu opening on hover like Obsidian", () => {
+    vi.useFakeTimers();
+    const menu = new Menu(document);
+    menu
+      .addSections(["info.copy"])
+      .setSectionSubmenu("info", { title: "Info", icon: "lucide-info" });
+    menu.addItem((item) => item.setTitle("Copy path").setSection("info.copy"));
+    menu.showAtPosition({ x: 10, y: 20 });
+    const submenuItem = menu.items.find((item): item is MenuItem => item instanceof MenuItem && !!item.submenu);
+    if (!submenuItem) throw new Error("missing submenu item");
+
+    submenuItem.dom.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    vi.advanceTimersByTime(249);
+
+    expect(menu.currentSubmenu).toBeNull();
+
+    vi.advanceTimersByTime(1);
+
+    expect(menu.currentSubmenu).toBe(submenuItem.submenu);
+    expect(submenuItem.submenu?.parentMenu).toBe(menu);
+  });
+
   it("treats checked state as a separate check icon and supports active alias", () => {
     const menu = new Menu(document);
     menu.addItem((item) => item.setTitle("Pinned").setIcon("lucide-pin").setActive(true));
@@ -190,6 +212,27 @@ describe("Menu Obsidian behavior", () => {
     expect(menu._loaded).toBe(false);
     expect(onHide).toHaveBeenCalledTimes(1);
     expect(parent.classList.contains("has-active-menu")).toBe(false);
+  });
+
+  it("hides when its parent element leaves the document", () => {
+    vi.useFakeTimers();
+    const parent = document.querySelector<HTMLElement>("#anchor");
+    if (!parent) throw new Error("missing parent");
+    const onHide = vi.fn();
+    const menu = new Menu(document);
+    menu.addItem((item) => item.setTitle("Close"));
+    menu.onHide(onHide);
+    menu.setParentElement(parent).showAtPosition({ x: 10, y: 20 });
+
+    parent.remove();
+    vi.advanceTimersByTime(499);
+
+    expect(menu.dom.isConnected).toBe(true);
+
+    vi.advanceTimersByTime(1);
+
+    expect(menu.dom.isConnected).toBe(false);
+    expect(onHide).toHaveBeenCalledOnce();
   });
 
   it("skips disabled items during keyboard navigation and activates the selected item", () => {
