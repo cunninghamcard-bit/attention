@@ -4,7 +4,6 @@ import type { App } from "../app/App";
 import { htmlToMarkdown as convertHtmlToMarkdown } from "../markdown/HtmlToMarkdown";
 import { preprocessHtmlDrop } from "../markdown/HtmlDropPreprocessor";
 import type { CachedMetadata } from "../metadata/MetadataCache";
-import { compareVersions } from "../utils/Version";
 import { getActiveWindow } from "../dom/ActiveDocument";
 
 export const apiVersion = "1.12.7";
@@ -111,7 +110,31 @@ export interface FootnoteSubpathResult extends SubpathResult {
 }
 
 export function requireApiVersion(version: string): boolean {
-  return compareVersions(apiVersion, version) >= 0;
+  return !isApiVersionLessThan(apiVersion, version);
+}
+
+function isApiVersionLessThan(current: string, required: string): boolean {
+  const currentParts = parseApiVersion(current);
+  const requiredParts = parseApiVersion(required);
+  if (!requiredParts) return false;
+  if (!currentParts) return true;
+  const length = Math.min(currentParts.length, requiredParts.length);
+  for (let index = 0; index < length; index += 1) {
+    if (currentParts[index] < requiredParts[index]) return true;
+    if (currentParts[index] > requiredParts[index]) return false;
+  }
+  return currentParts.length < requiredParts.length;
+}
+
+function parseApiVersion(version: string): number[] | null {
+  if (!version || typeof version !== "string") return null;
+  let valid = true;
+  const parts = version.split(".").map((part) => {
+    const value = Number.parseInt(part, 10);
+    if (Number.isNaN(value)) valid = false;
+    return value;
+  });
+  return valid ? parts : null;
 }
 
 export function normalizePath(path: string): string {

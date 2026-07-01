@@ -604,6 +604,8 @@ describe("Obsidian plugin API parity", () => {
     expect(module.apiVersion).toBe("1.12.7");
     expect(module.requireApiVersion("1.0.0")).toBe(true);
     expect(module.requireApiVersion("99.0.0")).toBe(false);
+    expect(module.requireApiVersion("v99.0.0")).toBe(true);
+    expect(module.requireApiVersion("1.12.7.0")).toBe(false);
     const previousLanguage = navigator.language;
     Object.defineProperty(navigator, "language", { configurable: true, value: "zh" });
     expect(module.getLanguage).toBe(getLanguage);
