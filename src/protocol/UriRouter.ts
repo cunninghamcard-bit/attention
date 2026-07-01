@@ -29,6 +29,8 @@ export class UriRouter {
 }
 
 export function parseObsidianUri(uri: string): ObsidianProtocolData | null {
+  const prefix = "obsidian://";
+  if (!uri.startsWith(prefix)) return null;
   if (uri.startsWith("obsidian://vault/")) {
     const [vault = "", ...file] = uri
       .slice("obsidian://vault/".length)
@@ -37,20 +39,23 @@ export function parseObsidianUri(uri: string): ObsidianProtocolData | null {
     return { action: "open", vault, file: file.join("/") };
   }
 
-  let url: URL;
-  try {
-    url = new URL(uri);
-  } catch {
-    return null;
+  const data: ObsidianProtocolData = { action: "" };
+  let body = uri.slice(prefix.length);
+  const queryIndex = body.indexOf("?");
+  const hashIndex = body.indexOf("#", Math.max(0, queryIndex));
+  if (hashIndex >= 0) {
+    data.hash = body.slice(hashIndex + 1);
+    body = body.slice(0, hashIndex);
   }
-  const action = url.hostname || url.pathname.replace(/^\//, "");
-  if (!action) return null;
-  return createProtocolData(action, url.searchParams);
-}
-
-function createProtocolData(action: string, params: URLSearchParams): ObsidianProtocolData {
-  const data: ObsidianProtocolData = { action };
-  for (const [key, value] of params.entries()) data[key] = value === "" ? "true" : value;
+  if (queryIndex >= 0) {
+    const query = body.slice(queryIndex + 1);
+    body = body.slice(0, queryIndex);
+    for (const part of query.split("&")) {
+      const [key, value] = part.split("=");
+      data[decodeURIComponent(key ?? "")] = value === undefined ? "true" : decodeURIComponent(value);
+    }
+  }
+  data.action = body.replace(/\/+$/g, "");
   return data;
 }
 
