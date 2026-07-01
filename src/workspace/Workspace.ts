@@ -164,7 +164,7 @@ export class Workspace extends Events {
   }, () => true, 0);
   readonly requestSaveLayout = createDebouncedWorkspaceRequest(async () => {
     await this.saveLayout();
-  }, () => this.layoutReady && Boolean(this.app.workspaceLayouts), 1000, false);
+  }, () => true, 1000, false, true);
   readonly requestLayoutChangeEvents = createDebouncedWorkspaceRequest(async () => {
     if (this.layoutReady) this.trigger("layout-change");
   }, () => true, 10);
@@ -2584,6 +2584,7 @@ function createDebouncedWorkspaceRequest<T>(
   canRun: () => boolean,
   delay: number,
   resetExisting = true,
+  runOnlyWhenPending = false,
 ): Debouncer<[], Promise<T>> {
   let timer: number | undefined;
   const cancel = (): void => {
@@ -2604,6 +2605,7 @@ function createDebouncedWorkspaceRequest<T>(
     return request;
   }) as Debouncer<[], Promise<T>>;
   request.run = () => {
+    if (runOnlyWhenPending && timer === undefined) return;
     cancel();
     if (!canRun()) return;
     return save();

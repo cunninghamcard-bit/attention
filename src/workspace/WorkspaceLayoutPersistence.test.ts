@@ -442,6 +442,10 @@ describe("WorkspaceLayoutPersistence", () => {
     const save = vi.spyOn(app.workspace, "saveLayout");
     vi.useFakeTimers();
     try {
+      expect(app.workspace.requestSaveLayout.run()).toBeUndefined();
+      expect(save).not.toHaveBeenCalled();
+
+      (app.workspace as unknown as { _layoutReady: boolean })._layoutReady = false;
       app.workspace.requestSaveLayout();
 
       await vi.advanceTimersByTimeAsync(500);
