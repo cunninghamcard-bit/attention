@@ -285,7 +285,11 @@ export class App {
       return;
     }
     if (Platform.isMobileApp && hasMobileOpenAdapter(adapter)) {
-      await adapter.open(path);
+      try {
+        await adapter.open(path);
+      } catch (error) {
+        new Notice(error instanceof Error && error.message ? error.message : `Failed to load file: ${path}`);
+      }
     }
   }
 

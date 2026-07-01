@@ -300,6 +300,12 @@ describe("App public plugin API", () => {
       (app.vault as unknown as { adapter: { open(path: string): void } }).adapter = { open: mobileOpen };
       await app.openWithDefaultApp("Mobile.md");
       expect(mobileOpen).toHaveBeenCalledWith("Mobile.md");
+
+      (app.vault as unknown as { adapter: { open(path: string): Promise<void> } }).adapter = {
+        open: vi.fn().mockRejectedValue(new Error("Native failed")),
+      };
+      await expect(app.openWithDefaultApp("Bad.md")).resolves.toBeUndefined();
+      expect(document.body.textContent).toContain("Native failed");
     } finally {
       Platform.isMobile = previousMobile;
       Platform.isMobileApp = previousMobileApp;
