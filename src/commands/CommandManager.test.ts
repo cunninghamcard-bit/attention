@@ -108,6 +108,17 @@ describe("CommandManager plugin command behavior", () => {
     expect(commands.editorCommands.editor).toBeUndefined();
   });
 
+  it("only notifies hotkey changes when Obsidian command hotkeys actually change", () => {
+    const hotkeys = new HotkeyManager();
+    const onCommandsChanged = vi.spyOn(hotkeys, "onCommandsChanged");
+    const commands = new CommandManager(hotkeys);
+
+    commands.addCommand({ id: "plain", name: "Plain", callback: () => {} });
+    commands.removeCommand("missing");
+
+    expect(onCommandsChanged).not.toHaveBeenCalled();
+  });
+
   it("executes commands synchronously and records only explicit command events", async () => {
     const app = { lastEvent: null };
     const commands = new CommandManager(undefined, app);
@@ -408,7 +419,7 @@ describe("CommandManager plugin command behavior", () => {
     hotkeys.unregisterListeners();
   });
 
-  it("rebakes custom hotkey overrides when commands are registered after an initial bake", () => {
+  it("does not rebake custom hotkey overrides for commands without default hotkeys", () => {
     const scope = new Scope();
     const vaultEvents = new Events();
     const app = { lastEvent: null as Event | null, scope, vault: vaultEvents };
@@ -423,13 +434,13 @@ describe("CommandManager plugin command behavior", () => {
 
     commands.addCommand({ id: "plugin:late", name: "Late Plugin Command", callback });
 
-    expect(scope.handleKey(modKey("p"))).toBe(false);
-    expect(callback).toHaveBeenCalledTimes(1);
+    expect(scope.handleKey(modKey("p"))).toBeUndefined();
+    expect(callback).not.toHaveBeenCalled();
 
     commands.removeCommand("plugin:late");
 
     expect(scope.handleKey(modKey("p"))).toBeUndefined();
-    expect(callback).toHaveBeenCalledTimes(1);
+    expect(callback).not.toHaveBeenCalled();
 
     hotkeys.unregisterListeners();
   });

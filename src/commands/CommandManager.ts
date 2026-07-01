@@ -80,12 +80,10 @@ export class CommandManager {
     if (command.showOnMobileToolbar) this.editorCommands[command.id] = command;
     this.commands[command.id] = command;
     if (command.hotkeys) this.hotkeyManager?.addDefaultHotkeys(command.id, command.hotkeys);
-    else this.hotkeyManager?.onCommandsChanged();
   }
 
   removeCommand(id: string): void {
     if (this.commands[id]) this.hotkeyManager?.removeDefaultHotkeys(id);
-    else this.hotkeyManager?.onCommandsChanged();
     delete this.commands[id];
     delete this.editorCommands[id];
   }

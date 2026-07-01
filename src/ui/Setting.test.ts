@@ -165,12 +165,15 @@ describe("Setting components", () => {
     const hsl: HSL = color.getValueHsl();
 
     expect(rgb).toEqual({ r: 51, g: 102, b: 153 });
-    expect(hsl).toMatchObject({ h: expect.any(Number), s: expect.any(Number), l: expect.any(Number) });
+    expect(hsl).toEqual({ h: 210, s: 50, l: 40 });
     expect(color.getValueInt()).toBe(0x336699);
 
     color.setValueRgb({ r: 255, g: 0, b: 16 });
     expect(color.getValue()).toBe("#ff0010");
     expect(callback).toHaveBeenLastCalledWith("#ff0010");
+
+    color.setValueHsl({ h: 210, s: 50, l: 40 });
+    expect(color.getValue()).toBe("#336699");
   });
 
   it("clamps progress and emits slider callbacks like Obsidian", () => {

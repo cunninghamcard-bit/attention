@@ -522,14 +522,14 @@ function rgbToHsl({ r, g, b }: RGB): HSL {
   const max = Math.max(red, green, blue);
   const min = Math.min(red, green, blue);
   const l = (max + min) / 2;
-  if (max === min) return { h: 0, s: 0, l };
+  if (max === min) return { h: 0, s: 0, l: Math.round(100 * l) };
   const delta = max - min;
   const s = l > 0.5 ? delta / (2 - max - min) : delta / (max + min);
   let h = 0;
   if (max === red) h = (green - blue) / delta + (green < blue ? 6 : 0);
   else if (max === green) h = (blue - red) / delta + 2;
   else h = (red - green) / delta + 4;
-  return { h: h / 6, s, l };
+  return { h: Math.round(60 * h), s: Math.round(100 * s), l: Math.round(100 * l) };
 }
 
 function hueToRgb(p: number, q: number, t: number): number {
@@ -542,7 +542,10 @@ function hueToRgb(p: number, q: number, t: number): number {
   return p;
 }
 
-function hslToRgb({ h, s, l }: HSL): RGB {
+function hslToRgb(value: HSL): RGB {
+  const h = clamp(value.h, 0, 360) / 360;
+  const s = clamp(value.s, 0, 100) / 100;
+  const l = clamp(value.l, 0, 100) / 100;
   if (s === 0) {
     const value = Math.round(l * 255);
     return { r: value, g: value, b: value };
