@@ -141,7 +141,7 @@ describe("Component lifecycle", () => {
     expect(clearIntervalSpy).toHaveBeenCalledWith(intervalId);
   });
 
-  it("loads community Plugin children without waiting for an async plugin onload", async () => {
+  it("loads community Plugin children after its async onload has completed", async () => {
     const app = new App(document.createElement("div"));
     const log: string[] = [];
     let resolveOnload!: () => void;
@@ -152,10 +152,10 @@ describe("Component lifecycle", () => {
 
     const loaded = plugin.load();
 
-    expect(log).toEqual(["plugin:load", "child:load"]);
+    expect(log).toEqual(["plugin:load"]);
     resolveOnload();
     await loaded;
-    expect(log).toEqual(["plugin:load", "child:load", "plugin:load:done"]);
+    expect(log).toEqual(["plugin:load", "plugin:load:done", "child:load"]);
   });
 
   it("does not wait for async onunload before continuing cleanup", async () => {
