@@ -31,7 +31,8 @@ export class PluginManager {
     this.plugins.set(runtimeManifest.id, plugin);
     try {
       await plugin.load();
-      await plugin.loadCSS(runtimeManifest.styles);
+      if (runtimeManifest.styles?.trim()) plugin.registerCss(runtimeManifest.styles);
+      await plugin.loadCSS();
       if (userInitiated) plugin.onUserEnable();
       state.enabled = true;
       this.app.workspace.trigger("community-plugin-loaded", plugin);

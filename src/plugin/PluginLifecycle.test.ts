@@ -455,7 +455,7 @@ describe("community plugin lifecycle", () => {
     });
 
     await plugin.load();
-    await plugin.loadCSS(".plugin-css-three { color: green; }");
+    plugin.registerCss(".plugin-css-three { color: green; }");
 
     const styles = getPluginStyleEls("css-life");
     expect(styles.map((style) => style.textContent)).toEqual([

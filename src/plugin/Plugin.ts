@@ -219,21 +219,10 @@ export class Plugin extends Component {
     return true;
   }
 
-  async loadCSS(cssText = ""): Promise<void> {
-    if (cssText.trim()) {
-      this.registerCss(cssText);
-      return;
-    }
-
+  async loadCSS(): Promise<void> {
     if (!this.manifest.dir) return;
-    const vault = this.app.vault as unknown as {
-      readText?: (path: string) => Promise<string | null>;
-      adapter?: { read?: (path: string) => Promise<string> };
-    };
     const path = `${this.manifest.dir}/styles.css`;
-    let loaded = "";
-    if (vault.readText) loaded = await vault.readText(path) ?? "";
-    else if (vault.adapter?.read) loaded = await vault.adapter.read(path);
+    const loaded = await this.app.vault.readText(path) ?? "";
     if (loaded.trim()) this.registerCss(loaded);
   }
 
