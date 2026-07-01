@@ -4,10 +4,8 @@ import { SettingPage, SettingTab } from "../app/SettingTab";
 import { Component } from "../core/Component";
 import { Events } from "../core/Events";
 import { createDiv, createEl, createSpan, detach, removeChildren } from "../dom/dom";
-import { Editor, SimpleEditor } from "../editor/Editor";
-import { editorDomClass, editorTransactionFilter, editorUpdateListener, editorViewPlugin } from "../editor/EditorExtension";
-import { editorEditorField, editorInfoField, editorLivePreviewField, editorViewField, livePreviewState, StateEffect, StateField, Transaction } from "../editor/EditorStateField";
-import { EditorViewHost } from "../editor/EditorView";
+import { Editor } from "../editor/Editor";
+import { editorEditorField, editorInfoField, editorLivePreviewField, editorViewField, livePreviewState } from "../editor/EditorStateField";
 import { Keymap } from "../hotkeys/Keymap";
 import { Scope } from "../hotkeys/Scope";
 import { MarkdownRenderChild } from "../markdown/MarkdownRenderChild";
@@ -217,20 +215,11 @@ export interface ObsidianPluginModule {
   FuzzySuggestModal: typeof FuzzySuggestModal;
   EditorSuggest: typeof EditorSuggestClass;
   Editor: typeof Editor;
-  EditorViewHost: typeof EditorViewHost;
-  SimpleEditor: typeof SimpleEditor;
-  StateEffect: typeof StateEffect;
-  StateField: typeof StateField;
-  Transaction: typeof Transaction;
   editorEditorField: typeof editorEditorField;
   editorInfoField: typeof editorInfoField;
   editorLivePreviewField: typeof editorLivePreviewField;
   editorViewField: typeof editorViewField;
   livePreviewState: typeof livePreviewState;
-  editorDomClass: typeof editorDomClass;
-  editorTransactionFilter: typeof editorTransactionFilter;
-  editorUpdateListener: typeof editorUpdateListener;
-  editorViewPlugin: typeof editorViewPlugin;
   MarkdownRenderer: typeof MarkdownRenderer;
   RenderContext: typeof RenderContext;
   MarkdownPreviewRenderer: typeof MarkdownPreviewRenderer;
@@ -395,20 +384,11 @@ export function createObsidianPluginModule(app: App): ObsidianPluginModule {
     FuzzySuggestModal,
     EditorSuggest: EditorSuggestClass,
     Editor,
-    EditorViewHost,
-    SimpleEditor,
-    StateEffect,
-    StateField,
-    Transaction,
     editorEditorField,
     editorInfoField,
     editorLivePreviewField,
     editorViewField,
     livePreviewState,
-    editorDomClass,
-    editorTransactionFilter,
-    editorUpdateListener,
-    editorViewPlugin,
     MarkdownRenderer,
     RenderContext,
     MarkdownPreviewRenderer,

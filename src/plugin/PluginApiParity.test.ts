@@ -72,8 +72,7 @@ import { WorkspaceWindow } from "../workspace/WorkspaceWindow";
 import { MarkdownEditView, MarkdownView } from "../views/MarkdownView";
 import { Plugin } from "./Plugin";
 import { createObsidianPluginModule } from "../api/ObsidianPluginModule";
-import { editorDomClass, editorTransactionFilter, editorUpdateListener, editorViewPlugin } from "../editor/EditorExtension";
-import { editorEditorField, editorInfoField, editorLivePreviewField, editorViewField, livePreviewState, StateEffect, StateField, Transaction } from "../editor/EditorStateField";
+import { editorEditorField, editorInfoField, editorLivePreviewField, editorViewField, livePreviewState } from "../editor/EditorStateField";
 import { RenderContext } from "../markdown/RenderContext";
 import { Platform } from "../platform/Platform";
 import { AbstractTextComponent } from "../ui/Setting";
@@ -277,7 +276,7 @@ describe("Obsidian plugin API parity", () => {
 
     expect(module.SettingTab).toBe(SettingTab);
     expect(new module.SettingTab(app, app.setting)).toBeInstanceOf(SettingTab);
-    expect(new module.SimpleEditor()).toBeInstanceOf(module.Editor);
+    expect("SimpleEditor" in module).toBe(false);
   });
 
   it("exports common public runtime constructors through the plugin module facade", () => {
@@ -308,6 +307,7 @@ describe("Obsidian plugin API parity", () => {
     expect(module.WorkspaceTabs).toBe(WorkspaceTabs);
     expect(module.WorkspaceWindow).toBe(WorkspaceWindow);
     expect(module.WorkspaceMobileDrawer).toBe(WorkspaceMobileDrawer);
+    expect("EditorViewHost" in module).toBe(false);
     expect(module.Tasks).toBe(Tasks);
     expect(module.MarkdownPreviewRenderer).toBe(MarkdownPreviewRenderer);
     expect(module.MarkdownPreviewSection).toBe(MarkdownPreviewSection);
@@ -434,27 +434,23 @@ describe("Obsidian plugin API parity", () => {
     expect(view.editMode.getScroll()).toBe(12);
   });
 
-  it("exports editor extension fields and helpers through the plugin module facade", () => {
+  it("exports only Obsidian's public editor extension fields through the plugin module facade", () => {
     const app = new App(document.createElement("div"));
     const module = createObsidianPluginModule(app);
 
-    expect(module.StateEffect).toBe(StateEffect);
-    expect(module.StateField).toBe(StateField);
-    expect(module.Transaction).toBe(Transaction);
+    expect("StateEffect" in module).toBe(false);
+    expect("StateField" in module).toBe(false);
+    expect("Transaction" in module).toBe(false);
     expect(module.editorEditorField).toBe(editorEditorField);
     expect(module.editorInfoField).toBe(editorInfoField);
     expect(module.editorLivePreviewField).toBe(editorLivePreviewField);
     expect(module.editorViewField).toBe(editorViewField);
     expect(module.livePreviewState).toBe(livePreviewState);
     expect(module.livePreviewState.instantiate()).toMatchObject({ mousedown: false });
-    expect(module.editorDomClass).toBe(editorDomClass);
-    expect(module.editorTransactionFilter).toBe(editorTransactionFilter);
-    expect(module.editorUpdateListener).toBe(editorUpdateListener);
-    expect(module.editorViewPlugin).toBe(editorViewPlugin);
-    expect(module.editorDomClass("plugin-editor")).toEqual({ type: "dom-class", className: "plugin-editor" });
-    expect(module.editorUpdateListener(() => {})).toMatchObject({ type: "update-listener" });
-    expect(module.editorTransactionFilter((transaction) => transaction)).toMatchObject({ type: "transaction-filter" });
-    expect(module.editorViewPlugin(() => {})).toMatchObject({ type: "view-plugin" });
+    expect("editorDomClass" in module).toBe(false);
+    expect("editorTransactionFilter" in module).toBe(false);
+    expect("editorUpdateListener" in module).toBe(false);
+    expect("editorViewPlugin" in module).toBe(false);
   });
 
   it("exposes HoverPopover as a Component-compatible Obsidian popover", () => {
