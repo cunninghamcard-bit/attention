@@ -941,7 +941,8 @@ export function registerAppCommands(app: App): void {
 }
 
 async function duplicateActiveFile(app: App, file: TFile): Promise<void> {
-  const path = app.vault.getAvailablePath(file.path, file.extension);
+  const prefix = file.parentPath ? `${file.parentPath}/` : "";
+  const path = app.vault.getAvailablePath(`${prefix}${file.basename}`, file.extension);
   const copied = await app.vault.copy(file, path);
   await app.workspace.getLeaf("tab").openFile(copied, { active: true, eState: { rename: "all" } });
 }

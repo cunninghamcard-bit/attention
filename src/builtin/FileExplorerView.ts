@@ -619,10 +619,9 @@ export class FileExplorerView extends ItemView {
 
   private getAvailableMovePath(file: TFile | TFolder, targetFolder: TFolder): string {
     const prefix = targetFolder.isRoot() ? "" : `${targetFolder.path}/`;
-    const targetPath = `${prefix}${file.name}`;
     return file instanceof TFolder
-      ? this.app.vault.getAvailablePath(targetPath, "")
-      : this.app.vault.getAvailablePath(targetPath, file.extension);
+      ? this.app.vault.getAvailablePath(`${prefix}${file.name}`, "")
+      : this.app.vault.getAvailablePath(`${prefix}${file.basename}`, file.extension);
   }
 
   private scheduleFolderExpand(folder: TFolder): void {

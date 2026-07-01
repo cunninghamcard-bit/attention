@@ -4,6 +4,12 @@ import { InMemoryAdapter, type DataWriteOptions } from "./DataAdapter";
 import { Vault } from "./Vault";
 
 describe("Vault attachment paths", () => {
+  it("always appends the requested extension when picking available paths", () => {
+    const vault = new Vault();
+
+    expect(vault.getAvailablePath("image.png", "png")).toBe("image.png.png");
+  });
+
   it("uses the vault root by default and sanitizes attachment names", async () => {
     const vault = new Vault();
 
@@ -27,7 +33,7 @@ describe("Vault attachment paths", () => {
 
     const path = await vault.getAvailablePathForAttachments("image.png", "png");
 
-    expect(path).toBe("Attachments/image 1.png");
+    expect(path).toBe("Attachments/image.png.png");
     expect(vault.getFolderByPath("Attachments")).not.toBeNull();
   });
 
@@ -57,7 +63,7 @@ describe("Vault attachment paths", () => {
 
     const path = await vault.getAvailablePathForAttachments("clip", ".m4a", source);
 
-    expect(path).toBe("Notes/assets/clip.m4a");
+    expect(path).toBe("Notes/assets/clip..m4a");
     expect(vault.getFolderByPath("Notes/assets")).not.toBeNull();
   });
 

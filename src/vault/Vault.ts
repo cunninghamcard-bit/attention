@@ -763,13 +763,10 @@ export class Vault extends Events {
   }
 
   getAvailablePath(path: string, extension = "md"): string {
-    const normalizedExtension = extension.replace(/^\./, "");
-    const suffix = normalizedExtension ? `.${normalizedExtension}` : "";
-    const base = suffix && path.endsWith(suffix) ? path.slice(0, -suffix.length) : path;
-    let candidate = `${base}${suffix}`;
+    let candidate = extension ? `${path}.${extension}` : path;
     let index = 1;
     while (this.getAbstractFileByPathInsensitive(candidate)) {
-      candidate = `${base} ${index}${suffix}`;
+      candidate = extension ? `${path} ${index}.${extension}` : `${path} ${index}`;
       index += 1;
     }
     return candidate;
@@ -779,13 +776,12 @@ export class Vault extends Events {
     const configuredPath = this.getConfig<string>("attachmentFolderPath") ?? "/";
     const folderPath = this.resolveAttachmentFolderPath(configuredPath, sourceFile ?? null);
     const clippedBase = sanitizeAttachmentName(filename).slice(0, 250);
-    const normalizedExtension = extension.replace(/^\./, "");
-    if (!folderPath) return this.getAvailablePath(clippedBase, normalizedExtension);
+    if (!folderPath) return this.getAvailablePath(clippedBase, extension);
 
     let folder = this.getAbstractFileByPathInsensitive(folderPath);
     if (!folder) folder = await this.createFolder(folderPath);
-    if (!(folder instanceof TFolder)) return this.getAvailablePath(clippedBase, normalizedExtension);
-    return this.getAvailablePath(`${folder.path}/${clippedBase}`, normalizedExtension);
+    if (!(folder instanceof TFolder)) return this.getAvailablePath(clippedBase, extension);
+    return this.getAvailablePath(`${folder.path}/${clippedBase}`, extension);
   }
 
   private attachToParent(file: TAbstractFile): void {
