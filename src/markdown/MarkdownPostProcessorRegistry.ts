@@ -1,7 +1,7 @@
 import type { MarkdownPostProcessor, MarkdownPostProcessorContext } from "./MarkdownRenderer";
 
 export interface OrderedMarkdownPostProcessor {
-  sortOrder: number;
+  sortOrder: number | undefined;
   processor: MarkdownPostProcessor;
 }
 
@@ -12,10 +12,10 @@ type MarkdownPostProcessorRunContext = MarkdownPostProcessorContext & {
 export class MarkdownPostProcessorRegistry {
   private processors: OrderedMarkdownPostProcessor[] = [];
 
-  register(processor: MarkdownPostProcessor, sortOrder = processor.sortOrder ?? 0): void {
+  register(processor: MarkdownPostProcessor, sortOrder?: number): void {
     processor.sortOrder = sortOrder;
     this.processors.push({ processor, sortOrder });
-    this.processors.sort((a, b) => (a.processor.sortOrder ?? 0) - (b.processor.sortOrder ?? 0));
+    this.processors.sort((a, b) => (a.processor.sortOrder || 0) - (b.processor.sortOrder || 0));
   }
 
   unregister(processor: MarkdownPostProcessor): void {

@@ -73,7 +73,7 @@ export abstract class MarkdownRenderer extends MarkdownRenderChild implements Ma
     this.postProcessors.clear();
   }
 
-  static registerPostProcessor(processor: MarkdownPostProcessor, sortOrder = processor.sortOrder ?? 0): void {
+  static registerPostProcessor(processor: MarkdownPostProcessor, sortOrder?: number): void {
     this.postProcessors.register(processor, sortOrder);
   }
 

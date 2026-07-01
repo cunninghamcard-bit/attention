@@ -551,29 +551,29 @@ describe("MarkdownPreviewRenderer", () => {
     }
   });
 
-  it("uses MarkdownPostProcessor.sortOrder when no explicit order is passed", async () => {
+  it("does not reuse stale MarkdownPostProcessor.sortOrder when no explicit order is passed", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
     const container = document.createElement("div");
     const order: string[] = [];
-    const later: MarkdownPostProcessor = () => {
-      order.push("later");
+    const stale: MarkdownPostProcessor = () => {
+      order.push("stale");
     };
-    later.sortOrder = 20;
-    const earlier: MarkdownPostProcessor = () => {
-      order.push("earlier");
+    stale.sortOrder = -10;
+    const explicit: MarkdownPostProcessor = () => {
+      order.push("explicit");
     };
-    earlier.sortOrder = -10;
 
-    MarkdownPreviewRenderer.registerPostProcessor(later);
-    MarkdownPreviewRenderer.registerPostProcessor(earlier);
+    MarkdownPreviewRenderer.registerPostProcessor(stale);
+    MarkdownPreviewRenderer.registerPostProcessor(explicit, -5);
     try {
       await MarkdownRenderer.render(app, "Ordered", container, "note.md");
 
-      expect(order).toEqual(["earlier", "later"]);
+      expect(stale.sortOrder).toBeUndefined();
+      expect(order).toEqual(["explicit", "stale"]);
     } finally {
-      MarkdownPreviewRenderer.unregisterPostProcessor(later);
-      MarkdownPreviewRenderer.unregisterPostProcessor(earlier);
+      MarkdownPreviewRenderer.unregisterPostProcessor(stale);
+      MarkdownPreviewRenderer.unregisterPostProcessor(explicit);
     }
   });
 
