@@ -177,7 +177,7 @@ export class Menu extends Component implements HistoryHandler {
   selected = -1;
   useNativeMenu = Menu.useNativeMenu;
   showMacWritingTools = false;
-  private parentEl: HTMLElement | null = null;
+  private parentEl: Element | null = null;
   private hideCallback: (() => void) | null = null;
   private shown = false;
   private hiding = false;
@@ -250,7 +250,7 @@ export class Menu extends Component implements HistoryHandler {
     return this;
   }
 
-  setParentElement(el: HTMLElement): this {
+  setParentElement(el: Element): this {
     this.parentEl?.classList.remove("has-active-menu");
     this.parentEl = el;
     return this;

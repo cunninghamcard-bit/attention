@@ -326,7 +326,7 @@ describe("View public API parity", () => {
     document.body.querySelectorAll(".menu").forEach((el) => el.remove());
   });
 
-  it("guards ItemView more-options reentry from the action button currentTarget", async () => {
+  it("anchors ItemView more-options to the actual click target", async () => {
     document.body.querySelectorAll(".menu").forEach((el) => el.remove());
     const app = new App(document.body.appendChild(document.createElement("div")));
     app.viewRegistry.registerView("action-item-view-api", (leaf) => new ActionItemView(leaf));
@@ -344,8 +344,9 @@ describe("View public API parity", () => {
 
     innerTarget.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
-    expect(leafMenus).toBe(0);
-    expect(document.body.querySelector(".menu")).toBeNull();
+    expect(leafMenus).toBe(1);
+    expect(document.body.querySelector(".menu")).not.toBeNull();
+    expect(innerTarget.classList.contains("has-active-menu")).toBe(true);
   });
 
   it("adds phone-only close and pin actions to ItemView more-options", async () => {
@@ -495,8 +496,8 @@ describe("View public API parity", () => {
     view.moreOptionsButtonEl.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
 
     expect(view.paneMenuSources).toContain("more-options");
-    expect(view.moreOptionsMenus).toBe(1);
-    expect(leafMenus).toHaveLength(1);
+    expect(view.moreOptionsMenus).toBe(2);
+    expect(leafMenus).toHaveLength(2);
     expect((leafMenus[0] as { menuLeaf?: unknown }).menuLeaf).toBe(leaf);
 
     const duplicateLeaf = vi.spyOn(app.workspace, "duplicateLeaf").mockResolvedValue(leaf);

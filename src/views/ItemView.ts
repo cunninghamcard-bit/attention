@@ -73,8 +73,7 @@ export class ItemView extends View {
 
   onMoreOptions(event: MouseEvent): void {
     event.preventDefault();
-    const target = event.currentTarget instanceof HTMLElement ? event.currentTarget : this.moreOptionsButtonEl;
-    if (target.classList.contains("has-active-menu")) return;
+    const target = event.target instanceof Element ? event.target : this.moreOptionsButtonEl;
     const menu = new Menu(target.ownerDocument).addSections(["close", "pane", "open", "action", "find", "info", "info.copy", "view", "view.linked", "system", "", "danger"]);
     menu.setSectionSubmenu("info.copy", { title: "Copy path", icon: "lucide-clipboard" });
     menu.setSectionSubmenu("view.linked", { title: "Open linked view", icon: "lucide-link" });
