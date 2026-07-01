@@ -112,7 +112,8 @@ export class Keymap {
     if (modifier === "Ctrl") return evt.ctrlKey;
     if (modifier === "Meta") return evt.metaKey;
     if (modifier === "Shift") return evt.shiftKey;
-    return evt.altKey;
+    if (modifier === "Alt") return evt.altKey;
+    return false;
   }
 
   static isMatch(ref: { modifiers: string | null; key: string | null }, event: { modifiers: string; key: string; vkey: string }): boolean {

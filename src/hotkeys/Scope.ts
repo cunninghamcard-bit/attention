@@ -118,7 +118,7 @@ function normalizeKey(key: string): string {
 }
 
 function isMacLike(): boolean {
-  return /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+  return navigator.appVersion.includes("Mac");
 }
 
 function normalizeModifier(modifier: string): string {

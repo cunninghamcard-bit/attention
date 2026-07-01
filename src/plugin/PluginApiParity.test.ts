@@ -379,6 +379,20 @@ describe("Obsidian plugin API parity", () => {
     expect(module.Keymap.isModEvent(new MouseEvent("click", { altKey: true, ...modKey }))).toBe("split");
     expect(module.Keymap.isModEvent(new MouseEvent("click", { altKey: true, shiftKey: true, ...modKey }))).toBe("window");
     expect(module.Keymap.isModEvent(new MouseEvent("click"))).toBe(false);
+    expect(module.Keymap.isModifier(new KeyboardEvent("keydown", { altKey: true }), "Alt")).toBe(true);
+    expect(module.Keymap.isModifier(new KeyboardEvent("keydown", { altKey: true }), "Bogus" as never)).toBe(false);
+
+    const originalAppVersion = navigator.appVersion;
+    const originalPlatform = navigator.platform;
+    Object.defineProperty(navigator, "appVersion", { configurable: true, value: "5.0 (Windows NT 10.0)" });
+    Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
+    try {
+      expect(module.Keymap.compileModifiers(["Mod"])).toBe("Ctrl");
+      expect(module.Keymap.decompileModifiers("Ctrl")).toEqual(["Mod"]);
+    } finally {
+      Object.defineProperty(navigator, "appVersion", { configurable: true, value: originalAppVersion });
+      Object.defineProperty(navigator, "platform", { configurable: true, value: originalPlatform });
+    }
   });
 
   it("exposes a usable DataAdapter on app.vault for plugin raw vault access", async () => {
