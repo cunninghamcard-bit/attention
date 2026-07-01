@@ -31,12 +31,14 @@ export interface PlatformApi {
 }
 
 const navigatorRef = typeof navigator !== "undefined" ? navigator : null;
+const appVersion = navigatorRef?.appVersion ?? "";
 const userAgent = navigatorRef?.userAgent ?? "";
 const platform = navigatorRef?.platform ?? "";
 const vendor = navigatorRef?.vendor ?? "";
 const maxTouchPoints = navigatorRef?.maxTouchPoints ?? 0;
 const isIosLike = /iPad|iPhone|iPod/.test(userAgent) || (platform === "MacIntel" && maxTouchPoints > 1);
 const isAndroidLike = /Android/.test(userAgent);
+const osName = appVersion.includes("Win") ? "Windows" : appVersion.includes("Mac") ? "macOS" : appVersion.includes("X11") || appVersion.includes("Linux") ? "Linux" : "Unknown OS";
 
 export const Platform: PlatformApi = {
   isDesktop: true,
@@ -47,9 +49,9 @@ export const Platform: PlatformApi = {
   isAndroidApp: false,
   isPhone: false,
   isTablet: false,
-  isMacOS: /Mac/.test(platform) || isIosLike,
-  isWin: /Win/.test(platform),
-  isLinux: /Linux/.test(platform) && !isAndroidLike,
+  isMacOS: osName === "macOS",
+  isWin: osName === "Windows",
+  isLinux: osName === "Linux",
   isSafari: /Safari/.test(userAgent) && /Apple/.test(vendor) && !/Chrome|Chromium|CriOS|FxiOS|EdgiOS|OPiOS/.test(userAgent),
   hasPhysicalKeyboard: !isAndroidLike && !isIosLike,
   resourcePathPrefix: resolveResourcePathPrefix(),
