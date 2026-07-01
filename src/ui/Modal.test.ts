@@ -170,19 +170,27 @@ describe("Modal Obsidian base behavior", () => {
     expect(document.body.querySelector(".modal-container")).toBeNull();
   });
 
-  it("runs onClose and close callbacks exactly once per open", () => {
+  it("runs the close path on every close call like Obsidian", () => {
     const app = new App(document.createElement("div"));
     const modal = new RecordingModal(app);
     const callback = vi.fn(() => "ignored");
 
     expect(modal.setCloseCallback(callback)).toBe(modal);
+    modal.close();
+    expect(modal.closedCount).toBe(1);
+    expect(callback).toHaveBeenCalledTimes(1);
+
     modal.open();
     modal.close();
+    expect(modal.closedCount).toBe(2);
+    expect(modal.sawSelfInOpenStackOnClose).toBe(true);
+
+    modal.sawSelfInOpenStackOnClose = false;
     modal.close();
 
-    expect(modal.closedCount).toBe(1);
-    expect(modal.sawSelfInOpenStackOnClose).toBe(true);
-    expect(callback).toHaveBeenCalledTimes(1);
+    expect(modal.closedCount).toBe(3);
+    expect(modal.sawSelfInOpenStackOnClose).toBe(false);
+    expect(callback).toHaveBeenCalledTimes(3);
     expect(Modal.getOpenModals()).not.toContain(modal);
   });
 

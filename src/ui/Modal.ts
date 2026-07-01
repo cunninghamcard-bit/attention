@@ -42,7 +42,6 @@ export class Modal extends Component implements HistoryHandler {
   shouldAnimate = true;
   dimBackground = true;
   bgOpacity = "0.85";
-  private opened = false;
   private closeCallback: (() => any) | null = null;
   private win: Window | null = null;
   private selection: SavedSelection | null = null;
@@ -109,7 +108,6 @@ export class Modal extends Component implements HistoryHandler {
 
   open(): void {
     if (this.containerEl.parentNode) return;
-    this.opened = true;
     const activeWindow = getActiveWindow();
     this.win = activeWindow;
     this.selection = this.shouldRestoreSelection ? captureSelection(activeWindow) : null;
@@ -126,9 +124,7 @@ export class Modal extends Component implements HistoryHandler {
   }
 
   close(): void {
-    if (!this.opened) return;
     const modalWindow = this.win;
-    this.opened = false;
     this.app.keymap.popScope(this.scope);
     this.containerEl.remove();
     this.onClose();
