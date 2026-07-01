@@ -367,11 +367,18 @@ describe("View public API parity", () => {
       expect(titles).toContain("Close");
       expect(titles).toContain("Pin");
 
-      [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
+      const pinItem = [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
         .find((item) => item.textContent?.includes("Pin"))
-        ?.click();
+      expect(pinItem?.querySelector(".menu-item-icon svg.lucide-pin")).not.toBeNull();
+      pinItem?.click();
 
       expect(leaf.pinned).toBe(true);
+
+      document.body.querySelectorAll(".menu").forEach((el) => el.remove());
+      view.moreOptionsButtonEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      const unpinItem = [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
+        .find((item) => item.textContent?.includes("Unpin"));
+      expect(unpinItem?.querySelector(".menu-item-icon svg.lucide-pin-off")).not.toBeNull();
     } finally {
       Platform.isPhone = previousPhone;
       document.body.querySelectorAll(".menu").forEach((el) => el.remove());

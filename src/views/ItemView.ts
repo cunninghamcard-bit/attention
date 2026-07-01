@@ -93,13 +93,11 @@ export class ItemView extends View {
         .setTitle("Close")
         .setIcon("lucide-x")
         .onClick(() => leaf.detach()));
-      if (leaf.canPin()) {
-        menu.addItem((item) => item
-          .setSection("pane")
-          .setTitle(leaf.pinned ? "Unpin" : "Pin")
-          .setIcon("lucide-pin")
-          .onClick(() => leaf.togglePinned()));
-      }
+      menu.addItem((item) => item
+        .setSection("action")
+        .setTitle(leaf.pinned ? "Unpin" : "Pin")
+        .setIcon(leaf.pinned ? "lucide-pin-off" : "lucide-pin")
+        .onClick(() => leaf.togglePinned()));
     }
     if (Platform.canSplit && leaf.canPin()) {
       menu.addItem((item) => item
