@@ -237,12 +237,13 @@ describe("Obsidian plugin API parity", () => {
     expect(statusEl.classList.contains("plugin-mixed_id-one?")).toBe(true);
   });
 
-  it("waits for plugin onload but does not await child component loads", async () => {
+  it("waits for plugin onload and child component loads through Component", async () => {
     const app = new App(document.createElement("div"));
     const plugin = new EmptyPlugin(app, manifest("child-load"));
     const child = plugin.addChild(new SlowChild());
 
     const loadPromise = plugin.load();
+    if (!loadPromise) throw new Error("Expected async child load to return a promise");
     await Promise.resolve();
     await Promise.resolve();
 
@@ -253,7 +254,7 @@ describe("Obsidian plugin API parity", () => {
     await Promise.resolve();
 
     expect(child.started).toBe(true);
-    expect(resolved).toBe(true);
+    expect(resolved).toBe(false);
 
     child.finish?.();
     await loadPromise;

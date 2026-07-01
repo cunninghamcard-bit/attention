@@ -43,13 +43,6 @@ export class Plugin extends Component {
   onUserEnable(): void | Promise<void> {}
   onExternalSettingsChange?(): any;
 
-  override async load(): Promise<void> {
-    if (this._loaded) return;
-    this._loaded = true;
-    await this.onload();
-    for (const child of this._children.slice()) void child.load();
-  }
-
   async loadData<T = any>(): Promise<T> {
     const data = await this.app.vault.readPluginData<T>(this.getPluginDataDir());
     if (data && this.onExternalSettingsChange) this._lastDataModifiedTime = await this.getModifiedTime();

@@ -17,7 +17,7 @@ export class Component {
       const childResult = child.load();
       if (childResult) promises.push(childResult);
     }
-    if (promises.length > 0) return Promise.all(promises);
+    if (promises.length > 0) return Promise.all(promises).then();
   }
 
   unload(): void {
