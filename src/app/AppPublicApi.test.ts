@@ -25,6 +25,8 @@ class TestFileSystemAdapter extends FileSystemAdapter {
   override async exists(path: string): Promise<boolean> {
     return this.existingPaths.has(path);
   }
+
+  override async mkdir(): Promise<void> {}
 }
 
 describe("App public plugin API", () => {
@@ -313,6 +315,7 @@ describe("App public plugin API", () => {
       Platform.isDesktopApp = previousDesktopApp;
       if (previousElectron === undefined) delete (globalThis as { electron?: unknown }).electron;
       else (globalThis as { electron?: unknown }).electron = previousElectron;
+      app.vault.unload();
       document.body.querySelectorAll(".notice").forEach((el) => el.remove());
     }
   });
