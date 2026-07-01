@@ -68,6 +68,39 @@ describe("MarkdownView public API parity", () => {
     expect((splitLeaf?.view as MarkdownView | undefined)?.getMode()).toBe("preview");
   });
 
+  it("exposes hover source, undo/redo, spellcheck config, and saveFrontmatter APIs", async () => {
+    const { app, file, view } = await openMarkdown("---\nstatus: old\n---\nBody text");
+    const undo = vi.spyOn(view.editor, "undo");
+    const redo = vi.spyOn(view.editor, "redo");
+
+    expect(view.getHoverSource()).toBe("editor");
+    view.undo();
+    view.redo();
+
+    expect(undo).toHaveBeenCalled();
+    expect(redo).toHaveBeenCalled();
+
+    await view.setMode("preview");
+    expect(view.getHoverSource()).toBe("preview");
+
+    app.vault.setConfig("spellcheck", false);
+    view.onConfigChanged("spellcheck");
+    expect(view.inlineTitleEl.spellcheck).toBe(false);
+
+    app.vault.setConfig("spellcheck", true);
+    view.onConfigChanged("spellcheck");
+    expect(view.inlineTitleEl.spellcheck).toBe(true);
+
+    await view.saveFrontmatter((frontmatter) => {
+      frontmatter.status = "new";
+      frontmatter.count = 2;
+    });
+
+    const data = await app.vault.read(file);
+    expect(data).toContain("status: new");
+    expect(data).toContain("count: 2");
+  });
+
   it("reports whether markdown metadata has focus", async () => {
     const app = new App(document.body.appendChild(document.createElement("div")));
     await app.ready;

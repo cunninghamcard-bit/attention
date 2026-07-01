@@ -18,6 +18,7 @@ import {
   reorderFrontmatterProperty,
   serializeFrontmatterProperties,
   setFrontmatterProperty,
+  updateFrontmatter,
 } from "../properties/Frontmatter";
 import { PropertyTypeMismatchModal } from "../properties/PropertyTypeMismatchModal";
 import type { PropertyDefinition, PropertyType, PropertyValue } from "../properties/PropertyTypes";
@@ -122,7 +123,7 @@ export class MarkdownView extends TextFileView {
     this.inlineTitleEl = document.createElement("div");
     this.inlineTitleEl.className = "inline-title";
     this.inlineTitleEl.contentEditable = "true";
-    this.inlineTitleEl.spellcheck = true;
+    this.inlineTitleEl.spellcheck = this.getSpellcheckEnabled();
     this.inlineTitleEl.autocapitalize = "on";
     this.inlineTitleEl.tabIndex = -1;
     this.inlineTitleEl.addEventListener("focus", () => this.onInlineTitleFocus());
@@ -217,6 +218,27 @@ export class MarkdownView extends TextFileView {
 
   getMode(): MarkdownViewModeType {
     return this.currentMode.type;
+  }
+
+  getHoverSource(): "editor" | "preview" {
+    return this.currentMode === this.editMode ? "editor" : "preview";
+  }
+
+  undo(): void {
+    this.editor.undo();
+  }
+
+  redo(): void {
+    this.editor.redo();
+  }
+
+  saveFrontmatter(update: (frontmatter: Record<string, PropertyValue>) => void): Promise<void> {
+    this.setViewData(updateFrontmatter(this.getViewData(), update), false);
+    return this.save();
+  }
+
+  onConfigChanged(key: string): void {
+    if (key === "spellcheck") this.inlineTitleEl.spellcheck = this.getSpellcheckEnabled();
   }
 
   getSourceMode(): MarkdownSourceMode {
@@ -513,6 +535,7 @@ export class MarkdownView extends TextFileView {
     this.registerEvent(this.app.vault.on("config-changed", (key: string) => {
       if (key === "propertiesInDocument") this.render();
       if (key === "readableLineLength" || key === "showLineNumber") this.updateOptions();
+      if (key === "spellcheck") this.onConfigChanged(key);
     }));
     this.updateOptions();
     this.syncActiveEditor();
@@ -1649,7 +1672,11 @@ export class MarkdownView extends TextFileView {
 
   private onInlineTitleFocus(): void {
     this.fileBeingRenamed = this.file;
-    this.inlineTitleEl.spellcheck = this.app.vault.getConfig<boolean>("spellcheck") ?? true;
+    this.inlineTitleEl.spellcheck = this.getSpellcheckEnabled();
+  }
+
+  private getSpellcheckEnabled(): boolean {
+    return this.app.vault.getConfig<boolean>("spellcheck") ?? true;
   }
 
   private async onInlineTitleBlur(): Promise<void> {

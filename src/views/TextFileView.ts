@@ -100,6 +100,10 @@ export class TextFileView extends EditableFileView {
     if (this.saveAgain) await this.save();
   }
 
+  saveImmediately(): Promise<void> | void {
+    if (this.dirty) return this.save(false);
+  }
+
   protected setData(data: string, clear: boolean): void {
     this.lastSavedData = data;
     this.setViewData(data, clear);

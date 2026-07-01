@@ -144,7 +144,13 @@ describe("View public API parity", () => {
     view.data = "Beta";
     expect(view.getViewData()).toBe("Beta");
 
+    await view.saveImmediately();
+    expect(view.saveCount).toBe(0);
+
     view.requestSave();
+    await view.saveImmediately();
+    expect(view.saveCount).toBe(1);
+
     await vi.advanceTimersByTimeAsync(2000);
 
     expect(view.saveCount).toBe(1);
