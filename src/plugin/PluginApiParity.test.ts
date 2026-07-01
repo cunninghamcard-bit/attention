@@ -210,6 +210,17 @@ describe("Obsidian plugin API parity", () => {
     expect(plugin.settings).toEqual({ enabled: true });
   });
 
+  it("matches Obsidian by storing plugin data under manifest.dir", async () => {
+    const app = new App(document.createElement("div"));
+    const plugin = new EmptyPlugin(app, { ...manifest("dir-id"), dir: "plugins/custom-dir" });
+
+    await plugin.saveData({ enabled: true });
+
+    await expect(app.jsonStore.read("plugins/custom-dir/data.json")).resolves.toEqual({ enabled: true });
+    await expect(app.jsonStore.read("plugins/dir-id/data.json")).resolves.toBeNull();
+    await expect(plugin.loadData()).resolves.toEqual({ enabled: true });
+  });
+
   it("matches Obsidian's mutable Plugin class shape and sync lifecycle hooks", async () => {
     const app = new App(document.createElement("div"));
     const plugin = new SyncShapePlugin(app, manifest("sync-shape"));

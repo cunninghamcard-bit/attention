@@ -51,7 +51,7 @@ export class Plugin extends Component {
   }
 
   async loadData<T = any>(): Promise<T> {
-    const data = await this.app.vault.readPluginData<T>(this.getPluginDataDir());
+    const data = await this.app.vault.readPluginData<T>(this.manifest.dir);
     if (data && this.onExternalSettingsChange) this._lastDataModifiedTime = await this.getModifiedTime();
     return data as T;
   }
@@ -59,7 +59,7 @@ export class Plugin extends Component {
   async saveData(data: any): Promise<void> {
     const mtime = Date.now();
     this._lastDataModifiedTime = mtime;
-    await this.app.vault.writePluginData(this.getPluginDataDir(), data, { mtime });
+    await this.app.vault.writePluginData(this.manifest.dir, data, { mtime });
   }
 
   onConfigFileChange(): void {
@@ -71,7 +71,15 @@ export class Plugin extends Component {
   }
 
   async getModifiedTime(): Promise<number> {
-    return (await this.app.jsonStore.stat(`${this.getPluginDataDir()}/data.json`))?.mtime ?? 0;
+    const dataPath = `${this.manifest.dir}/data.json`;
+    try {
+      return (await this.app.vault.adapter.stat(dataPath)).mtime;
+    } catch {}
+    try {
+      return (await this.app.jsonStore.stat(dataPath))?.mtime ?? 0;
+    } catch {
+      return 0;
+    }
   }
 
   private async _onConfigFileChange(): Promise<void> {
@@ -254,9 +262,5 @@ export class Plugin extends Component {
 
   private getFullCommandId(id: string): string {
     return `${this.manifest.id}:${id}`;
-  }
-
-  private getPluginDataDir(): string {
-    return this.manifest.dir ?? `plugins/${this.manifest.id}`;
   }
 }
