@@ -532,6 +532,17 @@ describe("Vault public file API", () => {
     await expect(adapter.read("Counter.md")).resolves.toBe("2");
   });
 
+  it("skips direct DataAdapter process writes when the updater returns the same text", async () => {
+    const adapter = new InMemoryAdapter();
+    const immediate = vi.fn();
+    await adapter.write("Same.md", "same", { ctime: 1, mtime: 2 });
+
+    await expect(adapter.process("Same.md", (data) => data, { mtime: 99, immediate })).resolves.toBe("same");
+
+    await expect(adapter.stat("Same.md")).resolves.toEqual({ type: "file", ctime: 1, mtime: 2, size: 4 });
+    expect(immediate).not.toHaveBeenCalled();
+  });
+
   it("serializes Vault process calls so concurrent updaters cannot overwrite each other", async () => {
     const vault = new Vault();
     const file = await vault.create("Counter.md", "0");
@@ -542,7 +553,7 @@ describe("Vault public file API", () => {
     await expect(vault.read(file)).resolves.toBe("2");
   });
 
-  it("runs no-op Vault process updates through the write path", async () => {
+  it("skips no-op Vault process writes", async () => {
     const vault = new Vault();
     const file = await vault.create("Noop.md", "same", { ctime: 1, mtime: 2 });
     const modified: string[] = [];
@@ -550,8 +561,8 @@ describe("Vault public file API", () => {
 
     await expect(vault.process(file, (data) => data, { mtime: 3 })).resolves.toBe("same");
 
-    expect(modified).toEqual(["Noop.md"]);
-    expect(file.stat).toEqual({ ctime: 1, mtime: 3, size: 4 });
+    expect(modified).toEqual([]);
+    expect(file.stat).toEqual({ ctime: 1, mtime: 2, size: 4 });
   });
 
   it("uses adapter process with Obsidian's saving and immediate cache contract", async () => {

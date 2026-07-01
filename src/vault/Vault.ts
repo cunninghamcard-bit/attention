@@ -627,6 +627,7 @@ export class Vault extends Events {
     const task = previous.catch(() => undefined).then(async () => {
       const current = await this.read(file);
       const next = updater(current);
+      if (next === current) return next;
       await this.modify(file, next, options);
       return next;
     });

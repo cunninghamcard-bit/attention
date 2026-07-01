@@ -63,7 +63,9 @@ export abstract class DataAdapter extends Events {
   async process(path: string, fn: (data: string) => string, options?: DataWriteOptions): Promise<string> {
     const previous = this.processQueues.get(path) ?? Promise.resolve();
     const task = previous.catch(() => undefined).then(async () => {
-      const next = fn(await this.read(path));
+      const current = await this.read(path);
+      const next = fn(current);
+      if (next === current) return next;
       await this.write(path, next, options);
       return next;
     });
