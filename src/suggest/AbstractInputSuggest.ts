@@ -143,14 +143,22 @@ function positionSuggestion(
   const win = doc.defaultView ?? window;
   const root = doc.documentElement;
   const rootRect = root.getBoundingClientRect();
-  const safeTop = Math.max(10, parseCssPx(root, "--safe-area-inset-top") - rootRect.top + 10);
-  const safeBottom = Math.min(root.clientHeight - 10, win.innerHeight - parseCssPx(root, "--safe-area-inset-bottom") - rootRect.top - 10);
-  const safeLeft = Math.max(10, parseCssPx(root, "--safe-area-inset-left") - rootRect.left + 10);
-  const safeRight = Math.min(root.clientWidth - 10, win.innerWidth - parseCssPx(root, "--safe-area-inset-right") - rootRect.left - 10);
+  const scrollTop = root.scrollTop;
+  const scrollLeft = root.scrollLeft;
+  const safeTop = scrollTop + Math.max(10, parseCssPx(root, "--safe-area-inset-top") - rootRect.top + 10);
+  const safeBottom = scrollTop + Math.min(root.clientHeight - 10, win.innerHeight - parseCssPx(root, "--safe-area-inset-bottom") - rootRect.top - 10);
+  const safeLeft = scrollLeft + Math.max(10, parseCssPx(root, "--safe-area-inset-left") - rootRect.left + 10);
+  const safeRight = scrollLeft + Math.min(root.clientWidth - 10, win.innerWidth - parseCssPx(root, "--safe-area-inset-right") - rootRect.left - 10);
   const height = el.offsetHeight || el.getBoundingClientRect().height;
   const width = el.offsetWidth || el.getBoundingClientRect().width;
-  const spaceAbove = rect.top - safeTop;
-  const spaceBelow = safeBottom - rect.bottom;
+  const anchor = {
+    left: rect.left + scrollLeft,
+    right: rect.right + scrollLeft,
+    top: rect.top + scrollTop,
+    bottom: rect.bottom + scrollTop,
+  };
+  const spaceAbove = anchor.top - safeTop;
+  const spaceBelow = safeBottom - anchor.bottom;
   const preferBelow = spaceBelow >= height + gap || spaceBelow >= spaceAbove;
   const align = direction === "auto"
     ? win.getComputedStyle(el).direction === "rtl" ? "right" : "left"
@@ -159,11 +167,11 @@ function positionSuggestion(
   el.style.position = "absolute";
   el.style.maxHeight = "";
   if (preferBelow) {
-    el.style.top = `${rect.bottom + gap}px`;
+    el.style.top = `${anchor.bottom + gap}px`;
     el.style.bottom = "";
   } else {
     el.style.top = "";
-    el.style.bottom = `${Math.max(0, root.clientHeight - rect.top + gap)}px`;
+    el.style.bottom = `${Math.max(0, Math.max(root.scrollHeight, root.clientHeight) - anchor.top + gap)}px`;
   }
 
   if (spaceAbove < height + gap && spaceBelow < height + gap) {
@@ -171,16 +179,17 @@ function positionSuggestion(
   }
 
   if (align === "left") {
-    let left = rect.left;
+    let left = anchor.left;
     if (left < safeLeft) left = safeLeft;
     if (left + width > safeRight) left = safeRight - width;
     el.style.left = `${Math.max(safeLeft, left)}px`;
     el.style.right = "";
   } else {
-    let right = root.clientWidth - rect.right;
-    const rightEdge = root.clientWidth - right;
-    if (rightEdge > safeRight) right = root.clientWidth - safeRight;
-    if (rightEdge - width < safeLeft) right = root.clientWidth - safeLeft - width;
+    const rootWidth = Math.max(root.scrollWidth, root.clientWidth);
+    let right = rootWidth - anchor.right;
+    const rightEdge = rootWidth - right;
+    if (rightEdge > safeRight) right = rootWidth - safeRight;
+    if (rightEdge - width < safeLeft) right = rootWidth - safeLeft - width;
     el.style.left = "";
     el.style.right = `${Math.max(0, right)}px`;
   }
@@ -196,7 +205,7 @@ function parseCssPx(el: HTMLElement, property: string): number {
 export abstract class AbstractInputSuggest<T> extends PopoverSuggest<T> {
   limit = 100;
   private selectCb: ((value: T, event: MouseEvent | KeyboardEvent) => void) | null = null;
-  private lastRect: DOMRect | null = null;
+  private lastRect: Pick<DOMRect, "left" | "right" | "top" | "bottom"> | null = null;
 
   constructor(app: App, readonly textInputEl: HTMLInputElement | HTMLTextAreaElement | HTMLElement) {
     super(app, app.scope, textInputEl.ownerDocument);
@@ -266,21 +275,21 @@ export abstract class AbstractInputSuggest<T> extends PopoverSuggest<T> {
     this.textInputEl.ownerDocument.removeEventListener("scroll", this.autoReposition, { capture: true });
   }
 
-  override reposition(rect: DOMRect): void {
+  override reposition(rect: Pick<DOMRect, "left" | "right" | "top" | "bottom">): void {
     super.reposition(rect);
     this.lastRect = rect;
   }
 
   override open(): void {
     super.open();
-    const rect = this.textInputEl.getBoundingClientRect();
+    const rect = projectRectToWindow(this.textInputEl.getBoundingClientRect(), this.textInputEl.ownerDocument.defaultView ?? window, this.suggestEl.ownerDocument.defaultView ?? window);
     this.reposition(rect);
     this.textInputEl.ownerDocument.addEventListener("scroll", this.autoReposition, { capture: true, passive: true });
   }
 
   autoReposition(): void {
     if (!this.lastRect) return;
-    const rect = this.textInputEl.getBoundingClientRect();
+    const rect = projectRectToWindow(this.textInputEl.getBoundingClientRect(), this.textInputEl.ownerDocument.defaultView ?? window, this.suggestEl.ownerDocument.defaultView ?? window);
     if (
       rect.bottom === this.lastRect.bottom
       && rect.top === this.lastRect.top
@@ -291,6 +300,29 @@ export abstract class AbstractInputSuggest<T> extends PopoverSuggest<T> {
   }
 
   abstract getSuggestions(inputStr: string): T[] | Promise<T[]>;
+}
+
+function projectRectToWindow(
+  rect: Pick<DOMRect, "left" | "right" | "top" | "bottom">,
+  fromWin: Window,
+  toWin: Window,
+): Pick<DOMRect, "left" | "right" | "top" | "bottom"> {
+  let current = fromWin;
+  let projected = rect;
+  while (current !== toWin && current.frameElement instanceof HTMLElement) {
+    const frame = current.frameElement;
+    const frameRect = frame.getBoundingClientRect();
+    const scale = frame.clientWidth ? frameRect.width / frame.clientWidth : 1;
+    projected = {
+      left: projected.left * scale + frameRect.left,
+      right: projected.right * scale + frameRect.left,
+      top: projected.top * scale + frameRect.top,
+      bottom: projected.bottom * scale + frameRect.top,
+    };
+    if (!current.parent || current.parent === current) break;
+    current = current.parent;
+  }
+  return projected;
 }
 
 function isTextValueElement(el: HTMLElement): el is HTMLInputElement | HTMLTextAreaElement {

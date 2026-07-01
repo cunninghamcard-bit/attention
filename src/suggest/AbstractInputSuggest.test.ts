@@ -283,6 +283,24 @@ describe("AbstractInputSuggest", () => {
     expect(suggest.getValue()).toBe("folder/note");
   });
 
+  it("positions suggestions from input rect plus document scroll", () => {
+    const input = inputEl();
+    const suggest = new FruitSuggest(createApp(), input);
+    Object.defineProperty(document.documentElement, "clientWidth", { configurable: true, value: 800 });
+    Object.defineProperty(document.documentElement, "clientHeight", { configurable: true, value: 600 });
+    Object.defineProperty(document.documentElement, "scrollLeft", { configurable: true, value: 30 });
+    Object.defineProperty(document.documentElement, "scrollTop", { configurable: true, value: 200 });
+    Object.defineProperty(input, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({ left: 20, right: 120, top: 30, bottom: 50, width: 100, height: 20 }),
+    });
+
+    suggest.open();
+
+    expect(suggest.suggestEl.style.left).toBe("50px");
+    expect(suggest.suggestEl.style.top).toBe("255px");
+  });
+
   it("attaches suggestions to the input ownerDocument for popout-like documents", () => {
     const popoutDom = new JSDOM("<!doctype html><html><body><input id=\"popout-input\"></body></html>", { pretendToBeVisual: true });
     try {
