@@ -19,7 +19,8 @@ export class MarkdownPostProcessorRegistry {
   }
 
   unregister(processor: MarkdownPostProcessor): void {
-    this.processors = this.processors.filter((item) => item.processor !== processor);
+    const index = this.processors.findIndex((item) => item.processor === processor);
+    if (index !== -1) this.processors.splice(index, 1);
   }
 
   run(element: HTMLElement, context: MarkdownPostProcessorRunContext): void {

@@ -576,6 +576,27 @@ describe("MarkdownPreviewRenderer", () => {
       MarkdownPreviewRenderer.unregisterPostProcessor(earlier);
     }
   });
+
+  it("unregisters only one matching postprocessor registration like Obsidian", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const container = document.createElement("div");
+    let calls = 0;
+    const processor: MarkdownPostProcessor = () => {
+      calls += 1;
+    };
+
+    MarkdownPreviewRenderer.registerPostProcessor(processor);
+    MarkdownPreviewRenderer.registerPostProcessor(processor);
+    MarkdownPreviewRenderer.unregisterPostProcessor(processor);
+    try {
+      await MarkdownRenderer.render(app, "Body", container, "note.md");
+
+      expect(calls).toBe(1);
+    } finally {
+      MarkdownPreviewRenderer.unregisterPostProcessor(processor);
+    }
+  });
 });
 
 class CountingRenderChild extends MarkdownRenderChild {
