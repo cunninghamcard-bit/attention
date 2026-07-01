@@ -1,7 +1,7 @@
 import type { App } from "../app/App";
 
 export interface InlineRenderContext {
-  app: App;
+  app: App | null;
   sourcePath: string;
 }
 

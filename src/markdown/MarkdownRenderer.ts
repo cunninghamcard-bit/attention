@@ -26,7 +26,7 @@ export interface MarkdownPostProcessorContext {
 }
 
 interface InternalMarkdownPostProcessorContext extends MarkdownPostProcessorContext {
-  app: App;
+  app: App | null;
   containerEl: HTMLElement;
   el: HTMLElement;
   displayMode: boolean;
@@ -113,14 +113,12 @@ export abstract class MarkdownRenderer extends MarkdownRenderChild implements Ma
     };
   }
 
-  static renderMarkdown(markdown: string, container: HTMLElement, sourcePath: string, component: Component): Promise<void> {
-    const app = getAppFromComponent(component);
-    if (!app) return Promise.reject(new Error("MarkdownRenderer.renderMarkdown requires a component attached to an app"));
-    return this.render(app, markdown, container, sourcePath, component);
+  static renderMarkdown(markdown: string, container: HTMLElement, sourcePath: string, component?: Component): Promise<void> {
+    return this.render(null, markdown, container, sourcePath, component);
   }
 
   static async render(
-    app: App,
+    app: App | null,
     markdown: string,
     container: HTMLElement,
     sourcePath: string,
@@ -161,7 +159,7 @@ export abstract class MarkdownRenderer extends MarkdownRenderChild implements Ma
       root.className = "markdown-rendered";
       container.appendChild(root);
     }
-    this.installInternalLinkHandlers(app, options.containerEl ?? root, sourcePath);
+    if (app) this.installInternalLinkHandlers(app, options.containerEl ?? root, sourcePath);
 
     const sections: HTMLElement[] = [];
     for (const block of this.parser.parse(markdown)) {
@@ -389,12 +387,6 @@ function copySectionAttributes(from: HTMLElement, to: HTMLElement): void {
   if (from.dataset.line) to.dataset.line = from.dataset.line;
   if (from.dataset.lineStart) to.dataset.lineStart = from.dataset.lineStart;
   if (from.dataset.lineEnd) to.dataset.lineEnd = from.dataset.lineEnd;
-}
-
-function getAppFromComponent(component: Component): App | null {
-  const componentApp = (component as Component & { app?: App }).app;
-  if (componentApp) return componentApp;
-  return (window as Window & { app?: App }).app ?? null;
 }
 
 function cleanupRenderChildren(

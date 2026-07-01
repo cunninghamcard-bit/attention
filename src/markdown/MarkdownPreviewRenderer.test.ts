@@ -65,6 +65,17 @@ describe("MarkdownPreviewRenderer", () => {
     owner.unload();
   });
 
+  it("renders public renderMarkdown without an app-bound component like Obsidian", async () => {
+    const owner = new Component();
+    owner.load();
+    const container = document.createElement("div");
+
+    await MarkdownRenderer.renderMarkdown("Body", container, "note.md", owner);
+
+    expect(container.querySelector("p")?.textContent).toBe("Body");
+    owner.unload();
+  });
+
   it("runs later postprocessors before waiting for earlier async postprocessors", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
