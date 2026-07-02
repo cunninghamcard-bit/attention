@@ -184,6 +184,42 @@ markdown-it plugins via parser config              syntax extensions
 - The host owns lifecycle, cleanup, layout, persistence and safety; plugins
   register capabilities (same rule as docs/extension-points.md).
 
+## The extension pattern (one formula, three scales)
+
+The same shape repeats at every scale of this app, and it is the formula to
+copy when opening a new rendering domain (AgentView panels, artifacts):
+
+```text
+a rendering domain = a typed producer registry
+                   + the shared decoration chain
+                   + the shared element vocabulary
+```
+
+| scale            | producer registry                        | decoration chain      |
+|------------------|------------------------------------------|-----------------------|
+| workspace        | registerView(type -> View)               | —                     |
+| markdown content | code block processors (language -> fn)   | postProcessor chain   |
+| agent content    | tool renderers (toolName -> fn) + parts  | the SAME chain        |
+
+Real Obsidian's reading view keeps its producer set closed, which is why its
+plugin ecosystem fakes new block types through code fences. The agent domain
+keeps its producer registry open on purpose.
+
+Content vs structure rule: content goes through the markdown pipeline;
+structure goes through registries. The boundary is typed — postProcessors
+receive rendered DOM, so anything that must be dispatched BEFORE rendering
+(tool parts, attachments) cannot ride the pipeline.
+
+## The view ladder
+
+```text
+View -> ItemView -> StreamView -> ChatView
+                 (our tier: a view whose content is a growing stream —
+                  stick-to-bottom scroll region + coalesced change sync;
+                  future streaming views (run logs, artifacts) extend it;
+                  never exported from the obsidian module)
+```
+
 ## Element contract
 
 ChatView does not invent an element dialect: rendered chat DOM speaks

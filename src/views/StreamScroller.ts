@@ -5,13 +5,13 @@ const BOTTOM_THRESHOLD = 48;
 
 // Stick-to-bottom state machine: follow the stream while the user is at the
 // bottom, detach the moment they scroll up, offer a way back down.
-export class ChatScroller extends Component {
+export class StreamScroller extends Component {
   private readonly buttonEl: HTMLElement;
   private stuck = true;
 
   constructor(private readonly scrollEl: HTMLElement, overlayEl: HTMLElement) {
     super();
-    this.buttonEl = createEl("button", { cls: "chat-scroll-bottom", parent: overlayEl, text: "↓" });
+    this.buttonEl = createEl("button", { cls: "stream-scroll-bottom", parent: overlayEl, text: "↓" });
     this.buttonEl.hide();
   }
 

@@ -2,11 +2,10 @@ import { createDiv } from "../dom/dom";
 import { writeClipboardText } from "../dom/Clipboard";
 import { Notice } from "../ui/Notice";
 import type { Menu } from "../ui/Menu";
-import { ItemView } from "../views/ItemView";
+import { StreamView } from "../views/StreamView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
 import { ChatComposer } from "./ChatComposer";
 import { ChatMessageList } from "./ChatMessageList";
-import { ChatScroller } from "./ChatScroller";
 import { chatTranscriptToMarkdown, type ChatAttachmentPayload, type Agent } from "./Agent";
 import { ensureChatStyles } from "./ChatStyles";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
@@ -21,7 +20,7 @@ interface ChatViewEphemeralState {
   scrollTop?: number;
 }
 
-export class ChatView extends ItemView {
+export class ChatView extends StreamView {
   override icon = "lucide-message-circle";
   override navigation = true;
   private agentId = "default";
@@ -29,11 +28,8 @@ export class ChatView extends ItemView {
   private session: Agent | null = null;
   private list: ChatMessageList | null = null;
   private composer: ChatComposer | null = null;
-  private scroller: ChatScroller | null = null;
-  private scrollEl: HTMLElement | null = null;
   private errorEl: HTMLElement | null = null;
   private stopActionEl: HTMLElement | null = null;
-  private syncScheduled = false;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
@@ -121,14 +117,13 @@ export class ChatView extends ItemView {
     this.contentEl.empty();
 
     this.session = this.app.agents.get(agentId);
-    this.scrollEl = createDiv("chat-scroll", this.contentEl);
+    const scrollEl = this.createStreamRegion("chat-scroll");
     // Chat speaks MarkdownView's element vocabulary, so the same delegated
     // handlers give internal links their click/hover/context-menu behavior.
     (MarkdownRenderer as unknown as {
       installInternalLinkHandlers(app: App, root: HTMLElement, sourcePath: string): void;
-    }).installInternalLinkHandlers(this.app, this.scrollEl, `agent://${agentId}`);
-    this.list = this.addChild(new ChatMessageList(this.scrollEl, this.session));
-    this.scroller = this.addChild(new ChatScroller(this.scrollEl, this.scrollEl));
+    }).installInternalLinkHandlers(this.app, scrollEl, `agent://${agentId}`);
+    this.list = this.addChild(new ChatMessageList(scrollEl, this.session));
     this.errorEl = createDiv("chat-error", this.contentEl);
     this.errorEl.hide();
     this.composer = this.addChild(
@@ -179,26 +174,14 @@ export class ChatView extends ItemView {
     this.leaf.tabHeaderInnerTitleEl.textContent = this.getDisplayText();
   }
 
-  // One animation frame coalesces any number of part deltas into a single
-  // parse + DOM update pass. rAF never fires in background tabs, so a timer
-  // races it — whichever lands first flushes, the other becomes a no-op.
-  private scheduleSync(): void {
-    if (this.syncScheduled) return;
-    this.syncScheduled = true;
-    const flush = () => {
-      if (!this.syncScheduled) return;
-      this.syncScheduled = false;
-      this.list?.sync();
-      this.composer?.syncRunning();
-      this.stopActionEl?.toggle(this.isRunning());
-      this.refreshTitle();
-      if (this.session?.state.lastError && this.errorEl) {
-        this.errorEl.setText(this.session.state.lastError);
-        this.errorEl.show();
-      }
-      this.scroller?.notifyContentChanged();
-    };
-    requestAnimationFrame(flush);
-    window.setTimeout(flush, 50);
+  protected onStreamSync(): void {
+    this.list?.sync();
+    this.composer?.syncRunning();
+    this.stopActionEl?.toggle(this.isRunning());
+    this.refreshTitle();
+    if (this.session?.state.lastError && this.errorEl) {
+      this.errorEl.setText(this.session.state.lastError);
+      this.errorEl.show();
+    }
   }
 }
