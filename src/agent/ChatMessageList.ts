@@ -3,7 +3,7 @@ import { createDiv, createEl, createSpan } from "../dom/dom";
 import { Component } from "../core/Component";
 import { getChatToolRenderer, listChatMessageActions } from "./ChatRegistry";
 import type { ChatMessage, ChatPart, Agent, ToolChatPart } from "./Agent";
-import { StreamMarkdownRenderer } from "./StreamMarkdownRenderer";
+import { StreamMarkdownRenderer } from "../views/StreamMarkdownRenderer";
 
 class ChatPartRenderer extends Component {
   readonly el: HTMLElement;

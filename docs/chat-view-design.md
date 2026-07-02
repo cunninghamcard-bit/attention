@@ -218,6 +218,10 @@ View -> ItemView -> StreamView -> ChatView
                   stick-to-bottom scroll region + coalesced change sync;
                   future streaming views (run logs, artifacts) extend it;
                   never exported from the obsidian module)
+
+The stream family lives together in src/views: StreamView (base class),
+StreamScroller, StreamMarkdownRenderer. Rendering is composed, not
+inherited — StreamView never assumes its stream is markdown.
 ```
 
 ## Element contract
