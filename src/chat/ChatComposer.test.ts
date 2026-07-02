@@ -47,7 +47,7 @@ describe("ChatComposer (CodeMirror host)", () => {
     expect(composer.getValue()).toBe("hello world");
 
     (parentEl.querySelector(".chat-composer-send") as HTMLButtonElement).click();
-    expect(send).toHaveBeenCalledWith("hello world");
+    expect(send).toHaveBeenCalledWith("hello world", []);
     expect(composer.getValue()).toBe("");
   });
 

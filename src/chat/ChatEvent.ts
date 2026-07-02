@@ -1,6 +1,6 @@
 export type ChatRole = "user" | "assistant";
 
-export type ChatPartType = "text" | "thinking" | "tool";
+export type ChatPartType = "text" | "thinking" | "tool" | "attachment";
 
 export type ChatRunStatus = "completed" | "error" | "aborted";
 
@@ -26,6 +26,7 @@ export interface ChatPartOpenedEvent extends ChatEventBase {
   partIndex: number;
   partType: ChatPartType;
   toolName?: string;
+  name?: string;
 }
 
 export interface ChatPartDeltaEvent extends ChatEventBase {

@@ -7,7 +7,7 @@ import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
 import { ChatComposer } from "./ChatComposer";
 import { ChatMessageList } from "./ChatMessageList";
 import { ChatScroller } from "./ChatScroller";
-import { chatTranscriptToMarkdown, getChatSession, type ChatSession } from "./ChatSession";
+import { chatTranscriptToMarkdown, getChatSession, type ChatAttachmentPayload, type ChatSession } from "./ChatSession";
 import { ChatTransport } from "./ChatTransport";
 import { ensureChatStyles } from "./ChatStyles";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
@@ -133,12 +133,16 @@ export class ChatView extends ItemView {
     this.errorEl = createDiv("chat-error", this.contentEl);
     this.errorEl.hide();
     this.composer = this.addChild(
-      new ChatComposer(this.contentEl, {
-        send: (text) => void this.sendMessage(text),
-        stop: () => void this.stopRun(),
-        isRunning: () => this.isRunning(),
-        getWikilinkTargets: () => this.app.vault.getMarkdownFiles().map((file) => file.basename),
-      }),
+      new ChatComposer(
+        this.contentEl,
+        {
+          send: (text, attachments) => void this.sendMessage(text, attachments),
+          stop: () => void this.stopRun(),
+          isRunning: () => this.isRunning(),
+          getWikilinkTargets: () => this.app.vault.getMarkdownFiles().map((file) => file.basename),
+        },
+        { threadId },
+      ),
     );
 
     this.registerEvent(this.session.on("changed", () => this.scheduleSync()));
@@ -146,10 +150,10 @@ export class ChatView extends ItemView {
     this.composer.focus();
   }
 
-  private async sendMessage(text: string): Promise<void> {
+  private async sendMessage(text: string, attachments: ChatAttachmentPayload[] = []): Promise<void> {
     try {
       this.errorEl?.hide();
-      await this.session?.sendMessage(text);
+      await this.session?.sendMessage(text, attachments);
     } catch (error) {
       if (this.errorEl) {
         this.errorEl.setText(`Cannot reach the chat bridge: ${error instanceof Error ? error.message : String(error)}`);

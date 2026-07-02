@@ -31,11 +31,22 @@ class ChatPartRenderer extends Component {
     this.lastSignature = signature;
     this.applyDataAttributes(part);
     if (part.type === "tool") this.syncTool(part);
+    else if (part.type === "attachment") this.syncAttachment(part);
     else this.syncText(part);
+  }
+
+  private syncAttachment(part: Extract<ChatPart, { type: "attachment" }>): void {
+    this.el.className = "chat-part chat-part-attachment";
+    this.el.empty();
+    const headerEl = createDiv("chat-attachment-header", this.el);
+    createSpan({ cls: "chat-attachment-name", text: part.name, parent: headerEl });
+    createSpan({ cls: "chat-attachment-meta", text: `${part.content.split("\n").length} lines`, parent: headerEl });
+    createEl("pre", { cls: "chat-attachment-content", text: part.content, parent: this.el });
   }
 
   private signatureOf(part: ChatPart): string {
     if (part.type === "tool") return `tool:${part.closed}:${part.input.length}:${part.result?.length ?? -1}`;
+    if (part.type === "attachment") return `attachment:${part.closed}:${part.content.length}`;
     return `${part.type}:${part.closed}:${part.markdown.length}`;
   }
 

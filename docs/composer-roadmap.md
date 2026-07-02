@@ -13,21 +13,30 @@ All of that is CM6 core or our autocomplete pipeline. Zero code, already done.
 
 ## Adopt (planned, in priority order)
 
-### P1 — Paste triage + PastedContentCard
+### P1 — Paste triage + attachment cards (in-memory)
 
 arkloop's paste pipeline, the single highest-value pattern:
 
 ```text
 paste event
   ├─ has files            -> attachment flow (rate-limited 1/s)
-  ├─ text >= 20 lines     -> becomes a PastedContentCard, not inline text
+  ├─ text >= 20 lines     -> becomes an attachment card, not inline text
   └─ multi-blank-line text -> collapse \n{2,} -> \n, insert inline
 ```
 
 Long agent-prompt pastes staying out of the editable draft is what keeps the
 composer usable. Requires the send payload to grow from `text` to parts:
-`sendMessage({ text, parts: [PastedContentPart...] })` — the canonical event
-model already has room (user message = Part[]).
+`sendMessage({ text, attachments })` — the canonical event model already has
+room (user message = Part[], attachment part type).
+
+Decision (revised during review): attachments are composer memory, exactly
+like arkloop — a ChatAttachmentBar component owns the list, cards render
+above the editor, content ships with the payload. A vault-file-backed
+variant (paste writes a note, draft holds ![[embed]], Obsidian's
+pasted-image pattern) was designed and rejected: it creates vault files
+before the user ever sends, accumulates orphans with no reclaim story, and
+conflates transient chat drafts with the knowledge base. Vault integration
+stays where it already works — [[wikilinks]] the user types deliberately.
 
 ### P2 — Draft persistence + input history
 

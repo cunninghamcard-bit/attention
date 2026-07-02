@@ -3,6 +3,7 @@ import type { SettingTab } from "../app/SettingRegistry";
 import { setIcon } from "../ui/Icon";
 import { Setting, SettingGroup } from "../ui/Setting";
 import { DEFAULT_CHAT_BRIDGE_URL } from "./ChatTransport";
+import { DEFAULT_PASTE_CARD_THRESHOLD } from "./ChatComposerPaste";
 
 export class ChatSettingTab implements SettingTab {
   readonly id = "chat";
@@ -38,6 +39,19 @@ export class ChatSettingTab implements SettingTab {
           const trimmed = value.trim();
           if (trimmed) window.localStorage?.setItem("chat-bridge-url", trimmed);
           else window.localStorage?.removeItem("chat-bridge-url");
+        }));
+
+    const composerGroup = new SettingGroup(this.containerEl).setHeading("Composer");
+    new Setting(composerGroup.itemsEl)
+      .setName("Paste-to-card threshold")
+      .setDesc(`Pasted text with at least this many lines becomes an attachment card instead of inline text. Default ${DEFAULT_PASTE_CARD_THRESHOLD}.`)
+      .addText((text) => text
+        .setPlaceholder(String(DEFAULT_PASTE_CARD_THRESHOLD))
+        .setValue(window.localStorage?.getItem("chat-paste-threshold") ?? "")
+        .onChange((value) => {
+          const parsed = Number(value.trim());
+          if (Number.isFinite(parsed) && parsed > 0) window.localStorage?.setItem("chat-paste-threshold", String(parsed));
+          else window.localStorage?.removeItem("chat-paste-threshold");
         }));
   }
 }

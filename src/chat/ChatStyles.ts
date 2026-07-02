@@ -45,6 +45,15 @@ export function ensureChatStyles(): void {
     .chat-composer-input .cm-content { padding: 10px 12px; font: inherit; min-height: 24px; }
     .chat-composer-input .cm-line { padding: 0; }
     .chat-composer-input .cm-placeholder { color: var(--text-muted, #999); }
+    .chat-attachment-bar { max-width: 760px; margin: 0 auto 8px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .chat-attachment-card { display: flex; align-items: center; gap: 8px; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); border-radius: 6px; padding: 6px 10px; font-size: 0.85em; background: var(--background-primary-alt, rgba(120,120,140,0.06)); }
+    .chat-attachment-name { font-weight: 600; }
+    .chat-attachment-meta { opacity: 0.55; font-size: 0.9em; }
+    .chat-attachment-remove { border: none; background: none; cursor: pointer; opacity: 0.5; font-size: 14px; padding: 0 2px; }
+    .chat-attachment-remove:hover { opacity: 1; }
+    .chat-part-attachment { border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); border-radius: 6px; padding: 8px 10px; font-size: 0.9em; }
+    .chat-attachment-header { display: flex; gap: 8px; align-items: baseline; }
+    .chat-attachment-content { margin: 6px 0 0; padding: 6px 8px; border-radius: 4px; background: var(--background-primary-alt, rgba(120,120,140,0.08)); overflow: auto; max-height: 160px; font-size: 0.85em; }
     .chat-composer-send { padding: 8px 16px; border-radius: 6px; cursor: pointer; }
     .chat-composer-send.is-running { background: var(--background-modifier-error, #c0392b); color: white; }
     .chat-slash-suggest { position: absolute; bottom: 100%; left: 24px; right: 24px; max-width: 760px; margin: 0 auto 4px; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); border-radius: 8px; background: var(--background-primary, white); box-shadow: 0 4px 18px rgba(0,0,0,0.12); overflow: hidden; z-index: 10; }

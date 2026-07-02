@@ -16,7 +16,19 @@ export interface ToolChatPart {
   closed: boolean;
 }
 
-export type ChatPart = TextChatPart | ToolChatPart;
+export interface AttachmentChatPart {
+  type: "attachment";
+  name: string;
+  content: string;
+  closed: boolean;
+}
+
+export type ChatPart = TextChatPart | ToolChatPart | AttachmentChatPart;
+
+export interface ChatAttachmentPayload {
+  name: string;
+  content: string;
+}
 
 export interface ChatMessage {
   id: string;
@@ -36,8 +48,9 @@ export function createChatSessionState(): ChatSessionState {
   return { messages: [], running: false, lastSeq: 0, lastError: null };
 }
 
-function createPart(partType: ChatPartType, toolName?: string): ChatPart {
+function createPart(partType: ChatPartType, toolName?: string, name?: string): ChatPart {
   if (partType === "tool") return { type: "tool", toolName: toolName ?? "unknown", input: "", closed: false };
+  if (partType === "attachment") return { type: "attachment", name: name ?? "attachment", content: "", closed: false };
   return { type: partType, markdown: "", closed: false };
 }
 
@@ -60,13 +73,14 @@ export function applyChatEvent(state: ChatSessionState, event: ChatEvent): boole
     case "part.opened": {
       const message = state.messages.find((item) => item.id === event.messageId);
       if (!message) return false;
-      message.parts[event.partIndex] = createPart(event.partType, event.toolName);
+      message.parts[event.partIndex] = createPart(event.partType, event.toolName, event.name);
       break;
     }
     case "part.delta": {
       const part = state.messages.find((item) => item.id === event.messageId)?.parts[event.partIndex];
       if (!part) return false;
       if (part.type === "tool") part.input += event.delta;
+      else if (part.type === "attachment") part.content += event.delta;
       else part.markdown += event.delta;
       break;
     }
@@ -129,9 +143,9 @@ export class ChatSession extends Events {
     return this.state.running;
   }
 
-  async sendMessage(text: string): Promise<void> {
+  async sendMessage(text: string, attachments: ChatAttachmentPayload[] = []): Promise<void> {
     if (!this.transport) return;
-    await this.transport.sendMessage(this.threadId, text);
+    await this.transport.sendMessage(this.threadId, text, attachments);
   }
 
   async stop(): Promise<void> {
@@ -152,6 +166,8 @@ export function chatMessageToMarkdown(message: ChatMessage): string {
     if (part.type === "tool") {
       const result = part.result !== undefined ? `\n${part.result}` : "";
       parts.push(`\`\`\`tool ${part.toolName}\n${part.input}${result}\n\`\`\``);
+    } else if (part.type === "attachment") {
+      parts.push(`\`\`\`attachment ${part.name}\n${part.content}\n\`\`\``);
     } else if (part.type === "thinking") {
       if (part.markdown.trim()) parts.push(`> ${part.markdown.trim().split("\n").join("\n> ")}`);
     } else {

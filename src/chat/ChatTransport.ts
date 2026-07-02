@@ -31,11 +31,11 @@ export class ChatTransport {
     return () => source.close();
   }
 
-  async sendMessage(threadId: string, text: string): Promise<void> {
+  async sendMessage(threadId: string, text: string, attachments: Array<{ name: string; content: string }> = []): Promise<void> {
     const response = await fetch(`${this.baseUrl}/threads/${encodeURIComponent(threadId)}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, attachments }),
     });
     if (!response.ok) throw new Error(`chat bridge rejected message: ${response.status}`);
   }

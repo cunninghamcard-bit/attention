@@ -44,13 +44,30 @@ function emit(thread: Thread, event: Omit<BridgeEvent, "seq" | "threadId">): voi
   for (const listener of thread.listeners) listener(full);
 }
 
-function emitUserMessage(thread: Thread, text: string): void {
+interface MessageAttachment {
+  name: string;
+  content: string;
+}
+
+function emitUserMessage(thread: Thread, text: string, attachments: MessageAttachment[] = []): void {
   const messageId = `${thread.id}-u${++thread.counter}`;
   emit(thread, { type: "message.started", messageId, role: "user" });
   emit(thread, { type: "part.opened", messageId, partIndex: 0, partType: "text" });
   emit(thread, { type: "part.delta", messageId, partIndex: 0, delta: text });
   emit(thread, { type: "part.closed", messageId, partIndex: 0 });
+  attachments.forEach((attachment, index) => {
+    const partIndex = index + 1;
+    emit(thread, { type: "part.opened", messageId, partIndex, partType: "attachment", name: attachment.name });
+    emit(thread, { type: "part.delta", messageId, partIndex, delta: attachment.content });
+    emit(thread, { type: "part.closed", messageId, partIndex });
+  });
   emit(thread, { type: "message.closed", messageId });
+}
+
+function composePrompt(text: string, attachments: MessageAttachment[]): string {
+  if (attachments.length === 0) return text;
+  const blocks = attachments.map((attachment) => `<attachment name="${attachment.name}">\n${attachment.content}\n</attachment>`);
+  return `${text}\n\n${blocks.join("\n\n")}`;
 }
 
 // --- Claude Code stream-json -> canonical events -------------------------
@@ -144,17 +161,18 @@ function handleEngineLine(thread: Thread, run: EngineRunState, line: string): vo
   }
 }
 
-async function runEngine(thread: Thread, text: string): Promise<void> {
+async function runEngine(thread: Thread, text: string, attachments: MessageAttachment[] = []): Promise<void> {
   const runId = `${thread.id}-r${++thread.counter}`;
   emit(thread, { type: "run.started", runId });
-  emitUserMessage(thread, text);
+  emitUserMessage(thread, text, attachments);
 
   if (MOCK) {
     await runMockEngine(thread, runId, text);
     return;
   }
 
-  const args = ["claude", "-p", text, "--output-format", "stream-json", "--include-partial-messages", "--verbose"];
+  const prompt = composePrompt(text, attachments);
+  const args = ["claude", "-p", prompt, "--output-format", "stream-json", "--include-partial-messages", "--verbose"];
   if (thread.engineSessionId) args.push("--resume", thread.engineSessionId);
   args.push(...EXTRA_CLAUDE_ARGS);
 
@@ -272,11 +290,16 @@ Bun.serve({
     const messagesMatch = url.pathname.match(/^\/threads\/([^/]+)\/messages$/);
     if (messagesMatch && request.method === "POST") {
       const thread = getThread(decodeURIComponent(messagesMatch[1]));
-      const body = (await request.json().catch(() => ({}))) as { text?: string };
+      const body = (await request.json().catch(() => ({}))) as { text?: string; attachments?: MessageAttachment[] };
       const text = String(body.text ?? "").trim();
-      if (!text) return new Response("missing text", { status: 400, headers: CORS_HEADERS });
+      const attachments = Array.isArray(body.attachments)
+        ? body.attachments
+            .filter((item) => item && typeof item.name === "string" && typeof item.content === "string")
+            .map((item) => ({ name: item.name, content: item.content }))
+        : [];
+      if (!text && attachments.length === 0) return new Response("missing text", { status: 400, headers: CORS_HEADERS });
       if (thread.proc) return new Response("run in progress", { status: 409, headers: CORS_HEADERS });
-      void runEngine(thread, text).catch((error) => {
+      void runEngine(thread, text, attachments).catch((error) => {
         emit(thread, { type: "run.closed", runId: `${thread.id}-r${thread.counter}`, status: "error", error: String(error) });
       });
       return new Response("{}", { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });

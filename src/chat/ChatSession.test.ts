@@ -46,6 +46,23 @@ describe("applyChatEvent", () => {
     expect(assistant.closed).toBe(true);
   });
 
+  it("folds attachment parts on user messages", () => {
+    const state = createChatSessionState();
+    const attachmentRun: ChatEvent[] = events("t1", [
+      { type: "run.started", runId: "r1" },
+      { type: "message.started", messageId: "u1", role: "user" },
+      { type: "part.opened", messageId: "u1", partIndex: 0, partType: "text" },
+      { type: "part.delta", messageId: "u1", partIndex: 0, delta: "看看这个" },
+      { type: "part.closed", messageId: "u1", partIndex: 0 },
+      { type: "part.opened", messageId: "u1", partIndex: 1, partType: "attachment", name: "Pasted text" },
+      { type: "part.delta", messageId: "u1", partIndex: 1, delta: "long pasted content" },
+      { type: "part.closed", messageId: "u1", partIndex: 1 },
+      { type: "message.closed", messageId: "u1" },
+    ]);
+    for (const event of attachmentRun) applyChatEvent(state, event);
+    expect(state.messages[0].parts[1]).toMatchObject({ type: "attachment", name: "Pasted text", content: "long pasted content", closed: true });
+  });
+
   it("merges a late tool result via a second part.closed", () => {
     const state = createChatSessionState();
     for (const event of streamedRun.slice(0, 13)) applyChatEvent(state, event);

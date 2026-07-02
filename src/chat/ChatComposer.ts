@@ -1,21 +1,35 @@
 import { autocompletion, completionKeymap, type Completion, type CompletionContext, type CompletionResult } from "@codemirror/autocomplete";
 import { defaultKeymap, history, historyKeymap, insertNewline } from "@codemirror/commands";
-import { Compartment, EditorState, Prec } from "@codemirror/state";
+import { Compartment, EditorState, Prec, type Extension } from "@codemirror/state";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
 import { createDiv, createEl } from "../dom/dom";
 import { Component } from "../core/Component";
+import { ChatAttachmentBar } from "./ChatAttachmentBar";
+import {
+  appendChatInputHistory,
+  chatDraftPersistence,
+  clearChatDraft,
+  readChatDraft,
+  readChatInputHistory,
+} from "./ChatComposerDrafts";
+import { composerPasteExtension } from "./ChatComposerPaste";
 import {
   listChatComposerActions,
   listChatComposerExtensions,
   listChatSlashCommands,
   onChatComposerExtensionsChanged,
 } from "./ChatRegistry";
+import type { ChatAttachmentPayload } from "./ChatSession";
 
 export interface ChatComposerCallbacks {
-  send(text: string): void;
+  send(text: string, attachments: ChatAttachmentPayload[]): void;
   stop(): void;
   isRunning(): boolean;
   getWikilinkTargets?(): string[];
+}
+
+export interface ChatComposerOptions {
+  threadId?: string;
 }
 
 // The composer is a CodeMirror extension host, the way MarkdownView's editor
@@ -23,19 +37,31 @@ export interface ChatComposerCallbacks {
 // completions ride the standard autocomplete pipeline.
 export class ChatComposer extends Component {
   readonly el: HTMLElement;
+  readonly attachmentBar: ChatAttachmentBar;
   private readonly editor: EditorView;
   private readonly sendButtonEl: HTMLButtonElement;
   private readonly pluginExtensions = new Compartment();
+  private readonly threadId: string | null;
+  private historyCursor = -1;
+  private historyStash = "";
 
-  constructor(parentEl: HTMLElement, private readonly callbacks: ChatComposerCallbacks) {
+  constructor(
+    parentEl: HTMLElement,
+    private readonly callbacks: ChatComposerCallbacks,
+    options: ChatComposerOptions = {},
+  ) {
     super();
+    this.threadId = options.threadId ?? null;
     this.el = createDiv("chat-composer", parentEl);
+    this.attachmentBar = this.addChild(new ChatAttachmentBar(this.el));
     const rowEl = createDiv("chat-composer-row", this.el);
     const editorEl = createDiv("chat-composer-input", rowEl);
 
+    const draftExtensions: Extension[] = this.threadId ? [chatDraftPersistence(this.threadId)] : [];
     this.editor = new EditorView({
       parent: editorEl,
       state: EditorState.create({
+        doc: this.threadId ? (readChatDraft(this.threadId) ?? "") : "",
         extensions: [
           history(),
           placeholder("Message… (/ for commands, [[ for notes)"),
@@ -45,8 +71,15 @@ export class ChatComposer extends Component {
           keymap.of([
             { key: "Enter", run: () => this.submit() },
             { key: "Shift-Enter", run: insertNewline },
+            { key: "ArrowUp", run: (view) => this.navigateHistory(view, -1) },
+            { key: "ArrowDown", run: (view) => this.navigateHistory(view, 1) },
           ]),
           keymap.of([...defaultKeymap, ...historyKeymap]),
+          composerPasteExtension({
+            addTextAttachment: (name, content) => this.attachmentBar.addText(name, content),
+            addFileAttachment: (file) => this.attachmentBar.addFile(file),
+          }),
+          ...draftExtensions,
           this.pluginExtensions.of(listChatComposerExtensions()),
         ],
       }),
@@ -94,9 +127,42 @@ export class ChatComposer extends Component {
 
   private submit(): boolean {
     const text = this.getValue().trim();
-    if (!text || this.callbacks.isRunning()) return true;
+    const attachments = this.attachmentBar.list().map(({ name, content }) => ({ name, content }));
+    if ((!text && attachments.length === 0) || this.callbacks.isRunning()) return true;
     this.setValue("");
-    this.callbacks.send(text);
+    this.attachmentBar.clear();
+    this.historyCursor = -1;
+    appendChatInputHistory(text);
+    if (this.threadId) clearChatDraft(this.threadId);
+    this.callbacks.send(text, attachments);
+    return true;
+  }
+
+  // ArrowUp/Down step through input history, but only when the cursor sits
+  // at the document edge — mid-document arrows keep their editing meaning.
+  private navigateHistory(view: EditorView, direction: -1 | 1): boolean {
+    const { main } = view.state.selection;
+    if (!main.empty) return false;
+    if (direction === -1 && main.head !== 0) return false;
+    if (direction === 1 && main.head !== view.state.doc.length) return false;
+    const historyItems = readChatInputHistory();
+    if (historyItems.length === 0) return false;
+
+    if (this.historyCursor === -1) {
+      if (direction === 1) return false;
+      this.historyStash = this.getValue();
+      this.historyCursor = historyItems.length - 1;
+    } else {
+      const next = this.historyCursor + direction;
+      if (next >= historyItems.length) {
+        this.historyCursor = -1;
+        this.setValue(this.historyStash);
+        return true;
+      }
+      if (next < 0) return true;
+      this.historyCursor = next;
+    }
+    this.setValue(historyItems[this.historyCursor]);
     return true;
   }
 
