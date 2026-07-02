@@ -38,7 +38,12 @@ export class Notice {
   }
 
   setMessage(message: NoticeMessage): this {
-    this.messageEl.textContent = getNoticeText(message);
+    if (typeof message === "string") {
+      this.messageEl.textContent = message;
+    } else {
+      this.messageEl.replaceChildren();
+      this.messageEl.appendChild(message);
+    }
     return this;
   }
 
@@ -84,8 +89,4 @@ export class Notice {
     this.containerEl.remove();
     if (this.noticesEl.children.length === 0) this.noticesEl.remove();
   }
-}
-
-function getNoticeText(message: NoticeMessage): string {
-  return typeof message === "string" ? message : message.textContent ?? "";
 }

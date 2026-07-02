@@ -32,9 +32,11 @@ describe("Notice DOM parity", () => {
     initial.appendChild(strong);
     const notice = new Notice(initial, 0);
 
+    // Real Obsidian appends fragment DOM (does not flatten to text).
     expect(notice.messageEl.textContent).toBe("Fragment");
-    expect(notice.messageEl.children).toHaveLength(0);
+    expect(notice.messageEl.querySelector("strong")).not.toBeNull();
 
+    // A string replaces the DOM with plain text.
     expect(notice.setMessage("Reset")).toBe(notice);
     expect(notice.messageEl.textContent).toBe("Reset");
     expect(notice.messageEl.children).toHaveLength(0);
@@ -46,7 +48,7 @@ describe("Notice DOM parity", () => {
 
     expect(notice.setMessage(next)).toBe(notice);
     expect(notice.messageEl.textContent).toBe("Next");
-    expect(notice.messageEl.children).toHaveLength(0);
+    expect(notice.messageEl.querySelector("em")).not.toBeNull();
   });
 
   it("adds CTA buttons inside a notice button container and hides on click", () => {

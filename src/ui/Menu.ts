@@ -705,6 +705,11 @@ function getOpenTopMenus(doc: Document): Set<Menu> {
   return menus;
 }
 
+/** Real `jg()`: close every open top-level menu in a document (used when a modal opens). */
+export function closeAllMenus(doc: Document): void {
+  for (const menu of [...getOpenTopMenus(doc)]) menu.hide();
+}
+
 function hideOtherTopMenus(doc: Document, except: Menu): void {
   for (const menu of [...getOpenTopMenus(doc)]) {
     if (menu !== except) menu.hide();

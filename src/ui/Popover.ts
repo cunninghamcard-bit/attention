@@ -451,7 +451,7 @@ function tooltipOptionsFromTarget(target: HTMLElement): TooltipOptions {
   };
 }
 
-function hideTooltip(): void {
+export function hideTooltip(): void {
   clearTooltipTimer();
   activeTooltipEl?.remove();
   activeTooltipEl = null;
