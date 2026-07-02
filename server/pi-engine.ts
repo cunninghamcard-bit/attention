@@ -3,12 +3,42 @@
 // Worker — pi is what along-go reimplements in Go, so mapping here is close
 // to identity and the along-go port inherits it.
 import { AuthStorage, ModelRegistry, createAgentSession, type AgentSession } from "@earendil-works/pi-coding-agent";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 export interface CanonicalEmit {
   (event: { type: string; [key: string]: unknown }): void;
 }
 
-const DEFAULT_MODEL = process.env.PI_MODEL ?? "claude-sonnet-4-5";
+// Engine config from env. PI_BASE_URL points at an Anthropic-compatible
+// endpoint (e.g. https://api.deepseek.com/anthropic) served under a custom
+// provider; unset uses pi's built-in anthropic provider + ANTHROPIC_API_KEY.
+const PROVIDER = process.env.PI_BASE_URL ? "custom" : "anthropic";
+const MODEL_ID = process.env.PI_MODEL ?? (process.env.PI_BASE_URL ? "deepseek-chat" : "claude-sonnet-4-5");
+
+let registry: { modelRegistry: ModelRegistry; authStorage: AuthStorage } | null = null;
+
+function getRegistry(): { modelRegistry: ModelRegistry; authStorage: AuthStorage } {
+  if (registry) return registry;
+  if (process.env.PI_BASE_URL) {
+    // Custom Anthropic-compatible provider; key stays a runtime override
+    // (never written to disk), the temp models.json holds only the shape.
+    const dir = mkdtempSync(join(tmpdir(), "pi-engine-"));
+    const modelsPath = join(dir, "models.json");
+    writeFileSync(
+      modelsPath,
+      JSON.stringify({ providers: { custom: { baseUrl: process.env.PI_BASE_URL, api: "anthropic-messages", models: [{ id: MODEL_ID }] } } }),
+    );
+    const authStorage = AuthStorage.create(join(dir, "auth.json"));
+    if (process.env.PI_API_KEY) authStorage.setRuntimeApiKey("custom", process.env.PI_API_KEY);
+    registry = { modelRegistry: ModelRegistry.create(authStorage, modelsPath), authStorage };
+  } else {
+    const authStorage = AuthStorage.create();
+    registry = { modelRegistry: ModelRegistry.create(authStorage), authStorage };
+  }
+  return registry;
+}
 
 const sessions = new Map<string, { session: AgentSession; counter: number }>();
 
@@ -16,46 +46,57 @@ async function ensureSession(agentId: string): Promise<AgentSession> {
   const existing = sessions.get(agentId);
   if (existing) return existing.session;
 
-  const authStorage = AuthStorage.create();
-  const modelRegistry = ModelRegistry.create(authStorage);
-  const model = modelRegistry.find("anthropic", DEFAULT_MODEL);
-  if (!model) throw new Error(`Unknown model anthropic/${DEFAULT_MODEL}`);
+  const { modelRegistry, authStorage } = getRegistry();
+  const model = modelRegistry.find(PROVIDER, MODEL_ID);
+  if (!model) throw new Error(`Unknown model ${PROVIDER}/${MODEL_ID}`);
 
-  const { session } = await createAgentSession({ model, modelRegistry, authStorage });
+  // Sandbox each agent's working dir: this dev bridge drives a real coding
+  // agent with bash/edit/write, so keep it out of the repo. PI_CWD overrides.
+  const cwd = process.env.PI_CWD ?? mkdtempSync(join(tmpdir(), `agent-${agentId}-`));
+  const { session } = await createAgentSession({ model, modelRegistry, authStorage, cwd });
   sessions.set(agentId, { session, counter: 0 });
   return session;
 }
 
 // Pi emits structured events already; the transform is mostly a rename plus
 // splitting assistant-message deltas into our text/thinking/tool parts.
-// ponytail: mapping is derived from pi's typed event union but not yet
-// runtime-verified against real assistant output (needs an anthropic key);
-// the structural shape is proven, adjust field names on first keyed run.
+// message.started is emitted lazily on the first real part, so pi's empty
+// turn-boundary messages produce no canonical noise. Verified end to end
+// against DeepSeek's Anthropic-compatible endpoint.
 function bridgeEvents(agentId: string, session: AgentSession, emit: CanonicalEmit): void {
-  const messageId = () => `${agentId}-a${(sessions.get(agentId)!.counter += 1)}`;
+  const nextMessageId = () => `${agentId}-a${(sessions.get(agentId)!.counter += 1)}`;
   let currentMessageId: string | null = null;
+  let messageStarted = false;
   // pi content index -> our part index + type; tool calls carry their id.
   const openParts = new Map<number, { partIndex: number; type: string }>();
-  const toolParts = new Map<string, { partIndex: number }>();
+  const toolParts = new Map<string, { partIndex: number; messageId: string }>();
   let nextPartIndex = 0;
+
+  const ensureStarted = (): string => {
+    if (!currentMessageId) currentMessageId = nextMessageId();
+    if (!messageStarted) {
+      messageStarted = true;
+      emit({ type: "message.started", messageId: currentMessageId, role: "assistant" });
+    }
+    return currentMessageId;
+  };
 
   session.subscribe((event) => {
     switch (event.type) {
       case "message_start": {
-        currentMessageId = messageId();
+        currentMessageId = null;
+        messageStarted = false;
         openParts.clear();
         nextPartIndex = 0;
-        emit({ type: "message.started", messageId: currentMessageId, role: "assistant" });
         return;
       }
       case "message_update": {
-        if (!currentMessageId) return;
         const inner = (event as { assistantMessageEvent?: { type: string; contentIndex?: number; delta?: string; toolCall?: { id: string; name: string; arguments?: unknown } } }).assistantMessageEvent;
         if (!inner) return;
-        const mid = currentMessageId;
         switch (inner.type) {
           case "text_start":
           case "thinking_start": {
+            const mid = ensureStarted();
             const partIndex = nextPartIndex++;
             const partType = inner.type === "thinking_start" ? "thinking" : "text";
             openParts.set(inner.contentIndex!, { partIndex, type: partType });
@@ -65,19 +106,20 @@ function bridgeEvents(agentId: string, session: AgentSession, emit: CanonicalEmi
           case "text_delta":
           case "thinking_delta": {
             const part = openParts.get(inner.contentIndex!);
-            if (part) emit({ type: "part.delta", messageId: mid, partIndex: part.partIndex, delta: inner.delta ?? "" });
+            if (part && currentMessageId) emit({ type: "part.delta", messageId: currentMessageId, partIndex: part.partIndex, delta: inner.delta ?? "" });
             return;
           }
           case "text_end":
           case "thinking_end": {
             const part = openParts.get(inner.contentIndex!);
-            if (part) emit({ type: "part.closed", messageId: mid, partIndex: part.partIndex });
+            if (part && currentMessageId) emit({ type: "part.closed", messageId: currentMessageId, partIndex: part.partIndex });
             return;
           }
           case "toolcall_end": {
+            const mid = ensureStarted();
             const call = inner.toolCall!;
             const partIndex = nextPartIndex++;
-            toolParts.set(call.id, { partIndex });
+            toolParts.set(call.id, { partIndex, messageId: mid });
             emit({ type: "part.opened", messageId: mid, partIndex, partType: "tool", toolName: call.name });
             emit({ type: "part.delta", messageId: mid, partIndex, delta: JSON.stringify(call.arguments ?? {}) });
             emit({ type: "part.closed", messageId: mid, partIndex });
@@ -92,11 +134,13 @@ function bridgeEvents(agentId: string, session: AgentSession, emit: CanonicalEmi
         return;
       }
       case "tool_execution_end": {
+        // Fires after the assistant message closed, so use the tool part's
+        // own message id, not currentMessageId (already null by now).
         const target = toolParts.get((event as { toolCallId: string }).toolCallId);
-        if (!target || !currentMessageId) return;
+        if (!target) return;
         const raw = (event as { result?: { content?: Array<{ text?: string }> } }).result;
         const result = raw?.content?.map((c) => c.text ?? "").join("\n") ?? "";
-        emit({ type: "part.closed", messageId: currentMessageId, partIndex: target.partIndex, result });
+        emit({ type: "part.closed", messageId: target.messageId, partIndex: target.partIndex, result });
         return;
       }
       case "compaction_start": {
