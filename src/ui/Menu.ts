@@ -145,7 +145,9 @@ export class MenuItem {
     }
     if (this.submenu) {
       event.preventDefault();
-      this.menu.openSubmenu(this);
+      // Real Obsidian selects the parent item first (marking it and closing
+      // sibling submenus), which then opens this submenu.
+      this.menu.selectElement(this.dom, true);
       return;
     }
     this.callback?.(event);
@@ -339,7 +341,8 @@ export class Menu extends Component implements HistoryHandler {
 
     const ordered: Array<MenuItem | MenuSeparator> = [];
     const renderedSubmenus = new Map<string, MenuItem>();
-    let previousTopSection: string | null = null;
+    // Real `c`: the full previous section string (not just its top prefix).
+    let previousSection: string | null = null;
 
     for (const section of sections) {
       const bucket = buckets[section];
@@ -354,14 +357,16 @@ export class Menu extends Component implements HistoryHandler {
             submenuItem.submenu.items.push(item);
           }
         }
-        previousTopSection = topSection(section);
+        previousSection = section;
         continue;
       }
 
+      // Real: separator when the full previous section differs from this
+      // section's top prefix (c !== g).
       const nextTopSection = topSection(section);
-      if (previousTopSection !== null && previousTopSection !== nextTopSection) ordered.push(new MenuSeparator(this));
+      if (previousSection !== null && previousSection !== nextTopSection) ordered.push(new MenuSeparator(this));
       ordered.push(...bucket);
-      previousTopSection = nextTopSection;
+      previousSection = section;
     }
 
     if (!sections.includes("") && buckets[""].length > 0) {
