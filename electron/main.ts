@@ -16,6 +16,7 @@ import { registerIpcHandlers } from "./ipc";
 import { performNetRequest } from "./net-request";
 import { handleObsidianUrl, obsidianUrlFromArgv } from "./obsidian-protocol";
 import { registerSessionHardening } from "./session-hardening";
+import { registerDesktopBridgeIpc } from "./desktop-bridge";
 import { applyMenu, updateMenuItems } from "./menu";
 import type { SystemMenuItem } from "../src/desktop/SystemMenuBuilder";
 
@@ -157,6 +158,7 @@ if (!gotLock) {
       isWindows: process.platform === "win32",
     });
     registerSessionHardening();
+    registerDesktopBridgeIpc();
     ipcMain.on("set-menu", (event, arg: { template: SystemMenuItem[] }) => {
       const win = BrowserWindow.fromWebContents(event.sender);
       if (win) applyMenu(win, arg.template);
