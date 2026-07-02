@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { App } from "../app/App";
 import type { ChatEvent } from "./ChatEvent";
-import { newChatThreadId } from "./ChatPlugin";
+import { newChatThreadId } from "./ChatBuiltin";
 import { getChatSession } from "./ChatSession";
 import { ChatTransport } from "./ChatTransport";
 import { ChatView } from "./ChatView";
 
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
 
-describe("Chat core plugin", () => {
-  it("registers the chat view, commands and ribbon through the core plugin pipeline", async () => {
+describe("Chat builtin", () => {
+  it("registers the chat view and commands as builtins, not as a togglable core plugin", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
 
-    expect(app.internalPlugins.getPluginById("chat")?.enabled).toBe(true);
+    expect(app.internalPlugins.getPluginById("chat")).toBeNull();
     expect(app.viewRegistry.getViewCreatorByType("chat")).toBeTypeOf("function");
 
     app.commands.executeCommandById("chat:open");

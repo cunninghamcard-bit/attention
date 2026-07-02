@@ -38,6 +38,8 @@ import { HotkeyManager } from "../hotkeys/HotkeyManager";
 import { Keymap } from "../hotkeys/Keymap";
 import { WorkspaceServices } from "./WorkspaceServices";
 import { registerAppCommands } from "./AppCommands";
+import { registerChatBuiltin } from "../chat/ChatBuiltin";
+import { ChatSettingTab } from "../chat/ChatSettingTab";
 import { registerAppProtocolHandlers } from "./AppProtocolHandlers";
 import { registerMarkdownDefaultProcessors } from "../markdown/MarkdownDefaultProcessors";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
@@ -249,6 +251,7 @@ export class App {
     this.statusBar = new StatusBar(this.dom.statusBarEl);
     this.appearance.applyFromConfig();
     registerAppCommands(this);
+    registerChatBuiltin(this);
     this.desktopMenu.refresh();
     MarkdownRenderer.resetProcessors();
     registerMarkdownDefaultProcessors(this);
@@ -500,6 +503,7 @@ export class App {
     this.setting.addSettingTab(new AppearanceSettingTab(this));
     this.setting.addSettingTab(new MobileSettingTab(this));
     this.setting.addSettingTab(new HotkeysSettingTab(this));
+    this.setting.addSettingTab(new ChatSettingTab(this));
     this.setting.addSettingTab(new CorePluginsSettingTab(this));
     this.setting.addSettingTab(new CommunityPluginsSettingTab(this));
   }

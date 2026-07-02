@@ -16,7 +16,6 @@ import { OutlineView } from "./OutlineView";
 import { CanvasView } from "./CanvasView";
 import { MarkdownView } from "../views/MarkdownView";
 import { createGraphPluginDefinition } from "./GraphPlugin";
-import { createChatPluginDefinition } from "../chat/ChatPlugin";
 import { createCommandPalettePluginDefinition } from "../commands/CommandPalette";
 import { createDailyNotesPluginDefinition } from "./DailyNotes";
 import { createTemplatesPluginDefinition } from "./Templates";
@@ -334,8 +333,6 @@ export const corePlugins: InternalPluginDefinition[] = [
     },
   },
   scopeCorePluginDefinition(createGraphPluginDefinition()),
-  // Not part of Obsidian parity: this is the app's own default strong view.
-  createChatPluginDefinition(),
   scopeCorePluginDefinition({
     id: "canvas",
     name: "Canvas",

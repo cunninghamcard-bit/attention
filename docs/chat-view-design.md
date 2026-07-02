@@ -23,21 +23,26 @@ App
 - Draft text and scroll position are ephemeral state, per leaf.
 - Multiple leaves may open the same thread; they share one ChatSession.
 
-## Core plugin wiring
+## Builtin wiring
 
-Chat registers through the same pipeline as every other builtin feature: an
-`InternalPluginDefinition` in CorePlugins.ts (`createChatPluginDefinition`).
-It is not part of Obsidian parity — it is this app's own default strong view,
-so unlike the nonParityFeatureScope seams it ships defaultOn.
+Chat is builtin, NOT a core plugin. The tier matters: core plugins are
+optional features a user can toggle off (outline, tag pane); the default
+strong view is the product itself, the tier MarkdownView lives at. You can
+disable the outline; you cannot disable "viewing markdown" — and in a
+chat-agent app you cannot disable chat.
 
-The plugin owns, exactly like outline/search do:
+Wiring (`src/chat/ChatBuiltin.ts`):
 
 ```text
-registerViewType("chat", ...)          view creation
-chat:open / chat:new-thread / chat:stop  global commands (+ Mod+Shift+C)
-ribbon icon                            left bar entry point
-ChatSettingTab                         settings (bridge URL)
-/new and /stop slash commands          run-style ChatSlashCommand
+registerChatViewType(app)     from registerBuiltinViews, next to
+                              developer-console (the builtin-view seam)
+registerChatBuiltin(app)      from the App constructor after
+                              registerAppCommands:
+  chat:open / chat:new-thread / chat:stop   commands (+ Mod+Shift+C)
+  ribbon icon                                left bar entry point
+  /new and /stop slash commands              run-style ChatSlashCommand
+ChatSettingTab                added in App.registerSettings with the other
+                              builtin setting tabs
 ```
 
 View-surface alignment with other views:
