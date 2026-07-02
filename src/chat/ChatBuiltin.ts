@@ -3,6 +3,7 @@ import { writeClipboardText } from "../dom/Clipboard";
 import { Notice } from "../ui/Notice";
 import { registerChatMessageAction, registerChatSlashCommand } from "./ChatRegistry";
 import { chatMessageToMarkdown } from "./ChatSession";
+import { ChatThreadsView, CHAT_THREADS_VIEW_TYPE } from "./ChatThreadsView";
 import { ChatView, CHAT_VIEW_TYPE } from "./ChatView";
 
 export function newChatThreadId(): string {
@@ -10,15 +11,23 @@ export function newChatThreadId(): string {
   return `thread-${random}`;
 }
 
+// Opens a specific thread, preferring a leaf that already shows it, then the
+// active chat leaf, then any chat leaf, then a new tab.
+export async function openChatThread(app: App, threadId: string): Promise<void> {
+  const leaves = app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
+  const showing = leaves.find((leaf) => (leaf.view as ChatView | null)?.getState()?.threadId === threadId);
+  const leaf = showing ?? app.workspace.getActiveViewOfType(ChatView)?.leaf ?? leaves[0] ?? app.workspace.getLeaf("tab");
+  await leaf.setViewState({ type: CHAT_VIEW_TYPE, active: true, state: { threadId } });
+  await app.workspace.revealLeaf(leaf);
+}
+
 async function openChatLeaf(app: App, threadId?: string): Promise<void> {
-  const activeChat = app.workspace.getActiveViewOfType(ChatView);
-  if (activeChat && threadId) {
-    await activeChat.leaf.setViewState({ type: CHAT_VIEW_TYPE, active: true, state: { threadId } });
+  if (threadId) {
+    await openChatThread(app, threadId);
     return;
   }
-  const existing = threadId ? null : app.workspace.getLeavesOfType(CHAT_VIEW_TYPE)[0];
-  const leaf = existing ?? app.workspace.getLeaf("tab");
-  await leaf.setViewState({ type: CHAT_VIEW_TYPE, active: true, state: threadId ? { threadId } : undefined });
+  const leaf = app.workspace.getLeavesOfType(CHAT_VIEW_TYPE)[0] ?? app.workspace.getLeaf("tab");
+  await leaf.setViewState({ type: CHAT_VIEW_TYPE, active: true });
   await app.workspace.revealLeaf(leaf);
 }
 
@@ -27,6 +36,7 @@ async function openChatLeaf(app: App, threadId?: string): Promise<void> {
 // command/ribbon/slash surface registers once the workspace exists.
 export function registerChatViewType(app: App): void {
   app.viewRegistry.registerView(CHAT_VIEW_TYPE, (leaf) => new ChatView(leaf));
+  app.viewRegistry.registerView(CHAT_THREADS_VIEW_TYPE, (leaf) => new ChatThreadsView(leaf));
 }
 
 export function registerChatBuiltin(app: App): void {
@@ -55,10 +65,18 @@ export function registerChatBuiltin(app: App): void {
     },
   });
 
+  app.commands.addCommand({
+    id: "chat:open-threads",
+    name: "Open chat threads",
+    icon: "lucide-messages-square",
+    callback: () => void app.workspace.ensureSideLeaf(CHAT_THREADS_VIEW_TYPE, "right", { active: true, reveal: true }),
+  });
+
   // After layout-ready, like core plugin ribbon items: the ribbon stays
   // pristine during workspace construction and layout deserialization.
   app.workspace.onLayoutReady(() => {
     app.workspace.leftRibbon.addRibbonIcon("lucide-message-circle", "Open chat", () => void openChatLeaf(app), "chat:open");
+    void app.workspace.ensureSideLeaf(CHAT_THREADS_VIEW_TYPE, "right", { reveal: false });
   });
 
   registerChatMessageAction({

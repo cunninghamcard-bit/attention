@@ -64,6 +64,15 @@ export function ensureChatStyles(): void {
     .chat-scroll-bottom { position: sticky; bottom: 8px; left: 100%; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.3)); background: var(--background-primary, white); cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
     .chat-error { max-width: 760px; margin: 8px auto 0; color: var(--text-error, #c0392b); font-size: 0.85em; }
     .chat-unknown-block { white-space: pre-wrap; }
+    .chat-threads-view { padding: 8px; }
+    .chat-threads-list { display: flex; flex-direction: column; gap: 2px; }
+    .chat-threads-empty { opacity: 0.5; font-size: 0.9em; padding: 12px 8px; }
+    .chat-thread-item { padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+    .chat-thread-item:hover { background: var(--background-secondary, rgba(120,120,140,0.12)); }
+    .chat-thread-item.is-active { background: var(--background-secondary, rgba(120,120,140,0.18)); }
+    .chat-thread-title { font-size: 0.92em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+    .chat-thread-time { font-size: 0.78em; opacity: 0.5; margin-top: 2px; }
+    .chat-thread-running { width: 7px; height: 7px; border-radius: 50%; background: var(--interactive-accent, #7c6ae0); flex: 0 0 auto; animation: chat-thinking 1.2s ease-in-out infinite; }
     .chat-view .markdown-rendered pre { overflow-x: auto; }
   `;
   document.head.appendChild(styleEl);

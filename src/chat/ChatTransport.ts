@@ -1,5 +1,12 @@
 import type { ChatEvent } from "./ChatEvent";
 
+export interface ChatThreadSummary {
+  id: string;
+  title: string | null;
+  updatedAt: number;
+  running: boolean;
+}
+
 export const DEFAULT_CHAT_BRIDGE_URL = "http://127.0.0.1:8787";
 
 export function resolveChatBridgeUrl(): string {
@@ -38,6 +45,13 @@ export class ChatTransport {
       body: JSON.stringify({ text, attachments }),
     });
     if (!response.ok) throw new Error(`chat bridge rejected message: ${response.status}`);
+  }
+
+  async listThreads(): Promise<ChatThreadSummary[]> {
+    const response = await fetch(`${this.baseUrl}/threads`);
+    if (!response.ok) return [];
+    const payload = (await response.json().catch(() => null)) as { threads?: ChatThreadSummary[] } | null;
+    return Array.isArray(payload?.threads) ? payload.threads : [];
   }
 
   async stop(threadId: string): Promise<void> {

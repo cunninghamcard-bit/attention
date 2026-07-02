@@ -25,6 +25,9 @@ interface Thread {
   engineSessionId: string | null;
   proc: ReturnType<typeof Bun.spawn> | null;
   counter: number;
+  title: string | null;
+  updatedAt: number;
+  running: boolean;
 }
 
 const threads = new Map<string, Thread>();
@@ -32,7 +35,18 @@ const threads = new Map<string, Thread>();
 function getThread(id: string): Thread {
   let thread = threads.get(id);
   if (!thread) {
-    thread = { id, seq: 0, events: [], listeners: new Set(), engineSessionId: null, proc: null, counter: 0 };
+    thread = {
+      id,
+      seq: 0,
+      events: [],
+      listeners: new Set(),
+      engineSessionId: null,
+      proc: null,
+      counter: 0,
+      title: null,
+      updatedAt: Date.now(),
+      running: false,
+    };
     threads.set(id, thread);
   }
   return thread;
@@ -41,6 +55,9 @@ function getThread(id: string): Thread {
 function emit(thread: Thread, event: Omit<BridgeEvent, "seq" | "threadId">): void {
   const full: BridgeEvent = { ...event, seq: ++thread.seq, threadId: thread.id };
   thread.events.push(full);
+  thread.updatedAt = Date.now();
+  if (event.type === "run.started") thread.running = true;
+  if (event.type === "run.closed") thread.running = false;
   for (const listener of thread.listeners) listener(full);
 }
 
@@ -50,6 +67,10 @@ interface MessageAttachment {
 }
 
 function emitUserMessage(thread: Thread, text: string, attachments: MessageAttachment[] = []): void {
+  if (!thread.title && text.trim()) {
+    const line = text.trim().split("\n")[0];
+    thread.title = line.length > 60 ? `${line.slice(0, 60)}…` : line;
+  }
   const messageId = `${thread.id}-u${++thread.counter}`;
   emit(thread, { type: "message.started", messageId, role: "user" });
   emit(thread, { type: "part.opened", messageId, partIndex: 0, partType: "text" });
@@ -265,6 +286,16 @@ Bun.serve({
   async fetch(request) {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
+
+    if (url.pathname === "/threads" && request.method === "GET") {
+      const list = [...threads.values()]
+        .filter((thread) => thread.events.length > 0)
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .map((thread) => ({ id: thread.id, title: thread.title, updatedAt: thread.updatedAt, running: thread.running }));
+      return new Response(JSON.stringify({ threads: list }), {
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
+    }
 
     const eventsMatch = url.pathname.match(/^\/threads\/([^/]+)\/events$/);
     if (eventsMatch && request.method === "GET") {
