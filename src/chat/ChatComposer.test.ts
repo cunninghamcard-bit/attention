@@ -1,8 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CompletionContext, type Completion, type CompletionResult } from "@codemirror/autocomplete";
 import { EditorView } from "@codemirror/view";
 import { ChatComposer, type ChatComposerCallbacks } from "./ChatComposer";
 import { registerChatComposerExtension, registerChatSlashCommand } from "./ChatRegistry";
+
+// Unload composers so their CodeMirror editors destroy with this file's
+// window; leaked editors fire measure timers into other test files.
+const composers: ChatComposer[] = [];
+afterEach(() => {
+  for (const composer of composers.splice(0)) composer.unload();
+});
 
 interface ComposerInternals {
   editor: EditorView;
@@ -22,6 +29,7 @@ function setup(overrides: Partial<ChatComposerCallbacks> = {}) {
     ...overrides,
   });
   composer.load();
+  composers.push(composer);
   const internals = composer as unknown as ComposerInternals;
   return { parentEl, composer, internals, send };
 }

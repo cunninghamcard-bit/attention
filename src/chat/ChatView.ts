@@ -58,7 +58,7 @@ export class ChatView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    ensureChatStyles();
+    ensureChatStyles(this.app);
     this.contentEl.classList.add("chat-view");
     this.addAction("lucide-message-circle-plus", "New thread", () => this.app.commands.executeCommandById("chat:new-thread"));
     this.stopActionEl = this.addAction("lucide-square", "Stop response", () => void this.stopRun());

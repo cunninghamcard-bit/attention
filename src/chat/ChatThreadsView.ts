@@ -39,7 +39,7 @@ export class ChatThreadsView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    ensureChatStyles();
+    ensureChatStyles(this.app);
     this.contentEl.classList.add("chat-threads-view");
     this.listEl = createDiv("chat-threads-list", this.contentEl);
     this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.render()));

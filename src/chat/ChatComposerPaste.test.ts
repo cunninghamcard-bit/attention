@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 beforeEach(() => {
   const values = new Map<string, string>();
@@ -26,12 +26,18 @@ describe("triagePastedText", () => {
   });
 });
 
+const composers: ChatComposer[] = [];
+afterEach(() => {
+  for (const composer of composers.splice(0)) composer.unload();
+});
+
 function setupComposer() {
   const parentEl = document.createElement("div");
   document.body.appendChild(parentEl);
   const send = vi.fn();
   const composer = new ChatComposer(parentEl, { send, stop: vi.fn(), isRunning: () => false });
   composer.load();
+  composers.push(composer);
   return { parentEl, composer, send };
 }
 

@@ -1,13 +1,15 @@
-let installed = false;
+import type { App } from "../app/App";
 
-export function ensureChatStyles(): void {
-  if (installed || document.getElementById("obsidian-reconstructed-chat-styles")) {
-    installed = true;
-    return;
-  }
-  const styleEl = document.createElement("style");
-  styleEl.id = "obsidian-reconstructed-chat-styles";
-  styleEl.textContent = `
+// Chat is builtin, so in real Obsidian these rules would be compiled into
+// app.css. That artifact is frozen here, so the styles ride the managed
+// CustomCss channel instead: tagged, deduped by id, and inserted before the
+// theme style element so user themes and snippets can override them.
+export function ensureChatStyles(app: App): void {
+  if (document.head.querySelector('style[data-obsidian-reconstructed-css="builtin:chat"]')) return;
+  app.customCss.registerCss("builtin:chat", CHAT_CSS);
+}
+
+const CHAT_CSS = `
     .chat-view { display: flex; flex-direction: column; height: 100%; padding: 0; }
     .chat-scroll { flex: 1 1 auto; overflow-y: auto; padding: 16px 24px; position: relative; }
     .chat-message-list { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
@@ -86,7 +88,4 @@ export function ensureChatStyles(): void {
     .chat-compact-divider::before, .chat-compact-divider::after { content: ""; flex: 1; border-top: 1px dashed var(--background-modifier-border, rgba(120,120,140,0.35)); }
     .chat-compact-label { font-size: 0.75em; opacity: 0.55; white-space: nowrap; }
     .chat-view .markdown-rendered pre { overflow-x: auto; }
-  `;
-  document.head.appendChild(styleEl);
-  installed = true;
-}
+`;
