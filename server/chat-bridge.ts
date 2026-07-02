@@ -255,19 +255,28 @@ async function runMockEngine(thread: Thread, runId: string, text: string): Promi
   }
   emit(thread, { type: "part.closed", messageId, partIndex: 0 });
 
-  emit(thread, { type: "part.opened", messageId, partIndex: 1, partType: "tool", toolName: "Bash" });
-  emit(thread, { type: "part.delta", messageId, partIndex: 1, delta: '{"command":"echo hello"}' });
-  emit(thread, { type: "part.closed", messageId, partIndex: 1 });
-  await sleep(400);
-  emit(thread, { type: "part.closed", messageId, partIndex: 1, result: "hello" });
+  const toolCalls: Array<[string, string, string]> = [
+    ["Bash", '{"command":"echo hello"}', "hello"],
+    ["Read", '{"file_path":"src/main.ts"}', "import { bootstrap } from …"],
+    ["Grep", '{"pattern":"ChatView"}', "12 matches"],
+  ];
+  for (let index = 0; index < toolCalls.length; index++) {
+    const [toolName, input, result] = toolCalls[index];
+    const partIndex = index + 1;
+    emit(thread, { type: "part.opened", messageId, partIndex, partType: "tool", toolName });
+    emit(thread, { type: "part.delta", messageId, partIndex, delta: input });
+    emit(thread, { type: "part.closed", messageId, partIndex });
+    await sleep(350);
+    emit(thread, { type: "part.closed", messageId, partIndex, result });
+  }
 
-  emit(thread, { type: "part.opened", messageId, partIndex: 2, partType: "text" });
+  emit(thread, { type: "part.opened", messageId, partIndex: 4, partType: "text" });
   const outro = "工具跑完了。*流式*结束,这一条消息现在归档,DOM 原地移交。";
   for (const chunk of outro.match(/.{1,5}/gs) ?? []) {
-    emit(thread, { type: "part.delta", messageId, partIndex: 2, delta: chunk });
+    emit(thread, { type: "part.delta", messageId, partIndex: 4, delta: chunk });
     await sleep(30);
   }
-  emit(thread, { type: "part.closed", messageId, partIndex: 2 });
+  emit(thread, { type: "part.closed", messageId, partIndex: 4 });
   emit(thread, { type: "message.closed", messageId });
   emit(thread, { type: "run.closed", runId, status: "completed" });
 }

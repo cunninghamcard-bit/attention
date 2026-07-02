@@ -31,8 +31,17 @@ export function ensureChatStyles(): void {
     .chat-message-parts { display: flex; flex-direction: column; gap: 8px; }
     .chat-part-text.is-streaming > .is-loading { opacity: 0.75; }
     .chat-part-thinking { opacity: 0.6; font-size: 0.92em; border-left: 2px solid var(--interactive-accent, #7c6ae0); padding-left: 10px; }
+    .chat-tool-timeline { border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); border-radius: 8px; overflow: hidden; }
+    .chat-tool-timeline-header { padding: 7px 12px; font-size: 0.85em; cursor: pointer; display: flex; align-items: center; gap: 8px; background: var(--background-primary-alt, rgba(120,120,140,0.05)); }
+    .chat-tool-timeline-header::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted, #999); flex: 0 0 auto; }
+    .chat-tool-timeline.is-running > .chat-tool-timeline-header::before { background: var(--interactive-accent, #7c6ae0); animation: chat-thinking 1.2s ease-in-out infinite; }
+    .chat-tool-timeline-summary { opacity: 0.75; }
+    .chat-tool-timeline-body { display: flex; flex-direction: column; }
+    .chat-tool-timeline.is-collapsed > .chat-tool-timeline-body { display: none; }
+    .chat-tool-timeline-body .chat-part-tool { border: none; border-top: 1px solid var(--background-modifier-border, rgba(120,120,140,0.15)); border-radius: 0; position: relative; padding-left: 26px; }
+    .chat-tool-timeline-body .chat-part-tool::before { content: ""; position: absolute; left: 12px; top: 14px; width: 6px; height: 6px; border-radius: 50%; background: var(--background-modifier-border, rgba(120,120,140,0.5)); }
     .chat-part-tool { border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); border-radius: 6px; padding: 8px 10px; font-size: 0.9em; }
-    .chat-tool-header { display: flex; gap: 8px; align-items: baseline; }
+    .chat-tool-header { display: flex; gap: 8px; align-items: baseline; cursor: pointer; }
     .chat-tool-name { font-weight: 600; font-family: var(--font-monospace, monospace); }
     .chat-tool-status { font-size: 11px; opacity: 0.6; }
     .chat-tool-status.is-running { color: var(--interactive-accent, #7c6ae0); }

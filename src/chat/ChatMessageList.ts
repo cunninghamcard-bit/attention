@@ -59,6 +59,8 @@ class ChatPartRenderer extends Component {
     this.el.toggleClass("is-streaming", !part.closed);
   }
 
+  private toolExpanded = false;
+
   private syncTool(part: ToolChatPart): void {
     this.el.className = "chat-part chat-part-tool";
     this.el.empty();
@@ -74,15 +76,33 @@ class ChatPartRenderer extends Component {
       text: part.closed ? (part.result !== undefined ? "done" : "called") : "running",
       parent: headerEl,
     });
-    if (part.input) createEl("pre", { cls: "chat-tool-input", text: part.input, parent: this.el });
-    if (part.result !== undefined) createEl("pre", { cls: "chat-tool-result", text: part.result, parent: this.el });
+    // Rows stay compact once done; the details expand on click, and stay
+    // open live so the running call's input streams in view.
+    const detailsEl = createDiv("chat-tool-details", this.el);
+    if (part.input) createEl("pre", { cls: "chat-tool-input", text: part.input, parent: detailsEl });
+    if (part.result !== undefined) createEl("pre", { cls: "chat-tool-result", text: part.result, parent: detailsEl });
+    detailsEl.toggle(!part.closed || this.toolExpanded);
+    headerEl.addEventListener("click", () => {
+      this.toolExpanded = !this.toolExpanded;
+      detailsEl.toggle(!part.closed || this.toolExpanded);
+    });
   }
+}
+
+interface ToolTimeline {
+  el: HTMLElement;
+  headerTextEl: HTMLElement;
+  bodyEl: HTMLElement;
+  partIndexes: number[];
+  userToggled: boolean;
+  autoCollapsed: boolean;
 }
 
 class ChatMessageItem extends Component {
   readonly el: HTMLElement;
   private readonly partsEl: HTMLElement;
   private readonly partRenderers: ChatPartRenderer[] = [];
+  private readonly timelines = new Map<number, ToolTimeline>();
 
   constructor(parentEl: HTMLElement, private readonly message: ChatMessage) {
     super();
@@ -106,12 +126,50 @@ class ChatMessageItem extends Component {
       if (!part) continue;
       let renderer = this.partRenderers[index];
       if (!renderer) {
-        renderer = this.addChild(new ChatPartRenderer(this.partsEl, this.message.id, index));
+        const parentEl = part.type === "tool" ? this.timelineFor(index).bodyEl : this.partsEl;
+        renderer = this.addChild(new ChatPartRenderer(parentEl, this.message.id, index));
         this.partRenderers[index] = renderer;
       }
       renderer.sync(part);
     }
+    this.syncTimelines();
     this.el.toggleClass("is-closed", this.message.closed);
+  }
+
+  // Consecutive tool parts share one timeline: the run's activity reads as
+  // one collapsible unit instead of flooding the conversation.
+  private timelineFor(index: number): ToolTimeline {
+    const previous = index > 0 ? this.timelines.get(index - 1) : undefined;
+    if (previous && this.message.parts[index - 1]?.type === "tool") {
+      previous.partIndexes.push(index);
+      this.timelines.set(index, previous);
+      return previous;
+    }
+    const el = createDiv("chat-tool-timeline", this.partsEl);
+    const headerEl = createDiv("chat-tool-timeline-header", el);
+    const headerTextEl = createSpan({ cls: "chat-tool-timeline-summary", parent: headerEl });
+    const bodyEl = createDiv("chat-tool-timeline-body", el);
+    const timeline: ToolTimeline = { el, headerTextEl, bodyEl, partIndexes: [index], userToggled: false, autoCollapsed: false };
+    headerEl.addEventListener("click", () => {
+      timeline.userToggled = true;
+      el.toggleClass("is-collapsed", !el.hasClass("is-collapsed"));
+    });
+    this.timelines.set(index, timeline);
+    return timeline;
+  }
+
+  private syncTimelines(): void {
+    for (const timeline of new Set(this.timelines.values())) {
+      const parts = timeline.partIndexes.map((index) => this.message.parts[index]).filter(Boolean);
+      const total = parts.length;
+      const running = parts.some((part) => !part.closed);
+      timeline.headerTextEl.setText(`${total} tool call${total === 1 ? "" : "s"} · ${running ? "running" : "done"}`);
+      timeline.el.toggleClass("is-running", running);
+      if (!running && !timeline.userToggled && !timeline.autoCollapsed) {
+        timeline.autoCollapsed = true;
+        timeline.el.addClass("is-collapsed");
+      }
+    }
   }
 }
 
