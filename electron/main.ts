@@ -1,6 +1,7 @@
-import { app, BrowserWindow, screen } from "electron";
+import { app, BrowserWindow, ipcMain, screen, shell } from "electron";
 import { initialize as initializeRemote } from "@electron/remote/main";
 import { join } from "node:path";
+import { existsSync, mkdirSync } from "node:fs";
 import { createRendererWindow, defaultPreloadPath } from "./window";
 import { registerFoundationIpc } from "./foundation-ipc";
 import { mainState } from "./state";
@@ -11,6 +12,8 @@ import { VaultWindowManager } from "./vault-windows";
 import type { DisplayProvider } from "./window-state";
 import { createFileOrigin } from "./app-protocol";
 import { registerAppProtocol, registerAppSchemePrivileges } from "./app-protocol-register";
+import { registerIpcHandlers } from "./ipc";
+import { performNetRequest } from "./net-request";
 
 /**
  * Electron main entry for the reconstructed Obsidian desktop app.
@@ -96,6 +99,33 @@ if (!gotLock) {
     });
     registry.pruneMissing();
     registerFoundationIpc();
+    registerIpcHandlers(ipcMain, {
+      registry,
+      vaultWindows,
+      paths: {
+        resources: resourcesDir,
+        version: app.getVersion(),
+        desktopDir: safePath("desktop"),
+        documentsDir: safePath("documents"),
+        sandboxVaultPath: join(app.getPath("userData"), "Obsidian Sandbox"),
+        defaultVaultPath: join(safePath("documents"), "Obsidian Vault"),
+      },
+      trashItem: (p) => shell.trashItem(p),
+      openExternal: (url) => void shell.openExternal(url),
+      performRequest: performNetRequest,
+      existsSync,
+      mkdirp: (p) => void mkdirSync(p, { recursive: true }),
+      onError: (error) => console.error(error),
+    });
     openStartupWindows();
   });
+
+  // app.getPath throws for unconfigured locations; fall back to userData.
+  function safePath(name: "desktop" | "documents"): string {
+    try {
+      return app.getPath(name);
+    } catch {
+      return app.getPath("userData");
+    }
+  }
 }
