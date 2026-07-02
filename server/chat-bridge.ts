@@ -113,6 +113,15 @@ function handleEngineLine(thread: Thread, run: EngineRunState, line: string): vo
     return;
   }
 
+  if (payload.type === "system" && payload.subtype === "compact_boundary") {
+    emit(thread, {
+      type: "context.compacted",
+      preTokens: payload.compact_metadata?.pre_tokens,
+      trigger: payload.compact_metadata?.trigger,
+    });
+    return;
+  }
+
   if (payload.type === "stream_event") {
     const event = payload.event;
     if (!event) return;
@@ -244,6 +253,7 @@ async function runEngine(thread: Thread, text: string, attachments: MessageAttac
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function runMockEngine(thread: Thread, runId: string, text: string): Promise<void> {
+  if (text.includes("compact")) emit(thread, { type: "context.compacted", preTokens: 52000, trigger: "auto" });
   const messageId = `${thread.id}-a${++thread.counter}`;
   emit(thread, { type: "message.started", messageId, role: "assistant" });
 

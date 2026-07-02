@@ -64,6 +64,31 @@ describe("tool timeline grouping", () => {
     expect(parentEl.querySelectorAll(".chat-tool-timeline")).toHaveLength(2);
   });
 
+  it("renders a compaction divider between the messages it separates", () => {
+    const { session, parentEl, list } = setup();
+    feed(session, [
+      { type: "run.started", runId: "r1" },
+      { type: "message.started", messageId: "u1", role: "user" },
+      { type: "part.opened", messageId: "u1", partIndex: 0, partType: "text" },
+      { type: "part.delta", messageId: "u1", partIndex: 0, delta: "hi" },
+      { type: "message.closed", messageId: "u1" },
+      { type: "context.compacted", preTokens: 52000 },
+      { type: "message.started", messageId: "a1", role: "assistant" },
+      { type: "part.opened", messageId: "a1", partIndex: 0, partType: "text" },
+      { type: "part.delta", messageId: "a1", partIndex: 0, delta: "继续" },
+    ]);
+    list.sync();
+    list.sync();
+
+    const children = [...parentEl.querySelector(".chat-message-list")!.children].map((el) => el.className.split(" ")[0]);
+    const dividerIndex = children.indexOf("chat-compact-divider");
+    const firstMessageIndex = children.indexOf("chat-message");
+    expect(dividerIndex).toBeGreaterThan(firstMessageIndex);
+    expect(children.filter((name) => name === "chat-compact-divider")).toHaveLength(1);
+    expect(parentEl.querySelector(".chat-compact-label")?.textContent).toBe("Context compacted · 52k tokens condensed");
+    expect(children.lastIndexOf("chat-message")).toBeGreaterThan(dividerIndex);
+  });
+
   it("keeps a manually expanded timeline open when it completes", () => {
     const { session, parentEl, list } = setup();
     let seq = feed(session, [

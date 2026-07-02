@@ -37,15 +37,21 @@ export interface ChatMessage {
   closed: boolean;
 }
 
+export interface ChatCompaction {
+  afterMessageId: string | null;
+  preTokens?: number;
+}
+
 export interface ChatSessionState {
   messages: ChatMessage[];
+  compactions: ChatCompaction[];
   running: boolean;
   lastSeq: number;
   lastError: string | null;
 }
 
 export function createChatSessionState(): ChatSessionState {
-  return { messages: [], running: false, lastSeq: 0, lastError: null };
+  return { messages: [], compactions: [], running: false, lastSeq: 0, lastError: null };
 }
 
 function createPart(partType: ChatPartType, toolName?: string, name?: string): ChatPart {
@@ -96,6 +102,14 @@ export function applyChatEvent(state: ChatSessionState, event: ChatEvent): boole
       if (!message) return false;
       message.closed = true;
       for (const part of message.parts) part.closed = true;
+      break;
+    }
+    case "context.compacted": {
+      const lastMessage = state.messages[state.messages.length - 1];
+      state.compactions.push({
+        afterMessageId: event.afterMessageId ?? lastMessage?.id ?? null,
+        preTokens: event.preTokens,
+      });
       break;
     }
     case "run.closed": {

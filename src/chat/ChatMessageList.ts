@@ -193,20 +193,41 @@ export class ChatMessageList extends Component {
     this.thinkingEl.hide();
   }
 
+  private renderedCompactions = 0;
+
   sync(): void {
     const messages = this.session.getMessages();
     this.emptyEl.toggle(messages.length === 0);
     for (const message of messages) {
       let item = this.items.get(message.id);
       if (!item) {
+        this.renderCompactionsAfter(messages[messages.indexOf(message) - 1]?.id ?? null);
         item = this.addChild(new ChatMessageItem(this.el, message));
         this.items.set(message.id, item);
         this.el.appendChild(this.thinkingEl);
       }
       item.sync();
     }
+    this.renderCompactionsAfter(messages[messages.length - 1]?.id ?? null);
     const last = messages[messages.length - 1];
     const waiting = this.session.isRunning() && (!last || last.role === "user" || last.closed);
     this.thinkingEl.toggle(waiting);
+  }
+
+  // Compaction dividers land between the message they follow and whatever
+  // comes next; each marker renders exactly once, in event order.
+  private renderCompactionsAfter(previousMessageId: string | null): void {
+    const compactions = this.session.state.compactions;
+    while (this.renderedCompactions < compactions.length) {
+      const compaction = compactions[this.renderedCompactions];
+      if (compaction.afterMessageId !== previousMessageId) return;
+      this.renderedCompactions++;
+      const dividerEl = createDiv("chat-compact-divider");
+      const label = compaction.preTokens
+        ? `Context compacted · ${Math.round(compaction.preTokens / 1000)}k tokens condensed`
+        : "Context compacted";
+      createSpan({ cls: "chat-compact-label", text: label, parent: dividerEl });
+      this.el.insertBefore(dividerEl, this.thinkingEl);
+    }
   }
 }

@@ -57,6 +57,15 @@ export interface ChatRunClosedEvent extends ChatEventBase {
   error?: string;
 }
 
+// The engine condensed earlier conversation to fit its context window; the
+// UI marks where history stopped being verbatim.
+export interface ChatContextCompactedEvent extends ChatEventBase {
+  type: "context.compacted";
+  afterMessageId?: string;
+  preTokens?: number;
+  trigger?: string;
+}
+
 export type ChatEvent =
   | ChatRunStartedEvent
   | ChatMessageStartedEvent
@@ -64,4 +73,5 @@ export type ChatEvent =
   | ChatPartDeltaEvent
   | ChatPartClosedEvent
   | ChatMessageClosedEvent
-  | ChatRunClosedEvent;
+  | ChatRunClosedEvent
+  | ChatContextCompactedEvent;

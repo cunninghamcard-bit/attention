@@ -82,6 +82,9 @@ export function ensureChatStyles(): void {
     .chat-thread-title { font-size: 0.92em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
     .chat-thread-time { font-size: 0.78em; opacity: 0.5; margin-top: 2px; }
     .chat-thread-running { width: 7px; height: 7px; border-radius: 50%; background: var(--interactive-accent, #7c6ae0); flex: 0 0 auto; animation: chat-thinking 1.2s ease-in-out infinite; }
+    .chat-compact-divider { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
+    .chat-compact-divider::before, .chat-compact-divider::after { content: ""; flex: 1; border-top: 1px dashed var(--background-modifier-border, rgba(120,120,140,0.35)); }
+    .chat-compact-label { font-size: 0.75em; opacity: 0.55; white-space: nowrap; }
     .chat-view .markdown-rendered pre { overflow-x: auto; }
   `;
   document.head.appendChild(styleEl);
