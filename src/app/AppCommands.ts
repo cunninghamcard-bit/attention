@@ -930,6 +930,13 @@ export function registerAppCommands(app: App): void {
   });
 
   app.commands.addCommand({
+    id: "app:open-chat",
+    name: "Open chat",
+    icon: "lucide-message-circle",
+    callback: () => void app.workspace.getLeaf("tab").setViewState({ type: "chat", active: true }),
+  });
+
+  app.commands.addCommand({
     id: "file:new-note",
     name: "Create new note",
     icon: "lucide-file-plus",
