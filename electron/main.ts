@@ -78,7 +78,8 @@ if (!gotLock) {
   // that page is a renderer seam here, so we create/open a real default folder
   // (`Documents/Obsidian Vault`, real `bt`) so the app opens on a real vault.
   const ensureDefaultVault = (): string | null => {
-    const defaultPath = join(safePath("documents"), "Obsidian Vault");
+    const defaultPath =
+      process.env.OBSIDIAN_VAULT_PATH || join(safePath("documents"), "Obsidian Vault");
     try {
       mkdirSync(defaultPath, { recursive: true });
     } catch (error) {
