@@ -39,7 +39,12 @@ export function ensureChatStyles(): void {
     .chat-tool-input, .chat-tool-result { margin: 6px 0 0; padding: 6px 8px; border-radius: 4px; background: var(--background-primary-alt, rgba(120,120,140,0.08)); overflow-x: auto; max-height: 200px; font-size: 0.85em; }
     .chat-composer { flex: 0 0 auto; border-top: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); padding: 12px 24px 16px; position: relative; }
     .chat-composer-row { max-width: 760px; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; }
-    .chat-composer-input { flex: 1 1 auto; resize: vertical; min-height: 44px; max-height: 200px; border-radius: 8px; padding: 10px 12px; font: inherit; }
+    .chat-composer-input { flex: 1 1 auto; min-height: 44px; max-height: 200px; overflow-y: auto; border-radius: 8px; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); background: var(--background-primary, white); }
+    .chat-composer-input .cm-editor { outline: none; }
+    .chat-composer-input .cm-scroller { font-family: inherit; line-height: 1.5; }
+    .chat-composer-input .cm-content { padding: 10px 12px; font: inherit; min-height: 24px; }
+    .chat-composer-input .cm-line { padding: 0; }
+    .chat-composer-input .cm-placeholder { color: var(--text-muted, #999); }
     .chat-composer-send { padding: 8px 16px; border-radius: 6px; cursor: pointer; }
     .chat-composer-send.is-running { background: var(--background-modifier-error, #c0392b); color: white; }
     .chat-slash-suggest { position: absolute; bottom: 100%; left: 24px; right: 24px; max-width: 760px; margin: 0 auto 4px; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); border-radius: 8px; background: var(--background-primary, white); box-shadow: 0 4px 18px rgba(0,0,0,0.12); overflow: hidden; z-index: 10; }

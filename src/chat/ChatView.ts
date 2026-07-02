@@ -137,6 +137,7 @@ export class ChatView extends ItemView {
         send: (text) => void this.sendMessage(text),
         stop: () => void this.stopRun(),
         isRunning: () => this.isRunning(),
+        getWikilinkTargets: () => this.app.vault.getMarkdownFiles().map((file) => file.basename),
       }),
     );
 

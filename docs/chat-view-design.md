@@ -213,10 +213,32 @@ Dev backend: `server/chat-bridge.ts` (bun). Drives
 maps threadId -> Claude Code session id, transforms stream-json into
 canonical events. It stands in for along-go and speaks the same contract.
 
+## Composer
+
+The composer is a CodeMirror 6 extension host, the composer counterpart of
+MarkdownView's editor:
+
+```text
+registerChatComposerExtension(ext)   CM Extension pass-through (mirrors
+                                     registerEditorExtension); a Compartment
+                                     reconfigures live composers on change
+slash commands                       @codemirror/autocomplete source at the
+                                     draft start; run-style commands execute,
+                                     insert-style commands replace the draft
+[[wikilink]] completion              vault-fed source (basenames via the
+                                     view); accepts to [[target]]
+Enter                                accepts an open completion first,
+                                     submits otherwise; Shift+Enter newline
+```
+
+The textarea-first plan was executed and then upgraded exactly as designed:
+the registry contracts did not change when the editor core did.
+
 ## Decided along the way
 
-- Composer starts as a plain textarea plus the action/slash registries; the
-  registry contract is the API, the editor core can be upgraded later.
+- Composer started as a plain textarea plus the action/slash registries; the
+  registry contract was the API, which let the editor core upgrade to
+  CodeMirror without breaking callers.
 - No document-level "streaming parser" is needed beyond markstream: block
   cache at the message level already bounds work to the tail (the 100x claims
   of streaming parsers measure against full re-parse baselines we never had).

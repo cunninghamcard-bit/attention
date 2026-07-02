@@ -1,3 +1,4 @@
+import type { Extension } from "@codemirror/state";
 import type { Component } from "../core/Component";
 import type { ChatMessage, ToolChatPart } from "./ChatSession";
 
@@ -39,6 +40,28 @@ const toolRenderers = new Map<string, ChatToolRenderer>();
 const slashCommands = new Map<string, ChatSlashCommand>();
 const composerActions = new Map<string, ChatComposerAction>();
 const messageActions = new Map<string, ChatMessageAction>();
+const composerExtensions = new Set<Extension>();
+const composerExtensionListeners = new Set<() => void>();
+
+// The composer counterpart of registerEditorExtension: plugins contribute
+// CodeMirror extensions; live composers reconfigure through the listener.
+export function registerChatComposerExtension(extension: Extension): () => void {
+  composerExtensions.add(extension);
+  for (const listener of composerExtensionListeners) listener();
+  return () => {
+    composerExtensions.delete(extension);
+    for (const listener of composerExtensionListeners) listener();
+  };
+}
+
+export function listChatComposerExtensions(): Extension[] {
+  return [...composerExtensions];
+}
+
+export function onChatComposerExtensionsChanged(listener: () => void): () => void {
+  composerExtensionListeners.add(listener);
+  return () => void composerExtensionListeners.delete(listener);
+}
 
 export function registerChatMessageAction(action: ChatMessageAction): () => void {
   messageActions.set(action.id, action);
