@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { resolve } from "node:path";
 import {
   computeContentRange,
+  contentTypeFor,
   createFileOrigin,
   resolveAppUrl,
   type ResolveDeps,
@@ -95,6 +96,22 @@ describe("computeContentRange (real Range branch)", () => {
     expect(computeContentRange("bytes=600-700", 500).status).toBe(416);
     expect(computeContentRange("bytes=200-100", 500).status).toBe(416);
     expect(computeContentRange("chars=0-1", 500).status).toBe(416);
+  });
+});
+
+describe("contentTypeFor", () => {
+  it("maps the extensions ES modules and stylesheets need to execute", () => {
+    expect(contentTypeFor("/x/index-abc.js")).toBe("text/javascript");
+    expect(contentTypeFor("/x/index.mjs")).toBe("text/javascript");
+    expect(contentTypeFor("/x/app.css")).toBe("text/css");
+    expect(contentTypeFor("/x/index.html")).toBe("text/html");
+    expect(contentTypeFor("/x/font.woff2")).toBe("font/woff2");
+    expect(contentTypeFor("/x/icon.svg")).toBe("image/svg+xml");
+  });
+
+  it("is undefined for unknown or extensionless paths", () => {
+    expect(contentTypeFor("/x/README")).toBeUndefined();
+    expect(contentTypeFor("/x/data.weird")).toBeUndefined();
   });
 });
 

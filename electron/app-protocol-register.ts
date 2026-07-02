@@ -3,6 +3,7 @@ import { createReadStream, promises as fsp } from "node:fs";
 import { Readable } from "node:stream";
 import {
   computeContentRange,
+  contentTypeFor,
   resolveAppUrl,
   type ResolveDeps,
 } from "./app-protocol";
@@ -28,6 +29,8 @@ export function registerAppProtocol(deps: ResolveDeps): void {
       const headers = new Headers(range.headers);
       headers.set("Access-Control-Allow-Origin", "*");
       headers.set("Last-Modified", stat.mtime.toUTCString());
+      const contentType = contentTypeFor(path);
+      if (contentType) headers.set("Content-Type", contentType);
       if (noframe) headers.set("X-Frame-Options", "DENY");
       const nodeStream =
         range.status === 206

@@ -81,6 +81,43 @@ function defaultIsRemotePath(path: string): boolean {
   return path.startsWith("\\\\") || path.startsWith("//");
 }
 
+/**
+ * Content-Type by file extension. Real Obsidian serves resources through
+ * `registerFileProtocol`, which infers the MIME type from the extension; the
+ * modern `protocol.handle` path must set it explicitly or the browser refuses
+ * to execute ES module scripts and apply stylesheets (strict MIME checking).
+ */
+const MIME_BY_EXT: Record<string, string> = {
+  html: "text/html",
+  htm: "text/html",
+  js: "text/javascript",
+  mjs: "text/javascript",
+  cjs: "text/javascript",
+  css: "text/css",
+  json: "application/json",
+  map: "application/json",
+  svg: "image/svg+xml",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  ico: "image/x-icon",
+  woff: "font/woff",
+  woff2: "font/woff2",
+  ttf: "font/ttf",
+  otf: "font/otf",
+  wasm: "application/wasm",
+  txt: "text/plain",
+  md: "text/markdown",
+};
+
+export function contentTypeFor(path: string): string | undefined {
+  const dot = path.lastIndexOf(".");
+  if (dot < 0) return undefined;
+  return MIME_BY_EXT[path.slice(dot + 1).toLowerCase()];
+}
+
 export interface ContentRange {
   status: 200 | 206 | 416;
   start: number;
