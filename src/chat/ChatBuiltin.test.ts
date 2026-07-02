@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../app/App";
 import type { ChatEvent } from "./ChatEvent";
 import { newChatThreadId } from "./ChatBuiltin";
@@ -8,9 +8,22 @@ import { ChatView } from "./ChatView";
 
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
 
+// Detach chat leaves so composer editors destroy with the test's window;
+// CodeMirror otherwise schedules measure timers that outlive the file.
+const apps: App[] = [];
+function trackApp(app: App): App {
+  apps.push(app);
+  return app;
+}
+afterEach(() => {
+  for (const app of apps.splice(0)) {
+    for (const leaf of app.workspace.getLeavesOfType("chat")) leaf.detach();
+  }
+});
+
 describe("Chat builtin", () => {
   it("registers the chat view and commands as builtins, not as a togglable core plugin", async () => {
-    const app = new App(document.createElement("div"));
+    const app = trackApp(new App(document.createElement("div")));
     await app.ready;
 
     expect(app.internalPlugins.getPluginById("chat")).toBeNull();
@@ -25,7 +38,7 @@ describe("Chat builtin", () => {
   });
 
   it("derives the tab title from the first user message, like file views derive it from the file", async () => {
-    const app = new App(document.createElement("div"));
+    const app = trackApp(new App(document.createElement("div")));
     await app.ready;
 
     const threadId = newChatThreadId();
@@ -50,7 +63,7 @@ describe("Chat builtin", () => {
   });
 
   it("exposes a working stop command only while a run is active", async () => {
-    const app = new App(document.createElement("div"));
+    const app = trackApp(new App(document.createElement("div")));
     await app.ready;
 
     const threadId = newChatThreadId();
