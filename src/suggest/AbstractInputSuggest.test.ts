@@ -79,6 +79,26 @@ function inputEl(): HTMLInputElement {
   return input;
 }
 
+describe("AbstractInputSuggest value element (real isTextValueElement)", () => {
+  it("reads/writes an <input> through .value", () => {
+    const suggest = new FruitSuggest(createApp(), inputEl());
+    suggest.setValue("apple");
+    expect(inputEl().value).toBe("apple");
+    expect(suggest.getValue()).toBe("apple");
+  });
+
+  it("reads/writes a <textarea> through .innerText, not .value", () => {
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+    const suggest = new FruitSuggest(createApp(), textarea);
+    suggest.setValue("multi\nline");
+    // Real Obsidian treats textarea as a non-value element -> innerText.
+    expect(textarea.innerText).toBe("multi\nline");
+    expect(textarea.value).toBe("");
+    expect(suggest.getValue()).toBe("multi\nline");
+  });
+});
+
 describe("AbstractInputSuggest", () => {
   it("keeps PopoverSuggest scope registration paired across close and repeated open", () => {
     const app = createApp();
