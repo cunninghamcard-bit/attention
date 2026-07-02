@@ -4,6 +4,24 @@ Readable reconstruction of Obsidian's bundled frontend architecture.
 
 This is not original source code. It is a clean, study-oriented structure rebuilt from the bundled app shape, public API names, DOM classes, and plugin extension points.
 
+## Running it
+
+```bash
+bun install
+bun run desktop        # build + launch the Electron desktop app (loads via app://, edits a real vault on disk)
+```
+
+Other entry points:
+
+- `bun run dev` — the renderer as a plain web app (Vite, in-memory vault) at http://127.0.0.1:5173.
+- `bun run dev` + `ELECTRON_RENDERER_URL= bun run start:desktop` — desktop shell against the live dev server (HMR).
+- `bun run check` — lint, typecheck (app + `electron/`), tests, and all builds.
+
+The Electron main process (`electron/`) is a clean-room reconstruction of Obsidian's
+`obsidian.asar/main.js`: single-instance lock, `obsidian.json` + vault registry,
+`BrowserWindow` lifecycle, the `app://` protocol, the IPC channel table, `obsidian://`
+routing, and default-session hardening. See `docs/electron-reconstruction-plan.md`.
+
 ## Core chain
 
 ```text

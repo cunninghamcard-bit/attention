@@ -16,6 +16,7 @@
     "e2e": "playwright test",
     "build:electron": "vite build --config vite.electron.config.ts",
     "start:desktop": "bun run build:electron && ELECTRON_RENDERER_URL=${ELECTRON_RENDERER_URL:-http://127.0.0.1:5173} electron dist-electron/main.cjs",
+    "desktop": "bun run build && bun run build:electron && electron dist-electron/main.cjs",
     "check": "oxlint -c oxlint.json src --quiet && tsc --noEmit && bun run typecheck:electron && vitest run && vite build && bun run build:api && bun run build:electron",
     "build:analyze": "ANALYZE=1 vite build",
     "packcheck": "publint && attw --pack .",
