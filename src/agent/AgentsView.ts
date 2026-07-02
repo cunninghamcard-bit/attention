@@ -1,7 +1,7 @@
 import { createDiv, createSpan } from "../dom/dom";
 import { ItemView } from "../views/ItemView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
-import { openAgent } from "./ChatBuiltin";
+import { openAgent } from "./AgentBuiltin";
 import { ensureChatStyles } from "./ChatStyles";
 import { AgentTransport, type AgentSummary } from "./AgentTransport";
 import { ChatView } from "./ChatView";

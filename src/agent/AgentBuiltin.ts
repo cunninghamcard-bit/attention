@@ -30,12 +30,12 @@ async function openChatLeaf(app: App, agentId?: string): Promise<void> {
 // Chat is the app's default strong view — MarkdownView-tier, not a togglable
 // core plugin. The view type registers with the other builtin views; the
 // command/ribbon/slash surface registers once the workspace exists.
-export function registerChatViewType(app: App): void {
+export function registerAgentViews(app: App): void {
   app.viewRegistry.registerView(CHAT_VIEW_TYPE, (leaf) => new ChatView(leaf));
   app.viewRegistry.registerView(AGENTS_VIEW_TYPE, (leaf) => new AgentsView(leaf));
 }
 
-export function registerChatBuiltin(app: App): void {
+export function registerAgentBuiltin(app: App): void {
   app.commands.addCommand({
     id: "agent:open",
     name: "Open chat",

@@ -9,6 +9,11 @@ get / list); the sidebar lists your agents; an agent outlives any tab showing
 it. "Chat" survives only as the UI genre: ChatView is a window onto an Agent,
 the way MarkdownView is a window onto a TFile.
 
+The name AgentView is deliberately reserved: it will be the view of the
+agent ITSELF — status, configuration, run overview — a different window
+onto the same entity. That is why the conversation view keeps its honest
+genre name.
+
 This document merges three earlier sources into one decided design:
 
 - `docs/chat-agent-mapping.md` (extension-point mapping)

@@ -6,8 +6,8 @@ import { DEFAULT_CHAT_BRIDGE_URL } from "./AgentTransport";
 import { DEFAULT_PASTE_CARD_THRESHOLD } from "./ChatComposerPaste";
 
 export class ChatSettingTab implements SettingTab {
-  readonly id = "chat";
-  readonly name = "Chat";
+  readonly id = "agents";
+  readonly name = "Agents";
   readonly icon = "message-circle";
   readonly navEl = document.createElement("div");
   readonly containerEl = document.createElement("div");
