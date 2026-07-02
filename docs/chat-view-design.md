@@ -23,6 +23,33 @@ App
 - Draft text and scroll position are ephemeral state, per leaf.
 - Multiple leaves may open the same thread; they share one ChatSession.
 
+## Core plugin wiring
+
+Chat registers through the same pipeline as every other builtin feature: an
+`InternalPluginDefinition` in CorePlugins.ts (`createChatPluginDefinition`).
+It is not part of Obsidian parity — it is this app's own default strong view,
+so unlike the nonParityFeatureScope seams it ships defaultOn.
+
+The plugin owns, exactly like outline/search do:
+
+```text
+registerViewType("chat", ...)          view creation
+chat:open / chat:new-thread / chat:stop  global commands (+ Mod+Shift+C)
+ribbon icon                            left bar entry point
+ChatSettingTab                         settings (bridge URL)
+/new and /stop slash commands          run-style ChatSlashCommand
+```
+
+View-surface alignment with other views:
+
+- navigation = true; back/forward buttons work like file views
+- tab + header title derives from the first user message (the way file views
+  derive theirs from the file); refreshes via updateHeader()
+- header actions: new thread, stop (visible only while running)
+- onPaneMenu contributes "New thread" and "Copy conversation"
+- per-message copy action; transcript export via chatTranscriptToMarkdown
+- empty state and a thinking indicator while waiting between parts
+
 ## Layers
 
 ```text

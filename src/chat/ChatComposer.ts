@@ -99,6 +99,16 @@ export class ChatComposer extends Component {
   }
 
   private applyCommand(command: ChatSlashCommand): void {
+    if (command.run) {
+      this.setValue("");
+      this.suggestEl.hide();
+      command.run({
+        getValue: () => this.getValue(),
+        setValue: (value) => this.setValue(value),
+        send: () => this.submit(),
+      });
+      return;
+    }
     this.setValue(command.insertText ?? `/${command.id} `);
     this.inputEl.focus();
   }

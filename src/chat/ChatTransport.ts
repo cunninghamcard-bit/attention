@@ -18,6 +18,7 @@ export class ChatTransport {
   constructor(private readonly baseUrl: string = resolveChatBridgeUrl()) {}
 
   connect(threadId: string, sinceSeq: number, onEvent: (event: ChatEvent) => void): () => void {
+    if (typeof EventSource === "undefined") return () => {};
     const url = `${this.baseUrl}/threads/${encodeURIComponent(threadId)}/events?since=${sinceSeq}`;
     const source = new EventSource(url);
     source.onmessage = (message) => {
@@ -40,6 +41,7 @@ export class ChatTransport {
   }
 
   async stop(threadId: string): Promise<void> {
-    await fetch(`${this.baseUrl}/threads/${encodeURIComponent(threadId)}/stop`, { method: "POST" });
+    // Best effort: interrupting a run that already ended is not an error.
+    await fetch(`${this.baseUrl}/threads/${encodeURIComponent(threadId)}/stop`, { method: "POST" }).catch(() => undefined);
   }
 }

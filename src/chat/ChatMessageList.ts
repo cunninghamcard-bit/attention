@@ -1,8 +1,10 @@
 import { getMarkdown, parseMarkdownToStructure } from "stream-markdown-parser";
 import { createDiv, createEl, createSpan } from "../dom/dom";
+import { writeClipboardText } from "../dom/Clipboard";
 import { Component } from "../core/Component";
+import { Notice } from "../ui/Notice";
 import { getChatToolRenderer } from "./ChatRegistry";
-import type { ChatMessage, ChatPart, ChatSession, ToolChatPart } from "./ChatSession";
+import { chatMessageToMarkdown, type ChatMessage, type ChatPart, type ChatSession, type ToolChatPart } from "./ChatSession";
 import { StreamMarkdownRenderer } from "./StreamMarkdownRenderer";
 
 class ChatPartRenderer extends Component {
@@ -69,7 +71,13 @@ class ChatMessageItem extends Component {
   constructor(parentEl: HTMLElement, private readonly message: ChatMessage) {
     super();
     this.el = createDiv(`chat-message chat-message-${message.role}`, parentEl);
-    createDiv({ cls: "chat-message-role", text: message.role === "user" ? "You" : "Assistant", parent: this.el });
+    const headerEl = createDiv("chat-message-header", this.el);
+    createDiv({ cls: "chat-message-role", text: message.role === "user" ? "You" : "Assistant", parent: headerEl });
+    const copyEl = createEl("button", { cls: "chat-message-copy", parent: headerEl, title: "Copy message" });
+    copyEl.setText("copy");
+    copyEl.addEventListener("click", () => {
+      void writeClipboardText(chatMessageToMarkdown(this.message)).then(() => new Notice("Message copied"));
+    });
     this.partsEl = createDiv("chat-message-parts", this.el);
   }
 
@@ -94,20 +102,34 @@ class ChatMessageItem extends Component {
 export class ChatMessageList extends Component {
   readonly el: HTMLElement;
   private readonly items = new Map<string, ChatMessageItem>();
+  private readonly emptyEl: HTMLElement;
+  private readonly thinkingEl: HTMLElement;
 
   constructor(parentEl: HTMLElement, private readonly session: ChatSession) {
     super();
     this.el = createDiv("chat-message-list", parentEl);
+    this.emptyEl = createDiv("chat-empty", this.el);
+    createDiv({ cls: "chat-empty-title", text: "Start a conversation", parent: this.emptyEl });
+    createDiv({ cls: "chat-empty-hint", text: "Type a message below, or / for commands.", parent: this.emptyEl });
+    this.thinkingEl = createDiv("chat-thinking-indicator", this.el);
+    for (let index = 0; index < 3; index++) createSpan({ cls: "chat-thinking-dot", parent: this.thinkingEl });
+    this.thinkingEl.hide();
   }
 
   sync(): void {
-    for (const message of this.session.getMessages()) {
+    const messages = this.session.getMessages();
+    this.emptyEl.toggle(messages.length === 0);
+    for (const message of messages) {
       let item = this.items.get(message.id);
       if (!item) {
         item = this.addChild(new ChatMessageItem(this.el, message));
         this.items.set(message.id, item);
+        this.el.appendChild(this.thinkingEl);
       }
       item.sync();
     }
+    const last = messages[messages.length - 1];
+    const waiting = this.session.isRunning() && (!last || last.role === "user" || last.closed);
+    this.thinkingEl.toggle(waiting);
   }
 }

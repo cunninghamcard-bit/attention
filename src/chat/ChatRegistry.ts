@@ -9,17 +9,18 @@ export interface ChatToolRenderer {
   render(part: ToolChatPart, el: HTMLElement, context: ChatToolRendererContext): void;
 }
 
+export interface ChatComposerActionContext {
+  getValue(): string;
+  setValue(value: string): void;
+  send(): void;
+}
+
 export interface ChatSlashCommand {
   id: string;
   name: string;
   description?: string;
   insertText?: string;
-}
-
-export interface ChatComposerActionContext {
-  getValue(): string;
-  setValue(value: string): void;
-  send(): void;
+  run?(context: ChatComposerActionContext): void;
 }
 
 export interface ChatComposerAction {

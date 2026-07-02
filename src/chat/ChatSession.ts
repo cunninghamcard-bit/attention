@@ -145,6 +145,28 @@ export class ChatSession extends Events {
   }
 }
 
+export function chatMessageToMarkdown(message: ChatMessage): string {
+  const parts: string[] = [];
+  for (const part of message.parts) {
+    if (!part) continue;
+    if (part.type === "tool") {
+      const result = part.result !== undefined ? `\n${part.result}` : "";
+      parts.push(`\`\`\`tool ${part.toolName}\n${part.input}${result}\n\`\`\``);
+    } else if (part.type === "thinking") {
+      if (part.markdown.trim()) parts.push(`> ${part.markdown.trim().split("\n").join("\n> ")}`);
+    } else {
+      if (part.markdown.trim()) parts.push(part.markdown.trim());
+    }
+  }
+  return parts.join("\n\n");
+}
+
+export function chatTranscriptToMarkdown(messages: readonly ChatMessage[]): string {
+  return messages
+    .map((message) => `**${message.role === "user" ? "You" : "Assistant"}**\n\n${chatMessageToMarkdown(message)}`)
+    .join("\n\n---\n\n");
+}
+
 const sessions = new Map<string, ChatSession>();
 
 // Sessions are shared app-wide so multiple leaves on the same thread render
