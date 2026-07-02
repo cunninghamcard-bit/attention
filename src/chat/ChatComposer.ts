@@ -19,7 +19,7 @@ import {
   listChatSlashCommands,
   onChatComposerExtensionsChanged,
 } from "./ChatRegistry";
-import type { ChatAttachmentPayload } from "./ChatSession";
+import type { ChatAttachmentPayload } from "./Agent";
 
 export interface ChatComposerCallbacks {
   send(text: string, attachments: ChatAttachmentPayload[]): void;
@@ -29,7 +29,7 @@ export interface ChatComposerCallbacks {
 }
 
 export interface ChatComposerOptions {
-  threadId?: string;
+  agentId?: string;
 }
 
 // The composer is a CodeMirror extension host, the way MarkdownView's editor
@@ -41,7 +41,7 @@ export class ChatComposer extends Component {
   private readonly editor: EditorView;
   private readonly sendButtonEl: HTMLButtonElement;
   private readonly pluginExtensions = new Compartment();
-  private readonly threadId: string | null;
+  private readonly agentId: string | null;
   private historyCursor = -1;
   private historyStash = "";
 
@@ -51,17 +51,17 @@ export class ChatComposer extends Component {
     options: ChatComposerOptions = {},
   ) {
     super();
-    this.threadId = options.threadId ?? null;
+    this.agentId = options.agentId ?? null;
     this.el = createDiv("chat-composer", parentEl);
     this.attachmentBar = this.addChild(new ChatAttachmentBar(this.el));
     const rowEl = createDiv("chat-composer-row", this.el);
     const editorEl = createDiv("chat-composer-input", rowEl);
 
-    const draftExtensions: Extension[] = this.threadId ? [chatDraftPersistence(this.threadId)] : [];
+    const draftExtensions: Extension[] = this.agentId ? [chatDraftPersistence(this.agentId)] : [];
     this.editor = new EditorView({
       parent: editorEl,
       state: EditorState.create({
-        doc: this.threadId ? (readChatDraft(this.threadId) ?? "") : "",
+        doc: this.agentId ? (readChatDraft(this.agentId) ?? "") : "",
         extensions: [
           history(),
           placeholder("Message… (/ for commands, [[ for notes)"),
@@ -133,7 +133,7 @@ export class ChatComposer extends Component {
     this.attachmentBar.clear();
     this.historyCursor = -1;
     appendChatInputHistory(text);
-    if (this.threadId) clearChatDraft(this.threadId);
+    if (this.agentId) clearChatDraft(this.agentId);
     this.callbacks.send(text, attachments);
     return true;
   }

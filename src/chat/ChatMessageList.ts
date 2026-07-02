@@ -2,7 +2,7 @@ import { getMarkdown, parseMarkdownToStructure } from "stream-markdown-parser";
 import { createDiv, createEl, createSpan } from "../dom/dom";
 import { Component } from "../core/Component";
 import { getChatToolRenderer, listChatMessageActions } from "./ChatRegistry";
-import type { ChatMessage, ChatPart, ChatSession, ToolChatPart } from "./ChatSession";
+import type { ChatMessage, ChatPart, Agent, ToolChatPart } from "./Agent";
 import { StreamMarkdownRenderer } from "./StreamMarkdownRenderer";
 
 class ChatPartRenderer extends Component {
@@ -52,7 +52,7 @@ class ChatPartRenderer extends Component {
 
   private syncText(part: Extract<ChatPart, { type: "text" | "thinking" }>): void {
     this.el.className = part.type === "thinking" ? "chat-part chat-part-thinking" : "chat-part chat-part-text";
-    if (!this.renderer) this.renderer = new StreamMarkdownRenderer(this.el, this, `chat://${this.messageId}/${this.partIndex}`);
+    if (!this.renderer) this.renderer = new StreamMarkdownRenderer(this.el, this, `agent://${this.messageId}/${this.partIndex}`);
     const md = getMarkdown(`${this.messageId}:${this.partIndex}`);
     const nodes = parseMarkdownToStructure(part.markdown, md, part.closed ? { final: true } : undefined);
     this.renderer.update(nodes);
@@ -182,7 +182,7 @@ export class ChatMessageList extends Component {
   private readonly emptyEl: HTMLElement;
   private readonly thinkingEl: HTMLElement;
 
-  constructor(parentEl: HTMLElement, private readonly session: ChatSession) {
+  constructor(parentEl: HTMLElement, private readonly session: Agent) {
     super();
     this.el = createDiv("chat-message-list", parentEl);
     this.emptyEl = createDiv("chat-empty", this.el);

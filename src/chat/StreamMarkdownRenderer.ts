@@ -31,7 +31,7 @@ export class StreamMarkdownRenderer {
   constructor(
     private readonly containerEl: HTMLElement,
     private readonly owner: Component,
-    private readonly sourcePath = "chat://message",
+    private readonly sourcePath = "agent://message",
   ) {
     this.containerEl.classList.add("markdown-rendered");
   }

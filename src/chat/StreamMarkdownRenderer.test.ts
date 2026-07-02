@@ -58,7 +58,7 @@ describe("StreamMarkdownRenderer", () => {
     expect(internal).toHaveLength(2);
     expect(internal[0].dataset.href).toBe("设计笔记");
     expect(internal[0].textContent).toBe("笔记");
-    expect(internal[0].dataset.sourcePath).toBe("chat://message");
+    expect(internal[0].dataset.sourcePath).toBe("agent://message");
     expect(internal[1].dataset.href).toBe("Welcome");
 
     const external = containerEl.querySelector<HTMLElement>("a.external-link");

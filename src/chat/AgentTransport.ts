@@ -1,6 +1,6 @@
-import type { ChatEvent } from "./ChatEvent";
+import type { AgentEvent } from "./AgentEvent";
 
-export interface ChatThreadSummary {
+export interface AgentSummary {
   id: string;
   title: string | null;
   updatedAt: number;
@@ -20,17 +20,17 @@ export function resolveChatBridgeUrl(): string {
 }
 
 // REST for commands, SSE for pushes. Internal to the chat module: plugins go
-// through ChatSession and never see this layer.
-export class ChatTransport {
+// through Agent and never see this layer.
+export class AgentTransport {
   constructor(private readonly baseUrl: string = resolveChatBridgeUrl()) {}
 
-  connect(threadId: string, sinceSeq: number, onEvent: (event: ChatEvent) => void): () => void {
+  connect(agentId: string, sinceSeq: number, onEvent: (event: AgentEvent) => void): () => void {
     if (typeof EventSource === "undefined") return () => {};
-    const url = `${this.baseUrl}/threads/${encodeURIComponent(threadId)}/events?since=${sinceSeq}`;
+    const url = `${this.baseUrl}/agents/${encodeURIComponent(agentId)}/events?since=${sinceSeq}`;
     const source = new EventSource(url);
     source.onmessage = (message) => {
       try {
-        onEvent(JSON.parse(message.data) as ChatEvent);
+        onEvent(JSON.parse(message.data) as AgentEvent);
       } catch (error) {
         console.error("chat: dropped malformed event", error);
       }
@@ -38,8 +38,8 @@ export class ChatTransport {
     return () => source.close();
   }
 
-  async sendMessage(threadId: string, text: string, attachments: Array<{ name: string; content: string }> = []): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/threads/${encodeURIComponent(threadId)}/messages`, {
+  async sendMessage(agentId: string, text: string, attachments: Array<{ name: string; content: string }> = []): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/agents/${encodeURIComponent(agentId)}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text, attachments }),
@@ -47,15 +47,15 @@ export class ChatTransport {
     if (!response.ok) throw new Error(`chat bridge rejected message: ${response.status}`);
   }
 
-  async listThreads(): Promise<ChatThreadSummary[]> {
-    const response = await fetch(`${this.baseUrl}/threads`);
+  async listAgents(): Promise<AgentSummary[]> {
+    const response = await fetch(`${this.baseUrl}/agents`);
     if (!response.ok) return [];
-    const payload = (await response.json().catch(() => null)) as { threads?: ChatThreadSummary[] } | null;
-    return Array.isArray(payload?.threads) ? payload.threads : [];
+    const payload = (await response.json().catch(() => null)) as { agents?: AgentSummary[] } | null;
+    return Array.isArray(payload?.agents) ? payload.agents : [];
   }
 
-  async stop(threadId: string): Promise<void> {
+  async stop(agentId: string): Promise<void> {
     // Best effort: interrupting a run that already ended is not an error.
-    await fetch(`${this.baseUrl}/threads/${encodeURIComponent(threadId)}/stop`, { method: "POST" }).catch(() => undefined);
+    await fetch(`${this.baseUrl}/agents/${encodeURIComponent(agentId)}/stop`, { method: "POST" }).catch(() => undefined);
   }
 }

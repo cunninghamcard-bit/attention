@@ -1,6 +1,6 @@
 import type { Extension } from "@codemirror/state";
 import type { Component } from "../core/Component";
-import type { ChatMessage, ToolChatPart } from "./ChatSession";
+import type { ChatMessage, ToolChatPart } from "./Agent";
 
 export interface ChatToolRendererContext {
   component: Component;

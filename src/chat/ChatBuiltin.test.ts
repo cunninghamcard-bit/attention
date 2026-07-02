@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../app/App";
-import type { ChatEvent } from "./ChatEvent";
-import { newChatThreadId } from "./ChatBuiltin";
+import type { AgentEvent } from "./AgentEvent";
+import { newAgentId } from "./AgentManager";
 import { ChatView } from "./ChatView";
 
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
@@ -27,30 +27,30 @@ describe("Chat builtin", () => {
     expect(app.internalPlugins.getPluginById("chat")).toBeNull();
     expect(app.viewRegistry.getViewCreatorByType("chat")).toBeTypeOf("function");
 
-    app.commands.executeCommandById("chat:open");
+    app.commands.executeCommandById("agent:open");
     await nextFrame();
     const view = app.workspace.getActiveViewOfType(ChatView);
     expect(view).not.toBeNull();
     expect(view?.getViewType()).toBe("chat");
-    expect(view?.getState()).toEqual({ threadId: "default" });
+    expect(view?.getState()).toEqual({ agentId: "default" });
   });
 
   it("derives the tab title from the first user message, like file views derive it from the file", async () => {
     const app = trackApp(new App(document.createElement("div")));
     await app.ready;
 
-    const threadId = newChatThreadId();
+    const agentId = newAgentId();
     const leaf = app.workspace.getLeaf("tab");
-    await leaf.setViewState({ type: "chat", active: true, state: { threadId } });
+    await leaf.setViewState({ type: "chat", active: true, state: { agentId } });
     const view = app.workspace.getActiveViewOfType(ChatView);
-    expect(view?.getDisplayText()).toBe(`Chat – ${threadId}`);
+    expect(view?.getDisplayText()).toBe(`Chat – ${agentId}`);
 
-    const session = app.chat.getSession(threadId);
-    const events: ChatEvent[] = [
-      { type: "run.started", runId: "r1", seq: 1, threadId },
-      { type: "message.started", messageId: "u1", role: "user", seq: 2, threadId },
-      { type: "part.opened", messageId: "u1", partIndex: 0, partType: "text", seq: 3, threadId },
-      { type: "part.delta", messageId: "u1", partIndex: 0, delta: "帮我看看这个架构设计的问题\n后面还有第二行", seq: 4, threadId },
+    const session = app.agents.get(agentId);
+    const events: AgentEvent[] = [
+      { type: "run.started", runId: "r1", seq: 1, agentId },
+      { type: "message.started", messageId: "u1", role: "user", seq: 2, agentId },
+      { type: "part.opened", messageId: "u1", partIndex: 0, partType: "text", seq: 3, agentId },
+      { type: "part.delta", messageId: "u1", partIndex: 0, delta: "帮我看看这个架构设计的问题\n后面还有第二行", seq: 4, agentId },
     ];
     for (const event of events) session.applyEvent(event);
     await nextFrame();
@@ -64,18 +64,18 @@ describe("Chat builtin", () => {
     const app = trackApp(new App(document.createElement("div")));
     await app.ready;
 
-    const threadId = newChatThreadId();
+    const agentId = newAgentId();
     const leaf = app.workspace.getLeaf("tab");
-    await leaf.setViewState({ type: "chat", active: true, state: { threadId } });
+    await leaf.setViewState({ type: "chat", active: true, state: { agentId } });
 
     const view = app.workspace.getActiveViewOfType(ChatView);
     expect(view?.isRunning()).toBe(false);
 
-    const session = app.chat.getSession(threadId);
-    session.applyEvent({ type: "run.started", runId: "r1", seq: 1, threadId });
+    const session = app.agents.get(agentId);
+    session.applyEvent({ type: "run.started", runId: "r1", seq: 1, agentId });
     expect(view?.isRunning()).toBe(true);
-    app.commands.executeCommandById("chat:stop");
-    session.applyEvent({ type: "run.closed", runId: "r1", status: "aborted", seq: 2, threadId });
+    app.commands.executeCommandById("agent:stop");
+    session.applyEvent({ type: "run.closed", runId: "r1", status: "aborted", seq: 2, agentId });
     expect(view?.isRunning()).toBe(false);
   });
 });

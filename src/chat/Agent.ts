@@ -1,6 +1,6 @@
 import { Events } from "../core/Events";
-import type { ChatEvent, ChatPartType, ChatRole } from "./ChatEvent";
-import type { ChatTransport } from "./ChatTransport";
+import type { AgentEvent, ChatPartType, ChatRole } from "./AgentEvent";
+import type { AgentTransport } from "./AgentTransport";
 
 export interface TextChatPart {
   type: "text" | "thinking";
@@ -42,7 +42,7 @@ export interface ChatCompaction {
   preTokens?: number;
 }
 
-export interface ChatSessionState {
+export interface AgentState {
   messages: ChatMessage[];
   compactions: ChatCompaction[];
   running: boolean;
@@ -50,7 +50,7 @@ export interface ChatSessionState {
   lastError: string | null;
 }
 
-export function createChatSessionState(): ChatSessionState {
+export function createAgentState(): AgentState {
   return { messages: [], compactions: [], running: false, lastSeq: 0, lastError: null };
 }
 
@@ -62,7 +62,7 @@ function createPart(partType: ChatPartType, toolName?: string, name?: string): C
 
 // The single reduce step shared by live SSE and history replay. Events with a
 // seq at or below state.lastSeq are replays and are dropped.
-export function applyChatEvent(state: ChatSessionState, event: ChatEvent): boolean {
+export function applyAgentEvent(state: AgentState, event: AgentEvent): boolean {
   if (event.seq <= state.lastSeq) return false;
   state.lastSeq = event.seq;
 
@@ -127,24 +127,24 @@ export function applyChatEvent(state: ChatSessionState, event: ChatEvent): boole
 
 // Frontend single source of truth for one thread. Views and plugins read it
 // and subscribe to it; the transport stays behind it.
-export class ChatSession extends Events {
-  readonly state = createChatSessionState();
+export class Agent extends Events {
+  readonly state = createAgentState();
   private disconnect: (() => void) | null = null;
 
   constructor(
-    readonly threadId: string,
-    private readonly transport: ChatTransport | null = null,
+    readonly agentId: string,
+    private readonly transport: AgentTransport | null = null,
   ) {
     super();
   }
 
   connect(): void {
     if (this.disconnect || !this.transport) return;
-    this.disconnect = this.transport.connect(this.threadId, this.state.lastSeq, (event) => this.applyEvent(event));
+    this.disconnect = this.transport.connect(this.agentId, this.state.lastSeq, (event) => this.applyEvent(event));
   }
 
-  applyEvent(event: ChatEvent): void {
-    if (!applyChatEvent(this.state, event)) return;
+  applyEvent(event: AgentEvent): void {
+    if (!applyAgentEvent(this.state, event)) return;
     if (event.type === "part.delta") this.trigger("delta", event.messageId, event.partIndex);
     this.trigger("changed");
   }
@@ -159,12 +159,12 @@ export class ChatSession extends Events {
 
   async sendMessage(text: string, attachments: ChatAttachmentPayload[] = []): Promise<void> {
     if (!this.transport) return;
-    await this.transport.sendMessage(this.threadId, text, attachments);
+    await this.transport.sendMessage(this.agentId, text, attachments);
   }
 
   async stop(): Promise<void> {
     if (!this.transport) return;
-    await this.transport.stop(this.threadId);
+    await this.transport.stop(this.agentId);
   }
 
   destroy(): void {

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { ChatEvent } from "./ChatEvent";
-import { applyChatEvent, ChatSession, createChatSessionState } from "./ChatSession";
+import type { AgentEvent } from "./AgentEvent";
+import { applyAgentEvent, Agent, createAgentState } from "./Agent";
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
-function events(threadId: string, list: Array<DistributiveOmit<ChatEvent, "seq" | "threadId">>): ChatEvent[] {
-  return list.map((event, index) => ({ ...event, seq: index + 1, threadId }) as ChatEvent);
+function events(agentId: string, list: Array<DistributiveOmit<AgentEvent, "seq" | "agentId">>): AgentEvent[] {
+  return list.map((event, index) => ({ ...event, seq: index + 1, agentId }) as AgentEvent);
 }
 
 const streamedRun = events("t1", [
@@ -28,10 +28,10 @@ const streamedRun = events("t1", [
   { type: "run.closed", runId: "r1", status: "completed" },
 ]);
 
-describe("applyChatEvent", () => {
+describe("applyAgentEvent", () => {
   it("folds a full run into messages with typed parts", () => {
-    const state = createChatSessionState();
-    for (const event of streamedRun) applyChatEvent(state, event);
+    const state = createAgentState();
+    for (const event of streamedRun) applyAgentEvent(state, event);
 
     expect(state.running).toBe(false);
     expect(state.messages).toHaveLength(2);
@@ -47,8 +47,8 @@ describe("applyChatEvent", () => {
   });
 
   it("folds attachment parts on user messages", () => {
-    const state = createChatSessionState();
-    const attachmentRun: ChatEvent[] = events("t1", [
+    const state = createAgentState();
+    const attachmentRun: AgentEvent[] = events("t1", [
       { type: "run.started", runId: "r1" },
       { type: "message.started", messageId: "u1", role: "user" },
       { type: "part.opened", messageId: "u1", partIndex: 0, partType: "text" },
@@ -59,45 +59,45 @@ describe("applyChatEvent", () => {
       { type: "part.closed", messageId: "u1", partIndex: 1 },
       { type: "message.closed", messageId: "u1" },
     ]);
-    for (const event of attachmentRun) applyChatEvent(state, event);
+    for (const event of attachmentRun) applyAgentEvent(state, event);
     expect(state.messages[0].parts[1]).toMatchObject({ type: "attachment", name: "Pasted text", content: "long pasted content", closed: true });
   });
 
   it("merges a late tool result via a second part.closed", () => {
-    const state = createChatSessionState();
-    for (const event of streamedRun.slice(0, 13)) applyChatEvent(state, event);
+    const state = createAgentState();
+    for (const event of streamedRun.slice(0, 13)) applyAgentEvent(state, event);
     const tool = state.messages[1].parts[1];
     expect(tool).toMatchObject({ type: "tool", closed: true });
     expect((tool as { result?: string }).result).toBeUndefined();
 
-    applyChatEvent(state, streamedRun[13]);
+    applyAgentEvent(state, streamedRun[13]);
     expect((state.messages[1].parts[1] as { result?: string }).result).toBe("file.txt");
   });
 
   it("drops replayed events at or below lastSeq, so history replay + live SSE share one path", () => {
-    const state = createChatSessionState();
-    for (const event of streamedRun) applyChatEvent(state, event);
+    const state = createAgentState();
+    for (const event of streamedRun) applyAgentEvent(state, event);
     const before = JSON.stringify(state.messages);
 
-    for (const event of streamedRun) expect(applyChatEvent(state, event)).toBe(false);
+    for (const event of streamedRun) expect(applyAgentEvent(state, event)).toBe(false);
     expect(JSON.stringify(state.messages)).toBe(before);
   });
 
   it("marks the run failed and closes open parts on run.closed error", () => {
-    const state = createChatSessionState();
-    for (const event of streamedRun.slice(0, 10)) applyChatEvent(state, event);
+    const state = createAgentState();
+    for (const event of streamedRun.slice(0, 10)) applyAgentEvent(state, event);
     expect(state.running).toBe(true);
 
-    applyChatEvent(state, { type: "run.closed", runId: "r1", status: "error", error: "boom", seq: 99, threadId: "t1" });
+    applyAgentEvent(state, { type: "run.closed", runId: "r1", status: "error", error: "boom", seq: 99, agentId: "t1" });
     expect(state.running).toBe(false);
     expect(state.lastError).toBe("boom");
     expect(state.messages[1].parts[0].closed).toBe(true);
   });
 });
 
-describe("ChatSession", () => {
+describe("Agent", () => {
   it("triggers delta and changed events for subscribers", () => {
-    const session = new ChatSession("t1");
+    const session = new Agent("t1");
     const seen: string[] = [];
     session.on("changed", () => seen.push("changed"));
     session.on<[string, number]>("delta", (messageId, partIndex) => seen.push(`delta:${messageId}:${partIndex}`));

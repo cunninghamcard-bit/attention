@@ -2,25 +2,25 @@ export type ChatRole = "user" | "assistant";
 
 export type ChatPartType = "text" | "thinking" | "tool" | "attachment";
 
-export type ChatRunStatus = "completed" | "error" | "aborted";
+export type AgentRunStatus = "completed" | "error" | "aborted";
 
-interface ChatEventBase {
+interface AgentEventBase {
   seq: number;
-  threadId: string;
+  agentId: string;
 }
 
-export interface ChatRunStartedEvent extends ChatEventBase {
+export interface AgentRunStartedEvent extends AgentEventBase {
   type: "run.started";
   runId: string;
 }
 
-export interface ChatMessageStartedEvent extends ChatEventBase {
+export interface AgentMessageStartedEvent extends AgentEventBase {
   type: "message.started";
   messageId: string;
   role: ChatRole;
 }
 
-export interface ChatPartOpenedEvent extends ChatEventBase {
+export interface AgentPartOpenedEvent extends AgentEventBase {
   type: "part.opened";
   messageId: string;
   partIndex: number;
@@ -29,7 +29,7 @@ export interface ChatPartOpenedEvent extends ChatEventBase {
   name?: string;
 }
 
-export interface ChatPartDeltaEvent extends ChatEventBase {
+export interface AgentPartDeltaEvent extends AgentEventBase {
   type: "part.delta";
   messageId: string;
   partIndex: number;
@@ -38,40 +38,40 @@ export interface ChatPartDeltaEvent extends ChatEventBase {
 
 // A second part.closed on an already-closed tool part merges its result;
 // tool results arrive after the tool_use block has closed.
-export interface ChatPartClosedEvent extends ChatEventBase {
+export interface AgentPartClosedEvent extends AgentEventBase {
   type: "part.closed";
   messageId: string;
   partIndex: number;
   result?: string;
 }
 
-export interface ChatMessageClosedEvent extends ChatEventBase {
+export interface AgentMessageClosedEvent extends AgentEventBase {
   type: "message.closed";
   messageId: string;
 }
 
-export interface ChatRunClosedEvent extends ChatEventBase {
+export interface AgentRunClosedEvent extends AgentEventBase {
   type: "run.closed";
   runId: string;
-  status: ChatRunStatus;
+  status: AgentRunStatus;
   error?: string;
 }
 
 // The engine condensed earlier conversation to fit its context window; the
 // UI marks where history stopped being verbatim.
-export interface ChatContextCompactedEvent extends ChatEventBase {
+export interface AgentContextCompactedEvent extends AgentEventBase {
   type: "context.compacted";
   afterMessageId?: string;
   preTokens?: number;
   trigger?: string;
 }
 
-export type ChatEvent =
-  | ChatRunStartedEvent
-  | ChatMessageStartedEvent
-  | ChatPartOpenedEvent
-  | ChatPartDeltaEvent
-  | ChatPartClosedEvent
-  | ChatMessageClosedEvent
-  | ChatRunClosedEvent
-  | ChatContextCompactedEvent;
+export type AgentEvent =
+  | AgentRunStartedEvent
+  | AgentMessageStartedEvent
+  | AgentPartOpenedEvent
+  | AgentPartDeltaEvent
+  | AgentPartClosedEvent
+  | AgentMessageClosedEvent
+  | AgentRunClosedEvent
+  | AgentContextCompactedEvent;

@@ -80,9 +80,9 @@ describe("chat drafts and input history", () => {
   });
 
   it("expires drafts past the TTL", () => {
-    window.localStorage.setItem("chat-draft:t-old", JSON.stringify({ text: "stale", updatedAt: Date.now() - 8 * 24 * 60 * 60 * 1000 }));
+    window.localStorage.setItem("agent-draft:t-old", JSON.stringify({ text: "stale", updatedAt: Date.now() - 8 * 24 * 60 * 60 * 1000 }));
     expect(readChatDraft("t-old")).toBeNull();
-    expect(window.localStorage.getItem("chat-draft:t-old")).toBeNull();
+    expect(window.localStorage.getItem("agent-draft:t-old")).toBeNull();
   });
 
   it("deduplicates history and caps it at 50", () => {

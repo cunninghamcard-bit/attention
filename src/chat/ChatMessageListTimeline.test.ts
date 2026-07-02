@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
-import type { ChatEvent } from "./ChatEvent";
+import type { AgentEvent } from "./AgentEvent";
 import { ChatMessageList } from "./ChatMessageList";
-import { ChatSession } from "./ChatSession";
+import { Agent } from "./Agent";
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
-type Bare = DistributiveOmit<ChatEvent, "seq" | "threadId">;
+type Bare = DistributiveOmit<AgentEvent, "seq" | "agentId">;
 
-function feed(session: ChatSession, list: Bare[], startSeq = 1): number {
-  list.forEach((event, index) => session.applyEvent({ ...event, seq: startSeq + index, threadId: "t1" } as ChatEvent));
+function feed(session: Agent, list: Bare[], startSeq = 1): number {
+  list.forEach((event, index) => session.applyEvent({ ...event, seq: startSeq + index, agentId: "t1" } as AgentEvent));
   return startSeq + list.length;
 }
 
 function setup() {
-  const session = new ChatSession("t1");
+  const session = new Agent("t1");
   const parentEl = document.createElement("div");
   document.body.appendChild(parentEl);
   const list = new ChatMessageList(parentEl, session);

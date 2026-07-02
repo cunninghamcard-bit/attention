@@ -1,7 +1,7 @@
 // Chat bridge: REST commands in, SSE canonical events out.
 // Drives Claude Code (`claude -p --output-format stream-json`) as the agent
 // engine. Stands in for the future Go backend and speaks the same contract
-// as src/chat/ChatEvent.ts.
+// as src/chat/AgentEvent.ts.
 //
 //   bun server/chat-bridge.ts          real engine (requires `claude` auth)
 //   bun server/chat-bridge.ts --mock   scripted stream, no engine needed
@@ -12,7 +12,7 @@ const EXTRA_CLAUDE_ARGS = (process.env.CHAT_BRIDGE_CLAUDE_ARGS ?? "").split(" ")
 
 interface BridgeEvent {
   seq: number;
-  threadId: string;
+  agentId: string;
   type: string;
   [key: string]: unknown;
 }
@@ -52,8 +52,8 @@ function getThread(id: string): Thread {
   return thread;
 }
 
-function emit(thread: Thread, event: Omit<BridgeEvent, "seq" | "threadId">): void {
-  const full: BridgeEvent = { ...event, seq: ++thread.seq, threadId: thread.id };
+function emit(thread: Thread, event: Omit<BridgeEvent, "seq" | "agentId">): void {
+  const full: BridgeEvent = { ...event, seq: ++thread.seq, agentId: thread.id };
   thread.events.push(full);
   thread.updatedAt = Date.now();
   if (event.type === "run.started") thread.running = true;
@@ -306,17 +306,17 @@ Bun.serve({
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
 
-    if (url.pathname === "/threads" && request.method === "GET") {
+    if (url.pathname === "/agents" && request.method === "GET") {
       const list = [...threads.values()]
         .filter((thread) => thread.events.length > 0)
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .map((thread) => ({ id: thread.id, title: thread.title, updatedAt: thread.updatedAt, running: thread.running }));
-      return new Response(JSON.stringify({ threads: list }), {
+      return new Response(JSON.stringify({ agents: list }), {
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
       });
     }
 
-    const eventsMatch = url.pathname.match(/^\/threads\/([^/]+)\/events$/);
+    const eventsMatch = url.pathname.match(/^\/agents\/([^/]+)\/events$/);
     if (eventsMatch && request.method === "GET") {
       const thread = getThread(decodeURIComponent(eventsMatch[1]));
       const since = Number(url.searchParams.get("since") ?? 0);
@@ -337,7 +337,7 @@ Bun.serve({
       });
     }
 
-    const messagesMatch = url.pathname.match(/^\/threads\/([^/]+)\/messages$/);
+    const messagesMatch = url.pathname.match(/^\/agents\/([^/]+)\/messages$/);
     if (messagesMatch && request.method === "POST") {
       const thread = getThread(decodeURIComponent(messagesMatch[1]));
       const body = (await request.json().catch(() => ({}))) as { text?: string; attachments?: MessageAttachment[] };
@@ -355,7 +355,7 @@ Bun.serve({
       return new Response("{}", { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
     }
 
-    const stopMatch = url.pathname.match(/^\/threads\/([^/]+)\/stop$/);
+    const stopMatch = url.pathname.match(/^\/agents\/([^/]+)\/stop$/);
     if (stopMatch && request.method === "POST") {
       const thread = getThread(decodeURIComponent(stopMatch[1]));
       thread.proc?.kill();

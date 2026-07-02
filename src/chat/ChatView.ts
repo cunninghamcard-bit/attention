@@ -7,7 +7,7 @@ import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
 import { ChatComposer } from "./ChatComposer";
 import { ChatMessageList } from "./ChatMessageList";
 import { ChatScroller } from "./ChatScroller";
-import { chatTranscriptToMarkdown, type ChatAttachmentPayload, type ChatSession } from "./ChatSession";
+import { chatTranscriptToMarkdown, type ChatAttachmentPayload, type Agent } from "./Agent";
 import { ensureChatStyles } from "./ChatStyles";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import type { App } from "../app/App";
@@ -24,9 +24,9 @@ interface ChatViewEphemeralState {
 export class ChatView extends ItemView {
   override icon = "lucide-message-circle";
   override navigation = true;
-  private threadId = "default";
-  private threadTitle: string | null = null;
-  private session: ChatSession | null = null;
+  private agentId = "default";
+  private agentTitle: string | null = null;
+  private session: Agent | null = null;
   private list: ChatMessageList | null = null;
   private composer: ChatComposer | null = null;
   private scroller: ChatScroller | null = null;
@@ -44,8 +44,8 @@ export class ChatView extends ItemView {
   }
 
   getDisplayText(): string {
-    if (this.threadTitle) return this.threadTitle;
-    return this.threadId === "default" ? "Chat" : `Chat – ${this.threadId}`;
+    if (this.agentTitle) return this.agentTitle;
+    return this.agentId === "default" ? "Chat" : `Chat – ${this.agentId}`;
   }
 
   isRunning(): boolean {
@@ -59,10 +59,10 @@ export class ChatView extends ItemView {
   async onOpen(): Promise<void> {
     ensureChatStyles(this.app);
     this.contentEl.classList.add("chat-view");
-    this.addAction("lucide-message-circle-plus", "New thread", () => this.app.commands.executeCommandById("chat:new-thread"));
+    this.addAction("lucide-message-circle-plus", "New agent", () => this.app.commands.executeCommandById("agent:create"));
     this.stopActionEl = this.addAction("lucide-square", "Stop response", () => void this.stopRun());
     this.stopActionEl.hide();
-    this.initFor(this.threadId);
+    this.initFor(this.agentId);
   }
 
   async onClose(): Promise<void> {
@@ -73,9 +73,9 @@ export class ChatView extends ItemView {
     super.onPaneMenu(menu, source);
     menu.addItem((item) => item
       .setSection("action")
-      .setTitle("New thread")
+      .setTitle("New agent")
       .setIcon("lucide-message-circle-plus")
-      .onClick(() => this.app.commands.executeCommandById("chat:new-thread")));
+      .onClick(() => this.app.commands.executeCommandById("agent:create")));
     menu.addItem((item) => item
       .setSection("action")
       .setTitle("Copy conversation")
@@ -86,11 +86,11 @@ export class ChatView extends ItemView {
 
   override async setState(state: unknown, result?: unknown): Promise<void> {
     await super.setState(state, result as never);
-    if (state && typeof state === "object" && "threadId" in state) {
-      const next = String((state as { threadId?: unknown }).threadId ?? "default");
-      if (next !== this.threadId) {
-        this.threadId = next;
-        this.threadTitle = null;
+    if (state && typeof state === "object" && "agentId" in state) {
+      const next = String((state as { agentId?: unknown }).agentId ?? "default");
+      if (next !== this.agentId) {
+        this.agentId = next;
+        this.agentTitle = null;
         if (this.contentEl.classList.contains("chat-view")) this.initFor(next);
         this.refreshTitle();
       }
@@ -98,7 +98,7 @@ export class ChatView extends ItemView {
   }
 
   override getState(): Record<string, unknown> {
-    return { threadId: this.threadId };
+    return { agentId: this.agentId };
   }
 
   override setEphemeralState(state: unknown): void {
@@ -114,19 +114,19 @@ export class ChatView extends ItemView {
     };
   }
 
-  private initFor(threadId: string): void {
+  private initFor(agentId: string): void {
     if (this.list) this.removeChild(this.list);
     if (this.composer) this.removeChild(this.composer);
     if (this.scroller) this.removeChild(this.scroller);
     this.contentEl.empty();
 
-    this.session = this.app.chat.getSession(threadId);
+    this.session = this.app.agents.get(agentId);
     this.scrollEl = createDiv("chat-scroll", this.contentEl);
     // Chat speaks MarkdownView's element vocabulary, so the same delegated
     // handlers give internal links their click/hover/context-menu behavior.
     (MarkdownRenderer as unknown as {
       installInternalLinkHandlers(app: App, root: HTMLElement, sourcePath: string): void;
-    }).installInternalLinkHandlers(this.app, this.scrollEl, `chat://${threadId}`);
+    }).installInternalLinkHandlers(this.app, this.scrollEl, `agent://${agentId}`);
     this.list = this.addChild(new ChatMessageList(this.scrollEl, this.session));
     this.scroller = this.addChild(new ChatScroller(this.scrollEl, this.scrollEl));
     this.errorEl = createDiv("chat-error", this.contentEl);
@@ -140,7 +140,7 @@ export class ChatView extends ItemView {
           isRunning: () => this.isRunning(),
           getWikilinkTargets: () => this.app.vault.getMarkdownFiles().map((file) => file.basename),
         },
-        { threadId },
+        { agentId },
       ),
     );
 
@@ -173,8 +173,8 @@ export class ChatView extends ItemView {
     const textPart = firstUserMessage?.parts.find((part) => part?.type === "text");
     const line = (textPart && "markdown" in textPart ? textPart.markdown : "").trim().split("\n")[0] ?? "";
     const title = line ? (line.length > TITLE_MAX_LENGTH ? `${line.slice(0, TITLE_MAX_LENGTH)}…` : line) : null;
-    if (title === this.threadTitle) return;
-    this.threadTitle = title;
+    if (title === this.agentTitle) return;
+    this.agentTitle = title;
     this.updateHeader();
     this.leaf.tabHeaderInnerTitleEl.textContent = this.getDisplayText();
   }

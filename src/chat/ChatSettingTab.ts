@@ -2,7 +2,7 @@ import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import { setIcon } from "../ui/Icon";
 import { Setting, SettingGroup } from "../ui/Setting";
-import { DEFAULT_CHAT_BRIDGE_URL } from "./ChatTransport";
+import { DEFAULT_CHAT_BRIDGE_URL } from "./AgentTransport";
 import { DEFAULT_PASTE_CARD_THRESHOLD } from "./ChatComposerPaste";
 
 export class ChatSettingTab implements SettingTab {

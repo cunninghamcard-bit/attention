@@ -1,7 +1,13 @@
 # ChatView Design
 
-ChatView is the default strong View of a chat-agent app, the way MarkdownView is
+ChatView is the default strong View of an agent app, the way MarkdownView is
 the default strong View of Obsidian. It lives inside Workspace, not above it.
+
+Mental model: you CREATE AN AGENT — a persistent individual with identity and
+history — not a chat session. The domain entity is Agent (app.agents.create /
+get / list); the sidebar lists your agents; an agent outlives any tab showing
+it. "Chat" survives only as the UI genre: ChatView is a window onto an Agent,
+the way MarkdownView is a window onto a TFile.
 
 This document merges three earlier sources into one decided design:
 
@@ -19,9 +25,9 @@ App
 ```
 
 - ChatView extends ItemView, NOT FileView. A conversation is a DB row, not a file.
-- View state is `{ threadId }` via getState/setState — participates in layout persistence.
+- View state is `{ agentId }` via getState/setState — participates in layout persistence.
 - Draft text and scroll position are ephemeral state, per leaf.
-- Multiple leaves may open the same thread; they share one ChatSession.
+- Multiple leaves may open the same thread; they share one Agent.
 
 ## Builtin wiring
 
@@ -60,9 +66,9 @@ View-surface alignment with other views:
 ```text
 Engine backend (Claude Code bridge now, along-go later)
   | REST commands / SSE canonical events
-ChatTransport            internal, invisible to plugins
+AgentTransport            internal, invisible to plugins
   |
-ChatSession              state layer, extends Events, single source of truth
+Agent              state layer, extends Events, single source of truth
   |  Message = Part[]    reduce(state, event) folds canonical events
 ChatView
   |- ChatMessageList     one ChatMessageItem per message
@@ -76,7 +82,7 @@ ChatView
 Rules carried over from the along discussion:
 
 - The state layer is the frontend's single source of truth. Plugins never talk
-  to the transport; they call ChatSession methods and subscribe to its events.
+  to the transport; they call Agent methods and subscribe to its events.
 - Live SSE and history replay go through the same reducer. History is "events
   already reduced"; reconnect is snapshot + resume by `seq`. One render path.
 
@@ -96,9 +102,9 @@ we keep it structured all the way to the renderer.
 
 ## Canonical events
 
-Defined in `src/chat/ChatEvent.ts` (TS side is authoritative while the bridge
+Defined in `src/chat/AgentEvent.ts` (TS side is authoritative while the bridge
 is ours; ownership moves to the Go facade when along-go becomes the producer).
-Every event carries `threadId` and a monotonically increasing `seq`.
+Every event carries `agentId` and a monotonically increasing `seq`.
 
 ```text
 run.started      { runId }
@@ -151,18 +157,18 @@ keep a subtree while dropping its render path.
 
 ## Extension points
 
-Plugins reach chat exclusively through `app.chat` (ChatManager) — an
+Plugins reach chat exclusively through `app.agents` (AgentManager) — an
 app-level service beside metadataCache and customCss. Nothing chat-related
 is exported from the obsidian module; that surface stays parity-pure.
 
 ```text
-app.chat.getSession(threadId)                      the shared per-thread session
-app.chat.listSessions()
-app.chat.registerToolRenderer(toolName, renderer)  structured tool blocks
-app.chat.registerSlashCommand(command)
-app.chat.registerComposerAction(action)
-app.chat.registerMessageAction(action)
-app.chat.registerComposerExtension(cmExtension)    the editor seam
+app.agents.get(agentId)                      the shared per-thread session
+app.agents.list()
+app.agents.registerToolRenderer(toolName, renderer)  structured tool blocks
+app.agents.registerSlashCommand(command)
+app.agents.registerComposerAction(action)
+app.agents.registerMessageAction(action)
+app.agents.registerComposerExtension(cmExtension)    the editor seam
 registerMarkdownPostProcessor(...)                 existing chain, reused
 markdown-it plugins via parser config              syntax extensions
 ```
@@ -184,7 +190,7 @@ span.internal-link[data-href][data-sourcePath]   [[wikilinks]] in messages;
                                                  click/hover/context-menu via
                                                  the same delegated handlers,
                                                  installed per chat root with
-                                                 sourcePath chat://<threadId>
+                                                 sourcePath chat://<agentId>
 a.external-link                                  http(s) links
 code.language-x inside pre                       code fences — language
                                                  processors (mermaid, math,
@@ -217,7 +223,7 @@ REST for commands, SSE for pushes (WebSocket rejected; see along discussion).
 
 Dev backend: `server/chat-bridge.ts` (bun). Drives
 `claude -p --output-format stream-json --include-partial-messages`,
-maps threadId -> Claude Code session id, transforms stream-json into
+maps agentId -> Claude Code session id, transforms stream-json into
 canonical events. It stands in for along-go and speaks the same contract.
 
 ## Composer

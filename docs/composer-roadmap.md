@@ -40,13 +40,13 @@ stays where it already works — [[wikilinks]] the user types deliberately.
 
 ### P2 — Draft persistence + input history
 
-arkloop keys drafts by a 6-tuple (owner, page, threadId, mode, search) with a
+arkloop keys drafts by a 6-tuple (owner, page, agentId, mode, search) with a
 7-day TTL and LRU eviction, and keeps a 50-entry deduplicated input history
 navigated with ArrowUp/Down at the doc edges.
 
-Our mapping: scope = threadId (localStorage, TTL); leaf ephemeral state keeps
+Our mapping: scope = agentId (localStorage, TTL); leaf ephemeral state keeps
 only cursor/scroll. History navigation is a CM keymap entry; the draft store
-is a small module next to ChatTransport. The lesson worth keeping verbatim:
+is a small module next to AgentTransport. The lesson worth keeping verbatim:
 drafts belong to the *thread*, not to the leaf — closing a tab must not eat
 a draft.
 
