@@ -15,6 +15,9 @@ import { registerAppProtocol, registerAppSchemePrivileges } from "./app-protocol
 import { registerIpcHandlers } from "./ipc";
 import { performNetRequest } from "./net-request";
 import { handleObsidianUrl, obsidianUrlFromArgv } from "./obsidian-protocol";
+import { registerSessionHardening } from "./session-hardening";
+import { applyMenu, updateMenuItems } from "./menu";
+import type { SystemMenuItem } from "../src/desktop/SystemMenuBuilder";
 
 /**
  * Electron main entry for the reconstructed Obsidian desktop app.
@@ -152,6 +155,14 @@ if (!gotLock) {
       resourcesDir,
       fileOrigin,
       isWindows: process.platform === "win32",
+    });
+    registerSessionHardening();
+    ipcMain.on("set-menu", (event, arg: { template: SystemMenuItem[] }) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (win) applyMenu(win, arg.template);
+    });
+    ipcMain.on("update-menu-items", (_event, items: Parameters<typeof updateMenuItems>[0]) => {
+      updateMenuItems(items);
     });
     registry.pruneMissing();
     registerFoundationIpc();
