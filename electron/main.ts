@@ -45,6 +45,15 @@ if (!gotLock) {
   const fileOrigin = createFileOrigin();
   mainState.fileUrlPrefix = fileOrigin;
 
+  // app.getPath throws for unconfigured locations; fall back to userData.
+  const safePath = (name: "desktop" | "documents"): string => {
+    try {
+      return app.getPath(name);
+    } catch {
+      return app.getPath("userData");
+    }
+  };
+
   const store = new JsonStore(join(app.getPath("userData")));
   const settings = loadSettings(store);
   const registry = new VaultRegistry(settings, store, () => saveSettings(store, settings));
@@ -61,13 +70,28 @@ if (!gotLock) {
     isQuitting: () => mainState.isQuitting,
   });
 
-  // Real `ke()`: reopen every vault persisted as open; fall back to a plain
-  // renderer window until the starter page exists (renderer seam).
+  // First-run default vault. Real Obsidian shows a starter to pick a vault;
+  // that page is a renderer seam here, so we create/open a real default folder
+  // (`Documents/Obsidian Vault`, real `bt`) so the app opens on a real vault.
+  const ensureDefaultVault = (): string | null => {
+    const defaultPath = join(safePath("documents"), "Obsidian Vault");
+    try {
+      mkdirSync(defaultPath, { recursive: true });
+    } catch (error) {
+      console.error(error);
+    }
+    const result = registry.registerPath(defaultPath);
+    return "id" in result ? result.id : null;
+  };
+
+  // Real `ke()`: reopen every vault persisted as open; otherwise open the
+  // default vault window (falling back to a plain window if it can't be made).
   const openStartupWindows = () => {
     const opened = vaultWindows.openAllPersisted();
-    if (opened === 0 && BrowserWindow.getAllWindows().length === 0) {
-      createRendererWindow({ preloadPath: defaultPreloadPath(here) });
-    }
+    if (opened > 0 || BrowserWindow.getAllWindows().length > 0) return;
+    const defaultVaultId = ensureDefaultVault();
+    if (defaultVaultId) vaultWindows.openVault(defaultVaultId);
+    else createRendererWindow({ preloadPath: defaultPreloadPath(here) });
   };
 
   // Real `$e(url)` dispatch. Starter page is a renderer seam, so for
@@ -155,13 +179,4 @@ if (!gotLock) {
       pendingUrl = null;
     }
   });
-
-  // app.getPath throws for unconfigured locations; fall back to userData.
-  function safePath(name: "desktop" | "documents"): string {
-    try {
-      return app.getPath(name);
-    } catch {
-      return app.getPath("userData");
-    }
-  }
 }

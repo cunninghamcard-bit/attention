@@ -4,7 +4,7 @@ import { Workspace } from "../workspace/Workspace";
 import { PluginManager } from "../plugin/PluginManager";
 import { StatusBar } from "./StatusBar";
 import { SettingRegistry } from "./SettingRegistry";
-import { InMemoryAdapter } from "../vault/DataAdapter";
+import { DataAdapter, InMemoryAdapter } from "../vault/DataAdapter";
 import { Vault } from "../vault/Vault";
 import { FileManager } from "../vault/FileManager";
 import { MetadataCache } from "../metadata/MetadataCache";
@@ -124,6 +124,29 @@ export interface CliHandlerRegistration {
   owner?: string;
 }
 
+/**
+ * One-shot handoff of the vault adapter into the next {@link App} construction.
+ *
+ * `App.vault` is a field initializer that runs before the constructor body and
+ * that many other field initializers depend on, so the adapter cannot be
+ * threaded through a constructor parameter (field initializers see neither
+ * `this.param` — assigned too late under useDefineForClassFields — nor the bare
+ * parameter name). The desktop bootstrap calls {@link provideAppAdapter}
+ * synchronously right before `new App(...)`; construction consumes and clears
+ * it. With nothing provided (web/tests) the App uses an in-memory adapter.
+ */
+let nextAppAdapter: DataAdapter | undefined;
+
+export function provideAppAdapter(adapter: DataAdapter | undefined): void {
+  nextAppAdapter = adapter;
+}
+
+function takeNextAppAdapter(): DataAdapter | undefined {
+  const adapter = nextAppAdapter;
+  nextAppAdapter = undefined;
+  return adapter;
+}
+
 export class App {
   readonly appId = "obsidian-reconstructed";
   readonly title = document.title || "Obsidian";
@@ -166,7 +189,7 @@ export class App {
   readonly hotkeys = new HotkeyManager(this);
   readonly commands = new CommandManager(this.hotkeys, this);
   readonly desktopMenu = new DesktopMenu(this);
-  readonly vault = new Vault(new InMemoryAdapter(), this.pluginData, this.jsonStore);
+  readonly vault = new Vault(takeNextAppAdapter() ?? new InMemoryAdapter(), this.pluginData, this.jsonStore);
   readonly metadataCache = new MetadataCache(this.vault, this);
   readonly linkSuggestions = new LinkSuggestionManager(this);
   readonly linkGraph = new LinkGraph(this);

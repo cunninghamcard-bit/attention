@@ -17,6 +17,9 @@ export const OBSIDIAN_WEB_PREFERENCES = {
   contextIsolation: false,
   nodeIntegration: true,
   nodeIntegrationInWorker: true,
+  // Non-sandboxed so the renderer gets a CommonJS `require` (FileSystemAdapter
+  // loads node:fs/path through it). Real Obsidian's renderer is non-sandboxed.
+  sandbox: false,
   spellcheck: true,
   webviewTag: true,
 } as const;
