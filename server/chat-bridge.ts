@@ -6,8 +6,11 @@
 //   bun server/chat-bridge.ts          real engine (requires `claude` auth)
 //   bun server/chat-bridge.ts --mock   scripted stream, no engine needed
 
+import { abortPiAgent, runPiEngine } from "./pi-engine";
+
 const PORT = Number(process.env.CHAT_BRIDGE_PORT ?? 8787);
 const MOCK = process.argv.includes("--mock");
+const PI = process.argv.includes("--pi");
 const EXTRA_CLAUDE_ARGS = (process.env.CHAT_BRIDGE_CLAUDE_ARGS ?? "").split(" ").filter(Boolean);
 
 interface BridgeEvent {
@@ -201,6 +204,11 @@ async function runEngine(thread: Thread, text: string, attachments: MessageAttac
     return;
   }
 
+  if (PI) {
+    await runPiEngine(thread.id, runId, composePrompt(text, attachments), (event) => emit(thread, event));
+    return;
+  }
+
   const prompt = composePrompt(text, attachments);
   const args = ["claude", "-p", prompt, "--output-format", "stream-json", "--include-partial-messages", "--verbose"];
   if (thread.engineSessionId) args.push("--resume", thread.engineSessionId);
@@ -359,6 +367,7 @@ Bun.serve({
     if (stopMatch && request.method === "POST") {
       const thread = getThread(decodeURIComponent(stopMatch[1]));
       thread.proc?.kill();
+      if (PI) abortPiAgent(thread.id);
       return new Response("{}", { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
     }
 
@@ -366,4 +375,5 @@ Bun.serve({
   },
 });
 
-console.log(`chat-bridge listening on http://127.0.0.1:${PORT}${MOCK ? " (mock engine)" : ""}`);
+const engineLabel = MOCK ? " (mock engine)" : PI ? " (pi engine)" : " (claude engine)";
+console.log(`chat-bridge listening on http://127.0.0.1:${PORT}${engineLabel}`);
