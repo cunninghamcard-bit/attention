@@ -9,6 +9,8 @@ import { loadSettings, saveSettings } from "./settings";
 import { VaultRegistry } from "./vault-registry";
 import { VaultWindowManager } from "./vault-windows";
 import type { DisplayProvider } from "./window-state";
+import { createFileOrigin } from "./app-protocol";
+import { registerAppProtocol, registerAppSchemePrivileges } from "./app-protocol-register";
 
 /**
  * Electron main entry for the reconstructed Obsidian desktop app.
@@ -28,6 +30,16 @@ if (!gotLock) {
   app.quit();
 } else {
   initializeRemote();
+
+  // Must run before app.ready: makes `app://` a standard/secure scheme so the
+  // renderer served from app://obsidian.md/ is a secure context.
+  registerAppSchemePrivileges();
+
+  // Renderer bundle dir (unpackaged: repo `dist/`). Real symbol `c`.
+  const resourcesDir = join(here, "..", "dist");
+  // Real `Be`: the per-launch file-access origin returned by `file-url`.
+  const fileOrigin = createFileOrigin();
+  mainState.fileUrlPrefix = fileOrigin;
 
   const store = new JsonStore(join(app.getPath("userData")));
   const settings = loadSettings(store);
@@ -77,6 +89,11 @@ if (!gotLock) {
   });
 
   void app.whenReady().then(() => {
+    registerAppProtocol({
+      resourcesDir,
+      fileOrigin,
+      isWindows: process.platform === "win32",
+    });
     registry.pruneMissing();
     registerFoundationIpc();
     openStartupWindows();
