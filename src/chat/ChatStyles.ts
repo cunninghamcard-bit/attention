@@ -15,9 +15,11 @@ export function ensureChatStyles(): void {
     .chat-message-user { background: var(--background-secondary, rgba(120, 120, 140, 0.12)); }
     .chat-message-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
     .chat-message-role { font-size: 11px; font-weight: 600; opacity: 0.55; text-transform: uppercase; letter-spacing: 0.04em; }
-    .chat-message-copy { font-size: 11px; opacity: 0; border: none; background: none; cursor: pointer; color: var(--text-muted, #888); }
-    .chat-message:hover .chat-message-copy { opacity: 0.7; }
-    .chat-message-copy:hover { opacity: 1; }
+    .chat-message-actions { display: flex; gap: 8px; }
+    .chat-message-action { font-size: 11px; opacity: 0; border: none; background: none; cursor: pointer; color: var(--text-muted, #888); }
+    .chat-message:hover .chat-message-action { opacity: 0.7; }
+    .chat-message-action:hover { opacity: 1; }
+    .chat-view .internal-link { color: var(--link-color, #7c6ae0); cursor: pointer; text-decoration: underline; text-decoration-color: rgba(124,106,224,0.35); }
     .chat-empty { text-align: center; padding: 48px 0 24px; opacity: 0.5; }
     .chat-empty-title { font-size: 1.1em; font-weight: 600; margin-bottom: 6px; }
     .chat-empty-hint { font-size: 0.9em; }

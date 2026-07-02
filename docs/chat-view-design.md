@@ -166,6 +166,44 @@ markdown-it plugins via parser config              syntax extensions
 - The host owns lifecycle, cleanup, layout, persistence and safety; plugins
   register capabilities (same rule as docs/extension-points.md).
 
+## Element contract
+
+ChatView does not invent an element dialect: rendered chat DOM speaks
+MarkdownView's element vocabulary, so theme CSS, the post-processor chain,
+hover preview and the shared link handlers all apply unchanged.
+
+```text
+span.internal-link[data-href][data-sourcePath]   [[wikilinks]] in messages;
+                                                 click/hover/context-menu via
+                                                 the same delegated handlers,
+                                                 installed per chat root with
+                                                 sourcePath chat://<threadId>
+a.external-link                                  http(s) links
+code.language-x inside pre                       code fences — language
+                                                 processors (mermaid, math,
+                                                 query, base) fire in chat
+                                                 exactly as in reading view
+button.copy-code-button                          added by a default
+                                                 post-processor; both views
+                                                 get it, app.css already
+                                                 ships the styles
+```
+
+Chat-specific anatomy is a stable selector contract for plugins and themes:
+
+```text
+.chat-message[data-role][data-message-id]
+  .chat-message-header > .chat-message-role + .chat-message-actions
+  .chat-message-parts > .chat-part[data-part-type][data-tool-name]
+```
+
+Element-level registries: registerChatMessageAction (per-message hover
+actions; "Copy" is the builtin first entry), plus the existing tool renderer,
+composer action and slash registries. Host differences stay in context, not
+in forked renderers: chat sourcePath is chat://…, so a post-processor can
+tell which host it is running in; interactive markdown that writes back to
+files (task checkboxes) stays read-only in chat.
+
 ## Communication
 
 REST for commands, SSE for pushes (WebSocket rejected; see along discussion).

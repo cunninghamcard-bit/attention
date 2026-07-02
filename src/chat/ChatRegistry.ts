@@ -1,5 +1,5 @@
 import type { Component } from "../core/Component";
-import type { ToolChatPart } from "./ChatSession";
+import type { ChatMessage, ToolChatPart } from "./ChatSession";
 
 export interface ChatToolRendererContext {
   component: Component;
@@ -29,9 +29,25 @@ export interface ChatComposerAction {
   onClick(context: ChatComposerActionContext): void;
 }
 
+export interface ChatMessageAction {
+  id: string;
+  title: string;
+  run(message: ChatMessage): void;
+}
+
 const toolRenderers = new Map<string, ChatToolRenderer>();
 const slashCommands = new Map<string, ChatSlashCommand>();
 const composerActions = new Map<string, ChatComposerAction>();
+const messageActions = new Map<string, ChatMessageAction>();
+
+export function registerChatMessageAction(action: ChatMessageAction): () => void {
+  messageActions.set(action.id, action);
+  return () => void messageActions.delete(action.id);
+}
+
+export function listChatMessageActions(): ChatMessageAction[] {
+  return [...messageActions.values()];
+}
 
 export function registerChatToolRenderer(toolName: string, renderer: ChatToolRenderer): () => void {
   toolRenderers.set(toolName, renderer);

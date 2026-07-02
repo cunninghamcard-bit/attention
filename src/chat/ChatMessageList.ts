@@ -1,10 +1,8 @@
 import { getMarkdown, parseMarkdownToStructure } from "stream-markdown-parser";
 import { createDiv, createEl, createSpan } from "../dom/dom";
-import { writeClipboardText } from "../dom/Clipboard";
 import { Component } from "../core/Component";
-import { Notice } from "../ui/Notice";
-import { getChatToolRenderer } from "./ChatRegistry";
-import { chatMessageToMarkdown, type ChatMessage, type ChatPart, type ChatSession, type ToolChatPart } from "./ChatSession";
+import { getChatToolRenderer, listChatMessageActions } from "./ChatRegistry";
+import type { ChatMessage, ChatPart, ChatSession, ToolChatPart } from "./ChatSession";
 import { StreamMarkdownRenderer } from "./StreamMarkdownRenderer";
 
 class ChatPartRenderer extends Component {
@@ -21,10 +19,17 @@ class ChatPartRenderer extends Component {
     this.el = createDiv("chat-part", parentEl);
   }
 
+  private applyDataAttributes(part: ChatPart): void {
+    this.el.dataset.partType = part.type;
+    if (part.type === "tool") this.el.dataset.toolName = part.toolName;
+    else delete this.el.dataset.toolName;
+  }
+
   sync(part: ChatPart): void {
     const signature = this.signatureOf(part);
     if (signature === this.lastSignature) return;
     this.lastSignature = signature;
+    this.applyDataAttributes(part);
     if (part.type === "tool") this.syncTool(part);
     else this.syncText(part);
   }
@@ -71,13 +76,16 @@ class ChatMessageItem extends Component {
   constructor(parentEl: HTMLElement, private readonly message: ChatMessage) {
     super();
     this.el = createDiv(`chat-message chat-message-${message.role}`, parentEl);
+    this.el.dataset.role = message.role;
+    this.el.dataset.messageId = message.id;
     const headerEl = createDiv("chat-message-header", this.el);
     createDiv({ cls: "chat-message-role", text: message.role === "user" ? "You" : "Assistant", parent: headerEl });
-    const copyEl = createEl("button", { cls: "chat-message-copy", parent: headerEl, title: "Copy message" });
-    copyEl.setText("copy");
-    copyEl.addEventListener("click", () => {
-      void writeClipboardText(chatMessageToMarkdown(this.message)).then(() => new Notice("Message copied"));
-    });
+    const actionsEl = createDiv("chat-message-actions", headerEl);
+    for (const action of listChatMessageActions()) {
+      const buttonEl = createEl("button", { cls: "chat-message-action", parent: actionsEl, title: action.title });
+      buttonEl.setText(action.title.toLowerCase());
+      buttonEl.addEventListener("click", () => action.run(this.message));
+    }
     this.partsEl = createDiv("chat-message-parts", this.el);
   }
 

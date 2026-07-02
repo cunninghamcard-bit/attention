@@ -1,5 +1,8 @@
 import type { App } from "../app/App";
-import { registerChatSlashCommand } from "./ChatRegistry";
+import { writeClipboardText } from "../dom/Clipboard";
+import { Notice } from "../ui/Notice";
+import { registerChatMessageAction, registerChatSlashCommand } from "./ChatRegistry";
+import { chatMessageToMarkdown } from "./ChatSession";
 import { ChatView, CHAT_VIEW_TYPE } from "./ChatView";
 
 export function newChatThreadId(): string {
@@ -56,6 +59,14 @@ export function registerChatBuiltin(app: App): void {
   // pristine during workspace construction and layout deserialization.
   app.workspace.onLayoutReady(() => {
     app.workspace.leftRibbon.addRibbonIcon("lucide-message-circle", "Open chat", () => void openChatLeaf(app), "chat:open");
+  });
+
+  registerChatMessageAction({
+    id: "copy",
+    title: "Copy",
+    run: (message) => {
+      void writeClipboardText(chatMessageToMarkdown(message)).then(() => new Notice("Message copied"));
+    },
   });
 
   registerChatSlashCommand({

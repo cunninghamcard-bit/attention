@@ -10,6 +10,8 @@ import { ChatScroller } from "./ChatScroller";
 import { chatTranscriptToMarkdown, getChatSession, type ChatSession } from "./ChatSession";
 import { ChatTransport } from "./ChatTransport";
 import { ensureChatStyles } from "./ChatStyles";
+import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
+import type { App } from "../app/App";
 
 export const CHAT_VIEW_TYPE = "chat";
 
@@ -121,6 +123,11 @@ export class ChatView extends ItemView {
 
     this.session = getChatSession(threadId, new ChatTransport());
     this.scrollEl = createDiv("chat-scroll", this.contentEl);
+    // Chat speaks MarkdownView's element vocabulary, so the same delegated
+    // handlers give internal links their click/hover/context-menu behavior.
+    (MarkdownRenderer as unknown as {
+      installInternalLinkHandlers(app: App, root: HTMLElement, sourcePath: string): void;
+    }).installInternalLinkHandlers(this.app, this.scrollEl, `chat://${threadId}`);
     this.list = this.addChild(new ChatMessageList(this.scrollEl, this.session));
     this.scroller = this.addChild(new ChatScroller(this.scrollEl, this.scrollEl));
     this.errorEl = createDiv("chat-error", this.contentEl);
@@ -169,11 +176,13 @@ export class ChatView extends ItemView {
   }
 
   // One animation frame coalesces any number of part deltas into a single
-  // parse + DOM update pass.
+  // parse + DOM update pass. rAF never fires in background tabs, so a timer
+  // races it — whichever lands first flushes, the other becomes a no-op.
   private scheduleSync(): void {
     if (this.syncScheduled) return;
     this.syncScheduled = true;
-    requestAnimationFrame(() => {
+    const flush = () => {
+      if (!this.syncScheduled) return;
       this.syncScheduled = false;
       this.list?.sync();
       this.composer?.syncRunning();
@@ -184,6 +193,8 @@ export class ChatView extends ItemView {
         this.errorEl.show();
       }
       this.scroller?.notifyContentChanged();
-    });
+    };
+    requestAnimationFrame(flush);
+    window.setTimeout(flush, 50);
   }
 }

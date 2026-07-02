@@ -209,7 +209,7 @@ async function runMockEngine(thread: Thread, runId: string, text: string): Promi
   emit(thread, { type: "message.started", messageId, role: "assistant" });
 
   emit(thread, { type: "part.opened", messageId, partIndex: 0, partType: "text" });
-  const intro = `你发来了:**${text.slice(0, 40)}**\n\n下面演示流式渲染:\n\n## 一个标题\n\n| 特性 | 状态 |\n| --- | --- |\n| 表格流式 | ✅ |\n| 围栏补闭 | ✅ |\n\n\`\`\`ts\nconst answer = 42;\nconsole.log(answer);\n\`\`\`\n\n`;
+  const intro = `你发来了:**${text.slice(0, 40)}**\n\n下面演示流式渲染,详见 [[Welcome]]:\n\n## 一个标题\n\n| 特性 | 状态 |\n| --- | --- |\n| 表格流式 | ✅ |\n| 内链元素 | ✅ |\n\n\`\`\`ts\nconst answer = 42;\nconsole.log(answer);\n\`\`\`\n\n\`\`\`mermaid\ngraph LR\n  A[SSE] --> B[reducer] --> C[ChatView]\n\`\`\`\n\n`;
   for (const chunk of intro.match(/.{1,7}/gs) ?? []) {
     emit(thread, { type: "part.delta", messageId, partIndex: 0, delta: chunk });
     await sleep(24);

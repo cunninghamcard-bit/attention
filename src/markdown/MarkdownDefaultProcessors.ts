@@ -72,7 +72,34 @@ export function registerMarkdownDefaultProcessors(app: App): void {
     app.fixFileLinks(root, context.sourcePath);
   });
 
+  MarkdownRenderer.registerPostProcessor(addCopyCodeButtons);
+
   app.workspace.trigger("post-processor-change");
+}
+
+// Obsidian shows a copy button on every rendered code fence; app.css already
+// ships the .copy-code-button styles. Registered as a default post-processor
+// so both MarkdownView and ChatView get it.
+export function addCopyCodeButtons(root: HTMLElement): void {
+  // Post-processors receive each section element directly, so the root may
+  // itself be the pre of a code fence.
+  const pres = root instanceof HTMLPreElement ? [root] : [...root.querySelectorAll("pre")];
+  for (const pre of pres) {
+    const code = pre.querySelector("code");
+    if (!code || pre.querySelector(".copy-code-button")) continue;
+    const button = pre.ownerDocument.createElement("button");
+    button.className = "copy-code-button";
+    button.textContent = "Copy";
+    button.addEventListener("click", () => {
+      void navigator.clipboard?.writeText(code.textContent ?? "").then(() => {
+        button.textContent = "Copied!";
+        window.setTimeout(() => {
+          button.textContent = "Copy";
+        }, 1500);
+      });
+    });
+    pre.appendChild(button);
+  }
 }
 
 function registerCodeBlockPostProcessor(language: string, processor: MarkdownCodeBlockProcessor): void {

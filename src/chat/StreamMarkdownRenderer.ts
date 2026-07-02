@@ -159,10 +159,26 @@ export class StreamMarkdownRenderer {
     for (const child of children ?? []) this.renderInline(child, parent);
   }
 
+  // Same element vocabulary as MarkdownView's reading view: [[wikilinks]]
+  // become span.internal-link with data-href/data-sourcePath, so the shared
+  // link handlers, hover preview and theme CSS all apply unchanged.
+  private renderTextWithWikilinks(text: string, parent: HTMLElement): void {
+    const pattern = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
+    let lastIndex = 0;
+    for (let match = pattern.exec(text); match; match = pattern.exec(text)) {
+      if (match.index > lastIndex) parent.appendText(text.slice(lastIndex, match.index));
+      const linkEl = createEl("span", { cls: "internal-link", parent, text: match[2] ?? match[1] });
+      linkEl.dataset.href = match[1];
+      linkEl.dataset.sourcePath = this.sourcePath;
+      lastIndex = pattern.lastIndex;
+    }
+    parent.appendText(text.slice(lastIndex));
+  }
+
   private renderInline(node: AnyNode, parent: HTMLElement): void {
     switch (node.type) {
       case "text":
-        parent.appendText(node.content ?? "");
+        this.renderTextWithWikilinks(node.content ?? "", parent);
         return;
       case "strong":
         this.renderInlineChildren(node.children, createEl("strong", { parent }));
@@ -181,7 +197,10 @@ export class StreamMarkdownRenderer {
         return;
       case "link": {
         const info = node as { href?: string; url?: string };
-        const el = createEl("a", { parent, href: info.href ?? info.url ?? "#" });
+        const href = info.href ?? info.url ?? "#";
+        const el = createEl("a", { parent, href });
+        el.className = /^https?:/.test(href) ? "external-link" : "internal-link";
+        el.dataset.sourcePath = this.sourcePath;
         el.setAttr("target", "_blank");
         el.setAttr("rel", "noopener");
         this.renderInlineChildren(node.children, el);
