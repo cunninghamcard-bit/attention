@@ -197,17 +197,3 @@ export function chatTranscriptToMarkdown(messages: readonly ChatMessage[]): stri
     .join("\n\n---\n\n");
 }
 
-const sessions = new Map<string, ChatSession>();
-
-// Sessions are shared app-wide so multiple leaves on the same thread render
-// from one state. Becomes an App-level manager when chat graduates from
-// builtin module to core service.
-export function getChatSession(threadId: string, transport: ChatTransport): ChatSession {
-  let session = sessions.get(threadId);
-  if (!session) {
-    session = new ChatSession(threadId, transport);
-    session.connect();
-    sessions.set(threadId, session);
-  }
-  return session;
-}

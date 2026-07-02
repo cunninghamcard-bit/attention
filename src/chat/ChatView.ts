@@ -7,8 +7,7 @@ import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
 import { ChatComposer } from "./ChatComposer";
 import { ChatMessageList } from "./ChatMessageList";
 import { ChatScroller } from "./ChatScroller";
-import { chatTranscriptToMarkdown, getChatSession, type ChatAttachmentPayload, type ChatSession } from "./ChatSession";
-import { ChatTransport } from "./ChatTransport";
+import { chatTranscriptToMarkdown, type ChatAttachmentPayload, type ChatSession } from "./ChatSession";
 import { ensureChatStyles } from "./ChatStyles";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import type { App } from "../app/App";
@@ -121,7 +120,7 @@ export class ChatView extends ItemView {
     if (this.scroller) this.removeChild(this.scroller);
     this.contentEl.empty();
 
-    this.session = getChatSession(threadId, new ChatTransport());
+    this.session = this.app.chat.getSession(threadId);
     this.scrollEl = createDiv("chat-scroll", this.contentEl);
     // Chat speaks MarkdownView's element vocabulary, so the same delegated
     // handlers give internal links their click/hover/context-menu behavior.

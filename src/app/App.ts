@@ -39,6 +39,7 @@ import { Keymap } from "../hotkeys/Keymap";
 import { WorkspaceServices } from "./WorkspaceServices";
 import { registerAppCommands } from "./AppCommands";
 import { registerChatBuiltin } from "../chat/ChatBuiltin";
+import { ChatManager } from "../chat/ChatManager";
 import { ChatSettingTab } from "../chat/ChatSettingTab";
 import { registerAppProtocolHandlers } from "./AppProtocolHandlers";
 import { registerMarkdownDefaultProcessors } from "../markdown/MarkdownDefaultProcessors";
@@ -200,6 +201,7 @@ export class App {
   readonly hoverPreview: WorkspaceServices["hoverPreview"];
   readonly themes = new ThemeManager(this);
   readonly customCss = new CustomCss(this);
+  readonly chat = new ChatManager(this);
   readonly cssSnippets = new CssSnippetManager(this);
   readonly appearance = new AppearanceManager(this);
   readonly settingSections = new SettingsSectionRegistry();

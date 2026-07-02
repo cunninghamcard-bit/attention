@@ -2,8 +2,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../app/App";
 import type { ChatEvent } from "./ChatEvent";
 import { newChatThreadId } from "./ChatBuiltin";
-import { getChatSession } from "./ChatSession";
-import { ChatTransport } from "./ChatTransport";
 import { ChatView } from "./ChatView";
 
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
@@ -47,7 +45,7 @@ describe("Chat builtin", () => {
     const view = app.workspace.getActiveViewOfType(ChatView);
     expect(view?.getDisplayText()).toBe(`Chat – ${threadId}`);
 
-    const session = getChatSession(threadId, new ChatTransport());
+    const session = app.chat.getSession(threadId);
     const events: ChatEvent[] = [
       { type: "run.started", runId: "r1", seq: 1, threadId },
       { type: "message.started", messageId: "u1", role: "user", seq: 2, threadId },
@@ -73,7 +71,7 @@ describe("Chat builtin", () => {
     const view = app.workspace.getActiveViewOfType(ChatView);
     expect(view?.isRunning()).toBe(false);
 
-    const session = getChatSession(threadId, new ChatTransport());
+    const session = app.chat.getSession(threadId);
     session.applyEvent({ type: "run.started", runId: "r1", seq: 1, threadId });
     expect(view?.isRunning()).toBe(true);
     app.commands.executeCommandById("chat:stop");

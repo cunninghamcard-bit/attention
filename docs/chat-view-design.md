@@ -151,11 +151,18 @@ keep a subtree while dropping its render path.
 
 ## Extension points
 
+Plugins reach chat exclusively through `app.chat` (ChatManager) — an
+app-level service beside metadataCache and customCss. Nothing chat-related
+is exported from the obsidian module; that surface stays parity-pure.
+
 ```text
-chat.registerPartRenderer(partType, renderer)      text/thinking overrides
-chat.registerToolRenderer(toolName, renderer)      structured tool blocks
-chat.registerComposerAction(action)
-chat.registerSlashCommand(command)
+app.chat.getSession(threadId)                      the shared per-thread session
+app.chat.listSessions()
+app.chat.registerToolRenderer(toolName, renderer)  structured tool blocks
+app.chat.registerSlashCommand(command)
+app.chat.registerComposerAction(action)
+app.chat.registerMessageAction(action)
+app.chat.registerComposerExtension(cmExtension)    the editor seam
 registerMarkdownPostProcessor(...)                 existing chain, reused
 markdown-it plugins via parser config              syntax extensions
 ```
