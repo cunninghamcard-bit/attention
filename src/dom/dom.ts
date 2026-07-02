@@ -27,6 +27,12 @@ export function createSpan(spec?: DomElementSpec, parentOrCallback?: DomParent |
   return createEl("span", spec, parentOrCallback, callback);
 }
 
+export function createFragment(callback?: (frag: DocumentFragment) => unknown): DocumentFragment {
+  const frag = getActiveDocument().createDocumentFragment();
+  callback?.(frag);
+  return frag;
+}
+
 export function createEl<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   spec?: DomElementSpec,
@@ -207,6 +213,22 @@ export function installDomExtensions(win: Window & typeof globalThis = window): 
   defineMethod(elementProto, "instanceOf", function instanceOfMethod(this: Element, constructor: typeof Element): boolean {
     return this instanceof constructor;
   });
+  defineMethod(elementProto, "getText", function getTextMethod(this: Element): string {
+    return this.textContent ?? "";
+  });
+  defineMethod(elementProto, "setCssStyles", function setCssStylesMethod(this: HTMLElement, styles: Partial<CSSStyleDeclaration>): void {
+    Object.assign(this.style, styles);
+  });
+  defineMethod(elementProto, "setCssProps", function setCssPropsMethod(this: HTMLElement, props: Record<string, string>): void {
+    for (const name of Object.keys(props)) this.style.setProperty(name, props[name]);
+  });
+  defineMethod(elementProto, "toggleVisibility", function toggleVisibilityMethod(this: HTMLElement, visible: boolean): void {
+    this.style.visibility = visible ? "" : "hidden";
+  });
+  defineMethod(nodeProto, "insertAfter", function insertAfterMethod<T extends Node>(this: Node, node: T, reference: Node | null): T {
+    this.insertBefore(node, reference ? reference.nextSibling : this.firstChild);
+    return node;
+  });
 }
 
 declare global {
@@ -220,6 +242,7 @@ declare global {
     empty(): this;
     setChildrenInPlace(children: Node[]): this;
     detach(): this;
+    insertAfter<T extends Node>(node: T, reference: Node | null): T;
   }
 
   interface Element {
@@ -243,6 +266,10 @@ declare global {
     onClickEvent(listener: (event: MouseEvent) => unknown): () => void;
     matchParent(selector: string): Element | null;
     instanceOf(constructor: typeof Element): boolean;
+    getText(): string;
+    setCssStyles(styles: Partial<CSSStyleDeclaration>): void;
+    setCssProps(props: Record<string, string>): void;
+    toggleVisibility(visible: boolean): void;
   }
 }
 
