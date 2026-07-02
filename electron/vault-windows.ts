@@ -11,6 +11,7 @@ import {
 } from "./window-state";
 import { OBSIDIAN_WEB_PREFERENCES } from "./window";
 import { resolveRendererUrl } from "./renderer-target";
+import { buildObsActScript, type ObsidianAction } from "./obsidian-url";
 
 /** A vault window plus the mutable bookkeeping real Obsidian hangs off it. */
 interface TrackedWindow {
@@ -147,6 +148,24 @@ export class VaultWindowManager {
     void win.loadURL(resolveRendererUrl()).then(reveal, reveal);
     this.deps.registry.setOpen(vaultId, true);
     return win;
+  }
+
+  /**
+   * Real `it(vaultId, action)`: open-or-get the vault window and inject the
+   * `OBS_ACT` payload, deferring to `did-finish-load` if it hasn't loaded yet.
+   */
+  deliverAction(vaultId: string, action: ObsidianAction): void {
+    const win = this.openVault(vaultId, false);
+    const entry = this.tracked.get(vaultId);
+    if (!entry) return;
+    const script = buildObsActScript(action);
+    if (entry.loaded) {
+      void win.webContents.executeJavaScript(script);
+    } else {
+      win.webContents.once("did-finish-load", () => {
+        void win.webContents.executeJavaScript(script);
+      });
+    }
   }
 
   /** Real `ve()` — the open vault with the most recent focus. */

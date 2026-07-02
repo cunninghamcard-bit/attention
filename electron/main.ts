@@ -14,6 +14,7 @@ import { createFileOrigin } from "./app-protocol";
 import { registerAppProtocol, registerAppSchemePrivileges } from "./app-protocol-register";
 import { registerIpcHandlers } from "./ipc";
 import { performNetRequest } from "./net-request";
+import { handleObsidianUrl, obsidianUrlFromArgv } from "./obsidian-protocol";
 
 /**
  * Electron main entry for the reconstructed Obsidian desktop app.
@@ -69,13 +70,44 @@ if (!gotLock) {
     }
   };
 
-  app.on("second-instance", () => {
+  // Real `$e(url)` dispatch. Starter page is a renderer seam, so for
+  // sync-setup/choose-vault we fall back to opening the app.
+  const dispatchObsidianUrl = (url: string) =>
+    handleObsidianUrl(url, {
+      registry,
+      vaultWindows,
+      openStarter: openStartupWindows,
+      showVaultNotFound: (u) => console.error(`No vault for URL ${u}`),
+      isWindows: process.platform === "win32",
+    });
+
+  // A protocol URL may arrive before `whenReady` (real `Oe` capture).
+  let pendingUrl: string | null = obsidianUrlFromArgv(process.argv);
+  app.on("will-finish-launching", () => {
+    app.once("open-url", (event, url) => {
+      event.preventDefault();
+      pendingUrl = url;
+    });
+  });
+  app.on("open-url", (event, url) => {
+    event.preventDefault();
+    if (app.isReady()) dispatchObsidianUrl(url);
+    else pendingUrl = url;
+  });
+
+  app.on("second-instance", (_event, argv) => {
+    const url = obsidianUrlFromArgv(argv);
+    if (url) dispatchObsidianUrl(url);
     const [win] = BrowserWindow.getAllWindows();
     if (win) {
       if (win.isMinimized()) win.restore();
       win.focus();
     }
   });
+
+  if (!app.isDefaultProtocolClient("obsidian")) {
+    app.setAsDefaultProtocolClient("obsidian");
+  }
 
   app.on("before-quit", () => {
     mainState.isQuitting = true;
@@ -118,6 +150,10 @@ if (!gotLock) {
       onError: (error) => console.error(error),
     });
     openStartupWindows();
+    if (pendingUrl) {
+      dispatchObsidianUrl(pendingUrl);
+      pendingUrl = null;
+    }
   });
 
   // app.getPath throws for unconfigured locations; fall back to userData.
