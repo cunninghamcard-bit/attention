@@ -210,6 +210,25 @@ structure goes through registries. The boundary is typed — postProcessors
 receive rendered DOM, so anything that must be dispatched BEFORE rendering
 (tool parts, attachments) cannot ride the pipeline.
 
+## Where each concern lives
+
+Every piece of chat UI has exactly one home, decided by its nature — the
+same rule that puts word counts in the status bar and never in MarkdownView:
+
+| concern                           | nature                      | home                          |
+|-----------------------------------|-----------------------------|-------------------------------|
+| messages, tool calls, compactions | conversation history        | the stream (ChatMessageList)  |
+| run errors (run.closed error)     | history — replay shows them | a stream row, not a toast     |
+| transport failures (bridge down)  | transient app trouble       | Notice                        |
+| token usage / cost                | per-view ephemeral status   | status bar item (AgentStatusBar, the WordCount pattern) |
+| composer, header actions, stop    | view chrome                 | ChatView                      |
+| agent list                        | workspace-level navigation  | AgentsView side leaf          |
+| domain state                      | single source of truth      | Agent (transport invisible)   |
+
+The test for a new element: if it would survive history replay it belongs in
+the stream; if it follows the active leaf it belongs in the status bar; only
+what operates THIS window belongs on the view.
+
 ## The view ladder
 
 ```text
