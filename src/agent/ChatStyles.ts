@@ -144,10 +144,12 @@ const CHAT_CSS = `
     .chat-part-attachment { border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); border-radius: 6px; padding: 8px 10px; font-size: 0.9em; }
     .chat-attachment-header { display: flex; gap: 8px; align-items: baseline; }
     .chat-attachment-content { margin: 6px 0 0; padding: 6px 8px; border-radius: 4px; background: var(--background-primary-alt, rgba(120,120,140,0.08)); overflow: auto; max-height: 160px; font-size: 0.85em; }
-    .chat-composer-send { width: 30px; height: 30px; padding: 0; border-radius: 50%; cursor: pointer; border: none; background: var(--interactive-accent, #7c6ae0); color: var(--text-on-accent, #fff); display: inline-flex; align-items: center; justify-content: center; transition: background 0.12s ease, transform 0.12s ease; flex: 0 0 auto; }
-    .chat-composer-send:hover { background: var(--interactive-accent-hover, #6a58d0); transform: translateY(-1px); }
+    .chat-composer-send { width: 30px; height: 30px; padding: 0; border-radius: 9px; cursor: pointer; border: none; background: transparent; color: var(--text-faint, #b6b6be); display: inline-flex; align-items: center; justify-content: center; transition: background 0.12s ease, color 0.12s ease; flex: 0 0 auto; }
+    .chat-composer-send:hover { background: var(--background-modifier-hover, rgba(120,120,140,0.12)); color: var(--text-muted, #888); }
+    .chat-composer-send.is-ready { background: var(--text-normal, #1f1f24); color: var(--background-primary, #fff); }
+    .chat-composer-send.is-ready:hover { opacity: 0.85; }
     .chat-composer-send svg { width: 16px; height: 16px; }
-    .chat-composer-send.is-running { background: var(--background-modifier-error, #c0392b); color: white; }
+    .chat-composer-send.is-running { background: rgba(220, 80, 80, 0.14); color: var(--color-red, #cc4444); }
     .chat-composer-send.is-running svg { width: 12px; height: 12px; }
     .chat-slash-suggest { position: absolute; bottom: 100%; left: 24px; right: 24px; max-width: 760px; margin: 0 auto 6px; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); border-radius: 8px; background: var(--background-primary, white); box-shadow: 0 4px 18px rgba(0,0,0,0.12); overflow: hidden; z-index: 10; }
     .chat-slash-item { display: flex; gap: 10px; padding: 8px 12px; cursor: pointer; }

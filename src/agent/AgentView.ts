@@ -4,6 +4,7 @@ import { Menu } from "../ui/Menu";
 import { ItemView } from "../views/ItemView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
 import { newRoomId, openAgent, openAgentProperties, openRoom } from "./AgentBuiltin";
+import { STRINGS, formatRelativeTime, formatUsage } from "./AgentStrings";
 import { newAgentId } from "./AgentManager";
 import { AgentTransport, type AgentSummary } from "./AgentTransport";
 import { ensureChatStyles } from "./ChatStyles";
@@ -20,35 +21,27 @@ export function showAgentMenu(app: App, transport: AgentTransport, agent: AgentS
   event.preventDefault();
   const menu = new Menu((event.target as HTMLElement | null)?.ownerDocument ?? document);
   menu.addItem((item) => item
-    .setTitle("Properties")
+    .setTitle(STRINGS.menu.properties)
     .setIcon("bot")
     .onClick(() => void openAgentProperties(app, agent.id)));
   menu.addItem((item) => item
-    .setTitle("Rename")
+    .setTitle(STRINGS.menu.rename)
     .setIcon("lucide-pencil")
     .onClick(() => {
       // ponytail: window.prompt over a custom modal; upgrade when a shared
       // prompt modal exists in the ui module.
-      const title = window.prompt("Rename agent", agent.title ?? agent.id);
+      const title = window.prompt(STRINGS.menu.renamePrompt, agent.title ?? agent.id);
       if (title?.trim()) void transport.rename(agent.id, title.trim()).then(onChanged);
     }));
   menu.addItem((item) => item
-    .setTitle("Delete")
+    .setTitle(STRINGS.menu.delete)
     .setIcon("lucide-trash-2")
     .onClick(() => {
-      if (window.confirm(`Delete agent "${agent.title ?? agent.id}"? Its history goes with it.`)) {
+      if (window.confirm(STRINGS.menu.deleteConfirm(agent.title ?? agent.id))) {
         void transport.delete(agent.id).then(onChanged);
       }
     }));
   menu.showAtMouseEvent(event);
-}
-
-function formatRelativeTime(timestamp: number): string {
-  const deltaSeconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
-  if (deltaSeconds < 60) return "just now";
-  if (deltaSeconds < 3600) return `${Math.floor(deltaSeconds / 60)}m ago`;
-  if (deltaSeconds < 86400) return `${Math.floor(deltaSeconds / 3600)}h ago`;
-  return `${Math.floor(deltaSeconds / 86400)}d ago`;
 }
 
 // AgentView shows the agents, plural: every agent as a card — who is
@@ -75,18 +68,18 @@ export class AgentView extends ItemView {
   }
 
   getDisplayText(): string {
-    return "Agent board";
+    return STRINGS.board.displayText;
   }
 
   async onOpen(): Promise<void> {
     ensureChatStyles(this.app);
     this.contentEl.classList.add("agent-board-view");
     const headerEl = createDiv("agent-board-header", this.contentEl);
-    createDiv({ cls: "agent-board-title", text: "Agents", parent: headerEl });
+    createDiv({ cls: "agent-board-title", text: STRINGS.board.title, parent: headerEl });
     const buttonsEl = createDiv("agent-board-buttons", headerEl);
-    const newAgentEl = createEl("button", { cls: "agent-board-create", text: "New agent", parent: buttonsEl });
+    const newAgentEl = createEl("button", { cls: "agent-board-create", text: STRINGS.board.newAgent, parent: buttonsEl });
     newAgentEl.addEventListener("click", () => void openAgent(this.app, newAgentId()));
-    const newRoomEl = createEl("button", { cls: "agent-board-create", text: "New room", parent: buttonsEl });
+    const newRoomEl = createEl("button", { cls: "agent-board-create", text: STRINGS.board.newRoom, parent: buttonsEl });
     newRoomEl.addEventListener("click", () => void openRoom(this.app, newRoomId()));
     this.gridEl = createDiv("agent-board-grid", this.contentEl);
     this.registerInterval(window.setInterval(() => void this.refresh(), REFRESH_INTERVAL_MS));
@@ -106,7 +99,7 @@ export class AgentView extends ItemView {
     if (!this.gridEl) return;
     this.gridEl.empty();
     if (this.agents.length === 0) {
-      createDiv({ cls: "agent-board-empty", text: "No agents yet. Create one to get started.", parent: this.gridEl });
+      createDiv({ cls: "agent-board-empty", text: STRINGS.board.empty, parent: this.gridEl });
       return;
     }
     for (const agent of this.agents) this.renderCard(agent);
@@ -121,26 +114,23 @@ export class AgentView extends ItemView {
     createDiv({ cls: "agent-card-title", text: agent.title ?? agent.id, parent: headerEl });
 
     const metaEl = createDiv("agent-card-meta", cardEl);
-    createSpan({ cls: "agent-card-state", text: agent.running ? "Running" : "Idle", parent: metaEl });
+    createSpan({ cls: "agent-card-state", text: agent.running ? STRINGS.agentState.running : STRINGS.agentState.idle, parent: metaEl });
     createSpan({ cls: "agent-card-time", text: formatRelativeTime(agent.updatedAt), parent: metaEl });
 
     // Usage renders only for agents this window has already connected to;
     // the board never opens SSE connections just to fill a cell.
     const usage = this.app.agents.peek(agent.id)?.state.usage;
-    if (usage) {
-      const cost = usage.costUsd ? ` · $${usage.costUsd.toFixed(3)}` : "";
-      createDiv({ cls: "agent-card-usage", text: `${(usage.totalTokens / 1000).toFixed(1)}k tokens${cost}`, parent: cardEl });
-    }
+    if (usage) createDiv({ cls: "agent-card-usage", text: formatUsage(usage), parent: cardEl });
 
     const isRoom = agent.id.startsWith("room-");
     const open = isRoom ? openRoom : openAgent;
     const actionsEl = createDiv("agent-card-actions", cardEl);
-    const chatEl = createEl("button", { cls: "agent-card-action", text: isRoom ? "Room" : "Chat", parent: actionsEl });
+    const chatEl = createEl("button", { cls: "agent-card-action", text: isRoom ? STRINGS.board.openRoom : STRINGS.board.openChat, parent: actionsEl });
     chatEl.addEventListener("click", (event) => {
       event.stopPropagation();
       void open(this.app, agent.id);
     });
-    const propsEl = createEl("button", { cls: "agent-card-action", text: "Properties", parent: actionsEl });
+    const propsEl = createEl("button", { cls: "agent-card-action", text: STRINGS.board.openProperties, parent: actionsEl });
     propsEl.addEventListener("click", (event) => {
       event.stopPropagation();
       void openAgentProperties(this.app, agent.id);

@@ -1,4 +1,5 @@
 import { createDiv, createSpan } from "../dom/dom";
+import { STRINGS } from "./AgentStrings";
 import { authorHue } from "./ChatMessageList";
 import { ChatView } from "./ChatView";
 import { createStatusDot } from "./StatusDot";
@@ -21,7 +22,7 @@ export class MultiAgentView extends ChatView {
 
   getDisplayText(): string {
     if (this.agentTitle) return this.agentTitle;
-    return this.agentId && this.agentId !== "default" ? `Room – ${this.agentId}` : "Room";
+    return this.agentId && this.agentId !== "default" ? STRINGS.room.titleFor(this.agentId) : STRINGS.room.title;
   }
 
   protected override onChatChromeReady(): void {
@@ -49,11 +50,11 @@ export class MultiAgentView extends ChatView {
     if (this.participantsEl.dataset.signature === signature) return;
     this.participantsEl.dataset.signature = signature;
     this.participantsEl.empty();
-    createSpan({ cls: "multi-agent-participants-label", text: "Participants", parent: this.participantsEl });
-    this.chip("you", "You", false);
+    createSpan({ cls: "multi-agent-participants-label", text: STRINGS.room.participants, parent: this.participantsEl });
+    this.chip("you", STRINGS.role.you, false);
     for (const [authorId, entry] of authors) this.chip(authorId, entry.name, entry.speaking);
     if (authors.size === 0) {
-      createSpan({ cls: "multi-agent-participants-hint", text: "Agents join as they speak.", parent: this.participantsEl });
+      createSpan({ cls: "multi-agent-participants-hint", text: STRINGS.room.participantsHint, parent: this.participantsEl });
     }
   }
 

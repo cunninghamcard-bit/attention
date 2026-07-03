@@ -2,6 +2,7 @@ import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import { setIcon } from "../ui/Icon";
 import { Setting, SettingGroup } from "../ui/Setting";
+import { STRINGS } from "./AgentStrings";
 import { DEFAULT_CHAT_BRIDGE_URL } from "./AgentTransport";
 import { DEFAULT_PASTE_CARD_THRESHOLD } from "./ChatComposerPaste";
 
@@ -28,10 +29,10 @@ export class ChatSettingTab implements SettingTab {
 
   display(): void {
     this.containerEl.replaceChildren();
-    const group = new SettingGroup(this.containerEl).setHeading("Engine");
+    const group = new SettingGroup(this.containerEl).setHeading(STRINGS.settings.engineHeading);
     new Setting(group.itemsEl)
-      .setName("Bridge URL")
-      .setDesc("REST + SSE endpoint of the chat bridge. Applies to newly opened threads.")
+      .setName(STRINGS.settings.bridgeUrl)
+      .setDesc(STRINGS.settings.bridgeUrlDesc)
       .addText((text) => text
         .setPlaceholder(DEFAULT_CHAT_BRIDGE_URL)
         .setValue(window.localStorage?.getItem("chat-bridge-url") ?? "")
@@ -41,10 +42,10 @@ export class ChatSettingTab implements SettingTab {
           else window.localStorage?.removeItem("chat-bridge-url");
         }));
 
-    const chatGroup = new SettingGroup(this.containerEl).setHeading("Chat");
+    const chatGroup = new SettingGroup(this.containerEl).setHeading(STRINGS.settings.chatHeading);
     new Setting(chatGroup.itemsEl)
-      .setName("Typewriter reveal")
-      .setDesc("Pace streamed text at a smooth reading rate. Off shows deltas the moment they arrive.")
+      .setName(STRINGS.settings.typewriter)
+      .setDesc(STRINGS.settings.typewriterDesc)
       .addToggle((toggle) => toggle
         .setValue(window.localStorage?.getItem("chat-typewriter") !== "off")
         .onChange((value) => {
@@ -52,8 +53,8 @@ export class ChatSettingTab implements SettingTab {
           else window.localStorage?.setItem("chat-typewriter", "off");
         }));
     new Setting(chatGroup.itemsEl)
-      .setName("Collapse finished thinking")
-      .setDesc("Fold reasoning to its header once it completes. Off keeps it expanded.")
+      .setName(STRINGS.settings.collapseThinking)
+      .setDesc(STRINGS.settings.collapseThinkingDesc)
       .addToggle((toggle) => toggle
         .setValue(window.localStorage?.getItem("chat-thinking-collapse") !== "off")
         .onChange((value) => {
@@ -61,10 +62,10 @@ export class ChatSettingTab implements SettingTab {
           else window.localStorage?.setItem("chat-thinking-collapse", "off");
         }));
 
-    const composerGroup = new SettingGroup(this.containerEl).setHeading("Composer");
+    const composerGroup = new SettingGroup(this.containerEl).setHeading(STRINGS.settings.composerHeading);
     new Setting(composerGroup.itemsEl)
-      .setName("Paste-to-card threshold")
-      .setDesc(`Pasted text with at least this many lines becomes an attachment card instead of inline text. Default ${DEFAULT_PASTE_CARD_THRESHOLD}.`)
+      .setName(STRINGS.settings.pasteThreshold)
+      .setDesc(STRINGS.settings.pasteThresholdDesc(DEFAULT_PASTE_CARD_THRESHOLD))
       .addText((text) => text
         .setPlaceholder(String(DEFAULT_PASTE_CARD_THRESHOLD))
         .setValue(window.localStorage?.getItem("chat-paste-threshold") ?? "")

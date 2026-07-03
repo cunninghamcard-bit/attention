@@ -1,6 +1,7 @@
 import { createDiv, createEl, createSpan } from "../dom/dom";
 import { registerChatToolRenderer } from "./ChatRegistry";
 import type { ToolChatPart } from "./Agent";
+import { STRINGS } from "./AgentStrings";
 
 // Builtin tool cards: the common coding-agent tools (bash, edit, read, write,
 // grep, glob) render a purpose-built card instead of raw JSON input + output.
@@ -143,7 +144,7 @@ function renderCard(spec: ToolCardSpec, part: ToolChatPart, el: HTMLElement): vo
   }
   createSpan({
     cls: `chat-tool-status ${failed ? "is-failed" : part.closed ? "is-done" : "is-running"}`,
-    text: failed ? "failed" : part.closed ? (part.result !== undefined ? "done" : "called") : "running",
+    text: failed ? STRINGS.tool.failed : part.closed ? (part.result !== undefined ? STRINGS.tool.done : STRINGS.tool.called) : STRINGS.tool.running,
     parent: headerEl,
   });
 

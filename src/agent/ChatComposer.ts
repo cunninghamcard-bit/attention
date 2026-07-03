@@ -4,6 +4,7 @@ import { Compartment, EditorState, Prec, type Extension } from "@codemirror/stat
 import { EditorView, keymap, placeholder } from "@codemirror/view";
 import { createDiv, createEl } from "../dom/dom";
 import { Component } from "../core/Component";
+import { STRINGS } from "./AgentStrings";
 import { setIcon } from "../ui/Icon";
 import { ChatAttachmentBar } from "./ChatAttachmentBar";
 import {
@@ -70,7 +71,7 @@ export class ChatComposer extends Component {
         doc: this.agentId ? (readChatDraft(this.agentId) ?? "") : "",
         extensions: [
           history(),
-          placeholder("Message… (/ for commands, [[ for notes)"),
+          placeholder(STRINGS.composer.placeholder),
           EditorView.lineWrapping,
           autocompletion({ override: [(context) => this.completeSlashCommand(context), (context) => this.completeWikilink(context), (context) => this.completeMention(context)] }),
           Prec.high(keymap.of(completionKeymap)),
@@ -81,9 +82,18 @@ export class ChatComposer extends Component {
             { key: "ArrowDown", run: (view) => this.navigateHistory(view, 1) },
           ]),
           keymap.of([...defaultKeymap, ...historyKeymap]),
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged) this.syncSendState();
+          }),
           composerPasteExtension({
-            addTextAttachment: (name, content) => this.attachmentBar.addText(name, content),
-            addFileAttachment: (file) => this.attachmentBar.addFile(file),
+            addTextAttachment: (name, content) => {
+              this.attachmentBar.addText(name, content);
+              this.syncSendState();
+            },
+            addFileAttachment: (file) => {
+              this.attachmentBar.addFile(file);
+              this.syncSendState();
+            },
           }),
           ...draftExtensions,
           this.pluginExtensions.of(listChatComposerExtensions()),
@@ -92,7 +102,7 @@ export class ChatComposer extends Component {
     });
 
     const toolbarEl = createDiv("chat-composer-toolbar", cardEl);
-    createDiv({ cls: "chat-composer-hint", text: "Enter to send · Shift+Enter for a new line · / commands", parent: toolbarEl });
+    createDiv({ cls: "chat-composer-hint", text: STRINGS.composer.hint, parent: toolbarEl });
     const actionsEl = createDiv("chat-composer-actions", toolbarEl);
     for (const action of listChatComposerActions()) {
       const buttonEl = createEl("button", { cls: "chat-composer-action", parent: actionsEl, text: action.title });
@@ -104,7 +114,9 @@ export class ChatComposer extends Component {
         }),
       );
     }
-    this.sendButtonEl = createEl("button", { cls: "chat-composer-send mod-cta", parent: actionsEl, title: "Send" });
+    // clickable-icon is the app's own icon-button vocabulary: quiet
+    // background and hover come from app.css; is-ready/is-running override.
+    this.sendButtonEl = createEl("button", { cls: "chat-composer-send clickable-icon", parent: actionsEl, title: STRINGS.composer.send });
     setIcon(this.sendButtonEl, "lucide-arrow-up");
   }
 
@@ -128,10 +140,15 @@ export class ChatComposer extends Component {
     this.editor.focus();
   }
 
+  // The send button is quiet until there is something to send.
+  private syncSendState(): void {
+    this.sendButtonEl.toggleClass("is-ready", this.getValue().trim().length > 0 || !this.attachmentBar.isEmpty());
+  }
+
   syncRunning(): void {
     const running = this.callbacks.isRunning();
     setIcon(this.sendButtonEl, running ? "lucide-square" : "lucide-arrow-up");
-    this.sendButtonEl.title = running ? "Stop" : "Send";
+    this.sendButtonEl.title = running ? STRINGS.composer.stop : STRINGS.composer.send;
     this.sendButtonEl.toggleClass("is-running", running);
   }
 

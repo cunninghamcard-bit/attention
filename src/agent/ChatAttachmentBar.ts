@@ -23,6 +23,10 @@ export class ChatAttachmentBar extends Component {
     this.el.hide();
   }
 
+  isEmpty(): boolean {
+    return this.attachments.size === 0;
+  }
+
   addText(name: string, content: string): void {
     const id = `attachment-${++attachmentCounter}`;
     this.attachments.set(id, { id, name, content });

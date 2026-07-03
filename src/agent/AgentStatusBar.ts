@@ -1,6 +1,7 @@
 import type { App } from "../app/App";
 import type { EventRef } from "../core/Events";
 import type { Agent } from "./Agent";
+import { formatUsage } from "./AgentStrings";
 import { ChatView } from "./ChatView";
 
 // Token usage lives in the app status bar, the way WordCount's counts do:
@@ -42,7 +43,6 @@ export class AgentStatusBar {
       return;
     }
     this.el.style.display = "";
-    const cost = usage.costUsd ? ` · $${usage.costUsd.toFixed(3)}` : "";
-    this.el.textContent = `${(usage.totalTokens / 1000).toFixed(1)}k tokens${cost}`;
+    this.el.textContent = formatUsage(usage);
   }
 }

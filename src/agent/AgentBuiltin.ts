@@ -1,6 +1,7 @@
 import type { App } from "../app/App";
 import { writeClipboardText } from "../dom/Clipboard";
 import { addIcon } from "../ui/Icon";
+import { STRINGS } from "./AgentStrings";
 import { Notice } from "../ui/Notice";
 
 // Lucide glyphs the vendored icon registry does not carry; agent surfaces
@@ -87,20 +88,20 @@ export function registerAgentBuiltin(app: App): void {
   new AgentStatusBar(app);
   app.commands.addCommand({
     id: "agent:open",
-    name: "Open chat",
+    name: STRINGS.commands.openChat,
     icon: "message-circle",
     hotkeys: [{ modifiers: ["Mod", "Shift"], key: "c" }],
     callback: () => void openChatLeaf(app),
   });
   app.commands.addCommand({
     id: "agent:create",
-    name: "Create agent",
+    name: STRINGS.commands.createAgent,
     icon: "message-circle-plus",
     callback: () => void openChatLeaf(app, newAgentId()),
   });
   app.commands.addCommand({
     id: "agent:stop",
-    name: "Stop chat response",
+    name: STRINGS.commands.stopResponse,
     icon: "lucide-square",
     checkCallback: (checking) => {
       const view = app.workspace.getActiveViewOfType(ChatView);
@@ -112,14 +113,14 @@ export function registerAgentBuiltin(app: App): void {
 
   app.commands.addCommand({
     id: "agent:create-room",
-    name: "Create multi-agent room",
+    name: STRINGS.commands.createRoom,
     icon: "users",
     callback: () => void openRoom(app, newRoomId()),
   });
 
   app.commands.addCommand({
     id: "agent:open-board",
-    name: "Open agent board",
+    name: STRINGS.commands.openBoard,
     icon: "lucide-layout-grid",
     callback: () => {
       const leaf = app.workspace.getLeavesOfType(AGENT_VIEW_TYPE)[0] ?? app.workspace.getLeaf("tab");
@@ -129,7 +130,7 @@ export function registerAgentBuiltin(app: App): void {
 
   app.commands.addCommand({
     id: "agent:open-properties",
-    name: "Open agent properties",
+    name: STRINGS.commands.openProperties,
     icon: "bot",
     checkCallback: (checking) => {
       const view = app.workspace.getActiveViewOfType(ChatView);
@@ -142,31 +143,31 @@ export function registerAgentBuiltin(app: App): void {
   // After layout-ready, like core plugin ribbon items: the ribbon stays
   // pristine during workspace construction and layout deserialization.
   app.workspace.onLayoutReady(() => {
-    app.workspace.leftRibbon.addRibbonIcon("message-circle", "Open chat", () => void openChatLeaf(app), "agent:open");
-    app.workspace.leftRibbon.addRibbonIcon("lucide-layout-grid", "Open agents", () => app.commands.executeCommandById("agent:open-board"), "agent:open-board");
+    app.workspace.leftRibbon.addRibbonIcon("message-circle", STRINGS.commands.openChat, () => void openChatLeaf(app), "agent:open");
+    app.workspace.leftRibbon.addRibbonIcon("lucide-layout-grid", STRINGS.commands.openAgents, () => app.commands.executeCommandById("agent:open-board"), "agent:open-board");
   });
 
   registerChatMessageAction({
     id: "copy",
-    title: "Copy",
+    title: STRINGS.actions.copy,
     run: (message) => {
-      void writeClipboardText(chatMessageToMarkdown(message)).then(() => new Notice("Message copied"));
+      void writeClipboardText(chatMessageToMarkdown(message)).then(() => new Notice(STRINGS.notices.messageCopied));
     },
   });
   registerChatMessageAction({
     id: "retry",
-    title: "Retry",
+    title: STRINGS.actions.retry,
     appliesTo: (message) => message.role === "user",
     run: (message, { agent }) => {
       const text = firstTextOf(message);
-      if (text) void agent.sendMessage(text).catch((error) => new Notice(`Retry failed: ${error instanceof Error ? error.message : String(error)}`));
+      if (text) void agent.sendMessage(text).catch((error) => new Notice(STRINGS.notices.retryFailed(error instanceof Error ? error.message : String(error))));
     },
   });
   // Edit = refill the composer, the honest v1: the sent message is history
   // and stays; a corrected version goes out as a new message.
   registerChatMessageAction({
     id: "edit",
-    title: "Edit",
+    title: STRINGS.actions.edit,
     appliesTo: (message) => message.role === "user",
     run: (message) => {
       const text = firstTextOf(message);
@@ -177,14 +178,14 @@ export function registerAgentBuiltin(app: App): void {
 
   registerChatSlashCommand({
     id: "new",
-    name: "New agent",
-    description: "Start a fresh conversation",
+    name: STRINGS.slash.newAgent,
+    description: STRINGS.slash.newAgentDesc,
     run: () => void openChatLeaf(app, newAgentId()),
   });
   registerChatSlashCommand({
     id: "stop",
-    name: "Stop response",
-    description: "Interrupt the running response",
+    name: STRINGS.slash.stop,
+    description: STRINGS.slash.stopDesc,
     run: () => void app.workspace.getActiveViewOfType(ChatView)?.stopRun(),
   });
 }

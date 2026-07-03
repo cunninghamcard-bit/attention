@@ -3,6 +3,7 @@ import { ItemView } from "../views/ItemView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
 import type { Agent } from "./Agent";
 import { openAgent } from "./AgentBuiltin";
+import { STRINGS, formatUsage } from "./AgentStrings";
 import { ensureChatStyles } from "./ChatStyles";
 
 export const AGENT_PROPERTIES_VIEW_TYPE = "agent-properties";
@@ -29,7 +30,7 @@ export class AgentPropertiesView extends ItemView {
   }
 
   getDisplayText(): string {
-    return this.agentId ? `Agent – ${this.agentId}` : "Agent";
+    return this.agentId ? STRINGS.properties.displayTextFor(this.agentId) : STRINGS.properties.displayText;
   }
 
   async onOpen(): Promise<void> {
@@ -57,7 +58,7 @@ export class AgentPropertiesView extends ItemView {
   private initFor(agentId: string): void {
     this.contentEl.empty();
     if (!agentId) {
-      createDiv({ cls: "agent-view-empty", text: "No agent selected.", parent: this.contentEl });
+      createDiv({ cls: "agent-view-empty", text: STRINGS.properties.none, parent: this.contentEl });
       return;
     }
     this.session = this.app.agents.get(agentId);
@@ -73,29 +74,26 @@ export class AgentPropertiesView extends ItemView {
     const state = this.session.state;
     const rootEl = createDiv("agent-view-root", this.contentEl);
 
-    const identityEl = this.section(rootEl, "identity", "Identity");
-    this.prop(identityEl, "id", "ID", this.agentId);
+    const identityEl = this.section(rootEl, "identity", STRINGS.properties.identity);
+    this.prop(identityEl, "id", STRINGS.properties.id, this.agentId);
 
-    const statusEl = this.section(rootEl, "status", "Status");
-    this.prop(statusEl, "state", "State", state.running ? "Running" : "Idle");
-    if (state.lastError) this.prop(statusEl, "error", "Last error", state.lastError);
+    const statusEl = this.section(rootEl, "status", STRINGS.properties.status);
+    this.prop(statusEl, "state", STRINGS.properties.state, state.running ? STRINGS.agentState.running : STRINGS.agentState.idle);
+    if (state.lastError) this.prop(statusEl, "error", STRINGS.properties.lastError, state.lastError);
 
-    const activityEl = this.section(rootEl, "activity", "Activity");
-    this.prop(activityEl, "messages", "Messages", String(state.messages.length));
-    this.prop(activityEl, "compactions", "Compactions", String(state.compactions.length));
-    if (state.usage) {
-      const cost = state.usage.costUsd ? ` · $${state.usage.costUsd.toFixed(3)}` : "";
-      this.prop(activityEl, "usage", "Last run", `${(state.usage.totalTokens / 1000).toFixed(1)}k tokens${cost}`);
-    }
+    const activityEl = this.section(rootEl, "activity", STRINGS.properties.activity);
+    this.prop(activityEl, "messages", STRINGS.properties.messages, String(state.messages.length));
+    this.prop(activityEl, "compactions", STRINGS.properties.compactions, String(state.compactions.length));
+    if (state.usage) this.prop(activityEl, "usage", STRINGS.properties.lastRun, formatUsage(state.usage));
 
     // Config lands here with along-go (engine, model, reasoning effort —
     // agent rows in the DB). The section exists so themes and plugins can
     // already target it.
-    const configEl = this.section(rootEl, "config", "Configuration");
-    createDiv({ cls: "agent-view-hint", text: "Engine and model configuration arrives with the Go backend.", parent: configEl });
+    const configEl = this.section(rootEl, "config", STRINGS.properties.configuration);
+    createDiv({ cls: "agent-view-hint", text: STRINGS.properties.configHint, parent: configEl });
 
-    const actionsEl = this.section(rootEl, "actions", "Actions");
-    const openEl = createEl("button", { cls: "agent-view-action", text: "Open chat", parent: actionsEl });
+    const actionsEl = this.section(rootEl, "actions", STRINGS.properties.actions);
+    const openEl = createEl("button", { cls: "agent-view-action", text: STRINGS.properties.openChat, parent: actionsEl });
     openEl.addEventListener("click", () => void openAgent(this.app, this.agentId));
   }
 

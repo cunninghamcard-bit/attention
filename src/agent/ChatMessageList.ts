@@ -5,6 +5,7 @@ import { Collapse } from "../ui/Collapse";
 import { setIcon } from "../ui/Icon";
 import { getChatToolRenderer, listChatMessageActions } from "./ChatRegistry";
 import type { ChatMessage, ChatPart, Agent, TextChatPart, ToolChatPart } from "./Agent";
+import { STRINGS } from "./AgentStrings";
 import { createStatusDot, setStatusDot } from "./StatusDot";
 import { StreamMarkdownRenderer } from "../views/StreamMarkdownRenderer";
 import { Typewriter } from "../views/Typewriter";
@@ -80,7 +81,7 @@ class ChatPartRenderer extends Component {
     this.el.empty();
     const headerEl = createDiv("chat-attachment-header", this.el);
     createSpan({ cls: "chat-attachment-name", text: part.name, parent: headerEl });
-    createSpan({ cls: "chat-attachment-meta", text: `${part.content.split("\n").length} lines`, parent: headerEl });
+    createSpan({ cls: "chat-attachment-meta", text: STRINGS.message.attachmentLines(part.content.split("\n").length), parent: headerEl });
     createEl("pre", { cls: "chat-attachment-content", text: part.content, parent: this.el });
   }
 
@@ -132,9 +133,7 @@ class ChatPartRenderer extends Component {
     const part = this.thinkingPart;
     if (!part || !this.thinkingCollapse) return;
     const elapsed = part.openedAt ? ((part.closedAt ?? Date.now()) - part.openedAt) / 1000 : null;
-    this.thinkingCollapse.headerEl.setText(
-      part.closed ? `Thought${elapsed !== null ? ` · ${elapsed.toFixed(1)}s` : ""}` : `Thinking…${elapsed !== null && elapsed >= 2 ? ` ${Math.round(elapsed)}s` : ""}`,
-    );
+    this.thinkingCollapse.headerEl.setText(part.closed ? STRINGS.thinking.done(elapsed) : STRINGS.thinking.active(elapsed));
   }
 
   private ensureMarkdownTarget(parentEl: HTMLElement): void {
@@ -166,7 +165,7 @@ class ChatPartRenderer extends Component {
     createSpan({ cls: "chat-tool-name", text: part.toolName, parent: headerEl });
     createSpan({
       cls: `chat-tool-status ${failed ? "is-failed" : part.closed ? "is-done" : "is-running"}`,
-      text: failed ? "failed" : part.closed ? (part.result !== undefined ? "done" : "called") : "running",
+      text: failed ? STRINGS.tool.failed : part.closed ? (part.result !== undefined ? STRINGS.tool.done : STRINGS.tool.called) : STRINGS.tool.running,
       parent: headerEl,
     });
     // Rows stay compact once done; the details expand on click, and stay
@@ -214,7 +213,7 @@ class ChatMessageItem extends Component {
       this.el.style.setProperty("--author-hue", String(authorHue(message.authorId)));
     }
     const headerEl = createDiv("chat-message-header", this.el);
-    const label = message.role === "user" ? "You" : message.authorName ?? "Assistant";
+    const label = message.role === "user" ? STRINGS.role.you : message.authorName ?? STRINGS.role.assistant;
     createDiv({ cls: "chat-message-role", text: label, parent: headerEl });
     const actionsEl = createDiv("chat-message-actions", headerEl);
     for (const action of listChatMessageActions()) {
@@ -257,11 +256,11 @@ class ChatMessageItem extends Component {
     if (this.message.role !== "user" || this.showMoreEl || !this.message.closed) return;
     if (this.partsEl.scrollHeight <= 220) return;
     this.el.addClass("is-collapsible");
-    this.showMoreEl = createEl("button", { cls: "chat-show-more", text: "Show more", parent: this.el });
+    this.showMoreEl = createEl("button", { cls: "chat-show-more", text: STRINGS.message.showMore, parent: this.el });
     this.showMoreEl.addEventListener("click", () => {
       const expanded = this.el.hasClass("is-expanded");
       this.el.toggleClass("is-expanded", !expanded);
-      this.showMoreEl!.setText(expanded ? "Show more" : "Show less");
+      this.showMoreEl!.setText(expanded ? STRINGS.message.showMore : STRINGS.message.showLess);
     });
   }
 
@@ -291,9 +290,9 @@ class ChatMessageItem extends Component {
       const failedCount = parts.filter((part) => part.type === "tool" && part.error !== undefined).length;
       const opened = parts[0]?.openedAt;
       const closed = parts[parts.length - 1]?.closedAt;
-      const duration = !running && opened && closed && closed > opened ? ` · ${((closed - opened) / 1000).toFixed(1)}s` : "";
-      const status = running ? "running" : failedCount ? `${failedCount} failed` : "done";
-      timeline.headerTextEl.setText(`${total} tool call${total === 1 ? "" : "s"} · ${status}${duration}`);
+      const duration = !running && opened && closed && closed > opened ? (closed - opened) / 1000 : null;
+      const status = running ? STRINGS.tool.running : failedCount ? STRINGS.timeline.failedStatus(failedCount) : STRINGS.tool.done;
+      timeline.headerTextEl.setText(STRINGS.timeline.summary(total, status, duration));
       setStatusDot(timeline.dotEl, running ? "running" : failedCount ? "failed" : "done");
       timeline.collapse.rootEl.toggleClass("is-running", running);
       timeline.collapse.rootEl.toggleClass("has-failed", failedCount > 0);
@@ -325,8 +324,8 @@ export class ChatMessageList extends Component {
     this.emptyEl = createDiv("chat-empty", this.el);
     const emptyIconEl = createDiv("chat-empty-icon", this.emptyEl);
     setIcon(emptyIconEl, "message-circle");
-    createDiv({ cls: "chat-empty-title", text: "Start a conversation", parent: this.emptyEl });
-    createDiv({ cls: "chat-empty-hint", text: "Type a message below, or / for commands.", parent: this.emptyEl });
+    createDiv({ cls: "chat-empty-title", text: STRINGS.empty.title, parent: this.emptyEl });
+    createDiv({ cls: "chat-empty-hint", text: STRINGS.empty.hint, parent: this.emptyEl });
     this.thinkingEl = createDiv("chat-thinking-indicator", this.el);
     for (let index = 0; index < 3; index++) createSpan({ cls: "chat-thinking-dot", parent: this.thinkingEl });
     this.thinkingEl.hide();
@@ -359,7 +358,7 @@ export class ChatMessageList extends Component {
     const waiting = this.session.isRunning() && (!last || last.role === "user" || last.closed);
     this.thinkingEl.toggle(waiting);
     const error = this.session.state.lastError;
-    if (error) this.errorEl.setText(`Run failed: ${error}`);
+    if (error) this.errorEl.setText(STRINGS.message.runFailed(error));
     this.errorEl.toggle(Boolean(error));
   }
 
@@ -372,9 +371,7 @@ export class ChatMessageList extends Component {
       if (compaction.afterMessageId !== previousMessageId) return;
       this.renderedCompactions++;
       const dividerEl = createDiv("chat-compact-divider");
-      const label = compaction.preTokens
-        ? `Context compacted · ${Math.round(compaction.preTokens / 1000)}k tokens condensed`
-        : "Context compacted";
+      const label = compaction.preTokens ? STRINGS.message.compactedTokens(compaction.preTokens) : STRINGS.message.compacted;
       createSpan({ cls: "chat-compact-label", text: label, parent: dividerEl });
       this.el.insertBefore(dividerEl, this.thinkingEl);
     }

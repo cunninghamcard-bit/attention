@@ -6,6 +6,7 @@ import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
 import { ChatComposer } from "./ChatComposer";
 import { ChatMessageList } from "./ChatMessageList";
 import { chatTranscriptToMarkdown, type ChatAttachmentPayload, type Agent } from "./Agent";
+import { STRINGS } from "./AgentStrings";
 import { ensureChatStyles } from "./ChatStyles";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import type { App } from "../app/App";
@@ -42,7 +43,7 @@ export class ChatView extends StreamView {
 
   getDisplayText(): string {
     if (this.agentTitle) return this.agentTitle;
-    return this.agentId === "default" ? "Chat" : `Chat – ${this.agentId}`;
+    return this.agentId === "default" ? STRINGS.chat.displayText : STRINGS.chat.displayTextFor(this.agentId);
   }
 
   isRunning(): boolean {
@@ -61,8 +62,8 @@ export class ChatView extends StreamView {
   async onOpen(): Promise<void> {
     ensureChatStyles(this.app);
     this.contentEl.classList.add("chat-view");
-    this.addAction("message-circle-plus", "New agent", () => this.app.commands.executeCommandById("agent:create"));
-    this.stopActionEl = this.addAction("lucide-square", "Stop response", () => void this.stopRun());
+    this.addAction("message-circle-plus", STRINGS.menu.newAgent, () => this.app.commands.executeCommandById("agent:create"));
+    this.stopActionEl = this.addAction("lucide-square", STRINGS.slash.stop, () => void this.stopRun());
     this.stopActionEl.hide();
     this.initFor(this.agentId);
   }
@@ -75,17 +76,17 @@ export class ChatView extends StreamView {
     super.onPaneMenu(menu, source);
     menu.addItem((item) => item
       .setSection("action")
-      .setTitle("Agent properties")
+      .setTitle(STRINGS.menu.agentProperties)
       .setIcon("bot")
       .onClick(() => this.app.commands.executeCommandById("agent:open-properties")));
     menu.addItem((item) => item
       .setSection("action")
-      .setTitle("New agent")
+      .setTitle(STRINGS.menu.newAgent)
       .setIcon("message-circle-plus")
       .onClick(() => this.app.commands.executeCommandById("agent:create")));
     menu.addItem((item) => item
       .setSection("action")
-      .setTitle("Copy conversation")
+      .setTitle(STRINGS.menu.copyConversation)
       .setIcon("lucide-copy")
       .setDisabled(!this.session || this.session.getMessages().length === 0)
       .onClick(() => void this.copyConversation()));
@@ -173,14 +174,14 @@ export class ChatView extends StreamView {
       this.anchorPending = true;
       await this.session?.sendMessage(text, attachments);
     } catch (error) {
-      new Notice(`Cannot reach the chat bridge: ${error instanceof Error ? error.message : String(error)}`);
+      new Notice(STRINGS.notices.bridgeUnreachable(error instanceof Error ? error.message : String(error)));
     }
   }
 
   private async copyConversation(): Promise<void> {
     if (!this.session) return;
     await writeClipboardText(chatTranscriptToMarkdown(this.session.getMessages()));
-    new Notice("Conversation copied");
+    new Notice(STRINGS.notices.conversationCopied);
   }
 
   // The tab title follows the thread: first line of the first user message.
