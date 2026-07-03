@@ -152,11 +152,19 @@ export function applyAgentEvent(state: AgentState, event: AgentEvent): boolean {
   return true;
 }
 
+export interface QueuedChatMessage {
+  text: string;
+  attachments: ChatAttachmentPayload[];
+}
+
 // Frontend single source of truth for one thread. Views and plugins read it
 // and subscribe to it; the transport stays behind it.
 export class Agent extends Events {
   readonly state = createAgentState();
   private disconnect: (() => void) | null = null;
+  // Queued sends are UI-only staging, not conversation history — they never
+  // touch applyAgentEvent/AgentState, so replay and reconnect stay untouched.
+  readonly queued: QueuedChatMessage[] = [];
 
   constructor(
     readonly agentId: string,
@@ -173,6 +181,24 @@ export class Agent extends Events {
   applyEvent(event: AgentEvent): void {
     if (!applyAgentEvent(this.state, event)) return;
     if (event.type === "part.delta") this.trigger("delta", event.messageId, event.partIndex);
+    this.trigger("changed");
+    // A finished run drains the next queued send, so queued prompts behave
+    // like typing-and-pressing-enter the moment the run frees up.
+    if (event.type === "run.closed" && this.queued.length > 0) {
+      const next = this.queued.shift()!;
+      this.sendMessage(next.text, next.attachments).catch(() => undefined).finally(() => this.trigger("changed"));
+      this.trigger("changed");
+    }
+  }
+
+  queueMessage(text: string, attachments: ChatAttachmentPayload[] = []): void {
+    this.queued.push({ text, attachments });
+    this.trigger("changed");
+  }
+
+  cancelQueued(index: number): void {
+    if (index < 0 || index >= this.queued.length) return;
+    this.queued.splice(index, 1);
     this.trigger("changed");
   }
 

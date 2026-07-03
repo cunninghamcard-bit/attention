@@ -25,6 +25,9 @@ import type { ChatAttachmentPayload } from "./Agent";
 
 export interface ChatComposerCallbacks {
   send(text: string, attachments: ChatAttachmentPayload[]): void;
+  // Submitting while a run is active queues instead of sending; ChatView
+  // wires this to session.queueMessage.
+  queue(text: string, attachments: ChatAttachmentPayload[]): void;
   stop(): void;
   isRunning(): boolean;
   getWikilinkTargets?(): string[];
@@ -155,13 +158,16 @@ export class ChatComposer extends Component {
   private submit(): boolean {
     const text = this.getValue().trim();
     const attachments = this.attachmentBar.list().map(({ name, content }) => ({ name, content }));
-    if ((!text && attachments.length === 0) || this.callbacks.isRunning()) return true;
+    if (!text && attachments.length === 0) return true;
+    const running = this.callbacks.isRunning();
+    if (running && !text) return true;
     this.setValue("");
     this.attachmentBar.clear();
     this.historyCursor = -1;
     appendChatInputHistory(text);
     if (this.agentId) clearChatDraft(this.agentId);
-    this.callbacks.send(text, attachments);
+    if (running) this.callbacks.queue(text, attachments);
+    else this.callbacks.send(text, attachments);
     return true;
   }
 

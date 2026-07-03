@@ -315,6 +315,7 @@ export class ChatMessageList extends Component {
   private readonly items = new Map<string, ChatMessageItem>();
   private readonly emptyEl: HTMLElement;
   private readonly thinkingEl: HTMLElement;
+  private readonly queuedEl: HTMLElement;
 
   constructor(
     parentEl: HTMLElement,
@@ -327,6 +328,9 @@ export class ChatMessageList extends Component {
     this.thinkingEl = createDiv("chat-thinking-indicator", this.el);
     for (let index = 0; index < 3; index++) createSpan({ cls: "chat-thinking-dot", parent: this.thinkingEl });
     this.thinkingEl.hide();
+    // Queued prompts render after the thinking indicator, one card per item;
+    // they are UI staging (Agent.queued), not conversation history.
+    this.queuedEl = createDiv("chat-queued-list", this.el);
     // Run errors are conversation history (run.closed status:error), so they
     // render in the stream — history replay shows them again, unlike a toast.
     this.errorEl = createDiv("chat-run-error", this.el);
@@ -347,6 +351,7 @@ export class ChatMessageList extends Component {
         item = this.addChild(new ChatMessageItem(this.el, message, this.session, this.onGrow));
         this.items.set(message.id, item);
         this.el.appendChild(this.thinkingEl);
+        this.el.appendChild(this.queuedEl);
         this.el.appendChild(this.errorEl);
       }
       item.sync();
@@ -355,9 +360,22 @@ export class ChatMessageList extends Component {
     const last = messages[messages.length - 1];
     const waiting = this.session.isRunning() && (!last || last.role === "user" || last.closed);
     this.thinkingEl.toggle(waiting);
+    this.syncQueued();
     const error = this.session.state.lastError;
     if (error) this.errorEl.setText(STRINGS.message.runFailed(error));
     this.errorEl.toggle(Boolean(error));
+  }
+
+  private syncQueued(): void {
+    this.queuedEl.empty();
+    this.session.queued.forEach((item, index) => {
+      const cardEl = createDiv("chat-queued", this.queuedEl);
+      cardEl.dataset.index = String(index);
+      createSpan({ cls: "chat-queued-label", text: STRINGS.queued.label, parent: cardEl });
+      createDiv({ cls: "chat-queued-text", text: item.text, parent: cardEl });
+      const cancelEl = createEl("button", { cls: "chat-queued-cancel", text: STRINGS.queued.cancel, parent: cardEl });
+      cancelEl.addEventListener("click", () => this.session.cancelQueued(index));
+    });
   }
 
   // Compaction dividers land between the message they follow and whatever
