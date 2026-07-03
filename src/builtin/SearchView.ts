@@ -1,5 +1,72 @@
 import { ItemView } from "../views/ItemView";
 import type { SearchMatch, VaultSearchResult } from "../search/SearchEngine";
+import { AbstractInputSuggest } from "../suggest/AbstractInputSuggest";
+import type { App } from "../app/App";
+
+interface SearchOperatorOption {
+  operator: string;
+  /** Text inserted into the input; caret lands at `caretOffset` from its end. */
+  insert: string;
+  caretOffset: number;
+  description: string;
+}
+
+const SEARCH_OPERATOR_OPTIONS: SearchOperatorOption[] = [
+  { operator: "path:", insert: "path:", caretOffset: 0, description: "match path of the file" },
+  { operator: "file:", insert: "file:", caretOffset: 0, description: "match file name" },
+  { operator: "tag:", insert: "tag:", caretOffset: 0, description: "search for tags" },
+  { operator: "line:", insert: "line:()", caretOffset: 1, description: "search keywords on same line" },
+  { operator: "section:", insert: "section:()", caretOffset: 1, description: "search keywords under same heading" },
+  { operator: "[property]", insert: "[]", caretOffset: 1, description: "match property" },
+];
+
+type SearchSuggestItem = { kind: "group" } | { kind: "option"; option: SearchOperatorOption };
+
+/**
+ * The "Search options" dropdown of the real search pane: focusing the empty
+ * input lists the query operators; picking one inserts it at the caret. The
+ * DOM contract (mod-search-suggestion, search-suggest-item, mod-group) is
+ * recovered from the vendored app.css.
+ */
+class SearchOperatorSuggest extends AbstractInputSuggest<SearchSuggestItem> {
+  constructor(app: App, inputEl: HTMLInputElement, private readonly onInsert: (query: string) => void) {
+    super(app, inputEl);
+    this.suggestEl.classList.add("mod-search-suggestion");
+    this.onSelect((item) => {
+      if (item.kind !== "option") return;
+      const { insert, caretOffset } = item.option;
+      const current = this.getValue();
+      const next = current && !current.endsWith(" ") ? `${current} ${insert}` : `${current}${insert}`;
+      this.setValue(next);
+      const caret = next.length - caretOffset;
+      inputEl.setSelectionRange(caret, caret);
+      this.onInsert(next);
+      this.close();
+    });
+  }
+
+  getSuggestions(value: string): SearchSuggestItem[] {
+    const token = value.slice(value.lastIndexOf(" ") + 1);
+    const options = SEARCH_OPERATOR_OPTIONS.filter((option) => option.operator.startsWith(token));
+    if (options.length === 0) return [];
+    return [{ kind: "group" }, ...options.map((option) => ({ kind: "option" as const, option }))];
+  }
+
+  renderSuggestion(item: SearchSuggestItem, el: HTMLElement): void {
+    el.classList.add("search-suggest-item");
+    if (item.kind === "group") {
+      el.classList.add("mod-group");
+      el.textContent = "Search options";
+      return;
+    }
+    const operatorEl = el.ownerDocument.createElement("span");
+    operatorEl.textContent = item.option.operator;
+    const descriptionEl = el.ownerDocument.createElement("span");
+    descriptionEl.className = "search-suggest-info-text";
+    descriptionEl.textContent = item.option.description;
+    el.append(operatorEl, descriptionEl);
+  }
+}
 
 export class SearchView extends ItemView {
   private query = "";
@@ -7,6 +74,7 @@ export class SearchView extends ItemView {
   private resultsEl: HTMLElement | null = null;
   private countEl: HTMLElement | null = null;
   private searchId = 0;
+  private operatorSuggest: SearchOperatorSuggest | null = null;
 
   getViewType(): string { return "search"; }
   getDisplayText(): string { return "Search"; }
@@ -25,9 +93,10 @@ export class SearchView extends ItemView {
     // content height, throwing the magnifier icon off-center.
     this.inputEl.type = "search";
     this.inputEl.className = "search-input";
-    this.inputEl.placeholder = "Search vault";
+    this.inputEl.placeholder = "Search...";
     this.inputEl.value = this.query;
     this.inputEl.addEventListener("input", () => this.setQuery(this.inputEl?.value ?? ""));
+    this.operatorSuggest = new SearchOperatorSuggest(this.app, this.inputEl, (query) => this.setQuery(query));
     inputContainerEl.appendChild(this.inputEl);
 
     this.countEl = document.createElement("div");
@@ -70,13 +139,19 @@ export class SearchView extends ItemView {
     if (!this.resultsEl || !this.countEl) return;
     this.resultsEl.replaceChildren();
     const matchCount = results.reduce((sum, result) => sum + result.matches.length, 0);
-    this.countEl.textContent = this.query.trim() ? `${matchCount} result${matchCount === 1 ? "" : "s"} in ${results.length} file${results.length === 1 ? "" : "s"}` : "Type to search the vault";
+    this.countEl.textContent = this.query.trim() ? `${matchCount} result${matchCount === 1 ? "" : "s"} in ${results.length} file${results.length === 1 ? "" : "s"}` : "";
 
     for (const result of results) this.renderResultFile(result, this.resultsEl);
   }
 
   getQuery(): string {
     return this.query;
+  }
+
+  async onClose(): Promise<void> {
+    this.operatorSuggest?.close();
+    this.operatorSuggest = null;
+    await super.onClose();
   }
 
   focusSearch(query?: string): void {
