@@ -10,6 +10,24 @@ import { Typewriter } from "../views/Typewriter";
 // sync cycle — this hook lets the scroller follow that growth.
 export type ChatContentGrowCallback = () => void;
 
+// User preferences, read at use sites the way the paste threshold is; the
+// setting tab writes the same keys ("off" = disabled, absent = default on).
+function typewriterEnabled(): boolean {
+  try {
+    return window.localStorage?.getItem("chat-typewriter") !== "off";
+  } catch {
+    return true;
+  }
+}
+
+function autoCollapseThinking(): boolean {
+  try {
+    return window.localStorage?.getItem("chat-thinking-collapse") !== "off";
+  } catch {
+    return true;
+  }
+}
+
 class ChatPartRenderer extends Component {
   readonly el: HTMLElement;
   private renderer: StreamMarkdownRenderer | null = null;
@@ -68,6 +86,7 @@ class ChatPartRenderer extends Component {
     if (part.type === "thinking") return this.syncThinking(part);
     this.el.className = "chat-part chat-part-text";
     this.ensureMarkdownTarget(this.el);
+    if (!typewriterEnabled()) return this.renderMarkdown(part.markdown, part.closed);
     this.typewriter!.setTarget(part.markdown, part.closed);
   }
 
@@ -75,7 +94,8 @@ class ChatPartRenderer extends Component {
   // while it streams, folded to "Thought · 3.2s" once it closes — the
   // reasoning stays reachable without dominating the transcript.
   private syncThinking(part: Extract<ChatPart, { type: "text" | "thinking" }>): void {
-    this.el.className = `chat-part chat-part-thinking${part.closed && !this.thinkingToggled ? " is-collapsed" : ""}`;
+    const collapsed = part.closed && !this.thinkingToggled && autoCollapseThinking();
+    this.el.className = `chat-part chat-part-thinking${collapsed ? " is-collapsed" : ""}`;
     if (!this.thinkingHeaderEl) {
       this.thinkingHeaderEl = createDiv("chat-thinking-header", this.el);
       this.thinkingHeaderEl.addEventListener("click", () => {
@@ -89,6 +109,7 @@ class ChatPartRenderer extends Component {
     );
     if (!this.thinkingBodyEl) this.thinkingBodyEl = createDiv("chat-thinking-body", this.el);
     this.ensureMarkdownTarget(this.thinkingBodyEl);
+    if (!typewriterEnabled()) return this.renderMarkdown(part.markdown, part.closed);
     this.typewriter!.setTarget(part.markdown, part.closed);
   }
 

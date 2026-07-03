@@ -41,6 +41,26 @@ export class ChatSettingTab implements SettingTab {
           else window.localStorage?.removeItem("chat-bridge-url");
         }));
 
+    const chatGroup = new SettingGroup(this.containerEl).setHeading("Chat");
+    new Setting(chatGroup.itemsEl)
+      .setName("Typewriter reveal")
+      .setDesc("Pace streamed text at a smooth reading rate. Off shows deltas the moment they arrive.")
+      .addToggle((toggle) => toggle
+        .setValue(window.localStorage?.getItem("chat-typewriter") !== "off")
+        .onChange((value) => {
+          if (value) window.localStorage?.removeItem("chat-typewriter");
+          else window.localStorage?.setItem("chat-typewriter", "off");
+        }));
+    new Setting(chatGroup.itemsEl)
+      .setName("Collapse finished thinking")
+      .setDesc("Fold reasoning to its header once it completes. Off keeps it expanded.")
+      .addToggle((toggle) => toggle
+        .setValue(window.localStorage?.getItem("chat-thinking-collapse") !== "off")
+        .onChange((value) => {
+          if (value) window.localStorage?.removeItem("chat-thinking-collapse");
+          else window.localStorage?.setItem("chat-thinking-collapse", "off");
+        }));
+
     const composerGroup = new SettingGroup(this.containerEl).setHeading("Composer");
     new Setting(composerGroup.itemsEl)
       .setName("Paste-to-card threshold")
