@@ -40,16 +40,58 @@ interface ParsedSearchQuery {
   propertyTerms: Array<{ key: string; value: string | null }>;
   lineGroups: string[][];
   sectionGroups: string[][];
+  customTerms: Array<{ operator: string; value: string }>;
+}
+
+/**
+ * A registered search operator — the extension point plugins use to add
+ * domain operators (e.g. the chat plugin registering `agent:`). The filter
+ * decides whether a file belongs to the result set; content matching stays
+ * with the engine. `value` arrives case-folded unless the query is
+ * case-sensitive.
+ */
+export interface SearchOperatorDefinition {
+  /** Operator name without the colon, e.g. "ext". */
+  name: string;
+  /** Text inserted by the search-options dropdown, e.g. "ext:". */
+  token: string;
+  /** Description shown in the search-options dropdown. */
+  description: string;
+  filter(file: TFile, value: string, app: App): boolean;
 }
 
 export class SearchEngine {
-  constructor(readonly app: App) {}
+  private readonly operators = new Map<string, SearchOperatorDefinition>();
+
+  constructor(readonly app: App) {
+    this.registerOperator({
+      name: "ext",
+      token: "ext:",
+      description: "match file extension",
+      filter: (file, value) => file.extension === value.replace(/^\./, ""),
+    });
+  }
+
+  registerOperator(definition: SearchOperatorDefinition): void {
+    if (BUILTIN_OPERATORS.has(definition.name) || this.operators.has(definition.name)) {
+      throw new Error(`Search operator "${definition.name}" is already registered`);
+    }
+    this.operators.set(definition.name, definition);
+  }
+
+  unregisterOperator(name: string): void {
+    this.operators.delete(name);
+  }
+
+  getRegisteredOperators(): SearchOperatorDefinition[] {
+    return [...this.operators.values()];
+  }
 
   async search(query: SearchQuery): Promise<VaultSearchResult[]> {
     const rawQuery = query.query.trim();
     if (!rawQuery) return [];
     const fold = (text: string) => (query.caseSensitive ? text : text.toLowerCase());
-    const parsed = parseSearchQuery(fold(rawQuery));
+    const parsed = parseSearchQuery(fold(rawQuery), (name) => this.operators.has(name));
     const results: VaultSearchResult[] = [];
 
     for (const file of this.app.vault.getFiles()) {
@@ -94,6 +136,10 @@ export class SearchEngine {
         if (realKey === undefined) return false;
         if (value !== null && !fold(String(frontmatter[realKey] ?? "")).includes(value)) return false;
       }
+    }
+    for (const { operator, value } of parsed.customTerms) {
+      const definition = this.operators.get(operator);
+      if (definition && !definition.filter(file, value, this.app)) return false;
     }
     return true;
   }
@@ -173,11 +219,13 @@ function dedupeMatches(matches: SearchMatch[]): SearchMatch[] {
   });
 }
 
-function parseSearchQuery(query: string): ParsedSearchQuery {
-  const parsed: ParsedSearchQuery = { words: [], pathTerms: [], fileTerms: [], tagTerms: [], propertyTerms: [], lineGroups: [], sectionGroups: [] };
-  const tokenPattern = /\[([^\]]+)\]|(path|file|tag|line|section):(?:\(([^)]*)\)|"([^"]*)"|(\S*))|"([^"]*)"|(\S+)/g;
+const BUILTIN_OPERATORS = new Set(["path", "file", "tag", "line", "section"]);
+
+function parseSearchQuery(query: string, isRegisteredOperator: (name: string) => boolean): ParsedSearchQuery {
+  const parsed: ParsedSearchQuery = { words: [], pathTerms: [], fileTerms: [], tagTerms: [], propertyTerms: [], lineGroups: [], sectionGroups: [], customTerms: [] };
+  const tokenPattern = /\[([^\]]+)\]|(\w+):(?:\(([^)]*)\)|"([^"]*)"|(\S*))|"([^"]*)"|(\S+)/g;
   for (const token of query.matchAll(tokenPattern)) {
-    const [, property, operator, parens, quoted, bare, quotedWord, plainWord] = token;
+    const [full, property, operator, parens, quoted, bare, quotedWord, plainWord] = token;
     if (property !== undefined) {
       const colon = property.indexOf(":");
       parsed.propertyTerms.push(colon === -1
@@ -185,7 +233,7 @@ function parseSearchQuery(query: string): ParsedSearchQuery {
         : { key: property.slice(0, colon).trim(), value: property.slice(colon + 1).trim() });
       continue;
     }
-    if (operator !== undefined) {
+    if (operator !== undefined && (BUILTIN_OPERATORS.has(operator) || isRegisteredOperator(operator))) {
       const value = parens ?? quoted ?? bare ?? "";
       const groupWords = value.split(/\s+/).filter(Boolean);
       if (groupWords.length === 0) continue;
@@ -194,6 +242,13 @@ function parseSearchQuery(query: string): ParsedSearchQuery {
       else if (operator === "tag") parsed.tagTerms.push(...groupWords.map((tag) => tag.replace(/^#/, "")));
       else if (operator === "line") parsed.lineGroups.push(groupWords);
       else if (operator === "section") parsed.sectionGroups.push(groupWords);
+      else parsed.customTerms.push({ operator, value: value.trim() });
+      continue;
+    }
+    if (operator !== undefined) {
+      // "release:notes" with no such operator is a plain keyword, like the
+      // real search treats unknown prefixes.
+      parsed.words.push(full);
       continue;
     }
     const word = quotedWord ?? plainWord;

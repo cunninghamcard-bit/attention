@@ -14,6 +14,7 @@ import type { TAbstractFile } from "../vault/TAbstractFile";
 import type { MarkdownView } from "../views/MarkdownView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
 import type { EditorSuggest } from "../suggest/EditorSuggest";
+import type { SearchOperatorDefinition } from "../search/SearchEngine";
 import { debounce } from "../api/ApiUtils";
 import { MarkdownRenderer, type MarkdownCodeBlockProcessor, type MarkdownPostProcessor } from "../markdown/MarkdownRenderer";
 import { MarkdownPreviewRenderer } from "../markdown/MarkdownPreviewRenderer";
@@ -194,6 +195,12 @@ export class Plugin extends Component {
   registerCliHandler(command: string, description: string, flags: CliFlags | null, handler: CliHandler): void {
     this.app.registerCliHandler(command, `[${this.manifest.name}]: ${description}`, flags, handler, this.manifest.id);
     this.register(() => this.app.unregisterCliHandler(command, handler));
+  }
+
+  /** Adds a search operator (shown in the search-options dropdown) with Obsidian cleanup semantics. */
+  registerSearchOperator(definition: SearchOperatorDefinition): void {
+    this.app.search.registerOperator(definition);
+    this.register(() => this.app.search.unregisterOperator(definition.name));
   }
 
   async loadCSS(): Promise<void> {

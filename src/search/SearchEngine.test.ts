@@ -62,6 +62,38 @@ describe("SearchEngine operators", () => {
     expect(rightValue.map((result) => result.path)).toEqual(["notes/alpha.md"]);
   });
 
+  it("ext: filters by file extension", async () => {
+    const app = await createSearchApp();
+    const results = await app.search.search({ query: "ext:go needle" });
+    expect(results.map((result) => result.path)).toEqual(["agent/server.go"]);
+  });
+
+  it("unknown operator prefixes fall back to plain keywords", async () => {
+    const app = await createSearchApp();
+    await app.vault.create("notes/link.md", "see release:notes for details\n");
+    const results = await app.search.search({ query: "release:notes" });
+    expect(results.map((result) => result.path)).toEqual(["notes/link.md"]);
+  });
+
+  it("plugins register custom operators with cleanup semantics", async () => {
+    const app = await createSearchApp();
+    app.search.registerOperator({
+      name: "agent",
+      token: "agent:",
+      description: "match files owned by an agent",
+      filter: (file, value) => file.path.startsWith(`${value}/`),
+    });
+
+    const scoped = await app.search.search({ query: "agent:agent needle" });
+    expect(scoped.map((result) => result.path)).toEqual(["agent/server.go"]);
+
+    app.search.unregisterOperator("agent");
+    const fallback = await app.search.search({ query: "agent:agent" });
+    expect(fallback).toEqual([]);
+    expect(() => app.search.registerOperator({ name: "path", token: "path:", description: "", filter: () => true }))
+      .toThrow(/already registered/);
+  });
+
   it("plain keywords still search every text file", async () => {
     const app = await createSearchApp();
     const results = await app.search.search({ query: "needle" });

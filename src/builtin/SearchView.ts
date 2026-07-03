@@ -49,7 +49,13 @@ class SearchOperatorSuggest extends AbstractInputSuggest<SearchSuggestItem> {
 
   getSuggestions(value: string): SearchSuggestItem[] {
     const token = value.slice(value.lastIndexOf(" ") + 1);
-    const options = SEARCH_OPERATOR_OPTIONS.filter((option) => option.operator.startsWith(token));
+    const registered: SearchOperatorOption[] = this.app.search.getRegisteredOperators().map((definition) => ({
+      operator: `${definition.name}:`,
+      insert: definition.token,
+      caretOffset: definition.token.endsWith("()") ? 1 : 0,
+      description: definition.description,
+    }));
+    const options = [...SEARCH_OPERATOR_OPTIONS, ...registered].filter((option) => option.operator.startsWith(token));
     if (options.length === 0) return [];
     return [{ kind: "group" }, ...options.map((option) => ({ kind: "option" as const, option }))];
   }
