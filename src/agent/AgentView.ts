@@ -1,24 +1,69 @@
-import { createDiv, createEl } from "../dom/dom";
+import type { App } from "../app/App";
+import { createDiv, createEl, createSpan } from "../dom/dom";
+import { Menu } from "../ui/Menu";
 import { ItemView } from "../views/ItemView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
-import type { Agent } from "./Agent";
-import { openAgent } from "./AgentBuiltin";
+import { openAgent, openAgentProperties } from "./AgentBuiltin";
+import { newAgentId } from "./AgentManager";
+import { AgentTransport, type AgentSummary } from "./AgentTransport";
 import { ensureChatStyles } from "./ChatStyles";
 
-export const AGENT_VIEW_TYPE = "agent";
+// The type string keeps its board heritage; the class carries the product
+// vocabulary: AgentView is the view of the agent population.
+export const AGENT_VIEW_TYPE = "agent-board";
 
-// The view of the agent ITSELF — the long-reserved second window onto the
-// same entity ChatView converses with. ChatView is to a conversation what
-// MarkdownView is to a file body; AgentView is the properties panel: who
-// this agent is, what it is doing, what it has cost. Framework first —
-// sections carry stable classes (.agent-view-section[data-section],
-// .agent-prop[data-prop]) so config rows (engine, model, effort) land here
-// later without re-plumbing.
+const REFRESH_INTERVAL_MS = 3000;
+
+// The context menu for one agent card: Properties / Rename / Delete.
+export function showAgentMenu(app: App, transport: AgentTransport, agent: AgentSummary, event: MouseEvent, onChanged: () => void): void {
+  event.preventDefault();
+  const menu = new Menu((event.target as HTMLElement | null)?.ownerDocument ?? document);
+  menu.addItem((item) => item
+    .setTitle("Properties")
+    .setIcon("lucide-bot")
+    .onClick(() => void openAgentProperties(app, agent.id)));
+  menu.addItem((item) => item
+    .setTitle("Rename")
+    .setIcon("lucide-pencil")
+    .onClick(() => {
+      // ponytail: window.prompt over a custom modal; upgrade when a shared
+      // prompt modal exists in the ui module.
+      const title = window.prompt("Rename agent", agent.title ?? agent.id);
+      if (title?.trim()) void transport.rename(agent.id, title.trim()).then(onChanged);
+    }));
+  menu.addItem((item) => item
+    .setTitle("Delete")
+    .setIcon("lucide-trash-2")
+    .onClick(() => {
+      if (window.confirm(`Delete agent "${agent.title ?? agent.id}"? Its history goes with it.`)) {
+        void transport.delete(agent.id).then(onChanged);
+      }
+    }));
+  menu.showAtMouseEvent(event);
+}
+
+function formatRelativeTime(timestamp: number): string {
+  const deltaSeconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
+  if (deltaSeconds < 60) return "just now";
+  if (deltaSeconds < 3600) return `${Math.floor(deltaSeconds / 60)}m ago`;
+  if (deltaSeconds < 86400) return `${Math.floor(deltaSeconds / 3600)}h ago`;
+  return `${Math.floor(deltaSeconds / 86400)}d ago`;
+}
+
+// AgentView shows the agents, plural: every agent as a card — who is
+// running, who is idle, what they cost. The product vocabulary:
+//   ChatView       one agent (conversing with it IS its main view)
+//   AgentView      the agent population (this board)
+//   MultiAgentView reserved — several agents conversing in one view
+// Skeleton first: cards carry stable classes (.agent-card[data-agent-id],
+// .agent-card-*) so richer cells (activity snippet, sparkline) land
+// without re-plumbing.
 export class AgentView extends ItemView {
-  override icon = "lucide-bot";
+  override icon = "lucide-layout-grid";
   override navigation = true;
-  private agentId = "";
-  private session: Agent | null = null;
+  private readonly transport = new AgentTransport();
+  private gridEl: HTMLElement | null = null;
+  private agents: AgentSummary[] = [];
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
@@ -29,87 +74,73 @@ export class AgentView extends ItemView {
   }
 
   getDisplayText(): string {
-    return this.agentId ? `Agent – ${this.agentId}` : "Agent";
+    return "Agent board";
   }
 
   async onOpen(): Promise<void> {
     ensureChatStyles(this.app);
-    this.contentEl.classList.add("agent-view");
-    this.initFor(this.agentId);
+    this.contentEl.classList.add("agent-board-view");
+    const headerEl = createDiv("agent-board-header", this.contentEl);
+    createDiv({ cls: "agent-board-title", text: "Agents", parent: headerEl });
+    const newAgentEl = createEl("button", { cls: "agent-board-create", text: "New agent", parent: headerEl });
+    newAgentEl.addEventListener("click", () => void openAgent(this.app, newAgentId()));
+    this.gridEl = createDiv("agent-board-grid", this.contentEl);
+    this.registerInterval(window.setInterval(() => void this.refresh(), REFRESH_INTERVAL_MS));
+    await this.refresh();
   }
 
-  override async setState(state: unknown, result?: unknown): Promise<void> {
-    await super.setState(state, result as never);
-    if (state && typeof state === "object" && "agentId" in state) {
-      const next = String((state as { agentId?: unknown }).agentId ?? "");
-      if (next !== this.agentId) {
-        this.agentId = next;
-        if (this.contentEl.classList.contains("agent-view")) this.initFor(next);
-        this.updateHeader();
-      }
+  private async refresh(): Promise<void> {
+    try {
+      this.agents = await this.transport.listAgents();
+    } catch {
+      this.agents = [];
     }
-  }
-
-  override getState(): Record<string, unknown> {
-    return { agentId: this.agentId };
-  }
-
-  private initFor(agentId: string): void {
-    this.contentEl.empty();
-    if (!agentId) {
-      createDiv({ cls: "agent-view-empty", text: "No agent selected.", parent: this.contentEl });
-      return;
-    }
-    this.session = this.app.agents.get(agentId);
-    this.session.connect();
-    this.registerEvent(this.session.on("changed", () => this.render()));
     this.render();
   }
 
-  // The panel is small; a full re-render per change is the simple truth.
   private render(): void {
-    if (!this.session) return;
-    this.contentEl.empty();
-    const state = this.session.state;
-    const rootEl = createDiv("agent-view-root", this.contentEl);
+    if (!this.gridEl) return;
+    this.gridEl.empty();
+    if (this.agents.length === 0) {
+      createDiv({ cls: "agent-board-empty", text: "No agents yet. Create one to get started.", parent: this.gridEl });
+      return;
+    }
+    for (const agent of this.agents) this.renderCard(agent);
+  }
 
-    const identityEl = this.section(rootEl, "identity", "Identity");
-    this.prop(identityEl, "id", "ID", this.agentId);
+  private renderCard(agent: AgentSummary): void {
+    const cardEl = createDiv(`agent-card${agent.running ? " is-running" : ""}`, this.gridEl!);
+    cardEl.dataset.agentId = agent.id;
 
-    const statusEl = this.section(rootEl, "status", "Status");
-    this.prop(statusEl, "state", "State", state.running ? "Running" : "Idle");
-    if (state.lastError) this.prop(statusEl, "error", "Last error", state.lastError);
+    const headerEl = createDiv("agent-card-header", cardEl);
+    createSpan({ cls: "agent-card-status", parent: headerEl });
+    createDiv({ cls: "agent-card-title", text: agent.title ?? agent.id, parent: headerEl });
 
-    const activityEl = this.section(rootEl, "activity", "Activity");
-    this.prop(activityEl, "messages", "Messages", String(state.messages.length));
-    this.prop(activityEl, "compactions", "Compactions", String(state.compactions.length));
-    if (state.usage) {
-      const cost = state.usage.costUsd ? ` · $${state.usage.costUsd.toFixed(3)}` : "";
-      this.prop(activityEl, "usage", "Last run", `${(state.usage.totalTokens / 1000).toFixed(1)}k tokens${cost}`);
+    const metaEl = createDiv("agent-card-meta", cardEl);
+    createSpan({ cls: "agent-card-state", text: agent.running ? "Running" : "Idle", parent: metaEl });
+    createSpan({ cls: "agent-card-time", text: formatRelativeTime(agent.updatedAt), parent: metaEl });
+
+    // Usage renders only for agents this window has already connected to;
+    // the board never opens SSE connections just to fill a cell.
+    const usage = this.app.agents.peek(agent.id)?.state.usage;
+    if (usage) {
+      const cost = usage.costUsd ? ` · $${usage.costUsd.toFixed(3)}` : "";
+      createDiv({ cls: "agent-card-usage", text: `${(usage.totalTokens / 1000).toFixed(1)}k tokens${cost}`, parent: cardEl });
     }
 
-    // Config lands here with along-go (engine, model, reasoning effort —
-    // agent rows in the DB). The section exists so themes and plugins can
-    // already target it.
-    const configEl = this.section(rootEl, "config", "Configuration");
-    createDiv({ cls: "agent-view-hint", text: "Engine and model configuration arrives with the Go backend.", parent: configEl });
+    const actionsEl = createDiv("agent-card-actions", cardEl);
+    const chatEl = createEl("button", { cls: "agent-card-action", text: "Chat", parent: actionsEl });
+    chatEl.addEventListener("click", (event) => {
+      event.stopPropagation();
+      void openAgent(this.app, agent.id);
+    });
+    const propsEl = createEl("button", { cls: "agent-card-action", text: "Properties", parent: actionsEl });
+    propsEl.addEventListener("click", (event) => {
+      event.stopPropagation();
+      void openAgentProperties(this.app, agent.id);
+    });
 
-    const actionsEl = this.section(rootEl, "actions", "Actions");
-    const openEl = createEl("button", { cls: "agent-view-action", text: "Open chat", parent: actionsEl });
-    openEl.addEventListener("click", () => void openAgent(this.app, this.agentId));
-  }
-
-  private section(parentEl: HTMLElement, key: string, title: string): HTMLElement {
-    const el = createDiv("agent-view-section", parentEl);
-    el.dataset.section = key;
-    createDiv({ cls: "agent-view-section-title", text: title, parent: el });
-    return el;
-  }
-
-  private prop(parentEl: HTMLElement, key: string, label: string, value: string): void {
-    const el = createDiv("agent-prop", parentEl);
-    el.dataset.prop = key;
-    createDiv({ cls: "agent-prop-label", text: label, parent: el });
-    createDiv({ cls: "agent-prop-value", text: value, parent: el });
+    cardEl.addEventListener("click", () => void openAgent(this.app, agent.id));
+    cardEl.addEventListener("contextmenu", (event) => showAgentMenu(this.app, this.transport, agent, event, () => void this.refresh()));
   }
 }

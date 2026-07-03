@@ -5,16 +5,23 @@ the default strong View of Obsidian. It lives inside Workspace, not above it.
 
 Mental model: you CREATE AN AGENT — a persistent individual with identity and
 history — not a chat session. The domain entity is Agent (app.agents.create /
-get / list); the sidebar lists your agents; an agent outlives any tab showing
-it. "Chat" survives only as the UI genre: ChatView is a window onto an Agent,
-the way MarkdownView is a window onto a TFile.
+get / list); an agent outlives any tab showing it. "Chat" survives only as
+the UI genre: ChatView is a window onto an Agent, the way MarkdownView is a
+window onto a TFile.
 
-AgentView is the view of the agent ITSELF — identity, status, activity,
-configuration — a different window onto the same entity, the properties
-panel to ChatView's document body. The skeleton ships (view type "agent",
-sections with stable data-section/data-prop hooks); config rows fill in
-when the Go backend owns agent rows. That is why the conversation view
-keeps its honest genre name.
+The view vocabulary, one entity at three zoom levels:
+
+```text
+ChatView             one agent — conversing with it IS its main view
+AgentPropertiesView  one agent's properties panel — identity, status,
+                     activity, configuration (frontmatter to ChatView's
+                     document body; config rows fill in with the Go backend)
+AgentView            the agents, plural — every agent as a live card
+                     (status pulse, usage, Chat/Properties); replaces the
+                     earlier sidebar list, which it made redundant
+MultiAgentView       RESERVED — several agents conversing in one view;
+                     lands when the backend can route agent-to-agent
+```
 
 This document merges three earlier sources into one decided design:
 
@@ -224,7 +231,7 @@ same rule that puts word counts in the status bar and never in MarkdownView:
 | transport failures (bridge down)  | transient app trouble       | Notice                        |
 | token usage / cost                | per-view ephemeral status   | status bar item (AgentStatusBar, the WordCount pattern) |
 | composer, header actions, stop    | view chrome                 | ChatView                      |
-| agent list                        | workspace-level navigation  | AgentsView side leaf          |
+| agent list                        | workspace-level navigation  | AgentView board               |
 | domain state                      | single source of truth      | Agent (transport invisible)   |
 
 The test for a new element: if it would survive history replay it belongs in

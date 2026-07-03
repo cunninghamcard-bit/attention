@@ -11,17 +11,16 @@ function firstTextOf(message: ChatMessage): string {
   const part = message.parts.find((item) => item?.type === "text");
   return part && "markdown" in part ? part.markdown : "";
 }
-import { AgentsView, AGENTS_VIEW_TYPE } from "./AgentsView";
-import { AgentBoardView, AGENT_BOARD_VIEW_TYPE } from "./AgentBoardView";
+import { AgentPropertiesView, AGENT_PROPERTIES_VIEW_TYPE } from "./AgentPropertiesView";
 import { AgentView, AGENT_VIEW_TYPE } from "./AgentView";
 import { ChatView, CHAT_VIEW_TYPE } from "./ChatView";
 
 // Opens the agent's properties view, reusing a leaf already showing it.
 export async function openAgentProperties(app: App, agentId: string): Promise<void> {
-  const leaves = app.workspace.getLeavesOfType(AGENT_VIEW_TYPE);
-  const showing = leaves.find((leaf) => (leaf.view as AgentView | null)?.getState()?.agentId === agentId);
+  const leaves = app.workspace.getLeavesOfType(AGENT_PROPERTIES_VIEW_TYPE);
+  const showing = leaves.find((leaf) => (leaf.view as AgentPropertiesView | null)?.getState()?.agentId === agentId);
   const leaf = showing ?? leaves[0] ?? app.workspace.getLeaf("tab");
-  await leaf.setViewState({ type: AGENT_VIEW_TYPE, active: true, state: { agentId } });
+  await leaf.setViewState({ type: AGENT_PROPERTIES_VIEW_TYPE, active: true, state: { agentId } });
   await app.workspace.revealLeaf(leaf);
 }
 
@@ -50,9 +49,8 @@ async function openChatLeaf(app: App, agentId?: string): Promise<void> {
 // command/ribbon/slash surface registers once the workspace exists.
 export function registerAgentViews(app: App): void {
   app.viewRegistry.registerView(CHAT_VIEW_TYPE, (leaf) => new ChatView(leaf));
-  app.viewRegistry.registerView(AGENTS_VIEW_TYPE, (leaf) => new AgentsView(leaf));
+  app.viewRegistry.registerView(AGENT_PROPERTIES_VIEW_TYPE, (leaf) => new AgentPropertiesView(leaf));
   app.viewRegistry.registerView(AGENT_VIEW_TYPE, (leaf) => new AgentView(leaf));
-  app.viewRegistry.registerView(AGENT_BOARD_VIEW_TYPE, (leaf) => new AgentBoardView(leaf));
 }
 
 export function registerAgentBuiltin(app: App): void {
@@ -88,8 +86,8 @@ export function registerAgentBuiltin(app: App): void {
     name: "Open agent board",
     icon: "lucide-layout-grid",
     callback: () => {
-      const leaf = app.workspace.getLeavesOfType(AGENT_BOARD_VIEW_TYPE)[0] ?? app.workspace.getLeaf("tab");
-      void leaf.setViewState({ type: AGENT_BOARD_VIEW_TYPE, active: true }).then(() => app.workspace.revealLeaf(leaf));
+      const leaf = app.workspace.getLeavesOfType(AGENT_VIEW_TYPE)[0] ?? app.workspace.getLeaf("tab");
+      void leaf.setViewState({ type: AGENT_VIEW_TYPE, active: true }).then(() => app.workspace.revealLeaf(leaf));
     },
   });
 
@@ -105,19 +103,11 @@ export function registerAgentBuiltin(app: App): void {
     },
   });
 
-  app.commands.addCommand({
-    id: "agent:open-list",
-    name: "Open agents",
-    icon: "lucide-messages-square",
-    callback: () => void app.workspace.ensureSideLeaf(AGENTS_VIEW_TYPE, "right", { active: true, reveal: true }),
-  });
-
   // After layout-ready, like core plugin ribbon items: the ribbon stays
   // pristine during workspace construction and layout deserialization.
   app.workspace.onLayoutReady(() => {
     app.workspace.leftRibbon.addRibbonIcon("lucide-message-circle", "Open chat", () => void openChatLeaf(app), "agent:open");
-    app.workspace.leftRibbon.addRibbonIcon("lucide-layout-grid", "Open agent board", () => app.commands.executeCommandById("agent:open-board"), "agent:open-board");
-    void app.workspace.ensureSideLeaf(AGENTS_VIEW_TYPE, "right", { reveal: false });
+    app.workspace.leftRibbon.addRibbonIcon("lucide-layout-grid", "Open agents", () => app.commands.executeCommandById("agent:open-board"), "agent:open-board");
   });
 
   registerChatMessageAction({

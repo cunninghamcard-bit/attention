@@ -1,47 +1,59 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
-import type { AgentEvent } from "./AgentEvent";
-import { AgentView, AGENT_VIEW_TYPE } from "./AgentView";
+import { AGENT_VIEW_TYPE, AgentView } from "./AgentView";
 
-const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+afterEach(() => vi.unstubAllGlobals());
+beforeEach(() => {
+  Object.defineProperty(window, "focus", { configurable: true, value: () => {} });
+});
+
+function stubAgents(agents: Array<{ id: string; title: string | null; updatedAt: number; running: boolean }>): void {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/agents")) {
+        return new Response(JSON.stringify({ agents }), { headers: { "Content-Type": "application/json" } });
+      }
+      return new Response("{}", { headers: { "Content-Type": "application/json" } });
+    }),
+  );
+}
 
 describe("AgentView", () => {
-  it("renders the agent's sections and live state", async () => {
+  it("renders one card per agent with status and actions", async () => {
+    stubAgents([
+      { id: "a-1", title: "重构讨论", updatedAt: Date.now() - 60_000, running: true },
+      { id: "a-2", title: null, updatedAt: Date.now() - 7_200_000, running: false },
+    ]);
     const app = new App(document.createElement("div"));
     await app.ready;
+    expect(app.viewRegistry.getViewCreatorByType(AGENT_VIEW_TYPE)).toBeTypeOf("function");
 
     const leaf = app.workspace.getLeaf("tab");
-    await leaf.setViewState({ type: AGENT_VIEW_TYPE, active: true, state: { agentId: "a-77" } });
-    const view = app.workspace.getActiveViewOfType(AgentView)!;
-    expect(view).not.toBeNull();
+    await leaf.setViewState({ type: AGENT_VIEW_TYPE, active: true });
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
-    const agent = app.agents.get("a-77");
-    const feed = (events: Array<Omit<AgentEvent, "agentId">>) =>
-      events.forEach((event) => agent.applyEvent({ ...event, agentId: "a-77" } as AgentEvent));
+    const view = leaf.view as AgentView;
+    expect(view.getDisplayText()).toBe("Agent board");
+    const cards = [...view.contentEl.querySelectorAll(".agent-card")];
+    expect(cards).toHaveLength(2);
+    expect((cards[0] as HTMLElement).dataset.agentId).toBe("a-1");
+    expect(cards[0].classList.contains("is-running")).toBe(true);
+    expect(cards[0].querySelector(".agent-card-title")?.textContent).toBe("重构讨论");
+    expect(cards[0].querySelector(".agent-card-state")?.textContent).toBe("Running");
+    expect(cards[1].querySelector(".agent-card-title")?.textContent).toBe("a-2");
+    expect([...cards[0].querySelectorAll(".agent-card-action")].map((el) => el.textContent)).toEqual(["Chat", "Properties"]);
+    leaf.detach();
+  });
 
-    feed([
-      { type: "run.started", runId: "r1", seq: 1 },
-      { type: "message.started", messageId: "u1", role: "user", seq: 2 },
-      { type: "message.closed", messageId: "u1", seq: 3 },
-    ] as never);
-    await nextFrame();
-
-    const el = view.contentEl;
-    const sections = [...el.querySelectorAll(".agent-view-section")].map((s) => (s as HTMLElement).dataset.section);
-    expect(sections).toEqual(["identity", "status", "activity", "config", "actions"]);
-    expect(el.querySelector('[data-prop="id"] .agent-prop-value')?.textContent).toBe("a-77");
-    expect(el.querySelector('[data-prop="state"] .agent-prop-value')?.textContent).toBe("Running");
-    expect(el.querySelector('[data-prop="messages"] .agent-prop-value')?.textContent).toBe("1");
-
-    feed([
-      {
-        type: "run.closed", runId: "r1", status: "completed", seq: 4,
-        usage: { inputTokens: 1000, outputTokens: 500, totalTokens: 1500, costUsd: 0.01 },
-      },
-    ] as never);
-    await nextFrame();
-    expect(el.querySelector('[data-prop="state"] .agent-prop-value')?.textContent).toBe("Idle");
-    expect(el.querySelector('[data-prop="usage"] .agent-prop-value')?.textContent).toBe("1.5k tokens · $0.010");
-    expect(view.getDisplayText()).toBe("Agent – a-77");
+  it("shows the empty state when the bridge has no agents", async () => {
+    stubAgents([]);
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const leaf = app.workspace.getLeaf("tab");
+    await leaf.setViewState({ type: AGENT_VIEW_TYPE, active: true });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect((leaf.view as AgentView).contentEl.querySelector(".agent-board-empty")).not.toBeNull();
+    leaf.detach();
   });
 });

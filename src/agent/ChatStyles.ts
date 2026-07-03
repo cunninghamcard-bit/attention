@@ -136,15 +136,6 @@ const CHAT_CSS = `
     .stream-scroll-bottom { position: sticky; bottom: 8px; left: 100%; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.3)); background: var(--background-primary, white); cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
     .chat-error { max-width: 760px; margin: 8px auto 0; color: var(--text-error, #c0392b); font-size: 0.85em; }
     .chat-unknown-block { white-space: pre-wrap; }
-    .agents-view { padding: 8px; }
-    .agents-list { display: flex; flex-direction: column; gap: 2px; }
-    .agents-empty { opacity: 0.5; font-size: 0.9em; padding: 12px 8px; }
-    .agent-item { padding: 6px 10px; border-radius: 6px; cursor: pointer; }
-    .agent-item:hover { background: var(--background-secondary, rgba(120,120,140,0.12)); }
-    .agent-item.is-active { background: var(--background-secondary, rgba(120,120,140,0.18)); }
-    .agent-item-title { font-size: 0.92em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
-    .agent-item-time { font-size: 0.78em; opacity: 0.5; margin-top: 2px; }
-    .agent-item-running { width: 7px; height: 7px; border-radius: 50%; background: var(--interactive-accent, #7c6ae0); flex: 0 0 auto; animation: chat-thinking 1.2s ease-in-out infinite; }
     .chat-compact-divider { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
     .chat-compact-divider::before, .chat-compact-divider::after { content: ""; flex: 1; border-top: 1px dashed var(--background-modifier-border, rgba(120,120,140,0.35)); }
     .chat-compact-label { font-size: 0.75em; opacity: 0.55; white-space: nowrap; }
