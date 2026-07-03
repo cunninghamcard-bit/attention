@@ -1,4 +1,5 @@
 import { createDiv, createSpan } from "../dom/dom";
+import { Menu } from "../ui/Menu";
 import { ItemView } from "../views/ItemView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
 import { openAgent } from "./AgentBuiltin";
@@ -78,6 +79,30 @@ export class AgentsView extends ItemView {
       titleEl.appendText(thread.title ?? thread.id);
       createDiv({ cls: "agent-item-time", text: formatRelativeTime(thread.updatedAt), parent: itemEl });
       itemEl.addEventListener("click", () => void openAgent(this.app, thread.id));
+      itemEl.addEventListener("contextmenu", (event) => this.showItemMenu(event, thread));
     }
+  }
+
+  private showItemMenu(event: MouseEvent, thread: AgentSummary): void {
+    event.preventDefault();
+    const menu = new Menu(this.containerEl.ownerDocument);
+    menu.addItem((item) => item
+      .setTitle("Rename")
+      .setIcon("lucide-pencil")
+      .onClick(() => {
+        // ponytail: window.prompt over a custom modal; upgrade when a shared
+        // prompt modal exists in the ui module.
+        const title = window.prompt("Rename agent", thread.title ?? thread.id);
+        if (title?.trim()) void this.transport.rename(thread.id, title.trim()).then(() => this.refresh());
+      }));
+    menu.addItem((item) => item
+      .setTitle("Delete")
+      .setIcon("lucide-trash-2")
+      .onClick(() => {
+        if (window.confirm(`Delete agent "${thread.title ?? thread.id}"? Its history goes with it.`)) {
+          void this.transport.delete(thread.id).then(() => this.refresh());
+        }
+      }));
+    menu.showAtMouseEvent(event);
   }
 }

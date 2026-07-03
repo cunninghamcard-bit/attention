@@ -56,7 +56,7 @@ function getThread(id: string): Thread {
 }
 
 function emit(thread: Thread, event: Omit<BridgeEvent, "seq" | "agentId">): void {
-  const full: BridgeEvent = { ...event, seq: ++thread.seq, agentId: thread.id };
+  const full: BridgeEvent = { ts: Date.now(), ...event, seq: ++thread.seq, agentId: thread.id };
   thread.events.push(full);
   thread.updatedAt = Date.now();
   if (event.type === "run.started") thread.running = true;
@@ -189,7 +189,13 @@ function handleEngineLine(thread: Thread, run: EngineRunState, line: string): vo
           : Array.isArray(block.content)
             ? block.content.map((item: any) => item?.text ?? "").join("\n")
             : JSON.stringify(block.content ?? "");
-      emit(thread, { type: "part.closed", messageId: target.messageId, partIndex: target.partIndex, result });
+      emit(thread, {
+        type: "part.closed",
+        messageId: target.messageId,
+        partIndex: target.partIndex,
+        result,
+        ...(block.is_error ? { error: result || "tool failed" } : {}),
+      });
     }
   }
 }
@@ -229,6 +235,7 @@ async function runEngine(thread: Thread, text: string, attachments: MessageAttac
 
   let buffered = "";
   let sawError: string | null = null;
+  let usage: Record<string, unknown> | undefined;
   const decoder = new TextDecoder();
   for await (const chunk of proc.stdout) {
     buffered += decoder.decode(chunk, { stream: true });
@@ -240,7 +247,19 @@ async function runEngine(thread: Thread, text: string, attachments: MessageAttac
         handleEngineLine(thread, run, line);
         try {
           const payload = JSON.parse(line);
-          if (payload.type === "result" && payload.is_error) sawError = payload.result ?? "engine error";
+          if (payload.type === "result") {
+            if (payload.is_error) sawError = payload.result ?? "engine error";
+            const raw = payload.usage;
+            if (raw) {
+              const inputTokens = (raw.input_tokens ?? 0) + (raw.cache_read_input_tokens ?? 0) + (raw.cache_creation_input_tokens ?? 0);
+              usage = {
+                inputTokens,
+                outputTokens: raw.output_tokens ?? 0,
+                totalTokens: inputTokens + (raw.output_tokens ?? 0),
+                ...(payload.total_cost_usd !== undefined ? { costUsd: payload.total_cost_usd } : {}),
+              };
+            }
+          }
         } catch {
           // non-JSON lines are ignored
         }
@@ -251,9 +270,9 @@ async function runEngine(thread: Thread, text: string, attachments: MessageAttac
   const exitCode = await proc.exited;
   thread.proc = null;
   if (run.currentMessageId) emit(thread, { type: "message.closed", messageId: run.currentMessageId });
-  if (sawError) emit(thread, { type: "run.closed", runId, status: "error", error: sawError });
-  else if (exitCode !== 0) emit(thread, { type: "run.closed", runId, status: "error", error: `engine exited with ${exitCode}` });
-  else emit(thread, { type: "run.closed", runId, status: "completed" });
+  if (sawError) emit(thread, { type: "run.closed", runId, status: "error", error: sawError, usage });
+  else if (exitCode !== 0) emit(thread, { type: "run.closed", runId, status: "error", error: `engine exited with ${exitCode}`, usage });
+  else emit(thread, { type: "run.closed", runId, status: "completed", usage });
 }
 
 // --- Mock engine ----------------------------------------------------------
@@ -273,37 +292,43 @@ async function runMockEngine(thread: Thread, runId: string, text: string): Promi
   }
   emit(thread, { type: "part.closed", messageId, partIndex: 0 });
 
-  const toolCalls: Array<[string, string, string]> = [
+  const toolCalls: Array<[string, string, string, string?]> = [
     ["Bash", '{"command":"echo hello"}', "hello"],
-    ["Read", '{"file_path":"src/main.ts"}', "import { bootstrap } from …"],
+    ["Edit", '{"file_path":"src/main.ts","old_string":"const a = 1;\\nconst b = 2;","new_string":"const a = 1;\\nconst b = 3;\\nconst c = 4;"}', "ok"],
+    ["Read", '{"file_path":"src/missing.ts"}', "ENOENT: no such file", "ENOENT: no such file"],
     ["Grep", '{"pattern":"ChatView"}', "12 matches"],
   ];
   for (let index = 0; index < toolCalls.length; index++) {
-    const [toolName, input, result] = toolCalls[index];
+    const [toolName, input, result, error] = toolCalls[index];
     const partIndex = index + 1;
     emit(thread, { type: "part.opened", messageId, partIndex, partType: "tool", toolName });
     emit(thread, { type: "part.delta", messageId, partIndex, delta: input });
     emit(thread, { type: "part.closed", messageId, partIndex });
     await sleep(350);
-    emit(thread, { type: "part.closed", messageId, partIndex, result });
+    emit(thread, { type: "part.closed", messageId, partIndex, result, ...(error ? { error } : {}) });
   }
 
-  emit(thread, { type: "part.opened", messageId, partIndex: 4, partType: "text" });
+  emit(thread, { type: "part.opened", messageId, partIndex: 5, partType: "text" });
   const outro = "工具跑完了。*流式*结束,这一条消息现在归档,DOM 原地移交。";
   for (const chunk of outro.match(/.{1,5}/gs) ?? []) {
-    emit(thread, { type: "part.delta", messageId, partIndex: 4, delta: chunk });
+    emit(thread, { type: "part.delta", messageId, partIndex: 5, delta: chunk });
     await sleep(30);
   }
-  emit(thread, { type: "part.closed", messageId, partIndex: 4 });
+  emit(thread, { type: "part.closed", messageId, partIndex: 5 });
   emit(thread, { type: "message.closed", messageId });
-  emit(thread, { type: "run.closed", runId, status: "completed" });
+  emit(thread, {
+    type: "run.closed",
+    runId,
+    status: "completed",
+    usage: { inputTokens: 12400, outputTokens: 860, totalTokens: 13260, costUsd: 0.021 },
+  });
 }
 
 // --- HTTP -----------------------------------------------------------------
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
@@ -360,6 +385,27 @@ Bun.serve({
       void runEngine(thread, text, attachments).catch((error) => {
         emit(thread, { type: "run.closed", runId: `${thread.id}-r${thread.counter}`, status: "error", error: String(error) });
       });
+      return new Response("{}", { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+    }
+
+    const agentMatch = url.pathname.match(/^\/agents\/([^/]+)$/);
+    if (agentMatch && request.method === "PATCH") {
+      const thread = threads.get(decodeURIComponent(agentMatch[1]));
+      if (!thread) return new Response("not found", { status: 404, headers: CORS_HEADERS });
+      const body = (await request.json().catch(() => ({}))) as { title?: string };
+      const title = String(body.title ?? "").trim();
+      if (!title) return new Response("missing title", { status: 400, headers: CORS_HEADERS });
+      thread.title = title;
+      return new Response("{}", { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+    }
+    if (agentMatch && request.method === "DELETE") {
+      const id = decodeURIComponent(agentMatch[1]);
+      const thread = threads.get(id);
+      if (thread) {
+        thread.proc?.kill();
+        if (PI) abortPiAgent(id);
+        threads.delete(id);
+      }
       return new Response("{}", { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
     }
 

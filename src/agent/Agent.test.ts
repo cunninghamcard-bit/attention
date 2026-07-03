@@ -93,6 +93,21 @@ describe("applyAgentEvent", () => {
     expect(state.lastError).toBe("boom");
     expect(state.messages[1].parts[0].closed).toBe(true);
   });
+
+  it("records a tool failure, usage and part timing from the extended fields", () => {
+    const state = createAgentState();
+    applyAgentEvent(state, { type: "message.started", messageId: "a1", role: "assistant", seq: 1, agentId: "t1" });
+    applyAgentEvent(state, { type: "part.opened", messageId: "a1", partIndex: 0, partType: "tool", toolName: "Read", seq: 2, agentId: "t1", ts: 1000 });
+    applyAgentEvent(state, { type: "part.closed", messageId: "a1", partIndex: 0, result: "ENOENT", error: "ENOENT", seq: 3, agentId: "t1", ts: 3500 });
+    const tool = state.messages[0].parts[0];
+    expect(tool).toMatchObject({ type: "tool", closed: true, error: "ENOENT", openedAt: 1000, closedAt: 3500 });
+
+    applyAgentEvent(state, {
+      type: "run.closed", runId: "r1", status: "completed", seq: 4, agentId: "t1",
+      usage: { inputTokens: 1200, outputTokens: 300, totalTokens: 1500, costUsd: 0.01 },
+    });
+    expect(state.usage).toEqual({ inputTokens: 1200, outputTokens: 300, totalTokens: 1500, costUsd: 0.01 });
+  });
 });
 
 describe("Agent", () => {

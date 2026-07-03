@@ -54,6 +54,18 @@ export class AgentTransport {
     return Array.isArray(payload?.agents) ? payload.agents : [];
   }
 
+  async rename(agentId: string, title: string): Promise<void> {
+    await fetch(`${this.baseUrl}/agents/${encodeURIComponent(agentId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+  }
+
+  async delete(agentId: string): Promise<void> {
+    await fetch(`${this.baseUrl}/agents/${encodeURIComponent(agentId)}`, { method: "DELETE" });
+  }
+
   async stop(agentId: string): Promise<void> {
     // Best effort: interrupting a run that already ended is not an error.
     await fetch(`${this.baseUrl}/agents/${encodeURIComponent(agentId)}/stop`, { method: "POST" }).catch(() => undefined);

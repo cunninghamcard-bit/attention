@@ -6,7 +6,7 @@ export default defineConfig({
     ...(process.env.ANALYZE ? [visualizer({ filename: "dist/stats.html", gzipSize: true, brotliSize: true })] : []),
   ],
   server: {
-    port: 5173,
+    port: Number(process.env.PORT) || 5173,
     strictPort: false,
   },
   build: {

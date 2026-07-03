@@ -3,6 +3,7 @@ import { writeClipboardText } from "../dom/Clipboard";
 import { Notice } from "../ui/Notice";
 import { newAgentId } from "./AgentManager";
 import { registerChatMessageAction, registerChatSlashCommand } from "./ChatRegistry";
+import { registerBuiltinToolCards } from "./ChatToolCards";
 import { chatMessageToMarkdown } from "./Agent";
 import { AgentsView, AGENTS_VIEW_TYPE } from "./AgentsView";
 import { ChatView, CHAT_VIEW_TYPE } from "./ChatView";
@@ -36,6 +37,7 @@ export function registerAgentViews(app: App): void {
 }
 
 export function registerAgentBuiltin(app: App): void {
+  registerBuiltinToolCards();
   app.commands.addCommand({
     id: "agent:open",
     name: "Open chat",

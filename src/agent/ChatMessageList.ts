@@ -4,19 +4,30 @@ import { Component } from "../core/Component";
 import { getChatToolRenderer, listChatMessageActions } from "./ChatRegistry";
 import type { ChatMessage, ChatPart, Agent, ToolChatPart } from "./Agent";
 import { StreamMarkdownRenderer } from "../views/StreamMarkdownRenderer";
+import { Typewriter } from "../views/Typewriter";
+
+// Typewriter reveals grow content between agent events, outside the view's
+// sync cycle — this hook lets the scroller follow that growth.
+export type ChatContentGrowCallback = () => void;
 
 class ChatPartRenderer extends Component {
   readonly el: HTMLElement;
   private renderer: StreamMarkdownRenderer | null = null;
+  private typewriter: Typewriter | null = null;
   private lastSignature = "";
 
   constructor(
     parentEl: HTMLElement,
     private readonly messageId: string,
     private readonly partIndex: number,
+    private readonly onGrow?: ChatContentGrowCallback,
   ) {
     super();
     this.el = createDiv("chat-part", parentEl);
+  }
+
+  override onunload(): void {
+    this.typewriter?.destroy();
   }
 
   private applyDataAttributes(part: ChatPart): void {
@@ -45,7 +56,7 @@ class ChatPartRenderer extends Component {
   }
 
   private signatureOf(part: ChatPart): string {
-    if (part.type === "tool") return `tool:${part.closed}:${part.input.length}:${part.result?.length ?? -1}`;
+    if (part.type === "tool") return `tool:${part.closed}:${part.input.length}:${part.result?.length ?? -1}:${part.error?.length ?? -1}`;
     if (part.type === "attachment") return `attachment:${part.closed}:${part.content.length}`;
     return `${part.type}:${part.closed}:${part.markdown.length}`;
   }
@@ -53,10 +64,16 @@ class ChatPartRenderer extends Component {
   private syncText(part: Extract<ChatPart, { type: "text" | "thinking" }>): void {
     this.el.className = part.type === "thinking" ? "chat-part chat-part-thinking" : "chat-part chat-part-text";
     if (!this.renderer) this.renderer = new StreamMarkdownRenderer(this.el, this, `agent://${this.messageId}/${this.partIndex}`);
+    if (!this.typewriter) this.typewriter = new Typewriter((visible, done) => this.renderMarkdown(visible, done));
+    this.typewriter.setTarget(part.markdown, part.closed);
+  }
+
+  private renderMarkdown(visible: string, done: boolean): void {
     const md = getMarkdown(`${this.messageId}:${this.partIndex}`);
-    const nodes = parseMarkdownToStructure(part.markdown, md, part.closed ? { final: true } : undefined);
-    this.renderer.update(nodes);
-    this.el.toggleClass("is-streaming", !part.closed);
+    const nodes = parseMarkdownToStructure(visible, md, done ? { final: true } : undefined);
+    this.renderer!.update(nodes);
+    this.el.toggleClass("is-streaming", !done);
+    this.onGrow?.();
   }
 
   private toolExpanded = false;
@@ -69,18 +86,23 @@ class ChatPartRenderer extends Component {
       custom.render(part, this.el, { component: this });
       return;
     }
+    const failed = part.error !== undefined;
+    this.el.toggleClass("is-failed", failed);
     const headerEl = createDiv("chat-tool-header", this.el);
     createSpan({ cls: "chat-tool-name", text: part.toolName, parent: headerEl });
     createSpan({
-      cls: `chat-tool-status ${part.closed ? "is-done" : "is-running"}`,
-      text: part.closed ? (part.result !== undefined ? "done" : "called") : "running",
+      cls: `chat-tool-status ${failed ? "is-failed" : part.closed ? "is-done" : "is-running"}`,
+      text: failed ? "failed" : part.closed ? (part.result !== undefined ? "done" : "called") : "running",
       parent: headerEl,
     });
     // Rows stay compact once done; the details expand on click, and stay
-    // open live so the running call's input streams in view.
+    // open live so the running call's input streams in view. Failures stay
+    // open so the error is never hidden behind a click.
+    if (failed) this.toolExpanded = true;
     const detailsEl = createDiv("chat-tool-details", this.el);
     if (part.input) createEl("pre", { cls: "chat-tool-input", text: part.input, parent: detailsEl });
-    if (part.result !== undefined) createEl("pre", { cls: "chat-tool-result", text: part.result, parent: detailsEl });
+    if (failed) createEl("pre", { cls: "chat-tool-error", text: part.error, parent: detailsEl });
+    else if (part.result !== undefined) createEl("pre", { cls: "chat-tool-result", text: part.result, parent: detailsEl });
     detailsEl.toggle(!part.closed || this.toolExpanded);
     headerEl.addEventListener("click", () => {
       this.toolExpanded = !this.toolExpanded;
@@ -104,7 +126,11 @@ class ChatMessageItem extends Component {
   private readonly partRenderers: ChatPartRenderer[] = [];
   private readonly timelines = new Map<number, ToolTimeline>();
 
-  constructor(parentEl: HTMLElement, private readonly message: ChatMessage) {
+  constructor(
+    parentEl: HTMLElement,
+    private readonly message: ChatMessage,
+    private readonly onGrow?: ChatContentGrowCallback,
+  ) {
     super();
     this.el = createDiv(`chat-message chat-message-${message.role}`, parentEl);
     this.el.dataset.role = message.role;
@@ -127,7 +153,7 @@ class ChatMessageItem extends Component {
       let renderer = this.partRenderers[index];
       if (!renderer) {
         const parentEl = part.type === "tool" ? this.timelineFor(index).bodyEl : this.partsEl;
-        renderer = this.addChild(new ChatPartRenderer(parentEl, this.message.id, index));
+        renderer = this.addChild(new ChatPartRenderer(parentEl, this.message.id, index, this.onGrow));
         this.partRenderers[index] = renderer;
       }
       renderer.sync(part);
@@ -163,9 +189,16 @@ class ChatMessageItem extends Component {
       const parts = timeline.partIndexes.map((index) => this.message.parts[index]).filter(Boolean);
       const total = parts.length;
       const running = parts.some((part) => !part.closed);
-      timeline.headerTextEl.setText(`${total} tool call${total === 1 ? "" : "s"} · ${running ? "running" : "done"}`);
+      const failedCount = parts.filter((part) => part.type === "tool" && part.error !== undefined).length;
+      const opened = parts[0]?.openedAt;
+      const closed = parts[parts.length - 1]?.closedAt;
+      const duration = !running && opened && closed && closed > opened ? ` · ${((closed - opened) / 1000).toFixed(1)}s` : "";
+      const status = running ? "running" : failedCount ? `${failedCount} failed` : "done";
+      timeline.headerTextEl.setText(`${total} tool call${total === 1 ? "" : "s"} · ${status}${duration}`);
       timeline.el.toggleClass("is-running", running);
-      if (!running && !timeline.userToggled && !timeline.autoCollapsed) {
+      timeline.el.toggleClass("has-failed", failedCount > 0);
+      // Failures keep the timeline open; a fully green run tucks itself away.
+      if (!running && failedCount === 0 && !timeline.userToggled && !timeline.autoCollapsed) {
         timeline.autoCollapsed = true;
         timeline.el.addClass("is-collapsed");
       }
@@ -182,7 +215,11 @@ export class ChatMessageList extends Component {
   private readonly emptyEl: HTMLElement;
   private readonly thinkingEl: HTMLElement;
 
-  constructor(parentEl: HTMLElement, private readonly session: Agent) {
+  constructor(
+    parentEl: HTMLElement,
+    private readonly session: Agent,
+    private readonly onGrow?: ChatContentGrowCallback,
+  ) {
     super();
     this.el = createDiv("chat-message-list", parentEl);
     this.emptyEl = createDiv("chat-empty", this.el);
@@ -202,7 +239,7 @@ export class ChatMessageList extends Component {
       let item = this.items.get(message.id);
       if (!item) {
         this.renderCompactionsAfter(messages[messages.indexOf(message) - 1]?.id ?? null);
-        item = this.addChild(new ChatMessageItem(this.el, message));
+        item = this.addChild(new ChatMessageItem(this.el, message, this.onGrow));
         this.items.set(message.id, item);
         this.el.appendChild(this.thinkingEl);
       }

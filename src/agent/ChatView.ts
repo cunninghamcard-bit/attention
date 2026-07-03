@@ -29,7 +29,11 @@ export class ChatView extends StreamView {
   private list: ChatMessageList | null = null;
   private composer: ChatComposer | null = null;
   private errorEl: HTMLElement | null = null;
+  private usageEl: HTMLElement | null = null;
   private stopActionEl: HTMLElement | null = null;
+  // Set on send: the next sync pins the new user message to the viewport top
+  // (ArkLoop-style anchoring) so the reply reads downward from the question.
+  private anchorPending = false;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
@@ -123,9 +127,11 @@ export class ChatView extends StreamView {
     (MarkdownRenderer as unknown as {
       installInternalLinkHandlers(app: App, root: HTMLElement, sourcePath: string): void;
     }).installInternalLinkHandlers(this.app, scrollEl, `agent://${agentId}`);
-    this.list = this.addChild(new ChatMessageList(scrollEl, this.session));
+    this.list = this.addChild(new ChatMessageList(scrollEl, this.session, () => this.scroller?.notifyContentChanged()));
     this.errorEl = createDiv("chat-error", this.contentEl);
     this.errorEl.hide();
+    this.usageEl = createDiv("chat-usage", this.contentEl);
+    this.usageEl.hide();
     this.composer = this.addChild(
       new ChatComposer(
         this.contentEl,
@@ -147,6 +153,7 @@ export class ChatView extends StreamView {
   private async sendMessage(text: string, attachments: ChatAttachmentPayload[] = []): Promise<void> {
     try {
       this.errorEl?.hide();
+      this.anchorPending = true;
       await this.session?.sendMessage(text, attachments);
     } catch (error) {
       if (this.errorEl) {
@@ -176,12 +183,39 @@ export class ChatView extends StreamView {
 
   protected onStreamSync(): void {
     this.list?.sync();
+    this.anchorLastUserMessage();
     this.composer?.syncRunning();
     this.stopActionEl?.toggle(this.isRunning());
     this.refreshTitle();
+    this.refreshUsage();
     if (this.session?.state.lastError && this.errorEl) {
       this.errorEl.setText(this.session.state.lastError);
       this.errorEl.show();
     }
+  }
+
+  // Pin the just-sent user message toward the viewport top and detach the
+  // scroller: the reply streams downward from the question instead of the
+  // viewport chasing the bottom. Without a spacer the pin clamps at the
+  // current bottom, but the position stays stable while the reply grows.
+  // ponytail: no bottom spacer — exact-top pinning on short content needs
+  // one; add it if the clamped position reads badly in practice.
+  private anchorLastUserMessage(): void {
+    if (!this.anchorPending || !this.scrollEl) return;
+    const userEls = this.scrollEl.querySelectorAll('.chat-message[data-role="user"]');
+    const target = userEls[userEls.length - 1] as HTMLElement | undefined;
+    if (!target) return;
+    this.anchorPending = false;
+    this.scrollEl.scrollTop += target.getBoundingClientRect().top - this.scrollEl.getBoundingClientRect().top - 8;
+    this.scroller?.detach();
+  }
+
+  private refreshUsage(): void {
+    if (!this.usageEl) return;
+    const usage = this.session?.state.usage;
+    if (!usage) return void this.usageEl.hide();
+    const cost = usage.costUsd ? ` · $${usage.costUsd.toFixed(3)}` : "";
+    this.usageEl.setText(`${(usage.totalTokens / 1000).toFixed(1)}k tokens${cost}`);
+    this.usageEl.show();
   }
 }

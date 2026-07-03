@@ -28,6 +28,12 @@ export class StreamScroller extends Component {
     else this.buttonEl.show();
   }
 
+  // Leave follow mode regardless of scroll position — anchored reading
+  // (question pinned, reply growing below) must not fight scrollToBottom.
+  detach(): void {
+    this.stuck = false;
+  }
+
   scrollToBottom(): void {
     this.scrollEl.scrollTop = this.scrollEl.scrollHeight;
     this.stuck = true;

@@ -1,26 +1,33 @@
 import { Events } from "../core/Events";
-import type { AgentEvent, ChatPartType, ChatRole } from "./AgentEvent";
+import type { AgentEvent, AgentUsage, ChatPartType, ChatRole } from "./AgentEvent";
 import type { AgentTransport } from "./AgentTransport";
 
-export interface TextChatPart {
-  type: "text" | "thinking";
-  markdown: string;
+interface ChatPartBase {
   closed: boolean;
+  // Producer timestamps (event.ts), when the bridge stamps them; durations
+  // survive history replay because they never come from the local clock.
+  openedAt?: number;
+  closedAt?: number;
 }
 
-export interface ToolChatPart {
+export interface TextChatPart extends ChatPartBase {
+  type: "text" | "thinking";
+  markdown: string;
+}
+
+export interface ToolChatPart extends ChatPartBase {
   type: "tool";
   toolName: string;
   input: string;
   result?: string;
-  closed: boolean;
+  // Presence means the execution failed; holds the engine's error text.
+  error?: string;
 }
 
-export interface AttachmentChatPart {
+export interface AttachmentChatPart extends ChatPartBase {
   type: "attachment";
   name: string;
   content: string;
-  closed: boolean;
 }
 
 export type ChatPart = TextChatPart | ToolChatPart | AttachmentChatPart;
@@ -48,10 +55,12 @@ export interface AgentState {
   running: boolean;
   lastSeq: number;
   lastError: string | null;
+  // Last run's token usage; the context bar reads this.
+  usage: AgentUsage | null;
 }
 
 export function createAgentState(): AgentState {
-  return { messages: [], compactions: [], running: false, lastSeq: 0, lastError: null };
+  return { messages: [], compactions: [], running: false, lastSeq: 0, lastError: null, usage: null };
 }
 
 function createPart(partType: ChatPartType, toolName?: string, name?: string): ChatPart {
@@ -79,7 +88,9 @@ export function applyAgentEvent(state: AgentState, event: AgentEvent): boolean {
     case "part.opened": {
       const message = state.messages.find((item) => item.id === event.messageId);
       if (!message) return false;
-      message.parts[event.partIndex] = createPart(event.partType, event.toolName, event.name);
+      const part = createPart(event.partType, event.toolName, event.name);
+      part.openedAt = event.ts;
+      message.parts[event.partIndex] = part;
       break;
     }
     case "part.delta": {
@@ -94,7 +105,11 @@ export function applyAgentEvent(state: AgentState, event: AgentEvent): boolean {
       const part = state.messages.find((item) => item.id === event.messageId)?.parts[event.partIndex];
       if (!part) return false;
       part.closed = true;
-      if (part.type === "tool" && event.result !== undefined) part.result = event.result;
+      part.closedAt = event.ts ?? part.closedAt;
+      if (part.type === "tool") {
+        if (event.result !== undefined) part.result = event.result;
+        if (event.error !== undefined) part.error = event.error;
+      }
       break;
     }
     case "message.closed": {
@@ -114,6 +129,7 @@ export function applyAgentEvent(state: AgentState, event: AgentEvent): boolean {
     }
     case "run.closed": {
       state.running = false;
+      if (event.usage) state.usage = event.usage;
       if (event.status === "error") state.lastError = event.error ?? "Run failed";
       for (const message of state.messages) {
         message.closed = true;

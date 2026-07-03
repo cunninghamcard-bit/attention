@@ -40,7 +40,25 @@ function getRegistry(): { modelRegistry: ModelRegistry; authStorage: AuthStorage
   return registry;
 }
 
-const sessions = new Map<string, { session: AgentSession; counter: number }>();
+interface RunUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  costUsd: number;
+}
+
+interface SessionEntry {
+  session: AgentSession;
+  counter: number;
+  bridged?: boolean;
+  // Accumulated by the event bridge across the run's assistant messages,
+  // drained by runPiEngine into run.closed.
+  usage: RunUsage;
+}
+
+const sessions = new Map<string, SessionEntry>();
+
+const zeroUsage = (): RunUsage => ({ inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: 0 });
 
 async function ensureSession(agentId: string): Promise<AgentSession> {
   const existing = sessions.get(agentId);
@@ -54,7 +72,7 @@ async function ensureSession(agentId: string): Promise<AgentSession> {
   // agent with bash/edit/write, so keep it out of the repo. PI_CWD overrides.
   const cwd = process.env.PI_CWD ?? mkdtempSync(join(tmpdir(), `agent-${agentId}-`));
   const { session } = await createAgentSession({ model, modelRegistry, authStorage, cwd });
-  sessions.set(agentId, { session, counter: 0 });
+  sessions.set(agentId, { session, counter: 0, usage: zeroUsage() });
   return session;
 }
 
@@ -129,6 +147,14 @@ function bridgeEvents(agentId: string, session: AgentSession, emit: CanonicalEmi
         return;
       }
       case "message_end": {
+        const message = (event as { message?: { role?: string; usage?: { input: number; output: number; totalTokens: number; cost?: { total?: number } } } }).message;
+        if (message?.role === "assistant" && message.usage) {
+          const total = sessions.get(agentId)!.usage;
+          total.inputTokens += message.usage.input;
+          total.outputTokens += message.usage.output;
+          total.totalTokens += message.usage.totalTokens;
+          total.costUsd += message.usage.cost?.total ?? 0;
+        }
         if (currentMessageId) emit({ type: "message.closed", messageId: currentMessageId });
         currentMessageId = null;
         return;
@@ -140,7 +166,14 @@ function bridgeEvents(agentId: string, session: AgentSession, emit: CanonicalEmi
         if (!target) return;
         const raw = (event as { result?: { content?: Array<{ text?: string }> } }).result;
         const result = raw?.content?.map((c) => c.text ?? "").join("\n") ?? "";
-        emit({ type: "part.closed", messageId: target.messageId, partIndex: target.partIndex, result });
+        const isError = (event as { isError?: boolean }).isError === true;
+        emit({
+          type: "part.closed",
+          messageId: target.messageId,
+          partIndex: target.partIndex,
+          result,
+          ...(isError ? { error: result || "tool failed" } : {}),
+        });
         return;
       }
       case "compaction_start": {
@@ -155,15 +188,16 @@ export async function runPiEngine(agentId: string, runId: string, text: string, 
   const session = await ensureSession(agentId);
   // Subscribe once per session (first run); pi keeps the session alive.
   const entry = sessions.get(agentId)!;
-  if (!(entry as { bridged?: boolean }).bridged) {
+  if (!entry.bridged) {
     bridgeEvents(agentId, session, emit);
-    (entry as { bridged?: boolean }).bridged = true;
+    entry.bridged = true;
   }
+  entry.usage = zeroUsage();
   try {
     await session.prompt(text);
-    emit({ type: "run.closed", runId, status: "completed" });
+    emit({ type: "run.closed", runId, status: "completed", usage: entry.usage });
   } catch (error) {
-    emit({ type: "run.closed", runId, status: "error", error: error instanceof Error ? error.message : String(error) });
+    emit({ type: "run.closed", runId, status: "error", error: error instanceof Error ? error.message : String(error), usage: entry.usage });
   }
 }
 
