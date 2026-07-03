@@ -18,6 +18,11 @@ export class SearchView extends ItemView {
     const inputContainerEl = document.createElement("div");
     inputContainerEl.className = "search-input-container";
     this.inputEl = document.createElement("input");
+    // app.css sizes/styles inputs via attribute selectors (input[type='search']
+    // gets --input-height, border, and the reset native search decoration).
+    // Without a type attribute the input misses all of it and collapses to
+    // content height, throwing the magnifier icon off-center.
+    this.inputEl.type = "search";
     this.inputEl.className = "search-input";
     this.inputEl.placeholder = "Search vault";
     this.inputEl.value = this.query;
