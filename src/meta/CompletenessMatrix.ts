@@ -40,9 +40,9 @@ export const completenessMatrix: CompletenessItem[] = [
   },
   {
     area: "Theme ecosystem",
-    status: "sketched",
+    status: "covered",
     evidence: ["src/theme", "src/theme-market"],
-    notes: "CSS variables, snippets, theme marketplace and installer are modeled.",
+    notes: "Theme/appearance/CSS-snippet managers and marketplace/installer are wired into App with a real style-injection cascade and config persistence; no real network fetch in the marketplace.",
   },
   {
     area: "Vault and scoped metadata",
@@ -57,16 +57,22 @@ export const completenessMatrix: CompletenessItem[] = [
     notes: "Frontmatter-to-query-to-table chain is represented.",
   },
   {
-    area: "Desktop shell boundary",
+    area: "Electron main process",
+    status: "covered",
+    evidence: ["electron/main.ts", "electron/ipc.ts", "vite.electron.config.ts"],
+    notes: "Real Electron main: single-instance lock, BrowserWindow lifecycle with bounds persistence, app:// protocol with Range support, full IPC channel table, obsidian:// routing, session hardening and native menus; builds to dist-electron/main.cjs.",
+  },
+  {
+    area: "Desktop shell boundary (renderer bridge)",
     status: "sketched",
     evidence: ["src/desktop", "src/native", "src/shell"],
-    notes: "Electron-shaped main/preload/native boundaries exist, but not real Electron code.",
+    notes: "Renderer-side native bridge branches on real-vs-mocked ipcRenderer and is backed by the real Electron main process (see 'Electron main process'); DesktopMain retains deliberate facade seams.",
   },
   {
     area: "Sync, publish, account",
-    status: "placeholder",
-    evidence: ["src/sync", "src/publish", "src/account"],
-    notes: "Product capability facades exist as boundaries only; Sync and Publish feature parity is excluded.",
+    status: "sketched",
+    evidence: ["src/sync", "src/publish", "src/account", "src/builtin/CorePlugins.ts"],
+    notes: "Sync and Publish are fully wired core plugins (views, modals, commands, settings) with real diff/hash logic but no real network transfer; Account/License remain boundary-only facades.",
   },
   {
     area: "Diagnostics and devtools",
