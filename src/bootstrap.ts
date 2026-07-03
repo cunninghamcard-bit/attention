@@ -54,6 +54,7 @@ export async function bootstrap(parent: HTMLElement = document.body): Promise<Ap
 
   const welcome = await ensureMarkdownFile(app, "Welcome.md", welcomeMarkdown);
   await ensureMarkdownFile(app, "Plugin Architecture.md", pluginMarkdown);
+  await seedCodeDemoFiles(app);
   await app.workspace.openFile(welcome, { active: true, state: { mode: "preview" } });
 
   app.statusBar.registerStatusBarItem().textContent = "Obsidian Reconstructed";
@@ -62,6 +63,46 @@ export async function bootstrap(parent: HTMLElement = document.body): Promise<Ap
 
 async function ensureMarkdownFile(app: App, path: string, markdown: string): Promise<TFile> {
   return app.vault.getFileByPath(path) ?? app.vault.create(path, markdown);
+}
+
+// The in-memory demo vault shows the agent-workspace surface: code files
+// open highlighted, extensionless files route to the code view, and global
+// search reaches all of them (try searching "needle").
+async function seedCodeDemoFiles(app: App): Promise<void> {
+  if (!app.vault.getFolderByPath("agent")) await app.vault.createFolder("agent");
+  const goSource = [
+    "package main",
+    "",
+    'import "fmt"',
+    "",
+    "// findNeedle scans the haystack for the needle.",
+    "func findNeedle(haystack []string) int {",
+    "\tfor i, s := range haystack {",
+    '\t\tif s == "needle" {',
+    "\t\t\treturn i",
+    "\t\t}",
+    "\t}",
+    "\treturn -1",
+    "}",
+    "",
+    "func main() {",
+    '\tfmt.Println(findNeedle([]string{"hay", "needle"}))',
+    "}",
+    "",
+  ].join("\n");
+  const dockerfile = [
+    "FROM golang:1.23-alpine AS build",
+    "WORKDIR /app",
+    "COPY . .",
+    "RUN go build -o server ./agent",
+    "",
+    "FROM alpine:3",
+    "COPY --from=build /app/server /usr/local/bin/server",
+    'ENTRYPOINT ["server"]',
+    "",
+  ].join("\n");
+  if (!app.vault.getFileByPath("agent/server.go")) await app.vault.create("agent/server.go", goSource);
+  if (!app.vault.getFileByPath("Dockerfile")) await app.vault.create("Dockerfile", dockerfile);
 }
 
 /**
