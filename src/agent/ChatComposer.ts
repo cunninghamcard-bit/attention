@@ -102,7 +102,6 @@ export class ChatComposer extends Component {
     });
 
     const toolbarEl = createDiv("chat-composer-toolbar", cardEl);
-    createDiv({ cls: "chat-composer-hint", text: STRINGS.composer.hint, parent: toolbarEl });
     const actionsEl = createDiv("chat-composer-actions", toolbarEl);
     for (const action of listChatComposerActions()) {
       const buttonEl = createEl("button", { cls: "chat-composer-action", parent: actionsEl, text: action.title });

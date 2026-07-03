@@ -2,10 +2,9 @@ import { getMarkdown, parseMarkdownToStructure } from "stream-markdown-parser";
 import { createDiv, createEl, createSpan } from "../dom/dom";
 import { Component } from "../core/Component";
 import { Collapse } from "../ui/Collapse";
-import { setIcon } from "../ui/Icon";
 import { getChatToolRenderer, listChatMessageActions } from "./ChatRegistry";
 import type { ChatMessage, ChatPart, Agent, TextChatPart, ToolChatPart } from "./Agent";
-import { STRINGS } from "./AgentStrings";
+import { STRINGS, timeGreeting } from "./AgentStrings";
 import { createStatusDot, setStatusDot } from "./StatusDot";
 import { StreamMarkdownRenderer } from "../views/StreamMarkdownRenderer";
 import { Typewriter } from "../views/Typewriter";
@@ -212,10 +211,14 @@ class ChatMessageItem extends Component {
       this.el.dataset.authorId = message.authorId;
       this.el.style.setProperty("--author-hue", String(authorHue(message.authorId)));
     }
-    const headerEl = createDiv("chat-message-header", this.el);
-    const label = message.role === "user" ? STRINGS.role.you : message.authorName ?? STRINGS.role.assistant;
-    createDiv({ cls: "chat-message-role", text: label, parent: headerEl });
-    const actionsEl = createDiv("chat-message-actions", headerEl);
+    // No role labels — the bubble side already says who is talking (the
+    // ArkLoop rule). Only a room's author name earns a header line.
+    if (message.role === "assistant" && message.authorName) {
+      const headerEl = createDiv("chat-message-header", this.el);
+      createDiv({ cls: "chat-message-role", text: message.authorName, parent: headerEl });
+    }
+    this.partsEl = createDiv("chat-message-parts", this.el);
+    const actionsEl = createDiv("chat-message-actions", this.el);
     for (const action of listChatMessageActions()) {
       if (action.appliesTo && !action.appliesTo(message)) continue;
       const buttonEl = createEl("button", { cls: "chat-message-action", parent: actionsEl, title: action.title });
@@ -227,7 +230,6 @@ class ChatMessageItem extends Component {
         window.setTimeout(() => buttonEl.setText(action.title.toLowerCase()), 900);
       });
     }
-    this.partsEl = createDiv("chat-message-parts", this.el);
   }
 
   sync(): void {
@@ -322,10 +324,7 @@ export class ChatMessageList extends Component {
     super();
     this.el = createDiv("chat-message-list", parentEl);
     this.emptyEl = createDiv("chat-empty", this.el);
-    const emptyIconEl = createDiv("chat-empty-icon", this.emptyEl);
-    setIcon(emptyIconEl, "message-circle");
-    createDiv({ cls: "chat-empty-title", text: STRINGS.empty.title, parent: this.emptyEl });
-    createDiv({ cls: "chat-empty-hint", text: STRINGS.empty.hint, parent: this.emptyEl });
+    createDiv({ cls: "chat-greeting", text: timeGreeting(), parent: this.emptyEl });
     this.thinkingEl = createDiv("chat-thinking-indicator", this.el);
     for (let index = 0; index < 3; index++) createSpan({ cls: "chat-thinking-dot", parent: this.thinkingEl });
     this.thinkingEl.hide();

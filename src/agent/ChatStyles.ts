@@ -10,26 +10,25 @@ export function ensureChatStyles(app: App): void {
 }
 
 const CHAT_CSS = `
-    .workspace-split.mod-root .view-content.chat-view, .view-content.chat-view, .chat-view { display: flex; flex-direction: column; height: 100%; padding: 0; background: var(--background-secondary, #f5f5f4); }
+    .workspace-split.mod-root .view-content.chat-view, .view-content.chat-view, .chat-view { display: flex; flex-direction: column; height: 100%; padding: 0; background: var(--background-secondary, #f5f5f4); font-size: 14px; }
     .chat-scroll { flex: 1 1 auto; overflow-y: auto; padding: 24px 24px 32px; position: relative; }
     .chat-message-list { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
-    .chat-message { border-radius: 10px; padding: 12px 16px; line-height: 1.6; }
-    .chat-message-user { background: var(--background-primary, #fff); border: 1px solid var(--background-modifier-border, rgba(0,0,0,0.09)); box-shadow: 0 1px 2px rgba(0,0,0,0.04); align-self: flex-end; max-width: 85%; min-width: min(260px, 100%); border-radius: 18px 18px 6px 18px; }
+    .chat-message { line-height: 1.65; }
+    .chat-message-user { background: var(--background-primary, #fff); border: 1px solid var(--background-modifier-border, rgba(0,0,0,0.09)); box-shadow: 0 1px 2px rgba(0,0,0,0.04); align-self: flex-end; max-width: 85%; border-radius: 18px 18px 6px 18px; padding: 10px 16px; }
     .chat-message-assistant { padding-left: 0; padding-right: 0; }
-    .chat-message-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+    .chat-message-header { margin-bottom: 4px; }
     .chat-message-role { font-size: 11px; font-weight: 600; opacity: 0.55; text-transform: uppercase; letter-spacing: 0.04em; }
     .chat-message[data-author-id] .chat-message-role { color: hsl(var(--author-hue, 255) 50% 52%); opacity: 0.9; }
-    .chat-message-actions { display: flex; gap: 8px; }
+    .chat-message-actions { display: flex; gap: 6px; margin-top: 2px; }
+    .chat-message-user { position: relative; }
+    .chat-message-user .chat-message-actions { position: absolute; bottom: -26px; right: 6px; margin: 0; }
     .chat-message-action { font-size: 11px; padding: 3px 6px; border-radius: 7px; opacity: 0; border: none; background: none; cursor: pointer; color: var(--text-muted, #8c8c8a); transition: opacity 60ms ease, color 60ms ease; }
     .chat-message:hover .chat-message-action { opacity: 0.6; }
     .chat-message-action:hover { opacity: 1; color: var(--text-normal, #141412); }
     .chat-message-action:hover { opacity: 1; }
     .chat-view .internal-link { color: var(--link-color, #7c6ae0); cursor: pointer; text-decoration: underline; text-decoration-color: rgba(124,106,224,0.35); }
-    .chat-empty { text-align: center; padding: 88px 0 24px; opacity: 0.6; }
-    .chat-empty-icon { margin-bottom: 10px; color: var(--text-faint, #b0b0b8); }
-    .chat-empty-icon svg { width: 40px; height: 40px; stroke-width: 1.5; }
-    .chat-empty-title { font-size: 1.1em; font-weight: 600; margin-bottom: 6px; }
-    .chat-empty-hint { font-size: 0.9em; }
+    .chat-empty { text-align: center; padding: 22vh 0 24px; }
+    .chat-greeting { font-size: 40px; font-weight: 400; letter-spacing: -0.5px; color: var(--text-normal, #141412); }
     .chat-status-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; background: var(--text-muted, #999); }
     .chat-status-dot.is-idle { background: var(--background-modifier-border, rgba(120,120,140,0.5)); }
     .chat-status-dot.is-on { background: var(--interactive-accent, #7c6ae0); }
@@ -131,8 +130,7 @@ const CHAT_CSS = `
     .theme-dark .chat-composer-card { border-color: rgba(255, 255, 255, 0.08); }
     .theme-dark .chat-composer-card:focus-within { border-color: rgba(255, 255, 255, 0.25); }
     .chat-composer-input { min-height: 40px; max-height: 200px; overflow-y: auto; }
-    .chat-composer-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px 0 10px; }
-    .chat-composer-hint { font-size: 10.5px; color: var(--text-faint, #b0b0b8); user-select: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .chat-composer-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 0 4px 0 10px; }
     .chat-composer-actions { display: flex; align-items: center; gap: 6px; }
     .chat-composer-input .cm-editor { outline: none; }
     .chat-composer-input .cm-scroller { font-family: inherit; line-height: 1.5; }
