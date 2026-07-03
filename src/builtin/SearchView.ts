@@ -10,6 +10,7 @@ export class SearchView extends ItemView {
 
   getViewType(): string { return "search"; }
   getDisplayText(): string { return "Search"; }
+  getIcon(): string { return "lucide-search"; }
 
   async onOpen(): Promise<void> {
     this.contentEl.replaceChildren();

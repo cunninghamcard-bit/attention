@@ -28,6 +28,7 @@ const ICON_PATHS: Record<string, string> = {
   "lucide-file-question": '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M10 13a2 2 0 1 1 3.3 1.5c-.8.5-1.3 1-1.3 2"/><path d="M12 19h.01"/>',
   "lucide-file-search": '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h6"/><path d="M14 2v6h6"/><circle cx="15" cy="15" r="3"/><path d="m17.5 17.5 3 3"/>',
   "lucide-folder": '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.6 3.9A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/>',
+  "lucide-folder-closed": '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M2 10h20"/>',
   "lucide-folder-cog": '<path d="M10 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v3"/><circle cx="16" cy="16" r="2"/><path d="M16 12v1"/><path d="M16 19v1"/><path d="m13.4 13.4.7.7"/><path d="m17.9 17.9.7.7"/><path d="M12 16h1"/><path d="M19 16h1"/><path d="m13.4 18.6.7-.7"/><path d="m17.9 14.1.7-.7"/>',
   "lucide-folder-tree": '<path d="M20 10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.6 2.1A2 2 0 0 0 7.9 1H4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2Z"/><path d="M4 10v4a2 2 0 0 0 2 2h5"/><path d="M11 16h5"/><path d="M16 16v5"/><path d="M20 21h-8a2 2 0 0 1-2-2v-1a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2Z"/>',
   "lucide-forward": '<polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/>',

@@ -19,6 +19,7 @@ export class FileExplorerView extends ItemView {
 
   getViewType(): string { return "file-explorer"; }
   getDisplayText(): string { return "Files"; }
+  getIcon(): string { return "lucide-folder-closed"; }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("nav-files-container");

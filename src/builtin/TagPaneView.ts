@@ -13,6 +13,7 @@ export class TagPaneView extends ItemView {
 
   getViewType(): string { return "tag"; }
   getDisplayText(): string { return "Tags"; }
+  getIcon(): string { return "lucide-tags"; }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("tag-pane");
