@@ -1,33 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
 import {
-  BooleanValue,
-  DateValue,
-  DurationValue,
-  FileValue,
-  HTMLValue,
-  IconValue,
-  ImageValue,
-  LinkValue,
-  ListValue,
-  NotNullValue,
-  NullValue,
-  NumberValue,
-  ObjectValue,
-  PrimitiveValue,
-  RegExpValue,
-  RelativeDateValue,
-  StringValue,
-  TagValue,
-  UrlValue,
-  Value,
-} from "../bases/BasesValues";
-import { parsePropertyId } from "../bases/BasesProperty";
-import { BasesView } from "../bases/BasesView";
-import { BasesViewConfig } from "../bases/BasesViewConfig";
-import { BasesEntry, BasesEntryGroup, BasesQueryResult } from "../bases/BasesQueryResult";
-import { QueryController } from "../bases/QueryController";
-import {
   finishRenderMath,
   loadMathJax,
   loadMermaid,
@@ -321,33 +294,6 @@ describe("Obsidian plugin API parity", () => {
     expect("ConfirmationButton" in module).toBe(false);
     expect("ConfirmationModal" in module).toBe(false);
     expect(module.SecretComponent).toBe(SecretComponent);
-    expect(module.Value).toBe(Value);
-    expect(module.NotNullValue).toBe(NotNullValue);
-    expect(module.NullValue).toBe(NullValue);
-    expect(module.PrimitiveValue).toBe(PrimitiveValue);
-    expect(module.StringValue).toBe(StringValue);
-    expect(module.NumberValue).toBe(NumberValue);
-    expect(module.BooleanValue).toBe(BooleanValue);
-    expect(module.DateValue).toBe(DateValue);
-    expect(module.DurationValue).toBe(DurationValue);
-    expect(module.FileValue).toBe(FileValue);
-    expect(module.HTMLValue).toBe(HTMLValue);
-    expect(module.IconValue).toBe(IconValue);
-    expect(module.ImageValue).toBe(ImageValue);
-    expect(module.LinkValue).toBe(LinkValue);
-    expect(module.ListValue).toBe(ListValue);
-    expect(module.ObjectValue).toBe(ObjectValue);
-    expect(module.RegExpValue).toBe(RegExpValue);
-    expect(module.RelativeDateValue).toBe(RelativeDateValue);
-    expect(module.TagValue).toBe(TagValue);
-    expect(module.UrlValue).toBe(UrlValue);
-    expect(module.parsePropertyId).toBe(parsePropertyId);
-    expect(module.BasesView).toBe(BasesView);
-    expect(module.BasesViewConfig).toBe(BasesViewConfig);
-    expect(module.BasesEntry).toBe(BasesEntry);
-    expect(module.BasesEntryGroup).toBe(BasesEntryGroup);
-    expect(module.BasesQueryResult).toBe(BasesQueryResult);
-    expect(module.QueryController).toBe(QueryController);
     expect(module.addIcon).toBe(addIcon);
     expect(module.getIcon).toBe(getIcon);
     expect(module.getIconIds).toBe(getIconIds);
@@ -930,71 +876,4 @@ describe("Obsidian plugin API parity", () => {
     expect(app.workspace.editorExtensions).toEqual([]);
   });
 
-  it("registers global and instance functions with Obsidian cleanup semantics", async () => {
-    const app = new App(document.createElement("div"));
-    const globalFunc = { name: "MiXeD", apply: () => "global" };
-    const parentFunc = { name: "format", apply: () => "parent" };
-    const childFunc = { name: "format", apply: () => "child" };
-    class FunctionPlugin extends Plugin {
-      override onload(): void {
-        this.registerGlobalFunc(globalFunc);
-        this.registerInstanceFunc(PrimitiveValue, parentFunc);
-        this.registerInstanceFunc(StringValue, childFunc);
-      }
-    }
-    const plugin = new FunctionPlugin(app, manifest("functions"));
-
-    await plugin.load();
-
-    expect(app.functionRegistry.findGlobal("mixed")).toBe(globalFunc);
-    expect(app.functionRegistry.findGlobal("MIXED")).toBe(globalFunc);
-    expect(app.functionRegistry.getAllGlobal()).toEqual([globalFunc]);
-    const value = new StringValue("alpha");
-    expect(app.functionRegistry.findForValue(value, "FORMAT")).toBe(childFunc);
-    expect(app.functionRegistry.getAllForValue(value).format).toBe(childFunc);
-    expect(app.functionRegistry.findForValue(new NumberValue(1), "format")).toBe(parentFunc);
-
-    plugin.unload();
-
-    expect(app.functionRegistry.findGlobal("mixed")).toBeNull();
-    expect(app.functionRegistry.findForValue(value, "format")).toBeNull();
-    expect(app.functionRegistry.findForValue(new NumberValue(1), "format")).toBeNull();
-  });
-
-  it("returns false when registering Bases views before the Bases core plugin is enabled", () => {
-    const app = new App(document.createElement("div"));
-    const plugin = new EmptyPlugin(app, manifest("bases-disabled"));
-
-    expect(plugin.registerBasesView("plugin-card-grid", {
-      name: "Plugin card grid",
-      icon: "lucide-grid",
-      factory: () => null as never,
-    })).toBe(false);
-    expect(app.bases.getView("plugin-card-grid")).toBeNull();
-  });
-
-  it("registers Bases views through the enabled Bases core plugin controller", async () => {
-    const app = new App(document.createElement("div"));
-    await app.ready;
-    await app.internalPlugins.enable("bases");
-    const plugin = new EmptyPlugin(app, manifest("bases-enabled"));
-    await plugin.load();
-    const registration = {
-      name: "Plugin card grid",
-      icon: "lucide-grid",
-      factory: () => null as never,
-    };
-
-    expect(plugin.registerBasesView("plugin-card-grid", registration)).toBe(true);
-
-    expect(app.bases.getView("plugin-card-grid")).toMatchObject({
-      id: "plugin-card-grid",
-      name: "Plugin card grid",
-      icon: "lucide-grid",
-    });
-
-    plugin.unload();
-
-    expect(app.bases.getView("plugin-card-grid")).toBeNull();
-  });
 });

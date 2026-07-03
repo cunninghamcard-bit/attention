@@ -13,8 +13,6 @@ import type { MarkdownFileInfo } from "../editor/EditorStateField";
 import type { TAbstractFile } from "../vault/TAbstractFile";
 import type { MarkdownView } from "../views/MarkdownView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
-import type { BasesViewRegistration } from "../bases/BasesRegistry";
-import type { BasesFunction, BasesValueType } from "../bases/BasesFunctionRegistry";
 import type { EditorSuggest } from "../suggest/EditorSuggest";
 import { debounce } from "../api/ApiUtils";
 import { MarkdownRenderer, type MarkdownCodeBlockProcessor, type MarkdownPostProcessor } from "../markdown/MarkdownRenderer";
@@ -188,18 +186,6 @@ export class Plugin extends Component {
 
   registerCodeMirror(_callback: unknown): void {}
 
-  registerGlobalFunc(func: BasesFunction): void {
-    this.app.functionRegistry.addGlobal(func);
-    const name = func.name;
-    this.register(() => this.app.functionRegistry.removeGlobal(name));
-  }
-
-  registerInstanceFunc(type: BasesValueType, func: BasesFunction): void {
-    this.app.functionRegistry.addForType(type, func);
-    const name = func.name;
-    this.register(() => this.app.functionRegistry.removeForType(type, name));
-  }
-
   registerEditorSuggest(suggest: EditorSuggest<unknown>): void {
     this.app.workspace.editorSuggest.addSuggest(suggest);
     this.register(() => this.app.workspace.editorSuggest.removeSuggest(suggest));
@@ -208,17 +194,6 @@ export class Plugin extends Component {
   registerCliHandler(command: string, description: string, flags: CliFlags | null, handler: CliHandler): void {
     this.app.registerCliHandler(command, `[${this.manifest.name}]: ${description}`, flags, handler, this.manifest.id);
     this.register(() => this.app.unregisterCliHandler(command, handler));
-  }
-
-  registerBasesView(viewId: string, registration: BasesViewRegistration): boolean {
-    const bases = this.app.internalPlugins.getEnabledPluginById<{
-      registerView(viewId: string, registration: BasesViewRegistration): void;
-      deregisterView(viewId: string): void;
-    }>("bases");
-    if (!bases) return false;
-    bases.registerView(viewId, registration);
-    this.register(() => bases.deregisterView(viewId));
-    return true;
   }
 
   async loadCSS(): Promise<void> {

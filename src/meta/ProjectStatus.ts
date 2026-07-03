@@ -38,14 +38,14 @@ export const projectStatus: ProjectStatus = {
     {
       name: "Knowledge and structured data",
       status: "complete-skeleton",
-      paths: ["src/vault", "src/metadata", "src/properties", "src/query", "src/bases"],
-      note: "Vault, scoped metadata links/tags/search, properties and Bases-style query views are modeled.",
+      paths: ["src/vault", "src/metadata", "src/properties", "src/query"],
+      note: "Vault, scoped metadata links/tags/search, frontmatter properties and the query engine are modeled; Bases views were removed in the agent-workspace refit.",
     },
     {
       name: "Desktop/product outer shell",
       status: "study-ready",
-      paths: ["electron", "src/desktop", "src/native", "src/shell", "src/sync", "src/publish", "src/account"],
-      note: "The Electron main process (electron/) is a real implementation — window lifecycle, app:// protocol, IPC, obsidian:// routing, hardening and native menus. The renderer-side desktop bridge and Sync/Publish/Account remain product-boundary facades without real network/transfer.",
+      paths: ["electron", "src/desktop", "src/native", "src/shell"],
+      note: "The Electron main process (electron/) is a real implementation — window lifecycle, app:// protocol, IPC, obsidian:// routing, hardening and native menus. The renderer-side desktop bridge remains a product-boundary facade; Sync/Publish/Account were removed in the agent-workspace refit.",
     },
     {
       name: "Navigation and learning docs",

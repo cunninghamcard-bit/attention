@@ -76,6 +76,11 @@ describe("community plugin manager facade", () => {
 
   it("separates pure load/unload from enable-and-save helpers", async () => {
     const app = new App(document.createElement("div"));
+    // Drain the startup lifecycle first: AppLifecycle.load() runs
+    // pluginInstaller.initialize() in the background, which re-reads
+    // community-plugins.json and would replay stale enabled ids over the
+    // enable/disable sequence below.
+    await app.ready;
     app.pluginSecurity.setCommunityPluginsEnabled(true);
     app.pluginLoader.setPackageSource(new MemoryPluginSource({
       "plugins/pure/manifest.json": {

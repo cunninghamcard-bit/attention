@@ -23,33 +23,6 @@ import { EditorSuggest as EditorSuggestClass } from "../suggest/EditorSuggest";
 import { FuzzySuggestModal, SuggestModal } from "../suggest/SuggestModal";
 import { Menu, MenuItem, MenuSeparator } from "../ui/Menu";
 import { addIcon, getIcon, getIconIds, removeIcon, setIcon as renderIcon } from "../ui/Icon";
-import {
-  BooleanValue,
-  DateValue,
-  DurationValue,
-  FileValue,
-  HTMLValue,
-  IconValue,
-  ImageValue,
-  LinkValue,
-  ListValue,
-  NotNullValue,
-  NullValue,
-  NumberValue,
-  ObjectValue,
-  PrimitiveValue,
-  RegExpValue,
-  RelativeDateValue,
-  StringValue,
-  TagValue,
-  UrlValue,
-  Value,
-} from "../bases/BasesValues";
-import { parsePropertyId } from "../bases/BasesProperty";
-import { BasesView } from "../bases/BasesView";
-import { BasesViewConfig } from "../bases/BasesViewConfig";
-import { BasesEntry, BasesEntryGroup, BasesQueryResult } from "../bases/BasesQueryResult";
-import { QueryController } from "../bases/QueryController";
 import { Modal } from "../ui/Modal";
 import { Notice } from "../ui/Notice";
 import { displayTooltip, HoverPopover, PopoverState, setTooltip } from "../ui/Popover";
@@ -159,33 +132,6 @@ export interface ObsidianPluginModule {
   Menu: typeof Menu;
   MenuItem: typeof MenuItem;
   MenuSeparator: typeof MenuSeparator;
-  Value: typeof Value;
-  NotNullValue: typeof NotNullValue;
-  NullValue: typeof NullValue;
-  PrimitiveValue: typeof PrimitiveValue;
-  StringValue: typeof StringValue;
-  NumberValue: typeof NumberValue;
-  BooleanValue: typeof BooleanValue;
-  DateValue: typeof DateValue;
-  DurationValue: typeof DurationValue;
-  FileValue: typeof FileValue;
-  HTMLValue: typeof HTMLValue;
-  IconValue: typeof IconValue;
-  ImageValue: typeof ImageValue;
-  LinkValue: typeof LinkValue;
-  ListValue: typeof ListValue;
-  ObjectValue: typeof ObjectValue;
-  RegExpValue: typeof RegExpValue;
-  RelativeDateValue: typeof RelativeDateValue;
-  TagValue: typeof TagValue;
-  UrlValue: typeof UrlValue;
-  parsePropertyId: typeof parsePropertyId;
-  BasesView: typeof BasesView;
-  BasesViewConfig: typeof BasesViewConfig;
-  BasesEntry: typeof BasesEntry;
-  BasesEntryGroup: typeof BasesEntryGroup;
-  BasesQueryResult: typeof BasesQueryResult;
-  QueryController: typeof QueryController;
   SettingTab: typeof SettingTab;
   Setting: typeof Setting;
   ValueComponent: typeof ValueComponent;
@@ -318,33 +264,6 @@ export function createObsidianPluginModule(app: App): ObsidianPluginModule {
     Menu,
     MenuItem,
     MenuSeparator,
-    Value,
-    NotNullValue,
-    NullValue,
-    PrimitiveValue,
-    StringValue,
-    NumberValue,
-    BooleanValue,
-    DateValue,
-    DurationValue,
-    FileValue,
-    HTMLValue,
-    IconValue,
-    ImageValue,
-    LinkValue,
-    ListValue,
-    ObjectValue,
-    RegExpValue,
-    RelativeDateValue,
-    TagValue,
-    UrlValue,
-    parsePropertyId,
-    BasesView,
-    BasesViewConfig,
-    BasesEntry,
-    BasesEntryGroup,
-    BasesQueryResult,
-    QueryController,
     SettingTab,
     AbstractTextComponent,
     BaseComponent,

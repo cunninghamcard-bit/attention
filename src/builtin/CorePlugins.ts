@@ -32,11 +32,7 @@ import { createZkPrefixerPluginDefinition } from "./ZkPrefixer";
 import { createNoteComposerPluginDefinition } from "./NoteComposer";
 import { createMarkdownImporterPluginDefinition } from "./MarkdownImporter";
 import { createFileRecoveryPluginDefinition } from "./FileRecoveryPlugin";
-import { createPropertiesPluginDefinition } from "./PropertiesPlugin";
-import { createBasesPluginDefinition } from "./BasesPlugin";
 import { createWebViewerPluginDefinition } from "./WebViewerPlugin";
-import { createPublishPluginDefinition } from "./PublishPlugin";
-import { createSyncPluginDefinition } from "./SyncPlugin";
 import { createBookmarksPluginDefinition } from "./Bookmarks";
 import { createSlidesPluginDefinition } from "./Slides";
 import { createAudioRecorderPluginDefinition } from "./AudioRecorder";
@@ -54,8 +50,6 @@ export const nonParityFeatureScope = [
   { id: "canvas", area: "core-plugin", boundary: "not implemented as a full canvas product; keep file/view/drop seams only when they support architecture study" },
   { id: "daily-notes", area: "core-plugin", boundary: "not implemented" },
   { id: "templates", area: "core-plugin", boundary: "not implemented" },
-  { id: "publish", area: "service-core-plugin", boundary: "not implemented as a product/service; facade-only seams are acceptable" },
-  { id: "sync", area: "service-core-plugin", boundary: "not implemented as a product/service; facade-only seams are acceptable" },
   { id: "slides", area: "core-plugin", boundary: "not implemented" },
   { id: "audio-recorder", area: "core-plugin", boundary: "not implemented" },
   { id: "bookmarks", area: "core-plugin", boundary: "not implemented as an Obsidian feature; drag/source contracts may remain as thin seams" },
@@ -112,11 +106,7 @@ export const corePlugins: InternalPluginDefinition[] = [
   scopeCorePluginDefinition(createAudioRecorderPluginDefinition()),
   createWorkspacesPluginDefinition(),
   createFileRecoveryPluginDefinition(),
-  createPropertiesPluginDefinition(),
-  createBasesPluginDefinition(),
   createWebViewerPluginDefinition(),
-  scopeCorePluginDefinition(createSyncPluginDefinition()),
-  scopeCorePluginDefinition(createPublishPluginDefinition()),
   {
     id: "file-explorer",
     name: "File explorer",
