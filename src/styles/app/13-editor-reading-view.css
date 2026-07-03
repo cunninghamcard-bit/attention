@@ -1,0 +1,51 @@
+::selection {
+  background-color: var(--text-selection);
+}
+.markdown-reading-view {
+  display: flex;
+  flex-direction: column;
+}
+.markdown-preview-view {
+  font-size: var(--font-text-size);
+  font-family: var(--font-text);
+  line-height: var(--line-height-normal);
+  width: 100%;
+  height: 100%;
+  padding: var(--file-margins);
+  position: relative;
+  overflow-y: auto;
+  overflow-wrap: break-word;
+  color: var(--text-normal);
+  user-select: text;
+  -webkit-user-select: text;
+  scrollbar-gutter: stable;
+}
+.workspace-leaf-content.is-read-mode .markdown-preview-view {
+  width: 100%;
+  inset-inline-start: 0;
+  background-color: var(--background-primary);
+}
+.markdown-preview-view.is-readable-line-width .markdown-preview-sizer {
+  max-width: var(--file-line-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+.markdown-rendered {
+  tab-size: var(--indent-size);
+}
+.markdown-rendered.rtl {
+  direction: rtl;
+}
+.markdown-rendered > :first-child {
+  margin-top: 0;
+}
+.markdown-rendered > :last-child {
+  margin-bottom: 0;
+}
+.markdown-rendered > .markdown-preview-section > .markdown-preview-pusher + div:not(.mod-ui) > :first-child,
+.markdown-rendered > .markdown-preview-section > .mod-ui + div:not(.mod-ui) > :first-child {
+  margin-top: 0;
+}
+.markdown-rendered > .markdown-preview-section > div:last-child > :last-child {
+  margin-bottom: 0;
+}

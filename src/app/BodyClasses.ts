@@ -21,7 +21,11 @@ const LOCAL_POPOUT_BODY_STYLE_PROPS = [
 export function applyObsidianBodyClasses(body: HTMLElement, win: Window = body.ownerDocument.defaultView ?? window): void {
   body.classList.add("obsidian-app");
   body.classList.remove("mod-macos", "mod-windows", "mod-linux");
-  body.classList.add(getObsidianPlatformClass(win));
+  const platformClass = getObsidianPlatformClass(win);
+  body.classList.add(platformClass);
+  // Obsidian styles its own scrollbars everywhere except macOS, which keeps the
+  // native overlay scrollbars: `Yl.isMacOS || document.body.addClass("styled-scrollbars")`.
+  body.classList.toggle("styled-scrollbars", platformClass !== "mod-macos");
 }
 
 export function syncObsidianConfigBodyClasses(body: HTMLElement, app: ObsidianBodyConfigSource): void {

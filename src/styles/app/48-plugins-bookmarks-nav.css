@@ -1,0 +1,143 @@
+.view-action.mod-bookmarked {
+  --icon-color: var(--icon-color-active);
+  --icon-color-hover: var(--icon-color-active);
+}
+/* Only browser shows the bookmark icon if not bookmarked */
+.workspace-leaf-content:not([data-type="browser"]) .view-action.mod-bookmark {
+  display: none;
+}
+.workspace-leaf-content:not([data-type="browser"]) .view-action.mod-bookmarked {
+  display: flex;
+}
+.workspace-leaf-content[data-type=bookmarks] .view-content {
+  padding: var(--size-4-1) var(--size-4-3) var(--size-4-8);
+}
+.modal.mod-bookmark .setting-item-control input {
+  width: 100%;
+}
+.nav-files-container {
+  flex-grow: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--size-4-1) var(--size-4-3) var(--size-4-6) var(--size-4-3);
+  padding-bottom: max(var(--safe-area-inset-bottom), var(--size-4-6));
+  scroll-padding-block: var(--size-4-2);
+}
+.nav-files-container:not(.show-unsupported) .is-unsupported {
+  display: none;
+}
+.nav-file-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-end: var(--size-2-3);
+  position: relative;
+  color: var(--icon-color);
+  opacity: var(--icon-opacity);
+}
+.nav-file-tag {
+  background-color: var(--nav-tag-background);
+  border-radius: var(--nav-tag-radius);
+  color: var(--nav-tag-color);
+  font-size: 9px;
+  font-weight: var(--nav-tag-weight);
+  letter-spacing: 0.05em;
+  line-height: var(--line-height-normal);
+  margin-inline-start: auto;
+  padding: 0 var(--size-4-1);
+  text-transform: uppercase;
+  align-self: center;
+}
+@media (hover: hover) {
+  .tree-item-self:hover .nav-file-tag {
+    color: var(--nav-tag-color-hover);
+  }
+}
+.tree-item-self.is-active .nav-file-tag {
+  color: var(--nav-tag-color-active);
+}
+.tree-item-self.is-being-dragged .nav-file-tag {
+  color: var(--text-normal);
+}
+.nav-file-title-content,
+.nav-folder-title-content {
+  display: inline-block;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  white-space: var(--nav-item-white-space);
+}
+.nav-file-title-content:not([contenteditable="true"]),
+.nav-folder-title-content:not([contenteditable="true"]) {
+  text-overflow: ellipsis;
+}
+.nav-folder.is-being-dragged-over {
+  border-radius: var(--radius-s);
+  background: hsla(var(--interactive-accent-hsl), 0.1);
+}
+.nav-folder.is-being-dragged-over > .nav-folder-title {
+  color: var(--nav-item-color-highlighted);
+}
+.nav-folder.is-being-dragged-over > .nav-folder-title .collapse-icon {
+  color: var(--nav-item-color-highlighted);
+}
+/* 2022-07 Only used for Publish AFAIK */
+.file-tree-item-checkbox,
+.file-tree-item-icon {
+  flex-shrink: 0;
+}
+.file-tree-item-title {
+  flex-grow: 1;
+  word-break: break-word;
+}
+.file-tree-item-icon {
+  --icon-size: var(--icon-s);
+  --icon-stroke: var(--icon-s-stroke-width);
+  margin-right: var(--size-4-1);
+  color: var(--icon-color);
+  position: relative;
+  top: var(--size-2-1);
+}
+.file-tree .tree-item-inner {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 100%;
+}
+.file-tree .tree-item-flair {
+  line-height: 1;
+  padding: var(--size-2-1) var(--size-2-3);
+  color: var(--text-on-accent);
+}
+.file-tree .is-selected {
+  color: var(--text-normal);
+}
+.file-tree .mod-changed.is-selected {
+  background-color: hsla(var(--interactive-accent-hsl), 0.2);
+}
+.file-tree .mod-changed .tree-item-flair {
+  color: var(--text-accent-hover);
+}
+.file-tree .mod-new.is-selected {
+  background-color: rgba(var(--background-modifier-success-rgb), 0.2);
+}
+.file-tree .mod-new .tree-item-flair {
+  color: var(--text-success);
+}
+.file-tree .mod-deleted.is-selected,
+.file-tree .mod-to-delete.is-selected {
+  background-color: rgba(var(--background-modifier-error-rgb), 0.2);
+}
+.file-tree .mod-deleted .tree-item-flair,
+.file-tree .mod-to-delete .tree-item-flair {
+  color: var(--text-error);
+}
+.file-tree .mod-to-delete .tree-item-flair {
+  display: none;
+}
+.file-tree .mod-to-delete.is-selected .tree-item-flair {
+  display: block;
+}
+.file-tree .clickable-icon {
+  display: flex;
+  --icon-size: var(--icon-s);
+  --icon-stroke: var(--icon-s-stroke-width);
+}

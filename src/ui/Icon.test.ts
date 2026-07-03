@@ -26,6 +26,17 @@ describe("setIcon", () => {
     expect(el.querySelector("svg")).toBeNull();
   });
 
+  it("resolves legacy icon aliases to their targets (real Ym map)", () => {
+    // "create-new" -> "edit" -> lucide-edit; back it with a custom icon so the
+    // resolution is verified without depending on the loaded lucide set.
+    addIcon("edit", '<path d="M0 0h1"/>');
+    const el = document.createElement("button");
+    const icon = setIcon(el, "create-new");
+    expect(icon).not.toBeNull();
+    expect(icon!.classList.contains("edit")).toBe(true);
+    removeIcon("edit");
+  });
+
   it("renders plugin-added custom icons with Obsidian's custom SVG viewBox contract", () => {
     addIcon("plugin-gem", '<circle cx="50" cy="50" r="40" fill="currentColor"/>');
 

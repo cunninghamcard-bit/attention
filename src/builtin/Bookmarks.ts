@@ -1,4 +1,5 @@
 import type { App } from "../app/App";
+import { setIcon } from "../ui/Icon";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../plugin/InternalPluginWrapper";
 import { ItemView } from "../views/ItemView";
@@ -277,12 +278,12 @@ class BookmarksView extends ItemView {
     if (item.type === "group") {
       const collapseIconEl = document.createElement("div");
       collapseIconEl.className = "tree-item-icon collapse-icon";
-      collapseIconEl.textContent = "›";
+      setIcon(collapseIconEl, "right-triangle");
       selfEl.appendChild(collapseIconEl);
     } else {
       const iconEl = document.createElement("div");
       iconEl.className = "tree-item-icon";
-      iconEl.dataset.icon = getBookmarkIcon(item);
+      setIcon(iconEl, getBookmarkIcon(item));
       selfEl.appendChild(iconEl);
     }
     const innerEl = document.createElement("div");

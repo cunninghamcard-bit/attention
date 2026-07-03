@@ -360,14 +360,14 @@ export class FileSystemAdapter extends DataAdapter {
 
   private async loadDesktopModules(): Promise<DesktopModules> {
     this.desktopModules ??= Promise.all([
-      import(/* @vite-ignore */ fsPromisesSpecifier),
-      import(/* @vite-ignore */ pathSpecifier),
-    ]).then(([fs, path]) => ({ fs: fs as FileSystemModule, path: path as PathModule }));
+      loadNodeModule<FileSystemModule>(fsPromisesSpecifier),
+      loadNodeModule<PathModule>(pathSpecifier),
+    ]).then(([fs, path]) => ({ fs, path }));
     return this.desktopModules;
   }
 
   private async loadWatchModule(): Promise<WatchModule> {
-    this.watchModule ??= import(/* @vite-ignore */ fsSpecifier).then((fs) => fs as WatchModule);
+    this.watchModule ??= loadNodeModule<WatchModule>(fsSpecifier);
     return this.watchModule;
   }
 
@@ -580,8 +580,22 @@ export class FileSystemAdapter extends DataAdapter {
   }
 }
 
+/**
+ * Load a Node builtin. Under Electron's renderer, ESM `import()` cannot resolve
+ * `node:` specifiers, but a CommonJS `require` is injected when the window runs
+ * with nodeIntegration (as real Obsidian's renderer does), so prefer it. Fall
+ * back to dynamic `import()` for other Node ESM hosts (e.g. tests).
+ */
+function loadNodeModule<T>(specifier: string): Promise<T> {
+  const nodeRequire = (globalThis as { require?: (id: string) => unknown }).require;
+  if (typeof nodeRequire === "function") {
+    return Promise.resolve(nodeRequire(specifier) as T);
+  }
+  return import(/* @vite-ignore */ specifier) as Promise<T>;
+}
+
 async function loadFileSystemModule(): Promise<FileSystemModule> {
-  return import(/* @vite-ignore */ fsPromisesSpecifier) as Promise<FileSystemModule>;
+  return loadNodeModule<FileSystemModule>(fsPromisesSpecifier);
 }
 
 function normalizeVaultPath(path: string): string {

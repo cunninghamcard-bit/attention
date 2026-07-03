@@ -200,6 +200,19 @@ describe("Obsidian popout and tab list DOM", () => {
     expect(Array.from(tabs.tabsContainerEl.children)).toEqual([first.containerEl, second.containerEl]);
   });
 
+  it("throws Desktop-only when opening a popout on a non-desktop platform (real V0)", () => {
+    const app = new App(document.createElement("div"));
+    const descriptor = Object.getOwnPropertyDescriptor(Platform, "isDesktopApp");
+    try {
+      Object.defineProperty(Platform, "isDesktopApp", { configurable: true, value: false });
+      expect(() => app.workspace.openPopout()).toThrow("Desktop-only feature.");
+      const leaf = new WorkspaceLeaf(app.workspace);
+      expect(() => app.workspace.moveLeafToPopout(leaf)).toThrow("Desktop-only feature.");
+    } finally {
+      if (descriptor) Object.defineProperty(Platform, "isDesktopApp", descriptor);
+    }
+  });
+
   it("does not enable stacked tabs when the platform disallows it", () => {
     const app = new App(document.createElement("div"));
     const tabs = new WorkspaceTabs(app.workspace);

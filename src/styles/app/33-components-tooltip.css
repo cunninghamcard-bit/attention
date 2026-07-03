@@ -1,0 +1,122 @@
+/* Add this attribute to the element that needs a tooltip */
+.tooltip {
+  animation: pop-down 200ms forwards ease-in-out;
+  box-shadow: 0 2px 8px var(--background-modifier-box-shadow);
+  background-color: var(--background-modifier-message);
+  border-radius: var(--radius-s);
+  color: #FAFAFA;
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-medium);
+  left: 50%;
+  line-height: var(--line-height-tight);
+  max-width: 300px;
+  padding: var(--size-4-1) var(--size-4-2);
+  position: fixed;
+  text-align: center;
+  transform: translateX(-50%);
+  z-index: var(--layer-tooltip);
+  pointer-events: none;
+  white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+.tooltip.mod-right {
+  animation: pop-right 200ms forwards ease-in-out;
+  transform: translateY(-50%);
+}
+.tooltip.mod-left {
+  animation: pop-right 200ms forwards ease-in-out;
+  transform: translateY(-50%);
+}
+.tooltip.mod-error {
+  width: 200px;
+  background-color: var(--background-modifier-error);
+  color: var(--text-on-accent);
+}
+.tooltip.mod-wide {
+  max-width: 450px;
+  width: 400px;
+}
+/* Triangle hack to make tooltip look like a speech bubble */
+.tooltip .tooltip-arrow {
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 0;
+  margin-left: -5px;
+  border-bottom: 5px solid var(--background-modifier-message);
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+  content: " ";
+  font-size: 0;
+  line-height: 0;
+}
+.tooltip.mod-right .tooltip-arrow {
+  top: calc(50% - 5px);
+  left: -5px;
+  border-right: 5px solid var(--background-modifier-message);
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+}
+.tooltip.mod-left .tooltip-arrow {
+  top: calc(50% - 5px);
+  left: calc(100% + 5px);
+  border-left: 5px solid var(--background-modifier-message);
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+}
+.tooltip.mod-top .tooltip-arrow {
+  top: calc(100%);
+  border-top: 5px solid var(--background-modifier-message);
+  border-bottom: 5px solid transparent;
+}
+.tooltip.mod-error .tooltip-arrow {
+  border-bottom-color: var(--background-modifier-error);
+}
+.tooltip.mod-error.mod-right .tooltip-arrow {
+  border-right-color: var(--background-modifier-error);
+  border-bottom: 5px solid transparent;
+}
+.tooltip.mod-error.mod-left .tooltip-arrow {
+  border-left-color: var(--background-modifier-error);
+  border-bottom: 5px solid transparent;
+}
+[aria-label] .svg-icon {
+  pointer-events: none;
+}
+@keyframes pop-down {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1);
+  }
+  20% {
+    opacity: 0.7;
+    transform: translateX(-50%) scale(1.02);
+  }
+  40% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+@keyframes pop-right {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) scale(1);
+  }
+  20% {
+    opacity: 0.7;
+    transform: translateY(-50%) scale(1.02);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}

@@ -1,0 +1,98 @@
+/* Document search and replace */
+/*
+Moves search to the top
+#todo move this into DOM */
+.markdown-reading-view.is-searching,
+.markdown-source-view.is-replacing,
+.markdown-source-view.is-searching {
+  flex-direction: column-reverse;
+}
+/* Container for dcoument search/replace UI */
+.mod-active .document-search-container {
+  background-color: var(--background-primary);
+}
+.document-search-container {
+  display: flex;
+  flex-direction: column;
+  padding: var(--size-4-2) 0;
+  margin: 0 var(--size-4-4);
+  gap: var(--size-4-2);
+  z-index: var(--layer-popover);
+}
+.document-search,
+.document-replace {
+  width: 100%;
+  max-width: var(--file-line-width);
+  margin: 0 auto;
+  display: flex;
+  padding: 0 var(--size-4-2);
+  gap: var(--size-4-2);
+}
+.document-replace {
+  display: none;
+}
+.document-search-container.mod-replace-mode .document-replace {
+  display: flex;
+}
+.document-search-input,
+.document-replace-input {
+  flex-grow: 1;
+}
+.document-search-input.mod-no-match,
+.document-replace-input.mod-no-match {
+  background-color: rgba(var(--background-modifier-error-rgb), 0.2);
+}
+@media (hover: hover) {
+  .document-search-input.mod-no-match:hover,
+  .document-replace-input.mod-no-match:hover {
+    background-color: rgba(var(--background-modifier-error-rgb), 0.2);
+  }
+}
+.document-search-count {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-variant-numeric: tabular-nums;
+  position: absolute;
+  transform: translateY(-50%);
+  top: 50%;
+  inset-inline-end: var(--size-4-2);
+}
+.search-input-clear-button ~ .document-search-count {
+  inset-inline-end: var(--size-4-8);
+}
+.document-replace-buttons,
+.document-search-buttons {
+  display: flex;
+  gap: var(--size-4-1);
+  align-items: center;
+}
+.document-search-button {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+/* Read */
+.markdown-rendered .search-highlight > div {
+  position: absolute;
+  pointer-events: none;
+  box-shadow: 0 0 0px 2px var(--text-normal);
+  opacity: 0.3;
+  mix-blend-mode: var(--highlight-mix-blend-mode);
+  border-radius: 2px;
+}
+.markdown-rendered .search-highlight > div.is-active {
+  box-shadow: 0 0 0px 3px var(--text-accent);
+  opacity: 1;
+}
+.cm-s-obsidian span.obsidian-search-match-highlight {
+  box-shadow: 0 0 0px 3px var(--text-accent);
+  mix-blend-mode: var(--highlight-mix-blend-mode);
+  border-radius: 2px;
+}
+/* Edit */
+.markdown-source-view.mod-cm6 .document-search-container {
+  flex: 0 0 auto;
+}
+.cm-s-obsidian span.cm-highlight.obsidian-search-match-highlight {
+  background-color: var(--text-selection);
+}
+/* class applies to select element itself, not a wrapper element */

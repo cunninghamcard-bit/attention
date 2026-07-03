@@ -20,7 +20,6 @@ export * from "./workspace/WorkspaceSidedock";
 export * from "./workspace/WorkspaceLayout";
 export * from "./workspace/WorkspaceLayoutSerializer";
 export * from "./workspace/WorkspaceLayoutPersistence";
-export * from "./workspace/WorkspaceHistory";
 export * from "./workspace/WorkspaceDragManager";
 export * from "./workspace/WorkspaceHover";
 export * from "./workspace/ViewRegistry";

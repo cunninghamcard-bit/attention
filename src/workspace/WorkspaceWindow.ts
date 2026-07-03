@@ -67,6 +67,7 @@ export class WorkspaceWindow extends WorkspaceRoot {
     this.workspaceEl = this.createDiv("workspace", this.horizontalMainContainerEl);
     this.workspaceEl.appendChild(this.containerEl);
     this.loadWindowState(state);
+    this.applyElectronWindowState();
     this.win.addEventListener("resize", () => this.onResize());
     this.win.addEventListener("beforeunload", this.beforeUnloadHandler);
     this.win.addEventListener("focus", () => this.onFocus());
@@ -118,8 +119,20 @@ export class WorkspaceWindow extends WorkspaceRoot {
         isMinimized?: () => boolean;
         isFullScreen?: () => boolean;
         getBounds?: () => { x: number; y: number; width: number; height: number };
+        webContents?: { zoomLevel?: number };
       };
     }).electronWindow;
+    // Refresh maximize/zoom from the live window so serialization reflects the
+    // current state (real O0 reads isMaximized()/webContents.zoomLevel).
+    if (electronWindow) {
+      try {
+        if (electronWindow.isMaximized) this.maximize = electronWindow.isMaximized();
+        const zoomLevel = electronWindow.webContents?.zoomLevel;
+        if (typeof zoomLevel === "number") this.zoom = zoomLevel;
+      } catch {
+        // Window mid-teardown — keep the last known values.
+      }
+    }
     if (
       electronWindow?.getBounds
       && !electronWindow.isMaximized?.()
@@ -184,6 +197,27 @@ export class WorkspaceWindow extends WorkspaceRoot {
     this.close();
   }
 
+  /**
+   * Real O0 constructor tail: show the popout window, restore its maximized
+   * state, and apply the saved zoom (inheriting the parent's zoom when none is
+   * saved). No-op outside Electron.
+   */
+  private applyElectronWindowState(): void {
+    const electronWindow = (this.win as Window & { electronWindow?: { show?: () => void; maximize?: () => void } }).electronWindow;
+    const webFrame = (this.win as Window & { electron?: { webFrame?: { setZoomLevel?: (n: number) => void } } }).electron?.webFrame;
+    electronWindow?.show?.();
+    if (this.maximize) electronWindow?.maximize?.();
+    if (typeof this.zoom === "number") {
+      webFrame?.setZoomLevel?.(this.zoom);
+    } else {
+      const parentWin = this.workspace.app.dom.appContainerEl.ownerDocument.defaultView as
+        | (Window & { electron?: { webFrame?: { getZoomLevel?: () => number } } })
+        | null;
+      const parentZoom = parentWin?.electron?.webFrame?.getZoomLevel?.();
+      if (typeof parentZoom === "number") webFrame?.setZoomLevel?.(parentZoom);
+    }
+  }
+
   private createDiv(className: string, parentEl: HTMLElement): HTMLElement {
     const el = this.doc.createElement("div");
     el.className = className;
@@ -231,7 +265,7 @@ export class WorkspaceWindow extends WorkspaceRoot {
 
   updateTitle(): void {
     const leaf = this.workspace.getMostRecentLeaf(this);
-    this.doc.title = this.workspace.app.getAppTitle(leaf?.getDisplayText() ?? "");
+    this.doc.title = this.workspace.app.getAppTitle(leaf?.getDisplayText().trim() ?? "");
     this.frameDom.updateTitle(this.doc.title);
     this.frameDom.updateStatus();
   }

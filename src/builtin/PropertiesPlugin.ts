@@ -204,9 +204,9 @@ class PropertiesView extends ItemView {
     this.updateHeader();
     this.contentEl.replaceChildren();
     this.contentEl.className = "view-content metadata-properties-view";
-    const toolbarEl = document.createElement("div");
+    const toolbarEl = this.contentEl.ownerDocument.createElement("div");
     toolbarEl.className = "metadata-properties-toolbar";
-    const searchButton = document.createElement("button");
+    const searchButton = this.contentEl.ownerDocument.createElement("button");
     searchButton.className = "metadata-properties-search-toggle";
     searchButton.textContent = this.showSearch ? "Hide search" : "Search";
     searchButton.addEventListener("click", () => {
@@ -214,7 +214,7 @@ class PropertiesView extends ItemView {
       this.app.saveLocalStorage(PROPERTY_SHOW_SEARCH_STORAGE_KEY, this.showSearch);
       this.render();
     });
-    const sortSelectEl = document.createElement("select");
+    const sortSelectEl = this.contentEl.ownerDocument.createElement("select");
     sortSelectEl.className = "metadata-properties-sort";
     for (const [value, label] of [
       ["frequency", "Most used"],
@@ -222,7 +222,7 @@ class PropertiesView extends ItemView {
       ["alphabetical", "A to Z"],
       ["alphabeticalReverse", "Z to A"],
     ] as const) {
-      const optionEl = document.createElement("option");
+      const optionEl = this.contentEl.ownerDocument.createElement("option");
       optionEl.value = value;
       optionEl.textContent = label;
       optionEl.selected = value === this.sortOrder;
@@ -237,7 +237,7 @@ class PropertiesView extends ItemView {
     this.contentEl.appendChild(toolbarEl);
 
     if (this.showSearch) {
-      const searchEl = document.createElement("input");
+      const searchEl = this.contentEl.ownerDocument.createElement("input");
       searchEl.className = "metadata-properties-search-input";
       searchEl.type = "search";
       searchEl.placeholder = "Filter properties";
@@ -252,7 +252,7 @@ class PropertiesView extends ItemView {
 
     const allProperties = this.app.metadataTypeManager.getAllProperties();
     if (Object.keys(allProperties).length === 0) {
-      const emptyEl = document.createElement("div");
+      const emptyEl = this.contentEl.ownerDocument.createElement("div");
       emptyEl.className = "metadata-empty-state";
       emptyEl.textContent = "No properties in the vault";
       this.contentEl.appendChild(emptyEl);
@@ -261,7 +261,7 @@ class PropertiesView extends ItemView {
 
     const usage = this.controller.listUsage(this.sortOrder, this.searchQuery);
     if (usage.length === 0) {
-      const emptyEl = document.createElement("div");
+      const emptyEl = this.contentEl.ownerDocument.createElement("div");
       emptyEl.className = "metadata-empty-state";
       emptyEl.textContent = "No matching properties";
       this.contentEl.appendChild(emptyEl);
@@ -272,7 +272,7 @@ class PropertiesView extends ItemView {
   }
 
   private renderUsage(item: PropertyListItem): void {
-    const rowEl = document.createElement("div");
+    const rowEl = this.contentEl.ownerDocument.createElement("div");
     rowEl.className = "tree-item nav-file metadata-property metadata-property-summary";
     rowEl.dataset.propertyKey = item.id;
     rowEl.addEventListener("click", (event) => {
@@ -280,20 +280,20 @@ class PropertiesView extends ItemView {
       void this.controller.openSearchForProperty(item.name, event);
     });
     rowEl.addEventListener("contextmenu", (event) => this.openPropertyMenu(item, event));
-    const keyEl = document.createElement("div");
+    const keyEl = this.contentEl.ownerDocument.createElement("div");
     keyEl.className = "metadata-property-key";
-    const iconEl = document.createElement("span");
+    const iconEl = this.contentEl.ownerDocument.createElement("span");
     iconEl.className = "metadata-property-icon";
     iconEl.dataset.icon = item.icon ?? "lucide-list-plus";
-    const nameEl = document.createElement("span");
+    const nameEl = this.contentEl.ownerDocument.createElement("span");
     nameEl.textContent = item.name;
     keyEl.append(iconEl, nameEl);
 
-    const valueEl = document.createElement("div");
+    const valueEl = this.contentEl.ownerDocument.createElement("div");
     valueEl.className = "metadata-property-value";
     valueEl.textContent = String(item.occurrences);
 
-    const actionsEl = document.createElement("div");
+    const actionsEl = this.contentEl.ownerDocument.createElement("div");
     actionsEl.className = "metadata-property-actions";
     const menuButton = this.actionButton("...", (event) => this.openPropertyMenu(item, event));
     menuButton.classList.add("clickable-icon");
@@ -304,7 +304,7 @@ class PropertiesView extends ItemView {
   }
 
   private actionButton(text: string, callback: (event: MouseEvent) => void): HTMLButtonElement {
-    const buttonEl = document.createElement("button");
+    const buttonEl = this.contentEl.ownerDocument.createElement("button");
     buttonEl.textContent = text;
     buttonEl.addEventListener("click", (event) => {
       event.stopPropagation();

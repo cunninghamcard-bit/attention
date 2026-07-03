@@ -5,6 +5,8 @@ import { Scope } from "../hotkeys/Scope";
 import { Platform } from "../platform/Platform";
 import { ButtonComponent } from "./Setting";
 import { setIcon } from "./Icon";
+import { closeAllMenus } from "./Menu";
+import { hideTooltip } from "./Popover";
 import { registerActiveCloseable, unregisterActiveCloseable } from "./ActiveCloseableRegistry";
 
 export interface HistoryHandler {
@@ -75,7 +77,21 @@ export class Modal extends Component implements HistoryHandler {
     });
     this.scope.setTabFocusContainerEl(this.containerEl);
     this.closeButtonEl.addEventListener("click", () => this.close());
-    this.bgEl.addEventListener("click", (event) => this.onClickOutside(event));
+    // On macOS a text selection drag that ends over the backdrop must not close
+    // the modal (real Obsidian guards with a 5px screen-distance threshold).
+    if (Platform.isDesktopApp && Platform.isMacOS) {
+      let downX = 0;
+      let downY = 0;
+      this.bgEl.addEventListener("mousedown", (event) => {
+        downX = event.screenX;
+        downY = event.screenY;
+      });
+      this.bgEl.addEventListener("click", (event) => {
+        if (Math.hypot(event.screenX - downX, event.screenY - downY) < 5) this.onClickOutside(event);
+      });
+    } else {
+      this.bgEl.addEventListener("click", (event) => this.onClickOutside(event));
+    }
   }
 
   setTitle(title: string): this {
@@ -110,6 +126,7 @@ export class Modal extends Component implements HistoryHandler {
     if (this.containerEl.parentNode) return;
     const activeWindow = getActiveWindow();
     this.win = activeWindow;
+    closeAllMenus(activeWindow.document);
     this.selection = this.shouldRestoreSelection ? captureSelection(activeWindow) : null;
     clearFocusAndSelection(activeWindow);
     this.app.keymap.pushScope(this.scope);
@@ -278,14 +295,19 @@ export class ConfirmationModal extends Modal {
     return this;
   }
 
-  addCancelButton(textOrCallback: string | (() => unknown | Promise<unknown>) = "Cancel"): this {
-    if (typeof textOrCallback === "string") return this.addButton("mod-cancel", textOrCallback, () => undefined);
-    return this.addButton("mod-cancel", "Cancel", () => textOrCallback());
+  addCancelButton(callback?: () => unknown | Promise<unknown>): this {
+    return this.addButton("mod-cancel", "Cancel", () => {
+      callback?.();
+    });
   }
 
   override open(): void {
     super.open();
     this.initialFocusButton?.buttonEl.focus();
+  }
+
+  override onClose(): void {
+    hideTooltip();
   }
 }
 
@@ -341,10 +363,22 @@ function containsInDocument(win: Window, target: Node): boolean {
   return win.document.body.contains(node);
 }
 
+// Real `tg` focusable selector: interactive elements, excluding disabled and
+// programmatically-unfocusable (tabindex="-1") ones.
+const FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button",
+  "input",
+  "select",
+  "textarea",
+  '[contenteditable]:not([contenteditable="false"])',
+  "[tabindex]",
+]
+  .map((sel) => `${sel}:not([disabled]):not([tabindex="-1"])`)
+  .join(", ");
+
 function focusFirstElement(containerEl: HTMLElement): void {
-  const focusable = containerEl.querySelector<HTMLElement>(
-    "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1']), [contenteditable='true']",
-  );
+  const focusable = containerEl.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
   try {
     (focusable ?? containerEl).focus({ preventScroll: true });
   } catch {

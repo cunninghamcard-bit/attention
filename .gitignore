@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-electron/
 coverage/
 test-results/
 playwright-report/
@@ -7,3 +8,7 @@ playwright-report/
 *.log
 .env
 .env.*
+.claude/
+
+# Local convenience symlink to the sibling reverse-engineering repo (not committed)
+decode-obsidian

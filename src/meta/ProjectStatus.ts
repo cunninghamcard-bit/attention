@@ -44,8 +44,8 @@ export const projectStatus: ProjectStatus = {
     {
       name: "Desktop/product outer shell",
       status: "study-ready",
-      paths: ["src/desktop", "src/native", "src/shell", "src/sync", "src/publish", "src/account"],
-      note: "Outer product boundaries are represented as facades and explicit non-goals, not real native/network implementations.",
+      paths: ["electron", "src/desktop", "src/native", "src/shell", "src/sync", "src/publish", "src/account"],
+      note: "The Electron main process (electron/) is a real implementation — window lifecycle, app:// protocol, IPC, obsidian:// routing, hardening and native menus. The renderer-side desktop bridge and Sync/Publish/Account remain product-boundary facades without real network/transfer.",
     },
     {
       name: "Navigation and learning docs",

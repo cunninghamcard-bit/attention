@@ -1,4 +1,6 @@
 import { ItemView } from "../views/ItemView";
+import { setIcon } from "../ui/Icon";
+import { setTooltip } from "../ui/Popover";
 import { Menu } from "../ui/Menu";
 import { TAbstractFile, TFile, TFolder } from "../vault/TAbstractFile";
 import { setAllowedDropEffect, type DragDropResult, type DragSource, type FileDragSource, type FilesDragSource, type FolderDragSource } from "../drag/DragManager";
@@ -17,6 +19,7 @@ export class FileExplorerView extends ItemView {
 
   getViewType(): string { return "file-explorer"; }
   getDisplayText(): string { return "Files"; }
+  getIcon(): string { return "lucide-folder-closed"; }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("nav-files-container");
@@ -101,7 +104,7 @@ export class FileExplorerView extends ItemView {
     const collapseEl = document.createElement("div");
     collapseEl.className = "tree-item-icon collapse-icon nav-folder-collapse-indicator";
     collapseEl.classList.toggle("is-collapsed", this.collapsedFolders.has(folder.path));
-    collapseEl.textContent = this.collapsedFolders.has(folder.path) ? ">" : "v";
+    setIcon(collapseEl, "right-triangle");
     const titleContentEl = document.createElement("div");
     titleContentEl.className = "tree-item-inner nav-folder-title-content";
     titleContentEl.textContent = folder.name;
@@ -455,8 +458,8 @@ export class FileExplorerView extends ItemView {
     const button = document.createElement("button");
     button.className = "view-action clickable-icon";
     button.type = "button";
-    button.title = title;
-    button.dataset.icon = icon;
+    setTooltip(button, title);
+    setIcon(button, icon);
     button.addEventListener("click", callback);
     return button;
   }

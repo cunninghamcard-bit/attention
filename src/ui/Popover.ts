@@ -102,13 +102,13 @@ export class HoverPopover extends Component {
     const previous = this.parent.hoverPopover;
     if (previous && previous !== this) previous.hide();
     this.parent.hoverPopover = this;
+    hideTooltip();
   }
 
   onHide(): void {}
 
   setIsFocused(focused: boolean): void {
     this.isFocused = focused;
-    this.transition();
   }
 
   detect(node: Element | null): void {
@@ -149,6 +149,9 @@ export class HoverPopover extends Component {
     removePendingHover(this);
     addShownHover(this);
     this.load();
+    // Real Obsidian fades the popover in over 80ms with the anim-motion-swing
+    // easing (no-op under jsdom, which lacks Element.animate).
+    this.hoverEl.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 80, easing: "cubic-bezier(0, 0.55, 0.45, 1)" });
     this.watchResize(this.hoverEl);
     stopHoverPollingIfIdle();
   }
@@ -161,11 +164,18 @@ export class HoverPopover extends Component {
       : { top: 0, bottom: 0, left: 0, right: 0 };
     let rtl = false;
     if (!this.staticPos && target) {
-      rect = target.getBoundingClientRect();
-      rtl = getComputedStyle(target).direction === "rtl";
-      const mapped = projectRectToTopWindow(rect, target.ownerDocument.defaultView ?? window);
-      rect = mapped.rect;
-      doc = mapped.win.document;
+      // Real Obsidian anchors to the cursor for very tall targets (e.g. a whole
+      // editor line) rather than the element's bounding box.
+      if (lastMouse && target.offsetHeight > 300) {
+        rect = pointRect({ x: lastMouse.x, y: lastMouse.y });
+        doc = lastMouse.doc;
+      } else {
+        rect = target.getBoundingClientRect();
+        rtl = getComputedStyle(target).direction === "rtl";
+        const mapped = projectRectToTopWindow(rect, target.ownerDocument.defaultView ?? window);
+        rect = mapped.rect;
+        doc = mapped.win.document;
+      }
     }
     const win = doc.defaultView ?? window;
     if (this.hoverEl.parentElement !== doc.body) doc.body.appendChild(this.hoverEl);
@@ -451,7 +461,7 @@ function tooltipOptionsFromTarget(target: HTMLElement): TooltipOptions {
   };
 }
 
-function hideTooltip(): void {
+export function hideTooltip(): void {
   clearTooltipTimer();
   activeTooltipEl?.remove();
   activeTooltipEl = null;

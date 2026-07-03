@@ -1,0 +1,188 @@
+.webviewer-favicon-container {
+  display: flex;
+  align-items: center;
+}
+.webviewer-favicon-container > * {
+  height: var(--icon-size);
+  max-width: var(--icon-size);
+}
+.view-action.mod-webviewer {
+  --icon-color: var(--icon-color-active);
+  --icon-color-hover: var(--icon-color-active);
+}
+.webviewer-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.workspace-leaf-content[data-type="browser"] .view-header {
+  gap: 0;
+}
+.view-header-always-show {
+  display: flex !important;
+}
+.view-header-reload-button {
+  display: flex;
+  align-items: center;
+  --icon-size: var(--icon-s);
+}
+.webviewer-address {
+  width: 100%;
+  display: flex;
+  margin: 0 2px;
+}
+.webviewer-address input {
+  flex-grow: 1;
+  min-width: 50px;
+}
+.webviewer-address-container {
+  padding: 0 var(--size-4-2);
+}
+.webviewer-address-container::after {
+  /* Remove the gradient normally at the end of the titleContainerEl */
+  background: transparent !important;
+}
+.webviewer-addressbar-suggestion.suggestion-item {
+  gap: var(--size-4-2);
+  align-items: center;
+}
+.webviewer-addressbar-suggestion.suggestion-item .suggestion-flair-left,
+.webviewer-addressbar-suggestion.suggestion-item .suggestion-icon:first-child {
+  color: var(--text-muted);
+  --icon-size: var(--icon-s);
+  --icon-stroke: var(--icon-s-stroke-width);
+  display: flex;
+  min-width: var(--icon-s);
+}
+.webviewer-addressbar-suggestion.suggestion-item .suggestion-flair-left img,
+.webviewer-addressbar-suggestion.suggestion-item .suggestion-icon:first-child img {
+  height: var(--icon-size);
+  max-width: var(--icon-size);
+}
+.webviewer-addressbar-suggestion.suggestion-item .suggestion-icon:last-child:empty {
+  display: none;
+}
+.webviewer-addressbar-suggestion.suggestion-item > .suggestion-content {
+  align-items: baseline;
+  flex-direction: row;
+  flex-grow: 1;
+}
+.webviewer-addressbar-suggestion.suggestion-item > .suggestion-content > .suggestion-title {
+  max-width: 75%;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-wrap: nowrap;
+  font-size: var(--font-ui-medium);
+}
+.webviewer-addressbar-suggestion.suggestion-item > .suggestion-content > .suggestion-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-wrap: nowrap;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+.webviewer-addressbar-suggestion.suggestion-item > .suggestion-content .suggestion-title + .suggestion-url {
+  margin-left: var(--size-4-2);
+}
+.webviewer-addressbar-suggestion.suggestion-item > .suggestion-content .suggestion-title:empty + .suggestion-url {
+  margin-left: 0;
+}
+.view-content.webviewer-content {
+  padding: 0;
+}
+.webviewer-content {
+  border-top: var(--border-width) solid var(--divider-color);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.webviewer-content webview {
+  flex-grow: 1;
+  width: 100%;
+}
+.webviewer-content .reader-mode-content {
+  overflow-y: auto;
+}
+.webviewer-content .reader-mode-content.is-readable-line-width .markdown-preview-sizer {
+  max-width: var(--file-line-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+.webviewer-content .markdown-preview-view .external-link {
+  /* Hide the external link icon */
+  background-image: none;
+  padding-right: 0;
+}
+.webviewer-content .error-notice {
+  max-width: var(--file-line-width);
+  margin: 25% auto 0;
+  padding: var(--file-margins);
+}
+/* History View */
+.webviewer-history-view-item {
+  text-wrap: nowrap;
+  overflow: hidden;
+}
+/* Settings */
+textarea.webviewer-adblock-lists {
+  flex-grow: 1;
+}
+.list-container.mod-manage-workspaces {
+  margin-top: var(--size-4-4);
+  padding-top: var(--size-4-1);
+  border-top: var(--border-width) solid var(--divider-color);
+}
+.list-container.mod-manage-workspaces:empty {
+  display: none;
+}
+.footnotes-view .footnote {
+  background-color: var(--footnote-input-background);
+  border-radius: var(--footnote-radius);
+  display: flex;
+  gap: var(--footnote-gap);
+  padding-inline: var(--footnote-padding-inline);
+  padding-block: var(--footnote-padding-block);
+}
+.footnotes-view .footnote-list-item {
+  border-bottom: var(--footnote-divider-width) solid var(--footnote-divider-color);
+}
+.footnotes-view .footnote-list-item.is-editing {
+  border-color: var(--footnote-divider-color-active);
+}
+.footnotes-view .footnote-list-item.is-editing > .footnote {
+  background-color: var(--footnote-input-background-active);
+  box-shadow: 0 0 0 var(--input-border-width-focus) var(--background-modifier-border-focus);
+}
+.footnotes-view .footnote-list-item:last-child {
+  border-bottom-width: 0;
+}
+.footnotes-view .footnote-id {
+  color: var(--footnote-id-color);
+  font-size: var(--footnote-size);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--footnote-line-height);
+}
+.footnotes-view .footnote-id::after {
+  content: var(--footnote-id-delimiter);
+}
+.footnotes-view .footnote-id.mod-no-occurrences {
+  color: var(--footnote-id-color-no-occurrences);
+}
+.footnotes-view .footnote-content {
+  width: 100%;
+  cursor: text;
+}
+.footnotes-view .footnote-content .markdown-preview-view,
+.footnotes-view .footnote-content .markdown-source-view {
+  padding: 0;
+  font-size: var(--footnote-size);
+  line-height: var(--footnote-line-height);
+}
+.footnotes-view .markdown-embed {
+  padding: 0;
+  border: none;
+}
+.footnotes-view .inline-title {
+  display: none;
+}

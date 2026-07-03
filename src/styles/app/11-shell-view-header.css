@@ -1,0 +1,115 @@
+.view-header {
+  height: var(--header-height);
+  display: flex;
+  border-bottom: var(--file-header-border);
+  background-color: var(--file-header-background);
+  z-index: 1;
+  position: relative;
+  gap: var(--size-4-2);
+  padding: 0 var(--size-4-3);
+}
+body:not(.show-view-header):not(.is-phone) .view-header {
+  display: none;
+}
+.is-focused .workspace-leaf.mod-active .view-header {
+  background-color: var(--file-header-background-focused);
+}
+.workspace-split.mod-left-split .view-header,
+.workspace-split.mod-right-split .view-header,
+.workspace-fake-target-overlay.is-in-sidebar .view-header {
+  display: none;
+}
+.view-header.is-highlighted:after {
+  content: ' ';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  inset-inline-start: 0;
+  background-color: hsla(var(--interactive-accent-hsl), 0.5);
+}
+.view-header-left {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+.view-header-title-container {
+  font-family: var(--file-header-font);
+  font-size: var(--file-header-font-size);
+  font-weight: var(--file-header-font-weight);
+  flex: 1 1 auto;
+  overflow: hidden;
+  position: relative;
+  justify-content: var(--file-header-justify);
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-1);
+  min-width: 0;
+}
+.view-header-title-parent {
+  color: var(--text-muted);
+  flex: 0 100 auto;
+  display: flex;
+  gap: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.view-header-title-parent:empty {
+  display: none;
+}
+.view-header-title-parent .view-header-breadcrumb {
+  padding: 2px 4px;
+  border-radius: var(--radius-s);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.view-header-title-parent .view-header-breadcrumb.has-active-menu {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+@media (hover: hover) {
+  .view-header-title-parent .view-header-breadcrumb:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+}
+.view-header-title-parent .view-header-breadcrumb-separator {
+  padding: 2px 1px;
+  color: var(--text-faint);
+}
+.view-header-title {
+  flex: 0 0 auto;
+  max-width: 100%;
+  word-wrap: normal;
+  color: var(--text-muted);
+  overflow: hidden;
+  scroll-padding-inline-end: 20px;
+  text-overflow: ellipsis;
+  white-space: pre;
+}
+.view-header-title:focus-within {
+  max-width: 100%;
+  overflow: auto;
+  text-overflow: unset;
+}
+.is-focused .workspace-leaf.mod-active .view-header-title {
+  color: var(--text-normal);
+}
+.view-header-title::-webkit-scrollbar {
+  display: none;
+}
+.view-content {
+  width: 100%;
+  height: calc(100% - var(--header-height));
+}
+.workspace-split.mod-root .view-content {
+  background-color: var(--background-primary);
+}
+.workspace-split.mod-root .workspace-fake-target-overlay .view-content {
+  background-color: transparent;
+}
+.workspace-split.mod-left-split .view-content,
+.workspace-split.mod-right-split .view-content {
+  height: 100%;
+  overflow: auto;
+}

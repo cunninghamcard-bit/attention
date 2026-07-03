@@ -1,0 +1,194 @@
+.markdown-rendered {
+  /* Highlights */
+}
+.markdown-rendered p {
+  margin-block-start: var(--p-spacing);
+  margin-block-end: var(--p-spacing);
+  unicode-bidi: plaintext;
+}
+.markdown-rendered mark {
+  background-color: var(--text-highlight-bg);
+  color: var(--text-normal);
+}
+.markdown-rendered mark .internal-link {
+  color: var(--text-normal);
+}
+.cm-s-obsidian span.cm-formatting-highlight,
+.cm-s-obsidian span.cm-highlight {
+  background-color: var(--text-highlight-bg);
+  color: var(--text-normal);
+}
+.cm-strong {
+  font-weight: calc(var(--font-weight) + var(--bold-modifier));
+  --link-weight: calc(var(--font-weight) + var(--bold-modifier));
+  color: var(--bold-color);
+}
+.cm-em {
+  font-style: italic;
+  color: var(--italic-color);
+  font-weight: var(--italic-weight);
+}
+.cm-strong.cm-em {
+  font-weight: calc(var(--font-weight) + var(--bold-modifier));
+}
+.cm-s-obsidian span.cm-error {
+  color: var(--text-error);
+}
+.outgoing-link-pane {
+  padding-top: var(--size-4-3);
+}
+.backlink-pane {
+  padding-top: var(--size-4-1);
+}
+.backlink-pane,
+.outgoing-link-pane {
+  overflow-y: auto;
+  flex: 1 0 0;
+  padding-inline-start: var(--size-4-3);
+  padding-inline-end: var(--size-4-3);
+  padding-bottom: max(var(--safe-area-inset-bottom), var(--size-4-8));
+  /* #todo This should be removed and make the DOM changes instead
+		Section headers for linked/unlinked mentions
+	 */
+}
+.backlink-pane .search-result-container,
+.outgoing-link-pane .search-result-container {
+  padding: var(--size-4-1) 1px var(--size-4-4);
+}
+.backlink-pane > .tree-item-self,
+.outgoing-link-pane > .tree-item-self {
+  color: var(--nav-heading-color);
+  padding-inline-start: var(--size-4-2);
+}
+.backlink-pane > .tree-item-self .tree-item-inner,
+.outgoing-link-pane > .tree-item-self .tree-item-inner {
+  font-weight: var(--nav-heading-weight);
+}
+.backlink-pane > .tree-item-self.is-clickable.is-collapsed,
+.outgoing-link-pane > .tree-item-self.is-clickable.is-collapsed {
+  color: var(--nav-heading-color-collapsed);
+}
+@media (hover: hover) {
+  .backlink-pane > .tree-item-self.is-clickable.is-collapsed:hover,
+  .outgoing-link-pane > .tree-item-self.is-clickable.is-collapsed:hover {
+    color: var(--nav-heading-color-collapsed-hover);
+  }
+}
+.backlink-pane > .tree-item-self .collapse-icon,
+.outgoing-link-pane > .tree-item-self .collapse-icon {
+  display: none;
+}
+@media (hover: hover) {
+  .backlink-pane > .tree-item-self:hover,
+  .outgoing-link-pane > .tree-item-self:hover {
+    color: var(--nav-heading-color-hover);
+    font-weight: var(--nav-heading-weight-hover);
+  }
+}
+/* Backlinks in Preview */
+.embedded-backlinks {
+  border-top: 1px solid var(--background-modifier-border);
+}
+.markdown-preview-view .embedded-backlinks {
+  margin-top: 3em;
+}
+.embedded-backlinks .backlink-pane {
+  padding: 0;
+}
+.embedded-backlinks .backlink-pane .search-empty-state,
+.embedded-backlinks .backlink-pane .tree-item-self {
+  /* Use quotes because Less overrides CSS math */
+  font-size: max(var(--font-ui-small),var(--font-smaller));
+  align-items: center;
+}
+.embedded-backlinks .backlink-pane > .tree-item-self {
+  font-size: max(var(--font-ui-small),1em);
+  width: fit-content;
+}
+.embedded-backlinks .backlink-pane > .tree-item-self .tree-item-inner {
+  margin-inline-end: var(--size-2-3);
+}
+.embedded-backlinks .backlink-pane .tree-item-flair {
+  font-size: max(var(--font-ui-small),var(--font-smallest));
+}
+.embedded-backlinks .nav-header {
+  padding: var(--size-4-3) 0 0 0;
+  position: relative;
+}
+.embedded-backlinks .nav-header > .search-input-container {
+  width: calc(100% - 150px);
+  margin: 0 0 var(--size-4-3) 0;
+}
+.embedded-backlinks .nav-buttons-container {
+  position: absolute;
+  inset-inline-end: 0;
+  top: var(--size-4-3);
+  z-index: 1;
+}
+/* .base files */
+.workspace-leaf-content[data-type="bases"] {
+  --bases-table-container-border-width: 0;
+  --bases-table-container-border-radius: 0;
+  --bases-table-cell-edge-padding: var(--size-4-1);
+  --bases-view-padding: 0 0 60px;
+  --bases-header-padding-start: var(--size-4-2);
+  --bases-header-padding-end: var(--size-4-2);
+}
+.workspace-leaf-content[data-type="bases"] .view-content {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.bases-view {
+  overflow: auto;
+  flex-grow: 1;
+  padding: var(--bases-view-padding);
+  scrollbar-gutter: stable;
+}
+.bases-view.is-being-dragged-over {
+  position: relative;
+}
+.bases-view.is-being-dragged-over:after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: hsla(var(--interactive-accent-hsl), 0.1);
+  z-index: var(--layer-cover);
+}
+.bases-error {
+  padding: 0 var(--size-4-2);
+  color: var(--text-warning);
+  font-size: var(--font-ui-small);
+  text-align: center;
+}
+.bases-error .formula-preview {
+  background-color: var(--background-secondary);
+  padding: var(--size-4-2);
+}
+.bases-formula-error {
+  display: flex;
+  align-items: center;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-error);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-style: dotted;
+  overflow: hidden;
+}
+.bases-formula-error .warning-icon {
+  --icon-size: var(--icon-xs);
+  --icon-stroke: var(--icon-xs-stroke-width);
+  color: rgba(var(--background-modifier-error-rgb), 0.6);
+  display: flex;
+  align-items: center;
+  margin-inline-end: var(--size-4-1);
+}
+.bases-formula-error .bases-formula-error-message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

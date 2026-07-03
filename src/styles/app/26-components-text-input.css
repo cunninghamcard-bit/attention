@@ -1,0 +1,334 @@
+textarea,
+.multi-select-container,
+input.metadata-input-text,
+input[type='date'],
+input[type='datetime-local'],
+input[type='text'],
+input[type='search'],
+input[type='email'],
+input[type='password'],
+input[type='number'] {
+  -webkit-app-region: no-drag;
+  background: var(--background-modifier-form-field);
+  border: var(--input-border-width) solid var(--background-modifier-border);
+  color: var(--text-normal);
+  font-family: inherit;
+  padding: var(--input-padding);
+  font-size: var(--font-ui-small);
+  border-radius: var(--input-radius);
+  corner-shape: var(--input-corner-shape);
+  outline: none;
+}
+@media (hover: hover) {
+  textarea:hover,
+  .multi-select-container:hover,
+  input.metadata-input-text:hover,
+  input[type='date']:hover,
+  input[type='datetime-local']:hover,
+  input[type='text']:hover,
+  input[type='search']:hover,
+  input[type='email']:hover,
+  input[type='password']:hover,
+  input[type='number']:hover {
+    background-color: var(--background-modifier-form-field-hover);
+    border-color: var(--background-modifier-border-hover);
+    transition: box-shadow var(--anim-duration-fast) ease-in-out, border var(--anim-duration-fast) ease-in-out;
+  }
+}
+textarea:active,
+.multi-select-container:active,
+input.metadata-input-text:active,
+input[type='date']:active,
+input[type='datetime-local']:active,
+input[type='text']:active,
+input[type='search']:active,
+input[type='email']:active,
+input[type='password']:active,
+input[type='number']:active,
+textarea:focus,
+.multi-select-container:focus,
+input.metadata-input-text:focus,
+input[type='date']:focus,
+input[type='datetime-local']:focus,
+input[type='text']:focus,
+input[type='search']:focus,
+input[type='email']:focus,
+input[type='password']:focus,
+input[type='number']:focus {
+  border-color: var(--background-modifier-border-focus);
+  transition: box-shadow 0.15s ease-in-out, border 0.15s ease-in-out;
+}
+textarea:active,
+.multi-select-container:active,
+input.metadata-input-text:active,
+input[type='date']:active,
+input[type='datetime-local']:active,
+input[type='text']:active,
+input[type='search']:active,
+input[type='email']:active,
+input[type='password']:active,
+input[type='number']:active,
+textarea:focus,
+.multi-select-container:focus,
+input.metadata-input-text:focus,
+input[type='date']:focus,
+input[type='datetime-local']:focus,
+input[type='text']:focus,
+input[type='search']:focus,
+input[type='email']:focus,
+input[type='password']:focus,
+input[type='number']:focus,
+textarea:focus-visible,
+.multi-select-container:focus-visible,
+input.metadata-input-text:focus-visible,
+input[type='date']:focus-visible,
+input[type='datetime-local']:focus-visible,
+input[type='text']:focus-visible,
+input[type='search']:focus-visible,
+input[type='email']:focus-visible,
+input[type='password']:focus-visible,
+input[type='number']:focus-visible {
+  box-shadow: 0 0 0 var(--input-border-width-focus) var(--background-modifier-border-focus);
+}
+textarea::placeholder,
+.multi-select-container::placeholder,
+input.metadata-input-text::placeholder,
+input[type='date']::placeholder,
+input[type='datetime-local']::placeholder,
+input[type='text']::placeholder,
+input[type='search']::placeholder,
+input[type='email']::placeholder,
+input[type='password']::placeholder,
+input[type='number']::placeholder {
+  color: var(--input-placeholder-color);
+}
+input[type='text'],
+input[type='search'],
+input[type='email'],
+input[type='password'],
+input[type='number'] {
+  height: var(--input-height);
+}
+/* Textarea */
+textarea {
+  line-height: var(--line-height-tight);
+  border-radius: var(--textarea-radius, var(--input-radius));
+  padding: var(--textarea-padding, var(--input-padding));
+}
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button {
+  display: none;
+  pointer-events: none;
+}
+input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+/* Date input */
+input[type='date'],
+input[type='datetime-local'] {
+  font-variant-numeric: tabular-nums;
+  position: relative;
+}
+input[type='date']::-webkit-datetime-edit-text,
+input[type='datetime-local']::-webkit-datetime-edit-text {
+  color: var(--input-date-separator);
+  padding-inline-end: 0;
+}
+input[type='date']:not([disabled="true"])::-webkit-calendar-picker-indicator,
+input[type='datetime-local']:not([disabled="true"])::-webkit-calendar-picker-indicator {
+  position: absolute;
+  left: var(--size-4-1);
+  right: auto;
+  opacity: 0.5;
+}
+input[type='date'].is-empty::-webkit-datetime-edit-month-field,
+input[type='datetime-local'].is-empty::-webkit-datetime-edit-month-field,
+input[type='date'].is-empty::-webkit-datetime-edit-day-field,
+input[type='datetime-local'].is-empty::-webkit-datetime-edit-day-field,
+input[type='date'].is-empty::-webkit-datetime-edit-year-field,
+input[type='datetime-local'].is-empty::-webkit-datetime-edit-year-field {
+  color: var(--input-placeholder-color);
+}
+input[type='date'].is-empty:focus-within::-webkit-datetime-edit-month-field,
+input[type='datetime-local'].is-empty:focus-within::-webkit-datetime-edit-month-field,
+input[type='date'].is-empty:focus-within::-webkit-datetime-edit-day-field,
+input[type='datetime-local'].is-empty:focus-within::-webkit-datetime-edit-day-field,
+input[type='date'].is-empty:focus-within::-webkit-datetime-edit-year-field,
+input[type='datetime-local'].is-empty:focus-within::-webkit-datetime-edit-year-field {
+  color: var(--text-normal);
+}
+input[type='date']::-webkit-datetime-edit-month-field:active,
+input[type='datetime-local']::-webkit-datetime-edit-month-field:active,
+input[type='date']::-webkit-datetime-edit-month-field:focus,
+input[type='datetime-local']::-webkit-datetime-edit-month-field:focus,
+input[type='date']::-webkit-datetime-edit-day-field:active,
+input[type='datetime-local']::-webkit-datetime-edit-day-field:active,
+input[type='date']::-webkit-datetime-edit-day-field:focus,
+input[type='datetime-local']::-webkit-datetime-edit-day-field:focus,
+input[type='date']::-webkit-datetime-edit-year-field:active,
+input[type='datetime-local']::-webkit-datetime-edit-year-field:active,
+input[type='date']::-webkit-datetime-edit-year-field:focus,
+input[type='datetime-local']::-webkit-datetime-edit-year-field:focus {
+  background-color: var(--text-selection);
+  color: var(--text-normal);
+  cursor: text;
+}
+body:not(.is-ios):not(.is-android) input[type='date']:not([disabled="true"]),
+body:not(.is-ios):not(.is-android) input[type='datetime-local']:not([disabled="true"]) {
+  padding-left: var(--size-4-6);
+}
+/* Range slider */
+input[type='range'] {
+  width: 100px;
+  -webkit-appearance: none;
+  background-color: var(--slider-track-background);
+  border-radius: var(--slider-track-height);
+  height: var(--slider-track-height);
+  padding: 0;
+  outline: none;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  -webkit-appearance: none;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: var(--slider-thumb-height);
+  width: var(--slider-thumb-width);
+  border-radius: var(--slider-thumb-radius);
+  cursor: default;
+  background: #FFF;
+  border: var(--slider-thumb-border-width) solid var(--slider-thumb-border-color);
+  position: relative;
+  top: var(--slider-thumb-y);
+  transition: all 0.1s linear;
+  box-shadow: 0 1px 1px 0px rgba(0, 0, 0, 0.05), 0 2px 2px 0px rgba(0, 0, 0, 0.1);
+}
+input[type='range']::-webkit-slider-thumb:hover,
+input[type='range']::-webkit-slider-thumb:active {
+  background: white;
+  border-color: var(--background-modifier-border-focus);
+  box-shadow: 0 1px 2px 0px rgba(0, 0, 0, 0.1), 0 2px 3px 0px rgba(0, 0, 0, 0.2);
+  transition: all 0.1s linear;
+}
+body:not(.is-mobile) input[type=range]:focus {
+  box-shadow: none;
+}
+body:not(.is-mobile) input[type=range]:focus::-webkit-slider-thumb {
+  box-shadow: 0 1px 2px 0px rgba(0, 0, 0, 0.05), 0 2px 3px 0px rgba(0, 0, 0, 0.2);
+}
+body:not(.is-mobile) input[type=range]:focus-visible::-webkit-slider-thumb {
+  border-color: var(--background-modifier-border-focus);
+  box-shadow: 0 1px 2px 0px rgba(0, 0, 0, 0.05), 0 2px 3px 0px rgba(0, 0, 0, 0.2), 0 0 0px 2px var(--background-modifier-border-focus);
+}
+/* Color inputs */
+input[type="color"] {
+  -webkit-appearance: none;
+  width: calc(var(--swatch-width) + 4px);
+  background-color: transparent;
+  border: none;
+  cursor: var(--cursor);
+  padding: 0;
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+input[type="color"]::-webkit-color-swatch {
+  border: 0px;
+  box-shadow: var(--swatch-shadow);
+  border-radius: var(--swatch-radius);
+  height: var(--swatch-height);
+  width: var(--swatch-width);
+  align-self: center;
+}
+@media (hover: hover) {
+  input[type="color"]::-webkit-color-swatch:hover {
+    box-shadow: inset 0 0 0 1px rgba(var(--mono-rgb-100), 0.25), 0 0 0 var(--input-border-width-focus) var(--background-modifier-border-hover);
+  }
+}
+input[type="color"]:focus-visible::-webkit-color-swatch,
+input[type="color"]:focus::-webkit-color-swatch {
+  box-shadow: var(--swatch-shadow), 0 0 0 var(--input-border-width-focus) var(--background-modifier-border-focus);
+}
+select.mod-hidden {
+  display: none;
+}
+.formula-editor-container {
+  width: 100%;
+}
+.formula-editor {
+  padding: 0;
+  border-radius: var(--textarea-radius, var(--input-radius));
+  background-color: var(--interactive-normal);
+  border: var(--input-border-width) solid var(--background-modifier-border);
+  display: flex;
+  align-items: center;
+  min-height: var(--input-height);
+  width: 100%;
+}
+@media (hover: hover) {
+  .formula-editor:hover {
+    border-color: var(--background-modifier-border-hover);
+    transition: box-shadow var(--anim-duration-fast) ease-in-out, border var(--anim-duration-fast) ease-in-out;
+  }
+}
+.formula-editor:active,
+.formula-editor:focus,
+.formula-editor:focus-within {
+  border-color: var(--background-modifier-border-focus);
+  transition: box-shadow 0.15s ease-in-out, border 0.15s ease-in-out;
+}
+.formula-editor:active,
+.formula-editor:focus,
+.formula-editor:focus-visible,
+.formula-editor:focus-within {
+  box-shadow: 0 0 0 var(--input-border-width-focus) var(--background-modifier-border-focus);
+}
+.formula-editor::placeholder {
+  color: var(--input-placeholder-color);
+}
+.formula-editor .cm-editor {
+  flex: 1 1 auto;
+}
+.formula-editor .cm-content {
+  caret-color: var(--caret-color);
+}
+.formula-editor .cm-placeholder {
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-small);
+  color: var(--text-faint);
+}
+.formula-editor .cm-line {
+  padding-inline-start: var(--size-4-2);
+  padding-inline-end: var(--size-4-2);
+}
+.formula-editor .cm-scroller {
+  color: var(--code-normal);
+  font-family: var(--font-monospace);
+  font-size: var(--font-small);
+}
+.formula-editor .cm-focused {
+  outline: none;
+}
+.formula-editor .cm-tooltip {
+  font-family: var(--font-interface);
+}
+.cm-tooltip.cm-tooltip-docstring {
+  border-radius: var(--radius-s);
+  padding: var(--size-4-1) var(--size-4-2);
+  background-color: var(--background-modifier-message);
+  box-shadow: 0 2px 8px var(--background-modifier-box-shadow);
+  font-size: 11px;
+  font-weight: var(--font-medium);
+  line-height: var(--line-height-tight);
+  color: #FAFAFA;
+  font-family: var(--font-monospace);
+  border: none;
+}
+.cm-tooltip.cm-tooltip-docstring .active {
+  font-weight: var(--font-semibold);
+}
+.cm-tooltip.cm-tooltip-docstring .cm-tooltip-arrow:before,
+.cm-tooltip.cm-tooltip-docstring .cm-tooltip-arrow:after {
+  border-top: 7px solid var(--background-modifier-message);
+}

@@ -325,9 +325,11 @@ function projectRectToWindow(
   return projected;
 }
 
-function isTextValueElement(el: HTMLElement): el is HTMLInputElement | HTMLTextAreaElement {
+function isTextValueElement(el: HTMLElement): el is HTMLInputElement {
+  // Real Obsidian treats only <input> as a value element; <textarea> and
+  // contenteditable targets read/write through .innerText.
   const win = el.ownerDocument.defaultView ?? window;
-  return el instanceof win.HTMLInputElement || el instanceof win.HTMLTextAreaElement;
+  return el instanceof win.HTMLInputElement;
 }
 
 function isActiveElement(el: HTMLElement): boolean {

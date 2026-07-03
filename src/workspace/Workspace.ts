@@ -868,6 +868,8 @@ export class Workspace extends Events {
     }
 
     if (node.type === "window") {
+      // Non-desktop restore skips window nodes (matches real isDesktopApp gate).
+      if (!Platform.isDesktopApp) return null;
       const workspaceWindow = this.openPopout(node);
       if (node.dimension !== undefined) workspaceWindow.setDimension(node.dimension);
       for (const child of node.children) {
@@ -1046,7 +1048,7 @@ export class Workspace extends Events {
     return leaves;
   }
 
-  private getActiveFileView(): FileView | null {
+  getActiveFileView(): FileView | null {
     const activeView = this.activeLeaf?.view;
     if (activeView?.navigation) return activeView instanceof FileView ? activeView : null;
     let activeFileView: FileView | null = null;
@@ -2098,7 +2100,15 @@ export class Workspace extends Events {
     return leaf;
   }
 
+  // Real `V0()`: popouts are a desktop-only capability. (Real Obsidian also
+  // gates on installer version qf<13; the reconstruction has no installer
+  // version, so only the desktop check applies.)
+  private assertPopoutSupported(): void {
+    if (!Platform.isDesktopApp) throw new Error("Desktop-only feature.");
+  }
+
   openPopout(data?: WorkspaceWindowInitData): WorkspaceWindow {
+    this.assertPopoutSupported();
     const ownerWindow = this.rootSplit.containerEl.ownerDocument.defaultView ?? window;
     const popoutWindow = this.openNativePopoutWindow(ownerWindow, data);
     const workspaceWindow = new WorkspaceWindow(this, popoutWindow, data);
@@ -2112,6 +2122,7 @@ export class Workspace extends Events {
   }
 
   moveLeafToPopout(leaf: WorkspaceLeaf, data?: WorkspaceWindowInitData): WorkspaceWindow | undefined {
+    this.assertPopoutSupported();
     if (!this.canPopoutLeaf(leaf)) return undefined;
     const popoutData = this.getPopoutInitData(leaf, data);
     leaf.parent?.removeChild(leaf);
@@ -2121,7 +2132,6 @@ export class Workspace extends Events {
     tabs.appendChild(leaf, false);
     tabs.selectTabIndex(0, false);
     workspaceWindow.appendChild(tabs);
-    this.setActiveLeaf(leaf, { focus: true });
     return workspaceWindow;
   }
 

@@ -38,19 +38,3 @@ export interface WorkspaceLayout {
   activeLeafId?: string;
   lastOpenFiles?: string[];
 }
-
-export class WorkspaceLayoutStore {
-  private layout: WorkspaceLayout | null = null;
-
-  save(layout: WorkspaceLayout): void {
-    this.layout = structuredClone(layout);
-  }
-
-  load(): WorkspaceLayout | null {
-    return this.layout ? structuredClone(this.layout) : null;
-  }
-
-  clear(): void {
-    this.layout = null;
-  }
-}

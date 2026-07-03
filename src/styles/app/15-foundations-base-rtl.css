@@ -1,0 +1,182 @@
+/* Calculate horizontal positions where text direction matters
+   but start/end values are not available, e.g. transforms used
+   for folding indicators
+*/
+body,
+[dir='ltr'] {
+  --direction: 1;
+  --inset-start: left;
+  --inset-end: right;
+}
+.mod-rtl,
+[dir='rtl'] {
+  --direction: -1;
+  --inset-start: right;
+  --inset-end: left;
+}
+@supports selector(:dir(rtl)) {
+  .is-collapsed:dir(ltr),
+  .cm-line:dir(ltr) {
+    --direction: 1;
+  }
+  .is-collapsed:dir(rtl),
+  .cm-line:dir(rtl) {
+    --direction: -1;
+  }
+}
+.mod-rtl,
+.is-rtl,
+.rtl {
+  --callout-padding: var(--size-4-3) var(--size-4-6) var(--size-4-3) var(--size-4-3);
+  --embed-padding: 0 var(--size-4-6) 0 0;
+  --nav-item-padding: var(--size-4-1) var(--size-4-6) var(--size-4-1) var(--size-4-2);
+}
+.mod-rtl .metadata-container,
+.is-rtl .metadata-container,
+.rtl .metadata-container {
+  --direction: -1;
+}
+.mod-rtl .metadata-container,
+.is-rtl .metadata-container,
+.rtl .metadata-container,
+.mod-rtl input.metadata-input-number,
+.is-rtl input.metadata-input-number,
+.rtl input.metadata-input-number,
+.mod-rtl input.metadata-property-key-input,
+.is-rtl input.metadata-property-key-input,
+.rtl input.metadata-property-key-input {
+  text-align: right;
+}
+.mod-rtl .bases-embed,
+.is-rtl .bases-embed,
+.rtl .bases-embed {
+  direction: rtl;
+}
+@supports selector(:has(*)) {
+  .mod-rtl .cm-line:has(.cm-hmd-frontmatter),
+  .is-rtl .cm-line:has(.cm-hmd-frontmatter),
+  .rtl .cm-line:has(.cm-hmd-frontmatter) {
+    direction: rtl;
+  }
+}
+.mod-rtl input[type='date'],
+.is-rtl input[type='date'],
+.rtl input[type='date'],
+.mod-rtl input[type='datetime-local'],
+.is-rtl input[type='datetime-local'],
+.rtl input[type='datetime-local'] {
+  direction: rtl;
+}
+.mod-rtl input[type='date']::-webkit-calendar-picker-indicator,
+.is-rtl input[type='date']::-webkit-calendar-picker-indicator,
+.rtl input[type='date']::-webkit-calendar-picker-indicator,
+.mod-rtl input[type='datetime-local']::-webkit-calendar-picker-indicator,
+.is-rtl input[type='datetime-local']::-webkit-calendar-picker-indicator,
+.rtl input[type='datetime-local']::-webkit-calendar-picker-indicator {
+  right: var(--size-4-1);
+  left: auto;
+}
+/* Callouts
+   Remember that callouts can be nested, so text direction can
+   change within a nested set of callouts
+*/
+@supports selector(:has(*)) {
+  .cm-callout:has(.callout .callout-title .callout-title-inner:dir(rtl)),
+  .callout:has( > .callout-title .callout-title-inner:dir(rtl)) {
+    direction: rtl;
+  }
+  .cm-callout:has(.callout .callout-title .callout-title-inner:dir(rtl)) > .callout-title,
+  .callout:has( > .callout-title .callout-title-inner:dir(rtl)) > .callout-title {
+    direction: rtl;
+    --direction: -1;
+  }
+  .cm-callout:has(.callout .callout-title .callout-title-inner:dir(rtl)) > .callout-title .callout-icon svg.svg-icon,
+  .callout:has( > .callout-title .callout-title-inner:dir(rtl)) > .callout-title .callout-icon svg.svg-icon {
+    transform: scale(-1, 1);
+  }
+}
+/* When Obsidian interface language is set to RTL language, mirror the UI */
+.mod-rtl {
+  --tab-stacked-text-transform: rotate(180deg);
+  /* Not RTL:
+	   - Code blocks
+	   - Canvas wrapper
+	   - Community directory
+	*/
+  /* Set text direction on interface elements */
+  /* Force right-align on UI elements that respond to content direction
+	   to improve readability and avoid text bouncing between LTR/RTL */
+  /* Since sidebars are not (yet) reversed but the tab header icons are
+	   we need to reverse the position of the sidebar toggles*/
+  /* Stacked tabs */
+  /* Mirror directional UI components, e.g. toggles */
+  /* Mirror icons */
+}
+.mod-rtl.is-mobile {
+  --nav-item-padding: var(--size-2-3) var(--size-4-6) var(--size-2-3) var(--size-4-2);
+}
+.mod-rtl .community-modal-readme,
+.mod-rtl .canvas-wrapper {
+  direction: ltr;
+}
+.mod-rtl .workspace-sidedock-vault-profile,
+.mod-rtl .modal,
+.mod-rtl .notice,
+.mod-rtl .prompt,
+.mod-rtl .titlebar,
+.mod-rtl .tooltip,
+.mod-rtl .workspace-tab-container,
+.mod-rtl .workspace-tab-header-container,
+.mod-rtl .workspace-drawer,
+.mod-rtl .mobile-navbar-actions,
+.mod-rtl .status-bar,
+.mod-rtl .suggestion-container,
+.mod-rtl .menu,
+.mod-rtl .bases-toolbar-menu,
+.mod-rtl .popover {
+  direction: rtl;
+}
+.mod-rtl .workspace-tab-header-inner-title,
+.mod-rtl .setting-item-description,
+.mod-rtl .setting-item-name,
+.mod-rtl input {
+  text-align: right;
+}
+.mod-rtl .sidebar-toggle-button {
+  order: 2;
+}
+.mod-rtl .sidebar-toggle-button.mod-right {
+  order: -1;
+}
+.mod-rtl .canvas-card-menu {
+  flex-direction: row-reverse;
+}
+.mod-rtl .workspace .mod-root .workspace-tabs.mod-stacked .workspace-tab-container {
+  flex-direction: row-reverse;
+}
+.mod-rtl .workspace .mod-root .workspace-tabs.mod-stacked .workspace-tab-container .workspace-tab-header-inner {
+  flex-direction: row-reverse;
+}
+.mod-rtl .search-input-container:before,
+.mod-rtl .checkbox-container {
+  transform: scale(-1, 1);
+}
+.mod-rtl svg.svg-icon:not(
+		.check-small,
+		.lucide-binary,
+		.lucide-check,
+		.lucide-check-square,
+		.lucide-clock,
+		.lucide-code-2,
+		.lucide-square-function,
+		.lucide-timer,
+		.sidebar-toggle-button-icon
+	) {
+  transform: scale(-1, 1);
+}
+[lang="he"] svg.svg-icon:is(
+		.lucide-help-circle,
+		.help
+	) {
+  transform: scale(1, 1);
+}
