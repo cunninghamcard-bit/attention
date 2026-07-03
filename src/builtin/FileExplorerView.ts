@@ -1,5 +1,6 @@
 import { ItemView } from "../views/ItemView";
 import { setIcon } from "../ui/Icon";
+import { getFileTypeInfo } from "../ui/FileTypeIcon";
 import { setTooltip } from "../ui/Popover";
 import { Menu } from "../ui/Menu";
 import { TAbstractFile, TFile, TFolder } from "../vault/TAbstractFile";
@@ -61,7 +62,7 @@ export class FileExplorerView extends ItemView {
 
     const rootChildrenEl = document.createElement("div");
     rootChildrenEl.className = "nav-folder-children";
-    for (const child of this.getRootChildren()) this.renderTreeItem(child, rootChildrenEl, 0);
+    for (const child of this.getRootChildren()) this.renderTreeItem(child, rootChildrenEl);
     rootEl.appendChild(rootChildrenEl);
     this.contentEl.appendChild(rootEl);
   }
@@ -85,22 +86,21 @@ export class FileExplorerView extends ItemView {
     );
   }
 
-  private renderTreeItem(file: TAbstractFile, parentEl: HTMLElement, depth: number): void {
+  private renderTreeItem(file: TAbstractFile, parentEl: HTMLElement): void {
     if (file instanceof TFolder) {
-      this.renderFolder(file, parentEl, depth);
+      this.renderFolder(file, parentEl);
       return;
     }
-    if (file instanceof TFile) this.renderFile(file, parentEl, depth);
+    if (file instanceof TFile) this.renderFile(file, parentEl);
   }
 
-  private renderFolder(folder: TFolder, parentEl: HTMLElement, depth: number): void {
+  private renderFolder(folder: TFolder, parentEl: HTMLElement): void {
     const folderEl = document.createElement("div");
     folderEl.className = "tree-item nav-folder";
     folderEl.classList.toggle("is-collapsed", this.collapsedFolders.has(folder.path));
     const titleEl = document.createElement("div");
     titleEl.className = "tree-item-self nav-folder-title tappable is-clickable mod-collapsible";
     titleEl.dataset.path = folder.path;
-    titleEl.style.setProperty("--nav-item-padding-left", `${depth * 14 + 8}px`);
     const collapseEl = document.createElement("div");
     collapseEl.className = "tree-item-icon collapse-icon nav-folder-collapse-indicator";
     collapseEl.classList.toggle("is-collapsed", this.collapsedFolders.has(folder.path));
@@ -118,23 +118,28 @@ export class FileExplorerView extends ItemView {
     folderEl.appendChild(titleEl);
 
     const childrenEl = document.createElement("div");
-    childrenEl.className = "nav-folder-children";
+    childrenEl.className = "tree-item-children nav-folder-children";
     childrenEl.hidden = this.collapsedFolders.has(folder.path);
-    for (const child of [...folder.children].sort(sortFiles)) this.renderTreeItem(child, childrenEl, depth + 1);
+    for (const child of [...folder.children].sort(sortFiles)) this.renderTreeItem(child, childrenEl);
     folderEl.appendChild(childrenEl);
     parentEl.appendChild(folderEl);
   }
 
-  private renderFile(file: TFile, parentEl: HTMLElement, depth: number): void {
+  private renderFile(file: TFile, parentEl: HTMLElement): void {
     const fileEl = document.createElement("div");
     fileEl.className = "tree-item nav-file";
     const titleEl = document.createElement("div");
     titleEl.className = "tree-item-self nav-file-title tappable is-clickable";
     titleEl.dataset.path = file.path;
-    titleEl.style.setProperty("--nav-item-padding-left", `${depth * 14 + 26}px`);
     titleEl.classList.toggle("is-active", this.app.workspace.activeEditor?.file?.path === file.path);
     titleEl.classList.toggle("is-unsupported", !this.app.viewRegistry.getTypeByExtension(file.extension));
     this.applySelectionState(titleEl, file);
+    const iconEl = document.createElement("div");
+    iconEl.className = "tree-item-icon nav-file-icon";
+    const typeInfo = getFileTypeInfo(file.name, file.extension);
+    if (typeInfo.lang) iconEl.dataset.lang = typeInfo.lang;
+    setIcon(iconEl, typeInfo.icon);
+    titleEl.appendChild(iconEl);
     const titleContentEl = document.createElement("div");
     titleContentEl.className = "tree-item-inner nav-file-title-content";
     titleContentEl.textContent = file.basename;

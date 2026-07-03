@@ -5,6 +5,7 @@ import { HighlightStyle, LanguageDescription, syntaxHighlighting } from "@codemi
 import { languages } from "@codemirror/language-data";
 import { tags } from "@lezer/highlight";
 import { ensureRangeGeometry } from "../editor/EditorView";
+import { getFileTypeInfo } from "../ui/FileTypeIcon";
 import { TextFileView } from "./TextFileView";
 import type { ViewStateResult } from "./View";
 import type { Menu } from "../ui/Menu";
@@ -60,7 +61,9 @@ export class CodeFileView extends TextFileView {
 
   getViewType(): string { return CodeFileView.VIEW_TYPE; }
   getDisplayText(): string { return this.file?.name ?? "Code"; }
-  getIcon(): string { return "lucide-file-code"; }
+  getIcon(): string {
+    return this.file ? getFileTypeInfo(this.file.name, this.file.extension).icon : "lucide-file-code";
+  }
 
   async onOpen(): Promise<void> {
     await super.onOpen();

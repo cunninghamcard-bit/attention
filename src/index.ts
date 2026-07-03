@@ -77,6 +77,7 @@ export * from "./ui/Modal";
 export * from "./ui/Menu";
 export * from "./ui/Setting";
 export { addIcon, getIcon, getIconIds, removeIcon } from "./ui/Icon";
+export * from "./ui/FileTypeIcon";
 export * from "./hotkeys/Scope";
 export * from "./hotkeys/Keymap";
 export * from "./suggest/SuggestModal";
