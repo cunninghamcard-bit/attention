@@ -89,6 +89,22 @@ describe("tool timeline grouping", () => {
     expect(children.lastIndexOf("chat-message")).toBeGreaterThan(dividerIndex);
   });
 
+  it("renders a run error as a stream row, shown on replay too", () => {
+    const { session, parentEl, list } = setup();
+    feed(session, [
+      { type: "run.started", runId: "r1" },
+      { type: "message.started", messageId: "u1", role: "user" },
+      { type: "part.opened", messageId: "u1", partIndex: 0, partType: "text" },
+      { type: "part.delta", messageId: "u1", partIndex: 0, delta: "hi" },
+      { type: "message.closed", messageId: "u1" },
+      { type: "run.closed", runId: "r1", status: "error", error: "engine exploded" },
+    ]);
+    list.sync();
+    const errorEl = parentEl.querySelector(".chat-run-error") as HTMLElement;
+    expect(errorEl.textContent).toBe("Run failed: engine exploded");
+    expect(errorEl.style.display).not.toBe("none");
+  });
+
   it("keeps a manually expanded timeline open when it completes", () => {
     const { session, parentEl, list } = setup();
     let seq = feed(session, [

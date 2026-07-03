@@ -1,4 +1,3 @@
-import { createDiv } from "../dom/dom";
 import { writeClipboardText } from "../dom/Clipboard";
 import { Notice } from "../ui/Notice";
 import type { Menu } from "../ui/Menu";
@@ -28,8 +27,6 @@ export class ChatView extends StreamView {
   private session: Agent | null = null;
   private list: ChatMessageList | null = null;
   private composer: ChatComposer | null = null;
-  private errorEl: HTMLElement | null = null;
-  private usageEl: HTMLElement | null = null;
   private stopActionEl: HTMLElement | null = null;
   // Set on send: the next sync pins the new user message to the viewport top
   // (ArkLoop-style anchoring) so the reply reads downward from the question.
@@ -128,10 +125,6 @@ export class ChatView extends StreamView {
       installInternalLinkHandlers(app: App, root: HTMLElement, sourcePath: string): void;
     }).installInternalLinkHandlers(this.app, scrollEl, `agent://${agentId}`);
     this.list = this.addChild(new ChatMessageList(scrollEl, this.session, () => this.scroller?.notifyContentChanged()));
-    this.errorEl = createDiv("chat-error", this.contentEl);
-    this.errorEl.hide();
-    this.usageEl = createDiv("chat-usage", this.contentEl);
-    this.usageEl.hide();
     this.composer = this.addChild(
       new ChatComposer(
         this.contentEl,
@@ -150,16 +143,15 @@ export class ChatView extends StreamView {
     this.composer.focus();
   }
 
+  // Transport failure is transient app trouble, not conversation content —
+  // it surfaces as a Notice, the way Obsidian reports failed operations.
+  // Run errors are history events and render inside the stream.
   private async sendMessage(text: string, attachments: ChatAttachmentPayload[] = []): Promise<void> {
     try {
-      this.errorEl?.hide();
       this.anchorPending = true;
       await this.session?.sendMessage(text, attachments);
     } catch (error) {
-      if (this.errorEl) {
-        this.errorEl.setText(`Cannot reach the chat bridge: ${error instanceof Error ? error.message : String(error)}`);
-        this.errorEl.show();
-      }
+      new Notice(`Cannot reach the chat bridge: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -187,11 +179,6 @@ export class ChatView extends StreamView {
     this.composer?.syncRunning();
     this.stopActionEl?.toggle(this.isRunning());
     this.refreshTitle();
-    this.refreshUsage();
-    if (this.session?.state.lastError && this.errorEl) {
-      this.errorEl.setText(this.session.state.lastError);
-      this.errorEl.show();
-    }
   }
 
   // Pin the just-sent user message toward the viewport top and detach the
@@ -210,12 +197,4 @@ export class ChatView extends StreamView {
     this.scroller?.detach();
   }
 
-  private refreshUsage(): void {
-    if (!this.usageEl) return;
-    const usage = this.session?.state.usage;
-    if (!usage) return void this.usageEl.hide();
-    const cost = usage.costUsd ? ` · $${usage.costUsd.toFixed(3)}` : "";
-    this.usageEl.setText(`${(usage.totalTokens / 1000).toFixed(1)}k tokens${cost}`);
-    this.usageEl.show();
-  }
 }

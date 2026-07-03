@@ -228,7 +228,13 @@ export class ChatMessageList extends Component {
     this.thinkingEl = createDiv("chat-thinking-indicator", this.el);
     for (let index = 0; index < 3; index++) createSpan({ cls: "chat-thinking-dot", parent: this.thinkingEl });
     this.thinkingEl.hide();
+    // Run errors are conversation history (run.closed status:error), so they
+    // render in the stream — history replay shows them again, unlike a toast.
+    this.errorEl = createDiv("chat-run-error", this.el);
+    this.errorEl.hide();
   }
+
+  private readonly errorEl: HTMLElement;
 
   private renderedCompactions = 0;
 
@@ -242,6 +248,7 @@ export class ChatMessageList extends Component {
         item = this.addChild(new ChatMessageItem(this.el, message, this.onGrow));
         this.items.set(message.id, item);
         this.el.appendChild(this.thinkingEl);
+        this.el.appendChild(this.errorEl);
       }
       item.sync();
     }
@@ -249,6 +256,9 @@ export class ChatMessageList extends Component {
     const last = messages[messages.length - 1];
     const waiting = this.session.isRunning() && (!last || last.role === "user" || last.closed);
     this.thinkingEl.toggle(waiting);
+    const error = this.session.state.lastError;
+    if (error) this.errorEl.setText(`Run failed: ${error}`);
+    this.errorEl.toggle(Boolean(error));
   }
 
   // Compaction dividers land between the message they follow and whatever
