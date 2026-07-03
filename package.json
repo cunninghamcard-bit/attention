@@ -22,7 +22,8 @@
     "packcheck": "publint && attw --pack .",
     "quality": "bun run check && bun run e2e && bun run packcheck",
     "build:api": "vite build --config vite.api.config.ts && bun scripts/fix-dts-extensions.ts",
-    "fix:dts": "bun scripts/fix-dts-extensions.ts"
+    "fix:dts": "bun scripts/fix-dts-extensions.ts",
+    "postinstall": "chmod +x node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.3",
@@ -74,7 +75,9 @@
     "@lezer/common": "^1.5.2",
     "@lezer/highlight": "^1.2.3",
     "@lezer/lr": "^1.4.10",
+    "ghostty-web": "^0.4.0",
     "moment": "^2.30.1",
+    "node-pty": "^1.1.0",
     "yaml": "^2.9.0"
   }
 }

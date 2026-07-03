@@ -33,6 +33,7 @@ import { createNoteComposerPluginDefinition } from "./NoteComposer";
 import { createMarkdownImporterPluginDefinition } from "./MarkdownImporter";
 import { createFileRecoveryPluginDefinition } from "./FileRecoveryPlugin";
 import { createWebViewerPluginDefinition } from "./WebViewerPlugin";
+import { createTerminalPluginDefinition } from "./TerminalPlugin";
 import { createBookmarksPluginDefinition } from "./Bookmarks";
 import { createSlidesPluginDefinition } from "./Slides";
 import { createAudioRecorderPluginDefinition } from "./AudioRecorder";
@@ -107,6 +108,7 @@ export const corePlugins: InternalPluginDefinition[] = [
   createWorkspacesPluginDefinition(),
   createFileRecoveryPluginDefinition(),
   createWebViewerPluginDefinition(),
+  createTerminalPluginDefinition(),
   {
     id: "file-explorer",
     name: "File explorer",

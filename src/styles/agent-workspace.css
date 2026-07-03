@@ -27,3 +27,38 @@
   background: transparent;
   color: var(--text-muted);
 }
+
+.terminal-view {
+  padding: 0;
+  height: 100%;
+  position: relative;
+  background: var(--background-primary);
+}
+.terminal-view-surface {
+  height: 100%;
+  width: 100%;
+}
+.terminal-view-surface canvas {
+  display: block;
+}
+.terminal-view-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--size-4-3);
+  background: var(--background-primary);
+  z-index: 1;
+}
+.terminal-view-overlay-message {
+  color: var(--text-muted);
+  max-width: 32em;
+  text-align: center;
+}
+.terminal-view-restart {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-2-2);
+}

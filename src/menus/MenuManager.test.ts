@@ -318,6 +318,7 @@ describe("MenuManager editor menu", () => {
     expect(folderMenu.items.filter((item): item is MenuItem => item instanceof MenuItem).map((item) => item.titleEl.textContent)).toEqual([
       "Move folder to...",
       "Copy path",
+      "Open terminal here",
       "Plugin file/folder action",
     ]);
     expect(filesMenu.items.filter((item): item is MenuItem => item instanceof MenuItem).map((item) => item.titleEl.textContent)).toEqual([

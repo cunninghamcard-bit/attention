@@ -4,6 +4,9 @@ const fileSystemSpecifier = "node:fs";
 
 const defaultCssImports = [
   "./styles/app.css",
+  // Agent-workspace product styles (terminal, code view). New rules belong
+  // there — never in the byte-locked app.css artifact.
+  "./styles/agent-workspace.css",
 ];
 
 const forbiddenDefaultImports = [
