@@ -6,10 +6,9 @@ import { AuthStorage, ModelRegistry, createAgentSession, type AgentSession } fro
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Engine, EngineEmit } from "./engine";
 
-export interface CanonicalEmit {
-  (event: { type: string; [key: string]: unknown }): void;
-}
+type CanonicalEmit = EngineEmit;
 
 // Engine config from env. PI_BASE_URL points at an Anthropic-compatible
 // endpoint (e.g. https://api.deepseek.com/anthropic) served under a custom
@@ -184,7 +183,7 @@ function bridgeEvents(agentId: string, session: AgentSession, emit: CanonicalEmi
   });
 }
 
-export async function runPiEngine(agentId: string, runId: string, text: string, emit: CanonicalEmit): Promise<void> {
+async function runPiEngine(agentId: string, runId: string, text: string, emit: CanonicalEmit): Promise<void> {
   const session = await ensureSession(agentId);
   // Subscribe once per session (first run); pi keeps the session alive.
   const entry = sessions.get(agentId)!;
@@ -201,6 +200,8 @@ export async function runPiEngine(agentId: string, runId: string, text: string, 
   }
 }
 
-export function abortPiAgent(agentId: string): void {
-  sessions.get(agentId)?.session.abort();
-}
+export const piEngine: Engine = {
+  name: "pi",
+  run: ({ agentId, runId, prompt, emit }) => runPiEngine(agentId, runId, prompt, emit),
+  stop: (agentId) => sessions.get(agentId)?.session.abort(),
+};

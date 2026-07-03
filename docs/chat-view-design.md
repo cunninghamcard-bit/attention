@@ -285,10 +285,24 @@ files (task checkboxes) stays read-only in chat.
 
 REST for commands, SSE for pushes (WebSocket rejected; see along discussion).
 
-Dev backend: `server/chat-bridge.ts` (bun). Drives
-`claude -p --output-format stream-json --include-partial-messages`,
-maps agentId -> Claude Code session id, transforms stream-json into
-canonical events. It stands in for along-go and speaks the same contract.
+Dev backend: `server/chat-bridge.ts` (bun). The bridge owns threads, HTTP
+and user-message echoing; everything engine-specific lives behind the
+engine kernel (`server/engine.ts`):
+
+```text
+Engine { name; run({agentId, runId, prompt, emit}); stop(agentId) }
+  claude-engine   claude -p stream-json, per-agent session id + proc
+  pi-engine       persistent pi AgentSession per agent
+  mock-engine     scripted stream, exercises every event shape offline
+```
+
+An engine's whole job is fn1: prompt in, canonical events out — including
+its own run.closed, since only the engine knows its real completion status.
+The frontend cannot tell engines apart, by design; Codex or any future
+engine is one more implementation. along-go's Worker implements the same
+interface in Go, and per-agent engine selection arrives with it (the engine
+becomes a column on the agent row, chosen at creation — no switching UI
+before then).
 
 ## Composer
 

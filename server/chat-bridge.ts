@@ -1,17 +1,22 @@
 // Chat bridge: REST commands in, SSE canonical events out.
-// Drives Claude Code (`claude -p --output-format stream-json`) as the agent
-// engine. Stands in for the future Go backend and speaks the same contract
-// as src/chat/AgentEvent.ts.
+// The bridge owns threads, HTTP and user-message echoing; everything
+// engine-specific lives behind the Engine interface (see engine.ts). It
+// stands in for the future Go backend and speaks the same contract as
+// src/agent/AgentEvent.ts.
 //
-//   bun server/chat-bridge.ts          real engine (requires `claude` auth)
+//   bun server/chat-bridge.ts          Claude Code engine (requires `claude` auth)
+//   bun server/chat-bridge.ts --pi     pi SDK engine (ANTHROPIC_API_KEY or PI_* env)
 //   bun server/chat-bridge.ts --mock   scripted stream, no engine needed
 
-import { abortPiAgent, runPiEngine } from "./pi-engine";
+import type { Engine } from "./engine";
+import { claudeEngine } from "./claude-engine";
+import { mockEngine } from "./mock-engine";
+import { piEngine } from "./pi-engine";
 
 const PORT = Number(process.env.CHAT_BRIDGE_PORT ?? 8787);
-const MOCK = process.argv.includes("--mock");
-const PI = process.argv.includes("--pi");
-const EXTRA_CLAUDE_ARGS = (process.env.CHAT_BRIDGE_CLAUDE_ARGS ?? "").split(" ").filter(Boolean);
+
+// Picked once at startup; per-agent engines arrive with the Go backend.
+const engine: Engine = process.argv.includes("--mock") ? mockEngine : process.argv.includes("--pi") ? piEngine : claudeEngine;
 
 interface BridgeEvent {
   seq: number;
@@ -25,8 +30,6 @@ interface Thread {
   seq: number;
   events: BridgeEvent[];
   listeners: Set<(event: BridgeEvent) => void>;
-  engineSessionId: string | null;
-  proc: ReturnType<typeof Bun.spawn> | null;
   counter: number;
   title: string | null;
   updatedAt: number;
@@ -43,8 +46,6 @@ function getThread(id: string): Thread {
       seq: 0,
       events: [],
       listeners: new Set(),
-      engineSessionId: null,
-      proc: null,
       counter: 0,
       title: null,
       updatedAt: Date.now(),
@@ -94,233 +95,15 @@ function composePrompt(text: string, attachments: MessageAttachment[]): string {
   return `${text}\n\n${blocks.join("\n\n")}`;
 }
 
-// --- Claude Code stream-json -> canonical events -------------------------
-
-interface EngineRunState {
-  runId: string;
-  currentMessageId: string | null;
-  toolParts: Map<string, { messageId: string; partIndex: number }>;
-  openParts: Map<number, { partType: string; toolId?: string }>;
-}
-
-function handleEngineLine(thread: Thread, run: EngineRunState, line: string): void {
-  let payload: any;
-  try {
-    payload = JSON.parse(line);
-  } catch {
-    return;
-  }
-
-  if (payload.type === "system" && payload.subtype === "init") {
-    thread.engineSessionId = payload.session_id ?? thread.engineSessionId;
-    return;
-  }
-
-  if (payload.type === "system" && payload.subtype === "compact_boundary") {
-    emit(thread, {
-      type: "context.compacted",
-      preTokens: payload.compact_metadata?.pre_tokens,
-      trigger: payload.compact_metadata?.trigger,
-    });
-    return;
-  }
-
-  if (payload.type === "stream_event") {
-    const event = payload.event;
-    if (!event) return;
-    switch (event.type) {
-      case "message_start": {
-        run.currentMessageId = event.message?.id ?? `${thread.id}-a${++thread.counter}`;
-        run.openParts.clear();
-        emit(thread, { type: "message.started", messageId: run.currentMessageId, role: "assistant" });
-        return;
-      }
-      case "content_block_start": {
-        if (!run.currentMessageId) return;
-        const block = event.content_block ?? {};
-        const partType = block.type === "tool_use" ? "tool" : block.type === "thinking" ? "thinking" : "text";
-        run.openParts.set(event.index, { partType, toolId: block.id });
-        if (partType === "tool" && block.id) {
-          run.toolParts.set(block.id, { messageId: run.currentMessageId, partIndex: event.index });
-        }
-        emit(thread, {
-          type: "part.opened",
-          messageId: run.currentMessageId,
-          partIndex: event.index,
-          partType,
-          toolName: block.name,
-        });
-        return;
-      }
-      case "content_block_delta": {
-        if (!run.currentMessageId) return;
-        const delta = event.delta ?? {};
-        const text = delta.text ?? delta.thinking ?? delta.partial_json ?? "";
-        if (!text) return;
-        emit(thread, { type: "part.delta", messageId: run.currentMessageId, partIndex: event.index, delta: text });
-        return;
-      }
-      case "content_block_stop": {
-        if (!run.currentMessageId) return;
-        emit(thread, { type: "part.closed", messageId: run.currentMessageId, partIndex: event.index });
-        return;
-      }
-      case "message_stop": {
-        if (!run.currentMessageId) return;
-        emit(thread, { type: "message.closed", messageId: run.currentMessageId });
-        run.currentMessageId = null;
-        return;
-      }
-    }
-    return;
-  }
-
-  // Tool results come back as user-role messages carrying tool_result blocks.
-  if (payload.type === "user") {
-    const content = payload.message?.content;
-    if (!Array.isArray(content)) return;
-    for (const block of content) {
-      if (block?.type !== "tool_result") continue;
-      const target = run.toolParts.get(block.tool_use_id);
-      if (!target) continue;
-      const result =
-        typeof block.content === "string"
-          ? block.content
-          : Array.isArray(block.content)
-            ? block.content.map((item: any) => item?.text ?? "").join("\n")
-            : JSON.stringify(block.content ?? "");
-      emit(thread, {
-        type: "part.closed",
-        messageId: target.messageId,
-        partIndex: target.partIndex,
-        result,
-        ...(block.is_error ? { error: result || "tool failed" } : {}),
-      });
-    }
-  }
-}
-
 async function runEngine(thread: Thread, text: string, attachments: MessageAttachment[] = []): Promise<void> {
   const runId = `${thread.id}-r${++thread.counter}`;
   emit(thread, { type: "run.started", runId });
   emitUserMessage(thread, text, attachments);
-
-  if (MOCK) {
-    await runMockEngine(thread, runId, text);
-    return;
-  }
-
-  if (PI) {
-    await runPiEngine(thread.id, runId, composePrompt(text, attachments), (event) => emit(thread, event));
-    return;
-  }
-
-  const prompt = composePrompt(text, attachments);
-  const args = ["claude", "-p", prompt, "--output-format", "stream-json", "--include-partial-messages", "--verbose"];
-  if (thread.engineSessionId) args.push("--resume", thread.engineSessionId);
-  args.push(...EXTRA_CLAUDE_ARGS);
-
-  // The desktop host injects a proxy base URL that child processes cannot
-  // authenticate against; strip it so the CLI uses its own credentials.
-  const env = { ...process.env };
-  delete env.ANTHROPIC_BASE_URL;
-  delete env.CLAUDECODE;
-  delete env.CLAUDE_CODE_SESSION_ID;
-  delete env.CLAUDE_CODE_CHILD_SESSION;
-  delete env.CLAUDE_CODE_ENTRYPOINT;
-
-  const proc = Bun.spawn(args, { env, stdout: "pipe", stderr: "pipe" });
-  thread.proc = proc;
-  const run: EngineRunState = { runId, currentMessageId: null, toolParts: new Map(), openParts: new Map() };
-
-  let buffered = "";
-  let sawError: string | null = null;
-  let usage: Record<string, unknown> | undefined;
-  const decoder = new TextDecoder();
-  for await (const chunk of proc.stdout) {
-    buffered += decoder.decode(chunk, { stream: true });
-    let newline = buffered.indexOf("\n");
-    while (newline !== -1) {
-      const line = buffered.slice(0, newline).trim();
-      buffered = buffered.slice(newline + 1);
-      if (line) {
-        handleEngineLine(thread, run, line);
-        try {
-          const payload = JSON.parse(line);
-          if (payload.type === "result") {
-            if (payload.is_error) sawError = payload.result ?? "engine error";
-            const raw = payload.usage;
-            if (raw) {
-              const inputTokens = (raw.input_tokens ?? 0) + (raw.cache_read_input_tokens ?? 0) + (raw.cache_creation_input_tokens ?? 0);
-              usage = {
-                inputTokens,
-                outputTokens: raw.output_tokens ?? 0,
-                totalTokens: inputTokens + (raw.output_tokens ?? 0),
-                ...(payload.total_cost_usd !== undefined ? { costUsd: payload.total_cost_usd } : {}),
-              };
-            }
-          }
-        } catch {
-          // non-JSON lines are ignored
-        }
-      }
-      newline = buffered.indexOf("\n");
-    }
-  }
-  const exitCode = await proc.exited;
-  thread.proc = null;
-  if (run.currentMessageId) emit(thread, { type: "message.closed", messageId: run.currentMessageId });
-  if (sawError) emit(thread, { type: "run.closed", runId, status: "error", error: sawError, usage });
-  else if (exitCode !== 0) emit(thread, { type: "run.closed", runId, status: "error", error: `engine exited with ${exitCode}`, usage });
-  else emit(thread, { type: "run.closed", runId, status: "completed", usage });
-}
-
-// --- Mock engine ----------------------------------------------------------
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function runMockEngine(thread: Thread, runId: string, text: string): Promise<void> {
-  if (text.includes("compact")) emit(thread, { type: "context.compacted", preTokens: 52000, trigger: "auto" });
-  const messageId = `${thread.id}-a${++thread.counter}`;
-  emit(thread, { type: "message.started", messageId, role: "assistant" });
-
-  emit(thread, { type: "part.opened", messageId, partIndex: 0, partType: "text" });
-  const intro = `你发来了:**${text.slice(0, 40)}**\n\n下面演示流式渲染,详见 [[Welcome]]:\n\n## 一个标题\n\n| 特性 | 状态 |\n| --- | --- |\n| 表格流式 | ✅ |\n| 内链元素 | ✅ |\n\n\`\`\`ts\nconst answer = 42;\nconsole.log(answer);\n\`\`\`\n\n\`\`\`mermaid\ngraph LR\n  A[SSE] --> B[reducer] --> C[ChatView]\n\`\`\`\n\n`;
-  for (const chunk of intro.match(/.{1,7}/gs) ?? []) {
-    emit(thread, { type: "part.delta", messageId, partIndex: 0, delta: chunk });
-    await sleep(24);
-  }
-  emit(thread, { type: "part.closed", messageId, partIndex: 0 });
-
-  const toolCalls: Array<[string, string, string, string?]> = [
-    ["Bash", '{"command":"echo hello"}', "hello"],
-    ["Edit", '{"file_path":"src/main.ts","old_string":"const a = 1;\\nconst b = 2;","new_string":"const a = 1;\\nconst b = 3;\\nconst c = 4;"}', "ok"],
-    ["Read", '{"file_path":"src/missing.ts"}', "ENOENT: no such file", "ENOENT: no such file"],
-    ["Grep", '{"pattern":"ChatView"}', "12 matches"],
-  ];
-  for (let index = 0; index < toolCalls.length; index++) {
-    const [toolName, input, result, error] = toolCalls[index];
-    const partIndex = index + 1;
-    emit(thread, { type: "part.opened", messageId, partIndex, partType: "tool", toolName });
-    emit(thread, { type: "part.delta", messageId, partIndex, delta: input });
-    emit(thread, { type: "part.closed", messageId, partIndex });
-    await sleep(350);
-    emit(thread, { type: "part.closed", messageId, partIndex, result, ...(error ? { error } : {}) });
-  }
-
-  emit(thread, { type: "part.opened", messageId, partIndex: 5, partType: "text" });
-  const outro = "工具跑完了。*流式*结束,这一条消息现在归档,DOM 原地移交。";
-  for (const chunk of outro.match(/.{1,5}/gs) ?? []) {
-    emit(thread, { type: "part.delta", messageId, partIndex: 5, delta: chunk });
-    await sleep(30);
-  }
-  emit(thread, { type: "part.closed", messageId, partIndex: 5 });
-  emit(thread, { type: "message.closed", messageId });
-  emit(thread, {
-    type: "run.closed",
+  await engine.run({
+    agentId: thread.id,
     runId,
-    status: "completed",
-    usage: { inputTokens: 12400, outputTokens: 860, totalTokens: 13260, costUsd: 0.021 },
+    prompt: composePrompt(text, attachments),
+    emit: (event) => emit(thread, event),
   });
 }
 
@@ -381,7 +164,7 @@ Bun.serve({
             .map((item) => ({ name: item.name, content: item.content }))
         : [];
       if (!text && attachments.length === 0) return new Response("missing text", { status: 400, headers: CORS_HEADERS });
-      if (thread.proc) return new Response("run in progress", { status: 409, headers: CORS_HEADERS });
+      if (thread.running) return new Response("run in progress", { status: 409, headers: CORS_HEADERS });
       void runEngine(thread, text, attachments).catch((error) => {
         emit(thread, { type: "run.closed", runId: `${thread.id}-r${thread.counter}`, status: "error", error: String(error) });
       });
@@ -400,10 +183,8 @@ Bun.serve({
     }
     if (agentMatch && request.method === "DELETE") {
       const id = decodeURIComponent(agentMatch[1]);
-      const thread = threads.get(id);
-      if (thread) {
-        thread.proc?.kill();
-        if (PI) abortPiAgent(id);
+      if (threads.has(id)) {
+        engine.stop(id);
         threads.delete(id);
       }
       return new Response("{}", { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
@@ -411,9 +192,7 @@ Bun.serve({
 
     const stopMatch = url.pathname.match(/^\/agents\/([^/]+)\/stop$/);
     if (stopMatch && request.method === "POST") {
-      const thread = getThread(decodeURIComponent(stopMatch[1]));
-      thread.proc?.kill();
-      if (PI) abortPiAgent(thread.id);
+      engine.stop(decodeURIComponent(stopMatch[1]));
       return new Response("{}", { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
     }
 
@@ -421,5 +200,4 @@ Bun.serve({
   },
 });
 
-const engineLabel = MOCK ? " (mock engine)" : PI ? " (pi engine)" : " (claude engine)";
-console.log(`chat-bridge listening on http://127.0.0.1:${PORT}${engineLabel}`);
+console.log(`chat-bridge listening on http://127.0.0.1:${PORT} (${engine.name} engine)`);
