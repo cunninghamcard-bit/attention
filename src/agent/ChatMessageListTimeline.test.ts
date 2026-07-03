@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentEvent } from "./AgentEvent";
 import { ChatMessageList } from "./ChatMessageList";
+import { registerChatMessageAction } from "./ChatRegistry";
 import { Agent } from "./Agent";
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -87,6 +88,44 @@ describe("tool timeline grouping", () => {
     expect(children.filter((name) => name === "chat-compact-divider")).toHaveLength(1);
     expect(parentEl.querySelector(".chat-compact-label")?.textContent).toBe("Context compacted · 52k tokens condensed");
     expect(children.lastIndexOf("chat-message")).toBeGreaterThan(dividerIndex);
+  });
+
+  it("folds a closed thinking part to a header with its duration", () => {
+    const { session, parentEl, list } = setup();
+    feed(session, [
+      { type: "message.started", messageId: "a1", role: "assistant" },
+      { type: "part.opened", messageId: "a1", partIndex: 0, partType: "thinking", ts: 1000 },
+      { type: "part.delta", messageId: "a1", partIndex: 0, delta: "推理内容" },
+      { type: "part.closed", messageId: "a1", partIndex: 0, ts: 3500 },
+    ] as never);
+    list.sync();
+    const thinking = parentEl.querySelector(".chat-part-thinking") as HTMLElement;
+    expect(thinking.querySelector(".chat-thinking-header")?.textContent).toBe("Thought · 2.5s");
+    expect(thinking.classList.contains("is-collapsed")).toBe(true);
+    (thinking.querySelector(".chat-thinking-header") as HTMLElement).click();
+    expect(thinking.classList.contains("is-collapsed")).toBe(false);
+  });
+
+  it("filters message actions by appliesTo", () => {
+    const unregister = registerChatMessageAction({
+      id: "user-only",
+      title: "Retry",
+      appliesTo: (message) => message.role === "user",
+      run: () => {},
+    });
+    try {
+      const { session, parentEl, list } = setup();
+      feed(session, [
+        { type: "message.started", messageId: "u1", role: "user" },
+        { type: "message.closed", messageId: "u1" },
+        { type: "message.started", messageId: "a1", role: "assistant" },
+      ]);
+      list.sync();
+      expect(parentEl.querySelector('.chat-message[data-role="user"] .chat-message-action')?.textContent).toBe("retry");
+      expect(parentEl.querySelector('.chat-message[data-role="assistant"] .chat-message-action')).toBeNull();
+    } finally {
+      unregister();
+    }
   });
 
   it("renders a run error as a stream row, shown on replay too", () => {

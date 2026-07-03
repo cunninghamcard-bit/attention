@@ -53,6 +53,11 @@ export class ChatView extends StreamView {
     await this.session?.stop();
   }
 
+  setComposerText(text: string): void {
+    this.composer?.setValue(text);
+    this.composer?.focus();
+  }
+
   async onOpen(): Promise<void> {
     ensureChatStyles(this.app);
     this.contentEl.classList.add("chat-view");

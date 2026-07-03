@@ -1,6 +1,6 @@
 import type { Extension } from "@codemirror/state";
 import type { Component } from "../core/Component";
-import type { ChatMessage, ToolChatPart } from "./Agent";
+import type { Agent, ChatMessage, ToolChatPart } from "./Agent";
 
 export interface ChatToolRendererContext {
   component: Component;
@@ -30,10 +30,17 @@ export interface ChatComposerAction {
   onClick(context: ChatComposerActionContext): void;
 }
 
+export interface ChatMessageActionContext {
+  agent: Agent;
+}
+
 export interface ChatMessageAction {
   id: string;
   title: string;
-  run(message: ChatMessage): void;
+  // Omitted = the action applies to every message (e.g. Copy); Retry only
+  // makes sense on user messages, so it filters here.
+  appliesTo?(message: ChatMessage): boolean;
+  run(message: ChatMessage, context: ChatMessageActionContext): void;
 }
 
 const toolRenderers = new Map<string, ChatToolRenderer>();

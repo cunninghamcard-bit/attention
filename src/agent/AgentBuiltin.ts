@@ -5,7 +5,12 @@ import { newAgentId } from "./AgentManager";
 import { registerChatMessageAction, registerChatSlashCommand } from "./ChatRegistry";
 import { registerBuiltinToolCards } from "./ChatToolCards";
 import { AgentStatusBar } from "./AgentStatusBar";
-import { chatMessageToMarkdown } from "./Agent";
+import { chatMessageToMarkdown, type ChatMessage } from "./Agent";
+
+function firstTextOf(message: ChatMessage): string {
+  const part = message.parts.find((item) => item?.type === "text");
+  return part && "markdown" in part ? part.markdown : "";
+}
 import { AgentsView, AGENTS_VIEW_TYPE } from "./AgentsView";
 import { ChatView, CHAT_VIEW_TYPE } from "./ChatView";
 
@@ -84,6 +89,27 @@ export function registerAgentBuiltin(app: App): void {
     title: "Copy",
     run: (message) => {
       void writeClipboardText(chatMessageToMarkdown(message)).then(() => new Notice("Message copied"));
+    },
+  });
+  registerChatMessageAction({
+    id: "retry",
+    title: "Retry",
+    appliesTo: (message) => message.role === "user",
+    run: (message, { agent }) => {
+      const text = firstTextOf(message);
+      if (text) void agent.sendMessage(text).catch((error) => new Notice(`Retry failed: ${error instanceof Error ? error.message : String(error)}`));
+    },
+  });
+  // Edit = refill the composer, the honest v1: the sent message is history
+  // and stays; a corrected version goes out as a new message.
+  registerChatMessageAction({
+    id: "edit",
+    title: "Edit",
+    appliesTo: (message) => message.role === "user",
+    run: (message) => {
+      const text = firstTextOf(message);
+      const view = app.workspace.getActiveViewOfType(ChatView);
+      if (text && view) view.setComposerText(text);
     },
   });
 

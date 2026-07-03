@@ -61,11 +61,42 @@ class ChatPartRenderer extends Component {
     return `${part.type}:${part.closed}:${part.markdown.length}`;
   }
 
+  private thinkingHeaderEl: HTMLElement | null = null;
+  private thinkingToggled = false;
+
   private syncText(part: Extract<ChatPart, { type: "text" | "thinking" }>): void {
-    this.el.className = part.type === "thinking" ? "chat-part chat-part-thinking" : "chat-part chat-part-text";
-    if (!this.renderer) this.renderer = new StreamMarkdownRenderer(this.el, this, `agent://${this.messageId}/${this.partIndex}`);
+    if (part.type === "thinking") return this.syncThinking(part);
+    this.el.className = "chat-part chat-part-text";
+    this.ensureMarkdownTarget(this.el);
+    this.typewriter!.setTarget(part.markdown, part.closed);
+  }
+
+  // Thinking renders as a collapsible card: open with a shimmering header
+  // while it streams, folded to "Thought · 3.2s" once it closes — the
+  // reasoning stays reachable without dominating the transcript.
+  private syncThinking(part: Extract<ChatPart, { type: "thinking" }>): void {
+    this.el.className = `chat-part chat-part-thinking${part.closed && !this.thinkingToggled ? " is-collapsed" : ""}`;
+    if (!this.thinkingHeaderEl) {
+      this.thinkingHeaderEl = createDiv("chat-thinking-header", this.el);
+      this.thinkingHeaderEl.addEventListener("click", () => {
+        this.thinkingToggled = true;
+        this.el.toggleClass("is-collapsed", !this.el.hasClass("is-collapsed"));
+      });
+    }
+    const elapsed = part.openedAt ? ((part.closedAt ?? Date.now()) - part.openedAt) / 1000 : null;
+    this.thinkingHeaderEl.setText(
+      part.closed ? `Thought${elapsed !== null ? ` · ${elapsed.toFixed(1)}s` : ""}` : `Thinking…${elapsed !== null && elapsed >= 2 ? ` ${Math.round(elapsed)}s` : ""}`,
+    );
+    if (!this.thinkingBodyEl) this.thinkingBodyEl = createDiv("chat-thinking-body", this.el);
+    this.ensureMarkdownTarget(this.thinkingBodyEl);
+    this.typewriter!.setTarget(part.markdown, part.closed);
+  }
+
+  private thinkingBodyEl: HTMLElement | null = null;
+
+  private ensureMarkdownTarget(parentEl: HTMLElement): void {
+    if (!this.renderer) this.renderer = new StreamMarkdownRenderer(parentEl, this, `agent://${this.messageId}/${this.partIndex}`);
     if (!this.typewriter) this.typewriter = new Typewriter((visible, done) => this.renderMarkdown(visible, done));
-    this.typewriter.setTarget(part.markdown, part.closed);
   }
 
   private renderMarkdown(visible: string, done: boolean): void {
@@ -129,6 +160,7 @@ class ChatMessageItem extends Component {
   constructor(
     parentEl: HTMLElement,
     private readonly message: ChatMessage,
+    private readonly session: Agent,
     private readonly onGrow?: ChatContentGrowCallback,
   ) {
     super();
@@ -139,9 +171,10 @@ class ChatMessageItem extends Component {
     createDiv({ cls: "chat-message-role", text: message.role === "user" ? "You" : "Assistant", parent: headerEl });
     const actionsEl = createDiv("chat-message-actions", headerEl);
     for (const action of listChatMessageActions()) {
+      if (action.appliesTo && !action.appliesTo(message)) continue;
       const buttonEl = createEl("button", { cls: "chat-message-action", parent: actionsEl, title: action.title });
       buttonEl.setText(action.title.toLowerCase());
-      buttonEl.addEventListener("click", () => action.run(this.message));
+      buttonEl.addEventListener("click", () => action.run(this.message, { agent: this.session }));
     }
     this.partsEl = createDiv("chat-message-parts", this.el);
   }
@@ -160,6 +193,24 @@ class ChatMessageItem extends Component {
     }
     this.syncTimelines();
     this.el.toggleClass("is-closed", this.message.closed);
+    this.syncUserCollapse();
+  }
+
+  // Long user messages fold to a preview with a fade mask — the question is
+  // context, not the content being read. Measured once; user messages arrive
+  // closed and never grow.
+  private showMoreEl: HTMLElement | null = null;
+
+  private syncUserCollapse(): void {
+    if (this.message.role !== "user" || this.showMoreEl || !this.message.closed) return;
+    if (this.partsEl.scrollHeight <= 220) return;
+    this.el.addClass("is-collapsible");
+    this.showMoreEl = createEl("button", { cls: "chat-show-more", text: "Show more", parent: this.el });
+    this.showMoreEl.addEventListener("click", () => {
+      const expanded = this.el.hasClass("is-expanded");
+      this.el.toggleClass("is-expanded", !expanded);
+      this.showMoreEl!.setText(expanded ? "Show more" : "Show less");
+    });
   }
 
   // Consecutive tool parts share one timeline: the run's activity reads as
@@ -174,7 +225,10 @@ class ChatMessageItem extends Component {
     const el = createDiv("chat-tool-timeline", this.partsEl);
     const headerEl = createDiv("chat-tool-timeline-header", el);
     const headerTextEl = createSpan({ cls: "chat-tool-timeline-summary", parent: headerEl });
-    const bodyEl = createDiv("chat-tool-timeline-body", el);
+    // The clip wrapper animates collapse via grid-template-rows 1fr -> 0fr;
+    // height: auto cannot transition, grid fractions can.
+    const clipEl = createDiv("chat-tool-timeline-clip", el);
+    const bodyEl = createDiv("chat-tool-timeline-body", clipEl);
     const timeline: ToolTimeline = { el, headerTextEl, bodyEl, partIndexes: [index], userToggled: false, autoCollapsed: false };
     headerEl.addEventListener("click", () => {
       timeline.userToggled = true;
@@ -245,7 +299,7 @@ export class ChatMessageList extends Component {
       let item = this.items.get(message.id);
       if (!item) {
         this.renderCompactionsAfter(messages[messages.indexOf(message) - 1]?.id ?? null);
-        item = this.addChild(new ChatMessageItem(this.el, message, this.onGrow));
+        item = this.addChild(new ChatMessageItem(this.el, message, this.session, this.onGrow));
         this.items.set(message.id, item);
         this.el.appendChild(this.thinkingEl);
         this.el.appendChild(this.errorEl);
