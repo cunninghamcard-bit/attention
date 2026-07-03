@@ -1,9 +1,10 @@
-import { Compartment, EditorState, type Extension } from "@codemirror/state";
+import { Compartment, EditorSelection, EditorState, type Extension } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { HighlightStyle, LanguageDescription, syntaxHighlighting } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { tags } from "@lezer/highlight";
+import { ensureRangeGeometry } from "../editor/EditorView";
 import { TextFileView } from "./TextFileView";
 import type { TFile } from "../vault/TAbstractFile";
 
@@ -45,6 +46,7 @@ export class CodeFileView extends TextFileView {
   private cm: EditorView | null = null;
   private readonly languageCompartment = new Compartment();
   private applyingViewData = false;
+  private pendingReveal: { line: number; start: number; end: number } | null = null;
 
   getViewType(): string { return CodeFileView.VIEW_TYPE; }
   getDisplayText(): string { return this.file?.name ?? "Code"; }
@@ -53,6 +55,7 @@ export class CodeFileView extends TextFileView {
   async onOpen(): Promise<void> {
     await super.onOpen();
     this.contentEl.classList.add("code-file-view");
+    ensureRangeGeometry(this.contentEl.ownerDocument.defaultView ?? window);
     this.cm = new EditorView({
       parent: this.contentEl,
       state: EditorState.create({ doc: this.source, extensions: this.baseExtensions() }),
@@ -62,6 +65,39 @@ export class CodeFileView extends TextFileView {
   override async onLoadFile(file: TFile): Promise<void> {
     await super.onLoadFile(file);
     await this.applyLanguage(file.name);
+    this.applyReveal();
+  }
+
+  /** eState contract shared with MarkdownView: { line (0-based), matchStart, matchEnd }. */
+  override setEphemeralState(state: unknown): void {
+    if (!state || typeof state !== "object") return;
+    const { line, matchStart, matchEnd } = state as { line?: unknown; matchStart?: unknown; matchEnd?: unknown };
+    const lineNumber = Number(line);
+    if (!Number.isFinite(lineNumber)) return;
+    this.pendingReveal = { line: lineNumber, start: Number(matchStart), end: Number(matchEnd) };
+    this.applyReveal();
+  }
+
+  revealLine(line: number, start = Number.NaN, end = Number.NaN): void {
+    this.pendingReveal = { line, start, end };
+    this.applyReveal();
+  }
+
+  private applyReveal(): void {
+    // The document may not be loaded yet when the ephemeral state arrives;
+    // onLoadFile retries once the content is in.
+    if (!this.cm || !this.pendingReveal || this.cm.state.doc.length === 0) return;
+    const { line, start, end } = this.pendingReveal;
+    this.pendingReveal = null;
+    const doc = this.cm.state.doc;
+    const docLine = doc.line(Math.min(Math.max(line + 1, 1), doc.lines));
+    const from = Number.isFinite(start) ? Math.min(docLine.from + start, docLine.to) : docLine.from;
+    const to = Number.isFinite(end) ? Math.min(docLine.from + end, docLine.to) : from;
+    this.cm.dispatch({
+      selection: EditorSelection.range(from, to),
+      effects: EditorView.scrollIntoView(from, { y: "center" }),
+    });
+    this.cm.focus();
   }
 
   override setViewData(data: string, clearDirty = false): void {

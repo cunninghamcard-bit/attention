@@ -33,6 +33,20 @@ describe("CodeFileView", () => {
     expect(view.contentEl.querySelector(".cm-content")?.textContent).toContain("print('b')");
   });
 
+  it("jumps to the eState line and selects the match range", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const file = await app.vault.create("jump.ts", "const a = 1;\nconst b = 2;\nconst target = 3;\n");
+
+    const leaf = await app.workspace.openFile(file, { active: true, eState: { line: 2, matchStart: 6, matchEnd: 12 } });
+    const view = leaf.view as CodeFileView;
+
+    const cm = (view as unknown as { cm: { state: { selection: { main: { from: number; to: number } }, doc: { line(n: number): { from: number } } } } }).cm;
+    const lineStart = cm.state.doc.line(3).from;
+    expect(cm.state.selection.main.from).toBe(lineStart + 6);
+    expect(cm.state.selection.main.to).toBe(lineStart + 12);
+  });
+
   it("saves edited view data back to the vault", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;

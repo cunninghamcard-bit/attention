@@ -300,7 +300,7 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function ensureRangeGeometry(win: Window): void {
+export function ensureRangeGeometry(win: Window): void {
   const globals = win as unknown as {
     Range?: { prototype: Range };
     DOMRect?: typeof DOMRect;
