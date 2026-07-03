@@ -1,5 +1,6 @@
 import { createDiv, createSpan } from "../dom/dom";
 import { ChatView } from "./ChatView";
+import { createStatusDot } from "./StatusDot";
 
 export const MULTI_AGENT_VIEW_TYPE = "multi-agent";
 
@@ -53,7 +54,7 @@ export class MultiAgentView extends ChatView {
   private chip(id: string, name: string): void {
     const chipEl = createSpan({ cls: "multi-agent-chip", parent: this.participantsEl! });
     chipEl.dataset.participantId = id;
-    createSpan({ cls: "multi-agent-chip-dot", parent: chipEl });
+    createStatusDot(chipEl, "on");
     chipEl.appendText(name);
   }
 }

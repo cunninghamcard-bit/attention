@@ -1,8 +1,10 @@
 import { getMarkdown, parseMarkdownToStructure } from "stream-markdown-parser";
 import { createDiv, createEl, createSpan } from "../dom/dom";
 import { Component } from "../core/Component";
+import { Collapse } from "../ui/Collapse";
 import { getChatToolRenderer, listChatMessageActions } from "./ChatRegistry";
-import type { ChatMessage, ChatPart, Agent, ToolChatPart } from "./Agent";
+import type { ChatMessage, ChatPart, Agent, TextChatPart, ToolChatPart } from "./Agent";
+import { createStatusDot, setStatusDot } from "./StatusDot";
 import { StreamMarkdownRenderer } from "../views/StreamMarkdownRenderer";
 import { Typewriter } from "../views/Typewriter";
 
@@ -79,41 +81,52 @@ class ChatPartRenderer extends Component {
     return `${part.type}:${part.closed}:${part.markdown.length}`;
   }
 
-  private thinkingHeaderEl: HTMLElement | null = null;
-  private thinkingToggled = false;
+  private thinkingCollapse: Collapse | null = null;
+  private thinkingPart: TextChatPart | null = null;
+  private thinkingTimer = 0;
 
   private syncText(part: Extract<ChatPart, { type: "text" | "thinking" }>): void {
     if (part.type === "thinking") return this.syncThinking(part);
-    this.el.className = "chat-part chat-part-text";
+    this.el.classList.add("chat-part-text");
     this.ensureMarkdownTarget(this.el);
     if (!typewriterEnabled()) return this.renderMarkdown(part.markdown, part.closed);
     this.typewriter!.setTarget(part.markdown, part.closed);
   }
 
   // Thinking renders as a collapsible card: open with a shimmering header
-  // while it streams, folded to "Thought · 3.2s" once it closes — the
-  // reasoning stays reachable without dominating the transcript.
+  // and a live elapsed clock while it streams, folded to "Thought · 3.2s"
+  // once it closes — reasoning stays reachable without dominating the
+  // transcript.
   private syncThinking(part: Extract<ChatPart, { type: "text" | "thinking" }>): void {
-    const collapsed = part.closed && !this.thinkingToggled && autoCollapseThinking();
-    this.el.className = `chat-part chat-part-thinking${collapsed ? " is-collapsed" : ""}`;
-    if (!this.thinkingHeaderEl) {
-      this.thinkingHeaderEl = createDiv("chat-thinking-header", this.el);
-      this.thinkingHeaderEl.addEventListener("click", () => {
-        this.thinkingToggled = true;
-        this.el.toggleClass("is-collapsed", !this.el.hasClass("is-collapsed"));
-      });
+    this.el.classList.add("chat-part-thinking");
+    this.thinkingPart = part;
+    if (!this.thinkingCollapse) {
+      this.thinkingCollapse = new Collapse(this.el, { header: "chat-thinking-header", clip: "chat-thinking-clip", body: "chat-thinking-body" });
     }
-    const elapsed = part.openedAt ? ((part.closedAt ?? Date.now()) - part.openedAt) / 1000 : null;
-    this.thinkingHeaderEl.setText(
-      part.closed ? `Thought${elapsed !== null ? ` · ${elapsed.toFixed(1)}s` : ""}` : `Thinking…${elapsed !== null && elapsed >= 2 ? ` ${Math.round(elapsed)}s` : ""}`,
-    );
-    if (!this.thinkingBodyEl) this.thinkingBodyEl = createDiv("chat-thinking-body", this.el);
-    this.ensureMarkdownTarget(this.thinkingBodyEl);
+    if (!this.thinkingCollapse.userToggled) this.thinkingCollapse.setCollapsed(part.closed && autoCollapseThinking());
+    this.updateThinkingHeader();
+    // The clock ticks between deltas too, so a silent engine still reads as
+    // alive; the interval dies with the component or the part's close.
+    if (!part.closed && !this.thinkingTimer) {
+      this.thinkingTimer = window.setInterval(() => this.updateThinkingHeader(), 1000);
+      this.registerInterval(this.thinkingTimer);
+    } else if (part.closed && this.thinkingTimer) {
+      window.clearInterval(this.thinkingTimer);
+      this.thinkingTimer = 0;
+    }
+    this.ensureMarkdownTarget(this.thinkingCollapse.bodyEl);
     if (!typewriterEnabled()) return this.renderMarkdown(part.markdown, part.closed);
     this.typewriter!.setTarget(part.markdown, part.closed);
   }
 
-  private thinkingBodyEl: HTMLElement | null = null;
+  private updateThinkingHeader(): void {
+    const part = this.thinkingPart;
+    if (!part || !this.thinkingCollapse) return;
+    const elapsed = part.openedAt ? ((part.closedAt ?? Date.now()) - part.openedAt) / 1000 : null;
+    this.thinkingCollapse.headerEl.setText(
+      part.closed ? `Thought${elapsed !== null ? ` · ${elapsed.toFixed(1)}s` : ""}` : `Thinking…${elapsed !== null && elapsed >= 2 ? ` ${Math.round(elapsed)}s` : ""}`,
+    );
+  }
 
   private ensureMarkdownTarget(parentEl: HTMLElement): void {
     if (!this.renderer) this.renderer = new StreamMarkdownRenderer(parentEl, this, `agent://${this.messageId}/${this.partIndex}`);
@@ -164,11 +177,10 @@ class ChatPartRenderer extends Component {
 }
 
 interface ToolTimeline {
-  el: HTMLElement;
+  collapse: Collapse;
+  dotEl: HTMLElement;
   headerTextEl: HTMLElement;
-  bodyEl: HTMLElement;
   partIndexes: number[];
-  userToggled: boolean;
   autoCollapsed: boolean;
 }
 
@@ -197,7 +209,12 @@ class ChatMessageItem extends Component {
       if (action.appliesTo && !action.appliesTo(message)) continue;
       const buttonEl = createEl("button", { cls: "chat-message-action", parent: actionsEl, title: action.title });
       buttonEl.setText(action.title.toLowerCase());
-      buttonEl.addEventListener("click", () => action.run(this.message, { agent: this.session }));
+      buttonEl.addEventListener("click", () => {
+        action.run(this.message, { agent: this.session });
+        // ArkLoop-style feedback: the button itself confirms, briefly.
+        buttonEl.setText("✓");
+        window.setTimeout(() => buttonEl.setText(action.title.toLowerCase()), 900);
+      });
     }
     this.partsEl = createDiv("chat-message-parts", this.el);
   }
@@ -208,7 +225,7 @@ class ChatMessageItem extends Component {
       if (!part) continue;
       let renderer = this.partRenderers[index];
       if (!renderer) {
-        const parentEl = part.type === "tool" ? this.timelineFor(index).bodyEl : this.partsEl;
+        const parentEl = part.type === "tool" ? this.timelineFor(index).collapse.bodyEl : this.partsEl;
         renderer = this.addChild(new ChatPartRenderer(parentEl, this.message.id, index, this.onGrow));
         this.partRenderers[index] = renderer;
       }
@@ -246,17 +263,10 @@ class ChatMessageItem extends Component {
       return previous;
     }
     const el = createDiv("chat-tool-timeline", this.partsEl);
-    const headerEl = createDiv("chat-tool-timeline-header", el);
-    const headerTextEl = createSpan({ cls: "chat-tool-timeline-summary", parent: headerEl });
-    // The clip wrapper animates collapse via grid-template-rows 1fr -> 0fr;
-    // height: auto cannot transition, grid fractions can.
-    const clipEl = createDiv("chat-tool-timeline-clip", el);
-    const bodyEl = createDiv("chat-tool-timeline-body", clipEl);
-    const timeline: ToolTimeline = { el, headerTextEl, bodyEl, partIndexes: [index], userToggled: false, autoCollapsed: false };
-    headerEl.addEventListener("click", () => {
-      timeline.userToggled = true;
-      el.toggleClass("is-collapsed", !el.hasClass("is-collapsed"));
-    });
+    const collapse = new Collapse(el, { header: "chat-tool-timeline-header", clip: "chat-tool-timeline-clip", body: "chat-tool-timeline-body" });
+    const dotEl = createStatusDot(collapse.headerEl, "running");
+    const headerTextEl = createSpan({ cls: "chat-tool-timeline-summary", parent: collapse.headerEl });
+    const timeline: ToolTimeline = { collapse, dotEl, headerTextEl, partIndexes: [index], autoCollapsed: false };
     this.timelines.set(index, timeline);
     return timeline;
   }
@@ -272,12 +282,13 @@ class ChatMessageItem extends Component {
       const duration = !running && opened && closed && closed > opened ? ` · ${((closed - opened) / 1000).toFixed(1)}s` : "";
       const status = running ? "running" : failedCount ? `${failedCount} failed` : "done";
       timeline.headerTextEl.setText(`${total} tool call${total === 1 ? "" : "s"} · ${status}${duration}`);
-      timeline.el.toggleClass("is-running", running);
-      timeline.el.toggleClass("has-failed", failedCount > 0);
+      setStatusDot(timeline.dotEl, running ? "running" : failedCount ? "failed" : "done");
+      timeline.collapse.rootEl.toggleClass("is-running", running);
+      timeline.collapse.rootEl.toggleClass("has-failed", failedCount > 0);
       // Failures keep the timeline open; a fully green run tucks itself away.
-      if (!running && failedCount === 0 && !timeline.userToggled && !timeline.autoCollapsed) {
+      if (!running && failedCount === 0 && !timeline.collapse.userToggled && !timeline.autoCollapsed) {
         timeline.autoCollapsed = true;
-        timeline.el.addClass("is-collapsed");
+        timeline.collapse.setCollapsed(true);
       }
     }
   }

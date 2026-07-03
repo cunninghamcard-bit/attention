@@ -260,6 +260,29 @@ The test for a new element: if it would survive history replay it belongs in
 the stream; if it follows the active leaf it belongs in the status bar; only
 what operates THIS window belongs on the view.
 
+## The component kit (ArkLoop parity, no React)
+
+ArkLoop's polish decomposes into a small set of primitives; each has a
+vanilla counterpart here. Components own DOM and expose sync(); state is
+CSS classes; animation is CSS transitions — the DOM-handoff advantage
+(a finished message keeps the exact DOM it streamed into) is only possible
+because there is no render path to drop.
+
+| ArkLoop (React + framer-motion)   | ours                                     |
+|-----------------------------------|------------------------------------------|
+| useTypewriter (adaptive CPS)      | views/Typewriter — exponential drain     |
+| useScrollPin (3-state scroll)     | views/StreamScroller + send anchoring    |
+| motion height expand/collapse     | ui/Collapse — grid-rows 1fr<->0fr clip   |
+| status badge family               | agent/StatusDot — one dot, 5 states      |
+| live "Thinking 12s" timers        | interval inside the part renderer        |
+| CopyIconButton "Copied!"          | action button flashes ✓                  |
+| enter animations                  | CSS @keyframes on .chat-message          |
+
+Collapse and StatusDot are deliberately dumb: callers name the CSS classes
+(selector contracts survive refactors) and auto-collapse logic stays with
+the caller — the primitive only refuses to fight a user's explicit toggle
+(userToggled).
+
 ## The view ladder
 
 ```text

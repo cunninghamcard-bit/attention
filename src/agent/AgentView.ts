@@ -7,6 +7,7 @@ import { newRoomId, openAgent, openAgentProperties, openRoom } from "./AgentBuil
 import { newAgentId } from "./AgentManager";
 import { AgentTransport, type AgentSummary } from "./AgentTransport";
 import { ensureChatStyles } from "./ChatStyles";
+import { createStatusDot } from "./StatusDot";
 
 // The type string keeps its board heritage; the class carries the product
 // vocabulary: AgentView is the view of the agent population.
@@ -116,7 +117,7 @@ export class AgentView extends ItemView {
     cardEl.dataset.agentId = agent.id;
 
     const headerEl = createDiv("agent-card-header", cardEl);
-    createSpan({ cls: "agent-card-status", parent: headerEl });
+    createStatusDot(headerEl, agent.running ? "running" : "idle", "agent-card-status");
     createDiv({ cls: "agent-card-title", text: agent.title ?? agent.id, parent: headerEl });
 
     const metaEl = createDiv("agent-card-meta", cardEl);
