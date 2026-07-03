@@ -8,6 +8,7 @@ export const STRINGS = {
   composer: {
     send: "Send",
     stop: "Stop",
+    attach: "Attach file",
   },
   queued: {
     label: "Queued",

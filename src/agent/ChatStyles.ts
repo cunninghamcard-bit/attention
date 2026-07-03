@@ -179,4 +179,10 @@ const CHAT_CSS = `
     .chat-queued-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; }
     .chat-queued-cancel { flex: 0 0 auto; border: none; background: none; cursor: pointer; opacity: 0.5; font-size: 14px; line-height: 1; padding: 0 2px; color: var(--text-normal, #1a1a19); }
     .chat-queued-cancel:hover { opacity: 1; }
+    .chat-composer-attach-input { display: none; }
+    .chat-composer-attach { width: 31.5px; height: 31.5px; padding: 0; border-radius: 8px; cursor: pointer; border: none; background: transparent; color: var(--text-muted, #8c8c8a); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; margin-right: auto; transition: background-color 60ms ease, color 60ms ease; }
+    .chat-composer-attach:hover { background: var(--background-modifier-hover, rgba(120,120,140,0.12)); color: var(--text-normal, #1a1a19); }
+    .chat-composer-attach svg { width: 17px; height: 17px; }
+    .chat-composer-card.is-dragging { border-color: rgba(0, 0, 0, 0.32); }
+    .theme-dark .chat-composer-card.is-dragging { border-color: rgba(255, 255, 255, 0.35); }
 `;

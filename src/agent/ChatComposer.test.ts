@@ -123,4 +123,51 @@ describe("ChatComposer (CodeMirror host)", () => {
       unregister();
     }
   });
+
+  it("shows an attach button in the toolbar", () => {
+    const { parentEl } = setup();
+    const attachButton = parentEl.querySelector(".chat-composer-attach");
+    expect(attachButton).not.toBeNull();
+    expect(attachButton?.getAttribute("title")).toBe("Attach file");
+  });
+
+  it("attaches a file chosen through the picker input", async () => {
+    const { parentEl, composer } = setup();
+    const inputEl = parentEl.querySelector(".chat-composer-attach-input") as HTMLInputElement;
+    const file = fakeTextFile("notes.txt", "hello");
+    Object.defineProperty(inputEl, "files", { configurable: true, value: [file] });
+
+    inputEl.dispatchEvent(new Event("change"));
+    await flushMicrotasks();
+
+    expect(composer.attachmentBar.list()).toEqual([expect.objectContaining({ name: "notes.txt", content: "hello" })]);
+  });
+
+  it("attaches files dropped on the composer card and clears the drag state", async () => {
+    const { parentEl, composer } = setup();
+    const cardEl = parentEl.querySelector(".chat-composer-card") as HTMLElement;
+    const file = fakeTextFile("dropped.md", "# hi");
+
+    const dragoverEvent = new Event("dragover", { cancelable: true });
+    cardEl.dispatchEvent(dragoverEvent);
+    expect(cardEl.hasClass("is-dragging")).toBe(true);
+
+    const dropEvent = new Event("drop", { cancelable: true }) as Event & { dataTransfer?: unknown };
+    dropEvent.dataTransfer = { files: [file] };
+    cardEl.dispatchEvent(dropEvent);
+    await flushMicrotasks();
+
+    expect(cardEl.hasClass("is-dragging")).toBe(false);
+    expect(composer.attachmentBar.list()).toEqual([expect.objectContaining({ name: "dropped.md", content: "# hi" })]);
+  });
 });
+
+// Synthetic file-like object rather than a real File: only the surface
+// ChatComposer touches (name, type, text()) needs to exist.
+function fakeTextFile(name: string, content: string): File {
+  return { name, type: "text/plain", text: async () => content } as unknown as File;
+}
+
+function flushMicrotasks(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}

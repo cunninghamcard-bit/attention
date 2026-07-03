@@ -40,6 +40,17 @@ export interface ChatComposerOptions {
   agentId?: string;
 }
 
+// Shared by the attach button, drag-and-drop, and paste: images fall through
+// to addFile so ChatAttachmentBar's existing rejection Notice fires once,
+// in one place, instead of being re-checked at every ingestion site.
+async function ingestAttachmentFile(bar: ChatAttachmentBar, file: File): Promise<void> {
+  if (file.type.startsWith("image/")) {
+    bar.addFile(file);
+    return;
+  }
+  bar.addText(file.name, await file.text());
+}
+
 // The composer is a CodeMirror extension host, the way MarkdownView's editor
 // is: plugins contribute Extensions through registerChatComposerExtension and
 // completions ride the standard autocomplete pipeline.
@@ -48,6 +59,9 @@ export class ChatComposer extends Component {
   readonly attachmentBar: ChatAttachmentBar;
   private readonly editor: EditorView;
   private readonly sendButtonEl: HTMLButtonElement;
+  private readonly attachButtonEl: HTMLButtonElement;
+  private readonly attachInputEl: HTMLInputElement;
+  private readonly cardEl: HTMLElement;
   private readonly pluginExtensions = new Compartment();
   private readonly agentId: string | null;
   private historyCursor = -1;
@@ -65,6 +79,7 @@ export class ChatComposer extends Component {
     // ArkLoop-style input card: the card is the visual unit (border, focus
     // ring, shadow); the editor sits chromeless inside, a toolbar row below.
     const cardEl = createDiv("chat-composer-card", this.el);
+    this.cardEl = cardEl;
     const editorEl = createDiv("chat-composer-input", cardEl);
 
     const draftExtensions: Extension[] = this.agentId ? [chatDraftPersistence(this.agentId)] : [];
@@ -104,6 +119,12 @@ export class ChatComposer extends Component {
     });
 
     const toolbarEl = createDiv("chat-composer-toolbar", cardEl);
+    // Hidden picker input: the button is the only visible affordance, the
+    // way a native file-attach control works in ArkLoop/Claude Desktop.
+    this.attachInputEl = createEl("input", { cls: "chat-composer-attach-input", parent: toolbarEl, attr: { type: "file", multiple: true } });
+    this.attachInputEl.hide();
+    this.attachButtonEl = createEl("button", { cls: "chat-composer-attach", parent: toolbarEl, title: STRINGS.composer.attach });
+    setIcon(this.attachButtonEl, "lucide-plus");
     const actionsEl = createDiv("chat-composer-actions", toolbarEl);
     for (const action of listChatComposerActions()) {
       const buttonEl = createEl("button", { cls: "chat-composer-action", parent: actionsEl, text: action.title });
@@ -126,10 +147,34 @@ export class ChatComposer extends Component {
 
   override onload(): void {
     this.registerDomEvent(this.sendButtonEl, "click", () => (this.callbacks.isRunning() ? this.callbacks.stop() : void this.submit()));
+    this.registerDomEvent(this.attachButtonEl, "click", () => this.attachInputEl.click());
+    this.registerDomEvent(this.attachInputEl, "change", () => {
+      void this.ingestFiles(this.attachInputEl.files).then(() => (this.attachInputEl.value = ""));
+    });
+    // dragover must preventDefault for drop to fire; is-dragging is purely
+    // a border cue, cleared on dragleave so it doesn't stick after a miss.
+    this.registerDomEvent(this.cardEl, "dragover", (event) => {
+      event.preventDefault();
+      this.cardEl.addClass("is-dragging");
+    });
+    this.registerDomEvent(this.cardEl, "dragleave", () => this.cardEl.removeClass("is-dragging"));
+    this.registerDomEvent(this.cardEl, "drop", (event) => {
+      event.preventDefault();
+      this.cardEl.removeClass("is-dragging");
+      void this.ingestFiles(event.dataTransfer?.files ?? null);
+    });
     this.register(onChatComposerExtensionsChanged(() => {
       this.editor.dispatch({ effects: this.pluginExtensions.reconfigure(listChatComposerExtensions()) });
     }));
     this.register(() => this.editor.destroy());
+  }
+
+  // Shared sink for the attach button and drag-and-drop; each file becomes
+  // an attachment (or triggers ChatAttachmentBar's image-rejection Notice).
+  private async ingestFiles(files: FileList | null): Promise<void> {
+    if (!files || files.length === 0) return;
+    for (const file of files) await ingestAttachmentFile(this.attachmentBar, file);
+    this.syncSendState();
   }
 
   getValue(): string {
