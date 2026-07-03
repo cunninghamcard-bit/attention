@@ -1,0 +1,210 @@
+/* Tables */
+.markdown-rendered table {
+  margin-block-start: var(--p-spacing);
+  margin-block-end: var(--p-spacing);
+  word-break: normal;
+}
+.cm-html-embed table,
+.markdown-rendered table {
+  border-collapse: collapse;
+  line-height: var(--table-line-height);
+}
+.cm-html-embed td,
+.markdown-rendered td,
+.cm-html-embed th,
+.markdown-rendered th {
+  padding: var(--size-2-2) var(--size-4-2);
+  border: var(--table-border-width) solid var(--table-border-color);
+  max-width: var(--table-column-max-width);
+  min-width: var(--table-column-min-width);
+  vertical-align: var(--table-cell-vertical-alignment);
+}
+.cm-html-embed td,
+.markdown-rendered td {
+  font-size: var(--table-text-size);
+  color: var(--table-text-color);
+}
+.cm-html-embed th,
+.markdown-rendered th {
+  font-size: var(--table-header-size);
+  font-weight: var(--table-header-weight);
+  color: var(--table-header-color);
+  font-family: var(--table-header-font);
+  line-height: var(--line-height-tight);
+}
+.cm-html-embed th,
+.markdown-rendered th,
+.cm-html-embed td,
+.markdown-rendered td {
+  text-align: start;
+}
+.cm-html-embed th[align="left"],
+.markdown-rendered th[align="left"],
+.cm-html-embed td[align="left"],
+.markdown-rendered td[align="left"] {
+  text-align: start;
+}
+.cm-html-embed th[align="center"],
+.markdown-rendered th[align="center"],
+.cm-html-embed td[align="center"],
+.markdown-rendered td[align="center"] {
+  text-align: center;
+}
+.cm-html-embed th[align="right"],
+.markdown-rendered th[align="right"],
+.cm-html-embed td[align="right"],
+.markdown-rendered td[align="right"] {
+  text-align: end;
+}
+.cm-html-embed thead > tr > th,
+.markdown-rendered thead > tr > th,
+.cm-html-embed tbody > tr > td,
+.markdown-rendered tbody > tr > td {
+  white-space: var(--table-white-space);
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.cm-html-embed thead > tr > th > .markdown-embed,
+.markdown-rendered thead > tr > th > .markdown-embed,
+.cm-html-embed tbody > tr > td > .markdown-embed,
+.markdown-rendered tbody > tr > td > .markdown-embed {
+  white-space: normal;
+}
+.cm-html-embed tbody tr,
+.markdown-rendered tbody tr {
+  background-color: var(--table-background);
+}
+@media (hover: hover) {
+  .cm-html-embed tbody tr:hover,
+  .markdown-rendered tbody tr:hover {
+    background-color: var(--table-row-background-hover);
+  }
+}
+.cm-html-embed tbody tr:nth-child(odd),
+.markdown-rendered tbody tr:nth-child(odd) {
+  background-color: var(--table-row-alt-background);
+}
+@media (hover: hover) {
+  .cm-html-embed tbody tr:nth-child(odd):hover,
+  .markdown-rendered tbody tr:nth-child(odd):hover {
+    background-color: var(--table-row-alt-background-hover);
+  }
+}
+.cm-html-embed tbody tr > td:nth-child(2n+2),
+.markdown-rendered tbody tr > td:nth-child(2n+2) {
+  background-color: var(--table-column-alt-background);
+}
+.cm-html-embed tbody tr:last-child > td,
+.markdown-rendered tbody tr:last-child > td {
+  border-bottom-width: var(--table-row-last-border-width);
+}
+.cm-html-embed tbody tr > td:first-child,
+.markdown-rendered tbody tr > td:first-child {
+  border-left-width: var(--table-column-first-border-width);
+}
+.cm-html-embed tbody tr > td:last-child,
+.markdown-rendered tbody tr > td:last-child {
+  border-right-width: var(--table-column-last-border-width);
+}
+.cm-html-embed thead tr,
+.markdown-rendered thead tr {
+  background-color: var(--table-header-background);
+}
+@media (hover: hover) {
+  .cm-html-embed thead tr:hover,
+  .markdown-rendered thead tr:hover {
+    background-color: var(--table-header-background-hover);
+  }
+}
+.cm-html-embed thead tr > th,
+.markdown-rendered thead tr > th {
+  border-top-width: var(--table-header-border-width);
+  border-color: var(--table-header-border-color);
+}
+.cm-html-embed thead tr > th:nth-child(2n+2),
+.markdown-rendered thead tr > th:nth-child(2n+2) {
+  background-color: var(--table-column-alt-background);
+}
+.cm-html-embed thead tr > th:first-child,
+.markdown-rendered thead tr > th:first-child {
+  border-left-width: var(--table-column-first-border-width);
+}
+.cm-html-embed thead tr > th:last-child,
+.markdown-rendered thead tr > th:last-child {
+  border-right-width: var(--table-column-last-border-width);
+}
+.cm-s-obsidian .HyperMD-table-row {
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+  font-size: var(--code-size);
+  font-family: var(--font-monospace);
+}
+.cm-s-obsidian .HyperMD-table-row span.cm-inline-code {
+  --code-size: 1em;
+}
+.cm-s-obsidian .HyperMD-table-rtl {
+  direction: rtl;
+}
+.cm-s-obsidian .hmd-table-column,
+.cm-s-obsidian .hmd-table-column-content {
+  display: inline-block;
+}
+.cm-s-obsidian .hmd-table-column-left {
+  text-align: left;
+}
+.cm-s-obsidian .hmd-table-column-center {
+  text-align: center;
+}
+.cm-s-obsidian .hmd-table-column-right {
+  text-align: right;
+}
+.cm-s-obsidian .HyperMD-table-row span.cm-hmd-table-sep,
+.cm-s-obsidian .HyperMD-table-row-1 {
+  color: var(--text-faint);
+}
+.cm-s-obsidian .HyperMD-table-row-0 {
+  color: var(--table-header-color);
+}
+.cm-s-obsidian .hmd-fold-html table {
+  border-collapse: collapse;
+}
+.cm-s-obsidian .hmd-fold-html table td,
+.cm-s-obsidian .hmd-fold-html table th {
+  padding: 10px;
+  border: 1px solid #ccc;
+}
+.cm-s-obsidian .hmd-inactive-line.HyperMD-table-row-1 {
+  color: transparent;
+  text-shadow: none;
+}
+.cm-s-obsidian .hmd-inactive-line.HyperMD-table-row-1 > span {
+  background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAACCAQAAAAziH6sAAAADklEQVR42mOc+Z9x5n8ACTkDM4ikM1IAAAAASUVORK5CYII=) repeat-x 0px center;
+}
+.cm-s-obsidian .hmd-inactive-line.HyperMD-table-row span.cm-hmd-table-sep {
+  color: transparent;
+}
+.markdown-source-view.mod-cm6 .cm-line.HyperMD-table-row {
+  min-width: max-content;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget table {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.table-drag-target {
+  position: absolute;
+  z-index: 2;
+}
+.table-drag-target::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  background-color: var(--interactive-accent);
+}
+.table-drag-target.mod-row::after {
+  inset-block: calc(-1 * var(--table-drop-indicator-half-width));
+}
+.table-drag-target.mod-col::after {
+  inset-inline: calc(-1 * var(--table-drop-indicator-half-width));
+}

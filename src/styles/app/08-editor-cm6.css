@@ -1,0 +1,383 @@
+.markdown-source-view.mod-cm6 .cm-line .cm-selection,
+.markdown-source-view.mod-cm6 .cm-line .cm-inline-code .cm-selection {
+  background-color: var(--text-selection);
+}
+.markdown-source-view.mod-cm6 .cm-selectionBackground,
+.markdown-source-view.mod-cm6 .cm-editor > .cm-scroller > .cm-selectionLayer > .cm-selectionBackground {
+  background-color: var(--text-selection);
+}
+.markdown-source-view.mod-cm6.is-readable-line-width .cm-sizer {
+  max-width: var(--file-line-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+.markdown-source-view.mod-cm6.is-readable-line-width .cm-content {
+  max-width: var(--file-line-width);
+}
+.markdown-source-view.mod-cm6.is-readable-line-width .cm-line {
+  max-width: var(--file-line-width);
+}
+.markdown-source-view.mod-cm6.is-readable-line-width .cm-line.HyperMD-table-row {
+  max-width: 100%;
+}
+.markdown-source-view.mod-cm6 .cm-editor {
+  flex: 1 1;
+  min-height: 0;
+}
+.markdown-source-view.mod-cm6 .cm-editor.cm-focused {
+  outline: none;
+}
+.markdown-source-view.mod-cm6 .cm-scroller {
+  font-family: var(--font-text);
+  line-height: var(--line-height-normal);
+  scrollbar-gutter: stable;
+}
+.markdown-source-view.mod-cm6 .cm-sizer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  min-height: 100%;
+}
+.markdown-source-view.mod-cm6 .cm-contentContainer {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: stretch;
+  overflow-x: visible;
+}
+.markdown-source-view.mod-cm6 .cm-content {
+  flex-basis: unset !important;
+  width: 0;
+  caret-color: var(--caret-color);
+  min-height: unset;
+  padding: 0;
+}
+.is-mobile.is-ios .markdown-source-view.mod-cm6 .cm-content {
+  -webkit-user-modify: read-write;
+}
+.markdown-source-view.mod-cm6 .cm-content > * {
+  margin: 0 !important;
+  display: block;
+}
+.markdown-source-view.mod-cm6 .cm-content > .image-embed {
+  display: flex;
+}
+.markdown-source-view.mod-cm6 .cm-content > [contenteditable=false] {
+  contain: paint !important;
+}
+.markdown-source-view.mod-cm6 .cm-gutters {
+  flex: 0 0 auto;
+  background-color: transparent;
+  color: var(--text-faint) !important;
+  border-right: none !important;
+  margin-inline-end: var(--file-folding-offset);
+  font-size: var(--font-ui-smaller);
+  z-index: 1;
+  font-variant: tabular-nums;
+}
+.markdown-source-view.mod-cm6 .cm-line > * {
+  text-indent: 0;
+}
+.markdown-source-view.mod-cm6 .cm-transparent {
+  color: transparent;
+}
+.markdown-source-view.mod-cm6 .cm-html-embed,
+.markdown-source-view.mod-cm6 .cm-callout,
+.markdown-source-view.mod-cm6 .cm-table-widget {
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget {
+  --table-drag-handle-size: var(--size-4-4);
+  padding: var(--table-drag-handle-size);
+  margin: 0 calc(-1 * var(--size-4-4)) !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.is-mobile .markdown-source-view.mod-cm6 .cm-table-widget {
+  --table-drag-handle-size: var(--size-4-6);
+}
+.markdown-source-view.mod-cm6 .cm-table-widget.is-loading {
+  padding: 0;
+  margin: 0 !important;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget .table-wrapper {
+  position: relative;
+  width: fit-content;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget tr {
+  height: 1px;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget th,
+.markdown-source-view.mod-cm6 .cm-table-widget td {
+  height: inherit;
+  min-width: var(--table-column-min-width);
+  cursor: text;
+  overflow: visible;
+  padding: 0;
+  position: relative;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget th.is-selected .table-cell-wrapper,
+.markdown-source-view.mod-cm6 .cm-table-widget td.is-selected .table-cell-wrapper {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget th.is-selected::after,
+.markdown-source-view.mod-cm6 .cm-table-widget td.is-selected::after {
+  pointer-events: none;
+  content: "";
+  display: block;
+  position: absolute;
+  top: calc(-1 * var(--table-border-width));
+  inset-inline-end: calc(-1 * var(--table-border-width));
+  bottom: calc(-1 * var(--table-border-width));
+  inset-inline-start: calc(-1 * var(--table-border-width));
+  background-color: var(--table-selection);
+  border: 0px solid var(--table-selection-border-color);
+  mix-blend-mode: var(--table-selection-blend-mode);
+  z-index: 1;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget th.top::after,
+.markdown-source-view.mod-cm6 .cm-table-widget td.top::after {
+  border-top-width: var(--table-selection-border-width);
+  top: calc(-1 * var(--table-selection-border-width));
+}
+.markdown-source-view.mod-cm6 .cm-table-widget th.bottom::after,
+.markdown-source-view.mod-cm6 .cm-table-widget td.bottom::after {
+  border-bottom-width: var(--table-selection-border-width);
+  bottom: calc(-1 * var(--table-selection-border-width));
+}
+.markdown-source-view.mod-cm6 .cm-table-widget.has-selection {
+  --text-selection: transparent;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget.has-selection .cm-content {
+  caret-color: transparent;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget.has-selection .cm-selectionLayer,
+.markdown-source-view.mod-cm6 .cm-table-widget.has-selection .cm-cursorLayer {
+  display: none;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget.is-selected {
+  --text-selection: transparent;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget.is-selected table {
+  position: relative;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget.is-selected table::after {
+  pointer-events: none;
+  content: "";
+  display: block;
+  position: absolute;
+  top: calc(-1 * var(--table-border-width));
+  inset-inline-end: calc(-1 * var(--table-border-width));
+  bottom: calc(-1 * var(--table-border-width));
+  inset-inline-start: calc(-1 * var(--table-border-width));
+  background-color: var(--table-selection);
+}
+.markdown-source-view.mod-cm6 .cm-table-widget .table-cell-wrapper {
+  height: 100%;
+  padding: var(--size-2-2) var(--size-4-2);
+}
+.markdown-source-view.mod-cm6 .cm-table-widget .table-row-drag-handle,
+.markdown-source-view.mod-cm6 .cm-table-widget .table-col-drag-handle {
+  --icon-size: var(--icon-s);
+  --icon-stroke: var(--icon-s-stroke-width);
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  background-color: var(--table-drag-handle-background);
+  color: var(--table-drag-handle-color);
+  touch-action: none;
+  opacity: 0;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget .table-row-drag-handle:active,
+.markdown-source-view.mod-cm6 .cm-table-widget .table-col-drag-handle:active,
+.markdown-source-view.mod-cm6 .cm-table-widget .table-row-drag-handle:hover,
+.markdown-source-view.mod-cm6 .cm-table-widget .table-col-drag-handle:hover {
+  opacity: 1;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget .table-row-drag-handle:active,
+.markdown-source-view.mod-cm6 .cm-table-widget .table-col-drag-handle:active {
+  cursor: grabbing;
+  background-color: var(--table-drag-handle-background-active);
+  color: var(--table-drag-handle-color-active);
+  box-shadow: 0 0 0 var(--table-selection-border-width) var(--table-selection-border-color);
+}
+.markdown-source-view.mod-cm6 .cm-table-widget .table-row-drag-handle *,
+.markdown-source-view.mod-cm6 .cm-table-widget .table-col-drag-handle * {
+  pointer-events: none;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget .table-row-drag-handle {
+  top: 0;
+  inset-inline-end: 100%;
+  width: calc(var(--table-drag-handle-size) - var(--table-selection-border-width));
+  height: 100%;
+  border-start-start-radius: var(--radius-s);
+  border-end-start-radius: var(--radius-s);
+}
+.markdown-source-view.mod-cm6 .cm-table-widget .table-col-drag-handle {
+  inset-block-end: 100%;
+  width: 100%;
+  height: calc(var(--table-drag-handle-size) - var(--table-selection-border-width));
+  border-start-start-radius: var(--radius-s);
+  border-start-end-radius: var(--radius-s);
+}
+.markdown-source-view.mod-cm6 .cm-table-widget.is-dragging .table-row-drag-handle,
+.markdown-source-view.mod-cm6 .cm-table-widget.is-dragging .table-col-drag-handle {
+  display: none;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget.is-dragging .table-row-drag-handle:active,
+.markdown-source-view.mod-cm6 .cm-table-widget.is-dragging .table-col-drag-handle:active {
+  display: flex;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget .table-row-btn,
+.markdown-source-view.mod-cm6 .cm-table-widget .table-col-btn {
+  --icon-size: var(--icon-s);
+  --icon-stroke: var(--icon-s-stroke-width);
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--table-drag-handle-size);
+  width: var(--table-drag-handle-size);
+  background-color: var(--table-add-button-background);
+  border: var(--table-add-button-border-width) solid var(--table-add-button-border-color);
+  color: var(--text-faint);
+  transition: opacity 0s 0.1s;
+  opacity: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+@media (hover: hover) {
+  .markdown-source-view.mod-cm6 .cm-table-widget .table-row-btn:hover,
+  .markdown-source-view.mod-cm6 .cm-table-widget .table-col-btn:hover {
+    opacity: 1;
+  }
+}
+.is-mobile .markdown-source-view.mod-cm6 .cm-table-widget .table-row-drag-handle,
+.is-mobile .markdown-source-view.mod-cm6 .cm-table-widget .table-col-drag-handle {
+  display: none;
+}
+.is-mobile .markdown-source-view.mod-cm6 .cm-table-widget .mod-active-row-handle > .table-row-drag-handle,
+.is-mobile .markdown-source-view.mod-cm6 .cm-table-widget .mod-active-col-handle > .table-col-drag-handle {
+  opacity: 1;
+  display: flex;
+}
+.is-mobile .markdown-source-view.mod-cm6 .cm-table-widget:not(.has-focus) .table-row-btn,
+.is-mobile .markdown-source-view.mod-cm6 .cm-table-widget:not(.has-focus) .table-col-btn {
+  pointer-events: none;
+}
+.is-mobile .markdown-source-view.mod-cm6 .cm-table-widget.has-focus .table-row-btn,
+.is-mobile .markdown-source-view.mod-cm6 .cm-table-widget.has-focus .table-col-btn {
+  opacity: 1;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget .table-row-btn {
+  top: 100%;
+  inset-inline-start: 0;
+  width: 100%;
+  border-top: none;
+  cursor: s-resize;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget .table-col-btn {
+  top: 0;
+  height: 100%;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget .cm-content,
+.markdown-source-view.mod-cm6 .cm-table-widget .cm-line {
+  max-width: none;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget .cm-content {
+  width: auto;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget .cm-content.cm-lineWrapping {
+  overflow-wrap: normal;
+  white-space: var(--table-white-space);
+  word-break: normal;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget .cm-scroller {
+  overflow-y: hidden;
+  scrollbar-gutter: auto;
+  line-height: var(--table-line-height);
+}
+.markdown-source-view.mod-cm6 .cm-table-widget .table-col-btn {
+  inset-inline-start: 100%;
+  border-inline-start: none;
+  cursor: e-resize;
+}
+.markdown-source-view.mod-cm6 .cm-table-widget th.is-selected.start::after,
+.markdown-source-view.mod-cm6 .cm-table-widget td.is-selected.start::after {
+  border-inline-start-width: var(--table-selection-border-width);
+  inset-inline-start: calc(-1 * var(--table-selection-border-width));
+}
+.markdown-source-view.mod-cm6 .cm-table-widget th.is-selected.end::after,
+.markdown-source-view.mod-cm6 .cm-table-widget td.is-selected.end::after {
+  border-inline-end-width: var(--table-selection-border-width);
+  inset-inline-end: calc(-1 * var(--table-selection-border-width));
+}
+.markdown-source-view.mod-cm6 .cm-table-widget th.is-selected.top.end::after,
+.markdown-source-view.mod-cm6 .cm-table-widget td.is-selected.top.end::after {
+  border-start-end-radius: var(--table-selection-border-radius);
+}
+.markdown-source-view.mod-cm6 .cm-table-widget th.is-selected.bottom.end::after,
+.markdown-source-view.mod-cm6 .cm-table-widget td.is-selected.bottom.end::after {
+  border-end-end-radius: var(--table-selection-border-radius);
+}
+.markdown-source-view.mod-cm6 .cm-table-widget th.is-selected.top.start::after,
+.markdown-source-view.mod-cm6 .cm-table-widget td.is-selected.top.start::after {
+  border-start-start-radius: var(--table-selection-border-radius);
+}
+.markdown-source-view.mod-cm6 .cm-table-widget th.is-selected.bottom.start::after,
+.markdown-source-view.mod-cm6 .cm-table-widget td.is-selected.bottom.start::after {
+  border-end-start-radius: var(--table-selection-border-radius);
+}
+.markdown-source-view.mod-cm6.is-rtl .cm-table-widget .table-col-btn,
+.markdown-source-view.mod-cm6 .cm-table-widget:dir(rtl) .table-col-btn {
+  cursor: w-resize;
+}
+.markdown-source-view.mod-cm6 .cm-line {
+  position: relative;
+  padding: 0;
+}
+.markdown-source-view.mod-cm6 .edit-block-button {
+  padding: var(--size-2-2) var(--size-2-3);
+  position: absolute;
+  top: var(--size-2-2);
+  inset-inline-end: var(--size-2-2);
+  display: flex;
+  opacity: 0;
+  color: var(--text-muted);
+  border-radius: var(--radius-s);
+  corner-shape: var(--corner-shape);
+  cursor: var(--cursor);
+}
+@media (hover: hover) {
+  .markdown-source-view.mod-cm6 .edit-block-button:hover {
+    background-color: var(--background-modifier-hover);
+  }
+}
+.markdown-source-view.mod-cm6 .cm-panels {
+  background-color: inherit;
+  color: inherit;
+}
+.markdown-source-view.mod-cm6 .cm-panels.cm-panels-bottom {
+  margin-bottom: var(--safe-area-inset-bottom);
+  border-top: 1px solid var(--background-modifier-border);
+  z-index: 1;
+}
+.markdown-source-view.mod-cm6 .cm-panels.cm-panels-bottom input[type="text"]:focus {
+  background-color: transparent;
+  box-shadow: none;
+}
+.markdown-source-view.mod-cm6 img.cm-widgetBuffer {
+  display: inline !important;
+  width: 0 !important;
+  border: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.view-content > .markdown-source-view.mod-cm6 > .cm-editor > .cm-scroller {
+  padding: var(--file-margins);
+}

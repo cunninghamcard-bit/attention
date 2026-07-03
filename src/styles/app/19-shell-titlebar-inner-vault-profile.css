@@ -1,0 +1,227 @@
+.titlebar {
+  -webkit-app-region: drag;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  background-color: var(--titlebar-background);
+  border-bottom: var(--titlebar-border-width) solid var(--titlebar-border-color);
+}
+.titlebar-inner {
+  color: var(--titlebar-text-color);
+  font-weight: var(--titlebar-text-weight);
+  width: 100%;
+  display: flex;
+}
+.is-focused .titlebar-inner {
+  color: var(--titlebar-text-color-focused);
+}
+.titlebar-text {
+  opacity: 0.85;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  inset-inline-start: 0;
+  flex-grow: 1;
+  gap: 0.15em;
+  font-size: var(--font-ui-small);
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 125px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.titlebar-button-container {
+  display: flex;
+  position: absolute;
+  top: 0;
+}
+.mod-macos .titlebar-button-container {
+  top: 8px;
+}
+.titlebar-button-container.mod-left {
+  left: 0;
+}
+.mod-macos .titlebar-button-container.mod-left {
+  left: calc(80px / var(--zoom-factor));
+}
+.titlebar-button-container .mod-back,
+.titlebar-button-container .mod-forward {
+  color: var(--icon-color);
+}
+.titlebar-button-container .mod-back .svg-icon,
+.titlebar-button-container .mod-forward .svg-icon {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.25px;
+}
+@media (hover: hover) {
+  .titlebar-button-container .mod-back:hover,
+  .titlebar-button-container .mod-forward:hover {
+    color: var(--icon-color-hover);
+  }
+}
+.titlebar-button-container.mod-right {
+  right: 0;
+}
+.titlebar-button {
+  -webkit-app-region: no-drag;
+  padding: var(--size-2-2) var(--size-2-3);
+  cursor: var(--cursor);
+  display: inline-flex;
+  align-items: center;
+}
+@media (hover: hover) {
+  .titlebar-button:hover {
+    opacity: 1;
+    background-color: var(--background-modifier-hover);
+  }
+  .titlebar-button.mod-close:hover {
+    background-color: var(--background-modifier-error);
+  }
+}
+.mod-macos .titlebar-button {
+  border-radius: var(--radius-s);
+}
+/* Hidden titlebar interferes with mouse */
+body.is-frameless.is-hidden-frameless:not(.in-progress) {
+  padding-top: 0 !important;
+}
+.is-hidden-frameless.mod-macos .titlebar {
+  display: none;
+}
+.is-hidden-frameless.mod-windows .titlebar,
+.is-hidden-frameless.mod-linux .titlebar {
+  background: transparent;
+  border: none;
+  z-index: var(--layer-popover);
+  pointer-events: none;
+}
+.is-hidden-frameless.mod-windows .titlebar-button.mod-back,
+.is-hidden-frameless.mod-linux .titlebar-button.mod-back,
+.is-hidden-frameless.mod-windows .titlebar-button.mod-forward,
+.is-hidden-frameless.mod-linux .titlebar-button.mod-forward,
+.is-hidden-frameless.mod-windows .titlebar-text,
+.is-hidden-frameless.mod-linux .titlebar-text {
+  display: none;
+}
+.is-hidden-frameless.mod-windows .titlebar-button-container,
+.is-hidden-frameless.mod-linux .titlebar-button-container {
+  pointer-events: auto;
+}
+.mod-linux .titlebar-button-container,
+.mod-windows .titlebar-button-container {
+  height: 100%;
+}
+.mod-linux .titlebar-button,
+.mod-windows .titlebar-button {
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+}
+.mod-linux .titlebar-button.mod-logo,
+.mod-windows .titlebar-button.mod-logo {
+  padding: 4px 8px;
+}
+@media (hover: hover) {
+  .mod-linux .titlebar-button.mod-close:hover,
+  .mod-windows .titlebar-button.mod-close:hover {
+    background-color: var(--background-modifier-error);
+  }
+  .mod-linux .titlebar-button.mod-close:hover .svg-icon,
+  .mod-windows .titlebar-button.mod-close:hover .svg-icon {
+    fill: white;
+    stroke: white;
+  }
+}
+@media screen and (max-width: 300px) {
+  .titlebar-text {
+    display: none;
+  }
+}
+.is-translucent:not(.is-fullscreen) {
+  --nav-collapse-icon-color: rgba(var(--mono-rgb-100), 0.3);
+  --nav-collapse-icon-color-collapsed: rgba(var(--mono-rgb-100), 0.3);
+  --divider-color: rgba(0, 0, 0, 0.15);
+}
+.is-translucent:not(.is-fullscreen) .titlebar,
+.is-translucent:not(.is-fullscreen) .app-container {
+  background-color: var(--workspace-background-translucent);
+}
+.is-translucent:not(.is-fullscreen) .workspace-ribbon.mod-left,
+.is-translucent:not(.is-fullscreen) .workspace-tabs,
+.is-translucent:not(.is-fullscreen) .workspace-split,
+.is-translucent:not(.is-fullscreen) .sidebar-toggle-button,
+.is-translucent:not(.is-fullscreen) .mod-left-split .workspace-tab-header-container,
+.is-translucent:not(.is-fullscreen) .mod-right-split .workspace-tab-header-container,
+.is-translucent:not(.is-fullscreen) .mod-top .workspace-tab-header-container,
+.is-translucent:not(.is-fullscreen) .workspace-tabs .workspace-leaf,
+.is-translucent:not(.is-fullscreen) .workspace-sidedock-vault-profile,
+.is-translucent:not(.is-fullscreen) .workspace-ribbon.mod-left:before {
+  background-color: transparent !important;
+}
+/* Rendering property values */
+.value-list-element {
+  align-items: center;
+}
+body:not(.is-mobile) .workspace-split.mod-left-split .workspace-sidedock-vault-profile {
+  background-color: var(--background-secondary);
+  border-top: var(--tab-outline-width) solid var(--tab-outline-color);
+  display: var(--vault-profile-display);
+  align-items: center;
+  height: unset;
+  flex: 0 0 auto;
+  gap: var(--size-4-1);
+  justify-content: space-between;
+  padding: var(--size-4-2) var(--size-4-2);
+  order: 1;
+}
+body:not(.is-mobile) .workspace-split.mod-left-split .workspace-sidedock-vault-profile .workspace-drawer-vault-switcher {
+  color: var(--vault-profile-color);
+  border-radius: var(--radius-s);
+  corner-shape: var(--corner-shape);
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  gap: var(--size-4-2);
+  overflow: hidden;
+  padding: var(--size-4-1) var(--size-4-2);
+}
+body:not(.is-mobile) .workspace-split.mod-left-split .workspace-sidedock-vault-profile .workspace-drawer-vault-switcher.has-active-menu {
+  background-color: var(--background-modifier-hover);
+}
+body:not(.is-mobile) .workspace-split.mod-left-split .workspace-sidedock-vault-profile .workspace-drawer-vault-switcher.has-active-menu .workspace-drawer-vault-switcher-icon {
+  color: var(--text-muted);
+}
+@media (hover: hover) {
+  body:not(.is-mobile) .workspace-split.mod-left-split .workspace-sidedock-vault-profile .workspace-drawer-vault-switcher:hover {
+    color: var(--vault-profile-color-hover);
+    background-color: var(--background-modifier-hover);
+  }
+  body:not(.is-mobile) .workspace-split.mod-left-split .workspace-sidedock-vault-profile .workspace-drawer-vault-switcher:hover .workspace-drawer-vault-switcher-icon {
+    color: var(--text-muted);
+  }
+}
+body:not(.is-mobile) .workspace-split.mod-left-split .workspace-sidedock-vault-profile .workspace-drawer-vault-name {
+  font-size: var(--vault-profile-font-size);
+  font-weight: var(--vault-profile-font-weight);
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+body:not(.is-mobile) .workspace-split.mod-left-split .workspace-sidedock-vault-profile .workspace-drawer-vault-switcher-icon {
+  --icon-size: var(--icon-s);
+  --icon-stroke: var(--icon-s-stroke-width);
+  display: flex;
+  align-items: center;
+  color: var(--text-faint);
+}
+body:not(.is-mobile) .workspace-split.mod-left-split .workspace-sidedock-vault-profile .workspace-drawer-vault-actions {
+  display: var(--vault-profile-actions-display);
+  align-items: center;
+}

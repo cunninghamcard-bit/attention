@@ -1,0 +1,344 @@
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin-block-start: var(--p-spacing);
+  margin-block-end: var(--p-spacing);
+}
+h1,
+.markdown-rendered h1 {
+  --font-weight: var(--h1-weight);
+  font-variant: var(--h1-variant);
+  letter-spacing: var(--h1-letter-spacing);
+  line-height: var(--h1-line-height);
+  font-size: var(--h1-size);
+  color: var(--h1-color);
+  font-weight: var(--font-weight);
+  font-style: var(--h1-style);
+  font-family: var(--h1-font);
+}
+h1 a,
+.markdown-rendered h1 a {
+  --link-weight: var(--h1-weight);
+}
+h2,
+.markdown-rendered h2 {
+  --font-weight: var(--h2-weight);
+  font-variant: var(--h2-variant);
+  letter-spacing: var(--h2-letter-spacing);
+  line-height: var(--h2-line-height);
+  font-size: var(--h2-size);
+  color: var(--h2-color);
+  font-weight: var(--font-weight);
+  font-style: var(--h2-style);
+  font-family: var(--h2-font);
+}
+h2 a,
+.markdown-rendered h2 a {
+  --link-weight: var(--h2-weight);
+}
+h3,
+.markdown-rendered h3 {
+  --font-weight: var(--h3-weight);
+  font-variant: var(--h3-variant);
+  letter-spacing: var(--h3-letter-spacing);
+  line-height: var(--h3-line-height);
+  font-size: var(--h3-size);
+  color: var(--h3-color);
+  font-weight: var(--font-weight);
+  font-style: var(--h3-style);
+  font-family: var(--h3-font);
+}
+h3 a,
+.markdown-rendered h3 a {
+  --link-weight: var(--h3-weight);
+}
+h4,
+.markdown-rendered h4 {
+  --font-weight: var(--h4-weight);
+  font-variant: var(--h4-variant);
+  letter-spacing: var(--h4-letter-spacing);
+  line-height: var(--h4-line-height);
+  font-size: var(--h4-size);
+  color: var(--h4-color);
+  font-weight: var(--font-weight);
+  font-style: var(--h4-style);
+  font-family: var(--h4-font);
+}
+h4 a,
+.markdown-rendered h4 a {
+  --link-weight: var(--h4-weight);
+}
+h5,
+.markdown-rendered h5 {
+  --font-weight: var(--h5-weight);
+  font-variant: var(--h5-variant);
+  letter-spacing: var(--h5-letter-spacing);
+  font-size: var(--h5-size);
+  line-height: var(--h5-line-height);
+  color: var(--h5-color);
+  font-weight: var(--font-weight);
+  font-style: var(--h5-style);
+  font-family: var(--h5-font);
+}
+h5 a,
+.markdown-rendered h5 a {
+  --link-weight: var(--h5-weight);
+}
+h6,
+.markdown-rendered h6 {
+  --font-weight: var(--h6-weight);
+  font-variant: var(--h6-variant);
+  letter-spacing: var(--h6-letter-spacing);
+  font-size: var(--h6-size);
+  line-height: var(--h6-line-height);
+  color: var(--h6-color);
+  font-weight: var(--font-weight);
+  font-style: var(--h6-style);
+  font-family: var(--h6-font);
+}
+h6 a,
+.markdown-rendered h6 a {
+  --link-weight: var(--h6-weight);
+}
+.cm-formatting-header {
+  color: var(--text-faint);
+}
+.cm-s-obsidian .cm-line.HyperMD-header {
+  padding-top: var(--p-spacing);
+}
+.cm-s-obsidian .cm-line.HyperMD-header + .cm-line:not(.HyperMD-header):not(:has(>br:only-child)) {
+  padding-top: var(--p-spacing-empty);
+}
+.cm-s-obsidian .cm-line.HyperMD-header + .cm-line:not(.HyperMD-header):has(>br:only-child) + .cm-line.HyperMD-header {
+  padding-top: 0;
+}
+.HyperMD-header-1,
+.inline-title h1,
+.HyperMD-list-line .cm-header-1 {
+  --font-weight: var(--h1-weight);
+  font-variant: var(--h1-variant);
+  letter-spacing: var(--h1-letter-spacing);
+  line-height: var(--h1-line-height);
+  font-size: var(--h1-size);
+  color: var(--h1-color);
+  font-weight: var(--font-weight);
+  font-style: var(--h1-style);
+  font-family: var(--h1-font);
+}
+.HyperMD-header-1 a,
+.inline-title h1 a,
+.HyperMD-list-line .cm-header-1 a,
+.HyperMD-header-1 .cm-hmd-internal-link,
+.inline-title h1 .cm-hmd-internal-link,
+.HyperMD-list-line .cm-header-1 .cm-hmd-internal-link {
+  --link-weight: var(--h1-weight);
+}
+.HyperMD-header-2,
+.inline-title h2,
+.HyperMD-list-line .cm-header-2 {
+  --font-weight: var(--h2-weight);
+  font-variant: var(--h2-variant);
+  letter-spacing: var(--h2-letter-spacing);
+  line-height: var(--h2-line-height);
+  font-size: var(--h2-size);
+  color: var(--h2-color);
+  font-weight: var(--font-weight);
+  font-style: var(--h2-style);
+  font-family: var(--h2-font);
+}
+.HyperMD-header-2 a,
+.inline-title h2 a,
+.HyperMD-list-line .cm-header-2 a,
+.HyperMD-header-2 .cm-hmd-internal-link,
+.inline-title h2 .cm-hmd-internal-link,
+.HyperMD-list-line .cm-header-2 .cm-hmd-internal-link {
+  --link-weight: var(--h2-weight);
+}
+.HyperMD-header-3,
+.inline-title h3,
+.HyperMD-list-line .cm-header-3 {
+  --font-weight: var(--h3-weight);
+  font-variant: var(--h3-variant);
+  letter-spacing: var(--h3-letter-spacing);
+  line-height: var(--h3-line-height);
+  font-size: var(--h3-size);
+  color: var(--h3-color);
+  font-weight: var(--font-weight);
+  font-style: var(--h3-style);
+  font-family: var(--h3-font);
+}
+.HyperMD-header-3 a,
+.inline-title h3 a,
+.HyperMD-list-line .cm-header-3 a,
+.HyperMD-header-3 .cm-hmd-internal-link,
+.inline-title h3 .cm-hmd-internal-link,
+.HyperMD-list-line .cm-header-3 .cm-hmd-internal-link {
+  --link-weight: var(--h3-weight);
+}
+.HyperMD-header-4,
+.inline-title h4,
+.HyperMD-list-line .cm-header-4 {
+  --font-weight: var(--h4-weight);
+  font-variant: var(--h4-variant);
+  letter-spacing: var(--h4-letter-spacing);
+  line-height: var(--h4-line-height);
+  font-size: var(--h4-size);
+  color: var(--h4-color);
+  font-weight: var(--font-weight);
+  font-style: var(--h4-style);
+  font-family: var(--h4-font);
+}
+.HyperMD-header-4 a,
+.inline-title h4 a,
+.HyperMD-list-line .cm-header-4 a,
+.HyperMD-header-4 .cm-hmd-internal-link,
+.inline-title h4 .cm-hmd-internal-link,
+.HyperMD-list-line .cm-header-4 .cm-hmd-internal-link {
+  --link-weight: var(--h4-weight);
+}
+.HyperMD-header-5,
+.inline-title h5,
+.HyperMD-list-line .cm-header-5 {
+  --font-weight: var(--h5-weight);
+  font-variant: var(--h5-variant);
+  font-size: var(--h5-size);
+  letter-spacing: var(--h5-letter-spacing);
+  line-height: var(--h5-line-height);
+  color: var(--h5-color);
+  font-weight: var(--font-weight);
+  font-style: var(--h5-style);
+  font-family: var(--h5-font);
+}
+.HyperMD-header-5 a,
+.inline-title h5 a,
+.HyperMD-list-line .cm-header-5 a,
+.HyperMD-header-5 .cm-hmd-internal-link,
+.inline-title h5 .cm-hmd-internal-link,
+.HyperMD-list-line .cm-header-5 .cm-hmd-internal-link {
+  --link-weight: var(--h5-weight);
+}
+.HyperMD-header-6,
+.inline-title h6,
+.HyperMD-list-line .cm-header-6 {
+  --font-weight: var(--h6-weight);
+  font-variant: var(--h6-variant);
+  letter-spacing: var(--h6-letter-spacing);
+  font-size: var(--h6-size);
+  line-height: var(--h6-line-height);
+  color: var(--h6-color);
+  font-weight: var(--font-weight);
+  font-style: var(--h6-style);
+  font-family: var(--h6-font);
+}
+.HyperMD-header-6 a,
+.inline-title h6 a,
+.HyperMD-list-line .cm-header-6 a,
+.HyperMD-header-6 .cm-hmd-internal-link,
+.inline-title h6 .cm-hmd-internal-link,
+.HyperMD-list-line .cm-header-6 .cm-hmd-internal-link {
+  --link-weight: var(--h6-weight);
+}
+.HyperMD-header .cm-header-1,
+.HyperMD-header .cm-header-2,
+.HyperMD-header .cm-header-3,
+.HyperMD-header .cm-header-4,
+.HyperMD-header .cm-header-5,
+.HyperMD-header .cm-header-6 {
+  font-size: inherit !important;
+}
+hr {
+  border: none;
+  border-top: var(--hr-thickness) solid;
+  border-color: var(--hr-color);
+  margin: 2rem 0;
+}
+.markdown-rendered hr {
+  border: none;
+  border-top: var(--hr-thickness) solid;
+  border-color: var(--hr-color);
+}
+.cm-s-obsidian .hmd-inactive-line.HyperMD-hr {
+  color: transparent;
+  background-color: transparent;
+}
+.markdown-source-view.mod-cm6 .hr {
+  display: flex;
+  align-items: center;
+}
+.markdown-source-view.mod-cm6 hr {
+  margin: 0;
+  flex: 1 0 0;
+}
+.cm-s-obsidian .hmd-fold-html-stub,
+.cm-s-obsidian .hmd-fold-code-stub {
+  display: inline-block;
+  font-size: 67%;
+  color: #999;
+  vertical-align: middle;
+  border: 1px solid #999;
+  padding: 0 0.2em;
+  border-radius: 5px;
+  margin: 0 0.5em;
+  background-color: var(--background-primary-alt);
+  cursor: var(--cursor);
+}
+.cm-s-obsidian .hmd-fold-html-stub.omittable,
+.cm-s-obsidian .omittable.hmd-fold-code-stub {
+  display: none;
+}
+.cm-s-obsidian .hmd-fold-html-stub:hover,
+.cm-s-obsidian .hmd-fold-code-stub:hover,
+.cm-s-obsidian .hmd-fold-html-stub.highlight,
+.cm-s-obsidian .highlight.hmd-fold-code-stub {
+  color: #FFF;
+  border-color: #C30;
+  background: #F40;
+}
+.cm-s-obsidian .hmd-fold-html {
+  position: relative;
+  border: 1px solid #FFF;
+}
+@media (hover: hover) {
+  .cm-s-obsidian .hmd-fold-html:hover {
+    border: 1px dashed #999;
+  }
+}
+.cm-s-obsidian .hmd-fold-html:hover .hmd-fold-html-stub.omittable,
+.cm-s-obsidian .hmd-fold-html:hover .omittable.hmd-fold-code-stub {
+  display: block;
+  right: 0;
+  bottom: 100%;
+  margin: 0;
+  position: absolute;
+  z-index: 100;
+}
+.markdown-preview-view img,
+.markdown-rendered img {
+  -webkit-touch-callout: default;
+  image-rendering: -webkit-optimize-contrast;
+  max-width: 100%;
+}
+.markdown-preview-view img:not([width]),
+.markdown-rendered img:not([width]) {
+  outline: none;
+}
+.cm-s-obsidian .hmd-fold-html a > img {
+  border: 0;
+}
+.cm-s-obsidian img.hmd-image {
+  vertical-align: middle;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+}
+.cm-s-obsidian img.hmd-image.hmd-image-loading,
+.cm-s-obsidian img.hmd-image.hmd-image-error {
+  min-width: 24px;
+  min-height: 24px;
+}
+.markdown-source-view.mod-cm6 img {
+  max-width: 100%;
+}

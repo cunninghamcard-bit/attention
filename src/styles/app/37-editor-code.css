@@ -1,0 +1,173 @@
+.markdown-rendered code {
+  color: var(--code-normal);
+  font-family: var(--font-monospace);
+  background-color: var(--code-background);
+  border-radius: var(--code-radius);
+  font-size: var(--code-size);
+  padding: 0.15em 0.3em;
+  border: var(--code-border-width) solid var(--code-border-color);
+  -webkit-box-decoration-break: clone;
+}
+.cm-s-obsidian span.cm-inline-code {
+  color: var(--code-normal);
+  font-size: var(--code-size);
+  background-color: var(--code-background);
+  vertical-align: baseline;
+  -webkit-box-decoration-break: clone;
+}
+.cm-s-obsidian span.cm-inline-code span.cm-inline-code.cm-hmd-indented-code {
+  background-color: transparent;
+}
+.cm-s-obsidian span.cm-inline-code span.cm-inline-code:not(.cm-formatting):not(.cm-hmd-indented-code):not(.obsidian-search-match-highlight) {
+  background-color: var(--code-background);
+  vertical-align: baseline;
+}
+.cm-s-obsidian span.cm-inline-code span.cm-inline-code.hmd-hidden-token {
+  font-size: 0;
+}
+.cm-s-obsidian .cm-inline-code {
+  border-color: var(--code-border-color);
+  border-style: solid;
+}
+.cm-s-obsidian .cm-inline-code:not(.cm-formatting) {
+  border-radius: var(--code-radius);
+  padding: 0.15em 0.3em;
+  border-width: var(--code-border-width);
+}
+.cm-s-obsidian .cm-inline-code.cm-formatting {
+  border-start-start-radius: var(--code-radius);
+  border-start-end-radius: 0;
+  border-end-start-radius: var(--code-radius);
+  border-end-end-radius: 0;
+  padding: 0.15em 0;
+  border-width: var(--code-border-width) 0 var(--code-border-width) var(--code-border-width);
+}
+.cm-s-obsidian .cm-inline-code:not(.cm-formatting) + .cm-formatting.cm-inline-code {
+  border-start-start-radius: 0;
+  border-start-end-radius: var(--code-radius);
+  border-end-start-radius: 0;
+  border-end-end-radius: var(--code-radius);
+  padding-inline-end: 0;
+  border-width: var(--code-border-width) var(--code-border-width) var(--code-border-width) 0;
+}
+.cm-s-obsidian .cm-inline-code.cm-formatting ~ .cm-inline-code:not(.cm-formatting) {
+  border-radius: 0;
+  padding: 0.15em 0;
+  border-left: none;
+  border-right: none;
+}
+.markdown-rendered pre {
+  position: relative;
+  padding: var(--size-4-3) var(--size-4-4);
+  min-height: 38px;
+  background-color: var(--code-background);
+  border-radius: var(--code-radius);
+  white-space: var(--code-white-space);
+  border: var(--code-border-width) solid var(--code-border-color);
+  overflow-x: auto;
+}
+.markdown-rendered pre code {
+  border: none;
+  padding: 0;
+  background-color: transparent;
+}
+.markdown-rendered li > pre {
+  margin: 0;
+}
+.markdown-rendered pre:not(:hover) > button.copy-code-button {
+  display: none;
+}
+.markdown-rendered button.copy-code-button {
+  margin: 6px;
+  padding: 6px 8px;
+  height: auto;
+  background-color: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-family: var(--font-interface);
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+}
+@media (hover: hover) {
+  .markdown-rendered button.copy-code-button:hover {
+    background-color: var(--background-modifier-hover);
+  }
+}
+.theme-dark .mermaid > svg {
+  filter: invert(100%) hue-rotate(180deg) saturate(1.25);
+}
+.markdown-source-view.mod-cm6 .cm-hmd-codeblock {
+  --indentation-guide-editing-indent: 0;
+}
+.markdown-source-view.mod-cm6 .cm-preview-code-block pre {
+  margin: 0;
+}
+.markdown-source-view.mod-cm6 .code-block-flair {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  z-index: 1;
+  display: inline-block;
+  padding: var(--size-4-1) var(--size-4-2);
+  border-radius: var(--code-radius);
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  cursor: var(--cursor);
+}
+@media (hover: hover) {
+  .markdown-source-view.mod-cm6 .code-block-flair:hover {
+    background-color: var(--background-modifier-hover);
+  }
+}
+.markdown-source-view.mod-cm6 .cm-line.HyperMD-codeblock {
+  color: var(--code-normal);
+}
+.markdown-source-view.mod-cm6 .cm-line.HyperMD-codeblock:not(.HyperMD-list-line) {
+  padding-inline-start: var(--size-4-4);
+}
+.markdown-source-view.mod-cm6 .cm-line.HyperMD-codeblock .cm-formatting.cm-formatting-list {
+  font-family: var(--font-text);
+  font-size: var(--font-text-size);
+}
+.cm-s-obsidian .HyperMD-codeblock {
+  font-family: var(--font-monospace);
+  font-size: var(--code-size);
+  direction: ltr;
+}
+.cm-s-obsidian .HyperMD-codeblock-begin,
+.cm-s-obsidian .HyperMD-codeblock-end {
+  color: var(--code-normal);
+}
+.cm-s-obsidian .HyperMD-codeblock span.cm-inline-code {
+  background-color: inherit;
+  border: inherit;
+  padding: inherit;
+  font-size: inherit;
+}
+.cm-s-obsidian div.HyperMD-codeblock-bg {
+  left: 0;
+  right: 0;
+  background-color: var(--code-background);
+  border-width: 0px var(--code-border-width) 0px var(--code-border-width);
+  border-color: var(--code-border-color);
+  border-style: solid;
+}
+.cm-s-obsidian div.HyperMD-codeblock-begin-bg {
+  border-top-left-radius: var(--code-radius);
+  border-top-right-radius: var(--code-radius);
+  border-width: var(--code-border-width) var(--code-border-width) 0px var(--code-border-width);
+}
+.cm-s-obsidian div.HyperMD-codeblock-end-bg {
+  border-bottom-left-radius: var(--code-radius);
+  border-bottom-right-radius: var(--code-radius);
+  border-width: 0 var(--code-border-width) var(--code-border-width) var(--code-border-width);
+}
+.cm-s-obsidian div.HyperMD-codeblock-begin-bg,
+.cm-s-obsidian div.HyperMD-codeblock-end-bg {
+  background-color: var(--code-background);
+  border-color: var(--code-border-color);
+  border-style: solid;
+}

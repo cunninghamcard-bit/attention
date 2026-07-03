@@ -1,0 +1,110 @@
+/* Ribbon */
+/* Add background to top left corner space above ribbon */
+.workspace-ribbon.mod-left {
+  margin-top: var(--header-height);
+  /* Add the tab background in the top left corner */
+}
+.workspace-ribbon.mod-left:before {
+  -webkit-app-region: drag;
+  position: absolute;
+  left: 0;
+  top: 0;
+  background-color: var(--titlebar-background);
+  content: " ";
+  border-bottom: var(--tab-outline-width) solid var(--tab-outline-color);
+  height: var(--header-height);
+  width: var(--ribbon-width);
+  box-sizing: border-box;
+}
+body:not(.show-ribbon) {
+  --ribbon-width: 0px;
+}
+body:not(.show-ribbon) .workspace-ribbon,
+body:not(.show-ribbon) .side-dock-ribbon {
+  display: none;
+}
+.workspace-ribbon {
+  width: var(--ribbon-width);
+  flex: 0 0 var(--ribbon-width);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--ribbon-background);
+  z-index: var(--layer-sidedock);
+  color: var(--text-muted);
+  padding: var(--ribbon-padding);
+  gap: var(--size-4-1);
+  border-right: var(--divider-width) solid var(--divider-color);
+}
+.workspace-ribbon.mod-left.is-collapsed {
+  transition: background-color 250ms 95ms ease-in-out;
+  background-color: var(--ribbon-background-collapsed);
+  border-right-color: var(--divider-color);
+}
+.workspace-ribbon.mod-right {
+  display: none;
+}
+.workspace-ribbon.is-hidden {
+  display: none;
+}
+.workspace-ribbon.is-collapsed {
+  background-color: var(--background-secondary);
+}
+.side-dock-settings,
+.side-dock-actions {
+  flex-direction: column;
+}
+.side-dock-settings .side-dock-ribbon-action,
+.side-dock-actions .side-dock-ribbon-action {
+  margin: 0 auto;
+}
+.side-dock-settings {
+  margin-top: auto;
+}
+.release-notes-view {
+  padding: var(--file-margins);
+}
+.release-notes-view .markdown-preview-view {
+  overflow: visible;
+}
+.release-notes-view .is-readable-line-width {
+  max-width: var(--file-line-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+/* Todo: remove this once the sidebars are flipped in RTL mode
+   otherwise the top right sidebar button opens the left sidebar  */
+.is-phone .view-header {
+  direction: ltr;
+}
+/* Use a different bidi algorithm to account for
+   mixed content in single line content both in LTR or RTL mode.
+   This is important for mixed-language users and also
+   to properly display untranslated strings.
+*/
+.bases-toolbar-result-count,
+.community-item-desc,
+.community-modal-info-desc,
+.community-modal-search-summary,
+.inline-title,
+.inline-title h1,
+.metadata-property-key-input,
+.metadata-input-longtext,
+.multi-select-pill-content,
+.nav-file-title-content,
+.nav-folder-title-content,
+.search-result-file-match,
+.setting-item-description,
+.setting-item-name,
+.suggestion-title,
+.bases-table-header-name,
+.table-cell-wrapper,
+.titlebar-text,
+.tooltip,
+.tree-item-inner,
+.view-header-breadcrumb,
+.view-header-title,
+.workspace-tab-header-inner-title,
+input {
+  unicode-bidi: plaintext;
+}

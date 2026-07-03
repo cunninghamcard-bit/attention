@@ -1,0 +1,56 @@
+.notice-container {
+  z-index: var(--layer-notice);
+  position: fixed;
+  top: 22px;
+  inset-inline-end: 0;
+  padding: 10px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+  background-color: var(--background-modifier-message);
+  border-radius: var(--radius-m);
+  box-shadow: 0 2px 8px var(--background-modifier-box-shadow);
+  color: #FAFAFA;
+  font-size: var(--font-ui-small);
+  line-height: var(--line-height-tight);
+  padding: 0.75em 1em 0.75em 1em;
+  max-width: 300px;
+  margin-bottom: 14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  cursor: var(--cursor);
+  pointer-events: auto;
+}
+.notice progress {
+  width: 100%;
+}
+.theme-light .notice progress[value]::-webkit-progress-bar {
+  background-color: #262626;
+  box-shadow: inset 0px 0px 0px 1px #363636;
+}
+.notice-button-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  column-gap: var(--size-4-3);
+  row-gap: var(--size-4-1);
+}
+.notice-cta {
+  display: flex;
+  align-items: center;
+  color: var(--text-accent);
+  white-space: nowrap;
+}
+.notice-cta.mobile-tap {
+  color: var(--text-accent-hover);
+}
+@media (hover: hover) {
+  .notice-cta:hover {
+    color: var(--text-accent-hover);
+  }
+}

@@ -1,0 +1,106 @@
+.menu {
+  -webkit-app-region: no-drag;
+  display: flex;
+  flex-direction: column;
+  border: var(--menu-border-width) solid var(--menu-border-color);
+  background-color: var(--menu-background);
+  backdrop-filter: var(--menu-backdrop-filter);
+  overflow: hidden;
+  padding: 0;
+  border-radius: var(--menu-radius);
+  corner-shape: var(--menu-corner-shape);
+  box-shadow: var(--menu-shadow);
+  max-height: 100%;
+  position: fixed;
+  z-index: var(--layer-menu);
+  user-select: none;
+}
+.menu.mod-no-icon .menu-item-icon:first-child {
+  display: none;
+}
+.menu-scroll {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: var(--menu-padding);
+}
+.menu-grabber {
+  display: none;
+}
+.menu-separator {
+  height: 0;
+  margin: var(--size-2-3) calc(var(--size-2-3) * -1);
+  border-bottom: var(--border-width) solid var(--background-modifier-border);
+}
+.menu-separator:last-child,
+.menu-separator:first-child {
+  display: none;
+}
+.menu-separator + .menu-separator {
+  display: none;
+}
+.menu-separator + .menu-item.is-label {
+  padding-bottom: var(--size-4-1);
+}
+.menu-item-desc {
+  padding-top: var(--size-4-1);
+  color: var(--text-faint);
+  font-size: 0.8em;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  padding: var(--size-4-1) var(--size-4-2);
+  cursor: var(--cursor);
+  font-size: var(--font-ui-small);
+  border-radius: var(--radius-s);
+  corner-shape: var(--corner-shape);
+  white-space: nowrap;
+}
+.menu-item.is-warning:not(.is-disabled) {
+  color: var(--text-error);
+}
+.menu-item.is-warning:not(.is-disabled).selected {
+  color: var(--text-error);
+}
+.menu-item.is-label {
+  cursor: default;
+  font-size: var(--font-ui-medium);
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.menu-item.is-disabled {
+  cursor: default;
+  color: var(--text-faint);
+}
+.menu-item:not(.is-label):not(.is-disabled).mobile-tap,
+.menu-item:not(.is-label):not(.is-disabled).selected {
+  background-color: var(--background-modifier-hover);
+}
+.menu-item-icon {
+  flex: 0 1 auto;
+  display: flex;
+  color: var(--text-muted);
+}
+.menu-item.is-warning .menu-item-icon {
+  color: var(--text-error);
+}
+.menu-item.is-disabled .menu-item-icon {
+  color: var(--text-faint);
+}
+.menu-item-icon .mod-submenu {
+  color: var(--text-faint);
+}
+.menu-item-title {
+  flex: 1 0 0;
+}
+.menu.mod-tab-list .menu-item-title {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}

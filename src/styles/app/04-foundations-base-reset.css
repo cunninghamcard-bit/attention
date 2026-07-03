@@ -1,0 +1,65 @@
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overscroll-behavior: none;
+}
+body {
+  text-rendering: optimizeLegibility;
+  font-family: var(--font-interface);
+  line-height: var(--line-height-tight);
+  font-size: var(--font-ui-medium);
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0);
+  overflow: hidden;
+  overflow: clip;
+  contain: strict;
+}
+body.is-translucent {
+  background-color: transparent;
+}
+@keyframes node-inserted {
+  from {
+    outline-color: #fff;
+  }
+  to {
+    outline-color: #000;
+  }
+}
+.node-insert-event {
+  animation-duration: 0.01s;
+  animation-name: node-inserted;
+}
+.is-flashing {
+  transition: color 0.25s ease, background-color 0.25s ease;
+  background-color: var(--text-highlight-bg) !important;
+  color: var(--text-normal);
+  mix-blend-mode: var(--highlight-mix-blend-mode);
+  border-radius: var(--radius-s);
+}
+body {
+  user-select: none;
+  -webkit-user-select: none;
+  caret-color: var(--caret-color);
+}
+body [contenteditable="true"],
+body [contenteditable=""] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+body.is-grabbing,
+body.is-grabbing *:not(.workspace-leaf-resize-handle) {
+  cursor: -moz-grabbing !important;
+  cursor: -webkit-grabbing !important;
+  cursor: grabbing !important;
+}
+body.is-grabbing iframe:not(.is-controlled),
+body.is-grabbing webview {
+  pointer-events: none;
+}

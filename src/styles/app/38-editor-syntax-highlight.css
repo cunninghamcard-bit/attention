@@ -1,0 +1,159 @@
+code[class*="language-"] {
+  color: var(--code-normal);
+  background: none;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  word-break: normal;
+  direction: ltr;
+  font-family: var(--font-monospace);
+  text-align: left;
+  word-spacing: normal;
+  line-height: var(--line-height-normal);
+  -webkit-hyphens: none;
+  -moz-hyphens: none;
+  -ms-hyphens: none;
+  hyphens: none;
+}
+@media print {
+  code[class*="language-"] {
+    text-shadow: none;
+  }
+}
+.token.important,
+.token.bold {
+  font-weight: bold;
+}
+.token.italic {
+  font-style: italic;
+}
+.token.entity {
+  cursor: help;
+}
+/* Syntax highlighting */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: var(--code-comment);
+}
+.token.namespace {
+  opacity: 0.7;
+}
+.token.tag,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: var(--code-tag);
+}
+.token.punctuation {
+  color: var(--code-punctuation);
+}
+.token.boolean,
+.token.number {
+  color: var(--code-value);
+}
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.inserted {
+  color: var(--code-string);
+}
+.token.operator {
+  color: var(--code-operator);
+}
+.token.entity,
+.token.parameter,
+.token.property,
+.token.url,
+.language-css .token.string,
+.style .token.string,
+.token.variable {
+  color: var(--code-property);
+}
+.token.atrule,
+.token.attr-value,
+.token.builtin,
+.token.function,
+.token.class-name,
+.token.property-access {
+  color: var(--code-function);
+}
+.token.keyword {
+  color: var(--code-keyword);
+}
+.token.regex,
+.token.important {
+  color: var(--code-important);
+}
+.cm-inline-code,
+.cm-math {
+  color: var(--code-normal);
+}
+.cm-comment,
+.cm-meta {
+  color: var(--code-comment);
+}
+.cm-tag {
+  color: var(--code-tag);
+}
+.cm-punctuation,
+.cm-bracket,
+.cm-hr {
+  color: var(--code-punctuation);
+}
+.cm-number {
+  color: var(--code-value);
+}
+.cm-qualifier,
+.cm-string,
+.cm-string-2 {
+  color: var(--code-string);
+}
+.cm-operator {
+  color: var(--code-operator);
+}
+.cm-link,
+.cm-variable,
+.cm-variable-2,
+.cm-variable-3 {
+  color: var(--code-property);
+}
+.cm-builtin,
+.cm-property,
+.cm-attribute,
+.cm-type {
+  color: var(--code-function);
+}
+.cm-keyword {
+  color: var(--code-keyword);
+}
+.cm-editor.cm-focused .cm-matchingBracket {
+  background-color: var(--code-bracket-background);
+  box-shadow: inset 0 0 0 1px var(--background-modifier-hover);
+}
+.cm-editor.cm-focused .cm-matchingBracket .punctuation {
+  color: var(--text-normal);
+}
+.markdown-preview-view .markdown-embed .markdown-preview-view {
+  --file-folding-offset: 0px;
+  height: 100%;
+  padding: 0;
+}
+.markdown-preview-view .markdown-embed .markdown-preview-view .markdown-preview-pusher h1,
+.markdown-preview-view .markdown-embed .markdown-preview-view .markdown-preview-pusher h2,
+.markdown-preview-view .markdown-embed .markdown-preview-view .markdown-preview-pusher h3,
+.markdown-preview-view .markdown-embed .markdown-preview-view .markdown-preview-pusher h4,
+.markdown-preview-view .markdown-embed .markdown-preview-view .markdown-preview-pusher h5,
+.markdown-preview-view .markdown-embed .markdown-preview-view .markdown-preview-pusher h6 {
+  margin-top: 0;
+}
+.pdf-embed,
+.markdown-source-view .pdf-embed,
+.markdown-source-view.mod-cm6 .cm-content > .pdf-embed,
+.internal-embed.pdf-embed:not(.image-embed) {
+  width: 100%;
+  height: 800px;
+  display: flex;
+  flex-direction: column;
+}

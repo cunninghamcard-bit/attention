@@ -8,6 +8,7 @@ playwright-report/
 *.log
 .env
 .env.*
+.claude/
 
 # Local convenience symlink to the sibling reverse-engineering repo (not committed)
 decode-obsidian

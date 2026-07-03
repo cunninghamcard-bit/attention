@@ -1,0 +1,126 @@
+.flair {
+  background-color: var(--flair-background);
+  border-radius: var(--radius-s);
+  corner-shape: var(--corner-shape);
+  color: var(--flair-color);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  margin-inline-start: var(--size-4-2);
+  padding: var(--size-2-1) var(--size-2-2);
+  position: relative;
+  text-transform: uppercase;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.flair.mod-flat {
+  vertical-align: top;
+}
+.flair.mod-pop {
+  --flair-background: var(--interactive-accent);
+  --flair-color: var(--text-on-accent);
+}
+.markdown-preview-view:not(.allow-fold-lists) .list-collapse-indicator,
+.markdown-preview-view:not(.allow-fold-headings) .heading-collapse-indicator {
+  display: none;
+}
+/* #todo Reduce specificity here */
+.cm-fold-indicator .collapse-indicator,
+.cm-gutterElement .collapse-indicator,
+.collapse-indicator,
+.fold-gutter {
+  opacity: 0;
+}
+/*
+.is-mobile & .cm-fold-indicator .collapse-indicator {
+	opacity: 1;
+}*/
+h1:hover .collapse-indicator,
+h2:hover .collapse-indicator,
+h3:hover .collapse-indicator,
+h4:hover .collapse-indicator,
+h5:hover .collapse-indicator,
+h6:hover .collapse-indicator,
+.collapse-indicator:hover,
+.is-collapsed .collapse-indicator,
+.cm-fold-indicator.is-collapsed .collapse-indicator,
+.cm-gutterElement:hover .collapse-indicator,
+.cm-gutterElement .is-collapsed .collapse-indicator,
+.cm-line:hover .cm-fold-indicator .collapse-indicator,
+.fold-gutter.is-collapsed,
+.fold-gutter:hover,
+.metadata-properties-heading:hover .collapse-indicator {
+  opacity: 1;
+}
+.collapse-icon {
+  display: flex;
+  align-items: center;
+}
+.collapse-icon:before {
+  content: "\200B";
+}
+.collapse-icon svg.svg-icon {
+  color: var(--nav-collapse-icon-color);
+  stroke-width: 4px;
+  width: 10px;
+  height: 10px;
+  transition: transform 100ms ease-in-out;
+}
+.collapse-icon.is-collapsed svg.svg-icon {
+  transform: rotate(calc(var(--direction) * -1 * 90deg));
+}
+.view-content .list-collapse-indicator svg.svg-icon,
+.view-content .collapse-indicator svg.svg-icon {
+  color: var(--collapse-icon-color);
+}
+.view-content .is-collapsed .list-collapse-indicator svg.svg-icon,
+.view-content .is-collapsed .collapse-indicator svg.svg-icon {
+  color: var(--collapse-icon-color-collapsed);
+}
+.markdown-preview-view .collapse-indicator {
+  display: inline-flex;
+  position: absolute;
+  cursor: var(--cursor);
+  user-select: none;
+}
+.markdown-preview-view .collapse-indicator .svg-icon {
+  vertical-align: middle;
+}
+.markdown-preview-view li.is-collapsed > ul,
+.markdown-preview-view li.is-collapsed > ol {
+  display: none;
+}
+.markdown-preview-view .heading-collapse-indicator {
+  margin-inline-start: -22px;
+  padding: 0 6px;
+}
+.markdown-source-view.mod-cm6 .cm-fold-indicator .collapse-indicator {
+  opacity: 0;
+}
+.markdown-source-view.mod-cm6 .cm-line:hover .cm-fold-indicator .collapse-indicator,
+.markdown-source-view.mod-cm6 .cm-fold-indicator.is-collapsed .collapse-indicator {
+  opacity: 1;
+}
+.markdown-source-view.mod-cm6 .cm-foldPlaceholder {
+  color: var(--text-faint);
+  background-color: transparent;
+  border: none;
+  margin-inline-start: 8px;
+  user-select: none;
+}
+.markdown-source-view.mod-cm6 .cm-fold-indicator {
+  display: inline-block;
+  position: relative;
+  z-index: 1;
+}
+.markdown-source-view.mod-cm6 .cm-fold-indicator:before {
+  content: '\200B';
+}
+.markdown-source-view.mod-cm6 .cm-fold-indicator .collapse-indicator {
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+  height: 100%;
+  cursor: var(--cursor);
+  padding-inline-end: 5px;
+}
+/* Consistency for hover states across all icon buttons */

@@ -1,0 +1,619 @@
+.internal-query {
+  margin: 0;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.internal-query .search-result-container {
+  padding: var(--size-4-2);
+  max-height: 800px;
+  overflow: auto;
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-secondary);
+  border-radius: var(--radius-m);
+}
+.internal-query .internal-query-header {
+  text-align: center;
+  padding: var(--size-4-3) 0 var(--size-4-3) var(--size-4-1);
+  color: var(--text-normal);
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+.internal-query .internal-query-header-icon {
+  color: var(--text-faint);
+  margin-inline-end: var(--size-4-1);
+  display: flex;
+}
+.internal-query .internal-query-header-title {
+  font-weight: var(--font-medium);
+}
+.internal-query .internal-query-header-title:before,
+.internal-query .internal-query-header-title:after {
+  content: '"';
+}
+/* Default markers */
+ul ul,
+ol ul,
+ol ol ul,
+ol ul ul,
+ul ol ul,
+ul ul ul {
+  list-style-type: disc;
+}
+ol {
+  list-style-type: var(--list-numbered-style);
+}
+ul > li,
+ol > li {
+  text-align: start;
+}
+ol > li::marker,
+ul > li::marker {
+  color: var(--list-marker-color);
+}
+ol > li.is-collapsed::marker,
+ul > li.is-collapsed::marker {
+  color: var(--list-marker-color-collapsed);
+}
+/* Indent depth
+   Consistency in horizontal positioning of lists
+*/
+.markdown-rendered ul,
+.markdown-rendered ol {
+  padding-inline-start: 0;
+  margin-block-start: var(--p-spacing);
+  margin-block-end: var(--p-spacing);
+  /* Space between list items */
+}
+.markdown-rendered ul ul,
+.markdown-rendered ol ul,
+.markdown-rendered ul ol,
+.markdown-rendered ol ol {
+  margin-block-start: 0;
+  margin-block-end: 0;
+}
+.markdown-rendered ul li p:first-of-type,
+.markdown-rendered ol li p:first-of-type {
+  margin-block-start: 0;
+}
+.markdown-rendered ul li p:last-of-type,
+.markdown-rendered ol li p:last-of-type {
+  margin-block-end: 0;
+}
+.markdown-rendered ul > li,
+.markdown-rendered ol > li {
+  padding-top: var(--list-spacing);
+  padding-bottom: var(--list-spacing);
+  position: relative;
+}
+.markdown-rendered ul > li {
+  margin-inline-start: 3ch;
+}
+.markdown-rendered ol > li {
+  margin-inline-start: 3ch;
+}
+.markdown-rendered ol ol > li,
+.markdown-rendered ul ul > li {
+  margin-inline-start: var(--list-indent);
+}
+.markdown-source-view {
+  --list-padding-inline-start: var(--list-indent-source);
+  --list-marker-space: 0;
+}
+.markdown-source-view.is-live-preview {
+  --list-padding-inline-start: var(--list-indent-editing);
+  --list-marker-space: 0.25em;
+}
+.cm-formatting-list-ul,
+.cm-formatting-list-ol {
+  font-variant-numeric: tabular-nums;
+  padding-inline-start: var(--list-padding-inline-start);
+}
+.markdown-source-view.mod-cm6 .HyperMD-list-line-nobullet .cm-indent {
+  min-width: var(--list-indent);
+}
+.cm-s-obsidian .cm-formatting-list {
+  color: var(--list-marker-color);
+}
+.cm-s-obsidian .is-collapsed ~ .cm-formatting-list {
+  color: var(--list-marker-color-collapsed);
+}
+/* Indent depth
+   Consistency in horizontal positioning of lists
+*/
+.cm-line.HyperMD-list-line {
+  tab-size: var(--list-indent);
+}
+/* Space between list items */
+.markdown-source-view ol > li,
+.markdown-source-view ul > li,
+.markdown-preview-view ol > li,
+.markdown-preview-view ul > li,
+.mod-cm6 .HyperMD-list-line.cm-line {
+  padding-top: var(--list-spacing);
+  padding-bottom: var(--list-spacing);
+}
+/* Allow clicking on the bullet to collapse */
+/* #todo move this into folding.less */
+.markdown-rendered .list-collapse-indicator {
+  margin-inline-start: -2.65em;
+  padding-inline-end: 2em;
+}
+.markdown-rendered .list-bullet {
+  float: left;
+  float: inline-start;
+  margin-inline-start: -0.8em;
+}
+.markdown-rendered .task-list-item > .list-bullet {
+  display: none;
+}
+/* Remove default bullets so we can replace them */
+.markdown-rendered ul.has-list-bullet {
+  list-style-type: '\200B';
+}
+.markdown-rendered ul.has-list-bullet > li::marker {
+  color: transparent;
+}
+.list-bullet {
+  /* hide bullet when editing the marker */
+  color: transparent;
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+.list-bullet:before {
+  content: '\200B';
+}
+.list-bullet:after {
+  position: absolute;
+  content: '\200B';
+  pointer-events: none;
+  color: var(--list-marker-color);
+  border-radius: var(--list-bullet-radius);
+  width: var(--list-bullet-size);
+  height: var(--list-bullet-size);
+  border: var(--list-bullet-border);
+  transform: var(--list-bullet-transform);
+  background-color: var(--list-marker-color);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.list-bullet::selection {
+  background-color: transparent !important;
+}
+li.is-collapsed .list-bullet:after,
+.is-collapsed ~ .cm-formatting-list .list-bullet:after {
+  background-color: var(--list-marker-color-collapsed);
+  box-shadow: 0 0 0 4px var(--background-modifier-active-hover);
+}
+/* Allow clicking on the bullet to collapse */
+/* #todo move this into folding.less */
+.markdown-source-view.mod-cm6.is-live-preview {
+  /* only allow this if line is not active, so that it's still editable */
+}
+.markdown-source-view.mod-cm6.is-live-preview .cm-line.HyperMD-list-line .cm-fold-indicator .collapse-indicator {
+  padding-inline-end: 0;
+}
+.markdown-source-view.mod-cm6.is-live-preview .cm-line.HyperMD-list-line:not(.cm-active):not(.HyperMD-task-line) .cm-fold-indicator .collapse-indicator {
+  padding-inline-end: var(--list-bullet-end-padding);
+  inset-inline-end: calc(var(--list-bullet-end-padding) * -1);
+}
+@media (hover: hover) {
+  .list-collapse-indicator:hover ~ .list-bullet:after,
+  .cm-fold-indicator:hover ~ .list-bullet:after,
+  .list-collapse-indicator:hover ~ .cm-formatting-list .list-bullet:after,
+  .cm-fold-indicator:hover ~ .cm-formatting-list .list-bullet:after {
+    background-color: var(--list-marker-color-hover);
+    box-shadow: 0 0 0 4px var(--background-modifier-hover);
+  }
+  li.is-collapsed .list-collapse-indicator:hover ~ .list-bullet:after,
+  li.is-collapsed .cm-fold-indicator:hover ~ .list-bullet:after,
+  .list-collapse-indicator:hover.is-collapsed ~ .list-bullet:after,
+  .cm-fold-indicator:hover.is-collapsed ~ .list-bullet:after,
+  li.is-collapsed .list-collapse-indicator:hover ~ .cm-formatting-list .list-bullet:after,
+  li.is-collapsed .cm-fold-indicator:hover ~ .cm-formatting-list .list-bullet:after,
+  .list-collapse-indicator:hover.is-collapsed ~ .cm-formatting-list .list-bullet:after,
+  .cm-fold-indicator:hover.is-collapsed ~ .cm-formatting-list .list-bullet:after {
+    background-color: var(--list-marker-color-collapsed);
+    box-shadow: 0 0 0 4px var(--background-modifier-active-hover);
+  }
+}
+.cm-s-obsidian .HyperMD-list-line.HyperMD-list-line-nobullet {
+  padding-top: initial;
+}
+.cm-s-obsidian .HyperMD-list-line.HyperMD-list-line-nobullet > .cm-hmd-list-indent > .cm-indent-spacing:last-child {
+  padding-inline-start: calc(var(--list-indent-editing) + var(--list-marker-space));
+}
+.markdown-source-view.mod-cm6 .cm-hmd-list-indent {
+  display: inline-block;
+  white-space: pre;
+}
+.markdown-source-view.mod-cm6 .cm-formatting-list-ul,
+.markdown-source-view.mod-cm6 .cm-formatting-list-ol {
+  white-space: pre;
+}
+a {
+  --font-weight: var(--link-weight);
+  color: var(--link-color);
+  font-weight: var(--link-weight);
+  outline: none;
+  text-decoration-line: var(--link-decoration);
+  text-decoration-thickness: var(--link-decoration-thickness);
+  cursor: var(--cursor-link);
+  transition: opacity var(--anim-duration-fast) ease-in-out;
+}
+@media (hover: hover) {
+  a:hover {
+    color: var(--link-color-hover);
+    text-decoration-line: var(--link-decoration-hover);
+  }
+}
+a.mobile-tap {
+  opacity: 0.5;
+}
+.external-link {
+  color: var(--link-external-color);
+  text-decoration-line: var(--link-external-decoration);
+  background-position: center right;
+  background-repeat: no-repeat;
+  background-image: linear-gradient(transparent, transparent), url(public/images/6155340132a851f6089e.svg);
+  background-size: 0.825em;
+  padding-inline-end: 0.9em;
+  background-position-y: 0.25em;
+  cursor: var(--cursor-link);
+  filter: var(--link-external-filter);
+  transition: opacity var(--anim-duration-fast) ease-in-out;
+}
+@media (hover: hover) {
+  .external-link:hover {
+    color: var(--link-external-color-hover);
+    text-decoration-line: var(--link-external-decoration-hover);
+  }
+}
+.external-link.mobile-tap {
+  opacity: 0.5;
+}
+@supports selector(:dir(rtl)) {
+  :dir(rtl) .external-link {
+    background-position: center left;
+    background-image: linear-gradient(transparent, transparent), url(public/images/2308ab1944a6bfa5c5b8.svg);
+    background-repeat: no-repeat;
+  }
+}
+.metadata-property-value .internal-link,
+.markdown-rendered .internal-link {
+  cursor: var(--cursor-link);
+  text-decoration-line: var(--link-decoration);
+  --font-weight: var(--link-weight);
+  color: var(--link-color);
+  transition: opacity var(--anim-duration-fast) ease-in-out;
+}
+@media (hover: hover) {
+  .metadata-property-value .internal-link:hover,
+  .markdown-rendered .internal-link:hover {
+    color: var(--link-color-hover);
+    text-decoration-line: var(--link-decoration-hover);
+  }
+}
+.metadata-property-value .internal-link.mobile-tap,
+.markdown-rendered .internal-link.mobile-tap {
+  opacity: 0.5;
+}
+.metadata-property-value .internal-link.is-unresolved,
+.markdown-rendered .internal-link.is-unresolved {
+  color: var(--link-unresolved-color);
+  opacity: var(--link-unresolved-opacity);
+  filter: var(--link-unresolved-filter);
+  text-decoration-style: var(--link-unresolved-decoration-style);
+  text-decoration-color: var(--link-unresolved-decoration-color);
+}
+@media (hover: hover) {
+  .metadata-property-value .internal-link.is-unresolved:hover,
+  .markdown-rendered .internal-link.is-unresolved:hover {
+    opacity: 1;
+    color: var(--link-color-hover);
+    text-decoration-color: var(--link-color-hover);
+    text-decoration-line: var(--link-decoration-hover);
+  }
+}
+.cm-s-obsidian span.cm-hmd-internal-link {
+  color: var(--link-color);
+  font-weight: var(--link-weight);
+}
+@media (hover: hover) {
+  .cm-s-obsidian span.cm-hmd-internal-link:hover {
+    text-decoration-line: var(--link-decoration-hover);
+    color: var(--link-color-hover);
+  }
+}
+.cm-s-obsidian span.cm-link {
+  color: var(--link-external-color);
+  word-break: break-word;
+}
+.cm-s-obsidian span.cm-link a {
+  color: var(--link-external-color);
+}
+@media (hover: hover) {
+  .cm-s-obsidian span.cm-link:hover {
+    color: var(--link-external-color-hover);
+    text-decoration-line: var(--link-external-decoration-hover);
+  }
+}
+.cm-s-obsidian span.cm-formatting-link.cm-url,
+.cm-s-obsidian span.cm-url {
+  color: var(--link-external-color);
+  font-weight: var(--link-weight);
+  text-decoration-line: var(--link-external-decoration);
+  filter: var(--link-external-filter);
+  word-break: break-all;
+}
+@media (hover: hover) {
+  .cm-s-obsidian span.cm-formatting-link.cm-url:hover,
+  .cm-s-obsidian span.cm-url:hover {
+    color: var(--link-external-color-hover);
+    text-decoration-line: var(--link-external-decoration-hover);
+  }
+}
+.cm-s-obsidian span.cm-footref.cm-inline-footnote.cm-formatting-inline-footnote,
+.cm-s-obsidian span.cm-footref.cm-hmd-barelink.cm-formatting,
+.cm-s-obsidian span.cm-formatting-image,
+.cm-s-obsidian span.cm-formatting-link-string,
+.cm-s-obsidian span.cm-formatting-link {
+  color: var(--text-faint);
+}
+.cm-s-obsidian span.hmd-link-icon {
+  width: 20px;
+  height: 16px;
+  display: inline-block;
+  vertical-align: middle;
+  opacity: 0.4;
+}
+@media (hover: hover) {
+  .cm-s-obsidian span.hmd-link-icon:hover {
+    opacity: 1;
+  }
+}
+.cm-s-obsidian span.hmd-link-icon:after {
+  content: "";
+}
+.markdown-source-view.mod-cm6 .is-unresolved {
+  color: var(--link-unresolved-color);
+  opacity: var(--link-unresolved-opacity);
+  filter: var(--link-unresolved-filter);
+}
+@media (hover: hover) {
+  .markdown-source-view.mod-cm6 .is-unresolved:hover {
+    opacity: 1;
+    color: var(--link-color-hover);
+    text-decoration-color: var(--link-color-hover);
+  }
+}
+.markdown-source-view.mod-cm6 .is-unresolved .cm-underline {
+  text-decoration-line: var(--link-decoration);
+  text-decoration-style: var(--link-unresolved-decoration-style);
+  text-decoration-color: var(--link-unresolved-decoration-color);
+  color: var(--link-unresolved-color);
+}
+.markdown-source-view.mod-cm6 .cm-underline {
+  text-decoration-line: var(--link-decoration);
+  text-decoration-thickness: var(--link-decoration-thickness);
+}
+body.is-ios .markdown-source-view.mod-cm6 .cm-editor:not(.cm-focused) .cm-underline {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-modify: read-only;
+}
+.markdown-source-view.mod-cm6.is-live-preview .cm-hashtag.cm-meta,
+.markdown-source-view.mod-cm6 .cm-hmd-internal-link .cm-underline,
+.markdown-source-view.mod-cm6 .cm-link .cm-underline,
+.markdown-source-view.mod-cm6 .cm-url .cm-underline {
+  cursor: var(--cursor-link);
+}
+@media (hover: hover) {
+  .markdown-source-view.mod-cm6 .cm-hmd-internal-link .cm-underline:hover {
+    text-decoration-line: var(--link-decoration-hover);
+  }
+}
+.markdown-source-view.mod-cm6 .cm-link .cm-underline,
+.markdown-source-view.mod-cm6 .cm-url .cm-underline {
+  color: var(--link-external-color);
+  text-decoration-line: var(--link-external-decoration);
+}
+@media (hover: hover) {
+  .markdown-source-view.mod-cm6 .cm-link .cm-underline:hover,
+  .markdown-source-view.mod-cm6 .cm-url .cm-underline:hover {
+    color: var(--link-external-color-hover);
+    text-decoration-line: var(--link-external-decoration-hover);
+  }
+}
+.cm-s-obsidian.HyperMD-with-alt span.cm-url,
+.cm-s-obsidian.HyperMD-with-alt span.cm-link,
+.cm-s-obsidian.HyperMD-with-alt span.cm-hashtag,
+.cm-s-obsidian.HyperMD-with-ctrl span.cm-url,
+.cm-s-obsidian.HyperMD-with-ctrl span.cm-link,
+.cm-s-obsidian.HyperMD-with-ctrl span.cm-hashtag {
+  cursor: var(--cursor-link);
+}
+.inline-block {
+  display: inline-block;
+  vertical-align: middle;
+}
+.hidden-token {
+  display: inline;
+  font-size: 1px !important;
+  letter-spacing: -1ch;
+  font-family: monospace;
+  color: transparent;
+}
+.cm-s-obsidian {
+  /* tooltip for addon/hover */
+  /* gutter for addon/click */
+  /* addon/fold */
+  /* addon/fold-emoji */
+}
+.cm-s-obsidian span.hmd-hidden-token.cm-formatting-em,
+.cm-s-obsidian span.hmd-hidden-token.cm-formatting-strong,
+.cm-s-obsidian span.hmd-hidden-token.cm-formatting-strikethrough,
+.cm-s-obsidian span.hmd-hidden-token.cm-formatting-code,
+.cm-s-obsidian span.hmd-hidden-token.cm-formatting-link {
+  display: inline;
+  font-size: 1px !important;
+  letter-spacing: -1ch;
+  font-family: monospace;
+  color: transparent;
+}
+.cm-s-obsidian div.HyperMD-hover > .HyperMD-hover-content {
+  background-color: #fff;
+  color: #000;
+  border: 1px solid #000;
+  padding: 0.5em;
+}
+.cm-s-obsidian div.HyperMD-hover > .HyperMD-hover-content p {
+  margin: 0.2em 0;
+}
+.cm-s-obsidian .HyperMD-goback {
+  width: 1px;
+}
+.cm-s-obsidian div.HyperMD-goback-button {
+  background-color: #ddd;
+  color: #333;
+  text-align: center;
+  cursor: var(--cursor);
+}
+.cm-s-obsidian .hmd-link-icon:after {
+  content: "🔗»";
+  color: #009;
+  text-shadow: 0 0 2px #69F;
+}
+.cm-s-obsidian img.hmd-emoji {
+  height: 1.2em;
+  vertical-align: middle;
+}
+.cm-s-obsidian {
+  line-height: var(--line-height-normal);
+}
+.cm-s-obsidian .hmd-fold-html-stub,
+.cm-s-obsidian .hmd-fold-code-stub,
+.cm-s-obsidian .cm-inline-code,
+.cm-s-obsidian .HyperMD-codeblock,
+.cm-s-obsidian .HyperMD-hr,
+.cm-s-obsidian .cm-hmd-frontmatter,
+.cm-s-obsidian .cm-hmd-orgmode-markup,
+.cm-s-obsidian .cm-formatting-code,
+.cm-s-obsidian .cm-math,
+.cm-s-obsidian span.hmd-fold-math-placeholder,
+.cm-s-obsidian .hmd-fold-html kbd {
+  font-family: var(--font-monospace);
+}
+.cm-s-obsidian span.cm-hmd-toc {
+  font-size: 24pt;
+  color: #999;
+}
+.cm-s-obsidian .HyperMD-header-line {
+  color: var(--text-muted);
+}
+.cm-s-obsidian span.cm-hmd-escape-backslash {
+  color: var(--text-faint);
+}
+.cm-s-obsidian span.cm-footref,
+.cm-s-obsidian span.cm-blockid {
+  position: relative;
+  font-size: var(--font-smallest);
+  vertical-align: text-top;
+  top: -0.2em;
+}
+.cm-s-obsidian span.cm-footref.cm-hmd-barelink,
+.cm-s-obsidian span.cm-blockid {
+  color: var(--text-muted);
+}
+.cm-s-obsidian .hmd-file-uploading {
+  outline: 2px dashed #CCC;
+  outline-offset: -2px;
+  animation: hmd-file-uploading-ani 1.5s linear infinite;
+}
+.cm-s-obsidian .hmd-file-uploaded {
+  outline: 2px solid #6C3;
+  outline-offset: -2px;
+}
+.cm-s-obsidian .HyperMD-goback {
+  width: 1px;
+}
+.cm-s-obsidian div.HyperMD-goback-button {
+  padding-right: 15px;
+  border-radius: 0 10px 10px 0;
+  display: inline-block;
+  text-align: center;
+  background-color: #8daed9;
+  color: #f7f7f7;
+  cursor: var(--cursor);
+}
+.cm-s-obsidian .hmd-fold-code-image {
+  text-align: center;
+}
+.cm-s-obsidian .HyperMD-header,
+.cm-s-obsidian .HyperMD-footnote,
+.cm-s-obsidian .HyperMD-codeblock,
+.cm-s-obsidian .HyperMD-hr {
+  clear: left;
+}
+.cm-s-obsidian .cm-s-obsidian span.hmd-hidden-token.cm-formatting-task {
+  color: transparent !important;
+}
+.cm-s-obsidian .hmd-inactive-line span.cm-hmd-escape-backslash,
+.cm-s-obsidian .hmd-inactive-line span.cm-formatting-header {
+  font-size: 0 !important;
+  display: inline;
+}
+.cm-s-obsidian .hmd-inactive-line span.cm-hmd-list-indent {
+  border-right: 0;
+}
+@keyframes hmd-file-uploading-ani {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+@media (hover: hover) {
+  .cm-s-obsidian div.HyperMD-goback-button:hover {
+    color: transparent;
+    text-align: left;
+  }
+  .cm-s-obsidian div.HyperMD-goback-button:hover:before {
+    position: absolute;
+    padding-left: 5px;
+    content: "Back";
+    color: #f7f7f7;
+  }
+}
+mjx-container {
+  outline: none;
+}
+.cm-s-obsidian {
+  /* addon/fold-math */
+}
+.cm-s-obsidian .hmd-fold-math {
+  display: inline-block;
+  vertical-align: middle;
+}
+.cm-s-obsidian .hmd-fold-math.hmd-fold-math.math-2 {
+  width: 100%;
+}
+.cm-s-obsidian span.cm-math,
+.cm-s-obsidian span.hmd-fold-math-placeholder {
+  font-size: var(--code-size);
+  font-style: italic;
+}
+.cm-s-obsidian span.cm-formatting-math {
+  color: var(--text-accent);
+  font-weight: inherit;
+}
+.cm-s-obsidian span.cm-math-2 {
+  font-size: 13.2pt;
+}
+.markdown-source-view.mod-cm6 .math-block > mjx-container {
+  margin: 0;
+  padding: 1em 0;
+  overflow-x: auto;
+}
