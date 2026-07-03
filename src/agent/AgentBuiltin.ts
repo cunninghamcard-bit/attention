@@ -16,6 +16,7 @@ function ensureAgentIcons(): void {
 }
 import { newAgentId } from "./AgentManager";
 import { registerChatMessageAction, registerChatSlashCommand } from "./ChatRegistry";
+import { registerMentionPostProcessor } from "./ChatMentions";
 import { registerBuiltinToolCards } from "./ChatToolCards";
 import { AgentStatusBar } from "./AgentStatusBar";
 import { chatMessageToMarkdown, type ChatMessage } from "./Agent";
@@ -85,6 +86,7 @@ export function registerAgentViews(app: App): void {
 export function registerAgentBuiltin(app: App): void {
   ensureAgentIcons();
   registerBuiltinToolCards();
+  registerMentionPostProcessor();
   new AgentStatusBar(app);
   app.commands.addCommand({
     id: "agent:open",

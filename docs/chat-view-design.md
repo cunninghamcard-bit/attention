@@ -45,6 +45,23 @@ MultiAgentView extends ChatView — a room is a chat whose speakers are many,
 not a new genre. It contributes the participants strip and its own view
 type; everything else is inherited.
 
+The group-chat design, three layers deep:
+
+```text
+identity  (UI, shipped)   avatars (hue-colored initials), @mention
+                          highlighting via the shared postProcessor chain,
+                          an invite chip that addresses agents by @
+roster    (contract, next) room.joined events make membership room STATE —
+                          invite before speaking; board agents drag into rooms
+turns     (backend)       who speaks next — @directed, moderated, or free
+                          round-robin — is engine orchestration; the UI only
+                          renders whoever spoke, so policies swap freely
+```
+
+Note the ordering constraint this uncovered: registerAgentBuiltin must run
+AFTER MarkdownRenderer.resetProcessors()/registerMarkdownDefaultProcessors,
+or the mention postProcessor is wiped at startup.
+
 This document merges three earlier sources into one decided design:
 
 - `docs/chat-agent-mapping.md` (extension-point mapping)

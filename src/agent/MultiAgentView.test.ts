@@ -44,7 +44,7 @@ describe("MultiAgentView", () => {
     expect(labels).toEqual(["研究员", "工程师"]);
     expect((el.querySelector('.chat-message[data-author-id="researcher"]') as HTMLElement | null)).not.toBeNull();
 
-    const chips = [...el.querySelectorAll(".multi-agent-chip")].map((n) => n.textContent);
+    const chips = [...el.querySelectorAll(".multi-agent-chip .multi-agent-chip-name")].map((n) => n.textContent);
     expect(chips).toEqual(["You", "研究员", "工程师"]);
 
     // authors get stable hues on messages and chips

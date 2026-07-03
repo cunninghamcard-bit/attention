@@ -45,6 +45,7 @@ export const STRINGS = {
   },
   room: {
     participants: "Participants",
+    invite: "Invite an agent",
     participantsHint: "Agents join as they speak.",
     title: "Room",
     titleFor: (roomId: string) => `Room – ${roomId}`,

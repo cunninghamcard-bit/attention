@@ -27,7 +27,7 @@ export class ChatView extends StreamView {
   protected agentTitle: string | null = null;
   protected session: Agent | null = null;
   private list: ChatMessageList | null = null;
-  private composer: ChatComposer | null = null;
+  protected composer: ChatComposer | null = null;
   private stopActionEl: HTMLElement | null = null;
   // Set on send: the next sync pins the new user message to the viewport top
   // (ArkLoop-style anchoring) so the reply reads downward from the question.

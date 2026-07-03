@@ -215,6 +215,7 @@ class ChatMessageItem extends Component {
     // ArkLoop rule). Only a room's author name earns a header line.
     if (message.role === "assistant" && message.authorName) {
       const headerEl = createDiv("chat-message-header", this.el);
+      createSpan({ cls: "chat-author-avatar", text: message.authorName.slice(0, 1), parent: headerEl });
       createDiv({ cls: "chat-message-role", text: message.authorName, parent: headerEl });
     }
     this.partsEl = createDiv("chat-message-parts", this.el);

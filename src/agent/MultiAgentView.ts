@@ -1,8 +1,9 @@
-import { createDiv, createSpan } from "../dom/dom";
+import { createDiv, createEl, createSpan } from "../dom/dom";
+import { Menu } from "../ui/Menu";
 import { STRINGS } from "./AgentStrings";
+import { AgentTransport } from "./AgentTransport";
 import { authorHue } from "./ChatMessageList";
 import { ChatView } from "./ChatView";
-import { createStatusDot } from "./StatusDot";
 
 export const MULTI_AGENT_VIEW_TYPE = "multi-agent";
 
@@ -15,6 +16,7 @@ export const MULTI_AGENT_VIEW_TYPE = "multi-agent";
 export class MultiAgentView extends ChatView {
   override icon = "users";
   private participantsEl: HTMLElement | null = null;
+  private readonly inviteTransport = new AgentTransport();
 
   getViewType(): string {
     return MULTI_AGENT_VIEW_TYPE;
@@ -56,6 +58,7 @@ export class MultiAgentView extends ChatView {
     if (authors.size === 0) {
       createSpan({ cls: "multi-agent-participants-hint", text: STRINGS.room.participantsHint, parent: this.participantsEl });
     }
+    this.inviteChip();
   }
 
   protected override mentionTargets(): string[] {
@@ -70,7 +73,26 @@ export class MultiAgentView extends ChatView {
     const chipEl = createSpan({ cls: `multi-agent-chip${speaking ? " is-speaking" : ""}`, parent: this.participantsEl! });
     chipEl.dataset.participantId = id;
     if (id !== "you") chipEl.style.setProperty("--author-hue", String(authorHue(id)));
-    createStatusDot(chipEl, speaking ? "running" : "on");
-    chipEl.appendText(name);
+    createSpan({ cls: "chat-author-avatar", text: name.slice(0, 1), parent: chipEl });
+    createSpan({ cls: "multi-agent-chip-name", text: name, parent: chipEl });
+  }
+
+  // "+" invites: pick any known agent, address it with an "@" — inviting IS
+  // addressing until the roster becomes room state on the backend.
+  private inviteChip(): void {
+    const inviteEl = createEl("button", { cls: "multi-agent-invite", text: "+", parent: this.participantsEl! });
+    inviteEl.title = STRINGS.room.invite;
+    inviteEl.addEventListener("click", async (event) => {
+      const agents = await this.inviteTransport.listAgents();
+      const menu = new Menu(this.containerEl.ownerDocument);
+      for (const agent of agents) {
+        const name = agent.title ?? agent.id;
+        menu.addItem((item) => item.setTitle(name).onClick(() => {
+          this.composer?.setValue(`${this.composer.getValue()}@${name} `.trimStart());
+          this.composer?.focus();
+        }));
+      }
+      menu.showAtMouseEvent(event);
+    });
   }
 }

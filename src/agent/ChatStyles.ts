@@ -185,4 +185,11 @@ const CHAT_CSS = `
     .chat-composer-attach svg { width: 17px; height: 17px; }
     .chat-composer-card.is-dragging { border-color: rgba(0, 0, 0, 0.32); }
     .theme-dark .chat-composer-card.is-dragging { border-color: rgba(255, 255, 255, 0.35); }
+    .chat-author-avatar { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: #fff; background: hsl(var(--author-hue, 255) 45% 55%); flex: 0 0 auto; user-select: none; }
+    .chat-message-header { display: flex; align-items: center; gap: 6px; }
+    .multi-agent-chip.is-speaking .chat-author-avatar { box-shadow: 0 0 0 2px hsl(var(--author-hue, 255) 50% 55% / 0.35); animation: chat-shimmer 1.6s ease-in-out infinite; }
+    .chat-mention { font-weight: 600; background: rgba(0, 0, 0, 0.06); border-radius: 4px; padding: 0 3px; }
+    .theme-dark .chat-mention { background: rgba(255, 255, 255, 0.1); }
+    .multi-agent-invite { width: 22px; height: 22px; border-radius: 999px; border: 1px dashed var(--background-modifier-border, rgba(0,0,0,0.2)); background: transparent; color: var(--text-muted, #8c8c8a); cursor: pointer; padding: 0; line-height: 1; font-size: 14px; }
+    .multi-agent-invite:hover { color: var(--text-normal, #1a1a19); border-color: rgba(0, 0, 0, 0.3); }
 `;

@@ -276,10 +276,12 @@ export class App {
     this.statusBar = new StatusBar(this.dom.statusBarEl);
     this.appearance.applyFromConfig();
     registerAppCommands(this);
-    registerAgentBuiltin(this);
     this.desktopMenu.refresh();
     MarkdownRenderer.resetProcessors();
     registerMarkdownDefaultProcessors(this);
+    // After the processor reset: the agent builtin registers its own
+    // postProcessor (mention highlighting) into the same chain.
+    registerAgentBuiltin(this);
     this.registerSettings();
     this.registerGlobalHotkeys();
     this.corePluginsReady = registerCorePlugins(this);
