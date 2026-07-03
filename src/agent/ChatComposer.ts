@@ -2,7 +2,7 @@ import { autocompletion, completionKeymap, type Completion, type CompletionConte
 import { defaultKeymap, history, historyKeymap, insertNewline } from "@codemirror/commands";
 import { Compartment, EditorState, Prec, type Extension } from "@codemirror/state";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
-import { createDiv, createEl } from "../dom/dom";
+import { createDiv, createEl, createSpan } from "../dom/dom";
 import { Component } from "../core/Component";
 import { STRINGS } from "./AgentStrings";
 import { setIcon } from "../ui/Icon";
@@ -113,10 +113,13 @@ export class ChatComposer extends Component {
         }),
       );
     }
-    // clickable-icon is the app's own icon-button vocabulary: quiet
-    // background and hover come from app.css; is-ready/is-running override.
-    this.sendButtonEl = createEl("button", { cls: "chat-composer-send clickable-icon", parent: actionsEl, title: STRINGS.composer.send });
+    // One slot, ArkLoop-style: empty draft shows nothing; the arrow springs
+    // in when there is something to send; streaming swaps it for a drawn
+    // record-stop glyph (ring + square). All swaps are CSS-only.
+    this.sendButtonEl = createEl("button", { cls: "chat-composer-send", parent: actionsEl, title: STRINGS.composer.send });
     setIcon(this.sendButtonEl, "lucide-arrow-up");
+    const stopEl = createSpan({ cls: "chat-stop-glyph", parent: this.sendButtonEl });
+    createSpan({ cls: "chat-stop-glyph-square", parent: stopEl });
   }
 
   override onload(): void {
@@ -146,7 +149,6 @@ export class ChatComposer extends Component {
 
   syncRunning(): void {
     const running = this.callbacks.isRunning();
-    setIcon(this.sendButtonEl, running ? "lucide-square" : "lucide-arrow-up");
     this.sendButtonEl.title = running ? STRINGS.composer.stop : STRINGS.composer.send;
     this.sendButtonEl.toggleClass("is-running", running);
   }

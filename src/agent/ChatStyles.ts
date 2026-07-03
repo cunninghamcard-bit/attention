@@ -146,12 +146,18 @@ const CHAT_CSS = `
     .chat-part-attachment { border: 1px solid var(--background-modifier-border, rgba(0,0,0,0.08)); border-radius: 10px; padding: 8px 12px; font-size: 0.9em; background: var(--background-primary, #fff); }
     .chat-attachment-header { display: flex; gap: 8px; align-items: baseline; }
     .chat-attachment-content { margin: 6px 0 0; padding: 6px 8px; border-radius: 4px; background: var(--background-primary-alt, rgba(120,120,140,0.08)); overflow: auto; max-height: 160px; font-size: 0.85em; }
-    .chat-composer-send { width: 32px; height: 32px; padding: 0; border-radius: 8px; cursor: pointer; border: none; background: transparent; color: var(--text-faint, #b6b6be); display: inline-flex; align-items: center; justify-content: center; transition: background-color 60ms ease, color 60ms ease, transform 100ms ease, opacity 60ms ease; flex: 0 0 auto; }
-    .chat-composer-send:active { transform: scale(0.93); opacity: 0.75; }
-    .chat-composer-send:hover { background: var(--background-modifier-hover, rgba(120,120,140,0.12)); color: var(--text-muted, #888); }
-    .chat-composer-send.is-ready { background: var(--text-normal, #1f1f24); color: var(--background-primary, #fff); }
-    .chat-composer-send.is-ready:hover { opacity: 0.85; }
+    .chat-composer-send { width: 31.5px; height: 31.5px; padding: 0; border-radius: 8px; cursor: pointer; border: none; background: var(--background-primary, #fff); color: var(--text-normal, #1a1a19); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; transform: scale(0); opacity: 0; pointer-events: none; transition: transform 281ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 150ms ease, background-color 60ms ease; }
+    .chat-composer-send.is-ready, .chat-composer-send.is-running { transform: scale(1); opacity: 1; pointer-events: auto; }
+    .chat-composer-send.is-ready:hover { background: var(--background-modifier-hover, #ebebeb); }
+    .chat-composer-send.is-ready:active { transform: scale(0.93); opacity: 0.75; }
+    .chat-composer-send.is-running { background: var(--background-primary, #fff); border: 1px solid var(--background-modifier-border, rgba(0,0,0,0.14)); }
+    .chat-composer-send.is-running:hover { background: var(--background-secondary, #f6f6f6); }
+    .chat-composer-send.is-running:active { transform: scale(0.97); opacity: 0.82; }
     .chat-composer-send svg { width: 17px; height: 17px; }
+    .chat-composer-send .chat-stop-glyph { display: none; width: 14px; height: 14px; border-radius: 999px; border: 1.3px solid var(--text-normal, #1a1a19); align-items: center; justify-content: center; flex: 0 0 auto; }
+    .chat-composer-send .chat-stop-glyph-square { width: 5px; height: 5px; border-radius: 1px; background: var(--text-normal, #1a1a19); flex: 0 0 auto; }
+    .chat-composer-send.is-running svg { display: none; }
+    .chat-composer-send.is-running .chat-stop-glyph { display: inline-flex; }
     .chat-composer-send.is-running { background: rgba(220, 80, 80, 0.14); color: var(--color-red, #cc4444); }
     .chat-composer-send.is-running svg { width: 12px; height: 12px; }
     .chat-slash-suggest { position: absolute; bottom: 100%; left: 24px; right: 24px; max-width: 760px; margin: 0 auto 6px; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); border-radius: 8px; background: var(--background-primary, white); box-shadow: 0 4px 18px rgba(0,0,0,0.12); overflow: hidden; z-index: 10; }
