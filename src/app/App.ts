@@ -266,7 +266,7 @@ export class App {
     this.mobileWorkspace = this.services.mobileWorkspace;
     this.mobileBackButton = new MobileBackButtonController(this);
     this.mobileToolbar = new MobileToolbar(this);
-    this.mobileToolbar.attachListeners();
+    if (Platform.isMobile) this.mobileToolbar.attachListeners();
     this.hoverPreview = this.services.hoverPreview;
     this.workspaceLayouts = new WorkspaceLayoutPersistence(this);
     this.statusBar = new StatusBar(this.dom.statusBarEl);

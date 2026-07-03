@@ -1,11 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
+import { Platform } from "../platform/Platform";
 import { MarkdownView } from "../views/MarkdownView";
 
 describe("MobileToolbar Obsidian command toolbar", () => {
+  const realIsMobile = Platform.isMobile;
+
   beforeEach(() => {
     vi.restoreAllMocks();
     document.body.innerHTML = "";
+  });
+
+  afterEach(() => {
+    Platform.isMobile = realIsMobile;
   });
 
   it("uses Obsidian's default mobile toolbar command order from vault config", () => {
@@ -78,7 +85,8 @@ describe("MobileToolbar Obsidian command toolbar", () => {
     expect(execute).toHaveBeenCalledWith("editor:insert-link", click);
   });
 
-  it("shows while the active editor has focus and hides when focus is lost", async () => {
+  it("shows while the active editor has focus and hides when focus is lost (mobile only)", async () => {
+    Platform.isMobile = true;
     const app = new App(document.createElement("div"));
     const file = await app.vault.create("Toolbar.md", "Alpha");
     const leaf = await app.workspace.openFile(file, { active: true, state: { mode: "source" } });
@@ -101,6 +109,24 @@ describe("MobileToolbar Obsidian command toolbar", () => {
     expect(app.mobileToolbar.isVisible).toBe(false);
     expect(app.dom.appContainerEl.contains(app.mobileToolbar.wrapperEl)).toBe(false);
     expect(app.dom.appContainerEl.contains(app.mobileToolbar.spacerEl)).toBe(false);
+    expect(document.body.classList.contains("mod-toolbar-open")).toBe(false);
+  });
+
+  it("never surfaces on desktop even while an editor holds focus", async () => {
+    Platform.isMobile = false;
+    const app = new App(document.createElement("div"));
+    const file = await app.vault.create("Toolbar.md", "Alpha");
+    const leaf = await app.workspace.openFile(file, { active: true, state: { mode: "source" } });
+    const view = leaf.view;
+    if (!(view instanceof MarkdownView)) throw new Error("Expected markdown view");
+    app.vault.setConfig("mobileToolbarCommands", ["editor:insert-link"]);
+
+    view.editor.focus();
+    app.workspace.activeEditor = view;
+    app.mobileToolbar.update();
+
+    expect(app.mobileToolbar.isVisible).toBe(false);
+    expect(app.dom.appContainerEl.contains(app.mobileToolbar.wrapperEl)).toBe(false);
     expect(document.body.classList.contains("mod-toolbar-open")).toBe(false);
   });
 

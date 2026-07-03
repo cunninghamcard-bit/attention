@@ -75,6 +75,9 @@ export class MobileToolbar {
   }
 
   update(): void {
+    // The editing toolbar is a mobile-only aid that rides above the on-screen
+    // keyboard; on desktop an editor simply having focus must never surface it.
+    if (!Platform.isMobile) return;
     this.lastKeyboardHeight = readCssPixelNumber("--keyboard-height");
     let hasFocusedEditor = Boolean(this.app.workspace.activeEditor?.editor.hasFocus());
     if (Platform.isAndroidApp && hasFocusedEditor) hasFocusedEditor = this.hasKeyboardVisible || this.isMultiWindowMode;
