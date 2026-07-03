@@ -134,6 +134,10 @@ export const STRINGS = {
 
 export function formatUsage(usage: AgentUsage): string {
   const cost = usage.costUsd ? ` · $${usage.costUsd.toFixed(3)}` : "";
+  if (usage.contextTokens && usage.contextWindow) {
+    const percent = Math.round((usage.contextTokens / usage.contextWindow) * 100);
+    return `${(usage.contextTokens / 1000).toFixed(1)}k / ${Math.round(usage.contextWindow / 1000)}k · ${percent}%${cost}`;
+  }
   return `${(usage.totalTokens / 1000).toFixed(1)}k tokens${cost}`;
 }
 

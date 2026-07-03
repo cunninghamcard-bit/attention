@@ -17,6 +17,11 @@ export interface AgentUsage {
   outputTokens: number;
   totalTokens: number;
   costUsd?: number;
+  // Occupancy of the context window: contextTokens is the LAST turn's total
+  // (accumulated totals double-count re-sent context); contextWindow is the
+  // model's capacity. Both engine-provided; absent when unknown.
+  contextTokens?: number;
+  contextWindow?: number;
 }
 
 export interface AgentRunStartedEvent extends AgentEventBase {

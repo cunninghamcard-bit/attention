@@ -44,12 +44,17 @@ interface RunUsage {
   outputTokens: number;
   totalTokens: number;
   costUsd: number;
+  // Last assistant turn's total = current context occupancy; the summed
+  // totals above double-count re-sent context.
+  contextTokens?: number;
+  contextWindow?: number;
 }
 
 interface SessionEntry {
   session: AgentSession;
   counter: number;
   bridged?: boolean;
+  contextWindow?: number;
   // Accumulated by the event bridge across the run's assistant messages,
   // drained by runPiEngine into run.closed.
   usage: RunUsage;
@@ -71,7 +76,7 @@ async function ensureSession(agentId: string): Promise<AgentSession> {
   // agent with bash/edit/write, so keep it out of the repo. PI_CWD overrides.
   const cwd = process.env.PI_CWD ?? mkdtempSync(join(tmpdir(), `agent-${agentId}-`));
   const { session } = await createAgentSession({ model, modelRegistry, authStorage, cwd });
-  sessions.set(agentId, { session, counter: 0, usage: zeroUsage() });
+  sessions.set(agentId, { session, counter: 0, usage: zeroUsage(), contextWindow: (model as { contextWindow?: number }).contextWindow });
   return session;
 }
 
@@ -148,11 +153,14 @@ function bridgeEvents(agentId: string, session: AgentSession, emit: CanonicalEmi
       case "message_end": {
         const message = (event as { message?: { role?: string; usage?: { input: number; output: number; totalTokens: number; cost?: { total?: number } } } }).message;
         if (message?.role === "assistant" && message.usage) {
-          const total = sessions.get(agentId)!.usage;
+          const entry = sessions.get(agentId)!;
+          const total = entry.usage;
           total.inputTokens += message.usage.input;
           total.outputTokens += message.usage.output;
           total.totalTokens += message.usage.totalTokens;
           total.costUsd += message.usage.cost?.total ?? 0;
+          total.contextTokens = message.usage.totalTokens;
+          total.contextWindow = entry.contextWindow;
         }
         if (currentMessageId) emit({ type: "message.closed", messageId: currentMessageId });
         currentMessageId = null;

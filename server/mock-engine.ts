@@ -50,7 +50,7 @@ async function runRoomScript(agentId: string, runId: string, prompt: string, emi
     type: "run.closed",
     runId,
     status: "completed",
-    usage: { inputTokens: 6400, outputTokens: 420, totalTokens: 6820, costUsd: 0.012 },
+    usage: { inputTokens: 6400, outputTokens: 420, totalTokens: 6820, costUsd: 0.012, contextTokens: 6820, contextWindow: 200000 },
   });
 }
 
@@ -103,7 +103,7 @@ async function runScript(agentId: string, runId: string, prompt: string, emit: E
     type: "run.closed",
     runId,
     status: "completed",
-    usage: { inputTokens: 12400, outputTokens: 860, totalTokens: 13260, costUsd: 0.021 },
+    usage: { inputTokens: 12400, outputTokens: 860, totalTokens: 13260, costUsd: 0.021, contextTokens: 13260, contextWindow: 200000 },
   });
 }
 
