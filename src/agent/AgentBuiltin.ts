@@ -12,6 +12,7 @@ function firstTextOf(message: ChatMessage): string {
   return part && "markdown" in part ? part.markdown : "";
 }
 import { AgentsView, AGENTS_VIEW_TYPE } from "./AgentsView";
+import { AgentBoardView, AGENT_BOARD_VIEW_TYPE } from "./AgentBoardView";
 import { AgentView, AGENT_VIEW_TYPE } from "./AgentView";
 import { ChatView, CHAT_VIEW_TYPE } from "./ChatView";
 
@@ -51,6 +52,7 @@ export function registerAgentViews(app: App): void {
   app.viewRegistry.registerView(CHAT_VIEW_TYPE, (leaf) => new ChatView(leaf));
   app.viewRegistry.registerView(AGENTS_VIEW_TYPE, (leaf) => new AgentsView(leaf));
   app.viewRegistry.registerView(AGENT_VIEW_TYPE, (leaf) => new AgentView(leaf));
+  app.viewRegistry.registerView(AGENT_BOARD_VIEW_TYPE, (leaf) => new AgentBoardView(leaf));
 }
 
 export function registerAgentBuiltin(app: App): void {
@@ -82,6 +84,16 @@ export function registerAgentBuiltin(app: App): void {
   });
 
   app.commands.addCommand({
+    id: "agent:open-board",
+    name: "Open agent board",
+    icon: "lucide-layout-grid",
+    callback: () => {
+      const leaf = app.workspace.getLeavesOfType(AGENT_BOARD_VIEW_TYPE)[0] ?? app.workspace.getLeaf("tab");
+      void leaf.setViewState({ type: AGENT_BOARD_VIEW_TYPE, active: true }).then(() => app.workspace.revealLeaf(leaf));
+    },
+  });
+
+  app.commands.addCommand({
     id: "agent:open-properties",
     name: "Open agent properties",
     icon: "lucide-bot",
@@ -104,6 +116,7 @@ export function registerAgentBuiltin(app: App): void {
   // pristine during workspace construction and layout deserialization.
   app.workspace.onLayoutReady(() => {
     app.workspace.leftRibbon.addRibbonIcon("lucide-message-circle", "Open chat", () => void openChatLeaf(app), "agent:open");
+    app.workspace.leftRibbon.addRibbonIcon("lucide-layout-grid", "Open agent board", () => app.commands.executeCommandById("agent:open-board"), "agent:open-board");
     void app.workspace.ensureSideLeaf(AGENTS_VIEW_TYPE, "right", { reveal: false });
   });
 

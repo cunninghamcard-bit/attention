@@ -92,6 +92,23 @@ const CHAT_CSS = `
     .agent-view-hint { font-size: 0.85em; color: var(--text-faint, #aaa); font-style: italic; }
     .agent-view-action { align-self: flex-start; cursor: pointer; }
     .agent-view-empty { padding: 24px; color: var(--text-muted, #999); }
+    .agent-board-view { overflow-y: auto; }
+    .agent-board-header { max-width: 960px; margin: 0 auto; padding: 24px 24px 0; display: flex; align-items: center; justify-content: space-between; }
+    .agent-board-title { font-size: 1.4em; font-weight: 600; }
+    .agent-board-create { cursor: pointer; }
+    .agent-board-grid { max-width: 960px; margin: 0 auto; padding: 16px 24px 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+    .agent-board-empty { grid-column: 1 / -1; padding: 32px 0; text-align: center; color: var(--text-muted, #999); }
+    .agent-card { border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); border-radius: 10px; padding: 14px 16px; cursor: pointer; display: flex; flex-direction: column; gap: 8px; transition: border-color 0.12s ease, background 0.12s ease; }
+    .agent-card:hover { background: var(--background-primary-alt, rgba(120,120,140,0.05)); border-color: var(--background-modifier-border-hover, rgba(120,120,140,0.45)); }
+    .agent-card-header { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .agent-card-status { width: 8px; height: 8px; border-radius: 50%; background: var(--background-modifier-border, rgba(120,120,140,0.5)); flex: 0 0 auto; }
+    .agent-card.is-running .agent-card-status { background: var(--interactive-accent, #7c6ae0); animation: chat-thinking 1.2s ease-in-out infinite; }
+    .agent-card-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .agent-card-meta { display: flex; gap: 10px; font-size: 0.8em; color: var(--text-muted, #999); }
+    .agent-card.is-running .agent-card-state { color: var(--interactive-accent, #7c6ae0); }
+    .agent-card-usage { font-size: 0.8em; color: var(--text-faint, #aaa); }
+    .agent-card-actions { display: flex; gap: 8px; margin-top: 2px; }
+    .agent-card-action { cursor: pointer; font-size: 0.8em; }
     .chat-composer { flex: 0 0 auto; border-top: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); padding: 12px 24px 16px; position: relative; }
     .chat-composer-row { max-width: 760px; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; }
     .chat-composer-input { flex: 1 1 auto; min-height: 44px; max-height: 200px; overflow-y: auto; border-radius: 8px; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); background: var(--background-primary, white); }

@@ -1,3 +1,4 @@
+import type { App } from "../app/App";
 import { createDiv, createSpan } from "../dom/dom";
 import { Menu } from "../ui/Menu";
 import { ItemView } from "../views/ItemView";
@@ -17,6 +18,39 @@ function formatRelativeTime(timestamp: number): string {
   if (deltaSeconds < 3600) return `${Math.floor(deltaSeconds / 60)}m ago`;
   if (deltaSeconds < 86400) return `${Math.floor(deltaSeconds / 3600)}h ago`;
   return `${Math.floor(deltaSeconds / 86400)}d ago`;
+}
+
+// One context menu for an agent item, shared by every surface that lists
+// agents (sidebar, board): Properties / Rename / Delete.
+export function showAgentMenu(app: App, transport: AgentTransport, agent: AgentSummary, event: MouseEvent, onChanged: () => void): void {
+  event.preventDefault();
+  const menu = new Menu(eventDocument(event));
+  menu.addItem((item) => item
+    .setTitle("Properties")
+    .setIcon("lucide-bot")
+    .onClick(() => void openAgentProperties(app, agent.id)));
+  menu.addItem((item) => item
+    .setTitle("Rename")
+    .setIcon("lucide-pencil")
+    .onClick(() => {
+      // ponytail: window.prompt over a custom modal; upgrade when a shared
+      // prompt modal exists in the ui module.
+      const title = window.prompt("Rename agent", agent.title ?? agent.id);
+      if (title?.trim()) void transport.rename(agent.id, title.trim()).then(onChanged);
+    }));
+  menu.addItem((item) => item
+    .setTitle("Delete")
+    .setIcon("lucide-trash-2")
+    .onClick(() => {
+      if (window.confirm(`Delete agent "${agent.title ?? agent.id}"? Its history goes with it.`)) {
+        void transport.delete(agent.id).then(onChanged);
+      }
+    }));
+  menu.showAtMouseEvent(event);
+}
+
+function eventDocument(event: MouseEvent): Document {
+  return (event.target as HTMLElement | null)?.ownerDocument ?? document;
 }
 
 // Sidebar list of conversations, the TagPane/Backlinks of the chat world:
@@ -79,34 +113,7 @@ export class AgentsView extends ItemView {
       titleEl.appendText(thread.title ?? thread.id);
       createDiv({ cls: "agent-item-time", text: formatRelativeTime(thread.updatedAt), parent: itemEl });
       itemEl.addEventListener("click", () => void openAgent(this.app, thread.id));
-      itemEl.addEventListener("contextmenu", (event) => this.showItemMenu(event, thread));
+      itemEl.addEventListener("contextmenu", (event) => showAgentMenu(this.app, this.transport, thread, event, () => void this.refresh()));
     }
-  }
-
-  private showItemMenu(event: MouseEvent, thread: AgentSummary): void {
-    event.preventDefault();
-    const menu = new Menu(this.containerEl.ownerDocument);
-    menu.addItem((item) => item
-      .setTitle("Properties")
-      .setIcon("lucide-bot")
-      .onClick(() => void openAgentProperties(this.app, thread.id)));
-    menu.addItem((item) => item
-      .setTitle("Rename")
-      .setIcon("lucide-pencil")
-      .onClick(() => {
-        // ponytail: window.prompt over a custom modal; upgrade when a shared
-        // prompt modal exists in the ui module.
-        const title = window.prompt("Rename agent", thread.title ?? thread.id);
-        if (title?.trim()) void this.transport.rename(thread.id, title.trim()).then(() => this.refresh());
-      }));
-    menu.addItem((item) => item
-      .setTitle("Delete")
-      .setIcon("lucide-trash-2")
-      .onClick(() => {
-        if (window.confirm(`Delete agent "${thread.title ?? thread.id}"? Its history goes with it.`)) {
-          void this.transport.delete(thread.id).then(() => this.refresh());
-        }
-      }));
-    menu.showAtMouseEvent(event);
   }
 }

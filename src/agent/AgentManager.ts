@@ -45,6 +45,12 @@ export class AgentManager {
     return agent;
   }
 
+  // Read-only lookup: no instance minted, no SSE opened. For surfaces that
+  // enrich a listing (the board) without adopting the agent.
+  peek(agentId: string): Agent | null {
+    return this.agents.get(agentId) ?? null;
+  }
+
   list(): Agent[] {
     return [...this.agents.values()];
   }
