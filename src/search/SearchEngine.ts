@@ -1,5 +1,6 @@
 import type { App } from "../app/App";
 import type { TFile } from "../vault/TAbstractFile";
+import { getAllTags } from "../api/ApiUtils";
 import { CODE_EXTENSIONS } from "../views/CodeFileView";
 
 // Search every text file the workspace can open: notes plus source code.
@@ -78,7 +79,9 @@ export class SearchEngine {
     for (const term of parsed.pathTerms) if (!fold(file.path).includes(term)) return false;
     for (const term of parsed.fileTerms) if (!fold(file.name).includes(term)) return false;
     if (parsed.tagTerms.length > 0) {
-      const tags = this.tagsOf(file).map(fold);
+      // getAllTags is the canonical inline+frontmatter merge (same helper the
+      // plugin API exposes); tags come back with their leading "#".
+      const tags = (getAllTags(this.app.metadataCache.getFileCache(file)) ?? []).map((tag) => fold(tag.replace(/^#/, "")));
       for (const term of parsed.tagTerms) {
         if (!tags.some((tag) => tag === term || tag.startsWith(`${term}/`))) return false;
       }
@@ -93,15 +96,6 @@ export class SearchEngine {
       }
     }
     return true;
-  }
-
-  private tagsOf(file: TFile): string[] {
-    const cache = this.app.metadataCache.getFileCache(file);
-    const tags = (cache?.tags ?? []).map((entry) => entry.tag.replace(/^#/, ""));
-    const frontmatterTags = cache?.frontmatter?.tags;
-    if (Array.isArray(frontmatterTags)) tags.push(...frontmatterTags.map((tag) => String(tag).replace(/^#/, "")));
-    else if (typeof frontmatterTags === "string") tags.push(frontmatterTags.replace(/^#/, ""));
-    return tags;
   }
 
   /** Returns matches when the content terms are satisfied, null otherwise. */

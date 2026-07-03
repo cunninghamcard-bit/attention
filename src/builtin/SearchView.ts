@@ -1,6 +1,8 @@
 import { ItemView } from "../views/ItemView";
 import type { SearchMatch, VaultSearchResult } from "../search/SearchEngine";
 import { AbstractInputSuggest } from "../suggest/AbstractInputSuggest";
+import { setIcon } from "../ui/Icon";
+import { setTooltip } from "../ui/Popover";
 import type { App } from "../app/App";
 
 interface SearchOperatorOption {
@@ -52,19 +54,45 @@ class SearchOperatorSuggest extends AbstractInputSuggest<SearchSuggestItem> {
     return [{ kind: "group" }, ...options.map((option) => ({ kind: "option" as const, option }))];
   }
 
+  // DOM structure recovered from app.js (hJ.renderSuggestion): mod-complex
+  // rows with suggestion-content/title/aux; the group row carries a
+  // clickable lucide-info icon linking to the search help page.
   renderSuggestion(item: SearchSuggestItem, el: HTMLElement): void {
-    el.classList.add("search-suggest-item");
+    const doc = el.ownerDocument;
+    el.classList.add("mod-complex", "search-suggest-item");
+    const contentEl = doc.createElement("div");
+    contentEl.className = "suggestion-content";
+    const auxEl = doc.createElement("div");
+    auxEl.className = "suggestion-aux";
+    const titleEl = doc.createElement("div");
+    titleEl.className = "suggestion-title";
+    contentEl.appendChild(titleEl);
+    el.append(contentEl, auxEl);
+
     if (item.kind === "group") {
       el.classList.add("mod-group");
-      el.textContent = "Search options";
+      titleEl.classList.add("list-item-part", "mod-extended");
+      const nameEl = doc.createElement("span");
+      nameEl.textContent = "Search options";
+      titleEl.appendChild(nameEl);
+      const iconEl = doc.createElement("div");
+      iconEl.className = "list-item-part search-suggest-icon clickable-icon";
+      setIcon(iconEl, "lucide-info");
+      setTooltip(iconEl, "Read more");
+      iconEl.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        window.open("https://help.obsidian.md/Plugins/Search", "_blank");
+      });
+      auxEl.appendChild(iconEl);
       return;
     }
-    const operatorEl = el.ownerDocument.createElement("span");
-    operatorEl.textContent = item.option.operator;
-    const descriptionEl = el.ownerDocument.createElement("span");
+    const nameEl = doc.createElement("span");
+    nameEl.textContent = item.option.operator;
+    const descriptionEl = doc.createElement("span");
     descriptionEl.className = "search-suggest-info-text";
     descriptionEl.textContent = item.option.description;
-    el.append(operatorEl, descriptionEl);
+    titleEl.append(nameEl, descriptionEl);
   }
 }
 
