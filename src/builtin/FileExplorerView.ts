@@ -105,10 +105,13 @@ export class FileExplorerView extends ItemView {
     collapseEl.className = "tree-item-icon collapse-icon nav-folder-collapse-indicator";
     collapseEl.classList.toggle("is-collapsed", this.collapsedFolders.has(folder.path));
     setIcon(collapseEl, "right-triangle");
+    const folderIconEl = document.createElement("div");
+    folderIconEl.className = "tree-item-icon nav-folder-icon";
+    setIcon(folderIconEl, this.collapsedFolders.has(folder.path) ? "lucide-folder-closed" : "lucide-folder-open");
     const titleContentEl = document.createElement("div");
     titleContentEl.className = "tree-item-inner nav-folder-title-content";
     titleContentEl.textContent = folder.name;
-    titleEl.append(collapseEl, titleContentEl);
+    titleEl.append(collapseEl, folderIconEl, titleContentEl);
     this.applySelectionState(titleEl, folder);
     this.applyRenameState(titleEl, titleContentEl, folder);
     titleEl.addEventListener("click", (event) => this.onFolderClick(folder, event));
@@ -142,15 +145,11 @@ export class FileExplorerView extends ItemView {
     titleEl.appendChild(iconEl);
     const titleContentEl = document.createElement("div");
     titleContentEl.className = "tree-item-inner nav-file-title-content";
-    titleContentEl.textContent = file.basename;
+    // Notes keep the clean basename; everything else shows the real filename
+    // with its extension, like a code editor.
+    titleContentEl.textContent = file.extension === "md" ? file.basename : file.name;
     titleEl.appendChild(titleContentEl);
     this.applyRenameState(titleEl, titleContentEl, file);
-    if (file.extension && file.extension !== "md") {
-      const tagEl = document.createElement("div");
-      tagEl.className = "nav-file-tag";
-      tagEl.textContent = file.extension;
-      titleEl.appendChild(tagEl);
-    }
     titleEl.addEventListener("click", (event) => this.onFileClick(file, event));
     titleEl.addEventListener("contextmenu", (event) => this.openFileContextMenu(file, event));
     this.app.dragManager.handleDrag(titleEl, (event) => this.createDragSource(event, file, titleEl));
@@ -323,6 +322,9 @@ export class FileExplorerView extends ItemView {
     const isRenaming = this.renamingPath === file.path;
     rowEl.classList.toggle("is-being-renamed", isRenaming);
     if (!isRenaming) return;
+    // Rename edits the basename — getNewPathAfterRename re-appends the
+    // extension, so the displayed "name.ext" must not be the editing text.
+    if (file instanceof TFile) titleEl.textContent = file.basename;
     titleEl.setAttribute("contenteditable", "true");
     titleEl.setAttribute("spellcheck", String(this.app.vault.getConfig("spellcheck") ?? false));
     titleEl.addEventListener("click", (event) => event.stopPropagation());
