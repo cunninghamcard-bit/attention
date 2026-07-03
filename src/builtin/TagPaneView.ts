@@ -1,4 +1,5 @@
 import { ItemView } from "../views/ItemView";
+import { setIcon } from "../ui/Icon";
 
 interface TagTreeNode {
   name: string;
@@ -48,7 +49,10 @@ export class TagPaneView extends ItemView {
     selfEl.style.setProperty("--tag-pane-padding", `${depth * 14 + 8}px`);
     const collapseEl = doc.createElement("div");
     collapseEl.className = "tree-item-icon collapse-icon";
-    collapseEl.textContent = node.children.size > 0 ? (this.collapsed.has(node.tag) ? ">" : "v") : "";
+    if (node.children.size > 0) {
+      collapseEl.classList.toggle("is-collapsed", this.collapsed.has(node.tag));
+      setIcon(collapseEl, "right-triangle");
+    }
     const titleEl = doc.createElement("div");
     titleEl.className = "tree-item-inner tag-pane-tag-text";
     titleEl.textContent = node.name;
