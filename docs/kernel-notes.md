@@ -123,3 +123,30 @@ typewriter; finer deltas over SSE). Both keep the DB as source of truth
 with seq as the resume cursor; the push channel is just a nudge with
 payload. For along-go local sidecar the finer-grained SSE stays right;
 adopt daemon-side batching only when the transport becomes a network hop.
+
+### Per-engine wiring table (from the adapters' spawn code)
+
+| engine   | spawn                                                            | transport            | autonomy                             | resume                     |
+|----------|------------------------------------------------------------------|----------------------|--------------------------------------|----------------------------|
+| claude   | `claude -p --output-format stream-json --input-format stream-json --verbose` | stdout JSON lines    | `--permission-mode bypassPermissions` + auto-answering `control_request` on stdin | `--resume <session_id>`    |
+| codex    | `codex app-server --listen stdio://`                             | JSON-RPC 2.0 (duplex)| sandbox_mode (Seatbelt/landlock)     | thread id via RPC          |
+| pi       | `pi -p --mode json --session <path> [--provider/--model] <prompt>` | stdout JSON events (has text_delta!) | headless by default            | `--session <jsonl path>`   |
+| cursor   | `... -p --output-format stream-json --yolo`                      | stream-json          | `--yolo`                             | session id                 |
+| opencode | `opencode run --format json --dangerously-skip-permissions --dir <cwd>` | JSON events     | `--dangerously-skip-permissions`     | session flag               |
+| copilot  | (cli) with `--allow-all-tools/-paths/-urls`                      | JSON events          | allow-all flags                      | session id                 |
+| hermes/kimi/kiro/qoder/trae | `<cli> acp`                                   | ACP JSON-RPC (shared spec) | per-ACP                        | ACP session/new-load       |
+
+Recurring integration recipe, engine-independent:
+1. find the CLI's headless/print mode and machine-readable output flag;
+2. find its "don't ask" switch (flag, or a protocol handshake like
+   claude's control_request);
+3. find its resume handle (session id, session FILE for pi, RPC thread);
+4. blocklist those exact flags against user custom_args;
+5. normalize the event vocabulary into the closed Message set;
+6. process-group kill + WaitDelay so cancellation reaps grandchildren
+   (codex leaked processes until they signalled the whole group).
+
+Pi note: they cold-spawn `pi` per turn with a session FILE for
+continuity; we hold a live pi SDK session in-process. Ours is lower
+latency and keeps deltas; theirs needs no long-lived process manager.
+Both are valid — the sidecar can even mix modes per engine.
