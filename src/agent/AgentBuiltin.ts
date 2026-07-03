@@ -1,6 +1,18 @@
 import type { App } from "../app/App";
 import { writeClipboardText } from "../dom/Clipboard";
+import { addIcon } from "../ui/Icon";
 import { Notice } from "../ui/Notice";
+
+// Lucide glyphs the vendored icon registry does not carry; agent surfaces
+// (ribbon, commands, views, empty state) use them. Registered through the
+// public addIcon channel (unprefixed: the lucide- namespace resolves
+// builtin-only, by parity) — drop these when the registry re-vendors them.
+function ensureAgentIcons(): void {
+  addIcon("message-circle", '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>');
+  addIcon("message-circle-plus", '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M8 12h8"/><path d="M12 8v8"/>');
+  addIcon("bot", '<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>');
+  addIcon("users", '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>');
+}
 import { newAgentId } from "./AgentManager";
 import { registerChatMessageAction, registerChatSlashCommand } from "./ChatRegistry";
 import { registerBuiltinToolCards } from "./ChatToolCards";
@@ -70,19 +82,20 @@ export function registerAgentViews(app: App): void {
 }
 
 export function registerAgentBuiltin(app: App): void {
+  ensureAgentIcons();
   registerBuiltinToolCards();
   new AgentStatusBar(app);
   app.commands.addCommand({
     id: "agent:open",
     name: "Open chat",
-    icon: "lucide-message-circle",
+    icon: "message-circle",
     hotkeys: [{ modifiers: ["Mod", "Shift"], key: "c" }],
     callback: () => void openChatLeaf(app),
   });
   app.commands.addCommand({
     id: "agent:create",
     name: "Create agent",
-    icon: "lucide-message-circle-plus",
+    icon: "message-circle-plus",
     callback: () => void openChatLeaf(app, newAgentId()),
   });
   app.commands.addCommand({
@@ -100,7 +113,7 @@ export function registerAgentBuiltin(app: App): void {
   app.commands.addCommand({
     id: "agent:create-room",
     name: "Create multi-agent room",
-    icon: "lucide-users",
+    icon: "users",
     callback: () => void openRoom(app, newRoomId()),
   });
 
@@ -117,7 +130,7 @@ export function registerAgentBuiltin(app: App): void {
   app.commands.addCommand({
     id: "agent:open-properties",
     name: "Open agent properties",
-    icon: "lucide-bot",
+    icon: "bot",
     checkCallback: (checking) => {
       const view = app.workspace.getActiveViewOfType(ChatView);
       const agentId = view ? String(view.getState().agentId ?? "") : "";
@@ -129,7 +142,7 @@ export function registerAgentBuiltin(app: App): void {
   // After layout-ready, like core plugin ribbon items: the ribbon stays
   // pristine during workspace construction and layout deserialization.
   app.workspace.onLayoutReady(() => {
-    app.workspace.leftRibbon.addRibbonIcon("lucide-message-circle", "Open chat", () => void openChatLeaf(app), "agent:open");
+    app.workspace.leftRibbon.addRibbonIcon("message-circle", "Open chat", () => void openChatLeaf(app), "agent:open");
     app.workspace.leftRibbon.addRibbonIcon("lucide-layout-grid", "Open agents", () => app.commands.executeCommandById("agent:open-board"), "agent:open-board");
   });
 

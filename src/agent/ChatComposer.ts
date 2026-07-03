@@ -4,6 +4,7 @@ import { Compartment, EditorState, Prec, type Extension } from "@codemirror/stat
 import { EditorView, keymap, placeholder } from "@codemirror/view";
 import { createDiv, createEl } from "../dom/dom";
 import { Component } from "../core/Component";
+import { setIcon } from "../ui/Icon";
 import { ChatAttachmentBar } from "./ChatAttachmentBar";
 import {
   appendChatInputHistory,
@@ -57,8 +58,10 @@ export class ChatComposer extends Component {
     this.agentId = options.agentId ?? null;
     this.el = createDiv("chat-composer", parentEl);
     this.attachmentBar = this.addChild(new ChatAttachmentBar(this.el));
-    const rowEl = createDiv("chat-composer-row", this.el);
-    const editorEl = createDiv("chat-composer-input", rowEl);
+    // ArkLoop-style input card: the card is the visual unit (border, focus
+    // ring, shadow); the editor sits chromeless inside, a toolbar row below.
+    const cardEl = createDiv("chat-composer-card", this.el);
+    const editorEl = createDiv("chat-composer-input", cardEl);
 
     const draftExtensions: Extension[] = this.agentId ? [chatDraftPersistence(this.agentId)] : [];
     this.editor = new EditorView({
@@ -88,7 +91,9 @@ export class ChatComposer extends Component {
       }),
     });
 
-    const actionsEl = createDiv("chat-composer-actions", rowEl);
+    const toolbarEl = createDiv("chat-composer-toolbar", cardEl);
+    createDiv({ cls: "chat-composer-hint", text: "Enter to send · Shift+Enter for a new line · / commands", parent: toolbarEl });
+    const actionsEl = createDiv("chat-composer-actions", toolbarEl);
     for (const action of listChatComposerActions()) {
       const buttonEl = createEl("button", { cls: "chat-composer-action", parent: actionsEl, text: action.title });
       buttonEl.addEventListener("click", () =>
@@ -99,7 +104,8 @@ export class ChatComposer extends Component {
         }),
       );
     }
-    this.sendButtonEl = createEl("button", { cls: "chat-composer-send mod-cta", parent: actionsEl, text: "Send" });
+    this.sendButtonEl = createEl("button", { cls: "chat-composer-send mod-cta", parent: actionsEl, title: "Send" });
+    setIcon(this.sendButtonEl, "lucide-arrow-up");
   }
 
   override onload(): void {
@@ -124,7 +130,8 @@ export class ChatComposer extends Component {
 
   syncRunning(): void {
     const running = this.callbacks.isRunning();
-    this.sendButtonEl.setText(running ? "Stop" : "Send");
+    setIcon(this.sendButtonEl, running ? "lucide-square" : "lucide-arrow-up");
+    this.sendButtonEl.title = running ? "Stop" : "Send";
     this.sendButtonEl.toggleClass("is-running", running);
   }
 

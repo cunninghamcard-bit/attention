@@ -2,6 +2,7 @@ import { getMarkdown, parseMarkdownToStructure } from "stream-markdown-parser";
 import { createDiv, createEl, createSpan } from "../dom/dom";
 import { Component } from "../core/Component";
 import { Collapse } from "../ui/Collapse";
+import { setIcon } from "../ui/Icon";
 import { getChatToolRenderer, listChatMessageActions } from "./ChatRegistry";
 import type { ChatMessage, ChatPart, Agent, TextChatPart, ToolChatPart } from "./Agent";
 import { createStatusDot, setStatusDot } from "./StatusDot";
@@ -322,6 +323,8 @@ export class ChatMessageList extends Component {
     super();
     this.el = createDiv("chat-message-list", parentEl);
     this.emptyEl = createDiv("chat-empty", this.el);
+    const emptyIconEl = createDiv("chat-empty-icon", this.emptyEl);
+    setIcon(emptyIconEl, "message-circle");
     createDiv({ cls: "chat-empty-title", text: "Start a conversation", parent: this.emptyEl });
     createDiv({ cls: "chat-empty-hint", text: "Type a message below, or / for commands.", parent: this.emptyEl });
     this.thinkingEl = createDiv("chat-thinking-indicator", this.el);

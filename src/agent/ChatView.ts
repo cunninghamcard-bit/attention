@@ -20,7 +20,7 @@ interface ChatViewEphemeralState {
 }
 
 export class ChatView extends StreamView {
-  override icon = "lucide-message-circle";
+  override icon = "message-circle";
   override navigation = true;
   protected agentId = "default";
   protected agentTitle: string | null = null;
@@ -61,7 +61,7 @@ export class ChatView extends StreamView {
   async onOpen(): Promise<void> {
     ensureChatStyles(this.app);
     this.contentEl.classList.add("chat-view");
-    this.addAction("lucide-message-circle-plus", "New agent", () => this.app.commands.executeCommandById("agent:create"));
+    this.addAction("message-circle-plus", "New agent", () => this.app.commands.executeCommandById("agent:create"));
     this.stopActionEl = this.addAction("lucide-square", "Stop response", () => void this.stopRun());
     this.stopActionEl.hide();
     this.initFor(this.agentId);
@@ -76,12 +76,12 @@ export class ChatView extends StreamView {
     menu.addItem((item) => item
       .setSection("action")
       .setTitle("Agent properties")
-      .setIcon("lucide-bot")
+      .setIcon("bot")
       .onClick(() => this.app.commands.executeCommandById("agent:open-properties")));
     menu.addItem((item) => item
       .setSection("action")
       .setTitle("New agent")
-      .setIcon("lucide-message-circle-plus")
+      .setIcon("message-circle-plus")
       .onClick(() => this.app.commands.executeCommandById("agent:create")));
     menu.addItem((item) => item
       .setSection("action")

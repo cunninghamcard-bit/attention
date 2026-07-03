@@ -24,7 +24,9 @@ const CHAT_CSS = `
     .chat-message:hover .chat-message-action { opacity: 0.7; }
     .chat-message-action:hover { opacity: 1; }
     .chat-view .internal-link { color: var(--link-color, #7c6ae0); cursor: pointer; text-decoration: underline; text-decoration-color: rgba(124,106,224,0.35); }
-    .chat-empty { text-align: center; padding: 96px 0 24px; opacity: 0.5; }
+    .chat-empty { text-align: center; padding: 88px 0 24px; opacity: 0.6; }
+    .chat-empty-icon { margin-bottom: 10px; color: var(--text-faint, #b0b0b8); }
+    .chat-empty-icon svg { width: 40px; height: 40px; stroke-width: 1.5; }
     .chat-empty-title { font-size: 1.1em; font-weight: 600; margin-bottom: 6px; }
     .chat-empty-hint { font-size: 0.9em; }
     .chat-status-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; background: var(--text-muted, #999); }
@@ -121,13 +123,16 @@ const CHAT_CSS = `
     .multi-agent-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.3)); border-radius: 999px; padding: 2px 10px; transition: border-color 0.15s ease; }
     .multi-agent-chip .chat-status-dot.is-on, .multi-agent-chip .chat-status-dot.is-running { background: hsl(var(--author-hue, 255) 50% 55%); }
     .multi-agent-chip.is-speaking { border-color: hsl(var(--author-hue, 255) 50% 55%); }
-    .chat-composer { flex: 0 0 auto; border-top: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); padding: 12px 24px 16px; position: relative; }
-    .chat-composer-row { max-width: 760px; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; }
-    .chat-composer-input { flex: 1 1 auto; min-height: 44px; max-height: 200px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); background: var(--background-primary, white); transition: border-color 0.12s ease, box-shadow 0.12s ease; }
-    .chat-composer-input:focus-within { border-color: var(--interactive-accent, #7c6ae0); box-shadow: 0 0 0 2px rgba(124,106,224,0.14); }
+    .chat-composer { flex: 0 0 auto; padding: 4px 24px 18px; position: relative; }
+    .chat-composer-card { max-width: 760px; margin: 0 auto; border-radius: 16px; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.28)); background: var(--background-primary, white); box-shadow: 0 2px 10px rgba(0,0,0,0.06); transition: border-color 0.12s ease, box-shadow 0.12s ease; padding: 4px 6px 6px; }
+    .chat-composer-card:focus-within { border-color: var(--interactive-accent, #7c6ae0); box-shadow: 0 0 0 2.5px rgba(124,106,224,0.16), 0 2px 10px rgba(0,0,0,0.06); }
+    .chat-composer-input { min-height: 40px; max-height: 200px; overflow-y: auto; }
+    .chat-composer-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px 0 10px; }
+    .chat-composer-hint { font-size: 10.5px; color: var(--text-faint, #b0b0b8); user-select: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .chat-composer-actions { display: flex; align-items: center; gap: 6px; }
     .chat-composer-input .cm-editor { outline: none; }
     .chat-composer-input .cm-scroller { font-family: inherit; line-height: 1.5; }
-    .chat-composer-input .cm-content { padding: 10px 12px; font: inherit; min-height: 24px; }
+    .chat-composer-input .cm-content { padding: 10px 10px 6px; font: inherit; min-height: 24px; }
     .chat-composer-input .cm-line { padding: 0; }
     .chat-composer-input .cm-placeholder { color: var(--text-muted, #999); white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: inline-block; }
     .chat-attachment-bar { max-width: 760px; margin: 0 auto 8px; display: flex; flex-wrap: wrap; gap: 8px; }
@@ -139,10 +144,12 @@ const CHAT_CSS = `
     .chat-part-attachment { border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); border-radius: 6px; padding: 8px 10px; font-size: 0.9em; }
     .chat-attachment-header { display: flex; gap: 8px; align-items: baseline; }
     .chat-attachment-content { margin: 6px 0 0; padding: 6px 8px; border-radius: 4px; background: var(--background-primary-alt, rgba(120,120,140,0.08)); overflow: auto; max-height: 160px; font-size: 0.85em; }
-    .chat-composer-send { padding: 8px 18px; border-radius: 10px; cursor: pointer; border: none; background: var(--interactive-accent, #7c6ae0); color: var(--text-on-accent, #fff); font-weight: 500; transition: background 0.12s ease; }
-    .chat-composer-send:hover { background: var(--interactive-accent-hover, #6a58d0); }
+    .chat-composer-send { width: 30px; height: 30px; padding: 0; border-radius: 50%; cursor: pointer; border: none; background: var(--interactive-accent, #7c6ae0); color: var(--text-on-accent, #fff); display: inline-flex; align-items: center; justify-content: center; transition: background 0.12s ease, transform 0.12s ease; flex: 0 0 auto; }
+    .chat-composer-send:hover { background: var(--interactive-accent-hover, #6a58d0); transform: translateY(-1px); }
+    .chat-composer-send svg { width: 16px; height: 16px; }
     .chat-composer-send.is-running { background: var(--background-modifier-error, #c0392b); color: white; }
-    .chat-slash-suggest { position: absolute; bottom: 100%; left: 24px; right: 24px; max-width: 760px; margin: 0 auto 4px; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); border-radius: 8px; background: var(--background-primary, white); box-shadow: 0 4px 18px rgba(0,0,0,0.12); overflow: hidden; z-index: 10; }
+    .chat-composer-send.is-running svg { width: 12px; height: 12px; }
+    .chat-slash-suggest { position: absolute; bottom: 100%; left: 24px; right: 24px; max-width: 760px; margin: 0 auto 6px; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); border-radius: 8px; background: var(--background-primary, white); box-shadow: 0 4px 18px rgba(0,0,0,0.12); overflow: hidden; z-index: 10; }
     .chat-slash-item { display: flex; gap: 10px; padding: 8px 12px; cursor: pointer; }
     .chat-slash-item.is-selected, .chat-slash-item:hover { background: var(--background-secondary, rgba(120,120,140,0.12)); }
     .chat-slash-name { font-family: var(--font-monospace, monospace); font-size: 0.9em; }

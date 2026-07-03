@@ -15,7 +15,7 @@ export const AGENT_PROPERTIES_VIEW_TYPE = "agent-properties";
 // so config rows (engine, model, effort) land here later without
 // re-plumbing.
 export class AgentPropertiesView extends ItemView {
-  override icon = "lucide-bot";
+  override icon = "bot";
   override navigation = true;
   private agentId = "";
   private session: Agent | null = null;

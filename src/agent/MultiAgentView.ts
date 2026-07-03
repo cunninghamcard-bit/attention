@@ -12,7 +12,7 @@ export const MULTI_AGENT_VIEW_TYPE = "multi-agent";
 // carries authorId/authorName, and the participants strip derives from the
 // authors seen so far (a roster event can replace that later).
 export class MultiAgentView extends ChatView {
-  override icon = "lucide-users";
+  override icon = "users";
   private participantsEl: HTMLElement | null = null;
 
   getViewType(): string {

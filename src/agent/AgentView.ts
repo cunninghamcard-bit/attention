@@ -21,7 +21,7 @@ export function showAgentMenu(app: App, transport: AgentTransport, agent: AgentS
   const menu = new Menu((event.target as HTMLElement | null)?.ownerDocument ?? document);
   menu.addItem((item) => item
     .setTitle("Properties")
-    .setIcon("lucide-bot")
+    .setIcon("bot")
     .onClick(() => void openAgentProperties(app, agent.id)));
   menu.addItem((item) => item
     .setTitle("Rename")
