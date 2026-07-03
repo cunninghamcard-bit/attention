@@ -173,4 +173,9 @@ const CHAT_CSS = `
     .chat-compact-label { font-size: 0.75em; opacity: 0.55; white-space: nowrap; }
     .chat-view .markdown-rendered pre { overflow-x: auto; }
     .chat-view .block-language-mermaid svg { min-height: 60px; max-width: 100%; height: auto; }
+    .chat-composer-attach-input { display: none; }
+    .chat-composer-attach { width: 31.5px; height: 31.5px; padding: 0; border-radius: 8px; cursor: pointer; border: none; background: transparent; color: var(--text-muted, #8c8c8a); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; margin-right: auto; transition: background-color 60ms ease, color 60ms ease; }
+    .chat-composer-attach:hover { background: var(--background-modifier-hover, rgba(120,120,140,0.12)); color: var(--text-normal, #1a1a19); }
+    .chat-composer-attach svg { width: 17px; height: 17px; }
+    .chat-composer-card.is-dragging { border-color: var(--interactive-accent, #7c6ae0); }
 `;
