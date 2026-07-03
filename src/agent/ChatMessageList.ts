@@ -30,6 +30,14 @@ function autoCollapseThinking(): boolean {
   }
 }
 
+// A stable hue per author id: multi-agent conversations become scannable by
+// color without any roster configuration. Same trick avatars everywhere use.
+export function authorHue(authorId: string): number {
+  let hash = 0;
+  for (let index = 0; index < authorId.length; index++) hash = (hash * 31 + authorId.charCodeAt(index)) | 0;
+  return Math.abs(hash) % 360;
+}
+
 class ChatPartRenderer extends Component {
   readonly el: HTMLElement;
   private renderer: StreamMarkdownRenderer | null = null;
@@ -200,7 +208,10 @@ class ChatMessageItem extends Component {
     this.el = createDiv(`chat-message chat-message-${message.role}`, parentEl);
     this.el.dataset.role = message.role;
     this.el.dataset.messageId = message.id;
-    if (message.authorId) this.el.dataset.authorId = message.authorId;
+    if (message.authorId) {
+      this.el.dataset.authorId = message.authorId;
+      this.el.style.setProperty("--author-hue", String(authorHue(message.authorId)));
+    }
     const headerEl = createDiv("chat-message-header", this.el);
     const label = message.role === "user" ? "You" : message.authorName ?? "Assistant";
     createDiv({ cls: "chat-message-role", text: label, parent: headerEl });

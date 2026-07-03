@@ -18,7 +18,7 @@ const CHAT_CSS = `
     .chat-message-assistant { padding-left: 0; padding-right: 0; }
     .chat-message-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
     .chat-message-role { font-size: 11px; font-weight: 600; opacity: 0.55; text-transform: uppercase; letter-spacing: 0.04em; }
-    .chat-message[data-author-id] .chat-message-role { color: var(--interactive-accent, #7c6ae0); opacity: 0.8; }
+    .chat-message[data-author-id] .chat-message-role { color: hsl(var(--author-hue, 255) 50% 52%); opacity: 0.9; }
     .chat-message-actions { display: flex; gap: 8px; }
     .chat-message-action { font-size: 11px; opacity: 0; border: none; background: none; cursor: pointer; color: var(--text-muted, #888); }
     .chat-message:hover .chat-message-action { opacity: 0.7; }
@@ -118,7 +118,9 @@ const CHAT_CSS = `
     .multi-agent-participants { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 24px; border-bottom: 1px solid var(--background-modifier-border, rgba(120,120,140,0.2)); font-size: 0.85em; }
     .multi-agent-participants-label { color: var(--text-muted, #999); font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.04em; }
     .multi-agent-participants-hint { color: var(--text-faint, #aaa); font-style: italic; }
-    .multi-agent-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.3)); border-radius: 999px; padding: 2px 10px; }
+    .multi-agent-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.3)); border-radius: 999px; padding: 2px 10px; transition: border-color 0.15s ease; }
+    .multi-agent-chip .chat-status-dot.is-on, .multi-agent-chip .chat-status-dot.is-running { background: hsl(var(--author-hue, 255) 50% 55%); }
+    .multi-agent-chip.is-speaking { border-color: hsl(var(--author-hue, 255) 50% 55%); }
     .chat-composer { flex: 0 0 auto; border-top: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); padding: 12px 24px 16px; position: relative; }
     .chat-composer-row { max-width: 760px; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; }
     .chat-composer-input { flex: 1 1 auto; min-height: 44px; max-height: 200px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); background: var(--background-primary, white); transition: border-color 0.12s ease, box-shadow 0.12s ease; }

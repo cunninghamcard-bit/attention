@@ -26,6 +26,9 @@ export interface ChatComposerCallbacks {
   stop(): void;
   isRunning(): boolean;
   getWikilinkTargets?(): string[];
+  // Multi-agent rooms feed participant names; "@" completes against them.
+  // Mentions stay plain text — routing is the engine's business, not the UI's.
+  getMentionTargets?(): string[];
 }
 
 export interface ChatComposerOptions {
@@ -66,7 +69,7 @@ export class ChatComposer extends Component {
           history(),
           placeholder("Message… (/ for commands, [[ for notes)"),
           EditorView.lineWrapping,
-          autocompletion({ override: [(context) => this.completeSlashCommand(context), (context) => this.completeWikilink(context)] }),
+          autocompletion({ override: [(context) => this.completeSlashCommand(context), (context) => this.completeWikilink(context), (context) => this.completeMention(context)] }),
           Prec.high(keymap.of(completionKeymap)),
           keymap.of([
             { key: "Enter", run: () => this.submit() },
@@ -186,6 +189,19 @@ export class ChatComposer extends Component {
         const insert = command.insertText ?? `/${command.id} `;
         view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert }, selection: { anchor: insert.length } });
       },
+    }));
+    return { from: match.from, options, filter: true };
+  }
+
+  // "@name" anywhere in the draft, fed by the room's participants.
+  private completeMention(context: CompletionContext): CompletionResult | null {
+    const targets = this.callbacks.getMentionTargets?.();
+    if (!targets?.length) return null;
+    const match = context.matchBefore(/@[^\s@]*/);
+    if (!match) return null;
+    const options: Completion[] = targets.map((target) => ({
+      label: `@${target}`,
+      apply: `@${target} `,
     }));
     return { from: match.from, options, filter: true };
   }

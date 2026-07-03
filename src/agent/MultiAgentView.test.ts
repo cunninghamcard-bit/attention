@@ -32,8 +32,8 @@ describe("MultiAgentView", () => {
       { type: "part.delta", messageId: "m1", partIndex: 0, delta: "背景已查明。", seq: 4, agentId: roomId },
       { type: "part.closed", messageId: "m1", partIndex: 0, seq: 5, agentId: roomId },
       { type: "message.closed", messageId: "m1", seq: 6, agentId: roomId },
+      // m2 stays open: 工程师 is mid-turn, the chip should pulse
       { type: "message.started", messageId: "m2", role: "assistant", authorId: "coder", authorName: "工程师", seq: 7, agentId: roomId },
-      { type: "message.closed", messageId: "m2", seq: 8, agentId: roomId },
     ];
     for (const event of events) agent.applyEvent(event);
     await nextFrame();
@@ -46,5 +46,18 @@ describe("MultiAgentView", () => {
 
     const chips = [...el.querySelectorAll(".multi-agent-chip")].map((n) => n.textContent);
     expect(chips).toEqual(["You", "研究员", "工程师"]);
+
+    // authors get stable hues on messages and chips
+    const authored = el.querySelector('.chat-message[data-author-id="researcher"]') as HTMLElement;
+    expect(authored.style.getPropertyValue("--author-hue")).not.toBe("");
+    const chipEls = [...el.querySelectorAll(".multi-agent-chip")] as HTMLElement[];
+    expect(chipEls[1].style.getPropertyValue("--author-hue")).not.toBe("");
+
+    // m2 never closed -> 工程师 is speaking; 研究员 is not
+    expect(chipEls[2].classList.contains("is-speaking")).toBe(true);
+    expect(chipEls[1].classList.contains("is-speaking")).toBe(false);
+
+    // participants feed "@" completion
+    expect((view as unknown as { mentionTargets(): string[] }).mentionTargets().sort()).toEqual(["工程师", "研究员"]);
   });
 });

@@ -143,6 +143,7 @@ export class ChatView extends StreamView {
           stop: () => void this.stopRun(),
           isRunning: () => this.isRunning(),
           getWikilinkTargets: () => this.app.vault.getMarkdownFiles().map((file) => file.basename),
+          getMentionTargets: () => this.mentionTargets(),
         },
         { agentId },
       ),
@@ -157,6 +158,12 @@ export class ChatView extends StreamView {
   // Called after the chat regions rebuild; subclasses add their chrome here
   // (MultiAgentView inserts its participants strip above the stream).
   protected onChatChromeReady(): void {}
+
+  // "@" completion targets; single-agent chats have none, rooms feed their
+  // participants.
+  protected mentionTargets(): string[] {
+    return [];
+  }
 
   // Transport failure is transient app trouble, not conversation content —
   // it surfaces as a Notice, the way Obsidian reports failed operations.

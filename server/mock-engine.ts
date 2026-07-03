@@ -17,11 +17,15 @@ function nextMessageId(agentId: string): string {
 // stream, each message stamped with its author — the UI contract for
 // MultiAgentView before the backend can route agent-to-agent.
 async function runRoomScript(agentId: string, runId: string, prompt: string, emit: EngineEmit): Promise<void> {
-  const speakers: Array<[string, string, string]> = [
+  const roster: Array<[string, string, string]> = [
     ["researcher", "研究员", `关于「${prompt.slice(0, 24)}」,我先查了一下相关背景:这是一个多智能体协作的演示场景。`],
     ["coder", "工程师", "我来验证一下可行性,先跑个命令。"],
     ["reviewer", "评审", "两位的结论我都看过了,**方案可行**,建议直接推进。"],
   ];
+  // "@名字" narrows who replies — the mock's stand-in for engine-side
+  // mention routing; no mention means everyone takes a turn.
+  const mentioned = roster.filter(([, name]) => prompt.includes(`@${name}`));
+  const speakers = mentioned.length > 0 ? mentioned : roster;
   for (let index = 0; index < speakers.length; index++) {
     const [authorId, authorName, text] = speakers[index];
     const messageId = nextMessageId(agentId);

@@ -1,4 +1,5 @@
 import { createDiv, createSpan } from "../dom/dom";
+import { authorHue } from "./ChatMessageList";
 import { ChatView } from "./ChatView";
 import { createStatusDot } from "./StatusDot";
 
@@ -35,26 +36,40 @@ export class MultiAgentView extends ChatView {
 
   private syncParticipants(): void {
     if (!this.participantsEl || !this.session) return;
-    const authors = new Map<string, string>();
+    // name + whether that author has a message still streaming — the chip
+    // pulses while its agent is speaking.
+    const authors = new Map<string, { name: string; speaking: boolean }>();
     for (const message of this.session.getMessages()) {
-      if (message.authorId) authors.set(message.authorId, message.authorName ?? message.authorId);
+      if (!message.authorId) continue;
+      const entry = authors.get(message.authorId) ?? { name: message.authorName ?? message.authorId, speaking: false };
+      if (!message.closed) entry.speaking = true;
+      authors.set(message.authorId, entry);
     }
-    const signature = [...authors.keys()].join(",");
+    const signature = [...authors.entries()].map(([id, entry]) => `${id}:${entry.speaking}`).join(",");
     if (this.participantsEl.dataset.signature === signature) return;
     this.participantsEl.dataset.signature = signature;
     this.participantsEl.empty();
     createSpan({ cls: "multi-agent-participants-label", text: "Participants", parent: this.participantsEl });
-    this.chip("you", "You");
-    for (const [authorId, authorName] of authors) this.chip(authorId, authorName);
+    this.chip("you", "You", false);
+    for (const [authorId, entry] of authors) this.chip(authorId, entry.name, entry.speaking);
     if (authors.size === 0) {
       createSpan({ cls: "multi-agent-participants-hint", text: "Agents join as they speak.", parent: this.participantsEl });
     }
   }
 
-  private chip(id: string, name: string): void {
-    const chipEl = createSpan({ cls: "multi-agent-chip", parent: this.participantsEl! });
+  protected override mentionTargets(): string[] {
+    const names = new Set<string>();
+    for (const message of this.session?.getMessages() ?? []) {
+      if (message.authorName) names.add(message.authorName);
+    }
+    return [...names];
+  }
+
+  private chip(id: string, name: string, speaking: boolean): void {
+    const chipEl = createSpan({ cls: `multi-agent-chip${speaking ? " is-speaking" : ""}`, parent: this.participantsEl! });
     chipEl.dataset.participantId = id;
-    createStatusDot(chipEl, "on");
+    if (id !== "you") chipEl.style.setProperty("--author-hue", String(authorHue(id)));
+    createStatusDot(chipEl, speaking ? "running" : "on");
     chipEl.appendText(name);
   }
 }
