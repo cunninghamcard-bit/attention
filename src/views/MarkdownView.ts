@@ -151,7 +151,11 @@ export class MarkdownView extends TextFileView {
     this.documentSearchInputEl = documentSearch.searchInputEl;
     this.documentSearchCountEl = documentSearch.countEl;
     this.documentReplaceInputEl = documentSearch.replaceInputEl;
-    this.editorContainerEl.appendChild(this.documentSearchContainerEl);
+    // The container is mounted lazily in showSearch(): app.css forces
+    // `.document-search-container { display: flex }`, which overrides the
+    // `hidden` attribute, so presence in the DOM — not `hidden` — is what
+    // gates visibility. Keeping it out until searched avoids a stray find bar
+    // sitting at the bottom of every editor.
     this.register(this.editor.onChange((_editor, origin) => this.handleEditorDocumentChange(origin)));
     this.register(this.editor.onSelectionChange(() => this.handleEditorSelectionChange()));
     this.editorViewHost.scrollerEl.addEventListener("contextmenu", (event) => this.handleSourceViewportContextMenu(event));
@@ -1270,7 +1274,7 @@ export class MarkdownView extends TextFileView {
   }
 
   private hideDocumentSearch(): void {
-    this.documentSearchContainerEl.hidden = true;
+    this.documentSearchContainerEl.remove();
     this.editorContainerEl.classList.remove("is-searching", "is-replacing");
   }
 
