@@ -3,7 +3,7 @@ import { createDiv, createEl, createSpan } from "../dom/dom";
 import { Menu } from "../ui/Menu";
 import { ItemView } from "../views/ItemView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
-import { openAgent, openAgentProperties } from "./AgentBuiltin";
+import { newRoomId, openAgent, openAgentProperties, openRoom } from "./AgentBuiltin";
 import { newAgentId } from "./AgentManager";
 import { AgentTransport, type AgentSummary } from "./AgentTransport";
 import { ensureChatStyles } from "./ChatStyles";
@@ -82,8 +82,11 @@ export class AgentView extends ItemView {
     this.contentEl.classList.add("agent-board-view");
     const headerEl = createDiv("agent-board-header", this.contentEl);
     createDiv({ cls: "agent-board-title", text: "Agents", parent: headerEl });
-    const newAgentEl = createEl("button", { cls: "agent-board-create", text: "New agent", parent: headerEl });
+    const buttonsEl = createDiv("agent-board-buttons", headerEl);
+    const newAgentEl = createEl("button", { cls: "agent-board-create", text: "New agent", parent: buttonsEl });
     newAgentEl.addEventListener("click", () => void openAgent(this.app, newAgentId()));
+    const newRoomEl = createEl("button", { cls: "agent-board-create", text: "New room", parent: buttonsEl });
+    newRoomEl.addEventListener("click", () => void openRoom(this.app, newRoomId()));
     this.gridEl = createDiv("agent-board-grid", this.contentEl);
     this.registerInterval(window.setInterval(() => void this.refresh(), REFRESH_INTERVAL_MS));
     await this.refresh();
@@ -128,11 +131,13 @@ export class AgentView extends ItemView {
       createDiv({ cls: "agent-card-usage", text: `${(usage.totalTokens / 1000).toFixed(1)}k tokens${cost}`, parent: cardEl });
     }
 
+    const isRoom = agent.id.startsWith("room-");
+    const open = isRoom ? openRoom : openAgent;
     const actionsEl = createDiv("agent-card-actions", cardEl);
-    const chatEl = createEl("button", { cls: "agent-card-action", text: "Chat", parent: actionsEl });
+    const chatEl = createEl("button", { cls: "agent-card-action", text: isRoom ? "Room" : "Chat", parent: actionsEl });
     chatEl.addEventListener("click", (event) => {
       event.stopPropagation();
-      void openAgent(this.app, agent.id);
+      void open(this.app, agent.id);
     });
     const propsEl = createEl("button", { cls: "agent-card-action", text: "Properties", parent: actionsEl });
     propsEl.addEventListener("click", (event) => {
@@ -140,7 +145,7 @@ export class AgentView extends ItemView {
       void openAgentProperties(this.app, agent.id);
     });
 
-    cardEl.addEventListener("click", () => void openAgent(this.app, agent.id));
+    cardEl.addEventListener("click", () => void open(this.app, agent.id));
     cardEl.addEventListener("contextmenu", (event) => showAgentMenu(this.app, this.transport, agent, event, () => void this.refresh()));
   }
 }

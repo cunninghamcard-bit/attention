@@ -167,8 +167,10 @@ class ChatMessageItem extends Component {
     this.el = createDiv(`chat-message chat-message-${message.role}`, parentEl);
     this.el.dataset.role = message.role;
     this.el.dataset.messageId = message.id;
+    if (message.authorId) this.el.dataset.authorId = message.authorId;
     const headerEl = createDiv("chat-message-header", this.el);
-    createDiv({ cls: "chat-message-role", text: message.role === "user" ? "You" : "Assistant", parent: headerEl });
+    const label = message.role === "user" ? "You" : message.authorName ?? "Assistant";
+    createDiv({ cls: "chat-message-role", text: label, parent: headerEl });
     const actionsEl = createDiv("chat-message-actions", headerEl);
     for (const action of listChatMessageActions()) {
       if (action.appliesTo && !action.appliesTo(message)) continue;

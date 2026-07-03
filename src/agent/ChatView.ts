@@ -22,9 +22,9 @@ interface ChatViewEphemeralState {
 export class ChatView extends StreamView {
   override icon = "lucide-message-circle";
   override navigation = true;
-  private agentId = "default";
-  private agentTitle: string | null = null;
-  private session: Agent | null = null;
+  protected agentId = "default";
+  protected agentTitle: string | null = null;
+  protected session: Agent | null = null;
   private list: ChatMessageList | null = null;
   private composer: ChatComposer | null = null;
   private stopActionEl: HTMLElement | null = null;
@@ -149,9 +149,14 @@ export class ChatView extends StreamView {
     );
 
     this.registerEvent(this.session.on("changed", () => this.scheduleSync()));
+    this.onChatChromeReady();
     this.scheduleSync();
     this.composer.focus();
   }
+
+  // Called after the chat regions rebuild; subclasses add their chrome here
+  // (MultiAgentView inserts its participants strip above the stream).
+  protected onChatChromeReady(): void {}
 
   // Transport failure is transient app trouble, not conversation content —
   // it surfaces as a Notice, the way Obsidian reports failed operations.

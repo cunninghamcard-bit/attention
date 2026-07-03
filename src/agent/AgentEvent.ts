@@ -24,10 +24,15 @@ export interface AgentRunStartedEvent extends AgentEventBase {
   runId: string;
 }
 
+// In a multi-agent room several assistants share one stream; authorId /
+// authorName say who is speaking. Absent on user messages and in
+// single-agent chats.
 export interface AgentMessageStartedEvent extends AgentEventBase {
   type: "message.started";
   messageId: string;
   role: ChatRole;
+  authorId?: string;
+  authorName?: string;
 }
 
 export interface AgentPartOpenedEvent extends AgentEventBase {

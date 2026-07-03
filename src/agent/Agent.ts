@@ -42,6 +42,10 @@ export interface ChatMessage {
   role: ChatRole;
   parts: ChatPart[];
   closed: boolean;
+  // Which agent spoke, in a multi-agent room; absent for the user and in
+  // single-agent chats.
+  authorId?: string;
+  authorName?: string;
 }
 
 export interface ChatCompaction {
@@ -82,7 +86,14 @@ export function applyAgentEvent(state: AgentState, event: AgentEvent): boolean {
       break;
     }
     case "message.started": {
-      state.messages.push({ id: event.messageId, role: event.role, parts: [], closed: false });
+      state.messages.push({
+        id: event.messageId,
+        role: event.role,
+        parts: [],
+        closed: false,
+        ...(event.authorId !== undefined ? { authorId: event.authorId } : {}),
+        ...(event.authorName !== undefined ? { authorName: event.authorName } : {}),
+      });
       break;
     }
     case "part.opened": {

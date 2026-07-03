@@ -13,7 +13,45 @@ function nextMessageId(agentId: string): string {
   return `${agentId}-m${next}`;
 }
 
+// Rooms (id prefix "room-") script a three-agent exchange: same event
+// stream, each message stamped with its author — the UI contract for
+// MultiAgentView before the backend can route agent-to-agent.
+async function runRoomScript(agentId: string, runId: string, prompt: string, emit: EngineEmit): Promise<void> {
+  const speakers: Array<[string, string, string]> = [
+    ["researcher", "研究员", `关于「${prompt.slice(0, 24)}」,我先查了一下相关背景:这是一个多智能体协作的演示场景。`],
+    ["coder", "工程师", "我来验证一下可行性,先跑个命令。"],
+    ["reviewer", "评审", "两位的结论我都看过了,**方案可行**,建议直接推进。"],
+  ];
+  for (let index = 0; index < speakers.length; index++) {
+    const [authorId, authorName, text] = speakers[index];
+    const messageId = nextMessageId(agentId);
+    emit({ type: "message.started", messageId, role: "assistant", authorId, authorName });
+    emit({ type: "part.opened", messageId, partIndex: 0, partType: "text" });
+    for (const chunk of text.match(/.{1,6}/gs) ?? []) {
+      emit({ type: "part.delta", messageId, partIndex: 0, delta: chunk });
+      await sleep(40);
+    }
+    emit({ type: "part.closed", messageId, partIndex: 0 });
+    if (authorId === "coder") {
+      emit({ type: "part.opened", messageId, partIndex: 1, partType: "tool", toolName: "Bash" });
+      emit({ type: "part.delta", messageId, partIndex: 1, delta: '{"command":"echo room-check"}' });
+      emit({ type: "part.closed", messageId, partIndex: 1 });
+      await sleep(300);
+      emit({ type: "part.closed", messageId, partIndex: 1, result: "room-check" });
+    }
+    emit({ type: "message.closed", messageId });
+    await sleep(200);
+  }
+  emit({
+    type: "run.closed",
+    runId,
+    status: "completed",
+    usage: { inputTokens: 6400, outputTokens: 420, totalTokens: 6820, costUsd: 0.012 },
+  });
+}
+
 async function runScript(agentId: string, runId: string, prompt: string, emit: EngineEmit): Promise<void> {
+  if (agentId.startsWith("room-")) return runRoomScript(agentId, runId, prompt, emit);
   if (prompt.includes("compact")) emit({ type: "context.compacted", preTokens: 52000, trigger: "auto" });
   const messageId = nextMessageId(agentId);
   emit({ type: "message.started", messageId, role: "assistant" });

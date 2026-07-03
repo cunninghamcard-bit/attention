@@ -14,6 +14,21 @@ function firstTextOf(message: ChatMessage): string {
 import { AgentPropertiesView, AGENT_PROPERTIES_VIEW_TYPE } from "./AgentPropertiesView";
 import { AgentView, AGENT_VIEW_TYPE } from "./AgentView";
 import { ChatView, CHAT_VIEW_TYPE } from "./ChatView";
+import { MultiAgentView, MULTI_AGENT_VIEW_TYPE } from "./MultiAgentView";
+
+// Rooms live in the same id space as agents, distinguished by prefix: the
+// bridge treats a room as one more event stream.
+export function newRoomId(): string {
+  return newAgentId().replace("agent-", "room-");
+}
+
+export async function openRoom(app: App, roomId: string): Promise<void> {
+  const leaves = app.workspace.getLeavesOfType(MULTI_AGENT_VIEW_TYPE);
+  const showing = leaves.find((leaf) => (leaf.view as MultiAgentView | null)?.getState()?.agentId === roomId);
+  const leaf = showing ?? app.workspace.getLeaf("tab");
+  await leaf.setViewState({ type: MULTI_AGENT_VIEW_TYPE, active: true, state: { agentId: roomId } });
+  await app.workspace.revealLeaf(leaf);
+}
 
 // Opens the agent's properties view, reusing a leaf already showing it.
 export async function openAgentProperties(app: App, agentId: string): Promise<void> {
@@ -51,6 +66,7 @@ export function registerAgentViews(app: App): void {
   app.viewRegistry.registerView(CHAT_VIEW_TYPE, (leaf) => new ChatView(leaf));
   app.viewRegistry.registerView(AGENT_PROPERTIES_VIEW_TYPE, (leaf) => new AgentPropertiesView(leaf));
   app.viewRegistry.registerView(AGENT_VIEW_TYPE, (leaf) => new AgentView(leaf));
+  app.viewRegistry.registerView(MULTI_AGENT_VIEW_TYPE, (leaf) => new MultiAgentView(leaf));
 }
 
 export function registerAgentBuiltin(app: App): void {
@@ -79,6 +95,13 @@ export function registerAgentBuiltin(app: App): void {
       if (!checking && running) void view?.stopRun();
       return running;
     },
+  });
+
+  app.commands.addCommand({
+    id: "agent:create-room",
+    name: "Create multi-agent room",
+    icon: "lucide-users",
+    callback: () => void openRoom(app, newRoomId()),
   });
 
   app.commands.addCommand({

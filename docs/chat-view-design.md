@@ -19,9 +19,31 @@ AgentPropertiesView  one agent's properties panel — identity, status,
 AgentView            the agents, plural — every agent as a live card
                      (status pulse, usage, Chat/Properties); replaces the
                      earlier sidebar list, which it made redundant
-MultiAgentView       RESERVED — several agents conversing in one view;
-                     lands when the backend can route agent-to-agent
+MultiAgentView       several agents conversing in one view (a room)
 ```
+
+## MultiAgentView: the room architecture
+
+```text
+a room = ONE canonical event stream (one seq, one reducer, one Agent state)
+       + N speaking identities: message.started carries authorId/authorName
+       + the user, whose messages simply carry no author
+```
+
+- No new state layer: `Agent(roomId)` IS the room. Live SSE, replay,
+  reconnect — the exact same path as a single-agent chat.
+- The renderer changes at exactly one point: the message header label reads
+  authorName instead of "Assistant". Parts, tools, compaction, usage — all
+  untouched.
+- Participants derive from observed authors (a roster event can come later);
+  the participants strip is chrome on MultiAgentView, not state.
+- The backend's future job (along-go): route agent-to-agent turns and stamp
+  each with its author. Until then the mock engine scripts a room, so the
+  UI is real before the routing exists.
+
+MultiAgentView extends ChatView — a room is a chat whose speakers are many,
+not a new genre. It contributes the participants strip and its own view
+type; everything else is inherited.
 
 This document merges three earlier sources into one decided design:
 
