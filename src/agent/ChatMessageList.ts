@@ -4,7 +4,7 @@ import { Component } from "../core/Component";
 import { Collapse } from "../ui/Collapse";
 import { getChatToolRenderer, listChatMessageActions } from "./ChatRegistry";
 import type { ChatMessage, ChatPart, Agent, TextChatPart, ToolChatPart } from "./Agent";
-import { STRINGS, timeGreeting } from "./AgentStrings";
+import { STRINGS } from "./AgentStrings";
 import { createStatusDot, setStatusDot } from "./StatusDot";
 import { StreamMarkdownRenderer } from "../views/StreamMarkdownRenderer";
 import { Typewriter } from "../views/Typewriter";
@@ -324,7 +324,6 @@ export class ChatMessageList extends Component {
     super();
     this.el = createDiv("chat-message-list", parentEl);
     this.emptyEl = createDiv("chat-empty", this.el);
-    createDiv({ cls: "chat-greeting", text: timeGreeting(), parent: this.emptyEl });
     this.thinkingEl = createDiv("chat-thinking-indicator", this.el);
     for (let index = 0; index < 3; index++) createSpan({ cls: "chat-thinking-dot", parent: this.thinkingEl });
     this.thinkingEl.hide();

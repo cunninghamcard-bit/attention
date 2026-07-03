@@ -28,7 +28,6 @@ const CHAT_CSS = `
     .chat-message-action:hover { opacity: 1; }
     .chat-view .internal-link { color: var(--link-color, #7c6ae0); cursor: pointer; text-decoration: underline; text-decoration-color: rgba(124,106,224,0.35); }
     .chat-empty { text-align: center; padding: 22vh 0 24px; }
-    .chat-greeting { font-size: 40px; font-weight: 400; letter-spacing: -0.5px; color: var(--text-normal, #141412); }
     .chat-status-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; background: var(--text-muted, #999); }
     .chat-status-dot.is-idle { background: var(--background-modifier-border, rgba(120,120,140,0.5)); }
     .chat-status-dot.is-on { background: var(--interactive-accent, #7c6ae0); }

@@ -1,7 +1,7 @@
 import { autocompletion, completionKeymap, type Completion, type CompletionContext, type CompletionResult } from "@codemirror/autocomplete";
 import { defaultKeymap, history, historyKeymap, insertNewline } from "@codemirror/commands";
 import { Compartment, EditorState, Prec, type Extension } from "@codemirror/state";
-import { EditorView, keymap, placeholder } from "@codemirror/view";
+import { EditorView, keymap } from "@codemirror/view";
 import { createDiv, createEl, createSpan } from "../dom/dom";
 import { Component } from "../core/Component";
 import { STRINGS } from "./AgentStrings";
@@ -71,7 +71,6 @@ export class ChatComposer extends Component {
         doc: this.agentId ? (readChatDraft(this.agentId) ?? "") : "",
         extensions: [
           history(),
-          placeholder(STRINGS.composer.placeholder),
           EditorView.lineWrapping,
           autocompletion({ override: [(context) => this.completeSlashCommand(context), (context) => this.completeWikilink(context), (context) => this.completeMention(context)] }),
           Prec.high(keymap.of(completionKeymap)),

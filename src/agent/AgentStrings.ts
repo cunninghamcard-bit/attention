@@ -6,15 +6,8 @@ import type { AgentUsage } from "./AgentEvent";
 // scattered at the call site.
 export const STRINGS = {
   composer: {
-    placeholder: "Message…",
     send: "Send",
     stop: "Stop",
-  },
-  greeting: {
-    morning: "Good morning",
-    afternoon: "Good afternoon",
-    evening: "Good evening",
-    lateNight: "Burning the midnight oil?",
   },
   role: {
     you: "You",
@@ -138,16 +131,6 @@ export const STRINGS = {
       `Pasted text with at least this many lines becomes an attachment card instead of inline text. Default ${defaultValue}.`,
   },
 };
-
-// The ArkLoop welcome: a large time-of-day greeting instead of an
-// instructional empty state.
-export function timeGreeting(now: Date = new Date()): string {
-  const hour = now.getHours();
-  if (hour < 5) return STRINGS.greeting.lateNight;
-  if (hour < 12) return STRINGS.greeting.morning;
-  if (hour < 18) return STRINGS.greeting.afternoon;
-  return STRINGS.greeting.evening;
-}
 
 export function formatUsage(usage: AgentUsage): string {
   const cost = usage.costUsd ? ` · $${usage.costUsd.toFixed(3)}` : "";
