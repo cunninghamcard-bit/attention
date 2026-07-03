@@ -23,6 +23,7 @@ function setup(overrides: Partial<ChatComposerCallbacks> = {}) {
   const send = vi.fn();
   const composer = new ChatComposer(parentEl, {
     send,
+    queue: vi.fn(),
     stop: vi.fn(),
     isRunning: () => false,
     getWikilinkTargets: () => ["Welcome", "设计笔记"],

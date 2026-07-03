@@ -9,6 +9,10 @@ export const STRINGS = {
     send: "Send",
     stop: "Stop",
   },
+  queued: {
+    label: "Queued",
+    cancel: "×",
+  },
   role: {
     you: "You",
     assistant: "Assistant",

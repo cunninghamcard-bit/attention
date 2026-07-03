@@ -141,6 +141,7 @@ export class ChatView extends StreamView {
         this.contentEl,
         {
           send: (text, attachments) => void this.sendMessage(text, attachments),
+          queue: (text, attachments) => this.session?.queueMessage(text, attachments),
           stop: () => void this.stopRun(),
           isRunning: () => this.isRunning(),
           getWikilinkTargets: () => this.app.vault.getMarkdownFiles().map((file) => file.basename),

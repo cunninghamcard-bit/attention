@@ -173,4 +173,10 @@ const CHAT_CSS = `
     .chat-compact-label { font-size: 0.75em; opacity: 0.55; white-space: nowrap; }
     .chat-view .markdown-rendered pre { overflow-x: auto; }
     .chat-view .block-language-mermaid svg { min-height: 60px; max-width: 100%; height: auto; }
+    .chat-queued-list { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+    .chat-queued { display: flex; align-items: center; gap: 8px; max-width: 85%; align-self: flex-end; border: 1px dashed var(--background-modifier-border, rgba(0,0,0,0.18)); border-radius: 18px 18px 6px 18px; padding: 8px 12px; opacity: 0.6; }
+    .chat-queued-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.7; flex: 0 0 auto; }
+    .chat-queued-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; }
+    .chat-queued-cancel { flex: 0 0 auto; border: none; background: none; cursor: pointer; opacity: 0.5; font-size: 14px; line-height: 1; padding: 0 2px; color: var(--text-normal, #1a1a19); }
+    .chat-queued-cancel:hover { opacity: 1; }
 `;
