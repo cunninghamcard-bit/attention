@@ -260,6 +260,34 @@ The test for a new element: if it would survive history replay it belongs in
 the stream; if it follows the active leaf it belongs in the status bar; only
 what operates THIS window belongs on the view.
 
+## The benchmark: ArkLoop / Claude Desktop / Codex tier
+
+What "a first-class agent chat" means, as a checklist. ✅ shipped,
+🔨 in flight, ◻ open. UI-only items land against the mock engine; items
+marked (go) wait for the backend.
+
+| capability                        | status | home                        |
+|-----------------------------------|--------|-----------------------------|
+| streaming markdown + typewriter   | ✅     | Typewriter / renderer       |
+| tool card family + failures       | ✅     | ChatToolCards registry      |
+| thinking fold + live clock        | ✅     | ChatPartRenderer            |
+| scroll anchor + return-to-bottom  | ✅     | StreamScroller              |
+| send/stop button states           | ✅     | ChatComposer (CSS states)   |
+| copy/retry/edit message actions   | ✅     | message action registry     |
+| drafts + input history            | ✅     | ChatComposerDrafts          |
+| slash / [[link]] / @mention       | ✅     | composer completion sources |
+| usage in status bar               | ✅     | AgentStatusBar              |
+| rooms: authors, colors, mentions  | ✅     | MultiAgentView              |
+| queued prompts                    | 🔨     | Agent (frontend queue)      |
+| attach button + drag-drop         | 🔨     | ChatComposer                |
+| context-window occupancy %        | ◻     | AgentStatusBar (needs window size from engine) |
+| permission approval cards         | ◻ (go) | deferred by decision        |
+| model / effort switching          | ◻ (go) | header action + Agent entity|
+| run inspector (raw events)        | ◻     | AgentPropertiesView tab     |
+| conversation search               | ◻     | ChatView                    |
+| fork conversation                 | ◻ (go) | needs backend history copy  |
+| voice input                       | ◻     | out of scope for now        |
+
 ## The component kit (ArkLoop parity, no React)
 
 ArkLoop's polish decomposes into a small set of primitives; each has a
