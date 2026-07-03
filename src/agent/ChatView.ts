@@ -75,6 +75,11 @@ export class ChatView extends StreamView {
     super.onPaneMenu(menu, source);
     menu.addItem((item) => item
       .setSection("action")
+      .setTitle("Agent properties")
+      .setIcon("lucide-bot")
+      .onClick(() => this.app.commands.executeCommandById("agent:open-properties")));
+    menu.addItem((item) => item
+      .setSection("action")
       .setTitle("New agent")
       .setIcon("lucide-message-circle-plus")
       .onClick(() => this.app.commands.executeCommandById("agent:create")));

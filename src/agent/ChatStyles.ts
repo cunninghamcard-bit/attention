@@ -84,6 +84,14 @@ const CHAT_CSS = `
     @keyframes chat-shimmer { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
     .chat-message-user.is-collapsible:not(.is-expanded) .chat-message-parts { max-height: 220px; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent); mask-image: linear-gradient(to bottom, black 70%, transparent); }
     .chat-show-more { border: none; background: none; cursor: pointer; color: var(--text-accent, #7c6ae0); font-size: 0.8em; padding: 2px 0; align-self: flex-start; }
+    .agent-view-root { max-width: 640px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+    .agent-view-section-title { font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted, #999); margin-bottom: 6px; }
+    .agent-prop { display: flex; gap: 12px; padding: 3px 0; font-size: 0.9em; }
+    .agent-prop-label { flex: 0 0 120px; color: var(--text-muted, #999); }
+    .agent-prop-value { flex: 1 1 auto; overflow-wrap: anywhere; }
+    .agent-view-hint { font-size: 0.85em; color: var(--text-faint, #aaa); font-style: italic; }
+    .agent-view-action { align-self: flex-start; cursor: pointer; }
+    .agent-view-empty { padding: 24px; color: var(--text-muted, #999); }
     .chat-composer { flex: 0 0 auto; border-top: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); padding: 12px 24px 16px; position: relative; }
     .chat-composer-row { max-width: 760px; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; }
     .chat-composer-input { flex: 1 1 auto; min-height: 44px; max-height: 200px; overflow-y: auto; border-radius: 8px; border: 1px solid var(--background-modifier-border, rgba(120,120,140,0.25)); background: var(--background-primary, white); }

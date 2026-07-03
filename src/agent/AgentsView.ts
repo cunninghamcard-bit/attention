@@ -2,7 +2,7 @@ import { createDiv, createSpan } from "../dom/dom";
 import { Menu } from "../ui/Menu";
 import { ItemView } from "../views/ItemView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
-import { openAgent } from "./AgentBuiltin";
+import { openAgent, openAgentProperties } from "./AgentBuiltin";
 import { ensureChatStyles } from "./ChatStyles";
 import { AgentTransport, type AgentSummary } from "./AgentTransport";
 import { ChatView } from "./ChatView";
@@ -86,6 +86,10 @@ export class AgentsView extends ItemView {
   private showItemMenu(event: MouseEvent, thread: AgentSummary): void {
     event.preventDefault();
     const menu = new Menu(this.containerEl.ownerDocument);
+    menu.addItem((item) => item
+      .setTitle("Properties")
+      .setIcon("lucide-bot")
+      .onClick(() => void openAgentProperties(this.app, thread.id)));
     menu.addItem((item) => item
       .setTitle("Rename")
       .setIcon("lucide-pencil")

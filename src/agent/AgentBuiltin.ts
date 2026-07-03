@@ -12,7 +12,17 @@ function firstTextOf(message: ChatMessage): string {
   return part && "markdown" in part ? part.markdown : "";
 }
 import { AgentsView, AGENTS_VIEW_TYPE } from "./AgentsView";
+import { AgentView, AGENT_VIEW_TYPE } from "./AgentView";
 import { ChatView, CHAT_VIEW_TYPE } from "./ChatView";
+
+// Opens the agent's properties view, reusing a leaf already showing it.
+export async function openAgentProperties(app: App, agentId: string): Promise<void> {
+  const leaves = app.workspace.getLeavesOfType(AGENT_VIEW_TYPE);
+  const showing = leaves.find((leaf) => (leaf.view as AgentView | null)?.getState()?.agentId === agentId);
+  const leaf = showing ?? leaves[0] ?? app.workspace.getLeaf("tab");
+  await leaf.setViewState({ type: AGENT_VIEW_TYPE, active: true, state: { agentId } });
+  await app.workspace.revealLeaf(leaf);
+}
 
 // Opens a specific thread, preferring a leaf that already shows it, then the
 // active chat leaf, then any chat leaf, then a new tab.
@@ -40,6 +50,7 @@ async function openChatLeaf(app: App, agentId?: string): Promise<void> {
 export function registerAgentViews(app: App): void {
   app.viewRegistry.registerView(CHAT_VIEW_TYPE, (leaf) => new ChatView(leaf));
   app.viewRegistry.registerView(AGENTS_VIEW_TYPE, (leaf) => new AgentsView(leaf));
+  app.viewRegistry.registerView(AGENT_VIEW_TYPE, (leaf) => new AgentView(leaf));
 }
 
 export function registerAgentBuiltin(app: App): void {
@@ -67,6 +78,18 @@ export function registerAgentBuiltin(app: App): void {
       const running = Boolean(view?.isRunning());
       if (!checking && running) void view?.stopRun();
       return running;
+    },
+  });
+
+  app.commands.addCommand({
+    id: "agent:open-properties",
+    name: "Open agent properties",
+    icon: "lucide-bot",
+    checkCallback: (checking) => {
+      const view = app.workspace.getActiveViewOfType(ChatView);
+      const agentId = view ? String(view.getState().agentId ?? "") : "";
+      if (!checking && agentId) void openAgentProperties(app, agentId);
+      return Boolean(agentId);
     },
   });
 

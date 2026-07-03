@@ -9,10 +9,12 @@ get / list); the sidebar lists your agents; an agent outlives any tab showing
 it. "Chat" survives only as the UI genre: ChatView is a window onto an Agent,
 the way MarkdownView is a window onto a TFile.
 
-The name AgentView is deliberately reserved: it will be the view of the
-agent ITSELF — status, configuration, run overview — a different window
-onto the same entity. That is why the conversation view keeps its honest
-genre name.
+AgentView is the view of the agent ITSELF — identity, status, activity,
+configuration — a different window onto the same entity, the properties
+panel to ChatView's document body. The skeleton ships (view type "agent",
+sections with stable data-section/data-prop hooks); config rows fill in
+when the Go backend owns agent rows. That is why the conversation view
+keeps its honest genre name.
 
 This document merges three earlier sources into one decided design:
 

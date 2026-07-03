@@ -74,7 +74,7 @@ class ChatPartRenderer extends Component {
   // Thinking renders as a collapsible card: open with a shimmering header
   // while it streams, folded to "Thought · 3.2s" once it closes — the
   // reasoning stays reachable without dominating the transcript.
-  private syncThinking(part: Extract<ChatPart, { type: "thinking" }>): void {
+  private syncThinking(part: Extract<ChatPart, { type: "text" | "thinking" }>): void {
     this.el.className = `chat-part chat-part-thinking${part.closed && !this.thinkingToggled ? " is-collapsed" : ""}`;
     if (!this.thinkingHeaderEl) {
       this.thinkingHeaderEl = createDiv("chat-thinking-header", this.el);
