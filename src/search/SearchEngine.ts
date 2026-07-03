@@ -1,4 +1,10 @@
 import type { App } from "../app/App";
+import { CODE_EXTENSIONS } from "../views/CodeFileView";
+
+// Search every text file the workspace can open: notes plus source code.
+// Binary formats (images, pdf, audio) stay out — reading them as text
+// produces garbage matches.
+const SEARCHABLE_EXTENSIONS = new Set(["md", "canvas", ...CODE_EXTENSIONS]);
 
 export interface SearchMatch {
   line: number;
@@ -28,7 +34,8 @@ export class SearchEngine {
     const needle = query.caseSensitive ? rawQuery : rawQuery.toLowerCase();
     const results: VaultSearchResult[] = [];
 
-    for (const file of this.app.vault.getMarkdownFiles()) {
+    for (const file of this.app.vault.getFiles()) {
+      if (!SEARCHABLE_EXTENSIONS.has(file.extension)) continue;
       if (query.pathPrefix && !file.path.startsWith(query.pathPrefix)) continue;
       const source = await this.app.vault.read(file);
       const matches: SearchMatch[] = [];

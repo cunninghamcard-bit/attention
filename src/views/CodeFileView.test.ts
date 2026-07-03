@@ -47,6 +47,45 @@ describe("CodeFileView", () => {
     expect(cm.state.selection.main.to).toBe(lineStart + 12);
   });
 
+  it("opens extensionless files like Dockerfile as code", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const file = await app.vault.create("Dockerfile", "FROM alpine:3\nRUN echo hi\n");
+
+    const leaf = await app.workspace.openFile(file, { active: true });
+
+    expect(leaf.view).toBeInstanceOf(CodeFileView);
+    expect((leaf.view as CodeFileView).contentEl.querySelector(".cm-content")?.textContent).toContain("FROM alpine:3");
+  });
+
+  it("global search covers code files and results deep-link into them", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    await app.vault.create("note.md", "needle in a note\n");
+    await app.vault.create("app.go", "package main\n// needle in code\n");
+    await app.vault.create("logo.png", "needle-in-binary");
+
+    const results = await app.search.search({ query: "needle" });
+
+    expect(results.map((result) => result.path)).toEqual(["app.go", "note.md"]);
+    expect(results[0].matches[0].line).toBe(1);
+  });
+
+  it("persists the word wrap toggle through view state", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const file = await app.vault.create("wrap.ts", "const x = 1;\n");
+    const leaf = await app.workspace.openFile(file, { active: true });
+    const view = leaf.view as CodeFileView;
+
+    expect(view.wordWrap).toBe(false);
+    view.setWordWrap(true);
+    expect(view.getState()).toMatchObject({ wordWrap: true });
+
+    await view.setState({ file: file.path, wordWrap: true });
+    expect(view.wordWrap).toBe(true);
+  });
+
   it("saves edited view data back to the vault", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;

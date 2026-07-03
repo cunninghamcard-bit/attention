@@ -6,6 +6,8 @@ import { languages } from "@codemirror/language-data";
 import { tags } from "@lezer/highlight";
 import { ensureRangeGeometry } from "../editor/EditorView";
 import { TextFileView } from "./TextFileView";
+import type { ViewStateResult } from "./View";
+import type { Menu } from "../ui/Menu";
 import type { TFile } from "../vault/TAbstractFile";
 
 /**
@@ -21,6 +23,12 @@ export const CODE_EXTENSIONS = [
   "json", "jsonc", "yaml", "yml", "toml", "xml",
   "css", "scss", "less", "html", "vue", "svelte",
   "sql", "graphql", "proto", "dockerfile", "txt", "log", "csv", "ini", "conf",
+  // .base (the removed Bases product) is YAML-ish text; keep old vault files readable.
+  "base",
+  // "" routes extensionless files (Dockerfile, Makefile, dotfiles — TFile
+  // treats a leading dot as no extension) into the code view; they are
+  // near-universally plain text in a code workspace.
+  "",
 ];
 
 // Map lezer highlight tags onto the theme's --code-* palette so code files
@@ -45,8 +53,10 @@ export class CodeFileView extends TextFileView {
   static readonly VIEW_TYPE = "code";
   private cm: EditorView | null = null;
   private readonly languageCompartment = new Compartment();
+  private readonly wrapCompartment = new Compartment();
   private applyingViewData = false;
   private pendingReveal: { line: number; start: number; end: number } | null = null;
+  wordWrap = false;
 
   getViewType(): string { return CodeFileView.VIEW_TYPE; }
   getDisplayText(): string { return this.file?.name ?? "Code"; }
@@ -100,6 +110,35 @@ export class CodeFileView extends TextFileView {
     this.cm.focus();
   }
 
+  setWordWrap(wordWrap: boolean): void {
+    this.wordWrap = wordWrap;
+    this.cm?.dispatch({ effects: this.wrapCompartment.reconfigure(wordWrap ? EditorView.lineWrapping : []) });
+  }
+
+  override onPaneMenu(menu: Menu, source?: string): void {
+    super.onPaneMenu(menu, source);
+    menu.addItem((item) => item
+      .setSection("pane")
+      .setTitle("Word wrap")
+      .setIcon("lucide-wrap-text")
+      .setChecked(this.wordWrap)
+      .onClick(() => {
+        this.setWordWrap(!this.wordWrap);
+        this.app.workspace.requestSaveLayout();
+      }));
+  }
+
+  override async setState(state: unknown, result?: ViewStateResult): Promise<void> {
+    await super.setState(state, result);
+    if (state && typeof state === "object" && "wordWrap" in state) {
+      this.setWordWrap(Boolean((state as { wordWrap?: unknown }).wordWrap));
+    }
+  }
+
+  override getState(): Record<string, unknown> {
+    return { ...super.getState(), wordWrap: this.wordWrap };
+  }
+
   override setViewData(data: string, clearDirty = false): void {
     super.setViewData(data, clearDirty);
     if (!this.cm || this.applyingViewData) return;
@@ -132,6 +171,7 @@ export class CodeFileView extends TextFileView {
       keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
       syntaxHighlighting(themeHighlightStyle),
       this.languageCompartment.of([]),
+      this.wrapCompartment.of(this.wordWrap ? EditorView.lineWrapping : []),
       EditorView.updateListener.of((update) => {
         if (!update.docChanged || this.applyingViewData) return;
         this.applyingViewData = true;
