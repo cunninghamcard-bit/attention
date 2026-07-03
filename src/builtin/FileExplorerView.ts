@@ -145,9 +145,7 @@ export class FileExplorerView extends ItemView {
     titleEl.appendChild(iconEl);
     const titleContentEl = document.createElement("div");
     titleContentEl.className = "tree-item-inner nav-file-title-content";
-    // Notes keep the clean basename; everything else shows the real filename
-    // with its extension, like a code editor.
-    titleContentEl.textContent = file.extension === "md" ? file.basename : file.name;
+    titleContentEl.textContent = file.name;
     titleEl.appendChild(titleContentEl);
     this.applyRenameState(titleEl, titleContentEl, file);
     titleEl.addEventListener("click", (event) => this.onFileClick(file, event));

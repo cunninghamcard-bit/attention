@@ -510,7 +510,7 @@ describe("FileExplorerView external folder drops", () => {
     expect(folderTitleEl.querySelector(".tree-item-inner.nav-folder-title-content")?.textContent).toBe("Folder");
     expect(fileEl.dataset.path).toBeUndefined();
     expect(fileTitleEl.dataset.path).toBe("Folder/Note.md");
-    expect(fileTitleEl.querySelector(".tree-item-inner.nav-file-title-content")?.textContent).toBe("Note");
+    expect(fileTitleEl.querySelector(".tree-item-inner.nav-file-title-content")?.textContent).toBe("Note.md");
   });
 
   it("creates file and folder drag sources from tree titles", async () => {
