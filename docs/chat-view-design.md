@@ -278,9 +278,9 @@ marked (go) wait for the backend.
 | slash / [[link]] / @mention       | ✅     | composer completion sources |
 | usage in status bar               | ✅     | AgentStatusBar              |
 | rooms: authors, colors, mentions  | ✅     | MultiAgentView              |
-| queued prompts                    | 🔨     | Agent (frontend queue)      |
-| attach button + drag-drop         | 🔨     | ChatComposer                |
-| context-window occupancy %        | ◻     | AgentStatusBar (needs window size from engine) |
+| queued prompts                    | ✅     | Agent (frontend queue)      |
+| attach button + drag-drop         | ✅     | ChatComposer                |
+| context-window occupancy %        | ✅     | AgentStatusBar + engine usage |
 | permission approval cards         | ◻ (go) | deferred by decision        |
 | model / effort switching          | ◻ (go) | header action + Agent entity|
 | run inspector (raw events)        | ◻     | AgentPropertiesView tab     |
