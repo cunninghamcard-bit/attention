@@ -72,3 +72,54 @@ this note maps its mechanisms onto the along-go kernel plan.
   claim protocol becomes relevant only when execution moves off-box.
 - WS hub + Redis relay is their multi-node story; SQLite-first along-go
   keeps SSE + DB until a second node exists.
+
+## Appendix A: adapter anatomy (how 13 engines become one)
+
+The whole compatibility layer is one Go interface plus a closed message set:
+
+```go
+Backend.Execute(ctx, prompt, opts) -> Session{ Messages <-chan Message, Result <-chan Result }
+Message.Type ∈ { text, thinking, tool-use, tool-result, status, error, log }
+Result.Status ∈ { completed, failed, aborted, timeout, cancelled } + SessionID + Usage
+```
+
+- One file per engine; a factory switch (`New(agentType)`) picks the struct.
+  Three transport families hide behind it: stream-json lines (claude),
+  JSON-RPC over stdio (codex), and ACP (hermes/kimi/kiro/qoder/trae — the
+  shared external spec makes those adapters thin).
+- The claude adapter is a scanner loop over stdout lines dispatching on
+  msg.Type; permission prompts (`control_request`) are auto-answered with
+  `control_response{allow}` written back to stdin — headless mode is a
+  protocol handshake, not a flag.
+- ExecOptions carries the portable knobs (cwd, model, resume id, thinking
+  level, mcp config); each adapter maps or IGNORES them (unsupported knob
+  falls through rather than fails — lets capabilities grow per-engine).
+- Failure forensics: a bounded stderr tail is attached to failure Results;
+  exit-code vs ctx-deadline vs write-error disambiguation happens once per
+  adapter, so "why did it die" is uniform upstream.
+
+Mapping: this Session/Message pair is channel-shaped fn1 — our Engine
+interface emits the same information as canonical events instead. When
+along-go adds Codex/Copilot adapters they are one file each.
+
+## Appendix B: the push pipeline (engine -> screen)
+
+```text
+engine subprocess (stdout lines / JSON-RPC / ACP)
+  -> adapter normalizes to Message channel            [server/pkg/agent/*]
+  -> daemon drain loop: coalesce adjacent text/thinking, flush on 500ms
+     ticker or on any tool event; stamp per-run seq; batch    [executeAndDrain]
+  -> HTTP POST ReportTaskMessages (batches)
+  -> server appends to task_message rows (task_id, seq, type, ...)
+  -> WS hub broadcast "task:message" to subscribers of scope task:<id>
+  -> frontend: WS payload patches the query cache in place (setQueryData);
+     history/reconnect = GET run-messages?since=<seq>; memoized rows so a
+     streamed event re-renders only the tail
+```
+
+Their delta vs ours: they coalesce in the DAEMON (500ms batches — fewer,
+fatter rows; good for HTTP hops), we coalesce in the CLIENT (rAF +
+typewriter; finer deltas over SSE). Both keep the DB as source of truth
+with seq as the resume cursor; the push channel is just a nudge with
+payload. For along-go local sidecar the finer-grained SSE stays right;
+adopt daemon-side batching only when the transport becomes a network hop.
