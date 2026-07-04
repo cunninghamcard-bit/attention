@@ -3,17 +3,25 @@ import { App } from "../app/App";
 import { DiffView, openGitDiff } from "../views/DiffView";
 import type { ElectronGitApi, GitExecResult } from "./GitService";
 
-function fakeGit(headFiles: Record<string, string>, isRepo = true): ElectronGitApi {
+function fakeGit(headFiles: Record<string, string>, isRepo = true): ElectronGitApi & { calls: string[][] } {
+  const calls: string[][] = [];
   return {
     available: true,
+    calls,
     async exec(args: string[]): Promise<GitExecResult> {
+      calls.push(args);
       if (args[0] === "rev-parse") return { code: 0, stdout: isRepo ? "true\n" : "false\n", stderr: "" };
       if (args[0] === "show") {
-        const path = args[1].replace(/^HEAD:/, "");
+        const path = args[1].replace(/^(HEAD|:0|v1\.0):/, "");
         if (path in headFiles) return { code: 0, stdout: headFiles[path], stderr: "" };
         return { code: 128, stdout: "", stderr: `fatal: path '${path}' does not exist in 'HEAD'` };
       }
       if (args[0] === "status") return { code: 0, stdout: " M agent.ts\n?? new.ts\n", stderr: "" };
+      if (args[0] === "add" || args[0] === "restore") return { code: 0, stdout: "", stderr: "" };
+      if (args[0] === "commit") return args[2] === "fail me"
+        ? { code: 1, stdout: "", stderr: "nothing to commit" }
+        : { code: 0, stdout: "[main abc123] ok", stderr: "" };
+      if (args[0] === "log") return { code: 0, stdout: "aaa111\x1faaa\x1fCard\x1f2026-07-01T00:00:00+08:00\x1ffirst commit\nbbb222\x1fbbb\x1fCard\x1f2026-07-02T00:00:00+08:00\x1fsecond commit\n", stderr: "" };
       return { code: 1, stdout: "", stderr: "unknown" };
     },
   };
@@ -63,6 +71,31 @@ describe("GitService", () => {
     expect(view.getChunkCount()).toBe(1);
     view.rejectAll();
     expect(view.getViewData()).toContain("line two");
+  });
+
+  it("stages, unstages and commits through the bridge", async () => {
+    const app = new App(document.createElement("div"));
+    const bridge = fakeGit({});
+    app.git.bridgeFactory = () => bridge;
+    (app.vault.adapter as { getBasePath?: () => string }).getBasePath = () => "/fake/vault";
+    await app.ready;
+
+    await expect(app.git.stage(["a.ts", "b.ts"])).resolves.toBe(true);
+    await expect(app.git.unstage(["a.ts"])).resolves.toBe(true);
+    await expect(app.git.commit("feat: works")).resolves.toBeNull();
+    await expect(app.git.commit("fail me")).resolves.toContain("nothing to commit");
+    expect(bridge.calls).toContainEqual(["add", "--", "a.ts", "b.ts"]);
+    expect(bridge.calls).toContainEqual(["restore", "--staged", "--", "a.ts"]);
+    expect(bridge.calls).toContainEqual(["commit", "-m", "feat: works"]);
+  });
+
+  it("parses the log format and reads files at arbitrary refs", async () => {
+    const app = await appWithGit({ "agent.ts": "tagged content\n" });
+
+    const log = await app.git.log("agent.ts");
+    expect(log).toHaveLength(2);
+    expect(log[0]).toMatchObject({ shortHash: "aaa", author: "Card", subject: "first commit" });
+    await expect(app.git.readFileAt("v1.0", "agent.ts")).resolves.toBe("tagged content\n");
   });
 
   it("diffs untracked files against empty", async () => {

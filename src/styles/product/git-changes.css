@@ -44,3 +44,33 @@
   padding: var(--size-4-2);
   text-align: center;
 }
+
+.git-commit-row {
+  display: flex;
+  gap: var(--size-2-2);
+  padding: var(--size-4-2) var(--size-4-2) 0;
+  align-items: flex-start;
+}
+.git-commit-message {
+  flex: 1 1 auto;
+  resize: vertical;
+  font-family: inherit;
+}
+.git-commit-button {
+  flex: 0 0 auto;
+}
+.git-commit-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.git-changes-section {
+  font-weight: var(--font-semibold, 600);
+  font-size: var(--font-ui-small, 13px);
+  color: var(--text-muted);
+  margin: var(--size-4-3) 0 var(--size-2-2);
+}
+.git-changes-stage {
+  flex: 0 0 auto;
+  padding: 0 var(--size-2-1);
+}
+.git-changes-stage svg.svg-icon { width: 14px; height: 14px; }
