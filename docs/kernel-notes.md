@@ -184,3 +184,49 @@ Layer 2 keeps exactly three integrity duties: seq monotonicity, dispatch
 dedup, link referential integrity (later: actor permission boundaries).
 The soft anti-loop layer (prompt-level "stay silent on acks") is policy
 and lives with layer 3.
+
+## The dispatch layer: local-first (wanman study)
+
+Source: https://github.com/chekusu/wanman — a local agent-matrix framework
+(Claude Code/Codex subprocesses, JSON-RPC supervisor, SQLite message bus).
+The local counter-reference to Multica's cloud claim protocol; it confirms
+the claim machinery (poll, heartbeat membership, slots, dispatch timeouts,
+orphan sweepers) is pure network-boundary tax that a same-box kernel never
+pays.
+
+Adopt for our Dispatch:
+
+1. One-shot turn per dispatch; continuity via the engine's own resume
+   handle, never by keeping a scheduler-visible process alive (wanman's
+   idle_cached = claude --resume; our pi SDK residency is an engine
+   detail below the dispatch layer).
+2. The pending guard is a state check + post-turn re-trigger drain — a
+   boolean and a recursive call, no locks, no queue objects.
+3. Steer/interrupt = kill the in-flight turn + a priority sort key on the
+   next dequeue. No live injection into a running turn (wanman ships this
+   in production; true preemption buys little).
+4. Priority scheduling collapses into ORDER BY (priority, seq) on the
+   dispatch table. No separate scheduler data structure.
+5. Event-driven wakeup (enqueue → callback → target wakes); polling exists
+   ONLY for cron-style time triggers.
+6. No central scheduler object: actors self-schedule, the supervisor only
+   constructs and starts them.
+
+Dispatch table sketch:
+  dispatches(id, actor_type, actor_id, stream_id, input, priority,
+             status queued|running|done|failed, hops, attempt, created_at)
+  UNIQUE(stream_id, actor_id) WHERE status IN (queued, running)
+
+Explicitly NOT copied from wanman:
+- flat name addressing with zero loop prevention (prompt discipline as the
+  only guard) — our Dispatch carries a hop count as MECHANISM-level
+  anti-loop, on top of the pending-dedup guard;
+- isolation that exists in code but is not wired (their WorktreeManager /
+  MergeQueue never run; agents actually share one repo) — never let the
+  isolation story diverge from what is load-bearing;
+- infinite flat-delay respawn — retries get backoff and a give-up state.
+
+Division of reference labor: Multica teaches the SCHEMA (actor rows, seq
+event log, trigger rules); wanman teaches the RUNTIME SHAPE (self-
+scheduling actors, kill-and-reorder steering, SQL-as-scheduler). Our
+layer-2 primitives sit exactly at their intersection.
