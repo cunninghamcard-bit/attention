@@ -126,6 +126,7 @@ export const corePlugins: InternalPluginDefinition[] = [
         id: "file-explorer:new-file",
         name: "New note",
         icon: "lucide-file-plus",
+        hotkeys: [{ modifiers: ["Mod"], key: "N" }],
         callback: async () => {
           const file = await plugin.app.fileManager.createNewMarkdownFile(null);
           await plugin.app.workspace.openFile(file, { active: true, state: { mode: "source" }, eState: { rename: "all" } });
