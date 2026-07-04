@@ -21,7 +21,7 @@ explicit scope boundary in docs/scope-boundary.md
 | View lifecycle | src/views, src/builtin | Covered |
 | MarkdownView default product | src/views/MarkdownView.ts, src/markdown, src/editor | Covered |
 | Plugin system | src/plugin, examples/plugins, docs/extension-points.md | Covered |
-| Theme/CSS system | src/theme, src/theme-market, src/styles/app.css, docs/scope-boundary.md | Covered; broad reconstruction CSS is quarantined and not part of the default visual contract |
+| Theme/CSS system | src/theme, src/theme-market, src/styles (docs/style-system.md), docs/scope-boundary.md | Covered; broad reconstruction CSS is quarantined and not part of the default visual contract |
 | Vault/metadata/search | src/vault, src/metadata, src/search, docs/scope-boundary.md | Covered for platform study; wiki-link resolver and TagIndex parity are excluded |
 | Properties/Bases/query | src/properties, src/query, src/bases | Covered |
 | Desktop shell boundary | src/desktop, src/native, src/shell | Covered as skeleton |

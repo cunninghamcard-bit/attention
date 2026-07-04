@@ -1,6 +1,6 @@
 /**
  * File-type presentation for the workspace: which icon a file gets and which
- * language key drives its accent color (styles/agent-workspace.css). Used by
+ * language key drives its accent color (styles/product/explorer.css). Used by
  * the file explorer rows and code tab headers, VS Code-style.
  */
 

@@ -91,7 +91,7 @@ src/views/ItemView.ts
 src/views/MarkdownView.ts
 src/markdown/MarkdownRenderer.ts
 src/plugin/Plugin.ts
-src/styles/app.css
+src/styles/index.css
 docs/scope-boundary.md
 ```
 

@@ -3,10 +3,8 @@ import { describe, expect, it } from "vitest";
 const fileSystemSpecifier = "node:fs";
 
 const defaultCssImports = [
-  "./styles/app.css",
-  // Agent-workspace product styles (terminal, code view). New rules belong
-  // there — never in the byte-locked app.css artifact.
-  "./styles/agent-workspace.css",
+  // The ArkLoop style system's single entry point (docs/style-system.md).
+  "./styles/index.css",
 ];
 
 const forbiddenDefaultImports = [
