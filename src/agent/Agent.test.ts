@@ -110,6 +110,24 @@ describe("applyAgentEvent", () => {
   });
 });
 
+describe("permission requests", () => {
+  it("appends a request then resolves it by requestId", () => {
+    const state = createAgentState();
+    applyAgentEvent(state, { type: "permission.requested", requestId: "p1", toolName: "Bash", input: "rm -rf /", seq: 1, agentId: "t1" });
+    expect(state.permissions).toEqual([{ requestId: "p1", toolName: "Bash", input: "rm -rf /" }]);
+
+    applyAgentEvent(state, { type: "permission.resolved", requestId: "p1", outcome: "allowed", seq: 2, agentId: "t1" });
+    expect(state.permissions[0].outcome).toBe("allowed");
+  });
+
+  it("dedups a duplicate permission.requested for the same requestId", () => {
+    const state = createAgentState();
+    applyAgentEvent(state, { type: "permission.requested", requestId: "p1", toolName: "Bash", seq: 1, agentId: "t1" });
+    applyAgentEvent(state, { type: "permission.requested", requestId: "p1", toolName: "Bash", seq: 2, agentId: "t1" });
+    expect(state.permissions).toHaveLength(1);
+  });
+});
+
 describe("Agent", () => {
   it("triggers delta and changed events for subscribers", () => {
     const session = new Agent("t1");

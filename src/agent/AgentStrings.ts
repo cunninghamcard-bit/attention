@@ -14,6 +14,17 @@ export const STRINGS = {
     label: "Queued",
     cancel: "×",
   },
+  permission: {
+    title: "Permission requested",
+    allow: "Allow",
+    deny: "Deny",
+    outcome: {
+      allowed: "allowed",
+      denied: "denied",
+      timed_out: "timed out",
+      cancelled: "cancelled",
+    },
+  },
   role: {
     you: "You",
     assistant: "Assistant",

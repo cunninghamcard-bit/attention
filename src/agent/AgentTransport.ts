@@ -70,4 +70,14 @@ export class AgentTransport {
     // Best effort: interrupting a run that already ended is not an error.
     await fetch(`${this.baseUrl}/agents/${encodeURIComponent(agentId)}/stop`, { method: "POST" }).catch(() => undefined);
   }
+
+  async resolvePermission(agentId: string, requestId: string, decision: "allow" | "deny"): Promise<void> {
+    // Best effort: the request may have already timed out or been cancelled
+    // on the kernel side by the time the user clicks.
+    await fetch(`${this.baseUrl}/agents/${encodeURIComponent(agentId)}/permissions/${encodeURIComponent(requestId)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision }),
+    }).catch(() => undefined);
+  }
 }

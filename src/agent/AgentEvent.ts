@@ -89,6 +89,22 @@ export interface AgentContextCompactedEvent extends AgentEventBase {
   trigger?: string;
 }
 
+// The engine wants to run a tool that needs approval; the UI blocks on a
+// card until permission.resolved arrives (from the user's decision or a
+// kernel-side timeout/cancellation).
+export interface AgentPermissionRequestedEvent extends AgentEventBase {
+  type: "permission.requested";
+  requestId: string;
+  toolName: string;
+  input?: string;
+}
+
+export interface AgentPermissionResolvedEvent extends AgentEventBase {
+  type: "permission.resolved";
+  requestId: string;
+  outcome: "allowed" | "denied" | "timed_out" | "cancelled";
+}
+
 export type AgentEvent =
   | AgentRunStartedEvent
   | AgentMessageStartedEvent
@@ -97,4 +113,6 @@ export type AgentEvent =
   | AgentPartClosedEvent
   | AgentMessageClosedEvent
   | AgentRunClosedEvent
-  | AgentContextCompactedEvent;
+  | AgentContextCompactedEvent
+  | AgentPermissionRequestedEvent
+  | AgentPermissionResolvedEvent;

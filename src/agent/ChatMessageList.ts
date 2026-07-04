@@ -317,6 +317,7 @@ export class ChatMessageList extends Component {
   private readonly emptyEl: HTMLElement;
   private readonly thinkingEl: HTMLElement;
   private readonly queuedEl: HTMLElement;
+  private readonly permissionsEl: HTMLElement;
 
   constructor(
     parentEl: HTMLElement,
@@ -332,6 +333,10 @@ export class ChatMessageList extends Component {
     // Queued prompts render after the thinking indicator, one card per item;
     // they are UI staging (Agent.queued), not conversation history.
     this.queuedEl = createDiv("chat-queued-list", this.el);
+    // Permission cards render after the queued prompts section; permissions
+    // ARE conversation history (permission.requested/resolved are canonical
+    // events), so they survive replay like the run-error row.
+    this.permissionsEl = createDiv("chat-permission-list", this.el);
     // Run errors are conversation history (run.closed status:error), so they
     // render in the stream — history replay shows them again, unlike a toast.
     this.errorEl = createDiv("chat-run-error", this.el);
@@ -353,6 +358,7 @@ export class ChatMessageList extends Component {
         this.items.set(message.id, item);
         this.el.appendChild(this.thinkingEl);
         this.el.appendChild(this.queuedEl);
+        this.el.appendChild(this.permissionsEl);
         this.el.appendChild(this.errorEl);
       }
       item.sync();
@@ -362,6 +368,7 @@ export class ChatMessageList extends Component {
     const waiting = this.session.isRunning() && (!last || last.role === "user" || last.closed);
     this.thinkingEl.toggle(waiting);
     this.syncQueued();
+    this.syncPermissions();
     const error = this.session.state.lastError;
     if (error) this.errorEl.setText(STRINGS.message.runFailed(error));
     this.errorEl.toggle(Boolean(error));
@@ -377,6 +384,28 @@ export class ChatMessageList extends Component {
       const cancelEl = createEl("button", { cls: "chat-queued-cancel", text: STRINGS.queued.cancel, parent: cardEl });
       cancelEl.addEventListener("click", () => this.session.cancelQueued(index));
     });
+  }
+
+  private syncPermissions(): void {
+    this.permissionsEl.empty();
+    for (const permission of this.session.state.permissions) {
+      if (permission.outcome) {
+        const rowEl = createDiv("chat-permission is-resolved", this.permissionsEl);
+        const outcomeLabel = STRINGS.permission.outcome[permission.outcome as keyof typeof STRINGS.permission.outcome] ?? permission.outcome;
+        rowEl.setText(`${permission.toolName} · ${outcomeLabel}`);
+        continue;
+      }
+      const cardEl = createDiv("chat-permission", this.permissionsEl);
+      cardEl.dataset.requestId = permission.requestId;
+      createDiv({ cls: "chat-permission-title", text: STRINGS.permission.title, parent: cardEl });
+      createSpan({ cls: "chat-permission-tool", text: permission.toolName, parent: cardEl });
+      if (permission.input) createEl("pre", { cls: "chat-permission-input", text: permission.input, parent: cardEl });
+      const actionsEl = createDiv("chat-permission-actions", cardEl);
+      const allowEl = createEl("button", { cls: "chat-permission-allow", text: STRINGS.permission.allow, parent: actionsEl });
+      allowEl.addEventListener("click", () => this.session.resolvePermission(permission.requestId, "allow"));
+      const denyEl = createEl("button", { cls: "chat-permission-deny", text: STRINGS.permission.deny, parent: actionsEl });
+      denyEl.addEventListener("click", () => this.session.resolvePermission(permission.requestId, "deny"));
+    }
   }
 
   // Compaction dividers land between the message they follow and whatever

@@ -53,6 +53,13 @@ export interface ChatCompaction {
   preTokens?: number;
 }
 
+export interface ChatPermission {
+  requestId: string;
+  toolName: string;
+  input?: string;
+  outcome?: string;
+}
+
 export interface AgentState {
   messages: ChatMessage[];
   compactions: ChatCompaction[];
@@ -61,10 +68,11 @@ export interface AgentState {
   lastError: string | null;
   // Last run's token usage; the context bar reads this.
   usage: AgentUsage | null;
+  permissions: ChatPermission[];
 }
 
 export function createAgentState(): AgentState {
-  return { messages: [], compactions: [], running: false, lastSeq: 0, lastError: null, usage: null };
+  return { messages: [], compactions: [], running: false, lastSeq: 0, lastError: null, usage: null, permissions: [] };
 }
 
 function createPart(partType: ChatPartType, toolName?: string, name?: string): ChatPart {
@@ -136,6 +144,17 @@ export function applyAgentEvent(state: AgentState, event: AgentEvent): boolean {
         afterMessageId: event.afterMessageId ?? lastMessage?.id ?? null,
         preTokens: event.preTokens,
       });
+      break;
+    }
+    case "permission.requested": {
+      if (state.permissions.some((permission) => permission.requestId === event.requestId)) return false;
+      state.permissions.push({ requestId: event.requestId, toolName: event.toolName, input: event.input });
+      break;
+    }
+    case "permission.resolved": {
+      const permission = state.permissions.find((item) => item.requestId === event.requestId);
+      if (!permission) return false;
+      permission.outcome = event.outcome;
       break;
     }
     case "run.closed": {
@@ -218,6 +237,14 @@ export class Agent extends Events {
   async stop(): Promise<void> {
     if (!this.transport) return;
     await this.transport.stop(this.agentId);
+  }
+
+  resolvePermission(requestId: string, decision: "allow" | "deny"): void {
+    if (!this.transport) return;
+    this.transport
+      .resolvePermission(this.agentId, requestId, decision)
+      .catch(() => undefined)
+      .finally(() => this.trigger("changed"));
   }
 
   destroy(): void {

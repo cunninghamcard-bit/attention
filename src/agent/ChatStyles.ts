@@ -192,4 +192,15 @@ const CHAT_CSS = `
     .theme-dark .chat-mention { background: rgba(255, 255, 255, 0.1); }
     .multi-agent-invite { width: 22px; height: 22px; border-radius: 999px; border: 1px dashed var(--background-modifier-border, rgba(0,0,0,0.2)); background: transparent; color: var(--text-muted, #8c8c8a); cursor: pointer; padding: 0; line-height: 1; font-size: 14px; }
     .multi-agent-invite:hover { color: var(--text-normal, #1a1a19); border-color: rgba(0, 0, 0, 0.3); }
+    .chat-permission-list { display: flex; flex-direction: column; gap: 8px; }
+    .chat-permission { background: var(--background-primary, #fff); border: 1px solid var(--background-modifier-border, rgba(0,0,0,0.08)); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); padding: 10px 14px; font-size: 0.9em; }
+    .chat-permission-title { font-weight: 600; margin-bottom: 4px; }
+    .chat-permission-tool { font-family: var(--font-monospace, monospace); opacity: 0.8; }
+    .chat-permission-input { margin: 6px 0 0; padding: 6px 8px; border-radius: 4px; background: var(--background-primary-alt, rgba(120,120,140,0.08)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-height: 60px; font-size: 0.85em; }
+    .chat-permission-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .chat-permission-allow { border: none; border-radius: 8px; padding: 5px 14px; cursor: pointer; background: var(--text-normal, #1a1a19); color: var(--background-primary, #fff); font-size: 0.9em; transition: transform 60ms ease, opacity 60ms ease; }
+    .chat-permission-allow:active { transform: scale(0.93); opacity: 0.85; }
+    .chat-permission-deny { border: 1px solid transparent; border-radius: 8px; padding: 5px 14px; cursor: pointer; background: none; color: var(--text-muted, #8c8c8a); font-size: 0.9em; transition: color 60ms ease, background-color 60ms ease; }
+    .chat-permission-deny:hover { color: var(--color-red, #cc4444); background: rgba(220,80,80,0.08); }
+    .chat-permission.is-resolved { padding: 4px 14px; box-shadow: none; opacity: 0.55; font-size: 0.85em; align-self: flex-start; }
 `;

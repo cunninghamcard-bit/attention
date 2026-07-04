@@ -1,8 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AgentEvent } from "./AgentEvent";
 import { ChatMessageList } from "./ChatMessageList";
 import { registerChatMessageAction } from "./ChatRegistry";
 import { Agent } from "./Agent";
+import type { AgentTransport } from "./AgentTransport";
+
+// Structurally an AgentTransport; only resolvePermission is exercised here.
+function fakeTransport(): AgentTransport {
+  return {
+    connect: () => () => undefined,
+    resolvePermission: vi.fn().mockResolvedValue(undefined),
+  } as unknown as AgentTransport;
+}
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 type Bare = DistributiveOmit<AgentEvent, "seq" | "agentId">;
@@ -160,5 +169,46 @@ describe("tool timeline grouping", () => {
     feed(session, [{ type: "part.closed", messageId: "a1", partIndex: 0, result: "ok" }], seq);
     list.sync();
     expect(timeline.classList.contains("is-collapsed")).toBe(false);
+  });
+});
+
+describe("permission cards", () => {
+  it("renders a pending permission card with both buttons wired to resolvePermission", () => {
+    const transport = fakeTransport();
+    const session = new Agent("t1", transport);
+    const parentEl = document.createElement("div");
+    document.body.appendChild(parentEl);
+    const list = new ChatMessageList(parentEl, session);
+    list.load();
+
+    feed(session, [{ type: "permission.requested", requestId: "p1", toolName: "Bash", input: "rm -rf /tmp/x" }]);
+    list.sync();
+
+    const cardEl = parentEl.querySelector('.chat-permission[data-request-id="p1"]') as HTMLElement;
+    expect(cardEl).not.toBeNull();
+    expect(cardEl.classList.contains("is-resolved")).toBe(false);
+    expect(cardEl.querySelector(".chat-permission-tool")?.textContent).toBe("Bash");
+    const allowEl = cardEl.querySelector(".chat-permission-allow") as HTMLElement;
+    const denyEl = cardEl.querySelector(".chat-permission-deny") as HTMLElement;
+    expect(allowEl).not.toBeNull();
+    expect(denyEl).not.toBeNull();
+
+    allowEl.click();
+    expect(transport.resolvePermission).toHaveBeenCalledWith("t1", "p1", "allow");
+  });
+
+  it("renders a resolved permission as a dim single line with no buttons", () => {
+    const { session, parentEl, list } = setup();
+    feed(session, [
+      { type: "permission.requested", requestId: "p1", toolName: "Bash", input: "ls" },
+      { type: "permission.resolved", requestId: "p1", outcome: "allowed" },
+    ]);
+    list.sync();
+
+    const rowEl = parentEl.querySelector(".chat-permission.is-resolved") as HTMLElement;
+    expect(rowEl).not.toBeNull();
+    expect(rowEl.textContent).toBe("Bash · allowed");
+    expect(rowEl.querySelector(".chat-permission-allow")).toBeNull();
+    expect(rowEl.querySelector(".chat-permission-deny")).toBeNull();
   });
 });
