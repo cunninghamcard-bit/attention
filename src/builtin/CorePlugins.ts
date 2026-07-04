@@ -35,6 +35,7 @@ import { createFileRecoveryPluginDefinition } from "./FileRecoveryPlugin";
 import { createWebViewerPluginDefinition } from "./WebViewerPlugin";
 import { createTerminalPluginDefinition } from "./TerminalPlugin";
 import { openFileCompare, openGitDiff } from "../views/DiffView";
+import { openFileHistory } from "./GitHistoryView";
 import { createBookmarksPluginDefinition } from "./Bookmarks";
 import { createSlidesPluginDefinition } from "./Slides";
 import { createAudioRecorderPluginDefinition } from "./AudioRecorder";
@@ -425,6 +426,11 @@ function addWorkspaceFileMenuItems(app: App, menu: Menu, file: TAbstractFile): v
         .setTitle("Copy Obsidian URL")
         .setIcon("lucide-link")
         .onClick(() => void app.copyObsidianUrl(file)))
+      .addItem((item) => item
+        .setSection("system")
+        .setTitle("File history")
+        .setIcon("lucide-history")
+        .onClick(() => void openFileHistory(app, file.path)))
       .addItem((item) => item
         .setSection("system")
         .setTitle("Open git diff")

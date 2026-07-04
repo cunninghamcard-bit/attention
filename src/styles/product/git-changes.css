@@ -74,3 +74,28 @@
   padding: 0 var(--size-2-1);
 }
 .git-changes-stage svg.svg-icon { width: 14px; height: 14px; }
+
+/* File history view. */
+.git-history-view { padding: var(--size-4-2); overflow-y: auto; }
+.git-history-entry {
+  padding: var(--size-2-3) var(--size-4-2);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.git-history-subject { font-weight: var(--font-semibold, 600); }
+.git-history-meta {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 11px);
+  font-family: var(--font-monospace);
+  margin: var(--size-2-1) 0;
+}
+.git-history-actions { display: flex; gap: var(--size-2-2); }
+.git-history-action {
+  font-size: var(--font-ui-smaller, 11px);
+  padding: 1px var(--size-2-3);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.git-history-action:hover { color: var(--text-normal); background: var(--background-modifier-hover); }

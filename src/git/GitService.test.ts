@@ -98,6 +98,26 @@ describe("GitService", () => {
     await expect(app.git.readFileAt("v1.0", "agent.ts")).resolves.toBe("tagged content\n");
   });
 
+  it("renders file history and diffs a historical version", async () => {
+    const { GitHistoryView, openFileHistory } = await import("../builtin/GitHistoryView");
+    const app = await appWithGit({ "agent.ts": "historic content\n" });
+    await app.vault.create("agent.ts", "current content\n");
+
+    await openFileHistory(app, "agent.ts");
+    const view = app.workspace.getLeavesOfType("git-history")[0].view as InstanceType<typeof GitHistoryView>;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const subjects = [...view.contentEl.querySelectorAll(".git-history-subject")].map((el) => el.textContent);
+    expect(subjects).toEqual(["first commit", "second commit"]);
+
+    const diffButton = [...view.contentEl.querySelectorAll(".git-history-action")].find((el) => el.textContent === "Diff vs working") as HTMLButtonElement;
+    diffButton.click();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const diffLeaf = app.workspace.getLeavesOfType("diff")[0];
+    expect(diffLeaf).toBeDefined();
+    expect((diffLeaf.view as unknown as { getChunkCount(): number }).getChunkCount()).toBe(1);
+  });
+
   it("diffs untracked files against empty", async () => {
     const app = await appWithGit({});
     const file = await app.vault.create("fresh.ts", "all new\n");
