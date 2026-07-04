@@ -1,0 +1,33 @@
+/* Unified diff/review view (@codemirror/merge). */
+.workspace-leaf-content[data-type="diff"] .cm-changedLine {
+  background: rgba(80, 180, 100, 0.10);
+}
+.workspace-leaf-content[data-type="diff"] .cm-changedText {
+  background: rgba(80, 180, 100, 0.28);
+}
+.workspace-leaf-content[data-type="diff"] .cm-deletedChunk {
+  background: rgba(220, 80, 80, 0.09);
+}
+.workspace-leaf-content[data-type="diff"] .cm-deletedText,
+.workspace-leaf-content[data-type="diff"] .cm-deletedChunk del {
+  background: rgba(220, 80, 80, 0.25);
+  text-decoration: none;
+}
+.workspace-leaf-content[data-type="diff"] .cm-chunkButtons button {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--font-ui-smaller, 11px);
+  padding: 0 var(--size-2-2);
+}
+.workspace-leaf-content[data-type="diff"] .cm-chunkButtons button:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+.workspace-leaf-content[data-type="diff"] .cm-collapsedLines {
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  padding: var(--size-2-1) var(--size-4-2);
+}

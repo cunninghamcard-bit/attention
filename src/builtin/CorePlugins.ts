@@ -34,6 +34,7 @@ import { createMarkdownImporterPluginDefinition } from "./MarkdownImporter";
 import { createFileRecoveryPluginDefinition } from "./FileRecoveryPlugin";
 import { createWebViewerPluginDefinition } from "./WebViewerPlugin";
 import { createTerminalPluginDefinition } from "./TerminalPlugin";
+import { openFileCompare } from "../views/DiffView";
 import { createBookmarksPluginDefinition } from "./Bookmarks";
 import { createSlidesPluginDefinition } from "./Slides";
 import { createAudioRecorderPluginDefinition } from "./AudioRecorder";
@@ -429,6 +430,14 @@ function addWorkspaceFilesMenuItems(app: App, menu: Menu, files: TAbstractFile[]
     .setTitle("Move items to...")
     .setIcon("lucide-folder-tree")
     .onClick(() => new MoveFileModal(app, files).open()));
+  if (files.length === 2 && files.every((file): file is TFile => file instanceof TFile)) {
+    const [baseline, target] = files;
+    menu.addItem((item) => item
+      .setSection("action")
+      .setTitle("Compare files")
+      .setIcon("lucide-file-diff")
+      .onClick(() => void openFileCompare(app, target, baseline)));
+  }
 }
 
 async function copyVaultPath(path: string): Promise<void> {

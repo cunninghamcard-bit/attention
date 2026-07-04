@@ -3,6 +3,7 @@ import type { WorkspaceLeaf } from "./WorkspaceLeaf";
 import type { View } from "../views/View";
 import { MarkdownView } from "../views/MarkdownView";
 import { CODE_EXTENSIONS, CodeFileView } from "../views/CodeFileView";
+import { DiffView } from "../views/DiffView";
 import {
   AUDIO_EXTENSIONS,
   AudioView,
@@ -29,6 +30,7 @@ export class ViewRegistry extends Events {
     this.registerViewWithExtensions(VIDEO_EXTENSIONS, VideoView.VIEW_TYPE, (leaf) => new VideoView(leaf));
     this.registerViewWithExtensions(PDF_EXTENSIONS, PdfView.VIEW_TYPE, (leaf) => new PdfView(leaf));
     this.registerViewWithExtensions(CODE_EXTENSIONS, CodeFileView.VIEW_TYPE, (leaf) => new CodeFileView(leaf));
+    this.registerView(DiffView.DIFF_VIEW_TYPE, (leaf) => new DiffView(leaf));
     this.registerView(ReleaseNotesView.VIEW_TYPE, (leaf) => new ReleaseNotesView(leaf));
   }
 
