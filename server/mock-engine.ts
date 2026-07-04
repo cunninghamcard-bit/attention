@@ -98,13 +98,21 @@ async function runScript(agentId: string, runId: string, prompt: string, emit: E
     emit({ type: "part.closed", messageId, partIndex, result, ...(error ? { error } : {}) });
   }
 
-  emit({ type: "part.opened", messageId, partIndex: 6, partType: "text" });
-  const outro = "工具跑完了。*流式*结束,这一条消息现在归档,DOM 原地移交。";
-  for (const chunk of outro.match(/.{1,5}/gs) ?? []) {
+  emit({ type: "part.opened", messageId, partIndex: 6, partType: "artifact", name: "总结报告.md", kind: "markdown" });
+  const artifact = "# 总结报告\n\n本轮演示覆盖了以下能力:\n\n- 流式 markdown 渲染\n- 工具调用与失败态\n- 上下文压缩三相\n\n> 产物可以 Open 预览、Copy 或存回 vault。\n";
+  for (const chunk of artifact.match(/.{1,10}/gs) ?? []) {
     emit({ type: "part.delta", messageId, partIndex: 6, delta: chunk });
-    await sleep(30);
+    await sleep(35);
   }
   emit({ type: "part.closed", messageId, partIndex: 6 });
+
+  emit({ type: "part.opened", messageId, partIndex: 7, partType: "text" });
+  const outro = "工具跑完了。*流式*结束,这一条消息现在归档,DOM 原地移交。";
+  for (const chunk of outro.match(/.{1,5}/gs) ?? []) {
+    emit({ type: "part.delta", messageId, partIndex: 7, delta: chunk });
+    await sleep(30);
+  }
+  emit({ type: "part.closed", messageId, partIndex: 7 });
   emit({ type: "message.closed", messageId });
   emit({
     type: "run.closed",

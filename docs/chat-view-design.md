@@ -371,6 +371,7 @@ marked (go) wait for the backend.
 | permission approval cards         | ✅     | permission.requested/resolved + loom broker |
 | model / effort / params (profile) | ✅     | AgentPropertiesView editor  |
 | run inspector (raw events)        | ◻     | AgentPropertiesView tab     |
+| artifacts (cards + view + vault)  | ✅     | ArtifactView + stream cards |
 | conversation search               | ◻     | ChatView                    |
 | fork conversation                 | ◻ (go) | needs backend history copy  |
 | voice input                       | ◻     | out of scope for now        |

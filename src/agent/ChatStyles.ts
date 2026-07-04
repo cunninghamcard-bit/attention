@@ -259,4 +259,18 @@ const CHAT_CSS = `
     .agent-prop-stepper button { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--background-modifier-border, rgba(0,0,0,0.12)); background: var(--background-primary, #fff); cursor: pointer; padding: 0; line-height: 1; color: var(--text-muted, #666); }
     .agent-prop-stepper button:hover { color: var(--text-normal, #1a1a19); }
     .agent-prop-stepper .agent-prop-input { max-width: 84px; text-align: center; }
+    .chat-part-artifact { border: 1px solid var(--background-modifier-border, rgba(0,0,0,0.1)); border-radius: 12px; padding: 10px 14px; background: var(--background-primary, #fff); box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+    .chat-artifact-header { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+    .chat-artifact-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .chat-artifact-kind { font-size: 11px; padding: 1px 8px; border-radius: 999px; color: var(--text-muted, #888); background: var(--background-secondary, #f3f3f2); flex: 0 0 auto; }
+    .chat-artifact-meta { font-size: 11px; color: var(--text-faint, #b0b0b8); margin-left: auto; flex: 0 0 auto; }
+    .chat-part-artifact.is-streaming .chat-artifact-meta { animation: chat-shimmer 1.6s ease-in-out infinite; }
+    .chat-artifact-actions { display: flex; gap: 6px; margin-top: 8px; }
+    .chat-artifact-action { font-size: 12px; padding: 3px 10px; border-radius: 7px; border: 1px solid var(--background-modifier-border, rgba(0,0,0,0.1)); background: transparent; cursor: pointer; color: var(--text-muted, #666); transition: color var(--chat-motion-fast, 140ms) ease, background-color var(--chat-motion-fast, 140ms) ease; }
+    .chat-artifact-action:hover { color: var(--text-normal, #1a1a19); background: var(--background-modifier-hover, rgba(0,0,0,0.04)); }
+    .artifact-view { padding: 0; }
+    .artifact-frame { width: 100%; height: 100%; border: none; background: #fff; }
+    .artifact-svg { max-width: 100%; display: block; margin: 24px auto; }
+    .artifact-markdown { max-width: 720px; margin: 0 auto; padding: 32px 24px; font-size: 16px; line-height: 1.6; }
+    .artifact-code { margin: 0; padding: 24px; font-size: 13.5px; line-height: 1.65; overflow: auto; height: 100%; }
 `;

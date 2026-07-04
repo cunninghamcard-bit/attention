@@ -9,6 +9,7 @@ import { ChatMessageList } from "./ChatMessageList";
 import { chatTranscriptToMarkdown, type ChatAttachmentPayload, type Agent } from "./Agent";
 import { STRINGS } from "./AgentStrings";
 import { AgentTransport, type AgentProfile } from "./AgentTransport";
+import { maybeAutoOpenArtifact } from "./ArtifactView";
 import { ensureChatStyles } from "./ChatStyles";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import type { App } from "../app/App";
@@ -143,7 +144,7 @@ export class ChatView extends StreamView {
     (MarkdownRenderer as unknown as {
       installInternalLinkHandlers(app: App, root: HTMLElement, sourcePath: string): void;
     }).installInternalLinkHandlers(this.app, scrollEl, `agent://${agentId}`);
-    this.list = this.addChild(new ChatMessageList(scrollEl, this.session, () => this.scroller?.notifyContentChanged()));
+    this.list = this.addChild(new ChatMessageList(scrollEl, this.session, () => this.scroller?.notifyContentChanged(), this.app));
     this.composer = this.addChild(
       new ChatComposer(
         bodyEl,
@@ -259,6 +260,11 @@ export class ChatView extends StreamView {
 
   protected onStreamSync(): void {
     this.list?.sync();
+    for (const message of this.session?.getMessages() ?? []) {
+      message.parts.forEach((part, index) => {
+        if (part?.type === "artifact" && part.closed) maybeAutoOpenArtifact(this.app, this.agentId, message.id, index);
+      });
+    }
     // Empty = welcome: the dock rises to the reading line; the first
     // message drops it to the bottom for good.
     this.contentEl.toggleClass("is-empty", (this.session?.getMessages().length ?? 0) === 0 && !this.isRunning());

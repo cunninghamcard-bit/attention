@@ -3,7 +3,11 @@ import { createDiv, createEl, createSpan } from "../dom/dom";
 import { Component } from "../core/Component";
 import { Collapse } from "../ui/Collapse";
 import { getChatToolRenderer, listChatMessageActions } from "./ChatRegistry";
-import type { ChatMessage, ChatPart, Agent, TextChatPart, ToolChatPart } from "./Agent";
+import type { App } from "../app/App";
+import { writeClipboardText } from "../dom/Clipboard";
+import { Notice } from "../ui/Notice";
+import type { ArtifactChatPart, ChatMessage, ChatPart, Agent, TextChatPart, ToolChatPart } from "./Agent";
+import { openArtifact } from "./ArtifactView";
 import { STRINGS } from "./AgentStrings";
 import { createStatusDot, setStatusDot } from "./StatusDot";
 import { StreamMarkdownRenderer } from "../views/StreamMarkdownRenderer";
@@ -47,9 +51,11 @@ class ChatPartRenderer extends Component {
 
   constructor(
     parentEl: HTMLElement,
+    private readonly session: Agent,
     private readonly messageId: string,
     private readonly partIndex: number,
     private readonly onGrow?: ChatContentGrowCallback,
+    private readonly app?: App,
   ) {
     super();
     this.el = createDiv("chat-part", parentEl);
@@ -72,6 +78,7 @@ class ChatPartRenderer extends Component {
     this.applyDataAttributes(part);
     if (part.type === "tool") this.syncTool(part);
     else if (part.type === "attachment") this.syncAttachment(part);
+    else if (part.type === "artifact") this.syncArtifact(part);
     else this.syncText(part);
   }
 
@@ -86,8 +93,46 @@ class ChatPartRenderer extends Component {
 
   private signatureOf(part: ChatPart): string {
     if (part.type === "tool") return `tool:${part.closed}:${part.input.length}:${part.result?.length ?? -1}:${part.error?.length ?? -1}`;
-    if (part.type === "attachment") return `attachment:${part.closed}:${part.content.length}`;
+    if (part.type === "attachment" || part.type === "artifact") return `${part.type}:${part.closed}:${part.content.length}`;
     return `${part.type}:${part.closed}:${part.markdown.length}`;
+  }
+
+  // The deliverable card: name + kind + live meta while it streams, then
+  // Open / Copy / Save-to-vault. Content renders in ArtifactView, never
+  // inline — a deliverable is a document, not a message.
+  private syncArtifact(part: ArtifactChatPart): void {
+    this.el.className = `chat-part chat-part-artifact${part.closed ? "" : " is-streaming"}`;
+    this.el.empty();
+    const headerEl = createDiv("chat-artifact-header", this.el);
+    createSpan({ cls: "chat-artifact-name", text: part.name, parent: headerEl });
+    if (part.kind) createSpan({ cls: "chat-artifact-kind", text: part.kind, parent: headerEl });
+    createSpan({
+      cls: "chat-artifact-meta",
+      text: part.closed ? STRINGS.message.attachmentLines(part.content.split("\n").length) : STRINGS.artifact.generating,
+      parent: headerEl,
+    });
+    const actionsEl = createDiv("chat-artifact-actions", this.el);
+    const openEl = createEl("button", { cls: "chat-artifact-action", text: STRINGS.artifact.open, parent: actionsEl });
+    openEl.addEventListener("click", () => {
+      if (this.app) void openArtifact(this.app, this.session.agentId, this.messageId, this.partIndex);
+    });
+    const copyEl = createEl("button", { cls: "chat-artifact-action", text: STRINGS.artifact.copy, parent: actionsEl });
+    copyEl.addEventListener("click", () => void writeClipboardText(part.content));
+    const saveEl = createEl("button", { cls: "chat-artifact-action", text: STRINGS.artifact.save, parent: actionsEl });
+    saveEl.addEventListener("click", () => void this.saveArtifact(part));
+  }
+
+  // Save-to-vault is the Obsidian superpower: the deliverable becomes a
+  // real file, linkable like any note.
+  private async saveArtifact(part: ArtifactChatPart): Promise<void> {
+    if (!this.app) return;
+    const name = this.app.vault.getAbstractFileByPath(part.name) ? part.name.replace(/(\.\w+)?$/, `-${Date.now()}$1`) : part.name;
+    try {
+      await this.app.vault.create(name, part.content);
+      new Notice(STRINGS.artifact.saved(name));
+    } catch (error) {
+      new Notice(STRINGS.artifact.saveFailed(error instanceof Error ? error.message : String(error)));
+    }
   }
 
   private thinkingCollapse: Collapse | null = null;
@@ -202,6 +247,7 @@ class ChatMessageItem extends Component {
     private readonly message: ChatMessage,
     private readonly session: Agent,
     private readonly onGrow?: ChatContentGrowCallback,
+    private readonly app?: App,
   ) {
     super();
     this.el = createDiv(`chat-message chat-message-${message.role}`, parentEl);
@@ -245,7 +291,7 @@ class ChatMessageItem extends Component {
       let renderer = this.partRenderers[index];
       if (!renderer) {
         const parentEl = part.type === "tool" ? this.timelineFor(index).collapse.bodyEl : this.partsEl;
-        renderer = this.addChild(new ChatPartRenderer(parentEl, this.message.id, index, this.onGrow));
+        renderer = this.addChild(new ChatPartRenderer(parentEl, this.session, this.message.id, index, this.onGrow, this.app));
         this.partRenderers[index] = renderer;
       }
       renderer.sync(part);
@@ -328,6 +374,7 @@ export class ChatMessageList extends Component {
     parentEl: HTMLElement,
     private readonly session: Agent,
     private readonly onGrow?: ChatContentGrowCallback,
+    private readonly app?: App,
   ) {
     super();
     this.el = createDiv("chat-message-list", parentEl);
@@ -359,7 +406,7 @@ export class ChatMessageList extends Component {
       let item = this.items.get(message.id);
       if (!item) {
         this.renderCompactionsAfter(messages[messages.indexOf(message) - 1]?.id ?? null);
-        item = this.addChild(new ChatMessageItem(this.el, message, this.session, this.onGrow));
+        item = this.addChild(new ChatMessageItem(this.el, message, this.session, this.onGrow, this.app));
         this.items.set(message.id, item);
         this.el.appendChild(this.thinkingEl);
         this.el.appendChild(this.queuedEl);

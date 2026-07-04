@@ -1,6 +1,6 @@
 export type ChatRole = "user" | "assistant";
 
-export type ChatPartType = "text" | "thinking" | "tool" | "attachment";
+export type ChatPartType = "text" | "thinking" | "tool" | "attachment" | "artifact";
 
 export type AgentRunStatus = "completed" | "error" | "aborted";
 
@@ -51,6 +51,9 @@ export interface AgentPartOpenedEvent extends AgentEventBase {
   partType: ChatPartType;
   toolName?: string;
   name?: string;
+  // Artifact dialect: markdown | html | svg | a code language. Renderers
+  // fall back to markdown when absent.
+  kind?: string;
 }
 
 export interface AgentPartDeltaEvent extends AgentEventBase {

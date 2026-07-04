@@ -47,6 +47,15 @@ export const STRINGS = {
       `${total} tool call${total === 1 ? "" : "s"} · ${status}${durationSeconds !== null ? ` · ${durationSeconds.toFixed(1)}s` : ""}`,
     failedStatus: (count: number) => `${count} failed`,
   },
+  artifact: {
+    displayText: "Artifact",
+    generating: "Generating…",
+    open: "Open",
+    copy: "Copy",
+    save: "Save to vault",
+    saved: (path: string) => `Saved to ${path}`,
+    saveFailed: (error: string) => `Could not save: ${error}`,
+  },
   message: {
     provenance: (model: string, effort?: string) => (effort ? `${model} · ${effort}` : model),
     compacting: "Compacting context…",

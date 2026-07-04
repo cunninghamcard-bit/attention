@@ -30,7 +30,17 @@ export interface AttachmentChatPart extends ChatPartBase {
   content: string;
 }
 
-export type ChatPart = TextChatPart | ToolChatPart | AttachmentChatPart;
+// A named deliverable the agent produced — the generated counterpart of an
+// attachment. Streams through the same delta path; the UI gives it a card
+// and its own view.
+export interface ArtifactChatPart extends ChatPartBase {
+  type: "artifact";
+  name: string;
+  kind?: string;
+  content: string;
+}
+
+export type ChatPart = TextChatPart | ToolChatPart | AttachmentChatPart | ArtifactChatPart;
 
 export interface ChatAttachmentPayload {
   name: string;
@@ -80,9 +90,10 @@ export function createAgentState(): AgentState {
   return { messages: [], compactions: [], running: false, lastSeq: 0, lastError: null, usage: null, permissions: [] };
 }
 
-function createPart(partType: ChatPartType, toolName?: string, name?: string): ChatPart {
+function createPart(partType: ChatPartType, toolName?: string, name?: string, kind?: string): ChatPart {
   if (partType === "tool") return { type: "tool", toolName: toolName ?? "unknown", input: "", closed: false };
   if (partType === "attachment") return { type: "attachment", name: name ?? "attachment", content: "", closed: false };
+  if (partType === "artifact") return { type: "artifact", name: name ?? "artifact", kind, content: "", closed: false };
   return { type: partType, markdown: "", closed: false };
 }
 
@@ -114,7 +125,7 @@ export function applyAgentEvent(state: AgentState, event: AgentEvent): boolean {
     case "part.opened": {
       const message = state.messages.find((item) => item.id === event.messageId);
       if (!message) return false;
-      const part = createPart(event.partType, event.toolName, event.name);
+      const part = createPart(event.partType, event.toolName, event.name, event.kind);
       part.openedAt = event.ts;
       message.parts[event.partIndex] = part;
       break;
@@ -123,7 +134,7 @@ export function applyAgentEvent(state: AgentState, event: AgentEvent): boolean {
       const part = state.messages.find((item) => item.id === event.messageId)?.parts[event.partIndex];
       if (!part) return false;
       if (part.type === "tool") part.input += event.delta;
-      else if (part.type === "attachment") part.content += event.delta;
+      else if (part.type === "attachment" || part.type === "artifact") part.content += event.delta;
       else part.markdown += event.delta;
       break;
     }
@@ -279,6 +290,8 @@ export function chatMessageToMarkdown(message: ChatMessage): string {
       parts.push(`\`\`\`tool ${part.toolName}\n${part.input}${result}\n\`\`\``);
     } else if (part.type === "attachment") {
       parts.push(`\`\`\`attachment ${part.name}\n${part.content}\n\`\`\``);
+    } else if (part.type === "artifact") {
+      parts.push(`\`\`\`artifact ${part.name}\n${part.content}\n\`\`\``);
     } else if (part.type === "thinking") {
       if (part.markdown.trim()) parts.push(`> ${part.markdown.trim().split("\n").join("\n> ")}`);
     } else {

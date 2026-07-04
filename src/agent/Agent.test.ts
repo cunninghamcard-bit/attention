@@ -133,6 +133,17 @@ describe("provenance and compaction phases", () => {
   });
 });
 
+describe("artifact parts", () => {
+  it("folds a streamed artifact with its kind", () => {
+    const state = createAgentState();
+    applyAgentEvent(state, { type: "message.started", messageId: "a1", role: "assistant", seq: 1, agentId: "t1" });
+    applyAgentEvent(state, { type: "part.opened", messageId: "a1", partIndex: 0, partType: "artifact", name: "报告.md", kind: "markdown", seq: 2, agentId: "t1" });
+    applyAgentEvent(state, { type: "part.delta", messageId: "a1", partIndex: 0, delta: "# 标题\n正文", seq: 3, agentId: "t1" });
+    applyAgentEvent(state, { type: "part.closed", messageId: "a1", partIndex: 0, seq: 4, agentId: "t1" });
+    expect(state.messages[0].parts[0]).toMatchObject({ type: "artifact", name: "报告.md", kind: "markdown", content: "# 标题\n正文", closed: true });
+  });
+});
+
 describe("permission requests", () => {
   it("appends a request then resolves it by requestId", () => {
     const state = createAgentState();

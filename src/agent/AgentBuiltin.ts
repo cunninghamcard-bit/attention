@@ -27,6 +27,7 @@ function firstTextOf(message: ChatMessage): string {
 }
 import { AgentPropertiesView, AGENT_PROPERTIES_VIEW_TYPE } from "./AgentPropertiesView";
 import { AgentView, AGENT_VIEW_TYPE } from "./AgentView";
+import { ArtifactView, ARTIFACT_VIEW_TYPE } from "./ArtifactView";
 import { ChatView, CHAT_VIEW_TYPE } from "./ChatView";
 import { MultiAgentView, MULTI_AGENT_VIEW_TYPE } from "./MultiAgentView";
 
@@ -81,6 +82,7 @@ export function registerAgentViews(app: App): void {
   app.viewRegistry.registerView(AGENT_PROPERTIES_VIEW_TYPE, (leaf) => new AgentPropertiesView(leaf));
   app.viewRegistry.registerView(AGENT_VIEW_TYPE, (leaf) => new AgentView(leaf));
   app.viewRegistry.registerView(MULTI_AGENT_VIEW_TYPE, (leaf) => new MultiAgentView(leaf));
+  app.viewRegistry.registerView(ARTIFACT_VIEW_TYPE, (leaf) => new ArtifactView(leaf));
 }
 
 export function registerAgentBuiltin(app: App): void {
