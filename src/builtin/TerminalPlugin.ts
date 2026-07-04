@@ -125,7 +125,19 @@ export function createTerminalPluginDefinition(): InternalPluginDefinition {
         id: "terminal:open",
         name: "Open terminal",
         icon: "lucide-terminal",
+        hotkeys: [{ modifiers: ["Mod"], key: "J" }],
         callback: () => void controller?.open(),
+      });
+      plugin.registerRibbonItem("Open terminal", "lucide-terminal", () => void controller?.open());
+      // Desktop workspaces start with a Terminal tab in the right dock. The
+      // deferred view keeps the PTY unspawned until the tab is revealed; the
+      // bridge check keeps browser mode (which cannot spawn shells) clean.
+      app.workspace.onLayoutReady(() => {
+        const bridge = (globalThis as { electronTerminal?: { available?: boolean } }).electronTerminal;
+        if (!bridge?.available) return;
+        if (app.workspace.getLeavesOfType(TERMINAL_VIEW_TYPE).length > 0) return;
+        const leaf = app.workspace.getRightLeaf(false);
+        if (leaf) void leaf.setViewState({ type: TERMINAL_VIEW_TYPE, state: { lazy: true }, icon: "lucide-terminal", title: "Terminal" } as never);
       });
       controller.onEnable(plugin);
       plugin.register(() => app.terminals.killAll());

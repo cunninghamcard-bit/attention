@@ -33,12 +33,15 @@ export class EmptyView extends ItemView {
       const hotkey = this.app.hotkeys.printHotkeyForCommand(id);
       return hotkey ? `${label} (${hotkey})` : label;
     };
-    const actions: EmptyViewAction[] = [
-      { label: withHotkey("Create new note", "file-explorer:new-file"), run: command("file-explorer:new-file") },
-    ];
+    const actions: EmptyViewAction[] = [];
+    // The workspace leads with its own identity: terminal first, notes after.
+    if (this.app.internalPlugins.getEnabledPluginById("terminal")) {
+      actions.push({ label: withHotkey("Open terminal", "terminal:open"), run: command("terminal:open") });
+    }
     if (!this.app.vault.isEmpty()) {
       actions.push({ label: withHotkey("Go to file", "switcher:open"), run: command("switcher:open") });
     }
+    actions.push({ label: withHotkey("Create new note", "file-explorer:new-file"), run: command("file-explorer:new-file") });
     if (this.app.internalPlugins.getEnabledPluginById("webviewer")) {
       actions.push({ label: withHotkey("Open web viewer", "webviewer:open"), run: command("webviewer:open") });
     }

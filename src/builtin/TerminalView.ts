@@ -10,6 +10,8 @@ interface TerminalViewState extends Record<string, unknown> {
   terminalId?: string;
   cwd?: string;
   shell?: string;
+  /** Postpone the PTY until the tab is first shown (seeded/restored tabs). */
+  lazy?: boolean;
 }
 
 export class TerminalView extends ItemView {
@@ -24,6 +26,7 @@ export class TerminalView extends ItemView {
   private detachOutput: (() => void) | null = null;
   private detachExit: (() => void) | null = null;
   private pendingState: TerminalViewState = {};
+  private lazyBindPending = false;
   // While the terminal surface is focused, an empty scope shields keystrokes
   // from global workspace hotkeys (spec: keyboard input must not be stolen).
   private readonly focusScope = new Scope();
@@ -54,12 +57,27 @@ export class TerminalView extends ItemView {
   async setState(state: unknown, result?: ViewStateResult): Promise<void> {
     await super.setState(state, result);
     if (state && typeof state === "object") this.pendingState = state as TerminalViewState;
+    if (this.pendingState.lazy && !this.terminalId) {
+      this.lazyBindPending = true;
+      return;
+    }
     await this.bindSession();
+  }
+
+  // Lazy tabs bind on their first resize — WorkspaceTabs resizes a leaf when
+  // its tab is revealed, so the shell spawns the moment the user first sees
+  // the terminal instead of at app startup.
+  override onResize(): void {
+    if (!this.lazyBindPending) return;
+    this.lazyBindPending = false;
+    void this.bindSession();
   }
 
   getState(): Record<string, unknown> {
     const terminal = this.getTerminal();
-    return { terminalId: this.terminalId, cwd: terminal?.cwd, shell: terminal?.shell };
+    // Persisted layouts restore lazily: the session id dies with the app, so
+    // the restored tab respawns its shell on first reveal, not at boot.
+    return { terminalId: this.terminalId, cwd: terminal?.cwd, shell: terminal?.shell, lazy: true };
   }
 
   async restart(): Promise<void> {
