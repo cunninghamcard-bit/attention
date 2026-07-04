@@ -150,3 +150,37 @@ Pi note: they cold-spawn `pi` per turn with a session FILE for
 continuity; we hold a live pi SDK session in-process. Ours is lower
 latency and keeps deltas; theirs needs no long-lived process manager.
 Both are valid — the sidecar can even mix modes per engine.
+
+## The layer-2 primitive set (decided 2026-07)
+
+Layer 2 ships MECHANISM only; Room/Squad/Pipeline are POLICY and have no
+names below layer 3. Five primitives:
+
+```text
+Actor     (type, id) identity; agent rows carry engine/model/session pointer
+Stream    seq event log, DECOUPLED from actors — any actor may be dispatched
+          to write into any stream; messages carry (authorType, authorId)
+Dispatch  (actor, stream, input): "make A take one turn on S". Carries the
+          one hard integrity guard: at most one pending per (stream, actor)
+Watch     subscribe to stream events since=seq (today's SSE)
+Link      (from, to, type, meta) typed edge; layer 2 stores and queries,
+          never interprets
+```
+
+Every construct decomposes: single chat = stream + "user msg → dispatch
+that agent"; room = stream + member links + "@mention → dispatch"; squad =
+leader-of link + "resolve to leader"; pipelines and debates are pure
+policy. Orchestration = f(watched events) → dispatches; structure = links.
+Layer 3 plugins hold three verbs and never need a kernel release for a new
+构造.
+
+Consequence for today's contract: agentId currently moonlights as the
+stream id (hence the room- prefix hack). Actor/Stream split renames the
+event-stream key to streamId; dispatch targets are agentIds; a single-agent
+chat is just a stream with one member link. UI is already primitive-shaped
+(MultiAgentView renders "a stream with authors").
+
+Layer 2 keeps exactly three integrity duties: seq monotonicity, dispatch
+dedup, link referential integrity (later: actor permission boundaries).
+The soft anti-loop layer (prompt-level "stay silent on acks") is policy
+and lives with layer 3.
