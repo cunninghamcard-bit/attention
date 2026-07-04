@@ -277,6 +277,27 @@ The test for a new element: if it would survive history replay it belongs in
 the stream; if it follows the active leaf it belongs in the status bar; only
 what operates THIS window belongs on the view.
 
+## The agent profile: frontmatter for an agent
+
+A note is body + frontmatter; an agent is conversation + profile. The
+profile holds the agent's configuration — known fields (model, effort;
+engine and cwd join them) plus an open params map, the same two-tier shape
+as note properties.
+
+```text
+truth     the bridge's agent record (an agent row when along-go lands);
+          PATCH /agents/:id { profile } merges — the channel rename
+          already used, now named
+editor    AgentPropertiesView's Configuration section: typed inputs for
+          known fields, key/value rows for params
+consumers engine.run receives the profile and takes what it understands
+          (the mock echoes it; pi maps model/effort when the backend owns
+          model selection)
+NOT state profile changes are record mutations, not conversation events —
+          same class as rename. If replay should someday show "switched
+          model here", that is a config.changed event to add then.
+```
+
 ## The benchmark: ArkLoop / Claude Desktop / Codex tier
 
 What "a first-class agent chat" means, as a checklist. ✅ shipped,
@@ -299,7 +320,7 @@ marked (go) wait for the backend.
 | attach button + drag-drop         | ✅     | ChatComposer                |
 | context-window occupancy %        | ✅     | AgentStatusBar + engine usage |
 | permission approval cards         | ✅     | permission.requested/resolved + loom broker |
-| model / effort switching          | ◻ (go) | header action + Agent entity|
+| model / effort / params (profile) | ✅     | AgentPropertiesView editor  |
 | run inspector (raw events)        | ◻     | AgentPropertiesView tab     |
 | conversation search               | ◻     | ChatView                    |
 | fork conversation                 | ◻ (go) | needs backend history copy  |

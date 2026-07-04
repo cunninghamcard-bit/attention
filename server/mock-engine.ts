@@ -54,8 +54,11 @@ async function runRoomScript(agentId: string, runId: string, prompt: string, emi
   });
 }
 
-async function runScript(agentId: string, runId: string, prompt: string, emit: EngineEmit): Promise<void> {
+async function runScript(agentId: string, runId: string, prompt: string, emit: EngineEmit, profile?: { model?: string; effort?: string }): Promise<void> {
   if (agentId.startsWith("room-")) return runRoomScript(agentId, runId, prompt, emit);
+  const profileNote = profile?.model || profile?.effort
+    ? `\n\n> 本轮配置:${profile.model ?? "默认模型"}${profile.effort ? ` · ${profile.effort}` : ""}`
+    : "";
   if (prompt.includes("compact")) emit({ type: "context.compacted", preTokens: 52000, trigger: "auto" });
   const messageId = nextMessageId(agentId);
   emit({ type: "message.started", messageId, role: "assistant" });
@@ -68,7 +71,7 @@ async function runScript(agentId: string, runId: string, prompt: string, emit: E
   emit({ type: "part.closed", messageId, partIndex: 0 });
 
   emit({ type: "part.opened", messageId, partIndex: 1, partType: "text" });
-  const intro = `你发来了:**${prompt.slice(0, 40)}**\n\n下面演示流式渲染,详见 [[Welcome]]:\n\n## 一个标题\n\n| 特性 | 状态 |\n| --- | --- |\n| 表格流式 | ✅ |\n| 内链元素 | ✅ |\n\n\`\`\`ts\nconst answer = 42;\nconsole.log(answer);\n\`\`\`\n\n\`\`\`mermaid\ngraph LR\n  A[SSE] --> B[reducer] --> C[ChatView]\n\`\`\`\n\n`;
+  const intro = `你发来了:**${prompt.slice(0, 40)}**${profileNote}\n\n下面演示流式渲染,详见 [[Welcome]]:\n\n## 一个标题\n\n| 特性 | 状态 |\n| --- | --- |\n| 表格流式 | ✅ |\n| 内链元素 | ✅ |\n\n\`\`\`ts\nconst answer = 42;\nconsole.log(answer);\n\`\`\`\n\n\`\`\`mermaid\ngraph LR\n  A[SSE] --> B[reducer] --> C[ChatView]\n\`\`\`\n\n`;
   for (const chunk of intro.match(/.{1,7}/gs) ?? []) {
     emit({ type: "part.delta", messageId, partIndex: 1, delta: chunk });
     await sleep(24);
@@ -109,6 +112,6 @@ async function runScript(agentId: string, runId: string, prompt: string, emit: E
 
 export const mockEngine: Engine = {
   name: "mock",
-  run: ({ agentId, runId, prompt, emit }) => runScript(agentId, runId, prompt, emit),
+  run: ({ agentId, runId, prompt, emit, profile }) => runScript(agentId, runId, prompt, emit, profile),
   stop: () => {},
 };

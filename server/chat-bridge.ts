@@ -25,6 +25,12 @@ interface BridgeEvent {
   [key: string]: unknown;
 }
 
+interface AgentProfile {
+  model?: string;
+  effort?: string;
+  params?: Record<string, string>;
+}
+
 interface Thread {
   id: string;
   seq: number;
@@ -34,6 +40,7 @@ interface Thread {
   title: string | null;
   updatedAt: number;
   running: boolean;
+  profile: AgentProfile;
 }
 
 const threads = new Map<string, Thread>();
@@ -50,6 +57,7 @@ function getThread(id: string): Thread {
       title: null,
       updatedAt: Date.now(),
       running: false,
+      profile: {},
     };
     threads.set(id, thread);
   }
@@ -104,6 +112,7 @@ async function runEngine(thread: Thread, text: string, attachments: MessageAttac
     runId,
     prompt: composePrompt(text, attachments),
     emit: (event) => emit(thread, event),
+    profile: thread.profile,
   });
 }
 
@@ -126,7 +135,7 @@ Bun.serve({
       const list = [...threads.values()]
         .filter((thread) => thread.events.length > 0)
         .sort((a, b) => b.updatedAt - a.updatedAt)
-        .map((thread) => ({ id: thread.id, title: thread.title, updatedAt: thread.updatedAt, running: thread.running }));
+        .map((thread) => ({ id: thread.id, title: thread.title, updatedAt: thread.updatedAt, running: thread.running, profile: thread.profile }));
       return new Response(JSON.stringify({ agents: list }), {
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
       });
@@ -172,13 +181,26 @@ Bun.serve({
     }
 
     const agentMatch = url.pathname.match(/^\/agents\/([^/]+)$/);
+    if (agentMatch && request.method === "GET") {
+      const thread = getThread(decodeURIComponent(agentMatch[1]));
+      return new Response(
+        JSON.stringify({ id: thread.id, title: thread.title, updatedAt: thread.updatedAt, running: thread.running, profile: thread.profile }),
+        { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
+      );
+    }
     if (agentMatch && request.method === "PATCH") {
-      const thread = threads.get(decodeURIComponent(agentMatch[1]));
-      if (!thread) return new Response("not found", { status: 404, headers: CORS_HEADERS });
-      const body = (await request.json().catch(() => ({}))) as { title?: string };
+      const thread = getThread(decodeURIComponent(agentMatch[1]));
+      const body = (await request.json().catch(() => ({}))) as { title?: string; profile?: AgentProfile };
       const title = String(body.title ?? "").trim();
-      if (!title) return new Response("missing title", { status: 400, headers: CORS_HEADERS });
-      thread.title = title;
+      if (title) thread.title = title;
+      // Shallow merge for known fields; params replace wholesale (the
+      // editor always sends the full map).
+      if (body.profile && typeof body.profile === "object") {
+        if (body.profile.model !== undefined) thread.profile.model = body.profile.model || undefined;
+        if (body.profile.effort !== undefined) thread.profile.effort = body.profile.effort || undefined;
+        if (body.profile.params !== undefined) thread.profile.params = body.profile.params;
+      }
+      if (!title && !body.profile) return new Response("nothing to update", { status: 400, headers: CORS_HEADERS });
       return new Response("{}", { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
     }
     if (agentMatch && request.method === "DELETE") {

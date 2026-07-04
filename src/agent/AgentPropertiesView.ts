@@ -1,4 +1,5 @@
 import { createDiv, createEl } from "../dom/dom";
+import { AgentTransport, type AgentProfile } from "./AgentTransport";
 import { ItemView } from "../views/ItemView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
 import type { Agent } from "./Agent";
@@ -20,6 +21,10 @@ export class AgentPropertiesView extends ItemView {
   override navigation = true;
   private agentId = "";
   private session: Agent | null = null;
+  private readonly transport = new AgentTransport();
+  // The agent's frontmatter, fetched from the bridge; edits PATCH back the
+  // full profile (params replace wholesale, so removals stick).
+  private profile: AgentProfile = {};
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
@@ -65,6 +70,12 @@ export class AgentPropertiesView extends ItemView {
     this.session.connect();
     this.registerEvent(this.session.on("changed", () => this.render()));
     this.render();
+    void this.transport.getAgent(agentId).then((summary) => {
+      if (summary?.profile) {
+        this.profile = summary.profile;
+        this.render();
+      }
+    });
   }
 
   // The panel is small; a full re-render per change is the simple truth.
@@ -86,15 +97,90 @@ export class AgentPropertiesView extends ItemView {
     this.prop(activityEl, "compactions", STRINGS.properties.compactions, String(state.compactions.length));
     if (state.usage) this.prop(activityEl, "usage", STRINGS.properties.lastRun, formatUsage(state.usage));
 
-    // Config lands here with along-go (engine, model, reasoning effort —
-    // agent rows in the DB). The section exists so themes and plugins can
-    // already target it.
-    const configEl = this.section(rootEl, "config", STRINGS.properties.configuration);
-    createDiv({ cls: "agent-view-hint", text: STRINGS.properties.configHint, parent: configEl });
+    this.renderConfig(rootEl);
 
     const actionsEl = this.section(rootEl, "actions", STRINGS.properties.actions);
     const openEl = createEl("button", { cls: "agent-view-action", text: STRINGS.properties.openChat, parent: actionsEl });
     openEl.addEventListener("click", () => void openAgent(this.app, this.agentId));
+  }
+
+  // The frontmatter editor: known fields (model, effort) as typed inputs,
+  // open params as key/value rows — the same two-tier shape a note's
+  // properties panel has.
+  private renderConfig(rootEl: HTMLElement): void {
+    const configEl = this.section(rootEl, "config", STRINGS.properties.configuration);
+
+    const modelRow = createDiv("agent-prop", configEl);
+    modelRow.dataset.prop = "model";
+    createDiv({ cls: "agent-prop-label", text: STRINGS.properties.model, parent: modelRow });
+    const modelInput = createEl("input", { cls: "agent-prop-input", parent: modelRow });
+    modelInput.type = "text";
+    modelInput.placeholder = STRINGS.properties.modelPlaceholder;
+    modelInput.value = this.profile.model ?? "";
+    modelInput.addEventListener("change", () => {
+      this.profile.model = modelInput.value.trim() || undefined;
+      void this.saveProfile();
+    });
+
+    const effortRow = createDiv("agent-prop", configEl);
+    effortRow.dataset.prop = "effort";
+    createDiv({ cls: "agent-prop-label", text: STRINGS.properties.effort, parent: effortRow });
+    const effortSelect = createEl("select", { cls: "agent-prop-input", parent: effortRow });
+    for (const level of ["", "low", "medium", "high"]) {
+      const option = createEl("option", { parent: effortSelect, text: level || STRINGS.properties.effortDefault });
+      option.value = level;
+    }
+    effortSelect.value = this.profile.effort ?? "";
+    effortSelect.addEventListener("change", () => {
+      this.profile.effort = effortSelect.value || undefined;
+      void this.saveProfile();
+    });
+
+    const paramsEl = createDiv("agent-params", configEl);
+    paramsEl.dataset.prop = "params";
+    createDiv({ cls: "agent-prop-label", text: STRINGS.properties.params, parent: paramsEl });
+    for (const [key, value] of Object.entries(this.profile.params ?? {})) this.paramRow(paramsEl, key, value);
+    const addEl = createEl("button", { cls: "agent-param-add", text: STRINGS.properties.addParam, parent: paramsEl });
+    addEl.addEventListener("click", () => this.paramRow(paramsEl, "", "", addEl));
+
+    createDiv({ cls: "agent-view-hint", text: STRINGS.properties.configHint, parent: configEl });
+  }
+
+  private paramRow(parentEl: HTMLElement, key: string, value: string, beforeEl?: HTMLElement): void {
+    const rowEl = createDiv("agent-param-row", parentEl);
+    if (beforeEl) parentEl.insertBefore(rowEl, beforeEl);
+    const keyInput = createEl("input", { cls: "agent-param-key", parent: rowEl });
+    keyInput.type = "text";
+    keyInput.placeholder = STRINGS.properties.paramKey;
+    keyInput.value = key;
+    const valueInput = createEl("input", { cls: "agent-param-value", parent: rowEl });
+    valueInput.type = "text";
+    valueInput.placeholder = STRINGS.properties.paramValue;
+    valueInput.value = value;
+    const removeEl = createEl("button", { cls: "agent-param-remove", text: "×", parent: rowEl });
+    const commit = () => void this.saveParams();
+    keyInput.addEventListener("change", commit);
+    valueInput.addEventListener("change", commit);
+    removeEl.addEventListener("click", () => {
+      rowEl.remove();
+      void this.saveParams();
+    });
+  }
+
+  // Params are read back from the DOM rows so add/edit/remove share one path.
+  private async saveParams(): Promise<void> {
+    const params: Record<string, string> = {};
+    for (const rowEl of this.contentEl.querySelectorAll(".agent-param-row")) {
+      const key = (rowEl.querySelector(".agent-param-key") as HTMLInputElement).value.trim();
+      const value = (rowEl.querySelector(".agent-param-value") as HTMLInputElement).value;
+      if (key) params[key] = value;
+    }
+    this.profile.params = params;
+    await this.saveProfile();
+  }
+
+  private async saveProfile(): Promise<void> {
+    await this.transport.updateProfile(this.agentId, this.profile);
   }
 
   private section(parentEl: HTMLElement, key: string, title: string): HTMLElement {

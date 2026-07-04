@@ -1,10 +1,21 @@
 import type { AgentEvent } from "./AgentEvent";
 
+// The agent's frontmatter: configuration properties beside the conversation
+// body. Known fields plus an open params map, exactly like a note's known
+// and custom properties. Truth lives on the bridge (an agent row later);
+// PATCH merges — the same channel rename already uses.
+export interface AgentProfile {
+  model?: string;
+  effort?: string;
+  params?: Record<string, string>;
+}
+
 export interface AgentSummary {
   id: string;
   title: string | null;
   updatedAt: number;
   running: boolean;
+  profile?: AgentProfile;
 }
 
 export const DEFAULT_CHAT_BRIDGE_URL = "http://127.0.0.1:8787";
@@ -52,6 +63,20 @@ export class AgentTransport {
     if (!response.ok) return [];
     const payload = (await response.json().catch(() => null)) as { agents?: AgentSummary[] } | null;
     return Array.isArray(payload?.agents) ? payload.agents : [];
+  }
+
+  async getAgent(agentId: string): Promise<AgentSummary | null> {
+    const response = await fetch(`${this.baseUrl}/agents/${encodeURIComponent(agentId)}`).catch(() => null);
+    if (!response?.ok) return null;
+    return (await response.json().catch(() => null)) as AgentSummary | null;
+  }
+
+  async updateProfile(agentId: string, profile: AgentProfile): Promise<void> {
+    await fetch(`${this.baseUrl}/agents/${encodeURIComponent(agentId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile }),
+    });
   }
 
   async rename(agentId: string, title: string): Promise<void> {

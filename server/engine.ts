@@ -17,6 +17,9 @@ export interface EngineRunInput {
   runId: string;
   prompt: string;
   emit: EngineEmit;
+  // The agent's profile (model, effort, open params) — engines consume what
+  // they understand and ignore the rest.
+  profile?: { model?: string; effort?: string; params?: Record<string, string> };
 }
 
 export interface Engine {
