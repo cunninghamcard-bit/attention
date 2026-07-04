@@ -112,6 +112,7 @@ export * from "./builtin/TerminalView";
 export * from "./terminal/TerminalService";
 export * from "./terminal/TerminalAdapter";
 export * from "./terminal/GhosttyTerminalRenderer";
+export * from "./git/GitService";
 export * from "./builtin/Bookmarks";
 export * from "./builtin/Slides";
 export * from "./builtin/AudioRecorder";

@@ -34,7 +34,7 @@ import { createMarkdownImporterPluginDefinition } from "./MarkdownImporter";
 import { createFileRecoveryPluginDefinition } from "./FileRecoveryPlugin";
 import { createWebViewerPluginDefinition } from "./WebViewerPlugin";
 import { createTerminalPluginDefinition } from "./TerminalPlugin";
-import { openFileCompare } from "../views/DiffView";
+import { openFileCompare, openGitDiff } from "../views/DiffView";
 import { createBookmarksPluginDefinition } from "./Bookmarks";
 import { createSlidesPluginDefinition } from "./Slides";
 import { createAudioRecorderPluginDefinition } from "./AudioRecorder";
@@ -87,6 +87,21 @@ export const corePlugins: InternalPluginDefinition[] = [
       plugin.registerEvent(plugin.app.workspace.on<[Menu, TAbstractFile[], string, WorkspaceLeaf]>("files-menu", (menu, files) => {
         addWorkspaceFilesMenuItems(plugin.app, menu, files);
       }));
+      plugin.registerGlobalCommand({
+        id: "git:diff-active-file",
+        name: "Open git diff for active file",
+        icon: "lucide-file-diff",
+        checkCallback: (checking) => {
+          const file = plugin.app.workspace.getActiveFileView()?.file;
+          if (!file || !plugin.app.git.isAvailable()) return false;
+          if (!checking) {
+            void openGitDiff(plugin.app, file).then((leaf) => {
+              if (!leaf) new Notice("Git is not available for this vault");
+            });
+          }
+          return true;
+        },
+      });
     },
   },
   createQuickSwitcherPluginDefinition(),
@@ -398,6 +413,13 @@ function addWorkspaceFileMenuItems(app: App, menu: Menu, file: TAbstractFile): v
         .setTitle("Copy Obsidian URL")
         .setIcon("lucide-link")
         .onClick(() => void app.copyObsidianUrl(file)))
+      .addItem((item) => item
+        .setSection("system")
+        .setTitle("Open git diff")
+        .setIcon("lucide-file-diff")
+        .onClick(() => void openGitDiff(app, file).then((leaf) => {
+          if (!leaf) new Notice("Git is not available for this vault");
+        })))
       .addItem((item) => item
         .setSection("system")
         .setTitle("Open in default app")

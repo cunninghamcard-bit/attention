@@ -93,3 +93,14 @@ export async function openFileCompare(app: App, file: TFile, against: TFile): Pr
   const original = await app.vault.read(against);
   return openFileDiff(app, file, original);
 }
+
+/**
+ * Opens the git diff for `file`: current content against HEAD. Untracked
+ * files diff against empty (everything reads as added). Returns null when
+ * git is unavailable or the vault is not a repository.
+ */
+export async function openGitDiff(app: App, file: TFile): Promise<WorkspaceLeaf | null> {
+  if (!app.git.isAvailable() || !(await app.git.isRepository())) return null;
+  const original = await app.git.readHeadFile(file);
+  return openFileDiff(app, file, original ?? "");
+}
