@@ -46,11 +46,16 @@ export interface ChatMessage {
   // single-agent chats.
   authorId?: string;
   authorName?: string;
+  // Generation-time provenance (metadata-first: never backfilled from the
+  // agent's current profile).
+  model?: string;
+  effort?: string;
 }
 
 export interface ChatCompaction {
   afterMessageId: string | null;
   preTokens?: number;
+  phase: "started" | "completed" | "failed";
 }
 
 export interface ChatPermission {
@@ -101,6 +106,8 @@ export function applyAgentEvent(state: AgentState, event: AgentEvent): boolean {
         closed: false,
         ...(event.authorId !== undefined ? { authorId: event.authorId } : {}),
         ...(event.authorName !== undefined ? { authorName: event.authorName } : {}),
+        ...(event.model !== undefined ? { model: event.model } : {}),
+        ...(event.effort !== undefined ? { effort: event.effort } : {}),
       });
       break;
     }
@@ -139,10 +146,20 @@ export function applyAgentEvent(state: AgentState, event: AgentEvent): boolean {
       break;
     }
     case "context.compacted": {
+      const phase = event.phase ?? "completed";
+      // A phased sequence updates the open compaction in place; a bare
+      // completed event (the original form) appends directly.
+      const open = state.compactions[state.compactions.length - 1];
+      if (phase !== "started" && open && open.phase === "started") {
+        open.phase = phase;
+        open.preTokens = event.preTokens ?? open.preTokens;
+        break;
+      }
       const lastMessage = state.messages[state.messages.length - 1];
       state.compactions.push({
         afterMessageId: event.afterMessageId ?? lastMessage?.id ?? null,
         preTokens: event.preTokens,
+        phase,
       });
       break;
     }

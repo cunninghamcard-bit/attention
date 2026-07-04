@@ -143,6 +143,9 @@ export class AgentPropertiesView extends ItemView {
       void this.saveProfile();
     });
 
+    this.stepperRow(configEl, "temperature", STRINGS.properties.temperature, 0.1, 0, 2, () => this.profile.temperature, (value) => (this.profile.temperature = value));
+    this.stepperRow(configEl, "maxTokens", STRINGS.properties.maxTokens, 128, 1, 1_000_000, () => this.profile.maxTokens, (value) => (this.profile.maxTokens = value));
+
     const paramsEl = createDiv("agent-params", configEl);
     paramsEl.dataset.prop = "params";
     createDiv({ cls: "agent-prop-label", text: STRINGS.properties.params, parent: paramsEl });
@@ -184,6 +187,50 @@ export class AgentPropertiesView extends ItemView {
     }
     this.profile.params = params;
     await this.saveProfile();
+  }
+
+  // Numeric dials PATCH through a debounce accumulator (DeepChat's
+  // pendingGenerationPatch shape) so steppers don't fire one request per
+  // click burst.
+  private saveTimer = 0;
+
+  private saveProfileDebounced(): void {
+    window.clearTimeout(this.saveTimer);
+    this.saveTimer = window.setTimeout(() => void this.saveProfile(), 500);
+  }
+
+  private stepperRow(
+    parentEl: HTMLElement,
+    key: string,
+    label: string,
+    step: number,
+    min: number,
+    max: number,
+    read: () => number | undefined,
+    write: (value: number | undefined) => void,
+  ): void {
+    const rowEl = createDiv("agent-prop", parentEl);
+    rowEl.dataset.prop = key;
+    createDiv({ cls: "agent-prop-label", text: label, parent: rowEl });
+    const stepperEl = createDiv("agent-prop-stepper", rowEl);
+    const decEl = createEl("button", { text: "−", parent: stepperEl });
+    const input = createEl("input", { cls: "agent-prop-input", parent: stepperEl });
+    input.type = "text";
+    input.placeholder = STRINGS.properties.effortDefault;
+    input.value = read() !== undefined ? String(read()) : "";
+    const incEl = createEl("button", { text: "+", parent: stepperEl });
+    const clamp = (value: number) => Math.min(max, Math.max(min, Math.round(value * 1000) / 1000));
+    const commit = (value: number | undefined) => {
+      write(value);
+      input.value = value !== undefined ? String(value) : "";
+      this.saveProfileDebounced();
+    };
+    decEl.addEventListener("click", () => commit(clamp((read() ?? (key === "temperature" ? 1 : 4096)) - step)));
+    incEl.addEventListener("click", () => commit(clamp((read() ?? (key === "temperature" ? 1 : 4096)) + step)));
+    input.addEventListener("change", () => {
+      const parsed = Number(input.value.trim());
+      commit(input.value.trim() === "" || !Number.isFinite(parsed) ? undefined : clamp(parsed));
+    });
   }
 
   private async saveProfile(): Promise<void> {

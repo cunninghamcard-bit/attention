@@ -252,4 +252,11 @@ const CHAT_CSS = `
     .chat-model-chip:hover { background: var(--background-modifier-hover, rgba(120,120,140,0.1)); color: var(--text-normal, #1a1a19); }
     .chat-model-chip-label { overflow: hidden; text-overflow: ellipsis; }
     .chat-model-chip-chevron svg { width: 14px; height: 14px; opacity: 0.6; display: block; }
+    .chat-message-provenance { font-size: 11px; color: var(--text-faint, #b0b0b8); margin-right: 4px; align-self: center; }
+    .chat-compact-divider.is-running .chat-compact-label { animation: chat-shimmer 1.6s ease-in-out infinite; }
+    .chat-compact-divider.is-failed .chat-compact-label { color: #b91c1c; opacity: 1; }
+    .agent-prop-stepper { display: inline-flex; align-items: center; gap: 4px; }
+    .agent-prop-stepper button { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--background-modifier-border, rgba(0,0,0,0.12)); background: var(--background-primary, #fff); cursor: pointer; padding: 0; line-height: 1; color: var(--text-muted, #666); }
+    .agent-prop-stepper button:hover { color: var(--text-normal, #1a1a19); }
+    .agent-prop-stepper .agent-prop-input { max-width: 84px; text-align: center; }
 `;

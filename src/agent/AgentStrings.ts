@@ -48,6 +48,9 @@ export const STRINGS = {
     failedStatus: (count: number) => `${count} failed`,
   },
   message: {
+    provenance: (model: string, effort?: string) => (effort ? `${model} · ${effort}` : model),
+    compacting: "Compacting context…",
+    compactFailed: "Context compaction failed",
     showMore: "Show more",
     showLess: "Show less",
     runFailed: (error: string) => `Run failed: ${error}`,
@@ -95,6 +98,8 @@ export const STRINGS = {
     modelPlaceholder: "engine default",
     effort: "Reasoning effort",
     effortDefault: "Default",
+    temperature: "Temperature",
+    maxTokens: "Max tokens",
     params: "Parameters",
     addParam: "Add parameter",
     paramKey: "key",

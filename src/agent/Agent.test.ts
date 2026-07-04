@@ -110,6 +110,29 @@ describe("applyAgentEvent", () => {
   });
 });
 
+describe("provenance and compaction phases", () => {
+  it("stamps generation-time model/effort onto the message", () => {
+    const state = createAgentState();
+    applyAgentEvent(state, { type: "message.started", messageId: "a1", role: "assistant", model: "deepseek-chat", effort: "high", seq: 1, agentId: "t1" });
+    expect(state.messages[0]).toMatchObject({ model: "deepseek-chat", effort: "high" });
+  });
+
+  it("a phased compaction updates in place: started -> completed", () => {
+    const state = createAgentState();
+    applyAgentEvent(state, { type: "context.compacted", phase: "started", seq: 1, agentId: "t1" });
+    expect(state.compactions).toEqual([{ afterMessageId: null, preTokens: undefined, phase: "started" }]);
+    applyAgentEvent(state, { type: "context.compacted", phase: "completed", preTokens: 42000, seq: 2, agentId: "t1" });
+    expect(state.compactions).toHaveLength(1);
+    expect(state.compactions[0]).toMatchObject({ phase: "completed", preTokens: 42000 });
+  });
+
+  it("a bare context.compacted still appends as completed", () => {
+    const state = createAgentState();
+    applyAgentEvent(state, { type: "context.compacted", preTokens: 52000, seq: 1, agentId: "t1" });
+    expect(state.compactions[0]).toMatchObject({ phase: "completed", preTokens: 52000 });
+  });
+});
+
 describe("permission requests", () => {
   it("appends a request then resolves it by requestId", () => {
     const state = createAgentState();

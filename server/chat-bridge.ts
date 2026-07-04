@@ -28,6 +28,8 @@ interface BridgeEvent {
 interface AgentProfile {
   model?: string;
   effort?: string;
+  temperature?: number;
+  maxTokens?: number;
   params?: Record<string, string>;
 }
 
@@ -147,7 +149,19 @@ Bun.serve({
       });
     }
 
-    const eventsMatch = url.pathname.match(/^\/agents\/([^/]+)\/events$/);
+    // The native (Go) dialect: /streams with Go-marshaled capitalized
+    // fields. The frontend speaks it now; this bridge answers both.
+    if (url.pathname === "/streams" && request.method === "GET") {
+      const list = [...threads.values()]
+        .filter((thread) => thread.events.length > 0)
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .map((thread) => ({ ID: thread.id, Title: thread.title, UpdatedAt: thread.updatedAt, Running: thread.running }));
+      return new Response(JSON.stringify({ streams: list }), {
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
+    }
+
+    const eventsMatch = url.pathname.match(/^\/(?:agents|streams)\/([^/]+)\/events$/);
     if (eventsMatch && request.method === "GET") {
       const thread = getThread(decodeURIComponent(eventsMatch[1]));
       const since = Number(url.searchParams.get("since") ?? 0);
@@ -168,7 +182,7 @@ Bun.serve({
       });
     }
 
-    const messagesMatch = url.pathname.match(/^\/agents\/([^/]+)\/messages$/);
+    const messagesMatch = url.pathname.match(/^\/(?:agents|streams)\/([^/]+)\/messages$/);
     if (messagesMatch && request.method === "POST") {
       const thread = getThread(decodeURIComponent(messagesMatch[1]));
       const body = (await request.json().catch(() => ({}))) as { text?: string; attachments?: MessageAttachment[] };
@@ -204,6 +218,8 @@ Bun.serve({
       if (body.profile && typeof body.profile === "object") {
         if (body.profile.model !== undefined) thread.profile.model = body.profile.model || undefined;
         if (body.profile.effort !== undefined) thread.profile.effort = body.profile.effort || undefined;
+        if (body.profile.temperature !== undefined) thread.profile.temperature = typeof body.profile.temperature === "number" ? body.profile.temperature : undefined;
+        if (body.profile.maxTokens !== undefined) thread.profile.maxTokens = typeof body.profile.maxTokens === "number" ? body.profile.maxTokens : undefined;
         if (body.profile.params !== undefined) thread.profile.params = body.profile.params;
       }
       if (!title && !body.profile) return new Response("nothing to update", { status: 400, headers: CORS_HEADERS });
@@ -218,7 +234,7 @@ Bun.serve({
       return new Response("{}", { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
     }
 
-    const stopMatch = url.pathname.match(/^\/agents\/([^/]+)\/stop$/);
+    const stopMatch = url.pathname.match(/^\/(?:agents|streams)\/([^/]+)\/stop$/);
     if (stopMatch && request.method === "POST") {
       engine.stop(decodeURIComponent(stopMatch[1]));
       return new Response("{}", { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });

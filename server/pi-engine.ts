@@ -101,7 +101,8 @@ function bridgeEvents(agentId: string, session: AgentSession, emit: CanonicalEmi
     if (!currentMessageId) currentMessageId = nextMessageId();
     if (!messageStarted) {
       messageStarted = true;
-      emit({ type: "message.started", messageId: currentMessageId, role: "assistant" });
+      const entry = sessions.get(agentId);
+      emit({ type: "message.started", messageId: currentMessageId, role: "assistant", model: entry?.modelId, effort: entry?.effort });
     }
     return currentMessageId;
   };

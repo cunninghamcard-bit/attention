@@ -38,6 +38,10 @@ export interface AgentMessageStartedEvent extends AgentEventBase {
   role: ChatRole;
   authorId?: string;
   authorName?: string;
+  // Provenance, stamped at generation time: history keeps showing what
+  // actually produced each message even after the agent's profile changes.
+  model?: string;
+  effort?: string;
 }
 
 export interface AgentPartOpenedEvent extends AgentEventBase {
@@ -87,6 +91,9 @@ export interface AgentContextCompactedEvent extends AgentEventBase {
   afterMessageId?: string;
   preTokens?: number;
   trigger?: string;
+  // Compaction is a process, not an instant: started -> completed | failed.
+  // Absent phase means completed (the original single-shot form).
+  phase?: "started" | "completed" | "failed";
 }
 
 // The engine wants to run a tool that needs approval; the UI blocks on a

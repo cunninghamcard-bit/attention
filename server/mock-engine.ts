@@ -59,9 +59,13 @@ async function runScript(agentId: string, runId: string, prompt: string, emit: E
   const profileNote = profile?.model || profile?.effort
     ? `\n\n> 本轮配置:${profile.model ?? "默认模型"}${profile.effort ? ` · ${profile.effort}` : ""}`
     : "";
-  if (prompt.includes("compact")) emit({ type: "context.compacted", preTokens: 52000, trigger: "auto" });
+  if (prompt.includes("compact")) {
+    emit({ type: "context.compacted", phase: "started", trigger: "auto" });
+    await sleep(1600);
+    emit({ type: "context.compacted", phase: "completed", preTokens: 52000, trigger: "auto" });
+  }
   const messageId = nextMessageId(agentId);
-  emit({ type: "message.started", messageId, role: "assistant" });
+  emit({ type: "message.started", messageId, role: "assistant", model: profile?.model ?? "mock-1", effort: profile?.effort });
 
   emit({ type: "part.opened", messageId, partIndex: 0, partType: "thinking" });
   for (const chunk of "用户想看演示。先流式输出一段包含各种元素的 markdown,然后跑几个工具,其中一个故意失败。".match(/.{1,6}/gs) ?? []) {

@@ -220,6 +220,11 @@ class ChatMessageItem extends Component {
     }
     this.partsEl = createDiv("chat-message-parts", this.el);
     const actionsEl = createDiv("chat-message-actions", this.el);
+    // Provenance rides the hover row: always the GENERATING model, never
+    // the agent's current one (metadata-first, DeepChat's rule).
+    if (message.role === "assistant" && message.model) {
+      createSpan({ cls: "chat-message-provenance", text: STRINGS.message.provenance(message.model, message.effort), parent: actionsEl });
+    }
     for (const action of listChatMessageActions()) {
       if (action.appliesTo && !action.appliesTo(message)) continue;
       const buttonEl = createEl("button", { cls: "chat-message-action", parent: actionsEl, title: action.title });
@@ -364,6 +369,10 @@ export class ChatMessageList extends Component {
       item.sync();
     }
     this.renderCompactionsAfter(messages[messages.length - 1]?.id ?? null);
+    this.compactionEls.forEach((el, index) => {
+      const compaction = this.session.state.compactions[index];
+      if (compaction) this.syncCompactionEl(el, compaction);
+    });
     const last = messages[messages.length - 1];
     const waiting = this.session.isRunning() && (!last || last.role === "user" || last.closed);
     this.thinkingEl.toggle(waiting);
@@ -408,6 +417,26 @@ export class ChatMessageList extends Component {
     }
   }
 
+  private readonly compactionEls: HTMLElement[] = [];
+
+  // A compaction is a process: the divider shimmers while it runs, settles
+  // into the token summary when done, goes red if the engine's summarizer
+  // failed.
+  private syncCompactionEl(dividerEl: HTMLElement, compaction: { preTokens?: number; phase: string }): void {
+    dividerEl.classList.toggle("is-running", compaction.phase === "started");
+    dividerEl.classList.toggle("is-failed", compaction.phase === "failed");
+    const label = compaction.phase === "started"
+      ? STRINGS.message.compacting
+      : compaction.phase === "failed"
+        ? STRINGS.message.compactFailed
+        : compaction.preTokens
+          ? STRINGS.message.compactedTokens(compaction.preTokens)
+          : STRINGS.message.compacted;
+    let labelEl = dividerEl.querySelector(".chat-compact-label") as HTMLElement | null;
+    if (!labelEl) labelEl = createSpan({ cls: "chat-compact-label", parent: dividerEl });
+    labelEl.setText(label);
+  }
+
   // Compaction dividers land between the message they follow and whatever
   // comes next; each marker renders exactly once, in event order.
   private renderCompactionsAfter(previousMessageId: string | null): void {
@@ -417,8 +446,8 @@ export class ChatMessageList extends Component {
       if (compaction.afterMessageId !== previousMessageId) return;
       this.renderedCompactions++;
       const dividerEl = createDiv("chat-compact-divider");
-      const label = compaction.preTokens ? STRINGS.message.compactedTokens(compaction.preTokens) : STRINGS.message.compacted;
-      createSpan({ cls: "chat-compact-label", text: label, parent: dividerEl });
+      this.compactionEls.push(dividerEl);
+      this.syncCompactionEl(dividerEl, compaction);
       this.el.insertBefore(dividerEl, this.thinkingEl);
     }
   }
