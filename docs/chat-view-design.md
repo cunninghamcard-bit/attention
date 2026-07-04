@@ -298,7 +298,7 @@ marked (go) wait for the backend.
 | queued prompts                    | ✅     | Agent (frontend queue)      |
 | attach button + drag-drop         | ✅     | ChatComposer                |
 | context-window occupancy %        | ✅     | AgentStatusBar + engine usage |
-| permission approval cards         | ◻ (go) | deferred by decision        |
+| permission approval cards         | ✅     | permission.requested/resolved + loom broker |
 | model / effort switching          | ◻ (go) | header action + Agent entity|
 | run inspector (raw events)        | ◻     | AgentPropertiesView tab     |
 | conversation search               | ◻     | ChatView                    |
