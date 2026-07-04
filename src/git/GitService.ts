@@ -16,7 +16,16 @@ export interface ElectronGitApi {
   available: boolean;
   exec(args: string[], cwd: string): Promise<GitExecResult>;
   /** GitHub CLI; optional so older bridges and test fakes keep working. */
-  execGh?(args: string[], cwd: string): Promise<GitExecResult>;
+  execGh?(args: string[], cwd: string, input?: string): Promise<GitExecResult>;
+}
+
+/** A draft inline review comment anchored to a diff line. */
+export interface PrDraftComment {
+  path: string;
+  line: number;
+  /** Which side of the diff the line lives on. */
+  side: "additions" | "deletions";
+  body: string;
 }
 
 export interface PrSummary {
@@ -48,8 +57,15 @@ export interface PrDetail extends PrSummary {
   body: string;
   additions: number;
   deletions: number;
+  headRefOid: string;
   files: PrFileChange[];
   comments: PrComment[];
+}
+
+export interface GitNumstatEntry {
+  path: string;
+  additions: number;
+  deletions: number;
 }
 
 export interface GitFileStatus {
@@ -114,9 +130,10 @@ export class GitService {
     return result.stdout;
   }
 
-  /** Working-tree changes, porcelain v1. */
+  /** Working-tree changes, porcelain v1. -uall expands untracked directories
+   * into their files, so review/staging always works on real paths. */
   async status(): Promise<GitFileStatus[]> {
-    const result = await this.exec(["status", "--porcelain"]);
+    const result = await this.exec(["status", "--porcelain", "-uall"]);
     if (!result || result.code !== 0) return [];
     return result.stdout
       .split("\n")
@@ -133,6 +150,12 @@ export class GitService {
   async unstage(paths: string[]): Promise<boolean> {
     if (paths.length === 0) return true;
     const result = await this.exec(["restore", "--staged", "--", ...paths]);
+    return result?.code === 0;
+  }
+
+  /** Empties the index back to HEAD (worktree untouched). */
+  async unstageAll(): Promise<boolean> {
+    const result = await this.exec(["reset", "-q"]);
     return result?.code === 0;
   }
 
@@ -175,6 +198,40 @@ export class GitService {
     return result.stdout;
   }
 
+  /**
+   * Per-file added/removed line counts. No ref: working tree vs HEAD
+   * (untracked files not included — callers count those themselves). With a
+   * ref: that commit vs its parent.
+   */
+  async numstat(ref?: string): Promise<GitNumstatEntry[]> {
+    const args = ref ? ["show", "--format=", "--numstat", ref] : ["diff", "HEAD", "--numstat"];
+    const result = await this.exec(args);
+    if (!result || result.code !== 0) return [];
+    return result.stdout
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [added, deleted, ...rest] = line.split("\t");
+        return { path: rest.join("\t"), additions: Number(added) || 0, deletions: Number(deleted) || 0 };
+      })
+      .filter((entry) => entry.path);
+  }
+
+  /** Files changed by a commit, as porcelain-style status + path. */
+  async changedFilesIn(ref: string): Promise<GitFileStatus[]> {
+    const result = await this.exec(["show", "--format=", "--name-status", ref]);
+    if (!result || result.code !== 0) return [];
+    return result.stdout
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [status, ...rest] = line.split("\t");
+        // Rename lines are "R100\told\tnew" — review the new path.
+        return { status: status[0] ?? "M", path: rest[rest.length - 1] ?? "" };
+      })
+      .filter((entry) => entry.path);
+  }
+
   // --- GitHub PRs, via the gh CLI --------------------------------------
 
   /** True when gh is installed and authenticated for this repo's host. */
@@ -193,7 +250,7 @@ export class GitService {
   }
 
   async prView(number: number): Promise<PrDetail | null> {
-    const result = await this.gh(["pr", "view", String(number), "--json", `${PR_SUMMARY_FIELDS},body,additions,deletions,files,comments`]);
+    const result = await this.gh(["pr", "view", String(number), "--json", `${PR_SUMMARY_FIELDS},body,additions,deletions,headRefOid,files,comments`]);
     if (!result || result.code !== 0) return null;
     const raw = parseJson<RawPr | null>(result.stdout, null);
     if (!raw) return null;
@@ -202,6 +259,7 @@ export class GitService {
       body: raw.body ?? "",
       additions: raw.additions ?? 0,
       deletions: raw.deletions ?? 0,
+      headRefOid: raw.headRefOid ?? "",
       files: raw.files ?? [],
       comments: (raw.comments ?? []).map((c) => ({ author: c.author?.login ?? "", body: c.body, createdAt: c.createdAt })),
     };
@@ -237,8 +295,48 @@ export class GitService {
     return { url: result.stdout.trim() };
   }
 
-  private async ghAction(args: string[]): Promise<string | null> {
-    const result = await this.gh(args);
+  /**
+   * Posts one inline comment immediately (GitHub's single-comment endpoint).
+   * Same recipe as codiff: gh api with the JSON body on stdin, line anchored
+   * via side LEFT/RIGHT + commit_id of the PR head.
+   */
+  async prAddInlineComment(number: number, headSha: string, comment: PrDraftComment): Promise<string | null> {
+    const body = JSON.stringify({
+      body: comment.body,
+      commit_id: headSha,
+      path: comment.path,
+      line: comment.line,
+      side: comment.side === "deletions" ? "LEFT" : "RIGHT",
+    });
+    return this.ghAction(["api", "-X", "POST", `repos/{owner}/{repo}/pulls/${number}/comments`, "--input", "-"], body);
+  }
+
+  /**
+   * Submits a whole review atomically: every draft comment plus a verdict, in
+   * one POST to the reviews endpoint. GitHub requires a body for
+   * REQUEST_CHANGES, so one is defaulted.
+   */
+  async prSubmitReview(
+    number: number,
+    event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT",
+    body: string,
+    comments: PrDraftComment[],
+  ): Promise<string | null> {
+    const payload = JSON.stringify({
+      body: body || (event === "REQUEST_CHANGES" && comments.length === 0 ? "Requesting changes." : body),
+      event,
+      comments: comments.map((comment) => ({
+        body: comment.body,
+        path: comment.path,
+        line: comment.line,
+        side: comment.side === "deletions" ? "LEFT" : "RIGHT",
+      })),
+    });
+    return this.ghAction(["api", "-X", "POST", `repos/{owner}/{repo}/pulls/${number}/reviews`, "--input", "-"], payload);
+  }
+
+  private async ghAction(args: string[], input?: string): Promise<string | null> {
+    const result = await this.gh(args, input);
     if (!result) return "gh is not available";
     if (result.code !== 0) return result.stderr.trim() || result.stdout.trim() || `gh exited ${result.code}`;
     return null;
@@ -246,11 +344,11 @@ export class GitService {
 
   private ghAvailableCache: boolean | undefined;
 
-  private async gh(args: string[]): Promise<GitExecResult | null> {
+  private async gh(args: string[], input?: string): Promise<GitExecResult | null> {
     const cwd = this.baseDir();
     if (!this.bridge?.available || !this.bridge.execGh || !cwd) return null;
     try {
-      return await this.bridge.execGh(args, cwd);
+      return await this.bridge.execGh(args, cwd, input);
     } catch (error) {
       console.error("gh exec failed", args, error);
       return null;
@@ -285,6 +383,7 @@ interface RawPr {
   body?: string;
   additions?: number;
   deletions?: number;
+  headRefOid?: string;
   files?: PrFileChange[];
   comments?: { author?: { login?: string }; body: string; createdAt: string }[];
 }

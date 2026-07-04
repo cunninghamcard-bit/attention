@@ -16,15 +16,19 @@ const FAKE_PR = {
   url: "https://github.com/x/y/pull/7",
 };
 
-function fakeGit(headFiles: Record<string, string>, isRepo = true): ElectronGitApi & { calls: string[][]; ghCalls: string[][] } {
+function fakeGit(headFiles: Record<string, string>, isRepo = true): ElectronGitApi & { calls: string[][]; ghCalls: string[][]; ghInputs: (string | undefined)[] } {
   const calls: string[][] = [];
   const ghCalls: string[][] = [];
+  const ghInputs: (string | undefined)[] = [];
   return {
     available: true,
     calls,
     ghCalls,
-    async execGh(args: string[]): Promise<GitExecResult> {
+    ghInputs,
+    async execGh(args: string[], _cwd: string, input?: string): Promise<GitExecResult> {
       ghCalls.push(args);
+      ghInputs.push(input);
+      if (args[0] === "api") return { code: 0, stdout: "{}", stderr: "" };
       if (args[0] === "auth") return { code: 0, stdout: "Logged in", stderr: "" };
       if (args[1] === "list") return { code: 0, stdout: JSON.stringify([FAKE_PR]), stderr: "" };
       if (args[1] === "view") return {
@@ -47,6 +51,12 @@ function fakeGit(headFiles: Record<string, string>, isRepo = true): ElectronGitA
     async exec(args: string[]): Promise<GitExecResult> {
       calls.push(args);
       if (args[0] === "rev-parse") return { code: 0, stdout: isRepo ? "true\n" : "false\n", stderr: "" };
+      if (args[0] === "show" && args.includes("--name-status")) {
+        return { code: 0, stdout: "M\tagent.ts\nR100\told.ts\tnew.ts\n", stderr: "" };
+      }
+      if (args[0] === "show" && args.includes("--numstat")) {
+        return { code: 0, stdout: "5\t0\tagent.ts\n", stderr: "" };
+      }
       if (args[0] === "show") {
         const path = args[1].replace(/^(HEAD|:0|v1\.0):/, "");
         if (path in headFiles) return { code: 0, stdout: headFiles[path], stderr: "" };
@@ -58,6 +68,8 @@ function fakeGit(headFiles: Record<string, string>, isRepo = true): ElectronGitA
         ? { code: 1, stdout: "", stderr: "nothing to commit" }
         : { code: 0, stdout: "[main abc123] ok", stderr: "" };
       if (args[0] === "log") return { code: 0, stdout: "aaa111\x1faaa\x1fCard\x1f2026-07-01T00:00:00+08:00\x1ffirst commit\nbbb222\x1fbbb\x1fCard\x1f2026-07-02T00:00:00+08:00\x1fsecond commit\n", stderr: "" };
+      if (args[0] === "reset") return { code: 0, stdout: "", stderr: "" };
+      if (args[0] === "diff" && args.includes("--numstat")) return { code: 0, stdout: "3\t1\tagent.ts\n0\t2\tsrc/old name.ts\n", stderr: "" };
       return { code: 1, stdout: "", stderr: "unknown" };
     },
   };
@@ -191,6 +203,51 @@ describe("GitService", () => {
     await expect(app.git.ghAvailable()).resolves.toBe(false);
     await expect(app.git.prList()).resolves.toEqual([]);
     await expect(app.git.prCheckout(1)).resolves.toBe("gh is not available");
+  });
+
+  it("parses numstat, commit file lists and resets the index", async () => {
+    const app = await appWithGit({});
+
+    await expect(app.git.numstat()).resolves.toEqual([
+      { path: "agent.ts", additions: 3, deletions: 1 },
+      { path: "src/old name.ts", additions: 0, deletions: 2 },
+    ]);
+    await expect(app.git.numstat("abc123")).resolves.toEqual([
+      { path: "agent.ts", additions: 5, deletions: 0 },
+    ]);
+    await expect(app.git.changedFilesIn("abc123")).resolves.toEqual([
+      { status: "M", path: "agent.ts" },
+      { status: "R", path: "new.ts" },
+    ]);
+    await expect(app.git.unstageAll()).resolves.toBe(true);
+  });
+
+  it("posts inline comments and batched reviews through gh api with stdin payloads", async () => {
+    const app = new App(document.createElement("div"));
+    const bridge = fakeGit({});
+    app.git.bridgeFactory = () => bridge;
+    (app.vault.adapter as { getBasePath?: () => string }).getBasePath = () => "/fake/vault";
+    await app.ready;
+
+    await expect(app.git.prAddInlineComment(7, "headsha", {
+      path: "agent.ts", line: 12, side: "additions", body: "why sync?",
+    })).resolves.toBeNull();
+    await expect(app.git.prSubmitReview(7, "REQUEST_CHANGES", "needs work", [
+      { path: "agent.ts", line: 12, side: "deletions", body: "old path" },
+    ])).resolves.toBeNull();
+    // GitHub requires a body for a comment-less REQUEST_CHANGES; it gets defaulted.
+    await expect(app.git.prSubmitReview(7, "REQUEST_CHANGES", "", [])).resolves.toBeNull();
+
+    const apiCalls = bridge.ghCalls.filter((call) => call[0] === "api");
+    expect(apiCalls[0]).toEqual(["api", "-X", "POST", "repos/{owner}/{repo}/pulls/7/comments", "--input", "-"]);
+    expect(apiCalls[1]).toEqual(["api", "-X", "POST", "repos/{owner}/{repo}/pulls/7/reviews", "--input", "-"]);
+    const single = JSON.parse(bridge.ghInputs.find((input) => input?.includes("commit_id"))!);
+    expect(single).toMatchObject({ body: "why sync?", commit_id: "headsha", path: "agent.ts", line: 12, side: "RIGHT" });
+    const inputs = bridge.ghInputs.filter(Boolean) as string[];
+    const withComment = JSON.parse(inputs[1]);
+    expect(withComment).toMatchObject({ event: "REQUEST_CHANGES", body: "needs work" });
+    expect(withComment.comments[0]).toMatchObject({ path: "agent.ts", line: 12, side: "LEFT" });
+    expect(JSON.parse(inputs[2])).toMatchObject({ body: "Requesting changes." });
   });
 
   it("diffs untracked files against empty", async () => {

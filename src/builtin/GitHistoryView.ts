@@ -3,6 +3,7 @@ import { openFileDiff } from "../views/DiffView";
 import type { ViewStateResult } from "../views/View";
 import { Notice } from "../ui/Notice";
 import type { GitLogEntry } from "../git/GitService";
+import { openGitReview } from "./review/GitReviewView";
 
 /**
  * Commit history for one file (git log --follow). Each entry offers the two
@@ -69,6 +70,7 @@ export class GitHistoryView extends ItemView {
     const actionsEl = doc.createElement("div");
     actionsEl.className = "git-history-actions";
     actionsEl.append(
+      this.actionButton("Review commit", () => void openGitReview(this.app, { kind: "commit", ref: entry.hash, subject: entry.subject })),
       this.actionButton("View version", () => void this.viewVersion(entry)),
       this.actionButton("Diff vs working", () => void this.diffAgainstWorking(entry)),
     );

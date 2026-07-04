@@ -37,6 +37,7 @@ import { createTerminalPluginDefinition } from "./TerminalPlugin";
 import { openFileCompare, openGitDiff } from "../views/DiffView";
 import { openFileHistory } from "./GitHistoryView";
 import { openPrList } from "./GitPrViews";
+import { openGitReview } from "./review/GitReviewView";
 import { createBookmarksPluginDefinition } from "./Bookmarks";
 import { createSlidesPluginDefinition } from "./Slides";
 import { createAudioRecorderPluginDefinition } from "./AudioRecorder";
@@ -98,6 +99,16 @@ export const corePlugins: InternalPluginDefinition[] = [
           if (!checking) {
             void plugin.app.workspace.getLeaf("tab").setViewState({ type: "git-changes", active: true });
           }
+          return true;
+        },
+      });
+      plugin.registerGlobalCommand({
+        id: "git:review-changes",
+        name: "Review working tree changes",
+        icon: "lucide-file-diff",
+        checkCallback: (checking) => {
+          if (!plugin.app.git.isAvailable()) return false;
+          if (!checking) void openGitReview(plugin.app);
           return true;
         },
       });

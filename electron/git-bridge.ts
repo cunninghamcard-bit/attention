@@ -17,8 +17,9 @@ export interface GitExecResult {
 export interface ElectronGitApi {
   available: boolean;
   exec(args: string[], cwd: string): Promise<GitExecResult>;
-  /** GitHub CLI; rejects into a code-127 result when gh is not installed. */
-  execGh(args: string[], cwd: string): Promise<GitExecResult>;
+  /** GitHub CLI; rejects into a code-127 result when gh is not installed.
+   * `input` is piped to stdin (for `gh api --input -` JSON bodies). */
+  execGh(args: string[], cwd: string, input?: string): Promise<GitExecResult>;
 }
 
 type ExecFileFn = typeof execFile;
@@ -32,22 +33,26 @@ export function resolveGhBinary(exists: (path: string) => boolean = existsSync):
 }
 
 export function createElectronGitApi(execFileImpl: ExecFileFn = execFile): ElectronGitApi {
-  const run = (binary: string, args: string[], cwd: string): Promise<GitExecResult> =>
+  const run = (binary: string, args: string[], cwd: string, input?: string): Promise<GitExecResult> =>
     new Promise((resolve) => {
-      execFileImpl(binary, args, { cwd, maxBuffer: 32 * 1024 * 1024 }, (error, stdout, stderr) => {
+      const child = execFileImpl(binary, args, { cwd, maxBuffer: 32 * 1024 * 1024 }, (error, stdout, stderr) => {
         const code = error && typeof (error as { code?: unknown }).code === "number"
           ? (error as { code: number }).code
           : error ? 1 : 0;
         resolve({ code, stdout: String(stdout), stderr: String(stderr) });
       });
+      if (input !== undefined && child.stdin) {
+        child.stdin.write(input);
+        child.stdin.end();
+      }
     });
   return {
     available: true,
     exec: (args, cwd) => run("git", args, cwd),
-    execGh(args, cwd) {
+    execGh(args, cwd, input) {
       const gh = resolveGhBinary();
       if (!gh) return Promise.resolve({ code: 127, stdout: "", stderr: "gh: command not found" });
-      return run(gh, args, cwd);
+      return run(gh, args, cwd, input);
     },
   };
 }

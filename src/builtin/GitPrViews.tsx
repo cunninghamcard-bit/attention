@@ -1,12 +1,13 @@
-import { Component as ReactComponent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { parsePatchFiles, type FileDiffMetadata } from "@pierre/diffs";
-import { FileDiff } from "@pierre/diffs/react";
 import moment from "moment";
 import { ItemView } from "../views/ItemView";
 import type { ViewStateResult } from "../views/View";
 import type { App } from "../app/App";
 import type { PrComment, PrDetail, PrSummary } from "../git/GitService";
+import { ReviewSurface } from "./review/ReviewSurface";
+import { fingerprintContents, type ReviewFile, type ReviewFileStatus } from "./review/reviewModel";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import { setIcon } from "../ui/Icon";
 import { Notice } from "../ui/Notice";
@@ -168,10 +169,35 @@ function PrDetailPanel({ app, number }: { app: App; number: number }): ReactNode
   }, [app, number]);
   useEffect(() => { void load(); }, [load]);
 
+  const reviewFiles = useMemo<ReviewFile[]>(() => {
+    if (!patchFiles || !detail) return [];
+    const statByPath = new Map(detail.files.map((file) => [file.path, file]));
+    return patchFiles.map((fileDiff) => {
+      const stat = statByPath.get(fileDiff.name);
+      return {
+        path: fileDiff.name,
+        status: PR_STATUS_BY_CHANGE_TYPE[fileDiff.type] ?? "modified",
+        fileDiff,
+        additions: stat?.additions ?? 0,
+        deletions: stat?.deletions ?? 0,
+        fingerprint: fingerprintContents(fileDiff.name, detail.headRefOid),
+        binary: false,
+      };
+    });
+  }, [detail, patchFiles]);
+
+  const submitInlineReview = useCallback(
+    async (event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT", body: string, comments: { path: string; line: number; side: "additions" | "deletions"; body: string }[]) => {
+      const error = await app.git.prSubmitReview(number, event, body, comments);
+      if (!error) void load();
+      return error;
+    },
+    [app, load, number],
+  );
+
   if (missing) return <div className="git-pr-empty">Could not load PR #{number}. Is gh signed in for this repository?</div>;
   if (!detail) return <div className="git-pr-empty">Loading PR #{number}…</div>;
 
-  const themeType = document.body.classList.contains("theme-dark") ? "dark" : "light";
   return (
     <div className="git-pr-detail">
       <div className="git-pr-header">
@@ -213,12 +239,18 @@ function PrDetailPanel({ app, number }: { app: App; number: number }): ReactNode
         </div>
       ) : (
         <div className="git-pr-files">
-          {patchFiles?.length === 0 && <div className="git-pr-empty">No diff available.</div>}
-          {patchFiles?.map((file) => (
-            <DiffBoundary key={file.name}>
-              <FileDiff fileDiff={file} options={{ diffStyle: "unified", themeType }} />
-            </DiffBoundary>
-          ))}
+          {reviewFiles.length === 0 ? (
+            <div className="git-pr-empty">No diff available.</div>
+          ) : (
+            <ReviewSurface
+              files={reviewFiles}
+              storageRoot={null}
+              title={`PR #${detail.number}`}
+              subtitle={detail.title}
+              review={{ onSubmit: submitInlineReview }}
+              onRefresh={() => void load()}
+            />
+          )}
         </div>
       )}
     </div>
@@ -327,13 +359,10 @@ function DecisionChip({ decision, isDraft }: { decision: string; isDraft: boolea
   return <span className={`git-pr-chip mod-${decision.toLowerCase()}`}>{labels[decision] ?? decision}</span>;
 }
 
-/** Keeps one broken diff (huge/odd patch, renderer failure) from killing the whole review. */
-class DiffBoundary extends ReactComponent<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError(): { failed: boolean } {
-    return { failed: true };
-  }
-  render(): ReactNode {
-    return this.state.failed ? <div className="git-pr-empty">Could not render this file's diff.</div> : this.props.children;
-  }
-}
+const PR_STATUS_BY_CHANGE_TYPE: Record<FileDiffMetadata["type"], ReviewFileStatus> = {
+  change: "modified",
+  "rename-pure": "renamed",
+  "rename-changed": "renamed",
+  new: "added",
+  deleted: "deleted",
+};

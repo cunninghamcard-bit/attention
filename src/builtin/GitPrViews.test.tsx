@@ -91,7 +91,7 @@ describe("PR views", () => {
     await until(() => view.contentEl.querySelector(".git-pr-title") !== null, "PR title");
     expect(view.contentEl.querySelector(".git-pr-title")!.textContent).toContain("Add agent relations");
     await until(() => view.contentEl.querySelectorAll(".git-pr-comment").length === 2, "description + comment cards");
-    expect(view.contentEl.textContent).toContain("Looks solid");
+    await until(() => view.contentEl.textContent!.includes("Looks solid"), "markdown-rendered comment body");
 
     (view.contentEl.querySelector(".git-pr-action.mod-approve") as HTMLButtonElement).click();
     await until(() => bridge.ghCalls.some((call) => call[1] === "review"), "review call");
