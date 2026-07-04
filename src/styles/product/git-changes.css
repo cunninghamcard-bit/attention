@@ -1,0 +1,46 @@
+/* Git change-set browser (@pierre/diffs). */
+.git-changes-view {
+  padding: var(--size-4-2);
+  overflow-y: auto;
+}
+.git-changes-file {
+  margin-bottom: var(--size-4-3);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  overflow: hidden;
+}
+.git-changes-file-header {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-2);
+  padding: var(--size-2-2) var(--size-4-2);
+  background: var(--background-secondary);
+  cursor: pointer;
+  font-size: var(--font-ui-small, 13px);
+}
+.git-changes-file-header:hover {
+  background: var(--background-modifier-hover);
+}
+.git-changes-file-icon { display: flex; color: var(--text-muted); }
+.git-changes-file-icon svg.svg-icon { width: 14px; height: 14px; }
+.git-changes-file-name {
+  font-family: var(--font-monospace);
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.git-changes-file-status {
+  font-size: var(--font-ui-smaller, 11px);
+  padding: 0 var(--size-2-2);
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+}
+.git-changes-file-status.mod-added, .git-changes-file-status.mod-untracked { color: #2f8f5b; }
+.git-changes-file-status.mod-deleted { color: #d64541; }
+.git-changes-message, .git-changes-binary {
+  color: var(--text-muted);
+  padding: var(--size-4-2);
+  text-align: center;
+}

@@ -76,6 +76,7 @@
     "@lezer/common": "^1.5.2",
     "@lezer/highlight": "^1.2.3",
     "@lezer/lr": "^1.4.10",
+    "@pierre/diffs": "^1.2.12",
     "ghostty-web": "^0.4.0",
     "moment": "^2.30.1",
     "node-pty": "^1.1.0",

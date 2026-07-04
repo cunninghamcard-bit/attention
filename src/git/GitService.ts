@@ -1,5 +1,4 @@
 import type { App } from "../app/App";
-import type { TFile } from "../vault/TAbstractFile";
 
 /**
  * `app.git` — read-side git access for the vault working tree, backed by the
@@ -56,8 +55,8 @@ export class GitService {
    * The file's content at HEAD; null when git is unavailable, the vault is
    * not a repository, or the file is untracked/new at HEAD.
    */
-  async readHeadFile(file: TFile): Promise<string | null> {
-    const result = await this.exec(["show", `HEAD:${file.path}`]);
+  async readHeadFile(path: string): Promise<string | null> {
+    const result = await this.exec(["show", `HEAD:${path}`]);
     if (!result || result.code !== 0) return null;
     return result.stdout;
   }

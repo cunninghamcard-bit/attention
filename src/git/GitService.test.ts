@@ -31,13 +31,13 @@ describe("GitService", () => {
   it("reads the HEAD version of a tracked file", async () => {
     const app = await appWithGit({ "agent.ts": "old content\n" });
     const file = await app.vault.create("agent.ts", "new content\n");
-    await expect(app.git.readHeadFile(file)).resolves.toBe("old content\n");
+    await expect(app.git.readHeadFile(file.path)).resolves.toBe("old content\n");
   });
 
   it("returns null for untracked files and parses status", async () => {
     const app = await appWithGit({});
     const file = await app.vault.create("new.ts", "brand new\n");
-    await expect(app.git.readHeadFile(file)).resolves.toBeNull();
+    await expect(app.git.readHeadFile(file.path)).resolves.toBeNull();
     await expect(app.git.status()).resolves.toEqual([
       { status: " M", path: "agent.ts" },
       { status: "??", path: "new.ts" },

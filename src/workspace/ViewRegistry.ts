@@ -4,6 +4,7 @@ import type { View } from "../views/View";
 import { MarkdownView } from "../views/MarkdownView";
 import { CODE_EXTENSIONS, CodeFileView } from "../views/CodeFileView";
 import { DiffView } from "../views/DiffView";
+import { GitChangesView } from "../builtin/GitChangesView";
 import {
   AUDIO_EXTENSIONS,
   AudioView,
@@ -31,6 +32,7 @@ export class ViewRegistry extends Events {
     this.registerViewWithExtensions(PDF_EXTENSIONS, PdfView.VIEW_TYPE, (leaf) => new PdfView(leaf));
     this.registerViewWithExtensions(CODE_EXTENSIONS, CodeFileView.VIEW_TYPE, (leaf) => new CodeFileView(leaf));
     this.registerView(DiffView.DIFF_VIEW_TYPE, (leaf) => new DiffView(leaf));
+    this.registerView(GitChangesView.VIEW_TYPE, (leaf) => new GitChangesView(leaf));
     this.registerView(ReleaseNotesView.VIEW_TYPE, (leaf) => new ReleaseNotesView(leaf));
   }
 

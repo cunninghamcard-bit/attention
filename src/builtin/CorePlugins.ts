@@ -88,6 +88,18 @@ export const corePlugins: InternalPluginDefinition[] = [
         addWorkspaceFilesMenuItems(plugin.app, menu, files);
       }));
       plugin.registerGlobalCommand({
+        id: "git:open-changes",
+        name: "Open git changes",
+        icon: "lucide-file-diff",
+        checkCallback: (checking) => {
+          if (!plugin.app.git.isAvailable()) return false;
+          if (!checking) {
+            void plugin.app.workspace.getLeaf("tab").setViewState({ type: "git-changes", active: true });
+          }
+          return true;
+        },
+      });
+      plugin.registerGlobalCommand({
         id: "git:diff-active-file",
         name: "Open git diff for active file",
         icon: "lucide-file-diff",

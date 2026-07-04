@@ -101,6 +101,6 @@ export async function openFileCompare(app: App, file: TFile, against: TFile): Pr
  */
 export async function openGitDiff(app: App, file: TFile): Promise<WorkspaceLeaf | null> {
   if (!app.git.isAvailable() || !(await app.git.isRepository())) return null;
-  const original = await app.git.readHeadFile(file);
+  const original = await app.git.readHeadFile(file.path);
   return openFileDiff(app, file, original ?? "");
 }
