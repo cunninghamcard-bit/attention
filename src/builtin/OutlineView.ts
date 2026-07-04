@@ -24,13 +24,15 @@ export class OutlineView extends ItemView {
   }
 
   updateFromActiveFile(): void {
-    const activeView = this.app.workspace.activeLeaf?.view;
-    if (activeView instanceof CodeFileView) {
-      this.codeView = activeView;
-      this.file = activeView.file;
+    // getActiveFileView resolves "the most recently active file leaf", so
+    // focusing the outline (or any sidebar pane) does not blank the outline.
+    const fileView = this.app.workspace.getActiveFileView();
+    if (fileView instanceof CodeFileView) {
+      this.codeView = fileView;
+      this.file = fileView.file;
     } else {
       this.codeView = null;
-      this.file = this.app.workspace.activeEditor?.file ?? (activeView instanceof MarkdownView ? activeView.file : null);
+      this.file = fileView instanceof MarkdownView ? fileView.file : null;
     }
     this.render();
   }
