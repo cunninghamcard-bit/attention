@@ -113,6 +113,7 @@ async function runScript(agentId: string, runId: string, prompt: string, emit: E
 export const mockEngine: Engine = {
   name: "mock",
   listModels: () => ["deepseek-chat", "claude-sonnet-4-5", "gpt-5-codex", "kimi-k2"],
+  listEfforts: () => ["low", "medium", "high"],
   run: ({ agentId, runId, prompt, emit, profile }) => runScript(agentId, runId, prompt, emit, profile),
   stop: () => {},
 };

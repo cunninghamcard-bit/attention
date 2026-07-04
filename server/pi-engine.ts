@@ -55,6 +55,9 @@ interface SessionEntry {
   counter: number;
   bridged?: boolean;
   contextWindow?: number;
+  // What the session currently runs with, so profile changes apply once.
+  modelId?: string;
+  effort?: string;
   // Accumulated by the event bridge across the run's assistant messages,
   // drained by runPiEngine into run.closed.
   usage: RunUsage;
@@ -76,7 +79,7 @@ async function ensureSession(agentId: string): Promise<AgentSession> {
   // agent with bash/edit/write, so keep it out of the repo. PI_CWD overrides.
   const cwd = process.env.PI_CWD ?? mkdtempSync(join(tmpdir(), `agent-${agentId}-`));
   const { session } = await createAgentSession({ model, modelRegistry, authStorage, cwd });
-  sessions.set(agentId, { session, counter: 0, usage: zeroUsage(), contextWindow: (model as { contextWindow?: number }).contextWindow });
+  sessions.set(agentId, { session, counter: 0, usage: zeroUsage(), contextWindow: (model as { contextWindow?: number }).contextWindow, modelId: MODEL_ID });
   return session;
 }
 
@@ -191,7 +194,29 @@ function bridgeEvents(agentId: string, session: AgentSession, emit: CanonicalEmi
   });
 }
 
-async function runPiEngine(agentId: string, runId: string, text: string, emit: CanonicalEmit): Promise<void> {
+const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"];
+
+// The agent's profile applies at run start: pi switches models and thinking
+// levels live, so the composer chip is real, not decorative.
+async function applyProfile(entry: SessionEntry, profile?: { model?: string; effort?: string }): Promise<void> {
+  if (!profile) return;
+  if (profile.model && profile.model !== entry.modelId) {
+    const { modelRegistry } = getRegistry();
+    const model = modelRegistry.getAll().find((candidate) => candidate.id === profile.model);
+    if (model) {
+      await entry.session.setModel(model);
+      entry.modelId = profile.model;
+      entry.contextWindow = (model as { contextWindow?: number }).contextWindow;
+    }
+  }
+  const effort = profile.effort ?? "off";
+  if (effort !== (entry.effort ?? "off") && THINKING_LEVELS.includes(effort)) {
+    entry.session.setThinkingLevel(effort as never);
+    entry.effort = profile.effort;
+  }
+}
+
+async function runPiEngine(agentId: string, runId: string, text: string, emit: CanonicalEmit, profile?: { model?: string; effort?: string }): Promise<void> {
   const session = await ensureSession(agentId);
   // Subscribe once per session (first run); pi keeps the session alive.
   const entry = sessions.get(agentId)!;
@@ -199,6 +224,7 @@ async function runPiEngine(agentId: string, runId: string, text: string, emit: C
     bridgeEvents(agentId, session, emit);
     entry.bridged = true;
   }
+  await applyProfile(entry, profile);
   entry.usage = zeroUsage();
   try {
     await session.prompt(text);
@@ -210,7 +236,10 @@ async function runPiEngine(agentId: string, runId: string, text: string, emit: C
 
 export const piEngine: Engine = {
   name: "pi",
-  listModels: () => [MODEL_ID],
-  run: ({ agentId, runId, prompt, emit }) => runPiEngine(agentId, runId, prompt, emit),
+  // Only the configured provider's models are runnable (others have no
+  // auth), so only they are listed.
+  listModels: () => [...new Set(getRegistry().modelRegistry.getAll().filter((model) => model.provider === PROVIDER).map((model) => model.id))],
+  listEfforts: () => THINKING_LEVELS,
+  run: ({ agentId, runId, prompt, emit, profile }) => runPiEngine(agentId, runId, prompt, emit, profile),
   stop: (agentId) => sessions.get(agentId)?.session.abort(),
 };

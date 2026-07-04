@@ -65,11 +65,14 @@ export class AgentTransport {
     return Array.isArray(payload?.agents) ? payload.agents : [];
   }
 
-  async listModels(): Promise<string[]> {
+  async listModels(): Promise<{ models: string[]; efforts: string[] }> {
     const response = await fetch(`${this.baseUrl}/models`).catch(() => null);
-    if (!response?.ok) return [];
-    const payload = (await response.json().catch(() => null)) as { models?: string[] } | null;
-    return Array.isArray(payload?.models) ? payload.models : [];
+    if (!response?.ok) return { models: [], efforts: [] };
+    const payload = (await response.json().catch(() => null)) as { models?: string[]; efforts?: string[] } | null;
+    return {
+      models: Array.isArray(payload?.models) ? payload.models : [],
+      efforts: Array.isArray(payload?.efforts) ? payload.efforts : [],
+    };
   }
 
   async getAgent(agentId: string): Promise<AgentSummary | null> {

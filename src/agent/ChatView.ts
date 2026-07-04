@@ -181,7 +181,8 @@ export class ChatView extends StreamView {
   // effort beneath them. The full profile (params, everything) lives in
   // AgentPropertiesView; this menu is the quick switch.
   private async openModelMenu(event: MouseEvent): Promise<void> {
-    const models = await this.profileTransport.listModels();
+    const { models, efforts } = await this.profileTransport.listModels();
+    const effortLevels = efforts.length > 0 ? efforts : ["low", "medium", "high"];
     const menu = new Menu(this.containerEl.ownerDocument);
     const pick = (patch: Partial<AgentProfile>) => {
       Object.assign(this.profile, patch);
@@ -199,7 +200,7 @@ export class ChatView extends StreamView {
         .onClick(() => pick({ model })));
     }
     menu.addSeparator();
-    for (const effort of ["", "low", "medium", "high"]) {
+    for (const effort of ["", ...effortLevels]) {
       menu.addItem((item) => item
         .setTitle(effort || STRINGS.properties.effortDefault)
         .setChecked((this.profile.effort ?? "") === effort)

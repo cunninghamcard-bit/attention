@@ -24,9 +24,10 @@ export interface EngineRunInput {
 
 export interface Engine {
   readonly name: string;
-  // Models this engine can run, for the composer's picker; omit when the
-  // engine has no useful answer.
+  // Models this engine can run and the reasoning-effort levels it honors,
+  // for the composer's picker; omit when the engine has no useful answer.
   listModels?(): string[];
+  listEfforts?(): string[];
   // Emits events for the run, including its own run.closed (engines know
   // their real completion status; the bridge does not).
   run(input: EngineRunInput): Promise<void>;

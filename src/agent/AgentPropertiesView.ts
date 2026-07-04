@@ -25,6 +25,7 @@ export class AgentPropertiesView extends ItemView {
   // The agent's frontmatter, fetched from the bridge; edits PATCH back the
   // full profile (params replace wholesale, so removals stick).
   private profile: AgentProfile = {};
+  private efforts: string[] = [];
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
@@ -73,6 +74,12 @@ export class AgentPropertiesView extends ItemView {
     void this.transport.getAgent(agentId).then((summary) => {
       if (summary?.profile) {
         this.profile = summary.profile;
+        this.render();
+      }
+    });
+    void this.transport.listModels().then(({ efforts }) => {
+      if (efforts.length > 0) {
+        this.efforts = efforts;
         this.render();
       }
     });
@@ -126,7 +133,7 @@ export class AgentPropertiesView extends ItemView {
     effortRow.dataset.prop = "effort";
     createDiv({ cls: "agent-prop-label", text: STRINGS.properties.effort, parent: effortRow });
     const effortSelect = createEl("select", { cls: "agent-prop-input", parent: effortRow });
-    for (const level of ["", "low", "medium", "high"]) {
+    for (const level of ["", ...(this.efforts.length > 0 ? this.efforts : ["low", "medium", "high"])]) {
       const option = createEl("option", { parent: effortSelect, text: level || STRINGS.properties.effortDefault });
       option.value = level;
     }

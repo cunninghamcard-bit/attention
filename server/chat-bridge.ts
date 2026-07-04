@@ -132,7 +132,7 @@ Bun.serve({
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
 
     if (url.pathname === "/models" && request.method === "GET") {
-      return new Response(JSON.stringify({ models: engine.listModels?.() ?? [] }), {
+      return new Response(JSON.stringify({ models: engine.listModels?.() ?? [], efforts: engine.listEfforts?.() ?? [] }), {
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
       });
     }
