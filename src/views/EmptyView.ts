@@ -24,16 +24,29 @@ export class EmptyView extends ItemView {
     return "New tab";
   }
 
+  // The real new-tab actions (app.js tD.onOpen): command-backed entries with
+  // the command's hotkey suffixed, Go to file only when the vault has files,
+  // Open web viewer only when that plugin is enabled, then a mod-close Close.
   async onOpen(): Promise<void> {
-    this.renderEmptyState({
-      title: "New tab",
-      description: "This empty pane is the default landing state for a WorkspaceLeaf.",
-      actions: [
-        { label: "Create new note", run: () => void this.app.commands.executeCommandById("file:new-note") },
-        { label: "Open command palette", run: () => void this.app.commands.executeCommandById("command-palette:open") },
-        { label: "Close this pane", run: () => this.leaf.detach(), danger: true },
-      ],
-    });
+    const command = (id: string): EmptyViewAction["run"] => () => void this.app.commands.executeCommandById(id);
+    const withHotkey = (label: string, id: string): string => {
+      const hotkey = this.app.hotkeys.printHotkeyForCommand(id);
+      return hotkey ? `${label} (${hotkey})` : label;
+    };
+    const actions: EmptyViewAction[] = [];
+    // The workspace leads with its own identity: terminal first, notes after.
+    if (this.app.internalPlugins.getEnabledPluginById("terminal")) {
+      actions.push({ label: withHotkey("Open terminal", "terminal:open"), run: command("terminal:open") });
+    }
+    if (!this.app.vault.isEmpty()) {
+      actions.push({ label: withHotkey("Go to file", "switcher:open"), run: command("switcher:open") });
+    }
+    actions.push({ label: withHotkey("Create new note", "file-explorer:new-file"), run: command("file-explorer:new-file") });
+    if (this.app.internalPlugins.getEnabledPluginById("webviewer")) {
+      actions.push({ label: withHotkey("Open web viewer", "webviewer:open"), run: command("webviewer:open") });
+    }
+    actions.push({ label: "Close", run: () => this.leaf.detach(), danger: true });
+    this.renderEmptyState({ title: "", actions });
   }
 
   protected renderEmptyState(options: EmptyViewStateOptions): void {
@@ -46,7 +59,7 @@ export class EmptyView extends ItemView {
 
     const title = doc.createElement("div");
     title.className = "empty-state-title";
-    title.textContent = options.title;
+    if (options.title) title.textContent = options.title;
     container.appendChild(title);
 
     if (options.description) {
@@ -59,11 +72,13 @@ export class EmptyView extends ItemView {
     const actionList = doc.createElement("div");
     actionList.className = "empty-state-action-list";
     for (const action of options.actions) {
-      const button = doc.createElement("button");
-      button.className = action.danger ? "empty-state-action tappable mod-close" : "empty-state-action tappable";
-      button.textContent = action.label;
-      button.addEventListener("click", () => void action.run());
-      actionList.appendChild(button);
+      // Real actions are divs (app.js tD.onOpen) — app.css styles them as the
+      // vertical accent-colored link list; a <button> misses all of it.
+      const actionEl = doc.createElement("div");
+      actionEl.className = action.danger ? "empty-state-action tappable mod-close" : "empty-state-action tappable";
+      actionEl.textContent = action.label;
+      actionEl.addEventListener("click", () => void action.run());
+      actionList.appendChild(actionEl);
     }
 
     container.appendChild(actionList);

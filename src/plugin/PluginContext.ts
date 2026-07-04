@@ -7,13 +7,9 @@ export interface PluginContext {
   diagnostics: App["diagnostics"];
   shell: App["shell"];
   desktopMain: App["desktopMain"];
-  accounts: App["accounts"];
-  licenses: App["licenses"];
   vaults: App["vaults"];
-  remoteSync: App["remoteSync"];
   revisions: App["revisions"];
   fileRecovery: App["fileRecovery"];
-  publish: App["publish"];
   themeMarketplace: App["themeMarketplace"];
   themeInstaller: App["themeInstaller"];
   apiDocs: App["apiDocs"];
@@ -47,7 +43,6 @@ export interface PluginContext {
   pluginInstaller: App["pluginInstaller"];
   updates: App["updates"];
   fileWatcher: App["fileWatcher"];
-  sync: App["sync"];
   settingSections: App["settingSections"];
   dragManager: App["dragManager"];
   uriRouter: App["uriRouter"];
@@ -67,13 +62,9 @@ export function createPluginContext(app: App): PluginContext {
     diagnostics: app.diagnostics,
     shell: app.shell,
     desktopMain: app.desktopMain,
-    accounts: app.accounts,
-    licenses: app.licenses,
     vaults: app.vaults,
-    remoteSync: app.remoteSync,
     revisions: app.revisions,
     fileRecovery: app.fileRecovery,
-    publish: app.publish,
     themeMarketplace: app.themeMarketplace,
     themeInstaller: app.themeInstaller,
     apiDocs: app.apiDocs,
@@ -107,7 +98,6 @@ export function createPluginContext(app: App): PluginContext {
     pluginInstaller: app.pluginInstaller,
     updates: app.updates,
     fileWatcher: app.fileWatcher,
-    sync: app.sync,
     settingSections: app.settingSections,
     dragManager: app.dragManager,
     uriRouter: app.uriRouter,

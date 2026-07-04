@@ -1,12 +1,6 @@
 import type { App } from "../app/App";
 import { finishRenderMath, loadMermaid, renderMath } from "../api/ApiUtils";
-import { parseBasesConfig, serializeBasesConfig } from "../bases/BasesConfigParser";
-import { renderBases } from "../bases/BasesView";
 import { MarkdownRenderer, type MarkdownCodeBlockProcessor, type MarkdownPostProcessorContext } from "./MarkdownRenderer";
-
-type InternalMarkdownCodeBlockContext = MarkdownPostProcessorContext & {
-  replaceCode?(source: string): Promise<void>;
-};
 
 export function registerMarkdownDefaultProcessors(app: App): void {
   registerCodeBlockPostProcessor("mermaid", async (source, el) => {
@@ -33,19 +27,6 @@ export function registerMarkdownDefaultProcessors(app: App): void {
   registerCodeBlockPostProcessor("query", async (source, el) => {
     el.classList.add("block-language-query");
     el.textContent = `Search/query block placeholder:\n${source}`;
-  });
-
-  registerCodeBlockPostProcessor("base", async (source, el, context) => {
-    el.classList.add("block-language-base", "bases-embed");
-    el.replaceChildren();
-    try {
-      const config = parseBasesConfig(source, context.sourcePath);
-      const replaceCode = (context as InternalMarkdownCodeBlockContext).replaceCode;
-      renderBases(app, el, config, context.sourcePath, undefined, replaceCode ? (next) => replaceCode(serializeBasesConfig(next)) : undefined);
-    } catch (error) {
-      el.classList.add("bases-formula-error");
-      el.textContent = error instanceof Error ? error.message : String(error);
-    }
   });
 
   MarkdownRenderer.registerPostProcessor((root, context) => {

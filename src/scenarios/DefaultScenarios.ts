@@ -23,15 +23,4 @@ export const defaultScenarios: RuntimeScenario[] = [
       { id: "cleanup", title: "Unload cleanup", description: "Plugin unregisters view and detaches leaves of that type.", modules: ["src/plugin/Plugin.ts"] },
     ],
   },
-  {
-    id: "bases-query",
-    title: "Bases query",
-    goal: "Trace frontmatter to Bases table.",
-    steps: [
-      { id: "metadata", title: "MetadataCache", description: "Frontmatter is parsed into metadata cache.", modules: ["src/metadata/MetadataCache.ts"] },
-      { id: "properties", title: "PropertyStore", description: "Frontmatter becomes file properties.", modules: ["src/properties/PropertyStore.ts"] },
-      { id: "query", title: "QueryEngine", description: "Filters and sorts files by properties.", modules: ["src/query/QueryEngine.ts"] },
-      { id: "view", title: "BasesView", description: "Query result becomes a table view.", modules: ["src/bases/BasesView.ts"] },
-    ],
-  },
 ];

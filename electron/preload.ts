@@ -1,5 +1,6 @@
 import { ipcRenderer, shell, webUtils } from "electron";
 import { getCurrentWindow } from "@electron/remote";
+import { installTerminalBridge } from "./terminal-bridge";
 
 /**
  * Preload bridge — installs the exact globals the reconstructed renderer reads.
@@ -42,3 +43,4 @@ export function installElectronBridge(target: typeof globalThis): void {
 }
 
 installElectronBridge(globalThis);
+installTerminalBridge(globalThis);

@@ -248,19 +248,17 @@ describe("WorkspaceLeaf tab header menu", () => {
     const items = linkedViewItems(app, file, "tab-header", sourceLeaf);
     const titles = menuItemTitles(items);
 
-    expect(titles).toHaveLength(5);
+    expect(titles).toHaveLength(4);
     expect(titles).toEqual(expect.arrayContaining([
       "Open local graph",
       "Open backlinks",
       "Open outgoing links",
       "Open outline",
-      "Open file properties",
     ]));
     expect(findMenuItem(items, "Open local graph").iconEl.querySelector("svg.lucide-git-fork")).not.toBeNull();
     expect(findMenuItem(items, "Open backlinks").iconEl.querySelector("svg.links-coming-in")).not.toBeNull();
     expect(findMenuItem(items, "Open outgoing links").iconEl.querySelector("svg.links-going-out")).not.toBeNull();
     expect(findMenuItem(items, "Open outline").iconEl.querySelector("svg.lucide-list")).not.toBeNull();
-    expect(findMenuItem(items, "Open file properties").iconEl.querySelector("svg.lucide-info")).not.toBeNull();
 
     const fileMenu = new Menu(document);
     app.workspace.trigger("file-menu", fileMenu, file, "tab-header", sourceLeaf);

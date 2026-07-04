@@ -51,10 +51,10 @@ export const completenessMatrix: CompletenessItem[] = [
     notes: "Files, metadata cache, scoped links/tags and search are represented; full wiki-link resolver and TagIndex parity are excluded.",
   },
   {
-    area: "Properties, query and Bases",
+    area: "Properties and query",
     status: "covered",
-    evidence: ["src/properties", "src/query", "src/bases"],
-    notes: "Frontmatter-to-query-to-table chain is represented.",
+    evidence: ["src/properties", "src/query"],
+    notes: "Frontmatter parsing, property types and the query engine are represented; the Bases table product and the sidebar properties panel were removed in the agent-workspace refit.",
   },
   {
     area: "Electron main process",
@@ -70,9 +70,9 @@ export const completenessMatrix: CompletenessItem[] = [
   },
   {
     area: "Sync, publish, account",
-    status: "sketched",
-    evidence: ["src/sync", "src/publish", "src/account", "src/builtin/CorePlugins.ts"],
-    notes: "Sync and Publish are fully wired core plugins (views, modals, commands, settings) with real diff/hash logic but no real network transfer; Account/License remain boundary-only facades.",
+    status: "not-modeled",
+    evidence: ["src/builtin/CorePlugins.ts"],
+    notes: "Removed in the agent-workspace refit: Sync/Publish/Account are note-product services with no role in an agent workspace.",
   },
   {
     area: "Diagnostics and devtools",

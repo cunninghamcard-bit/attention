@@ -24,7 +24,6 @@ export interface AppearancePublicApi {
 }
 
 export interface BasesPublicApi {
-  bases: App["bases"];
   query: App["query"];
   metadataTypeManager: App["metadataTypeManager"];
   properties: App["properties"];
@@ -69,7 +68,6 @@ export function createPublicApi(app: App): ObsidianPublicApi {
       appearance: app.appearance,
     },
     bases: {
-      bases: app.bases,
       query: app.query,
       metadataTypeManager: app.metadataTypeManager,
       properties: app.properties,

@@ -1,0 +1,75 @@
+/* ArkLoop style system — single entry point.
+ *
+ * Cascade layers, in import order:
+ *   tokens/     design tokens (colors, spacing, typography)
+ *   base/       reset, RTL, platform
+ *   vendor/     third-party (pdf.js)
+ *   components/ generic UI components
+ *   workspace/  app shell (ribbon, docks, tabs, titlebar, status bar)
+ *   editor/     markdown + code editing surfaces
+ *   features/   feature panes (search, explorer, outline, ...)
+ *   product/    ArkLoop additions & overrides — always imported last
+ *
+ * The import sequence preserves the legacy cascade exactly (see
+ * docs/style-system.md); reordering imports changes which rules win.
+ * StyleSystem.test.ts guards the order, coverage and token contract.
+ */
+@import "./vendor/pdfjs-messagebar-dialog.css";
+@import "./vendor/pdfjs-viewer.css";
+@import "./tokens/tokens.css";
+@import "./base/reset.css";
+@import "./workspace/app-container.css";
+@import "./editor/cm-cursor.css";
+@import "./editor/source-view.css";
+@import "./editor/cm6.css";
+@import "./workspace/empty-state.css";
+@import "./workspace/titlebar-frameless.css";
+@import "./workspace/view-header.css";
+@import "./editor/inline-title.css";
+@import "./editor/reading-view.css";
+@import "./workspace/ribbon-sidedock.css";
+@import "./base/rtl.css";
+@import "./features/settings-item.css";
+@import "./features/community-plugins.css";
+@import "./workspace/status-bar.css";
+@import "./workspace/titlebar-vault-profile.css";
+@import "./workspace/splits-tabs.css";
+@import "./components/button-card.css";
+@import "./components/document-search.css";
+@import "./components/dropdown.css";
+@import "./components/collapse-indicator.css";
+@import "./components/clickable-icon.css";
+@import "./components/text-input.css";
+@import "./components/notice.css";
+@import "./components/menu.css";
+@import "./components/modal-dialog.css";
+@import "./components/popover-prompt-scrollbar.css";
+@import "./components/suggestion-tabs.css";
+@import "./components/checkbox.css";
+@import "./components/tooltip.css";
+@import "./components/tree-item.css";
+@import "./features/pdf-view.css";
+@import "./editor/callout.css";
+@import "./editor/code.css";
+@import "./editor/syntax-highlight.css";
+@import "./editor/embeds.css";
+@import "./editor/footnotes.css";
+@import "./editor/properties-metadata.css";
+@import "./editor/headings-hr.css";
+@import "./editor/lists.css";
+@import "./editor/tables.css";
+@import "./editor/links-tasks.css";
+@import "./editor/rendered-content.css";
+@import "./features/bookmarks-nav.css";
+@import "./features/file-recovery.css";
+@import "./features/graph-outline.css";
+@import "./features/search.css";
+@import "./features/tag-pane-canvas.css";
+@import "./features/webviewer-workspaces.css";
+@import "./workspace/starter-splash.css";
+@import "./base/platform-mobile.css";
+@import "./product/code-view.css";
+@import "./product/terminal.css";
+@import "./product/explorer.css";
+@import "./product/outline.css";
+@import "./product/theme-market.css";

@@ -1,4 +1,4 @@
-import "./styles/app.css";
+import "./styles/index.css";
 import { bootstrap } from "./bootstrap";
 
 void bootstrap();

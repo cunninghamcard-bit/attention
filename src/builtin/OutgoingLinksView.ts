@@ -8,6 +8,7 @@ export class OutgoingLinksView extends ItemView {
 
   getViewType(): string { return "outgoing-link"; }
   getDisplayText(): string { return "Outgoing links"; }
+  getIcon(): string { return "links-going-out"; }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("outgoing-link-pane");

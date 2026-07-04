@@ -33,7 +33,23 @@ export class ThemeManager {
 
   applyConfiguredTheme(): void {
     const configuredTheme = this.app.vault.getConfig<string>("cssTheme") ?? "";
-    if (configuredTheme && this.themes.has(configuredTheme)) this.applyTheme(configuredTheme);
+    if (!configuredTheme) return;
+    if (this.themes.has(configuredTheme)) {
+      this.applyTheme(configuredTheme);
+      return;
+    }
+    // Vault themes (.obsidian/themes/<id>/theme.css) live on disk, not in the
+    // registry — Obsidian-installed themes work by sharing the vault.
+    void this.applyThemeFromVault(configuredTheme);
+  }
+
+  private async applyThemeFromVault(id: string): Promise<void> {
+    const cssText = await this.app.vault.readText(this.app.customCss.getThemePath(id));
+    // Guard against a theme switch racing the read.
+    if ((this.app.vault.getConfig<string>("cssTheme") ?? "") !== id) return;
+    if (cssText === null) return;
+    this.app.customCss.setThemeCss(cssText, id);
+    this.activeThemeId = id;
   }
 
   private applyTheme(id: string): void {

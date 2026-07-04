@@ -1,0 +1,26 @@
+.code-file-view {
+  padding: 0;
+  height: 100%;
+}
+.code-file-view .cm-editor {
+  height: 100%;
+  background: var(--background-primary);
+}
+.code-file-view .cm-editor.cm-focused {
+  outline: none;
+}
+.code-file-view .cm-scroller {
+  font-family: var(--font-monospace);
+  font-size: var(--code-size);
+  line-height: var(--line-height-normal);
+  color: var(--code-normal);
+}
+.code-file-view .cm-gutters {
+  background: transparent;
+  border-right: none;
+  color: var(--text-faint);
+}
+.code-file-view .cm-activeLineGutter {
+  background: transparent;
+  color: var(--text-muted);
+}

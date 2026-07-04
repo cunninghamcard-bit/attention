@@ -2,25 +2,24 @@ import { App, provideAppAdapter } from "./app/App";
 import { FileSystemAdapter } from "./vault/FileSystemAdapter";
 import type { TFile } from "./vault/TAbstractFile";
 
-const welcomeMarkdown = `# Obsidian Reconstructed
+const welcomeMarkdown = `# Welcome to ArkLoop
 
-This runnable shell follows the reconstructed Obsidian chain:
+This workspace is where your agents live and work — code, terminals, notes and search in one place.
 
-\`\`\`text
-AppDom -> App -> Workspace -> WorkspaceTabs -> WorkspaceLeaf -> MarkdownView
-\`\`\`
+## Get around
 
-## What is running here
+- **Terminal** — press \`Cmd+J\`, click the terminal icon in the ribbon, or right-click any folder and choose *Open terminal here*. Real shell, real PTY.
+- **Code** — open [[agent/server.go|server.go]] or the [[Dockerfile]] straight from the file tree. Syntax highlighting, editing and auto-save included.
+- **Search everything** — \`Cmd+Shift+F\`-style global search covers notes *and* code. Try operators: \`path:agent needle\`, \`ext:go\`, \`line:(hay needle)\`.
+- **Notes** — markdown still works everywhere. Link with [[wiki-links]], tag with #tags, and agents can reference any file the same way.
 
-- The app creates the real reconstructed \`App\` object.
-- The workspace owns splits, tabs, leaves, and views.
-- \`.md\` files resolve through \`ViewRegistry\` into \`MarkdownView\`.
-- Core plugin registration goes through the internal plugin wrapper.
-- Markdown rendering still uses the reconstructed renderer pipeline.
+## Conventions
 
-Open [[Plugin Architecture]] to exercise view navigation, markdown rendering, command registration and plugin seams.
+- \`agent/\` holds an agent's working files — configs, scripts, sources.
+- Extensionless files (Dockerfile, Makefile, dotfiles) open as code.
+- The chat and agent board arrive with the agent domain — this workspace is their home.
 
-#study #obsidian
+#arkloop
 `;
 
 const pluginMarkdown = `# Plugin Architecture
@@ -54,14 +53,55 @@ export async function bootstrap(parent: HTMLElement = document.body): Promise<Ap
 
   const welcome = await ensureMarkdownFile(app, "Welcome.md", welcomeMarkdown);
   await ensureMarkdownFile(app, "Plugin Architecture.md", pluginMarkdown);
+  await seedCodeDemoFiles(app);
   await app.workspace.openFile(welcome, { active: true, state: { mode: "preview" } });
 
-  app.statusBar.registerStatusBarItem().textContent = "Obsidian Reconstructed";
+  app.statusBar.registerStatusBarItem().textContent = "ArkLoop";
   return app;
 }
 
 async function ensureMarkdownFile(app: App, path: string, markdown: string): Promise<TFile> {
   return app.vault.getFileByPath(path) ?? app.vault.create(path, markdown);
+}
+
+// The in-memory demo vault shows the agent-workspace surface: code files
+// open highlighted, extensionless files route to the code view, and global
+// search reaches all of them (try searching "needle").
+async function seedCodeDemoFiles(app: App): Promise<void> {
+  if (!app.vault.getFolderByPath("agent")) await app.vault.createFolder("agent");
+  const goSource = [
+    "package main",
+    "",
+    'import "fmt"',
+    "",
+    "// findNeedle scans the haystack for the needle.",
+    "func findNeedle(haystack []string) int {",
+    "\tfor i, s := range haystack {",
+    '\t\tif s == "needle" {',
+    "\t\t\treturn i",
+    "\t\t}",
+    "\t}",
+    "\treturn -1",
+    "}",
+    "",
+    "func main() {",
+    '\tfmt.Println(findNeedle([]string{"hay", "needle"}))',
+    "}",
+    "",
+  ].join("\n");
+  const dockerfile = [
+    "FROM golang:1.23-alpine AS build",
+    "WORKDIR /app",
+    "COPY . .",
+    "RUN go build -o server ./agent",
+    "",
+    "FROM alpine:3",
+    "COPY --from=build /app/server /usr/local/bin/server",
+    'ENTRYPOINT ["server"]',
+    "",
+  ].join("\n");
+  if (!app.vault.getFileByPath("agent/server.go")) await app.vault.create("agent/server.go", goSource);
+  if (!app.vault.getFileByPath("Dockerfile")) await app.vault.create("Dockerfile", dockerfile);
 }
 
 /**

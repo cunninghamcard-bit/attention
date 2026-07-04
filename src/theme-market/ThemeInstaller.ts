@@ -13,6 +13,11 @@ export class ThemeInstaller {
 
   constructor(readonly app: App) {}
 
+  /**
+   * Persists the theme into the vault (`.obsidian/themes/<name>/`) — the same
+   * layout real Obsidian writes, so themes are shared with it — then registers
+   * it for immediate selection.
+   */
   async install(pkg: ThemePackage): Promise<InstalledThemeRecord> {
     const record: InstalledThemeRecord = {
       id: pkg.manifest.id,
@@ -20,10 +25,17 @@ export class ThemeInstaller {
       installedAt: new Date().toISOString(),
       enabled: false,
     };
+    const folder = `${this.app.customCss.getThemeFolder()}/${pkg.manifest.name}`;
+    await this.app.vault.writeText(`${folder}/theme.css`, pkg.cssText);
+    await this.app.vault.writeJson(`${folder}/manifest.json`, {
+      name: pkg.manifest.name,
+      version: pkg.manifest.version,
+      author: pkg.manifest.author,
+    });
+    await this.app.customCss.readThemes();
     this.installed.set(record.id, record);
-    this.app.customCss.registerCss(`theme:${record.id}`, pkg.cssText);
     if (pkg.manifest.variables) {
-      this.app.themes.registerTheme({ id: pkg.manifest.id, name: pkg.manifest.name, variables: pkg.manifest.variables, author: pkg.manifest.author });
+      this.app.themes.registerTheme({ id: pkg.manifest.id, name: pkg.manifest.name, variables: pkg.manifest.variables, author: pkg.manifest.author, cssText: pkg.cssText });
     }
     this.app.workspace.trigger("theme-installed", record);
     return record;
@@ -34,7 +46,6 @@ export class ThemeInstaller {
     if (!record) return;
     record.enabled = true;
     this.app.themes.setTheme(id);
-    document.body.classList.add(`theme-${id}`);
     this.app.workspace.trigger("theme-enabled", record);
   }
 
@@ -42,7 +53,6 @@ export class ThemeInstaller {
     const record = this.installed.get(id);
     if (!record) return;
     record.enabled = false;
-    document.body.classList.remove(`theme-${id}`);
     this.app.workspace.trigger("theme-disabled", record);
   }
 

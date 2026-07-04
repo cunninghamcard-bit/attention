@@ -1,0 +1,61 @@
+/* VS Code-style file-type icons in the file explorer. */
+.nav-file-icon {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-inline-end: var(--size-2-2);
+  color: var(--text-muted);
+}
+.nav-file-icon svg.svg-icon {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.8px;
+}
+/* Language accents — one hue per ecosystem, readable on light and dark. */
+.nav-file-icon[data-lang="md"] { color: var(--text-muted); }
+.nav-file-icon[data-lang="ts"] { color: #3178c6; }
+.nav-file-icon[data-lang="js"] { color: #d4a72c; }
+.nav-file-icon[data-lang="go"] { color: #00a7c7; }
+.nav-file-icon[data-lang="py"] { color: #3776ab; }
+.nav-file-icon[data-lang="rs"] { color: #c6763c; }
+.nav-file-icon[data-lang="java"] { color: #b07219; }
+.nav-file-icon[data-lang="swift"] { color: #f05138; }
+.nav-file-icon[data-lang="rb"] { color: #cc342d; }
+.nav-file-icon[data-lang="php"] { color: #7a86b8; }
+.nav-file-icon[data-lang="lua"] { color: #000080; }
+.nav-file-icon[data-lang="c"] { color: #6a6fbf; }
+.nav-file-icon[data-lang="cs"] { color: #178600; }
+.nav-file-icon[data-lang="sh"] { color: #4ea44e; }
+.nav-file-icon[data-lang="json"] { color: #c98a1b; }
+.nav-file-icon[data-lang="yaml"] { color: #a074c4; }
+.nav-file-icon[data-lang="html"] { color: #e44d26; }
+.nav-file-icon[data-lang="vue"] { color: #41b883; }
+.nav-file-icon[data-lang="css"] { color: #663399; }
+.nav-file-icon[data-lang="sql"] { color: #d38a3c; }
+.nav-file-icon[data-lang="csv"] { color: #2f8f5b; }
+.nav-file-icon[data-lang="docker"] { color: #2496ed; }
+.nav-file-icon[data-lang="canvas"] { color: var(--interactive-accent); }
+.nav-file-icon[data-lang="pdf"] { color: #d64541; }
+.nav-file-icon[data-lang="image"] { color: #6c9e4f; }
+.nav-file-icon[data-lang="media"] { color: #8a63b8; }
+
+/* Make the extension badge read as a chip instead of faint text. */
+.nav-file-tag {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: 8.5px;
+  font-weight: 600;
+}
+
+.nav-folder-icon {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-inline-end: var(--size-2-2);
+  color: var(--text-muted);
+}
+.nav-folder-icon svg.svg-icon {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.8px;
+}

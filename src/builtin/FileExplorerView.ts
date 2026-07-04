@@ -1,5 +1,6 @@
 import { ItemView } from "../views/ItemView";
 import { setIcon } from "../ui/Icon";
+import { getFileTypeInfo } from "../ui/FileTypeIcon";
 import { setTooltip } from "../ui/Popover";
 import { Menu } from "../ui/Menu";
 import { TAbstractFile, TFile, TFolder } from "../vault/TAbstractFile";
@@ -8,8 +9,28 @@ import { getAttachmentFilesFromDataTransfer, hasDataTransferAttachmentFiles } fr
 import { Platform } from "../platform/Platform";
 import { validateRenameName } from "../vault/FileNameValidation";
 
+type FileSortOrder = "alphabetical" | "alphabeticalReverse" | "byModifiedTime" | "byModifiedTimeReverse" | "byCreatedTime" | "byCreatedTimeReverse";
+
+// Sort menu contract from app.js (HH groups / zH labels).
+const FILE_SORT_GROUPS: FileSortOrder[][] = [
+  ["alphabetical", "alphabeticalReverse"],
+  ["byModifiedTime", "byModifiedTimeReverse"],
+  ["byCreatedTime", "byCreatedTimeReverse"],
+];
+const FILE_SORT_LABELS: Record<FileSortOrder, string> = {
+  alphabetical: "File name (A to Z)",
+  alphabeticalReverse: "File name (Z to A)",
+  byModifiedTime: "Modified time (new to old)",
+  byModifiedTimeReverse: "Modified time (old to new)",
+  byCreatedTime: "Created time (new to old)",
+  byCreatedTimeReverse: "Created time (old to new)",
+};
+
 export class FileExplorerView extends ItemView {
   private collapsedFolders = new Set<string>();
+  private treeContainerEl: HTMLElement | null = null;
+  private collapseAllEl: HTMLElement | null = null;
+  private autoReveal = false;
   private selectedPaths = new Set<string>();
   private focusedPath: string | null = null;
   private treeActivePath: string | null = null;
@@ -25,13 +46,16 @@ export class FileExplorerView extends ItemView {
     this.contentEl.classList.add("nav-files-container");
     this.contentEl.tabIndex = 0;
     this.contentEl.addEventListener("keydown", (event) => this.onTreeKeydown(event));
-    this.installActions();
+    this.installNavHeader();
     this.renderFileTree();
     this.registerEvent(this.app.vault.on("create", () => this.renderFileTree()));
     this.registerEvent(this.app.vault.on("modify", () => this.renderFileTree()));
     this.registerEvent(this.app.vault.on("delete", () => this.renderFileTree()));
     this.registerEvent(this.app.vault.on("rename", () => this.renderFileTree()));
-    this.registerEvent(this.app.workspace.on("file-open", () => this.renderFileTree()));
+    this.registerEvent(this.app.workspace.on("file-open", (file: TFile | null) => {
+      this.renderFileTree();
+      if (this.autoReveal && file) this.revealFile(file);
+    }));
   }
 
   override async setState(state: unknown): Promise<void> {
@@ -44,7 +68,8 @@ export class FileExplorerView extends ItemView {
   }
 
   renderFileTree(): void {
-    this.contentEl.replaceChildren();
+    this.treeContainerEl ??= this.contentEl.appendChild(document.createElement("div"));
+    this.treeContainerEl.replaceChildren();
     const rootEl = document.createElement("div");
     rootEl.className = "nav-files-container node-insert-event";
     rootEl.addEventListener("contextmenu", (event) => {
@@ -52,18 +77,13 @@ export class FileExplorerView extends ItemView {
       this.openFileContextMenu(this.app.vault.root, event);
     });
     this.installRootDrop(rootEl);
-    const headerEl = document.createElement("div");
-    headerEl.className = "nav-header";
-    headerEl.textContent = "Vault";
-    headerEl.addEventListener("contextmenu", (event) => this.openFileContextMenu(this.app.vault.root, event));
-    this.installFolderDrop(headerEl, this.app.vault.root, headerEl);
-    rootEl.appendChild(headerEl);
 
     const rootChildrenEl = document.createElement("div");
     rootChildrenEl.className = "nav-folder-children";
-    for (const child of this.getRootChildren()) this.renderTreeItem(child, rootChildrenEl, 0);
+    for (const child of this.getRootChildren()) this.renderTreeItem(child, rootChildrenEl);
     rootEl.appendChild(rootChildrenEl);
-    this.contentEl.appendChild(rootEl);
+    this.treeContainerEl.appendChild(rootEl);
+    this.updateCollapseAllButton();
   }
 
   revealFile(file: TAbstractFile): void {
@@ -77,38 +97,119 @@ export class FileExplorerView extends ItemView {
     this.contentEl.querySelector<HTMLElement>(`.${itemClass}-title[data-path="${cssEscape(file.path)}"]`)?.scrollIntoView({ block: "nearest" });
   }
 
-  private installActions(): void {
-    this.actionsEl.replaceChildren();
-    this.actionsEl.append(
-      this.createActionButton("New note", "lucide-file-plus", () => void this.createNote(null)),
-      this.createActionButton("New folder", "lucide-folder-plus", () => void this.createFolder(null)),
+  // The real explorer toolbar (app.js ~3218382): nav-header > nav-buttons-
+  // container with New note, New folder, Change sort order, Auto-reveal and
+  // Expand/Collapse all as clickable-icon nav-action-button entries.
+  private installNavHeader(): void {
+    const headerEl = document.createElement("div");
+    headerEl.className = "nav-header";
+    headerEl.addEventListener("contextmenu", (event) => this.openFileContextMenu(this.app.vault.root, event));
+    this.installFolderDrop(headerEl, this.app.vault.root, headerEl);
+    const buttonsEl = document.createElement("div");
+    buttonsEl.className = "nav-buttons-container";
+    headerEl.appendChild(buttonsEl);
+    buttonsEl.append(
+      this.createNavActionButton("lucide-edit", "New note", () => void this.createNote(null)),
+      this.createNavActionButton("lucide-folder-plus", "New folder", () => void this.createFolder(null)),
+      this.createNavActionButton("lucide-sort-asc", "Change sort order", (event) => this.showSortMenu(event)),
     );
+    const autoRevealEl = this.createNavActionButton("lucide-gallery-vertical", "Auto-reveal current file", () => {
+      this.autoReveal = !this.autoReveal;
+      autoRevealEl.classList.toggle("is-active", this.autoReveal);
+    });
+    autoRevealEl.classList.toggle("is-active", this.autoReveal);
+    this.collapseAllEl = this.createNavActionButton("lucide-chevrons-up-down", "Expand all", () => this.toggleCollapseAll());
+    buttonsEl.append(autoRevealEl, this.collapseAllEl);
+    this.contentEl.appendChild(headerEl);
   }
 
-  private renderTreeItem(file: TAbstractFile, parentEl: HTMLElement, depth: number): void {
+  private createNavActionButton(icon: string, title: string, onClick: (event: MouseEvent) => void): HTMLElement {
+    const buttonEl = document.createElement("div");
+    buttonEl.className = "clickable-icon nav-action-button";
+    setIcon(buttonEl, icon);
+    setTooltip(buttonEl, title);
+    buttonEl.addEventListener("click", onClick);
+    return buttonEl;
+  }
+
+  private showSortMenu(event: MouseEvent): void {
+    const menu = new Menu(this.contentEl.ownerDocument);
+    const current = this.getSortOrder();
+    for (const group of FILE_SORT_GROUPS) {
+      for (const order of group) {
+        menu.addItem((item) => item
+          .setTitle(FILE_SORT_LABELS[order])
+          .setChecked(order === current)
+          .onClick(() => {
+            this.app.vault.setConfig("fileSortOrder", order);
+            this.renderFileTree();
+          }));
+      }
+      menu.addSeparator();
+    }
+    menu.showAtMouseEvent(event);
+  }
+
+  private getSortOrder(): FileSortOrder {
+    const order = this.app.vault.getConfig<string>("fileSortOrder");
+    return order && order in FILE_SORT_LABELS ? order as FileSortOrder : "alphabetical";
+  }
+
+  private toggleCollapseAll(): void {
+    const folders = this.allFolderPaths();
+    const anyExpanded = folders.some((path) => !this.collapsedFolders.has(path));
+    if (anyExpanded) this.collapsedFolders = new Set(folders);
+    else this.collapsedFolders.clear();
+    this.renderFileTree();
+  }
+
+  private updateCollapseAllButton(): void {
+    if (!this.collapseAllEl) return;
+    const anyExpanded = this.allFolderPaths().some((path) => !this.collapsedFolders.has(path));
+    setIcon(this.collapseAllEl, anyExpanded ? "lucide-chevrons-down-up" : "lucide-chevrons-up-down");
+    setTooltip(this.collapseAllEl, anyExpanded ? "Collapse all" : "Expand all");
+  }
+
+  private allFolderPaths(): string[] {
+    const paths: string[] = [];
+    const walk = (folder: TFolder): void => {
+      for (const child of folder.children) {
+        if (child instanceof TFolder) {
+          paths.push(child.path);
+          walk(child);
+        }
+      }
+    };
+    walk(this.app.vault.root);
+    return paths;
+  }
+
+  private renderTreeItem(file: TAbstractFile, parentEl: HTMLElement): void {
     if (file instanceof TFolder) {
-      this.renderFolder(file, parentEl, depth);
+      this.renderFolder(file, parentEl);
       return;
     }
-    if (file instanceof TFile) this.renderFile(file, parentEl, depth);
+    if (file instanceof TFile) this.renderFile(file, parentEl);
   }
 
-  private renderFolder(folder: TFolder, parentEl: HTMLElement, depth: number): void {
+  private renderFolder(folder: TFolder, parentEl: HTMLElement): void {
     const folderEl = document.createElement("div");
     folderEl.className = "tree-item nav-folder";
     folderEl.classList.toggle("is-collapsed", this.collapsedFolders.has(folder.path));
     const titleEl = document.createElement("div");
     titleEl.className = "tree-item-self nav-folder-title tappable is-clickable mod-collapsible";
     titleEl.dataset.path = folder.path;
-    titleEl.style.setProperty("--nav-item-padding-left", `${depth * 14 + 8}px`);
     const collapseEl = document.createElement("div");
     collapseEl.className = "tree-item-icon collapse-icon nav-folder-collapse-indicator";
     collapseEl.classList.toggle("is-collapsed", this.collapsedFolders.has(folder.path));
     setIcon(collapseEl, "right-triangle");
+    const folderIconEl = document.createElement("div");
+    folderIconEl.className = "tree-item-icon nav-folder-icon";
+    setIcon(folderIconEl, this.collapsedFolders.has(folder.path) ? "lucide-folder-closed" : "lucide-folder-open");
     const titleContentEl = document.createElement("div");
     titleContentEl.className = "tree-item-inner nav-folder-title-content";
     titleContentEl.textContent = folder.name;
-    titleEl.append(collapseEl, titleContentEl);
+    titleEl.append(collapseEl, folderIconEl, titleContentEl);
     this.applySelectionState(titleEl, folder);
     this.applyRenameState(titleEl, titleContentEl, folder);
     titleEl.addEventListener("click", (event) => this.onFolderClick(folder, event));
@@ -118,34 +219,33 @@ export class FileExplorerView extends ItemView {
     folderEl.appendChild(titleEl);
 
     const childrenEl = document.createElement("div");
-    childrenEl.className = "nav-folder-children";
+    childrenEl.className = "tree-item-children nav-folder-children";
     childrenEl.hidden = this.collapsedFolders.has(folder.path);
-    for (const child of [...folder.children].sort(sortFiles)) this.renderTreeItem(child, childrenEl, depth + 1);
+    for (const child of [...folder.children].sort(this.compareFiles)) this.renderTreeItem(child, childrenEl);
     folderEl.appendChild(childrenEl);
     parentEl.appendChild(folderEl);
   }
 
-  private renderFile(file: TFile, parentEl: HTMLElement, depth: number): void {
+  private renderFile(file: TFile, parentEl: HTMLElement): void {
     const fileEl = document.createElement("div");
     fileEl.className = "tree-item nav-file";
     const titleEl = document.createElement("div");
     titleEl.className = "tree-item-self nav-file-title tappable is-clickable";
     titleEl.dataset.path = file.path;
-    titleEl.style.setProperty("--nav-item-padding-left", `${depth * 14 + 26}px`);
     titleEl.classList.toggle("is-active", this.app.workspace.activeEditor?.file?.path === file.path);
     titleEl.classList.toggle("is-unsupported", !this.app.viewRegistry.getTypeByExtension(file.extension));
     this.applySelectionState(titleEl, file);
+    const iconEl = document.createElement("div");
+    iconEl.className = "tree-item-icon nav-file-icon";
+    const typeInfo = getFileTypeInfo(file.name, file.extension);
+    if (typeInfo.lang) iconEl.dataset.lang = typeInfo.lang;
+    setIcon(iconEl, typeInfo.icon);
+    titleEl.appendChild(iconEl);
     const titleContentEl = document.createElement("div");
     titleContentEl.className = "tree-item-inner nav-file-title-content";
-    titleContentEl.textContent = file.basename;
+    titleContentEl.textContent = file.name;
     titleEl.appendChild(titleContentEl);
     this.applyRenameState(titleEl, titleContentEl, file);
-    if (file.extension && file.extension !== "md") {
-      const tagEl = document.createElement("div");
-      tagEl.className = "nav-file-tag";
-      tagEl.textContent = file.extension;
-      titleEl.appendChild(tagEl);
-    }
     titleEl.addEventListener("click", (event) => this.onFileClick(file, event));
     titleEl.addEventListener("contextmenu", (event) => this.openFileContextMenu(file, event));
     this.app.dragManager.handleDrag(titleEl, (event) => this.createDragSource(event, file, titleEl));
@@ -318,6 +418,9 @@ export class FileExplorerView extends ItemView {
     const isRenaming = this.renamingPath === file.path;
     rowEl.classList.toggle("is-being-renamed", isRenaming);
     if (!isRenaming) return;
+    // Rename edits the basename — getNewPathAfterRename re-appends the
+    // extension, so the displayed "name.ext" must not be the editing text.
+    if (file instanceof TFile) titleEl.textContent = file.basename;
     titleEl.setAttribute("contenteditable", "true");
     titleEl.setAttribute("spellcheck", String(this.app.vault.getConfig("spellcheck") ?? false));
     titleEl.addEventListener("click", (event) => event.stopPropagation());
@@ -454,19 +557,28 @@ export class FileExplorerView extends ItemView {
     return selected.length > 0 ? selected : [target];
   }
 
-  private createActionButton(title: string, icon: string, callback: () => void): HTMLButtonElement {
-    const button = document.createElement("button");
-    button.className = "view-action clickable-icon";
-    button.type = "button";
-    setTooltip(button, title);
-    setIcon(button, icon);
-    button.addEventListener("click", callback);
-    return button;
+  private getRootChildren(): TAbstractFile[] {
+    return this.app.vault.getAllLoadedFiles().filter((file) => file.parentPath === "" && file.path !== "/").sort(this.compareFiles);
   }
 
-  private getRootChildren(): TAbstractFile[] {
-    return this.app.vault.getAllLoadedFiles().filter((file) => file.parentPath === "" && file.path !== "/").sort(sortFiles);
-  }
+  private readonly compareFiles = (a: TAbstractFile, b: TAbstractFile): number => {
+    const folderDelta = Number(b instanceof TFolder) - Number(a instanceof TFolder);
+    if (folderDelta) return folderDelta;
+    const order = this.getSortOrder();
+    const byName = a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true });
+    // Folders always sort by name; the reverse-alphabetical order flips them.
+    if (a instanceof TFolder) return order === "alphabeticalReverse" ? -byName : byName;
+    const statA = (a as TFile).stat;
+    const statB = (b as TFile).stat;
+    switch (order) {
+      case "alphabeticalReverse": return -byName;
+      case "byModifiedTime": return statB.mtime - statA.mtime || byName;
+      case "byModifiedTimeReverse": return statA.mtime - statB.mtime || byName;
+      case "byCreatedTime": return statB.ctime - statA.ctime || byName;
+      case "byCreatedTimeReverse": return statA.ctime - statB.ctime || byName;
+      default: return byName;
+    }
+  };
 
   private installRootDrop(targetEl: HTMLElement): void {
     const preview = (event: DragEvent): void => {
@@ -689,11 +801,6 @@ export class FileExplorerView extends ItemView {
     const el = this.contentEl.querySelector<HTMLElement>(`.nav-folder-title[data-path="${cssEscape(path)}"], .nav-file-title[data-path="${cssEscape(path)}"]`);
     return el;
   }
-}
-
-function sortFiles(a: TAbstractFile, b: TAbstractFile): number {
-  const folderDelta = Number(b instanceof TFolder) - Number(a instanceof TFolder);
-  return folderDelta || a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true });
 }
 
 function cssEscape(value: string): string {

@@ -9,8 +9,8 @@ export const frontendLearningPath: LearningStep[] = [
   {
     id: "dom-css",
     title: "DOM and CSS shell",
-    read: ["src/dom", "src/ui", "src/styles/app.css", "docs/scope-boundary.md"],
-    goal: "Understand how reconstructed DOM/state contracts are shaped to fit the real Obsidian app.css artifact.",
+    read: ["src/dom", "src/ui", "src/styles/index.css", "docs/scope-boundary.md"],
+    goal: "Understand how DOM/state contracts drive the ArkLoop style system (docs/style-system.md), which forked from the Obsidian app.css artifact.",
   },
   {
     id: "workspace",

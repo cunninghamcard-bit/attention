@@ -13,9 +13,8 @@ import type { MarkdownFileInfo } from "../editor/EditorStateField";
 import type { TAbstractFile } from "../vault/TAbstractFile";
 import type { MarkdownView } from "../views/MarkdownView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
-import type { BasesViewRegistration } from "../bases/BasesRegistry";
-import type { BasesFunction, BasesValueType } from "../bases/BasesFunctionRegistry";
 import type { EditorSuggest } from "../suggest/EditorSuggest";
+import type { SearchOperatorDefinition } from "../search/SearchEngine";
 import { debounce } from "../api/ApiUtils";
 import { MarkdownRenderer, type MarkdownCodeBlockProcessor, type MarkdownPostProcessor } from "../markdown/MarkdownRenderer";
 import { MarkdownPreviewRenderer } from "../markdown/MarkdownPreviewRenderer";
@@ -188,18 +187,6 @@ export class Plugin extends Component {
 
   registerCodeMirror(_callback: unknown): void {}
 
-  registerGlobalFunc(func: BasesFunction): void {
-    this.app.functionRegistry.addGlobal(func);
-    const name = func.name;
-    this.register(() => this.app.functionRegistry.removeGlobal(name));
-  }
-
-  registerInstanceFunc(type: BasesValueType, func: BasesFunction): void {
-    this.app.functionRegistry.addForType(type, func);
-    const name = func.name;
-    this.register(() => this.app.functionRegistry.removeForType(type, name));
-  }
-
   registerEditorSuggest(suggest: EditorSuggest<unknown>): void {
     this.app.workspace.editorSuggest.addSuggest(suggest);
     this.register(() => this.app.workspace.editorSuggest.removeSuggest(suggest));
@@ -210,15 +197,10 @@ export class Plugin extends Component {
     this.register(() => this.app.unregisterCliHandler(command, handler));
   }
 
-  registerBasesView(viewId: string, registration: BasesViewRegistration): boolean {
-    const bases = this.app.internalPlugins.getEnabledPluginById<{
-      registerView(viewId: string, registration: BasesViewRegistration): void;
-      deregisterView(viewId: string): void;
-    }>("bases");
-    if (!bases) return false;
-    bases.registerView(viewId, registration);
-    this.register(() => bases.deregisterView(viewId));
-    return true;
+  /** Adds a search operator (shown in the search-options dropdown) with Obsidian cleanup semantics. */
+  registerSearchOperator(definition: SearchOperatorDefinition): void {
+    this.app.search.registerOperator(definition);
+    this.register(() => this.app.search.unregisterOperator(definition.name));
   }
 
   async loadCSS(): Promise<void> {

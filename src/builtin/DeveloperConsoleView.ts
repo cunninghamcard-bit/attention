@@ -3,6 +3,7 @@ import { ItemView } from "../views/ItemView";
 export class DeveloperConsoleView extends ItemView {
   getViewType(): string { return "developer-console"; }
   getDisplayText(): string { return "Developer console"; }
+  getIcon(): string { return "lucide-code"; }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("developer-console-view");

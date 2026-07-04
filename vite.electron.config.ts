@@ -33,6 +33,7 @@ export default defineConfig({
     rollupOptions: {
       external: (source) =>
         source === "electron" ||
+        source === "node-pty" ||
         source.startsWith("@electron/remote") ||
         nodeBuiltins.has(source),
     },
