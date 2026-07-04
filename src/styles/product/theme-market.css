@@ -1,0 +1,34 @@
+/* Community theme browser modal. */
+.theme-market-search {
+  width: 100%;
+  margin-bottom: var(--size-4-2);
+}
+.theme-market-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.theme-market-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-4-2);
+  padding: var(--size-2-3) var(--size-2-2);
+  border-radius: var(--radius-s);
+}
+.theme-market-item:hover {
+  background-color: var(--background-modifier-hover);
+}
+.theme-market-item-name {
+  font-weight: var(--font-semibold, 600);
+}
+.theme-market-item-meta {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small, 0.9em);
+}
+.theme-market-message {
+  color: var(--text-muted);
+  padding: var(--size-4-2);
+  text-align: center;
+}

@@ -2,6 +2,7 @@ import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import { Setting, SettingGroup } from "../ui/Setting";
 import type { BaseTheme } from "../theme/AppearanceManager";
+import { ThemeMarketplaceModal } from "./ThemeMarketplaceModal";
 import { setIcon } from "../ui/Icon";
 
 export class AppearanceSettingTab implements SettingTab {
@@ -55,6 +56,12 @@ export class AppearanceSettingTab implements SettingTab {
         if (active) dropdown.setValue(active.id);
         dropdown.onChange((value) => this.app.themes.setTheme(value));
       });
+    new Setting(themeGroup.itemsEl)
+      .setName("Community themes")
+      .setDesc("Browse and install themes from the official catalog.")
+      .addButton((button) => button.setButtonText("Browse").onClick(() => {
+        new ThemeMarketplaceModal(this.app).open();
+      }));
 
     const snippetsGroup = new SettingGroup(this.containerEl).setHeading("CSS snippets");
     const snippets = this.app.cssSnippets.listSnippets();
