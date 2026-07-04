@@ -36,6 +36,7 @@ import { createWebViewerPluginDefinition } from "./WebViewerPlugin";
 import { createTerminalPluginDefinition } from "./TerminalPlugin";
 import { openFileCompare, openGitDiff } from "../views/DiffView";
 import { openFileHistory } from "./GitHistoryView";
+import { openPrList } from "./GitPrViews";
 import { createBookmarksPluginDefinition } from "./Bookmarks";
 import { createSlidesPluginDefinition } from "./Slides";
 import { createAudioRecorderPluginDefinition } from "./AudioRecorder";
@@ -97,6 +98,16 @@ export const corePlugins: InternalPluginDefinition[] = [
           if (!checking) {
             void plugin.app.workspace.getLeaf("tab").setViewState({ type: "git-changes", active: true });
           }
+          return true;
+        },
+      });
+      plugin.registerGlobalCommand({
+        id: "git:open-pull-requests",
+        name: "Open pull requests",
+        icon: "lucide-git-pull-request",
+        checkCallback: (checking) => {
+          if (!plugin.app.git.isAvailable()) return false;
+          if (!checking) void openPrList(plugin.app);
           return true;
         },
       });

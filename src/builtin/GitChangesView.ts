@@ -1,6 +1,7 @@
 import { FileDiff } from "@pierre/diffs";
 import { ItemView } from "../views/ItemView";
 import { openGitDiff } from "../views/DiffView";
+import { openPrList } from "./GitPrViews";
 import { setIcon } from "../ui/Icon";
 import { setTooltip } from "../ui/Popover";
 import { Notice } from "../ui/Notice";
@@ -47,6 +48,7 @@ export class GitChangesView extends ItemView {
     this.listEl = doc.createElement("div");
     this.listEl.className = "git-changes-list";
     this.contentEl.appendChild(this.listEl);
+    this.addAction("lucide-git-pull-request", "Pull requests", () => void openPrList(this.app));
     this.addAction("lucide-rotate-ccw", "Refresh", () => void this.refresh());
     await this.refresh();
   }

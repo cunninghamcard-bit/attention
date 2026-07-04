@@ -15,6 +15,41 @@ export interface GitExecResult {
 export interface ElectronGitApi {
   available: boolean;
   exec(args: string[], cwd: string): Promise<GitExecResult>;
+  /** GitHub CLI; optional so older bridges and test fakes keep working. */
+  execGh?(args: string[], cwd: string): Promise<GitExecResult>;
+}
+
+export interface PrSummary {
+  number: number;
+  title: string;
+  author: string;
+  headRefName: string;
+  baseRefName: string;
+  state: string;
+  isDraft: boolean;
+  reviewDecision: string;
+  updatedAt: string;
+  url: string;
+}
+
+export interface PrFileChange {
+  path: string;
+  additions: number;
+  deletions: number;
+}
+
+export interface PrComment {
+  author: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface PrDetail extends PrSummary {
+  body: string;
+  additions: number;
+  deletions: number;
+  files: PrFileChange[];
+  comments: PrComment[];
 }
 
 export interface GitFileStatus {
@@ -140,6 +175,88 @@ export class GitService {
     return result.stdout;
   }
 
+  // --- GitHub PRs, via the gh CLI --------------------------------------
+
+  /** True when gh is installed and authenticated for this repo's host. */
+  async ghAvailable(): Promise<boolean> {
+    if (this.ghAvailableCache === undefined) {
+      const result = await this.gh(["auth", "status"]);
+      this.ghAvailableCache = result?.code === 0;
+    }
+    return this.ghAvailableCache;
+  }
+
+  async prList(): Promise<PrSummary[]> {
+    const result = await this.gh(["pr", "list", "--json", PR_SUMMARY_FIELDS]);
+    if (!result || result.code !== 0) return [];
+    return parseJson<RawPr[]>(result.stdout, []).map(toPrSummary);
+  }
+
+  async prView(number: number): Promise<PrDetail | null> {
+    const result = await this.gh(["pr", "view", String(number), "--json", `${PR_SUMMARY_FIELDS},body,additions,deletions,files,comments`]);
+    if (!result || result.code !== 0) return null;
+    const raw = parseJson<RawPr | null>(result.stdout, null);
+    if (!raw) return null;
+    return {
+      ...toPrSummary(raw),
+      body: raw.body ?? "",
+      additions: raw.additions ?? 0,
+      deletions: raw.deletions ?? 0,
+      files: raw.files ?? [],
+      comments: (raw.comments ?? []).map((c) => ({ author: c.author?.login ?? "", body: c.body, createdAt: c.createdAt })),
+    };
+  }
+
+  /** Unified patch text of the PR, ready for @pierre/diffs parsePatchFiles. */
+  async prDiff(number: number): Promise<string | null> {
+    const result = await this.gh(["pr", "diff", String(number)]);
+    if (!result || result.code !== 0) return null;
+    return result.stdout;
+  }
+
+  /** Returns the error output on failure, null on success. */
+  async prCheckout(number: number): Promise<string | null> {
+    return this.ghAction(["pr", "checkout", String(number)]);
+  }
+
+  async prComment(number: number, body: string): Promise<string | null> {
+    return this.ghAction(["pr", "comment", String(number), "--body", body]);
+  }
+
+  async prReview(number: number, verdict: "approve" | "request-changes" | "comment", body?: string): Promise<string | null> {
+    const args = ["pr", "review", String(number), `--${verdict}`];
+    if (body) args.push("--body", body);
+    return this.ghAction(args);
+  }
+
+  /** Creates a PR from the current branch. */
+  async prCreate(title: string, body: string): Promise<{ url: string } | { error: string }> {
+    const result = await this.gh(["pr", "create", "--title", title, "--body", body]);
+    if (!result) return { error: "gh is not available" };
+    if (result.code !== 0) return { error: result.stderr.trim() || result.stdout.trim() };
+    return { url: result.stdout.trim() };
+  }
+
+  private async ghAction(args: string[]): Promise<string | null> {
+    const result = await this.gh(args);
+    if (!result) return "gh is not available";
+    if (result.code !== 0) return result.stderr.trim() || result.stdout.trim() || `gh exited ${result.code}`;
+    return null;
+  }
+
+  private ghAvailableCache: boolean | undefined;
+
+  private async gh(args: string[]): Promise<GitExecResult | null> {
+    const cwd = this.baseDir();
+    if (!this.bridge?.available || !this.bridge.execGh || !cwd) return null;
+    try {
+      return await this.bridge.execGh(args, cwd);
+    } catch (error) {
+      console.error("gh exec failed", args, error);
+      return null;
+    }
+  }
+
   private async exec(args: string[]): Promise<GitExecResult | null> {
     const cwd = this.baseDir();
     if (!this.bridge?.available || !cwd) return null;
@@ -149,5 +266,48 @@ export class GitService {
       console.error("git exec failed", args, error);
       return null;
     }
+  }
+}
+
+const PR_SUMMARY_FIELDS = "number,title,author,headRefName,baseRefName,state,isDraft,reviewDecision,updatedAt,url";
+
+interface RawPr {
+  number: number;
+  title: string;
+  author?: { login?: string };
+  headRefName?: string;
+  baseRefName?: string;
+  state?: string;
+  isDraft?: boolean;
+  reviewDecision?: string;
+  updatedAt?: string;
+  url?: string;
+  body?: string;
+  additions?: number;
+  deletions?: number;
+  files?: PrFileChange[];
+  comments?: { author?: { login?: string }; body: string; createdAt: string }[];
+}
+
+function toPrSummary(raw: RawPr): PrSummary {
+  return {
+    number: raw.number,
+    title: raw.title,
+    author: raw.author?.login ?? "",
+    headRefName: raw.headRefName ?? "",
+    baseRefName: raw.baseRefName ?? "",
+    state: raw.state ?? "",
+    isDraft: raw.isDraft ?? false,
+    reviewDecision: raw.reviewDecision ?? "",
+    updatedAt: raw.updatedAt ?? "",
+    url: raw.url ?? "",
+  };
+}
+
+function parseJson<T>(text: string, fallback: T): T {
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return fallback;
   }
 }

@@ -6,6 +6,7 @@ import { CODE_EXTENSIONS, CodeFileView } from "../views/CodeFileView";
 import { DiffView } from "../views/DiffView";
 import { GitChangesView } from "../builtin/GitChangesView";
 import { GitHistoryView } from "../builtin/GitHistoryView";
+import { PrDetailView, PrListView } from "../builtin/GitPrViews";
 import {
   AUDIO_EXTENSIONS,
   AudioView,
@@ -35,6 +36,8 @@ export class ViewRegistry extends Events {
     this.registerView(DiffView.DIFF_VIEW_TYPE, (leaf) => new DiffView(leaf));
     this.registerView(GitChangesView.VIEW_TYPE, (leaf) => new GitChangesView(leaf));
     this.registerView(GitHistoryView.VIEW_TYPE, (leaf) => new GitHistoryView(leaf));
+    this.registerView(PrListView.VIEW_TYPE, (leaf) => new PrListView(leaf));
+    this.registerView(PrDetailView.VIEW_TYPE, (leaf) => new PrDetailView(leaf));
     this.registerView(ReleaseNotesView.VIEW_TYPE, (leaf) => new ReleaseNotesView(leaf));
   }
 

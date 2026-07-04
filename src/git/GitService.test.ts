@@ -3,11 +3,47 @@ import { App } from "../app/App";
 import { DiffView, openGitDiff } from "../views/DiffView";
 import type { ElectronGitApi, GitExecResult } from "./GitService";
 
-function fakeGit(headFiles: Record<string, string>, isRepo = true): ElectronGitApi & { calls: string[][] } {
+const FAKE_PR = {
+  number: 7,
+  title: "Add agent relations",
+  author: { login: "card" },
+  headRefName: "feat/relations",
+  baseRefName: "main",
+  state: "OPEN",
+  isDraft: false,
+  reviewDecision: "REVIEW_REQUIRED",
+  updatedAt: "2026-07-01T00:00:00Z",
+  url: "https://github.com/x/y/pull/7",
+};
+
+function fakeGit(headFiles: Record<string, string>, isRepo = true): ElectronGitApi & { calls: string[][]; ghCalls: string[][] } {
   const calls: string[][] = [];
+  const ghCalls: string[][] = [];
   return {
     available: true,
     calls,
+    ghCalls,
+    async execGh(args: string[]): Promise<GitExecResult> {
+      ghCalls.push(args);
+      if (args[0] === "auth") return { code: 0, stdout: "Logged in", stderr: "" };
+      if (args[1] === "list") return { code: 0, stdout: JSON.stringify([FAKE_PR]), stderr: "" };
+      if (args[1] === "view") return {
+        code: 0,
+        stdout: JSON.stringify({
+          ...FAKE_PR,
+          body: "Links agents together.",
+          additions: 10,
+          deletions: 2,
+          files: [{ path: "agent.ts", additions: 10, deletions: 2 }],
+          comments: [{ author: { login: "reviewer" }, body: "LGTM", createdAt: "2026-07-02T00:00:00Z" }],
+        }),
+        stderr: "",
+      };
+      if (args[1] === "diff") return { code: 0, stdout: "diff --git a/agent.ts b/agent.ts\n", stderr: "" };
+      if (args[1] === "checkout" || args[1] === "comment" || args[1] === "review") return { code: 0, stdout: "", stderr: "" };
+      if (args[1] === "create") return { code: 0, stdout: "https://github.com/x/y/pull/8\n", stderr: "" };
+      return { code: 1, stdout: "", stderr: "unknown gh command" };
+    },
     async exec(args: string[]): Promise<GitExecResult> {
       calls.push(args);
       if (args[0] === "rev-parse") return { code: 0, stdout: isRepo ? "true\n" : "false\n", stderr: "" };
@@ -116,6 +152,45 @@ describe("GitService", () => {
     const diffLeaf = app.workspace.getLeavesOfType("diff")[0];
     expect(diffLeaf).toBeDefined();
     expect((diffLeaf.view as unknown as { getChunkCount(): number }).getChunkCount()).toBe(1);
+  });
+
+  it("lists, views and acts on PRs through the gh bridge", async () => {
+    const app = new App(document.createElement("div"));
+    const bridge = fakeGit({});
+    app.git.bridgeFactory = () => bridge;
+    (app.vault.adapter as { getBasePath?: () => string }).getBasePath = () => "/fake/vault";
+    await app.ready;
+
+    await expect(app.git.ghAvailable()).resolves.toBe(true);
+    const prs = await app.git.prList();
+    expect(prs).toHaveLength(1);
+    expect(prs[0]).toMatchObject({ number: 7, title: "Add agent relations", author: "card", headRefName: "feat/relations" });
+
+    const detail = await app.git.prView(7);
+    expect(detail).toMatchObject({ body: "Links agents together.", additions: 10 });
+    expect(detail!.files).toEqual([{ path: "agent.ts", additions: 10, deletions: 2 }]);
+    expect(detail!.comments).toEqual([{ author: "reviewer", body: "LGTM", createdAt: "2026-07-02T00:00:00Z" }]);
+
+    await expect(app.git.prDiff(7)).resolves.toContain("diff --git");
+    await expect(app.git.prCheckout(7)).resolves.toBeNull();
+    await expect(app.git.prComment(7, "nice")).resolves.toBeNull();
+    await expect(app.git.prReview(7, "approve", "ship it")).resolves.toBeNull();
+    await expect(app.git.prCreate("t", "b")).resolves.toEqual({ url: "https://github.com/x/y/pull/8" });
+    expect(bridge.ghCalls).toContainEqual(["pr", "checkout", "7"]);
+    expect(bridge.ghCalls).toContainEqual(["pr", "review", "7", "--approve", "--body", "ship it"]);
+  });
+
+  it("reports gh unavailable when the bridge lacks execGh", async () => {
+    const app = new App(document.createElement("div"));
+    const bridge = fakeGit({});
+    delete (bridge as { execGh?: unknown }).execGh;
+    app.git.bridgeFactory = () => bridge;
+    (app.vault.adapter as { getBasePath?: () => string }).getBasePath = () => "/fake/vault";
+    await app.ready;
+
+    await expect(app.git.ghAvailable()).resolves.toBe(false);
+    await expect(app.git.prList()).resolves.toEqual([]);
+    await expect(app.git.prCheckout(1)).resolves.toBe("gh is not available");
   });
 
   it("diffs untracked files against empty", async () => {
