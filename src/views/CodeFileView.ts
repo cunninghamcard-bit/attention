@@ -6,6 +6,7 @@ import { languages } from "@codemirror/language-data";
 import { tags } from "@lezer/highlight";
 import { ensureRangeGeometry } from "../editor/EditorView";
 import { getFileTypeInfo } from "../ui/FileTypeIcon";
+import { extractCodeSymbols, type CodeSymbol } from "./CodeSymbols";
 import { TextFileView } from "./TextFileView";
 import type { ViewStateResult } from "./View";
 import type { Menu } from "../ui/Menu";
@@ -89,6 +90,11 @@ export class CodeFileView extends TextFileView {
     if (!Number.isFinite(lineNumber)) return;
     this.pendingReveal = { line: lineNumber, start: Number(matchStart), end: Number(matchEnd) };
     this.applyReveal();
+  }
+
+  /** Symbols from the live lezer tree; empty until the language pack loads. */
+  getSymbols(): CodeSymbol[] {
+    return this.cm ? extractCodeSymbols(this.cm) : [];
   }
 
   revealLine(line: number, start = Number.NaN, end = Number.NaN): void {
@@ -184,6 +190,7 @@ export class CodeFileView extends TextFileView {
           this.applyingViewData = false;
         }
         this.requestSave();
+        this.app.workspace.trigger("code-symbols-change", this);
       }),
     ];
   }
@@ -194,5 +201,7 @@ export class CodeFileView extends TextFileView {
     const support = description ? await description.load() : null;
     if (!this.cm) return;
     this.cm.dispatch({ effects: this.languageCompartment.reconfigure(support ?? []) });
+    // The outline listens for this: symbols only exist once the tree is in.
+    this.app.workspace.trigger("code-symbols-change", this);
   }
 }

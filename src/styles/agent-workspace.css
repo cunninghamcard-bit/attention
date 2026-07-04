@@ -124,3 +124,20 @@
   height: 15px;
   stroke-width: 1.8px;
 }
+
+/* Code symbol outline. */
+.outline-symbol-kind {
+  flex: 0 0 auto;
+  width: 1.2em;
+  text-align: center;
+  margin-inline-end: var(--size-2-2);
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+.outline-symbol.mod-symbol-class .outline-symbol-kind { color: #d4863c; }
+.outline-symbol.mod-symbol-type .outline-symbol-kind { color: #3f9e8a; }
+.outline-symbol.mod-symbol-enum .outline-symbol-kind { color: #a074c4; }
+.outline-symbol.mod-symbol-function .outline-symbol-kind,
+.outline-symbol.mod-symbol-method .outline-symbol-kind { color: #6a8fd8; }
+.outline-symbol .tree-item-self { padding-inline-start: var(--outline-heading-padding); }

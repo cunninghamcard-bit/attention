@@ -8,8 +8,13 @@ async function createSearchApp(): Promise<App> {
   await app.vault.create("notes/beta.md", "# Other\n\nonly hay here\nneedle on its own line\n#inline-tag\n");
   await app.vault.create("agent/server.go", "package main\n// needle in code\n");
   await app.metadataCache.initialize();
-  // initialize() fires metadata computation without awaiting it.
-  for (let i = 0; i < 100 && !app.metadataCache.getCache("notes/alpha.md")?.frontmatter; i++) {
+  // initialize() fires metadata computation without awaiting it; wait until
+  // every fixture this suite asserts on has landed in the cache.
+  const ready = () =>
+    Boolean(app.metadataCache.getCache("notes/alpha.md")?.frontmatter)
+    && Boolean(app.metadataCache.getCache("notes/alpha.md")?.headings?.length)
+    && Boolean(app.metadataCache.getCache("notes/beta.md")?.tags?.length);
+  for (let i = 0; i < 400 && !ready(); i++) {
     await new Promise((resolve) => setTimeout(resolve, 5));
   }
   return app;

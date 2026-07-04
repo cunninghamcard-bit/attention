@@ -29,6 +29,7 @@ export * from "./views/FileView";
 export * from "./views/EditableFileView";
 export * from "./views/TextFileView";
 export * from "./views/CodeFileView";
+export * from "./views/CodeSymbols";
 export * from "./views/MarkdownView";
 export * from "./views/MediaViews";
 export * from "./markdown/MarkdownRenderer";
