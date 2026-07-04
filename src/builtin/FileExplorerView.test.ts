@@ -381,7 +381,7 @@ describe("FileExplorerView external folder drops", () => {
   it("starts inline folder rename after creating a new folder from the file explorer action", async () => {
     const app = new App(document.createElement("div"));
     const view = await openFileExplorerView(app);
-    const newFolderButton = queryRequired<HTMLButtonElement>(view.actionsEl, 'button[aria-label="New folder"]');
+    const newFolderButton = queryRequired<HTMLElement>(view.contentEl, '.nav-action-button[aria-label="New folder"]');
 
     newFolderButton.click();
 
@@ -478,7 +478,7 @@ describe("FileExplorerView external folder drops", () => {
   it("opens newly created notes with rename ephemeral state", async () => {
     const app = new App(document.createElement("div"));
     const view = await openFileExplorerView(app);
-    const newNoteButton = queryRequired<HTMLButtonElement>(view.actionsEl, 'button[aria-label="New note"]');
+    const newNoteButton = queryRequired<HTMLElement>(view.contentEl, '.nav-action-button[aria-label="New note"]');
     const openFile = vi.spyOn(app.workspace, "openFile");
 
     newNoteButton.click();
