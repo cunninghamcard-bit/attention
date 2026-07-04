@@ -8,11 +8,12 @@ beforeEach(() => {
 });
 
 function stubAgents(agents: Array<{ id: string; title: string | null; updatedAt: number; running: boolean }>): void {
+  const streams = agents.map((a) => ({ ID: a.id, Title: a.title, UpdatedAt: a.updatedAt, Running: a.running }));
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
-      if (String(input).endsWith("/agents")) {
-        return new Response(JSON.stringify({ agents }), { headers: { "Content-Type": "application/json" } });
+      if (String(input).endsWith("/streams")) {
+        return new Response(JSON.stringify({ streams }), { headers: { "Content-Type": "application/json" } });
       }
       return new Response("{}", { headers: { "Content-Type": "application/json" } });
     }),
