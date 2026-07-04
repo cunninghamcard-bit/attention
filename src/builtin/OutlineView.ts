@@ -11,6 +11,7 @@ export class OutlineView extends ItemView {
 
   getViewType(): string { return "outline"; }
   getDisplayText(): string { return "Outline"; }
+  getIcon(): string { return "lucide-list"; }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("outline-view");

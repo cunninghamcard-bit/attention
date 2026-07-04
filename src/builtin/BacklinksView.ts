@@ -8,6 +8,7 @@ export class BacklinksView extends ItemView {
 
   getViewType(): string { return "backlink"; }
   getDisplayText(): string { return "Backlinks"; }
+  getIcon(): string { return "links-coming-in"; }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("backlink-pane");
