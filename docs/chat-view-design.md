@@ -68,6 +68,53 @@ This document merges three earlier sources into one decided design:
 - `along/docs/chat-view-architecture-discussion.md` (streaming, communication, state layer)
 - the markstream spike (parser adoption, NodeRenderer contract)
 
+## The anatomy: what a ChatView contains
+
+Not styles — regions, and the relationships between them. Four regions,
+one scroller, two states:
+
+```text
+ChatView
+├─ conversation identity        the workspace view header (title from the
+│                               first message, actions, pane menu) — NOT a
+│                               second header inside the view
+├─ context strip [conditional]  room participants; later: mode chips.
+│                               Pinned above the body, never scrolls
+├─ BODY (position: relative)
+│   ├─ TRANSCRIPT               the ONLY scrolling region
+│   │   ├─ turn*                user bubble | assistant flow
+│   │   │     assistant turn =  process (thinking, tool timelines)
+│   │   │                       + prose + hover actions — one object,
+│   │   │                       zero internal gap
+│   │   ├─ punctuation          compaction dividers, run errors,
+│   │   │                       thinking indicator — stream rows, replayable
+│   │   └─ queued prompts       the tail: staged, cancellable
+│   └─ COMPOSER DOCK            floats OVER the transcript bottom; the
+│       │                       transcript scrolls UNDER it through a
+│       │                       gradient scrim (bottom padding = dock height)
+│       ├─ attachment staging
+│       └─ input card           editor + config rail (attach · model chip)
+│                               + send slot
+└─ (app status bar)             usage / context occupancy — outside the view
+```
+
+Two states, one relationship change:
+
+```text
+empty       the dock sits in the upper middle of the page (the welcome
+            position, ~27vh from the top) — the conversation starts where
+            your eyes already are
+conversing  the dock lives at the bottom; the transcript owns the page
+```
+
+What a ChatView does NOT contain, and why:
+- side panels (sources/files/agents) — that is the workspace's job; open
+  leaves, not in-view panels
+- a settings surface — config is the composer chip (quick) +
+  AgentPropertiesView (full)
+- its own title bar — the view header IS the conversation header
+- global status — usage lives in the app status bar
+
 ## Position in the app
 
 ```text

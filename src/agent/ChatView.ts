@@ -1,3 +1,4 @@
+import { createDiv } from "../dom/dom";
 import { writeClipboardText } from "../dom/Clipboard";
 import { Notice } from "../ui/Notice";
 import { Menu } from "../ui/Menu";
@@ -132,7 +133,11 @@ export class ChatView extends StreamView {
     this.contentEl.empty();
 
     this.session = this.app.agents.get(agentId);
-    const scrollEl = this.createStreamRegion("chat-scroll");
+    // The body owns the dock relationship: the transcript is the only
+    // scroller, the composer floats over its bottom edge, and the
+    // transcript scrolls under it through the scrim (see the anatomy).
+    const bodyEl = createDiv("chat-body", this.contentEl);
+    const scrollEl = this.createStreamRegion("chat-scroll", bodyEl);
     // Chat speaks MarkdownView's element vocabulary, so the same delegated
     // handlers give internal links their click/hover/context-menu behavior.
     (MarkdownRenderer as unknown as {
@@ -141,7 +146,7 @@ export class ChatView extends StreamView {
     this.list = this.addChild(new ChatMessageList(scrollEl, this.session, () => this.scroller?.notifyContentChanged()));
     this.composer = this.addChild(
       new ChatComposer(
-        this.contentEl,
+        bodyEl,
         {
           send: (text, attachments) => void this.sendMessage(text, attachments),
           queue: (text, attachments) => this.session?.queueMessage(text, attachments),
@@ -156,6 +161,13 @@ export class ChatView extends StreamView {
       ),
     );
 
+    if (typeof ResizeObserver !== "undefined" && this.composer) {
+      const dockObserver = new ResizeObserver(() => {
+        bodyEl.style.setProperty("--chat-dock-h", `${this.composer?.el.offsetHeight ?? 120}px`);
+      });
+      dockObserver.observe(this.composer.el);
+      this.register(() => dockObserver.disconnect());
+    }
     this.registerEvent(this.session.on("changed", () => this.scheduleSync()));
     void this.profileTransport.getAgent(agentId).then((summary) => {
       if (summary?.profile) {
@@ -247,6 +259,9 @@ export class ChatView extends StreamView {
 
   protected onStreamSync(): void {
     this.list?.sync();
+    // Empty = welcome: the dock rises to the reading line; the first
+    // message drops it to the bottom for good.
+    this.contentEl.toggleClass("is-empty", (this.session?.getMessages().length ?? 0) === 0 && !this.isRunning());
     this.anchorLastUserMessage();
     this.composer?.syncRunning();
     this.stopActionEl?.toggle(this.isRunning());

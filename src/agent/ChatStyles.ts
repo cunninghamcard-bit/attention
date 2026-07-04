@@ -11,7 +11,8 @@ export function ensureChatStyles(app: App): void {
 
 const CHAT_CSS = `
     .workspace-split.mod-root .view-content.chat-view, .view-content.chat-view, .chat-view { display: flex; flex-direction: column; height: 100%; padding: 0; background: var(--background-secondary, #f5f5f4); font-size: 14px; }
-    .chat-scroll { flex: 1 1 auto; overflow-y: auto; padding: 40px 24px 32px; position: relative; }
+    .chat-body { position: relative; flex: 1 1 auto; min-height: 0; }
+    .chat-scroll { position: absolute; inset: 0; overflow-y: auto; padding: 40px 24px calc(var(--chat-dock-h, 120px) + 32px); }
     .chat-view { --chat-motion-fast: 140ms; --chat-motion: 220ms; --chat-ease: cubic-bezier(0.16, 1, 0.3, 1); }
     .chat-message-list { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
     .chat-message { line-height: 1.6; }
@@ -128,7 +129,9 @@ const CHAT_CSS = `
     .multi-agent-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--background-modifier-border, rgba(0,0,0,0.09)); border-radius: 999px; padding: 2px 10px; background: var(--background-primary, #fff); transition: border-color 0.15s ease; }
     .multi-agent-chip .chat-status-dot.is-on, .multi-agent-chip .chat-status-dot.is-running { background: hsl(var(--author-hue, 255) 50% 55%); }
     .multi-agent-chip.is-speaking { border-color: hsl(var(--author-hue, 255) 50% 55%); }
-    .chat-composer { flex: 0 0 auto; padding: 4px 24px 18px; position: relative; }
+    .chat-composer { position: absolute; left: 0; right: 0; bottom: 0; padding: 28px 24px 18px; background: linear-gradient(to bottom, transparent, var(--background-secondary, #f5f5f4) 26px); transition: bottom 320ms cubic-bezier(0.16, 1, 0.3, 1); }
+    .chat-view.is-empty .chat-composer { bottom: 52%; background: transparent; }
+    .chat-view.is-empty .chat-scroll { display: none; }
     .chat-composer-card { max-width: 760px; margin: 0 auto; border-radius: 20px; border: 1px solid rgba(0, 0, 0, 0.14); background: var(--background-primary, #fff); box-shadow: 0 2px 16px -4px rgba(0,0,0,0.07); transition: border-color 0.2s ease, box-shadow 0.2s ease; padding: 6px 8px 8px; }
     .chat-composer-card:focus-within { border-color: rgba(0, 0, 0, 0.28); box-shadow: 0 2px 6px -1px rgba(0,0,0,0.04); }
     .theme-dark .chat-composer-card { border-color: rgba(255, 255, 255, 0.08); }
