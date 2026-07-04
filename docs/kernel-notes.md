@@ -5,6 +5,10 @@ platform (agents as teammates; board, comment threads, squads; 13 engine
 adapters incl. Claude Code, Codex and Pi). Deep-dive performed 2026-07;
 this note maps its mechanisms onto the along-go kernel plan.
 
+> Sibling studies: [dagu-notes.md](dagu-notes.md) — reading guide for
+> dagu (execution-plane DAG runner; clone at `~/Projects/dagu`), whose
+> distilled conclusions live in loom's `GRAPH.md`.
+
 ## What it validates in our design (keep course)
 
 - **The engine interface IS the whole ballgame.** Their `Backend.Execute →
