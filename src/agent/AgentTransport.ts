@@ -65,6 +65,13 @@ export class AgentTransport {
     return Array.isArray(payload?.agents) ? payload.agents : [];
   }
 
+  async listModels(): Promise<string[]> {
+    const response = await fetch(`${this.baseUrl}/models`).catch(() => null);
+    if (!response?.ok) return [];
+    const payload = (await response.json().catch(() => null)) as { models?: string[] } | null;
+    return Array.isArray(payload?.models) ? payload.models : [];
+  }
+
   async getAgent(agentId: string): Promise<AgentSummary | null> {
     const response = await fetch(`${this.baseUrl}/agents/${encodeURIComponent(agentId)}`).catch(() => null);
     if (!response?.ok) return null;

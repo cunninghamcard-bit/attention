@@ -34,6 +34,10 @@ export interface ChatComposerCallbacks {
   // Multi-agent rooms feed participant names; "@" completes against them.
   // Mentions stay plain text — routing is the engine's business, not the UI's.
   getMentionTargets?(): string[];
+  // The composer-integrated config chip (ArkLoop's ModelPicker shape): the
+  // host names the current selection and owns the menu; absent = no chip.
+  getModelLabel?(): string;
+  openModelMenu?(event: MouseEvent): void;
 }
 
 export interface ChatComposerOptions {
@@ -59,6 +63,8 @@ export class ChatComposer extends Component {
   readonly attachmentBar: ChatAttachmentBar;
   private readonly editor: EditorView;
   private readonly sendButtonEl: HTMLButtonElement;
+  private modelChipEl: HTMLButtonElement | null = null;
+  private modelChipLabelEl: HTMLElement | null = null;
   private readonly attachButtonEl: HTMLButtonElement;
   private readonly attachInputEl: HTMLInputElement;
   private readonly cardEl: HTMLElement;
@@ -125,6 +131,13 @@ export class ChatComposer extends Component {
     this.attachInputEl.hide();
     this.attachButtonEl = createEl("button", { cls: "chat-composer-attach", parent: toolbarEl, title: STRINGS.composer.attach });
     setIcon(this.attachButtonEl, "lucide-plus");
+    if (this.callbacks.getModelLabel && this.callbacks.openModelMenu) {
+      this.modelChipEl = createEl("button", { cls: "chat-model-chip", parent: toolbarEl });
+      this.modelChipLabelEl = createSpan({ cls: "chat-model-chip-label", parent: this.modelChipEl });
+      setIcon(createSpan({ cls: "chat-model-chip-chevron", parent: this.modelChipEl }), "lucide-chevron-down");
+      this.modelChipEl.addEventListener("click", (event) => this.callbacks.openModelMenu!(event));
+      this.refreshModelChip();
+    }
     const actionsEl = createDiv("chat-composer-actions", toolbarEl);
     for (const action of listChatComposerActions()) {
       const buttonEl = createEl("button", { cls: "chat-composer-action", parent: actionsEl, text: action.title });
@@ -192,6 +205,10 @@ export class ChatComposer extends Component {
   // The send button is quiet until there is something to send.
   private syncSendState(): void {
     this.sendButtonEl.toggleClass("is-ready", this.getValue().trim().length > 0 || !this.attachmentBar.isEmpty());
+  }
+
+  refreshModelChip(): void {
+    if (this.modelChipLabelEl && this.callbacks.getModelLabel) this.modelChipLabelEl.setText(this.callbacks.getModelLabel());
   }
 
   syncRunning(): void {

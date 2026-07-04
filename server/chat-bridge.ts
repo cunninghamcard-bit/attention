@@ -131,6 +131,12 @@ Bun.serve({
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
 
+    if (url.pathname === "/models" && request.method === "GET") {
+      return new Response(JSON.stringify({ models: engine.listModels?.() ?? [] }), {
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
+    }
+
     if (url.pathname === "/agents" && request.method === "GET") {
       const list = [...threads.values()]
         .filter((thread) => thread.events.length > 0)

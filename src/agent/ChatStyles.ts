@@ -185,7 +185,7 @@ const CHAT_CSS = `
     .chat-queued-cancel { flex: 0 0 auto; border: none; background: none; cursor: pointer; opacity: 0.5; font-size: 14px; line-height: 1; padding: 0 2px; color: var(--text-normal, #1a1a19); }
     .chat-queued-cancel:hover { opacity: 1; }
     .chat-composer-attach-input { display: none; }
-    .chat-composer-attach { width: 31.5px; height: 31.5px; padding: 0; border-radius: 8px; cursor: pointer; border: none; background: transparent; color: var(--text-muted, #8c8c8a); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; margin-right: auto; transition: background-color 60ms ease, color 60ms ease; }
+    .chat-composer-attach { width: 31.5px; height: 31.5px; padding: 0; border-radius: 8px; cursor: pointer; border: none; background: transparent; color: var(--text-muted, #8c8c8a); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; transition: background-color 60ms ease, color 60ms ease; }
     .chat-composer-attach:hover { background: var(--background-modifier-hover, rgba(120,120,140,0.12)); color: var(--text-normal, #1a1a19); }
     .chat-composer-attach svg { width: 17px; height: 17px; }
     .chat-composer-card.is-dragging { border-color: rgba(0, 0, 0, 0.32); }
@@ -245,4 +245,8 @@ const CHAT_CSS = `
     .chat-view .markdown-rendered p:has(+ h1), .chat-view .markdown-rendered p:has(+ h2), .chat-view .markdown-rendered p:has(+ h3) { margin-bottom: 0.3em; }
     .chat-view .markdown-rendered p + h1 { margin-top: 0.65em; }
     .chat-view .markdown-rendered p + h2, .chat-view .markdown-rendered p + h3 { margin-top: 0.55em; }
+    .chat-model-chip { display: inline-flex; align-items: center; gap: 3px; height: 28px; padding: 0 8px 0 10px; border: none; border-radius: 8px; background: transparent; color: var(--text-muted, #8c8c8a); font-size: 13px; cursor: pointer; max-width: 260px; overflow: hidden; white-space: nowrap; margin-right: auto; transition: background-color 120ms ease, color 120ms ease; }
+    .chat-model-chip:hover { background: var(--background-modifier-hover, rgba(120,120,140,0.1)); color: var(--text-normal, #1a1a19); }
+    .chat-model-chip-label { overflow: hidden; text-overflow: ellipsis; }
+    .chat-model-chip-chevron svg { width: 14px; height: 14px; opacity: 0.6; display: block; }
 `;

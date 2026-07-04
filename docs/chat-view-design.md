@@ -288,8 +288,10 @@ as note properties.
 truth     the bridge's agent record (an agent row when along-go lands);
           PATCH /agents/:id { profile } merges — the channel rename
           already used, now named
-editor    AgentPropertiesView's Configuration section: typed inputs for
-          known fields, key/value rows for params
+editor    two surfaces, ArkLoop/DeepChat-shaped: the composer's model chip
+          (quiet trigger + menu: engine models, reasoning efforts — the
+          quick switch) and AgentPropertiesView's Configuration section
+          (typed inputs + key/value param rows — the full editor)
 consumers engine.run receives the profile and takes what it understands
           (the mock echoes it; pi maps model/effort when the backend owns
           model selection)

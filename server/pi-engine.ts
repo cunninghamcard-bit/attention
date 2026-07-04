@@ -210,6 +210,7 @@ async function runPiEngine(agentId: string, runId: string, text: string, emit: C
 
 export const piEngine: Engine = {
   name: "pi",
+  listModels: () => [MODEL_ID],
   run: ({ agentId, runId, prompt, emit }) => runPiEngine(agentId, runId, prompt, emit),
   stop: (agentId) => sessions.get(agentId)?.session.abort(),
 };

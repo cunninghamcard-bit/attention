@@ -1,12 +1,13 @@
 import { writeClipboardText } from "../dom/Clipboard";
 import { Notice } from "../ui/Notice";
-import type { Menu } from "../ui/Menu";
+import { Menu } from "../ui/Menu";
 import { StreamView } from "../views/StreamView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
 import { ChatComposer } from "./ChatComposer";
 import { ChatMessageList } from "./ChatMessageList";
 import { chatTranscriptToMarkdown, type ChatAttachmentPayload, type Agent } from "./Agent";
 import { STRINGS } from "./AgentStrings";
+import { AgentTransport, type AgentProfile } from "./AgentTransport";
 import { ensureChatStyles } from "./ChatStyles";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import type { App } from "../app/App";
@@ -32,6 +33,8 @@ export class ChatView extends StreamView {
   // Set on send: the next sync pins the new user message to the viewport top
   // (ArkLoop-style anchoring) so the reply reads downward from the question.
   private anchorPending = false;
+  private readonly profileTransport = new AgentTransport();
+  protected profile: AgentProfile = {};
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
@@ -146,12 +149,20 @@ export class ChatView extends StreamView {
           isRunning: () => this.isRunning(),
           getWikilinkTargets: () => this.app.vault.getMarkdownFiles().map((file) => file.basename),
           getMentionTargets: () => this.mentionTargets(),
+          getModelLabel: () => this.modelChipLabel(),
+          openModelMenu: (event) => void this.openModelMenu(event),
         },
         { agentId },
       ),
     );
 
     this.registerEvent(this.session.on("changed", () => this.scheduleSync()));
+    void this.profileTransport.getAgent(agentId).then((summary) => {
+      if (summary?.profile) {
+        this.profile = summary.profile;
+        this.composer?.refreshModelChip();
+      }
+    });
     this.onChatChromeReady();
     this.scheduleSync();
     this.composer.focus();
@@ -160,6 +171,42 @@ export class ChatView extends StreamView {
   // Called after the chat regions rebuild; subclasses add their chrome here
   // (MultiAgentView inserts its participants strip above the stream).
   protected onChatChromeReady(): void {}
+
+  private modelChipLabel(): string {
+    const model = this.profile.model ?? STRINGS.composer.modelDefault;
+    return this.profile.effort ? `${model} · ${this.profile.effort}` : model;
+  }
+
+  // The composer-integrated config: models from the engine, reasoning
+  // effort beneath them. The full profile (params, everything) lives in
+  // AgentPropertiesView; this menu is the quick switch.
+  private async openModelMenu(event: MouseEvent): Promise<void> {
+    const models = await this.profileTransport.listModels();
+    const menu = new Menu(this.containerEl.ownerDocument);
+    const pick = (patch: Partial<AgentProfile>) => {
+      Object.assign(this.profile, patch);
+      void this.profileTransport.updateProfile(this.agentId, this.profile);
+      this.composer?.refreshModelChip();
+    };
+    menu.addItem((item) => item
+      .setTitle(STRINGS.composer.modelDefault)
+      .setChecked(!this.profile.model)
+      .onClick(() => pick({ model: undefined })));
+    for (const model of models) {
+      menu.addItem((item) => item
+        .setTitle(model)
+        .setChecked(this.profile.model === model)
+        .onClick(() => pick({ model })));
+    }
+    menu.addSeparator();
+    for (const effort of ["", "low", "medium", "high"]) {
+      menu.addItem((item) => item
+        .setTitle(effort || STRINGS.properties.effortDefault)
+        .setChecked((this.profile.effort ?? "") === effort)
+        .onClick(() => pick({ effort: effort || undefined })));
+    }
+    menu.showAtMouseEvent(event);
+  }
 
   // "@" completion targets; single-agent chats have none, rooms feed their
   // participants.

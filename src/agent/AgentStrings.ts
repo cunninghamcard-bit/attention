@@ -6,6 +6,7 @@ import type { AgentUsage } from "./AgentEvent";
 // scattered at the call site.
 export const STRINGS = {
   composer: {
+    modelDefault: "Default",
     send: "Send",
     stop: "Stop",
     attach: "Attach file",
