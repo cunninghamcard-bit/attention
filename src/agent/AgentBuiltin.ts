@@ -15,7 +15,7 @@ function ensureAgentIcons(): void {
   addIcon("users", '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>');
 }
 import { newAgentId } from "./AgentManager";
-import { registerChatMessageAction, registerChatSlashCommand } from "./ChatRegistry";
+import { registerChatMessageAction } from "./ChatRegistry";
 import { registerMentionPostProcessor } from "./ChatMentions";
 import { registerBuiltinToolCards } from "./ChatToolCards";
 import { AgentStatusBar } from "./AgentStatusBar";
@@ -180,42 +180,4 @@ export function registerAgentBuiltin(app: App): void {
     },
   });
 
-  registerChatSlashCommand({
-    id: "new",
-    name: STRINGS.slash.newAgent,
-    description: STRINGS.slash.newAgentDesc,
-    run: () => void openChatLeaf(app, newAgentId()),
-  });
-  registerChatSlashCommand({
-    id: "stop",
-    name: STRINGS.slash.stop,
-    description: STRINGS.slash.stopDesc,
-    run: () => void app.workspace.getActiveViewOfType(ChatView)?.stopRun(),
-  });
-  registerChatSlashCommand({
-    id: "steer",
-    name: STRINGS.slash.steer,
-    description: STRINGS.slash.steerDesc,
-    args: "text",
-    run: (_context, args) => void app.workspace.getActiveViewOfType(ChatView)?.steerRun(args),
-  });
-  registerChatSlashCommand({
-    id: "rename",
-    name: STRINGS.slash.rename,
-    description: STRINGS.slash.renameDesc,
-    args: "text",
-    run: (_context, args) => void app.workspace.getActiveViewOfType(ChatView)?.renameThread(args),
-  });
-  registerChatSlashCommand({
-    id: "copy",
-    name: STRINGS.slash.copy,
-    description: STRINGS.slash.copyDesc,
-    run: () => void app.workspace.getActiveViewOfType(ChatView)?.copyConversation(),
-  });
-  registerChatSlashCommand({
-    id: "delete",
-    name: STRINGS.slash.delete,
-    description: STRINGS.slash.deleteDesc,
-    run: () => void app.workspace.getActiveViewOfType(ChatView)?.deleteThread(),
-  });
 }
