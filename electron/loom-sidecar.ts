@@ -83,7 +83,7 @@ export class LoomSidecar {
 
   private spawn(): void {
     const child = spawn(this.config.bin as string, ["serve", "-port", "0", "-db", this.config.dbPath], {
-      env: { ...process.env, LOOM_DEFAULT_HARNESS: process.env.LOOM_DEFAULT_HARNESS || "mock" },
+      env: { ...process.env },
       stdio: ["ignore", "pipe", "pipe"],
     });
     this.child = child;

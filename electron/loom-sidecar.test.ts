@@ -69,7 +69,7 @@ describe("LoomSidecar", () => {
     expect(spawnMock).toHaveBeenCalledWith(
       "/bin/loom",
       ["serve", "-port", "0", "-db", "/data/loom/loom.db"],
-      expect.objectContaining({ env: expect.objectContaining({ LOOM_DEFAULT_HARNESS: "mock" }) }),
+      expect.objectContaining({ env: expect.any(Object) }),
     );
 
     child.stdout.write('{"event":"ready","port":54321,"url":"http://127.0.0.1:54321"}\n');

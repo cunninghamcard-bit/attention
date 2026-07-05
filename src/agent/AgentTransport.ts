@@ -79,7 +79,12 @@ export class AgentTransport {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text, attachments }),
     });
-    if (!response.ok) throw new Error(`chat bridge rejected message: ${response.status}`);
+    if (!response.ok) {
+      // The kernel's {error} is the user-facing guidance (fail-fast
+      // messages tell you what to configure) — surface it, not a code.
+      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)?.error;
+      throw new Error(detail || `chat bridge rejected message: ${response.status}`);
+    }
   }
 
   async listAgents(): Promise<AgentSummary[]> {

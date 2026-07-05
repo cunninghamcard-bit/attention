@@ -107,6 +107,18 @@ describe.skipIf(!BIN)("chat e2e against a real loom kernel", () => {
       kernel.once("error", reject);
       kernel.once("exit", (code) => reject(new Error(`kernel exited before ready (code ${code})`)));
     });
+    // Fail-fast kernel: no silent default member — the e2e configures
+    // its agent explicitly, like every real client must.
+    const post = (path: string, body: unknown) =>
+      fetch(`${baseUrl}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    await post("/agents", { id: "e2e-mock", name: "mock", harness: "mock" });
+    for (const threadId of ["e2e-tour", "e2e-perm"]) {
+      await post("/links", { fromType: "agent", fromId: "e2e-mock", toType: "thread", toId: threadId, type: "member" });
+    }
   }, 30_000);
 
   afterAll(() => {
