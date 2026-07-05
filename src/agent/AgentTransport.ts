@@ -42,16 +42,16 @@ export function resolveChatBridgeUrl(): string {
   return DEFAULT_CHAT_BRIDGE_URL;
 }
 
-// A native /streams list entry: Go-marshaled, capitalized fields.
-interface StreamSummary {
-  ID: string;
-  Title: string | null;
-  Running: boolean;
-  UpdatedAt: number;
+// A native /threads list entry — the kernel's frozen camelCase wire.
+interface ThreadSummary {
+  id: string;
+  title: string;
+  running: boolean;
+  updatedAt: number;
 }
 
-function toAgentSummary(s: StreamSummary): AgentSummary {
-  return { id: s.ID, title: s.Title, updatedAt: s.UpdatedAt, running: s.Running };
+function toAgentSummary(t: ThreadSummary): AgentSummary {
+  return { id: t.id, title: t.title || null, updatedAt: t.updatedAt, running: t.running };
 }
 
 // REST for commands, SSE for pushes. Internal to the chat module: plugins go
@@ -61,7 +61,7 @@ export class AgentTransport {
 
   connect(agentId: string, sinceSeq: number, onEvent: (event: AgentEvent) => void): () => void {
     if (typeof EventSource === "undefined") return () => {};
-    const url = `${this.baseUrl}/streams/${encodeURIComponent(agentId)}/events?since=${sinceSeq}`;
+    const url = `${this.baseUrl}/threads/${encodeURIComponent(agentId)}/events?since=${sinceSeq}`;
     const source = new EventSource(url);
     source.onmessage = (message) => {
       try {
@@ -74,7 +74,7 @@ export class AgentTransport {
   }
 
   async sendMessage(agentId: string, text: string, attachments: Array<{ name: string; content: string }> = []): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/streams/${encodeURIComponent(agentId)}/messages`, {
+    const response = await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text, attachments }),
@@ -83,10 +83,10 @@ export class AgentTransport {
   }
 
   async listAgents(): Promise<AgentSummary[]> {
-    const response = await fetch(`${this.baseUrl}/streams`);
+    const response = await fetch(`${this.baseUrl}/threads`);
     if (!response.ok) return [];
-    const payload = (await response.json().catch(() => null)) as { streams?: StreamSummary[] } | null;
-    return Array.isArray(payload?.streams) ? payload.streams.map(toAgentSummary) : [];
+    const payload = (await response.json().catch(() => null)) as { threads?: ThreadSummary[] } | null;
+    return Array.isArray(payload?.threads) ? payload.threads.map(toAgentSummary) : [];
   }
 
   async listModels(): Promise<{ models: string[]; efforts: string[] }> {
@@ -114,7 +114,7 @@ export class AgentTransport {
   }
 
   async rename(agentId: string, title: string): Promise<void> {
-    await fetch(`${this.baseUrl}/streams/${encodeURIComponent(agentId)}`, {
+    await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
@@ -122,18 +122,18 @@ export class AgentTransport {
   }
 
   async delete(agentId: string): Promise<void> {
-    await fetch(`${this.baseUrl}/streams/${encodeURIComponent(agentId)}`, { method: "DELETE" });
+    await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}`, { method: "DELETE" });
   }
 
   async stop(agentId: string): Promise<void> {
     // Best effort: interrupting a run that already ended is not an error.
-    await fetch(`${this.baseUrl}/streams/${encodeURIComponent(agentId)}/stop`, { method: "POST" }).catch(() => undefined);
+    await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}/stop`, { method: "POST" }).catch(() => undefined);
   }
 
   async resolvePermission(agentId: string, requestId: string, decision: "allow" | "deny"): Promise<void> {
     // Best effort: the request may have already timed out or been cancelled
     // on the kernel side by the time the user clicks.
-    await fetch(`${this.baseUrl}/streams/${encodeURIComponent(agentId)}/permissions/${encodeURIComponent(requestId)}`, {
+    await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}/permissions/${encodeURIComponent(requestId)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ decision }),

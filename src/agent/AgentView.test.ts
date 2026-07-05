@@ -8,12 +8,12 @@ beforeEach(() => {
 });
 
 function stubAgents(agents: Array<{ id: string; title: string | null; updatedAt: number; running: boolean }>): void {
-  const streams = agents.map((a) => ({ ID: a.id, Title: a.title, UpdatedAt: a.updatedAt, Running: a.running }));
+  const threads = agents.map((a) => ({ id: a.id, title: a.title ?? "", updatedAt: a.updatedAt, running: a.running }));
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
-      if (String(input).endsWith("/streams")) {
-        return new Response(JSON.stringify({ streams }), { headers: { "Content-Type": "application/json" } });
+      if (String(input).endsWith("/threads")) {
+        return new Response(JSON.stringify({ threads }), { headers: { "Content-Type": "application/json" } });
       }
       return new Response("{}", { headers: { "Content-Type": "application/json" } });
     }),
