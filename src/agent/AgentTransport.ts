@@ -31,6 +31,14 @@ export function resolveChatBridgeUrl(): string {
   } catch {
     // localStorage may be unavailable in some embedding contexts
   }
+  try {
+    // Desktop: main process resolved a loom sidecar (spawned or external).
+    const host = globalThis as { electron?: { ipcRenderer?: { sendSync?(channel: string): unknown } } };
+    const loomUrl = host.electron?.ipcRenderer?.sendSync?.("loom-url");
+    if (typeof loomUrl === "string" && loomUrl) return loomUrl;
+  } catch {
+    // Not running under Electron, or the main process hasn't wired the channel.
+  }
   return DEFAULT_CHAT_BRIDGE_URL;
 }
 
