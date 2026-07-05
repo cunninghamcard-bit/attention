@@ -237,12 +237,6 @@ export class ChatView extends StreamView {
       await this.session?.sendMessage(text, attachments);
     } catch (error) {
       new Notice(STRINGS.notices.bridgeUnreachable(error instanceof Error ? error.message : String(error)));
-      // A refused message must never eat the user's words: the composer
-      // cleared optimistically on submit, so put the text back (in front
-      // of anything typed since).
-      const current = this.composer?.getValue() ?? "";
-      this.composer?.setValue(current ? `${text}\n${current}` : text);
-      this.composer?.focus();
     }
   }
 
