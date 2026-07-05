@@ -173,11 +173,11 @@ function flushMicrotasks(): Promise<void> {
 }
 
 describe("slash command grammar and interception", () => {
-  it("parseSlashInput classifies commands, args, escapes and prose", async () => {
+  it("parseSlashInput classifies command references and prose", async () => {
     const { parseSlashInput } = await import("./ChatComposer");
     expect(parseSlashInput("/stop")).toEqual({ id: "stop", args: "" });
-    expect(parseSlashInput("/rename 新标题 带空格")).toEqual({ id: "rename", args: "新标题 带空格" });
-    expect(parseSlashInput("//literal path")).toEqual({ literal: "/literal path" });
+    expect(parseSlashInput("/fix-tests 先跑一遍")).toEqual({ id: "fix-tests", args: "先跑一遍" });
+    expect(parseSlashInput("/skill:brave-search 查询")).toEqual({ id: "skill:brave-search", args: "查询" });
     expect(parseSlashInput("plain /middle")).toBeNull();
     expect(parseSlashInput("/")).toBeNull();
   });
@@ -197,19 +197,22 @@ describe("slash command grammar and interception", () => {
     }
   });
 
-  it("unknown /command fails fast: no send, draft preserved", () => {
+  it("unregistered /command forwards verbatim — the harness interprets, not the composer", () => {
     const { composer, send, internals } = setup();
-    composer.setValue("/no-such-cmd");
+    composer.setValue("/fix-tests 先跑一遍");
     internals.editor.contentDOM.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    expect(send).not.toHaveBeenCalled();
-    expect(composer.getValue()).toBe("/no-such-cmd");
+    expect(send).toHaveBeenCalledWith("/fix-tests 先跑一遍", []);
+    expect(composer.getValue()).toBe("");
   });
 
-  it("// escapes to a literal leading slash and sends", () => {
-    const { composer, send, internals } = setup();
-    composer.setValue("//etc/hosts 怎么看");
-    internals.editor.contentDOM.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    expect(send).toHaveBeenCalledWith("/etc/hosts 怎么看", []);
+  it("the / menu relays harness-native commands and inserts /name ", () => {
+    const { composer, internals } = setup({
+      getHarnessCommands: () => [{ name: "fix-tests", description: "修测试" }],
+    });
+    composer.setValue("/fi");
+    const result = internals.completeSlashCommand(contextAt(internals.editor, 3));
+    applyOption(internals.editor, result!, "/fix-tests");
+    expect(composer.getValue()).toBe("/fix-tests ");
   });
 
   it("menu apply: arg-less runs immediately, arg-taking inserts /id ", () => {

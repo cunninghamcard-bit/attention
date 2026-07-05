@@ -39,14 +39,17 @@ export interface ChatComposerCallbacks {
   // host names the current selection and owns the menu; absent = no chip.
   getModelLabel?(): string;
   openModelMenu?(event: MouseEvent): void;
+  // The harness-native forwardable commands of this thread's members —
+  // the / menu is a pure relay of these; selection inserts "/name "
+  // and submit sends the text verbatim for the harness to interpret.
+  getHarnessCommands?(): Array<{ name: string; description?: string }>;
 }
 
 // parseSlashInput classifies a submitted draft: a leading "/word" is a
-// command (with the rest of the line as args); "//" escapes a literal
-// leading slash. Exported pure so tests pin the grammar.
-export function parseSlashInput(text: string): { id: string; args: string } | { literal: string } | null {
-  if (text.startsWith("//")) return { literal: text.slice(1) };
-  const match = text.match(/^\/([\w-]+)(?:\s+([\s\S]*))?$/);
+// command reference (rest of the line = args). Locally registered ids
+// run in the client; everything else forwards verbatim to the harness.
+export function parseSlashInput(text: string): { id: string; args: string } | null {
+  const match = text.match(/^\/([\w:.-]+)(?:\s+([\s\S]*))?$/);
   if (!match) return null;
   return { id: match[1], args: (match[2] ?? "").trim() };
 }
@@ -233,19 +236,17 @@ export class ChatComposer extends Component {
     const attachments = this.attachmentBar.list().map(({ name, content }) => ({ name, content }));
     if (!text && attachments.length === 0) return true;
     const parsed = parseSlashInput(text);
-    if (parsed && "id" in parsed) {
+    if (parsed) {
       const command = listChatSlashCommands().find((c) => c.id === parsed.id);
       if (command?.run) {
         this.setValue("");
         command.run(this.commandContext(), parsed.args);
         return true;
       }
-      // Unknown command: fail fast, keep the draft — never send "/typo"
-      // into the thread as if it were conversation.
-      new Notice(STRINGS.composer.unknownCommand(parsed.id));
-      return true;
+      // Not locally registered: FORWARD verbatim — harness commands
+      // (claude/codex/pi custom prompts, extensions, skills) are the
+      // harness's to interpret, never the composer's to police.
     }
-    if (parsed && "literal" in parsed) text = parsed.literal;
     const running = this.callbacks.isRunning();
     if (running && !text) return true;
     this.setValue("");
@@ -298,7 +299,15 @@ export class ChatComposer extends Component {
   private completeSlashCommand(context: CompletionContext): CompletionResult | null {
     const match = context.matchBefore(/^\/[\w-]*/);
     if (!match || (match.from === match.to && !context.explicit)) return null;
-    const options: Completion[] = listChatSlashCommands().map((command) => ({
+    const harnessOptions: Completion[] = (this.callbacks.getHarnessCommands?.() ?? []).map((command) => ({
+      label: `/${command.name}`,
+      detail: command.description ?? "",
+      apply: (view: EditorView) => {
+        const insert = `/${command.name} `;
+        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert }, selection: { anchor: insert.length } });
+      },
+    }));
+    const options: Completion[] = harnessOptions.concat(listChatSlashCommands().map((command) => ({
       label: `/${command.id}`,
       detail: command.description ?? command.name,
       apply: (view) => {
@@ -312,7 +321,7 @@ export class ChatComposer extends Component {
         const insert = command.insertText ?? `/${command.id} `;
         view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert }, selection: { anchor: insert.length } });
       },
-    }));
+    })));
     return { from: match.from, options, filter: true };
   }
 

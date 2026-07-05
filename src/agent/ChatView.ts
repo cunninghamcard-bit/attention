@@ -31,6 +31,7 @@ export class ChatView extends StreamView {
   protected session: Agent | null = null;
   private list: ChatMessageList | null = null;
   protected composer: ChatComposer | null = null;
+  private harnessCommands: Array<{ name: string; description?: string }> = [];
   private stopActionEl: HTMLElement | null = null;
   // Set on send: the next sync pins the new user message to the viewport top
   // (ArkLoop-style anchoring) so the reply reads downward from the question.
@@ -155,6 +156,9 @@ export class ChatView extends StreamView {
     this.contentEl.empty();
 
     this.session = this.app.agents.get(agentId);
+    void new AgentTransport().listCommands(agentId).then((commands) => {
+      this.harnessCommands = commands;
+    });
     // The body owns the dock relationship: the transcript is the only
     // scroller, the composer floats over its bottom edge, and the
     // transcript scrolls under it through the scrim (see the anatomy).
@@ -173,6 +177,7 @@ export class ChatView extends StreamView {
           send: (text, attachments) => void this.sendMessage(text, attachments),
           queue: (text, attachments) => this.session?.queueMessage(text, attachments),
           stop: () => void this.stopRun(),
+          getHarnessCommands: () => this.harnessCommands,
           isRunning: () => this.isRunning(),
           getWikilinkTargets: () => this.app.vault.getMarkdownFiles().map((file) => file.basename),
           getMentionTargets: () => this.mentionTargets(),

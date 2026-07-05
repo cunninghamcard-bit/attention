@@ -130,6 +130,13 @@ export class AgentTransport {
     await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}`, { method: "DELETE" });
   }
 
+  async listCommands(agentId: string): Promise<Array<{ name: string; description?: string; source?: string; agentId: string }>> {
+    const response = await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}/commands`).catch(() => null);
+    if (!response?.ok) return [];
+    const payload = (await response.json().catch(() => null)) as { commands?: Array<{ name: string; description?: string; source?: string; agentId: string }> } | null;
+    return Array.isArray(payload?.commands) ? payload.commands : [];
+  }
+
   async steer(agentId: string, input: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}/steer`, {
       method: "POST",
