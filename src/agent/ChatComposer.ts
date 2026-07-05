@@ -6,6 +6,7 @@ import { createDiv, createEl, createSpan } from "../dom/dom";
 import { Component } from "../core/Component";
 import { STRINGS } from "./AgentStrings";
 import { setIcon } from "../ui/Icon";
+import { Notice } from "../ui/Notice";
 import { ChatAttachmentBar } from "./ChatAttachmentBar";
 import {
   appendChatInputHistory,
@@ -38,6 +39,16 @@ export interface ChatComposerCallbacks {
   // host names the current selection and owns the menu; absent = no chip.
   getModelLabel?(): string;
   openModelMenu?(event: MouseEvent): void;
+}
+
+// parseSlashInput classifies a submitted draft: a leading "/word" is a
+// command (with the rest of the line as args); "//" escapes a literal
+// leading slash. Exported pure so tests pin the grammar.
+export function parseSlashInput(text: string): { id: string; args: string } | { literal: string } | null {
+  if (text.startsWith("//")) return { literal: text.slice(1) };
+  const match = text.match(/^\/([\w-]+)(?:\s+([\s\S]*))?$/);
+  if (!match) return null;
+  return { id: match[1], args: (match[2] ?? "").trim() };
 }
 
 export interface ChatComposerOptions {
@@ -218,9 +229,23 @@ export class ChatComposer extends Component {
   }
 
   private submit(): boolean {
-    const text = this.getValue().trim();
+    let text = this.getValue().trim();
     const attachments = this.attachmentBar.list().map(({ name, content }) => ({ name, content }));
     if (!text && attachments.length === 0) return true;
+    const parsed = parseSlashInput(text);
+    if (parsed && "id" in parsed) {
+      const command = listChatSlashCommands().find((c) => c.id === parsed.id);
+      if (command?.run) {
+        this.setValue("");
+        command.run(this.commandContext(), parsed.args);
+        return true;
+      }
+      // Unknown command: fail fast, keep the draft — never send "/typo"
+      // into the thread as if it were conversation.
+      new Notice(STRINGS.composer.unknownCommand(parsed.id));
+      return true;
+    }
+    if (parsed && "literal" in parsed) text = parsed.literal;
     const running = this.callbacks.isRunning();
     if (running && !text) return true;
     this.setValue("");
@@ -261,6 +286,14 @@ export class ChatComposer extends Component {
     return true;
   }
 
+  private commandContext() {
+    return {
+      getValue: () => this.getValue(),
+      setValue: (value: string) => this.setValue(value),
+      send: () => void this.submit(),
+    };
+  }
+
   // "/command" at the very start of the draft.
   private completeSlashCommand(context: CompletionContext): CompletionResult | null {
     const match = context.matchBefore(/^\/[\w-]*/);
@@ -269,13 +302,11 @@ export class ChatComposer extends Component {
       label: `/${command.id}`,
       detail: command.description ?? command.name,
       apply: (view) => {
-        if (command.run) {
+        // Argument-less commands run on selection; argument-taking ones
+        // insert "/id " and run at submit with the rest of the line.
+        if (command.run && (command.args ?? "none") === "none") {
           view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } });
-          command.run({
-            getValue: () => this.getValue(),
-            setValue: (value) => this.setValue(value),
-            send: () => void this.submit(),
-          });
+          command.run(this.commandContext(), "");
           return;
         }
         const insert = command.insertText ?? `/${command.id} `;

@@ -130,6 +130,18 @@ export class AgentTransport {
     await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}`, { method: "DELETE" });
   }
 
+  async steer(agentId: string, input: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}/steer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ input }),
+    });
+    if (!response.ok) {
+      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)?.error;
+      throw new Error(detail || `steer rejected: ${response.status}`);
+    }
+  }
+
   async stop(agentId: string): Promise<void> {
     // Best effort: interrupting a run that already ended is not an error.
     await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}/stop`, { method: "POST" }).catch(() => undefined);

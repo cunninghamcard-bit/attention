@@ -192,4 +192,30 @@ export function registerAgentBuiltin(app: App): void {
     description: STRINGS.slash.stopDesc,
     run: () => void app.workspace.getActiveViewOfType(ChatView)?.stopRun(),
   });
+  registerChatSlashCommand({
+    id: "steer",
+    name: STRINGS.slash.steer,
+    description: STRINGS.slash.steerDesc,
+    args: "text",
+    run: (_context, args) => void app.workspace.getActiveViewOfType(ChatView)?.steerRun(args),
+  });
+  registerChatSlashCommand({
+    id: "rename",
+    name: STRINGS.slash.rename,
+    description: STRINGS.slash.renameDesc,
+    args: "text",
+    run: (_context, args) => void app.workspace.getActiveViewOfType(ChatView)?.renameThread(args),
+  });
+  registerChatSlashCommand({
+    id: "copy",
+    name: STRINGS.slash.copy,
+    description: STRINGS.slash.copyDesc,
+    run: () => void app.workspace.getActiveViewOfType(ChatView)?.copyConversation(),
+  });
+  registerChatSlashCommand({
+    id: "delete",
+    name: STRINGS.slash.delete,
+    description: STRINGS.slash.deleteDesc,
+    run: () => void app.workspace.getActiveViewOfType(ChatView)?.deleteThread(),
+  });
 }

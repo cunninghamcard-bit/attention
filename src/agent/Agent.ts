@@ -267,6 +267,11 @@ export class Agent extends Events {
     await this.transport.stop(this.agentId);
   }
 
+  async steer(text: string): Promise<void> {
+    if (!this.transport) return;
+    await this.transport.steer(this.agentId, text);
+  }
+
   resolvePermission(requestId: string, decision: "allow" | "deny"): void {
     if (!this.transport) return;
     this.transport

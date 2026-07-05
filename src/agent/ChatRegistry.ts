@@ -21,7 +21,11 @@ export interface ChatSlashCommand {
   name: string;
   description?: string;
   insertText?: string;
-  run?(context: ChatComposerActionContext): void;
+  // "none" (default) runs on selection/submit with no argument;
+  // "text" takes the rest of the line: selecting from the menu inserts
+  // "/id " and the command runs when the user submits with arguments.
+  args?: "none" | "text";
+  run?(context: ChatComposerActionContext, args: string): void;
 }
 
 export interface ChatComposerAction {

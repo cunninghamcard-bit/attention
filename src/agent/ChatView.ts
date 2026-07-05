@@ -55,6 +55,27 @@ export class ChatView extends StreamView {
     return this.session?.isRunning() ?? false;
   }
 
+  async steerRun(text: string): Promise<void> {
+    try {
+      await this.session?.steer(text);
+      new Notice(STRINGS.slash.steered);
+    } catch (error) {
+      new Notice(STRINGS.notices.bridgeUnreachable(error instanceof Error ? error.message : String(error)));
+    }
+  }
+
+  async renameThread(title: string): Promise<void> {
+    await new AgentTransport().rename(this.agentId, title);
+    new Notice(STRINGS.slash.renamed(title));
+  }
+
+  async deleteThread(): Promise<void> {
+    if (!window.confirm(STRINGS.slash.deleteDesc + "?")) return;
+    await new AgentTransport().delete(this.agentId);
+    new Notice(STRINGS.slash.deleted);
+    this.leaf.detach();
+  }
+
   async stopRun(): Promise<void> {
     await this.session?.stop();
   }
@@ -240,7 +261,7 @@ export class ChatView extends StreamView {
     }
   }
 
-  private async copyConversation(): Promise<void> {
+  async copyConversation(): Promise<void> {
     if (!this.session) return;
     await writeClipboardText(chatTranscriptToMarkdown(this.session.getMessages()));
     new Notice(STRINGS.notices.conversationCopied);

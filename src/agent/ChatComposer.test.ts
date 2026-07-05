@@ -171,3 +171,66 @@ function fakeTextFile(name: string, content: string): File {
 function flushMicrotasks(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
+
+describe("slash command grammar and interception", () => {
+  it("parseSlashInput classifies commands, args, escapes and prose", async () => {
+    const { parseSlashInput } = await import("./ChatComposer");
+    expect(parseSlashInput("/stop")).toEqual({ id: "stop", args: "" });
+    expect(parseSlashInput("/rename 新标题 带空格")).toEqual({ id: "rename", args: "新标题 带空格" });
+    expect(parseSlashInput("//literal path")).toEqual({ literal: "/literal path" });
+    expect(parseSlashInput("plain /middle")).toBeNull();
+    expect(parseSlashInput("/")).toBeNull();
+  });
+
+  it("submit runs a registered command with args instead of sending", () => {
+    const ran = vi.fn();
+    const unregister = registerChatSlashCommand({ id: "echo-cmd", name: "Echo", args: "text", run: (_c, args) => ran(args) });
+    try {
+      const { composer, send, internals } = setup();
+      composer.setValue("/echo-cmd 你好 世界");
+      internals.editor.contentDOM.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      expect(ran).toHaveBeenCalledWith("你好 世界");
+      expect(send).not.toHaveBeenCalled();
+      expect(composer.getValue()).toBe("");
+    } finally {
+      unregister();
+    }
+  });
+
+  it("unknown /command fails fast: no send, draft preserved", () => {
+    const { composer, send, internals } = setup();
+    composer.setValue("/no-such-cmd");
+    internals.editor.contentDOM.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(send).not.toHaveBeenCalled();
+    expect(composer.getValue()).toBe("/no-such-cmd");
+  });
+
+  it("// escapes to a literal leading slash and sends", () => {
+    const { composer, send, internals } = setup();
+    composer.setValue("//etc/hosts 怎么看");
+    internals.editor.contentDOM.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(send).toHaveBeenCalledWith("/etc/hosts 怎么看", []);
+  });
+
+  it("menu apply: arg-less runs immediately, arg-taking inserts /id ", () => {
+    const ranNow = vi.fn();
+    const u1 = registerChatSlashCommand({ id: "now-cmd", name: "Now", run: () => ranNow() });
+    const u2 = registerChatSlashCommand({ id: "later-cmd", name: "Later", args: "text", run: vi.fn() });
+    try {
+      const { composer, internals } = setup();
+      composer.setValue("/no");
+      const result = internals.completeSlashCommand(contextAt(internals.editor, 3));
+      applyOption(internals.editor, result!, "/now-cmd");
+      expect(ranNow).toHaveBeenCalled();
+      expect(composer.getValue()).toBe("");
+
+      composer.setValue("/la");
+      const result2 = internals.completeSlashCommand(contextAt(internals.editor, 3));
+      applyOption(internals.editor, result2!, "/later-cmd");
+      expect(composer.getValue()).toBe("/later-cmd ");
+    } finally {
+      u1();
+      u2();
+    }
+  });
+});
