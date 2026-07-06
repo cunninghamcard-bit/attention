@@ -196,6 +196,7 @@ export class ChatView extends StreamView {
 
     this.session = this.app.agents.get(agentId);
     void new AgentTransport().listCommands(agentId).then((commands) => {
+      if (this.agentId !== agentId) return; // view switched while in flight
       this.harnessCommands = commands;
     });
     // The body owns the dock relationship: the transcript is the only
@@ -236,6 +237,10 @@ export class ChatView extends StreamView {
     }
     this.registerEvent(this.session.on("changed", () => this.scheduleSync()));
     void this.profileTransport.memberAgents(agentId).then((members) => {
+      // Guard the race: onOpen inits for the constructor-default thread,
+      // setState re-inits for the real one; the stale response must not
+      // land last and overwrite the fresh member (or its absence).
+      if (this.agentId !== agentId) return;
       this.memberAgent = members[0] ?? null;
       this.composer?.refreshModelChip();
     });
