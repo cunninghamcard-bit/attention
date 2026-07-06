@@ -160,6 +160,8 @@ export const STRINGS = {
     removed: (id: string) => `${id} removed from the thread`,
     empty: "No agents configured yet — create one with the file layer (~/.loom/agents) or the CLI.",
     linkPrompt: "Link an agent…",
+    newAgent: (harness: string) => `New ${harness} agent…`,
+    newAgentPrompt: (harness: string) => `New ${harness} agent — id:`,
   },
   notices: {
     messageCopied: "Message copied",

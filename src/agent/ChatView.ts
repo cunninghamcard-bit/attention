@@ -263,19 +263,31 @@ export class ChatView extends StreamView {
     });
   }
 
-  // The member roster menu: current members (click to unlink) and every
-  // other configured agent (click to link). Pure relay of /links + /agents;
-  // an empty kernel shows the file-layer guidance instead of inventing a
-  // default (fail-fast has no silent member).
+  // The member roster menu. Harness is the first-class axis (user
+  // ruling): current members sit on top, then one submenu per
+  // registered harness — its linkable agents plus a "New {harness}
+  // agent…" that creates the row and links it in one motion. Pure
+  // relay of /harnesses + /agents + /links; the UI never invents a
+  // default member (fail-fast).
   private async openMembersMenu(event: MouseEvent): Promise<void> {
-    const [members, all] = await Promise.all([
+    const [members, all, harnesses] = await Promise.all([
       this.profileTransport.memberAgents(this.agentId),
       this.profileTransport.listAgentEntities(),
+      this.profileTransport.listHarnesses(),
     ]);
     const menu = new Menu(this.containerEl.ownerDocument);
     const memberLink = (agentId: string) => ({
       fromType: "agent", fromId: agentId, toType: "thread", toId: this.agentId, type: "member",
     });
+    const link = async (agentId: string) => {
+      try {
+        await this.profileTransport.putLink(memberLink(agentId));
+        new Notice(STRINGS.members.added(agentId));
+        await this.refreshMember();
+      } catch (error) {
+        new Notice(error instanceof Error ? error.message : String(error));
+      }
+    };
     for (const member of members) {
       menu.addItem((item) => item
         .setTitle(STRINGS.members.remove(`${member.id} (${member.harness})`))
@@ -288,22 +300,41 @@ export class ChatView extends StreamView {
     }
     const memberIds = new Set(members.map((member) => member.id));
     const addable = all.filter((agent) => !memberIds.has(agent.id) && (agent.type ?? "agent") === "agent");
-    if (members.length > 0 && addable.length > 0) menu.addSeparator();
-    for (const agent of addable) {
+    menu.addSections(["", ...harnesses.map((h) => `harness-${h.name}`)]);
+    for (const harness of harnesses) {
+      const section = `harness-${harness.name}`;
+      menu.setSectionSubmenu(section, { title: harness.name, icon: "bot" });
+      for (const agent of addable.filter((a) => a.harness === harness.name)) {
+        menu.addItem((item) => item
+          .setSection(section)
+          .setTitle(STRINGS.members.add(agent.model ? `${agent.id} · ${agent.model}` : agent.id))
+          .setIcon("lucide-user-plus")
+          .onClick(() => void link(agent.id)));
+      }
       menu.addItem((item) => item
-        .setTitle(STRINGS.members.add(`${agent.id} (${agent.harness})`))
-        .setIcon("lucide-user-plus")
+        .setSection(section)
+        .setTitle(STRINGS.members.newAgent(harness.name))
+        .setIcon("lucide-plus")
         .onClick(async () => {
+          const id = window.prompt(STRINGS.members.newAgentPrompt(harness.name))?.trim();
+          if (!id) return;
           try {
-            await this.profileTransport.putLink(memberLink(agent.id));
-            new Notice(STRINGS.members.added(agent.id));
-            await this.refreshMember();
+            await this.profileTransport.putAgent({ id, name: id, harness: harness.name });
+            await link(id);
           } catch (error) {
             new Notice(error instanceof Error ? error.message : String(error));
           }
         }));
     }
-    if (members.length === 0 && addable.length === 0) {
+    // Agents on harnesses this kernel no longer registers stay reachable.
+    const known = new Set(harnesses.map((h) => h.name));
+    for (const agent of addable.filter((a) => !known.has(a.harness))) {
+      menu.addItem((item) => item
+        .setTitle(STRINGS.members.add(`${agent.id} (${agent.harness})`))
+        .setIcon("lucide-user-plus")
+        .onClick(() => void link(agent.id)));
+    }
+    if (harnesses.length === 0 && addable.length === 0 && members.length === 0) {
       menu.addItem((item) => item.setTitle(STRINGS.members.empty).setDisabled(true));
     }
     menu.showAtMouseEvent(event);
