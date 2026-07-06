@@ -121,6 +121,11 @@ export class ChatView extends StreamView {
       .onClick(() => void this.copyConversation()));
     menu.addItem((item) => item
       .setSection("action")
+      .setTitle(STRINGS.members.title)
+      .setIcon("users")
+      .onClick((evt) => void this.openMembersMenu(evt as MouseEvent)));
+    menu.addItem((item) => item
+      .setSection("action")
       .setTitle(STRINGS.menu.fork)
       .setIcon("lucide-git-branch")
       .onClick(() => void this.forkThread()));
@@ -243,8 +248,64 @@ export class ChatView extends StreamView {
   // (MultiAgentView inserts its participants strip above the stream).
   protected onChatChromeReady(): void {}
 
+  // Reload the member roster after link changes; the chip follows.
+  private async refreshMember(): Promise<void> {
+    const members = await this.profileTransport.memberAgents(this.agentId);
+    this.memberAgent = members[0] ?? null;
+    this.composer?.refreshModelChip();
+    void this.profileTransport.listCommands(this.agentId).then((commands) => {
+      this.harnessCommands = commands;
+    });
+  }
+
+  // The member roster menu: current members (click to unlink) and every
+  // other configured agent (click to link). Pure relay of /links + /agents;
+  // an empty kernel shows the file-layer guidance instead of inventing a
+  // default (fail-fast has no silent member).
+  private async openMembersMenu(event: MouseEvent): Promise<void> {
+    const [members, all] = await Promise.all([
+      this.profileTransport.memberAgents(this.agentId),
+      this.profileTransport.listAgentEntities(),
+    ]);
+    const menu = new Menu(this.containerEl.ownerDocument);
+    const memberLink = (agentId: string) => ({
+      fromType: "agent", fromId: agentId, toType: "thread", toId: this.agentId, type: "member",
+    });
+    for (const member of members) {
+      menu.addItem((item) => item
+        .setTitle(STRINGS.members.remove(`${member.id} (${member.harness})`))
+        .setIcon("lucide-user-minus")
+        .onClick(async () => {
+          await this.profileTransport.deleteLink(memberLink(member.id));
+          new Notice(STRINGS.members.removed(member.id));
+          await this.refreshMember();
+        }));
+    }
+    const memberIds = new Set(members.map((member) => member.id));
+    const addable = all.filter((agent) => !memberIds.has(agent.id) && (agent.type ?? "agent") === "agent");
+    if (members.length > 0 && addable.length > 0) menu.addSeparator();
+    for (const agent of addable) {
+      menu.addItem((item) => item
+        .setTitle(STRINGS.members.add(`${agent.id} (${agent.harness})`))
+        .setIcon("lucide-user-plus")
+        .onClick(async () => {
+          try {
+            await this.profileTransport.putLink(memberLink(agent.id));
+            new Notice(STRINGS.members.added(agent.id));
+            await this.refreshMember();
+          } catch (error) {
+            new Notice(error instanceof Error ? error.message : String(error));
+          }
+        }));
+    }
+    if (members.length === 0 && addable.length === 0) {
+      menu.addItem((item) => item.setTitle(STRINGS.members.empty).setDisabled(true));
+    }
+    menu.showAtMouseEvent(event);
+  }
+
   private modelChipLabel(): string {
-    if (!this.memberAgent) return STRINGS.composer.modelDefault;
+    if (!this.memberAgent) return STRINGS.members.linkPrompt;
     const model = this.memberAgent.model || STRINGS.composer.modelDefault;
     const label = `${this.memberAgent.harness} · ${model}`;
     return this.memberAgent.thinking ? `${label} · ${this.memberAgent.thinking}` : label;
@@ -258,7 +319,7 @@ export class ChatView extends StreamView {
   private async openModelMenu(event: MouseEvent): Promise<void> {
     const agent = this.memberAgent;
     if (!agent) {
-      new Notice(STRINGS.notices.noMemberAgent);
+      await this.openMembersMenu(event);
       return;
     }
     const capabilities = (await this.profileTransport.listHarnesses())

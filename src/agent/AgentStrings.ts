@@ -148,6 +148,15 @@ export const STRINGS = {
     retry: "Retry",
     edit: "Edit",
   },
+  members: {
+    title: "Members",
+    add: (label: string) => `Add ${label}`,
+    remove: (label: string) => `Remove ${label}`,
+    added: (id: string) => `${id} joined the thread`,
+    removed: (id: string) => `${id} removed from the thread`,
+    empty: "No agents configured yet — create one with the file layer (~/.loom/agents) or the CLI.",
+    linkPrompt: "Link an agent…",
+  },
   notices: {
     messageCopied: "Message copied",
     conversationCopied: "Conversation copied",
