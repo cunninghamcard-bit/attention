@@ -1,5 +1,6 @@
 import { createDiv, createEl } from "../dom/dom";
-import { AgentTransport, type AgentProfile } from "./AgentTransport";
+import { AgentTransport, type HarnessCapabilities, type KernelAgent } from "./AgentTransport";
+import { Notice } from "../ui/Notice";
 import { ItemView } from "../views/ItemView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
 import type { Agent } from "./Agent";
@@ -22,10 +23,10 @@ export class AgentPropertiesView extends ItemView {
   private agentId = "";
   private session: Agent | null = null;
   private readonly transport = new AgentTransport();
-  // The agent's frontmatter, fetched from the bridge; edits PATCH back the
-  // full profile (params replace wholesale, so removals stick).
-  private profile: AgentProfile = {};
-  private efforts: string[] = [];
+  // The thread's first member agent entity — the kernel row this panel
+  // edits. env arrives masked and is never posted back from here.
+  private member: KernelAgent | null = null;
+  private capabilities: HarnessCapabilities | null = null;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
@@ -71,17 +72,12 @@ export class AgentPropertiesView extends ItemView {
     this.session.connect();
     this.registerEvent(this.session.on("changed", () => this.render()));
     this.render();
-    void this.transport.getAgent(agentId).then((summary) => {
-      if (summary?.profile) {
-        this.profile = summary.profile;
-        this.render();
-      }
-    });
-    void this.transport.listModels().then(({ efforts }) => {
-      if (efforts.length > 0) {
-        this.efforts = efforts;
-        this.render();
-      }
+    void this.transport.memberAgents(agentId).then(async (members) => {
+      this.member = members[0] ?? null;
+      this.capabilities = this.member
+        ? (await this.transport.listHarnesses()).find((h) => h.name === this.member?.harness) ?? null
+        : null;
+      this.render();
     });
   }
 
@@ -111,130 +107,101 @@ export class AgentPropertiesView extends ItemView {
     openEl.addEventListener("click", () => void openAgent(this.app, this.agentId));
   }
 
-  // The frontmatter editor: known fields (model, effort) as typed inputs,
-  // open params as key/value rows — the same two-tier shape a note's
-  // properties panel has.
+  // The configuration editor mirrors the kernel's Agent entity exactly:
+  // name / model / thinking / instructions, with dropdowns fed by the
+  // harness's own capability declaration. env is displayed (masked) but
+  // never edited here — omitting it on save preserves stored secrets.
+  // File-origin agents are read-only: their truth is the .md file.
   private renderConfig(rootEl: HTMLElement): void {
     const configEl = this.section(rootEl, "config", STRINGS.properties.configuration);
+    const member = this.member;
+    if (!member) {
+      createDiv({ cls: "agent-view-hint", text: STRINGS.properties.noMembers, parent: configEl });
+      return;
+    }
+    createDiv({ cls: "agent-view-hint", text: STRINGS.properties.memberAgentFor(member.id), parent: configEl });
+    const readOnly = member.origin === "file";
+    if (readOnly) createDiv({ cls: "agent-view-hint", text: STRINGS.properties.fileOrigin, parent: configEl });
 
-    const modelRow = createDiv("agent-prop", configEl);
-    modelRow.dataset.prop = "model";
-    createDiv({ cls: "agent-prop-label", text: STRINGS.properties.model, parent: modelRow });
-    const modelInput = createEl("input", { cls: "agent-prop-input", parent: modelRow });
-    modelInput.type = "text";
-    modelInput.placeholder = STRINGS.properties.modelPlaceholder;
-    modelInput.value = this.profile.model ?? "";
-    modelInput.addEventListener("change", () => {
-      this.profile.model = modelInput.value.trim() || undefined;
-      void this.saveProfile();
-    });
+    this.prop(configEl, "harness", STRINGS.properties.harness, member.harness);
+    if (member.origin) this.prop(configEl, "origin", "Origin", member.origin);
 
-    const effortRow = createDiv("agent-prop", configEl);
-    effortRow.dataset.prop = "effort";
-    createDiv({ cls: "agent-prop-label", text: STRINGS.properties.effort, parent: effortRow });
-    const effortSelect = createEl("select", { cls: "agent-prop-input", parent: effortRow });
-    for (const level of ["", ...(this.efforts.length > 0 ? this.efforts : ["low", "medium", "high"])]) {
-      const option = createEl("option", { parent: effortSelect, text: level || STRINGS.properties.effortDefault });
+    this.textRow(configEl, "name", "Name", member.name, readOnly, (value) => this.save({ name: value || member.id }));
+    this.textRow(configEl, "model", STRINGS.properties.model, member.model ?? "", readOnly,
+      (value) => this.save({ model: value || undefined }), this.capabilities?.modelHint || STRINGS.properties.modelPlaceholder);
+
+    const thinkingRow = createDiv("agent-prop", configEl);
+    thinkingRow.dataset.prop = "thinking";
+    createDiv({ cls: "agent-prop-label", text: STRINGS.properties.thinking, parent: thinkingRow });
+    const thinkingSelect = createEl("select", { cls: "agent-prop-input", parent: thinkingRow });
+    for (const level of ["", ...(this.capabilities?.thinkingLevels ?? [])]) {
+      const option = createEl("option", { parent: thinkingSelect, text: level || STRINGS.properties.effortDefault });
       option.value = level;
     }
-    effortSelect.value = this.profile.effort ?? "";
-    effortSelect.addEventListener("change", () => {
-      this.profile.effort = effortSelect.value || undefined;
-      void this.saveProfile();
-    });
+    thinkingSelect.value = member.thinking ?? "";
+    thinkingSelect.disabled = readOnly;
+    thinkingSelect.addEventListener("change", () => void this.save({ thinking: thinkingSelect.value || undefined }));
 
-    this.stepperRow(configEl, "temperature", STRINGS.properties.temperature, 0.1, 0, 2, () => this.profile.temperature, (value) => (this.profile.temperature = value));
-    this.stepperRow(configEl, "maxTokens", STRINGS.properties.maxTokens, 128, 1, 1_000_000, () => this.profile.maxTokens, (value) => (this.profile.maxTokens = value));
+    const instructionsRow = createDiv("agent-prop agent-prop-block", configEl);
+    instructionsRow.dataset.prop = "instructions";
+    createDiv({ cls: "agent-prop-label", text: STRINGS.properties.instructions, parent: instructionsRow });
+    const instructionsInput = createEl("textarea", { cls: "agent-prop-input agent-prop-textarea", parent: instructionsRow });
+    instructionsInput.placeholder = STRINGS.properties.instructionsPlaceholder;
+    instructionsInput.value = member.instructions ?? "";
+    instructionsInput.disabled = readOnly;
+    instructionsInput.addEventListener("change", () => void this.save({ instructions: instructionsInput.value }));
 
-    const paramsEl = createDiv("agent-params", configEl);
-    paramsEl.dataset.prop = "params";
-    createDiv({ cls: "agent-prop-label", text: STRINGS.properties.params, parent: paramsEl });
-    for (const [key, value] of Object.entries(this.profile.params ?? {})) this.paramRow(paramsEl, key, value);
-    const addEl = createEl("button", { cls: "agent-param-add", text: STRINGS.properties.addParam, parent: paramsEl });
-    addEl.addEventListener("click", () => this.paramRow(paramsEl, "", "", addEl));
+    const envEntries = Object.entries(member.env ?? {});
+    if (envEntries.length > 0) {
+      const envEl = createDiv("agent-params", configEl);
+      envEl.dataset.prop = "env";
+      createDiv({ cls: "agent-prop-label", text: STRINGS.properties.envSection, parent: envEl });
+      for (const [key, value] of envEntries) {
+        const rowEl = createDiv("agent-param-row", envEl);
+        createDiv({ cls: "agent-param-key", text: key, parent: rowEl });
+        createDiv({ cls: "agent-param-value", text: value, parent: rowEl });
+      }
+      createDiv({ cls: "agent-view-hint", text: STRINGS.properties.envHint, parent: envEl });
+    }
 
     createDiv({ cls: "agent-view-hint", text: STRINGS.properties.configHint, parent: configEl });
   }
 
-  private paramRow(parentEl: HTMLElement, key: string, value: string, beforeEl?: HTMLElement): void {
-    const rowEl = createDiv("agent-param-row", parentEl);
-    if (beforeEl) parentEl.insertBefore(rowEl, beforeEl);
-    const keyInput = createEl("input", { cls: "agent-param-key", parent: rowEl });
-    keyInput.type = "text";
-    keyInput.placeholder = STRINGS.properties.paramKey;
-    keyInput.value = key;
-    const valueInput = createEl("input", { cls: "agent-param-value", parent: rowEl });
-    valueInput.type = "text";
-    valueInput.placeholder = STRINGS.properties.paramValue;
-    valueInput.value = value;
-    const removeEl = createEl("button", { cls: "agent-param-remove", text: "×", parent: rowEl });
-    const commit = () => void this.saveParams();
-    keyInput.addEventListener("change", commit);
-    valueInput.addEventListener("change", commit);
-    removeEl.addEventListener("click", () => {
-      rowEl.remove();
-      void this.saveParams();
-    });
-  }
-
-  // Params are read back from the DOM rows so add/edit/remove share one path.
-  private async saveParams(): Promise<void> {
-    const params: Record<string, string> = {};
-    for (const rowEl of this.contentEl.querySelectorAll(".agent-param-row")) {
-      const key = (rowEl.querySelector(".agent-param-key") as HTMLInputElement).value.trim();
-      const value = (rowEl.querySelector(".agent-param-value") as HTMLInputElement).value;
-      if (key) params[key] = value;
-    }
-    this.profile.params = params;
-    await this.saveProfile();
-  }
-
-  // Numeric dials PATCH through a debounce accumulator (DeepChat's
-  // pendingGenerationPatch shape) so steppers don't fire one request per
-  // click burst.
-  private saveTimer = 0;
-
-  private saveProfileDebounced(): void {
-    window.clearTimeout(this.saveTimer);
-    this.saveTimer = window.setTimeout(() => void this.saveProfile(), 500);
-  }
-
-  private stepperRow(
+  private textRow(
     parentEl: HTMLElement,
     key: string,
     label: string,
-    step: number,
-    min: number,
-    max: number,
-    read: () => number | undefined,
-    write: (value: number | undefined) => void,
+    value: string,
+    readOnly: boolean,
+    commit: (value: string) => void,
+    placeholder?: string,
   ): void {
     const rowEl = createDiv("agent-prop", parentEl);
     rowEl.dataset.prop = key;
     createDiv({ cls: "agent-prop-label", text: label, parent: rowEl });
-    const stepperEl = createDiv("agent-prop-stepper", rowEl);
-    const decEl = createEl("button", { text: "−", parent: stepperEl });
-    const input = createEl("input", { cls: "agent-prop-input", parent: stepperEl });
+    const input = createEl("input", { cls: "agent-prop-input", parent: rowEl });
     input.type = "text";
-    input.placeholder = STRINGS.properties.effortDefault;
-    input.value = read() !== undefined ? String(read()) : "";
-    const incEl = createEl("button", { text: "+", parent: stepperEl });
-    const clamp = (value: number) => Math.min(max, Math.max(min, Math.round(value * 1000) / 1000));
-    const commit = (value: number | undefined) => {
-      write(value);
-      input.value = value !== undefined ? String(value) : "";
-      this.saveProfileDebounced();
-    };
-    decEl.addEventListener("click", () => commit(clamp((read() ?? (key === "temperature" ? 1 : 4096)) - step)));
-    incEl.addEventListener("click", () => commit(clamp((read() ?? (key === "temperature" ? 1 : 4096)) + step)));
-    input.addEventListener("change", () => {
-      const parsed = Number(input.value.trim());
-      commit(input.value.trim() === "" || !Number.isFinite(parsed) ? undefined : clamp(parsed));
-    });
+    if (placeholder) input.placeholder = placeholder;
+    input.value = value;
+    input.disabled = readOnly;
+    input.addEventListener("change", () => commit(input.value.trim()));
   }
 
-  private async saveProfile(): Promise<void> {
-    await this.transport.updateProfile(this.agentId, this.profile);
+  // Upsert with env stripped: masked values must never round-trip, and an
+  // absent env means "keep what is stored". The kernel's {error} text is
+  // the user guidance (409 for file-origin, 400 for bad values).
+  private async save(patch: Partial<KernelAgent>): Promise<void> {
+    if (!this.member) return;
+    const next = { ...this.member, ...patch };
+    delete next.env;
+    try {
+      await this.transport.putAgent(next);
+      this.member = { ...this.member, ...patch };
+      new Notice(STRINGS.notices.agentSaved);
+    } catch (error) {
+      new Notice(error instanceof Error ? error.message : String(error));
+    }
+    this.render();
   }
 
   private section(parentEl: HTMLElement, key: string, title: string): HTMLElement {

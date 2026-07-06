@@ -8,7 +8,7 @@ import { ChatComposer } from "./ChatComposer";
 import { ChatMessageList } from "./ChatMessageList";
 import { chatTranscriptToMarkdown, type ChatAttachmentPayload, type Agent } from "./Agent";
 import { STRINGS } from "./AgentStrings";
-import { AgentTransport, type AgentProfile } from "./AgentTransport";
+import { AgentTransport, type HarnessCapabilities, type KernelAgent } from "./AgentTransport";
 import { maybeAutoOpenArtifact } from "./ArtifactView";
 import { ensureChatStyles } from "./ChatStyles";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
@@ -37,7 +37,9 @@ export class ChatView extends StreamView {
   // (ArkLoop-style anchoring) so the reply reads downward from the question.
   private anchorPending = false;
   private readonly profileTransport = new AgentTransport();
-  protected profile: AgentProfile = {};
+  // The thread's first member agent — what the composer's model chip
+  // reflects and the thinking menu edits. null until links resolve.
+  protected memberAgent: KernelAgent | null = null;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
@@ -196,11 +198,9 @@ export class ChatView extends StreamView {
       this.register(() => dockObserver.disconnect());
     }
     this.registerEvent(this.session.on("changed", () => this.scheduleSync()));
-    void this.profileTransport.getAgent(agentId).then((summary) => {
-      if (summary?.profile) {
-        this.profile = summary.profile;
-        this.composer?.refreshModelChip();
-      }
+    void this.profileTransport.memberAgents(agentId).then((members) => {
+      this.memberAgent = members[0] ?? null;
+      this.composer?.refreshModelChip();
     });
     this.onChatChromeReady();
     this.scheduleSync();
@@ -212,38 +212,52 @@ export class ChatView extends StreamView {
   protected onChatChromeReady(): void {}
 
   private modelChipLabel(): string {
-    const model = this.profile.model ?? STRINGS.composer.modelDefault;
-    return this.profile.effort ? `${model} · ${this.profile.effort}` : model;
+    if (!this.memberAgent) return STRINGS.composer.modelDefault;
+    const model = this.memberAgent.model || STRINGS.composer.modelDefault;
+    const label = `${this.memberAgent.harness} · ${model}`;
+    return this.memberAgent.thinking ? `${label} · ${this.memberAgent.thinking}` : label;
   }
 
-  // The composer-integrated config: models from the engine, reasoning
-  // effort beneath them. The full profile (params, everything) lives in
-  // AgentPropertiesView; this menu is the quick switch.
+  // The quick switch beside the composer: thinking levels come from the
+  // member harness's own capability declaration (GET /harnesses), never
+  // a hardcoded list. Saves go through the agent upsert with env OMITTED
+  // so masked secrets are preserved, not clobbered. File-origin agents
+  // reject writes (409) — the kernel's error text is the guidance.
   private async openModelMenu(event: MouseEvent): Promise<void> {
-    const { models, efforts } = await this.profileTransport.listModels();
-    const effortLevels = efforts.length > 0 ? efforts : ["low", "medium", "high"];
+    const agent = this.memberAgent;
+    if (!agent) {
+      new Notice(STRINGS.notices.noMemberAgent);
+      return;
+    }
+    const capabilities = (await this.profileTransport.listHarnesses())
+      .find((h): h is HarnessCapabilities => h.name === agent.harness);
     const menu = new Menu(this.containerEl.ownerDocument);
-    const pick = (patch: Partial<AgentProfile>) => {
-      Object.assign(this.profile, patch);
-      void this.profileTransport.updateProfile(this.agentId, this.profile);
-      this.composer?.refreshModelChip();
+    const save = (patch: Partial<KernelAgent>) => {
+      const next = { ...agent, ...patch };
+      delete next.env; // masked on read; omitted = preserved
+      this.profileTransport.putAgent(next)
+        .then(() => {
+          this.memberAgent = { ...agent, ...patch };
+          this.composer?.refreshModelChip();
+        })
+        .catch((error) => new Notice(error instanceof Error ? error.message : String(error)));
     };
     menu.addItem((item) => item
-      .setTitle(STRINGS.composer.modelDefault)
-      .setChecked(!this.profile.model)
-      .onClick(() => pick({ model: undefined })));
-    for (const model of models) {
-      menu.addItem((item) => item
-        .setTitle(model)
-        .setChecked(this.profile.model === model)
-        .onClick(() => pick({ model })));
-    }
-    menu.addSeparator();
-    for (const effort of ["", ...effortLevels]) {
-      menu.addItem((item) => item
-        .setTitle(effort || STRINGS.properties.effortDefault)
-        .setChecked((this.profile.effort ?? "") === effort)
-        .onClick(() => pick({ effort: effort || undefined })));
+      .setTitle(STRINGS.properties.editModel(capabilities?.modelHint))
+      .setIcon("lucide-pencil")
+      .onClick(() => {
+        const model = window.prompt(capabilities?.modelHint || STRINGS.properties.modelPlaceholder, agent.model ?? "");
+        if (model !== null) save({ model: model.trim() || undefined });
+      }));
+    const levels = capabilities?.thinkingLevels ?? [];
+    if (levels.length > 0) {
+      menu.addSeparator();
+      for (const level of ["", ...levels]) {
+        menu.addItem((item) => item
+          .setTitle(level || STRINGS.properties.effortDefault)
+          .setChecked((agent.thinking ?? "") === level)
+          .onClick(() => save({ thinking: level || undefined })));
+      }
     }
     menu.showAtMouseEvent(event);
   }

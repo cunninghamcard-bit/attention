@@ -1,17 +1,41 @@
 import type { AgentEvent } from "./AgentEvent";
 
-// The agent's frontmatter: configuration properties beside the conversation
-// body. Known fields plus an open params map, exactly like a note's known
-// and custom properties. Truth lives on the bridge (an agent row later);
-// PATCH merges — the same channel rename already uses.
-export interface AgentProfile {
+// The kernel's Agent entity — the exact wire shape of GET/POST /agents
+// (camelCase, frozen in PROTOCOL.md). env values arrive masked ("•••")
+// unless they are $NAME references; a masked value must never be posted
+// back (the kernel refuses it), so updates omit env entirely.
+export interface KernelAgent {
+  id: string;
+  type?: string;
+  name: string;
+  harness: string;
   model?: string;
-  effort?: string;
-  // Generation params engines may honor; typed because they are known
-  // dials, unlike the open params bag below.
-  temperature?: number;
-  maxTokens?: number;
-  params?: Record<string, string>;
+  instructions?: string;
+  env?: Record<string, string>;
+  args?: string[];
+  thinking?: string;
+  origin?: string; // "" = api/cli-owned, "file" = agents-dir managed (writes 409)
+  home?: string;
+}
+
+// A harness's self-declared capabilities (GET /harnesses) — dropdowns
+// come from here, never hardcoded harness knowledge.
+export interface HarnessCapabilities {
+  name: string;
+  thinkingLevels?: string[];
+  modelHint?: string;
+  envHints?: string[];
+  supportsResume?: boolean;
+}
+
+// One edge of the graph (GET/POST/DELETE /links). Open vocabulary; the
+// UI mostly reads member (agent→thread) and forked-from (thread→thread).
+export interface KernelLink {
+  fromType: string;
+  fromId: string;
+  toType: string;
+  toId: string;
+  type: string;
 }
 
 export interface AgentSummary {
@@ -19,7 +43,6 @@ export interface AgentSummary {
   title: string | null;
   updatedAt: number;
   running: boolean;
-  profile?: AgentProfile;
 }
 
 export const DEFAULT_CHAT_BRIDGE_URL = "http://127.0.0.1:8787";
@@ -94,28 +117,118 @@ export class AgentTransport {
     return Array.isArray(payload?.threads) ? payload.threads.map(toAgentSummary) : [];
   }
 
-  async listModels(): Promise<{ models: string[]; efforts: string[] }> {
-    const response = await fetch(`${this.baseUrl}/models`).catch(() => null);
-    if (!response?.ok) return { models: [], efforts: [] };
-    const payload = (await response.json().catch(() => null)) as { models?: string[]; efforts?: string[] } | null;
-    return {
-      models: Array.isArray(payload?.models) ? payload.models : [],
-      efforts: Array.isArray(payload?.efforts) ? payload.efforts : [],
-    };
+  // ── kernel config surface ─────────────────────────────────────────────
+
+  async listHarnesses(): Promise<HarnessCapabilities[]> {
+    const response = await fetch(`${this.baseUrl}/harnesses`).catch(() => null);
+    if (!response?.ok) return [];
+    const payload = (await response.json().catch(() => null)) as { harnesses?: HarnessCapabilities[] } | null;
+    return Array.isArray(payload?.harnesses) ? payload.harnesses : [];
   }
 
-  async getAgent(agentId: string): Promise<AgentSummary | null> {
-    const response = await fetch(`${this.baseUrl}/agents/${encodeURIComponent(agentId)}`).catch(() => null);
+  async listAgentEntities(): Promise<KernelAgent[]> {
+    const response = await fetch(`${this.baseUrl}/agents`).catch(() => null);
+    if (!response?.ok) return [];
+    const payload = (await response.json().catch(() => null)) as { agents?: KernelAgent[] } | null;
+    return Array.isArray(payload?.agents) ? payload.agents : [];
+  }
+
+  async getAgentEntity(id: string): Promise<KernelAgent | null> {
+    const response = await fetch(`${this.baseUrl}/agents/${encodeURIComponent(id)}`).catch(() => null);
     if (!response?.ok) return null;
-    return (await response.json().catch(() => null)) as AgentSummary | null;
+    return (await response.json().catch(() => null)) as KernelAgent | null;
   }
 
-  async updateProfile(agentId: string, profile: AgentProfile): Promise<void> {
-    await fetch(`${this.baseUrl}/agents/${encodeURIComponent(agentId)}`, {
-      method: "PATCH",
+  // Upsert. Callers editing config must OMIT env (the kernel preserves
+  // stored values when the field is absent; masked values are refused).
+  async putAgent(agent: KernelAgent): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/agents`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profile }),
+      body: JSON.stringify(agent),
     });
+    if (!response.ok) {
+      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)?.error;
+      throw new Error(detail || `agent save rejected: ${response.status}`);
+    }
+  }
+
+  async deleteAgent(id: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/agents/${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (!response.ok) {
+      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)?.error;
+      throw new Error(detail || `agent delete rejected: ${response.status}`);
+    }
+  }
+
+  async listLinks(filter: Partial<KernelLink> = {}): Promise<KernelLink[]> {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(filter)) if (value) query.set(key, value);
+    const response = await fetch(`${this.baseUrl}/links?${query}`).catch(() => null);
+    if (!response?.ok) return [];
+    const payload = (await response.json().catch(() => null)) as { links?: KernelLink[] } | null;
+    return Array.isArray(payload?.links) ? payload.links : [];
+  }
+
+  async putLink(link: KernelLink): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/links`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(link),
+    });
+    if (!response.ok) {
+      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)?.error;
+      throw new Error(detail || `link rejected: ${response.status}`);
+    }
+  }
+
+  async deleteLink(link: KernelLink): Promise<void> {
+    await fetch(`${this.baseUrl}/links`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(link),
+    }).catch(() => undefined);
+  }
+
+  // The thread's member agents, in link order — the first is the one the
+  // composer's model chip reflects.
+  async memberAgents(threadId: string): Promise<KernelAgent[]> {
+    const links = await this.listLinks({ toType: "thread", toId: threadId, type: "member" });
+    const agents = await Promise.all(links.map((link) => this.getAgentEntity(link.fromId)));
+    return agents.filter((agent): agent is KernelAgent => agent !== null);
+  }
+
+  async createThread(id?: string, title?: string): Promise<string> {
+    const response = await fetch(`${this.baseUrl}/threads`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, title }),
+    });
+    if (!response.ok) {
+      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)?.error;
+      throw new Error(detail || `thread create rejected: ${response.status}`);
+    }
+    return ((await response.json()) as { id: string }).id;
+  }
+
+  // Fork: new thread carrying every member's harness-session context.
+  async forkThread(threadId: string, title?: string): Promise<{ id: string; forkedFrom: string }> {
+    const response = await fetch(`${this.baseUrl}/threads/${encodeURIComponent(threadId)}/fork`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+    if (!response.ok) {
+      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)?.error;
+      throw new Error(detail || `fork rejected: ${response.status}`);
+    }
+    return (await response.json()) as { id: string; forkedFrom: string };
+  }
+
+  async health(): Promise<{ status: string; version?: string; schemaVersion?: number } | null> {
+    const response = await fetch(`${this.baseUrl}/health`).catch(() => null);
+    if (!response?.ok) return null;
+    return (await response.json().catch(() => null)) as { status: string; version?: string; schemaVersion?: number } | null;
   }
 
   async rename(agentId: string, title: string): Promise<void> {
