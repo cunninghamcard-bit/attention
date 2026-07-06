@@ -65,6 +65,7 @@ export interface ChatMessage {
 export interface ChatCompaction {
   afterMessageId: string | null;
   preTokens?: number;
+  trigger?: string;
   phase: "started" | "completed" | "failed";
 }
 
@@ -177,6 +178,7 @@ export function applyAgentEvent(state: AgentState, event: AgentEvent): boolean {
       state.compactions.push({
         afterMessageId: event.afterMessageId ?? lastMessage?.id ?? null,
         preTokens: event.preTokens,
+        trigger: event.trigger,
         phase,
       });
       break;

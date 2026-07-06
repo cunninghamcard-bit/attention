@@ -226,6 +226,9 @@ export class AgentTransport {
   }
 
   async health(): Promise<{ status: string; version?: string; schemaVersion?: number } | null> {
+    // Guarded: the status bar polls from its constructor, which also runs
+    // under jsdom where fetch does not exist at all.
+    if (typeof fetch !== "function") return null;
     const response = await fetch(`${this.baseUrl}/health`).catch(() => null);
     if (!response?.ok) return null;
     return (await response.json().catch(() => null)) as { status: string; version?: string; schemaVersion?: number } | null;

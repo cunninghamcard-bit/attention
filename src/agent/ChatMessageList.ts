@@ -488,16 +488,18 @@ export class ChatMessageList extends Component {
   // A compaction is a process: the divider shimmers while it runs, settles
   // into the token summary when done, goes red if the engine's summarizer
   // failed.
-  private syncCompactionEl(dividerEl: HTMLElement, compaction: { preTokens?: number; phase: string }): void {
+  private syncCompactionEl(dividerEl: HTMLElement, compaction: { preTokens?: number; trigger?: string; phase: string }): void {
     dividerEl.classList.toggle("is-running", compaction.phase === "started");
     dividerEl.classList.toggle("is-failed", compaction.phase === "failed");
-    const label = compaction.phase === "started"
+    const base = compaction.phase === "started"
       ? STRINGS.message.compacting
       : compaction.phase === "failed"
         ? STRINGS.message.compactFailed
         : compaction.preTokens
           ? STRINGS.message.compactedTokens(compaction.preTokens)
           : STRINGS.message.compacted;
+    // The engine-reported trigger (manual / auto) is provenance worth a word.
+    const label = compaction.phase === "completed" && compaction.trigger ? `${base} · ${compaction.trigger}` : base;
     let labelEl = dividerEl.querySelector(".chat-compact-label") as HTMLElement | null;
     if (!labelEl) labelEl = createSpan({ cls: "chat-compact-label", parent: dividerEl });
     labelEl.setText(label);

@@ -148,6 +148,10 @@ export const STRINGS = {
     retry: "Retry",
     edit: "Edit",
   },
+  status: {
+    kernel: (version?: string) => (version ? `loom v${version}` : "loom"),
+    kernelOffline: "kernel offline",
+  },
   members: {
     title: "Members",
     add: (label: string) => `Add ${label}`,
