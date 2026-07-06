@@ -99,6 +99,13 @@ export interface AgentContextCompactedEvent extends AgentEventBase {
   phase?: "started" | "completed" | "failed";
 }
 
+// The first event of a forked thread's log: the harness sessions carry
+// the parent's full context, the visible history starts fresh here.
+export interface AgentThreadForkedEvent extends AgentEventBase {
+  type: "thread.forked";
+  forkedFrom: string;
+}
+
 // The engine wants to run a tool that needs approval; the UI blocks on a
 // card until permission.resolved arrives (from the user's decision or a
 // kernel-side timeout/cancellation).
@@ -124,5 +131,6 @@ export type AgentEvent =
   | AgentMessageClosedEvent
   | AgentRunClosedEvent
   | AgentContextCompactedEvent
+  | AgentThreadForkedEvent
   | AgentPermissionRequestedEvent
   | AgentPermissionResolvedEvent;

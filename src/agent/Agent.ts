@@ -81,13 +81,16 @@ export interface AgentState {
   running: boolean;
   lastSeq: number;
   lastError: string | null;
+  // Set by thread.forked (always the forked thread's first event): the
+  // parent this history branched from. null on ordinary threads.
+  forkedFrom: string | null;
   // Last run's token usage; the context bar reads this.
   usage: AgentUsage | null;
   permissions: ChatPermission[];
 }
 
 export function createAgentState(): AgentState {
-  return { messages: [], compactions: [], running: false, lastSeq: 0, lastError: null, usage: null, permissions: [] };
+  return { messages: [], compactions: [], running: false, lastSeq: 0, lastError: null, forkedFrom: null, usage: null, permissions: [] };
 }
 
 function createPart(partType: ChatPartType, toolName?: string, name?: string, kind?: string): ChatPart {
@@ -154,6 +157,10 @@ export function applyAgentEvent(state: AgentState, event: AgentEvent): boolean {
       if (!message) return false;
       message.closed = true;
       for (const part of message.parts) part.closed = true;
+      break;
+    }
+    case "thread.forked": {
+      state.forkedFrom = event.forkedFrom;
       break;
     }
     case "context.compacted": {

@@ -63,6 +63,7 @@ export const STRINGS = {
     provenance: (model: string, effort?: string) => (effort ? `${model} · ${effort}` : model),
     compacting: "Compacting context…",
     compactFailed: "Context compaction failed",
+    forkedFrom: (id: string) => `Forked from ${id} — the agent remembers everything before this line`,
     showMore: "Show more",
     showLess: "Show less",
     runFailed: (error: string) => `Run failed: ${error}`,
@@ -138,6 +139,9 @@ export const STRINGS = {
     agentProperties: "Agent properties",
     newAgent: "New agent",
     copyConversation: "Copy conversation",
+    fork: "Fork thread",
+    forked: (id: string) => `Forked into ${id}`,
+    forkFailed: (error: string) => `Fork failed: ${error}`,
   },
   actions: {
     copy: "Copy",

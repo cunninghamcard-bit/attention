@@ -1,6 +1,7 @@
 import type { App } from "../app/App";
 import { createDiv, createEl, createSpan } from "../dom/dom";
 import { Menu } from "../ui/Menu";
+import { Notice } from "../ui/Notice";
 import { ItemView } from "../views/ItemView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
 import { newRoomId, openAgent, openAgentProperties, openRoom } from "./AgentBuiltin";
@@ -32,6 +33,17 @@ export function showAgentMenu(app: App, transport: AgentTransport, agent: AgentS
       // prompt modal exists in the ui module.
       const title = window.prompt(STRINGS.menu.renamePrompt, agent.title ?? agent.id);
       if (title?.trim()) void transport.rename(agent.id, title.trim()).then(onChanged);
+    }));
+  menu.addItem((item) => item
+    .setTitle(STRINGS.menu.fork)
+    .setIcon("lucide-git-branch")
+    .onClick(() => {
+      void transport.forkThread(agent.id)
+        .then(({ id }) => {
+          new Notice(STRINGS.menu.forked(id));
+          onChanged();
+        })
+        .catch((error: unknown) => new Notice(STRINGS.menu.forkFailed(error instanceof Error ? error.message : String(error))));
     }));
   menu.addItem((item) => item
     .setTitle(STRINGS.menu.delete)

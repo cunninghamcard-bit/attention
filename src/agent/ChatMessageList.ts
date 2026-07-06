@@ -8,6 +8,7 @@ import { writeClipboardText } from "../dom/Clipboard";
 import { Notice } from "../ui/Notice";
 import type { ArtifactChatPart, ChatMessage, ChatPart, Agent, TextChatPart, ToolChatPart } from "./Agent";
 import { openArtifact } from "./ArtifactView";
+import { openAgent } from "./AgentBuiltin";
 import { STRINGS } from "./AgentStrings";
 import { createStatusDot, setStatusDot } from "./StatusDot";
 import { StreamMarkdownRenderer } from "../views/StreamMarkdownRenderer";
@@ -379,6 +380,10 @@ export class ChatMessageList extends Component {
     super();
     this.el = createDiv("chat-message-list", parentEl);
     this.emptyEl = createDiv("chat-empty", this.el);
+    // A forked thread opens with its lineage seam: the agent remembers the
+    // parent's context even though the visible history starts here.
+    this.forkSeamEl = createDiv("chat-fork-seam", this.el);
+    this.forkSeamEl.hide();
     this.thinkingEl = createDiv("chat-thinking-indicator", this.el);
     for (let index = 0; index < 3; index++) createSpan({ cls: "chat-thinking-dot", parent: this.thinkingEl });
     this.thinkingEl.hide();
@@ -396,12 +401,26 @@ export class ChatMessageList extends Component {
   }
 
   private readonly errorEl: HTMLElement;
+  private forkSeamEl!: HTMLElement;
 
   private renderedCompactions = 0;
 
+  private syncForkSeam(): void {
+    const forkedFrom = this.session.state.forkedFrom;
+    this.forkSeamEl.toggle(Boolean(forkedFrom));
+    if (!forkedFrom || this.forkSeamEl.dataset.forkedFrom === forkedFrom) return;
+    this.forkSeamEl.dataset.forkedFrom = forkedFrom;
+    this.forkSeamEl.empty();
+    const labelEl = createSpan({ cls: "chat-fork-label", text: STRINGS.message.forkedFrom(forkedFrom), parent: this.forkSeamEl });
+    labelEl.addEventListener("click", () => {
+      if (this.app) void openAgent(this.app, forkedFrom);
+    });
+  }
+
   sync(): void {
     const messages = this.session.getMessages();
-    this.emptyEl.toggle(messages.length === 0);
+    this.emptyEl.toggle(messages.length === 0 && !this.session.state.forkedFrom);
+    this.syncForkSeam();
     for (const message of messages) {
       let item = this.items.get(message.id);
       if (!item) {

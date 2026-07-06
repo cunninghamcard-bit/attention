@@ -119,6 +119,38 @@ export class ChatView extends StreamView {
       .setIcon("lucide-copy")
       .setDisabled(!this.session || this.session.getMessages().length === 0)
       .onClick(() => void this.copyConversation()));
+    menu.addItem((item) => item
+      .setSection("action")
+      .setTitle(STRINGS.menu.fork)
+      .setIcon("lucide-git-branch")
+      .onClick(() => void this.forkThread()));
+    menu.addItem((item) => item
+      .setSection("action")
+      .setTitle(STRINGS.menu.rename)
+      .setIcon("lucide-pencil")
+      .onClick(() => {
+        const title = window.prompt(STRINGS.menu.renamePrompt, this.agentTitle ?? this.agentId);
+        if (title?.trim()) void this.renameThread(title.trim());
+      }));
+    menu.addItem((item) => item
+      .setSection("action")
+      .setTitle(STRINGS.menu.delete)
+      .setIcon("lucide-trash-2")
+      .onClick(() => void this.deleteThread()));
+  }
+
+  // Fork = branch this thread: the kernel copies members and forks each
+  // harness session natively, so the new thread's agent remembers
+  // everything. We open the branch beside the parent.
+  async forkThread(): Promise<void> {
+    try {
+      const { id } = await this.profileTransport.forkThread(this.agentId);
+      new Notice(STRINGS.menu.forked(id));
+      const { openAgent } = await import("./AgentBuiltin");
+      await openAgent(this.app, id);
+    } catch (error) {
+      new Notice(STRINGS.menu.forkFailed(error instanceof Error ? error.message : String(error)));
+    }
   }
 
   override async setState(state: unknown, result?: unknown): Promise<void> {

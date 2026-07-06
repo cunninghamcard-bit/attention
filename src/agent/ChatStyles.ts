@@ -176,6 +176,10 @@ const CHAT_CSS = `
     .stream-scroll-bottom:hover { transform: translateY(-2px); color: var(--interactive-accent, #7c6ae0); }
     .chat-error { max-width: 760px; margin: 8px auto 0; color: var(--text-error, #c0392b); font-size: 0.85em; }
     .chat-unknown-block { white-space: pre-wrap; }
+    .chat-fork-seam { display: flex; align-items: center; gap: 10px; margin: 4px 0 12px; }
+    .chat-fork-seam::before, .chat-fork-seam::after { content: ""; flex: 1; border-top: 1px dashed var(--background-modifier-border, rgba(120,120,140,0.35)); }
+    .chat-fork-label { font-size: 12px; color: var(--text-muted, #8a8a95); cursor: pointer; white-space: nowrap; }
+    .chat-fork-label:hover { color: var(--text-normal, #ddd); text-decoration: underline; }
     .chat-compact-divider { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
     .chat-compact-divider::before, .chat-compact-divider::after { content: ""; flex: 1; border-top: 1px dashed var(--background-modifier-border, rgba(120,120,140,0.35)); }
     .chat-compact-label { font-size: 0.75em; opacity: 0.55; white-space: nowrap; }
