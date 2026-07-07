@@ -93,7 +93,7 @@ describe.skipIf(!BIN)("chat e2e against a real loom kernel", () => {
     const dir = mkdtempSync(join(tmpdir(), "loom-e2e-"));
     // -agents points at the empty tmpdir so the kernel never syncs ~/.loom/agents.
     kernel = spawn(BIN!, ["serve", "-port", "0", "-db", join(dir, "e2e.db"), "-agents", dir], {
-      env: { ...nodeProcess.env, LOOM_DEFAULT_HARNESS: "mock" },
+      env: { ...nodeProcess.env, LOOM_ENABLE_MOCK: "1" },
       stdio: ["ignore", "pipe", "inherit"],
     });
     baseUrl = await new Promise<string>((resolve, reject) => {
