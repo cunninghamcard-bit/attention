@@ -38,10 +38,11 @@ export type CliFlags = Record<string, CliFlag>;
 export type CliHandler = (params: CliData) => string | Promise<string>;
 
 // One registry entry — the real decompiled shape: the Map key is the command
-// id, the record carries only handler/description/flags.
+// id, the record carries only handler/description/flags. Real storage
+// normalizes falsy flags to undefined (`flags: n || void 0`).
 export interface CliCommand {
   description: string;
-  flags: CliFlags | null;
+  flags?: CliFlags;
   handler: CliHandler;
 }
 
@@ -56,7 +57,7 @@ export class Cli {
     if (this.handlers.has(id)) {
       throw new Error(`Command "${id}" is already registered as a handler.`);
     }
-    this.handlers.set(id, { description, flags, handler });
+    this.handlers.set(id, { description, flags: flags || undefined, handler });
   }
 
   // Real shape: no handler → delete; with handler → delete only while it still
@@ -217,10 +218,12 @@ export class Cli {
 
   // `help` lists every command sorted by id (skipping the TUI-internal `__*`),
   // splitting developer commands into their own group; `help <command>` shows
-  // one command (or its `<command>:*` family).
+  // one command (or its `<command>:*` family). Verbatim port of the real
+  // handler: ub sort, Options/Notes header, unconditional Developer section
+  // (only "Obsidian"/"obsidian" swapped for our identity).
   private renderHelp(args: CliData): string {
     const requested = Object.keys(args).find((key) => args[key] === "true");
-    const entries = [...this.handlers.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    const entries = [...this.handlers.entries()].sort((a, b) => alphaCompare(a[0], b[0]));
 
     if (requested) {
       const matched = entries.filter(([id]) => id === requested || id.startsWith(`${requested}:`));
@@ -240,9 +243,17 @@ export class Cli {
       const block = formatCommand(id, cmd);
       (id.startsWith("dev:") || id === "devtools" || id === "eval" ? developer : main).push(block);
     }
-    let out = "Arkloop CLI\n\nUsage: arkloop <command> [options]\n\nCommands:\n" + main.join("\n");
-    if (developer.length) out += "\n\nDeveloper:\n" + developer.join("\n");
-    return out;
+    return (
+      "Arkloop CLI\n\nUsage: arkloop <command> [options]\n\n" +
+      "Options:\n  vault=<name>          Target a specific vault by name\n\n" +
+      "Notes:\n" +
+      "  file resolves by name (like wikilinks), path is exact (folder/note.md)\n" +
+      "  Most commands default to the active file when file/path is omitted\n" +
+      '  Quote values with spaces: name="My Note"\n' +
+      "  Use \\n for newline, \\t for tab in content values\n\n" +
+      "Commands:\n" + main.join("\n") +
+      "\n\nDeveloper:\n" + developer.join("\n")
+    );
   }
 }
 
@@ -301,16 +312,22 @@ function formatUsage(flags: CliFlags | null): string {
     .join(" ");
 }
 
-// A help block: the command line, then one indented line per flag. A flag
-// with a value domain renders as `name=value`; required flags are marked.
+// A help block, verbatim (real closure `c`): title = two spaces + id padded
+// to 22 + description (no separator); each flag line pads its atom to 20 (or
+// atom + two spaces once it hits 20) before `- description (required)`; the
+// block always ends with a newline.
 function formatCommand(id: string, cmd: CliCommand): string {
-  let block = `  ${id.padEnd(20)}  ${cmd.description}`;
-  for (const [name, flag] of Object.entries(cmd.flags ?? {})) {
-    const atom = flag.value ? `${name}=${flag.value}` : name;
-    const required = flag.required ? " (required)" : "";
-    block += `\n    ${atom.padEnd(18)} - ${flag.description}${required}`;
+  const lines = [`  ${id.padEnd(22)}${cmd.description}`];
+  if (cmd.flags) {
+    for (const [name, flag] of Object.entries(cmd.flags)) {
+      const atom = flag.value ? `${name}=${flag.value}` : name;
+      let description = flag.description;
+      if (flag.required) description += " (required)";
+      const padded = atom.length >= 20 ? `${atom}  ` : atom.padEnd(20);
+      lines.push(`    ${padded}- ${description}`);
+    }
   }
-  return block;
+  return lines.join("\n") + "\n";
 }
 
 // Fuzzy suggest (real `wA`): prefix (0) > substring (1) > Levenshtein<=3 (2+d);

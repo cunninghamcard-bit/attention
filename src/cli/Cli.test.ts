@@ -146,6 +146,47 @@ describe("Cli help output", () => {
     expect(help).toMatch(/query {2,}- query \(required\)/);
     expect(help).toContain("format=text|json");
   });
+
+  // Verbatim-format pins (real `c` + help header): these fail on any drift.
+  it("renders the real header: Options, Notes, unconditional Developer section", async () => {
+    const help = await makeCli().handleCli(["help"]);
+    expect(help).toContain(
+      "Arkloop CLI\n\nUsage: arkloop <command> [options]\n\n" +
+      "Options:\n  vault=<name>          Target a specific vault by name\n\n" +
+      "Notes:\n" +
+      "  file resolves by name (like wikilinks), path is exact (folder/note.md)\n" +
+      "  Most commands default to the active file when file/path is omitted\n" +
+      '  Quote values with spaces: name="My Note"\n' +
+      "  Use \\n for newline, \\t for tab in content values\n\n" +
+      "Commands:\n",
+    );
+    // Developer: is emitted even with no developer commands registered.
+    expect(help).toMatch(/\n\nDeveloper:\n/);
+  });
+
+  it("pads command titles to 22 and flag atoms to 20, block ends with newline", async () => {
+    const cli = makeCli();
+    const help = await cli.handleCli(["help", "daily"]);
+    // "  " + id.padEnd(22) + description, no separator between columns.
+    expect(help).toContain(`  ${"daily".padEnd(22)}Open daily note`);
+    // "    " + atom.padEnd(20) + "- " + description; block trailing newline.
+    expect(help).toContain(`    ${"read".padEnd(20)}- read it`);
+    expect(help.endsWith("\n")).toBe(true);
+  });
+
+  it("a flag atom of 20+ chars gets exactly two trailing spaces, not padEnd", async () => {
+    const cli = makeCli();
+    cli.registerHandler("wide", "Wide flags", { "a-very-long-flag-name": { value: "<v>", description: "wide" } }, () => "");
+    const help = await cli.handleCli(["help", "wide"]);
+    expect(help).toContain("    a-very-long-flag-name=<v>  - wide");
+  });
+
+  it("normalizes null flags to undefined in the registry (real storage shape)", () => {
+    const cli = new Cli();
+    cli.registerHandler("bare", "No flags", null, () => "");
+    expect(cli.handlers.get("bare")?.flags).toBeUndefined();
+    expect("flags" in (cli.handlers.get("bare") ?? {})).toBe(true);
+  });
 });
 
 describe("Cli.init", () => {
