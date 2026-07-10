@@ -162,11 +162,18 @@ describe("IPC vault channels", () => {
 });
 
 describe("IPC actions", () => {
-  it("trash acks synchronously and trashes in the background", async () => {
+  it("trash acks true only after trashItem settles, false on failure", async () => {
+    // Real handler shape: async, returnValue set after shell.trashItem — the
+    // renderer's sendSync blocks until then, so deletes are strictly ordered.
     const event = makeEvent();
-    handlers.trash(event, "/some/file.md");
-    expect(event.returnValue).toBe(true);
+    await handlers.trash(event, "/some/file.md");
     expect(trashItem).toHaveBeenCalledWith("/some/file.md");
+    expect(event.returnValue).toBe(true);
+
+    trashItem.mockRejectedValueOnce(new Error("locked"));
+    const failed = makeEvent();
+    await handlers.trash(failed, "/other/file.md");
+    expect(failed.returnValue).toBe(false);
   });
 
   it("open-url forwards string urls to openExternal", () => {

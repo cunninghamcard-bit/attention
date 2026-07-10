@@ -312,6 +312,20 @@ handler). Excluded by ruling: `daily*`, `bookmark*`, `template*`/`templates`,
 `task*`, `base*`, plus `history*`, `sync*`, `publish*`, `unique` — unregistered,
 so they produce the real unknown-command error.
 
+**Live dual-instance oracle (2026-07-11).** The same 70-command script
+(reads, error faces, writes) ran against real Obsidian 1.12.7 (throwaway vault
+injected into its registry, removed afterwards; config restored byte-identical)
+and against this reconstruction (hermetic vault), same seed content. Result:
+**68/70 byte-identical** (normalizing only timestamps/absolute paths); the two
+diffs were mirror-image async-settling races, not semantic divergences — real
+lags its metadata cache after `property:set` (its own `property:read` returned
+"Property not found." for a value its next `read` proved written), and we
+lagged the vault tree after `delete` (fixed: the `trash` IPC now awaits
+shell.trashItem before acking, the real handler's shape, so deletes are
+strictly ordered; re-verified live). `help` was separately byte-diffed against
+the real instance earlier: header identical after the identity swap, all 41
+overlapping command blocks byte-identical.
+
 Known dev-only divergence: unpackaged `version` reports Electron's version
 (`app.getVersion()` without a packaged app version). Disclosed divergences are
 commented at their sites (e.g. template `{{date}}` uses our formatDate subset).
