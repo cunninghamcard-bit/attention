@@ -85,6 +85,7 @@ if (!gotLock) {
     displays,
     preloadPath: defaultPreloadPath(here),
     isQuitting: () => mainState.isQuitting,
+    isCliEnabled: () => settings.cli === true,
   });
 
   // First-run default vault. Real Obsidian shows a starter to pick a vault;

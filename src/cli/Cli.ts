@@ -66,22 +66,26 @@ export class Cli {
   }
 
   // Installs `window.handleCli` (the main process reaches it via
-  // executeJavaScript) and drains any requests the main process queued before
-  // the renderer was ready (`window.cliQueue`). Registers the builtins.
+  // executeJavaScript) and registers the builtins. Requests the main process
+  // queued before the renderer was ready (`window.cliQueue`) drain only once
+  // the workspace layout is ready — the real boundary: no command runs
+  // against a half-built workspace.
   init(app: App): void {
     this.app = app;
     this.registerBuiltins();
 
     const target = globalThis as unknown as {
       handleCli?: (argv: string[]) => Promise<string>;
-      cliQueue?: Array<{ argv: string[]; resolve: (out: string) => void; reject: (err: unknown) => void }>;
+      cliQueue?: Array<{ argv: string[]; resolve: (out: string) => void; reject: (err: unknown) => void }> | null;
     };
     target.handleCli = (argv: string[]) => this.handleCli(argv);
-    const queued = target.cliQueue;
-    if (Array.isArray(queued)) {
-      for (const { argv, resolve, reject } of queued) this.handleCli(argv).then(resolve, reject);
-      target.cliQueue = [];
-    }
+    app.workspace.onLayoutReady(() => {
+      const queued = target.cliQueue;
+      if (Array.isArray(queued)) {
+        for (const { argv, resolve, reject } of queued) this.handleCli(argv).then(resolve, reject);
+      }
+      target.cliQueue = null;
+    });
   }
 
   // The dispatcher — the exact shape of real Obsidian's `window.handleCli`.
@@ -216,11 +220,14 @@ function formatUsage(flags: CliFlags | null): string {
     .join(" ");
 }
 
-// A help block: the command line, then one indented line per flag.
+// A help block: the command line, then one indented line per flag. A flag
+// with a value domain renders as `name=value`; required flags are marked.
 function formatCommand(id: string, cmd: CliCommand): string {
   let block = `  ${id.padEnd(20)}  ${cmd.description}`;
   for (const [name, flag] of Object.entries(cmd.flags ?? {})) {
-    block += `\n    ${name.padEnd(18)} - ${flag.description}`;
+    const atom = flag.value ? `${name}=${flag.value}` : name;
+    const required = flag.required ? " (required)" : "";
+    block += `\n    ${atom.padEnd(18)} - ${flag.description}${required}`;
   }
   return block;
 }

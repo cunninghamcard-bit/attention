@@ -27,6 +27,10 @@ export interface VaultWindowDeps {
   displays: DisplayProvider;
   preloadPath: string;
   isQuitting: () => boolean;
+  // The CLI-enable gate (real `C.cli`). `executeCliRequest` re-checks it —
+  // real `Xe` gates independently of `et`, since it is reachable from other
+  // main-side paths. Absent (tests) means enabled.
+  isCliEnabled?: () => boolean;
 }
 
 /**
@@ -176,10 +180,12 @@ export class VaultWindowManager {
    * installs the global (`app.cli.init`). A thrown string surfaces as
    * `Error: <string>` (the reference's catch clause).
    *
-   * The CLI-enable gate (`cliEnabled`) is added with the settings toggle in a
-   * later step; today every request runs.
    */
   async executeCliRequest(vaultId: string | null, argv: string[]): Promise<string> {
+    // Gate ② (real Xe checks C.cli again, independent of et's gate ①).
+    if (this.deps.isCliEnabled && !this.deps.isCliEnabled()) {
+      return "Command line interface is not enabled. Please turn it on in Settings > General > Advanced.";
+    }
     if (!vaultId || !this.deps.registry.vaults[vaultId]) return "Vault not found.";
     const win = this.openVault(vaultId, false);
     const entry = this.tracked.get(vaultId);

@@ -42,15 +42,19 @@ describe("CliServer", () => {
     expect(seen).toEqual({ argv: ["vault", "files"], tty: false, cwd: "/x" });
   });
 
-  it("wraps a rejected exec as Error: …", async () => {
+  it("drops the connection on a rejected exec (no server-side Error: wrap)", async () => {
     const socketPath = join(dir, "b.sock");
     const exec: CliExec = async () => {
       throw new Error("boom");
     };
-    server = new CliServer(exec, socketPath);
+    const errors: unknown[] = [];
+    server = new CliServer(exec, socketPath, false, (error) => errors.push(error));
     server.start();
-    const out = await call(socketPath, JSON.stringify({ argv: ["x"], tty: false, cwd: "/" }) + "\n");
-    expect(out).toBe("Error: boom\n");
+    // The socket errors or ends empty; either way no `Error: ` text arrives —
+    // the only faithful wrap lives in executeCliRequest (real Xe).
+    const out = await call(socketPath, JSON.stringify({ argv: ["x"], tty: false, cwd: "/" }) + "\n").catch(() => "");
+    expect(out).toBe("");
+    expect(errors).toHaveLength(1);
   });
 
   it("clears a stale socket file so a restart can bind", () => {

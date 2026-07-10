@@ -223,6 +223,21 @@ This replaces `main.ts`'s current `app.quit()` in the no-lock branch.
    (spawn primary + secondary electron) is not yet scripted; the seam is
    covered by the CliServer/CliDispatch/registerCliCommands unit tests.
 
+### Review round 1 — five fidelity corrections (applied)
+
+1. `cliQueue` drains on `workspace.onLayoutReady`, and the queue is set to
+   `null` after (was: drained immediately in `init`, breaking the real
+   "nothing runs against a half-built workspace" boundary).
+2. Gate ② restored: `executeCliRequest` re-checks `C.cli` independently of
+   `et`'s gate (real `Xe` gates too — it is reachable from other main paths).
+3. Socket path platform contract: macOS `~/.arkloop-cli.sock`; Linux
+   `$XDG_RUNTIME_DIR/.arkloop-cli.sock` falling back to home; Windows
+   `\\.\pipe\arkloop-cli-<username>`.
+4. Help flag lines render `name=value` and append `(required)`.
+5. The server no longer wraps a rejected exec as `Error: …` — the only
+   faithful wrap lives where `Xe` catches the renderer rejection
+   (`executeCliRequest`); the server logs and drops the connection.
+
 ### Batch coverage
 
 Registered today (real services): `help`, `vault`, `files`, `folders`,

@@ -1,14 +1,18 @@
 import { createServer, type Server, type Socket } from "node:net";
 import { unlinkSync } from "node:fs";
-import { homedir } from "node:os";
+import { homedir, userInfo } from "node:os";
 import { join } from "node:path";
 import type { CliRequest } from "./CliDispatch";
 
-// Real Obsidian: `~/.obsidian-cli.sock` on posix, a `\\.\pipe\…` named pipe on
-// Windows. Ours is `arkloop`.
+// The real platform contract (obsidian → arkloop): macOS `~/.obsidian-cli.sock`;
+// Linux `$XDG_RUNTIME_DIR/.obsidian-cli.sock`, falling back to home; Windows a
+// per-user named pipe `\\.\pipe\obsidian-cli-<username>`.
 export function defaultCliSocketPath(): string {
-  if (process.platform === "win32") return "\\\\.\\pipe\\arkloop-cli";
-  return join(homedir(), ".arkloop-cli.sock");
+  if (process.platform === "win32") {
+    return `\\\\.\\pipe\\arkloop-cli-${userInfo().username}`;
+  }
+  const base = (process.platform === "linux" && process.env.XDG_RUNTIME_DIR) || homedir();
+  return join(base, ".arkloop-cli.sock");
 }
 
 /**
@@ -104,11 +108,14 @@ export class CliServer {
       socket.destroy();
       return;
     }
+    // No error envelope here: the only faithful `Error: ` wrap lives where
+    // `Xe` catches the renderer rejection (executeCliRequest). dispatchCli
+    // always resolves to text; anything else is a bug — log and drop.
     this.exec(request)
       .then((output) => this.write(socket, output))
       .catch((error: unknown) => {
         this.onError(error);
-        this.write(socket, `Error: ${error instanceof Error ? error.message : String(error)}`);
+        socket.destroy();
       });
   }
 

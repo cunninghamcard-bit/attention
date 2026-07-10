@@ -10,9 +10,15 @@ afterEach(() => {
 
 // A Cli with the real builtins (via init, which needs no real App for help)
 // plus a couple of stub commands. The dispatcher, parser, and help are pure.
+// A minimal App stub: init only touches workspace.onLayoutReady, which we
+// fire immediately (tests run "after layout ready").
+function stubApp(): never {
+  return { workspace: { onLayoutReady: (callback: () => void) => callback() } } as never;
+}
+
 function makeCli(): Cli {
   const cli = new Cli();
-  cli.init({} as never);
+  cli.init(stubApp());
   cli.registerHandler(
     "files",
     "List files in the vault",
@@ -134,23 +140,35 @@ describe("Cli help output", () => {
     expect(help).toContain("daily:path");
     expect(help).not.toContain("files");
   });
+
+  it("flag lines render name=value and mark required flags", async () => {
+    const help = await makeCli().handleCli(["help", "search"]);
+    expect(help).toMatch(/query {2,}- query \(required\)/);
+    expect(help).toContain("format=text|json");
+  });
 });
 
 describe("Cli.init", () => {
-  it("installs window.handleCli and drains cliQueue", async () => {
+  it("installs window.handleCli immediately but drains cliQueue only on layout ready", async () => {
     const resolve = vi.fn();
     const target = globalThis as unknown as {
       handleCli?: unknown;
-      cliQueue?: Array<{ argv: string[]; resolve: (o: string) => void; reject: (e: unknown) => void }>;
+      cliQueue?: Array<{ argv: string[]; resolve: (o: string) => void; reject: (e: unknown) => void }> | null;
     };
     target.cliQueue = [{ argv: ["help"], resolve, reject: () => {} }];
+    let layoutReady: (() => void) | null = null;
     const cli = new Cli();
-    cli.init({} as never);
+    cli.init({ workspace: { onLayoutReady: (callback: () => void) => (layoutReady = callback) } } as never);
     expect(typeof target.handleCli).toBe("function");
+    await Promise.resolve();
+    // The real boundary: nothing runs against a half-built workspace.
+    expect(resolve).not.toHaveBeenCalled();
+    layoutReady!();
     await Promise.resolve();
     await Promise.resolve();
     expect(resolve).toHaveBeenCalledOnce();
-    expect(target.cliQueue).toEqual([]);
+    // Real Obsidian nulls the queue after draining.
+    expect(target.cliQueue).toBeNull();
     delete target.handleCli;
     delete target.cliQueue;
   });
