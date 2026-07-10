@@ -18,7 +18,7 @@ export function registerCliCommands(app: App): void {
     "vault",
     "Show vault info",
     { info: { value: "name|path|files|folders|size", description: "Return specific info only" } },
-    () => {
+    (params) => {
       const adapter = app.vault.adapter as { getBasePath?(): string } | undefined;
       const rows: Record<string, string> = {
         name: app.vault.getName(),
@@ -27,6 +27,9 @@ export function registerCliCommands(app: App): void {
         folders: String(allFolders(app).length),
         size: String(app.vault.getFiles().reduce((sum, file) => sum + (file.stat?.size ?? 0), 0)),
       };
+      // `info=<key>` returns just that value; otherwise all rows tab-separated.
+      const info = params.info;
+      if (info && info !== "true") return rows[info] ?? "";
       return tabbed(rows);
     },
   );

@@ -16,7 +16,8 @@ describe("core CLI commands", () => {
     const out = await app.cli.handleCli(["vault"]);
     expect(out).toContain("name\t");
     expect(out).toContain("files\t2");
-    expect(await app.cli.handleCli(["vault", "info=files"])).toContain("files\t2");
+    // info=<key> returns just that value, not the whole table.
+    expect(await app.cli.handleCli(["vault", "info=files"])).toBe("2");
   });
 
   it("files lists paths, filters by folder/ext, and counts with total", async () => {
