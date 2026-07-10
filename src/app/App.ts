@@ -45,7 +45,7 @@ import { FoldManager } from "../markdown/FoldManager";
 import type { TFile, TFolder } from "../vault/TAbstractFile";
 import { Notice } from "../ui/Notice";
 import { SettingsSectionRegistry } from "../settings/SettingsSection";
-import { JsonStore } from "../storage/JsonStore";
+import { JsonStore, type JsonStoreAdapter } from "../storage/JsonStore";
 import { AppConfigManager } from "../storage/AppConfig";
 import { PluginDataStore } from "../storage/PluginDataStore";
 import { SecretStorage } from "../storage/SecretStorage";
@@ -123,6 +123,21 @@ function takeNextAppAdapter(): DataAdapter | undefined {
   return adapter;
 }
 
+// Same one-shot handoff for the vault-config store: on desktop it must write
+// the vault's `.obsidian/` (real Obsidian persists core-plugins/app/appearance
+// there); with nothing provided (web/tests) JsonStore stays in-memory.
+let nextJsonStoreAdapter: JsonStoreAdapter | undefined;
+
+export function provideJsonStoreAdapter(adapter: JsonStoreAdapter | undefined): void {
+  nextJsonStoreAdapter = adapter;
+}
+
+function takeNextJsonStoreAdapter(): JsonStoreAdapter | undefined {
+  const adapter = nextJsonStoreAdapter;
+  nextJsonStoreAdapter = undefined;
+  return adapter;
+}
+
 export class App {
   readonly appId = "obsidian-reconstructed";
   readonly title = document.title || "Obsidian";
@@ -131,7 +146,7 @@ export class App {
   readonly containerEl: HTMLElement;
   lastEvent: Event | null = null;
   readonly cli = new Cli();
-  readonly jsonStore = new JsonStore();
+  readonly jsonStore = new JsonStore(takeNextJsonStoreAdapter());
   readonly config = new AppConfigManager(this.jsonStore);
   readonly pluginData = new PluginDataStore(this.jsonStore);
   readonly secretStorage = new SecretStorage();

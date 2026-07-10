@@ -1,4 +1,5 @@
-import { App, provideAppAdapter } from "./app/App";
+import { App, provideAppAdapter, provideJsonStoreAdapter } from "./app/App";
+import { FileSystemJsonStoreAdapter } from "./storage/FileSystemJsonStoreAdapter";
 import { FileSystemAdapter } from "./vault/FileSystemAdapter";
 import type { TFile } from "./vault/TAbstractFile";
 
@@ -117,7 +118,12 @@ async function seedCodeDemoFiles(app: App): Promise<void> {
 function provideDesktopAdapter(parent: HTMLElement): void {
   const win = parent.ownerDocument.defaultView ?? window;
   const vaultPath = resolveElectronVaultPath(win);
-  provideAppAdapter(vaultPath ? new FileSystemAdapter(vaultPath) : undefined);
+  const adapter = vaultPath ? new FileSystemAdapter(vaultPath) : undefined;
+  provideAppAdapter(adapter);
+  // Vault config (core-plugins/app/appearance/workspace) persists into the
+  // vault's `.obsidian/` like real Obsidian — without this the JsonStore is
+  // memory-only and every setting evaporates on restart.
+  provideJsonStoreAdapter(adapter ? new FileSystemJsonStoreAdapter(adapter) : undefined);
 }
 
 function resolveElectronVaultPath(win: Window): string | null {

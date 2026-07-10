@@ -33,7 +33,15 @@ export class FileSystemJsonStoreAdapter implements JsonStoreAdapter {
   }
 
   async list(path: string): Promise<{ folders: string[]; files: string[] }> {
-    const listed = await this.adapter.list(path);
+    // A config subfolder that was never created (e.g. `.obsidian/themes` on a
+    // fresh vault) lists as empty, like real Obsidian.
+    let listed: { folders: string[]; files: string[] };
+    try {
+      listed = await this.adapter.list(path);
+    } catch (error) {
+      if (isNotFoundError(error)) return { folders: [], files: [] };
+      throw error;
+    }
     const prefix = normalizeStorePath(path);
     const folders = new Set<string>();
     const files = new Set<string>();

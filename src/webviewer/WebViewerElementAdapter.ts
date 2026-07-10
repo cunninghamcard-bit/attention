@@ -21,6 +21,11 @@ export class WebViewerElementAdapter {
   readonly webContents = new WebContentsBridge();
   readonly mode: "webview" | "iframe";
   private currentUrl = "about:blank";
+  // Electron <webview> methods (setZoomFactor/reload/goBack/...) throw until
+  // the element is attached AND dom-ready has fired; gate them and replay the
+  // last requested zoom once ready.
+  private ready = false;
+  private pendingZoom: number | null = null;
 
   constructor(options: WebViewerElementAdapterOptions) {
     const supportsWebview = typeof customElements !== "undefined" && Boolean(customElements.get("webview"));
@@ -43,20 +48,21 @@ export class WebViewerElementAdapter {
 
   reload(): void {
     this.webContents.emit("did-start-navigation", { url: this.currentUrl, reload: true });
-    if (this.element.reload) this.element.reload();
+    if (this.ready && this.element.reload) this.element.reload();
     else this.element.src = this.currentUrl;
   }
 
   goBack(): void {
-    this.element.goBack?.();
+    if (this.ready) this.element.goBack?.();
   }
 
   goForward(): void {
-    this.element.goForward?.();
+    if (this.ready) this.element.goForward?.();
   }
 
   setZoom(zoom: number): void {
-    this.element.setZoomFactor?.(zoom);
+    if (this.ready) this.element.setZoomFactor?.(zoom);
+    else this.pendingZoom = zoom;
     this.element.style.transform = `scale(${zoom})`;
     this.element.style.transformOrigin = "top left";
     this.element.style.width = `${100 / zoom}%`;
@@ -64,6 +70,7 @@ export class WebViewerElementAdapter {
   }
 
   getWebContentsId(): number | null {
+    if (!this.ready) return null;
     return this.element.getWebContentsId?.() ?? null;
   }
 
@@ -73,12 +80,33 @@ export class WebViewerElementAdapter {
   }
 
   private installEvents(): void {
-    this.element.addEventListener("load", () => {
-      this.webContents.emit("dom-ready", { url: this.currentUrl });
-      this.webContents.emit("did-stop-loading", { url: this.currentUrl });
-      this.webContents.emit("did-finish-load", { url: this.currentUrl });
-      this.webContents.emit("page-title-updated", { title: titleFromUrl(this.currentUrl) });
-    });
+    const markReady = () => {
+      this.ready = true;
+      if (this.pendingZoom != null) {
+        this.element.setZoomFactor?.(this.pendingZoom);
+        this.pendingZoom = null;
+      }
+    };
+    if (this.mode === "webview") {
+      // A real Electron <webview> emits its lifecycle as element events
+      // (dom-ready/did-stop-loading/...), never the iframe "load" event.
+      this.element.addEventListener("dom-ready", () => {
+        markReady();
+        this.webContents.emit("dom-ready", { url: this.currentUrl });
+      });
+      this.element.addEventListener("did-stop-loading", () => this.webContents.emit("did-stop-loading", { url: this.currentUrl }));
+      this.element.addEventListener("did-start-loading", () => this.webContents.emit("did-start-navigation", { url: this.currentUrl }));
+      this.element.addEventListener("did-finish-load", () => this.webContents.emit("did-finish-load", { url: this.currentUrl }));
+      this.element.addEventListener("did-fail-load", (event) => this.webContents.emit("did-fail-load", event));
+    } else {
+      this.element.addEventListener("load", () => {
+        markReady();
+        this.webContents.emit("dom-ready", { url: this.currentUrl });
+        this.webContents.emit("did-stop-loading", { url: this.currentUrl });
+        this.webContents.emit("did-finish-load", { url: this.currentUrl });
+        this.webContents.emit("page-title-updated", { title: titleFromUrl(this.currentUrl) });
+      });
+    }
     this.element.addEventListener("error", () => {
       this.webContents.emit("did-fail-load", { url: this.currentUrl });
     });
