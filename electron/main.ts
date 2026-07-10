@@ -131,6 +131,9 @@ if (!gotLock) {
       getIdByName: (name) => registry.getIdByName(name),
       getIdByContainedPath: (path) => registry.getIdByContainedPath(path),
       mostRecentVaultId: () => vaultWindows.mostRecentVaultId(),
+      // Real `C.cli` — off unless enabled in Settings > General > Advanced
+      // (persisted as the `cli` flag in obsidian.json).
+      isCliEnabled: () => settings.cli === true,
       openStarter: openStartupWindows,
       handleUrl: (url) => {
         dispatchObsidianUrl(url);

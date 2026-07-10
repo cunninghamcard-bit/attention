@@ -7,6 +7,7 @@ function makeDeps(overrides: Partial<CliDispatchDeps> = {}): CliDispatchDeps {
     getIdByName: (name) => (name === "Work" ? "vault-work" : null),
     getIdByContainedPath: (path) => (path.startsWith("/vaults/notes") ? "vault-notes" : null),
     mostRecentVaultId: () => "vault-recent",
+    isCliEnabled: () => true,
     openStarter: vi.fn(),
     handleUrl: (url) => `Processed URI ${url}`,
     executeCliRequest: vi.fn(async (vaultId, argv) => `ran ${vaultId} ${argv.join(",")}`),
@@ -53,5 +54,15 @@ describe("dispatchCli", () => {
     const out = await dispatchCli({ argv: ["obsidian://open?file=A"], tty: false, cwd: "/x" }, deps);
     expect(out).toBe("Processed URI obsidian://open?file=A");
     expect(deps.executeCliRequest).not.toHaveBeenCalled();
+  });
+
+  it("returns the not-enabled message when the CLI is disabled, but still handles URLs", async () => {
+    const deps = makeDeps({ isCliEnabled: () => false });
+    const out = await dispatchCli({ argv: ["vault"], tty: false, cwd: "/x" }, deps);
+    expect(out).toBe("Command line interface is not enabled. Please turn it on in Settings > General > Advanced.");
+    expect(deps.executeCliRequest).not.toHaveBeenCalled();
+    // URLs bypass the gate (real et short-circuits before the C.cli check).
+    const url = await dispatchCli({ argv: ["obsidian://open?file=A"], tty: false, cwd: "/x" }, deps);
+    expect(url).toBe("Processed URI obsidian://open?file=A");
   });
 });
