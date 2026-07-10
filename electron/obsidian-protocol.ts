@@ -4,6 +4,7 @@ import {
   type ObsidianAction,
 } from "./obsidian-url";
 import type { VaultRegistry } from "./vault-registry";
+import { URL_SCHEME } from "../src/protocol/scheme";
 
 /**
  * `obsidian://` routing orchestrator — real `$e(url)` end to end, plus the OS
@@ -49,5 +50,5 @@ export function handleObsidianUrl(rawUrl: string, deps: ObsidianUrlDeps): void {
 /** Extract a trailing `obsidian://` argument from a process argv (win/linux). */
 export function obsidianUrlFromArgv(argv: string[]): string | null {
   const last = argv[argv.length - 1];
-  return last && last.startsWith("obsidian://") ? last : null;
+  return last && last.startsWith(URL_SCHEME) ? last : null;
 }

@@ -87,6 +87,7 @@ import { applyObsidianBodyClasses, installFocusBodyClassSync, syncObsidianConfig
 
 import { Cli } from "../cli/Cli";
 import { registerCliCommands } from "../cli/registerCliCommands";
+import { URL_SCHEME } from "../protocol/scheme";
 const localStorageFallback = new Map<string, string>();
 
 function installAnimationFrameFallback(win: Window): void {
@@ -264,7 +265,7 @@ export class App {
 
   getObsidianUrl(file: TFile): string {
     const path = file.extension === "md" ? file.path.slice(0, -3) : file.path;
-    return `obsidian://open?vault=${encodeURIComponent(this.vault.getName())}&file=${encodeURIComponent(path)}`;
+    return `${URL_SCHEME}open?vault=${encodeURIComponent(this.vault.getName())}&file=${encodeURIComponent(path)}`;
   }
 
   async copyObsidianUrl(file: TFile): Promise<void> {

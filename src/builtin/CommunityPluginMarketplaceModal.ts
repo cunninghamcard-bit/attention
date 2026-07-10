@@ -5,6 +5,7 @@ import { Notice } from "../ui/Notice";
 import { registerActiveCloseable, unregisterActiveCloseable, type ActiveCloseable } from "../ui/ActiveCloseableRegistry";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import type { MarketplacePluginEntry } from "../plugin/PluginMarketplace";
+import { URL_SCHEME } from "../protocol/scheme";
 
 type SortMode = "download" | "update" | "release" | "alphabetical";
 
@@ -430,7 +431,7 @@ export class CommunityPluginMarketplaceModal extends Modal {
   }
 
   private async copyShareLink(entry: MarketplacePluginEntry): Promise<void> {
-    await navigator.clipboard?.writeText(`obsidian://show-plugin?id=${encodeURIComponent(entry.manifest.id)}`);
+    await navigator.clipboard?.writeText(`${URL_SCHEME}show-plugin?id=${encodeURIComponent(entry.manifest.id)}`);
     new Notice("Copied");
   }
 

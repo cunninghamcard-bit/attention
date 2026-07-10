@@ -223,6 +223,20 @@ This replaces `main.ts`'s current `app.quit()` in the no-lock branch.
    (spawn primary + secondary electron) is not yet scripted; the seam is
    covered by the CliServer/CliDispatch/registerCliCommands unit tests.
 
+### Review round 3 — URL scheme end to end (applied)
+
+Round 2 registered `arkloop://` at the OS but left the whole URL chain on
+`obsidian://` — a dangerous half-change: `arkloop://` launches parsed to
+nothing, and "Copy link" still emitted `obsidian://open?…`, which opens the
+user's real Obsidian. Fixed with one source of truth: `src/protocol/scheme.ts`
+exports `URL_SCHEME = "arkloop://"`, imported by the renderer URI router, the
+Electron URL parser + argv extractor, the CLI URL short-circuit, and every
+generated share link (`App.getFileUrl`, plugin-share clipboard). The plugin
+API keeps its faithful name `registerObsidianProtocolHandler`; only the scheme
+string changed. Verified live: `arkloop arkloop://open?file=X` → "Processed URI
+…"; `arkloop obsidian://open?…` is now just an unknown command (no real
+Obsidian touched).
+
 ### Review round 2 — identity separation (applied)
 
 We reconstruct Obsidian's CLI **inside our own app**; we must never drive,

@@ -1,3 +1,4 @@
+import { URL_SCHEME } from "./scheme";
 export interface ObsidianProtocolData {
   action: string;
   [key: string]: string | "true";
@@ -29,11 +30,11 @@ export class UriRouter {
 }
 
 export function parseObsidianUri(uri: string): ObsidianProtocolData | null {
-  const prefix = "obsidian://";
+  const prefix = URL_SCHEME;
   if (!uri.startsWith(prefix)) return null;
-  if (uri.startsWith("obsidian://vault/")) {
+  if (uri.startsWith(`${URL_SCHEME}vault/`)) {
     const [vault = "", ...file] = uri
-      .slice("obsidian://vault/".length)
+      .slice(`${URL_SCHEME}vault/`.length)
       .split("/")
       .map((part) => decodeURIComponent(part));
     return { action: "open", vault, file: file.join("/") };

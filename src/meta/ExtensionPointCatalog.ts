@@ -20,6 +20,6 @@ export const extensionPointCatalog: ExtensionPoint[] = [
   { id: "knowledge.properties", kind: "knowledge", api: "app.propertyRegistry.register(def)", purpose: "Add known property definitions for Bases/query." },
   { id: "menu.file", kind: "menu", api: "plugin.registerFileMenu(handler)", purpose: "Extend file context menus." },
   { id: "menu.editor", kind: "menu", api: "plugin.registerEditorMenu(handler)", purpose: "Extend editor context menus." },
-  { id: "shell.protocol", kind: "shell", api: "plugin.registerObsidianProtocolHandler(action, handler)", purpose: "Handle obsidian:// style actions." },
+  { id: "shell.protocol", kind: "shell", api: "plugin.registerObsidianProtocolHandler(action, handler)", purpose: "Handle arkloop:// style actions." },
   { id: "diagnostics.devtools", kind: "diagnostics", api: "app.devtools", purpose: "Inspect plugin/core/log/error state." },
 ];

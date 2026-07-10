@@ -718,7 +718,7 @@ describe("community plugin lifecycle", () => {
     expect(instance?.statusEl?.classList.contains("plugin-chrome-api")).toBe(true);
     expect(instance?.statusEl?.textContent).toBe("Plugin status");
     expect(instance?.statusEl?.parentElement).toBe(app.statusBar.containerEl);
-    await app.uriRouter.handleUri("obsidian://chrome-api?file=Folder%2FNote.md&empty&dry-run=true");
+    await app.uriRouter.handleUri("arkloop://chrome-api?file=Folder%2FNote.md&empty&dry-run=true");
     expect(instance?.protocolHits).toBe(1);
     expect(instance?.protocolPayload).toMatchObject({
       action: "chrome-api",
@@ -747,7 +747,7 @@ describe("community plugin lifecycle", () => {
     expect(app.commands.findCommand("chrome-api:kept")).toBeUndefined();
     expect(app.hotkeys.getDefaultHotkeys("chrome-api:kept")).toBeUndefined();
     expect(instance?.statusEl?.parentElement).toBeNull();
-    await expect(app.uriRouter.handleUri("obsidian://chrome-api")).resolves.toBe(false);
+    await expect(app.uriRouter.handleUri("arkloop://chrome-api")).resolves.toBe(false);
     // Disabled → the command is unregistered, so the CLI rejects it as unknown.
     await expect(app.cli.handleCli(["chrome-api", "dry-run"])).rejects.toMatch(/^Command "chrome-api" not found/);
     await app.workspace.editorSuggest.trigger(editor, anchorEl);

@@ -1,4 +1,5 @@
 import { routeVault, type VaultRouterDeps } from "./CliVaultRouter";
+import { URL_SCHEME } from "../../src/protocol/scheme";
 
 /**
  * The CLI dispatch — reconstructed from real Obsidian's `et(socket, argv, tty,
@@ -33,7 +34,6 @@ export interface CliDispatchDeps extends VaultRouterDeps {
   executeCliRequest(vaultId: string | null, argv: string[]): Promise<string>;
 }
 
-const URL_SCHEME = "obsidian://";
 const CLI_DISABLED = "Command line interface is not enabled. Please turn it on in Settings > General > Advanced.";
 
 export async function dispatchCli(request: CliRequest, deps: CliDispatchDeps): Promise<string> {
