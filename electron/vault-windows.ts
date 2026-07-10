@@ -168,6 +168,44 @@ export class VaultWindowManager {
     }
   }
 
+  /**
+   * Real `Xe(vaultId, argv)` — run one CLI request in the vault's renderer and
+   * return the text to write back to the socket. Symmetric to
+   * {@link deliverAction}: a loaded window runs `window.handleCli(argv)` now,
+   * an unloaded one queues onto `window.cliQueue` and drains when the renderer
+   * installs the global (`app.cli.init`). A thrown string surfaces as
+   * `Error: <string>` (the reference's catch clause).
+   *
+   * The CLI-enable gate (`cliEnabled`) is added with the settings toggle in a
+   * later step; today every request runs.
+   */
+  async executeCliRequest(vaultId: string | null, argv: string[]): Promise<string> {
+    if (!vaultId || !this.deps.registry.vaults[vaultId]) return "Vault not found.";
+    const win = this.openVault(vaultId, false);
+    const entry = this.tracked.get(vaultId);
+    if (!entry) return "Vault not found.";
+    const script = `
+      new Promise((resolve, reject) => {
+        let argv = ${JSON.stringify(argv)};
+        if (window.handleCli) {
+          Promise.resolve(window.handleCli(argv)).then(resolve, reject);
+        } else {
+          window.cliQueue = window.cliQueue || [];
+          window.cliQueue.push({ argv, resolve, reject });
+        }
+      })
+    `;
+    const run = (): Promise<string> => win.webContents.executeJavaScript(script) as Promise<string>;
+    try {
+      if (entry.loaded) return await run();
+      return await new Promise<string>((resolve, reject) => {
+        win.webContents.once("did-finish-load", () => run().then(resolve, reject));
+      });
+    } catch (error) {
+      return typeof error === "string" ? `Error: ${error}` : String(error);
+    }
+  }
+
   /** Real `ve()` — the open vault with the most recent focus. */
   mostRecentVaultId(): string | null {
     let bestId: string | null = null;
