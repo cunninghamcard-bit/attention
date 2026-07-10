@@ -4,68 +4,95 @@ import type { App } from "../app/App";
  * `App.cli` — the command-line registry and dispatcher, reconstructed from
  * real Obsidian's `app.cli` (decompiled `CA` class + `window.handleCli`).
  *
- * Layering (verified against the reference's main.js/app.js symbol split):
- * the Electron main process owns the socket, vault routing, and the CLI-enable
- * gate; THIS class owns every command semantic — parsing, the unknown-command
- * error, fuzzy suggestions, required-parameter validation, and the command
- * table itself. Plugins extend the surface through `registerHandler`, so the
- * transport layer never learns a single business concept.
+ * This is the ONE registry: the core app, internal plugins, and community
+ * plugins all register through it (via `App.registerCliHandler`, which
+ * delegates here). The Electron main process owns the socket, vault routing,
+ * and the CLI-enable gate; THIS class owns every command semantic — parsing,
+ * the unknown-command error, fuzzy suggestions, required-parameter validation,
+ * and the command table itself. The transport layer never learns a business
+ * concept.
  *
  * Not reconstructed (no TUI): the interactive completion REPL and its
  * `__completions`/`__commands`/`__files` helpers. The socket protocol reserves
- * `tty:true` for that future branch; nothing here needs to change to add it.
+ * `tty:true` for that future branch.
  */
 
 // Parsed parameters. Values are always strings: `key=value` keeps the value,
 // a bare `flag` becomes the literal string "true" (faithful to real Obsidian —
 // NOT a boolean).
-export type CliArgs = Record<string, string>;
-
-export type CliHandler = (args: CliArgs) => string | void | Promise<string | void>;
+export interface CliData {
+  [key: string]: string | "true";
+}
 
 export interface CliFlag {
-  description?: string;
-  // A "|"-separated option set, e.g. "json|tsv|csv". When present on a flag
-  // named `format`, it enables the format shorthand (`files json` -> format=json).
+  // A "|"-separated option set, e.g. "json|tsv|csv". On a `format` flag it
+  // enables the format shorthand; in usage it renders as `name=value`.
   value?: string;
+  description: string;
   required?: boolean;
 }
 
 export type CliFlags = Record<string, CliFlag>;
 
-export interface CliCommand {
+export type CliHandler = (params: CliData) => string | Promise<string>;
+
+export interface CliHandlerRegistration {
   id: string;
+  command: string;
   description: string;
-  flags: CliFlags;
+  flags: CliFlags | null;
   handler: CliHandler;
+  // The registering plugin's id, when the command came from a plugin. A local
+  // attribution field (real Obsidian tracks ownership via the closure instead).
+  owner?: string;
 }
 
 export class Cli {
-  readonly handlers = new Map<string, CliCommand>();
+  readonly handlers = new Map<string, CliHandlerRegistration>();
   private app: App | null = null;
 
   // A duplicate id is an error, never a silent overwrite (faithful to real
   // Obsidian: the registry refuses a second claim on a command name so a
-  // plugin can't shadow a core or peer command).
-  registerHandler(id: string, description: string, flags: CliFlags, handler: CliHandler): void {
+  // plugin can't shadow a core or peer command). Returns the registration so
+  // callers can hold it for a later unregister.
+  registerHandler(
+    id: string,
+    description: string,
+    flags: CliFlags | null,
+    handler: CliHandler,
+    owner?: string,
+  ): CliHandlerRegistration {
     if (this.handlers.has(id)) {
       throw new Error(`Command "${id}" is already registered as a handler.`);
     }
-    this.handlers.set(id, { id, description, flags, handler });
+    const registration: CliHandlerRegistration = {
+      id,
+      command: id,
+      description,
+      flags,
+      handler,
+      ...(owner ? { owner } : {}),
+    };
+    this.handlers.set(id, registration);
+    return registration;
   }
 
-  // Unregister by id; when a handler is passed, only remove if it still owns
-  // the slot (so a plugin unload can't clobber a command another plugin
-  // re-registered under the same id).
-  unregisterHandler(id: string, handler?: CliHandler): void {
-    const existing = this.handlers.get(id);
-    if (!handler || (existing && existing.handler === handler)) this.handlers.delete(id);
+  // Unregister by id (optionally only when `handler` still owns the slot, so a
+  // peer re-registration is never clobbered by a late unload) or by the exact
+  // registration object.
+  unregisterHandler(idOrRegistration: string | CliHandlerRegistration, handler?: CliHandler): void {
+    if (typeof idOrRegistration !== "string") {
+      const existing = this.handlers.get(idOrRegistration.id);
+      if (existing === idOrRegistration) this.handlers.delete(idOrRegistration.id);
+      return;
+    }
+    const existing = this.handlers.get(idOrRegistration);
+    if (existing && (!handler || existing.handler === handler)) this.handlers.delete(idOrRegistration);
   }
 
   // Installs `window.handleCli` (the main process reaches it via
   // executeJavaScript) and drains any requests the main process queued before
-  // the renderer was ready (`window.cliQueue`). Called from bootstrap right
-  // after `new App`, so early requests are never lost.
+  // the renderer was ready (`window.cliQueue`). Registers the builtins.
   init(app: App): void {
     this.app = app;
     this.registerBuiltins();
@@ -92,15 +119,14 @@ export class Cli {
     const params = parseParams(argv.slice(1));
 
     // Colon fallback: `daily:read` with no exact handler degrades to `daily`
-    // when `daily` declares a `read` flag (real Obsidian folds subcommands
-    // that are really parent-command flags).
+    // when `daily` declares a `read` flag.
     if (!this.handlers.has(command)) {
       const colon = command.lastIndexOf(":");
       if (colon !== -1) {
         const parent = command.slice(0, colon);
         const suffix = command.slice(colon + 1);
         const parentCmd = this.handlers.get(parent);
-        if (parentCmd && suffix in parentCmd.flags) {
+        if (parentCmd && parentCmd.flags && suffix in parentCmd.flags) {
           command = parent;
           params[suffix] = "true";
         }
@@ -121,11 +147,9 @@ export class Cli {
     validateRequired(command, cmd.flags, params);
 
     // `--copy` is a framework flag, handled centrally: strip it, run the
-    // command, then mirror the result to the clipboard.
+    // command, then mirror a non-empty result to the clipboard.
     const copy = params["--copy"] === "true";
     delete params["--copy"];
-    // A handler returning void writes nothing back (main's `u && p(u)` skips
-    // falsy results); normalize to "" so the socket just closes.
     const result = (await cmd.handler(params)) || "";
     if (copy && result) await navigator.clipboard.writeText(result);
     return result;
@@ -143,7 +167,7 @@ export class Cli {
   // `help` lists every command sorted by id (skipping the TUI-internal `__*`),
   // splitting developer commands into their own group; `help <command>` shows
   // one command (or its `<command>:*` family).
-  private renderHelp(args: CliArgs): string {
+  private renderHelp(args: CliData): string {
     const requested = Object.keys(args).find((key) => args[key] === "true");
     const entries = [...this.handlers.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 
@@ -172,8 +196,8 @@ export class Cli {
 }
 
 // key=value keeps the value; a bare token becomes "true".
-function parseParams(tokens: string[]): CliArgs {
-  const params: CliArgs = {};
+function parseParams(tokens: string[]): CliData {
+  const params: CliData = {};
   for (const token of tokens) {
     const eq = token.indexOf("=");
     if (eq !== -1) params[token.slice(0, eq)] = token.slice(eq + 1);
@@ -184,8 +208,8 @@ function parseParams(tokens: string[]): CliArgs {
 
 // `files json` or `files --json` -> `format=json`, with the shorthand key
 // removed. Only fires for a `format` flag that declares its option set.
-function applyFormatShorthand(flags: CliFlags, params: CliArgs): void {
-  const format = flags.format;
+function applyFormatShorthand(flags: CliFlags | null, params: CliData): void {
+  const format = flags?.format;
   if (!format?.value || params.format) return;
   for (const option of format.value.split("|")) {
     if (params[option] || params[`--${option}`]) {
@@ -197,9 +221,9 @@ function applyFormatShorthand(flags: CliFlags, params: CliArgs): void {
   }
 }
 
-function validateRequired(command: string, flags: CliFlags, params: CliArgs): void {
+function validateRequired(command: string, flags: CliFlags | null, params: CliData): void {
   const missing: string[] = [];
-  for (const [name, flag] of Object.entries(flags)) {
+  for (const [name, flag] of Object.entries(flags ?? {})) {
     if (flag.required && !(name in params)) missing.push(flag.value ? `${name}=${flag.value}` : name);
   }
   if (missing.length > 0) {
@@ -208,8 +232,8 @@ function validateRequired(command: string, flags: CliFlags, params: CliArgs): vo
 }
 
 // One flag: `name=value` (required) or `[name=value]` (optional), space-joined.
-function formatUsage(flags: CliFlags): string {
-  return Object.entries(flags)
+function formatUsage(flags: CliFlags | null): string {
+  return Object.entries(flags ?? {})
     .map(([name, flag]) => {
       const atom = flag.value ? `${name}=${flag.value}` : name;
       return flag.required ? atom : `[${atom}]`;
@@ -218,10 +242,10 @@ function formatUsage(flags: CliFlags): string {
 }
 
 // A help block: the command line, then one indented line per flag.
-function formatCommand(cmd: CliCommand): string {
-  let block = `  ${cmd.id.padEnd(20)}  ${cmd.description}`;
-  for (const [name, flag] of Object.entries(cmd.flags)) {
-    block += `\n    ${name.padEnd(18)} - ${flag.description ?? ""}`;
+function formatCommand(cmd: CliHandlerRegistration): string {
+  let block = `  ${cmd.command.padEnd(20)}  ${cmd.description}`;
+  for (const [name, flag] of Object.entries(cmd.flags ?? {})) {
+    block += `\n    ${name.padEnd(18)} - ${flag.description}`;
   }
   return block;
 }

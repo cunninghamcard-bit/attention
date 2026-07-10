@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Cli, fuzzySuggest, type CliArgs } from "./Cli";
+import { Cli, fuzzySuggest, type CliData } from "./Cli";
 
 // Clean the globals `init` installs so tests never leak into each other.
 afterEach(() => {
@@ -16,13 +16,13 @@ function makeCli(): Cli {
   cli.registerHandler(
     "files",
     "List files in the vault",
-    { ext: { description: "extension" }, total: {}, format: { value: "json|tsv|csv" } },
+    { ext: { description: "extension" }, total: { description: "count" }, format: { value: "json|tsv|csv", description: "output format" } },
     (args) => `files ${JSON.stringify(args)}`,
   );
   cli.registerHandler(
     "search",
     "Search vault for text",
-    { query: { description: "query", required: true }, format: { value: "text|json" } },
+    { query: { description: "query", required: true }, format: { value: "text|json", description: "output format" } },
     (args) => `search ${JSON.stringify(args)}`,
   );
   cli.registerHandler("daily", "Open daily note", { read: { description: "read it" } }, (args) => `daily ${JSON.stringify(args)}`);
@@ -46,14 +46,14 @@ describe("Cli parsing", () => {
 describe("Cli format shorthand", () => {
   it("`files json` becomes format=json with the shorthand key removed", async () => {
     const out = await makeCli().handleCli(["files", "json"]);
-    const args = JSON.parse(out.slice("files ".length)) as CliArgs;
+    const args = JSON.parse(out.slice("files ".length)) as CliData;
     expect(args.format).toBe("json");
     expect(args.json).toBeUndefined();
   });
 
   it("also accepts the --json spelling", async () => {
     const out = await makeCli().handleCli(["files", "--tsv"]);
-    const args = JSON.parse(out.slice("files ".length)) as CliArgs;
+    const args = JSON.parse(out.slice("files ".length)) as CliData;
     expect(args.format).toBe("tsv");
     expect(args["--tsv"]).toBeUndefined();
   });
@@ -62,7 +62,7 @@ describe("Cli format shorthand", () => {
 describe("Cli colon fallback", () => {
   it("daily:read folds into daily with read=true when daily declares a read flag", async () => {
     const out = await makeCli().handleCli(["daily:read"]);
-    const args = JSON.parse(out.slice("daily ".length)) as CliArgs;
+    const args = JSON.parse(out.slice("daily ".length)) as CliData;
     expect(args.read).toBe("true");
   });
 
@@ -103,7 +103,7 @@ describe("Cli --copy", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal("navigator", { clipboard: { writeText } });
     const out = await makeCli().handleCli(["files", "--copy"]);
-    const args = JSON.parse(out.slice("files ".length)) as CliArgs;
+    const args = JSON.parse(out.slice("files ".length)) as CliData;
     expect(args["--copy"]).toBeUndefined();
     expect(writeText).toHaveBeenCalledWith(out);
     vi.unstubAllGlobals();

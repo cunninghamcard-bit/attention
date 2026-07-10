@@ -732,7 +732,7 @@ describe("community plugin lifecycle", () => {
       flags: { "dry-run": { description: "Run without changing state" } },
       owner: "chrome-api",
     });
-    await expect(app.runCliHandler("chrome-api", ["--dry-run"])).resolves.toEqual(["chrome-cli"]);
+    await expect(app.cli.handleCli(["chrome-api", "dry-run"])).resolves.toBe("chrome-cli");
     expect(instance?.cliHits).toEqual([{ "dry-run": "true" }]);
     expect(() => app.workspace.registerObsidianProtocolHandler("chrome-api", () => {})).toThrow(
       'Action "chrome-api" is already registered as a handler.',
@@ -749,7 +749,8 @@ describe("community plugin lifecycle", () => {
     expect(app.hotkeys.getDefaultHotkeys("chrome-api:kept")).toBeUndefined();
     expect(instance?.statusEl?.parentElement).toBeNull();
     await expect(app.uriRouter.handleUri("obsidian://chrome-api")).resolves.toBe(false);
-    await expect(app.runCliHandler("chrome-api", ["--dry-run"])).resolves.toEqual([]);
+    // Disabled → the command is unregistered, so the CLI rejects it as unknown.
+    await expect(app.cli.handleCli(["chrome-api", "dry-run"])).rejects.toMatch(/^Command "chrome-api" not found/);
     await app.workspace.editorSuggest.trigger(editor, anchorEl);
     expect(document.body.textContent).not.toContain("Plugin suggestion");
     anchorEl.remove();
@@ -964,12 +965,12 @@ describe("community plugin lifecycle", () => {
     wrapper.init();
     await wrapper.enable();
 
-    await expect(app.runCliHandler("core-cli", ["--list"])).resolves.toEqual(["core-cli"]);
+    await expect(app.cli.handleCli(["core-cli", "list"])).resolves.toBe("core-cli");
     expect(hits).toEqual([["list"]]);
 
     await wrapper.disable(true);
 
-    await expect(app.runCliHandler("core-cli", ["--list"])).resolves.toEqual([]);
+    await expect(app.cli.handleCli(["core-cli", "list"])).rejects.toMatch(/^Command "core-cli" not found/);
   });
 
   it("enforces unique CLI commands and required flag metadata", async () => {
@@ -983,10 +984,12 @@ describe("community plugin lifecycle", () => {
     }, (params) => params.path);
 
     expect(() => app.registerCliHandler("sample", "Duplicate sample", null, () => "duplicate")).toThrow(
-      'CLI command "sample" is already registered.',
+      'Command "sample" is already registered as a handler.',
     );
-    await expect(app.runCliHandler("sample", [])).rejects.toThrow('Missing required CLI flag "path" for command "sample".');
-    await expect(app.runCliHandler("sample", ["--path=Daily.md"])).resolves.toEqual(["Daily.md"]);
+    await expect(app.cli.handleCli(["sample"])).rejects.toBe(
+      "Missing required parameter: path=<path>\nUsage: sample path=<path>",
+    );
+    await expect(app.cli.handleCli(["sample", "path=Daily.md"])).resolves.toBe("Daily.md");
   });
 
   it("downloads marketplace source packages into the plugins folder before enabling", async () => {

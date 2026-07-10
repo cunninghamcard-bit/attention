@@ -85,19 +85,12 @@ import type { AttachmentImportData, AttachmentImportFile } from "./AttachmentImp
 import { FrameDom } from "./FrameDom";
 import { applyObsidianBodyClasses, installFocusBodyClassSync, syncObsidianConfigBodyClasses } from "./BodyClasses";
 
-export interface CliData {
-  [key: string]: string | "true";
-}
-
-export interface CliFlag {
-  value?: string;
-  description: string;
-  required?: boolean;
-}
-
-export type CliFlags = Record<string, CliFlag>;
-
-export type CliHandler = (params: CliData) => string | Promise<string>;
+// The CLI registry and its types live in ../cli/Cli; re-exported here so the
+// long-standing `App`-scoped imports (Plugin, InternalPluginWrapper) keep
+// working while `App.cli` is the single source of truth.
+import { Cli } from "../cli/Cli";
+import type { CliFlags, CliHandler, CliHandlerRegistration } from "../cli/Cli";
+export type { CliData, CliFlag, CliFlags, CliHandler, CliHandlerRegistration } from "../cli/Cli";
 const localStorageFallback = new Map<string, string>();
 
 function installAnimationFrameFallback(win: Window): void {
@@ -109,14 +102,6 @@ function installAnimationFrameFallback(win: Window): void {
   }
 }
 
-export interface CliHandlerRegistration {
-  id: string;
-  command: string;
-  description: string;
-  flags: CliFlags | null;
-  handler: CliHandler;
-  owner?: string;
-}
 
 /**
  * One-shot handoff of the vault adapter into the next {@link App} construction.
@@ -148,7 +133,12 @@ export class App {
   readonly dom: AppDom;
   readonly containerEl: HTMLElement;
   lastEvent: Event | null = null;
-  readonly cliHandlers: CliHandlerRegistration[] = [];
+  readonly cli = new Cli();
+  // Read-only view of the registered CLI commands (the registry is a Map on
+  // `this.cli`; this preserves the array shape existing callers/tests read).
+  get cliHandlers(): CliHandlerRegistration[] {
+    return [...this.cli.handlers.values()];
+  }
   readonly jsonStore = new JsonStore();
   readonly config = new AppConfigManager(this.jsonStore);
   readonly pluginData = new PluginDataStore(this.jsonStore);
@@ -260,6 +250,7 @@ export class App {
     this.statusBar = new StatusBar(this.dom.statusBarEl);
     this.appearance.applyFromConfig();
     registerAppCommands(this);
+    this.cli.init(this);
     this.desktopMenu.refresh();
     MarkdownRenderer.resetProcessors();
     registerMarkdownDefaultProcessors(this);
@@ -413,32 +404,17 @@ export class App {
     }
   }
 
+  // The CLI registry lives on `this.cli`; these delegate so the established
+  // `app.registerCliHandler(...)` call sites (Plugin, InternalPluginWrapper)
+  // keep working against the single faithful registry.
   registerCliHandler(command: string, description: string, flags: CliFlags | null, handler: CliHandler, owner?: string): CliHandlerRegistration {
-    if (this.cliHandlers.some((registration) => registration.command === command)) {
-      throw new Error(`CLI command "${command}" is already registered.`);
-    }
-    const registration = { id: command, command, description, flags, handler, ...(owner ? { owner } : {}) };
-    this.cliHandlers.push(registration);
-    return registration;
+    return this.cli.registerHandler(command, description, flags, handler, owner);
   }
 
   unregisterCliHandler(registration: CliHandlerRegistration): void;
   unregisterCliHandler(id: string, handler?: CliHandler): void;
   unregisterCliHandler(idOrRegistration: string | CliHandlerRegistration, handler?: CliHandler): void {
-    const index = typeof idOrRegistration === "string"
-      ? this.cliHandlers.findIndex((registration) => registration.command === idOrRegistration && (!handler || registration.handler === handler))
-      : this.cliHandlers.indexOf(idOrRegistration);
-    if (index !== -1) this.cliHandlers.splice(index, 1);
-  }
-
-  async runCliHandler(command: string, params: CliData | string[] = {}): Promise<string[]> {
-    const results: string[] = [];
-    const data = Array.isArray(params) ? parseCliArgs(params) : params;
-    for (const registration of this.cliHandlers.filter((handler) => handler.command === command)) {
-      validateCliData(registration, data);
-      results.push(await registration.handler(data));
-    }
-    return results;
+    this.cli.unregisterHandler(idOrRegistration, handler);
   }
 
   resolveAttachmentFile(file: AttachmentImportFile): TFile | null {
@@ -567,28 +543,6 @@ function isExternalMediaSrc(src: string): boolean {
   return /^[a-z][a-z0-9+.-]*:/i.test(src);
 }
 
-function parseCliArgs(args: string[]): CliData {
-  const data: CliData = {};
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (!arg.startsWith("--")) continue;
-    const raw = arg.slice(2);
-    const equalIndex = raw.indexOf("=");
-    if (equalIndex !== -1) {
-      data[raw.slice(0, equalIndex)] = raw.slice(equalIndex + 1);
-      continue;
-    }
-    const next = args[index + 1];
-    if (next && !next.startsWith("-")) {
-      data[raw] = next;
-      index += 1;
-    } else {
-      data[raw] = "true";
-    }
-  }
-  return data;
-}
-
 function getBrowserStorage(): Storage | null {
   try {
     return globalThis.window?.localStorage ?? null;
@@ -624,14 +578,6 @@ function safeRequireElectron(host: { require?: (moduleName: "electron") => { she
     return host.require?.("electron") ?? null;
   } catch {
     return null;
-  }
-}
-
-function validateCliData(registration: CliHandlerRegistration, data: CliData): void {
-  for (const [flag, definition] of Object.entries(registration.flags ?? {})) {
-    if (definition.required && data[flag] === undefined) {
-      throw new Error(`Missing required CLI flag "${flag}" for command "${registration.command}".`);
-    }
   }
 }
 
