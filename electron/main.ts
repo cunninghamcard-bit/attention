@@ -43,6 +43,11 @@ function cliArgvFromProcess(argv: string[]): string[] {
 // build output dir where `preload.cjs` sits beside it.
 const here = __dirname;
 
+// Our own identity: userData resolves to ~/Library/Application Support/Arkloop
+// (etc.), never the generic Electron dir and never anything of real Obsidian's.
+// Must run before the first app.getPath("userData").
+app.setName("Arkloop");
+
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   // The primary instance owns the app; this one becomes the CLI client —
@@ -90,10 +95,12 @@ if (!gotLock) {
 
   // First-run default vault. Real Obsidian shows a starter to pick a vault;
   // that page is a renderer seam here, so we create/open a real default folder
-  // (`Documents/Obsidian Vault`, real `bt`) so the app opens on a real vault.
+  // so the app opens on a real vault. OURS: `Documents/Arkloop Vault` — the
+  // real app's `Documents/Obsidian Vault` is the user's actual Obsidian data
+  // and must never be touched by this reconstruction.
   const ensureDefaultVault = (): string | null => {
     const defaultPath =
-      process.env.OBSIDIAN_VAULT_PATH || join(safePath("documents"), "Obsidian Vault");
+      process.env.ARKLOOP_VAULT_PATH || join(safePath("documents"), "Arkloop Vault");
     try {
       mkdirSync(defaultPath, { recursive: true });
     } catch (error) {
@@ -169,8 +176,11 @@ if (!gotLock) {
     }
   });
 
-  if (!app.isDefaultProtocolClient("obsidian")) {
-    app.setAsDefaultProtocolClient("obsidian");
+  // Our own scheme. Registering "obsidian" would hijack the real app's links
+  // at the OS level; obsidian:// URLs arriving via the CLI/second instance are
+  // still parsed internally.
+  if (!app.isDefaultProtocolClient("arkloop")) {
+    app.setAsDefaultProtocolClient("arkloop");
   }
 
   app.on("before-quit", () => {
@@ -213,8 +223,8 @@ if (!gotLock) {
         version: app.getVersion(),
         desktopDir: safePath("desktop"),
         documentsDir: safePath("documents"),
-        sandboxVaultPath: join(app.getPath("userData"), "Obsidian Sandbox"),
-        defaultVaultPath: join(safePath("documents"), "Obsidian Vault"),
+        sandboxVaultPath: join(app.getPath("userData"), "Arkloop Sandbox"),
+        defaultVaultPath: join(safePath("documents"), "Arkloop Vault"),
       },
       trashItem: (p) => shell.trashItem(p),
       openExternal: (url) => void shell.openExternal(url),

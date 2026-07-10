@@ -223,6 +223,25 @@ This replaces `main.ts`'s current `app.quit()` in the no-lock branch.
    (spawn primary + secondary electron) is not yet scripted; the seam is
    covered by the CliServer/CliDispatch/registerCliCommands unit tests.
 
+### Review round 2 — identity separation (applied)
+
+We reconstruct Obsidian's CLI **inside our own app**; we must never drive,
+open, or write real Obsidian's data. Three collisions were removed:
+
+- **userData**: `app.setName("Arkloop")` before the first
+  `getPath("userData")`, so state lands in `.../Arkloop`, not the generic
+  Electron dir.
+- **default vault**: `Documents/Arkloop Vault` (env override
+  `ARKLOOP_VAULT_PATH`), never `Documents/Obsidian Vault` — the user's real
+  Obsidian data. (This is why an earlier e2e routed into the real vault:
+  the default path was copied verbatim from the reference.)
+- **protocol scheme**: register `arkloop://`, not `obsidian://` (registering
+  the latter hijacks the real app's OS-level links). obsidian:// URLs
+  arriving via the CLI are still parsed internally.
+
+Verified hermetic: `arkloop vault` returns our temp vault, our userData is a
+separate `Arkloop/` dir, and the real `Obsidian Vault` mtime is unchanged.
+
 ### Review round 1 — five fidelity corrections (applied)
 
 1. `cliQueue` drains on `workspace.onLayoutReady`, and the queue is set to
