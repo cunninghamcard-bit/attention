@@ -32,7 +32,14 @@ describe("core CLI commands", () => {
     const app = await seededApp();
     expect(await app.cli.handleCli(["read", "file=Note"])).toContain("# Note");
     expect(await app.cli.handleCli(["read", "path=Folder/Sub.md"])).toBe("sub");
-    expect(await app.cli.handleCli(["read", "path=Nope.md"])).toBe("File not found.");
+    // Real resolver errors are thrown plain strings, not returned text.
+    await expect(app.cli.handleCli(["read", "path=Nope.md"])).rejects.toBe('File "Nope.md" not found.');
+  });
+
+  it("open has no active-file fallback and echoes the resolved path", async () => {
+    const app = await seededApp();
+    expect(await app.cli.handleCli(["open", "file=Note"])).toBe("Opened: Note.md");
+    await expect(app.cli.handleCli(["open"])).rejects.toBe("Missing required parameter: file or path");
   });
 
   it("command requires an id and reports unknown ids", async () => {

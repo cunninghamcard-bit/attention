@@ -75,8 +75,10 @@ export const Platform: PlatformApi = {
   },
   supportsIndexedDb: typeof window !== "undefined" && Boolean(window.indexedDB),
   mobileSoftKeyboardVisible: false,
-  version: "",
-  build: "",
+  // Real Yl.version/Yl.build (app vs installer). This reconstruction has no
+  // asar/installer split, so both carry the one real app version.
+  version: resolveAppVersion(),
+  build: resolveAppVersion(),
   manufacturer: "",
   model: "",
   osName: "",
@@ -110,4 +112,17 @@ interface ElectronBridge {
   ipcRenderer?: {
     sendSync?: (channel: string) => unknown;
   };
+}
+
+// The main process's `version` sync channel (app.getVersion()). Empty outside
+// the desktop shell (browser/test environments).
+function resolveAppVersion(): string {
+  const maybeGlobal = globalThis as { electron?: ElectronBridge; window?: { electron?: ElectronBridge } };
+  try {
+    const version = (maybeGlobal.window?.electron ?? maybeGlobal.electron)?.ipcRenderer?.sendSync?.("version");
+    if (typeof version === "string") return version;
+  } catch {
+    // Electron is not available in browser/test environments.
+  }
+  return "";
 }

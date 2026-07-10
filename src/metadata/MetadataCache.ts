@@ -2,6 +2,7 @@ import { Events } from "../core/Events";
 import type { EventRef } from "../core/Events";
 import { unregisterEventRef } from "../core/EventRefInternal";
 import type { App } from "../app/App";
+import { getAllTags } from "../api/ApiUtils";
 import { createMetadataCacheStore, type MetadataCachePersistentStore } from "./MetadataCacheStore";
 import { getFrontmatterValues } from "../properties/Frontmatter";
 import type { PropertyType } from "../properties/PropertyTypes";
@@ -294,6 +295,44 @@ export class MetadataCache extends Events {
       }
     }
     return suggestions;
+  }
+
+  // Real `getTags()`: vault-wide '#tag' -> occurrence count. Each nested tag
+  // also counts toward its parents ('#foo/bar' increments '#foo'), ignored
+  // files are skipped, and casings are merged per lowercase key — the casing
+  // with the highest individual count becomes the reported key.
+  getTags(): Record<string, number> {
+    const counts: Record<string, number> = {};
+    const count = (tag: string): void => {
+      if (tag.endsWith("/")) tag = tag.slice(0, -1);
+      if (!isValidTag(tag)) return;
+      const last = tag.split("/").pop() ?? tag;
+      counts[tag] = (counts[tag] ?? 0) + 1;
+      if (last !== tag) count(tag.slice(0, tag.length - last.length - 1));
+    };
+    for (const [path, info] of this.fileCache) {
+      if (this.isUserIgnored(path)) continue;
+      const cache = this.metadataCache.get(info.hash);
+      if (!cache) continue;
+      for (const tag of getAllTags(cache) ?? []) count(tag);
+    }
+    const merged: Record<string, { tag: string; count: number; max: number }> = {};
+    for (const [tag, total] of Object.entries(counts)) {
+      const key = tag.toLowerCase();
+      const entry = merged[key];
+      if (entry) {
+        entry.count += total;
+        if (total > entry.max) {
+          entry.max = total;
+          entry.tag = tag;
+        }
+      } else {
+        merged[key] = { tag, count: total, max: total };
+      }
+    }
+    const result: Record<string, number> = {};
+    for (const entry of Object.values(merged)) result[entry.tag] = entry.count;
+    return result;
   }
 
   fileToLinktext(file: TFile, sourcePath = "", omitMdExtension = true): string {
@@ -858,6 +897,15 @@ export class MetadataCache extends Events {
     if (this.app?.vault.getConfig<boolean>("showUnsupportedFiles")) return true;
     return this.app?.viewRegistry.isExtensionRegistered(file.extension) ?? true;
   }
+}
+
+// Real `$A` tag-validity check: '#' followed by characters that are not
+// punctuation or whitespace, and not purely numeric.
+const VALID_TAG_RE = /^#[^\u2000-\u206F\u2E00-\u2E7F'!"#$%&()*+,.:;<=>?@^`{|}~\[\]\\\s]+$/;
+const NUMERIC_TAG_RE = /^#\d+$/;
+
+function isValidTag(tag: string): boolean {
+  return !!tag && VALID_TAG_RE.test(tag) && !NUMERIC_TAG_RE.test(tag);
 }
 
 function matchesIgnoreFilter(path: string, filter: string): boolean {

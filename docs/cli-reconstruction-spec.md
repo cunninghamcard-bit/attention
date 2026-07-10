@@ -273,10 +273,48 @@ separate `Arkloop/` dir, and the real `Obsidian Vault` mtime is unchanged.
 
 ### Batch coverage
 
-Registered today (real services): `help`, `vault`, `files`, `folders`,
-`read`, `open`, `command`, `commands`. Still unregistered (no real service):
-`vaults` (cross-vault registry, main-side), `version`, and everything under
-Graph / Sync / Bases — they return nothing until their service lands.
+**Batch 2 (2026-07-11, workflow: 9 lanes × extract→implement→fidelity-verify).**
+39 commands wired onto real services, each reverse-engineered verbatim from the
+`registerHandler`/`registerCliHandler` call-sites (byte offsets recorded per lane):
+
+- **Core registry** (`registerCliCommands` → `src/cli/commands/`):
+  - file writes: `create` (content/template/overwrite/open), `append`, `prepend`,
+    `move`, `rename`, `delete` — vault.create/append/process/delete/trash,
+    fileManager.renameFile/createNewFile.
+  - metadata: `tags`, `tag`, `properties`, `property:read/set/remove`, `aliases` —
+    metadataCache.getTags() (added: verbatim port with nested-tag rollup,
+    case-insensitive merge, isUserIgnored skip), getFileCache, processFrontMatter.
+  - graph lists: `backlinks`, `unresolved`, `orphans`, `deadends` —
+    metadataCache.resolvedLinks/unresolvedLinks.
+  - navigation: `random`, `random:read`, `reload`, `tabs`, `recents`, `tab:open`,
+    `workspace` — vault.getMarkdownFiles, workspace tree/recentFileTracker.
+  - misc: `version` (Platform.version/build ← `version` sync IPC; dev shows the
+    Electron version, packaged shows the app version), `vaults` (`vault-list`
+    sync IPC), `folder`, `file`.
+- **Internal plugins** (via `plugin.registerCliHandler` in each definition's init):
+  - global-search → `search`, `search:context`, `search:open` (SearchEngine,
+    reordered to vault traversal order + filename-word bare hits per real BH).
+  - outline → `outline`; outgoing-link → `links` (default-off seam here, so
+    `links` surfaces only when that plugin is enabled — the faithful carrier contract).
+  - word-count → `wordcount` (countWords now uses the verbatim Aee regex port).
+  - webviewer → `web` (default-off; WebViewerView is now `navigation=true` like real).
+  - workspaces → `workspaces`, `workspace:save/load/delete` (controller now
+    persists `{workspaces, active}` like the real plugin).
+- **Shared prototype methods hoisted to `Cli`** (their real home):
+  `tryResolveFile(params, allowActiveFallback)` (four verbatim thrown strings),
+  `formatTable(header, rows, format)` (json/tsv/csv, no header row),
+  `formatAsciiTree` / `formatAsciiTreeWithRoot`, exported `alphaCompare` (real `ub`).
+  Batch-1 `read`/`open` refit onto them (`open` has NO active-file fallback and
+  echoes `Opened: <path>`; `read` uses cachedRead).
+
+Skipped with reasons: `restart` (renderer has no relaunch IPC surface — no fake
+handler). Excluded by ruling: `daily*`, `bookmark*`, `template*`/`templates`,
+`task*`, `base*`, plus `history*`, `sync*`, `publish*`, `unique` — unregistered,
+so they produce the real unknown-command error.
+
+Known dev-only divergence: unpackaged `version` reports Electron's version
+(`app.getVersion()` without a packaged app version). Disclosed divergences are
+commented at their sites (e.g. template `{{date}}` uses our formatDate subset).
 
 ---
 

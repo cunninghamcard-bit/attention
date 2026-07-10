@@ -1,4 +1,5 @@
 import type { App } from "../app/App";
+import { TFile } from "../vault/TAbstractFile";
 
 /**
  * `App.cli` — the command-line registry and dispatcher, reconstructed from
@@ -134,6 +135,77 @@ export class Cli {
     return result;
   }
 
+  // Real `tryResolveFile` (a CLI-class prototype method, shared by every
+  // file-taking command): path= is an exact lookup that throws rather than
+  // falling through; file= resolves like a wikilink (empty source path); the
+  // active file is the default fallback. The four thrown strings are the
+  // contract — plain strings, never Error objects.
+  tryResolveFile(params: CliData, allowActiveFallback = true): TFile {
+    const app = this.app;
+    if (!app) throw new Error("Cli not initialized.");
+    if (params.path) {
+      const file = app.vault.getAbstractFileByPath(String(params.path));
+      if (!file) throw `File "${params.path}" not found.`;
+      if (!(file instanceof TFile)) throw `"${params.path}" is a folder, not a file.`;
+      return file;
+    }
+    if (params.file) {
+      const file = app.metadataCache.getFirstLinkpathDest(String(params.file), "");
+      if (!file) throw `File "${params.file}" not found.`;
+      return file;
+    }
+    if (allowActiveFallback) {
+      const active = app.workspace.getActiveFile();
+      if (!active) throw "No active file. Use file=<name> or path=<path> to specify a file.";
+      return active;
+    }
+    throw "Missing required parameter: file or path";
+  }
+
+  // Real `formatTable`: json = 2-space-indented objects keyed by header
+  // (missing cells → ""); tsv/csv emit NO header row; cells containing a
+  // quote, newline, or the separator get double-quoted with inner quotes
+  // doubled. Any format other than json/csv falls through to TSV.
+  formatTable(header: string[], rows: string[][], format?: string): string {
+    if (format === "json") {
+      return JSON.stringify(
+        rows.map((row) => Object.fromEntries(header.map((key, i) => [key, row[i] ?? ""]))),
+        null,
+        2,
+      );
+    }
+    const sep = format === "csv" ? "," : "\t";
+    const quotable = new RegExp(`["\\n\\r${sep}]`);
+    return rows
+      .map((row) => header
+        .map((_, i) => {
+          const cell = row[i] ?? "";
+          return quotable.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
+        })
+        .join(sep))
+      .join("\n");
+  }
+
+  // Real `formatAsciiTree`: ├──/└── connectors on every row (top level too);
+  // a whole subtree joins its lines as one element.
+  formatAsciiTree(nodes: AsciiTreeNode[], indent = ""): string {
+    const lines: string[] = [];
+    nodes.forEach((node, index) => {
+      const last = index === nodes.length - 1;
+      lines.push(indent + (last ? "└── " : "├── ") + node.label);
+      if (node.children && node.children.length > 0) {
+        lines.push(this.formatAsciiTree(node.children, indent + (last ? "    " : "│   ")));
+      }
+    });
+    return lines.join("\n");
+  }
+
+  formatAsciiTreeWithRoot(rootLabel: string, nodes: AsciiTreeNode[]): string {
+    const lines = [rootLabel];
+    if (nodes.length > 0) lines.push(this.formatAsciiTree(nodes));
+    return lines.join("\n");
+  }
+
   private registerBuiltins(): void {
     this.registerHandler(
       "help",
@@ -173,6 +245,15 @@ export class Cli {
     return out;
   }
 }
+
+export interface AsciiTreeNode {
+  label: string;
+  children?: AsciiTreeNode[];
+}
+
+// Real `ub`: the shared collator every CLI name/path sort uses — locale-aware,
+// case-insensitive, numeric-aware.
+export const alphaCompare = new Intl.Collator(undefined, { usage: "sort", sensitivity: "base", numeric: true }).compare;
 
 // key=value keeps the value; a bare token becomes "true".
 function parseParams(tokens: string[]): CliData {

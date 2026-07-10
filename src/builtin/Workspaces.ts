@@ -6,6 +6,7 @@ import type { WorkspaceLayout } from "../workspace/WorkspaceLayout";
 import { FuzzySuggestModal, type FuzzySuggestion } from "../suggest/SuggestModal";
 import { Setting, SettingGroup } from "../ui/Setting";
 import { setIcon } from "../ui/Icon";
+import { registerWorkspacesCliHandlers } from "../cli/commands/workspacesCli";
 
 export interface SavedWorkspace {
   name: string;
@@ -15,17 +16,19 @@ export interface SavedWorkspace {
 
 export interface WorkspacesOptions {
   workspaces: Record<string, SavedWorkspace>;
+  // The last saved/loaded workspace name — real Obsidian persists {workspaces, active}.
+  active: string;
 }
 
 export class WorkspacesController {
-  options: WorkspacesOptions = { workspaces: {} };
+  options: WorkspacesOptions = { workspaces: {}, active: "" };
   plugin: InternalPluginWrapper | null = null;
 
   constructor(readonly app: App) {}
 
   async onEnable(plugin: InternalPluginWrapper): Promise<void> {
     this.plugin = plugin;
-    this.options = { workspaces: {}, ...((await plugin.loadData<WorkspacesOptions>()) ?? {}) };
+    this.options = { workspaces: {}, active: "", ...((await plugin.loadData<WorkspacesOptions>()) ?? {}) };
     plugin.addSettingTab(new WorkspacesSettingTab(this.app, this));
   }
 
@@ -33,21 +36,33 @@ export class WorkspacesController {
     return Object.values(this.options.workspaces).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true }));
   }
 
+  get activeWorkspace(): string {
+    return this.options.active;
+  }
+
+  // Real setActiveWorkspace: sets the field only; persistence rides the next
+  // saveData from the mutation that follows.
+  setActiveWorkspace(name: string): void {
+    this.options.active = name;
+  }
+
+  // Real saveWorkspace does not trim or validate the name — callers do.
   async saveCurrentWorkspace(name: string): Promise<void> {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    this.options.workspaces[trimmed] = {
-      name: trimmed,
+    this.options.workspaces[name] = {
+      name,
       layout: this.app.workspace.getLayout(),
       savedAt: new Date().toISOString(),
     };
     await this.persist();
   }
 
+  // Real loadWorkspace: set active, apply the layout, persist.
   async loadWorkspace(name: string): Promise<void> {
     const workspace = this.options.workspaces[name];
     if (!workspace) return;
+    this.options.active = name;
     await this.app.workspace.changeLayout(workspace.layout);
+    await this.persist();
   }
 
   async deleteWorkspace(name: string): Promise<void> {
@@ -190,6 +205,7 @@ export function createWorkspacesPluginDefinition(): InternalPluginDefinition {
     init(app: App, plugin: InternalPluginWrapper) {
       controller = new WorkspacesController(app);
       plugin.instance = controller;
+      registerWorkspacesCliHandlers(plugin, controller);
       plugin.registerGlobalCommand({
         id: "workspaces:save",
         name: "Save current workspace",

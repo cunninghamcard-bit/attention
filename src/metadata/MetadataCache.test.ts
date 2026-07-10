@@ -31,6 +31,27 @@ describe("MetadataCache", () => {
     expect(metadataCache.getFileCache(folderIgnored)?.headings?.[0]?.heading).toBe("Hidden");
   });
 
+  it("aggregates vault tags with parent rollup, case merging, and ignore filters", async () => {
+    const vault = new Vault();
+    const metadataCache = new MetadataCache(vault);
+    await vault.create("One.md", "---\ntags: [Foo, foo]\n---\n#foo/bar/baz #other/");
+    await vault.create("Two.md", "#FOO #123 #foo");
+    await vault.create("Archive/Hidden.md", "#foo #hidden");
+
+    vault.setConfig("userIgnoreFilters", ["Archive/"]);
+    await metadataCache.clear();
+
+    // '#123' fails the validity check; '#other/' is trimmed; nested tags also
+    // count toward their parents; '#foo' wins the casing merge (highest
+    // individual count) with the '#Foo'/'#FOO' occurrences folded in.
+    expect(metadataCache.getTags()).toEqual({
+      "#foo": 5,
+      "#foo/bar": 1,
+      "#foo/bar/baz": 1,
+      "#other": 1,
+    });
+  });
+
   it("emits changed with source text and debounces finished after vault modifications", async () => {
     vi.useFakeTimers();
     try {

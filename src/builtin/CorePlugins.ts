@@ -15,6 +15,8 @@ import { TagPaneView } from "./TagPaneView";
 import { OutlineView } from "./OutlineView";
 import { CanvasView } from "./CanvasView";
 import { MarkdownView } from "../views/MarkdownView";
+import { registerSearchCliHandlers } from "../cli/commands/searchCli";
+import { registerLinksCliHandlers, registerOutlineCliHandlers } from "../cli/commands/linksOutlineCli";
 import { createGraphPluginDefinition } from "./GraphPlugin";
 import { createCommandPalettePluginDefinition } from "../commands/CommandPalette";
 import { createDailyNotesPluginDefinition } from "./DailyNotes";
@@ -201,6 +203,7 @@ export const corePlugins: InternalPluginDefinition[] = [
       plugin.registerRibbonItem("Search", "lucide-search", () => {
         void plugin.app.workspace.ensureSideLeaf("search", "left", { active: true, reveal: true });
       });
+      registerSearchCliHandlers(plugin);
     },
     onEnable(app: App) {
       app.workspace.onLayoutReady(() => void app.workspace.ensureSideLeaf("search", "left", { reveal: false }));
@@ -266,6 +269,7 @@ export const corePlugins: InternalPluginDefinition[] = [
           return true;
         },
       });
+      registerLinksCliHandlers(plugin);
     },
     onEnable(app: App, plugin: InternalPluginWrapper) {
       plugin.registerEvent(app.workspace.on<[Menu, TFile, string, WorkspaceLeaf]>("file-menu", (menu, file, source, leaf) => {
@@ -311,6 +315,7 @@ export const corePlugins: InternalPluginDefinition[] = [
         icon: "lucide-list-tree",
         callback: () => void plugin.app.workspace.ensureSideLeaf("outline", "right", { active: true, reveal: true }),
       });
+      registerOutlineCliHandlers(plugin);
     },
     onEnable(app: App, plugin: InternalPluginWrapper) {
       plugin.registerEvent(app.workspace.on<[Menu, TFile, string, WorkspaceLeaf]>("file-menu", (menu, file, source, leaf) => {

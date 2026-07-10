@@ -1,6 +1,10 @@
 import type { App } from "../app/App";
-import type { CliData } from "./Cli";
-import { TFile, TFolder } from "../vault/TAbstractFile";
+import { allFolders, tabbed } from "./commands/helpers";
+import { registerCoreMiscCommands } from "./commands/coreMisc";
+import { registerFileWriteCommands } from "./commands/fileWrites";
+import { registerGraphListCommands } from "./commands/graphLists";
+import { registerMetadataCommands } from "./commands/metadata";
+import { registerNavigationCommands } from "./commands/navigation";
 
 /**
  * The core CLI command batch — registered by the app itself (not a plugin)
@@ -70,11 +74,8 @@ export function registerCliCommands(app: App): void {
     "read",
     "Read file contents",
     { file: { value: "<name>", description: "File name" }, path: { value: "<path>", description: "File path" } },
-    async (params) => {
-      const file = resolveFile(app, params);
-      if (!file) return "File not found.";
-      return app.vault.read(file);
-    },
+    // Real handler: shared resolver (throws), then cachedRead.
+    async (params) => app.vault.cachedRead(cli.tryResolveFile(params)),
   );
 
   cli.registerHandler(
@@ -85,11 +86,12 @@ export function registerCliCommands(app: App): void {
       path: { value: "<path>", description: "File path" },
       newtab: { description: "Open in new tab" },
     },
+    // Real handler: NO active-file fallback (`tryResolveFile(t, !1)`) — bare
+    // `open` throws "Missing required parameter: file or path".
     async (params) => {
-      const file = resolveFile(app, params);
-      if (!file) return "File not found.";
-      await app.workspace.openLinkText(file.path, "", params.newtab === "true" ? "tab" : false);
-      return `Opened ${file.path}`;
+      const file = cli.tryResolveFile(params, false);
+      await app.workspace.getLeaf(params.newtab ? "tab" : false).openFile(file, { active: true });
+      return `Opened: ${file.path}`;
     },
   );
 
@@ -113,27 +115,10 @@ export function registerCliCommands(app: App): void {
       return ids.sort().join("\n");
     },
   );
-}
 
-// `file=<name>` resolves like a wikilink; `path=<path>` is exact. Falls back to
-// the active file when neither is given (real Obsidian's default).
-function resolveFile(app: App, params: CliData): TFile | null {
-  if (params.path && params.path !== "true") {
-    const file = app.vault.getAbstractFileByPath(String(params.path));
-    return file instanceof TFile ? file : null;
-  }
-  if (params.file && params.file !== "true") {
-    return app.metadataCache.getFirstLinkpathDest(String(params.file), "");
-  }
-  return app.workspace.getActiveFile();
-}
-
-function allFolders(app: App): TFolder[] {
-  return app.vault.getAllLoadedFiles().filter((file): file is TFolder => file instanceof TFolder && file.path !== "/");
-}
-
-function tabbed(rows: Record<string, string>): string {
-  return Object.entries(rows)
-    .map(([key, value]) => `${key}\t${value}`)
-    .join("\n");
+  registerFileWriteCommands(app);
+  registerMetadataCommands(app);
+  registerGraphListCommands(app);
+  registerNavigationCommands(app);
+  registerCoreMiscCommands(app);
 }

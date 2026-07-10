@@ -1,5 +1,6 @@
 import type { App } from "../app/App";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
+import { registerWebCliHandlers } from "../cli/commands/wordcountWebCli";
 import type { InternalPluginWrapper } from "../plugin/InternalPluginWrapper";
 import { Notice } from "../ui/Notice";
 import { ConfirmationModal } from "../ui/Modal";
@@ -116,6 +117,8 @@ export class WebViewerController {
 
 export class WebViewerView extends ItemView {
   icon = "lucide-globe";
+  // Real webviewer views are navigable (getLeaf(false) replaces them in place).
+  navigation = true;
   url = "about:blank";
   title = "Web viewer";
   readerMode = false;
@@ -569,6 +572,7 @@ export function createWebViewerPluginDefinition(): InternalPluginDefinition {
       plugin.instance = controller;
       plugin.registerViewType(WEBVIEWER_VIEW_TYPE, (leaf) => new WebViewerView(leaf, controller as WebViewerController));
       plugin.registerViewType(WEBVIEWER_HISTORY_VIEW_TYPE, (leaf) => new WebViewerHistoryView(leaf, controller as WebViewerController));
+      registerWebCliHandlers(plugin);
       plugin.registerGlobalCommand({
         id: "webviewer:open",
         name: "Open Web viewer",
