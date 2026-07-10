@@ -51,10 +51,14 @@ export async function bootstrap(parent: HTMLElement = document.body): Promise<Ap
   win.app = app;
   await app.ready;
 
-  const welcome = await ensureMarkdownFile(app, "Welcome.md", welcomeMarkdown);
-  await ensureMarkdownFile(app, "Plugin Architecture.md", pluginMarkdown);
-  await seedCodeDemoFiles(app);
-  await app.workspace.openFile(welcome, { active: true, state: { mode: "preview" } });
+  // Demo content seeds only a brand-new (empty) vault — an existing vault's
+  // contents are the user's; real Obsidian never writes into an opened vault.
+  if (app.vault.getFiles().length === 0) {
+    const welcome = await ensureMarkdownFile(app, "Welcome.md", welcomeMarkdown);
+    await ensureMarkdownFile(app, "Plugin Architecture.md", pluginMarkdown);
+    await seedCodeDemoFiles(app);
+    await app.workspace.openFile(welcome, { active: true, state: { mode: "preview" } });
+  }
 
   app.statusBar.registerStatusBarItem().textContent = "ArkLoop";
   return app;

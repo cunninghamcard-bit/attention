@@ -112,6 +112,31 @@ describe("MetadataCache", () => {
     expect(preloaded.getCache("Note.md")?.frontmatter).toEqual({ status: "cached" });
   });
 
+  it("prunes preloaded entries for files absent from the vault on initialize", async () => {
+    // The persistent store is shared per appId, not per vault, so a cache
+    // saved while one vault was open must not leak into another vault's reads.
+    const store = new MemoryMetadataCacheStore();
+    const first = new Vault();
+    const seeded = new MetadataCache(first, undefined, store);
+    const ghost = await first.create("Plugin Architecture.md", "body #arkloop tag");
+    await seeded.computeFileMetadata(ghost);
+    expect(store.getFile("Plugin Architecture.md")).not.toBeNull();
+
+    // A different vault that never had that file preloads the shared cache...
+    const otherVault = new Vault();
+    const kept = await otherVault.create("Real.md", "#alpha here");
+    const cache = new MetadataCache(otherVault, undefined, store);
+    await cache.initialize();
+    // initialize queues the real file's metadata asynchronously; compute it
+    // deterministically before reading tags.
+    await cache.computeFileMetadata(kept);
+
+    // ...and initialize reconciles the ghost away, so vault-wide reads stay clean.
+    expect(cache.getFileInfo("Plugin Architecture.md")).toBeNull();
+    expect(cache.getCachedFiles()).toEqual(["Real.md"]);
+    expect(Object.keys(cache.getTags())).toEqual(["#alpha"]);
+  });
+
   it("indexes frontmatter position and root markdown sections", async () => {
     const vault = new Vault();
     const metadataCache = new MetadataCache(vault);

@@ -398,11 +398,25 @@ export class MetadataCache extends Events {
     await this.preload();
     this.preloadPromise = null;
     const tasks: Array<Promise<CachedMetadata>> = [];
+    const present = new Set<string>();
     for (const file of this.vault.getAllLoadedFiles()) {
       if (!(file instanceof TFile)) continue;
+      present.add(file.path);
       this.addUniqueFile(file);
       if (await this.canReuseFileCache(file)) this.queueFileForLinkResolution(file);
       else tasks.push(this.computeFileMetadataAsync(file));
+    }
+    // Reconcile the preloaded cache against the vault: the persistent store is
+    // keyed per appId, not per vault, so entries from a previously opened
+    // vault would otherwise leak into this one's fileCache and pollute every
+    // vault-wide read (getTags, resolved/unresolved links, properties). Real
+    // Obsidian never carries cache for files absent from the open vault.
+    for (const path of [...this.fileCache.keys()]) {
+      if (!present.has(path)) {
+        this.fileCache.delete(path);
+        delete this.resolvedLinks[path];
+        delete this.unresolvedLinks[path];
+      }
     }
     this.initialized = true;
     this.watchVaultChanges();
