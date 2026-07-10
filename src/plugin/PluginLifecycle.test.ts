@@ -727,10 +727,9 @@ describe("community plugin lifecycle", () => {
       "dry-run": "true",
     });
     expect(instance?.protocolPayload?.params).toBeUndefined();
-    expect(app.cliHandlers.find((handler) => handler.command === "chrome-api")).toMatchObject({
+    expect(app.cli.handlers.get("chrome-api")).toMatchObject({
       description: "[Chrome API]: Run the Chrome API plugin",
       flags: { "dry-run": { description: "Run without changing state" } },
-      owner: "chrome-api",
     });
     await expect(app.cli.handleCli(["chrome-api", "dry-run"])).resolves.toBe("chrome-cli");
     expect(instance?.cliHits).toEqual([{ "dry-run": "true" }]);
@@ -975,7 +974,7 @@ describe("community plugin lifecycle", () => {
 
   it("enforces unique CLI commands and required flag metadata", async () => {
     const app = new App(document.createElement("div"));
-    app.registerCliHandler("sample", "Run sample", {
+    app.cli.registerHandler("sample", "Run sample", {
       path: {
         value: "<path>",
         description: "Path to open",
@@ -983,7 +982,7 @@ describe("community plugin lifecycle", () => {
       },
     }, (params) => params.path);
 
-    expect(() => app.registerCliHandler("sample", "Duplicate sample", null, () => "duplicate")).toThrow(
+    expect(() => app.cli.registerHandler("sample", "Duplicate sample", null, () => "duplicate")).toThrow(
       'Command "sample" is already registered as a handler.',
     );
     await expect(app.cli.handleCli(["sample"])).rejects.toBe(

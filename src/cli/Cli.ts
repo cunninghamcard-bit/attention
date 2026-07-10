@@ -5,8 +5,8 @@ import type { App } from "../app/App";
  * real Obsidian's `app.cli` (decompiled `CA` class + `window.handleCli`).
  *
  * This is the ONE registry: the core app, internal plugins, and community
- * plugins all register through it (via `App.registerCliHandler`, which
- * delegates here). The Electron main process owns the socket, vault routing,
+ * plugins all register through `app.cli.registerHandler` directly (the real
+ * shape). The Electron main process owns the socket, vault routing,
  * and the CLI-enable gate; THIS class owns every command semantic — parsing,
  * the unknown-command error, fuzzy suggestions, required-parameter validation,
  * and the command table itself. The transport layer never learns a business
@@ -36,58 +36,33 @@ export type CliFlags = Record<string, CliFlag>;
 
 export type CliHandler = (params: CliData) => string | Promise<string>;
 
-export interface CliHandlerRegistration {
-  id: string;
-  command: string;
+// One registry entry — the real decompiled shape: the Map key is the command
+// id, the record carries only handler/description/flags.
+export interface CliCommand {
   description: string;
   flags: CliFlags | null;
   handler: CliHandler;
-  // The registering plugin's id, when the command came from a plugin. A local
-  // attribution field (real Obsidian tracks ownership via the closure instead).
-  owner?: string;
 }
 
 export class Cli {
-  readonly handlers = new Map<string, CliHandlerRegistration>();
+  readonly handlers = new Map<string, CliCommand>();
   private app: App | null = null;
 
-  // A duplicate id is an error, never a silent overwrite (faithful to real
-  // Obsidian: the registry refuses a second claim on a command name so a
-  // plugin can't shadow a core or peer command). Returns the registration so
-  // callers can hold it for a later unregister.
-  registerHandler(
-    id: string,
-    description: string,
-    flags: CliFlags | null,
-    handler: CliHandler,
-    owner?: string,
-  ): CliHandlerRegistration {
+  // A duplicate id is an error, never a silent overwrite (faithful: the
+  // registry refuses a second claim so a plugin can't shadow a core or peer
+  // command).
+  registerHandler(id: string, description: string, flags: CliFlags | null, handler: CliHandler): void {
     if (this.handlers.has(id)) {
       throw new Error(`Command "${id}" is already registered as a handler.`);
     }
-    const registration: CliHandlerRegistration = {
-      id,
-      command: id,
-      description,
-      flags,
-      handler,
-      ...(owner ? { owner } : {}),
-    };
-    this.handlers.set(id, registration);
-    return registration;
+    this.handlers.set(id, { description, flags, handler });
   }
 
-  // Unregister by id (optionally only when `handler` still owns the slot, so a
-  // peer re-registration is never clobbered by a late unload) or by the exact
-  // registration object.
-  unregisterHandler(idOrRegistration: string | CliHandlerRegistration, handler?: CliHandler): void {
-    if (typeof idOrRegistration !== "string") {
-      const existing = this.handlers.get(idOrRegistration.id);
-      if (existing === idOrRegistration) this.handlers.delete(idOrRegistration.id);
-      return;
-    }
-    const existing = this.handlers.get(idOrRegistration);
-    if (existing && (!handler || existing.handler === handler)) this.handlers.delete(idOrRegistration);
+  // Real shape: no handler → delete; with handler → delete only while it still
+  // owns the slot (a peer re-registration is never clobbered by a late unload).
+  unregisterHandler(id: string, handler?: CliHandler): void {
+    const existing = this.handlers.get(id);
+    if (!handler || (existing && existing.handler === handler)) this.handlers.delete(id);
   }
 
   // Installs `window.handleCli` (the main process reaches it via
@@ -179,14 +154,14 @@ export class Cli {
         if (suggestions.length) message += ` Did you mean: ${suggestions.join(", ")}?`;
         return message;
       }
-      return matched.map(([, cmd]) => formatCommand(cmd)).join("\n");
+      return matched.map(([id, cmd]) => formatCommand(id, cmd)).join("\n");
     }
 
     const main: string[] = [];
     const developer: string[] = [];
     for (const [id, cmd] of entries) {
       if (id.startsWith("__")) continue;
-      const block = formatCommand(cmd);
+      const block = formatCommand(id, cmd);
       (id.startsWith("dev:") || id === "devtools" || id === "eval" ? developer : main).push(block);
     }
     let out = "Arkloop CLI\n\nUsage: arkloop <command> [options]\n\nCommands:\n" + main.join("\n");
@@ -242,8 +217,8 @@ function formatUsage(flags: CliFlags | null): string {
 }
 
 // A help block: the command line, then one indented line per flag.
-function formatCommand(cmd: CliHandlerRegistration): string {
-  let block = `  ${cmd.command.padEnd(20)}  ${cmd.description}`;
+function formatCommand(id: string, cmd: CliCommand): string {
+  let block = `  ${id.padEnd(20)}  ${cmd.description}`;
   for (const [name, flag] of Object.entries(cmd.flags ?? {})) {
     block += `\n    ${name.padEnd(18)} - ${flag.description}`;
   }

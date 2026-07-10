@@ -1,5 +1,6 @@
 import { Component } from "../core/Component";
-import type { App, CliFlags, CliHandler } from "../app/App";
+import type { App } from "../app/App";
+import type { CliFlags, CliHandler } from "../cli/Cli";
 import type { Command } from "../commands/CommandManager";
 import type { ThemeDefinition } from "../theme/ThemeManager";
 import type { CssSnippet } from "../theme/CssSnippetManager";
@@ -193,8 +194,8 @@ export class Plugin extends Component {
   }
 
   registerCliHandler(command: string, description: string, flags: CliFlags | null, handler: CliHandler): void {
-    this.app.registerCliHandler(command, `[${this.manifest.name}]: ${description}`, flags, handler, this.manifest.id);
-    this.register(() => this.app.unregisterCliHandler(command, handler));
+    this.app.cli.registerHandler(command, `[${this.manifest.name}]: ${description}`, flags, handler);
+    this.register(() => this.app.cli.unregisterHandler(command, handler));
   }
 
   /** Adds a search operator (shown in the search-options dropdown) with Obsidian cleanup semantics. */

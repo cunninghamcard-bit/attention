@@ -85,13 +85,8 @@ import type { AttachmentImportData, AttachmentImportFile } from "./AttachmentImp
 import { FrameDom } from "./FrameDom";
 import { applyObsidianBodyClasses, installFocusBodyClassSync, syncObsidianConfigBodyClasses } from "./BodyClasses";
 
-// The CLI registry and its types live in ../cli/Cli; re-exported here so the
-// long-standing `App`-scoped imports (Plugin, InternalPluginWrapper) keep
-// working while `App.cli` is the single source of truth.
 import { Cli } from "../cli/Cli";
 import { registerCliCommands } from "../cli/registerCliCommands";
-import type { CliFlags, CliHandler, CliHandlerRegistration } from "../cli/Cli";
-export type { CliData, CliFlag, CliFlags, CliHandler, CliHandlerRegistration } from "../cli/Cli";
 const localStorageFallback = new Map<string, string>();
 
 function installAnimationFrameFallback(win: Window): void {
@@ -135,11 +130,6 @@ export class App {
   readonly containerEl: HTMLElement;
   lastEvent: Event | null = null;
   readonly cli = new Cli();
-  // Read-only view of the registered CLI commands (the registry is a Map on
-  // `this.cli`; this preserves the array shape existing callers/tests read).
-  get cliHandlers(): CliHandlerRegistration[] {
-    return [...this.cli.handlers.values()];
-  }
   readonly jsonStore = new JsonStore();
   readonly config = new AppConfigManager(this.jsonStore);
   readonly pluginData = new PluginDataStore(this.jsonStore);
@@ -404,19 +394,6 @@ export class App {
       const resourcePath = this.vault.getResourcePath(file);
       if (resourcePath) media.setAttribute("src", resourcePath);
     }
-  }
-
-  // The CLI registry lives on `this.cli`; these delegate so the established
-  // `app.registerCliHandler(...)` call sites (Plugin, InternalPluginWrapper)
-  // keep working against the single faithful registry.
-  registerCliHandler(command: string, description: string, flags: CliFlags | null, handler: CliHandler, owner?: string): CliHandlerRegistration {
-    return this.cli.registerHandler(command, description, flags, handler, owner);
-  }
-
-  unregisterCliHandler(registration: CliHandlerRegistration): void;
-  unregisterCliHandler(id: string, handler?: CliHandler): void;
-  unregisterCliHandler(idOrRegistration: string | CliHandlerRegistration, handler?: CliHandler): void {
-    this.cli.unregisterHandler(idOrRegistration, handler);
   }
 
   resolveAttachmentFile(file: AttachmentImportFile): TFile | null {
