@@ -202,18 +202,33 @@ This replaces `main.ts`'s current `app.quit()` in the no-lock branch.
 
 ---
 
-## 6. Implementation order
+## 6. Implementation order — status
 
-1. ~~`Cli` registry + `handleCli` + parser + help, unit-testable.~~ **DONE**
-   (`src/cli/Cli.ts`, 18 tests).
-2. `Plugin`/`InternalPlugin.registerCliHandler` + `VaultWindowManager.executeCliRequest`
-   + `window.cliQueue`; `Cli.init` installs at `bootstrap.ts` after `new App`.
-3. Unix socket server/client; run one real `arkloop vault` on macOS end to end.
-4. Replace `main.ts` second-instance `app.quit()` with the CLI client branch.
-5. Windows named pipe; the `cliEnabled` setting (gate strings already in `et`
-   and `Xe`); packaged launcher.
-6. E2E: boot the desktop app, drive the CLI from a second process, assert a
-   real vault change.
+1. ~~`Cli` registry + `handleCli` + parser + help.~~ **DONE** (`src/cli/Cli.ts`).
+2. ~~`registerCliHandler` lifecycle + `executeCliRequest` + `window.cliQueue`.~~
+   **DONE** — the plugin lifecycle already existed (`Plugin` /
+   `InternalPluginWrapper`) and was reconciled onto the one faithful registry;
+   `App.cli.init(this)` installs `window.handleCli` from the App constructor.
+3. ~~Unix socket server/client; one real `arkloop vault`.~~ **DONE** — proven
+   live (primary app + second-instance CLI over `~/.arkloop-cli.sock`):
+   `vault`, `files`, `read`, `commands`, unknown-command fuzzy all correct.
+4. ~~`main.ts` second-instance → CLI client.~~ **DONE**.
+5. `cliEnabled` gate — **DONE** (`settings.cli`, off by default, live-verified
+   both ways). **Remaining (untestable on this macOS box):** the Settings >
+   General > Advanced toggle UI (renderer); the Windows named-pipe
+   second-instance flow (the reference has the primary initiate the pipe
+   client — `defaultCliSocketPath` returns the pipe path, but that handshake
+   is unbuilt); the packaged `arkloop` launcher/symlink.
+6. E2E — **DONE manually** (steps 3/5 above). An automated desktop e2e
+   (spawn primary + secondary electron) is not yet scripted; the seam is
+   covered by the CliServer/CliDispatch/registerCliCommands unit tests.
+
+### Batch coverage
+
+Registered today (real services): `help`, `vault`, `files`, `folders`,
+`read`, `open`, `command`, `commands`. Still unregistered (no real service):
+`vaults` (cross-vault registry, main-side), `version`, and everything under
+Graph / Sync / Bases — they return nothing until their service lands.
 
 ---
 
