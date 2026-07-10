@@ -19,6 +19,16 @@ import { registerSessionHardening } from "./session-hardening";
 import { registerDesktopBridgeIpc } from "./desktop-bridge";
 import { applyMenu, updateMenuItems } from "./menu";
 import type { SystemMenuItem } from "../src/desktop/SystemMenuBuilder";
+import { CliServer, defaultCliSocketPath } from "./cli/CliServer";
+import { runCliClient } from "./cli/CliClient";
+import { dispatchCli } from "./cli/CliDispatch";
+
+// The CLI args this instance was launched with — real Obsidian's `f(argv)`.
+// In dev (`electron .`) the executable and script lead argv[0..1]; packaged,
+// only the executable leads.
+function cliArgvFromProcess(argv: string[]): string[] {
+  return process.defaultApp ? argv.slice(2) : argv.slice(1);
+}
 
 /**
  * Electron main entry for the reconstructed Obsidian desktop app.
@@ -35,7 +45,10 @@ const here = __dirname;
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
-  app.quit();
+  // The primary instance owns the app; this one becomes the CLI client —
+  // connect to its socket, relay argv/cwd, print the response, exit. (Real
+  // Obsidian's `!requestSingleInstanceLock()` branch; replaces app.quit().)
+  runCliClient(defaultCliSocketPath(), cliArgvFromProcess(process.argv), process.cwd());
 } else {
   initializeRemote();
 
@@ -110,6 +123,24 @@ if (!gotLock) {
       isWindows: process.platform === "win32",
     });
 
+  // The CLI socket server (real `Ve`): dispatches each request to a vault
+  // renderer via `window.handleCli`. All transport lives in CliServer; the
+  // deps here are the app's real vault routing and window bridge.
+  const cliServer = new CliServer((request) =>
+    dispatchCli(request, {
+      getIdByName: (name) => registry.getIdByName(name),
+      getIdByContainedPath: (path) => registry.getIdByContainedPath(path),
+      mostRecentVaultId: () => vaultWindows.mostRecentVaultId(),
+      openStarter: openStartupWindows,
+      handleUrl: (url) => {
+        dispatchObsidianUrl(url);
+        return `Processed URI ${url}`;
+      },
+      executeCliRequest: (vaultId, argv) => vaultWindows.executeCliRequest(vaultId, argv),
+    }),
+    defaultCliSocketPath(),
+  );
+
   // A protocol URL may arrive before `whenReady` (real `Oe` capture).
   let pendingUrl: string | null = obsidianUrlFromArgv(process.argv);
   app.on("will-finish-launching", () => {
@@ -140,6 +171,7 @@ if (!gotLock) {
 
   app.on("before-quit", () => {
     mainState.isQuitting = true;
+    cliServer.stop();
   });
 
   // macOS: quit only on explicit Cmd+Q (reverse note `window-all-closed`).
@@ -188,6 +220,7 @@ if (!gotLock) {
       onError: (error) => console.error(error),
     });
     openStartupWindows();
+    cliServer.start();
     if (pendingUrl) {
       dispatchObsidianUrl(pendingUrl);
       pendingUrl = null;
