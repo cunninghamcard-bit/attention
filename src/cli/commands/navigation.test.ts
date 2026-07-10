@@ -91,6 +91,10 @@ describe("reload", () => {
   it("returns Reloading... and schedules the reload instead of firing it inline", async () => {
     vi.useFakeTimers();
     const app = bareApp();
+    // Settle the async core-plugin enables first — their layout timers must
+    // not land between the baseline capture and the reload call.
+    await app.corePluginsReady;
+    await Promise.resolve();
     const pending = vi.getTimerCount();
     expect(await app.cli.handleCli(["reload"])).toBe("Reloading...");
     // The reload is deferred so the reply is delivered first.

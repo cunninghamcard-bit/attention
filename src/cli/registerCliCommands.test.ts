@@ -16,16 +16,37 @@ describe("core CLI commands", () => {
     const out = await app.cli.handleCli(["vault"]);
     expect(out).toContain("name\t");
     expect(out).toContain("files\t2");
+    // The path row only exists for a FileSystemAdapter (in-memory here);
+    // info=path then reports the real "(not available)".
+    expect(out).not.toContain("path\t");
+    expect(await app.cli.handleCli(["vault", "info=path"])).toBe("(not available)");
     // info=<key> returns just that value, not the whole table.
     expect(await app.cli.handleCli(["vault", "info=files"])).toBe("2");
+    // An unknown info value (and a bare `info` flag = "true") falls through
+    // to the full report — never an empty string.
+    expect(await app.cli.handleCli(["vault", "info=bogus"])).toContain("files\t2");
+    expect(await app.cli.handleCli(["vault", "info"])).toContain("files\t2");
   });
 
-  it("files lists paths, filters by folder/ext, and counts with total", async () => {
+  it("files lists ub-sorted paths, filters by folder/ext, and counts with total", async () => {
     const app = await seededApp();
-    expect((await app.cli.handleCli(["files"])).split("\n").sort()).toEqual(["Folder/Sub.md", "Note.md"]);
+    expect(await app.cli.handleCli(["files"])).toBe("Folder/Sub.md\nNote.md");
+    // folder= accepts an explicit trailing slash too.
     expect(await app.cli.handleCli(["files", "folder=Folder"])).toBe("Folder/Sub.md");
+    expect(await app.cli.handleCli(["files", "folder=Folder/"])).toBe("Folder/Sub.md");
     expect(await app.cli.handleCli(["files", "total"])).toBe("2");
+    // ext= strips a leading dot before matching.
     expect(await app.cli.handleCli(["files", "ext=md", "total"])).toBe("2");
+    expect(await app.cli.handleCli(["files", "ext=.md", "total"])).toBe("2");
+  });
+
+  it("folders traverses from folder= (throwing when missing) and includes the root", async () => {
+    const app = await seededApp();
+    // recurseChildren visits the start folder itself, so "/" is listed.
+    expect(await app.cli.handleCli(["folders"])).toBe("/\nFolder");
+    expect(await app.cli.handleCli(["folders", "folder=Folder"])).toBe("Folder");
+    expect(await app.cli.handleCli(["folders", "total"])).toBe("2");
+    await expect(app.cli.handleCli(["folders", "folder=Nope"])).rejects.toBe('Folder "Nope" not found.');
   });
 
   it("read resolves file= by name and path= exactly", async () => {

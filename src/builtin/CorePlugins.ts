@@ -47,7 +47,6 @@ const openRootView = (app: App, viewType: string, mode: "tab" | "split" = "tab")
 export const nonParityFeatureScope = [
   { id: "graph", area: "core-plugin", boundary: "not implemented as an Obsidian feature; keep only thin architecture seams when useful" },
   { id: "backlink", area: "core-plugin", boundary: "not implemented as an Obsidian feature; linked-view/menu contracts may remain as thin seams" },
-  { id: "outgoing-link", area: "core-plugin", boundary: "not implemented as an Obsidian feature; linked-view/menu contracts may remain as thin seams" },
   { id: "wiki-link-resolver", area: "metadata", boundary: "do not chase Obsidian's full resolver; keep simplified link interfaces for editor/plugin flow" },
   { id: "tag-index", area: "metadata", boundary: "do not chase Obsidian's full tag index; keep simplified metadata surfaces only where needed" },
   { id: "canvas", area: "core-plugin", boundary: "not implemented as a full canvas product; keep file/view/drop seams only when they support architecture study" },

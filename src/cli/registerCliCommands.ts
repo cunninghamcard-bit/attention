@@ -1,5 +1,8 @@
 import type { App } from "../app/App";
-import { allFolders, tabbed } from "./commands/helpers";
+import { alphaCompare } from "./Cli";
+import { FileSystemAdapter } from "../vault/FileSystemAdapter";
+import { TFolder } from "../vault/TAbstractFile";
+import { Vault } from "../vault/Vault";
 import { registerCoreMiscCommands } from "./commands/coreMisc";
 import { registerFileWriteCommands } from "./commands/fileWrites";
 import { registerGraphListCommands } from "./commands/graphLists";
@@ -18,26 +21,42 @@ import { registerNavigationCommands } from "./commands/navigation";
 export function registerCliCommands(app: App): void {
   const cli = app.cli;
 
+  // Verbatim shape: info values checked one by one, unknown values (and a
+  // bare `info` flag) fall through to the full report; the path row appears
+  // only for a FileSystemAdapter, and info=path without one returns
+  // "(not available)"; counts come from the root folder's recursive counters.
   cli.registerHandler(
     "vault",
     "Show vault info",
     { info: { value: "name|path|files|folders|size", description: "Return specific info only" } },
     (params) => {
-      const adapter = app.vault.adapter as { getBasePath?(): string } | undefined;
-      const rows: Record<string, string> = {
-        name: app.vault.getName(),
-        path: adapter?.getBasePath?.() ?? "",
-        files: String(app.vault.getFiles().length),
-        folders: String(allFolders(app).length),
-        size: String(app.vault.getFiles().reduce((sum, file) => sum + (file.stat?.size ?? 0), 0)),
-      };
-      // `info=<key>` returns just that value; otherwise all rows tab-separated.
-      const info = params.info;
-      if (info && info !== "true") return rows[info] ?? "";
-      return tabbed(rows);
+      const adapter = app.vault.adapter;
+      if (params.info === "name") return app.vault.getName();
+      if (params.info === "path") return adapter instanceof FileSystemAdapter ? adapter.getBasePath() : "(not available)";
+      const root = app.vault.getRoot();
+      const fileCount = root.getFileCount();
+      const folderCount = root.getFolderCount();
+      if (params.info === "files") return String(fileCount);
+      if (params.info === "folders") return String(folderCount);
+      if (params.info === "size") {
+        let size = 0;
+        for (const file of app.vault.getFiles()) size += file.stat.size;
+        return String(size);
+      }
+      const lines: string[] = [];
+      lines.push(`name\t${app.vault.getName()}`);
+      if (adapter instanceof FileSystemAdapter) lines.push(`path\t${adapter.getBasePath()}`);
+      lines.push(`files\t${fileCount}`);
+      lines.push(`folders\t${folderCount}`);
+      let size = 0;
+      for (const file of app.vault.getFiles()) size += file.stat.size;
+      lines.push(`size\t${size}`);
+      return lines.join("\n");
     },
   );
 
+  // Flag checks are plain truthy (a bare `folder` filters by the folder
+  // "true"); ext= strips a leading dot; output is ub-sorted paths.
   cli.registerHandler(
     "files",
     "List files in the vault",
@@ -48,13 +67,22 @@ export function registerCliCommands(app: App): void {
     },
     (params) => {
       let files = app.vault.getFiles();
-      if (params.folder && params.folder !== "true") files = files.filter((f) => f.path.startsWith(`${params.folder}/`));
-      if (params.ext && params.ext !== "true") files = files.filter((f) => f.extension === params.ext);
-      if (params.total === "true") return String(files.length);
-      return files.map((f) => f.path).join("\n");
+      if (params.folder) {
+        const prefix = params.folder.endsWith("/") ? params.folder : `${params.folder}/`;
+        files = files.filter((f) => f.path.startsWith(prefix));
+      }
+      if (params.ext) {
+        const ext = params.ext.startsWith(".") ? params.ext.slice(1) : params.ext;
+        files = files.filter((f) => f.extension === ext);
+      }
+      if (params.total) return String(files.length);
+      return files.map((f) => f.path).sort(alphaCompare).join("\n");
     },
   );
 
+  // folder= picks the traversal ROOT (throwing when missing), not a prefix
+  // filter; recurseChildren visits the start folder itself, so the vault root
+  // "/" appears in the unfiltered list.
   cli.registerHandler(
     "folders",
     "List folders in the vault",
@@ -63,10 +91,14 @@ export function registerCliCommands(app: App): void {
       total: { description: "Return folder count" },
     },
     (params) => {
-      let folders = allFolders(app);
-      if (params.folder && params.folder !== "true") folders = folders.filter((f) => f.path.startsWith(`${params.folder}/`));
-      if (params.total === "true") return String(folders.length);
-      return folders.map((f) => f.path).join("\n");
+      const start = params.folder ? app.vault.getFolderByPath(params.folder) : app.vault.getRoot();
+      if (!start) throw `Folder "${params.folder}" not found.`;
+      const folders: TFolder[] = [];
+      Vault.recurseChildren(start, (file) => {
+        if (file instanceof TFolder) folders.push(file);
+      });
+      if (params.total) return String(folders.length);
+      return folders.map((f) => f.path).sort(alphaCompare).join("\n");
     },
   );
 
@@ -110,9 +142,10 @@ export function registerCliCommands(app: App): void {
     "List available commands",
     { filter: { value: "<prefix>", description: "Filter by ID prefix" } },
     (params) => {
-      let ids = app.commands.listCommands().map((command) => command.id);
-      if (params.filter && params.filter !== "true") ids = ids.filter((id) => id.startsWith(String(params.filter)));
-      return ids.sort().join("\n");
+      let list = app.commands.listCommands();
+      if (params.filter) list = list.filter((command) => command.id.startsWith(params.filter));
+      list.sort((a, b) => alphaCompare(a.id, b.id));
+      return list.map((command) => command.id).join("\n");
     },
   );
 
