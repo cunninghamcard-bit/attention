@@ -89,6 +89,7 @@ import { applyObsidianBodyClasses, installFocusBodyClassSync, syncObsidianConfig
 // long-standing `App`-scoped imports (Plugin, InternalPluginWrapper) keep
 // working while `App.cli` is the single source of truth.
 import { Cli } from "../cli/Cli";
+import { registerCliCommands } from "../cli/registerCliCommands";
 import type { CliFlags, CliHandler, CliHandlerRegistration } from "../cli/Cli";
 export type { CliData, CliFlag, CliFlags, CliHandler, CliHandlerRegistration } from "../cli/Cli";
 const localStorageFallback = new Map<string, string>();
@@ -251,6 +252,7 @@ export class App {
     this.appearance.applyFromConfig();
     registerAppCommands(this);
     this.cli.init(this);
+    registerCliCommands(this);
     this.desktopMenu.refresh();
     MarkdownRenderer.resetProcessors();
     registerMarkdownDefaultProcessors(this);
