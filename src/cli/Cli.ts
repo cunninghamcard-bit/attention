@@ -44,7 +44,13 @@ export class Cli {
   readonly handlers = new Map<string, CliCommand>();
   private app: App | null = null;
 
+  // A duplicate id is an error, never a silent overwrite (faithful to real
+  // Obsidian: the registry refuses a second claim on a command name so a
+  // plugin can't shadow a core or peer command).
   registerHandler(id: string, description: string, flags: CliFlags, handler: CliHandler): void {
+    if (this.handlers.has(id)) {
+      throw new Error(`Command "${id}" is already registered as a handler.`);
+    }
     this.handlers.set(id, { id, description, flags, handler });
   }
 

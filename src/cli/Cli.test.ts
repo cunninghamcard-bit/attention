@@ -156,6 +156,25 @@ describe("Cli.init", () => {
   });
 });
 
+describe("Cli registration", () => {
+  it("refuses a duplicate id instead of silently overwriting", () => {
+    const cli = makeCli();
+    expect(() => cli.registerHandler("files", "dup", {}, () => "")).toThrow(
+      'Command "files" is already registered as a handler.',
+    );
+  });
+
+  it("unregisterHandler only removes the slot when the handler still owns it", () => {
+    const cli = new Cli();
+    const first = () => "first";
+    cli.registerHandler("x", "d", {}, first);
+    cli.unregisterHandler("x", () => "other"); // different handler → no-op
+    expect(cli.handlers.has("x")).toBe(true);
+    cli.unregisterHandler("x", first);
+    expect(cli.handlers.has("x")).toBe(false);
+  });
+});
+
 describe("fuzzySuggest", () => {
   it("ranks prefix over substring over edit-distance", () => {
     expect(fuzzySuggest("fil", ["files", "profile", "folders"])).toEqual(["files", "profile"]);
