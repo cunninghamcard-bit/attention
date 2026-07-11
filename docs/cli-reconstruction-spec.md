@@ -213,9 +213,10 @@ This replaces `main.ts`'s current `app.quit()` in the no-lock branch.
    live (primary app + second-instance CLI over `~/.arkloop-cli.sock`):
    `vault`, `files`, `read`, `commands`, unknown-command fuzzy all correct.
 4. ~~`main.ts` second-instance → CLI client.~~ **DONE**.
-5. `cliEnabled` gate — **DONE** (`settings.cli`, off by default, live-verified
-   both ways). **Remaining (untestable on this macOS box):** the Settings >
-   General > Advanced toggle UI (renderer); the Windows named-pipe
+5. `cliEnabled` gate — **DONE** (`settings.cli`; Arkloop defaults it ON — see
+   the product-divergence note below — `cli: false` still disables,
+   live-verified both ways). No Settings toggle will be built (ruling).
+   **Remaining (untestable on this macOS box):** the Windows named-pipe
    second-instance flow (the reference has the primary initiate the pipe
    client — `defaultCliSocketPath` returns the pipe path, but that handshake
    is unbuilt); the packaged `arkloop` launcher/symlink.
@@ -325,6 +326,14 @@ shell.trashItem before acking, the real handler's shape, so deletes are
 strictly ordered; re-verified live). `help` was separately byte-diffed against
 the real instance earlier: header identical after the identity swap, all 41
 overlapping command blocks byte-identical.
+
+**Deliberate product divergence — CLI on by default (2026-07-11).** Real
+Obsidian gates the CLI behind Settings > General > Advanced (`cli` flag,
+default off). Arkloop is an agent workbench: its command surface defaults ON
+(`settings.cli !== false`), with the same persisted `cli` flag — `cli: false`
+in obsidian.json still disables it and both faithful gates (dispatch `et` and
+`executeCliRequest` `Xe`) remain in place with the verbatim disabled message.
+No Settings toggle is built (ruling: default-on, no switch).
 
 Known dev-only divergence: unpackaged `version` reports Electron's version
 (`app.getVersion()` without a packaged app version). Disclosed divergences are

@@ -90,7 +90,10 @@ if (!gotLock) {
     displays,
     preloadPath: defaultPreloadPath(here),
     isQuitting: () => mainState.isQuitting,
-    isCliEnabled: () => settings.cli === true,
+    // Arkloop product divergence: the CLI is ON by default (an agent
+    // workbench wants its command surface always up); real Obsidian defaults
+    // off behind Settings > General > Advanced. `cli: false` still gates.
+    isCliEnabled: () => settings.cli !== false,
   });
 
   // First-run default vault. Real Obsidian shows a starter to pick a vault;
@@ -139,9 +142,10 @@ if (!gotLock) {
       getIdByName: (name) => registry.getIdByName(name),
       getIdByContainedPath: (path) => registry.getIdByContainedPath(path),
       mostRecentVaultId: () => vaultWindows.mostRecentVaultId(),
-      // Real `C.cli` — off unless enabled in Settings > General > Advanced
-      // (persisted as the `cli` flag in obsidian.json).
-      isCliEnabled: () => settings.cli === true,
+      // Real `C.cli` gate, kept verbatim in shape — but Arkloop defaults it ON
+      // (deliberate product divergence; set `cli: false` in obsidian.json to
+      // disable, same persisted flag as real Obsidian).
+      isCliEnabled: () => settings.cli !== false,
       openStarter: openStartupWindows,
       handleUrl: (url) => {
         dispatchObsidianUrl(url);
