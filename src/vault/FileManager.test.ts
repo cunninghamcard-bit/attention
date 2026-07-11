@@ -73,6 +73,8 @@ describe("FileManager", () => {
 
     const file = await app.fileManager.createNewFile(folder, "Seed.md", "md", "# Seed");
     const sibling = await app.fileManager.createNewFile("Drafts", "Seed.md", "md", "# Next");
+    // A registered creator keeps its extension (the real coercion gate).
+    app.fileManager.registerFileParentCreator("json", () => app.vault.getRoot());
     const dataFile = await app.fileManager.createNewFile("Data", "payload", "json", "{\"ok\":true}");
 
     expect(file.path).toBe("Drafts/Seed.md");
@@ -549,3 +551,20 @@ async function waitForFileRename(app: App, oldPath: string, newPath: string, fil
   }
   throw new Error("File did not finish renaming");
 }
+
+describe("createNewFile extension coercion (real fileParentCreatorByType gate)", () => {
+  it("coerces an unregistered extension to md before de-suffixing the name", async () => {
+    const app = new App(document.createElement("div"));
+    // "xyz" has no registered creator → md; the dotted name survives intact.
+    const file = await app.fileManager.createNewFile(null, "Note.xyz", "xyz");
+    expect(file.path).toBe("Note.xyz.md");
+    expect(file.extension).toBe("md");
+  });
+
+  it("keeps an extension that has a registered creator", async () => {
+    const app = new App(document.createElement("div"));
+    app.fileManager.registerFileParentCreator("canvas", () => app.vault.getRoot());
+    const file = await app.fileManager.createNewFile(null, "Board", "canvas");
+    expect(file.path).toBe("Board.canvas");
+  });
+});

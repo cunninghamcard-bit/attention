@@ -57,7 +57,9 @@ describe("create", () => {
 
   it("splits the extension off the base path (strict lastIndexOf > 0)", async () => {
     const app = await seededApp();
-    expect(await app.cli.handleCli(["create", "name=data.txt"])).toBe("Created: data.txt");
+    // txt has no registered file creator, so real createNewFile coerces the
+    // extension to md — the dot-split still ran (basePath "data", ext "txt").
+    expect(await app.cli.handleCli(["create", "name=data.txt"])).toBe("Created: data.md");
   });
 
   it("never overwrites without the flag: uniquifies instead", async () => {
@@ -337,5 +339,13 @@ describe("delete", () => {
     await expect(app.cli.handleCli(["delete"]))
       .rejects.toBe("No active file. Use file=<name> or path=<path> to specify a file.");
     await expect(app.cli.handleCli(["delete", "path=Nope.md"])).rejects.toBe('File "Nope.md" not found.');
+  });
+});
+
+describe("move into a missing folder", () => {
+  it("propagates the vault's ENOENT (adapter parity) instead of reparenting", async () => {
+    const app = await seededApp();
+    await expect(app.cli.handleCli(["move", "file=Note", "to=Nope"])).rejects.toThrow(/ENOENT: no such file or directory/);
+    expect(app.vault.getFileByPath("Note.md")).not.toBeNull();
   });
 });
