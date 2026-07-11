@@ -1,0 +1,248 @@
+/* Pull request list + review surface (React-rendered views). */
+
+.git-pr-view {
+  padding: 0;
+  overflow-y: auto;
+}
+
+.git-pr-empty {
+  padding: var(--size-4-4);
+  color: var(--text-muted);
+}
+
+/* --- List ---------------------------------------------------------- */
+
+.git-pr-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--size-4-2) var(--size-4-4);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.git-pr-list-title {
+  font-weight: var(--font-semibold);
+}
+
+.git-pr-row {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-3);
+  padding: var(--size-4-2) var(--size-4-4);
+  border-bottom: 1px solid var(--background-modifier-border);
+  cursor: var(--cursor);
+}
+
+.git-pr-row:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.git-pr-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-2-1);
+  min-width: 0;
+  flex: 1;
+}
+
+.git-pr-row-title {
+  font-weight: var(--font-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-pr-row-meta {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.git-pr-state-icon.mod-open { color: var(--color-green, #3fb950); }
+.git-pr-state-icon.mod-merged { color: var(--color-purple, #a371f7); }
+.git-pr-state-icon.mod-closed { color: var(--color-red, #f85149); }
+.git-pr-state-icon.mod-draft { color: var(--text-muted); }
+
+.git-pr-icon {
+  display: inline-flex;
+  --icon-size: var(--icon-s);
+}
+
+/* --- Chips ---------------------------------------------------------- */
+
+.git-pr-chip {
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-medium);
+  padding: 1px var(--size-4-2);
+  border-radius: var(--radius-l);
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+
+.git-pr-chip.mod-open,
+.git-pr-chip.mod-approved {
+  color: var(--color-green, #3fb950);
+  border-color: currentcolor;
+}
+
+.git-pr-chip.mod-merged { color: var(--color-purple, #a371f7); border-color: currentcolor; }
+.git-pr-chip.mod-closed,
+.git-pr-chip.mod-changes_requested {
+  color: var(--color-red, #f85149);
+  border-color: currentcolor;
+}
+
+/* --- Detail --------------------------------------------------------- */
+
+.git-pr-detail {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.git-pr-header {
+  padding: var(--size-4-4) var(--size-4-4) var(--size-4-2);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.git-pr-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--size-4-2);
+}
+
+.git-pr-title {
+  flex: 1;
+  margin: 0;
+  font-size: var(--font-ui-large);
+}
+
+.git-pr-number {
+  color: var(--text-muted);
+  font-weight: var(--font-normal);
+}
+
+.git-pr-meta-row {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  margin-top: var(--size-4-2);
+}
+
+.git-pr-action {
+  font-size: var(--font-ui-small);
+}
+
+.git-pr-action.mod-approve {
+  color: var(--color-green, #3fb950);
+}
+
+.git-pr-action.mod-request-changes {
+  color: var(--color-red, #f85149);
+}
+
+/* --- Tabs ------------------------------------------------------------ */
+
+.git-pr-tabs {
+  display: flex;
+  gap: var(--size-4-2);
+  padding: 0 var(--size-4-4);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.git-pr-tab {
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  padding: var(--size-4-2) var(--size-4-1);
+}
+
+.git-pr-tab.is-active {
+  color: var(--text-normal);
+  border-bottom-color: var(--interactive-accent);
+}
+
+.git-pr-diffstat {
+  margin-left: var(--size-4-1);
+  font-size: var(--font-ui-smaller);
+}
+
+.git-pr-diffstat ins {
+  color: var(--color-green, #3fb950);
+  text-decoration: none;
+}
+
+.git-pr-diffstat del {
+  color: var(--color-red, #f85149);
+  text-decoration: none;
+}
+
+/* --- Conversation ----------------------------------------------------- */
+
+.git-pr-conversation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-3);
+  padding: var(--size-4-4);
+  max-width: var(--file-line-width);
+  width: 100%;
+  margin: 0 auto;
+}
+
+.git-pr-comment {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+}
+
+.git-pr-comment-header {
+  display: flex;
+  gap: var(--size-4-2);
+  align-items: baseline;
+  padding: var(--size-4-1) var(--size-4-3);
+  background-color: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m) var(--radius-m) 0 0;
+}
+
+.git-pr-comment-author {
+  font-weight: var(--font-semibold);
+  font-size: var(--font-ui-small);
+}
+
+.git-pr-comment-date {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.git-pr-markdown {
+  padding: var(--size-4-1) var(--size-4-3);
+}
+
+.git-pr-review-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+}
+
+.git-pr-review-input {
+  width: 100%;
+  resize: vertical;
+}
+
+.git-pr-review-actions {
+  display: flex;
+  gap: var(--size-4-2);
+  justify-content: flex-end;
+}
+
+/* --- Files changed ----------------------------------------------------- */
+
+.git-pr-files {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-3);
+  padding: var(--size-4-3);
+}

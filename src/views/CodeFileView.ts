@@ -53,7 +53,7 @@ const themeHighlightStyle = HighlightStyle.define([
 
 export class CodeFileView extends TextFileView {
   static readonly VIEW_TYPE = "code";
-  private cm: EditorView | null = null;
+  protected cm: EditorView | null = null;
   private readonly languageCompartment = new Compartment();
   private readonly wrapCompartment = new Compartment();
   private applyingViewData = false;
@@ -173,7 +173,7 @@ export class CodeFileView extends TextFileView {
     this.cm = null;
   }
 
-  private baseExtensions(): Extension[] {
+  protected baseExtensions(): Extension[] {
     return [
       lineNumbers(),
       history(),
