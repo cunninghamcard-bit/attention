@@ -220,9 +220,11 @@ This replaces `main.ts`'s current `app.quit()` in the no-lock branch.
    second-instance flow (the reference has the primary initiate the pipe
    client — `defaultCliSocketPath` returns the pipe path, but that handshake
    is unbuilt); the packaged `arkloop` launcher/symlink.
-6. E2E — **DONE manually** (steps 3/5 above). An automated desktop e2e
-   (spawn primary + secondary electron) is not yet scripted; the seam is
-   covered by the CliServer/CliDispatch/registerCliCommands unit tests.
+6. E2E — **DONE, automated**: `bun run e2e:cli` (scripts/e2e-cli.mjs) spawns
+   the primary on a throwaway vault/userData/socket (ARKLOOP_USER_DATA and
+   ARKLOOP_CLI_SOCKET hermetic seams) and drives it through real
+   second-instance invocations — 18 exact-output checks over the two-process
+   wire (reads, writes, colon sugar, error faces, help header).
 
 ### Review round 3 — URL scheme end to end (applied)
 

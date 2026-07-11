@@ -8,6 +8,9 @@ import type { CliRequest } from "./CliDispatch";
 // Linux `$XDG_RUNTIME_DIR/.obsidian-cli.sock`, falling back to home; Windows a
 // per-user named pipe `\\.\pipe\obsidian-cli-<username>`.
 export function defaultCliSocketPath(): string {
+  // Hermetic-test seam: both the server and the second-instance client read
+  // this, so an e2e run gets its own socket without racing a live instance.
+  if (process.env.ARKLOOP_CLI_SOCKET) return process.env.ARKLOOP_CLI_SOCKET;
   if (process.platform === "win32") {
     return `\\\\.\\pipe\\arkloop-cli-${userInfo().username}`;
   }

@@ -47,6 +47,9 @@ const here = __dirname;
 // (etc.), never the generic Electron dir and never anything of real Obsidian's.
 // Must run before the first app.getPath("userData").
 app.setName("Arkloop");
+// Hermetic-test seam (mirrors ARKLOOP_VAULT_PATH): an isolated userData also
+// isolates the single-instance lock, so e2e runs never touch the real profile.
+if (process.env.ARKLOOP_USER_DATA) app.setPath("userData", process.env.ARKLOOP_USER_DATA);
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
