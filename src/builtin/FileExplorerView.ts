@@ -1,7 +1,8 @@
 import { ItemView } from "../views/ItemView";
 import { setIcon } from "../ui/Icon";
 import { getFileTypeInfo } from "../ui/FileTypeIcon";
-import { setTooltip } from "../ui/Popover";
+import { displayTooltip, hideTooltip, setTooltip } from "../ui/Popover";
+import { moment } from "../api/ApiUtils";
 import { Menu } from "../ui/Menu";
 import { TAbstractFile, TFile, TFolder } from "../vault/TAbstractFile";
 import { setAllowedDropEffect, type DragDropResult, type DragSource, type FileDragSource, type FilesDragSource, type FolderDragSource } from "../drag/DragManager";
@@ -213,6 +214,7 @@ export class FileExplorerView extends ItemView {
     this.applySelectionState(titleEl, folder);
     this.applyRenameState(titleEl, titleContentEl, folder);
     titleEl.addEventListener("click", (event) => this.onFolderClick(folder, event));
+    this.installHoverTooltip(titleEl, titleContentEl, folder);
     titleEl.addEventListener("contextmenu", (event) => this.openFileContextMenu(folder, event));
     this.app.dragManager.handleDrag(titleEl, (event) => this.createDragSource(event, folder, titleEl));
     this.installFolderDrop(titleEl, folder, folderEl);
@@ -248,9 +250,49 @@ export class FileExplorerView extends ItemView {
     this.applyRenameState(titleEl, titleContentEl, file);
     titleEl.addEventListener("click", (event) => this.onFileClick(file, event));
     titleEl.addEventListener("contextmenu", (event) => this.openFileContextMenu(file, event));
+    this.installHoverTooltip(titleEl, titleContentEl, file);
     this.app.dragManager.handleDrag(titleEl, (event) => this.createDragSource(event, file, titleEl));
     fileEl.appendChild(titleEl);
     parentEl.appendChild(fileEl);
+  }
+
+  /**
+   * Real explorer hover hints (decode, onFilePointerover): every FILE shows
+   * "Last modified at ..." / "Created at ..." from its stat; every FOLDER
+   * shows "N files, M folders"; a truncated title prepends the full name.
+   * Placement points away from the dock side, wide gap, off the item row.
+   * Files additionally announce hover-link for the page-preview layer.
+   */
+  private installHoverTooltip(titleEl: HTMLElement, contentEl: HTMLElement, file: TAbstractFile): void {
+    titleEl.addEventListener("pointerover", (event) => {
+      if (event.pointerType === "touch") return;
+      const sections: string[] = [];
+      if (!isFullTitleShown(titleEl, contentEl)) sections.push(file.name);
+      if (file instanceof TFile) {
+        const modified = moment(file.stat.mtime).format("YYYY-MM-DD HH:mm");
+        const created = moment(file.stat.ctime).format("YYYY-MM-DD HH:mm");
+        sections.push(`Last modified at ${modified}\nCreated at ${created}`);
+      } else if (file instanceof TFolder) {
+        const counts = countDescendants(file);
+        sections.push(`${counts.files} ${counts.files === 1 ? "file" : "files"}, ${counts.folders} ${counts.folders === 1 ? "folder" : "folders"}`);
+      }
+      const text = sections.join("\n\n");
+      if (text) {
+        displayTooltip(titleEl, text, {
+          placement: this.containerEl.closest(".mod-right-split") ? "left" : "right",
+          gap: 24,
+          horizontalParent: this.contentEl,
+          delay: 300,
+        });
+      }
+      if (file instanceof TFile) {
+        this.app.workspace.trigger("hover-link", { event, source: "file-explorer", hoverParent: this, targetEl: titleEl, linktext: file.path });
+      }
+    });
+    titleEl.addEventListener("pointerout", (event) => {
+      if (event.pointerType === "touch") return;
+      hideTooltip();
+    });
   }
 
   private openFileContextMenu(file: TFile | TFolder, event: MouseEvent): void {
@@ -817,4 +859,28 @@ function isFilesDragSource(source: DragSource): source is FilesDragSource {
 
 function isFolderDragSource(source: DragSource): source is FolderDragSource {
   return source.type === "folder" && (source as Partial<FolderDragSource>).file instanceof TFolder;
+}
+
+/** Real truncation math: padded title start + content scrollWidth vs row viewport. */
+function isFullTitleShown(selfEl: HTMLElement, innerEl: HTMLElement): boolean {
+  const offsetParent = selfEl.offsetParent as HTMLElement | null;
+  if (!offsetParent) return true;
+  const start = (Number.parseInt(getComputedStyle(selfEl).paddingLeft, 10) || 0) + selfEl.offsetLeft;
+  return start + innerEl.scrollWidth <= offsetParent.clientWidth + offsetParent.scrollLeft;
+}
+
+function countDescendants(folder: TFolder): { files: number; folders: number } {
+  let files = 0;
+  let folders = 0;
+  for (const child of folder.children) {
+    if (child instanceof TFolder) {
+      folders += 1;
+      const nested = countDescendants(child);
+      files += nested.files;
+      folders += nested.folders;
+    } else {
+      files += 1;
+    }
+  }
+  return { files, folders };
 }

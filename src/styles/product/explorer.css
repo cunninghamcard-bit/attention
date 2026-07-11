@@ -59,3 +59,10 @@
   height: 15px;
   stroke-width: 1.8px;
 }
+
+/* Product choice: file-explorer header buttons align left (newer Obsidian
+   look) — scoped here so the shared centered default for view-actions and
+   other button rows stays untouched. */
+.workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container {
+  justify-content: flex-start;
+}

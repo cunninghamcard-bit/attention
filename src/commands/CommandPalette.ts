@@ -6,6 +6,7 @@ import type { InternalPluginWrapper } from "../plugin/InternalPluginWrapper";
 import type { SettingTab } from "../app/SettingRegistry";
 import type { Hotkey } from "../hotkeys/Keymap";
 import { setIcon } from "../ui/Icon";
+import { setTooltip } from "../ui/Popover";
 
 export interface CommandPaletteOptions {
   pinned?: string[] | null;
@@ -350,7 +351,7 @@ function makeIconButton(icon: string, label: string, onClick?: () => void): HTML
   button.type = "button";
   button.className = "clickable-icon";
   setIcon(button, icon);
-  button.title = label;
+  setTooltip(button, label);
   if (onClick) button.addEventListener("click", onClick);
   return button;
 }

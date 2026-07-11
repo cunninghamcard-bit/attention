@@ -12,17 +12,21 @@ import type { WebViewerHistoryEntry } from "../webviewer/WebViewerService";
 import type { SettingTab } from "../app/SettingRegistry";
 import type { WebViewerAddressSuggestion } from "../webviewer/WebViewerAddressSuggest";
 import { WebViewerElementAdapter } from "../webviewer/WebViewerElementAdapter";
+import { AbstractInputSuggest } from "../suggest/AbstractInputSuggest";
+import { MarkdownPreviewRenderer } from "../markdown/MarkdownPreviewRenderer";
 import { setIcon } from "../ui/Icon";
 import type { ObsidianProtocolData } from "../protocol/UriRouter";
 
 const WEBVIEWER_VIEW_TYPE = "webviewer";
 const WEBVIEWER_HISTORY_VIEW_TYPE = "webviewer-history";
 
+// Zoom is deliberately NOT view state: Chromium persists zoom per-origin in
+// the persist: partition, and real Obsidian only nudges the live factor
+// (getZoomFactor ± 0.1). Persisting one number per view and re-applying it
+// stomps the per-site memory and makes pages open at the wrong scale.
 interface WebViewerState extends Record<string, unknown> {
   url?: string;
   readerMode?: boolean;
-  zoom?: number;
-  search?: string;
 }
 
 export class WebViewerController {
@@ -67,16 +71,19 @@ export class WebViewerController {
   }
 
   zoom(delta: number): void {
-    this.activeView()?.setZoom((this.activeView()?.zoom ?? 1) + delta);
+    if (delta > 0) this.activeView()?.zoomIn();
+    else this.activeView()?.zoomOut();
   }
 
   resetZoom(): void {
-    this.activeView()?.setZoom(1);
+    this.activeView()?.zoomReset();
   }
 
   search(): void {
-    const query = window.prompt("Search in page", this.activeView()?.searchQuery ?? "");
-    if (query != null) this.activeView()?.setSearch(query);
+    // ponytail: window.prompt until a shared prompt modal grows a text field;
+    // semantics match real Obsidian — a web search in a new tab, not in-page find.
+    const query = window.prompt("Search the web", "");
+    if (query) void this.open(query);
   }
 
   async saveToVault(): Promise<void> {
@@ -116,22 +123,26 @@ export class WebViewerController {
 }
 
 export class WebViewerView extends ItemView {
-  icon = "lucide-globe";
+  icon = "lucide-globe-2";
   // Real webviewer views are navigable (getLeaf(false) replaces them in place).
   navigation = true;
   url = "about:blank";
   title = "Web viewer";
   readerMode = false;
-  zoom = 1;
-  searchQuery = "";
-  private readonly rootEl = document.createElement("div");
-  private readonly addressFormEl = document.createElement("form");
   private readonly addressInputEl = document.createElement("input");
-  private readonly suggestionsEl = document.createElement("div");
-  private readonly contentElInner = document.createElement("div");
+  private readonly reloadButtonEl = document.createElement("button");
+  private readonly readerEl = document.createElement("div");
+  private readonly readerSizerEl = document.createElement("div");
+  private readonly errorEl = document.createElement("div");
+  private readerActionEl: HTMLElement | null = null;
+  private suggest: AddressBarSuggest | null = null;
   private adapter: WebViewerElementAdapter | null = null;
   private adapterUrl = "";
+  private faviconUrl: string | null = null;
   private loading = false;
+  private readerResult: { url: string; title: string; markdown: string } | null = null;
+  /** Last reader render, awaitable in tests. */
+  readerRender: Promise<void> = Promise.resolve();
 
   constructor(leaf: WorkspaceLeaf, readonly controller: WebViewerController) {
     super(leaf);
@@ -149,8 +160,6 @@ export class WebViewerView extends ItemView {
     return {
       url: this.url,
       readerMode: this.readerMode,
-      zoom: this.zoom,
-      search: this.searchQuery,
     };
   }
 
@@ -158,48 +167,82 @@ export class WebViewerView extends ItemView {
     await super.setState(state);
     const next = state && typeof state === "object" ? state as WebViewerState : {};
     this.readerMode = Boolean(next.readerMode);
-    this.zoom = typeof next.zoom === "number" ? next.zoom : 1;
-    this.searchQuery = next.search ?? "";
-    this.navigate(next.url ?? this.url);
+    // The leaf already recorded the previous view state for this setViewState
+    // (openInternal does it for history !== false), so don't record again.
+    this.navigateInternal(next.url ?? this.url, { record: false });
+    this.applyMode();
   }
 
   async onOpen(): Promise<void> {
-    this.containerEl.classList.add("mod-webviewer");
-    this.rootEl.className = "webviewer-container";
-    this.addressFormEl.className = "webviewer-address webviewer-address-container";
+    // Faithful header layout: the address bar REPLACES the title inside
+    // view-header-title-container; back/forward are the stock nav arrows
+    // (navigation = true), reload is a dedicated header button before the
+    // title container, reader mode is a right-side view action.
+    this.headerEl.classList.add("view-header-always-show");
+    const reloadContainerEl = document.createElement("div");
+    reloadContainerEl.className = "view-header-reload-button";
+    this.reloadButtonEl.type = "button";
+    this.reloadButtonEl.className = "clickable-icon";
+    // Faithful: the real reload button carries no tooltip or title.
+    setIcon(this.reloadButtonEl, "lucide-rotate-cw");
+    this.reloadButtonEl.addEventListener("click", () => {
+      if (this.loading) this.adapter?.stop();
+      else this.adapter?.reload();
+    });
+    reloadContainerEl.appendChild(this.reloadButtonEl);
+    this.headerEl.insertBefore(reloadContainerEl, this.titleContainerEl);
+    this.titleEl.remove();
+    this.titleContainerEl.classList.add("webviewer-address-container");
+    const addressEl = document.createElement("div");
+    addressEl.className = "webviewer-address";
     this.addressInputEl.type = "text";
     this.addressInputEl.spellcheck = false;
-    this.addressInputEl.placeholder = "Search or enter URL";
-    this.addressInputEl.addEventListener("focus", () => this.renderAddressSuggestions());
-    this.addressInputEl.addEventListener("input", () => this.renderAddressSuggestions());
     this.addressInputEl.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
+      // The suggest popover consumes Enter at the keymap layer while open;
+      // this fires only with the popover closed.
+      if (event.key === "Enter") {
+        event.preventDefault();
+        this.navigate(this.addressInputEl.value);
+        this.addressInputEl.blur();
+      } else if (event.key === "Escape") {
         this.addressInputEl.value = this.url;
-        this.hideAddressSuggestions();
         this.addressInputEl.blur();
       }
     });
-    this.suggestionsEl.className = "webviewer-addressbar-suggestion";
-    this.addressFormEl.append(
-      this.iconButton("Back", "lucide-arrow-left", () => this.adapter?.goBack()),
-      this.iconButton("Forward", "lucide-arrow-right", () => this.adapter?.goForward()),
-      this.iconButton("Reload", "lucide-rotate-cw", () => this.adapter?.reload()),
-      this.addressInputEl,
-      this.iconButton("Reader", "lucide-book-open", () => this.toggleReaderMode()),
-    );
-    this.addressFormEl.addEventListener("submit", (event) => {
-      event.preventDefault();
-      this.navigate(this.addressInputEl.value);
+    addressEl.appendChild(this.addressInputEl);
+    this.titleContainerEl.appendChild(addressEl);
+    this.suggest = new AddressBarSuggest(this.app, this.addressInputEl);
+    this.suggest.onSelect((suggestion) => {
+      this.suggest?.close();
+      this.addressInputEl.blur();
+      this.navigate(suggestion.url);
     });
-    this.contentElInner.className = "webviewer-content";
-    this.rootEl.append(this.addressFormEl, this.suggestionsEl, this.contentElInner);
-    this.rootEl.addEventListener("contextmenu", (event) => this.openContextMenu(event));
-    this.contentEl.appendChild(this.rootEl);
-    this.renderContent();
+    this.readerActionEl = this.addAction("lucide-glasses", "Reader view", () => this.toggleReaderMode());
+
+    // Content: the class lives on view-content ITSELF (real CSS:
+    // .view-content.webviewer-content { padding: 0 }); children mount once
+    // and toggle visibility — re-attaching a <webview> destroys the guest.
+    this.contentEl.classList.add("webviewer-content");
+    this.readerEl.className = "reader-mode-content markdown-preview-view";
+    this.readerSizerEl.className = "markdown-preview-sizer";
+    this.readerEl.appendChild(this.readerSizerEl);
+    this.readerEl.hidden = true;
+    this.errorEl.className = "error-notice";
+    const errorTitleEl = document.createElement("h1");
+    errorTitleEl.textContent = "Failed to load";
+    const errorBodyEl = document.createElement("p");
+    errorBodyEl.textContent = "The page could not be loaded. Check the address or your connection, then reload.";
+    this.errorEl.append(errorTitleEl, errorBodyEl);
+    this.errorEl.hidden = true;
+    this.contentEl.append(this.readerEl, this.errorEl);
+    this.contentEl.addEventListener("contextmenu", (event) => this.openContextMenu(event));
+    this.ensureAdapter();
+    this.applyMode();
   }
 
   async onClose(): Promise<void> {
     await super.onClose();
+    this.suggest?.close();
     this.adapter?.destroy();
     this.adapter = null;
   }
@@ -207,120 +250,196 @@ export class WebViewerView extends ItemView {
   focusAddressBar(): void {
     this.addressInputEl.focus();
     this.addressInputEl.select();
-    this.renderAddressSuggestions();
   }
 
   navigate(input: string): void {
-    this.url = this.app.webViewer.normalizeUrl(input);
-    this.title = titleFromUrl(this.url);
-    this.addressInputEl.value = this.url;
-    this.hideAddressSuggestions();
-    this.renderContent();
-    this.updateHeader();
+    this.navigateInternal(input, { record: true });
+  }
+
+  private navigateInternal(input: string, options: { record: boolean }): void {
+    const url = this.app.webViewer.normalizeUrl(input);
+    const adapter = this.ensureAdapter();
+    if (url === this.url && this.adapterUrl === url) return;
+    if (options.record) this.pushCurrentToHistory();
+    this.url = url;
+    this.title = titleFromUrl(url);
+    this.faviconUrl = null;
+    this.syncAddressInput();
+    this.adapterUrl = url;
+    adapter.navigate(url, true);
+    this.exitReaderMode();
+    this.refreshHeader();
+  }
+
+  /** Reader mode is per-page (real behavior): navigation returns to the web view. */
+  private exitReaderMode(): void {
+    if (!this.readerMode) return;
+    this.readerMode = false;
+    this.applyMode();
   }
 
   toggleReaderMode(): void {
     this.readerMode = !this.readerMode;
-    this.renderContent();
+    this.applyMode();
     this.app.workspace.requestSaveLayout();
   }
 
-  setZoom(zoom: number): void {
-    this.zoom = Math.max(0.25, Math.min(3, zoom));
-    this.renderContent();
-    this.app.workspace.requestSaveLayout();
+  // Relative zoom against the LIVE factor, exactly like real Obsidian —
+  // Chromium's per-origin zoom memory in the persist: partition does the rest.
+  zoomIn(): void {
+    const adapter = this.ensureAdapter();
+    const factor = adapter.getZoomFactor();
+    if (factor < 3) adapter.setZoom(Math.min(3, factor + 0.1));
   }
 
-  setSearch(query: string): void {
-    this.searchQuery = query;
-    this.renderContent();
+  zoomOut(): void {
+    const adapter = this.ensureAdapter();
+    const factor = adapter.getZoomFactor();
+    if (factor > 0.5) adapter.setZoom(Math.max(0.5, factor - 0.1));
+  }
+
+  zoomReset(): void {
+    this.ensureAdapter().setZoom(1);
   }
 
   getReaderText(): string {
-    return `Reader snapshot for ${this.url}${this.searchQuery ? `\n\nSearch: ${this.searchQuery}` : ""}`;
+    if (this.readerResult?.url === this.url) return this.readerResult.markdown;
+    return `Reader snapshot for ${this.url}`;
   }
 
-  private renderContent(): void {
-    this.contentElInner.replaceChildren();
-    this.contentElInner.style.setProperty("--webviewer-zoom", String(this.zoom));
-    if (this.readerMode) {
-      const readerEl = document.createElement("article");
-      readerEl.className = "webviewer-reader";
-      const titleEl = document.createElement("h1");
-      titleEl.textContent = this.title;
-      const sourceEl = document.createElement("p");
-      sourceEl.textContent = this.url;
-      const bodyEl = document.createElement("p");
-      bodyEl.textContent = this.getReaderText();
-      if (this.searchQuery) bodyEl.textContent += `\n\nMatches for "${this.searchQuery}" would be highlighted by the page search layer.`;
-      readerEl.append(titleEl, sourceEl, bodyEl);
-      this.contentElInner.appendChild(readerEl);
-      return;
-    }
+  /** Visibility-only mode switch — the webview element is never re-attached. */
+  private applyMode(): void {
     const adapter = this.ensureAdapter();
-    adapter.setZoom(this.zoom);
-    this.contentElInner.appendChild(adapter.element);
-    if (this.adapterUrl !== this.url) {
-      this.adapterUrl = this.url;
-      adapter.navigate(this.url, true);
+    this.readerEl.hidden = !this.readerMode;
+    adapter.element.style.display = this.readerMode ? "none" : "";
+    this.readerActionEl?.classList.toggle("mod-webviewer", this.readerMode);
+    if (this.readerMode) this.readerRender = this.renderReader();
+  }
+
+  /**
+   * Real reader pipeline: inject readability into the guest, sanitize,
+   * htmlToMarkdown, render with the markdown preview renderer. Cached per URL
+   * so toggling reader on/off doesn't re-extract.
+   */
+  private async renderReader(): Promise<void> {
+    const url = this.url;
+    if (this.readerResult?.url !== url) {
+      try {
+        const result = await this.app.webViewer.reader.extractFromPage(this.ensureAdapter(), url);
+        this.readerResult = { url, ...result };
+      } catch (error) {
+        new Notice(error instanceof Error ? error.message : "Could not extract page content");
+        this.readerMode = false;
+        this.applyMode();
+        return;
+      }
     }
+    if (!this.readerMode || this.url !== url) return;
+    this.readerEl.classList.toggle("is-readable-line-width", Boolean(this.app.vault.getConfig("readableLineLength")));
+    this.readerSizerEl.replaceChildren();
+    const titleEl = document.createElement("h1");
+    titleEl.textContent = this.readerResult.title;
+    this.readerSizerEl.appendChild(titleEl);
+    const bodyEl = document.createElement("div");
+    this.readerSizerEl.appendChild(bodyEl);
+    await MarkdownPreviewRenderer.renderMarkdown(this.app, this.readerResult.markdown, bodyEl, "", this);
   }
 
   private ensureAdapter(): WebViewerElementAdapter {
     if (this.adapter) return this.adapter;
     const session = this.app.webViewer.getActiveSession();
     this.adapter = new WebViewerElementAdapter({ partition: session.partition, allowPopups: true });
+    // Mounted once, before the (hidden) reader/error layers. setState can run
+    // before onOpen has appended those layers — appendChild keeps the same
+    // final order either way (onOpen appends reader/error after the element).
+    if (this.readerEl.parentElement === this.contentEl) this.contentEl.insertBefore(this.adapter.element, this.readerEl);
+    else this.contentEl.appendChild(this.adapter.element);
+    const commit = (payload: unknown) => this.handleCommittedNavigation(payload as { url?: string; isMainFrame?: boolean });
+    this.adapter.webContents.on("did-navigate", commit);
+    this.adapter.webContents.on("did-navigate-in-page", commit);
+    this.adapter.webContents.on("did-redirect-navigation", commit);
     this.adapter.webContents.on("did-start-navigation", () => {
-      this.loading = true;
-      this.containerEl.classList.add("is-loading");
+      this.setLoading(true);
+      this.errorEl.hidden = true;
     });
-    this.adapter.webContents.on("did-stop-loading", () => {
-      this.loading = false;
-      this.containerEl.classList.remove("is-loading");
-    });
-    this.adapter.webContents.on("did-finish-load", () => {
-      this.app.webViewer.recordHistory(this.url, this.title);
-    });
-    this.adapter.webContents.on("did-fail-load", () => {
-      this.loading = false;
-      this.containerEl.classList.add("mod-error");
+    this.adapter.webContents.on("did-stop-loading", () => this.setLoading(false));
+    this.adapter.webContents.on("did-fail-load", (payload) => {
+      this.setLoading(false);
+      const failure = payload as { errorCode?: number; isMainFrame?: boolean } | undefined;
+      // -3 is ERR_ABORTED — fired for normal in-flight cancellations.
+      if (failure?.errorCode !== -3 && failure?.isMainFrame !== false) this.errorEl.hidden = false;
     });
     this.adapter.webContents.on("page-title-updated", (payload) => {
       const title = payload && typeof payload === "object" && "title" in payload ? String((payload as { title?: unknown }).title) : titleFromUrl(this.url);
       this.title = title;
-      this.updateHeader();
+      this.refreshHeader();
+    });
+    this.adapter.webContents.on("page-favicon-updated", (payload) => {
+      const favicons = payload && typeof payload === "object" && "favicons" in payload ? (payload as { favicons?: unknown }).favicons : null;
+      if (Array.isArray(favicons) && favicons.length > 0) {
+        const urls = favicons.filter((f): f is string => typeof f === "string");
+        this.faviconUrl = urls.find((f) => f.includes("32")) ?? urls[0] ?? null;
+        this.refreshHeader();
+      }
     });
     return this.adapter;
   }
 
-  private renderAddressSuggestions(): void {
-    const suggestions = this.app.webViewer.getAddressSuggestions(this.addressInputEl.value);
-    this.suggestionsEl.replaceChildren();
-    this.suggestionsEl.hidden = suggestions.length === 0;
-    for (const suggestion of suggestions) this.renderSuggestion(suggestion);
+  /** Guest-committed navigation (link clicks, redirects) syncs the view. */
+  private handleCommittedNavigation(payload: { url?: string; isMainFrame?: boolean }): void {
+    const url = payload?.url;
+    if (!url || payload.isMainFrame === false || url === this.url) return;
+    this.pushCurrentToHistory();
+    this.url = url;
+    this.adapterUrl = url;
+    this.title = titleFromUrl(url);
+    this.faviconUrl = null;
+    this.syncAddressInput();
+    this.exitReaderMode();
+    this.refreshHeader();
+    this.app.webViewer.recordHistory(this.url, this.title);
   }
 
-  private renderSuggestion(suggestion: WebViewerAddressSuggestion): void {
-    const itemEl = document.createElement("div");
-    itemEl.className = `webviewer-addressbar-suggestion-item mod-${suggestion.type}`;
-    const titleEl = document.createElement("div");
-    titleEl.className = "webviewer-addressbar-suggestion-title";
-    titleEl.textContent = suggestion.title;
-    const urlEl = document.createElement("div");
-    urlEl.className = "webviewer-addressbar-suggestion-url";
-    urlEl.textContent = suggestion.url;
-    itemEl.append(titleEl, urlEl);
-    itemEl.addEventListener("mousedown", (event) => {
-      event.preventDefault();
-      this.addressInputEl.blur();
-      this.navigate(suggestion.url);
+  /** Back/forward ride the leaf history like every navigable view. */
+  private pushCurrentToHistory(): void {
+    if (!this.url || this.url === "about:blank") return;
+    this.leaf.recordHistory({
+      title: this.title,
+      icon: "lucide-globe-2",
+      state: { type: WEBVIEWER_VIEW_TYPE, state: { url: this.url, readerMode: this.readerMode } },
+      eState: null,
     });
-    this.suggestionsEl.appendChild(itemEl);
   }
 
-  private hideAddressSuggestions(): void {
-    this.suggestionsEl.hidden = true;
-    this.suggestionsEl.replaceChildren();
+  private syncAddressInput(): void {
+    if (document.activeElement !== this.addressInputEl) this.addressInputEl.value = this.url;
+  }
+
+  private setLoading(loading: boolean): void {
+    this.loading = loading;
+    this.contentEl.classList.toggle("is-loading", loading);
+    setIcon(this.reloadButtonEl, loading ? "lucide-x" : "lucide-rotate-cw");
+  }
+
+  private refreshHeader(): void {
+    this.updateHeader();
+    this.leaf.updateHeader();
+    this.syncTabIcon();
+  }
+
+  /** Real favicon in the tab header, lucide globe fallback. */
+  private syncTabIcon(): void {
+    if (!this.faviconUrl) return;
+    const containerEl = document.createElement("div");
+    containerEl.className = "webviewer-favicon-container";
+    const img = document.createElement("img");
+    img.addEventListener("error", () => {
+      this.faviconUrl = null;
+      setIcon(containerEl, "lucide-globe-2");
+    });
+    img.src = this.faviconUrl;
+    containerEl.appendChild(img);
+    this.leaf.tabHeaderInnerIconEl.replaceChildren(containerEl);
   }
 
   private openContextMenu(event: MouseEvent): void {
@@ -363,6 +482,23 @@ export class WebViewerView extends ItemView {
         .setIcon("lucide-copy")
         .onClick(() => void navigator.clipboard?.writeText(imageUrl)));
     }
+    // Real webviewer context menu: zoom section driven by the LIVE factor.
+    const factor = this.adapter?.getZoomFactor() ?? 1;
+    menu.addItem((item) => item
+      .setTitle("Zoom in")
+      .setIcon("lucide-zoom-in")
+      .setDisabled(factor >= 3)
+      .onClick(() => this.zoomIn()));
+    menu.addItem((item) => item
+      .setTitle("Reset zoom")
+      .setIcon("lucide-rotate-cw")
+      .setDisabled(factor === 1)
+      .onClick(() => this.zoomReset()));
+    menu.addItem((item) => item
+      .setTitle("Zoom out")
+      .setIcon("lucide-zoom-out")
+      .setDisabled(factor <= 0.5)
+      .onClick(() => this.zoomOut()));
     menu.addItem((item) => item
       .setTitle("Save page to vault")
       .setIcon("lucide-save")
@@ -376,15 +512,40 @@ export class WebViewerView extends ItemView {
     }
     menu.showAtMouseEvent(event);
   }
+}
 
-  private iconButton(title: string, icon: string, callback: () => void): HTMLButtonElement {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "clickable-icon";
-    button.title = title;
-    button.dataset.icon = icon;
-    button.addEventListener("click", callback);
-    return button;
+/** Address bar suggestions in the standard suggestion popover (real classes:
+ * suggestion-item mod-complex webviewer-addressbar-suggestion). */
+class AddressBarSuggest extends AbstractInputSuggest<WebViewerAddressSuggestion> {
+  getSuggestions(input: string): WebViewerAddressSuggestion[] {
+    return this.app.webViewer.getAddressSuggestions(input);
+  }
+
+  renderSuggestion(suggestion: WebViewerAddressSuggestion, el: HTMLElement): void {
+    el.classList.add("mod-complex", "webviewer-addressbar-suggestion");
+    const iconEl = document.createElement("div");
+    iconEl.className = "suggestion-icon suggestion-flair-left";
+    const icon = suggestion.type === "search" ? "lucide-search"
+      : suggestion.type === "history" ? "lucide-history"
+      : suggestion.type === "bookmark" ? "lucide-bookmark"
+      : "lucide-globe-2";
+    setIcon(iconEl, icon);
+    const contentEl = document.createElement("div");
+    contentEl.className = "suggestion-content";
+    const titleEl = document.createElement("div");
+    titleEl.className = "suggestion-title";
+    titleEl.textContent = suggestion.title;
+    const urlEl = document.createElement("div");
+    urlEl.className = "suggestion-url";
+    urlEl.textContent = suggestion.url;
+    contentEl.append(titleEl, urlEl);
+    el.append(iconEl, contentEl);
+  }
+
+  // Real Obsidian forces the popover to the address input's width.
+  override open(): void {
+    super.open();
+    this.suggestEl.style.width = `${(this.textInputEl as HTMLElement).getBoundingClientRect().width}px`;
   }
 }
 
@@ -413,7 +574,6 @@ class WebViewerHistoryView extends ItemView {
     this.updateHeader();
     this.contentEl.replaceChildren();
     const listEl = document.createElement("div");
-    listEl.className = "webviewer-history";
     const entries = this.app.webViewer.listHistory();
     if (entries.length === 0) {
       listEl.textContent = "No web viewer history";
@@ -423,17 +583,18 @@ class WebViewerHistoryView extends ItemView {
   }
 
   private renderEntry(parent: HTMLElement, entry: WebViewerHistoryEntry): void {
+    // Real CSS clips the row to a single line (.webviewer-history-view-item);
+    // children stay inline so title and url share that line.
     const itemEl = document.createElement("div");
     itemEl.className = "webviewer-history-view-item";
     const faviconEl = document.createElement("div");
     faviconEl.className = "webviewer-favicon-container";
-    faviconEl.dataset.icon = "lucide-globe";
-    const textEl = document.createElement("div");
-    textEl.className = "webviewer-history-view-item-title";
+    setIcon(faviconEl, "lucide-globe-2");
+    const textEl = document.createElement("span");
     textEl.textContent = entry.title;
-    const urlEl = document.createElement("div");
-    urlEl.className = "webviewer-history-view-item-url";
-    urlEl.textContent = entry.url;
+    const urlEl = document.createElement("span");
+    urlEl.style.color = "var(--text-muted)";
+    urlEl.textContent = ` — ${entry.url}`;
     itemEl.append(faviconEl, textEl, urlEl);
     itemEl.addEventListener("click", () => void this.controller.open(entry.url));
     itemEl.addEventListener("contextmenu", (event) => {
@@ -617,7 +778,7 @@ export function createWebViewerPluginDefinition(): InternalPluginDefinition {
       });
       plugin.registerGlobalCommand({
         id: "webviewer:search",
-        name: "Search in page",
+        name: "Search the web",
         icon: "lucide-search",
         callback: () => controller?.search(),
       });

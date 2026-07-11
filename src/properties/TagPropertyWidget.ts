@@ -1,6 +1,7 @@
 import { focusLastPill, renderEditablePropertyPill } from "./EditablePropertyPill";
 import { completeTagSuggestionText, getTagSuggestions, renderTagSuggestion, stripHash, type TagSuggestion } from "../metadata/TagSuggestion";
 import type { PropertyWidgetContext, PropertyValue } from "./PropertyTypes";
+import { setTooltip } from "../ui/Popover";
 
 export function renderTagPropertyWidget(parent: HTMLElement, context: PropertyWidgetContext): void {
   const containerEl = document.createElement("div");
@@ -26,7 +27,7 @@ export function renderTagPropertyWidget(parent: HTMLElement, context: PropertyWi
       decoratePill: (pillEl, item) => {
         if (!isValidTag(`#${stripHash(item)}`)) {
           pillEl.classList.add("is-invalid");
-          pillEl.title = "Invalid tag";
+          setTooltip(pillEl, "Invalid tag name");
         }
       },
       renderContent: (contentEl, item) => {

@@ -35,6 +35,7 @@ import { parseObsidianUri, type ObsidianProtocolData, type ObsidianProtocolHandl
 import type { Menu } from "../ui/Menu";
 import { setIcon } from "../ui/Icon";
 import { Notice } from "../ui/Notice";
+import { setTooltip } from "../ui/Popover";
 
 interface WorkspaceActiveEditor extends MarkdownFileInfo {
   editor: Editor;
@@ -281,8 +282,18 @@ export class Workspace extends Events {
   private createSidebarToggleButton(side: "left" | "right", ownerDocument: Document): HTMLElement {
     const buttonEl = ownerDocument.createElement("div");
     buttonEl.className = `sidebar-toggle-button mod-${side}`;
-    buttonEl.title = side === "left" ? "Toggle left sidebar" : "Toggle right sidebar";
-    buttonEl.setAttribute("aria-label", buttonEl.title);
+    // Real: state-dependent tooltip ("Expand"/"Collapse") away from the edge
+    // (left button opens right, right button opens left); no native title.
+    // Real resolves the text lazily at hover time — mirror that by refreshing
+    // on mouseenter, which also survives command-driven toggles and the fact
+    // that the splits don't exist yet while this button is constructed.
+    const tooltipPlacement = side === "left" ? "right" as const : "left" as const;
+    const refreshToggleTooltip = () => {
+      const dock = side === "left" ? this.leftSplit : this.rightSplit;
+      setTooltip(buttonEl, (dock as { collapsed?: boolean } | undefined)?.collapsed ? "Expand" : "Collapse", { placement: tooltipPlacement });
+    };
+    buttonEl.addEventListener("mouseenter", refreshToggleTooltip);
+    refreshToggleTooltip();
     const iconEl = ownerDocument.createElement("div");
     iconEl.className = "clickable-icon";
     setIcon(iconEl, "sidebar-toggle-button-icon");
@@ -292,6 +303,7 @@ export class Workspace extends Events {
       const sidedock = dock as { collapsed?: boolean; collapse?: () => void; expand?: () => void };
       if (sidedock.collapsed) sidedock.expand?.();
       else sidedock.collapse?.();
+      refreshToggleTooltip();
     });
     return buttonEl;
   }

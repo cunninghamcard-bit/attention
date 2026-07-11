@@ -148,14 +148,12 @@ export class WorkspaceSidedock extends WorkspaceSplit {
 
     const helpEl = ownerDocument.createElement("span");
     helpEl.className = "clickable-icon";
-    helpEl.title = "Open help";
-    helpEl.setAttribute("aria-label", "Open help");
+    // Real: no tooltip/title on the vault-actions help button.
     setIcon(helpEl, "lucide-help-circle");
 
     const settingsEl = ownerDocument.createElement("span");
     settingsEl.className = "clickable-icon";
-    settingsEl.title = "Open settings";
-    settingsEl.setAttribute("aria-label", "Open settings");
+    // Real: no tooltip/title on the vault-actions settings button.
     setIcon(settingsEl, "lucide-settings");
     settingsEl.addEventListener("click", () => this.workspace.app.setting.open());
     actionsEl.append(helpEl, settingsEl);

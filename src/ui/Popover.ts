@@ -494,28 +494,43 @@ function positionTooltip(target: HTMLElement, tooltipEl: HTMLElement, arrowEl: H
   const height = tooltipRect.height || tooltipEl.offsetHeight || 1;
   const viewportWidth = body.clientWidth || win.innerWidth;
   const viewportHeight = body.clientHeight || win.innerHeight;
-  let left = horizontalRect.left + horizontalRect.width / 2 - width / 2;
+  // Coordinate contract with tooltip.css: top/bottom tooltips carry
+  // `transform: translateX(-50%)` (left is the CENTER x), left/right carry
+  // `translateY(-50%)` (top is the CENTER y). Subtracting width/2 or height/2
+  // here double-shifts and parks the tooltip half a box off its target.
+  let left = horizontalRect.left + horizontalRect.width / 2;
   let top = targetRect.bottom + gap;
 
   if (placement === "top") top = targetRect.top - height - gap - TOP_TOOLTIP_OFFSET;
   else if (placement === "left") {
     left = targetRect.left - width - gap;
-    top = targetRect.top + targetRect.height / 2 - height / 2;
+    top = targetRect.top + targetRect.height / 2;
   } else if (placement === "right") {
     left = targetRect.right + gap;
-    top = targetRect.top + targetRect.height / 2 - height / 2;
+    top = targetRect.top + targetRect.height / 2;
   }
 
-  const clampedLeft = clamp(left, 0, Math.max(0, viewportWidth - width));
-  const clampedTop = clamp(top, 0, Math.max(0, viewportHeight - height));
+  let clampedLeft: number;
+  let clampedTop: number;
+  if (placement === "left" || placement === "right") {
+    clampedLeft = clamp(left, 0, Math.max(0, viewportWidth - width));
+    clampedTop = clamp(top, height / 2, Math.max(height / 2, viewportHeight - height / 2));
+  } else {
+    clampedLeft = clamp(left, width / 2, Math.max(width / 2, viewportWidth - width / 2));
+    clampedTop = clamp(top, 0, Math.max(0, viewportHeight - height));
+  }
   tooltipEl.style.position = "fixed";
   tooltipEl.style.left = `${clampedLeft}px`;
   tooltipEl.style.top = `${clampedTop}px`;
 
-  const targetCenter = targetRect.left + targetRect.width / 2;
-  const arrowLeft = clamp(targetCenter - clampedLeft, 0, width);
-  arrowEl.style.left = `${arrowLeft}px`;
-  arrowEl.style.right = "";
+  if (placement === "top" || placement === "bottom") {
+    // Arrow tracks the target when edge-clamping shifted the box; the box's
+    // visual left edge is clampedLeft - width/2 because of the translate.
+    const targetCenter = targetRect.left + targetRect.width / 2;
+    const arrowLeft = clamp(targetCenter - (clampedLeft - width / 2), 0, width);
+    arrowEl.style.left = `${arrowLeft}px`;
+    arrowEl.style.right = "";
+  }
 }
 
 function clamp(value: number, min: number, max: number): number {

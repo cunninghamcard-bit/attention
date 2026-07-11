@@ -30,8 +30,7 @@ export class ItemView extends View {
     this.headerLeftEl = createDiv("view-header-left", this.headerEl);
     if (Platform.isMobile) {
       this.leftSidebarToggleEl = createEl("button", "view-action clickable-icon mod-left-split-toggle mod-raised sidebar-toggle-button mod-left", this.headerLeftEl);
-      this.leftSidebarToggleEl.title = "Toggle left sidebar";
-      this.leftSidebarToggleEl.setAttribute("aria-label", "Toggle left sidebar");
+      setTooltip(this.leftSidebarToggleEl, "Expand");
       setIcon(this.leftSidebarToggleEl, "sidebar-toggle-button-icon");
       this.leftSidebarToggleEl.addEventListener("click", () => {
         navigator.vibrate?.(100);

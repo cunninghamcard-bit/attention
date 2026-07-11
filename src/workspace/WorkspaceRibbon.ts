@@ -1,5 +1,6 @@
 import { createEl } from "../dom/dom";
 import { setIcon } from "../ui/Icon";
+import { setTooltip } from "../ui/Popover";
 import { Menu } from "../ui/Menu";
 import type { Workspace } from "./Workspace";
 
@@ -96,8 +97,10 @@ export class WorkspaceRibbon {
 
   private makeRibbonItemButton(icon: string, title: string, callback: (event: MouseEvent) => unknown): HTMLElement {
     const button = createEl("div", "clickable-icon side-dock-ribbon-action");
-    button.title = title;
-    button.setAttribute("aria-label", title);
+    // Real ribbon buttons use the app tooltip (placement right), never the
+    // native title attribute — that pops the delayed OS tooltip in the wrong
+    // style, and doubles up with ours. setTooltip also sets aria-label.
+    setTooltip(button, title, { placement: "right" });
     setIcon(button, icon);
     button.addEventListener("click", callback);
     return button;
@@ -109,8 +112,7 @@ export class WorkspaceRibbon {
 
   addRibbonSettingButton(id: string, icon: string, title: string, callback: (event: MouseEvent) => unknown): HTMLElement {
     const button = createEl("div", "clickable-icon side-dock-ribbon-action", this.settingsEl ?? this.containerEl);
-    button.title = title;
-    button.setAttribute("aria-label", title);
+    setTooltip(button, title, { placement: "right" });
     setIcon(button, icon);
     button.addEventListener("click", callback);
     this.actions.set(id, button);

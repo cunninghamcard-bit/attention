@@ -1,7 +1,9 @@
 export type WebContentsBridgeEvent =
   | "did-start-navigation"
   | "did-redirect-navigation"
+  | "did-navigate"
   | "dom-ready"
+  | "did-start-loading"
   | "did-stop-loading"
   | "did-finish-load"
   | "did-fail-load"

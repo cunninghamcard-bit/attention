@@ -42,9 +42,12 @@ export interface WebViewerOptions {
   markdownPath: string;
 }
 
+const HISTORY_STORAGE_KEY = "webviewer-history";
+
 export class WebViewerService {
   private sessions = new Map<string, WebViewerSession>();
   private history: WebViewerHistoryEntry[] = [];
+  private historyLoaded = false;
   private activeSessionId = "";
   readonly bridge: BrowserSessionBridge;
   readonly addressSuggest: WebViewerAddressSuggest;
@@ -144,7 +147,23 @@ export class WebViewerService {
     return `${engine}${encodeURIComponent(trimmed)}`;
   }
 
+  // Real Obsidian keeps webviewer history in IndexedDB; vault-local storage is
+  // our lighter equivalent — without it the address bar forgets everything on
+  // restart and suggests nothing but the Blank seed.
+  // ponytail: 1000 small rows in localStorage; move to IndexedDB if it grows.
+  private ensureHistoryLoaded(): void {
+    if (this.historyLoaded) return;
+    this.historyLoaded = true;
+    const stored = this.app.loadLocalStorage<WebViewerHistoryEntry[]>(HISTORY_STORAGE_KEY);
+    if (Array.isArray(stored)) this.history = stored;
+  }
+
+  private saveHistory(): void {
+    this.app.saveLocalStorage(HISTORY_STORAGE_KEY, this.history);
+  }
+
   recordHistory(url: string, title = url, sessionId = this.activeSessionId): WebViewerHistoryEntry {
+    this.ensureHistoryLoaded();
     if (this.history[0]?.url === url) return { ...this.history[0] };
     const entry: WebViewerHistoryEntry = {
       id: crypto.randomUUID?.() ?? `${Date.now()}`,
@@ -155,23 +174,29 @@ export class WebViewerService {
     };
     this.history.unshift(entry);
     this.history = this.history.slice(0, 1000);
+    this.saveHistory();
     this.app.workspace.trigger("webviewer-history-add", { ...entry });
     return { ...entry };
   }
 
   listHistory(sessionId?: string): readonly WebViewerHistoryEntry[] {
+    this.ensureHistoryLoaded();
     return this.history
       .filter((entry) => !sessionId || entry.sessionId === sessionId)
       .map((entry) => ({ ...entry }));
   }
 
   removeHistoryEntry(id: string): void {
+    this.ensureHistoryLoaded();
     this.history = this.history.filter((entry) => entry.id !== id);
+    this.saveHistory();
     this.app.workspace.trigger("webviewer-history-remove", id);
   }
 
   clearHistory(sessionId?: string): void {
+    this.ensureHistoryLoaded();
     this.history = sessionId ? this.history.filter((entry) => entry.sessionId !== sessionId) : [];
+    this.saveHistory();
     this.app.workspace.trigger("webviewer-history-clear", sessionId);
   }
 
