@@ -795,3 +795,22 @@ function mockNavigatorRuntime(values: Partial<Pick<Navigator, "appVersion" | "pl
     }
   };
 }
+
+describe("rename into a missing folder (adapter-parity ENOENT)", () => {
+  it("throws ENOENT instead of silently reparenting", async () => {
+    const vault = new Vault();
+    const file = await vault.create("Note.md", "body");
+    await expect(vault.rename(file, "Nope/Note.md")).rejects.toThrow(/ENOENT: no such file or directory/);
+    // The tree is untouched by the refused rename.
+    expect(vault.getFileByPath("Note.md")).toBe(file);
+    expect(vault.getFileByPath("Nope/Note.md")).toBeNull();
+  });
+
+  it("still renames into an existing folder", async () => {
+    const vault = new Vault();
+    const file = await vault.create("Note.md", "body");
+    await vault.createFolder("Sub");
+    await vault.rename(file, "Sub/Note.md");
+    expect(vault.getFileByPath("Sub/Note.md")).toBe(file);
+  });
+});

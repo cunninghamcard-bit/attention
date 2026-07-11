@@ -684,6 +684,13 @@ export class Vault extends Events {
       this.invalidateCachedRead(normalized);
       return;
     }
+    // The adapter path surfaces fs ENOENT when the destination's parent
+    // folder is missing; the in-memory tree must refuse identically instead
+    // of silently reparenting.
+    const slash = normalized.lastIndexOf("/");
+    if (slash !== -1 && !(this.getAbstractFileByPath(normalized.slice(0, slash)) instanceof TFolder)) {
+      throw new Error(`ENOENT: no such file or directory, rename '${file.path}' -> '${normalized}'`);
+    }
     if (file instanceof TFolder) await this.renameFolder(file, normalized);
     else if (file instanceof TFile) await this.renameFile(file, normalized);
   }
