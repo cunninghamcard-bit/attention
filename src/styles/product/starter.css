@@ -1,0 +1,11 @@
+/* Starter (vault chooser) brand block. Real renders SVG gem + wordmark
+ * artwork; ArkLoop brands with the vault icon and a text wordmark, so the
+ * text needs the display sizing the SVG carried implicitly. */
+.splash-brand-logo-text {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.splash-brand-logo .svg-icon {
+  stroke-width: 1px;
+}

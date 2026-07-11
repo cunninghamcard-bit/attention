@@ -31,6 +31,9 @@ export interface VaultWindowDeps {
   // real `Xe` gates independently of `et`, since it is reachable from other
   // main-side paths. Absent (tests) means enabled.
   isCliEnabled?: () => boolean;
+  // Whether the starter (vault chooser) window is open — real `le` in the
+  // closed handler. Absent means no starter window exists.
+  isStarterOpen?: () => boolean;
 }
 
 /**
@@ -146,7 +149,13 @@ export class VaultWindowManager {
     });
     win.on("closed", () => {
       this.tracked.delete(vaultId);
-      if (!this.deps.isQuitting()) this.deps.registry.setOpen(vaultId, false);
+      // Real closed handler: `!ye && (le || Object.keys(H).length > 0) &&
+      // Ke(e, !1)` — the persisted `open` flag is cleared only when the
+      // starter or another vault window remains. Closing the app's last
+      // window keeps the flag, so the next launch restores the same vault;
+      // closing while switching (starter open) forgets it.
+      const othersRemain = this.deps.isStarterOpen?.() || this.tracked.size > 0;
+      if (!this.deps.isQuitting() && othersRemain) this.deps.registry.setOpen(vaultId, false);
     });
 
     void win.loadURL(resolveRendererUrl()).then(reveal, reveal);

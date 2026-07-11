@@ -47,6 +47,8 @@ export interface IpcDeps {
     sandboxVaultPath: string;
     defaultVaultPath: string;
   };
+  /** Open-or-focus the starter (vault chooser) window — real `pe()`. */
+  openStarter(): void;
   /** shell.trashItem — real `trash` handler. */
   trashItem(path: string): Promise<void>;
   /** shell.openExternal — real `open-url` for external schemes. */
@@ -109,6 +111,13 @@ export function createIpcHandlers(deps: IpcDeps): Record<string, IpcListener> {
         toArg as string,
         (id) => vaultWindows.isOpen(id),
       );
+    },
+
+    // Real: `ipcMain.on("starter", t => { t.returnValue = null; pe() })` —
+    // sync so openVaultChooser callers can `window.close()` right after.
+    starter: (e) => {
+      e.returnValue = null;
+      deps.openStarter();
     },
 
     // --- Actions ---

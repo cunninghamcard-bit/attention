@@ -139,6 +139,7 @@ export class WorkspaceSidedock extends WorkspaceSplit {
     const updateTooltip = () => setTooltip(nameEl, this.getVaultProfileTooltip(), { placement: "top", delay: 300 });
     updateTooltip();
     switcherEl.addEventListener("mouseover", updateTooltip);
+    switcherEl.addEventListener("click", (event) => this.openVaultSwitcherMenu(event, switcherEl));
     switcherEl.addEventListener("contextmenu", (event) => this.openVaultProfileMenu(event));
 
     switcherEl.append(iconEl, nameEl);
@@ -171,6 +172,45 @@ export class WorkspaceSidedock extends WorkspaceSplit {
     const folders = root.getFolderCount();
     const countText = `${files} ${files === 1 ? "file" : "files"}, ${folders} ${folders === 1 ? "folder" : "folders"}`;
     return basePath ? `${basePath}\n\n${countText}` : countText;
+  }
+
+  /**
+   * Real vault switcher (decode, sidedock vault profile click): list every
+   * registered vault by folder name with the current one checked, open via
+   * the synchronous vault-open IPC, then a separator and a manage entry.
+   * Browser builds have no vault registry — the click is a silent no-op.
+   */
+  private openVaultSwitcherMenu(event: MouseEvent, switcherEl: HTMLElement): void {
+    if (switcherEl.classList.contains("has-active-menu")) return;
+    const ipc = (globalThis as {
+      electron?: { ipcRenderer?: { sendSync?: (channel: string, ...args: unknown[]) => unknown; invoke?: (channel: string, ...args: unknown[]) => Promise<unknown> } };
+    }).electron?.ipcRenderer;
+    if (!ipc?.sendSync) return;
+    const current = (ipc.sendSync("vault") as { path?: string } | undefined)?.path;
+    const vaults = (ipc.sendSync("vault-list") ?? {}) as Record<string, { path: string }>;
+    const menu = Menu.forEvent(event);
+    for (const id of Object.keys(vaults)) {
+      const vault = vaults[id];
+      if (!vault?.path) continue;
+      const name = vault.path.split(/[\\/]/).pop() || vault.path;
+      const isCurrent = current === vault.path;
+      menu.addItem((item) => item
+        .setTitle(name)
+        .setChecked(isCurrent)
+        .onClick(() => {
+          if (isCurrent) return;
+          if (ipc.sendSync?.("vault-open", vault.path, false) !== true) new Notice("Failed to open vault");
+        }));
+    }
+    menu.addSeparator();
+    menu.addItem((item) => item
+      // Real `gm.interface.manageVaults()` — opens the starter (vault
+      // chooser) singleton; the current vault window stays open.
+      .setTitle("Manage vaults...")
+      .setIcon("open-vault")
+      .onClick(() => ipc.sendSync?.("starter")));
+    menu.setParentElement(switcherEl);
+    menu.showAtMouseEvent(event);
   }
 
   private openVaultProfileMenu(event: MouseEvent): void {

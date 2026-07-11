@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import { visualizer } from "rollup-plugin-visualizer";
 
@@ -18,5 +19,13 @@ export default defineConfig({
     // ponytail: dist accumulates old hashes on dev machines; a packaging
     // pipeline should clean once with `vite build --emptyOutDir`.
     emptyOutDir: false,
+    rollupOptions: {
+      input: {
+        // Two pages, like the real app: the vault renderer (index.html) and
+        // the starter/vault-chooser page (starter.html).
+        index: resolve(__dirname, "index.html"),
+        starter: resolve(__dirname, "starter.html"),
+      },
+    },
   },
 });

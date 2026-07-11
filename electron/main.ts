@@ -2,7 +2,8 @@ import { app, BrowserWindow, ipcMain, screen, shell } from "electron";
 import { initialize as initializeRemote } from "@electron/remote/main";
 import { join } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
-import { createRendererWindow, defaultPreloadPath } from "./window";
+import { defaultPreloadPath } from "./window";
+import { isStarterOpen, openStarter } from "./starter-window";
 import { registerFoundationIpc } from "./foundation-ipc";
 import { mainState } from "./state";
 import { JsonStore } from "./json-store";
@@ -97,42 +98,41 @@ if (!gotLock) {
     // workbench wants its command surface always up); real Obsidian defaults
     // off behind Settings > General > Advanced. `cli: false` still gates.
     isCliEnabled: () => settings.cli !== false,
+    isStarterOpen,
   });
 
-  // First-run default vault. Real Obsidian shows a starter to pick a vault;
-  // that page is a renderer seam here, so we create/open a real default folder
-  // so the app opens on a real vault. OURS: `Documents/Arkloop Vault` — the
-  // real app's `Documents/Obsidian Vault` is the user's actual Obsidian data
-  // and must never be touched by this reconstruction.
-  const ensureDefaultVault = (): string | null => {
-    const defaultPath =
-      process.env.ARKLOOP_VAULT_PATH || join(safePath("documents"), "Arkloop Vault");
+  const openStarterWindow = () => openStarter({ preloadPath: defaultPreloadPath(here) });
+
+  // Hermetic-test seam: ARKLOOP_VAULT_PATH pins a vault that is created and
+  // opened directly, so e2e runs land in a window without driving the starter.
+  const ensureSeededVault = (): string | null => {
+    const seededPath = process.env.ARKLOOP_VAULT_PATH;
+    if (!seededPath) return null;
     try {
-      mkdirSync(defaultPath, { recursive: true });
+      mkdirSync(seededPath, { recursive: true });
     } catch (error) {
       console.error(error);
     }
-    const result = registry.registerPath(defaultPath);
+    const result = registry.registerPath(seededPath);
     return "id" in result ? result.id : null;
   };
 
-  // Real `ke()`: reopen every vault persisted as open; otherwise open the
-  // default vault window (falling back to a plain window if it can't be made).
+  // Real `ke()`: reopen every vault persisted as open; zero windows means the
+  // starter (vault chooser) comes up instead.
   const openStartupWindows = () => {
     const opened = vaultWindows.openAllPersisted();
     if (opened > 0 || BrowserWindow.getAllWindows().length > 0) return;
-    const defaultVaultId = ensureDefaultVault();
-    if (defaultVaultId) vaultWindows.openVault(defaultVaultId);
-    else createRendererWindow({ preloadPath: defaultPreloadPath(here) });
+    const seededVaultId = ensureSeededVault();
+    if (seededVaultId) vaultWindows.openVault(seededVaultId);
+    else openStarterWindow();
   };
 
-  // Real `$e(url)` dispatch. Starter page is a renderer seam, so for
-  // sync-setup/choose-vault we fall back to opening the app.
+  // Real `$e(url)` dispatch — sync-setup/choose-vault open the starter.
   const dispatchObsidianUrl = (url: string) =>
     handleObsidianUrl(url, {
       registry,
       vaultWindows,
-      openStarter: openStartupWindows,
+      openStarter: openStarterWindow,
       showVaultNotFound: (u) => console.error(`No vault for URL ${u}`),
       isWindows: process.platform === "win32",
     });
@@ -149,7 +149,8 @@ if (!gotLock) {
       // (deliberate product divergence; set `cli: false` in obsidian.json to
       // disable, same persisted flag as real Obsidian).
       isCliEnabled: () => settings.cli !== false,
-      openStarter: openStartupWindows,
+      // Real second-instance-no-args behavior is `pe()` — the starter itself.
+      openStarter: openStarterWindow,
       handleUrl: (url) => {
         dispatchObsidianUrl(url);
         return `Processed URI ${url}`;
@@ -225,6 +226,7 @@ if (!gotLock) {
     registerIpcHandlers(ipcMain, {
       registry,
       vaultWindows,
+      openStarter: openStarterWindow,
       paths: {
         resources: resourcesDir,
         version: app.getVersion(),

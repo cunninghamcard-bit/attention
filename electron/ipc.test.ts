@@ -20,6 +20,7 @@ let openSet: Set<string>;
 let webContentsToVault: Map<number, string>;
 let trashItem: ReturnType<typeof vi.fn<(path: string) => Promise<void>>>;
 let openExternal: ReturnType<typeof vi.fn<(url: string) => void>>;
+let openStarter: ReturnType<typeof vi.fn<() => void>>;
 let performRequest: ReturnType<typeof vi.fn<(p: RequestUrlParams) => Promise<RequestUrlResult>>>;
 let handlers: Record<string, (event: IpcSyncEvent, ...args: unknown[]) => void>;
 
@@ -51,6 +52,7 @@ beforeEach(() => {
   webContentsToVault = new Map();
   trashItem = vi.fn<(path: string) => Promise<void>>(() => Promise.resolve());
   openExternal = vi.fn<(url: string) => void>();
+  openStarter = vi.fn<() => void>();
   performRequest = vi.fn<(p: RequestUrlParams) => Promise<RequestUrlResult>>(() =>
     Promise.resolve({ status: 200, headers: {}, body: new ArrayBuffer(0) }),
   );
@@ -63,6 +65,7 @@ beforeEach(() => {
       vaultIdForWebContents: (wcId) => webContentsToVault.get(wcId) ?? null,
     },
     paths: PATHS,
+    openStarter,
     trashItem,
     openExternal,
     performRequest,
@@ -158,6 +161,13 @@ describe("IPC vault channels", () => {
     const move = makeEvent();
     handlers["vault-move"](move, resolved, join(dir, "Moved"));
     expect(move.returnValue).toBe("EVAULTOPEN");
+  });
+
+  it("starter opens the vault chooser and acks null (sync)", () => {
+    const event = makeEvent();
+    handlers.starter(event);
+    expect(openStarter).toHaveBeenCalledTimes(1);
+    expect(event.returnValue).toBeNull();
   });
 });
 
