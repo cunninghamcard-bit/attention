@@ -1,8 +1,8 @@
 import { defineConfig } from "@playwright/test";
 
 // Desktop (Electron) e2e — DeepChat-style: serial, generous timeouts, and
-// failure artifacts retained. Run `bun run build && bun run build:electron`
-// first; then `bun run e2e:desktop`.
+// failure artifacts retained. Run `pnpm run build && pnpm run build:electron`
+// first; then `pnpm run e2e:desktop`.
 export default defineConfig({
   testDir: "./e2e/desktop/specs",
   fullyParallel: false,

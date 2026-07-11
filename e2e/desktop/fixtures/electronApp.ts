@@ -49,7 +49,7 @@ export const test = base.extend<ArkloopFixtures>({
 
   launchApp: async ({}, use, testInfo) => {
     if (!existsSync(MAIN_CJS)) {
-      throw new Error("dist-electron/main.cjs missing — run: bun run build && bun run build:electron");
+      throw new Error("dist-electron/main.cjs missing — run: pnpm run build && pnpm run build:electron");
     }
 
     const base = mkdtempSync(join(tmpdir(), "arkloop-desktop-e2e-"));

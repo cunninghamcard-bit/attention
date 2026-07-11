@@ -2,7 +2,7 @@
  * Resolves where a BrowserWindow loads the reconstructed renderer from.
  *
  * - Development: the Vite dev server URL (passed via `ELECTRON_RENDERER_URL`),
- *   so `bun run dev:desktop` shows the live renderer with HMR.
+ *   so `pnpm run dev:desktop` shows the live renderer with HMR.
  * - Production: `app://obsidian.md/index.html`, exactly like real Obsidian
  *   (symbol `je = se + "index.html"`). The `app://` protocol that serves it is
  *   implemented in L4; before that lands, run via the dev server.

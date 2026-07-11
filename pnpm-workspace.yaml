@@ -1,0 +1,11 @@
+supportedArchitectures:
+  os:
+    - current
+  cpu:
+    - current
+
+# electron 43+ has no install scripts (its binary self-downloads on first
+# run); node-pty's postinstall arranges its prebuilds.
+allowBuilds:
+  electron: set this to true or false
+  node-pty: true

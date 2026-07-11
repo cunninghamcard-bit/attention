@@ -15,23 +15,25 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "build:electron": "vite build --config vite.electron.config.ts",
-    "start:desktop": "bun run build:electron && ELECTRON_RENDERER_URL=${ELECTRON_RENDERER_URL:-http://127.0.0.1:5173} electron dist-electron/main.cjs",
-    "desktop": "bun run build && bun run build:electron && electron dist-electron/main.cjs",
-    "check": "oxlint -c oxlint.json src --quiet && tsc --noEmit && bun run typecheck:electron && vitest run && vite build && bun run build:api && bun run build:electron",
+    "start:desktop": "pnpm run build:electron && ELECTRON_RENDERER_URL=${ELECTRON_RENDERER_URL:-http://127.0.0.1:5173} electron dist-electron/main.cjs",
+    "desktop": "pnpm run build && pnpm run build:electron && electron dist-electron/main.cjs",
+    "check": "oxlint -c oxlint.json src --quiet && tsc --noEmit && pnpm run typecheck:electron && vitest run && vite build && pnpm run build:api && pnpm run build:electron",
     "build:analyze": "ANALYZE=1 vite build",
     "packcheck": "publint && attw --pack .",
-    "quality": "bun run check && bun run e2e && bun run packcheck",
-    "build:api": "vite build --config vite.api.config.ts && bun scripts/fix-dts-extensions.ts",
-    "fix:dts": "bun scripts/fix-dts-extensions.ts",
+    "quality": "pnpm run check && pnpm run e2e && pnpm run packcheck",
+    "build:api": "vite build --config vite.api.config.ts && node scripts/fix-dts-extensions.ts",
+    "fix:dts": "node scripts/fix-dts-extensions.ts",
     "postinstall": "chmod +x node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true",
     "e2e:cli": "node scripts/e2e-cli.mjs",
-    "e2e:desktop": "playwright test -c playwright.desktop.config.ts"
+    "e2e:desktop": "playwright test -c playwright.desktop.config.ts",
+    "preinstall": "npx only-allow pnpm"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.3",
     "@electron/remote": "^2.1.3",
     "@playwright/test": "^1.61.0",
     "@types/node": "^26.1.0",
+    "@typescript/typescript6": "^6.0.2",
     "electron": "^43.0.0",
     "jsdom": "^29.1.1",
     "oxlint": "^1.70.0",
@@ -42,16 +44,16 @@
     "vite-plugin-dts": "^5.0.2",
     "vitest": "^4.1.9"
   },
-  "packageManager": "bun@1.3.14",
-  "types": "dist/api/src/index.d.ts",
+  "packageManager": "pnpm@11.7.0",
+  "types": "dist/api/index.d.ts",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/api/src/index.d.ts",
+        "types": "./dist/api/index.d.ts",
         "default": "./dist/api/index.js"
       },
       "require": {
-        "types": "./dist/api/src/index.d.cts",
+        "types": "./dist/api/index.d.cts",
         "default": "./dist/api/index.cjs"
       },
       "default": "./dist/api/index.js"
@@ -62,7 +64,8 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=20.19.0",
+    "pnpm": ">=10.11.0"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

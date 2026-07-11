@@ -5,7 +5,7 @@
 // user types) and asserts exact outputs. Fully hermetic — never touches the
 // real profile, vaults, or a running instance.
 //
-//   bun run build && bun run build:electron && bun run e2e:cli
+//   pnpm run build && pnpm run build:electron && pnpm run e2e:cli
 import { execFile, spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -18,7 +18,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const electron = join(root, "node_modules", ".bin", "electron");
 const mainJs = join(root, "dist-electron", "main.cjs");
 if (!existsSync(mainJs)) {
-  console.error("dist-electron/main.cjs missing — run: bun run build && bun run build:electron");
+  console.error("dist-electron/main.cjs missing — run: pnpm run build && pnpm run build:electron");
   process.exit(2);
 }
 
