@@ -9,3 +9,6 @@ supportedArchitectures:
 allowBuilds:
   electron: set this to true or false
   node-pty: true
+
+patchedDependencies:
+  ghostty-web: patches/ghostty-web.patch

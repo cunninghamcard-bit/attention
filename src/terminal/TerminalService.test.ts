@@ -32,12 +32,14 @@ class FakePty implements PtyHandle {
 class FakeAdapter implements TerminalAdapter {
   readonly available = true;
   ptys: FakePty[] = [];
-  spawnRequests: Array<{ shell?: string; cwd?: string }> = [];
+  spawnRequests: Array<{ shell?: string; cwd?: string; env?: Record<string, string> }> = [];
   failNext: string | null = null;
+  integrationDir: string | null = "/fake/zdotdir";
 
   defaultShell(): string { return "/bin/fake-sh"; }
   defaultCwd(): string { return "/home/fake"; }
-  spawn(request: { shell?: string; cwd?: string }): PtyHandle {
+  prepareShellIntegration(): string | null { return this.integrationDir; }
+  spawn(request: { shell?: string; cwd?: string; env?: Record<string, string> }): PtyHandle {
     if (this.failNext) {
       const message = this.failNext;
       this.failNext = null;
@@ -82,12 +84,46 @@ describe("TerminalService", () => {
     const terminal = await app.terminals.open();
 
     expect(terminal.status).toBe("running");
-    expect(terminal.shell).toBe("/bin/fake-sh");
+    // Default profile is "enhanced": zsh + the shell-integration ZDOTDIR.
+    expect(terminal.shell).toBe("/bin/zsh");
+    expect(adapter.spawnRequests[0].env).toEqual({ ZDOTDIR: "/fake/zdotdir" });
     const leaves = app.workspace.getLeavesOfType("terminal");
     expect(leaves).toHaveLength(1);
     expect(leaves[0].view).toBeInstanceOf(TerminalView);
     adapter.ptys[0].emitData("fake-prompt$ ");
     expect(renderer.output.join("")).toContain("fake-prompt$ ");
+  });
+
+  it("TerminalProfile: system profile spawns the login shell with no injection", async () => {
+    const { app, adapter } = await createAppWithFakeTerminal();
+    app.terminals.saveSettings({ profile: "system" });
+
+    const terminal = await app.terminals.open();
+
+    expect(terminal.shell).toBe("/bin/fake-sh");
+    expect(adapter.spawnRequests[0].env).toBeUndefined();
+  });
+
+  it("TerminalProfile: custom profile honors the configured shell, no injection", async () => {
+    const { app, adapter } = await createAppWithFakeTerminal();
+    app.terminals.saveSettings({ profile: "custom", shell: "/opt/weird/sh" });
+
+    const terminal = await app.terminals.open();
+
+    expect(terminal.shell).toBe("/opt/weird/sh");
+    expect(adapter.spawnRequests[0].env).toBeUndefined();
+  });
+
+  it("TerminalProfile: enhanced degrades to plain zsh when integration is unavailable", async () => {
+    const { app, adapter } = await createAppWithFakeTerminal();
+    // localStorage persists across tests in this file — pin the profile.
+    app.terminals.saveSettings({ profile: "enhanced", shell: "" });
+    adapter.integrationDir = null;
+
+    const terminal = await app.terminals.open();
+
+    expect(terminal.shell).toBe("/bin/zsh");
+    expect(adapter.spawnRequests[0].env).toBeUndefined();
   });
 
   it("TerminalInput: renderer input reaches the PTY", async () => {

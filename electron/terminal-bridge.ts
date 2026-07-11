@@ -1,4 +1,5 @@
 import { homedir } from "node:os";
+import { ensureZshShim } from "./zsh-shim";
 
 /**
  * Preload-side PTY bridge (`window.electronTerminal`).
@@ -15,6 +16,9 @@ export interface PtySpawnOptions {
   cwd?: string;
   cols?: number;
   rows?: number;
+  /** Extra environment merged over the defaults — already resolved by the
+   * caller (TerminalService profile resolution); the bridge applies it verbatim. */
+  env?: Record<string, string>;
 }
 
 export interface PtyHandle {
@@ -32,6 +36,10 @@ export interface ElectronTerminalApi {
   defaultShell: string;
   homeDir: string;
   spawn(options: PtySpawnOptions): PtyHandle;
+  /** Provision the enhanced-zsh shim (see zsh-shim.ts) and return the ZDOTDIR
+   * to spawn with, or null when it can't be provisioned. Pure capability —
+   * whether to use it is the renderer's profile decision. */
+  prepareShellIntegration(): string | null;
 }
 
 interface NodePtyProcess {
@@ -63,6 +71,11 @@ export function createElectronTerminalApi(
     platform,
     defaultShell,
     homeDir: homedir(),
+    prepareShellIntegration(): string | null {
+      // Respect a user who already runs their own ZDOTDIR arrangement.
+      if (process.env.ZDOTDIR) return null;
+      return ensureZshShim({ homeDir: homedir() });
+    },
     spawn(options: PtySpawnOptions): PtyHandle {
       if (platform === "win32") {
         throw new Error("Terminal is not supported on Windows yet.");
@@ -83,6 +96,7 @@ export function createElectronTerminalApi(
           COLORTERM: "truecolor",
           COLUMNS: String(cols),
           LINES: String(rows),
+          ...options.env,
         },
       });
       let killed = false;

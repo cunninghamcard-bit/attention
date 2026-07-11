@@ -1,0 +1,36 @@
+diff --git a/dist/ghostty-web.js b/dist/ghostty-web.js
+index a4ca427b95288e70c782ce303013cd644893dcec..6af996b5705826d48aa195e12e6063221171de1e 100644
+--- a/dist/ghostty-web.js
++++ b/dist/ghostty-web.js
+@@ -1515,6 +1515,22 @@ class $ {
+     let i = A.bg_r, w = A.bg_g, s = A.bg_b;
+     A.flags & e.INVERSE && (i = A.fg_r, w = A.fg_g, s = A.fg_b), i === 0 && w === 0 && s === 0 || (this.ctx.fillStyle = this.rgbToCSS(i, w, s), this.ctx.fillRect(E, C, I, this.metrics.height));
+   }
++  /**
++   * Powerline separators (U+E0B0-U+E0B7) drawn as exact vector geometry
++   * filling the cell box — font rasterization leaves AA fringe and sub-cell
++   * height gaps that read as smudge; WezTerm/xterm.js draw these as custom
++   * glyphs for the same reason. Even codepoints are solid, odd are outlines.
++   */
++  drawPowerlineGlyph(cp, x, top, cw, ch) {
++    const c = this.ctx, my = top + ch / 2;
++    c.beginPath();
++    if (cp === 57520 || cp === 57521) c.moveTo(x, top), c.lineTo(x + cw, my), c.lineTo(x, top + ch);
++    else if (cp === 57522 || cp === 57523) c.moveTo(x + cw, top), c.lineTo(x, my), c.lineTo(x + cw, top + ch);
++    else if (cp === 57524 || cp === 57525) c.moveTo(x, top), c.ellipse(x, my, cw, ch / 2, 0, -Math.PI / 2, Math.PI / 2);
++    else c.moveTo(x + cw, top + ch), c.ellipse(x + cw, my, cw, ch / 2, 0, Math.PI / 2, Math.PI * 1.5);
++    if (cp & 1) c.strokeStyle = c.fillStyle, c.lineWidth = 1, c.stroke();
++    else c.closePath(), c.fill();
++  }
+   /**
+    * Render a cell's text and decorations (Pass 2 of two-pass rendering)
+    * Selection foreground color is applied here to match the selection background.
+@@ -1535,7 +1551,7 @@ class $ {
+     A.flags & e.FAINT && (this.ctx.globalAlpha = 0.5);
+     const w = E, s = C + this.metrics.baseline;
+     let N;
+-    if (A.grapheme_len > 0 && ((k = this.currentBuffer) != null && k.getGraphemeString) ? N = this.currentBuffer.getGraphemeString(g, B) : N = String.fromCodePoint(A.codepoint || 32), this.ctx.fillText(N, w, s), A.flags & e.FAINT && (this.ctx.globalAlpha = 1), A.flags & e.UNDERLINE) {
++    if (A.grapheme_len > 0 && ((k = this.currentBuffer) != null && k.getGraphemeString) ? N = this.currentBuffer.getGraphemeString(g, B) : N = String.fromCodePoint(A.codepoint || 32), (!(A.grapheme_len > 0) && A.codepoint >= 57520 && A.codepoint <= 57527 ? this.drawPowerlineGlyph(A.codepoint, w, C, I, this.metrics.height) : this.ctx.fillText(N, w, s, I)), A.flags & e.FAINT && (this.ctx.globalAlpha = 1), A.flags & e.UNDERLINE) {
+       const M = C + this.metrics.baseline + 2;
+       this.ctx.strokeStyle = this.ctx.fillStyle, this.ctx.lineWidth = 1, this.ctx.beginPath(), this.ctx.moveTo(E, M), this.ctx.lineTo(E + I, M), this.ctx.stroke();
+     }
