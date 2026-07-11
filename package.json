@@ -24,7 +24,8 @@
     "build:api": "vite build --config vite.api.config.ts && bun scripts/fix-dts-extensions.ts",
     "fix:dts": "bun scripts/fix-dts-extensions.ts",
     "postinstall": "chmod +x node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true",
-    "e2e:cli": "node scripts/e2e-cli.mjs"
+    "e2e:cli": "node scripts/e2e-cli.mjs",
+    "e2e:desktop": "playwright test -c playwright.desktop.config.ts"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.3",
