@@ -26,7 +26,7 @@
     "postinstall": "chmod +x node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true",
     "e2e:cli": "node scripts/e2e-cli.mjs",
     "e2e:desktop": "playwright test -c playwright.desktop.config.ts",
-    "preinstall": "npx only-allow pnpm"
+    "preinstall": "node -e \"if(!/\\bpnpm\\//.test(process.env.npm_config_user_agent||''))throw new Error('Use pnpm to install dependencies (this repo is pnpm-only).')\""
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.3",

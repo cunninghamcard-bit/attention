@@ -1,10 +1,12 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test } from "../fixtures/electronApp";
 
 // DeepChat lesson #2 (their 03-session-persistence): the `launchApp` factory
 // makes restart tests one-liners — do something, close, relaunch, assert it
 // survived. Here: the workspace layout (an open image tab) must round-trip
 // through the vault's .obsidian/workspace.json.
-test("restores the open tab across an app restart", async ({ launchApp }) => {
+test("restores the open tab across an app restart", async ({ launchApp, vaultPath }) => {
   const first = await launchApp();
 
   const file = first.page.locator('.nav-file-title[data-path="Pics/pic.png"]');
@@ -17,6 +19,10 @@ test("restores the open tab across an app restart", async ({ launchApp }) => {
   // The layout save is debounced; give it a beat before killing the app.
   await first.page.waitForTimeout(2_000);
   await first.close();
+
+  // The layout must be ON DISK between the two runs (vaultPath is the
+  // fixture-owned throwaway vault).
+  expect(existsSync(join(vaultPath, ".obsidian", "workspace.json"))).toBe(true);
 
   const second = await launchApp();
   await expect(second.page.locator(".workspace-leaf .image-container img").first()).toBeVisible({ timeout: 20_000 });

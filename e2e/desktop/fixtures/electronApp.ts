@@ -43,21 +43,28 @@ function seedVault(vault: string): void {
 }
 
 export const test = base.extend<ArkloopFixtures>({
+  // Owns the throwaway workspace: tests that read/write vault files depend on
+  // this for the real on-disk path; launchApp builds its env from it.
   vaultPath: async ({}, use) => {
-    await use("");
+    const base = mkdtempSync(join(tmpdir(), "arkloop-desktop-e2e-"));
+    const vault = join(base, "vault");
+    seedVault(vault);
+    try {
+      await use(vault);
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
   },
 
-  launchApp: async ({}, use, testInfo) => {
+  launchApp: async ({ vaultPath }, use, testInfo) => {
     if (!existsSync(MAIN_CJS)) {
       throw new Error("dist-electron/main.cjs missing — run: pnpm run build && pnpm run build:electron");
     }
 
-    const base = mkdtempSync(join(tmpdir(), "arkloop-desktop-e2e-"));
-    const vault = join(base, "vault");
-    seedVault(vault);
+    const base = dirname(vaultPath);
     const env = {
       ...process.env,
-      ARKLOOP_VAULT_PATH: vault,
+      ARKLOOP_VAULT_PATH: vaultPath,
       ARKLOOP_USER_DATA: join(base, "userData"),
       ARKLOOP_CLI_SOCKET: join(base, "cli.sock"),
     };
@@ -93,9 +100,6 @@ export const test = base.extend<ArkloopFixtures>({
       return instance;
     };
 
-    // Tests read the vault path off the env the fixture owns.
-    (launchApp as unknown as { vaultPath: string }).vaultPath = vault;
-
     try {
       await use(launchApp);
     } finally {
@@ -108,7 +112,9 @@ export const test = base.extend<ArkloopFixtures>({
         body: Buffer.from(pageErrors.join("\n") || "No renderer page errors"),
         contentType: "text/plain",
       });
-      rmSync(base, { recursive: true, force: true });
+      // An uncaught renderer exception fails the test even when every UI
+      // assertion passed — desktop usability means a clean renderer.
+      expect.soft(pageErrors, "renderer page errors").toEqual([]);
     }
   },
 
