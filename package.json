@@ -39,7 +39,7 @@
     "oxlint": "^1.70.0",
     "publint": "^0.3.21",
     "rollup-plugin-visualizer": "^7.0.1",
-    "typescript": "latest",
+    "typescript": "^7.0.2",
     "vite": "latest",
     "vite-plugin-dts": "^5.0.2",
     "vitest": "^4.1.9"
