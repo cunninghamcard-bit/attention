@@ -2,7 +2,7 @@ import { createDiv, createEl } from "../dom/dom";
 import { View } from "./View";
 import { Menu, MenuItem } from "../ui/Menu";
 import { setIcon } from "../ui/Icon";
-import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
+import type { WorkspaceLeaf } from "./workspace/WorkspaceLeaf";
 import type { DragDropResult, DragSource } from "../ui/drag/DragManager";
 import { Keymap } from "../app/hotkeys/Keymap";
 import { Platform } from "../platform/Platform";

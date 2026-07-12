@@ -1,7 +1,7 @@
-import type { Workspace } from "../../workspace/Workspace";
-import { WorkspaceParent } from "../../workspace/WorkspaceParent";
-import type { WorkspaceItem } from "../../workspace/WorkspaceItem";
-import { WorkspaceLeaf } from "../../workspace/WorkspaceLeaf";
+import type { Workspace } from "../../views/workspace/Workspace";
+import { WorkspaceParent } from "../../views/workspace/WorkspaceParent";
+import type { WorkspaceItem } from "../../views/workspace/WorkspaceItem";
+import { WorkspaceLeaf } from "../../views/workspace/WorkspaceLeaf";
 import { setChildrenInPlace } from "../../dom/dom";
 import { setIcon } from "../../ui/Icon";
 

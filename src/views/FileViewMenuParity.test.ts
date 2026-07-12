@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
 import { Menu } from "../ui/Menu";
-import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
+import type { WorkspaceLeaf } from "./workspace/WorkspaceLeaf";
 import { TFile, type TAbstractFile } from "../vault/TAbstractFile";
 import { FileView } from "./FileView";
 

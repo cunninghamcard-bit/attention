@@ -1,7 +1,7 @@
 import type { App } from "../app/App";
 import { getTimestampForPastedImage, type AttachmentImportData, type AttachmentImportFile } from "../app/AttachmentImport";
-import { deleteFrontmatterProperty, mergeFrontmatterValues, parseFrontmatter, renameFrontmatterProperty, serializeFrontmatter, updateFrontmatter } from "../properties/Frontmatter";
-import type { PropertyValue } from "../properties/PropertyTypes";
+import { deleteFrontmatterProperty, mergeFrontmatterValues, parseFrontmatter, renameFrontmatterProperty, serializeFrontmatter, updateFrontmatter } from "../views/properties/Frontmatter";
+import type { PropertyValue } from "../views/properties/PropertyTypes";
 import { ConfirmationModal } from "../ui/Modal";
 import type { DataWriteOptions } from "./DataAdapter";
 import { validateRenamePromptName } from "./FileNameValidation";

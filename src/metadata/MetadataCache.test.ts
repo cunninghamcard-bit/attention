@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { iterateCacheRefs, iterateRefs, MetadataCache } from "./MetadataCache";
 import { MemoryMetadataCacheStore } from "./MetadataCacheStore";
 import { Vault, type VaultAdapter } from "../vault/Vault";
-import { ViewRegistry } from "../workspace/ViewRegistry";
+import { ViewRegistry } from "../views/workspace/ViewRegistry";
 import type { App } from "../app/App";
 
 describe("MetadataCache", () => {

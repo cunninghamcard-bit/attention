@@ -1,5 +1,5 @@
 import { normalizeViewStatePayload, View } from "./View";
-import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
+import type { WorkspaceLeaf } from "./workspace/WorkspaceLeaf";
 
 export class DeferredView extends View {
   protected viewState: unknown = {};

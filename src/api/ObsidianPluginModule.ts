@@ -56,19 +56,19 @@ import { ItemView } from "../views/ItemView";
 import { MarkdownView } from "../views/MarkdownView";
 import { TextFileView } from "../views/TextFileView";
 import { View } from "../views/View";
-import { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
-import { Workspace } from "../workspace/Workspace";
-import { WorkspaceContainer } from "../workspace/WorkspaceContainer";
-import { WorkspaceFloating } from "../workspace/WorkspaceFloating";
-import { WorkspaceItem } from "../workspace/WorkspaceItem";
-import { WorkspaceParent } from "../workspace/WorkspaceParent";
-import { WorkspaceRibbon } from "../workspace/WorkspaceRibbon";
-import { WorkspaceRoot } from "../workspace/WorkspaceRoot";
-import { WorkspaceSidedock } from "../workspace/WorkspaceSidedock";
-import { WorkspaceSplit } from "../workspace/WorkspaceSplit";
-import { WorkspaceTabs } from "../workspace/WorkspaceTabs";
-import { WorkspaceWindow } from "../workspace/WorkspaceWindow";
-import { ViewRegistry } from "../workspace/ViewRegistry";
+import { WorkspaceLeaf } from "../views/workspace/WorkspaceLeaf";
+import { Workspace } from "../views/workspace/Workspace";
+import { WorkspaceContainer } from "../views/workspace/WorkspaceContainer";
+import { WorkspaceFloating } from "../views/workspace/WorkspaceFloating";
+import { WorkspaceItem } from "../views/workspace/WorkspaceItem";
+import { WorkspaceParent } from "../views/workspace/WorkspaceParent";
+import { WorkspaceRibbon } from "../views/workspace/WorkspaceRibbon";
+import { WorkspaceRoot } from "../views/workspace/WorkspaceRoot";
+import { WorkspaceSidedock } from "../views/workspace/WorkspaceSidedock";
+import { WorkspaceSplit } from "../views/workspace/WorkspaceSplit";
+import { WorkspaceTabs } from "../views/workspace/WorkspaceTabs";
+import { WorkspaceWindow } from "../views/workspace/WorkspaceWindow";
+import { ViewRegistry } from "../views/workspace/ViewRegistry";
 import {
   apiVersion,
   arrayBufferToBase64,

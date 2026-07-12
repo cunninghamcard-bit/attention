@@ -1,6 +1,6 @@
 import type { App } from "../../app/App";
 import { setActiveWindow } from "../../dom/ActiveDocument";
-import type { WorkspaceWindow } from "../../workspace/WorkspaceWindow";
+import type { WorkspaceWindow } from "../../views/workspace/WorkspaceWindow";
 
 export interface AppWindowState {
   id: string;

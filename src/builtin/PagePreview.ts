@@ -3,7 +3,7 @@ import type { SettingTab } from "../app/SettingRegistry";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../plugin/InternalPluginWrapper";
 import { Setting, SettingGroup } from "../ui/Setting";
-import type { HoverLinkSource } from "../workspace/WorkspaceHover";
+import type { HoverLinkSource } from "../views/workspace/WorkspaceHover";
 import { setIcon } from "../ui/Icon";
 
 export type PagePreviewOverrides = Record<string, boolean>;

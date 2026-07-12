@@ -1,6 +1,6 @@
 import { EmptyView } from "./EmptyView";
 import { normalizeViewStatePayload } from "./View";
-import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
+import type { WorkspaceLeaf } from "./workspace/WorkspaceLeaf";
 
 export class UnknownView extends EmptyView {
   protected unknownState: unknown = {};

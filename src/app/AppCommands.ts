@@ -9,7 +9,7 @@ import { Notice } from "../ui/Notice";
 import { Menu } from "../ui/Menu";
 import { MoveFileModal } from "../vault/MoveFileModal";
 import type { TFile } from "../vault/TAbstractFile";
-import { WorkspaceTabs } from "../workspace/WorkspaceTabs";
+import { WorkspaceTabs } from "../views/workspace/WorkspaceTabs";
 import { Platform } from "../platform/Platform";
 
 export function registerAppCommands(app: App): void {

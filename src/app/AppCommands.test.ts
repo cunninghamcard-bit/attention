@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import { MarkdownView } from "../views/MarkdownView";
-import { WorkspaceTabs } from "../workspace/WorkspaceTabs";
+import { WorkspaceTabs } from "../views/workspace/WorkspaceTabs";
 
 describe("AppCommands Obsidian file operation commands", () => {
   beforeEach(() => {

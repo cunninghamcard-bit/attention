@@ -19,9 +19,9 @@ import {
   serializeFrontmatterProperties,
   setFrontmatterProperty,
   updateFrontmatter,
-} from "../properties/Frontmatter";
-import { PropertyTypeMismatchModal } from "../properties/PropertyTypeMismatchModal";
-import type { PropertyDefinition, PropertyType, PropertyValue } from "../properties/PropertyTypes";
+} from "./properties/Frontmatter";
+import { PropertyTypeMismatchModal } from "./properties/PropertyTypeMismatchModal";
+import type { PropertyDefinition, PropertyType, PropertyValue } from "./properties/PropertyTypes";
 import { Menu } from "../ui/Menu";
 import { Notice } from "../ui/Notice";
 import { setIcon } from "../ui/Icon";

@@ -4,7 +4,7 @@ import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../plugin/InternalPluginWrapper";
 import { ItemView } from "../views/ItemView";
 import { MarkdownView } from "../views/MarkdownView";
-import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
+import type { WorkspaceLeaf } from "../views/workspace/WorkspaceLeaf";
 import { TFile, TFolder } from "../vault/TAbstractFile";
 import type { DragSource } from "../ui/drag/DragManager";
 

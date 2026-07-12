@@ -3,7 +3,7 @@ import type { Editor } from "../../editor/Editor";
 import { TFile, type TAbstractFile } from "../../vault/TAbstractFile";
 import type { View } from "../../views/View";
 import { MarkdownView } from "../../views/MarkdownView";
-import type { WorkspaceLeaf } from "../../workspace/WorkspaceLeaf";
+import type { WorkspaceLeaf } from "../../views/workspace/WorkspaceLeaf";
 import { Menu } from "../../ui/Menu";
 import { readClipboardText, writeClipboardText } from "../../dom/Clipboard";
 

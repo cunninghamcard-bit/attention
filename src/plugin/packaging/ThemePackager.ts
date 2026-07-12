@@ -1,5 +1,5 @@
-import type { ThemePackage } from "../../theme-market/ThemeManifest";
-import { ThemeManifestValidator } from "../../theme-market/ThemeManifestValidator";
+import type { ThemePackage } from "../../builtin/theme-market/ThemeManifest";
+import { ThemeManifestValidator } from "../../builtin/theme-market/ThemeManifestValidator";
 
 export interface PackagedThemeArtifact {
   id: string;

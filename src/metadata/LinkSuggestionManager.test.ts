@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { LinkSuggestionManager } from "./LinkSuggestionManager";
 import { MetadataCache } from "./MetadataCache";
 import { Vault, type VaultAdapter } from "../vault/Vault";
-import { ViewRegistry } from "../workspace/ViewRegistry";
+import { ViewRegistry } from "../views/workspace/ViewRegistry";
 import type { App } from "../app/App";
 
 describe("LinkSuggestionManager", () => {

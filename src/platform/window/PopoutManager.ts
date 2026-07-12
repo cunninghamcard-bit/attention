@@ -1,6 +1,6 @@
 import type { App } from "../../app/App";
-import type { WorkspaceLeaf } from "../../workspace/WorkspaceLeaf";
-import type { WorkspaceWindow } from "../../workspace/WorkspaceWindow";
+import type { WorkspaceLeaf } from "../../views/workspace/WorkspaceLeaf";
+import type { WorkspaceWindow } from "../../views/workspace/WorkspaceWindow";
 
 export interface PopoutState {
   id: string;

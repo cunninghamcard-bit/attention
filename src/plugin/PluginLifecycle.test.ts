@@ -10,7 +10,7 @@ import { MarkdownRenderer, type MarkdownCodeBlockProcessor, type MarkdownPostPro
 import { EditorSuggest, type EditorSuggestTriggerInfo } from "../ui/suggest/EditorSuggest";
 import { ItemView } from "../views/ItemView";
 import { MarkdownView } from "../views/MarkdownView";
-import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
+import type { WorkspaceLeaf } from "../views/workspace/WorkspaceLeaf";
 import { InternalPluginWrapper } from "./InternalPluginWrapper";
 import { Plugin } from "./Plugin";
 import type { PluginManifest, PluginPackage } from "./PluginManifest";

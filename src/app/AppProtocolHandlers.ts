@@ -1,7 +1,7 @@
 import type { App } from "./App";
 import { Notice } from "../ui/Notice";
 import { TFile, TFolder } from "../vault/TAbstractFile";
-import type { LeafOpenMode } from "../workspace/Workspace";
+import type { LeafOpenMode } from "../views/workspace/Workspace";
 import { readClipboardText, writeClipboardText } from "../dom/Clipboard";
 import { parseLinktext } from "../metadata/Linkpath";
 import type { ObsidianProtocolData } from "./protocol/UriRouter";

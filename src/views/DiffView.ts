@@ -3,7 +3,7 @@ import { acceptChunk, getChunks, goToNextChunk, goToPreviousChunk, rejectChunk, 
 import type { App } from "../app/App";
 import type { TFile } from "../vault/TAbstractFile";
 import type { ViewStateResult } from "./View";
-import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
+import type { WorkspaceLeaf } from "./workspace/WorkspaceLeaf";
 import { CodeFileView } from "./CodeFileView";
 
 /**

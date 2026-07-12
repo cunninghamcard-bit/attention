@@ -1,6 +1,6 @@
 import { getActiveDocument } from "../../dom/ActiveDocument";
 import { Platform } from "../../platform/Platform";
-import type { PaneType } from "../../workspace/Workspace";
+import type { PaneType } from "../../views/workspace/Workspace";
 import {
   compileModifiers,
   decompileModifiers,
