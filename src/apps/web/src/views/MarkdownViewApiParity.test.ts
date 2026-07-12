@@ -261,7 +261,7 @@ describe("MarkdownView public API parity", () => {
   it("does not keep data-icon assignments in MarkdownView source", async () => {
     const fs = await import("node:" + "fs") as { readFileSync(path: string, encoding: "utf8"): string };
     const cwd = (globalThis as unknown as { process: { cwd(): string } }).process.cwd();
-    const source = fs.readFileSync(`${cwd}/src/views/MarkdownView.ts`, "utf8");
+    const source = fs.readFileSync(`${cwd}/src/apps/web/src/views/MarkdownView.ts`, "utf8");
 
     expect(source).not.toContain("dataset.icon");
   });

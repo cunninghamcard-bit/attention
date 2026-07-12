@@ -30,7 +30,7 @@ const forbiddenCoreSelectors = [
 
 describe("Obsidian CSS contract", () => {
   it("keeps the default startup surface on the real Obsidian app.css artifact", async () => {
-    const mainSource = await readProjectFile("src/main.ts");
+    const mainSource = await readProjectFile("src/apps/web/src/main.ts");
     const cssImports = [...mainSource.matchAll(/import\s+["']([^"']+\.css)["'];?/g)].map((match) => match[1]);
 
     expect(cssImports).toEqual(defaultCssImports);
@@ -52,10 +52,10 @@ describe("Obsidian CSS contract", () => {
 async function getQuarantinedCssFiles(): Promise<string[]> {
   const fs = await loadFileSystemModule();
   return [
-    "src/app/theme/obsidian-structure.css",
-    ...fs.readdirSync("src/app/theme/reconstruction")
+    "src/apps/web/src/app/theme/obsidian-structure.css",
+    ...fs.readdirSync("src/apps/web/src/app/theme/reconstruction")
       .filter((name) => name.endsWith(".css"))
-      .map((name) => `src/app/theme/reconstruction/${name}`)
+      .map((name) => `src/apps/web/src/app/theme/reconstruction/${name}`)
       .sort(),
   ];
 }

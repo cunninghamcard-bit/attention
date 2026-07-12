@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import { builtinModules } from "node:module";
 
@@ -16,16 +17,25 @@ const nodeBuiltins = new Set([
 ]);
 
 export default defineConfig({
+  // The desktop main imports its two shared items (SystemMenuItem, URL_SCHEME)
+  // from the web package as `@app/web/*`; alias it to the web source so the
+  // electron bundle resolves the .ts directly (web exports "./*": "./src/*").
+  resolve: {
+    alias: {
+      "@app/web": resolve(__dirname, "../web/src"),
+    },
+  },
   build: {
-    outDir: "dist-electron",
+    // Emit to repo-root dist-electron/ (electron dist-electron/main.cjs).
+    outDir: resolve(__dirname, "../../../dist-electron"),
     emptyOutDir: true,
     target: "node20",
     minify: false,
     sourcemap: true,
     lib: {
       entry: {
-        main: "electron/main.ts",
-        preload: "electron/preload.ts",
+        main: resolve(__dirname, "main.ts"),
+        preload: resolve(__dirname, "preload.ts"),
       },
       formats: ["cjs"],
       fileName: (_format, entryName) => `${entryName}.cjs`,

@@ -1,4 +1,4 @@
-import "../styles/index.css";
+import "../../styles/index.css";
 import { applyObsidianBodyClasses, installFocusBodyClassSync } from "../BodyClasses";
 import { FrameDom } from "../FrameDom";
 import { StarterScreen, type StarterIpc } from "./StarterScreen";

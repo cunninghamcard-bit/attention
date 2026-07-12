@@ -13,13 +13,13 @@
 // breaks every other file's DOM-typed timers — so this references just the
 // submodule .d.ts files it needs (their own `declare module "node:x"` blocks
 // don't reference globals.d.ts) instead of widening the shared config.
-/// <reference path="../../../node_modules/@types/node/child_process.d.ts" />
-/// <reference path="../../../node_modules/@types/node/fs.d.ts" />
-/// <reference path="../../../node_modules/@types/node/os.d.ts" />
-/// <reference path="../../../node_modules/@types/node/path.d.ts" />
-/// <reference path="../../../node_modules/@types/node/process.d.ts" />
-/// <reference path="../../../node_modules/@types/node/buffer.d.ts" />
-/// <reference path="../../../node_modules/@types/node/events.d.ts" />
+/// <reference path="../../../../../../node_modules/@types/node/child_process.d.ts" />
+/// <reference path="../../../../../../node_modules/@types/node/fs.d.ts" />
+/// <reference path="../../../../../../node_modules/@types/node/os.d.ts" />
+/// <reference path="../../../../../../node_modules/@types/node/path.d.ts" />
+/// <reference path="../../../../../../node_modules/@types/node/process.d.ts" />
+/// <reference path="../../../../../../node_modules/@types/node/buffer.d.ts" />
+/// <reference path="../../../../../../node_modules/@types/node/events.d.ts" />
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdtempSync } from "node:fs";

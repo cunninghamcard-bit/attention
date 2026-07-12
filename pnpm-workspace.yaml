@@ -1,3 +1,8 @@
+packages:
+  - src/apps/desktop
+  - src/apps/web
+  - src/apps/server
+
 supportedArchitectures:
   os:
     - current

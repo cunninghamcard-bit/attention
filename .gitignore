@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-electron/
+dist-server/
 coverage/
 test-results/
 playwright-report/
