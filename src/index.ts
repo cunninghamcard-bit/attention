@@ -113,6 +113,7 @@ export * from "./terminal/TerminalService";
 export * from "./terminal/TerminalAdapter";
 export * from "./terminal/GhosttyTerminalRenderer";
 export * from "./git/GitService";
+export { GitHubService } from "./github/GitHubService";
 export * from "./builtin/GitChangesView";
 export * from "./builtin/GitHistoryView";
 export * from "./builtin/Bookmarks";
