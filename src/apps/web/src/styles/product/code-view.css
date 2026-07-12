@@ -16,11 +16,14 @@
   color: var(--code-normal);
 }
 .code-file-view .cm-gutters {
-  background: transparent;
+  /* Opaque: the gutter is position:sticky, so horizontally-scrolled code
+   * slides underneath it — a transparent background lets that code show
+   * through and the line numbers appear to float on top of it. */
+  background: var(--background-primary);
   border-right: none;
   color: var(--text-faint);
 }
 .code-file-view .cm-activeLineGutter {
-  background: transparent;
+  background: var(--background-primary);
   color: var(--text-muted);
 }
