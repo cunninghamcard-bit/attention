@@ -1,6 +1,6 @@
 import type { App } from "../../../app/App";
-import { formatDate } from "../../DailyNotes";
-import type { TemplatesController } from "../../Templates";
+import { formatDate } from "../../../builtin/DailyNotes";
+import type { TemplatesController } from "../../../builtin/Templates";
 import { TFile, TFolder } from "../../../vault/TAbstractFile";
 
 /**

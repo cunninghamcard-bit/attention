@@ -1,6 +1,6 @@
 import { Component } from "../core/Component";
 import type { App } from "../app/App";
-import type { CliFlags, CliHandler } from "../builtin/cli/Cli";
+import type { CliFlags, CliHandler } from "../app/cli/Cli";
 import type { Command } from "../app/commands/CommandManager";
 import type { SettingTab } from "../app/SettingRegistry";
 import type { ViewCreator } from "../views/workspace/ViewRegistry";

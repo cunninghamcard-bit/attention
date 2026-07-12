@@ -4,7 +4,7 @@
     "**/*.css",
     "**/*.md",
     "**/public/**",
-    "src/apps/web/src/styles/**",
-    "src/apps/web/src/app/theme/reconstruction/**"
+    "apps/web/src/styles/**",
+    "apps/web/src/app/theme/reconstruction/**"
   ]
 }

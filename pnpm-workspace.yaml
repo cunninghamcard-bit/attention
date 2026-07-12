@@ -1,7 +1,7 @@
 packages:
-  - src/apps/desktop
-  - src/apps/web
-  - src/apps/server
+  - apps/desktop
+  - apps/web
+  - apps/server
   - tests
 
 supportedArchitectures:

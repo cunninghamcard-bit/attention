@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Cli, fuzzySuggest, type CliData } from "@web/builtin/cli/Cli";
+import { Cli, fuzzySuggest, type CliData } from "@web/app/cli/Cli";
 
 // Clean the globals `init` installs so tests never leak into each other.
 afterEach(() => {

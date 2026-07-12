@@ -1,8 +1,8 @@
-<!-- docwright:governs: src/apps/** -->
+<!-- docwright:governs: apps/** -->
 
 # Architecture
 
-This document governs `src/apps/**`. `docwright guard` flags it as drift when
+This document governs `apps/**`. `docwright guard` flags it as drift when
 the directory tree, the runtime split, or the import rules below stop matching
 the code — keep the doc and the tree in step or the guard goes red.
 
@@ -15,13 +15,13 @@ product name appears in the tree, only in the git remote.
 
 ```
 .
-├── src/apps/            three runtime packages — the only workspace packages
+├── apps/            three runtime packages — the only workspace packages
 │   ├── desktop/         @app/desktop — Electron main + preload; the thin native shell
 │   ├── web/             @app/web — the product; browser tech, node powers under the shell
 │   └── server/          @app/server — agent sidecar (loom kernel client, pi engine)
 ├── tests/               ALL unit tests, centralized (workspace member @app/tests):
-│   ├── web/             mirrors src/apps/web/src/** — imports via @web/*
-│   ├── desktop/         mirrors src/apps/desktop/** — imports via @desktop/*
+│   ├── web/             mirrors apps/web/src/** — imports via @web/*
+│   ├── desktop/         mirrors apps/desktop/** — imports via @desktop/*
 │   ├── e2e/             Playwright end-to-end + the large-vault perf harness (PERF_VAULT)
 │   ├── architecture.test.ts   the architecture alarms (direction/lane/facade/freeze)
 │   └── package.json     declares the bare deps tests need (own pnpm lane)
@@ -44,7 +44,7 @@ holds dev tooling and scripts but **zero runtime dependencies**. Each runtime
 lane carries its own dependency table — web has no `electron`, desktop has no
 UI-framework dependency, server has only its agent engine.
 
-### `src/apps/web/src/` — the 16 source directories
+### `apps/web/src/` — the 16 source directories
 
 The web app collapses what used to be 55 flat directories into 16. Kernel
 domain names stay visible at the top; features live under one roof; families

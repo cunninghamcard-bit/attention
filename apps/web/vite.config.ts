@@ -2,10 +2,10 @@ import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import { visualizer } from "rollup-plugin-visualizer";
 
-// Config lives in the web app package (src/apps/web); the renderer bundle still
+// Config lives in the web app package (apps/web); the renderer bundle still
 // emits to the repo-root `dist/` the Electron main serves from (join(here, "..",
-// "dist") in src/apps/desktop/main.ts).
-const rootDist = resolve(__dirname, "../../../out/web");
+// "dist") in apps/desktop/main.ts).
+const rootDist = resolve(__dirname, "../../out/web");
 
 export default defineConfig({
   root: __dirname,

@@ -12,7 +12,7 @@ import { join, posix } from "node:path";
 
 // vitest's root config lives at the repo root, so tests always run with cwd there.
 const ROOT = process.cwd();
-const WEB_SRC = "src/apps/web/src";
+const WEB_SRC = "apps/web/src";
 
 function abs(...segments: string[]): string {
   return join(ROOT, ...segments);
@@ -53,7 +53,7 @@ function findLaneViolations(manifest: Manifest, forbidden: string[]): string[] {
 }
 
 interface SourceFile {
-  /** repo-relative, posix-separated, e.g. "src/apps/web/src/vault/Vault.ts" */
+  /** repo-relative, posix-separated, e.g. "apps/web/src/vault/Vault.ts" */
   path: string;
   /** raw import specifiers as written in the file */
   imports: string[];
@@ -64,7 +64,7 @@ function resolveRelativeImport(fromFile: string, specifier: string): string {
   return posix.normalize(posix.join(posix.dirname(fromFile), specifier));
 }
 
-/** First path segment under `src/apps/web/src/` that `resolvedPath` lands in, else null. */
+/** First path segment under `apps/web/src/` that `resolvedPath` lands in, else null. */
 function topLevelWebSrcDir(resolvedPath: string): string | null {
   const marker = `${WEB_SRC}/`;
   const idx = resolvedPath.indexOf(marker);
@@ -197,11 +197,11 @@ describe("Rule: runtime-walls — the workspace splits by runtime", () => {
   it("workspace declares desktop web and server app packages", () => {
     const packages = parseWorkspacePackages(readText("pnpm-workspace.yaml"));
 
-    expect(packages).toContain("src/apps/desktop");
-    expect(packages).toContain("src/apps/web");
-    expect(packages).toContain("src/apps/server");
+    expect(packages).toContain("apps/desktop");
+    expect(packages).toContain("apps/web");
+    expect(packages).toContain("apps/server");
 
-    for (const pkgDir of ["src/apps/desktop", "src/apps/web", "src/apps/server"]) {
+    for (const pkgDir of ["apps/desktop", "apps/web", "apps/server"]) {
       expect(existsSync(abs(pkgDir, "package.json")), `${pkgDir}/package.json should exist`).toBe(
         true,
       );
@@ -210,8 +210,8 @@ describe("Rule: runtime-walls — the workspace splits by runtime", () => {
 
   it("app package dependencies stay in their runtime lane", () => {
     const root: Manifest = JSON.parse(readText("package.json"));
-    const desktop: Manifest = JSON.parse(readText("src/apps/desktop/package.json"));
-    const web: Manifest = JSON.parse(readText("src/apps/web/package.json"));
+    const desktop: Manifest = JSON.parse(readText("apps/desktop/package.json"));
+    const web: Manifest = JSON.parse(readText("apps/web/package.json"));
 
     expect(Object.keys(root.dependencies ?? {})).toEqual([]);
     expect(findLaneViolations(desktop, ["react", "react-dom"])).toEqual([]);
@@ -454,7 +454,7 @@ describe("Rule: public-api surface freeze", () => {
   };
 
   it("public plugin surface stays frozen", () => {
-    expect(exportedNames("src/apps/web/src/api/PublicApi.ts")).toEqual([
+    expect(exportedNames("apps/web/src/api/PublicApi.ts")).toEqual([
       "AppearancePublicApi",
       "BasesPublicApi",
       "ObsidianPublicApi",
@@ -463,7 +463,7 @@ describe("Rule: public-api surface freeze", () => {
       "WorkspacePublicApi",
       "createPublicApi",
     ]);
-    expect(exportedNames("src/apps/web/src/api/ObsidianPluginModule.ts")).toEqual([
+    expect(exportedNames("apps/web/src/api/ObsidianPluginModule.ts")).toEqual([
       "DebouncedFunction",
       "Debouncer",
       "ObsidianPluginModule",
@@ -492,9 +492,9 @@ describe("Rule: ipc surface freeze", () => {
     const stub: unknown = new Proxy(() => stub, { get: () => stub, apply: () => stub });
     const mapChannels = Object.keys(createIpcHandlers(stub as never));
     const direct = [
-      "src/apps/desktop/main.ts",
-      "src/apps/desktop/foundation-ipc.ts",
-      "src/apps/desktop/desktop-bridge.ts",
+      "apps/desktop/main.ts",
+      "apps/desktop/foundation-ipc.ts",
+      "apps/desktop/desktop-bridge.ts",
     ].flatMap((file) =>
       [...readText(file).matchAll(/ipcMain\s*\.\s*(?:handle|on)\s*\(\s*"([^"]+)"/g)].map(
         (m) => m[1],

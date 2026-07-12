@@ -15,11 +15,11 @@ import { TagPaneView } from "./TagPaneView";
 import { OutlineView } from "./OutlineView";
 import { CanvasView } from "./canvas/CanvasView";
 import { MarkdownView } from "../views/MarkdownView";
-import { registerSearchCliHandlers } from "./cli/commands/searchCli";
+import { registerSearchCliHandlers } from "../app/cli/commands/searchCli";
 import {
   registerLinksCliHandlers,
   registerOutlineCliHandlers,
-} from "./cli/commands/linksOutlineCli";
+} from "../app/cli/commands/linksOutlineCli";
 import { createGraphPluginDefinition } from "./graph/GraphPlugin";
 import { createCommandPalettePluginDefinition } from "../app/commands/CommandPalette";
 import { createDailyNotesPluginDefinition } from "./DailyNotes";

@@ -31,8 +31,8 @@ All decisions were grilled and recorded; see research.md and
 learning-records/ 0001–0009.
 
 - Workspace: pnpm monorepo; the only packages are the three runtimes
-  `src/apps/desktop` (current electron/, main+preload thin shell),
-  `src/apps/web` (current src/, the product), `src/apps/server`
+  `apps/desktop` (current electron/, main+preload thin shell),
+  `apps/web` (current src/, the product), `apps/server`
   (current server/). Root package.json becomes a pure workspace yard
   with no runtime dependencies. Package names `@app/desktop`,
   `@app/web`, `@app/server` — deliberately product-name-free — all
@@ -134,7 +134,7 @@ Scenario: three app packages exist (critical)
   Test: workspace declares desktop web and server app packages
   Given the repository root
   When the workspace configuration is read
-  Then pnpm-workspace.yaml lists src/apps/desktop, src/apps/web and src/apps/server
+  Then pnpm-workspace.yaml lists apps/desktop, apps/web and apps/server
   And each app directory contains its own package.json
 
 Scenario: dependency tables are split by runtime

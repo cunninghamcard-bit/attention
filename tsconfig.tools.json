@@ -19,13 +19,13 @@
     "noEmit": true,
     "paths": {
       "@web/*": [
-        "./src/apps/web/src/*"
+        "./apps/web/src/*"
       ],
       "@desktop/*": [
-        "./src/apps/desktop/*"
+        "./apps/desktop/*"
       ],
       "@app/web/*": [
-        "./src/apps/web/src/*"
+        "./apps/web/src/*"
       ]
     }
   },
@@ -33,8 +33,8 @@
     "tests/e2e",
     "scripts",
     "vitest.config.ts",
-    "src/apps/web/vite.config.ts",
-    "src/apps/web/vite.api.config.ts",
-    "src/apps/server/vite.config.ts"
+    "apps/web/vite.config.ts",
+    "apps/web/vite.api.config.ts",
+    "apps/server/vite.config.ts"
   ]
 }

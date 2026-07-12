@@ -41,10 +41,10 @@ Other entry points:
 ## Repo map
 
 ```text
-src/apps/web              the product: vault, workspace, metadata, plugin system, builtin views
-src/apps/desktop          Electron main + preload — a thin native shell (@app/desktop)
-src/apps/server           server runtime (@app/server)
-src/apps/web/src/builtin  core plugins: agent, github, terminal, graph, canvas, git, webviewer, theme-market
+apps/web              the product: vault, workspace, metadata, plugin system, builtin views
+apps/desktop          Electron main + preload — a thin native shell (@app/desktop)
+apps/server           server runtime (@app/server)
+apps/web/src/builtin  core plugins: agent, github, terminal, graph, canvas, git, webviewer, theme-market
 docs/architecture.md      the real map — annotated tree, direction table, runtime topology, tradeoffs
 docs/architecture/        Spec-Driven Development records for structural work
 e2e/                      Playwright specs, including the large-vault perf harness

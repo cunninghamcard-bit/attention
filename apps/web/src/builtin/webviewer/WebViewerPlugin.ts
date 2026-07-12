@@ -1,6 +1,6 @@
 import type { App } from "../../app/App";
 import type { InternalPluginDefinition } from "../../plugin/InternalPlugin";
-import { registerWebCliHandlers } from "../cli/commands/wordcountWebCli";
+import { registerWebCliHandlers } from "../../app/cli/commands/wordcountWebCli";
 import type { InternalPluginWrapper } from "../../plugin/InternalPluginWrapper";
 import { Notice } from "../../ui/Notice";
 import { ConfirmationModal } from "../../ui/Modal";

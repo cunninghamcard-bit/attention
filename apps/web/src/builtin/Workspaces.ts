@@ -6,7 +6,7 @@ import type { WorkspaceLayout } from "../views/workspace/WorkspaceLayout";
 import { FuzzySuggestModal, type FuzzySuggestion } from "../ui/suggest/SuggestModal";
 import { Setting, SettingGroup } from "../ui/Setting";
 import { setIcon } from "../ui/Icon";
-import { registerWorkspacesCliHandlers } from "./cli/commands/workspacesCli";
+import { registerWorkspacesCliHandlers } from "../app/cli/commands/workspacesCli";
 
 export interface SavedWorkspace {
   name: string;

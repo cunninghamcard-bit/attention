@@ -15,11 +15,11 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "paths": {
-      "@web/*": ["./src/apps/web/src/*"],
-      "@desktop/*": ["./src/apps/desktop/*"],
-      "@app/web/*": ["./src/apps/web/src/*"]
+      "@web/*": ["./apps/web/src/*"],
+      "@desktop/*": ["./apps/desktop/*"],
+      "@app/web/*": ["./apps/web/src/*"]
     }
   },
-  "include": ["src/apps/web/src", "tests"],
+  "include": ["apps/web/src", "tests"],
   "exclude": ["tests/e2e"]
 }

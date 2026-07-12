@@ -1,6 +1,6 @@
 import type { App } from "../app/App";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
-import { registerWordCountCliHandlers } from "./cli/commands/wordcountWebCli";
+import { registerWordCountCliHandlers } from "../app/cli/commands/wordcountWebCli";
 import type { InternalPluginWrapper } from "../plugin/InternalPluginWrapper";
 import { MarkdownView } from "../views/MarkdownView";
 

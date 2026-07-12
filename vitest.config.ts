@@ -6,9 +6,9 @@ export default defineConfig({
     // Tests live centralized under tests/{web,desktop}/** (mirror paths)
     // and reach their subjects through these aliases.
     alias: {
-      "@app/web": resolve(__dirname, "src/apps/web/src"),
-      "@web": resolve(__dirname, "src/apps/web/src"),
-      "@desktop": resolve(__dirname, "src/apps/desktop"),
+      "@app/web": resolve(__dirname, "apps/web/src"),
+      "@web": resolve(__dirname, "apps/web/src"),
+      "@desktop": resolve(__dirname, "apps/desktop"),
     },
   },
   test: {

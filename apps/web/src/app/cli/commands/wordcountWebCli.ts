@@ -1,6 +1,6 @@
 import type { App } from "../../../app/App";
 import type { InternalPluginWrapper } from "../../../plugin/InternalPluginWrapper";
-import { countWords, stripFrontmatter } from "../../WordCount";
+import { countWords, stripFrontmatter } from "../../../builtin/WordCount";
 
 /**
  * Internal-plugin CLI batch: `wordcount` (carried by the word-count plugin)

@@ -92,8 +92,8 @@ import {
   syncObsidianConfigBodyClasses,
 } from "./BodyClasses";
 
-import { Cli } from "../builtin/cli/Cli";
-import { registerCliCommands } from "../builtin/cli/registerCliCommands";
+import { Cli } from "../app/cli/Cli";
+import { registerCliCommands } from "../app/cli/registerCliCommands";
 import { URL_SCHEME } from "./protocol/scheme";
 const localStorageFallback = new Map<string, string>();
 

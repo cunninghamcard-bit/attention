@@ -11,7 +11,7 @@ const nodeBuiltins = new Set([...builtinModules, ...builtinModules.map((name) =>
 
 export default defineConfig({
   build: {
-    outDir: resolve(__dirname, "../../../out/server"),
+    outDir: resolve(__dirname, "../../out/server"),
     emptyOutDir: true,
     target: "node20",
     minify: false,

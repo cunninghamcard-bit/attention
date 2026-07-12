@@ -1,6 +1,6 @@
 import { Component } from "../core/Component";
 import type { App } from "../app/App";
-import type { CliFlags, CliHandler } from "../builtin/cli/Cli";
+import type { CliFlags, CliHandler } from "../app/cli/Cli";
 import type { Command } from "../app/commands/CommandManager";
 import type { ThemeDefinition } from "../app/theme/ThemeManager";
 import type { CssSnippet } from "../app/theme/CssSnippetManager";

@@ -1,5 +1,5 @@
 import type { InternalPluginWrapper } from "../../../plugin/InternalPluginWrapper";
-import type { WorkspacesController } from "../../Workspaces";
+import type { WorkspacesController } from "../../../builtin/Workspaces";
 
 /**
  * Workspaces-plugin CLI batch (carried by the workspaces core plugin).

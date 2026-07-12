@@ -27,7 +27,7 @@ export default defineConfig({
   build: {
     // Emit into the single out/ roof (electron out/desktop/main.cjs); the web
     // bundle sits at the sibling out/web so main resolves it relatively.
-    outDir: resolve(__dirname, "../../../out/desktop"),
+    outDir: resolve(__dirname, "../../out/desktop"),
     emptyOutDir: true,
     target: "node20",
     minify: false,
