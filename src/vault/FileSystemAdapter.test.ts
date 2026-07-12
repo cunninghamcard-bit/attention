@@ -243,6 +243,40 @@ describe("FileSystemAdapter", () => {
 
     expect(created).toEqual(["folder:External", "folder:External/Nested", "file:External/Nested/Note.md"]);
   });
+
+  it("skips node_modules and other heavy directories during list and reconcile", async () => {
+    const { isVaultIndexSkippedPath } = await import("./FileSystemAdapter");
+    expect(isVaultIndexSkippedPath("node_modules")).toBe(true);
+    expect(isVaultIndexSkippedPath("src/node_modules/pkg")).toBe(true);
+    expect(isVaultIndexSkippedPath("dist")).toBe(true);
+    expect(isVaultIndexSkippedPath("src")).toBe(false);
+    expect(isVaultIndexSkippedPath("notes/dist-notes.md")).toBe(false);
+
+    await adapter.write("src/main.ts", "export {};\n");
+    await adapter.write("node_modules/pkg/index.js", "module.exports = 1;\n");
+    await adapter.write("dist/bundle.js", "/* built */\n");
+    await adapter.mkdir("coverage");
+    await adapter.write("coverage/lcov.info", "TN:\n");
+
+    const rootListed = await adapter.list("");
+    expect(rootListed.folders.sort()).toEqual(["src"]);
+    expect(rootListed.files).toEqual([]);
+
+    const created: string[] = [];
+    adapter.on("folder-created", (filePath) => created.push(`folder:${String(filePath)}`));
+    adapter.on("file-created", (filePath) => created.push(`file:${String(filePath)}`));
+    // Fresh adapter load path: reconcile root walks only non-skipped children.
+    const loadAdapter = new FileSystemAdapter(basePath);
+    loadAdapter.on("folder-created", (filePath) => created.push(`folder:${String(filePath)}`));
+    loadAdapter.on("file-created", (filePath) => created.push(`file:${String(filePath)}`));
+    await loadAdapter.reconcileInternalFile("");
+
+    expect(created.filter((entry) => entry.includes("node_modules"))).toEqual([]);
+    expect(created.filter((entry) => entry.includes("dist"))).toEqual([]);
+    expect(created.filter((entry) => entry.includes("coverage"))).toEqual([]);
+    expect(created).toContain("folder:src");
+    expect(created).toContain("file:src/main.ts");
+  });
 });
 
 async function importRuntimeModule<T>(specifier: string): Promise<T> {

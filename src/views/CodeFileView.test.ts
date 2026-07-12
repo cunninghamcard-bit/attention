@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { App } from "../app/App";
-import { CodeFileView } from "./CodeFileView";
+import { CODE_LARGE_FILE_CHARS, CodeFileView } from "./CodeFileView";
 
 describe("CodeFileView", () => {
   it("opens code files by extension and mirrors the document into CodeMirror", async () => {
@@ -97,5 +97,24 @@ describe("CodeFileView", () => {
     await view.save();
 
     await expect(app.vault.read(file)).resolves.toBe("a: 2\n");
+  });
+
+  it("skips language packs for large documents", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const body = `${"const x = 1;\n".repeat(Math.ceil(CODE_LARGE_FILE_CHARS / 12))}// end\n`;
+    expect(body.length).toBeGreaterThanOrEqual(CODE_LARGE_FILE_CHARS);
+    const file = await app.vault.create("huge.ts", body);
+
+    const leaf = await app.workspace.openFile(file, { active: true });
+    const view = leaf.view as CodeFileView;
+    // Allow async applyLanguage to settle.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const cm = (view as unknown as { cm: { state: { facet: (f: unknown) => unknown } } }).cm;
+    // Language compartment left empty: content still renders, no lezer language active.
+    expect(view.getViewData().length).toBe(body.length);
+    expect(view.contentEl.querySelector(".cm-content")?.textContent?.length).toBeGreaterThan(0);
+    expect(cm).toBeTruthy();
   });
 });
