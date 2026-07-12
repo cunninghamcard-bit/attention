@@ -136,8 +136,17 @@ export class QuickSwitcherModal extends FuzzySuggestModal<QuickSwitcherSuggestio
     });
   }
 
+  /** Item list frozen per modal open: on 20k-file vaults the enumerate+sort
+   * would otherwise run on every keystroke to render at most `limit` rows. */
+  private cachedItems: QuickSwitcherSuggestionItem[] | null = null;
+
+  override onOpen(): void {
+    this.cachedItems = null;
+    super.onOpen();
+  }
+
   getItems(): QuickSwitcherSuggestionItem[] {
-    return this.controller.getItems();
+    return this.cachedItems ??= this.controller.getItems();
   }
 
   getItemText(item: QuickSwitcherSuggestionItem): string {

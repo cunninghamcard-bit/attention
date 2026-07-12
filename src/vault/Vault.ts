@@ -804,8 +804,8 @@ export class Vault extends Events {
 
   private bindAdapterEvents(adapter: VaultAdapter): void {
     adapter.on?.("folder-created", (path) => this.handleAdapterCreate(String(path), "folder"));
-    adapter.on?.("file-created", (path) => this.handleAdapterCreate(String(path), "file"));
-    adapter.on?.("modified", (path) => this.handleAdapterModify(String(path)));
+    adapter.on?.("file-created", (path, stat) => this.handleAdapterCreate(String(path), "file", asAdapterStat(stat)));
+    adapter.on?.("modified", (path, stat) => this.handleAdapterModify(String(path), asAdapterStat(stat)));
     adapter.on?.("folder-removed", (path) => this.handleAdapterDelete(String(path)));
     adapter.on?.("file-removed", (path) => this.handleAdapterDelete(String(path)));
     adapter.on?.("renamed", (path, oldPath) => this.handleAdapterRename(String(path), String(oldPath)));
@@ -824,7 +824,7 @@ export class Vault extends Events {
     }
   }
 
-  private handleAdapterCreate(path: string, type: "file" | "folder"): void {
+  private handleAdapterCreate(path: string, type: "file" | "folder", stat?: VaultAdapterStat): void {
     if (!path || path === "/") {
       this.files.set(this.root.path, this.root);
       return;
@@ -832,18 +832,24 @@ export class Vault extends Events {
     if (this.files.has(path)) return;
     const parentPath = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
     if (parentPath && !this.files.has(parentPath)) this.handleAdapterCreate(parentPath, "folder");
-    const file = type === "folder" ? new TFolder(this, path) : new TFile(this, path);
+    // When the adapter's reconcile already read the entry's stat, apply it
+    // synchronously instead of issuing a second stat per file (mtime 0 marks
+    // the stat as unknown until the async refresh lands).
+    const file = type === "folder"
+      ? new TFolder(this, path)
+      : new TFile(this, path, stat ? toFileStats(stat) : { ctime: 0, mtime: 0, size: 0 });
     this.files.set(path, file);
     this.attachToParent(file);
-    if (file instanceof TFile) void this.refreshFileStat(file);
+    if (file instanceof TFile && !stat) void this.refreshFileStat(file);
     this.trigger("create", file);
   }
 
-  private handleAdapterModify(path: string): void {
+  private handleAdapterModify(path: string, stat?: VaultAdapterStat): void {
     const file = this.getFileByPath(path);
     if (!file) return;
     if (!file.saving) this.invalidateCachedRead(path);
-    void this.refreshFileStat(file);
+    if (stat) file.stat = toFileStats(stat, file.stat);
+    else void this.refreshFileStat(file);
     this.trigger("modify", file);
   }
 
@@ -1175,6 +1181,13 @@ function createFileStats(size: number, options?: DataWriteOptions, previous?: Fi
     mtime: options?.mtime ?? now,
     size,
   };
+}
+
+/** Accept an adapter event's optional stat payload only when it carries a real mtime. */
+function asAdapterStat(value: unknown): VaultAdapterStat | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const stat = value as VaultAdapterStat;
+  return typeof stat.mtime === "number" && stat.mtime > 0 ? stat : undefined;
 }
 
 function toFileStats(stat: VaultAdapterStat, previous?: FileStats): FileStats {

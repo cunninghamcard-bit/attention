@@ -814,3 +814,64 @@ describe("rename into a missing folder (adapter-parity ENOENT)", () => {
     expect(vault.getFileByPath("Sub/Note.md")).toBe(file);
   });
 });
+
+describe("Vault adapter stat threading", () => {
+  it("vault applies adapter-provided stats without re-statting", async () => {
+    const handlers = new Map<string, (...args: unknown[]) => void>();
+    const statSpy = vi.fn(async () => ({ ctime: 1, mtime: 2, size: 3 }));
+    const adapter = {
+      supportsEvents: true,
+      on: (name: string, handler: (...args: unknown[]) => void) => {
+        handlers.set(name, handler);
+        return { unregister: () => {} };
+      },
+      load: async () => {},
+      stat: statSpy,
+      read: async () => "",
+      write: async () => {},
+      delete: async () => {},
+      list: async () => ({ files: [], folders: [] }),
+    } as unknown as VaultAdapter;
+    const vault = new Vault(adapter);
+    await vault.load();
+
+    handlers.get("file-created")?.("Note.md", { type: "file", ctime: 100, mtime: 111, size: 5 });
+    const file = vault.getFileByPath("Note.md");
+
+    expect(file?.stat).toEqual({ ctime: 100, mtime: 111, size: 5 });
+    expect(statSpy).not.toHaveBeenCalled();
+
+    handlers.get("modified")?.("Note.md", { type: "file", ctime: 100, mtime: 222, size: 9 });
+    await Promise.resolve();
+
+    expect(file?.stat).toEqual({ ctime: 100, mtime: 222, size: 9 });
+    expect(statSpy).not.toHaveBeenCalled();
+  });
+
+  it("vault still refreshes stats via the adapter when events carry none", async () => {
+    const handlers = new Map<string, (...args: unknown[]) => void>();
+    const statSpy = vi.fn(async () => ({ ctime: 7, mtime: 8, size: 9 }));
+    const adapter = {
+      supportsEvents: true,
+      on: (name: string, handler: (...args: unknown[]) => void) => {
+        handlers.set(name, handler);
+        return { unregister: () => {} };
+      },
+      load: async () => {},
+      stat: statSpy,
+      read: async () => "",
+      write: async () => {},
+      delete: async () => {},
+      list: async () => ({ files: [], folders: [] }),
+    } as unknown as VaultAdapter;
+    const vault = new Vault(adapter);
+    await vault.load();
+
+    handlers.get("file-created")?.("Legacy.md");
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(statSpy).toHaveBeenCalledWith("Legacy.md");
+    expect(vault.getFileByPath("Legacy.md")?.stat).toMatchObject({ ctime: 7, mtime: 8, size: 9 });
+  });
+});

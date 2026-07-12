@@ -52,6 +52,32 @@ describe("MetadataCache", () => {
     });
   });
 
+  it("metadata indexing reuses in-memory file stats", async () => {
+    const vault = new Vault();
+    const metadataCache = new MetadataCache(vault);
+    const file = await vault.create("src/data.js", "export const x = 1;");
+    const statSpy = vi.fn(async () => ({ mtime: 1, size: 1 }));
+    Object.defineProperty(vault, "adapter", { configurable: true, value: { stat: statSpy } });
+
+    await metadataCache.computeFileMetadataAsync(file);
+
+    expect(file.stat.mtime).toBeGreaterThan(0);
+    expect(statSpy).not.toHaveBeenCalled();
+  });
+
+  it("metadata indexing falls back to adapter stat when in-memory stat is unknown", async () => {
+    const vault = new Vault();
+    const metadataCache = new MetadataCache(vault);
+    const file = await vault.create("src/other.js", "export const y = 2;");
+    file.stat = { ctime: 0, mtime: 0, size: 0 };
+    const statSpy = vi.fn(async () => ({ mtime: 4321, size: 7 }));
+    Object.defineProperty(vault, "adapter", { configurable: true, value: { stat: statSpy } });
+
+    await metadataCache.computeFileMetadataAsync(file);
+
+    expect(statSpy).toHaveBeenCalledWith("src/other.js");
+  });
+
   it("emits changed with source text and debounces finished after vault modifications", async () => {
     vi.useFakeTimers();
     try {

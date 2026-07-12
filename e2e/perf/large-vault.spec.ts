@@ -103,12 +103,16 @@ test("per-click latency on a huge vault", async ({}, testInfo) => {
       }, `notes/note-${i % 4}.md`);
       openFile.push(ms);
     }
+    // Emit phase-1 numbers immediately so a later crash cannot lose them.
+    console.log(`PERF_PHASE1 ${JSON.stringify({ junkFiles: JUNK_FILES, vaultReadyMs, openFile, openFileMedian: median(openFile) })}`);
 
-    // Physical explorer clicks: expand notes folder first if needed, then
-    // click alternating visible notes; measure click dispatch -> file-open ->
-    // double-rAF in-page.
+    // Physical explorer clicks: ensure the notes folder is expanded (it starts
+    // expanded on a fully-expanded first paint; clicking it would collapse it),
+    // then click alternating visible notes; measure click dispatch ->
+    // file-open -> double-rAF in-page.
     const notesFolder = page.locator(".nav-folder-title", { hasText: "notes" }).first();
-    await notesFolder.click();
+    const notesCollapsed = await notesFolder.evaluate((el) => el.closest(".nav-folder")?.classList.contains("is-collapsed") ?? false);
+    if (notesCollapsed) await notesFolder.click();
     const explorerClick: number[] = [];
     for (let i = 0; i < 6; i++) {
       const target = `note-${4 + (i % 2)}`;
@@ -131,6 +135,49 @@ test("per-click latency on a huge vault", async ({}, testInfo) => {
       explorerClick.push(await waitPaint);
     }
 
+    // Attribution: detach the file-explorer leaf and re-measure pure switches.
+    // The delta vs openFile is the explorer's per-click share; the remainder
+    // is every other file-open/active-leaf consumer plus the view swap itself.
+    await page.evaluate(() => {
+      const anyWin = window as unknown as { app: { workspace: { getLeavesOfType: (type: string) => Array<{ detach: () => void }> } } };
+      for (const leaf of anyWin.app.workspace.getLeavesOfType("file-explorer")) leaf.detach();
+    });
+    const openFileNoExplorer: number[] = [];
+    for (let i = 0; i < 8; i++) {
+      const ms = await page.evaluate(async (name) => {
+        const anyWin = window as unknown as { app: { workspace: { openLinkText: (link: string, from: string, newLeaf: boolean) => Promise<void> } } };
+        const start = performance.now();
+        await anyWin.app.workspace.openLinkText(name, "/", false);
+        await new Promise<void>((resolveFrame) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolveFrame())));
+        return Math.round(performance.now() - start);
+      }, `notes/note-${i % 4}.md`);
+      openFileNoExplorer.push(ms);
+    }
+
+    // Quick switcher: open, then measure per-keystroke suggestion latency.
+    const switcher = await page.evaluate(async (chars) => {
+      const anyWin = window as unknown as { app: { commands: { executeCommandById: (id: string) => boolean } } };
+      const openStart = performance.now();
+      anyWin.app.commands.executeCommandById("switcher:open");
+      await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+      const openMs = Math.round(performance.now() - openStart);
+      const input = document.querySelector<HTMLInputElement>(".prompt input");
+      if (!input) return { openMs, keystroke: [] as number[] };
+      const keystroke: number[] = [];
+      for (const ch of chars) {
+        const start = performance.now();
+        input.value += ch;
+        input.dispatchEvent(new Event("input"));
+        await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+        keystroke.push(Math.round(performance.now() - start));
+      }
+      document.querySelector<HTMLElement>(".modal-close-button")?.click();
+      (document.activeElement as HTMLElement | null)?.blur?.();
+      return { openMs, keystroke };
+    }, "note-3");
+    console.log(`PERF_SWITCHER ${JSON.stringify(switcher)}`);
+
     const longTasks = await page.evaluate(() => (window as unknown as { __longTasks: number[] }).__longTasks);
     const result = {
       junkFiles: JUNK_FILES,
@@ -139,6 +186,8 @@ test("per-click latency on a huge vault", async ({}, testInfo) => {
       openFileMedian: median(openFile),
       explorerClick,
       explorerClickMedian: median(explorerClick),
+      openFileNoExplorer,
+      openFileNoExplorerMedian: median(openFileNoExplorer),
       longTasksOver100ms: longTasks.filter((t) => t >= 100),
     };
     console.log(`PERF_RESULT ${JSON.stringify(result)}`);

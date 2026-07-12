@@ -814,6 +814,10 @@ export class MetadataCache extends Events {
   }
 
   private async getVaultFileStat(file: TFile): Promise<{ mtime: number; size: number } | null> {
+    // Vault reconcile/write paths maintain TFile.stat; a real mtime lets us
+    // skip one adapter stat round-trip per indexed file (mtime 0 = unknown,
+    // e.g. an adapter event that carried no stat and hasn't refreshed yet).
+    if (file.stat.mtime > 0) return { mtime: file.stat.mtime, size: file.stat.size };
     const adapter = this.vault.adapter as { stat?: (path: string) => Promise<{ mtime?: number; size?: number } | null> } | undefined;
     const stat = await adapter?.stat?.(file.path);
     if (stat?.mtime == null || stat.size == null) return null;

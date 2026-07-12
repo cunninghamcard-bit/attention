@@ -436,7 +436,7 @@ export class FileSystemAdapter extends DataAdapter {
 
     if (!previous) {
       this.files.set(path, entry);
-      this.trigger(entry.type === "folder" ? "folder-created" : "file-created", path);
+      this.trigger(entry.type === "folder" ? "folder-created" : "file-created", path, entry.type === "file" ? entry : undefined);
       if (entry.type === "folder") {
         if (!this.usesRecursiveWatcher()) await this.startWatchPath(path);
         await this.reconcileFolderChildren(path);
@@ -447,7 +447,7 @@ export class FileSystemAdapter extends DataAdapter {
     if (previous.type !== entry.type) {
       this.removeIndexedEntry(path, previous.type);
       this.files.set(path, entry);
-      this.trigger(entry.type === "folder" ? "folder-created" : "file-created", path);
+      this.trigger(entry.type === "folder" ? "folder-created" : "file-created", path, entry.type === "file" ? entry : undefined);
       if (entry.type === "folder") {
         if (!this.usesRecursiveWatcher()) await this.startWatchPath(path);
         await this.reconcileFolderChildren(path);
@@ -456,7 +456,7 @@ export class FileSystemAdapter extends DataAdapter {
     }
 
     this.files.set(path, entry);
-    if (entry.type === "file" && (previous.mtime !== entry.mtime || previous.size !== entry.size)) this.trigger("modified", path);
+    if (entry.type === "file" && (previous.mtime !== entry.mtime || previous.size !== entry.size)) this.trigger("modified", path, entry);
   }
 
   private removeIndexedEntry(path: string, type: "file" | "folder"): void {

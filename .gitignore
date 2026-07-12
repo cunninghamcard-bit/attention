@@ -13,3 +13,4 @@ playwright-report/
 # Local convenience symlink to the sibling reverse-engineering repo (not committed)
 decode-obsidian
 .obsidian/
+.agent-spec/
