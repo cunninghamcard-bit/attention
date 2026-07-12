@@ -23,8 +23,6 @@ product name appears in the tree, only in the git remote.
 │   ├── web/             mirrors src/apps/web/src/** — imports via @web/*
 │   ├── desktop/         mirrors src/apps/desktop/** — imports via @desktop/*
 │   ├── e2e/             Playwright end-to-end + the large-vault perf harness (PERF_VAULT)
-│   ├── fixtures/        inert test inputs: a sample vault + sample community
-│   │                    plugins (currently referenced by no automated test)
 │   ├── architecture.test.ts   the architecture alarms (direction/lane/facade/freeze)
 │   └── package.json     declares the bare deps tests need (own pnpm lane)
 
