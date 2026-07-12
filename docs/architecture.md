@@ -23,11 +23,11 @@ product name appears in the tree, only in the git remote.
 │   ├── web/             mirrors src/apps/web/src/** — imports via @web/*
 │   ├── desktop/         mirrors src/apps/desktop/** — imports via @desktop/*
 │   ├── e2e/             Playwright end-to-end + the large-vault perf harness (PERF_VAULT)
+│   ├── fixtures/        inert test inputs: a sample vault + sample community
+│   │                    plugins (currently referenced by no automated test)
 │   ├── architecture.test.ts   the architecture alarms (direction/lane/facade/freeze)
 │   └── package.json     declares the bare deps tests need (own pnpm lane)
 
-├── examples/            sample community plugins exercising the public api/ facade
-├── fixtures/            test vaults and other read-only test inputs
 ├── docs/                this file, the project constitution, and SDD goal folders
 ├── out/                 ALL transient outputs (reports, coverage) — gitignored
 ├── .githooks/           tracked git hooks (pre-commit guard + commit-msg lint),

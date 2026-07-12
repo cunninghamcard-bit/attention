@@ -1,4 +1,4 @@
-import { Plugin } from "../../../src/apps/web/src";
+import { Plugin } from "../../../../src/apps/web/src";
 
 export default class MarkdownProcessorPlugin extends Plugin {
   async onload(): Promise<void> {
@@ -7,7 +7,8 @@ export default class MarkdownProcessorPlugin extends Plugin {
     });
 
     this.registerMarkdownPostProcessor((root) => {
-      for (const strong of root.querySelectorAll("strong")) strong.classList.add("plugin-enhanced-strong");
+      for (const strong of root.querySelectorAll("strong"))
+        strong.classList.add("plugin-enhanced-strong");
     });
   }
 }

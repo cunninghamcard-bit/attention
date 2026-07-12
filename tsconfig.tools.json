@@ -3,8 +3,14 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["node"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "node"
+    ],
     "jsx": "react-jsx",
     "strict": false,
     "esModuleInterop": true,
@@ -12,15 +18,20 @@
     "resolveJsonModule": true,
     "noEmit": true,
     "paths": {
-      "@web/*": ["./src/apps/web/src/*"],
-      "@desktop/*": ["./src/apps/desktop/*"],
-      "@app/web/*": ["./src/apps/web/src/*"]
+      "@web/*": [
+        "./src/apps/web/src/*"
+      ],
+      "@desktop/*": [
+        "./src/apps/desktop/*"
+      ],
+      "@app/web/*": [
+        "./src/apps/web/src/*"
+      ]
     }
   },
   "include": [
     "tests/e2e",
     "scripts",
-    "examples",
     "playwright.config.ts",
     "playwright.desktop.config.ts",
     "vitest.config.ts",

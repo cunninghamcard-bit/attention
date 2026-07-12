@@ -395,7 +395,7 @@ describe("Rule: name-agnostic code — the retired product name is gone", () => 
       ".css",
       ".scss",
     ];
-    const scanDirs = ["src/apps", "tests", "scripts", "examples"];
+    const scanDirs = ["src/apps", "tests", "scripts"];
     const rootConfigFiles = [
       "package.json",
       "pnpm-workspace.yaml",
