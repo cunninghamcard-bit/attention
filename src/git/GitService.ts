@@ -120,6 +120,14 @@ export class GitService {
     return result?.code === 0 && result.stdout.trim() === "true";
   }
 
+  /** Remote URL for `name` (default origin); null when missing or git unavailable. */
+  async getRemoteUrl(name = "origin"): Promise<string | null> {
+    const result = await this.exec(["remote", "get-url", name]);
+    if (!result || result.code !== 0) return null;
+    const url = result.stdout.trim();
+    return url || null;
+  }
+
   /**
    * The file's content at HEAD; null when git is unavailable, the vault is
    * not a repository, or the file is untracked/new at HEAD.

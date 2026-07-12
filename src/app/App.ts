@@ -64,6 +64,7 @@ import { FileRecoveryService } from "../recovery/FileRecovery";
 import { WebViewerService } from "../webviewer/WebViewerService";
 import { TerminalService } from "../terminal/TerminalService";
 import { GitService } from "../git/GitService";
+import { GitHubService } from "../github/GitHubService";
 import { ThemeMarketplace } from "../theme-market/ThemeMarketplace";
 import { ThemeInstaller } from "../theme-market/ThemeInstaller";
 import { ApiDocGenerator } from "../docs/ApiDocGenerator";
@@ -160,6 +161,7 @@ export class App {
   readonly webViewer = new WebViewerService(this);
   readonly terminals = new TerminalService(this);
   readonly git = new GitService(this);
+  readonly github = new GitHubService(this);
   readonly themeMarketplace = new ThemeMarketplace();
   readonly themeInstaller = new ThemeInstaller(this);
   readonly apiDocs = new ApiDocGenerator(this);
