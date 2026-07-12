@@ -205,7 +205,7 @@ export class ReleaseNotesView extends ItemView {
   }
 }
 
-function mimeForExtension(extension: string | undefined, fallback: string): string {
+export function mimeForExtension(extension: string | undefined, fallback: string): string {
   switch (extension) {
     case "svg":
       return "image/svg+xml";

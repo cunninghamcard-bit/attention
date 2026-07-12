@@ -22,7 +22,7 @@ not-modeled = not included
 | Theme ecosystem | sketched | src/theme, src/theme-market |
 | Vault and scoped metadata | covered / scoped | src/vault, src/metadata, src/search; wiki-link resolver and TagIndex are not Obsidian parity targets |
 | Properties, query, Bases | covered | src/properties, src/query, src/bases |
-| Desktop shell | covered | electron/ bootable main (obsidian.json + vault registry, BrowserWindow lifecycle, app:// protocol, IPC table, obsidian:// routing, session hardening, native menu); src/desktop, src/native, src/shell wired to it. `bun run desktop` launches a real on-disk vault. |
+| Desktop shell | covered | electron/ bootable main (obsidian.json + vault registry, BrowserWindow lifecycle, app:// protocol, IPC table, obsidian:// routing, session hardening, native menu); src/desktop, src/native, src/shell wired to it. `pnpm run desktop` launches a real on-disk vault. |
 | Sync, publish, account | placeholder | src/sync, src/publish, src/account; service facades only, not product features |
 | Excluded Obsidian product features | not-modeled | docs/scope-boundary.md |
 | Diagnostics and devtools | covered | src/diagnostics, src/devtools |

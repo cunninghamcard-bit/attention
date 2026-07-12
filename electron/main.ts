@@ -2,7 +2,8 @@ import { app, BrowserWindow, ipcMain, screen, shell } from "electron";
 import { initialize as initializeRemote } from "@electron/remote/main";
 import { join } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
-import { createRendererWindow, defaultPreloadPath } from "./window";
+import { defaultPreloadPath } from "./window";
+import { isStarterOpen, openStarter } from "./starter-window";
 import { registerFoundationIpc } from "./foundation-ipc";
 import { mainState } from "./state";
 import { JsonStore } from "./json-store";
@@ -20,6 +21,16 @@ import { registerDesktopBridgeIpc } from "./desktop-bridge";
 import { LoomSidecar, resolveLoomSidecarConfig } from "./loom-sidecar";
 import { applyMenu, updateMenuItems } from "./menu";
 import type { SystemMenuItem } from "../src/desktop/SystemMenuBuilder";
+import { CliServer, defaultCliSocketPath } from "./cli/CliServer";
+import { runCliClient } from "./cli/CliClient";
+import { dispatchCli } from "./cli/CliDispatch";
+
+// The CLI args this instance was launched with — real Obsidian's `f(argv)`.
+// In dev (`electron .`) the executable and script lead argv[0..1]; packaged,
+// only the executable leads.
+function cliArgvFromProcess(argv: string[]): string[] {
+  return process.defaultApp ? argv.slice(2) : argv.slice(1);
+}
 
 /**
  * Electron main entry for the reconstructed Obsidian desktop app.
@@ -34,9 +45,20 @@ import type { SystemMenuItem } from "../src/desktop/SystemMenuBuilder";
 // build output dir where `preload.cjs` sits beside it.
 const here = __dirname;
 
+// Our own identity: userData resolves to ~/Library/Application Support/Arkloop
+// (etc.), never the generic Electron dir and never anything of real Obsidian's.
+// Must run before the first app.getPath("userData").
+app.setName("Arkloop");
+// Hermetic-test seam (mirrors ARKLOOP_VAULT_PATH): an isolated userData also
+// isolates the single-instance lock, so e2e runs never touch the real profile.
+if (process.env.ARKLOOP_USER_DATA) app.setPath("userData", process.env.ARKLOOP_USER_DATA);
+
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
-  app.quit();
+  // The primary instance owns the app; this one becomes the CLI client —
+  // connect to its socket, relay argv/cwd, print the response, exit. (Real
+  // Obsidian's `!requestSingleInstanceLock()` branch; replaces app.quit().)
+  runCliClient(defaultCliSocketPath(), cliArgvFromProcess(process.argv), process.cwd());
 } else {
   initializeRemote();
 
@@ -73,43 +95,71 @@ if (!gotLock) {
     displays,
     preloadPath: defaultPreloadPath(here),
     isQuitting: () => mainState.isQuitting,
+    // Arkloop product divergence: the CLI is ON by default (an agent
+    // workbench wants its command surface always up); real Obsidian defaults
+    // off behind Settings > General > Advanced. `cli: false` still gates.
+    isCliEnabled: () => settings.cli !== false,
+    isStarterOpen,
   });
 
-  // First-run default vault. Real Obsidian shows a starter to pick a vault;
-  // that page is a renderer seam here, so we create/open a real default folder
-  // (`Documents/Obsidian Vault`, real `bt`) so the app opens on a real vault.
-  const ensureDefaultVault = (): string | null => {
-    const defaultPath =
-      process.env.OBSIDIAN_VAULT_PATH || join(safePath("documents"), "Obsidian Vault");
+  const openStarterWindow = () => openStarter({ preloadPath: defaultPreloadPath(here) });
+
+  // Hermetic-test seam: ARKLOOP_VAULT_PATH pins a vault that is created and
+  // opened directly, so e2e runs land in a window without driving the starter.
+  const ensureSeededVault = (): string | null => {
+    const seededPath = process.env.ARKLOOP_VAULT_PATH;
+    if (!seededPath) return null;
     try {
-      mkdirSync(defaultPath, { recursive: true });
+      mkdirSync(seededPath, { recursive: true });
     } catch (error) {
       console.error(error);
     }
-    const result = registry.registerPath(defaultPath);
+    const result = registry.registerPath(seededPath);
     return "id" in result ? result.id : null;
   };
 
-  // Real `ke()`: reopen every vault persisted as open; otherwise open the
-  // default vault window (falling back to a plain window if it can't be made).
+  // Real `ke()`: reopen every vault persisted as open; zero windows means the
+  // starter (vault chooser) comes up instead.
   const openStartupWindows = () => {
     const opened = vaultWindows.openAllPersisted();
     if (opened > 0 || BrowserWindow.getAllWindows().length > 0) return;
-    const defaultVaultId = ensureDefaultVault();
-    if (defaultVaultId) vaultWindows.openVault(defaultVaultId);
-    else createRendererWindow({ preloadPath: defaultPreloadPath(here) });
+    const seededVaultId = ensureSeededVault();
+    if (seededVaultId) vaultWindows.openVault(seededVaultId);
+    else openStarterWindow();
   };
 
-  // Real `$e(url)` dispatch. Starter page is a renderer seam, so for
-  // sync-setup/choose-vault we fall back to opening the app.
+  // Real `$e(url)` dispatch — sync-setup/choose-vault open the starter.
   const dispatchObsidianUrl = (url: string) =>
     handleObsidianUrl(url, {
       registry,
       vaultWindows,
-      openStarter: openStartupWindows,
+      openStarter: openStarterWindow,
       showVaultNotFound: (u) => console.error(`No vault for URL ${u}`),
       isWindows: process.platform === "win32",
     });
+
+  // The CLI socket server (real `Ve`): dispatches each request to a vault
+  // renderer via `window.handleCli`. All transport lives in CliServer; the
+  // deps here are the app's real vault routing and window bridge.
+  const cliServer = new CliServer((request) =>
+    dispatchCli(request, {
+      getIdByName: (name) => registry.getIdByName(name),
+      getIdByContainedPath: (path) => registry.getIdByContainedPath(path),
+      mostRecentVaultId: () => vaultWindows.mostRecentVaultId(),
+      // Real `C.cli` gate, kept verbatim in shape — but Arkloop defaults it ON
+      // (deliberate product divergence; set `cli: false` in obsidian.json to
+      // disable, same persisted flag as real Obsidian).
+      isCliEnabled: () => settings.cli !== false,
+      // Real second-instance-no-args behavior is `pe()` — the starter itself.
+      openStarter: openStarterWindow,
+      handleUrl: (url) => {
+        dispatchObsidianUrl(url);
+        return `Processed URI ${url}`;
+      },
+      executeCliRequest: (vaultId, argv) => vaultWindows.executeCliRequest(vaultId, argv),
+    }),
+    defaultCliSocketPath(),
+  );
 
   // A protocol URL may arrive before `whenReady` (real `Oe` capture).
   let pendingUrl: string | null = obsidianUrlFromArgv(process.argv);
@@ -135,8 +185,11 @@ if (!gotLock) {
     }
   });
 
-  if (!app.isDefaultProtocolClient("obsidian")) {
-    app.setAsDefaultProtocolClient("obsidian");
+  // Our own scheme. Registering "obsidian" would hijack the real app's links
+  // at the OS level; obsidian:// URLs arriving via the CLI/second instance are
+  // still parsed internally.
+  if (!app.isDefaultProtocolClient("arkloop")) {
+    app.setAsDefaultProtocolClient("arkloop");
   }
 
   const loomSidecar = new LoomSidecar(
@@ -149,6 +202,7 @@ if (!gotLock) {
   app.on("before-quit", () => {
     mainState.isQuitting = true;
     loomSidecar.stop();
+    cliServer.stop();
   });
 
   // macOS: quit only on explicit Cmd+Q (reverse note `window-all-closed`).
@@ -182,13 +236,14 @@ if (!gotLock) {
     registerIpcHandlers(ipcMain, {
       registry,
       vaultWindows,
+      openStarter: openStarterWindow,
       paths: {
         resources: resourcesDir,
         version: app.getVersion(),
         desktopDir: safePath("desktop"),
         documentsDir: safePath("documents"),
-        sandboxVaultPath: join(app.getPath("userData"), "Obsidian Sandbox"),
-        defaultVaultPath: join(safePath("documents"), "Obsidian Vault"),
+        sandboxVaultPath: join(app.getPath("userData"), "Arkloop Sandbox"),
+        defaultVaultPath: join(safePath("documents"), "Arkloop Vault"),
       },
       trashItem: (p) => shell.trashItem(p),
       openExternal: (url) => void shell.openExternal(url),
@@ -198,6 +253,7 @@ if (!gotLock) {
       onError: (error) => console.error(error),
     });
     openStartupWindows();
+    cliServer.start();
     if (pendingUrl) {
       dispatchObsidianUrl(pendingUrl);
       pendingUrl = null;

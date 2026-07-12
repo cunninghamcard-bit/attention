@@ -66,7 +66,7 @@ export class FileManager {
 
   async createNewFile(folder: TFolder | string | null, filename = "Untitled", extension?: string, data = ""): Promise<TFile> {
     const folderPath = normalizeCreationFolderPath(typeof folder === "string" ? folder : folder?.path ?? "");
-    const target = normalizeNewFileName(filename, extension);
+    const target = normalizeNewFileName(filename, extension, (candidate) => this.canCreateFileWithExt(candidate));
     const rawPath = folderPath ? `${folderPath}/${target.basename}` : target.basename;
     const path = this.app.vault.getAvailablePath(rawPath, target.extension);
     return this.app.vault.create(path, data);
@@ -757,10 +757,14 @@ function isValidNewFileLinktext(path: string): boolean {
   return path.length > 0 && !/[\\:*?"<>|]/.test(path) && path.split("/").every((part) => part.trim().length > 0);
 }
 
-function normalizeNewFileName(filename: string, extension?: string): { basename: string; extension: string } {
+function normalizeNewFileName(filename: string, extension: string | undefined, hasCreator: (extension: string) => boolean): { basename: string; extension: string } {
   const normalizedName = filename.trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "") || "Untitled";
   const inferredExtension = getExtensionFromPath(normalizedName);
-  const targetExtension = normalizeRegisteredExtension(extension ?? inferredExtension) || "md";
+  let targetExtension = normalizeRegisteredExtension(extension ?? inferredExtension) || "md";
+  // Real createNewFile coerces an extension with no registered file creator
+  // to md BEFORE de-suffixing the name — so "Note.xyz" yields "Note.xyz.md",
+  // never a bare .xyz file.
+  if (!hasCreator(targetExtension)) targetExtension = "md";
   const basename = inferredExtension === targetExtension
     ? normalizedName.slice(0, -(targetExtension.length + 1))
     : normalizedName;

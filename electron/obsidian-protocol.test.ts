@@ -55,24 +55,24 @@ describe("handleObsidianUrl (real $e end to end)", () => {
   });
 
   it("opens the starter for sync-setup", () => {
-    dispatch("obsidian://sync-setup");
+    dispatch("arkloop://sync-setup");
     expect(openStarter).toHaveBeenCalled();
   });
 
   it("delivers an open action to the vault resolved by name", () => {
-    dispatch("obsidian://open?vault=notes&file=Daily");
+    dispatch("arkloop://open?vault=notes&file=Daily");
     expect(deliverAction).toHaveBeenCalledWith(vaultId, expect.objectContaining({ file: "Daily" }));
   });
 
   it("delivers to the vault containing the path, with a relative file", () => {
     const notePath = join(dir, "Notes", "sub", "n.md");
-    dispatch(`obsidian://open?path=${encodeURIComponent(notePath)}`);
+    dispatch(`arkloop://open?path=${encodeURIComponent(notePath)}`);
     expect(deliverAction).toHaveBeenCalledWith(vaultId, expect.objectContaining({ file: "/sub/n.md" }));
   });
 
   it("uses the most-recent vault when none is specified", () => {
     mostRecent = vaultId;
-    dispatch("obsidian://search?query=x");
+    dispatch("arkloop://search?query=x");
     expect(deliverAction).toHaveBeenCalledWith(vaultId, expect.objectContaining({ action: "search" }));
   });
 
@@ -83,7 +83,7 @@ describe("handleObsidianUrl (real $e end to end)", () => {
       return 1;
     });
     // mostRecent starts null; becomes the vault only after openAllPersisted runs.
-    handleObsidianUrl("obsidian://command?id=x", {
+    handleObsidianUrl("arkloop://command?id=x", {
       registry,
       vaultWindows: {
         deliverAction,
@@ -98,15 +98,15 @@ describe("handleObsidianUrl (real $e end to end)", () => {
   });
 
   it("reports vault-not-found when nothing resolves", () => {
-    dispatch("obsidian://open?vault=ghost");
+    dispatch("arkloop://open?vault=ghost");
     expect(deliverAction).not.toHaveBeenCalled();
-    expect(showVaultNotFound).toHaveBeenCalledWith("obsidian://open?vault=ghost");
+    expect(showVaultNotFound).toHaveBeenCalledWith("arkloop://open?vault=ghost");
   });
 });
 
 describe("obsidianUrlFromArgv", () => {
-  it("returns a trailing obsidian:// argument", () => {
-    expect(obsidianUrlFromArgv(["electron", ".", "obsidian://open?x=1"])).toBe("obsidian://open?x=1");
+  it("returns a trailing arkloop:// argument", () => {
+    expect(obsidianUrlFromArgv(["electron", ".", "arkloop://open?x=1"])).toBe("arkloop://open?x=1");
   });
   it("returns null when absent", () => {
     expect(obsidianUrlFromArgv(["electron", "."])).toBeNull();

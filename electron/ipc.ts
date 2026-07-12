@@ -47,6 +47,8 @@ export interface IpcDeps {
     sandboxVaultPath: string;
     defaultVaultPath: string;
   };
+  /** Open-or-focus the starter (vault chooser) window — real `pe()`. */
+  openStarter(): void;
   /** shell.trashItem — real `trash` handler. */
   trashItem(path: string): Promise<void>;
   /** shell.openExternal — real `open-url` for external schemes. */
@@ -111,12 +113,25 @@ export function createIpcHandlers(deps: IpcDeps): Record<string, IpcListener> {
       );
     },
 
+    // Real: `ipcMain.on("starter", t => { t.returnValue = null; pe() })` —
+    // sync so openVaultChooser callers can `window.close()` right after.
+    starter: (e) => {
+      e.returnValue = null;
+      deps.openStarter();
+    },
+
     // --- Actions ---
-    trash: (e, pathArg) => {
-      // Optimistic sync ack: the renderer's trashSystem reads the return value
-      // synchronously, while shell.trashItem completes in the background.
-      e.returnValue = true;
-      void deps.trashItem(pathArg as string).catch(report);
+    // Real handler: async, sets returnValue only after shell.trashItem settles
+    // (sendSync blocks the renderer until then), reporting the true outcome —
+    // so a delete is strictly ordered and a failed trash never acks true.
+    trash: async (e, pathArg) => {
+      try {
+        await deps.trashItem(pathArg as string);
+        e.returnValue = true;
+      } catch (error) {
+        report(error);
+        e.returnValue = false;
+      }
     },
     "open-url": (_e, urlArg) => {
       if (typeof urlArg === "string") deps.openExternal(urlArg);

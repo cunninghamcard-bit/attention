@@ -31,6 +31,53 @@ describe("MetadataCache", () => {
     expect(metadataCache.getFileCache(folderIgnored)?.headings?.[0]?.heading).toBe("Hidden");
   });
 
+  it("aggregates vault tags with parent rollup, case merging, and ignore filters", async () => {
+    const vault = new Vault();
+    const metadataCache = new MetadataCache(vault);
+    await vault.create("One.md", "---\ntags: [Foo, foo]\n---\n#foo/bar/baz #other/");
+    await vault.create("Two.md", "#FOO #123 #foo");
+    await vault.create("Archive/Hidden.md", "#foo #hidden");
+
+    vault.setConfig("userIgnoreFilters", ["Archive/"]);
+    await metadataCache.clear();
+
+    // '#123' fails the validity check; '#other/' is trimmed; nested tags also
+    // count toward their parents; '#foo' wins the casing merge (highest
+    // individual count) with the '#Foo'/'#FOO' occurrences folded in.
+    expect(metadataCache.getTags()).toEqual({
+      "#foo": 5,
+      "#foo/bar": 1,
+      "#foo/bar/baz": 1,
+      "#other": 1,
+    });
+  });
+
+  it("metadata indexing reuses in-memory file stats", async () => {
+    const vault = new Vault();
+    const metadataCache = new MetadataCache(vault);
+    const file = await vault.create("src/data.js", "export const x = 1;");
+    const statSpy = vi.fn(async () => ({ mtime: 1, size: 1 }));
+    Object.defineProperty(vault, "adapter", { configurable: true, value: { stat: statSpy } });
+
+    await metadataCache.computeFileMetadataAsync(file);
+
+    expect(file.stat.mtime).toBeGreaterThan(0);
+    expect(statSpy).not.toHaveBeenCalled();
+  });
+
+  it("metadata indexing falls back to adapter stat when in-memory stat is unknown", async () => {
+    const vault = new Vault();
+    const metadataCache = new MetadataCache(vault);
+    const file = await vault.create("src/other.js", "export const y = 2;");
+    file.stat = { ctime: 0, mtime: 0, size: 0 };
+    const statSpy = vi.fn(async () => ({ mtime: 4321, size: 7 }));
+    Object.defineProperty(vault, "adapter", { configurable: true, value: { stat: statSpy } });
+
+    await metadataCache.computeFileMetadataAsync(file);
+
+    expect(statSpy).toHaveBeenCalledWith("src/other.js");
+  });
+
   it("emits changed with source text and debounces finished after vault modifications", async () => {
     vi.useFakeTimers();
     try {
@@ -89,6 +136,31 @@ describe("MetadataCache", () => {
 
     expect(preloaded.getFileInfo("Note.md")).toEqual(info);
     expect(preloaded.getCache("Note.md")?.frontmatter).toEqual({ status: "cached" });
+  });
+
+  it("prunes preloaded entries for files absent from the vault on initialize", async () => {
+    // The persistent store is shared per appId, not per vault, so a cache
+    // saved while one vault was open must not leak into another vault's reads.
+    const store = new MemoryMetadataCacheStore();
+    const first = new Vault();
+    const seeded = new MetadataCache(first, undefined, store);
+    const ghost = await first.create("Plugin Architecture.md", "body #arkloop tag");
+    await seeded.computeFileMetadata(ghost);
+    expect(store.getFile("Plugin Architecture.md")).not.toBeNull();
+
+    // A different vault that never had that file preloads the shared cache...
+    const otherVault = new Vault();
+    const kept = await otherVault.create("Real.md", "#alpha here");
+    const cache = new MetadataCache(otherVault, undefined, store);
+    await cache.initialize();
+    // initialize queues the real file's metadata asynchronously; compute it
+    // deterministically before reading tags.
+    await cache.computeFileMetadata(kept);
+
+    // ...and initialize reconciles the ghost away, so vault-wide reads stay clean.
+    expect(cache.getFileInfo("Plugin Architecture.md")).toBeNull();
+    expect(cache.getCachedFiles()).toEqual(["Real.md"]);
+    expect(Object.keys(cache.getTags())).toEqual(["#alpha"]);
   });
 
   it("indexes frontmatter position and root markdown sections", async () => {

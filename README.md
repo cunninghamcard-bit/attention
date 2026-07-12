@@ -7,15 +7,15 @@ This is not original source code. It is a clean, study-oriented structure rebuil
 ## Running it
 
 ```bash
-bun install
-bun run desktop        # build + launch the Electron desktop app (loads via app://, edits a real vault on disk)
+pnpm install
+pnpm run desktop        # build + launch the Electron desktop app (loads via app://, edits a real vault on disk)
 ```
 
 Other entry points:
 
-- `bun run dev` — the renderer as a plain web app (Vite, in-memory vault) at http://127.0.0.1:5173.
-- `bun run dev` + `ELECTRON_RENDERER_URL= bun run start:desktop` — desktop shell against the live dev server (HMR).
-- `bun run check` — lint, typecheck (app + `electron/`), tests, and all builds.
+- `pnpm run dev` — the renderer as a plain web app (Vite, in-memory vault) at http://127.0.0.1:5173.
+- `pnpm run dev` + `ELECTRON_RENDERER_URL= pnpm run start:desktop` — desktop shell against the live dev server (HMR).
+- `pnpm run check` — lint, typecheck (app + `electron/`), tests, and all builds.
 
 The Electron main process (`electron/`) is a clean-room reconstruction of Obsidian's
 `obsidian.asar/main.js`: single-instance lock, `obsidian.json` + vault registry,

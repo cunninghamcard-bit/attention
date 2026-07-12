@@ -718,7 +718,7 @@ describe("community plugin lifecycle", () => {
     expect(instance?.statusEl?.classList.contains("plugin-chrome-api")).toBe(true);
     expect(instance?.statusEl?.textContent).toBe("Plugin status");
     expect(instance?.statusEl?.parentElement).toBe(app.statusBar.containerEl);
-    await app.uriRouter.handleUri("obsidian://chrome-api?file=Folder%2FNote.md&empty&dry-run=true");
+    await app.uriRouter.handleUri("arkloop://chrome-api?file=Folder%2FNote.md&empty&dry-run=true");
     expect(instance?.protocolHits).toBe(1);
     expect(instance?.protocolPayload).toMatchObject({
       action: "chrome-api",
@@ -727,12 +727,11 @@ describe("community plugin lifecycle", () => {
       "dry-run": "true",
     });
     expect(instance?.protocolPayload?.params).toBeUndefined();
-    expect(app.cliHandlers.find((handler) => handler.command === "chrome-api")).toMatchObject({
+    expect(app.cli.handlers.get("chrome-api")).toMatchObject({
       description: "[Chrome API]: Run the Chrome API plugin",
       flags: { "dry-run": { description: "Run without changing state" } },
-      owner: "chrome-api",
     });
-    await expect(app.runCliHandler("chrome-api", ["--dry-run"])).resolves.toEqual(["chrome-cli"]);
+    await expect(app.cli.handleCli(["chrome-api", "dry-run"])).resolves.toBe("chrome-cli");
     expect(instance?.cliHits).toEqual([{ "dry-run": "true" }]);
     expect(() => app.workspace.registerObsidianProtocolHandler("chrome-api", () => {})).toThrow(
       'Action "chrome-api" is already registered as a handler.',
@@ -748,8 +747,9 @@ describe("community plugin lifecycle", () => {
     expect(app.commands.findCommand("chrome-api:kept")).toBeUndefined();
     expect(app.hotkeys.getDefaultHotkeys("chrome-api:kept")).toBeUndefined();
     expect(instance?.statusEl?.parentElement).toBeNull();
-    await expect(app.uriRouter.handleUri("obsidian://chrome-api")).resolves.toBe(false);
-    await expect(app.runCliHandler("chrome-api", ["--dry-run"])).resolves.toEqual([]);
+    await expect(app.uriRouter.handleUri("arkloop://chrome-api")).resolves.toBe(false);
+    // Disabled → the command is unregistered, so the CLI rejects it as unknown.
+    await expect(app.cli.handleCli(["chrome-api", "dry-run"])).rejects.toMatch(/^Command "chrome-api" not found/);
     await app.workspace.editorSuggest.trigger(editor, anchorEl);
     expect(document.body.textContent).not.toContain("Plugin suggestion");
     anchorEl.remove();
@@ -964,17 +964,17 @@ describe("community plugin lifecycle", () => {
     wrapper.init();
     await wrapper.enable();
 
-    await expect(app.runCliHandler("core-cli", ["--list"])).resolves.toEqual(["core-cli"]);
+    await expect(app.cli.handleCli(["core-cli", "list"])).resolves.toBe("core-cli");
     expect(hits).toEqual([["list"]]);
 
     await wrapper.disable(true);
 
-    await expect(app.runCliHandler("core-cli", ["--list"])).resolves.toEqual([]);
+    await expect(app.cli.handleCli(["core-cli", "list"])).rejects.toMatch(/^Command "core-cli" not found/);
   });
 
   it("enforces unique CLI commands and required flag metadata", async () => {
     const app = new App(document.createElement("div"));
-    app.registerCliHandler("sample", "Run sample", {
+    app.cli.registerHandler("sample", "Run sample", {
       path: {
         value: "<path>",
         description: "Path to open",
@@ -982,11 +982,13 @@ describe("community plugin lifecycle", () => {
       },
     }, (params) => params.path);
 
-    expect(() => app.registerCliHandler("sample", "Duplicate sample", null, () => "duplicate")).toThrow(
-      'CLI command "sample" is already registered.',
+    expect(() => app.cli.registerHandler("sample", "Duplicate sample", null, () => "duplicate")).toThrow(
+      'Command "sample" is already registered as a handler.',
     );
-    await expect(app.runCliHandler("sample", [])).rejects.toThrow('Missing required CLI flag "path" for command "sample".');
-    await expect(app.runCliHandler("sample", ["--path=Daily.md"])).resolves.toEqual(["Daily.md"]);
+    await expect(app.cli.handleCli(["sample"])).rejects.toBe(
+      "Missing required parameter: path=<path>\nUsage: sample path=<path>",
+    );
+    await expect(app.cli.handleCli(["sample", "path=Daily.md"])).resolves.toBe("Daily.md");
   });
 
   it("downloads marketplace source packages into the plugins folder before enabling", async () => {

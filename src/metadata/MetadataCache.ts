@@ -2,6 +2,7 @@ import { Events } from "../core/Events";
 import type { EventRef } from "../core/Events";
 import { unregisterEventRef } from "../core/EventRefInternal";
 import type { App } from "../app/App";
+import { getAllTags } from "../api/ApiUtils";
 import { createMetadataCacheStore, type MetadataCachePersistentStore } from "./MetadataCacheStore";
 import { getFrontmatterValues } from "../properties/Frontmatter";
 import type { PropertyType } from "../properties/PropertyTypes";
@@ -296,6 +297,44 @@ export class MetadataCache extends Events {
     return suggestions;
   }
 
+  // Real `getTags()`: vault-wide '#tag' -> occurrence count. Each nested tag
+  // also counts toward its parents ('#foo/bar' increments '#foo'), ignored
+  // files are skipped, and casings are merged per lowercase key — the casing
+  // with the highest individual count becomes the reported key.
+  getTags(): Record<string, number> {
+    const counts: Record<string, number> = {};
+    const count = (tag: string): void => {
+      if (tag.endsWith("/")) tag = tag.slice(0, -1);
+      if (!isValidTag(tag)) return;
+      const last = tag.split("/").pop() ?? tag;
+      counts[tag] = (counts[tag] ?? 0) + 1;
+      if (last !== tag) count(tag.slice(0, tag.length - last.length - 1));
+    };
+    for (const [path, info] of this.fileCache) {
+      if (this.isUserIgnored(path)) continue;
+      const cache = this.metadataCache.get(info.hash);
+      if (!cache) continue;
+      for (const tag of getAllTags(cache) ?? []) count(tag);
+    }
+    const merged: Record<string, { tag: string; count: number; max: number }> = {};
+    for (const [tag, total] of Object.entries(counts)) {
+      const key = tag.toLowerCase();
+      const entry = merged[key];
+      if (entry) {
+        entry.count += total;
+        if (total > entry.max) {
+          entry.max = total;
+          entry.tag = tag;
+        }
+      } else {
+        merged[key] = { tag, count: total, max: total };
+      }
+    }
+    const result: Record<string, number> = {};
+    for (const entry of Object.values(merged)) result[entry.tag] = entry.count;
+    return result;
+  }
+
   fileToLinktext(file: TFile, sourcePath = "", omitMdExtension = true): string {
     const format = this.vault.getConfig<string>("newLinkFormat") ?? "shortest";
     const fullPath = file.extension === "md" && omitMdExtension && file.path.endsWith(".md")
@@ -359,11 +398,25 @@ export class MetadataCache extends Events {
     await this.preload();
     this.preloadPromise = null;
     const tasks: Array<Promise<CachedMetadata>> = [];
+    const present = new Set<string>();
     for (const file of this.vault.getAllLoadedFiles()) {
       if (!(file instanceof TFile)) continue;
+      present.add(file.path);
       this.addUniqueFile(file);
       if (await this.canReuseFileCache(file)) this.queueFileForLinkResolution(file);
       else tasks.push(this.computeFileMetadataAsync(file));
+    }
+    // Reconcile the preloaded cache against the vault: the persistent store is
+    // keyed per appId, not per vault, so entries from a previously opened
+    // vault would otherwise leak into this one's fileCache and pollute every
+    // vault-wide read (getTags, resolved/unresolved links, properties). Real
+    // Obsidian never carries cache for files absent from the open vault.
+    for (const path of [...this.fileCache.keys()]) {
+      if (!present.has(path)) {
+        this.fileCache.delete(path);
+        delete this.resolvedLinks[path];
+        delete this.unresolvedLinks[path];
+      }
     }
     this.initialized = true;
     this.watchVaultChanges();
@@ -761,6 +814,10 @@ export class MetadataCache extends Events {
   }
 
   private async getVaultFileStat(file: TFile): Promise<{ mtime: number; size: number } | null> {
+    // Vault reconcile/write paths maintain TFile.stat; a real mtime lets us
+    // skip one adapter stat round-trip per indexed file (mtime 0 = unknown,
+    // e.g. an adapter event that carried no stat and hasn't refreshed yet).
+    if (file.stat.mtime > 0) return { mtime: file.stat.mtime, size: file.stat.size };
     const adapter = this.vault.adapter as { stat?: (path: string) => Promise<{ mtime?: number; size?: number } | null> } | undefined;
     const stat = await adapter?.stat?.(file.path);
     if (stat?.mtime == null || stat.size == null) return null;
@@ -858,6 +915,15 @@ export class MetadataCache extends Events {
     if (this.app?.vault.getConfig<boolean>("showUnsupportedFiles")) return true;
     return this.app?.viewRegistry.isExtensionRegistered(file.extension) ?? true;
   }
+}
+
+// Real `$A` tag-validity check: '#' followed by characters that are not
+// punctuation or whitespace, and not purely numeric.
+const VALID_TAG_RE = /^#[^\u2000-\u206F\u2E00-\u2E7F'!"#$%&()*+,.:;<=>?@^`{|}~\[\]\\\s]+$/;
+const NUMERIC_TAG_RE = /^#\d+$/;
+
+function isValidTag(tag: string): boolean {
+  return !!tag && VALID_TAG_RE.test(tag) && !NUMERIC_TAG_RE.test(tag);
 }
 
 function matchesIgnoreFilter(path: string, filter: string): boolean {

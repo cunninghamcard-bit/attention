@@ -27,9 +27,15 @@ export class TerminalView extends ItemView {
   private detachExit: (() => void) | null = null;
   private pendingState: TerminalViewState = {};
   private lazyBindPending = false;
-  // While the terminal surface is focused, an empty scope shields keystrokes
-  // from global workspace hotkeys (spec: keyboard input must not be stolen).
-  private readonly focusScope = new Scope();
+  // While the terminal surface is focused, this scope shields keystrokes from
+  // global workspace hotkeys (spec: keyboard input must not be stolen) — with
+  // one carve-out: Cmd/Meta combos still reach the app, like native macOS
+  // terminals (a shell can't meaningfully receive Super, and ghostty-web would
+  // otherwise swallow them as CSI-u SUPER sequences). Cmd+C/Cmd+V stay with
+  // the terminal for copy/paste, mirroring ghostty's own clipboard carve-out.
+  private readonly focusScope = createTerminalFocusScope(
+    (evt, ctx) => this.app.keymap.rootScope.handleKey(evt, ctx),
+  );
   private focusScopePushed = false;
 
   getViewType(): string { return TERMINAL_VIEW_TYPE; }
@@ -51,6 +57,16 @@ export class TerminalView extends ItemView {
     this.surfaceEl.addEventListener("contextmenu", (event) => this.showContextMenu(event));
     this.surfaceEl.addEventListener("focusin", () => this.pushFocusScope());
     this.surfaceEl.addEventListener("focusout", () => this.popFocusScope());
+    // System chords (Cmd+Q/H/M/`) belong to the native menu: stop them from
+    // reaching ghostty's key handler WITHOUT preventDefault, or Electron
+    // suppresses the menu accelerator and "Cmd+Q gets eaten". Registered
+    // before the renderer mounts, so stopImmediatePropagation also beats
+    // ghostty's own listener on this same element.
+    this.surfaceEl.addEventListener(
+      "keydown",
+      (event) => { if (isSystemChord(event)) event.stopImmediatePropagation(); },
+      { capture: true },
+    );
     this.addAction("lucide-rotate-ccw", "Restart terminal", () => void this.restart());
   }
 
@@ -235,4 +251,40 @@ export class TerminalView extends ItemView {
 
 function shellName(shell: string): string {
   return shell.split("/").pop() || shell;
+}
+
+/**
+ * Meta chords that belong to the NATIVE menu (role accelerators: quit, hide,
+ * hide-others, minimize, window cycling). These must never be preventDefault-ed
+ * anywhere in the renderer — in Electron that suppresses the menu accelerator —
+ * and must never reach ghostty either, which would consume them as SUPER
+ * sequences. So: Keymap leaves them untouched (blanket returns undefined) and
+ * the terminal surface stops their DOM propagation without touching default.
+ */
+export function isSystemChord(evt: KeyboardEvent): boolean {
+  return evt.metaKey && !evt.ctrlKey
+    && (evt.code === "KeyQ" || evt.code === "KeyH" || evt.code === "KeyM" || evt.code === "Backquote");
+}
+
+/**
+ * The terminal's focus shield. Three classes of keys, three owners:
+ * - plain keys / Ctrl combos → the terminal (undefined: Keymap doesn't touch
+ *   them, they flow to ghostty);
+ * - Cmd+C / Cmd+V → the terminal (copy/paste, mirrors ghostty's carve-out);
+ * - system chords (Cmd+Q/H/M/`) → the native menu (undefined here; the view's
+ *   capture listener keeps them from ghostty without preventDefault);
+ * - every other Meta chord → the app: dispatched to the root scope and then
+ *   consumed whether or not a hotkey matched, so the shell never sees SUPER.
+ */
+export function createTerminalFocusScope(
+  dispatchToApp: (evt: KeyboardEvent, ctx?: Parameters<Scope["handleKey"]>[1]) => boolean | void,
+): Scope {
+  const scope = new Scope();
+  scope.register(null, null, (evt, ctx) => {
+    if (!evt.metaKey || evt.code === "KeyC" || evt.code === "KeyV") return;
+    if (isSystemChord(evt)) return;
+    dispatchToApp(evt, ctx);
+    return false;
+  });
+  return scope;
 }

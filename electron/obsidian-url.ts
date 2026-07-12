@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import type { VaultRegistryData } from "./vault-registry";
+import { URL_SCHEME } from "../src/protocol/scheme";
 
 /**
  * `obsidian://` URL parsing and routing — real `$e(url)` (reverse note
@@ -10,7 +11,7 @@ import type { VaultRegistryData } from "./vault-registry";
  * OS registration is in `obsidian-protocol.ts`.
  */
 
-const PREFIX = "obsidian://";
+const PREFIX = URL_SCHEME;
 
 /** An action object handed to the renderer's `OBS_ACT`. */
 export interface ObsidianAction {

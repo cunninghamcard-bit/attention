@@ -8,6 +8,7 @@ import { WorkspaceParent } from "./WorkspaceParent";
 import type { Workspace } from "./Workspace";
 import type { WorkspaceItem } from "./WorkspaceItem";
 import { WorkspaceLeaf } from "./WorkspaceLeaf";
+import { setTooltip } from "../ui/Popover";
 
 export interface WorkspaceTabInsertLocation {
   index: number;
@@ -68,9 +69,10 @@ export class WorkspaceTabs extends WorkspaceParent {
     this.tabHeaderContainerEl.addEventListener("mouseleave", () => this.unlockTabWidths());
     this.newTabButtonEl = createDiv("workspace-tab-header-new-tab", this.tabHeaderContainerEl);
     this.newTabButtonIconEl = createSpan("clickable-icon", this.newTabButtonEl);
+    // Real: app tooltip on the inner clickable-icon span, set before the icon;
+    // no native title, no manual aria-label (setTooltip provides it).
+    setTooltip(this.newTabButtonIconEl, "New tab");
     setIcon(this.newTabButtonIconEl, "lucide-plus");
-    this.newTabButtonEl.title = "New tab";
-    this.newTabButtonIconEl.setAttribute("aria-label", "New tab");
     this.newTabButtonIconEl.addEventListener("click", () => {
       const leaf = new WorkspaceLeaf(this.workspace, undefined, this.containerEl.ownerDocument);
       this.appendChild(leaf);
@@ -81,8 +83,7 @@ export class WorkspaceTabs extends WorkspaceParent {
     this.tabListEl = createDiv("workspace-tab-header-tab-list", this.tabHeaderContainerEl);
     this.tabListIconEl = createSpan("clickable-icon", this.tabListEl);
     setIcon(this.tabListIconEl, "lucide-chevron-down");
-    this.tabListEl.title = "Tab list";
-    this.tabListIconEl.setAttribute("aria-label", "Tab list");
+    // Real: the tab-list chevron carries no hover hint at all.
     this.tabListIconEl.addEventListener("click", (event) => this.showTabListMenu(event));
     this.tabListIconEl.addEventListener("contextmenu", (event) => this.showTabListMenu(event));
     this.tabsContainerEl = createDiv("workspace-tab-container", this.containerEl);

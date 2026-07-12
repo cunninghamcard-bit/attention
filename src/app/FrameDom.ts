@@ -1,6 +1,7 @@
 import { createDiv } from "../dom/dom";
 import { setIcon } from "../ui/Icon";
 import { getObsidianPlatformClass } from "./BodyClasses";
+import { setTooltip } from "../ui/Popover";
 
 export interface FrameDomOptions {
   hidden?: boolean;
@@ -108,8 +109,7 @@ export class FrameDom {
 
   private createTitlebarButton(parent: HTMLElement, modifier: string, icon: string, title: string, onClick?: () => void): HTMLElement {
     const button = createDiv(`titlebar-button ${modifier}`, parent);
-    button.title = title;
-    button.setAttribute("aria-label", title);
+    setTooltip(button, title);
     setIcon(button, icon);
     if (onClick) button.addEventListener("click", onClick);
     return button;
@@ -117,8 +117,7 @@ export class FrameDom {
 
   private updateMaximizeButton(button: HTMLElement, electronWindow?: FrameElectronWindow): void {
     const maximized = Boolean(electronWindow?.isMaximized?.());
-    button.title = maximized ? "Restore down" : "Maximize";
-    button.setAttribute("aria-label", button.title);
+    setTooltip(button, maximized ? "Restore down" : "Maximize");
     setIcon(button, maximized ? "lucide-copy" : "lucide-maximize-2");
   }
 }

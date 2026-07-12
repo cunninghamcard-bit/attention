@@ -15,6 +15,8 @@ import { TagPaneView } from "./TagPaneView";
 import { OutlineView } from "./OutlineView";
 import { CanvasView } from "./CanvasView";
 import { MarkdownView } from "../views/MarkdownView";
+import { registerSearchCliHandlers } from "../cli/commands/searchCli";
+import { registerLinksCliHandlers, registerOutlineCliHandlers } from "../cli/commands/linksOutlineCli";
 import { createGraphPluginDefinition } from "./GraphPlugin";
 import { createCommandPalettePluginDefinition } from "../commands/CommandPalette";
 import { createDailyNotesPluginDefinition } from "./DailyNotes";
@@ -34,6 +36,10 @@ import { createMarkdownImporterPluginDefinition } from "./MarkdownImporter";
 import { createFileRecoveryPluginDefinition } from "./FileRecoveryPlugin";
 import { createWebViewerPluginDefinition } from "./WebViewerPlugin";
 import { createTerminalPluginDefinition } from "./TerminalPlugin";
+import { openFileCompare, openGitDiff } from "../views/DiffView";
+import { openFileHistory } from "./GitHistoryView";
+import { openPrList } from "./GitPrViews";
+import { openGitReview } from "./review/GitReviewView";
 import { createBookmarksPluginDefinition } from "./Bookmarks";
 import { createSlidesPluginDefinition } from "./Slides";
 import { createAudioRecorderPluginDefinition } from "./AudioRecorder";
@@ -45,7 +51,6 @@ const openRootView = (app: App, viewType: string, mode: "tab" | "split" = "tab")
 export const nonParityFeatureScope = [
   { id: "graph", area: "core-plugin", boundary: "not implemented as an Obsidian feature; keep only thin architecture seams when useful" },
   { id: "backlink", area: "core-plugin", boundary: "not implemented as an Obsidian feature; linked-view/menu contracts may remain as thin seams" },
-  { id: "outgoing-link", area: "core-plugin", boundary: "not implemented as an Obsidian feature; linked-view/menu contracts may remain as thin seams" },
   { id: "wiki-link-resolver", area: "metadata", boundary: "do not chase Obsidian's full resolver; keep simplified link interfaces for editor/plugin flow" },
   { id: "tag-index", area: "metadata", boundary: "do not chase Obsidian's full tag index; keep simplified metadata surfaces only where needed" },
   { id: "canvas", area: "core-plugin", boundary: "not implemented as a full canvas product; keep file/view/drop seams only when they support architecture study" },
@@ -86,6 +91,53 @@ export const corePlugins: InternalPluginDefinition[] = [
       plugin.registerEvent(plugin.app.workspace.on<[Menu, TAbstractFile[], string, WorkspaceLeaf]>("files-menu", (menu, files) => {
         addWorkspaceFilesMenuItems(plugin.app, menu, files);
       }));
+      plugin.registerGlobalCommand({
+        id: "git:open-changes",
+        name: "Open git changes",
+        icon: "lucide-file-diff",
+        checkCallback: (checking) => {
+          if (!plugin.app.git.isAvailable()) return false;
+          if (!checking) {
+            void plugin.app.workspace.getLeaf("tab").setViewState({ type: "git-changes", active: true });
+          }
+          return true;
+        },
+      });
+      plugin.registerGlobalCommand({
+        id: "git:review-changes",
+        name: "Review working tree changes",
+        icon: "lucide-file-diff",
+        checkCallback: (checking) => {
+          if (!plugin.app.git.isAvailable()) return false;
+          if (!checking) void openGitReview(plugin.app);
+          return true;
+        },
+      });
+      plugin.registerGlobalCommand({
+        id: "git:open-pull-requests",
+        name: "Open pull requests",
+        icon: "lucide-git-pull-request",
+        checkCallback: (checking) => {
+          if (!plugin.app.git.isAvailable()) return false;
+          if (!checking) void openPrList(plugin.app);
+          return true;
+        },
+      });
+      plugin.registerGlobalCommand({
+        id: "git:diff-active-file",
+        name: "Open git diff for active file",
+        icon: "lucide-file-diff",
+        checkCallback: (checking) => {
+          const file = plugin.app.workspace.getActiveFileView()?.file;
+          if (!file || !plugin.app.git.isAvailable()) return false;
+          if (!checking) {
+            void openGitDiff(plugin.app, file).then((leaf) => {
+              if (!leaf) new Notice("Git is not available for this vault");
+            });
+          }
+          return true;
+        },
+      });
     },
   },
   createQuickSwitcherPluginDefinition(),
@@ -201,6 +253,7 @@ export const corePlugins: InternalPluginDefinition[] = [
       plugin.registerRibbonItem("Search", "lucide-search", () => {
         void plugin.app.workspace.ensureSideLeaf("search", "left", { active: true, reveal: true });
       });
+      registerSearchCliHandlers(plugin);
     },
     onEnable(app: App) {
       app.workspace.onLayoutReady(() => void app.workspace.ensureSideLeaf("search", "left", { reveal: false }));
@@ -266,6 +319,7 @@ export const corePlugins: InternalPluginDefinition[] = [
           return true;
         },
       });
+      registerLinksCliHandlers(plugin);
     },
     onEnable(app: App, plugin: InternalPluginWrapper) {
       plugin.registerEvent(app.workspace.on<[Menu, TFile, string, WorkspaceLeaf]>("file-menu", (menu, file, source, leaf) => {
@@ -311,6 +365,7 @@ export const corePlugins: InternalPluginDefinition[] = [
         icon: "lucide-list-tree",
         callback: () => void plugin.app.workspace.ensureSideLeaf("outline", "right", { active: true, reveal: true }),
       });
+      registerOutlineCliHandlers(plugin);
     },
     onEnable(app: App, plugin: InternalPluginWrapper) {
       plugin.registerEvent(app.workspace.on<[Menu, TFile, string, WorkspaceLeaf]>("file-menu", (menu, file, source, leaf) => {
@@ -399,6 +454,18 @@ function addWorkspaceFileMenuItems(app: App, menu: Menu, file: TAbstractFile): v
         .onClick(() => void app.copyObsidianUrl(file)))
       .addItem((item) => item
         .setSection("system")
+        .setTitle("File history")
+        .setIcon("lucide-history")
+        .onClick(() => void openFileHistory(app, file.path)))
+      .addItem((item) => item
+        .setSection("system")
+        .setTitle("Open git diff")
+        .setIcon("lucide-file-diff")
+        .onClick(() => void openGitDiff(app, file).then((leaf) => {
+          if (!leaf) new Notice("Git is not available for this vault");
+        })))
+      .addItem((item) => item
+        .setSection("system")
         .setTitle("Open in default app")
         .setIcon("lucide-arrow-up-right")
         .onClick(() => void app.openWithDefaultApp(file.path)))
@@ -429,6 +496,14 @@ function addWorkspaceFilesMenuItems(app: App, menu: Menu, files: TAbstractFile[]
     .setTitle("Move items to...")
     .setIcon("lucide-folder-tree")
     .onClick(() => new MoveFileModal(app, files).open()));
+  if (files.length === 2 && files.every((file): file is TFile => file instanceof TFile)) {
+    const [baseline, target] = files;
+    menu.addItem((item) => item
+      .setSection("action")
+      .setTitle("Compare files")
+      .setIcon("lucide-file-diff")
+      .onClick(() => void openFileCompare(app, target, baseline)));
+  }
 }
 
 async function copyVaultPath(path: string): Promise<void> {

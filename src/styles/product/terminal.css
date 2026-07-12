@@ -1,5 +1,14 @@
-.terminal-view {
+/* Terminal fills its content box. Every ItemView content area inherits
+   `.workspace-leaf-content .view-content { padding: ...; overflow: auto }`
+   (splits-tabs.css); markdown/backlink/canvas each cancel it with their own
+   `[data-type]` override — terminal was the one type missing it, which left a
+   ~12px side / ~32px bottom padding inset around the surface. Match the pattern
+   at equal specificity; product/ is imported last so this wins the tie. */
+.workspace-leaf-content[data-type='terminal'] .view-content {
   padding: 0;
+  overflow: hidden;
+}
+.terminal-view {
   height: 100%;
   position: relative;
   background: var(--background-primary);
@@ -7,6 +16,12 @@
 .terminal-view-surface {
   height: 100%;
   width: 100%;
+  /* Pre-mount fallback only: GhosttyTerminalRenderer.mount() paints the surface
+     inline with the terminal's exact theme background (blended from
+     --background-primary, see buildTerminalTheme), which also hides the
+     <1-cell fit seam on the right/bottom. This keeps the brief pre-mount state
+     from flashing a mismatched color in either app theme. */
+  background: var(--background-primary);
 }
 .terminal-view-surface canvas {
   display: block;

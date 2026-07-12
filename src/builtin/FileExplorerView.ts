@@ -1,7 +1,8 @@
 import { ItemView } from "../views/ItemView";
 import { setIcon } from "../ui/Icon";
 import { getFileTypeInfo } from "../ui/FileTypeIcon";
-import { setTooltip } from "../ui/Popover";
+import { displayTooltip, hideTooltip, setTooltip } from "../ui/Popover";
+import { moment } from "../api/ApiUtils";
 import { Menu } from "../ui/Menu";
 import { TAbstractFile, TFile, TFolder } from "../vault/TAbstractFile";
 import { setAllowedDropEffect, type DragDropResult, type DragSource, type FileDragSource, type FilesDragSource, type FolderDragSource } from "../drag/DragManager";
@@ -10,6 +11,9 @@ import { Platform } from "../platform/Platform";
 import { validateRenameName } from "../vault/FileNameValidation";
 
 type FileSortOrder = "alphabetical" | "alphabeticalReverse" | "byModifiedTime" | "byModifiedTimeReverse" | "byCreatedTime" | "byCreatedTimeReverse";
+
+/** When the vault has at least this many loaded entries, folders start collapsed. */
+const LARGE_TREE_COLLAPSE_THRESHOLD = 200;
 
 // Sort menu contract from app.js (HH groups / zH labels).
 const FILE_SORT_GROUPS: FileSortOrder[][] = [
@@ -28,6 +32,8 @@ const FILE_SORT_LABELS: Record<FileSortOrder, string> = {
 
 export class FileExplorerView extends ItemView {
   private collapsedFolders = new Set<string>();
+  /** Once true, we have seeded default-collapsed state for the current vault tree. */
+  private collapseSeeded = false;
   private treeContainerEl: HTMLElement | null = null;
   private collapseAllEl: HTMLElement | null = null;
   private autoReveal = false;
@@ -37,6 +43,7 @@ export class FileExplorerView extends ItemView {
   private folderExpandTimer: ReturnType<typeof setTimeout> | null = null;
   private folderExpandPath: string | null = null;
   private renamingPath: string | null = null;
+  private renderTimer: ReturnType<typeof setTimeout> | null = null;
 
   getViewType(): string { return "file-explorer"; }
   getDisplayText(): string { return "Files"; }
@@ -48,14 +55,42 @@ export class FileExplorerView extends ItemView {
     this.contentEl.addEventListener("keydown", (event) => this.onTreeKeydown(event));
     this.installNavHeader();
     this.renderFileTree();
-    this.registerEvent(this.app.vault.on("create", () => this.renderFileTree()));
-    this.registerEvent(this.app.vault.on("modify", () => this.renderFileTree()));
-    this.registerEvent(this.app.vault.on("delete", () => this.renderFileTree()));
-    this.registerEvent(this.app.vault.on("rename", () => this.renderFileTree()));
+    // Structure-changing events only. Content modify must NOT rebuild the tree.
+    this.registerEvent(this.app.vault.on("create", () => this.scheduleRenderFileTree()));
+    this.registerEvent(this.app.vault.on("delete", () => this.scheduleRenderFileTree()));
+    this.registerEvent(this.app.vault.on("rename", () => this.scheduleRenderFileTree()));
     this.registerEvent(this.app.workspace.on("file-open", (file: TFile | null) => {
-      this.renderFileTree();
+      this.updateActiveFileHighlight(file);
       if (this.autoReveal && file) this.revealFile(file);
     }));
+  }
+
+  override async onClose(): Promise<void> {
+    if (this.renderTimer) {
+      clearTimeout(this.renderTimer);
+      this.renderTimer = null;
+    }
+    this.clearFolderExpandTimer();
+    await super.onClose();
+  }
+
+  /** Coalesce bursty vault events (bulk create during load) into one paint. */
+  private scheduleRenderFileTree(): void {
+    if (this.renderTimer) clearTimeout(this.renderTimer);
+    this.renderTimer = setTimeout(() => {
+      this.renderTimer = null;
+      this.renderFileTree();
+    }, 48);
+  }
+
+  private updateActiveFileHighlight(file: TFile | null): void {
+    for (const el of this.contentEl.querySelectorAll(".nav-file-title.is-active")) {
+      el.classList.remove("is-active");
+    }
+    if (!file) return;
+    this.contentEl
+      .querySelector<HTMLElement>(`.nav-file-title[data-path="${cssEscape(file.path)}"]`)
+      ?.classList.add("is-active");
   }
 
   override async setState(state: unknown): Promise<void> {
@@ -68,6 +103,17 @@ export class FileExplorerView extends ItemView {
   }
 
   renderFileTree(): void {
+    // Large vaults only: default-collapse every folder so we paint O(root) rows
+    // instead of the full tree. Small vaults (and unit tests) keep the previous
+    // fully-expanded first paint for discoverability.
+    if (!this.collapseSeeded) {
+      this.collapseSeeded = true;
+      const loaded = this.app.vault.getAllLoadedFiles().length;
+      if (loaded >= LARGE_TREE_COLLAPSE_THRESHOLD) {
+        for (const path of this.allFolderPaths()) this.collapsedFolders.add(path);
+      }
+    }
+
     this.treeContainerEl ??= this.contentEl.appendChild(document.createElement("div"));
     this.treeContainerEl.replaceChildren();
     const rootEl = document.createElement("div");
@@ -193,19 +239,20 @@ export class FileExplorerView extends ItemView {
   }
 
   private renderFolder(folder: TFolder, parentEl: HTMLElement): void {
+    const isCollapsed = this.collapsedFolders.has(folder.path);
     const folderEl = document.createElement("div");
     folderEl.className = "tree-item nav-folder";
-    folderEl.classList.toggle("is-collapsed", this.collapsedFolders.has(folder.path));
+    folderEl.classList.toggle("is-collapsed", isCollapsed);
     const titleEl = document.createElement("div");
     titleEl.className = "tree-item-self nav-folder-title tappable is-clickable mod-collapsible";
     titleEl.dataset.path = folder.path;
     const collapseEl = document.createElement("div");
     collapseEl.className = "tree-item-icon collapse-icon nav-folder-collapse-indicator";
-    collapseEl.classList.toggle("is-collapsed", this.collapsedFolders.has(folder.path));
+    collapseEl.classList.toggle("is-collapsed", isCollapsed);
     setIcon(collapseEl, "right-triangle");
     const folderIconEl = document.createElement("div");
     folderIconEl.className = "tree-item-icon nav-folder-icon";
-    setIcon(folderIconEl, this.collapsedFolders.has(folder.path) ? "lucide-folder-closed" : "lucide-folder-open");
+    setIcon(folderIconEl, isCollapsed ? "lucide-folder-closed" : "lucide-folder-open");
     const titleContentEl = document.createElement("div");
     titleContentEl.className = "tree-item-inner nav-folder-title-content";
     titleContentEl.textContent = folder.name;
@@ -213,6 +260,7 @@ export class FileExplorerView extends ItemView {
     this.applySelectionState(titleEl, folder);
     this.applyRenameState(titleEl, titleContentEl, folder);
     titleEl.addEventListener("click", (event) => this.onFolderClick(folder, event));
+    this.installHoverTooltip(titleEl, titleContentEl, folder);
     titleEl.addEventListener("contextmenu", (event) => this.openFileContextMenu(folder, event));
     this.app.dragManager.handleDrag(titleEl, (event) => this.createDragSource(event, folder, titleEl));
     this.installFolderDrop(titleEl, folder, folderEl);
@@ -220,8 +268,11 @@ export class FileExplorerView extends ItemView {
 
     const childrenEl = document.createElement("div");
     childrenEl.className = "tree-item-children nav-folder-children";
-    childrenEl.hidden = this.collapsedFolders.has(folder.path);
-    for (const child of [...folder.children].sort(this.compareFiles)) this.renderTreeItem(child, childrenEl);
+    childrenEl.hidden = isCollapsed;
+    // Skip building DOM for collapsed subtrees — the dominant cost on large vaults.
+    if (!isCollapsed) {
+      for (const child of [...folder.children].sort(this.compareFiles)) this.renderTreeItem(child, childrenEl);
+    }
     folderEl.appendChild(childrenEl);
     parentEl.appendChild(folderEl);
   }
@@ -248,9 +299,49 @@ export class FileExplorerView extends ItemView {
     this.applyRenameState(titleEl, titleContentEl, file);
     titleEl.addEventListener("click", (event) => this.onFileClick(file, event));
     titleEl.addEventListener("contextmenu", (event) => this.openFileContextMenu(file, event));
+    this.installHoverTooltip(titleEl, titleContentEl, file);
     this.app.dragManager.handleDrag(titleEl, (event) => this.createDragSource(event, file, titleEl));
     fileEl.appendChild(titleEl);
     parentEl.appendChild(fileEl);
+  }
+
+  /**
+   * Real explorer hover hints (decode, onFilePointerover): every FILE shows
+   * "Last modified at ..." / "Created at ..." from its stat; every FOLDER
+   * shows "N files, M folders"; a truncated title prepends the full name.
+   * Placement points away from the dock side, wide gap, off the item row.
+   * Files additionally announce hover-link for the page-preview layer.
+   */
+  private installHoverTooltip(titleEl: HTMLElement, contentEl: HTMLElement, file: TAbstractFile): void {
+    titleEl.addEventListener("pointerover", (event) => {
+      if (event.pointerType === "touch") return;
+      const sections: string[] = [];
+      if (!isFullTitleShown(titleEl, contentEl)) sections.push(file.name);
+      if (file instanceof TFile) {
+        const modified = moment(file.stat.mtime).format("YYYY-MM-DD HH:mm");
+        const created = moment(file.stat.ctime).format("YYYY-MM-DD HH:mm");
+        sections.push(`Last modified at ${modified}\nCreated at ${created}`);
+      } else if (file instanceof TFolder) {
+        const counts = countDescendants(file);
+        sections.push(`${counts.files} ${counts.files === 1 ? "file" : "files"}, ${counts.folders} ${counts.folders === 1 ? "folder" : "folders"}`);
+      }
+      const text = sections.join("\n\n");
+      if (text) {
+        displayTooltip(titleEl, text, {
+          placement: this.containerEl.closest(".mod-right-split") ? "left" : "right",
+          gap: 24,
+          horizontalParent: this.contentEl,
+          delay: 300,
+        });
+      }
+      if (file instanceof TFile) {
+        this.app.workspace.trigger("hover-link", { event, source: "file-explorer", hoverParent: this, targetEl: titleEl, linktext: file.path });
+      }
+    });
+    titleEl.addEventListener("pointerout", (event) => {
+      if (event.pointerType === "touch") return;
+      hideTooltip();
+    });
   }
 
   private openFileContextMenu(file: TFile | TFolder, event: MouseEvent): void {
@@ -817,4 +908,28 @@ function isFilesDragSource(source: DragSource): source is FilesDragSource {
 
 function isFolderDragSource(source: DragSource): source is FolderDragSource {
   return source.type === "folder" && (source as Partial<FolderDragSource>).file instanceof TFolder;
+}
+
+/** Real truncation math: padded title start + content scrollWidth vs row viewport. */
+function isFullTitleShown(selfEl: HTMLElement, innerEl: HTMLElement): boolean {
+  const offsetParent = selfEl.offsetParent as HTMLElement | null;
+  if (!offsetParent) return true;
+  const start = (Number.parseInt(getComputedStyle(selfEl).paddingLeft, 10) || 0) + selfEl.offsetLeft;
+  return start + innerEl.scrollWidth <= offsetParent.clientWidth + offsetParent.scrollLeft;
+}
+
+function countDescendants(folder: TFolder): { files: number; folders: number } {
+  let files = 0;
+  let folders = 0;
+  for (const child of folder.children) {
+    if (child instanceof TFolder) {
+      folders += 1;
+      const nested = countDescendants(child);
+      files += nested.files;
+      folders += nested.folders;
+    } else {
+      files += 1;
+    }
+  }
+  return { files, folders };
 }

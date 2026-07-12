@@ -23,6 +23,37 @@ describe("QuickSwitcher Obsidian core plugin behavior", () => {
     });
   });
 
+  it("quick switcher computes its item list once per open", async () => {
+    const app = new App(document.createElement("div"));
+    const controller = new QuickSwitcherController(app);
+    await controller.onEnable(createWrapper());
+    await app.vault.create("Alpha.md", "alpha");
+    await app.vault.create("Beta.md", "beta");
+    const getFiles = vi.spyOn(app.vault, "getFiles");
+
+    controller.open();
+    const modal = controller.activeModal!;
+    for (const query of ["a", "al", "alp"]) {
+      modal.inputEl.value = query;
+      modal.inputEl.dispatchEvent(new Event("input"));
+    }
+
+    expect(getFiles).toHaveBeenCalledTimes(1);
+    expect(document.body.textContent).toContain("Alpha");
+
+    // A fresh open must re-enumerate: files created meanwhile must appear.
+    modal.close();
+    await app.vault.create("Gamma.md", "gamma");
+    controller.open();
+    const reopened = controller.activeModal!;
+    reopened.inputEl.value = "gam";
+    reopened.inputEl.dispatchEvent(new Event("input"));
+
+    expect(getFiles).toHaveBeenCalledTimes(2);
+    expect(document.body.textContent).toContain("Gamma");
+    reopened.close();
+  });
+
   it("reuses one active modal until it closes", async () => {
     const app = new App(document.createElement("div"));
     const controller = new QuickSwitcherController(app);

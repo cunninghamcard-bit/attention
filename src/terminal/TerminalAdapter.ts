@@ -22,7 +22,8 @@ export interface ElectronTerminalApi {
   platform: string;
   defaultShell: string;
   homeDir: string;
-  spawn(options: { shell?: string; args?: string[]; cwd?: string; cols?: number; rows?: number }): PtyHandle;
+  spawn(options: { shell?: string; args?: string[]; cwd?: string; cols?: number; rows?: number; env?: Record<string, string> }): PtyHandle;
+  prepareShellIntegration?(): string | null;
 }
 
 export type TerminalErrorCode = "unsupported-runtime" | "spawn-failed";
@@ -39,6 +40,8 @@ export interface TerminalSpawnRequest {
   cwd?: string;
   cols?: number;
   rows?: number;
+  /** Extra environment resolved by the profile layer; passed through verbatim. */
+  env?: Record<string, string>;
 }
 
 export type TerminalProcessHandle = PtyHandle;
@@ -48,6 +51,8 @@ export interface TerminalAdapter {
   defaultShell(): string;
   defaultCwd(): string;
   spawn(request: TerminalSpawnRequest): TerminalProcessHandle;
+  /** ZDOTDIR for the enhanced-zsh profile, or null when unavailable. */
+  prepareShellIntegration(): string | null;
 }
 
 export class DesktopTerminalAdapter implements TerminalAdapter {
@@ -63,6 +68,10 @@ export class DesktopTerminalAdapter implements TerminalAdapter {
 
   defaultCwd(): string {
     return this.bridge.homeDir;
+  }
+
+  prepareShellIntegration(): string | null {
+    return this.bridge.prepareShellIntegration?.() ?? null;
   }
 
   spawn(request: TerminalSpawnRequest): TerminalProcessHandle {
@@ -83,6 +92,10 @@ export class UnsupportedTerminalAdapter implements TerminalAdapter {
 
   defaultCwd(): string {
     return "";
+  }
+
+  prepareShellIntegration(): string | null {
+    return null;
   }
 
   spawn(): TerminalProcessHandle {

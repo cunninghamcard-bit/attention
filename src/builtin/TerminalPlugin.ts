@@ -68,12 +68,34 @@ class TerminalSettingTab implements SettingTab {
     this.containerEl.replaceChildren();
     const settings = this.app.terminals.getSettings();
     const group = new SettingGroup(this.containerEl).setHeading("Terminal");
+    // Profile is the product-level choice; only Custom exposes the detail
+    // fields. Semantics live in TerminalService.resolveSpawnConfig.
     new Setting(group.itemsEl)
-      .setName("Shell path")
-      .setDesc("Leave empty to use the login shell from $SHELL.")
-      .addText((text) => text.setValue(settings.shell).onChange((value) => {
-        this.app.terminals.saveSettings({ shell: value.trim() });
-      }));
+      .setName("Profile")
+        .setDesc("Enhanced: zsh with prompt, autosuggestions and syntax highlighting, on top of your own config. System: your login shell and dotfiles, untouched. Custom: pick the details below.")
+      .addDropdown((dropdown) => dropdown
+        .addOption("enhanced", "Enhanced zsh (default)")
+        .addOption("system", "System shell")
+        .addOption("custom", "Custom")
+        .setValue(settings.profile)
+        .onChange((value) => {
+          this.app.terminals.saveSettings({ profile: value === "system" || value === "custom" ? value : "enhanced" });
+          this.display();
+        }));
+    if (settings.profile === "custom") {
+      new Setting(group.itemsEl)
+        .setName("Shell path")
+        .setDesc("Leave empty to use the login shell from $SHELL.")
+        .addText((text) => text.setValue(settings.shell).onChange((value) => {
+          this.app.terminals.saveSettings({ shell: value.trim() });
+        }));
+      new Setting(group.itemsEl)
+        .setName("Font family")
+        .setDesc("Leave empty to use the bundled terminal font stack.")
+        .addText((text) => text.setValue(settings.fontFamily).onChange((value) => {
+          this.app.terminals.saveSettings({ fontFamily: value.trim() });
+        }));
+    }
     new Setting(group.itemsEl)
       .setName("Default location")
       .setDesc("Where new terminals open in the workspace.")
@@ -85,12 +107,6 @@ class TerminalSettingTab implements SettingTab {
         .onChange((value) => {
           this.app.terminals.saveSettings({ location: value === "split" || value === "right" ? value : "tab" });
         }));
-    new Setting(group.itemsEl)
-      .setName("Font family")
-      .setDesc("Leave empty to use the interface monospace font.")
-      .addText((text) => text.setValue(settings.fontFamily).onChange((value) => {
-        this.app.terminals.saveSettings({ fontFamily: value.trim() });
-      }));
     new Setting(group.itemsEl)
       .setName("Font size")
       .addText((text) => text.setValue(String(settings.fontSize)).onChange((value) => {

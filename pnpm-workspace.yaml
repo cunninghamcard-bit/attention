@@ -1,0 +1,18 @@
+supportedArchitectures:
+  os:
+    - current
+  cpu:
+    - current
+
+# electron 43+ has no install scripts (its binary self-downloads on first
+# run); node-pty's postinstall arranges its prebuilds.
+allowBuilds:
+  # pure-JS SDK, no native build needed
+  '@google/genai': false
+  electron: set this to true or false
+  node-pty: true
+  # postinstall only stamps version files
+  protobufjs: false
+
+patchedDependencies:
+  ghostty-web: patches/ghostty-web.patch

@@ -25,7 +25,18 @@ export interface TerminalOpenOptions {
   reveal?: boolean;
 }
 
+/**
+ * The product-level terminal choice:
+ * - "enhanced" (default): zsh with the batteries-included integration layer —
+ *   prompt, autosuggestions, syntax highlighting — layered over the user's
+ *   existing shell configuration like Kaku's setup flow.
+ * - "system": the user's login shell and their own dotfiles, no injection.
+ * - "custom": the shell/font detail fields below take effect.
+ */
+export type TerminalProfile = "enhanced" | "system" | "custom";
+
 export interface TerminalSettings {
+  profile: TerminalProfile;
   shell: string;
   location: "tab" | "split" | "right";
   fontFamily: string;
@@ -67,12 +78,34 @@ export class TerminalService {
   getSettings(): TerminalSettings {
     const stored = this.app.loadLocalStorage<Partial<TerminalSettings>>(SETTINGS_KEY) ?? {};
     return {
+      profile: stored.profile ?? "enhanced",
       shell: stored.shell ?? "",
       location: stored.location ?? "tab",
       fontFamily: stored.fontFamily ?? "",
-      fontSize: stored.fontSize ?? 13,
+      fontSize: stored.fontSize ?? 15,
       scrollback: stored.scrollback ?? 10000,
     };
+  }
+
+  /**
+   * Resolve the active profile into a concrete spawn config. This is the only
+   * place profile semantics live — adapters and the bridge receive plain
+   * `{ shell, env }` and execute it verbatim.
+   */
+  resolveSpawnConfig(requestedShell?: string): { shell: string; env?: Record<string, string> } {
+    const settings = this.getSettings();
+    if (settings.profile === "system") {
+      return { shell: requestedShell || this.adapter.defaultShell() };
+    }
+    if (settings.profile === "custom") {
+      return { shell: requestedShell || settings.shell || this.adapter.defaultShell() };
+    }
+    // enhanced: always zsh (matching the vendor terminal this profile mirrors),
+    // with the integration shim's ZDOTDIR when it can be provisioned.
+    const loginShell = this.adapter.defaultShell();
+    const shell = requestedShell || (loginShell.split("/").pop() === "zsh" ? loginShell : "/bin/zsh");
+    const zdotdir = this.adapter.prepareShellIntegration();
+    return zdotdir ? { shell, env: { ZDOTDIR: zdotdir } } : { shell };
   }
 
   saveSettings(settings: Partial<TerminalSettings>): void {
@@ -90,7 +123,7 @@ export class TerminalService {
   /** Start a PTY session without opening a leaf (the view calls this too). */
   createSession(options: Pick<TerminalOpenOptions, "cwd" | "shell"> = {}): TTerminal {
     const id = `terminal-${++this.counter}`;
-    const shell = options.shell || this.getSettings().shell || this.adapter.defaultShell();
+    const { shell } = this.resolveSpawnConfig(options.shell);
     const cwd = options.cwd || this.defaultCwd();
     const terminal: TTerminal = { id, cwd, shell, status: "starting" };
     const session: TerminalSession = { terminal, process: null, buffer: [], consumers: new Set(), exitCallbacks: new Set(), lastError: null };
@@ -174,7 +207,9 @@ export class TerminalService {
     const { terminal } = session;
     session.lastError = null;
     try {
-      const handle = this.adapter.spawn({ shell: terminal.shell, cwd: terminal.cwd, cols: 80, rows: 24 });
+      // Re-resolve on every (re)spawn so a profile change applies to restarts.
+      const { env } = this.resolveSpawnConfig(terminal.shell);
+      const handle = this.adapter.spawn({ shell: terminal.shell, cwd: terminal.cwd, cols: 80, rows: 24, env });
       session.process = handle;
       terminal.status = "running";
       handle.onData((data) => {

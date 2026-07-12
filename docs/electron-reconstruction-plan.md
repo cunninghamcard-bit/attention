@@ -16,7 +16,7 @@ Authoritative evidence: `decode-obsidian/.claude/skills/obsidian-reverse-profile
 2. **Feature scope = platform contract only.** Per `reconstruction-scope.md`: no
    Graph / Backlinks / Canvas / Sync / Publish / Daily Notes / etc. feature parity —
    seam-only, `defaultOn: false`. This effort touches the desktop shell, not features.
-3. **Never break the web build or tests.** `bun run check` (oxlint + tsc + vitest +
+3. **Never break the web build or tests.** `pnpm run check` (oxlint + tsc + vitest +
    vite build + build:api) and the Playwright e2e must stay green after every layer.
    Electron code lives in its own build target; web/test path keeps using the
    in-memory adapter and the existing `window.electron?`-optional renderer code.
@@ -50,7 +50,7 @@ Renderer Node use: `import("node:fs/promises" | "node:path" | "node:fs")` [FileS
 
 - **L0 Foundation / build wiring.** Add `electron` dep; `electron/` target
   (`main.ts`, `preload.ts`) with its own tsconfig (node/CJS); dev = load Vite dev
-  server, prod = load built assets via `app://`. `bun run check` still green.
+  server, prod = load built assets via `app://`. `pnpm run check` still green.
 - **L1 Preload bridge.** `preload.ts` installs `window.electron`
   (`ipcRenderer.{sendSync,send,on}`, `shell`, `webUtils`) + `window.electronWindow`.
   Exact interfaces from FrameDom/Platform/FileSystemAdapter. Tests for the bridge shape.
@@ -84,4 +84,4 @@ Out-of-scope seams recorded only (updater download/install, CLI REPL/server, adb
 
 Layers are sequential (each depends on the previous). Within a layer, independent
 files + their tests are built in parallel by subagents, then the layer is verified
-(`bun run check`) and committed. Non-goal feature domains are never touched.
+(`pnpm run check`) and committed. Non-goal feature domains are never touched.

@@ -98,12 +98,14 @@ let store: JsonStore;
 let registry: VaultRegistry;
 let manager: VaultWindowManager;
 let quitting: boolean;
+let starterOpen: boolean;
 let vaultId: string;
 
 beforeEach(() => {
   vi.useFakeTimers();
   FakeBrowserWindow.instances = [];
   quitting = false;
+  starterOpen = false;
   dir = fs.mkdtempSync(join(tmpdir(), "vault-windows-"));
   const vaultPath = join(dir, "Vault");
   fs.mkdirSync(vaultPath);
@@ -117,6 +119,7 @@ beforeEach(() => {
     displays: DISPLAYS,
     preloadPath: "/tmp/preload.cjs",
     isQuitting: () => quitting,
+    isStarterOpen: () => starterOpen,
   });
 });
 
@@ -151,17 +154,27 @@ describe("VaultWindowManager (real de/H/ve)", () => {
     expect((first as unknown as InstanceType<typeof FakeBrowserWindow>).focused).toBe(true);
   });
 
-  it("marks the vault open in the registry, and closed on window close", () => {
+  it("clears the open flag on close while the starter remains", () => {
     manager.openVault(vaultId);
     expect(registry.vaults[vaultId].open).toBe(true);
+    starterOpen = true;
     (FakeBrowserWindow.instances[0]).close();
     expect(registry.vaults[vaultId].open).toBeUndefined();
     expect(manager.openCount).toBe(0);
   });
 
+  it("keeps the open flag when the app's last window closes (relaunch restores it)", () => {
+    // Real closed handler: no starter and no other vault window remain, so
+    // the persisted flag survives and the next launch reopens the vault.
+    manager.openVault(vaultId);
+    FakeBrowserWindow.instances[0].close();
+    expect(registry.vaults[vaultId].open).toBe(true);
+  });
+
   it("keeps the open flag while quitting so relaunch restores windows", () => {
     manager.openVault(vaultId);
     quitting = true;
+    starterOpen = true;
     FakeBrowserWindow.instances[0].close();
     expect(registry.vaults[vaultId].open).toBe(true);
   });

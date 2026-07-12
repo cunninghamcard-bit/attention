@@ -1,0 +1,477 @@
+/* Review surface: sidebar + virtualized multi-file diff (codiff-class). */
+
+.git-review-view {
+  padding: 0;
+  overflow: hidden;
+}
+
+.review-surface {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  height: 100%;
+  outline: none;
+}
+
+/* --- Sidebar ---------------------------------------------------------- */
+
+.review-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--background-modifier-border);
+  background-color: var(--background-secondary);
+}
+
+.review-sidebar-title {
+  font-weight: var(--font-semibold);
+  padding: var(--size-4-3) var(--size-4-3) 0;
+}
+
+.review-sidebar-subtitle {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  padding: 0 var(--size-4-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-filter {
+  margin: var(--size-4-2) var(--size-4-3);
+  width: calc(100% - 2 * var(--size-4-3));
+}
+
+.review-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  padding: 0 var(--size-4-3) var(--size-4-2);
+}
+
+.review-progress-track {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--background-modifier-border);
+  overflow: hidden;
+}
+
+.review-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background-color: var(--interactive-accent);
+  transition: width 180ms ease;
+}
+
+.review-progress-text {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.review-file-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--size-4-1) var(--size-4-2);
+}
+
+.review-file-row {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  padding: 3px var(--size-4-2);
+  border-radius: var(--radius-s);
+  cursor: var(--cursor);
+  font-size: var(--font-ui-small);
+}
+
+.review-file-row:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.review-file-row.is-active {
+  background-color: var(--background-modifier-active-hover, var(--background-modifier-hover));
+}
+
+/* codiff: viewed rows visually recede instead of disappearing. */
+.review-file-row.is-viewed {
+  opacity: 0.45;
+}
+
+.review-file-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}
+
+.review-file-row-dir {
+  color: var(--text-faint);
+}
+
+.review-file-row-stat {
+  display: flex;
+  gap: var(--size-2-1);
+  font-size: var(--font-ui-smaller);
+  font-variant-numeric: tabular-nums;
+}
+
+.review-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.review-status-dot.mod-added,
+.review-status-dot.mod-untracked { background-color: var(--color-green, #3fb950); }
+.review-status-dot.mod-deleted { background-color: var(--color-red, #f85149); }
+.review-status-dot.mod-renamed { background-color: var(--color-yellow, #d29922); }
+.review-status-dot.mod-modified { background-color: var(--color-orange, #d29922); }
+
+.review-sidebar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--size-4-2) var(--size-4-3);
+  border-top: 1px solid var(--background-modifier-border);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Main pane --------------------------------------------------------- */
+
+.review-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.review-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--size-4-1) var(--size-4-3);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.review-toolbar-tabs {
+  display: inline-flex;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  overflow: hidden;
+}
+
+.review-toolbar-tab {
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 2px var(--size-4-3);
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+
+.review-toolbar-tab.is-active {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.review-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+}
+
+.review-codeview-host {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.review-codeview {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--size-4-3);
+}
+
+.review-empty {
+  color: var(--text-muted);
+  padding: var(--size-4-3);
+}
+
+.review-empty-main {
+  padding: var(--size-4-8) var(--size-4-4);
+  text-align: center;
+}
+
+/* --- File card headers (rendered inside CodeView items) ----------------- */
+
+.review-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  width: 100%;
+  height: 44px;
+  padding: 0 var(--size-4-2);
+  cursor: var(--cursor);
+  font-size: var(--font-ui-small);
+  background-color: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.review-chevron {
+  display: inline-flex;
+  transition: transform 120ms ease;
+}
+
+.review-chevron.is-collapsed {
+  transform: rotate(-90deg);
+}
+
+.review-card-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-monospace);
+  font-size: 12px;
+}
+
+.review-card-dir {
+  color: var(--text-faint);
+}
+
+.review-card-name {
+  font-weight: var(--font-medium);
+}
+
+.review-card-stat {
+  display: flex;
+  gap: var(--size-2-1);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-ui-smaller);
+}
+
+.review-chip {
+  font-size: var(--font-ui-smaller);
+  padding: 0 var(--size-4-2);
+  border-radius: var(--radius-l);
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-muted);
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.review-chip.mod-added,
+.review-chip.mod-untracked { color: var(--color-green, #3fb950); border-color: currentcolor; }
+.review-chip.mod-deleted { color: var(--color-red, #f85149); border-color: currentcolor; }
+.review-chip.mod-renamed { color: var(--color-yellow, #d29922); border-color: currentcolor; }
+
+.review-card-action {
+  font-size: var(--font-ui-smaller);
+  padding: 1px var(--size-4-2);
+}
+
+.review-viewed {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-2-2);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.review-surface ins,
+.git-pr-view ins {
+  color: var(--color-green, #3fb950);
+  text-decoration: none;
+}
+
+.review-surface del,
+.git-pr-view del {
+  color: var(--color-red, #f85149);
+  text-decoration: none;
+}
+
+/* --- Inline comments ---------------------------------------------------- */
+
+.review-add-comment {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: var(--radius-s);
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-weight: var(--font-bold);
+  line-height: 1;
+}
+
+.review-comment-thread {
+  margin: var(--size-4-1) var(--size-4-4);
+  padding: var(--size-4-2);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background-color: var(--background-primary);
+  font-family: var(--font-interface);
+}
+
+.review-comment-input {
+  width: 100%;
+  resize: vertical;
+}
+
+.review-comment-body {
+  white-space: pre-wrap;
+  font-size: var(--font-ui-small);
+}
+
+.review-comment-actions {
+  display: flex;
+  gap: var(--size-4-2);
+  justify-content: flex-end;
+  margin-top: var(--size-4-1);
+}
+
+/* --- Commit / review bars ------------------------------------------------ */
+
+.review-commit-bar,
+.review-submit-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--size-4-3);
+  padding: var(--size-4-2) var(--size-4-3);
+  border-top: 1px solid var(--background-modifier-border);
+  background-color: var(--background-secondary);
+}
+
+.review-commit-meta {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+  padding-bottom: var(--size-4-1);
+}
+
+.review-commit-fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-1);
+  min-width: 0;
+}
+
+.review-commit-subject-row {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+}
+
+.review-commit-subject {
+  flex: 1;
+}
+
+.review-commit-counter {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.review-commit-counter.is-over {
+  color: var(--color-red, #f85149);
+}
+
+.review-commit-body,
+.review-submit-body {
+  width: 100%;
+  resize: vertical;
+}
+
+.review-submit-bar {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.review-submit-actions {
+  display: flex;
+  gap: var(--size-4-2);
+  justify-content: flex-end;
+}
+
+.review-action {
+  font-size: var(--font-ui-small);
+}
+
+.review-action.mod-approve { color: var(--color-green, #3fb950); }
+.review-action.mod-request-changes { color: var(--color-red, #f85149); }
+
+/* --- Keyboard help -------------------------------------------------------- */
+
+.review-help {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 60px;
+  background-color: rgb(0 0 0 / 0.28);
+  z-index: var(--layer-modal, 50);
+}
+
+.review-help-panel {
+  min-width: 260px;
+  padding: var(--size-4-3);
+  border-radius: var(--radius-m);
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary);
+  box-shadow: var(--shadow-s);
+}
+
+.review-help-title {
+  font-weight: var(--font-semibold);
+  margin-bottom: var(--size-4-2);
+}
+
+.review-help-row {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-3);
+  padding: 2px 0;
+  font-size: var(--font-ui-small);
+}
+
+.review-help-row kbd {
+  min-width: 48px;
+  text-align: center;
+  padding: 1px var(--size-4-1);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background-color: var(--background-secondary);
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+}
+
+/* --- PR files tab hosts the surface ------------------------------------- */
+
+.git-pr-files {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.git-pr-detail {
+  height: 100%;
+}
+
+.review-icon {
+  display: inline-flex;
+  --icon-size: var(--icon-s);
+}

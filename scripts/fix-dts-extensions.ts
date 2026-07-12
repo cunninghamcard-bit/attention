@@ -5,6 +5,8 @@ const root = await firstExistingDirectory([
   join(process.cwd(), "dist", "api", "src"),
   join(process.cwd(), "dist", "src"),
   join(process.cwd(), "dist", "types"),
+  // unplugin-dts with the TS6 fallback applies entryRoot and emits flat.
+  join(process.cwd(), "dist", "api"),
 ]);
 const relativeSpecifier = /((?:from\s+|export\s+\*\s+from\s+|import\s*\(\s*)["'])(\.{1,2}\/[^"']+?)(["'])/g;
 

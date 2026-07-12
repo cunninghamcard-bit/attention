@@ -1,4 +1,5 @@
-import { App, provideAppAdapter } from "./app/App";
+import { App, provideAppAdapter, provideJsonStoreAdapter } from "./app/App";
+import { FileSystemJsonStoreAdapter } from "./storage/FileSystemJsonStoreAdapter";
 import { FileSystemAdapter } from "./vault/FileSystemAdapter";
 import type { TFile } from "./vault/TAbstractFile";
 
@@ -51,10 +52,14 @@ export async function bootstrap(parent: HTMLElement = document.body): Promise<Ap
   win.app = app;
   await app.ready;
 
-  const welcome = await ensureMarkdownFile(app, "Welcome.md", welcomeMarkdown);
-  await ensureMarkdownFile(app, "Plugin Architecture.md", pluginMarkdown);
-  await seedCodeDemoFiles(app);
-  await app.workspace.openFile(welcome, { active: true, state: { mode: "preview" } });
+  // Demo content seeds only a brand-new (empty) vault — an existing vault's
+  // contents are the user's; real Obsidian never writes into an opened vault.
+  if (app.vault.getFiles().length === 0) {
+    const welcome = await ensureMarkdownFile(app, "Welcome.md", welcomeMarkdown);
+    await ensureMarkdownFile(app, "Plugin Architecture.md", pluginMarkdown);
+    await seedCodeDemoFiles(app);
+    await app.workspace.openFile(welcome, { active: true, state: { mode: "preview" } });
+  }
 
   app.statusBar.registerStatusBarItem().textContent = "ArkLoop";
   return app;
@@ -113,7 +118,12 @@ async function seedCodeDemoFiles(app: App): Promise<void> {
 function provideDesktopAdapter(parent: HTMLElement): void {
   const win = parent.ownerDocument.defaultView ?? window;
   const vaultPath = resolveElectronVaultPath(win);
-  provideAppAdapter(vaultPath ? new FileSystemAdapter(vaultPath) : undefined);
+  const adapter = vaultPath ? new FileSystemAdapter(vaultPath) : undefined;
+  provideAppAdapter(adapter);
+  // Vault config (core-plugins/app/appearance/workspace) persists into the
+  // vault's `.obsidian/` like real Obsidian — without this the JsonStore is
+  // memory-only and every setting evaporates on restart.
+  provideJsonStoreAdapter(adapter ? new FileSystemJsonStoreAdapter(adapter) : undefined);
 }
 
 function resolveElectronVaultPath(win: Window): string | null {

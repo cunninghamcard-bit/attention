@@ -48,7 +48,7 @@ import { FoldManager } from "../markdown/FoldManager";
 import type { TFile, TFolder } from "../vault/TAbstractFile";
 import { Notice } from "../ui/Notice";
 import { SettingsSectionRegistry } from "../settings/SettingsSection";
-import { JsonStore } from "../storage/JsonStore";
+import { JsonStore, type JsonStoreAdapter } from "../storage/JsonStore";
 import { AppConfigManager } from "../storage/AppConfig";
 import { PluginDataStore } from "../storage/PluginDataStore";
 import { SecretStorage } from "../storage/SecretStorage";
@@ -66,6 +66,7 @@ import { RevisionHistoryService } from "../revisions/RevisionHistory";
 import { FileRecoveryService } from "../recovery/FileRecovery";
 import { WebViewerService } from "../webviewer/WebViewerService";
 import { TerminalService } from "../terminal/TerminalService";
+import { GitService } from "../git/GitService";
 import { ThemeMarketplace } from "../theme-market/ThemeMarketplace";
 import { ThemeInstaller } from "../theme-market/ThemeInstaller";
 import { ApiDocGenerator } from "../docs/ApiDocGenerator";
@@ -88,19 +89,9 @@ import type { AttachmentImportData, AttachmentImportFile } from "./AttachmentImp
 import { FrameDom } from "./FrameDom";
 import { applyObsidianBodyClasses, installFocusBodyClassSync, syncObsidianConfigBodyClasses } from "./BodyClasses";
 
-export interface CliData {
-  [key: string]: string | "true";
-}
-
-export interface CliFlag {
-  value?: string;
-  description: string;
-  required?: boolean;
-}
-
-export type CliFlags = Record<string, CliFlag>;
-
-export type CliHandler = (params: CliData) => string | Promise<string>;
+import { Cli } from "../cli/Cli";
+import { registerCliCommands } from "../cli/registerCliCommands";
+import { URL_SCHEME } from "../protocol/scheme";
 const localStorageFallback = new Map<string, string>();
 
 function installAnimationFrameFallback(win: Window): void {
@@ -112,14 +103,6 @@ function installAnimationFrameFallback(win: Window): void {
   }
 }
 
-export interface CliHandlerRegistration {
-  id: string;
-  command: string;
-  description: string;
-  flags: CliFlags | null;
-  handler: CliHandler;
-  owner?: string;
-}
 
 /**
  * One-shot handoff of the vault adapter into the next {@link App} construction.
@@ -144,6 +127,21 @@ function takeNextAppAdapter(): DataAdapter | undefined {
   return adapter;
 }
 
+// Same one-shot handoff for the vault-config store: on desktop it must write
+// the vault's `.obsidian/` (real Obsidian persists core-plugins/app/appearance
+// there); with nothing provided (web/tests) JsonStore stays in-memory.
+let nextJsonStoreAdapter: JsonStoreAdapter | undefined;
+
+export function provideJsonStoreAdapter(adapter: JsonStoreAdapter | undefined): void {
+  nextJsonStoreAdapter = adapter;
+}
+
+function takeNextJsonStoreAdapter(): JsonStoreAdapter | undefined {
+  const adapter = nextJsonStoreAdapter;
+  nextJsonStoreAdapter = undefined;
+  return adapter;
+}
+
 export class App {
   readonly appId = "obsidian-reconstructed";
   readonly title = document.title || "Obsidian";
@@ -151,8 +149,8 @@ export class App {
   readonly dom: AppDom;
   readonly containerEl: HTMLElement;
   lastEvent: Event | null = null;
-  readonly cliHandlers: CliHandlerRegistration[] = [];
-  readonly jsonStore = new JsonStore();
+  readonly cli = new Cli();
+  readonly jsonStore = new JsonStore(takeNextJsonStoreAdapter());
   readonly config = new AppConfigManager(this.jsonStore);
   readonly pluginData = new PluginDataStore(this.jsonStore);
   readonly secretStorage = new SecretStorage();
@@ -164,6 +162,7 @@ export class App {
   readonly fileRecovery = new FileRecoveryService(this);
   readonly webViewer = new WebViewerService(this);
   readonly terminals = new TerminalService(this);
+  readonly git = new GitService(this);
   readonly themeMarketplace = new ThemeMarketplace();
   readonly themeInstaller = new ThemeInstaller(this);
   readonly apiDocs = new ApiDocGenerator(this);
@@ -264,6 +263,8 @@ export class App {
     this.statusBar = new StatusBar(this.dom.statusBarEl);
     this.appearance.applyFromConfig();
     registerAppCommands(this);
+    this.cli.init(this);
+    registerCliCommands(this);
     this.desktopMenu.refresh();
     MarkdownRenderer.resetProcessors();
     registerMarkdownDefaultProcessors(this);
@@ -288,7 +289,7 @@ export class App {
 
   getObsidianUrl(file: TFile): string {
     const path = file.extension === "md" ? file.path.slice(0, -3) : file.path;
-    return `obsidian://open?vault=${encodeURIComponent(this.vault.getName())}&file=${encodeURIComponent(path)}`;
+    return `${URL_SCHEME}open?vault=${encodeURIComponent(this.vault.getName())}&file=${encodeURIComponent(path)}`;
   }
 
   async copyObsidianUrl(file: TFile): Promise<void> {
@@ -420,34 +421,6 @@ export class App {
     }
   }
 
-  registerCliHandler(command: string, description: string, flags: CliFlags | null, handler: CliHandler, owner?: string): CliHandlerRegistration {
-    if (this.cliHandlers.some((registration) => registration.command === command)) {
-      throw new Error(`CLI command "${command}" is already registered.`);
-    }
-    const registration = { id: command, command, description, flags, handler, ...(owner ? { owner } : {}) };
-    this.cliHandlers.push(registration);
-    return registration;
-  }
-
-  unregisterCliHandler(registration: CliHandlerRegistration): void;
-  unregisterCliHandler(id: string, handler?: CliHandler): void;
-  unregisterCliHandler(idOrRegistration: string | CliHandlerRegistration, handler?: CliHandler): void {
-    const index = typeof idOrRegistration === "string"
-      ? this.cliHandlers.findIndex((registration) => registration.command === idOrRegistration && (!handler || registration.handler === handler))
-      : this.cliHandlers.indexOf(idOrRegistration);
-    if (index !== -1) this.cliHandlers.splice(index, 1);
-  }
-
-  async runCliHandler(command: string, params: CliData | string[] = {}): Promise<string[]> {
-    const results: string[] = [];
-    const data = Array.isArray(params) ? parseCliArgs(params) : params;
-    for (const registration of this.cliHandlers.filter((handler) => handler.command === command)) {
-      validateCliData(registration, data);
-      results.push(await registration.handler(data));
-    }
-    return results;
-  }
-
   resolveAttachmentFile(file: AttachmentImportFile): TFile | null {
     return this.fileManager.resolveAttachmentFile(file);
   }
@@ -575,28 +548,6 @@ function isExternalMediaSrc(src: string): boolean {
   return /^[a-z][a-z0-9+.-]*:/i.test(src);
 }
 
-function parseCliArgs(args: string[]): CliData {
-  const data: CliData = {};
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (!arg.startsWith("--")) continue;
-    const raw = arg.slice(2);
-    const equalIndex = raw.indexOf("=");
-    if (equalIndex !== -1) {
-      data[raw.slice(0, equalIndex)] = raw.slice(equalIndex + 1);
-      continue;
-    }
-    const next = args[index + 1];
-    if (next && !next.startsWith("-")) {
-      data[raw] = next;
-      index += 1;
-    } else {
-      data[raw] = "true";
-    }
-  }
-  return data;
-}
-
 function getBrowserStorage(): Storage | null {
   try {
     return globalThis.window?.localStorage ?? null;
@@ -632,14 +583,6 @@ function safeRequireElectron(host: { require?: (moduleName: "electron") => { she
     return host.require?.("electron") ?? null;
   } catch {
     return null;
-  }
-}
-
-function validateCliData(registration: CliHandlerRegistration, data: CliData): void {
-  for (const [flag, definition] of Object.entries(registration.flags ?? {})) {
-    if (definition.required && data[flag] === undefined) {
-      throw new Error(`Missing required CLI flag "${flag}" for command "${registration.command}".`);
-    }
   }
 }
 

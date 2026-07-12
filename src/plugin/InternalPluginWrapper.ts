@@ -1,5 +1,6 @@
 import { Component } from "../core/Component";
-import type { App, CliFlags, CliHandler, CliHandlerRegistration } from "../app/App";
+import type { App } from "../app/App";
+import type { CliFlags, CliHandler } from "../cli/Cli";
 import type { Command } from "../commands/CommandManager";
 import type { SettingTab } from "../app/SettingRegistry";
 import type { ViewCreator } from "../workspace/ViewRegistry";
@@ -22,7 +23,7 @@ export class InternalPluginWrapper extends Component {
   readonly views = new Map<string, ViewCreator>();
   readonly extensions = new Map<string, string[]>();
   private addedRibbonEls: HTMLElement[] = [];
-  private addedCliHandlers: CliHandlerRegistration[] = [];
+  private addedCliHandlers: InternalCliHandler[] = [];
   private hasStatusBarItem = false;
   lastSave = 0;
   lastDataModifiedTime = 0;
@@ -54,7 +55,10 @@ export class InternalPluginWrapper extends Component {
     }
     for (const [type, creator] of this.views) this.app.viewRegistry.registerView(type, creator);
     for (const [type, extensions] of this.extensions) this.app.viewRegistry.registerExtensions(extensions, type);
-    for (const entry of this.cliHandlers) this.addedCliHandlers.push(this.app.registerCliHandler(entry.id, entry.description, entry.flags, entry.handler, this.definition.id));
+    for (const entry of this.cliHandlers) {
+      this.app.cli.registerHandler(entry.id, entry.description, entry.flags, entry.handler);
+      this.addedCliHandlers.push(entry);
+    }
 
     await this.definition.onEnable?.(this.app, this);
     if (userInitiated) this.definition.onUserEnable?.(this.app, this);
@@ -77,7 +81,7 @@ export class InternalPluginWrapper extends Component {
     for (const el of this.addedRibbonEls) el.remove();
     this.addedRibbonEls = [];
     for (const item of this.ribbonItems) this.app.workspace.leftRibbon.removeRibbonAction(item.id);
-    for (const registration of this.addedCliHandlers) this.app.unregisterCliHandler(registration);
+    for (const entry of this.addedCliHandlers) this.app.cli.unregisterHandler(entry.id, entry.handler);
     this.addedCliHandlers = [];
     this.statusBarEl?.remove();
     this.statusBarEl = null;
@@ -119,8 +123,12 @@ export class InternalPluginWrapper extends Component {
   }
 
   registerCliHandler(command: string, description: string, flags: CliFlags | null, handler: CliHandler): void {
-    this.cliHandlers.push({ id: command, description, flags, handler });
-    if (this.enabled) this.addedCliHandlers.push(this.app.registerCliHandler(command, description, flags, handler, this.definition.id));
+    const entry = { id: command, description, flags, handler };
+    this.cliHandlers.push(entry);
+    if (this.enabled) {
+      this.app.cli.registerHandler(command, description, flags, handler);
+      this.addedCliHandlers.push(entry);
+    }
   }
 
   registerMobileFileInfo(renderCallback: (el: HTMLElement) => void): void {
