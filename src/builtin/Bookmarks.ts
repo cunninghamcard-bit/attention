@@ -6,7 +6,7 @@ import { ItemView } from "../views/ItemView";
 import { MarkdownView } from "../views/MarkdownView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
 import { TFile, TFolder } from "../vault/TAbstractFile";
-import type { DragSource } from "../drag/DragManager";
+import type { DragSource } from "../ui/drag/DragManager";
 
 export type BookmarkItem =
   | { type: "file"; ctime: number; path: string; subpath?: string; title?: string }

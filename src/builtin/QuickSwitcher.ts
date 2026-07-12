@@ -2,10 +2,10 @@ import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../plugin/InternalPluginWrapper";
-import { FuzzySuggestModal, type FuzzySuggestion } from "../suggest/SuggestModal";
+import { FuzzySuggestModal, type FuzzySuggestion } from "../ui/suggest/SuggestModal";
 import { Setting, SettingGroup } from "../ui/Setting";
 import { TFile } from "../vault/TAbstractFile";
-import { Keymap } from "../hotkeys/Keymap";
+import { Keymap } from "../app/hotkeys/Keymap";
 import { setIcon } from "../ui/Icon";
 
 export interface QuickSwitcherOptions {

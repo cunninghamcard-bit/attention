@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
 import type { CanvasFileNodeData, CanvasLinkNodeData, CanvasTextNodeData } from "../canvas/CanvasData";
-import type { FileDragSource, FilesDragSource, FolderDragSource, LinkDragSource } from "../drag/DragManager";
+import type { FileDragSource, FilesDragSource, FolderDragSource, LinkDragSource } from "../ui/drag/DragManager";
 import { CanvasView } from "./CanvasView";
 
 describe("CanvasView external drops", () => {

@@ -5,7 +5,7 @@ import { displayTooltip, hideTooltip, setTooltip } from "../ui/Popover";
 import { moment } from "../api/ApiUtils";
 import { Menu } from "../ui/Menu";
 import { TAbstractFile, TFile, TFolder } from "../vault/TAbstractFile";
-import { setAllowedDropEffect, type DragDropResult, type DragSource, type FileDragSource, type FilesDragSource, type FolderDragSource } from "../drag/DragManager";
+import { setAllowedDropEffect, type DragDropResult, type DragSource, type FileDragSource, type FilesDragSource, type FolderDragSource } from "../ui/drag/DragManager";
 import { getAttachmentFilesFromDataTransfer, hasDataTransferAttachmentFiles } from "../app/AttachmentImport";
 import { Platform } from "../platform/Platform";
 import { validateRenameName } from "../vault/FileNameValidation";

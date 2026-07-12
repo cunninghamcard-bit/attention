@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
 import { AppDom } from "../app/AppDom";
-import { MobileDrawer } from "../mobile/MobileDrawer";
+import { MobileDrawer } from "../platform/mobile/MobileDrawer";
 import { ItemView } from "../views/ItemView";
 import { WorkspaceLeaf } from "./WorkspaceLeaf";
 import { WorkspaceSidedock } from "./WorkspaceSidedock";

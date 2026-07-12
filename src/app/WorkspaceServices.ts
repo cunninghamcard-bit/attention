@@ -1,10 +1,10 @@
-import { DragManager } from "../drag/DragManager";
-import { UriRouter } from "../protocol/UriRouter";
+import { DragManager } from "../ui/drag/DragManager";
+import { UriRouter } from "./protocol/UriRouter";
 import type { App } from "./App";
-import { WindowManager } from "../window/WindowManager";
-import { PopoutManager } from "../window/PopoutManager";
-import { MobileWorkspace } from "../mobile/MobileWorkspace";
-import { HoverPreviewController } from "../hover/HoverPreviewController";
+import { WindowManager } from "../platform/window/WindowManager";
+import { PopoutManager } from "../platform/window/PopoutManager";
+import { MobileWorkspace } from "../platform/mobile/MobileWorkspace";
+import { HoverPreviewController } from "../ui/hover/HoverPreviewController";
 
 export class WorkspaceServices {
   readonly dragManager: DragManager;

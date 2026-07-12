@@ -3,8 +3,8 @@ import { View } from "./View";
 import { Menu, MenuItem } from "../ui/Menu";
 import { setIcon } from "../ui/Icon";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
-import type { DragDropResult, DragSource } from "../drag/DragManager";
-import { Keymap } from "../hotkeys/Keymap";
+import type { DragDropResult, DragSource } from "../ui/drag/DragManager";
+import { Keymap } from "../app/hotkeys/Keymap";
 import { Platform } from "../platform/Platform";
 import { setTooltip } from "../ui/Popover";
 

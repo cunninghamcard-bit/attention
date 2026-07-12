@@ -20,7 +20,7 @@ import { registerSessionHardening } from "./session-hardening";
 import { registerDesktopBridgeIpc } from "./desktop-bridge";
 import { LoomSidecar, resolveLoomSidecarConfig } from "./loom-sidecar";
 import { applyMenu, updateMenuItems } from "./menu";
-import type { SystemMenuItem } from "../src/desktop/SystemMenuBuilder";
+import type { SystemMenuItem } from "../src/platform/desktop/SystemMenuBuilder";
 import { CliServer, defaultCliSocketPath } from "./cli/CliServer";
 import { runCliClient } from "./cli/CliClient";
 import { dispatchCli } from "./cli/CliDispatch";

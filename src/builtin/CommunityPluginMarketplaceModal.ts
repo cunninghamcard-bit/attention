@@ -5,7 +5,7 @@ import { Notice } from "../ui/Notice";
 import { registerActiveCloseable, unregisterActiveCloseable, type ActiveCloseable } from "../ui/ActiveCloseableRegistry";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import type { MarketplacePluginEntry } from "../plugin/PluginMarketplace";
-import { URL_SCHEME } from "../protocol/scheme";
+import { URL_SCHEME } from "../app/protocol/scheme";
 
 type SortMode = "download" | "update" | "release" | "alphabetical";
 

@@ -1,5 +1,5 @@
 import { normalizePluginManifest, type PluginManifest, type PluginManifestInput, type PluginPackage } from "./PluginManifest";
-import { compareVersions, latestVersion } from "../utils/Version";
+import { compareVersions, latestVersion } from "../core/Version";
 
 export interface MarketplacePluginEntry {
   manifest: PluginManifestInput;

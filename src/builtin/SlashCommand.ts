@@ -1,11 +1,11 @@
 import type { App } from "../app/App";
-import { formatHotkey, getDisplayHotkeys } from "../commands/CommandPalette";
-import { runCommandCallback, type Command } from "../commands/CommandManager";
+import { formatHotkey, getDisplayHotkeys } from "../app/commands/CommandPalette";
+import { runCommandCallback, type Command } from "../app/commands/CommandManager";
 import type { Editor, EditorPosition } from "../editor/Editor";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../plugin/InternalPluginWrapper";
-import { EditorSuggest, type EditorSuggestContext, type EditorSuggestTriggerInfo } from "../suggest/EditorSuggest";
-import { fuzzyMatch, prepareFuzzyQuery, renderFuzzyText, sortFuzzySuggestions, type FuzzySuggestion } from "../suggest/SuggestModal";
+import { EditorSuggest, type EditorSuggestContext, type EditorSuggestTriggerInfo } from "../ui/suggest/EditorSuggest";
+import { fuzzyMatch, prepareFuzzyQuery, renderFuzzyText, sortFuzzySuggestions, type FuzzySuggestion } from "../ui/suggest/SuggestModal";
 import { setIcon } from "../ui/Icon";
 
 const TRIGGER = /(^|\s)\/([^\s/]*)$/;

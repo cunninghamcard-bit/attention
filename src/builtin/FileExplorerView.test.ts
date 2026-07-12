@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
-import type { DragSource, FileDragSource, FilesDragSource, FolderDragSource } from "../drag/DragManager";
+import type { DragSource, FileDragSource, FilesDragSource, FolderDragSource } from "../ui/drag/DragManager";
 import { Menu } from "../ui/Menu";
 import { TAbstractFile, TFile, TFolder } from "../vault/TAbstractFile";
 import { FileExplorerView } from "./FileExplorerView";

@@ -1,5 +1,5 @@
 import { Menu, BrowserWindow, type MenuItemConstructorOptions } from "electron";
-import type { SystemMenuItem } from "../src/desktop/SystemMenuBuilder";
+import type { SystemMenuItem } from "../src/platform/desktop/SystemMenuBuilder";
 
 /**
  * Native menu from a renderer-supplied template (reverse note `set-menu` +

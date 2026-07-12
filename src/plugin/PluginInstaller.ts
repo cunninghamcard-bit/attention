@@ -2,7 +2,7 @@ import type { App } from "../app/App";
 import { CommunityPluginTrustModal } from "../builtin/CommunityPluginTrustModal";
 import { Platform } from "../platform/Platform";
 import { Notice } from "../ui/Notice";
-import type { UpdateCheckResult } from "../updates/UpdateManager";
+import type { UpdateCheckResult } from "../app/release/UpdateManager";
 import { normalizePluginManifest, type PluginManifest, type PluginManifestInput, type PluginPackage } from "./PluginManifest";
 import type { Plugin } from "./Plugin";
 import { prepareDownloadedMainJs } from "./PluginSource";

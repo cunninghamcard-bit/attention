@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
-import type { ObsidianProtocolData } from "../protocol/UriRouter";
+import type { ObsidianProtocolData } from "../app/protocol/UriRouter";
 
 describe("Workspace registerUriHook parity", () => {
   beforeEach(() => {

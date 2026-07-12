@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
-import { Scope } from "../hotkeys/Scope";
+import { Scope } from "../app/hotkeys/Scope";
 import type { TFile } from "../vault/TAbstractFile";
 import { MarkdownView } from "./MarkdownView";
 

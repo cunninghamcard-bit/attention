@@ -3,7 +3,7 @@ import { FileView } from "./FileView";
 import { ItemView } from "./ItemView";
 import type { InternalViewStateResult } from "./View";
 import type { TFile } from "../vault/TAbstractFile";
-import { ReleaseNotesBuilder } from "../release/ReleaseNotes";
+import { ReleaseNotesBuilder } from "../app/release/ReleaseNotes";
 
 export const IMAGE_EXTENSIONS = ["bmp", "png", "jpg", "jpeg", "gif", "svg", "webp", "avif"];
 export const AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "3gp", "flac", "ogg", "oga", "opus"];

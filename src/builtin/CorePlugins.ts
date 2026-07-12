@@ -18,7 +18,7 @@ import { MarkdownView } from "../views/MarkdownView";
 import { registerSearchCliHandlers } from "../cli/commands/searchCli";
 import { registerLinksCliHandlers, registerOutlineCliHandlers } from "../cli/commands/linksOutlineCli";
 import { createGraphPluginDefinition } from "./GraphPlugin";
-import { createCommandPalettePluginDefinition } from "../commands/CommandPalette";
+import { createCommandPalettePluginDefinition } from "../app/commands/CommandPalette";
 import { createDailyNotesPluginDefinition } from "./DailyNotes";
 import { createTemplatesPluginDefinition } from "./Templates";
 import { createRandomNotePluginDefinition } from "./RandomNote";

@@ -6,7 +6,7 @@ import { WorkspaceSidedock } from "./WorkspaceSidedock";
 import { WorkspaceTabs } from "./WorkspaceTabs";
 import { WorkspaceFloating } from "./WorkspaceFloating";
 import { WorkspaceWindow } from "./WorkspaceWindow";
-import { MobileDrawer } from "../mobile/MobileDrawer";
+import { MobileDrawer } from "../platform/mobile/MobileDrawer";
 import type { WorkspaceItem } from "./WorkspaceItem";
 import type { WorkspaceLayout, WorkspaceLayoutNode } from "./WorkspaceLayout";
 

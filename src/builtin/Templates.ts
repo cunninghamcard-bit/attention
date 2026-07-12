@@ -2,7 +2,7 @@ import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../plugin/InternalPluginWrapper";
-import { FuzzySuggestModal, type FuzzySuggestion } from "../suggest/SuggestModal";
+import { FuzzySuggestModal, type FuzzySuggestion } from "../ui/suggest/SuggestModal";
 import type { TFile } from "../vault/TAbstractFile";
 import { MarkdownView } from "../views/MarkdownView";
 import { Setting, SettingGroup } from "../ui/Setting";

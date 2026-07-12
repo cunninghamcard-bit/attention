@@ -1,5 +1,5 @@
 import type { App } from "../app/App";
-import { SuggestModal } from "../suggest/SuggestModal";
+import { SuggestModal } from "../ui/suggest/SuggestModal";
 import { TAbstractFile, TFile, TFolder } from "./TAbstractFile";
 
 export class MoveFileModal extends SuggestModal<TFolder> {

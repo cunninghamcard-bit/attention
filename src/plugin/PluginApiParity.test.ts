@@ -13,14 +13,14 @@ import {
   stringifyYaml,
 } from "../api/ApiUtils";
 import { Component } from "../core/Component";
-import { Keymap } from "../hotkeys/Keymap";
-import { Scope } from "../hotkeys/Scope";
+import { Keymap } from "../app/hotkeys/Keymap";
+import { Scope } from "../app/hotkeys/Scope";
 import { MarkdownPreviewRenderer } from "../markdown/MarkdownPreviewRenderer";
 import { MarkdownPreviewSection } from "../markdown/MarkdownPreviewSection";
 import { MarkdownPreviewView } from "../markdown/MarkdownPreviewView";
 import { iterateCacheRefs, iterateRefs, MetadataCache } from "../metadata/MetadataCache";
 import { fuzzySearch, prepareQuery } from "../search/SearchHelpers";
-import { FuzzySuggestModal } from "../suggest/SuggestModal";
+import { FuzzySuggestModal } from "../ui/suggest/SuggestModal";
 import { addIcon, getIcon, getIconIds, removeIcon } from "../ui/Icon";
 import { Menu } from "../ui/Menu";
 import { SecretComponent } from "../ui/Setting";

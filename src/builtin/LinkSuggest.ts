@@ -3,7 +3,7 @@ import type { Editor, EditorPosition } from "../editor/Editor";
 import { computeBlockIdInsertion } from "../metadata/BlockCache";
 import type { LinkFileSuggestion, LinkSuggestionReplacement } from "../metadata/LinkSuggestionManager";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
-import { EditorSuggest, type EditorSuggestContext, type EditorSuggestTriggerInfo } from "../suggest/EditorSuggest";
+import { EditorSuggest, type EditorSuggestContext, type EditorSuggestTriggerInfo } from "../ui/suggest/EditorSuggest";
 import type { TFile } from "../vault/TAbstractFile";
 import { MarkdownView } from "../views/MarkdownView";
 

@@ -5,7 +5,7 @@ import { desktopWorkspaceFileName, mobileWorkspaceFileName } from "./WorkspaceLa
 import { WorkspaceWindow } from "./WorkspaceWindow";
 import { WorkspaceSidedock } from "./WorkspaceSidedock";
 import { WorkspaceLeaf } from "./WorkspaceLeaf";
-import { MobileDrawer } from "../mobile/MobileDrawer";
+import { MobileDrawer } from "../platform/mobile/MobileDrawer";
 
 describe("WorkspaceLayoutPersistence", () => {
   beforeEach(() => {

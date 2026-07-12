@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import type { VaultRegistryData } from "./vault-registry";
-import { URL_SCHEME } from "../src/protocol/scheme";
+import { URL_SCHEME } from "../src/app/protocol/scheme";
 
 /**
  * `obsidian://` URL parsing and routing — real `$e(url)` (reverse note

@@ -2,7 +2,7 @@ import type { App } from "../app/App";
 import type { Editor, EditorPosition } from "../editor/Editor";
 import { completeTagSuggestionText, getTagSuggestions, renderTagSuggestion, type TagSuggestion } from "../metadata/TagSuggestion";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
-import { EditorSuggest, type EditorSuggestContext, type EditorSuggestTriggerInfo } from "../suggest/EditorSuggest";
+import { EditorSuggest, type EditorSuggestContext, type EditorSuggestTriggerInfo } from "../ui/suggest/EditorSuggest";
 import { MarkdownView } from "../views/MarkdownView";
 
 const TAG_TRIGGER = /(^|\s)#[^\u2000-\u206F\u2E00-\u2E7F'!"#$%&()*+,.:;<=>?@^`{|}~\[\]\\\s]*$/u;

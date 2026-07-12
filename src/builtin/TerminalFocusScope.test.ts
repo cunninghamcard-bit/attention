@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createTerminalFocusScope, isSystemChord } from "./TerminalView";
-import { normalizedKeymapEventFromKeyboardEvent } from "../hotkeys/Scope";
+import { normalizedKeymapEventFromKeyboardEvent } from "../app/hotkeys/Scope";
 
 function key(init: KeyboardEventInit & { code?: string }): KeyboardEvent {
   return new KeyboardEvent("keydown", init);

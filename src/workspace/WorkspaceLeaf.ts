@@ -11,7 +11,7 @@ import { EmptyView } from "../views/EmptyView";
 import { UnknownView } from "../views/UnknownView";
 import { DeferredView } from "../views/DeferredView";
 import { FileView } from "../views/FileView";
-import type { DragDropResult, DragSource, FileDragSource, LinkDragSource } from "../drag/DragManager";
+import type { DragDropResult, DragSource, FileDragSource, LinkDragSource } from "../ui/drag/DragManager";
 import { WorkspaceTabs } from "./WorkspaceTabs";
 import { parseLinktext } from "../metadata/Linkpath";
 import { setTooltip, type HoverPopover } from "../ui/Popover";

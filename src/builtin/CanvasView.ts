@@ -5,7 +5,7 @@ import { CanvasNode } from "../canvas/CanvasNode";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import { Menu } from "../ui/Menu";
 import { TextFileView } from "../views/TextFileView";
-import type { DragDropResult, DragSource, FileDragSource, FilesDragSource, FolderDragSource, LinkDragSource } from "../drag/DragManager";
+import type { DragDropResult, DragSource, FileDragSource, FilesDragSource, FolderDragSource, LinkDragSource } from "../ui/drag/DragManager";
 import { TFile, TFolder } from "../vault/TAbstractFile";
 import { getAttachmentFilesFromDataTransfer, hasDataTransferAttachmentFiles, type AttachmentImportFile } from "../app/AttachmentImport";
 

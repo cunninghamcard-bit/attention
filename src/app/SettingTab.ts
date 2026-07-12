@@ -1,6 +1,6 @@
 import type { App } from "./App";
 import type { SettingRegistry } from "./SettingRegistry";
-import { FilteredFolderInputSuggest, FullPathFileInputSuggest } from "../suggest/FileInputSuggest";
+import { FilteredFolderInputSuggest, FullPathFileInputSuggest } from "../ui/suggest/FileInputSuggest";
 import {
   Setting,
   SettingGroup,

@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { App } from "../app/App";
-import { createCommandPalettePluginDefinition } from "../commands/CommandPalette";
-import type { Command } from "../commands/CommandManager";
+import { createCommandPalettePluginDefinition } from "../app/commands/CommandPalette";
+import type { Command } from "../app/commands/CommandManager";
 import type { Editor } from "../editor/Editor";
-import type { EditorSuggestContext } from "../suggest/EditorSuggest";
-import type { FuzzySuggestion } from "../suggest/SuggestModal";
+import type { EditorSuggestContext } from "../ui/suggest/EditorSuggest";
+import type { FuzzySuggestion } from "../ui/suggest/SuggestModal";
 import { createSlashCommandPluginDefinition } from "./SlashCommand";
 
 interface SlashSuggestHarness {

@@ -1,5 +1,5 @@
 import type { EventRef } from "./Events";
-import type { KeymapEventHandler } from "../hotkeys/Scope";
+import type { KeymapEventHandler } from "../app/hotkeys/Scope";
 
 export class Component {
   _loaded = false;

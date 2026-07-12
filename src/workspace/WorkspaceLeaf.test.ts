@@ -6,7 +6,7 @@ import { MarkdownView } from "../views/MarkdownView";
 import { EmptyView } from "../views/EmptyView";
 import { Menu } from "../ui/Menu";
 import { Platform } from "../platform/Platform";
-import type { DragSource } from "../drag/DragManager";
+import type { DragSource } from "../ui/drag/DragManager";
 import type { WorkspaceLeaf } from "./WorkspaceLeaf";
 import { WorkspaceSplit } from "./WorkspaceSplit";
 import { WorkspaceTabs } from "./WorkspaceTabs";

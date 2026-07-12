@@ -2,7 +2,7 @@ import type { App } from "../app/App";
 import { computeBlockIdInsertion, createBlockId, type BlockCacheBlock, type BlockCacheRecord } from "./BlockCache";
 import type { LinkSuggestion } from "./MetadataCache";
 import type { TFile } from "../vault/TAbstractFile";
-import { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch } from "../suggest/SuggestModal";
+import { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch } from "../ui/suggest/SuggestModal";
 import { splitLinkpath } from "./Linkpath";
 
 export type LinkSuggestionMatchRange = Array<[number, number]>;

@@ -4,7 +4,7 @@ import { TFile, TFolder } from "../vault/TAbstractFile";
 import type { LeafOpenMode } from "../workspace/Workspace";
 import { readClipboardText, writeClipboardText } from "../dom/Clipboard";
 import { parseLinktext } from "../metadata/Linkpath";
-import type { ObsidianProtocolData } from "../protocol/UriRouter";
+import type { ObsidianProtocolData } from "./protocol/UriRouter";
 
 export function registerAppProtocolHandlers(app: App): void {
   app.workspace.registerObsidianProtocolHandler("open", async (data) => {

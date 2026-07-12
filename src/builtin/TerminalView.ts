@@ -2,7 +2,7 @@ import { ItemView } from "../views/ItemView";
 import type { ViewStateResult } from "../views/View";
 import { Menu } from "../ui/Menu";
 import { setIcon } from "../ui/Icon";
-import { Scope } from "../hotkeys/Scope";
+import { Scope } from "../app/hotkeys/Scope";
 import { TERMINAL_VIEW_TYPE, type TTerminal } from "../terminal/TerminalService";
 import { createGhosttyRenderer, type TerminalRenderer, type TerminalRendererFactory } from "../terminal/GhosttyTerminalRenderer";
 

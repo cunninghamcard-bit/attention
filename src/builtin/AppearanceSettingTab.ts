@@ -1,7 +1,7 @@
 import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import { Setting, SettingGroup } from "../ui/Setting";
-import type { BaseTheme } from "../theme/AppearanceManager";
+import type { BaseTheme } from "../app/theme/AppearanceManager";
 import { ThemeMarketplaceModal } from "./ThemeMarketplaceModal";
 import { setIcon } from "../ui/Icon";
 

@@ -4,7 +4,7 @@ import {
   type ObsidianAction,
 } from "./obsidian-url";
 import type { VaultRegistry } from "./vault-registry";
-import { URL_SCHEME } from "../src/protocol/scheme";
+import { URL_SCHEME } from "../src/app/protocol/scheme";
 
 /**
  * `obsidian://` routing orchestrator — real `$e(url)` end to end, plus the OS

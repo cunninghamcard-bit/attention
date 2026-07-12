@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
-import type { Hotkey } from "../hotkeys/Keymap";
+import type { Hotkey } from "../app/hotkeys/Keymap";
 import { HotkeysSettingTab } from "./HotkeysSettingTab";
 
 describe("HotkeysSettingTab Obsidian settings contract", () => {

@@ -7,7 +7,7 @@ import { editorEditorField, editorInfoField, editorLivePreviewField, editorViewF
 import { MarkdownRenderChild } from "../markdown/MarkdownRenderChild";
 import { MarkdownPreviewRenderer } from "../markdown/MarkdownPreviewRenderer";
 import { MarkdownRenderer, type MarkdownCodeBlockProcessor, type MarkdownPostProcessor } from "../markdown/MarkdownRenderer";
-import { EditorSuggest, type EditorSuggestTriggerInfo } from "../suggest/EditorSuggest";
+import { EditorSuggest, type EditorSuggestTriggerInfo } from "../ui/suggest/EditorSuggest";
 import { ItemView } from "../views/ItemView";
 import { MarkdownView } from "../views/MarkdownView";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";

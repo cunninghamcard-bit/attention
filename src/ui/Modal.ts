@@ -1,7 +1,7 @@
 import { Component } from "../core/Component";
 import type { App } from "../app/App";
 import { getActiveDocument, getActiveWindow } from "../dom/ActiveDocument";
-import { Scope } from "../hotkeys/Scope";
+import { Scope } from "../app/hotkeys/Scope";
 import { Platform } from "../platform/Platform";
 import { ButtonComponent } from "./Setting";
 import { setIcon } from "./Icon";

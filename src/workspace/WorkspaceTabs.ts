@@ -1,5 +1,5 @@
 import { createDiv, createSpan } from "../dom/dom";
-import type { DragDropResult, DragSource, FileDragSource, FilesDragSource, LinkDragSource } from "../drag/DragManager";
+import type { DragDropResult, DragSource, FileDragSource, FilesDragSource, LinkDragSource } from "../ui/drag/DragManager";
 import { setIcon } from "../ui/Icon";
 import { Menu } from "../ui/Menu";
 import { Platform } from "../platform/Platform";

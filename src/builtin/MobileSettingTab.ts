@@ -1,7 +1,7 @@
 import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
-import type { Command } from "../commands/CommandManager";
-import { fuzzyMatch, prepareFuzzyQuery, sortFuzzySuggestions } from "../suggest/SuggestModal";
+import type { Command } from "../app/commands/CommandManager";
+import { fuzzyMatch, prepareFuzzyQuery, sortFuzzySuggestions } from "../ui/suggest/SuggestModal";
 import { setIcon } from "../ui/Icon";
 
 export class MobileSettingTab implements SettingTab {

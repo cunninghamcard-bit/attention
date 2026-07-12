@@ -1,8 +1,8 @@
 import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
-import type { Command } from "../commands/CommandManager";
-import { formatHotkey, getDisplayHotkeys } from "../commands/CommandPalette";
-import type { Hotkey } from "../hotkeys/Keymap";
+import type { Command } from "../app/commands/CommandManager";
+import { formatHotkey, getDisplayHotkeys } from "../app/commands/CommandPalette";
+import type { Hotkey } from "../app/hotkeys/Keymap";
 import { Setting, SettingGroup } from "../ui/Setting";
 import { setIcon } from "../ui/Icon";
 

@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     include: ["src/**/*.test.{ts,tsx}", "electron/**/*.test.ts"],
-    setupFiles: ["./src/test/setup.ts"],
+    setupFiles: ["./src/test-setup.ts"],
     coverage: {
       reporter: ["text", "html"],
     },

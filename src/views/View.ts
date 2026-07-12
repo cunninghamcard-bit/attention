@@ -2,7 +2,7 @@ import { Component } from "../core/Component";
 import { createDiv, detach } from "../dom/dom";
 import type { App } from "../app/App";
 import type { WorkspaceLeaf } from "../workspace/WorkspaceLeaf";
-import { Scope } from "../hotkeys/Scope";
+import { Scope } from "../app/hotkeys/Scope";
 import { Menu } from "../ui/Menu";
 
 export interface ViewState {

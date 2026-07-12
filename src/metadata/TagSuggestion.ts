@@ -1,4 +1,4 @@
-import { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch } from "../suggest/SuggestModal";
+import { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch } from "../ui/suggest/SuggestModal";
 
 export interface TagSuggestion {
   tag: string;

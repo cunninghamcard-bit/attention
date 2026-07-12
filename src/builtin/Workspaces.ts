@@ -3,7 +3,7 @@ import type { SettingTab } from "../app/SettingRegistry";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../plugin/InternalPluginWrapper";
 import type { WorkspaceLayout } from "../workspace/WorkspaceLayout";
-import { FuzzySuggestModal, type FuzzySuggestion } from "../suggest/SuggestModal";
+import { FuzzySuggestModal, type FuzzySuggestion } from "../ui/suggest/SuggestModal";
 import { Setting, SettingGroup } from "../ui/Setting";
 import { setIcon } from "../ui/Icon";
 import { registerWorkspacesCliHandlers } from "../cli/commands/workspacesCli";

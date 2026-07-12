@@ -1,6 +1,6 @@
 import { ItemView } from "../views/ItemView";
 import type { SearchMatch, VaultSearchResult } from "../search/SearchEngine";
-import { AbstractInputSuggest } from "../suggest/AbstractInputSuggest";
+import { AbstractInputSuggest } from "../ui/suggest/AbstractInputSuggest";
 import { setIcon } from "../ui/Icon";
 import { setTooltip } from "../ui/Popover";
 import type { App } from "../app/App";

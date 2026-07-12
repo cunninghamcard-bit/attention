@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("electron", () => ({ Menu: {}, BrowserWindow: class {} }));
 import { toElectronTemplate } from "./menu";
-import type { SystemMenuItem } from "../src/desktop/SystemMenuBuilder";
+import type { SystemMenuItem } from "../src/platform/desktop/SystemMenuBuilder";
 
 describe("toElectronTemplate", () => {
   it("passes role/accelerator/type through for native items", () => {

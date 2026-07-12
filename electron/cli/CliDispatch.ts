@@ -1,5 +1,5 @@
 import { routeVault, type VaultRouterDeps } from "./CliVaultRouter";
-import { URL_SCHEME } from "../../src/protocol/scheme";
+import { URL_SCHEME } from "../../src/app/protocol/scheme";
 
 /**
  * The CLI dispatch — reconstructed from real Obsidian's `et(socket, argv, tty,

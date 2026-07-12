@@ -12,10 +12,10 @@ import type { WebViewerHistoryEntry } from "../webviewer/WebViewerService";
 import type { SettingTab } from "../app/SettingRegistry";
 import type { WebViewerAddressSuggestion } from "../webviewer/WebViewerAddressSuggest";
 import { WebViewerElementAdapter } from "../webviewer/WebViewerElementAdapter";
-import { AbstractInputSuggest } from "../suggest/AbstractInputSuggest";
+import { AbstractInputSuggest } from "../ui/suggest/AbstractInputSuggest";
 import { MarkdownPreviewRenderer } from "../markdown/MarkdownPreviewRenderer";
 import { setIcon } from "../ui/Icon";
-import type { ObsidianProtocolData } from "../protocol/UriRouter";
+import type { ObsidianProtocolData } from "../app/protocol/UriRouter";
 
 const WEBVIEWER_VIEW_TYPE = "webviewer";
 const WEBVIEWER_HISTORY_VIEW_TYPE = "webviewer-history";

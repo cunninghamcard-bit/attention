@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../app/App";
-import type { DragSource } from "../drag/DragManager";
+import type { DragSource } from "../ui/drag/DragManager";
 import type { TFile } from "../vault/TAbstractFile";
 import { installPopoutBodyClassSync } from "../app/BodyClasses";
 import { Platform } from "../platform/Platform";

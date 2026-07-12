@@ -5,7 +5,7 @@ import { WorkspaceLeaf } from "../../workspace/WorkspaceLeaf";
 import { WorkspaceParent } from "../../workspace/WorkspaceParent";
 import { WorkspaceSplit } from "../../workspace/WorkspaceSplit";
 import { WorkspaceTabs } from "../../workspace/WorkspaceTabs";
-import { MobileDrawer } from "../../mobile/MobileDrawer";
+import { MobileDrawer } from "../../platform/mobile/MobileDrawer";
 import type { WorkspaceItem } from "../../workspace/WorkspaceItem";
 
 /**
