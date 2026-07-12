@@ -82,6 +82,16 @@ export interface GitLogEntry {
   subject: string;
 }
 
+export interface GitBranch {
+  name: string;
+  current: boolean;
+}
+
+export interface GitDivergence {
+  ahead: number;
+  behind: number;
+}
+
 /** Index column ≠ space/? means something is staged for this file. */
 export function isStaged(status: GitFileStatus): boolean {
   return status.status[0] !== " " && status.status[0] !== "?";
@@ -170,14 +180,101 @@ export class GitService {
     return result?.code === 0;
   }
 
-  /** Commits the index. Returns the error output on failure, null on success. */
-  async commit(message: string): Promise<string | null> {
-    const result = await this.exec(["commit", "-m", message]);
+  /** Commits the index (optionally amending). Error text on failure, null on success. */
+  async commit(message: string, options: { amend?: boolean } = {}): Promise<string | null> {
+    const args = options.amend ? ["commit", "--amend", "-m", message] : ["commit", "-m", message];
+    const result = await this.exec(args);
     if (!result) return "git is not available";
     if (result.code !== 0)
       return result.stderr.trim() || result.stdout.trim() || `git commit exited ${result.code}`;
     this.app.workspace.trigger("git-commit", message);
     return null;
+  }
+
+  // --- Branches & sync ---------------------------------------------------
+
+  /** Current branch name; null when detached, unborn, or unavailable. */
+  async currentBranch(): Promise<string | null> {
+    const result = await this.exec(["rev-parse", "--abbrev-ref", "HEAD"]);
+    if (!result || result.code !== 0) return null;
+    const name = result.stdout.trim();
+    return name && name !== "HEAD" ? name : null;
+  }
+
+  /** Local branches, HEAD flagged. */
+  async branches(): Promise<GitBranch[]> {
+    const result = await this.exec([
+      "for-each-ref",
+      "refs/heads",
+      "--format=%(HEAD)%(refname:short)",
+    ]);
+    if (!result || result.code !== 0) return [];
+    return result.stdout
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => ({ current: line.startsWith("*"), name: line.slice(1) }))
+      .filter((branch) => branch.name);
+  }
+
+  /** Commits ahead/behind the upstream; null when no upstream is configured. */
+  async aheadBehind(): Promise<GitDivergence | null> {
+    const result = await this.exec(["rev-list", "--left-right", "--count", "@{upstream}...HEAD"]);
+    if (!result || result.code !== 0) return null;
+    const [behind, ahead] = result.stdout.trim().split(/\s+/).map(Number);
+    if (!Number.isFinite(ahead) || !Number.isFinite(behind)) return null;
+    return { ahead, behind };
+  }
+
+  async fetch(): Promise<string | null> {
+    return this.errorText(await this.exec(["fetch", "--prune"]), "fetch");
+  }
+
+  /** Fast-forward only — divergence surfaces git's own advice instead of a merge. */
+  async pull(): Promise<string | null> {
+    return this.errorText(await this.exec(["pull", "--ff-only"]), "pull");
+  }
+
+  /** Pushes; when no upstream exists, retries once with -u origin <branch>. */
+  async push(): Promise<string | null> {
+    const result = await this.exec(["push"]);
+    if (result?.code === 0) return null;
+    if (/no upstream|set-upstream/i.test(result?.stderr ?? "")) {
+      const branch = await this.currentBranch();
+      if (branch) return this.errorText(await this.exec(["push", "-u", "origin", branch]), "push");
+    }
+    return this.errorText(result, "push");
+  }
+
+  async switchBranch(name: string): Promise<string | null> {
+    const error = this.errorText(await this.exec(["switch", name]), "switch");
+    if (!error) this.app.workspace.trigger("git-branch-change", name);
+    return error;
+  }
+
+  async createBranch(name: string): Promise<string | null> {
+    const error = this.errorText(await this.exec(["switch", "-c", name]), "switch");
+    if (!error) this.app.workspace.trigger("git-branch-change", name);
+    return error;
+  }
+
+  /** Tracked worktree edits go through restore; untracked files through clean. */
+  async discard(entries: GitFileStatus[]): Promise<boolean> {
+    const untracked = entries.filter((e) => e.status[0] === "?").map((e) => e.path);
+    const tracked = entries
+      .filter((e) => e.status[0] !== "?" && e.status[1] !== " ")
+      .map((e) => e.path);
+    let ok = true;
+    if (tracked.length > 0)
+      ok = (await this.exec(["restore", "--worktree", "--", ...tracked]))?.code === 0 && ok;
+    if (untracked.length > 0)
+      ok = (await this.exec(["clean", "-f", "--", ...untracked]))?.code === 0 && ok;
+    return ok;
+  }
+
+  private errorText(result: GitExecResult | null, verb: string): string | null {
+    if (!result) return "git is not available";
+    if (result.code === 0) return null;
+    return result.stderr.trim() || result.stdout.trim() || `git ${verb} exited ${result.code}`;
   }
 
   /** The staged (index) content of a file; null when nothing is staged. */

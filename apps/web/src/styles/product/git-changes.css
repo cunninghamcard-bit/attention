@@ -99,3 +99,45 @@
   cursor: pointer;
 }
 .git-history-action:hover { color: var(--text-normal); background: var(--background-modifier-hover); }
+
+/* Branch/sync header */
+.git-header-row {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  padding: var(--size-4-2) var(--size-4-3);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.git-branch-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-4-1);
+  padding: 2px var(--size-4-2);
+  border-radius: var(--radius-s);
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  font-size: var(--font-smaller);
+  cursor: pointer;
+}
+.git-branch-pill:hover { background: var(--background-modifier-hover); }
+.git-divergence { color: var(--text-muted); font-size: var(--font-smaller); }
+.git-sync-actions { margin-left: auto; display: flex; gap: var(--size-4-1); }
+.git-sync-busy .git-sync-button { opacity: 0.5; pointer-events: none; }
+.git-changes-discard { color: var(--text-muted); }
+.git-changes-discard:hover { color: var(--text-error); }
+.git-amend-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-4-1);
+  color: var(--text-muted);
+  font-size: var(--font-smaller);
+  user-select: none;
+}
+.git-branch-current-badge {
+  margin-left: var(--size-4-2);
+  padding: 0 var(--size-4-1);
+  border-radius: var(--radius-s);
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: var(--font-smallest);
+}

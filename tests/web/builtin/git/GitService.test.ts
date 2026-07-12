@@ -320,3 +320,130 @@ describe("GitService", () => {
     expect(view.getChunkCount()).toBe(1);
   });
 });
+
+// --- Branch, sync and worktree verb families (local-git-surface-completion)
+
+interface Scripted {
+  bridge: ElectronGitApi;
+  calls: string[][];
+}
+
+/** Bridge whose responses are matched by argument prefix, recording every call. */
+function scriptedGit(script: Array<[string[], GitExecResult]>): Scripted {
+  const calls: string[][] = [];
+  return {
+    calls,
+    bridge: {
+      available: true,
+      async exec(args: string[]): Promise<GitExecResult> {
+        calls.push(args);
+        for (const [prefix, result] of script)
+          if (prefix.every((part, i) => args[i] === part)) return result;
+        return { code: 0, stdout: "", stderr: "" };
+      },
+    },
+  };
+}
+
+async function appWithScriptedGit(script: Array<[string[], GitExecResult]>) {
+  const app = new App(document.createElement("div"));
+  const scripted = scriptedGit(script);
+  app.git.bridgeFactory = () => scripted.bridge;
+  (app.vault.adapter as { getBasePath?: () => string }).getBasePath = () => "/fake/vault";
+  await app.ready;
+  return { app, calls: scripted.calls };
+}
+
+const ok = (stdout = ""): GitExecResult => ({ code: 0, stdout, stderr: "" });
+const fail = (stderr: string, code = 1): GitExecResult => ({ code, stdout: "", stderr });
+
+describe("GitService sync verbs", () => {
+  it("reports branch and divergence", async () => {
+    const { app } = await appWithScriptedGit([
+      [["rev-parse", "--abbrev-ref", "HEAD"], ok("main\n")],
+      [["rev-list", "--left-right", "--count"], ok("2\t1\n")],
+    ]);
+    await expect(app.git.currentBranch()).resolves.toBe("main");
+    await expect(app.git.aheadBehind()).resolves.toEqual({ ahead: 1, behind: 2 });
+  });
+
+  it("pull fast-forwards and push sets upstream when missing", async () => {
+    const { app, calls } = await appWithScriptedGit([
+      [["pull"], ok()],
+      [["push", "-u"], ok()],
+      [
+        ["push"],
+        fail(
+          "fatal: The current branch feature has no upstream branch.\nTo push... use --set-upstream",
+        ),
+      ],
+      [["rev-parse", "--abbrev-ref", "HEAD"], ok("feature\n")],
+    ]);
+    await expect(app.git.pull()).resolves.toBeNull();
+    expect(calls.find((c) => c[0] === "pull")).toEqual(["pull", "--ff-only"]);
+    await expect(app.git.push()).resolves.toBeNull();
+    expect(calls.at(-1)).toEqual(["push", "-u", "origin", "feature"]);
+  });
+
+  it("surfaces sync failures as error text", async () => {
+    const { app } = await appWithScriptedGit([
+      [["pull"], fail("fatal: Not possible to fast-forward, aborting.")],
+    ]);
+    await expect(app.git.pull()).resolves.toContain("Not possible to fast-forward");
+  });
+});
+
+describe("GitService branch verbs", () => {
+  it("lists switches and creates branches", async () => {
+    const { app, calls } = await appWithScriptedGit([
+      [["for-each-ref"], ok("*main\n feature\n")],
+      [["switch", "-c"], ok()],
+      [["switch"], ok()],
+    ]);
+    await expect(app.git.branches()).resolves.toEqual([
+      { name: "main", current: true },
+      { name: "feature", current: false },
+    ]);
+    await expect(app.git.switchBranch("feature")).resolves.toBeNull();
+    expect(calls.at(-1)).toEqual(["switch", "feature"]);
+    await expect(app.git.createBranch("hotfix")).resolves.toBeNull();
+    expect(calls.at(-1)).toEqual(["switch", "-c", "hotfix"]);
+  });
+
+  it("propagates switch failure text", async () => {
+    const { app } = await appWithScriptedGit([
+      [["switch"], fail("error: pathspec 'nope' did not match any known refs")],
+    ]);
+    await expect(app.git.switchBranch("nope")).resolves.toContain("did not match");
+  });
+});
+
+describe("GitService worktree verbs", () => {
+  it("discards tracked edits and deletes untracked files", async () => {
+    const { app, calls } = await appWithScriptedGit([]);
+    await expect(
+      app.git.discard([
+        { path: "notes/edited.md", status: " M" },
+        { path: "scratch/new.md", status: "??" },
+      ]),
+    ).resolves.toBe(true);
+    expect(calls).toContainEqual(["restore", "--worktree", "--", "notes/edited.md"]);
+    expect(calls).toContainEqual(["clean", "-f", "--", "scratch/new.md"]);
+  });
+
+  it("amends the previous commit", async () => {
+    const { app, calls } = await appWithScriptedGit([[["commit"], ok()]]);
+    let fired = "";
+    app.workspace.on("git-commit", (message: string) => (fired = message));
+    await expect(app.git.commit("fix: typo", { amend: true })).resolves.toBeNull();
+    expect(calls.at(-1)).toEqual(["commit", "--amend", "-m", "fix: typo"]);
+    expect(fired).toBe("fix: typo");
+  });
+
+  it("returns amend failure text", async () => {
+    const { app } = await appWithScriptedGit([
+      [["commit"], fail("fatal: You have nothing to amend.")],
+    ]);
+    await expect(app.git.commit("x", { amend: true })).resolves.toContain("nothing to amend");
+  });
+});

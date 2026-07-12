@@ -7,6 +7,8 @@ import { setIcon } from "../../ui/Icon";
 import { setTooltip } from "../../ui/Popover";
 import { Notice } from "../../ui/Notice";
 import { hasUnstagedChanges, isStaged, type GitFileStatus } from "./GitService";
+import { BranchSwitchModal } from "./BranchSwitchModal";
+import { ConfirmationModal } from "../../ui/Modal";
 
 const MAX_RENDERED_FILES = 50;
 
@@ -22,6 +24,10 @@ export class GitChangesView extends ItemView {
   private listEl: HTMLElement | null = null;
   private commitEl: HTMLTextAreaElement | null = null;
   private commitButtonEl: HTMLButtonElement | null = null;
+  private amendEl: HTMLInputElement | null = null;
+  private branchEl: HTMLButtonElement | null = null;
+  private divergenceEl: HTMLElement | null = null;
+  private syncBusy = false;
   private diffs: FileDiff[] = [];
   private refreshing = false;
 
@@ -38,6 +44,32 @@ export class GitChangesView extends ItemView {
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("git-changes-view");
     const doc = this.contentEl.ownerDocument;
+
+    const headerRow = doc.createElement("div");
+    headerRow.className = "git-header-row";
+    this.branchEl = doc.createElement("button");
+    this.branchEl.className = "git-branch-pill clickable-icon";
+    setTooltip(this.branchEl, "Switch branch");
+    this.branchEl.addEventListener("click", () => new BranchSwitchModal(this.app).open());
+    this.divergenceEl = doc.createElement("span");
+    this.divergenceEl.className = "git-divergence";
+    const syncActions = doc.createElement("div");
+    syncActions.className = "git-sync-actions";
+    for (const [icon, label, verb] of [
+      ["lucide-refresh-cw", "Fetch", () => this.app.git.fetch()],
+      ["lucide-arrow-down", "Pull (fast-forward)", () => this.app.git.pull()],
+      ["lucide-arrow-up", "Push", () => this.app.git.push()],
+    ] as const) {
+      const buttonEl = doc.createElement("button");
+      buttonEl.className = "git-sync-button clickable-icon";
+      setIcon(buttonEl, icon);
+      setTooltip(buttonEl, label);
+      buttonEl.addEventListener("click", () => void this.runSync(label, verb));
+      syncActions.appendChild(buttonEl);
+    }
+    headerRow.append(this.branchEl, this.divergenceEl, syncActions);
+    this.contentEl.appendChild(headerRow);
+
     const commitRow = doc.createElement("div");
     commitRow.className = "git-commit-row";
     this.commitEl = doc.createElement("textarea");
@@ -49,7 +81,13 @@ export class GitChangesView extends ItemView {
     this.commitButtonEl.className = "git-commit-button mod-cta";
     this.commitButtonEl.textContent = "Commit";
     this.commitButtonEl.addEventListener("click", () => void this.commit());
-    commitRow.append(this.commitEl, this.commitButtonEl);
+    const amendLabel = doc.createElement("label");
+    amendLabel.className = "git-amend-label";
+    this.amendEl = doc.createElement("input");
+    this.amendEl.type = "checkbox";
+    this.amendEl.addEventListener("change", () => this.updateCommitButton());
+    amendLabel.append(this.amendEl, doc.createTextNode("Amend"));
+    commitRow.append(this.commitEl, amendLabel, this.commitButtonEl);
     this.contentEl.appendChild(commitRow);
 
     this.listEl = doc.createElement("div");
@@ -73,6 +111,7 @@ export class GitChangesView extends ItemView {
       this.disposeDiffs();
       this.listEl.replaceChildren();
       if (!this.app.git.isAvailable()) {
+        this.setHeaderVisible(false);
         this.setCommitVisible(false);
         this.renderMessage(
           "Git is not available in this runtime. Open the desktop app inside a git repository.",
@@ -80,11 +119,13 @@ export class GitChangesView extends ItemView {
         return;
       }
       if (!(await this.app.git.isRepository())) {
+        this.setHeaderVisible(false);
         this.setCommitVisible(false);
         this.renderMessage("This vault is not a git repository.");
         return;
       }
       this.setCommitVisible(true);
+      await this.refreshHeader();
       const status = await this.app.git.status();
       if (status.length === 0) {
         this.renderMessage("Working tree clean — no changes.");
@@ -152,7 +193,19 @@ export class GitChangesView extends ItemView {
         stagedSection ? this.app.git.unstage([entry.path]) : this.app.git.stage([entry.path])
       ).then(() => this.refresh());
     });
-    headerEl.append(iconEl, nameEl, statusEl, stageEl);
+    if (!stagedSection) {
+      const discardEl = doc.createElement("button");
+      discardEl.className = "git-changes-discard clickable-icon";
+      setIcon(discardEl, "lucide-undo-2");
+      setTooltip(discardEl, entry.status[0] === "?" ? "Delete untracked file" : "Discard changes");
+      discardEl.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.confirmDiscard(entry);
+      });
+      headerEl.append(iconEl, nameEl, statusEl, discardEl, stageEl);
+    } else {
+      headerEl.append(iconEl, nameEl, statusEl, stageEl);
+    }
     headerEl.addEventListener("click", () => {
       const file = this.app.vault.getFileByPath(entry.path);
       if (file) void openGitDiff(this.app, file);
@@ -201,13 +254,15 @@ export class GitChangesView extends ItemView {
   private async commit(): Promise<void> {
     const message = this.commitEl?.value.trim() ?? "";
     if (!message) return;
-    const error = await this.app.git.commit(message);
+    const amend = this.amendEl?.checked ?? false;
+    const error = await this.app.git.commit(message, { amend });
     if (error) {
       new Notice(`Commit failed: ${error}`);
       return;
     }
-    new Notice("Committed");
+    new Notice(amend ? "Amended" : "Committed");
     if (this.commitEl) this.commitEl.value = "";
+    if (this.amendEl) this.amendEl.checked = false;
     await this.refresh();
   }
 
@@ -216,13 +271,78 @@ export class GitChangesView extends ItemView {
     const message = this.commitEl?.value.trim() ?? "";
     if (stagedCount !== undefined) this.commitButtonEl.dataset.staged = String(stagedCount);
     const staged = Number(this.commitButtonEl.dataset.staged ?? "0");
-    this.commitButtonEl.disabled = staged === 0 || message.length === 0;
-    this.commitButtonEl.textContent = staged > 0 ? `Commit (${staged})` : "Commit";
+    const amend = this.amendEl?.checked ?? false;
+    this.commitButtonEl.disabled = (staged === 0 && !amend) || message.length === 0;
+    this.commitButtonEl.textContent = amend
+      ? "Amend"
+      : staged > 0
+        ? `Commit (${staged})`
+        : "Commit";
   }
 
   private setCommitVisible(visible: boolean): void {
     const row = this.contentEl.querySelector<HTMLElement>(".git-commit-row");
     if (row) row.style.display = visible ? "" : "none";
+  }
+
+  private async refreshHeader(): Promise<void> {
+    this.setHeaderVisible(true);
+    const [branch, divergence] = await Promise.all([
+      this.app.git.currentBranch(),
+      this.app.git.aheadBehind(),
+    ]);
+    if (this.branchEl) {
+      this.branchEl.replaceChildren();
+      const iconEl = this.branchEl.ownerDocument.createElement("span");
+      setIcon(iconEl, "lucide-git-branch");
+      this.branchEl.append(
+        iconEl,
+        this.branchEl.ownerDocument.createTextNode(branch ?? "detached"),
+      );
+    }
+    if (this.divergenceEl)
+      this.divergenceEl.textContent = divergence
+        ? `↑${divergence.ahead} ↓${divergence.behind}`
+        : "";
+  }
+
+  private setHeaderVisible(visible: boolean): void {
+    const row = this.contentEl.querySelector<HTMLElement>(".git-header-row");
+    if (row) row.style.display = visible ? "" : "none";
+  }
+
+  private async runSync(label: string, verb: () => Promise<string | null>): Promise<void> {
+    if (this.syncBusy) return;
+    this.syncBusy = true;
+    this.contentEl.classList.add("git-sync-busy");
+    try {
+      const error = await verb();
+      if (error) new Notice(`${label} failed: ${error}`);
+      else new Notice(`${label} done`);
+    } finally {
+      this.syncBusy = false;
+      this.contentEl.classList.remove("git-sync-busy");
+      await this.refresh();
+    }
+  }
+
+  private confirmDiscard(entry: GitFileStatus): void {
+    const untracked = entry.status[0] === "?";
+    new ConfirmationModal(this.app)
+      .setTitle(untracked ? "Delete untracked file?" : "Discard changes?")
+      .setContent(
+        untracked
+          ? `${entry.path} is untracked — deleting it cannot be undone.`
+          : `Local edits to ${entry.path} will be lost. This cannot be undone.`,
+      )
+      .addButton("mod-warning", untracked ? "Delete" : "Discard", () => {
+        void this.app.git.discard([entry]).then((ok) => {
+          if (!ok) new Notice("git: discard failed");
+          void this.refresh();
+        });
+      })
+      .addCancelButton()
+      .open();
   }
 
   private disposeDiffs(): void {
