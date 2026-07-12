@@ -60,6 +60,20 @@ describe("FileSystemAdapter", () => {
     expect(folderListed.folders.sort()).toEqual(["Folder/Sub"]);
   });
 
+  it("lists dotfiles but keeps vcs internals and app config hidden", async () => {
+    await adapter.write(".gitignore", "node_modules\n");
+    await adapter.write(".github/workflows/ci.yml", "name: ci\n");
+    await adapter.write(".git/config", "[core]\n");
+    await adapter.write(".obsidian/app.json", "{}");
+
+    const rootListed = await adapter.list("");
+
+    expect(rootListed.files).toContain(".gitignore");
+    expect(rootListed.folders).toContain(".github");
+    expect(rootListed.folders).not.toContain(".git");
+    expect(rootListed.folders).not.toContain(".obsidian");
+  });
+
   it("lets missing folder list calls reject like desktop readdir", async () => {
     await expect(adapter.list("Missing")).rejects.toThrow();
   });

@@ -1123,3 +1123,21 @@ body {
     --font-text: var(--font-print) !important;
   }
 }
+
+/* Code palette: One Light (Atom) — light theme only; dark keeps the accent-
+ * variable mapping above. Consumed by markdown code blocks and CodeFileView
+ * alike via the --code-* slots. */
+.theme-light {
+  --code-background: #fafafa;
+  --code-normal: #383a42;
+  --code-comment: #a0a1a7;
+  --code-keyword: #a626a4;
+  --code-string: #50a14f;
+  --code-value: #986801;
+  --code-function: #4078f2;
+  --code-property: #e45649;
+  --code-operator: #0184bc;
+  --code-tag: #e45649;
+  --code-important: #c18401;
+  --code-punctuation: #383a42;
+}

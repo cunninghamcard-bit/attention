@@ -93,7 +93,6 @@ const pathSpecifier = "node:path";
  * Directory names that must never be walked into the vault index.
  * Opening a code repo as a vault (with node_modules / build output) otherwise
  * forces tens of thousands of files through reconcile + metadata + the explorer.
- * Hidden (dot-prefixed) segments are already skipped separately.
  */
 export const VAULT_INDEX_SKIP_NAMES = new Set([
   "node_modules",
@@ -111,6 +110,18 @@ export const VAULT_INDEX_SKIP_NAMES = new Set([
   ".venv",
   "venv",
 ]);
+
+/**
+ * Dotfiles are VISIBLE in the vault (deliberate: code repos as vaults need
+ * .gitignore/.github/... on screen). Only these dot entries stay hidden from
+ * listings and vault reconcile — VCS internals, the app's own config dir, OS
+ * junk. Listing INSIDE them still works (plugin data, config machinery).
+ */
+export const HIDDEN_VAULT_ENTRIES = new Set([".git", ".obsidian", ".DS_Store"]);
+
+function isUnderHiddenVaultEntry(path: string): boolean {
+  return path.split("/").some((segment) => HIDDEN_VAULT_ENTRIES.has(segment));
+}
 
 /** True when any path segment is a known heavy/generated directory. */
 export function isVaultIndexSkippedPath(path: string): boolean {
@@ -332,9 +343,9 @@ export class FileSystemAdapter extends DataAdapter {
     for (const entry of entries) {
       // Skip by basename before path join work for the common node_modules case.
       if (VAULT_INDEX_SKIP_NAMES.has(entry.name)) continue;
+      if (HIDDEN_VAULT_ENTRIES.has(entry.name) && !path.startsWith(".")) continue;
       const fullPath = modules.path.join(root, entry.name);
       const vaultPath = this.toVaultPath(fullPath, modules.path);
-      if (!path.startsWith(".") && this.isHiddenPath(vaultPath)) continue;
       if (isVaultIndexSkippedPath(vaultPath)) continue;
       if (entry.isDirectory()) result.folders.push(vaultPath);
       else if (entry.isFile()) result.files.push(vaultPath);
@@ -428,7 +439,7 @@ export class FileSystemAdapter extends DataAdapter {
   async reconcileInternalFile(path: string): Promise<void> {
     const normalized = normalizeVaultPath(path);
     this.trigger("raw", normalized);
-    if (this.isHiddenPath(normalized) || isVaultIndexSkippedPath(normalized)) return;
+    if (isUnderHiddenVaultEntry(normalized) || isVaultIndexSkippedPath(normalized)) return;
     const entry = await this.readEntry(normalized);
     await this.reconcileFile(normalized, entry);
   }
@@ -647,10 +658,6 @@ export class FileSystemAdapter extends DataAdapter {
         this.trigger("raw", normalized);
       }, 100),
     );
-  }
-
-  private isHiddenPath(path: string): boolean {
-    return path.split("/").some((segment) => segment.startsWith("."));
   }
 
   private usesRecursiveWatcher(): boolean {
