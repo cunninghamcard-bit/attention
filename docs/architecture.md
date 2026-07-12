@@ -27,9 +27,10 @@ product name appears in the tree, only in the git remote.
 │   └── package.json     declares the bare deps tests need (own pnpm lane)
 
 ├── docs/                this file, the project constitution, and SDD goal folders
-├── out/                 ALL generated artifacts, one roof — builds (web, desktop,
-│                        server, api, types) AND reports (coverage, playwright) —
-│                        gitignored, safe to rm wholesale
+├── out/                 build outputs, one roof — out/{web,desktop,server,api,types}
+│                        (deliverables; the electron-vite geometry) — gitignored
+├── reports/             test observability, one roof — coverage + playwright
+│                        reports/results — gitignored, look-then-discard
 ├── .githooks/           tracked git hooks (pre-commit guard + commit-msg lint),
 │                        auto-armed by the `prepare` script on every install
 ├── .github/             CI: the full local gate battery on push/PR
