@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 
 const SPEC_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SPEC_DIR, "..", "..", "..");
-const MAIN_CJS = join(REPO_ROOT, "dist-electron", "main.cjs");
+const MAIN_CJS = join(REPO_ROOT, "out", "desktop", "main.cjs");
 
 const JUNK_FILES = Number(process.env.PERF_VAULT_FILES || 20000);
 const FILES_PER_DIR = 40;

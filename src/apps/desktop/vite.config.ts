@@ -25,8 +25,9 @@ export default defineConfig({
     },
   },
   build: {
-    // Emit to repo-root dist-electron/ (electron dist-electron/main.cjs).
-    outDir: resolve(__dirname, "../../../dist-electron"),
+    // Emit into the single out/ roof (electron out/desktop/main.cjs); the web
+    // bundle sits at the sibling out/web so main resolves it relatively.
+    outDir: resolve(__dirname, "../../../out/desktop"),
     emptyOutDir: true,
     target: "node20",
     minify: false,

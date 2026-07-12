@@ -97,6 +97,7 @@ const pathSpecifier = "node:path";
  */
 export const VAULT_INDEX_SKIP_NAMES = new Set([
   "node_modules",
+  "out",
   "dist",
   "dist-electron",
   "coverage",

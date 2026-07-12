@@ -27,7 +27,9 @@ product name appears in the tree, only in the git remote.
 │   └── package.json     declares the bare deps tests need (own pnpm lane)
 
 ├── docs/                this file, the project constitution, and SDD goal folders
-├── out/                 ALL transient outputs (reports, coverage) — gitignored
+├── out/                 ALL generated artifacts, one roof — builds (web, desktop,
+│                        server, api, types) AND reports (coverage, playwright) —
+│                        gitignored, safe to rm wholesale
 ├── .githooks/           tracked git hooks (pre-commit guard + commit-msg lint),
 │                        auto-armed by the `prepare` script on every install
 ├── .github/             CI: the full local gate battery on push/PR
@@ -158,8 +160,9 @@ intended future path is a three-rung ladder: internal track → rewritten onto
 These are documented goals, not executed work — the code stays on rung one.
 
 **Desktop bundle resolves its own lane.** The desktop main bundle is emitted
-to the repo-root `dist-electron/` (so launch paths stay stable), which sits
-outside the desktop package's own `node_modules`. Ordinary npm dependencies
+to `out/desktop/` — the single generated-artifacts roof, where the web bundle
+sits at the sibling `out/web` (main resolves it relatively, the electron-vite
+geometry) — which sits outside the desktop package's own `node_modules`. Ordinary npm dependencies
 of `@app/desktop` (e.g. `@electron/remote`) are therefore *bundled* rather
 than externalized; only Electron itself, native modules (`node-pty`), and
 Node builtins stay external.

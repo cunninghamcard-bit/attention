@@ -16,8 +16,8 @@
     "e2e": "playwright test",
     "build:electron": "vite build --config src/apps/desktop/vite.config.ts",
     "build:server": "vite build --config src/apps/server/vite.config.ts",
-    "start:desktop": "pnpm run build:electron && ELECTRON_RENDERER_URL=${ELECTRON_RENDERER_URL:-http://127.0.0.1:5173} electron dist-electron/main.cjs",
-    "desktop": "pnpm run build && pnpm run build:electron && electron dist-electron/main.cjs",
+    "start:desktop": "pnpm run build:electron && ELECTRON_RENDERER_URL=${ELECTRON_RENDERER_URL:-http://127.0.0.1:5173} electron out/desktop/main.cjs",
+    "desktop": "pnpm run build && pnpm run build:electron && electron out/desktop/main.cjs",
     "check": "pnpm run lint && pnpm run format:check && tsc --noEmit && pnpm run typecheck:electron && pnpm run typecheck:server && pnpm run typecheck:tools && vitest run && pnpm run build && pnpm run build:api && pnpm run build:electron && pnpm run build:server",
     "build:analyze": "ANALYZE=1 vite build -c src/apps/web/vite.config.ts",
     "packcheck": "publint && attw --pack .",
@@ -57,18 +57,18 @@
     "vitest": "^4.1.9"
   },
   "packageManager": "pnpm@11.7.0",
-  "types": "dist/api/index.d.ts",
+  "types": "out/api/index.d.ts",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/api/index.d.ts",
-        "default": "./dist/api/index.js"
+        "types": "./out/api/index.d.ts",
+        "default": "./out/api/index.js"
       },
       "require": {
-        "types": "./dist/api/index.d.cts",
-        "default": "./dist/api/index.cjs"
+        "types": "./out/api/index.d.cts",
+        "default": "./out/api/index.cjs"
       },
-      "default": "./dist/api/index.js"
+      "default": "./out/api/index.js"
     }
   },
   "files": [

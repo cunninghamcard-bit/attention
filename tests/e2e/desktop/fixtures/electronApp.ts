@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 
 const FIXTURE_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(FIXTURE_DIR, "..", "..", "..", "..");
-const MAIN_CJS = join(REPO_ROOT, "dist-electron", "main.cjs");
+const MAIN_CJS = join(REPO_ROOT, "out", "desktop", "main.cjs");
 
 // A valid 1x1 red PNG — enough for a real decode (naturalWidth === 1).
 const TINY_PNG = Buffer.from(

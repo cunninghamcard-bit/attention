@@ -118,7 +118,14 @@ function findApiFacadeViolations(
 // fs helpers (kept separate from the pure checkers above)
 // ---------------------------------------------------------------------------
 
-const DEFAULT_SKIP_DIRS = new Set(["node_modules", ".git", "dist", "dist-electron", "coverage"]);
+const DEFAULT_SKIP_DIRS = new Set([
+  "node_modules",
+  ".git",
+  "out",
+  "dist",
+  "dist-electron",
+  "coverage",
+]);
 
 function walk(dirAbs: string, skipDirs: Set<string>, out: string[]): void {
   let entries: Dirent[];

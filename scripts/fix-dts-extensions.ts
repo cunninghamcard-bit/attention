@@ -2,11 +2,11 @@ import { copyFile, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
 const root = await firstExistingDirectory([
-  join(process.cwd(), "dist", "api", "src"),
-  join(process.cwd(), "dist", "src"),
-  join(process.cwd(), "dist", "types"),
+  join(process.cwd(), "out", "api", "src"),
+  join(process.cwd(), "out", "src"),
+  join(process.cwd(), "out", "types"),
   // unplugin-dts with the TS6 fallback applies entryRoot and emits flat.
-  join(process.cwd(), "dist", "api"),
+  join(process.cwd(), "out", "api"),
 ]);
 const relativeSpecifier =
   /((?:from\s+|export\s+\*\s+from\s+|import\s*\(\s*)["'])(\.{1,2}\/[^"']+?)(["'])/g;

@@ -1,7 +1,4 @@
 node_modules/
-dist/
-dist-electron/
-dist-server/
 out/
 .DS_Store
 *.log

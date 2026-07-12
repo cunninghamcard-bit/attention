@@ -66,8 +66,8 @@ if (!gotLock) {
   // renderer served from app://obsidian.md/ is a secure context.
   registerAppSchemePrivileges();
 
-  // Renderer bundle dir (unpackaged: repo `dist/`). Real symbol `c`.
-  const resourcesDir = join(here, "..", "dist");
+  // Renderer bundle dir (unpackaged: sibling out/web). Real symbol `c`.
+  const resourcesDir = join(here, "..", "web");
   // Real `Be`: the per-launch file-access origin returned by `file-url`.
   const fileOrigin = createFileOrigin();
   mainState.fileUrlPrefix = fileOrigin;

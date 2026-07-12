@@ -16,9 +16,9 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const electron = join(root, "node_modules", ".bin", "electron");
-const mainJs = join(root, "dist-electron", "main.cjs");
+const mainJs = join(root, "out", "desktop", "main.cjs");
 if (!existsSync(mainJs)) {
-  console.error("dist-electron/main.cjs missing — run: pnpm run build && pnpm run build:electron");
+  console.error("out/desktop/main.cjs missing — run: pnpm run build && pnpm run build:electron");
   process.exit(2);
 }
 

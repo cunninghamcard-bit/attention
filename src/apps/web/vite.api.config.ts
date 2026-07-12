@@ -9,14 +9,14 @@ export default defineConfig({
   plugins: [
     dts({
       entryRoot: resolve(__dirname, "src"),
-      outDirs: resolve(__dirname, "../../../dist/types"),
+      outDirs: resolve(__dirname, "../../../out/types"),
       bundleTypes: true,
       tsconfigPath: resolve(__dirname, "tsconfig.json"),
     }),
   ],
   build: {
     target: "es2022",
-    outDir: resolve(__dirname, "../../../dist/api"),
+    outDir: resolve(__dirname, "../../../out/api"),
     emptyOutDir: false,
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
