@@ -76,6 +76,36 @@ const fsPromisesSpecifier = "node:fs/promises";
 const fsSpecifier = "node:fs";
 const pathSpecifier = "node:path";
 
+/**
+ * Directory names that must never be walked into the vault index.
+ * Opening a code repo as a vault (with node_modules / build output) otherwise
+ * forces tens of thousands of files through reconcile + metadata + the explorer.
+ * Hidden (dot-prefixed) segments are already skipped separately.
+ */
+export const VAULT_INDEX_SKIP_NAMES = new Set([
+  "node_modules",
+  "dist",
+  "dist-electron",
+  "coverage",
+  "playwright-report",
+  "test-results",
+  "__pycache__",
+  ".pnpm-store",
+  ".turbo",
+  ".next",
+  ".cache",
+  ".venv",
+  "venv",
+]);
+
+/** True when any path segment is a known heavy/generated directory. */
+export function isVaultIndexSkippedPath(path: string): boolean {
+  if (!path || path === "/" || path === ".") return false;
+  return path.split("/").some((segment) => segment.length > 0 && VAULT_INDEX_SKIP_NAMES.has(segment));
+}
+
+const RECONCILE_CONCURRENCY = 24;
+
 export class FileSystemAdapter extends DataAdapter {
   readonly supportsEvents = true;
   private desktopModules?: Promise<DesktopModules>;
@@ -259,9 +289,12 @@ export class FileSystemAdapter extends DataAdapter {
     const result: ListedFiles = { files: [], folders: [] };
     const entries = await modules.fs.readdir(root, { withFileTypes: true });
     for (const entry of entries) {
+      // Skip by basename before path join work for the common node_modules case.
+      if (VAULT_INDEX_SKIP_NAMES.has(entry.name)) continue;
       const fullPath = modules.path.join(root, entry.name);
       const vaultPath = this.toVaultPath(fullPath, modules.path);
       if (!path.startsWith(".") && this.isHiddenPath(vaultPath)) continue;
+      if (isVaultIndexSkippedPath(vaultPath)) continue;
       if (entry.isDirectory()) result.folders.push(vaultPath);
       else if (entry.isFile()) result.files.push(vaultPath);
     }
@@ -353,7 +386,7 @@ export class FileSystemAdapter extends DataAdapter {
   async reconcileInternalFile(path: string): Promise<void> {
     const normalized = normalizeVaultPath(path);
     this.trigger("raw", normalized);
-    if (this.isHiddenPath(normalized)) return;
+    if (this.isHiddenPath(normalized) || isVaultIndexSkippedPath(normalized)) return;
     const entry = await this.readEntry(normalized);
     await this.reconcileFile(normalized, entry);
   }
@@ -473,8 +506,10 @@ export class FileSystemAdapter extends DataAdapter {
     const listed = await this.list(path);
     const folders = [...listed.folders].sort((a, b) => a.length - b.length);
     const files = [...listed.files].sort((a, b) => a.length - b.length);
-    for (const folder of folders) await this.reconcileInternalFile(folder);
-    for (const file of files) await this.reconcileInternalFile(file);
+    // Sibling folders/files are independent; parallelize to cut serial I/O latency
+    // when indexing large code vaults (still bounded so we don't stampede the FS).
+    await mapWithConcurrency(folders, RECONCILE_CONCURRENCY, (folder) => this.reconcileInternalFile(folder));
+    await mapWithConcurrency(files, RECONCILE_CONCURRENCY, (file) => this.reconcileInternalFile(file));
   }
 
   private async startWatchPath(path: string): Promise<void> {
@@ -631,6 +666,20 @@ function pathToFileUrl(path: string): string {
   const normalized = path.replace(/\\/g, "/");
   if (normalized.startsWith("//")) return `file://${encodeFileUrlPath(normalized.slice(2))}`;
   return `file://${encodeFileUrlPath(normalized.startsWith("/") ? normalized : `/${normalized}`)}`;
+}
+
+async function mapWithConcurrency<T>(items: readonly T[], concurrency: number, worker: (item: T) => Promise<void>): Promise<void> {
+  if (items.length === 0) return;
+  let next = 0;
+  const limit = Math.max(1, Math.min(concurrency, items.length));
+  const runners = Array.from({ length: limit }, async () => {
+    while (next < items.length) {
+      const current = items[next];
+      next += 1;
+      await worker(current);
+    }
+  });
+  await Promise.all(runners);
 }
 
 function encodeFileUrlPath(path: string): string {

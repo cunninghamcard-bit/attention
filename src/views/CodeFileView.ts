@@ -33,6 +33,13 @@ export const CODE_EXTENSIONS = [
   "",
 ];
 
+/**
+ * Documents at or above this size open in a degraded mode: no language pack,
+ * no syntax highlighting pass. History still works for normal edits; the
+ * expensive lezer parse of multi-hundred-KB sources is what freezes the UI.
+ */
+export const CODE_LARGE_FILE_CHARS = 400_000;
+
 // Map lezer highlight tags onto the theme's --code-* palette so code files
 // pick up accent/theme changes exactly like markdown code blocks do.
 const themeHighlightStyle = HighlightStyle.define([
@@ -148,10 +155,17 @@ export class CodeFileView extends TextFileView {
     return { ...super.getState(), wordWrap: this.wordWrap };
   }
 
+  override getViewData(): string {
+    // Prefer the live CM doc so we never full-copy on every keystroke into this.source.
+    if (this.cm) return this.cm.state.doc.toString();
+    return this.source;
+  }
+
   override setViewData(data: string, clearDirty = false): void {
     super.setViewData(data, clearDirty);
     if (!this.cm || this.applyingViewData) return;
-    if (this.cm.state.doc.toString() === data) return;
+    // Cheap length gate before an O(n) equality check on large documents.
+    if (this.cm.state.doc.length === data.length && this.cm.state.doc.toString() === data) return;
     this.applyingViewData = true;
     try {
       this.cm.dispatch({ changes: { from: 0, to: this.cm.state.doc.length, insert: data } });
@@ -183,20 +197,26 @@ export class CodeFileView extends TextFileView {
       this.wrapCompartment.of(this.wordWrap ? EditorView.lineWrapping : []),
       EditorView.updateListener.of((update) => {
         if (!update.docChanged || this.applyingViewData) return;
-        this.applyingViewData = true;
-        try {
-          this.source = update.state.doc.toString();
-        } finally {
-          this.applyingViewData = false;
-        }
+        // Do not clone the full document into this.source on every edit —
+        // getViewData() reads from CM on save. Still mark dirty + notify outline.
         this.requestSave();
-        this.app.workspace.trigger("code-symbols-change", this);
+        if (!this.isLargeDocument()) this.app.workspace.trigger("code-symbols-change", this);
       }),
     ];
   }
 
+  private isLargeDocument(): boolean {
+    const length = this.cm?.state.doc.length ?? this.source.length;
+    return length >= CODE_LARGE_FILE_CHARS;
+  }
+
   private async applyLanguage(filename: string): Promise<void> {
     if (!this.cm) return;
+    if (this.isLargeDocument()) {
+      this.cm.dispatch({ effects: this.languageCompartment.reconfigure([]) });
+      this.app.workspace.trigger("code-symbols-change", this);
+      return;
+    }
     const description = LanguageDescription.matchFilename(languages, filename);
     const support = description ? await description.load() : null;
     if (!this.cm) return;
