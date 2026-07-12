@@ -170,4 +170,8 @@ Every root-level sibling of `src/` is covered by a named gate: `lint` sweeps
 `src tests scripts` (e2e now lives inside tests/), `typecheck`/`typecheck:electron`/`typecheck:server`
 cover the three runtimes, and `typecheck:tools` covers e2e specs, scripts,
 examples, and the root config files themselves. `mise.toml` pins the
-toolchain; a docwright pre-commit hook runs the repo guard.
+toolchain (plus `engines`/`packageManager` for non-mise users); `oxfmt` formats
+`src tests scripts` (one-time reformat lives in `.git-blame-ignore-revs`);
+`pnpm run hooks:install` arms both git hooks — the docwright pre-commit guard
+and the commitlint commit-msg check. The IPC channel table and the public
+plugin surface are frozen by budget alarms.

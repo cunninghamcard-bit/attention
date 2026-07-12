@@ -471,3 +471,55 @@ describe("Rule: public-api surface freeze", () => {
     ]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Extra: IPC channel table freeze (budget guard). The desktop<->web IPC
+// surface is a protocol: channels may only be ADDED deliberately — update the
+// baseline in the same commit as the change.
+// ---------------------------------------------------------------------------
+
+import { createIpcHandlers } from "@desktop/ipc";
+
+describe("Rule: ipc surface freeze", () => {
+  it("ipc channel table stays frozen", () => {
+    // Handlers only dereference deps when invoked, so a lazy proxy is enough
+    // to materialize the channel map without a live Electron.
+    const stub: unknown = new Proxy(() => stub, { get: () => stub, apply: () => stub });
+    const mapChannels = Object.keys(createIpcHandlers(stub as never));
+    const direct = [
+      "src/apps/desktop/main.ts",
+      "src/apps/desktop/foundation-ipc.ts",
+      "src/apps/desktop/desktop-bridge.ts",
+    ].flatMap((file) =>
+      [...readText(file).matchAll(/ipcMain\s*\.\s*(?:handle|on)\s*\(\s*"([^"]+)"/g)].map(
+        (m) => m[1],
+      ),
+    );
+    expect([...new Set([...mapChannels, ...direct])].sort()).toEqual([
+      "desktop-dir",
+      "dialog:open",
+      "dialog:save",
+      "documents-dir",
+      "file-url",
+      "get-default-vault-path",
+      "get-documents-path",
+      "get-sandbox-vault-path",
+      "is-quitting",
+      "loom-url",
+      "open-url",
+      "request-url",
+      "resources",
+      "set-menu",
+      "starter",
+      "trash",
+      "update-menu-items",
+      "vault",
+      "vault-list",
+      "vault-move",
+      "vault-open",
+      "vault-remove",
+      "version",
+      "window:set-fullscreen",
+    ]);
+  });
+});

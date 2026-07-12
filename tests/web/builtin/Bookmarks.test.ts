@@ -191,9 +191,7 @@ function dispatchDragStart(el: HTMLElement): void {
   el.dispatchEvent(event);
 }
 
-function getBookmarkDragSource(
-  app: App,
-): DragSource & {
+function getBookmarkDragSource(app: App): DragSource & {
   type: "bookmarks";
   source: "bookmarks";
   icon: string;

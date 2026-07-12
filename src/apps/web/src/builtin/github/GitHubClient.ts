@@ -102,9 +102,7 @@ export class GitHubClient {
   }
 
   /** Recent repositories the token can access (for the cloud repo picker). */
-  async listRepositories(
-    limit = 40,
-  ): Promise<
+  async listRepositories(limit = 40): Promise<
     Array<{
       owner: string;
       repo: string;

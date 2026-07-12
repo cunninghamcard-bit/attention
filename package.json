@@ -18,7 +18,7 @@
     "build:server": "vite build --config src/apps/server/vite.config.ts",
     "start:desktop": "pnpm run build:electron && ELECTRON_RENDERER_URL=${ELECTRON_RENDERER_URL:-http://127.0.0.1:5173} electron dist-electron/main.cjs",
     "desktop": "pnpm run build && pnpm run build:electron && electron dist-electron/main.cjs",
-    "check": "pnpm run lint && tsc --noEmit && pnpm run typecheck:electron && pnpm run typecheck:server && pnpm run typecheck:tools && vitest run && pnpm run build && pnpm run build:api && pnpm run build:electron && pnpm run build:server",
+    "check": "pnpm run lint && pnpm run format:check && tsc --noEmit && pnpm run typecheck:electron && pnpm run typecheck:server && pnpm run typecheck:tools && vitest run && pnpm run build && pnpm run build:api && pnpm run build:electron && pnpm run build:server",
     "build:analyze": "ANALYZE=1 vite build -c src/apps/web/vite.config.ts",
     "packcheck": "publint && attw --pack .",
     "quality": "pnpm run check && pnpm run e2e && pnpm run packcheck",
@@ -30,7 +30,10 @@
     "e2e:desktop": "playwright test -c playwright.desktop.config.ts",
     "preinstall": "node -e \"if(!/\\bpnpm\\//.test(process.env.npm_config_user_agent||''))throw new Error('Use pnpm to install dependencies (this repo is pnpm-only).')\"",
     "typecheck:server": "tsc -p src/apps/server/tsconfig.json",
-    "typecheck:tools": "tsc -p tsconfig.tools.json"
+    "typecheck:tools": "tsc -p tsconfig.tools.json",
+    "format": "oxfmt src tests scripts",
+    "format:check": "oxfmt --check src tests scripts",
+    "hooks:install": "docwright install-hooks && install -m 755 scripts/hooks/commit-msg .git/hooks/commit-msg"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.3",
@@ -72,7 +75,7 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=20.19.0",
-    "pnpm": ">=10.11.0"
+    "node": ">=26.0.0",
+    "pnpm": ">=11"
   }
 }
