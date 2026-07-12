@@ -3105,7 +3105,7 @@ class EmbeddedBacklinks extends Component {
   private readonly unlinkedHeaderEl: HTMLElement;
   private readonly unlinkedCountEl: HTMLElement;
   private readonly unlinkedResultsEl: HTMLElement;
-  private searchTimer: ReturnType<typeof window.setTimeout> | null = null;
+  private searchTimer:  number | null = null;
   private updateVersion = 0;
 
   constructor(readonly app: App, readonly containerEl: HTMLElement) {

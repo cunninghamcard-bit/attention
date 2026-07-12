@@ -43,6 +43,8 @@ re-litigate them.
 - Kernel direction rule: `vault/`, `metadata/`, and `storage/` import only
   from the kernel, `core`, `dom`, and `platform` — never upward.
 - Disk access stays behind the `VaultAdapter` seam inside the web app.
+- Unit tests are centralized under `tests/` (workspace member), mirroring
+  source paths; no test file lives next to source.
 - The docs household is docwright goals under
   `docs/{features,issues,architecture}` plus promoted capabilities in
   `docs/capabilities/`.

@@ -58,7 +58,7 @@ test("per-click latency on a huge vault", async ({}, testInfo) => {
   seedLargeVault(vault);
   console.log(`seeded ${JUNK_FILES} junk files in ${Date.now() - seedStart}ms`);
 
-  const env = {
+  const env: NodeJS.ProcessEnv = {
     ...process.env,
     E2E_VAULT_PATH: vault,
     E2E_USER_DATA: join(base, "userData"),

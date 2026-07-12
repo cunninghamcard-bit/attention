@@ -2301,7 +2301,7 @@ export class Workspace extends Events {
           upEvent.preventDefault();
           return;
         }
-        let cleanupTimer: ReturnType<typeof setTimeout>;
+        let cleanupTimer: number;
         const cleanup = () => {
           ownerWindow.removeEventListener("auxclick", onAuxClick);
           ownerWindow.removeEventListener("paste", onPaste, { capture: true });

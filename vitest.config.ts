@@ -3,20 +3,18 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
-    // Desktop tests import their two shared items from the web package.
+    // Tests live centralized under tests/{web,desktop}/** (mirror paths)
+    // and reach their subjects through these aliases.
     alias: {
       "@app/web": resolve(__dirname, "src/apps/web/src"),
+      "@web": resolve(__dirname, "src/apps/web/src"),
+      "@desktop": resolve(__dirname, "src/apps/desktop"),
     },
   },
   test: {
     environment: "jsdom",
-    include: [
-      "src/apps/web/src/**/*.test.{ts,tsx}",
-      "src/apps/desktop/**/*.test.ts",
-      "src/apps/server/**/*.test.ts",
-      "tests/**/*.test.ts",
-    ],
-    setupFiles: ["./src/apps/web/src/test-setup.ts"],
+    include: ["tests/**/*.test.{ts,tsx}"],
+    setupFiles: ["./tests/web/setup.ts"],
     coverage: {
       reporter: ["text", "html"],
     },

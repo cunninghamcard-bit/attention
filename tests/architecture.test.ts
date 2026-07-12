@@ -342,7 +342,7 @@ describe("Rule: architecture-docs — the new documentation set exists", () => {
 describe("Rule: name-agnostic code — the retired product name is gone", () => {
   it("no retired product-name literals remain in code", () => {
     const textExtensions = [".ts", ".tsx", ".js", ".mjs", ".cjs", ".json", ".md", ".yaml", ".yml", ".html", ".css", ".scss"];
-    const scanDirs = ["src/apps", "e2e", "scripts"];
+    const scanDirs = ["src/apps", "tests", "e2e", "scripts", "examples"];
     const rootConfigFiles = [
       "package.json",
       "pnpm-workspace.yaml",
@@ -357,12 +357,57 @@ describe("Rule: name-agnostic code — the retired product name is gone", () => 
     const candidates = [
       ...scanDirs.flatMap((dir) => listFilesRecursive(abs(dir), textExtensions)),
       ...rootConfigFiles.map((file) => abs(file)).filter((file) => existsSync(file)),
-    ];
+      // The scanner itself carries the banned literal inside its own regex.
+    ].filter((file) => !file.endsWith("architecture.test.ts"));
 
     const hits: string[] = [];
     for (const fileAbs of candidates) {
       if (/arkloop/i.test(readFileSync(fileAbs, "utf8"))) hits.push(fileAbs.slice(ROOT.length));
     }
     expect(hits).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Extra: budget-style surface freeze (beyond the 11 spec scenarios). The
+// community-plugin surface is a compatibility contract: exports may only be
+// ADDED deliberately — update the baseline in the same commit as the change.
+// ---------------------------------------------------------------------------
+
+describe("Rule: public-api surface freeze", () => {
+  const exportedNames = (relPath: string): string[] => {
+    const source = readFileSync(abs(relPath), "utf8");
+    const names = new Set<string>();
+    for (const m of source.matchAll(/^export (?:abstract )?(?:class|function|const|interface|type|enum) (\w+)/gm)) names.add(m[1]);
+    for (const m of source.matchAll(/^export (?:type )?\{([^}]*)\}/gms)) {
+      for (const piece of m[1].split(",")) {
+        const name = piece.trim().split(/\s+as\s+/).pop()?.trim();
+        if (name) names.add(name);
+      }
+    }
+    return [...names].sort();
+  };
+
+  it("public plugin surface stays frozen", () => {
+    expect(exportedNames("src/apps/web/src/api/PublicApi.ts")).toEqual([
+      "AppearancePublicApi",
+      "BasesPublicApi",
+      "ObsidianPublicApi",
+      "ShellPublicApi",
+      "VaultPublicApi",
+      "WorkspacePublicApi",
+      "createPublicApi",
+    ]);
+    expect(exportedNames("src/apps/web/src/api/ObsidianPluginModule.ts")).toEqual([
+      "DebouncedFunction",
+      "Debouncer",
+      "ObsidianPluginModule",
+      "RequestUrlError",
+      "RequestUrlParam",
+      "RequestUrlResponse",
+      "RequestUrlResponsePromise",
+      "createObsidianPluginModule",
+      "setIcon",
+    ]);
   });
 });

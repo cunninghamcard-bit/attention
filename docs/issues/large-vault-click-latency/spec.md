@@ -109,7 +109,7 @@ Vault --> User: index ready without redundant per-file stat round-trips
 
 Scenario: Quick switcher reuses its item list across keystrokes
   Test:
-    Package: src/apps/web/src/builtin/QuickSwitcher.test.ts
+    Package: tests/web/builtin/QuickSwitcher.test.ts
     Filter: quick switcher computes its item list once per open
     Level: unit
   Given a vault with many files and an open quick switcher modal
@@ -119,7 +119,7 @@ Scenario: Quick switcher reuses its item list across keystrokes
 
 Scenario: Metadata indexing reuses in-memory file stats
   Test:
-    Package: src/apps/web/src/metadata/MetadataCache.test.ts
+    Package: tests/web/metadata/MetadataCache.test.ts
     Filter: metadata indexing reuses in-memory file stats
     Level: unit
   Given a loaded vault whose TFile entries carry fresh stat data
@@ -128,7 +128,7 @@ Scenario: Metadata indexing reuses in-memory file stats
 
 Scenario: Metadata indexing falls back to adapter stat when in-memory stat is unknown
   Test:
-    Package: src/apps/web/src/metadata/MetadataCache.test.ts
+    Package: tests/web/metadata/MetadataCache.test.ts
     Filter: metadata indexing falls back to adapter stat when in-memory stat is unknown
     Level: unit
   Given a TFile whose stat carries no real mtime
@@ -137,7 +137,7 @@ Scenario: Metadata indexing falls back to adapter stat when in-memory stat is un
 
 Scenario: Vault applies adapter-provided stats without re-statting
   Test:
-    Package: src/apps/web/src/vault/Vault.test.ts
+    Package: tests/web/vault/Vault.test.ts
     Filter: vault applies adapter-provided stats without re-statting
     Level: unit
   Given the adapter reconciles a file and already holds its stat entry

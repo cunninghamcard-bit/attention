@@ -19,13 +19,17 @@ product name appears in the tree, only in the git remote.
 │   ├── desktop/         @app/desktop — Electron main + preload; the thin native shell
 │   ├── web/             @app/web — the product; browser tech, node powers under the shell
 │   └── server/          @app/server — agent sidecar (loom kernel client, pi engine)
+├── tests/               ALL unit tests, centralized (workspace member @app/tests):
+│   ├── web/             mirrors src/apps/web/src/** — imports via @web/*
+│   ├── desktop/         mirrors src/apps/desktop/** — imports via @desktop/*
+│   ├── architecture.test.ts   the architecture alarms (direction/lane/facade/freeze)
+│   └── package.json     declares the bare deps tests need (own pnpm lane)
 ├── e2e/                 Playwright end-to-end + the large-vault perf harness (PERF_VAULT)
 ├── examples/            sample community plugins exercising the public api/ facade
 ├── fixtures/            test vaults and other read-only test inputs
 ├── docs/                this file, the project constitution, and SDD goal folders
 ├── scripts/             build/e2e helper scripts (dts fixup, CLI e2e driver)
 ├── patches/             pnpm dependency patches (ghostty-web)
-├── public/              static assets served verbatim by the web build (readability.js)
 └── decode-obsidian/     read-only reference symlink to Obsidian's source (never edited)
 ```
 
@@ -156,3 +160,13 @@ outside the desktop package's own `node_modules`. Ordinary npm dependencies
 of `@app/desktop` (e.g. `@electron/remote`) are therefore *bundled* rather
 than externalized; only Electron itself, native modules (`node-pty`), and
 Node builtins stay external.
+
+**Tests are centralized, gates are total.** Unit tests live under `tests/`
+(never next to source), mirroring source paths; `tests/` is its own workspace
+member so its bare imports and `vi.mock` specifiers resolve in its own
+dependency lane — a structural consequence of per-runtime dependency lanes.
+Every root-level sibling of `src/` is covered by a named gate: `lint` sweeps
+`src tests e2e scripts`, `typecheck`/`typecheck:electron`/`typecheck:server`
+cover the three runtimes, and `typecheck:tools` covers e2e specs, scripts,
+examples, and the root config files themselves. `mise.toml` pins the
+toolchain; a docwright pre-commit hook runs the repo guard.

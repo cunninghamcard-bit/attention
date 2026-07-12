@@ -66,7 +66,7 @@ function getThread(id: string): Thread {
   return thread;
 }
 
-function emit(thread: Thread, event: Omit<BridgeEvent, "seq" | "agentId">): void {
+function emit(thread: Thread, event: { type: string; ts?: number; [key: string]: unknown }): void {
   const full: BridgeEvent = { ts: Date.now(), ...event, seq: ++thread.seq, agentId: thread.id };
   thread.events.push(full);
   thread.updatedAt = Date.now();

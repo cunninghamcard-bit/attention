@@ -9,8 +9,8 @@ export default defineConfig({
   plugins: [
     dts({
       entryRoot: resolve(__dirname, "src"),
-      outDir: resolve(__dirname, "../../../dist/types"),
-      rollupTypes: true,
+      outDirs: resolve(__dirname, "../../../dist/types"),
+      bundleTypes: true,
       tsconfigPath: resolve(__dirname, "tsconfig.json"),
     }),
   ],

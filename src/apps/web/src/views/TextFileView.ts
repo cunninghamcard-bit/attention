@@ -8,7 +8,7 @@ export class TextFileView extends EditableFileView {
   protected lastSavedData = "";
   protected saving = false;
   protected saveAgain = false;
-  private saveTimer: ReturnType<typeof window.setTimeout> | null = null;
+  private saveTimer:  number | null = null;
   requestSave = (): void => {
     this.dirty = true;
     this.scheduleSave();

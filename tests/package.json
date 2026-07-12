@@ -1,0 +1,20 @@
+{
+  "name": "@app/tests",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Centralized test tree (mirrors src/apps/* paths). A workspace member so bare imports and vi.mock specifiers resolve in its own dependency lane.",
+  "devDependencies": {
+    "@app/web": "workspace:*",
+    "@codemirror/autocomplete": "^6.20.3",
+    "@codemirror/language": "^6.12.3",
+    "@codemirror/language-data": "^6.5.2",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "^6.43.1",
+    "@electron/remote": "^2.1.3",
+    "@pierre/diffs": "^1.2.12",
+    "electron": "^43.0.0",
+    "jsdom": "^29.1.1",
+    "react": "^19.2.7",
+    "stream-markdown-parser": "1.0.9"
+  }
+}

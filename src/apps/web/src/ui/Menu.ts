@@ -186,7 +186,7 @@ export class Menu extends Component implements HistoryHandler {
   private hiding = false;
   private outsideCleanup: (() => void) | null = null;
   private parentElementCleanup: (() => void) | null = null;
-  private submenuOpenTimer: ReturnType<typeof setTimeout> | null = null;
+  private submenuOpenTimer:  number | null = null;
   private shownDoc: Document | null = null;
 
   constructor(doc: Document = getActiveDocument()) {
