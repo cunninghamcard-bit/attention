@@ -408,8 +408,6 @@ describe("Rule: name-agnostic code — the retired product name is gone", () => 
       "pnpm-workspace.yaml",
       "tsconfig.json",
       "vitest.config.ts",
-      "playwright.config.ts",
-      "playwright.desktop.config.ts",
       "README.md",
       "oxlint.json",
     ];

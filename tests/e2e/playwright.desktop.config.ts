@@ -4,14 +4,17 @@ import { defineConfig } from "@playwright/test";
 // failure artifacts retained. Run `pnpm run build && pnpm run build:electron`
 // first; then `pnpm run e2e:desktop`.
 export default defineConfig({
-  testDir: "./tests/e2e/desktop/specs",
+  testDir: "./desktop/specs",
   fullyParallel: false,
   workers: 1,
   retries: 0,
   timeout: 120_000,
   expect: { timeout: 15_000 },
-  reporter: [["list"], ["html", { open: "never", outputFolder: "reports/playwright-desktop" }]],
-  outputDir: "reports/test-results-desktop",
+  reporter: [
+    ["list"],
+    ["html", { open: "never", outputFolder: "../../reports/playwright-desktop" }],
+  ],
+  outputDir: "../../reports/test-results-desktop",
   use: {
     screenshot: "only-on-failure",
     video: "retain-on-failure",

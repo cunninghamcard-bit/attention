@@ -32,8 +32,6 @@
   "include": [
     "tests/e2e",
     "scripts",
-    "playwright.config.ts",
-    "playwright.desktop.config.ts",
     "vitest.config.ts",
     "src/apps/web/vite.config.ts",
     "src/apps/web/vite.api.config.ts",
