@@ -1,4 +1,7 @@
 import type {
+  ActionJob,
+  ActionRunDetail,
+  ActionRunSummary,
   CiState,
   CommitDetail,
   CommitFileChange,
@@ -8,6 +11,11 @@ import type {
   GitHubAuthState,
   GitHubBranch,
   GitHubRepositoryRef,
+  IssueDetail,
+  IssueSummary,
+  MergeMethod,
+  MergeResult,
+  NotificationItem,
   PrCheck,
   PrComment,
   PrCommit,
@@ -20,6 +28,8 @@ import type {
   PrReviewComment,
   PrState,
   PrSummary,
+  RepoContentItem,
+  RepoFileContent,
 } from "./types";
 import { apiBaseUrlForHost } from "./resolveRepository";
 
@@ -275,6 +285,145 @@ export class GitHubClient {
     return res.text;
   }
 
+  // --- Issues --------------------------------------------------------------
+
+  async listIssues(repo: GitHubRepositoryRef, state: "open" | "closed" | "all" = "open"): Promise<IssueSummary[]> {
+    const res = await this.request(
+      "GET",
+      `/repos/${repo.owner}/${repo.repo}/issues?state=${state}&sort=updated&direction=desc&per_page=50`,
+    );
+    if (res.status >= 400) throw apiError(res);
+    const items = (res.json as RawIssue[]) ?? [];
+    // REST /issues includes PRs — keep only pure issues for the Issues section.
+    return items.filter((item) => !item.pull_request).map(mapIssueSummary);
+  }
+
+  async getIssue(repo: GitHubRepositoryRef, number: number): Promise<IssueDetail> {
+    const [issueRes, commentsRes] = await Promise.all([
+      this.request("GET", `/repos/${repo.owner}/${repo.repo}/issues/${number}`),
+      this.request("GET", `/repos/${repo.owner}/${repo.repo}/issues/${number}/comments?per_page=100`),
+    ]);
+    if (issueRes.status >= 400) throw apiError(issueRes);
+    const raw = issueRes.json as RawIssue;
+    return {
+      ...mapIssueSummary(raw),
+      body: raw.body ?? "",
+      assignees: (raw.assignees ?? []).map(mapActor),
+      milestone: raw.milestone ? { title: raw.milestone.title, url: raw.milestone.html_url } : null,
+      commentsList: okList(commentsRes).map(mapIssueComment),
+      closedAt: raw.closed_at ?? null,
+    };
+  }
+
+  // --- Actions -------------------------------------------------------------
+
+  async listWorkflowRuns(repo: GitHubRepositoryRef, page = 1): Promise<ActionRunSummary[]> {
+    const res = await this.request(
+      "GET",
+      `/repos/${repo.owner}/${repo.repo}/actions/runs?per_page=30&page=${page}`,
+    );
+    if (res.status >= 400) throw apiError(res);
+    const runs = ((res.json as { workflow_runs?: RawWorkflowRun[] })?.workflow_runs) ?? [];
+    return runs.map(mapActionRun);
+  }
+
+  async getWorkflowRun(repo: GitHubRepositoryRef, runId: number): Promise<ActionRunDetail> {
+    const [runRes, jobsRes] = await Promise.all([
+      this.request("GET", `/repos/${repo.owner}/${repo.repo}/actions/runs/${runId}`),
+      this.request("GET", `/repos/${repo.owner}/${repo.repo}/actions/runs/${runId}/jobs?per_page=50`),
+    ]);
+    if (runRes.status >= 400) throw apiError(runRes);
+    const run = mapActionRun(runRes.json as RawWorkflowRun);
+    const jobs = (((jobsRes.json as { jobs?: RawJob[] })?.jobs) ?? []).map(mapJob);
+    return { ...run, jobs };
+  }
+
+  // --- Files ---------------------------------------------------------------
+
+  async listContents(repo: GitHubRepositoryRef, path = "", ref?: string): Promise<RepoContentItem[]> {
+    const clean = path.replace(/^\/+|\/+$/g, "");
+    const params = ref ? `?ref=${encodeURIComponent(ref)}` : "";
+    const apiPath = clean
+      ? `/repos/${repo.owner}/${repo.repo}/contents/${clean.split("/").map(encodeURIComponent).join("/")}${params}`
+      : `/repos/${repo.owner}/${repo.repo}/contents${params}`;
+    const res = await this.request("GET", apiPath);
+    if (res.status >= 400) throw apiError(res);
+    const data = res.json;
+    const items = Array.isArray(data) ? data : [data];
+    return (items as RawContent[]).map(mapContent).filter((item) => item.name);
+  }
+
+  async getFileContent(repo: GitHubRepositoryRef, path: string, ref?: string): Promise<RepoFileContent> {
+    const clean = path.replace(/^\/+/, "");
+    const params = ref ? `?ref=${encodeURIComponent(ref)}` : "";
+    const res = await this.request(
+      "GET",
+      `/repos/${repo.owner}/${repo.repo}/contents/${clean.split("/").map(encodeURIComponent).join("/")}${params}`,
+    );
+    if (res.status >= 400) throw apiError(res);
+    const raw = res.json as RawContent;
+    let text: string | null = null;
+    if (raw.encoding === "base64" && typeof raw.content === "string") {
+      text = decodeBase64Text(raw.content, 512 * 1024);
+    }
+    return {
+      path: raw.path ?? path,
+      name: raw.name ?? path.split("/").pop() ?? path,
+      sha: raw.sha ?? "",
+      size: raw.size ?? 0,
+      encoding: raw.encoding ?? "",
+      text,
+      htmlUrl: raw.html_url ?? "",
+      downloadUrl: raw.download_url ?? null,
+    };
+  }
+
+  // --- Notifications / Inbox ---------------------------------------------
+
+  async listNotifications(options: { all?: boolean; participating?: boolean } = {}): Promise<NotificationItem[]> {
+    const params = new URLSearchParams({ per_page: "40" });
+    if (options.all) params.set("all", "true");
+    if (options.participating) params.set("participating", "true");
+    const res = await this.request("GET", `/notifications?${params}`);
+    if (res.status >= 400) throw apiError(res);
+    return ((res.json as RawNotification[]) ?? []).map(mapNotification);
+  }
+
+  async markNotificationRead(id: string): Promise<void> {
+    const res = await this.request("PATCH", `/notifications/threads/${id}`);
+    if (res.status >= 400 && res.status !== 205) throw apiError(res);
+  }
+
+  async markAllNotificationsRead(): Promise<void> {
+    const res = await this.request("PUT", "/notifications", {
+      body: { last_read_at: new Date().toISOString() },
+    });
+    if (res.status >= 400 && res.status !== 205) throw apiError(res);
+  }
+
+  // --- Merge ---------------------------------------------------------------
+
+  async mergePullRequest(
+    repo: GitHubRepositoryRef,
+    number: number,
+    options: { method?: MergeMethod; commitTitle?: string; commitMessage?: string } = {},
+  ): Promise<MergeResult> {
+    const res = await this.request("POST", `/repos/${repo.owner}/${repo.repo}/pulls/${number}/merge`, {
+      body: {
+        merge_method: options.method ?? "squash",
+        ...(options.commitTitle ? { commit_title: options.commitTitle } : {}),
+        ...(options.commitMessage ? { commit_message: options.commitMessage } : {}),
+      },
+    });
+    if (res.status >= 400) throw apiError(res);
+    const raw = res.json as { merged?: boolean; message?: string; sha?: string };
+    return {
+      merged: Boolean(raw.merged),
+      message: raw.message ?? (raw.merged ? "Pull request merged" : "Merge failed"),
+      sha: raw.sha ?? null,
+    };
+  }
+
   private async listChecks(repo: GitHubRepositoryRef, sha: string): Promise<PrCheck[]> {
     const res = await this.request("GET", `/repos/${repo.owner}/${repo.repo}/commits/${sha}/check-runs?per_page=100`);
     if (res.status >= 400) return [];
@@ -484,6 +633,88 @@ function mapFile(raw: RawFile): PrFileChange {
   };
 }
 
+function mapIssueSummary(raw: RawIssue): IssueSummary {
+  return {
+    number: raw.number,
+    title: raw.title ?? "",
+    state: raw.state === "closed" ? "closed" : "open",
+    author: mapActor(raw.user),
+    createdAt: raw.created_at ?? "",
+    updatedAt: raw.updated_at ?? "",
+    url: raw.html_url ?? "",
+    labels: (raw.labels ?? []).map(mapLabel),
+    comments: raw.comments ?? 0,
+    isPullRequest: Boolean(raw.pull_request),
+  };
+}
+
+function mapActionRun(raw: RawWorkflowRun): ActionRunSummary {
+  return {
+    id: raw.id ?? 0,
+    name: raw.name ?? "workflow",
+    displayTitle: raw.display_title ?? raw.name ?? "workflow",
+    status: raw.status ?? "queued",
+    conclusion: raw.conclusion ?? null,
+    headBranch: raw.head_branch ?? "",
+    headSha: raw.head_sha ?? "",
+    event: raw.event ?? "",
+    url: raw.url ?? "",
+    htmlUrl: raw.html_url ?? "",
+    createdAt: raw.created_at ?? "",
+    updatedAt: raw.updated_at ?? "",
+    runNumber: raw.run_number ?? 0,
+    attempt: raw.run_attempt ?? 1,
+  };
+}
+
+function mapJob(raw: RawJob): ActionJob {
+  return {
+    id: raw.id ?? 0,
+    name: raw.name ?? "job",
+    status: raw.status ?? "queued",
+    conclusion: raw.conclusion ?? null,
+    startedAt: raw.started_at ?? null,
+    completedAt: raw.completed_at ?? null,
+    steps: (raw.steps ?? []).map((step) => ({
+      name: step.name ?? "step",
+      status: step.status ?? "queued",
+      conclusion: step.conclusion ?? null,
+      number: step.number ?? 0,
+    })),
+  };
+}
+
+function mapContent(raw: RawContent): RepoContentItem {
+  return {
+    name: raw.name ?? "",
+    path: raw.path ?? "",
+    type: (raw.type as RepoContentItem["type"]) ?? "file",
+    size: raw.size ?? 0,
+    sha: raw.sha ?? "",
+    url: raw.url ?? "",
+    htmlUrl: raw.html_url ?? "",
+    downloadUrl: raw.download_url ?? null,
+  };
+}
+
+function mapNotification(raw: RawNotification): NotificationItem {
+  const full = raw.repository?.full_name ?? "";
+  const [owner = "", repo = ""] = full.split("/");
+  return {
+    id: raw.id ?? "",
+    unread: Boolean(raw.unread),
+    reason: raw.reason ?? "",
+    updatedAt: raw.updated_at ?? "",
+    title: raw.subject?.title ?? "",
+    type: raw.subject?.type ?? "",
+    url: raw.subject?.url ?? null,
+    repository: full,
+    owner,
+    repo,
+    subjectUrl: raw.subject?.latest_comment_url ?? raw.subject?.url ?? null,
+  };
+}
+
 function rollupCi(checks: PrCheck[]): CiState | null {
   if (checks.length === 0) return null;
   const conclusions = checks.map((check) => (check.conclusion ?? check.status).toLowerCase());
@@ -510,6 +741,29 @@ function apiError(res: HttpResponse): Error {
   const error = new Error(message) as Error & { status: number };
   error.status = res.status;
   return error;
+}
+
+function decodeBase64Text(content: string, maxBytes: number): string | null {
+  try {
+    const cleaned = content.replace(/\n/g, "");
+    let bytes: Uint8Array;
+    if (typeof atob === "function") {
+      const binary = atob(cleaned);
+      if (binary.length > maxBytes || binary.includes("\0")) return null;
+      bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    } else {
+      const buf = (globalThis as { Buffer?: { from(s: string, enc: string): Uint8Array } }).Buffer?.from(cleaned, "base64");
+      if (!buf || buf.length > maxBytes) return null;
+      bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf as ArrayBuffer);
+      for (let i = 0; i < Math.min(bytes.length, 1024); i += 1) {
+        if (bytes[i] === 0) return null;
+      }
+    }
+    return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+  } catch {
+    return null;
+  }
 }
 
 // --- raw shapes (minimal) ------------------------------------------------
@@ -643,4 +897,70 @@ interface RawRepo {
   description?: string | null;
   open_issues_count?: number;
   owner?: { login?: string };
+}
+
+interface RawIssue {
+  number: number;
+  title?: string;
+  state?: string;
+  body?: string | null;
+  user?: RawUser | null;
+  created_at?: string;
+  updated_at?: string;
+  closed_at?: string | null;
+  html_url?: string;
+  labels?: RawLabel[];
+  comments?: number;
+  assignees?: RawUser[];
+  milestone?: { title: string; html_url: string } | null;
+  pull_request?: unknown;
+}
+
+interface RawWorkflowRun {
+  id?: number;
+  name?: string;
+  display_title?: string;
+  status?: string;
+  conclusion?: string | null;
+  head_branch?: string;
+  head_sha?: string;
+  event?: string;
+  url?: string;
+  html_url?: string;
+  created_at?: string;
+  updated_at?: string;
+  run_number?: number;
+  run_attempt?: number;
+}
+
+interface RawJob {
+  id?: number;
+  name?: string;
+  status?: string;
+  conclusion?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  steps?: Array<{ name?: string; status?: string; conclusion?: string | null; number?: number }>;
+}
+
+interface RawContent {
+  name?: string;
+  path?: string;
+  type?: string;
+  size?: number;
+  sha?: string;
+  url?: string;
+  html_url?: string;
+  download_url?: string | null;
+  encoding?: string;
+  content?: string;
+}
+
+interface RawNotification {
+  id?: string;
+  unread?: boolean;
+  reason?: string;
+  updated_at?: string;
+  subject?: { title?: string; type?: string; url?: string | null; latest_comment_url?: string | null };
+  repository?: { full_name?: string };
 }

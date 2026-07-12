@@ -4,15 +4,24 @@ import { GitHubClient, type HttpTransport } from "./GitHubClient";
 import { readGithubPrPrefs, writeGithubPrPrefs } from "./prefs";
 import { parseGitRemoteUrl } from "./resolveRepository";
 import type {
+  ActionRunDetail,
+  ActionRunSummary,
   CommitDetail,
   CommitPage,
   GitHubAuthState,
   GitHubBranch,
   GitHubRepositoryRef,
+  IssueDetail,
+  IssueSummary,
+  MergeMethod,
+  MergeResult,
+  NotificationItem,
   PrDetail,
   PrDraftComment,
   PrListFilter,
   PrSummary,
+  RepoContentItem,
+  RepoFileContent,
 } from "./types";
 
 const TOKEN_SECRET_ID = "github-token";
@@ -205,6 +214,87 @@ export class GitHubService {
   async getCommitDiff(sha: string, repo?: GitHubRepositoryRef): Promise<string> {
     const { client, repo: active } = await this.requireClient(repo);
     return client.getCommitDiff(active, sha);
+  }
+
+  async listIssues(state: "open" | "closed" | "all" = "open", repo?: GitHubRepositoryRef): Promise<IssueSummary[]> {
+    const { client, repo: active } = await this.requireClient(repo);
+    return client.listIssues(active, state);
+  }
+
+  async getIssue(number: number, repo?: GitHubRepositoryRef): Promise<IssueDetail> {
+    const { client, repo: active } = await this.requireClient(repo);
+    return client.getIssue(active, number);
+  }
+
+  async createIssueComment(number: number, body: string, repo?: GitHubRepositoryRef): Promise<string | null> {
+    try {
+      const { client, repo: active } = await this.requireClient(repo);
+      await client.createIssueComment(active, number, body);
+      return null;
+    } catch (error) {
+      return errorMessage(error);
+    }
+  }
+
+  async listWorkflowRuns(page = 1, repo?: GitHubRepositoryRef): Promise<ActionRunSummary[]> {
+    const { client, repo: active } = await this.requireClient(repo);
+    return client.listWorkflowRuns(active, page);
+  }
+
+  async getWorkflowRun(runId: number, repo?: GitHubRepositoryRef): Promise<ActionRunDetail> {
+    const { client, repo: active } = await this.requireClient(repo);
+    return client.getWorkflowRun(active, runId);
+  }
+
+  async listContents(path = "", ref?: string, repo?: GitHubRepositoryRef): Promise<RepoContentItem[]> {
+    const { client, repo: active } = await this.requireClient(repo);
+    return client.listContents(active, path, ref);
+  }
+
+  async getFileContent(path: string, ref?: string, repo?: GitHubRepositoryRef): Promise<RepoFileContent> {
+    const { client, repo: active } = await this.requireClient(repo);
+    return client.getFileContent(active, path, ref);
+  }
+
+  async listNotifications(options?: { all?: boolean; participating?: boolean }): Promise<NotificationItem[]> {
+    const token = this.readToken();
+    if (!token) throw Object.assign(new Error("Sign in required"), { status: 401 });
+    return this.client(token, "github.com").listNotifications(options);
+  }
+
+  async markNotificationRead(id: string): Promise<string | null> {
+    try {
+      const token = this.readToken();
+      if (!token) return "Not signed in";
+      await this.client(token, "github.com").markNotificationRead(id);
+      return null;
+    } catch (error) {
+      return errorMessage(error);
+    }
+  }
+
+  async markAllNotificationsRead(): Promise<string | null> {
+    try {
+      const token = this.readToken();
+      if (!token) return "Not signed in";
+      await this.client(token, "github.com").markAllNotificationsRead();
+      return null;
+    } catch (error) {
+      return errorMessage(error);
+    }
+  }
+
+  async mergePullRequest(
+    number: number,
+    options: { method?: MergeMethod; commitTitle?: string; commitMessage?: string } = {},
+    repo?: GitHubRepositoryRef,
+  ): Promise<MergeResult | { error: string }> {
+    try {
+      const { client, repo: active } = await this.requireClient(repo);
+      return await client.mergePullRequest(active, number, options);
+    } catch (error) {
+      return { error: errorMessage(error) };
+    }
   }
 
   private readToken(): string | null {

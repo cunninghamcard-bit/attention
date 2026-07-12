@@ -18,6 +18,7 @@ import { readGithubPrPrefs, writeGithubPrPrefs } from "../github/prefs";
 import { setIcon } from "../ui/Icon";
 import { Notice } from "../ui/Notice";
 import { openGitReview } from "./review/GitReviewView";
+import { ActionsPanel, FilesPanel, InboxPanel, IssuesPanel } from "./GitHubExtraPanels";
 
 /** Avoid circular import with GitPrViews — open by view type string. */
 async function openPullRequestsView(app: App): Promise<void> {
@@ -37,8 +38,12 @@ async function openPullRequestsView(app: App): Promise<void> {
 
 const SECTIONS: { id: GithubWorkspaceSection; label: string; icon: string }[] = [
   { id: "pulls", label: "Pull requests", icon: "lucide-git-pull-request" },
+  { id: "issues", label: "Issues", icon: "lucide-circle-dot" },
   { id: "commits", label: "Commits", icon: "lucide-git-commit" },
+  { id: "files", label: "Files", icon: "lucide-folder" },
+  { id: "actions", label: "Actions", icon: "lucide-play" },
   { id: "branches", label: "Branches", icon: "lucide-git-branch" },
+  { id: "inbox", label: "Inbox", icon: "lucide-inbox" },
   { id: "local", label: "Local", icon: "lucide-file-diff" },
 ];
 
@@ -284,7 +289,11 @@ function WorkspaceShell({
       </aside>
       <main className="gh-main">
         {section === "commits" && <CommitsPanel app={app} repo={repo} />}
+        {section === "issues" && <IssuesPanel app={app} repo={repo} />}
+        {section === "files" && <FilesPanel app={app} repo={repo} />}
+        {section === "actions" && <ActionsPanel app={app} repo={repo} />}
         {section === "branches" && <BranchesPanel app={app} repo={repo} />}
+        {section === "inbox" && <InboxPanel app={app} />}
         {section === "local" && <LocalPanel app={app} />}
         {section === "pulls" && (
           <div className="gh-empty-center">

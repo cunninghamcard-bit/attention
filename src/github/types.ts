@@ -198,4 +198,131 @@ export interface CommitDetail {
   checks: PrCheck[];
 }
 
-export type GithubWorkspaceSection = "pulls" | "commits" | "branches" | "local";
+export type GithubWorkspaceSection =
+  | "pulls"
+  | "issues"
+  | "commits"
+  | "files"
+  | "actions"
+  | "branches"
+  | "inbox"
+  | "local";
+
+export type IssueState = "open" | "closed";
+
+export interface IssueSummary {
+  number: number;
+  title: string;
+  state: IssueState;
+  author: GitHubActor;
+  createdAt: string;
+  updatedAt: string;
+  url: string;
+  labels: PrLabel[];
+  comments: number;
+  isPullRequest: boolean;
+}
+
+export interface IssueDetail extends IssueSummary {
+  body: string;
+  assignees: GitHubActor[];
+  milestone: { title: string; url: string } | null;
+  commentsList: PrComment[];
+  closedAt: string | null;
+}
+
+export interface ActionRunSummary {
+  id: number;
+  name: string;
+  displayTitle: string;
+  status: string;
+  conclusion: string | null;
+  headBranch: string;
+  headSha: string;
+  event: string;
+  url: string;
+  htmlUrl: string;
+  createdAt: string;
+  updatedAt: string;
+  runNumber: number;
+  attempt: number;
+}
+
+export interface ActionJob {
+  id: number;
+  name: string;
+  status: string;
+  conclusion: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  steps: Array<{
+    name: string;
+    status: string;
+    conclusion: string | null;
+    number: number;
+  }>;
+}
+
+export interface ActionRunDetail extends ActionRunSummary {
+  jobs: ActionJob[];
+}
+
+export interface RepoContentItem {
+  name: string;
+  path: string;
+  type: "file" | "dir" | "symlink" | "submodule";
+  size: number;
+  sha: string;
+  url: string;
+  htmlUrl: string;
+  downloadUrl: string | null;
+}
+
+export interface RepoFileContent {
+  path: string;
+  name: string;
+  sha: string;
+  size: number;
+  encoding: string;
+  /** Decoded utf-8 text when possible; null for binary/large. */
+  text: string | null;
+  htmlUrl: string;
+  downloadUrl: string | null;
+}
+
+export type NotificationReason =
+  | "assign"
+  | "author"
+  | "comment"
+  | "invitation"
+  | "manual"
+  | "mention"
+  | "review_requested"
+  | "security_alert"
+  | "state_change"
+  | "subscribed"
+  | "team_mention"
+  | "ci_activity"
+  | string;
+
+export interface NotificationItem {
+  id: string;
+  unread: boolean;
+  reason: NotificationReason;
+  updatedAt: string;
+  title: string;
+  type: string;
+  url: string | null;
+  repository: string;
+  owner: string;
+  repo: string;
+  subjectUrl: string | null;
+}
+
+export type MergeMethod = "merge" | "squash" | "rebase";
+
+export interface MergeResult {
+  merged: boolean;
+  message: string;
+  sha: string | null;
+}

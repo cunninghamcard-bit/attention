@@ -445,6 +445,9 @@ function PrDetailPanel({
   const [fileQuery, setFileQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [unifiedDiff, setUnifiedDiff] = useState("");
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [mergeMethod, setMergeMethod] = useState<"merge" | "squash" | "rebase">("squash");
+  const [mergeBusy, setMergeBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -551,12 +554,68 @@ function PrDetailPanel({
             <span className="git-pr-number">#{detail.number}</span>
           </h2>
           <div className="git-pr-header-actions">
+            {detail.state === "open" && !detail.isDraft && (
+              <button
+                type="button"
+                className="mod-cta git-pr-action"
+                disabled={detail.mergeable === false}
+                title={detail.mergeable === false ? "Resolve conflicts first" : "Merge pull request"}
+                onClick={() => setMergeOpen((o) => !o)}
+              >
+                Merge
+              </button>
+            )}
             <button type="button" className="git-pr-action" onClick={() => window.open(detail.url, "_blank")}>
               Open on GitHub
             </button>
             <button type="button" className="git-pr-action" onClick={() => void load()}>Refresh</button>
           </div>
         </div>
+        {mergeOpen && detail.state === "open" && (
+          <div className="git-pr-merge-box">
+            <div className="git-pr-merge-methods">
+              {(["squash", "merge", "rebase"] as const).map((method) => (
+                <label key={method} className="git-pr-merge-option">
+                  <input
+                    type="radio"
+                    name="merge-method"
+                    checked={mergeMethod === method}
+                    onChange={() => setMergeMethod(method)}
+                  />
+                  {method === "squash" ? "Squash and merge" : method === "merge" ? "Create a merge commit" : "Rebase and merge"}
+                </label>
+              ))}
+            </div>
+            <div className="git-pr-merge-actions">
+              <button type="button" className="git-pr-action" onClick={() => setMergeOpen(false)}>Cancel</button>
+              <button
+                type="button"
+                className="mod-cta"
+                disabled={mergeBusy || detail.mergeable === false}
+                onClick={() => {
+                  void (async () => {
+                    setMergeBusy(true);
+                    const result = await app.github.mergePullRequest(
+                      number,
+                      { method: mergeMethod, commitTitle: detail.title },
+                      repo ?? undefined,
+                    );
+                    setMergeBusy(false);
+                    if ("error" in result) {
+                      new Notice(`Merge failed: ${result.error}`);
+                      return;
+                    }
+                    new Notice(result.message || "Merged");
+                    setMergeOpen(false);
+                    void load();
+                  })();
+                }}
+              >
+                {mergeBusy ? "Merging…" : "Confirm merge"}
+              </button>
+            </div>
+          </div>
+        )}
         <div className="git-pr-meta-row">
           <StateChip state={detail.state} isDraft={detail.isDraft} />
           {detail.ciState && <CiChip state={detail.ciState} />}

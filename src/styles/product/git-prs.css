@@ -1427,3 +1427,186 @@
   .gh-sidebar { display: none; }
   .gh-commit-files-split { grid-template-columns: 1fr; }
 }
+
+/* --- Extra workspace panels (issues/actions/files/inbox) ------------ */
+
+.gh-split-panel {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+.gh-split-list, .gh-split-detail {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.gh-split-list { border-right: 1px solid var(--background-modifier-border); }
+.gh-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  flex-shrink: 0;
+}
+.gh-filter-pills {
+  display: flex;
+  gap: 2px;
+  background: var(--background-modifier-border);
+  padding: 2px;
+  border-radius: var(--radius-m);
+}
+.gh-filter-pills button {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: calc(var(--radius-m) - 1px);
+  cursor: var(--cursor);
+  font-size: var(--font-ui-smaller);
+  box-shadow: none;
+}
+.gh-filter-pills button.is-active {
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+.gh-search-block {
+  margin: 8px 12px;
+}
+.gh-item-list { overflow: auto; flex: 1; }
+.gh-item-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: transparent;
+  color: inherit;
+  padding: 10px 14px;
+  cursor: var(--cursor);
+  box-shadow: none;
+  border-radius: 0;
+}
+.gh-item-row:hover, .gh-item-row.is-active { background: var(--background-modifier-hover); }
+.gh-item-row.is-active { box-shadow: inset 2px 0 0 var(--interactive-accent); }
+.gh-item-row.is-unread .gh-item-title { font-weight: var(--font-semibold); }
+.gh-item-main { flex: 1; min-width: 0; }
+.gh-item-title {
+  font-size: var(--font-ui-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gh-dot {
+  width: 8px; height: 8px; border-radius: 50%; margin-top: 6px;
+  background: var(--text-muted); flex-shrink: 0;
+}
+.gh-dot.mod-open { background: var(--color-green, #3fb950); }
+.gh-dot.mod-closed { background: var(--color-purple, #a371f7); }
+.gh-label {
+  font-size: 10px; padding: 1px 6px; border-radius: 2em;
+  border: 1px solid color-mix(in srgb, var(--label-color, #888) 50%, transparent);
+  background: color-mix(in srgb, var(--label-color, #888) 16%, transparent);
+  max-width: 8em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gh-detail-scroll { overflow: auto; flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.gh-detail-head { display: flex; flex-direction: column; gap: 6px; }
+.gh-card {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  padding: 12px;
+  background: var(--background-primary);
+}
+.gh-card-meta {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 8px; font-size: var(--font-ui-small);
+}
+.gh-composer {
+  display: flex; flex-direction: column; gap: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  padding: 12px;
+  background: var(--background-secondary);
+}
+.gh-composer textarea { width: 100%; resize: vertical; }
+.gh-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.gh-steps { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.gh-step-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: var(--font-ui-smaller); padding: 4px 0;
+}
+.gh-ci-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  background: var(--text-muted);
+}
+.gh-ci-dot.mod-success { background: var(--color-green, #3fb950); }
+.gh-ci-dot.mod-failure, .gh-ci-dot.mod-error { background: var(--color-red, #f85149); }
+.gh-ci-dot.mod-pending { background: var(--color-orange, #d29922); }
+
+.gh-files-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.gh-crumbs { font-size: var(--font-ui-smaller); margin-top: 4px; }
+.gh-select {
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  border-radius: var(--radius-m);
+  padding: 6px 8px;
+  font-size: var(--font-ui-small);
+  color: inherit;
+}
+.gh-files-split {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  flex: 1; min-height: 0; overflow: hidden;
+}
+.gh-file-browser {
+  overflow: auto;
+  border-right: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+.gh-file-browser-row {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  text-align: left; border: none; border-bottom: 1px solid var(--background-modifier-border);
+  background: transparent; color: inherit; padding: 8px 12px; cursor: var(--cursor);
+  font-size: var(--font-ui-small); box-shadow: none; border-radius: 0;
+}
+.gh-file-browser-row:hover { background: var(--background-modifier-hover); }
+.gh-file-browser-row .gh-muted { margin-left: auto; font-size: 11px; }
+.gh-file-content { overflow: auto; min-width: 0; }
+.gh-code-pre {
+  margin: 0; padding: 14px; font-family: var(--font-monospace); font-size: 12px;
+  line-height: 1.45; white-space: pre; overflow: auto;
+}
+.gh-check {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--font-ui-smaller); color: var(--text-muted);
+}
+.gh-markdown { font-size: var(--font-ui-small); }
+
+.git-pr-merge-box {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.git-pr-merge-methods { display: flex; flex-direction: column; gap: 6px; }
+.git-pr-merge-option {
+  display: flex; align-items: center; gap: 8px;
+  font-size: var(--font-ui-small); cursor: var(--cursor);
+}
+.git-pr-merge-actions {
+  display: flex; justify-content: flex-end; gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .gh-split-panel, .gh-files-split { grid-template-columns: 1fr; }
+}
