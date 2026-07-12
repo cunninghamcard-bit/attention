@@ -6,7 +6,7 @@ import { StatusBar } from "./StatusBar";
 import { SettingRegistry } from "./SettingRegistry";
 import { DataAdapter, InMemoryAdapter } from "../vault/DataAdapter";
 import { Vault } from "../vault/Vault";
-import { FileManager } from "../vault/FileManager";
+import { FileManager } from "./FileManager";
 import { MetadataCache } from "../metadata/MetadataCache";
 import { LinkSuggestionManager } from "../metadata/LinkSuggestionManager";
 import { LinkGraph } from "../metadata/LinkGraph";

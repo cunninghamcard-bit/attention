@@ -1,4 +1,8 @@
-import type { App } from "../app/App";
+// Minimal host: VaultManager only broadcasts record changes on the workspace
+// event bus, so it needs nothing else from App.
+interface VaultManagerHost {
+  workspace: { trigger(name: string, ...data: unknown[]): void };
+}
 
 export interface VaultRecord {
   id: string;
@@ -12,7 +16,7 @@ export class VaultManager {
   private vaults = new Map<string, VaultRecord>();
   private activeVaultId: string | null = null;
 
-  constructor(readonly app: App) {}
+  constructor(readonly app: VaultManagerHost) {}
 
   addVault(record: VaultRecord): void {
     this.vaults.set(record.id, record);

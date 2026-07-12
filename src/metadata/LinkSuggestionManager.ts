@@ -1,8 +1,7 @@
-import type { App } from "../app/App";
 import { computeBlockIdInsertion, createBlockId, type BlockCacheBlock, type BlockCacheRecord } from "./BlockCache";
-import type { LinkSuggestion } from "./MetadataCache";
+import type { LinkSuggestion, MetadataHost } from "./MetadataCache";
 import type { TFile } from "../vault/TAbstractFile";
-import { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch } from "../ui/suggest/SuggestModal";
+import { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch } from "../core/fuzzy";
 import { splitLinkpath } from "./Linkpath";
 
 export type LinkSuggestionMatchRange = Array<[number, number]>;
@@ -84,7 +83,7 @@ type TextMatcher = (text: string) => FuzzyMatch | null;
 export class LinkSuggestionManager {
   private fileSuggestions: LinkSuggestion[] | null = null;
 
-  constructor(readonly app: App) {
+  constructor(readonly app: MetadataHost) {
     this.app.metadataCache.on("changed", () => this.clearFileSuggestions());
     this.app.metadataCache.on("deleted", () => this.clearFileSuggestions());
     this.app.metadataCache.on("resolved", () => this.clearFileSuggestions());

@@ -1,5 +1,5 @@
 import { Events } from "../../core/Events";
-import { coercePropertyValue } from "./Frontmatter";
+import { coercePropertyValue } from "../../metadata/Frontmatter";
 import { renderAliasPropertyWidget } from "./AliasPropertyWidget";
 import { renderMultiValuePropertyWidget } from "./MultiValuePropertyWidget";
 import { renderPropertyLinkValue } from "./PropertyLinkRenderer";

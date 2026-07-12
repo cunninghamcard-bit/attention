@@ -1,19 +1,8 @@
 import type { App } from "../../app/App";
 import type { TFile } from "../../vault/TAbstractFile";
+import type { PropertyType, PropertyValue } from "../../core/PropertyValue";
 
-export type PropertyType =
-  | "text"
-  | "number"
-  | "checkbox"
-  | "date"
-  | "datetime"
-  | "tags"
-  | "aliases"
-  | "multitext"
-  | "file"
-  | "folder"
-  | "property"
-  | "unknown";
+export type { PropertyType, PropertyValue };
 
 export interface PropertyDefinition {
   id: string;
@@ -22,8 +11,6 @@ export interface PropertyDefinition {
   icon?: string;
   hidden?: boolean;
 }
-
-export type PropertyValue = string | number | boolean | PropertyValue[] | { [key: string]: PropertyValue } | null;
 
 export interface FileProperties {
   file: TFile;

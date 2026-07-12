@@ -3,6 +3,7 @@ import { iterateCacheRefs, iterateRefs, MetadataCache } from "./MetadataCache";
 import { MemoryMetadataCacheStore } from "./MetadataCacheStore";
 import { Vault, type VaultAdapter } from "../vault/Vault";
 import { ViewRegistry } from "../views/workspace/ViewRegistry";
+import { installSlowIndexingNotice } from "../app/MetadataIndexingNotice";
 import type { App } from "../app/App";
 
 describe("MetadataCache", () => {
@@ -671,6 +672,7 @@ describe("MetadataCache", () => {
     try {
       const vault = new Vault();
       const metadataCache = new MetadataCache(vault);
+      installSlowIndexingNotice(metadataCache);
       const file = await vault.create("Slow.md", "# Slow");
       let workStarted: (() => void) | null = null;
       const started = new Promise<void>((resolve) => {

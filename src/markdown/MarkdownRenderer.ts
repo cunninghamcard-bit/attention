@@ -9,7 +9,7 @@ import { RenderContext } from "./RenderContext";
 import { MarkdownLinkResolver } from "./MarkdownLinkResolver";
 import type { Component } from "../core/Component";
 import { MarkdownRenderChild } from "./MarkdownRenderChild";
-import { parseFrontmatter } from "../views/properties/Frontmatter";
+import { parseFrontmatter } from "../metadata/Frontmatter";
 
 export interface MarkdownSectionInformation {
   text: string;

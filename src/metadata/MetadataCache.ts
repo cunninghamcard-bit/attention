@@ -1,15 +1,30 @@
 import { Events } from "../core/Events";
 import type { EventRef } from "../core/Events";
-import { unregisterEventRef } from "../core/EventRefInternal";
-import type { App } from "../app/App";
-import { getAllTags } from "../api/ApiUtils";
+import { getAllTags } from "./FrontmatterTags";
 import { createMetadataCacheStore, type MetadataCachePersistentStore } from "./MetadataCacheStore";
-import { getFrontmatterValues } from "../views/properties/Frontmatter";
-import type { PropertyType } from "../views/properties/PropertyTypes";
+import { getFrontmatterValues } from "./Frontmatter";
+import type { PropertyType } from "../core/PropertyValue";
 import { TFile } from "../vault/TAbstractFile";
 import type { Vault } from "../vault/Vault";
-import { Notice } from "../ui/Notice";
 import { MarkdownBlockCache, parseMarkdownBlocks, type BlockCacheBlock } from "./BlockCache";
+
+// Kernel-local view of the App the metadata cache actually touches: config
+// reads, extension registration and the property-widget assignments. Defined
+// here so the headless cache never imports the App class upward. The app-side
+// caller passes its real App, which structurally satisfies this.
+export interface MetadataCacheApp {
+  appId: string;
+  vault: Vault;
+  metadataTypeManager: { assignedWidgets: Iterable<readonly [string, { name: string; widget: PropertyType }]> };
+  viewRegistry: { isExtensionRegistered(extension: string): boolean };
+}
+
+// Narrow host shared by the metadata helpers (LinkGraph, LinkSuggestionManager,
+// TagIndex) that only reach through App into the kernel's vault + metadataCache.
+export interface MetadataHost {
+  vault: Vault;
+  metadataCache: MetadataCache;
+}
 
 export interface CachedMetadata {
   frontmatter?: FrontMatterCache;
@@ -173,20 +188,18 @@ export class MetadataCache extends Events {
   private uniqueFileLookup = new Map<string, TFile[]>();
   private workerResolve: ((metadata: CachedMetadata) => void) | null = null;
   private workerReject: ((reason: unknown) => void) | null = null;
-  private indexingNoticeTimer: ReturnType<typeof setTimeout> | null = null;
-  private indexingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
-  private indexingNotice: Notice | null = null;
 
   override on(name: "changed", callback: (file: TFile, data: string, cache: CachedMetadata) => any, ctx?: any): EventRef;
   override on(name: "deleted", callback: (file: TFile, prevCache: CachedMetadata | null) => any, ctx?: any): EventRef;
   override on(name: "resolve", callback: (file: TFile) => any, ctx?: any): EventRef;
   override on(name: "resolved", callback: () => any, ctx?: any): EventRef;
+  override on(name: "indexing-slow", callback: (path: string) => any, ctx?: any): EventRef;
   override on<TArgs extends unknown[]>(name: string, callback: (...args: TArgs) => any, ctx?: object): EventRef<TArgs>;
   override on<TArgs extends unknown[]>(name: string, callback: (...args: TArgs) => any, ctx?: object): EventRef<TArgs> {
     return super.on(name, callback, ctx);
   }
 
-  constructor(readonly vault: Vault, readonly app?: App, private readonly persistentStore: MetadataCachePersistentStore | null = createMetadataCacheStore(app?.appId ?? "obsidian-reconstructed")) {
+  constructor(readonly vault: Vault, readonly app?: MetadataCacheApp, private readonly persistentStore: MetadataCachePersistentStore | null = createMetadataCacheStore(app?.appId ?? "obsidian-reconstructed")) {
     super();
     this.blockCache = new MarkdownBlockCache(this.vault);
     this.on("finished", () => this.checkCleanCache());
@@ -425,35 +438,15 @@ export class MetadataCache extends Events {
     void Promise.all(tasks).catch((error) => console.error(error));
   }
 
-  showIndexingNotice(): void {
-    if (this.indexingNoticeTimer) clearTimeout(this.indexingNoticeTimer);
-    if (this.indexingCompleteTimer) clearTimeout(this.indexingCompleteTimer);
-    this.indexingNotice?.hide();
-    this.indexingNotice = null;
-    this.indexingNoticeTimer = setTimeout(() => {
-      this.indexingNoticeTimer = null;
-      if (this.inProgressTaskCount === 0) return;
-      const total = this.metadataCache.size + this.inProgressTaskCount;
-      if (total === 0) return;
-      const notice = new Notice(formatIndexingNotice(total, this.inProgressTaskCount), 0);
-      this.indexingNotice = notice;
-      const update = () => notice.setMessage(formatIndexingNotice(total, this.inProgressTaskCount));
-      const changedRef = this.on("changed", update);
-      const finishedRef = this.on("finished", update);
-      this.onCleanCache(() => {
-        unregisterEventRef(changedRef);
-        unregisterEventRef(finishedRef);
-        if (this.indexingNotice !== notice) return;
-        notice.setMessage("Indexing complete");
-        this.indexingCompleteTimer = setTimeout(() => {
-          this.indexingCompleteTimer = null;
-          if (this.indexingNotice === notice) {
-            notice.hide();
-            this.indexingNotice = null;
-          }
-        }, 3000);
-      });
-    }, 1000);
+  // Live in-progress task count and cached-entry count, exposed so the app-side
+  // indexing Notice (see app/MetadataIndexingNotice) can render progress without
+  // this headless cache reaching into the UI.
+  get pendingTaskCount(): number {
+    return this.inProgressTaskCount;
+  }
+
+  get cachedMetadataCount(): number {
+    return this.metadataCache.size;
   }
 
   async clear(): Promise<void> {
@@ -543,7 +536,7 @@ export class MetadataCache extends Events {
 
   private async workWithSlowIndexingNotice(file: TFile, buffer: ArrayBuffer): Promise<CachedMetadata> {
     const timer = setTimeout(() => {
-      new Notice(`Indexing taking a long time for ${file.path}`);
+      this.trigger("indexing-slow", file.path);
     }, 10_000);
     (timer as { unref?: () => void }).unref?.();
     try {
@@ -1040,10 +1033,6 @@ function hasRelatedLink(names: string[], links: Record<string, number> | undefin
   return Object.keys(links).some((path) => names.includes(basename(path).toLowerCase()));
 }
 
-function formatIndexingNotice(total: number, inProgress: number): string {
-  const complete = Math.max(0, Math.min(total, total - inProgress));
-  return `Indexing ${complete}/${total}`;
-}
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

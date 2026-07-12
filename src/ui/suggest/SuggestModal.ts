@@ -1,7 +1,10 @@
 import { Modal } from "../Modal";
 import type { App } from "../../app/App";
 import { Platform } from "../../platform/Platform";
-import { fuzzySearch, prepareQuery, renderResults, sortSearchResults, type PreparedQuery, type SearchResult } from "../../search/SearchHelpers";
+import { renderResults, sortSearchResults } from "../../search/SearchHelpers";
+import { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch, type PreparedFuzzyQuery } from "../../core/fuzzy";
+
+export { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch, type PreparedFuzzyQuery };
 
 export interface Instruction {
   command: string;
@@ -9,8 +12,6 @@ export interface Instruction {
 }
 
 export type PromptInstruction = Instruction;
-
-export interface FuzzyMatch extends SearchResult {}
 
 export interface FuzzySuggestion<T> {
   match: FuzzyMatch;
@@ -416,16 +417,6 @@ export abstract class FuzzySuggestModal<T> extends SuggestModal<FuzzySuggestion<
   onChooseSuggestion(value: FuzzySuggestion<T>, event: MouseEvent | KeyboardEvent): void {
     this.onChooseItem(value.item, event);
   }
-}
-
-export interface PreparedFuzzyQuery extends PreparedQuery {}
-
-export function prepareFuzzyQuery(query: string): PreparedFuzzyQuery {
-  return prepareQuery(query);
-}
-
-export function fuzzyMatch(query: PreparedFuzzyQuery, text: string): FuzzyMatch | null {
-  return fuzzySearch(query, text);
 }
 
 export function sortFuzzySuggestions<T>(suggestions: FuzzySuggestion<T>[]): void {

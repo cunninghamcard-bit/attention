@@ -1,11 +1,11 @@
-import type { App } from "../app/App";
-import { getTimestampForPastedImage, type AttachmentImportData, type AttachmentImportFile } from "../app/AttachmentImport";
-import { deleteFrontmatterProperty, mergeFrontmatterValues, parseFrontmatter, renameFrontmatterProperty, serializeFrontmatter, updateFrontmatter } from "../views/properties/Frontmatter";
+import type { App } from "./App";
+import { getTimestampForPastedImage, type AttachmentImportData, type AttachmentImportFile } from "./AttachmentImport";
+import { deleteFrontmatterProperty, mergeFrontmatterValues, parseFrontmatter, renameFrontmatterProperty, serializeFrontmatter, updateFrontmatter } from "../metadata/Frontmatter";
 import type { PropertyValue } from "../views/properties/PropertyTypes";
 import { ConfirmationModal } from "../ui/Modal";
-import type { DataWriteOptions } from "./DataAdapter";
-import { validateRenamePromptName } from "./FileNameValidation";
-import { TAbstractFile, TFile, TFolder } from "./TAbstractFile";
+import type { DataWriteOptions } from "../vault/DataAdapter";
+import { validateRenamePromptName } from "../vault/FileNameValidation";
+import { TAbstractFile, TFile, TFolder } from "../vault/TAbstractFile";
 
 export class FileManager {
   private readonly fileParentCreatorByType: Record<string, (sourcePath: string) => TFolder> = {};

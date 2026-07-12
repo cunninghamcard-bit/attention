@@ -1,6 +1,6 @@
 import type { App } from "../../app/App";
 import { TFile } from "../../vault/TAbstractFile";
-import { deleteFrontmatterProperty, parseFrontmatter, setFrontmatterProperty, updateFrontmatter } from "./Frontmatter";
+import { deleteFrontmatterProperty, parseFrontmatter, setFrontmatterProperty, updateFrontmatter } from "../../metadata/Frontmatter";
 import type { FileProperties, PropertyDefinition, PropertyUsage, PropertyValue } from "./PropertyTypes";
 
 export class PropertyStore {

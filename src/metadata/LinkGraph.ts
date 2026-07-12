@@ -1,4 +1,4 @@
-import type { App } from "../app/App";
+import type { MetadataHost } from "./MetadataCache";
 import type { SourceMatchPosition } from "./MetadataCache";
 
 export interface LinkGraphEdge {
@@ -10,7 +10,7 @@ export interface LinkGraphEdge {
 }
 
 export class LinkGraph {
-  constructor(readonly app: App) {}
+  constructor(readonly app: MetadataHost) {}
 
   getOutgoingLinks(path: string): LinkGraphEdge[] {
     const file = this.app.vault.getFileByPath(path);

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { App } from "../app/App";
+import { App } from "./App";
 
 describe("FileManager", () => {
   beforeEach(() => {

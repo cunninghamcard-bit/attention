@@ -46,7 +46,7 @@ import {
   ValueComponent
 } from "../ui/Setting";
 import { CapacitorAdapter } from "../vault/DataAdapter";
-import { FileManager } from "../vault/FileManager";
+import { FileManager } from "../app/FileManager";
 import { FileSystemAdapter } from "../vault/FileSystemAdapter";
 import { TAbstractFile, TFile, TFolder } from "../vault/TAbstractFile";
 import { Vault } from "../vault/Vault";

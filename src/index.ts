@@ -55,7 +55,7 @@ export * from "./dom/dom";
 export * from "./api/ApiUtils";
 export * from "./vault/TAbstractFile";
 export * from "./vault/Vault";
-export * from "./vault/FileManager";
+export * from "./app/FileManager";
 export * from "./metadata/MetadataCache";
 export * from "./metadata/BlockCache";
 export * from "./metadata/LinkSuggestionManager";
@@ -208,7 +208,7 @@ export * from "./builtin/webviewer/WebContentsBridge";
 export * from "./builtin/webviewer/WebViewerElementAdapter";
 
 export * from "./views/properties/PropertyTypes";
-export * from "./views/properties/Frontmatter";
+export * from "./metadata/Frontmatter";
 export * from "./views/properties/PropertyRegistry";
 export * from "./views/properties/MetadataTypeManager";
 export * from "./views/properties/PropertyStore";

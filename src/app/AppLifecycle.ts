@@ -1,5 +1,6 @@
 import type { App } from "./App";
 import type { DailyNotesController } from "../builtin/DailyNotes";
+import { installSlowIndexingNotice, showIndexingNotice } from "./MetadataIndexingNotice";
 import { TFile } from "../vault/TAbstractFile";
 
 export class AppLifecycle {
@@ -24,8 +25,9 @@ export class AppLifecycle {
     this.app.hotkeys.registerListeners();
     this.app.mobileBackButton.attach();
     this.app.metadataTypeManager.registerListeners();
+    installSlowIndexingNotice(this.app.metadataCache);
     await this.app.metadataCache.initialize();
-    this.app.metadataCache.showIndexingNotice();
+    showIndexingNotice(this.app.metadataCache);
     await this.app.workspace.loadLayout();
     await this.runOpeningBehavior();
     if (!this.app.workspace.isLayoutReady()) this.app.workspace.markLayoutReady();

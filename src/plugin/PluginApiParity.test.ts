@@ -26,7 +26,7 @@ import { Menu } from "../ui/Menu";
 import { SecretComponent } from "../ui/Setting";
 import { HoverPopover, HoverPopoverState, PopoverState } from "../ui/Popover";
 import { CapacitorAdapter, DataAdapter } from "../vault/DataAdapter";
-import { FileManager } from "../vault/FileManager";
+import { FileManager } from "../app/FileManager";
 import { FileSystemAdapter } from "../vault/FileSystemAdapter";
 import { Workspace } from "../views/workspace/Workspace";
 import { WorkspaceContainer } from "../views/workspace/WorkspaceContainer";

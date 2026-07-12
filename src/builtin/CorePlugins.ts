@@ -6,7 +6,7 @@ import { TFile, TFolder, type TAbstractFile } from "../vault/TAbstractFile";
 import type { WorkspaceLeaf } from "../views/workspace/WorkspaceLeaf";
 import { writeClipboardText } from "../dom/Clipboard";
 import { Notice } from "../ui/Notice";
-import { MoveFileModal } from "../vault/MoveFileModal";
+import { MoveFileModal } from "../app/MoveFileModal";
 import { FileExplorerView } from "./FileExplorerView";
 import { SearchView } from "./SearchView";
 import { BacklinksView } from "./BacklinksView";

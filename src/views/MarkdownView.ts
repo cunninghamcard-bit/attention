@@ -19,7 +19,7 @@ import {
   serializeFrontmatterProperties,
   setFrontmatterProperty,
   updateFrontmatter,
-} from "./properties/Frontmatter";
+} from "../metadata/Frontmatter";
 import { PropertyTypeMismatchModal } from "./properties/PropertyTypeMismatchModal";
 import type { PropertyDefinition, PropertyType, PropertyValue } from "./properties/PropertyTypes";
 import { Menu } from "../ui/Menu";

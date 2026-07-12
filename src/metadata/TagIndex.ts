@@ -1,6 +1,5 @@
-import type { App } from "../app/App";
-import type { SourceMatchPosition } from "./MetadataCache";
-import { getAllTags } from "../api/ApiUtils";
+import type { MetadataHost, SourceMatchPosition } from "./MetadataCache";
+import { getAllTags } from "./FrontmatterTags";
 
 export interface TagOccurrence {
   tag: string;
@@ -10,7 +9,7 @@ export interface TagOccurrence {
 }
 
 export class TagIndex {
-  constructor(readonly app: App) {}
+  constructor(readonly app: MetadataHost) {}
 
   getTags(): string[] {
     const tags = new Set<string>();

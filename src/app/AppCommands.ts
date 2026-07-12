@@ -7,7 +7,7 @@ import { getActiveDocument } from "../dom/ActiveDocument";
 import { writeClipboardText } from "../dom/Clipboard";
 import { Notice } from "../ui/Notice";
 import { Menu } from "../ui/Menu";
-import { MoveFileModal } from "../vault/MoveFileModal";
+import { MoveFileModal } from "./MoveFileModal";
 import type { TFile } from "../vault/TAbstractFile";
 import { WorkspaceTabs } from "../views/workspace/WorkspaceTabs";
 import { Platform } from "../platform/Platform";

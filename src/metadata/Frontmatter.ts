@@ -1,4 +1,4 @@
-import type { PropertyValue } from "./PropertyTypes";
+import type { PropertyValue } from "../core/PropertyValue";
 
 export interface ParsedFrontmatter {
   hasFrontmatter: boolean;
