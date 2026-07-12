@@ -16,7 +16,7 @@ describe("GitHubClient", () => {
   it("maps list pull requests", async () => {
     const client = new GitHubClient(
       mockTransport({
-        "GET /repos/acme/widget/pulls?state=open&sort=updated&direction=desc&per_page=40": {
+        "GET /repos/acme/widget/pulls?state=open&sort=updated&direction=desc&per_page=50": {
           status: 200,
           text: "[]",
           json: [

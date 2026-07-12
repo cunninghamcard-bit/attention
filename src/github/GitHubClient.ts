@@ -76,11 +76,29 @@ export class GitHubClient {
     const state = filter === "all" ? "all" : "open";
     const res = await this.request(
       "GET",
-      `/repos/${repo.owner}/${repo.repo}/pulls?state=${state}&sort=updated&direction=desc&per_page=40`,
+      `/repos/${repo.owner}/${repo.repo}/pulls?state=${state}&sort=updated&direction=desc&per_page=50`,
     );
     if (res.status >= 400) throw apiError(res);
     const items = (res.json as RawPull[]) ?? [];
     return items.map((item) => mapSummary(item));
+  }
+
+  /** Recent repositories the token can access (for the cloud repo picker). */
+  async listRepositories(limit = 40): Promise<Array<{ owner: string; repo: string; fullName: string; private: boolean; description: string | null; openIssues: number }>> {
+    const res = await this.request(
+      "GET",
+      `/user/repos?sort=updated&per_page=${Math.min(limit, 100)}&affiliation=owner,collaborator,organization_member`,
+    );
+    if (res.status >= 400) throw apiError(res);
+    const items = (res.json as RawRepo[]) ?? [];
+    return items.map((item) => ({
+      owner: item.owner?.login ?? item.full_name?.split("/")[0] ?? "",
+      repo: item.name ?? item.full_name?.split("/")[1] ?? "",
+      fullName: item.full_name ?? `${item.owner?.login}/${item.name}`,
+      private: Boolean(item.private),
+      description: item.description ?? null,
+      openIssues: item.open_issues_count ?? 0,
+    })).filter((item) => item.owner && item.repo);
   }
 
   async getPullRequest(repo: GitHubRepositoryRef, number: number): Promise<PrDetail> {
@@ -95,8 +113,10 @@ export class GitHubClient {
     if (prRes.status >= 400) throw apiError(prRes);
     const pr = prRes.json as RawPullDetail;
     const headSha = pr.head?.sha ?? "";
-    const checks = headSha ? await this.listChecks(repo, headSha) : [];
-    const ciState = rollupCi(checks);
+    const [checks, combined] = headSha
+      ? await Promise.all([this.listChecks(repo, headSha), this.combinedStatus(repo, headSha)])
+      : [[], null as CiState | null];
+    const ciState = rollupCi(checks) ?? combined;
 
     return {
       ...mapSummary(pr),
@@ -168,6 +188,18 @@ export class GitHubClient {
       startedAt: run.started_at ?? null,
       completedAt: run.completed_at ?? null,
     }));
+  }
+
+  /** Classic commit status (used when Actions check-runs are empty). */
+  private async combinedStatus(repo: GitHubRepositoryRef, sha: string): Promise<CiState | null> {
+    const res = await this.request("GET", `/repos/${repo.owner}/${repo.repo}/commits/${sha}/status`);
+    if (res.status >= 400) return null;
+    const state = String((res.json as { state?: string })?.state ?? "").toLowerCase();
+    if (state === "success") return "success";
+    if (state === "pending") return "pending";
+    if (state === "failure") return "failure";
+    if (state === "error") return "error";
+    return state ? "unknown" : null;
   }
 
   private async searchPullRequests(repo: GitHubRepositoryRef, filter: "mine" | "review-requested"): Promise<PrSummary[]> {
@@ -464,4 +496,13 @@ interface RawCheckRun {
 
 interface RawSearchIssue {
   number?: number;
+}
+
+interface RawRepo {
+  name?: string;
+  full_name?: string;
+  private?: boolean;
+  description?: string | null;
+  open_issues_count?: number;
+  owner?: { login?: string };
 }
