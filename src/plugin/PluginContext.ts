@@ -12,14 +12,12 @@ export interface PluginContext {
   fileRecovery: App["fileRecovery"];
   themeMarketplace: App["themeMarketplace"];
   themeInstaller: App["themeInstaller"];
-  apiDocs: App["apiDocs"];
   buildPipeline: App["buildPipeline"];
   releases: App["releases"];
   pluginPackager: App["pluginPackager"];
   themePackager: App["themePackager"];
   propertyRegistry: App["propertyRegistry"];
   properties: App["properties"];
-  query: App["query"];
   devtools: App["devtools"];
   workspaceLayouts: App["workspaceLayouts"];
   lifecycle: App["lifecycle"];
@@ -67,14 +65,12 @@ export function createPluginContext(app: App): PluginContext {
     fileRecovery: app.fileRecovery,
     themeMarketplace: app.themeMarketplace,
     themeInstaller: app.themeInstaller,
-    apiDocs: app.apiDocs,
     buildPipeline: app.buildPipeline,
     releases: app.releases,
     pluginPackager: app.pluginPackager,
     themePackager: app.themePackager,
     propertyRegistry: app.propertyRegistry,
     properties: app.properties,
-    query: app.query,
     devtools: app.devtools,
     workspaceLayouts: app.workspaceLayouts,
     lifecycle: app.lifecycle,

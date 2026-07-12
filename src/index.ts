@@ -212,13 +212,10 @@ export * from "./properties/Frontmatter";
 export * from "./properties/PropertyRegistry";
 export * from "./properties/MetadataTypeManager";
 export * from "./properties/PropertyStore";
-export * from "./query/QueryEngine";
 
 export * from "./theme-market/ThemeManifest";
 export * from "./theme-market/ThemeMarketplace";
 export * from "./theme-market/ThemeInstaller";
-export * from "./docs/ApiDocModel";
-export * from "./docs/ApiDocGenerator";
 
 export * from "./plugin/PluginManifestValidator";
 export * from "./theme-market/ThemeManifestValidator";
@@ -229,19 +226,11 @@ export * from "./build/BuildPipeline";
 export * from "./release/ReleaseChannel";
 export * from "./release/ReleaseManager";
 export * from "./release/ReleaseNotes";
-export * from "./meta/ArchitectureCatalog";
-export * from "./meta/ExtensionPointCatalog";
-export * from "./meta/LearningPath";
 
 export * from "./api/PublicApi";
 export * from "./api/PluginApiFacade";
 export * from "./api/ObsidianPluginModule";
 export * from "./api/ApiUtils";
-export * from "./scenarios/RuntimeScenario";
-export * from "./scenarios/DefaultScenarios";
-export * from "./scenarios/ScenarioMarkdownRenderer";
-export * from "./meta/CompletenessMatrix";
-export * from "./meta/ProjectStatus";
 
 export * from "./app/AppDom";
 export * from "./views/DeferredView";
