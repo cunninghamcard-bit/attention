@@ -244,7 +244,7 @@ export class Cli {
       (id.startsWith("dev:") || id === "devtools" || id === "eval" ? developer : main).push(block);
     }
     return (
-      "Arkloop CLI\n\nUsage: arkloop <command> [options]\n\n" +
+      "Workbench CLI\n\nUsage: workbench <command> [options]\n\n" +
       "Options:\n  vault=<name>          Target a specific vault by name\n\n" +
       "Notes:\n" +
       "  file resolves by name (like wikilinks), path is exact (folder/note.md)\n" +

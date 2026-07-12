@@ -78,7 +78,7 @@ describe("CommunityPluginMarketplaceModal", () => {
     clickButton(modal.contentEl, "Copy share link");
     await flushAsync();
 
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("arkloop://show-plugin?id=market");
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("workbench://show-plugin?id=market");
 
     clickButton(modal.contentEl, "Donate");
 

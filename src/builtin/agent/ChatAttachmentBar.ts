@@ -10,9 +10,9 @@ export interface ComposerAttachment {
 
 let attachmentCounter = 0;
 
-// Owns the composer's transient attachment state, the way arkloop's parent
-// owns its attachment list: ChatComposer composes this bar and reads it at
-// submit; no attachment state lives inside ChatComposer itself.
+// Owns the composer's transient attachment state, the same way a composer's
+// parent owns its attachment list: ChatComposer composes this bar and reads
+// it at submit; no attachment state lives inside ChatComposer itself.
 export class ChatAttachmentBar extends Component {
   readonly el: HTMLElement;
   private readonly attachments = new Map<string, ComposerAttachment>();

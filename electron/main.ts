@@ -45,13 +45,13 @@ function cliArgvFromProcess(argv: string[]): string[] {
 // build output dir where `preload.cjs` sits beside it.
 const here = __dirname;
 
-// Our own identity: userData resolves to ~/Library/Application Support/Arkloop
+// Our own identity: userData resolves to ~/Library/Application Support/Workbench
 // (etc.), never the generic Electron dir and never anything of real Obsidian's.
 // Must run before the first app.getPath("userData").
-app.setName("Arkloop");
-// Hermetic-test seam (mirrors ARKLOOP_VAULT_PATH): an isolated userData also
+app.setName("Workbench");
+// Hermetic-test seam (mirrors E2E_VAULT_PATH): an isolated userData also
 // isolates the single-instance lock, so e2e runs never touch the real profile.
-if (process.env.ARKLOOP_USER_DATA) app.setPath("userData", process.env.ARKLOOP_USER_DATA);
+if (process.env.E2E_USER_DATA) app.setPath("userData", process.env.E2E_USER_DATA);
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -95,7 +95,7 @@ if (!gotLock) {
     displays,
     preloadPath: defaultPreloadPath(here),
     isQuitting: () => mainState.isQuitting,
-    // Arkloop product divergence: the CLI is ON by default (an agent
+    // Workbench product divergence: the CLI is ON by default (an agent
     // workbench wants its command surface always up); real Obsidian defaults
     // off behind Settings > General > Advanced. `cli: false` still gates.
     isCliEnabled: () => settings.cli !== false,
@@ -104,10 +104,10 @@ if (!gotLock) {
 
   const openStarterWindow = () => openStarter({ preloadPath: defaultPreloadPath(here) });
 
-  // Hermetic-test seam: ARKLOOP_VAULT_PATH pins a vault that is created and
+  // Hermetic-test seam: E2E_VAULT_PATH pins a vault that is created and
   // opened directly, so e2e runs land in a window without driving the starter.
   const ensureSeededVault = (): string | null => {
-    const seededPath = process.env.ARKLOOP_VAULT_PATH;
+    const seededPath = process.env.E2E_VAULT_PATH;
     if (!seededPath) return null;
     try {
       mkdirSync(seededPath, { recursive: true });
@@ -146,7 +146,7 @@ if (!gotLock) {
       getIdByName: (name) => registry.getIdByName(name),
       getIdByContainedPath: (path) => registry.getIdByContainedPath(path),
       mostRecentVaultId: () => vaultWindows.mostRecentVaultId(),
-      // Real `C.cli` gate, kept verbatim in shape — but Arkloop defaults it ON
+      // Real `C.cli` gate, kept verbatim in shape — but Workbench defaults it ON
       // (deliberate product divergence; set `cli: false` in obsidian.json to
       // disable, same persisted flag as real Obsidian).
       isCliEnabled: () => settings.cli !== false,
@@ -188,8 +188,8 @@ if (!gotLock) {
   // Our own scheme. Registering "obsidian" would hijack the real app's links
   // at the OS level; obsidian:// URLs arriving via the CLI/second instance are
   // still parsed internally.
-  if (!app.isDefaultProtocolClient("arkloop")) {
-    app.setAsDefaultProtocolClient("arkloop");
+  if (!app.isDefaultProtocolClient("workbench")) {
+    app.setAsDefaultProtocolClient("workbench");
   }
 
   const loomSidecar = new LoomSidecar(
@@ -242,8 +242,8 @@ if (!gotLock) {
         version: app.getVersion(),
         desktopDir: safePath("desktop"),
         documentsDir: safePath("documents"),
-        sandboxVaultPath: join(app.getPath("userData"), "Arkloop Sandbox"),
-        defaultVaultPath: join(safePath("documents"), "Arkloop Vault"),
+        sandboxVaultPath: join(app.getPath("userData"), "Workbench Sandbox"),
+        defaultVaultPath: join(safePath("documents"), "Workbench Vault"),
       },
       trashItem: (p) => shell.trashItem(p),
       openExternal: (url) => void shell.openExternal(url),

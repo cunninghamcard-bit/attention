@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 // Window-level desktop e2e fixture, after DeepChat's test/e2e architecture:
 // - `_electron.launch` drives the REAL built app (dist-electron/main.cjs)
 // - a throwaway vault + userData + CLI socket per test file (our existing
-//   ARKLOOP_* hermetic seams — the same pattern as DEEPCHAT_E2E_USER_DATA_DIR)
+//   E2E_* hermetic seams — the same pattern as DEEPCHAT_E2E_USER_DATA_DIR)
 // - `app` auto-launches/closes; `launchApp` is the factory that makes
 //   RESTART tests possible (close + relaunch inside one test)
 // - renderer console + pageerror output is captured and attached to every
@@ -23,16 +23,16 @@ const TINY_PNG = Buffer.from(
   "base64",
 );
 
-export interface ArkloopAppInstance {
+export interface DesktopAppInstance {
   electronApp: ElectronApplication;
   page: Page;
   close: () => Promise<void>;
 }
 
-interface ArkloopFixtures {
+interface DesktopFixtures {
   vaultPath: string;
-  app: ArkloopAppInstance;
-  launchApp: () => Promise<ArkloopAppInstance>;
+  app: DesktopAppInstance;
+  launchApp: () => Promise<DesktopAppInstance>;
 }
 
 function seedVault(vault: string): void {
@@ -42,11 +42,11 @@ function seedVault(vault: string): void {
   writeFileSync(join(vault, "Doc.md"), "# A\n## B\nbody text\n");
 }
 
-export const test = base.extend<ArkloopFixtures>({
+export const test = base.extend<DesktopFixtures>({
   // Owns the throwaway workspace: tests that read/write vault files depend on
   // this for the real on-disk path; launchApp builds its env from it.
   vaultPath: async ({}, use) => {
-    const base = mkdtempSync(join(tmpdir(), "arkloop-desktop-e2e-"));
+    const base = mkdtempSync(join(tmpdir(), "workbench-desktop-e2e-"));
     const vault = join(base, "vault");
     seedVault(vault);
     try {
@@ -64,22 +64,22 @@ export const test = base.extend<ArkloopFixtures>({
     const base = dirname(vaultPath);
     const env = {
       ...process.env,
-      ARKLOOP_VAULT_PATH: vaultPath,
-      ARKLOOP_USER_DATA: join(base, "userData"),
-      ARKLOOP_CLI_SOCKET: join(base, "cli.sock"),
+      E2E_VAULT_PATH: vaultPath,
+      E2E_USER_DATA: join(base, "userData"),
+      E2E_CLI_SOCKET: join(base, "cli.sock"),
     };
 
     const consoleLogs: string[] = [];
     const pageErrors: string[] = [];
-    const launched = new Set<ArkloopAppInstance>();
+    const launched = new Set<DesktopAppInstance>();
     let launchCount = 0;
 
-    const launchApp = async (): Promise<ArkloopAppInstance> => {
+    const launchApp = async (): Promise<DesktopAppInstance> => {
       launchCount += 1;
       const label = `launch-${launchCount}`;
       const electronApp = await electron.launch({ args: [MAIN_CJS], cwd: REPO_ROOT, env, timeout: 60_000 });
 
-      const instance: ArkloopAppInstance = {
+      const instance: DesktopAppInstance = {
         electronApp,
         page: undefined as unknown as Page,
         close: async () => {

@@ -17,66 +17,66 @@ describe("App protocol handlers", () => {
     document.body.querySelectorAll(".notice").forEach((el) => el.remove());
   });
 
-  it("opens files from arkloop://open with subpath and paneType", async () => {
+  it("opens files from workbench://open with subpath and paneType", async () => {
     const app = new App(document.createElement("div"));
     await app.vault.create("Target.md", "# Heading#Child");
 
-    await app.uriRouter.handleUri("arkloop://open?file=Target%23Heading%23Child%7CAlias&paneType=tab");
+    await app.uriRouter.handleUri("workbench://open?file=Target%23Heading%23Child%7CAlias&paneType=tab");
 
     expect((app.workspace.activeLeaf?.view as { file?: { path: string } | null } | null)?.file?.path).toBe("Target.md");
     expect(app.workspace.activeLeaf?.view?.getEphemeralState()).toEqual({ subpath: "Heading#Child", line: 0 });
     expect(document.body.textContent).toContain("Opened Target.md");
   });
 
-  it("opens global search from arkloop://search with the query", async () => {
+  it("opens global search from workbench://search with the query", async () => {
     const app = new App(document.createElement("div"));
     await app.corePluginsReady;
 
-    await app.uriRouter.handleUri("arkloop://search?query=needle");
+    await app.uriRouter.handleUri("workbench://search?query=needle");
 
     expect(app.workspace.activeLeaf?.view?.getViewType()).toBe("search");
     expect((app.workspace.activeLeaf?.view as { getQuery?: () => string } | null)?.getQuery?.()).toBe("needle");
   });
 
-  it("creates, appends, overwrites, and silently updates files from arkloop://new", async () => {
+  it("creates, appends, overwrites, and silently updates files from workbench://new", async () => {
     const app = new App(document.createElement("div"));
 
-    await app.uriRouter.handleUri(`arkloop://new?${new URLSearchParams({ name: "Protocol", content: "Hello", paneType: "tab" })}`);
+    await app.uriRouter.handleUri(`workbench://new?${new URLSearchParams({ name: "Protocol", content: "Hello", paneType: "tab" })}`);
 
     const created = app.vault.getFileByPath("Protocol.md");
     expect(created).not.toBeNull();
     expect(created ? await app.vault.read(created) : "").toBe("Hello");
     expect((app.workspace.activeLeaf?.view as { file?: { path: string } | null } | null)?.file?.path).toBe("Protocol.md");
 
-    await app.uriRouter.handleUri(`arkloop://new?${new URLSearchParams({ name: "Protocol", append: "true", content: "World", silent: "true" })}`);
+    await app.uriRouter.handleUri(`workbench://new?${new URLSearchParams({ name: "Protocol", append: "true", content: "World", silent: "true" })}`);
 
     expect(created ? await app.vault.read(created) : "").toBe("Hello\n\nWorld");
 
-    await app.uriRouter.handleUri(`arkloop://new?${new URLSearchParams({ file: "Protocol.md", overwrite: "true", content: "Replaced", silent: "true" })}`);
+    await app.uriRouter.handleUri(`workbench://new?${new URLSearchParams({ file: "Protocol.md", overwrite: "true", content: "Replaced", silent: "true" })}`);
 
     expect(created ? await app.vault.read(created) : "").toBe("Replaced");
   });
 
-  it("reads clipboard content for arkloop://new when clipboard is requested", async () => {
+  it("reads clipboard content for workbench://new when clipboard is requested", async () => {
     const app = new App(document.createElement("div"));
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: { readText: vi.fn().mockResolvedValue("Clipboard text") },
     });
 
-    await app.uriRouter.handleUri("arkloop://new?name=Clipboard&clipboard=true&silent=true");
+    await app.uriRouter.handleUri("workbench://new?name=Clipboard&clipboard=true&silent=true");
 
     const file = app.vault.getFileByPath("Clipboard.md");
     expect(file ? await app.vault.read(file) : "").toBe("Clipboard text");
   });
 
-  it("runs x-success callbacks for arkloop://new when URI callbacks are enabled", async () => {
+  it("runs x-success callbacks for workbench://new when URI callbacks are enabled", async () => {
     const app = new App(document.createElement("div"));
     const open = vi.fn();
     Object.defineProperty(window, "open", { configurable: true, value: open });
     app.vault.setConfig("uriCallbacks", true);
 
-    await app.uriRouter.handleUri(`arkloop://new?${new URLSearchParams({
+    await app.uriRouter.handleUri(`workbench://new?${new URLSearchParams({
       name: "Callback",
       content: "Done",
       silent: "true",
@@ -88,7 +88,7 @@ describe("App protocol handlers", () => {
     expect(url.protocol).toBe("callback:");
     expect(url.searchParams.get("token")).toBe("1");
     expect(url.searchParams.get("name")).toBe("Callback");
-    expect(url.searchParams.get("url")).toBe("arkloop://open?vault=In-memory&file=Callback");
+    expect(url.searchParams.get("url")).toBe("workbench://open?vault=In-memory&file=Callback");
   });
 
   it("copies the active file address or opens x-error from hook-get-address", async () => {
@@ -101,12 +101,12 @@ describe("App protocol handlers", () => {
 
     const file = await app.vault.create("Address.md", "address");
     await app.workspace.openFile(file, { active: true });
-    await app.uriRouter.handleUri("arkloop://hook-get-address");
+    await app.uriRouter.handleUri("workbench://hook-get-address");
 
-    expect(writeText).toHaveBeenCalledWith("[Address](arkloop://open?vault=In-memory&file=Address)");
+    expect(writeText).toHaveBeenCalledWith("[Address](workbench://open?vault=In-memory&file=Address)");
 
     await app.workspace.activeLeaf?.setViewState({ type: "empty", active: true });
-    await app.uriRouter.handleUri(`arkloop://hook-get-address?${new URLSearchParams({ "x-error": "callback://error" })}`);
+    await app.uriRouter.handleUri(`workbench://hook-get-address?${new URLSearchParams({ "x-error": "callback://error" })}`);
 
     expect(open).toHaveBeenCalledOnce();
     const errorUrl = new URL(String(open.mock.calls[0]?.[0]));
@@ -123,9 +123,9 @@ describe("App protocol handlers", () => {
 
     const file = await app.vault.create("Disabled.md", "disabled");
     await app.workspace.openFile(file, { active: true });
-    await app.uriRouter.handleUri("arkloop://hook-get-address");
+    await app.uriRouter.handleUri("workbench://hook-get-address");
     await app.workspace.activeLeaf?.setViewState({ type: "empty", active: true });
-    await app.uriRouter.handleUri(`arkloop://hook-get-address?${new URLSearchParams({ "x-error": "callback://error" })}`);
+    await app.uriRouter.handleUri(`workbench://hook-get-address?${new URLSearchParams({ "x-error": "callback://error" })}`);
 
     expect(writeText).not.toHaveBeenCalled();
     expect(open).not.toHaveBeenCalled();

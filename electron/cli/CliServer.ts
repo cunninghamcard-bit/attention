@@ -4,24 +4,24 @@ import { homedir, userInfo } from "node:os";
 import { join } from "node:path";
 import type { CliRequest } from "./CliDispatch";
 
-// The real platform contract (obsidian → arkloop): macOS `~/.obsidian-cli.sock`;
+// The real platform contract (obsidian → workbench): macOS `~/.obsidian-cli.sock`;
 // Linux `$XDG_RUNTIME_DIR/.obsidian-cli.sock`, falling back to home; Windows a
 // per-user named pipe `\\.\pipe\obsidian-cli-<username>`.
 export function defaultCliSocketPath(): string {
   // Hermetic-test seam: both the server and the second-instance client read
   // this, so an e2e run gets its own socket without racing a live instance.
-  if (process.env.ARKLOOP_CLI_SOCKET) return process.env.ARKLOOP_CLI_SOCKET;
+  if (process.env.E2E_CLI_SOCKET) return process.env.E2E_CLI_SOCKET;
   if (process.platform === "win32") {
-    return `\\\\.\\pipe\\arkloop-cli-${userInfo().username}`;
+    return `\\\\.\\pipe\\workbench-cli-${userInfo().username}`;
   }
   const base = (process.platform === "linux" && process.env.XDG_RUNTIME_DIR) || homedir();
-  return join(base, ".arkloop-cli.sock");
+  return join(base, ".workbench-cli.sock");
 }
 
 /**
- * The `arkloop` CLI's app-side server — real Obsidian's `Ve = createServer(…)`.
+ * The `workbench` CLI's app-side server — real Obsidian's `Ve = createServer(…)`.
  *
- * The `arkloop` binary is the client: it connects to the socket, writes ONE
+ * The `workbench` binary is the client: it connects to the socket, writes ONE
  * line `{"argv":[…],"tty":bool,"cwd":"…"}\n`, then reads the response as plain
  * text until the socket closes (verified live against obsidian 1.12.7 — no
  * handshake, no auth, no framing). Owning the socket path is the whole

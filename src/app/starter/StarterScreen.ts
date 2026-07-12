@@ -19,7 +19,7 @@ import { Setting, SettingGroup, type TextComponent } from "../../ui/Setting";
  * - Every successful `vault-open` sendSync (`=== true`) closes the window —
  *   main never closes the starter.
  *
- * Product cuts vs real: no Obsidian Sync rows/panes (ArkLoop has no account
+ * Product cuts vs real: no Obsidian Sync rows/panes (Workbench has no account
  * service), no language dropdown (no i18n layer), and no
  * `vault-message {action:"vault-setup"}` after create — our bootstrap seeds
  * welcome content into an empty vault already.
@@ -114,7 +114,7 @@ export class StarterScreen {
     const logoEl = createDiv("splash-brand-logo", brandEl);
     logoEl.style.setProperty("--icon-size", "90px");
     setIcon(logoEl, "vault");
-    createDiv({ cls: "splash-brand-logo-text", text: "ArkLoop" }, brandEl);
+    createDiv({ cls: "splash-brand-logo-text", text: "Workbench" }, brandEl);
     const version = this.ipc.sendSync("version");
     createDiv({ cls: "splash-brand-version", text: `Version ${String(version ?? "")}` }, brandEl);
   }

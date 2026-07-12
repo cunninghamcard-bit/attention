@@ -3,8 +3,8 @@ import { BUNDLED_FONT_FACES, buildTerminalTheme, DEFAULT_FONT_STACK } from "./Gh
 
 describe("buildTerminalTheme", () => {
   it("uses exact bundled font families and real normal/bold Nerd faces", () => {
-    expect(DEFAULT_FONT_STACK).toContain('"Arkloop Nerd Symbols"');
-    expect(BUNDLED_FONT_FACES.filter((face) => face.family === "Arkloop Nerd Symbols").map((face) => face.weight)).toEqual(["400", "700"]);
+    expect(DEFAULT_FONT_STACK).toContain('"Workbench Nerd Symbols"');
+    expect(BUNDLED_FONT_FACES.filter((face) => face.family === "Workbench Nerd Symbols").map((face) => face.weight)).toEqual(["400", "700"]);
   });
 
   it("uses the paper-toned light scheme for light appearance", () => {

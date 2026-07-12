@@ -482,7 +482,7 @@ export class GitHubClient {
       Accept: options.accept ?? ACCEPT,
       Authorization: `Bearer ${this.token}`,
       "X-GitHub-Api-Version": API_VERSION,
-      "User-Agent": "Arkloop-GitHub",
+      "User-Agent": "Workbench-GitHub",
     };
     let body: string | undefined;
     if (options.body !== undefined) {
@@ -753,7 +753,7 @@ function decodeBase64Text(content: string, maxBytes: number): string | null {
       bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
     } else {
-      const buf = (globalThis as { Buffer?: { from(s: string, enc: string): Uint8Array } }).Buffer?.from(cleaned, "base64");
+      const buf = (globalThis as unknown as { Buffer?: { from(s: string, enc: string): Uint8Array } }).Buffer?.from(cleaned, "base64");
       if (!buf || buf.length > maxBytes) return null;
       bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf as ArrayBuffer);
       for (let i = 0; i < Math.min(bytes.length, 1024); i += 1) {

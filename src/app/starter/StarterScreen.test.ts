@@ -16,7 +16,7 @@ function makeIpc(vaults: Record<string, { path: string; ts?: number; open?: bool
       switch (channel) {
         case "version": return "1.2.3";
         case "vault-list": return vaults;
-        case "get-default-vault-path": return "/docs/Arkloop Vault";
+        case "get-default-vault-path": return "/docs/Workbench Vault";
         case "vault-open": return true;
         case "vault-move": return "";
         case "vault-remove": {
@@ -72,7 +72,7 @@ describe("StarterScreen", () => {
     const quickStart = parent.querySelector<HTMLElement>(".quick-start-container button");
     expect(quickStart?.textContent).toBe("Quick start");
     quickStart!.click();
-    expect(ipc.sendSync).toHaveBeenCalledWith("vault-open", "/docs/Arkloop Vault", true);
+    expect(ipc.sendSync).toHaveBeenCalledWith("vault-open", "/docs/Workbench Vault", true);
     expect(closeWindow).toHaveBeenCalled();
   });
 

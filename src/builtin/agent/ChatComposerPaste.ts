@@ -17,7 +17,7 @@ export type PasteTriage =
   | { kind: "card"; text: string }
   | { kind: "inline"; text: string };
 
-// arkloop's triage: long pastes become cards instead of flooding the draft;
+// Paste triage: long pastes become cards instead of flooding the draft;
 // short pastes with runs of blank lines are collapsed before inline insert.
 export function triagePastedText(text: string, thresholdLines = DEFAULT_PASTE_CARD_THRESHOLD): PasteTriage {
   const lineCount = text.split("\n").length;

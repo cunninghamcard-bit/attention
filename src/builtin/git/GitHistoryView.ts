@@ -118,9 +118,9 @@ export class GitHistoryView extends ItemView {
    * view) can host them without touching the real file. */
   private async materializeSnapshot(entry: GitLogEntry, content: string): Promise<string> {
     const name = this.path!.split("/").pop()!;
-    const folder = ".arkloop/git-snapshots";
+    const folder = ".workbench/git-snapshots";
     if (!this.app.vault.getFolderByPath(folder)) {
-      await this.app.vault.createFolder(".arkloop").catch(() => {});
+      await this.app.vault.createFolder(".workbench").catch(() => {});
       await this.app.vault.createFolder(folder).catch(() => {});
     }
     const snapshotPath = `${folder}/${entry.shortHash}-${name}`;

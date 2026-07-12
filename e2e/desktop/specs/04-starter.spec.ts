@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// The starter (vault chooser) window — launched WITHOUT the ARKLOOP_VAULT_PATH
+// The starter (vault chooser) window — launched WITHOUT the E2E_VAULT_PATH
 // seed so main's real `ke()` path runs: zero persisted-open vaults means the
 // starter comes up instead of a vault window.
 
@@ -15,16 +15,16 @@ const MAIN_CJS = join(REPO_ROOT, "dist-electron", "main.cjs");
 function starterEnv(base: string): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    ARKLOOP_USER_DATA: join(base, "userData"),
-    ARKLOOP_CLI_SOCKET: join(base, "cli.sock"),
+    E2E_USER_DATA: join(base, "userData"),
+    E2E_CLI_SOCKET: join(base, "cli.sock"),
   };
-  delete env.ARKLOOP_VAULT_PATH;
+  delete env.E2E_VAULT_PATH;
   delete env.ELECTRON_RENDERER_URL;
   return env;
 }
 
 test("a fresh profile boots into the starter with Quick start", async ({}, testInfo) => {
-  const base = mkdtempSync(join(tmpdir(), "arkloop-starter-e2e-"));
+  const base = mkdtempSync(join(tmpdir(), "workbench-starter-e2e-"));
   const app = await electron.launch({ args: [MAIN_CJS], cwd: REPO_ROOT, env: starterEnv(base), timeout: 60_000 });
   try {
     const page = await app.firstWindow();
@@ -42,7 +42,7 @@ test("a fresh profile boots into the starter with Quick start", async ({}, testI
 });
 
 test("clicking a registered vault opens its window and the starter closes itself", async ({}, testInfo) => {
-  const base = mkdtempSync(join(tmpdir(), "arkloop-starter-e2e-"));
+  const base = mkdtempSync(join(tmpdir(), "workbench-starter-e2e-"));
   const vaultPath = join(base, "picked-vault");
   mkdirSync(vaultPath, { recursive: true });
   // Registered but NOT open — startup still lands on the starter, with the

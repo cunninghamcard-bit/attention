@@ -179,16 +179,16 @@ describe("Workspace public API parity", () => {
       'Action "plugin-action" is already registered as a handler.',
     );
 
-    await expect(app.uriRouter.handleUri("arkloop://plugin-action?source=first")).resolves.toBe(true);
+    await expect(app.uriRouter.handleUri("workbench://plugin-action?source=first")).resolves.toBe(true);
     expect(first).toHaveBeenCalledWith({ action: "plugin-action", source: "first" });
     expect(second).not.toHaveBeenCalled();
 
     app.workspace.unregisterObsidianProtocolHandler("plugin-action", second);
-    await expect(app.uriRouter.handleUri("arkloop://plugin-action?source=still-first")).resolves.toBe(true);
+    await expect(app.uriRouter.handleUri("workbench://plugin-action?source=still-first")).resolves.toBe(true);
     expect(first).toHaveBeenLastCalledWith({ action: "plugin-action", source: "still-first" });
 
     app.workspace.unregisterObsidianProtocolHandler("plugin-action", first);
-    await expect(app.uriRouter.handleUri("arkloop://plugin-action")).resolves.toBe(false);
+    await expect(app.uriRouter.handleUri("workbench://plugin-action")).resolves.toBe(false);
   });
 
   it("unregisters a workspace protocol handler by action when no handler is passed", async () => {
@@ -198,7 +198,7 @@ describe("Workspace public API parity", () => {
     app.workspace.registerObsidianProtocolHandler("plugin-action", handler);
     app.workspace.unregisterObsidianProtocolHandler("plugin-action");
 
-    await expect(app.uriRouter.handleUri("arkloop://plugin-action")).resolves.toBe(false);
+    await expect(app.uriRouter.handleUri("workbench://plugin-action")).resolves.toBe(false);
   });
 
   it("keeps View.getState as the view payload and lets WorkspaceLeaf wrap it", async () => {

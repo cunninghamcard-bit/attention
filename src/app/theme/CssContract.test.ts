@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 const fileSystemSpecifier = "node:fs";
 
 const defaultCssImports = [
-  // The ArkLoop style system's single entry point (docs/style-system.md).
+  // The Workbench style system's single entry point (docs/style-system.md).
   "./styles/index.css",
 ];
 

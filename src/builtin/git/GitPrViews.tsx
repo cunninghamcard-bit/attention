@@ -1016,7 +1016,7 @@ function SignInPanel({ app, onSignedIn }: { app: App; onSignedIn: (auth: GitHubA
         <button
           type="button"
           className="git-pr-action"
-          onClick={() => window.open("https://github.com/settings/tokens/new?scopes=repo&description=Arkloop", "_blank")}
+          onClick={() => window.open("https://github.com/settings/tokens/new?scopes=repo&description=Workbench", "_blank")}
         >
           Create a token on GitHub →
         </button>

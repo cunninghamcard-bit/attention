@@ -49,10 +49,10 @@ describe("dispatchCli", () => {
     expect(deps.openStarter).not.toHaveBeenCalled();
   });
 
-  it("short-circuits a trailing arkloop:// URL to the URL router", async () => {
+  it("short-circuits a trailing workbench:// URL to the URL router", async () => {
     const deps = makeDeps();
-    const out = await dispatchCli({ argv: ["arkloop://open?file=A"], tty: false, cwd: "/x" }, deps);
-    expect(out).toBe("Processed URI arkloop://open?file=A");
+    const out = await dispatchCli({ argv: ["workbench://open?file=A"], tty: false, cwd: "/x" }, deps);
+    expect(out).toBe("Processed URI workbench://open?file=A");
     expect(deps.executeCliRequest).not.toHaveBeenCalled();
   });
 
@@ -62,7 +62,7 @@ describe("dispatchCli", () => {
     expect(out).toBe("Command line interface is not enabled. Please turn it on in Settings > General > Advanced.");
     expect(deps.executeCliRequest).not.toHaveBeenCalled();
     // URLs bypass the gate (real et short-circuits before the C.cli check).
-    const url = await dispatchCli({ argv: ["arkloop://open?file=A"], tty: false, cwd: "/x" }, deps);
-    expect(url).toBe("Processed URI arkloop://open?file=A");
+    const url = await dispatchCli({ argv: ["workbench://open?file=A"], tty: false, cwd: "/x" }, deps);
+    expect(url).toBe("Processed URI workbench://open?file=A");
   });
 });

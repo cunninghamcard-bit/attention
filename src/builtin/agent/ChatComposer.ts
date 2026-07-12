@@ -35,7 +35,7 @@ export interface ChatComposerCallbacks {
   // Multi-agent rooms feed participant names; "@" completes against them.
   // Mentions stay plain text — routing is the engine's business, not the UI's.
   getMentionTargets?(): string[];
-  // The composer-integrated config chip (ArkLoop's ModelPicker shape): the
+  // The composer-integrated config chip (a ModelPicker shape): the
   // host names the current selection and owns the menu; absent = no chip.
   getModelLabel?(): string;
   openModelMenu?(event: MouseEvent): void;
@@ -96,7 +96,7 @@ export class ChatComposer extends Component {
     this.agentId = options.agentId ?? null;
     this.el = createDiv("chat-composer", parentEl);
     this.attachmentBar = this.addChild(new ChatAttachmentBar(this.el));
-    // ArkLoop-style input card: the card is the visual unit (border, focus
+    // Chat-style input card: the card is the visual unit (border, focus
     // ring, shadow); the editor sits chromeless inside, a toolbar row below.
     const cardEl = createDiv("chat-composer-card", this.el);
     this.cardEl = cardEl;
@@ -140,7 +140,7 @@ export class ChatComposer extends Component {
 
     const toolbarEl = createDiv("chat-composer-toolbar", cardEl);
     // Hidden picker input: the button is the only visible affordance, the
-    // way a native file-attach control works in ArkLoop/Claude Desktop.
+    // way a native file-attach control works in Claude Desktop.
     this.attachInputEl = createEl("input", { cls: "chat-composer-attach-input", parent: toolbarEl, attr: { type: "file", multiple: true } });
     this.attachInputEl.hide();
     this.attachButtonEl = createEl("button", { cls: "chat-composer-attach", parent: toolbarEl, title: STRINGS.composer.attach });
@@ -163,7 +163,7 @@ export class ChatComposer extends Component {
         }),
       );
     }
-    // One slot, ArkLoop-style: empty draft shows nothing; the arrow springs
+    // One slot, chat-style: empty draft shows nothing; the arrow springs
     // in when there is something to send; streaming swaps it for a drawn
     // record-stop glyph (ring + square). All swaps are CSS-only.
     this.sendButtonEl = createEl("button", { cls: "chat-composer-send", parent: actionsEl, title: STRINGS.composer.send });

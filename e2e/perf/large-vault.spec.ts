@@ -6,10 +6,10 @@ import { fileURLToPath } from "node:url";
 
 // Per-click latency harness on a synthetic huge vault (default 20k files,
 // shaped like a code repo: many small files across many folders, plus a
-// handful of notes to switch between). Gated behind ARKLOOP_PERF=1 so the
+// handful of notes to switch between). Gated behind PERF_VAULT=1 so the
 // regular e2e suite never pays the seeding cost:
 //
-//   ARKLOOP_PERF=1 pnpm exec playwright test e2e/perf/large-vault.spec.ts
+//   PERF_VAULT=1 pnpm exec playwright test e2e/perf/large-vault.spec.ts
 //
 // Metrics (all in ms, printed as one JSON line prefixed PERF_RESULT):
 // - openFile: workspace.openLinkText -> double-rAF (pure app cost, no
@@ -22,10 +22,10 @@ const SPEC_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SPEC_DIR, "..", "..");
 const MAIN_CJS = join(REPO_ROOT, "dist-electron", "main.cjs");
 
-const JUNK_FILES = Number(process.env.ARKLOOP_PERF_FILES || 20000);
+const JUNK_FILES = Number(process.env.PERF_VAULT_FILES || 20000);
 const FILES_PER_DIR = 40;
 
-test.skip(!process.env.ARKLOOP_PERF, "perf harness — run with ARKLOOP_PERF=1");
+test.skip(!process.env.PERF_VAULT, "perf harness — run with PERF_VAULT=1");
 
 function seedLargeVault(vault: string): void {
   const dirs = Math.ceil(JUNK_FILES / FILES_PER_DIR);
@@ -52,7 +52,7 @@ function median(values: number[]): number {
 
 test("per-click latency on a huge vault", async ({}, testInfo) => {
   test.setTimeout(600_000);
-  const base = mkdtempSync(join(tmpdir(), "arkloop-perf-"));
+  const base = mkdtempSync(join(tmpdir(), "perf-vault-"));
   const vault = join(base, "vault");
   const seedStart = Date.now();
   seedLargeVault(vault);
@@ -60,9 +60,9 @@ test("per-click latency on a huge vault", async ({}, testInfo) => {
 
   const env = {
     ...process.env,
-    ARKLOOP_VAULT_PATH: vault,
-    ARKLOOP_USER_DATA: join(base, "userData"),
-    ARKLOOP_CLI_SOCKET: join(base, "cli.sock"),
+    E2E_VAULT_PATH: vault,
+    E2E_USER_DATA: join(base, "userData"),
+    E2E_CLI_SOCKET: join(base, "cli.sock"),
   };
   delete env.ELECTRON_RENDERER_URL;
   const app = await electron.launch({ args: [MAIN_CJS], cwd: REPO_ROOT, env, timeout: 120_000 });

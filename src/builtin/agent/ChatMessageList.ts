@@ -258,8 +258,8 @@ class ChatMessageItem extends Component {
       this.el.dataset.authorId = message.authorId;
       this.el.style.setProperty("--author-hue", String(authorHue(message.authorId)));
     }
-    // No role labels — the bubble side already says who is talking (the
-    // ArkLoop rule). Only a room's author name earns a header line.
+    // No role labels — the bubble side already says who is talking (this
+    // app's rule). Only a room's author name earns a header line.
     if (message.role === "assistant" && message.authorName) {
       const headerEl = createDiv("chat-message-header", this.el);
       createSpan({ cls: "chat-author-avatar", text: message.authorName.slice(0, 1), parent: headerEl });
@@ -278,7 +278,7 @@ class ChatMessageItem extends Component {
       buttonEl.setText(action.title.toLowerCase());
       buttonEl.addEventListener("click", () => {
         action.run(this.message, { agent: this.session });
-        // ArkLoop-style feedback: the button itself confirms, briefly.
+        // Inline feedback: the button itself confirms, briefly.
         buttonEl.setText("✓");
         window.setTimeout(() => buttonEl.setText(action.title.toLowerCase()), 900);
       });

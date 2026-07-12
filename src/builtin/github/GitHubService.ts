@@ -300,7 +300,7 @@ export class GitHubService {
   private readToken(): string | null {
     const fromSecret = this.app.secretStorage.getSecret(TOKEN_SECRET_ID)?.trim();
     if (fromSecret) return fromSecret;
-    const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
+    const env = (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env;
     return env?.GITHUB_TOKEN?.trim() || null;
   }
 

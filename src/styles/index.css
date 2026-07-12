@@ -1,4 +1,4 @@
-/* ArkLoop style system — single entry point.
+/* Workbench style system — single entry point.
  *
  * Cascade layers, in import order:
  *   tokens/     design tokens (colors, spacing, typography)
@@ -8,7 +8,7 @@
  *   workspace/  app shell (ribbon, docks, tabs, titlebar, status bar)
  *   editor/     markdown + code editing surfaces
  *   features/   feature panes (search, explorer, outline, ...)
- *   product/    ArkLoop additions & overrides — always imported last
+ *   product/    Workbench additions & overrides — always imported last
  *
  * The import sequence preserves the legacy cascade exactly (see
  * docs/style-system.md); reordering imports changes which rules win.

@@ -51,7 +51,7 @@ const REQUIRED_TOKENS = [
   "--prompt-border-color",
 ];
 
-describe("ArkLoop style system", () => {
+describe("Workbench style system", () => {
   it("imports every stylesheet exactly once from index.css", async () => {
     const { imports, allFiles } = await loadStyleTree();
     const importSet = new Set(imports);

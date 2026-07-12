@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// True desktop e2e for the CLI: spawns the PRIMARY Arkloop instance on a
+// True desktop e2e for the CLI: spawns the PRIMARY Workbench instance on a
 // throwaway vault + userData + socket, then drives it through real
 // SECOND-INSTANCE invocations (the same `electron main.cjs <argv>` path a
 // user types) and asserts exact outputs. Fully hermetic — never touches the
@@ -22,7 +22,7 @@ if (!existsSync(mainJs)) {
   process.exit(2);
 }
 
-const base = mkdtempSync(join(tmpdir(), "arkloop-e2e-"));
+const base = mkdtempSync(join(tmpdir(), "workbench-e2e-"));
 const vault = join(base, "vault");
 mkdirSync(join(vault, "Sub"), { recursive: true });
 writeFileSync(join(vault, "Note.md"), "---\ntags: [alpha]\n---\n# Top\nHello [[Doc]] world.\n#alpha #beta\n");
@@ -31,9 +31,9 @@ writeFileSync(join(vault, "Sub/Inner.md"), "deep [[Note]]\n");
 
 const env = {
   ...process.env,
-  ARKLOOP_VAULT_PATH: vault,
-  ARKLOOP_USER_DATA: join(base, "userData"),
-  ARKLOOP_CLI_SOCKET: join(base, "cli.sock"),
+  E2E_VAULT_PATH: vault,
+  E2E_USER_DATA: join(base, "userData"),
+  E2E_CLI_SOCKET: join(base, "cli.sock"),
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -64,7 +64,7 @@ const CHECKS = [
   [["nope"], (out) => out.startsWith('Error: Command "nope" not found.')],
   [["read", "path=Missing.md"], 'Error: File "Missing.md" not found.\n'],
   [["daily"], (out) => out.startsWith('Error: Command "daily" not found.')],
-  [["help"], (out) => out.startsWith("Arkloop CLI\n\nUsage: arkloop <command> [options]\n\nOptions:\n  vault=<name>")],
+  [["help"], (out) => out.startsWith("Workbench CLI\n\nUsage: workbench <command> [options]\n\nOptions:\n  vault=<name>")],
 ];
 
 let primary = null;
@@ -74,7 +74,7 @@ try {
 
   // Boot: wait for the socket, then for the vault index to settle.
   const deadline = Date.now() + 40000;
-  while (!existsSync(env.ARKLOOP_CLI_SOCKET)) {
+  while (!existsSync(env.E2E_CLI_SOCKET)) {
     if (primary.exitCode !== null) throw new Error(`primary exited early (${primary.exitCode})`);
     if (Date.now() > deadline) throw new Error("primary never bound the CLI socket");
     await sleep(300);

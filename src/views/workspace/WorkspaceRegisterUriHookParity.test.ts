@@ -52,7 +52,7 @@ describe("Workspace registerUriHook parity", () => {
     app.workspace.registerObsidianProtocolHandler("plugin-action", handler);
 
     app.workspace.registerUriHook();
-    appUrlOpen?.({ url: "arkloop://plugin-action?source=native&empty" });
+    appUrlOpen?.({ url: "workbench://plugin-action?source=native&empty" });
 
     await vi.waitFor(() => expect(handler).toHaveBeenCalledWith({
       action: "plugin-action",

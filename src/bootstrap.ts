@@ -3,7 +3,7 @@ import { FileSystemJsonStoreAdapter } from "./storage/FileSystemJsonStoreAdapter
 import { FileSystemAdapter } from "./vault/FileSystemAdapter";
 import type { TFile } from "./vault/TAbstractFile";
 
-const welcomeMarkdown = `# Welcome to ArkLoop
+const welcomeMarkdown = `# Welcome to Workbench
 
 This workspace is where your agents live and work — code, terminals, notes and search in one place.
 
@@ -20,7 +20,7 @@ This workspace is where your agents live and work — code, terminals, notes and
 - Extensionless files (Dockerfile, Makefile, dotfiles) open as code.
 - The chat and agent board arrive with the agent domain — this workspace is their home.
 
-#arkloop
+#workbench
 `;
 
 const pluginMarkdown = `# Plugin Architecture
@@ -61,7 +61,7 @@ export async function bootstrap(parent: HTMLElement = document.body): Promise<Ap
     await app.workspace.openFile(welcome, { active: true, state: { mode: "preview" } });
   }
 
-  app.statusBar.registerStatusBarItem().textContent = "ArkLoop";
+  app.statusBar.registerStatusBarItem().textContent = "Workbench";
   return app;
 }
 

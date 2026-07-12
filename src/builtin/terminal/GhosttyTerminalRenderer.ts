@@ -68,18 +68,18 @@ function resolveThemeFromDocument(): Record<string, string> {
  * falls back per glyph like CSS.
  */
 export const DEFAULT_FONT_STACK =
-  '"Arkloop JetBrains Mono", "Arkloop Nerd Symbols", "PingFang SC", "Apple Color Emoji", monospace';
+  '"Workbench JetBrains Mono", "Workbench Nerd Symbols", "PingFang SC", "Apple Color Emoji", monospace';
 
 export const BUNDLED_FONT_FACES = [
-  { family: "Arkloop JetBrains Mono", file: "JetBrainsMono-Regular.ttf", weight: "400" },
+  { family: "Workbench JetBrains Mono", file: "JetBrainsMono-Regular.ttf", weight: "400" },
   // SemiBold, not Medium: Medium's usWeightClass is 500 — registering it as
   // 700 renders bold cells barely heavier than regular.
-  { family: "Arkloop JetBrains Mono", file: "JetBrainsMono-SemiBold.ttf", weight: "700" },
-  { family: "Arkloop Nerd Symbols", file: "SymbolsNerdFontMono-Regular.ttf", weight: "400" },
+  { family: "Workbench JetBrains Mono", file: "JetBrainsMono-SemiBold.ttf", weight: "700" },
+  { family: "Workbench Nerd Symbols", file: "SymbolsNerdFontMono-Regular.ttf", weight: "400" },
   // ghostty-web emits CSS `bold` for ANSI bold cells. Registering the same
   // symbol face at 700 prevents Chromium from synthesizing a swollen glyph,
   // which blurred Powerline edges and shifted eza icons inside their cells.
-  { family: "Arkloop Nerd Symbols", file: "SymbolsNerdFontMono-Regular.ttf", weight: "700" },
+  { family: "Workbench Nerd Symbols", file: "SymbolsNerdFontMono-Regular.ttf", weight: "700" },
 ] as const;
 
 /**

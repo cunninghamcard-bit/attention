@@ -11,14 +11,14 @@ import { join } from "node:path";
  */
 
 const SHIM_VERSION = 6;
-const STAMP = `# arkloop-zsh-shim v${SHIM_VERSION}`;
+const STAMP = `# workbench-zsh-shim v${SHIM_VERSION}`;
 
 // The Kaku terminal's app bundle, which vendors the zsh plugins we source.
 export const DEFAULT_VENDOR_RESOURCES = "/Applications/Kaku.app/Contents/Resources";
 
 export interface ZshShimOptions {
   homeDir: string;
-  /** Shim location; default `<homeDir>/.config/arkloop/zsh`. */
+  /** Shim location; default `<homeDir>/.config/workbench/zsh`. */
   configDir?: string;
   /** Vendor bundle resources root, injectable for tests. */
   vendorResourcesDir?: string;
@@ -35,7 +35,7 @@ function zshrcContent(vendorDir: string): string {
 # The user's real config runs first and always wins.
 [[ -f "$HOME/.zshrc" ]] && source "$HOME/.zshrc"
 
-_arkloop_vendor=${JSON.stringify(vendorDir)}
+_workbench_vendor=${JSON.stringify(vendorDir)}
 
 # macOS /etc/zshrc points HISTFILE into ZDOTDIR; keep history shared with
 # the user's normal shells unless their zshrc chose a custom location.
@@ -43,7 +43,7 @@ _arkloop_vendor=${JSON.stringify(vendorDir)}
 
 # Completions: the vendored zsh-completions, then compinit if the user's rc
 # didn't already run it.
-[[ -d "$_arkloop_vendor/vendor/zsh-completions/src" ]] && fpath+=("$_arkloop_vendor/vendor/zsh-completions/src")
+[[ -d "$_workbench_vendor/vendor/zsh-completions/src" ]] && fpath+=("$_workbench_vendor/vendor/zsh-completions/src")
 if ! (( \${+functions[compdef]} )); then
   autoload -Uz compinit && compinit -C
 fi
@@ -51,8 +51,8 @@ fi
 # Prompt: starship, with the vendored preset when the user has no config of
 # their own.
 if command -v starship >/dev/null 2>&1; then
-  if [[ ! -f "\${XDG_CONFIG_HOME:-$HOME/.config}/starship.toml" && -f "$_arkloop_vendor/vendor/starship.toml" ]]; then
-    export STARSHIP_CONFIG="$_arkloop_vendor/vendor/starship.toml"
+  if [[ ! -f "\${XDG_CONFIG_HOME:-$HOME/.config}/starship.toml" && -f "$_workbench_vendor/vendor/starship.toml" ]]; then
+    export STARSHIP_CONFIG="$_workbench_vendor/vendor/starship.toml"
   fi
   eval "$(starship init zsh)"
 fi
@@ -91,16 +91,16 @@ setopt auto_cd auto_pushd pushd_ignore_dups pushdminus
 (( \${+aliases[gco]} ))   || alias gco='git checkout'
 
 # Fish-style autosuggestions (skip if the user's rc already loaded one).
-if ! (( \${+functions[_zsh_autosuggest_start]} )) && [[ -f "$_arkloop_vendor/vendor/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
-  source "$_arkloop_vendor/vendor/zsh-autosuggestions/zsh-autosuggestions.zsh"
+if ! (( \${+functions[_zsh_autosuggest_start]} )) && [[ -f "$_workbench_vendor/vendor/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
+  source "$_workbench_vendor/vendor/zsh-autosuggestions/zsh-autosuggestions.zsh"
 fi
 
 # Syntax highlighting loads LAST — it wraps zle widgets.
-if [[ -z "\${FAST_HIGHLIGHT_VERSION:-}" ]] && [[ -f "$_arkloop_vendor/vendor/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh" ]]; then
-  source "$_arkloop_vendor/vendor/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh"
+if [[ -z "\${FAST_HIGHLIGHT_VERSION:-}" ]] && [[ -f "$_workbench_vendor/vendor/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh" ]]; then
+  source "$_workbench_vendor/vendor/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh"
 fi
 
-unset _arkloop_vendor
+unset _workbench_vendor
 `;
 }
 
@@ -109,7 +109,7 @@ unset _arkloop_vendor
  * can't be provisioned — spawn must fall back to a plain shell, never fail.
  */
 export function ensureZshShim(options: ZshShimOptions): string | null {
-  const dir = options.configDir ?? join(options.homeDir, ".config", "arkloop", "zsh");
+  const dir = options.configDir ?? join(options.homeDir, ".config", "workbench", "zsh");
   const vendorDir = options.vendorResourcesDir ?? DEFAULT_VENDOR_RESOURCES;
   try {
     mkdirSync(dir, { recursive: true });

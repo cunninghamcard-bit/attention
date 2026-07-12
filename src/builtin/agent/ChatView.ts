@@ -34,7 +34,7 @@ export class ChatView extends StreamView {
   private harnessCommands: Array<{ name: string; description?: string }> = [];
   private stopActionEl: HTMLElement | null = null;
   // Set on send: the next sync pins the new user message to the viewport top
-  // (ArkLoop-style anchoring) so the reply reads downward from the question.
+  // (chat-style anchoring) so the reply reads downward from the question.
   private anchorPending = false;
   private readonly profileTransport = new AgentTransport();
   // The thread's first member agent — what the composer's model chip
