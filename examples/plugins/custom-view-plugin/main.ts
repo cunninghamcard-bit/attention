@@ -1,4 +1,4 @@
-import { Plugin, ItemView, type WorkspaceLeaf } from "../../src";
+import { Plugin, ItemView, type WorkspaceLeaf } from "../../../src/apps/web/src";
 
 class ExampleView extends ItemView {
   getViewType(): string { return "example-view"; }

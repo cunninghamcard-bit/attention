@@ -1,4 +1,4 @@
-import { Plugin } from "../../src";
+import { Plugin } from "../../../src/apps/web/src";
 
 export default class BasesPlugin extends Plugin {
   async onload(): Promise<void> {

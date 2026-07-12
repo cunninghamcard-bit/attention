@@ -1,4 +1,4 @@
-import { Plugin } from "../../src";
+import { Plugin } from "../../../src/apps/web/src";
 
 export default class MarkdownProcessorPlugin extends Plugin {
   async onload(): Promise<void> {

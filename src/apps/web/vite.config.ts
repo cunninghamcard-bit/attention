@@ -10,7 +10,7 @@ const rootDist = resolve(__dirname, "../../../dist");
 export default defineConfig({
   root: __dirname,
   // Static assets (fonts, icons) live at the repo root, not under this package.
-  publicDir: resolve(__dirname, "../../../public"),
+  publicDir: resolve(__dirname, "public"),
   plugins: [
     ...(process.env.ANALYZE ? [visualizer({ filename: resolve(rootDist, "stats.html"), gzipSize: true, brotliSize: true })] : []),
   ],

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Clean-room runnable reconstruction of Obsidian's frontend architecture for study.",
+  "description": "Desktop agent workbench built on a clean-room reconstruction of Obsidian's frontend architecture.",
   "scripts": {
     "dev": "vite --host 127.0.0.1 -c src/apps/web/vite.config.ts",
     "build": "vite build -c src/apps/web/vite.config.ts",
