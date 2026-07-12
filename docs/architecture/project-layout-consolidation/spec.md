@@ -34,9 +34,9 @@ learning-records/ 0001–0009.
   `src/apps/desktop` (current electron/, main+preload thin shell),
   `src/apps/web` (current src/, the product), `src/apps/server`
   (current server/). Root package.json becomes a pure workspace yard
-  with no runtime dependencies. Package names `@arkloop/desktop`,
-  `@arkloop/web`, `@arkloop/server`, all `private: true`
-  (records 0004, 0006, 0008; research.md F1, F3).
+  with no runtime dependencies. Package names `@app/desktop`,
+  `@app/web`, `@app/server` — deliberately product-name-free — all
+  `private: true` (records 0004, 0006, 0008, 0010; research.md F1, F3).
 - Zero library packages today: no base/platform/kernel/ui packages.
   kernel (vault+metadata+storage) graduates to a package only when a
   second consumer appears; no `shared` package until protocol types
@@ -67,6 +67,12 @@ learning-records/ 0001–0009.
 - Museum retirement: delete `src/meta`, `src/scenarios`, `src/docs`
   (ApiDocGenerator) and `src/query` (QueryEngine) including their
   `App.ts` wiring and `src/index.ts` exports (record 0003).
+- Name-agnostic code: no product name (the retired `arkloop` or any
+  future name) appears anywhere in the tree — package names, protocol
+  scheme, env vars, titles, docs. Branded literals are replaced with
+  neutral ones: the URL scheme constant in `scheme.ts` becomes
+  `workbench`, the perf env var becomes `PERF_VAULT`. The product name
+  lives only in the git remote / repo name (record 0010).
 - Docs: retire all 21 legacy docs; delete
   `docs/specs/terminal-view.spec.md`; write `docs/architecture.md`
   (annotated tree + direction table + runtime topology + dual-track +
@@ -76,8 +82,9 @@ learning-records/ 0001–0009.
 - Verification constraints, fixed: the full vitest suite (1576+ tests)
   passes after every phase; the perf harness keeps openFile median
   under 50ms and explorerClick median under 120ms on the 20k-file
-  vault (`ARKLOOP_PERF=1 pnpm exec playwright test
-  e2e/perf/large-vault.spec.ts`; main baseline 32ms / 82ms); file
+  vault (`PERF_VAULT=1 pnpm exec playwright test
+  e2e/perf/large-vault.spec.ts`, env var renamed by the debrand
+  decision; main baseline 32ms / 82ms); file
   moves preserve git history (verify with `git log --follow` on
   Vault.ts and ChatView.ts); no new production dependencies; the
   exported surface of `PublicApi` stays unchanged.
