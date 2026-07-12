@@ -15,7 +15,11 @@ async function seededApp(): Promise<App> {
   await seed(app, "Other.md", "other");
   await seed(app, "Image.png", "png");
   // Frontmatter link + duplicate inline links + subpath link + embed.
-  await seed(app, "Note.md", '---\nrelated: "[[Other]]"\n---\n[[Sub]] then [[Sub]] again, [[Missing#Section]], ![[Image.png]]');
+  await seed(
+    app,
+    "Note.md",
+    '---\nrelated: "[[Other]]"\n---\n[[Sub]] then [[Sub]] again, [[Missing#Section]], ![[Image.png]]',
+  );
   await seed(app, "NoLinks.md", "plain text without links");
   await seed(app, "Doc.md", "# A\n## B\n### C\n## D\n# E");
   await seed(app, "data.txt", "not markdown");
@@ -57,8 +61,12 @@ describe("links CLI command", () => {
 
   it("throws the shared resolver errors as plain strings", async () => {
     const app = await seededApp();
-    await expect(app.cli.handleCli(["links", "path=Nope.md"])).rejects.toBe('File "Nope.md" not found.');
-    await expect(app.cli.handleCli(["links", "path=Folder"])).rejects.toBe('"Folder" is a folder, not a file.');
+    await expect(app.cli.handleCli(["links", "path=Nope.md"])).rejects.toBe(
+      'File "Nope.md" not found.',
+    );
+    await expect(app.cli.handleCli(["links", "path=Folder"])).rejects.toBe(
+      '"Folder" is a folder, not a file.',
+    );
     await expect(app.cli.handleCli(["links", "file=Nope"])).rejects.toBe('File "Nope" not found.');
     await expect(app.cli.handleCli(["links"])).rejects.toBe(
       "No active file. Use file=<name> or path=<path> to specify a file.",
@@ -90,7 +98,9 @@ describe("outline CLI command", () => {
 
   it("renders markdown headings with format=md", async () => {
     const app = await seededApp();
-    expect(await app.cli.handleCli(["outline", "path=Doc.md", "format=md"])).toBe("# A\n## B\n### C\n## D\n# E");
+    expect(await app.cli.handleCli(["outline", "path=Doc.md", "format=md"])).toBe(
+      "# A\n## B\n### C\n## D\n# E",
+    );
   });
 
   it("renders pretty-printed JSON with 1-based lines with format=json (and the json shorthand)", async () => {
@@ -119,17 +129,23 @@ describe("outline CLI command", () => {
     const app = await seededApp();
     expect(await app.cli.handleCli(["outline", "path=NoLinks.md"])).toBe("No headings found.");
     // The empty check runs before total (asymmetric with links, faithful).
-    expect(await app.cli.handleCli(["outline", "path=NoLinks.md", "total"])).toBe("No headings found.");
+    expect(await app.cli.handleCli(["outline", "path=NoLinks.md", "total"])).toBe(
+      "No headings found.",
+    );
   });
 
   it("rejects non-markdown files", async () => {
     const app = await seededApp();
-    await expect(app.cli.handleCli(["outline", "path=data.txt"])).rejects.toBe("File is not a markdown file.");
+    await expect(app.cli.handleCli(["outline", "path=data.txt"])).rejects.toBe(
+      "File is not a markdown file.",
+    );
   });
 
   it("throws the shared resolver errors as plain strings", async () => {
     const app = await seededApp();
-    await expect(app.cli.handleCli(["outline", "path=Nope.md"])).rejects.toBe('File "Nope.md" not found.');
+    await expect(app.cli.handleCli(["outline", "path=Nope.md"])).rejects.toBe(
+      'File "Nope.md" not found.',
+    );
     await expect(app.cli.handleCli(["outline"])).rejects.toBe(
       "No active file. Use file=<name> or path=<path> to specify a file.",
     );

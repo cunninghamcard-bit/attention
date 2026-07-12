@@ -97,11 +97,13 @@ export class View extends Component {
   onTabMenu(menu: Menu): void {
     const leaf = this.leaf;
     const parent = leaf.parent;
-    menu.addItem((item) => item
-      .setSection("close")
-      .setTitle("Close")
-      .setIcon("lucide-x")
-      .onClick(() => leaf.detach()));
+    menu.addItem((item) =>
+      item
+        .setSection("close")
+        .setTitle("Close")
+        .setIcon("lucide-x")
+        .onClick(() => leaf.detach()),
+    );
     if (!parent || this.app.workspace.isInSidebar(leaf)) return;
     const siblings = Array.isArray(parent.children)
       ? parent.children.filter((child): child is WorkspaceLeaf => isWorkspaceLeafLike(child))
@@ -109,33 +111,40 @@ export class View extends Component {
     const index = siblings.indexOf(leaf);
     const closeOthers = siblings.filter((candidate) => candidate !== leaf && !candidate.pinned);
     if (closeOthers.length > 0) {
-      menu.addItem((item) => item
-        .setSection("close")
-        .setTitle("Close others")
-        .setIcon("lucide-x")
-        .onClick(() => {
-          for (const candidate of closeOthers) candidate.detach();
-        }));
+      menu.addItem((item) =>
+        item
+          .setSection("close")
+          .setTitle("Close others")
+          .setIcon("lucide-x")
+          .onClick(() => {
+            for (const candidate of closeOthers) candidate.detach();
+          }),
+      );
     }
-    const closeAfter = index === -1 ? [] : siblings.slice(index + 1).filter((candidate) => !candidate.pinned);
+    const closeAfter =
+      index === -1 ? [] : siblings.slice(index + 1).filter((candidate) => !candidate.pinned);
     if (closeAfter.length > 0) {
-      menu.addItem((item) => item
-        .setSection("close")
-        .setTitle("Close tabs to the right")
-        .setIcon("lucide-x")
-        .onClick(() => {
-          for (const candidate of closeAfter) candidate.detach();
-        }));
+      menu.addItem((item) =>
+        item
+          .setSection("close")
+          .setTitle("Close tabs to the right")
+          .setIcon("lucide-x")
+          .onClick(() => {
+            for (const candidate of closeAfter) candidate.detach();
+          }),
+      );
     }
     const closeAll = siblings.filter((candidate) => !candidate.pinned);
     if (closeAll.length > 0 && !(closeAll.length === 1 && closeAll[0] === leaf)) {
-      menu.addItem((item) => item
-        .setSection("close")
-        .setTitle("Close all")
-        .setIcon("lucide-x")
-        .onClick(() => {
-          for (const candidate of closeAll) candidate.detach();
-        }));
+      menu.addItem((item) =>
+        item
+          .setSection("close")
+          .setTitle("Close all")
+          .setIcon("lucide-x")
+          .onClick(() => {
+            for (const candidate of closeAll) candidate.detach();
+          }),
+      );
     }
   }
 
@@ -152,7 +161,10 @@ export class View extends Component {
   }
 
   async rerender(): Promise<void> {
-    await this.leaf.setViewState({ type: this.getViewType(), state: this.getState() }, this.getEphemeralState());
+    await this.leaf.setViewState(
+      { type: this.getViewType(), state: this.getState() },
+      this.getEphemeralState(),
+    );
   }
 }
 

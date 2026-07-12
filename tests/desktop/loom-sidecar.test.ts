@@ -54,7 +54,10 @@ describe("LoomSidecar", () => {
 
   it("uses LOOM_EXTERNAL_URL without spawning", () => {
     const onUrlChange = vi.fn();
-    new LoomSidecar({ bin: "/bin/loom", externalUrl: "http://127.0.0.1:8790", dbPath: "/x" }, onUrlChange).start();
+    new LoomSidecar(
+      { bin: "/bin/loom", externalUrl: "http://127.0.0.1:8790", dbPath: "/x" },
+      onUrlChange,
+    ).start();
     expect(spawnMock).not.toHaveBeenCalled();
     expect(onUrlChange).toHaveBeenCalledWith("http://127.0.0.1:8790");
   });
@@ -64,7 +67,10 @@ describe("LoomSidecar", () => {
     spawnMock.mockReturnValue(child);
     const onUrlChange = vi.fn();
 
-    new LoomSidecar({ bin: "/bin/loom", externalUrl: null, dbPath: "/data/loom/loom.db" }, onUrlChange).start();
+    new LoomSidecar(
+      { bin: "/bin/loom", externalUrl: null, dbPath: "/data/loom/loom.db" },
+      onUrlChange,
+    ).start();
 
     expect(spawnMock).toHaveBeenCalledWith(
       "/bin/loom",
@@ -114,7 +120,10 @@ describe("LoomSidecar", () => {
     spawnMock.mockReturnValue(child);
     const onUrlChange = vi.fn();
 
-    const sidecar = new LoomSidecar({ bin: "/bin/loom", externalUrl: null, dbPath: "/x" }, onUrlChange);
+    const sidecar = new LoomSidecar(
+      { bin: "/bin/loom", externalUrl: null, dbPath: "/x" },
+      onUrlChange,
+    );
     sidecar.start();
     sidecar.stop();
 

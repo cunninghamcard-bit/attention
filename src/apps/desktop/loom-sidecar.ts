@@ -82,10 +82,14 @@ export class LoomSidecar {
   }
 
   private spawn(): void {
-    const child = spawn(this.config.bin as string, ["serve", "-port", "0", "-db", this.config.dbPath], {
-      env: { ...process.env },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    const child = spawn(
+      this.config.bin as string,
+      ["serve", "-port", "0", "-db", this.config.dbPath],
+      {
+        env: { ...process.env },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
     this.child = child;
 
     createInterface({ input: child.stdout }).on("line", (line) => {

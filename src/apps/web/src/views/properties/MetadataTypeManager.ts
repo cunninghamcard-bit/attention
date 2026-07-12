@@ -9,8 +9,7 @@ export interface TypesConfig {
   types?: Record<string, string>;
 }
 
-export interface MetadataPropertyInfo extends FrontmatterPropertyInfo {
-}
+export interface MetadataPropertyInfo extends FrontmatterPropertyInfo {}
 
 const reservedTypes: Record<string, { name: string; widget: PropertyType }> = {
   aliases: { name: "aliases", widget: "aliases" },
@@ -18,7 +17,10 @@ const reservedTypes: Record<string, { name: string; widget: PropertyType }> = {
   tags: { name: "tags", widget: "tags" },
 };
 
-export class MetadataTypeManager extends PropertyRegistry<MetadataPropertyInfo, Record<string, MetadataPropertyInfo>> {
+export class MetadataTypeManager extends PropertyRegistry<
+  MetadataPropertyInfo,
+  Record<string, MetadataPropertyInfo>
+> {
   private properties: Record<string, MetadataPropertyInfo> = {};
   private loaded = false;
   private lastSave = 0;
@@ -104,7 +106,9 @@ export class MetadataTypeManager extends PropertyRegistry<MetadataPropertyInfo, 
 
   getPropertyInfo(id: string): MetadataPropertyInfo | null {
     const normalized = id.toLowerCase();
-    return this.properties[normalized] ? structuredClone(this.properties[normalized]) : { name: id, widget: "text", occurrences: 0 };
+    return this.properties[normalized]
+      ? structuredClone(this.properties[normalized])
+      : { name: id, widget: "text", occurrences: 0 };
   }
 
   getAssignedWidget(id: string): PropertyType | null {
@@ -146,7 +150,7 @@ export class MetadataTypeManager extends PropertyRegistry<MetadataPropertyInfo, 
   }
 
   private normalizeWidget(widget: string): PropertyType | null {
-    return this.getType(widget as PropertyType) ? widget as PropertyType : null;
+    return this.getType(widget as PropertyType) ? (widget as PropertyType) : null;
   }
 
   private cancelConfigFileChange(): void {

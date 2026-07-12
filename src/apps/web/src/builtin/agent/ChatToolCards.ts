@@ -86,7 +86,10 @@ const SPECS: Record<string, ToolCardSpec> = {
       const oldText = str(input, "old_string");
       const newText = str(input, "new_string");
       if (!oldText && !newText) return null;
-      return { add: newText ? newText.split("\n").length : 0, del: oldText ? oldText.split("\n").length : 0 };
+      return {
+        add: newText ? newText.split("\n").length : 0,
+        del: oldText ? oldText.split("\n").length : 0,
+      };
     },
     body: (_part, input, bodyEl) => {
       renderDiff(str(input, "old_string"), str(input, "new_string"), bodyEl);
@@ -144,7 +147,13 @@ function renderCard(spec: ToolCardSpec, part: ToolChatPart, el: HTMLElement): vo
   }
   createSpan({
     cls: `chat-tool-status ${failed ? "is-failed" : part.closed ? "is-done" : "is-running"}`,
-    text: failed ? STRINGS.tool.failed : part.closed ? (part.result !== undefined ? STRINGS.tool.done : STRINGS.tool.called) : STRINGS.tool.running,
+    text: failed
+      ? STRINGS.tool.failed
+      : part.closed
+        ? part.result !== undefined
+          ? STRINGS.tool.done
+          : STRINGS.tool.called
+        : STRINGS.tool.running,
     parent: headerEl,
   });
 
@@ -166,7 +175,9 @@ function renderCard(spec: ToolCardSpec, part: ToolChatPart, el: HTMLElement): vo
 
 export function registerBuiltinToolCards(): void {
   for (const [name, spec] of Object.entries(SPECS)) {
-    const renderer = { render: (part: ToolChatPart, el: HTMLElement) => renderCard(spec, part, el) };
+    const renderer = {
+      render: (part: ToolChatPart, el: HTMLElement) => renderCard(spec, part, el),
+    };
     // Claude Code emits TitleCase names (Bash), pi emits lowercase (bash).
     registerChatToolRenderer(name, renderer);
     registerChatToolRenderer(name.charAt(0).toUpperCase() + name.slice(1), renderer);

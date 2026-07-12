@@ -56,7 +56,9 @@ export function resolveChatBridgeUrl(): string {
   }
   try {
     // Desktop: main process resolved a loom sidecar (spawned or external).
-    const host = globalThis as { electron?: { ipcRenderer?: { sendSync?(channel: string): unknown } } };
+    const host = globalThis as {
+      electron?: { ipcRenderer?: { sendSync?(channel: string): unknown } };
+    };
     const loomUrl = host.electron?.ipcRenderer?.sendSync?.("loom-url");
     if (typeof loomUrl === "string" && loomUrl) return loomUrl;
   } catch {
@@ -96,16 +98,24 @@ export class AgentTransport {
     return () => source.close();
   }
 
-  async sendMessage(agentId: string, text: string, attachments: Array<{ name: string; content: string }> = []): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, attachments }),
-    });
+  async sendMessage(
+    agentId: string,
+    text: string,
+    attachments: Array<{ name: string; content: string }> = [],
+  ): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/threads/${encodeURIComponent(agentId)}/messages`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, attachments }),
+      },
+    );
     if (!response.ok) {
       // The kernel's {error} is the user-facing guidance (fail-fast
       // messages tell you what to configure) — surface it, not a code.
-      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)?.error;
+      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)
+        ?.error;
       throw new Error(detail || `chat bridge rejected message: ${response.status}`);
     }
   }
@@ -113,7 +123,9 @@ export class AgentTransport {
   async listAgents(): Promise<AgentSummary[]> {
     const response = await fetch(`${this.baseUrl}/threads`);
     if (!response.ok) return [];
-    const payload = (await response.json().catch(() => null)) as { threads?: ThreadSummary[] } | null;
+    const payload = (await response.json().catch(() => null)) as {
+      threads?: ThreadSummary[];
+    } | null;
     return Array.isArray(payload?.threads) ? payload.threads.map(toAgentSummary) : [];
   }
 
@@ -122,7 +134,9 @@ export class AgentTransport {
   async listHarnesses(): Promise<HarnessCapabilities[]> {
     const response = await fetch(`${this.baseUrl}/harnesses`).catch(() => null);
     if (!response?.ok) return [];
-    const payload = (await response.json().catch(() => null)) as { harnesses?: HarnessCapabilities[] } | null;
+    const payload = (await response.json().catch(() => null)) as {
+      harnesses?: HarnessCapabilities[];
+    } | null;
     return Array.isArray(payload?.harnesses) ? payload.harnesses : [];
   }
 
@@ -134,7 +148,9 @@ export class AgentTransport {
   }
 
   async getAgentEntity(id: string): Promise<KernelAgent | null> {
-    const response = await fetch(`${this.baseUrl}/agents/${encodeURIComponent(id)}`).catch(() => null);
+    const response = await fetch(`${this.baseUrl}/agents/${encodeURIComponent(id)}`).catch(
+      () => null,
+    );
     if (!response?.ok) return null;
     return (await response.json().catch(() => null)) as KernelAgent | null;
   }
@@ -148,15 +164,19 @@ export class AgentTransport {
       body: JSON.stringify(agent),
     });
     if (!response.ok) {
-      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)?.error;
+      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)
+        ?.error;
       throw new Error(detail || `agent save rejected: ${response.status}`);
     }
   }
 
   async deleteAgent(id: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/agents/${encodeURIComponent(id)}`, { method: "DELETE" });
+    const response = await fetch(`${this.baseUrl}/agents/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
     if (!response.ok) {
-      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)?.error;
+      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)
+        ?.error;
       throw new Error(detail || `agent delete rejected: ${response.status}`);
     }
   }
@@ -177,7 +197,8 @@ export class AgentTransport {
       body: JSON.stringify(link),
     });
     if (!response.ok) {
-      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)?.error;
+      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)
+        ?.error;
       throw new Error(detail || `link rejected: ${response.status}`);
     }
   }
@@ -205,7 +226,8 @@ export class AgentTransport {
       body: JSON.stringify({ id, title }),
     });
     if (!response.ok) {
-      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)?.error;
+      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)
+        ?.error;
       throw new Error(detail || `thread create rejected: ${response.status}`);
     }
     return ((await response.json()) as { id: string }).id;
@@ -219,7 +241,8 @@ export class AgentTransport {
       body: JSON.stringify({ title }),
     });
     if (!response.ok) {
-      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)?.error;
+      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)
+        ?.error;
       throw new Error(detail || `fork rejected: ${response.status}`);
     }
     return (await response.json()) as { id: string; forkedFrom: string };
@@ -231,7 +254,11 @@ export class AgentTransport {
     if (typeof fetch !== "function") return null;
     const response = await fetch(`${this.baseUrl}/health`).catch(() => null);
     if (!response?.ok) return null;
-    return (await response.json().catch(() => null)) as { status: string; version?: string; schemaVersion?: number } | null;
+    return (await response.json().catch(() => null)) as {
+      status: string;
+      version?: string;
+      schemaVersion?: number;
+    } | null;
   }
 
   async rename(agentId: string, title: string): Promise<void> {
@@ -246,10 +273,16 @@ export class AgentTransport {
     await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}`, { method: "DELETE" });
   }
 
-  async listCommands(agentId: string): Promise<Array<{ name: string; description?: string; source?: string; agentId: string }>> {
-    const response = await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}/commands`).catch(() => null);
+  async listCommands(
+    agentId: string,
+  ): Promise<Array<{ name: string; description?: string; source?: string; agentId: string }>> {
+    const response = await fetch(
+      `${this.baseUrl}/threads/${encodeURIComponent(agentId)}/commands`,
+    ).catch(() => null);
     if (!response?.ok) return [];
-    const payload = (await response.json().catch(() => null)) as { commands?: Array<{ name: string; description?: string; source?: string; agentId: string }> } | null;
+    const payload = (await response.json().catch(() => null)) as {
+      commands?: Array<{ name: string; description?: string; source?: string; agentId: string }>;
+    } | null;
     return Array.isArray(payload?.commands) ? payload.commands : [];
   }
 
@@ -260,23 +293,33 @@ export class AgentTransport {
       body: JSON.stringify({ input }),
     });
     if (!response.ok) {
-      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)?.error;
+      const detail = ((await response.json().catch(() => null)) as { error?: string } | null)
+        ?.error;
       throw new Error(detail || `steer rejected: ${response.status}`);
     }
   }
 
   async stop(agentId: string): Promise<void> {
     // Best effort: interrupting a run that already ended is not an error.
-    await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}/stop`, { method: "POST" }).catch(() => undefined);
+    await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}/stop`, {
+      method: "POST",
+    }).catch(() => undefined);
   }
 
-  async resolvePermission(agentId: string, requestId: string, decision: "allow" | "deny"): Promise<void> {
+  async resolvePermission(
+    agentId: string,
+    requestId: string,
+    decision: "allow" | "deny",
+  ): Promise<void> {
     // Best effort: the request may have already timed out or been cancelled
     // on the kernel side by the time the user clicks.
-    await fetch(`${this.baseUrl}/threads/${encodeURIComponent(agentId)}/permissions/${encodeURIComponent(requestId)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision }),
-    }).catch(() => undefined);
+    await fetch(
+      `${this.baseUrl}/threads/${encodeURIComponent(agentId)}/permissions/${encodeURIComponent(requestId)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision }),
+      },
+    ).catch(() => undefined);
   }
 }

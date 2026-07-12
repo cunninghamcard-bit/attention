@@ -1,4 +1,9 @@
-import { normalizePluginManifest, type PluginManifest, type PluginManifestInput, type PluginPackage } from "./PluginManifest";
+import {
+  normalizePluginManifest,
+  type PluginManifest,
+  type PluginManifestInput,
+  type PluginPackage,
+} from "./PluginManifest";
 import { compareVersions, latestVersion } from "../core/Version";
 
 export interface MarketplacePluginEntry {
@@ -39,7 +44,10 @@ export type ObsidianCommunityPluginStats = Record<string, number | undefined> & 
   updated?: number;
 };
 
-export type ObsidianCommunityPluginStatsMap = Record<string, ObsidianCommunityPluginStats | undefined>;
+export type ObsidianCommunityPluginStatsMap = Record<
+  string,
+  ObsidianCommunityPluginStats | undefined
+>;
 export type ObsidianCommunityPluginDeprecations = Record<string, string[] | undefined>;
 
 export interface MarketplaceDataSource {
@@ -49,9 +57,12 @@ export interface MarketplaceDataSource {
 
 export type MarketplaceLoadState = "idle" | "loading" | "loaded" | "error";
 
-export const OBSIDIAN_RELEASES_COMMUNITY_PLUGINS_URL = "https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugins.json";
-export const OBSIDIAN_RELEASES_COMMUNITY_PLUGIN_STATS_URL = "https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json";
-export const OBSIDIAN_RELEASES_COMMUNITY_PLUGIN_DEPRECATION_URL = "https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-deprecation.json";
+export const OBSIDIAN_RELEASES_COMMUNITY_PLUGINS_URL =
+  "https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugins.json";
+export const OBSIDIAN_RELEASES_COMMUNITY_PLUGIN_STATS_URL =
+  "https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json";
+export const OBSIDIAN_RELEASES_COMMUNITY_PLUGIN_DEPRECATION_URL =
+  "https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-deprecation.json";
 
 export class PluginMarketplace {
   private entries = new Map<string, MarketplacePluginEntry>();
@@ -87,7 +98,9 @@ export class PluginMarketplace {
     deprecations: ObsidianCommunityPluginDeprecations = {},
   ): void {
     for (const plugin of plugins) {
-      this.registerEntry(createObsidianMarketplaceEntry(plugin, stats[plugin.id], deprecations[plugin.id]));
+      this.registerEntry(
+        createObsidianMarketplaceEntry(plugin, stats[plugin.id], deprecations[plugin.id]),
+      );
     }
     this.deprecationsLoaded = true;
   }
@@ -125,9 +138,15 @@ export class PluginMarketplace {
   private async loadObsidianReleasesNow(): Promise<void> {
     try {
       const [plugins, stats, deprecations] = await Promise.all([
-        this.dataSource.fetchJson<ObsidianCommunityPluginListItem[]>(OBSIDIAN_RELEASES_COMMUNITY_PLUGINS_URL),
-        this.dataSource.fetchJson<ObsidianCommunityPluginStatsMap>(OBSIDIAN_RELEASES_COMMUNITY_PLUGIN_STATS_URL),
-        this.dataSource.fetchJson<ObsidianCommunityPluginDeprecations>(OBSIDIAN_RELEASES_COMMUNITY_PLUGIN_DEPRECATION_URL),
+        this.dataSource.fetchJson<ObsidianCommunityPluginListItem[]>(
+          OBSIDIAN_RELEASES_COMMUNITY_PLUGINS_URL,
+        ),
+        this.dataSource.fetchJson<ObsidianCommunityPluginStatsMap>(
+          OBSIDIAN_RELEASES_COMMUNITY_PLUGIN_STATS_URL,
+        ),
+        this.dataSource.fetchJson<ObsidianCommunityPluginDeprecations>(
+          OBSIDIAN_RELEASES_COMMUNITY_PLUGIN_DEPRECATION_URL,
+        ),
       ]);
       this.registerObsidianReleaseData(plugins, stats, deprecations);
       this.loadState = "loaded";
@@ -188,10 +207,12 @@ export class PluginMarketplace {
     return [...this.entries.values()].filter((entry) => {
       if (query.author && entry.manifest.author !== query.author) return false;
       if (!text) return true;
-      return entry.manifest.name.toLowerCase().includes(text)
-        || entry.manifest.description?.toLowerCase().includes(text)
-        || entry.manifest.id.toLowerCase().includes(text)
-        || Boolean(entry.repo?.toLowerCase().includes(text));
+      return (
+        entry.manifest.name.toLowerCase().includes(text) ||
+        entry.manifest.description?.toLowerCase().includes(text) ||
+        entry.manifest.id.toLowerCase().includes(text) ||
+        Boolean(entry.repo?.toLowerCase().includes(text))
+      );
     });
   }
 
@@ -204,13 +225,15 @@ export class PluginMarketplace {
       manifest: { ...entry.manifest, version },
       entry: `plugins/${entry.manifest.id}/main.js`,
       styles: undefined,
-      source: entry.repo ? {
-        repo: entry.repo,
-        version,
-        manifestUrl: githubReleaseAssetUrl(entry.repo, version, "manifest.json"),
-        mainJsUrl: githubReleaseAssetUrl(entry.repo, version, "main.js"),
-        stylesUrl: githubReleaseAssetUrl(entry.repo, version, "styles.css"),
-      } : undefined,
+      source: entry.repo
+        ? {
+            repo: entry.repo,
+            version,
+            manifestUrl: githubReleaseAssetUrl(entry.repo, version, "manifest.json"),
+            mainJsUrl: githubReleaseAssetUrl(entry.repo, version, "main.js"),
+            stylesUrl: githubReleaseAssetUrl(entry.repo, version, "styles.css"),
+          }
+        : undefined,
     };
   }
 
@@ -223,29 +246,46 @@ export class PluginMarketplace {
     const entry = this.entries.get(id);
     if (!entry) return null;
     if (!entry.repo) return entry.manifest.version;
-    const manifest = normalizePluginManifest(await this.dataSource.fetchJson<PluginManifestInput>(githubRawUrl(entry.repo, "HEAD", "manifest.json")));
+    const manifest = normalizePluginManifest(
+      await this.dataSource.fetchJson<PluginManifestInput>(
+        githubRawUrl(entry.repo, "HEAD", "manifest.json"),
+      ),
+    );
     if (!manifest?.id || manifest.id !== id) return null;
     entry.latestManifest = manifest;
     const version = await this.selectCompatibleVersion(entry.repo, manifest, appVersion);
     if (!version) return null;
     entry.latestCompatibleVersion = version;
-    entry.manifest = version === manifest.version
-      ? { ...entry.manifest, ...manifest }
-      : { ...entry.manifest, version };
+    entry.manifest =
+      version === manifest.version
+        ? { ...entry.manifest, ...manifest }
+        : { ...entry.manifest, version };
     return version;
   }
 
-  private async selectCompatibleVersion(repo: string, manifest: PluginManifest, appVersion: string): Promise<string | null> {
+  private async selectCompatibleVersion(
+    repo: string,
+    manifest: PluginManifest,
+    appVersion: string,
+  ): Promise<string | null> {
     const version = manifest.version || null;
     if (!version) return null;
-    if (!appVersion || !manifest.minAppVersion || compareVersions(appVersion, manifest.minAppVersion) >= 0) {
+    if (
+      !appVersion ||
+      !manifest.minAppVersion ||
+      compareVersions(appVersion, manifest.minAppVersion) >= 0
+    ) {
       return version;
     }
     try {
-      const versions = await this.dataSource.fetchJson<Record<string, string>>(githubRawUrl(repo, "HEAD", "versions.json"));
-      return latestVersion(Object.entries(versions)
-        .filter(([, minAppVersion]) => compareVersions(appVersion, minAppVersion) >= 0)
-        .map(([candidate]) => candidate));
+      const versions = await this.dataSource.fetchJson<Record<string, string>>(
+        githubRawUrl(repo, "HEAD", "versions.json"),
+      );
+      return latestVersion(
+        Object.entries(versions)
+          .filter(([, minAppVersion]) => compareVersions(appVersion, minAppVersion) >= 0)
+          .map(([candidate]) => candidate),
+      );
     } catch {
       return null;
     }
@@ -257,7 +297,9 @@ export class PluginMarketplace {
   }
 
   private async loadDeprecationsNow(): Promise<void> {
-    const deprecations = await this.dataSource.fetchJson<ObsidianCommunityPluginDeprecations>(OBSIDIAN_RELEASES_COMMUNITY_PLUGIN_DEPRECATION_URL);
+    const deprecations = await this.dataSource.fetchJson<ObsidianCommunityPluginDeprecations>(
+      OBSIDIAN_RELEASES_COMMUNITY_PLUGIN_DEPRECATION_URL,
+    );
     this.deprecations.clear();
     for (const [id, versions] of Object.entries(deprecations)) {
       this.rememberDeprecations(id, versions);
@@ -287,8 +329,11 @@ function normalizeMarketplaceEntry(entry: MarketplacePluginEntry): MarketplacePl
   return {
     ...entry,
     manifest: normalizePluginManifest(entry.manifest),
-    latestManifest: entry.latestManifest ? normalizePluginManifest(entry.latestManifest) : undefined,
-    readmeUrl: entry.readmeUrl ?? (entry.repo ? githubRawUrl(entry.repo, "HEAD", "README.md") : undefined),
+    latestManifest: entry.latestManifest
+      ? normalizePluginManifest(entry.latestManifest)
+      : undefined,
+    readmeUrl:
+      entry.readmeUrl ?? (entry.repo ? githubRawUrl(entry.repo, "HEAD", "README.md") : undefined),
     readmeState: entry.readme !== undefined ? "loaded" : entry.readmeState,
     readmeError: entry.readme !== undefined ? null : entry.readmeError,
   };
@@ -299,8 +344,11 @@ function createObsidianMarketplaceEntry(
   stats: ObsidianCommunityPluginStats | undefined,
   deprecatedVersions: readonly string[] | undefined,
 ): MarketplacePluginEntry {
-  const usableVersions = marketplaceVersions(stats).filter((version) => !deprecatedVersions?.includes(version));
-  const version = latestVersion(usableVersions) ?? latestVersion(marketplaceVersions(stats)) ?? "0.0.0";
+  const usableVersions = marketplaceVersions(stats).filter(
+    (version) => !deprecatedVersions?.includes(version),
+  );
+  const version =
+    latestVersion(usableVersions) ?? latestVersion(marketplaceVersions(stats)) ?? "0.0.0";
   const updatedAt = formatMarketplaceDate(stats?.updated);
   return {
     manifest: {

@@ -63,9 +63,13 @@ export class AppLifecycle {
       return;
     }
     if (behavior === "daily") {
-      const dailyNotes = this.app.internalPlugins.getEnabledPluginById<DailyNotesController>("daily-notes");
+      const dailyNotes =
+        this.app.internalPlugins.getEnabledPluginById<DailyNotesController>("daily-notes");
       const file = await dailyNotes?.getDailyNote();
-      if (file) await this.app.workspace.getLeaf().openFile(file, { active: true, state: { mode: "source" } });
+      if (file)
+        await this.app.workspace
+          .getLeaf()
+          .openFile(file, { active: true, state: { mode: "source" } });
       return;
     }
     if (behavior.startsWith("file:")) {

@@ -12,7 +12,10 @@ class BrowserHistoryView extends View {
   }
 
   async setState(state: unknown, result?: ViewStateResult): Promise<void> {
-    this.payload = state && typeof state === "object" && !Array.isArray(state) ? state as Record<string, unknown> : {};
+    this.payload =
+      state && typeof state === "object" && !Array.isArray(state)
+        ? (state as Record<string, unknown>)
+        : {};
     if (result) result.history = true;
   }
 
@@ -68,15 +71,21 @@ describe("Workspace browser history parity", () => {
       const input = document.body.appendChild(document.createElement("input"));
       input.focus();
 
-      input.dispatchEvent(new MouseEvent("mousedown", { button: 1, bubbles: true, cancelable: true }));
-      window.dispatchEvent(new MouseEvent("mouseup", { button: 1, bubbles: true, cancelable: true }));
+      input.dispatchEvent(
+        new MouseEvent("mousedown", { button: 1, bubbles: true, cancelable: true }),
+      );
+      window.dispatchEvent(
+        new MouseEvent("mouseup", { button: 1, bubbles: true, cancelable: true }),
+      );
 
       const paste = new Event("paste", { bubbles: true, cancelable: true });
       window.dispatchEvent(paste);
 
       expect(paste.defaultPrevented).toBe(true);
 
-      window.dispatchEvent(new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true }));
+      window.dispatchEvent(
+        new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true }),
+      );
       const nextPaste = new Event("paste", { bubbles: true, cancelable: true });
       window.dispatchEvent(nextPaste);
 

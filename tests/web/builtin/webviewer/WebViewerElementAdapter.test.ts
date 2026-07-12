@@ -10,9 +10,11 @@ function makeIframeAdapter() {
 function makeWebviewAdapter() {
   // jsdom can't define a hyphen-less custom element ("webview" is an Electron
   // internal registration), so stub the detection probe instead.
-  const spy = vi.spyOn(customElements, "get").mockImplementation((name) =>
-    name === "webview" ? (class extends HTMLElement {}) as CustomElementConstructor : undefined,
-  );
+  const spy = vi
+    .spyOn(customElements, "get")
+    .mockImplementation((name) =>
+      name === "webview" ? (class extends HTMLElement {} as CustomElementConstructor) : undefined,
+    );
   try {
     return new WebViewerElementAdapter({ partition: "persist:test" });
   } finally {
@@ -24,7 +26,8 @@ describe("WebViewerElementAdapter zoom", () => {
   it("iframe mode zooms via CSS only — no native calls", () => {
     const adapter = makeIframeAdapter();
     const setZoomFactor = vi.fn<(zoom: number) => void>();
-    (adapter.element as unknown as { setZoomFactor: typeof setZoomFactor }).setZoomFactor = setZoomFactor;
+    (adapter.element as unknown as { setZoomFactor: typeof setZoomFactor }).setZoomFactor =
+      setZoomFactor;
     adapter.setZoom(1.5);
     expect(adapter.element.style.transform).toBe("scale(1.5)");
     adapter.element.dispatchEvent(new Event("load"));
@@ -37,7 +40,8 @@ describe("WebViewerElementAdapter zoom", () => {
     const adapter = makeWebviewAdapter();
     expect(adapter.mode).toBe("webview");
     const setZoomFactor = vi.fn<(zoom: number) => void>();
-    (adapter.element as unknown as { setZoomFactor: typeof setZoomFactor }).setZoomFactor = setZoomFactor;
+    (adapter.element as unknown as { setZoomFactor: typeof setZoomFactor }).setZoomFactor =
+      setZoomFactor;
     // Electron throws "The WebView must be attached to the DOM and the
     // dom-ready event emitted" for early calls — the adapter must not forward.
     adapter.setZoom(2);
@@ -73,7 +77,12 @@ describe("WebViewerElementAdapter readiness gating", () => {
   it("emits the bridge lifecycle on load and falls back to src for early reload", () => {
     const adapter = makeIframeAdapter();
     const events: string[] = [];
-    for (const name of ["dom-ready", "did-navigate", "did-stop-loading", "did-finish-load"] as const) {
+    for (const name of [
+      "dom-ready",
+      "did-navigate",
+      "did-stop-loading",
+      "did-finish-load",
+    ] as const) {
       adapter.webContents.on(name, () => events.push(name));
     }
     adapter.navigate("https://example.com", true);
@@ -94,7 +103,9 @@ describe("WebViewerElementAdapter guest navigation tracking", () => {
   it("webview mode adopts main-frame URLs from native navigation events and ignores subframes", () => {
     const adapter = makeWebviewAdapter();
     const commits: Array<{ url?: string; isMainFrame?: boolean }> = [];
-    adapter.webContents.on("did-navigate", (payload) => commits.push(payload as { url?: string; isMainFrame?: boolean }));
+    adapter.webContents.on("did-navigate", (payload) =>
+      commits.push(payload as { url?: string; isMainFrame?: boolean }),
+    );
 
     const nav = new Event("did-navigate") as Event & { url?: string; isMainFrame?: boolean };
     nav.url = "https://example.com/clicked";

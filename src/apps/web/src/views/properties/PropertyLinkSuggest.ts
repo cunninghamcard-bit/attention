@@ -2,7 +2,10 @@ import { computeBlockIdInsertion, createBlockId } from "../../metadata/BlockCach
 import type { LinkFileSuggestion } from "../../metadata/LinkSuggestionManager";
 import type { PropertyWidgetContext } from "./PropertyTypes";
 
-export function bindPropertyLinkSuggest(inputEl: HTMLInputElement, context: PropertyWidgetContext): PropertyLinkSuggestController | null {
+export function bindPropertyLinkSuggest(
+  inputEl: HTMLInputElement,
+  context: PropertyWidgetContext,
+): PropertyLinkSuggestController | null {
   if (!context.app || !context.sourcePath) return null;
   return new PropertyLinkSuggestController(inputEl, context);
 }
@@ -13,7 +16,10 @@ class PropertyLinkSuggestController {
   private containerEl: HTMLElement | null = null;
   private lastQuery = "";
 
-  constructor(readonly inputEl: HTMLInputElement, readonly context: PropertyWidgetContext) {
+  constructor(
+    readonly inputEl: HTMLInputElement,
+    readonly context: PropertyWidgetContext,
+  ) {
     inputEl.addEventListener("input", () => void this.refresh());
     inputEl.addEventListener("keydown", (event) => void this.handleKeydown(event));
     inputEl.addEventListener("blur", () => {
@@ -32,7 +38,11 @@ class PropertyLinkSuggestController {
       return;
     }
     this.lastQuery = trigger.query;
-    const values = await this.app.linkSuggestions.getSuggestionsAsync(null, trigger.query, this.context.sourcePath ?? "");
+    const values = await this.app.linkSuggestions.getSuggestionsAsync(
+      null,
+      trigger.query,
+      this.context.sourcePath ?? "",
+    );
     if (this.lastQuery !== trigger.query) return;
     if (values.length === 0) {
       this.close();
@@ -98,10 +108,14 @@ class PropertyLinkSuggestController {
     this.inputEl.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
-  private async writeBlockId(value: Extract<LinkFileSuggestion, { type: "block" }>, blockId: string): Promise<void> {
+  private async writeBlockId(
+    value: Extract<LinkFileSuggestion, { type: "block" }>,
+    blockId: string,
+  ): Promise<void> {
     if (!this.app) return;
     const insertion = computeBlockIdInsertion(value, blockId);
-    const update = (source: string) => `${source.slice(0, insertion.blockEnd)}${insertion.addition}${source.slice(insertion.blockEnd)}`;
+    const update = (source: string) =>
+      `${source.slice(0, insertion.blockEnd)}${insertion.addition}${source.slice(insertion.blockEnd)}`;
     if (this.context.writeFile) await this.context.writeFile(value.file, update);
     else await this.app.vault.process(value.file, update);
     value.node.id = blockId;
@@ -110,7 +124,13 @@ class PropertyLinkSuggestController {
   }
 
   private isAcceptKey(event: KeyboardEvent): boolean {
-    return event.key === "Enter" || event.key === "Tab" || event.key === "#" || event.key === "^" || event.key === "|";
+    return (
+      event.key === "Enter" ||
+      event.key === "Tab" ||
+      event.key === "#" ||
+      event.key === "^" ||
+      event.key === "|"
+    );
   }
 
   private getTrigger(): { openIndex: number; end: number; query: string } | null {
@@ -172,7 +192,9 @@ class PropertyLinkSuggestController {
     if (this.values.length === 0) return;
     this.selectedIndex = (index + this.values.length) % this.values.length;
     const items = this.containerEl?.querySelectorAll<HTMLElement>(".suggestion-item") ?? [];
-    items.forEach((item, itemIndex) => item.classList.toggle("is-selected", itemIndex === this.selectedIndex));
+    items.forEach((item, itemIndex) =>
+      item.classList.toggle("is-selected", itemIndex === this.selectedIndex),
+    );
   }
 
   private close(): void {

@@ -33,14 +33,27 @@ export function resolveGhBinary(exists: (path: string) => boolean = existsSync):
 }
 
 export function createElectronGitApi(execFileImpl: ExecFileFn = execFile): ElectronGitApi {
-  const run = (binary: string, args: string[], cwd: string, input?: string): Promise<GitExecResult> =>
+  const run = (
+    binary: string,
+    args: string[],
+    cwd: string,
+    input?: string,
+  ): Promise<GitExecResult> =>
     new Promise((resolve) => {
-      const child = execFileImpl(binary, args, { cwd, maxBuffer: 32 * 1024 * 1024 }, (error, stdout, stderr) => {
-        const code = error && typeof (error as { code?: unknown }).code === "number"
-          ? (error as { code: number }).code
-          : error ? 1 : 0;
-        resolve({ code, stdout: String(stdout), stderr: String(stderr) });
-      });
+      const child = execFileImpl(
+        binary,
+        args,
+        { cwd, maxBuffer: 32 * 1024 * 1024 },
+        (error, stdout, stderr) => {
+          const code =
+            error && typeof (error as { code?: unknown }).code === "number"
+              ? (error as { code: number }).code
+              : error
+                ? 1
+                : 0;
+          resolve({ code, stdout: String(stdout), stderr: String(stderr) });
+        },
+      );
       if (input !== undefined && child.stdin) {
         child.stdin.write(input);
         child.stdin.end();

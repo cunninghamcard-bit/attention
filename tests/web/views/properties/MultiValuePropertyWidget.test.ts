@@ -19,29 +19,31 @@ describe("MultiValuePropertyWidget", () => {
   it("renders multitext values as removable multi-select pills and commits typed entries", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const source = await app.vault.create("Note.md", [
-      "---",
-      "items:",
-      "  - Alpha",
-      "  - Beta",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Note.md",
+      ["---", "items:", "  - Alpha", "  - Beta", "---", "Body"].join("\n"),
+    );
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const rowEl = view.metadataContainerEl.querySelector<HTMLElement>('[data-property-key="items"]');
+    const rowEl = view.metadataContainerEl.querySelector<HTMLElement>(
+      '[data-property-key="items"]',
+    );
     const inputEl = rowEl?.querySelector<HTMLInputElement>(".multi-select-input");
     if (!rowEl || !inputEl) throw new Error("missing items multi-select");
 
-    expect([...rowEl.querySelectorAll(".multi-select-pill-content")].map((el) => el.textContent)).toEqual(["Alpha", "Beta"]);
+    expect(
+      [...rowEl.querySelectorAll(".multi-select-pill-content")].map((el) => el.textContent),
+    ).toEqual(["Alpha", "Beta"]);
 
     rowEl.querySelector<HTMLButtonElement>(".multi-select-pill-remove-button")?.click();
     expect(view.getViewData()).toContain("  - Beta");
     expect(view.getViewData()).not.toContain("  - Alpha");
 
-    const rerenderedInput = view.metadataContainerEl.querySelector<HTMLInputElement>('[data-property-key="items"] .multi-select-input');
+    const rerenderedInput = view.metadataContainerEl.querySelector<HTMLInputElement>(
+      '[data-property-key="items"] .multi-select-input',
+    );
     if (!rerenderedInput) throw new Error("missing rerendered input");
     rerenderedInput.value = "Gamma";
     rerenderedInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
@@ -49,30 +51,31 @@ describe("MultiValuePropertyWidget", () => {
     expect(view.getViewData()).toContain("  - Beta");
     expect(view.getViewData()).toContain("  - Gamma");
 
-    const finalInput = view.metadataContainerEl.querySelector<HTMLInputElement>('[data-property-key="items"] .multi-select-input');
+    const finalInput = view.metadataContainerEl.querySelector<HTMLInputElement>(
+      '[data-property-key="items"] .multi-select-input',
+    );
     if (!finalInput) throw new Error("missing final input");
     finalInput.value = "[[Manual";
     finalInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    expect(view.getViewData()).toContain("  - \"[[Manual]]\"");
+    expect(view.getViewData()).toContain('  - "[[Manual]]"');
   });
 
   it("adds accepted property link suggestions as multitext pills", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const source = await app.vault.create("Daily/Today.md", [
-      "---",
-      "items:",
-      "  - Existing",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Daily/Today.md",
+      ["---", "items:", "  - Existing", "---", "Body"].join("\n"),
+    );
     await app.vault.create("Notes/Target.md", "Target body");
     app.vault.setConfig("newLinkFormat", "relative");
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const inputEl = view.metadataContainerEl.querySelector<HTMLInputElement>('[data-property-key="items"] .multi-select-input');
+    const inputEl = view.metadataContainerEl.querySelector<HTMLInputElement>(
+      '[data-property-key="items"] .multi-select-input',
+    );
     if (!inputEl) throw new Error("missing items input");
 
     inputEl.value = "[[Tar";
@@ -83,33 +86,35 @@ describe("MultiValuePropertyWidget", () => {
     await waitForSuggestions();
 
     expect(view.getViewData()).toContain("  - Existing");
-    expect(view.getViewData()).toContain("  - \"[[../Notes/Target|Target]]\"");
+    expect(view.getViewData()).toContain('  - "[[../Notes/Target|Target]]"');
   });
 
   it("edits existing multitext pills and preserves wikilink normalization", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const source = await app.vault.create("Note.md", [
-      "---",
-      "items:",
-      "  - Alpha",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Note.md",
+      ["---", "items:", "  - Alpha", "---", "Body"].join("\n"),
+    );
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const pill = view.metadataContainerEl.querySelector<HTMLElement>('[data-property-key="items"] .multi-select-pill');
+    const pill = view.metadataContainerEl.querySelector<HTMLElement>(
+      '[data-property-key="items"] .multi-select-pill',
+    );
     if (!pill) throw new Error("missing item pill");
     pill.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
-    const editInput = [...view.metadataContainerEl.querySelectorAll<HTMLInputElement>('[data-property-key="items"] .multi-select-input')]
-      .find((input) => input.value === "Alpha");
+    const editInput = [
+      ...view.metadataContainerEl.querySelectorAll<HTMLInputElement>(
+        '[data-property-key="items"] .multi-select-input',
+      ),
+    ].find((input) => input.value === "Alpha");
     if (!editInput) throw new Error("missing item edit input");
     editInput.value = "[[Edited";
     editInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
 
-    expect(view.getViewData()).toContain("  - \"[[Edited]]\"");
+    expect(view.getViewData()).toContain('  - "[[Edited]]"');
     expect(view.getViewData()).not.toContain("  - Alpha");
   });
 });

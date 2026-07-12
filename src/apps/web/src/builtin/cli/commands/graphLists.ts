@@ -41,7 +41,9 @@ export function registerGraphListCommands(app: App): void {
       entries.sort((a, b) => alphaCompare(a.path, b.path));
       const counts = Boolean(params.counts);
       const header = counts ? ["file", "count"] : ["file"];
-      const rows = entries.map((entry) => counts ? [entry.path, String(entry.count)] : [entry.path]);
+      const rows = entries.map((entry) =>
+        counts ? [entry.path, String(entry.count)] : [entry.path],
+      );
       return cli.formatTable(header, rows, params.format);
     },
   );
@@ -77,10 +79,18 @@ export function registerGraphListCommands(app: App): void {
       if (entries.length === 0) return "No unresolved links found.";
       entries.sort((a, b) => alphaCompare(a.link, b.link));
       // verbose wins over counts when both are passed.
-      const header = params.verbose ? ["link", "count", "sources"] : params.counts ? ["link", "count"] : ["link"];
-      const rows = entries.map((entry) => params.verbose
-        ? [entry.link, String(entry.count), entry.sources.join(", ")]
-        : params.counts ? [entry.link, String(entry.count)] : [entry.link]);
+      const header = params.verbose
+        ? ["link", "count", "sources"]
+        : params.counts
+          ? ["link", "count"]
+          : ["link"];
+      const rows = entries.map((entry) =>
+        params.verbose
+          ? [entry.link, String(entry.count), entry.sources.join(", ")]
+          : params.counts
+            ? [entry.link, String(entry.count)]
+            : [entry.link],
+      );
       return cli.formatTable(header, rows, params.format);
     },
   );
@@ -101,7 +111,10 @@ export function registerGraphListCommands(app: App): void {
       for (const source of Object.keys(resolved)) {
         for (const target of Object.keys(resolved[source])) targets.add(target);
       }
-      const orphans = app.vault.getFiles().map((file) => file.path).filter((path) => !targets.has(path));
+      const orphans = app.vault
+        .getFiles()
+        .map((file) => file.path)
+        .filter((path) => !targets.has(path));
       if (params.total) return String(orphans.length);
       if (orphans.length === 0) return "No orphan files found.";
       return orphans.sort(alphaCompare).join("\n");
@@ -119,10 +132,13 @@ export function registerGraphListCommands(app: App): void {
       // Only RESOLVED outgoing links count — a file whose links are all
       // unresolved is still a dead end (unresolvedLinks is not consulted).
       const resolved = app.metadataCache.resolvedLinks;
-      const deadends = app.vault.getFiles().map((file) => file.path).filter((path) => {
-        const links = resolved[path];
-        return !links || Object.keys(links).length === 0;
-      });
+      const deadends = app.vault
+        .getFiles()
+        .map((file) => file.path)
+        .filter((path) => {
+          const links = resolved[path];
+          return !links || Object.keys(links).length === 0;
+        });
       if (params.total) return String(deadends.length);
       if (deadends.length === 0) return "No dead-end files found.";
       return deadends.sort(alphaCompare).join("\n");

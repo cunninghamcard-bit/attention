@@ -1,13 +1,20 @@
 import { JSDOM } from "jsdom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { closeTopActiveCloseable, getActiveCloseables, registerActiveCloseable, unregisterActiveCloseable } from "@web/ui/ActiveCloseableRegistry";
+import {
+  closeTopActiveCloseable,
+  getActiveCloseables,
+  registerActiveCloseable,
+  unregisterActiveCloseable,
+} from "@web/ui/ActiveCloseableRegistry";
 import { Menu, MenuItem } from "@web/ui/Menu";
 
 let dom: JSDOM | null = null;
 
 beforeEach(() => {
-  dom = new JSDOM("<!doctype html><html><body><button id=\"anchor\"></button></body></html>", { pretendToBeVisual: true });
+  dom = new JSDOM('<!doctype html><html><body><button id="anchor"></button></body></html>', {
+    pretendToBeVisual: true,
+  });
   vi.stubGlobal("window", dom.window);
   vi.stubGlobal("document", dom.window.document);
   vi.stubGlobal("HTMLElement", dom.window.HTMLElement);
@@ -31,14 +38,19 @@ afterEach(() => {
 });
 
 function titles(menu: Menu): string[] {
-  return [...menu.dom.querySelectorAll<HTMLElement>(".menu-item-title")].map((el) => el.textContent ?? "");
+  return [...menu.dom.querySelectorAll<HTMLElement>(".menu-item-title")].map(
+    (el) => el.textContent ?? "",
+  );
 }
 
 describe("Menu Obsidian behavior", () => {
   it("constructs Obsidian's menu shell and renders items only when shown", () => {
     const menu = new Menu(document);
 
-    expect([...menu.dom.children].map((child) => child.className)).toEqual(["menu-grabber", "menu-scroll"]);
+    expect([...menu.dom.children].map((child) => child.className)).toEqual([
+      "menu-grabber",
+      "menu-scroll",
+    ]);
     expect(menu.dom.getAttribute("role")).toBeNull();
     expect(menu.selected).toBe(-1);
     expect(menu.useNativeMenu).toBe(Menu.useNativeMenu);
@@ -142,7 +154,9 @@ describe("Menu Obsidian behavior", () => {
   });
 
   it("uses event.doc when showing a menu from a popout document event", () => {
-    const popout = new JSDOM("<!doctype html><html><body></body></html>", { pretendToBeVisual: true });
+    const popout = new JSDOM("<!doctype html><html><body></body></html>", {
+      pretendToBeVisual: true,
+    });
     try {
       const menu = new Menu(document);
       const event = new MouseEvent("contextmenu", { clientX: 30, clientY: 40 });
@@ -171,7 +185,9 @@ describe("Menu Obsidian behavior", () => {
 
     expect(titles(menu)).toEqual(["Actions", "Delete"]);
     expect(menu.dom.querySelector(".menu-item-icon svg.lucide-copy")).not.toBeNull();
-    const submenuItem = menu.items.find((item): item is MenuItem => item instanceof MenuItem && !!item.submenu);
+    const submenuItem = menu.items.find(
+      (item): item is MenuItem => item instanceof MenuItem && !!item.submenu,
+    );
     const submenu = submenuItem?.submenu;
     expect(submenu && titles(submenu)).toEqual(["Copy", "Paste"]);
     expect(submenu?.parentMenu).toBeNull();
@@ -190,7 +206,9 @@ describe("Menu Obsidian behavior", () => {
       .setSectionSubmenu("info", { title: "Info", icon: "lucide-info" });
     menu.addItem((item) => item.setTitle("Copy path").setSection("info.copy"));
     menu.showAtPosition({ x: 10, y: 20 });
-    const submenuItem = menu.items.find((item): item is MenuItem => item instanceof MenuItem && !!item.submenu);
+    const submenuItem = menu.items.find(
+      (item): item is MenuItem => item instanceof MenuItem && !!item.submenu,
+    );
     if (!submenuItem) throw new Error("missing submenu item");
 
     submenuItem.dom.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
@@ -222,7 +240,9 @@ describe("Menu Obsidian behavior", () => {
     menu.addItem((item) => item.setTitle("Tri-state").setChecked(true).setChecked(null));
     menu.showAtPosition({ x: 10, y: 20 });
 
-    const item = menu.items.find((candidate): candidate is MenuItem => candidate instanceof MenuItem);
+    const item = menu.items.find(
+      (candidate): candidate is MenuItem => candidate instanceof MenuItem,
+    );
     const itemEl = menu.dom.querySelector<HTMLElement>(".menu-item");
 
     expect(item?.checked).toBeNull();
@@ -342,7 +362,12 @@ describe("Menu Obsidian behavior", () => {
     const anchor = document.querySelector<HTMLElement>("#anchor");
     if (!anchor) throw new Error("missing anchor");
     let menu: Menu | null = null;
-    const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 30, clientY: 40 });
+    const event = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 30,
+      clientY: 40,
+    });
 
     anchor.addEventListener("contextmenu", (evt) => {
       menu = Menu.forEvent(evt);
@@ -412,7 +437,9 @@ describe("Menu Obsidian behavior", () => {
       submenu.addItem((child) => child.setTitle("Child").onClick(onClick));
     });
     menu.showAtPosition({ x: 10, y: 20 });
-    const parentItem = menu.items.find((item): item is MenuItem => item instanceof MenuItem && item.submenu !== null);
+    const parentItem = menu.items.find(
+      (item): item is MenuItem => item instanceof MenuItem && item.submenu !== null,
+    );
     if (!parentItem || !submenu) throw new Error("missing submenu");
 
     menu.openSubmenu(parentItem);

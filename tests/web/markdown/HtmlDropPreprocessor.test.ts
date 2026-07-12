@@ -24,7 +24,9 @@ describe("preprocessHtmlDrop", () => {
     const jpeg = makeDataUrl("image/jpeg", 800, 9);
     const short = "data:image/png;base64,AQID";
 
-    const result = preprocessHtmlDrop(`<p>Before</p><img src="${png}"><img src="${jpeg}"><img src="${short}"><p>After</p>`);
+    const result = preprocessHtmlDrop(
+      `<p>Before</p><img src="${png}"><img src="${jpeg}"><img src="${short}"><p>After</p>`,
+    );
 
     expect(result.detachedImages).toHaveLength(2);
     expect(result.detachedImages.map((image) => image.extension)).toEqual(["png", "jpg"]);
@@ -38,22 +40,28 @@ describe("preprocessHtmlDrop", () => {
   });
 
   it("rewrites resource-prefixed media src through the supplied linktext resolver", () => {
-    const result = preprocessHtmlDrop(`
+    const result = preprocessHtmlDrop(
+      `
       <p><img src="app://resource/Users/me/Vault/image.png?123" alt="Image"></p>
       <video><source src="app://resource/Users/me/Vault/movie.mp4"></video>
       <iframe src="app://resource/Users/me/Vault/embed.html"></iframe>
-    `, {
-      resourcePathPrefix: "app://resource/",
-      resolveMediaLinktext: (fileUrl) => ({
-        "file:///Users/me/Vault/image.png?123": "image.png",
-        "file:///Users/me/Vault/movie.mp4": "movie.mp4",
-        "file:///Users/me/Vault/embed.html": "embed.html",
-      })[fileUrl] ?? null,
-    });
+    `,
+      {
+        resourcePathPrefix: "app://resource/",
+        resolveMediaLinktext: (fileUrl) =>
+          ({
+            "file:///Users/me/Vault/image.png?123": "image.png",
+            "file:///Users/me/Vault/movie.mp4": "movie.mp4",
+            "file:///Users/me/Vault/embed.html": "embed.html",
+          })[fileUrl] ?? null,
+      },
+    );
 
     expect(result.html).toContain('<img src="image.png" alt="Image">');
     expect(result.html).toContain('<source src="movie.mp4">');
-    expect(result.html).toContain('<iframe src="embed.html" sandbox="allow-forms allow-presentation allow-same-origin allow-scripts allow-modals"></iframe>');
+    expect(result.html).toContain(
+      '<iframe src="embed.html" sandbox="allow-forms allow-presentation allow-same-origin allow-scripts allow-modals"></iframe>',
+    );
   });
 
   it("sanitizes iframe sandbox and allow tokens like the original hook", () => {

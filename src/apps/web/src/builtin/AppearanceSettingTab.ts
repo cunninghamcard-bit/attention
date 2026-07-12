@@ -34,17 +34,23 @@ export class AppearanceSettingTab implements SettingTab {
     new Setting(baseGroup.itemsEl)
       .setName("Base color scheme")
       .setDesc("Matches Obsidian's obsidian/moonstone/system base theme options.")
-      .addDropdown((dropdown) => dropdown
-        .addOption("obsidian", "Dark")
-        .addOption("moonstone", "Light")
-        .addOption("system", "Adapt to system")
-        .setValue(settings.baseTheme)
-        .onChange((value) => this.app.appearance.setBaseTheme(value as BaseTheme)));
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("obsidian", "Dark")
+          .addOption("moonstone", "Light")
+          .addOption("system", "Adapt to system")
+          .setValue(settings.baseTheme)
+          .onChange((value) => this.app.appearance.setBaseTheme(value as BaseTheme)),
+      );
 
     new Setting(baseGroup.itemsEl)
       .setName("Accent color")
       .setDesc("Writes accent HSL variables on document.body.")
-      .addText((text) => text.setValue(settings.accentColor).onChange((value) => this.app.appearance.setAccentColor(value)));
+      .addText((text) =>
+        text
+          .setValue(settings.accentColor)
+          .onChange((value) => this.app.appearance.setAccentColor(value)),
+      );
 
     const themeGroup = new SettingGroup(this.containerEl).setHeading("Themes");
     new Setting(themeGroup.itemsEl)
@@ -59,9 +65,11 @@ export class AppearanceSettingTab implements SettingTab {
     new Setting(themeGroup.itemsEl)
       .setName("Community themes")
       .setDesc("Browse and install themes from the official catalog.")
-      .addButton((button) => button.setButtonText("Browse").onClick(() => {
-        new ThemeMarketplaceModal(this.app).open();
-      }));
+      .addButton((button) =>
+        button.setButtonText("Browse").onClick(() => {
+          new ThemeMarketplaceModal(this.app).open();
+        }),
+      );
 
     const snippetsGroup = new SettingGroup(this.containerEl).setHeading("CSS snippets");
     const snippets = this.app.cssSnippets.listSnippets();
@@ -75,7 +83,11 @@ export class AppearanceSettingTab implements SettingTab {
       new Setting(snippetsGroup.itemsEl)
         .setName(snippet.name)
         .setDesc(snippet.id)
-        .addToggle((toggle) => toggle.setValue(snippet.enabled).onChange((value) => this.app.cssSnippets.setEnabled(snippet.id, value)));
+        .addToggle((toggle) =>
+          toggle
+            .setValue(snippet.enabled)
+            .onChange((value) => this.app.cssSnippets.setEnabled(snippet.id, value)),
+        );
     }
   }
 

@@ -64,14 +64,18 @@ export class MobileSettingTab implements SettingTab {
         return;
       }
       for (const [index, id] of ids.entries()) {
-        selectedEl.appendChild(this.createSelectedRow(id, index, renderSelected, renderMore, renderResults));
+        selectedEl.appendChild(
+          this.createSelectedRow(id, index, renderSelected, renderMore, renderResults),
+        );
       }
     };
 
     const renderMore = () => {
       moreEl.replaceChildren();
       const selected = new Set(this.getToolbarCommands());
-      const moreCommands = this.app.commands.getEditorCommands().filter((command) => !selected.has(command.id));
+      const moreCommands = this.app.commands
+        .getEditorCommands()
+        .filter((command) => !selected.has(command.id));
       if (moreCommands.length === 0) {
         const emptyEl = document.createElement("div");
         emptyEl.className = "mobile-option-setting-item";
@@ -90,13 +94,14 @@ export class MobileSettingTab implements SettingTab {
       if (!query) return;
       const selected = new Set(this.getToolbarCommands());
       const fuzzyQuery = prepareFuzzyQuery(query);
-      const editorCommandIds = new Set(this.app.commands.getEditorCommands().map((command) => command.id));
-      const matches = this.app.commands.getCommands()
-        .flatMap((command) => {
-          if (selected.has(command.id) || editorCommandIds.has(command.id)) return [];
-          const match = fuzzyMatch(fuzzyQuery, command.name);
-          return match ? [{ item: command, match }] : [];
-        });
+      const editorCommandIds = new Set(
+        this.app.commands.getEditorCommands().map((command) => command.id),
+      );
+      const matches = this.app.commands.getCommands().flatMap((command) => {
+        if (selected.has(command.id) || editorCommandIds.has(command.id)) return [];
+        const match = fuzzyMatch(fuzzyQuery, command.name);
+        return match ? [{ item: command, match }] : [];
+      });
       sortFuzzySuggestions(matches);
       for (const { item: command } of matches.slice(0, 20)) {
         const itemEl = document.createElement("div");
@@ -122,7 +127,13 @@ export class MobileSettingTab implements SettingTab {
     this.containerEl.remove();
   }
 
-  private createSelectedRow(id: string, index: number, renderSelected: () => void, renderMore: () => void, renderResults: () => void): HTMLElement {
+  private createSelectedRow(
+    id: string,
+    index: number,
+    renderSelected: () => void,
+    renderMore: () => void,
+    renderResults: () => void,
+  ): HTMLElement {
     const command = this.app.commands.findCommand(id);
     const rowEl = document.createElement("div");
     rowEl.className = "mobile-option-setting-item";
@@ -144,7 +155,10 @@ export class MobileSettingTab implements SettingTab {
       renderMore();
       renderResults();
     });
-    deleteEl.classList.add("mobile-option-setting-item-remove-icon", "mobile-option-setting-item-option-icon");
+    deleteEl.classList.add(
+      "mobile-option-setting-item-remove-icon",
+      "mobile-option-setting-item-option-icon",
+    );
     const upEl = this.makeIconButton("lucide-chevron-up", "Move up", () => {
       this.moveCommand(index, -1);
       renderSelected();
@@ -154,7 +168,10 @@ export class MobileSettingTab implements SettingTab {
       renderSelected();
     });
     const dragEl = this.makeIconButton("lucide-menu", "Drag to rearrange");
-    dragEl.classList.add("mobile-option-setting-item-option-icon", "mobile-option-setting-drag-icon");
+    dragEl.classList.add(
+      "mobile-option-setting-item-option-icon",
+      "mobile-option-setting-drag-icon",
+    );
     dragEl.draggable = true;
     dragEl.addEventListener("dragstart", (event) => {
       event.dataTransfer?.setData("text/plain", id);
@@ -163,7 +180,11 @@ export class MobileSettingTab implements SettingTab {
     return rowEl;
   }
 
-  private createMoreRow(command: Command, renderSelected: () => void, renderMore: () => void): HTMLElement {
+  private createMoreRow(
+    command: Command,
+    renderSelected: () => void,
+    renderMore: () => void,
+  ): HTMLElement {
     const rowEl = document.createElement("div");
     rowEl.className = "mobile-option-setting-item";
     rowEl.dataset.commandId = command.id;
@@ -172,7 +193,10 @@ export class MobileSettingTab implements SettingTab {
       renderSelected();
       renderMore();
     });
-    addEl.classList.add("mobile-option-setting-item-add-icon", "mobile-option-setting-item-option-icon");
+    addEl.classList.add(
+      "mobile-option-setting-item-add-icon",
+      "mobile-option-setting-item-option-icon",
+    );
     const nameEl = document.createElement("div");
     nameEl.className = "mobile-option-setting-item-name";
     nameEl.textContent = command.name;
@@ -191,7 +215,9 @@ export class MobileSettingTab implements SettingTab {
 
   private getToolbarCommands(): string[] {
     const configured = this.app.vault.getConfig<unknown>("mobileToolbarCommands");
-    return Array.isArray(configured) ? configured.filter((id): id is string => typeof id === "string") : [];
+    return Array.isArray(configured)
+      ? configured.filter((id): id is string => typeof id === "string")
+      : [];
   }
 
   private getValidToolbarCommands(): string[] {

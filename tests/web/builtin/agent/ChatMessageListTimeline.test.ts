@@ -17,7 +17,9 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K>
 type Bare = DistributiveOmit<AgentEvent, "seq" | "agentId">;
 
 function feed(session: Agent, list: Bare[], startSeq = 1): number {
-  list.forEach((event, index) => session.applyEvent({ ...event, seq: startSeq + index, agentId: "t1" } as AgentEvent));
+  list.forEach((event, index) =>
+    session.applyEvent({ ...event, seq: startSeq + index, agentId: "t1" } as AgentEvent),
+  );
   return startSeq + list.length;
 }
 
@@ -48,13 +50,21 @@ describe("tool timeline grouping", () => {
     const timelines = parentEl.querySelectorAll(".chat-tool-timeline");
     expect(timelines).toHaveLength(1);
     expect(timelines[0].querySelectorAll(".chat-part-tool")).toHaveLength(2);
-    expect(timelines[0].querySelector(".chat-tool-timeline-summary")?.textContent).toBe("2 tool calls · running");
+    expect(timelines[0].querySelector(".chat-tool-timeline-summary")?.textContent).toBe(
+      "2 tool calls · running",
+    );
     expect(timelines[0].classList.contains("is-running")).toBe(true);
     expect(timelines[0].classList.contains("is-collapsed")).toBe(false);
 
-    seq = feed(session, [{ type: "part.closed", messageId: "a1", partIndex: 2, result: "done" }], seq);
+    seq = feed(
+      session,
+      [{ type: "part.closed", messageId: "a1", partIndex: 2, result: "done" }],
+      seq,
+    );
     list.sync();
-    expect(timelines[0].querySelector(".chat-tool-timeline-summary")?.textContent).toBe("2 tool calls · done");
+    expect(timelines[0].querySelector(".chat-tool-timeline-summary")?.textContent).toBe(
+      "2 tool calls · done",
+    );
     expect(timelines[0].classList.contains("is-collapsed")).toBe(true);
   });
 
@@ -90,12 +100,16 @@ describe("tool timeline grouping", () => {
     list.sync();
     list.sync();
 
-    const children = [...parentEl.querySelector(".chat-message-list")!.children].map((el) => el.className.split(" ")[0]);
+    const children = [...parentEl.querySelector(".chat-message-list")!.children].map(
+      (el) => el.className.split(" ")[0],
+    );
     const dividerIndex = children.indexOf("chat-compact-divider");
     const firstMessageIndex = children.indexOf("chat-message");
     expect(dividerIndex).toBeGreaterThan(firstMessageIndex);
     expect(children.filter((name) => name === "chat-compact-divider")).toHaveLength(1);
-    expect(parentEl.querySelector(".chat-compact-label")?.textContent).toBe("Context compacted · 52k tokens condensed");
+    expect(parentEl.querySelector(".chat-compact-label")?.textContent).toBe(
+      "Context compacted · 52k tokens condensed",
+    );
     expect(children.lastIndexOf("chat-message")).toBeGreaterThan(dividerIndex);
   });
 
@@ -130,8 +144,12 @@ describe("tool timeline grouping", () => {
         { type: "message.started", messageId: "a1", role: "assistant" },
       ]);
       list.sync();
-      expect(parentEl.querySelector('.chat-message[data-role="user"] .chat-message-action')?.textContent).toBe("retry");
-      expect(parentEl.querySelector('.chat-message[data-role="assistant"] .chat-message-action')).toBeNull();
+      expect(
+        parentEl.querySelector('.chat-message[data-role="user"] .chat-message-action')?.textContent,
+      ).toBe("retry");
+      expect(
+        parentEl.querySelector('.chat-message[data-role="assistant"] .chat-message-action'),
+      ).toBeNull();
     } finally {
       unregister();
     }
@@ -181,7 +199,9 @@ describe("permission cards", () => {
     const list = new ChatMessageList(parentEl, session);
     list.load();
 
-    feed(session, [{ type: "permission.requested", requestId: "p1", toolName: "Bash", input: "rm -rf /tmp/x" }]);
+    feed(session, [
+      { type: "permission.requested", requestId: "p1", toolName: "Bash", input: "rm -rf /tmp/x" },
+    ]);
     list.sync();
 
     const cardEl = parentEl.querySelector('.chat-permission[data-request-id="p1"]') as HTMLElement;

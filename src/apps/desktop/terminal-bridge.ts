@@ -52,13 +52,17 @@ interface NodePtyProcess {
 }
 
 interface NodePtyModule {
-  spawn(shell: string, args: string[], options: {
-    name: string;
-    cols: number;
-    rows: number;
-    cwd: string;
-    env: Record<string, string | undefined>;
-  }): NodePtyProcess;
+  spawn(
+    shell: string,
+    args: string[],
+    options: {
+      name: string;
+      cols: number;
+      rows: number;
+      cwd: string;
+      env: Record<string, string | undefined>;
+    },
+  ): NodePtyProcess;
 }
 
 export function createElectronTerminalApi(
@@ -121,10 +125,11 @@ export function createElectronTerminalApi(
           }
         },
         onData: (callback) => child.onData(callback),
-        onExit: (callback) => child.onExit(({ exitCode }) => {
-          killed = true;
-          callback(exitCode);
-        }),
+        onExit: (callback) =>
+          child.onExit(({ exitCode }) => {
+            killed = true;
+            callback(exitCode);
+          }),
       };
     },
   };

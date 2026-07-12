@@ -9,18 +9,28 @@ export class OutlineView extends ItemView {
   private file: TFile | null = null;
   private codeView: CodeFileView | null = null;
 
-  getViewType(): string { return "outline"; }
-  getDisplayText(): string { return "Outline"; }
-  getIcon(): string { return "lucide-list"; }
+  getViewType(): string {
+    return "outline";
+  }
+  getDisplayText(): string {
+    return "Outline";
+  }
+  getIcon(): string {
+    return "lucide-list";
+  }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("outline-view");
-    this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.updateFromActiveFile()));
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", () => this.updateFromActiveFile()),
+    );
     this.registerEvent(this.app.metadataCache.on("changed", () => this.render()));
     // Code files publish symbol changes (edits, language pack loaded) here.
-    this.registerEvent(this.app.workspace.on("code-symbols-change", (view: CodeFileView) => {
-      if (view === this.codeView) this.render();
-    }));
+    this.registerEvent(
+      this.app.workspace.on("code-symbols-change", (view: CodeFileView) => {
+        if (view === this.codeView) this.render();
+      }),
+    );
     this.updateFromActiveFile();
   }
 
@@ -94,11 +104,18 @@ export class OutlineView extends ItemView {
     parentEl.appendChild(itemEl);
   }
 
-  private renderHeading(file: TFile, heading: NonNullable<CachedMetadata["headings"]>[number], parentEl: HTMLElement): void {
+  private renderHeading(
+    file: TFile,
+    heading: NonNullable<CachedMetadata["headings"]>[number],
+    parentEl: HTMLElement,
+  ): void {
     const doc = parentEl.ownerDocument;
     const itemEl = doc.createElement("div");
     itemEl.className = `tree-item outline-heading mod-heading-${heading.level}`;
-    itemEl.style.setProperty("--outline-heading-padding", `${Math.max(0, heading.level - 1) * 14 + 8}px`);
+    itemEl.style.setProperty(
+      "--outline-heading-padding",
+      `${Math.max(0, heading.level - 1) * 14 + 8}px`,
+    );
     const selfEl = doc.createElement("div");
     selfEl.className = "tree-item-self outline-heading-self tappable";
     const titleEl = doc.createElement("div");
@@ -106,7 +123,10 @@ export class OutlineView extends ItemView {
     titleEl.textContent = heading.heading;
     selfEl.appendChild(titleEl);
     selfEl.addEventListener("click", () => {
-      void this.app.workspace.openFile(file, { active: true, eState: heading.position ? { line: heading.position.line } : undefined });
+      void this.app.workspace.openFile(file, {
+        active: true,
+        eState: heading.position ? { line: heading.position.line } : undefined,
+      });
     });
     itemEl.appendChild(selfEl);
     parentEl.appendChild(itemEl);

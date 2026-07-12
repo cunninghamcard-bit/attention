@@ -9,9 +9,13 @@ class MemoryPluginSource implements PluginPackageSource {
   async list(path: string): Promise<{ folders: string[]; files: string[] }> {
     const prefix = `${path}/`;
     return {
-      folders: [...new Set(Object.keys(this.files)
-        .filter((file) => file.startsWith(prefix))
-        .map((file) => file.slice(prefix.length).split("/", 1)[0]))],
+      folders: [
+        ...new Set(
+          Object.keys(this.files)
+            .filter((file) => file.startsWith(prefix))
+            .map((file) => file.slice(prefix.length).split("/", 1)[0]),
+        ),
+      ],
       files: [],
     };
   }
@@ -23,7 +27,7 @@ class MemoryPluginSource implements PluginPackageSource {
 
   async readJson<T>(path: string): Promise<T | null> {
     const value = this.files[path];
-    return value && typeof value === "object" ? structuredClone(value) as T : null;
+    return value && typeof value === "object" ? (structuredClone(value) as T) : null;
   }
 }
 
@@ -48,13 +52,14 @@ describe("community plugin manager facade", () => {
     const app = new App(document.createElement("div"));
     app.pluginSecurity.setCommunityPluginsEnabled(true);
     await app.jsonStore.write("community-plugins.json", ["facade"]);
-    app.pluginLoader.setPackageSource(new MemoryPluginSource({
-      "plugins/facade/manifest.json": {
-        id: "facade",
-        name: "Facade Plugin",
-        version: "1.0.0",
-      },
-      "plugins/facade/main.js": `
+    app.pluginLoader.setPackageSource(
+      new MemoryPluginSource({
+        "plugins/facade/manifest.json": {
+          id: "facade",
+          name: "Facade Plugin",
+          version: "1.0.0",
+        },
+        "plugins/facade/main.js": `
         const { Plugin } = require("obsidian");
         module.exports = class FacadePlugin extends Plugin {
           async onload() {
@@ -62,7 +67,8 @@ describe("community plugin manager facade", () => {
           }
         };
       `,
-    }));
+      }),
+    );
 
     await app.pluginInstaller.initialize();
 
@@ -82,13 +88,14 @@ describe("community plugin manager facade", () => {
     // enable/disable sequence below.
     await app.ready;
     app.pluginSecurity.setCommunityPluginsEnabled(true);
-    app.pluginLoader.setPackageSource(new MemoryPluginSource({
-      "plugins/pure/manifest.json": {
-        id: "pure",
-        name: "Pure Plugin",
-        version: "1.0.0",
-      },
-      "plugins/pure/main.js": `
+    app.pluginLoader.setPackageSource(
+      new MemoryPluginSource({
+        "plugins/pure/manifest.json": {
+          id: "pure",
+          name: "Pure Plugin",
+          version: "1.0.0",
+        },
+        "plugins/pure/main.js": `
         const { Plugin } = require("obsidian");
         module.exports = class PurePlugin extends Plugin {
           async onload() {
@@ -96,7 +103,8 @@ describe("community plugin manager facade", () => {
           }
         };
       `,
-    }));
+      }),
+    );
 
     await app.pluginInstaller.loadManifests();
     await expect(app.pluginInstaller.enablePlugin("pure")).resolves.toBe(true);
@@ -124,17 +132,19 @@ describe("community plugin manager facade", () => {
 
   it("loads a single manifest from an Obsidian-style config-dir path", async () => {
     const app = new App(document.createElement("div"));
-    app.pluginLoader.setPackageSource(new MemoryPluginSource({
-      "plugins/single/manifest.json": {
-        id: "single",
-        name: "Single",
-        version: "1.0.0",
-      },
-      "plugins/single/main.js": `
+    app.pluginLoader.setPackageSource(
+      new MemoryPluginSource({
+        "plugins/single/manifest.json": {
+          id: "single",
+          name: "Single",
+          version: "1.0.0",
+        },
+        "plugins/single/main.js": `
         const { Plugin } = require("obsidian");
         module.exports = class SinglePlugin extends Plugin {};
       `,
-    }));
+      }),
+    );
 
     await app.pluginInstaller.loadManifest(".obsidian/plugins/single");
 
@@ -145,13 +155,14 @@ describe("community plugin manager facade", () => {
     const app = new App(document.createElement("div"));
     app.pluginSecurity.setCommunityPluginsEnabled(true);
     await app.jsonStore.write("community-plugins.json", ["startup", "missing"]);
-    app.pluginLoader.setPackageSource(new MemoryPluginSource({
-      "plugins/startup/manifest.json": {
-        id: "startup",
-        name: "Startup Plugin",
-        version: "1.0.0",
-      },
-      "plugins/startup/main.js": `
+    app.pluginLoader.setPackageSource(
+      new MemoryPluginSource({
+        "plugins/startup/manifest.json": {
+          id: "startup",
+          name: "Startup Plugin",
+          version: "1.0.0",
+        },
+        "plugins/startup/main.js": `
         const { Plugin } = require("obsidian");
         module.exports = class StartupPlugin extends Plugin {
           async onload() {
@@ -159,27 +170,32 @@ describe("community plugin manager facade", () => {
           }
         };
       `,
-    }));
+      }),
+    );
 
     await app.pluginInstaller.initialize();
 
     expect(app.commands.findCommand("startup:boot")?.name).toBe("Startup Plugin: Boot");
     expect(app.pluginInstaller.enabledPlugins.has("startup")).toBe(true);
     expect(app.pluginInstaller.enabledPlugins.has("missing")).toBe(true);
-    await expect(app.jsonStore.read("community-plugins.json")).resolves.toEqual(["startup", "missing"]);
+    await expect(app.jsonStore.read("community-plugins.json")).resolves.toEqual([
+      "startup",
+      "missing",
+    ]);
   });
 
   it("treats non-array community plugin config as empty like Obsidian", async () => {
     const app = new App(document.createElement("div"));
     app.pluginSecurity.setCommunityPluginsEnabled(true);
     await app.jsonStore.write("community-plugins.json", { legacy: { enabled: true } });
-    app.pluginLoader.setPackageSource(new MemoryPluginSource({
-      "plugins/legacy/manifest.json": {
-        id: "legacy",
-        name: "Legacy Config Plugin",
-        version: "1.0.0",
-      },
-      "plugins/legacy/main.js": `
+    app.pluginLoader.setPackageSource(
+      new MemoryPluginSource({
+        "plugins/legacy/manifest.json": {
+          id: "legacy",
+          name: "Legacy Config Plugin",
+          version: "1.0.0",
+        },
+        "plugins/legacy/main.js": `
         const { Plugin } = require("obsidian");
         module.exports = class LegacyConfigPlugin extends Plugin {
           async onload() {
@@ -187,7 +203,8 @@ describe("community plugin manager facade", () => {
           }
         };
       `,
-    }));
+      }),
+    );
 
     await app.pluginInstaller.initialize();
 
@@ -201,13 +218,14 @@ describe("community plugin manager facade", () => {
     const app = new App(document.createElement("div"));
     app.pluginSecurity.setCommunityPluginsEnabled(true);
     await app.jsonStore.write("community-plugins.json", ["switchable"]);
-    app.pluginLoader.setPackageSource(new MemoryPluginSource({
-      "plugins/switchable/manifest.json": {
-        id: "switchable",
-        name: "Switchable Plugin",
-        version: "1.0.0",
-      },
-      "plugins/switchable/main.js": `
+    app.pluginLoader.setPackageSource(
+      new MemoryPluginSource({
+        "plugins/switchable/manifest.json": {
+          id: "switchable",
+          name: "Switchable Plugin",
+          version: "1.0.0",
+        },
+        "plugins/switchable/main.js": `
         const { Plugin } = require("obsidian");
         module.exports = class SwitchablePlugin extends Plugin {
           async onload() {
@@ -215,7 +233,8 @@ describe("community plugin manager facade", () => {
           }
         };
       `,
-    }));
+      }),
+    );
     await app.pluginInstaller.initialize();
 
     await app.pluginInstaller.setEnable(false);
@@ -231,5 +250,4 @@ describe("community plugin manager facade", () => {
     expect(app.commands.findCommand("switchable:boot")?.name).toBe("Switchable Plugin: Boot");
     await expect(app.jsonStore.read("community-plugins.json")).resolves.toEqual(["switchable"]);
   });
-
 });

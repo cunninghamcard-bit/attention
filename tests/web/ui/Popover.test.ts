@@ -6,7 +6,10 @@ import { displayTooltip, HoverPopover, PopoverState, setTooltip } from "@web/ui/
 let dom: JSDOM | null = null;
 
 beforeEach(() => {
-  dom = new JSDOM("<!doctype html><html><body><button id=\"target\">Target</button><div id=\"parent\"></div></body></html>", { pretendToBeVisual: true });
+  dom = new JSDOM(
+    '<!doctype html><html><body><button id="target">Target</button><div id="parent"></div></body></html>',
+    { pretendToBeVisual: true },
+  );
   vi.stubGlobal("window", dom.window);
   vi.stubGlobal("document", dom.window.document);
   vi.stubGlobal("HTMLElement", dom.window.HTMLElement);
@@ -67,7 +70,11 @@ describe("tooltip API parity", () => {
   it("setTooltip writes Obsidian tooltip attributes", () => {
     const target = targetEl();
 
-    setTooltip(target, "Donate", { placement: "right", classes: ["mod-accent", "mod-small"], delay: 25 });
+    setTooltip(target, "Donate", {
+      placement: "right",
+      classes: ["mod-accent", "mod-small"],
+      delay: 25,
+    });
 
     expect(target.getAttribute("aria-label")).toBe("Donate");
     expect(target.dataset.tooltipPosition).toBe("right");
@@ -174,7 +181,9 @@ describe("HoverPopover API parity", () => {
     const childPopover = new RecordingHoverPopover(childParent, childTarget, 0);
     vi.runOnlyPendingTimers();
 
-    parentTarget.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }));
+    parentTarget.dispatchEvent(
+      new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }),
+    );
     parentPopover.transition();
 
     expect(childPopover.state).toBe(PopoverState.Shown);

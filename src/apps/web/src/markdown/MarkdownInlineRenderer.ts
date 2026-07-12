@@ -8,13 +8,21 @@ export interface InlineRenderContext {
 export class MarkdownInlineRenderer {
   render(text: string, context: InlineRenderContext): DocumentFragment {
     const fragment = document.createDocumentFragment();
-    const pattern = /(!?\[\[([^\]|]+)(?:\|([^\]]+))?\]\])|(`([^`]+)`)|(!\[([^\]]*)\]\(([^)]+)\))|\[([^\]]+)\]\(([^)]+)\)/g;
+    const pattern =
+      /(!?\[\[([^\]|]+)(?:\|([^\]]+))?\]\])|(`([^`]+)`)|(!\[([^\]]*)\]\(([^)]+)\))|\[([^\]]+)\]\(([^)]+)\)/g;
     let lastIndex = 0;
     let match: RegExpExecArray | null;
 
     while ((match = pattern.exec(text))) {
       appendText(fragment, text.slice(lastIndex, match.index));
-      if (match[1]) this.renderWikiLink(fragment, Boolean(match[1].startsWith("!")), match[2], match[3], context);
+      if (match[1])
+        this.renderWikiLink(
+          fragment,
+          Boolean(match[1].startsWith("!")),
+          match[2],
+          match[3],
+          context,
+        );
       else if (match[4]) this.renderCode(fragment, match[5]);
       else if (match[6]) this.renderMarkdownImage(fragment, match[7], match[8], context);
       else if (match[9]) this.renderMarkdownLink(fragment, match[9], match[10]);
@@ -25,7 +33,13 @@ export class MarkdownInlineRenderer {
     return fragment;
   }
 
-  private renderWikiLink(fragment: DocumentFragment, embed: boolean, target: string, alias: string | undefined, context: InlineRenderContext): void {
+  private renderWikiLink(
+    fragment: DocumentFragment,
+    embed: boolean,
+    target: string,
+    alias: string | undefined,
+    context: InlineRenderContext,
+  ): void {
     const el = document.createElement("span");
     el.className = embed ? "internal-embed" : "internal-link";
     el.dataset.href = target;
@@ -39,7 +53,12 @@ export class MarkdownInlineRenderer {
   // becomes an internal embed handled by the same embed post-processor as
   // `![[...]]` (real Obsidian treats both as embeds; alt text that parses as
   // dimensions becomes width/height — real `qx`).
-  private renderMarkdownImage(fragment: DocumentFragment, alt: string, src: string, context: InlineRenderContext): void {
+  private renderMarkdownImage(
+    fragment: DocumentFragment,
+    alt: string,
+    src: string,
+    context: InlineRenderContext,
+  ): void {
     if (/^https?:\/\//.test(src)) {
       const img = document.createElement("img");
       applyImageDimensionsFromAlt(img, alt);

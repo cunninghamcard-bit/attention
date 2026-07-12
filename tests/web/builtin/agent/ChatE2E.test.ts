@@ -117,7 +117,13 @@ describe.skipIf(!BIN)("chat e2e against a real loom kernel", () => {
       });
     await post("/agents", { id: "e2e-mock", name: "mock", harness: "mock" });
     for (const threadId of ["e2e-tour", "e2e-perm"]) {
-      await post("/links", { fromType: "agent", fromId: "e2e-mock", toType: "thread", toId: threadId, type: "member" });
+      await post("/links", {
+        fromType: "agent",
+        fromId: "e2e-mock",
+        toType: "thread",
+        toId: threadId,
+        type: "member",
+      });
     }
   }, 30_000);
 
@@ -146,11 +152,17 @@ describe.skipIf(!BIN)("chat e2e against a real loom kernel", () => {
     await session.sendMessage("你好,e2e");
 
     await waitFor(
-      () => parentEl.querySelector('.chat-message[data-role="user"]')?.textContent?.includes("你好,e2e") === true,
+      () =>
+        parentEl
+          .querySelector('.chat-message[data-role="user"]')
+          ?.textContent?.includes("你好,e2e") === true,
       "user message in the DOM",
     );
     await waitFor(
-      () => parentEl.querySelector('.chat-message[data-role="assistant"]')?.textContent?.includes("mock") === true,
+      () =>
+        parentEl
+          .querySelector('.chat-message[data-role="assistant"]')
+          ?.textContent?.includes("mock") === true,
       "mock assistant reply in the DOM",
     );
     // The mock harness runs one Bash tool per turn.
@@ -158,7 +170,11 @@ describe.skipIf(!BIN)("chat e2e against a real loom kernel", () => {
 
     // run.closed carries the mock's fixed usage into Agent state.
     await waitFor(() => session.state.usage !== null, "usage from run.closed");
-    expect(session.state.usage).toMatchObject({ inputTokens: 900, outputTokens: 120, totalTokens: 1020 });
+    expect(session.state.usage).toMatchObject({
+      inputTokens: 900,
+      outputTokens: 120,
+      totalTokens: 1020,
+    });
     expect(session.state.running).toBe(false);
   }, 15_000);
 
@@ -167,7 +183,9 @@ describe.skipIf(!BIN)("chat e2e against a real loom kernel", () => {
     await session.sendMessage("请审批这次工具调用");
 
     await waitFor(
-      () => parentEl.querySelector(".chat-permission:not(.is-resolved) .chat-permission-allow") !== null,
+      () =>
+        parentEl.querySelector(".chat-permission:not(.is-resolved) .chat-permission-allow") !==
+        null,
       "pending permission card",
     );
     (parentEl.querySelector(".chat-permission-allow") as HTMLElement).click();
@@ -178,8 +196,13 @@ describe.skipIf(!BIN)("chat e2e against a real loom kernel", () => {
     }, "resolved permission card");
 
     // run.closed lands: the approved tool ran to a result and the run stopped.
-    await waitFor(() => !session.state.running && session.state.usage !== null, "run.closed after approval");
-    const tool = session.state.messages.flatMap((message) => message.parts).find((part) => part?.type === "tool");
+    await waitFor(
+      () => !session.state.running && session.state.usage !== null,
+      "run.closed after approval",
+    );
+    const tool = session.state.messages
+      .flatMap((message) => message.parts)
+      .find((part) => part?.type === "tool");
     expect(tool).toMatchObject({ toolName: "Bash", result: "loom", closed: true });
   }, 15_000);
 });

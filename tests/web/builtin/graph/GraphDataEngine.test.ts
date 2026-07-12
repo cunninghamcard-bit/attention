@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { App } from "@web/app/App";
-import { DEFAULT_GRAPH_FILTER_OPTIONS, type GraphFilterOptions } from "@web/builtin/graph/GraphOptions";
+import {
+  DEFAULT_GRAPH_FILTER_OPTIONS,
+  type GraphFilterOptions,
+} from "@web/builtin/graph/GraphOptions";
 import { GraphDataEngine } from "@web/builtin/graph/GraphDataEngine";
 
 interface TestFile {
@@ -17,7 +20,7 @@ interface TestCache {
 
 function testFile(path: string): TestFile {
   const name = path.split("/").pop() ?? path;
-  const extension = name.includes(".") ? name.split(".").pop() ?? "" : "";
+  const extension = name.includes(".") ? (name.split(".").pop() ?? "") : "";
   return {
     path,
     name,
@@ -48,10 +51,12 @@ function engine(options: {
       getFileByPath: (path: string) => files.find((file) => file.path === path) ?? null,
     },
     metadataCache: {
-      getCachedFiles: () => options.cachedFiles ?? files.filter((file) => file.extension === "md").map((file) => file.path),
+      getCachedFiles: () =>
+        options.cachedFiles ??
+        files.filter((file) => file.extension === "md").map((file) => file.path),
       isUserIgnored: () => false,
       getCacheByPath: (path: string) => caches[path] ?? null,
-      getFileCache: (file: TestFile | null) => file ? caches[file.path] ?? null : null,
+      getFileCache: (file: TestFile | null) => (file ? (caches[file.path] ?? null) : null),
       resolvedLinks: options.resolvedLinks,
       unresolvedLinks: options.unresolvedLinks,
     },
@@ -87,13 +92,15 @@ describe("GraphDataEngine", () => {
     expect(data.nodes.find((node) => node.id === "A.md")?.type).toBe("");
     expect(data.nodes.find((node) => node.id === "Pic.png")?.type).toBe("attachment");
     expect(data.nodes.find((node) => node.id === "Missing")?.type).toBe("unresolved");
-    expect(data.links).toEqual(expect.arrayContaining([
-      { from: "A.md", to: "B.md", resolved: true },
-      { from: "A.md", to: "Pic.png", resolved: true },
-      { from: "B.md", to: "Missing", resolved: false },
-      { from: "A.md", to: "#Project", resolved: true },
-      { from: "B.md", to: "#Project", resolved: true },
-    ]));
+    expect(data.links).toEqual(
+      expect.arrayContaining([
+        { from: "A.md", to: "B.md", resolved: true },
+        { from: "A.md", to: "Pic.png", resolved: true },
+        { from: "B.md", to: "Missing", resolved: false },
+        { from: "A.md", to: "#Project", resolved: true },
+        { from: "B.md", to: "#Project", resolved: true },
+      ]),
+    );
   });
 
   it("crops local graphs from global data with depth weights and without expanding through tags", () => {
@@ -108,7 +115,17 @@ describe("GraphDataEngine", () => {
         "B.md": { "C.md": 1 },
       },
       tags: ["#Project"],
-    }).collect(filter({ showTags: true, localFile: "A.md", localJumps: 2, localForelinks: true, localBacklinks: true }), true, []);
+    }).collect(
+      filter({
+        showTags: true,
+        localFile: "A.md",
+        localJumps: 2,
+        localForelinks: true,
+        localBacklinks: true,
+      }),
+      true,
+      [],
+    );
 
     expect(ids(data)).toEqual(["#Project", "A.md", "B.md", "C.md"]);
     expect(data.nodes.find((node) => node.id === "A.md")?.links).toBe(30);
@@ -125,11 +142,20 @@ describe("GraphDataEngine", () => {
         "B.md": { "C.md": 1 },
       },
     });
-    const base = filter({ localFile: "A.md", localJumps: 1, localForelinks: true, localBacklinks: false });
+    const base = filter({
+      localFile: "A.md",
+      localJumps: 1,
+      localForelinks: true,
+      localBacklinks: false,
+    });
     const withoutInterlinks = graph.collect(filter({ ...base, localInterlinks: false }), true, []);
     const withInterlinks = graph.collect(filter({ ...base, localInterlinks: true }), true, []);
 
-    expect(withoutInterlinks.links.some((link) => link.from === "B.md" && link.to === "C.md")).toBe(false);
-    expect(withInterlinks.links.some((link) => link.from === "B.md" && link.to === "C.md")).toBe(true);
+    expect(withoutInterlinks.links.some((link) => link.from === "B.md" && link.to === "C.md")).toBe(
+      false,
+    );
+    expect(withInterlinks.links.some((link) => link.from === "B.md" && link.to === "C.md")).toBe(
+      true,
+    );
   });
 });

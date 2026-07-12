@@ -84,7 +84,10 @@ export class GitHubClient {
     };
   }
 
-  async listPullRequests(repo: GitHubRepositoryRef, filter: PrListFilter = "open"): Promise<PrSummary[]> {
+  async listPullRequests(
+    repo: GitHubRepositoryRef,
+    filter: PrListFilter = "open",
+  ): Promise<PrSummary[]> {
     if (filter === "mine" || filter === "review-requested") {
       return this.searchPullRequests(repo, filter);
     }
@@ -99,32 +102,58 @@ export class GitHubClient {
   }
 
   /** Recent repositories the token can access (for the cloud repo picker). */
-  async listRepositories(limit = 40): Promise<Array<{ owner: string; repo: string; fullName: string; private: boolean; description: string | null; openIssues: number }>> {
+  async listRepositories(
+    limit = 40,
+  ): Promise<
+    Array<{
+      owner: string;
+      repo: string;
+      fullName: string;
+      private: boolean;
+      description: string | null;
+      openIssues: number;
+    }>
+  > {
     const res = await this.request(
       "GET",
       `/user/repos?sort=updated&per_page=${Math.min(limit, 100)}&affiliation=owner,collaborator,organization_member`,
     );
     if (res.status >= 400) throw apiError(res);
     const items = (res.json as RawRepo[]) ?? [];
-    return items.map((item) => ({
-      owner: item.owner?.login ?? item.full_name?.split("/")[0] ?? "",
-      repo: item.name ?? item.full_name?.split("/")[1] ?? "",
-      fullName: item.full_name ?? `${item.owner?.login}/${item.name}`,
-      private: Boolean(item.private),
-      description: item.description ?? null,
-      openIssues: item.open_issues_count ?? 0,
-    })).filter((item) => item.owner && item.repo);
+    return items
+      .map((item) => ({
+        owner: item.owner?.login ?? item.full_name?.split("/")[0] ?? "",
+        repo: item.name ?? item.full_name?.split("/")[1] ?? "",
+        fullName: item.full_name ?? `${item.owner?.login}/${item.name}`,
+        private: Boolean(item.private),
+        description: item.description ?? null,
+        openIssues: item.open_issues_count ?? 0,
+      }))
+      .filter((item) => item.owner && item.repo);
   }
 
   async getPullRequest(repo: GitHubRepositoryRef, number: number): Promise<PrDetail> {
-    const [prRes, commentsRes, reviewsRes, reviewCommentsRes, commitsRes, filesRes] = await Promise.all([
-      this.request("GET", `/repos/${repo.owner}/${repo.repo}/pulls/${number}`),
-      this.request("GET", `/repos/${repo.owner}/${repo.repo}/issues/${number}/comments?per_page=100`),
-      this.request("GET", `/repos/${repo.owner}/${repo.repo}/pulls/${number}/reviews?per_page=100`),
-      this.request("GET", `/repos/${repo.owner}/${repo.repo}/pulls/${number}/comments?per_page=100`),
-      this.request("GET", `/repos/${repo.owner}/${repo.repo}/pulls/${number}/commits?per_page=100`),
-      this.request("GET", `/repos/${repo.owner}/${repo.repo}/pulls/${number}/files?per_page=100`),
-    ]);
+    const [prRes, commentsRes, reviewsRes, reviewCommentsRes, commitsRes, filesRes] =
+      await Promise.all([
+        this.request("GET", `/repos/${repo.owner}/${repo.repo}/pulls/${number}`),
+        this.request(
+          "GET",
+          `/repos/${repo.owner}/${repo.repo}/issues/${number}/comments?per_page=100`,
+        ),
+        this.request(
+          "GET",
+          `/repos/${repo.owner}/${repo.repo}/pulls/${number}/reviews?per_page=100`,
+        ),
+        this.request(
+          "GET",
+          `/repos/${repo.owner}/${repo.repo}/pulls/${number}/comments?per_page=100`,
+        ),
+        this.request(
+          "GET",
+          `/repos/${repo.owner}/${repo.repo}/pulls/${number}/commits?per_page=100`,
+        ),
+        this.request("GET", `/repos/${repo.owner}/${repo.repo}/pulls/${number}/files?per_page=100`),
+      ]);
     if (prRes.status >= 400) throw apiError(prRes);
     const pr = prRes.json as RawPullDetail;
     const headSha = pr.head?.sha ?? "";
@@ -140,7 +169,9 @@ export class GitHubClient {
       mergeable: typeof pr.mergeable === "boolean" ? pr.mergeable : null,
       mergeStateStatus: pr.mergeable_state ?? null,
       comments: okList(commentsRes).map(mapIssueComment),
-      reviews: okList(reviewsRes).map(mapReview).filter((review) => review.state !== "PENDING"),
+      reviews: okList(reviewsRes)
+        .map(mapReview)
+        .filter((review) => review.state !== "PENDING"),
       reviewComments: okList(reviewCommentsRes).map(mapReviewComment),
       commits: okList(commitsRes).map(mapCommit),
       files: okList(filesRes).map(mapFile),
@@ -162,9 +193,13 @@ export class GitHubClient {
   }
 
   async createIssueComment(repo: GitHubRepositoryRef, number: number, body: string): Promise<void> {
-    const res = await this.request("POST", `/repos/${repo.owner}/${repo.repo}/issues/${number}/comments`, {
-      body: { body },
-    });
+    const res = await this.request(
+      "POST",
+      `/repos/${repo.owner}/${repo.repo}/issues/${number}/comments`,
+      {
+        body: { body },
+      },
+    );
     if (res.status >= 400) throw apiError(res);
   }
 
@@ -176,7 +211,9 @@ export class GitHubClient {
     comments: PrDraftComment[],
   ): Promise<void> {
     const payload = {
-      body: body || (event === "REQUEST_CHANGES" && comments.length === 0 ? "Requesting changes." : body),
+      body:
+        body ||
+        (event === "REQUEST_CHANGES" && comments.length === 0 ? "Requesting changes." : body),
       event,
       comments: comments.map((comment) => ({
         path: comment.path,
@@ -185,21 +222,30 @@ export class GitHubClient {
         side: comment.side === "deletions" ? "LEFT" : "RIGHT",
       })),
     };
-    const res = await this.request("POST", `/repos/${repo.owner}/${repo.repo}/pulls/${number}/reviews`, {
-      body: payload,
-    });
+    const res = await this.request(
+      "POST",
+      `/repos/${repo.owner}/${repo.repo}/pulls/${number}/reviews`,
+      {
+        body: payload,
+      },
+    );
     if (res.status >= 400) throw apiError(res);
   }
 
   async listBranches(repo: GitHubRepositoryRef): Promise<GitHubBranch[]> {
-    const res = await this.request("GET", `/repos/${repo.owner}/${repo.repo}/branches?per_page=100`);
+    const res = await this.request(
+      "GET",
+      `/repos/${repo.owner}/${repo.repo}/branches?per_page=100`,
+    );
     if (res.status >= 400) throw apiError(res);
     const items = (res.json as RawBranch[]) ?? [];
-    return items.map((item) => ({
-      name: item.name ?? "",
-      commitSha: item.commit?.sha ?? "",
-      protected: Boolean(item.protected),
-    })).filter((b) => b.name);
+    return items
+      .map((item) => ({
+        name: item.name ?? "",
+        commitSha: item.commit?.sha ?? "",
+        protected: Boolean(item.protected),
+      }))
+      .filter((b) => b.name);
   }
 
   async getDefaultBranch(repo: GitHubRepositoryRef): Promise<string> {
@@ -208,7 +254,10 @@ export class GitHubClient {
     return String((res.json as { default_branch?: string })?.default_branch ?? "main");
   }
 
-  async listCommits(repo: GitHubRepositoryRef, options: { ref?: string; page?: number; perPage?: number } = {}): Promise<CommitPage> {
+  async listCommits(
+    repo: GitHubRepositoryRef,
+    options: { ref?: string; page?: number; perPage?: number } = {},
+  ): Promise<CommitPage> {
     const page = options.page ?? 1;
     const perPage = options.perPage ?? 30;
     const ref = options.ref?.trim() || undefined;
@@ -228,7 +277,10 @@ export class GitHubClient {
   }
 
   async getCommit(repo: GitHubRepositoryRef, sha: string): Promise<CommitDetail> {
-    const res = await this.request("GET", `/repos/${repo.owner}/${repo.repo}/commits/${encodeURIComponent(sha)}`);
+    const res = await this.request(
+      "GET",
+      `/repos/${repo.owner}/${repo.repo}/commits/${encodeURIComponent(sha)}`,
+    );
     if (res.status >= 400) throw apiError(res);
     const raw = res.json as RawCommitDetail;
     const fullSha = raw.sha ?? sha;
@@ -270,7 +322,10 @@ export class GitHubClient {
       },
       files: (raw.files ?? []).map(mapCommitFile),
       verification: raw.commit?.verification
-        ? { verified: Boolean(raw.commit.verification.verified), reason: raw.commit.verification.reason ?? null }
+        ? {
+            verified: Boolean(raw.commit.verification.verified),
+            reason: raw.commit.verification.reason ?? null,
+          }
         : null,
       checks,
       ciState: rollupCi(checks) ?? combined,
@@ -278,16 +333,23 @@ export class GitHubClient {
   }
 
   async getCommitDiff(repo: GitHubRepositoryRef, sha: string): Promise<string> {
-    const res = await this.request("GET", `/repos/${repo.owner}/${repo.repo}/commits/${encodeURIComponent(sha)}`, {
-      accept: "application/vnd.github.v3.diff",
-    });
+    const res = await this.request(
+      "GET",
+      `/repos/${repo.owner}/${repo.repo}/commits/${encodeURIComponent(sha)}`,
+      {
+        accept: "application/vnd.github.v3.diff",
+      },
+    );
     if (res.status >= 400) throw apiError(res);
     return res.text;
   }
 
   // --- Issues --------------------------------------------------------------
 
-  async listIssues(repo: GitHubRepositoryRef, state: "open" | "closed" | "all" = "open"): Promise<IssueSummary[]> {
+  async listIssues(
+    repo: GitHubRepositoryRef,
+    state: "open" | "closed" | "all" = "open",
+  ): Promise<IssueSummary[]> {
     const res = await this.request(
       "GET",
       `/repos/${repo.owner}/${repo.repo}/issues?state=${state}&sort=updated&direction=desc&per_page=50`,
@@ -301,7 +363,10 @@ export class GitHubClient {
   async getIssue(repo: GitHubRepositoryRef, number: number): Promise<IssueDetail> {
     const [issueRes, commentsRes] = await Promise.all([
       this.request("GET", `/repos/${repo.owner}/${repo.repo}/issues/${number}`),
-      this.request("GET", `/repos/${repo.owner}/${repo.repo}/issues/${number}/comments?per_page=100`),
+      this.request(
+        "GET",
+        `/repos/${repo.owner}/${repo.repo}/issues/${number}/comments?per_page=100`,
+      ),
     ]);
     if (issueRes.status >= 400) throw apiError(issueRes);
     const raw = issueRes.json as RawIssue;
@@ -323,24 +388,31 @@ export class GitHubClient {
       `/repos/${repo.owner}/${repo.repo}/actions/runs?per_page=30&page=${page}`,
     );
     if (res.status >= 400) throw apiError(res);
-    const runs = ((res.json as { workflow_runs?: RawWorkflowRun[] })?.workflow_runs) ?? [];
+    const runs = (res.json as { workflow_runs?: RawWorkflowRun[] })?.workflow_runs ?? [];
     return runs.map(mapActionRun);
   }
 
   async getWorkflowRun(repo: GitHubRepositoryRef, runId: number): Promise<ActionRunDetail> {
     const [runRes, jobsRes] = await Promise.all([
       this.request("GET", `/repos/${repo.owner}/${repo.repo}/actions/runs/${runId}`),
-      this.request("GET", `/repos/${repo.owner}/${repo.repo}/actions/runs/${runId}/jobs?per_page=50`),
+      this.request(
+        "GET",
+        `/repos/${repo.owner}/${repo.repo}/actions/runs/${runId}/jobs?per_page=50`,
+      ),
     ]);
     if (runRes.status >= 400) throw apiError(runRes);
     const run = mapActionRun(runRes.json as RawWorkflowRun);
-    const jobs = (((jobsRes.json as { jobs?: RawJob[] })?.jobs) ?? []).map(mapJob);
+    const jobs = ((jobsRes.json as { jobs?: RawJob[] })?.jobs ?? []).map(mapJob);
     return { ...run, jobs };
   }
 
   // --- Files ---------------------------------------------------------------
 
-  async listContents(repo: GitHubRepositoryRef, path = "", ref?: string): Promise<RepoContentItem[]> {
+  async listContents(
+    repo: GitHubRepositoryRef,
+    path = "",
+    ref?: string,
+  ): Promise<RepoContentItem[]> {
     const clean = path.replace(/^\/+|\/+$/g, "");
     const params = ref ? `?ref=${encodeURIComponent(ref)}` : "";
     const apiPath = clean
@@ -353,7 +425,11 @@ export class GitHubClient {
     return (items as RawContent[]).map(mapContent).filter((item) => item.name);
   }
 
-  async getFileContent(repo: GitHubRepositoryRef, path: string, ref?: string): Promise<RepoFileContent> {
+  async getFileContent(
+    repo: GitHubRepositoryRef,
+    path: string,
+    ref?: string,
+  ): Promise<RepoFileContent> {
     const clean = path.replace(/^\/+/, "");
     const params = ref ? `?ref=${encodeURIComponent(ref)}` : "";
     const res = await this.request(
@@ -380,7 +456,9 @@ export class GitHubClient {
 
   // --- Notifications / Inbox ---------------------------------------------
 
-  async listNotifications(options: { all?: boolean; participating?: boolean } = {}): Promise<NotificationItem[]> {
+  async listNotifications(
+    options: { all?: boolean; participating?: boolean } = {},
+  ): Promise<NotificationItem[]> {
     const params = new URLSearchParams({ per_page: "40" });
     if (options.all) params.set("all", "true");
     if (options.participating) params.set("participating", "true");
@@ -408,13 +486,17 @@ export class GitHubClient {
     number: number,
     options: { method?: MergeMethod; commitTitle?: string; commitMessage?: string } = {},
   ): Promise<MergeResult> {
-    const res = await this.request("POST", `/repos/${repo.owner}/${repo.repo}/pulls/${number}/merge`, {
-      body: {
-        merge_method: options.method ?? "squash",
-        ...(options.commitTitle ? { commit_title: options.commitTitle } : {}),
-        ...(options.commitMessage ? { commit_message: options.commitMessage } : {}),
+    const res = await this.request(
+      "POST",
+      `/repos/${repo.owner}/${repo.repo}/pulls/${number}/merge`,
+      {
+        body: {
+          merge_method: options.method ?? "squash",
+          ...(options.commitTitle ? { commit_title: options.commitTitle } : {}),
+          ...(options.commitMessage ? { commit_message: options.commitMessage } : {}),
+        },
       },
-    });
+    );
     if (res.status >= 400) throw apiError(res);
     const raw = res.json as { merged?: boolean; message?: string; sha?: string };
     return {
@@ -425,9 +507,12 @@ export class GitHubClient {
   }
 
   private async listChecks(repo: GitHubRepositoryRef, sha: string): Promise<PrCheck[]> {
-    const res = await this.request("GET", `/repos/${repo.owner}/${repo.repo}/commits/${sha}/check-runs?per_page=100`);
+    const res = await this.request(
+      "GET",
+      `/repos/${repo.owner}/${repo.repo}/commits/${sha}/check-runs?per_page=100`,
+    );
     if (res.status >= 400) return [];
-    const runs = ((res.json as { check_runs?: RawCheckRun[] })?.check_runs) ?? [];
+    const runs = (res.json as { check_runs?: RawCheckRun[] })?.check_runs ?? [];
     return runs.map((run) => ({
       name: run.name ?? run.app?.name ?? "check",
       status: run.status ?? "queued",
@@ -440,7 +525,10 @@ export class GitHubClient {
 
   /** Classic commit status (used when Actions check-runs are empty). */
   private async combinedStatus(repo: GitHubRepositoryRef, sha: string): Promise<CiState | null> {
-    const res = await this.request("GET", `/repos/${repo.owner}/${repo.repo}/commits/${sha}/status`);
+    const res = await this.request(
+      "GET",
+      `/repos/${repo.owner}/${repo.repo}/commits/${sha}/status`,
+    );
     if (res.status >= 400) return null;
     const state = String((res.json as { state?: string })?.state ?? "").toLowerCase();
     if (state === "success") return "success";
@@ -450,17 +538,29 @@ export class GitHubClient {
     return state ? "unknown" : null;
   }
 
-  private async searchPullRequests(repo: GitHubRepositoryRef, filter: "mine" | "review-requested"): Promise<PrSummary[]> {
+  private async searchPullRequests(
+    repo: GitHubRepositoryRef,
+    filter: "mine" | "review-requested",
+  ): Promise<PrSummary[]> {
     const qualifier = filter === "mine" ? "author:@me" : "review-requested:@me";
     const q = encodeURIComponent(`is:pr is:open repo:${repo.owner}/${repo.repo} ${qualifier}`);
-    const res = await this.request("GET", `/search/issues?q=${q}&sort=updated&order=desc&per_page=40`);
+    const res = await this.request(
+      "GET",
+      `/search/issues?q=${q}&sort=updated&order=desc&per_page=40`,
+    );
     if (res.status >= 400) throw apiError(res);
-    const items = ((res.json as { items?: RawSearchIssue[] })?.items) ?? [];
+    const items = (res.json as { items?: RawSearchIssue[] })?.items ?? [];
     // Search results lack branch names — hydrate from PR endpoint in parallel (cap).
-    const numbers = items.map((item) => item.number).filter((n): n is number => typeof n === "number").slice(0, 20);
+    const numbers = items
+      .map((item) => item.number)
+      .filter((n): n is number => typeof n === "number")
+      .slice(0, 20);
     const details = await Promise.all(
       numbers.map(async (number) => {
-        const prRes = await this.request("GET", `/repos/${repo.owner}/${repo.repo}/pulls/${number}`);
+        const prRes = await this.request(
+          "GET",
+          `/repos/${repo.owner}/${repo.repo}/pulls/${number}`,
+        );
         if (prRes.status >= 400) return null;
         return mapSummary(prRes.json as RawPull);
       }),
@@ -718,10 +818,21 @@ function mapNotification(raw: RawNotification): NotificationItem {
 function rollupCi(checks: PrCheck[]): CiState | null {
   if (checks.length === 0) return null;
   const conclusions = checks.map((check) => (check.conclusion ?? check.status).toLowerCase());
-  if (conclusions.some((c) => c === "failure" || c === "timed_out" || c === "action_required")) return "failure";
-  if (conclusions.some((c) => c === "cancelled" || c === "error" || c === "startup_failure")) return "error";
-  if (conclusions.some((c) => c === "pending" || c === "queued" || c === "in_progress" || c === "waiting")) return "pending";
-  if (conclusions.every((c) => c === "success" || c === "neutral" || c === "skipped" || c === "completed")) {
+  if (conclusions.some((c) => c === "failure" || c === "timed_out" || c === "action_required"))
+    return "failure";
+  if (conclusions.some((c) => c === "cancelled" || c === "error" || c === "startup_failure"))
+    return "error";
+  if (
+    conclusions.some(
+      (c) => c === "pending" || c === "queued" || c === "in_progress" || c === "waiting",
+    )
+  )
+    return "pending";
+  if (
+    conclusions.every(
+      (c) => c === "success" || c === "neutral" || c === "skipped" || c === "completed",
+    )
+  ) {
     if (conclusions.some((c) => c === "success" || c === "completed")) return "success";
     return "neutral";
   }
@@ -753,7 +864,9 @@ function decodeBase64Text(content: string, maxBytes: number): string | null {
       bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
     } else {
-      const buf = (globalThis as unknown as { Buffer?: { from(s: string, enc: string): Uint8Array } }).Buffer?.from(cleaned, "base64");
+      const buf = (
+        globalThis as unknown as { Buffer?: { from(s: string, enc: string): Uint8Array } }
+      ).Buffer?.from(cleaned, "base64");
       if (!buf || buf.length > maxBytes) return null;
       bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf as ArrayBuffer);
       for (let i = 0; i < Math.min(bytes.length, 1024); i += 1) {
@@ -961,6 +1074,11 @@ interface RawNotification {
   unread?: boolean;
   reason?: string;
   updated_at?: string;
-  subject?: { title?: string; type?: string; url?: string | null; latest_comment_url?: string | null };
+  subject?: {
+    title?: string;
+    type?: string;
+    url?: string | null;
+    latest_comment_url?: string | null;
+  };
   repository?: { full_name?: string };
 }

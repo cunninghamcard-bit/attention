@@ -62,12 +62,12 @@ export class FileSystemJsonStoreAdapter implements JsonStoreAdapter {
   }
 
   async delete(path: string): Promise<void> {
-    if (!await this.adapter.exists(path)) return;
+    if (!(await this.adapter.exists(path))) return;
     await this.adapter.remove(path);
   }
 
   async deleteFolder(path: string): Promise<void> {
-    if (!await this.adapter.exists(path)) return;
+    if (!(await this.adapter.exists(path))) return;
     await this.adapter.rmdir(path, true);
   }
 }
@@ -78,7 +78,11 @@ function normalizeStorePath(path: string): string {
 
 function directChildName(parent: string, path: string): string | null {
   const normalized = normalizeStorePath(path);
-  const rest = parent ? normalized.startsWith(`${parent}/`) ? normalized.slice(parent.length + 1) : "" : normalized;
+  const rest = parent
+    ? normalized.startsWith(`${parent}/`)
+      ? normalized.slice(parent.length + 1)
+      : ""
+    : normalized;
   if (!rest) return null;
   const slash = rest.indexOf("/");
   return slash === -1 ? rest : rest.slice(0, slash);
@@ -86,10 +90,19 @@ function directChildName(parent: string, path: string): string | null {
 
 function directFileName(parent: string, path: string): string | null {
   const normalized = normalizeStorePath(path);
-  const rest = parent ? normalized.startsWith(`${parent}/`) ? normalized.slice(parent.length + 1) : "" : normalized;
+  const rest = parent
+    ? normalized.startsWith(`${parent}/`)
+      ? normalized.slice(parent.length + 1)
+      : ""
+    : normalized;
   return rest && !rest.includes("/") ? rest : null;
 }
 
 function isNotFoundError(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "ENOENT";
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "ENOENT"
+  );
 }

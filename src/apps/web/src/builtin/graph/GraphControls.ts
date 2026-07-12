@@ -14,7 +14,10 @@ export class GraphControls {
   private searchInputEl: HTMLInputElement | null = null;
   private closed = false;
 
-  constructor(private readonly options: GraphPluginOptions, private readonly callbacks: GraphControlsCallbacks) {
+  constructor(
+    private readonly options: GraphPluginOptions,
+    private readonly callbacks: GraphControlsCallbacks,
+  ) {
     this.closed = this.options.close.controls ?? false;
   }
 
@@ -39,17 +42,25 @@ export class GraphControls {
 
     const headerEl = document.createElement("div");
     headerEl.className = "graph-controls-header";
-    const closeButtonEl = this.button(this.closed ? "Open controls" : "Close controls", this.closed ? "mod-open" : "mod-close", () => {
-      this.closed = !this.closed;
-      this.options.close.controls = this.closed;
-      this.callbacks.onChange();
-      this.sync();
-    });
+    const closeButtonEl = this.button(
+      this.closed ? "Open controls" : "Close controls",
+      this.closed ? "mod-open" : "mod-close",
+      () => {
+        this.closed = !this.closed;
+        this.options.close.controls = this.closed;
+        this.callbacks.onChange();
+        this.sync();
+      },
+    );
     const resetButtonEl = this.button("Reset pan", "mod-reset", this.callbacks.onResetPan);
     headerEl.append(closeButtonEl, resetButtonEl);
 
     if (!this.callbacks.isLocal) {
-      const animateButtonEl = this.button(this.callbacks.isAnimating() ? "Stop animation" : "Animate graph", "mod-animate", this.callbacks.onToggleAnimate);
+      const animateButtonEl = this.button(
+        this.callbacks.isAnimating() ? "Stop animation" : "Animate graph",
+        "mod-animate",
+        this.callbacks.onToggleAnimate,
+      );
       headerEl.appendChild(animateButtonEl);
     }
     this.rootEl.appendChild(headerEl);
@@ -57,7 +68,12 @@ export class GraphControls {
     const bodyEl = document.createElement("div");
     bodyEl.className = "graph-controls-body";
     bodyEl.hidden = this.closed;
-    bodyEl.append(this.renderFilters(), this.renderGroups(), this.renderDisplay(), this.renderForces());
+    bodyEl.append(
+      this.renderFilters(),
+      this.renderGroups(),
+      this.renderDisplay(),
+      this.renderForces(),
+    );
     this.rootEl.appendChild(bodyEl);
   }
 
@@ -76,21 +92,58 @@ export class GraphControls {
 
     if (this.callbacks.isLocal) {
       bodyEl.append(
-        this.slider("Depth", this.options.filterOptions.localJumps, 1, 5, 1, (value) => this.options.filterOptions.localJumps = Math.round(value)),
-        this.checkbox("Backlinks", this.options.filterOptions.localBacklinks, (checked) => this.options.filterOptions.localBacklinks = checked),
-        this.checkbox("Forelinks", this.options.filterOptions.localForelinks, (checked) => this.options.filterOptions.localForelinks = checked),
-        this.checkbox("Neighbor links", this.options.filterOptions.localInterlinks, (checked) => this.options.filterOptions.localInterlinks = checked),
+        this.slider(
+          "Depth",
+          this.options.filterOptions.localJumps,
+          1,
+          5,
+          1,
+          (value) => (this.options.filterOptions.localJumps = Math.round(value)),
+        ),
+        this.checkbox(
+          "Backlinks",
+          this.options.filterOptions.localBacklinks,
+          (checked) => (this.options.filterOptions.localBacklinks = checked),
+        ),
+        this.checkbox(
+          "Forelinks",
+          this.options.filterOptions.localForelinks,
+          (checked) => (this.options.filterOptions.localForelinks = checked),
+        ),
+        this.checkbox(
+          "Neighbor links",
+          this.options.filterOptions.localInterlinks,
+          (checked) => (this.options.filterOptions.localInterlinks = checked),
+        ),
       );
     }
 
     bodyEl.append(
-      this.checkbox("Tags", this.options.filterOptions.showTags, (checked) => this.options.filterOptions.showTags = checked),
-      this.checkbox("Attachments", this.options.filterOptions.showAttachments, (checked) => this.options.filterOptions.showAttachments = checked),
-      this.checkbox("Existing files only", this.options.filterOptions.hideUnresolved, (checked) => this.options.filterOptions.hideUnresolved = checked),
+      this.checkbox(
+        "Tags",
+        this.options.filterOptions.showTags,
+        (checked) => (this.options.filterOptions.showTags = checked),
+      ),
+      this.checkbox(
+        "Attachments",
+        this.options.filterOptions.showAttachments,
+        (checked) => (this.options.filterOptions.showAttachments = checked),
+      ),
+      this.checkbox(
+        "Existing files only",
+        this.options.filterOptions.hideUnresolved,
+        (checked) => (this.options.filterOptions.hideUnresolved = checked),
+      ),
     );
 
     if (!this.callbacks.isLocal) {
-      bodyEl.appendChild(this.checkbox("Orphans", this.options.filterOptions.showOrphans, (checked) => this.options.filterOptions.showOrphans = checked));
+      bodyEl.appendChild(
+        this.checkbox(
+          "Orphans",
+          this.options.filterOptions.showOrphans,
+          (checked) => (this.options.filterOptions.showOrphans = checked),
+        ),
+      );
     }
 
     return sectionEl;
@@ -163,10 +216,35 @@ export class GraphControls {
   private renderDisplay(): HTMLElement {
     const { sectionEl, bodyEl } = this.section("Display", "display");
     bodyEl.append(
-      this.checkbox("Show arrows", this.options.displayOptions.showArrow, (checked) => this.options.displayOptions.showArrow = checked),
-      this.slider("Text fade", this.options.displayOptions.textFadeMultiplier, 0, 1, 0.05, (value) => this.options.displayOptions.textFadeMultiplier = value),
-      this.slider("Node size", this.options.displayOptions.nodeSizeMultiplier, 0.2, 3, 0.1, (value) => this.options.displayOptions.nodeSizeMultiplier = value),
-      this.slider("Link thickness", this.options.displayOptions.lineSizeMultiplier, 0.2, 3, 0.1, (value) => this.options.displayOptions.lineSizeMultiplier = value),
+      this.checkbox(
+        "Show arrows",
+        this.options.displayOptions.showArrow,
+        (checked) => (this.options.displayOptions.showArrow = checked),
+      ),
+      this.slider(
+        "Text fade",
+        this.options.displayOptions.textFadeMultiplier,
+        0,
+        1,
+        0.05,
+        (value) => (this.options.displayOptions.textFadeMultiplier = value),
+      ),
+      this.slider(
+        "Node size",
+        this.options.displayOptions.nodeSizeMultiplier,
+        0.2,
+        3,
+        0.1,
+        (value) => (this.options.displayOptions.nodeSizeMultiplier = value),
+      ),
+      this.slider(
+        "Link thickness",
+        this.options.displayOptions.lineSizeMultiplier,
+        0.2,
+        3,
+        0.1,
+        (value) => (this.options.displayOptions.lineSizeMultiplier = value),
+      ),
     );
     return sectionEl;
   }
@@ -174,10 +252,38 @@ export class GraphControls {
   private renderForces(): HTMLElement {
     const { sectionEl, bodyEl } = this.section("Forces", "forces");
     bodyEl.append(
-      this.slider("Center force", this.options.forceOptions.centerStrength, 0, 1, 0.01, (value) => this.options.forceOptions.centerStrength = value),
-      this.slider("Repel force", this.options.forceOptions.repelStrength, 0, 50, 1, (value) => this.options.forceOptions.repelStrength = value),
-      this.slider("Link force", this.options.forceOptions.linkStrength, 0, 2, 0.01, (value) => this.options.forceOptions.linkStrength = value),
-      this.slider("Link distance", this.options.forceOptions.linkDistance, 40, 500, 5, (value) => this.options.forceOptions.linkDistance = value),
+      this.slider(
+        "Center force",
+        this.options.forceOptions.centerStrength,
+        0,
+        1,
+        0.01,
+        (value) => (this.options.forceOptions.centerStrength = value),
+      ),
+      this.slider(
+        "Repel force",
+        this.options.forceOptions.repelStrength,
+        0,
+        50,
+        1,
+        (value) => (this.options.forceOptions.repelStrength = value),
+      ),
+      this.slider(
+        "Link force",
+        this.options.forceOptions.linkStrength,
+        0,
+        2,
+        0.01,
+        (value) => (this.options.forceOptions.linkStrength = value),
+      ),
+      this.slider(
+        "Link distance",
+        this.options.forceOptions.linkDistance,
+        40,
+        500,
+        5,
+        (value) => (this.options.forceOptions.linkDistance = value),
+      ),
     );
     return sectionEl;
   }
@@ -213,7 +319,11 @@ export class GraphControls {
     return { sectionEl, bodyEl };
   }
 
-  private checkbox(label: string, checked: boolean, update: (checked: boolean) => void): HTMLElement {
+  private checkbox(
+    label: string,
+    checked: boolean,
+    update: (checked: boolean) => void,
+  ): HTMLElement {
     const rowEl = document.createElement("label");
     rowEl.className = "graph-control-row setting-item";
     const inputEl = document.createElement("input");
@@ -229,7 +339,14 @@ export class GraphControls {
     return rowEl;
   }
 
-  private slider(label: string, value: number, min: number, max: number, step: number, update: (value: number) => void): HTMLElement {
+  private slider(
+    label: string,
+    value: number,
+    min: number,
+    max: number,
+    step: number,
+    update: (value: number) => void,
+  ): HTMLElement {
     const rowEl = document.createElement("label");
     rowEl.className = "graph-control-row setting-item mod-slider";
     const labelEl = document.createElement("span");

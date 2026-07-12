@@ -1,6 +1,11 @@
 import type { App } from "../app/App";
 import { Plugin } from "./Plugin";
-import { normalizePluginManifest, type PluginManifest, type PluginManifestInput, type PluginPackage } from "./PluginManifest";
+import {
+  normalizePluginManifest,
+  type PluginManifest,
+  type PluginManifestInput,
+  type PluginPackage,
+} from "./PluginManifest";
 import type { JsonStore } from "../storage/JsonStore";
 import { createPluginRequire } from "./PluginRequire";
 import { wrapCommonJsPluginSource } from "./PluginSource";
@@ -17,7 +22,10 @@ export class PluginLoader {
   private factories = new Map<string, PluginModuleFactory>();
   private packages = new Map<string, PluginPackage>();
 
-  constructor(readonly app: App, private source: PluginPackageSource = new JsonStorePluginPackageSource(app.jsonStore)) {}
+  constructor(
+    readonly app: App,
+    private source: PluginPackageSource = new JsonStorePluginPackageSource(app.jsonStore),
+  ) {}
 
   setPackageSource(source: PluginPackageSource): void {
     this.source = source;
@@ -33,7 +41,11 @@ export class PluginLoader {
 
   registerPackage(pkg: PluginPackage): PluginPackage {
     const normalized = normalizePackage(pkg);
-    const factory = normalized.factory ?? (normalized.mainJs ? compileCommonJsPlugin(normalized.mainJs, normalized.manifest.id) : undefined);
+    const factory =
+      normalized.factory ??
+      (normalized.mainJs
+        ? compileCommonJsPlugin(normalized.mainJs, normalized.manifest.id)
+        : undefined);
     const runnable = factory ? { ...normalized, factory } : normalized;
     this.packages.set(runnable.manifest.id, runnable);
     if (factory) this.registerFactory(runnable.manifest.id, factory);
@@ -55,7 +67,7 @@ export class PluginLoader {
 
   async discoverPackages(pluginRoot = "plugins"): Promise<PluginPackage[]> {
     const listing = await this.source.list(pluginRoot);
-    const folders = Array.isArray(listing) ? listing : listing.folders ?? [];
+    const folders = Array.isArray(listing) ? listing : (listing.folders ?? []);
     const packages: PluginPackage[] = [];
     for (const folder of folders) {
       const dir = folder.includes("/") ? folder : `${pluginRoot}/${folder}`;
@@ -96,11 +108,16 @@ export class PluginLoader {
   }
 
   async loadPackage(pkgOrId: PluginPackage | string, userInitiated = false): Promise<Plugin> {
-    const pkg = typeof pkgOrId === "string" ? this.packages.get(pkgOrId) : this.registerPackage(pkgOrId);
+    const pkg =
+      typeof pkgOrId === "string" ? this.packages.get(pkgOrId) : this.registerPackage(pkgOrId);
     if (!pkg) throw new Error(`Plugin package not registered: ${pkgOrId}`);
     const factory = pkg.factory ?? this.factories.get(pkg.manifest.id);
     if (!factory) throw new Error(`Plugin factory not registered: ${pkg.manifest.id}`);
-    return this.app.plugins.enablePlugin(normalizePluginManifest({ ...pkg.manifest, styles: pkg.styles }, pkg.dir ?? pkg.manifest.dir), factory, userInitiated);
+    return this.app.plugins.enablePlugin(
+      normalizePluginManifest({ ...pkg.manifest, styles: pkg.styles }, pkg.dir ?? pkg.manifest.dir),
+      factory,
+      userInitiated,
+    );
   }
 }
 
@@ -146,11 +163,18 @@ function compileCommonJsPlugin(source: string, pluginId: string): PluginModuleFa
     execute(createPluginRequire(app, pluginId), moduleObject, exportsObject);
     const exported = (moduleObject.exports || exportsObject) as { default?: unknown };
     const PluginClass = exported?.default ?? moduleObject.exports;
-    if (!PluginClass || PluginClass === exportsObject && Object.keys(exportsObject).length === 0) {
+    if (
+      !PluginClass ||
+      (PluginClass === exportsObject && Object.keys(exportsObject).length === 0)
+    ) {
       throw new Error(`No exports detected in plugin ${pluginId}`);
     }
-    if (typeof PluginClass !== "function") throw new Error(`Plugin ${pluginId} did not export a plugin class`);
-    const instance = new (PluginClass as new (app: App, manifest: PluginManifestInput) => Plugin)(app, manifest);
+    if (typeof PluginClass !== "function")
+      throw new Error(`Plugin ${pluginId} did not export a plugin class`);
+    const instance = new (PluginClass as new (app: App, manifest: PluginManifestInput) => Plugin)(
+      app,
+      manifest,
+    );
     if (!(instance instanceof Plugin)) throw new Error(`Plugin ${pluginId} must extend Plugin`);
     return instance;
   };

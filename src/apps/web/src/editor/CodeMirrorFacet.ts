@@ -1,5 +1,8 @@
 export class Facet<TInput, TOutput = readonly TInput[]> {
-  constructor(readonly combine: (values: readonly TInput[]) => TOutput = (values) => values as unknown as TOutput) {}
+  constructor(
+    readonly combine: (values: readonly TInput[]) => TOutput = (values) =>
+      values as unknown as TOutput,
+  ) {}
 }
 
 export class Compartment<T = unknown> {

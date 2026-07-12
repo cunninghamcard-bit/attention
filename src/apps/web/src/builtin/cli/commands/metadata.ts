@@ -30,7 +30,8 @@ export function registerMetadataCommands(app: App): void {
       if (params.active || params.file || params.path) {
         const file = cli.tryResolveFile(params);
         const counts: Record<string, number> = {};
-        for (const tag of getAllTags(app.metadataCache.getFileCache(file)) ?? []) counts[tag] = (counts[tag] ?? 0) + 1;
+        for (const tag of getAllTags(app.metadataCache.getFileCache(file)) ?? [])
+          counts[tag] = (counts[tag] ?? 0) + 1;
         entries = Object.entries(counts);
       } else {
         entries = Object.entries(app.metadataCache.getTags());
@@ -100,7 +101,11 @@ export function registerMetadataCommands(app: App): void {
           }
           return lines.join("\n");
         }
-        return stringifyYaml(frontmatter, { nullStr: "", lineWidth: 0, aliasDuplicateObjects: false }).trim();
+        return stringifyYaml(frontmatter, {
+          nullStr: "",
+          lineWidth: 0,
+          aliasDuplicateObjects: false,
+        }).trim();
       }
       // Vault mode — format=yaml/tsv have no effect here (reference behavior).
       const all = app.metadataTypeManager.getAllProperties();
@@ -114,9 +119,14 @@ export function registerMetadataCommands(app: App): void {
       if (params.sort === "count") list.sort((a, b) => b.occurrences - a.occurrences);
       else list.sort((a, b) => alphaCompare(a.name, b.name));
       if (params.format === "json") {
-        return JSON.stringify(list.map((entry) => ({ name: entry.name, type: entry.widget, count: entry.occurrences })), null, 2);
+        return JSON.stringify(
+          list.map((entry) => ({ name: entry.name, type: entry.widget, count: entry.occurrences })),
+          null,
+          2,
+        );
       }
-      if (params.counts) return list.map((entry) => `${entry.name}\t${entry.occurrences}`).join("\n");
+      if (params.counts)
+        return list.map((entry) => `${entry.name}\t${entry.occurrences}`).join("\n");
       return list.map((entry) => entry.name).join("\n");
     },
   );
@@ -188,7 +198,11 @@ export function registerMetadataCommands(app: App): void {
       await app.fileManager.processFrontMatter(file, (frontmatter) => {
         frontmatter[String(params.name)] = parsed as never;
       });
-      if (type) app.metadataTypeManager.setType(String(params.name), (type === "list" ? "multitext" : type) as PropertyType);
+      if (type)
+        app.metadataTypeManager.setType(
+          String(params.name),
+          (type === "list" ? "multitext" : type) as PropertyType,
+        );
       // Echoes the raw input string, not the parsed representation.
       return `Set ${params.name}: ${raw}`;
     },
@@ -226,14 +240,17 @@ export function registerMetadataCommands(app: App): void {
     (params) => {
       if (params.active || params.file || params.path) {
         const file = cli.tryResolveFile(params);
-        const aliases = parseFrontMatterAliases(app.metadataCache.getFileCache(file)?.frontmatter) ?? [];
+        const aliases =
+          parseFrontMatterAliases(app.metadataCache.getFileCache(file)?.frontmatter) ?? [];
         if (params.total) return String(aliases.length);
         if (aliases.length === 0) return "No aliases found.";
         return aliases.sort(alphaCompare).join("\n");
       }
       const byAlias = new Map<string, string[]>();
       for (const file of app.vault.getMarkdownFiles()) {
-        for (const alias of parseFrontMatterAliases(app.metadataCache.getFileCache(file)?.frontmatter) ?? []) {
+        for (const alias of parseFrontMatterAliases(
+          app.metadataCache.getFileCache(file)?.frontmatter,
+        ) ?? []) {
           const paths = byAlias.get(alias) ?? [];
           paths.push(file.path);
           byAlias.set(alias, paths);

@@ -9,9 +9,16 @@ export class StreamScroller extends Component {
   private readonly buttonEl: HTMLElement;
   private stuck = true;
 
-  constructor(private readonly scrollEl: HTMLElement, overlayEl: HTMLElement) {
+  constructor(
+    private readonly scrollEl: HTMLElement,
+    overlayEl: HTMLElement,
+  ) {
     super();
-    this.buttonEl = createEl("button", { cls: "stream-scroll-bottom", parent: overlayEl, text: "↓" });
+    this.buttonEl = createEl("button", {
+      cls: "stream-scroll-bottom",
+      parent: overlayEl,
+      text: "↓",
+    });
     this.buttonEl.hide();
   }
 
@@ -41,6 +48,9 @@ export class StreamScroller extends Component {
   }
 
   private isAtBottom(): boolean {
-    return this.scrollEl.scrollHeight - this.scrollEl.scrollTop - this.scrollEl.clientHeight <= BOTTOM_THRESHOLD;
+    return (
+      this.scrollEl.scrollHeight - this.scrollEl.scrollTop - this.scrollEl.clientHeight <=
+      BOTTOM_THRESHOLD
+    );
   }
 }

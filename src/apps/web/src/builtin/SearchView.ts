@@ -17,8 +17,18 @@ const SEARCH_OPERATOR_OPTIONS: SearchOperatorOption[] = [
   { operator: "path:", insert: "path:", caretOffset: 0, description: "match path of the file" },
   { operator: "file:", insert: "file:", caretOffset: 0, description: "match file name" },
   { operator: "tag:", insert: "tag:", caretOffset: 0, description: "search for tags" },
-  { operator: "line:", insert: "line:()", caretOffset: 1, description: "search keywords on same line" },
-  { operator: "section:", insert: "section:()", caretOffset: 1, description: "search keywords under same heading" },
+  {
+    operator: "line:",
+    insert: "line:()",
+    caretOffset: 1,
+    description: "search keywords on same line",
+  },
+  {
+    operator: "section:",
+    insert: "section:()",
+    caretOffset: 1,
+    description: "search keywords under same heading",
+  },
   { operator: "[property]", insert: "[]", caretOffset: 1, description: "match property" },
 ];
 
@@ -31,14 +41,19 @@ type SearchSuggestItem = { kind: "group" } | { kind: "option"; option: SearchOpe
  * recovered from the vendored app.css.
  */
 class SearchOperatorSuggest extends AbstractInputSuggest<SearchSuggestItem> {
-  constructor(app: App, inputEl: HTMLInputElement, private readonly onInsert: (query: string) => void) {
+  constructor(
+    app: App,
+    inputEl: HTMLInputElement,
+    private readonly onInsert: (query: string) => void,
+  ) {
     super(app, inputEl);
     this.suggestEl.classList.add("mod-search-suggestion");
     this.onSelect((item) => {
       if (item.kind !== "option") return;
       const { insert, caretOffset } = item.option;
       const current = this.getValue();
-      const next = current && !current.endsWith(" ") ? `${current} ${insert}` : `${current}${insert}`;
+      const next =
+        current && !current.endsWith(" ") ? `${current} ${insert}` : `${current}${insert}`;
       this.setValue(next);
       const caret = next.length - caretOffset;
       inputEl.setSelectionRange(caret, caret);
@@ -49,13 +64,17 @@ class SearchOperatorSuggest extends AbstractInputSuggest<SearchSuggestItem> {
 
   getSuggestions(value: string): SearchSuggestItem[] {
     const token = value.slice(value.lastIndexOf(" ") + 1);
-    const registered: SearchOperatorOption[] = this.app.search.getRegisteredOperators().map((definition) => ({
-      operator: `${definition.name}:`,
-      insert: definition.token,
-      caretOffset: definition.token.endsWith("()") ? 1 : 0,
-      description: definition.description,
-    }));
-    const options = [...SEARCH_OPERATOR_OPTIONS, ...registered].filter((option) => option.operator.startsWith(token));
+    const registered: SearchOperatorOption[] = this.app.search
+      .getRegisteredOperators()
+      .map((definition) => ({
+        operator: `${definition.name}:`,
+        insert: definition.token,
+        caretOffset: definition.token.endsWith("()") ? 1 : 0,
+        description: definition.description,
+      }));
+    const options = [...SEARCH_OPERATOR_OPTIONS, ...registered].filter((option) =>
+      option.operator.startsWith(token),
+    );
     if (options.length === 0) return [];
     return [{ kind: "group" }, ...options.map((option) => ({ kind: "option" as const, option }))];
   }
@@ -110,9 +129,15 @@ export class SearchView extends ItemView {
   private searchId = 0;
   private operatorSuggest: SearchOperatorSuggest | null = null;
 
-  getViewType(): string { return "search"; }
-  getDisplayText(): string { return "Search"; }
-  getIcon(): string { return "lucide-search"; }
+  getViewType(): string {
+    return "search";
+  }
+  getDisplayText(): string {
+    return "Search";
+  }
+  getIcon(): string {
+    return "lucide-search";
+  }
 
   async onOpen(): Promise<void> {
     this.contentEl.replaceChildren();
@@ -130,7 +155,9 @@ export class SearchView extends ItemView {
     this.inputEl.placeholder = "Search...";
     this.inputEl.value = this.query;
     this.inputEl.addEventListener("input", () => this.setQuery(this.inputEl?.value ?? ""));
-    this.operatorSuggest = new SearchOperatorSuggest(this.app, this.inputEl, (query) => this.setQuery(query));
+    this.operatorSuggest = new SearchOperatorSuggest(this.app, this.inputEl, (query) =>
+      this.setQuery(query),
+    );
     inputContainerEl.appendChild(this.inputEl);
 
     this.countEl = document.createElement("div");
@@ -173,7 +200,9 @@ export class SearchView extends ItemView {
     if (!this.resultsEl || !this.countEl) return;
     this.resultsEl.replaceChildren();
     const matchCount = results.reduce((sum, result) => sum + result.matches.length, 0);
-    this.countEl.textContent = this.query.trim() ? `${matchCount} result${matchCount === 1 ? "" : "s"} in ${results.length} file${results.length === 1 ? "" : "s"}` : "";
+    this.countEl.textContent = this.query.trim()
+      ? `${matchCount} result${matchCount === 1 ? "" : "s"} in ${results.length} file${results.length === 1 ? "" : "s"}`
+      : "";
 
     for (const result of results) this.renderResultFile(result, this.resultsEl);
   }
@@ -226,11 +255,19 @@ export class SearchView extends ItemView {
   private openResult(path: string, match: SearchMatch): void {
     const file = this.app.vault.getFileByPath(path);
     if (!file) return;
-    void this.app.workspace.openFile(file, { active: true, eState: { line: match.line, matchStart: match.start, matchEnd: match.end } });
+    void this.app.workspace.openFile(file, {
+      active: true,
+      eState: { line: match.line, matchStart: match.start, matchEnd: match.end },
+    });
   }
 }
 
-function appendHighlightedText(parentEl: HTMLElement, text: string, start: number, end: number): void {
+function appendHighlightedText(
+  parentEl: HTMLElement,
+  text: string,
+  start: number,
+  end: number,
+): void {
   if (start > 0) parentEl.appendChild(document.createTextNode(text.slice(0, start)));
   const highlightEl = document.createElement("span");
   highlightEl.className = "search-result-file-matched-text";

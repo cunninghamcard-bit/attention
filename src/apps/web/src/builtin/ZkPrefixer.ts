@@ -37,7 +37,12 @@ export class ZkPrefixerController {
     const content = await this.getTemplateContent(id);
     const file = await this.app.fileManager.createNewMarkdownFile(folder, id);
     if (content) await this.app.vault.modify(file, content);
-    if (open) await this.app.workspace.openFile(file, { active: true, state: { mode: "source" }, eState: { rename: "end" } });
+    if (open)
+      await this.app.workspace.openFile(file, {
+        active: true,
+        state: { mode: "source" },
+        eState: { rename: "end" },
+      });
     return folder ? `${folder}/${id}` : id;
   }
 
@@ -70,7 +75,9 @@ export class ZkPrefixerController {
   private async getTemplateContent(title: string): Promise<string> {
     const template = this.options.template?.trim();
     if (!template) return "";
-    const file = this.app.metadataCache.getFirstLinkpathDest(template, "") ?? this.app.vault.getFileByPath(template);
+    const file =
+      this.app.metadataCache.getFirstLinkpathDest(template, "") ??
+      this.app.vault.getFileByPath(template);
     if (!file) return "";
     const source = await this.app.vault.read(file);
     return renderTemplate(source, { title });
@@ -85,7 +92,10 @@ class ZkPrefixerSettingTab implements SettingTab {
   readonly navEl = document.createElement("div");
   readonly containerEl = document.createElement("div");
 
-  constructor(readonly app: App, readonly controller: ZkPrefixerController) {
+  constructor(
+    readonly app: App,
+    readonly controller: ZkPrefixerController,
+  ) {
     this.navEl.className = "vertical-tab-nav-item tappable";
     const iconEl = document.createElement("div");
     iconEl.className = "vertical-tab-nav-item-icon";
@@ -105,21 +115,27 @@ class ZkPrefixerSettingTab implements SettingTab {
     new Setting(group.itemsEl)
       .setName("New file location")
       .setDesc("Folder where unique notes are created.")
-      .addText((text) => text.setValue(this.controller.options.folder ?? "").onChange((folder) => {
-        void this.controller.saveOptions({ folder });
-      }));
+      .addText((text) =>
+        text.setValue(this.controller.options.folder ?? "").onChange((folder) => {
+          void this.controller.saveOptions({ folder });
+        }),
+      );
     new Setting(group.itemsEl)
       .setName("Template file location")
       .setDesc("Optional template used for new unique notes.")
-      .addText((text) => text.setValue(this.controller.options.template ?? "").onChange((template) => {
-        void this.controller.saveOptions({ template });
-      }));
+      .addText((text) =>
+        text.setValue(this.controller.options.template ?? "").onChange((template) => {
+          void this.controller.saveOptions({ template });
+        }),
+      );
     new Setting(group.itemsEl)
       .setName("Unique ID format")
       .setDesc("Moment-style format. Default: YYYYMMDDHHmm.")
-      .addText((text) => text.setValue(this.controller.options.format ?? DEFAULT_FORMAT).onChange((format) => {
-        void this.controller.saveOptions({ format });
-      }));
+      .addText((text) =>
+        text.setValue(this.controller.options.format ?? DEFAULT_FORMAT).onChange((format) => {
+          void this.controller.saveOptions({ format });
+        }),
+      );
   }
 
   hide(): void {

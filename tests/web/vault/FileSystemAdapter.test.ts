@@ -72,7 +72,10 @@ describe("FileSystemAdapter", () => {
     await memory.write("Folder/Sub/Leaf.md", "leaf");
 
     await expect(memory.list("")).resolves.toEqual({ files: [], folders: ["Folder"] });
-    await expect(memory.list("Folder")).resolves.toEqual({ files: ["Folder/Note.md"], folders: ["Folder/Sub"] });
+    await expect(memory.list("Folder")).resolves.toEqual({
+      files: ["Folder/Note.md"],
+      folders: ["Folder/Sub"],
+    });
   });
 
   it("reads and writes binary files without UTF-8 conversion", async () => {
@@ -80,8 +83,12 @@ describe("FileSystemAdapter", () => {
 
     await adapter.writeBinary("Assets/image.bin", data);
 
-    expect([...new Uint8Array(await adapter.readBinary("Assets/image.bin"))]).toEqual([0, 255, 127, 64]);
-    expect([...await fs.readFile(path.join(basePath, "Assets/image.bin"))]).toEqual([0, 255, 127, 64]);
+    expect([...new Uint8Array(await adapter.readBinary("Assets/image.bin"))]).toEqual([
+      0, 255, 127, 64,
+    ]);
+    expect([...(await fs.readFile(path.join(basePath, "Assets/image.bin")))]).toEqual([
+      0, 255, 127, 64,
+    ]);
   });
 
   it("exposes Obsidian static desktop file helpers", async () => {
@@ -114,14 +121,20 @@ describe("FileSystemAdapter", () => {
     expect(adapter.getFullPath("")).toBe(basePath);
     expect(adapter.getFullPath("/")).toBe(basePath);
     expect(adapter.getFullPath("///")).toBe(basePath);
-    expect(adapter.getFullPath("Folder/No Break/é.md")).toBe(path.join(basePath, "Folder", "No Break", "é.md"));
+    expect(adapter.getFullPath("Folder/No Break/é.md")).toBe(
+      path.join(basePath, "Folder", "No Break", "é.md"),
+    );
     expect(await adapter.exists("Folder/No Break/é.md", true)).toBe(true);
   });
 
   it("resolves descendant full paths through indexed real paths", async () => {
     const realFolder = path.join(basePath, "Actual Folder");
     await fs.mkdir(realFolder, { recursive: true });
-    (adapter as unknown as { files: Map<string, { path: string; realpath: string; type: "folder" }> }).files.set("Linked", {
+    (
+      adapter as unknown as {
+        files: Map<string, { path: string; realpath: string; type: "folder" }>;
+      }
+    ).files.set("Linked", {
       path: "Linked",
       realpath: realFolder,
       type: "folder",
@@ -163,7 +176,9 @@ describe("FileSystemAdapter", () => {
   it("returns false from system trash when the desktop ipc channel is unavailable or returns false", async () => {
     await expect(adapter.trashSystem("Missing.md")).resolves.toBe(false);
 
-    (globalThis as { electron?: unknown }).electron = { ipcRenderer: { sendSync: vi.fn().mockReturnValue(false) } };
+    (globalThis as { electron?: unknown }).electron = {
+      ipcRenderer: { sendSync: vi.fn().mockReturnValue(false) },
+    };
 
     await expect(adapter.trashSystem("Denied.md")).resolves.toBe(false);
   });
@@ -224,7 +239,9 @@ describe("FileSystemAdapter", () => {
     await adapter.write("Folder/Name.md", "one");
     await adapter.write("Folder/Other.md", "two");
 
-    await expect(adapter.rename("Folder/Name.md", "Folder/Other.md")).rejects.toThrow("Destination file already exists!");
+    await expect(adapter.rename("Folder/Name.md", "Folder/Other.md")).rejects.toThrow(
+      "Destination file already exists!",
+    );
 
     await adapter.rename("Folder/Name.md", "Folder/name.md");
 
@@ -241,7 +258,11 @@ describe("FileSystemAdapter", () => {
 
     await adapter.reconcileInternalFile("External");
 
-    expect(created).toEqual(["folder:External", "folder:External/Nested", "file:External/Nested/Note.md"]);
+    expect(created).toEqual([
+      "folder:External",
+      "folder:External/Nested",
+      "file:External/Nested/Note.md",
+    ]);
   });
 
   it("skips node_modules and other heavy directories during list and reconcile", async () => {

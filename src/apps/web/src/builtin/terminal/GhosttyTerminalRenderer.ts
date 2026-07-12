@@ -20,7 +20,9 @@ export interface TerminalRenderer {
   dispose(): void;
 }
 
-export type TerminalRendererFactory = (options: TerminalRendererOptions) => Promise<TerminalRenderer>;
+export type TerminalRendererFactory = (
+  options: TerminalRendererOptions,
+) => Promise<TerminalRenderer>;
 
 /**
  * Terminal color schemes, transcribed from the Kaku terminal's local install
@@ -36,21 +38,50 @@ export type TerminalRendererFactory = (options: TerminalRendererOptions) => Prom
  * pre-blended against the background here (#29263c ≈ its SURFACE_ACTIVE).
  */
 const LIGHT_SCHEME = {
-  background: "#fffcf0", foreground: "#100f0f", cursor: "#343331",
-  selectionBackground: "#e8e6db", selectionForeground: "#100f0f",
-  black: "#100f0f", red: "#af3029", green: "#536907", yellow: "#8e6b02",
-  blue: "#205ea6", magenta: "#a02f6f", cyan: "#1c6c66", white: "#575653",
-  brightBlack: "#6f6e69", brightRed: "#c03e35", brightGreen: "#66790d", brightYellow: "#8e6b02",
-  brightBlue: "#3171b2", brightMagenta: "#b74583", brightCyan: "#2f968d", brightWhite: "#403e3c",
+  background: "#fffcf0",
+  foreground: "#100f0f",
+  cursor: "#343331",
+  selectionBackground: "#e8e6db",
+  selectionForeground: "#100f0f",
+  black: "#100f0f",
+  red: "#af3029",
+  green: "#536907",
+  yellow: "#8e6b02",
+  blue: "#205ea6",
+  magenta: "#a02f6f",
+  cyan: "#1c6c66",
+  white: "#575653",
+  brightBlack: "#6f6e69",
+  brightRed: "#c03e35",
+  brightGreen: "#66790d",
+  brightYellow: "#8e6b02",
+  brightBlue: "#3171b2",
+  brightMagenta: "#b74583",
+  brightCyan: "#2f968d",
+  brightWhite: "#403e3c",
 };
 const DARK_SCHEME = {
-  background: "#15141b", foreground: "#d5d4d6", cursor: "#8e6ad9",
+  background: "#15141b",
+  foreground: "#d5d4d6",
+  cursor: "#8e6ad9",
   selectionBackground: "#29263c",
   // The source scheme renders ANSI-black foregrounds as light text on dark bg.
-  black: "#c8c6cc", red: "#d85d5d", green: "#58d8ad", yellow: "#daae76",
-  blue: "#68afda", magenta: "#8e6ad9", cyan: "#58d8ad", white: "#d5d4d6",
-  brightBlack: "#6d6d6d", brightRed: "#d85d5d", brightGreen: "#58d8ad", brightYellow: "#daae76",
-  brightBlue: "#90c9e6", brightMagenta: "#8e6ad9", brightCyan: "#58d8ad", brightWhite: "#d5d4d6",
+  black: "#c8c6cc",
+  red: "#d85d5d",
+  green: "#58d8ad",
+  yellow: "#daae76",
+  blue: "#68afda",
+  magenta: "#8e6ad9",
+  cyan: "#58d8ad",
+  white: "#d5d4d6",
+  brightBlack: "#6d6d6d",
+  brightRed: "#d85d5d",
+  brightGreen: "#58d8ad",
+  brightYellow: "#daae76",
+  brightBlue: "#90c9e6",
+  brightMagenta: "#8e6ad9",
+  brightCyan: "#58d8ad",
+  brightWhite: "#d5d4d6",
 };
 
 export function buildTerminalTheme(dark: boolean): Record<string, string> {
@@ -103,7 +134,8 @@ async function registerBundledFonts(doc: Document): Promise<void> {
       // through to PingFang. Scan the FontFaceSet for a real match instead.
       let registered = false;
       doc.fonts.forEach((face) => {
-        if (face.family.replace(/["']/g, "") === family && face.weight === weight) registered = true;
+        if (face.family.replace(/["']/g, "") === family && face.weight === weight)
+          registered = true;
       });
       if (registered) continue;
       const path = `/Applications/Kaku.app/Contents/Resources/fonts/${file}`;

@@ -68,11 +68,16 @@ export class AppearanceManager {
     });
   }
 
-  setFonts(settings: Partial<Pick<AppearanceSettings, "textFont" | "uiFont" | "monospaceFont">>): void {
+  setFonts(
+    settings: Partial<Pick<AppearanceSettings, "textFont" | "uiFont" | "monospaceFont">>,
+  ): void {
     this.applyFonts(settings);
-    if (settings.textFont !== undefined) this.app.vault.setConfig("textFontFamily", settings.textFont);
-    if (settings.uiFont !== undefined) this.app.vault.setConfig("interfaceFontFamily", settings.uiFont);
-    if (settings.monospaceFont !== undefined) this.app.vault.setConfig("monospaceFontFamily", settings.monospaceFont);
+    if (settings.textFont !== undefined)
+      this.app.vault.setConfig("textFontFamily", settings.textFont);
+    if (settings.uiFont !== undefined)
+      this.app.vault.setConfig("interfaceFontFamily", settings.uiFont);
+    if (settings.monospaceFont !== undefined)
+      this.app.vault.setConfig("monospaceFontFamily", settings.monospaceFont);
   }
 
   updateFontFamily(): void {
@@ -100,9 +105,12 @@ export class AppearanceManager {
   applyBaseTheme(baseTheme: BaseTheme): void {
     this.settings.baseTheme = baseTheme;
     const body = this.getBody();
-    const prefersDark = this.getWindow().matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+    const prefersDark =
+      this.getWindow().matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
     const dark = baseTheme === "obsidian" || (baseTheme === "system" && prefersDark);
-    const changed = body.classList.contains("theme-dark") !== dark || body.classList.contains("theme-light") !== !dark;
+    const changed =
+      body.classList.contains("theme-dark") !== dark ||
+      body.classList.contains("theme-light") !== !dark;
     body.classList.toggle("theme-dark", dark);
     body.classList.toggle("theme-light", !dark);
     this.app.workspace.trigger("appearance-change", this.getSettings());
@@ -125,7 +133,8 @@ export class AppearanceManager {
       body.style.setProperty("--accent-h", String(hsl.h));
       body.style.setProperty("--accent-s", `${hsl.s}%`);
       body.style.setProperty("--accent-l", `${hsl.l}%`);
-      if (isLightColor(normalized)) body.style.setProperty("--text-on-accent", "var(--text-on-accent-inverted)");
+      if (isLightColor(normalized))
+        body.style.setProperty("--text-on-accent", "var(--text-on-accent-inverted)");
       else body.style.removeProperty("--text-on-accent");
       root.style.setProperty("--interactive-accent", normalized);
     }
@@ -141,7 +150,9 @@ export class AppearanceManager {
     return this.getBody().ownerDocument.defaultView ?? window;
   }
 
-  private applyFonts(settings: Partial<Pick<AppearanceSettings, "textFont" | "uiFont" | "monospaceFont">>): void {
+  private applyFonts(
+    settings: Partial<Pick<AppearanceSettings, "textFont" | "uiFont" | "monospaceFont">>,
+  ): void {
     this.settings = { ...this.settings, ...settings };
     const body = this.getBody();
     const root = this.getBody().ownerDocument.documentElement;
@@ -183,7 +194,14 @@ function formatFontFamilyOverride(value: string): string {
     .map((font) => font.trim())
     .filter(Boolean)
     .map((font) => {
-      if (/^['"]/.test(font) || /^var\(/.test(font) || /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-serif|ui-sans-serif|ui-monospace)$/i.test(font)) return font;
+      if (
+        /^['"]/.test(font) ||
+        /^var\(/.test(font) ||
+        /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-serif|ui-sans-serif|ui-monospace)$/i.test(
+          font,
+        )
+      )
+        return font;
       return /[^a-z0-9-]/i.test(font) ? JSON.stringify(font) : font;
     })
     .join(", ");
@@ -197,7 +215,11 @@ function clampNumber(value: number, min: number, max: number): number {
 function normalizeHexColor(hex: string): string | null {
   const normalized = hex.trim().replace(/^#/, "");
   if (/^[0-9a-f]{3}$/i.test(normalized)) {
-    return `#${normalized.split("").map((char) => `${char}${char}`).join("").toLowerCase()}`;
+    return `#${normalized
+      .split("")
+      .map((char) => `${char}${char}`)
+      .join("")
+      .toLowerCase()}`;
   }
   if (/^[0-9a-f]{6}$/i.test(normalized)) return `#${normalized.toLowerCase()}`;
   return null;
@@ -209,7 +231,7 @@ function parseCssNumber(value: string): number {
 }
 
 function hslToHex(hsl: { h: number; s: number; l: number }): string {
-  const h = ((hsl.h % 360) + 360) % 360 / 360;
+  const h = (((hsl.h % 360) + 360) % 360) / 360;
   const s = clamp(hsl.s / 100);
   const l = clamp(hsl.l / 100);
   if (s === 0) return rgbToHex(l, l, l);
@@ -229,7 +251,13 @@ function hueToRgb(p: number, q: number, t: number): number {
 }
 
 function rgbToHex(r: number, g: number, b: number): string {
-  return `#${[r, g, b].map((channel) => Math.round(clamp(channel) * 255).toString(16).padStart(2, "0")).join("")}`;
+  return `#${[r, g, b]
+    .map((channel) =>
+      Math.round(clamp(channel) * 255)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
 }
 
 function clamp(value: number): number {
@@ -242,7 +270,9 @@ function isLightColor(hex: string): boolean {
   const r = parseInt(normalized.slice(1, 3), 16) / 255;
   const g = parseInt(normalized.slice(3, 5), 16) / 255;
   const b = parseInt(normalized.slice(5, 7), 16) / 255;
-  const linear = [r, g, b].map((channel) => channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+  const linear = [r, g, b].map((channel) =>
+    channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
+  );
   return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2] > 0.5;
 }
 

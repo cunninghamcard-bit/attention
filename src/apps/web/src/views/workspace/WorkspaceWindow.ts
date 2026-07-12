@@ -7,7 +7,13 @@ import { installDomExtensions } from "../../dom/dom";
 import type { EventRef } from "../../core/Events";
 import { unregisterEventRef } from "../../core/EventRefInternal";
 import { FrameDom } from "../../app/FrameDom";
-import { applyObsidianBodyClasses, installFocusBodyClassSync, installPopoutBodyClassSync, syncBodyThemeClasses, syncObsidianConfigBodyClasses } from "../../app/BodyClasses";
+import {
+  applyObsidianBodyClasses,
+  installFocusBodyClassSync,
+  installPopoutBodyClassSync,
+  syncBodyThemeClasses,
+  syncObsidianConfigBodyClasses,
+} from "../../app/BodyClasses";
 
 export interface WorkspaceWindowState {
   id?: string;
@@ -60,10 +66,16 @@ export class WorkspaceWindow extends WorkspaceRoot {
     this.focusClassCleanup = installFocusBodyClassSync(win);
     this.doc.body.classList.add("is-popout-window");
     this.frameDom = new FrameDom(this.doc, { hidden: true, win });
-    this.bodyClassSyncCleanup = installPopoutBodyClassSync(this.workspace.app.dom.appContainerEl.ownerDocument.body, this.doc.body);
+    this.bodyClassSyncCleanup = installPopoutBodyClassSync(
+      this.workspace.app.dom.appContainerEl.ownerDocument.body,
+      this.doc.body,
+    );
     this.appContainerEl = this.createDiv("app-container", this.doc.body);
     this.frameDom.titleBarEl.after(this.appContainerEl);
-    this.horizontalMainContainerEl = this.createDiv("horizontal-main-container", this.appContainerEl);
+    this.horizontalMainContainerEl = this.createDiv(
+      "horizontal-main-container",
+      this.appContainerEl,
+    );
     this.workspaceEl = this.createDiv("workspace", this.horizontalMainContainerEl);
     this.workspaceEl.appendChild(this.containerEl);
     this.loadWindowState(state);
@@ -100,28 +112,31 @@ export class WorkspaceWindow extends WorkspaceRoot {
     this.height = state.height ?? state.size?.height ?? null;
     this.maximize = state.maximize ?? false;
     this.zoom = state.zoom ?? null;
-    this.size = this.x != null || this.y != null || this.width != null || this.height != null
-      ? {
-          ...(this.x == null ? {} : { x: this.x }),
-          ...(this.y == null ? {} : { y: this.y }),
-          ...(this.width == null ? {} : { width: this.width }),
-          ...(this.height == null ? {} : { height: this.height }),
-        }
-      : null;
+    this.size =
+      this.x != null || this.y != null || this.width != null || this.height != null
+        ? {
+            ...(this.x == null ? {} : { x: this.x }),
+            ...(this.y == null ? {} : { y: this.y }),
+            ...(this.width == null ? {} : { width: this.width }),
+            ...(this.height == null ? {} : { height: this.height }),
+          }
+        : null;
     if (this.width != null) this.containerEl.style.width = `${this.width}px`;
     if (this.height != null) this.containerEl.style.height = `${this.height}px`;
   }
 
   updateSize(): void {
-    const electronWindow = (this.win as Window & {
-      electronWindow?: {
-        isMaximized?: () => boolean;
-        isMinimized?: () => boolean;
-        isFullScreen?: () => boolean;
-        getBounds?: () => { x: number; y: number; width: number; height: number };
-        webContents?: { zoomLevel?: number };
-      };
-    }).electronWindow;
+    const electronWindow = (
+      this.win as Window & {
+        electronWindow?: {
+          isMaximized?: () => boolean;
+          isMinimized?: () => boolean;
+          isFullScreen?: () => boolean;
+          getBounds?: () => { x: number; y: number; width: number; height: number };
+          webContents?: { zoomLevel?: number };
+        };
+      }
+    ).electronWindow;
     // Refresh maximize/zoom from the live window so serialization reflects the
     // current state (real O0 reads isMaximized()/webContents.zoomLevel).
     if (electronWindow) {
@@ -134,10 +149,10 @@ export class WorkspaceWindow extends WorkspaceRoot {
       }
     }
     if (
-      electronWindow?.getBounds
-      && !electronWindow.isMaximized?.()
-      && !electronWindow.isMinimized?.()
-      && !electronWindow.isFullScreen?.()
+      electronWindow?.getBounds &&
+      !electronWindow.isMaximized?.() &&
+      !electronWindow.isMinimized?.() &&
+      !electronWindow.isFullScreen?.()
     ) {
       const bounds = electronWindow.getBounds();
       this.x = bounds.x;
@@ -179,7 +194,8 @@ export class WorkspaceWindow extends WorkspaceRoot {
     if (this.layoutChangeRef) unregisterEventRef(this.layoutChangeRef);
     this.layoutChangeRef = null;
     this.workspace.floatingSplit.removeChild(this);
-    if (this.workspace.floatingSplit.children.length === 0) this.workspace.floatingSplit.closePopout();
+    if (this.workspace.floatingSplit.children.length === 0)
+      this.workspace.floatingSplit.closePopout();
     this.appContainerEl.remove();
     this.frameDom.remove();
     if (this.win === getActiveWindow()) resetActiveWindow();
@@ -203,8 +219,12 @@ export class WorkspaceWindow extends WorkspaceRoot {
    * saved). No-op outside Electron.
    */
   private applyElectronWindowState(): void {
-    const electronWindow = (this.win as Window & { electronWindow?: { show?: () => void; maximize?: () => void } }).electronWindow;
-    const webFrame = (this.win as Window & { electron?: { webFrame?: { setZoomLevel?: (n: number) => void } } }).electron?.webFrame;
+    const electronWindow = (
+      this.win as Window & { electronWindow?: { show?: () => void; maximize?: () => void } }
+    ).electronWindow;
+    const webFrame = (
+      this.win as Window & { electron?: { webFrame?: { setZoomLevel?: (n: number) => void } } }
+    ).electron?.webFrame;
     electronWindow?.show?.();
     if (this.maximize) electronWindow?.maximize?.();
     if (typeof this.zoom === "number") {
@@ -228,10 +248,14 @@ export class WorkspaceWindow extends WorkspaceRoot {
   private installAnimationFrameFallback(): void {
     const parentWin = this.workspace.app.dom.appContainerEl.ownerDocument.defaultView ?? window;
     if (!this.win.requestAnimationFrame) {
-      this.win.requestAnimationFrame = parentWin.requestAnimationFrame?.bind(parentWin) ?? ((callback) => this.win.setTimeout(() => callback(Date.now()), 16));
+      this.win.requestAnimationFrame =
+        parentWin.requestAnimationFrame?.bind(parentWin) ??
+        ((callback) => this.win.setTimeout(() => callback(Date.now()), 16));
     }
     if (!this.win.cancelAnimationFrame) {
-      this.win.cancelAnimationFrame = parentWin.cancelAnimationFrame?.bind(parentWin) ?? ((handle) => this.win.clearTimeout(handle));
+      this.win.cancelAnimationFrame =
+        parentWin.cancelAnimationFrame?.bind(parentWin) ??
+        ((handle) => this.win.clearTimeout(handle));
     }
   }
 
@@ -245,7 +269,10 @@ export class WorkspaceWindow extends WorkspaceRoot {
     }
     const popoutWin = this.win as Window & { history?: History };
     if (!popoutWin.history || popoutWin.history === parentWin.history) {
-      Object.defineProperty(popoutWin, "history", { configurable: true, value: Object.create(parentWin.history) as History });
+      Object.defineProperty(popoutWin, "history", {
+        configurable: true,
+        value: Object.create(parentWin.history) as History,
+      });
     }
     popoutWin.history.forward = () => parentWin.history.forward();
     popoutWin.history.back = () => parentWin.history.back();
@@ -279,7 +306,11 @@ export class WorkspaceWindow extends WorkspaceRoot {
   }
 
   private isQuitting(): boolean {
-    const electron = (this.win as Window & { electron?: { ipcRenderer?: { sendSync?: (channel: string) => unknown } } }).electron;
+    const electron = (
+      this.win as Window & {
+        electron?: { ipcRenderer?: { sendSync?: (channel: string) => unknown } };
+      }
+    ).electron;
     return electron?.ipcRenderer?.sendSync?.("is-quitting") === true;
   }
 

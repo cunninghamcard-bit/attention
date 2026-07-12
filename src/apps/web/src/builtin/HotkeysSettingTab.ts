@@ -60,9 +60,7 @@ export class HotkeysSettingTab implements SettingTab {
     listEl.appendChild(group.itemsEl);
 
     for (const command of this.getMatchingCommands()) {
-      const setting = new Setting(group.itemsEl)
-        .setName(command.name)
-        .setDesc(command.id);
+      const setting = new Setting(group.itemsEl).setName(command.name).setDesc(command.id);
       this.renderCommandHotkeys(setting, command);
     }
   }
@@ -98,7 +96,8 @@ export class HotkeysSettingTab implements SettingTab {
     });
 
     hotkeysEl.appendChild(this.createAddHotkeyButton(command));
-    if (this.app.hotkeys.hasHotkeyOverride(command.id)) hotkeysEl.appendChild(this.createRestoreHotkeyButton(command));
+    if (this.app.hotkeys.hasHotkeyOverride(command.id))
+      hotkeysEl.appendChild(this.createRestoreHotkeyButton(command));
     setting.controlEl.appendChild(hotkeysEl);
   }
 
@@ -222,13 +221,15 @@ function getHotkeyConflicts(app: App, command: Command, hotkey: Hotkey): Command
   const signature = hotkeySignature(hotkey);
   return app.commands.getCommands().filter((candidate) => {
     if (candidate.id === command.id) return false;
-    return getDisplayHotkeys(app, candidate).some((candidateHotkey) => hotkeySignature(candidateHotkey) === signature);
+    return getDisplayHotkeys(app, candidate).some(
+      (candidateHotkey) => hotkeySignature(candidateHotkey) === signature,
+    );
   });
 }
 
 function hotkeySignature(hotkey: Hotkey): string {
   const modifiers = [...hotkey.modifiers].sort().join(",");
-  const key = hotkey.code ? normalizeCode(hotkey.code) : hotkey.key ?? "";
+  const key = hotkey.code ? normalizeCode(hotkey.code) : (hotkey.key ?? "");
   return `${modifiers}:${key}`.toLowerCase();
 }
 

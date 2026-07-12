@@ -12,7 +12,15 @@ export default defineConfig({
   // Static assets (fonts, icons) live at the repo root, not under this package.
   publicDir: resolve(__dirname, "public"),
   plugins: [
-    ...(process.env.ANALYZE ? [visualizer({ filename: resolve(rootDist, "stats.html"), gzipSize: true, brotliSize: true })] : []),
+    ...(process.env.ANALYZE
+      ? [
+          visualizer({
+            filename: resolve(rootDist, "stats.html"),
+            gzipSize: true,
+            brotliSize: true,
+          }),
+        ]
+      : []),
   ],
   server: {
     port: Number(process.env.PORT) || 5173,

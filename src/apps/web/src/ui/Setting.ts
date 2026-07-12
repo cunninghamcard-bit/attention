@@ -180,7 +180,9 @@ export class ExtraButtonComponent extends BaseComponent {
   }
 }
 
-export abstract class AbstractTextComponent<T extends HTMLInputElement | HTMLTextAreaElement = HTMLInputElement | HTMLTextAreaElement> extends ValueComponent<string> {
+export abstract class AbstractTextComponent<
+  T extends HTMLInputElement | HTMLTextAreaElement = HTMLInputElement | HTMLTextAreaElement,
+> extends ValueComponent<string> {
   inputEl: T;
   private changeCallback?: (value: string) => unknown;
 
@@ -238,7 +240,10 @@ export class TextComponent extends AbstractTextComponent<HTMLInputElement> {
 }
 
 export class SecretComponent extends TextComponent {
-  constructor(readonly app: App, containerEl: HTMLElement) {
+  constructor(
+    readonly app: App,
+    containerEl: HTMLElement,
+  ) {
     super(containerEl);
     this.inputEl.type = "password";
     this.inputEl.autocomplete = "new-password";
@@ -334,7 +339,8 @@ export class MomentFormatComponent extends TextComponent {
   updateSample(): this {
     if (!this.sampleEl) return this;
     const format = this.getValue() || this.defaultFormat;
-    const momentFactory = (globalThis as { moment?: () => { format: (format: string) => string } }).moment;
+    const momentFactory = (globalThis as { moment?: () => { format: (format: string) => string } })
+      .moment;
     this.sampleEl.textContent = momentFactory ? momentFactory().format(format) : format;
     return this;
   }
@@ -656,7 +662,9 @@ export class SliderComponent extends ValueComponent<number> {
   getValuePretty(): string {
     const value = this.getValue();
     if (this.displayFormat) return this.displayFormat(value);
-    return this.sliderEl.step === "any" || parseFloat(this.sliderEl.step) < 1 ? value.toFixed(2) : value.toString();
+    return this.sliderEl.step === "any" || parseFloat(this.sliderEl.step) < 1
+      ? value.toFixed(2)
+      : value.toString();
   }
 
   setDisplayFormat(format: (value: number) => string): this {
@@ -836,7 +844,8 @@ export class Setting {
     const component = new TextComponent(this.controlEl);
     if (!Platform.hasPhysicalKeyboard) {
       component.inputEl.addEventListener("keydown", (event) => {
-        if (!event.isComposing && !event.defaultPrevented && event.key === "Enter") component.inputEl.blur();
+        if (!event.isComposing && !event.defaultPrevented && event.key === "Enter")
+          component.inputEl.blur();
       });
     }
     this.components.push(component);

@@ -7,7 +7,11 @@ import { preprocessHtmlDrop, type DetachedHtmlImage } from "../markdown/HtmlDrop
 import type { FoldInfo } from "../markdown/FoldManager";
 import { SimpleEditor, type Editor, type EditorPosition } from "../editor/Editor";
 import { EditorViewHost } from "../editor/EditorView";
-import { editorEditorField, editorInfoField, editorLivePreviewField } from "../editor/EditorStateField";
+import {
+  editorEditorField,
+  editorInfoField,
+  editorLivePreviewField,
+} from "../editor/EditorStateField";
 import { normalizeEditorExtensions, type EditorExtension } from "../editor/EditorExtension";
 import {
   insertFrontmatterProperty,
@@ -34,7 +38,12 @@ import { normalizeViewStatePayload, type ViewStateResult } from "./View";
 import { Component } from "../core/Component";
 import type { App } from "../app/App";
 import type { LinkGraphEdge } from "../metadata/LinkGraph";
-import { getAttachmentFilesFromDataTransfer, hasDataTransferAttachmentFiles, splitAttachmentFilename, type AttachmentImportFile } from "../app/AttachmentImport";
+import {
+  getAttachmentFilesFromDataTransfer,
+  hasDataTransferAttachmentFiles,
+  splitAttachmentFilename,
+  type AttachmentImportFile,
+} from "../app/AttachmentImport";
 import type { Scope } from "../app/hotkeys/Scope";
 import { Keymap } from "../app/hotkeys/Keymap";
 
@@ -129,14 +138,20 @@ export class MarkdownView extends TextFileView {
     this.inlineTitleEl.addEventListener("focus", () => this.onInlineTitleFocus());
     this.inlineTitleEl.addEventListener("blur", () => void this.onInlineTitleBlur());
     this.inlineTitleEl.addEventListener("input", () => this.onTitleChange(this.inlineTitleEl));
-    this.inlineTitleEl.addEventListener("paste", (event) => this.onTitlePaste(this.inlineTitleEl, event));
+    this.inlineTitleEl.addEventListener("paste", (event) =>
+      this.onTitlePaste(this.inlineTitleEl, event),
+    );
     this.inlineTitleEl.addEventListener("keydown", (event) => void this.onTitleKeydown(event));
     this.metadataContainerEl = document.createElement("div");
     this.metadataContainerEl.className = "metadata-container";
     this.metadataContainerEl.tabIndex = -1;
     this.metadataContainerEl.dataset.propertyCount = "0";
     this.metadataContainerEl.addEventListener("focusin", (event) => {
-      if (![...this.metadataContainerEl.querySelectorAll(".metadata-property")].some((row) => row === event.target)) {
+      if (
+        ![...this.metadataContainerEl.querySelectorAll(".metadata-property")].some(
+          (row) => row === event.target,
+        )
+      ) {
         this.clearMetadataSelection();
       }
     });
@@ -156,20 +171,52 @@ export class MarkdownView extends TextFileView {
     // `hidden` attribute, so presence in the DOM — not `hidden` — is what
     // gates visibility. Keeping it out until searched avoids a stray find bar
     // sitting at the bottom of every editor.
-    this.register(this.editor.onChange((_editor, origin) => this.handleEditorDocumentChange(origin)));
+    this.register(
+      this.editor.onChange((_editor, origin) => this.handleEditorDocumentChange(origin)),
+    );
     this.register(this.editor.onSelectionChange(() => this.handleEditorSelectionChange()));
-    this.editorViewHost.scrollerEl.addEventListener("contextmenu", (event) => this.handleSourceViewportContextMenu(event));
-    this.editorViewHost.contentEl.addEventListener("paste", (event) => void this.handleSourcePaste(event), { capture: true });
-    this.editorViewHost.contentEl.addEventListener("dragover", (event) => this.handleSourceDragOver(event), { capture: true });
-    this.editorViewHost.contentEl.addEventListener("drop", (event) => void this.handleSourceDrop(event), { capture: true });
+    this.editorViewHost.scrollerEl.addEventListener("contextmenu", (event) =>
+      this.handleSourceViewportContextMenu(event),
+    );
+    this.editorViewHost.contentEl.addEventListener(
+      "paste",
+      (event) => void this.handleSourcePaste(event),
+      { capture: true },
+    );
+    this.editorViewHost.contentEl.addEventListener(
+      "dragover",
+      (event) => this.handleSourceDragOver(event),
+      { capture: true },
+    );
+    this.editorViewHost.contentEl.addEventListener(
+      "drop",
+      (event) => void this.handleSourceDrop(event),
+      { capture: true },
+    );
     this.sourceMode = { cmEditor: this.editor };
-    this.editorViewHost.contentEl.addEventListener("keydown", (event) => void this.handleEditorSuggest(event));
-    this.editorViewHost.contentEl.addEventListener("keyup", (event) => void this.handleSourceKeyup(event));
-    this.editorViewHost.contentEl.addEventListener("mouseup", () => this.handleSourceSelectionChange());
-    this.editorViewHost.contentEl.addEventListener("click", (event) => this.handleSourceClick(event));
-    this.editorViewHost.contentEl.addEventListener("mousedown", (event) => this.handleSourceClick(event));
-    this.editorViewHost.contentEl.addEventListener("contextmenu", (event) => this.handleSourceContextMenu(event));
-    this.editorViewHost.contentEl.addEventListener("mousemove", (event) => this.handleSourceHover(event));
+    this.editorViewHost.contentEl.addEventListener(
+      "keydown",
+      (event) => void this.handleEditorSuggest(event),
+    );
+    this.editorViewHost.contentEl.addEventListener(
+      "keyup",
+      (event) => void this.handleSourceKeyup(event),
+    );
+    this.editorViewHost.contentEl.addEventListener("mouseup", () =>
+      this.handleSourceSelectionChange(),
+    );
+    this.editorViewHost.contentEl.addEventListener("click", (event) =>
+      this.handleSourceClick(event),
+    );
+    this.editorViewHost.contentEl.addEventListener("mousedown", (event) =>
+      this.handleSourceClick(event),
+    );
+    this.editorViewHost.contentEl.addEventListener("contextmenu", (event) =>
+      this.handleSourceContextMenu(event),
+    );
+    this.editorViewHost.contentEl.addEventListener("mousemove", (event) =>
+      this.handleSourceHover(event),
+    );
     this.editorViewHost.contentEl.addEventListener("mouseleave", () => {
       this.lastHoveredEditorLink = null;
     });
@@ -251,7 +298,10 @@ export class MarkdownView extends TextFileView {
 
   toggleMode(): void {
     const viewState = this.leaf.getViewState();
-    viewState.state = { ...(viewState.state ?? {}), mode: this.getMode() === "preview" ? "source" : "preview" };
+    viewState.state = {
+      ...(viewState.state ?? {}),
+      mode: this.getMode() === "preview" ? "source" : "preview",
+    };
     void this.leaf.setViewState(viewState, { focus: true });
   }
 
@@ -305,10 +355,15 @@ export class MarkdownView extends TextFileView {
     this.documentSearchInputEl.select();
   }
 
-  async setMode(mode: MarkdownMode | MarkdownViewModeComponent, source?: boolean, options: { saveFold?: boolean } = {}): Promise<boolean> {
+  async setMode(
+    mode: MarkdownMode | MarkdownViewModeComponent,
+    source?: boolean,
+    options: { saveFold?: boolean } = {},
+  ): Promise<boolean> {
     const nextMode = typeof mode === "string" ? this.modes[mode] : mode;
     if (!nextMode) return false;
-    const nextSourceMode = typeof source === "boolean" ? sourceToMode(source) : this.getSourceMode();
+    const nextSourceMode =
+      typeof source === "boolean" ? sourceToMode(source) : this.getSourceMode();
     const modeChanged = this.currentMode !== nextMode;
     const sourceChanged = this.getSourceMode() !== nextSourceMode;
     if (!modeChanged && !sourceChanged) return false;
@@ -337,23 +392,27 @@ export class MarkdownView extends TextFileView {
   override onPaneMenu(menu: Menu, source?: string): void {
     super.onPaneMenu(menu, source);
     const mode = this.getMode();
-    menu.addItem((item) => item
-      .setSection("pane")
-      .setTitle("Toggle reading view")
-      .setIcon("lucide-book-open")
-      .setChecked(mode === "preview")
-      .onClick(() => {
-        this.toggleMode();
-      }));
-    if (mode === "source") {
-      menu.addItem((item) => item
+    menu.addItem((item) =>
+      item
         .setSection("pane")
-        .setTitle("Toggle source mode")
-        .setIcon("lucide-code-2")
-        .setChecked(this.getSourceMode() === "source")
+        .setTitle("Toggle reading view")
+        .setIcon("lucide-book-open")
+        .setChecked(mode === "preview")
         .onClick(() => {
-          this.setSourceMode(this.getSourceMode() === "source" ? "live" : "source");
-        }));
+          this.toggleMode();
+        }),
+    );
+    if (mode === "source") {
+      menu.addItem((item) =>
+        item
+          .setSection("pane")
+          .setTitle("Toggle source mode")
+          .setIcon("lucide-code-2")
+          .setChecked(this.getSourceMode() === "source")
+          .onClick(() => {
+            this.setSourceMode(this.getSourceMode() === "source" ? "live" : "source");
+          }),
+      );
     }
   }
 
@@ -461,8 +520,13 @@ export class MarkdownView extends TextFileView {
     const source = this.getViewData();
     const cursorLine = this.editor.getCursor().line;
     const ranges = getSourceFoldRanges(source);
-    const target = ranges.find((range) => range.from <= cursorLine && range.to >= cursorLine && !this.sourceFoldLines.has(range.from))
-      ?? ranges.find((range) => !this.sourceFoldLines.has(range.from));
+    const target =
+      ranges.find(
+        (range) =>
+          range.from <= cursorLine &&
+          range.to >= cursorLine &&
+          !this.sourceFoldLines.has(range.from),
+      ) ?? ranges.find((range) => !this.sourceFoldLines.has(range.from));
     if (!target) return false;
     this.sourceFoldLines.add(target.from);
     this.render();
@@ -475,10 +539,11 @@ export class MarkdownView extends TextFileView {
     const cursorLine = this.editor.getCursor().line;
     const ranges = getSourceFoldRanges(this.getViewData());
     const foldedRanges = ranges.filter((range) => this.sourceFoldLines.has(range.from));
-    const target = [...foldedRanges]
-      .sort((left, right) => (right.from - left.from) || (left.to - right.to))
-      .find((range) => range.from <= cursorLine && range.to >= cursorLine)
-      ?? foldedRanges[foldedRanges.length - 1];
+    const target =
+      [...foldedRanges]
+        .sort((left, right) => right.from - left.from || left.to - right.to)
+        .find((range) => range.from <= cursorLine && range.to >= cursorLine) ??
+      foldedRanges[foldedRanges.length - 1];
     if (!target) return false;
     this.sourceFoldLines.delete(target.from);
     this.render();
@@ -504,14 +569,23 @@ export class MarkdownView extends TextFileView {
     const source = this.getViewData();
     const parsed = parseFrontmatter(source);
     const folds: Array<{ from: number; to: number }> = [];
-    if (parsed.valid && Object.keys(parsed.values).length > 0 && this.metadataContainerEl.classList.contains("is-collapsed")) {
+    if (
+      parsed.valid &&
+      Object.keys(parsed.values).length > 0 &&
+      this.metadataContainerEl.classList.contains("is-collapsed")
+    ) {
       folds.push({ from: 0, to: getFrontmatterLineCount(source) });
     }
     return { folds, lines: countLines(source) };
   }
 
   applyFoldInfo(foldInfo: unknown): void {
-    if (!foldInfo || typeof foldInfo !== "object" || !Array.isArray((foldInfo as { folds?: unknown }).folds)) return;
+    if (
+      !foldInfo ||
+      typeof foldInfo !== "object" ||
+      !Array.isArray((foldInfo as { folds?: unknown }).folds)
+    )
+      return;
     this.sourceFoldLines.clear();
     const source = this.getViewData();
     const frontmatterLines = getFrontmatterLineCount(source);
@@ -520,7 +594,11 @@ export class MarkdownView extends TextFileView {
       const from = Number(fold.from);
       const to = Number(fold.to);
       if (!Number.isFinite(from)) continue;
-      if (from === 0 && frontmatterLines > 0 && (!Number.isFinite(to) || to === 0 || to === frontmatterLines)) {
+      if (
+        from === 0 &&
+        frontmatterLines > 0 &&
+        (!Number.isFinite(to) || to === 0 || to === frontmatterLines)
+      ) {
         metadataCollapsed = true;
         continue;
       }
@@ -530,17 +608,23 @@ export class MarkdownView extends TextFileView {
   }
 
   async onOpen(): Promise<void> {
-    this.registerEvent(this.app.workspace.on("property-change", (path: string) => {
-      if (path === this.file?.path) this.renderProperties();
-    }));
-    this.registerEvent(this.app.metadataCache.on("changed", (file: TFile) => {
-      if (file.path === this.file?.path) this.renderProperties();
-    }));
-    this.registerEvent(this.app.vault.on("config-changed", (key: string) => {
-      if (key === "propertiesInDocument") this.render();
-      if (key === "readableLineLength" || key === "showLineNumber") this.updateOptions();
-      if (key === "spellcheck") this.onConfigChanged(key);
-    }));
+    this.registerEvent(
+      this.app.workspace.on("property-change", (path: string) => {
+        if (path === this.file?.path) this.renderProperties();
+      }),
+    );
+    this.registerEvent(
+      this.app.metadataCache.on("changed", (file: TFile) => {
+        if (file.path === this.file?.path) this.renderProperties();
+      }),
+    );
+    this.registerEvent(
+      this.app.vault.on("config-changed", (key: string) => {
+        if (key === "propertiesInDocument") this.render();
+        if (key === "readableLineLength" || key === "showLineNumber") this.updateOptions();
+        if (key === "spellcheck") this.onConfigChanged(key);
+      }),
+    );
     this.updateOptions();
     this.syncActiveEditor();
     this.render();
@@ -589,7 +673,8 @@ export class MarkdownView extends TextFileView {
     }
     if (state && typeof state === "object" && "backlinkOpts" in state) {
       const backlinkOpts = (state as { backlinkOpts?: unknown }).backlinkOpts;
-      if (backlinkOpts && typeof backlinkOpts === "object" && this.backlinks) void this.backlinks.setState(backlinkOpts);
+      if (backlinkOpts && typeof backlinkOpts === "object" && this.backlinks)
+        void this.backlinks.setState(backlinkOpts);
     }
     if (changedModeState && result) (result as { layout?: boolean }).layout = true;
     if (targetMode) await this.setMode(targetMode, undefined, { saveFold: false });
@@ -631,7 +716,12 @@ export class MarkdownView extends TextFileView {
   ): void {
     if (token.type === "internal-link") {
       const linktext = token.text ?? token.linktext;
-      if (linktext) setTimeout(() => void this.app.workspace.openLinkText(linktext, this.file?.path ?? "", target as never), 100);
+      if (linktext)
+        setTimeout(
+          () =>
+            void this.app.workspace.openLinkText(linktext, this.file?.path ?? "", target as never),
+          100,
+        );
       return;
     }
     if (token.type === "external-link" || token.type === "external-ref-link") {
@@ -646,14 +736,23 @@ export class MarkdownView extends TextFileView {
       const text = token.text ?? token.linktext;
       if (!text) return;
       const tag = text.startsWith("#") ? text : `#${text}`;
-      const plugin = this.app.internalPlugins.getEnabledPluginById<{ openGlobalSearch?: (query: string) => void }>("global-search");
+      const plugin = this.app.internalPlugins.getEnabledPluginById<{
+        openGlobalSearch?: (query: string) => void;
+      }>("global-search");
       plugin?.openGlobalSearch?.(`tag:${tag}`);
     }
   }
 
-  getClickableTokenHref(token: { type: string; text?: string; linktext?: string; href?: string; id?: string }): string | null {
+  getClickableTokenHref(token: {
+    type: string;
+    text?: string;
+    linktext?: string;
+    href?: string;
+    id?: string;
+  }): string | null {
     if (token.type === "external-link") return token.href ?? token.text ?? token.linktext ?? null;
-    if (token.type === "external-ref-link") return this.getExternalRefLinkHref(token.text ?? token.id ?? "");
+    if (token.type === "external-ref-link")
+      return this.getExternalRefLinkHref(token.text ?? token.id ?? "");
     return null;
   }
 
@@ -709,7 +808,9 @@ export class MarkdownView extends TextFileView {
     this.applyTextEdits(edits, lineStarts[from.line] ?? 0);
   }
 
-  toggleMarkdownFormatting(kind: "bold" | "italic" | "strikethrough" | "highlight" | "code" | "math"): void {
+  toggleMarkdownFormatting(
+    kind: "bold" | "italic" | "strikethrough" | "highlight" | "code" | "math",
+  ): void {
     const markers = {
       bold: ["**", "__"],
       italic: ["*", "_"],
@@ -745,7 +846,11 @@ export class MarkdownView extends TextFileView {
     }
     if (source.slice(start - 3, start) === "%% " && source.slice(end, end + 3) === " %%") {
       this.syncSourceValue(source);
-      this.applyTextEdits([{ start: start - 3, end: end + 3, text: selection }], start - 3, end - 3);
+      this.applyTextEdits(
+        [{ start: start - 3, end: end + 3, text: selection }],
+        start - 3,
+        end - 3,
+      );
       return;
     }
     const text = `%% ${selection} %%`;
@@ -776,11 +881,15 @@ export class MarkdownView extends TextFileView {
 
   toggleBlockquote(): void {
     const ctx = this.getSelectedLineContext();
-    const rows = this.getSelectedRows(ctx, { includeEmpty: true }).map((row) => ({ ...row, quoteLength: this.getBlockquotePrefixLength(row.line) }));
+    const rows = this.getSelectedRows(ctx, { includeEmpty: true }).map((row) => ({
+      ...row,
+      quoteLength: this.getBlockquotePrefixLength(row.line),
+    }));
     const shouldAdd = rows.some((row) => row.quoteLength === 0);
     const edits = rows
       .map((row) => {
-        if (shouldAdd) return row.quoteLength === 0 ? { start: row.start, end: row.start, text: "> " } : null;
+        if (shouldAdd)
+          return row.quoteLength === 0 ? { start: row.start, end: row.start, text: "> " } : null;
         return { start: row.start, end: row.start + row.quoteLength, text: "" };
       })
       .filter((edit): edit is { start: number; end: number; text: string } => edit !== null);
@@ -790,8 +899,13 @@ export class MarkdownView extends TextFileView {
 
   toggleBulletList(): void {
     const ctx = this.getSelectedLineContext();
-    const rows = this.getSelectedRows(ctx).map((row) => ({ ...row, list: this.parseListPrefix(row.line) }));
-    const shouldAdd = rows.some((row) => !row.list.bullet || row.list.ordered || row.list.check !== undefined);
+    const rows = this.getSelectedRows(ctx).map((row) => ({
+      ...row,
+      list: this.parseListPrefix(row.line),
+    }));
+    const shouldAdd = rows.some(
+      (row) => !row.list.bullet || row.list.ordered || row.list.check !== undefined,
+    );
     const edits = rows.map((row) => ({
       start: row.start,
       end: row.start + row.list.markerLength,
@@ -803,7 +917,10 @@ export class MarkdownView extends TextFileView {
 
   toggleNumberList(): void {
     const ctx = this.getSelectedLineContext();
-    const rows = this.getSelectedRows(ctx).map((row) => ({ ...row, list: this.parseListPrefix(row.line) }));
+    const rows = this.getSelectedRows(ctx).map((row) => ({
+      ...row,
+      list: this.parseListPrefix(row.line),
+    }));
     const shouldAdd = rows.some((row) => !row.list.ordered);
     const edits = rows.map((row) => ({
       start: row.start,
@@ -816,7 +933,10 @@ export class MarkdownView extends TextFileView {
 
   toggleCheckList(cycle = false): void {
     const ctx = this.getSelectedLineContext();
-    const rows = this.getSelectedRows(ctx).map((row) => ({ ...row, list: this.parseListPrefix(row.line) }));
+    const rows = this.getSelectedRows(ctx).map((row) => ({
+      ...row,
+      list: this.parseListPrefix(row.line),
+    }));
     let mode = 3;
     for (const row of rows) {
       if (mode > 2 && row.list.check === " ") mode = 2;
@@ -847,7 +967,11 @@ export class MarkdownView extends TextFileView {
       const text = "\n> [!NOTE] Title\n> Contents\n";
       const noteStart = cursorOffset + text.indexOf("NOTE");
       this.syncSourceValue(ctx.source);
-      this.applyTextEdits([{ start: cursorOffset, end: this.editor.posToOffset(to), text }], noteStart, noteStart + 4);
+      this.applyTextEdits(
+        [{ start: cursorOffset, end: this.editor.posToOffset(to), text }],
+        noteStart,
+        noteStart + 4,
+      );
       return;
     }
     const edits: Array<{ start: number; end: number; text: string }> = [];
@@ -926,7 +1050,9 @@ export class MarkdownView extends TextFileView {
   unindentList(): void {
     const ctx = this.getSelectedLineContext();
     const edits = this.getSelectedRows(ctx).flatMap((row) => {
-      const removable = row.line.startsWith("\t") ? 1 : Math.min(row.line.match(/^ {1,4}/)?.[0].length ?? 0, 4);
+      const removable = row.line.startsWith("\t")
+        ? 1
+        : Math.min(row.line.match(/^ {1,4}/)?.[0].length ?? 0, 4);
       return removable > 0 ? [{ start: row.start, end: row.start + removable, text: "" }] : [];
     });
     this.syncSourceValue(ctx.source);
@@ -946,12 +1072,20 @@ export class MarkdownView extends TextFileView {
     this.scheduleSave();
   }
 
-  private replaceEditorSelection(text: string, relativeSelectionStart = text.length, relativeSelectionEnd = relativeSelectionStart): void {
+  private replaceEditorSelection(
+    text: string,
+    relativeSelectionStart = text.length,
+    relativeSelectionEnd = relativeSelectionStart,
+  ): void {
     const source = this.editor.getValue();
     const start = this.editor.posToOffset(this.editor.getCursor("from"));
     const end = this.editor.posToOffset(this.editor.getCursor("to"));
     this.syncSourceValue(source);
-    this.applyTextEdits([{ start, end, text }], start + relativeSelectionStart, start + relativeSelectionEnd);
+    this.applyTextEdits(
+      [{ start, end, text }],
+      start + relativeSelectionStart,
+      start + relativeSelectionEnd,
+    );
   }
 
   private toggleWrappedSelection(marker: string, alternateMarkers: string[] = []): void {
@@ -973,15 +1107,26 @@ export class MarkdownView extends TextFileView {
     const markers = [marker, ...alternateMarkers];
     const selection = source.slice(start, end);
     for (const candidate of markers) {
-      if (selection.startsWith(candidate) && selection.endsWith(candidate) && selection.length >= candidate.length * 2) {
+      if (
+        selection.startsWith(candidate) &&
+        selection.endsWith(candidate) &&
+        selection.length >= candidate.length * 2
+      ) {
         const text = selection.slice(candidate.length, selection.length - candidate.length);
         this.syncSourceValue(source);
         this.applyTextEdits([{ start, end, text }], start, start + text.length);
         return;
       }
-      if (source.slice(start - candidate.length, start) === candidate && source.slice(end, end + candidate.length) === candidate) {
+      if (
+        source.slice(start - candidate.length, start) === candidate &&
+        source.slice(end, end + candidate.length) === candidate
+      ) {
         this.syncSourceValue(source);
-        this.applyTextEdits([{ start: start - candidate.length, end: end + candidate.length, text: selection }], start - candidate.length, end - candidate.length);
+        this.applyTextEdits(
+          [{ start: start - candidate.length, end: end + candidate.length, text: selection }],
+          start - candidate.length,
+          end - candidate.length,
+        );
         return;
       }
     }
@@ -992,7 +1137,11 @@ export class MarkdownView extends TextFileView {
     const content = source.slice(contentStart, contentEnd);
     const text = `${marker}${content}${marker}`;
     this.syncSourceValue(source);
-    this.applyTextEdits([{ start: contentStart, end: contentEnd, text }], contentStart + marker.length, contentStart + marker.length + content.length);
+    this.applyTextEdits(
+      [{ start: contentStart, end: contentEnd, text }],
+      contentStart + marker.length,
+      contentStart + marker.length + content.length,
+    );
   }
 
   private getWordRangeAt(source: string, offset: number): { start: number; end: number } | null {
@@ -1023,7 +1172,10 @@ export class MarkdownView extends TextFileView {
     const to = this.editor.getCursor("to");
     const maxLine = Math.max(0, lines.length - 1);
     const fromLine = Math.max(0, Math.min(from.line, maxLine));
-    const toLine = Math.max(fromLine, Math.min(to.ch === 0 && to.line > from.line ? to.line - 1 : to.line, maxLine));
+    const toLine = Math.max(
+      fromLine,
+      Math.min(to.ch === 0 && to.line > from.line ? to.line - 1 : to.line, maxLine),
+    );
     return { source, lines, lineStarts, fromLine, toLine, multipleLines: from.line !== to.line };
   }
 
@@ -1040,7 +1192,13 @@ export class MarkdownView extends TextFileView {
     return rows;
   }
 
-  private parseListPrefix(line: string): { prefix: string; markerLength: number; bullet?: string; ordered?: string; check?: string } {
+  private parseListPrefix(line: string): {
+    prefix: string;
+    markerLength: number;
+    bullet?: string;
+    ordered?: string;
+    check?: string;
+  } {
     const match = line.match(/^([>\s]*)(([*+-] |(\d+)([.)] ))(?:\[(.)\] )?)?/);
     return {
       prefix: match?.[1] ?? "",
@@ -1062,7 +1220,8 @@ export class MarkdownView extends TextFileView {
     const from = this.editor.posToOffset(this.editor.getCursor("from"));
     const to = this.editor.posToOffset(this.editor.getCursor("to"));
     const start = ctx.lineStarts[ctx.fromLine] ?? 0;
-    const end = (ctx.lineStarts[ctx.toLine] ?? ctx.source.length) + (ctx.lines[ctx.toLine] ?? "").length;
+    const end =
+      (ctx.lineStarts[ctx.toLine] ?? ctx.source.length) + (ctx.lines[ctx.toLine] ?? "").length;
     const shift = open.length + 1;
     this.syncSourceValue(ctx.source);
     this.applyTextEdits(
@@ -1077,7 +1236,11 @@ export class MarkdownView extends TextFileView {
 
   private applyLineIndent(text: string): void {
     const ctx = this.getSelectedLineContext();
-    const edits = this.getSelectedRows(ctx).map((row) => ({ start: row.start, end: row.start, text }));
+    const edits = this.getSelectedRows(ctx).map((row) => ({
+      start: row.start,
+      end: row.start,
+      text,
+    }));
     this.syncSourceValue(ctx.source);
     this.applyTextEdits(edits, (ctx.lineStarts[ctx.fromLine] ?? 0) + text.length);
   }
@@ -1088,7 +1251,11 @@ export class MarkdownView extends TextFileView {
     return max + 1;
   }
 
-  applyTextEdits(edits: Array<{ start: number; end: number; text: string }>, selectionStart: number, selectionEnd = selectionStart): void {
+  applyTextEdits(
+    edits: Array<{ start: number; end: number; text: string }>,
+    selectionStart: number,
+    selectionEnd = selectionStart,
+  ): void {
     const source = this.editor.getValue();
     const sorted = [...edits]
       .filter((edit) => edit.start <= edit.end)
@@ -1283,11 +1450,20 @@ export class MarkdownView extends TextFileView {
     this.documentSearchMatches = findDocumentSearchMatches(this.getViewData(), query);
     if (this.documentSearchMatches.length === 0) {
       this.documentSearchIndex = -1;
-    } else if (this.documentSearchIndex < 0 || this.documentSearchIndex >= this.documentSearchMatches.length) {
+    } else if (
+      this.documentSearchIndex < 0 ||
+      this.documentSearchIndex >= this.documentSearchMatches.length
+    ) {
       this.documentSearchIndex = 0;
     }
-    this.documentSearchInputEl.classList.toggle("mod-no-match", query.length > 0 && this.documentSearchMatches.length === 0);
-    this.documentReplaceInputEl.classList.toggle("mod-no-match", query.length > 0 && this.documentSearchMatches.length === 0);
+    this.documentSearchInputEl.classList.toggle(
+      "mod-no-match",
+      query.length > 0 && this.documentSearchMatches.length === 0,
+    );
+    this.documentReplaceInputEl.classList.toggle(
+      "mod-no-match",
+      query.length > 0 && this.documentSearchMatches.length === 0,
+    );
     this.updateDocumentSearchCount();
   }
 
@@ -1302,7 +1478,10 @@ export class MarkdownView extends TextFileView {
   private selectDocumentSearchMatch(delta: number): void {
     this.updateDocumentSearchMatches();
     if (this.documentSearchMatches.length === 0) return;
-    this.documentSearchIndex = wrapIndex(this.documentSearchIndex + delta, this.documentSearchMatches.length);
+    this.documentSearchIndex = wrapIndex(
+      this.documentSearchIndex + delta,
+      this.documentSearchMatches.length,
+    );
     this.updateDocumentSearchCount();
     const match = this.documentSearchMatches[this.documentSearchIndex];
     void this.setMode("source").then(() => this.selectRange(match.start, match.end));
@@ -1313,8 +1492,14 @@ export class MarkdownView extends TextFileView {
     if (this.documentSearchMatches.length === 0) return;
     const match = this.documentSearchMatches[Math.max(0, this.documentSearchIndex)];
     const replacement = this.documentReplaceInputEl.value;
-    this.applyTextEdits([{ start: match.start, end: match.end, text: replacement }], match.start, match.start + replacement.length);
-    const nextIndex = this.documentSearchMatches.findIndex((nextMatch) => nextMatch.start >= match.start);
+    this.applyTextEdits(
+      [{ start: match.start, end: match.end, text: replacement }],
+      match.start,
+      match.start + replacement.length,
+    );
+    const nextIndex = this.documentSearchMatches.findIndex(
+      (nextMatch) => nextMatch.start >= match.start,
+    );
     this.documentSearchIndex = nextIndex === -1 ? 0 : nextIndex;
     this.updateDocumentSearchMatches();
   }
@@ -1325,7 +1510,11 @@ export class MarkdownView extends TextFileView {
     const replacement = this.documentReplaceInputEl.value;
     const firstMatch = this.documentSearchMatches[0];
     this.applyTextEdits(
-      this.documentSearchMatches.map((match) => ({ start: match.start, end: match.end, text: replacement })),
+      this.documentSearchMatches.map((match) => ({
+        start: match.start,
+        end: match.end,
+        text: replacement,
+      })),
       firstMatch.start,
       firstMatch.start + replacement.length,
     );
@@ -1346,7 +1535,7 @@ export class MarkdownView extends TextFileView {
 
   setEphemeralState(state: unknown): void {
     if (!state || typeof state !== "object") return;
-    const viewState = { ...state as Record<string, unknown> } as {
+    const viewState = { ...(state as Record<string, unknown>) } as {
       focus?: unknown;
       focusMetadata?: unknown;
       focusOnMobile?: unknown;
@@ -1366,7 +1555,11 @@ export class MarkdownView extends TextFileView {
       delete viewState.rename;
     }
     this.baseEphemeralState = viewState;
-    if (typeof viewState.subpath === "string" && viewState.subpath.trim() && !("line" in viewState)) {
+    if (
+      typeof viewState.subpath === "string" &&
+      viewState.subpath.trim() &&
+      !("line" in viewState)
+    ) {
       const line = this.getSubpathLine(viewState.subpath);
       if (line !== null) viewState.line = line;
     }
@@ -1374,7 +1567,8 @@ export class MarkdownView extends TextFileView {
       const line = Number(viewState.line);
       const start = Number(viewState.matchStart);
       const end = Number(viewState.matchEnd);
-      if (Number.isFinite(line) && Number.isFinite(start) && Number.isFinite(end)) this.selectLineRange(line, start, end);
+      if (Number.isFinite(line) && Number.isFinite(start) && Number.isFinite(end))
+        this.selectLineRange(line, start, end);
       else if (Number.isFinite(line)) this.focusLine(line);
     }
     if (this.currentMode === this.editMode && this.applyCursorEphemeralState(viewState.cursor)) {
@@ -1429,8 +1623,12 @@ export class MarkdownView extends TextFileView {
   }
 
   canShowProperties(): boolean {
-    const propertiesInDocument = this.app.vault.getConfig<string>("propertiesInDocument") ?? "visible";
-    return propertiesInDocument === "visible" && (this.currentMode !== this.editMode || this.getSourceMode() !== "source");
+    const propertiesInDocument =
+      this.app.vault.getConfig<string>("propertiesInDocument") ?? "visible";
+    return (
+      propertiesInDocument === "visible" &&
+      (this.currentMode !== this.editMode || this.getSourceMode() !== "source")
+    );
   }
 
   metadataHasFocus(): boolean {
@@ -1456,21 +1654,33 @@ export class MarkdownView extends TextFileView {
       target?.focus({ preventScroll: true });
       return;
     }
-    if (!this.inlineTitleEl.hidden && this.inlineTitleEl.isConnected) this.inlineTitleEl.focus({ preventScroll: true });
+    if (!this.inlineTitleEl.hidden && this.inlineTitleEl.isConnected)
+      this.inlineTitleEl.focus({ preventScroll: true });
   }
 
   private applyCursorEphemeralState(cursor: unknown): boolean {
-    const from = this.getEphemeralCursorPosition(cursor, "from") ?? this.getEphemeralCursorPosition(cursor, "anchor") ?? this.getEphemeralCursorPosition(cursor);
+    const from =
+      this.getEphemeralCursorPosition(cursor, "from") ??
+      this.getEphemeralCursorPosition(cursor, "anchor") ??
+      this.getEphemeralCursorPosition(cursor);
     if (!from) return false;
-    const to = this.getEphemeralCursorPosition(cursor, "to") ?? this.getEphemeralCursorPosition(cursor, "head");
+    const to =
+      this.getEphemeralCursorPosition(cursor, "to") ??
+      this.getEphemeralCursorPosition(cursor, "head");
     if (to) this.editor.setSelection(from, to);
     else this.editor.setCursor(from);
     this.handleSourceSelectionChange();
     return true;
   }
 
-  private getEphemeralCursorPosition(cursor: unknown, key?: string): { line: number; ch: number } | null {
-    const value = key && cursor && typeof cursor === "object" ? (cursor as Record<string, unknown>)[key] : cursor;
+  private getEphemeralCursorPosition(
+    cursor: unknown,
+    key?: string,
+  ): { line: number; ch: number } | null {
+    const value =
+      key && cursor && typeof cursor === "object"
+        ? (cursor as Record<string, unknown>)[key]
+        : cursor;
     if (!value || typeof value !== "object") return null;
     const position = value as { line?: unknown; ch?: unknown };
     const line = Number(position.line);
@@ -1480,11 +1690,18 @@ export class MarkdownView extends TextFileView {
   }
 
   private updatePropertiesInDocument(): void {
-    const propertiesInDocument = this.app.vault.getConfig<string>("propertiesInDocument") ?? "visible";
+    const propertiesInDocument =
+      this.app.vault.getConfig<string>("propertiesInDocument") ?? "visible";
     const showProperties = this.canShowProperties();
     this.contentEl.classList.toggle("show-properties", showProperties);
-    this.editorContainerEl.classList.toggle("show-properties", showProperties && this.currentMode === this.editMode);
-    this.previewRendererEl.classList.toggle("show-properties", propertiesInDocument !== "hidden" && this.currentMode === this.previewMode);
+    this.editorContainerEl.classList.toggle(
+      "show-properties",
+      showProperties && this.currentMode === this.editMode,
+    );
+    this.previewRendererEl.classList.toggle(
+      "show-properties",
+      propertiesInDocument !== "hidden" && this.currentMode === this.previewMode,
+    );
     this.metadataContainerEl.classList.toggle("show-properties", showProperties);
   }
 
@@ -1521,11 +1738,23 @@ export class MarkdownView extends TextFileView {
   private getEditorExtensions(): readonly EditorExtension[] {
     const livePreview = this.getSourceMode() === "live";
     return [
-      { id: "editor-editor-field", source: "core", value: editorEditorField.init(() => this.editorViewHost) },
+      {
+        id: "editor-editor-field",
+        source: "core",
+        value: editorEditorField.init(() => this.editorViewHost),
+      },
       { id: "editor-info-field", source: "core", value: editorInfoField.init(() => this) },
-      { id: "editor-live-preview-field", source: "core", value: editorLivePreviewField.init(() => livePreview) },
-      ...(livePreview ? [{ id: "live-preview-plugin", source: "core", value: { type: "live-preview-plugin" } }] : []),
-      ...this.app.workspace.editorExtensions.flatMap((extension) => normalizeEditorExtensions(extension, "plugin")),
+      {
+        id: "editor-live-preview-field",
+        source: "core",
+        value: editorLivePreviewField.init(() => livePreview),
+      },
+      ...(livePreview
+        ? [{ id: "live-preview-plugin", source: "core", value: { type: "live-preview-plugin" } }]
+        : []),
+      ...this.app.workspace.editorExtensions.flatMap((extension) =>
+        normalizeEditorExtensions(extension, "plugin"),
+      ),
     ];
   }
 
@@ -1591,7 +1820,16 @@ export class MarkdownView extends TextFileView {
     });
 
     if (this.pendingEmptyProperty) {
-      this.renderPropertyRow({ id: "", name: "", type: "text", icon: this.app.propertyRegistry.getTypeInfo("text")?.icon }, null, entries.length);
+      this.renderPropertyRow(
+        {
+          id: "",
+          name: "",
+          type: "text",
+          icon: this.app.propertyRegistry.getTypeInfo("text")?.icon,
+        },
+        null,
+        entries.length,
+      );
     }
 
     const addButton = document.createElement("button");
@@ -1610,7 +1848,11 @@ export class MarkdownView extends TextFileView {
       if (event.key === " " || event.key === "Enter") {
         event.preventDefault();
         void this.addPropertyFromView();
-      } else if (event.key === "ArrowUp" || event.key === "k" || (event.key === "Tab" && event.shiftKey)) {
+      } else if (
+        event.key === "ArrowUp" ||
+        event.key === "k" ||
+        (event.key === "Tab" && event.shiftKey)
+      ) {
         event.preventDefault();
         this.focusPropertyAtIndex(-1);
       } else if (event.key === "ArrowDown" || event.key === "j" || event.key === "Tab") {
@@ -1626,8 +1868,7 @@ export class MarkdownView extends TextFileView {
     this.inlineTitleEl.textContent = this.file?.basename ?? "";
   }
 
-  private renderEmbeddedBacklinks(): void {
-  }
+  private renderEmbeddedBacklinks(): void {}
 
   private updateShowBacklinks(): void {
     if (this.showBacklinks && !this.backlinks) {
@@ -1694,7 +1935,11 @@ export class MarkdownView extends TextFileView {
     normalizeInlineTitleElement(titleEl);
     const title = getInlineTitleText(titleEl).trim();
     const validation = this.validateInlineTitle(title, false);
-    if (validation.error || validation.warning) this.showInlineTitleMessage(validation.error || validation.warning, Boolean(validation.error));
+    if (validation.error || validation.warning)
+      this.showInlineTitleMessage(
+        validation.error || validation.warning,
+        Boolean(validation.error),
+      );
     else this.clearInlineTitleError();
   }
 
@@ -1734,7 +1979,7 @@ export class MarkdownView extends TextFileView {
     const newPath = getRenamedMarkdownPath(file, title);
     if (newPath === file.path) return true;
     try {
-      const renamed = await this.app.fileManager.renameAbstractFile(file, newPath) as TFile;
+      const renamed = (await this.app.fileManager.renameAbstractFile(file, newPath)) as TFile;
       this.file = renamed;
       titleEl.textContent = renamed.basename;
       this.clearInlineTitleError();
@@ -1776,7 +2021,11 @@ export class MarkdownView extends TextFileView {
     selection.addRange(range);
   }
 
-  private renderPropertyRow(property: PropertyDefinition, value: PropertyValue, index: number): void {
+  private renderPropertyRow(
+    property: PropertyDefinition,
+    value: PropertyValue,
+    index: number,
+  ): void {
     let forceExpected = false;
 
     const rowEl = document.createElement("div");
@@ -1823,7 +2072,9 @@ export class MarkdownView extends TextFileView {
         onUpdate: () => {
           forceExpected = true;
           renderValue();
-          valueEl.querySelector<HTMLElement>("input, textarea, select, button, [tabindex]")?.focus();
+          valueEl
+            .querySelector<HTMLElement>("input, textarea, select, button, [tabindex]")
+            ?.focus();
         },
       }).open();
     });
@@ -1833,10 +2084,13 @@ export class MarkdownView extends TextFileView {
       const expectedType = typeInfo.expected.type;
       const inferredType = typeInfo.inferred.type;
       const hasTypeMismatch = expectedType !== inferredType;
-      const renderType: PropertyType = hasTypeMismatch && !forceExpected ? inferredType : expectedType;
+      const renderType: PropertyType =
+        hasTypeMismatch && !forceExpected ? inferredType : expectedType;
       const renderInfo = this.app.propertyRegistry.getTypeInfo(renderType);
       const renderProperty: PropertyDefinition =
-        renderType === property.type ? property : { ...property, type: renderType, icon: renderInfo?.icon ?? property.icon };
+        renderType === property.type
+          ? property
+          : { ...property, type: renderType, icon: renderInfo?.icon ?? property.icon };
       valueEl.replaceChildren();
       valueEl.dataset.propertyType = renderType;
       setIcon(iconEl, typeInfo.expected.icon);
@@ -1855,7 +2109,10 @@ export class MarkdownView extends TextFileView {
           writeFile: (file, update) => this.updateLinkedFileFromProperty(file, update),
           onChange: (next) => {
             if (!property.id) return;
-            this.updateLocalProperty(property.id, this.app.propertyRegistry.normalizeValue(renderType, next));
+            this.updateLocalProperty(
+              property.id,
+              this.app.propertyRegistry.normalizeValue(renderType, next),
+            );
           },
           onDelete: () => this.removeLocalProperty(property.id),
         });
@@ -1889,8 +2146,11 @@ export class MarkdownView extends TextFileView {
       }
 
       const parsed = parseFrontmatter(this.getViewData());
-      const duplicate = Object.keys(parsed.values)
-        .some((key) => key.toLowerCase() === trimmed.toLowerCase() && key.toLowerCase() !== property.id.toLowerCase());
+      const duplicate = Object.keys(parsed.values).some(
+        (key) =>
+          key.toLowerCase() === trimmed.toLowerCase() &&
+          key.toLowerCase() !== property.id.toLowerCase(),
+      );
       if (duplicate) {
         showKeyError("Property name already exists");
         rowEl.classList.add("is-selected");
@@ -1913,7 +2173,10 @@ export class MarkdownView extends TextFileView {
       const presentKeys = new Set(Object.keys(parsed.values).map((key) => key.toLowerCase()));
       const names = Object.values(this.app.metadataTypeManager.getAllProperties())
         .map((info) => info.name)
-        .filter((name, index, list) => list.findIndex((item) => item.toLowerCase() === name.toLowerCase()) === index)
+        .filter(
+          (name, index, list) =>
+            list.findIndex((item) => item.toLowerCase() === name.toLowerCase()) === index,
+        )
         .filter((name) => name.toLowerCase() !== property.id.toLowerCase())
         .filter((name) => !presentKeys.has(name.toLowerCase()))
         .filter((name) => !query || name.toLowerCase().includes(query))
@@ -1924,13 +2187,15 @@ export class MarkdownView extends TextFileView {
       const menu = new Menu();
       menu.dom.addEventListener("mousedown", (event) => event.preventDefault());
       for (const name of names) {
-        menu.addItem((item) => item
-          .setTitle(name)
-          .setIcon(this.app.propertyRegistry.getPropertyTypeInfo(name, null).expected.icon)
-          .onClick(() => {
-            keyInputEl.value = name;
-            if (handleUpdateKey(name)) this.focusPropertyValue(name);
-          }));
+        menu.addItem((item) =>
+          item
+            .setTitle(name)
+            .setIcon(this.app.propertyRegistry.getPropertyTypeInfo(name, null).expected.icon)
+            .onClick(() => {
+              keyInputEl.value = name;
+              if (handleUpdateKey(name)) this.focusPropertyValue(name);
+            }),
+        );
       }
       keySuggestMenu = menu;
       menu.showAtPosition({ x: rect.left, y: rect.bottom });
@@ -1940,7 +2205,8 @@ export class MarkdownView extends TextFileView {
       event.preventDefault();
       event.stopPropagation();
       const menu = new Menu();
-      const currentType = this.app.propertyRegistry.getPropertyTypeInfo(property.id, value).expected.type;
+      const currentType = this.app.propertyRegistry.getPropertyTypeInfo(property.id, value).expected
+        .type;
       const isReserved = isReservedMetadataProperty(property.id);
       menu.addItem((menuItem) => {
         menuItem.setTitle("Property type").setIcon("lucide-info");
@@ -1949,37 +2215,47 @@ export class MarkdownView extends TextFileView {
           if (!isMetadataTypeMenuItemAllowed(typeId, property.id)) continue;
           const type = this.app.metadataTypeManager.getTypeInfo(typeId);
           if (!type) continue;
-          submenu.addItem((typeItem) => typeItem
-            .setTitle(type.name)
-            .setIcon(type.icon)
-            .setSection("action.changeType")
-            .setDisabled(isReserved)
-            .setChecked(type.type === currentType)
-            .onClick(() => {
-              this.app.metadataTypeManager.setType(property.id, type.type);
-              forceExpected = false;
-              renderValue();
-              if (value != null && !this.app.metadataTypeManager.validateValue(type.type, value)) {
-                new PropertyTypeMismatchModal(this.app, {
-                  expectedType: type.name,
-                  inferredType: this.app.propertyRegistry.getPropertyTypeInfo(property.id, value).inferred.name,
-                  onUpdate: () => {
-                    forceExpected = true;
-                    renderValue();
-                    valueEl.querySelector<HTMLElement>("input, textarea, select, button, [tabindex]")?.focus();
-                  },
-                }).open();
-              }
-            }));
+          submenu.addItem((typeItem) =>
+            typeItem
+              .setTitle(type.name)
+              .setIcon(type.icon)
+              .setSection("action.changeType")
+              .setDisabled(isReserved)
+              .setChecked(type.type === currentType)
+              .onClick(() => {
+                this.app.metadataTypeManager.setType(property.id, type.type);
+                forceExpected = false;
+                renderValue();
+                if (
+                  value != null &&
+                  !this.app.metadataTypeManager.validateValue(type.type, value)
+                ) {
+                  new PropertyTypeMismatchModal(this.app, {
+                    expectedType: type.name,
+                    inferredType: this.app.propertyRegistry.getPropertyTypeInfo(property.id, value)
+                      .inferred.name,
+                    onUpdate: () => {
+                      forceExpected = true;
+                      renderValue();
+                      valueEl
+                        .querySelector<HTMLElement>("input, textarea, select, button, [tabindex]")
+                        ?.focus();
+                    },
+                  }).open();
+                }
+              }),
+          );
         }
       });
       menu.addSeparator();
-      menu.addItem((menuItem) => menuItem
-        .setTitle("Remove")
-        .setIcon("lucide-trash-2")
-        .setWarning(true)
-        .setSection("danger")
-        .onClick(() => this.removeLocalProperty(property.id)));
+      menu.addItem((menuItem) =>
+        menuItem
+          .setTitle("Remove")
+          .setIcon("lucide-trash-2")
+          .setWarning(true)
+          .setSection("danger")
+          .onClick(() => this.removeLocalProperty(property.id)),
+      );
       menu.setParentElement(rowEl).showAtMouseEvent(event);
     };
     iconEl.addEventListener("click", (event) => {
@@ -2089,7 +2365,8 @@ export class MarkdownView extends TextFileView {
   }
 
   private handleMetadataHeadingKeydown(event: KeyboardEvent): void {
-    if (event.isComposing || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.isComposing || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey)
+      return;
     if (event.key === "ArrowLeft") {
       event.preventDefault();
       this.setMetadataCollapse(true);
@@ -2112,29 +2389,37 @@ export class MarkdownView extends TextFileView {
   private openPropertiesMenu(event: MouseEvent): void {
     event.preventDefault();
     const menu = new Menu();
-    menu.addItem((item) => item
-      .setTitle("Add property")
-      .setSection("action-primary")
-      .onClick(() => void this.addPropertyFromView()));
+    menu.addItem((item) =>
+      item
+        .setTitle("Add property")
+        .setSection("action-primary")
+        .onClick(() => void this.addPropertyFromView()),
+    );
     menu.addItem((item) => {
       item.setTitle("Sort").setIcon("lucide-sort-asc").setSection("action.sort");
       const submenu = item.setSubmenu();
-      submenu.addItem((sortItem) => sortItem
-        .setTitle("Sort properties A to Z")
-        .setSection("action.sort")
-        .onClick(() => this.sortLocalProperties()));
-      submenu.addItem((sortItem) => sortItem
-        .setTitle("Sort properties Z to A")
-        .setSection("action.sort")
-        .onClick(() => this.sortLocalProperties(true)));
+      submenu.addItem((sortItem) =>
+        sortItem
+          .setTitle("Sort properties A to Z")
+          .setSection("action.sort")
+          .onClick(() => this.sortLocalProperties()),
+      );
+      submenu.addItem((sortItem) =>
+        sortItem
+          .setTitle("Sort properties Z to A")
+          .setSection("action.sort")
+          .onClick(() => this.sortLocalProperties(true)),
+      );
     });
     menu.addSeparator();
-    menu.addItem((item) => item
-      .setTitle("Clear properties")
-      .setSection("danger")
-      .setIcon("lucide-trash-2")
-      .setWarning(true)
-      .onClick(() => this.clearLocalProperties()));
+    menu.addItem((item) =>
+      item
+        .setTitle("Clear properties")
+        .setSection("danger")
+        .setIcon("lucide-trash-2")
+        .setWarning(true)
+        .onClick(() => this.clearLocalProperties()),
+    );
     this.app.workspace.trigger("markdown-properties-menu", menu, this.file);
     menu.showAtMouseEvent(event);
   }
@@ -2156,7 +2441,11 @@ export class MarkdownView extends TextFileView {
     } else if (event.key === "ArrowRight" || event.key === "l") {
       event.preventDefault();
       this.focusPropertyValue(propertyId);
-    } else if (event.key === "ArrowUp" || event.key === "k" || (event.key === "Tab" && event.shiftKey)) {
+    } else if (
+      event.key === "ArrowUp" ||
+      event.key === "k" ||
+      (event.key === "Tab" && event.shiftKey)
+    ) {
       event.preventDefault();
       this.focusAdjacentProperty(propertyId, -1);
     } else if (event.key === "ArrowDown" || event.key === "j" || event.key === "Tab") {
@@ -2182,9 +2471,14 @@ export class MarkdownView extends TextFileView {
     if (event.shiftKey) {
       if (focusedKey) {
         const keys = this.getRenderedMetadataKeys();
-        const range = [keys.indexOf(focusedKey), keys.indexOf(propertyId)].sort((left, right) => left - right);
-        const shouldSelect = !(this.selectedMetadataKeys.has(focusedKey) && this.selectedMetadataKeys.has(propertyId));
-        for (const key of keys.slice(range[0], range[1] + 1)) this.selectMetadataProperty(key, shouldSelect);
+        const range = [keys.indexOf(focusedKey), keys.indexOf(propertyId)].sort(
+          (left, right) => left - right,
+        );
+        const shouldSelect = !(
+          this.selectedMetadataKeys.has(focusedKey) && this.selectedMetadataKeys.has(propertyId)
+        );
+        for (const key of keys.slice(range[0], range[1] + 1))
+          this.selectMetadataProperty(key, shouldSelect);
       } else {
         this.selectMetadataProperty(propertyId, true);
       }
@@ -2259,7 +2553,12 @@ export class MarkdownView extends TextFileView {
     this.editor.setValue(next);
     this.syncSourceValue(next);
     this.app.workspace.trigger("property-change", this.file.path, oldId, null);
-    this.app.workspace.trigger("property-change", this.file.path, newId, parsed.values[newId] ?? null);
+    this.app.workspace.trigger(
+      "property-change",
+      this.file.path,
+      newId,
+      parsed.values[newId] ?? null,
+    );
     this.triggerEditorContentChange();
     this.scheduleSave();
     this.renderProperties();
@@ -2282,9 +2581,15 @@ export class MarkdownView extends TextFileView {
 
   private sortLocalProperties(descending = false): void {
     if (!this.file) return;
-    const collator = new Intl.Collator(undefined, { usage: "sort", sensitivity: "base", numeric: true });
-    this.metadataDisplayOrder = Object.keys(parseFrontmatter(this.getViewData()).values)
-      .sort((left, right) => (descending ? -collator.compare(left, right) : collator.compare(left, right)));
+    const collator = new Intl.Collator(undefined, {
+      usage: "sort",
+      sensitivity: "base",
+      numeric: true,
+    });
+    this.metadataDisplayOrder = Object.keys(parseFrontmatter(this.getViewData()).values).sort(
+      (left, right) =>
+        descending ? -collator.compare(left, right) : collator.compare(left, right),
+    );
     this.app.workspace.trigger("property-sort", this.file.path, descending);
     this.renderProperties();
   }
@@ -2305,10 +2610,16 @@ export class MarkdownView extends TextFileView {
     this.renderProperties();
   }
 
-  private focusPropertyValue(propertyId: string, position: "both" | "start" | "end" = "both"): void {
-    const rowEl = [...this.metadataContainerEl.querySelectorAll<HTMLElement>(".metadata-property")]
-      .find((row) => row.dataset.propertyKey?.toLowerCase() === propertyId.toLowerCase());
-    const target = rowEl?.querySelector<HTMLElement>(".metadata-property-value input, .metadata-property-value textarea, .metadata-property-value select, .metadata-property-value button, .metadata-property-value [tabindex]");
+  private focusPropertyValue(
+    propertyId: string,
+    position: "both" | "start" | "end" = "both",
+  ): void {
+    const rowEl = [
+      ...this.metadataContainerEl.querySelectorAll<HTMLElement>(".metadata-property"),
+    ].find((row) => row.dataset.propertyKey?.toLowerCase() === propertyId.toLowerCase());
+    const target = rowEl?.querySelector<HTMLElement>(
+      ".metadata-property-value input, .metadata-property-value textarea, .metadata-property-value select, .metadata-property-value button, .metadata-property-value [tabindex]",
+    );
     target?.focus();
     if ((position === "start" || position === "end") && target instanceof HTMLInputElement) {
       const offset = position === "start" ? 0 : target.value.length;
@@ -2317,8 +2628,9 @@ export class MarkdownView extends TextFileView {
   }
 
   private focusPropertyKey(propertyId: string): void {
-    const rowEl = [...this.metadataContainerEl.querySelectorAll<HTMLElement>(".metadata-property")]
-      .find((row) => (row.dataset.propertyKey ?? "").toLowerCase() === propertyId.toLowerCase());
+    const rowEl = [
+      ...this.metadataContainerEl.querySelectorAll<HTMLElement>(".metadata-property"),
+    ].find((row) => (row.dataset.propertyKey ?? "").toLowerCase() === propertyId.toLowerCase());
     rowEl?.querySelector<HTMLInputElement>(".metadata-property-key-input")?.focus();
   }
 
@@ -2339,10 +2651,13 @@ export class MarkdownView extends TextFileView {
 
   private focusAdjacentProperty(propertyId: string, direction: -1 | 1): void {
     const rows = [...this.metadataContainerEl.querySelectorAll<HTMLElement>(".metadata-property")];
-    const index = rows.findIndex((row) => row.dataset.propertyKey?.toLowerCase() === propertyId.toLowerCase());
+    const index = rows.findIndex(
+      (row) => row.dataset.propertyKey?.toLowerCase() === propertyId.toLowerCase(),
+    );
     const target = rows[index + direction];
     if (target) target.focus();
-    else if (direction < 0) this.metadataContainerEl.querySelector<HTMLElement>(".metadata-properties-heading")?.focus();
+    else if (direction < 0)
+      this.metadataContainerEl.querySelector<HTMLElement>(".metadata-properties-heading")?.focus();
     else {
       const addButton = this.metadataContainerEl.querySelector<HTMLElement>(".metadata-add-button");
       if (addButton) addButton.focus();
@@ -2350,9 +2665,13 @@ export class MarkdownView extends TextFileView {
     }
   }
 
-  private orderMetadataEntries(entries: Array<[string, PropertyValue]>): Array<[string, PropertyValue]> {
+  private orderMetadataEntries(
+    entries: Array<[string, PropertyValue]>,
+  ): Array<[string, PropertyValue]> {
     if (!this.metadataDisplayOrder) return entries;
-    const order = new Map(this.metadataDisplayOrder.map((key, index) => [key.toLowerCase(), index]));
+    const order = new Map(
+      this.metadataDisplayOrder.map((key, index) => [key.toLowerCase(), index]),
+    );
     return [...entries].sort(([left], [right]) => {
       const leftIndex = order.get(left.toLowerCase());
       const rightIndex = order.get(right.toLowerCase());
@@ -2370,7 +2689,8 @@ export class MarkdownView extends TextFileView {
 
   private getFocusedMetadataKey(): string | null {
     const active = this.metadataContainerEl.ownerDocument.activeElement;
-    const row = active instanceof HTMLElement ? active.closest<HTMLElement>(".metadata-property") : null;
+    const row =
+      active instanceof HTMLElement ? active.closest<HTMLElement>(".metadata-property") : null;
     return row?.dataset.propertyKey ?? null;
   }
 
@@ -2381,8 +2701,11 @@ export class MarkdownView extends TextFileView {
   }
 
   private getMetadataRow(propertyId: string): HTMLElement | null {
-    return [...this.metadataContainerEl.querySelectorAll<HTMLElement>(".metadata-property")]
-      .find((row) => row.dataset.propertyKey?.toLowerCase() === propertyId.toLowerCase()) ?? null;
+    return (
+      [...this.metadataContainerEl.querySelectorAll<HTMLElement>(".metadata-property")].find(
+        (row) => row.dataset.propertyKey?.toLowerCase() === propertyId.toLowerCase(),
+      ) ?? null
+    );
   }
 
   private selectMetadataProperty(propertyId: string, selected: boolean): void {
@@ -2393,25 +2716,39 @@ export class MarkdownView extends TextFileView {
   }
 
   private clearMetadataSelection(): void {
-    for (const key of this.selectedMetadataKeys) this.getMetadataRow(key)?.classList.remove("is-selected");
+    for (const key of this.selectedMetadataKeys)
+      this.getMetadataRow(key)?.classList.remove("is-selected");
     this.selectedMetadataKeys.clear();
   }
 
   private getSelectedMetadataProperties(): Record<string, PropertyValue> {
     const parsed = parseFrontmatter(this.getViewData());
-    const selectedKeys = this.selectedMetadataKeys.size > 0 ? [...this.selectedMetadataKeys] : [this.getFocusedMetadataKey()].filter((key): key is string => Boolean(key));
+    const selectedKeys =
+      this.selectedMetadataKeys.size > 0
+        ? [...this.selectedMetadataKeys]
+        : [this.getFocusedMetadataKey()].filter((key): key is string => Boolean(key));
     const values: Record<string, PropertyValue> = {};
     for (const [key, value] of Object.entries(parsed.values)) {
-      if (selectedKeys.some((selected) => selected.toLowerCase() === key.toLowerCase())) values[key] = value;
+      if (selectedKeys.some((selected) => selected.toLowerCase() === key.toLowerCase()))
+        values[key] = value;
     }
     return values;
   }
 
   private hasMetadataPropertyFocused(event?: Event): boolean {
     const active = this.metadataContainerEl.ownerDocument.activeElement;
-    if (active instanceof HTMLElement && this.metadataContainerEl.contains(active) && active.closest(".metadata-property")) return true;
+    if (
+      active instanceof HTMLElement &&
+      this.metadataContainerEl.contains(active) &&
+      active.closest(".metadata-property")
+    )
+      return true;
     const target = event?.target;
-    return target instanceof HTMLElement && this.metadataContainerEl.contains(target) && Boolean(target.closest(".metadata-property"));
+    return (
+      target instanceof HTMLElement &&
+      this.metadataContainerEl.contains(target) &&
+      Boolean(target.closest(".metadata-property"))
+    );
   }
 
   private handleMetadataCopy(event: ClipboardEvent): void {
@@ -2440,7 +2777,8 @@ export class MarkdownView extends TextFileView {
     let properties: Record<string, PropertyValue> | null = null;
     try {
       const parsed = JSON.parse(raw) as unknown;
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) properties = parsed as Record<string, PropertyValue>;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+        properties = parsed as Record<string, PropertyValue>;
     } catch (error) {
       console.error(error);
     }
@@ -2477,7 +2815,10 @@ export class MarkdownView extends TextFileView {
     this.renderProperties();
   }
 
-  private async updateLinkedFileFromProperty(file: TFile, update: (source: string) => string): Promise<void> {
+  private async updateLinkedFileFromProperty(
+    file: TFile,
+    update: (source: string) => string,
+  ): Promise<void> {
     if (file.path !== this.file?.path) {
       await this.app.vault.process(file, update);
       return;
@@ -2532,7 +2873,11 @@ export class MarkdownView extends TextFileView {
   }
 
   private async handleEditorSuggest(event: KeyboardEvent): Promise<void> {
-    await this.app.workspace.editorSuggest.trigger(this.editor, this.editorViewHost.contentEl, event);
+    await this.app.workspace.editorSuggest.trigger(
+      this.editor,
+      this.editorViewHost.contentEl,
+      event,
+    );
     if (super.getViewData() !== this.editor.getValue()) {
       super.setViewData(this.editor.getValue());
       this.scheduleSave();
@@ -2562,12 +2907,18 @@ export class MarkdownView extends TextFileView {
     if (this.getMode() !== "source") return;
     event.preventDefault();
     this.syncActiveEditor();
-    this.app.menus.createEditorMenu(this.editor, this, this.getEditorMenuContext(event)).showAtMouseEvent(event);
+    this.app.menus
+      .createEditorMenu(this.editor, this, this.getEditorMenuContext(event))
+      .showAtMouseEvent(event);
   }
 
   private handleSourceClick(event: MouseEvent): void {
     if (this.getMode() !== "source") return;
-    if (!(event.type === "click" && event.button === 0) && !(event.type === "mousedown" && event.button === 1)) return;
+    if (
+      !(event.type === "click" && event.button === 0) &&
+      !(event.type === "mousedown" && event.button === 1)
+    )
+      return;
     const token = this.findHoveredSourceToken(event);
     if (!token || token.type === "footref") return;
     this.triggerClickableToken(token, Keymap.isModEvent(event));
@@ -2645,7 +2996,8 @@ export class MarkdownView extends TextFileView {
     if (event.defaultPrevented) return;
     let markdown: string | null = null;
     if (!event.shiftKey) markdown = this.getExternalDataTransferMarkdown(event.dataTransfer);
-    if (markdown !== null || hasDataTransferAttachmentFiles(event.dataTransfer)) event.preventDefault();
+    if (markdown !== null || hasDataTransferAttachmentFiles(event.dataTransfer))
+      event.preventDefault();
     if (markdown === null) markdown = await this.handleExternalDropIntoEditor(event);
     if (markdown === null) return;
 
@@ -2655,8 +3007,9 @@ export class MarkdownView extends TextFileView {
   }
 
   private setDropInsertionPoint(event: DragEvent): void {
-    const position = this.editor.posAtCoords?.({ x: event.clientX, y: event.clientY })
-      ?? this.getEditorPositionAtCoords(event.clientX, event.clientY);
+    const position =
+      this.editor.posAtCoords?.({ x: event.clientX, y: event.clientY }) ??
+      this.getEditorPositionAtCoords(event.clientX, event.clientY);
     if (!position) return;
     const cursor = this.clampEditorPosition(position);
     this.editor.setCursor(cursor);
@@ -2672,9 +3025,13 @@ export class MarkdownView extends TextFileView {
     const fontSize = parseCssPixels(style.fontSize, 16);
     const lineHeight = parseCssPixels(style.lineHeight, fontSize * 1.4);
     const charWidth = measureEditorCharacterWidth(this.editorViewHost.contentEl, style, fontSize);
-    const left = rect.left + parseCssPixels(style.paddingLeft, 0) + parseCssPixels(style.borderLeftWidth, 0);
-    const top = rect.top + parseCssPixels(style.paddingTop, 0) + parseCssPixels(style.borderTopWidth, 0);
-    const line = Math.floor((clientY - top + this.editorViewHost.scrollerEl.scrollTop) / lineHeight);
+    const left =
+      rect.left + parseCssPixels(style.paddingLeft, 0) + parseCssPixels(style.borderLeftWidth, 0);
+    const top =
+      rect.top + parseCssPixels(style.paddingTop, 0) + parseCssPixels(style.borderTopWidth, 0);
+    const line = Math.floor(
+      (clientY - top + this.editorViewHost.scrollerEl.scrollTop) / lineHeight,
+    );
     const ch = Math.floor((clientX - left + this.editorViewHost.scrollerEl.scrollLeft) / charWidth);
     return { line, ch };
   }
@@ -2746,12 +3103,18 @@ export class MarkdownView extends TextFileView {
     if (!dataTransfer) return null;
 
     const html = getDataTransferData(dataTransfer, "text/html");
-    if (html && html.includes("<!-- obsidian -->") && getDataTransferData(dataTransfer, "text/plain")) return null;
+    if (
+      html &&
+      html.includes("<!-- obsidian -->") &&
+      getDataTransferData(dataTransfer, "text/plain")
+    )
+      return null;
 
     const markdown = getDataTransferData(dataTransfer, "text/markdown");
     if (markdown) return markdown;
 
-    if (html && getDataTransferFileCount(dataTransfer) > 0 && /^<img [^>]+>$/.test(html.trim())) return null;
+    if (html && getDataTransferFileCount(dataTransfer) > 0 && /^<img [^>]+>$/.test(html.trim()))
+      return null;
     if (html) {
       if (!this.app.vault.getConfig("autoConvertHtml")) return null;
       const sourcePath = this.file?.path ?? "";
@@ -2762,7 +3125,8 @@ export class MarkdownView extends TextFileView {
           return file ? this.app.metadataCache.fileToLinktext(file, sourcePath, true) : null;
         },
       });
-      if (preprocessed.detachedImages.length) void this.saveDetachedHtmlImages(preprocessed.detachedImages);
+      if (preprocessed.detachedImages.length)
+        void this.saveDetachedHtmlImages(preprocessed.detachedImages);
       return htmlToMarkdown(preprocessed.html);
     }
 
@@ -2810,7 +3174,9 @@ export class MarkdownView extends TextFileView {
     }
 
     if (!file.filepath) return null;
-    const url = file.filepath.startsWith("/") ? `file://${file.filepath}` : `file:///${file.filepath}`;
+    const url = file.filepath.startsWith("/")
+      ? `file://${file.filepath}`
+      : `file:///${file.filepath}`;
     const title = getAttachmentDisplayName(file);
     const link = `[${title}](${url})`;
     return isImageLikePath(file.filepath || file.name) ? `!${link}` : link;
@@ -2818,7 +3184,9 @@ export class MarkdownView extends TextFileView {
 
   private async insertExternalFiles(files: AttachmentImportFile[]): Promise<void> {
     const imported = await this.app.importAttachments(files, null, this.file);
-    const inserted = imported.map((file) => `!${this.app.fileManager.generateMarkdownLink(file, this.file?.path ?? "")}`);
+    const inserted = imported.map(
+      (file) => `!${this.app.fileManager.generateMarkdownLink(file, this.file?.path ?? "")}`,
+    );
     if (!inserted.length) return;
     this.replaceSelection(inserted.join("\n\n"));
     this.focusSourceEditor();
@@ -2831,7 +3199,11 @@ export class MarkdownView extends TextFileView {
     }
   }
 
-  private async saveAttachmentData(name: string, extension: string, data: ArrayBuffer): Promise<TFile> {
+  private async saveAttachmentData(
+    name: string,
+    extension: string,
+    data: ArrayBuffer,
+  ): Promise<TFile> {
     return this.app.saveAttachment(name, extension, data, this.file);
   }
 
@@ -2851,7 +3223,10 @@ export class MarkdownView extends TextFileView {
       return { start, end, empty: start === end };
     });
     if (!ranges.length || !ranges.some((range) => !range.empty)) return false;
-    if (!ranges.every((range) => range.empty || !source.slice(range.start, range.end).includes("\n"))) return false;
+    if (
+      !ranges.every((range) => range.empty || !source.slice(range.start, range.end).includes("\n"))
+    )
+      return false;
 
     let urls: string[];
     if (!payload.includes("\n") && isPasteUrl(payload)) {
@@ -2872,10 +3247,13 @@ export class MarkdownView extends TextFileView {
     });
     const primaryEdit = edits[edits.length - 1];
     if (!primaryEdit) return false;
-    const cursor = primaryEdit.start + primaryEdit.text.length + edits.reduce((delta, edit) => {
-      if (edit.start >= primaryEdit.start) return delta;
-      return delta + edit.text.length - (edit.end - edit.start);
-    }, 0);
+    const cursor =
+      primaryEdit.start +
+      primaryEdit.text.length +
+      edits.reduce((delta, edit) => {
+        if (edit.start >= primaryEdit.start) return delta;
+        return delta + edit.text.length - (edit.end - edit.start);
+      }, 0);
 
     event.preventDefault();
     this.applyTextEdits(edits, cursor);
@@ -2943,7 +3321,10 @@ export class MarkdownView extends TextFileView {
           id: hit.id,
           start: { line: hit.line, ch: hit.start },
           end: { line: hit.line, ch: hit.end },
-          definitionStart: offsetToPosition(this.editor.getValue(), footnote.position.start.offset - 1),
+          definitionStart: offsetToPosition(
+            this.editor.getValue(),
+            footnote.position.start.offset - 1,
+          ),
           definitionEnd: offsetToPosition(this.editor.getValue(), footnote.position.end.offset),
         },
       };
@@ -2964,12 +3345,20 @@ export class MarkdownView extends TextFileView {
     };
   }
 
-  private getFootnoteDefinition(id: string): { position: { start: { offset: number }; end: { offset: number } } } | null {
-    return this.app.metadataCache.getFileCache(this.file)?.footnotes?.find((footnote) => footnote.id === id) ?? null;
+  private getFootnoteDefinition(
+    id: string,
+  ): { position: { start: { offset: number }; end: { offset: number } } } | null {
+    return (
+      this.app.metadataCache
+        .getFileCache(this.file)
+        ?.footnotes?.find((footnote) => footnote.id === id) ?? null
+    );
   }
 
   private getExternalRefLinkHref(id: string): string | null {
-    const reference = this.app.metadataCache.getFileCache(this.file)?.referenceLinks?.find((link) => link.id === id);
+    const reference = this.app.metadataCache
+      .getFileCache(this.file)
+      ?.referenceLinks?.find((link) => link.id === id);
     if (!reference || !isExternalUrl(reference.link)) return null;
     return reference.link;
   }
@@ -2999,7 +3388,12 @@ export class MarkdownView extends TextFileView {
     const ch = Math.max(0, Math.floor(x / charWidth));
     const textLine = this.editor.getValue().split(/\r?\n/)[line];
     if (!textLine) return null;
-    return findLinkAt(textLine, ch, line) ?? findExternalRefLinkAt(textLine, ch, line) ?? findTagAt(textLine, ch, line) ?? findFootrefAt(textLine, ch, line);
+    return (
+      findLinkAt(textLine, ch, line) ??
+      findExternalRefLinkAt(textLine, ch, line) ??
+      findTagAt(textLine, ch, line) ??
+      findFootrefAt(textLine, ch, line)
+    );
   }
 
   private updateModeButton(): void {
@@ -3026,7 +3420,10 @@ export class MarkdownView extends TextFileView {
     this.setSourceSelectionRange(offset, offset);
     this.handleSourceSelectionChange();
     const lineHeight = parseFloat(getComputedStyle(this.editorViewHost.contentEl).lineHeight) || 20;
-    this.editorViewHost.scrollerEl.scrollTop = Math.max(0, clamped * lineHeight - this.editorViewHost.scrollerEl.clientHeight / 3);
+    this.editorViewHost.scrollerEl.scrollTop = Math.max(
+      0,
+      clamped * lineHeight - this.editorViewHost.scrollerEl.clientHeight / 3,
+    );
   }
 
   private selectLineRange(line: number, start: number, end: number): void {
@@ -3044,7 +3441,10 @@ export class MarkdownView extends TextFileView {
     this.editor.setCursor(offsetToPosition(source, to));
     this.handleSourceSelectionChange();
     const lineHeight = parseFloat(getComputedStyle(this.editorViewHost.contentEl).lineHeight) || 20;
-    this.editorViewHost.scrollerEl.scrollTop = Math.max(0, clampedLine * lineHeight - this.editorViewHost.scrollerEl.clientHeight / 3);
+    this.editorViewHost.scrollerEl.scrollTop = Math.max(
+      0,
+      clampedLine * lineHeight - this.editorViewHost.scrollerEl.clientHeight / 3,
+    );
   }
 
   private getSubpathLine(subpath: string): number | null {
@@ -3105,10 +3505,13 @@ class EmbeddedBacklinks extends Component {
   private readonly unlinkedHeaderEl: HTMLElement;
   private readonly unlinkedCountEl: HTMLElement;
   private readonly unlinkedResultsEl: HTMLElement;
-  private searchTimer:  number | null = null;
+  private searchTimer: number | null = null;
   private updateVersion = 0;
 
-  constructor(readonly app: App, readonly containerEl: HTMLElement) {
+  constructor(
+    readonly app: App,
+    readonly containerEl: HTMLElement,
+  ) {
     super();
     this.paneEl = document.createElement("div");
     this.paneEl.className = "backlink-pane";
@@ -3118,14 +3521,30 @@ class EmbeddedBacklinks extends Component {
     this.navHeaderEl.className = "backlink-pane-nav-header";
     this.paneEl.appendChild(this.navHeaderEl);
 
-    this.collapseAllButtonEl = this.createButton("lucide-list", "Collapse all", () => this.onToggleCollapseClick());
-    this.extraContextButtonEl = this.createButton("lucide-move-vertical", "Show more context", () => this.onToggleMoreContextClick());
+    this.collapseAllButtonEl = this.createButton("lucide-list", "Collapse all", () =>
+      this.onToggleCollapseClick(),
+    );
+    this.extraContextButtonEl = this.createButton("lucide-move-vertical", "Show more context", () =>
+      this.onToggleMoreContextClick(),
+    );
     this.sortSelectEl = document.createElement("select");
     this.sortSelectEl.className = "backlink-pane-sort";
-    this.sortSelectEl.append(new Option("A to Z", "alphabetical"), new Option("Z to A", "reverse-alphabetical"));
-    this.sortSelectEl.addEventListener("change", () => this.setSortOrder(this.sortSelectEl.value as BacklinkSortOrder));
-    this.searchButtonEl = this.createButton("lucide-search", "Search backlinks", () => this.onToggleShowSearch());
-    this.navHeaderEl.append(this.collapseAllButtonEl, this.extraContextButtonEl, this.sortSelectEl, this.searchButtonEl);
+    this.sortSelectEl.append(
+      new Option("A to Z", "alphabetical"),
+      new Option("Z to A", "reverse-alphabetical"),
+    );
+    this.sortSelectEl.addEventListener("change", () =>
+      this.setSortOrder(this.sortSelectEl.value as BacklinkSortOrder),
+    );
+    this.searchButtonEl = this.createButton("lucide-search", "Search backlinks", () =>
+      this.onToggleShowSearch(),
+    );
+    this.navHeaderEl.append(
+      this.collapseAllButtonEl,
+      this.extraContextButtonEl,
+      this.sortSelectEl,
+      this.searchButtonEl,
+    );
 
     this.searchContainerEl = document.createElement("div");
     this.searchContainerEl.className = "backlink-pane-search";
@@ -3179,9 +3598,12 @@ class EmbeddedBacklinks extends Component {
     if (typeof value.collapseAll === "boolean") this.setCollapseAll(value.collapseAll);
     if (typeof value.extraContext === "boolean") this.setExtraContext(value.extraContext);
     if (typeof value.showSearch === "boolean") this.setShowSearch(value.showSearch);
-    if (value.sortOrder === "alphabetical" || value.sortOrder === "reverse-alphabetical") this.setSortOrder(value.sortOrder);
-    if (typeof value.backlinkCollapsed === "boolean") this.setBacklinkCollapsed(value.backlinkCollapsed, false);
-    if (typeof value.unlinkedCollapsed === "boolean") this.setUnlinkedCollapsed(value.unlinkedCollapsed, false);
+    if (value.sortOrder === "alphabetical" || value.sortOrder === "reverse-alphabetical")
+      this.setSortOrder(value.sortOrder);
+    if (typeof value.backlinkCollapsed === "boolean")
+      this.setBacklinkCollapsed(value.backlinkCollapsed, false);
+    if (typeof value.unlinkedCollapsed === "boolean")
+      this.setUnlinkedCollapsed(value.unlinkedCollapsed, false);
     if (typeof value.searchQuery === "string") {
       this.searchInputEl.value = value.searchQuery;
       this.updateSearch();
@@ -3326,7 +3748,9 @@ class EmbeddedBacklinks extends Component {
     const term = file.basename.trim();
     if (!term) return [];
     const result: LinkGraphEdge[] = [];
-    const existingSources = new Set(this.app.linkGraph.getBacklinks(file.path).map((edge) => edge.from));
+    const existingSources = new Set(
+      this.app.linkGraph.getBacklinks(file.path).map((edge) => edge.from),
+    );
     for (const candidate of this.app.vault.getMarkdownFiles()) {
       if (candidate.path === file.path) continue;
       const text = await this.app.vault.read(candidate);
@@ -3341,7 +3765,12 @@ class EmbeddedBacklinks extends Component {
         to: file.path,
         original: term,
         resolved: false,
-        position: { line, start: index - lineStart, end: index - lineStart + term.length, text: lineText },
+        position: {
+          line,
+          start: index - lineStart,
+          end: index - lineStart + term.length,
+          text: lineText,
+        },
       });
     }
     return result;
@@ -3350,7 +3779,11 @@ class EmbeddedBacklinks extends Component {
   private filterAndSort(edges: LinkGraphEdge[]): LinkGraphEdge[] {
     const query = this.searchQuery?.toLowerCase();
     const filtered = query
-      ? edges.filter((edge) => `${edge.from} ${edge.original} ${edge.position?.text ?? ""}`.toLowerCase().includes(query))
+      ? edges.filter((edge) =>
+          `${edge.from} ${edge.original} ${edge.position?.text ?? ""}`
+            .toLowerCase()
+            .includes(query),
+        )
       : edges;
     return filtered.sort((left, right) => {
       const order = left.from.localeCompare(right.from);
@@ -3381,7 +3814,9 @@ class EmbeddedBacklinks extends Component {
     if (!file) return;
     void this.app.workspace.openFile(file, {
       active: true,
-      eState: edge.position ? { line: edge.position.line, matchStart: edge.position.start, matchEnd: edge.position.end } : undefined,
+      eState: edge.position
+        ? { line: edge.position.line, matchStart: edge.position.start, matchEnd: edge.position.end }
+        : undefined,
     });
   }
 
@@ -3395,7 +3830,10 @@ class EmbeddedBacklinks extends Component {
     return button;
   }
 
-  private createSection(title: string, onClick: () => void): { headerEl: HTMLElement; countEl: HTMLElement; resultsEl: HTMLElement } {
+  private createSection(
+    title: string,
+    onClick: () => void,
+  ): { headerEl: HTMLElement; countEl: HTMLElement; resultsEl: HTMLElement } {
     const sectionEl = document.createElement("div");
     sectionEl.className = "backlink-pane-section";
     const headerEl = document.createElement("div");
@@ -3526,10 +3964,17 @@ class MarkdownReadingMode implements MarkdownViewModeComponent {
   readonly renderer: MarkdownPreviewRenderer;
 
   constructor(readonly owner: MarkdownView) {
-    this.renderer = new MarkdownPreviewRenderer(owner.app, owner.previewRendererEl, owner.file?.path ?? "", owner);
+    this.renderer = new MarkdownPreviewRenderer(
+      owner.app,
+      owner.previewRendererEl,
+      owner.file?.path ?? "",
+      owner,
+    );
     this.renderer.addHeader();
     this.renderer.addFooter();
-    owner.registerEvent(owner.app.workspace.on("post-processor-change", () => this.renderer.rerender(true)));
+    owner.registerEvent(
+      owner.app.workspace.on("post-processor-change", () => this.renderer.rerender(true)),
+    );
   }
 
   get(): string {
@@ -3589,20 +4034,32 @@ class MarkdownReadingMode implements MarkdownViewModeComponent {
       this.renderer.previewEl.tabIndex = -1;
       this.renderer.previewEl.focus({ preventScroll: true });
     }
-    if (Object.prototype.hasOwnProperty.call(viewState, "scroll")) this.renderer.applyScrollDelayed(viewState.scroll);
+    if (Object.prototype.hasOwnProperty.call(viewState, "scroll"))
+      this.renderer.applyScrollDelayed(viewState.scroll);
     const syncScroll = () => this.owner.syncScroll();
     const line = Number(viewState.line);
-    if (Number.isFinite(line) && line >= 0) this.renderer.applyScrollDelayed(line, { highlight: true }, syncScroll);
+    if (Number.isFinite(line) && line >= 0)
+      this.renderer.applyScrollDelayed(line, { highlight: true }, syncScroll);
     if (Array.isArray(viewState.propertyMatches)) {
       const first = viewState.propertyMatches[0] as { key?: unknown } | undefined;
       if (typeof first?.key === "string") {
-        this.owner.metadataContainerEl.querySelector<HTMLElement>(`[data-property-key="${first.key}"]`)?.focus();
+        this.owner.metadataContainerEl
+          .querySelector<HTMLElement>(`[data-property-key="${first.key}"]`)
+          ?.focus();
       }
     } else if (viewState.match && typeof viewState.match === "object") {
       const match = viewState.match as { content?: unknown; matches?: unknown };
       const firstMatch = Array.isArray(match.matches) ? match.matches[0] : null;
-      if (typeof match.content === "string" && Array.isArray(firstMatch) && typeof firstMatch[0] === "number") {
-        this.renderer.applyScrollDelayed(lineFromOffset(match.content, firstMatch[0]), { center: true, highlight: true }, syncScroll);
+      if (
+        typeof match.content === "string" &&
+        Array.isArray(firstMatch) &&
+        typeof firstMatch[0] === "number"
+      ) {
+        this.renderer.applyScrollDelayed(
+          lineFromOffset(match.content, firstMatch[0]),
+          { center: true, highlight: true },
+          syncScroll,
+        );
       }
     }
   }
@@ -3674,7 +4131,12 @@ function getHeadingLevelFromLine(line: string): number {
   return match ? match[1].length : 0;
 }
 
-function renderEmbeddedBacklinkSection(parentEl: HTMLElement, title: string, backlinks: string[], emptyText: string): void {
+function renderEmbeddedBacklinkSection(
+  parentEl: HTMLElement,
+  title: string,
+  backlinks: string[],
+  emptyText: string,
+): void {
   const sectionEl = document.createElement("div");
   sectionEl.className = "backlink-pane-section";
   const titleEl = document.createElement("div");
@@ -3771,7 +4233,10 @@ function getRecord(value: unknown): Record<string, unknown> | null {
 }
 
 function getLinktextSubpath(linktext: string): string | undefined {
-  const withoutAlias = linktext.slice(0, linktext.indexOf("|") === -1 ? linktext.length : linktext.indexOf("|"));
+  const withoutAlias = linktext.slice(
+    0,
+    linktext.indexOf("|") === -1 ? linktext.length : linktext.indexOf("|"),
+  );
   const hashIndex = withoutAlias.indexOf("#");
   const blockIndex = withoutAlias.indexOf("^");
   const indexes = [hashIndex, blockIndex].filter((index) => index !== -1);
@@ -3789,7 +4254,13 @@ function isEmbeddableFile(file: TFile): boolean {
 }
 
 function canInsertDragSourceMarkdown(source: DragSource): boolean {
-  if (source.type === "file" || source.type === "files" || source.type === "link" || source.type === "heading") return true;
+  if (
+    source.type === "file" ||
+    source.type === "files" ||
+    source.type === "link" ||
+    source.type === "heading"
+  )
+    return true;
   if (source.type !== "bookmarks") return false;
   const value = source as unknown as Record<string, unknown>;
   const items = Array.isArray(value.items) ? value.items : [];
@@ -3811,7 +4282,10 @@ function setAllowedDropEffect(event: DragEvent, effect: DataTransfer["dropEffect
   event.dataTransfer.dropEffect = effect;
 }
 
-function isDropEffectAllowed(effectAllowed: DataTransfer["effectAllowed"], effect: DataTransfer["dropEffect"]): boolean {
+function isDropEffectAllowed(
+  effectAllowed: DataTransfer["effectAllowed"],
+  effect: DataTransfer["dropEffect"],
+): boolean {
   if (effect === "none") return false;
   if (effectAllowed === "all") return true;
   if (effectAllowed === "uninitialized" || effectAllowed === "none") return false;
@@ -3839,7 +4313,11 @@ function parseCssPixels(value: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function measureEditorCharacterWidth(element: HTMLElement, style: CSSStyleDeclaration, fallbackFontSize: number): number {
+function measureEditorCharacterWidth(
+  element: HTMLElement,
+  style: CSSStyleDeclaration,
+  fallbackFontSize: number,
+): number {
   const probe = document.createElement("span");
   probe.textContent = "mmmmmmmmmm";
   probe.style.position = "absolute";
@@ -3871,7 +4349,9 @@ function getUriListMarkdown(dataTransfer: DataTransfer, uri: string, plain: stri
   return isImageLikePath(uri) ? `!${text}` : text;
 }
 
-function getFirstDataTransferFile(dataTransfer: DataTransfer): { basename: string; extension: string } | null {
+function getFirstDataTransferFile(
+  dataTransfer: DataTransfer,
+): { basename: string; extension: string } | null {
   const file = getAttachmentFilesFromDataTransfer(dataTransfer, "drop", false)[0];
   return file ? { basename: file.name, extension: file.extension } : null;
 }
@@ -3883,7 +4363,9 @@ function getAttachmentDisplayName(file: AttachmentImportFile): string {
 
 function isImageLikePath(path: string): boolean {
   const withoutFragment = path.split("#", 1)[0]?.split("?", 1)[0] ?? path;
-  const extension = splitAttachmentFilename(withoutFragment.slice(withoutFragment.lastIndexOf("/") + 1)).extension;
+  const extension = splitAttachmentFilename(
+    withoutFragment.slice(withoutFragment.lastIndexOf("/") + 1),
+  ).extension;
   return IMAGE_EXTENSIONS.has(extension.toLowerCase());
 }
 
@@ -3983,13 +4465,18 @@ function findTagAt(textLine: string, ch: number, line: number): SourceTagHit | n
   return null;
 }
 
-function findExternalRefLinkAt(textLine: string, ch: number, line: number): SourceExternalRefLinkHit | null {
+function findExternalRefLinkAt(
+  textLine: string,
+  ch: number,
+  line: number,
+): SourceExternalRefLinkHit | null {
   for (const match of textLine.matchAll(/!?\[[^\]]*\]\[([^\]\s]+)\]/g)) {
     const start = match.index ?? 0;
     const end = start + match[0].length;
     const id = match[1] ?? "";
     const refStart = end - id.length - 2;
-    if (id && ch >= refStart && ch <= end) return { type: "external-ref-link", id, line, start: refStart, end };
+    if (id && ch >= refStart && ch <= end)
+      return { type: "external-ref-link", id, line, start: refStart, end };
   }
   return null;
 }

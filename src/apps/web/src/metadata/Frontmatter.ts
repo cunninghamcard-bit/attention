@@ -37,14 +37,22 @@ export function getFrontmatterValues(source: string): Record<string, PropertyVal
   return parseFrontmatter(source).values;
 }
 
-export function setFrontmatterProperty(source: string, propertyId: string, value: PropertyValue): string {
+export function setFrontmatterProperty(
+  source: string,
+  propertyId: string,
+  value: PropertyValue,
+): string {
   return updateFrontmatter(source, (values) => {
     if (value == null || isEmptyArray(value)) delete values[propertyId];
     else values[propertyId] = value;
   });
 }
 
-export function insertFrontmatterProperty(source: string, propertyId: string, value: PropertyValue = null): string {
+export function insertFrontmatterProperty(
+  source: string,
+  propertyId: string,
+  value: PropertyValue = null,
+): string {
   const trimmed = propertyId.trim();
   if (!trimmed) return source;
   return updateFrontmatter(source, (values) => {
@@ -58,7 +66,10 @@ export function deleteFrontmatterProperty(source: string, propertyId: string): s
   });
 }
 
-export function deleteFrontmatterProperties(source: string, propertyIds: readonly string[]): string {
+export function deleteFrontmatterProperties(
+  source: string,
+  propertyIds: readonly string[],
+): string {
   const targets = new Set(propertyIds.map((id) => id.toLowerCase()));
   return updateFrontmatter(source, (values) => {
     for (const key of Object.keys(values)) {
@@ -67,7 +78,10 @@ export function deleteFrontmatterProperties(source: string, propertyIds: readonl
   });
 }
 
-export function mergeFrontmatterProperties(source: string, incoming: Record<string, PropertyValue>): string {
+export function mergeFrontmatterProperties(
+  source: string,
+  incoming: Record<string, PropertyValue>,
+): string {
   return updateFrontmatter(source, (values) => {
     mergeFrontmatterValues(values, incoming);
   });
@@ -78,13 +92,18 @@ export function renameFrontmatterProperty(source: string, oldId: string, newId: 
   if (!trimmed || trimmed === oldId) return source;
   return updateFrontmatter(source, (values) => {
     if (!(oldId in values)) return;
-    if (Object.prototype.hasOwnProperty.call(values, trimmed)) mergeFrontmatterValues(values, { [trimmed]: values[oldId] });
+    if (Object.prototype.hasOwnProperty.call(values, trimmed))
+      mergeFrontmatterValues(values, { [trimmed]: values[oldId] });
     else renameFrontmatterKeyPreservingOrder(values, oldId, trimmed);
     delete values[oldId];
   });
 }
 
-export function reorderFrontmatterProperty(source: string, propertyId: string, targetIndex: number): string {
+export function reorderFrontmatterProperty(
+  source: string,
+  propertyId: string,
+  targetIndex: number,
+): string {
   return updateFrontmatter(source, (values) => {
     if (!Object.prototype.hasOwnProperty.call(values, propertyId)) return;
     const value = values[propertyId];
@@ -102,25 +121,36 @@ export function reorderFrontmatterProperty(source: string, propertyId: string, t
 }
 
 export function sortFrontmatterProperties(source: string, descending = false): string {
-  const collator = new Intl.Collator(undefined, { usage: "sort", sensitivity: "base", numeric: true });
+  const collator = new Intl.Collator(undefined, {
+    usage: "sort",
+    sensitivity: "base",
+    numeric: true,
+  });
   return updateFrontmatter(source, (values) => {
-    const sortedKeys = Object.keys(values).sort((left, right) => (
-      descending ? -collator.compare(left, right) : collator.compare(left, right)
-    ));
+    const sortedKeys = Object.keys(values).sort((left, right) =>
+      descending ? -collator.compare(left, right) : collator.compare(left, right),
+    );
     const sorted = sortedKeys.map((key) => [key, values[key]] as [string, PropertyValue]);
     for (const key of Object.keys(values)) delete values[key];
     for (const [key, value] of sorted) values[key] = value;
   });
 }
 
-export function mergeFrontmatterValues(target: Record<string, PropertyValue>, incoming: Record<string, PropertyValue>): void {
+export function mergeFrontmatterValues(
+  target: Record<string, PropertyValue>,
+  incoming: Record<string, PropertyValue>,
+): void {
   if (Object.keys(incoming).length === 0) return;
   for (const [key, incomingValue] of Object.entries(incoming)) {
     const existingValue = target[key];
     if (existingValue) {
       if (Array.isArray(existingValue) && Array.isArray(incomingValue)) {
         target[key] = uniqueValues([...existingValue, ...incomingValue]);
-      } else if (isPlainObject(existingValue) && incomingValue !== null && isPlainObject(incomingValue)) {
+      } else if (
+        isPlainObject(existingValue) &&
+        incomingValue !== null &&
+        isPlainObject(incomingValue)
+      ) {
         mergeFrontmatterValues(existingValue, incomingValue);
       } else if (incomingValue !== null) {
         target[key] = incomingValue;
@@ -131,7 +161,11 @@ export function mergeFrontmatterValues(target: Record<string, PropertyValue>, in
   }
 }
 
-export function renameFrontmatterKeyPreservingOrder(values: Record<string, PropertyValue>, oldId: string, newId: string): void {
+export function renameFrontmatterKeyPreservingOrder(
+  values: Record<string, PropertyValue>,
+  oldId: string,
+  newId: string,
+): void {
   for (const key of Object.keys(values)) {
     const value = values[key];
     delete values[key];
@@ -139,7 +173,10 @@ export function renameFrontmatterKeyPreservingOrder(values: Record<string, Prope
   }
 }
 
-export function updateFrontmatter(source: string, update: (values: Record<string, PropertyValue>) => void): string {
+export function updateFrontmatter(
+  source: string,
+  update: (values: Record<string, PropertyValue>) => void,
+): string {
   const parsed = parseFrontmatter(source);
   if (!parsed.valid) return source;
   const values = { ...parsed.values };
@@ -172,11 +209,16 @@ export function coercePropertyValue(type: string, value: unknown): PropertyValue
   }
   if (type === "checkbox") {
     if (typeof value === "boolean") return value;
-    if (typeof value === "string") return ["true", "yes", "1", "on"].includes(value.trim().toLowerCase());
+    if (typeof value === "string")
+      return ["true", "yes", "1", "on"].includes(value.trim().toLowerCase());
     return Boolean(value);
   }
   if (type === "tags" || type === "aliases" || type === "multitext") {
-    if (Array.isArray(value)) return value.map(String).map((item) => item.trim()).filter(Boolean);
+    if (Array.isArray(value))
+      return value
+        .map(String)
+        .map((item) => item.trim())
+        .filter(Boolean);
     return splitList(String(value));
   }
   return String(value);
@@ -273,7 +315,12 @@ function serializeProperty(key: string, value: PropertyValue): string[] {
   if (isPlainObject(value)) {
     const entries = Object.entries(value).filter(([, item]) => item != null && !isEmptyArray(item));
     if (entries.length === 0) return [`${key}: {}`];
-    return [`${key}:`, ...entries.flatMap(([childKey, childValue]) => indentLines(serializeProperty(childKey, childValue), 2))];
+    return [
+      `${key}:`,
+      ...entries.flatMap(([childKey, childValue]) =>
+        indentLines(serializeProperty(childKey, childValue), 2),
+      ),
+    ];
   }
   if (value == null) return [`${key}:`];
   return [`${key}: ${quoteIfNeeded(value)}`];
@@ -288,7 +335,9 @@ function serializeArrayItem(value: PropertyValue, indent: number): string[] {
   if (isPlainObject(value)) {
     const entries = Object.entries(value).filter(([, item]) => item != null && !isEmptyArray(item));
     if (entries.length === 0) return [`${prefix}- {}`];
-    const [first, ...rest] = entries.flatMap(([childKey, childValue]) => serializeProperty(childKey, childValue));
+    const [first, ...rest] = entries.flatMap(([childKey, childValue]) =>
+      serializeProperty(childKey, childValue),
+    );
     return [`${prefix}- ${first}`, ...rest.map((line) => `${prefix}  ${line}`)];
   }
   if (value == null) return [`${prefix}- null`];
@@ -302,20 +351,26 @@ function indentLines(lines: string[], spaces: number): string[] {
 
 function quoteIfNeeded(value: string | number | boolean): string {
   if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (value === "") return "\"\"";
+  if (value === "") return '""';
   if (/[:#\[\]{},&*?|\-<>=!%@`]/.test(value) || /^\s|\s$/.test(value)) return JSON.stringify(value);
   return value;
 }
 
 function stripQuotes(value: string): string {
-  if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
     return value.slice(1, -1);
   }
   return value;
 }
 
 function splitList(value: string): string[] {
-  return value.split(/[,\n]/).map((item) => item.trim()).filter(Boolean);
+  return value
+    .split(/[,\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function splitCsv(value: string): string[] {
@@ -323,7 +378,7 @@ function splitCsv(value: string): string[] {
   let current = "";
   let quote: string | null = null;
   for (const char of value) {
-    if ((char === "\"" || char === "'") && (!quote || quote === char)) {
+    if ((char === '"' || char === "'") && (!quote || quote === char)) {
       quote = quote ? null : char;
       current += char;
       continue;
@@ -351,7 +406,8 @@ function uniqueValues(values: PropertyValue[]): PropertyValue[] {
   const seen = new Set<string>();
   const result: PropertyValue[] = [];
   for (const value of values) {
-    const key = typeof value === "object" ? JSON.stringify(value) : `${typeof value}:${String(value)}`;
+    const key =
+      typeof value === "object" ? JSON.stringify(value) : `${typeof value}:${String(value)}`;
     if (seen.has(key)) continue;
     seen.add(key);
     result.push(value);

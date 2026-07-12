@@ -70,11 +70,23 @@ interface VaultLike {
 export class GraphDataEngine {
   constructor(private readonly app: App) {}
 
-  collect(filters: GraphFilterOptions, local: boolean, colorGroups: GraphColorGroupOptions[]): GraphData {
+  collect(
+    filters: GraphFilterOptions,
+    local: boolean,
+    colorGroups: GraphColorGroupOptions[],
+  ): GraphData {
     const globalData = this.collectGlobalData(filters);
-    const focusedId = local ? filters.localFile ?? this.app.workspace.activeEditor?.file?.path ?? null : null;
-    const graphData = local ? this.collectLocalData(globalData, filters, focusedId) : { ...globalData, focusedId };
-    return this.finalizeData(this.filterByQuery(graphData, filters.query), filters.query, colorGroups);
+    const focusedId = local
+      ? (filters.localFile ?? this.app.workspace.activeEditor?.file?.path ?? null)
+      : null;
+    const graphData = local
+      ? this.collectLocalData(globalData, filters, focusedId)
+      : { ...globalData, focusedId };
+    return this.finalizeData(
+      this.filterByQuery(graphData, filters.query),
+      filters.query,
+      colorGroups,
+    );
   }
 
   private collectGlobalData(filters: GraphFilterOptions): GraphData {
@@ -96,7 +108,11 @@ export class GraphDataEngine {
     const metadataCache = this.metadataCache();
     const cachedFiles = metadataCache.getCachedFiles?.() ?? [];
     const markdownFiles = this.vault().getMarkdownFiles?.() ?? [];
-    const sourcePaths = new Set(cachedFiles.length > 0 ? [...cachedFiles, ...markdownFiles.map((file) => file.path)] : markdownFiles.map((file) => file.path));
+    const sourcePaths = new Set(
+      cachedFiles.length > 0
+        ? [...cachedFiles, ...markdownFiles.map((file) => file.path)]
+        : markdownFiles.map((file) => file.path),
+    );
 
     for (const path of sourcePaths) {
       if (metadataCache.isUserIgnored?.(path)) continue;
@@ -112,7 +128,11 @@ export class GraphDataEngine {
     }
   }
 
-  private collectMetadataLinks(nodeMap: Map<string, GraphNode>, links: GraphLink[], filters: GraphFilterOptions): boolean {
+  private collectMetadataLinks(
+    nodeMap: Map<string, GraphNode>,
+    links: GraphLink[],
+    filters: GraphFilterOptions,
+  ): boolean {
     const metadataCache = this.metadataCache();
     const resolvedLinks = metadataCache.resolvedLinks;
     const unresolvedLinks = metadataCache.unresolvedLinks;
@@ -135,7 +155,8 @@ export class GraphDataEngine {
         this.ensureResolvedNode(nodeMap, from, filters);
         if (!nodeMap.has(from)) continue;
         for (const to of Object.keys(destinations)) {
-          if (!nodeMap.has(to)) nodeMap.set(to, this.createNode(to, this.pathLabel(to), "unresolved", false));
+          if (!nodeMap.has(to))
+            nodeMap.set(to, this.createNode(to, this.pathLabel(to), "unresolved", false));
           this.addLink(links, { from, to, resolved: false });
         }
       }
@@ -144,7 +165,11 @@ export class GraphDataEngine {
     return true;
   }
 
-  private collectFallbackLinks(nodeMap: Map<string, GraphNode>, links: GraphLink[], filters: GraphFilterOptions): void {
+  private collectFallbackLinks(
+    nodeMap: Map<string, GraphNode>,
+    links: GraphLink[],
+    filters: GraphFilterOptions,
+  ): void {
     const rawLinks = this.app.linkGraph.getGraph() as LinkLike[];
 
     for (const raw of rawLinks) {
@@ -153,7 +178,8 @@ export class GraphDataEngine {
       this.ensureResolvedNode(nodeMap, raw.from, filters);
       if (!nodeMap.has(raw.from)) continue;
       if (resolved) this.ensureResolvedNode(nodeMap, raw.to, filters);
-      else if (!nodeMap.has(raw.to)) nodeMap.set(raw.to, this.createNode(raw.to, this.pathLabel(raw.to), "unresolved", false));
+      else if (!nodeMap.has(raw.to))
+        nodeMap.set(raw.to, this.createNode(raw.to, this.pathLabel(raw.to), "unresolved", false));
       if (nodeMap.has(raw.to)) this.addLink(links, { from: raw.from, to: raw.to, resolved });
     }
   }
@@ -172,11 +198,16 @@ export class GraphDataEngine {
     }
   }
 
-  private collectLocalData(globalData: GraphData, filters: GraphFilterOptions, focusedId: string | null): GraphData {
+  private collectLocalData(
+    globalData: GraphData,
+    filters: GraphFilterOptions,
+    focusedId: string | null,
+  ): GraphData {
     if (!focusedId) return { nodes: [], links: [], focusedId: null, hasFilter: false, weights: {} };
 
     const nodeMap = new Map(globalData.nodes.map((node) => [node.id, { ...node, focused: false }]));
-    if (!nodeMap.has(focusedId)) nodeMap.set(focusedId, this.createNode(focusedId, this.pathLabel(focusedId), "", true));
+    if (!nodeMap.has(focusedId))
+      nodeMap.set(focusedId, this.createNode(focusedId, this.pathLabel(focusedId), "", true));
 
     const outgoing = this.groupLinks(globalData.links, "from");
     const incoming = this.groupLinks(globalData.links, "to");
@@ -188,7 +219,7 @@ export class GraphDataEngine {
 
     for (let depth = 0; depth < jumps && frontier.size > 0; depth++) {
       const next = new Set<string>();
-      const weight = Math.max(0, 30 - 30 / jumps * (depth + 1));
+      const weight = Math.max(0, 30 - (30 / jumps) * (depth + 1));
       for (const id of frontier) {
         const node = nodeMap.get(id);
         if (node?.type === "tag") continue;
@@ -201,7 +232,15 @@ export class GraphDataEngine {
 
         if (filters.localBacklinks) {
           for (const link of incoming.get(id) ?? []) {
-            this.includeLocalLink(link, visibleIds, next, weights, weight, localLinkKeys, link.from);
+            this.includeLocalLink(
+              link,
+              visibleIds,
+              next,
+              weights,
+              weight,
+              localLinkKeys,
+              link.from,
+            );
           }
         }
       }
@@ -210,7 +249,12 @@ export class GraphDataEngine {
 
     const links = filters.localInterlinks
       ? globalData.links.filter((link) => visibleIds.has(link.from) && visibleIds.has(link.to))
-      : globalData.links.filter((link) => visibleIds.has(link.from) && visibleIds.has(link.to) && localLinkKeys.has(this.linkKey(link)));
+      : globalData.links.filter(
+          (link) =>
+            visibleIds.has(link.from) &&
+            visibleIds.has(link.to) &&
+            localLinkKeys.has(this.linkKey(link)),
+        );
     const nodes = [...visibleIds].flatMap((id) => {
       const node = nodeMap.get(id);
       return node ? [{ ...node }] : [];
@@ -240,7 +284,9 @@ export class GraphDataEngine {
     if (query.isEmpty) return data;
     const nodes = data.nodes.filter((node) => query.matchNode(node));
     const ids = new Set(nodes.map((node) => node.id));
-    const weights = data.weights ? Object.fromEntries(Object.entries(data.weights).filter(([id]) => ids.has(id))) : undefined;
+    const weights = data.weights
+      ? Object.fromEntries(Object.entries(data.weights).filter(([id]) => ids.has(id)))
+      : undefined;
     return {
       ...data,
       nodes,
@@ -249,9 +295,16 @@ export class GraphDataEngine {
     };
   }
 
-  private finalizeData(data: GraphData, queryText: string, colorGroups: GraphColorGroupOptions[]): GraphData {
+  private finalizeData(
+    data: GraphData,
+    queryText: string,
+    colorGroups: GraphColorGroupOptions[],
+  ): GraphData {
     const withMetrics = this.withLinkMetrics(data);
-    const nodes = withMetrics.nodes.map((node) => ({ ...node, focused: node.id === withMetrics.focusedId }));
+    const nodes = withMetrics.nodes.map((node) => ({
+      ...node,
+      focused: node.id === withMetrics.focusedId,
+    }));
     this.applyColorGroups(nodes, colorGroups);
     return {
       ...withMetrics,
@@ -264,11 +317,18 @@ export class GraphDataEngine {
     const counts = this.countLinks(data.links);
     return {
       ...data,
-      nodes: data.nodes.map((node) => ({ ...node, links: Math.round(data.weights?.[node.id] ?? counts.get(node.id) ?? 0) })),
+      nodes: data.nodes.map((node) => ({
+        ...node,
+        links: Math.round(data.weights?.[node.id] ?? counts.get(node.id) ?? 0),
+      })),
     };
   }
 
-  private dataFromMap(nodeMap: Map<string, GraphNode>, links: GraphLink[], focusedId: string | null): GraphData {
+  private dataFromMap(
+    nodeMap: Map<string, GraphNode>,
+    links: GraphLink[],
+    focusedId: string | null,
+  ): GraphData {
     const ids = new Set(nodeMap.keys());
     return {
       nodes: [...nodeMap.values()].map((node) => ({ ...node })),
@@ -350,12 +410,21 @@ export class GraphDataEngine {
     return "color-fill";
   }
 
-  private ensureResolvedNode(nodeMap: Map<string, GraphNode>, path: string, filters: GraphFilterOptions): void {
+  private ensureResolvedNode(
+    nodeMap: Map<string, GraphNode>,
+    path: string,
+    filters: GraphFilterOptions,
+  ): void {
     if (nodeMap.has(path)) return;
     if (!this.shouldIncludeResolvedPath(path, filters)) return;
     const file = this.getVaultFile(path);
     const type = this.isMarkdownPath(path, file) ? "" : "attachment";
-    const node = this.createNode(path, file ? this.fileLabel(file) : this.pathLabel(path), type, true);
+    const node = this.createNode(
+      path,
+      file ? this.fileLabel(file) : this.pathLabel(path),
+      type,
+      true,
+    );
     node.properties = this.getFrontmatterForPath(path);
     nodeMap.set(path, node);
   }
@@ -365,7 +434,17 @@ export class GraphDataEngine {
   }
 
   private createNode(id: string, label: string, type: GraphNodeType, resolved: boolean): GraphNode {
-    return { id, label, type, resolved, x: 0, y: 0, links: 0, focused: false, colorClass: "color-fill" };
+    return {
+      id,
+      label,
+      type,
+      resolved,
+      x: 0,
+      y: 0,
+      links: 0,
+      focused: false,
+      colorClass: "color-fill",
+    };
   }
 
   private metadataCache(): MetadataCacheLike {
@@ -382,7 +461,11 @@ export class GraphDataEngine {
   }
 
   private getVaultFile(path: string): VaultFileLike | null {
-    return this.vault().getFileByPath?.(path) ?? this.getAllVaultFiles().find((file) => file.path === path) ?? null;
+    return (
+      this.vault().getFileByPath?.(path) ??
+      this.getAllVaultFiles().find((file) => file.path === path) ??
+      null
+    );
   }
 
   private isMarkdownPath(path: string, file: VaultFileLike | null): boolean {
@@ -430,6 +513,10 @@ export class GraphDataEngine {
 
   private getCacheForPath(path: string): CachedMetadataLike | null {
     const metadataCache = this.metadataCache();
-    return metadataCache.getCacheByPath?.(path) ?? metadataCache.getFileCache?.(this.getVaultFile(path)) ?? null;
+    return (
+      metadataCache.getCacheByPath?.(path) ??
+      metadataCache.getFileCache?.(this.getVaultFile(path)) ??
+      null
+    );
   }
 }

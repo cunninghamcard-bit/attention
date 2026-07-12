@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { App } from "@web/app/App";
 import type { AgentEvent } from "@web/builtin/agent/AgentEvent";
-import { AgentPropertiesView, AGENT_PROPERTIES_VIEW_TYPE } from "@web/builtin/agent/AgentPropertiesView";
+import {
+  AgentPropertiesView,
+  AGENT_PROPERTIES_VIEW_TYPE,
+} from "@web/builtin/agent/AgentPropertiesView";
 
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
 
@@ -11,7 +14,11 @@ describe("AgentPropertiesView", () => {
     await app.ready;
 
     const leaf = app.workspace.getLeaf("tab");
-    await leaf.setViewState({ type: AGENT_PROPERTIES_VIEW_TYPE, active: true, state: { agentId: "a-77" } });
+    await leaf.setViewState({
+      type: AGENT_PROPERTIES_VIEW_TYPE,
+      active: true,
+      state: { agentId: "a-77" },
+    });
     const view = app.workspace.getActiveViewOfType(AgentPropertiesView)!;
     expect(view).not.toBeNull();
 
@@ -27,7 +34,9 @@ describe("AgentPropertiesView", () => {
     await nextFrame();
 
     const el = view.contentEl;
-    const sections = [...el.querySelectorAll(".agent-view-section")].map((s) => (s as HTMLElement).dataset.section);
+    const sections = [...el.querySelectorAll(".agent-view-section")].map(
+      (s) => (s as HTMLElement).dataset.section,
+    );
     expect(sections).toEqual(["identity", "status", "activity", "config", "actions"]);
     expect(el.querySelector('[data-prop="id"] .agent-prop-value')?.textContent).toBe("a-77");
     expect(el.querySelector('[data-prop="state"] .agent-prop-value')?.textContent).toBe("Running");
@@ -35,13 +44,18 @@ describe("AgentPropertiesView", () => {
 
     feed([
       {
-        type: "run.closed", runId: "r1", status: "completed", seq: 4,
+        type: "run.closed",
+        runId: "r1",
+        status: "completed",
+        seq: 4,
         usage: { inputTokens: 1000, outputTokens: 500, totalTokens: 1500, costUsd: 0.01 },
       },
     ] as never);
     await nextFrame();
     expect(el.querySelector('[data-prop="state"] .agent-prop-value')?.textContent).toBe("Idle");
-    expect(el.querySelector('[data-prop="usage"] .agent-prop-value')?.textContent).toBe("1.5k tokens · $0.010");
+    expect(el.querySelector('[data-prop="usage"] .agent-prop-value')?.textContent).toBe(
+      "1.5k tokens · $0.010",
+    );
     expect(view.getDisplayText()).toBe("Agent – a-77");
   });
 });

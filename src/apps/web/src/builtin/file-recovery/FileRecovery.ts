@@ -17,7 +17,7 @@ export class FileRecoveryService {
   async recover(path: string, revisionId: string): Promise<RecoverySnapshot | null> {
     const revision = this.app.revisions.getRevision(path, revisionId);
     if (!revision) return null;
-    const file = this.app.vault.getFileByPath(path) ?? await this.app.vault.create(path, "");
+    const file = this.app.vault.getFileByPath(path) ?? (await this.app.vault.create(path, ""));
     await this.app.vault.modify(file, revision.content);
     const snapshot = { path, revisionId, recoveredAt: new Date().toISOString() };
     this.app.workspace.trigger("file-recovered", snapshot);

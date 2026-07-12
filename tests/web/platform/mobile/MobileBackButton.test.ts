@@ -1,9 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
 import { resetActiveWindow } from "@web/dom/ActiveDocument";
-import { closeTopActiveCloseable, getActiveCloseables, registerActiveCloseable, unregisterActiveCloseable } from "@web/ui/ActiveCloseableRegistry";
+import {
+  closeTopActiveCloseable,
+  getActiveCloseables,
+  registerActiveCloseable,
+  unregisterActiveCloseable,
+} from "@web/ui/ActiveCloseableRegistry";
 import { MobileDrawer } from "@web/platform/mobile/MobileDrawer";
-import { MobileBackButtonController, type MobileBackButtonBridge } from "@web/platform/mobile/MobileBackButton";
+import {
+  MobileBackButtonController,
+  type MobileBackButtonBridge,
+} from "@web/platform/mobile/MobileBackButton";
 
 describe("MobileBackButtonController", () => {
   beforeEach(() => {
@@ -30,10 +38,12 @@ describe("MobileBackButtonController", () => {
     const collapse = vi.spyOn(left, "collapse");
     const closed: string[] = [];
     const first = { close: vi.fn(() => closed.push("first")) };
-    const second = { close: vi.fn(() => {
-      closed.push("second");
-      unregisterActiveCloseable(second);
-    }) };
+    const second = {
+      close: vi.fn(() => {
+        closed.push("second");
+        unregisterActiveCloseable(second);
+      }),
+    };
     registerActiveCloseable(first);
     registerActiveCloseable(second);
 
@@ -94,7 +104,9 @@ describe("MobileBackButtonController", () => {
     await app.ready;
     prepareExitBranch(app);
     const bridge = createBridge();
-    const controller = new MobileBackButtonController(app, bridge, { exitNoticeMessage: "Back again to exit" });
+    const controller = new MobileBackButtonController(app, bridge, {
+      exitNoticeMessage: "Back again to exit",
+    });
 
     await controller.handleBackButton();
 
@@ -113,7 +125,9 @@ describe("MobileBackButtonController", () => {
     await app.ready;
     prepareExitBranch(app);
     const bridge = createBridge();
-    const controller = new MobileBackButtonController(app, bridge, { exitNoticeMessage: "Back again to exit" });
+    const controller = new MobileBackButtonController(app, bridge, {
+      exitNoticeMessage: "Back again to exit",
+    });
 
     await controller.handleBackButton();
     bridge.advance(6000);

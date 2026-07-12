@@ -22,21 +22,25 @@ export class EditableFileView extends FileView {
     const file = this.file;
     if (!file) return;
     menu
-      .addItem((item) => item
-        .setSection("action")
-        .setTitle("Rename")
-        .setIcon("lucide-edit-3")
-        .onClick(() => {
-          void this.app.fileManager.promptForFileRename(file);
-        }))
-      .addItem((item) => item
-        .setSection("danger")
-        .setTitle("Delete")
-        .setIcon("lucide-trash-2")
-        .setWarning(true)
-        .onClick(() => {
-          void this.app.fileManager.promptForDeletion(file);
-        }));
+      .addItem((item) =>
+        item
+          .setSection("action")
+          .setTitle("Rename")
+          .setIcon("lucide-edit-3")
+          .onClick(() => {
+            void this.app.fileManager.promptForFileRename(file);
+          }),
+      )
+      .addItem((item) =>
+        item
+          .setSection("danger")
+          .setTitle("Delete")
+          .setIcon("lucide-trash-2")
+          .setWarning(true)
+          .onClick(() => {
+            void this.app.fileManager.promptForDeletion(file);
+          }),
+      );
     this.triggerFileMenu(menu, source);
   }
 
@@ -118,14 +122,24 @@ export class EditableFileView extends FileView {
   protected getValidHeaderTitle(): string | null {
     const file = this.fileBeingRenamed ?? this.file;
     if (!file) return null;
-    const validation = validateRenameName(this.app.vault, file, this.titleEl.textContent ?? "", true);
+    const validation = validateRenameName(
+      this.app.vault,
+      file,
+      this.titleEl.textContent ?? "",
+      true,
+    );
     return validation.error ? null : validation.name;
   }
 
   protected getHeaderTitleValidation(requireNonEmpty: boolean): RenameValidationResult {
     const file = this.fileBeingRenamed ?? this.file;
     if (!file) return { name: "", error: "File name cannot be empty", warning: "" };
-    return validateRenameName(this.app.vault, file, this.titleEl.textContent ?? "", requireNonEmpty);
+    return validateRenameName(
+      this.app.vault,
+      file,
+      this.titleEl.textContent ?? "",
+      requireNonEmpty,
+    );
   }
 
   protected applyHeaderTitleValidation(validation: RenameValidationResult): void {
@@ -133,7 +147,8 @@ export class EditableFileView extends FileView {
     const isWarning = !isError && Boolean(validation.warning);
     this.titleEl.classList.toggle("is-invalid", isError);
     this.titleEl.classList.toggle("mod-warning", isWarning);
-    if (validation.error || validation.warning) this.titleEl.title = validation.error || validation.warning;
+    if (validation.error || validation.warning)
+      this.titleEl.title = validation.error || validation.warning;
     else this.titleEl.removeAttribute("title");
   }
 }

@@ -28,14 +28,21 @@ export class AudioRecorderController {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     this.chunks = [];
     this.extension = format.extension;
-    this.recorder = new MediaRecorder(stream, format.mimeType ? { mimeType: format.mimeType } : undefined);
+    this.recorder = new MediaRecorder(
+      stream,
+      format.mimeType ? { mimeType: format.mimeType } : undefined,
+    );
     this.recorder.addEventListener("dataavailable", (event) => {
       if (event.data.size > 0) this.chunks.push(event.data);
     });
-    this.recorder.addEventListener("stop", () => {
-      for (const track of stream.getTracks()) track.stop();
-      void this.finishRecording(format);
-    }, { once: true });
+    this.recorder.addEventListener(
+      "stop",
+      () => {
+        for (const track of stream.getTracks()) track.stop();
+        void this.finishRecording(format);
+      },
+      { once: true },
+    );
     this.recorder.start();
     this.recording = true;
     this.updateRibbon();
@@ -59,7 +66,11 @@ export class AudioRecorderController {
 
   private async finishRecording(format: RecorderFormat): Promise<void> {
     const blob = new Blob(this.chunks, { type: format.mimeType || "audio/webm" });
-    const path = await this.app.vault.getAvailablePathForAttachments(`Recording ${formatTimestamp(new Date())}`, format.extension, this.app.workspace.getActiveFile());
+    const path = await this.app.vault.getAvailablePathForAttachments(
+      `Recording ${formatTimestamp(new Date())}`,
+      format.extension,
+      this.app.workspace.getActiveFile(),
+    );
     const file = await this.app.vault.createBinary(path, await blob.arrayBuffer());
     this.recording = false;
     this.recorder = null;
@@ -106,10 +117,14 @@ export function createAudioRecorderPluginDefinition(): InternalPluginDefinition 
           return available;
         },
       });
-      plugin.registerRibbonItem("Start/stop audio recording", "lucide-mic", () => controller?.toggle());
+      plugin.registerRibbonItem("Start/stop audio recording", "lucide-mic", () =>
+        controller?.toggle(),
+      );
     },
     onEnable(app: App) {
-      const button = app.workspace.leftRibbon.containerEl.querySelector<HTMLElement>('.side-dock-ribbon-action[aria-label="Start/stop audio recording"]');
+      const button = app.workspace.leftRibbon.containerEl.querySelector<HTMLElement>(
+        '.side-dock-ribbon-action[aria-label="Start/stop audio recording"]',
+      );
       if (button) controller?.setRibbonEl(button);
     },
     onDisable() {

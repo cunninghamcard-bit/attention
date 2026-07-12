@@ -13,12 +13,12 @@ const LOCAL_POPOUT_BODY_CLASSES = [
   "is-popout-window",
 ];
 
-const LOCAL_POPOUT_BODY_STYLE_PROPS = [
-  "--zoom-factor",
-  "--keyboard-height",
-];
+const LOCAL_POPOUT_BODY_STYLE_PROPS = ["--zoom-factor", "--keyboard-height"];
 
-export function applyObsidianBodyClasses(body: HTMLElement, win: Window = body.ownerDocument.defaultView ?? window): void {
+export function applyObsidianBodyClasses(
+  body: HTMLElement,
+  win: Window = body.ownerDocument.defaultView ?? window,
+): void {
   body.classList.add("obsidian-app");
   body.classList.remove("mod-macos", "mod-windows", "mod-linux");
   const platformClass = getObsidianPlatformClass(win);
@@ -28,17 +28,29 @@ export function applyObsidianBodyClasses(body: HTMLElement, win: Window = body.o
   body.classList.toggle("styled-scrollbars", platformClass !== "mod-macos");
 }
 
-export function syncObsidianConfigBodyClasses(body: HTMLElement, app: ObsidianBodyConfigSource): void {
-  body.classList.toggle("show-view-header", app.vault.getConfig<boolean>("showViewHeader") !== false);
+export function syncObsidianConfigBodyClasses(
+  body: HTMLElement,
+  app: ObsidianBodyConfigSource,
+): void {
+  body.classList.toggle(
+    "show-view-header",
+    app.vault.getConfig<boolean>("showViewHeader") !== false,
+  );
   body.classList.toggle("show-ribbon", app.vault.getConfig<boolean>("showRibbon") !== false);
 }
 
-export function syncBodyThemeClasses(target: HTMLElement, source: HTMLElement = document.body): void {
+export function syncBodyThemeClasses(
+  target: HTMLElement,
+  source: HTMLElement = document.body,
+): void {
   target.classList.toggle("theme-dark", source.classList.contains("theme-dark"));
   target.classList.toggle("theme-light", source.classList.contains("theme-light"));
 }
 
-export function installPopoutBodyClassSync(sourceBody: HTMLElement, targetBody: HTMLElement): () => void {
+export function installPopoutBodyClassSync(
+  sourceBody: HTMLElement,
+  targetBody: HTMLElement,
+): () => void {
   if (sourceBody === targetBody) return () => {};
   const sync = () => syncPopoutBodyFromMain(sourceBody, targetBody);
   sync();
@@ -48,8 +60,15 @@ export function installPopoutBodyClassSync(sourceBody: HTMLElement, targetBody: 
 }
 
 export function syncPopoutBodyFromMain(sourceBody: HTMLElement, targetBody: HTMLElement): void {
-  const localClasses = new Map(LOCAL_POPOUT_BODY_CLASSES.map((className) => [className, targetBody.classList.contains(className)]));
-  const localStyles = new Map(LOCAL_POPOUT_BODY_STYLE_PROPS.map((prop) => [prop, targetBody.style.getPropertyValue(prop)]));
+  const localClasses = new Map(
+    LOCAL_POPOUT_BODY_CLASSES.map((className) => [
+      className,
+      targetBody.classList.contains(className),
+    ]),
+  );
+  const localStyles = new Map(
+    LOCAL_POPOUT_BODY_STYLE_PROPS.map((prop) => [prop, targetBody.style.getPropertyValue(prop)]),
+  );
 
   targetBody.className = sourceBody.className;
   for (const [className, enabled] of localClasses) targetBody.classList.toggle(className, enabled);
@@ -76,12 +95,15 @@ export function installFocusBodyClassSync(win: Window = window): () => void {
 }
 
 export function syncFocusBodyClass(win: Window = window): void {
-  const electronWindow = (win as Window & { electronWindow?: { isFocused?: () => boolean } }).electronWindow;
+  const electronWindow = (win as Window & { electronWindow?: { isFocused?: () => boolean } })
+    .electronWindow;
   const focused = electronWindow?.isFocused?.() ?? win.document.hasFocus?.() ?? true;
   win.document.body.classList.toggle("is-focused", focused);
 }
 
-export function getObsidianPlatformClass(win: Window = window): "mod-macos" | "mod-windows" | "mod-linux" {
+export function getObsidianPlatformClass(
+  win: Window = window,
+): "mod-macos" | "mod-windows" | "mod-linux" {
   const platform = win.navigator.platform;
   const userAgent = win.navigator.userAgent;
   if (/Mac|iPhone|iPad|iPod/.test(platform)) return "mod-macos";

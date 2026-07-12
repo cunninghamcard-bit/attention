@@ -31,7 +31,11 @@ describe("LinkSuggest", () => {
     view.editor.setCursor({ line: 0, ch: "Link [[Tar".length });
 
     await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl);
-    await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl, new KeyboardEvent("keydown", { key: "Enter" }));
+    await app.workspace.editorSuggest.trigger(
+      view.editor,
+      view.editorViewHost.contentEl,
+      new KeyboardEvent("keydown", { key: "Enter" }),
+    );
 
     expect(view.editor.getValue()).toBe("Link [[../Notes/Target|Target]]");
   });
@@ -52,7 +56,11 @@ describe("LinkSuggest", () => {
     view.editor.setCursor({ line: 0, ch: "Link [[Alias".length });
 
     await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl);
-    await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl, new KeyboardEvent("keydown", { key: "Enter" }));
+    await app.workspace.editorSuggest.trigger(
+      view.editor,
+      view.editorViewHost.contentEl,
+      new KeyboardEvent("keydown", { key: "Enter" }),
+    );
 
     expect(view.editor.getValue()).toBe("Link [Alias](../Notes/Target.md)");
   });
@@ -71,8 +79,14 @@ describe("LinkSuggest", () => {
     view.editor.setCursor({ line: 2, ch: "Link [[Note#^Para".length });
 
     await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl);
-    await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl, new KeyboardEvent("keydown", { key: "Enter" }));
+    await app.workspace.editorSuggest.trigger(
+      view.editor,
+      view.editorViewHost.contentEl,
+      new KeyboardEvent("keydown", { key: "Enter" }),
+    );
 
-    expect(view.editor.getValue()).toMatch(/^Paragraph block \^[a-f0-9]{6}\n\nLink \[\[Note#\^[a-f0-9]{6}\]\]$/);
+    expect(view.editor.getValue()).toMatch(
+      /^Paragraph block \^[a-f0-9]{6}\n\nLink \[\[Note#\^[a-f0-9]{6}\]\]$/,
+    );
   });
 });

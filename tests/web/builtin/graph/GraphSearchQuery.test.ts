@@ -20,10 +20,12 @@ function node(overrides: Partial<GraphNode>): GraphNode {
 
 describe("GraphSearchQuery", () => {
   it("matches phrase, negation and OR expressions", () => {
-    const query = compileGraphSearchQuery("(\"daily note\" OR tag:project) -archive");
+    const query = compileGraphSearchQuery('("daily note" OR tag:project) -archive');
     expect(query.matchNode(node({ id: "Daily/Daily Note.md", label: "Daily Note" }))).toBe(true);
     expect(query.matchNode(node({ id: "#project", label: "#project", type: "tag" }))).toBe(true);
-    expect(query.matchNode(node({ id: "Archive/Daily Note.md", label: "Daily Note Archive" }))).toBe(false);
+    expect(
+      query.matchNode(node({ id: "Archive/Daily Note.md", label: "Daily Note Archive" })),
+    ).toBe(false);
   });
 
   it("matches frontmatter property expressions", () => {
@@ -33,7 +35,9 @@ describe("GraphSearchQuery", () => {
   });
 
   it("matches filepath and tag helpers used by graph filters", () => {
-    expect(compileGraphSearchQuery("path:Projects").matchFilepath("Projects/Roadmap.md")).toBe(true);
+    expect(compileGraphSearchQuery("path:Projects").matchFilepath("Projects/Roadmap.md")).toBe(
+      true,
+    );
     expect(compileGraphSearchQuery("tag:agent").matchTag("#agent")).toBe(true);
   });
 });

@@ -22,13 +22,15 @@ export interface CompiledGraphSearchQuery {
 
 export function compileGraphSearchQuery(raw: string): CompiledGraphSearchQuery {
   const tokens = tokenize(raw);
-  const expr = tokens.length === 0 ? { type: "all" } satisfies Expr : new Parser(tokens).parse();
+  const expr = tokens.length === 0 ? ({ type: "all" } satisfies Expr) : new Parser(tokens).parse();
   return {
     raw,
     isEmpty: tokens.length === 0,
     matchNode: (node) => evaluate(expr, node),
-    matchFilepath: (path) => evaluate(expr, createSyntheticNode(path, path.endsWith(".md") ? "file" : "attachment")),
-    matchTag: (tag) => evaluate(expr, createSyntheticNode(tag.startsWith("#") ? tag : `#${tag}`, "tag")),
+    matchFilepath: (path) =>
+      evaluate(expr, createSyntheticNode(path, path.endsWith(".md") ? "file" : "attachment")),
+    matchTag: (tag) =>
+      evaluate(expr, createSyntheticNode(tag.startsWith("#") ? tag : `#${tag}`, "tag")),
   };
 }
 
@@ -114,8 +116,8 @@ function tokenize(raw: string): Token[] {
       index++;
       continue;
     }
-    if (char === "\"") {
-      const read = readUntil(raw, index + 1, "\"");
+    if (char === '"') {
+      const read = readUntil(raw, index + 1, '"');
       tokens.push({ type: "quoted", value: read.value });
       index = read.next;
       continue;
@@ -204,12 +206,18 @@ function matchTerm(term: Extract<Expr, { type: "term" }>, node: GraphNode): bool
     case "file":
       return node.type === "file" && matchText(node.label, value, term.exact);
     case "tag":
-      return node.type === "tag" && matchText(node.id.replace(/^#/, ""), value.replace(/^#/, ""), term.exact);
+      return (
+        node.type === "tag" &&
+        matchText(node.id.replace(/^#/, ""), value.replace(/^#/, ""), term.exact)
+      );
     case "content":
     case "line":
     case "block":
     case "section":
-      return node.type === "file" && (matchText(node.id, value, term.exact) || matchText(node.label, value, term.exact));
+      return (
+        node.type === "file" &&
+        (matchText(node.id, value, term.exact) || matchText(node.label, value, term.exact))
+      );
     case "task":
     case "task-todo":
     case "task-done":
@@ -221,7 +229,11 @@ function matchTerm(term: Extract<Expr, { type: "term" }>, node: GraphNode): bool
     case "property":
       return matchProperty(node, value);
     default:
-      return matchText(node.id, value, term.exact) || matchText(node.label, value, term.exact) || matchText(node.type, value, term.exact);
+      return (
+        matchText(node.id, value, term.exact) ||
+        matchText(node.label, value, term.exact) ||
+        matchText(node.type, value, term.exact)
+      );
   }
 }
 
@@ -233,26 +245,50 @@ function matchText(haystack: string, needle: string, exact: boolean): boolean {
 function matchProperty(node: GraphNode, value: string): boolean {
   const properties = node.properties ?? {};
   const expression = parsePropertyExpression(value);
-  const actualKey = Object.keys(properties).find((propertyKey) => propertyKey.toLowerCase() === expression.key.toLowerCase());
+  const actualKey = Object.keys(properties).find(
+    (propertyKey) => propertyKey.toLowerCase() === expression.key.toLowerCase(),
+  );
   if (!actualKey) return false;
   if (expression.expected == null || expression.expected === "") return true;
   const actual = properties[actualKey];
-  if (expression.comparator) return comparePropertyValue(actual, expression.expected, expression.comparator);
+  if (expression.comparator)
+    return comparePropertyValue(actual, expression.expected, expression.comparator);
   if (expression.expected === "true") return actual === true;
   if (expression.expected === "false") return actual === false;
-  if (expression.expected === "empty") return actual == null || actual === "" || Array.isArray(actual) && actual.length === 0;
-  if (Array.isArray(actual)) return actual.some((item) => stringifyPropertyValue(item).toLowerCase().includes(expression.expected ?? ""));
+  if (expression.expected === "empty")
+    return actual == null || actual === "" || (Array.isArray(actual) && actual.length === 0);
+  if (Array.isArray(actual))
+    return actual.some((item) =>
+      stringifyPropertyValue(item)
+        .toLowerCase()
+        .includes(expression.expected ?? ""),
+    );
   return stringifyPropertyValue(actual).toLowerCase().includes(expression.expected);
 }
 
-function parsePropertyExpression(value: string): { key: string; expected: string | null; comparator: ">" | "<" | null } {
+function parsePropertyExpression(value: string): {
+  key: string;
+  expected: string | null;
+  comparator: ">" | "<" | null;
+} {
   const comparison = value.match(/^(.+?)([<>])(.+)$/);
   if (comparison) {
-    return { key: comparison[1].trim(), comparator: comparison[2] as ">" | "<", expected: comparison[3].trim().toLowerCase() };
+    return {
+      key: comparison[1].trim(),
+      comparator: comparison[2] as ">" | "<",
+      expected: comparison[3].trim().toLowerCase(),
+    };
   }
   const separator = value.indexOf(":");
   if (separator === -1) return { key: value.trim(), expected: null, comparator: null };
-  return { key: value.slice(0, separator).trim(), expected: value.slice(separator + 1).trim().toLowerCase(), comparator: null };
+  return {
+    key: value.slice(0, separator).trim(),
+    expected: value
+      .slice(separator + 1)
+      .trim()
+      .toLowerCase(),
+    comparator: null,
+  };
 }
 
 function comparePropertyValue(actual: unknown, expected: string, comparator: ">" | "<"): boolean {
@@ -282,8 +318,22 @@ function safeRegex(source: string): RegExp | null {
 }
 
 function createSyntheticNode(id: string, type: GraphNode["type"]): GraphNode {
-  const label = id.split("/").pop()?.replace(/\.[^.]+$/, "") ?? id;
-  return { id, label, type, resolved: true, x: 0, y: 0, links: 0, focused: false, colorClass: "color-fill" };
+  const label =
+    id
+      .split("/")
+      .pop()
+      ?.replace(/\.[^.]+$/, "") ?? id;
+  return {
+    id,
+    label,
+    type,
+    resolved: true,
+    x: 0,
+    y: 0,
+    links: 0,
+    focused: false,
+    colorClass: "color-fill",
+  };
 }
 
 function isSupportedOperator(operator: string): boolean {

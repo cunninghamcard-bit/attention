@@ -53,7 +53,12 @@ export class Cli {
   // A duplicate id is an error, never a silent overwrite (faithful: the
   // registry refuses a second claim so a plugin can't shadow a core or peer
   // command).
-  registerHandler(id: string, description: string, flags: CliFlags | null, handler: CliHandler): void {
+  registerHandler(
+    id: string,
+    description: string,
+    flags: CliFlags | null,
+    handler: CliHandler,
+  ): void {
     if (this.handlers.has(id)) {
       throw new Error(`Command "${id}" is already registered as a handler.`);
     }
@@ -78,7 +83,11 @@ export class Cli {
 
     const target = globalThis as unknown as {
       handleCli?: (argv: string[]) => Promise<string>;
-      cliQueue?: Array<{ argv: string[]; resolve: (out: string) => void; reject: (err: unknown) => void }> | null;
+      cliQueue?: Array<{
+        argv: string[];
+        resolve: (out: string) => void;
+        reject: (err: unknown) => void;
+      }> | null;
     };
     target.handleCli = (argv: string[]) => this.handleCli(argv);
     app.workspace.onLayoutReady(() => {
@@ -178,12 +187,14 @@ export class Cli {
     const sep = format === "csv" ? "," : "\t";
     const quotable = new RegExp(`["\\n\\r${sep}]`);
     return rows
-      .map((row) => header
-        .map((_, i) => {
-          const cell = row[i] ?? "";
-          return quotable.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
-        })
-        .join(sep))
+      .map((row) =>
+        header
+          .map((_, i) => {
+            const cell = row[i] ?? "";
+            return quotable.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
+          })
+          .join(sep),
+      )
       .join("\n");
   }
 
@@ -228,7 +239,10 @@ export class Cli {
     if (requested) {
       const matched = entries.filter(([id]) => id === requested || id.startsWith(`${requested}:`));
       if (matched.length === 0) {
-        const suggestions = fuzzySuggest(requested, entries.map(([id]) => id));
+        const suggestions = fuzzySuggest(
+          requested,
+          entries.map(([id]) => id),
+        );
         let message = `No commands matching "${requested}".`;
         if (suggestions.length) message += ` Did you mean: ${suggestions.join(", ")}?`;
         return message;
@@ -251,8 +265,10 @@ export class Cli {
       "  Most commands default to the active file when file/path is omitted\n" +
       '  Quote values with spaces: name="My Note"\n' +
       "  Use \\n for newline, \\t for tab in content values\n\n" +
-      "Commands:\n" + main.join("\n") +
-      "\n\nDeveloper:\n" + developer.join("\n")
+      "Commands:\n" +
+      main.join("\n") +
+      "\n\nDeveloper:\n" +
+      developer.join("\n")
     );
   }
 }
@@ -264,7 +280,11 @@ export interface AsciiTreeNode {
 
 // Real `ub`: the shared collator every CLI name/path sort uses — locale-aware,
 // case-insensitive, numeric-aware.
-export const alphaCompare = new Intl.Collator(undefined, { usage: "sort", sensitivity: "base", numeric: true }).compare;
+export const alphaCompare = new Intl.Collator(undefined, {
+  usage: "sort",
+  sensitivity: "base",
+  numeric: true,
+}).compare;
 
 // key=value keeps the value; a bare token becomes "true".
 function parseParams(tokens: string[]): CliData {
@@ -295,7 +315,8 @@ function applyFormatShorthand(flags: CliFlags | null, params: CliData): void {
 function validateRequired(command: string, flags: CliFlags | null, params: CliData): void {
   const missing: string[] = [];
   for (const [name, flag] of Object.entries(flags ?? {})) {
-    if (flag.required && !(name in params)) missing.push(flag.value ? `${name}=${flag.value}` : name);
+    if (flag.required && !(name in params))
+      missing.push(flag.value ? `${name}=${flag.value}` : name);
   }
   if (missing.length > 0) {
     throw `Missing required parameter: ${missing.join(", ")}\nUsage: ${command} ${formatUsage(flags)}`;

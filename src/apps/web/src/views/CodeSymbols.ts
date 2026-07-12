@@ -35,7 +35,8 @@ const KIND_BY_PATTERN: Array<[RegExp, CodeSymbolKind]> = [
 
 // Identifier-ish node names, in preference order, searched within a symbol
 // node to recover its display name.
-const NAME_NODE_PATTERN = /Definition$|^DefName$|^Identifier$|^VariableName$|^TypeIdentifier$|^FieldIdentifier$|^FieldName$|^PropertyName$|^Name$/;
+const NAME_NODE_PATTERN =
+  /Definition$|^DefName$|^Identifier$|^VariableName$|^TypeIdentifier$|^FieldIdentifier$|^FieldName$|^PropertyName$|^Name$/;
 
 const MAX_SYMBOLS = 500;
 

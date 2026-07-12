@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
 import { TerminalView } from "@web/builtin/terminal/TerminalView";
-import { TerminalSpawnError, UnsupportedTerminalAdapter, type TerminalAdapter, type PtyHandle } from "@web/builtin/terminal/TerminalAdapter";
+import {
+  TerminalSpawnError,
+  UnsupportedTerminalAdapter,
+  type TerminalAdapter,
+  type PtyHandle,
+} from "@web/builtin/terminal/TerminalAdapter";
 import type { TerminalRenderer } from "@web/builtin/terminal/GhosttyTerminalRenderer";
 import { Menu, MenuItem } from "@web/ui/Menu";
 
@@ -13,15 +18,25 @@ class FakePty implements PtyHandle {
   private dataCallbacks: Array<(data: string) => void> = [];
   private exitCallbacks: Array<(code: number) => void> = [];
 
-  write(data: string): void { this.written.push(data); }
-  resize(cols: number, rows: number): void { this.resizes.push([cols, rows]); }
+  write(data: string): void {
+    this.written.push(data);
+  }
+  resize(cols: number, rows: number): void {
+    this.resizes.push([cols, rows]);
+  }
   kill(): void {
     this.killed = true;
     this.emitExit(0);
   }
-  onData(callback: (data: string) => void): void { this.dataCallbacks.push(callback); }
-  onExit(callback: (code: number) => void): void { this.exitCallbacks.push(callback); }
-  emitData(data: string): void { for (const cb of this.dataCallbacks) cb(data); }
+  onData(callback: (data: string) => void): void {
+    this.dataCallbacks.push(callback);
+  }
+  onExit(callback: (code: number) => void): void {
+    this.exitCallbacks.push(callback);
+  }
+  emitData(data: string): void {
+    for (const cb of this.dataCallbacks) cb(data);
+  }
   emitExit(code: number): void {
     const callbacks = this.exitCallbacks;
     this.exitCallbacks = [];
@@ -36,9 +51,15 @@ class FakeAdapter implements TerminalAdapter {
   failNext: string | null = null;
   integrationDir: string | null = "/fake/zdotdir";
 
-  defaultShell(): string { return "/bin/fake-sh"; }
-  defaultCwd(): string { return "/home/fake"; }
-  prepareShellIntegration(): string | null { return this.integrationDir; }
+  defaultShell(): string {
+    return "/bin/fake-sh";
+  }
+  defaultCwd(): string {
+    return "/home/fake";
+  }
+  prepareShellIntegration(): string | null {
+    return this.integrationDir;
+  }
   spawn(request: { shell?: string; cwd?: string; env?: Record<string, string> }): PtyHandle {
     if (this.failNext) {
       const message = this.failNext;
@@ -52,13 +73,20 @@ class FakeAdapter implements TerminalAdapter {
   }
 }
 
-function fakeRenderer(): TerminalRenderer & { output: string[]; inputCallback: ((data: string) => void) | null } {
+function fakeRenderer(): TerminalRenderer & {
+  output: string[];
+  inputCallback: ((data: string) => void) | null;
+} {
   const renderer = {
     output: [] as string[],
     inputCallback: null as ((data: string) => void) | null,
     mount: () => {},
-    write: (data: Uint8Array | string) => { renderer.output.push(String(data)); },
-    onInput: (callback: (data: string) => void) => { renderer.inputCallback = callback; },
+    write: (data: Uint8Array | string) => {
+      renderer.output.push(String(data));
+    },
+    onInput: (callback: (data: string) => void) => {
+      renderer.inputCallback = callback;
+    },
     fit: () => ({ cols: 120, rows: 40 }),
     getSelection: () => "",
     focus: () => {},
@@ -194,7 +222,9 @@ describe("TerminalService", () => {
     expect(seen).toHaveLength(1);
     expect(seen[0].context.cwd).toBeDefined();
     expect(seen[0].context.status).toBe("running");
-    const titles = seen[0].menu.items.filter((item): item is MenuItem => item instanceof MenuItem).map((item) => item.titleEl.textContent);
+    const titles = seen[0].menu.items
+      .filter((item): item is MenuItem => item instanceof MenuItem)
+      .map((item) => item.titleEl.textContent);
     expect(titles).toContain("Plugin action");
   });
 
@@ -219,7 +249,9 @@ describe("TerminalService", () => {
     expect(terminal.status).toBe("error");
     expect(errors).toHaveLength(1);
     const view = app.workspace.getLeavesOfType("terminal")[0].view as TerminalView;
-    expect(view.contentEl.querySelector(".terminal-view-overlay-message")?.textContent).toContain("bad shell path");
+    expect(view.contentEl.querySelector(".terminal-view-overlay-message")?.textContent).toContain(
+      "bad shell path",
+    );
 
     await view.restart();
     expect(view.getTerminal()?.status).toBe("running");
@@ -231,7 +263,9 @@ describe("TerminalService", () => {
     TerminalView.rendererFactory = async () => fakeRenderer();
     await app.ready;
     const errors: TerminalSpawnError[] = [];
-    app.workspace.on("terminal-error", (_terminal: unknown, error: TerminalSpawnError) => errors.push(error));
+    app.workspace.on("terminal-error", (_terminal: unknown, error: TerminalSpawnError) =>
+      errors.push(error),
+    );
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const terminal = await app.terminals.open();

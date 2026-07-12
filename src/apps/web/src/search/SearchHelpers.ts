@@ -34,11 +34,21 @@ export function sortSearchResults(results: SearchResultContainer[]): void {
   results.sort((left, right) => right.match.score - left.match.score);
 }
 
-export function renderResults(el: HTMLElement, text: string, result: SearchResult | null, offset = 0): void {
+export function renderResults(
+  el: HTMLElement,
+  text: string,
+  result: SearchResult | null,
+  offset = 0,
+): void {
   renderMatches(el, text, result ? result.matches : null, offset);
 }
 
-export function renderMatches(el: HTMLElement | DocumentFragment, text: string, matches: SearchMatches | null, offset = 0): void {
+export function renderMatches(
+  el: HTMLElement | DocumentFragment,
+  text: string,
+  matches: SearchMatches | null,
+  offset = 0,
+): void {
   el.appendChild(renderMatchesFragment(text, matches, offset, getOwnerDocument(el)));
 }
 
@@ -67,10 +77,18 @@ export function prepareQuery(query: string): PreparedQuery {
 
 export function fuzzySearch(query: PreparedQuery, text: string): SearchResult | null {
   if (query.query === "") return { score: 0, matches: [] };
-  return matchTokens(query.tokens, query.query, text, false) ?? matchTokens(query.fuzzy, query.query, text, true);
+  return (
+    matchTokens(query.tokens, query.query, text, false) ??
+    matchTokens(query.fuzzy, query.query, text, true)
+  );
 }
 
-function matchTokens(tokens: string[], query: string, text: string, strictStart: boolean): SearchResult | null {
+function matchTokens(
+  tokens: string[],
+  query: string,
+  text: string,
+  strictStart: boolean,
+): SearchResult | null {
   if (tokens.length === 0) return null;
   const lowerText = text.toLowerCase();
   let skippedWordStarts = 0;
@@ -83,10 +101,13 @@ function matchTokens(tokens: string[], query: string, text: string, strictStart:
     const originalChar = text.charAt(found);
     if (found > 0 && !PUNCTUATION_RE.test(originalChar) && !CJK_RE.test(originalChar)) {
       const previousChar = text.charAt(found - 1);
-      const isBadCamelStart = (
-        originalChar.toLowerCase() !== originalChar && previousChar.toLowerCase() !== previousChar
-        || originalChar.toUpperCase() !== originalChar && !PUNCTUATION_RE.test(previousChar) && !WHITESPACE_RE.test(previousChar) && !CJK_RE.test(previousChar)
-      );
+      const isBadCamelStart =
+        (originalChar.toLowerCase() !== originalChar &&
+          previousChar.toLowerCase() !== previousChar) ||
+        (originalChar.toUpperCase() !== originalChar &&
+          !PUNCTUATION_RE.test(previousChar) &&
+          !WHITESPACE_RE.test(previousChar) &&
+          !CJK_RE.test(previousChar));
       if (isBadCamelStart) {
         if (strictStart) {
           if (found !== cursor) {
@@ -110,10 +131,12 @@ function matchTokens(tokens: string[], query: string, text: string, strictStart:
 
 function simpleSearch(tokens: string[], query: string, text: string): SearchResult | null {
   const matches = findSimpleMatches(tokens, text);
-  return matches ? {
-    score: scoreMatches(matches, query.length, text.length, 0),
-    matches,
-  } : null;
+  return matches
+    ? {
+        score: scoreMatches(matches, query.length, text.length, 0),
+        matches,
+      }
+    : null;
 }
 
 function findSimpleMatches(tokens: string[], text: string): SearchMatches | null {
@@ -133,7 +156,12 @@ function findSimpleMatches(tokens: string[], text: string): SearchMatches | null
   return mergeMatches(matches);
 }
 
-function scoreMatches(matches: SearchMatches, queryLength: number, textLength: number, skippedWordStarts: number): number {
+function scoreMatches(
+  matches: SearchMatches,
+  queryLength: number,
+  textLength: number,
+  skippedWordStarts: number,
+): number {
   if (matches.length === 0) return 0;
   let score = 0;
   score -= Math.max(0, matches.length - 1);
@@ -168,7 +196,12 @@ function mergeMatches(matches: SearchMatches): SearchMatches {
   return merged;
 }
 
-function renderMatchesFragment(text: string, matches: SearchMatches | null, offset: number, doc: Document): Node {
+function renderMatchesFragment(
+  text: string,
+  matches: SearchMatches | null,
+  offset: number,
+  doc: Document,
+): Node {
   if (!matches || matches.length === 0) return doc.createTextNode(text);
   const fragment = doc.createDocumentFragment();
   let cursor = 0;

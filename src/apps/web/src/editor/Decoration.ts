@@ -6,12 +6,17 @@ export interface DecorationSpec {
 
 export abstract class WidgetType {
   abstract toDOM(): HTMLElement;
-  eq(other: WidgetType): boolean { return other === this; }
+  eq(other: WidgetType): boolean {
+    return other === this;
+  }
   destroy(_dom: HTMLElement): void {}
 }
 
 export class Decoration {
-  private constructor(readonly type: "mark" | "widget" | "line", readonly spec: DecorationSpec) {}
+  private constructor(
+    readonly type: "mark" | "widget" | "line",
+    readonly spec: DecorationSpec,
+  ) {}
 
   static mark(spec: DecorationSpec): Decoration {
     return new Decoration("mark", spec);

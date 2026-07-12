@@ -93,10 +93,14 @@ describe("MenuManager editor menu", () => {
     wikiEditor.setValue("Alpha beta");
     wikiEditor.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 5 });
 
-    clickMenuItem(findMenuItem(
-      app.menus.createEditorMenu(wikiEditor, view).items.filter((item): item is MenuItem => item instanceof MenuItem),
-      "Insert link",
-    ));
+    clickMenuItem(
+      findMenuItem(
+        app.menus
+          .createEditorMenu(wikiEditor, view)
+          .items.filter((item): item is MenuItem => item instanceof MenuItem),
+        "Insert link",
+      ),
+    );
 
     expect(wikiEditor.getValue()).toBe("[[Alpha]] beta");
     expect(wikiEditor.getCursor()).toEqual({ line: 0, ch: "[[Alpha".length });
@@ -105,10 +109,14 @@ describe("MenuManager editor menu", () => {
     externalEditor.setValue("Alpha beta");
     externalEditor.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 5 });
 
-    clickMenuItem(findMenuItem(
-      app.menus.createEditorMenu(externalEditor, view).items.filter((item): item is MenuItem => item instanceof MenuItem),
-      "Insert external link",
-    ));
+    clickMenuItem(
+      findMenuItem(
+        app.menus
+          .createEditorMenu(externalEditor, view)
+          .items.filter((item): item is MenuItem => item instanceof MenuItem),
+        "Insert external link",
+      ),
+    );
 
     expect(externalEditor.getValue()).toBe("[Alpha]() beta");
     expect(externalEditor.getCursor()).toEqual({ line: 0, ch: "[Alpha](".length });
@@ -117,10 +125,14 @@ describe("MenuManager editor menu", () => {
     emptyExternalEditor.setValue("Alpha");
     emptyExternalEditor.setCursor(0, 0);
 
-    clickMenuItem(findMenuItem(
-      app.menus.createEditorMenu(emptyExternalEditor, view).items.filter((item): item is MenuItem => item instanceof MenuItem),
-      "Insert external link",
-    ));
+    clickMenuItem(
+      findMenuItem(
+        app.menus
+          .createEditorMenu(emptyExternalEditor, view)
+          .items.filter((item): item is MenuItem => item instanceof MenuItem),
+        "Insert external link",
+      ),
+    );
 
     expect(emptyExternalEditor.getValue()).toBe("[]()Alpha");
     expect(emptyExternalEditor.getCursor()).toEqual({ line: 0, ch: 1 });
@@ -130,10 +142,14 @@ describe("MenuManager editor menu", () => {
     emptyWikiEditor.setCursor(0, 0);
     const trigger = vi.spyOn(app.workspace.editorSuggest, "trigger");
 
-    clickMenuItem(findMenuItem(
-      app.menus.createEditorMenu(emptyWikiEditor, view).items.filter((item): item is MenuItem => item instanceof MenuItem),
-      "Insert link",
-    ));
+    clickMenuItem(
+      findMenuItem(
+        app.menus
+          .createEditorMenu(emptyWikiEditor, view)
+          .items.filter((item): item is MenuItem => item instanceof MenuItem),
+        "Insert link",
+      ),
+    );
 
     await vi.waitFor(() => expect(trigger).toHaveBeenCalled());
     expect(emptyWikiEditor.getValue()).toBe("[[]]Alpha");
@@ -161,7 +177,9 @@ describe("MenuManager editor menu", () => {
     if (!(view instanceof MarkdownView)) throw new Error("Expected markdown view");
 
     view.editor.setSelection({ line: 1, ch: 0 }, { line: 2, ch: 4 });
-    let items = app.menus.createEditorMenu(view.editor, view).items.filter((item): item is MenuItem => item instanceof MenuItem);
+    let items = app.menus
+      .createEditorMenu(view.editor, view)
+      .items.filter((item): item is MenuItem => item instanceof MenuItem);
 
     expect(findMenuItem(items, "Bullet list").section).toBe("selection.paragraph.list");
     expect(findMenuItem(items, "Numbered list").section).toBe("selection.paragraph.list");
@@ -182,61 +200,79 @@ describe("MenuManager editor menu", () => {
 
     view.setViewData("Title");
     view.editor.setCursor(0, 0);
-    items = app.menus.createEditorMenu(view.editor, view).items.filter((item): item is MenuItem => item instanceof MenuItem);
+    items = app.menus
+      .createEditorMenu(view.editor, view)
+      .items.filter((item): item is MenuItem => item instanceof MenuItem);
 
     clickMenuItem(findMenuItem(items, "Heading 2"));
     expect(view.getViewData()).toBe("## Title");
 
-    items = app.menus.createEditorMenu(view.editor, view).items.filter((item): item is MenuItem => item instanceof MenuItem);
+    items = app.menus
+      .createEditorMenu(view.editor, view)
+      .items.filter((item): item is MenuItem => item instanceof MenuItem);
 
     clickMenuItem(findMenuItem(items, "No heading"));
     expect(view.getViewData()).toBe("Title");
 
     view.setViewData("Quote");
     view.editor.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 5 });
-    items = app.menus.createEditorMenu(view.editor, view).items.filter((item): item is MenuItem => item instanceof MenuItem);
+    items = app.menus
+      .createEditorMenu(view.editor, view)
+      .items.filter((item): item is MenuItem => item instanceof MenuItem);
 
     clickMenuItem(findMenuItem(items, "Blockquote"));
     expect(view.getViewData()).toBe("> Quote");
 
     view.setViewData("Intro\nAlpha\nBeta");
     view.editor.setSelection({ line: 1, ch: 0 }, { line: 2, ch: 4 });
-    items = app.menus.createEditorMenu(view.editor, view).items.filter((item): item is MenuItem => item instanceof MenuItem);
+    items = app.menus
+      .createEditorMenu(view.editor, view)
+      .items.filter((item): item is MenuItem => item instanceof MenuItem);
 
     clickMenuItem(findMenuItem(items, "Insert callout"));
     expect(view.getViewData()).toBe("Intro\n\n> [!NOTE]\n> Alpha\n> Beta");
 
     view.setViewData("Footnote");
     view.editor.setCursor(0, 8);
-    items = app.menus.createEditorMenu(view.editor, view).items.filter((item): item is MenuItem => item instanceof MenuItem);
+    items = app.menus
+      .createEditorMenu(view.editor, view)
+      .items.filter((item): item is MenuItem => item instanceof MenuItem);
 
     clickMenuItem(findMenuItem(items, "Insert footnote"));
     expect(view.getViewData()).toBe("Footnote[^1]\n\n[^1]: \n");
 
     view.setViewData("Cell");
     view.editor.setCursor(0, 4);
-    items = app.menus.createEditorMenu(view.editor, view).items.filter((item): item is MenuItem => item instanceof MenuItem);
+    items = app.menus
+      .createEditorMenu(view.editor, view)
+      .items.filter((item): item is MenuItem => item instanceof MenuItem);
 
     clickMenuItem(findMenuItem(items, "Insert table"));
     expect(view.getViewData()).toBe("Cell\n\n| | |\n| --- | --- |\n| | |\n");
 
     view.setViewData("Alpha");
     view.editor.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 5 });
-    items = app.menus.createEditorMenu(view.editor, view).items.filter((item): item is MenuItem => item instanceof MenuItem);
+    items = app.menus
+      .createEditorMenu(view.editor, view)
+      .items.filter((item): item is MenuItem => item instanceof MenuItem);
 
     clickMenuItem(findMenuItem(items, "Insert code block"));
     expect(view.getViewData()).toBe("```\nAlpha\n```");
 
     view.setViewData("Beta");
     view.editor.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 4 });
-    items = app.menus.createEditorMenu(view.editor, view).items.filter((item): item is MenuItem => item instanceof MenuItem);
+    items = app.menus
+      .createEditorMenu(view.editor, view)
+      .items.filter((item): item is MenuItem => item instanceof MenuItem);
 
     clickMenuItem(findMenuItem(items, "Insert math block"));
     expect(view.getViewData()).toBe("$$\nBeta\n$$");
 
     view.setViewData("Tail");
     view.editor.setCursor(0, 4);
-    items = app.menus.createEditorMenu(view.editor, view).items.filter((item): item is MenuItem => item instanceof MenuItem);
+    items = app.menus
+      .createEditorMenu(view.editor, view)
+      .items.filter((item): item is MenuItem => item instanceof MenuItem);
 
     clickMenuItem(findMenuItem(items, "Insert horizontal rule"));
     expect(view.getViewData()).toBe("Tail\n\n---\n");
@@ -290,7 +326,9 @@ describe("MenuManager editor menu", () => {
 
     expect(app.workspace.handleLinkContextMenu(new Menu(), "", "Source.md", leaf)).toBe(false);
     expect(app.workspace.handleLinkContextMenu(new Menu(), "Target", "Source.md", leaf)).toBe(true);
-    expect(app.workspace.handleLinkContextMenu(new Menu(), "Missing", "Source.md", leaf)).toBe(true);
+    expect(app.workspace.handleLinkContextMenu(new Menu(), "Missing", "Source.md", leaf)).toBe(
+      true,
+    );
 
     expect(app.metadataCache.getFirstLinkpathDest("Target", "Source.md")).toBe(target);
     expect(seenLeaves).toEqual([leaf]);
@@ -315,16 +353,21 @@ describe("MenuManager editor menu", () => {
     const folderMenu = app.menus.createFileMenu(folder, "file-explorer-context-menu");
     const filesMenu = app.menus.createFilesMenu([folder, note], "file-explorer-context-menu");
 
-    expect(folderMenu.items.filter((item): item is MenuItem => item instanceof MenuItem).map((item) => item.titleEl.textContent)).toEqual([
+    expect(
+      folderMenu.items
+        .filter((item): item is MenuItem => item instanceof MenuItem)
+        .map((item) => item.titleEl.textContent),
+    ).toEqual([
       "Move folder to...",
       "Copy path",
       "Open terminal here",
       "Plugin file/folder action",
     ]);
-    expect(filesMenu.items.filter((item): item is MenuItem => item instanceof MenuItem).map((item) => item.titleEl.textContent)).toEqual([
-      "Move items to...",
-      "Plugin multi-file action",
-    ]);
+    expect(
+      filesMenu.items
+        .filter((item): item is MenuItem => item instanceof MenuItem)
+        .map((item) => item.titleEl.textContent),
+    ).toEqual(["Move items to...", "Plugin multi-file action"]);
     expect(fileEvents).toEqual([{ file: folder, source: "file-explorer-context-menu" }]);
     expect(filesEvents).toEqual([{ files: [folder, note], source: "file-explorer-context-menu" }]);
   });
@@ -449,7 +492,11 @@ describe("MenuManager editor menu", () => {
   });
 });
 
-function createClipboard(): { text: string; readText: ReturnType<typeof vi.fn>; writeText: ReturnType<typeof vi.fn> } {
+function createClipboard(): {
+  text: string;
+  readText: ReturnType<typeof vi.fn>;
+  writeText: ReturnType<typeof vi.fn>;
+} {
   const clipboard = {
     text: "",
     readText: vi.fn(async () => clipboard.text),

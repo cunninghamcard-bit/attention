@@ -37,7 +37,10 @@ describe("CliServer", () => {
     server = new CliServer(exec, socketPath);
     server.start();
 
-    const out = await call(socketPath, JSON.stringify({ argv: ["vault", "files"], tty: false, cwd: "/x" }) + "\n");
+    const out = await call(
+      socketPath,
+      JSON.stringify({ argv: ["vault", "files"], tty: false, cwd: "/x" }) + "\n",
+    );
     expect(out).toBe("hello\n");
     expect(seen).toEqual({ argv: ["vault", "files"], tty: false, cwd: "/x" });
   });
@@ -52,7 +55,10 @@ describe("CliServer", () => {
     server.start();
     // The socket errors or ends empty; either way no `Error: ` text arrives —
     // the only faithful wrap lives in executeCliRequest (real Xe).
-    const out = await call(socketPath, JSON.stringify({ argv: ["x"], tty: false, cwd: "/" }) + "\n").catch(() => "");
+    const out = await call(
+      socketPath,
+      JSON.stringify({ argv: ["x"], tty: false, cwd: "/" }) + "\n",
+    ).catch(() => "");
     expect(out).toBe("");
     expect(errors).toHaveLength(1);
   });

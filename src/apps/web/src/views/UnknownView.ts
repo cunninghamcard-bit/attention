@@ -5,7 +5,10 @@ import type { WorkspaceLeaf } from "./workspace/WorkspaceLeaf";
 export class UnknownView extends EmptyView {
   protected unknownState: unknown = {};
 
-  constructor(leaf: WorkspaceLeaf, readonly viewType: string) {
+  constructor(
+    leaf: WorkspaceLeaf,
+    readonly viewType: string,
+  ) {
     super(leaf);
     this.icon = "lucide-ghost";
     this.containerEl.dataset.type = viewType;

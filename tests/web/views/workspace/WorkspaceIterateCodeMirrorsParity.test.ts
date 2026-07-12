@@ -6,7 +6,9 @@ describe("Workspace iterateCodeMirrors parity", () => {
     const app = new App(document.createElement("div"));
     const visited: unknown[] = [];
 
-    expect(() => app.workspace.iterateCodeMirrors((codeMirror) => visited.push(codeMirror))).not.toThrow();
+    expect(() =>
+      app.workspace.iterateCodeMirrors((codeMirror) => visited.push(codeMirror)),
+    ).not.toThrow();
     expect(visited).toEqual([]);
   });
 });

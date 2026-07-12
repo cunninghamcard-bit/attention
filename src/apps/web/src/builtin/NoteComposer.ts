@@ -17,9 +17,7 @@ export interface NoteComposerOptions {
   template?: string;
 }
 
-type TargetItem =
-  | { type: "file"; file: TFile }
-  | { type: "create"; path: string };
+type TargetItem = { type: "file"; file: TFile } | { type: "create"; path: string };
 
 const DEFAULT_OPTIONS: NoteComposerOptions = {
   askBeforeMerging: true,
@@ -35,10 +33,19 @@ export class NoteComposerController {
 
   async onEnable(plugin: InternalPluginWrapper): Promise<void> {
     this.plugin = plugin;
-    this.options = { ...DEFAULT_OPTIONS, ...((await plugin.loadData<Partial<NoteComposerOptions>>()) ?? {}) };
+    this.options = {
+      ...DEFAULT_OPTIONS,
+      ...((await plugin.loadData<Partial<NoteComposerOptions>>()) ?? {}),
+    };
     plugin.addSettingTab(new NoteComposerSettingTab(this.app, this));
-    plugin.registerEvent(this.app.workspace.on("file-menu", (menu, file, source) => this.onFileMenu(menu as Menu, file, source)));
-    plugin.registerEvent(this.app.workspace.on("editor-menu", (menu) => this.onEditorMenu(menu as Menu)));
+    plugin.registerEvent(
+      this.app.workspace.on("file-menu", (menu, file, source) =>
+        this.onFileMenu(menu as Menu, file, source),
+      ),
+    );
+    plugin.registerEvent(
+      this.app.workspace.on("editor-menu", (menu) => this.onEditorMenu(menu as Menu)),
+    );
   }
 
   openMergeModal(source = this.activeFile()): void {
@@ -78,8 +85,16 @@ export class NoteComposerController {
 
   async mergeFile(source: TFile, target: TFile): Promise<void> {
     if (source.path === target.path) return;
-    if (this.options.askBeforeMerging && !window.confirm(`Merge ${source.path} into ${target.path}?`)) return;
-    const content = await this.applyTemplate(await this.app.vault.read(source), source.basename, target.basename);
+    if (
+      this.options.askBeforeMerging &&
+      !window.confirm(`Merge ${source.path} into ${target.path}?`)
+    )
+      return;
+    const content = await this.applyTemplate(
+      await this.app.vault.read(source),
+      source.basename,
+      target.basename,
+    );
     await this.insertIntoFile(target, content);
     await this.updateLinksToMergedFile(source, target);
     await this.app.vault.delete(source);
@@ -97,29 +112,40 @@ export class NoteComposerController {
   async createTarget(path: string): Promise<TFile> {
     const normalized = path.endsWith(".md") ? path.slice(0, -3) : path;
     const folder = normalized.includes("/") ? normalized.slice(0, normalized.lastIndexOf("/")) : "";
-    const basename = normalized.includes("/") ? normalized.slice(normalized.lastIndexOf("/") + 1) : normalized;
+    const basename = normalized.includes("/")
+      ? normalized.slice(normalized.lastIndexOf("/") + 1)
+      : normalized;
     return this.app.fileManager.createNewMarkdownFile(folder, basename || "Untitled");
   }
 
   async saveOptions(options: Partial<NoteComposerOptions>): Promise<void> {
     this.options = { ...this.options, ...options };
-    if (!["link", "embed", "none"].includes(this.options.replacementText)) this.options.replacementText = "link";
+    if (!["link", "embed", "none"].includes(this.options.replacementText))
+      this.options.replacementText = "link";
     await this.plugin?.saveData(this.options);
   }
 
   private onFileMenu(menu: Menu, file: unknown, source?: string): void {
-    if (source === "link-context-menu" || !(file instanceof TFile) || file.extension !== "md") return;
-    menu.addItem((item) => item
-      .setSection("action")
-      .setTitle("Merge entire file with...")
-      .setIcon("lucide-git-merge")
-      .onClick(() => this.openMergeModal(file)));
+    if (source === "link-context-menu" || !(file instanceof TFile) || file.extension !== "md")
+      return;
+    menu.addItem((item) =>
+      item
+        .setSection("action")
+        .setTitle("Merge entire file with...")
+        .setIcon("lucide-git-merge")
+        .onClick(() => this.openMergeModal(file)),
+    );
   }
 
   private onEditorMenu(menu: Menu): void {
     const view = this.activeMarkdownView();
     if (!view?.getSelection().trim()) return;
-    menu.addItem((item) => item.setTitle("Extract current selection...").setIcon("lucide-scissors").onClick(() => this.openSplitModal()));
+    menu.addItem((item) =>
+      item
+        .setTitle("Extract current selection...")
+        .setIcon("lucide-scissors")
+        .onClick(() => this.openSplitModal()),
+    );
   }
 
   private activeMarkdownView(): MarkdownView | null {
@@ -138,10 +164,16 @@ export class NoteComposerController {
     await this.app.vault.modify(file, `${existing}${separator}${content}`);
   }
 
-  private async applyTemplate(content: string, fromTitle: string, newTitle: string): Promise<string> {
+  private async applyTemplate(
+    content: string,
+    fromTitle: string,
+    newTitle: string,
+  ): Promise<string> {
     const templatePath = this.options.template?.trim();
     if (!templatePath) return content;
-    const templateFile = this.app.metadataCache.getFirstLinkpathDest(templatePath, "") ?? this.app.vault.getFileByPath(templatePath);
+    const templateFile =
+      this.app.metadataCache.getFirstLinkpathDest(templatePath, "") ??
+      this.app.vault.getFileByPath(templatePath);
     if (!templateFile) return content;
     let template = await this.app.vault.read(templateFile);
     if (!template.includes("{{content}}")) template = `${template}\n\n{{content}}`;
@@ -178,18 +210,25 @@ class NoteComposerTargetModal extends FuzzySuggestModal<TargetItem> {
   constructor(
     app: App,
     readonly controller: NoteComposerController,
-    readonly request: { mode: "merge"; source: TFile } | { mode: "split"; view: MarkdownView; defaultName: string },
+    readonly request:
+      | { mode: "merge"; source: TFile }
+      | { mode: "split"; view: MarkdownView; defaultName: string },
   ) {
     super(app);
-    this.setPlaceholder(request.mode === "merge" ? "Select file to merge into..." : "Select file to extract into...");
+    this.setPlaceholder(
+      request.mode === "merge" ? "Select file to merge into..." : "Select file to extract into...",
+    );
     this.emptyStateText = "No files found";
   }
 
   getItems(): TargetItem[] {
     const excluded = this.request.mode === "merge" ? this.request.source.path : "";
-    return this.controller.app.vault.getMarkdownFiles()
+    return this.controller.app.vault
+      .getMarkdownFiles()
       .filter((file) => file.path !== excluded)
-      .sort((a, b) => a.path.localeCompare(b.path, undefined, { sensitivity: "base", numeric: true }))
+      .sort((a, b) =>
+        a.path.localeCompare(b.path, undefined, { sensitivity: "base", numeric: true }),
+      )
       .map((file) => ({ type: "file", file }));
   }
 
@@ -200,17 +239,25 @@ class NoteComposerTargetModal extends FuzzySuggestModal<TargetItem> {
   getSuggestions(query: string): FuzzySuggestion<TargetItem>[] {
     this.query = query.trim();
     const suggestions = super.getSuggestions(query) as FuzzySuggestion<TargetItem>[];
-    const createPath = this.query || (this.request.mode === "split" ? this.request.defaultName : "");
+    const createPath =
+      this.query || (this.request.mode === "split" ? this.request.defaultName : "");
     if (!createPath) return suggestions;
     const path = createPath.endsWith(".md") ? createPath : `${createPath}.md`;
     if (this.controller.app.vault.getFileByPath(path)) return suggestions;
-    return [{ item: { type: "create", path: createPath }, match: { score: 0, matches: [] } } as FuzzySuggestion<TargetItem>, ...suggestions];
+    return [
+      {
+        item: { type: "create", path: createPath },
+        match: { score: 0, matches: [] },
+      } as FuzzySuggestion<TargetItem>,
+      ...suggestions,
+    ];
   }
 
   renderSuggestion(value: FuzzySuggestion<TargetItem>, el: HTMLElement): void {
     const titleEl = document.createElement("div");
     titleEl.className = "suggestion-title";
-    titleEl.textContent = value.item.type === "file" ? value.item.file.basename : `Create ${value.item.path}`;
+    titleEl.textContent =
+      value.item.type === "file" ? value.item.file.basename : `Create ${value.item.path}`;
     const noteEl = document.createElement("div");
     noteEl.className = "suggestion-note";
     noteEl.textContent = value.item.type === "file" ? value.item.file.path : "New note";
@@ -236,7 +283,10 @@ class NoteComposerSettingTab implements SettingTab {
   readonly navEl = document.createElement("div");
   readonly containerEl = document.createElement("div");
 
-  constructor(readonly app: App, readonly controller: NoteComposerController) {
+  constructor(
+    readonly app: App,
+    readonly controller: NoteComposerController,
+  ) {
     this.navEl.className = "vertical-tab-nav-item tappable";
     const iconEl = document.createElement("div");
     iconEl.className = "vertical-tab-nav-item-icon";
@@ -256,21 +306,29 @@ class NoteComposerSettingTab implements SettingTab {
     new Setting(group.itemsEl)
       .setName("Split replacement text")
       .setDesc("Use link, embed, or none.")
-      .addText((text) => text.setValue(this.controller.options.replacementText).onChange((replacementText) => {
-        void this.controller.saveOptions({ replacementText: replacementText as NoteComposerReplacementText });
-      }));
+      .addText((text) =>
+        text.setValue(this.controller.options.replacementText).onChange((replacementText) => {
+          void this.controller.saveOptions({
+            replacementText: replacementText as NoteComposerReplacementText,
+          });
+        }),
+      );
     new Setting(group.itemsEl)
       .setName("Template file location")
       .setDesc("Optional template. Supports {{content}}, {{fromTitle}}, and {{newTitle}}.")
-      .addText((text) => text.setValue(this.controller.options.template ?? "").onChange((template) => {
-        void this.controller.saveOptions({ template });
-      }));
+      .addText((text) =>
+        text.setValue(this.controller.options.template ?? "").onChange((template) => {
+          void this.controller.saveOptions({ template });
+        }),
+      );
     new Setting(group.itemsEl)
       .setName("Confirm file merge")
       .setDesc("Ask before merging a whole file into another note.")
-      .addToggle((toggle) => toggle.setValue(this.controller.options.askBeforeMerging).onChange((askBeforeMerging) => {
-        void this.controller.saveOptions({ askBeforeMerging });
-      }));
+      .addToggle((toggle) =>
+        toggle.setValue(this.controller.options.askBeforeMerging).onChange((askBeforeMerging) => {
+          void this.controller.saveOptions({ askBeforeMerging });
+        }),
+      );
   }
 
   hide(): void {
@@ -326,9 +384,9 @@ export function createNoteComposerPluginDefinition(): InternalPluginDefinition {
   };
 }
 
-
 function lineOffset(lines: string[], line: number): number {
   let offset = 0;
-  for (let index = 0; index < Math.min(line, lines.length); index += 1) offset += lines[index].length + 1;
+  for (let index = 0; index < Math.min(line, lines.length); index += 1)
+    offset += lines[index].length + 1;
   return offset;
 }

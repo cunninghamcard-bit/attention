@@ -25,7 +25,10 @@ if (!existsSync(mainJs)) {
 const base = mkdtempSync(join(tmpdir(), "workbench-e2e-"));
 const vault = join(base, "vault");
 mkdirSync(join(vault, "Sub"), { recursive: true });
-writeFileSync(join(vault, "Note.md"), "---\ntags: [alpha]\n---\n# Top\nHello [[Doc]] world.\n#alpha #beta\n");
+writeFileSync(
+  join(vault, "Note.md"),
+  "---\ntags: [alpha]\n---\n# Top\nHello [[Doc]] world.\n#alpha #beta\n",
+);
 writeFileSync(join(vault, "Doc.md"), "# A\n## B\nbody\n");
 writeFileSync(join(vault, "Sub/Inner.md"), "deep [[Note]]\n");
 
@@ -40,7 +43,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // A second-instance CLI invocation — the real user-facing path.
 async function cli(...argv) {
-  const { stdout } = await execFileAsync(electron, [mainJs, ...argv], { env, encoding: "utf8", timeout: 20000 });
+  const { stdout } = await execFileAsync(electron, [mainJs, ...argv], {
+    env,
+    encoding: "utf8",
+    timeout: 20000,
+  });
   return stdout;
 }
 
@@ -64,7 +71,13 @@ const CHECKS = [
   [["nope"], (out) => out.startsWith('Error: Command "nope" not found.')],
   [["read", "path=Missing.md"], 'Error: File "Missing.md" not found.\n'],
   [["daily"], (out) => out.startsWith('Error: Command "daily" not found.')],
-  [["help"], (out) => out.startsWith("Workbench CLI\n\nUsage: workbench <command> [options]\n\nOptions:\n  vault=<name>")],
+  [
+    ["help"],
+    (out) =>
+      out.startsWith(
+        "Workbench CLI\n\nUsage: workbench <command> [options]\n\nOptions:\n  vault=<name>",
+      ),
+  ],
 ];
 
 let primary = null;
@@ -99,7 +112,9 @@ try {
     console.log(`${pass ? "PASS" : "FAIL"}  ${argv.join(" ")}`);
     if (!pass) {
       failures += 1;
-      console.log(`      expected: ${typeof expected === "function" ? "<predicate>" : JSON.stringify(expected)}`);
+      console.log(
+        `      expected: ${typeof expected === "function" ? "<predicate>" : JSON.stringify(expected)}`,
+      );
       console.log(`      got:      ${JSON.stringify(out)}`);
     }
   }
@@ -115,5 +130,9 @@ try {
   rmSync(base, { recursive: true, force: true });
 }
 
-console.log(failures === 0 ? `\nOK — ${CHECKS.length} checks over the real two-process wire` : `\n${failures} failure(s)`);
+console.log(
+  failures === 0
+    ? `\nOK — ${CHECKS.length} checks over the real two-process wire`
+    : `\n${failures} failure(s)`,
+);
 process.exit(failures === 0 ? 0 : 1);

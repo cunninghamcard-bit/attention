@@ -55,7 +55,10 @@ export class WorkspaceDragManager {
     return this.source;
   }
 
-  showOverlay(rect: DOMRect | { x: number; y: number; width: number; height: number }, doc: Document = document): void {
+  showOverlay(
+    rect: DOMRect | { x: number; y: number; width: number; height: number },
+    doc: Document = document,
+  ): void {
     this.overlayEl.style.transform = `translate(${rect.x}px, ${rect.y}px)`;
     this.overlayEl.style.width = `${rect.width}px`;
     this.overlayEl.style.height = `${rect.height}px`;

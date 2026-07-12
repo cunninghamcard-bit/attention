@@ -48,7 +48,10 @@ export class MarkdownBlockCache {
     this.cache.clear();
   }
 
-  async getForFile(cancelToken: BlockCacheCancelToken | null, file: TFile): Promise<BlockCacheRecord | null> {
+  async getForFile(
+    cancelToken: BlockCacheCancelToken | null,
+    file: TFile,
+  ): Promise<BlockCacheRecord | null> {
     if (file.extension !== "md") return null;
     const stat = await this.getFileStat(file);
     const cached = this.cache.get(file.path);
@@ -56,7 +59,8 @@ export class MarkdownBlockCache {
     const content = await this.vault.read(file);
     if (isCancelled(cancelToken)) return null;
     const mtime = stat?.mtime ?? hashContent(content);
-    if (cached && cached.file === file && cached.mtime === mtime && cached.content === content) return cached;
+    if (cached && cached.file === file && cached.mtime === mtime && cached.content === content)
+      return cached;
     const record = {
       file,
       content,
@@ -67,7 +71,9 @@ export class MarkdownBlockCache {
     return record;
   }
 
-  async *getAll(cancelToken: BlockCacheCancelToken | null): AsyncGenerator<BlockCacheRecord | null> {
+  async *getAll(
+    cancelToken: BlockCacheCancelToken | null,
+  ): AsyncGenerator<BlockCacheRecord | null> {
     for (const file of this.vault.getMarkdownFiles()) {
       if (isCancelled(cancelToken)) return;
       yield await this.getForFile(cancelToken, file);
@@ -75,7 +81,9 @@ export class MarkdownBlockCache {
   }
 
   private async getFileStat(file: TFile): Promise<{ mtime: number } | null> {
-    const adapter = this.vault.adapter as { stat?: (path: string) => Promise<{ mtime?: number } | null> } | undefined;
+    const adapter = this.vault.adapter as
+      | { stat?: (path: string) => Promise<{ mtime?: number } | null> }
+      | undefined;
     const stat = await adapter?.stat?.(file.path);
     return typeof stat?.mtime === "number" ? { mtime: stat.mtime } : null;
   }
@@ -83,11 +91,15 @@ export class MarkdownBlockCache {
 
 export function createBlockId(length = 6): string {
   const chars: string[] = [];
-  for (let index = 0; index < length; index += 1) chars.push((Math.random() * 16 | 0).toString(16));
+  for (let index = 0; index < length; index += 1)
+    chars.push(((Math.random() * 16) | 0).toString(16));
   return chars.join("");
 }
 
-export function computeBlockIdInsertion(block: Pick<BlockCacheBlock, "node"> & { content: string }, blockId: string): BlockIdInsertion {
+export function computeBlockIdInsertion(
+  block: Pick<BlockCacheBlock, "node"> & { content: string },
+  blockId: string,
+): BlockIdInsertion {
   const node = block.node;
   const blockStart = node.position.start.offset;
   let blockEnd = node.position.end.offset;
@@ -114,7 +126,10 @@ export function computeBlockIdInsertion(block: Pick<BlockCacheBlock, "node"> & {
   return { blockStart, blockEnd, addition, newlines };
 }
 
-export function parseMarkdownBlocks(content: string, cancelToken: BlockCacheCancelToken | null = null): BlockCacheBlock[] {
+export function parseMarkdownBlocks(
+  content: string,
+  cancelToken: BlockCacheCancelToken | null = null,
+): BlockCacheBlock[] {
   const lines = splitLines(content);
   const blocks: BlockCacheBlock[] = [];
   let index = frontmatterEndLine(lines);
@@ -136,15 +151,16 @@ export function parseMarkdownBlocks(content: string, cancelToken: BlockCacheCanc
     if (heading) {
       const { text, id } = stripTrailingBlockId(heading[2]);
       const display = `${heading[1]} ${text.trim()}`.trim();
-      if (display) blocks.push({
-        display,
-        node: {
-          type: "heading",
-          id,
-          depth: heading[1].length,
-          position: linePosition(line, line),
-        },
-      });
+      if (display)
+        blocks.push({
+          display,
+          node: {
+            type: "heading",
+            id,
+            depth: heading[1].length,
+            position: linePosition(line, line),
+          },
+        });
       index += 1;
       continue;
     }
@@ -154,26 +170,35 @@ export function parseMarkdownBlocks(content: string, cancelToken: BlockCacheCanc
       const display = text.trim();
       const nestedList = nextNestedList(lines, index, listItem[1].length);
       const lineEnd = nestedList ? line : nestedListEnd(lines, index);
-      if (display) blocks.push({
-        display,
-        node: {
-          type: "listItem",
-          id,
-          depth: listItem[1].length,
-          position: linePosition(line, lineEnd),
-          ...(nestedList ? { children: [
-            { type: "paragraph", position: linePosition(line, line) },
-            { type: "list", position: linePosition(nestedList.start, nestedList.end) },
-          ] } : {}),
-        },
-      });
+      if (display)
+        blocks.push({
+          display,
+          node: {
+            type: "listItem",
+            id,
+            depth: listItem[1].length,
+            position: linePosition(line, lineEnd),
+            ...(nestedList
+              ? {
+                  children: [
+                    { type: "paragraph", position: linePosition(line, line) },
+                    { type: "list", position: linePosition(nestedList.start, nestedList.end) },
+                  ],
+                }
+              : {}),
+          },
+        });
       index += 1;
       continue;
     }
     const start = index;
     const paragraphLines: typeof lines = [];
     while (index < lines.length && lines[index].text.trim()) {
-      if (index !== start && (/^(#{1,6})\s+/.test(lines[index].text) || /^(\s*)[-*+]\s+/.test(lines[index].text))) break;
+      if (
+        index !== start &&
+        (/^(#{1,6})\s+/.test(lines[index].text) || /^(\s*)[-*+]\s+/.test(lines[index].text))
+      )
+        break;
       const blockId = parseStandaloneBlockId(lines[index].text);
       if (blockId) break;
       paragraphLines.push(lines[index]);
@@ -183,14 +208,15 @@ export function parseMarkdownBlocks(content: string, cancelToken: BlockCacheCanc
     const { text, id } = stripTrailingBlockId(raw);
     const display = text.trim();
     const end = paragraphLines[paragraphLines.length - 1] ?? lines[start];
-    if (display) blocks.push({
-      display,
-      node: {
-        type: "paragraph",
-        id,
-        position: linePosition(lines[start], end),
-      },
-    });
+    if (display)
+      blocks.push({
+        display,
+        node: {
+          type: "paragraph",
+          id,
+          position: linePosition(lines[start], end),
+        },
+      });
   }
   return blocks;
 }
@@ -225,7 +251,14 @@ function stripTrailingBlockId(text: string): { text: string; id?: string } {
   return { text: text.slice(0, match.index).trimEnd(), id: match[1] };
 }
 
-function nextNestedList(lines: Array<{ text: string; line: number; offset: number }>, index: number, indent: number): { start: { text: string; line: number; offset: number }; end: { text: string; line: number; offset: number } } | null {
+function nextNestedList(
+  lines: Array<{ text: string; line: number; offset: number }>,
+  index: number,
+  indent: number,
+): {
+  start: { text: string; line: number; offset: number };
+  end: { text: string; line: number; offset: number };
+} | null {
   const nested: Array<{ text: string; line: number; offset: number }> = [];
   for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
     const text = lines[cursor].text;
@@ -239,7 +272,10 @@ function nextNestedList(lines: Array<{ text: string; line: number; offset: numbe
   return { start: nested[0], end: nested[nested.length - 1] };
 }
 
-function nestedListEnd(lines: Array<{ text: string; line: number; offset: number }>, index: number): { text: string; line: number; offset: number } {
+function nestedListEnd(
+  lines: Array<{ text: string; line: number; offset: number }>,
+  index: number,
+): { text: string; line: number; offset: number } {
   let end = lines[index];
   for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
     const text = lines[cursor].text;
@@ -250,7 +286,10 @@ function nestedListEnd(lines: Array<{ text: string; line: number; offset: number
   return end;
 }
 
-function linePosition(start: { text: string; line: number; offset: number }, end: { text: string; line: number; offset: number }): BlockCachePosition {
+function linePosition(
+  start: { text: string; line: number; offset: number },
+  end: { text: string; line: number; offset: number },
+): BlockCachePosition {
   return {
     start: { line: start.line, col: 0, offset: start.offset },
     end: { line: end.line, col: end.text.length, offset: end.offset + end.text.length },

@@ -75,13 +75,16 @@ function topLevelWebSrcDir(resolvedPath: string): string | null {
 /** Rule: kernel-direction. Kernel code may only reach into these directories. */
 const KERNEL_ALLOWED_TARGETS = new Set(["vault", "metadata", "storage", "core", "dom", "platform"]);
 
-function findKernelDirectionViolations(files: SourceFile[]): Array<{ path: string; import: string }> {
+function findKernelDirectionViolations(
+  files: SourceFile[],
+): Array<{ path: string; import: string }> {
   const violations: Array<{ path: string; import: string }> = [];
   for (const file of files) {
     for (const spec of file.imports) {
       if (!spec.startsWith(".")) continue; // bare specifiers (npm packages) are never "above the kernel"
       const target = topLevelWebSrcDir(resolveRelativeImport(file.path, spec));
-      if (target && !KERNEL_ALLOWED_TARGETS.has(target)) violations.push({ path: file.path, import: spec });
+      if (target && !KERNEL_ALLOWED_TARGETS.has(target))
+        violations.push({ path: file.path, import: spec });
     }
   }
   return violations;
@@ -95,7 +98,10 @@ function findKernelDirectionViolations(files: SourceFile[]): Array<{ path: strin
  */
 const API_FACADE_ALLOWED_CALLERS = [`${WEB_SRC}/plugin/PluginRequire.ts`];
 
-function findApiFacadeViolations(files: SourceFile[], allowedCallers: readonly string[] = []): Array<{ path: string; import: string }> {
+function findApiFacadeViolations(
+  files: SourceFile[],
+  allowedCallers: readonly string[] = [],
+): Array<{ path: string; import: string }> {
   const violations: Array<{ path: string; import: string }> = [];
   for (const file of files) {
     if (allowedCallers.includes(file.path)) continue;
@@ -131,7 +137,11 @@ function walk(dirAbs: string, skipDirs: Set<string>, out: string[]): void {
   }
 }
 
-function listFilesRecursive(dirAbs: string, extensions: string[], skipDirs: Set<string> = DEFAULT_SKIP_DIRS): string[] {
+function listFilesRecursive(
+  dirAbs: string,
+  extensions: string[],
+  skipDirs: Set<string> = DEFAULT_SKIP_DIRS,
+): string[] {
   if (!existsSync(dirAbs)) return [];
   const out: string[] = [];
   walk(dirAbs, skipDirs, out);
@@ -144,12 +154,22 @@ function extractImports(source: string): string[] {
   return [...source.matchAll(IMPORT_RE)].map((match) => match[1]);
 }
 
-function sourceFilesUnder(relDirs: string[], extensions: string[], excludeTests: boolean): SourceFile[] {
+function sourceFilesUnder(
+  relDirs: string[],
+  extensions: string[],
+  excludeTests: boolean,
+): SourceFile[] {
   const files: SourceFile[] = [];
   for (const relDir of relDirs) {
     for (const fileAbs of listFilesRecursive(abs(relDir), extensions)) {
       if (excludeTests && fileAbs.endsWith(".test.ts")) continue;
-      const path = posix.join(relDir, fileAbs.slice(abs(relDir).length + 1).split("\\").join("/"));
+      const path = posix.join(
+        relDir,
+        fileAbs
+          .slice(abs(relDir).length + 1)
+          .split("\\")
+          .join("/"),
+      );
       files.push({ path, imports: extractImports(readFileSync(fileAbs, "utf8")) });
     }
   }
@@ -175,7 +195,9 @@ describe("Rule: runtime-walls — the workspace splits by runtime", () => {
     expect(packages).toContain("src/apps/server");
 
     for (const pkgDir of ["src/apps/desktop", "src/apps/web", "src/apps/server"]) {
-      expect(existsSync(abs(pkgDir, "package.json")), `${pkgDir}/package.json should exist`).toBe(true);
+      expect(existsSync(abs(pkgDir, "package.json")), `${pkgDir}/package.json should exist`).toBe(
+        true,
+      );
     }
   });
 
@@ -227,7 +249,13 @@ describe("Rule: dual-track-api — the public facade serves only community plugi
     const allFiles = listFilesRecursive(abs(WEB_SRC), [".ts"])
       .filter((fileAbs) => !fileAbs.endsWith(".test.ts")) // ponytail: parity tests legitimately verify the facade's own shape
       .map((fileAbs) => ({
-        path: posix.join(WEB_SRC, fileAbs.slice(abs(WEB_SRC).length + 1).split("\\").join("/")),
+        path: posix.join(
+          WEB_SRC,
+          fileAbs
+            .slice(abs(WEB_SRC).length + 1)
+            .split("\\")
+            .join("/"),
+        ),
         imports: extractImports(readFileSync(fileAbs, "utf8")),
       }))
       .filter((file) => topLevelWebSrcDir(file.path) !== "api")
@@ -238,7 +266,10 @@ describe("Rule: dual-track-api — the public facade serves only community plugi
   });
 
   it("flags an internal import of the api facade", () => {
-    const synthetic: SourceFile = { path: `${WEB_SRC}/workspace/X.ts`, imports: ["../api/PublicApi"] };
+    const synthetic: SourceFile = {
+      path: `${WEB_SRC}/workspace/X.ts`,
+      imports: ["../api/PublicApi"],
+    };
 
     expect(findApiFacadeViolations([synthetic])).toHaveLength(1);
   });
@@ -250,7 +281,16 @@ describe("Rule: dual-track-api — the public facade serves only community plugi
 
 describe("Rule: builtin-roof — one core plugin per slice", () => {
   it("builtin roof holds one directory per core plugin", () => {
-    const corePlugins = ["canvas", "git", "github", "graph", "webviewer", "theme-market", "terminal", "agent"];
+    const corePlugins = [
+      "canvas",
+      "git",
+      "github",
+      "graph",
+      "webviewer",
+      "theme-market",
+      "terminal",
+      "agent",
+    ];
     const builtinDirs = new Set(listTopLevelDirNames(abs(WEB_SRC, "builtin")));
     const topLevelDirs = listTopLevelDirNames(abs(WEB_SRC));
 
@@ -341,7 +381,20 @@ describe("Rule: architecture-docs — the new documentation set exists", () => {
 
 describe("Rule: name-agnostic code — the retired product name is gone", () => {
   it("no retired product-name literals remain in code", () => {
-    const textExtensions = [".ts", ".tsx", ".js", ".mjs", ".cjs", ".json", ".md", ".yaml", ".yml", ".html", ".css", ".scss"];
+    const textExtensions = [
+      ".ts",
+      ".tsx",
+      ".js",
+      ".mjs",
+      ".cjs",
+      ".json",
+      ".md",
+      ".yaml",
+      ".yml",
+      ".html",
+      ".css",
+      ".scss",
+    ];
     const scanDirs = ["src/apps", "tests", "scripts", "examples"];
     const rootConfigFiles = [
       "package.json",
@@ -378,10 +431,17 @@ describe("Rule: public-api surface freeze", () => {
   const exportedNames = (relPath: string): string[] => {
     const source = readFileSync(abs(relPath), "utf8");
     const names = new Set<string>();
-    for (const m of source.matchAll(/^export (?:abstract )?(?:class|function|const|interface|type|enum) (\w+)/gm)) names.add(m[1]);
+    for (const m of source.matchAll(
+      /^export (?:abstract )?(?:class|function|const|interface|type|enum) (\w+)/gm,
+    ))
+      names.add(m[1]);
     for (const m of source.matchAll(/^export (?:type )?\{([^}]*)\}/gms)) {
       for (const piece of m[1].split(",")) {
-        const name = piece.trim().split(/\s+as\s+/).pop()?.trim();
+        const name = piece
+          .trim()
+          .split(/\s+as\s+/)
+          .pop()
+          ?.trim();
         if (name) names.add(name);
       }
     }

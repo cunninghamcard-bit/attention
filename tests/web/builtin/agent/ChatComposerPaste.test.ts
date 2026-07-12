@@ -13,7 +13,12 @@ beforeEach(() => {
 });
 import { ChatComposer } from "@web/builtin/agent/ChatComposer";
 import { triagePastedText } from "@web/builtin/agent/ChatComposerPaste";
-import { appendChatInputHistory, readChatDraft, readChatInputHistory, writeChatDraft } from "@web/builtin/agent/ChatComposerDrafts";
+import {
+  appendChatInputHistory,
+  readChatDraft,
+  readChatInputHistory,
+  writeChatDraft,
+} from "@web/builtin/agent/ChatComposerDrafts";
 
 describe("triagePastedText", () => {
   it("collapses blank-line runs for short pastes", () => {
@@ -35,7 +40,12 @@ function setupComposer() {
   const parentEl = document.createElement("div");
   document.body.appendChild(parentEl);
   const send = vi.fn();
-  const composer = new ChatComposer(parentEl, { send, queue: vi.fn(), stop: vi.fn(), isRunning: () => false });
+  const composer = new ChatComposer(parentEl, {
+    send,
+    queue: vi.fn(),
+    stop: vi.fn(),
+    isRunning: () => false,
+  });
   composer.load();
   composers.push(composer);
   return { parentEl, composer, send };
@@ -50,7 +60,9 @@ describe("composer attachments", () => {
 
     composer.setValue("看看这个");
     (parentEl.querySelector(".chat-composer-send") as HTMLButtonElement).click();
-    expect(send).toHaveBeenCalledWith("看看这个", [{ name: "Pasted text", content: "long content\nsecond line" }]);
+    expect(send).toHaveBeenCalledWith("看看这个", [
+      { name: "Pasted text", content: "long content\nsecond line" },
+    ]);
     expect(parentEl.querySelectorAll(".chat-attachment-card")).toHaveLength(0);
   });
 
@@ -80,7 +92,10 @@ describe("chat drafts and input history", () => {
   });
 
   it("expires drafts past the TTL", () => {
-    window.localStorage.setItem("agent-draft:t-old", JSON.stringify({ text: "stale", updatedAt: Date.now() - 8 * 24 * 60 * 60 * 1000 }));
+    window.localStorage.setItem(
+      "agent-draft:t-old",
+      JSON.stringify({ text: "stale", updatedAt: Date.now() - 8 * 24 * 60 * 60 * 1000 }),
+    );
     expect(readChatDraft("t-old")).toBeNull();
     expect(window.localStorage.getItem("agent-draft:t-old")).toBeNull();
   });

@@ -15,7 +15,11 @@ export abstract class PopoverSuggest<T> implements SuggestOwner<T> {
   readonly suggestions: SuggestChooser<T>;
   private autoDestroy: (() => void) | null = null;
 
-  constructor(readonly app: App, parentScope: Scope | null = app.scope, ownerDocument: Document = getActiveDocument()) {
+  constructor(
+    readonly app: App,
+    parentScope: Scope | null = app.scope,
+    ownerDocument: Document = getActiveDocument(),
+  ) {
     this.scope = new Scope(parentScope);
     const doc = ownerDocument;
     this.suggestEl = doc.createElement("div");
@@ -58,7 +62,10 @@ export abstract class PopoverSuggest<T> implements SuggestOwner<T> {
     unregisterActiveCloseable(this);
   }
 
-  reposition(rect: DOMRect | Pick<DOMRect, "left" | "right" | "top" | "bottom">, direction: "auto" | "ltr" | "rtl" = "auto"): void {
+  reposition(
+    rect: DOMRect | Pick<DOMRect, "left" | "right" | "top" | "bottom">,
+    direction: "auto" | "ltr" | "rtl" = "auto",
+  ): void {
     positionSuggestion(this.suggestEl, rect, direction);
   }
 
@@ -145,10 +152,22 @@ function positionSuggestion(
   const rootRect = root.getBoundingClientRect();
   const scrollTop = root.scrollTop;
   const scrollLeft = root.scrollLeft;
-  const safeTop = scrollTop + Math.max(10, parseCssPx(root, "--safe-area-inset-top") - rootRect.top + 10);
-  const safeBottom = scrollTop + Math.min(root.clientHeight - 10, win.innerHeight - parseCssPx(root, "--safe-area-inset-bottom") - rootRect.top - 10);
-  const safeLeft = scrollLeft + Math.max(10, parseCssPx(root, "--safe-area-inset-left") - rootRect.left + 10);
-  const safeRight = scrollLeft + Math.min(root.clientWidth - 10, win.innerWidth - parseCssPx(root, "--safe-area-inset-right") - rootRect.left - 10);
+  const safeTop =
+    scrollTop + Math.max(10, parseCssPx(root, "--safe-area-inset-top") - rootRect.top + 10);
+  const safeBottom =
+    scrollTop +
+    Math.min(
+      root.clientHeight - 10,
+      win.innerHeight - parseCssPx(root, "--safe-area-inset-bottom") - rootRect.top - 10,
+    );
+  const safeLeft =
+    scrollLeft + Math.max(10, parseCssPx(root, "--safe-area-inset-left") - rootRect.left + 10);
+  const safeRight =
+    scrollLeft +
+    Math.min(
+      root.clientWidth - 10,
+      win.innerWidth - parseCssPx(root, "--safe-area-inset-right") - rootRect.left - 10,
+    );
   const height = el.offsetHeight || el.getBoundingClientRect().height;
   const width = el.offsetWidth || el.getBoundingClientRect().width;
   const anchor = {
@@ -160,9 +179,14 @@ function positionSuggestion(
   const spaceAbove = anchor.top - safeTop;
   const spaceBelow = safeBottom - anchor.bottom;
   const preferBelow = spaceBelow >= height + gap || spaceBelow >= spaceAbove;
-  const align = direction === "auto"
-    ? win.getComputedStyle(el).direction === "rtl" ? "right" : "left"
-    : direction === "rtl" ? "right" : "left";
+  const align =
+    direction === "auto"
+      ? win.getComputedStyle(el).direction === "rtl"
+        ? "right"
+        : "left"
+      : direction === "rtl"
+        ? "right"
+        : "left";
 
   el.style.position = "absolute";
   el.style.maxHeight = "";
@@ -207,7 +231,10 @@ export abstract class AbstractInputSuggest<T> extends PopoverSuggest<T> {
   private selectCb: ((value: T, event: MouseEvent | KeyboardEvent) => void) | null = null;
   private lastRect: Pick<DOMRect, "left" | "right" | "top" | "bottom"> | null = null;
 
-  constructor(app: App, readonly textInputEl: HTMLInputElement | HTMLTextAreaElement | HTMLElement) {
+  constructor(
+    app: App,
+    readonly textInputEl: HTMLInputElement | HTMLTextAreaElement | HTMLElement,
+  ) {
     super(app, app.scope, textInputEl.ownerDocument);
     this.autoReposition = this.autoReposition.bind(this);
     textInputEl.addEventListener("input", () => this.onInputChange());
@@ -215,7 +242,8 @@ export abstract class AbstractInputSuggest<T> extends PopoverSuggest<T> {
     textInputEl.addEventListener("blur", () => this.close());
     this.suggestEl.addEventListener("mousedown", (event) => {
       const target = event.target;
-      if (target instanceof HTMLElement && target.closest(".suggestion-item")) event.preventDefault();
+      if (target instanceof HTMLElement && target.closest(".suggestion-item"))
+        event.preventDefault();
     });
   }
 
@@ -238,12 +266,16 @@ export abstract class AbstractInputSuggest<T> extends PopoverSuggest<T> {
   }
 
   getValue(): string {
-    return isTextValueElement(this.textInputEl) ? this.textInputEl.value : this.textInputEl.innerText;
+    return isTextValueElement(this.textInputEl)
+      ? this.textInputEl.value
+      : this.textInputEl.innerText;
   }
 
   onInputFocus(): void {
     if (Platform.isIosApp) {
-      deferUntilMobileResizeSettles(this.textInputEl.ownerDocument.defaultView ?? window, () => this.onInputChange());
+      deferUntilMobileResizeSettles(this.textInputEl.ownerDocument.defaultView ?? window, () =>
+        this.onInputChange(),
+      );
       return;
     }
     this.onInputChange();
@@ -272,7 +304,9 @@ export abstract class AbstractInputSuggest<T> extends PopoverSuggest<T> {
 
   override close(): void {
     super.close();
-    this.textInputEl.ownerDocument.removeEventListener("scroll", this.autoReposition, { capture: true });
+    this.textInputEl.ownerDocument.removeEventListener("scroll", this.autoReposition, {
+      capture: true,
+    });
   }
 
   override reposition(rect: Pick<DOMRect, "left" | "right" | "top" | "bottom">): void {
@@ -282,20 +316,32 @@ export abstract class AbstractInputSuggest<T> extends PopoverSuggest<T> {
 
   override open(): void {
     super.open();
-    const rect = projectRectToWindow(this.textInputEl.getBoundingClientRect(), this.textInputEl.ownerDocument.defaultView ?? window, this.suggestEl.ownerDocument.defaultView ?? window);
+    const rect = projectRectToWindow(
+      this.textInputEl.getBoundingClientRect(),
+      this.textInputEl.ownerDocument.defaultView ?? window,
+      this.suggestEl.ownerDocument.defaultView ?? window,
+    );
     this.reposition(rect);
-    this.textInputEl.ownerDocument.addEventListener("scroll", this.autoReposition, { capture: true, passive: true });
+    this.textInputEl.ownerDocument.addEventListener("scroll", this.autoReposition, {
+      capture: true,
+      passive: true,
+    });
   }
 
   autoReposition(): void {
     if (!this.lastRect) return;
-    const rect = projectRectToWindow(this.textInputEl.getBoundingClientRect(), this.textInputEl.ownerDocument.defaultView ?? window, this.suggestEl.ownerDocument.defaultView ?? window);
+    const rect = projectRectToWindow(
+      this.textInputEl.getBoundingClientRect(),
+      this.textInputEl.ownerDocument.defaultView ?? window,
+      this.suggestEl.ownerDocument.defaultView ?? window,
+    );
     if (
-      rect.bottom === this.lastRect.bottom
-      && rect.top === this.lastRect.top
-      && rect.left === this.lastRect.left
-      && rect.right === this.lastRect.right
-    ) return;
+      rect.bottom === this.lastRect.bottom &&
+      rect.top === this.lastRect.top &&
+      rect.left === this.lastRect.left &&
+      rect.right === this.lastRect.right
+    )
+      return;
     this.reposition(rect);
   }
 

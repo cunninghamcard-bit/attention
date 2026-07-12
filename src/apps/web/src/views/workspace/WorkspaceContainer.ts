@@ -5,7 +5,12 @@ import type { WorkspaceLeaf } from "./WorkspaceLeaf";
 export class WorkspaceContainer extends WorkspaceSplit {
   override isWorkspaceContainer = true;
 
-  constructor(workspace: Workspace, direction: "vertical" | "horizontal" = "vertical", id?: string, ownerDocument?: Document) {
+  constructor(
+    workspace: Workspace,
+    direction: "vertical" | "horizontal" = "vertical",
+    id?: string,
+    ownerDocument?: Document,
+  ) {
     super(workspace, direction, id, ownerDocument);
   }
 

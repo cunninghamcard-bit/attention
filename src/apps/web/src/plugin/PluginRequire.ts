@@ -51,7 +51,11 @@ const DEPRECATED_CODEMIRROR_MODULES: Record<string, unknown> = {
 export function createPluginRequire(app: App, pluginId: string): PluginRequire {
   return (id) => {
     if (hasOwn(DEPRECATED_CODEMIRROR_MODULES, id)) {
-      console.error(new Error(`[CM6][${pluginId}] Using a deprecated package: "${id}".\n${DEPRECATED_CODEMIRROR_MESSAGE}`));
+      console.error(
+        new Error(
+          `[CM6][${pluginId}] Using a deprecated package: "${id}".\n${DEPRECATED_CODEMIRROR_MESSAGE}`,
+        ),
+      );
       return DEPRECATED_CODEMIRROR_MODULES[id];
     }
     if (id === "obsidian") return createObsidianPluginModule(app);

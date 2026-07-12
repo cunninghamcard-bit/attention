@@ -129,12 +129,18 @@ describe("MarkdownView public API parity", () => {
     expect(view.editor.getCursor()).toEqual({ line: 0, ch: 0 });
 
     view.editor.setCursor(4, 4);
-    view.setEphemeralState({ focus: true, focusOnMobile: true, cursor: { from: { line: 0, ch: 1 } } });
+    view.setEphemeralState({
+      focus: true,
+      focusOnMobile: true,
+      cursor: { from: { line: 0, ch: 1 } },
+    });
     expect(view.editor.getCursor()).toEqual({ line: 0, ch: 1 });
 
     view.shiftFocusBefore();
     expect(view.metadataHasFocus()).toBe(true);
-    expect(document.activeElement).toBe(view.metadataContainerEl.querySelectorAll(".metadata-property").item(1));
+    expect(document.activeElement).toBe(
+      view.metadataContainerEl.querySelectorAll(".metadata-property").item(1),
+    );
 
     view.shiftFocusBefore();
     expect(document.activeElement).toBe(view.inlineTitleEl);
@@ -146,15 +152,25 @@ describe("MarkdownView public API parity", () => {
   });
 
   it("routes clickable tokens through Obsidian-style handlers", async () => {
-    const { app, file, view } = await openMarkdown("[[Target]] [Docs][docs] #todo\n\n[docs]: https://example.com");
+    const { app, file, view } = await openMarkdown(
+      "[[Target]] [Docs][docs] #todo\n\n[docs]: https://example.com",
+    );
     await app.metadataCache.computeFileMetadata(file);
     const openLinkText = vi.spyOn(app.workspace, "openLinkText").mockResolvedValue();
 
     view.triggerClickableToken({ type: "internal-link", text: "Target" });
-    await vi.waitFor(() => expect(openLinkText).toHaveBeenCalledWith("Target", "Note.md", undefined));
+    await vi.waitFor(() =>
+      expect(openLinkText).toHaveBeenCalledWith("Target", "Note.md", undefined),
+    );
     openLinkText.mockClear();
 
-    const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, clientX: 8, clientY: 1 });
+    const click = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      clientX: 8,
+      clientY: 1,
+    });
     view.editorViewHost.contentEl.dispatchEvent(click);
     expect(click.defaultPrevented).toBe(true);
     await vi.waitFor(() => expect(openLinkText).toHaveBeenCalledWith("Target", "Note.md", false));
@@ -165,10 +181,14 @@ describe("MarkdownView public API parity", () => {
     expect(open).toHaveBeenCalledWith("mailto:x@example.com");
     view.triggerClickableToken({ type: "external-ref-link", text: "docs" }, "pane");
     expect(open).toHaveBeenCalledWith("https://example.com", "pane");
-    expect(view.getClickableTokenHref({ type: "external-ref-link", id: "docs" })).toBe("https://example.com");
+    expect(view.getClickableTokenHref({ type: "external-ref-link", id: "docs" })).toBe(
+      "https://example.com",
+    );
 
     const openGlobalSearch = vi.fn();
-    vi.spyOn(app.internalPlugins, "getEnabledPluginById").mockReturnValue({ openGlobalSearch } as never);
+    vi.spyOn(app.internalPlugins, "getEnabledPluginById").mockReturnValue({
+      openGlobalSearch,
+    } as never);
     view.triggerClickableToken({ type: "tag", text: "todo" });
     expect(openGlobalSearch).toHaveBeenCalledWith("tag:#todo");
   });
@@ -250,16 +270,26 @@ describe("MarkdownView public API parity", () => {
 
     expectSvgIcon(getSearchButton(view, "Previous match"));
     expectSvgIcon(getSearchButton(view, "Next match"));
-    expectSvgIcon(view.containerEl.querySelector<HTMLElement>("button[aria-label='Switch to reading view']"));
+    expectSvgIcon(
+      view.containerEl.querySelector<HTMLElement>("button[aria-label='Switch to reading view']"),
+    );
     expect(view.containerEl.querySelector("button.markdown-toggle-source-mode")).toBeNull();
-    expectSvgIcon(view.metadataContainerEl.querySelector<HTMLElement>(".metadata-properties-heading .collapse-icon"));
-    expectSvgIcon(view.metadataContainerEl.querySelector<HTMLElement>(".metadata-add-button .text-button-icon"));
+    expectSvgIcon(
+      view.metadataContainerEl.querySelector<HTMLElement>(
+        ".metadata-properties-heading .collapse-icon",
+      ),
+    );
+    expectSvgIcon(
+      view.metadataContainerEl.querySelector<HTMLElement>(".metadata-add-button .text-button-icon"),
+    );
     expectSvgIcon(view.metadataContainerEl.querySelector<HTMLElement>(".metadata-property-icon"));
     expectSvgIcon(view.metadataContainerEl.querySelector<HTMLElement>(".metadata-property-delete"));
   });
 
   it("does not keep data-icon assignments in MarkdownView source", async () => {
-    const fs = await import("node:" + "fs") as { readFileSync(path: string, encoding: "utf8"): string };
+    const fs = (await import("node:" + "fs")) as {
+      readFileSync(path: string, encoding: "utf8"): string;
+    };
     const cwd = (globalThis as unknown as { process: { cwd(): string } }).process.cwd();
     const source = fs.readFileSync(`${cwd}/src/apps/web/src/views/MarkdownView.ts`, "utf8");
 
@@ -288,7 +318,9 @@ describe("MarkdownView public API parity", () => {
   });
 });
 
-async function openMarkdown(source: string): Promise<{ app: App; file: TFile; view: MarkdownView }> {
+async function openMarkdown(
+  source: string,
+): Promise<{ app: App; file: TFile; view: MarkdownView }> {
   const app = new App(document.createElement("div"));
   await app.ready;
   const file = await app.vault.create("Note.md", source);
@@ -298,7 +330,9 @@ async function openMarkdown(source: string): Promise<{ app: App; file: TFile; vi
 }
 
 function getDocumentSearchContainer(view: MarkdownView): HTMLElement {
-  const containerEl = view.editorContainerEl.querySelector<HTMLElement>(".document-search-container");
+  const containerEl = view.editorContainerEl.querySelector<HTMLElement>(
+    ".document-search-container",
+  );
   if (!containerEl) throw new Error("Missing document search container");
   return containerEl;
 }
@@ -322,8 +356,9 @@ function getSearchCount(view: MarkdownView): HTMLElement {
 }
 
 function getSearchButton(view: MarkdownView, label: string): HTMLButtonElement {
-  const buttonEl = [...view.editorContainerEl.querySelectorAll<HTMLButtonElement>(".document-search-button")]
-    .find((element) => element.getAttribute("aria-label") === label);
+  const buttonEl = [
+    ...view.editorContainerEl.querySelectorAll<HTMLButtonElement>(".document-search-button"),
+  ].find((element) => element.getAttribute("aria-label") === label);
   if (!buttonEl) throw new Error(`Missing search button: ${label}`);
   return buttonEl;
 }

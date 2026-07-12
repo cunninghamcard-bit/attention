@@ -51,7 +51,9 @@ export class ChatView extends StreamView {
 
   getDisplayText(): string {
     if (this.agentTitle) return this.agentTitle;
-    return this.agentId === "default" ? STRINGS.chat.displayText : STRINGS.chat.displayTextFor(this.agentId);
+    return this.agentId === "default"
+      ? STRINGS.chat.displayText
+      : STRINGS.chat.displayTextFor(this.agentId);
   }
 
   isRunning(): boolean {
@@ -63,7 +65,9 @@ export class ChatView extends StreamView {
       await this.session?.steer(text);
       new Notice(STRINGS.slash.steered);
     } catch (error) {
-      new Notice(STRINGS.notices.bridgeUnreachable(error instanceof Error ? error.message : String(error)));
+      new Notice(
+        STRINGS.notices.bridgeUnreachable(error instanceof Error ? error.message : String(error)),
+      );
     }
   }
 
@@ -91,8 +95,14 @@ export class ChatView extends StreamView {
   async onOpen(): Promise<void> {
     ensureChatStyles(this.app);
     this.contentEl.classList.add("chat-view");
-    this.addAction("message-circle-plus", STRINGS.menu.newAgent, () => this.app.commands.executeCommandById("agent:create"));
-    this.stopActionEl = this.addAction("lucide-square", STRINGS.slash.stop, () => void this.stopRun());
+    this.addAction("message-circle-plus", STRINGS.menu.newAgent, () =>
+      this.app.commands.executeCommandById("agent:create"),
+    );
+    this.stopActionEl = this.addAction(
+      "lucide-square",
+      STRINGS.slash.stop,
+      () => void this.stopRun(),
+    );
     this.stopActionEl.hide();
     this.initFor(this.agentId);
   }
@@ -103,45 +113,59 @@ export class ChatView extends StreamView {
 
   override onPaneMenu(menu: Menu, source?: string): void {
     super.onPaneMenu(menu, source);
-    menu.addItem((item) => item
-      .setSection("action")
-      .setTitle(STRINGS.menu.agentProperties)
-      .setIcon("bot")
-      .onClick(() => this.app.commands.executeCommandById("agent:open-properties")));
-    menu.addItem((item) => item
-      .setSection("action")
-      .setTitle(STRINGS.menu.newAgent)
-      .setIcon("message-circle-plus")
-      .onClick(() => this.app.commands.executeCommandById("agent:create")));
-    menu.addItem((item) => item
-      .setSection("action")
-      .setTitle(STRINGS.menu.copyConversation)
-      .setIcon("lucide-copy")
-      .setDisabled(!this.session || this.session.getMessages().length === 0)
-      .onClick(() => void this.copyConversation()));
-    menu.addItem((item) => item
-      .setSection("action")
-      .setTitle(STRINGS.members.title)
-      .setIcon("users")
-      .onClick((evt) => void this.openMembersMenu(evt as MouseEvent)));
-    menu.addItem((item) => item
-      .setSection("action")
-      .setTitle(STRINGS.menu.fork)
-      .setIcon("lucide-git-branch")
-      .onClick(() => void this.forkThread()));
-    menu.addItem((item) => item
-      .setSection("action")
-      .setTitle(STRINGS.menu.rename)
-      .setIcon("lucide-pencil")
-      .onClick(() => {
-        const title = window.prompt(STRINGS.menu.renamePrompt, this.agentTitle ?? this.agentId);
-        if (title?.trim()) void this.renameThread(title.trim());
-      }));
-    menu.addItem((item) => item
-      .setSection("action")
-      .setTitle(STRINGS.menu.delete)
-      .setIcon("lucide-trash-2")
-      .onClick(() => void this.deleteThread()));
+    menu.addItem((item) =>
+      item
+        .setSection("action")
+        .setTitle(STRINGS.menu.agentProperties)
+        .setIcon("bot")
+        .onClick(() => this.app.commands.executeCommandById("agent:open-properties")),
+    );
+    menu.addItem((item) =>
+      item
+        .setSection("action")
+        .setTitle(STRINGS.menu.newAgent)
+        .setIcon("message-circle-plus")
+        .onClick(() => this.app.commands.executeCommandById("agent:create")),
+    );
+    menu.addItem((item) =>
+      item
+        .setSection("action")
+        .setTitle(STRINGS.menu.copyConversation)
+        .setIcon("lucide-copy")
+        .setDisabled(!this.session || this.session.getMessages().length === 0)
+        .onClick(() => void this.copyConversation()),
+    );
+    menu.addItem((item) =>
+      item
+        .setSection("action")
+        .setTitle(STRINGS.members.title)
+        .setIcon("users")
+        .onClick((evt) => void this.openMembersMenu(evt as MouseEvent)),
+    );
+    menu.addItem((item) =>
+      item
+        .setSection("action")
+        .setTitle(STRINGS.menu.fork)
+        .setIcon("lucide-git-branch")
+        .onClick(() => void this.forkThread()),
+    );
+    menu.addItem((item) =>
+      item
+        .setSection("action")
+        .setTitle(STRINGS.menu.rename)
+        .setIcon("lucide-pencil")
+        .onClick(() => {
+          const title = window.prompt(STRINGS.menu.renamePrompt, this.agentTitle ?? this.agentId);
+          if (title?.trim()) void this.renameThread(title.trim());
+        }),
+    );
+    menu.addItem((item) =>
+      item
+        .setSection("action")
+        .setTitle(STRINGS.menu.delete)
+        .setIcon("lucide-trash-2")
+        .onClick(() => void this.deleteThread()),
+    );
   }
 
   // Fork = branch this thread: the kernel copies members and forks each
@@ -178,7 +202,8 @@ export class ChatView extends StreamView {
   override setEphemeralState(state: unknown): void {
     const ephemeral = (state ?? {}) as ChatViewEphemeralState;
     if (ephemeral.draft !== undefined) this.composer?.setValue(ephemeral.draft);
-    if (ephemeral.scrollTop !== undefined && this.scrollEl) this.scrollEl.scrollTop = ephemeral.scrollTop;
+    if (ephemeral.scrollTop !== undefined && this.scrollEl)
+      this.scrollEl.scrollTop = ephemeral.scrollTop;
   }
 
   override getEphemeralState(): ChatViewEphemeralState {
@@ -206,10 +231,19 @@ export class ChatView extends StreamView {
     const scrollEl = this.createStreamRegion("chat-scroll", bodyEl);
     // Chat speaks MarkdownView's element vocabulary, so the same delegated
     // handlers give internal links their click/hover/context-menu behavior.
-    (MarkdownRenderer as unknown as {
-      installInternalLinkHandlers(app: App, root: HTMLElement, sourcePath: string): void;
-    }).installInternalLinkHandlers(this.app, scrollEl, `agent://${agentId}`);
-    this.list = this.addChild(new ChatMessageList(scrollEl, this.session, () => this.scroller?.notifyContentChanged(), this.app));
+    (
+      MarkdownRenderer as unknown as {
+        installInternalLinkHandlers(app: App, root: HTMLElement, sourcePath: string): void;
+      }
+    ).installInternalLinkHandlers(this.app, scrollEl, `agent://${agentId}`);
+    this.list = this.addChild(
+      new ChatMessageList(
+        scrollEl,
+        this.session,
+        () => this.scroller?.notifyContentChanged(),
+        this.app,
+      ),
+    );
     this.composer = this.addChild(
       new ChatComposer(
         bodyEl,
@@ -277,7 +311,11 @@ export class ChatView extends StreamView {
     ]);
     const menu = new Menu(this.containerEl.ownerDocument);
     const memberLink = (agentId: string) => ({
-      fromType: "agent", fromId: agentId, toType: "thread", toId: this.agentId, type: "member",
+      fromType: "agent",
+      fromId: agentId,
+      toType: "thread",
+      toId: this.agentId,
+      type: "member",
     });
     const link = async (agentId: string) => {
       try {
@@ -289,50 +327,60 @@ export class ChatView extends StreamView {
       }
     };
     for (const member of members) {
-      menu.addItem((item) => item
-        .setTitle(STRINGS.members.remove(`${member.id} (${member.harness})`))
-        .setIcon("lucide-user-minus")
-        .onClick(async () => {
-          await this.profileTransport.deleteLink(memberLink(member.id));
-          new Notice(STRINGS.members.removed(member.id));
-          await this.refreshMember();
-        }));
+      menu.addItem((item) =>
+        item
+          .setTitle(STRINGS.members.remove(`${member.id} (${member.harness})`))
+          .setIcon("lucide-user-minus")
+          .onClick(async () => {
+            await this.profileTransport.deleteLink(memberLink(member.id));
+            new Notice(STRINGS.members.removed(member.id));
+            await this.refreshMember();
+          }),
+      );
     }
     const memberIds = new Set(members.map((member) => member.id));
-    const addable = all.filter((agent) => !memberIds.has(agent.id) && (agent.type ?? "agent") === "agent");
+    const addable = all.filter(
+      (agent) => !memberIds.has(agent.id) && (agent.type ?? "agent") === "agent",
+    );
     menu.addSections(["", ...harnesses.map((h) => `harness-${h.name}`)]);
     for (const harness of harnesses) {
       const section = `harness-${harness.name}`;
       menu.setSectionSubmenu(section, { title: harness.name, icon: "bot" });
       for (const agent of addable.filter((a) => a.harness === harness.name)) {
-        menu.addItem((item) => item
-          .setSection(section)
-          .setTitle(STRINGS.members.add(agent.model ? `${agent.id} · ${agent.model}` : agent.id))
-          .setIcon("lucide-user-plus")
-          .onClick(() => void link(agent.id)));
+        menu.addItem((item) =>
+          item
+            .setSection(section)
+            .setTitle(STRINGS.members.add(agent.model ? `${agent.id} · ${agent.model}` : agent.id))
+            .setIcon("lucide-user-plus")
+            .onClick(() => void link(agent.id)),
+        );
       }
-      menu.addItem((item) => item
-        .setSection(section)
-        .setTitle(STRINGS.members.newAgent(harness.name))
-        .setIcon("lucide-plus")
-        .onClick(async () => {
-          const id = window.prompt(STRINGS.members.newAgentPrompt(harness.name))?.trim();
-          if (!id) return;
-          try {
-            await this.profileTransport.putAgent({ id, name: id, harness: harness.name });
-            await link(id);
-          } catch (error) {
-            new Notice(error instanceof Error ? error.message : String(error));
-          }
-        }));
+      menu.addItem((item) =>
+        item
+          .setSection(section)
+          .setTitle(STRINGS.members.newAgent(harness.name))
+          .setIcon("lucide-plus")
+          .onClick(async () => {
+            const id = window.prompt(STRINGS.members.newAgentPrompt(harness.name))?.trim();
+            if (!id) return;
+            try {
+              await this.profileTransport.putAgent({ id, name: id, harness: harness.name });
+              await link(id);
+            } catch (error) {
+              new Notice(error instanceof Error ? error.message : String(error));
+            }
+          }),
+      );
     }
     // Agents on harnesses this kernel no longer registers stay reachable.
     const known = new Set(harnesses.map((h) => h.name));
     for (const agent of addable.filter((a) => !known.has(a.harness))) {
-      menu.addItem((item) => item
-        .setTitle(STRINGS.members.add(`${agent.id} (${agent.harness})`))
-        .setIcon("lucide-user-plus")
-        .onClick(() => void link(agent.id)));
+      menu.addItem((item) =>
+        item
+          .setTitle(STRINGS.members.add(`${agent.id} (${agent.harness})`))
+          .setIcon("lucide-user-plus")
+          .onClick(() => void link(agent.id)),
+      );
     }
     if (harnesses.length === 0 && addable.length === 0 && members.length === 0) {
       menu.addItem((item) => item.setTitle(STRINGS.members.empty).setDisabled(true));
@@ -358,34 +406,43 @@ export class ChatView extends StreamView {
       await this.openMembersMenu(event);
       return;
     }
-    const capabilities = (await this.profileTransport.listHarnesses())
-      .find((h): h is HarnessCapabilities => h.name === agent.harness);
+    const capabilities = (await this.profileTransport.listHarnesses()).find(
+      (h): h is HarnessCapabilities => h.name === agent.harness,
+    );
     const menu = new Menu(this.containerEl.ownerDocument);
     const save = (patch: Partial<KernelAgent>) => {
       const next = { ...agent, ...patch };
       delete next.env; // masked on read; omitted = preserved
-      this.profileTransport.putAgent(next)
+      this.profileTransport
+        .putAgent(next)
         .then(() => {
           this.memberAgent = { ...agent, ...patch };
           this.composer?.refreshModelChip();
         })
         .catch((error) => new Notice(error instanceof Error ? error.message : String(error)));
     };
-    menu.addItem((item) => item
-      .setTitle(STRINGS.properties.editModel(capabilities?.modelHint))
-      .setIcon("lucide-pencil")
-      .onClick(() => {
-        const model = window.prompt(capabilities?.modelHint || STRINGS.properties.modelPlaceholder, agent.model ?? "");
-        if (model !== null) save({ model: model.trim() || undefined });
-      }));
+    menu.addItem((item) =>
+      item
+        .setTitle(STRINGS.properties.editModel(capabilities?.modelHint))
+        .setIcon("lucide-pencil")
+        .onClick(() => {
+          const model = window.prompt(
+            capabilities?.modelHint || STRINGS.properties.modelPlaceholder,
+            agent.model ?? "",
+          );
+          if (model !== null) save({ model: model.trim() || undefined });
+        }),
+    );
     const levels = capabilities?.thinkingLevels ?? [];
     if (levels.length > 0) {
       menu.addSeparator();
       for (const level of ["", ...levels]) {
-        menu.addItem((item) => item
-          .setTitle(level || STRINGS.properties.effortDefault)
-          .setChecked((agent.thinking ?? "") === level)
-          .onClick(() => save({ thinking: level || undefined })));
+        menu.addItem((item) =>
+          item
+            .setTitle(level || STRINGS.properties.effortDefault)
+            .setChecked((agent.thinking ?? "") === level)
+            .onClick(() => save({ thinking: level || undefined })),
+        );
       }
     }
     menu.showAtMouseEvent(event);
@@ -400,12 +457,17 @@ export class ChatView extends StreamView {
   // Transport failure is transient app trouble, not conversation content —
   // it surfaces as a Notice, the way Obsidian reports failed operations.
   // Run errors are history events and render inside the stream.
-  private async sendMessage(text: string, attachments: ChatAttachmentPayload[] = []): Promise<void> {
+  private async sendMessage(
+    text: string,
+    attachments: ChatAttachmentPayload[] = [],
+  ): Promise<void> {
     try {
       this.anchorPending = true;
       await this.session?.sendMessage(text, attachments);
     } catch (error) {
-      new Notice(STRINGS.notices.bridgeUnreachable(error instanceof Error ? error.message : String(error)));
+      new Notice(
+        STRINGS.notices.bridgeUnreachable(error instanceof Error ? error.message : String(error)),
+      );
     }
   }
 
@@ -419,8 +481,13 @@ export class ChatView extends StreamView {
   private refreshTitle(): void {
     const firstUserMessage = this.session?.getMessages().find((message) => message.role === "user");
     const textPart = firstUserMessage?.parts.find((part) => part?.type === "text");
-    const line = (textPart && "markdown" in textPart ? textPart.markdown : "").trim().split("\n")[0] ?? "";
-    const title = line ? (line.length > TITLE_MAX_LENGTH ? `${line.slice(0, TITLE_MAX_LENGTH)}…` : line) : null;
+    const line =
+      (textPart && "markdown" in textPart ? textPart.markdown : "").trim().split("\n")[0] ?? "";
+    const title = line
+      ? line.length > TITLE_MAX_LENGTH
+        ? `${line.slice(0, TITLE_MAX_LENGTH)}…`
+        : line
+      : null;
     if (title === this.agentTitle) return;
     this.agentTitle = title;
     this.updateHeader();
@@ -431,12 +498,16 @@ export class ChatView extends StreamView {
     this.list?.sync();
     for (const message of this.session?.getMessages() ?? []) {
       message.parts.forEach((part, index) => {
-        if (part?.type === "artifact" && part.closed) maybeAutoOpenArtifact(this.app, this.agentId, message.id, index);
+        if (part?.type === "artifact" && part.closed)
+          maybeAutoOpenArtifact(this.app, this.agentId, message.id, index);
       });
     }
     // Empty = welcome: the dock rises to the reading line; the first
     // message drops it to the bottom for good.
-    this.contentEl.toggleClass("is-empty", (this.session?.getMessages().length ?? 0) === 0 && !this.isRunning());
+    this.contentEl.toggleClass(
+      "is-empty",
+      (this.session?.getMessages().length ?? 0) === 0 && !this.isRunning(),
+    );
     this.anchorLastUserMessage();
     this.composer?.syncRunning();
     this.stopActionEl?.toggle(this.isRunning());
@@ -455,8 +526,8 @@ export class ChatView extends StreamView {
     const target = userEls[userEls.length - 1] as HTMLElement | undefined;
     if (!target) return;
     this.anchorPending = false;
-    this.scrollEl.scrollTop += target.getBoundingClientRect().top - this.scrollEl.getBoundingClientRect().top - 8;
+    this.scrollEl.scrollTop +=
+      target.getBoundingClientRect().top - this.scrollEl.getBoundingClientRect().top - 8;
     this.scroller?.detach();
   }
-
 }

@@ -21,19 +21,27 @@ export interface SaveDialogOptions {
   extensions?: string[];
 }
 
-export function toOpenProperties(opts: OpenDialogOptions): Array<"openFile" | "openDirectory" | "multiSelections"> {
+export function toOpenProperties(
+  opts: OpenDialogOptions,
+): Array<"openFile" | "openDirectory" | "multiSelections"> {
   if (opts.directory) return ["openDirectory"];
   return opts.multiple ? ["openFile", "multiSelections"] : ["openFile"];
 }
 
-export function toFilters(extensions?: string[]): Array<{ name: string; extensions: string[] }> | undefined {
+export function toFilters(
+  extensions?: string[],
+): Array<{ name: string; extensions: string[] }> | undefined {
   return extensions && extensions.length > 0 ? [{ name: "Files", extensions }] : undefined;
 }
 
 export function registerDesktopBridgeIpc(): void {
   ipcMain.handle("dialog:open", async (event, opts: OpenDialogOptions = {}) => {
     const win = BrowserWindow.fromWebContents(event.sender);
-    const options = { title: opts.title, properties: toOpenProperties(opts), filters: toFilters(opts.extensions) };
+    const options = {
+      title: opts.title,
+      properties: toOpenProperties(opts),
+      filters: toFilters(opts.extensions),
+    };
     const result = win
       ? await dialog.showOpenDialog(win, options)
       : await dialog.showOpenDialog(options);
@@ -42,11 +50,15 @@ export function registerDesktopBridgeIpc(): void {
 
   ipcMain.handle("dialog:save", async (event, opts: SaveDialogOptions = {}) => {
     const win = BrowserWindow.fromWebContents(event.sender);
-    const options = { title: opts.title, defaultPath: opts.defaultPath, filters: toFilters(opts.extensions) };
+    const options = {
+      title: opts.title,
+      defaultPath: opts.defaultPath,
+      filters: toFilters(opts.extensions),
+    };
     const result = win
       ? await dialog.showSaveDialog(win, options)
       : await dialog.showSaveDialog(options);
-    return result.canceled ? null : result.filePath ?? null;
+    return result.canceled ? null : (result.filePath ?? null);
   });
 
   ipcMain.handle("window:set-fullscreen", (event, value: unknown) => {

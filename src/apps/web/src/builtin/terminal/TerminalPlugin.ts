@@ -21,13 +21,20 @@ export class TerminalController {
 
   onEnable(plugin: InternalPluginWrapper): void {
     plugin.addSettingTab(new TerminalSettingTab(this.app));
-    plugin.registerEvent(this.app.workspace.on<[Menu, TAbstractFile, string, WorkspaceLeaf]>("file-menu", (menu, file) => {
-      menu.addItem((item) => item
-        .setSection("system")
-        .setTitle("Open terminal here")
-        .setIcon("lucide-terminal")
-        .onClick(() => void this.openAt(file)));
-    }));
+    plugin.registerEvent(
+      this.app.workspace.on<[Menu, TAbstractFile, string, WorkspaceLeaf]>(
+        "file-menu",
+        (menu, file) => {
+          menu.addItem((item) =>
+            item
+              .setSection("system")
+              .setTitle("Open terminal here")
+              .setIcon("lucide-terminal")
+              .onClick(() => void this.openAt(file)),
+          );
+        },
+      ),
+    );
   }
 
   async open(cwd?: string): Promise<void> {
@@ -72,53 +79,68 @@ class TerminalSettingTab implements SettingTab {
     // fields. Semantics live in TerminalService.resolveSpawnConfig.
     new Setting(group.itemsEl)
       .setName("Profile")
-        .setDesc("Enhanced: zsh with prompt, autosuggestions and syntax highlighting, on top of your own config. System: your login shell and dotfiles, untouched. Custom: pick the details below.")
-      .addDropdown((dropdown) => dropdown
-        .addOption("enhanced", "Enhanced zsh (default)")
-        .addOption("system", "System shell")
-        .addOption("custom", "Custom")
-        .setValue(settings.profile)
-        .onChange((value) => {
-          this.app.terminals.saveSettings({ profile: value === "system" || value === "custom" ? value : "enhanced" });
-          this.display();
-        }));
+      .setDesc(
+        "Enhanced: zsh with prompt, autosuggestions and syntax highlighting, on top of your own config. System: your login shell and dotfiles, untouched. Custom: pick the details below.",
+      )
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("enhanced", "Enhanced zsh (default)")
+          .addOption("system", "System shell")
+          .addOption("custom", "Custom")
+          .setValue(settings.profile)
+          .onChange((value) => {
+            this.app.terminals.saveSettings({
+              profile: value === "system" || value === "custom" ? value : "enhanced",
+            });
+            this.display();
+          }),
+      );
     if (settings.profile === "custom") {
       new Setting(group.itemsEl)
         .setName("Shell path")
         .setDesc("Leave empty to use the login shell from $SHELL.")
-        .addText((text) => text.setValue(settings.shell).onChange((value) => {
-          this.app.terminals.saveSettings({ shell: value.trim() });
-        }));
+        .addText((text) =>
+          text.setValue(settings.shell).onChange((value) => {
+            this.app.terminals.saveSettings({ shell: value.trim() });
+          }),
+        );
       new Setting(group.itemsEl)
         .setName("Font family")
         .setDesc("Leave empty to use the bundled terminal font stack.")
-        .addText((text) => text.setValue(settings.fontFamily).onChange((value) => {
-          this.app.terminals.saveSettings({ fontFamily: value.trim() });
-        }));
+        .addText((text) =>
+          text.setValue(settings.fontFamily).onChange((value) => {
+            this.app.terminals.saveSettings({ fontFamily: value.trim() });
+          }),
+        );
     }
     new Setting(group.itemsEl)
       .setName("Default location")
       .setDesc("Where new terminals open in the workspace.")
-      .addDropdown((dropdown) => dropdown
-        .addOption("tab", "New tab")
-        .addOption("split", "Split pane")
-        .addOption("right", "Right sidebar")
-        .setValue(settings.location)
-        .onChange((value) => {
-          this.app.terminals.saveSettings({ location: value === "split" || value === "right" ? value : "tab" });
-        }));
-    new Setting(group.itemsEl)
-      .setName("Font size")
-      .addText((text) => text.setValue(String(settings.fontSize)).onChange((value) => {
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("tab", "New tab")
+          .addOption("split", "Split pane")
+          .addOption("right", "Right sidebar")
+          .setValue(settings.location)
+          .onChange((value) => {
+            this.app.terminals.saveSettings({
+              location: value === "split" || value === "right" ? value : "tab",
+            });
+          }),
+      );
+    new Setting(group.itemsEl).setName("Font size").addText((text) =>
+      text.setValue(String(settings.fontSize)).onChange((value) => {
         const size = Number(value);
         if (Number.isFinite(size) && size > 0) this.app.terminals.saveSettings({ fontSize: size });
-      }));
-    new Setting(group.itemsEl)
-      .setName("Scrollback lines")
-      .addText((text) => text.setValue(String(settings.scrollback)).onChange((value) => {
+      }),
+    );
+    new Setting(group.itemsEl).setName("Scrollback lines").addText((text) =>
+      text.setValue(String(settings.scrollback)).onChange((value) => {
         const lines = Number(value);
-        if (Number.isFinite(lines) && lines >= 0) this.app.terminals.saveSettings({ scrollback: lines });
-      }));
+        if (Number.isFinite(lines) && lines >= 0)
+          this.app.terminals.saveSettings({ scrollback: lines });
+      }),
+    );
   }
 
   hide(): void {
@@ -149,11 +171,18 @@ export function createTerminalPluginDefinition(): InternalPluginDefinition {
       // deferred view keeps the PTY unspawned until the tab is revealed; the
       // bridge check keeps browser mode (which cannot spawn shells) clean.
       app.workspace.onLayoutReady(() => {
-        const bridge = (globalThis as { electronTerminal?: { available?: boolean } }).electronTerminal;
+        const bridge = (globalThis as { electronTerminal?: { available?: boolean } })
+          .electronTerminal;
         if (!bridge?.available) return;
         if (app.workspace.getLeavesOfType(TERMINAL_VIEW_TYPE).length > 0) return;
         const leaf = app.workspace.getRightLeaf(false);
-        if (leaf) void leaf.setViewState({ type: TERMINAL_VIEW_TYPE, state: { lazy: true }, icon: "lucide-terminal", title: "Terminal" } as never);
+        if (leaf)
+          void leaf.setViewState({
+            type: TERMINAL_VIEW_TYPE,
+            state: { lazy: true },
+            icon: "lucide-terminal",
+            title: "Terminal",
+          } as never);
       });
       controller.onEnable(plugin);
       plugin.register(() => app.terminals.killAll());

@@ -86,10 +86,14 @@ export class StarterScreen {
     const win = parentEl.ownerDocument.defaultView ?? window;
     this.closeWindow = options.closeWindow ?? (() => win.close());
     this.isWindows = options.isWindows ?? /win/i.test(win.navigator?.platform ?? "");
-    this.showItemInFolder = options.showItemInFolder ?? ((path) => {
-      const shell = (win as Window & { electron?: { shell?: { showItemInFolder?: (p: string) => void } } }).electron?.shell;
-      shell?.showItemInFolder?.(path);
-    });
+    this.showItemInFolder =
+      options.showItemInFolder ??
+      ((path) => {
+        const shell = (
+          win as Window & { electron?: { shell?: { showItemInFolder?: (p: string) => void } } }
+        ).electron?.shell;
+        shell?.showItemInFolder?.(path);
+      });
 
     this.containerEl = createDiv("starter-screen", parentEl);
     const innerEl = createDiv("starter-screen-inner", this.containerEl);
@@ -136,19 +140,25 @@ export class StarterScreen {
 
   private buildMainActions(): void {
     const group = new SettingGroup(this.mainPaneEl);
-    group.addSetting((setting) => setting
-      .setName("Create new vault")
-      .setDesc("Create a new vault under a folder.")
-      .addButton((button) => button
-        .setCta()
-        .setButtonText("Create")
-        .onClick(() => this.openCreatePane())));
-    group.addSetting((setting) => setting
-      .setName("Open folder as vault")
-      .setDesc("Choose an existing folder of Markdown files.")
-      .addButton((button) => button
-        .setButtonText("Open")
-        .onClick(() => void this.openFolderAsVault())));
+    group.addSetting((setting) =>
+      setting
+        .setName("Create new vault")
+        .setDesc("Create a new vault under a folder.")
+        .addButton((button) =>
+          button
+            .setCta()
+            .setButtonText("Create")
+            .onClick(() => this.openCreatePane()),
+        ),
+    );
+    group.addSetting((setting) =>
+      setting
+        .setName("Open folder as vault")
+        .setDesc("Choose an existing folder of Markdown files.")
+        .addButton((button) =>
+          button.setButtonText("Open").onClick(() => void this.openFolderAsVault()),
+        ),
+    );
   }
 
   private async openFolderAsVault(): Promise<void> {
@@ -160,7 +170,9 @@ export class StarterScreen {
   }
 
   private async pickFolder(title: string): Promise<string | null> {
-    const picked = await this.ipc.invoke?.("dialog:open", { title, directory: true }) as string[] | undefined;
+    const picked = (await this.ipc.invoke?.("dialog:open", { title, directory: true })) as
+      | string[]
+      | undefined;
     return picked?.[0] ?? null;
   }
 
@@ -177,24 +189,26 @@ export class StarterScreen {
 
     const group = new SettingGroup(paneEl);
     group.setHeading("Create local vault");
-    group.addSetting((setting) => setting
-      .setName("Vault name")
-      .setDesc("Pick a name for your awesome vault.")
-      .addText((text) => {
-        this.nameComponent = text;
-        text.setPlaceholder("Vault name");
-      }));
+    group.addSetting((setting) =>
+      setting
+        .setName("Vault name")
+        .setDesc("Pick a name for your awesome vault.")
+        .addText((text) => {
+          this.nameComponent = text;
+          text.setPlaceholder("Vault name");
+        }),
+    );
     group.addSetting((setting) => {
       this.locationSetting = setting;
       setting
         .setName("Location")
         .setDesc("Pick a place to put your new vault.")
-        .addButton((button) => button
-          .setButtonText("Browse")
-          .onClick(async () => {
+        .addButton((button) =>
+          button.setButtonText("Browse").onClick(async () => {
             const folder = await this.pickFolder("Location");
             if (folder) this.setLocation(folder);
-          }));
+          }),
+        );
     });
 
     const buttonContainerEl = createDiv("button-container", paneEl);
@@ -209,10 +223,14 @@ export class StarterScreen {
 
   private setLocation(folder: string): void {
     this.location = folder;
-    this.locationSetting.setDesc(createFragment((frag) => {
-      frag.appendChild(this.containerEl.ownerDocument.createTextNode("Your new vault will be placed in: "));
-      createSpan({ cls: "u-pop", text: folder }, frag);
-    }));
+    this.locationSetting.setDesc(
+      createFragment((frag) => {
+        frag.appendChild(
+          this.containerEl.ownerDocument.createTextNode("Your new vault will be placed in: "),
+        );
+        createSpan({ cls: "u-pop", text: folder }, frag);
+      }),
+    );
   }
 
   private createVault(): void {
@@ -235,7 +253,9 @@ export class StarterScreen {
       if (result === true) this.closeWindow();
       else new Notice(`Failed to create vault. ${String(result)}.`);
     } catch {
-      new Notice("Could not create vault at the given location. Please double check the location and permission.");
+      new Notice(
+        "Could not create vault at the given location. Please double check the location and permission.",
+      );
     }
   }
 
@@ -270,7 +290,10 @@ export class StarterScreen {
   // --- Recent vaults ---
 
   private readVaults(): VaultEntry[] {
-    const raw = (this.ipc.sendSync("vault-list") ?? {}) as Record<string, { path?: string; ts?: number; open?: boolean }>;
+    const raw = (this.ipc.sendSync("vault-list") ?? {}) as Record<
+      string,
+      { path?: string; ts?: number; open?: boolean }
+    >;
     const entries: VaultEntry[] = [];
     for (const id of Object.keys(raw)) {
       const value = raw[id];
@@ -297,7 +320,10 @@ export class StarterScreen {
   private renderVaultItem(vault: VaultEntry): void {
     const itemEl = createDiv("recent-vaults-list-item", this.listEl);
     setTooltip(itemEl, vault.path, { placement: "right" });
-    const nameEl = createDiv({ cls: "recent-vaults-list-item-name", text: basename(vault.path) }, itemEl);
+    const nameEl = createDiv(
+      { cls: "recent-vaults-list-item-name", text: basename(vault.path) },
+      itemEl,
+    );
     createDiv({ cls: "recent-vaults-list-item-path", text: dirname(vault.path) }, itemEl);
     const optionEl = createDiv("recent-vaults-list-item-option-button", itemEl);
     setIcon(optionEl, "lucide-more-vertical");
@@ -319,42 +345,58 @@ export class StarterScreen {
     });
   }
 
-  private openVaultItemMenu(event: MouseEvent, itemEl: HTMLElement, nameEl: HTMLElement, vault: VaultEntry): void {
+  private openVaultItemMenu(
+    event: MouseEvent,
+    itemEl: HTMLElement,
+    nameEl: HTMLElement,
+    vault: VaultEntry,
+  ): void {
     const menu = Menu.forEvent(event);
     menu.addSections(["open", "info", "action", "system", "", "danger"]);
     menu.setParentElement(itemEl);
-    menu.addItem((item) => item
-      .setSection("action")
-      .setIcon("lucide-edit-3")
-      .setTitle("Rename vault...")
-      .onClick(() => this.startInlineRename(nameEl, vault)));
-    menu.addItem((item) => item
-      .setSection("action")
-      .setIcon("lucide-folder-tree")
-      .setTitle("Move vault...")
-      .onClick(async () => {
-        const destination = await this.pickFolder("Select destination folder");
-        if (destination) this.moveVault(vault, joinPath(destination, basename(vault.path)), "move");
-      }));
-    menu.addItem((item) => item
-      .setSection("info")
-      .setIcon("lucide-copy")
-      .setTitle("Copy vault ID")
-      .onClick(() => {
-        void navigator.clipboard?.writeText(vault.id);
-        new Notice("Copied to your clipboard");
-      }));
-    menu.addItem((item) => item
-      .setSection("system")
-      .setIcon("lucide-folder-open")
-      .setTitle(this.isWindows ? "Reveal vault in system explorer" : "Reveal vault in Finder")
-      .onClick(() => this.showItemInFolder(vault.path)));
-    menu.addItem((item) => item
-      .setSection("danger")
-      .setIcon("lucide-x")
-      .setWarning(true)
-      .setTitle("Remove from list")
-      .onClick(() => this.removeVault(vault)));
+    menu.addItem((item) =>
+      item
+        .setSection("action")
+        .setIcon("lucide-edit-3")
+        .setTitle("Rename vault...")
+        .onClick(() => this.startInlineRename(nameEl, vault)),
+    );
+    menu.addItem((item) =>
+      item
+        .setSection("action")
+        .setIcon("lucide-folder-tree")
+        .setTitle("Move vault...")
+        .onClick(async () => {
+          const destination = await this.pickFolder("Select destination folder");
+          if (destination)
+            this.moveVault(vault, joinPath(destination, basename(vault.path)), "move");
+        }),
+    );
+    menu.addItem((item) =>
+      item
+        .setSection("info")
+        .setIcon("lucide-copy")
+        .setTitle("Copy vault ID")
+        .onClick(() => {
+          void navigator.clipboard?.writeText(vault.id);
+          new Notice("Copied to your clipboard");
+        }),
+    );
+    menu.addItem((item) =>
+      item
+        .setSection("system")
+        .setIcon("lucide-folder-open")
+        .setTitle(this.isWindows ? "Reveal vault in system explorer" : "Reveal vault in Finder")
+        .onClick(() => this.showItemInFolder(vault.path)),
+    );
+    menu.addItem((item) =>
+      item
+        .setSection("danger")
+        .setIcon("lucide-x")
+        .setWarning(true)
+        .setTitle("Remove from list")
+        .onClick(() => this.removeVault(vault)),
+    );
     menu.showAtMouseEvent(event);
   }
 
@@ -409,9 +451,15 @@ export class StarterScreen {
     }
     const result = this.ipc.sendSync("vault-move", vault.path, newPath);
     if (result === "EVAULTOPEN") {
-      new Notice(verb === "rename" ? "Can't rename a currently open vault." : "Can't move a currently open vault.");
+      new Notice(
+        verb === "rename"
+          ? "Can't rename a currently open vault."
+          : "Can't move a currently open vault.",
+      );
     } else if (result) {
-      new Notice(`${verb === "rename" ? "Failed to rename vault." : "Failed to move vault."} ${String(result)}`);
+      new Notice(
+        `${verb === "rename" ? "Failed to rename vault." : "Failed to move vault."} ${String(result)}`,
+      );
     } else {
       new Notice(verb === "rename" ? "Successfully renamed vault." : "Successfully moved vault.");
     }

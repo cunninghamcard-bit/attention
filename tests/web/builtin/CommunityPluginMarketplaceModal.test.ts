@@ -26,7 +26,10 @@ describe("CommunityPluginMarketplaceModal", () => {
     });
     Object.defineProperty(window, "focus", { configurable: true, value: () => {} });
     Object.defineProperty(window, "open", { configurable: true, value: vi.fn() });
-    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
     document.querySelectorAll(".modal-container, .notice").forEach((el) => el.remove());
   });
 
@@ -56,7 +59,8 @@ describe("CommunityPluginMarketplaceModal", () => {
       package: {
         manifest,
         entry: "plugins/market/main.js",
-        factory: (pluginApp, pluginManifest) => new MarketplaceTestPlugin(pluginApp, pluginManifest),
+        factory: (pluginApp, pluginManifest) =>
+          new MarketplaceTestPlugin(pluginApp, pluginManifest),
       },
     });
 
@@ -150,8 +154,22 @@ describe("CommunityPluginMarketplaceModal", () => {
 
   it("filters marketplace entries from the search input", () => {
     const app = new App(document.createElement("div"));
-    app.pluginMarketplace.registerEntry({ manifest: { id: "alpha", name: "Alpha Plugin", version: "1.0.0", description: "Alpha detail" } });
-    app.pluginMarketplace.registerEntry({ manifest: { id: "beta", name: "Beta Plugin", version: "1.0.0", description: "Beta list item" } });
+    app.pluginMarketplace.registerEntry({
+      manifest: {
+        id: "alpha",
+        name: "Alpha Plugin",
+        version: "1.0.0",
+        description: "Alpha detail",
+      },
+    });
+    app.pluginMarketplace.registerEntry({
+      manifest: {
+        id: "beta",
+        name: "Beta Plugin",
+        version: "1.0.0",
+        description: "Beta list item",
+      },
+    });
     const modal = new CommunityPluginMarketplaceModal(app);
     modal.open();
 
@@ -160,37 +178,80 @@ describe("CommunityPluginMarketplaceModal", () => {
     searchEl!.value = "beta";
     searchEl!.dispatchEvent(new Event("input"));
 
-    expect(modal.contentEl.querySelector(".community-modal-search-results")?.textContent).toContain("Beta Plugin");
-    expect(modal.contentEl.querySelector(".community-modal-search-results")?.textContent).not.toContain("Alpha Plugin");
-    expect(modal.contentEl.querySelector(".community-modal-details")?.textContent).toContain("Alpha detail");
+    expect(modal.contentEl.querySelector(".community-modal-search-results")?.textContent).toContain(
+      "Beta Plugin",
+    );
+    expect(
+      modal.contentEl.querySelector(".community-modal-search-results")?.textContent,
+    ).not.toContain("Alpha Plugin");
+    expect(modal.contentEl.querySelector(".community-modal-details")?.textContent).toContain(
+      "Alpha detail",
+    );
   });
 
   it("keeps selected details when installed-only hides the selected plugin from the list", () => {
     const app = new App(document.createElement("div"));
-    app.pluginMarketplace.registerEntry({ manifest: { id: "alpha", name: "Alpha Plugin", version: "1.0.0", description: "Selected detail" } });
-    app.pluginMarketplace.registerEntry({ manifest: { id: "beta", name: "Beta Plugin", version: "1.0.0", description: "Installed list item" } });
-    app.communityPlugins.add({ manifest: { id: "beta", name: "Beta Plugin", version: "1.0.0" }, installed: true, enabled: false });
+    app.pluginMarketplace.registerEntry({
+      manifest: {
+        id: "alpha",
+        name: "Alpha Plugin",
+        version: "1.0.0",
+        description: "Selected detail",
+      },
+    });
+    app.pluginMarketplace.registerEntry({
+      manifest: {
+        id: "beta",
+        name: "Beta Plugin",
+        version: "1.0.0",
+        description: "Installed list item",
+      },
+    });
+    app.communityPlugins.add({
+      manifest: { id: "beta", name: "Beta Plugin", version: "1.0.0" },
+      installed: true,
+      enabled: false,
+    });
     const modal = new CommunityPluginMarketplaceModal(app);
     modal.open();
 
-    const installedOnlyEl = modal.contentEl.querySelector<HTMLInputElement>(".community-plugin-installed-only input");
+    const installedOnlyEl = modal.contentEl.querySelector<HTMLInputElement>(
+      ".community-plugin-installed-only input",
+    );
     if (!installedOnlyEl) throw new Error("Installed-only toggle not found");
     installedOnlyEl.checked = true;
     installedOnlyEl.dispatchEvent(new Event("change", { bubbles: true }));
 
-    expect(modal.contentEl.querySelector(".community-modal-search-results")?.textContent).toContain("Beta Plugin");
-    expect(modal.contentEl.querySelector(".community-modal-search-results")?.textContent).not.toContain("Alpha Plugin");
-    expect(modal.contentEl.querySelector(".community-modal-details")?.textContent).toContain("Selected detail");
+    expect(modal.contentEl.querySelector(".community-modal-search-results")?.textContent).toContain(
+      "Beta Plugin",
+    );
+    expect(
+      modal.contentEl.querySelector(".community-modal-search-results")?.textContent,
+    ).not.toContain("Alpha Plugin");
+    expect(modal.contentEl.querySelector(".community-modal-details")?.textContent).toContain(
+      "Selected detail",
+    );
   });
 
   it("returns from selected plugin details through the active closeable stack", () => {
     const app = new App(document.createElement("div"));
-    app.pluginMarketplace.registerEntry({ manifest: { id: "alpha", name: "Alpha Plugin", version: "1.0.0", description: "Alpha detail" } });
-    app.pluginMarketplace.registerEntry({ manifest: { id: "beta", name: "Beta Plugin", version: "1.0.0", description: "Beta detail" } });
+    app.pluginMarketplace.registerEntry({
+      manifest: {
+        id: "alpha",
+        name: "Alpha Plugin",
+        version: "1.0.0",
+        description: "Alpha detail",
+      },
+    });
+    app.pluginMarketplace.registerEntry({
+      manifest: { id: "beta", name: "Beta Plugin", version: "1.0.0", description: "Beta detail" },
+    });
     const modal = new CommunityPluginMarketplaceModal(app);
     modal.open();
 
-    expect(modal.contentEl.querySelector(".community-modal-details")?.textContent).toContain("Alpha detail");
+    expect(modal.contentEl.querySelector(".community-modal-details")?.textContent).toContain(
+      "Alpha detail",
+    );
     expect(getActiveCloseables()).toHaveLength(2);
 
     expect(closeTopActiveCloseable()).toBe(true);
@@ -202,7 +263,9 @@ describe("CommunityPluginMarketplaceModal", () => {
 
     modal.contentEl.querySelector<HTMLButtonElement>('[data-plugin-id="beta"]')?.click();
 
-    expect(modal.contentEl.querySelector(".community-modal-details")?.textContent).toContain("Beta detail");
+    expect(modal.contentEl.querySelector(".community-modal-details")?.textContent).toContain(
+      "Beta detail",
+    );
     expect(getActiveCloseables()).toHaveLength(2);
 
     modal.close();
@@ -212,11 +275,15 @@ describe("CommunityPluginMarketplaceModal", () => {
 
   it("sets the search query from a missing auto-open plugin id instead of selecting the first item", () => {
     const app = new App(document.createElement("div"));
-    app.pluginMarketplace.registerEntry({ manifest: { id: "other-plugin", name: "Other Plugin", version: "1.0.0" } });
+    app.pluginMarketplace.registerEntry({
+      manifest: { id: "other-plugin", name: "Other Plugin", version: "1.0.0" },
+    });
     const modal = new CommunityPluginMarketplaceModal(app).setAutoOpen("missing-plugin");
     modal.open();
 
-    expect(modal.contentEl.querySelector<HTMLInputElement>(".community-plugin-search")?.value).toBe("missing plugin");
+    expect(modal.contentEl.querySelector<HTMLInputElement>(".community-plugin-search")?.value).toBe(
+      "missing plugin",
+    );
     expect(modal.contentEl.querySelector(".community-modal-details")).toBeNull();
   });
 
@@ -232,11 +299,17 @@ describe("CommunityPluginMarketplaceModal", () => {
       },
     });
     const app = new App(document.createElement("div"));
-    app.pluginMarketplace.registerEntry({ manifest: { id: "alpha", name: "Alpha Plugin", version: "1.0.0" }, downloads: 1, updatedAt: "2026-01-01" });
+    app.pluginMarketplace.registerEntry({
+      manifest: { id: "alpha", name: "Alpha Plugin", version: "1.0.0" },
+      downloads: 1,
+      updatedAt: "2026-01-01",
+    });
     const modal = new CommunityPluginMarketplaceModal(app);
     modal.open();
 
-    modal.contentEl.querySelector<HTMLButtonElement>(".community-plugin-sort")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    modal.contentEl
+      .querySelector<HTMLButtonElement>(".community-plugin-sort")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     clickButton(document.body, "Alphabetical");
 
     expect(values.get("communityPluginSortOrder")).toBe("alphabetical");
@@ -265,7 +338,8 @@ describe("CommunityPluginMarketplaceModal", () => {
       package: {
         manifest: latestManifest,
         entry: "plugins/updatable/main.js",
-        factory: (pluginApp, pluginManifest) => new MarketplaceTestPlugin(pluginApp, pluginManifest),
+        factory: (pluginApp, pluginManifest) =>
+          new MarketplaceTestPlugin(pluginApp, pluginManifest),
       },
     });
     await app.pluginInstaller.checkForUpdates(["updatable"]);
@@ -318,15 +392,24 @@ describe("CommunityPluginMarketplaceModal", () => {
     clickButton(modal.contentEl, "Options");
 
     expect(document.body.querySelector(".modal.mod-settings")).not.toBeNull();
-    expect(document.body.querySelector('.vertical-tab-nav-item.is-active[data-setting-id="settings-plugin"]')).not.toBeNull();
+    expect(
+      document.body.querySelector(
+        '.vertical-tab-nav-item.is-active[data-setting-id="settings-plugin"]',
+      ),
+    ).not.toBeNull();
     expect(document.body.querySelector(".modal.mod-community-plugin")).toBeNull();
 
     const hotkeysModal = new CommunityPluginMarketplaceModal(app);
     hotkeysModal.open();
     clickButton(hotkeysModal.contentEl, "Hotkeys");
 
-    expect(document.body.querySelector('.vertical-tab-nav-item.is-active[data-setting-id="hotkeys"]')).not.toBeNull();
-    expect(document.body.querySelector<HTMLInputElement>(".hotkeys-settings .setting-group-search")?.value).toBe("settings-plugin");
+    expect(
+      document.body.querySelector('.vertical-tab-nav-item.is-active[data-setting-id="hotkeys"]'),
+    ).not.toBeNull();
+    expect(
+      document.body.querySelector<HTMLInputElement>(".hotkeys-settings .setting-group-search")
+        ?.value,
+    ).toBe("settings-plugin");
     expect(document.body.textContent).toContain("Settings Plugin: Run");
     expect(document.body.querySelector(".modal.mod-community-plugin")).toBeNull();
   });
@@ -358,7 +441,9 @@ describe("CommunityPluginMarketplaceModal", () => {
     expect(modal.contentEl.textContent).toContain("Loading README");
     await flushAsync();
 
-    expect(modal.contentEl.querySelector(".community-modal-readme h1")?.textContent).toBe("Plugin README");
+    expect(modal.contentEl.querySelector(".community-modal-readme h1")?.textContent).toBe(
+      "Plugin README",
+    );
     expect(modal.contentEl.textContent).toContain("Useful details.");
   });
 
@@ -367,7 +452,15 @@ describe("CommunityPluginMarketplaceModal", () => {
     app.pluginMarketplace.setDataSource({
       async fetchJson<T>(url: string): Promise<T> {
         if (url.endsWith("community-plugins.json")) {
-          return [{ id: "catalog", name: "Catalog Plugin", author: "Ada", description: "Loaded from catalog", repo: "ada/catalog" }] as T;
+          return [
+            {
+              id: "catalog",
+              name: "Catalog Plugin",
+              author: "Ada",
+              description: "Loaded from catalog",
+              repo: "ada/catalog",
+            },
+          ] as T;
         }
         if (url.endsWith("community-plugin-stats.json")) {
           return { catalog: { downloads: 12, updated: Date.UTC(2026, 5, 20), "1.0.0": 1 } } as T;
@@ -397,7 +490,15 @@ describe("CommunityPluginMarketplaceModal", () => {
           throw new Error("offline");
         }
         if (url.endsWith("community-plugins.json")) {
-          return [{ id: "retry", name: "Retry Plugin", author: "Ada", description: "Loaded after retry", repo: "ada/retry" }] as T;
+          return [
+            {
+              id: "retry",
+              name: "Retry Plugin",
+              author: "Ada",
+              description: "Loaded after retry",
+              repo: "ada/retry",
+            },
+          ] as T;
         }
         return {} as T;
       },
@@ -418,7 +519,9 @@ describe("CommunityPluginMarketplaceModal", () => {
 });
 
 function clickButton(root: HTMLElement, text: string): void {
-  const button = [...root.querySelectorAll<HTMLElement>("button, .menu-item")].find((item) => item.textContent?.trim() === text);
+  const button = [...root.querySelectorAll<HTMLElement>("button, .menu-item")].find(
+    (item) => item.textContent?.trim() === text,
+  );
   if (!button) throw new Error(`Button not found: ${text}`);
   button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 }
@@ -428,9 +531,13 @@ function flushAsync(): Promise<void> {
 }
 
 function buttonTexts(root: HTMLElement): string[] {
-  return [...root.querySelectorAll<HTMLButtonElement>("button")].map((button) => button.textContent?.trim() ?? "");
+  return [...root.querySelectorAll<HTMLButtonElement>("button")].map(
+    (button) => button.textContent?.trim() ?? "",
+  );
 }
 
 function modalTitles(): string[] {
-  return [...document.body.querySelectorAll<HTMLElement>(".modal .modal-title")].map((title) => title.textContent ?? "");
+  return [...document.body.querySelectorAll<HTMLElement>(".modal .modal-title")].map(
+    (title) => title.textContent ?? "",
+  );
 }

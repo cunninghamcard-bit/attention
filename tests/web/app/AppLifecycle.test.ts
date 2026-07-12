@@ -97,7 +97,11 @@ describe("AppLifecycle opening behavior", () => {
     const changed: string[] = [];
     app.vault.on("config-changed", (key) => changed.push(String(key)));
 
-    await app.jsonStore.write("appearance.json", { theme: "obsidian", accentColor: "#123456" }, { mtime: Date.now() + 1_000 });
+    await app.jsonStore.write(
+      "appearance.json",
+      { theme: "obsidian", accentColor: "#123456" },
+      { mtime: Date.now() + 1_000 },
+    );
 
     await vi.waitFor(() => {
       expect(app.vault.getConfig("theme")).toBe("obsidian");
@@ -112,7 +116,11 @@ describe("AppLifecycle opening behavior", () => {
     await app.ready;
     vi.useFakeTimers();
     try {
-      await app.jsonStore.write("hotkeys.json", { "app:open": [{ modifiers: ["Mod"], key: "O" }] }, { mtime: Date.now() + 1_000 });
+      await app.jsonStore.write(
+        "hotkeys.json",
+        { "app:open": [{ modifiers: ["Mod"], key: "O" }] },
+        { mtime: Date.now() + 1_000 },
+      );
 
       await vi.advanceTimersByTimeAsync(49);
       expect(app.hotkeys.getHotkeys("app:open")).toBeUndefined();

@@ -1,4 +1,10 @@
-import { autocompletion, completionKeymap, type Completion, type CompletionContext, type CompletionResult } from "@codemirror/autocomplete";
+import {
+  autocompletion,
+  completionKeymap,
+  type Completion,
+  type CompletionContext,
+  type CompletionResult,
+} from "@codemirror/autocomplete";
 import { defaultKeymap, history, historyKeymap, insertNewline } from "@codemirror/commands";
 import { Compartment, EditorState, Prec, type Extension } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
@@ -110,7 +116,13 @@ export class ChatComposer extends Component {
         extensions: [
           history(),
           EditorView.lineWrapping,
-          autocompletion({ override: [(context) => this.completeSlashCommand(context), (context) => this.completeWikilink(context), (context) => this.completeMention(context)] }),
+          autocompletion({
+            override: [
+              (context) => this.completeSlashCommand(context),
+              (context) => this.completeWikilink(context),
+              (context) => this.completeMention(context),
+            ],
+          }),
           Prec.high(keymap.of(completionKeymap)),
           keymap.of([
             { key: "Enter", run: () => this.submit() },
@@ -141,20 +153,38 @@ export class ChatComposer extends Component {
     const toolbarEl = createDiv("chat-composer-toolbar", cardEl);
     // Hidden picker input: the button is the only visible affordance, the
     // way a native file-attach control works in Claude Desktop.
-    this.attachInputEl = createEl("input", { cls: "chat-composer-attach-input", parent: toolbarEl, attr: { type: "file", multiple: true } });
+    this.attachInputEl = createEl("input", {
+      cls: "chat-composer-attach-input",
+      parent: toolbarEl,
+      attr: { type: "file", multiple: true },
+    });
     this.attachInputEl.hide();
-    this.attachButtonEl = createEl("button", { cls: "chat-composer-attach", parent: toolbarEl, title: STRINGS.composer.attach });
+    this.attachButtonEl = createEl("button", {
+      cls: "chat-composer-attach",
+      parent: toolbarEl,
+      title: STRINGS.composer.attach,
+    });
     setIcon(this.attachButtonEl, "lucide-plus");
     if (this.callbacks.getModelLabel && this.callbacks.openModelMenu) {
       this.modelChipEl = createEl("button", { cls: "chat-model-chip", parent: toolbarEl });
-      this.modelChipLabelEl = createSpan({ cls: "chat-model-chip-label", parent: this.modelChipEl });
-      setIcon(createSpan({ cls: "chat-model-chip-chevron", parent: this.modelChipEl }), "lucide-chevron-down");
+      this.modelChipLabelEl = createSpan({
+        cls: "chat-model-chip-label",
+        parent: this.modelChipEl,
+      });
+      setIcon(
+        createSpan({ cls: "chat-model-chip-chevron", parent: this.modelChipEl }),
+        "lucide-chevron-down",
+      );
       this.modelChipEl.addEventListener("click", (event) => this.callbacks.openModelMenu!(event));
       this.refreshModelChip();
     }
     const actionsEl = createDiv("chat-composer-actions", toolbarEl);
     for (const action of listChatComposerActions()) {
-      const buttonEl = createEl("button", { cls: "chat-composer-action", parent: actionsEl, text: action.title });
+      const buttonEl = createEl("button", {
+        cls: "chat-composer-action",
+        parent: actionsEl,
+        text: action.title,
+      });
       buttonEl.addEventListener("click", () =>
         action.onClick({
           getValue: () => this.getValue(),
@@ -166,14 +196,20 @@ export class ChatComposer extends Component {
     // One slot, chat-style: empty draft shows nothing; the arrow springs
     // in when there is something to send; streaming swaps it for a drawn
     // record-stop glyph (ring + square). All swaps are CSS-only.
-    this.sendButtonEl = createEl("button", { cls: "chat-composer-send", parent: actionsEl, title: STRINGS.composer.send });
+    this.sendButtonEl = createEl("button", {
+      cls: "chat-composer-send",
+      parent: actionsEl,
+      title: STRINGS.composer.send,
+    });
     setIcon(this.sendButtonEl, "lucide-arrow-up");
     const stopEl = createSpan({ cls: "chat-stop-glyph", parent: this.sendButtonEl });
     createSpan({ cls: "chat-stop-glyph-square", parent: stopEl });
   }
 
   override onload(): void {
-    this.registerDomEvent(this.sendButtonEl, "click", () => (this.callbacks.isRunning() ? this.callbacks.stop() : void this.submit()));
+    this.registerDomEvent(this.sendButtonEl, "click", () =>
+      this.callbacks.isRunning() ? this.callbacks.stop() : void this.submit(),
+    );
     this.registerDomEvent(this.attachButtonEl, "click", () => this.attachInputEl.click());
     this.registerDomEvent(this.attachInputEl, "change", () => {
       void this.ingestFiles(this.attachInputEl.files).then(() => (this.attachInputEl.value = ""));
@@ -190,9 +226,13 @@ export class ChatComposer extends Component {
       this.cardEl.removeClass("is-dragging");
       void this.ingestFiles(event.dataTransfer?.files ?? null);
     });
-    this.register(onChatComposerExtensionsChanged(() => {
-      this.editor.dispatch({ effects: this.pluginExtensions.reconfigure(listChatComposerExtensions()) });
-    }));
+    this.register(
+      onChatComposerExtensionsChanged(() => {
+        this.editor.dispatch({
+          effects: this.pluginExtensions.reconfigure(listChatComposerExtensions()),
+        });
+      }),
+    );
     this.register(() => this.editor.destroy());
   }
 
@@ -218,11 +258,15 @@ export class ChatComposer extends Component {
 
   // The send button is quiet until there is something to send.
   private syncSendState(): void {
-    this.sendButtonEl.toggleClass("is-ready", this.getValue().trim().length > 0 || !this.attachmentBar.isEmpty());
+    this.sendButtonEl.toggleClass(
+      "is-ready",
+      this.getValue().trim().length > 0 || !this.attachmentBar.isEmpty(),
+    );
   }
 
   refreshModelChip(): void {
-    if (this.modelChipLabelEl && this.callbacks.getModelLabel) this.modelChipLabelEl.setText(this.callbacks.getModelLabel());
+    if (this.modelChipLabelEl && this.callbacks.getModelLabel)
+      this.modelChipLabelEl.setText(this.callbacks.getModelLabel());
   }
 
   syncRunning(): void {
@@ -299,29 +343,39 @@ export class ChatComposer extends Component {
   private completeSlashCommand(context: CompletionContext): CompletionResult | null {
     const match = context.matchBefore(/^\/[\w-]*/);
     if (!match || (match.from === match.to && !context.explicit)) return null;
-    const harnessOptions: Completion[] = (this.callbacks.getHarnessCommands?.() ?? []).map((command) => ({
-      label: `/${command.name}`,
-      detail: command.description ?? "",
-      apply: (view: EditorView) => {
-        const insert = `/${command.name} `;
-        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert }, selection: { anchor: insert.length } });
-      },
-    }));
-    const options: Completion[] = harnessOptions.concat(listChatSlashCommands().map((command) => ({
-      label: `/${command.id}`,
-      detail: command.description ?? command.name,
-      apply: (view) => {
-        // Argument-less commands run on selection; argument-taking ones
-        // insert "/id " and run at submit with the rest of the line.
-        if (command.run && (command.args ?? "none") === "none") {
-          view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } });
-          command.run(this.commandContext(), "");
-          return;
-        }
-        const insert = command.insertText ?? `/${command.id} `;
-        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert }, selection: { anchor: insert.length } });
-      },
-    })));
+    const harnessOptions: Completion[] = (this.callbacks.getHarnessCommands?.() ?? []).map(
+      (command) => ({
+        label: `/${command.name}`,
+        detail: command.description ?? "",
+        apply: (view: EditorView) => {
+          const insert = `/${command.name} `;
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert },
+            selection: { anchor: insert.length },
+          });
+        },
+      }),
+    );
+    const options: Completion[] = harnessOptions.concat(
+      listChatSlashCommands().map((command) => ({
+        label: `/${command.id}`,
+        detail: command.description ?? command.name,
+        apply: (view) => {
+          // Argument-less commands run on selection; argument-taking ones
+          // insert "/id " and run at submit with the rest of the line.
+          if (command.run && (command.args ?? "none") === "none") {
+            view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } });
+            command.run(this.commandContext(), "");
+            return;
+          }
+          const insert = command.insertText ?? `/${command.id} `;
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert },
+            selection: { anchor: insert.length },
+          });
+        },
+      })),
+    );
     return { from: match.from, options, filter: true };
   }
 

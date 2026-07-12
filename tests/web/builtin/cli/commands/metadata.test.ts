@@ -93,7 +93,9 @@ describe("tags", () => {
     const { app } = await seededApp();
     const json = JSON.parse(await app.cli.handleCli(["tags", "counts", "format=json"]));
     expect(json).toContainEqual({ tag: "#foo", count: "3" });
-    expect(JSON.parse(await app.cli.handleCli(["tags", "format=json"]))).toContainEqual({ tag: "#foo" });
+    expect(JSON.parse(await app.cli.handleCli(["tags", "format=json"]))).toContainEqual({
+      tag: "#foo",
+    });
     const csv = await app.cli.handleCli(["tags", "counts", "format=csv"]);
     expect(csv.split("\n")).toContain("#foo,3");
   });
@@ -101,14 +103,20 @@ describe("tags", () => {
   it("per-file mode scopes tags to the resolved file", async () => {
     const { app } = await seededApp();
     expect(await app.cli.handleCli(["tags", "path=Alpha.md"])).toBe("#bar\n#baz\n#foo");
-    expect(await app.cli.handleCli(["tags", "file=Alpha", "counts"])).toBe("#bar\t1\n#baz\t1\n#foo\t2");
+    expect(await app.cli.handleCli(["tags", "file=Alpha", "counts"])).toBe(
+      "#bar\t1\n#baz\t1\n#foo\t2",
+    );
     expect(await app.cli.handleCli(["tags", "path=Folder/Gamma.md"])).toBe("No tags found.");
   });
 
   it("throws the tryResolveFile error strings", async () => {
     const { app } = await seededApp();
-    await expect(app.cli.handleCli(["tags", "path=Nope.md"])).rejects.toBe('File "Nope.md" not found.');
-    await expect(app.cli.handleCli(["tags", "path=Folder"])).rejects.toBe('"Folder" is a folder, not a file.');
+    await expect(app.cli.handleCli(["tags", "path=Nope.md"])).rejects.toBe(
+      'File "Nope.md" not found.',
+    );
+    await expect(app.cli.handleCli(["tags", "path=Folder"])).rejects.toBe(
+      '"Folder" is a folder, not a file.',
+    );
     await expect(app.cli.handleCli(["tags", "file=Zed"])).rejects.toBe('File "Zed" not found.');
     await expect(app.cli.handleCli(["tags", "active"])).rejects.toBe(
       "No active file. Use file=<name> or path=<path> to specify a file.",
@@ -132,7 +140,9 @@ describe("tag", () => {
   it("total returns the occurrence count; verbose prepends tag and count", async () => {
     const { app } = await seededApp();
     expect(await app.cli.handleCli(["tag", "name=foo", "total"])).toBe("3");
-    expect(await app.cli.handleCli(["tag", "name=foo", "verbose"])).toBe("#foo\t3\nAlpha.md\nBeta.md");
+    expect(await app.cli.handleCli(["tag", "name=foo", "verbose"])).toBe(
+      "#foo\t3\nAlpha.md\nBeta.md",
+    );
   });
 
   it("looks up the count case-sensitively but matches files case-insensitively", async () => {
@@ -147,7 +157,9 @@ describe("tag", () => {
   it("throws for unknown tags and missing name", async () => {
     const { app } = await seededApp();
     await expect(app.cli.handleCli(["tag", "name=nope"])).rejects.toBe('Tag "#nope" not found.');
-    await expect(app.cli.handleCli(["tag"])).rejects.toMatch(/^Missing required parameter: name=<tag>/);
+    await expect(app.cli.handleCli(["tag"])).rejects.toMatch(
+      /^Missing required parameter: name=<tag>/,
+    );
   });
 });
 
@@ -184,14 +196,24 @@ describe("properties", () => {
 
   it("per-file without frontmatter returns the literal text", async () => {
     const { app } = await seededApp();
-    expect(await app.cli.handleCli(["properties", "path=Folder/Gamma.md"])).toBe("No frontmatter found.");
+    expect(await app.cli.handleCli(["properties", "path=Folder/Gamma.md"])).toBe(
+      "No frontmatter found.",
+    );
   });
 
   it("vault mode lists property names sorted by name", async () => {
     const { app } = await seededApp();
     await refreshProperties(app);
     const out = await app.cli.handleCli(["properties"]);
-    expect(out.split("\n")).toEqual(["aliases", "count", "cssclasses", "done", "empty", "status", "tags"]);
+    expect(out.split("\n")).toEqual([
+      "aliases",
+      "count",
+      "cssclasses",
+      "done",
+      "empty",
+      "status",
+      "tags",
+    ]);
   });
 
   it("vault counts, total, sort=count, and json shapes", async () => {
@@ -211,18 +233,26 @@ describe("properties", () => {
     const { app } = await seededApp();
     await refreshProperties(app);
     expect(await app.cli.handleCli(["properties", "name=Status"])).toBe("1");
-    await expect(app.cli.handleCli(["properties", "name=zzz"])).rejects.toBe('Property "zzz" not found.');
+    await expect(app.cli.handleCli(["properties", "name=zzz"])).rejects.toBe(
+      'Property "zzz" not found.',
+    );
   });
 });
 
 describe("property:read", () => {
   it("renders scalars, booleans, arrays, and empties", async () => {
     const { app } = await seededApp();
-    expect(await app.cli.handleCli(["property:read", "name=status", "path=Alpha.md"])).toBe("draft");
+    expect(await app.cli.handleCli(["property:read", "name=status", "path=Alpha.md"])).toBe(
+      "draft",
+    );
     expect(await app.cli.handleCli(["property:read", "name=count", "path=Alpha.md"])).toBe("2");
     expect(await app.cli.handleCli(["property:read", "name=done", "path=Beta.md"])).toBe("false");
-    expect(await app.cli.handleCli(["property:read", "name=aliases", "path=Alpha.md"])).toBe("A1\nShared");
-    expect(await app.cli.handleCli(["property:read", "name=empty", "path=Alpha.md"])).toBe("(empty)");
+    expect(await app.cli.handleCli(["property:read", "name=aliases", "path=Alpha.md"])).toBe(
+      "A1\nShared",
+    );
+    expect(await app.cli.handleCli(["property:read", "name=empty", "path=Alpha.md"])).toBe(
+      "(empty)",
+    );
   });
 
   it("throws for absent keys, missing frontmatter, and missing name", async () => {
@@ -230,11 +260,15 @@ describe("property:read", () => {
     await expect(app.cli.handleCli(["property:read", "name=nope", "path=Alpha.md"])).rejects.toBe(
       'Property "nope" not found.',
     );
-    await expect(app.cli.handleCli(["property:read", "name=status", "path=Folder/Gamma.md"])).rejects.toBe(
-      'Property "status" not found.',
+    await expect(
+      app.cli.handleCli(["property:read", "name=status", "path=Folder/Gamma.md"]),
+    ).rejects.toBe('Property "status" not found.');
+    await expect(app.cli.handleCli(["property:read", "name=x", "path=Nope.md"])).rejects.toBe(
+      'File "Nope.md" not found.',
     );
-    await expect(app.cli.handleCli(["property:read", "name=x", "path=Nope.md"])).rejects.toBe('File "Nope.md" not found.');
-    await expect(app.cli.handleCli(["property:read"])).rejects.toMatch(/^Missing required parameter: name=<name>/);
+    await expect(app.cli.handleCli(["property:read"])).rejects.toMatch(
+      /^Missing required parameter: name=<name>/,
+    );
   });
 });
 
@@ -246,41 +280,65 @@ describe("property:set", () => {
 
   it("sets a text value and echoes the raw input", async () => {
     const { app, alpha } = await seededApp();
-    expect(await app.cli.handleCli(["property:set", "name=status", "value=final", "path=Alpha.md"])).toBe(
-      "Set status: final",
-    );
+    expect(
+      await app.cli.handleCli(["property:set", "name=status", "value=final", "path=Alpha.md"]),
+    ).toBe("Set status: final");
     expect(await readBack(app, alpha, "status")).toBe("final");
   });
 
   it("parses a JSON array regardless of type and infers list", async () => {
     const { app, beta } = await seededApp();
-    expect(await app.cli.handleCli(["property:set", "name=mylist", 'value=["a", "b"]', "path=Beta.md"])).toBe(
-      'Set mylist: ["a", "b"]',
-    );
+    expect(
+      await app.cli.handleCli(["property:set", "name=mylist", 'value=["a", "b"]', "path=Beta.md"]),
+    ).toBe('Set mylist: ["a", "b"]');
     expect(await readBack(app, beta, "mylist")).toBe("a\nb");
     expect(app.metadataTypeManager.getAssignedWidget("mylist")).toBe("multitext");
   });
 
   it("parses number, checkbox, list, and date types", async () => {
     const { app, beta } = await seededApp();
-    await app.cli.handleCli(["property:set", "name=num", "value=42", "type=number", "path=Beta.md"]);
+    await app.cli.handleCli([
+      "property:set",
+      "name=num",
+      "value=42",
+      "type=number",
+      "path=Beta.md",
+    ]);
     expect(await readBack(app, beta, "num")).toBe("42");
-    await app.cli.handleCli(["property:set", "name=flag", "value=1", "type=checkbox", "path=Beta.md"]);
+    await app.cli.handleCli([
+      "property:set",
+      "name=flag",
+      "value=1",
+      "type=checkbox",
+      "path=Beta.md",
+    ]);
     expect(await readBack(app, beta, "flag")).toBe("true");
-    await app.cli.handleCli(["property:set", "name=items", "value=a, b", "type=list", "path=Beta.md"]);
+    await app.cli.handleCli([
+      "property:set",
+      "name=items",
+      "value=a, b",
+      "type=list",
+      "path=Beta.md",
+    ]);
     expect(await readBack(app, beta, "items")).toBe("a\nb");
-    await app.cli.handleCli(["property:set", "name=day", "value=2026-07-11", "type=date", "path=Beta.md"]);
+    await app.cli.handleCli([
+      "property:set",
+      "name=day",
+      "value=2026-07-11",
+      "type=date",
+      "path=Beta.md",
+    ]);
     expect(await readBack(app, beta, "day")).toBe("2026-07-11");
   });
 
   it("throws the validation error strings", async () => {
     const { app } = await seededApp();
-    await expect(app.cli.handleCli(["property:set", "name=n", "value=abc", "type=number", "path=Alpha.md"])).rejects.toBe(
-      "Invalid number: abc",
-    );
-    await expect(app.cli.handleCli(["property:set", "name=d", "value=nope", "type=date", "path=Alpha.md"])).rejects.toBe(
-      "Invalid date format. Use YYYY-MM-DD",
-    );
+    await expect(
+      app.cli.handleCli(["property:set", "name=n", "value=abc", "type=number", "path=Alpha.md"]),
+    ).rejects.toBe("Invalid number: abc");
+    await expect(
+      app.cli.handleCli(["property:set", "name=d", "value=nope", "type=date", "path=Alpha.md"]),
+    ).rejects.toBe("Invalid date format. Use YYYY-MM-DD");
     await expect(
       app.cli.handleCli(["property:set", "name=d", "value=nope", "type=datetime", "path=Alpha.md"]),
     ).rejects.toBe("Invalid datetime format. Use YYYY-MM-DDTHH:mm or YYYY-MM-DDTHH:mm:ss");
@@ -293,9 +351,13 @@ describe("property:set", () => {
 describe("property:remove", () => {
   it("removes a property and reports success even for absent keys", async () => {
     const { app, alpha } = await seededApp();
-    expect(await app.cli.handleCli(["property:remove", "name=status", "path=Alpha.md"])).toBe("Removed: status");
+    expect(await app.cli.handleCli(["property:remove", "name=status", "path=Alpha.md"])).toBe(
+      "Removed: status",
+    );
     expect(await app.vault.read(alpha)).not.toContain("status");
-    expect(await app.cli.handleCli(["property:remove", "name=ghost", "path=Alpha.md"])).toBe("Removed: ghost");
+    expect(await app.cli.handleCli(["property:remove", "name=ghost", "path=Alpha.md"])).toBe(
+      "Removed: ghost",
+    );
     await expect(app.cli.handleCli(["property:remove", "path=Alpha.md"])).rejects.toMatch(
       /^Missing required parameter: name=<name>/,
     );
@@ -307,7 +369,9 @@ describe("aliases", () => {
     const { app } = await seededApp();
     expect(await app.cli.handleCli(["aliases"])).toBe("A1\nShared");
     // Paths ride in encounter order (vault traversal), NOT sorted — faithful.
-    expect(await app.cli.handleCli(["aliases", "verbose"])).toBe("A1\tAlpha.md\nShared\tBeta.md, Alpha.md");
+    expect(await app.cli.handleCli(["aliases", "verbose"])).toBe(
+      "A1\tAlpha.md\nShared\tBeta.md, Alpha.md",
+    );
     expect(await app.cli.handleCli(["aliases", "total"])).toBe("2");
   });
 
@@ -320,7 +384,9 @@ describe("aliases", () => {
 
   it("throws the tryResolveFile error strings", async () => {
     const { app } = await seededApp();
-    await expect(app.cli.handleCli(["aliases", "path=Nope.md"])).rejects.toBe('File "Nope.md" not found.');
+    await expect(app.cli.handleCli(["aliases", "path=Nope.md"])).rejects.toBe(
+      'File "Nope.md" not found.',
+    );
     await expect(app.cli.handleCli(["aliases", "active"])).rejects.toBe(
       "No active file. Use file=<name> or path=<path> to specify a file.",
     );

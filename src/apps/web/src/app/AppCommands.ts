@@ -15,7 +15,10 @@ import { Platform } from "../platform/Platform";
 export function registerAppCommands(app: App): void {
   app.commands.setEditorContextProvider(() => {
     const activeEditor = app.workspace.activeEditor;
-    const view = activeEditor instanceof MarkdownView ? activeEditor : app.workspace.getActiveViewOfType(MarkdownView);
+    const view =
+      activeEditor instanceof MarkdownView
+        ? activeEditor
+        : app.workspace.getActiveViewOfType(MarkdownView);
     return activeEditor?.editor && view ? { editor: activeEditor.editor, view } : null;
   });
 
@@ -63,7 +66,8 @@ export function registerAppCommands(app: App): void {
     name: "Toggle ribbon",
     checkCallback: (checking) => {
       if (!Platform.isDesktop || !Platform.canDisplayRibbon) return false;
-      if (!checking) app.vault.setConfig("showRibbon", app.vault.getConfig<boolean>("showRibbon") === false);
+      if (!checking)
+        app.vault.setConfig("showRibbon", app.vault.getConfig<boolean>("showRibbon") === false);
       return true;
     },
   });
@@ -72,7 +76,8 @@ export function registerAppCommands(app: App): void {
     id: "editor:toggle-readable-line-length",
     name: "Toggle readable line length",
     icon: "lucide-ruler",
-    callback: () => app.vault.setConfig("readableLineLength", !app.vault.getConfig("readableLineLength")),
+    callback: () =>
+      app.vault.setConfig("readableLineLength", !app.vault.getConfig("readableLineLength")),
   });
 
   app.commands.addCommand({
@@ -221,7 +226,10 @@ export function registerAppCommands(app: App): void {
     icon: "lucide-layers",
     checkCallback: (checking) => {
       const tabs = app.workspace.activeLeaf?.parent;
-      const available = tabs instanceof WorkspaceTabs && tabs.getRoot() !== app.workspace.leftSplit && tabs.getRoot() !== app.workspace.rightSplit;
+      const available =
+        tabs instanceof WorkspaceTabs &&
+        tabs.getRoot() !== app.workspace.leftSplit &&
+        tabs.getRoot() !== app.workspace.rightSplit;
       if (!checking && available) tabs.setStacked(!tabs.isStacked);
       return available;
     },
@@ -551,7 +559,13 @@ export function registerAppCommands(app: App): void {
     icon: "lucide-diff",
     allowProperties: true,
     editorCheckCallback: (checking, _editor, ctx) => {
-      if (!canFoldMarkdown(app) || !(ctx instanceof MarkdownView) || ctx.getMode() !== "source" || !ctx.canToggleFoldAtCursor()) return false;
+      if (
+        !canFoldMarkdown(app) ||
+        !(ctx instanceof MarkdownView) ||
+        ctx.getMode() !== "source" ||
+        !ctx.canToggleFoldAtCursor()
+      )
+        return false;
       if (!checking) ctx.toggleFoldAtCursor();
       return true;
     },
@@ -695,7 +709,12 @@ export function registerAppCommands(app: App): void {
   });
 
   for (const command of [
-    ["editor:toggle-strikethrough", "Toggle strikethrough", "lucide-strikethrough", "strikethrough"],
+    [
+      "editor:toggle-strikethrough",
+      "Toggle strikethrough",
+      "lucide-strikethrough",
+      "strikethrough",
+    ],
     ["editor:toggle-highlight", "Toggle highlight", "lucide-highlighter", "highlight"],
     ["editor:toggle-code", "Toggle code", "lucide-code-2", "code"],
     ["editor:toggle-inline-math", "Toggle inline math", "lucide-sigma", "math"],
@@ -750,7 +769,8 @@ export function registerAppCommands(app: App): void {
     icon: "lucide-quote",
     showOnMobileToolbar: true,
     editorCheckCallback: (checking, editor, ctx) => {
-      if (!(ctx instanceof MarkdownView) || (editor as { inTableCell?: boolean }).inTableCell) return false;
+      if (!(ctx instanceof MarkdownView) || (editor as { inTableCell?: boolean }).inTableCell)
+        return false;
       if (!checking) ctx.toggleBlockquote();
       return true;
     },
@@ -762,7 +782,8 @@ export function registerAppCommands(app: App): void {
     icon: "lucide-list",
     showOnMobileToolbar: true,
     editorCheckCallback: (checking, editor, ctx) => {
-      if (!(ctx instanceof MarkdownView) || (editor as { inTableCell?: boolean }).inTableCell) return false;
+      if (!(ctx instanceof MarkdownView) || (editor as { inTableCell?: boolean }).inTableCell)
+        return false;
       if (!checking) ctx.toggleBulletList();
       return true;
     },
@@ -774,7 +795,8 @@ export function registerAppCommands(app: App): void {
     icon: "lucide-list-ordered",
     showOnMobileToolbar: true,
     editorCheckCallback: (checking, editor, ctx) => {
-      if (!(ctx instanceof MarkdownView) || (editor as { inTableCell?: boolean }).inTableCell) return false;
+      if (!(ctx instanceof MarkdownView) || (editor as { inTableCell?: boolean }).inTableCell)
+        return false;
       if (!checking) ctx.toggleNumberList();
       return true;
     },
@@ -787,7 +809,8 @@ export function registerAppCommands(app: App): void {
     hotkeys: [{ modifiers: ["Mod"], key: "l" }],
     showOnMobileToolbar: true,
     editorCheckCallback: (checking, editor, ctx) => {
-      if (!(ctx instanceof MarkdownView) || (editor as { inTableCell?: boolean }).inTableCell) return false;
+      if (!(ctx instanceof MarkdownView) || (editor as { inTableCell?: boolean }).inTableCell)
+        return false;
       if (!checking) ctx.toggleCheckList();
       return true;
     },
@@ -798,7 +821,8 @@ export function registerAppCommands(app: App): void {
     name: "Cycle bullet/checklist",
     icon: "lucide-check-square",
     editorCheckCallback: (checking, editor, ctx) => {
-      if (!(ctx instanceof MarkdownView) || (editor as { inTableCell?: boolean }).inTableCell) return false;
+      if (!(ctx instanceof MarkdownView) || (editor as { inTableCell?: boolean }).inTableCell)
+        return false;
       if (!checking) ctx.toggleCheckList(true);
       return true;
     },
@@ -809,7 +833,8 @@ export function registerAppCommands(app: App): void {
     name: "Insert callout",
     icon: "lucide-quote",
     editorCheckCallback: (checking, editor, ctx) => {
-      if (!(ctx instanceof MarkdownView) || (editor as { inTableCell?: boolean }).inTableCell) return false;
+      if (!(ctx instanceof MarkdownView) || (editor as { inTableCell?: boolean }).inTableCell)
+        return false;
       if (!checking) ctx.insertCallout();
       return true;
     },
@@ -820,7 +845,8 @@ export function registerAppCommands(app: App): void {
     name: "Insert code block",
     icon: "lucide-code",
     editorCheckCallback: (checking, editor, ctx) => {
-      if (!(ctx instanceof MarkdownView) || (editor as { inTableCell?: boolean }).inTableCell) return false;
+      if (!(ctx instanceof MarkdownView) || (editor as { inTableCell?: boolean }).inTableCell)
+        return false;
       if (!checking) ctx.insertCodeblock();
       return true;
     },
@@ -935,7 +961,9 @@ export function registerAppCommands(app: App): void {
     icon: "lucide-file-plus",
     callback: async () => {
       const file = await app.fileManager.createNewMarkdownFile(null);
-      await app.workspace.getLeaf("tab").openFile(file, { active: true, state: { mode: "source" } });
+      await app.workspace
+        .getLeaf("tab")
+        .openFile(file, { active: true, state: { mode: "source" } });
     },
   });
 }
@@ -996,23 +1024,38 @@ function isMacRuntime(): boolean {
   return /Mac|iPhone|iPad|iPod/.test(globalThis.navigator?.platform ?? "");
 }
 
-function dispatchOpenLinkFromActiveElement(checking: boolean, paneType: false | "tab" | "split" | "window"): boolean | void {
+function dispatchOpenLinkFromActiveElement(
+  checking: boolean,
+  paneType: false | "tab" | "split" | "window",
+): boolean | void {
   const activeDocument = getActiveDocument();
   const activeElement = activeDocument.activeElement;
   if (checking || !activeElement || activeElement === activeDocument.body) return undefined;
   const CustomEventCtor = activeDocument.defaultView?.CustomEvent ?? CustomEvent;
-  activeElement.dispatchEvent(new CustomEventCtor("open-link", {
-    bubbles: true,
-    cancelable: true,
-    detail: { paneType },
-  }));
+  activeElement.dispatchEvent(
+    new CustomEventCtor("open-link", {
+      bubbles: true,
+      cancelable: true,
+      detail: { paneType },
+    }),
+  );
 }
 
 function showHeadingMenu(view: MarkdownView): void {
   const menu = new Menu(view.containerEl.ownerDocument);
-  menu.addItem((item) => item.setTitle("No heading").setIcon("lucide-type").onClick(() => view.setHeading(0)));
+  menu.addItem((item) =>
+    item
+      .setTitle("No heading")
+      .setIcon("lucide-type")
+      .onClick(() => view.setHeading(0)),
+  );
   for (const level of [1, 2, 3, 4, 5, 6] as const) {
-    menu.addItem((item) => item.setTitle(`Heading ${level}`).setIcon(`lucide-heading-${level}`).onClick(() => view.setHeading(level)));
+    menu.addItem((item) =>
+      item
+        .setTitle(`Heading ${level}`)
+        .setIcon(`lucide-heading-${level}`)
+        .onClick(() => view.setHeading(level)),
+    );
   }
   const rect = view.containerEl.getBoundingClientRect();
   menu.setParentElement(view.containerEl).showAtPosition({ x: rect.left + 24, y: rect.top + 24 });

@@ -99,7 +99,8 @@ export class SearchEngine {
       if (query.pathPrefix && !file.path.startsWith(query.pathPrefix)) continue;
       if (!this.passesFileFilters(file, parsed, fold)) continue;
 
-      const hasContentTerms = parsed.words.length > 0 || parsed.lineGroups.length > 0 || parsed.sectionGroups.length > 0;
+      const hasContentTerms =
+        parsed.words.length > 0 || parsed.lineGroups.length > 0 || parsed.sectionGroups.length > 0;
       if (!hasContentTerms) {
         results.push({ path: file.path, matches: [] });
         continue;
@@ -112,18 +113,26 @@ export class SearchEngine {
       if (matches) results.push({ path: file.path, matches });
     }
 
-    results.sort((a, b) => a.path.localeCompare(b.path, undefined, { sensitivity: "base", numeric: true }));
+    results.sort((a, b) =>
+      a.path.localeCompare(b.path, undefined, { sensitivity: "base", numeric: true }),
+    );
     this.app.workspace.trigger("search-complete", query, results);
     return results;
   }
 
-  private passesFileFilters(file: TFile, parsed: ParsedSearchQuery, fold: (text: string) => string): boolean {
+  private passesFileFilters(
+    file: TFile,
+    parsed: ParsedSearchQuery,
+    fold: (text: string) => string,
+  ): boolean {
     for (const term of parsed.pathTerms) if (!fold(file.path).includes(term)) return false;
     for (const term of parsed.fileTerms) if (!fold(file.name).includes(term)) return false;
     if (parsed.tagTerms.length > 0) {
       // getAllTags is the canonical inline+frontmatter merge (same helper the
       // plugin API exposes); tags come back with their leading "#".
-      const tags = (getAllTags(this.app.metadataCache.getFileCache(file)) ?? []).map((tag) => fold(tag.replace(/^#/, "")));
+      const tags = (getAllTags(this.app.metadataCache.getFileCache(file)) ?? []).map((tag) =>
+        fold(tag.replace(/^#/, "")),
+      );
       for (const term of parsed.tagTerms) {
         if (!tags.some((tag) => tag === term || tag.startsWith(`${term}/`))) return false;
       }
@@ -134,7 +143,8 @@ export class SearchEngine {
       for (const { key, value } of parsed.propertyTerms) {
         const realKey = keys.get(key);
         if (realKey === undefined) return false;
-        if (value !== null && !fold(String(frontmatter[realKey] ?? "")).includes(value)) return false;
+        if (value !== null && !fold(String(frontmatter[realKey] ?? "")).includes(value))
+          return false;
       }
     }
     for (const { operator, value } of parsed.customTerms) {
@@ -145,7 +155,12 @@ export class SearchEngine {
   }
 
   /** Returns matches when the content terms are satisfied, null otherwise. */
-  private matchContent(file: TFile, lines: string[], haystacks: string[], parsed: ParsedSearchQuery): SearchMatch[] | null {
+  private matchContent(
+    file: TFile,
+    lines: string[],
+    haystacks: string[],
+    parsed: ParsedSearchQuery,
+  ): SearchMatch[] | null {
     const matches: SearchMatch[] = [];
 
     for (const word of parsed.words) {
@@ -159,7 +174,8 @@ export class SearchEngine {
       for (let index = 0; index < haystacks.length; index++) {
         if (!group.every((word) => haystacks[index].includes(word))) continue;
         satisfied = true;
-        for (const word of group) matches.push(...collectWordMatches(lines, haystacks, word, index, index + 1));
+        for (const word of group)
+          matches.push(...collectWordMatches(lines, haystacks, word, index, index + 1));
       }
       if (!satisfied) return null;
     }
@@ -169,9 +185,11 @@ export class SearchEngine {
       for (const group of parsed.sectionGroups) {
         let satisfied = false;
         for (const [from, to] of sections) {
-          if (!group.every((word) => haystacks.slice(from, to).some((line) => line.includes(word)))) continue;
+          if (!group.every((word) => haystacks.slice(from, to).some((line) => line.includes(word))))
+            continue;
           satisfied = true;
-          for (const word of group) matches.push(...collectWordMatches(lines, haystacks, word, from, to));
+          for (const word of group)
+            matches.push(...collectWordMatches(lines, haystacks, word, from, to));
         }
         if (!satisfied) return null;
       }
@@ -194,7 +212,13 @@ export class SearchEngine {
   }
 }
 
-function collectWordMatches(lines: string[], haystacks: string[], word: string, fromLine: number, toLine: number): SearchMatch[] {
+function collectWordMatches(
+  lines: string[],
+  haystacks: string[],
+  word: string,
+  fromLine: number,
+  toLine: number,
+): SearchMatch[] {
   const matches: SearchMatch[] = [];
   for (let index = fromLine; index < toLine; index++) {
     const haystack = haystacks[index];
@@ -221,25 +245,43 @@ function dedupeMatches(matches: SearchMatch[]): SearchMatch[] {
 
 const BUILTIN_OPERATORS = new Set(["path", "file", "tag", "line", "section"]);
 
-function parseSearchQuery(query: string, isRegisteredOperator: (name: string) => boolean): ParsedSearchQuery {
-  const parsed: ParsedSearchQuery = { words: [], pathTerms: [], fileTerms: [], tagTerms: [], propertyTerms: [], lineGroups: [], sectionGroups: [], customTerms: [] };
+function parseSearchQuery(
+  query: string,
+  isRegisteredOperator: (name: string) => boolean,
+): ParsedSearchQuery {
+  const parsed: ParsedSearchQuery = {
+    words: [],
+    pathTerms: [],
+    fileTerms: [],
+    tagTerms: [],
+    propertyTerms: [],
+    lineGroups: [],
+    sectionGroups: [],
+    customTerms: [],
+  };
   const tokenPattern = /\[([^\]]+)\]|(\w+):(?:\(([^)]*)\)|"([^"]*)"|(\S*))|"([^"]*)"|(\S+)/g;
   for (const token of query.matchAll(tokenPattern)) {
     const [full, property, operator, parens, quoted, bare, quotedWord, plainWord] = token;
     if (property !== undefined) {
       const colon = property.indexOf(":");
-      parsed.propertyTerms.push(colon === -1
-        ? { key: property.trim(), value: null }
-        : { key: property.slice(0, colon).trim(), value: property.slice(colon + 1).trim() });
+      parsed.propertyTerms.push(
+        colon === -1
+          ? { key: property.trim(), value: null }
+          : { key: property.slice(0, colon).trim(), value: property.slice(colon + 1).trim() },
+      );
       continue;
     }
-    if (operator !== undefined && (BUILTIN_OPERATORS.has(operator) || isRegisteredOperator(operator))) {
+    if (
+      operator !== undefined &&
+      (BUILTIN_OPERATORS.has(operator) || isRegisteredOperator(operator))
+    ) {
       const value = parens ?? quoted ?? bare ?? "";
       const groupWords = value.split(/\s+/).filter(Boolean);
       if (groupWords.length === 0) continue;
       if (operator === "path") parsed.pathTerms.push(value.trim());
       else if (operator === "file") parsed.fileTerms.push(value.trim());
-      else if (operator === "tag") parsed.tagTerms.push(...groupWords.map((tag) => tag.replace(/^#/, "")));
+      else if (operator === "tag")
+        parsed.tagTerms.push(...groupWords.map((tag) => tag.replace(/^#/, "")));
       else if (operator === "line") parsed.lineGroups.push(groupWords);
       else if (operator === "section") parsed.sectionGroups.push(groupWords);
       else parsed.customTerms.push({ operator, value: value.trim() });

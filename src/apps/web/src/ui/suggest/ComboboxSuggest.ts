@@ -26,7 +26,9 @@ export class ComboboxSuggest extends PopoverSuggest<ComboboxSuggestion> {
   readonly searchComponent: SearchComponent;
   private items: ComboboxItem[] = [];
   private value: ComboboxItem | null = null;
-  private selectCb: ((value: ComboboxItem | null, event: MouseEvent | KeyboardEvent) => void) | null = null;
+  private selectCb:
+    | ((value: ComboboxItem | null, event: MouseEvent | KeyboardEvent) => void)
+    | null = null;
   private openCb: (() => void) | null = null;
   private closeCb: (() => void) | null = null;
 
@@ -83,8 +85,12 @@ export class ComboboxSuggest extends PopoverSuggest<ComboboxSuggestion> {
       const target = event.target;
       if (target instanceof HTMLElement && target.closest(".suggestion")) event.preventDefault();
     });
-    this.searchComponent.inputEl.addEventListener("focus", () => this.suggestEl.classList.add("has-input-focus"));
-    this.searchComponent.inputEl.addEventListener("blur", () => this.suggestEl.classList.remove("has-input-focus"));
+    this.searchComponent.inputEl.addEventListener("focus", () =>
+      this.suggestEl.classList.add("has-input-focus"),
+    );
+    this.searchComponent.inputEl.addEventListener("blur", () =>
+      this.suggestEl.classList.remove("has-input-focus"),
+    );
     this.searchComponent.inputEl.addEventListener("keydown", (event) => {
       if (!event.isComposing && event.key === "Tab") this.buttonEl.focus({ preventScroll: true });
     });
@@ -184,7 +190,9 @@ export class ComboboxSuggest extends PopoverSuggest<ComboboxSuggestion> {
     return this;
   }
 
-  onSelect(callback: (value: ComboboxItem | null, event: MouseEvent | KeyboardEvent) => void): this {
+  onSelect(
+    callback: (value: ComboboxItem | null, event: MouseEvent | KeyboardEvent) => void,
+  ): this {
     this.selectCb = callback;
     return this;
   }
@@ -239,7 +247,8 @@ export class ComboboxSuggest extends PopoverSuggest<ComboboxSuggestion> {
       }
       if (item.display) {
         const displayMatch = fuzzyMatch(query, item.display);
-        if (displayMatch) suggestions.push({ ...item, match: displayMatch, score: displayMatch.score - 10 });
+        if (displayMatch)
+          suggestions.push({ ...item, match: displayMatch, score: displayMatch.score - 10 });
       }
     }
     suggestions.sort((left, right) => right.score - left.score);

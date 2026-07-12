@@ -31,7 +31,8 @@ export class PopoutManager {
 
   listPopouts(): readonly PopoutState[] {
     for (const [id, state] of this.popouts) {
-      if (state.window.parent !== this.app.workspace.floatingSplit || state.window.win.closed) this.popouts.delete(id);
+      if (state.window.parent !== this.app.workspace.floatingSplit || state.window.win.closed)
+        this.popouts.delete(id);
     }
     return [...this.popouts.values()];
   }

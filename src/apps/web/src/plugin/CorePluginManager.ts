@@ -52,7 +52,8 @@ export class CorePluginManager extends Events {
   }
 
   register(definition: InternalPluginDefinition): void {
-    if (this.states.has(definition.id)) throw new Error(`Core plugin is already registered: ${definition.id}`);
+    if (this.states.has(definition.id))
+      throw new Error(`Core plugin is already registered: ${definition.id}`);
     const plugin = new InternalPluginWrapper(this.app, definition, this);
     plugin.init();
     const state: CorePluginState = {
@@ -93,8 +94,9 @@ export class CorePluginManager extends Events {
     let needsSave = false;
     for (const state of this.states.values()) {
       const configured = this.config[state.id];
-      const lockedDisabled = state.definition.hiddenFromList && state.definition.defaultOn === false;
-      const shouldEnable = lockedDisabled ? false : configured ?? state.definition.defaultOn;
+      const lockedDisabled =
+        state.definition.hiddenFromList && state.definition.defaultOn === false;
+      const shouldEnable = lockedDisabled ? false : (configured ?? state.definition.defaultOn);
       if (configured === undefined) {
         this.config[state.id] = shouldEnable;
         needsSave = true;
@@ -120,9 +122,13 @@ export class CorePluginManager extends Events {
   }
 
   private async loadConfig(): Promise<void> {
-    const raw = await this.app.vault.readConfigJson<Record<string, boolean> | string[]>("core-plugins");
+    const raw = await this.app.vault.readConfigJson<Record<string, boolean> | string[]>(
+      "core-plugins",
+    );
     if (Array.isArray(raw)) {
-      const migrated = await this.app.vault.readConfigJson<Record<string, boolean>>("core-plugins-migration") ?? {};
+      const migrated =
+        (await this.app.vault.readConfigJson<Record<string, boolean>>("core-plugins-migration")) ??
+        {};
       for (const id of CORE_PLUGIN_MIGRATION_IDS) migrated[id] = raw.includes(id);
       this.config = migrated;
       this.requestSaveConfig();

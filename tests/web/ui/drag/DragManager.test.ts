@@ -36,7 +36,10 @@ describe("DragManager", () => {
     });
     app.dragManager.setSource(createSource());
 
-    const dragover = createDragEvent("dragover", createDataTransfer("copyMove"), { clientX: 10, clientY: 20 });
+    const dragover = createDragEvent("dragover", createDataTransfer("copyMove"), {
+      clientX: 10,
+      clientY: 20,
+    });
     targetEl.dispatchEvent(dragover);
 
     expect(dragover.defaultPrevented).toBe(true);
@@ -78,15 +81,19 @@ describe("DragManager", () => {
     const targetEl = document.createElement("div");
     const hoverEl = document.createElement("div");
     document.body.append(targetEl, hoverEl);
-    app.dragManager.handleDrop(targetEl, (_event, source) => {
-      expect(source).toBeNull();
-      return {
-        action: "Import attachments",
-        dropEffect: "copy",
-        hoverEl,
-        hoverClass: "is-being-dragged-over",
-      };
-    }, true);
+    app.dragManager.handleDrop(
+      targetEl,
+      (_event, source) => {
+        expect(source).toBeNull();
+        return {
+          action: "Import attachments",
+          dropEffect: "copy",
+          hoverEl,
+          hoverClass: "is-being-dragged-over",
+        };
+      },
+      true,
+    );
 
     targetEl.dispatchEvent(createDragEvent("dragover", createDataTransfer("copy")));
 
@@ -124,7 +131,11 @@ function createDataTransfer(effectAllowed: DataTransfer["effectAllowed"]): DataT
   };
 }
 
-function createDragEvent(type: string, dataTransfer: DataTransfer, init: MouseEventInit = {}): DragEvent {
+function createDragEvent(
+  type: string,
+  dataTransfer: DataTransfer,
+  init: MouseEventInit = {},
+): DragEvent {
   const event = new MouseEvent(type, {
     bubbles: true,
     cancelable: true,

@@ -1,5 +1,11 @@
 import { createDiv, createSpan } from "../../dom/dom";
-import type { DragDropResult, DragSource, FileDragSource, FilesDragSource, LinkDragSource } from "../../ui/drag/DragManager";
+import type {
+  DragDropResult,
+  DragSource,
+  FileDragSource,
+  FilesDragSource,
+  LinkDragSource,
+} from "../../ui/drag/DragManager";
 import { setIcon } from "../../ui/Icon";
 import { Menu } from "../../ui/Menu";
 import { Platform } from "../../platform/Platform";
@@ -29,8 +35,16 @@ type BookmarksDragSource = DragSource & {
 };
 
 interface BookmarkOpener {
-  openBookmarkInLeaf?: (item: BookmarkDropItem, leaf: WorkspaceLeaf, openState?: { active?: boolean }) => unknown;
-  openItemInLeaf?: (item: BookmarkDropItem, leaf: WorkspaceLeaf, openState?: { active?: boolean }) => unknown;
+  openBookmarkInLeaf?: (
+    item: BookmarkDropItem,
+    leaf: WorkspaceLeaf,
+    openState?: { active?: boolean },
+  ) => unknown;
+  openItemInLeaf?: (
+    item: BookmarkDropItem,
+    leaf: WorkspaceLeaf,
+    openState?: { active?: boolean },
+  ) => unknown;
 }
 
 const TAB_HEADER_ANIMATION_MS = 200;
@@ -64,7 +78,9 @@ export class WorkspaceTabs extends WorkspaceParent {
     this.tabHeaderContainerEl = createDiv("workspace-tab-header-container", this.containerEl);
     installMacWindowDoubleClickAction(this.tabHeaderContainerEl);
     this.tabsInnerEl = createDiv("workspace-tab-header-container-inner", this.tabHeaderContainerEl);
-    this.tabsInnerEl.addEventListener("wheel", (event) => this.handleTabHeaderWheel(event), { passive: false });
+    this.tabsInnerEl.addEventListener("wheel", (event) => this.handleTabHeaderWheel(event), {
+      passive: false,
+    });
     this.tabsInnerEl.addEventListener("click", (event) => this.onTabHeaderClick(event));
     this.tabHeaderContainerEl.addEventListener("mouseleave", () => this.unlockTabWidths());
     this.newTabButtonEl = createDiv("workspace-tab-header-new-tab", this.tabHeaderContainerEl);
@@ -87,9 +103,14 @@ export class WorkspaceTabs extends WorkspaceParent {
     this.tabListIconEl.addEventListener("click", (event) => this.showTabListMenu(event));
     this.tabListIconEl.addEventListener("contextmenu", (event) => this.showTabListMenu(event));
     this.tabsContainerEl = createDiv("workspace-tab-container", this.containerEl);
-    this.tabsContainerEl.addEventListener("scroll", () => this.onContainerScroll(), { passive: true });
-    if (typeof ResizeObserver !== "undefined") new ResizeObserver(() => this.updateSlidingTabs()).observe(this.tabsContainerEl);
-    this.app.dragManager.handleDrop(this.tabHeaderContainerEl, (event, source, hovering) => this.handleTabHeaderDrop(event, source, hovering));
+    this.tabsContainerEl.addEventListener("scroll", () => this.onContainerScroll(), {
+      passive: true,
+    });
+    if (typeof ResizeObserver !== "undefined")
+      new ResizeObserver(() => this.updateSlidingTabs()).observe(this.tabsContainerEl);
+    this.app.dragManager.handleDrop(this.tabHeaderContainerEl, (event, source, hovering) =>
+      this.handleTabHeaderDrop(event, source, hovering),
+    );
   }
 
   appendChild(child: WorkspaceItem, activate = true): void {
@@ -120,8 +141,7 @@ export class WorkspaceTabs extends WorkspaceParent {
     if (activate) {
       this.selectTabIndex(clamped);
       this.workspace.setActiveLeaf(child, { focus: true });
-    }
-    else this.updateTabDisplay();
+    } else this.updateTabDisplay();
   }
 
   removeChild(child: WorkspaceItem): void {
@@ -147,8 +167,7 @@ export class WorkspaceTabs extends WorkspaceParent {
     if (child === previousActiveTab) {
       this.currentTab = Math.min(index, this.children.length - 1);
       this.workspace.onLayoutChange(this);
-    }
-    else this.currentTab = this.children.indexOf(previousActiveTab);
+    } else this.currentTab = this.children.indexOf(previousActiveTab);
   }
 
   selectTabIndex(index: number, _activate = true, persist = true): void {
@@ -179,7 +198,12 @@ export class WorkspaceTabs extends WorkspaceParent {
 
   getTabInsertLocation(clientX: number): WorkspaceTabInsertLocation {
     const groupRect = this.tabHeaderContainerEl.getBoundingClientRect();
-    let rect: DOMRect | null = new DOMRect(groupRect.x - 5, groupRect.y, groupRect.width, groupRect.height);
+    let rect: DOMRect | null = new DOMRect(
+      groupRect.x - 5,
+      groupRect.y,
+      groupRect.width,
+      groupRect.height,
+    );
     let index = this.tabHeaderEls.length;
     let droppedIndex: number | null = null;
     for (let childIndex = 0; childIndex < this.children.length; childIndex += 1) {
@@ -193,7 +217,12 @@ export class WorkspaceTabs extends WorkspaceParent {
         const middle = (left + right) / 2;
         index = childIndex;
         droppedIndex = Math.abs(clientX - middle) / width < 0.25 ? childIndex : null;
-        rect = new DOMRect(clientX > middle ? right - 5 : left - 5, headerRect.y, 10, headerRect.height);
+        rect = new DOMRect(
+          clientX > middle ? right - 5 : left - 5,
+          headerRect.y,
+          10,
+          headerRect.height,
+        );
         if (clientX > middle) index += 1;
         break;
       }
@@ -219,13 +248,15 @@ export class WorkspaceTabs extends WorkspaceParent {
     const corrected = clamped !== this.currentTab;
     this.currentTab = clamped;
     const previousTabHeaderEls = this.tabHeaderEls.slice();
-    const leafChildren = this.children.filter((child): child is WorkspaceLeaf => child instanceof WorkspaceLeaf);
+    const leafChildren = this.children.filter(
+      (child): child is WorkspaceLeaf => child instanceof WorkspaceLeaf,
+    );
     this.tabHeaderEls = leafChildren.map((child) => child.tabHeaderEl);
     const containerChildren = this.isStacked
       ? leafChildren.flatMap((child) => {
-        void child.loadIfDeferred();
-        return [child.tabHeaderEl, child.containerEl];
-      })
+          void child.loadIfDeferred();
+          return [child.tabHeaderEl, child.containerEl];
+        })
       : leafChildren.map((child) => child.containerEl);
     setChildrenInPlace(this.tabsContainerEl, containerChildren);
     if (this.isStacked) this.tabsInnerEl.replaceChildren();
@@ -268,38 +299,51 @@ export class WorkspaceTabs extends WorkspaceParent {
   private showTabListMenu(event: MouseEvent): void {
     if (this.tabListIconEl.classList.contains("has-active-menu")) return;
     event.preventDefault();
-    const menu = new Menu(this.containerEl.ownerDocument).addSections(["action", "close", "", "tablist"]);
+    const menu = new Menu(this.containerEl.ownerDocument).addSections([
+      "action",
+      "close",
+      "",
+      "tablist",
+    ]);
     menu.dom.classList.add("mod-tab-list");
     menu
-      .addItem((item) => item
-        .setSection("action")
-        .setTitle(this.isStacked ? "Unstack tabs" : "Stack tabs")
-        .setIcon("lucide-layers")
-        .onClick(() => this.setStacked(!this.isStacked)))
-      .addItem((item) => item
-        .setSection("close")
-        .setTitle("Close all")
-        .setIcon("lucide-x")
-        .onClick(() => {
-          for (const child of [...this.children]) {
-            if (child instanceof WorkspaceLeaf && !child.pinned) child.detach();
-          }
-        }));
+      .addItem((item) =>
+        item
+          .setSection("action")
+          .setTitle(this.isStacked ? "Unstack tabs" : "Stack tabs")
+          .setIcon("lucide-layers")
+          .onClick(() => this.setStacked(!this.isStacked)),
+      )
+      .addItem((item) =>
+        item
+          .setSection("close")
+          .setTitle("Close all")
+          .setIcon("lucide-x")
+          .onClick(() => {
+            for (const child of [...this.children]) {
+              if (child instanceof WorkspaceLeaf && !child.pinned) child.detach();
+            }
+          }),
+      );
     this.workspace.trigger("tab-group-menu", menu, this);
     for (let index = 0; index < this.children.length; index += 1) {
       const child = this.children[index];
       if (!(child instanceof WorkspaceLeaf)) continue;
-      menu.addItem((item) => item
-        .setSection("tablist")
-        .setTitle(child.getDisplayText())
-        .setChecked(index === this.currentTab)
-        .setIcon(child.getIcon())
-        .onClick(() => {
-          this.workspace.setActiveLeaf(child);
-        }));
+      menu.addItem((item) =>
+        item
+          .setSection("tablist")
+          .setTitle(child.getDisplayText())
+          .setChecked(index === this.currentTab)
+          .setIcon(child.getIcon())
+          .onClick(() => {
+            this.workspace.setActiveLeaf(child);
+          }),
+      );
     }
     const rect = this.tabListIconEl.getBoundingClientRect();
-    menu.setParentElement(this.tabListIconEl).showAtPosition({ x: rect.x, y: rect.bottom, width: rect.width, overlap: true, left: true });
+    menu
+      .setParentElement(this.tabListIconEl)
+      .showAtPosition({ x: rect.x, y: rect.bottom, width: rect.width, overlap: true, left: true });
   }
 
   private onTabHeaderClick(event: MouseEvent): void {
@@ -314,7 +358,11 @@ export class WorkspaceTabs extends WorkspaceParent {
     this.workspace.setActiveLeaf(child, { focus: true });
   }
 
-  private handleTabHeaderDrop(event: DragEvent, source: DragSource | null, hovering: boolean): DragDropResult {
+  private handleTabHeaderDrop(
+    event: DragEvent,
+    source: DragSource | null,
+    hovering: boolean,
+  ): DragDropResult {
     if (!source || !isTabHeaderDropSource(source)) return undefined;
     const location = this.getTabInsertLocation(event.clientX);
     const droppedLeaf = location.droppedIndex == null ? null : this.children[location.droppedIndex];
@@ -337,7 +385,12 @@ export class WorkspaceTabs extends WorkspaceParent {
     }
 
     if (source.type === "bookmarks") {
-      return this.handleBookmarksDrop(source as BookmarksDragSource, droppedLeaf, location, hovering);
+      return this.handleBookmarksDrop(
+        source as BookmarksDragSource,
+        droppedLeaf,
+        location,
+        hovering,
+      );
     }
 
     const files = getDraggedFiles(source);
@@ -353,11 +406,18 @@ export class WorkspaceTabs extends WorkspaceParent {
     return this.openAsTabResult(location.rect);
   }
 
-  private handleBookmarksDrop(source: BookmarksDragSource, droppedLeaf: WorkspaceItem | null, location: WorkspaceTabInsertLocation, hovering: boolean): DragDropResult {
+  private handleBookmarksDrop(
+    source: BookmarksDragSource,
+    droppedLeaf: WorkspaceItem | null,
+    location: WorkspaceTabInsertLocation,
+    hovering: boolean,
+  ): DragDropResult {
     const opener = this.app.internalPlugins.getEnabledPluginById<BookmarkOpener>("bookmarks");
     const openBookmarkInLeaf = getBookmarkOpener(opener);
     if (!openBookmarkInLeaf) return undefined;
-    const items = source.items.map((entry) => entry.item).filter((item) => item.type === "file" || item.type === "graph");
+    const items = source.items
+      .map((entry) => entry.item)
+      .filter((item) => item.type === "file" || item.type === "graph");
     if (items.length === 0) return undefined;
     if (location.droppedIndex !== null) {
       if (items.length !== 1) return undefined;
@@ -389,7 +449,11 @@ export class WorkspaceTabs extends WorkspaceParent {
     if (last) this.workspace.setActiveLeaf(last, { focus: true });
   }
 
-  private async openBookmarksInNewTabs(items: BookmarkDropItem[], startIndex: number, opener: BookmarkOpener): Promise<void> {
+  private async openBookmarksInNewTabs(
+    items: BookmarkDropItem[],
+    startIndex: number,
+    opener: BookmarkOpener,
+  ): Promise<void> {
     const openBookmarkInLeaf = getBookmarkOpener(opener);
     if (!openBookmarkInLeaf) return;
     const leaves: WorkspaceLeaf[] = [];
@@ -415,7 +479,9 @@ export class WorkspaceTabs extends WorkspaceParent {
   lockTabWidths(): void {
     if (!this.tabHeaderContainerEl.isShown() || this.isStacked) return;
     this.hasLockedTabWidths = true;
-    const widths = this.children.map((child) => child instanceof WorkspaceLeaf ? child.tabHeaderEl.clientWidth : 0);
+    const widths = this.children.map((child) =>
+      child instanceof WorkspaceLeaf ? child.tabHeaderEl.clientWidth : 0,
+    );
     this.children.forEach((child, index) => {
       if (child instanceof WorkspaceLeaf) child.tabHeaderEl.style.width = `${widths[index]}px`;
     });
@@ -431,7 +497,9 @@ export class WorkspaceTabs extends WorkspaceParent {
 
   updateSlidingTabs(): void {
     if (this.isStacked) {
-      const headerWidths = this.children.map((child) => child instanceof WorkspaceLeaf ? child.tabHeaderEl.offsetWidth : 0);
+      const headerWidths = this.children.map((child) =>
+        child instanceof WorkspaceLeaf ? child.tabHeaderEl.offsetWidth : 0,
+      );
       const totalHeaderWidth = headerWidths.reduce((sum, width) => sum + width, 0);
       const availableWidth = this.tabsContainerEl.clientWidth;
       const maxWidth = Math.max(300, availableWidth - totalHeaderWidth);
@@ -476,7 +544,8 @@ export class WorkspaceTabs extends WorkspaceParent {
       const contentLeft = left + headerWidth;
       const contentRight = contentLeft + contentWidth;
       left = contentRight;
-      const hidden = index !== this.currentTab && (contentRight <= scrollLeft || contentLeft >= scrollRight);
+      const hidden =
+        index !== this.currentTab && (contentRight <= scrollLeft || contentLeft >= scrollRight);
       child.containerEl.classList.toggle("is-hidden", hidden);
     });
   }
@@ -500,7 +569,11 @@ export class WorkspaceTabs extends WorkspaceParent {
       }
     }
     const left = leftEdge - totalHeadersToCurrent;
-    const right = leftEdge + child.containerEl.offsetWidth - this.tabsContainerEl.clientWidth + totalHeadersAfterCurrent;
+    const right =
+      leftEdge +
+      child.containerEl.offsetWidth -
+      this.tabsContainerEl.clientWidth +
+      totalHeadersAfterCurrent;
     const current = this.tabsContainerEl.scrollLeft;
     if (current < right) this.scrollTabsContainerTo(right);
     else if (current > left) this.scrollTabsContainerTo(left);
@@ -510,12 +583,14 @@ export class WorkspaceTabs extends WorkspaceParent {
     if (!event.deltaY) return;
     const target = event.currentTarget;
     if (!(target instanceof HTMLElement)) return;
-    target.scrollLeft += Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    target.scrollLeft +=
+      Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
     event.preventDefault();
   }
 
   private scrollTabsContainerTo(left: number): void {
-    if (typeof this.tabsContainerEl.scrollTo === "function") this.tabsContainerEl.scrollTo({ behavior: "smooth", left });
+    if (typeof this.tabsContainerEl.scrollTo === "function")
+      this.tabsContainerEl.scrollTo({ behavior: "smooth", left });
     else this.tabsContainerEl.scrollLeft = left;
   }
 }
@@ -531,7 +606,11 @@ function setChildrenInPlace(container: HTMLElement, nextChildren: HTMLElement[])
   });
 }
 
-function syncTabHeadersWithAnimation(container: HTMLElement, previousHeaders: HTMLElement[], nextHeaders: HTMLElement[]): void {
+function syncTabHeadersWithAnimation(
+  container: HTMLElement,
+  previousHeaders: HTMLElement[],
+  nextHeaders: HTMLElement[],
+): void {
   const previousSet = new Set(previousHeaders);
   const nextSet = new Set(nextHeaders);
   const animate = shouldAnimateTabHeaderDiff(container);
@@ -548,16 +627,23 @@ function syncTabHeadersWithAnimation(container: HTMLElement, previousHeaders: HT
 function animateTabHeaderInsertion(header: HTMLElement, animate: boolean): void {
   const width = getTabHeaderAnimationWidth(header);
   if (!animate || width <= 0 || typeof header.animate !== "function") return;
-  header.animate([
-    { width: "0px", opacity: "0" },
-    { width: `${width}px`, opacity: "1" },
-  ], {
-    duration: TAB_HEADER_ANIMATION_MS,
-    easing: "ease-in-out",
-  });
+  header.animate(
+    [
+      { width: "0px", opacity: "0" },
+      { width: `${width}px`, opacity: "1" },
+    ],
+    {
+      duration: TAB_HEADER_ANIMATION_MS,
+      easing: "ease-in-out",
+    },
+  );
 }
 
-function animateTabHeaderRemoval(container: HTMLElement, header: HTMLElement, animate: boolean): void {
+function animateTabHeaderRemoval(
+  container: HTMLElement,
+  header: HTMLElement,
+  animate: boolean,
+): void {
   if (header.parentElement !== container) {
     header.remove();
     return;
@@ -569,13 +655,16 @@ function animateTabHeaderRemoval(container: HTMLElement, header: HTMLElement, an
   }
   const clone = header.cloneNode(true) as HTMLElement;
   header.replaceWith(clone);
-  const animation = clone.animate([
-    { width: `${width}px`, opacity: "1" },
-    { width: "0px", opacity: "0" },
-  ], {
-    duration: TAB_HEADER_ANIMATION_MS,
-    easing: "ease-in-out",
-  });
+  const animation = clone.animate(
+    [
+      { width: `${width}px`, opacity: "1" },
+      { width: "0px", opacity: "0" },
+    ],
+    {
+      duration: TAB_HEADER_ANIMATION_MS,
+      easing: "ease-in-out",
+    },
+  );
   animation.addEventListener("finish", () => clone.remove(), { once: true });
 }
 
@@ -589,16 +678,25 @@ function shouldAnimateTabHeaderDiff(container: HTMLElement): boolean {
 }
 
 function isTabHeaderDropSource(source: DragSource): boolean {
-  return source.type === "file" || source.type === "files" || source.type === "link" || source.type === "bookmarks";
+  return (
+    source.type === "file" ||
+    source.type === "files" ||
+    source.type === "link" ||
+    source.type === "bookmarks"
+  );
 }
 
-function getBookmarkOpener(opener: BookmarkOpener | null | undefined): BookmarkOpener["openBookmarkInLeaf"] {
+function getBookmarkOpener(
+  opener: BookmarkOpener | null | undefined,
+): BookmarkOpener["openBookmarkInLeaf"] {
   return opener?.openBookmarkInLeaf ?? opener?.openItemInLeaf;
 }
 
 function getDraggedFiles(source: DragSource): TFile[] {
-  if (source.type === "file") return [(source as FileDragSource).file].filter((file): file is TFile => file instanceof TFile);
-  if (source.type === "files") return (source as FilesDragSource).files.filter((file): file is TFile => file instanceof TFile);
+  if (source.type === "file")
+    return [(source as FileDragSource).file].filter((file): file is TFile => file instanceof TFile);
+  if (source.type === "files")
+    return (source as FilesDragSource).files.filter((file): file is TFile => file instanceof TFile);
   return [];
 }
 
@@ -640,15 +738,21 @@ function installMacWindowDoubleClickAction(container: HTMLElement): void {
 function handleMacWindowDoubleClick(event: MouseEvent, win: MacDoubleClickWindow): void {
   if (event.button !== 0) return;
   const target = event.target;
-  if (target instanceof HTMLElement && (
-    target.closest(".clickable-icon")
-    || target.closest(".workspace-tab-header-inner-close-button")
-    || (target.closest(".workspace-tab-header") && target.closest(".workspace-split.mod-sidedock"))
-  )) return;
+  if (
+    target instanceof HTMLElement &&
+    (target.closest(".clickable-icon") ||
+      target.closest(".workspace-tab-header-inner-close-button") ||
+      (target.closest(".workspace-tab-header") && target.closest(".workspace-split.mod-sidedock")))
+  )
+    return;
 
   const electronWindow = win.electronWindow;
   if (!electronWindow || !isElectronWindowMaximizable(electronWindow)) return;
-  const action = win.electron?.remote?.systemPreferences?.getUserDefault?.("AppleActionOnDoubleClick", "string") ?? "Maximize";
+  const action =
+    win.electron?.remote?.systemPreferences?.getUserDefault?.(
+      "AppleActionOnDoubleClick",
+      "string",
+    ) ?? "Maximize";
   if (action === "Minimize") {
     electronWindow.minimize?.();
     return;

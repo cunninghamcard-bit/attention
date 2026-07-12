@@ -10,7 +10,11 @@ import { SettingsRenderer } from "@web/builtin/SettingsRenderer";
 class EmptyPlugin extends Plugin {}
 
 class IndexedSettingTab extends PluginSettingTab {
-  constructor(app: App, plugin: Plugin, private readonly definitions: SettingDefinitionItem[]) {
+  constructor(
+    app: App,
+    plugin: Plugin,
+    private readonly definitions: SettingDefinitionItem[],
+  ) {
     super(app, plugin);
   }
 
@@ -71,21 +75,24 @@ describe("Settings DOM parity", () => {
     renderer.render();
 
     const containerEl = host.querySelector<HTMLElement>(".vertical-tabs-container");
-    const groups = [...host.querySelectorAll<HTMLElement>(".vertical-tab-header > .vertical-tab-header-group")];
+    const groups = [
+      ...host.querySelectorAll<HTMLElement>(".vertical-tab-header > .vertical-tab-header-group"),
+    ];
     expect(containerEl).toBe(renderer.containerEl);
     expect(groups).toHaveLength(3);
-    expect(groups.map((group) => group.querySelector(".vertical-tab-header-group-title")?.textContent)).toEqual([
-      "Options",
-      "Core plugins",
-      "Community plugins",
-    ]);
-    expect(groups.map((group) => group.querySelector<HTMLElement>(".vertical-tab-header-group-items")?.dataset.section)).toEqual([
-      "options",
-      "core-plugins",
-      "community-plugins",
-    ]);
+    expect(
+      groups.map((group) => group.querySelector(".vertical-tab-header-group-title")?.textContent),
+    ).toEqual(["Options", "Core plugins", "Community plugins"]);
+    expect(
+      groups.map(
+        (group) =>
+          group.querySelector<HTMLElement>(".vertical-tab-header-group-items")?.dataset.section,
+      ),
+    ).toEqual(["options", "core-plugins", "community-plugins"]);
     expect(groups.some((group) => group.dataset.section)).toBe(false);
-    expect(host.querySelector(".vertical-tab-header-search .search-input-container")).not.toBeNull();
+    expect(
+      host.querySelector(".vertical-tab-header-search .search-input-container"),
+    ).not.toBeNull();
   });
 
   it("generates plugin setting nav items with Obsidian chevron icon DOM", () => {
@@ -98,7 +105,9 @@ describe("Settings DOM parity", () => {
 
     renderer.render("dom-plugin");
 
-    const navEl = host.querySelector<HTMLElement>('[data-section="community-plugins"] [data-setting-id="dom-plugin"]');
+    const navEl = host.querySelector<HTMLElement>(
+      '[data-section="community-plugins"] [data-setting-id="dom-plugin"]',
+    );
     expect(navEl?.classList.contains("vertical-tab-nav-item")).toBe(true);
     expect(navEl?.classList.contains("tappable")).toBe(true);
     expect(navEl?.querySelector(".vertical-tab-nav-item-title")?.textContent).toBe("DOM Plugin");
@@ -108,7 +117,11 @@ describe("Settings DOM parity", () => {
 
   it("registers the active settings tab above the settings modal in the closeable stack", () => {
     const app = new App(document.createElement("div"));
-    const plugin = new EmptyPlugin(app, { id: "closeable-plugin", name: "Closeable Plugin", version: "1.0.0" });
+    const plugin = new EmptyPlugin(app, {
+      id: "closeable-plugin",
+      name: "Closeable Plugin",
+      version: "1.0.0",
+    });
     const tab = new PluginSettingTab(app, plugin);
     app.setting.addSettingTab(tab);
     const modal = new SettingsModal(app, "closeable-plugin");
@@ -116,7 +129,9 @@ describe("Settings DOM parity", () => {
     modal.open();
 
     expect(getActiveCloseables()).toHaveLength(2);
-    expect(tab.containerEl.parentElement).toBe(modal.contentEl.querySelector(".vertical-tab-content-container"));
+    expect(tab.containerEl.parentElement).toBe(
+      modal.contentEl.querySelector(".vertical-tab-content-container"),
+    );
 
     expect(closeTopActiveCloseable()).toBe(true);
 
@@ -128,7 +143,9 @@ describe("Settings DOM parity", () => {
 
     modal.openTabById("closeable-plugin");
 
-    expect(tab.containerEl.parentElement).toBe(modal.contentEl.querySelector(".vertical-tab-content-container"));
+    expect(tab.containerEl.parentElement).toBe(
+      modal.contentEl.querySelector(".vertical-tab-content-container"),
+    );
     expect(getActiveCloseables()).toHaveLength(2);
 
     modal.close();
@@ -138,8 +155,16 @@ describe("Settings DOM parity", () => {
 
   it("filters setting navigation from the header search box", () => {
     const app = new App(document.createElement("div"));
-    const firstPlugin = new EmptyPlugin(app, { id: "alpha-plugin", name: "Alpha Plugin", version: "1.0.0" });
-    const secondPlugin = new EmptyPlugin(app, { id: "beta-plugin", name: "Beta Plugin", version: "1.0.0" });
+    const firstPlugin = new EmptyPlugin(app, {
+      id: "alpha-plugin",
+      name: "Alpha Plugin",
+      version: "1.0.0",
+    });
+    const secondPlugin = new EmptyPlugin(app, {
+      id: "beta-plugin",
+      name: "Beta Plugin",
+      version: "1.0.0",
+    });
     app.setting.addSettingTab(new PluginSettingTab(app, firstPlugin));
     app.setting.addSettingTab(new PluginSettingTab(app, secondPlugin));
     const host = document.createElement("div");
@@ -159,28 +184,40 @@ describe("Settings DOM parity", () => {
 
   it("indexes declarative settings while respecting visible and searchable flags", () => {
     const app = new App(document.createElement("div"));
-    const hiddenPlugin = new EmptyPlugin(app, { id: "indexed-hidden", name: "Indexed A", version: "1.0.0" });
-    const visiblePlugin = new EmptyPlugin(app, { id: "indexed-visible", name: "Indexed B", version: "1.0.0" });
+    const hiddenPlugin = new EmptyPlugin(app, {
+      id: "indexed-hidden",
+      name: "Indexed A",
+      version: "1.0.0",
+    });
+    const visiblePlugin = new EmptyPlugin(app, {
+      id: "indexed-visible",
+      name: "Indexed B",
+      version: "1.0.0",
+    });
     const fragment = document.createDocumentFragment();
     fragment.append("fragment-index");
-    app.setting.addSettingTab(new IndexedSettingTab(app, hiddenPlugin, [
-      { name: "Secret row", aliases: ["secret-index"], searchable: false },
-      {
-        type: "group",
-        heading: "Hidden group",
-        visible: false,
-        items: [{ name: "hidden-index" }],
-      },
-    ]));
-    app.setting.addSettingTab(new IndexedSettingTab(app, visiblePlugin, [
-      {
-        type: "page",
-        name: "Visible page",
-        desc: fragment,
-        displayValue: () => "function-index",
-        items: [{ name: "child-index" }],
-      },
-    ]));
+    app.setting.addSettingTab(
+      new IndexedSettingTab(app, hiddenPlugin, [
+        { name: "Secret row", aliases: ["secret-index"], searchable: false },
+        {
+          type: "group",
+          heading: "Hidden group",
+          visible: false,
+          items: [{ name: "hidden-index" }],
+        },
+      ]),
+    );
+    app.setting.addSettingTab(
+      new IndexedSettingTab(app, visiblePlugin, [
+        {
+          type: "page",
+          name: "Visible page",
+          desc: fragment,
+          displayValue: () => "function-index",
+          items: [{ name: "child-index" }],
+        },
+      ]),
+    );
     const host = document.createElement("div");
     const renderer = new SettingsRenderer(app, host);
 

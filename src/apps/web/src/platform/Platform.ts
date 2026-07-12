@@ -36,9 +36,16 @@ const userAgent = navigatorRef?.userAgent ?? "";
 const platform = navigatorRef?.platform ?? "";
 const vendor = navigatorRef?.vendor ?? "";
 const maxTouchPoints = navigatorRef?.maxTouchPoints ?? 0;
-const isIosLike = /iPad|iPhone|iPod/.test(userAgent) || (platform === "MacIntel" && maxTouchPoints > 1);
+const isIosLike =
+  /iPad|iPhone|iPod/.test(userAgent) || (platform === "MacIntel" && maxTouchPoints > 1);
 const isAndroidLike = /Android/.test(userAgent);
-const osName = appVersion.includes("Win") ? "Windows" : appVersion.includes("Mac") ? "macOS" : appVersion.includes("X11") || appVersion.includes("Linux") ? "Linux" : "Unknown OS";
+const osName = appVersion.includes("Win")
+  ? "Windows"
+  : appVersion.includes("Mac")
+    ? "macOS"
+    : appVersion.includes("X11") || appVersion.includes("Linux")
+      ? "Linux"
+      : "Unknown OS";
 
 export const Platform: PlatformApi = {
   isDesktop: true,
@@ -52,7 +59,10 @@ export const Platform: PlatformApi = {
   isMacOS: osName === "macOS",
   isWin: osName === "Windows",
   isLinux: osName === "Linux",
-  isSafari: /Safari/.test(userAgent) && /Apple/.test(vendor) && !/Chrome|Chromium|CriOS|FxiOS|EdgiOS|OPiOS/.test(userAgent),
+  isSafari:
+    /Safari/.test(userAgent) &&
+    /Apple/.test(vendor) &&
+    !/Chrome|Chromium|CriOS|FxiOS|EdgiOS|OPiOS/.test(userAgent),
   hasPhysicalKeyboard: !isAndroidLike && !isIosLike,
   resourcePathPrefix: resolveResourcePathPrefix(),
   get canExportPdf() {
@@ -98,7 +108,8 @@ function resolveResourcePathPrefix(): string {
   };
 
   try {
-    const bridge = maybeGlobal.window?.electron ?? maybeGlobal.electron ?? maybeGlobal.require?.("electron");
+    const bridge =
+      maybeGlobal.window?.electron ?? maybeGlobal.electron ?? maybeGlobal.require?.("electron");
     const prefix = bridge?.ipcRenderer?.sendSync?.("file-url");
     if (typeof prefix === "string" && prefix.length > 0) return prefix;
   } catch {
@@ -117,9 +128,14 @@ interface ElectronBridge {
 // The main process's `version` sync channel (app.getVersion()). Empty outside
 // the desktop shell (browser/test environments).
 function resolveAppVersion(): string {
-  const maybeGlobal = globalThis as { electron?: ElectronBridge; window?: { electron?: ElectronBridge } };
+  const maybeGlobal = globalThis as {
+    electron?: ElectronBridge;
+    window?: { electron?: ElectronBridge };
+  };
   try {
-    const version = (maybeGlobal.window?.electron ?? maybeGlobal.electron)?.ipcRenderer?.sendSync?.("version");
+    const version = (maybeGlobal.window?.electron ?? maybeGlobal.electron)?.ipcRenderer?.sendSync?.(
+      "version",
+    );
     if (typeof version === "string") return version;
   } catch {
     // Electron is not available in browser/test environments.

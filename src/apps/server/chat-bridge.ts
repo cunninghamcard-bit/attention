@@ -16,7 +16,11 @@ import { piEngine } from "./pi-engine";
 const PORT = Number(process.env.CHAT_BRIDGE_PORT ?? 8787);
 
 // Picked once at startup; per-agent engines arrive with the Go backend.
-const engine: Engine = process.argv.includes("--mock") ? mockEngine : process.argv.includes("--pi") ? piEngine : claudeEngine;
+const engine: Engine = process.argv.includes("--mock")
+  ? mockEngine
+  : process.argv.includes("--pi")
+    ? piEngine
+    : claudeEngine;
 
 interface BridgeEvent {
   seq: number;
@@ -80,7 +84,11 @@ interface MessageAttachment {
   content: string;
 }
 
-function emitUserMessage(thread: Thread, text: string, attachments: MessageAttachment[] = []): void {
+function emitUserMessage(
+  thread: Thread,
+  text: string,
+  attachments: MessageAttachment[] = [],
+): void {
   if (!thread.title && text.trim()) {
     const line = text.trim().split("\n")[0];
     thread.title = line.length > 60 ? `${line.slice(0, 60)}…` : line;
@@ -92,7 +100,13 @@ function emitUserMessage(thread: Thread, text: string, attachments: MessageAttac
   emit(thread, { type: "part.closed", messageId, partIndex: 0 });
   attachments.forEach((attachment, index) => {
     const partIndex = index + 1;
-    emit(thread, { type: "part.opened", messageId, partIndex, partType: "attachment", name: attachment.name });
+    emit(thread, {
+      type: "part.opened",
+      messageId,
+      partIndex,
+      partType: "attachment",
+      name: attachment.name,
+    });
     emit(thread, { type: "part.delta", messageId, partIndex, delta: attachment.content });
     emit(thread, { type: "part.closed", messageId, partIndex });
   });
@@ -101,11 +115,17 @@ function emitUserMessage(thread: Thread, text: string, attachments: MessageAttac
 
 function composePrompt(text: string, attachments: MessageAttachment[]): string {
   if (attachments.length === 0) return text;
-  const blocks = attachments.map((attachment) => `<attachment name="${attachment.name}">\n${attachment.content}\n</attachment>`);
+  const blocks = attachments.map(
+    (attachment) => `<attachment name="${attachment.name}">\n${attachment.content}\n</attachment>`,
+  );
   return `${text}\n\n${blocks.join("\n\n")}`;
 }
 
-async function runEngine(thread: Thread, text: string, attachments: MessageAttachment[] = []): Promise<void> {
+async function runEngine(
+  thread: Thread,
+  text: string,
+  attachments: MessageAttachment[] = [],
+): Promise<void> {
   const runId = `${thread.id}-r${++thread.counter}`;
   emit(thread, { type: "run.started", runId });
   emitUserMessage(thread, text, attachments);
@@ -134,16 +154,28 @@ Bun.serve({
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
 
     if (url.pathname === "/models" && request.method === "GET") {
-      return new Response(JSON.stringify({ models: engine.listModels?.() ?? [], efforts: engine.listEfforts?.() ?? [] }), {
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          models: engine.listModels?.() ?? [],
+          efforts: engine.listEfforts?.() ?? [],
+        }),
+        {
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        },
+      );
     }
 
     if (url.pathname === "/agents" && request.method === "GET") {
       const list = [...threads.values()]
         .filter((thread) => thread.events.length > 0)
         .sort((a, b) => b.updatedAt - a.updatedAt)
-        .map((thread) => ({ id: thread.id, title: thread.title, updatedAt: thread.updatedAt, running: thread.running, profile: thread.profile }));
+        .map((thread) => ({
+          id: thread.id,
+          title: thread.title,
+          updatedAt: thread.updatedAt,
+          running: thread.running,
+          profile: thread.profile,
+        }));
       return new Response(JSON.stringify({ agents: list }), {
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
       });
@@ -155,7 +187,12 @@ Bun.serve({
       const list = [...threads.values()]
         .filter((thread) => thread.events.length > 0)
         .sort((a, b) => b.updatedAt - a.updatedAt)
-        .map((thread) => ({ ID: thread.id, Title: thread.title, UpdatedAt: thread.updatedAt, Running: thread.running }));
+        .map((thread) => ({
+          ID: thread.id,
+          Title: thread.title,
+          UpdatedAt: thread.updatedAt,
+          Running: thread.running,
+        }));
       return new Response(JSON.stringify({ streams: list }), {
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
       });
@@ -178,52 +215,88 @@ Bun.serve({
         },
       });
       return new Response(stream, {
-        headers: { ...CORS_HEADERS, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
+        headers: {
+          ...CORS_HEADERS,
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+        },
       });
     }
 
     const messagesMatch = url.pathname.match(/^\/(?:agents|streams)\/([^/]+)\/messages$/);
     if (messagesMatch && request.method === "POST") {
       const thread = getThread(decodeURIComponent(messagesMatch[1]));
-      const body = (await request.json().catch(() => ({}))) as { text?: string; attachments?: MessageAttachment[] };
+      const body = (await request.json().catch(() => ({}))) as {
+        text?: string;
+        attachments?: MessageAttachment[];
+      };
       const text = String(body.text ?? "").trim();
       const attachments = Array.isArray(body.attachments)
         ? body.attachments
-            .filter((item) => item && typeof item.name === "string" && typeof item.content === "string")
+            .filter(
+              (item) => item && typeof item.name === "string" && typeof item.content === "string",
+            )
             .map((item) => ({ name: item.name, content: item.content }))
         : [];
-      if (!text && attachments.length === 0) return new Response("missing text", { status: 400, headers: CORS_HEADERS });
-      if (thread.running) return new Response("run in progress", { status: 409, headers: CORS_HEADERS });
+      if (!text && attachments.length === 0)
+        return new Response("missing text", { status: 400, headers: CORS_HEADERS });
+      if (thread.running)
+        return new Response("run in progress", { status: 409, headers: CORS_HEADERS });
       void runEngine(thread, text, attachments).catch((error) => {
-        emit(thread, { type: "run.closed", runId: `${thread.id}-r${thread.counter}`, status: "error", error: String(error) });
+        emit(thread, {
+          type: "run.closed",
+          runId: `${thread.id}-r${thread.counter}`,
+          status: "error",
+          error: String(error),
+        });
       });
-      return new Response("{}", { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      return new Response("{}", {
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
     }
 
     const agentMatch = url.pathname.match(/^\/agents\/([^/]+)$/);
     if (agentMatch && request.method === "GET") {
       const thread = getThread(decodeURIComponent(agentMatch[1]));
       return new Response(
-        JSON.stringify({ id: thread.id, title: thread.title, updatedAt: thread.updatedAt, running: thread.running, profile: thread.profile }),
+        JSON.stringify({
+          id: thread.id,
+          title: thread.title,
+          updatedAt: thread.updatedAt,
+          running: thread.running,
+          profile: thread.profile,
+        }),
         { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
       );
     }
     if (agentMatch && request.method === "PATCH") {
       const thread = getThread(decodeURIComponent(agentMatch[1]));
-      const body = (await request.json().catch(() => ({}))) as { title?: string; profile?: AgentProfile };
+      const body = (await request.json().catch(() => ({}))) as {
+        title?: string;
+        profile?: AgentProfile;
+      };
       const title = String(body.title ?? "").trim();
       if (title) thread.title = title;
       // Shallow merge for known fields; params replace wholesale (the
       // editor always sends the full map).
       if (body.profile && typeof body.profile === "object") {
-        if (body.profile.model !== undefined) thread.profile.model = body.profile.model || undefined;
-        if (body.profile.effort !== undefined) thread.profile.effort = body.profile.effort || undefined;
-        if (body.profile.temperature !== undefined) thread.profile.temperature = typeof body.profile.temperature === "number" ? body.profile.temperature : undefined;
-        if (body.profile.maxTokens !== undefined) thread.profile.maxTokens = typeof body.profile.maxTokens === "number" ? body.profile.maxTokens : undefined;
+        if (body.profile.model !== undefined)
+          thread.profile.model = body.profile.model || undefined;
+        if (body.profile.effort !== undefined)
+          thread.profile.effort = body.profile.effort || undefined;
+        if (body.profile.temperature !== undefined)
+          thread.profile.temperature =
+            typeof body.profile.temperature === "number" ? body.profile.temperature : undefined;
+        if (body.profile.maxTokens !== undefined)
+          thread.profile.maxTokens =
+            typeof body.profile.maxTokens === "number" ? body.profile.maxTokens : undefined;
         if (body.profile.params !== undefined) thread.profile.params = body.profile.params;
       }
-      if (!title && !body.profile) return new Response("nothing to update", { status: 400, headers: CORS_HEADERS });
-      return new Response("{}", { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      if (!title && !body.profile)
+        return new Response("nothing to update", { status: 400, headers: CORS_HEADERS });
+      return new Response("{}", {
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
     }
     if (agentMatch && request.method === "DELETE") {
       const id = decodeURIComponent(agentMatch[1]);
@@ -231,13 +304,17 @@ Bun.serve({
         engine.stop(id);
         threads.delete(id);
       }
-      return new Response("{}", { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      return new Response("{}", {
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
     }
 
     const stopMatch = url.pathname.match(/^\/(?:agents|streams)\/([^/]+)\/stop$/);
     if (stopMatch && request.method === "POST") {
       engine.stop(decodeURIComponent(stopMatch[1]));
-      return new Response("{}", { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      return new Response("{}", {
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
     }
 
     return new Response("not found", { status: 404, headers: CORS_HEADERS });

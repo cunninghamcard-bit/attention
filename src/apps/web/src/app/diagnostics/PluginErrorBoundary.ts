@@ -3,7 +3,10 @@ import type { ErrorReporter } from "./ErrorReporter";
 import type { Logger } from "./Logger";
 
 export class PluginErrorBoundary {
-  constructor(readonly reporter: ErrorReporter, readonly logger: Logger) {}
+  constructor(
+    readonly reporter: ErrorReporter,
+    readonly logger: Logger,
+  ) {}
 
   run(plugin: Plugin, phase: string, fn: () => void | Promise<void>): Promise<void> {
     return Promise.resolve()

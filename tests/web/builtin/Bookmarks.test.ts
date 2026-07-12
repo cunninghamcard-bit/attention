@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { App } from "@web/app/App";
 import type { DragSource } from "@web/ui/drag/DragManager";
-import { BookmarksController, createBookmarksPluginDefinition, type BookmarkItem } from "@web/builtin/Bookmarks";
+import {
+  BookmarksController,
+  createBookmarksPluginDefinition,
+  type BookmarkItem,
+} from "@web/builtin/Bookmarks";
 
 describe("Bookmarks plugin", () => {
   beforeEach(() => {
@@ -29,7 +33,9 @@ describe("Bookmarks plugin", () => {
     expect(rows[0].classList.contains("bookmark")).toBe(true);
     expect(rows[0].classList.contains("is-clickable")).toBe(true);
     expect(rows[0].querySelector(".tree-item-icon")).not.toBeNull();
-    expect(rows[0].querySelector(".tree-item-inner > .tree-item-inner-text")?.textContent).toBe("Alpha.md");
+    expect(rows[0].querySelector(".tree-item-inner > .tree-item-inner-text")?.textContent).toBe(
+      "Alpha.md",
+    );
     dispatchDragStart(rows[1]);
 
     const source = getBookmarkDragSource(app);
@@ -53,18 +59,24 @@ describe("Bookmarks plugin", () => {
     setOffsetTop(rows[1], 10);
     setOffsetTop(rows[2], 20);
 
-    rows[0].dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }));
-    rows[1].dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }));
-    rows[2].dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }));
+    rows[0].dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }),
+    );
+    rows[1].dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }),
+    );
+    rows[2].dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }),
+    );
     dispatchDragStart(rows[0]);
 
     const source = getBookmarkDragSource(app);
     expect(source.title).toBe("3 bookmarks");
-    expect(source.items.map((entry) => entry.item.type === "file" ? entry.item.path : entry.item.title)).toEqual([
-      "Beta.md",
-      "Example",
-      "Alpha.md",
-    ]);
+    expect(
+      source.items.map((entry) =>
+        entry.item.type === "file" ? entry.item.path : entry.item.title,
+      ),
+    ).toEqual(["Beta.md", "Example", "Alpha.md"]);
     expect(rows.every((row) => row.classList.contains("is-being-dragged"))).toBe(true);
   });
 
@@ -76,15 +88,21 @@ describe("Bookmarks plugin", () => {
     ]);
     const rows = getBookmarkRows();
 
-    rows[0].dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }));
-    rows[1].dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }));
+    rows[0].dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }),
+    );
+    rows[1].dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }),
+    );
     dispatchDragStart(rows[2]);
 
     const source = getBookmarkDragSource(app);
     expect(rows[0].classList.contains("is-selected")).toBe(false);
     expect(rows[1].classList.contains("is-selected")).toBe(false);
     expect(rows[2].classList.contains("is-selected")).toBe(true);
-    expect(source.items.map((entry) => entry.item.type === "file" ? entry.item.path : "")).toEqual(["Gamma.md"]);
+    expect(
+      source.items.map((entry) => (entry.item.type === "file" ? entry.item.path : "")),
+    ).toEqual(["Gamma.md"]);
   });
 
   it("uses Alt toggle and Shift range selection without opening bookmarks", async () => {
@@ -99,20 +117,31 @@ describe("Bookmarks plugin", () => {
       opened.push(item);
     };
 
-    rows[0].dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }));
-    rows[2].dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, shiftKey: true }));
+    rows[0].dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }),
+    );
+    rows[2].dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, shiftKey: true }),
+    );
 
     expect(opened).toEqual([]);
     expect(rows.map((row) => row.classList.contains("is-selected"))).toEqual([true, true, true]);
     expect(rows[2].classList.contains("has-focus")).toBe(true);
 
-    rows[2].dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }));
+    rows[2].dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }),
+    );
 
     expect(rows.map((row) => row.classList.contains("is-selected"))).toEqual([true, true, false]);
   });
 
   it("keeps graph bookmarks as a disabled seam until the Graph plugin is explicitly enabled", async () => {
-    const graph: BookmarkItem = { type: "graph", ctime: 1, title: "Graph view", options: { "collapse-filter": true } };
+    const graph: BookmarkItem = {
+      type: "graph",
+      ctime: 1,
+      title: "Graph view",
+      options: { "collapse-filter": true },
+    };
     const { app, controller } = await openBookmarks([graph]);
     const leaf = app.workspace.getLeaf(true);
 
@@ -129,9 +158,12 @@ describe("Bookmarks plugin", () => {
   });
 });
 
-async function openBookmarks(items: BookmarkItem[]): Promise<{ app: App; controller: BookmarksController }> {
+async function openBookmarks(
+  items: BookmarkItem[],
+): Promise<{ app: App; controller: BookmarksController }> {
   const app = new App(document.body.appendChild(document.createElement("div")));
-  if (!app.internalPlugins.getPluginById("bookmarks")) app.internalPlugins.register(createBookmarksPluginDefinition());
+  if (!app.internalPlugins.getPluginById("bookmarks"))
+    app.internalPlugins.register(createBookmarksPluginDefinition());
   await app.internalPlugins.enable("bookmarks");
   const controller = app.internalPlugins.getEnabledPluginById<BookmarksController>("bookmarks");
   if (!controller) throw new Error("Expected bookmarks controller");
@@ -141,11 +173,17 @@ async function openBookmarks(items: BookmarkItem[]): Promise<{ app: App; control
 }
 
 function getBookmarkRows(): HTMLElement[] {
-  return [...document.body.querySelectorAll<HTMLElement>(".workspace-leaf-content[data-type='bookmarks'] .tree-item-self")];
+  return [
+    ...document.body.querySelectorAll<HTMLElement>(
+      ".workspace-leaf-content[data-type='bookmarks'] .tree-item-self",
+    ),
+  ];
 }
 
 function dispatchDragStart(el: HTMLElement): void {
-  const event = new Event("dragstart", { bubbles: true, cancelable: true }) as Event & { dataTransfer: TestDataTransfer };
+  const event = new Event("dragstart", { bubbles: true, cancelable: true }) as Event & {
+    dataTransfer: TestDataTransfer;
+  };
   Object.defineProperty(event, "dataTransfer", {
     configurable: true,
     value: createDataTransfer(),
@@ -153,10 +191,22 @@ function dispatchDragStart(el: HTMLElement): void {
   el.dispatchEvent(event);
 }
 
-function getBookmarkDragSource(app: App): DragSource & { type: "bookmarks"; source: "bookmarks"; icon: string; items: Array<{ item: BookmarkItem }> } {
+function getBookmarkDragSource(
+  app: App,
+): DragSource & {
+  type: "bookmarks";
+  source: "bookmarks";
+  icon: string;
+  items: Array<{ item: BookmarkItem }>;
+} {
   const source = app.dragManager.getSource();
   if (!source || source.type !== "bookmarks") throw new Error("Expected bookmarks drag source");
-  return source as DragSource & { type: "bookmarks"; source: "bookmarks"; icon: string; items: Array<{ item: BookmarkItem }> };
+  return source as DragSource & {
+    type: "bookmarks";
+    source: "bookmarks";
+    icon: string;
+    items: Array<{ item: BookmarkItem }>;
+  };
 }
 
 function setOffsetTop(el: HTMLElement, value: number): void {

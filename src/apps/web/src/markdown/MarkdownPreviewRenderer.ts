@@ -9,7 +9,12 @@ import {
   type MarkdownSectionInformation,
 } from "./MarkdownRenderer";
 import { MarkdownRenderChild } from "./MarkdownRenderChild";
-import { MarkdownPreviewSection, type MarkdownHighlightRange, type MarkdownHighlightRect, zeroPosition } from "./MarkdownPreviewSection";
+import {
+  MarkdownPreviewSection,
+  type MarkdownHighlightRange,
+  type MarkdownHighlightRect,
+  zeroPosition,
+} from "./MarkdownPreviewSection";
 import type { FoldInfo } from "./FoldManager";
 import { toggleCheckboxAtLine } from "./MarkdownTaskList";
 import type { View } from "../views/View";
@@ -47,10 +52,17 @@ export class MarkdownPreviewRenderer {
   private dirty = false;
   private collapsedHeadings = new Set<number>();
 
-  constructor(readonly app: App, readonly previewEl: HTMLElement, sourcePath = "", readonly owner?: Component) {
+  constructor(
+    readonly app: App,
+    readonly previewEl: HTMLElement,
+    sourcePath = "",
+    readonly owner?: Component,
+  ) {
     this.sourcePath = sourcePath;
     this.previewEl.classList.add("markdown-preview-view", "markdown-rendered");
-    const existingSizerEl = this.previewEl.querySelector<HTMLElement>(":scope > .markdown-preview-sizer");
+    const existingSizerEl = this.previewEl.querySelector<HTMLElement>(
+      ":scope > .markdown-preview-sizer",
+    );
     if (existingSizerEl) {
       this.sizerEl = existingSizerEl;
     } else {
@@ -73,11 +85,17 @@ export class MarkdownPreviewRenderer {
     MarkdownRenderer.unregisterPostProcessor(postProcessor);
   }
 
-  static createCodeBlockPostProcessor(language: string, handler: MarkdownCodeBlockProcessor): MarkdownPostProcessor {
+  static createCodeBlockPostProcessor(
+    language: string,
+    handler: MarkdownCodeBlockProcessor,
+  ): MarkdownPostProcessor {
     return MarkdownRenderer.createCodeBlockPostProcessor(language, handler);
   }
 
-  static registerCodeBlockPostProcessor(language: string, handler: MarkdownCodeBlockProcessor): void {
+  static registerCodeBlockPostProcessor(
+    language: string,
+    handler: MarkdownCodeBlockProcessor,
+  ): void {
     MarkdownRenderer.registerCodeBlockPostProcessor(language, handler);
   }
 
@@ -85,7 +103,13 @@ export class MarkdownPreviewRenderer {
     MarkdownRenderer.unregisterCodeBlockPostProcessor(language);
   }
 
-  static async renderMarkdown(app: App, markdown: string, container: HTMLElement, sourcePath: string, owner?: Component): Promise<void> {
+  static async renderMarkdown(
+    app: App,
+    markdown: string,
+    container: HTMLElement,
+    sourcePath: string,
+    owner?: Component,
+  ): Promise<void> {
     const renderer = new MarkdownPreviewRenderer(app, container, sourcePath, owner);
     renderer.set(markdown);
     await renderer.whenIdle();
@@ -171,7 +195,8 @@ export class MarkdownPreviewRenderer {
   onResize(): void {
     this.renderedWidth = this.previewEl.offsetWidth;
     this.viewportHeight = this.previewEl.clientHeight;
-    if (this.addBottomPadding) this.sizerEl.style.paddingBottom = `${Math.floor(this.viewportHeight / 2)}px`;
+    if (this.addBottomPadding)
+      this.sizerEl.style.paddingBottom = `${Math.floor(this.viewportHeight / 2)}px`;
     for (const section of this.sections) section.resetCompute();
     this.updateVirtualDisplay();
   }
@@ -187,7 +212,11 @@ export class MarkdownPreviewRenderer {
     if (!Number.isFinite(targetLine) || this.text !== this.lastText) return false;
     const lineHeight = this.getLineHeight();
     let scrollTop = Math.max(0, targetLine * lineHeight);
-    if (options.center) scrollTop = Math.max(0, scrollTop - Math.max(0, this.previewEl.clientHeight - lineHeight) / 2);
+    if (options.center)
+      scrollTop = Math.max(
+        0,
+        scrollTop - Math.max(0, this.previewEl.clientHeight - lineHeight) / 2,
+      );
     this.previewEl.scrollTop = scrollTop;
     this.lastAppliedScrollLine = targetLine;
     this.scrolling = true;
@@ -195,7 +224,11 @@ export class MarkdownPreviewRenderer {
     return true;
   }
 
-  applyScrollDelayed(line: unknown, options?: { center?: boolean; highlight?: boolean }, callback?: () => void): void {
+  applyScrollDelayed(
+    line: unknown,
+    options?: { center?: boolean; highlight?: boolean },
+    callback?: () => void,
+  ): void {
     if (this.applyScroll(line, options)) {
       callback?.();
       return;
@@ -215,11 +248,13 @@ export class MarkdownPreviewRenderer {
       const section = this.sections[index];
       if (section.modUi) continue;
       const metadataEl = section.el.querySelector<HTMLElement>(".metadata-container.is-collapsed");
-      if (metadataEl) folds.push({ from: section.start.line, to: section.start.line + section.lines });
-      if (section.headingCollapsed) folds.push({
-        from: section.start.line,
-        to: this.getHeadingFoldEnd(index),
-      });
+      if (metadataEl)
+        folds.push({ from: section.start.line, to: section.start.line + section.lines });
+      if (section.headingCollapsed)
+        folds.push({
+          from: section.start.line,
+          to: this.getHeadingFoldEnd(index),
+        });
       for (const li of getFoldableListItems(section.el)) {
         if (!li.classList.contains("is-collapsed")) continue;
         const line = parseNumber(li.dataset.line, 0);
@@ -237,9 +272,15 @@ export class MarkdownPreviewRenderer {
     const info = foldInfo as { folds?: unknown; lines?: unknown };
     if (!Array.isArray(info.folds)) return;
     if (typeof info.lines === "number" && info.lines !== countLines(this.text)) return;
-    const collapsedLines = new Set(info.folds
-      .map((fold) => typeof fold === "object" && fold !== null ? Number((fold as { from?: unknown }).from) : NaN)
-      .filter((line) => Number.isFinite(line)));
+    const collapsedLines = new Set(
+      info.folds
+        .map((fold) =>
+          typeof fold === "object" && fold !== null
+            ? Number((fold as { from?: unknown }).from)
+            : NaN,
+        )
+        .filter((line) => Number.isFinite(line)),
+    );
     this.onRendered(() => {
       for (const section of this.sections) {
         if (section.modUi) continue;
@@ -317,7 +358,12 @@ export class MarkdownPreviewRenderer {
     const contentEl = document.createElement("div");
     contentEl.className = "markdown-preview-section";
     this.sections = [...(this.header ? [this.header] : [])];
-    this.sizerEl.append(pusherEl, ...(this.header ? [this.header.el] : []), contentEl, ...(this.footer ? [this.footer.el] : []));
+    this.sizerEl.append(
+      pusherEl,
+      ...(this.header ? [this.header.el] : []),
+      contentEl,
+      ...(this.footer ? [this.footer.el] : []),
+    );
     const frontmatter = getMarkdownFrontmatter(this.text);
     this.frontmatter = frontmatter;
     this.setCssClasses(getFrontmatterCssClasses(frontmatter));
@@ -332,7 +378,10 @@ export class MarkdownPreviewRenderer {
         this.queueRender();
       },
       onSectionPostProcess: (el, context) => {
-        frontmatterUsage.set(el, (context as InternalPreviewPostProcessorContext).usesFrontMatter === true);
+        frontmatterUsage.set(
+          el,
+          (context as InternalPreviewPostProcessorContext).usesFrontMatter === true,
+        );
       },
     });
     const markdownSections = collectMarkdownSections(contentEl, this.text, frontmatterUsage);
@@ -391,7 +440,10 @@ export class MarkdownPreviewRenderer {
   }
 
   belongsToMe(el: HTMLElement): boolean {
-    return this.previewEl.contains(el) || this.sections.some((section) => section.el === el || section.el.contains(el));
+    return (
+      this.previewEl.contains(el) ||
+      this.sections.some((section) => section.el === el || section.el.contains(el))
+    );
   }
 
   cleanupParentComponents(): void {
@@ -409,8 +461,10 @@ export class MarkdownPreviewRenderer {
   }
 
   private highlightLine(line: number): void {
-    for (const element of this.previewEl.querySelectorAll(".is-flashing")) element.classList.remove("is-flashing");
-    const target = this.previewEl.querySelector<HTMLElement>(`[data-line="${line}"]`) ?? this.sizerEl;
+    for (const element of this.previewEl.querySelectorAll(".is-flashing"))
+      element.classList.remove("is-flashing");
+    const target =
+      this.previewEl.querySelector<HTMLElement>(`[data-line="${line}"]`) ?? this.sizerEl;
     target.classList.add("is-flashing");
     window.setTimeout(() => target.classList.remove("is-flashing"), 3000);
   }
@@ -437,10 +491,7 @@ export class MarkdownPreviewRenderer {
     if (!this.progressiveRender || shownIndexes.length === 0) {
       this.pusherEl.style.marginBottom = "0px";
       this.sizerEl.style.minHeight = "";
-      const children = [
-        this.pusherEl,
-        ...this.sections.map((section) => section.el),
-      ];
+      const children = [this.pusherEl, ...this.sections.map((section) => section.el)];
       this.sizerEl.replaceChildren(...children);
       for (const section of this.sections) {
         section.el.style.display = section.shown ? "" : "none";
@@ -450,7 +501,8 @@ export class MarkdownPreviewRenderer {
       return;
     }
 
-    const viewportHeight = this.previewEl.clientHeight || this.viewportHeight || this.renderExtraMinPx;
+    const viewportHeight =
+      this.previewEl.clientHeight || this.viewportHeight || this.renderExtraMinPx;
     const buffer = Math.max(viewportHeight * this.renderExtra, this.renderExtraMinPx);
     const windowTop = Math.max(0, scrollTop - buffer);
     const windowBottom = scrollTop + viewportHeight + buffer;
@@ -485,9 +537,15 @@ export class MarkdownPreviewRenderer {
     }
     this.sizerEl.replaceChildren(...children);
 
-    const firstShownPosition = layout.positions.find((position, index) => index >= firstIndex && index <= lastIndex && position.shown);
-    this.pusherEl.style.marginBottom = firstShownPosition && firstShownPosition.top > 0 ? `${Math.floor(firstShownPosition.top)}px` : "";
-    this.sizerEl.style.minHeight = layout.totalHeight > 0 ? `${Math.max(0, Math.floor(layout.totalHeight - 1))}px` : "";
+    const firstShownPosition = layout.positions.find(
+      (position, index) => index >= firstIndex && index <= lastIndex && position.shown,
+    );
+    this.pusherEl.style.marginBottom =
+      firstShownPosition && firstShownPosition.top > 0
+        ? `${Math.floor(firstShownPosition.top)}px`
+        : "";
+    this.sizerEl.style.minHeight =
+      layout.totalHeight > 0 ? `${Math.max(0, Math.floor(layout.totalHeight - 1))}px` : "";
 
     for (let index = firstIndex; index <= lastIndex; index += 1) {
       const section = this.sections[index];
@@ -528,7 +586,10 @@ export class MarkdownPreviewRenderer {
     return heights.reduce((sum, height) => sum + height, 0) / heights.length;
   }
 
-  private getEstimatedSectionHeight(section: MarkdownPreviewSection, averageHeight: number): number {
+  private getEstimatedSectionHeight(
+    section: MarkdownPreviewSection,
+    averageHeight: number,
+  ): number {
     if (section.computed && section.height > 0) return section.height;
     if (section.height > 0) return section.height;
     return Math.max(1, section.lines) * averageHeight;
@@ -544,11 +605,12 @@ export class MarkdownPreviewRenderer {
     for (const index of indexes) {
       const position = positions[index];
       if (!position) continue;
-      const distance = scrollTop < position.top
-        ? position.top - scrollTop
-        : scrollTop > position.bottom
-          ? scrollTop - position.bottom
-          : 0;
+      const distance =
+        scrollTop < position.top
+          ? position.top - scrollTop
+          : scrollTop > position.bottom
+            ? scrollTop - position.bottom
+            : 0;
       if (distance < nearestDistance) {
         nearest = index;
         nearestDistance = distance;
@@ -573,16 +635,20 @@ export class MarkdownPreviewRenderer {
     if (!node) return null;
     const element = node instanceof HTMLElement ? node : node.parentElement;
     if (!element) return null;
-    const index = this.sections.findIndex((section) => section.el === element || section.el.contains(element));
+    const index = this.sections.findIndex(
+      (section) => section.el === element || section.el.contains(element),
+    );
     return index === -1 ? null : index;
   }
 
   private renderHighlights(firstIndex: number, lastIndex: number): void {
-    for (const highlightEl of this.sizerEl.querySelectorAll(":scope > .search-highlight")) highlightEl.remove();
+    for (const highlightEl of this.sizerEl.querySelectorAll(":scope > .search-highlight"))
+      highlightEl.remove();
     if (firstIndex < 0 || lastIndex < firstIndex) return;
 
     const rectEls: HTMLElement[] = [];
-    const offsetParent = this.sizerEl.offsetParent instanceof HTMLElement ? this.sizerEl.offsetParent : this.sizerEl;
+    const offsetParent =
+      this.sizerEl.offsetParent instanceof HTMLElement ? this.sizerEl.offsetParent : this.sizerEl;
     const offsetRect = offsetParent.getBoundingClientRect();
 
     for (let index = firstIndex; index <= lastIndex; index += 1) {
@@ -620,7 +686,8 @@ export class MarkdownPreviewRenderer {
     const range = createRangeFromTextOffsets(textNodes, highlightRange.start, highlightRange.end);
     const rects: MarkdownHighlightRect[] = [];
     if (range) {
-      const clientRects = typeof range.getClientRects === "function" ? Array.from(range.getClientRects()) : [];
+      const clientRects =
+        typeof range.getClientRects === "function" ? Array.from(range.getClientRects()) : [];
       for (const rect of clientRects) {
         rects.push({
           x: rect.left - offsetRect.left,
@@ -636,7 +703,10 @@ export class MarkdownPreviewRenderer {
   }
 
   private onHeadingCollapseClick(event: MouseEvent): void {
-    const target = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>(".heading-collapse-indicator") : null;
+    const target =
+      event.target instanceof HTMLElement
+        ? event.target.closest<HTMLElement>(".heading-collapse-indicator")
+        : null;
     if (!target) return;
     const section = this.getSectionForElement(target);
     if (!section || section.level <= 0) return;
@@ -652,7 +722,10 @@ export class MarkdownPreviewRenderer {
 
   private onListCollapseClick(event: MouseEvent): void {
     if (event.defaultPrevented || event.button !== 0) return;
-    const target = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>("li > .list-collapse-indicator") : null;
+    const target =
+      event.target instanceof HTMLElement
+        ? event.target.closest<HTMLElement>("li > .list-collapse-indicator")
+        : null;
     if (!target) return;
     const li = target.parentElement;
     if (!(li instanceof HTMLLIElement) || !this.belongsToMe(li)) return;
@@ -665,16 +738,26 @@ export class MarkdownPreviewRenderer {
 
   private onCheckboxClick(event: MouseEvent): void {
     if (event.defaultPrevented || event.button !== 0) return;
-    const checkbox = event.target instanceof HTMLElement ? event.target.closest<HTMLInputElement>(".task-list-item-checkbox") : null;
-    if (!(checkbox instanceof HTMLInputElement) || checkbox.type !== "checkbox" || !this.belongsToMe(checkbox)) return;
+    const checkbox =
+      event.target instanceof HTMLElement
+        ? event.target.closest<HTMLInputElement>(".task-list-item-checkbox")
+        : null;
+    if (
+      !(checkbox instanceof HTMLInputElement) ||
+      checkbox.type !== "checkbox" ||
+      !this.belongsToMe(checkbox)
+    )
+      return;
     const section = this.findSectionContaining(checkbox);
     if (!section || section.modUi) return;
     const relativeLine = parseNumber(checkbox.dataset.line, NaN);
     if (!Number.isFinite(relativeLine)) return;
     const absoluteLine = section.start.line + relativeLine;
-    const owner = this.owner as (Component & {
-      onCheckboxClick?: (event: MouseEvent, checkbox: HTMLInputElement, line: number) => void;
-    }) | undefined;
+    const owner = this.owner as
+      | (Component & {
+          onCheckboxClick?: (event: MouseEvent, checkbox: HTMLInputElement, line: number) => void;
+        })
+      | undefined;
     if (owner?.onCheckboxClick) {
       event.preventDefault();
       event.stopPropagation();
@@ -704,13 +787,16 @@ export class MarkdownPreviewRenderer {
     const target = event.target instanceof Node ? event.target : null;
     if (target && this.sizerEl.contains(target)) return;
     event.preventDefault();
-    this.app.menus.createMarkdownViewportMenu(this.owner as unknown as View, "preview", "gutter").showAtMouseEvent(event);
+    this.app.menus
+      .createMarkdownViewportMenu(this.owner as unknown as View, "preview", "gutter")
+      .showAtMouseEvent(event);
   }
 
   private setListCollapse(li: HTMLLIElement, collapsed: boolean): void {
     const changed = li.classList.contains("is-collapsed") !== collapsed;
     li.classList.toggle("is-collapsed", collapsed);
-    for (const icon of li.querySelectorAll<HTMLElement>(":scope > .collapse-icon")) icon.classList.toggle("is-collapsed", collapsed);
+    for (const icon of li.querySelectorAll<HTMLElement>(":scope > .collapse-icon"))
+      icon.classList.toggle("is-collapsed", collapsed);
     if (!changed) return;
     const section = this.findSectionContaining(li);
     section?.resetCompute();
@@ -764,7 +850,8 @@ export class MarkdownPreviewRenderer {
         section.el.style.display = "";
         continue;
       }
-      if (collapsedLevel > 0 && section.level > 0 && section.level <= collapsedLevel) collapsedLevel = 0;
+      if (collapsedLevel > 0 && section.level > 0 && section.level <= collapsedLevel)
+        collapsedLevel = 0;
       const hidden = collapsedLevel > 0 && (section.level === 0 || section.level > collapsedLevel);
       section.shown = !hidden;
       section.el.style.display = hidden ? "none" : "";
@@ -775,7 +862,8 @@ export class MarkdownPreviewRenderer {
   private getHeadingFoldEnd(index: number): number {
     const section = this.sections[index];
     const nextSection = this.sections[index + 1];
-    if (nextSection && !nextSection.modUi) return Math.max(section.start.line, nextSection.start.line - 1);
+    if (nextSection && !nextSection.modUi)
+      return Math.max(section.start.line, nextSection.start.line - 1);
     return section.start.line + section.lines;
   }
 
@@ -795,13 +883,20 @@ function createUiSection(className: string): MarkdownPreviewSection {
   return section;
 }
 
-function collectMarkdownSections(containerEl: HTMLElement, text: string, frontmatterUsage = new WeakMap<HTMLElement, boolean>()): MarkdownPreviewSection[] {
-  const rootEl = containerEl.children.length === 1
-    && containerEl.firstElementChild instanceof HTMLElement
-    && containerEl.firstElementChild.classList.contains("markdown-rendered")
-    ? containerEl.firstElementChild
-    : containerEl;
-  const blockEls = [...rootEl.children].filter((child): child is HTMLElement => child instanceof HTMLElement);
+function collectMarkdownSections(
+  containerEl: HTMLElement,
+  text: string,
+  frontmatterUsage = new WeakMap<HTMLElement, boolean>(),
+): MarkdownPreviewSection[] {
+  const rootEl =
+    containerEl.children.length === 1 &&
+    containerEl.firstElementChild instanceof HTMLElement &&
+    containerEl.firstElementChild.classList.contains("markdown-rendered")
+      ? containerEl.firstElementChild
+      : containerEl;
+  const blockEls = [...rootEl.children].filter(
+    (child): child is HTMLElement => child instanceof HTMLElement,
+  );
   if (blockEls.length === 0) {
     const section = new MarkdownPreviewSection(containerEl.innerHTML, containerEl);
     section.rendered = true;
@@ -829,7 +924,10 @@ function parseNumber(value: string | undefined, fallback: number): number {
   return Number.isFinite(number) ? number : fallback;
 }
 
-function getSectionInfoFromAttributes(el: HTMLElement, text: string): MarkdownSectionInformation | null {
+function getSectionInfoFromAttributes(
+  el: HTMLElement,
+  text: string,
+): MarkdownSectionInformation | null {
   let current: HTMLElement | null = el;
   while (current) {
     const lineStart = Number(current.dataset.lineStart ?? current.dataset.line);
@@ -852,8 +950,9 @@ function getHeadingLevel(el: HTMLElement): number {
 }
 
 function getFoldableListItems(root: HTMLElement): HTMLLIElement[] {
-  return [...root.querySelectorAll<HTMLLIElement>("li")]
-    .filter((li) => li.querySelector(":scope > ul, :scope > ol"));
+  return [...root.querySelectorAll<HTMLLIElement>("li")].filter((li) =>
+    li.querySelector(":scope > ul, :scope > ol"),
+  );
 }
 
 function countLines(text: string): number {
@@ -905,13 +1004,17 @@ function createRangeFromTextOffsets(textNodes: Text[], start: number, end: numbe
   return range;
 }
 
-function getFrontmatterCssClasses(frontmatter: Record<string, unknown> | null | undefined): string[] {
+function getFrontmatterCssClasses(
+  frontmatter: Record<string, unknown> | null | undefined,
+): string[] {
   if (!frontmatter) return [];
   const entry = Object.entries(frontmatter).find(([key]) => /^cssclasses$/i.test(key));
   if (!entry) return [];
   const value = entry[1];
   const candidates = Array.isArray(value) ? value : [value];
-  return candidates.filter((item): item is string => typeof item === "string" && item.length > 0 && !/\s/.test(item));
+  return candidates.filter(
+    (item): item is string => typeof item === "string" && item.length > 0 && !/\s/.test(item),
+  );
 }
 
 function lineOffset(text: string, line: number): number {

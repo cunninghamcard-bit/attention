@@ -19,7 +19,9 @@ export function registerAppProtocolHandlers(app: App): void {
     }
 
     const eState = parsed.subpath ? { subpath: parsed.subpath } : undefined;
-    await app.workspace.getLeaf(parsePaneType(params.get("paneType"))).openFile(file, { active: true, eState });
+    await app.workspace
+      .getLeaf(parsePaneType(params.get("paneType")))
+      .openFile(file, { active: true, eState });
     new Notice(`Opened ${file.path}`);
   });
 
@@ -27,7 +29,11 @@ export function registerAppProtocolHandlers(app: App): void {
     const params = protocolParams(data);
     await app.corePluginsReady;
     const query = params.get("query") ?? "";
-    const leaf = await app.workspace.ensureSideLeaf("search", "left", { active: true, reveal: true, state: { query } });
+    const leaf = await app.workspace.ensureSideLeaf("search", "left", {
+      active: true,
+      reveal: true,
+      state: { query },
+    });
     const view = leaf.view as { focusSearch?: (query?: string) => void } | null;
     view?.focusSearch?.(query);
   });
@@ -46,7 +52,11 @@ export function registerAppProtocolHandlers(app: App): void {
     if (hasFlag(params, "clipboard")) content = await readClipboardText();
     if (content) {
       if (hasFlag(params, "append") || hasFlag(params, "prepend")) {
-        await app.fileManager.insertIntoFile(file, content, hasFlag(params, "prepend") ? "prepend" : "append");
+        await app.fileManager.insertIntoFile(
+          file,
+          content,
+          hasFlag(params, "prepend") ? "prepend" : "append",
+        );
       } else {
         await app.vault.modify(file, content);
       }
@@ -86,7 +96,8 @@ function protocolParams(data: ObsidianProtocolData): URLSearchParams {
 }
 
 async function resolveProtocolNewFile(app: App, params: URLSearchParams): Promise<TFile | null> {
-  const shouldReuse = hasFlag(params, "append") || hasFlag(params, "prepend") || hasFlag(params, "overwrite");
+  const shouldReuse =
+    hasFlag(params, "append") || hasFlag(params, "prepend") || hasFlag(params, "overwrite");
   const filePath = params.get("file");
   if (filePath) {
     if (/\.\.[/\\]/.test(filePath)) return null;
@@ -94,12 +105,17 @@ async function resolveProtocolNewFile(app: App, params: URLSearchParams): Promis
     if (existing) return existing;
 
     const folderPath = parentPath(filePath);
-    let folder = folderPath ? app.vault.getAbstractFileByPathInsensitive(folderPath) : app.vault.getRoot();
+    let folder = folderPath
+      ? app.vault.getAbstractFileByPathInsensitive(folderPath)
+      : app.vault.getRoot();
     if (folderPath && !folder) folder = await app.vault.createFolder(folderPath);
     if (!(folder instanceof TFolder) && folderPath) return null;
 
     try {
-      return await app.fileManager.createNewFile(folder instanceof TFolder ? folder : null, basename(filePath));
+      return await app.fileManager.createNewFile(
+        folder instanceof TFolder ? folder : null,
+        basename(filePath),
+      );
     } catch (error) {
       new Notice(String(error));
       return null;

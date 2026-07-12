@@ -1,5 +1,11 @@
 import { focusLastPill, renderEditablePropertyPill } from "./EditablePropertyPill";
-import { completeTagSuggestionText, getTagSuggestions, renderTagSuggestion, stripHash, type TagSuggestion } from "../../metadata/TagSuggestion";
+import {
+  completeTagSuggestionText,
+  getTagSuggestions,
+  renderTagSuggestion,
+  stripHash,
+  type TagSuggestion,
+} from "../../metadata/TagSuggestion";
 import type { PropertyWidgetContext, PropertyValue } from "./PropertyTypes";
 import { setTooltip } from "../../ui/Popover";
 
@@ -23,7 +29,8 @@ export function renderTagPropertyWidget(parent: HTMLElement, context: PropertyWi
       removeLabel: `Remove ${display}`,
       commitValues,
       createValue: (raw) => createTagValue(raw),
-      findDuplicate: (candidate, existing) => existing.findIndex((item) => stripHash(item) === stripHash(candidate)),
+      findDuplicate: (candidate, existing) =>
+        existing.findIndex((item) => stripHash(item) === stripHash(candidate)),
       decoratePill: (pillEl, item) => {
         if (!isValidTag(`#${stripHash(item)}`)) {
           pillEl.classList.add("is-invalid");
@@ -64,7 +71,12 @@ export function renderTagPropertyWidget(parent: HTMLElement, context: PropertyWi
       focusLastPill(containerEl);
       return;
     }
-    if (event.key === "ArrowLeft" && inputEl.value === "" && inputEl.selectionStart === 0 && values.length > 0) {
+    if (
+      event.key === "ArrowLeft" &&
+      inputEl.value === "" &&
+      inputEl.selectionStart === 0 &&
+      values.length > 0
+    ) {
       event.preventDefault();
       focusLastPill(containerEl);
       return;
@@ -83,7 +95,11 @@ export function renderTagPropertyWidget(parent: HTMLElement, context: PropertyWi
   parent.appendChild(containerEl);
 }
 
-function commitInput(inputEl: HTMLInputElement, values: string[], commitValues: (values: string[]) => void): void {
+function commitInput(
+  inputEl: HTMLInputElement,
+  values: string[],
+  commitValues: (values: string[]) => void,
+): void {
   const incoming = splitTagInput(inputEl.value);
   if (incoming.length === 0) return;
   const next = addTagValues(values, incoming);
@@ -180,12 +196,18 @@ class TagPropertySuggest {
     if (this.suggestions.length === 0) return;
     this.selectedIndex = (index + this.suggestions.length) % this.suggestions.length;
     const items = this.containerEl?.querySelectorAll<HTMLElement>(".suggestion-item") ?? [];
-    items.forEach((item, itemIndex) => item.classList.toggle("is-selected", itemIndex === this.selectedIndex));
+    items.forEach((item, itemIndex) =>
+      item.classList.toggle("is-selected", itemIndex === this.selectedIndex),
+    );
   }
 }
 
 function normalizeTagValues(value: PropertyValue): string[] {
-  if (Array.isArray(value)) return value.map(String).map((item) => item.trim()).filter(Boolean);
+  if (Array.isArray(value))
+    return value
+      .map(String)
+      .map((item) => item.trim())
+      .filter(Boolean);
   if (typeof value === "string") return splitTagInput(value);
   return [];
 }
@@ -229,6 +251,8 @@ function isValidTag(value: string): boolean {
 }
 
 function openTagSearch(context: PropertyWidgetContext, display: string): void {
-  const plugin = context.app?.internalPlugins.getEnabledPluginById<{ openGlobalSearch?: (query: string) => void }>("global-search");
+  const plugin = context.app?.internalPlugins.getEnabledPluginById<{
+    openGlobalSearch?: (query: string) => void;
+  }>("global-search");
   plugin?.openGlobalSearch?.(`tag:${display}`);
 }

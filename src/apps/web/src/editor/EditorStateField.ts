@@ -31,7 +31,7 @@ export class StateField<T> {
     return {
       type: "state-field-init",
       field: this,
-      value: typeof value === "function" ? (value as () => T)() : value ?? this.create(),
+      value: typeof value === "function" ? (value as () => T)() : (value ?? this.create()),
     };
   }
 }
@@ -49,15 +49,19 @@ export interface LivePreviewStateType {
   mousedown: boolean;
 }
 
-export const livePreviewState = ViewPlugin.fromClass(class LivePreviewState implements LivePreviewStateType {
-  mousedown = false;
+export const livePreviewState = ViewPlugin.fromClass(
+  class LivePreviewState implements LivePreviewStateType {
+    mousedown = false;
 
-  update(): void {}
-});
+    update(): void {}
+  },
+);
 
 export function isStateFieldInit(value: unknown): value is StateFieldInit<unknown> {
-  return typeof value === "object"
-    && value !== null
-    && (value as { type?: unknown }).type === "state-field-init"
-    && (value as { field?: unknown }).field instanceof StateField;
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as { type?: unknown }).type === "state-field-init" &&
+    (value as { field?: unknown }).field instanceof StateField
+  );
 }

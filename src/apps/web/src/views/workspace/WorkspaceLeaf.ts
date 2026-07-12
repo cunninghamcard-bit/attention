@@ -11,7 +11,12 @@ import { EmptyView } from "../EmptyView";
 import { UnknownView } from "../UnknownView";
 import { DeferredView } from "../DeferredView";
 import { FileView } from "../FileView";
-import type { DragDropResult, DragSource, FileDragSource, LinkDragSource } from "../../ui/drag/DragManager";
+import type {
+  DragDropResult,
+  DragSource,
+  FileDragSource,
+  LinkDragSource,
+} from "../../ui/drag/DragManager";
 import { WorkspaceTabs } from "./WorkspaceTabs";
 import { parseLinktext } from "../../metadata/Linkpath";
 import { setTooltip, type HoverPopover } from "../../ui/Popover";
@@ -52,8 +57,16 @@ type BookmarksDragSource = DragSource & {
 };
 
 interface BookmarkOpener {
-  openBookmarkInLeaf?: (item: BookmarkDropItem, leaf: WorkspaceLeaf, openState?: { active?: boolean }) => unknown;
-  openItemInLeaf?: (item: BookmarkDropItem, leaf: WorkspaceLeaf, openState?: { active?: boolean }) => unknown;
+  openBookmarkInLeaf?: (
+    item: BookmarkDropItem,
+    leaf: WorkspaceLeaf,
+    openState?: { active?: boolean },
+  ) => unknown;
+  openItemInLeaf?: (
+    item: BookmarkDropItem,
+    leaf: WorkspaceLeaf,
+    openState?: { active?: boolean },
+  ) => unknown;
 }
 
 export class WorkspaceLeaf extends WorkspaceItem {
@@ -92,7 +105,9 @@ export class WorkspaceLeaf extends WorkspaceItem {
     this.tabHeaderEl.className = "workspace-tab-header tappable";
     this.tabHeaderEl.setAttribute("role", "tab");
     this.tabHeaderEl.draggable = true;
-    this.tabHeaderEl.addEventListener("dragstart", (event) => this.workspace.onDragLeaf(event, this));
+    this.tabHeaderEl.addEventListener("dragstart", (event) =>
+      this.workspace.onDragLeaf(event, this),
+    );
     this.tabHeaderEl.addEventListener("contextmenu", (event) => this.onOpenTabHeaderMenu(event));
     this.tabHeaderEl.addEventListener("mousedown", (event) => {
       if (event.button === 1) event.preventDefault();
@@ -115,11 +130,14 @@ export class WorkspaceLeaf extends WorkspaceItem {
     });
 
     this.containerEl.addEventListener("focusin", () => this.workspace.setActiveLeaf(this));
-    this.containerEl.addEventListener("pointerdown", () => this.workspace.setActiveLeaf(this), { capture: true });
+    this.containerEl.addEventListener("pointerdown", () => this.workspace.setActiveLeaf(this), {
+      capture: true,
+    });
 
     this.emptyView = new EmptyView(this);
     this.view = this.emptyView;
-    const ResizeObserverCtor = this.containerEl.ownerDocument.defaultView?.ResizeObserver ?? globalThis.ResizeObserver;
+    const ResizeObserverCtor =
+      this.containerEl.ownerDocument.defaultView?.ResizeObserver ?? globalThis.ResizeObserver;
     if (ResizeObserverCtor) {
       this.resizeObserver = new ResizeObserverCtor((entries) => {
         if (!entries.some((entry) => entry.target === this.containerEl)) return;
@@ -138,8 +156,16 @@ export class WorkspaceLeaf extends WorkspaceItem {
   override on(name: "pinned-change", callback: (pinned: boolean) => any, ctx?: any): EventRef;
   override on(name: "group-change", callback: (group: string | null) => any, ctx?: any): EventRef;
   override on(name: "history-change", callback: () => any, ctx?: any): EventRef;
-  override on<TArgs extends unknown[]>(name: string, callback: (...args: TArgs) => any, ctx?: object): EventRef<TArgs>;
-  override on<TArgs extends unknown[]>(name: string, callback: (...args: TArgs) => any, ctx?: object): EventRef<TArgs> {
+  override on<TArgs extends unknown[]>(
+    name: string,
+    callback: (...args: TArgs) => any,
+    ctx?: object,
+  ): EventRef<TArgs>;
+  override on<TArgs extends unknown[]>(
+    name: string,
+    callback: (...args: TArgs) => any,
+    ctx?: object,
+  ): EventRef<TArgs> {
     return super.on(name, callback, ctx);
   }
 
@@ -149,7 +175,21 @@ export class WorkspaceLeaf extends WorkspaceItem {
 
   openTabHeaderMenu(event: MouseEvent, parentEl: HTMLElement = this.tabHeaderEl): Menu {
     event.preventDefault();
-    const menu = Menu.forEvent(event).addSections(["title", "close", "pane", "open", "action", "find", "info", "info.copy", "view", "view.linked", "system", "", "danger"]);
+    const menu = Menu.forEvent(event).addSections([
+      "title",
+      "close",
+      "pane",
+      "open",
+      "action",
+      "find",
+      "info",
+      "info.copy",
+      "view",
+      "view.linked",
+      "system",
+      "",
+      "danger",
+    ]);
     menu.setSectionSubmenu("info.copy", { title: "Copy path", icon: "lucide-copy" });
     menu.setSectionSubmenu("view.linked", { title: "Open linked view", icon: "lucide-link" });
     if (Platform.isPhone) {
@@ -164,7 +204,10 @@ export class WorkspaceLeaf extends WorkspaceItem {
     }
     this.view?.onTabMenu(menu);
     if (this.isVisible()) {
-      this.view?.onPaneMenu(menu, this.workspace.isInSidebar(this) ? "sidebar-context-menu" : "tab-header");
+      this.view?.onPaneMenu(
+        menu,
+        this.workspace.isInSidebar(this) ? "sidebar-context-menu" : "tab-header",
+      );
       this.workspace.trigger("leaf-menu", menu, this);
     }
     menu.setParentElement(parentEl);
@@ -253,7 +296,11 @@ export class WorkspaceLeaf extends WorkspaceItem {
     if (isFocusEphemeralState(state) && this.workspace.isLayoutReady()) {
       const doc = this.containerEl.ownerDocument;
       const activeElement = doc.activeElement;
-      if (activeElement && activeElement !== doc.body && !this.containerEl.contains(activeElement)) {
+      if (
+        activeElement &&
+        activeElement !== doc.body &&
+        !this.containerEl.contains(activeElement)
+      ) {
         if (activeElement instanceof HTMLElement) activeElement.blur();
         doc.getSelection()?.removeAllRanges();
       }
@@ -282,29 +329,36 @@ export class WorkspaceLeaf extends WorkspaceItem {
       const type = state.type ?? "empty";
       const typeChanged = type !== previousType;
       const wasDeferredView = previousView instanceof DeferredView;
-      const previousHistoryState = previousView && previousView !== this.emptyView ? this.getHistoryState() : null;
+      const previousHistoryState =
+        previousView && previousView !== this.emptyView ? this.getHistoryState() : null;
       const result: InternalViewStateResult = { history: false, layout: false, close: false };
       const internalState = state as InternalViewState;
 
       if (typeChanged || wasDeferredView || this.deferredViewState) {
         const creator = this.app.viewRegistry.getViewCreatorByType(type);
         const canDefer = Boolean(
-          creator
-          && !previousHistoryState
-          && !this.deferredViewState
-          && !wasDeferredView
-          && Boolean(internalState.icon)
-          && internalState.title !== undefined
-          && !this.containerEl.isShown()
-          && options.defer !== false,
+          creator &&
+          !previousHistoryState &&
+          !this.deferredViewState &&
+          !wasDeferredView &&
+          Boolean(internalState.icon) &&
+          internalState.title !== undefined &&
+          !this.containerEl.isShown() &&
+          options.defer !== false,
         );
-        const nextView = type === "empty"
-          ? null
-          : canDefer
-            ? new DeferredView(this, type, internalState.icon as string, internalState.title as string)
-            : creator
-              ? creator(this)
-              : new UnknownView(this, type);
+        const nextView =
+          type === "empty"
+            ? null
+            : canDefer
+              ? new DeferredView(
+                  this,
+                  type,
+                  internalState.icon as string,
+                  internalState.title as string,
+                )
+              : creator
+                ? creator(this)
+                : new UnknownView(this, type);
         await this.openInternal(nextView);
         result.history = true;
         result.layout = true;
@@ -326,17 +380,19 @@ export class WorkspaceLeaf extends WorkspaceItem {
       }
       if (ephemeralState) this.setEphemeralState(ephemeralState);
       if (
-        options.popstate
-        || state.popstate === true
-        || options.history === false
-        || isSyncState(state.state)
-        || (wasDeferredView && !typeChanged)
-      ) result.history = false;
+        options.popstate ||
+        state.popstate === true ||
+        options.history === false ||
+        isSyncState(state.state) ||
+        (wasDeferredView && !typeChanged)
+      )
+        result.history = false;
       if (options.layout === false) result.layout = false;
       else if (options.layout === true) result.layout = true;
 
       this.updateHeader();
-      if (result.history !== false && previousHistoryState) this.recordHistory(previousHistoryState);
+      if (result.history !== false && previousHistoryState)
+        this.recordHistory(previousHistoryState);
       if (result.layout) this.workspace.onLayoutChange(this);
       result.done?.();
     } finally {
@@ -379,14 +435,20 @@ export class WorkspaceLeaf extends WorkspaceItem {
     const extension = file.extension ?? file.path.split(".").pop() ?? "";
     const currentType = this.view?.getViewType();
     let type = this.app.viewRegistry.getTypeByExtension(extension);
-    if (currentType && this.view instanceof FileView && this.view.canAcceptExtension(extension)) type = currentType;
+    if (currentType && this.view instanceof FileView && this.view.canAcceptExtension(extension))
+      type = currentType;
     if (!type) {
-      const opener = this.app as unknown as { openWithDefaultApp?: (path: string) => void | Promise<void> };
+      const opener = this.app as unknown as {
+        openWithDefaultApp?: (path: string) => void | Promise<void>;
+      };
       await opener.openWithDefaultApp?.(file.path);
       return;
     }
 
-    const state = openState.state && typeof openState.state === "object" ? openState.state as Record<string, unknown> : {};
+    const state =
+      openState.state && typeof openState.state === "object"
+        ? (openState.state as Record<string, unknown>)
+        : {};
     state.file = file.path;
 
     await this.setViewState(
@@ -408,12 +470,20 @@ export class WorkspaceLeaf extends WorkspaceItem {
     try {
       const parsed = parseLinktext(linktext);
       let file = this.app.metadataCache.getFirstLinkpathDest(parsed.path, sourcePath);
-      const state = openState.state && typeof openState.state === "object" ? openState.state as Record<string, unknown> : {};
-      const eState = openState.eState && typeof openState.eState === "object" ? openState.eState as Record<string, unknown> : {};
+      const state =
+        openState.state && typeof openState.state === "object"
+          ? (openState.state as Record<string, unknown>)
+          : {};
+      const eState =
+        openState.eState && typeof openState.eState === "object"
+          ? (openState.eState as Record<string, unknown>)
+          : {};
 
       if (file && parsed.subpath) eState.subpath = parsed.subpath;
       if (!file) {
-        const parent = parsed.path.includes("/") ? null : this.app.fileManager.getNewFileParent(sourcePath, linktext);
+        const parent = parsed.path.includes("/")
+          ? null
+          : this.app.fileManager.getNewFileParent(sourcePath, linktext);
         file = await this.app.fileManager.createNewFile(parent, parsed.path);
         state.mode = "source";
       }
@@ -433,7 +503,12 @@ export class WorkspaceLeaf extends WorkspaceItem {
     this.deferredEphemeralState = undefined;
     if ("group" in state) this.group = normalizeLeafGroup(state.group);
     if (typeof state.pinned === "boolean") this.pinned = state.pinned;
-    const deferredView = new DeferredView(this, deferredState.type, deferredState.icon, deferredState.title);
+    const deferredView = new DeferredView(
+      this,
+      deferredState.type,
+      deferredState.icon,
+      deferredState.title,
+    );
     void deferredView.setState(deferredState.state ?? {});
     deferredView.setEphemeralState(cloneStatePayload(ephemeralState));
     void this.openInternal(deferredView).then(() => this.updateHeader());
@@ -524,12 +599,21 @@ export class WorkspaceLeaf extends WorkspaceItem {
   }
 
   private async restoreHistoryState(historyState: LeafHistoryState): Promise<void> {
-    await this.setViewState({ ...historyState.state, active: true }, historyState.eState, { history: false, popstate: true, defer: false });
+    await this.setViewState({ ...historyState.state, active: true }, historyState.eState, {
+      history: false,
+      popstate: true,
+      defer: false,
+    });
     this.emitHistoryChange();
   }
 
   recordHistory(state: LeafHistoryState): void {
-    if (!this.view?.navigation || this.view instanceof DeferredView || this.view instanceof EmptyView) return;
+    if (
+      !this.view?.navigation ||
+      this.view instanceof DeferredView ||
+      this.view instanceof EmptyView
+    )
+      return;
     const previous = this.backHistory[this.backHistory.length - 1];
     if (previous && isEquivalentViewState(previous.state, state.state)) return;
     this.backHistory.push(cloneHistoryState(state));
@@ -651,7 +735,8 @@ export class WorkspaceLeaf extends WorkspaceItem {
     if (options.layout !== false) this.workspace.requestSaveLayout();
     if (this.group) {
       this.workspace.iterateAllLeaves((leaf) => {
-        if (leaf !== this && leaf.group === this.group && leaf.pinned !== pinned) leaf.setPinned(pinned, { layout: false });
+        if (leaf !== this && leaf.group === this.group && leaf.pinned !== pinned)
+          leaf.setPinned(pinned, { layout: false });
       });
     }
   }
@@ -737,7 +822,10 @@ export class WorkspaceLeaf extends WorkspaceItem {
     if (!openBookmarkInLeaf) return undefined;
     const items = (source.items ?? [])
       .map((entry) => entry.item)
-      .filter((item): item is BookmarkDropItem => !!item && (item.type === "file" || item.type === "graph"));
+      .filter(
+        (item): item is BookmarkDropItem =>
+          !!item && (item.type === "file" || item.type === "graph"),
+      );
     if (items.length !== 1) return undefined;
     if (!hovering) {
       this.workspace.setActiveLeaf(this);
@@ -799,7 +887,7 @@ class WorkspaceLeafHistoryController implements WorkspaceLeafHistory {
 
 function normalizeLeafGroup(group: string | WorkspaceLeaf | null | undefined): string | null {
   if (!group) return null;
-  return group instanceof WorkspaceLeaf ? group.group ?? group.id : group;
+  return group instanceof WorkspaceLeaf ? (group.group ?? group.id) : group;
 }
 
 function createLeafGroupId(length = 16): string {
@@ -808,7 +896,11 @@ function createLeafGroupId(length = 16): string {
   return id.join("");
 }
 
-function normalizeHistoryPushState(leaf: WorkspaceLeaf, state: LeafHistoryState | InternalViewState | null, eState: unknown): LeafHistoryState | null {
+function normalizeHistoryPushState(
+  leaf: WorkspaceLeaf,
+  state: LeafHistoryState | InternalViewState | null,
+  eState: unknown,
+): LeafHistoryState | null {
   if (!state) return leaf.getHistoryState();
   if ("type" in state) {
     return {
@@ -826,7 +918,13 @@ function displayTextFromViewState(state: InternalViewState): string {
   const payload = state.state;
   if (payload && typeof payload === "object" && "file" in payload) {
     const file = (payload as { file?: unknown }).file;
-    if (typeof file === "string" && file) return file.split("/").pop()?.replace(/\.[^.]+$/, "") ?? file;
+    if (typeof file === "string" && file)
+      return (
+        file
+          .split("/")
+          .pop()
+          ?.replace(/\.[^.]+$/, "") ?? file
+      );
   }
   return state.type === "empty" ? "New tab" : state.type;
 }

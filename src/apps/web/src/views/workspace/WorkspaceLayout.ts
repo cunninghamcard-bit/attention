@@ -10,9 +10,30 @@ export type WorkspaceLayoutNode =
       collapsed?: boolean;
       width?: number;
     }
-  | { id: string; type: "tabs"; currentTab?: number; stacked?: boolean; children: WorkspaceLayoutNode[]; dimension?: number }
-  | { id: string; type: "mobile-drawer"; currentTab?: number; pinned?: boolean; children: WorkspaceLayoutNode[]; dimension?: number }
-  | { id: string; type: "leaf"; state: InternalViewState; dimension?: number; group?: string; pinned?: boolean }
+  | {
+      id: string;
+      type: "tabs";
+      currentTab?: number;
+      stacked?: boolean;
+      children: WorkspaceLayoutNode[];
+      dimension?: number;
+    }
+  | {
+      id: string;
+      type: "mobile-drawer";
+      currentTab?: number;
+      pinned?: boolean;
+      children: WorkspaceLayoutNode[];
+      dimension?: number;
+    }
+  | {
+      id: string;
+      type: "leaf";
+      state: InternalViewState;
+      dimension?: number;
+      group?: string;
+      pinned?: boolean;
+    }
   | { id: string; type: "floating"; children: WorkspaceLayoutNode[]; dimension?: number }
   | {
       id: string;

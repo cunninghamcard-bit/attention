@@ -15,7 +15,9 @@ describe("CodeFileView", () => {
     expect(view.getViewData()).toBe("const x: number = 1;\n");
     expect(view.getDisplayText()).toBe("main.ts");
     expect(view.getIcon()).toBe("lucide-file-code");
-    expect(view.contentEl.querySelector(".cm-content")?.textContent).toContain("const x: number = 1;");
+    expect(view.contentEl.querySelector(".cm-content")?.textContent).toContain(
+      "const x: number = 1;",
+    );
   });
 
   it("keeps external file changes in sync with the editor document", async () => {
@@ -36,12 +38,27 @@ describe("CodeFileView", () => {
   it("jumps to the eState line and selects the match range", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const file = await app.vault.create("jump.ts", "const a = 1;\nconst b = 2;\nconst target = 3;\n");
+    const file = await app.vault.create(
+      "jump.ts",
+      "const a = 1;\nconst b = 2;\nconst target = 3;\n",
+    );
 
-    const leaf = await app.workspace.openFile(file, { active: true, eState: { line: 2, matchStart: 6, matchEnd: 12 } });
+    const leaf = await app.workspace.openFile(file, {
+      active: true,
+      eState: { line: 2, matchStart: 6, matchEnd: 12 },
+    });
     const view = leaf.view as CodeFileView;
 
-    const cm = (view as unknown as { cm: { state: { selection: { main: { from: number; to: number } }, doc: { line(n: number): { from: number } } } } }).cm;
+    const cm = (
+      view as unknown as {
+        cm: {
+          state: {
+            selection: { main: { from: number; to: number } };
+            doc: { line(n: number): { from: number } };
+          };
+        };
+      }
+    ).cm;
     const lineStart = cm.state.doc.line(3).from;
     expect(cm.state.selection.main.from).toBe(lineStart + 6);
     expect(cm.state.selection.main.to).toBe(lineStart + 12);
@@ -55,7 +72,9 @@ describe("CodeFileView", () => {
     const leaf = await app.workspace.openFile(file, { active: true });
 
     expect(leaf.view).toBeInstanceOf(CodeFileView);
-    expect((leaf.view as CodeFileView).contentEl.querySelector(".cm-content")?.textContent).toContain("FROM alpine:3");
+    expect(
+      (leaf.view as CodeFileView).contentEl.querySelector(".cm-content")?.textContent,
+    ).toContain("FROM alpine:3");
   });
 
   it("global search covers code files and results deep-link into them", async () => {

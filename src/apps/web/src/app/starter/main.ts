@@ -16,9 +16,11 @@ declare global {
  */
 
 function resolveIpc(): StarterIpc {
-  const bridge = (window as Window & {
-    electron?: { ipcRenderer?: StarterIpc };
-  }).electron?.ipcRenderer;
+  const bridge = (
+    window as Window & {
+      electron?: { ipcRenderer?: StarterIpc };
+    }
+  ).electron?.ipcRenderer;
   if (bridge?.sendSync) return bridge;
   if (import.meta.env.DEV) {
     // Browser-pane preview only: an in-memory registry so the page can be
@@ -38,10 +40,14 @@ function createDevFakeIpc(): StarterIpc {
   return {
     sendSync(channel: string, ...args: unknown[]): unknown {
       switch (channel) {
-        case "version": return "0.0.0-dev";
-        case "vault-list": return vaults;
-        case "get-default-vault-path": return "/Users/dev/Documents/Workbench Vault";
-        case "vault-open": return true;
+        case "version":
+          return "0.0.0-dev";
+        case "vault-list":
+          return vaults;
+        case "get-default-vault-path":
+          return "/Users/dev/Documents/Workbench Vault";
+        case "vault-open":
+          return true;
         case "vault-move": {
           const [from, to] = args as [string, string];
           for (const entry of Object.values(vaults)) {
@@ -60,7 +66,8 @@ function createDevFakeIpc(): StarterIpc {
           }
           return false;
         }
-        default: return undefined;
+        default:
+          return undefined;
       }
     },
     invoke: async () => ["/Users/dev/picked-folder"],

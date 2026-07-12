@@ -89,7 +89,9 @@ describe("Vault config JSON helpers", () => {
     expect(store.root).toBe(".config");
     await expect(vault.readConfigJson("daily-notes")).resolves.toEqual({ folder: "Daily" });
     await expect(store.read("daily-notes.json")).resolves.toEqual({ folder: "Daily" });
-    await expect(store.read(vault.getConfigFile("daily-notes"))).resolves.toEqual({ folder: "Daily" });
+    await expect(store.read(vault.getConfigFile("daily-notes"))).resolves.toEqual({
+      folder: "Daily",
+    });
 
     await vault.deleteConfigJson("daily-notes");
 
@@ -99,7 +101,9 @@ describe("Vault config JSON helpers", () => {
   it("returns null only for missing adapter JSON and undefined for broken reads", async () => {
     const missing = Object.assign(new Error("missing"), { code: "ENOENT" });
     const missingVault = new Vault({
-      read: vi.fn(async () => { throw missing; }),
+      read: vi.fn(async () => {
+        throw missing;
+      }),
       write: vi.fn(async () => {}),
       delete: vi.fn(async () => {}),
       list: vi.fn(async () => []),
@@ -148,20 +152,27 @@ describe("Vault public file API", () => {
     expect(() => vault.checkPath("Bad:Name.md")).toThrow("File name cannot contain");
     const restorePlatform = mockNavigatorPlatform("Win32");
     try {
-      expect(() => vault.checkPath("Notes/Trailing dot.")).toThrow("File names cannot end with a dot or a space.");
-      expect(() => vault.checkPath("Notes/Trailing space ")).toThrow("File names cannot end with a dot or a space.");
+      expect(() => vault.checkPath("Notes/Trailing dot.")).toThrow(
+        "File names cannot end with a dot or a space.",
+      );
+      expect(() => vault.checkPath("Notes/Trailing space ")).toThrow(
+        "File names cannot end with a dot or a space.",
+      );
       expect(() => vault.checkPath("Notes/CON.md")).toThrow("File name is forbidden: CON");
       expect(() => vault.checkPath("Notes/Bad|Name.md")).toThrow("File name cannot contain");
     } finally {
       restorePlatform();
     }
-    const restoreAndroid = mockNavigatorRuntime({ platform: "Linux armv8l", userAgent: "Mozilla/5.0 (Linux; Android 14)" });
+    const restoreAndroid = mockNavigatorRuntime({
+      platform: "Linux armv8l",
+      userAgent: "Mozilla/5.0 (Linux; Android 14)",
+    });
     try {
       expect(() => vault.checkPath("Notes/Bad?Name.md")).toThrow("File name cannot contain");
     } finally {
       restoreAndroid();
     }
-    vault.checkPath("Notes/Question?Star*Angle<Quote\".md");
+    vault.checkPath('Notes/Question?Star*Angle<Quote".md');
 
     const file = await vault.create("Notes/Today.md", "body");
     const other = await vault.create("Notes/Other.md", "body");
@@ -172,7 +183,9 @@ describe("Vault public file API", () => {
     await expect(vault.exists("notes/today.md", true)).resolves.toBe(false);
     expect(vault.checkForDuplicate(file, "Today")).toBe(false);
     expect(vault.checkForDuplicate(other, "Today")).toBe(true);
-    await expect(vault.create("notes/today.md", "duplicate")).rejects.toThrow("File already exists.");
+    await expect(vault.create("notes/today.md", "duplicate")).rejects.toThrow(
+      "File already exists.",
+    );
     await expect(vault.create("Bad:Name.md", "bad")).rejects.toThrow("File name cannot contain");
   });
 
@@ -277,7 +290,9 @@ describe("Vault public file API", () => {
     const file = await vault.create("Notes/Today.md", "body");
     await vault.create("Notes/Other.md", "other");
 
-    await expect(vault.rename(file, "Notes/Bad:Name.md")).rejects.toThrow("File name cannot contain");
+    await expect(vault.rename(file, "Notes/Bad:Name.md")).rejects.toThrow(
+      "File name cannot contain",
+    );
     await expect(vault.rename(file, "Notes/Other.md")).rejects.toThrow("File already exists");
 
     await vault.rename(file, "Notes/today.md");
@@ -325,8 +340,12 @@ describe("Vault public file API", () => {
     const read = vi.fn(async (path: string) => data.get(path) ?? "");
     const adapter = {
       read,
-      write: async (path: string, value: string) => { data.set(path, value); },
-      delete: async (path: string) => { data.delete(path); },
+      write: async (path: string, value: string) => {
+        data.set(path, value);
+      },
+      delete: async (path: string) => {
+        data.delete(path);
+      },
       list: async () => [],
     };
     const vault = new Vault(adapter);
@@ -364,7 +383,9 @@ describe("Vault public file API", () => {
           savingDuringImmediate = activeFile?.saving ?? false;
         }
       },
-      delete: async (path: string) => { data.delete(path); },
+      delete: async (path: string) => {
+        data.delete(path);
+      },
       list: async () => [],
     };
     const vault = new Vault(adapter);
@@ -410,7 +431,9 @@ describe("Vault public file API", () => {
     });
     const adapter = {
       read: vi.fn(async (path: string) => data.get(path) ?? ""),
-      write: vi.fn(async (path: string, value: string) => { data.set(path, value); }),
+      write: vi.fn(async (path: string, value: string) => {
+        data.set(path, value);
+      }),
       delete: vi.fn(async () => {}),
       list: vi.fn(async () => []),
       copy,
@@ -432,8 +455,17 @@ describe("Vault public file API", () => {
     await vault.create("Folder/Sub/b.txt", "");
     await vault.create("Folder/Sub/c.md", "");
 
-    expect(vault.getFiles().map((file) => file.path)).toEqual(["Root.md", "Folder/a.md", "Folder/Sub/c.md", "Folder/Sub/b.txt"]);
-    expect(vault.getMarkdownFiles().map((file) => file.path)).toEqual(["Root.md", "Folder/a.md", "Folder/Sub/c.md"]);
+    expect(vault.getFiles().map((file) => file.path)).toEqual([
+      "Root.md",
+      "Folder/a.md",
+      "Folder/Sub/c.md",
+      "Folder/Sub/b.txt",
+    ]);
+    expect(vault.getMarkdownFiles().map((file) => file.path)).toEqual([
+      "Root.md",
+      "Folder/a.md",
+      "Folder/Sub/c.md",
+    ]);
   });
 
   it("iterates files with Markdown content and empty non-Markdown content", async () => {
@@ -445,15 +477,20 @@ describe("Vault public file API", () => {
     const read = vi.spyOn(vault, "read");
 
     const cachedEntries = [];
-    for await (const entry of vault.iterateFiles([note, text], true)) cachedEntries.push({ path: entry.file.path, content: entry.content });
+    for await (const entry of vault.iterateFiles([note, text], true))
+      cachedEntries.push({ path: entry.file.path, content: entry.content });
 
-    expect(cachedEntries).toEqual([{ path: "Note.md", content: "Cached body" }, { path: "Attachment.txt", content: "" }]);
+    expect(cachedEntries).toEqual([
+      { path: "Note.md", content: "Cached body" },
+      { path: "Attachment.txt", content: "" },
+    ]);
     expect(cachedRead).toHaveBeenCalledWith(note);
     expect(read).not.toHaveBeenCalled();
 
     cachedRead.mockClear();
     const uncachedEntries = [];
-    for await (const entry of vault.iterateFiles([note], false)) uncachedEntries.push({ path: entry.file.path, content: entry.content });
+    for await (const entry of vault.iterateFiles([note], false))
+      uncachedEntries.push({ path: entry.file.path, content: entry.content });
 
     expect(uncachedEntries).toEqual([{ path: "Note.md", content: "Body" }]);
     expect(read).toHaveBeenCalledWith(note);
@@ -471,7 +508,8 @@ describe("Vault public file API", () => {
     const read = vi.spyOn(vault, "read");
 
     const entries = [];
-    for await (const entry of vault.generateFiles([note, canvas, text], true)) entries.push({ path: entry.file.path, content: entry.content });
+    for await (const entry of vault.generateFiles([note, canvas, text], true))
+      entries.push({ path: entry.file.path, content: entry.content });
 
     expect(entries).toEqual([
       { path: "Note.md", content: "Cached note" },
@@ -536,7 +574,12 @@ describe("Vault public file API", () => {
     await vault.append(file, "B", { mtime: 3 });
 
     await expect(vault.read(file)).resolves.toBe("AB");
-    await expect(adapter.stat("Adapter.md")).resolves.toEqual({ type: "file", ctime: 1, mtime: 3, size: 2 });
+    await expect(adapter.stat("Adapter.md")).resolves.toEqual({
+      type: "file",
+      ctime: 1,
+      mtime: 3,
+      size: 2,
+    });
     expect(file.stat).toEqual({ ctime: 1, mtime: 3, size: 2 });
   });
 
@@ -556,9 +599,16 @@ describe("Vault public file API", () => {
     const immediate = vi.fn();
     await adapter.write("Same.md", "same", { ctime: 1, mtime: 2 });
 
-    await expect(adapter.process("Same.md", (data) => data, { mtime: 99, immediate })).resolves.toBe("same");
+    await expect(
+      adapter.process("Same.md", (data) => data, { mtime: 99, immediate }),
+    ).resolves.toBe("same");
 
-    await expect(adapter.stat("Same.md")).resolves.toEqual({ type: "file", ctime: 1, mtime: 2, size: 4 });
+    await expect(adapter.stat("Same.md")).resolves.toEqual({
+      type: "file",
+      ctime: 1,
+      mtime: 2,
+      size: 4,
+    });
     expect(immediate).not.toHaveBeenCalled();
   });
 
@@ -590,17 +640,23 @@ describe("Vault public file API", () => {
     const callerImmediate = vi.fn();
     let activeFile: { saving: boolean } | null = null;
     let savingDuringImmediate = false;
-    const process = vi.fn(async (path: string, updater: (text: string) => string, options?: DataWriteOptions) => {
-      options?.immediate?.();
-      savingDuringImmediate = activeFile?.saving ?? false;
-      const next = updater(data.get(path) ?? "");
-      data.set(path, next);
-      return next;
-    });
+    const process = vi.fn(
+      async (path: string, updater: (text: string) => string, options?: DataWriteOptions) => {
+        options?.immediate?.();
+        savingDuringImmediate = activeFile?.saving ?? false;
+        const next = updater(data.get(path) ?? "");
+        data.set(path, next);
+        return next;
+      },
+    );
     const adapter = {
       read,
-      write: async (path: string, value: string) => { data.set(path, value); },
-      delete: async (path: string) => { data.delete(path); },
+      write: async (path: string, value: string) => {
+        data.set(path, value);
+      },
+      delete: async (path: string) => {
+        data.delete(path);
+      },
       list: async () => [],
       process,
     };
@@ -608,7 +664,9 @@ describe("Vault public file API", () => {
     const file = await vault.create("Counter.md", "one");
     activeFile = file;
 
-    await expect(vault.process(file, (text) => `${text}!`, { immediate: callerImmediate, mtime: 25 })).resolves.toBe("one!");
+    await expect(
+      vault.process(file, (text) => `${text}!`, { immediate: callerImmediate, mtime: 25 }),
+    ).resolves.toBe("one!");
 
     expect(process).toHaveBeenCalledTimes(1);
     expect(savingDuringImmediate).toBe(true);
@@ -638,7 +696,10 @@ describe("Vault setup and save config", () => {
     const store = new JsonStore();
     const vault = new Vault(undefined, undefined, store);
     await store.write("app.json", { theme: "app-theme", attachmentFolderPath: "Files" });
-    await store.write("appearance.json", { theme: "appearance-theme", editorFontFamily: "Legacy Serif" });
+    await store.write("appearance.json", {
+      theme: "appearance-theme",
+      editorFontFamily: "Legacy Serif",
+    });
 
     await vault.setupConfig();
 
@@ -650,7 +711,10 @@ describe("Vault setup and save config", () => {
     await vault.requestSaveConfig.run();
 
     await expect(store.read("app.json")).resolves.toEqual({ attachmentFolderPath: "Files" });
-    await expect(store.read("appearance.json")).resolves.toEqual({ theme: "app-theme", textFontFamily: "Legacy Serif" });
+    await expect(store.read("appearance.json")).resolves.toEqual({
+      theme: "app-theme",
+      textFontFamily: "Legacy Serif",
+    });
   });
 
   it("reloads app config when the adapter reports a raw config file change", async () => {
@@ -746,15 +810,21 @@ describe("Vault trash", () => {
   });
 });
 
-function createAdapter(overrides: Partial<{
-  trashSystem: (path: string) => Promise<boolean>;
-  trashLocal: (path: string) => Promise<void>;
-}> = {}) {
+function createAdapter(
+  overrides: Partial<{
+    trashSystem: (path: string) => Promise<boolean>;
+    trashLocal: (path: string) => Promise<void>;
+  }> = {},
+) {
   const data = new Map<string, string>();
   return {
     read: async (path: string) => data.get(path) ?? "",
-    write: async (path: string, value: string) => { data.set(path, value); },
-    delete: async (path: string) => { data.delete(path); },
+    write: async (path: string, value: string) => {
+      data.set(path, value);
+    },
+    delete: async (path: string) => {
+      data.delete(path);
+    },
     list: async () => [],
     ...overrides,
   };
@@ -764,7 +834,9 @@ class RawWatchAdapter extends InMemoryAdapter {
   supportsEvents = true;
   private handler: ((event: string, path: string, oldPath?: string) => void) | null = null;
 
-  override async watch(handler: (event: string, path: string, oldPath?: string) => void): Promise<() => void> {
+  override async watch(
+    handler: (event: string, path: string, oldPath?: string) => void,
+  ): Promise<() => void> {
     this.handler = handler;
     return () => {
       this.handler = null;
@@ -780,7 +852,9 @@ function mockNavigatorPlatform(platform: string): () => void {
   return mockNavigatorRuntime({ platform });
 }
 
-function mockNavigatorRuntime(values: Partial<Pick<Navigator, "appVersion" | "platform" | "userAgent">>): () => void {
+function mockNavigatorRuntime(
+  values: Partial<Pick<Navigator, "appVersion" | "platform" | "userAgent">>,
+): () => void {
   const original = {
     appVersion: window.navigator.appVersion,
     platform: window.navigator.platform,
@@ -800,7 +874,9 @@ describe("rename into a missing folder (adapter-parity ENOENT)", () => {
   it("throws ENOENT instead of silently reparenting", async () => {
     const vault = new Vault();
     const file = await vault.create("Note.md", "body");
-    await expect(vault.rename(file, "Nope/Note.md")).rejects.toThrow(/ENOENT: no such file or directory/);
+    await expect(vault.rename(file, "Nope/Note.md")).rejects.toThrow(
+      /ENOENT: no such file or directory/,
+    );
     // The tree is untouched by the refused rename.
     expect(vault.getFileByPath("Note.md")).toBe(file);
     expect(vault.getFileByPath("Nope/Note.md")).toBeNull();

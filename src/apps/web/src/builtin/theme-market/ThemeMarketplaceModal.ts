@@ -76,11 +76,15 @@ export class ThemeMarketplaceModal extends Modal {
     nameEl.textContent = entry.manifest.name;
     const metaEl = doc.createElement("div");
     metaEl.className = "theme-market-item-meta";
-    metaEl.textContent = [entry.manifest.author, entry.manifest.modes.join(" · ")].filter(Boolean).join(" — ");
+    metaEl.textContent = [entry.manifest.author, entry.manifest.modes.join(" · ")]
+      .filter(Boolean)
+      .join(" — ");
     infoEl.append(nameEl, metaEl);
     const buttonEl = doc.createElement("button");
     buttonEl.className = "mod-cta";
-    const installed = this.app.themeInstaller.listInstalled().some((record) => record.id === entry.manifest.id);
+    const installed = this.app.themeInstaller
+      .listInstalled()
+      .some((record) => record.id === entry.manifest.id);
     const active = this.app.themes.getActiveTheme()?.id === entry.manifest.id;
     buttonEl.textContent = active ? "In use" : installed ? "Use" : "Install and use";
     buttonEl.disabled = active || this.busyId !== null;
@@ -89,12 +93,17 @@ export class ThemeMarketplaceModal extends Modal {
     this.listEl.appendChild(itemEl);
   }
 
-  private async installAndUse(entry: ThemeMarketplaceEntry, buttonEl: HTMLButtonElement): Promise<void> {
+  private async installAndUse(
+    entry: ThemeMarketplaceEntry,
+    buttonEl: HTMLButtonElement,
+  ): Promise<void> {
     this.busyId = entry.manifest.id;
     buttonEl.disabled = true;
     buttonEl.textContent = "Installing…";
     try {
-      const installed = this.app.themeInstaller.listInstalled().some((record) => record.id === entry.manifest.id);
+      const installed = this.app.themeInstaller
+        .listInstalled()
+        .some((record) => record.id === entry.manifest.id);
       if (!installed) {
         const pkg = await this.app.themeMarketplace.downloadPackage(entry.manifest.id);
         await this.app.themeInstaller.install(pkg);

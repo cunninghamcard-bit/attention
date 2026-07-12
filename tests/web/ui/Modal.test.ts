@@ -55,7 +55,10 @@ describe("Modal Obsidian base behavior", () => {
     const modal = new Modal(app).setTitle("Modal title").setContent("Body");
 
     expect(modal.app).toBe(app);
-    expect([...modal.containerEl.children].map((child) => child.className)).toEqual(["modal-bg", "modal"]);
+    expect([...modal.containerEl.children].map((child) => child.className)).toEqual([
+      "modal-bg",
+      "modal",
+    ]);
     expect([...modal.modalEl.children].map((child) => child.className)).toEqual([
       "modal-close-button mod-raised clickable-icon",
       "modal-header",
@@ -93,9 +96,7 @@ describe("Modal Obsidian base behavior", () => {
 
   it("applies dim background settings on open while setters only update stored state", () => {
     const app = new App(document.createElement("div"));
-    const modal = new RecordingModal(app)
-      .setBackgroundOpacity("0.42")
-      .setDimBackground(false);
+    const modal = new RecordingModal(app).setBackgroundOpacity("0.42").setDimBackground(false);
 
     modal.open();
 
@@ -130,7 +131,10 @@ describe("Modal Obsidian base behavior", () => {
     expect(modal.contentEl.textContent).toBe("Intro");
 
     modal.setContent(first).setContent(second);
-    expect([...modal.contentEl.children].map((child) => child.textContent)).toEqual(["First", "Second"]);
+    expect([...modal.contentEl.children].map((child) => child.textContent)).toEqual([
+      "First",
+      "Second",
+    ]);
 
     modal.setContent("Reset");
     expect(modal.contentEl.textContent).toBe("Reset");
@@ -242,17 +246,10 @@ describe("Modal Obsidian base behavior", () => {
       .addCheckbox("Also delete attachments", checkbox)
       .addButton((button) => {
         expect(button).toBeInstanceOf(ConfirmationButton);
-        button
-          .setButtonText("Details")
-          .setSecondary()
-          .onClick(stayOpen);
+        button.setButtonText("Details").setSecondary().onClick(stayOpen);
       })
       .addButton((button) => {
-        button
-          .setButtonText("Delete")
-          .setDestructive()
-          .setInitialFocus()
-          .onClick(confirm);
+        button.setButtonText("Delete").setDestructive().setInitialFocus().onClick(confirm);
       })
       .addCancelButton();
 
@@ -271,7 +268,9 @@ describe("Modal Obsidian base behavior", () => {
     expect(checkbox.mock.calls[0]?.[0]).toBeInstanceOf(MouseEvent);
     expect(checkbox.mock.calls[0]?.[0].target).toBe(input);
 
-    const [detailsButton, deleteButton, cancelButton] = [...modal.buttonContainerEl.querySelectorAll<HTMLButtonElement>("button")];
+    const [detailsButton, deleteButton, cancelButton] = [
+      ...modal.buttonContainerEl.querySelectorAll<HTMLButtonElement>("button"),
+    ];
     expect(detailsButton.classList.contains("mod-secondary")).toBe(true);
     expect(deleteButton.classList.contains("mod-destructive")).toBe(true);
     expect(cancelButton.classList.contains("mod-cancel")).toBe(true);
@@ -295,12 +294,12 @@ describe("Modal Obsidian base behavior", () => {
     const keepOpen = vi.fn().mockResolvedValue(true);
     const close = vi.fn().mockResolvedValue(undefined);
 
-    modal
-      .addButton(["mod-secondary"], "Details", keepOpen)
-      .addButton("mod-cta", "Accept", close);
+    modal.addButton(["mod-secondary"], "Details", keepOpen).addButton("mod-cta", "Accept", close);
     modal.open();
 
-    const [detailsButton, acceptButton] = [...modal.buttonContainerEl.querySelectorAll<HTMLButtonElement>("button")];
+    const [detailsButton, acceptButton] = [
+      ...modal.buttonContainerEl.querySelectorAll<HTMLButtonElement>("button"),
+    ];
     expect(detailsButton.className).toBe("mod-secondary");
 
     detailsButton.click();

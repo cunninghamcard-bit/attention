@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { GitHubClient, type HttpResponse, type HttpTransport } from "@web/builtin/github/GitHubClient";
+import {
+  GitHubClient,
+  type HttpResponse,
+  type HttpTransport,
+} from "@web/builtin/github/GitHubClient";
 
-function mockTransport(routes: Record<string, HttpResponse | ((url: string) => HttpResponse)>): HttpTransport {
+function mockTransport(
+  routes: Record<string, HttpResponse | ((url: string) => HttpResponse)>,
+): HttpTransport {
   return async ({ url, method }) => {
     const key = `${method ?? "GET"} ${url.replace(/^https:\/\/api\.github\.com/, "")}`;
     const handler = routes[key] ?? routes[url];
@@ -25,7 +31,11 @@ describe("GitHubClient", () => {
               title: "Add agent",
               state: "open",
               draft: false,
-              user: { login: "card", avatar_url: "https://avatars/x", html_url: "https://github.com/card" },
+              user: {
+                login: "card",
+                avatar_url: "https://avatars/x",
+                html_url: "https://github.com/card",
+              },
               head: { ref: "feat" },
               base: { ref: "main" },
               updated_at: "2026-07-01T00:00:00Z",
@@ -82,27 +92,76 @@ describe("GitHubClient", () => {
         "GET /repos/acme/widget/issues/7/comments?per_page=100": {
           status: 200,
           text: "",
-          json: [{ id: 1, user: { login: "rev" }, body: "Looks good", created_at: "2026-07-02T00:00:00Z", updated_at: "2026-07-02T00:00:00Z", html_url: "" }],
+          json: [
+            {
+              id: 1,
+              user: { login: "rev" },
+              body: "Looks good",
+              created_at: "2026-07-02T00:00:00Z",
+              updated_at: "2026-07-02T00:00:00Z",
+              html_url: "",
+            },
+          ],
         },
         "GET /repos/acme/widget/pulls/7/reviews?per_page=100": {
           status: 200,
           text: "",
-          json: [{ id: 2, user: { login: "rev" }, state: "APPROVED", body: "LGTM", submitted_at: "2026-07-02T00:00:00Z", html_url: "" }],
+          json: [
+            {
+              id: 2,
+              user: { login: "rev" },
+              state: "APPROVED",
+              body: "LGTM",
+              submitted_at: "2026-07-02T00:00:00Z",
+              html_url: "",
+            },
+          ],
         },
         "GET /repos/acme/widget/pulls/7/comments?per_page=100": {
           status: 200,
           text: "",
-          json: [{ id: 3, user: { login: "rev" }, body: "nit", path: "a.ts", line: 4, side: "RIGHT", created_at: "2026-07-02T00:00:00Z", html_url: "", diff_hunk: "@@ -1 +1 @@" }],
+          json: [
+            {
+              id: 3,
+              user: { login: "rev" },
+              body: "nit",
+              path: "a.ts",
+              line: 4,
+              side: "RIGHT",
+              created_at: "2026-07-02T00:00:00Z",
+              html_url: "",
+              diff_hunk: "@@ -1 +1 @@",
+            },
+          ],
         },
         "GET /repos/acme/widget/pulls/7/commits?per_page=100": {
           status: 200,
           text: "",
-          json: [{ sha: "abc123def", commit: { message: "feat: add\n\nbody", author: { name: "Card", date: "2026-07-01T00:00:00Z" }, committer: { date: "2026-07-01T00:00:00Z" } }, author: { login: "card", avatar_url: "", html_url: "" }, html_url: "" }],
+          json: [
+            {
+              sha: "abc123def",
+              commit: {
+                message: "feat: add\n\nbody",
+                author: { name: "Card", date: "2026-07-01T00:00:00Z" },
+                committer: { date: "2026-07-01T00:00:00Z" },
+              },
+              author: { login: "card", avatar_url: "", html_url: "" },
+              html_url: "",
+            },
+          ],
         },
         "GET /repos/acme/widget/pulls/7/files?per_page=100": {
           status: 200,
           text: "",
-          json: [{ filename: "a.ts", status: "modified", additions: 3, deletions: 1, patch: "@@ -1 +1 @@\n-old\n+new" }],
+          json: [
+            {
+              filename: "a.ts",
+              status: "modified",
+              additions: 3,
+              deletions: 1,
+              patch: "@@ -1 +1 @@\n-old\n+new",
+            },
+          ],
         },
         "GET /repos/acme/widget/commits/abc123/check-runs?per_page=100": {
           status: 200,

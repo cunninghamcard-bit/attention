@@ -54,7 +54,9 @@ describe("AppCommands Obsidian file operation commands", () => {
     const app = new App(document.createElement("div"));
     const file = await app.vault.create("Delete.md", "Hello");
     await app.workspace.openFile(file, { active: true });
-    const promptForDeletion = vi.spyOn(app.fileManager, "promptForDeletion").mockResolvedValue(true);
+    const promptForDeletion = vi
+      .spyOn(app.fileManager, "promptForDeletion")
+      .mockResolvedValue(true);
     const command = app.commands.findCommand("app:delete-file");
 
     expect(command?.icon).toBe("lucide-trash-2");
@@ -91,17 +93,24 @@ describe("AppCommands Obsidian file operation commands", () => {
     expect(view.previewRendererEl.classList.contains("is-readable-line-width")).toBe(true);
     expect(view.editorViewHost.guttersEl.children).toHaveLength(0);
 
-    expect(app.commands.findCommand("editor:toggle-readable-line-length")?.icon).toBe("lucide-ruler");
+    expect(app.commands.findCommand("editor:toggle-readable-line-length")?.icon).toBe(
+      "lucide-ruler",
+    );
     expect(app.commands.executeCommandById("editor:toggle-readable-line-length")).toBe(true);
     expect(app.vault.getConfig("readableLineLength")).toBe(false);
     expect(view.editorContainerEl.classList.contains("is-readable-line-width")).toBe(false);
     expect(view.previewRendererEl.classList.contains("is-readable-line-width")).toBe(false);
 
-    expect(app.commands.findCommand("editor:toggle-line-numbers")?.icon).toBe("lucide-list-ordered");
+    expect(app.commands.findCommand("editor:toggle-line-numbers")?.icon).toBe(
+      "lucide-list-ordered",
+    );
     expect(app.commands.executeCommandById("editor:toggle-line-numbers")).toBe(true);
     expect(app.vault.getConfig("showLineNumber")).toBe(true);
     expect(view.editorViewHost.guttersEl.classList.contains("cm-lineNumbers")).toBe(true);
-    expect([...view.editorViewHost.guttersEl.children].map((child) => child.textContent)).toEqual(["1", "2"]);
+    expect([...view.editorViewHost.guttersEl.children].map((child) => child.textContent)).toEqual([
+      "1",
+      "2",
+    ]);
   });
 
   it("duplicates the active file into a new tab and selects the copied file", async () => {
@@ -109,7 +118,9 @@ describe("AppCommands Obsidian file operation commands", () => {
     const file = await app.vault.create("Note.md", "Hello");
     await app.workspace.openFile(file, { active: true });
 
-    expect(app.commands.findCommand("file-explorer:duplicate-file")?.checkCallback?.(true)).toBe(true);
+    expect(app.commands.findCommand("file-explorer:duplicate-file")?.checkCallback?.(true)).toBe(
+      true,
+    );
     expect(app.commands.executeCommandById("file-explorer:duplicate-file")).toBe(true);
 
     await vi.waitFor(() => {
@@ -173,7 +184,9 @@ describe("AppCommands Obsidian file operation commands", () => {
 
     view.setViewData("legacy");
 
-    expect(app.commands.findCommand("markdown:save-current-file")?.checkCallback?.(true)).toBe(true);
+    expect(app.commands.findCommand("markdown:save-current-file")?.checkCallback?.(true)).toBe(
+      true,
+    );
     expect(app.commands.executeCommandById("markdown:save-current-file")).toBe(true);
 
     await vi.waitFor(async () => {
@@ -198,12 +211,16 @@ describe("AppCommands Obsidian file operation commands", () => {
       expect(view.getSourceMode()).toBe(initialSourceMode === "source" ? "live" : "source");
     });
 
-    expect(app.commands.findCommand("editor:open-search")?.hotkeys).toEqual([{ modifiers: ["Mod"], key: "F" }]);
+    expect(app.commands.findCommand("editor:open-search")?.hotkeys).toEqual([
+      { modifiers: ["Mod"], key: "F" },
+    ]);
     expect(app.commands.findCommand("editor:open-search")?.checkCallback?.(true)).toBe(true);
     expect(app.commands.executeCommandById("editor:open-search")).toBe(true);
     expect(showSearch).toHaveBeenCalledWith(false);
 
-    expect(app.commands.findCommand("editor:open-search-replace")?.checkCallback?.(true)).toBe(true);
+    expect(app.commands.findCommand("editor:open-search-replace")?.checkCallback?.(true)).toBe(
+      true,
+    );
     expect(app.commands.executeCommandById("editor:open-search-replace")).toBe(true);
     expect(showSearch).toHaveBeenCalledWith(true);
 
@@ -214,13 +231,18 @@ describe("AppCommands Obsidian file operation commands", () => {
 
   it("routes Obsidian fold commands through the active markdown view", async () => {
     const app = new App(document.createElement("div"));
-    const file = await app.vault.create("Fold.md", "---\naliases: [fold]\n---\n# One\nBody\n## Two\nNested\n# Three\nTail");
+    const file = await app.vault.create(
+      "Fold.md",
+      "---\naliases: [fold]\n---\n# One\nBody\n## Two\nNested\n# Three\nTail",
+    );
     const leaf = await app.workspace.openFile(file, { active: true, state: { mode: "source" } });
     const view = leaf.view;
     if (!(view instanceof MarkdownView)) throw new Error("Expected markdown view");
 
     expect(app.commands.findCommand("editor:toggle-fold-properties")?.icon).toBe("lucide-diff");
-    expect(app.commands.findCommand("editor:toggle-fold-properties")?.checkCallback?.(true)).toBe(true);
+    expect(app.commands.findCommand("editor:toggle-fold-properties")?.checkCallback?.(true)).toBe(
+      true,
+    );
     expect(app.commands.executeCommandById("editor:toggle-fold-properties")).toBe(true);
     expect(view.getFoldInfo().folds.some((fold) => fold.from === 0)).toBe(true);
 
@@ -254,7 +276,9 @@ describe("AppCommands Obsidian file operation commands", () => {
 
     view.editor.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 5 });
 
-    expect(app.commands.findCommand("editor:insert-link")?.hotkeys).toEqual([{ modifiers: ["Mod"], key: "K" }]);
+    expect(app.commands.findCommand("editor:insert-link")?.hotkeys).toEqual([
+      { modifiers: ["Mod"], key: "K" },
+    ]);
     expect(app.commands.executeCommandById("editor:insert-link")).toBe(true);
     expect(view.getViewData()).toBe("[Alpha]()");
 
@@ -298,10 +322,14 @@ describe("AppCommands Obsidian file operation commands", () => {
 
     expect(app.commands.findCommand("editor:set-heading")?.showOnMobileToolbar).toBe(true);
     expect(app.commands.executeCommandById("editor:set-heading")).toBe(true);
-    const headingTitles = [...document.body.querySelectorAll(".menu-item-title")].map((el) => el.textContent);
+    const headingTitles = [...document.body.querySelectorAll(".menu-item-title")].map(
+      (el) => el.textContent,
+    );
     expect(headingTitles).toContain("No heading");
     expect(headingTitles).toContain("Heading 6");
-    const headingThree = [...document.body.querySelectorAll(".menu-item")].find((el) => el.textContent === "Heading 3");
+    const headingThree = [...document.body.querySelectorAll(".menu-item")].find(
+      (el) => el.textContent === "Heading 3",
+    );
     if (!(headingThree instanceof HTMLElement)) throw new Error("Missing heading menu item");
     headingThree.click();
     expect(view.getViewData()).toBe("### Title\nAlpha\nBeta");
@@ -310,7 +338,9 @@ describe("AppCommands Obsidian file operation commands", () => {
     expect(view.getViewData()).toBe("Title\nAlpha\nBeta");
 
     view.editor.setSelection({ line: 1, ch: 0 }, { line: 1, ch: 5 });
-    expect(app.commands.findCommand("editor:toggle-bold")?.hotkeys).toEqual([{ modifiers: ["Mod"], key: "B" }]);
+    expect(app.commands.findCommand("editor:toggle-bold")?.hotkeys).toEqual([
+      { modifiers: ["Mod"], key: "B" },
+    ]);
     expect(app.commands.executeCommandById("editor:toggle-bold")).toBe(true);
     expect(view.getViewData()).toBe("Title\n**Alpha**\nBeta");
 
@@ -318,7 +348,9 @@ describe("AppCommands Obsidian file operation commands", () => {
     expect(view.getViewData()).toBe("Title\nAlpha\nBeta");
 
     view.editor.setSelection({ line: 2, ch: 0 }, { line: 2, ch: 4 });
-    expect(app.commands.findCommand("editor:toggle-italics")?.hotkeys).toEqual([{ modifiers: ["Mod"], key: "I" }]);
+    expect(app.commands.findCommand("editor:toggle-italics")?.hotkeys).toEqual([
+      { modifiers: ["Mod"], key: "I" },
+    ]);
     expect(app.commands.executeCommandById("editor:toggle-italics")).toBe(true);
     expect(view.getViewData()).toBe("Title\nAlpha\n*Beta*");
 
@@ -328,36 +360,47 @@ describe("AppCommands Obsidian file operation commands", () => {
     view.setViewData("**Bold** ==Mark== `Code` %% Note %%");
     view.editor.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 36 });
     expect(app.commands.findCommand("editor:clear-formatting")?.icon).toBe("lucide-eraser");
-    expect(app.commands.findCommand("editor:clear-formatting")?.editorCheckCallback?.(true, view.editor, view)).toBe(true);
+    expect(
+      app.commands
+        .findCommand("editor:clear-formatting")
+        ?.editorCheckCallback?.(true, view.editor, view),
+    ).toBe(true);
     expect(app.commands.executeCommandById("editor:clear-formatting")).toBe(true);
     expect(view.getViewData()).toBe("Bold Mark Code Note");
 
     view.setViewData("Comment");
     view.editor.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 7 });
-    expect(app.commands.findCommand("editor:toggle-comments")?.hotkeys).toEqual([{ modifiers: ["Mod"], key: "/" }]);
+    expect(app.commands.findCommand("editor:toggle-comments")?.hotkeys).toEqual([
+      { modifiers: ["Mod"], key: "/" },
+    ]);
     expect(app.commands.executeCommandById("editor:toggle-comments")).toBe(true);
     expect(view.getViewData()).toBe("%% Comment %%");
 
-    const mobileToolbarIds = app.commands.getEditorCommands().filter((command) => command.showOnMobileToolbar).map((command) => command.id);
-    expect(mobileToolbarIds).toEqual(expect.arrayContaining([
-      "editor:insert-wikilink",
-      "editor:insert-embed",
-      "editor:insert-tag",
-      "editor:set-heading",
-      "editor:toggle-bold",
-      "editor:toggle-italics",
-      "editor:toggle-strikethrough",
-      "editor:toggle-highlight",
-      "editor:toggle-code",
-      "editor:toggle-blockquote",
-      "editor:toggle-comments",
-      "editor:insert-link",
-      "editor:toggle-bullet-list",
-      "editor:toggle-numbered-list",
-      "editor:toggle-checklist-status",
-      "editor:indent-list",
-      "editor:unindent-list",
-    ]));
+    const mobileToolbarIds = app.commands
+      .getEditorCommands()
+      .filter((command) => command.showOnMobileToolbar)
+      .map((command) => command.id);
+    expect(mobileToolbarIds).toEqual(
+      expect.arrayContaining([
+        "editor:insert-wikilink",
+        "editor:insert-embed",
+        "editor:insert-tag",
+        "editor:set-heading",
+        "editor:toggle-bold",
+        "editor:toggle-italics",
+        "editor:toggle-strikethrough",
+        "editor:toggle-highlight",
+        "editor:toggle-code",
+        "editor:toggle-blockquote",
+        "editor:toggle-comments",
+        "editor:insert-link",
+        "editor:toggle-bullet-list",
+        "editor:toggle-numbered-list",
+        "editor:toggle-checklist-status",
+        "editor:indent-list",
+        "editor:unindent-list",
+      ]),
+    );
   });
 
   it("routes Obsidian line-level editor commands through markdown edits", async () => {
@@ -384,7 +427,9 @@ describe("AppCommands Obsidian file operation commands", () => {
 
     view.setViewData("- Alpha\n- Beta");
     view.editor.setSelection({ line: 0, ch: 0 }, { line: 1, ch: 6 });
-    expect(app.commands.findCommand("editor:toggle-numbered-list")?.icon).toBe("lucide-list-ordered");
+    expect(app.commands.findCommand("editor:toggle-numbered-list")?.icon).toBe(
+      "lucide-list-ordered",
+    );
     expect(app.commands.executeCommandById("editor:toggle-numbered-list")).toBe(true);
     expect(view.getViewData()).toBe("1. Alpha\n1. Beta");
 
@@ -394,7 +439,9 @@ describe("AppCommands Obsidian file operation commands", () => {
 
     view.setViewData("Task");
     view.editor.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 4 });
-    expect(app.commands.findCommand("editor:toggle-checklist-status")?.hotkeys).toEqual([{ modifiers: ["Mod"], key: "l" }]);
+    expect(app.commands.findCommand("editor:toggle-checklist-status")?.hotkeys).toEqual([
+      { modifiers: ["Mod"], key: "l" },
+    ]);
     expect(app.commands.executeCommandById("editor:toggle-checklist-status")).toBe(true);
     expect(view.getViewData()).toBe("- [ ] Task");
 
@@ -404,7 +451,9 @@ describe("AppCommands Obsidian file operation commands", () => {
 
     view.setViewData("- Task");
     view.editor.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 6 });
-    expect(app.commands.findCommand("editor:cycle-list-checklist")?.icon).toBe("lucide-check-square");
+    expect(app.commands.findCommand("editor:cycle-list-checklist")?.icon).toBe(
+      "lucide-check-square",
+    );
     expect(app.commands.executeCommandById("editor:cycle-list-checklist")).toBe(true);
     expect(view.getViewData()).toBe("- [ ] Task");
   });
@@ -476,7 +525,9 @@ describe("AppCommands Obsidian file operation commands", () => {
     const source = await app.workspace.openFile(file, { active: true });
 
     expect(app.commands.findCommand("workspace:split-vertical")?.checkCallback?.(true)).toBe(true);
-    expect(app.commands.findCommand("workspace:split-horizontal")?.checkCallback?.(true)).toBe(true);
+    expect(app.commands.findCommand("workspace:split-horizontal")?.checkCallback?.(true)).toBe(
+      true,
+    );
     expect(app.commands.executeCommandById("workspace:split-vertical")).toBe(true);
 
     await vi.waitFor(() => {
@@ -490,12 +541,16 @@ describe("AppCommands Obsidian file operation commands", () => {
     const secondFile = await secondApp.vault.create("Split.md", "Hello");
     const horizontalSource = await secondApp.workspace.openFile(secondFile, { active: true });
 
-    expect(secondApp.commands.findCommand("workspace:split-horizontal")?.checkCallback?.(true)).toBe(true);
+    expect(
+      secondApp.commands.findCommand("workspace:split-horizontal")?.checkCallback?.(true),
+    ).toBe(true);
     expect(secondApp.commands.executeCommandById("workspace:split-horizontal")).toBe(true);
 
     await vi.waitFor(() => {
       expect(secondApp.workspace.activeLeaf).not.toBe(horizontalSource);
-      expect(secondApp.workspace.activeLeaf?.getViewState().state).toMatchObject({ file: "Split.md" });
+      expect(secondApp.workspace.activeLeaf?.getViewState().state).toMatchObject({
+        file: "Split.md",
+      });
     });
     expect(secondApp.workspace.activeLeaf?.getRoot()).toBe(secondApp.workspace.rootSplit);
   });
@@ -507,7 +562,9 @@ describe("AppCommands Obsidian file operation commands", () => {
     const tabs = leaf.parent;
     if (!(tabs instanceof WorkspaceTabs)) throw new Error("Expected active file in tabs");
 
-    expect(app.commands.findCommand("workspace:toggle-stacked-tabs")?.checkCallback?.(true)).toBe(true);
+    expect(app.commands.findCommand("workspace:toggle-stacked-tabs")?.checkCallback?.(true)).toBe(
+      true,
+    );
     expect(app.commands.executeCommandById("workspace:toggle-stacked-tabs")).toBe(true);
     expect(tabs.isStacked).toBe(true);
     expect(app.commands.executeCommandById("workspace:toggle-stacked-tabs")).toBe(true);
@@ -516,7 +573,9 @@ describe("AppCommands Obsidian file operation commands", () => {
     await app.workspace.ensureSideLeaf("file-explorer", "left", { active: true, reveal: true });
 
     expect(app.commands.findCommand("workspace:split-vertical")?.checkCallback?.(true)).toBe(false);
-    expect(app.commands.findCommand("workspace:toggle-stacked-tabs")?.checkCallback?.(true)).toBe(false);
+    expect(app.commands.findCommand("workspace:toggle-stacked-tabs")?.checkCallback?.(true)).toBe(
+      false,
+    );
   });
 
   it("focuses adjacent leaves through Obsidian directional focus commands", async () => {
@@ -547,7 +606,9 @@ describe("AppCommands Obsidian file operation commands", () => {
     setRect(bottom.containerEl, { x: 0, y: 140, width: 100, height: 100 });
 
     verticalApp.workspace.setActiveLeaf(top);
-    expect(verticalApp.commands.findCommand("editor:focus-bottom")?.checkCallback?.(true)).toBe(true);
+    expect(verticalApp.commands.findCommand("editor:focus-bottom")?.checkCallback?.(true)).toBe(
+      true,
+    );
     expect(verticalApp.commands.executeCommandById("editor:focus-bottom")).toBe(true);
     expect(verticalApp.workspace.activeLeaf).toBe(bottom);
 
@@ -572,27 +633,44 @@ describe("AppCommands Obsidian file operation commands", () => {
     const app = new App(document.createElement("div"));
 
     expect(app.commands.findCommand("workspace:toggle-pin")?.checkCallback?.(true)).toBe(false);
-    expect(app.commands.findCommand("workspace:edit-file-title")?.checkCallback?.(true)).toBe(false);
+    expect(app.commands.findCommand("workspace:edit-file-title")?.checkCallback?.(true)).toBe(
+      false,
+    );
     expect(app.commands.findCommand("app:delete-file")?.checkCallback?.(true)).toBe(false);
     expect(app.commands.findCommand("editor:save-file")?.checkCallback?.(true)).toBe(false);
-    expect(app.commands.findCommand("markdown:save-current-file")?.checkCallback?.(true)).toBe(false);
+    expect(app.commands.findCommand("markdown:save-current-file")?.checkCallback?.(true)).toBe(
+      false,
+    );
     expect(app.commands.findCommand("editor:toggle-source")?.checkCallback?.(true)).toBe(false);
     expect(app.commands.findCommand("editor:open-search")?.checkCallback?.(true)).toBe(false);
-    expect(app.commands.findCommand("editor:open-search-replace")?.checkCallback?.(true)).toBe(false);
+    expect(app.commands.findCommand("editor:open-search-replace")?.checkCallback?.(true)).toBe(
+      false,
+    );
     expect(app.commands.findCommand("editor:focus")?.checkCallback?.(true)).toBe(false);
-    expect(app.commands.findCommand("editor:toggle-fold-properties")?.checkCallback?.(true)).toBe(false);
+    expect(app.commands.findCommand("editor:toggle-fold-properties")?.checkCallback?.(true)).toBe(
+      false,
+    );
     expect(app.commands.findCommand("editor:toggle-fold")?.checkCallback?.(true)).toBeNull();
     expect(app.commands.findCommand("workspace:copy-path")?.checkCallback?.(true)).toBe(false);
     expect(app.commands.findCommand("workspace:copy-full-path")?.checkCallback?.(true)).toBe(false);
     expect(app.commands.findCommand("workspace:copy-url")?.checkCallback?.(true)).toBe(false);
-    expect(app.commands.findCommand("open-with-default-app:open")?.checkCallback?.(true)).toBe(false);
-    expect(app.commands.findCommand("open-with-default-app:show")?.checkCallback?.(true)).toBe(false);
+    expect(app.commands.findCommand("open-with-default-app:open")?.checkCallback?.(true)).toBe(
+      false,
+    );
+    expect(app.commands.findCommand("open-with-default-app:show")?.checkCallback?.(true)).toBe(
+      false,
+    );
     expect(app.commands.findCommand("file-explorer:move-file")?.checkCallback?.(true)).toBe(false);
-    expect(app.commands.findCommand("file-explorer:duplicate-file")?.checkCallback?.(true)).toBe(false);
+    expect(app.commands.findCommand("file-explorer:duplicate-file")?.checkCallback?.(true)).toBe(
+      false,
+    );
   });
 });
 
-function setRect(el: HTMLElement, rect: { x: number; y: number; width: number; height: number }): void {
+function setRect(
+  el: HTMLElement,
+  rect: { x: number; y: number; width: number; height: number },
+): void {
   const domRect = {
     x: rect.x,
     y: rect.y,

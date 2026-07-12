@@ -6,7 +6,9 @@ export class CanvasEdge {
 
   constructor(readonly data: CanvasEdgeData) {}
 
-  get id(): string { return this.data.id; }
+  get id(): string {
+    return this.data.id;
+  }
 
   getData(): CanvasEdgeData {
     return { ...this.data };
@@ -41,7 +43,11 @@ function sidePoint(node: CanvasNode, side: string): { x: number; y: number } {
   return { x: node.x + node.width, y: node.y + node.height / 2 };
 }
 
-function controlPoint(point: { x: number; y: number }, side: string, distance: number): { x: number; y: number } {
+function controlPoint(
+  point: { x: number; y: number },
+  side: string,
+  distance: number,
+): { x: number; y: number } {
   if (side === "top") return { x: point.x, y: point.y - distance };
   if (side === "bottom") return { x: point.x, y: point.y + distance };
   if (side === "left") return { x: point.x - distance, y: point.y };

@@ -43,7 +43,13 @@ import { WorkspaceWindow } from "@web/views/workspace/WorkspaceWindow";
 import { MarkdownEditView, MarkdownView } from "@web/views/MarkdownView";
 import { Plugin } from "@web/plugin/Plugin";
 import { createObsidianPluginModule } from "@web/api/ObsidianPluginModule";
-import { editorEditorField, editorInfoField, editorLivePreviewField, editorViewField, livePreviewState } from "@web/editor/EditorStateField";
+import {
+  editorEditorField,
+  editorInfoField,
+  editorLivePreviewField,
+  editorViewField,
+  livePreviewState,
+} from "@web/editor/EditorStateField";
 import { RenderContext } from "@web/markdown/RenderContext";
 import { Platform } from "@web/platform/Platform";
 import { AbstractTextComponent } from "@web/ui/Setting";
@@ -185,7 +191,9 @@ describe("Obsidian plugin API parity", () => {
 
     await plugin.saveData({ enabled: true });
 
-    await expect(app.jsonStore.read("plugins/custom-dir/data.json")).resolves.toEqual({ enabled: true });
+    await expect(app.jsonStore.read("plugins/custom-dir/data.json")).resolves.toEqual({
+      enabled: true,
+    });
     await expect(app.jsonStore.read("plugins/dir-id/data.json")).resolves.toBeNull();
     await expect(plugin.loadData()).resolves.toEqual({ enabled: true });
   });
@@ -307,7 +315,12 @@ describe("Obsidian plugin API parity", () => {
     const module = createObsidianPluginModule(app);
     const modKey = Platform.isMacOS ? { metaKey: true } : { ctrlKey: true };
     const modifiers = module.Keymap.compileModifiers(["Mod", "Shift"]);
-    const event = new KeyboardEvent("keydown", { key: "P", code: "KeyP", shiftKey: true, ...modKey });
+    const event = new KeyboardEvent("keydown", {
+      key: "P",
+      code: "KeyP",
+      shiftKey: true,
+      ...modKey,
+    });
     const keymap = new module.Keymap(null);
     const keymapCtor = module.Keymap as typeof Keymap & { global?: Keymap; init?: () => Keymap };
 
@@ -324,25 +337,43 @@ describe("Obsidian plugin API parity", () => {
     keymap.updateModifiers(event);
     expect(keymap.matchModifiers(modifiers)).toBe(true);
     expect(keymap.hasModifier("Mod")).toBe(true);
-    expect(module.Keymap.isMatch({ modifiers, key: "p" }, { modifiers, key: "P", vkey: "KeyP" })).toBe(true);
+    expect(
+      module.Keymap.isMatch({ modifiers, key: "p" }, { modifiers, key: "P", vkey: "KeyP" }),
+    ).toBe(true);
 
     expect(module.Keymap.isModEvent(new MouseEvent("click", { button: 1 }))).toBe("tab");
     expect(module.Keymap.isModEvent(new MouseEvent("click", modKey))).toBe("tab");
-    expect(module.Keymap.isModEvent(new MouseEvent("click", { altKey: true, ...modKey }))).toBe("split");
-    expect(module.Keymap.isModEvent(new MouseEvent("click", { altKey: true, shiftKey: true, ...modKey }))).toBe("window");
+    expect(module.Keymap.isModEvent(new MouseEvent("click", { altKey: true, ...modKey }))).toBe(
+      "split",
+    );
+    expect(
+      module.Keymap.isModEvent(
+        new MouseEvent("click", { altKey: true, shiftKey: true, ...modKey }),
+      ),
+    ).toBe("window");
     expect(module.Keymap.isModEvent(new MouseEvent("click"))).toBe(false);
-    expect(module.Keymap.isModifier(new KeyboardEvent("keydown", { altKey: true }), "Alt")).toBe(true);
-    expect(module.Keymap.isModifier(new KeyboardEvent("keydown", { altKey: true }), "Bogus" as never)).toBe(false);
+    expect(module.Keymap.isModifier(new KeyboardEvent("keydown", { altKey: true }), "Alt")).toBe(
+      true,
+    );
+    expect(
+      module.Keymap.isModifier(new KeyboardEvent("keydown", { altKey: true }), "Bogus" as never),
+    ).toBe(false);
 
     const originalAppVersion = navigator.appVersion;
     const originalPlatform = navigator.platform;
-    Object.defineProperty(navigator, "appVersion", { configurable: true, value: "5.0 (Windows NT 10.0)" });
+    Object.defineProperty(navigator, "appVersion", {
+      configurable: true,
+      value: "5.0 (Windows NT 10.0)",
+    });
     Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
     try {
       expect(module.Keymap.compileModifiers(["Mod"])).toBe("Ctrl");
       expect(module.Keymap.decompileModifiers("Ctrl")).toEqual(["Mod"]);
     } finally {
-      Object.defineProperty(navigator, "appVersion", { configurable: true, value: originalAppVersion });
+      Object.defineProperty(navigator, "appVersion", {
+        configurable: true,
+        value: originalAppVersion,
+      });
       Object.defineProperty(navigator, "platform", { configurable: true, value: originalPlatform });
     }
   });
@@ -353,10 +384,13 @@ describe("Obsidian plugin API parity", () => {
 
     expect(adapter).toBeInstanceOf(DataAdapter);
     if (!adapter) throw new Error("missing vault adapter");
-    await adapter.write("raw-plugin-data.json", "{\"ok\":true}");
+    await adapter.write("raw-plugin-data.json", '{"ok":true}');
 
-    await expect(adapter.read("raw-plugin-data.json")).resolves.toBe("{\"ok\":true}");
-    await expect(adapter.stat("raw-plugin-data.json")).resolves.toMatchObject({ type: "file", size: 11 });
+    await expect(adapter.read("raw-plugin-data.json")).resolves.toBe('{"ok":true}');
+    await expect(adapter.stat("raw-plugin-data.json")).resolves.toMatchObject({
+      type: "file",
+      size: 11,
+    });
   });
 
   it("exposes mobile and markdown edit runtime shims with usable behavior", async () => {
@@ -459,44 +493,50 @@ describe("Obsidian plugin API parity", () => {
     const originalMobile = Platform.isMobile;
 
     expect(module.Platform).toBe(Platform);
-    expect(Object.keys(module.Platform).sort()).toEqual([
-      "build",
-      "canDisplayRibbon",
-      "canExportPdf",
-      "canPinSidebar",
-      "canPopoutWindow",
-      "canSplit",
-      "canStackTabs",
-      "deviceName",
-      "hasPhysicalKeyboard",
-      "isAndroidApp",
-      "isDesktop",
-      "isDesktopApp",
-      "isIosApp",
-      "isLinux",
-      "isMacOS",
-      "isMobile",
-      "isMobileApp",
-      "isPhone",
-      "isSafari",
-      "isTablet",
-      "isWin",
-      "manufacturer",
-      "mobileSoftKeyboardVisible",
-      "model",
-      "osName",
-      "osVersion",
-      "resourcePathPrefix",
-      "supportsIndexedDb",
-      "version",
-    ].sort());
+    expect(Object.keys(module.Platform).sort()).toEqual(
+      [
+        "build",
+        "canDisplayRibbon",
+        "canExportPdf",
+        "canPinSidebar",
+        "canPopoutWindow",
+        "canSplit",
+        "canStackTabs",
+        "deviceName",
+        "hasPhysicalKeyboard",
+        "isAndroidApp",
+        "isDesktop",
+        "isDesktopApp",
+        "isIosApp",
+        "isLinux",
+        "isMacOS",
+        "isMobile",
+        "isMobileApp",
+        "isPhone",
+        "isSafari",
+        "isTablet",
+        "isWin",
+        "manufacturer",
+        "mobileSoftKeyboardVisible",
+        "model",
+        "osName",
+        "osVersion",
+        "resourcePathPrefix",
+        "supportsIndexedDb",
+        "version",
+      ].sort(),
+    );
     expect(typeof module.Platform.resourcePathPrefix).toBe("string");
     expect(module.Platform.canExportPdf).toBe(module.Platform.isDesktopApp);
-    expect(module.Platform.canPopoutWindow).toBe(module.Platform.isDesktopApp && module.Platform.isDesktop);
+    expect(module.Platform.canPopoutWindow).toBe(
+      module.Platform.isDesktopApp && module.Platform.isDesktop,
+    );
     expect(module.Platform.canStackTabs).toBe(!module.Platform.isPhone);
     expect(module.Platform.canSplit).toBe(!module.Platform.isPhone);
     expect(module.Platform.canDisplayRibbon).toBe(!module.Platform.isPhone);
-    expect(module.Platform.canPinSidebar).toBe(module.Platform.isMobile && !module.Platform.isPhone);
+    expect(module.Platform.canPinSidebar).toBe(
+      module.Platform.isMobile && !module.Platform.isPhone,
+    );
 
     Platform.isMobile = !originalMobile;
     expect(module.Platform.isMobile).toBe(!originalMobile);
@@ -548,7 +588,9 @@ describe("Obsidian plugin API parity", () => {
     expect(icon?.querySelector("path")?.getAttribute("d")).toBe("M4 4h16v16H4z");
 
     module.setIcon(host, "plugin-api-test-icon");
-    expect(host.querySelector("svg.plugin-api-test-icon path")?.getAttribute("d")).toBe("M4 4h16v16H4z");
+    expect(host.querySelector("svg.plugin-api-test-icon path")?.getAttribute("d")).toBe(
+      "M4 4h16v16H4z",
+    );
 
     module.setIcon(host, "missing-plugin-api-test-icon");
     expect(host.querySelector("svg")).toBeNull();
@@ -573,7 +615,10 @@ describe("Obsidian plugin API parity", () => {
     expect(module.getLanguage).toBe(getLanguage);
     expect(module.getLanguage()).toBe("zh");
     Object.defineProperty(navigator, "language", { configurable: true, value: previousLanguage });
-    expect(module.parseLinktext(" Target#Heading#Child | Alias ")).toEqual({ path: " Target", subpath: "#Heading#Child | Alias " });
+    expect(module.parseLinktext(" Target#Heading#Child | Alias ")).toEqual({
+      path: " Target",
+      subpath: "#Heading#Child | Alias ",
+    });
     expect(module.getLinkpath(" Target#Heading | Alias ")).toBe(" Target");
     expect(module.arrayBufferToHex(bytes)).toBe("000f10ff");
     expect(new Uint8Array(module.hexToArrayBuffer("000f10ff"))).toEqual(new Uint8Array(bytes));
@@ -581,10 +626,14 @@ describe("Obsidian plugin API parity", () => {
     expect(new Uint8Array(module.hexToArrayBuffer(" 0f"))).toEqual(new Uint8Array([0x00]));
     expect(module.arrayBufferToBase64(bytes)).toBe("AA8Q/w==");
     expect(new Uint8Array(module.base64ToArrayBuffer("AA8Q/w=="))).toEqual(new Uint8Array(bytes));
-    await expect(module.getBlobArrayBuffer(new Blob(["hi"]))).resolves.toEqual(new TextEncoder().encode("hi").buffer);
+    await expect(module.getBlobArrayBuffer(new Blob(["hi"]))).resolves.toEqual(
+      new TextEncoder().encode("hi").buffer,
+    );
     const fallbackBlob = new Blob(["fallback"]);
     Object.defineProperty(fallbackBlob, "arrayBuffer", { value: undefined });
-    await expect(module.getBlobArrayBuffer(fallbackBlob)).resolves.toEqual(new TextEncoder().encode("fallback").buffer);
+    await expect(module.getBlobArrayBuffer(fallbackBlob)).resolves.toEqual(
+      new TextEncoder().encode("fallback").buffer,
+    );
   });
 
   it("matches Obsidian debounce Debouncer chaining cancel and run semantics", async () => {
@@ -623,9 +672,13 @@ describe("Obsidian plugin API parity", () => {
       expect(resetCalls).toEqual(["second"]);
       expect(debounced.run()).toBeUndefined();
 
-      const firstOnly = module.debounce((value: string) => {
-        calls.push(value);
-      }, 10, false);
+      const firstOnly = module.debounce(
+        (value: string) => {
+          calls.push(value);
+        },
+        10,
+        false,
+      );
       expect(firstOnly("first-pending")).toBe(firstOnly);
       expect(firstOnly("latest-pending")).toBe(firstOnly);
       await vi.advanceTimersByTimeAsync(10);
@@ -649,7 +702,13 @@ describe("Obsidian plugin API parity", () => {
   it("exports frontmatter and HTML utility helpers through the plugin module facade", () => {
     const app = new App(document.createElement("div"));
     const module = createObsidianPluginModule(app);
-    const frontmatter = { alias: "Ignored", aliases: ["Alias", " "], tag: "ignored", tags: ["alpha", "#beta", "two words", " "], other: 42 };
+    const frontmatter = {
+      alias: "Ignored",
+      aliases: ["Alias", " "],
+      tag: "ignored",
+      tags: ["alpha", "#beta", "two words", " "],
+      other: 42,
+    };
 
     expect(module.parseFrontMatterEntry(frontmatter, "OTHER")).toBeNull();
     expect(module.parseFrontMatterEntry(frontmatter, "other")).toBe(42);
@@ -657,15 +716,31 @@ describe("Obsidian plugin API parity", () => {
     expect(module.parseFrontMatterTags(frontmatter)).toEqual(["#alpha", "#beta"]);
     expect(module.parseFrontMatterAliases({ alias: "Alias" })).toBeNull();
     expect(module.parseFrontMatterTags({ tag: "alpha" })).toBeNull();
-    expect(module.parseFrontMatterStringArray({ cssclasses: "wide" }, "cssclasses")).toEqual(["wide"]);
+    expect(module.parseFrontMatterStringArray({ cssclasses: "wide" }, "cssclasses")).toEqual([
+      "wide",
+    ]);
     expect(module.getAllTags(null)).toBeNull();
-    expect(module.getAllTags({
-      tags: [
-        { tag: "#beta", position: { start: { line: 0, col: 0, offset: 0 }, end: { line: 0, col: 5, offset: 5 } } },
-        { tag: "#inline", position: { start: { line: 0, col: 6, offset: 6 }, end: { line: 0, col: 13, offset: 13 } } },
-      ],
-      frontmatter,
-    })).toEqual(["#alpha", "#beta", "#beta", "#inline"]);
+    expect(
+      module.getAllTags({
+        tags: [
+          {
+            tag: "#beta",
+            position: {
+              start: { line: 0, col: 0, offset: 0 },
+              end: { line: 0, col: 5, offset: 5 },
+            },
+          },
+          {
+            tag: "#inline",
+            position: {
+              start: { line: 0, col: 6, offset: 6 },
+              end: { line: 0, col: 13, offset: 13 },
+            },
+          },
+        ],
+        frontmatter,
+      }),
+    ).toEqual(["#alpha", "#beta", "#beta", "#inline"]);
     expect(module.getAllTags({})).toEqual([]);
     expect(module.getFrontMatterInfo("---\na: 1\n---\nBody")).toEqual({
       exists: true,
@@ -682,17 +757,22 @@ describe("Obsidian plugin API parity", () => {
       contentStart: 0,
     });
 
-    const fragment = module.sanitizeHTMLToDom("<p onclick=\"evil()\">Hi<script>bad()</script></p>");
+    const fragment = module.sanitizeHTMLToDom('<p onclick="evil()">Hi<script>bad()</script></p>');
     expect(fragment.querySelector("script")).toBeNull();
     expect(fragment.querySelector("p")?.getAttribute("onclick")).toBeNull();
-    expect(module.htmlToMarkdown("<h1>Title</h1><p><strong>Body</strong></p>")).toBe("# Title\n\n**Body**");
+    expect(module.htmlToMarkdown("<h1>Title</h1><p><strong>Body</strong></p>")).toBe(
+      "# Title\n\n**Body**",
+    );
   });
 
   it("exports heading cleanup and subpath resolution helpers through the plugin module facade", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
     const module = createObsidianPluginModule(app);
-    const file = await app.vault.create("Resolve.md", "# Parent\n## Child\nBody ^abc\n\n[^note]: Footnote\n# Next");
+    const file = await app.vault.create(
+      "Resolve.md",
+      "# Parent\n## Child\nBody ^abc\n\n[^note]: Footnote\n# Next",
+    );
 
     await app.metadataCache.computeFileMetadataAsync(file);
     const cache = app.metadataCache.getFileCache(file);
@@ -724,14 +804,18 @@ describe("Obsidian plugin API parity", () => {
   it("exposes Obsidian-style requestUrl response sub-promises and throw semantics", async () => {
     const app = new App(document.createElement("div"));
     const module = createObsidianPluginModule(app);
-    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => new Response('{"ok":true}', {
-      status: 201,
-      headers: {
-        "content-type": init?.headers && typeof init.headers === "object" && "Content-Type" in init.headers
-          ? String((init.headers as Record<string, string>)["Content-Type"])
-          : "application/json",
-      },
-    }));
+    const fetchMock = vi.fn(
+      async (_url: string, init?: RequestInit) =>
+        new Response('{"ok":true}', {
+          status: 201,
+          headers: {
+            "content-type":
+              init?.headers && typeof init.headers === "object" && "Content-Type" in init.headers
+                ? String((init.headers as Record<string, string>)["Content-Type"])
+                : "application/json",
+          },
+        }),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     const responsePromise = module.requestUrl({
@@ -778,7 +862,7 @@ describe("Obsidian plugin API parity", () => {
       return {
         status: 202,
         headers: { "x-native": "yes" },
-        text: "{\"native\":true}",
+        text: '{"native":true}',
       };
     });
 
@@ -786,7 +870,7 @@ describe("Obsidian plugin API parity", () => {
       url: "https://api.example.test/private",
       method: "POST",
       contentType: "application/json",
-      body: "{\"ok\":true}",
+      body: '{"ok":true}',
     });
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -794,22 +878,27 @@ describe("Obsidian plugin API parity", () => {
       url: "https://api.example.test/private",
       method: "POST",
       contentType: "application/json",
-      body: "{\"ok\":true}",
+      body: '{"ok":true}',
     });
     expect((nativePayload as { headers?: unknown }).headers).toBeUndefined();
     expect(response).toMatchObject({
       status: 202,
       headers: { "x-native": "yes" },
-      text: "{\"native\":true}",
+      text: '{"native":true}',
       json: { native: true },
     });
-    await expect(module.request("https://api.example.test/private")).resolves.toBe("{\"native\":true}");
+    await expect(module.request("https://api.example.test/private")).resolves.toBe(
+      '{"native":true}',
+    );
   });
 
   it("rejects requestUrl on HTTP errors unless throw is false", async () => {
     const app = new App(document.createElement("div"));
     const module = createObsidianPluginModule(app);
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("missing", { status: 404 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("missing", { status: 404 })),
+    );
 
     await expect(module.requestUrl("https://example.com/missing")).rejects.toMatchObject({
       status: 404,
@@ -831,7 +920,12 @@ describe("Obsidian plugin API parity", () => {
 
     const fuzzy = module.prepareFuzzySearch("qs");
     const fuzzyMatch = fuzzy("Quick Switcher");
-    expect(fuzzyMatch).toMatchObject({ matches: [[0, 1], [6, 7]] });
+    expect(fuzzyMatch).toMatchObject({
+      matches: [
+        [0, 1],
+        [6, 7],
+      ],
+    });
     expect(fuzzy("Command Palette")).toBeNull();
 
     const prepared = module.prepareQuery("qs");
@@ -841,7 +935,12 @@ describe("Obsidian plugin API parity", () => {
     expect(module.fuzzySearch(prepared, "Quick Switcher")).toEqual(fuzzyMatch);
 
     const simple = module.prepareSimpleSearch("quick switch");
-    expect(simple("Open Quick Switcher")).toMatchObject({ matches: [[5, 10], [11, 17]] });
+    expect(simple("Open Quick Switcher")).toMatchObject({
+      matches: [
+        [5, 10],
+        [11, 17],
+      ],
+    });
     expect(simple("Open Quick Panel")).toBeNull();
 
     const results = [
@@ -853,11 +952,19 @@ describe("Obsidian plugin API parity", () => {
     expect(results.map((item) => item.match.score)).toEqual([-1, -5, -10]);
 
     const matchesEl = document.createElement("div");
-    module.renderMatches(matchesEl, "Quick Switcher", [[0, 5], [6, 14]]);
-    expect(matchesEl.innerHTML).toBe('<span class="suggestion-highlight">Quick</span> <span class="suggestion-highlight">Switcher</span>');
+    module.renderMatches(matchesEl, "Quick Switcher", [
+      [0, 5],
+      [6, 14],
+    ]);
+    expect(matchesEl.innerHTML).toBe(
+      '<span class="suggestion-highlight">Quick</span> <span class="suggestion-highlight">Switcher</span>',
+    );
 
     const overflowMatchesEl = document.createElement("div");
-    module.renderMatches(overflowMatchesEl, "abc", [[0, 99], [1, 2]]);
+    module.renderMatches(overflowMatchesEl, "abc", [
+      [0, 99],
+      [1, 2],
+    ]);
     expect(overflowMatchesEl.innerHTML).toBe('<span class="suggestion-highlight">abc</span>');
 
     const resultEl = document.createElement("div");
@@ -875,5 +982,4 @@ describe("Obsidian plugin API parity", () => {
     expect(callback).not.toHaveBeenCalled();
     expect(app.workspace.editorExtensions).toEqual([]);
   });
-
 });

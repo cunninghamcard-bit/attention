@@ -71,7 +71,9 @@ export class StreamMarkdownRenderer {
   }
 
   private runPostProcessors(el: HTMLElement, child: MarkdownRenderChild): void {
-    const registry = (MarkdownRenderer as unknown as { postProcessors: MarkdownPostProcessorRegistry }).postProcessors;
+    const registry = (
+      MarkdownRenderer as unknown as { postProcessors: MarkdownPostProcessorRegistry }
+    ).postProcessors;
     const context: MarkdownPostProcessorContext & { promises: Promise<void>[] } = {
       docId: this.sourcePath,
       sourcePath: this.sourcePath,
@@ -111,7 +113,8 @@ export class StreamMarkdownRenderer {
       case "list": {
         const info = node as { ordered?: boolean; start?: number; items?: AnyNode[] };
         const el = createEl(info.ordered ? "ol" : "ul");
-        if (info.ordered && info.start !== undefined && info.start !== 1) el.setAttr("start", String(info.start));
+        if (info.ordered && info.start !== undefined && info.start !== 1)
+          el.setAttr("start", String(info.start));
         for (const item of info.items ?? []) {
           const itemEl = createEl("li", { parent: el });
           for (const child of (item as AnyNode).children ?? []) {

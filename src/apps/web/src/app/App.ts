@@ -86,7 +86,11 @@ import { ProgressBar } from "../ui/ProgressBar";
 import { QuitEvent } from "./QuitEvent";
 import type { AttachmentImportData, AttachmentImportFile } from "./AttachmentImport";
 import { FrameDom } from "./FrameDom";
-import { applyObsidianBodyClasses, installFocusBodyClassSync, syncObsidianConfigBodyClasses } from "./BodyClasses";
+import {
+  applyObsidianBodyClasses,
+  installFocusBodyClassSync,
+  syncObsidianConfigBodyClasses,
+} from "./BodyClasses";
 
 import { Cli } from "../builtin/cli/Cli";
 import { registerCliCommands } from "../builtin/cli/registerCliCommands";
@@ -101,7 +105,6 @@ function installAnimationFrameFallback(win: Window): void {
     win.cancelAnimationFrame = (handle) => win.clearTimeout(handle);
   }
 }
-
 
 /**
  * One-shot handoff of the vault adapter into the next {@link App} construction.
@@ -178,7 +181,11 @@ export class App {
   readonly hotkeys = new HotkeyManager(this);
   readonly commands = new CommandManager(this.hotkeys, this);
   readonly desktopMenu = new DesktopMenu(this);
-  readonly vault = new Vault(takeNextAppAdapter() ?? new InMemoryAdapter(), this.pluginData, this.jsonStore);
+  readonly vault = new Vault(
+    takeNextAppAdapter() ?? new InMemoryAdapter(),
+    this.pluginData,
+    this.jsonStore,
+  );
   readonly metadataCache = new MetadataCache(this.vault, this);
   readonly linkSuggestions = new LinkSuggestionManager(this);
   readonly linkGraph = new LinkGraph(this);
@@ -305,7 +312,9 @@ export class App {
       try {
         await adapter.open(path);
       } catch (error) {
-        new Notice(error instanceof Error && error.message ? error.message : `Failed to load file: ${path}`);
+        new Notice(
+          error instanceof Error && error.message ? error.message : `Failed to load file: ${path}`,
+        );
       }
     }
   }
@@ -316,7 +325,7 @@ export class App {
     if (!(adapter instanceof FileSystemAdapter)) return;
     const fullPath = adapter.getFullPath(path);
     void (async () => {
-      if (!await adapter.exists(path)) {
+      if (!(await adapter.exists(path))) {
         new Notice(`File not found: ${fullPath}`);
         return;
       }
@@ -384,15 +393,24 @@ export class App {
   }
 
   updateInlineTitleDisplay(): void {
-    this.dom.appContainerEl.ownerDocument.body.classList.toggle("show-inline-title", Boolean(this.vault.getConfig("showInlineTitle")));
+    this.dom.appContainerEl.ownerDocument.body.classList.toggle(
+      "show-inline-title",
+      Boolean(this.vault.getConfig("showInlineTitle")),
+    );
   }
 
   updateFloatingNavigationDisplay(): void {
-    this.dom.appContainerEl.ownerDocument.body.classList.toggle("is-floating-nav", Boolean(this.vault.getConfig("floatingNavigation")));
+    this.dom.appContainerEl.ownerDocument.body.classList.toggle(
+      "is-floating-nav",
+      Boolean(this.vault.getConfig("floatingNavigation")),
+    );
   }
 
   updateAutoFullScreenDisplay(): void {
-    this.dom.appContainerEl.ownerDocument.body.classList.toggle("auto-full-screen", Boolean(this.vault.getConfig("autoFullScreen")));
+    this.dom.appContainerEl.ownerDocument.body.classList.toggle(
+      "auto-full-screen",
+      Boolean(this.vault.getConfig("autoFullScreen")),
+    );
   }
 
   updateViewHeaderDisplay(): void {
@@ -409,7 +427,9 @@ export class App {
   }
 
   fixFileLinks(el: HTMLElement, sourcePath = ""): void {
-    for (const media of el.querySelectorAll<HTMLImageElement | HTMLAudioElement | HTMLVideoElement | HTMLSourceElement | HTMLIFrameElement>("img, audio, video, source, iframe")) {
+    for (const media of el.querySelectorAll<
+      HTMLImageElement | HTMLAudioElement | HTMLVideoElement | HTMLSourceElement | HTMLIFrameElement
+    >("img, audio, video, source, iframe")) {
       const src = media.getAttribute("src");
       if (!src) continue;
       const file = this.resolveMediaSrc(src, sourcePath);
@@ -423,11 +443,20 @@ export class App {
     return this.fileManager.resolveAttachmentFile(file);
   }
 
-  async importAttachments(files: AttachmentImportFile[], targetFolder: TFolder | null = null, sourceFile: TFile | null = this.workspace.getActiveFile()): Promise<TFile[]> {
+  async importAttachments(
+    files: AttachmentImportFile[],
+    targetFolder: TFolder | null = null,
+    sourceFile: TFile | null = this.workspace.getActiveFile(),
+  ): Promise<TFile[]> {
     return this.fileManager.importAttachments(files, targetFolder, sourceFile);
   }
 
-  async saveAttachment(name: string, extension: string, data: AttachmentImportData, sourceFile: TFile | null = this.workspace.getActiveFile()): Promise<TFile> {
+  async saveAttachment(
+    name: string,
+    extension: string,
+    data: AttachmentImportData,
+    sourceFile: TFile | null = this.workspace.getActiveFile(),
+  ): Promise<TFile> {
     return this.fileManager.saveAttachment(name, extension, data, sourceFile);
   }
 
@@ -441,7 +470,8 @@ export class App {
 
   loadLocalStorage<T = unknown>(key: string): T | null {
     const storageKey = this.getLocalStorageKey(key);
-    const value = getBrowserStorage()?.getItem(storageKey) ?? localStorageFallback.get(storageKey) ?? null;
+    const value =
+      getBrowserStorage()?.getItem(storageKey) ?? localStorageFallback.get(storageKey) ?? null;
     if (value == null) return null;
     try {
       return JSON.parse(value) as T;
@@ -484,7 +514,11 @@ export class App {
     this.settingSections.register({ id: "file", name: "Files and links", order: 15 });
     this.settingSections.register({ id: "appearance", name: "Appearance", order: 20 });
     this.settingSections.register({ id: "core-plugins", name: "Core plugins", order: 30 });
-    this.settingSections.register({ id: "community-plugins", name: "Community plugins", order: 40 });
+    this.settingSections.register({
+      id: "community-plugins",
+      name: "Community plugins",
+      order: 40,
+    });
     this.setting.addSettingTab(new FilesSettingTab(this));
     this.setting.addSettingTab(new AppearanceSettingTab(this));
     this.setting.addSettingTab(new MobileSettingTab(this));
@@ -515,10 +549,12 @@ export class App {
 
   private isConfigReloadPath(path: string): boolean {
     const configDir = this.vault.configDir;
-    return path === `${configDir}/app.json`
-      || path === `${configDir}/appearance.json`
-      || path === this.jsonStore.path("app.json")
-      || path === this.jsonStore.path("appearance.json");
+    return (
+      path === `${configDir}/app.json` ||
+      path === `${configDir}/appearance.json` ||
+      path === this.jsonStore.path("app.json") ||
+      path === this.jsonStore.path("appearance.json")
+    );
   }
 
   private onConfigChanged(key: string): void {
@@ -536,11 +572,7 @@ export class App {
   }
 }
 
-const fontFamilyKeys = new Set([
-  "textFontFamily",
-  "interfaceFontFamily",
-  "monospaceFontFamily",
-]);
+const fontFamilyKeys = new Set(["textFontFamily", "interfaceFontFamily", "monospaceFontFamily"]);
 
 function isExternalMediaSrc(src: string): boolean {
   return /^[a-z][a-z0-9+.-]*:/i.test(src);
@@ -554,7 +586,9 @@ function getBrowserStorage(): Storage | null {
   }
 }
 
-function hasMobileOpenAdapter(adapter: unknown): adapter is { open(path: string): Promise<void> | void } {
+function hasMobileOpenAdapter(
+  adapter: unknown,
+): adapter is { open(path: string): Promise<void> | void } {
   return typeof (adapter as { open?: unknown } | null)?.open === "function";
 }
 
@@ -570,13 +604,17 @@ function getElectronShell(win: Window): { showItemInFolder?: (path: string) => v
     electron?: { shell?: { showItemInFolder?: (path: string) => void } };
     require?: (moduleName: "electron") => { shell?: { showItemInFolder?: (path: string) => void } };
   };
-  const electron = (win as Window & { electron?: { shell?: { showItemInFolder?: (path: string) => void } } }).electron
-    ?? host.electron
-    ?? safeRequireElectron(host);
+  const electron =
+    (win as Window & { electron?: { shell?: { showItemInFolder?: (path: string) => void } } })
+      .electron ??
+    host.electron ??
+    safeRequireElectron(host);
   return electron?.shell ?? null;
 }
 
-function safeRequireElectron(host: { require?: (moduleName: "electron") => { shell?: { showItemInFolder?: (path: string) => void } } }): { shell?: { showItemInFolder?: (path: string) => void } } | null {
+function safeRequireElectron(host: {
+  require?: (moduleName: "electron") => { shell?: { showItemInFolder?: (path: string) => void } };
+}): { shell?: { showItemInFolder?: (path: string) => void } } | null {
   try {
     return host.require?.("electron") ?? null;
   } catch {

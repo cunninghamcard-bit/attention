@@ -60,6 +60,11 @@ export class CssSnippetManager {
   }
 
   private persistEnabledSnippets(): void {
-    this.app.vault.setConfig("enabledCssSnippets", this.listSnippets().filter((snippet) => snippet.enabled).map((snippet) => snippet.id));
+    this.app.vault.setConfig(
+      "enabledCssSnippets",
+      this.listSnippets()
+        .filter((snippet) => snippet.enabled)
+        .map((snippet) => snippet.id),
+    );
   }
 }

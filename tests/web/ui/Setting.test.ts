@@ -41,7 +41,12 @@ describe("Setting components", () => {
     const host = parent();
     const button = new ButtonComponent(host);
     let resolveClick!: () => void;
-    button.onClick(() => new Promise<void>((resolve) => { resolveClick = resolve; }));
+    button.onClick(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveClick = resolve;
+        }),
+    );
 
     button.buttonEl.click();
     expect(button.buttonEl.classList.contains("mod-loading")).toBe(true);
@@ -278,7 +283,9 @@ describe("Setting components", () => {
         desktopText = text;
       });
       const desktopBlur = vi.spyOn(desktopText!.inputEl, "blur");
-      desktopText!.inputEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      desktopText!.inputEl.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
       expect(desktopBlur).not.toHaveBeenCalled();
 
       Object.defineProperty(Platform, "hasPhysicalKeyboard", { configurable: true, value: false });
@@ -287,10 +294,15 @@ describe("Setting components", () => {
         mobileText = text;
       });
       const mobileBlur = vi.spyOn(mobileText!.inputEl, "blur");
-      mobileText!.inputEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      mobileText!.inputEl.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
       expect(mobileBlur).toHaveBeenCalledTimes(1);
     } finally {
-      Object.defineProperty(Platform, "hasPhysicalKeyboard", { configurable: true, value: original });
+      Object.defineProperty(Platform, "hasPhysicalKeyboard", {
+        configurable: true,
+        value: original,
+      });
     }
   });
 

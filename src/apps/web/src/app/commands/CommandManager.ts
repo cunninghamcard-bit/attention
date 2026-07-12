@@ -14,7 +14,11 @@ export interface Command {
   callback?: () => any;
   checkCallback?: (checking: boolean) => boolean | void | null;
   editorCallback?: (editor: Editor, ctx: MarkdownView | MarkdownFileInfo) => any;
-  editorCheckCallback?: (checking: boolean, editor: Editor, ctx: MarkdownView | MarkdownFileInfo) => boolean | void | null;
+  editorCheckCallback?: (
+    checking: boolean,
+    editor: Editor,
+    ctx: MarkdownView | MarkdownFileInfo,
+  ) => boolean | void | null;
   allowPreview?: boolean;
   allowProperties?: boolean;
   hotkeys?: Hotkey[];
@@ -65,11 +69,24 @@ export class CommandManager {
         if (isMarkdownView(view)) {
           if (view.inlineTitleEl && isActiveElement(view.inlineTitleEl)) return undefined;
           if (view.titleEl && isActiveElement(view.titleEl)) return undefined;
-          if (!command.allowProperties && isMetadataFocused(view.inlineTitleEl?.ownerDocument ?? view.titleEl?.ownerDocument)) return undefined;
+          if (
+            !command.allowProperties &&
+            isMetadataFocused(view.inlineTitleEl?.ownerDocument ?? view.titleEl?.ownerDocument)
+          )
+            return undefined;
         }
-        if (command.editorCheckCallback) return command.editorCheckCallback(checking, context.editor, context.view as MarkdownView | MarkdownFileInfo);
+        if (command.editorCheckCallback)
+          return command.editorCheckCallback(
+            checking,
+            context.editor,
+            context.view as MarkdownView | MarkdownFileInfo,
+          );
         if (command.editorCallback) {
-          if (!checking) void command.editorCallback(context.editor, context.view as MarkdownView | MarkdownFileInfo);
+          if (!checking)
+            void command.editorCallback(
+              context.editor,
+              context.view as MarkdownView | MarkdownFileInfo,
+            );
           return true;
         }
         return undefined;
@@ -160,8 +177,11 @@ function isActiveElement(el: HTMLElement): boolean {
 
 function isMetadataFocused(doc: Document = document): boolean {
   const activeElement = doc.activeElement;
-  const closest = (activeElement as { closest?: (selector: string) => Element | null } | null)?.closest;
-  return typeof closest === "function" && Boolean(closest.call(activeElement, ".metadata-container"));
+  const closest = (activeElement as { closest?: (selector: string) => Element | null } | null)
+    ?.closest;
+  return (
+    typeof closest === "function" && Boolean(closest.call(activeElement, ".metadata-container"))
+  );
 }
 
 function isMarkdownView(view: View): view is MarkdownView {

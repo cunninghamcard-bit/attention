@@ -35,10 +35,16 @@ export class PagePreviewController {
     this.plugin = plugin;
     this.ensureDefaultSources();
     this.overrides = { ...((await plugin.loadData<PagePreviewOverrides>()) ?? {}) };
-    plugin.registerEvent(this.app.workspace.on("hover-link", (event) => void this.onHoverLink(event as HoverLinkEvent)));
+    plugin.registerEvent(
+      this.app.workspace.on(
+        "hover-link",
+        (event) => void this.onHoverLink(event as HoverLinkEvent),
+      ),
+    );
     plugin.addSettingTab(new PagePreviewSettingTab(this.app, this));
     const unfoldProperties = this.app.loadLocalStorage<boolean>("page-preview-unfold-properties");
-    if (unfoldProperties == null) this.app.saveLocalStorage("page-preview-unfold-properties", false);
+    if (unfoldProperties == null)
+      this.app.saveLocalStorage("page-preview-unfold-properties", false);
   }
 
   async onHoverLink(event: HoverLinkEvent): Promise<void> {
@@ -48,13 +54,16 @@ export class PagePreviewController {
     if (requiresMod && !hasMod(event.event)) return;
     const targetEl = event.targetEl;
     if (!targetEl) return;
-    await this.app.hoverPreview.show({
-      source: event.source,
-      linktext: event.linktext,
-      sourcePath: event.sourcePath ?? "",
-      state: event.state,
-      event: event.event,
-    }, targetEl);
+    await this.app.hoverPreview.show(
+      {
+        source: event.source,
+        linktext: event.linktext,
+        sourcePath: event.sourcePath ?? "",
+        state: event.state,
+        event: event.event,
+      },
+      targetEl,
+    );
   }
 
   async setOverride(source: HoverLinkSource, value: boolean): Promise<void> {
@@ -66,7 +75,10 @@ export class PagePreviewController {
   private ensureDefaultSources(): void {
     for (const source of DEFAULT_HOVER_SOURCES) {
       if (!this.app.workspace.hoverLinkSources.get(source.id)) {
-        this.app.workspace.registerHoverLinkSource(source.id, { display: source.display, defaultMod: source.defaultMod });
+        this.app.workspace.registerHoverLinkSource(source.id, {
+          display: source.display,
+          defaultMod: source.defaultMod,
+        });
       }
     }
   }
@@ -80,7 +92,10 @@ class PagePreviewSettingTab implements SettingTab {
   readonly navEl = document.createElement("div");
   readonly containerEl = document.createElement("div");
 
-  constructor(readonly app: App, readonly controller: PagePreviewController) {
+  constructor(
+    readonly app: App,
+    readonly controller: PagePreviewController,
+  ) {
     this.navEl.className = "vertical-tab-nav-item tappable";
     const iconEl = document.createElement("div");
     iconEl.className = "vertical-tab-nav-item-icon";
@@ -96,7 +111,9 @@ class PagePreviewSettingTab implements SettingTab {
 
   display(): void {
     this.containerEl.replaceChildren();
-    const group = new SettingGroup(this.containerEl).setHeading("Require Mod key to trigger preview");
+    const group = new SettingGroup(this.containerEl).setHeading(
+      "Require Mod key to trigger preview",
+    );
     for (const source of this.app.workspace.hoverLinkSources.list()) {
       const value = Object.hasOwn(this.controller.overrides, source.id)
         ? this.controller.overrides[source.id]
@@ -104,9 +121,11 @@ class PagePreviewSettingTab implements SettingTab {
       new Setting(group.itemsEl)
         .setName(source.display)
         .setDesc(source.id)
-        .addToggle((toggle) => toggle.setValue(value).onChange((next) => {
-          void this.controller.setOverride(source, next).then(() => this.display());
-        }));
+        .addToggle((toggle) =>
+          toggle.setValue(value).onChange((next) => {
+            void this.controller.setOverride(source, next).then(() => this.display());
+          }),
+        );
     }
   }
 

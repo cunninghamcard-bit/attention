@@ -36,7 +36,12 @@ export class HoverPopover extends Component {
   private cleanupTarget: Array<() => void> = [];
 
   constructor(parentEl?: HTMLElement);
-  constructor(parent: HoverParent, targetEl: HTMLElement | null, waitTime?: number, staticPos?: Point | null);
+  constructor(
+    parent: HoverParent,
+    targetEl: HTMLElement | null,
+    waitTime?: number,
+    staticPos?: Point | null,
+  );
   constructor(
     parentOrEl: HoverParent | HTMLElement = getActiveDocument().body,
     targetEl?: HTMLElement | null,
@@ -47,7 +52,7 @@ export class HoverPopover extends Component {
     const isLegacyParentEl = isHTMLElementLike(parentOrEl);
     const doc = isLegacyParentEl
       ? parentOrEl.ownerDocument
-      : targetEl?.ownerDocument ?? getActiveDocument();
+      : (targetEl?.ownerDocument ?? getActiveDocument());
     if (!isLegacyParentEl) {
       this.parent = parentOrEl;
       this.waitTime = waitTime;
@@ -138,7 +143,10 @@ export class HoverPopover extends Component {
   }
 
   show(): void {
-    if (this.state !== HoverPopoverState.Showing || (this.targetEl && !this.targetEl.ownerDocument.body.contains(this.targetEl))) {
+    if (
+      this.state !== HoverPopoverState.Showing ||
+      (this.targetEl && !this.targetEl.ownerDocument.body.contains(this.targetEl))
+    ) {
       this.hide();
       return;
     }
@@ -151,7 +159,10 @@ export class HoverPopover extends Component {
     this.load();
     // Real Obsidian fades the popover in over 80ms with the anim-motion-swing
     // easing (no-op under jsdom, which lacks Element.animate).
-    this.hoverEl.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 80, easing: "cubic-bezier(0, 0.55, 0.45, 1)" });
+    this.hoverEl.animate?.([{ opacity: 0 }, { opacity: 1 }], {
+      duration: 80,
+      easing: "cubic-bezier(0, 0.55, 0.45, 1)",
+    });
     this.watchResize(this.hoverEl);
     stopHoverPollingIfIdle();
   }
@@ -183,7 +194,10 @@ export class HoverPopover extends Component {
     const height = Math.min(400, Math.max(180, win.innerHeight * 0.8));
     const alignedLeft = rtl ? rect.right - width : rect.left;
     const left = Math.min(Math.max(8, alignedLeft), Math.max(8, win.innerWidth - width - 8));
-    const top = rect.bottom + 10 + height > win.innerHeight ? Math.max(8, rect.top - height - 10) : rect.bottom + 10;
+    const top =
+      rect.bottom + 10 + height > win.innerHeight
+        ? Math.max(8, rect.top - height - 10)
+        : rect.bottom + 10;
     this.hoverEl.style.position = "fixed";
     this.hoverEl.style.left = `${left}px`;
     this.hoverEl.style.top = `${top}px`;
@@ -197,11 +211,18 @@ export class HoverPopover extends Component {
   }
 
   private shouldShowSelf(): boolean {
-    return this.onTarget || this.onHover || this.isFocused || this.hoverEl.contains(this.hoverEl.ownerDocument.activeElement);
+    return (
+      this.onTarget ||
+      this.onHover ||
+      this.isFocused ||
+      this.hoverEl.contains(this.hoverEl.ownerDocument.activeElement)
+    );
   }
 
   get childHovers(): HoverPopover[] {
-    return shownHoverPopovers.filter((hover) => hover !== this && Boolean(hover.targetEl && this.hoverEl.contains(hover.targetEl)));
+    return shownHoverPopovers.filter(
+      (hover) => hover !== this && Boolean(hover.targetEl && this.hoverEl.contains(hover.targetEl)),
+    );
   }
 
   private attachTargetListeners(target: HTMLElement): void {
@@ -306,7 +327,8 @@ function ensureHoverPolling(win: Window): void {
 }
 
 function stopHoverPollingIfIdle(): void {
-  if (!hoverPollingWindow || pendingHoverPopovers.length > 0 || shownHoverPopovers.length > 0) return;
+  if (!hoverPollingWindow || pendingHoverPopovers.length > 0 || shownHoverPopovers.length > 0)
+    return;
   hoverPollingWindow.removeEventListener("click", closeDetachedHovers, { capture: true });
   hoverPollingWindow.removeEventListener("contextmenu", closeDetachedHovers, { capture: true });
   hoverPollingWindow.removeEventListener("mousemove", recordMousePosition);
@@ -325,14 +347,21 @@ function closeDetachedHovers(event: Event): void {
     if (target && popover.childHovers.some((child) => child.hoverEl.contains(target))) return false;
     return true;
   });
-  const win = event.target instanceof Node ? event.target.ownerDocument.defaultView ?? window : getActiveWindow();
+  const win =
+    event.target instanceof Node
+      ? (event.target.ownerDocument.defaultView ?? window)
+      : getActiveWindow();
   win.setTimeout(() => {
     for (const popover of candidates) popover.hide();
   }, 5);
 }
 
 function recordMousePosition(event: MouseEvent): void {
-  lastMouse = { x: event.clientX, y: event.clientY, doc: event.target instanceof Node ? event.target.ownerDocument : document };
+  lastMouse = {
+    x: event.clientX,
+    y: event.clientY,
+    doc: event.target instanceof Node ? event.target.ownerDocument : document,
+  };
 }
 
 function pollHoverTargets(): void {
@@ -374,12 +403,19 @@ let activeTooltipTargetEl: HTMLElement | null = null;
 let tooltipTimer: number | null = null;
 let lastTooltipHide = 0;
 
-export function displayTooltip(target: HTMLElement, text: string, options: TooltipOptions = {}): void {
+export function displayTooltip(
+  target: HTMLElement,
+  text: string,
+  options: TooltipOptions = {},
+): void {
   const delay = options.delay ?? 0;
   if (delay > 0 && (activeTooltipEl || Date.now() > lastTooltipHide + FAST_TOOLTIP_DELAY)) {
     clearTooltipTimer();
     const win = target.ownerDocument.defaultView ?? window;
-    tooltipTimer = win.setTimeout(() => displayTooltip(target, text, { ...options, delay: 0 }), delay);
+    tooltipTimer = win.setTimeout(
+      () => displayTooltip(target, text, { ...options, delay: 0 }),
+      delay,
+    );
     return;
   }
 
@@ -422,13 +458,17 @@ function installTooltipListeners(doc: Document): void {
 
 function handleTooltipPointerOver(event: PointerEvent): void {
   const target = tooltipTargetFromEvent(event);
-  if (!target || getComputedStyle(target).getPropertyValue("--no-tooltip").trim() === "true") return;
+  if (!target || getComputedStyle(target).getPropertyValue("--no-tooltip").trim() === "true")
+    return;
   const text = target.getAttribute("aria-label");
   if (!text) return;
 
   clearTooltipTimer();
   const options = tooltipOptionsFromTarget(target);
-  const delay = Date.now() - lastTooltipHide < FAST_TOOLTIP_DELAY ? 0 : options.delay ?? DEFAULT_TOOLTIP_DELAY;
+  const delay =
+    Date.now() - lastTooltipHide < FAST_TOOLTIP_DELAY
+      ? 0
+      : (options.delay ?? DEFAULT_TOOLTIP_DELAY);
   if (delay <= 0) displayTooltip(target, text, options);
   else {
     const win = target.ownerDocument.defaultView ?? window;
@@ -453,9 +493,15 @@ function tooltipTargetFromEvent(event: Event): HTMLElement | null {
 function tooltipOptionsFromTarget(target: HTMLElement): TooltipOptions {
   const placement = target.dataset.tooltipPosition;
   const classes = target.dataset.tooltipClasses?.split(/\s+/).filter(Boolean);
-  const delay = target.dataset.tooltipDelay == null ? undefined : Number.parseInt(target.dataset.tooltipDelay, 10);
+  const delay =
+    target.dataset.tooltipDelay == null
+      ? undefined
+      : Number.parseInt(target.dataset.tooltipDelay, 10);
   return {
-    placement: placement === "top" || placement === "left" || placement === "right" || placement === "bottom" ? placement : undefined,
+    placement:
+      placement === "top" || placement === "left" || placement === "right" || placement === "bottom"
+        ? placement
+        : undefined,
     classes,
     delay: Number.isFinite(delay) ? delay : undefined,
   };
@@ -476,12 +522,18 @@ function clearTooltipTimer(): void {
 }
 
 function applyTooltipOptions(target: HTMLElement, options: TooltipOptions): void {
-  if (options.placement && options.placement !== "bottom") target.setAttribute("data-tooltip-position", options.placement);
+  if (options.placement && options.placement !== "bottom")
+    target.setAttribute("data-tooltip-position", options.placement);
   if (options.classes) target.setAttribute("data-tooltip-classes", options.classes.join(" "));
   if (options.delay) target.setAttribute("data-tooltip-delay", String(options.delay));
 }
 
-function positionTooltip(target: HTMLElement, tooltipEl: HTMLElement, arrowEl: HTMLElement, options: TooltipOptions): void {
+function positionTooltip(
+  target: HTMLElement,
+  tooltipEl: HTMLElement,
+  arrowEl: HTMLElement,
+  options: TooltipOptions,
+): void {
   const doc = target.ownerDocument;
   const body = doc.body;
   const win = doc.defaultView ?? window;

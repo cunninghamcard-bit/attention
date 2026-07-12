@@ -56,7 +56,9 @@ describe("Notice DOM parity", () => {
     const callback = vi.fn();
 
     notice.addButton("Undo", callback);
-    const buttonContainerEl = notice.containerEl.querySelector<HTMLElement>(".notice-button-container");
+    const buttonContainerEl = notice.containerEl.querySelector<HTMLElement>(
+      ".notice-button-container",
+    );
     const buttonEl = buttonContainerEl?.querySelector<HTMLElement>(".notice-cta");
 
     expect(buttonContainerEl?.parentElement).toBe(notice.containerEl);

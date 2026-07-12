@@ -114,8 +114,14 @@ describe("View public API parity", () => {
     app.viewRegistry.registerView("action-item-view-api", (leaf) => new ActionItemView(leaf));
 
     const mainView = new BasicView(app.workspace.getLeaf());
-    const leftLeaf = await app.workspace.ensureSideLeaf("basic-view-api", "left", { active: true, reveal: true });
-    const rightLeaf = await app.workspace.ensureSideLeaf("action-item-view-api", "right", { active: true, reveal: true });
+    const leftLeaf = await app.workspace.ensureSideLeaf("basic-view-api", "left", {
+      active: true,
+      reveal: true,
+    });
+    const rightLeaf = await app.workspace.ensureSideLeaf("action-item-view-api", "right", {
+      active: true,
+      reveal: true,
+    });
 
     expect(mainView.getSideTooltipPlacement()).toBeUndefined();
     expect(leftLeaf.view?.getSideTooltipPlacement()).toBe("right");
@@ -186,7 +192,11 @@ describe("View public API parity", () => {
 
     sourceLeaf.setGroup("file-view-sync");
     targetLeaf.setGroup("file-view-sync");
-    await sourceLeaf.setViewState({ type: "lifecycle-file-view-api", state: { file: file.path }, active: true });
+    await sourceLeaf.setViewState({
+      type: "lifecycle-file-view-api",
+      state: { file: file.path },
+      active: true,
+    });
     await targetLeaf.setViewState({ type: "lifecycle-file-view-api", active: false });
 
     (sourceLeaf.view as LifecycleFileView).syncState();
@@ -210,7 +220,9 @@ describe("View public API parity", () => {
     await view.open(parent);
     await view.loadFile(file);
 
-    expect([...view.titleParentEl.children].map((el) => `${el.className}:${el.textContent}`)).toEqual([
+    expect(
+      [...view.titleParentEl.children].map((el) => `${el.className}:${el.textContent}`),
+    ).toEqual([
       "view-header-breadcrumb:Folder",
       "view-header-breadcrumb-separator:/",
       "view-header-breadcrumb:Sub",
@@ -221,10 +233,14 @@ describe("View public API parity", () => {
     expect(subBreadcrumb).toBeInstanceOf(HTMLElement);
     expect((subBreadcrumb as HTMLElement).draggable).toBe(true);
 
-    subBreadcrumb.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    subBreadcrumb.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
 
     expect(seenMenus).toContain("Folder/Sub:file-explorer-context-menu:true");
-    const menuTitles = Array.from(document.body.querySelectorAll<HTMLElement>(".menu-item-title")).map((el) => el.textContent);
+    const menuTitles = Array.from(
+      document.body.querySelectorAll<HTMLElement>(".menu-item-title"),
+    ).map((el) => el.textContent);
     expect(menuTitles).toContain("New note");
     expect(menuTitles).not.toContain("New folder");
     expect(document.body.querySelector(".menu-item-icon svg.lucide-edit")).not.toBeNull();
@@ -277,15 +293,24 @@ describe("View public API parity", () => {
     await vi.waitFor(() => expect(duplicateGo).toHaveBeenCalledWith(1));
 
     document.body.querySelectorAll(".menu").forEach((el) => el.remove());
-    view.backButtonEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
-    expect([...document.body.querySelectorAll(".menu-item-title")].map((el) => el.textContent)).toEqual(["Closest", "Older"]);
+    view.backButtonEl.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
+    expect(
+      [...document.body.querySelectorAll(".menu-item-title")].map((el) => el.textContent),
+    ).toEqual(["Closest", "Older"]);
     [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
-      .find((item) => item.textContent?.includes("Older"))?.click();
+      .find((item) => item.textContent?.includes("Older"))
+      ?.click();
     expect(historyGo).toHaveBeenLastCalledWith(-2);
 
     document.body.querySelectorAll(".menu").forEach((el) => el.remove());
-    view.forwardButtonEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
-    expect([...document.body.querySelectorAll(".menu-item-title")].map((el) => el.textContent)).toEqual(["Forward", "Farther"]);
+    view.forwardButtonEl.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
+    expect(
+      [...document.body.querySelectorAll(".menu-item-title")].map((el) => el.textContent),
+    ).toEqual(["Forward", "Farther"]);
     duplicateGo.mockClear();
     [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
       .find((item) => item.textContent?.includes("Farther"))
@@ -296,7 +321,10 @@ describe("View public API parity", () => {
   it("creates ItemView chrome inside the leaf owner document", async () => {
     const ownerDocument = document.implementation.createHTMLDocument("Owner");
     const app = new App(ownerDocument.body.appendChild(ownerDocument.createElement("div")));
-    app.viewRegistry.registerView("owner-document-item-view-api", (leaf) => new ActionItemView(leaf));
+    app.viewRegistry.registerView(
+      "owner-document-item-view-api",
+      (leaf) => new ActionItemView(leaf),
+    );
     const leaf = app.workspace.getLeaf();
 
     await leaf.setViewState({ type: "owner-document-item-view-api", active: true });
@@ -313,7 +341,10 @@ describe("View public API parity", () => {
     const app = new App(document.body.appendChild(document.createElement("div")));
     app.viewRegistry.registerView("action-item-view-api", (leaf) => new ActionItemView(leaf));
 
-    const leaf = await app.workspace.ensureSideLeaf("action-item-view-api", "right", { active: true, reveal: true });
+    const leaf = await app.workspace.ensureSideLeaf("action-item-view-api", "right", {
+      active: true,
+      reveal: true,
+    });
     const view = leaf.view as ActionItemView;
     const menu = new Menu(document);
 
@@ -323,8 +354,9 @@ describe("View public API parity", () => {
     menu.showAtPosition({ x: 0, y: 0 });
 
     const titles = [...menu.dom.querySelectorAll(".menu-item-title")].map((el) => el.textContent);
-    const splitRightItem = [...menu.dom.querySelectorAll<HTMLElement>(".menu-item")]
-      .find((item) => item.textContent?.includes("Split right"));
+    const splitRightItem = [...menu.dom.querySelectorAll<HTMLElement>(".menu-item")].find((item) =>
+      item.textContent?.includes("Split right"),
+    );
 
     expect(titles).toContain("Split right");
     expect(titles).toContain("Split down");
@@ -367,23 +399,31 @@ describe("View public API parity", () => {
       await leaf.setViewState({ type: "action-item-view-api", active: true });
       const view = leaf.view as ActionItemView;
       expect(view.actionsEl.classList.contains("mod-raised")).toBe(true);
-      view.moreOptionsButtonEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      view.moreOptionsButtonEl.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
 
-      const titles = [...document.body.querySelectorAll(".menu-item-title")].map((el) => el.textContent);
+      const titles = [...document.body.querySelectorAll(".menu-item-title")].map(
+        (el) => el.textContent,
+      );
       expect(titles).toContain("Close");
       expect(titles).toContain("Pin");
 
-      const pinItem = [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
-        .find((item) => item.textContent?.includes("Pin"))
+      const pinItem = [...document.body.querySelectorAll<HTMLElement>(".menu-item")].find((item) =>
+        item.textContent?.includes("Pin"),
+      );
       expect(pinItem?.querySelector(".menu-item-icon svg.lucide-pin")).not.toBeNull();
       pinItem?.click();
 
       expect(leaf.pinned).toBe(true);
 
       document.body.querySelectorAll(".menu").forEach((el) => el.remove());
-      view.moreOptionsButtonEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-      const unpinItem = [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
-        .find((item) => item.textContent?.includes("Unpin"));
+      view.moreOptionsButtonEl.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
+      const unpinItem = [...document.body.querySelectorAll<HTMLElement>(".menu-item")].find(
+        (item) => item.textContent?.includes("Unpin"),
+      );
       expect(unpinItem?.querySelector(".menu-item-icon svg.lucide-pin-off")).not.toBeNull();
     } finally {
       Platform.isPhone = previousPhone;
@@ -424,7 +464,9 @@ describe("View public API parity", () => {
 
       await leaf.setViewState({ type: "action-item-view-api", active: true });
       app.workspace.rightSplit.collapse();
-      (leaf.view as ActionItemView).moreOptionsButtonEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+      (leaf.view as ActionItemView).moreOptionsButtonEl.dispatchEvent(
+        new MouseEvent("contextmenu", { bubbles: true, cancelable: true }),
+      );
 
       expect(app.workspace.rightSplit.collapsed).toBe(false);
     } finally {
@@ -449,22 +491,30 @@ describe("View public API parity", () => {
     ];
     leaf.trigger("history-change", leaf);
 
-    view.backButtonEl.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, clientX: 10, clientY: 10 }));
+    view.backButtonEl.dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, clientX: 10, clientY: 10 }),
+    );
     await vi.advanceTimersByTimeAsync(399);
 
     expect(document.body.querySelector(".menu")).toBeNull();
 
     await vi.advanceTimersByTimeAsync(1);
 
-    expect([...document.body.querySelectorAll(".menu-item-title")].map((el) => el.textContent)).toEqual(["Closest", "Older"]);
+    expect(
+      [...document.body.querySelectorAll(".menu-item-title")].map((el) => el.textContent),
+    ).toEqual(["Closest", "Older"]);
 
     document.body.querySelectorAll(".menu").forEach((el) => el.remove());
     document.body.querySelectorAll(".suggestion-bg").forEach((el) => el.remove());
 
-    view.forwardButtonEl.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, clientX: 10, clientY: 10 }));
+    view.forwardButtonEl.dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, clientX: 10, clientY: 10 }),
+    );
     window.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, clientX: 10, clientY: 16 }));
 
-    expect([...document.body.querySelectorAll(".menu-item-title")].map((el) => el.textContent)).toEqual(["Forward"]);
+    expect(
+      [...document.body.querySelectorAll(".menu-item-title")].map((el) => el.textContent),
+    ).toEqual(["Forward"]);
   });
 
   it("updates ItemView title fade state through the observed short scroll debounce", async () => {
@@ -523,7 +573,9 @@ describe("View public API parity", () => {
     document.body.querySelectorAll(".suggestion-bg").forEach((el) => el.remove());
     const onStartLink = vi.spyOn(app.workspace, "onStartLink").mockImplementation(() => {});
 
-    leaf.openTabHeaderMenu(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    leaf.openTabHeaderMenu(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
     await vi.waitFor(() => expect(document.body.querySelector(".menu")).toBeTruthy());
     [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
       .find((item) => item.textContent?.includes("Link tab"))
@@ -536,7 +588,9 @@ describe("View public API parity", () => {
     document.body.querySelectorAll(".suggestion-bg").forEach((el) => el.remove());
     const moveLeafToPopout = vi.spyOn(app.workspace, "moveLeafToPopout").mockReturnValue(undefined);
 
-    leaf.openTabHeaderMenu(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    leaf.openTabHeaderMenu(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
     await vi.waitFor(() => expect(document.body.querySelector(".menu")).toBeTruthy());
     [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
       .find((item) => item.textContent?.includes("Move to new window"))
@@ -552,7 +606,9 @@ describe("View public API parity", () => {
     await source.setViewState({ type: "action-item-view-api", active: true });
     const target = app.workspace.getLeaf("tab");
     await target.setViewState({ type: "action-item-view-api", active: true });
-    vi.spyOn(target.containerEl, "getBoundingClientRect").mockReturnValue(new DOMRect(20, 30, 120, 80));
+    vi.spyOn(target.containerEl, "getBoundingClientRect").mockReturnValue(
+      new DOMRect(20, 30, 120, 80),
+    );
 
     app.workspace.onStartLink(source);
     window.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, clientX: 40, clientY: 50 }));

@@ -15,13 +15,21 @@ export class ShellIntegration {
       // Desktop: forward to the real Electron main process.
       this.bridge.handle("dialog:open", (payload) => invoke("dialog:open", payload));
       this.bridge.handle("dialog:save", (payload) => invoke("dialog:save", payload));
-      this.bridge.handle("window:set-fullscreen", (value) => invoke("window:set-fullscreen", value));
+      this.bridge.handle("window:set-fullscreen", (value) =>
+        invoke("window:set-fullscreen", value),
+      );
       this.bridge.handle("request-url", (payload) => invoke("request-url", payload));
     } else {
       // Browser / tests: in-process mocks.
-      this.bridge.handle("dialog:open", (payload) => this.fileDialogs.showOpenDialog(payload as never));
-      this.bridge.handle("dialog:save", (payload) => this.fileDialogs.showSaveDialog(payload as never));
-      this.bridge.handle("window:set-fullscreen", (value) => this.windowFrame.setFullscreen(Boolean(value)));
+      this.bridge.handle("dialog:open", (payload) =>
+        this.fileDialogs.showOpenDialog(payload as never),
+      );
+      this.bridge.handle("dialog:save", (payload) =>
+        this.fileDialogs.showSaveDialog(payload as never),
+      );
+      this.bridge.handle("window:set-fullscreen", (value) =>
+        this.windowFrame.setFullscreen(Boolean(value)),
+      );
     }
   }
 }

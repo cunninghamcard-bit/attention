@@ -15,8 +15,12 @@ export class CommunityPluginTrustModal extends ConfirmationModal {
 
     this.contentEl.append(
       paragraph("You're opening this vault for the first time, and it comes with some plugins."),
-      paragraph("If you obtained this vault from someone else, please note that plugins of unknown origin might pose security risks."),
-      paragraph("If you do not fully trust the author of this vault, we recommend staying in Restricted Mode, so the plugins in this vault do not run."),
+      paragraph(
+        "If you obtained this vault from someone else, please note that plugins of unknown origin might pose security risks.",
+      ),
+      paragraph(
+        "If you do not fully trust the author of this vault, we recommend staying in Restricted Mode, so the plugins in this vault do not run.",
+      ),
     );
 
     buttonEl.append(
@@ -32,11 +36,10 @@ export class CommunityPluginTrustModal extends ConfirmationModal {
     buttonEl.addEventListener("click", () => {
       buttonEl.disabled = true;
       this.close();
-      void this.app.pluginInstaller.setCommunityPluginsEnabled(enabled)
-        .then(() => {
-          this.app.setting.open();
-          this.app.setting.openTabById("community-plugins");
-        });
+      void this.app.pluginInstaller.setCommunityPluginsEnabled(enabled).then(() => {
+        this.app.setting.open();
+        this.app.setting.openTabById("community-plugins");
+      });
     });
     return buttonEl;
   }

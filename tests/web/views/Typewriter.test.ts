@@ -21,7 +21,8 @@ describe("Typewriter", () => {
     expect(lengths[0]).toBeLessThan(1000); // not all at once
     expect(lengths[lengths.length - 1]).toBe(1000); // fully drained
     expect(now).toBeLessThan(2000); // exponential drain converges fast
-    for (let index = 1; index < lengths.length; index++) expect(lengths[index]).toBeGreaterThan(lengths[index - 1]);
+    for (let index = 1; index < lengths.length; index++)
+      expect(lengths[index]).toBeGreaterThan(lengths[index - 1]);
   });
 
   it("final target flushes immediately and reports done", () => {

@@ -3,7 +3,12 @@ import type { App } from "../App";
 import type { EventRef } from "../../core/Events";
 import { unregisterEventRef } from "../../core/EventRefInternal";
 import type { Hotkey } from "./Keymap";
-import { compileModifiers, normalizedKeymapEventFromKeyboardEvent, type KeymapEventHandler, type NormalizedKeymapEvent } from "./Scope";
+import {
+  compileModifiers,
+  normalizedKeymapEventFromKeyboardEvent,
+  type KeymapEventHandler,
+  type NormalizedKeymapEvent,
+} from "./Scope";
 
 export class HotkeyManager {
   private defaultHotkeys = new Map<string, Hotkey[]>();
@@ -16,12 +21,16 @@ export class HotkeyManager {
   private readonly globalScopeRef: KeymapEventHandler | null = null;
 
   constructor(private readonly app?: App) {
-    this.globalScopeRef = this.app?.scope.register(null, null, (event, keymapEvent) => this.onTrigger(event, keymapEvent)) ?? null;
+    this.globalScopeRef =
+      this.app?.scope.register(null, null, (event, keymapEvent) =>
+        this.onTrigger(event, keymapEvent),
+      ) ?? null;
   }
 
   registerListeners(): void {
     if (!this.app) return;
-    if (!this.rawListenerRef) this.rawListenerRef = this.app.vault.on<[string]>("raw", (path) => this.onRaw(path));
+    if (!this.rawListenerRef)
+      this.rawListenerRef = this.app.vault.on<[string]>("raw", (path) => this.onRaw(path));
   }
 
   unregisterListeners(): void {
@@ -84,7 +93,9 @@ export class HotkeyManager {
   }
 
   getEffectiveHotkeys(commandId: string): readonly Hotkey[] | undefined {
-    return this.hotkeyOverrides.has(commandId) ? this.getHotkeys(commandId) : this.getDefaultHotkeys(commandId);
+    return this.hotkeyOverrides.has(commandId)
+      ? this.getHotkeys(commandId)
+      : this.getDefaultHotkeys(commandId);
   }
 
   getCustomHotkeys(commandId: string): readonly Hotkey[] {
@@ -97,11 +108,15 @@ export class HotkeyManager {
 
   getAllHotkeys(): Record<string, Hotkey[]> {
     const ids = new Set([...this.defaultHotkeys.keys(), ...this.hotkeyOverrides.keys()]);
-    return Object.fromEntries([...ids].map((id) => [id, [...(this.getEffectiveHotkeys(id) ?? [])]]));
+    return Object.fromEntries(
+      [...ids].map((id) => [id, [...(this.getEffectiveHotkeys(id) ?? [])]]),
+    );
   }
 
   getHotkeyOverrides(): Record<string, Hotkey[]> {
-    return Object.fromEntries([...this.hotkeyOverrides.entries()].map(([id, hotkeys]) => [id, [...hotkeys]]));
+    return Object.fromEntries(
+      [...this.hotkeyOverrides.entries()].map(([id, hotkeys]) => [id, [...hotkeys]]),
+    );
   }
 
   get customKeys(): Record<string, Hotkey[]> {
@@ -137,7 +152,9 @@ export class HotkeyManager {
 
     for (const command of commands) {
       const registeredHotkeys = this.getHotkeys(command.id) ?? [];
-      const hotkeys = this.hasHotkeyOverride(command.id) ? registeredHotkeys : (command.hotkeys ?? []);
+      const hotkeys = this.hasHotkeyOverride(command.id)
+        ? registeredHotkeys
+        : (command.hotkeys ?? []);
       for (const hotkey of hotkeys) {
         if (matches(event, hotkey)) return command;
       }
@@ -150,7 +167,12 @@ export class HotkeyManager {
     const commands = this.app.commands.getCommands();
     this.bake(commands);
     for (let index = 0; index < this.bakedHotkeys.length; index++) {
-      if (keymapEvent ? !matchesKeymapEvent(this.bakedHotkeys[index], keymapEvent) : !matches(event, this.bakedHotkeys[index])) continue;
+      if (
+        keymapEvent
+          ? !matchesKeymapEvent(this.bakedHotkeys[index], keymapEvent)
+          : !matches(event, this.bakedHotkeys[index])
+      )
+        continue;
       const command = this.app.commands.findCommand(this.bakedIds[index]);
       if (!command) continue;
       if (event.repeat && !command.repeatable) continue;
@@ -175,14 +197,20 @@ export class HotkeyManager {
     }
     for (const command of commands) {
       if (this.hotkeyOverrides.has(command.id)) continue;
-      this.addBakedHotkeys(command.id, this.defaultHotkeys.get(command.id) ?? command.hotkeys ?? []);
+      this.addBakedHotkeys(
+        command.id,
+        this.defaultHotkeys.get(command.id) ?? command.hotkeys ?? [],
+      );
     }
     this.hotkeysDirty = false;
   }
 
   private addBakedHotkeys(commandId: string, hotkeys: readonly Hotkey[]): void {
     for (const hotkey of hotkeys) {
-      this.bakedHotkeys.push({ modifiers: hotkey.modifiers, key: hotkey.code ? normalizeCode(hotkey.code) : hotkey.key });
+      this.bakedHotkeys.push({
+        modifiers: hotkey.modifiers,
+        key: hotkey.code ? normalizeCode(hotkey.code) : hotkey.key,
+      });
       this.bakedIds.push(commandId);
     }
   }
@@ -195,7 +223,10 @@ export class HotkeyManager {
 function matchesKeymapEvent(hotkey: Hotkey, event: NormalizedKeymapEvent): boolean {
   const modifiers = compileModifiers(hotkey.modifiers);
   const key = hotkey.code ? normalizeCode(hotkey.code) : hotkey.key;
-  return modifiers === event.modifiers && (!key || key === event.vkey || key.toLowerCase() === event.key.toLowerCase());
+  return (
+    modifiers === event.modifiers &&
+    (!key || key === event.vkey || key.toLowerCase() === event.key.toLowerCase())
+  );
 }
 
 function matches(event: KeyboardEvent, hotkey: Hotkey): boolean {
@@ -214,16 +245,34 @@ function isMacLike(): boolean {
 }
 
 const MODIFIER_ORDER = ["Mod", "Ctrl", "Meta", "Alt", "Shift"] as const;
-const MAC_MODIFIER_LABELS: Record<string, string> = { Mod: "⌘", Ctrl: "⌃", Meta: "⌘", Alt: "⌥", Shift: "⇧" };
-const NON_MAC_MODIFIER_LABELS: Record<string, string> = { Mod: "Ctrl", Ctrl: "Ctrl", Meta: "Win", Alt: "Alt", Shift: "Shift" };
-const SPECIAL_KEY_LABELS: Record<string, string> = { ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓", " ": "Space" };
+const MAC_MODIFIER_LABELS: Record<string, string> = {
+  Mod: "⌘",
+  Ctrl: "⌃",
+  Meta: "⌘",
+  Alt: "⌥",
+  Shift: "⇧",
+};
+const NON_MAC_MODIFIER_LABELS: Record<string, string> = {
+  Mod: "Ctrl",
+  Ctrl: "Ctrl",
+  Meta: "Win",
+  Alt: "Alt",
+  Shift: "Shift",
+};
+const SPECIAL_KEY_LABELS: Record<string, string> = {
+  ArrowLeft: "←",
+  ArrowRight: "→",
+  ArrowUp: "↑",
+  ArrowDown: "↓",
+  " ": "Space",
+};
 
 function formatHotkey(hotkey: Hotkey): string {
   const labels = isMacLike() ? MAC_MODIFIER_LABELS : NON_MAC_MODIFIER_LABELS;
-  const parts = MODIFIER_ORDER
-    .filter((modifier) => hotkey.modifiers.includes(modifier))
-    .map((modifier) => labels[modifier]);
-  parts.push(formatHotkeyKey(hotkey.code ? normalizeDisplayCode(hotkey.code) : hotkey.key ?? ""));
+  const parts = MODIFIER_ORDER.filter((modifier) => hotkey.modifiers.includes(modifier)).map(
+    (modifier) => labels[modifier],
+  );
+  parts.push(formatHotkeyKey(hotkey.code ? normalizeDisplayCode(hotkey.code) : (hotkey.key ?? "")));
   return parts.join(isMacLike() ? " " : " + ");
 }
 

@@ -47,7 +47,10 @@ export function parseObsidianUrl(
     return { kind: "starter" };
   }
   if (rest.startsWith("vault/")) {
-    const parts = rest.substring("vault/".length).split("/").map((p) => decodeURIComponent(p));
+    const parts = rest
+      .substring("vault/".length)
+      .split("/")
+      .map((p) => decodeURIComponent(p));
     action.action = "open";
     action.vault = parts[0];
     action.file = parts.slice(1).join("/");

@@ -33,46 +33,57 @@ export class ChatSettingTab implements SettingTab {
     new Setting(group.itemsEl)
       .setName(STRINGS.settings.bridgeUrl)
       .setDesc(STRINGS.settings.bridgeUrlDesc)
-      .addText((text) => text
-        .setPlaceholder(DEFAULT_CHAT_BRIDGE_URL)
-        .setValue(window.localStorage?.getItem("chat-bridge-url") ?? "")
-        .onChange((value) => {
-          const trimmed = value.trim();
-          if (trimmed) window.localStorage?.setItem("chat-bridge-url", trimmed);
-          else window.localStorage?.removeItem("chat-bridge-url");
-        }));
+      .addText((text) =>
+        text
+          .setPlaceholder(DEFAULT_CHAT_BRIDGE_URL)
+          .setValue(window.localStorage?.getItem("chat-bridge-url") ?? "")
+          .onChange((value) => {
+            const trimmed = value.trim();
+            if (trimmed) window.localStorage?.setItem("chat-bridge-url", trimmed);
+            else window.localStorage?.removeItem("chat-bridge-url");
+          }),
+      );
 
     const chatGroup = new SettingGroup(this.containerEl).setHeading(STRINGS.settings.chatHeading);
     new Setting(chatGroup.itemsEl)
       .setName(STRINGS.settings.typewriter)
       .setDesc(STRINGS.settings.typewriterDesc)
-      .addToggle((toggle) => toggle
-        .setValue(window.localStorage?.getItem("chat-typewriter") !== "off")
-        .onChange((value) => {
-          if (value) window.localStorage?.removeItem("chat-typewriter");
-          else window.localStorage?.setItem("chat-typewriter", "off");
-        }));
+      .addToggle((toggle) =>
+        toggle
+          .setValue(window.localStorage?.getItem("chat-typewriter") !== "off")
+          .onChange((value) => {
+            if (value) window.localStorage?.removeItem("chat-typewriter");
+            else window.localStorage?.setItem("chat-typewriter", "off");
+          }),
+      );
     new Setting(chatGroup.itemsEl)
       .setName(STRINGS.settings.collapseThinking)
       .setDesc(STRINGS.settings.collapseThinkingDesc)
-      .addToggle((toggle) => toggle
-        .setValue(window.localStorage?.getItem("chat-thinking-collapse") !== "off")
-        .onChange((value) => {
-          if (value) window.localStorage?.removeItem("chat-thinking-collapse");
-          else window.localStorage?.setItem("chat-thinking-collapse", "off");
-        }));
+      .addToggle((toggle) =>
+        toggle
+          .setValue(window.localStorage?.getItem("chat-thinking-collapse") !== "off")
+          .onChange((value) => {
+            if (value) window.localStorage?.removeItem("chat-thinking-collapse");
+            else window.localStorage?.setItem("chat-thinking-collapse", "off");
+          }),
+      );
 
-    const composerGroup = new SettingGroup(this.containerEl).setHeading(STRINGS.settings.composerHeading);
+    const composerGroup = new SettingGroup(this.containerEl).setHeading(
+      STRINGS.settings.composerHeading,
+    );
     new Setting(composerGroup.itemsEl)
       .setName(STRINGS.settings.pasteThreshold)
       .setDesc(STRINGS.settings.pasteThresholdDesc(DEFAULT_PASTE_CARD_THRESHOLD))
-      .addText((text) => text
-        .setPlaceholder(String(DEFAULT_PASTE_CARD_THRESHOLD))
-        .setValue(window.localStorage?.getItem("chat-paste-threshold") ?? "")
-        .onChange((value) => {
-          const parsed = Number(value.trim());
-          if (Number.isFinite(parsed) && parsed > 0) window.localStorage?.setItem("chat-paste-threshold", String(parsed));
-          else window.localStorage?.removeItem("chat-paste-threshold");
-        }));
+      .addText((text) =>
+        text
+          .setPlaceholder(String(DEFAULT_PASTE_CARD_THRESHOLD))
+          .setValue(window.localStorage?.getItem("chat-paste-threshold") ?? "")
+          .onChange((value) => {
+            const parsed = Number(value.trim());
+            if (Number.isFinite(parsed) && parsed > 0)
+              window.localStorage?.setItem("chat-paste-threshold", String(parsed));
+            else window.localStorage?.removeItem("chat-paste-threshold");
+          }),
+      );
   }
 }

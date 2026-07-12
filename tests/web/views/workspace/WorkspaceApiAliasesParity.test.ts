@@ -9,7 +9,9 @@ describe("Workspace Obsidian API aliases", () => {
 
     await app.workspace.openFile(file, { active: true });
 
-    expect(app.workspace.getActiveLeafOfViewType(MarkdownView)).toBe(app.workspace.getActiveViewOfType(MarkdownView));
+    expect(app.workspace.getActiveLeafOfViewType(MarkdownView)).toBe(
+      app.workspace.getActiveViewOfType(MarkdownView),
+    );
   });
 
   it("exposes addRecentFile as a workspace-level recent file tracker wrapper", async () => {
@@ -37,7 +39,12 @@ describe("Workspace Obsidian API aliases", () => {
     app.workspace.recentFilePaths = ["Missing.md", "Board.canvas", "Image.png", "Sound.mp3"];
 
     expect(app.workspace.getRecentFiles()).toEqual(["Missing.md", "Board.canvas"]);
-    expect(app.workspace.getLastOpenFiles()).toEqual(["Missing.md", "Board.canvas", "Image.png", "Sound.mp3"]);
+    expect(app.workspace.getLastOpenFiles()).toEqual([
+      "Missing.md",
+      "Board.canvas",
+      "Image.png",
+      "Sound.mp3",
+    ]);
   });
 
   it("keeps layout recent file arrays by reference like Obsidian's workspace state", () => {

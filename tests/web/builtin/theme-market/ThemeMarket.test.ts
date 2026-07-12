@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { App } from "@web/app/App";
-import { ThemeMarketplace, type MarketplaceFetcher } from "@web/builtin/theme-market/ThemeMarketplace";
+import {
+  ThemeMarketplace,
+  type MarketplaceFetcher,
+} from "@web/builtin/theme-market/ThemeMarketplace";
 
 const CATALOG = JSON.stringify([
   { name: "Minimal", author: "kepano", repo: "kepano/obsidian-minimal", modes: ["light", "dark"] },
@@ -10,7 +13,8 @@ const CATALOG = JSON.stringify([
 function fakeFetcher(routes: Record<string, string | number>): MarketplaceFetcher {
   return async (url) => {
     const hit = Object.entries(routes).find(([suffix]) => url.endsWith(suffix));
-    if (!hit || typeof hit[1] === "number") return { ok: false, status: (hit?.[1] as number) ?? 404, text: async () => "" };
+    if (!hit || typeof hit[1] === "number")
+      return { ok: false, status: (hit?.[1] as number) ?? 404, text: async () => "" };
     const body = hit[1];
     return { ok: true, status: 200, text: async () => body };
   };
@@ -26,11 +30,13 @@ describe("theme marketplace", () => {
   });
 
   it("downloads theme.css and merges the remote manifest", async () => {
-    const market = new ThemeMarketplace(fakeFetcher({
-      "community-css-themes.json": CATALOG,
-      "kepano/obsidian-minimal/HEAD/theme.css": "body { --minimal-marker: 1; }",
-      "kepano/obsidian-minimal/HEAD/manifest.json": JSON.stringify({ version: "8.1.0" }),
-    }));
+    const market = new ThemeMarketplace(
+      fakeFetcher({
+        "community-css-themes.json": CATALOG,
+        "kepano/obsidian-minimal/HEAD/theme.css": "body { --minimal-marker: 1; }",
+        "kepano/obsidian-minimal/HEAD/manifest.json": JSON.stringify({ version: "8.1.0" }),
+      }),
+    );
     await market.loadCatalog();
 
     const pkg = await market.downloadPackage("Minimal");
@@ -44,15 +50,26 @@ describe("theme marketplace", () => {
     const app = new App(document.createElement("div"));
     await app.ready;
     const pkg = {
-      manifest: { id: "Minimal", name: "Minimal", version: "8.1.0", author: "kepano", modes: ["light", "dark"] as Array<"light" | "dark"> },
+      manifest: {
+        id: "Minimal",
+        name: "Minimal",
+        version: "8.1.0",
+        author: "kepano",
+        modes: ["light", "dark"] as Array<"light" | "dark">,
+      },
       cssText: "body { --installed-theme-marker: yes; }",
     };
 
     await app.themeInstaller.install(pkg);
 
     const folder = `${app.customCss.getThemeFolder()}/Minimal`;
-    await expect(app.vault.readText(`${folder}/theme.css`)).resolves.toContain("--installed-theme-marker");
-    await expect(app.vault.readJson(`${folder}/manifest.json`)).resolves.toMatchObject({ name: "Minimal", version: "8.1.0" });
+    await expect(app.vault.readText(`${folder}/theme.css`)).resolves.toContain(
+      "--installed-theme-marker",
+    );
+    await expect(app.vault.readJson(`${folder}/manifest.json`)).resolves.toMatchObject({
+      name: "Minimal",
+      version: "8.1.0",
+    });
     expect(app.themes.listThemes().some((theme) => theme.id === "Minimal")).toBe(true);
 
     app.themeInstaller.enable("Minimal");

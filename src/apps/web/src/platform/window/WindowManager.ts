@@ -48,7 +48,7 @@ export class WindowManager {
   }
 
   getActiveWindow(): AppWindowState | null {
-    return this.activeWindowId ? this.windows.get(this.activeWindowId) ?? null : null;
+    return this.activeWindowId ? (this.windows.get(this.activeWindowId) ?? null) : null;
   }
 
   listWindows(): readonly AppWindowState[] {

@@ -29,7 +29,11 @@ interface CommentAnnotationMetadata {
 
 export interface ReviewSubmitOptions {
   /** PR verdict submit: batches every draft into one review. */
-  onSubmit(event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT", body: string, comments: ReviewDraftComment[]): Promise<string | null>;
+  onSubmit(
+    event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT",
+    body: string,
+    comments: ReviewDraftComment[],
+  ): Promise<string | null>;
 }
 
 export interface ReviewCommitOptions {
@@ -63,7 +67,9 @@ export function ReviewSurface({
   onEditDiff,
   onRefresh,
 }: ReviewSurfaceProps): ReactNode {
-  const [viewed, setViewed] = useState<Record<string, string>>(() => (storageRoot ? readViewed(storageRoot) : {}));
+  const [viewed, setViewed] = useState<Record<string, string>>(() =>
+    storageRoot ? readViewed(storageRoot) : {},
+  );
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
   const [filter, setFilter] = useState("");
   const [diffStyle, setDiffStyle] = useState<ReviewDiffStyle>(() => readDiffStyle());
@@ -86,22 +92,25 @@ export function ReviewSurface({
   const selected = commitSelected ?? new Set(files.map((file) => file.path));
   const viewedCount = files.filter((file) => isViewed(viewed, file)).length;
 
-  const markViewed = useCallback((file: ReviewFile, nextViewed: boolean) => {
-    setViewed((current) => {
-      const next = { ...current };
-      if (nextViewed) next[file.path] = file.fingerprint;
-      else delete next[file.path];
-      if (storageRoot) writeViewed(storageRoot, next);
-      return next;
-    });
-    // codiff behavior: marking a file viewed collapses it out of the way.
-    setCollapsed((current) => {
-      const next = new Set(current);
-      if (nextViewed) next.add(file.path);
-      else next.delete(file.path);
-      return next;
-    });
-  }, [storageRoot]);
+  const markViewed = useCallback(
+    (file: ReviewFile, nextViewed: boolean) => {
+      setViewed((current) => {
+        const next = { ...current };
+        if (nextViewed) next[file.path] = file.fingerprint;
+        else delete next[file.path];
+        if (storageRoot) writeViewed(storageRoot, next);
+        return next;
+      });
+      // codiff behavior: marking a file viewed collapses it out of the way.
+      setCollapsed((current) => {
+        const next = new Set(current);
+        if (nextViewed) next.add(file.path);
+        else next.delete(file.path);
+        return next;
+      });
+    },
+    [storageRoot],
+  );
 
   const toggleCollapsed = useCallback((path: string) => {
     setCollapsed((current) => {
@@ -130,31 +139,43 @@ export function ReviewSurface({
     ]);
   }, []);
 
-  const keyHandler = useCallback((event: React.KeyboardEvent) => {
-    const target = event.target as HTMLElement;
-    if (target.closest("input, textarea, [contenteditable]")) return;
-    const order = visibleFiles.map((file) => file.path);
-    const index = activePath ? order.indexOf(activePath) : -1;
-    const active = visibleFiles.find((file) => file.path === activePath);
-    if (event.key === "j" && order.length > 0) {
-      scrollToFile(order[Math.min(index + 1, order.length - 1)]);
-    } else if (event.key === "k" && order.length > 0) {
-      scrollToFile(order[Math.max(index - 1, 0)]);
-    } else if (event.key === "v" && active) {
-      markViewed(active, !isViewed(viewed, active));
-    } else if (event.key === "x" && active) {
-      toggleCollapsed(active.path);
-    } else if (event.key === "s") {
-      switchDiffStyle(diffStyle === "split" ? "unified" : "split");
-    } else if (event.key === "?") {
-      setHelpOpen((open) => !open);
-    } else if (event.key === "Escape") {
-      setHelpOpen(false);
-    } else {
-      return;
-    }
-    event.preventDefault();
-  }, [activePath, diffStyle, markViewed, scrollToFile, switchDiffStyle, toggleCollapsed, viewed, visibleFiles]);
+  const keyHandler = useCallback(
+    (event: React.KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.closest("input, textarea, [contenteditable]")) return;
+      const order = visibleFiles.map((file) => file.path);
+      const index = activePath ? order.indexOf(activePath) : -1;
+      const active = visibleFiles.find((file) => file.path === activePath);
+      if (event.key === "j" && order.length > 0) {
+        scrollToFile(order[Math.min(index + 1, order.length - 1)]);
+      } else if (event.key === "k" && order.length > 0) {
+        scrollToFile(order[Math.max(index - 1, 0)]);
+      } else if (event.key === "v" && active) {
+        markViewed(active, !isViewed(viewed, active));
+      } else if (event.key === "x" && active) {
+        toggleCollapsed(active.path);
+      } else if (event.key === "s") {
+        switchDiffStyle(diffStyle === "split" ? "unified" : "split");
+      } else if (event.key === "?") {
+        setHelpOpen((open) => !open);
+      } else if (event.key === "Escape") {
+        setHelpOpen(false);
+      } else {
+        return;
+      }
+      event.preventDefault();
+    },
+    [
+      activePath,
+      diffStyle,
+      markViewed,
+      scrollToFile,
+      switchDiffStyle,
+      toggleCollapsed,
+      viewed,
+      visibleFiles,
+    ],
+  );
 
   const items = useMemo<CodeViewItem<CommentAnnotationMetadata>[]>(
     () =>
@@ -171,7 +192,11 @@ export function ReviewSurface({
           version: hashVersion(
             `${file.fingerprint}:${isCollapsed ? 1 : 0}:${fileDrafts.map((draft) => `${draft.id}@${draft.side}${draft.line}`).join(",")}`,
           ),
-          annotations: fileDrafts.map((draft) => ({ side: draft.side, lineNumber: draft.line, metadata: { draftId: draft.id } })),
+          annotations: fileDrafts.map((draft) => ({
+            side: draft.side,
+            lineNumber: draft.line,
+            metadata: { draftId: draft.id },
+          })),
         };
       }),
     [collapsed, drafts, visibleFiles],
@@ -197,41 +222,75 @@ export function ReviewSurface({
     [diffStyle, themeType],
   );
 
-  const renderHeader = useCallback((item: CodeViewItem<CommentAnnotationMetadata>) => {
-    const file = files.find((candidate) => candidate.path === item.id);
-    if (!file) return null;
-    return (
-      <FileCardHeader
-        file={file}
-        collapsed={collapsed.has(file.path)}
-        viewed={isViewed(viewed, file)}
-        active={activePath === file.path}
-        includeInCommit={commit ? selected.has(file.path) : null}
-        onToggleCollapsed={() => toggleCollapsed(file.path)}
-        onToggleViewed={(next) => markViewed(file, next)}
-        onToggleInclude={commit ? (include) => {
-          setCommitSelected(() => {
-            const next = new Set(selected);
-            if (include) next.add(file.path);
-            else next.delete(file.path);
-            return next;
-          });
-        } : undefined}
-        onOpenFile={onOpenFile && file.status !== "deleted" ? () => onOpenFile(file.path) : undefined}
-        onEditDiff={onEditDiff && !file.binary && file.status !== "deleted" ? () => onEditDiff(file.path) : undefined}
-      />
-    );
-  }, [activePath, collapsed, commit, files, markViewed, onEditDiff, onOpenFile, selected, toggleCollapsed, viewed]);
+  const renderHeader = useCallback(
+    (item: CodeViewItem<CommentAnnotationMetadata>) => {
+      const file = files.find((candidate) => candidate.path === item.id);
+      if (!file) return null;
+      return (
+        <FileCardHeader
+          file={file}
+          collapsed={collapsed.has(file.path)}
+          viewed={isViewed(viewed, file)}
+          active={activePath === file.path}
+          includeInCommit={commit ? selected.has(file.path) : null}
+          onToggleCollapsed={() => toggleCollapsed(file.path)}
+          onToggleViewed={(next) => markViewed(file, next)}
+          onToggleInclude={
+            commit
+              ? (include) => {
+                  setCommitSelected(() => {
+                    const next = new Set(selected);
+                    if (include) next.add(file.path);
+                    else next.delete(file.path);
+                    return next;
+                  });
+                }
+              : undefined
+          }
+          onOpenFile={
+            onOpenFile && file.status !== "deleted" ? () => onOpenFile(file.path) : undefined
+          }
+          onEditDiff={
+            onEditDiff && !file.binary && file.status !== "deleted"
+              ? () => onEditDiff(file.path)
+              : undefined
+          }
+        />
+      );
+    },
+    [
+      activePath,
+      collapsed,
+      commit,
+      files,
+      markViewed,
+      onEditDiff,
+      onOpenFile,
+      selected,
+      toggleCollapsed,
+      viewed,
+    ],
+  );
 
   const renderGutterUtility = useCallback(
-    (getHoveredLine: (() => { lineNumber: number; side?: "additions" | "deletions" } | undefined) | (() => { lineNumber: number } | undefined), item: CodeViewItem<CommentAnnotationMetadata>) => (
+    (
+      getHoveredLine:
+        | (() => { lineNumber: number; side?: "additions" | "deletions" } | undefined)
+        | (() => { lineNumber: number } | undefined),
+      item: CodeViewItem<CommentAnnotationMetadata>,
+    ) => (
       <button
         className="review-add-comment"
         aria-label="Add review comment"
         onMouseDown={(event) => {
           event.preventDefault();
           const line = getHoveredLine();
-          if (line) addDraft(item.id, (line as { side?: "additions" | "deletions" }).side ?? "additions", line.lineNumber);
+          if (line)
+            addDraft(
+              item.id,
+              (line as { side?: "additions" | "deletions" }).side ?? "additions",
+              line.lineNumber,
+            );
         }}
       >
         +
@@ -247,7 +306,9 @@ export function ReviewSurface({
       return (
         <DraftCommentCard
           draft={draft}
-          onSave={(body) => setDrafts((current) => current.map((c) => (c.id === draft.id ? { ...c, body } : c)))}
+          onSave={(body) =>
+            setDrafts((current) => current.map((c) => (c.id === draft.id ? { ...c, body } : c)))
+          }
           onDelete={() => setDrafts((current) => current.filter((c) => c.id !== draft.id))}
         />
       );
@@ -265,24 +326,33 @@ export function ReviewSurface({
     new Notice("Review notes copied as Markdown");
   }, [drafts, title]);
 
-  const submitReview = useCallback(async (event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT") => {
-    if (!review) return;
-    setBusy(true);
-    try {
-      const pending = drafts.filter((draft) => draft.body.trim().length > 0);
-      const error = await review.onSubmit(event, reviewBody.trim(), pending);
-      if (error) {
-        new Notice(`Review failed: ${error}`);
-        return;
+  const submitReview = useCallback(
+    async (event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT") => {
+      if (!review) return;
+      setBusy(true);
+      try {
+        const pending = drafts.filter((draft) => draft.body.trim().length > 0);
+        const error = await review.onSubmit(event, reviewBody.trim(), pending);
+        if (error) {
+          new Notice(`Review failed: ${error}`);
+          return;
+        }
+        new Notice(
+          event === "APPROVE"
+            ? "Approved"
+            : event === "REQUEST_CHANGES"
+              ? "Changes requested"
+              : "Review submitted",
+        );
+        setDrafts([]);
+        setReviewBody("");
+        onRefresh?.();
+      } finally {
+        setBusy(false);
       }
-      new Notice(event === "APPROVE" ? "Approved" : event === "REQUEST_CHANGES" ? "Changes requested" : "Review submitted");
-      setDrafts([]);
-      setReviewBody("");
-      onRefresh?.();
-    } finally {
-      setBusy(false);
-    }
-  }, [drafts, onRefresh, review, reviewBody]);
+    },
+    [drafts, onRefresh, review, reviewBody],
+  );
 
   const doCommit = useCallback(async () => {
     if (!commit) return;
@@ -320,11 +390,19 @@ export function ReviewSurface({
           value={filter}
           onChange={(event) => setFilter(event.target.value)}
         />
-        <div className="review-progress" aria-label={`${viewedCount} of ${files.length} files viewed`}>
+        <div
+          className="review-progress"
+          aria-label={`${viewedCount} of ${files.length} files viewed`}
+        >
           <div className="review-progress-track">
-            <div className="review-progress-fill" style={{ width: files.length ? `${(viewedCount / files.length) * 100}%` : "0%" }} />
+            <div
+              className="review-progress-fill"
+              style={{ width: files.length ? `${(viewedCount / files.length) * 100}%` : "0%" }}
+            />
           </div>
-          <span className="review-progress-text">{viewedCount} / {files.length} viewed</span>
+          <span className="review-progress-text">
+            {viewedCount} / {files.length} viewed
+          </span>
         </div>
         <div className="review-file-list">
           {visibleFiles.map((file) => (
@@ -335,7 +413,11 @@ export function ReviewSurface({
             >
               <span className={`review-status-dot mod-${file.status}`} />
               <span className="review-file-row-name" title={file.path}>
-                {file.path.includes("/") && <span className="review-file-row-dir">{file.path.slice(0, file.path.lastIndexOf("/") + 1)}</span>}
+                {file.path.includes("/") && (
+                  <span className="review-file-row-dir">
+                    {file.path.slice(0, file.path.lastIndexOf("/") + 1)}
+                  </span>
+                )}
                 {file.path.split("/").pop()}
               </span>
               <span className="review-file-row-stat">
@@ -352,7 +434,9 @@ export function ReviewSurface({
             <del>−{files.reduce((sum, file) => sum + file.deletions, 0)}</del>
           </span>
           {onRefresh && (
-            <button className="clickable-icon" aria-label="Refresh" onClick={onRefresh}><Icon name="lucide-rotate-ccw" /></button>
+            <button className="clickable-icon" aria-label="Refresh" onClick={onRefresh}>
+              <Icon name="lucide-rotate-ccw" />
+            </button>
           )}
         </div>
       </div>
@@ -378,14 +462,20 @@ export function ReviewSurface({
                 Copy {draftCount} note{draftCount > 1 ? "s" : ""} as Markdown
               </button>
             )}
-            <button className="clickable-icon" aria-label="Keyboard shortcuts (?)" onClick={() => setHelpOpen((open) => !open)}>
+            <button
+              className="clickable-icon"
+              aria-label="Keyboard shortcuts (?)"
+              onClick={() => setHelpOpen((open) => !open)}
+            >
               <Icon name="lucide-keyboard" />
             </button>
           </div>
         </div>
         <div className="review-codeview-host">
           {files.length === 0 ? (
-            <div className="review-empty review-empty-main">Nothing to review — the working tree is clean.</div>
+            <div className="review-empty review-empty-main">
+              Nothing to review — the working tree is clean.
+            </div>
           ) : (
             <CodeView<CommentAnnotationMetadata>
               className="review-codeview"
@@ -401,7 +491,9 @@ export function ReviewSurface({
         </div>
         {commit && files.length > 0 && (
           <div className="review-commit-bar">
-            <div className="review-commit-meta">{selected.size} of {files.length} files selected</div>
+            <div className="review-commit-meta">
+              {selected.size} of {files.length} files selected
+            </div>
             <div className="review-commit-fields">
               <div className="review-commit-subject-row">
                 <input
@@ -411,7 +503,9 @@ export function ReviewSurface({
                   value={subject}
                   onChange={(event) => setSubject(event.target.value)}
                 />
-                <span className={`review-commit-counter${subject.length > SUBJECT_LIMIT ? " is-over" : ""}`}>
+                <span
+                  className={`review-commit-counter${subject.length > SUBJECT_LIMIT ? " is-over" : ""}`}
+                >
                   {subject.length}/{SUBJECT_LIMIT}
                 </span>
               </div>
@@ -436,14 +530,20 @@ export function ReviewSurface({
           <div className="review-submit-bar">
             <textarea
               className="review-submit-body"
-              placeholder={draftCount > 0 ? `Review summary (submits ${draftCount} inline comment${draftCount > 1 ? "s" : ""})` : "Review summary"}
+              placeholder={
+                draftCount > 0
+                  ? `Review summary (submits ${draftCount} inline comment${draftCount > 1 ? "s" : ""})`
+                  : "Review summary"
+              }
               rows={2}
               value={reviewBody}
               onChange={(event) => setReviewBody(event.target.value)}
             />
             <div className="review-submit-actions">
               {draftCount > 0 && (
-                <button className="review-action" onClick={() => void copyNotes()}>Copy as Markdown</button>
+                <button className="review-action" onClick={() => void copyNotes()}>
+                  Copy as Markdown
+                </button>
               )}
               <button
                 className="review-action"
@@ -452,10 +552,18 @@ export function ReviewSurface({
               >
                 Comment
               </button>
-              <button className="review-action mod-approve" disabled={busy} onClick={() => void submitReview("APPROVE")}>
+              <button
+                className="review-action mod-approve"
+                disabled={busy}
+                onClick={() => void submitReview("APPROVE")}
+              >
                 Approve
               </button>
-              <button className="review-action mod-request-changes" disabled={busy} onClick={() => void submitReview("REQUEST_CHANGES")}>
+              <button
+                className="review-action mod-request-changes"
+                disabled={busy}
+                onClick={() => void submitReview("REQUEST_CHANGES")}
+              >
                 Request changes
               </button>
             </div>
@@ -505,11 +613,17 @@ function FileCardHeader({
         />
       )}
       <span className="review-card-path" title={file.path}>
-        {file.path.includes("/") && <span className="review-card-dir">{file.path.slice(0, file.path.lastIndexOf("/") + 1)}</span>}
+        {file.path.includes("/") && (
+          <span className="review-card-dir">
+            {file.path.slice(0, file.path.lastIndexOf("/") + 1)}
+          </span>
+        )}
         <span className="review-card-name">{file.path.split("/").pop()}</span>
       </span>
       <span className="review-card-stat">
-        {file.binary ? <span className="review-chip">Binary</span> : (
+        {file.binary ? (
+          <span className="review-chip">Binary</span>
+        ) : (
           <>
             {file.additions > 0 && <ins>+{file.additions}</ins>}
             {file.deletions > 0 && <del>−{file.deletions}</del>}
@@ -568,8 +682,12 @@ function DraftCommentCard({
       <div className="review-comment-thread">
         <div className="review-comment-body">{draft.body}</div>
         <div className="review-comment-actions">
-          <button className="review-card-action" onClick={() => setEditing(true)}>Edit</button>
-          <button className="review-card-action" onClick={onDelete}>Delete</button>
+          <button className="review-card-action" onClick={() => setEditing(true)}>
+            Edit
+          </button>
+          <button className="review-card-action" onClick={onDelete}>
+            Delete
+          </button>
         </div>
       </div>
     );
@@ -595,7 +713,9 @@ function DraftCommentCard({
         >
           Save
         </button>
-        <button className="review-card-action" onClick={onDelete}>Cancel</button>
+        <button className="review-card-action" onClick={onDelete}>
+          Cancel
+        </button>
       </div>
     </div>
   );

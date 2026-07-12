@@ -4,7 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { App } from "@web/app/App";
 import type { Editor, EditorPosition } from "@web/editor/Editor";
 import { Keymap } from "@web/app/hotkeys/Keymap";
-import { EditorSuggest, type EditorSuggestContext, EditorSuggestManager, type EditorSuggestTriggerInfo } from "@web/ui/suggest/EditorSuggest";
+import {
+  EditorSuggest,
+  type EditorSuggestContext,
+  EditorSuggestManager,
+  type EditorSuggestTriggerInfo,
+} from "@web/ui/suggest/EditorSuggest";
 
 let dom: JSDOM | null = null;
 
@@ -39,14 +44,21 @@ afterEach(() => {
 });
 
 class TestEditorSuggest extends EditorSuggest<string> {
-  onTriggerMock = vi.fn<(cursor: EditorPosition, editor: Editor, file?: unknown) => EditorSuggestTriggerInfo | null>();
+  onTriggerMock =
+    vi.fn<
+      (cursor: EditorPosition, editor: Editor, file?: unknown) => EditorSuggestTriggerInfo | null
+    >();
   get = vi.fn<(context: EditorSuggestContext) => string[] | null | Promise<string[] | null>>();
   render = vi.fn<(value: string, el: HTMLElement) => void>((value, el) => {
     el.textContent = value;
   });
   select = vi.fn<(value: string, event: MouseEvent | KeyboardEvent) => void>();
 
-  onTrigger(cursor: EditorPosition, editor: Editor, file?: unknown): EditorSuggestTriggerInfo | null {
+  onTrigger(
+    cursor: EditorPosition,
+    editor: Editor,
+    file?: unknown,
+  ): EditorSuggestTriggerInfo | null {
     return this.onTriggerMock(cursor, editor, file);
   }
 
@@ -71,7 +83,14 @@ function createApp(): App {
   } as unknown as App;
 }
 
-function createEditor(options: { from?: EditorPosition; to?: EditorPosition; focused?: boolean; ownerDocument?: Document } = {}): Editor {
+function createEditor(
+  options: {
+    from?: EditorPosition;
+    to?: EditorPosition;
+    focused?: boolean;
+    ownerDocument?: Document;
+  } = {},
+): Editor {
   const from = options.from ?? { line: 0, ch: 1 };
   const to = options.to ?? from;
   const containerEl = (options.ownerDocument ?? document).createElement("div");
@@ -150,7 +169,9 @@ describe("EditorSuggestManager", () => {
   });
 
   it("attaches editor suggestions to the editor ownerDocument", async () => {
-    const popoutDom = new JSDOM("<!doctype html><html><body></body></html>", { pretendToBeVisual: true });
+    const popoutDom = new JSDOM("<!doctype html><html><body></body></html>", {
+      pretendToBeVisual: true,
+    });
     try {
       const manager = new EditorSuggestManager();
       const editor = createEditor({ ownerDocument: popoutDom.window.document });
@@ -162,7 +183,9 @@ describe("EditorSuggestManager", () => {
       await manager.trigger(editor, { path: "Popout.md" }, true);
 
       expect(suggest.suggestEl.parentElement).toBe(popoutDom.window.document.body);
-      expect(popoutDom.window.document.body.querySelector(".suggestion-container")).toBe(suggest.suggestEl);
+      expect(popoutDom.window.document.body.querySelector(".suggestion-container")).toBe(
+        suggest.suggestEl,
+      );
       expect(document.body.querySelector(".suggestion-container")).toBeNull();
     } finally {
       popoutDom.window.close();

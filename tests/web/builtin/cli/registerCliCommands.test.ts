@@ -46,7 +46,9 @@ describe("core CLI commands", () => {
     expect(await app.cli.handleCli(["folders"])).toBe("/\nFolder");
     expect(await app.cli.handleCli(["folders", "folder=Folder"])).toBe("Folder");
     expect(await app.cli.handleCli(["folders", "total"])).toBe("2");
-    await expect(app.cli.handleCli(["folders", "folder=Nope"])).rejects.toBe('Folder "Nope" not found.');
+    await expect(app.cli.handleCli(["folders", "folder=Nope"])).rejects.toBe(
+      'Folder "Nope" not found.',
+    );
   });
 
   it("read resolves file= by name and path= exactly", async () => {
@@ -54,19 +56,27 @@ describe("core CLI commands", () => {
     expect(await app.cli.handleCli(["read", "file=Note"])).toContain("# Note");
     expect(await app.cli.handleCli(["read", "path=Folder/Sub.md"])).toBe("sub");
     // Real resolver errors are thrown plain strings, not returned text.
-    await expect(app.cli.handleCli(["read", "path=Nope.md"])).rejects.toBe('File "Nope.md" not found.');
+    await expect(app.cli.handleCli(["read", "path=Nope.md"])).rejects.toBe(
+      'File "Nope.md" not found.',
+    );
   });
 
   it("open has no active-file fallback and echoes the resolved path", async () => {
     const app = await seededApp();
     expect(await app.cli.handleCli(["open", "file=Note"])).toBe("Opened: Note.md");
-    await expect(app.cli.handleCli(["open"])).rejects.toBe("Missing required parameter: file or path");
+    await expect(app.cli.handleCli(["open"])).rejects.toBe(
+      "Missing required parameter: file or path",
+    );
   });
 
   it("command requires an id and reports unknown ids", async () => {
     const app = await seededApp();
-    await expect(app.cli.handleCli(["command"])).rejects.toMatch(/^Missing required parameter: id=<command-id>/);
-    expect(await app.cli.handleCli(["command", "id=nope:missing"])).toBe('Command "nope:missing" not found.');
+    await expect(app.cli.handleCli(["command"])).rejects.toMatch(
+      /^Missing required parameter: id=<command-id>/,
+    );
+    expect(await app.cli.handleCli(["command", "id=nope:missing"])).toBe(
+      'Command "nope:missing" not found.',
+    );
   });
 
   it("commands lists ids and filters by prefix", async () => {

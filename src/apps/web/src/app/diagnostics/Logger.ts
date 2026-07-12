@@ -28,10 +28,18 @@ export class Logger extends Events {
     return entry;
   }
 
-  debug(message: string, data?: unknown, scope?: string): LogEntry { return this.log("debug", message, data, scope); }
-  info(message: string, data?: unknown, scope?: string): LogEntry { return this.log("info", message, data, scope); }
-  warn(message: string, data?: unknown, scope?: string): LogEntry { return this.log("warn", message, data, scope); }
-  error(message: string, data?: unknown, scope?: string): LogEntry { return this.log("error", message, data, scope); }
+  debug(message: string, data?: unknown, scope?: string): LogEntry {
+    return this.log("debug", message, data, scope);
+  }
+  info(message: string, data?: unknown, scope?: string): LogEntry {
+    return this.log("info", message, data, scope);
+  }
+  warn(message: string, data?: unknown, scope?: string): LogEntry {
+    return this.log("warn", message, data, scope);
+  }
+  error(message: string, data?: unknown, scope?: string): LogEntry {
+    return this.log("error", message, data, scope);
+  }
 
   list(level?: LogLevel): readonly LogEntry[] {
     return level ? this.entries.filter((entry) => entry.level === level) : [...this.entries];

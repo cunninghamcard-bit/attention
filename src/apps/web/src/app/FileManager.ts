@@ -1,6 +1,17 @@
 import type { App } from "./App";
-import { getTimestampForPastedImage, type AttachmentImportData, type AttachmentImportFile } from "./AttachmentImport";
-import { deleteFrontmatterProperty, mergeFrontmatterValues, parseFrontmatter, renameFrontmatterProperty, serializeFrontmatter, updateFrontmatter } from "../metadata/Frontmatter";
+import {
+  getTimestampForPastedImage,
+  type AttachmentImportData,
+  type AttachmentImportFile,
+} from "./AttachmentImport";
+import {
+  deleteFrontmatterProperty,
+  mergeFrontmatterValues,
+  parseFrontmatter,
+  renameFrontmatterProperty,
+  serializeFrontmatter,
+  updateFrontmatter,
+} from "../metadata/Frontmatter";
 import type { PropertyValue } from "../views/properties/PropertyTypes";
 import { ConfirmationModal } from "../ui/Modal";
 import type { DataWriteOptions } from "../vault/DataAdapter";
@@ -31,42 +42,70 @@ export class FileManager {
     const creator = this.fileParentCreatorByType[extension];
     if (creator) return creator(sourcePath);
 
-    console.error(`No file creator assigned to create file with extension ${extension}. Falling back to Markdown file creator.`);
+    console.error(
+      `No file creator assigned to create file with extension ${extension}. Falling back to Markdown file creator.`,
+    );
     return this.getMarkdownNewFileParent(sourcePath);
   }
 
   getMarkdownNewFileParent(sourcePath = ""): TFolder {
     const location = this.app.vault.getConfig<string>("newFileLocation") ?? "root";
-    const configuredPath = normalizeConfiguredPath(this.app.vault.getConfig<string>("newFileFolderPath") ?? "/");
-    const parentPath = location === "current"
-      ? sourcePath.includes("/") ? sourcePath.slice(0, sourcePath.lastIndexOf("/")) : ""
-      : location === "folder"
-        ? configuredPath
-        : "";
+    const configuredPath = normalizeConfiguredPath(
+      this.app.vault.getConfig<string>("newFileFolderPath") ?? "/",
+    );
+    const parentPath =
+      location === "current"
+        ? sourcePath.includes("/")
+          ? sourcePath.slice(0, sourcePath.lastIndexOf("/"))
+          : ""
+        : location === "folder"
+          ? configuredPath
+          : "";
     return this.getFolderByPathOrVirtual(parentPath);
   }
 
   async createNewMarkdownFileFromLinktext(linktext: string, sourcePath = ""): Promise<TFile> {
     const parsed = splitLinktextTarget(linktext);
-    if (!isValidNewFileLinktext(parsed.path)) throw new Error("File name contains invalid characters.");
-    const parent = parsed.path.includes("/") ? null : this.getNewFileParent(sourcePath, parsed.path);
+    if (!isValidNewFileLinktext(parsed.path))
+      throw new Error("File name contains invalid characters.");
+    const parent = parsed.path.includes("/")
+      ? null
+      : this.getNewFileParent(sourcePath, parsed.path);
     return this.createNewMarkdownFile(parent, parsed.path);
   }
 
-  async createNewMarkdownFile(folder: TFolder | string | null, basename = "Untitled", data = ""): Promise<TFile> {
-    const targetFolder = folder ?? this.getNewFileParent(this.app.workspace.activeEditor?.file?.path ?? "");
+  async createNewMarkdownFile(
+    folder: TFolder | string | null,
+    basename = "Untitled",
+    data = "",
+  ): Promise<TFile> {
+    const targetFolder =
+      folder ?? this.getNewFileParent(this.app.workspace.activeEditor?.file?.path ?? "");
     return this.createNewFile(targetFolder, basename, "md", data);
   }
 
   async createAndOpenMarkdownFile(sourcePath = "", basename = "Untitled"): Promise<TFile> {
     const file = await this.createNewMarkdownFile(this.getNewFileParent(sourcePath), basename);
-    await this.app.workspace.openFile(file, { active: true, state: { mode: "source" }, eState: { rename: "all" } });
+    await this.app.workspace.openFile(file, {
+      active: true,
+      state: { mode: "source" },
+      eState: { rename: "all" },
+    });
     return file;
   }
 
-  async createNewFile(folder: TFolder | string | null, filename = "Untitled", extension?: string, data = ""): Promise<TFile> {
-    const folderPath = normalizeCreationFolderPath(typeof folder === "string" ? folder : folder?.path ?? "");
-    const target = normalizeNewFileName(filename, extension, (candidate) => this.canCreateFileWithExt(candidate));
+  async createNewFile(
+    folder: TFolder | string | null,
+    filename = "Untitled",
+    extension?: string,
+    data = "",
+  ): Promise<TFile> {
+    const folderPath = normalizeCreationFolderPath(
+      typeof folder === "string" ? folder : (folder?.path ?? ""),
+    );
+    const target = normalizeNewFileName(filename, extension, (candidate) =>
+      this.canCreateFileWithExt(candidate),
+    );
     const rawPath = folderPath ? `${folderPath}/${target.basename}` : target.basename;
     const path = this.app.vault.getAvailablePath(rawPath, target.extension);
     return this.app.vault.create(path, data);
@@ -74,12 +113,18 @@ export class FileManager {
 
   resolveAttachmentFile(file: AttachmentImportFile): TFile | null {
     if (!file.filepath) return null;
-    return this.app.vault.resolveFileUrl(file.filepath)
-      ?? this.app.vault.getFileByPath(file.filepath)
-      ?? this.app.vault.getFileByPath(file.filepath.replace(/^\/+/, ""));
+    return (
+      this.app.vault.resolveFileUrl(file.filepath) ??
+      this.app.vault.getFileByPath(file.filepath) ??
+      this.app.vault.getFileByPath(file.filepath.replace(/^\/+/, ""))
+    );
   }
 
-  async importAttachments(files: AttachmentImportFile[], targetFolder: TFolder | null = null, sourceFile: TFile | null = this.app.workspace.getActiveFile()): Promise<TFile[]> {
+  async importAttachments(
+    files: AttachmentImportFile[],
+    targetFolder: TFolder | null = null,
+    sourceFile: TFile | null = this.app.workspace.getActiveFile(),
+  ): Promise<TFile[]> {
     const imported: TFile[] = [];
     for (const file of files) {
       const existing = this.resolveAttachmentFile(file);
@@ -99,36 +144,64 @@ export class FileManager {
     return imported;
   }
 
-  async saveAttachment(name: string, extension: string, data: AttachmentImportData, sourceFile: TFile | null = this.app.workspace.getActiveFile()): Promise<TFile> {
+  async saveAttachment(
+    name: string,
+    extension: string,
+    data: AttachmentImportData,
+    sourceFile: TFile | null = this.app.workspace.getActiveFile(),
+  ): Promise<TFile> {
     const bytes = await data;
     if (!bytes) throw new Error("Attachment data is empty");
-    const targetPath = await this.app.vault.getAvailablePathForAttachments(getAttachmentSaveName(name), extension, sourceFile);
+    const targetPath = await this.app.vault.getAvailablePathForAttachments(
+      getAttachmentSaveName(name),
+      extension,
+      sourceFile,
+    );
     return this.app.vault.createBinary(targetPath, normalizeBinaryData(bytes));
   }
 
-  async saveAttachmentToFolder(name: string, extension: string, data: AttachmentImportData, folder: TFolder): Promise<TFile> {
+  async saveAttachmentToFolder(
+    name: string,
+    extension: string,
+    data: AttachmentImportData,
+    folder: TFolder,
+  ): Promise<TFile> {
     const bytes = await data;
     if (!bytes) throw new Error("Attachment data is empty");
-    const targetPath = this.getAvailableAttachmentPathInFolder(folder, getAttachmentSaveName(name), extension);
+    const targetPath = this.getAvailableAttachmentPathInFolder(
+      folder,
+      getAttachmentSaveName(name),
+      extension,
+    );
     return this.app.vault.createBinary(targetPath, normalizeBinaryData(bytes));
   }
 
   async createNewFolder(parent: TFolder | string | null, name = "Untitled"): Promise<TFolder> {
-    const parentPath = normalizeCreationFolderPath(typeof parent === "string" ? parent : parent?.path ?? "");
+    const parentPath = normalizeCreationFolderPath(
+      typeof parent === "string" ? parent : (parent?.path ?? ""),
+    );
     const rawPath = parentPath ? `${parentPath}/${name}` : name;
     return this.app.vault.createFolder(this.getAvailableFolderPath(rawPath));
   }
 
-  async processFrontMatter(file: TFile, handler: (frontmatter: Record<string, PropertyValue>) => void, options?: DataWriteOptions): Promise<void> {
+  async processFrontMatter(
+    file: TFile,
+    handler: (frontmatter: Record<string, PropertyValue>) => void,
+    options?: DataWriteOptions,
+  ): Promise<void> {
     if (file.extension !== "md") return;
-    await this.app.vault.process(file, (source) => {
-      const frontmatter = { ...parseFrontmatter(source).values };
-      handler(frontmatter);
-      return updateFrontmatter(source, (values) => {
-        for (const key of Object.keys(values)) delete values[key];
-        Object.assign(values, frontmatter);
-      });
-    }, options);
+    await this.app.vault.process(
+      file,
+      (source) => {
+        const frontmatter = { ...parseFrontmatter(source).values };
+        handler(frontmatter);
+        return updateFrontmatter(source, (values) => {
+          for (const key of Object.keys(values)) delete values[key];
+          Object.assign(values, frontmatter);
+        });
+      },
+      options,
+    );
   }
 
   async renameProperty(oldId: string, newId: string): Promise<number> {
@@ -146,7 +219,9 @@ export class FileManager {
       if (!frontmatter || !Object.prototype.hasOwnProperty.call(frontmatter, oldId)) continue;
       const file = this.app.vault.getAbstractFileByPath(path);
       if (!(file instanceof TFile)) continue;
-      await this.app.vault.process(file, (source) => renameFrontmatterProperty(source, oldId, trimmed));
+      await this.app.vault.process(file, (source) =>
+        renameFrontmatterProperty(source, oldId, trimmed),
+      );
       count += 1;
     }
     return count;
@@ -184,14 +259,18 @@ export class FileManager {
 
   async deleteFile(file: TAbstractFile): Promise<boolean> {
     const promptDelete = this.app.vault.getConfig<boolean>("promptDelete") ?? true;
-    if (promptDelete && !await this.confirmDeletion(file)) return false;
-    const linkedAttachments = file instanceof TFile ? await this.collectLinkedAttachments(file) : [];
+    if (promptDelete && !(await this.confirmDeletion(file))) return false;
+    const linkedAttachments =
+      file instanceof TFile ? await this.collectLinkedAttachments(file) : [];
     await this.trashFile(file);
     await this.deleteUnlinkedAttachments(file, linkedAttachments);
     return true;
   }
 
-  async trashFile(file: TAbstractFile, system = this.app.vault.getConfig<string>("trashOption") ?? "system"): Promise<void> {
+  async trashFile(
+    file: TAbstractFile,
+    system = this.app.vault.getConfig<string>("trashOption") ?? "system",
+  ): Promise<void> {
     if (system === "system") await this.app.vault.trash(file, true);
     else if (system === "local") await this.app.vault.trash(file, false);
     else if (system === "none") await this.app.vault.delete(file, true);
@@ -212,7 +291,9 @@ export class FileManager {
   }
 
   async getAvailablePathForAttachment(filename: string, sourcePath?: string): Promise<string> {
-    const sourceFile = sourcePath ? this.app.vault.getFileByPath(sourcePath) : this.app.workspace.getActiveFile();
+    const sourceFile = sourcePath
+      ? this.app.vault.getFileByPath(sourcePath)
+      : this.app.workspace.getActiveFile();
     const name = filename.split(/[\\/]/).pop() ?? filename;
     const dotIndex = name.lastIndexOf(".");
     const basename = dotIndex > 0 ? name.slice(0, dotIndex) : name;
@@ -220,15 +301,22 @@ export class FileManager {
     return this.app.vault.getAvailablePathForAttachments(basename, extension, sourceFile);
   }
 
-  async insertIntoFile(file: TFile, content: string, position: "append" | "prepend" = "append"): Promise<void> {
+  async insertIntoFile(
+    file: TFile,
+    content: string,
+    position: "append" | "prepend" = "append",
+  ): Promise<void> {
     await this.app.vault.process(file, (existing) => {
       const incoming = parseInsertFrontmatter(content);
       const current = parseInsertFrontmatter(existing);
       const before = position === "prepend" ? incoming.body : current.body;
       const after = position === "prepend" ? current.body : incoming.body;
-      const separator = before && after && !`${before.slice(-2)}${after.slice(0, 2)}`.includes("\n\n")
-        ? before.endsWith("\n") || after.startsWith("\n") ? "\n" : "\n\n"
-        : "";
+      const separator =
+        before && after && !`${before.slice(-2)}${after.slice(0, 2)}`.includes("\n\n")
+          ? before.endsWith("\n") || after.startsWith("\n")
+            ? "\n"
+            : "\n\n"
+          : "";
       const frontmatter = { ...current.values };
       mergeFrontmatterValues(frontmatter, incoming.values);
       return `${serializeFrontmatter(frontmatter)}${before}${separator}${after}`;
@@ -245,8 +333,16 @@ export class FileManager {
     return candidate;
   }
 
-  private getAvailableAttachmentPathInFolder(folder: TFolder, basename: string, extension: string): string {
-    const sanitizedBase = basename.replace(/[\\/:*?"<>|]/g, "-").replace(/\s+/g, " ").trim() || "Pasted image";
+  private getAvailableAttachmentPathInFolder(
+    folder: TFolder,
+    basename: string,
+    extension: string,
+  ): string {
+    const sanitizedBase =
+      basename
+        .replace(/[\\/:*?"<>|]/g, "-")
+        .replace(/\s+/g, " ")
+        .trim() || "Pasted image";
     const clippedBase = sanitizedBase.slice(0, 250);
     const folderPath = folder === this.app.vault.root || folder.path === "/" ? "" : folder.path;
     const path = folderPath ? `${folderPath}/${clippedBase}` : clippedBase;
@@ -257,7 +353,8 @@ export class FileManager {
     const normalized = normalizeCreationFolderPath(path);
     const folder = this.app.vault.getFolderByPath(normalized);
     if (folder) return folder;
-    if (rootIfPathIsFile && this.app.vault.getAbstractFileByPath(normalized)) return this.app.vault.root;
+    if (rootIfPathIsFile && this.app.vault.getAbstractFileByPath(normalized))
+      return this.app.vault.root;
     return new TFolder(this.app.vault, normalized);
   }
 
@@ -265,7 +362,9 @@ export class FileManager {
     const format = this.app.vault.getConfig<string>("newLinkFormat") ?? "shortest";
     if (format === "absolute") return file.path;
     if (format === "relative") return relativePath(sourcePath, file.path);
-    const sameBasenameFiles = this.app.vault.getMarkdownFiles().filter((item) => item.basename === file.basename);
+    const sameBasenameFiles = this.app.vault
+      .getMarkdownFiles()
+      .filter((item) => item.basename === file.basename);
     return sameBasenameFiles.length <= 1 ? file.basename : file.path;
   }
 
@@ -276,7 +375,10 @@ export class FileManager {
       const source = await this.app.vault.read(sourceFile);
       const matches = collectInternalLinkMatches(source);
       const replacements = matches.filter((match) => {
-        const destination = this.app.metadataCache.getFirstLinkpathDest(match.target, sourceFile.path);
+        const destination = this.app.metadataCache.getFirstLinkpathDest(
+          match.target,
+          sourceFile.path,
+        );
         return destination?.path === file.path;
       });
       if (replacements.length > 0) updates.push({ file: sourceFile, source, replacements });
@@ -284,7 +386,10 @@ export class FileManager {
     return updates;
   }
 
-  private async applyInternalLinkUpdates(renamedFile: TFile, updates: InternalLinkUpdate[]): Promise<void> {
+  private async applyInternalLinkUpdates(
+    renamedFile: TFile,
+    updates: InternalLinkUpdate[],
+  ): Promise<void> {
     if (updates.length === 0) return;
     const linkCount = updates.reduce((total, update) => total + update.replacements.length, 0);
     const shouldUpdate = await this.confirmInternalLinkUpdates(linkCount, updates.length);
@@ -292,12 +397,17 @@ export class FileManager {
 
     for (const update of updates) {
       let source = update.source;
-      for (const replacement of [...update.replacements].sort((left, right) => right.start - left.start)) {
+      for (const replacement of [...update.replacements].sort(
+        (left, right) => right.start - left.start,
+      )) {
         const linkpath = this.getLinkpath(renamedFile, update.file.path);
-        const nextTarget = (replacement.kind === "wiki" ? stripMarkdownExtension(linkpath, renamedFile) : linkpath) + replacement.subpath;
-        const nextLink = replacement.kind === "wiki"
-          ? formatWikiLink(nextTarget, replacement)
-          : formatMarkdownLink(nextTarget, replacement);
+        const nextTarget =
+          (replacement.kind === "wiki" ? stripMarkdownExtension(linkpath, renamedFile) : linkpath) +
+          replacement.subpath;
+        const nextLink =
+          replacement.kind === "wiki"
+            ? formatWikiLink(nextTarget, replacement)
+            : formatMarkdownLink(nextTarget, replacement);
         source = `${source.slice(0, replacement.start)}${nextLink}${source.slice(replacement.end)}`;
       }
       if (source !== update.source) await this.app.vault.modify(update.file, source);
@@ -328,7 +438,10 @@ export class FileManager {
       if (sourceFile === file) continue;
       const cache = this.app.metadataCache.getFileCache(sourceFile);
       for (const reference of [...(cache?.links ?? []), ...(cache?.embeds ?? [])]) {
-        const resolved = this.app.metadataCache.getFirstLinkpathDest(reference.link, sourceFile.path);
+        const resolved = this.app.metadataCache.getFirstLinkpathDest(
+          reference.link,
+          sourceFile.path,
+        );
         if (resolved?.path === file.path) count += 1;
       }
     }
@@ -337,7 +450,9 @@ export class FileManager {
 
   private async collectLinkedAttachments(file: TFile): Promise<TFile[]> {
     await this.ensureMarkdownCaches();
-    const cache = this.app.metadataCache.getFileCache(file) ?? await this.app.metadataCache.computeFileMetadata(file);
+    const cache =
+      this.app.metadataCache.getFileCache(file) ??
+      (await this.app.metadataCache.computeFileMetadata(file));
     const attachments = new Map<string, TFile>();
     for (const reference of [...(cache.links ?? []), ...(cache.embeds ?? [])]) {
       const target = this.app.metadataCache.getFirstLinkpathDest(reference.link, file.path);
@@ -346,18 +461,25 @@ export class FileManager {
     return [...attachments.values()];
   }
 
-  private async deleteUnlinkedAttachments(deletedFile: TAbstractFile, candidates: TFile[]): Promise<void> {
+  private async deleteUnlinkedAttachments(
+    deletedFile: TAbstractFile,
+    candidates: TFile[],
+  ): Promise<void> {
     if (!(deletedFile instanceof TFile || deletedFile instanceof TFolder)) return;
     const mode = this.app.vault.getConfig<string>("deleteUnlinkedAttachments") ?? "ask";
     if (mode === "never" || candidates.length === 0) return;
-    const unlinked = candidates.filter((candidate) => !this.isReferencedByOtherMarkdownFile(candidate, deletedFile));
+    const unlinked = candidates.filter(
+      (candidate) => !this.isReferencedByOtherMarkdownFile(candidate, deletedFile),
+    );
     if (unlinked.length === 0) return;
     if (mode === "always") {
       for (const file of unlinked) await this.trashFile(file);
       return;
     }
-    if (mode === "ask" && await this.confirmDeleteUnlinkedAttachments(unlinked)) {
-      for (const file of unlinked.filter((candidate) => !this.isReferencedByOtherMarkdownFile(candidate, deletedFile))) {
+    if (mode === "ask" && (await this.confirmDeleteUnlinkedAttachments(unlinked))) {
+      for (const file of unlinked.filter(
+        (candidate) => !this.isReferencedByOtherMarkdownFile(candidate, deletedFile),
+      )) {
         await this.trashFile(file);
       }
     }
@@ -384,16 +506,24 @@ export class FileManager {
 
   private async confirmDeleteUnlinkedAttachments(files: TFile[]): Promise<boolean> {
     return new Promise((resolve) => {
-      const modal = new OrphanAttachmentsModal(this.app, files, async (selectedFiles) => {
-        for (const file of selectedFiles) await this.trashFile(file);
-        resolve(false);
-      }, () => resolve(false));
+      const modal = new OrphanAttachmentsModal(
+        this.app,
+        files,
+        async (selectedFiles) => {
+          for (const file of selectedFiles) await this.trashFile(file);
+          resolve(false);
+        },
+        () => resolve(false),
+      );
       modal.open();
     });
   }
 }
 
-function parseInsertFrontmatter(source: string): { body: string; values: Record<string, PropertyValue> } {
+function parseInsertFrontmatter(source: string): {
+  body: string;
+  values: Record<string, PropertyValue>;
+} {
   const parsed = parseFrontmatter(source);
   if (!parsed.valid) return { body: source, values: {} };
   return { body: parsed.body, values: parsed.values };
@@ -402,7 +532,10 @@ function parseInsertFrontmatter(source: string): { body: string; values: Record<
 class FileRenameModal extends ConfirmationModal {
   private readonly inputEl: HTMLTextAreaElement;
 
-  constructor(app: App, private readonly file: TAbstractFile) {
+  constructor(
+    app: App,
+    private readonly file: TAbstractFile,
+  ) {
     super(app);
     this.modalEl.classList.add("mod-file-rename");
     this.setTitle(file instanceof TFile && file.extension === "md" ? "Rename file" : "Rename");
@@ -417,7 +550,11 @@ class FileRenameModal extends ConfirmationModal {
     });
     this.inputEl.addEventListener("input", () => {
       this.resizeInput();
-      const validation = validateRenamePromptName(this.app.vault, this.file, this.inputEl.value.trim());
+      const validation = validateRenamePromptName(
+        this.app.vault,
+        this.file,
+        this.inputEl.value.trim(),
+      );
       if (validation.error) this.displayError(validation.error);
       else this.clearError();
     });
@@ -472,7 +609,12 @@ class FileRenameModal extends ConfirmationModal {
 class LinkUpdateConfirmModal extends ConfirmationModal {
   private resolved = false;
 
-  constructor(app: App, linkCount: number, fileCount: number, private readonly resolveChoice: (value: boolean) => void) {
+  constructor(
+    app: App,
+    linkCount: number,
+    fileCount: number,
+    private readonly resolveChoice: (value: boolean) => void,
+  ) {
     super(app);
     this.setTitle("Update links");
     const contentEl = document.createElement("div");
@@ -509,7 +651,12 @@ class DeleteConfirmModal extends ConfirmationModal {
   private resolved = false;
   private readonly doNotAskAgainEl: HTMLInputElement;
 
-  constructor(app: App, file: TFile | TFolder, backlinkCount: number, private readonly resolveChoice: (value: boolean) => void) {
+  constructor(
+    app: App,
+    file: TFile | TFolder,
+    backlinkCount: number,
+    private readonly resolveChoice: (value: boolean) => void,
+  ) {
     super(app);
     this.setTitle(file instanceof TFolder ? "Delete folder" : "Delete file");
     const contentEl = document.createElement("div");
@@ -754,20 +901,33 @@ function splitLinktextTarget(linktext: string): { path: string } {
 }
 
 function isValidNewFileLinktext(path: string): boolean {
-  return path.length > 0 && !/[\\:*?"<>|]/.test(path) && path.split("/").every((part) => part.trim().length > 0);
+  return (
+    path.length > 0 &&
+    !/[\\:*?"<>|]/.test(path) &&
+    path.split("/").every((part) => part.trim().length > 0)
+  );
 }
 
-function normalizeNewFileName(filename: string, extension: string | undefined, hasCreator: (extension: string) => boolean): { basename: string; extension: string } {
-  const normalizedName = filename.trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "") || "Untitled";
+function normalizeNewFileName(
+  filename: string,
+  extension: string | undefined,
+  hasCreator: (extension: string) => boolean,
+): { basename: string; extension: string } {
+  const normalizedName =
+    filename
+      .trim()
+      .replace(/\\/g, "/")
+      .replace(/^\/+|\/+$/g, "") || "Untitled";
   const inferredExtension = getExtensionFromPath(normalizedName);
   let targetExtension = normalizeRegisteredExtension(extension ?? inferredExtension) || "md";
   // Real createNewFile coerces an extension with no registered file creator
   // to md BEFORE de-suffixing the name — so "Note.xyz" yields "Note.xyz.md",
   // never a bare .xyz file.
   if (!hasCreator(targetExtension)) targetExtension = "md";
-  const basename = inferredExtension === targetExtension
-    ? normalizedName.slice(0, -(targetExtension.length + 1))
-    : normalizedName;
+  const basename =
+    inferredExtension === targetExtension
+      ? normalizedName.slice(0, -(targetExtension.length + 1))
+      : normalizedName;
   return { basename: basename || "Untitled", extension: targetExtension };
 }
 
@@ -778,7 +938,9 @@ function usesAttachmentLocation(newFilePath: string): boolean {
 function resolveAttachmentParentPath(configuredPath: string, sourcePath: string): string {
   const normalized = configuredPath.replace(/\\/g, "/");
   if (normalized === "/" || normalized === "") return "";
-  const sourceParentPath = sourcePath.includes("/") ? sourcePath.slice(0, sourcePath.lastIndexOf("/")) : "";
+  const sourceParentPath = sourcePath.includes("/")
+    ? sourcePath.slice(0, sourcePath.lastIndexOf("/"))
+    : "";
   if (normalized === "." || normalized === "./") return sourceParentPath;
   if (normalized.startsWith("./")) {
     const subfolder = normalizeConfiguredPath(normalized.slice(2));
@@ -814,7 +976,9 @@ function isReservedProperty(id: string): boolean {
 }
 
 function relativePath(sourcePath: string, targetPath: string): string {
-  const sourceParts = sourcePath.includes("/") ? sourcePath.slice(0, sourcePath.lastIndexOf("/")).split("/").filter(Boolean) : [];
+  const sourceParts = sourcePath.includes("/")
+    ? sourcePath.slice(0, sourcePath.lastIndexOf("/")).split("/").filter(Boolean)
+    : [];
   const targetParts = targetPath.split("/").filter(Boolean);
   while (sourceParts.length > 0 && targetParts.length > 0 && sourceParts[0] === targetParts[0]) {
     sourceParts.shift();

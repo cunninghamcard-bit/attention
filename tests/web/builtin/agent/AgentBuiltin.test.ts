@@ -50,7 +50,14 @@ describe("Chat builtin", () => {
       { type: "run.started", runId: "r1", seq: 1, agentId },
       { type: "message.started", messageId: "u1", role: "user", seq: 2, agentId },
       { type: "part.opened", messageId: "u1", partIndex: 0, partType: "text", seq: 3, agentId },
-      { type: "part.delta", messageId: "u1", partIndex: 0, delta: "帮我看看这个架构设计的问题\n后面还有第二行", seq: 4, agentId },
+      {
+        type: "part.delta",
+        messageId: "u1",
+        partIndex: 0,
+        delta: "帮我看看这个架构设计的问题\n后面还有第二行",
+        seq: 4,
+        agentId,
+      },
     ];
     for (const event of events) session.applyEvent(event);
     await nextFrame();

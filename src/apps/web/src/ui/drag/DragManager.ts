@@ -85,14 +85,19 @@ export class DragManager {
         event.preventDefault();
         return;
       }
-      if (!event.dataTransfer?.getData("text/plain")) this.writeFallbackData(event, source.title || "-");
+      if (!event.dataTransfer?.getData("text/plain"))
+        this.writeFallbackData(event, source.title || "-");
       if (event.dataTransfer) event.dataTransfer.effectAllowed = "all";
       this.setSource(source);
     });
     el.addEventListener("dragend", () => this.clearSource());
   }
 
-  handleDrop(el: HTMLElement, callback: (event: DragEvent, source: DragSource | null, hovering: boolean) => DragDropResult, allowExternal = false): void {
+  handleDrop(
+    el: HTMLElement,
+    callback: (event: DragEvent, source: DragSource | null, hovering: boolean) => DragDropResult,
+    allowExternal = false,
+  ): void {
     const preview = (event: DragEvent): void => {
       if (!this.source && !allowExternal) return;
       const result = callback(event, this.source, true);
@@ -121,7 +126,12 @@ export class DragManager {
     });
   }
 
-  dragFile(event: DragEvent, file: TFile, source?: string, elements: HTMLElement[] = []): FileDragSource {
+  dragFile(
+    event: DragEvent,
+    file: TFile,
+    source?: string,
+    elements: HTMLElement[] = [],
+  ): FileDragSource {
     this.writeUriList(event, this.app.getObsidianUrl(file));
     return {
       ...(source === undefined ? {} : { source }),
@@ -134,8 +144,15 @@ export class DragManager {
     };
   }
 
-  dragFiles(event: DragEvent, files: Array<TFile | TFolder>, source?: string, elements: HTMLElement[] = []): FilesDragSource {
-    const urls = files.filter((file): file is TFile => file instanceof TFile).map((file) => this.app.getObsidianUrl(file));
+  dragFiles(
+    event: DragEvent,
+    files: Array<TFile | TFolder>,
+    source?: string,
+    elements: HTMLElement[] = [],
+  ): FilesDragSource {
+    const urls = files
+      .filter((file): file is TFile => file instanceof TFile)
+      .map((file) => this.app.getObsidianUrl(file));
     if (urls.length > 0) this.writeUriList(event, urls.join("\n"));
     return {
       ...(source === undefined ? {} : { source }),
@@ -148,7 +165,12 @@ export class DragManager {
     };
   }
 
-  dragFolder(event: DragEvent, folder: TFolder, source?: string, elements: HTMLElement[] = []): FolderDragSource {
+  dragFolder(
+    event: DragEvent,
+    folder: TFolder,
+    source?: string,
+    elements: HTMLElement[] = [],
+  ): FolderDragSource {
     this.writeFallbackData(event, folder.name);
     return {
       ...(source === undefined ? {} : { source }),
@@ -161,7 +183,13 @@ export class DragManager {
     };
   }
 
-  dragLink(event: DragEvent, linktext: string, sourcePath: string, source = "markdown", elements: HTMLElement[] = []): LinkDragSource {
+  dragLink(
+    event: DragEvent,
+    linktext: string,
+    sourcePath: string,
+    source = "markdown",
+    elements: HTMLElement[] = [],
+  ): LinkDragSource {
     const parsedPath = linktext.split("|", 1)[0]?.split("#", 1)[0] ?? linktext;
     const file = this.app.metadataCache.getFirstLinkpathDest(parsedPath, sourcePath);
     this.writeUriList(event, file ? this.app.getObsidianUrl(file) : linktext);
@@ -234,7 +262,10 @@ export function setAllowedDropEffect(event: DragEvent, effect: DataTransfer["dro
   event.dataTransfer.dropEffect = effect;
 }
 
-export function isDropEffectAllowed(effectAllowed: DataTransfer["effectAllowed"], effect: DataTransfer["dropEffect"]): boolean {
+export function isDropEffectAllowed(
+  effectAllowed: DataTransfer["effectAllowed"],
+  effect: DataTransfer["dropEffect"],
+): boolean {
   if (effect === "none") return false;
   if (effectAllowed === "all") return true;
   if (!effectAllowed || effectAllowed === "none" || effectAllowed === "uninitialized") return false;

@@ -23,9 +23,14 @@ type RecentFileKind = "md" | "canvas" | "image" | "other";
 export class RecentFileTracker {
   private lastOpenFiles: string[] = [];
 
-  constructor(readonly workspace: Workspace, readonly vault: Vault) {
+  constructor(
+    readonly workspace: Workspace,
+    readonly vault: Vault,
+  ) {
     this.vault.on<[TAbstractFile]>("create", (file) => this.addRecentFile(file));
-    this.vault.on<[TAbstractFile, string]>("rename", (file, oldPath) => this.onRename(file, oldPath));
+    this.vault.on<[TAbstractFile, string]>("rename", (file, oldPath) =>
+      this.onRename(file, oldPath),
+    );
   }
 
   load(paths: string[] | null | undefined): void {
@@ -64,7 +69,7 @@ export class RecentFileTracker {
 
   onRename(file: TAbstractFile, oldPath: string): void {
     if (!this.workspace.isLayoutReady()) return;
-    this.lastOpenFiles = this.lastOpenFiles.map((path) => path === oldPath ? file.path : path);
+    this.lastOpenFiles = this.lastOpenFiles.map((path) => (path === oldPath ? file.path : path));
     this.workspace.requestSaveLayout();
   }
 
@@ -122,5 +127,7 @@ function getExtension(path: string): string {
 }
 
 function hasPath(value: unknown): value is { path: string } {
-  return Boolean(value && typeof value === "object" && typeof (value as { path?: unknown }).path === "string");
+  return Boolean(
+    value && typeof value === "object" && typeof (value as { path?: unknown }).path === "string",
+  );
 }

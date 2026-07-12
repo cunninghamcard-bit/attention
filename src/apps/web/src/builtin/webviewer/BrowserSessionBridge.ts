@@ -15,11 +15,19 @@ export class BrowserSessionBridge {
 
   constructor(readonly app: App) {}
 
-  createBrowserSession(partition: string, enableAdblocking: boolean, announce = true): BrowserSessionState {
+  createBrowserSession(
+    partition: string,
+    enableAdblocking: boolean,
+    announce = true,
+  ): BrowserSessionState {
     const existing = this.sessions.get(partition);
     if (existing) {
       existing.enableAdblocking = enableAdblocking;
-      if (announce) this.app.workspace.trigger("create-browser-session", { ...existing, adblockLists: [...existing.adblockLists] });
+      if (announce)
+        this.app.workspace.trigger("create-browser-session", {
+          ...existing,
+          adblockLists: [...existing.adblockLists],
+        });
       return this.clone(existing);
     }
     const session: BrowserSessionState = {
@@ -41,7 +49,11 @@ export class BrowserSessionBridge {
   }
 
   clearData(partition: string, kind: WebViewerClearDataKind): void {
-    this.app.workspace.trigger("webviewer-clear-data", { partition, kind, clearedAt: new Date().toISOString() });
+    this.app.workspace.trigger("webviewer-clear-data", {
+      partition,
+      kind,
+      clearedAt: new Date().toISOString(),
+    });
   }
 
   listSessions(): readonly BrowserSessionState[] {

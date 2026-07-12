@@ -3,7 +3,12 @@ import { CommunityPluginTrustModal } from "../builtin/CommunityPluginTrustModal"
 import { Platform } from "../platform/Platform";
 import { Notice } from "../ui/Notice";
 import type { UpdateCheckResult } from "../app/release/UpdateManager";
-import { normalizePluginManifest, type PluginManifest, type PluginManifestInput, type PluginPackage } from "./PluginManifest";
+import {
+  normalizePluginManifest,
+  type PluginManifest,
+  type PluginManifestInput,
+  type PluginPackage,
+} from "./PluginManifest";
 import type { Plugin } from "./Plugin";
 import { prepareDownloadedMainJs } from "./PluginSource";
 
@@ -45,7 +50,10 @@ export class PluginInstaller {
   private deprecationCheckRegistered = false;
   private trustModalOpen = false;
 
-  constructor(readonly app: App, private downloader: PluginPackageDownloader = new FetchPluginPackageDownloader()) {
+  constructor(
+    readonly app: App,
+    private downloader: PluginPackageDownloader = new FetchPluginPackageDownloader(),
+  ) {
     this.app.vault.on<[string]>("raw", (path) => this.onRaw(path));
   }
 
@@ -128,7 +136,9 @@ export class PluginInstaller {
 
   async loadManifests(): Promise<void> {
     clearRecord(this.manifests);
-    const packages = await this.app.pluginLoader.discoverPackages(this.toPluginLoaderRoot(this.getPluginFolder()));
+    const packages = await this.app.pluginLoader.discoverPackages(
+      this.toPluginLoaderRoot(this.getPluginFolder()),
+    );
     this.syncDiscoveredPackages(packages, [...this.enabledPlugins]);
   }
 
@@ -157,7 +167,10 @@ export class PluginInstaller {
   }
 
   async enablePlugin(id: string, userInitiated = false): Promise<boolean> {
-    const pkg = this.packages.get(id) ?? this.app.pluginLoader.getPackage(id) ?? this.app.pluginMarketplace.createPackage(id);
+    const pkg =
+      this.packages.get(id) ??
+      this.app.pluginLoader.getPackage(id) ??
+      this.app.pluginMarketplace.createPackage(id);
     if (!pkg) return false;
     const record = this.installed.get(id) ?? this.createInstallRecord(pkg);
     if (!this.app.pluginSecurity.isCommunityPluginsEnabled()) {
@@ -173,7 +186,10 @@ export class PluginInstaller {
       return false;
     }
     if (isDesktopOnlyBlocked(manifest)) return false;
-    const registered = this.packages.get(id) ?? this.app.pluginLoader.getPackage(id) ?? this.app.pluginLoader.registerPackage(pkg);
+    const registered =
+      this.packages.get(id) ??
+      this.app.pluginLoader.getPackage(id) ??
+      this.app.pluginLoader.registerPackage(pkg);
     this.rememberPackage(registered);
     try {
       const plugin = await this.loadPlugin(id, userInitiated);
@@ -184,7 +200,10 @@ export class PluginInstaller {
       return true;
     } catch (error) {
       record.enabled = false;
-      this.app.communityPlugins.setError(id, error instanceof Error ? error.message : String(error));
+      this.app.communityPlugins.setError(
+        id,
+        error instanceof Error ? error.message : String(error),
+      );
       this.app.workspace.trigger("plugin-enable-failed", record, error);
       new Notice(`Failed to enable plugin ${id}`);
       console.error(`Plugin failure: ${id}`, error);
@@ -193,8 +212,11 @@ export class PluginInstaller {
   }
 
   async disablePlugin(id: string, userInitiated = false): Promise<void> {
-    const record = this.installed.get(id)
-      ?? (this.app.pluginLoader.getPackage(id) ? this.createInstallRecord(this.app.pluginLoader.getPackage(id)!) : null);
+    const record =
+      this.installed.get(id) ??
+      (this.app.pluginLoader.getPackage(id)
+        ? this.createInstallRecord(this.app.pluginLoader.getPackage(id)!)
+        : null);
     if (!record) return;
     record.enabled = false;
     this.app.communityPlugins.setEnabled(id, false);
@@ -203,7 +225,10 @@ export class PluginInstaller {
     } catch (error) {
       new Notice(`Failed to disable plugin ${id}`);
       console.error(`Plugin failure: ${id}`, error);
-      this.app.communityPlugins.setError(id, error instanceof Error ? error.message : String(error));
+      this.app.communityPlugins.setError(
+        id,
+        error instanceof Error ? error.message : String(error),
+      );
     } finally {
       this.app.workspace.trigger("plugin-disabled", record);
     }
@@ -274,15 +299,25 @@ export class PluginInstaller {
     this.app.saveLocalStorage(LAST_UPDATE_CHECK_KEY, Date.now());
     const checkedAt = new Date().toISOString();
     const results: PluginUpdateRecord[] = [];
-    for (const record of this.listInstalled().filter((record) => targets.size === 0 || targets.has(record.id))) {
-      const currentVersion = this.app.communityPlugins.get(record.id)?.manifest.version ?? record.version;
-      const compatibleVersion = await this.app.pluginMarketplace.resolveLatestCompatibleVersion(record.id).catch(() => null);
+    for (const record of this.listInstalled().filter(
+      (record) => targets.size === 0 || targets.has(record.id),
+    )) {
+      const currentVersion =
+        this.app.communityPlugins.get(record.id)?.manifest.version ?? record.version;
+      const compatibleVersion = await this.app.pluginMarketplace
+        .resolveLatestCompatibleVersion(record.id)
+        .catch(() => null);
       if (compatibleVersion) this.app.updates.setLatestVersion(record.id, compatibleVersion);
       const result = this.app.updates.checkPlugin(record.id, currentVersion);
       const packageAvailable = Boolean(this.app.pluginMarketplace.createPackage(record.id));
       record.latestVersion = result.latestVersion;
       record.checkedAt = checkedAt;
-      this.app.communityPlugins.setUpdateStatus(record.id, result.updateAvailable, result.latestVersion, checkedAt);
+      this.app.communityPlugins.setUpdateStatus(
+        record.id,
+        result.updateAvailable,
+        result.latestVersion,
+        checkedAt,
+      );
       const updateRecord = {
         ...result,
         installed: true,
@@ -332,7 +367,10 @@ export class PluginInstaller {
       return record;
     } catch (error) {
       record.enabled = false;
-      this.app.communityPlugins.setError(id, error instanceof Error ? error.message : String(error));
+      this.app.communityPlugins.setError(
+        id,
+        error instanceof Error ? error.message : String(error),
+      );
       this.app.workspace.trigger("plugin-update-failed", record, error);
       throw error;
     }
@@ -363,7 +401,8 @@ export class PluginInstaller {
       this.app.communityPlugins.setError(plugin.manifest.id, reason);
       disabled.push(plugin.manifest.id);
     }
-    if (disabled.length > 0) this.app.workspace.trigger("community-plugin-deprecations-found", disabled);
+    if (disabled.length > 0)
+      this.app.workspace.trigger("community-plugin-deprecations-found", disabled);
     return disabled;
   }
 
@@ -475,7 +514,10 @@ export class PluginInstaller {
     this.app.plugins.getPlugin(pluginId)?.onConfigFileChange();
   }
 
-  private syncDiscoveredPackages(packages: readonly PluginPackage[], enabledIds: readonly string[]): void {
+  private syncDiscoveredPackages(
+    packages: readonly PluginPackage[],
+    enabledIds: readonly string[],
+  ): void {
     const enabled = new Set(enabledIds);
     for (const pkg of packages) {
       this.rememberPackage(pkg);
@@ -502,13 +544,17 @@ export class PluginInstaller {
     if (!pkg.source || pkg.mainJs || pkg.factory) return pkg;
     if (!pkg.source.manifestUrl) return pkg;
 
-    const manifest = normalizePluginManifest(await this.downloader.fetchJson<PluginManifestInput>(pkg.source.manifestUrl));
+    const manifest = normalizePluginManifest(
+      await this.downloader.fetchJson<PluginManifestInput>(pkg.source.manifestUrl),
+    );
     const [mainJs, styles] = await Promise.all([
       pkg.source.mainJsUrl ? this.fetchOptionalText(pkg.source.mainJsUrl) : Promise.resolve(null),
       pkg.source.stylesUrl ? this.fetchOptionalText(pkg.source.stylesUrl) : Promise.resolve(null),
     ]);
     if (manifest.id !== pkg.manifest.id) {
-      throw new Error(`Downloaded plugin manifest id mismatch: expected ${pkg.manifest.id}, got ${manifest.id}`);
+      throw new Error(
+        `Downloaded plugin manifest id mismatch: expected ${pkg.manifest.id}, got ${manifest.id}`,
+      );
     }
     const dir = pkg.dir ?? pkg.manifest.dir ?? `plugins/${manifest.id}`;
     return {
@@ -534,7 +580,8 @@ export class PluginInstaller {
     const dir = pkg.dir ?? pkg.manifest.dir ?? `plugins/${pkg.manifest.id}`;
     await this.app.jsonStore.write(`${dir}/manifest.json`, pkg.manifest);
     if (pkg.mainJs !== undefined) await this.app.jsonStore.writeText(`${dir}/main.js`, pkg.mainJs);
-    if (pkg.styles !== undefined) await this.app.jsonStore.writeText(`${dir}/styles.css`, pkg.styles);
+    if (pkg.styles !== undefined)
+      await this.app.jsonStore.writeText(`${dir}/styles.css`, pkg.styles);
   }
 }
 
@@ -569,7 +616,9 @@ function withoutEnabledPlugin(config: unknown, id: string): string[] {
 }
 
 function enabledPluginIds(config: unknown): string[] {
-  return Array.isArray(config) ? config.filter((item): item is string => typeof item === "string") : [];
+  return Array.isArray(config)
+    ? config.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 function clearRecord<T>(record: Record<string, T>): void {
@@ -577,5 +626,8 @@ function clearRecord<T>(record: Record<string, T>): void {
 }
 
 function isDesktopOnlyBlocked(manifest: PluginManifestInput): boolean {
-  return Boolean(manifest.isDesktopOnly && (!Platform.isDesktopApp || document.body.classList.contains("emulate-mobile")));
+  return Boolean(
+    manifest.isDesktopOnly &&
+    (!Platform.isDesktopApp || document.body.classList.contains("emulate-mobile")),
+  );
 }

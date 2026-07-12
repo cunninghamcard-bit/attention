@@ -244,7 +244,11 @@ describe("WorkspaceSplit", () => {
     const tabs = firstLeaf.parent;
     if (!(tabs instanceof WorkspaceTabs)) throw new Error("Expected tabs");
 
-    const moved = app.workspace.moveLeafToDropTarget(firstLeaf, { leaf: thirdLeaf, side: "center", tabInsertIndex: 3 });
+    const moved = app.workspace.moveLeafToDropTarget(firstLeaf, {
+      leaf: thirdLeaf,
+      side: "center",
+      tabInsertIndex: 3,
+    });
 
     expect(moved).toBe(true);
     expect(tabs.children).toEqual([secondLeaf, thirdLeaf, firstLeaf]);
@@ -441,7 +445,9 @@ describe("WorkspaceSplit", () => {
     expect(document.body.querySelector(".workspace-fake-target-container")).not.toBeNull();
     expect(document.body.querySelector(".workspace-fake-target-overlay")).not.toBeNull();
     expect(sourceTabs.containerEl.style.opacity).toBe("0");
-    const fakeTargetContainer = document.body.querySelector<HTMLElement>(".workspace-fake-target-container");
+    const fakeTargetContainer = document.body.querySelector<HTMLElement>(
+      ".workspace-fake-target-container",
+    );
     // fake target should preserve the target parent class chain, matching Obsidian's preview DOM.
     expect(
       Array.from(fakeTargetContainer?.querySelectorAll("div") ?? []).some(
@@ -488,10 +494,20 @@ describe("WorkspaceSplit", () => {
     setRect(leaf.containerEl, { x: 0, y: 0, width: 300, height: 180 });
     const dataTransfer = createDataTransfer();
 
-    const location = app.workspace.getDropLocation(createDragEvent("dragover", dataTransfer, 4, 90));
-    const target = app.workspace.recursiveGetTarget(createDragEvent("dragover", dataTransfer, 4, 90), app.workspace.rootSplit);
+    const location = app.workspace.getDropLocation(
+      createDragEvent("dragover", dataTransfer, 4, 90),
+    );
+    const target = app.workspace.recursiveGetTarget(
+      createDragEvent("dragover", dataTransfer, 4, 90),
+      app.workspace.rootSplit,
+    );
     const rect = new DOMRect(0, 0, 300, 180);
-    const side = app.workspace.getDropDirection(createDragEvent("dragover", dataTransfer, 4, 90), rect, [], leaf);
+    const side = app.workspace.getDropDirection(
+      createDragEvent("dragover", dataTransfer, 4, 90),
+      rect,
+      [],
+      leaf,
+    );
 
     expect(location).toBe(tabs);
     expect(target).toBe(tabs);
@@ -515,7 +531,11 @@ describe("WorkspaceSplit", () => {
     const firstTabs = firstLeaf.parent;
     const secondTabs = secondLeaf.parent;
     const sourceTabs = sourceLeaf.parent;
-    if (!(firstTabs instanceof WorkspaceTabs) || !(secondTabs instanceof WorkspaceTabs) || !(sourceTabs instanceof WorkspaceTabs)) {
+    if (
+      !(firstTabs instanceof WorkspaceTabs) ||
+      !(secondTabs instanceof WorkspaceTabs) ||
+      !(sourceTabs instanceof WorkspaceTabs)
+    ) {
       throw new Error("Expected overlapping leaves to be wrapped in tab groups");
     }
     setRect(firstTabs.containerEl, { x: 0, y: 0, width: 240, height: 160 });
@@ -600,7 +620,9 @@ describe("WorkspaceSplit", () => {
 
     expect(app.workspace.leftSplit.children[0]).toBeInstanceOf(WorkspaceTabs);
     expect(leaf.parent?.parent).toBe(app.workspace.leftSplit);
-    expect(app.workspace.leftSplit.containerEl.classList.contains("is-sidedock-collapsed")).toBe(false);
+    expect(app.workspace.leftSplit.containerEl.classList.contains("is-sidedock-collapsed")).toBe(
+      false,
+    );
     expect(app.workspace.activeLeaf).toBe(leaf);
   });
 
@@ -912,7 +934,9 @@ describe("WorkspaceSplit", () => {
     if (!(rootTargetLeaf instanceof WorkspaceLeaf)) throw new Error("Expected root target leaf");
     const floatingChildrenBefore = app.workspace.floatingSplit.children.length;
     const closedWindows: WorkspaceWindow[] = [];
-    app.workspace.on("window-close", (workspaceWindow) => closedWindows.push(workspaceWindow as WorkspaceWindow));
+    app.workspace.on("window-close", (workspaceWindow) =>
+      closedWindows.push(workspaceWindow as WorkspaceWindow),
+    );
     setRect(sourceLeaf.containerEl, { x: 20, y: 20, width: 260, height: 180 });
     setRect(sourceLeaf.tabHeaderEl, { x: 20, y: 20, width: 100, height: 24 });
     setRect(app.workspace.rootSplit.containerEl, { x: 420, y: 0, width: 360, height: 260 });
@@ -921,7 +945,9 @@ describe("WorkspaceSplit", () => {
     setRect(rootTargetLeaf.tabHeaderEl, { x: 420, y: 0, width: 100, height: 24 });
     const dataTransfer = createDataTransfer();
 
-    sourceLeaf.tabHeaderEl.dispatchEvent(createDragEvent("dragstart", dataTransfer, 30, 30, sourceWin));
+    sourceLeaf.tabHeaderEl.dispatchEvent(
+      createDragEvent("dragstart", dataTransfer, 30, 30, sourceWin),
+    );
     window.dispatchEvent(createDragEvent("dragover", dataTransfer, 600, 130));
 
     const overlay = document.body.querySelector<HTMLElement>(".workspace-drop-overlay");
@@ -936,7 +962,9 @@ describe("WorkspaceSplit", () => {
 
     expect(app.workspace.floatingSplit.children).toHaveLength(floatingChildrenBefore - 1);
     expect(app.workspace.floatingSplit.children).not.toContain(popoutWindow);
-    expect(app.workspace.floatingSplit.containerEl.classList.contains("is-popout-window")).toBe(false);
+    expect(app.workspace.floatingSplit.containerEl.classList.contains("is-popout-window")).toBe(
+      false,
+    );
     expect(popoutWindow.parent).toBeNull();
     expect(popoutWindow.appContainerEl.isConnected).toBe(false);
     expect(closedWindows).toEqual([popoutWindow]);
@@ -1004,7 +1032,10 @@ describe("WorkspaceSplit", () => {
   });
 });
 
-function setRect(el: HTMLElement, rect: { x: number; y: number; width: number; height: number }): void {
+function setRect(
+  el: HTMLElement,
+  rect: { x: number; y: number; width: number; height: number },
+): void {
   const value = new DOMRect(rect.x, rect.y, rect.width, rect.height);
   Object.defineProperty(value, "right", { configurable: true, value: rect.x + rect.width });
   Object.defineProperty(value, "bottom", { configurable: true, value: rect.y + rect.height });
@@ -1031,7 +1062,14 @@ function createDataTransfer(): DataTransfer {
   } as unknown as DataTransfer;
 }
 
-function createDragEvent(type: string, dataTransfer: DataTransfer, clientX: number, clientY: number, view: Window = window, target?: EventTarget): DragEvent {
+function createDragEvent(
+  type: string,
+  dataTransfer: DataTransfer,
+  clientX: number,
+  clientY: number,
+  view: Window = window,
+  target?: EventTarget,
+): DragEvent {
   const EventConstructor = view.document.defaultView?.Event ?? Event;
   const event = new EventConstructor(type, { bubbles: true, cancelable: true }) as DragEvent;
   Object.defineProperty(event, "dataTransfer", { configurable: true, value: dataTransfer });

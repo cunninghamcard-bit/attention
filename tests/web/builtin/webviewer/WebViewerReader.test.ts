@@ -33,6 +33,8 @@ describe("WebViewerReader.extractFromPage", () => {
     const reader = new WebViewerReader();
     reader.loadLibrary = async () => "lib";
     const host = { executeJavaScript: vi.fn(async () => null) };
-    await expect(reader.extractFromPage(host, "https://example.com")).rejects.toThrow("No readable content");
+    await expect(reader.extractFromPage(host, "https://example.com")).rejects.toThrow(
+      "No readable content",
+    );
   });
 });

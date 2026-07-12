@@ -54,11 +54,19 @@ describe("MobileToolbar Obsidian command toolbar", () => {
     ]);
 
     app.mobileToolbar.compileToolbar();
-    const options = [...app.mobileToolbar.optionsListEl.querySelectorAll<HTMLElement>(".mobile-toolbar-option")];
+    const options = [
+      ...app.mobileToolbar.optionsListEl.querySelectorAll<HTMLElement>(".mobile-toolbar-option"),
+    ];
 
     expect(options).toHaveLength(3);
-    expect(app.mobileToolbar.optionsListContainerEl.className).toBe("mobile-toolbar-options-list-container mod-raised");
-    expect(options.map((option) => option.hasAttribute("aria-label"))).toEqual([false, false, false]);
+    expect(app.mobileToolbar.optionsListContainerEl.className).toBe(
+      "mobile-toolbar-options-list-container mod-raised",
+    );
+    expect(options.map((option) => option.hasAttribute("aria-label"))).toEqual([
+      false,
+      false,
+      false,
+    ]);
     expect(options.map((option) => option.className)).toEqual([
       "mobile-toolbar-option",
       "mobile-toolbar-option",
@@ -72,7 +80,8 @@ describe("MobileToolbar Obsidian command toolbar", () => {
     const execute = vi.spyOn(app.commands, "executeCommandById");
 
     app.mobileToolbar.compileToolbar();
-    const option = app.mobileToolbar.optionsListEl.querySelector<HTMLElement>(".mobile-toolbar-option");
+    const option =
+      app.mobileToolbar.optionsListEl.querySelector<HTMLElement>(".mobile-toolbar-option");
     if (!option) throw new Error("Missing toolbar option");
     const mouseDown = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
     const click = new MouseEvent("click", { bubbles: true, cancelable: true });

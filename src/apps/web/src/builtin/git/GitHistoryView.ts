@@ -16,9 +16,15 @@ export class GitHistoryView extends ItemView {
   private path: string | null = null;
   private listEl: HTMLElement | null = null;
 
-  getViewType(): string { return GitHistoryView.VIEW_TYPE; }
-  getDisplayText(): string { return this.path ? `History — ${this.path.split("/").pop()}` : "File history"; }
-  getIcon(): string { return "lucide-history"; }
+  getViewType(): string {
+    return GitHistoryView.VIEW_TYPE;
+  }
+  getDisplayText(): string {
+    return this.path ? `History — ${this.path.split("/").pop()}` : "File history";
+  }
+  getIcon(): string {
+    return "lucide-history";
+  }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("git-history-view");
@@ -30,7 +36,11 @@ export class GitHistoryView extends ItemView {
 
   async setState(state: unknown, result?: ViewStateResult): Promise<void> {
     await super.setState(state, result);
-    if (state && typeof state === "object" && typeof (state as { path?: unknown }).path === "string") {
+    if (
+      state &&
+      typeof state === "object" &&
+      typeof (state as { path?: unknown }).path === "string"
+    ) {
       this.path = (state as { path: string }).path;
       await this.refresh();
       this.leaf.updateHeader();
@@ -70,7 +80,11 @@ export class GitHistoryView extends ItemView {
     const actionsEl = doc.createElement("div");
     actionsEl.className = "git-history-actions";
     actionsEl.append(
-      this.actionButton("Review commit", () => void openGitReview(this.app, { kind: "commit", ref: entry.hash, subject: entry.subject })),
+      this.actionButton(
+        "Review commit",
+        () =>
+          void openGitReview(this.app, { kind: "commit", ref: entry.hash, subject: entry.subject }),
+      ),
       this.actionButton("View version", () => void this.viewVersion(entry)),
       this.actionButton("Diff vs working", () => void this.diffAgainstWorking(entry)),
     );
@@ -140,7 +154,10 @@ export class GitHistoryView extends ItemView {
 }
 
 /** Opens the history view for a file path. */
-export async function openFileHistory(app: import("../../app/App").App, path: string): Promise<void> {
+export async function openFileHistory(
+  app: import("../../app/App").App,
+  path: string,
+): Promise<void> {
   const leaf = app.workspace.getLeaf("tab");
   await leaf.setViewState({ type: GitHistoryView.VIEW_TYPE, active: true, state: { path } });
 }

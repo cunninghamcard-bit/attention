@@ -36,39 +36,46 @@ export class QuickSwitcherController {
 
   async onEnable(plugin: InternalPluginWrapper): Promise<void> {
     this.plugin = plugin;
-    this.options = { ...DEFAULT_OPTIONS, ...((await plugin.loadData<Partial<QuickSwitcherOptions>>()) ?? {}) };
+    this.options = {
+      ...DEFAULT_OPTIONS,
+      ...((await plugin.loadData<Partial<QuickSwitcherOptions>>()) ?? {}),
+    };
     plugin.addSettingTab(new QuickSwitcherSettingTab(this.app, this));
   }
 
   open(): void {
     if (!this.activeModal) {
-      this.activeModal = new QuickSwitcherModal(this.app, this)
-        .setCloseCallback(() => {
-          this.activeModal = null;
-        }) as QuickSwitcherModal;
+      this.activeModal = new QuickSwitcherModal(this.app, this).setCloseCallback(() => {
+        this.activeModal = null;
+      }) as QuickSwitcherModal;
     }
     this.activeModal.open();
   }
 
   getItems(): QuickSwitcherItem[] {
-    return this.app.vault.getFiles()
+    return this.app.vault
+      .getFiles()
       .filter((file) => isVisibleQuickSwitcherFile(file, this.options, this.app))
-      .sort((a, b) => a.path.localeCompare(b.path, undefined, { sensitivity: "base", numeric: true }))
+      .sort((a, b) =>
+        a.path.localeCompare(b.path, undefined, { sensitivity: "base", numeric: true }),
+      )
       .map((file) => ({ type: "file", file }) as QuickSwitcherItem)
       .concat(this.getUnresolvedItems());
   }
 
   getRecentItems(): QuickSwitcherItem[] {
-    return this.app.workspace.getRecentFiles({
-      showMarkdown: true,
-      showNonAttachments: true,
-      showNonImageAttachments: this.options.showAttachments,
-      showImages: this.options.showAttachments,
-      maxCount: 10,
-    }).flatMap((path) => {
-      const file = this.app.vault.getFileByPath(path);
-      return file ? [{ type: "file", file } as QuickSwitcherItem] : [];
-    });
+    return this.app.workspace
+      .getRecentFiles({
+        showMarkdown: true,
+        showNonAttachments: true,
+        showNonImageAttachments: this.options.showAttachments,
+        showImages: this.options.showAttachments,
+        maxCount: 10,
+      })
+      .flatMap((path) => {
+        const file = this.app.vault.getFileByPath(path);
+        return file ? [{ type: "file", file } as QuickSwitcherItem] : [];
+      });
   }
 
   getUnresolvedItems(): QuickSwitcherItem[] {
@@ -93,11 +100,20 @@ export class QuickSwitcherController {
       return;
     }
     if (item.type === "unresolved") {
-      await this.app.workspace.getLeaf(paneType).openLinkText(item.linktext, this.app.workspace.getActiveFile()?.path ?? "", { active: true });
+      await this.app.workspace
+        .getLeaf(paneType)
+        .openLinkText(item.linktext, this.app.workspace.getActiveFile()?.path ?? "", {
+          active: true,
+        });
       return;
     }
 
-    await this.app.workspace.openLinkText(item.path, this.app.workspace.getActiveFile()?.path ?? "", paneType, { active: true });
+    await this.app.workspace.openLinkText(
+      item.path,
+      this.app.workspace.getActiveFile()?.path ?? "",
+      paneType,
+      { active: true },
+    );
   }
 
   async saveOptions(options: Partial<QuickSwitcherOptions>): Promise<void> {
@@ -109,7 +125,10 @@ export class QuickSwitcherController {
 export class QuickSwitcherModal extends FuzzySuggestModal<QuickSwitcherSuggestionItem> {
   private query = "";
 
-  constructor(app: App, readonly controller: QuickSwitcherController) {
+  constructor(
+    app: App,
+    readonly controller: QuickSwitcherController,
+  ) {
     super(app);
     this.limit = 20;
     this.setPlaceholder("Type to switch files...");
@@ -146,7 +165,7 @@ export class QuickSwitcherModal extends FuzzySuggestModal<QuickSwitcherSuggestio
   }
 
   getItems(): QuickSwitcherSuggestionItem[] {
-    return this.cachedItems ??= this.controller.getItems();
+    return (this.cachedItems ??= this.controller.getItems());
   }
 
   getItemText(item: QuickSwitcherSuggestionItem): string {
@@ -204,7 +223,10 @@ export class QuickSwitcherModal extends FuzzySuggestModal<QuickSwitcherSuggestio
     el.appendChild(contentEl);
   }
 
-  override onChooseSuggestion(value: FuzzySuggestion<QuickSwitcherSuggestionItem> | null, event: MouseEvent | KeyboardEvent): void {
+  override onChooseSuggestion(
+    value: FuzzySuggestion<QuickSwitcherSuggestionItem> | null,
+    event: MouseEvent | KeyboardEvent,
+  ): void {
     if (!value || value.item === null) {
       const path = this.query || this.inputEl.value.trim();
       if (path) void this.controller.choose({ type: "create", path }, event);
@@ -231,7 +253,10 @@ class QuickSwitcherSettingTab implements SettingTab {
   readonly navEl = document.createElement("div");
   readonly containerEl = document.createElement("div");
 
-  constructor(readonly app: App, readonly controller: QuickSwitcherController) {
+  constructor(
+    readonly app: App,
+    readonly controller: QuickSwitcherController,
+  ) {
     this.navEl.className = "vertical-tab-nav-item tappable";
     const iconEl = document.createElement("div");
     iconEl.className = "vertical-tab-nav-item-icon";
@@ -251,21 +276,27 @@ class QuickSwitcherSettingTab implements SettingTab {
     new Setting(group.itemsEl)
       .setName("Show existing files only")
       .setDesc("When disabled, typing a missing Markdown path offers to create it.")
-      .addToggle((toggle) => toggle.setValue(this.controller.options.showExistingOnly).onChange((showExistingOnly) => {
-        void this.controller.saveOptions({ showExistingOnly });
-      }));
+      .addToggle((toggle) =>
+        toggle.setValue(this.controller.options.showExistingOnly).onChange((showExistingOnly) => {
+          void this.controller.saveOptions({ showExistingOnly });
+        }),
+      );
     new Setting(group.itemsEl)
       .setName("Show attachments")
       .setDesc("Include non-Markdown files alongside notes.")
-      .addToggle((toggle) => toggle.setValue(this.controller.options.showAttachments).onChange((showAttachments) => {
-        void this.controller.saveOptions({ showAttachments });
-      }));
+      .addToggle((toggle) =>
+        toggle.setValue(this.controller.options.showAttachments).onChange((showAttachments) => {
+          void this.controller.saveOptions({ showAttachments });
+        }),
+      );
     new Setting(group.itemsEl)
       .setName("Show all file types")
       .setDesc("Include every loaded file type in the switcher.")
-      .addToggle((toggle) => toggle.setValue(this.controller.options.showAllFileTypes).onChange((showAllFileTypes) => {
-        void this.controller.saveOptions({ showAllFileTypes });
-      }));
+      .addToggle((toggle) =>
+        toggle.setValue(this.controller.options.showAllFileTypes).onChange((showAllFileTypes) => {
+          void this.controller.saveOptions({ showAllFileTypes });
+        }),
+      );
   }
 
   hide(): void {
@@ -290,7 +321,9 @@ export function createQuickSwitcherPluginDefinition(): InternalPluginDefinition 
         hotkeys: [{ modifiers: ["Mod"], key: "O" }],
         callback: () => controller?.open(),
       });
-      plugin.registerRibbonItem("Open quick switcher", "lucide-file-search", () => controller?.open());
+      plugin.registerRibbonItem("Open quick switcher", "lucide-file-search", () =>
+        controller?.open(),
+      );
     },
     async onEnable(_app: App, plugin: InternalPluginWrapper) {
       await controller?.onEnable(plugin);
@@ -302,7 +335,9 @@ function isMacLike(): boolean {
   return /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
 }
 
-function toSuggestion(item: QuickSwitcherSuggestionItem): FuzzySuggestion<QuickSwitcherSuggestionItem> {
+function toSuggestion(
+  item: QuickSwitcherSuggestionItem,
+): FuzzySuggestion<QuickSwitcherSuggestionItem> {
   return { item, match: { score: 0, matches: [] } };
 }
 
@@ -318,7 +353,10 @@ function isVisibleQuickSwitcherFile(file: TFile, options: QuickSwitcherOptions, 
 }
 
 function isRegisteredQuickSwitcherAttachment(file: TFile, app: App): boolean {
-  return app.viewRegistry.isExtensionRegistered(file.extension) || isKnownAttachmentExtension(file.extension);
+  return (
+    app.viewRegistry.isExtensionRegistered(file.extension) ||
+    isKnownAttachmentExtension(file.extension)
+  );
 }
 
 function isKnownAttachmentExtension(extension: string): boolean {

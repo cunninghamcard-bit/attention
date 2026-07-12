@@ -45,8 +45,10 @@ export class BookmarksController {
   async onEnable(plugin: InternalPluginWrapper): Promise<void> {
     this.plugin = plugin;
     const data = await plugin.loadData<BookmarksData>();
-    this.items = data?.items ?? await this.loadStarredMigration();
-    plugin.registerEvent(this.app.workspace.on("layout-change", () => this.updateBookmarkedState()));
+    this.items = data?.items ?? (await this.loadStarredMigration());
+    plugin.registerEvent(
+      this.app.workspace.on("layout-change", () => this.updateBookmarkedState()),
+    );
     this.updateBookmarkedState();
   }
 
@@ -63,14 +65,23 @@ export class BookmarksController {
   async bookmarkCurrentView(): Promise<void> {
     const leaf = this.app.workspace.activeLeaf;
     if (!leaf?.view) return;
-    const view = leaf.view as unknown as { file?: TFile | null; getViewType?: () => string; getState?: () => unknown };
+    const view = leaf.view as unknown as {
+      file?: TFile | null;
+      getViewType?: () => string;
+      getState?: () => unknown;
+    };
     if (view.file instanceof TFile) {
       await this.addItem({ type: "file", ctime: Date.now(), path: view.file.path });
       return;
     }
     const type = view.getViewType?.();
     if (type === "graph") {
-      await this.addItem({ type: "graph", ctime: Date.now(), title: "Graph view", options: getStateObject(view) });
+      await this.addItem({
+        type: "graph",
+        ctime: Date.now(),
+        title: "Graph view",
+        options: getStateObject(view),
+      });
       return;
     }
     if (type === "search") {
@@ -79,11 +90,18 @@ export class BookmarksController {
   }
 
   async bookmarkCurrentSearch(): Promise<void> {
-    const view = this.app.workspace.activeLeaf?.view as unknown as { getViewType?: () => string; getState?: () => unknown } | undefined;
+    const view = this.app.workspace.activeLeaf?.view as unknown as
+      | { getViewType?: () => string; getState?: () => unknown }
+      | undefined;
     if (view?.getViewType?.() !== "search") return;
     const state = getStateObject(view);
     const query = String(state.query ?? state.search ?? "");
-    await this.addItem({ type: "search", ctime: Date.now(), query, title: query ? `Search: ${query}` : "Search" });
+    await this.addItem({
+      type: "search",
+      ctime: Date.now(),
+      query,
+      title: query ? `Search: ${query}` : "Search",
+    });
   }
 
   async bookmarkCurrentHeading(): Promise<void> {
@@ -91,7 +109,9 @@ export class BookmarksController {
     if (!(view instanceof MarkdownView) || !(view.file instanceof TFile)) return;
     const headings = this.app.metadataCache.getFileCache(view.file)?.headings ?? [];
     const cursorLine = this.app.workspace.activeEditor?.editor.getCursor().line ?? 0;
-    const heading = [...headings].reverse().find((item) => (item.position?.line ?? -1) <= cursorLine);
+    const heading = [...headings]
+      .reverse()
+      .find((item) => (item.position?.line ?? -1) <= cursorLine);
     if (!heading) {
       await this.addItem({ type: "file", ctime: Date.now(), path: view.file.path });
       return;
@@ -108,13 +128,16 @@ export class BookmarksController {
   async bookmarkAllTabs(): Promise<void> {
     for (const leaf of this.collectLeaves()) {
       const file = (leaf.view as unknown as { file?: TFile | null }).file;
-      if (file instanceof TFile) this.addItemSync({ type: "file", ctime: Date.now(), path: file.path });
+      if (file instanceof TFile)
+        this.addItemSync({ type: "file", ctime: Date.now(), path: file.path });
     }
     await this.save();
   }
 
   async unbookmarkCurrentView(): Promise<void> {
-    const file = (this.app.workspace.activeLeaf?.view as unknown as { file?: TFile | null } | undefined)?.file;
+    const file = (
+      this.app.workspace.activeLeaf?.view as unknown as { file?: TFile | null } | undefined
+    )?.file;
     if (file instanceof TFile) {
       this.items = this.items.filter((item) => item.type !== "file" || item.path !== file.path);
       await this.save();
@@ -134,19 +157,28 @@ export class BookmarksController {
   async openItem(item: BookmarkItem): Promise<void> {
     if (item.type === "file") {
       const file = this.app.vault.getFileByPath(item.path);
-      if (file) await this.app.workspace.openFile(file, { active: true, eState: item.subpath ? { subpath: item.subpath } : undefined });
+      if (file)
+        await this.app.workspace.openFile(file, {
+          active: true,
+          eState: item.subpath ? { subpath: item.subpath } : undefined,
+        });
       return;
     }
     if (item.type === "folder") {
       const folder = this.app.vault.getFolderByPath(item.path);
       if (!folder) return;
-      const leaf = await this.app.workspace.ensureSideLeaf("file-explorer", "left", { reveal: true });
+      const leaf = await this.app.workspace.ensureSideLeaf("file-explorer", "left", {
+        reveal: true,
+      });
       const view = leaf.view as unknown as { revealFile?: (target: TFolder) => void };
       view.revealFile?.(folder);
       return;
     }
     if (item.type === "search") {
-      const leaf = await this.app.workspace.ensureSideLeaf("search", "left", { active: true, reveal: true });
+      const leaf = await this.app.workspace.ensureSideLeaf("search", "left", {
+        active: true,
+        reveal: true,
+      });
       const view = leaf.view as unknown as { focusSearch?: (query: string) => void };
       view.focusSearch?.(item.query);
       return;
@@ -162,15 +194,27 @@ export class BookmarksController {
     }
   }
 
-  async openItemInLeaf(item: BookmarkItem, leaf: WorkspaceLeaf, openState: { active?: boolean } = {}): Promise<void> {
+  async openItemInLeaf(
+    item: BookmarkItem,
+    leaf: WorkspaceLeaf,
+    openState: { active?: boolean } = {},
+  ): Promise<void> {
     await this.openBookmarkInLeaf(item, leaf, openState);
   }
 
-  async openBookmarkInLeaf(item: BookmarkItem, leaf: WorkspaceLeaf, openState: { active?: boolean } = {}): Promise<void> {
+  async openBookmarkInLeaf(
+    item: BookmarkItem,
+    leaf: WorkspaceLeaf,
+    openState: { active?: boolean } = {},
+  ): Promise<void> {
     const active = openState.active ?? true;
     if (item.type === "file") {
       const file = this.app.vault.getFileByPath(item.path);
-      if (file) await leaf.openFile(file, { active, eState: item.subpath ? { subpath: item.subpath } : undefined });
+      if (file)
+        await leaf.openFile(file, {
+          active,
+          eState: item.subpath ? { subpath: item.subpath } : undefined,
+        });
       return;
     }
     if (item.type === "graph") {
@@ -197,7 +241,10 @@ export class BookmarksController {
   private updateBookmarkedState(): void {
     for (const leaf of this.collectLeaves()) {
       const file = (leaf.view as unknown as { file?: TFile | null }).file;
-      leaf.tabHeaderEl?.classList.toggle("mod-bookmarked", file instanceof TFile && this.isBookmarked(file.path));
+      leaf.tabHeaderEl?.classList.toggle(
+        "mod-bookmarked",
+        file instanceof TFile && this.isBookmarked(file.path),
+      );
     }
   }
 
@@ -218,7 +265,7 @@ export class BookmarksController {
 
   private async loadStarredMigration(): Promise<BookmarkItem[]> {
     const starred = await this.app.jsonStore.read<string[] | { items?: string[] }>("starred");
-    const paths = Array.isArray(starred) ? starred : starred?.items ?? [];
+    const paths = Array.isArray(starred) ? starred : (starred?.items ?? []);
     return paths.map((path) => ({ type: "file", ctime: Date.now(), path }));
   }
 }
@@ -228,7 +275,10 @@ class BookmarksView extends ItemView {
   private readonly selectedDoms = new Set<BookmarkItemDom>();
   private activeDom: BookmarkItemDom | null = null;
 
-  constructor(leaf: WorkspaceLeaf, readonly controller: BookmarksController) {
+  constructor(
+    leaf: WorkspaceLeaf,
+    readonly controller: BookmarksController,
+  ) {
     super(leaf);
     this.contentEl.classList.add("bookmarks-pane");
   }
@@ -273,7 +323,12 @@ class BookmarksView extends ItemView {
     if ("path" in item) itemEl.dataset.path = item.path;
     const selfEl = document.createElement("div");
     selfEl.className = "tree-item-self bookmark is-clickable";
-    const itemDom: BookmarkItemDom = { item, itemEl, selfEl, titleEl: document.createElement("span") };
+    const itemDom: BookmarkItemDom = {
+      item,
+      itemEl,
+      selfEl,
+      titleEl: document.createElement("span"),
+    };
     this.itemDoms.set(item, itemDom);
     if (item.type === "group") {
       const collapseIconEl = document.createElement("div");
@@ -423,7 +478,10 @@ export function createBookmarksPluginDefinition(): InternalPluginDefinition {
       controller = new BookmarksController(app);
       plugin.instance = controller;
       plugin.registerViewType(VIEW_TYPE, (leaf) => new BookmarksView(leaf, controller!));
-      app.workspace.registerHoverLinkSource("bookmarks", { display: "Bookmarks", defaultMod: true });
+      app.workspace.registerHoverLinkSource("bookmarks", {
+        display: "Bookmarks",
+        defaultMod: true,
+      });
       plugin.register(() => app.workspace.unregisterHoverLinkSource("bookmarks"));
       plugin.registerGlobalCommand({
         id: "bookmarks:open",
@@ -507,12 +565,16 @@ function containsBookmark(items: BookmarkItem[], path: string): boolean {
 function removeBookmark(items: BookmarkItem[], target: BookmarkItem): BookmarkItem[] {
   return items
     .filter((item) => item !== target)
-    .map((item) => item.type === "group" ? { ...item, items: removeBookmark(item.items, target) } : item);
+    .map((item) =>
+      item.type === "group" ? { ...item, items: removeBookmark(item.items, target) } : item,
+    );
 }
 
 function getStateObject(view: { getState?: () => unknown }): Record<string, unknown> {
   const state = view.getState?.();
   if (!state || typeof state !== "object") return {};
   const maybeState = state as { state?: unknown };
-  return maybeState.state && typeof maybeState.state === "object" ? maybeState.state as Record<string, unknown> : {};
+  return maybeState.state && typeof maybeState.state === "object"
+    ? (maybeState.state as Record<string, unknown>)
+    : {};
 }

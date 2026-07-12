@@ -1,6 +1,10 @@
 import type { App } from "../app/App";
 import type { Plugin } from "./Plugin";
-import { SettingTab, type SettingDefinitionItem, type SettingTab as SettingTabShape } from "../app/SettingTab";
+import {
+  SettingTab,
+  type SettingDefinitionItem,
+  type SettingTab as SettingTabShape,
+} from "../app/SettingTab";
 import type { InternalPluginWrapper } from "./InternalPluginWrapper";
 
 export class PluginSettingTab extends SettingTab {
@@ -32,7 +36,12 @@ export class PluginSettingTab extends SettingTab {
   display(): void {}
 
   private getMutableSettings(): Record<string, unknown> {
-    if (!this.plugin.settings || typeof this.plugin.settings !== "object" || Array.isArray(this.plugin.settings)) this.plugin.settings = {};
+    if (
+      !this.plugin.settings ||
+      typeof this.plugin.settings !== "object" ||
+      Array.isArray(this.plugin.settings)
+    )
+      this.plugin.settings = {};
     return this.plugin.settings as Record<string, unknown>;
   }
 }
@@ -43,7 +52,11 @@ export class CorePluginSettingTab extends SettingTab {
   declare name: string;
   declare icon?: string;
 
-  constructor(app: App, readonly plugin: InternalPluginWrapper, readonly delegate?: SettingTabShape) {
+  constructor(
+    app: App,
+    readonly plugin: InternalPluginWrapper,
+    readonly delegate?: SettingTabShape,
+  ) {
     super(app, app.setting);
     const instance = plugin.instance as { id?: string; name?: string } | null;
     this.id = instance?.id ?? plugin.definition.id;

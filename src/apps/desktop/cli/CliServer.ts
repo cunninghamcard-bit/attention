@@ -42,7 +42,8 @@ export class CliServer {
     private readonly exec: CliExec,
     private readonly socketPath: string,
     private readonly isWindows: boolean = process.platform === "win32",
-    private readonly onError: (error: unknown) => void = (error) => console.error("CLI server error:", error),
+    private readonly onError: (error: unknown) => void = (error) =>
+      console.error("CLI server error:", error),
   ) {}
 
   start(): void {

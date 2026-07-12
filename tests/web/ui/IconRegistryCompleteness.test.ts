@@ -8,7 +8,10 @@ import { getIconIds } from "@web/ui/Icon";
 
 declare global {
   interface ImportMeta {
-    glob(pattern: string, options: { query: string; import: string; eager: true }): Record<string, string>;
+    glob(
+      pattern: string,
+      options: { query: string; import: string; eager: true },
+    ): Record<string, string>;
   }
 }
 
@@ -29,7 +32,9 @@ describe("icon registry completeness", () => {
         missing.set(name, files);
       }
     }
-    const report = [...missing.entries()].map(([name, files]) => `${name} (${files.join(", ")})`).join("\n");
+    const report = [...missing.entries()]
+      .map(([name, files]) => `${name} (${files.join(", ")})`)
+      .join("\n");
     expect(missing.size, `Unregistered icons render as blank elements:\n${report}`).toBe(0);
   });
 });

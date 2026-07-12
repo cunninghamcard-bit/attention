@@ -69,7 +69,7 @@ export class ProgressBar {
 
   setProgress(done: number, total: number): this {
     this.progressBarEl.classList.remove("is-indeterminate");
-    const value = total > 0 ? Math.max(0, Math.min(100, done / total * 100)) : 0;
+    const value = total > 0 ? Math.max(0, Math.min(100, (done / total) * 100)) : 0;
     this.lineEl.style.width = `${value}%`;
     return this;
   }

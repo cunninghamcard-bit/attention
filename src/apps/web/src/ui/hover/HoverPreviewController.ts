@@ -36,7 +36,11 @@ export class HoverPreviewController {
     this.app.workspace.trigger("hover-preview-close");
   }
 
-  private async renderPreview(container: HTMLElement, file: TFile | null, request: HoverPreviewRequest): Promise<void> {
+  private async renderPreview(
+    container: HTMLElement,
+    file: TFile | null,
+    request: HoverPreviewRequest,
+  ): Promise<void> {
     if (!file) {
       container.classList.add("mod-empty");
       container.textContent = `Missing target: ${request.linktext}`;

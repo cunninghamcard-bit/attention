@@ -1,5 +1,12 @@
 import { Compartment, type Extension } from "@codemirror/state";
-import { acceptChunk, getChunks, goToNextChunk, goToPreviousChunk, rejectChunk, unifiedMergeView } from "@codemirror/merge";
+import {
+  acceptChunk,
+  getChunks,
+  goToNextChunk,
+  goToPreviousChunk,
+  rejectChunk,
+  unifiedMergeView,
+} from "@codemirror/merge";
 import type { App } from "../app/App";
 import type { TFile } from "../vault/TAbstractFile";
 import type { ViewStateResult } from "./View";
@@ -19,16 +26,26 @@ export class DiffView extends CodeFileView {
   private readonly mergeCompartment = new Compartment();
   private original: string | null = null;
 
-  getViewType(): string { return DiffView.DIFF_VIEW_TYPE; }
-  getDisplayText(): string { return this.file ? `${this.file.name} (changes)` : "Diff"; }
-  getIcon(): string { return "lucide-file-diff"; }
+  getViewType(): string {
+    return DiffView.DIFF_VIEW_TYPE;
+  }
+  getDisplayText(): string {
+    return this.file ? `${this.file.name} (changes)` : "Diff";
+  }
+  getIcon(): string {
+    return "lucide-file-diff";
+  }
 
   protected override baseExtensions(): Extension[] {
     return [...super.baseExtensions(), this.mergeCompartment.of([])];
   }
 
   override async setState(state: unknown, result?: ViewStateResult): Promise<void> {
-    if (state && typeof state === "object" && typeof (state as { original?: unknown }).original === "string") {
+    if (
+      state &&
+      typeof state === "object" &&
+      typeof (state as { original?: unknown }).original === "string"
+    ) {
       this.original = (state as { original: string }).original;
     }
     await super.setState(state, result);
@@ -68,17 +85,26 @@ export class DiffView extends CodeFileView {
   private applyOriginal(): void {
     if (!this.cm) return;
     this.cm.dispatch({
-      effects: this.mergeCompartment.reconfigure(this.original === null ? [] : unifiedMergeView({
-        original: this.original,
-        collapseUnchanged: { margin: 3, minSize: 6 },
-        allowInlineDiffs: true,
-      })),
+      effects: this.mergeCompartment.reconfigure(
+        this.original === null
+          ? []
+          : unifiedMergeView({
+              original: this.original,
+              collapseUnchanged: { margin: 3, minSize: 6 },
+              allowInlineDiffs: true,
+            }),
+      ),
     });
   }
 }
 
 /** Opens the review view for `file`, diffing its current content against `original`. */
-export async function openFileDiff(app: App, file: TFile, original: string, options: { active?: boolean } = {}): Promise<WorkspaceLeaf> {
+export async function openFileDiff(
+  app: App,
+  file: TFile,
+  original: string,
+  options: { active?: boolean } = {},
+): Promise<WorkspaceLeaf> {
   const leaf = app.workspace.getLeaf("tab");
   await leaf.setViewState({
     type: DiffView.DIFF_VIEW_TYPE,
@@ -89,7 +115,11 @@ export async function openFileDiff(app: App, file: TFile, original: string, opti
 }
 
 /** Opens a comparison of two files: `file` stays editable, `against` is the baseline. */
-export async function openFileCompare(app: App, file: TFile, against: TFile): Promise<WorkspaceLeaf> {
+export async function openFileCompare(
+  app: App,
+  file: TFile,
+  against: TFile,
+): Promise<WorkspaceLeaf> {
   const original = await app.vault.read(against);
   return openFileDiff(app, file, original);
 }

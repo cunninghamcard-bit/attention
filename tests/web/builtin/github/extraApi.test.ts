@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { GitHubClient, type HttpResponse, type HttpTransport } from "@web/builtin/github/GitHubClient";
+import {
+  GitHubClient,
+  type HttpResponse,
+  type HttpTransport,
+} from "@web/builtin/github/GitHubClient";
 
 function mock(routes: Record<string, HttpResponse>): HttpTransport {
   return async ({ url, method }) => {
@@ -19,8 +23,29 @@ describe("GitHubClient issues/actions/files/inbox/merge", () => {
           status: 200,
           text: "",
           json: [
-            { number: 1, title: "Bug", state: "open", user: { login: "a" }, created_at: "", updated_at: "", html_url: "", labels: [], comments: 0 },
-            { number: 2, title: "PR-ish", state: "open", user: { login: "a" }, created_at: "", updated_at: "", html_url: "", labels: [], comments: 0, pull_request: {} },
+            {
+              number: 1,
+              title: "Bug",
+              state: "open",
+              user: { login: "a" },
+              created_at: "",
+              updated_at: "",
+              html_url: "",
+              labels: [],
+              comments: 0,
+            },
+            {
+              number: 2,
+              title: "PR-ish",
+              state: "open",
+              user: { login: "a" },
+              created_at: "",
+              updated_at: "",
+              html_url: "",
+              labels: [],
+              comments: 0,
+              pull_request: {},
+            },
           ],
         },
       }),
@@ -54,7 +79,16 @@ describe("GitHubClient issues/actions/files/inbox/merge", () => {
         "GET /repos/coder/ghostty-web/issues/10/comments?per_page=100": {
           status: 200,
           text: "",
-          json: [{ id: 1, user: { login: "rev" }, body: "hi", created_at: "2026-01-02T00:00:00Z", updated_at: "", html_url: "" }],
+          json: [
+            {
+              id: 1,
+              user: { login: "rev" },
+              body: "hi",
+              created_at: "2026-01-02T00:00:00Z",
+              updated_at: "",
+              html_url: "",
+            },
+          ],
         },
       }),
       "tok",
@@ -71,40 +105,59 @@ describe("GitHubClient issues/actions/files/inbox/merge", () => {
           status: 200,
           text: "",
           json: {
-            workflow_runs: [{
-              id: 99,
-              name: "ci",
-              display_title: "ci on main",
-              status: "completed",
-              conclusion: "success",
-              head_branch: "main",
-              head_sha: "abc",
-              event: "push",
-              html_url: "https://x",
-              created_at: "",
-              updated_at: "",
-              run_number: 1,
-              run_attempt: 1,
-            }],
+            workflow_runs: [
+              {
+                id: 99,
+                name: "ci",
+                display_title: "ci on main",
+                status: "completed",
+                conclusion: "success",
+                head_branch: "main",
+                head_sha: "abc",
+                event: "push",
+                html_url: "https://x",
+                created_at: "",
+                updated_at: "",
+                run_number: 1,
+                run_attempt: 1,
+              },
+            ],
           },
         },
         "GET /repos/coder/ghostty-web/actions/runs/99": {
           status: 200,
           text: "",
           json: {
-            id: 99, name: "ci", display_title: "ci on main", status: "completed", conclusion: "success",
-            head_branch: "main", head_sha: "abc", event: "push", html_url: "https://x",
-            created_at: "", updated_at: "", run_number: 1, run_attempt: 1,
+            id: 99,
+            name: "ci",
+            display_title: "ci on main",
+            status: "completed",
+            conclusion: "success",
+            head_branch: "main",
+            head_sha: "abc",
+            event: "push",
+            html_url: "https://x",
+            created_at: "",
+            updated_at: "",
+            run_number: 1,
+            run_attempt: 1,
           },
         },
         "GET /repos/coder/ghostty-web/actions/runs/99/jobs?per_page=50": {
           status: 200,
           text: "",
           json: {
-            jobs: [{
-              id: 1, name: "build", status: "completed", conclusion: "success",
-              steps: [{ name: "checkout", status: "completed", conclusion: "success", number: 1 }],
-            }],
+            jobs: [
+              {
+                id: 1,
+                name: "build",
+                status: "completed",
+                conclusion: "success",
+                steps: [
+                  { name: "checkout", status: "completed", conclusion: "success", number: 1 },
+                ],
+              },
+            ],
           },
         },
       }),
@@ -125,15 +178,29 @@ describe("GitHubClient issues/actions/files/inbox/merge", () => {
           text: "",
           json: [
             { name: "src", path: "src", type: "dir", size: 0, sha: "1", html_url: "" },
-            { name: "README.md", path: "README.md", type: "file", size: 12, sha: "2", html_url: "" },
+            {
+              name: "README.md",
+              path: "README.md",
+              type: "file",
+              size: 12,
+              sha: "2",
+              html_url: "",
+            },
           ],
         },
         "GET /repos/coder/ghostty-web/contents/README.md": {
           status: 200,
           text: "",
           json: {
-            name: "README.md", path: "README.md", type: "file", size: 12, sha: "2",
-            encoding: "base64", content, html_url: "https://x", download_url: null,
+            name: "README.md",
+            path: "README.md",
+            type: "file",
+            size: 12,
+            sha: "2",
+            encoding: "base64",
+            content,
+            html_url: "https://x",
+            download_url: null,
           },
         },
       }),
@@ -151,14 +218,20 @@ describe("GitHubClient issues/actions/files/inbox/merge", () => {
         "GET /notifications?per_page=40": {
           status: 200,
           text: "",
-          json: [{
-            id: "n1",
-            unread: true,
-            reason: "review_requested",
-            updated_at: "2026-07-01T00:00:00Z",
-            subject: { title: "Please review", type: "PullRequest", url: "https://api.github.com/repos/coder/ghostty-web/pulls/185" },
-            repository: { full_name: "coder/ghostty-web" },
-          }],
+          json: [
+            {
+              id: "n1",
+              unread: true,
+              reason: "review_requested",
+              updated_at: "2026-07-01T00:00:00Z",
+              subject: {
+                title: "Please review",
+                type: "PullRequest",
+                url: "https://api.github.com/repos/coder/ghostty-web/pulls/185",
+              },
+              repository: { full_name: "coder/ghostty-web" },
+            },
+          ],
         },
         "POST /repos/coder/ghostty-web/pulls/185/merge": {
           status: 200,

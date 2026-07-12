@@ -56,7 +56,10 @@ export class WorkspaceParent extends WorkspaceItem {
   replaceChild(oldChild: WorkspaceItem, newChild: WorkspaceItem): void;
   replaceChild(index: number, newChild: WorkspaceItem): void;
   replaceChild(indexOrOldChild: number | WorkspaceItem, newChild: WorkspaceItem): void {
-    const index = typeof indexOrOldChild === "number" ? indexOrOldChild : this.children.indexOf(indexOrOldChild);
+    const index =
+      typeof indexOrOldChild === "number"
+        ? indexOrOldChild
+        : this.children.indexOf(indexOrOldChild);
     if (index === -1) return;
     const oldChild = this.children[index];
     oldChild.setParent(null);

@@ -1,6 +1,10 @@
 import type { App } from "../app/App";
 import { Plugin, type PluginManifest } from "./Plugin";
-import { normalizePluginManifest, type PluginManifestInput, type RuntimePluginManifest } from "./PluginManifest";
+import {
+  normalizePluginManifest,
+  type PluginManifestInput,
+  type RuntimePluginManifest,
+} from "./PluginManifest";
 
 export interface PluginState {
   id: string;
@@ -16,11 +20,19 @@ export class PluginManager {
 
   constructor(readonly app: App) {}
 
-  async loadPlugin(manifest: PluginManifestInput, factory: (app: App, manifest: PluginManifest) => Plugin, userInitiated = false): Promise<Plugin> {
+  async loadPlugin(
+    manifest: PluginManifestInput,
+    factory: (app: App, manifest: PluginManifest) => Plugin,
+    userInitiated = false,
+  ): Promise<Plugin> {
     return this.enablePlugin(manifest, factory, userInitiated);
   }
 
-  async enablePlugin(manifest: PluginManifestInput, factory: (app: App, manifest: PluginManifest) => Plugin, userInitiated = false): Promise<Plugin> {
+  async enablePlugin(
+    manifest: PluginManifestInput,
+    factory: (app: App, manifest: PluginManifest) => Plugin,
+    userInitiated = false,
+  ): Promise<Plugin> {
     const runtimeManifest = normalizePluginManifest(manifest);
     const existing = this.plugins.get(runtimeManifest.id);
     if (existing) return existing;
@@ -101,6 +113,10 @@ export class PluginManager {
   private reportPluginError(plugin: Plugin, phase: string, error: unknown): void {
     const source = `plugin:${plugin.manifest.id}:${phase}`;
     this.app.diagnostics.errors.report(source, error, true);
-    this.app.diagnostics.logger.error(`Plugin ${plugin.manifest.id} failed during ${phase}`, error, source);
+    this.app.diagnostics.logger.error(
+      `Plugin ${plugin.manifest.id} failed during ${phase}`,
+      error,
+      source,
+    );
   }
 }

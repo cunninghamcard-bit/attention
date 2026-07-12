@@ -1,4 +1,8 @@
-export type AttachmentImportData = ArrayBuffer | ArrayBufferView | null | Promise<ArrayBuffer | ArrayBufferView | null>;
+export type AttachmentImportData =
+  | ArrayBuffer
+  | ArrayBufferView
+  | null
+  | Promise<ArrayBuffer | ArrayBufferView | null>;
 
 export interface AttachmentImportFile {
   name: string;
@@ -10,24 +14,30 @@ export interface AttachmentImportFile {
 
 export type AttachmentImportMode = "drop" | "clipboard";
 
-export function getAttachmentFilesFromDataTransfer(dataTransfer: DataTransfer | null, modeOrIncludeData: AttachmentImportMode | boolean = "drop", includeData = true): AttachmentImportFile[] {
-  const shouldIncludeData = typeof modeOrIncludeData === "boolean" ? modeOrIncludeData : includeData;
-  const itemFiles = Array.from(dataTransfer?.items ?? [])
-    .flatMap((item) => {
-      if (item.kind !== "file") return [];
-      const file = item.getAsFile();
-      if (!file) return [];
-      return [createAttachmentImportFile(file, shouldIncludeData)];
-    });
+export function getAttachmentFilesFromDataTransfer(
+  dataTransfer: DataTransfer | null,
+  modeOrIncludeData: AttachmentImportMode | boolean = "drop",
+  includeData = true,
+): AttachmentImportFile[] {
+  const shouldIncludeData =
+    typeof modeOrIncludeData === "boolean" ? modeOrIncludeData : includeData;
+  const itemFiles = Array.from(dataTransfer?.items ?? []).flatMap((item) => {
+    if (item.kind !== "file") return [];
+    const file = item.getAsFile();
+    if (!file) return [];
+    return [createAttachmentImportFile(file, shouldIncludeData)];
+  });
   if (itemFiles.length) return itemFiles;
-  return Array.from(dataTransfer?.files ?? []).map((file) => createAttachmentImportFile(file, shouldIncludeData));
+  return Array.from(dataTransfer?.files ?? []).map((file) =>
+    createAttachmentImportFile(file, shouldIncludeData),
+  );
 }
 
 export function hasDataTransferAttachmentFiles(dataTransfer: DataTransfer | null): boolean {
   return Boolean(
-    Array.from(dataTransfer?.items ?? []).some((item) => item.kind === "file")
-    || (dataTransfer?.files?.length ?? 0) > 0
-    || Array.from(dataTransfer?.types ?? []).includes("Files"),
+    Array.from(dataTransfer?.items ?? []).some((item) => item.kind === "file") ||
+    (dataTransfer?.files?.length ?? 0) > 0 ||
+    Array.from(dataTransfer?.types ?? []).includes("Files"),
   );
 }
 

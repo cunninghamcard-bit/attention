@@ -3,9 +3,16 @@ import { SuggestModal } from "../ui/suggest/SuggestModal";
 import { TAbstractFile, TFile, TFolder } from "../vault/TAbstractFile";
 
 export class MoveFileModal extends SuggestModal<TFolder> {
-  constructor(app: App, readonly files: TAbstractFile[]) {
+  constructor(
+    app: App,
+    readonly files: TAbstractFile[],
+  ) {
     super(app);
-    this.setPlaceholder(files.length === 1 ? `Move ${files[0]?.name ?? "item"} to...` : `Move ${files.length} items to...`);
+    this.setPlaceholder(
+      files.length === 1
+        ? `Move ${files[0]?.name ?? "item"} to...`
+        : `Move ${files.length} items to...`,
+    );
     this.emptyStateText = "No folders found";
     this.setInstructions([
       { command: "↑↓", purpose: "Navigate" },
@@ -16,14 +23,22 @@ export class MoveFileModal extends SuggestModal<TFolder> {
 
   getSuggestions(query: string): TFolder[] {
     const normalizedQuery = query.trim().toLowerCase();
-    return this.app.vault.getAllFolders(true)
+    return this.app.vault
+      .getAllFolders(true)
       .filter((folder) => this.canMoveTo(folder))
       .filter((folder) => {
         if (!normalizedQuery) return true;
-        return getFolderLabel(this.app, folder).toLowerCase().includes(normalizedQuery)
-          || folder.path.toLowerCase().includes(normalizedQuery);
+        return (
+          getFolderLabel(this.app, folder).toLowerCase().includes(normalizedQuery) ||
+          folder.path.toLowerCase().includes(normalizedQuery)
+        );
       })
-      .sort((left, right) => getSortPath(left).localeCompare(getSortPath(right), undefined, { sensitivity: "base", numeric: true }));
+      .sort((left, right) =>
+        getSortPath(left).localeCompare(getSortPath(right), undefined, {
+          sensitivity: "base",
+          numeric: true,
+        }),
+      );
   }
 
   renderSuggestion(folder: TFolder, el: HTMLElement): void {
@@ -50,7 +65,8 @@ export class MoveFileModal extends SuggestModal<TFolder> {
 
   private canMoveTo(folder: TFolder): boolean {
     return this.files.every((file) => {
-      if (file instanceof TFolder && (folder === file || folder.path.startsWith(`${file.path}/`))) return false;
+      if (file instanceof TFolder && (folder === file || folder.path.startsWith(`${file.path}/`)))
+        return false;
       return getMoveTargetPath(file, folder) !== file.path;
     });
   }

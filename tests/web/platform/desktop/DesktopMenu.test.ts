@@ -83,9 +83,16 @@ describe("DesktopMenu Obsidian application menu bridge", () => {
     (window as Window & { electron?: unknown }).electron = { ipcRenderer: { send } };
     const app = new App(document.createElement("div"));
 
-    app.desktopMenu.updateMenuItems([{ itemId: "toggle-preview", eState: { checked: true, enabled: true } }], true);
+    app.desktopMenu.updateMenuItems(
+      [{ itemId: "toggle-preview", eState: { checked: true, enabled: true } }],
+      true,
+    );
 
-    expect(send).toHaveBeenLastCalledWith("update-menu-items", [{ itemId: "toggle-preview", eState: { checked: true, enabled: true } }], true);
+    expect(send).toHaveBeenLastCalledWith(
+      "update-menu-items",
+      [{ itemId: "toggle-preview", eState: { checked: true, enabled: true } }],
+      true,
+    );
   });
 
   it("honors nativeMenus=false without sending a renderer menu template", () => {
@@ -101,7 +108,9 @@ describe("DesktopMenu Obsidian application menu bridge", () => {
   });
 
   it("formats Electron accelerators from Obsidian hotkeys", () => {
-    expect(formatElectronAccelerator({ modifiers: ["Mod", "Shift"], key: "t" })).toBe("CmdOrCtrl+Shift+T");
+    expect(formatElectronAccelerator({ modifiers: ["Mod", "Shift"], key: "t" })).toBe(
+      "CmdOrCtrl+Shift+T",
+    );
     expect(formatElectronAccelerator({ modifiers: ["Ctrl"], key: "Tab" })).toBe("Ctrl+Tab");
     expect(formatElectronAccelerator({ modifiers: ["Mod"], key: " " })).toBe("CmdOrCtrl+Space");
   });

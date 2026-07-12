@@ -29,6 +29,11 @@ describe("ViewRegistry", () => {
     registry.unregisterView("missing-view");
     registry.unregisterExtensions(["custom"]);
 
-    expect(events).toEqual(["registered:custom-view", "extensions", "unregistered:custom-view", "extensions"]);
+    expect(events).toEqual([
+      "registered:custom-view",
+      "extensions",
+      "unregistered:custom-view",
+      "extensions",
+    ]);
   });
 });

@@ -8,24 +8,28 @@ describe("InternalPluginWrapper Obsidian parity", () => {
     let finishUserEnable: (() => void) | null = null;
     let enableResolved = false;
     const seen: string[] = [];
-    const wrapper = new InternalPluginWrapper(app, {
-      id: "core-user-enable",
-      name: "Core User Enable",
-      defaultOn: false,
-      init: () => {},
-      onEnable: () => {
-        seen.push("onEnable");
+    const wrapper = new InternalPluginWrapper(
+      app,
+      {
+        id: "core-user-enable",
+        name: "Core User Enable",
+        defaultOn: false,
+        init: () => {},
+        onEnable: () => {
+          seen.push("onEnable");
+        },
+        onUserEnable: () => {
+          seen.push("onUserEnable");
+          return new Promise<void>((resolve) => {
+            finishUserEnable = () => {
+              seen.push("onUserEnable:done");
+              resolve();
+            };
+          });
+        },
       },
-      onUserEnable: () => {
-        seen.push("onUserEnable");
-        return new Promise<void>((resolve) => {
-          finishUserEnable = () => {
-            seen.push("onUserEnable:done");
-            resolve();
-          };
-        });
-      },
-    }, app.internalPlugins);
+      app.internalPlugins,
+    );
 
     wrapper.init();
 
@@ -51,32 +55,36 @@ describe("InternalPluginWrapper Obsidian parity", () => {
     let finishDisable: (() => void) | null = null;
     let disableResolved = false;
     const seen: string[] = [];
-    const wrapper = new InternalPluginWrapper(app, {
-      id: "core-async-disable",
-      name: "Core Async Disable",
-      defaultOn: false,
-      init: (_app, plugin) => {
-        plugin.registerGlobalCommand({
-          id: "core-async-disable:run",
-          name: "Run",
-          callback: () => {
-            seen.push("run");
-          },
-        });
+    const wrapper = new InternalPluginWrapper(
+      app,
+      {
+        id: "core-async-disable",
+        name: "Core Async Disable",
+        defaultOn: false,
+        init: (_app, plugin) => {
+          plugin.registerGlobalCommand({
+            id: "core-async-disable:run",
+            name: "Run",
+            callback: () => {
+              seen.push("run");
+            },
+          });
+        },
+        onDisable: () => {
+          seen.push("onDisable");
+          return new Promise<void>((resolve) => {
+            finishDisable = () => {
+              seen.push("onDisable:done");
+              resolve();
+            };
+          });
+        },
+        onUserDisable: () => {
+          seen.push("onUserDisable");
+        },
       },
-      onDisable: () => {
-        seen.push("onDisable");
-        return new Promise<void>((resolve) => {
-          finishDisable = () => {
-            seen.push("onDisable:done");
-            resolve();
-          };
-        });
-      },
-      onUserDisable: () => {
-        seen.push("onUserDisable");
-      },
-    }, app.internalPlugins);
+      app.internalPlugins,
+    );
 
     wrapper.init();
     await wrapper.enable();

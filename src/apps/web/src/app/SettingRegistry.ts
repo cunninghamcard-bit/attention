@@ -47,12 +47,17 @@ export class SettingRegistry {
 
   open(preferredTabId = this.lastTabId ?? undefined): void {
     this.modal?.close();
-    this.modal = new SettingsModal(this.app, preferredTabId, (tab) => {
-      this.activeTab = tab;
-      if (tab.id) this.lastTabId = tab.id;
-    }, () => {
-      this.modal = null;
-    });
+    this.modal = new SettingsModal(
+      this.app,
+      preferredTabId,
+      (tab) => {
+        this.activeTab = tab;
+        if (tab.id) this.lastTabId = tab.id;
+      },
+      () => {
+        this.modal = null;
+      },
+    );
     this.modal.open();
   }
 

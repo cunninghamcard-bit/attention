@@ -4,7 +4,10 @@ import { parsePatchFiles, type FileDiffMetadata } from "@pierre/diffs";
  * Turn a GitHub `files[].patch` (hunk-only) into FileDiffMetadata for @pierre/diffs.
  * Full `git` style patches pass through unchanged.
  */
-export function fileDiffFromGithubPatch(path: string, patch: string | null | undefined): FileDiffMetadata | null {
+export function fileDiffFromGithubPatch(
+  path: string,
+  patch: string | null | undefined,
+): FileDiffMetadata | null {
   if (!patch?.trim()) return null;
   const full = patch.startsWith("diff --git")
     ? patch

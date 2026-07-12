@@ -5,7 +5,10 @@ import type { AgentTransport } from "@web/builtin/agent/AgentTransport";
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
-function events(agentId: string, list: Array<DistributiveOmit<AgentEvent, "seq" | "agentId">>): AgentEvent[] {
+function events(
+  agentId: string,
+  list: Array<DistributiveOmit<AgentEvent, "seq" | "agentId">>,
+): AgentEvent[] {
   return list.map((event, index) => ({ ...event, seq: index + 1, agentId }) as AgentEvent);
 }
 
@@ -21,7 +24,8 @@ function fakeTransport(): AgentTransport {
 describe("Agent queued prompts", () => {
   it("stores a queued message and triggers changed while a run is active", () => {
     const session = new Agent("t1", fakeTransport());
-    for (const event of events("t1", [{ type: "run.started", runId: "r1" }])) session.applyEvent(event);
+    for (const event of events("t1", [{ type: "run.started", runId: "r1" }]))
+      session.applyEvent(event);
 
     const seen: string[] = [];
     session.on("changed", () => seen.push("changed"));
@@ -36,12 +40,20 @@ describe("Agent queued prompts", () => {
     const session = new Agent("t1", transport);
     session.queueMessage("queued text", [{ name: "a.txt", content: "hi" }]);
 
-    session.applyEvent({ type: "run.closed", runId: "r1", status: "completed", seq: 1, agentId: "t1" });
+    session.applyEvent({
+      type: "run.closed",
+      runId: "r1",
+      status: "completed",
+      seq: 1,
+      agentId: "t1",
+    });
     // sendMessage fires fire-and-forget; let its microtask settle.
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(transport.sendMessage).toHaveBeenCalledWith("t1", "queued text", [{ name: "a.txt", content: "hi" }]);
+    expect(transport.sendMessage).toHaveBeenCalledWith("t1", "queued text", [
+      { name: "a.txt", content: "hi" },
+    ]);
     expect(session.queued).toHaveLength(0);
   });
 
@@ -55,7 +67,13 @@ describe("Agent queued prompts", () => {
 
     expect(session.queued).toEqual([{ text: "keep me", attachments: [] }]);
 
-    session.applyEvent({ type: "run.closed", runId: "r1", status: "completed", seq: 1, agentId: "t1" });
+    session.applyEvent({
+      type: "run.closed",
+      runId: "r1",
+      status: "completed",
+      seq: 1,
+      agentId: "t1",
+    });
     expect(transport.sendMessage).toHaveBeenCalledWith("t1", "keep me", []);
     expect(transport.sendMessage).not.toHaveBeenCalledWith("t1", "drop me", []);
   });

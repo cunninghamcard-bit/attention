@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": [
+    "**/*.css",
+    "**/*.md",
+    "**/public/**",
+    "src/apps/web/src/styles/**",
+    "src/apps/web/src/app/theme/reconstruction/**"
+  ]
+}

@@ -118,7 +118,10 @@ interface NativeBackButtonSubscription {
 }
 
 interface NativeAppPlugin {
-  addListener?(eventName: "backButton", listener: () => void | Promise<void>): NativeBackButtonSubscription | Promise<NativeBackButtonSubscription>;
+  addListener?(
+    eventName: "backButton",
+    listener: () => void | Promise<void>,
+  ): NativeBackButtonSubscription | Promise<NativeBackButtonSubscription>;
   minimizeApp?(): void | Promise<void>;
 }
 

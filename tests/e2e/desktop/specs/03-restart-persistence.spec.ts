@@ -14,7 +14,9 @@ test("restores the open tab across an app restart", async ({ launchApp, vaultPat
     await first.page.locator(".nav-folder-title", { hasText: "Pics" }).first().click();
   }
   await file.click();
-  await expect(first.page.locator(".workspace-leaf.mod-active .image-container img")).toBeVisible({ timeout: 15_000 });
+  await expect(first.page.locator(".workspace-leaf.mod-active .image-container img")).toBeVisible({
+    timeout: 15_000,
+  });
 
   // The layout save is debounced; give it a beat before killing the app.
   await first.page.waitForTimeout(2_000);
@@ -25,6 +27,8 @@ test("restores the open tab across an app restart", async ({ launchApp, vaultPat
   expect(existsSync(join(vaultPath, ".obsidian", "workspace.json"))).toBe(true);
 
   const second = await launchApp();
-  await expect(second.page.locator(".workspace-leaf .image-container img").first()).toBeVisible({ timeout: 20_000 });
+  await expect(second.page.locator(".workspace-leaf .image-container img").first()).toBeVisible({
+    timeout: 20_000,
+  });
   await second.close();
 });

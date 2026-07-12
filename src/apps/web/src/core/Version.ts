@@ -21,5 +21,5 @@ function parseVersion(version: string): number[] {
     .replace(/^v/i, "")
     .split(/[.-]/)
     .map((part) => Number.parseInt(part, 10))
-    .map((part) => Number.isFinite(part) ? part : 0);
+    .map((part) => (Number.isFinite(part) ? part : 0));
 }

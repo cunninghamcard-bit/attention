@@ -50,7 +50,9 @@ describe("Vault with FileSystemAdapter events", () => {
     const seen: string[] = [];
     vault.on("create", (file) => seen.push(`create:${(file as TFile | TFolder).path}`));
     vault.on("modify", (file) => seen.push(`modify:${(file as TFile).path}`));
-    vault.on("rename", (file, oldPath) => seen.push(`rename:${String(oldPath)}->${(file as TFile).path}`));
+    vault.on("rename", (file, oldPath) =>
+      seen.push(`rename:${String(oldPath)}->${(file as TFile).path}`),
+    );
     vault.on("delete", (file) => seen.push(`delete:${(file as TFile).path}`));
 
     const file = await vault.create("Folder/Note.md", "hello");
@@ -107,7 +109,9 @@ describe("Vault with FileSystemAdapter events", () => {
   });
 
   it("loads existing filesystem entries into the Vault object map", async () => {
-    const nextBasePath = await fs.mkdtemp(path.join(os.tmpdir(), "obsidian-reconstructed-existing-"));
+    const nextBasePath = await fs.mkdtemp(
+      path.join(os.tmpdir(), "obsidian-reconstructed-existing-"),
+    );
     const nextAdapter = new FileSystemAdapter(nextBasePath);
     await fs.mkdir(path.join(nextBasePath, "Existing"), { recursive: true });
     await fs.writeFile(path.join(nextBasePath, "Existing", "Nested.md"), "nested", "utf8");
@@ -134,7 +138,11 @@ describe("Vault with FileSystemAdapter events", () => {
     const nextBasePath = await fs.mkdtemp(path.join(os.tmpdir(), "obsidian-reconstructed-config-"));
     await fs.mkdir(path.join(nextBasePath, ".obsidian", "plugins", "sample"), { recursive: true });
     await fs.writeFile(path.join(nextBasePath, ".obsidian", "app.json"), "{}", "utf8");
-    await fs.writeFile(path.join(nextBasePath, ".obsidian", "plugins", "sample", "data.json"), "{}", "utf8");
+    await fs.writeFile(
+      path.join(nextBasePath, ".obsidian", "plugins", "sample", "data.json"),
+      "{}",
+      "utf8",
+    );
     const nextAdapter = new FileSystemAdapter(nextBasePath);
     const nextVault = new Vault(nextAdapter);
     const rawPaths: string[] = [];

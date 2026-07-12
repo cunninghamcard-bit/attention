@@ -111,8 +111,14 @@ export class Canvas {
       const node = new CanvasNode({
         id: createCanvasId("node"),
         type: "file",
-        x: x + (CANVAS_DEFAULT_FILE_NODE_DIMENSIONS.width + CANVAS_FILE_NODE_GAP) * (index % CANVAS_FILE_NODE_COLUMNS),
-        y: y + (CANVAS_DEFAULT_FILE_NODE_DIMENSIONS.height + CANVAS_FILE_NODE_GAP) * Math.trunc(index / CANVAS_FILE_NODE_COLUMNS),
+        x:
+          x +
+          (CANVAS_DEFAULT_FILE_NODE_DIMENSIONS.width + CANVAS_FILE_NODE_GAP) *
+            (index % CANVAS_FILE_NODE_COLUMNS),
+        y:
+          y +
+          (CANVAS_DEFAULT_FILE_NODE_DIMENSIONS.height + CANVAS_FILE_NODE_GAP) *
+            Math.trunc(index / CANVAS_FILE_NODE_COLUMNS),
         width: CANVAS_DEFAULT_FILE_NODE_DIMENSIONS.width,
         height: CANVAS_DEFAULT_FILE_NODE_DIMENSIONS.height,
         file: files[index],
@@ -141,14 +147,27 @@ export class Canvas {
   }
 
   createGroupNode(label = "Group", x = 0, y = 0): CanvasNode<CanvasGroupNodeData> {
-    const node = new CanvasNode({ id: createCanvasId("node"), type: "group", x, y, width: 480, height: 320, label });
+    const node = new CanvasNode({
+      id: createCanvasId("node"),
+      type: "group",
+      x,
+      y,
+      width: 480,
+      height: 320,
+      label,
+    });
     this.nodes.set(node.id, node);
     this.selectOnly(node.id);
     this.onChange();
     return node;
   }
 
-  createEdge(fromNode: string, toNode: string, fromSide: CanvasSide = "right", toSide: CanvasSide = "left"): CanvasEdge {
+  createEdge(
+    fromNode: string,
+    toNode: string,
+    fromSide: CanvasSide = "right",
+    toSide: CanvasSide = "left",
+  ): CanvasEdge {
     const edge = new CanvasEdge({
       id: createCanvasId("edge"),
       fromNode,
@@ -179,12 +198,15 @@ export class Canvas {
       const toNode = idMap.get(edge.toNode);
       if (!fromNode || !toNode) continue;
       const id = createCanvasId("edge");
-      this.edges.set(id, new CanvasEdge({
-        ...edge,
+      this.edges.set(
         id,
-        fromNode,
-        toNode,
-      }));
+        new CanvasEdge({
+          ...edge,
+          id,
+          fromNode,
+          toNode,
+        }),
+      );
     }
     this.onChange();
   }
@@ -217,14 +239,21 @@ export class Canvas {
     for (const id of this.nodes.keys()) this.selection.add(id);
   }
 
-  selectWithin(rect: { x: number; y: number; width: number; height: number }, additive = false): void {
+  selectWithin(
+    rect: { x: number; y: number; width: number; height: number },
+    additive = false,
+  ): void {
     if (!additive) this.selection.clear();
     const left = Math.min(rect.x, rect.x + rect.width);
     const right = Math.max(rect.x, rect.x + rect.width);
     const top = Math.min(rect.y, rect.y + rect.height);
     const bottom = Math.max(rect.y, rect.y + rect.height);
     for (const node of this.nodes.values()) {
-      const overlaps = node.x < right && node.x + node.width > left && node.y < bottom && node.y + node.height > top;
+      const overlaps =
+        node.x < right &&
+        node.x + node.width > left &&
+        node.y < bottom &&
+        node.y + node.height > top;
       if (overlaps) this.selection.add(node.id);
     }
   }
@@ -233,7 +262,8 @@ export class Canvas {
     const selected = new Set(this.selection);
     for (const id of selected) this.nodes.delete(id);
     for (const [id, edge] of this.edges.entries()) {
-      if (selected.has(edge.data.fromNode) || selected.has(edge.data.toNode) || selected.has(id)) this.edges.delete(id);
+      if (selected.has(edge.data.fromNode) || selected.has(edge.data.toNode) || selected.has(id))
+        this.edges.delete(id);
     }
     this.selection.clear();
     this.onChange();
@@ -271,8 +301,21 @@ export class Canvas {
     this.viewport.y += dy;
   }
 
-  zoomToBbox(bbox: { x: number; y: number; width: number; height: number }, viewportWidth = 800, viewportHeight = 600): void {
-    const zoom = Math.max(0.1, Math.min(2, Math.min(viewportWidth / Math.max(1, bbox.width), viewportHeight / Math.max(1, bbox.height)) * 0.8));
+  zoomToBbox(
+    bbox: { x: number; y: number; width: number; height: number },
+    viewportWidth = 800,
+    viewportHeight = 600,
+  ): void {
+    const zoom = Math.max(
+      0.1,
+      Math.min(
+        2,
+        Math.min(
+          viewportWidth / Math.max(1, bbox.width),
+          viewportHeight / Math.max(1, bbox.height),
+        ) * 0.8,
+      ),
+    );
     this.viewport.zoom = zoom;
     this.viewport.tZoom = zoom;
     this.viewport.x = viewportWidth / 2 - (bbox.x + bbox.width / 2) * zoom;
@@ -280,7 +323,11 @@ export class Canvas {
   }
 
   zoomToFit(width?: number, height?: number): void {
-    this.zoomToBbox(this.getBounds([...this.nodes.values()].map((node) => node.getData())), width, height);
+    this.zoomToBbox(
+      this.getBounds([...this.nodes.values()].map((node) => node.getData())),
+      width,
+      height,
+    );
   }
 
   zoomToSelection(width?: number, height?: number): void {
@@ -291,11 +338,13 @@ export class Canvas {
   getSingleSelectedTextNode(): CanvasNode<CanvasTextNodeData> | null {
     if (this.selection.size !== 1) return null;
     const node = this.nodes.get([...this.selection][0]);
-    return node?.data.type === "text" ? node as CanvasNode<CanvasTextNodeData> : null;
+    return node?.data.type === "text" ? (node as CanvasNode<CanvasTextNodeData>) : null;
   }
 
   getGroupNodes(): Array<CanvasNode<CanvasGroupNodeData>> {
-    return [...this.nodes.values()].filter((node): node is CanvasNode<CanvasGroupNodeData> => node.data.type === "group");
+    return [...this.nodes.values()].filter(
+      (node): node is CanvasNode<CanvasGroupNodeData> => node.data.type === "group",
+    );
   }
 
   getBounds(nodes: CanvasNodeData[]): { x: number; y: number; width: number; height: number } {

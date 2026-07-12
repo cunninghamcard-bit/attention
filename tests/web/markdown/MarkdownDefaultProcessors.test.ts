@@ -15,11 +15,21 @@ describe("Markdown default processors", () => {
     const owner = new Component();
     const container = document.createElement("div");
 
-    await MarkdownRenderer.render(app, "```math\nx^2\n```\n\n```mermaid\ngraph TD; A-->B;\n```", container, "Note.md", owner);
+    await MarkdownRenderer.render(
+      app,
+      "```math\nx^2\n```\n\n```mermaid\ngraph TD; A-->B;\n```",
+      container,
+      "Note.md",
+      owner,
+    );
 
-    expect(container.querySelector(".block-language-math .math.math-block")?.textContent).toBe("x^2");
+    expect(container.querySelector(".block-language-math .math.math-block")?.textContent).toBe(
+      "x^2",
+    );
     const mermaid = container.querySelector<HTMLElement>(".block-language-mermaid.mermaid");
-    expect(mermaid?.querySelector("svg")?.getAttribute("data-mermaid-source")).toBe("graph TD; A-->B;");
+    expect(mermaid?.querySelector("svg")?.getAttribute("data-mermaid-source")).toBe(
+      "graph TD; A-->B;",
+    );
     expect(container.textContent).not.toContain("placeholder");
   });
 
@@ -94,14 +104,18 @@ describe("Markdown default processors", () => {
     });
 
     it("renders audio/video/pdf/generic embeds with the real classes and elements", async () => {
-      const { container } = await render("![[Clip.mp3]]\n\n![[Movie.mp4]]\n\n![[Paper.pdf]]\n\n![[Data.zip]]");
+      const { container } = await render(
+        "![[Clip.mp3]]\n\n![[Movie.mp4]]\n\n![[Paper.pdf]]\n\n![[Data.zip]]",
+      );
       const audio = container.querySelector<HTMLElement>(".internal-embed.audio-embed audio");
       expect(audio?.getAttribute("controls")).toBe("");
       expect(audio?.getAttribute("controlsList")).toBe("nodownload");
       const video = container.querySelector<HTMLElement>(".internal-embed.video-embed video");
       expect(video?.getAttribute("preload")).toBe("metadata");
       expect(container.querySelector(".internal-embed.pdf-embed iframe")).toBeTruthy();
-      const generic = container.querySelector<HTMLElement>(".internal-embed.file-embed.mod-generic");
+      const generic = container.querySelector<HTMLElement>(
+        ".internal-embed.file-embed.mod-generic",
+      );
       expect(generic?.querySelector(".file-embed-title")?.textContent).toBe("Data.zip");
     });
 

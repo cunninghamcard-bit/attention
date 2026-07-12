@@ -26,9 +26,10 @@ export class AgentStatusBar {
     const transport = new AgentTransport();
     const poll = async () => {
       const health = await transport.health();
-      this.kernelLabel = health?.status === "ok"
-        ? STRINGS.status.kernel(health.version)
-        : STRINGS.status.kernelOffline;
+      this.kernelLabel =
+        health?.status === "ok"
+          ? STRINGS.status.kernel(health.version)
+          : STRINGS.status.kernelOffline;
       this.render();
     };
     void poll();
@@ -59,7 +60,8 @@ export class AgentStatusBar {
     if (usage) pieces.push(formatUsage(usage));
     // The offline marker always shows (that is the point); the version
     // tag only accompanies an active chat, keeping the bar quiet.
-    if (this.kernelLabel === STRINGS.status.kernelOffline || (this.kernelLabel && this.current)) pieces.push(this.kernelLabel);
+    if (this.kernelLabel === STRINGS.status.kernelOffline || (this.kernelLabel && this.current))
+      pieces.push(this.kernelLabel);
     if (pieces.length === 0) {
       this.el.style.display = "none";
       return;

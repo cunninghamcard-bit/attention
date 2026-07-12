@@ -40,7 +40,10 @@ class StatefulView extends View {
   }
 
   override async setState(state: unknown): Promise<void> {
-    this.payload = state && typeof state === "object" && !Array.isArray(state) ? state as Record<string, unknown> : {};
+    this.payload =
+      state && typeof state === "object" && !Array.isArray(state)
+        ? (state as Record<string, unknown>)
+        : {};
   }
 
   override getState(): Record<string, unknown> {
@@ -68,7 +71,8 @@ describe("Workspace public API parity", () => {
     const laterFile = await app.vault.create("Later.md", "later");
     const opened: string[] = [];
     app.workspace.on("file-open", (openedFile: unknown) => {
-      if (openedFile && typeof openedFile === "object" && "path" in openedFile) opened.push(String((openedFile as { path: unknown }).path));
+      if (openedFile && typeof openedFile === "object" && "path" in openedFile)
+        opened.push(String((openedFile as { path: unknown }).path));
     });
 
     await app.workspace.openFile(file, { active: true });
@@ -85,7 +89,10 @@ describe("Workspace public API parity", () => {
 
   it("does not fall back to an older file when the active navigable view is not a FileView", async () => {
     const app = new App(document.createElement("div"));
-    app.viewRegistry.registerView("navigable-public-api-test", (leaf) => new NavigablePlainView(leaf));
+    app.viewRegistry.registerView(
+      "navigable-public-api-test",
+      (leaf) => new NavigablePlainView(leaf),
+    );
     const file = await app.vault.create("Previous active.md", "previous");
     await app.workspace.openFile(file, { active: true });
 
@@ -139,8 +146,12 @@ describe("Workspace public API parity", () => {
 
   it("registers operator function display configs by id like Obsidian", () => {
     const app = new App(document.createElement("div"));
-    const first = [{ funcName: "contains", display: "contains", inverseDisplay: "does not contain" }];
-    const replacement = [{ funcName: "matches", display: "matches", inverseDisplay: "does not match" }];
+    const first = [
+      { funcName: "contains", display: "contains", inverseDisplay: "does not contain" },
+    ];
+    const replacement = [
+      { funcName: "matches", display: "matches", inverseDisplay: "does not match" },
+    ];
 
     expect(Object.keys(app.workspace.operatorFuncConfigs)).toEqual([]);
 
@@ -179,12 +190,16 @@ describe("Workspace public API parity", () => {
       'Action "plugin-action" is already registered as a handler.',
     );
 
-    await expect(app.uriRouter.handleUri("workbench://plugin-action?source=first")).resolves.toBe(true);
+    await expect(app.uriRouter.handleUri("workbench://plugin-action?source=first")).resolves.toBe(
+      true,
+    );
     expect(first).toHaveBeenCalledWith({ action: "plugin-action", source: "first" });
     expect(second).not.toHaveBeenCalled();
 
     app.workspace.unregisterObsidianProtocolHandler("plugin-action", second);
-    await expect(app.uriRouter.handleUri("workbench://plugin-action?source=still-first")).resolves.toBe(true);
+    await expect(
+      app.uriRouter.handleUri("workbench://plugin-action?source=still-first"),
+    ).resolves.toBe(true);
     expect(first).toHaveBeenLastCalledWith({ action: "plugin-action", source: "still-first" });
 
     app.workspace.unregisterObsidianProtocolHandler("plugin-action", first);
@@ -206,7 +221,11 @@ describe("Workspace public API parity", () => {
     app.viewRegistry.registerView("stateful-public-api-test", (leaf) => new StatefulView(leaf));
     const leaf = app.workspace.getLeaf();
 
-    await leaf.setViewState({ type: "stateful-public-api-test", state: { answer: 42 }, active: true });
+    await leaf.setViewState({
+      type: "stateful-public-api-test",
+      state: { answer: 42 },
+      active: true,
+    });
 
     expect(leaf.view.getState()).toEqual({ answer: 42 });
     expect(leaf.getViewState()).toMatchObject({
@@ -260,7 +279,11 @@ describe("Workspace public API parity", () => {
     const leaf = await app.workspace.openFile(file, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
 
-    expect(view.getState()).toMatchObject({ file: "Markdown state.md", mode: "source", source: false });
+    expect(view.getState()).toMatchObject({
+      file: "Markdown state.md",
+      mode: "source",
+      source: false,
+    });
     expect(leaf.getViewState()).toMatchObject({
       type: "markdown",
       state: { file: "Markdown state.md", mode: "source", source: false },
@@ -312,7 +335,8 @@ describe("Workspace public API parity", () => {
       configurable: true,
       value: scrollIntoView,
     });
-    if (!(first.parent instanceof WorkspaceTabs) || first.parent !== second.parent) throw new Error("Expected shared tab group");
+    if (!(first.parent instanceof WorkspaceTabs) || first.parent !== second.parent)
+      throw new Error("Expected shared tab group");
     first.parent.selectTabIndex(first.parent.children.indexOf(first), false);
 
     await app.workspace.revealLeaf(second);
@@ -356,10 +380,14 @@ describe("Workspace public API parity", () => {
       seen.push(`editor-change:${editor.getValue()}:${info.hoverPopover === null}`);
     });
     app.workspace.on("window-open", (workspaceWindow, popoutWindow) => {
-      seen.push(`window-open:${workspaceWindow instanceof WorkspaceWindow}:${popoutWindow === window}`);
+      seen.push(
+        `window-open:${workspaceWindow instanceof WorkspaceWindow}:${popoutWindow === window}`,
+      );
     });
     app.workspace.on("window-close", (workspaceWindow, popoutWindow) => {
-      seen.push(`window-close:${workspaceWindow instanceof WorkspaceWindow}:${popoutWindow === window}`);
+      seen.push(
+        `window-close:${workspaceWindow instanceof WorkspaceWindow}:${popoutWindow === window}`,
+      );
     });
     app.workspace.on("css-change", () => {
       seen.push("css-change");
@@ -430,12 +458,15 @@ describe("Workspace public API parity", () => {
     expect(leaf.hoverPopover).toBeNull();
     expect(leaf.isDeferred).toBe(false);
 
-    leaf.setDeferredViewState({
-      type: "plain-public-api-test",
-      state: {},
-      icon: "lucide-file",
-      title: "Deferred plain",
-    }, { line: 1 });
+    leaf.setDeferredViewState(
+      {
+        type: "plain-public-api-test",
+        state: {},
+        icon: "lucide-file",
+        title: "Deferred plain",
+      },
+      { line: 1 },
+    );
 
     expect(leaf.isDeferred).toBe(true);
     expect(leaf.getEphemeralState()).toEqual({ line: 1 });
@@ -467,10 +498,15 @@ describe("Workspace public API parity", () => {
         disconnected = true;
       }
     }
-    Object.defineProperty(window, "ResizeObserver", { configurable: true, value: FakeResizeObserver });
+    Object.defineProperty(window, "ResizeObserver", {
+      configurable: true,
+      value: FakeResizeObserver,
+    });
     const app = new App(document.createElement("div"));
-    if (resizeObserverDescriptor) Object.defineProperty(window, "ResizeObserver", resizeObserverDescriptor);
-    else delete (window as typeof window & { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+    if (resizeObserverDescriptor)
+      Object.defineProperty(window, "ResizeObserver", resizeObserverDescriptor);
+    else
+      delete (window as typeof window & { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
     try {
       let instance: PlainView | null = null;
       app.viewRegistry.registerView("plain-public-api-test", (leaf) => {
@@ -482,7 +518,10 @@ describe("Workspace public API parity", () => {
       Object.defineProperty(leaf.containerEl, "offsetWidth", { configurable: true, value: 320 });
       Object.defineProperty(leaf.containerEl, "offsetHeight", { configurable: true, value: 180 });
 
-      callback?.([{ target: leaf.containerEl } as unknown as ResizeObserverEntry], {} as ResizeObserver);
+      callback?.(
+        [{ target: leaf.containerEl } as unknown as ResizeObserverEntry],
+        {} as ResizeObserver,
+      );
       await new Promise((resolve) => setTimeout(resolve, 25));
 
       expect(instance?.resizeCount).toBe(1);
@@ -491,8 +530,11 @@ describe("Workspace public API parity", () => {
 
       expect(disconnected).toBe(true);
     } finally {
-      if (resizeObserverDescriptor) Object.defineProperty(window, "ResizeObserver", resizeObserverDescriptor);
-      else delete (window as typeof window & { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+      if (resizeObserverDescriptor)
+        Object.defineProperty(window, "ResizeObserver", resizeObserverDescriptor);
+      else
+        delete (window as typeof window & { ResizeObserver?: typeof ResizeObserver })
+          .ResizeObserver;
     }
   });
 
@@ -523,7 +565,9 @@ describe("Workspace public API parity", () => {
     expect(leaf.isDeferred).toBe(true);
     expect(app.workspace.getLeavesOfType("plain-public-api-test")).toEqual([leaf]);
 
-    const sideLeaf = await app.workspace.ensureSideLeaf("plain-public-api-test", "right", { reveal: false });
+    const sideLeaf = await app.workspace.ensureSideLeaf("plain-public-api-test", "right", {
+      reveal: false,
+    });
 
     expect(sideLeaf).toBe(leaf);
     expect(leaf.isDeferred).toBe(true);
@@ -570,7 +614,9 @@ describe("Workspace public API parity", () => {
     app.viewRegistry.registerView("quiet-side-test", (leaf) => new PlainView(leaf));
     app.workspace.rightSplit.collapse();
 
-    const sideLeaf = await app.workspace.ensureSideLeaf("quiet-side-test", "right", { reveal: false });
+    const sideLeaf = await app.workspace.ensureSideLeaf("quiet-side-test", "right", {
+      reveal: false,
+    });
 
     expect(sideLeaf.getRoot()).toBe(app.workspace.rightSplit);
     expect(app.workspace.rightSplit.collapsed).toBe(true);
@@ -602,10 +648,16 @@ describe("Workspace public API parity", () => {
     const setViewState = vi.spyOn(WorkspaceLeaf.prototype, "setViewState");
 
     try {
-      const leaf = await app.workspace.ensureSideLeaf("plain-public-api-test", "right", { active: true, reveal: false });
+      const leaf = await app.workspace.ensureSideLeaf("plain-public-api-test", "right", {
+        active: true,
+        reveal: false,
+      });
       const viewState = leaf.getViewState() as unknown as Record<string, unknown>;
 
-      expect(setViewState).toHaveBeenCalledWith({ type: "plain-public-api-test", state: undefined });
+      expect(setViewState).toHaveBeenCalledWith({
+        type: "plain-public-api-test",
+        state: undefined,
+      });
       expect(setViewState.mock.calls[0]?.[0]).not.toHaveProperty("active");
       expect(viewState).not.toHaveProperty("active");
       expect(app.workspace.activeLeaf).toBe(leaf);
@@ -725,7 +777,9 @@ describe("Workspace public API parity", () => {
 
       expect(duplicate.parent).toBe(activeSplitLeaf.parent);
       expect(duplicate.parent).not.toBe(sourceParent);
-      expect((duplicate.getViewState().state as { file?: string }).file).toBe("Duplicate source.md");
+      expect((duplicate.getViewState().state as { file?: string }).file).toBe(
+        "Duplicate source.md",
+      );
     } finally {
       container.remove();
     }
@@ -740,13 +794,17 @@ describe("Workspace public API parity", () => {
     const trueDuplicate = await app.workspace.duplicateLeaf(source, true);
 
     expect(trueDuplicate.parent).toBe(sourceParent);
-    expect((trueDuplicate.getViewState().state as { file?: string }).file).toBe("Duplicate aliases.md");
+    expect((trueDuplicate.getViewState().state as { file?: string }).file).toBe(
+      "Duplicate aliases.md",
+    );
 
     const splitDuplicate = await app.workspace.duplicateLeaf(source, "split");
 
     expect(splitDuplicate.parent).not.toBe(sourceParent);
     expect(splitDuplicate.getRoot()).toBe(app.workspace.rootSplit);
-    expect((splitDuplicate.getViewState().state as { file?: string }).file).toBe("Duplicate aliases.md");
+    expect((splitDuplicate.getViewState().state as { file?: string }).file).toBe(
+      "Duplicate aliases.md",
+    );
   });
 
   it("keeps splitLeafOrActive group-neutral until setViewState links the new leaf", async () => {
@@ -775,10 +833,24 @@ describe("Workspace public API parity", () => {
     const source = await app.workspace.openFile(file, { active: true });
     Object.defineProperty(source.containerEl, "getBoundingClientRect", {
       configurable: true,
-      value: () => ({ x: 0, y: 0, width: 420, height: 360, top: 0, left: 0, right: 420, bottom: 360, toJSON: () => ({}) }),
+      value: () => ({
+        x: 0,
+        y: 0,
+        width: 420,
+        height: 360,
+        top: 0,
+        left: 0,
+        right: 420,
+        bottom: 360,
+        toJSON: () => ({}),
+      }),
     });
 
-    const workspaceWindow = app.workspace.moveLeafToPopout(source, { x: 10, y: 20, size: { width: 640, height: 480 } });
+    const workspaceWindow = app.workspace.moveLeafToPopout(source, {
+      x: 10,
+      y: 20,
+      size: { width: 640, height: 480 },
+    });
 
     expect(workspaceWindow).toBe(source.getContainer());
     expect(workspaceWindow.parent).toBe(app.workspace.floatingSplit);
@@ -827,7 +899,17 @@ describe("Workspace public API parity", () => {
     const source = await app.workspace.openFile(file, { active: true });
     Object.defineProperty(source.containerEl, "getBoundingClientRect", {
       configurable: true,
-      value: () => ({ x: 4, y: 5, width: 420, height: 360, top: 5, left: 4, right: 424, bottom: 365, toJSON: () => ({}) }),
+      value: () => ({
+        x: 4,
+        y: 5,
+        width: 420,
+        height: 360,
+        top: 5,
+        left: 4,
+        right: 424,
+        bottom: 365,
+        toJSON: () => ({}),
+      }),
     });
     Object.defineProperty(source.containerEl.ownerDocument.defaultView ?? window, "electron", {
       configurable: true,
@@ -883,7 +965,11 @@ describe("Workspace public API parity", () => {
     const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
     const go = vi.spyOn(window.history, "go").mockImplementation(() => {});
     try {
-      const workspaceWindow = app.workspace.openPopout({ x: 10, y: 20, size: { width: 320, height: 500 } });
+      const workspaceWindow = app.workspace.openPopout({
+        x: 10,
+        y: 20,
+        size: { width: 320, height: 500 },
+      });
 
       expect(workspaceWindow.win).toBe(openedWindow);
       expect(calls[0]).toContain("about:blank|_blank|popup");

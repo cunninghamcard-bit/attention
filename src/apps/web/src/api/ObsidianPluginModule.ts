@@ -3,7 +3,13 @@ import { SettingTab } from "../app/SettingTab";
 import { Component } from "../core/Component";
 import { Events } from "../core/Events";
 import { Editor } from "../editor/Editor";
-import { editorEditorField, editorInfoField, editorLivePreviewField, editorViewField, livePreviewState } from "../editor/EditorStateField";
+import {
+  editorEditorField,
+  editorInfoField,
+  editorLivePreviewField,
+  editorViewField,
+  livePreviewState,
+} from "../editor/EditorStateField";
 import { Keymap } from "../app/hotkeys/Keymap";
 import { Scope } from "../app/hotkeys/Scope";
 import { MarkdownRenderChild } from "../markdown/MarkdownRenderChild";
@@ -16,7 +22,15 @@ import { iterateCacheRefs, iterateRefs, MetadataCache } from "../metadata/Metada
 import { Platform } from "../platform/Platform";
 import { Plugin } from "../plugin/Plugin";
 import { PluginSettingTab } from "../plugin/PluginSettingTab";
-import { fuzzySearch, prepareFuzzySearch, prepareQuery, prepareSimpleSearch, renderMatches, renderResults, sortSearchResults } from "../search/SearchHelpers";
+import {
+  fuzzySearch,
+  prepareFuzzySearch,
+  prepareQuery,
+  prepareSimpleSearch,
+  renderMatches,
+  renderResults,
+  sortSearchResults,
+} from "../search/SearchHelpers";
 import { SecretStorage } from "../storage/SecretStorage";
 import { AbstractInputSuggest, PopoverSuggest } from "../ui/suggest/AbstractInputSuggest";
 import { EditorSuggest as EditorSuggestClass } from "../ui/suggest/EditorSuggest";
@@ -43,7 +57,7 @@ import {
   TextAreaComponent,
   TextComponent,
   ToggleComponent,
-  ValueComponent
+  ValueComponent,
 } from "../ui/Setting";
 import { CapacitorAdapter } from "../vault/DataAdapter";
 import { FileManager } from "../app/FileManager";
@@ -249,7 +263,11 @@ export interface ObsidianPluginModule {
   normalizePath(path: string): string;
   requestUrl(param: string | RequestUrlParam): RequestUrlResponsePromise;
   request(param: string | RequestUrlParam): Promise<string>;
-  debounce<T extends unknown[], V>(fn: (...args: T) => V, timeout?: number, resetTimer?: boolean): Debouncer<T, V>;
+  debounce<T extends unknown[], V>(
+    fn: (...args: T) => V,
+    timeout?: number,
+    resetTimer?: boolean,
+  ): Debouncer<T, V>;
 }
 
 export function createObsidianPluginModule(app: App): ObsidianPluginModule {

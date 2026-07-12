@@ -2,12 +2,21 @@ import { JSDOM } from "jsdom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { resetActiveWindow, setActiveWindow } from "@web/dom/ActiveDocument";
-import { createDiv, createEl, createSpan, detach, installDomExtensions, removeChildren } from "@web/dom/dom";
+import {
+  createDiv,
+  createEl,
+  createSpan,
+  detach,
+  installDomExtensions,
+  removeChildren,
+} from "@web/dom/dom";
 
 let dom: JSDOM | null = null;
 
 beforeEach(() => {
-  dom = new JSDOM("<!doctype html><html><body><section id=\"host\"><p id=\"first\"></p></section></body></html>");
+  dom = new JSDOM(
+    '<!doctype html><html><body><section id="host"><p id="first"></p></section></body></html>',
+  );
   vi.stubGlobal("window", dom.window);
   vi.stubGlobal("document", dom.window.document);
   vi.stubGlobal("HTMLElement", dom.window.HTMLElement);
@@ -34,9 +43,18 @@ function hostEl(): HTMLElement {
 describe("Obsidian DOM helpers", () => {
   it("supports createDiv object info, parent, prepend, and callback builder", () => {
     const host = hostEl();
-    const child = createDiv({ parent: host, cls: ["callout", "mod-info"], text: "Info", attr: { contentEditable: false, "data-kind": "note" }, prepend: true }, (el) => {
-      el.dataset.built = "true";
-    });
+    const child = createDiv(
+      {
+        parent: host,
+        cls: ["callout", "mod-info"],
+        text: "Info",
+        attr: { contentEditable: false, "data-kind": "note" },
+        prepend: true,
+      },
+      (el) => {
+        el.dataset.built = "true";
+      },
+    );
 
     expect(host.firstElementChild).toBe(child);
     expect(child.className).toBe("callout mod-info");
@@ -62,7 +80,9 @@ describe("Obsidian DOM helpers", () => {
     const popoutDom = new JSDOM("<!doctype html><html><body></body></html>");
     installDomExtensions(popoutDom.window as Window & typeof globalThis);
     const mainHost = hostEl();
-    const popoutHost = popoutDom.window.document.body.appendChild(popoutDom.window.document.createElement("section"));
+    const popoutHost = popoutDom.window.document.body.appendChild(
+      popoutDom.window.document.createElement("section"),
+    );
     setActiveWindow(popoutDom.window as unknown as Window);
 
     const el = createDiv("workspace-tabs");

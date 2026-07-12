@@ -2,7 +2,11 @@ import type { App } from "../app/App";
 import { ConfirmationModal, Modal } from "../ui/Modal";
 import { Menu } from "../ui/Menu";
 import { Notice } from "../ui/Notice";
-import { registerActiveCloseable, unregisterActiveCloseable, type ActiveCloseable } from "../ui/ActiveCloseableRegistry";
+import {
+  registerActiveCloseable,
+  unregisterActiveCloseable,
+  type ActiveCloseable,
+} from "../ui/ActiveCloseableRegistry";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import type { MarketplacePluginEntry } from "../plugin/PluginMarketplace";
 import { URL_SCHEME } from "../app/protocol/scheme";
@@ -60,11 +64,18 @@ export class CommunityPluginMarketplaceModal extends Modal {
     this.sidebarEl.className = "modal-sidebar";
     this.detailEl.className = "community-modal-details";
     this.contentEl.append(this.sidebarEl, this.detailEl);
-    if (this.selectedId && !this.app.pluginMarketplace.getEntry(this.selectedId) && this.autoOpenRequested && !this.query) {
+    if (
+      this.selectedId &&
+      !this.app.pluginMarketplace.getEntry(this.selectedId) &&
+      this.autoOpenRequested &&
+      !this.query
+    ) {
       this.query = this.selectedId.split("-").join(" ");
     }
     const entries = this.getEntries();
-    let selectedEntry = this.selectedId ? this.app.pluginMarketplace.getEntry(this.selectedId) : null;
+    let selectedEntry = this.selectedId
+      ? this.app.pluginMarketplace.getEntry(this.selectedId)
+      : null;
     if (this.selectedId && !selectedEntry) {
       this.selectedId = null;
       this.unregisterSelectedItemCloseable();
@@ -90,7 +101,11 @@ export class CommunityPluginMarketplaceModal extends Modal {
   }
 
   private async loadCatalogIfNeeded(force = false): Promise<void> {
-    if (!force && (this.app.pluginMarketplace.hasEntries() || this.app.pluginMarketplace.loadState === "loaded")) return;
+    if (
+      !force &&
+      (this.app.pluginMarketplace.hasEntries() || this.app.pluginMarketplace.loadState === "loaded")
+    )
+      return;
     this.catalogLoading = true;
     this.catalogError = null;
     this.render();
@@ -106,12 +121,19 @@ export class CommunityPluginMarketplaceModal extends Modal {
   }
 
   private getEntries(): MarketplacePluginEntry[] {
-    const entries = this.app.pluginMarketplace.search({ query: this.query })
-      .filter((entry) => !this.installedOnly || Boolean(this.app.communityPlugins.get(entry.manifest.id)?.installed));
+    const entries = this.app.pluginMarketplace
+      .search({ query: this.query })
+      .filter(
+        (entry) =>
+          !this.installedOnly ||
+          Boolean(this.app.communityPlugins.get(entry.manifest.id)?.installed),
+      );
     entries.sort((a, b) => {
-      if (this.sort === "alphabetical") return a.manifest.name.localeCompare(b.manifest.name, undefined, { sensitivity: "base" });
+      if (this.sort === "alphabetical")
+        return a.manifest.name.localeCompare(b.manifest.name, undefined, { sensitivity: "base" });
       if (this.sort === "update") return timestamp(b.updatedAt) - timestamp(a.updatedAt);
-      if (this.sort === "release") return timestamp(b.releasedAt ?? b.updatedAt) - timestamp(a.releasedAt ?? a.updatedAt);
+      if (this.sort === "release")
+        return timestamp(b.releasedAt ?? b.updatedAt) - timestamp(a.releasedAt ?? a.updatedAt);
       return (b.downloads ?? 0) - (a.downloads ?? 0);
     });
     return entries;
@@ -155,7 +177,9 @@ export class CommunityPluginMarketplaceModal extends Modal {
     wrapperEl.className = "community-modal-search-results-wrapper";
     const statusEl = document.createElement("div");
     statusEl.className = "community-modal-search-results-status";
-    statusEl.textContent = this.catalogLoading ? "Loading community plugins..." : `${entries.length} plugin${entries.length === 1 ? "" : "s"}`;
+    statusEl.textContent = this.catalogLoading
+      ? "Loading community plugins..."
+      : `${entries.length} plugin${entries.length === 1 ? "" : "s"}`;
     const listEl = document.createElement("div");
     listEl.className = "community-modal-search-results";
     if (this.catalogLoading) {
@@ -222,7 +246,8 @@ export class CommunityPluginMarketplaceModal extends Modal {
     downloadsEl.className = "community-item-downloads";
     const downloadsTextEl = document.createElement("span");
     downloadsTextEl.className = "community-item-downloads-text";
-    downloadsTextEl.textContent = entry.downloads === undefined ? "" : `${entry.downloads.toLocaleString()} downloads`;
+    downloadsTextEl.textContent =
+      entry.downloads === undefined ? "" : `${entry.downloads.toLocaleString()} downloads`;
     downloadsEl.appendChild(downloadsTextEl);
     const updatedEl = document.createElement("div");
     updatedEl.className = "community-item-updated";
@@ -313,8 +338,10 @@ export class CommunityPluginMarketplaceModal extends Modal {
 
     const linksEl = document.createElement("div");
     linksEl.className = "community-modal-info-repo";
-    if (manifest.authorUrl) linksEl.appendChild(this.createExternalButton("Author", manifest.authorUrl));
-    if (entry.repository) linksEl.appendChild(this.createExternalButton("Repository", entry.repository));
+    if (manifest.authorUrl)
+      linksEl.appendChild(this.createExternalButton("Author", manifest.authorUrl));
+    if (entry.repository)
+      linksEl.appendChild(this.createExternalButton("Repository", entry.repository));
 
     const readmeEl = document.createElement("div");
     readmeEl.className = "community-modal-readme markdown-rendered";
@@ -333,7 +360,9 @@ export class CommunityPluginMarketplaceModal extends Modal {
       return;
     }
     if (entry.readmeState === "error") {
-      readmeEl.textContent = entry.readmeError ? `Failed to load README: ${entry.readmeError}` : "Failed to load README.";
+      readmeEl.textContent = entry.readmeError
+        ? `Failed to load README: ${entry.readmeError}`
+        : "Failed to load README.";
       return;
     }
     if (!entry.readmeUrl) {
@@ -341,7 +370,8 @@ export class CommunityPluginMarketplaceModal extends Modal {
       return;
     }
     readmeEl.textContent = "Loading README...";
-    void this.app.pluginMarketplace.loadReadme(entry.manifest.id)
+    void this.app.pluginMarketplace
+      .loadReadme(entry.manifest.id)
       .then(() => {
         if (this.selectedId === entry.manifest.id) this.render();
       })
@@ -350,23 +380,50 @@ export class CommunityPluginMarketplaceModal extends Modal {
       });
   }
 
-  private renderActions(entry: MarketplacePluginEntry, parentEl: HTMLElement, installed: boolean, enabled: boolean, updateAvailable: boolean): void {
+  private renderActions(
+    entry: MarketplacePluginEntry,
+    parentEl: HTMLElement,
+    installed: boolean,
+    enabled: boolean,
+    updateAvailable: boolean,
+  ): void {
     if (!installed) {
       parentEl.appendChild(this.createActionButton("Install", () => void this.install(entry)));
     } else {
-      if (updateAvailable) parentEl.appendChild(this.createActionButton("Update", () => void this.update(entry)));
+      if (updateAvailable)
+        parentEl.appendChild(this.createActionButton("Update", () => void this.update(entry)));
       if (this.app.setting.getTabById(entry.manifest.id)) {
-        parentEl.appendChild(this.createActionButton("Options", () => this.openPluginOptions(entry)));
+        parentEl.appendChild(
+          this.createActionButton("Options", () => this.openPluginOptions(entry)),
+        );
       }
       if (this.hasPluginCommands(entry.manifest.id)) {
-        parentEl.appendChild(this.createActionButton("Hotkeys", () => this.openPluginHotkeys(entry)));
+        parentEl.appendChild(
+          this.createActionButton("Hotkeys", () => this.openPluginHotkeys(entry)),
+        );
       }
-      parentEl.appendChild(this.createActionButton(enabled ? "Disable" : "Enable", () => void this.toggle(entry, !enabled), enabled ? "mod-destructive" : "mod-cta"));
-      parentEl.appendChild(this.createActionButton("Uninstall", () => void this.uninstall(entry), "mod-destructive"));
+      parentEl.appendChild(
+        this.createActionButton(
+          enabled ? "Disable" : "Enable",
+          () => void this.toggle(entry, !enabled),
+          enabled ? "mod-destructive" : "mod-cta",
+        ),
+      );
+      parentEl.appendChild(
+        this.createActionButton("Uninstall", () => void this.uninstall(entry), "mod-destructive"),
+      );
     }
-    parentEl.appendChild(this.createActionButton("Copy share link", () => void this.copyShareLink(entry), ""));
+    parentEl.appendChild(
+      this.createActionButton("Copy share link", () => void this.copyShareLink(entry), ""),
+    );
     if (entry.fundingUrl) {
-      parentEl.appendChild(this.createActionButton("Donate", () => new CommunityPluginDonateModal(this.app, entry).open(), ""));
+      parentEl.appendChild(
+        this.createActionButton(
+          "Donate",
+          () => new CommunityPluginDonateModal(this.app, entry).open(),
+          "",
+        ),
+      );
     }
   }
 
@@ -431,11 +488,17 @@ export class CommunityPluginMarketplaceModal extends Modal {
   }
 
   private async copyShareLink(entry: MarketplacePluginEntry): Promise<void> {
-    await navigator.clipboard?.writeText(`${URL_SCHEME}show-plugin?id=${encodeURIComponent(entry.manifest.id)}`);
+    await navigator.clipboard?.writeText(
+      `${URL_SCHEME}show-plugin?id=${encodeURIComponent(entry.manifest.id)}`,
+    );
     new Notice("Copied");
   }
 
-  private createActionButton(text: string, callback: () => void, cls = "mod-cta"): HTMLButtonElement {
+  private createActionButton(
+    text: string,
+    callback: () => void,
+    cls = "mod-cta",
+  ): HTMLButtonElement {
     const buttonEl = document.createElement("button");
     buttonEl.className = cls;
     buttonEl.textContent = text;
@@ -449,10 +512,30 @@ export class CommunityPluginMarketplaceModal extends Modal {
 
   private showSortMenu(event: MouseEvent): void {
     new Menu()
-      .addItem((item) => item.setTitle("Most downloaded").setChecked(this.sort === "download").onClick(() => this.setSort("download")))
-      .addItem((item) => item.setTitle("Recently updated").setChecked(this.sort === "update").onClick(() => this.setSort("update")))
-      .addItem((item) => item.setTitle("Recently released").setChecked(this.sort === "release").onClick(() => this.setSort("release")))
-      .addItem((item) => item.setTitle("Alphabetical").setChecked(this.sort === "alphabetical").onClick(() => this.setSort("alphabetical")))
+      .addItem((item) =>
+        item
+          .setTitle("Most downloaded")
+          .setChecked(this.sort === "download")
+          .onClick(() => this.setSort("download")),
+      )
+      .addItem((item) =>
+        item
+          .setTitle("Recently updated")
+          .setChecked(this.sort === "update")
+          .onClick(() => this.setSort("update")),
+      )
+      .addItem((item) =>
+        item
+          .setTitle("Recently released")
+          .setChecked(this.sort === "release")
+          .onClick(() => this.setSort("release")),
+      )
+      .addItem((item) =>
+        item
+          .setTitle("Alphabetical")
+          .setChecked(this.sort === "alphabetical")
+          .onClick(() => this.setSort("alphabetical")),
+      )
       .showAtMouseEvent(event);
   }
 
@@ -464,7 +547,10 @@ export class CommunityPluginMarketplaceModal extends Modal {
 }
 
 class CommunityPluginDonateModal extends ConfirmationModal {
-  constructor(app: App, readonly entry: MarketplacePluginEntry) {
+  constructor(
+    app: App,
+    readonly entry: MarketplacePluginEntry,
+  ) {
     super(app);
     this.setTitle(`Donate to ${entry.manifest.name}`);
   }

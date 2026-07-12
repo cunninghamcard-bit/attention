@@ -5,12 +5,28 @@ import { displayTooltip, hideTooltip, setTooltip } from "../ui/Popover";
 import moment from "moment";
 import { Menu } from "../ui/Menu";
 import { TAbstractFile, TFile, TFolder } from "../vault/TAbstractFile";
-import { setAllowedDropEffect, type DragDropResult, type DragSource, type FileDragSource, type FilesDragSource, type FolderDragSource } from "../ui/drag/DragManager";
-import { getAttachmentFilesFromDataTransfer, hasDataTransferAttachmentFiles } from "../app/AttachmentImport";
+import {
+  setAllowedDropEffect,
+  type DragDropResult,
+  type DragSource,
+  type FileDragSource,
+  type FilesDragSource,
+  type FolderDragSource,
+} from "../ui/drag/DragManager";
+import {
+  getAttachmentFilesFromDataTransfer,
+  hasDataTransferAttachmentFiles,
+} from "../app/AttachmentImport";
 import { Platform } from "../platform/Platform";
 import { validateRenameName } from "../vault/FileNameValidation";
 
-type FileSortOrder = "alphabetical" | "alphabeticalReverse" | "byModifiedTime" | "byModifiedTimeReverse" | "byCreatedTime" | "byCreatedTimeReverse";
+type FileSortOrder =
+  | "alphabetical"
+  | "alphabeticalReverse"
+  | "byModifiedTime"
+  | "byModifiedTimeReverse"
+  | "byCreatedTime"
+  | "byCreatedTimeReverse";
 
 /** When the vault has at least this many loaded entries, folders start collapsed. */
 const LARGE_TREE_COLLAPSE_THRESHOLD = 200;
@@ -45,9 +61,15 @@ export class FileExplorerView extends ItemView {
   private renamingPath: string | null = null;
   private renderTimer: ReturnType<typeof setTimeout> | null = null;
 
-  getViewType(): string { return "file-explorer"; }
-  getDisplayText(): string { return "Files"; }
-  getIcon(): string { return "lucide-folder-closed"; }
+  getViewType(): string {
+    return "file-explorer";
+  }
+  getDisplayText(): string {
+    return "Files";
+  }
+  getIcon(): string {
+    return "lucide-folder-closed";
+  }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("nav-files-container");
@@ -59,10 +81,12 @@ export class FileExplorerView extends ItemView {
     this.registerEvent(this.app.vault.on("create", () => this.scheduleRenderFileTree()));
     this.registerEvent(this.app.vault.on("delete", () => this.scheduleRenderFileTree()));
     this.registerEvent(this.app.vault.on("rename", () => this.scheduleRenderFileTree()));
-    this.registerEvent(this.app.workspace.on("file-open", (file: TFile | null) => {
-      this.updateActiveFileHighlight(file);
-      if (this.autoReveal && file) this.revealFile(file);
-    }));
+    this.registerEvent(
+      this.app.workspace.on("file-open", (file: TFile | null) => {
+        this.updateActiveFileHighlight(file);
+        if (this.autoReveal && file) this.revealFile(file);
+      }),
+    );
   }
 
   override async onClose(): Promise<void> {
@@ -140,7 +164,9 @@ export class FileExplorerView extends ItemView {
     }
     this.renderFileTree();
     const itemClass = file instanceof TFolder ? "nav-folder" : "nav-file";
-    this.contentEl.querySelector<HTMLElement>(`.${itemClass}-title[data-path="${cssEscape(file.path)}"]`)?.scrollIntoView({ block: "nearest" });
+    this.contentEl
+      .querySelector<HTMLElement>(`.${itemClass}-title[data-path="${cssEscape(file.path)}"]`)
+      ?.scrollIntoView({ block: "nearest" });
   }
 
   // The real explorer toolbar (app.js ~3218382): nav-header > nav-buttons-
@@ -149,27 +175,45 @@ export class FileExplorerView extends ItemView {
   private installNavHeader(): void {
     const headerEl = document.createElement("div");
     headerEl.className = "nav-header";
-    headerEl.addEventListener("contextmenu", (event) => this.openFileContextMenu(this.app.vault.root, event));
+    headerEl.addEventListener("contextmenu", (event) =>
+      this.openFileContextMenu(this.app.vault.root, event),
+    );
     this.installFolderDrop(headerEl, this.app.vault.root, headerEl);
     const buttonsEl = document.createElement("div");
     buttonsEl.className = "nav-buttons-container";
     headerEl.appendChild(buttonsEl);
     buttonsEl.append(
       this.createNavActionButton("lucide-edit", "New note", () => void this.createNote(null)),
-      this.createNavActionButton("lucide-folder-plus", "New folder", () => void this.createFolder(null)),
-      this.createNavActionButton("lucide-sort-asc", "Change sort order", (event) => this.showSortMenu(event)),
+      this.createNavActionButton(
+        "lucide-folder-plus",
+        "New folder",
+        () => void this.createFolder(null),
+      ),
+      this.createNavActionButton("lucide-sort-asc", "Change sort order", (event) =>
+        this.showSortMenu(event),
+      ),
     );
-    const autoRevealEl = this.createNavActionButton("lucide-gallery-vertical", "Auto-reveal current file", () => {
-      this.autoReveal = !this.autoReveal;
-      autoRevealEl.classList.toggle("is-active", this.autoReveal);
-    });
+    const autoRevealEl = this.createNavActionButton(
+      "lucide-gallery-vertical",
+      "Auto-reveal current file",
+      () => {
+        this.autoReveal = !this.autoReveal;
+        autoRevealEl.classList.toggle("is-active", this.autoReveal);
+      },
+    );
     autoRevealEl.classList.toggle("is-active", this.autoReveal);
-    this.collapseAllEl = this.createNavActionButton("lucide-chevrons-up-down", "Expand all", () => this.toggleCollapseAll());
+    this.collapseAllEl = this.createNavActionButton("lucide-chevrons-up-down", "Expand all", () =>
+      this.toggleCollapseAll(),
+    );
     buttonsEl.append(autoRevealEl, this.collapseAllEl);
     this.contentEl.appendChild(headerEl);
   }
 
-  private createNavActionButton(icon: string, title: string, onClick: (event: MouseEvent) => void): HTMLElement {
+  private createNavActionButton(
+    icon: string,
+    title: string,
+    onClick: (event: MouseEvent) => void,
+  ): HTMLElement {
     const buttonEl = document.createElement("div");
     buttonEl.className = "clickable-icon nav-action-button";
     setIcon(buttonEl, icon);
@@ -183,13 +227,15 @@ export class FileExplorerView extends ItemView {
     const current = this.getSortOrder();
     for (const group of FILE_SORT_GROUPS) {
       for (const order of group) {
-        menu.addItem((item) => item
-          .setTitle(FILE_SORT_LABELS[order])
-          .setChecked(order === current)
-          .onClick(() => {
-            this.app.vault.setConfig("fileSortOrder", order);
-            this.renderFileTree();
-          }));
+        menu.addItem((item) =>
+          item
+            .setTitle(FILE_SORT_LABELS[order])
+            .setChecked(order === current)
+            .onClick(() => {
+              this.app.vault.setConfig("fileSortOrder", order);
+              this.renderFileTree();
+            }),
+        );
       }
       menu.addSeparator();
     }
@@ -198,7 +244,7 @@ export class FileExplorerView extends ItemView {
 
   private getSortOrder(): FileSortOrder {
     const order = this.app.vault.getConfig<string>("fileSortOrder");
-    return order && order in FILE_SORT_LABELS ? order as FileSortOrder : "alphabetical";
+    return order && order in FILE_SORT_LABELS ? (order as FileSortOrder) : "alphabetical";
   }
 
   private toggleCollapseAll(): void {
@@ -212,7 +258,10 @@ export class FileExplorerView extends ItemView {
   private updateCollapseAllButton(): void {
     if (!this.collapseAllEl) return;
     const anyExpanded = this.allFolderPaths().some((path) => !this.collapsedFolders.has(path));
-    setIcon(this.collapseAllEl, anyExpanded ? "lucide-chevrons-down-up" : "lucide-chevrons-up-down");
+    setIcon(
+      this.collapseAllEl,
+      anyExpanded ? "lucide-chevrons-down-up" : "lucide-chevrons-up-down",
+    );
     setTooltip(this.collapseAllEl, anyExpanded ? "Collapse all" : "Expand all");
   }
 
@@ -262,7 +311,9 @@ export class FileExplorerView extends ItemView {
     titleEl.addEventListener("click", (event) => this.onFolderClick(folder, event));
     this.installHoverTooltip(titleEl, titleContentEl, folder);
     titleEl.addEventListener("contextmenu", (event) => this.openFileContextMenu(folder, event));
-    this.app.dragManager.handleDrag(titleEl, (event) => this.createDragSource(event, folder, titleEl));
+    this.app.dragManager.handleDrag(titleEl, (event) =>
+      this.createDragSource(event, folder, titleEl),
+    );
     this.installFolderDrop(titleEl, folder, folderEl);
     folderEl.appendChild(titleEl);
 
@@ -271,7 +322,8 @@ export class FileExplorerView extends ItemView {
     childrenEl.hidden = isCollapsed;
     // Skip building DOM for collapsed subtrees — the dominant cost on large vaults.
     if (!isCollapsed) {
-      for (const child of [...folder.children].sort(this.compareFiles)) this.renderTreeItem(child, childrenEl);
+      for (const child of [...folder.children].sort(this.compareFiles))
+        this.renderTreeItem(child, childrenEl);
     }
     folderEl.appendChild(childrenEl);
     parentEl.appendChild(folderEl);
@@ -283,8 +335,14 @@ export class FileExplorerView extends ItemView {
     const titleEl = document.createElement("div");
     titleEl.className = "tree-item-self nav-file-title tappable is-clickable";
     titleEl.dataset.path = file.path;
-    titleEl.classList.toggle("is-active", this.app.workspace.activeEditor?.file?.path === file.path);
-    titleEl.classList.toggle("is-unsupported", !this.app.viewRegistry.getTypeByExtension(file.extension));
+    titleEl.classList.toggle(
+      "is-active",
+      this.app.workspace.activeEditor?.file?.path === file.path,
+    );
+    titleEl.classList.toggle(
+      "is-unsupported",
+      !this.app.viewRegistry.getTypeByExtension(file.extension),
+    );
     this.applySelectionState(titleEl, file);
     const iconEl = document.createElement("div");
     iconEl.className = "tree-item-icon nav-file-icon";
@@ -300,7 +358,9 @@ export class FileExplorerView extends ItemView {
     titleEl.addEventListener("click", (event) => this.onFileClick(file, event));
     titleEl.addEventListener("contextmenu", (event) => this.openFileContextMenu(file, event));
     this.installHoverTooltip(titleEl, titleContentEl, file);
-    this.app.dragManager.handleDrag(titleEl, (event) => this.createDragSource(event, file, titleEl));
+    this.app.dragManager.handleDrag(titleEl, (event) =>
+      this.createDragSource(event, file, titleEl),
+    );
     fileEl.appendChild(titleEl);
     parentEl.appendChild(fileEl);
   }
@@ -312,7 +372,11 @@ export class FileExplorerView extends ItemView {
    * Placement points away from the dock side, wide gap, off the item row.
    * Files additionally announce hover-link for the page-preview layer.
    */
-  private installHoverTooltip(titleEl: HTMLElement, contentEl: HTMLElement, file: TAbstractFile): void {
+  private installHoverTooltip(
+    titleEl: HTMLElement,
+    contentEl: HTMLElement,
+    file: TAbstractFile,
+  ): void {
     titleEl.addEventListener("pointerover", (event) => {
       if (event.pointerType === "touch") return;
       const sections: string[] = [];
@@ -323,7 +387,9 @@ export class FileExplorerView extends ItemView {
         sections.push(`Last modified at ${modified}\nCreated at ${created}`);
       } else if (file instanceof TFolder) {
         const counts = countDescendants(file);
-        sections.push(`${counts.files} ${counts.files === 1 ? "file" : "files"}, ${counts.folders} ${counts.folders === 1 ? "folder" : "folders"}`);
+        sections.push(
+          `${counts.files} ${counts.files === 1 ? "file" : "files"}, ${counts.folders} ${counts.folders === 1 ? "folder" : "folders"}`,
+        );
       }
       const text = sections.join("\n\n");
       if (text) {
@@ -335,7 +401,13 @@ export class FileExplorerView extends ItemView {
         });
       }
       if (file instanceof TFile) {
-        this.app.workspace.trigger("hover-link", { event, source: "file-explorer", hoverParent: this, targetEl: titleEl, linktext: file.path });
+        this.app.workspace.trigger("hover-link", {
+          event,
+          source: "file-explorer",
+          hoverParent: this,
+          targetEl: titleEl,
+          linktext: file.path,
+        });
       }
     });
     titleEl.addEventListener("pointerout", (event) => {
@@ -356,42 +428,97 @@ export class FileExplorerView extends ItemView {
     menu.showAtMouseEvent(event);
   }
 
-  private openFilesContextMenu(files: TAbstractFile[], target: TFile | TFolder, event: MouseEvent): void {
+  private openFilesContextMenu(
+    files: TAbstractFile[],
+    target: TFile | TFolder,
+    event: MouseEvent,
+  ): void {
     const selectedRoots = this.filterSelectionRoots(files);
     const menu = new Menu()
-      .addSections(["title", "open", "action-primary", "action", "info", "info.copy", "view", "system", "", "danger"])
-      .addItem((item) => item
-        .setSection("action-primary")
-        .setTitle(`New folder with selection (${selectedRoots.length} ${selectedRoots.length === 1 ? "item" : "items"})`)
-        .setIcon("lucide-folder-plus")
-        .onClick(() => void this.createFolderWithSelection(target, selectedRoots)))
-      .addItem((item) => item
-        .setSection("danger")
-        .setTitle("Delete")
-        .setIcon("lucide-trash-2")
-        .setWarning(true)
-        .onClick(() => void this.deleteFiles(files)));
+      .addSections([
+        "title",
+        "open",
+        "action-primary",
+        "action",
+        "info",
+        "info.copy",
+        "view",
+        "system",
+        "",
+        "danger",
+      ])
+      .addItem((item) =>
+        item
+          .setSection("action-primary")
+          .setTitle(
+            `New folder with selection (${selectedRoots.length} ${selectedRoots.length === 1 ? "item" : "items"})`,
+          )
+          .setIcon("lucide-folder-plus")
+          .onClick(() => void this.createFolderWithSelection(target, selectedRoots)),
+      )
+      .addItem((item) =>
+        item
+          .setSection("danger")
+          .setTitle("Delete")
+          .setIcon("lucide-trash-2")
+          .setWarning(true)
+          .onClick(() => void this.deleteFiles(files)),
+      );
     this.app.workspace.trigger("files-menu", menu, files, "file-explorer-context-menu", null);
     menu.showAtMouseEvent(event);
   }
 
   private buildFileExplorerContextMenu(file: TFile | TFolder): Menu {
-    const menu = new Menu().addSections(["title", "open", "action-primary", "action", "info", "info.copy", "view", "system", "", "danger"]);
+    const menu = new Menu().addSections([
+      "title",
+      "open",
+      "action-primary",
+      "action",
+      "info",
+      "info.copy",
+      "view",
+      "system",
+      "",
+      "danger",
+    ]);
     if (file instanceof TFolder) {
       menu
-        .addItem((item) => item.setSection("action-primary").setTitle("New note").setIcon("lucide-edit").onClick(() => void this.createNote(file.isRoot() ? null : file)))
-        .addItem((item) => item.setSection("action-primary").setTitle("New folder").setIcon("lucide-folder-open").onClick(() => void this.createFolder(file.isRoot() ? null : file)));
+        .addItem((item) =>
+          item
+            .setSection("action-primary")
+            .setTitle("New note")
+            .setIcon("lucide-edit")
+            .onClick(() => void this.createNote(file.isRoot() ? null : file)),
+        )
+        .addItem((item) =>
+          item
+            .setSection("action-primary")
+            .setTitle("New folder")
+            .setIcon("lucide-folder-open")
+            .onClick(() => void this.createFolder(file.isRoot() ? null : file)),
+        );
       if (!file.isRoot()) this.addFileExplorerMutationItems(menu, file);
       return menu;
     }
-    menu
-      .addItem((item) => item.setSection("open").setTitle("Open in new tab").setIcon("lucide-file-plus").onClick(() => {
-        void this.app.workspace.getLeaf(true).openFile(file, { active: true });
-      }));
+    menu.addItem((item) =>
+      item
+        .setSection("open")
+        .setTitle("Open in new tab")
+        .setIcon("lucide-file-plus")
+        .onClick(() => {
+          void this.app.workspace.getLeaf(true).openFile(file, { active: true });
+        }),
+    );
     if (Platform.canSplit) {
-      menu.addItem((item) => item.setSection("open").setTitle("Open to the right").setIcon("lucide-separator-vertical").onClick(() => {
-        void this.app.workspace.getLeaf("split").openFile(file, { active: true });
-      }));
+      menu.addItem((item) =>
+        item
+          .setSection("open")
+          .setTitle("Open to the right")
+          .setIcon("lucide-separator-vertical")
+          .onClick(() => {
+            void this.app.workspace.getLeaf("split").openFile(file, { active: true });
+          }),
+      );
     }
     this.addFileExplorerMutationItems(menu, file);
     return menu;
@@ -399,14 +526,37 @@ export class FileExplorerView extends ItemView {
 
   private addFileExplorerMutationItems(menu: Menu, file: TFile | TFolder): void {
     menu
-      .addItem((item) => item.setSection("danger").setTitle("Rename").setIcon("lucide-edit-3").onClick(() => this.startRename(file)))
-      .addItem((item) => item.setSection("action").setTitle("Make copy").setIcon("lucide-files").onClick(() => void this.makeCopy(file)))
-      .addItem((item) => item.setSection("danger").setTitle("Delete").setIcon("lucide-trash-2").setWarning(true).onClick(() => void this.deleteFile(file)));
+      .addItem((item) =>
+        item
+          .setSection("danger")
+          .setTitle("Rename")
+          .setIcon("lucide-edit-3")
+          .onClick(() => this.startRename(file)),
+      )
+      .addItem((item) =>
+        item
+          .setSection("action")
+          .setTitle("Make copy")
+          .setIcon("lucide-files")
+          .onClick(() => void this.makeCopy(file)),
+      )
+      .addItem((item) =>
+        item
+          .setSection("danger")
+          .setTitle("Delete")
+          .setIcon("lucide-trash-2")
+          .setWarning(true)
+          .onClick(() => void this.deleteFile(file)),
+      );
   }
 
   private async createNote(folder: TFolder | null): Promise<void> {
     const file = await this.app.fileManager.createNewMarkdownFile(folder);
-    await this.app.workspace.openFile(file, { active: true, state: { mode: "source" }, eState: { rename: "all" } });
+    await this.app.workspace.openFile(file, {
+      active: true,
+      state: { mode: "source" },
+      eState: { rename: "all" },
+    });
   }
 
   private async createFolder(folder: TFolder | null): Promise<void> {
@@ -414,17 +564,23 @@ export class FileExplorerView extends ItemView {
     this.afterCreate(created);
   }
 
-  private async createFolderWithSelection(target: TFile | TFolder, files: TAbstractFile[]): Promise<void> {
-    const parent = target instanceof TFolder ? target.isRoot() ? null : target : target.parent;
+  private async createFolderWithSelection(
+    target: TFile | TFolder,
+    files: TAbstractFile[],
+  ): Promise<void> {
+    const parent = target instanceof TFolder ? (target.isRoot() ? null : target) : target.parent;
     const folder = await this.app.fileManager.createNewFolder(parent);
     this.afterCreate(folder);
-    const movable = files.filter((file): file is TFile | TFolder => file instanceof TFile || file instanceof TFolder);
+    const movable = files.filter(
+      (file): file is TFile | TFolder => file instanceof TFile || file instanceof TFolder,
+    );
     await this.moveFilesIntoFolder(movable, folder);
     this.clearSelection();
   }
 
   private async deleteFile(file: TAbstractFile): Promise<void> {
-    if (file instanceof TFile || file instanceof TFolder) await this.app.fileManager.deleteFile(file);
+    if (file instanceof TFile || file instanceof TFolder)
+      await this.app.fileManager.deleteFile(file);
     this.renderFileTree();
   }
 
@@ -438,7 +594,12 @@ export class FileExplorerView extends ItemView {
 
   private filterSelectionRoots(files: TAbstractFile[]): TAbstractFile[] {
     const selectedFolders = files.filter((file): file is TFolder => file instanceof TFolder);
-    return files.filter((file) => !selectedFolders.some((folder) => folder !== file && file.path.startsWith(`${folder.path}/`)));
+    return files.filter(
+      (file) =>
+        !selectedFolders.some(
+          (folder) => folder !== file && file.path.startsWith(`${folder.path}/`),
+        ),
+    );
   }
 
   private async makeCopy(file: TFile | TFolder): Promise<void> {
@@ -484,7 +645,8 @@ export class FileExplorerView extends ItemView {
     if (event.altKey && !event.shiftKey) {
       if (this.selectedPaths.has(file.path)) this.selectedPaths.delete(file.path);
       else {
-        if (this.treeActivePath && this.treeActivePath !== file.path) this.selectedPaths.add(this.treeActivePath);
+        if (this.treeActivePath && this.treeActivePath !== file.path)
+          this.selectedPaths.add(this.treeActivePath);
         this.selectedPaths.add(file.path);
       }
       this.treeActivePath = file.path;
@@ -556,7 +718,11 @@ export class FileExplorerView extends ItemView {
     selection?.addRange(range);
   }
 
-  private async onRenameKeydown(event: KeyboardEvent, file: TFile | TFolder, titleEl: HTMLElement): Promise<void> {
+  private async onRenameKeydown(
+    event: KeyboardEvent,
+    file: TFile | TFolder,
+    titleEl: HTMLElement,
+  ): Promise<void> {
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
@@ -575,10 +741,15 @@ export class FileExplorerView extends ItemView {
     event.preventDefault();
     const text = event.clipboardData?.getData("text/plain") ?? "";
     const target = event.currentTarget;
-    if (target instanceof HTMLElement) target.ownerDocument.execCommand("insertText", false, text.replace(/[\r\n]/g, " "));
+    if (target instanceof HTMLElement)
+      target.ownerDocument.execCommand("insertText", false, text.replace(/[\r\n]/g, " "));
   }
 
-  private async stopRename(file: TFile | TFolder, titleEl: HTMLElement, save: boolean): Promise<void> {
+  private async stopRename(
+    file: TFile | TFolder,
+    titleEl: HTMLElement,
+    save: boolean,
+  ): Promise<void> {
     if (this.renamingPath !== file.path) return;
     const nextName = (titleEl.textContent ?? "").trim();
     const validation = this.getRenameValidation(file, nextName, true);
@@ -588,7 +759,10 @@ export class FileExplorerView extends ItemView {
     }
     this.exitRename(titleEl);
     if (save && validation.name && validation.name !== file.name) {
-      await this.app.fileManager.renameAbstractFile(file, this.getRenameTargetPath(file, validation.name));
+      await this.app.fileManager.renameAbstractFile(
+        file,
+        this.getRenameTargetPath(file, validation.name),
+      );
     }
     this.renderFileTree();
   }
@@ -621,7 +795,11 @@ export class FileExplorerView extends ItemView {
     this.applyRenameValidation(titleEl, validation.error, validation.warning);
   }
 
-  private getRenameValidation(file: TFile | TFolder, name: string, requireNonEmpty: boolean): ReturnType<typeof validateRenameName> {
+  private getRenameValidation(
+    file: TFile | TFolder,
+    name: string,
+    requireNonEmpty: boolean,
+  ): ReturnType<typeof validateRenameName> {
     return validateRenameName(this.app.vault, file, name, requireNonEmpty);
   }
 
@@ -649,7 +827,10 @@ export class FileExplorerView extends ItemView {
   }
 
   private getRootChildren(): TAbstractFile[] {
-    return this.app.vault.getAllLoadedFiles().filter((file) => file.parentPath === "" && file.path !== "/").sort(this.compareFiles);
+    return this.app.vault
+      .getAllLoadedFiles()
+      .filter((file) => file.parentPath === "" && file.path !== "/")
+      .sort(this.compareFiles);
   }
 
   private readonly compareFiles = (a: TAbstractFile, b: TAbstractFile): number => {
@@ -662,19 +843,31 @@ export class FileExplorerView extends ItemView {
     const statA = (a as TFile).stat;
     const statB = (b as TFile).stat;
     switch (order) {
-      case "alphabeticalReverse": return -byName;
-      case "byModifiedTime": return statB.mtime - statA.mtime || byName;
-      case "byModifiedTimeReverse": return statA.mtime - statB.mtime || byName;
-      case "byCreatedTime": return statB.ctime - statA.ctime || byName;
-      case "byCreatedTimeReverse": return statA.ctime - statB.ctime || byName;
-      default: return byName;
+      case "alphabeticalReverse":
+        return -byName;
+      case "byModifiedTime":
+        return statB.mtime - statA.mtime || byName;
+      case "byModifiedTimeReverse":
+        return statA.mtime - statB.mtime || byName;
+      case "byCreatedTime":
+        return statB.ctime - statA.ctime || byName;
+      case "byCreatedTimeReverse":
+        return statA.ctime - statB.ctime || byName;
+      default:
+        return byName;
     }
   };
 
   private installRootDrop(targetEl: HTMLElement): void {
     const preview = (event: DragEvent): void => {
       if (event.target !== targetEl) return;
-      const result = this.handleFolderDrop(event, this.app.dragManager.getSource(), true, this.app.vault.root, targetEl);
+      const result = this.handleFolderDrop(
+        event,
+        this.app.dragManager.getSource(),
+        true,
+        this.app.vault.root,
+        targetEl,
+      );
       if (!result) return;
       event.stopPropagation();
       event.preventDefault();
@@ -703,11 +896,19 @@ export class FileExplorerView extends ItemView {
   }
 
   private installFolderDrop(targetEl: HTMLElement, folder: TFolder, hoverEl: HTMLElement): void {
-    this.app.dragManager.handleDrop(targetEl, (event, source, hovering) => this.handleFolderDrop(event, source, hovering, folder, hoverEl), true);
+    this.app.dragManager.handleDrop(
+      targetEl,
+      (event, source, hovering) => this.handleFolderDrop(event, source, hovering, folder, hoverEl),
+      true,
+    );
     targetEl.addEventListener("dragleave", () => this.clearFolderExpandTimer());
   }
 
-  private createDragSource(event: DragEvent, file: TAbstractFile, titleEl: HTMLElement): DragSource | null {
+  private createDragSource(
+    event: DragEvent,
+    file: TAbstractFile,
+    titleEl: HTMLElement,
+  ): DragSource | null {
     const selectedSource = this.createSelectedDragSource(event, file);
     if (selectedSource) return selectedSource;
     if (!this.selectedPaths.has(file.path)) {
@@ -716,8 +917,10 @@ export class FileExplorerView extends ItemView {
       this.focusTreeItem(file.path);
       this.refreshSelectionDom();
     }
-    if (file instanceof TFile) return this.app.dragManager.dragFile(event, file, undefined, [titleEl]);
-    if (file instanceof TFolder) return this.app.dragManager.dragFolder(event, file, undefined, [titleEl]);
+    if (file instanceof TFile)
+      return this.app.dragManager.dragFile(event, file, undefined, [titleEl]);
+    if (file instanceof TFolder)
+      return this.app.dragManager.dragFolder(event, file, undefined, [titleEl]);
     return null;
   }
 
@@ -730,22 +933,50 @@ export class FileExplorerView extends ItemView {
         const abstractFile = this.app.vault.getAbstractFileByPath(path);
         const titleEl = abstractFile ? this.getTitleEl(abstractFile.path) : null;
         const itemEl = titleEl?.closest<HTMLElement>(".tree-item") ?? null;
-        return (abstractFile instanceof TFile || abstractFile instanceof TFolder) && titleEl && itemEl ? { file: abstractFile, titleEl, itemEl } : null;
+        return (abstractFile instanceof TFile || abstractFile instanceof TFolder) &&
+          titleEl &&
+          itemEl
+          ? { file: abstractFile, titleEl, itemEl }
+          : null;
       })
-      .filter((entry): entry is { file: TFile | TFolder; titleEl: HTMLElement; itemEl: HTMLElement } => entry !== null)
+      .filter(
+        (entry): entry is { file: TFile | TFolder; titleEl: HTMLElement; itemEl: HTMLElement } =>
+          entry !== null,
+      )
       .sort((a, b) => a.titleEl.offsetTop - b.titleEl.offsetTop);
-    return this.app.dragManager.dragFiles(event, entries.map((entry) => entry.file), undefined, entries.map((entry) => entry.itemEl));
+    return this.app.dragManager.dragFiles(
+      event,
+      entries.map((entry) => entry.file),
+      undefined,
+      entries.map((entry) => entry.itemEl),
+    );
   }
 
-  private handleFolderDrop(event: DragEvent, source: DragSource | null, hovering: boolean, folder: TFolder, hoverEl: HTMLElement): DragDropResult {
+  private handleFolderDrop(
+    event: DragEvent,
+    source: DragSource | null,
+    hovering: boolean,
+    folder: TFolder,
+    hoverEl: HTMLElement,
+  ): DragDropResult {
     if (source) {
-      const result = this.handleInternalFolderDrop(source, hovering, folder, this.resolveFolderHoverEl(event, folder, hoverEl));
+      const result = this.handleInternalFolderDrop(
+        source,
+        hovering,
+        folder,
+        this.resolveFolderHoverEl(event, folder, hoverEl),
+      );
       if (result) event.stopPropagation();
       return result;
     }
     this.clearFolderExpandTimer();
     if (!hasDataTransferAttachmentFiles(event.dataTransfer)) return undefined;
-    if (!hovering) void this.app.importAttachments(getAttachmentFilesFromDataTransfer(event.dataTransfer), folder, null);
+    if (!hovering)
+      void this.app.importAttachments(
+        getAttachmentFilesFromDataTransfer(event.dataTransfer),
+        folder,
+        null,
+      );
     event.stopPropagation();
     return {
       action: "Import attachments",
@@ -755,14 +986,23 @@ export class FileExplorerView extends ItemView {
     };
   }
 
-  private resolveFolderHoverEl(event: DragEvent, folder: TFolder, fallbackEl: HTMLElement): HTMLElement {
+  private resolveFolderHoverEl(
+    event: DragEvent,
+    folder: TFolder,
+    fallbackEl: HTMLElement,
+  ): HTMLElement {
     if (folder.isRoot()) return fallbackEl;
     const currentTarget = event.currentTarget;
     if (!(currentTarget instanceof HTMLElement)) return fallbackEl;
     return currentTarget.closest<HTMLElement>(".tree-item.nav-folder") ?? fallbackEl;
   }
 
-  private handleInternalFolderDrop(source: DragSource, hovering: boolean, folder: TFolder, hoverEl: HTMLElement): DragDropResult {
+  private handleInternalFolderDrop(
+    source: DragSource,
+    hovering: boolean,
+    folder: TFolder,
+    hoverEl: HTMLElement,
+  ): DragDropResult {
     const files = this.getMovableFilesForFolderDrop(source, folder);
     if (files.length === 0) {
       this.clearFolderExpandTimer();
@@ -771,20 +1011,25 @@ export class FileExplorerView extends ItemView {
     if (hovering) {
       hoverEl.classList.add("is-being-dragged-over");
       this.scheduleFolderExpand(folder);
-    }
-    else {
+    } else {
       this.clearFolderExpandTimer();
       void this.moveFilesIntoFolder(files, folder);
     }
     return {
-      action: files.length === 1 ? `Move to ${folder.isRoot() ? this.app.vault.getName() : folder.name}` : `Move ${files.length} items`,
+      action:
+        files.length === 1
+          ? `Move to ${folder.isRoot() ? this.app.vault.getName() : folder.name}`
+          : `Move ${files.length} items`,
       dropEffect: "move",
       hoverEl,
       hoverClass: "is-being-dragged-over",
     };
   }
 
-  private getMovableFilesForFolderDrop(source: DragSource, targetFolder: TFolder): Array<TFile | TFolder> {
+  private getMovableFilesForFolderDrop(
+    source: DragSource,
+    targetFolder: TFolder,
+  ): Array<TFile | TFolder> {
     if (isFileDragSource(source)) {
       return this.canMoveIntoFolder(source.file, targetFolder) ? [source.file] : [];
     }
@@ -792,7 +1037,9 @@ export class FileExplorerView extends ItemView {
       return this.canMoveIntoFolder(source.file, targetFolder) ? [source.file] : [];
     }
     if (!isFilesDragSource(source)) return [];
-    return this.removeSelectedDescendants(source.files.filter((file) => this.canMoveIntoFolder(file, targetFolder)));
+    return this.removeSelectedDescendants(
+      source.files.filter((file) => this.canMoveIntoFolder(file, targetFolder)),
+    );
   }
 
   private canMoveIntoFolder(file: TFile | TFolder, targetFolder: TFolder): boolean {
@@ -811,10 +1058,18 @@ export class FileExplorerView extends ItemView {
 
   private removeSelectedDescendants(files: Array<TFile | TFolder>): Array<TFile | TFolder> {
     const selectedFolders = files.filter((file): file is TFolder => file instanceof TFolder);
-    return files.filter((file) => !selectedFolders.some((folder) => folder !== file && file.path.startsWith(`${folder.path}/`)));
+    return files.filter(
+      (file) =>
+        !selectedFolders.some(
+          (folder) => folder !== file && file.path.startsWith(`${folder.path}/`),
+        ),
+    );
   }
 
-  private async moveFilesIntoFolder(files: Array<TFile | TFolder>, targetFolder: TFolder): Promise<void> {
+  private async moveFilesIntoFolder(
+    files: Array<TFile | TFolder>,
+    targetFolder: TFolder,
+  ): Promise<void> {
     for (const file of files) {
       if (!this.canMoveIntoFolder(file, targetFolder)) continue;
       const targetPath = this.getAvailableMovePath(file, targetFolder);
@@ -866,7 +1121,11 @@ export class FileExplorerView extends ItemView {
       this.selectedPaths.add(path);
       return;
     }
-    const paths = [...this.contentEl.querySelectorAll<HTMLElement>(".nav-folder-title[data-path], .nav-file-title[data-path]")]
+    const paths = [
+      ...this.contentEl.querySelectorAll<HTMLElement>(
+        ".nav-folder-title[data-path], .nav-file-title[data-path]",
+      ),
+    ]
       .map((el) => el.dataset.path)
       .filter((value): value is string => Boolean(value));
     const start = paths.indexOf(this.treeActivePath);
@@ -881,7 +1140,9 @@ export class FileExplorerView extends ItemView {
   }
 
   private refreshSelectionDom(): void {
-    for (const titleEl of this.contentEl.querySelectorAll<HTMLElement>(".nav-folder-title, .nav-file-title")) {
+    for (const titleEl of this.contentEl.querySelectorAll<HTMLElement>(
+      ".nav-folder-title, .nav-file-title",
+    )) {
       const path = titleEl.dataset.path;
       titleEl.classList.toggle("is-selected", !!path && this.selectedPaths.has(path));
       titleEl.classList.toggle("has-focus", !!path && this.focusedPath === path);
@@ -889,7 +1150,9 @@ export class FileExplorerView extends ItemView {
   }
 
   private getTitleEl(path: string): HTMLElement | null {
-    const el = this.contentEl.querySelector<HTMLElement>(`.nav-folder-title[data-path="${cssEscape(path)}"], .nav-file-title[data-path="${cssEscape(path)}"]`);
+    const el = this.contentEl.querySelector<HTMLElement>(
+      `.nav-folder-title[data-path="${cssEscape(path)}"], .nav-file-title[data-path="${cssEscape(path)}"]`,
+    );
     return el;
   }
 }
@@ -914,7 +1177,8 @@ function isFolderDragSource(source: DragSource): source is FolderDragSource {
 function isFullTitleShown(selfEl: HTMLElement, innerEl: HTMLElement): boolean {
   const offsetParent = selfEl.offsetParent as HTMLElement | null;
   if (!offsetParent) return true;
-  const start = (Number.parseInt(getComputedStyle(selfEl).paddingLeft, 10) || 0) + selfEl.offsetLeft;
+  const start =
+    (Number.parseInt(getComputedStyle(selfEl).paddingLeft, 10) || 0) + selfEl.offsetLeft;
   return start + innerEl.scrollWidth <= offsetParent.clientWidth + offsetParent.scrollLeft;
 }
 

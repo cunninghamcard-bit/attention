@@ -7,10 +7,7 @@ import { defineConfig } from "vite";
  * that pulls in every engine; @earendil-works/pi-coding-agent and all Node
  * builtins stay external (provided by the Node runtime, not bundled).
  */
-const nodeBuiltins = new Set([
-  ...builtinModules,
-  ...builtinModules.map((name) => `node:${name}`),
-]);
+const nodeBuiltins = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
 
 export default defineConfig({
   build: {
@@ -25,8 +22,7 @@ export default defineConfig({
       fileName: () => "index.js",
     },
     rollupOptions: {
-      external: (source) =>
-        source.startsWith("@earendil-works/") || nodeBuiltins.has(source),
+      external: (source) => source.startsWith("@earendil-works/") || nodeBuiltins.has(source),
     },
   },
 });

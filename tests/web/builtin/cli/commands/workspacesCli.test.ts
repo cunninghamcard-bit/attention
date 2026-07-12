@@ -86,7 +86,9 @@ describe("workspace:load CLI command", () => {
   it("throws the missing-parameter string verbatim for an empty name", async () => {
     const { app } = await workspacesApp();
     // The dispatcher's required-flag check fires when the flag is absent...
-    await expect(app.cli.handleCli(["workspace:load"])).rejects.toMatch(/^Missing required parameter: name=<name>/);
+    await expect(app.cli.handleCli(["workspace:load"])).rejects.toMatch(
+      /^Missing required parameter: name=<name>/,
+    );
     // ...so exercise the handler's own guard with an empty value.
     await expect(app.cli.handleCli(["workspace:load", "name="])).rejects.toBe(
       "Missing required parameter: name\nUsage: workspace:load name=<name>",
@@ -95,7 +97,9 @@ describe("workspace:load CLI command", () => {
 
   it("throws the not-found string verbatim", async () => {
     const { app } = await workspacesApp();
-    await expect(app.cli.handleCli(["workspace:load", "name=Ghost"])).rejects.toBe('Workspace "Ghost" not found.');
+    await expect(app.cli.handleCli(["workspace:load", "name=Ghost"])).rejects.toBe(
+      'Workspace "Ghost" not found.',
+    );
   });
 });
 
@@ -104,7 +108,9 @@ describe("workspace:delete CLI command", () => {
     const { app, controller } = await workspacesApp();
     await app.cli.handleCli(["workspace:save", "name=Main"]);
     await app.cli.handleCli(["workspace:save", "name=Alt"]);
-    expect(await app.cli.handleCli(["workspace:delete", "name=Main"])).toBe("Deleted workspace: Main");
+    expect(await app.cli.handleCli(["workspace:delete", "name=Main"])).toBe(
+      "Deleted workspace: Main",
+    );
     expect(Object.keys(controller.options.workspaces)).toEqual(["Alt"]);
     expect(await app.cli.handleCli(["workspaces"])).toBe("Alt (active)");
   });
@@ -120,10 +126,14 @@ describe("workspace:delete CLI command", () => {
 
   it("throws the missing-parameter and not-found strings verbatim", async () => {
     const { app } = await workspacesApp();
-    await expect(app.cli.handleCli(["workspace:delete"])).rejects.toMatch(/^Missing required parameter: name=<name>/);
+    await expect(app.cli.handleCli(["workspace:delete"])).rejects.toMatch(
+      /^Missing required parameter: name=<name>/,
+    );
     await expect(app.cli.handleCli(["workspace:delete", "name="])).rejects.toBe(
       "Missing required parameter: name\nUsage: workspace:delete name=<name>",
     );
-    await expect(app.cli.handleCli(["workspace:delete", "name=Ghost"])).rejects.toBe('Workspace "Ghost" not found.');
+    await expect(app.cli.handleCli(["workspace:delete", "name=Ghost"])).rejects.toBe(
+      'Workspace "Ghost" not found.',
+    );
   });
 });

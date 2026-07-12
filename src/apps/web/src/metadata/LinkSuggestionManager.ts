@@ -1,4 +1,9 @@
-import { computeBlockIdInsertion, createBlockId, type BlockCacheBlock, type BlockCacheRecord } from "./BlockCache";
+import {
+  computeBlockIdInsertion,
+  createBlockId,
+  type BlockCacheBlock,
+  type BlockCacheRecord,
+} from "./BlockCache";
 import type { LinkSuggestion, MetadataHost } from "./MetadataCache";
 import type { TFile } from "../vault/TAbstractFile";
 import { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch } from "../core/fuzzy";
@@ -8,49 +13,49 @@ export type LinkSuggestionMatchRange = Array<[number, number]>;
 
 export type LinkFileSuggestion =
   | {
-    type: "file";
-    file: TFile;
-    path: string;
-    score: number;
-    matches: LinkSuggestionMatchRange | null;
-    downranked?: boolean;
-  }
+      type: "file";
+      file: TFile;
+      path: string;
+      score: number;
+      matches: LinkSuggestionMatchRange | null;
+      downranked?: boolean;
+    }
   | {
-    type: "alias";
-    alias: string;
-    file: TFile | null;
-    path: string;
-    score: number;
-    matches: LinkSuggestionMatchRange | null;
-    downranked?: boolean;
-  }
+      type: "alias";
+      alias: string;
+      file: TFile | null;
+      path: string;
+      score: number;
+      matches: LinkSuggestionMatchRange | null;
+      downranked?: boolean;
+    }
   | {
-    type: "linktext";
-    path: string;
-    score: number;
-    matches: LinkSuggestionMatchRange | null;
-  }
+      type: "linktext";
+      path: string;
+      score: number;
+      matches: LinkSuggestionMatchRange | null;
+    }
   | {
-    type: "heading";
-    file: TFile | null;
-    path: string | null;
-    subpath: string;
-    level: number;
-    heading: string;
-    score: number;
-    matches: LinkSuggestionMatchRange | null;
-  }
+      type: "heading";
+      file: TFile | null;
+      path: string | null;
+      subpath: string;
+      level: number;
+      heading: string;
+      score: number;
+      matches: LinkSuggestionMatchRange | null;
+    }
   | {
-    type: "block";
-    file: TFile;
-    path: string | null;
-    content: string;
-    display: string;
-    node: BlockCacheBlock["node"];
-    score: number;
-    matches: LinkSuggestionMatchRange | null;
-    idMatch?: LinkSuggestionMatchRange | null;
-  };
+      type: "block";
+      file: TFile;
+      path: string | null;
+      content: string;
+      display: string;
+      node: BlockCacheBlock["node"];
+      score: number;
+      matches: LinkSuggestionMatchRange | null;
+      idMatch?: LinkSuggestionMatchRange | null;
+    };
 
 export interface LinkSuggestionCancelToken {
   isCancelled?: boolean;
@@ -93,12 +98,22 @@ export class LinkSuggestionManager {
     this.fileSuggestions = null;
   }
 
-  async getSuggestionsAsync(cancelToken: LinkSuggestionCancelToken | null, query: string, sourcePath = ""): Promise<LinkFileSuggestion[]> {
+  async getSuggestionsAsync(
+    cancelToken: LinkSuggestionCancelToken | null,
+    query: string,
+    sourcePath = "",
+  ): Promise<LinkFileSuggestion[]> {
     const pipeIndex = query.indexOf("|");
     let suggestions: LinkFileSuggestion[];
     if (pipeIndex !== -1) {
       const { path, subpath } = splitLinkpath(query.slice(0, pipeIndex));
-      suggestions = this.getDisplaySuggestions(cancelToken, path, subpath, query.slice(pipeIndex + 1), sourcePath);
+      suggestions = this.getDisplaySuggestions(
+        cancelToken,
+        path,
+        subpath,
+        query.slice(pipeIndex + 1),
+        sourcePath,
+      );
     } else if (query.startsWith("##")) {
       suggestions = this.getGlobalHeadingSuggestions(cancelToken, query.slice(2));
     } else if (query.startsWith("^^")) {
@@ -111,16 +126,25 @@ export class LinkSuggestionManager {
           : this.getHeadingSuggestions(cancelToken, path, subpath, sourcePath);
       } else {
         const caretIndex = path.lastIndexOf("^");
-        suggestions = caretIndex !== -1
-          ? await this.getBlockSuggestions(cancelToken, path.slice(0, caretIndex), path.slice(caretIndex + 1), sourcePath)
-          : this.getFileSuggestions(cancelToken, path);
+        suggestions =
+          caretIndex !== -1
+            ? await this.getBlockSuggestions(
+                cancelToken,
+                path.slice(0, caretIndex),
+                path.slice(caretIndex + 1),
+                sourcePath,
+              )
+            : this.getFileSuggestions(cancelToken, path);
       }
     }
     suggestions.sort(compareSuggestionScore);
     return suggestions;
   }
 
-  getFileSuggestions(cancelToken: LinkSuggestionCancelToken | null, query: string): LinkFileSuggestion[] {
+  getFileSuggestions(
+    cancelToken: LinkSuggestionCancelToken | null,
+    query: string,
+  ): LinkFileSuggestion[] {
     const trimmedQuery = query.trim();
     const suggestions = this.getCachedLinkSuggestions();
     const results: LinkFileSuggestion[] = [];
@@ -153,16 +177,27 @@ export class LinkSuggestionManager {
       return results;
     }
 
-    const matcher = suggestions.length < 10_000 ? createFuzzyMatcher(trimmedQuery) : createLargeListMatcher(trimmedQuery);
+    const matcher =
+      suggestions.length < 10_000
+        ? createFuzzyMatcher(trimmedQuery)
+        : createLargeListMatcher(trimmedQuery);
     for (const suggestion of suggestions) {
       this.throwIfCancelled(cancelToken);
       if (!suggestion.file) {
         const match = matcher(suggestion.path);
-        if (match) results.push({ type: "linktext", path: suggestion.path, score: match.score, matches: match.matches });
+        if (match)
+          results.push({
+            type: "linktext",
+            path: suggestion.path,
+            score: match.score,
+            matches: match.matches,
+          });
         continue;
       }
       const ignored = this.app.metadataCache.isUserIgnored(suggestion.file.path);
-      const match = suggestion.alias ? matcher(suggestion.alias) : matchFilePath(matcher, suggestion.path);
+      const match = suggestion.alias
+        ? matcher(suggestion.alias)
+        : matchFilePath(matcher, suggestion.path);
       if (!match) continue;
       const score = match.score + (ignored ? -10 : 0);
       if (suggestion.alias) {
@@ -189,7 +224,13 @@ export class LinkSuggestionManager {
     return results;
   }
 
-  getDisplaySuggestions(cancelToken: LinkSuggestionCancelToken | null, path: string, subpath: string, displayQuery: string, sourcePath = ""): LinkFileSuggestion[] {
+  getDisplaySuggestions(
+    cancelToken: LinkSuggestionCancelToken | null,
+    path: string,
+    subpath: string,
+    displayQuery: string,
+    sourcePath = "",
+  ): LinkFileSuggestion[] {
     const linkpathWithSubpath = `${path}${subpath}`;
     const file = this.app.metadataCache.getFirstLinkpathDest(path, sourcePath);
     const aliases = getDisplayAliases(this.app.metadataCache.getFileCache(file)?.frontmatter);
@@ -211,40 +252,57 @@ export class LinkSuggestionManager {
       }
     }
     if (suggestions.length > 0) return suggestions;
-    return [{
-      type: "alias",
-      alias: displayQuery,
-      file: null,
-      path: linkpathWithSubpath,
-      score: 0,
-      matches: [[0, displayQuery.length]],
-    }];
+    return [
+      {
+        type: "alias",
+        alias: displayQuery,
+        file: null,
+        path: linkpathWithSubpath,
+        score: 0,
+        matches: [[0, displayQuery.length]],
+      },
+    ];
   }
 
-  getHeadingSuggestions(cancelToken: LinkSuggestionCancelToken | null, path: string, subpath: string, sourcePath = ""): LinkFileSuggestion[] {
+  getHeadingSuggestions(
+    cancelToken: LinkSuggestionCancelToken | null,
+    path: string,
+    subpath: string,
+    sourcePath = "",
+  ): LinkFileSuggestion[] {
     const file = this.app.metadataCache.getFirstLinkpathDest(path, sourcePath);
     if (!file || file.extension !== "md") return [];
     const headings = this.app.metadataCache.getFileCache(file)?.headings ?? [];
-    const suggestions = buildHeadingSuggestions(cancelToken, headings, (token) => this.throwIfCancelled(token), {
-      file,
-      path,
-      rawSubpath: subpath,
-      global: false,
-    });
+    const suggestions = buildHeadingSuggestions(
+      cancelToken,
+      headings,
+      (token) => this.throwIfCancelled(token),
+      {
+        file,
+        path,
+        rawSubpath: subpath,
+        global: false,
+      },
+    );
     if (suggestions.length > 0) return suggestions;
-    return [{
-      type: "heading",
-      file: null,
-      path,
-      subpath,
-      heading: subpath.slice(1),
-      level: 0,
-      score: 0,
-      matches: [[0, subpath.length]],
-    }];
+    return [
+      {
+        type: "heading",
+        file: null,
+        path,
+        subpath,
+        heading: subpath.slice(1),
+        level: 0,
+        score: 0,
+        matches: [[0, subpath.length]],
+      },
+    ];
   }
 
-  getGlobalHeadingSuggestions(cancelToken: LinkSuggestionCancelToken | null, query: string): LinkFileSuggestion[] {
+  getGlobalHeadingSuggestions(
+    cancelToken: LinkSuggestionCancelToken | null,
+    query: string,
+  ): LinkFileSuggestion[] {
     const matcher = createFuzzyMatcher(query.trim());
     const suggestions: LinkFileSuggestion[] = [];
     for (const path of this.app.metadataCache.getCachedFiles()) {
@@ -270,7 +328,12 @@ export class LinkSuggestionManager {
     return suggestions;
   }
 
-  async getBlockSuggestions(cancelToken: LinkSuggestionCancelToken | null, path: string, query: string, sourcePath = ""): Promise<LinkFileSuggestion[]> {
+  async getBlockSuggestions(
+    cancelToken: LinkSuggestionCancelToken | null,
+    path: string,
+    query: string,
+    sourcePath = "",
+  ): Promise<LinkFileSuggestion[]> {
     const file = this.app.metadataCache.getFirstLinkpathDest(path, sourcePath);
     if (!file || file.extension !== "md") return [];
     const record = await this.app.metadataCache.blockCache.getForFile(cancelToken, file);
@@ -278,7 +341,10 @@ export class LinkSuggestionManager {
     return this.getBlockSuggestionsForRecord(cancelToken, record, path, query);
   }
 
-  async getGlobalBlockSuggestions(cancelToken: LinkSuggestionCancelToken | null, query: string): Promise<LinkFileSuggestion[]> {
+  async getGlobalBlockSuggestions(
+    cancelToken: LinkSuggestionCancelToken | null,
+    query: string,
+  ): Promise<LinkFileSuggestion[]> {
     const queryParts = blockQueryParts(query);
     const suggestions: LinkFileSuggestion[] = [];
     for await (const record of this.app.metadataCache.blockCache.getAll(cancelToken)) {
@@ -293,13 +359,26 @@ export class LinkSuggestionManager {
   }
 
   suggestionToLinkpath(suggestion: LinkFileSuggestion): { path: string; subpath: string } {
-    if (suggestion.type === "block") return { path: suggestion.file.path, subpath: `#^${suggestion.node.id ?? ""}` };
-    if (suggestion.type === "heading") return { path: suggestion.file?.path ?? suggestion.path ?? "", subpath: `#${sanitizeHeadingSubpath(suggestion.heading)}` };
-    if (suggestion.type === "file" || suggestion.type === "alias") return { path: suggestion.file?.path ?? "", subpath: "" };
+    if (suggestion.type === "block")
+      return { path: suggestion.file.path, subpath: `#^${suggestion.node.id ?? ""}` };
+    if (suggestion.type === "heading")
+      return {
+        path: suggestion.file?.path ?? suggestion.path ?? "",
+        subpath: `#${sanitizeHeadingSubpath(suggestion.heading)}`,
+      };
+    if (suggestion.type === "file" || suggestion.type === "alias")
+      return { path: suggestion.file?.path ?? "", subpath: "" };
     return splitLinkpath(suggestion.path);
   }
 
-  async ensureBlockSuggestionId(suggestion: Extract<LinkFileSuggestion, { type: "block" }>, blockId = createBlockId(6)): Promise<{ suggestion: Extract<LinkFileSuggestion, { type: "block" }>; blockId: string; insertion: ReturnType<typeof computeBlockIdInsertion> | null }> {
+  async ensureBlockSuggestionId(
+    suggestion: Extract<LinkFileSuggestion, { type: "block" }>,
+    blockId = createBlockId(6),
+  ): Promise<{
+    suggestion: Extract<LinkFileSuggestion, { type: "block" }>;
+    blockId: string;
+    insertion: ReturnType<typeof computeBlockIdInsertion> | null;
+  }> {
     if (suggestion.node.id) return { suggestion, blockId: suggestion.node.id, insertion: null };
     const insertion = computeBlockIdInsertion(suggestion, blockId);
     const nextContent = `${suggestion.content.slice(0, insertion.blockEnd)}${insertion.addition}${suggestion.content.slice(insertion.blockEnd)}`;
@@ -310,11 +389,18 @@ export class LinkSuggestionManager {
     return { suggestion, blockId, insertion };
   }
 
-  createLinkSuggestionReplacement(suggestion: LinkFileSuggestion | { type: "none" }, options: LinkSuggestionReplacementOptions): LinkSuggestionReplacement {
+  createLinkSuggestionReplacement(
+    suggestion: LinkFileSuggestion | { type: "none" },
+    options: LinkSuggestionReplacementOptions,
+  ): LinkSuggestionReplacement {
     const mode = options.mode ?? "markdown";
     const key = options.key ?? "";
     const sourcePath = options.sourcePath ?? "";
-    const markdownLink = mode === "markdown" && Boolean(this.app.vault.getConfig<boolean>("useMarkdownLinks")) && key !== "#" && key !== "^";
+    const markdownLink =
+      mode === "markdown" &&
+      Boolean(this.app.vault.getConfig<boolean>("useMarkdownLinks")) &&
+      key !== "#" &&
+      key !== "^";
     let target = "";
     let display = "";
     let blockId: string | null = null;
@@ -342,11 +428,14 @@ export class LinkSuggestionManager {
       display = "";
     }
 
-    if (key === "#") target += suggestion.type === "file" && suggestion.file.extension === "pdf" ? "#page=" : "#";
+    if (key === "#")
+      target += suggestion.type === "file" && suggestion.file.extension === "pdf" ? "#page=" : "#";
     if (key === "^") target += "^";
     const consumedDisplay = consumeTrailingDisplay(options.tailText ?? "");
     if (consumedDisplay) display = consumedDisplay.display;
-    const replacement = markdownLink ? markdownReplacement(target, display) : wikiReplacement(target, display);
+    const replacement = markdownLink
+      ? markdownReplacement(target, display)
+      : wikiReplacement(target, display);
     const end = options.end + (consumedDisplay?.length ?? 0);
     const selection = replacementSelection(replacement, display, markdownLink, key);
     return {
@@ -372,11 +461,21 @@ export class LinkSuggestionManager {
     return this.app.metadataCache.fileToLinktext(file, sourcePath, omitMdExtension);
   }
 
-  private resolveSuggestionBasePath(file: TFile | null, path: string | null, sourcePath: string, omitMdExtension: boolean): string {
-    return file ? this.fileToLinktext(file, sourcePath, omitMdExtension) : path ?? "";
+  private resolveSuggestionBasePath(
+    file: TFile | null,
+    path: string | null,
+    sourcePath: string,
+    omitMdExtension: boolean,
+  ): string {
+    return file ? this.fileToLinktext(file, sourcePath, omitMdExtension) : (path ?? "");
   }
 
-  private getBlockSuggestionsForRecord(cancelToken: LinkSuggestionCancelToken | null, record: BlockCacheRecord, path: string, query: string): LinkFileSuggestion[] {
+  private getBlockSuggestionsForRecord(
+    cancelToken: LinkSuggestionCancelToken | null,
+    record: BlockCacheRecord,
+    path: string,
+    query: string,
+  ): LinkFileSuggestion[] {
     const queryParts = blockQueryParts(query);
     const suggestions: LinkFileSuggestion[] = [];
     for (const block of record.blocks) {
@@ -387,7 +486,12 @@ export class LinkSuggestionManager {
     return suggestions;
   }
 
-  private matchBlock(record: BlockCacheRecord, block: BlockCacheBlock, path: string | null, queryParts: string[]): LinkFileSuggestion | null {
+  private matchBlock(
+    record: BlockCacheRecord,
+    block: BlockCacheBlock,
+    path: string | null,
+    queryParts: string[],
+  ): LinkFileSuggestion | null {
     const displayMatch = matchBlockText(queryParts, block.display.toLowerCase());
     let idMatch: LinkSuggestionMatchRange | null = null;
     let score = scoreBlockMatch(displayMatch);
@@ -411,7 +515,8 @@ export class LinkSuggestionManager {
 
   private throwIfCancelled(cancelToken: LinkSuggestionCancelToken | null): void {
     cancelToken?.throwIfCancelled?.();
-    if (cancelToken?.isCancelled || cancelToken?.cancelled) throw new Error("Suggestion request cancelled");
+    if (cancelToken?.isCancelled || cancelToken?.cancelled)
+      throw new Error("Suggestion request cancelled");
   }
 }
 
@@ -467,7 +572,9 @@ function shouldUseFileDisplay(target: string, file: TFile): boolean {
 }
 
 function isImageExtension(extension: string): boolean {
-  return ["bmp", "png", "jpg", "jpeg", "gif", "svg", "webp", "avif"].includes(extension.toLowerCase());
+  return ["bmp", "png", "jpg", "jpeg", "gif", "svg", "webp", "avif"].includes(
+    extension.toLowerCase(),
+  );
 }
 
 function wikiReplacement(target: string, display: string): string {
@@ -487,7 +594,12 @@ function consumeTrailingDisplay(tailText: string): { display: string; length: nu
   return match ? { display: match[1], length: match[0].length } : null;
 }
 
-function replacementSelection(replacement: string, display: string, markdownLink: boolean, key: string): { start: number; end: number } {
+function replacementSelection(
+  replacement: string,
+  display: string,
+  markdownLink: boolean,
+  key: string,
+): { start: number; end: number } {
   if (markdownLink) {
     if (!display) return { start: 1, end: 1 };
     return { start: replacement.length, end: replacement.length };
@@ -505,7 +617,10 @@ function replacementSelection(replacement: string, display: string, markdownLink
 }
 
 function blockQueryParts(query: string): string[] {
-  return query.toLowerCase().split(" ").filter((part) => part.length > 0);
+  return query
+    .toLowerCase()
+    .split(" ")
+    .filter((part) => part.length > 0);
 }
 
 function matchBlockText(queryParts: string[], text: string): LinkSuggestionMatchRange | null {
@@ -594,6 +709,11 @@ function getDisplayAliases(frontmatter: Record<string, unknown> | undefined): st
   const entry = Object.entries(frontmatter).find(([key]) => /^aliases$/i.test(key));
   if (!entry) return [];
   const value = entry[1];
-  const values = typeof value === "string" ? [value] : Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  const values =
+    typeof value === "string"
+      ? [value]
+      : Array.isArray(value)
+        ? value.filter((item): item is string => typeof item === "string")
+        : [];
   return values.map((item) => item.trim()).filter(Boolean);
 }

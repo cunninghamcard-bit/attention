@@ -50,7 +50,10 @@ export class DeferredView extends View {
 
   async rerender(): Promise<void> {
     if (this.leaf.view !== this || this.leaf.working) return;
-    await this.leaf.setViewState({ type: this.viewType, state: normalizeViewStatePayload(this.viewState) }, this.ephemeralViewState);
+    await this.leaf.setViewState(
+      { type: this.viewType, state: normalizeViewStatePayload(this.viewState) },
+      this.ephemeralViewState,
+    );
     if (this.leaf.view !== this) this.app.workspace.requestLayoutChangeEvents();
   }
 }

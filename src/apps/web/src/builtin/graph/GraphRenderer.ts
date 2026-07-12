@@ -45,7 +45,14 @@ interface GraphWorkerResult {
 
 type TouchGesture =
   | { mode: "pan"; x: number; y: number; panX: number; panY: number }
-  | { mode: "pinch"; distance: number; center: { x: number; y: number }; scale: number; panX: number; panY: number };
+  | {
+      mode: "pinch";
+      distance: number;
+      center: { x: number; y: number };
+      scale: number;
+      panX: number;
+      panY: number;
+    };
 
 export class GraphRenderer {
   private data: GraphData = { nodes: [], links: [], focusedId: null, hasFilter: false };
@@ -86,8 +93,12 @@ export class GraphRenderer {
     this.containerEl.addEventListener("mousedown", (event) => event.preventDefault());
     this.containerEl.addEventListener("wheel", (event) => this.onWheel(event), { passive: false });
     this.containerEl.addEventListener("pointerdown", (event) => this.startPan(event));
-    this.containerEl.addEventListener("touchstart", (event) => this.onTouchStart(event), { passive: false });
-    this.containerEl.addEventListener("touchmove", (event) => this.onTouchMove(event), { passive: false });
+    this.containerEl.addEventListener("touchstart", (event) => this.onTouchStart(event), {
+      passive: false,
+    });
+    this.containerEl.addEventListener("touchmove", (event) => this.onTouchMove(event), {
+      passive: false,
+    });
     this.containerEl.addEventListener("touchend", () => this.onTouchEnd());
     this.containerEl.addEventListener("touchcancel", () => this.onTouchEnd());
   }
@@ -99,9 +110,12 @@ export class GraphRenderer {
   }
 
   setRenderOptions(options: GraphDisplayOptions): void {
-    if (typeof options.nodeSizeMultiplier === "number") this.displayOptions.nodeSizeMultiplier = options.nodeSizeMultiplier;
-    if (typeof options.lineSizeMultiplier === "number") this.displayOptions.lineSizeMultiplier = options.lineSizeMultiplier;
-    if (typeof options.textFadeMultiplier === "number") this.displayOptions.textFadeMultiplier = options.textFadeMultiplier;
+    if (typeof options.nodeSizeMultiplier === "number")
+      this.displayOptions.nodeSizeMultiplier = options.nodeSizeMultiplier;
+    if (typeof options.lineSizeMultiplier === "number")
+      this.displayOptions.lineSizeMultiplier = options.lineSizeMultiplier;
+    if (typeof options.textFadeMultiplier === "number")
+      this.displayOptions.textFadeMultiplier = options.textFadeMultiplier;
     if (typeof options.showArrow === "boolean") this.displayOptions.showArrow = options.showArrow;
     this.changed();
   }
@@ -127,7 +141,7 @@ export class GraphRenderer {
       const start = performance.now();
       const shouldContinue = this.render();
       const elapsed = Math.max(16, performance.now() - start);
-      this.progression = Math.max(0, this.progression - speed * elapsed / 1000);
+      this.progression = Math.max(0, this.progression - (speed * elapsed) / 1000);
       if (this.progression > 0 && shouldContinue) {
         this.progressionTimer = window.requestAnimationFrame(tick);
       } else {
@@ -182,7 +196,9 @@ export class GraphRenderer {
   }
 
   static async copyToClipboard(canvas: HTMLCanvasElement, type = "image/png"): Promise<void> {
-    const clipboard = navigator.clipboard as (Clipboard & { write?: (items: ClipboardItem[]) => Promise<void> }) | undefined;
+    const clipboard = navigator.clipboard as
+      | (Clipboard & { write?: (items: ClipboardItem[]) => Promise<void> })
+      | undefined;
     if (clipboard?.write && typeof ClipboardItem !== "undefined") {
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type));
       if (blob) {
@@ -261,7 +277,10 @@ export class GraphRenderer {
     line.setAttribute("y1", String(from.y));
     line.setAttribute("x2", String(to.x));
     line.setAttribute("y2", String(to.y));
-    line.setAttribute("stroke-width", String(Math.max(0.5, this.displayOptions.lineSizeMultiplier * 1.5)));
+    line.setAttribute(
+      "stroke-width",
+      String(Math.max(0.5, this.displayOptions.lineSizeMultiplier * 1.5)),
+    );
     if (this.displayOptions.showArrow) line.setAttribute("marker-end", `url(#${this.markerId})`);
     return line;
   }
@@ -294,7 +313,10 @@ export class GraphRenderer {
     label.classList.add("graph-node-label", "color-text");
     label.setAttribute("x", String(this.nodeRadius(node) + 5));
     label.setAttribute("y", "4");
-    label.setAttribute("opacity", String(Math.max(0.2, 1 - this.displayOptions.textFadeMultiplier * 0.7)));
+    label.setAttribute(
+      "opacity",
+      String(Math.max(0.2, 1 - this.displayOptions.textFadeMultiplier * 0.7)),
+    );
     label.textContent = node.label;
 
     group.append(circle, label);
@@ -304,13 +326,20 @@ export class GraphRenderer {
   private layout(data: GraphData): GraphData {
     const nodes = data.nodes.map((node) => ({ ...node }));
     const links = data.links.map((link) => ({ ...link }));
-    const focused = data.focusedId ? nodes.find((node) => node.id === data.focusedId) ?? null : null;
-    const sorted = [...nodes].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base", numeric: true }));
+    const focused = data.focusedId
+      ? (nodes.find((node) => node.id === data.focusedId) ?? null)
+      : null;
+    const sorted = [...nodes].sort((a, b) =>
+      a.label.localeCompare(b.label, undefined, { sensitivity: "base", numeric: true }),
+    );
     const rest = focused ? sorted.filter((node) => node !== focused) : sorted;
     const centerX = this.width / 2;
     const centerY = this.height / 2;
     const baseDistance = Math.max(120, Math.min(310, this.forceOptions.linkDistance));
-    const radius = Math.max(baseDistance, Math.min(340, 56 + rest.length * 11 + this.forceOptions.repelStrength * 2));
+    const radius = Math.max(
+      baseDistance,
+      Math.min(340, 56 + rest.length * 11 + this.forceOptions.repelStrength * 2),
+    );
 
     if (focused) {
       focused.x = centerX;
@@ -318,9 +347,21 @@ export class GraphRenderer {
     }
 
     rest.forEach((node, index) => {
-      const angle = rest.length === 1 ? -Math.PI / 2 : (Math.PI * 2 * index) / Math.max(1, rest.length) - Math.PI / 2;
-      const connectedToFocus = !!focused && links.some((link) => link.from === focused.id && link.to === node.id || link.to === focused.id && link.from === node.id);
-      const nodeRadius = focused && connectedToFocus ? radius * Math.max(0.4, this.forceOptions.linkStrength * 0.72) : radius;
+      const angle =
+        rest.length === 1
+          ? -Math.PI / 2
+          : (Math.PI * 2 * index) / Math.max(1, rest.length) - Math.PI / 2;
+      const connectedToFocus =
+        !!focused &&
+        links.some(
+          (link) =>
+            (link.from === focused.id && link.to === node.id) ||
+            (link.to === focused.id && link.from === node.id),
+        );
+      const nodeRadius =
+        focused && connectedToFocus
+          ? radius * Math.max(0.4, this.forceOptions.linkStrength * 0.72)
+          : radius;
       node.x = centerX + Math.cos(angle) * nodeRadius;
       node.y = centerY + Math.sin(angle) * nodeRadius;
     });
@@ -346,7 +387,12 @@ export class GraphRenderer {
       links[link.from][link.to] = true;
     }
     this.worker.postMessage({
-      nodes: this.data.nodes.map((node) => ({ id: node.id, type: node.type, color: node.color, links: node.links })),
+      nodes: this.data.nodes.map((node) => ({
+        id: node.id,
+        type: node.type,
+        color: node.color,
+        links: node.links,
+      })),
       links,
       alpha: 0.3,
       run: true,
@@ -435,7 +481,7 @@ export class GraphRenderer {
       this.draggingNodeId = null;
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
-      window.setTimeout(() => this.dragMoved = false);
+      window.setTimeout(() => (this.dragMoved = false));
     };
 
     window.addEventListener("pointermove", move);
@@ -460,14 +506,14 @@ export class GraphRenderer {
     if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) deltaY *= 800;
     const nextScale = clamp(this.targetScale * Math.pow(1.5, -deltaY / 120), 1 / 128, 8);
     const rect = this.containerEl.getBoundingClientRect();
-    const center = deltaY < 0
-      ? { x: event.clientX - rect.left, y: event.clientY - rect.top }
-      : { x: 0, y: 0 };
+    const center =
+      deltaY < 0 ? { x: event.clientX - rect.left, y: event.clientY - rect.top } : { x: 0, y: 0 };
     this.zoomTo(nextScale, center);
   }
 
   private zoomTo(nextScale: number, center: { x: number; y: number }): void {
-    const focal = center.x === 0 && center.y === 0 ? { x: this.width / 2, y: this.height / 2 } : center;
+    const focal =
+      center.x === 0 && center.y === 0 ? { x: this.width / 2, y: this.height / 2 } : center;
     const before = this.screenToWorld(focal.x, focal.y);
     this.targetScale = clamp(nextScale, 1 / 128, 8);
     this.scale = this.scale * 0.85 + this.targetScale * 0.15;
@@ -485,7 +531,13 @@ export class GraphRenderer {
     this.stopPanInertia();
     this.panning = true;
     document.body.classList.add("is-grabbing");
-    const start = { x: event.clientX, y: event.clientY, panX: this.panX, panY: this.panY, time: performance.now() };
+    const start = {
+      x: event.clientX,
+      y: event.clientY,
+      panX: this.panX,
+      panY: this.panY,
+      time: performance.now(),
+    };
     let last = start;
     let moved = false;
     const move = (moveEvent: PointerEvent) => {
@@ -495,11 +547,17 @@ export class GraphRenderer {
       moved = true;
       const now = performance.now();
       const elapsed = Math.max(1, now - last.time);
-      this.panVelocityX = (moveEvent.clientX - last.x) / elapsed / this.scale * 16;
-      this.panVelocityY = (moveEvent.clientY - last.y) / elapsed / this.scale * 16;
+      this.panVelocityX = ((moveEvent.clientX - last.x) / elapsed / this.scale) * 16;
+      this.panVelocityY = ((moveEvent.clientY - last.y) / elapsed / this.scale) * 16;
       this.panX = start.panX + (moveEvent.clientX - start.x) / this.scale;
       this.panY = start.panY + (moveEvent.clientY - start.y) / this.scale;
-      last = { x: moveEvent.clientX, y: moveEvent.clientY, panX: this.panX, panY: this.panY, time: now };
+      last = {
+        x: moveEvent.clientX,
+        y: moveEvent.clientY,
+        panX: this.panX,
+        panY: this.panY,
+        time: now,
+      };
       this.updateViewBox();
     };
     const up = () => {
@@ -548,7 +606,13 @@ export class GraphRenderer {
       event.preventDefault();
       this.stopPanInertia();
       const touch = event.touches[0];
-      this.touchGesture = { mode: "pan", x: touch.clientX, y: touch.clientY, panX: this.panX, panY: this.panY };
+      this.touchGesture = {
+        mode: "pan",
+        x: touch.clientX,
+        y: touch.clientY,
+        panX: this.panX,
+        panY: this.panY,
+      };
       return;
     }
     if (event.touches.length >= 2) {
@@ -583,7 +647,14 @@ export class GraphRenderer {
       const distance = touchDistance(first, second);
       const center = touchCenter(first, second, this.containerEl);
       if (this.touchGesture.mode !== "pinch") {
-        this.touchGesture = { mode: "pinch", distance, center, scale: this.targetScale, panX: this.panX, panY: this.panY };
+        this.touchGesture = {
+          mode: "pinch",
+          distance,
+          center,
+          scale: this.targetScale,
+          panX: this.panX,
+          panY: this.panY,
+        };
         return;
       }
       const ratio = distance / Math.max(1, this.touchGesture.distance);
@@ -622,7 +693,6 @@ export class GraphRenderer {
     };
   }
 
-
   private stopProgression(): void {
     if (this.progressionTimer !== undefined) {
       window.cancelAnimationFrame(this.progressionTimer);
@@ -646,7 +716,11 @@ function touchDistance(first: Touch, second: Touch): number {
   return Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY);
 }
 
-function touchCenter(first: Touch, second: Touch, containerEl: HTMLElement): { x: number; y: number } {
+function touchCenter(
+  first: Touch,
+  second: Touch,
+  containerEl: HTMLElement,
+): { x: number; y: number } {
   const rect = containerEl.getBoundingClientRect();
   return {
     x: (first.clientX + second.clientX) / 2 - rect.left,
@@ -685,7 +759,7 @@ class InlineGraphSimulationWorker implements GraphWorkerLike {
     const count = Math.max(1, this.nodes.length);
     const radius = Math.max(120, Math.min(320, 48 + count * 10));
     this.nodes.forEach((node, index) => {
-      const angle = count === 1 ? -Math.PI / 2 : Math.PI * 2 * index / count - Math.PI / 2;
+      const angle = count === 1 ? -Math.PI / 2 : (Math.PI * 2 * index) / count - Math.PI / 2;
       const weight = Object.keys(this.links[node.id] ?? {}).length + node.links;
       const weightedRadius = radius - Math.min(90, weight * 6);
       resultNodes[node.id] = {

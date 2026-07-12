@@ -29,10 +29,16 @@ describe("FilesSettingTab", () => {
     expect(tab.containerEl.textContent).toContain("Advanced");
     expect(tab.containerEl.textContent).toContain("URI callbacks");
 
-    const toggle = findSetting(tab.containerEl, "URI callbacks")?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    const toggle = findSetting(tab.containerEl, "URI callbacks")?.querySelector<HTMLInputElement>(
+      'input[type="checkbox"]',
+    );
     expect(toggle).not.toBeNull();
     expect(toggle?.checked).toBe(false);
-    expect(findSetting(tab.containerEl, "URI callbacks")?.querySelector(".checkbox-container")?.classList.contains("is-enabled")).toBe(false);
+    expect(
+      findSetting(tab.containerEl, "URI callbacks")
+        ?.querySelector(".checkbox-container")
+        ?.classList.contains("is-enabled"),
+    ).toBe(false);
 
     toggle!.checked = true;
     toggle!.dispatchEvent(new Event("change"));
@@ -40,8 +46,15 @@ describe("FilesSettingTab", () => {
     expect(app.vault.getConfig("uriCallbacks")).toBe(true);
 
     tab.display();
-    const rerenderedToggle = findSetting(tab.containerEl, "URI callbacks")?.querySelector<HTMLInputElement>('input[type="checkbox"]');
-    expect(findSetting(tab.containerEl, "URI callbacks")?.querySelector(".checkbox-container")?.classList.contains("is-enabled")).toBe(true);
+    const rerenderedToggle = findSetting(
+      tab.containerEl,
+      "URI callbacks",
+    )?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    expect(
+      findSetting(tab.containerEl, "URI callbacks")
+        ?.querySelector(".checkbox-container")
+        ?.classList.contains("is-enabled"),
+    ).toBe(true);
 
     rerenderedToggle!.checked = false;
     rerenderedToggle!.dispatchEvent(new Event("change"));
@@ -83,7 +96,9 @@ describe("FilesSettingTab", () => {
     window.localStorage.setItem("obsidian-reconstructed-config", ".obsidian-custom");
     const app = new App(document.createElement("div"));
     const tab = new FilesSettingTab(app);
-    const reload = vi.spyOn(tab as unknown as { reloadWindow: () => void }, "reloadWindow").mockImplementation(() => {});
+    const reload = vi
+      .spyOn(tab as unknown as { reloadWindow: () => void }, "reloadWindow")
+      .mockImplementation(() => {});
 
     expect(app.vault.configDir).toBe(".obsidian-custom");
 
@@ -148,7 +163,9 @@ describe("FilesSettingTab", () => {
     const app = new App(document.createElement("div"));
     const tab = new FilesSettingTab(app);
     const clear = vi.spyOn(app.metadataCache, "clear").mockResolvedValue();
-    const reload = vi.spyOn(tab as unknown as { reloadWindow: () => void }, "reloadWindow").mockImplementation(() => {});
+    const reload = vi
+      .spyOn(tab as unknown as { reloadWindow: () => void }, "reloadWindow")
+      .mockImplementation(() => {});
 
     tab.display();
     clickButton(tab.containerEl, "Reindex");
@@ -185,13 +202,16 @@ function setTextAfterName(parent: HTMLElement, name: string, value: string): voi
 }
 
 function setToggleAfterName(parent: HTMLElement, name: string, value: boolean): void {
-  const input = findSetting(parent, name)?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+  const input = findSetting(parent, name)?.querySelector<HTMLInputElement>(
+    'input[type="checkbox"]',
+  );
   expect(input).not.toBeNull();
   input!.checked = value;
   input!.dispatchEvent(new Event("change"));
 }
 
 function findSetting(parent: HTMLElement, name: string): HTMLElement | undefined {
-  return [...parent.querySelectorAll<HTMLElement>(".setting-item")]
-    .find((item) => item.querySelector(".setting-item-name")?.textContent === name);
+  return [...parent.querySelectorAll<HTMLElement>(".setting-item")].find(
+    (item) => item.querySelector(".setting-item-name")?.textContent === name,
+  );
 }

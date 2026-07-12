@@ -19,12 +19,10 @@ describe("PropertyLinkSuggest", () => {
   it("accepts property link suggestions as wikilinks even when markdown links are enabled", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const source = await app.vault.create("Daily/Today.md", [
-      "---",
-      "related: \"[[Tar\"",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Daily/Today.md",
+      ["---", 'related: "[[Tar"', "---", "Body"].join("\n"),
+    );
     await app.vault.create("Notes/Target.md", "Target body");
     app.vault.setConfig("newLinkFormat", "relative");
     app.vault.setConfig("useMarkdownLinks", true);
@@ -32,7 +30,8 @@ describe("PropertyLinkSuggest", () => {
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const inputEl = view.metadataContainerEl.querySelector<HTMLInputElement>(".metadata-input-text");
+    const inputEl =
+      view.metadataContainerEl.querySelector<HTMLInputElement>(".metadata-input-text");
     if (!inputEl) throw new Error("missing property input");
     inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
     inputEl.dispatchEvent(new InputEvent("input", { bubbles: true }));
@@ -40,30 +39,26 @@ describe("PropertyLinkSuggest", () => {
     inputEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     await Promise.resolve();
 
-    expect(view.getViewData()).toBe([
-      "---",
-      "related: \"[[../Notes/Target|Target]]\"",
-      "---",
-      "Body",
-    ].join("\n"));
+    expect(view.getViewData()).toBe(
+      ["---", 'related: "[[../Notes/Target|Target]]"', "---", "Body"].join("\n"),
+    );
   });
 
   it("keeps property suggestions open for subpath continuation keys", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const source = await app.vault.create("Daily/Today.md", [
-      "---",
-      "related: \"[[Tar\"",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Daily/Today.md",
+      ["---", 'related: "[[Tar"', "---", "Body"].join("\n"),
+    );
     await app.vault.create("Notes/Target.md", "Target body");
     app.vault.setConfig("newLinkFormat", "relative");
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const inputEl = view.metadataContainerEl.querySelector<HTMLInputElement>(".metadata-input-text");
+    const inputEl =
+      view.metadataContainerEl.querySelector<HTMLInputElement>(".metadata-input-text");
     if (!inputEl) throw new Error("missing property input");
     inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
     inputEl.dispatchEvent(new InputEvent("input", { bubbles: true }));
@@ -72,25 +67,24 @@ describe("PropertyLinkSuggest", () => {
     await Promise.resolve();
 
     expect(inputEl.value).toBe("[[../Notes/Target#|Target]]");
-    expect(view.getViewData()).toContain("related: \"[[Tar\"");
+    expect(view.getViewData()).toContain('related: "[[Tar"');
   });
 
   it("writes missing block ids before committing a property link", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const source = await app.vault.create("Source.md", [
-      "---",
-      "related: \"[[Target#^Para\"",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Source.md",
+      ["---", 'related: "[[Target#^Para"', "---", "Body"].join("\n"),
+    );
     const target = await app.vault.create("Target.md", "Paragraph block");
     await app.metadataCache.computeFileMetadataAsync(target);
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const inputEl = view.metadataContainerEl.querySelector<HTMLInputElement>(".metadata-input-text");
+    const inputEl =
+      view.metadataContainerEl.querySelector<HTMLInputElement>(".metadata-input-text");
     if (!inputEl) throw new Error("missing property input");
     inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
     inputEl.dispatchEvent(new InputEvent("input", { bubbles: true }));

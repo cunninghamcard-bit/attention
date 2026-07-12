@@ -34,7 +34,10 @@ export interface AssignedPropertyWidget {
   widget: PropertyType;
 }
 
-export class PropertyRegistry<TPropertyInfo = PropertyDefinition, TAllProperties = readonly PropertyDefinition[]> extends Events {
+export class PropertyRegistry<
+  TPropertyInfo = PropertyDefinition,
+  TAllProperties = readonly PropertyDefinition[],
+> extends Events {
   protected definitions = new Map<string, PropertyDefinition>();
   protected types = new Map<PropertyType, PropertyTypeDefinition>();
   protected widgets = new Map<PropertyType, PropertyTypeWidget>();
@@ -46,7 +49,12 @@ export class PropertyRegistry<TPropertyInfo = PropertyDefinition, TAllProperties
     this.registerDefaultWidgets();
     this.register({ id: "tags", name: "tags", type: "tags", icon: "lucide-tags" });
     this.register({ id: "aliases", name: "aliases", type: "aliases", icon: "lucide-at-sign" });
-    this.register({ id: "cssclasses", name: "cssclasses", type: "multitext", icon: "lucide-palette" });
+    this.register({
+      id: "cssclasses",
+      name: "cssclasses",
+      type: "multitext",
+      icon: "lucide-palette",
+    });
   }
 
   register(definition: PropertyDefinition): void {
@@ -104,7 +112,12 @@ export class PropertyRegistry<TPropertyInfo = PropertyDefinition, TAllProperties
     if (isReservedProperty(normalized)) return;
     this.assignedWidgets.delete(normalized);
     const definition = this.definitions.get(normalized);
-    if (definition) this.definitions.set(normalized, { ...definition, type: "text", icon: this.getType("text")?.icon });
+    if (definition)
+      this.definitions.set(normalized, {
+        ...definition,
+        type: "text",
+        icon: this.getType("text")?.icon,
+      });
   }
 
   getAssignedWidget(id: string): PropertyType | null {
@@ -134,7 +147,8 @@ export class PropertyRegistry<TPropertyInfo = PropertyDefinition, TAllProperties
       return { expected: assigned, inferred: assigned };
     }
 
-    const inferredType = value == null ? assignedType ?? this.inferType(id, value) : this.inferType(id, value);
+    const inferredType =
+      value == null ? (assignedType ?? this.inferType(id, value)) : this.inferType(id, value);
     const inferred = this.getType(inferredType) ?? this.getRequiredType("unknown");
     return { expected: assigned ?? inferred, inferred };
   }
@@ -177,7 +191,9 @@ export class PropertyRegistry<TPropertyInfo = PropertyDefinition, TAllProperties
       case "date":
         return !value || (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value));
       case "datetime":
-        return !value || (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value));
+        return (
+          !value || (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value))
+        );
       case "tags":
       case "aliases":
       case "multitext":
@@ -261,7 +277,10 @@ export class PropertyRegistry<TPropertyInfo = PropertyDefinition, TAllProperties
   }
 }
 
-function inputWidget(type: HTMLInputElement["type"], linkSuggest = type === "text"): PropertyTypeWidget {
+function inputWidget(
+  type: HTMLInputElement["type"],
+  linkSuggest = type === "text",
+): PropertyTypeWidget {
   return {
     render(parent, context) {
       const showInput = () => {
@@ -272,26 +291,32 @@ function inputWidget(type: HTMLInputElement["type"], linkSuggest = type === "tex
         inputEl.value = String(context.value ?? "");
         if (linkSuggest) bindPropertyLinkSuggest(inputEl, context);
         inputEl.addEventListener("change", () => {
-          if (type === "number") context.onChange(inputEl.value === "" ? null : Number(inputEl.value));
+          if (type === "number")
+            context.onChange(inputEl.value === "" ? null : Number(inputEl.value));
           else context.onChange(inputEl.value || null);
         });
         parent.appendChild(inputEl);
         return inputEl;
       };
-      if (type === "text" && renderPropertyLinkValue(String(context.value ?? ""), parent, context, {
-        onEdit: () => {
-          const inputEl = showInput();
-          inputEl.focus();
-          inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
-        },
-      })) return;
+      if (
+        type === "text" &&
+        renderPropertyLinkValue(String(context.value ?? ""), parent, context, {
+          onEdit: () => {
+            const inputEl = showInput();
+            inputEl.focus();
+            inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+          },
+        })
+      )
+        return;
       const inputEl = document.createElement("input");
       inputEl.type = type;
       inputEl.className = "metadata-input-text";
       inputEl.value = String(context.value ?? "");
       if (linkSuggest) bindPropertyLinkSuggest(inputEl, context);
       inputEl.addEventListener("change", () => {
-        if (type === "number") context.onChange(inputEl.value === "" ? null : Number(inputEl.value));
+        if (type === "number")
+          context.onChange(inputEl.value === "" ? null : Number(inputEl.value));
         else context.onChange(inputEl.value || null);
       });
       parent.appendChild(inputEl);

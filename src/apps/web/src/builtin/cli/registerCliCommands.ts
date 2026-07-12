@@ -32,7 +32,8 @@ export function registerCliCommands(app: App): void {
     (params) => {
       const adapter = app.vault.adapter;
       if (params.info === "name") return app.vault.getName();
-      if (params.info === "path") return adapter instanceof FileSystemAdapter ? adapter.getBasePath() : "(not available)";
+      if (params.info === "path")
+        return adapter instanceof FileSystemAdapter ? adapter.getBasePath() : "(not available)";
       const root = app.vault.getRoot();
       const fileCount = root.getFileCount();
       const folderCount = root.getFolderCount();
@@ -76,7 +77,10 @@ export function registerCliCommands(app: App): void {
         files = files.filter((f) => f.extension === ext);
       }
       if (params.total) return String(files.length);
-      return files.map((f) => f.path).sort(alphaCompare).join("\n");
+      return files
+        .map((f) => f.path)
+        .sort(alphaCompare)
+        .join("\n");
     },
   );
 
@@ -98,14 +102,20 @@ export function registerCliCommands(app: App): void {
         if (file instanceof TFolder) folders.push(file);
       });
       if (params.total) return String(folders.length);
-      return folders.map((f) => f.path).sort(alphaCompare).join("\n");
+      return folders
+        .map((f) => f.path)
+        .sort(alphaCompare)
+        .join("\n");
     },
   );
 
   cli.registerHandler(
     "read",
     "Read file contents",
-    { file: { value: "<name>", description: "File name" }, path: { value: "<path>", description: "File path" } },
+    {
+      file: { value: "<name>", description: "File name" },
+      path: { value: "<path>", description: "File path" },
+    },
     // Real handler: shared resolver (throws), then cachedRead.
     async (params) => app.vault.cachedRead(cli.tryResolveFile(params)),
   );

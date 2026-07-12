@@ -71,7 +71,10 @@ export class DailyNotesController {
     const file = this.app.vault.getFileByPath(templatePath);
     if (!file) return "";
     const source = await this.app.vault.read(file);
-    return renderTemplate(source, { title: formatDate(date, this.options.format || "YYYY-MM-DD"), date });
+    return renderTemplate(source, {
+      title: formatDate(date, this.options.format || "YYYY-MM-DD"),
+      date,
+    });
   }
 
   private getActiveDailyDate(): Date | null {
@@ -95,7 +98,10 @@ class DailyNotesSettingTab implements SettingTab {
   readonly navEl = document.createElement("div");
   readonly containerEl = document.createElement("div");
 
-  constructor(readonly app: App, readonly controller: DailyNotesController) {
+  constructor(
+    readonly app: App,
+    readonly controller: DailyNotesController,
+  ) {
     this.navEl.className = "vertical-tab-nav-item tappable";
     const iconEl = document.createElement("div");
     iconEl.className = "vertical-tab-nav-item-icon";
@@ -115,21 +121,27 @@ class DailyNotesSettingTab implements SettingTab {
     new Setting(group.itemsEl)
       .setName("Date format")
       .setDesc("Filename format for today's note.")
-      .addText((text) => text.setValue(this.controller.options.format ?? "YYYY-MM-DD").onChange((format) => {
-        void this.controller.saveOptions({ format });
-      }));
+      .addText((text) =>
+        text.setValue(this.controller.options.format ?? "YYYY-MM-DD").onChange((format) => {
+          void this.controller.saveOptions({ format });
+        }),
+      );
     new Setting(group.itemsEl)
       .setName("New file location")
       .setDesc("Folder where daily notes are created.")
-      .addText((text) => text.setValue(this.controller.options.folder ?? "").onChange((folder) => {
-        void this.controller.saveOptions({ folder });
-      }));
+      .addText((text) =>
+        text.setValue(this.controller.options.folder ?? "").onChange((folder) => {
+          void this.controller.saveOptions({ folder });
+        }),
+      );
     new Setting(group.itemsEl)
       .setName("Template file location")
       .setDesc("Optional markdown template used when a daily note is created.")
-      .addText((text) => text.setValue(this.controller.options.template ?? "").onChange((template) => {
-        void this.controller.saveOptions({ template });
-      }));
+      .addText((text) =>
+        text.setValue(this.controller.options.template ?? "").onChange((template) => {
+          void this.controller.saveOptions({ template });
+        }),
+      );
   }
 
   hide(): void {
@@ -190,7 +202,10 @@ export function formatDate(date: Date, format: string): string {
   return format.replace(/YYYY|YY|MM|M|DD|D|HH|H|mm|m|ss|s/g, (token) => values[token] ?? token);
 }
 
-export function renderTemplate(source: string, context: { title?: string; date?: Date } = {}): string {
+export function renderTemplate(
+  source: string,
+  context: { title?: string; date?: Date } = {},
+): string {
   const now = context.date ?? new Date();
   return source
     .replace(/{{date}}/gi, formatDate(now, "YYYY-MM-DD"))

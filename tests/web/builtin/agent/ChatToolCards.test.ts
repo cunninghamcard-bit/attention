@@ -8,7 +8,9 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K>
 type Bare = DistributiveOmit<AgentEvent, "seq" | "agentId">;
 
 function feed(session: Agent, list: Bare[]): void {
-  list.forEach((event, index) => session.applyEvent({ ...event, seq: index + 1, agentId: "t1" } as AgentEvent));
+  list.forEach((event, index) =>
+    session.applyEvent({ ...event, seq: index + 1, agentId: "t1" } as AgentEvent),
+  );
 }
 
 function mount(events: Bare[]): HTMLElement {
@@ -30,7 +32,12 @@ describe("builtin tool cards", () => {
     const el = mount([
       { type: "message.started", messageId: "a1", role: "assistant" },
       { type: "part.opened", messageId: "a1", partIndex: 0, partType: "tool", toolName: "bash" },
-      { type: "part.delta", messageId: "a1", partIndex: 0, delta: JSON.stringify({ command: "echo hi" }) },
+      {
+        type: "part.delta",
+        messageId: "a1",
+        partIndex: 0,
+        delta: JSON.stringify({ command: "echo hi" }),
+      },
       { type: "part.closed", messageId: "a1", partIndex: 0, result: "hi\n" },
       { type: "message.closed", messageId: "a1" },
     ]);
@@ -46,13 +53,22 @@ describe("builtin tool cards", () => {
     const el = mount([
       { type: "message.started", messageId: "a1", role: "assistant" },
       { type: "part.opened", messageId: "a1", partIndex: 0, partType: "tool", toolName: "Edit" },
-      { type: "part.delta", messageId: "a1", partIndex: 0, delta: JSON.stringify({ file_path: "/x/foo.ts", old_string: "a\nb", new_string: "a\nc" }) },
+      {
+        type: "part.delta",
+        messageId: "a1",
+        partIndex: 0,
+        delta: JSON.stringify({ file_path: "/x/foo.ts", old_string: "a\nb", new_string: "a\nc" }),
+      },
       { type: "part.closed", messageId: "a1", partIndex: 0, result: "ok" },
       { type: "message.closed", messageId: "a1" },
     ]);
     expect(el.querySelector(".chat-tool-title")?.textContent).toBe("foo.ts");
-    const dels = [...el.querySelectorAll(".chat-diff-del .chat-diff-text")].map((n) => n.textContent);
-    const adds = [...el.querySelectorAll(".chat-diff-add .chat-diff-text")].map((n) => n.textContent);
+    const dels = [...el.querySelectorAll(".chat-diff-del .chat-diff-text")].map(
+      (n) => n.textContent,
+    );
+    const adds = [...el.querySelectorAll(".chat-diff-add .chat-diff-text")].map(
+      (n) => n.textContent,
+    );
     expect(dels).toEqual(["a", "b"]);
     expect(adds).toEqual(["a", "c"]);
   });
@@ -61,7 +77,12 @@ describe("builtin tool cards", () => {
     const el = mount([
       { type: "message.started", messageId: "a1", role: "assistant" },
       { type: "part.opened", messageId: "a1", partIndex: 0, partType: "tool", toolName: "edit" },
-      { type: "part.delta", messageId: "a1", partIndex: 0, delta: JSON.stringify({ file_path: "x.ts", old_string: "a", new_string: "b\nc\nd" }) },
+      {
+        type: "part.delta",
+        messageId: "a1",
+        partIndex: 0,
+        delta: JSON.stringify({ file_path: "x.ts", old_string: "a", new_string: "b\nc\nd" }),
+      },
       { type: "part.closed", messageId: "a1", partIndex: 0, result: "ok" },
     ]);
     expect(el.querySelector(".chat-diffstat-add")?.textContent).toBe("+3");
@@ -72,8 +93,19 @@ describe("builtin tool cards", () => {
     const el = mount([
       { type: "message.started", messageId: "a1", role: "assistant" },
       { type: "part.opened", messageId: "a1", partIndex: 0, partType: "tool", toolName: "read" },
-      { type: "part.delta", messageId: "a1", partIndex: 0, delta: JSON.stringify({ file_path: "gone.ts" }) },
-      { type: "part.closed", messageId: "a1", partIndex: 0, result: "ENOENT: no such file", error: "ENOENT: no such file" },
+      {
+        type: "part.delta",
+        messageId: "a1",
+        partIndex: 0,
+        delta: JSON.stringify({ file_path: "gone.ts" }),
+      },
+      {
+        type: "part.closed",
+        messageId: "a1",
+        partIndex: 0,
+        result: "ENOENT: no such file",
+        error: "ENOENT: no such file",
+      },
       { type: "message.closed", messageId: "a1" },
     ]);
     expect(el.querySelector(".chat-tool-status")?.textContent).toBe("failed");

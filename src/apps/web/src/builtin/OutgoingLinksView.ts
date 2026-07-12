@@ -6,13 +6,21 @@ import { MarkdownView } from "../views/MarkdownView";
 export class OutgoingLinksView extends ItemView {
   private file: TFile | null = null;
 
-  getViewType(): string { return "outgoing-link"; }
-  getDisplayText(): string { return "Outgoing links"; }
-  getIcon(): string { return "links-going-out"; }
+  getViewType(): string {
+    return "outgoing-link";
+  }
+  getDisplayText(): string {
+    return "Outgoing links";
+  }
+  getIcon(): string {
+    return "links-going-out";
+  }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("outgoing-link-pane");
-    this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.updateFromActiveFile()));
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", () => this.updateFromActiveFile()),
+    );
     this.registerEvent(this.app.metadataCache.on("changed", () => this.render()));
     this.registerEvent(this.app.metadataCache.on("deleted", () => this.render()));
     this.updateFromActiveFile();
@@ -20,7 +28,9 @@ export class OutgoingLinksView extends ItemView {
 
   updateFromActiveFile(): void {
     const activeView = this.app.workspace.activeLeaf?.view;
-    this.file = this.app.workspace.activeEditor?.file ?? (activeView instanceof MarkdownView ? activeView.file : null);
+    this.file =
+      this.app.workspace.activeEditor?.file ??
+      (activeView instanceof MarkdownView ? activeView.file : null);
     this.render();
   }
 
@@ -55,7 +65,8 @@ export class OutgoingLinksView extends ItemView {
       emptyEl.textContent = emptyText;
       childrenEl.appendChild(emptyEl);
     } else {
-      for (const link of links.sort((a, b) => a.to.localeCompare(b.to))) this.renderLink(link, childrenEl);
+      for (const link of links.sort((a, b) => a.to.localeCompare(b.to)))
+        this.renderLink(link, childrenEl);
     }
 
     this.contentEl.appendChild(sectionEl);
@@ -78,7 +89,8 @@ export class OutgoingLinksView extends ItemView {
     lineEl.textContent = link.position ? String(link.position.line + 1) : "";
     const textEl = doc.createElement("span");
     textEl.className = "search-result-file-match-text";
-    if (link.position) appendHighlightedText(textEl, link.position.text, link.position.start, link.position.end);
+    if (link.position)
+      appendHighlightedText(textEl, link.position.text, link.position.start, link.position.end);
     else textEl.textContent = link.original;
     matchEl.append(lineEl, textEl);
     matchEl.addEventListener("click", () => this.openLink(link));
@@ -104,7 +116,12 @@ export class OutgoingLinksView extends ItemView {
   }
 }
 
-function appendHighlightedText(parentEl: HTMLElement, text: string, start: number, end: number): void {
+function appendHighlightedText(
+  parentEl: HTMLElement,
+  text: string,
+  start: number,
+  end: number,
+): void {
   const doc = parentEl.ownerDocument;
   if (start > 0) parentEl.appendChild(doc.createTextNode(text.slice(0, start)));
   const highlightEl = doc.createElement("span");

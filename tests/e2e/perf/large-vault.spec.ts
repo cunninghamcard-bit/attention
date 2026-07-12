@@ -30,7 +30,12 @@ test.skip(!process.env.PERF_VAULT, "perf harness — run with PERF_VAULT=1");
 function seedLargeVault(vault: string): void {
   const dirs = Math.ceil(JUNK_FILES / FILES_PER_DIR);
   for (let d = 0; d < dirs; d++) {
-    const dir = join(vault, "junk", `pkg-${String(Math.floor(d / 50)).padStart(2, "0")}`, `mod-${String(d).padStart(4, "0")}`);
+    const dir = join(
+      vault,
+      "junk",
+      `pkg-${String(Math.floor(d / 50)).padStart(2, "0")}`,
+      `mod-${String(d).padStart(4, "0")}`,
+    );
     mkdirSync(dir, { recursive: true });
     for (let f = 0; f < FILES_PER_DIR && d * FILES_PER_DIR + f < JUNK_FILES; f++) {
       writeFileSync(join(dir, `file-${f}.js`), "export const x = 1;\n");
@@ -66,8 +71,16 @@ test("per-click latency on a huge vault", async ({}, testInfo) => {
   };
   delete env.ELECTRON_RENDERER_URL;
   const app = await electron.launch({ args: [MAIN_CJS], cwd: REPO_ROOT, env, timeout: 120_000 });
-  app.process().stderr?.on("data", (chunk: Buffer) => console.log(`MAIN-STDERR ${String(chunk).slice(0, 500)}`));
-  app.process().stdout?.on("data", (chunk: Buffer) => console.log(`MAIN-STDOUT ${String(chunk).slice(0, 500)}`));
+  app
+    .process()
+    .stderr?.on("data", (chunk: Buffer) =>
+      console.log(`MAIN-STDERR ${String(chunk).slice(0, 500)}`),
+    );
+  app
+    .process()
+    .stdout?.on("data", (chunk: Buffer) =>
+      console.log(`MAIN-STDOUT ${String(chunk).slice(0, 500)}`),
+    );
   app.on("close", () => console.log("ELECTRON APP CLOSED"));
   try {
     const page = await app.firstWindow();
@@ -78,7 +91,9 @@ test("per-click latency on a huge vault", async ({}, testInfo) => {
       if (message.type() === "error") console.log(`CONSOLE-ERROR ${message.text().slice(0, 300)}`);
     });
     const launchStart = Date.now();
-    await expect(page.locator(".nav-folder-title", { hasText: "notes" }).first()).toBeVisible({ timeout: 180_000 });
+    await expect(page.locator(".nav-folder-title", { hasText: "notes" }).first()).toBeVisible({
+      timeout: 180_000,
+    });
     const vaultReadyMs = Date.now() - launchStart;
 
     // Long-task observer for the whole measured window.
@@ -93,32 +108,51 @@ test("per-click latency on a huge vault", async ({}, testInfo) => {
     // Pure app cost: openLinkText -> paint, alternating notes.
     const openFile: number[] = [];
     for (let i = 0; i < 8; i++) {
-      const ms = await page.evaluate(async (name) => {
-        const anyWin = window as unknown as { app: { workspace: { openLinkText: (link: string, from: string, newLeaf: boolean) => Promise<void> } } };
-        const start = performance.now();
-        await anyWin.app.workspace.openLinkText(name, "/", false);
-        await new Promise<void>((resolveFrame) =>
-          requestAnimationFrame(() => requestAnimationFrame(() => resolveFrame())));
-        return Math.round(performance.now() - start);
-      }, `notes/note-${i % 4}.md`);
+      const ms = await page.evaluate(
+        async (name) => {
+          const anyWin = window as unknown as {
+            app: {
+              workspace: {
+                openLinkText: (link: string, from: string, newLeaf: boolean) => Promise<void>;
+              };
+            };
+          };
+          const start = performance.now();
+          await anyWin.app.workspace.openLinkText(name, "/", false);
+          await new Promise<void>((resolveFrame) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolveFrame())),
+          );
+          return Math.round(performance.now() - start);
+        },
+        `notes/note-${i % 4}.md`,
+      );
       openFile.push(ms);
     }
     // Emit phase-1 numbers immediately so a later crash cannot lose them.
-    console.log(`PERF_PHASE1 ${JSON.stringify({ junkFiles: JUNK_FILES, vaultReadyMs, openFile, openFileMedian: median(openFile) })}`);
+    console.log(
+      `PERF_PHASE1 ${JSON.stringify({ junkFiles: JUNK_FILES, vaultReadyMs, openFile, openFileMedian: median(openFile) })}`,
+    );
 
     // Physical explorer clicks: ensure the notes folder is expanded (it starts
     // expanded on a fully-expanded first paint; clicking it would collapse it),
     // then click alternating visible notes; measure click dispatch ->
     // file-open -> double-rAF in-page.
     const notesFolder = page.locator(".nav-folder-title", { hasText: "notes" }).first();
-    const notesCollapsed = await notesFolder.evaluate((el) => el.closest(".nav-folder")?.classList.contains("is-collapsed") ?? false);
+    const notesCollapsed = await notesFolder.evaluate(
+      (el) => el.closest(".nav-folder")?.classList.contains("is-collapsed") ?? false,
+    );
     if (notesCollapsed) await notesFolder.click();
     const explorerClick: number[] = [];
     for (let i = 0; i < 6; i++) {
       const target = `note-${4 + (i % 2)}`;
       const waitPaint = page.evaluate((expected) => {
         const anyWin = window as unknown as {
-          app: { workspace: { on: (name: string, cb: (...args: unknown[]) => void) => unknown; offref: (ref: unknown) => void } };
+          app: {
+            workspace: {
+              on: (name: string, cb: (...args: unknown[]) => void) => unknown;
+              offref: (ref: unknown) => void;
+            };
+          };
         };
         return new Promise<number>((resolvePaint) => {
           const start = performance.now();
@@ -126,8 +160,9 @@ test("per-click latency on a huge vault", async ({}, testInfo) => {
             const path = (file as { path?: string } | null)?.path ?? "";
             if (!path.includes(expected)) return;
             anyWin.app.workspace.offref(ref);
-            requestAnimationFrame(() => requestAnimationFrame(() =>
-              resolvePaint(Math.round(performance.now() - start))));
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => resolvePaint(Math.round(performance.now() - start))),
+            );
           });
         });
       }, target);
@@ -139,25 +174,39 @@ test("per-click latency on a huge vault", async ({}, testInfo) => {
     // The delta vs openFile is the explorer's per-click share; the remainder
     // is every other file-open/active-leaf consumer plus the view swap itself.
     await page.evaluate(() => {
-      const anyWin = window as unknown as { app: { workspace: { getLeavesOfType: (type: string) => Array<{ detach: () => void }> } } };
+      const anyWin = window as unknown as {
+        app: { workspace: { getLeavesOfType: (type: string) => Array<{ detach: () => void }> } };
+      };
       for (const leaf of anyWin.app.workspace.getLeavesOfType("file-explorer")) leaf.detach();
     });
     const openFileNoExplorer: number[] = [];
     for (let i = 0; i < 8; i++) {
-      const ms = await page.evaluate(async (name) => {
-        const anyWin = window as unknown as { app: { workspace: { openLinkText: (link: string, from: string, newLeaf: boolean) => Promise<void> } } };
-        const start = performance.now();
-        await anyWin.app.workspace.openLinkText(name, "/", false);
-        await new Promise<void>((resolveFrame) =>
-          requestAnimationFrame(() => requestAnimationFrame(() => resolveFrame())));
-        return Math.round(performance.now() - start);
-      }, `notes/note-${i % 4}.md`);
+      const ms = await page.evaluate(
+        async (name) => {
+          const anyWin = window as unknown as {
+            app: {
+              workspace: {
+                openLinkText: (link: string, from: string, newLeaf: boolean) => Promise<void>;
+              };
+            };
+          };
+          const start = performance.now();
+          await anyWin.app.workspace.openLinkText(name, "/", false);
+          await new Promise<void>((resolveFrame) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolveFrame())),
+          );
+          return Math.round(performance.now() - start);
+        },
+        `notes/note-${i % 4}.md`,
+      );
       openFileNoExplorer.push(ms);
     }
 
     // Quick switcher: open, then measure per-keystroke suggestion latency.
     const switcher = await page.evaluate(async (chars) => {
-      const anyWin = window as unknown as { app: { commands: { executeCommandById: (id: string) => boolean } } };
+      const anyWin = window as unknown as {
+        app: { commands: { executeCommandById: (id: string) => boolean } };
+      };
       const openStart = performance.now();
       anyWin.app.commands.executeCommandById("switcher:open");
       await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
@@ -169,7 +218,9 @@ test("per-click latency on a huge vault", async ({}, testInfo) => {
         const start = performance.now();
         input.value += ch;
         input.dispatchEvent(new Event("input"));
-        await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+        await new Promise<void>((r) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => r())),
+        );
         keystroke.push(Math.round(performance.now() - start));
       }
       document.querySelector<HTMLElement>(".modal-close-button")?.click();
@@ -178,7 +229,9 @@ test("per-click latency on a huge vault", async ({}, testInfo) => {
     }, "note-3");
     console.log(`PERF_SWITCHER ${JSON.stringify(switcher)}`);
 
-    const longTasks = await page.evaluate(() => (window as unknown as { __longTasks: number[] }).__longTasks);
+    const longTasks = await page.evaluate(
+      () => (window as unknown as { __longTasks: number[] }).__longTasks,
+    );
     const result = {
       junkFiles: JUNK_FILES,
       vaultReadyMs,
@@ -191,7 +244,10 @@ test("per-click latency on a huge vault", async ({}, testInfo) => {
       longTasksOver100ms: longTasks.filter((t) => t >= 100),
     };
     console.log(`PERF_RESULT ${JSON.stringify(result)}`);
-    await testInfo.attach("perf-result.json", { body: JSON.stringify(result, null, 2), contentType: "application/json" });
+    await testInfo.attach("perf-result.json", {
+      body: JSON.stringify(result, null, 2),
+      contentType: "application/json",
+    });
   } finally {
     await app.close();
     rmSync(base, { recursive: true, force: true });

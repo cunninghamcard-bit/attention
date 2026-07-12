@@ -38,7 +38,10 @@ export class MobileToolbar {
     win.addEventListener("focusin", () => this.update());
     win.addEventListener("keyboardWillHide", (event) => {
       this.animateToKeyboardHeight();
-      if (!("hasPhysicalKeyboard" in event) || !(event as Event & { hasPhysicalKeyboard?: boolean }).hasPhysicalKeyboard) {
+      if (
+        !("hasPhysicalKeyboard" in event) ||
+        !(event as Event & { hasPhysicalKeyboard?: boolean }).hasPhysicalKeyboard
+      ) {
         this.hasKeyboardVisible = false;
         if (Platform.isAndroidApp) this.update();
       }
@@ -80,7 +83,8 @@ export class MobileToolbar {
     if (!Platform.isMobile) return;
     this.lastKeyboardHeight = readCssPixelNumber("--keyboard-height");
     let hasFocusedEditor = Boolean(this.app.workspace.activeEditor?.editor.hasFocus());
-    if (Platform.isAndroidApp && hasFocusedEditor) hasFocusedEditor = this.hasKeyboardVisible || this.isMultiWindowMode;
+    if (Platform.isAndroidApp && hasFocusedEditor)
+      hasFocusedEditor = this.hasKeyboardVisible || this.isMultiWindowMode;
     if (hasFocusedEditor) {
       if (!this.isVisible) this.show();
     } else if (this.isVisible) this.hide();
@@ -111,7 +115,9 @@ export class MobileToolbar {
 
   private getCommandIds(): string[] {
     const configured = this.app.vault.getConfig<unknown>("mobileToolbarCommands");
-    return Array.isArray(configured) ? configured.filter((id): id is string => typeof id === "string") : [];
+    return Array.isArray(configured)
+      ? configured.filter((id): id is string => typeof id === "string")
+      : [];
   }
 }
 

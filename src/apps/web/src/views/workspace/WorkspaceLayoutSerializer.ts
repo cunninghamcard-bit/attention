@@ -19,7 +19,8 @@ export class WorkspaceLayoutSerializer {
       "left-ribbon": workspace.leftRibbon.serialize(),
       active: workspace.activeLeaf?.id,
     };
-    if (workspace.floatingSplit.children.length > 0) layout.floating = this.serializeItem(workspace.floatingSplit);
+    if (workspace.floatingSplit.children.length > 0)
+      layout.floating = this.serializeItem(workspace.floatingSplit);
     return layout;
   }
 

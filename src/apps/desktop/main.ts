@@ -141,23 +141,24 @@ if (!gotLock) {
   // The CLI socket server (real `Ve`): dispatches each request to a vault
   // renderer via `window.handleCli`. All transport lives in CliServer; the
   // deps here are the app's real vault routing and window bridge.
-  const cliServer = new CliServer((request) =>
-    dispatchCli(request, {
-      getIdByName: (name) => registry.getIdByName(name),
-      getIdByContainedPath: (path) => registry.getIdByContainedPath(path),
-      mostRecentVaultId: () => vaultWindows.mostRecentVaultId(),
-      // Real `C.cli` gate, kept verbatim in shape — but Workbench defaults it ON
-      // (deliberate product divergence; set `cli: false` in obsidian.json to
-      // disable, same persisted flag as real Obsidian).
-      isCliEnabled: () => settings.cli !== false,
-      // Real second-instance-no-args behavior is `pe()` — the starter itself.
-      openStarter: openStarterWindow,
-      handleUrl: (url) => {
-        dispatchObsidianUrl(url);
-        return `Processed URI ${url}`;
-      },
-      executeCliRequest: (vaultId, argv) => vaultWindows.executeCliRequest(vaultId, argv),
-    }),
+  const cliServer = new CliServer(
+    (request) =>
+      dispatchCli(request, {
+        getIdByName: (name) => registry.getIdByName(name),
+        getIdByContainedPath: (path) => registry.getIdByContainedPath(path),
+        mostRecentVaultId: () => vaultWindows.mostRecentVaultId(),
+        // Real `C.cli` gate, kept verbatim in shape — but Workbench defaults it ON
+        // (deliberate product divergence; set `cli: false` in obsidian.json to
+        // disable, same persisted flag as real Obsidian).
+        isCliEnabled: () => settings.cli !== false,
+        // Real second-instance-no-args behavior is `pe()` — the starter itself.
+        openStarter: openStarterWindow,
+        handleUrl: (url) => {
+          dispatchObsidianUrl(url);
+          return `Processed URI ${url}`;
+        },
+        executeCliRequest: (vaultId, argv) => vaultWindows.executeCliRequest(vaultId, argv),
+      }),
     defaultCliSocketPath(),
   );
 
@@ -192,12 +193,9 @@ if (!gotLock) {
     app.setAsDefaultProtocolClient("workbench");
   }
 
-  const loomSidecar = new LoomSidecar(
-    resolveLoomSidecarConfig(app.getPath("userData")),
-    (url) => {
-      mainState.loomUrl = url;
-    },
-  );
+  const loomSidecar = new LoomSidecar(resolveLoomSidecarConfig(app.getPath("userData")), (url) => {
+    mainState.loomUrl = url;
+  });
 
   app.on("before-quit", () => {
     mainState.isQuitting = true;

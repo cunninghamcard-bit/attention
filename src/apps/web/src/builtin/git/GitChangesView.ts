@@ -25,9 +25,15 @@ export class GitChangesView extends ItemView {
   private diffs: FileDiff[] = [];
   private refreshing = false;
 
-  getViewType(): string { return GitChangesView.VIEW_TYPE; }
-  getDisplayText(): string { return "Git changes"; }
-  getIcon(): string { return "lucide-git-commit"; }
+  getViewType(): string {
+    return GitChangesView.VIEW_TYPE;
+  }
+  getDisplayText(): string {
+    return "Git changes";
+  }
+  getIcon(): string {
+    return "lucide-git-commit";
+  }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("git-changes-view");
@@ -68,7 +74,9 @@ export class GitChangesView extends ItemView {
       this.listEl.replaceChildren();
       if (!this.app.git.isAvailable()) {
         this.setCommitVisible(false);
-        this.renderMessage("Git is not available in this runtime. Open the desktop app inside a git repository.");
+        this.renderMessage(
+          "Git is not available in this runtime. Open the desktop app inside a git repository.",
+        );
         return;
       }
       if (!(await this.app.git.isRepository())) {
@@ -94,7 +102,12 @@ export class GitChangesView extends ItemView {
     }
   }
 
-  private async renderSection(title: string, entries: GitFileStatus[], budget: number, stagedSection: boolean): Promise<number> {
+  private async renderSection(
+    title: string,
+    entries: GitFileStatus[],
+    budget: number,
+    stagedSection: boolean,
+  ): Promise<number> {
     if (!this.listEl || entries.length === 0) return budget;
     const doc = this.listEl.ownerDocument;
     const headingEl = doc.createElement("div");
@@ -135,8 +148,9 @@ export class GitChangesView extends ItemView {
     setTooltip(stageEl, stagedSection ? "Unstage" : "Stage");
     stageEl.addEventListener("click", (event) => {
       event.stopPropagation();
-      void (stagedSection ? this.app.git.unstage([entry.path]) : this.app.git.stage([entry.path]))
-        .then(() => this.refresh());
+      void (
+        stagedSection ? this.app.git.unstage([entry.path]) : this.app.git.stage([entry.path])
+      ).then(() => this.refresh());
     });
     headerEl.append(iconEl, nameEl, statusEl, stageEl);
     headerEl.addEventListener("click", () => {
@@ -150,12 +164,16 @@ export class GitChangesView extends ItemView {
     // Staged section diffs HEAD→index; Changes section diffs index→worktree,
     // so each hunk appears exactly once, in the section that owns it.
     const baseContents = stagedSection
-      ? (await this.app.git.readHeadFile(entry.path)) ?? ""
-      : (await this.app.git.readIndexFile(entry.path)) ?? (await this.app.git.readHeadFile(entry.path)) ?? "";
+      ? ((await this.app.git.readHeadFile(entry.path)) ?? "")
+      : ((await this.app.git.readIndexFile(entry.path)) ??
+        (await this.app.git.readHeadFile(entry.path)) ??
+        "");
     const workingFile = this.app.vault.getFileByPath(entry.path);
     const targetContents = stagedSection
-      ? (await this.app.git.readIndexFile(entry.path)) ?? ""
-      : entry.status.includes("D") || !workingFile ? "" : await this.app.vault.read(workingFile);
+      ? ((await this.app.git.readIndexFile(entry.path)) ?? "")
+      : entry.status.includes("D") || !workingFile
+        ? ""
+        : await this.app.vault.read(workingFile);
     if (isProbablyBinary(baseContents) || isProbablyBinary(targetContents)) {
       const binaryEl = doc.createElement("div");
       binaryEl.className = "git-changes-binary";

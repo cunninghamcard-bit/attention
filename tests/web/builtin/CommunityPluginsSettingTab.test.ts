@@ -80,13 +80,21 @@ describe("CommunityPluginsSettingTab", () => {
     const tab = new CommunityPluginsSettingTab(app);
     tab.display();
 
-    expect(tab.containerEl.querySelector(".community-plugins-restricted-mode")?.classList.contains("is-enabled")).toBe(true);
+    expect(
+      tab.containerEl
+        .querySelector(".community-plugins-restricted-mode")
+        ?.classList.contains("is-enabled"),
+    ).toBe(true);
     expect(tab.containerEl.textContent).toContain("Browse community plugins");
     expect(tab.containerEl.textContent).toContain("Current plugins");
     expect(tab.containerEl.textContent).toContain("1,200 downloads");
     expect(tab.containerEl.textContent).toContain("Update available");
     expect(tab.containerEl.textContent).not.toContain("Failed previously");
-    expect(tab.containerEl.querySelector('.installed-community-plugin[data-plugin-id="sample"]')?.classList.contains("mod-update-available")).toBe(true);
+    expect(
+      tab.containerEl
+        .querySelector('.installed-community-plugin[data-plugin-id="sample"]')
+        ?.classList.contains("mod-update-available"),
+    ).toBe(true);
   });
 
   it("shows enabled community plugin controls when restricted mode is off", () => {
@@ -105,10 +113,22 @@ describe("CommunityPluginsSettingTab", () => {
     const tab = new CommunityPluginsSettingTab(app);
     tab.display();
 
-    expect(tab.containerEl.querySelector(".community-plugins-restricted-mode")?.classList.contains("is-enabled")).toBe(true);
+    expect(
+      tab.containerEl
+        .querySelector(".community-plugins-restricted-mode")
+        ?.classList.contains("is-enabled"),
+    ).toBe(true);
     expect(tab.containerEl.textContent).toContain("Turn on restricted mode");
-    expect(tab.containerEl.querySelector<HTMLInputElement>('.installed-community-plugin[data-plugin-id="enabled"] input[type="checkbox"]')?.disabled).toBe(false);
-    expect(tab.containerEl.querySelector('.installed-community-plugin[data-plugin-id="enabled"] .extra-setting-button[aria-label="Uninstall"]')).not.toBeNull();
+    expect(
+      tab.containerEl.querySelector<HTMLInputElement>(
+        '.installed-community-plugin[data-plugin-id="enabled"] input[type="checkbox"]',
+      )?.disabled,
+    ).toBe(false);
+    expect(
+      tab.containerEl.querySelector(
+        '.installed-community-plugin[data-plugin-id="enabled"] .extra-setting-button[aria-label="Uninstall"]',
+      ),
+    ).not.toBeNull();
   });
 
   it("shows loaded plugin options, hotkeys and uninstall confirmation controls", async () => {
@@ -128,12 +148,26 @@ describe("CommunityPluginsSettingTab", () => {
     const tab = new CommunityPluginsSettingTab(app);
     tab.display();
 
-    expect(tab.containerEl.querySelector('.installed-community-plugin[data-plugin-id="settings-plugin"] .extra-setting-button[aria-label="Options"]')).not.toBeNull();
-    expect(tab.containerEl.querySelector('.installed-community-plugin[data-plugin-id="settings-plugin"] .extra-setting-button[aria-label="Hotkeys"]')).not.toBeNull();
+    expect(
+      tab.containerEl.querySelector(
+        '.installed-community-plugin[data-plugin-id="settings-plugin"] .extra-setting-button[aria-label="Options"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      tab.containerEl.querySelector(
+        '.installed-community-plugin[data-plugin-id="settings-plugin"] .extra-setting-button[aria-label="Hotkeys"]',
+      ),
+    ).not.toBeNull();
 
-    tab.containerEl.querySelector<HTMLElement>('.installed-community-plugin[data-plugin-id="settings-plugin"] .extra-setting-button[aria-label="Uninstall"]')?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    tab.containerEl
+      .querySelector<HTMLElement>(
+        '.installed-community-plugin[data-plugin-id="settings-plugin"] .extra-setting-button[aria-label="Uninstall"]',
+      )
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
-    expect(document.body.querySelector(".modal .modal-title")?.textContent).toBe("Uninstall plugin");
+    expect(document.body.querySelector(".modal .modal-title")?.textContent).toBe(
+      "Uninstall plugin",
+    );
     expect(document.body.textContent).toContain("Are you sure you want to uninstall this plugin?");
   });
 
@@ -162,11 +196,19 @@ describe("CommunityPluginsSettingTab", () => {
 
     const tab = new CommunityPluginsSettingTab(app);
     tab.display();
-    tab.containerEl.querySelector<HTMLElement>('.installed-community-plugin[data-plugin-id="open-me"] .setting-item-info')?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    tab.containerEl
+      .querySelector<HTMLElement>(
+        '.installed-community-plugin[data-plugin-id="open-me"] .setting-item-info',
+      )
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
     expect(document.body.querySelector(".modal.mod-community-plugin")).not.toBeNull();
-    expect(document.body.querySelector(".community-item.is-selected")?.textContent).toContain("Open Me");
-    expect(document.body.querySelector(".community-modal-details")?.textContent).toContain("Marketplace detail target");
+    expect(document.body.querySelector(".community-item.is-selected")?.textContent).toContain(
+      "Open Me",
+    );
+    expect(document.body.querySelector(".community-modal-details")?.textContent).toContain(
+      "Marketplace detail target",
+    );
   });
 
   it("checks for updates and updates all installed plugins from the marketplace", async () => {
@@ -179,7 +221,8 @@ describe("CommunityPluginsSettingTab", () => {
         version: "1.0.0",
       },
       entry: "plugins/updates/main.js",
-      factory: (pluginApp, manifest) => ({ app: pluginApp, manifest, load: () => {}, unload: () => {} }) as never,
+      factory: (pluginApp, manifest) =>
+        ({ app: pluginApp, manifest, load: () => {}, unload: () => {} }) as never,
     });
     app.pluginMarketplace.registerEntry({
       manifest: {
@@ -194,7 +237,8 @@ describe("CommunityPluginsSettingTab", () => {
           version: "1.2.0",
         },
         entry: "plugins/updates/main.js",
-        factory: (pluginApp, manifest) => ({ app: pluginApp, manifest, load: () => {}, unload: () => {} }) as never,
+        factory: (pluginApp, manifest) =>
+          ({ app: pluginApp, manifest, load: () => {}, unload: () => {} }) as never,
       },
     });
 
@@ -216,7 +260,9 @@ describe("CommunityPluginsSettingTab", () => {
 });
 
 function clickButton(root: HTMLElement, text: string): void {
-  const button = [...root.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent?.trim() === text);
+  const button = [...root.querySelectorAll<HTMLButtonElement>("button")].find(
+    (item) => item.textContent?.trim() === text,
+  );
   if (!button) throw new Error(`Button not found: ${text}`);
   button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 }

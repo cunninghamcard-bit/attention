@@ -1,7 +1,7 @@
 import { getActiveDocument, getActiveWindow } from "./ActiveDocument";
 
 export async function readClipboardText(): Promise<string> {
-  return await getActiveClipboard()?.readText?.() ?? "";
+  return (await getActiveClipboard()?.readText?.()) ?? "";
 }
 
 export async function writeClipboardText(text: string): Promise<void> {

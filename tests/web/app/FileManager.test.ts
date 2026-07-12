@@ -38,8 +38,12 @@ describe("FileManager", () => {
     expect(app.fileManager.getNewFileParent("Notes/Source.md", "Draft.md").path).toBe("Inbox");
     expect(app.fileManager.getNewFileParent("Notes/Source.md", "Board.canvas").path).toBe("Inbox");
     expect(app.fileManager.getNewFileParent("Notes/Source.md", "image.png").path).toBe("Inbox");
-    expect(consoleError).toHaveBeenCalledWith("No file creator assigned to create file with extension canvas. Falling back to Markdown file creator.");
-    expect(consoleError).toHaveBeenCalledWith("No file creator assigned to create file with extension png. Falling back to Markdown file creator.");
+    expect(consoleError).toHaveBeenCalledWith(
+      "No file creator assigned to create file with extension canvas. Falling back to Markdown file creator.",
+    );
+    expect(consoleError).toHaveBeenCalledWith(
+      "No file creator assigned to create file with extension png. Falling back to Markdown file creator.",
+    );
 
     app.vault.setConfig("newFileLocation", "current");
     expect(app.fileManager.getNewFileParent("Notes/Source.md", "clip.webm").path).toBe("Notes");
@@ -75,14 +79,14 @@ describe("FileManager", () => {
     const sibling = await app.fileManager.createNewFile("Drafts", "Seed.md", "md", "# Next");
     // A registered creator keeps its extension (the real coercion gate).
     app.fileManager.registerFileParentCreator("json", () => app.vault.getRoot());
-    const dataFile = await app.fileManager.createNewFile("Data", "payload", "json", "{\"ok\":true}");
+    const dataFile = await app.fileManager.createNewFile("Data", "payload", "json", '{"ok":true}');
 
     expect(file.path).toBe("Drafts/Seed.md");
     expect(await app.vault.read(file)).toBe("# Seed");
     expect(sibling.path).toBe("Drafts/Seed 1.md");
     expect(await app.vault.read(sibling)).toBe("# Next");
     expect(dataFile.path).toBe("Data/payload.json");
-    expect(await app.vault.read(dataFile)).toBe("{\"ok\":true}");
+    expect(await app.vault.read(dataFile)).toBe('{"ok":true}');
   });
 
   it("creates markdown files from linktext using source-relative parent rules", async () => {
@@ -90,12 +94,20 @@ describe("FileManager", () => {
     app.vault.setConfig("newFileLocation", "current");
     await app.vault.createFolder("Notes");
 
-    const file = await app.fileManager.createNewMarkdownFileFromLinktext("Missing#Heading|Alias", "Notes/Source.md");
-    const nested = await app.fileManager.createNewMarkdownFileFromLinktext("Projects/New note.md", "Notes/Source.md");
+    const file = await app.fileManager.createNewMarkdownFileFromLinktext(
+      "Missing#Heading|Alias",
+      "Notes/Source.md",
+    );
+    const nested = await app.fileManager.createNewMarkdownFileFromLinktext(
+      "Projects/New note.md",
+      "Notes/Source.md",
+    );
 
     expect(file.path).toBe("Notes/Missing.md");
     expect(nested.path).toBe("Projects/New note.md");
-    await expect(app.fileManager.createNewMarkdownFileFromLinktext("Bad:Name", "Notes/Source.md")).rejects.toThrow(/invalid characters/i);
+    await expect(
+      app.fileManager.createNewMarkdownFileFromLinktext("Bad:Name", "Notes/Source.md"),
+    ).rejects.toThrow(/invalid characters/i);
   });
 
   it("generates links from link format and markdown-link settings", async () => {
@@ -107,7 +119,9 @@ describe("FileManager", () => {
     app.vault.setConfig("newLinkFormat", "relative");
     app.vault.setConfig("useMarkdownLinks", true);
 
-    expect(app.fileManager.generateMarkdownLink(file, "Daily/Today.md", "#Heading", "Alias")).toBe("[Alias](../Notes/Target.md#Heading)");
+    expect(app.fileManager.generateMarkdownLink(file, "Daily/Today.md", "#Heading", "Alias")).toBe(
+      "[Alias](../Notes/Target.md#Heading)",
+    );
   });
 
   it("generates Obsidian linktext separately from full markdown links", async () => {
@@ -121,29 +135,41 @@ describe("FileManager", () => {
     app.vault.setConfig("newLinkFormat", "relative");
 
     expect(app.fileManager.fileToLinktext(note, "Daily/Today.md", true)).toBe("../Notes/Target");
-    expect(app.fileManager.fileToLinktext(image, "Daily/Today.md", true)).toBe("../Assets/image.png");
-    expect(app.fileManager.generateMarkdownLink(note, "Daily/Today.md")).toBe("[[../Notes/Target.md]]");
+    expect(app.fileManager.fileToLinktext(image, "Daily/Today.md", true)).toBe(
+      "../Assets/image.png",
+    );
+    expect(app.fileManager.generateMarkdownLink(note, "Daily/Today.md")).toBe(
+      "[[../Notes/Target.md]]",
+    );
   });
 
   it("merges inserted frontmatter into one properties block", async () => {
     const app = new App(document.createElement("div"));
-    const file = await app.vault.create("Merge.md", "---\ntags:\n  - old\nstatus: draft\n---\nExisting");
+    const file = await app.vault.create(
+      "Merge.md",
+      "---\ntags:\n  - old\nstatus: draft\n---\nExisting",
+    );
 
-    await app.fileManager.insertIntoFile(file, "---\ntags:\n  - new\naliases:\n  - Alias\n---\nIncoming");
+    await app.fileManager.insertIntoFile(
+      file,
+      "---\ntags:\n  - new\naliases:\n  - Alias\n---\nIncoming",
+    );
 
-    expect(await app.vault.read(file)).toBe([
-      "---",
-      "tags:",
-      "  - old",
-      "  - new",
-      "status: draft",
-      "aliases:",
-      "  - Alias",
-      "---",
-      "Existing",
-      "",
-      "Incoming",
-    ].join("\n"));
+    expect(await app.vault.read(file)).toBe(
+      [
+        "---",
+        "tags:",
+        "  - old",
+        "  - new",
+        "status: draft",
+        "aliases:",
+        "  - Alias",
+        "---",
+        "Existing",
+        "",
+        "Incoming",
+      ].join("\n"),
+    );
   });
 
   it("moves deleted files to the vault trash folder when trashOption is local", async () => {
@@ -228,21 +254,26 @@ describe("FileManager", () => {
     app.vault.setConfig("alwaysUpdateLinks", true);
     app.vault.setConfig("newLinkFormat", "relative");
     const target = await app.vault.create("Notes/Old target.md", "# Heading");
-    const source = await app.vault.create("Daily/Source.md", [
-      "[[../Notes/Old target]]",
-      "![[../Notes/Old target#Heading|Shown]]",
-      "[markdown](../Notes/Old%20target.md#Heading)",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Daily/Source.md",
+      [
+        "[[../Notes/Old target]]",
+        "![[../Notes/Old target#Heading|Shown]]",
+        "[markdown](../Notes/Old%20target.md#Heading)",
+      ].join("\n"),
+    );
     await app.metadataCache.computeFileMetadata(target);
     await app.metadataCache.computeFileMetadata(source);
 
     await app.fileManager.renameFile(target, "Notes/New target.md");
 
-    expect(await app.vault.read(source)).toBe([
-      "[[../Notes/New target]]",
-      "![[../Notes/New target#Heading|Shown]]",
-      "[markdown](../Notes/New%20target.md#Heading)",
-    ].join("\n"));
+    expect(await app.vault.read(source)).toBe(
+      [
+        "[[../Notes/New target]]",
+        "![[../Notes/New target#Heading|Shown]]",
+        "[markdown](../Notes/New%20target.md#Heading)",
+      ].join("\n"),
+    );
   });
 
   it("matches the public renameFile contract by resolving void", async () => {
@@ -341,12 +372,20 @@ describe("FileManager", () => {
 
   it("passes write options through processFrontMatter", async () => {
     const app = new App(document.createElement("div"));
-    const file = await app.vault.create("Properties.md", ["---", "title: Old", "---", "Body"].join("\n"), { ctime: 10, mtime: 20 });
+    const file = await app.vault.create(
+      "Properties.md",
+      ["---", "title: Old", "---", "Body"].join("\n"),
+      { ctime: 10, mtime: 20 },
+    );
 
-    await app.fileManager.processFrontMatter(file, (frontmatter) => {
-      frontmatter.title = "New";
-      frontmatter.tags = ["chat"];
-    }, { mtime: 30 });
+    await app.fileManager.processFrontMatter(
+      file,
+      (frontmatter) => {
+        frontmatter.title = "New";
+        frontmatter.tags = ["chat"];
+      },
+      { mtime: 30 },
+    );
 
     const source = await app.vault.read(file);
     expect(source).toContain("title: New");
@@ -356,13 +395,17 @@ describe("FileManager", () => {
 
   it("leaves non-markdown files untouched when processing frontmatter", async () => {
     const app = new App(document.createElement("div"));
-    const file = await app.vault.create("data.json", "{\"title\":\"Old\"}", { ctime: 10, mtime: 20 });
+    const file = await app.vault.create("data.json", '{"title":"Old"}', { ctime: 10, mtime: 20 });
 
-    await app.fileManager.processFrontMatter(file, (frontmatter) => {
-      frontmatter.title = "New";
-    }, { mtime: 30 });
+    await app.fileManager.processFrontMatter(
+      file,
+      (frontmatter) => {
+        frontmatter.title = "New";
+      },
+      { mtime: 30 },
+    );
 
-    expect(await app.vault.read(file)).toBe("{\"title\":\"Old\"}");
+    expect(await app.vault.read(file)).toBe('{"title":"Old"}');
     expect(file.stat).toEqual({ ctime: 10, mtime: 20, size: 15 });
   });
 
@@ -373,36 +416,35 @@ describe("FileManager", () => {
     await app.fileManager.getAvailablePathForAttachment("image.png", source.path);
     await app.vault.createBinary("Notes/assets/image.png", new ArrayBuffer(1));
 
-    await expect(app.fileManager.getAvailablePathForAttachment("image.png", source.path)).resolves.toBe("Notes/assets/image 1.png");
+    await expect(
+      app.fileManager.getAvailablePathForAttachment("image.png", source.path),
+    ).resolves.toBe("Notes/assets/image 1.png");
   });
 
   it("renames properties from metadata cache and merges existing targets", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const file = await app.vault.create("Note.md", [
-      "---",
-      "target:",
-      "  - existing",
-      "old:",
-      "  - existing",
-      "  - incoming",
-      "after: true",
-      "---",
-      "Body",
-    ].join("\n"));
+    const file = await app.vault.create(
+      "Note.md",
+      [
+        "---",
+        "target:",
+        "  - existing",
+        "old:",
+        "  - existing",
+        "  - incoming",
+        "after: true",
+        "---",
+        "Body",
+      ].join("\n"),
+    );
     await app.metadataCache.computeFileMetadata(file);
 
     await expect(app.fileManager.renameProperty("old", "target")).resolves.toBe(1);
 
-    expect(await app.vault.read(file)).toBe([
-      "---",
-      "target:",
-      "  - existing",
-      "  - incoming",
-      "after: true",
-      "---",
-      "Body",
-    ].join("\n"));
+    expect(await app.vault.read(file)).toBe(
+      ["---", "target:", "  - existing", "  - incoming", "after: true", "---", "Body"].join("\n"),
+    );
   });
 
   it("updates internal links just once from the update links modal", async () => {
@@ -513,8 +555,9 @@ describe("FileManager", () => {
 });
 
 function clickModalButton(text: string): void {
-  const button = [...document.body.querySelectorAll<HTMLButtonElement>(".modal button")]
-    .find((item) => item.textContent === text);
+  const button = [...document.body.querySelectorAll<HTMLButtonElement>(".modal button")].find(
+    (item) => item.textContent === text,
+  );
   expect(button).toBeDefined();
   button?.click();
 }
@@ -544,9 +587,19 @@ async function waitForModalClose(): Promise<void> {
   throw new Error("Modal did not close");
 }
 
-async function waitForFileRename(app: App, oldPath: string, newPath: string, file: unknown): Promise<void> {
+async function waitForFileRename(
+  app: App,
+  oldPath: string,
+  newPath: string,
+  file: unknown,
+): Promise<void> {
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    if (!document.body.querySelector(".modal") && app.vault.getFileByPath(oldPath) === null && app.vault.getFileByPath(newPath) === file) return;
+    if (
+      !document.body.querySelector(".modal") &&
+      app.vault.getFileByPath(oldPath) === null &&
+      app.vault.getFileByPath(newPath) === file
+    )
+      return;
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
   throw new Error("File did not finish renaming");

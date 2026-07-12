@@ -43,11 +43,17 @@ describe("MarkdownPreviewRenderer", () => {
     if (!heading || !paragraph) throw new Error("Expected rendered markdown blocks");
 
     expect(renderer.sections.filter((section) => !section.modUi)).toHaveLength(2);
-    expect(renderer.sections.filter((section) => !section.modUi).every((section) => section.computed)).toBe(true);
+    expect(
+      renderer.sections.filter((section) => !section.modUi).every((section) => section.computed),
+    ).toBe(true);
     expect(renderer.getSectionForElement(heading)?.level).toBe(1);
     expect(renderer.getSectionForElement(paragraph)?.level).toBe(0);
     expect(renderer.getSectionInfo(heading)).toEqual({ text: markdown, lineStart: 0, lineEnd: 0 });
-    expect(renderer.getSectionInfo(paragraph)).toEqual({ text: markdown, lineStart: 2, lineEnd: 2 });
+    expect(renderer.getSectionInfo(paragraph)).toEqual({
+      text: markdown,
+      lineStart: 2,
+      lineEnd: 2,
+    });
   });
 
   it("exposes the public MarkdownRenderer.render app-first entrypoint", async () => {
@@ -117,12 +123,16 @@ describe("MarkdownPreviewRenderer", () => {
     owner.load();
     const container = document.createElement("div");
     let thenCalled = false;
-    const wrapper = MarkdownRenderer.createCodeBlockPostProcessor("thenable", () => ({
-      then(resolve: () => void) {
-        thenCalled = true;
-        resolve();
-      },
-    }) as Promise<void>);
+    const wrapper = MarkdownRenderer.createCodeBlockPostProcessor(
+      "thenable",
+      () =>
+        ({
+          then(resolve: () => void) {
+            thenCalled = true;
+            resolve();
+          },
+        }) as Promise<void>,
+    );
     MarkdownPreviewRenderer.registerPostProcessor(wrapper);
     try {
       await MarkdownRenderer.render(app, "```thenable\nbody\n```", container, "note.md", owner);
@@ -139,18 +149,20 @@ describe("MarkdownPreviewRenderer", () => {
     const container = document.createElement("div");
     const renderer = new MarkdownPreviewRenderer(app, container, "note.md");
 
-    renderer.set([
-      "---",
-      "cssclasses:",
-      "  - alpha",
-      "  - beta",
-      "  - bad class",
-      "cssclass: ignored",
-      "tags:",
-      "  - taggy",
-      "---",
-      "Body",
-    ].join("\n"));
+    renderer.set(
+      [
+        "---",
+        "cssclasses:",
+        "  - alpha",
+        "  - beta",
+        "  - bad class",
+        "cssclass: ignored",
+        "tags:",
+        "  - taggy",
+        "---",
+        "Body",
+      ].join("\n"),
+    );
     await renderer.whenIdle();
 
     expect(container.classList.contains("alpha")).toBe(true);
@@ -175,11 +187,17 @@ describe("MarkdownPreviewRenderer", () => {
     let loads = 0;
     let unloads = 0;
     const processor: MarkdownPostProcessor = (el, context) => {
-      context.addChild(new CountingRenderChild(el, () => {
-        loads += 1;
-      }, () => {
-        unloads += 1;
-      }));
+      context.addChild(
+        new CountingRenderChild(
+          el,
+          () => {
+            loads += 1;
+          },
+          () => {
+            unloads += 1;
+          },
+        ),
+      );
     };
     MarkdownPreviewRenderer.registerPostProcessor(processor);
     try {
@@ -240,7 +258,9 @@ describe("MarkdownPreviewRenderer", () => {
     const app = new App(document.createElement("div"));
     await app.ready;
     const image = await app.vault.createBinary("Assets/Image One.png", new ArrayBuffer(1));
-    vi.spyOn(app.vault, "getResourcePath").mockImplementation((file) => `app://resource/${encodeURIComponent(file.path)}`);
+    vi.spyOn(app.vault, "getResourcePath").mockImplementation(
+      (file) => `app://resource/${encodeURIComponent(file.path)}`,
+    );
     const container = document.createElement("div");
     const renderer = new MarkdownPreviewRenderer(app, container, "Notes/Source.md");
     const processor: MarkdownPostProcessor = (el) => {
@@ -257,8 +277,12 @@ describe("MarkdownPreviewRenderer", () => {
       renderer.set("Body");
       await renderer.whenIdle();
 
-      expect(container.querySelector<HTMLImageElement>('img[data-kind="internal"]')?.getAttribute("src")).toBe(`app://resource/${encodeURIComponent(image.path)}`);
-      expect(container.querySelector<HTMLImageElement>('img[data-kind="external"]')?.getAttribute("src")).toBe("https://example.com/image.png");
+      expect(
+        container.querySelector<HTMLImageElement>('img[data-kind="internal"]')?.getAttribute("src"),
+      ).toBe(`app://resource/${encodeURIComponent(image.path)}`);
+      expect(
+        container.querySelector<HTMLImageElement>('img[data-kind="external"]')?.getAttribute("src"),
+      ).toBe("https://example.com/image.png");
     } finally {
       MarkdownPreviewRenderer.unregisterPostProcessor(processor);
     }
@@ -300,7 +324,14 @@ describe("MarkdownPreviewRenderer", () => {
     await renderer.whenIdle();
 
     const sections = renderer.sections.filter((section) => !section.modUi);
-    expect(sections.map((section) => section.shown)).toEqual([true, false, false, false, true, true]);
+    expect(sections.map((section) => section.shown)).toEqual([
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+    ]);
     expect(container.querySelector("h1")?.classList.contains("is-collapsed")).toBe(true);
   });
 
@@ -424,13 +455,15 @@ describe("MarkdownPreviewRenderer", () => {
 
     const section = renderer.sections.find((item) => !item.modUi);
     if (!section) throw new Error("Expected markdown section");
-    section.highlightRanges = [{
-      section,
-      start: 6,
-      end: 10,
-      active: true,
-      rects: [{ x: 10, y: 20, width: 30, height: 8 }],
-    }];
+    section.highlightRanges = [
+      {
+        section,
+        start: 6,
+        end: 10,
+        active: true,
+        rects: [{ x: 10, y: 20, width: 30, height: 8 }],
+      },
+    ];
 
     renderer.updateVirtualDisplay(0);
 
@@ -455,17 +488,20 @@ describe("MarkdownPreviewRenderer", () => {
 
     const section = renderer.sections.find((item) => !item.modUi);
     if (!section) throw new Error("Expected markdown section");
-    section.highlightRanges = [{
-      section,
-      start: 0,
-      end: 6,
-      active: false,
-      rects: [{ x: 1, y: 2, width: 3, height: 4 }],
-    }];
+    section.highlightRanges = [
+      {
+        section,
+        start: 0,
+        end: 6,
+        active: false,
+        rects: [{ x: 1, y: 2, width: 3, height: 4 }],
+      },
+    ];
 
     const indicator = section.el.querySelector<HTMLElement>("li > .list-collapse-indicator");
     const li = indicator?.parentElement;
-    if (!(indicator instanceof HTMLElement) || !(li instanceof HTMLLIElement)) throw new Error("Expected list collapse indicator");
+    if (!(indicator instanceof HTMLElement) || !(li instanceof HTMLLIElement))
+      throw new Error("Expected list collapse indicator");
 
     indicator.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
 
@@ -473,16 +509,25 @@ describe("MarkdownPreviewRenderer", () => {
     expect(indicator.classList.contains("is-collapsed")).toBe(true);
     expect(section.computed).toBe(false);
     expect(section.highlightRanges?.[0]?.rects).toBeUndefined();
-    expect(renderer.getFoldInfo().folds).toContainEqual({ from: section.start.line, to: section.start.line + 1 });
+    expect(renderer.getFoldInfo().folds).toContainEqual({
+      from: section.start.line,
+      to: section.start.line + 1,
+    });
     await renderer.whenIdle();
 
     const restoredSection = renderer.sections.find((item) => !item.modUi);
-    const restoredIndicator = restoredSection?.el.querySelector<HTMLElement>("li > .list-collapse-indicator");
+    const restoredIndicator = restoredSection?.el.querySelector<HTMLElement>(
+      "li > .list-collapse-indicator",
+    );
     const restoredLi = restoredIndicator?.parentElement;
-    if (!(restoredIndicator instanceof HTMLElement) || !(restoredLi instanceof HTMLLIElement)) throw new Error("Expected rerendered list collapse indicator");
+    if (!(restoredIndicator instanceof HTMLElement) || !(restoredLi instanceof HTMLLIElement))
+      throw new Error("Expected rerendered list collapse indicator");
     restoredLi.classList.remove("is-collapsed");
     restoredIndicator.classList.remove("is-collapsed");
-    renderer.applyFoldInfo({ folds: [{ from: section.start.line, to: section.start.line + 1 }], lines: 3 });
+    renderer.applyFoldInfo({
+      folds: [{ from: section.start.line, to: section.start.line + 1 }],
+      lines: 3,
+    });
     await renderer.whenIdle();
 
     expect(restoredLi.classList.contains("is-collapsed")).toBe(true);
@@ -500,7 +545,9 @@ describe("MarkdownPreviewRenderer", () => {
 
     const list = container.querySelector<HTMLElement>("ul.contains-task-list");
     const items = container.querySelectorAll<HTMLLIElement>("li.task-list-item");
-    const checkboxes = container.querySelectorAll<HTMLInputElement>("input.task-list-item-checkbox");
+    const checkboxes = container.querySelectorAll<HTMLInputElement>(
+      "input.task-list-item-checkbox",
+    );
     expect(list).not.toBeNull();
     expect(items).toHaveLength(5);
     expect(checkboxes).toHaveLength(5);
@@ -518,14 +565,22 @@ describe("MarkdownPreviewRenderer", () => {
 
     const parent = items[4];
     expect(parent?.firstElementChild?.classList.contains("list-collapse-indicator")).toBe(true);
-    expect(parent?.firstElementChild?.nextElementSibling?.classList.contains("task-list-item-checkbox")).toBe(true);
+    expect(
+      parent?.firstElementChild?.nextElementSibling?.classList.contains("task-list-item-checkbox"),
+    ).toBe(true);
 
     checkboxes[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
-    expect(renderer.text).toBe("- [x] Todo\n- [x] Done\n- [X] Upper\n- [-] Maybe\n- [ ] Parent\n  - Child");
+    expect(renderer.text).toBe(
+      "- [x] Todo\n- [x] Done\n- [X] Upper\n- [-] Maybe\n- [ ] Parent\n  - Child",
+    );
     await renderer.whenIdle();
 
-    container.querySelectorAll<HTMLInputElement>("input.task-list-item-checkbox")[3]?.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
-    expect(renderer.text).toBe("- [x] Todo\n- [x] Done\n- [X] Upper\n- [ ] Maybe\n- [ ] Parent\n  - Child");
+    container
+      .querySelectorAll<HTMLInputElement>("input.task-list-item-checkbox")[3]
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
+    expect(renderer.text).toBe(
+      "- [x] Todo\n- [x] Done\n- [X] Upper\n- [ ] Maybe\n- [ ] Parent\n  - Child",
+    );
   });
 
   it("keeps static MarkdownRenderer section lookup and replacement unavailable", async () => {
@@ -600,7 +655,11 @@ describe("MarkdownPreviewRenderer", () => {
 });
 
 class CountingRenderChild extends MarkdownRenderChild {
-  constructor(containerEl: HTMLElement, readonly onLoad: () => void, readonly onUnload: () => void) {
+  constructor(
+    containerEl: HTMLElement,
+    readonly onLoad: () => void,
+    readonly onUnload: () => void,
+  ) {
     super(containerEl);
   }
 
@@ -633,7 +692,12 @@ describe("MarkdownPreviewRenderer rendered link context menus", () => {
 
     const link = container.querySelector<HTMLElement>(".internal-link");
     if (!link) throw new Error("Expected rendered internal link");
-    const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 12 });
+    const event = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 10,
+      clientY: 12,
+    });
     link.dispatchEvent(event);
 
     expect(event.defaultPrevented).toBe(true);
@@ -662,7 +726,12 @@ describe("MarkdownPreviewRenderer rendered link context menus", () => {
 
     const link = container.querySelector<HTMLElement>(".external-link");
     if (!link) throw new Error("Expected rendered external link");
-    const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 12 });
+    const event = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 10,
+      clientY: 12,
+    });
     link.dispatchEvent(event);
 
     expect(event.defaultPrevented).toBe(true);

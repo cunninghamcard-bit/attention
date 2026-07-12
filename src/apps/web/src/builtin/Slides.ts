@@ -89,7 +89,12 @@ export class SlidesController {
     const sectionEl = document.createElement("section");
     sectionEl.className = "markdown-preview-view markdown-rendered";
     slidesEl.appendChild(sectionEl);
-    await MarkdownRenderer.render(this.app, this.slides[this.index] ?? "", sectionEl, this.sourcePath);
+    await MarkdownRenderer.render(
+      this.app,
+      this.slides[this.index] ?? "",
+      sectionEl,
+      this.sourcePath,
+    );
     const progressEl = document.createElement("div");
     progressEl.className = "slides-progress";
     progressEl.textContent = `${this.index + 1} / ${Math.max(1, this.slides.length)}`;

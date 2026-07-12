@@ -17,7 +17,11 @@ describe("parseObsidianUri", () => {
 
   it("matches Obsidian by adding an empty query key when no query exists", () => {
     expect(parseObsidianUri("workbench://open")).toEqual({ action: "open", "": "true" });
-    expect(parseObsidianUri("workbench://open#Heading")).toEqual({ action: "open", hash: "Heading", "": "true" });
+    expect(parseObsidianUri("workbench://open#Heading")).toEqual({
+      action: "open",
+      hash: "Heading",
+      "": "true",
+    });
   });
 
   it("matches Obsidian by parsing workbench://vault URLs as open actions", () => {

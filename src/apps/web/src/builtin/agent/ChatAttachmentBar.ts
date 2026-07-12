@@ -66,7 +66,11 @@ export class ChatAttachmentBar extends Component {
         text: `${attachment.content.split("\n").length} lines`,
         parent: cardEl,
       });
-      const removeEl = createEl("button", { cls: "chat-attachment-remove", parent: cardEl, title: "Remove" });
+      const removeEl = createEl("button", {
+        cls: "chat-attachment-remove",
+        parent: cardEl,
+        title: "Remove",
+      });
       removeEl.setText("×");
       removeEl.addEventListener("click", () => this.remove(attachment.id));
     }

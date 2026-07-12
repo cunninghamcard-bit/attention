@@ -13,10 +13,7 @@ import { builtinModules } from "node:module";
  * so it gets bundled. This target is completely separate from the renderer
  * (`vite.config.ts`) and the library (`vite.api.config.ts`).
  */
-const nodeBuiltins = new Set([
-  ...builtinModules,
-  ...builtinModules.map((name) => `node:${name}`),
-]);
+const nodeBuiltins = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
 
 export default defineConfig({
   // The desktop main imports its two shared items (SystemMenuItem, URL_SCHEME)
@@ -44,9 +41,7 @@ export default defineConfig({
     },
     rollupOptions: {
       external: (source) =>
-        source === "electron" ||
-        source === "node-pty" ||
-        nodeBuiltins.has(source),
+        source === "electron" || source === "node-pty" || nodeBuiltins.has(source),
     },
   },
 });

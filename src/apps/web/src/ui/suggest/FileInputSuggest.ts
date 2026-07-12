@@ -1,7 +1,13 @@
 import type { App } from "../../app/App";
 import { TFile, TFolder } from "../../vault/TAbstractFile";
 import { AbstractInputSuggest } from "./AbstractInputSuggest";
-import { fuzzyMatch, prepareFuzzyQuery, renderFuzzyText, sortFuzzySuggestions, type FuzzyMatch } from "./SuggestModal";
+import {
+  fuzzyMatch,
+  prepareFuzzyQuery,
+  renderFuzzyText,
+  sortFuzzySuggestions,
+  type FuzzyMatch,
+} from "./SuggestModal";
 
 export interface InputFileSuggestion<T extends TFile | TFolder> {
   item: T;
@@ -35,7 +41,10 @@ export class FileInputSuggest extends AbstractInputSuggest<InputFileSuggestion<T
     return true;
   }
 
-  override selectSuggestion(value: InputFileSuggestion<TFile>, event: MouseEvent | KeyboardEvent): void {
+  override selectSuggestion(
+    value: InputFileSuggestion<TFile>,
+    event: MouseEvent | KeyboardEvent,
+  ): void {
     this.setValue(this.getSelectedPath(value.item));
     triggerTextInputEvents(this.textInputEl, true);
     this.close();
@@ -57,7 +66,11 @@ export class MarkdownFileInputSuggest extends FileInputSuggest {
 }
 
 export class FilteredFileInputSuggest extends FileInputSuggest {
-  constructor(app: App, textInputEl: HTMLInputElement | HTMLTextAreaElement | HTMLElement, readonly predicate?: (file: TFile) => boolean) {
+  constructor(
+    app: App,
+    textInputEl: HTMLInputElement | HTMLTextAreaElement | HTMLElement,
+    readonly predicate?: (file: TFile) => boolean,
+  ) {
     super(app, textInputEl);
   }
 
@@ -80,7 +93,12 @@ export class FolderInputSuggest extends AbstractInputSuggest<FolderSuggestion> {
   static readonly MAX_SUGGESTIONS = 100;
   includeRoot = false;
 
-  constructor(app: App, textInputEl: HTMLInputElement | HTMLTextAreaElement | HTMLElement, readonly allowNullSelection = false, includeRoot = false) {
+  constructor(
+    app: App,
+    textInputEl: HTMLInputElement | HTMLTextAreaElement | HTMLElement,
+    readonly allowNullSelection = false,
+    includeRoot = false,
+  ) {
     super(app, textInputEl);
     this.includeRoot = includeRoot;
   }

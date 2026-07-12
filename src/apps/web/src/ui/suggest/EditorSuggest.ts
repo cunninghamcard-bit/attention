@@ -28,7 +28,11 @@ export abstract class EditorSuggest<T> extends PopoverSuggest<T> {
     this.suggestEl.addEventListener("mousedown", (event) => event.preventDefault());
   }
 
-  abstract onTrigger(cursor: EditorPosition, editor: Editor, file: TFile | null): EditorSuggestTriggerInfo | null;
+  abstract onTrigger(
+    cursor: EditorPosition,
+    editor: Editor,
+    file: TFile | null,
+  ): EditorSuggestTriggerInfo | null;
   abstract getSuggestions(context: EditorSuggestContext): T[] | null | Promise<T[] | null>;
 
   shouldAcceptKey?(event: KeyboardEvent): boolean;
@@ -56,7 +60,12 @@ export abstract class EditorSuggest<T> extends PopoverSuggest<T> {
     this.suggestEl.appendChild(this.instructionsEl);
   }
 
-  async trigger(editor: Editor, file?: unknown, force = false, fallbackAnchorEl: HTMLElement | null = null): Promise<boolean> {
+  async trigger(
+    editor: Editor,
+    file?: unknown,
+    force = false,
+    fallbackAnchorEl: HTMLElement | null = null,
+  ): Promise<boolean> {
     this.fallbackAnchorEl = fallbackAnchorEl;
     const cursor = getEditorCursor(editor, "from");
     const end = getEditorCursor(editor, "to");
@@ -103,7 +112,12 @@ export abstract class EditorSuggest<T> extends PopoverSuggest<T> {
     const context = this.context;
     if (!context) return;
 
-    const rect = getEditorSuggestRect(context.editor, context.start, context.end, this.fallbackAnchorEl);
+    const rect = getEditorSuggestRect(
+      context.editor,
+      context.start,
+      context.end,
+      this.fallbackAnchorEl,
+    );
     if (!rect) return;
 
     this.open(getEditorOwnerDocument(context.editor, this.fallbackAnchorEl));
@@ -131,7 +145,11 @@ export class EditorSuggestManager {
     this.suggests = this.suggests.filter((candidate) => candidate !== suggest);
   }
 
-  async trigger(editor: Editor, source: HTMLElement | unknown, eventOrForce?: KeyboardEvent | boolean): Promise<void> {
+  async trigger(
+    editor: Editor,
+    source: HTMLElement | unknown,
+    eventOrForce?: KeyboardEvent | boolean,
+  ): Promise<void> {
     const event = isKeyboardEvent(eventOrForce) ? eventOrForce : undefined;
     const force = eventOrForce === true || !event;
     const anchorEl = isHTMLElement(source) ? source : null;
@@ -206,7 +224,7 @@ function isHTMLElement(value: unknown): value is HTMLElement {
 }
 
 function toEditorSuggestFile(value: unknown): TFile | null {
-  return value && typeof value === "object" ? value as TFile : null;
+  return value && typeof value === "object" ? (value as TFile) : null;
 }
 
 function isPromiseLike<T>(value: T[] | null | Promise<T[] | null>): value is Promise<T[] | null> {
@@ -233,7 +251,12 @@ function editorHasFocus(editor: Editor): boolean {
   return true;
 }
 
-function getEditorSuggestRect(editor: Editor, start: EditorPosition, end: EditorPosition, fallbackAnchorEl: HTMLElement | null): Pick<DOMRect, "left" | "right" | "top" | "bottom"> | null {
+function getEditorSuggestRect(
+  editor: Editor,
+  start: EditorPosition,
+  end: EditorPosition,
+  fallbackAnchorEl: HTMLElement | null,
+): Pick<DOMRect, "left" | "right" | "top" | "bottom"> | null {
   const coordsAtPos = editor.coordsAtPos?.bind(editor);
   const startRect = coordsAtPos?.(start);
   const endRect = coordsAtPos?.(end);

@@ -18,7 +18,9 @@ import {
 let dom: JSDOM | null = null;
 
 beforeEach(() => {
-  dom = new JSDOM("<!doctype html><html><body><input id=\"path-input\"></body></html>", { pretendToBeVisual: true });
+  dom = new JSDOM('<!doctype html><html><body><input id="path-input"></body></html>', {
+    pretendToBeVisual: true,
+  });
   vi.stubGlobal("window", dom.window);
   vi.stubGlobal("document", dom.window.document);
   vi.stubGlobal("HTMLElement", dom.window.HTMLElement);
@@ -97,19 +99,29 @@ describe("FileInputSuggest DOM and behavior parity", () => {
     const input = inputEl();
     const app = createApp(vault);
     const markdownSuggest = new MarkdownFileInputSuggest(app, input);
-    const filteredSuggest = new FilteredFileInputSuggest(app, input, (file) => file.extension === "canvas");
+    const filteredSuggest = new FilteredFileInputSuggest(
+      app,
+      input,
+      (file) => file.extension === "canvas",
+    );
 
     expect(markdownSuggest.getSuggestions("").map((suggestion) => suggestion.item.path)).toEqual([
       "Notes/Alpha.md",
       "Archive/Gamma.md",
     ]);
-    expect(filteredSuggest.getSuggestions("").map((suggestion) => suggestion.item.path)).toEqual(["Notes/Beta.canvas"]);
+    expect(filteredSuggest.getSuggestions("").map((suggestion) => suggestion.item.path)).toEqual([
+      "Notes/Beta.canvas",
+    ]);
   });
 
   it("supports full-path file selection for declarative file setting controls", async () => {
     const vault = await createVault();
     const input = inputEl();
-    const suggest = new FullPathFileInputSuggest(createApp(vault), input, (file) => file.extension === "md");
+    const suggest = new FullPathFileInputSuggest(
+      createApp(vault),
+      input,
+      (file) => file.extension === "md",
+    );
 
     input.focus();
     input.value = "alpha";
@@ -133,12 +145,23 @@ describe("FileInputSuggest DOM and behavior parity", () => {
     const selected: FolderSuggestion[] = [];
     const inputListener = vi.fn();
     const changeListener = vi.fn();
-    const suggest = new FolderInputSuggest(createApp(vault), input, true, true).onSelect((value) => selected.push(value));
+    const suggest = new FolderInputSuggest(createApp(vault), input, true, true).onSelect((value) =>
+      selected.push(value),
+    );
     input.addEventListener("input", inputListener);
     input.addEventListener("change", changeListener);
 
-    expect(vault.getAllFolders(false).map((folder) => folder.path)).toEqual(["Notes", "Archive", "Empty"]);
-    expect(vault.getAllFolders(true).map((folder) => folder.path)).toEqual(["/", "Notes", "Archive", "Empty"]);
+    expect(vault.getAllFolders(false).map((folder) => folder.path)).toEqual([
+      "Notes",
+      "Archive",
+      "Empty",
+    ]);
+    expect(vault.getAllFolders(true).map((folder) => folder.path)).toEqual([
+      "/",
+      "Notes",
+      "Archive",
+      "Empty",
+    ]);
 
     input.focus();
     input.value = "NewFolder";
@@ -177,14 +200,22 @@ describe("FileInputSuggest DOM and behavior parity", () => {
 
   it("applies folder predicates", async () => {
     const vault = await createVault();
-    const suggest = new FilteredFolderInputSuggest(createApp(vault), inputEl(), (folder) => folder.path.startsWith("A"));
+    const suggest = new FilteredFolderInputSuggest(createApp(vault), inputEl(), (folder) =>
+      folder.path.startsWith("A"),
+    );
 
     expect(suggest.getSuggestions("").map((value) => value?.item.path)).toEqual(["Archive"]);
   });
 
   it("passes includeRoot through filtered folder suggestions", async () => {
     const vault = await createVault();
-    const suggest = new FilteredFolderInputSuggest(createApp(vault), inputEl(), (folder) => folder.path === "/" || folder.path.startsWith("A"), false, true);
+    const suggest = new FilteredFolderInputSuggest(
+      createApp(vault),
+      inputEl(),
+      (folder) => folder.path === "/" || folder.path.startsWith("A"),
+      false,
+      true,
+    );
 
     expect(suggest.getSuggestions("").map((value) => value?.item.path)).toEqual(["/", "Archive"]);
   });

@@ -16,7 +16,8 @@ function setup() {
 describe("StreamMarkdownRenderer", () => {
   it("renders headings, tables and code fences from parsed nodes", () => {
     const { containerEl, renderer, md } = setup();
-    const markdown = "# Title\n\nSome **bold** and `code`.\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\n```ts\nconst x = 1;\n```\n";
+    const markdown =
+      "# Title\n\nSome **bold** and `code`.\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\n```ts\nconst x = 1;\n```\n";
     renderer.update(parseMarkdownToStructure(markdown, md, { final: true }));
 
     expect(containerEl.querySelector("h1")?.textContent).toBe("Title");

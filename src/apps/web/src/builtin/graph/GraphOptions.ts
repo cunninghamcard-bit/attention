@@ -87,17 +87,27 @@ export function cloneGraphPluginOptions(options: GraphPluginOptions): GraphPlugi
     filterOptions: { ...DEFAULT_GRAPH_FILTER_OPTIONS, ...options.filterOptions },
     displayOptions: { ...DEFAULT_GRAPH_DISPLAY_OPTIONS, ...options.displayOptions },
     forceOptions: { ...DEFAULT_GRAPH_FORCE_OPTIONS, ...options.forceOptions },
-    colorGroups: options.colorGroups.map((group) => ({ query: group.query, color: { ...group.color } })),
+    colorGroups: options.colorGroups.map((group) => ({
+      query: group.query,
+      color: { ...group.color },
+    })),
     scale: options.scale ?? 1,
     close: { ...options.close },
   };
 }
 
-export function assignGraphPluginOptions(target: GraphPluginOptions, source: Partial<GraphPluginOptions>): GraphPluginOptions {
+export function assignGraphPluginOptions(
+  target: GraphPluginOptions,
+  source: Partial<GraphPluginOptions>,
+): GraphPluginOptions {
   if (source.filterOptions) Object.assign(target.filterOptions, source.filterOptions);
   if (source.displayOptions) Object.assign(target.displayOptions, source.displayOptions);
   if (source.forceOptions) Object.assign(target.forceOptions, source.forceOptions);
-  if (source.colorGroups) target.colorGroups = source.colorGroups.map((group) => ({ query: group.query, color: { ...group.color } }));
+  if (source.colorGroups)
+    target.colorGroups = source.colorGroups.map((group) => ({
+      query: group.query,
+      color: { ...group.color },
+    }));
   if (typeof source.scale === "number") target.scale = source.scale;
   if (source.close) target.close = { ...target.close, ...source.close };
   return target;

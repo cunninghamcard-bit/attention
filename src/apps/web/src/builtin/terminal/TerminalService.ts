@@ -1,5 +1,10 @@
 import type { App } from "../../app/App";
-import { createTerminalAdapter, TerminalSpawnError, type TerminalAdapter, type TerminalProcessHandle } from "./TerminalAdapter";
+import {
+  createTerminalAdapter,
+  TerminalSpawnError,
+  type TerminalAdapter,
+  type TerminalProcessHandle,
+} from "./TerminalAdapter";
 import type { WorkspaceLeaf } from "../../views/workspace/WorkspaceLeaf";
 
 /**
@@ -103,7 +108,8 @@ export class TerminalService {
     // enhanced: always zsh (matching the vendor terminal this profile mirrors),
     // with the integration shim's ZDOTDIR when it can be provisioned.
     const loginShell = this.adapter.defaultShell();
-    const shell = requestedShell || (loginShell.split("/").pop() === "zsh" ? loginShell : "/bin/zsh");
+    const shell =
+      requestedShell || (loginShell.split("/").pop() === "zsh" ? loginShell : "/bin/zsh");
     const zdotdir = this.adapter.prepareShellIntegration();
     return zdotdir ? { shell, env: { ZDOTDIR: zdotdir } } : { shell };
   }
@@ -115,7 +121,11 @@ export class TerminalService {
   async open(options: TerminalOpenOptions = {}): Promise<TTerminal> {
     const terminal = this.createSession(options);
     const leaf = this.resolveLeaf(options.location ?? this.getSettings().location);
-    await leaf.setViewState({ type: TERMINAL_VIEW_TYPE, active: true, state: { terminalId: terminal.id } });
+    await leaf.setViewState({
+      type: TERMINAL_VIEW_TYPE,
+      active: true,
+      state: { terminalId: terminal.id },
+    });
     if (options.reveal !== false) this.app.workspace.revealLeaf(leaf);
     return terminal;
   }
@@ -126,7 +136,14 @@ export class TerminalService {
     const { shell } = this.resolveSpawnConfig(options.shell);
     const cwd = options.cwd || this.defaultCwd();
     const terminal: TTerminal = { id, cwd, shell, status: "starting" };
-    const session: TerminalSession = { terminal, process: null, buffer: [], consumers: new Set(), exitCallbacks: new Set(), lastError: null };
+    const session: TerminalSession = {
+      terminal,
+      process: null,
+      buffer: [],
+      consumers: new Set(),
+      exitCallbacks: new Set(),
+      lastError: null,
+    };
     this.sessions.set(id, session);
     this.spawnInto(session);
     return terminal;
@@ -209,12 +226,19 @@ export class TerminalService {
     try {
       // Re-resolve on every (re)spawn so a profile change applies to restarts.
       const { env } = this.resolveSpawnConfig(terminal.shell);
-      const handle = this.adapter.spawn({ shell: terminal.shell, cwd: terminal.cwd, cols: 80, rows: 24, env });
+      const handle = this.adapter.spawn({
+        shell: terminal.shell,
+        cwd: terminal.cwd,
+        cols: 80,
+        rows: 24,
+        env,
+      });
       session.process = handle;
       terminal.status = "running";
       handle.onData((data) => {
         session.buffer.push(data);
-        if (session.buffer.length > MAX_BUFFER_CHUNKS) session.buffer.splice(0, session.buffer.length - MAX_BUFFER_CHUNKS);
+        if (session.buffer.length > MAX_BUFFER_CHUNKS)
+          session.buffer.splice(0, session.buffer.length - MAX_BUFFER_CHUNKS);
         for (const consumer of session.consumers) consumer(data);
       });
       handle.onExit((code) => {
@@ -226,9 +250,13 @@ export class TerminalService {
       this.app.workspace.trigger("terminal-open", { ...terminal });
     } catch (error) {
       terminal.status = "error";
-      const spawnError = error instanceof TerminalSpawnError
-        ? error
-        : new TerminalSpawnError("spawn-failed", error instanceof Error ? error.message : String(error));
+      const spawnError =
+        error instanceof TerminalSpawnError
+          ? error
+          : new TerminalSpawnError(
+              "spawn-failed",
+              error instanceof Error ? error.message : String(error),
+            );
       session.lastError = spawnError;
       this.app.workspace.trigger("terminal-error", { ...terminal }, spawnError);
     }

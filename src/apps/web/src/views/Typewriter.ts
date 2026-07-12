@@ -40,7 +40,10 @@ export class Typewriter {
     if (behind <= 0) return;
     const step = Math.max(1, Math.ceil(behind * (dt / DRAIN_MS)));
     this.visible = behind - step <= SNAP_THRESHOLD ? this.target.length : this.visible + step;
-    this.onReveal(this.target.slice(0, this.visible), this.final && this.visible >= this.target.length);
+    this.onReveal(
+      this.target.slice(0, this.visible),
+      this.final && this.visible >= this.target.length,
+    );
   }
 
   destroy(): void {

@@ -25,7 +25,11 @@ class RecordingComponent extends Component {
 }
 
 class RecordingPlugin extends Plugin {
-  constructor(readonly testApp: App, readonly log: string[], readonly resolveOnload: Promise<void>) {
+  constructor(
+    readonly testApp: App,
+    readonly log: string[],
+    readonly resolveOnload: Promise<void>,
+  ) {
     super(testApp, { id: "recording-plugin", name: "Recording Plugin", version: "1.0.0" });
   }
 
@@ -55,9 +59,14 @@ describe("Component lifecycle", () => {
   it("loads Component children without waiting for an async parent onload", async () => {
     const log: string[] = [];
     let resolveParent!: () => void;
-    const parent = new RecordingComponent("parent", log, () => new Promise<void>((resolve) => {
-      resolveParent = resolve;
-    }));
+    const parent = new RecordingComponent(
+      "parent",
+      log,
+      () =>
+        new Promise<void>((resolve) => {
+          resolveParent = resolve;
+        }),
+    );
     parent.addChild(new RecordingComponent("child", log));
 
     const loaded = parent.load();
@@ -154,9 +163,13 @@ describe("Component lifecycle", () => {
     const app = new App(document.createElement("div"));
     const log: string[] = [];
     let resolveOnload!: () => void;
-    const plugin = new RecordingPlugin(app, log, new Promise<void>((resolve) => {
-      resolveOnload = resolve;
-    }));
+    const plugin = new RecordingPlugin(
+      app,
+      log,
+      new Promise<void>((resolve) => {
+        resolveOnload = resolve;
+      }),
+    );
     plugin.addChild(new RecordingComponent("child", log));
 
     const loaded = plugin.load();
@@ -170,11 +183,13 @@ describe("Component lifecycle", () => {
   it("does not wait for async onunload before continuing cleanup", async () => {
     const log: string[] = [];
     let resolveUnload!: () => void;
-    const component = new RecordingComponent("component", log, null, () => new Promise<void>((resolve) => {
-      resolveUnload = resolve;
-    }).then(() => {
-      log.push("component:unload:done");
-    }));
+    const component = new RecordingComponent("component", log, null, () =>
+      new Promise<void>((resolve) => {
+        resolveUnload = resolve;
+      }).then(() => {
+        log.push("component:unload:done");
+      }),
+    );
 
     component.load();
     const result = component.unload();

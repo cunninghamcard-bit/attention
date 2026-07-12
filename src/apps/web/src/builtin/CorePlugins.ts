@@ -16,7 +16,10 @@ import { OutlineView } from "./OutlineView";
 import { CanvasView } from "./canvas/CanvasView";
 import { MarkdownView } from "../views/MarkdownView";
 import { registerSearchCliHandlers } from "./cli/commands/searchCli";
-import { registerLinksCliHandlers, registerOutlineCliHandlers } from "./cli/commands/linksOutlineCli";
+import {
+  registerLinksCliHandlers,
+  registerOutlineCliHandlers,
+} from "./cli/commands/linksOutlineCli";
 import { createGraphPluginDefinition } from "./graph/GraphPlugin";
 import { createCommandPalettePluginDefinition } from "../app/commands/CommandPalette";
 import { createDailyNotesPluginDefinition } from "./DailyNotes";
@@ -50,16 +53,46 @@ const openRootView = (app: App, viewType: string, mode: "tab" | "split" = "tab")
 };
 
 export const nonParityFeatureScope = [
-  { id: "graph", area: "core-plugin", boundary: "not implemented as an Obsidian feature; keep only thin architecture seams when useful" },
-  { id: "backlink", area: "core-plugin", boundary: "not implemented as an Obsidian feature; linked-view/menu contracts may remain as thin seams" },
-  { id: "wiki-link-resolver", area: "metadata", boundary: "do not chase Obsidian's full resolver; keep simplified link interfaces for editor/plugin flow" },
-  { id: "tag-index", area: "metadata", boundary: "do not chase Obsidian's full tag index; keep simplified metadata surfaces only where needed" },
-  { id: "canvas", area: "core-plugin", boundary: "not implemented as a full canvas product; keep file/view/drop seams only when they support architecture study" },
+  {
+    id: "graph",
+    area: "core-plugin",
+    boundary:
+      "not implemented as an Obsidian feature; keep only thin architecture seams when useful",
+  },
+  {
+    id: "backlink",
+    area: "core-plugin",
+    boundary:
+      "not implemented as an Obsidian feature; linked-view/menu contracts may remain as thin seams",
+  },
+  {
+    id: "wiki-link-resolver",
+    area: "metadata",
+    boundary:
+      "do not chase Obsidian's full resolver; keep simplified link interfaces for editor/plugin flow",
+  },
+  {
+    id: "tag-index",
+    area: "metadata",
+    boundary:
+      "do not chase Obsidian's full tag index; keep simplified metadata surfaces only where needed",
+  },
+  {
+    id: "canvas",
+    area: "core-plugin",
+    boundary:
+      "not implemented as a full canvas product; keep file/view/drop seams only when they support architecture study",
+  },
   { id: "daily-notes", area: "core-plugin", boundary: "not implemented" },
   { id: "templates", area: "core-plugin", boundary: "not implemented" },
   { id: "slides", area: "core-plugin", boundary: "not implemented" },
   { id: "audio-recorder", area: "core-plugin", boundary: "not implemented" },
-  { id: "bookmarks", area: "core-plugin", boundary: "not implemented as an Obsidian feature; drag/source contracts may remain as thin seams" },
+  {
+    id: "bookmarks",
+    area: "core-plugin",
+    boundary:
+      "not implemented as an Obsidian feature; drag/source contracts may remain as thin seams",
+  },
 ] as const;
 
 const nonParityDefaultOffCorePluginIds = new Set<string>(
@@ -86,12 +119,22 @@ export const corePlugins: InternalPluginDefinition[] = [
     description: "Adds Obsidian's generic file menu actions.",
     defaultOn: true,
     init(_app: App, plugin: InternalPluginWrapper) {
-      plugin.registerEvent(plugin.app.workspace.on<[Menu, TAbstractFile, string, WorkspaceLeaf]>("file-menu", (menu, file) => {
-        addWorkspaceFileMenuItems(plugin.app, menu, file);
-      }));
-      plugin.registerEvent(plugin.app.workspace.on<[Menu, TAbstractFile[], string, WorkspaceLeaf]>("files-menu", (menu, files) => {
-        addWorkspaceFilesMenuItems(plugin.app, menu, files);
-      }));
+      plugin.registerEvent(
+        plugin.app.workspace.on<[Menu, TAbstractFile, string, WorkspaceLeaf]>(
+          "file-menu",
+          (menu, file) => {
+            addWorkspaceFileMenuItems(plugin.app, menu, file);
+          },
+        ),
+      );
+      plugin.registerEvent(
+        plugin.app.workspace.on<[Menu, TAbstractFile[], string, WorkspaceLeaf]>(
+          "files-menu",
+          (menu, files) => {
+            addWorkspaceFilesMenuItems(plugin.app, menu, files);
+          },
+        ),
+      );
       plugin.registerGlobalCommand({
         id: "git:open-changes",
         name: "Open git changes",
@@ -99,7 +142,9 @@ export const corePlugins: InternalPluginDefinition[] = [
         checkCallback: (checking) => {
           if (!plugin.app.git.isAvailable()) return false;
           if (!checking) {
-            void plugin.app.workspace.getLeaf("tab").setViewState({ type: "git-changes", active: true });
+            void plugin.app.workspace
+              .getLeaf("tab")
+              .setViewState({ type: "git-changes", active: true });
           }
           return true;
         },
@@ -118,49 +163,65 @@ export const corePlugins: InternalPluginDefinition[] = [
         id: "git:open-pull-requests",
         name: "Open pull requests",
         icon: "lucide-git-pull-request",
-        callback: () => { void openPrList(plugin.app); },
+        callback: () => {
+          void openPrList(plugin.app);
+        },
       });
       plugin.registerGlobalCommand({
         id: "github:open-workspace",
         name: "Open GitHub workspace",
         icon: "lucide-github",
-        callback: () => { void openGitHubWorkspace(plugin.app, { section: "pulls" }); },
+        callback: () => {
+          void openGitHubWorkspace(plugin.app, { section: "pulls" });
+        },
       });
       plugin.registerGlobalCommand({
         id: "github:open-commits",
         name: "Open GitHub commits",
         icon: "lucide-git-commit",
-        callback: () => { void openGitHubWorkspace(plugin.app, { section: "commits" }); },
+        callback: () => {
+          void openGitHubWorkspace(plugin.app, { section: "commits" });
+        },
       });
       plugin.registerGlobalCommand({
         id: "github:open-branches",
         name: "Open GitHub branches",
         icon: "lucide-git-branch",
-        callback: () => { void openGitHubWorkspace(plugin.app, { section: "branches" }); },
+        callback: () => {
+          void openGitHubWorkspace(plugin.app, { section: "branches" });
+        },
       });
       plugin.registerGlobalCommand({
         id: "github:open-issues",
         name: "Open GitHub issues",
         icon: "lucide-circle-dot",
-        callback: () => { void openGitHubWorkspace(plugin.app, { section: "issues" }); },
+        callback: () => {
+          void openGitHubWorkspace(plugin.app, { section: "issues" });
+        },
       });
       plugin.registerGlobalCommand({
         id: "github:open-actions",
         name: "Open GitHub actions",
         icon: "lucide-play",
-        callback: () => { void openGitHubWorkspace(plugin.app, { section: "actions" }); },
+        callback: () => {
+          void openGitHubWorkspace(plugin.app, { section: "actions" });
+        },
       });
       plugin.registerGlobalCommand({
         id: "github:open-files",
         name: "Open GitHub files",
         icon: "lucide-folder",
-        callback: () => { void openGitHubWorkspace(plugin.app, { section: "files" }); },
+        callback: () => {
+          void openGitHubWorkspace(plugin.app, { section: "files" });
+        },
       });
       plugin.registerGlobalCommand({
         id: "github:open-inbox",
         name: "Open GitHub inbox",
         icon: "lucide-inbox",
-        callback: () => { void openGitHubWorkspace(plugin.app, { section: "inbox" }); },
+        callback: () => {
+          void openGitHubWorkspace(plugin.app, { section: "inbox" });
+        },
       });
       plugin.registerGlobalCommand({
         id: "git:diff-active-file",
@@ -211,7 +272,11 @@ export const corePlugins: InternalPluginDefinition[] = [
         id: "file-explorer:open",
         name: "Open file explorer",
         icon: "lucide-folder",
-        callback: () => void plugin.app.workspace.ensureSideLeaf("file-explorer", "left", { active: true, reveal: true }),
+        callback: () =>
+          void plugin.app.workspace.ensureSideLeaf("file-explorer", "left", {
+            active: true,
+            reveal: true,
+          }),
       });
       plugin.registerGlobalCommand({
         id: "file-explorer:new-file",
@@ -220,18 +285,25 @@ export const corePlugins: InternalPluginDefinition[] = [
         hotkeys: [{ modifiers: ["Mod"], key: "N" }],
         callback: async () => {
           const file = await plugin.app.fileManager.createNewMarkdownFile(null);
-          await plugin.app.workspace.openFile(file, { active: true, state: { mode: "source" }, eState: { rename: "all" } });
+          await plugin.app.workspace.openFile(file, {
+            active: true,
+            state: { mode: "source" },
+            eState: { rename: "all" },
+          });
         },
       });
       plugin.registerGlobalCommand({
         id: "file-explorer:new-folder",
         name: "New folder",
         icon: "lucide-folder-plus",
-        callback: () => void plugin.app.fileManager.createNewFolder(null).then((folder) => plugin.app.workspace.ensureSideLeaf("file-explorer", "left", {
-          active: true,
-          reveal: true,
-          state: { newFile: folder.path },
-        })),
+        callback: () =>
+          void plugin.app.fileManager.createNewFolder(null).then((folder) =>
+            plugin.app.workspace.ensureSideLeaf("file-explorer", "left", {
+              active: true,
+              reveal: true,
+              state: { newFile: folder.path },
+            }),
+          ),
       });
       plugin.registerGlobalCommand({
         id: "file-explorer:reveal-active-file",
@@ -241,20 +313,27 @@ export const corePlugins: InternalPluginDefinition[] = [
           const file = plugin.app.workspace.activeEditor?.file;
           if (!file) return false;
           if (!checking) {
-            void plugin.app.workspace.ensureSideLeaf("file-explorer", "left", { reveal: true }).then((leaf) => {
-              const view = leaf.view as unknown as { revealFile?: (target: typeof file) => void };
-              view.revealFile?.(file);
-            });
+            void plugin.app.workspace
+              .ensureSideLeaf("file-explorer", "left", { reveal: true })
+              .then((leaf) => {
+                const view = leaf.view as unknown as { revealFile?: (target: typeof file) => void };
+                view.revealFile?.(file);
+              });
           }
           return true;
         },
       });
       plugin.registerRibbonItem("Open file explorer", "lucide-folder", () => {
-        void plugin.app.workspace.ensureSideLeaf("file-explorer", "left", { active: true, reveal: true });
+        void plugin.app.workspace.ensureSideLeaf("file-explorer", "left", {
+          active: true,
+          reveal: true,
+        });
       });
     },
     onEnable(app: App) {
-      app.workspace.onLayoutReady(() => void app.workspace.ensureSideLeaf("file-explorer", "left", { reveal: false }));
+      app.workspace.onLayoutReady(
+        () => void app.workspace.ensureSideLeaf("file-explorer", "left", { reveal: false }),
+      );
     },
   },
   {
@@ -268,10 +347,13 @@ export const corePlugins: InternalPluginDefinition[] = [
         id: "global-search:open",
         name: "Search in all files",
         icon: "lucide-search",
-        callback: () => void plugin.app.workspace.ensureSideLeaf("search", "left", { active: true, reveal: true }).then((leaf) => {
-          const view = leaf.view as unknown as { focusSearch?: () => void };
-          view.focusSearch?.();
-        }),
+        callback: () =>
+          void plugin.app.workspace
+            .ensureSideLeaf("search", "left", { active: true, reveal: true })
+            .then((leaf) => {
+              const view = leaf.view as unknown as { focusSearch?: () => void };
+              view.focusSearch?.();
+            }),
       });
       plugin.registerGlobalCommand({
         id: "global-search:search-selection",
@@ -281,10 +363,12 @@ export const corePlugins: InternalPluginDefinition[] = [
           const selection = plugin.app.workspace.activeEditor?.editor.getSelection();
           if (!selection) return false;
           if (!checking) {
-            void plugin.app.workspace.ensureSideLeaf("search", "left", { active: true, reveal: true }).then((leaf) => {
-              const view = leaf.view as unknown as { focusSearch?: (query: string) => void };
-              view.focusSearch?.(selection);
-            });
+            void plugin.app.workspace
+              .ensureSideLeaf("search", "left", { active: true, reveal: true })
+              .then((leaf) => {
+                const view = leaf.view as unknown as { focusSearch?: (query: string) => void };
+                view.focusSearch?.(selection);
+              });
           }
           return true;
         },
@@ -295,7 +379,9 @@ export const corePlugins: InternalPluginDefinition[] = [
       registerSearchCliHandlers(plugin);
     },
     onEnable(app: App) {
-      app.workspace.onLayoutReady(() => void app.workspace.ensureSideLeaf("search", "left", { reveal: false }));
+      app.workspace.onLayoutReady(
+        () => void app.workspace.ensureSideLeaf("search", "left", { reveal: false }),
+      );
     },
   },
   scopeCorePluginDefinition({
@@ -310,28 +396,41 @@ export const corePlugins: InternalPluginDefinition[] = [
         id: "backlink:open",
         name: "Open backlinks",
         icon: "lucide-link",
-        callback: () => void plugin.app.workspace.ensureSideLeaf("backlink", "right", { active: true, reveal: true }),
+        callback: () =>
+          void plugin.app.workspace.ensureSideLeaf("backlink", "right", {
+            active: true,
+            reveal: true,
+          }),
       });
     },
     onEnable(app: App, plugin: InternalPluginWrapper) {
-      plugin.registerEvent(app.workspace.on<[Menu, TFile, string, WorkspaceLeaf]>("file-menu", (menu, file, source, leaf) => {
-        if (source === "sidebar-context-menu" || isMobileRuntime() || !leaf) return;
-        addLinkedViewMenuItem(app, menu, file, leaf, {
-          title: "Open backlinks",
-          icon: "links-coming-in",
-          type: "backlink",
-          direction: "horizontal",
-        });
-        if (leaf.view instanceof MarkdownView && leaf.view.canToggleBacklinks()) {
-          menu.addItem((item) => item
-            .setSection("pane")
-            .setTitle("Backlinks in document")
-            .setChecked(Boolean(leaf.view.getState().backlinks))
-            .setIcon("links-coming-in")
-            .onClick(() => leaf.view instanceof MarkdownView && leaf.view.toggleBacklinks()));
-        }
-      }));
-      app.workspace.onLayoutReady(() => void app.workspace.ensureSideLeaf("backlink", "right", { reveal: false }));
+      plugin.registerEvent(
+        app.workspace.on<[Menu, TFile, string, WorkspaceLeaf]>(
+          "file-menu",
+          (menu, file, source, leaf) => {
+            if (source === "sidebar-context-menu" || isMobileRuntime() || !leaf) return;
+            addLinkedViewMenuItem(app, menu, file, leaf, {
+              title: "Open backlinks",
+              icon: "links-coming-in",
+              type: "backlink",
+              direction: "horizontal",
+            });
+            if (leaf.view instanceof MarkdownView && leaf.view.canToggleBacklinks()) {
+              menu.addItem((item) =>
+                item
+                  .setSection("pane")
+                  .setTitle("Backlinks in document")
+                  .setChecked(Boolean(leaf.view.getState().backlinks))
+                  .setIcon("links-coming-in")
+                  .onClick(() => leaf.view instanceof MarkdownView && leaf.view.toggleBacklinks()),
+              );
+            }
+          },
+        ),
+      );
+      app.workspace.onLayoutReady(
+        () => void app.workspace.ensureSideLeaf("backlink", "right", { reveal: false }),
+      );
     },
   }),
   scopeCorePluginDefinition({
@@ -345,7 +444,11 @@ export const corePlugins: InternalPluginDefinition[] = [
         id: "outgoing-links:open",
         name: "Open outgoing links",
         icon: "lucide-forward",
-        callback: () => void plugin.app.workspace.ensureSideLeaf("outgoing-link", "right", { active: true, reveal: true }),
+        callback: () =>
+          void plugin.app.workspace.ensureSideLeaf("outgoing-link", "right", {
+            active: true,
+            reveal: true,
+          }),
       });
       plugin.registerGlobalCommand({
         id: "outgoing-links:open-for-current",
@@ -354,23 +457,40 @@ export const corePlugins: InternalPluginDefinition[] = [
         checkCallback: (checking) => {
           const file = plugin.app.workspace.activeEditor?.file;
           if (!file) return false;
-          if (!checking) void plugin.app.workspace.ensureSideLeaf("outgoing-link", "right", { active: true, reveal: true });
+          if (!checking)
+            void plugin.app.workspace.ensureSideLeaf("outgoing-link", "right", {
+              active: true,
+              reveal: true,
+            });
           return true;
         },
       });
       registerLinksCliHandlers(plugin);
     },
     onEnable(app: App, plugin: InternalPluginWrapper) {
-      plugin.registerEvent(app.workspace.on<[Menu, TFile, string, WorkspaceLeaf]>("file-menu", (menu, file, source, leaf) => {
-        if (source === "sidebar-context-menu" || isMobileRuntime() || file.extension !== "md" || !leaf) return;
-        addLinkedViewMenuItem(app, menu, file, leaf, {
-          title: "Open outgoing links",
-          icon: "links-going-out",
-          type: "outgoing-link",
-          direction: "horizontal",
-        });
-      }));
-      app.workspace.onLayoutReady(() => void app.workspace.ensureSideLeaf("outgoing-link", "right", { reveal: false }));
+      plugin.registerEvent(
+        app.workspace.on<[Menu, TFile, string, WorkspaceLeaf]>(
+          "file-menu",
+          (menu, file, source, leaf) => {
+            if (
+              source === "sidebar-context-menu" ||
+              isMobileRuntime() ||
+              file.extension !== "md" ||
+              !leaf
+            )
+              return;
+            addLinkedViewMenuItem(app, menu, file, leaf, {
+              title: "Open outgoing links",
+              icon: "links-going-out",
+              type: "outgoing-link",
+              direction: "horizontal",
+            });
+          },
+        ),
+      );
+      app.workspace.onLayoutReady(
+        () => void app.workspace.ensureSideLeaf("outgoing-link", "right", { reveal: false }),
+      );
     },
   }),
   {
@@ -384,11 +504,14 @@ export const corePlugins: InternalPluginDefinition[] = [
         id: "tag-pane:open",
         name: "Open tags",
         icon: "lucide-tags",
-        callback: () => void plugin.app.workspace.ensureSideLeaf("tag", "right", { active: true, reveal: true }),
+        callback: () =>
+          void plugin.app.workspace.ensureSideLeaf("tag", "right", { active: true, reveal: true }),
       });
     },
     onEnable(app: App) {
-      app.workspace.onLayoutReady(() => void app.workspace.ensureSideLeaf("tag", "right", { reveal: false }));
+      app.workspace.onLayoutReady(
+        () => void app.workspace.ensureSideLeaf("tag", "right", { reveal: false }),
+      );
     },
   },
   {
@@ -402,21 +525,38 @@ export const corePlugins: InternalPluginDefinition[] = [
         id: "outline:open",
         name: "Open outline",
         icon: "lucide-list-tree",
-        callback: () => void plugin.app.workspace.ensureSideLeaf("outline", "right", { active: true, reveal: true }),
+        callback: () =>
+          void plugin.app.workspace.ensureSideLeaf("outline", "right", {
+            active: true,
+            reveal: true,
+          }),
       });
       registerOutlineCliHandlers(plugin);
     },
     onEnable(app: App, plugin: InternalPluginWrapper) {
-      plugin.registerEvent(app.workspace.on<[Menu, TFile, string, WorkspaceLeaf]>("file-menu", (menu, file, source, leaf) => {
-        if (source === "sidebar-context-menu" || isMobileRuntime() || file.extension !== "md" || !leaf) return;
-        addLinkedViewMenuItem(app, menu, file, leaf, {
-          title: "Open outline",
-          icon: "lucide-list",
-          type: "outline",
-          direction: "vertical",
-        });
-      }));
-      app.workspace.onLayoutReady(() => void app.workspace.ensureSideLeaf("outline", "right", { reveal: false }));
+      plugin.registerEvent(
+        app.workspace.on<[Menu, TFile, string, WorkspaceLeaf]>(
+          "file-menu",
+          (menu, file, source, leaf) => {
+            if (
+              source === "sidebar-context-menu" ||
+              isMobileRuntime() ||
+              file.extension !== "md" ||
+              !leaf
+            )
+              return;
+            addLinkedViewMenuItem(app, menu, file, leaf, {
+              title: "Open outline",
+              icon: "lucide-list",
+              type: "outline",
+              direction: "vertical",
+            });
+          },
+        ),
+      );
+      app.workspace.onLayoutReady(
+        () => void app.workspace.ensureSideLeaf("outline", "right", { reveal: false }),
+      );
     },
   },
   scopeCorePluginDefinition(createGraphPluginDefinition()),
@@ -429,11 +569,24 @@ export const corePlugins: InternalPluginDefinition[] = [
       plugin.registerViewType("canvas", (leaf) => new CanvasView(leaf));
       plugin.registerExtensions(["canvas"], "canvas");
       const createCanvasFile = async () => {
-        const file = await plugin.app.vault.create(plugin.app.vault.getAvailablePath("Untitled", "canvas"), "{\n  \"nodes\": [],\n  \"edges\": []\n}\n");
+        const file = await plugin.app.vault.create(
+          plugin.app.vault.getAvailablePath("Untitled", "canvas"),
+          '{\n  "nodes": [],\n  "edges": []\n}\n',
+        );
         await plugin.app.workspace.openFile(file, { active: true, eState: { rename: "all" } });
       };
-      plugin.registerGlobalCommand({ id: "canvas:new-file", name: "Create new canvas", icon: "lucide-layout-dashboard", callback: () => void createCanvasFile() });
-      plugin.registerGlobalCommand({ id: "canvas:new", name: "Create new canvas", icon: "lucide-layout-dashboard", callback: () => void createCanvasFile() });
+      plugin.registerGlobalCommand({
+        id: "canvas:new-file",
+        name: "Create new canvas",
+        icon: "lucide-layout-dashboard",
+        callback: () => void createCanvasFile(),
+      });
+      plugin.registerGlobalCommand({
+        id: "canvas:new",
+        name: "Create new canvas",
+        icon: "lucide-layout-dashboard",
+        callback: () => void createCanvasFile(),
+      });
       plugin.registerGlobalCommand({
         id: "canvas:export-as-image",
         name: "Export canvas as image",
@@ -460,8 +613,12 @@ export const corePlugins: InternalPluginDefinition[] = [
           const groups = view.canvas.getGroupNodes();
           if (groups.length === 0) return false;
           if (!checking) {
-            const label = window.prompt("Group", groups.map((group) => group.data.label || group.id).join(", "));
-            const group = groups.find((item) => item.id === label || item.data.label === label) ?? groups[0];
+            const label = window.prompt(
+              "Group",
+              groups.map((group) => group.data.label || group.id).join(", "),
+            );
+            const group =
+              groups.find((item) => item.id === label || item.data.label === label) ?? groups[0];
             view.zoomToGroup(group.id);
           }
           return true;
@@ -473,7 +630,8 @@ export const corePlugins: InternalPluginDefinition[] = [
         icon: "lucide-file-plus",
         checkCallback: (checking) => {
           const view = plugin.app.workspace.activeLeaf?.view;
-          if (!(view instanceof CanvasView) || !view.canvas.getSingleSelectedTextNode()) return false;
+          if (!(view instanceof CanvasView) || !view.canvas.getSingleSelectedTextNode())
+            return false;
           if (!checking) void view.convertSelectedTextNodeToFile();
           return true;
         },
@@ -486,62 +644,83 @@ function addWorkspaceFileMenuItems(app: App, menu: Menu, file: TAbstractFile): v
   menu.setSectionSubmenu("info.copy", { title: "Copy path", icon: "lucide-clipboard" });
   if (file instanceof TFile) {
     menu
-      .addItem((item) => item
-        .setSection("info.copy")
-        .setTitle("Copy Obsidian URL")
-        .setIcon("lucide-link")
-        .onClick(() => void app.copyObsidianUrl(file)))
-      .addItem((item) => item
-        .setSection("system")
-        .setTitle("File history")
-        .setIcon("lucide-history")
-        .onClick(() => void openFileHistory(app, file.path)))
-      .addItem((item) => item
-        .setSection("system")
-        .setTitle("Open git diff")
-        .setIcon("lucide-file-diff")
-        .onClick(() => void openGitDiff(app, file).then((leaf) => {
-          if (!leaf) new Notice("Git is not available for this vault");
-        })))
-      .addItem((item) => item
-        .setSection("system")
-        .setTitle("Open in default app")
-        .setIcon("lucide-arrow-up-right")
-        .onClick(() => void app.openWithDefaultApp(file.path)))
-      .addItem((item) => item
-        .setSection("open")
-        .setTitle("Open in new window")
-        .setIcon("lucide-picture-in-picture-2")
-        .onClick(() => void app.workspace.openPopoutLeaf().openFile(file)));
+      .addItem((item) =>
+        item
+          .setSection("info.copy")
+          .setTitle("Copy Obsidian URL")
+          .setIcon("lucide-link")
+          .onClick(() => void app.copyObsidianUrl(file)),
+      )
+      .addItem((item) =>
+        item
+          .setSection("system")
+          .setTitle("File history")
+          .setIcon("lucide-history")
+          .onClick(() => void openFileHistory(app, file.path)),
+      )
+      .addItem((item) =>
+        item
+          .setSection("system")
+          .setTitle("Open git diff")
+          .setIcon("lucide-file-diff")
+          .onClick(
+            () =>
+              void openGitDiff(app, file).then((leaf) => {
+                if (!leaf) new Notice("Git is not available for this vault");
+              }),
+          ),
+      )
+      .addItem((item) =>
+        item
+          .setSection("system")
+          .setTitle("Open in default app")
+          .setIcon("lucide-arrow-up-right")
+          .onClick(() => void app.openWithDefaultApp(file.path)),
+      )
+      .addItem((item) =>
+        item
+          .setSection("open")
+          .setTitle("Open in new window")
+          .setIcon("lucide-picture-in-picture-2")
+          .onClick(() => void app.workspace.openPopoutLeaf().openFile(file)),
+      );
   }
   if (file instanceof TFolder && file.isRoot()) return;
   menu
-    .addItem((item) => item
-      .setSection("action")
-      .setTitle(file instanceof TFile ? "Move file to..." : "Move folder to...")
-      .setIcon("lucide-folder-tree")
-      .onClick(() => new MoveFileModal(app, [file]).open()))
-    .addItem((item) => item
-      .setSection("info.copy")
-      .setTitle("Copy path")
-      .setIcon("vault")
-      .onClick(() => void copyVaultPath(file.path)));
+    .addItem((item) =>
+      item
+        .setSection("action")
+        .setTitle(file instanceof TFile ? "Move file to..." : "Move folder to...")
+        .setIcon("lucide-folder-tree")
+        .onClick(() => new MoveFileModal(app, [file]).open()),
+    )
+    .addItem((item) =>
+      item
+        .setSection("info.copy")
+        .setTitle("Copy path")
+        .setIcon("vault")
+        .onClick(() => void copyVaultPath(file.path)),
+    );
 }
 
 function addWorkspaceFilesMenuItems(app: App, menu: Menu, files: TAbstractFile[]): void {
   if (files.length === 0 || files.some((file) => file instanceof TFolder && file.isRoot())) return;
-  menu.addItem((item) => item
-    .setSection("action")
-    .setTitle("Move items to...")
-    .setIcon("lucide-folder-tree")
-    .onClick(() => new MoveFileModal(app, files).open()));
+  menu.addItem((item) =>
+    item
+      .setSection("action")
+      .setTitle("Move items to...")
+      .setIcon("lucide-folder-tree")
+      .onClick(() => new MoveFileModal(app, files).open()),
+  );
   if (files.length === 2 && files.every((file): file is TFile => file instanceof TFile)) {
     const [baseline, target] = files;
-    menu.addItem((item) => item
-      .setSection("action")
-      .setTitle("Compare files")
-      .setIcon("lucide-file-diff")
-      .onClick(() => void openFileCompare(app, target, baseline)));
+    menu.addItem((item) =>
+      item
+        .setSection("action")
+        .setTitle("Compare files")
+        .setIcon("lucide-file-diff")
+        .onClick(() => void openFileCompare(app, target, baseline)),
+    );
   }
 }
 
@@ -557,15 +736,28 @@ interface LinkedViewMenuItem {
   direction: "vertical" | "horizontal";
 }
 
-function addLinkedViewMenuItem(app: App, menu: Menu, file: TFile, sourceLeaf: WorkspaceLeaf, item: LinkedViewMenuItem): void {
-  menu.addItem((menuItem) => menuItem
-    .setSection("view.linked")
-    .setTitle(item.title)
-    .setIcon(item.icon)
-    .onClick(() => {
-      const leaf = app.workspace.splitLeafOrActive(sourceLeaf, item.direction);
-      void leaf.setViewState({ type: item.type, state: { file: file.path }, active: true, group: sourceLeaf });
-    }));
+function addLinkedViewMenuItem(
+  app: App,
+  menu: Menu,
+  file: TFile,
+  sourceLeaf: WorkspaceLeaf,
+  item: LinkedViewMenuItem,
+): void {
+  menu.addItem((menuItem) =>
+    menuItem
+      .setSection("view.linked")
+      .setTitle(item.title)
+      .setIcon(item.icon)
+      .onClick(() => {
+        const leaf = app.workspace.splitLeafOrActive(sourceLeaf, item.direction);
+        void leaf.setViewState({
+          type: item.type,
+          state: { file: file.path },
+          active: true,
+          group: sourceLeaf,
+        });
+      }),
+  );
 }
 
 function isMobileRuntime(): boolean {

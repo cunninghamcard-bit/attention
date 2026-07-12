@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolve } from "node:path";
-import {
-  buildObsActScript,
-  parseObsidianUrl,
-  resolveVaultForAction,
-} from "@desktop/obsidian-url";
+import { buildObsActScript, parseObsidianUrl, resolveVaultForAction } from "@desktop/obsidian-url";
 import type { VaultRegistryData } from "@desktop/vault-registry";
 
 describe("parseObsidianUrl (real $e parse)", () => {
@@ -59,7 +55,10 @@ describe("resolveVaultForAction (real $e resolution)", () => {
   };
 
   it("resolves by longest matching path and sets the relative file", () => {
-    const out = resolveVaultForAction({ action: "open", path: resolve("/vaults/Alpha/n.md") }, vaults);
+    const out = resolveVaultForAction(
+      { action: "open", path: resolve("/vaults/Alpha/n.md") },
+      vaults,
+    );
     expect(out.vaultId).toBe("a1");
     expect(out.action.file).toBe("/n.md");
     expect(out.useMostRecent).toBe(false);

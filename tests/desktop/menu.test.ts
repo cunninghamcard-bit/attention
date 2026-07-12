@@ -16,7 +16,10 @@ describe("toElectronTemplate", () => {
   });
 
   it("maps appCommand to id and attaches a click handler", () => {
-    const [item] = toElectronTemplate([{ label: "Toggle X", appCommand: "app:toggle-x" }], () => {});
+    const [item] = toElectronTemplate(
+      [{ label: "Toggle X", appCommand: "app:toggle-x" }],
+      () => {},
+    );
     expect(item.id).toBe("app:toggle-x");
     expect(typeof item.click).toBe("function");
     // Non-BrowserWindow arg is ignored (guarded), so this must not throw.

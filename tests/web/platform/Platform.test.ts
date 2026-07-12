@@ -8,7 +8,7 @@ describe("Platform runtime contract", () => {
 
   it("hydrates resourcePathPrefix from Obsidian's desktop electron bridge", async () => {
     vi.resetModules();
-    const sendSync = vi.fn((channel: string) => channel === "file-url" ? "app://obsidian/" : "");
+    const sendSync = vi.fn((channel: string) => (channel === "file-url" ? "app://obsidian/" : ""));
     (window as Window & { electron?: unknown }).electron = { ipcRenderer: { sendSync } };
 
     const { Platform } = await import("@web/platform/Platform");
@@ -30,7 +30,10 @@ describe("Platform runtime contract", () => {
     vi.resetModules();
     const originalAppVersion = window.navigator.appVersion;
     const originalPlatform = window.navigator.platform;
-    Object.defineProperty(window.navigator, "appVersion", { configurable: true, value: "5.0 (Windows NT 10.0)" });
+    Object.defineProperty(window.navigator, "appVersion", {
+      configurable: true,
+      value: "5.0 (Windows NT 10.0)",
+    });
     Object.defineProperty(window.navigator, "platform", { configurable: true, value: "MacIntel" });
 
     try {
@@ -40,8 +43,14 @@ describe("Platform runtime contract", () => {
       expect(Platform.isMacOS).toBe(false);
       expect(Platform.isLinux).toBe(false);
     } finally {
-      Object.defineProperty(window.navigator, "appVersion", { configurable: true, value: originalAppVersion });
-      Object.defineProperty(window.navigator, "platform", { configurable: true, value: originalPlatform });
+      Object.defineProperty(window.navigator, "appVersion", {
+        configurable: true,
+        value: originalAppVersion,
+      });
+      Object.defineProperty(window.navigator, "platform", {
+        configurable: true,
+        value: originalPlatform,
+      });
     }
   });
 });

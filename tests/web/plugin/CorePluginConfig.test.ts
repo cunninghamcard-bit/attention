@@ -31,7 +31,9 @@ describe("Core plugin config", () => {
       vi.useRealTimers();
     }
 
-    await expect(vault.readConfigJson<Record<string, boolean>>("core-plugins")).resolves.toMatchObject({
+    await expect(
+      vault.readConfigJson<Record<string, boolean>>("core-plugins"),
+    ).resolves.toMatchObject({
       "command-palette": false,
     });
   });

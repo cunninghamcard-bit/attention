@@ -2,7 +2,12 @@ import { Modal } from "../Modal";
 import type { App } from "../../app/App";
 import { Platform } from "../../platform/Platform";
 import { renderResults, sortSearchResults } from "../../search/SearchHelpers";
-import { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch, type PreparedFuzzyQuery } from "../../core/fuzzy";
+import {
+  fuzzyMatch,
+  prepareFuzzyQuery,
+  type FuzzyMatch,
+  type PreparedFuzzyQuery,
+} from "../../core/fuzzy";
 
 export { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch, type PreparedFuzzyQuery };
 
@@ -220,7 +225,10 @@ export class SuggestChooser<T> {
   selectedItem = 0;
   selectOnHover = true;
 
-  constructor(readonly owner: SuggestOwner<T>, readonly containerEl: HTMLElement) {}
+  constructor(
+    readonly owner: SuggestOwner<T>,
+    readonly containerEl: HTMLElement,
+  ) {}
 
   get length(): number {
     return this.values.length;
@@ -423,6 +431,11 @@ export function sortFuzzySuggestions<T>(suggestions: FuzzySuggestion<T>[]): void
   sortSearchResults(suggestions);
 }
 
-export function renderFuzzyText(el: HTMLElement, text: string, match: FuzzyMatch | null, offset = 0): void {
+export function renderFuzzyText(
+  el: HTMLElement,
+  text: string,
+  match: FuzzyMatch | null,
+  offset = 0,
+): void {
   renderResults(el, text, match, offset);
 }

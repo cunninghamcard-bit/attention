@@ -15,7 +15,11 @@ interface EventRefRecord<TArgs extends unknown[] = unknown[]> extends EventRef<T
 export class Events {
   readonly _: Record<string, EventRefRecord[]> = {};
 
-  on<TArgs extends unknown[]>(name: string, handler: EventHandler<TArgs>, ctx?: unknown): EventRef<TArgs> {
+  on<TArgs extends unknown[]>(
+    name: string,
+    handler: EventHandler<TArgs>,
+    ctx?: unknown,
+  ): EventRef<TArgs> {
     let bucket = this._[name];
     if (!bucket) this._[name] = bucket = [];
     const ref: EventRefRecord<TArgs> = { e: this, name, fn: handler, ctx };
@@ -46,7 +50,7 @@ export class Events {
   }
 
   trigger(name: string, ...args: unknown[]): void {
-    for (const ref of [...this._[name] ?? []]) this.tryTrigger(ref, args);
+    for (const ref of [...(this._[name] ?? [])]) this.tryTrigger(ref, args);
   }
 
   tryTrigger(ref: EventRef, args: unknown[] = []): void {

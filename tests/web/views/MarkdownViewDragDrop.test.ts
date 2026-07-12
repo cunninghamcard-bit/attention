@@ -87,7 +87,12 @@ describe("MarkdownView drag and drop", () => {
     const target = await app.vault.create("Target.md", "target");
     const view = await openMarkdownView(app, current);
 
-    setDragSource(app, { type: "link", file: target, linktext: "Target#Section|Alias", sourcePath: current.path });
+    setDragSource(app, {
+      type: "link",
+      file: target,
+      linktext: "Target#Section|Alias",
+      sourcePath: current.path,
+    });
     dropIntoEditor(view);
     expect(view.editor.getValue()).toBe("[[Target#Section]]");
 
@@ -103,14 +108,20 @@ describe("MarkdownView drag and drop", () => {
     const target = await app.vault.create("Target.md", "target");
     const view = await openMarkdownView(app, current);
 
-    setDragSource(app, { type: "heading", file: target, heading: { heading: "A:# bad [[x]] %% tag" } });
+    setDragSource(app, {
+      type: "heading",
+      file: target,
+      heading: { heading: "A:# bad [[x]] %% tag" },
+    });
     dropIntoEditor(view);
     expect(view.editor.getValue()).toBe("[[Target#A bad x tag]]");
 
     view.selectRange(view.editor.getValue().length, view.editor.getValue().length);
     setDragSource(app, {
       type: "bookmarks",
-      items: [{ item: { type: "file", path: target.path, subpath: "#Section", title: "Nice title" } }],
+      items: [
+        { item: { type: "file", path: target.path, subpath: "#Section", title: "Nice title" } },
+      ],
     });
     dropIntoEditor(view);
     expect(view.editor.getValue()).toBe("[[Target#A bad x tag]][[Target#Section|Nice title]]");
@@ -137,7 +148,9 @@ describe("MarkdownView drag and drop", () => {
     const view = await openMarkdownView(app, current);
 
     setDragSource(app, { type: "file", file: target });
-    const openInLeafEvent = dragOverEditor(view, "all", { [isMacLikePlatform() ? "shiftKey" : "altKey"]: true });
+    const openInLeafEvent = dragOverEditor(view, "all", {
+      [isMacLikePlatform() ? "shiftKey" : "altKey"]: true,
+    });
     expect(openInLeafEvent.dataTransfer?.dropEffect).toBe("move");
 
     setDragSource(app, { type: "bookmarks", items: [{ item: { type: "graph" } }] });
@@ -204,8 +217,14 @@ describe("MarkdownView drag and drop", () => {
     view.editorViewHost.contentEl.style.fontSize = "10px";
     view.editorViewHost.contentEl.style.lineHeight = "20px";
     view.editorViewHost.contentEl.style.padding = "0";
-    Object.defineProperty(view.editorViewHost.scrollerEl, "scrollTop", { configurable: true, value: 0 });
-    Object.defineProperty(view.editorViewHost.scrollerEl, "scrollLeft", { configurable: true, value: 0 });
+    Object.defineProperty(view.editorViewHost.scrollerEl, "scrollTop", {
+      configurable: true,
+      value: 0,
+    });
+    Object.defineProperty(view.editorViewHost.scrollerEl, "scrollLeft", {
+      configurable: true,
+      value: 0,
+    });
     view.editorViewHost.contentEl.getBoundingClientRect = () => ({
       x: 0,
       y: 0,
@@ -291,8 +310,15 @@ describe("MarkdownView drag and drop", () => {
     await vi.waitFor(() => {
       expect(view.editor.getValue()).toMatch(/^Before\n\nAfter!\[\[Pasted image \d{14}]]\n\n$/);
     });
-    expect(saveAttachment).toHaveBeenCalledWith("Pasted image", "png", expect.any(ArrayBuffer), current);
-    expect(app.vault.getFiles().some((file) => /^Pasted image \d{14}\.png$/.test(file.path))).toBe(true);
+    expect(saveAttachment).toHaveBeenCalledWith(
+      "Pasted image",
+      "png",
+      expect.any(ArrayBuffer),
+      current,
+    );
+    expect(app.vault.getFiles().some((file) => /^Pasted image \d{14}\.png$/.test(file.path))).toBe(
+      true,
+    );
   });
 
   it("does not convert external HTML drops when autoConvertHtml is disabled", async () => {
@@ -333,12 +359,16 @@ describe("MarkdownView drag and drop", () => {
         "text/plain": "Example image",
       }),
     });
-    expect(view.editor.getValue()).toBe("[Example page](https://example.com/page)![Example image](https://example.com/image.png)");
+    expect(view.editor.getValue()).toBe(
+      "[Example page](https://example.com/page)![Example image](https://example.com/image.png)",
+    );
 
     view.setViewData("");
     view.editor.setValue("");
     view.selectRange(0, 0);
-    const plainEvent = dropIntoEditor(view, { dataTransfer: createDropDataTransfer({ "text/plain": "plain" }) });
+    const plainEvent = dropIntoEditor(view, {
+      dataTransfer: createDropDataTransfer({ "text/plain": "plain" }),
+    });
     expect(plainEvent.defaultPrevented).toBe(false);
     expect(view.editor.getValue()).toBe("");
   });
@@ -352,9 +382,12 @@ describe("MarkdownView drag and drop", () => {
 
     clearDragSource(app);
     const event = dropIntoEditor(view, {
-      dataTransfer: createDropDataTransfer({
-        "text/uri-list": "https://example.com/from-file",
-      }, [file]),
+      dataTransfer: createDropDataTransfer(
+        {
+          "text/uri-list": "https://example.com/from-file",
+        },
+        [file],
+      ),
     });
 
     expect(event.defaultPrevented).toBe(true);
@@ -391,7 +424,9 @@ describe("MarkdownView drag and drop", () => {
     await vi.waitFor(() => {
       expect(view.editor.getValue()).toMatch(/^!\[\[Pasted image \d{14}]]$/);
     });
-    expect(app.vault.getFiles().some((file) => /^Pasted image \d{14}\.png$/.test(file.path))).toBe(true);
+    expect(app.vault.getFiles().some((file) => /^Pasted image \d{14}\.png$/.test(file.path))).toBe(
+      true,
+    );
   });
 
   it("links external dropped files when the platform file-link modifier is held", async () => {
@@ -452,7 +487,14 @@ function clearDragSource(app: App): void {
 
 function dropIntoEditor(
   view: MarkdownView,
-  init: { altKey?: boolean; clientX?: number; clientY?: number; ctrlKey?: boolean; dataTransfer?: DataTransfer | null; shiftKey?: boolean } = {},
+  init: {
+    altKey?: boolean;
+    clientX?: number;
+    clientY?: number;
+    ctrlKey?: boolean;
+    dataTransfer?: DataTransfer | null;
+    shiftKey?: boolean;
+  } = {},
 ): DragEvent {
   const event = new Event("drop", { bubbles: true, cancelable: true }) as DragEvent;
   Object.defineProperties(event, {

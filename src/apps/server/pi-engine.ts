@@ -2,7 +2,12 @@
 // to our canonical events. This is the faithful prototype of the along-go
 // Worker — pi is what along-go reimplements in Go, so mapping here is close
 // to identity and the along-go port inherits it.
-import { AuthStorage, ModelRegistry, createAgentSession, type AgentSession } from "@earendil-works/pi-coding-agent";
+import {
+  AuthStorage,
+  ModelRegistry,
+  createAgentSession,
+  type AgentSession,
+} from "@earendil-works/pi-coding-agent";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,7 +19,8 @@ type CanonicalEmit = EngineEmit;
 // endpoint (e.g. https://api.deepseek.com/anthropic) served under a custom
 // provider; unset uses pi's built-in anthropic provider + ANTHROPIC_API_KEY.
 const PROVIDER = process.env.PI_BASE_URL ? "custom" : "anthropic";
-const MODEL_ID = process.env.PI_MODEL ?? (process.env.PI_BASE_URL ? "deepseek-chat" : "claude-sonnet-4-5");
+const MODEL_ID =
+  process.env.PI_MODEL ?? (process.env.PI_BASE_URL ? "deepseek-chat" : "claude-sonnet-4-5");
 
 let registry: { modelRegistry: ModelRegistry; authStorage: AuthStorage } | null = null;
 
@@ -27,7 +33,15 @@ function getRegistry(): { modelRegistry: ModelRegistry; authStorage: AuthStorage
     const modelsPath = join(dir, "models.json");
     writeFileSync(
       modelsPath,
-      JSON.stringify({ providers: { custom: { baseUrl: process.env.PI_BASE_URL, api: "anthropic-messages", models: [{ id: MODEL_ID }] } } }),
+      JSON.stringify({
+        providers: {
+          custom: {
+            baseUrl: process.env.PI_BASE_URL,
+            api: "anthropic-messages",
+            models: [{ id: MODEL_ID }],
+          },
+        },
+      }),
     );
     const authStorage = AuthStorage.create(join(dir, "auth.json"));
     if (process.env.PI_API_KEY) authStorage.setRuntimeApiKey("custom", process.env.PI_API_KEY);
@@ -79,7 +93,13 @@ async function ensureSession(agentId: string): Promise<AgentSession> {
   // agent with bash/edit/write, so keep it out of the repo. PI_CWD overrides.
   const cwd = process.env.PI_CWD ?? mkdtempSync(join(tmpdir(), `agent-${agentId}-`));
   const { session } = await createAgentSession({ model, modelRegistry, authStorage, cwd });
-  sessions.set(agentId, { session, counter: 0, usage: zeroUsage(), contextWindow: (model as { contextWindow?: number }).contextWindow, modelId: MODEL_ID });
+  sessions.set(agentId, {
+    session,
+    counter: 0,
+    usage: zeroUsage(),
+    contextWindow: (model as { contextWindow?: number }).contextWindow,
+    modelId: MODEL_ID,
+  });
   return session;
 }
 
@@ -102,7 +122,13 @@ function bridgeEvents(agentId: string, session: AgentSession, emit: CanonicalEmi
     if (!messageStarted) {
       messageStarted = true;
       const entry = sessions.get(agentId);
-      emit({ type: "message.started", messageId: currentMessageId, role: "assistant", model: entry?.modelId, effort: entry?.effort });
+      emit({
+        type: "message.started",
+        messageId: currentMessageId,
+        role: "assistant",
+        model: entry?.modelId,
+        effort: entry?.effort,
+      });
     }
     return currentMessageId;
   };
@@ -117,7 +143,16 @@ function bridgeEvents(agentId: string, session: AgentSession, emit: CanonicalEmi
         return;
       }
       case "message_update": {
-        const inner = (event as { assistantMessageEvent?: { type: string; contentIndex?: number; delta?: string; toolCall?: { id: string; name: string; arguments?: unknown } } }).assistantMessageEvent;
+        const inner = (
+          event as {
+            assistantMessageEvent?: {
+              type: string;
+              contentIndex?: number;
+              delta?: string;
+              toolCall?: { id: string; name: string; arguments?: unknown };
+            };
+          }
+        ).assistantMessageEvent;
         if (!inner) return;
         switch (inner.type) {
           case "text_start":
@@ -132,13 +167,20 @@ function bridgeEvents(agentId: string, session: AgentSession, emit: CanonicalEmi
           case "text_delta":
           case "thinking_delta": {
             const part = openParts.get(inner.contentIndex!);
-            if (part && currentMessageId) emit({ type: "part.delta", messageId: currentMessageId, partIndex: part.partIndex, delta: inner.delta ?? "" });
+            if (part && currentMessageId)
+              emit({
+                type: "part.delta",
+                messageId: currentMessageId,
+                partIndex: part.partIndex,
+                delta: inner.delta ?? "",
+              });
             return;
           }
           case "text_end":
           case "thinking_end": {
             const part = openParts.get(inner.contentIndex!);
-            if (part && currentMessageId) emit({ type: "part.closed", messageId: currentMessageId, partIndex: part.partIndex });
+            if (part && currentMessageId)
+              emit({ type: "part.closed", messageId: currentMessageId, partIndex: part.partIndex });
             return;
           }
           case "toolcall_end": {
@@ -146,8 +188,19 @@ function bridgeEvents(agentId: string, session: AgentSession, emit: CanonicalEmi
             const call = inner.toolCall!;
             const partIndex = nextPartIndex++;
             toolParts.set(call.id, { partIndex, messageId: mid });
-            emit({ type: "part.opened", messageId: mid, partIndex, partType: "tool", toolName: call.name });
-            emit({ type: "part.delta", messageId: mid, partIndex, delta: JSON.stringify(call.arguments ?? {}) });
+            emit({
+              type: "part.opened",
+              messageId: mid,
+              partIndex,
+              partType: "tool",
+              toolName: call.name,
+            });
+            emit({
+              type: "part.delta",
+              messageId: mid,
+              partIndex,
+              delta: JSON.stringify(call.arguments ?? {}),
+            });
             emit({ type: "part.closed", messageId: mid, partIndex });
             return;
           }
@@ -155,7 +208,19 @@ function bridgeEvents(agentId: string, session: AgentSession, emit: CanonicalEmi
         return;
       }
       case "message_end": {
-        const message = (event as { message?: { role?: string; usage?: { input: number; output: number; totalTokens: number; cost?: { total?: number } } } }).message;
+        const message = (
+          event as {
+            message?: {
+              role?: string;
+              usage?: {
+                input: number;
+                output: number;
+                totalTokens: number;
+                cost?: { total?: number };
+              };
+            };
+          }
+        ).message;
         if (message?.role === "assistant" && message.usage) {
           const entry = sessions.get(agentId)!;
           const total = entry.usage;
@@ -199,7 +264,10 @@ const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"];
 
 // The agent's profile applies at run start: pi switches models and thinking
 // levels live, so the composer chip is real, not decorative.
-async function applyProfile(entry: SessionEntry, profile?: { model?: string; effort?: string }): Promise<void> {
+async function applyProfile(
+  entry: SessionEntry,
+  profile?: { model?: string; effort?: string },
+): Promise<void> {
   if (!profile) return;
   if (profile.model && profile.model !== entry.modelId) {
     const { modelRegistry } = getRegistry();
@@ -217,7 +285,13 @@ async function applyProfile(entry: SessionEntry, profile?: { model?: string; eff
   }
 }
 
-async function runPiEngine(agentId: string, runId: string, text: string, emit: CanonicalEmit, profile?: { model?: string; effort?: string }): Promise<void> {
+async function runPiEngine(
+  agentId: string,
+  runId: string,
+  text: string,
+  emit: CanonicalEmit,
+  profile?: { model?: string; effort?: string },
+): Promise<void> {
   const session = await ensureSession(agentId);
   // Subscribe once per session (first run); pi keeps the session alive.
   const entry = sessions.get(agentId)!;
@@ -231,7 +305,13 @@ async function runPiEngine(agentId: string, runId: string, text: string, emit: C
     await session.prompt(text);
     emit({ type: "run.closed", runId, status: "completed", usage: entry.usage });
   } catch (error) {
-    emit({ type: "run.closed", runId, status: "error", error: error instanceof Error ? error.message : String(error), usage: entry.usage });
+    emit({
+      type: "run.closed",
+      runId,
+      status: "error",
+      error: error instanceof Error ? error.message : String(error),
+      usage: entry.usage,
+    });
   }
 }
 
@@ -239,8 +319,16 @@ export const piEngine: Engine = {
   name: "pi",
   // Only the configured provider's models are runnable (others have no
   // auth), so only they are listed.
-  listModels: () => [...new Set(getRegistry().modelRegistry.getAll().filter((model) => model.provider === PROVIDER).map((model) => model.id))],
+  listModels: () => [
+    ...new Set(
+      getRegistry()
+        .modelRegistry.getAll()
+        .filter((model) => model.provider === PROVIDER)
+        .map((model) => model.id),
+    ),
+  ],
   listEfforts: () => THINKING_LEVELS,
-  run: ({ agentId, runId, prompt, emit, profile }) => runPiEngine(agentId, runId, prompt, emit, profile),
+  run: ({ agentId, runId, prompt, emit, profile }) =>
+    runPiEngine(agentId, runId, prompt, emit, profile),
   stop: (agentId) => sessions.get(agentId)?.session.abort(),
 };

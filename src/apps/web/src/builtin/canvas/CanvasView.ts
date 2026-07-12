@@ -1,13 +1,34 @@
-import { Canvas, CANVAS_DEFAULT_FILE_NODE_DIMENSIONS, CANVAS_DEFAULT_TEXT_NODE_DIMENSIONS } from "./Canvas";
-import { parseCanvasData, serializeCanvasData, type CanvasSelectionData, type CanvasNodeData, type CanvasSide } from "./CanvasData";
+import {
+  Canvas,
+  CANVAS_DEFAULT_FILE_NODE_DIMENSIONS,
+  CANVAS_DEFAULT_TEXT_NODE_DIMENSIONS,
+} from "./Canvas";
+import {
+  parseCanvasData,
+  serializeCanvasData,
+  type CanvasSelectionData,
+  type CanvasNodeData,
+  type CanvasSide,
+} from "./CanvasData";
 import type { CanvasEdge } from "./CanvasEdge";
 import { CanvasNode } from "./CanvasNode";
 import { MarkdownRenderer } from "../../markdown/MarkdownRenderer";
 import { Menu } from "../../ui/Menu";
 import { TextFileView } from "../../views/TextFileView";
-import type { DragDropResult, DragSource, FileDragSource, FilesDragSource, FolderDragSource, LinkDragSource } from "../../ui/drag/DragManager";
+import type {
+  DragDropResult,
+  DragSource,
+  FileDragSource,
+  FilesDragSource,
+  FolderDragSource,
+  LinkDragSource,
+} from "../../ui/drag/DragManager";
 import { TFile, TFolder } from "../../vault/TAbstractFile";
-import { getAttachmentFilesFromDataTransfer, hasDataTransferAttachmentFiles, type AttachmentImportFile } from "../../app/AttachmentImport";
+import {
+  getAttachmentFilesFromDataTransfer,
+  hasDataTransferAttachmentFiles,
+  type AttachmentImportFile,
+} from "../../app/AttachmentImport";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -22,8 +43,12 @@ export class CanvasView extends TextFileView {
   private suppressBackgroundClick = false;
   private suppressChange = false;
 
-  getViewType(): string { return "canvas"; }
-  getDisplayText(): string { return this.file?.basename ?? "Canvas"; }
+  getViewType(): string {
+    return "canvas";
+  }
+  getDisplayText(): string {
+    return this.file?.basename ?? "Canvas";
+  }
 
   setViewData(data: string, clearDirty = false): void {
     super.setViewData(data, clearDirty);
@@ -62,12 +87,17 @@ export class CanvasView extends TextFileView {
     wrapper.addEventListener("copy", (event) => this.copySelection(event));
     wrapper.addEventListener("paste", (event) => this.pasteSelection(event));
     wrapper.addEventListener("keydown", (event) => this.handleKeydown(event));
-    this.app.dragManager.handleDrop(wrapper, (event, source, hovering) => this.handleCanvasDrop(event, source, hovering), true);
+    this.app.dragManager.handleDrop(
+      wrapper,
+      (event, source, hovering) => this.handleCanvasDrop(event, source, hovering),
+      true,
+    );
     wrapper.addEventListener("contextmenu", (event) => this.openSelectionMenu(event));
 
     const background = document.createElementNS(SVG_NS, "svg");
     background.classList.add("canvas-background");
-    background.innerHTML = "<defs><pattern id=\"canvas-grid\" width=\"40\" height=\"40\" patternUnits=\"userSpaceOnUse\"><circle cx=\"1\" cy=\"1\" r=\"1\" /></pattern></defs><rect width=\"100%\" height=\"100%\" fill=\"url(#canvas-grid)\" />";
+    background.innerHTML =
+      '<defs><pattern id="canvas-grid" width="40" height="40" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" /></pattern></defs><rect width="100%" height="100%" fill="url(#canvas-grid)" />';
 
     const mover = document.createElement("div");
     mover.className = "canvas-mover";
@@ -98,7 +128,11 @@ export class CanvasView extends TextFileView {
   zoomToGroup(id: string): void {
     const group = this.canvas.nodes.get(id);
     if (!group) return;
-    this.canvas.zoomToBbox({ x: group.x, y: group.y, width: group.width, height: group.height }, this.contentEl.clientWidth, this.contentEl.clientHeight);
+    this.canvas.zoomToBbox(
+      { x: group.x, y: group.y, width: group.width, height: group.height },
+      this.contentEl.clientWidth,
+      this.contentEl.clientHeight,
+    );
     this.renderCanvas();
   }
 
@@ -106,7 +140,10 @@ export class CanvasView extends TextFileView {
     const node = this.canvas.getSingleSelectedTextNode();
     if (!node) return false;
     const title = firstLine(node.data.text) || "Canvas note";
-    const file = await this.app.fileManager.createNewMarkdownFile(this.file?.parentPath ?? "", title);
+    const file = await this.app.fileManager.createNewMarkdownFile(
+      this.file?.parentPath ?? "",
+      title,
+    );
     await this.app.vault.modify(file, node.data.text);
     this.canvas.updateNode(node.id, { type: "file", file: file.path } as Partial<CanvasNodeData>);
     return true;
@@ -123,14 +160,16 @@ export class CanvasView extends TextFileView {
     nodeEl.className = `canvas-node canvas-node-${node.data.type}`;
     nodeEl.classList.toggle("is-selected", this.canvas.selection.has(node.id));
     if (node.data.type === "group") nodeEl.classList.add("canvas-node-group");
-    if (node.data.type === "group" && node.data.backgroundStyle) nodeEl.classList.add(`mod-${node.data.backgroundStyle}`);
+    if (node.data.type === "group" && node.data.backgroundStyle)
+      nodeEl.classList.add(`mod-${node.data.backgroundStyle}`);
     nodeEl.dataset.nodeId = node.id;
     nodeEl.style.left = `${node.x}px`;
     nodeEl.style.top = `${node.y}px`;
     nodeEl.style.width = `${node.width}px`;
     nodeEl.style.height = `${node.height}px`;
     if (node.data.color) nodeEl.style.setProperty("--canvas-node-color", node.data.color);
-    if (node.data.type === "group" && node.data.background) nodeEl.style.background = node.data.background;
+    if (node.data.type === "group" && node.data.background)
+      nodeEl.style.background = node.data.background;
     nodeEl.addEventListener("pointerdown", (event) => this.startNodeDrag(event, node));
     nodeEl.addEventListener("contextmenu", (event) => this.openNodeMenu(event, node));
 
@@ -152,7 +191,11 @@ export class CanvasView extends TextFileView {
     if (node.data.type === "text") {
       content.contentEditable = String(!this.canvas.readonly);
       content.textContent = node.data.text;
-      content.addEventListener("blur", () => this.canvas.updateNode(node.id, { text: content.textContent ?? "" } as Partial<CanvasNodeData>));
+      content.addEventListener("blur", () =>
+        this.canvas.updateNode(node.id, {
+          text: content.textContent ?? "",
+        } as Partial<CanvasNodeData>),
+      );
       return;
     }
     if (node.data.type === "file") {
@@ -163,7 +206,9 @@ export class CanvasView extends TextFileView {
       preview.className = "canvas-node-file-preview";
       const file = this.app.vault.getFileByPath(node.data.file);
       if (file && file.extension === "md") {
-        void this.app.vault.read(file).then((source) => MarkdownRenderer.render(this.app, source, preview, file.path));
+        void this.app.vault
+          .read(file)
+          .then((source) => MarkdownRenderer.render(this.app, source, preview, file.path));
       } else {
         preview.textContent = file ? file.path : "Missing file";
       }
@@ -186,7 +231,11 @@ export class CanvasView extends TextFileView {
     label.className = "canvas-group-label";
     label.contentEditable = String(!this.canvas.readonly);
     label.textContent = node.data.label ?? "Group";
-    label.addEventListener("blur", () => this.canvas.updateNode(node.id, { label: label.textContent ?? "" } as Partial<CanvasNodeData>));
+    label.addEventListener("blur", () =>
+      this.canvas.updateNode(node.id, {
+        label: label.textContent ?? "",
+      } as Partial<CanvasNodeData>),
+    );
     content.appendChild(label);
   }
 
@@ -217,7 +266,8 @@ export class CanvasView extends TextFileView {
     if (!this.edgesEl) return;
     this.edgesEl.replaceChildren();
     const defs = document.createElementNS(SVG_NS, "defs");
-    defs.innerHTML = "<marker id=\"canvas-arrow\" markerWidth=\"8\" markerHeight=\"8\" refX=\"7\" refY=\"4\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M 0 0 L 8 4 L 0 8 z\" /></marker>";
+    defs.innerHTML =
+      '<marker id="canvas-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 8 4 L 0 8 z" /></marker>';
     this.edgesEl.appendChild(defs);
     for (const edge of this.canvas.edges.values()) this.edgesEl.appendChild(this.renderEdge(edge));
   }
@@ -241,7 +291,9 @@ export class CanvasView extends TextFileView {
       label.className = "canvas-path-label";
       label.contentEditable = String(!this.canvas.readonly);
       label.textContent = edge.data.label;
-      label.addEventListener("blur", () => this.canvas.updateEdge(edge.id, { label: label.textContent ?? "" }));
+      label.addEventListener("blur", () =>
+        this.canvas.updateEdge(edge.id, { label: label.textContent ?? "" }),
+      );
       const foreign = document.createElementNS(SVG_NS, "foreignObject");
       foreign.setAttribute("x", String(position.x - 100));
       foreign.setAttribute("y", String(position.y - 20));
@@ -256,7 +308,9 @@ export class CanvasView extends TextFileView {
   private createMinimap(): HTMLElement {
     const minimap = document.createElement("div");
     minimap.className = "canvas-minimap";
-    const bounds = this.canvas.getBounds([...this.canvas.nodes.values()].map((node) => node.getData()));
+    const bounds = this.canvas.getBounds(
+      [...this.canvas.nodes.values()].map((node) => node.getData()),
+    );
     for (const node of this.canvas.nodes.values()) {
       const item = document.createElement("div");
       item.className = `canvas-minimap-node mod-${node.data.type}`;
@@ -285,34 +339,74 @@ export class CanvasView extends TextFileView {
     const controls = document.createElement("div");
     controls.className = "canvas-controls";
     controls.append(
-      this.controlButton("Zoom in", "lucide-plus", () => { this.canvas.zoomBy(0.1); this.renderCanvas(); }),
-      this.controlButton("Zoom out", "lucide-minus", () => { this.canvas.zoomBy(-0.1); this.renderCanvas(); }),
-      this.controlButton("Fit", "lucide-scan", () => { this.canvas.zoomToFit(this.contentEl.clientWidth, this.contentEl.clientHeight); this.renderCanvas(); }),
-      this.controlButton("Select all", "lucide-square-dashed-mouse-pointer", () => { this.canvas.selectAll(); this.renderCanvas(); }),
-      this.controlButton("Delete", "lucide-trash", () => { if (!this.canvas.readonly) { this.canvas.deleteSelection(); this.renderCanvas(); } }),
-      this.controlButton(this.canvas.snapToGrid ? "Snap grid on" : "Snap grid off", "lucide-grid-2x2", () => { this.canvas.snapToGrid = !this.canvas.snapToGrid; this.renderCanvas(); }),
-      this.controlButton(this.canvas.readonly ? "Readonly on" : "Readonly off", "lucide-lock", () => { this.canvas.readonly = !this.canvas.readonly; this.renderCanvas(); }),
+      this.controlButton("Zoom in", "lucide-plus", () => {
+        this.canvas.zoomBy(0.1);
+        this.renderCanvas();
+      }),
+      this.controlButton("Zoom out", "lucide-minus", () => {
+        this.canvas.zoomBy(-0.1);
+        this.renderCanvas();
+      }),
+      this.controlButton("Fit", "lucide-scan", () => {
+        this.canvas.zoomToFit(this.contentEl.clientWidth, this.contentEl.clientHeight);
+        this.renderCanvas();
+      }),
+      this.controlButton("Select all", "lucide-square-dashed-mouse-pointer", () => {
+        this.canvas.selectAll();
+        this.renderCanvas();
+      }),
+      this.controlButton("Delete", "lucide-trash", () => {
+        if (!this.canvas.readonly) {
+          this.canvas.deleteSelection();
+          this.renderCanvas();
+        }
+      }),
+      this.controlButton(
+        this.canvas.snapToGrid ? "Snap grid on" : "Snap grid off",
+        "lucide-grid-2x2",
+        () => {
+          this.canvas.snapToGrid = !this.canvas.snapToGrid;
+          this.renderCanvas();
+        },
+      ),
+      this.controlButton(
+        this.canvas.readonly ? "Readonly on" : "Readonly off",
+        "lucide-lock",
+        () => {
+          this.canvas.readonly = !this.canvas.readonly;
+          this.renderCanvas();
+        },
+      ),
     );
     return controls;
   }
 
   private createAtCenter(type: "text" | "file" | "link" | "group"): void {
     if (this.canvas.readonly) return;
-    const x = (this.contentEl.clientWidth / 2 - this.canvas.viewport.x) / this.canvas.viewport.zoom - 120;
-    const y = (this.contentEl.clientHeight / 2 - this.canvas.viewport.y) / this.canvas.viewport.zoom - 80;
+    const x =
+      (this.contentEl.clientWidth / 2 - this.canvas.viewport.x) / this.canvas.viewport.zoom - 120;
+    const y =
+      (this.contentEl.clientHeight / 2 - this.canvas.viewport.y) / this.canvas.viewport.zoom - 80;
     if (type === "text") this.canvas.createTextNode("New text", x, y);
     if (type === "file") this.canvas.createFileNode(window.prompt("File path") ?? "", x, y);
-    if (type === "link") this.canvas.createLinkNode(window.prompt("URL") ?? "https://obsidian.md", x, y);
+    if (type === "link")
+      this.canvas.createLinkNode(window.prompt("URL") ?? "https://obsidian.md", x, y);
     if (type === "group") this.canvas.createGroupNode("Group", x, y);
     this.renderCanvas();
   }
 
-  private createAtPoint(type: "text" | "file" | "link" | "group", clientX: number, clientY: number, value = ""): void {
+  private createAtPoint(
+    type: "text" | "file" | "link" | "group",
+    clientX: number,
+    clientY: number,
+    value = "",
+  ): void {
     if (this.canvas.readonly) return;
     const point = this.clientToCanvas(clientX, clientY);
     if (type === "text") this.canvas.createTextNode(value || "New text", point.x, point.y);
     if (type === "file") this.canvas.createFileNode(value, point.x, point.y);
-    if (type === "link") this.canvas.createLinkNode(value || "https://obsidian.md", point.x, point.y);
+    if (type === "link")
+      this.canvas.createLinkNode(value || "https://obsidian.md", point.x, point.y);
     if (type === "group") this.canvas.createGroupNode(value || "Group", point.x, point.y);
     this.renderCanvas();
   }
@@ -378,7 +472,10 @@ export class CanvasView extends TextFileView {
       selectionEl.style.width = `${Math.abs(moveEvent.clientX - screenStart.x)}px`;
       selectionEl.style.height = `${Math.abs(moveEvent.clientY - screenStart.y)}px`;
       const current = this.clientToCanvas(moveEvent.clientX, moveEvent.clientY);
-      this.canvas.selectWithin({ x: start.x, y: start.y, width: current.x - start.x, height: current.y - start.y }, moveEvent.shiftKey);
+      this.canvas.selectWithin(
+        { x: start.x, y: start.y, width: current.x - start.x, height: current.y - start.y },
+        moveEvent.shiftKey,
+      );
       this.renderNodes();
     };
     const up = () => {
@@ -415,21 +512,36 @@ export class CanvasView extends TextFileView {
     event.preventDefault();
     this.app.workspace.trigger("canvas:node-menu", node, this);
     const menu = new Menu();
-    menu.addItem((item) => item.setTitle("Delete").setIcon("lucide-trash").onClick(() => {
-      if (this.canvas.readonly) return;
-      this.canvas.selectOnly(node.id);
-      this.canvas.deleteSelection();
-      this.renderCanvas();
-    }));
-    menu.addItem((item) => item.setTitle("Connect to selected").setIcon("lucide-git-branch").onClick(() => {
-      if (this.canvas.readonly) return;
-      const target = [...this.canvas.selection].find((id) => id !== node.id);
-      if (target) this.canvas.createEdge(node.id, target);
-      else this.app.workspace.trigger("canvas:node-connection-drop-menu", node, this);
-      this.renderCanvas();
-    }));
+    menu.addItem((item) =>
+      item
+        .setTitle("Delete")
+        .setIcon("lucide-trash")
+        .onClick(() => {
+          if (this.canvas.readonly) return;
+          this.canvas.selectOnly(node.id);
+          this.canvas.deleteSelection();
+          this.renderCanvas();
+        }),
+    );
+    menu.addItem((item) =>
+      item
+        .setTitle("Connect to selected")
+        .setIcon("lucide-git-branch")
+        .onClick(() => {
+          if (this.canvas.readonly) return;
+          const target = [...this.canvas.selection].find((id) => id !== node.id);
+          if (target) this.canvas.createEdge(node.id, target);
+          else this.app.workspace.trigger("canvas:node-connection-drop-menu", node, this);
+          this.renderCanvas();
+        }),
+    );
     if (node.data.type === "text") {
-      menu.addItem((item) => item.setTitle("Convert to file").setIcon("lucide-file-plus").onClick(() => void this.convertSelectedTextNodeToFile()));
+      menu.addItem((item) =>
+        item
+          .setTitle("Convert to file")
+          .setIcon("lucide-file-plus")
+          .onClick(() => void this.convertSelectedTextNodeToFile()),
+      );
     }
     menu.showAtMouseEvent(event);
   }
@@ -438,18 +550,28 @@ export class CanvasView extends TextFileView {
     event.preventDefault();
     this.app.workspace.trigger("canvas:edge-menu", edge, this);
     const menu = new Menu();
-    menu.addItem((item) => item.setTitle("Edit label").setIcon("lucide-text").onClick(() => {
-      if (this.canvas.readonly) return;
-      const label = window.prompt("Edge label", edge.data.label ?? "");
-      if (label != null) this.canvas.updateEdge(edge.id, { label });
-      this.renderCanvas();
-    }));
-    menu.addItem((item) => item.setTitle("Remove").setIcon("lucide-trash").onClick(() => {
-      if (this.canvas.readonly) return;
-      this.canvas.edges.delete(edge.id);
-      this.onCanvasChanged();
-      this.renderCanvas();
-    }));
+    menu.addItem((item) =>
+      item
+        .setTitle("Edit label")
+        .setIcon("lucide-text")
+        .onClick(() => {
+          if (this.canvas.readonly) return;
+          const label = window.prompt("Edge label", edge.data.label ?? "");
+          if (label != null) this.canvas.updateEdge(edge.id, { label });
+          this.renderCanvas();
+        }),
+    );
+    menu.addItem((item) =>
+      item
+        .setTitle("Remove")
+        .setIcon("lucide-trash")
+        .onClick(() => {
+          if (this.canvas.readonly) return;
+          this.canvas.edges.delete(edge.id);
+          this.onCanvasChanged();
+          this.renderCanvas();
+        }),
+    );
     menu.showAtMouseEvent(event);
   }
 
@@ -486,7 +608,10 @@ export class CanvasView extends TextFileView {
     if (!raw) return;
     try {
       const data = JSON.parse(raw) as CanvasSelectionData;
-      const center = this.clientToCanvas(this.contentEl.clientWidth / 2, this.contentEl.clientHeight / 2);
+      const center = this.clientToCanvas(
+        this.contentEl.clientWidth / 2,
+        this.contentEl.clientHeight / 2,
+      );
       this.canvas.importSelection(data, center);
       this.renderCanvas();
       event.preventDefault();
@@ -501,7 +626,11 @@ export class CanvasView extends TextFileView {
     this.scheduleSave();
   }
 
-  private handleCanvasDrop(event: DragEvent, source: DragSource | null, hovering: boolean): DragDropResult {
+  private handleCanvasDrop(
+    event: DragEvent,
+    source: DragSource | null,
+    hovering: boolean,
+  ): DragDropResult {
     if (this.canvas.readonly) return undefined;
     if (source) return this.handleInternalCanvasDrop(event, source, hovering);
     const dataTransfer = event.dataTransfer;
@@ -509,7 +638,8 @@ export class CanvasView extends TextFileView {
 
     const point = this.clientToCanvas(event.clientX, event.clientY);
     if (hasDataTransferAttachmentFiles(dataTransfer)) {
-      if (!hovering) void this.importExternalFiles(getAttachmentFilesFromDataTransfer(dataTransfer), point);
+      if (!hovering)
+        void this.importExternalFiles(getAttachmentFilesFromDataTransfer(dataTransfer), point);
       return { dropEffect: "copy" };
     }
 
@@ -535,7 +665,11 @@ export class CanvasView extends TextFileView {
     return undefined;
   }
 
-  private handleInternalCanvasDrop(event: DragEvent, source: DragSource, hovering: boolean): DragDropResult {
+  private handleInternalCanvasDrop(
+    event: DragEvent,
+    source: DragSource,
+    hovering: boolean,
+  ): DragDropResult {
     if (!hovering) {
       const point = this.clientToCanvas(event.clientX, event.clientY);
       if (isFileDragSource(source)) {
@@ -543,13 +677,18 @@ export class CanvasView extends TextFileView {
         this.renderCanvas();
         this.wrapperEl?.focus();
       } else if (isLinkDragSource(source)) {
-        if (source.file instanceof TFile) this.canvas.createFileNode(source.file.path, point.x, point.y);
+        if (source.file instanceof TFile)
+          this.canvas.createFileNode(source.file.path, point.x, point.y);
         this.renderCanvas();
         this.wrapperEl?.focus();
       } else if (isFilesDragSource(source)) {
         const files = collectFilesFromDragItems(source.files, true);
         if (files.length) {
-          const nodes = this.canvas.createFileNodes(files.map((file) => file.path), point.x, point.y);
+          const nodes = this.canvas.createFileNodes(
+            files.map((file) => file.path),
+            point.x,
+            point.y,
+          );
           this.canvas.selectNodes(nodes);
           this.renderCanvas();
         }
@@ -557,7 +696,11 @@ export class CanvasView extends TextFileView {
       } else if (isFolderDragSource(source)) {
         const files = collectFilesFromFolder(source.file);
         if (files.length) {
-          this.canvas.createFileNodes(files.map((file) => file.path), point.x, point.y);
+          this.canvas.createFileNodes(
+            files.map((file) => file.path),
+            point.x,
+            point.y,
+          );
           this.renderCanvas();
         }
         this.wrapperEl?.focus();
@@ -567,7 +710,10 @@ export class CanvasView extends TextFileView {
     return { dropEffect: "copy" };
   }
 
-  private async importExternalFiles(files: AttachmentImportFile[], point: { x: number; y: number }): Promise<void> {
+  private async importExternalFiles(
+    files: AttachmentImportFile[],
+    point: { x: number; y: number },
+  ): Promise<void> {
     const imported = await this.app.importAttachments(files, null, this.file);
     const importedPaths = imported.map((file) => file.path);
     if (!importedPaths.length) return;
@@ -580,11 +726,29 @@ export class CanvasView extends TextFileView {
     event.preventDefault();
     this.app.workspace.trigger("canvas:selection-menu", this.canvas.selection, this);
     const menu = new Menu();
-    menu.addItem((item) => item.setTitle("New text").setIcon("lucide-type").onClick(() => this.createAtPoint("text", event.clientX, event.clientY)));
-    menu.addItem((item) => item.setTitle("New group").setIcon("lucide-box").onClick(() => this.createAtPoint("group", event.clientX, event.clientY)));
-    menu.addItem((item) => item.setTitle("Paste").setIcon("lucide-clipboard").onClick(() => void navigator.clipboard?.readText?.().then((text) => {
-      if (text) this.createAtPoint("text", event.clientX, event.clientY, text);
-    })));
+    menu.addItem((item) =>
+      item
+        .setTitle("New text")
+        .setIcon("lucide-type")
+        .onClick(() => this.createAtPoint("text", event.clientX, event.clientY)),
+    );
+    menu.addItem((item) =>
+      item
+        .setTitle("New group")
+        .setIcon("lucide-box")
+        .onClick(() => this.createAtPoint("group", event.clientX, event.clientY)),
+    );
+    menu.addItem((item) =>
+      item
+        .setTitle("Paste")
+        .setIcon("lucide-clipboard")
+        .onClick(
+          () =>
+            void navigator.clipboard?.readText?.().then((text) => {
+              if (text) this.createAtPoint("text", event.clientX, event.clientY, text);
+            }),
+        ),
+    );
     menu.showAtMouseEvent(event);
   }
 
@@ -600,11 +764,20 @@ export class CanvasView extends TextFileView {
 }
 
 function firstLine(text: string): string {
-  return text.split(/\r?\n/).find((line) => line.trim())?.trim() ?? "";
+  return (
+    text
+      .split(/\r?\n/)
+      .find((line) => line.trim())
+      ?.trim() ?? ""
+  );
 }
 
 function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;" }[char] ?? char));
+  return value.replace(
+    /[&<>"']/g,
+    (char) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[char] ?? char,
+  );
 }
 
 function getDataTransferData(dataTransfer: DataTransfer, format: string): string {
@@ -626,7 +799,10 @@ function isCanvasUrlText(text: string): boolean {
   }
 }
 
-function centerToTopLeft(point: { x: number; y: number }, size: { width: number; height: number }): { x: number; y: number } {
+function centerToTopLeft(
+  point: { x: number; y: number },
+  size: { width: number; height: number },
+): { x: number; y: number } {
   return {
     x: point.x - size.width / 2,
     y: point.y - size.height / 2,

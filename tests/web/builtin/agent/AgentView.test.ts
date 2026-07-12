@@ -7,13 +7,22 @@ beforeEach(() => {
   Object.defineProperty(window, "focus", { configurable: true, value: () => {} });
 });
 
-function stubAgents(agents: Array<{ id: string; title: string | null; updatedAt: number; running: boolean }>): void {
-  const threads = agents.map((a) => ({ id: a.id, title: a.title ?? "", updatedAt: a.updatedAt, running: a.running }));
+function stubAgents(
+  agents: Array<{ id: string; title: string | null; updatedAt: number; running: boolean }>,
+): void {
+  const threads = agents.map((a) => ({
+    id: a.id,
+    title: a.title ?? "",
+    updatedAt: a.updatedAt,
+    running: a.running,
+  }));
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       if (String(input).endsWith("/threads")) {
-        return new Response(JSON.stringify({ threads }), { headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ threads }), {
+          headers: { "Content-Type": "application/json" },
+        });
       }
       return new Response("{}", { headers: { "Content-Type": "application/json" } });
     }),
@@ -43,7 +52,9 @@ describe("AgentView", () => {
     expect(cards[0].querySelector(".agent-card-title")?.textContent).toBe("重构讨论");
     expect(cards[0].querySelector(".agent-card-state")?.textContent).toBe("Running");
     expect(cards[1].querySelector(".agent-card-title")?.textContent).toBe("a-2");
-    expect([...cards[0].querySelectorAll(".agent-card-action")].map((el) => el.textContent)).toEqual(["Chat", "Properties"]);
+    expect(
+      [...cards[0].querySelectorAll(".agent-card-action")].map((el) => el.textContent),
+    ).toEqual(["Chat", "Properties"]);
     leaf.detach();
   });
 

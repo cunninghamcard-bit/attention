@@ -1,9 +1,9 @@
 {
   "name": "@app/tests",
-  "private": true,
   "version": "0.0.0",
-  "type": "module",
+  "private": true,
   "description": "Centralized test tree (mirrors src/apps/* paths). A workspace member so bare imports and vi.mock specifiers resolve in its own dependency lane.",
+  "type": "module",
   "devDependencies": {
     "@app/web": "workspace:*",
     "@codemirror/autocomplete": "^6.20.3",

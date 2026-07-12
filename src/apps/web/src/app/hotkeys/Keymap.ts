@@ -69,7 +69,13 @@ export class Keymap {
     const container = this.scope.tabFocusContainerEl;
     const target = event.target;
     const activeDocument = getActiveDocument();
-    if (!container || target === activeDocument.body || !isElementLike(target) || container.contains(target)) return;
+    if (
+      !container ||
+      target === activeDocument.body ||
+      !isElementLike(target) ||
+      container.contains(target)
+    )
+      return;
     const scope = this.scope;
     const activeWindow = activeDocument.defaultView ?? window;
     activeWindow.setTimeout(() => {
@@ -98,7 +104,7 @@ export class Keymap {
   }
 
   static init(): Keymap {
-    return this.global ??= new Keymap();
+    return (this.global ??= new Keymap());
   }
 
   static compileModifiers(modifiers: string[]): string {
@@ -122,21 +128,30 @@ export class Keymap {
     return false;
   }
 
-  static isMatch(ref: { modifiers: string | null; key: string | null }, event: { modifiers: string; key: string; vkey: string }): boolean {
+  static isMatch(
+    ref: { modifiers: string | null; key: string | null },
+    event: { modifiers: string; key: string; vkey: string },
+  ): boolean {
     const modifiers = ref.modifiers;
     const key = ref.key;
-    return (modifiers === null || modifiers === event.modifiers)
-      && (!key || key === event.vkey || Boolean(event.key && key.toLowerCase() === event.key.toLowerCase()));
+    return (
+      (modifiers === null || modifiers === event.modifiers) &&
+      (!key ||
+        key === event.vkey ||
+        Boolean(event.key && key.toLowerCase() === event.key.toLowerCase()))
+    );
   }
 
   static isModEvent(event?: UserEvent | null): false | PaneType {
     if (!event) return false;
     if (
-      typeof MouseEvent !== "undefined" && event instanceof MouseEvent && event.button === 1
-      || typeof PointerEvent !== "undefined" && event instanceof PointerEvent && event.button === 1
-    ) return "tab";
+      (typeof MouseEvent !== "undefined" && event instanceof MouseEvent && event.button === 1) ||
+      (typeof PointerEvent !== "undefined" && event instanceof PointerEvent && event.button === 1)
+    )
+      return "tab";
     if (!Keymap.isModifier(event, "Mod")) return false;
-    if (Keymap.isModifier(event, "Alt")) return Keymap.isModifier(event, "Shift") ? "window" : "split";
+    if (Keymap.isModifier(event, "Alt"))
+      return Keymap.isModifier(event, "Shift") ? "window" : "split";
     return "tab";
   }
 }

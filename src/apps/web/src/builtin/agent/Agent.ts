@@ -91,13 +91,30 @@ export interface AgentState {
 }
 
 export function createAgentState(): AgentState {
-  return { messages: [], compactions: [], running: false, lastSeq: 0, lastError: null, forkedFrom: null, usage: null, permissions: [] };
+  return {
+    messages: [],
+    compactions: [],
+    running: false,
+    lastSeq: 0,
+    lastError: null,
+    forkedFrom: null,
+    usage: null,
+    permissions: [],
+  };
 }
 
-function createPart(partType: ChatPartType, toolName?: string, name?: string, kind?: string): ChatPart {
-  if (partType === "tool") return { type: "tool", toolName: toolName ?? "unknown", input: "", closed: false };
-  if (partType === "attachment") return { type: "attachment", name: name ?? "attachment", content: "", closed: false };
-  if (partType === "artifact") return { type: "artifact", name: name ?? "artifact", kind, content: "", closed: false };
+function createPart(
+  partType: ChatPartType,
+  toolName?: string,
+  name?: string,
+  kind?: string,
+): ChatPart {
+  if (partType === "tool")
+    return { type: "tool", toolName: toolName ?? "unknown", input: "", closed: false };
+  if (partType === "attachment")
+    return { type: "attachment", name: name ?? "attachment", content: "", closed: false };
+  if (partType === "artifact")
+    return { type: "artifact", name: name ?? "artifact", kind, content: "", closed: false };
   return { type: partType, markdown: "", closed: false };
 }
 
@@ -135,7 +152,9 @@ export function applyAgentEvent(state: AgentState, event: AgentEvent): boolean {
       break;
     }
     case "part.delta": {
-      const part = state.messages.find((item) => item.id === event.messageId)?.parts[event.partIndex];
+      const part = state.messages.find((item) => item.id === event.messageId)?.parts[
+        event.partIndex
+      ];
       if (!part) return false;
       if (part.type === "tool") part.input += event.delta;
       else if (part.type === "attachment" || part.type === "artifact") part.content += event.delta;
@@ -143,7 +162,9 @@ export function applyAgentEvent(state: AgentState, event: AgentEvent): boolean {
       break;
     }
     case "part.closed": {
-      const part = state.messages.find((item) => item.id === event.messageId)?.parts[event.partIndex];
+      const part = state.messages.find((item) => item.id === event.messageId)?.parts[
+        event.partIndex
+      ];
       if (!part) return false;
       part.closed = true;
       part.closedAt = event.ts ?? part.closedAt;
@@ -184,8 +205,13 @@ export function applyAgentEvent(state: AgentState, event: AgentEvent): boolean {
       break;
     }
     case "permission.requested": {
-      if (state.permissions.some((permission) => permission.requestId === event.requestId)) return false;
-      state.permissions.push({ requestId: event.requestId, toolName: event.toolName, input: event.input });
+      if (state.permissions.some((permission) => permission.requestId === event.requestId))
+        return false;
+      state.permissions.push({
+        requestId: event.requestId,
+        toolName: event.toolName,
+        input: event.input,
+      });
       break;
     }
     case "permission.resolved": {
@@ -231,7 +257,9 @@ export class Agent extends Events {
 
   connect(): void {
     if (this.disconnect || !this.transport) return;
-    this.disconnect = this.transport.connect(this.agentId, this.state.lastSeq, (event) => this.applyEvent(event));
+    this.disconnect = this.transport.connect(this.agentId, this.state.lastSeq, (event) =>
+      this.applyEvent(event),
+    );
   }
 
   applyEvent(event: AgentEvent): void {
@@ -242,7 +270,9 @@ export class Agent extends Events {
     // like typing-and-pressing-enter the moment the run frees up.
     if (event.type === "run.closed" && this.queued.length > 0) {
       const next = this.queued.shift()!;
-      this.sendMessage(next.text, next.attachments).catch(() => undefined).finally(() => this.trigger("changed"));
+      this.sendMessage(next.text, next.attachments)
+        .catch(() => undefined)
+        .finally(() => this.trigger("changed"));
       this.trigger("changed");
     }
   }
@@ -317,7 +347,9 @@ export function chatMessageToMarkdown(message: ChatMessage): string {
 
 export function chatTranscriptToMarkdown(messages: readonly ChatMessage[]): string {
   return messages
-    .map((message) => `**${message.role === "user" ? "You" : "Assistant"}**\n\n${chatMessageToMarkdown(message)}`)
+    .map(
+      (message) =>
+        `**${message.role === "user" ? "You" : "Assistant"}**\n\n${chatMessageToMarkdown(message)}`,
+    )
     .join("\n\n---\n\n");
 }
-

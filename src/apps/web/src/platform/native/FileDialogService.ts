@@ -25,6 +25,10 @@ export class FileDialogService {
     return this.lastSavePath;
   }
 
-  getLastOpenPath(): string | null { return this.lastOpenPath; }
-  getLastSavePath(): string | null { return this.lastSavePath; }
+  getLastOpenPath(): string | null {
+    return this.lastOpenPath;
+  }
+  getLastSavePath(): string | null {
+    return this.lastSavePath;
+  }
 }

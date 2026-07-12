@@ -25,7 +25,9 @@ describe("WebViewerView structural parity", () => {
     // Reload button sits in the header before the title container.
     const reloadEl = view.headerEl.querySelector(".view-header-reload-button");
     expect(reloadEl).not.toBeNull();
-    expect(reloadEl!.compareDocumentPosition(view.titleContainerEl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      reloadEl!.compareDocumentPosition(view.titleContainerEl) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     // The title container IS the address container; the title text is gone.
     expect(view.titleContainerEl.classList.contains("webviewer-address-container")).toBe(true);
     expect(view.titleContainerEl.querySelector(".webviewer-address > input")).not.toBeNull();
@@ -62,7 +64,10 @@ describe("WebViewerView structural parity", () => {
   it("syncs url, address input, tab title, and leaf history on guest-committed navigation", async () => {
     const { view, leaf, adapter } = await createWebViewer("https://example.com/");
     const record = vi.spyOn(leaf, "recordHistory");
-    adapter.webContents.emit("did-navigate", { url: "https://example.com/next", isMainFrame: true });
+    adapter.webContents.emit("did-navigate", {
+      url: "https://example.com/next",
+      isMainFrame: true,
+    });
     expect(view.url).toBe("https://example.com/next");
     const input = view.titleContainerEl.querySelector<HTMLInputElement>(".webviewer-address input");
     expect(input!.value).toBe("https://example.com/next");
@@ -70,16 +75,23 @@ describe("WebViewerView structural parity", () => {
     const pushed = record.mock.calls[0][0];
     expect((pushed.state.state as { url?: string }).url).toBe("https://example.com/");
     // Subframe commits must not touch the view.
-    adapter.webContents.emit("did-navigate", { url: "https://ads.example.com/", isMainFrame: false });
+    adapter.webContents.emit("did-navigate", {
+      url: "https://ads.example.com/",
+      isMainFrame: false,
+    });
     expect(view.url).toBe("https://example.com/next");
   });
 
   it("shows the favicon in the tab header with a container the real CSS knows", async () => {
     const { view, leaf, adapter } = await createWebViewer();
-    adapter.webContents.emit("page-favicon-updated", { favicons: ["https://example.com/icon-32.png"] });
+    adapter.webContents.emit("page-favicon-updated", {
+      favicons: ["https://example.com/icon-32.png"],
+    });
     const container = leaf.tabHeaderInnerIconEl.querySelector(".webviewer-favicon-container");
     expect(container).not.toBeNull();
-    expect(container!.querySelector("img")?.getAttribute("src")).toBe("https://example.com/icon-32.png");
+    expect(container!.querySelector("img")?.getAttribute("src")).toBe(
+      "https://example.com/icon-32.png",
+    );
     expect(view.url).toBe("https://example.com/");
   });
 
@@ -119,7 +131,9 @@ describe("WebViewerView structural parity", () => {
 
   it("falls back to web view with a notice when extraction fails", async () => {
     const { app, view, adapter } = await createWebViewer("https://example.com/broken");
-    vi.spyOn(app.webViewer.reader, "extractFromPage").mockRejectedValue(new Error("No readable content found on this page"));
+    vi.spyOn(app.webViewer.reader, "extractFromPage").mockRejectedValue(
+      new Error("No readable content found on this page"),
+    );
     view.toggleReaderMode();
     await view.readerRender;
     expect(view.readerMode).toBe(false);

@@ -4,8 +4,12 @@ import { SettingsRenderer } from "./SettingsRenderer";
 export class SettingsView extends ItemView {
   private renderer: SettingsRenderer | null = null;
 
-  getViewType(): string { return "settings"; }
-  getDisplayText(): string { return "Settings"; }
+  getViewType(): string {
+    return "settings";
+  }
+  getDisplayText(): string {
+    return "Settings";
+  }
 
   async onOpen(): Promise<void> {
     this.renderSettingsHome();

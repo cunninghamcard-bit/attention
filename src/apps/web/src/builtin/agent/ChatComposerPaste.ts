@@ -13,13 +13,14 @@ export function getPasteCardThreshold(): number {
   return DEFAULT_PASTE_CARD_THRESHOLD;
 }
 
-export type PasteTriage =
-  | { kind: "card"; text: string }
-  | { kind: "inline"; text: string };
+export type PasteTriage = { kind: "card"; text: string } | { kind: "inline"; text: string };
 
 // Paste triage: long pastes become cards instead of flooding the draft;
 // short pastes with runs of blank lines are collapsed before inline insert.
-export function triagePastedText(text: string, thresholdLines = DEFAULT_PASTE_CARD_THRESHOLD): PasteTriage {
+export function triagePastedText(
+  text: string,
+  thresholdLines = DEFAULT_PASTE_CARD_THRESHOLD,
+): PasteTriage {
   const lineCount = text.split("\n").length;
   if (lineCount >= thresholdLines) return { kind: "card", text };
   return { kind: "inline", text: text.replace(/\n{2,}/g, "\n") };
@@ -63,7 +64,10 @@ export function composerPasteExtension(handlers: ComposerPasteHandlers): Extensi
       const triage = triagePastedText(text, getPasteCardThreshold());
       event.preventDefault();
       if (triage.kind === "card") {
-        handlers.addTextAttachment(`Pasted text ${++pastedCardCount > 1 ? pastedCardCount : ""}`.trim(), triage.text);
+        handlers.addTextAttachment(
+          `Pasted text ${++pastedCardCount > 1 ? pastedCardCount : ""}`.trim(),
+          triage.text,
+        );
       } else {
         insertInline(view, triage.text);
       }

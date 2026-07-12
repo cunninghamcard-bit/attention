@@ -19,23 +19,23 @@ describe("AliasPropertyWidget", () => {
   it("renders aliases as plain text pills, marks empty aliases invalid, and prevents exact duplicates", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const source = await app.vault.create("Note.md", [
-      "---",
-      "aliases:",
-      "  - Alpha",
-      "  - \"\"",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Note.md",
+      ["---", "aliases:", "  - Alpha", '  - ""', "---", "Body"].join("\n"),
+    );
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const rowEl = view.metadataContainerEl.querySelector<HTMLElement>('[data-property-key="aliases"]');
+    const rowEl = view.metadataContainerEl.querySelector<HTMLElement>(
+      '[data-property-key="aliases"]',
+    );
     const inputEl = rowEl?.querySelector<HTMLInputElement>(".multi-select-input");
     if (!rowEl || !inputEl) throw new Error("missing aliases widget");
 
-    expect([...rowEl.querySelectorAll(".multi-select-pill-content")].map((el) => el.textContent)).toEqual(["Alpha", ""]);
+    expect(
+      [...rowEl.querySelectorAll(".multi-select-pill-content")].map((el) => el.textContent),
+    ).toEqual(["Alpha", ""]);
     expect(rowEl.querySelectorAll(".multi-select-pill.is-invalid")).toHaveLength(1);
     expect(rowEl.querySelector(".metadata-link-inner")).toBeNull();
 
@@ -51,18 +51,17 @@ describe("AliasPropertyWidget", () => {
   it("commits aliases on blur but not comma or tab", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const source = await app.vault.create("Note.md", [
-      "---",
-      "aliases:",
-      "  - Existing",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Note.md",
+      ["---", "aliases:", "  - Existing", "---", "Body"].join("\n"),
+    );
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const inputEl = view.metadataContainerEl.querySelector<HTMLInputElement>('[data-property-key="aliases"] .multi-select-input');
+    const inputEl = view.metadataContainerEl.querySelector<HTMLInputElement>(
+      '[data-property-key="aliases"] .multi-select-input',
+    );
     if (!inputEl) throw new Error("missing aliases input");
 
     inputEl.value = "Comma";
@@ -79,19 +78,18 @@ describe("AliasPropertyWidget", () => {
   it("does not bind property link suggestions for aliases", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const source = await app.vault.create("Note.md", [
-      "---",
-      "aliases:",
-      "  - Existing",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Note.md",
+      ["---", "aliases:", "  - Existing", "---", "Body"].join("\n"),
+    );
     await app.vault.create("Target.md", "Target body");
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const inputEl = view.metadataContainerEl.querySelector<HTMLInputElement>('[data-property-key="aliases"] .multi-select-input');
+    const inputEl = view.metadataContainerEl.querySelector<HTMLInputElement>(
+      '[data-property-key="aliases"] .multi-select-input',
+    );
     if (!inputEl) throw new Error("missing aliases input");
 
     inputEl.value = "[[Tar";
@@ -100,35 +98,40 @@ describe("AliasPropertyWidget", () => {
     await waitForMicrotasks();
     inputEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
 
-    expect(view.getViewData()).toContain("  - \"[[Tar\"");
+    expect(view.getViewData()).toContain('  - "[[Tar"');
     expect(view.getViewData()).not.toContain("[[Target");
   });
 
   it("edits existing alias pills with enter, escape, blur, and duplicate highlighting", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const source = await app.vault.create("Note.md", [
-      "---",
-      "aliases:",
-      "  - Alpha",
-      "  - Beta",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Note.md",
+      ["---", "aliases:", "  - Alpha", "  - Beta", "---", "Body"].join("\n"),
+    );
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const firstPill = view.metadataContainerEl.querySelector<HTMLElement>('[data-property-key="aliases"] .multi-select-pill');
+    const firstPill = view.metadataContainerEl.querySelector<HTMLElement>(
+      '[data-property-key="aliases"] .multi-select-pill',
+    );
     if (!firstPill) throw new Error("missing alias pill");
     firstPill.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    const editInput = [...view.metadataContainerEl.querySelectorAll<HTMLInputElement>('[data-property-key="aliases"] .multi-select-input')]
-      .find((input) => input.value === "Alpha");
+    const editInput = [
+      ...view.metadataContainerEl.querySelectorAll<HTMLInputElement>(
+        '[data-property-key="aliases"] .multi-select-input',
+      ),
+    ].find((input) => input.value === "Alpha");
     if (!editInput) throw new Error("missing alias edit input");
     editInput.value = "Beta";
     editInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     expect(view.getViewData()).toContain("  - Alpha");
-    expect(view.metadataContainerEl.querySelector('[data-property-key="aliases"] .multi-select-pill.multi-select-duplicate')).not.toBeNull();
+    expect(
+      view.metadataContainerEl.querySelector(
+        '[data-property-key="aliases"] .multi-select-pill.multi-select-duplicate',
+      ),
+    ).not.toBeNull();
 
     editInput.value = "Gamma";
     editInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
@@ -144,30 +147,36 @@ describe("AliasPropertyWidget", () => {
     });
     const app = new App(document.createElement("div"));
     await app.ready;
-    const source = await app.vault.create("Note.md", [
-      "---",
-      "aliases:",
-      "  - Alpha",
-      "  - Beta",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Note.md",
+      ["---", "aliases:", "  - Alpha", "  - Beta", "---", "Body"].join("\n"),
+    );
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const firstPill = view.metadataContainerEl.querySelector<HTMLElement>('[data-property-key="aliases"] .multi-select-pill');
+    const firstPill = view.metadataContainerEl.querySelector<HTMLElement>(
+      '[data-property-key="aliases"] .multi-select-pill',
+    );
     if (!firstPill) throw new Error("missing alias pill");
 
-    firstPill.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, clientX: 10, clientY: 10 }));
-    expect([...document.body.querySelectorAll(".menu-item-title")].map((el) => el.textContent)).toEqual(["Edit", "Copy", "Remove"]);
+    firstPill.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, clientX: 10, clientY: 10 }),
+    );
+    expect(
+      [...document.body.querySelectorAll(".menu-item-title")].map((el) => el.textContent),
+    ).toEqual(["Edit", "Copy", "Remove"]);
     [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
-      .find((item) => item.textContent?.includes("Copy"))?.click();
+      .find((item) => item.textContent?.includes("Copy"))
+      ?.click();
     expect(writeText).toHaveBeenCalledWith("Alpha");
 
-    firstPill.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, clientX: 10, clientY: 10 }));
+    firstPill.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, clientX: 10, clientY: 10 }),
+    );
     [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
-      .find((item) => item.textContent?.includes("Remove"))?.click();
+      .find((item) => item.textContent?.includes("Remove"))
+      ?.click();
     expect(view.getViewData()).not.toContain("  - Alpha");
     expect(view.getViewData()).toContain("  - Beta");
   });

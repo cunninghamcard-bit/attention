@@ -58,7 +58,11 @@ export class AppConfigManager extends Events {
   private saving = false;
   private reloadTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(readonly store: JsonStore, readonly fileName = "app.json", readonly appearanceFileName = "appearance.json") {
+  constructor(
+    readonly store: JsonStore,
+    readonly fileName = "app.json",
+    readonly appearanceFileName = "appearance.json",
+  ) {
     super();
   }
 
@@ -73,7 +77,9 @@ export class AppConfigManager extends Events {
     const appConfig: AppConfigShape = {};
     const appearanceConfig: AppConfigShape = {};
     try {
-      for (const [key, value] of Object.entries(this.cache) as Array<[keyof AppConfigShape, AppConfigShape[keyof AppConfigShape]]>) {
+      for (const [key, value] of Object.entries(this.cache) as Array<
+        [keyof AppConfigShape, AppConfigShape[keyof AppConfigShape]]
+      >) {
         if (appearanceConfigKeys.has(key)) appearanceConfig[key] = value as never;
         else appConfig[key] = value as never;
       }
@@ -90,14 +96,22 @@ export class AppConfigManager extends Events {
     if (this.saving) return;
     const appStat = await this.store.stat(this.fileName);
     const appearanceStat = await this.store.stat(this.appearanceFileName);
-    if (appStat && appearanceStat && appStat.mtime <= this.configTs && appearanceStat.mtime <= this.configTs) return;
+    if (
+      appStat &&
+      appearanceStat &&
+      appStat.mtime <= this.configTs &&
+      appearanceStat.mtime <= this.configTs
+    )
+      return;
 
     this.configTs = Date.now();
     const next = await this.readConfigFiles();
     const previous = this.cache;
     this.cache = { ...previous };
 
-    for (const [key, value] of Object.entries(next) as Array<[keyof AppConfigShape, AppConfigShape[keyof AppConfigShape]]>) {
+    for (const [key, value] of Object.entries(next) as Array<
+      [keyof AppConfigShape, AppConfigShape[keyof AppConfigShape]]
+    >) {
       if (hasEqualConfigValue(previous[key], value)) continue;
       this.cache[key] = value as never;
       this.trigger("config-changed", key);
@@ -138,8 +152,8 @@ export class AppConfigManager extends Events {
   }
 
   private async readConfigFiles(): Promise<AppConfigShape> {
-    const appConfig = await this.store.read<AppConfigShape>(this.fileName) ?? {};
-    const appearanceConfig = await this.store.read<AppConfigShape>(this.appearanceFileName) ?? {};
+    const appConfig = (await this.store.read<AppConfigShape>(this.fileName)) ?? {};
+    const appearanceConfig = (await this.store.read<AppConfigShape>(this.appearanceFileName)) ?? {};
     return migrateConfig({ ...appearanceConfig, ...appConfig });
   }
 
@@ -151,7 +165,8 @@ export class AppConfigManager extends Events {
 }
 
 function migrateConfig(config: AppConfigShape & { editorFontFamily?: string }): AppConfigShape {
-  if (config.editorFontFamily && !config.textFontFamily) config.textFontFamily = config.editorFontFamily;
+  if (config.editorFontFamily && !config.textFontFamily)
+    config.textFontFamily = config.editorFontFamily;
   delete config.editorFontFamily;
   return config;
 }

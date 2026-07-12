@@ -1,8 +1,18 @@
 import type { App } from "../app/App";
 import type { TFile } from "../vault/TAbstractFile";
 import { finishRenderMath, loadMermaid, renderMath } from "../core/ApiUtils";
-import { AUDIO_EXTENSIONS, IMAGE_EXTENSIONS, PDF_EXTENSIONS, VIDEO_EXTENSIONS, mimeForExtension } from "../views/MediaViews";
-import { MarkdownRenderer, type MarkdownCodeBlockProcessor, type MarkdownPostProcessorContext } from "./MarkdownRenderer";
+import {
+  AUDIO_EXTENSIONS,
+  IMAGE_EXTENSIONS,
+  PDF_EXTENSIONS,
+  VIDEO_EXTENSIONS,
+  mimeForExtension,
+} from "../views/MediaViews";
+import {
+  MarkdownRenderer,
+  type MarkdownCodeBlockProcessor,
+  type MarkdownPostProcessorContext,
+} from "./MarkdownRenderer";
 
 export function registerMarkdownDefaultProcessors(app: App): void {
   registerCodeBlockPostProcessor("mermaid", async (source, el) => {
@@ -48,15 +58,24 @@ export function registerMarkdownDefaultProcessors(app: App): void {
       if (IMAGE_EXTENSIONS.includes(file.extension)) {
         embed.classList.add("image-embed");
         embed.replaceChildren();
-        renderImageInto(embed, await mediaSrc(app, file, mimeForExtension(file.extension, "image/*")));
+        renderImageInto(
+          embed,
+          await mediaSrc(app, file, mimeForExtension(file.extension, "image/*")),
+        );
       } else if (AUDIO_EXTENSIONS.includes(file.extension)) {
         embed.classList.add("audio-embed");
         embed.replaceChildren();
-        renderAudioInto(embed, await mediaSrc(app, file, mimeForExtension(file.extension, "audio/*")));
+        renderAudioInto(
+          embed,
+          await mediaSrc(app, file, mimeForExtension(file.extension, "audio/*")),
+        );
       } else if (VIDEO_EXTENSIONS.includes(file.extension)) {
         embed.classList.add("video-embed");
         embed.replaceChildren();
-        renderVideoInto(embed, await mediaSrc(app, file, mimeForExtension(file.extension, "video/*")));
+        renderVideoInto(
+          embed,
+          await mediaSrc(app, file, mimeForExtension(file.extension, "video/*")),
+        );
       } else if (PDF_EXTENSIONS.includes(file.extension)) {
         // Real pdf embed: an iframe filling the container.
         embed.classList.add("pdf-embed");
@@ -126,7 +145,10 @@ export function addCopyCodeButtons(root: HTMLElement): void {
   }
 }
 
-function registerCodeBlockPostProcessor(language: string, processor: MarkdownCodeBlockProcessor): void {
+function registerCodeBlockPostProcessor(
+  language: string,
+  processor: MarkdownCodeBlockProcessor,
+): void {
   const wrapper = MarkdownRenderer.createCodeBlockPostProcessor(language, processor);
   MarkdownRenderer.registerPostProcessor(wrapper);
   MarkdownRenderer.registerCodeBlockPostProcessor(language, processor);
@@ -138,7 +160,8 @@ async function mediaSrc(app: App, file: TFile, mime: string): Promise<string> {
   const resourcePath = app.vault.getResourcePath(file);
   if (resourcePath) return resourcePath;
   const data = await app.vault.readBinary(file);
-  if (typeof URL.createObjectURL === "function") return URL.createObjectURL(new Blob([data], { type: mime }));
+  if (typeof URL.createObjectURL === "function")
+    return URL.createObjectURL(new Blob([data], { type: mime }));
   let binary = "";
   for (const byte of new Uint8Array(data)) binary += String.fromCharCode(byte);
   return `data:${mime};base64,${btoa(binary)}`;

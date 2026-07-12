@@ -25,7 +25,7 @@ export class MemoryJsonStoreAdapter implements JsonStoreAdapter {
   private mtimes = new Map<string, number>();
 
   async readJson<T>(path: string): Promise<T | null> {
-    return this.jsonValues.has(path) ? structuredClone(this.jsonValues.get(path)) as T : null;
+    return this.jsonValues.has(path) ? (structuredClone(this.jsonValues.get(path)) as T) : null;
   }
 
   async writeJson<T>(path: string, value: T, options?: JsonStoreWriteOptions): Promise<void> {
@@ -57,7 +57,9 @@ export class MemoryJsonStoreAdapter implements JsonStoreAdapter {
   }
 
   async stat(path: string): Promise<JsonStoreStat | null> {
-    return this.jsonValues.has(path) || this.textValues.has(path) ? { mtime: this.mtimes.get(path) ?? 0 } : null;
+    return this.jsonValues.has(path) || this.textValues.has(path)
+      ? { mtime: this.mtimes.get(path) ?? 0 }
+      : null;
   }
 
   async delete(path: string): Promise<void> {
@@ -88,7 +90,10 @@ export class MemoryJsonStoreAdapter implements JsonStoreAdapter {
 }
 
 export class JsonStore extends Events {
-  constructor(readonly adapter: JsonStoreAdapter = new MemoryJsonStoreAdapter(), public root = ".obsidian") {
+  constructor(
+    readonly adapter: JsonStoreAdapter = new MemoryJsonStoreAdapter(),
+    public root = ".obsidian",
+  ) {
     super();
   }
 
@@ -98,7 +103,9 @@ export class JsonStore extends Events {
 
   path(name: string): string {
     const normalized = name.replace(/\\/g, "/").replace(/^\/+/, "");
-    return normalized === this.root || normalized.startsWith(`${this.root}/`) ? normalized : `${this.root}/${normalized}`;
+    return normalized === this.root || normalized.startsWith(`${this.root}/`)
+      ? normalized
+      : `${this.root}/${normalized}`;
   }
 
   read<T>(name: string): Promise<T | null> {

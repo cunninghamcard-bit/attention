@@ -60,7 +60,11 @@ describe("MetadataTypeManager", () => {
     manager.registerListeners();
     vi.useFakeTimers();
     try {
-      await vault.writeConfigJson<TypesConfig>("types", { types: { Status: "checkbox" } }, { mtime: 1_000 });
+      await vault.writeConfigJson<TypesConfig>(
+        "types",
+        { types: { Status: "checkbox" } },
+        { mtime: 1_000 },
+      );
       await vi.advanceTimersByTimeAsync(49);
       expect(manager.getAssignedWidget("status")).toBeNull();
 
@@ -126,7 +130,11 @@ describe("MetadataTypeManager", () => {
   });
 });
 
-function createMetadataTypeHarness(): { manager: MetadataTypeManager; metadataCache: MetadataCache; vault: Vault } {
+function createMetadataTypeHarness(): {
+  manager: MetadataTypeManager;
+  metadataCache: MetadataCache;
+  vault: Vault;
+} {
   const jsonStore = new JsonStore();
   const vault = new Vault(undefined, undefined, jsonStore);
   const app = {

@@ -52,12 +52,18 @@ export class CommunityPluginsSettingTab implements SettingTab {
     titleEl.textContent = "Community plugins are currently restricted";
     const descEl = document.createElement("div");
     descEl.className = "setting-item-description";
-    descEl.textContent = "Community plugins can run third-party code. Review plugins carefully before enabling them.";
+    descEl.textContent =
+      "Community plugins can run third-party code. Review plugins carefully before enabling them.";
     disclaimerEl.append(titleEl, descEl);
 
     const checklistEl = document.createElement("ul");
     checklistEl.className = "community-plugins-security-list";
-    for (const text of ["Review the plugin code when possible.", "Prefer open-source plugins.", "Check community audit and reputation.", "Report suspicious behavior."]) {
+    for (const text of [
+      "Review the plugin code when possible.",
+      "Prefer open-source plugins.",
+      "Check community audit and reputation.",
+      "Report suspicious behavior.",
+    ]) {
       const itemEl = document.createElement("li");
       itemEl.textContent = text;
       checklistEl.appendChild(itemEl);
@@ -68,17 +74,23 @@ export class CommunityPluginsSettingTab implements SettingTab {
     new Setting(this.containerEl)
       .setName("Turn on community plugins")
       .setDesc("Exit restricted mode and allow installed community plugins to load.")
-      .addButton((button) => button
-        .setCta()
-        .setButtonText("Turn on community plugins")
-        .onClick(() => this.app.pluginInstaller.setCommunityPluginsEnabled(true).then(() => this.display())));
+      .addButton((button) =>
+        button
+          .setCta()
+          .setButtonText("Turn on community plugins")
+          .onClick(() =>
+            this.app.pluginInstaller.setCommunityPluginsEnabled(true).then(() => this.display()),
+          ),
+      );
 
     new Setting(this.containerEl)
       .setName("Learn more")
       .setDesc("Read about plugin security before turning on community plugins.")
-      .addButton((button) => button.setButtonText("Plugin security").onClick(() => {
-        window.open("https://help.obsidian.md/plugin-security", "_blank");
-      }));
+      .addButton((button) =>
+        button.setButtonText("Plugin security").onClick(() => {
+          window.open("https://help.obsidian.md/plugin-security", "_blank");
+        }),
+      );
   }
 
   private renderRestrictedModeToggle(): void {
@@ -87,19 +99,28 @@ export class CommunityPluginsSettingTab implements SettingTab {
     new Setting(group.itemsEl)
       .setName("Restricted mode")
       .setDesc("Turn restricted mode on to disable all community plugins in this vault.")
-      .addButton((button) => button
-        .setButtonText("Turn on restricted mode")
-        .onClick(async () => {
+      .addButton((button) =>
+        button.setButtonText("Turn on restricted mode").onClick(async () => {
           await this.app.pluginInstaller.setCommunityPluginsEnabled(false);
           window.location.reload();
-        }));
+        }),
+      );
   }
 
   private renderBrowseCommunityPlugins(): void {
     new Setting(this.containerEl)
       .setName("Browse community plugins")
       .setDesc("Search and install community plugins from the marketplace.")
-      .addButton((button) => button.setCta().setButtonText("Browse").onClick(() => new CommunityPluginMarketplaceModal(this.app).setCloseCallback(() => this.display()).open()));
+      .addButton((button) =>
+        button
+          .setCta()
+          .setButtonText("Browse")
+          .onClick(() =>
+            new CommunityPluginMarketplaceModal(this.app)
+              .setCloseCallback(() => this.display())
+              .open(),
+          ),
+      );
   }
 
   private renderCurrentPlugins(): void {
@@ -109,17 +130,30 @@ export class CommunityPluginsSettingTab implements SettingTab {
     group.groupEl.classList.add("current-community-plugins");
     new Setting(group.itemsEl)
       .setName(`${installed.length} installed plugin${installed.length === 1 ? "" : "s"}`)
-      .setDesc(updates.length > 0 ? `${updates.length} update${updates.length === 1 ? "" : "s"} available.` : "All installed plugins are up to date.")
-      .addButton((button) => button.setButtonText(updates.length > 0 ? "Update all plugins" : "Check for updates").onClick(() => {
-        const action = updates.length > 0 ? this.app.pluginInstaller.updateAll() : this.app.pluginInstaller.checkForUpdates();
-        return action.then(() => this.display());
-      }));
+      .setDesc(
+        updates.length > 0
+          ? `${updates.length} update${updates.length === 1 ? "" : "s"} available.`
+          : "All installed plugins are up to date.",
+      )
+      .addButton((button) =>
+        button
+          .setButtonText(updates.length > 0 ? "Update all plugins" : "Check for updates")
+          .onClick(() => {
+            const action =
+              updates.length > 0
+                ? this.app.pluginInstaller.updateAll()
+                : this.app.pluginInstaller.checkForUpdates();
+            return action.then(() => this.display());
+          }),
+      );
     new Setting(group.itemsEl)
       .setName("Automatic update check")
       .setDesc("Check installed community plugins for updates automatically.")
-      .addToggle((toggle) => toggle
-        .setValue(this.app.pluginInstaller.autoCheckForUpdates)
-        .onChange((enabled) => this.app.pluginInstaller.setAutomaticUpdateCheck(enabled)));
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.app.pluginInstaller.autoCheckForUpdates)
+          .onChange((enabled) => this.app.pluginInstaller.setAutomaticUpdateCheck(enabled)),
+      );
   }
 
   private renderInstalledPlugins(): void {
@@ -137,11 +171,13 @@ export class CommunityPluginsSettingTab implements SettingTab {
     });
 
     const tokens = this.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    const records = this.app.communityPlugins.list()
+    const records = this.app.communityPlugins
+      .list()
       .filter((record) => record.installed)
       .filter((record) => {
         const manifest = record.manifest;
-        const haystack = `${manifest.name} ${manifest.author ?? ""} ${manifest.description ?? ""} ${manifest.id}`.toLowerCase();
+        const haystack =
+          `${manifest.name} ${manifest.author ?? ""} ${manifest.description ?? ""} ${manifest.id}`.toLowerCase();
         return tokens.length === 0 || tokens.every((token) => haystack.includes(token));
       })
       .sort((a, b) => a.manifest.name.localeCompare(b.manifest.name));
@@ -159,30 +195,32 @@ export class CommunityPluginsSettingTab implements SettingTab {
       const entry = this.app.pluginMarketplace.getEntry(manifest.id);
       const setting = new Setting(group.itemsEl)
         .setName(manifest.name)
-        .setDesc(pluginDescription([
-          record.enabled ? "Enabled" : "Disabled",
-          record.updateAvailable ? "Update available" : null,
-          manifest.version,
-          manifest.author,
-          manifest.description,
-          entry?.downloads === undefined ? null : `${entry.downloads.toLocaleString()} downloads`,
-          entry?.updatedAt ? `Updated ${entry.updatedAt}` : null,
-        ]))
-        .addToggle((toggle) => toggle
-          .setValue(record.enabled)
-          .setDisabled(this.app.pluginSecurity.isRestrictedMode())
-          .onChange((enabled) => {
-            const previous = record.enabled;
-            toggle.setDisabled(true);
-            const action = enabled
-              ? this.app.pluginInstaller.enable(manifest.id, true).then((success) => {
-                if (!success) toggle.setValue(false);
-              })
-              : this.app.pluginInstaller.disable(manifest.id, true);
-            void action
-              .catch(() => toggle.setValue(previous))
-              .finally(() => this.display());
-          }));
+        .setDesc(
+          pluginDescription([
+            record.enabled ? "Enabled" : "Disabled",
+            record.updateAvailable ? "Update available" : null,
+            manifest.version,
+            manifest.author,
+            manifest.description,
+            entry?.downloads === undefined ? null : `${entry.downloads.toLocaleString()} downloads`,
+            entry?.updatedAt ? `Updated ${entry.updatedAt}` : null,
+          ]),
+        )
+        .addToggle((toggle) =>
+          toggle
+            .setValue(record.enabled)
+            .setDisabled(this.app.pluginSecurity.isRestrictedMode())
+            .onChange((enabled) => {
+              const previous = record.enabled;
+              toggle.setDisabled(true);
+              const action = enabled
+                ? this.app.pluginInstaller.enable(manifest.id, true).then((success) => {
+                    if (!success) toggle.setValue(false);
+                  })
+                : this.app.pluginInstaller.disable(manifest.id, true);
+              void action.catch(() => toggle.setValue(previous)).finally(() => this.display());
+            }),
+        );
       setting.settingEl.classList.add("installed-community-plugin");
       setting.settingEl.dataset.pluginId = manifest.id;
       setting.settingEl.classList.toggle("is-enabled", record.enabled);
@@ -191,21 +229,46 @@ export class CommunityPluginsSettingTab implements SettingTab {
       setting.infoEl.addEventListener("click", () => this.openPluginInMarketplace(manifest.id));
       const fundingUrl = (manifest as { fundingUrl?: string }).fundingUrl ?? entry?.fundingUrl;
       if (fundingUrl) {
-        setting.addExtraButton((button) => button.setIcon("lucide-heart").setTooltip("Donate").onClick(() => window.open(fundingUrl, "_blank")));
+        setting.addExtraButton((button) =>
+          button
+            .setIcon("lucide-heart")
+            .setTooltip("Donate")
+            .onClick(() => window.open(fundingUrl, "_blank")),
+        );
       }
       if (record.updateAvailable) {
-        setting.addButton((button) => button.setCta().setButtonText("Update").onClick(() => this.app.pluginInstaller.update(manifest.id).then(() => this.display())));
+        setting.addButton((button) =>
+          button
+            .setCta()
+            .setButtonText("Update")
+            .onClick(() => this.app.pluginInstaller.update(manifest.id).then(() => this.display())),
+        );
       }
       if (this.app.plugins.getPlugin(manifest.id) && this.app.setting.getTabById(manifest.id)) {
-        setting.addExtraButton((button) => button.setIcon("lucide-settings").setTooltip("Options").onClick(() => this.app.setting.openTabById(manifest.id)));
+        setting.addExtraButton((button) =>
+          button
+            .setIcon("lucide-settings")
+            .setTooltip("Options")
+            .onClick(() => this.app.setting.openTabById(manifest.id)),
+        );
       }
       if (this.app.plugins.getPlugin(manifest.id) && this.hasPluginCommands(manifest.id)) {
-        setting.addExtraButton((button) => button.setIcon("lucide-plus-circle").setTooltip("Hotkeys").onClick(() => {
-          this.app.setting.getTabById("hotkeys")?.setQuery?.(manifest.id);
-          this.app.setting.openTabById("hotkeys");
-        }));
+        setting.addExtraButton((button) =>
+          button
+            .setIcon("lucide-plus-circle")
+            .setTooltip("Hotkeys")
+            .onClick(() => {
+              this.app.setting.getTabById("hotkeys")?.setQuery?.(manifest.id);
+              this.app.setting.openTabById("hotkeys");
+            }),
+        );
       }
-      setting.addExtraButton((button) => button.setIcon("lucide-trash-2").setTooltip("Uninstall").onClick(() => this.openUninstallModal(manifest.id)));
+      setting.addExtraButton((button) =>
+        button
+          .setIcon("lucide-trash-2")
+          .setTooltip("Uninstall")
+          .onClick(() => this.openUninstallModal(manifest.id)),
+      );
     }
   }
 

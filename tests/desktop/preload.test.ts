@@ -35,7 +35,15 @@ describe("installElectronBridge", () => {
   it("satisfies the renderer contract surface it probes for", () => {
     const target = {} as typeof globalThis;
     installElectronBridge(target);
-    const electron = (target as { electron?: { ipcRenderer: typeof fakeIpcRenderer; shell: typeof fakeShell; webUtils: typeof fakeWebUtils } }).electron!;
+    const electron = (
+      target as {
+        electron?: {
+          ipcRenderer: typeof fakeIpcRenderer;
+          shell: typeof fakeShell;
+          webUtils: typeof fakeWebUtils;
+        };
+      }
+    ).electron!;
     // Platform.ts / WorkspaceWindow.ts / FileSystemAdapter.ts
     expect(typeof electron.ipcRenderer.sendSync).toBe("function");
     expect(typeof electron.ipcRenderer.send).toBe("function");

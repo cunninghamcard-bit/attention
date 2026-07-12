@@ -16,7 +16,8 @@ export interface HtmlDropPreprocessOptions {
 const LONG_DATA_URL_LENGTH = 1000;
 const DATA_IMAGE_REGEX = /^data:([\w/.-]+);base64,(.*)$/;
 const ALLOWED_IFRAME_ATTRS = new Set(["allow", "allowfullscreen", "frameborder", "sandbox"]);
-const DEFAULT_IFRAME_SANDBOX = "allow-forms allow-presentation allow-same-origin allow-scripts allow-modals";
+const DEFAULT_IFRAME_SANDBOX =
+  "allow-forms allow-presentation allow-same-origin allow-scripts allow-modals";
 const ALLOWED_IFRAME_SANDBOX_TOKENS = new Set(DEFAULT_IFRAME_SANDBOX.split(" "));
 const ALLOWED_IFRAME_ALLOW_TOKENS = new Set([
   "accelerometer",
@@ -52,7 +53,10 @@ const ALLOWED_IFRAME_ALLOW_TOKENS = new Set([
   "xr-spatial-tracking",
 ]);
 
-export function preprocessHtmlDrop(html: string, options: HtmlDropPreprocessOptions = {}): PreprocessedHtmlDrop {
+export function preprocessHtmlDrop(
+  html: string,
+  options: HtmlDropPreprocessOptions = {},
+): PreprocessedHtmlDrop {
   const template = document.createElement("template");
   template.innerHTML = html.trim();
   const fragment = document.importNode(template.content, true);
@@ -95,9 +99,22 @@ function sanitizeElement(element: HTMLElement): void {
     const value = attr.value.trim().toLowerCase();
     if (name.startsWith("on")) element.removeAttribute(attr.name);
     else if (name === "style") element.removeAttribute(attr.name);
-    else if ((name === "src" || name === "href") && value.startsWith("javascript:")) element.removeAttribute(attr.name);
-    else if (element instanceof HTMLIFrameElement && name.startsWith("data-") && name !== "data-tooltip-position") element.removeAttribute(attr.name);
-    else if (element instanceof HTMLIFrameElement || name !== "sandbox" && name !== "allowfullscreen" && name !== "frameborder" && name !== "allow") continue;
+    else if ((name === "src" || name === "href") && value.startsWith("javascript:"))
+      element.removeAttribute(attr.name);
+    else if (
+      element instanceof HTMLIFrameElement &&
+      name.startsWith("data-") &&
+      name !== "data-tooltip-position"
+    )
+      element.removeAttribute(attr.name);
+    else if (
+      element instanceof HTMLIFrameElement ||
+      (name !== "sandbox" &&
+        name !== "allowfullscreen" &&
+        name !== "frameborder" &&
+        name !== "allow")
+    )
+      continue;
     else if (!ALLOWED_IFRAME_ATTRS.has(name)) element.removeAttribute(attr.name);
   }
 
@@ -112,7 +129,8 @@ function sanitizeElement(element: HTMLElement): void {
     } else {
       element.setAttribute("sandbox", DEFAULT_IFRAME_SANDBOX);
     }
-    if (element.hasAttribute("allow")) sanitizeTokenListAttribute(element, "allow", ";", ALLOWED_IFRAME_ALLOW_TOKENS);
+    if (element.hasAttribute("allow"))
+      sanitizeTokenListAttribute(element, "allow", ";", ALLOWED_IFRAME_ALLOW_TOKENS);
   }
 }
 
@@ -135,7 +153,12 @@ function decodeBase64(value: string): ArrayBuffer {
   return bytes.buffer;
 }
 
-function sanitizeTokenListAttribute(element: HTMLElement, attr: string, separator: string, allowed: Set<string>): void {
+function sanitizeTokenListAttribute(
+  element: HTMLElement,
+  attr: string,
+  separator: string,
+  allowed: Set<string>,
+): void {
   const raw = element.getAttribute(attr) ?? "";
   const values = raw
     .split(separator)

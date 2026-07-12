@@ -128,7 +128,12 @@ export abstract class Editor {
   abstract setSelection(anchor: EditorPosition, head?: EditorPosition): void;
   abstract setSelections(ranges: EditorSelectionOrCaret[], main?: number): void;
   abstract getLine(line: number): string;
-  abstract replaceRange(value: string, from: EditorPosition, to?: EditorPosition, origin?: string): void;
+  abstract replaceRange(
+    value: string,
+    from: EditorPosition,
+    to?: EditorPosition,
+    origin?: string,
+  ): void;
   abstract focus(): void;
   abstract blur(): void;
   abstract hasFocus(): boolean;
@@ -151,7 +156,9 @@ export abstract class Editor {
 
 export class SimpleEditor extends Editor {
   private value = "";
-  private selections: EditorSelection[] = [{ anchor: { line: 0, ch: 0 }, head: { line: 0, ch: 0 } }];
+  private selections: EditorSelection[] = [
+    { anchor: { line: 0, ch: 0 }, head: { line: 0, ch: 0 } },
+  ];
   private mainSelection = 0;
   private focused = false;
   private scrollLeft = 0;
@@ -161,9 +168,13 @@ export class SimpleEditor extends Editor {
     super();
   }
 
-  getDoc(): this { return this; }
+  getDoc(): this {
+    return this;
+  }
   refresh(): void {}
-  getValue(): string { return this.value; }
+  getValue(): string {
+    return this.value;
+  }
   setValue(value: string, origin?: string): void {
     const previous = this.value;
     const previousSelection = this.selectionSignature();
@@ -177,8 +188,12 @@ export class SimpleEditor extends Editor {
     this.replaceRange(text, { line, ch: 0 }, { line, ch: this.getLine(line).length });
   }
 
-  lineCount(): number { return this.lines().length; }
-  lastLine(): number { return Math.max(0, this.lineCount() - 1); }
+  lineCount(): number {
+    return this.lines().length;
+  }
+  lastLine(): number {
+    return Math.max(0, this.lineCount() - 1);
+  }
 
   getSelection(): string {
     const selection = this.getMainSelection();
@@ -187,7 +202,9 @@ export class SimpleEditor extends Editor {
   }
 
   somethingSelected(): boolean {
-    return this.listSelections().some((selection) => comparePositions(selection.anchor, selection.head) !== 0);
+    return this.listSelections().some(
+      (selection) => comparePositions(selection.anchor, selection.head) !== 0,
+    );
   }
 
   getRange(from: EditorPosition, to: EditorPosition): string {
@@ -239,10 +256,12 @@ export class SimpleEditor extends Editor {
 
   setSelection(anchor: EditorPosition, head: EditorPosition = anchor): void {
     const previous = this.selectionSignature();
-    this.selections = [{
-      anchor: this.clampPosition(anchor),
-      head: this.clampPosition(head),
-    }];
+    this.selections = [
+      {
+        anchor: this.clampPosition(anchor),
+        head: this.clampPosition(head),
+      },
+    ];
     this.mainSelection = 0;
     if (previous !== this.selectionSignature()) this.selectionChanged();
   }
@@ -258,22 +277,37 @@ export class SimpleEditor extends Editor {
     if (previous !== this.selectionSignature()) this.selectionChanged();
   }
 
-  getLine(line: number): string { return this.value.split(/\r?\n/)[line] ?? ""; }
-  replaceRange(value: string, from: EditorPosition, to: EditorPosition = from, origin?: string): void {
+  getLine(line: number): string {
+    return this.value.split(/\r?\n/)[line] ?? "";
+  }
+  replaceRange(
+    value: string,
+    from: EditorPosition,
+    to: EditorPosition = from,
+    origin?: string,
+  ): void {
     const previous = this.value;
     const previousSelection = this.selectionSignature();
     const range = sortRange(from, to);
     const start = this.posToOffset(range.from);
     const end = this.posToOffset(range.to);
     this.value = `${this.value.slice(0, start)}${value}${this.value.slice(end)}`;
-    this.withoutSelectionNotifications(() => this.setCursor(this.offsetToPos(start + value.length)));
+    this.withoutSelectionNotifications(() =>
+      this.setCursor(this.offsetToPos(start + value.length)),
+    );
     if (previous !== this.value) this.changed(origin);
     if (previousSelection !== this.selectionSignature()) this.selectionChanged();
   }
 
-  focus(): void { this.focused = true; }
-  blur(): void { this.focused = false; }
-  hasFocus(): boolean { return this.focused; }
+  focus(): void {
+    this.focused = true;
+  }
+  blur(): void {
+    this.focused = false;
+  }
+  hasFocus(): boolean {
+    return this.focused;
+  }
 
   getScrollInfo(): EditorScrollInfo {
     return {
@@ -297,7 +331,8 @@ export class SimpleEditor extends Editor {
 
   exec(command: EditorCommandName): void {
     if (command === "goStart") this.setCursor(0, 0);
-    else if (command === "goEnd") this.setCursor(this.lastLine(), this.getLine(this.lastLine()).length);
+    else if (command === "goEnd")
+      this.setCursor(this.lastLine(), this.getLine(this.lastLine()).length);
   }
 
   transaction(tx: EditorTransaction, origin?: string): void {
@@ -307,7 +342,9 @@ export class SimpleEditor extends Editor {
       this.withoutSelectionNotifications(() => {
         if (tx.replaceSelection !== undefined) this.replaceSelection(tx.replaceSelection, origin);
         if (tx.changes) {
-          const changes = [...tx.changes].sort((a, b) => this.posToOffset(b.from) - this.posToOffset(a.from));
+          const changes = [...tx.changes].sort(
+            (a, b) => this.posToOffset(b.from) - this.posToOffset(a.from),
+          );
           let cursorOffset = this.posToOffset(this.getCursor());
           for (const change of changes) {
             const range = sortRange(change.from, change.to ?? change.from);
@@ -318,7 +355,10 @@ export class SimpleEditor extends Editor {
           }
           this.setCursor(this.offsetToPos(cursorOffset));
         }
-        if (tx.selections) this.setSelections(tx.selections.map((selection) => ({ anchor: selection.from, head: selection.to })));
+        if (tx.selections)
+          this.setSelections(
+            tx.selections.map((selection) => ({ anchor: selection.from, head: selection.to })),
+          );
         else if (tx.selection) this.setSelection(tx.selection.from, tx.selection.to);
       });
     });
@@ -365,12 +405,20 @@ export class SimpleEditor extends Editor {
   }
 
   private getMainSelection(): EditorSelection {
-    return this.selections[this.mainSelection] ?? { anchor: { line: 0, ch: 0 }, head: { line: 0, ch: 0 } };
+    return (
+      this.selections[this.mainSelection] ?? {
+        anchor: { line: 0, ch: 0 },
+        head: { line: 0, ch: 0 },
+      }
+    );
   }
 
   private selectionSignature(): string {
     return `${this.mainSelection}:${this.selections
-      .map((selection) => `${selection.anchor.line}:${selection.anchor.ch}:${selection.head.line}:${selection.head.ch}`)
+      .map(
+        (selection) =>
+          `${selection.anchor.line}:${selection.anchor.ch}:${selection.head.line}:${selection.head.ch}`,
+      )
       .join("|")}`;
   }
 

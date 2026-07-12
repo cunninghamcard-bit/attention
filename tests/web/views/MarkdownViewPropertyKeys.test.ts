@@ -63,7 +63,8 @@ describe("MarkdownView property key input", () => {
 
   it("adds an empty property row and saves it after the key is confirmed", async () => {
     const { view } = await openPropertyNote("Body");
-    const addButton = view.metadataContainerEl.querySelector<HTMLButtonElement>(".metadata-add-button");
+    const addButton =
+      view.metadataContainerEl.querySelector<HTMLButtonElement>(".metadata-add-button");
     if (!addButton) throw new Error("missing add property button");
 
     addButton.click();
@@ -71,18 +72,15 @@ describe("MarkdownView property key input", () => {
     inputEl.value = "created";
     inputEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
 
-    expect(view.getViewData()).toBe([
-      "---",
-      "created:",
-      "---",
-      "Body",
-    ].join("\n"));
+    expect(view.getViewData()).toBe(["---", "created:", "---", "Body"].join("\n"));
     expect(view.metadataContainerEl.querySelector('[data-property-key="created"]')).not.toBeNull();
   });
 
   it("reorders properties by dragging the metadata property icon", async () => {
     const { view } = await openPropertyNote("---\nfirst: 1\nsecond: 2\nthird: 3\n---\nBody");
-    const draggedIcon = getPropertyRow(view, "third").querySelector<HTMLElement>(".metadata-property-icon");
+    const draggedIcon = getPropertyRow(view, "third").querySelector<HTMLElement>(
+      ".metadata-property-icon",
+    );
     const targetRow = getPropertyRow(view, "first");
     if (!draggedIcon) throw new Error("missing drag icon");
     const dataTransfer = createDataTransfer();
@@ -90,25 +88,24 @@ describe("MarkdownView property key input", () => {
     dispatchDragEvent(draggedIcon, "dragstart", dataTransfer);
     dispatchDragEvent(targetRow, "drop", dataTransfer);
 
-    expect(view.getViewData()).toBe([
-      "---",
-      "third: 3",
-      "first: 1",
-      "second: 2",
-      "---",
-      "Body",
-    ].join("\n"));
+    expect(view.getViewData()).toBe(
+      ["---", "third: 3", "first: 1", "second: 2", "---", "Body"].join("\n"),
+    );
   });
 
   it("collapses metadata content and exposes heading sort/clear actions", async () => {
     const { view } = await openPropertyNote("---\nz10: ten\nA2: two\na1: one\n---\nBody");
-    let headingEl = view.metadataContainerEl.querySelector<HTMLElement>(".metadata-properties-heading");
+    let headingEl = view.metadataContainerEl.querySelector<HTMLElement>(
+      ".metadata-properties-heading",
+    );
     let contentEl = view.metadataContainerEl.querySelector<HTMLElement>(".metadata-content");
     if (!headingEl || !contentEl) throw new Error("missing metadata heading");
 
     headingEl.click();
     expect(view.metadataContainerEl.classList.contains("is-collapsed")).toBe(true);
-    expect(view.metadataContainerEl.querySelector<HTMLElement>(".metadata-content")?.hidden).toBe(true);
+    expect(view.metadataContainerEl.querySelector<HTMLElement>(".metadata-content")?.hidden).toBe(
+      true,
+    );
 
     headingEl = view.metadataContainerEl.querySelector<HTMLElement>(".metadata-properties-heading");
     contentEl = view.metadataContainerEl.querySelector<HTMLElement>(".metadata-content");
@@ -118,24 +115,23 @@ describe("MarkdownView property key input", () => {
 
     headingEl = view.metadataContainerEl.querySelector<HTMLElement>(".metadata-properties-heading");
     if (!headingEl) throw new Error("missing metadata heading after expand");
-    headingEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    headingEl.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
     findMenuItem("Sort").dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
     await new Promise((resolve) => window.setTimeout(resolve, 250));
     findMenuItem("Sort properties A to Z").click();
 
     expect(getPropertyKeys(view)).toEqual(["a1", "A2", "z10"]);
-    expect(view.getViewData()).toBe([
-      "---",
-      "z10: ten",
-      "A2: two",
-      "a1: one",
-      "---",
-      "Body",
-    ].join("\n"));
+    expect(view.getViewData()).toBe(
+      ["---", "z10: ten", "A2: two", "a1: one", "---", "Body"].join("\n"),
+    );
 
     headingEl = view.metadataContainerEl.querySelector<HTMLElement>(".metadata-properties-heading");
     if (!headingEl) throw new Error("missing metadata heading after sort");
-    headingEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    headingEl.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
     findMenuItem("Clear properties").click();
 
     expect(view.getViewData()).toBe("Body");
@@ -143,7 +139,9 @@ describe("MarkdownView property key input", () => {
 
   it("persists metadata collapse through Obsidian's zero-line fold sentinel", async () => {
     const { app, file, view } = await openPropertyNote("---\nstatus: open\n---\nBody");
-    const headingEl = view.metadataContainerEl.querySelector<HTMLElement>(".metadata-properties-heading");
+    const headingEl = view.metadataContainerEl.querySelector<HTMLElement>(
+      ".metadata-properties-heading",
+    );
     if (!headingEl) throw new Error("missing metadata heading");
 
     headingEl.click();
@@ -153,7 +151,9 @@ describe("MarkdownView property key input", () => {
     expect(view.getState()).not.toHaveProperty("foldInfo");
 
     view.setMode("preview");
-    expect(view.metadataContainerEl.querySelector<HTMLElement>(".metadata-content")?.hidden).toBe(true);
+    expect(view.metadataContainerEl.querySelector<HTMLElement>(".metadata-content")?.hidden).toBe(
+      true,
+    );
 
     app.foldManager.save(file, { folds: [], lines: 4 });
     await view.setState({ mode: "source", source: true });
@@ -161,7 +161,9 @@ describe("MarkdownView property key input", () => {
     expect(view.metadataContainerEl.hidden).toBe(true);
 
     await view.setState({ mode: "source", source: false });
-    expect(view.metadataContainerEl.querySelector<HTMLElement>(".metadata-content")?.hidden).toBe(false);
+    expect(view.metadataContainerEl.querySelector<HTMLElement>(".metadata-content")?.hidden).toBe(
+      false,
+    );
 
     view.setMode("preview");
     view.metadataContainerEl.querySelector<HTMLElement>(".metadata-properties-heading")?.click();
@@ -201,16 +203,17 @@ describe("MarkdownView property key input", () => {
     expect(view.editorViewHost.dom.classList.contains("cm-editor")).toBe(true);
     expect(view.editorViewHost.scrollerEl.classList.contains("cm-scroller")).toBe(true);
     expect(view.editorViewHost.sizerEl.classList.contains("cm-sizer")).toBe(true);
-    expect(view.editorViewHost.contentContainerEl.classList.contains("cm-contentContainer")).toBe(true);
+    expect(view.editorViewHost.contentContainerEl.classList.contains("cm-contentContainer")).toBe(
+      true,
+    );
     expect(view.editorViewHost.contentEl.classList.contains("cm-content")).toBe(true);
     expect(view.editorContainerEl.querySelector("textarea.markdown-source-input")).toBeNull();
     expect(view.contentEl.querySelector("textarea.markdown-source-input")).toBeNull();
-    expect([...view.editorViewHost.contentEl.querySelectorAll(".cm-line")].map((line) => line.textContent)).toEqual([
-      "---",
-      "status: open",
-      "---",
-      "Body",
-    ]);
+    expect(
+      [...view.editorViewHost.contentEl.querySelectorAll(".cm-line")].map(
+        (line) => line.textContent,
+      ),
+    ).toEqual(["---", "status: open", "---", "Body"]);
     expect(view.editorViewHost.getStateField(editorLivePreviewField)).toBe(true);
     expect(view.editorViewHost.dom.dataset.livePreview).toBe("true");
     expect(view.previewMode.renderer.header).not.toBeNull();
@@ -271,8 +274,11 @@ describe("MarkdownView property key input", () => {
     view.onPaneMenu(previewPaneMenu, "more-options");
     previewPaneMenu.showAtPosition({ x: 1, y: 1 });
     expect(findMenuItem("Toggle reading view")).not.toBeNull();
-    expect([...document.body.querySelectorAll<HTMLElement>(".menu-item-title")]
-      .some((element) => element.textContent?.trim() === "Toggle source mode")).toBe(false);
+    expect(
+      [...document.body.querySelectorAll<HTMLElement>(".menu-item-title")].some(
+        (element) => element.textContent?.trim() === "Toggle source mode",
+      ),
+    ).toBe(false);
     previewPaneMenu.hide();
     expect(view.previewContainerEl.classList.contains("markdown-reading-view")).toBe(true);
     expect(view.inlineTitleEl.parentElement).toBe(view.previewMode.renderer.header?.el);
@@ -282,7 +288,9 @@ describe("MarkdownView property key input", () => {
     expect(view.previewRendererEl.classList.contains("markdown-rendered")).toBe(true);
     expect(view.previewRendererEl.classList.contains("show-properties")).toBe(true);
     expect(view.metadataContainerEl.hidden).toBe(false);
-    expect(view.previewRendererEl.querySelector(".markdown-preview-sizer.markdown-preview-section")).not.toBeNull();
+    expect(
+      view.previewRendererEl.querySelector(".markdown-preview-sizer.markdown-preview-section"),
+    ).not.toBeNull();
     expect(view.previewRendererEl.querySelector(".markdown-preview-pusher")).not.toBeNull();
 
     await view.setState({ mode: "source", source: false });
@@ -360,7 +368,12 @@ describe("MarkdownView property key input", () => {
     expect(selectionEvents).toEqual([{ editor: view.editor, view }]);
     expect(view.editor.getCursor()).toEqual({ line: 0, ch: 5 });
 
-    const menuEventObject = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 12 });
+    const menuEventObject = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 10,
+      clientY: 12,
+    });
     view.editorViewHost.contentEl.dispatchEvent(menuEventObject);
 
     expect(menuEvent).toEqual({ editor: view.editor, view });
@@ -383,7 +396,12 @@ describe("MarkdownView property key input", () => {
       (menu as Menu).addItem((item) => item.setTitle("Viewport action"));
     });
 
-    const sourceEvent = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 5, clientY: 8 });
+    const sourceEvent = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 5,
+      clientY: 8,
+    });
     view.editorViewHost.guttersEl.dispatchEvent(sourceEvent);
 
     expect(sourceEvent.defaultPrevented).toBe(true);
@@ -391,7 +409,12 @@ describe("MarkdownView property key input", () => {
 
     await view.setMode("preview");
     await view.previewMode.renderer.whenIdle();
-    const previewEvent = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 9, clientY: 11 });
+    const previewEvent = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 9,
+      clientY: 11,
+    });
     view.previewRendererEl.dispatchEvent(previewEvent);
 
     expect(previewEvent.defaultPrevented).toBe(true);
@@ -404,7 +427,12 @@ describe("MarkdownView property key input", () => {
   it("adds editor link context actions when source contextmenu hits an internal link", async () => {
     const { view } = await openPropertyNote("See [[Target]]");
 
-    const menuEventObject = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 52, clientY: 1 });
+    const menuEventObject = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 52,
+      clientY: 1,
+    });
     view.editorViewHost.contentEl.dispatchEvent(menuEventObject);
 
     expect(menuEventObject.defaultPrevented).toBe(true);
@@ -418,7 +446,12 @@ describe("MarkdownView property key input", () => {
   it("adds editor tag context actions when source contextmenu hits a tag", async () => {
     const { view } = await openPropertyNote("Task #project/today");
 
-    const menuEventObject = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 62, clientY: 1 });
+    const menuEventObject = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 62,
+      clientY: 1,
+    });
     view.editorViewHost.contentEl.dispatchEvent(menuEventObject);
 
     expect(menuEventObject.defaultPrevented).toBe(true);
@@ -433,7 +466,12 @@ describe("MarkdownView property key input", () => {
     const { app, file, view } = await openPropertyNote("Text [^one]\n\n[^one]: Footnote\nNext");
     await app.metadataCache.computeFileMetadata(file);
 
-    const menuEventObject = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 42, clientY: 1 });
+    const menuEventObject = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 42,
+      clientY: 1,
+    });
     view.editorViewHost.contentEl.dispatchEvent(menuEventObject);
 
     expect(menuEventObject.defaultPrevented).toBe(true);
@@ -444,7 +482,9 @@ describe("MarkdownView property key input", () => {
   });
 
   it("adds editor external reference link actions through metadata cache", async () => {
-    const { app, file, view } = await openPropertyNote("Read [Docs][docs]\n\n[docs]: https://example.com");
+    const { app, file, view } = await openPropertyNote(
+      "Read [Docs][docs]\n\n[docs]: https://example.com",
+    );
     await app.metadataCache.computeFileMetadata(file);
     const urlMenu = vi.fn((menu: unknown, url: unknown) => {
       expect(url).toBe("https://example.com");
@@ -452,7 +492,12 @@ describe("MarkdownView property key input", () => {
     });
     app.workspace.on("url-menu", urlMenu);
 
-    const menuEventObject = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 100, clientY: 1 });
+    const menuEventObject = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 100,
+      clientY: 1,
+    });
     view.editorViewHost.contentEl.dispatchEvent(menuEventObject);
 
     expect(menuEventObject.defaultPrevented).toBe(true);
@@ -509,7 +554,9 @@ describe("MarkdownView property key input", () => {
   it("flows direct public editor selection changes back into the source selection event", async () => {
     const { app, view } = await openPropertyNote("alpha\nbody");
     const selectionEvents: Array<{ editor: unknown; owner: unknown }> = [];
-    app.workspace.on("editor-selection-change", (editor, owner) => selectionEvents.push({ editor, owner }));
+    app.workspace.on("editor-selection-change", (editor, owner) =>
+      selectionEvents.push({ editor, owner }),
+    );
 
     view.editor.setSelection({ line: 0, ch: 1 }, { line: 0, ch: 4 });
 
@@ -745,7 +792,9 @@ describe("MarkdownView property key input", () => {
 
     expect(view.inlineTitleEl.classList.contains("mod-error")).toBe(true);
 
-    view.inlineTitleEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    view.inlineTitleEl.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
 
     expect(view.inlineTitleEl.textContent).toBe("Note");
     expect(view.inlineTitleEl.classList.contains("mod-error")).toBe(false);
@@ -820,7 +869,9 @@ describe("MarkdownView property key input", () => {
     expect(view.previewMode.renderer.lastAppliedScrollLine).toBe(5);
 
     view.setEphemeralState({ focusMetadata: true });
-    expect(document.activeElement).toBe(view.metadataContainerEl.querySelector(".metadata-property"));
+    expect(document.activeElement).toBe(
+      view.metadataContainerEl.querySelector(".metadata-property"),
+    );
 
     app.containerEl.remove();
   });
@@ -843,7 +894,9 @@ describe("MarkdownView property key input", () => {
     expect(view.previewMode.renderer.text).toBe("");
     expect(view.previewMode.renderer.lastText).toBe("");
     expect(view.previewMode.renderer.pusherEl).not.toBeNull();
-    expect(view.previewMode.renderer.sizerEl.querySelector(".markdown-preview-pusher")).not.toBeNull();
+    expect(
+      view.previewMode.renderer.sizerEl.querySelector(".markdown-preview-pusher"),
+    ).not.toBeNull();
   });
 
   it("keeps reading renderer header and footer sections around markdown content", async () => {
@@ -878,7 +931,9 @@ describe("MarkdownView property key input", () => {
     await view.setMode("preview");
     await view.previewMode.renderer.whenIdle();
 
-    const firstCheckbox = view.previewRendererEl.querySelector<HTMLInputElement>("input.task-list-item-checkbox");
+    const firstCheckbox = view.previewRendererEl.querySelector<HTMLInputElement>(
+      "input.task-list-item-checkbox",
+    );
     if (!firstCheckbox) throw new Error("Expected checklist checkbox");
     firstCheckbox.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
 
@@ -888,7 +943,9 @@ describe("MarkdownView property key input", () => {
     await view.previewMode.renderer.whenIdle();
     expect(view.previewMode.renderer.text).toBe("- [x] Todo\n- [-] Maybe");
 
-    const maybeCheckbox = view.previewRendererEl.querySelectorAll<HTMLInputElement>("input.task-list-item-checkbox")[1];
+    const maybeCheckbox = view.previewRendererEl.querySelectorAll<HTMLInputElement>(
+      "input.task-list-item-checkbox",
+    )[1];
     maybeCheckbox?.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
 
     expect(view.getViewData()).toBe("- [x] Todo\n- [ ] Maybe");
@@ -912,7 +969,9 @@ describe("MarkdownView property key input", () => {
       app.workspace.trigger("post-processor-change");
       await view.previewMode.renderer.whenIdle();
 
-      expect(view.previewMode.renderer.sizerEl.querySelector(".post-processor-marker")?.textContent).toBe("processed");
+      expect(
+        view.previewMode.renderer.sizerEl.querySelector(".post-processor-marker")?.textContent,
+      ).toBe("processed");
     } finally {
       MarkdownPreviewRenderer.unregisterPostProcessor(processor);
     }
@@ -921,8 +980,12 @@ describe("MarkdownView property key input", () => {
   it("selects metadata rows and copies/cuts them using Obsidian clipboard formats", async () => {
     const { view } = await openPropertyNote("---\nalpha: 1\nbeta: 2\ngamma: 3\n---\nBody");
 
-    getPropertyIcon(view, "beta").dispatchEvent(new MouseEvent("click", { bubbles: true, altKey: true }));
-    getPropertyIcon(view, "gamma").dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: true }));
+    getPropertyIcon(view, "beta").dispatchEvent(
+      new MouseEvent("click", { bubbles: true, altKey: true }),
+    );
+    getPropertyIcon(view, "gamma").dispatchEvent(
+      new MouseEvent("click", { bubbles: true, shiftKey: true }),
+    );
 
     expect(getPropertyRow(view, "beta").classList.contains("is-selected")).toBe(true);
     expect(getPropertyRow(view, "gamma").classList.contains("is-selected")).toBe(true);
@@ -945,24 +1008,29 @@ describe("MarkdownView property key input", () => {
   it("pastes Obsidian property clipboard data by merging it into frontmatter", async () => {
     const { view } = await openPropertyNote("---\ntags:\n  - existing\nstatus: old\n---\nBody");
     const clipboard = createClipboardData();
-    clipboard.setData("obsidian/properties", JSON.stringify({
-      tags: ["existing", "incoming"],
-      status: "new",
-      created: null,
-    }));
+    clipboard.setData(
+      "obsidian/properties",
+      JSON.stringify({
+        tags: ["existing", "incoming"],
+        status: "new",
+        created: null,
+      }),
+    );
 
     dispatchClipboardEvent(getPropertyRow(view, "status"), "paste", clipboard);
 
-    expect(view.getViewData()).toBe([
-      "---",
-      "tags:",
-      "  - existing",
-      "  - incoming",
-      "status: new",
-      "created:",
-      "---",
-      "Body",
-    ].join("\n"));
+    expect(view.getViewData()).toBe(
+      [
+        "---",
+        "tags:",
+        "  - existing",
+        "  - incoming",
+        "status: new",
+        "created:",
+        "---",
+        "Body",
+      ].join("\n"),
+    );
   });
 
   it("pastes Obsidian property clipboard data from the source editor before plain text insertion", async () => {
@@ -1003,17 +1071,23 @@ describe("MarkdownView property key input", () => {
     expect(view.metadataContainerEl.dataset.propertyCount).toBe("0");
     expect(view.metadataContainerEl.querySelector(".metadata-properties-heading")).toBeNull();
     expect(view.metadataContainerEl.querySelector(".metadata-add-button")).toBeNull();
-    expect(view.metadataContainerEl.querySelector(".metadata-error-title")?.textContent).toBe("Invalid properties");
+    expect(view.metadataContainerEl.querySelector(".metadata-error-title")?.textContent).toBe(
+      "Invalid properties",
+    );
 
     view.setMode("preview");
-    view.metadataContainerEl.querySelector<HTMLButtonElement>(".metadata-show-source-button")?.click();
+    view.metadataContainerEl
+      .querySelector<HTMLButtonElement>(".metadata-show-source-button")
+      ?.click();
 
     expect(view.getMode()).toBe("source");
     expect(view.editor.posToOffset(view.editor.getCursor("from"))).toBe(0);
   });
 });
 
-async function openPropertyNote(source: string): Promise<{ app: App; file: TFile; view: MarkdownView }> {
+async function openPropertyNote(
+  source: string,
+): Promise<{ app: App; file: TFile; view: MarkdownView }> {
   const app = new App(document.createElement("div"));
   await app.ready;
   const file = await app.vault.create("Note.md", source);
@@ -1023,7 +1097,9 @@ async function openPropertyNote(source: string): Promise<{ app: App; file: TFile
 }
 
 function getKeyInput(view: MarkdownView, key: string): HTMLInputElement {
-  const input = view.metadataContainerEl.querySelector<HTMLInputElement>(`[data-property-key="${key}"] .metadata-property-key-input`);
+  const input = view.metadataContainerEl.querySelector<HTMLInputElement>(
+    `[data-property-key="${key}"] .metadata-property-key-input`,
+  );
   if (!input) throw new Error(`Missing key input: ${key}`);
   return input;
 }
@@ -1041,8 +1117,9 @@ function getPropertyIcon(view: MarkdownView, key: string): HTMLElement {
 }
 
 function getPropertyKeys(view: MarkdownView): string[] {
-  return [...view.metadataContainerEl.querySelectorAll<HTMLElement>(".metadata-property")]
-    .map((row) => row.dataset.propertyKey ?? "");
+  return [...view.metadataContainerEl.querySelectorAll<HTMLElement>(".metadata-property")].map(
+    (row) => row.dataset.propertyKey ?? "",
+  );
 }
 
 function createDataTransfer(): DataTransfer {
@@ -1059,7 +1136,10 @@ function createDataTransfer(): DataTransfer {
   return transfer as unknown as DataTransfer;
 }
 
-function createClipboardData(initial: Record<string, string> = {}, files: File[] = []): DataTransfer {
+function createClipboardData(
+  initial: Record<string, string> = {},
+  files: File[] = [],
+): DataTransfer {
   const values = new Map<string, string>(Object.entries(initial));
   const items = files.map((file) => ({
     kind: "file",
@@ -1080,7 +1160,11 @@ function dispatchDragEvent(target: HTMLElement, type: string, dataTransfer: Data
   target.dispatchEvent(event);
 }
 
-function dispatchClipboardEvent(target: HTMLElement, type: string, clipboardData: DataTransfer): ClipboardEvent {
+function dispatchClipboardEvent(
+  target: HTMLElement,
+  type: string,
+  clipboardData: DataTransfer,
+): ClipboardEvent {
   const event = new Event(type, { bubbles: true, cancelable: true }) as ClipboardEvent;
   Object.defineProperty(event, "clipboardData", { value: clipboardData });
   target.dispatchEvent(event);
@@ -1092,8 +1176,9 @@ function createBrowserFile(name: string, bytes: number[]): File {
 }
 
 function findMenuItem(title: string): HTMLElement {
-  const item = [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
-    .find((element) => element.querySelector(".menu-item-title")?.textContent?.trim() === title);
+  const item = [...document.body.querySelectorAll<HTMLElement>(".menu-item")].find(
+    (element) => element.querySelector(".menu-item-title")?.textContent?.trim() === title,
+  );
   if (!item) throw new Error(`Missing menu item: ${title}`);
   return item;
 }

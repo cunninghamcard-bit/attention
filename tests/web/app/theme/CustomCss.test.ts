@@ -17,7 +17,9 @@ describe("CustomCss", () => {
   });
 
   afterEach(() => {
-    document.head.querySelectorAll("style[data-obsidian-reconstructed-css]").forEach((style) => style.remove());
+    document.head
+      .querySelectorAll("style[data-obsidian-reconstructed-css]")
+      .forEach((style) => style.remove());
   });
 
   it("loads legacy theme css and enabled snippets from the vault config directory", async () => {
@@ -30,20 +32,31 @@ describe("CustomCss", () => {
     await app.ready;
 
     expect(app.themes.getActiveTheme()?.id).toBe("Legacy");
-    expect(document.head.querySelector<HTMLStyleElement>('style[data-theme="Legacy"]')?.textContent).toContain("--legacy-theme");
-    expect(document.head.querySelector<HTMLStyleElement>('style[data-obsidian-reconstructed-css="snippet:focus"]')?.textContent).toContain("opacity");
+    expect(
+      document.head.querySelector<HTMLStyleElement>('style[data-theme="Legacy"]')?.textContent,
+    ).toContain("--legacy-theme");
+    expect(
+      document.head.querySelector<HTMLStyleElement>(
+        'style[data-obsidian-reconstructed-css="snippet:focus"]',
+      )?.textContent,
+    ).toContain("opacity");
   });
 
   it("loads folder themes from manifest.json and theme.css", async () => {
     const app = new App(document.createElement("div"));
-    void app.jsonStore.write("themes/Solarized/manifest.json", { name: "Solarized", author: "Ethan" });
+    void app.jsonStore.write("themes/Solarized/manifest.json", {
+      name: "Solarized",
+      author: "Ethan",
+    });
     void app.jsonStore.writeText("themes/Solarized/theme.css", "body { --solarized: 1; }");
     app.vault.setConfig("cssTheme", "Solarized");
 
     await app.ready;
 
     expect(app.themes.getActiveTheme()?.id).toBe("Solarized");
-    expect(document.head.querySelector<HTMLStyleElement>('style[data-theme="Solarized"]')?.textContent).toContain("--solarized");
+    expect(
+      document.head.querySelector<HTMLStyleElement>('style[data-theme="Solarized"]')?.textContent,
+    ).toContain("--solarized");
   });
 
   it("reloads snippets from raw config file changes", async () => {
@@ -54,7 +67,11 @@ describe("CustomCss", () => {
     await app.jsonStore.writeText("snippets/later.css", ".later { color: red; }");
 
     await vi.waitFor(() => {
-      expect(document.head.querySelector<HTMLStyleElement>('style[data-obsidian-reconstructed-css="snippet:later"]')?.textContent).toContain("color");
+      expect(
+        document.head.querySelector<HTMLStyleElement>(
+          'style[data-obsidian-reconstructed-css="snippet:later"]',
+        )?.textContent,
+      ).toContain("color");
     });
   });
 
@@ -98,12 +115,25 @@ describe("CustomCss", () => {
       app.cssSnippets.setEnabled("slow", true);
 
       await vi.advanceTimersByTimeAsync(99);
-      expect(document.head.querySelector<HTMLStyleElement>('style[data-theme="Slow"]')?.textContent ?? "").not.toContain("--slow-theme");
-      expect(document.head.querySelector<HTMLStyleElement>('style[data-obsidian-reconstructed-css="snippet:slow"]')).toBeNull();
+      expect(
+        document.head.querySelector<HTMLStyleElement>('style[data-theme="Slow"]')?.textContent ??
+          "",
+      ).not.toContain("--slow-theme");
+      expect(
+        document.head.querySelector<HTMLStyleElement>(
+          'style[data-obsidian-reconstructed-css="snippet:slow"]',
+        ),
+      ).toBeNull();
 
       await vi.advanceTimersByTimeAsync(1);
-      expect(document.head.querySelector<HTMLStyleElement>('style[data-theme="Slow"]')?.textContent).toContain("--slow-theme");
-      expect(document.head.querySelector<HTMLStyleElement>('style[data-obsidian-reconstructed-css="snippet:slow"]')?.textContent).toContain("blue");
+      expect(
+        document.head.querySelector<HTMLStyleElement>('style[data-theme="Slow"]')?.textContent,
+      ).toContain("--slow-theme");
+      expect(
+        document.head.querySelector<HTMLStyleElement>(
+          'style[data-obsidian-reconstructed-css="snippet:slow"]',
+        )?.textContent,
+      ).toContain("blue");
     } finally {
       vi.useRealTimers();
     }
@@ -111,5 +141,7 @@ describe("CustomCss", () => {
 });
 
 function getSnippetStyle(id: string): HTMLStyleElement | null {
-  return document.head.querySelector<HTMLStyleElement>(`style[data-obsidian-reconstructed-css="snippet:${id}"]`);
+  return document.head.querySelector<HTMLStyleElement>(
+    `style[data-obsidian-reconstructed-css="snippet:${id}"]`,
+  );
 }

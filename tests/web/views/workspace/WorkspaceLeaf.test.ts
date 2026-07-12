@@ -109,8 +109,10 @@ class RebuildableView extends View {
   }
 
   getState(): Record<string, unknown> {
-    return this.receivedState && typeof this.receivedState === "object" && !Array.isArray(this.receivedState)
-      ? this.receivedState as Record<string, unknown>
+    return this.receivedState &&
+      typeof this.receivedState === "object" &&
+      !Array.isArray(this.receivedState)
+      ? (this.receivedState as Record<string, unknown>)
       : {};
   }
 }
@@ -149,8 +151,10 @@ class HistoryRecordingView extends View {
   }
 
   getState(): Record<string, unknown> {
-    return this.receivedState && typeof this.receivedState === "object" && !Array.isArray(this.receivedState)
-      ? this.receivedState as Record<string, unknown>
+    return this.receivedState &&
+      typeof this.receivedState === "object" &&
+      !Array.isArray(this.receivedState)
+      ? (this.receivedState as Record<string, unknown>)
       : {};
   }
 }
@@ -189,7 +193,10 @@ class AsyncCloseView extends View {
   }
 
   async setState(state: unknown): Promise<void> {
-    this.payload = state && typeof state === "object" && !Array.isArray(state) ? state as Record<string, unknown> : {};
+    this.payload =
+      state && typeof state === "object" && !Array.isArray(state)
+        ? (state as Record<string, unknown>)
+        : {};
   }
 
   getState(): Record<string, unknown> {
@@ -265,7 +272,10 @@ describe("WorkspaceLeaf", () => {
 
   it("does not record history for popstate view state updates", async () => {
     const app = new App(document.createElement("div"));
-    app.viewRegistry.registerView("history-recording-test", (leaf) => new HistoryRecordingView(leaf));
+    app.viewRegistry.registerView(
+      "history-recording-test",
+      (leaf) => new HistoryRecordingView(leaf),
+    );
     const leaf = app.workspace.getLeaf();
 
     await leaf.setViewState({ type: "history-recording-test", state: { step: 1 }, active: true });
@@ -281,19 +291,37 @@ describe("WorkspaceLeaf", () => {
 
   it("deduplicates history with Obsidian's JSON view-state order semantics", async () => {
     const app = new App(document.createElement("div"));
-    app.viewRegistry.registerView("history-recording-test", (leaf) => new HistoryRecordingView(leaf));
+    app.viewRegistry.registerView(
+      "history-recording-test",
+      (leaf) => new HistoryRecordingView(leaf),
+    );
     const leaf = app.workspace.getLeaf();
 
-    await leaf.setViewState({ type: "history-recording-test", state: { a: 1, b: 2 }, active: true });
-    await leaf.setViewState({ type: "history-recording-test", state: { b: 2, a: 1 }, active: true });
-    await leaf.setViewState({ type: "history-recording-test", state: { a: 1, b: 2 }, active: true });
+    await leaf.setViewState({
+      type: "history-recording-test",
+      state: { a: 1, b: 2 },
+      active: true,
+    });
+    await leaf.setViewState({
+      type: "history-recording-test",
+      state: { b: 2, a: 1 },
+      active: true,
+    });
+    await leaf.setViewState({
+      type: "history-recording-test",
+      state: { a: 1, b: 2 },
+      active: true,
+    });
 
     expect(leaf.backHistory).toHaveLength(2);
   });
 
   it("does not record history when materializing a same-type DeferredView", async () => {
     const app = new App(document.createElement("div"));
-    app.viewRegistry.registerView("history-recording-test", (leaf) => new HistoryRecordingView(leaf));
+    app.viewRegistry.registerView(
+      "history-recording-test",
+      (leaf) => new HistoryRecordingView(leaf),
+    );
     const leaf = app.workspace.getLeaf();
 
     await leaf.setViewState({
@@ -318,7 +346,11 @@ describe("WorkspaceLeaf", () => {
     const leaf = app.workspace.getLeaf("tab");
     DeferredView.created = 0;
 
-    leaf.setDeferredViewState({ type: "deferred-test", state: { file: "Deferred.md" }, title: "Deferred" });
+    leaf.setDeferredViewState({
+      type: "deferred-test",
+      state: { file: "Deferred.md" },
+      title: "Deferred",
+    });
 
     expect(DeferredView.created).toBe(0);
     expect(leaf.getDisplayText()).toBe("Deferred");
@@ -478,7 +510,11 @@ describe("WorkspaceLeaf", () => {
 
     const middleDown = new MouseEvent("mousedown", { button: 1, bubbles: true, cancelable: true });
     leaf.tabHeaderEl.dispatchEvent(middleDown);
-    const middleAuxClick = new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true });
+    const middleAuxClick = new MouseEvent("auxclick", {
+      button: 1,
+      bubbles: true,
+      cancelable: true,
+    });
     leaf.tabHeaderEl.dispatchEvent(middleAuxClick);
 
     expect(middleDown.defaultPrevented).toBe(true);
@@ -515,7 +551,9 @@ describe("WorkspaceLeaf", () => {
     app.viewRegistry.registerView("throwing-state-test", (leaf) => new ThrowingStateView(leaf));
     const leaf = app.workspace.getLeaf();
 
-    await expect(leaf.setViewState({ type: "throwing-state-test", active: true })).resolves.toBeUndefined();
+    await expect(
+      leaf.setViewState({ type: "throwing-state-test", active: true }),
+    ).resolves.toBeUndefined();
 
     expect(leaf.view?.getViewType()).toBe("throwing-state-test");
     expect(errorSpy).toHaveBeenCalledWith(expect.any(Error));
@@ -527,7 +565,9 @@ describe("WorkspaceLeaf", () => {
     app.viewRegistry.registerView("throwing-open-test", (leaf) => new ThrowingOpenView(leaf));
     const leaf = app.workspace.getLeaf();
 
-    await expect(leaf.setViewState({ type: "throwing-open-test", active: true })).resolves.toBeUndefined();
+    await expect(
+      leaf.setViewState({ type: "throwing-open-test", active: true }),
+    ).resolves.toBeUndefined();
 
     expect(leaf.view?.getViewType()).toBe("throwing-open-test");
     expect(errorSpy).toHaveBeenCalledWith("Failed to open view", expect.any(Error));
@@ -563,14 +603,18 @@ describe("WorkspaceLeaf", () => {
 
     await leaf.setViewState({ type: "menu-counting-test", active: true });
     leaf.containerEl.style.display = "none";
-    leaf.openTabHeaderMenu(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    leaf.openTabHeaderMenu(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
 
     expect(instance?.tabMenus).toBe(1);
     expect(instance?.paneMenus).toBe(0);
     expect(leafMenuEvents).toBe(0);
 
     leaf.containerEl.style.display = "";
-    leaf.openTabHeaderMenu(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    leaf.openTabHeaderMenu(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
 
     expect(instance?.tabMenus).toBe(2);
     expect(instance?.paneMenus).toBe(1);
@@ -586,12 +630,23 @@ describe("WorkspaceLeaf", () => {
       const leaf = app.workspace.getLeaf();
 
       await leaf.setViewState({ type: "rebuildable-test", state: { value: 1 }, active: true });
-      leaf.openTabHeaderMenu(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+      leaf.openTabHeaderMenu(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 10,
+          clientY: 10,
+        }),
+      );
       await vi.waitFor(() => expect(document.body.querySelector(".menu")).toBeTruthy());
 
-      const titleItem = document.body.querySelector<HTMLElement>(".menu-item[data-section='title']");
+      const titleItem = document.body.querySelector<HTMLElement>(
+        ".menu-item[data-section='title']",
+      );
       expect(titleItem?.classList.contains("is-label")).toBe(true);
-      expect(titleItem?.querySelector(".menu-item-title")?.classList.contains("u-muted")).toBe(true);
+      expect(titleItem?.querySelector(".menu-item-title")?.classList.contains("u-muted")).toBe(
+        true,
+      );
       expect(titleItem?.querySelector(".menu-item-icon svg")).not.toBeNull();
       expect(titleItem?.querySelector(".menu-item-title")?.textContent).toBe(leaf.getDisplayText());
     } finally {
@@ -647,14 +702,26 @@ describe("WorkspaceLeaf", () => {
     await groupedLeaf.openFile(second, { active: true });
     groupedLeaf.setGroupMember(sourceLeaf);
 
-    await sourceLeaf.setViewState({ type: "markdown", state: { file: third.path, sync: false }, active: true });
+    await sourceLeaf.setViewState({
+      type: "markdown",
+      state: { file: third.path, sync: false },
+      active: true,
+    });
     await vi.waitFor(() => {
-      expect((groupedLeaf.view as { file?: { path: string } | null } | null)?.file?.path).toBe("Third.md");
+      expect((groupedLeaf.view as { file?: { path: string } | null } | null)?.file?.path).toBe(
+        "Third.md",
+      );
     });
 
-    await sourceLeaf.setViewState({ type: "markdown", state: { file: first.path, sync: true }, active: true });
+    await sourceLeaf.setViewState({
+      type: "markdown",
+      state: { file: first.path, sync: true },
+      active: true,
+    });
 
-    expect((groupedLeaf.view as { file?: { path: string } | null } | null)?.file?.path).toBe("Third.md");
+    expect((groupedLeaf.view as { file?: { path: string } | null } | null)?.file?.path).toBe(
+      "Third.md",
+    );
   });
 
   it("rebuilds leaves when their view type is unregistered and registered again", async () => {
@@ -729,13 +796,19 @@ describe("WorkspaceLeaf", () => {
     await leaf.history.go(-2);
 
     expect((leaf.view as { file?: { path: string } | null } | null)?.file?.path).toBe("First.md");
-    expect(leaf.forwardHistory.map((entry) => (entry.state.state as { file?: string }).file)).toEqual(["Third.md", "Second.md"]);
+    expect(
+      leaf.forwardHistory.map((entry) => (entry.state.state as { file?: string }).file),
+    ).toEqual(["Third.md", "Second.md"]);
 
     await leaf.history.go(1);
 
     expect((leaf.view as { file?: { path: string } | null } | null)?.file?.path).toBe("Second.md");
-    expect(leaf.forwardHistory.map((entry) => (entry.state.state as { file?: string }).file)).toEqual(["Third.md"]);
-    expect(leaf.backHistory.map((entry) => (entry.state.state as { file?: string }).file)).toEqual(["First.md"]);
+    expect(
+      leaf.forwardHistory.map((entry) => (entry.state.state as { file?: string }).file),
+    ).toEqual(["Third.md"]);
+    expect(leaf.backHistory.map((entry) => (entry.state.state as { file?: string }).file)).toEqual([
+      "First.md",
+    ]);
   });
 
   it("opens link subpaths as ephemeral state", async () => {
@@ -793,7 +866,12 @@ describe("WorkspaceLeaf", () => {
   it("opens a single file or graph bookmark drop in the target leaf", async () => {
     const app = new App(document.createElement("div"));
     const leaf = app.workspace.getLeaf();
-    const bookmark = { type: "graph", title: "Graph", ctime: Date.now(), options: { showTags: true } };
+    const bookmark = {
+      type: "graph",
+      title: "Graph",
+      ctime: Date.now(),
+      options: { showTags: true },
+    };
     const opener = { openBookmarkInLeaf: vi.fn() };
     vi.spyOn(app.internalPlugins, "getEnabledPluginById").mockReturnValue(opener as never);
     const source = {
@@ -824,7 +902,10 @@ describe("WorkspaceLeaf", () => {
       payload: null,
       elements: [],
       items: [{ item: { type: "file", path: "A.md" } }, { item: { type: "graph" } }],
-    } as DragSource & { type: "bookmarks"; items: Array<{ item: { type: string; path?: string } }> };
+    } as DragSource & {
+      type: "bookmarks";
+      items: Array<{ item: { type: string; path?: string } }>;
+    };
     const nonOpenableSource = {
       type: "bookmarks",
       payload: null,
@@ -832,8 +913,12 @@ describe("WorkspaceLeaf", () => {
       items: [{ item: { type: "url", url: "https://example.com" } }],
     } as DragSource & { type: "bookmarks"; items: Array<{ item: { type: string; url?: string } }> };
 
-    expect(leaf.handleDrop(new Event("dragover") as DragEvent, multipleOpenableSource, true)).toBeUndefined();
-    expect(leaf.handleDrop(new Event("dragover") as DragEvent, nonOpenableSource, true)).toBeUndefined();
+    expect(
+      leaf.handleDrop(new Event("dragover") as DragEvent, multipleOpenableSource, true),
+    ).toBeUndefined();
+    expect(
+      leaf.handleDrop(new Event("dragover") as DragEvent, nonOpenableSource, true),
+    ).toBeUndefined();
     expect(opener.openBookmarkInLeaf).not.toHaveBeenCalled();
   });
 
@@ -846,19 +931,25 @@ describe("WorkspaceLeaf", () => {
 
     leaf.detach();
 
-    expect(app.workspace.undoHistory[0]?.leafHistory?.backHistory[0]?.state.state).toEqual(expect.objectContaining({ file: "First.md" }));
+    expect(app.workspace.undoHistory[0]?.leafHistory?.backHistory[0]?.state.state).toEqual(
+      expect.objectContaining({ file: "First.md" }),
+    );
     expect(app.commands.findCommand("workspace:undo-close-pane")?.checkCallback?.(true)).toBe(true);
 
     await app.workspace.undoClosePane();
 
     const restored = app.workspace.activeLeaf;
     expect(restored?.id).toBe(leaf.id);
-    expect((restored?.view as { file?: { path: string } | null } | null)?.file?.path).toBe("Second.md");
+    expect((restored?.view as { file?: { path: string } | null } | null)?.file?.path).toBe(
+      "Second.md",
+    );
     expect(restored?.canGoBack()).toBe(true);
 
     await restored?.goBack();
 
-    expect((restored?.view as { file?: { path: string } | null } | null)?.file?.path).toBe("First.md");
+    expect((restored?.view as { file?: { path: string } | null } | null)?.file?.path).toBe(
+      "First.md",
+    );
     expect(app.workspace.hasUndoHistory()).toBe(false);
   });
 
@@ -873,18 +964,30 @@ describe("WorkspaceLeaf", () => {
     await app.fileManager.renameFile(first, "First Renamed.md");
     await app.fileManager.renameFile(second, "Second Renamed.md");
 
-    expect((app.workspace.undoHistory[0]?.state.state as { file?: string } | undefined)?.file).toBe("Second Renamed.md");
+    expect((app.workspace.undoHistory[0]?.state.state as { file?: string } | undefined)?.file).toBe(
+      "Second Renamed.md",
+    );
     expect(app.workspace.undoHistory[0]?.leafHistory?.backHistory[0]?.title).toBe("First Renamed");
-    expect((app.workspace.undoHistory[0]?.leafHistory?.backHistory[0]?.state.state as { file?: string } | undefined)?.file).toBe("First Renamed.md");
+    expect(
+      (
+        app.workspace.undoHistory[0]?.leafHistory?.backHistory[0]?.state.state as
+          | { file?: string }
+          | undefined
+      )?.file,
+    ).toBe("First Renamed.md");
 
     await app.workspace.undoClosePane();
 
     const restored = app.workspace.activeLeaf;
-    expect((restored?.view as { file?: { path: string } | null } | null)?.file?.path).toBe("Second Renamed.md");
+    expect((restored?.view as { file?: { path: string } | null } | null)?.file?.path).toBe(
+      "Second Renamed.md",
+    );
 
     await restored?.goBack();
 
-    expect((restored?.view as { file?: { path: string } | null } | null)?.file?.path).toBe("First Renamed.md");
+    expect((restored?.view as { file?: { path: string } | null } | null)?.file?.path).toBe(
+      "First Renamed.md",
+    );
   });
 
   it("uses Obsidian close commands to unpin active tabs and close unpinned siblings", async () => {
@@ -916,7 +1019,11 @@ describe("WorkspaceLeaf", () => {
     expect(app.workspace.getLeafById(firstLeaf.id)).toBe(firstLeaf);
     expect(app.workspace.getLeafById(secondLeaf.id)).toBeNull();
     expect(app.workspace.getLeafById(thirdLeaf.id)).toBe(thirdLeaf);
-    expect(app.workspace.undoHistory.some((entry) => entry.leafId === secondLeaf.id && entry.state.type === "markdown")).toBe(true);
+    expect(
+      app.workspace.undoHistory.some(
+        (entry) => entry.leafId === secondLeaf.id && entry.state.type === "markdown",
+      ),
+    ).toBe(true);
   });
 
   it("closes tab groups while preserving pinned leaves and supports closing others in the active tab group", async () => {
@@ -984,7 +1091,9 @@ describe("WorkspaceLeaf", () => {
 
     expect(app.workspace.activeLeaf?.view?.getViewType()).toBe("empty");
     expect(app.workspace.activeLeaf?.parent?.children.length).toBe(before + 1);
-    expect(app.commands.findCommand("workspace:new-tab")?.hotkeys).toEqual([{ modifiers: ["Mod"], key: "T" }]);
+    expect(app.commands.findCommand("workspace:new-tab")?.hotkeys).toEqual([
+      { modifiers: ["Mod"], key: "T" },
+    ]);
   });
 
   it("opens and moves ItemViews into popout windows without using undo history", async () => {
@@ -993,8 +1102,12 @@ describe("WorkspaceLeaf", () => {
     const sourceLeaf = await app.workspace.openFile(file, { active: true });
     const originalRoot = sourceLeaf.getRoot();
 
-    expect(app.commands.findCommand("workspace:open-in-new-window")?.checkCallback?.(true)).toBe(true);
-    expect(app.commands.findCommand("workspace:move-to-new-window")?.checkCallback?.(true)).toBe(true);
+    expect(app.commands.findCommand("workspace:open-in-new-window")?.checkCallback?.(true)).toBe(
+      true,
+    );
+    expect(app.commands.findCommand("workspace:move-to-new-window")?.checkCallback?.(true)).toBe(
+      true,
+    );
 
     const copiedLeaf = await app.workspace.openActiveLeafInNewWindow();
 
@@ -1003,7 +1116,9 @@ describe("WorkspaceLeaf", () => {
     expect(copiedLeaf?.getContainer()).toBeInstanceOf(WorkspaceWindow);
     expect(copiedLeaf?.getContainer().parent).toBe(app.workspace.floatingSplit);
     expect(sourceLeaf.getRoot()).toBe(originalRoot);
-    expect((copiedLeaf?.view as { file?: { path: string } | null } | null)?.file?.path).toBe("Window.md");
+    expect((copiedLeaf?.view as { file?: { path: string } | null } | null)?.file?.path).toBe(
+      "Window.md",
+    );
 
     app.workspace.setActiveLeaf(sourceLeaf);
     const undoCount = app.workspace.undoHistory.length;
@@ -1025,13 +1140,17 @@ describe("WorkspaceLeaf", () => {
     expect(app.workspace.activeLeaf?.getContainer().parent).toBe(app.workspace.floatingSplit);
     expect(app.workspace.activeLeaf?.view?.getViewType()).toBe("empty");
     expect(app.workspace.floatingSplit.children.length).toBe(1);
-    expect(app.workspace.floatingSplit.containerEl.classList.contains("is-popout-window")).toBe(true);
+    expect(app.workspace.floatingSplit.containerEl.classList.contains("is-popout-window")).toBe(
+      true,
+    );
     expect(app.commands.findCommand("workspace:close-window")?.checkCallback?.(true)).toBe(true);
 
     await app.commands.executeCommandById("workspace:close-window");
 
     expect(app.workspace.floatingSplit.children.length).toBe(0);
-    expect(app.workspace.floatingSplit.containerEl.classList.contains("is-popout-window")).toBe(false);
+    expect(app.workspace.floatingSplit.containerEl.classList.contains("is-popout-window")).toBe(
+      false,
+    );
     expect(app.commands.findCommand("workspace:close-window")?.checkCallback?.(true)).toBe(false);
   });
 
@@ -1046,17 +1165,23 @@ describe("WorkspaceLeaf", () => {
     }
 
     expect(app.workspace.floatingSplit.children).toHaveLength(2);
-    expect(app.workspace.floatingSplit.containerEl.classList.contains("is-popout-window")).toBe(true);
+    expect(app.workspace.floatingSplit.containerEl.classList.contains("is-popout-window")).toBe(
+      true,
+    );
 
     firstWindow.close();
 
     expect(app.workspace.floatingSplit.children).toEqual([secondWindow]);
-    expect(app.workspace.floatingSplit.containerEl.classList.contains("is-popout-window")).toBe(true);
+    expect(app.workspace.floatingSplit.containerEl.classList.contains("is-popout-window")).toBe(
+      true,
+    );
 
     secondWindow.close();
 
     expect(app.workspace.floatingSplit.children).toEqual([]);
-    expect(app.workspace.floatingSplit.containerEl.classList.contains("is-popout-window")).toBe(false);
+    expect(app.workspace.floatingSplit.containerEl.classList.contains("is-popout-window")).toBe(
+      false,
+    );
   });
 
   it("creates missing link targets beside the source file and opens them in source mode", async () => {
@@ -1068,14 +1193,18 @@ describe("WorkspaceLeaf", () => {
     await leaf.openLinkText("Missing", "folder/source.md", { active: true });
 
     expect(app.vault.getFileByPath("folder/Missing.md")).not.toBeNull();
-    expect((leaf.view as { file?: { path: string } | null; getMode?: () => string } | null)?.file?.path).toBe("folder/Missing.md");
+    expect(
+      (leaf.view as { file?: { path: string } | null; getMode?: () => string } | null)?.file?.path,
+    ).toBe("folder/Missing.md");
     expect((leaf.view as { getMode?: () => string } | null)?.getMode?.()).toBe("source");
   });
 
   it("shows a notice and logs when opening a link target fails", async () => {
     const app = new App(document.createElement("div"));
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.spyOn(app.fileManager, "createNewFile").mockRejectedValueOnce(new Error("cannot create target"));
+    vi.spyOn(app.fileManager, "createNewFile").mockRejectedValueOnce(
+      new Error("cannot create target"),
+    );
     const leaf = app.workspace.getLeaf();
 
     await expect(leaf.openLinkText("Missing", "", { active: true })).resolves.toBeUndefined();
@@ -1090,9 +1219,15 @@ describe("WorkspaceLeaf", () => {
     const second = await app.vault.create("Second.md", "second");
     const leaf = await app.workspace.openFile(first, { active: true, state: { mode: "source" } });
     const view = leaf.view;
-    if (!view || !("headerEl" in view) || !(view.headerEl instanceof HTMLElement)) throw new Error("Expected ItemView header");
+    if (!view || !("headerEl" in view) || !(view.headerEl instanceof HTMLElement))
+      throw new Error("Expected ItemView header");
     const dataTransfer = createDataTransfer();
-    const source = app.dragManager.dragFile(createDragEvent("dragstart", dataTransfer), second, "test", [view.headerEl]);
+    const source = app.dragManager.dragFile(
+      createDragEvent("dragstart", dataTransfer),
+      second,
+      "test",
+      [view.headerEl],
+    );
 
     expect(dataTransfer.getData("text/plain")).toBe(app.getObsidianUrl(second));
     expect(dataTransfer.getData("text/uri-list")).toBe(app.getObsidianUrl(second));
@@ -1101,12 +1236,20 @@ describe("WorkspaceLeaf", () => {
     app.dragManager.setSource(source);
     dispatchDragEvent(view.headerEl, "drop", dataTransfer);
     await vi.waitFor(() => {
-      expect((leaf.view as { file?: { path: string } | null } | null)?.file?.path).toBe("Second.md");
+      expect((leaf.view as { file?: { path: string } | null } | null)?.file?.path).toBe(
+        "Second.md",
+      );
     });
 
     const openLinkText = vi.spyOn(leaf, "openLinkText").mockResolvedValue();
     const linkTransfer = createDataTransfer();
-    const linkSource = app.dragManager.dragLink(createDragEvent("dragstart", linkTransfer), "Missing", "First.md", "test", [view.headerEl]);
+    const linkSource = app.dragManager.dragLink(
+      createDragEvent("dragstart", linkTransfer),
+      "Missing",
+      "First.md",
+      "test",
+      [view.headerEl],
+    );
     app.dragManager.setSource(linkSource);
     dispatchDragEvent(view.headerEl, "drop", linkTransfer);
 
@@ -1130,7 +1273,11 @@ describe("WorkspaceLeaf", () => {
     const second = await app.vault.create("Second.md", "second");
     const opened: Array<string | null> = [];
     app.workspace.on("file-open", (file: unknown) => {
-      opened.push(file && typeof file === "object" && "path" in file ? String((file as { path: unknown }).path) : null);
+      opened.push(
+        file && typeof file === "object" && "path" in file
+          ? String((file as { path: unknown }).path)
+          : null,
+      );
     });
     app.workspace.markLayoutReady();
 
@@ -1165,7 +1312,11 @@ describe("WorkspaceLeaf", () => {
     const opened: Array<string | null> = [];
     app.workspace.onLayoutReady(() => callbacks.push("queued"));
     app.workspace.on("file-open", (openedFile: unknown) => {
-      opened.push(openedFile && typeof openedFile === "object" && "path" in openedFile ? String((openedFile as { path: unknown }).path) : null);
+      opened.push(
+        openedFile && typeof openedFile === "object" && "path" in openedFile
+          ? String((openedFile as { path: unknown }).path)
+          : null,
+      );
     });
 
     await app.workspace.openFile(file, { active: true });
@@ -1186,10 +1337,12 @@ describe("WorkspaceLeaf", () => {
     const file = await app.vault.create("State.md", "state");
     const triggered: string[] = [];
     const originalTrigger = app.workspace.trigger.bind(app.workspace);
-    const trigger = vi.spyOn(app.workspace, "trigger").mockImplementation((name: string, ...args: unknown[]) => {
-      triggered.push(name);
-      originalTrigger(name, ...args);
-    });
+    const trigger = vi
+      .spyOn(app.workspace, "trigger")
+      .mockImplementation((name: string, ...args: unknown[]) => {
+        triggered.push(name);
+        originalTrigger(name, ...args);
+      });
 
     const leaf = await app.workspace.openFile(file, { active: true, state: { mode: "source" } });
     const view = leaf.view;
@@ -1234,9 +1387,19 @@ describe("WorkspaceLeaf", () => {
     for (const file of files) app.workspace.recentFileTracker.collect(file);
     await app.fileManager.renameFile(files[0], "One Renamed.md");
 
-    expect(app.workspace.recentFilePaths).toEqual(["Four.pdf", "Three.png", "Two.canvas", "One Renamed.md"]);
+    expect(app.workspace.recentFilePaths).toEqual([
+      "Four.pdf",
+      "Three.png",
+      "Two.canvas",
+      "One Renamed.md",
+    ]);
     expect(app.workspace.getRecentFiles()).toEqual(["Two.canvas", "One Renamed.md"]);
-    expect(app.workspace.getLastOpenFiles()).toEqual(["Four.pdf", "Three.png", "Two.canvas", "One Renamed.md"]);
+    expect(app.workspace.getLastOpenFiles()).toEqual([
+      "Four.pdf",
+      "Three.png",
+      "Two.canvas",
+      "One Renamed.md",
+    ]);
   });
 });
 

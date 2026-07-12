@@ -6,10 +6,15 @@ export interface TagSuggestion {
   matches: FuzzyMatch["matches"] | null;
 }
 
-export function getTagSuggestions(tags: string[], query: string, keepHash = false, existingValues: string[] = []): TagSuggestion[] {
+export function getTagSuggestions(
+  tags: string[],
+  query: string,
+  keepHash = false,
+  existingValues: string[] = [],
+): TagSuggestion[] {
   const preparedQuery = prepareFuzzyQuery(query);
   return tags
-    .map((tag) => keepHash ? tag : stripHash(tag))
+    .map((tag) => (keepHash ? tag : stripHash(tag)))
     .sort((a, b) => a.localeCompare(b))
     .map((tag) => createTagSuggestion(tag, query, keepHash, preparedQuery))
     .filter((item): item is TagSuggestion => item !== null)
@@ -41,14 +46,20 @@ export function renderTagSuggestion(parent: HTMLElement, suggestion: TagSuggesti
     parent.appendChild(highlightEl);
     cursor = end;
   }
-  if (cursor < suggestion.tag.length) parent.append(document.createTextNode(suggestion.tag.slice(cursor)));
+  if (cursor < suggestion.tag.length)
+    parent.append(document.createTextNode(suggestion.tag.slice(cursor)));
 }
 
 export function stripHash(value: string): string {
   return value.startsWith("#") ? value.slice(1) : value;
 }
 
-function createTagSuggestion(tag: string, query: string, keepHash: boolean, preparedQuery: ReturnType<typeof prepareFuzzyQuery>): TagSuggestion | null {
+function createTagSuggestion(
+  tag: string,
+  query: string,
+  keepHash: boolean,
+  preparedQuery: ReturnType<typeof prepareFuzzyQuery>,
+): TagSuggestion | null {
   if (query === "" || (query === "#" && keepHash)) return { tag, score: 0, matches: null };
   const match = fuzzyMatch(preparedQuery, tag);
   return match ? { tag, score: match.score, matches: match.matches } : null;

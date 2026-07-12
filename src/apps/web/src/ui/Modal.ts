@@ -87,7 +87,8 @@ export class Modal extends Component implements HistoryHandler {
         downY = event.screenY;
       });
       this.bgEl.addEventListener("click", (event) => {
-        if (Math.hypot(event.screenX - downX, event.screenY - downY) < 5) this.onClickOutside(event);
+        if (Math.hypot(event.screenX - downX, event.screenY - downY) < 5)
+          this.onClickOutside(event);
       });
     } else {
       this.bgEl.addEventListener("click", (event) => this.onClickOutside(event));
@@ -149,7 +150,8 @@ export class Modal extends Component implements HistoryHandler {
     removeOpenModal(this);
     unregisterActiveCloseable(this);
     if (this.shouldRestoreSelection) restoreSelection(this.selection);
-    if (modalWindow && modalWindow !== window) modalWindow.removeEventListener("beforeunload", this.onWindowClose);
+    if (modalWindow && modalWindow !== window)
+      modalWindow.removeEventListener("beforeunload", this.onWindowClose);
     this.selection = null;
     this.win = null;
   }
@@ -180,7 +182,6 @@ export class Modal extends Component implements HistoryHandler {
   onEscapeKey(event: KeyboardEvent): void {
     if (!event.defaultPrevented) this.close();
   }
-
 }
 
 export class ConfirmationButton extends ButtonComponent {
@@ -264,7 +265,11 @@ export class ConfirmationModal extends Modal {
   }
 
   addButton(cb: (btn: ConfirmationButton) => any): this;
-  addButton(cls: string | string[], text: string, callback: (event: MouseEvent) => unknown | Promise<unknown>): this;
+  addButton(
+    cls: string | string[],
+    text: string,
+    callback: (event: MouseEvent) => unknown | Promise<unknown>,
+  ): this;
   addButton(
     cbOrClass: ((btn: ConfirmationButton) => any) | string | string[],
     text?: string,
@@ -326,7 +331,8 @@ function captureSelection(win: Window): SavedSelection | null {
   if (!selection) return null;
   let focusEl: Element | null = win.document.activeElement;
   if (focusEl === win.document.body) focusEl = null;
-  if (isIframeElement(focusEl) && focusEl.contentDocument) focusEl = focusEl.contentDocument.activeElement;
+  if (isIframeElement(focusEl) && focusEl.contentDocument)
+    focusEl = focusEl.contentDocument.activeElement;
   let range: Range | null = null;
   if (focusEl && selection.rangeCount > 0) {
     const selectedRange = selection.getRangeAt(0);
@@ -347,7 +353,12 @@ function restoreSelection(selection: SavedSelection | null): void {
   const { win, range, focusEl } = selection;
   win.focus();
   const isCodeMirrorContent = isHtmlElement(focusEl) && focusEl.classList.contains("cm-content");
-  if (range && !isCodeMirrorContent && containsInDocument(win, range.startContainer) && containsInDocument(win, range.endContainer)) {
+  if (
+    range &&
+    !isCodeMirrorContent &&
+    containsInDocument(win, range.startContainer) &&
+    containsInDocument(win, range.endContainer)
+  ) {
     const currentSelection = win.getSelection();
     currentSelection?.removeAllRanges();
     currentSelection?.addRange(range);
@@ -359,7 +370,8 @@ function restoreSelection(selection: SavedSelection | null): void {
 
 function containsInDocument(win: Window, target: Node): boolean {
   let node: Node | null = target;
-  while (node && node.ownerDocument.defaultView?.frameElement) node = node.ownerDocument.defaultView.frameElement;
+  while (node && node.ownerDocument.defaultView?.frameElement)
+    node = node.ownerDocument.defaultView.frameElement;
   return win.document.body.contains(node);
 }
 

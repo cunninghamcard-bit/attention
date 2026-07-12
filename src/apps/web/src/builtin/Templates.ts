@@ -33,9 +33,14 @@ export class TemplatesController {
 
   listTemplates(): TFile[] {
     const folder = (this.options.folder ?? "").replace(/^\/+|\/+$/g, "");
-    return this.app.vault.getMarkdownFiles()
-      .filter((file) => !folder || file.path === `${folder}.md` || file.path.startsWith(`${folder}/`))
-      .sort((a, b) => a.path.localeCompare(b.path, undefined, { sensitivity: "base", numeric: true }));
+    return this.app.vault
+      .getMarkdownFiles()
+      .filter(
+        (file) => !folder || file.path === `${folder}.md` || file.path.startsWith(`${folder}/`),
+      )
+      .sort((a, b) =>
+        a.path.localeCompare(b.path, undefined, { sensitivity: "base", numeric: true }),
+      );
   }
 
   openTemplatePicker(): void {
@@ -71,7 +76,11 @@ export class TemplatesController {
 }
 
 class TemplateSuggestModal extends FuzzySuggestModal<TFile> {
-  constructor(app: App, readonly controller: TemplatesController, readonly templates: TFile[]) {
+  constructor(
+    app: App,
+    readonly controller: TemplatesController,
+    readonly templates: TFile[],
+  ) {
     super(app);
     this.setPlaceholder("Choose a template...");
     this.emptyStateText = "No templates found";
@@ -105,7 +114,10 @@ class TemplatesSettingTab implements SettingTab {
   readonly navEl = document.createElement("div");
   readonly containerEl = document.createElement("div");
 
-  constructor(readonly app: App, readonly controller: TemplatesController) {
+  constructor(
+    readonly app: App,
+    readonly controller: TemplatesController,
+  ) {
     this.navEl.className = "vertical-tab-nav-item tappable";
     const iconEl = document.createElement("div");
     iconEl.className = "vertical-tab-nav-item-icon";
@@ -125,21 +137,27 @@ class TemplatesSettingTab implements SettingTab {
     new Setting(group.itemsEl)
       .setName("Template folder location")
       .setDesc("Markdown files in this folder are available as templates.")
-      .addText((text) => text.setValue(this.controller.options.folder ?? "").onChange((folder) => {
-        void this.controller.saveOptions({ folder });
-      }));
+      .addText((text) =>
+        text.setValue(this.controller.options.folder ?? "").onChange((folder) => {
+          void this.controller.saveOptions({ folder });
+        }),
+      );
     new Setting(group.itemsEl)
       .setName("Date format")
       .setDesc("Format used by {{date}} and Insert current date.")
-      .addText((text) => text.setValue(this.controller.options.dateFormat ?? "YYYY-MM-DD").onChange((dateFormat) => {
-        void this.controller.saveOptions({ dateFormat });
-      }));
+      .addText((text) =>
+        text.setValue(this.controller.options.dateFormat ?? "YYYY-MM-DD").onChange((dateFormat) => {
+          void this.controller.saveOptions({ dateFormat });
+        }),
+      );
     new Setting(group.itemsEl)
       .setName("Time format")
       .setDesc("Format used by {{time}} and Insert current time.")
-      .addText((text) => text.setValue(this.controller.options.timeFormat ?? "HH:mm").onChange((timeFormat) => {
-        void this.controller.saveOptions({ timeFormat });
-      }));
+      .addText((text) =>
+        text.setValue(this.controller.options.timeFormat ?? "HH:mm").onChange((timeFormat) => {
+          void this.controller.saveOptions({ timeFormat });
+        }),
+      );
   }
 
   hide(): void {
@@ -162,7 +180,9 @@ export function createTemplatesPluginDefinition(): InternalPluginDefinition {
         name: "Insert template",
         icon: "lucide-scroll-text",
         checkCallback: (checking) => {
-          const available = app.workspace.activeLeaf?.view instanceof MarkdownView && (controller?.listTemplates().length ?? 0) > 0;
+          const available =
+            app.workspace.activeLeaf?.view instanceof MarkdownView &&
+            (controller?.listTemplates().length ?? 0) > 0;
           if (!checking && available) controller?.openTemplatePicker();
           return available;
         },

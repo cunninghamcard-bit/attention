@@ -128,8 +128,15 @@ export class DesktopMenu {
         id: "format",
         label: "F&ormat",
         submenu: [
-          { id: "heading-indeterminate", label: "Indeterminate heading level", type: "radio", visible: false },
-          ...([1, 2, 3, 4, 5, 6] as const).map((level) => this.commandItem(`editor:set-heading-${level}`, `Heading ${level}`, { type: "radio" })),
+          {
+            id: "heading-indeterminate",
+            label: "Indeterminate heading level",
+            type: "radio",
+            visible: false,
+          },
+          ...([1, 2, 3, 4, 5, 6] as const).map((level) =>
+            this.commandItem(`editor:set-heading-${level}`, `Heading ${level}`, { type: "radio" }),
+          ),
           this.commandItem("editor:set-heading-0", "No heading", { type: "radio" }),
           { type: "separator" },
           this.commandItem("editor:toggle-bold", "Bold"),
@@ -173,11 +180,17 @@ export class DesktopMenu {
   }
 
   updateMenuItems(items: NativeMenuItemUpdate[], updateShareMenu = false): void {
-    const ipcRenderer = getElectronBridge(this.app.containerEl.ownerDocument.defaultView)?.ipcRenderer;
+    const ipcRenderer = getElectronBridge(
+      this.app.containerEl.ownerDocument.defaultView,
+    )?.ipcRenderer;
     ipcRenderer?.send?.("update-menu-items", items, updateShareMenu);
   }
 
-  private commandItem(commandId: string, fallbackLabel: string, extra: Partial<SystemMenuItem> = {}): SystemMenuItem {
+  private commandItem(
+    commandId: string,
+    fallbackLabel: string,
+    extra: Partial<SystemMenuItem> = {},
+  ): SystemMenuItem {
     return {
       ...extra,
       appCommand: commandId,
@@ -217,7 +230,9 @@ export class DesktopMenu {
   }
 
   private sendMenuTemplate(template: SystemMenuItem[]): void {
-    const ipcRenderer = getElectronBridge(this.app.containerEl.ownerDocument.defaultView)?.ipcRenderer;
+    const ipcRenderer = getElectronBridge(
+      this.app.containerEl.ownerDocument.defaultView,
+    )?.ipcRenderer;
     ipcRenderer?.send?.("set-menu", { template });
   }
 }
@@ -238,7 +253,9 @@ function normalizeAcceleratorKey(key: string): string {
   return key;
 }
 
-function getElectronBridge(win: (Window & { electron?: DesktopMenuElectronBridge }) | null): DesktopMenuElectronBridge | null {
+function getElectronBridge(
+  win: (Window & { electron?: DesktopMenuElectronBridge }) | null,
+): DesktopMenuElectronBridge | null {
   const host = globalThis as { electron?: DesktopMenuElectronBridge };
   return win?.electron ?? host.electron ?? null;
 }

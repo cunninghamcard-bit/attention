@@ -6,7 +6,10 @@ import type { WorkspacesController } from "../../Workspaces";
  * Command ids, descriptions, flags, output shapes, and error strings are
  * verbatim from real Obsidian.
  */
-export function registerWorkspacesCliHandlers(plugin: InternalPluginWrapper, controller: WorkspacesController): void {
+export function registerWorkspacesCliHandlers(
+  plugin: InternalPluginWrapper,
+  controller: WorkspacesController,
+): void {
   plugin.registerCliHandler(
     "workspaces",
     "List saved workspaces",
@@ -16,7 +19,9 @@ export function registerWorkspacesCliHandlers(plugin: InternalPluginWrapper, con
       const names = Object.keys(controller.options.workspaces);
       if (params.total) return String(names.length);
       if (names.length === 0) return "No workspaces saved.";
-      return names.map((name) => (name === controller.activeWorkspace ? `${name} (active)` : name)).join("\n");
+      return names
+        .map((name) => (name === controller.activeWorkspace ? `${name} (active)` : name))
+        .join("\n");
     },
   );
 
@@ -45,7 +50,8 @@ export function registerWorkspacesCliHandlers(plugin: InternalPluginWrapper, con
       // Redundant with required:true, but the real handler guards manually too.
       if (!params.name) throw "Missing required parameter: name\nUsage: workspace:load name=<name>";
       const name = String(params.name);
-      if (!Object.hasOwn(controller.options.workspaces, name)) throw `Workspace "${name}" not found.`;
+      if (!Object.hasOwn(controller.options.workspaces, name))
+        throw `Workspace "${name}" not found.`;
       // controller.loadWorkspace sets and persists the active name (real shape).
       await controller.loadWorkspace(name);
       return `Loaded workspace: ${name}`;
@@ -57,9 +63,11 @@ export function registerWorkspacesCliHandlers(plugin: InternalPluginWrapper, con
     "Delete a saved workspace",
     { name: { value: "<name>", description: "Workspace name", required: true } },
     async (params) => {
-      if (!params.name) throw "Missing required parameter: name\nUsage: workspace:delete name=<name>";
+      if (!params.name)
+        throw "Missing required parameter: name\nUsage: workspace:delete name=<name>";
       const name = String(params.name);
-      if (!Object.hasOwn(controller.options.workspaces, name)) throw `Workspace "${name}" not found.`;
+      if (!Object.hasOwn(controller.options.workspaces, name))
+        throw `Workspace "${name}" not found.`;
       // Faithful: deleting the active workspace leaves `active` dangling.
       await controller.deleteWorkspace(name);
       return `Deleted workspace: ${name}`;

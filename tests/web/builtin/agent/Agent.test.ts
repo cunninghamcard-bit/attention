@@ -4,7 +4,10 @@ import { applyAgentEvent, Agent, createAgentState } from "@web/builtin/agent/Age
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
-function events(agentId: string, list: Array<DistributiveOmit<AgentEvent, "seq" | "agentId">>): AgentEvent[] {
+function events(
+  agentId: string,
+  list: Array<DistributiveOmit<AgentEvent, "seq" | "agentId">>,
+): AgentEvent[] {
   return list.map((event, index) => ({ ...event, seq: index + 1, agentId }) as AgentEvent);
 }
 
@@ -41,8 +44,18 @@ describe("applyAgentEvent", () => {
     expect(user.parts[0]).toMatchObject({ type: "text", markdown: "hi", closed: true });
 
     expect(assistant.role).toBe("assistant");
-    expect(assistant.parts[0]).toMatchObject({ type: "text", markdown: "Hello world", closed: true });
-    expect(assistant.parts[1]).toMatchObject({ type: "tool", toolName: "Bash", input: '{"command":"ls"}', result: "file.txt", closed: true });
+    expect(assistant.parts[0]).toMatchObject({
+      type: "text",
+      markdown: "Hello world",
+      closed: true,
+    });
+    expect(assistant.parts[1]).toMatchObject({
+      type: "tool",
+      toolName: "Bash",
+      input: '{"command":"ls"}',
+      result: "file.txt",
+      closed: true,
+    });
     expect(assistant.closed).toBe(true);
   });
 
@@ -54,13 +67,24 @@ describe("applyAgentEvent", () => {
       { type: "part.opened", messageId: "u1", partIndex: 0, partType: "text" },
       { type: "part.delta", messageId: "u1", partIndex: 0, delta: "看看这个" },
       { type: "part.closed", messageId: "u1", partIndex: 0 },
-      { type: "part.opened", messageId: "u1", partIndex: 1, partType: "attachment", name: "Pasted text" },
+      {
+        type: "part.opened",
+        messageId: "u1",
+        partIndex: 1,
+        partType: "attachment",
+        name: "Pasted text",
+      },
       { type: "part.delta", messageId: "u1", partIndex: 1, delta: "long pasted content" },
       { type: "part.closed", messageId: "u1", partIndex: 1 },
       { type: "message.closed", messageId: "u1" },
     ]);
     for (const event of attachmentRun) applyAgentEvent(state, event);
-    expect(state.messages[0].parts[1]).toMatchObject({ type: "attachment", name: "Pasted text", content: "long pasted content", closed: true });
+    expect(state.messages[0].parts[1]).toMatchObject({
+      type: "attachment",
+      name: "Pasted text",
+      content: "long pasted content",
+      closed: true,
+    });
   });
 
   it("merges a late tool result via a second part.closed", () => {
@@ -88,7 +112,14 @@ describe("applyAgentEvent", () => {
     for (const event of streamedRun.slice(0, 10)) applyAgentEvent(state, event);
     expect(state.running).toBe(true);
 
-    applyAgentEvent(state, { type: "run.closed", runId: "r1", status: "error", error: "boom", seq: 99, agentId: "t1" });
+    applyAgentEvent(state, {
+      type: "run.closed",
+      runId: "r1",
+      status: "error",
+      error: "boom",
+      seq: 99,
+      agentId: "t1",
+    });
     expect(state.running).toBe(false);
     expect(state.lastError).toBe("boom");
     expect(state.messages[1].parts[0].closed).toBe(true);
@@ -96,32 +127,87 @@ describe("applyAgentEvent", () => {
 
   it("records a tool failure, usage and part timing from the extended fields", () => {
     const state = createAgentState();
-    applyAgentEvent(state, { type: "message.started", messageId: "a1", role: "assistant", seq: 1, agentId: "t1" });
-    applyAgentEvent(state, { type: "part.opened", messageId: "a1", partIndex: 0, partType: "tool", toolName: "Read", seq: 2, agentId: "t1", ts: 1000 });
-    applyAgentEvent(state, { type: "part.closed", messageId: "a1", partIndex: 0, result: "ENOENT", error: "ENOENT", seq: 3, agentId: "t1", ts: 3500 });
+    applyAgentEvent(state, {
+      type: "message.started",
+      messageId: "a1",
+      role: "assistant",
+      seq: 1,
+      agentId: "t1",
+    });
+    applyAgentEvent(state, {
+      type: "part.opened",
+      messageId: "a1",
+      partIndex: 0,
+      partType: "tool",
+      toolName: "Read",
+      seq: 2,
+      agentId: "t1",
+      ts: 1000,
+    });
+    applyAgentEvent(state, {
+      type: "part.closed",
+      messageId: "a1",
+      partIndex: 0,
+      result: "ENOENT",
+      error: "ENOENT",
+      seq: 3,
+      agentId: "t1",
+      ts: 3500,
+    });
     const tool = state.messages[0].parts[0];
-    expect(tool).toMatchObject({ type: "tool", closed: true, error: "ENOENT", openedAt: 1000, closedAt: 3500 });
+    expect(tool).toMatchObject({
+      type: "tool",
+      closed: true,
+      error: "ENOENT",
+      openedAt: 1000,
+      closedAt: 3500,
+    });
 
     applyAgentEvent(state, {
-      type: "run.closed", runId: "r1", status: "completed", seq: 4, agentId: "t1",
+      type: "run.closed",
+      runId: "r1",
+      status: "completed",
+      seq: 4,
+      agentId: "t1",
       usage: { inputTokens: 1200, outputTokens: 300, totalTokens: 1500, costUsd: 0.01 },
     });
-    expect(state.usage).toEqual({ inputTokens: 1200, outputTokens: 300, totalTokens: 1500, costUsd: 0.01 });
+    expect(state.usage).toEqual({
+      inputTokens: 1200,
+      outputTokens: 300,
+      totalTokens: 1500,
+      costUsd: 0.01,
+    });
   });
 });
 
 describe("provenance and compaction phases", () => {
   it("stamps generation-time model/effort onto the message", () => {
     const state = createAgentState();
-    applyAgentEvent(state, { type: "message.started", messageId: "a1", role: "assistant", model: "deepseek-chat", effort: "high", seq: 1, agentId: "t1" });
+    applyAgentEvent(state, {
+      type: "message.started",
+      messageId: "a1",
+      role: "assistant",
+      model: "deepseek-chat",
+      effort: "high",
+      seq: 1,
+      agentId: "t1",
+    });
     expect(state.messages[0]).toMatchObject({ model: "deepseek-chat", effort: "high" });
   });
 
   it("a phased compaction updates in place: started -> completed", () => {
     const state = createAgentState();
     applyAgentEvent(state, { type: "context.compacted", phase: "started", seq: 1, agentId: "t1" });
-    expect(state.compactions).toEqual([{ afterMessageId: null, preTokens: undefined, phase: "started" }]);
-    applyAgentEvent(state, { type: "context.compacted", phase: "completed", preTokens: 42000, seq: 2, agentId: "t1" });
+    expect(state.compactions).toEqual([
+      { afterMessageId: null, preTokens: undefined, phase: "started" },
+    ]);
+    applyAgentEvent(state, {
+      type: "context.compacted",
+      phase: "completed",
+      preTokens: 42000,
+      seq: 2,
+      agentId: "t1",
+    });
     expect(state.compactions).toHaveLength(1);
     expect(state.compactions[0]).toMatchObject({ phase: "completed", preTokens: 42000 });
   });
@@ -136,28 +222,87 @@ describe("provenance and compaction phases", () => {
 describe("artifact parts", () => {
   it("folds a streamed artifact with its kind", () => {
     const state = createAgentState();
-    applyAgentEvent(state, { type: "message.started", messageId: "a1", role: "assistant", seq: 1, agentId: "t1" });
-    applyAgentEvent(state, { type: "part.opened", messageId: "a1", partIndex: 0, partType: "artifact", name: "报告.md", kind: "markdown", seq: 2, agentId: "t1" });
-    applyAgentEvent(state, { type: "part.delta", messageId: "a1", partIndex: 0, delta: "# 标题\n正文", seq: 3, agentId: "t1" });
-    applyAgentEvent(state, { type: "part.closed", messageId: "a1", partIndex: 0, seq: 4, agentId: "t1" });
-    expect(state.messages[0].parts[0]).toMatchObject({ type: "artifact", name: "报告.md", kind: "markdown", content: "# 标题\n正文", closed: true });
+    applyAgentEvent(state, {
+      type: "message.started",
+      messageId: "a1",
+      role: "assistant",
+      seq: 1,
+      agentId: "t1",
+    });
+    applyAgentEvent(state, {
+      type: "part.opened",
+      messageId: "a1",
+      partIndex: 0,
+      partType: "artifact",
+      name: "报告.md",
+      kind: "markdown",
+      seq: 2,
+      agentId: "t1",
+    });
+    applyAgentEvent(state, {
+      type: "part.delta",
+      messageId: "a1",
+      partIndex: 0,
+      delta: "# 标题\n正文",
+      seq: 3,
+      agentId: "t1",
+    });
+    applyAgentEvent(state, {
+      type: "part.closed",
+      messageId: "a1",
+      partIndex: 0,
+      seq: 4,
+      agentId: "t1",
+    });
+    expect(state.messages[0].parts[0]).toMatchObject({
+      type: "artifact",
+      name: "报告.md",
+      kind: "markdown",
+      content: "# 标题\n正文",
+      closed: true,
+    });
   });
 });
 
 describe("permission requests", () => {
   it("appends a request then resolves it by requestId", () => {
     const state = createAgentState();
-    applyAgentEvent(state, { type: "permission.requested", requestId: "p1", toolName: "Bash", input: "rm -rf /", seq: 1, agentId: "t1" });
+    applyAgentEvent(state, {
+      type: "permission.requested",
+      requestId: "p1",
+      toolName: "Bash",
+      input: "rm -rf /",
+      seq: 1,
+      agentId: "t1",
+    });
     expect(state.permissions).toEqual([{ requestId: "p1", toolName: "Bash", input: "rm -rf /" }]);
 
-    applyAgentEvent(state, { type: "permission.resolved", requestId: "p1", outcome: "allowed", seq: 2, agentId: "t1" });
+    applyAgentEvent(state, {
+      type: "permission.resolved",
+      requestId: "p1",
+      outcome: "allowed",
+      seq: 2,
+      agentId: "t1",
+    });
     expect(state.permissions[0].outcome).toBe("allowed");
   });
 
   it("dedups a duplicate permission.requested for the same requestId", () => {
     const state = createAgentState();
-    applyAgentEvent(state, { type: "permission.requested", requestId: "p1", toolName: "Bash", seq: 1, agentId: "t1" });
-    applyAgentEvent(state, { type: "permission.requested", requestId: "p1", toolName: "Bash", seq: 2, agentId: "t1" });
+    applyAgentEvent(state, {
+      type: "permission.requested",
+      requestId: "p1",
+      toolName: "Bash",
+      seq: 1,
+      agentId: "t1",
+    });
+    applyAgentEvent(state, {
+      type: "permission.requested",
+      requestId: "p1",
+      toolName: "Bash",
+      seq: 2,
+      agentId: "t1",
+    });
     expect(state.permissions).toHaveLength(1);
   });
 });
@@ -167,7 +312,9 @@ describe("Agent", () => {
     const session = new Agent("t1");
     const seen: string[] = [];
     session.on("changed", () => seen.push("changed"));
-    session.on<[string, number]>("delta", (messageId, partIndex) => seen.push(`delta:${messageId}:${partIndex}`));
+    session.on<[string, number]>("delta", (messageId, partIndex) =>
+      seen.push(`delta:${messageId}:${partIndex}`),
+    );
 
     for (const event of streamedRun.slice(0, 4)) session.applyEvent(event);
     expect(seen).toContain("delta:u1:0");

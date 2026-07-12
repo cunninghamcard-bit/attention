@@ -12,7 +12,16 @@ const pathSpecifier = "node:path";
  *  3. The design tokens themes and plugins depend on stay defined.
  */
 
-const LAYER_ORDER = ["tokens/", "base/", "vendor/", "components/", "workspace/", "editor/", "features/", "product/"];
+const LAYER_ORDER = [
+  "tokens/",
+  "base/",
+  "vendor/",
+  "components/",
+  "workspace/",
+  "editor/",
+  "features/",
+  "product/",
+];
 
 // Tokens the theme ecosystem and our own views target. Removing one breaks
 // installed themes silently — extend freely, trim only with a migration.
@@ -62,7 +71,10 @@ describe("Workbench style system", () => {
   it("keeps product overrides last and known layers only", async () => {
     const { imports } = await loadStyleTree();
     for (const entry of imports) {
-      expect(LAYER_ORDER.some((layer) => entry.startsWith(layer)), `unknown layer for ${entry}`).toBe(true);
+      expect(
+        LAYER_ORDER.some((layer) => entry.startsWith(layer)),
+        `unknown layer for ${entry}`,
+      ).toBe(true);
     }
     const firstProduct = imports.findIndex((entry) => entry.startsWith("product/"));
     expect(firstProduct, "product/ must exist").toBeGreaterThan(-1);
@@ -72,7 +84,7 @@ describe("Workbench style system", () => {
   });
 
   it("defines the design tokens themes depend on", async () => {
-    const fs = await load(fileSystemSpecifier) as FsModule;
+    const fs = (await load(fileSystemSpecifier)) as FsModule;
     const tokens = fs.readFileSync("src/apps/web/src/styles/tokens/tokens.css", "utf8");
     for (const token of REQUIRED_TOKENS) {
       expect(tokens, `missing design token ${token}`).toContain(`${token}:`);
@@ -81,8 +93,8 @@ describe("Workbench style system", () => {
 });
 
 async function loadStyleTree(): Promise<{ imports: string[]; allFiles: string[] }> {
-  const fs = await load(fileSystemSpecifier) as FsModule;
-  const path = await load(pathSpecifier) as PathModule;
+  const fs = (await load(fileSystemSpecifier)) as FsModule;
+  const path = (await load(pathSpecifier)) as PathModule;
   const index = fs.readFileSync("src/apps/web/src/styles/index.css", "utf8");
   const imports = [...index.matchAll(/@import\s+"\.\/([^"]+\.css)";/g)].map((match) => match[1]);
   const allFiles: string[] = [];
@@ -107,7 +119,10 @@ async function load(specifier: string): Promise<unknown> {
 
 interface FsModule {
   readFileSync(path: string, encoding: "utf8"): string;
-  readdirSync(path: string, options: { withFileTypes: true }): Array<{ name: string; isDirectory(): boolean }>;
+  readdirSync(
+    path: string,
+    options: { withFileTypes: true },
+  ): Array<{ name: string; isDirectory(): boolean }>;
 }
 
 interface PathModule {

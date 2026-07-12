@@ -9,9 +9,13 @@ class MemoryPluginSource implements PluginPackageSource {
   async list(path: string): Promise<{ folders: string[]; files: string[] }> {
     const prefix = `${path}/`;
     return {
-      folders: [...new Set(Object.keys(this.files)
-      .filter((file) => file.startsWith(prefix))
-      .map((file) => file.slice(prefix.length).split("/", 1)[0]))],
+      folders: [
+        ...new Set(
+          Object.keys(this.files)
+            .filter((file) => file.startsWith(prefix))
+            .map((file) => file.slice(prefix.length).split("/", 1)[0]),
+        ),
+      ],
       files: [],
     };
   }
@@ -23,7 +27,7 @@ class MemoryPluginSource implements PluginPackageSource {
 
   async readJson<T>(path: string): Promise<T | null> {
     const value = this.files[path];
-    return value && typeof value === "object" ? structuredClone(value) as T : null;
+    return value && typeof value === "object" ? (structuredClone(value) as T) : null;
   }
 }
 
@@ -46,16 +50,17 @@ describe("PluginLoader discovery", () => {
 
   it("discovers manifest, main.js and styles.css from the plugins folder", async () => {
     const app = new App(document.createElement("div"));
-    app.pluginLoader.setPackageSource(new MemoryPluginSource({
-      "plugins/disk/manifest.json": {
-        id: "disk",
-        name: "Disk Plugin",
-        version: "1.0.0",
-        minAppVersion: "1.0.0",
-        author: "Obsidian",
-        description: "Loaded from plugin folder",
-      },
-      "plugins/disk/main.js": `
+    app.pluginLoader.setPackageSource(
+      new MemoryPluginSource({
+        "plugins/disk/manifest.json": {
+          id: "disk",
+          name: "Disk Plugin",
+          version: "1.0.0",
+          minAppVersion: "1.0.0",
+          author: "Obsidian",
+          description: "Loaded from plugin folder",
+        },
+        "plugins/disk/main.js": `
         const { Plugin } = require("obsidian");
         module.exports = class DiskPlugin extends Plugin {
           async onload() {
@@ -65,8 +70,9 @@ describe("PluginLoader discovery", () => {
           }
         };
       `,
-      "plugins/disk/styles.css": ".disk-plugin { color: blue; }",
-    }));
+        "plugins/disk/styles.css": ".disk-plugin { color: blue; }",
+      }),
+    );
 
     const packages = await app.pluginLoader.discoverPackages();
 
@@ -80,25 +86,36 @@ describe("PluginLoader discovery", () => {
 
     expect(app.plugins.getPlugin("disk")?.manifest.dir).toBe("plugins/disk");
     expect(app.commands.findCommand("disk:hello")?.name).toBe("Disk Plugin: Hello");
-    expect(app.workspace.leftRibbon.containerEl.querySelector('.side-dock-ribbon-action[aria-label="Disk"]')).not.toBeNull();
-    expect(document.head.querySelector('style[data-obsidian-reconstructed-css="plugin:disk"]')?.textContent).toContain("disk-plugin");
-    await expect(app.jsonStore.read("plugins/disk/data.json")).resolves.toEqual({ dir: "plugins/disk" });
+    expect(
+      app.workspace.leftRibbon.containerEl.querySelector(
+        '.side-dock-ribbon-action[aria-label="Disk"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      document.head.querySelector('style[data-obsidian-reconstructed-css="plugin:disk"]')
+        ?.textContent,
+    ).toContain("disk-plugin");
+    await expect(app.jsonStore.read("plugins/disk/data.json")).resolves.toEqual({
+      dir: "plugins/disk",
+    });
   });
 
   it("discovers a single plugin folder like Obsidian loadManifest", async () => {
     const app = new App(document.createElement("div"));
-    app.pluginLoader.setPackageSource(new MemoryPluginSource({
-      "plugins/single/manifest.json": {
-        id: "single",
-        name: "Single Plugin",
-        version: "1.0.0",
-        author: "Ada",
-      },
-      "plugins/single/main.js": `
+    app.pluginLoader.setPackageSource(
+      new MemoryPluginSource({
+        "plugins/single/manifest.json": {
+          id: "single",
+          name: "Single Plugin",
+          version: "1.0.0",
+          author: "Ada",
+        },
+        "plugins/single/main.js": `
         const { Plugin } = require("obsidian");
         module.exports = class SinglePlugin extends Plugin {};
       `,
-    }));
+      }),
+    );
 
     const pkg = await app.pluginLoader.discoverPackage("plugins/single");
 
@@ -112,14 +129,15 @@ describe("PluginLoader discovery", () => {
     const app = new App(document.createElement("div"));
     app.pluginSecurity.setCommunityPluginsEnabled(true);
     document.body.classList.add("emulate-mobile");
-    app.pluginLoader.setPackageSource(new MemoryPluginSource({
-      "plugins/desktop-only/manifest.json": {
-        id: "desktop-only",
-        name: "Desktop Only",
-        version: "1.0.0",
-        isDesktopOnly: true,
-      },
-      "plugins/desktop-only/main.js": `
+    app.pluginLoader.setPackageSource(
+      new MemoryPluginSource({
+        "plugins/desktop-only/manifest.json": {
+          id: "desktop-only",
+          name: "Desktop Only",
+          version: "1.0.0",
+          isDesktopOnly: true,
+        },
+        "plugins/desktop-only/main.js": `
         const { Plugin } = require("obsidian");
         module.exports = class DesktopOnlyPlugin extends Plugin {
           async onload() {
@@ -127,7 +145,8 @@ describe("PluginLoader discovery", () => {
           }
         };
       `,
-    }));
+      }),
+    );
     await app.pluginLoader.discoverPackages();
 
     await expect(app.pluginInstaller.enable("desktop-only")).resolves.toBe(false);
@@ -151,15 +170,16 @@ describe("PluginLoader discovery", () => {
     const app = new App(document.createElement("div"));
     app.pluginSecurity.setCommunityPluginsEnabled(true);
     void app.jsonStore.write("community-plugins.json", ["auto"]);
-    app.pluginLoader.setPackageSource(new MemoryPluginSource({
-      "plugins/auto/manifest.json": {
-        id: "auto",
-        name: "Auto Plugin",
-        version: "1.0.0",
-        minAppVersion: "1.0.0",
-        author: "Test",
-      },
-      "plugins/auto/main.js": `
+    app.pluginLoader.setPackageSource(
+      new MemoryPluginSource({
+        "plugins/auto/manifest.json": {
+          id: "auto",
+          name: "Auto Plugin",
+          version: "1.0.0",
+          minAppVersion: "1.0.0",
+          author: "Test",
+        },
+        "plugins/auto/main.js": `
         const { Plugin } = require("obsidian");
         module.exports.default = class AutoPlugin extends Plugin {
           async onload() {
@@ -167,7 +187,8 @@ describe("PluginLoader discovery", () => {
           }
         };
       `,
-    }));
+      }),
+    );
 
     await app.ready;
 
@@ -178,14 +199,15 @@ describe("PluginLoader discovery", () => {
   it("discovers but does not enable startup plugins while restricted mode is on", async () => {
     const app = new App(document.createElement("div"));
     void app.jsonStore.write("community-plugins.json", ["blocked"]);
-    app.pluginLoader.setPackageSource(new MemoryPluginSource({
-      "plugins/blocked/manifest.json": {
-        id: "blocked",
-        name: "Blocked Plugin",
-        version: "1.0.0",
-        minAppVersion: "1.0.0",
-      },
-      "plugins/blocked/main.js": `
+    app.pluginLoader.setPackageSource(
+      new MemoryPluginSource({
+        "plugins/blocked/manifest.json": {
+          id: "blocked",
+          name: "Blocked Plugin",
+          version: "1.0.0",
+          minAppVersion: "1.0.0",
+        },
+        "plugins/blocked/main.js": `
         const { Plugin } = require("obsidian");
         module.exports = class BlockedPlugin extends Plugin {
           async onload() {
@@ -193,7 +215,8 @@ describe("PluginLoader discovery", () => {
           }
         };
       `,
-    }));
+      }),
+    );
 
     await app.ready;
 
@@ -218,13 +241,14 @@ describe("PluginLoader discovery", () => {
     });
     const app = new App(document.createElement("div"));
     void app.jsonStore.write("community-plugins.json", ["trusted"]);
-    app.pluginLoader.setPackageSource(new MemoryPluginSource({
-      "plugins/trusted/manifest.json": {
-        id: "trusted",
-        name: "Trusted Plugin",
-        version: "1.0.0",
-      },
-      "plugins/trusted/main.js": `
+    app.pluginLoader.setPackageSource(
+      new MemoryPluginSource({
+        "plugins/trusted/manifest.json": {
+          id: "trusted",
+          name: "Trusted Plugin",
+          version: "1.0.0",
+        },
+        "plugins/trusted/main.js": `
         const { Plugin } = require("obsidian");
         module.exports = class TrustedPlugin extends Plugin {
           async onload() {
@@ -232,7 +256,8 @@ describe("PluginLoader discovery", () => {
           }
         };
       `,
-    }));
+      }),
+    );
     await app.ready;
 
     expect(app.commands.findCommand("trusted:boot")).toBeUndefined();
@@ -243,7 +268,11 @@ describe("PluginLoader discovery", () => {
     expect(values.get("enable-plugin-obsidian-reconstructed")).toBe("true");
     expect(app.commands.findCommand("trusted:boot")?.name).toBe("Trusted Plugin: Boot");
     expect(document.body.querySelector(".modal.mod-settings")).not.toBeNull();
-    expect(document.body.querySelector('.vertical-tab-nav-item.is-active[data-setting-id="community-plugins"]')).not.toBeNull();
+    expect(
+      document.body.querySelector(
+        '.vertical-tab-nav-item.is-active[data-setting-id="community-plugins"]',
+      ),
+    ).not.toBeNull();
   });
 
   it("toggles the global community plugin switch without deleting enabled plugin config", async () => {
@@ -260,13 +289,14 @@ describe("PluginLoader discovery", () => {
     const app = new App(document.createElement("div"));
     app.pluginSecurity.setCommunityPluginsEnabled(true);
     void app.jsonStore.write("community-plugins.json", ["toggle"]);
-    app.pluginLoader.setPackageSource(new MemoryPluginSource({
-      "plugins/toggle/manifest.json": {
-        id: "toggle",
-        name: "Toggle Plugin",
-        version: "1.0.0",
-      },
-      "plugins/toggle/main.js": `
+    app.pluginLoader.setPackageSource(
+      new MemoryPluginSource({
+        "plugins/toggle/manifest.json": {
+          id: "toggle",
+          name: "Toggle Plugin",
+          version: "1.0.0",
+        },
+        "plugins/toggle/main.js": `
         const { Plugin } = require("obsidian");
         module.exports = class TogglePlugin extends Plugin {
           async onload() {
@@ -274,7 +304,8 @@ describe("PluginLoader discovery", () => {
           }
         };
       `,
-    }));
+      }),
+    );
     await app.ready;
 
     expect(app.commands.findCommand("toggle:boot")).not.toBeUndefined();
@@ -294,7 +325,9 @@ describe("PluginLoader discovery", () => {
 });
 
 function clickButton(root: HTMLElement, text: string): void {
-  const button = [...root.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent?.trim() === text);
+  const button = [...root.querySelectorAll<HTMLButtonElement>("button")].find(
+    (item) => item.textContent?.trim() === text,
+  );
   if (!button) throw new Error(`Button not found: ${text}`);
   button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 }

@@ -35,7 +35,13 @@ export class ThemeInstaller {
     await this.app.customCss.readThemes();
     this.installed.set(record.id, record);
     if (pkg.manifest.variables) {
-      this.app.themes.registerTheme({ id: pkg.manifest.id, name: pkg.manifest.name, variables: pkg.manifest.variables, author: pkg.manifest.author, cssText: pkg.cssText });
+      this.app.themes.registerTheme({
+        id: pkg.manifest.id,
+        name: pkg.manifest.name,
+        variables: pkg.manifest.variables,
+        author: pkg.manifest.author,
+        cssText: pkg.cssText,
+      });
     }
     this.app.workspace.trigger("theme-installed", record);
     return record;

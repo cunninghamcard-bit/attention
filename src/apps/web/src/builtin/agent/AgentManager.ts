@@ -13,7 +13,10 @@ import {
 import { Agent } from "./Agent";
 
 export function newAgentId(): string {
-  const random = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10);
+  const random =
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
   return `agent-${random}`;
 }
 import { AgentTransport } from "./AgentTransport";

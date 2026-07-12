@@ -38,16 +38,22 @@ export class WebViewerElementAdapter {
   private iframeZoom = 1;
 
   constructor(options: WebViewerElementAdapterOptions) {
-    const supportsWebview = typeof customElements !== "undefined" && Boolean(customElements.get("webview"));
+    const supportsWebview =
+      typeof customElements !== "undefined" && Boolean(customElements.get("webview"));
     this.mode = supportsWebview ? "webview" : "iframe";
-    this.element = document.createElement(this.mode === "webview" ? "webview" : "iframe") as WebviewLikeElement;
+    this.element = document.createElement(
+      this.mode === "webview" ? "webview" : "iframe",
+    ) as WebviewLikeElement;
     this.element.className = this.mode === "webview" ? "webviewer-webview" : "webviewer-frame";
     this.element.partition = options.partition;
     this.element.allowpopups = options.allowPopups ?? true;
     this.element.setAttribute("partition", options.partition);
     if (options.allowPopups ?? true) this.element.setAttribute("allowpopups", "true");
     if (this.mode === "iframe") {
-      this.element.setAttribute("sandbox", "allow-forms allow-same-origin allow-scripts allow-popups");
+      this.element.setAttribute(
+        "sandbox",
+        "allow-forms allow-same-origin allow-scripts allow-popups",
+      );
       // Real Obsidian's CSS only sizes `webview` (`.webviewer-content webview`);
       // the iframe fallback would render at the UA default 300x150 without
       // inline sizing. Kept inline so the shipped CSS stays byte-identical.
@@ -61,12 +67,19 @@ export class WebViewerElementAdapter {
 
   navigate(url: string, userInitiated = false): void {
     this.currentUrl = url || "about:blank";
-    this.webContents.emit(userInitiated ? "did-start-navigation" : "did-redirect-navigation", { url: this.currentUrl, isMainFrame: true });
+    this.webContents.emit(userInitiated ? "did-start-navigation" : "did-redirect-navigation", {
+      url: this.currentUrl,
+      isMainFrame: true,
+    });
     this.element.src = this.currentUrl;
   }
 
   reload(): void {
-    this.webContents.emit("did-start-navigation", { url: this.currentUrl, reload: true, isMainFrame: true });
+    this.webContents.emit("did-start-navigation", {
+      url: this.currentUrl,
+      reload: true,
+      isMainFrame: true,
+    });
     if (this.ready && this.element.reload) this.element.reload();
     else this.element.src = this.currentUrl;
   }
@@ -122,7 +135,8 @@ export class WebViewerElementAdapter {
    */
   async executeJavaScript(code: string): Promise<unknown> {
     if (this.mode === "webview") {
-      if (!this.ready || !this.element.executeJavaScript) throw new Error("Web viewer is not ready");
+      if (!this.ready || !this.element.executeJavaScript)
+        throw new Error("Web viewer is not ready");
       return this.element.executeJavaScript(code);
     }
     const frame = this.element as unknown as HTMLIFrameElement;
@@ -158,16 +172,36 @@ export class WebViewerElementAdapter {
         markReady();
         this.webContents.emit("dom-ready", { url: this.currentUrl });
       });
-      this.element.addEventListener("did-start-navigation", (event) => this.webContents.emit("did-start-navigation", trackUrl(event)));
-      this.element.addEventListener("did-redirect-navigation", (event) => this.webContents.emit("did-redirect-navigation", trackUrl(event)));
-      this.element.addEventListener("did-navigate", (event) => this.webContents.emit("did-navigate", trackUrl(event)));
-      this.element.addEventListener("did-navigate-in-page", (event) => this.webContents.emit("did-navigate-in-page", trackUrl(event)));
-      this.element.addEventListener("did-start-loading", () => this.webContents.emit("did-start-loading", { url: this.currentUrl }));
-      this.element.addEventListener("did-stop-loading", () => this.webContents.emit("did-stop-loading", { url: this.currentUrl }));
-      this.element.addEventListener("did-finish-load", () => this.webContents.emit("did-finish-load", { url: this.currentUrl }));
-      this.element.addEventListener("did-fail-load", (event) => this.webContents.emit("did-fail-load", event));
-      this.element.addEventListener("page-title-updated", (event) => this.webContents.emit("page-title-updated", event));
-      this.element.addEventListener("page-favicon-updated", (event) => this.webContents.emit("page-favicon-updated", event));
+      this.element.addEventListener("did-start-navigation", (event) =>
+        this.webContents.emit("did-start-navigation", trackUrl(event)),
+      );
+      this.element.addEventListener("did-redirect-navigation", (event) =>
+        this.webContents.emit("did-redirect-navigation", trackUrl(event)),
+      );
+      this.element.addEventListener("did-navigate", (event) =>
+        this.webContents.emit("did-navigate", trackUrl(event)),
+      );
+      this.element.addEventListener("did-navigate-in-page", (event) =>
+        this.webContents.emit("did-navigate-in-page", trackUrl(event)),
+      );
+      this.element.addEventListener("did-start-loading", () =>
+        this.webContents.emit("did-start-loading", { url: this.currentUrl }),
+      );
+      this.element.addEventListener("did-stop-loading", () =>
+        this.webContents.emit("did-stop-loading", { url: this.currentUrl }),
+      );
+      this.element.addEventListener("did-finish-load", () =>
+        this.webContents.emit("did-finish-load", { url: this.currentUrl }),
+      );
+      this.element.addEventListener("did-fail-load", (event) =>
+        this.webContents.emit("did-fail-load", event),
+      );
+      this.element.addEventListener("page-title-updated", (event) =>
+        this.webContents.emit("page-title-updated", event),
+      );
+      this.element.addEventListener("page-favicon-updated", (event) =>
+        this.webContents.emit("page-favicon-updated", event),
+      );
     } else {
       this.element.addEventListener("load", () => {
         markReady();

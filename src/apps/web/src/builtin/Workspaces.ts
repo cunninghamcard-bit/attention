@@ -28,12 +28,18 @@ export class WorkspacesController {
 
   async onEnable(plugin: InternalPluginWrapper): Promise<void> {
     this.plugin = plugin;
-    this.options = { workspaces: {}, active: "", ...((await plugin.loadData<WorkspacesOptions>()) ?? {}) };
+    this.options = {
+      workspaces: {},
+      active: "",
+      ...((await plugin.loadData<WorkspacesOptions>()) ?? {}),
+    };
     plugin.addSettingTab(new WorkspacesSettingTab(this.app, this));
   }
 
   listWorkspaces(): SavedWorkspace[] {
-    return Object.values(this.options.workspaces).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true }));
+    return Object.values(this.options.workspaces).sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true }),
+    );
   }
 
   get activeWorkspace(): string {
@@ -103,7 +109,10 @@ export class WorkspacesController {
 }
 
 class WorkspaceSuggestModal extends FuzzySuggestModal<SavedWorkspace> {
-  constructor(app: App, readonly controller: WorkspacesController) {
+  constructor(
+    app: App,
+    readonly controller: WorkspacesController,
+  ) {
     super(app);
     this.setPlaceholder("Load workspace...");
     this.emptyStateText = "No saved workspaces";
@@ -140,7 +149,10 @@ class WorkspacesSettingTab implements SettingTab {
   readonly navEl = document.createElement("div");
   readonly containerEl = document.createElement("div");
 
-  constructor(readonly app: App, readonly controller: WorkspacesController) {
+  constructor(
+    readonly app: App,
+    readonly controller: WorkspacesController,
+  ) {
     this.navEl.className = "vertical-tab-nav-item tappable";
     const iconEl = document.createElement("div");
     iconEl.className = "vertical-tab-nav-item-icon";
@@ -160,9 +172,11 @@ class WorkspacesSettingTab implements SettingTab {
     new Setting(group.itemsEl)
       .setName("Save current workspace")
       .setDesc("Stores the current layout under a name.")
-      .addButton((button) => button.setButtonText("Save").onClick(() => {
-        void this.controller.promptSaveCurrentWorkspace().then(() => this.display());
-      }));
+      .addButton((button) =>
+        button.setButtonText("Save").onClick(() => {
+          void this.controller.promptSaveCurrentWorkspace().then(() => this.display());
+        }),
+      );
 
     const saved = this.controller.listWorkspaces();
     if (saved.length === 0) {
@@ -177,16 +191,23 @@ class WorkspacesSettingTab implements SettingTab {
       new Setting(group.itemsEl)
         .setName(workspace.name)
         .setDesc(`Saved ${new Date(workspace.savedAt).toLocaleString()}`)
-        .addButton((button) => button.setButtonText("Load").onClick(() => {
-          void this.controller.loadWorkspace(workspace.name);
-        }))
-        .addButton((button) => button.setButtonText("Rename").onClick(() => {
-          const next = window.prompt("Workspace name", workspace.name);
-          if (next) void this.controller.renameWorkspace(workspace.name, next).then(() => this.display());
-        }))
-        .addButton((button) => button.setButtonText("Delete").onClick(() => {
-          void this.controller.deleteWorkspace(workspace.name).then(() => this.display());
-        }));
+        .addButton((button) =>
+          button.setButtonText("Load").onClick(() => {
+            void this.controller.loadWorkspace(workspace.name);
+          }),
+        )
+        .addButton((button) =>
+          button.setButtonText("Rename").onClick(() => {
+            const next = window.prompt("Workspace name", workspace.name);
+            if (next)
+              void this.controller.renameWorkspace(workspace.name, next).then(() => this.display());
+          }),
+        )
+        .addButton((button) =>
+          button.setButtonText("Delete").onClick(() => {
+            void this.controller.deleteWorkspace(workspace.name).then(() => this.display());
+          }),
+        );
     }
   }
 

@@ -11,7 +11,9 @@ import { AbstractInputSuggest } from "@web/ui/suggest/AbstractInputSuggest";
 let dom: JSDOM | null = null;
 
 beforeEach(() => {
-  dom = new JSDOM("<!doctype html><html><body><input id=\"suggest-input\"></body></html>", { pretendToBeVisual: true });
+  dom = new JSDOM('<!doctype html><html><body><input id="suggest-input"></body></html>', {
+    pretendToBeVisual: true,
+  });
   vi.stubGlobal("window", dom.window);
   vi.stubGlobal("document", dom.window.document);
   vi.stubGlobal("HTMLElement", dom.window.HTMLElement);
@@ -166,7 +168,9 @@ describe("AbstractInputSuggest", () => {
     input.dispatchEvent(new InputEvent("input", { bubbles: true }));
 
     expect(suggest.isOpen).toBe(true);
-    expect([...document.body.querySelectorAll(".suggestion-item")].map((el) => el.textContent)).toEqual(["apple", "apricot"]);
+    expect(
+      [...document.body.querySelectorAll(".suggestion-item")].map((el) => el.textContent),
+    ).toEqual(["apple", "apricot"]);
   });
 
   it("updates suggestions immediately on non-iOS focus", () => {
@@ -306,10 +310,22 @@ describe("AbstractInputSuggest", () => {
   it("positions suggestions from input rect plus document scroll", () => {
     const input = inputEl();
     const suggest = new FruitSuggest(createApp(), input);
-    Object.defineProperty(document.documentElement, "clientWidth", { configurable: true, value: 800 });
-    Object.defineProperty(document.documentElement, "clientHeight", { configurable: true, value: 600 });
-    Object.defineProperty(document.documentElement, "scrollLeft", { configurable: true, value: 30 });
-    Object.defineProperty(document.documentElement, "scrollTop", { configurable: true, value: 200 });
+    Object.defineProperty(document.documentElement, "clientWidth", {
+      configurable: true,
+      value: 800,
+    });
+    Object.defineProperty(document.documentElement, "clientHeight", {
+      configurable: true,
+      value: 600,
+    });
+    Object.defineProperty(document.documentElement, "scrollLeft", {
+      configurable: true,
+      value: 30,
+    });
+    Object.defineProperty(document.documentElement, "scrollTop", {
+      configurable: true,
+      value: 200,
+    });
     Object.defineProperty(input, "getBoundingClientRect", {
       configurable: true,
       value: () => ({ left: 20, right: 120, top: 30, bottom: 50, width: 100, height: 20 }),
@@ -322,7 +338,10 @@ describe("AbstractInputSuggest", () => {
   });
 
   it("attaches suggestions to the input ownerDocument for popout-like documents", () => {
-    const popoutDom = new JSDOM("<!doctype html><html><body><input id=\"popout-input\"></body></html>", { pretendToBeVisual: true });
+    const popoutDom = new JSDOM(
+      '<!doctype html><html><body><input id="popout-input"></body></html>',
+      { pretendToBeVisual: true },
+    );
     try {
       const input = popoutDom.window.document.querySelector<HTMLInputElement>("#popout-input");
       if (!input) throw new Error("missing popout input");
@@ -339,7 +358,9 @@ describe("AbstractInputSuggest", () => {
 
       expect(suggest.isOpen).toBe(true);
       expect(suggest.suggestEl.ownerDocument).toBe(popoutDom.window.document);
-      expect(popoutDom.window.document.body.querySelector(".suggestion-container")).toBe(suggest.suggestEl);
+      expect(popoutDom.window.document.body.querySelector(".suggestion-container")).toBe(
+        suggest.suggestEl,
+      );
       expect(document.body.querySelector(".suggestion-container")).toBeNull();
       expect(suggest.getValue()).toBe("p");
 

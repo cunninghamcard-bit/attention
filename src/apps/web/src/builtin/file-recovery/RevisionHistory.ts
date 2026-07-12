@@ -13,7 +13,11 @@ export class RevisionHistoryService {
 
   constructor(readonly app: App) {}
 
-  addRevision(path: string, content: string, source: FileRevision["source"] = "local"): FileRevision {
+  addRevision(
+    path: string,
+    content: string,
+    source: FileRevision["source"] = "local",
+  ): FileRevision {
     const revision: FileRevision = {
       id: crypto.randomUUID?.() ?? `${Date.now()}`,
       path,
@@ -33,7 +37,9 @@ export class RevisionHistoryService {
   }
 
   listPaths(): string[] {
-    return [...this.revisions.keys()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }));
+    return [...this.revisions.keys()].sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }),
+    );
   }
 
   getRevision(path: string, id: string): FileRevision | null {
@@ -43,7 +49,9 @@ export class RevisionHistoryService {
   pruneOlderThan(cutoff: Date): void {
     const cutoffTime = cutoff.getTime();
     for (const [path, revisions] of this.revisions) {
-      const next = revisions.filter((revision) => new Date(revision.createdAt).getTime() >= cutoffTime);
+      const next = revisions.filter(
+        (revision) => new Date(revision.createdAt).getTime() >= cutoffTime,
+      );
       if (next.length === 0) this.revisions.delete(path);
       else this.revisions.set(path, next);
     }

@@ -51,11 +51,15 @@ export function editorViewPlugin(create: EditorViewPluginSpec["create"]): Editor
   return { type: "view-plugin", create };
 }
 
-export function editorUpdateListener(update: EditorUpdateListenerSpec["update"]): EditorUpdateListenerSpec {
+export function editorUpdateListener(
+  update: EditorUpdateListenerSpec["update"],
+): EditorUpdateListenerSpec {
   return { type: "update-listener", update };
 }
 
-export function editorTransactionFilter(filter: EditorTransactionFilterSpec["filter"]): EditorTransactionFilterSpec {
+export function editorTransactionFilter(
+  filter: EditorTransactionFilterSpec["filter"],
+): EditorTransactionFilterSpec {
   return { type: "transaction-filter", filter };
 }
 
@@ -75,7 +79,9 @@ export class EditorExtensionRegistry {
   unregister(extension: EditorExtension | unknown): void {
     this.extensions = this.extensions.filter((item) => {
       if (item.original === extension) return false;
-      return !normalizeEditorExtensions(item.original, item.source).some((current) => current === extension || current.value === extension);
+      return !normalizeEditorExtensions(item.original, item.source).some(
+        (current) => current === extension || current.value === extension,
+      );
     });
   }
 
@@ -101,18 +107,22 @@ export class EditorExtensionHost {
 }
 
 function isEditorExtension(value: unknown): value is EditorExtension {
-  return typeof value === "object"
-    && value !== null
-    && "value" in value
-    && ("id" in value || "source" in value);
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "value" in value &&
+    ("id" in value || "source" in value)
+  );
 }
 
 export function normalizeEditorExtensions(extension: unknown, source: string): EditorExtension[] {
   if (extension === null || extension === undefined || extension === false) return [];
-  if (Array.isArray(extension)) return extension.flatMap((item) => normalizeEditorExtensions(item, source));
+  if (Array.isArray(extension))
+    return extension.flatMap((item) => normalizeEditorExtensions(item, source));
   if (!isEditorExtension(extension)) return [{ source, value: extension }];
   const nested = normalizeEditorExtensions(extension.value, extension.source ?? source);
-  if (nested.length === 0) return [{ id: extension.id, source: extension.source ?? source, value: extension.value }];
+  if (nested.length === 0)
+    return [{ id: extension.id, source: extension.source ?? source, value: extension.value }];
   return nested.map((item) => ({
     ...item,
     id: item.id ?? extension.id,
@@ -121,25 +131,39 @@ export function normalizeEditorExtensions(extension: unknown, source: string): E
 }
 
 export function isEditorViewPluginSpec(value: unknown): value is EditorViewPluginSpec {
-  return Boolean(value && typeof value === "object"
-    && (value as { type?: unknown }).type === "view-plugin"
-    && typeof (value as { create?: unknown }).create === "function");
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    (value as { type?: unknown }).type === "view-plugin" &&
+    typeof (value as { create?: unknown }).create === "function",
+  );
 }
 
 export function isEditorUpdateListenerSpec(value: unknown): value is EditorUpdateListenerSpec {
-  return Boolean(value && typeof value === "object"
-    && (value as { type?: unknown }).type === "update-listener"
-    && typeof (value as { update?: unknown }).update === "function");
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    (value as { type?: unknown }).type === "update-listener" &&
+    typeof (value as { update?: unknown }).update === "function",
+  );
 }
 
-export function isEditorTransactionFilterSpec(value: unknown): value is EditorTransactionFilterSpec {
-  return Boolean(value && typeof value === "object"
-    && (value as { type?: unknown }).type === "transaction-filter"
-    && typeof (value as { filter?: unknown }).filter === "function");
+export function isEditorTransactionFilterSpec(
+  value: unknown,
+): value is EditorTransactionFilterSpec {
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    (value as { type?: unknown }).type === "transaction-filter" &&
+    typeof (value as { filter?: unknown }).filter === "function",
+  );
 }
 
 export function isEditorDomClassSpec(value: unknown): value is EditorDomClassSpec {
-  return Boolean(value && typeof value === "object"
-    && (value as { type?: unknown }).type === "dom-class"
-    && typeof (value as { className?: unknown }).className === "string");
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    (value as { type?: unknown }).type === "dom-class" &&
+    typeof (value as { className?: unknown }).className === "string",
+  );
 }

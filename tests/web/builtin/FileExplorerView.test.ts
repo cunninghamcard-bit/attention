@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
-import type { DragSource, FileDragSource, FilesDragSource, FolderDragSource } from "@web/ui/drag/DragManager";
+import type {
+  DragSource,
+  FileDragSource,
+  FilesDragSource,
+  FolderDragSource,
+} from "@web/ui/drag/DragManager";
 import { Menu } from "@web/ui/Menu";
 import { TAbstractFile, TFile, TFolder } from "@web/vault/TAbstractFile";
 import { FileExplorerView } from "@web/builtin/FileExplorerView";
@@ -29,7 +34,10 @@ describe("FileExplorerView external folder drops", () => {
     await app.vault.createFolder("Assets");
     await app.vault.createBinary("Assets/image.png", new ArrayBuffer(1));
     const view = await openFileExplorerView(app);
-    const folderTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Assets"]');
+    const folderTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-folder-title[data-path="Assets"]',
+    );
     const folderEl = closestRequired<HTMLElement>(folderTitleEl, ".tree-item.nav-folder");
     const image = createBrowserFile("image.png", [1, 2, 3]);
     const imageArrayBuffer = vi.spyOn(image, "arrayBuffer");
@@ -56,7 +64,10 @@ describe("FileExplorerView external folder drops", () => {
     await app.vault.createFolder("Assets");
     const file = await app.vault.create("Note.md", "");
     const view = await openFileExplorerView(app);
-    const folderTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Assets"]');
+    const folderTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-folder-title[data-path="Assets"]',
+    );
     const dataTransfer = createDropDataTransfer([createBrowserFile("external.png", [1])]);
     const source: DragSource = {
       type: "tab-header",
@@ -78,7 +89,10 @@ describe("FileExplorerView external folder drops", () => {
     await app.vault.createFolder("Assets");
     const note = await app.vault.create("Note.md", "");
     const view = await openFileExplorerView(app);
-    const folderTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Assets"]');
+    const folderTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-folder-title[data-path="Assets"]',
+    );
     const folderEl = closestRequired<HTMLElement>(folderTitleEl, ".tree-item.nav-folder");
     const dataTransfer = createDropDataTransfer([]);
     app.dragManager.setSource(createFileSource(note));
@@ -104,7 +118,10 @@ describe("FileExplorerView external folder drops", () => {
     const note = await app.vault.create("Assets/Note.md", "");
     const rename = vi.spyOn(app.fileManager, "renameAbstractFile");
     const view = await openFileExplorerView(app);
-    const folderTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Assets"]');
+    const folderTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-folder-title[data-path="Assets"]',
+    );
     const dataTransfer = createDropDataTransfer([]);
     app.dragManager.setSource(createFileSource(note));
 
@@ -123,7 +140,10 @@ describe("FileExplorerView external folder drops", () => {
     const parent = await app.vault.createFolder("Parent");
     await app.vault.createFolder("Parent/Child");
     const view = await openFileExplorerView(app);
-    const childTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Parent/Child"]');
+    const childTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-folder-title[data-path="Parent/Child"]',
+    );
     const dataTransfer = createDropDataTransfer([]);
     app.dragManager.setSource(createFolderSource(parent));
 
@@ -140,7 +160,10 @@ describe("FileExplorerView external folder drops", () => {
     const parent = await app.vault.createFolder("Parent");
     const child = await app.vault.create("Parent/Child.md", "");
     const view = await openFileExplorerView(app);
-    const targetTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Target"]');
+    const targetTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-folder-title[data-path="Target"]',
+    );
     const dataTransfer = createDropDataTransfer([]);
     app.dragManager.setSource(createFilesSource([parent, child]));
 
@@ -159,7 +182,10 @@ describe("FileExplorerView external folder drops", () => {
     await app.vault.createFolder("Folder");
     const note = await app.vault.create("Folder/Note.md", "");
     const view = await openFileExplorerView(app);
-    const rootEl = queryRequired<HTMLElement>(view.contentEl, ".nav-files-container.node-insert-event");
+    const rootEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      ".nav-files-container.node-insert-event",
+    );
     const dataTransfer = createDropDataTransfer([]);
     app.dragManager.setSource(createFileSource(note));
 
@@ -178,17 +204,36 @@ describe("FileExplorerView external folder drops", () => {
     await app.vault.createFolder("Folder");
     const loose = await app.vault.create("Loose.md", "");
     const view = await openFileExplorerView(app);
-    const folderTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Folder"]');
+    const folderTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-folder-title[data-path="Folder"]',
+    );
     folderTitleEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-    expect(queryRequired<HTMLElement>(view.contentEl, ".tree-item.nav-folder").classList.contains("is-collapsed")).toBe(true);
+    expect(
+      queryRequired<HTMLElement>(view.contentEl, ".tree-item.nav-folder").classList.contains(
+        "is-collapsed",
+      ),
+    ).toBe(true);
     app.dragManager.setSource(createFileSource(loose));
 
-    dispatchDragEvent(queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Folder"]'), "dragover", createDropDataTransfer([]));
+    dispatchDragEvent(
+      queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Folder"]'),
+      "dragover",
+      createDropDataTransfer([]),
+    );
     await vi.advanceTimersByTimeAsync(749);
-    expect(queryRequired<HTMLElement>(view.contentEl, ".tree-item.nav-folder").classList.contains("is-collapsed")).toBe(true);
+    expect(
+      queryRequired<HTMLElement>(view.contentEl, ".tree-item.nav-folder").classList.contains(
+        "is-collapsed",
+      ),
+    ).toBe(true);
     await vi.advanceTimersByTimeAsync(1);
 
-    expect(queryRequired<HTMLElement>(view.contentEl, ".tree-item.nav-folder").classList.contains("is-collapsed")).toBe(false);
+    expect(
+      queryRequired<HTMLElement>(view.contentEl, ".tree-item.nav-folder").classList.contains(
+        "is-collapsed",
+      ),
+    ).toBe(false);
     app.dragManager.clearSource();
   });
 
@@ -198,21 +243,37 @@ describe("FileExplorerView external folder drops", () => {
     const note = await app.vault.create("Folder/Note.md", "");
     const other = await app.vault.create("Other.md", "");
     const view = await openFileExplorerView(app);
-    const folderTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Folder"]');
-    const otherTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Other.md"]');
+    const folderTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-folder-title[data-path="Folder"]',
+    );
+    const otherTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="Other.md"]',
+    );
     const events: Array<{ paths: string[]; source: string }> = [];
     app.workspace.on("files-menu", (menu, files, source) => {
-      events.push({ paths: (files as TAbstractFile[]).map((file) => file.path), source: source as string });
+      events.push({
+        paths: (files as TAbstractFile[]).map((file) => file.path),
+        source: source as string,
+      });
       (menu as Menu).addItem((item) => item.setTitle("Plugin batch action"));
     });
 
     folderTitleEl.dispatchEvent(new MouseEvent("click", { bubbles: true, altKey: true }));
     otherTitleEl.dispatchEvent(new MouseEvent("click", { bubbles: true, altKey: true }));
-    otherTitleEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    otherTitleEl.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
 
-    expect(events).toEqual([{ paths: ["Folder", "Other.md"], source: "file-explorer-context-menu" }]);
+    expect(events).toEqual([
+      { paths: ["Folder", "Other.md"], source: "file-explorer-context-menu" },
+    ]);
     expect(document.body.textContent).toContain("New folder with selection (2 items)");
-    expect(document.body.querySelector<HTMLElement>(".menu-item.is-warning .menu-item-title")?.textContent).toBe("Delete");
+    expect(
+      document.body.querySelector<HTMLElement>(".menu-item.is-warning .menu-item-title")
+        ?.textContent,
+    ).toBe("Delete");
     expect(document.body.textContent).toContain("Plugin batch action");
     expect(app.vault.getFileByPath(note.path)).toBe(note);
   });
@@ -223,12 +284,20 @@ describe("FileExplorerView external folder drops", () => {
     await app.vault.create("Folder/Note.md", "");
     await app.vault.create("Other.md", "");
     const view = await openFileExplorerView(app);
-    const folderTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Folder"]');
-    const otherTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Other.md"]');
+    const folderTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-folder-title[data-path="Folder"]',
+    );
+    const otherTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="Other.md"]',
+    );
 
     folderTitleEl.dispatchEvent(new MouseEvent("click", { bubbles: true, altKey: true }));
     otherTitleEl.dispatchEvent(new MouseEvent("click", { bubbles: true, altKey: true }));
-    otherTitleEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    otherTitleEl.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
     clickMenuItem("New folder with selection (2 items)");
 
     await vi.waitFor(() => {
@@ -237,9 +306,24 @@ describe("FileExplorerView external folder drops", () => {
       expect(app.vault.getFileByPath("Untitled/Folder/Note.md")).not.toBeNull();
       expect(app.vault.getFileByPath("Untitled/Other.md")).not.toBeNull();
     });
-    expect(queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Untitled"]').classList.contains("is-being-renamed")).toBe(true);
-    expect(queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Untitled/Folder"]').classList.contains("is-selected")).toBe(false);
-    expect(queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Untitled/Other.md"]').classList.contains("is-selected")).toBe(false);
+    expect(
+      queryRequired<HTMLElement>(
+        view.contentEl,
+        '.nav-folder-title[data-path="Untitled"]',
+      ).classList.contains("is-being-renamed"),
+    ).toBe(true);
+    expect(
+      queryRequired<HTMLElement>(
+        view.contentEl,
+        '.nav-folder-title[data-path="Untitled/Folder"]',
+      ).classList.contains("is-selected"),
+    ).toBe(false);
+    expect(
+      queryRequired<HTMLElement>(
+        view.contentEl,
+        '.nav-file-title[data-path="Untitled/Other.md"]',
+      ).classList.contains("is-selected"),
+    ).toBe(false);
   });
 
   it("uses filtered root count when creating a folder with selected descendants", async () => {
@@ -247,12 +331,20 @@ describe("FileExplorerView external folder drops", () => {
     await app.vault.createFolder("Folder");
     await app.vault.create("Folder/Note.md", "");
     const view = await openFileExplorerView(app);
-    const folderTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Folder"]');
-    const noteTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Folder/Note.md"]');
+    const folderTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-folder-title[data-path="Folder"]',
+    );
+    const noteTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="Folder/Note.md"]',
+    );
 
     folderTitleEl.dispatchEvent(new MouseEvent("click", { bubbles: true, altKey: true }));
     noteTitleEl.dispatchEvent(new MouseEvent("click", { bubbles: true, altKey: true }));
-    noteTitleEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    noteTitleEl.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
 
     expect(document.body.textContent).toContain("New folder with selection (1 item)");
     clickMenuItem("New folder with selection (1 item)");
@@ -267,16 +359,23 @@ describe("FileExplorerView external folder drops", () => {
     const app = new App(document.createElement("div"));
     const note = await app.vault.create("Note.md", "");
     const view = await openFileExplorerView(app);
-    const fileTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Note.md"]');
+    const fileTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="Note.md"]',
+    );
     const events: Array<{ path: string; source: string }> = [];
     app.workspace.on("file-menu", (menu, file, source) => {
       events.push({ path: (file as TAbstractFile).path, source: source as string });
       (menu as Menu).addItem((item) => item.setTitle("Plugin file action"));
     });
 
-    fileTitleEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    fileTitleEl.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
     expect(events).toEqual([{ path: note.path, source: "file-explorer-context-menu" }]);
-    const menuTitles = [...document.body.querySelectorAll(".menu-item-title")].map((el) => el.textContent);
+    const menuTitles = [...document.body.querySelectorAll(".menu-item-title")].map(
+      (el) => el.textContent,
+    );
     expect(menuTitles).toContain("Open in new tab");
     expect(menuTitles).toContain("Open to the right");
     expect(menuTitles).toContain("Make copy");
@@ -285,12 +384,22 @@ describe("FileExplorerView external folder drops", () => {
     expect(menuTitles).toContain("Plugin file action");
     clickMenuItem("Rename");
     await vi.waitFor(() => {
-      expect(queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Note.md"]').classList.contains("is-being-renamed")).toBe(true);
+      expect(
+        queryRequired<HTMLElement>(
+          view.contentEl,
+          '.nav-file-title[data-path="Note.md"]',
+        ).classList.contains("is-being-renamed"),
+      ).toBe(true);
     });
-    const innerEl = queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Note.md"] .nav-file-title-content');
+    const innerEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="Note.md"] .nav-file-title-content',
+    );
 
     expect(innerEl.getAttribute("contenteditable")).toBe("true");
-    expect(innerEl.getAttribute("spellcheck")).toBe(String(app.vault.getConfig("spellcheck") ?? false));
+    expect(innerEl.getAttribute("spellcheck")).toBe(
+      String(app.vault.getConfig("spellcheck") ?? false),
+    );
 
     innerEl.textContent = "Unsafe#Name";
     innerEl.dispatchEvent(new InputEvent("input", { bubbles: true }));
@@ -317,14 +426,27 @@ describe("FileExplorerView external folder drops", () => {
     await app.vault.create("Note.md", "");
     await app.vault.create("Other.md", "");
     const view = await openFileExplorerView(app);
-    const fileTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Note.md"]');
+    const fileTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="Note.md"]',
+    );
 
-    fileTitleEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    fileTitleEl.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
     clickMenuItem("Rename");
     await vi.waitFor(() => {
-      expect(queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Note.md"]').classList.contains("is-being-renamed")).toBe(true);
+      expect(
+        queryRequired<HTMLElement>(
+          view.contentEl,
+          '.nav-file-title[data-path="Note.md"]',
+        ).classList.contains("is-being-renamed"),
+      ).toBe(true);
     });
-    const innerEl = queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Note.md"] .nav-file-title-content');
+    const innerEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="Note.md"] .nav-file-title-content',
+    );
 
     innerEl.textContent = "Other";
     innerEl.dispatchEvent(new InputEvent("input", { bubbles: true }));
@@ -348,10 +470,13 @@ describe("FileExplorerView external folder drops", () => {
       (menu as Menu).addItem((item) => item.setTitle("Plugin file action"));
     });
 
-    queryRequired<HTMLElement>(view.contentEl, ".nav-header")
-      .dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    queryRequired<HTMLElement>(view.contentEl, ".nav-header").dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
 
-    let menuTitles = [...document.body.querySelectorAll(".menu-item-title")].map((el) => el.textContent);
+    let menuTitles = [...document.body.querySelectorAll(".menu-item-title")].map(
+      (el) => el.textContent,
+    );
     expect(events.at(-1)).toEqual({ path: "/", source: "file-explorer-context-menu" });
     expect(menuTitles).toContain("New note");
     expect(menuTitles).toContain("New folder");
@@ -360,17 +485,26 @@ describe("FileExplorerView external folder drops", () => {
     expect(menuTitles).toContain("Plugin file action");
 
     document.body.querySelector<HTMLElement>(".menu")?.remove();
-    queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Folder"]')
-      .dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-folder-title[data-path="Folder"]',
+    ).dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
 
-    menuTitles = [...document.body.querySelectorAll(".menu-item-title")].map((el) => el.textContent);
+    menuTitles = [...document.body.querySelectorAll(".menu-item-title")].map(
+      (el) => el.textContent,
+    );
     expect(events.at(-1)).toEqual({ path: folder.path, source: "file-explorer-context-menu" });
     expect(menuTitles).toContain("New note");
     expect(menuTitles).toContain("New folder");
     expect(menuTitles).toContain("Rename");
     expect(menuTitles).toContain("Make copy");
     expect(menuTitles).toContain("Delete");
-    expect(document.body.querySelector<HTMLElement>(".menu-item.is-warning .menu-item-title")?.textContent).toBe("Delete");
+    expect(
+      document.body.querySelector<HTMLElement>(".menu-item.is-warning .menu-item-title")
+        ?.textContent,
+    ).toBe("Delete");
 
     clickMenuItem("Make copy");
     await vi.waitFor(() => {
@@ -381,16 +515,29 @@ describe("FileExplorerView external folder drops", () => {
   it("starts inline folder rename after creating a new folder from the file explorer action", async () => {
     const app = new App(document.createElement("div"));
     const view = await openFileExplorerView(app);
-    const newFolderButton = queryRequired<HTMLElement>(view.contentEl, '.nav-action-button[aria-label="New folder"]');
+    const newFolderButton = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-action-button[aria-label="New folder"]',
+    );
 
     newFolderButton.click();
 
     await vi.waitFor(() => {
-      expect(queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Untitled"]').classList.contains("is-being-renamed")).toBe(true);
+      expect(
+        queryRequired<HTMLElement>(
+          view.contentEl,
+          '.nav-folder-title[data-path="Untitled"]',
+        ).classList.contains("is-being-renamed"),
+      ).toBe(true);
     });
-    const innerEl = queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Untitled"] .nav-folder-title-content');
+    const innerEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-folder-title[data-path="Untitled"] .nav-folder-title-content',
+    );
     innerEl.textContent = "Projects";
-    innerEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    innerEl.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }),
+    );
 
     await vi.waitFor(() => {
       expect(app.vault.getFolderByPath("Projects")).not.toBeNull();
@@ -402,17 +549,32 @@ describe("FileExplorerView external folder drops", () => {
     const app = new App(document.createElement("div"));
     await app.vault.create("Note.md", "");
     const view = await openFileExplorerView(app);
-    const fileTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Note.md"]');
+    const fileTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="Note.md"]',
+    );
 
-    fileTitleEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    fileTitleEl.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
     clickMenuItem("Rename");
     await vi.waitFor(() => {
-      expect(queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Note.md"]').classList.contains("is-being-renamed")).toBe(true);
+      expect(
+        queryRequired<HTMLElement>(
+          view.contentEl,
+          '.nav-file-title[data-path="Note.md"]',
+        ).classList.contains("is-being-renamed"),
+      ).toBe(true);
     });
-    const innerEl = queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Note.md"] .nav-file-title-content');
+    const innerEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="Note.md"] .nav-file-title-content',
+    );
 
     innerEl.textContent = "Draft";
-    innerEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    innerEl.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+    );
 
     expect(innerEl.textContent).toBe("Note");
     expect(fileTitleEl.classList.contains("is-being-renamed")).toBe(false);
@@ -426,15 +588,32 @@ describe("FileExplorerView external folder drops", () => {
     await app.vault.create("Alpha.md", "");
     await app.vault.create("Beta.md", "");
     const view = await openFileExplorerView(app);
-    const betaEl = queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Beta.md"]');
+    const betaEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="Beta.md"]',
+    );
 
-    betaEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }));
-    view.contentEl.dispatchEvent(new KeyboardEvent("keydown", { key: "F2", bubbles: true, cancelable: true }));
+    betaEl.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }),
+    );
+    view.contentEl.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "F2", bubbles: true, cancelable: true }),
+    );
 
     await vi.waitFor(() => {
-      expect(queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Beta.md"]').classList.contains("is-being-renamed")).toBe(true);
+      expect(
+        queryRequired<HTMLElement>(
+          view.contentEl,
+          '.nav-file-title[data-path="Beta.md"]',
+        ).classList.contains("is-being-renamed"),
+      ).toBe(true);
     });
-    expect(queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Alpha.md"]').classList.contains("is-being-renamed")).toBe(false);
+    expect(
+      queryRequired<HTMLElement>(
+        view.contentEl,
+        '.nav-file-title[data-path="Alpha.md"]',
+      ).classList.contains("is-being-renamed"),
+    ).toBe(false);
   });
 
   it("keeps normal file clicks separate from tree focus and selection", async () => {
@@ -442,20 +621,28 @@ describe("FileExplorerView external folder drops", () => {
     const note = await app.vault.create("Note.md", "");
     const view = await openFileExplorerView(app);
     const openFile = vi.spyOn(app.workspace, "openFile");
-    const noteEl = queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Note.md"]');
+    const noteEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="Note.md"]',
+    );
 
     noteEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
     expect(openFile).toHaveBeenCalledTimes(1);
     expect(noteEl.classList.contains("is-selected")).toBe(false);
     expect(noteEl.classList.contains("has-focus")).toBe(false);
-    view.contentEl.dispatchEvent(new KeyboardEvent("keydown", { key: "F2", bubbles: true, cancelable: true }));
+    view.contentEl.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "F2", bubbles: true, cancelable: true }),
+    );
     expect(noteEl.classList.contains("is-being-renamed")).toBe(false);
 
     await vi.waitFor(() => {
       expect(app.workspace.activeEditor?.file).toBe(note);
     });
-    const activeNoteEl = queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Note.md"]');
+    const activeNoteEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="Note.md"]',
+    );
     activeNoteEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
     expect(openFile).toHaveBeenCalledTimes(1);
@@ -471,14 +658,22 @@ describe("FileExplorerView external folder drops", () => {
     await view.setState({ newFile: folder.path });
 
     await vi.waitFor(() => {
-      expect(queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="State Folder"]').classList.contains("is-being-renamed")).toBe(true);
+      expect(
+        queryRequired<HTMLElement>(
+          view.contentEl,
+          '.nav-folder-title[data-path="State Folder"]',
+        ).classList.contains("is-being-renamed"),
+      ).toBe(true);
     });
   });
 
   it("opens newly created notes with rename ephemeral state", async () => {
     const app = new App(document.createElement("div"));
     const view = await openFileExplorerView(app);
-    const newNoteButton = queryRequired<HTMLElement>(view.contentEl, '.nav-action-button[aria-label="New note"]');
+    const newNoteButton = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-action-button[aria-label="New note"]',
+    );
     const openFile = vi.spyOn(app.workspace, "openFile");
 
     newNoteButton.click();
@@ -500,17 +695,27 @@ describe("FileExplorerView external folder drops", () => {
     const view = await openFileExplorerView(app);
 
     const folderEl = queryRequired<HTMLElement>(view.contentEl, ".tree-item.nav-folder");
-    const folderTitleEl = queryRequired<HTMLElement>(folderEl, ".tree-item-self.nav-folder-title.is-clickable");
+    const folderTitleEl = queryRequired<HTMLElement>(
+      folderEl,
+      ".tree-item-self.nav-folder-title.is-clickable",
+    );
     const fileEl = queryRequired<HTMLElement>(view.contentEl, ".tree-item.nav-file");
-    const fileTitleEl = queryRequired<HTMLElement>(fileEl, ".tree-item-self.nav-file-title.is-clickable");
+    const fileTitleEl = queryRequired<HTMLElement>(
+      fileEl,
+      ".tree-item-self.nav-file-title.is-clickable",
+    );
 
     expect(folderEl.dataset.path).toBeUndefined();
     expect(folderTitleEl.dataset.path).toBe("Folder");
     expect(folderTitleEl.querySelector(".tree-item-icon.collapse-icon")).not.toBeNull();
-    expect(folderTitleEl.querySelector(".tree-item-inner.nav-folder-title-content")?.textContent).toBe("Folder");
+    expect(
+      folderTitleEl.querySelector(".tree-item-inner.nav-folder-title-content")?.textContent,
+    ).toBe("Folder");
     expect(fileEl.dataset.path).toBeUndefined();
     expect(fileTitleEl.dataset.path).toBe("Folder/Note.md");
-    expect(fileTitleEl.querySelector(".tree-item-inner.nav-file-title-content")?.textContent).toBe("Note.md");
+    expect(fileTitleEl.querySelector(".tree-item-inner.nav-file-title-content")?.textContent).toBe(
+      "Note.md",
+    );
   });
 
   it("creates file and folder drag sources from tree titles", async () => {
@@ -518,8 +723,14 @@ describe("FileExplorerView external folder drops", () => {
     await app.vault.createFolder("Folder");
     const note = await app.vault.create("Folder/Note.md", "");
     const view = await openFileExplorerView(app);
-    const folderTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-folder-title[data-path="Folder"]');
-    const fileTitleEl = queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Folder/Note.md"]');
+    const folderTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-folder-title[data-path="Folder"]',
+    );
+    const fileTitleEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="Folder/Note.md"]',
+    );
 
     dispatchDragEvent(fileTitleEl, "dragstart", createDropDataTransfer([]));
     const fileSource = app.dragManager.getSource() as FileDragSource;
@@ -543,19 +754,34 @@ describe("FileExplorerView external folder drops", () => {
     await app.vault.create("Beta.md", "");
     await app.vault.create("Gamma.md", "");
     const view = await openFileExplorerView(app);
-    const alphaEl = queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Alpha.md"]');
-    const betaEl = queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Beta.md"]');
-    const gammaEl = queryRequired<HTMLElement>(view.contentEl, '.nav-file-title[data-path="Gamma.md"]');
+    const alphaEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="Alpha.md"]',
+    );
+    const betaEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="Beta.md"]',
+    );
+    const gammaEl = queryRequired<HTMLElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="Gamma.md"]',
+    );
     setOffsetTop(alphaEl, 30);
     setOffsetTop(betaEl, 10);
     setOffsetTop(gammaEl, 20);
 
-    alphaEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }));
-    gammaEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, shiftKey: true }));
+    alphaEl.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, altKey: true }),
+    );
+    gammaEl.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, shiftKey: true }),
+    );
 
     expect(alphaEl.classList.contains("has-focus")).toBe(true);
     expect(gammaEl.classList.contains("has-focus")).toBe(false);
-    expect([alphaEl, betaEl, gammaEl].every((el) => el.classList.contains("is-selected"))).toBe(true);
+    expect([alphaEl, betaEl, gammaEl].every((el) => el.classList.contains("is-selected"))).toBe(
+      true,
+    );
 
     dispatchDragEvent(alphaEl, "dragstart", createDropDataTransfer([]));
 
@@ -563,8 +789,14 @@ describe("FileExplorerView external folder drops", () => {
     expect(source.type).toBe("files");
     expect(source.source).toBeUndefined();
     expect(source.files.map((file) => file.path)).toEqual(["Beta.md", "Gamma.md", "Alpha.md"]);
-    expect([alphaEl, betaEl, gammaEl].every((el) => !el.classList.contains("is-being-dragged"))).toBe(true);
-    expect([alphaEl, betaEl, gammaEl].every((el) => el.closest(".tree-item")?.classList.contains("is-being-dragged"))).toBe(true);
+    expect(
+      [alphaEl, betaEl, gammaEl].every((el) => !el.classList.contains("is-being-dragged")),
+    ).toBe(true);
+    expect(
+      [alphaEl, betaEl, gammaEl].every((el) =>
+        el.closest(".tree-item")?.classList.contains("is-being-dragged"),
+      ),
+    ).toBe(true);
   });
 });
 
@@ -589,13 +821,18 @@ function closestRequired<T extends Element>(el: Element, selector: string): T {
 }
 
 function clickMenuItem(title: string): void {
-  const item = [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
-    .find((el) => el.querySelector(".menu-item-title")?.textContent === title);
+  const item = [...document.body.querySelectorAll<HTMLElement>(".menu-item")].find(
+    (el) => el.querySelector(".menu-item-title")?.textContent === title,
+  );
   if (!item) throw new Error(`Missing menu item: ${title}`);
   item.click();
 }
 
-function dispatchDragEvent(target: HTMLElement, type: string, dataTransfer: DataTransfer): DragEvent {
+function dispatchDragEvent(
+  target: HTMLElement,
+  type: string,
+  dataTransfer: DataTransfer,
+): DragEvent {
   const event = new Event(type, { bubbles: true, cancelable: true }) as DragEvent;
   Object.defineProperty(event, "dataTransfer", { configurable: true, value: dataTransfer });
   target.dispatchEvent(event);

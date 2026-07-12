@@ -20,17 +20,31 @@ export function artifactKey(agentId: string, messageId: string, partIndex: numbe
   return `${agentId}:${messageId}:${partIndex}`;
 }
 
-export async function openArtifact(app: App, agentId: string, messageId: string, partIndex: number): Promise<void> {
+export async function openArtifact(
+  app: App,
+  agentId: string,
+  messageId: string,
+  partIndex: number,
+): Promise<void> {
   const key = artifactKey(agentId, messageId, partIndex);
   const leaves = app.workspace.getLeavesOfType(ARTIFACT_VIEW_TYPE);
   const showing = leaves.find((leaf) => (leaf.view as ArtifactView | null)?.key === key);
   // Artifacts open beside the conversation, not over it.
   const leaf = showing ?? leaves[0] ?? app.workspace.getLeaf("split");
-  await leaf.setViewState({ type: ARTIFACT_VIEW_TYPE, active: true, state: { agentId, messageId, partIndex } });
+  await leaf.setViewState({
+    type: ARTIFACT_VIEW_TYPE,
+    active: true,
+    state: { agentId, messageId, partIndex },
+  });
   await app.workspace.revealLeaf(leaf);
 }
 
-export function maybeAutoOpenArtifact(app: App, agentId: string, messageId: string, partIndex: number): void {
+export function maybeAutoOpenArtifact(
+  app: App,
+  agentId: string,
+  messageId: string,
+  partIndex: number,
+): void {
   const key = artifactKey(agentId, messageId, partIndex);
   if (completedContexts.has(key) || dismissedContexts.has(key)) return;
   completedContexts.add(key);
@@ -125,8 +139,14 @@ export class ArtifactView extends ItemView {
       img.src = `data:image/svg+xml;utf8,${encodeURIComponent(part.content)}`;
     } else if (kind === "markdown") {
       const bodyEl = createDiv("artifact-markdown", this.contentEl);
-      const renderer = new StreamMarkdownRenderer(bodyEl, this, `agent://${this.agentId}/${this.messageId}/${this.partIndex}`);
-      renderer.update(parseMarkdownToStructure(part.content, getMarkdown(this.key), { final: part.closed }));
+      const renderer = new StreamMarkdownRenderer(
+        bodyEl,
+        this,
+        `agent://${this.agentId}/${this.messageId}/${this.partIndex}`,
+      );
+      renderer.update(
+        parseMarkdownToStructure(part.content, getMarkdown(this.key), { final: part.closed }),
+      );
     } else {
       const pre = createEl("pre", { cls: "artifact-code", parent: this.contentEl });
       const code = createEl("code", { parent: pre, text: part.content });

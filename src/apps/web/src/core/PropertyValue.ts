@@ -15,4 +15,10 @@ export type PropertyType =
   | "property"
   | "unknown";
 
-export type PropertyValue = string | number | boolean | PropertyValue[] | { [key: string]: PropertyValue } | null;
+export type PropertyValue =
+  | string
+  | number
+  | boolean
+  | PropertyValue[]
+  | { [key: string]: PropertyValue }
+  | null;

@@ -36,7 +36,11 @@ export interface CanvasGroupNodeData extends CanvasBaseNodeData {
   backgroundStyle?: string;
 }
 
-export type CanvasNodeData = CanvasFileNodeData | CanvasTextNodeData | CanvasLinkNodeData | CanvasGroupNodeData;
+export type CanvasNodeData =
+  | CanvasFileNodeData
+  | CanvasTextNodeData
+  | CanvasLinkNodeData
+  | CanvasGroupNodeData;
 
 export interface CanvasEdgeData {
   id: string;
@@ -79,11 +83,15 @@ export function serializeCanvasData(data: CanvasData): string {
 }
 
 export function normalizeCanvasData(value: unknown): CanvasData {
-  const raw = value && typeof value === "object" ? value as Partial<CanvasData> : {};
+  const raw = value && typeof value === "object" ? (value as Partial<CanvasData>) : {};
   return {
     ...raw,
-    nodes: Array.isArray(raw.nodes) ? raw.nodes.map(normalizeNode).filter(Boolean) as CanvasNodeData[] : [],
-    edges: Array.isArray(raw.edges) ? raw.edges.map(normalizeEdge).filter(Boolean) as CanvasEdgeData[] : [],
+    nodes: Array.isArray(raw.nodes)
+      ? (raw.nodes.map(normalizeNode).filter(Boolean) as CanvasNodeData[])
+      : [],
+    edges: Array.isArray(raw.edges)
+      ? (raw.edges.map(normalizeEdge).filter(Boolean) as CanvasEdgeData[])
+      : [],
   };
 }
 
@@ -103,9 +111,20 @@ function normalizeNode(raw: unknown): CanvasNodeData | null {
     width: Math.max(60, numberOr(node.width, 240)),
     height: Math.max(40, numberOr(node.height, 160)),
   };
-  if (base.type === "file") return { ...base, type: "file", file: String((node as Partial<CanvasFileNodeData>).file ?? "") };
-  if (base.type === "link") return { ...base, type: "link", url: String((node as Partial<CanvasLinkNodeData>).url ?? "") };
-  if (base.type === "group") return { ...base, type: "group", label: String((node as Partial<CanvasGroupNodeData>).label ?? "") };
+  if (base.type === "file")
+    return {
+      ...base,
+      type: "file",
+      file: String((node as Partial<CanvasFileNodeData>).file ?? ""),
+    };
+  if (base.type === "link")
+    return { ...base, type: "link", url: String((node as Partial<CanvasLinkNodeData>).url ?? "") };
+  if (base.type === "group")
+    return {
+      ...base,
+      type: "group",
+      label: String((node as Partial<CanvasGroupNodeData>).label ?? ""),
+    };
   return { ...base, type: "text", text: String((node as Partial<CanvasTextNodeData>).text ?? "") };
 }
 

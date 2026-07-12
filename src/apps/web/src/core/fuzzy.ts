@@ -1,4 +1,9 @@
-import { fuzzySearch, prepareQuery, type PreparedQuery, type SearchResult } from "../search/SearchHelpers";
+import {
+  fuzzySearch,
+  prepareQuery,
+  type PreparedQuery,
+  type SearchResult,
+} from "../search/SearchHelpers";
 
 // Pure string fuzzy-scoring, lifted out of ui/suggest so the headless kernel
 // (metadata link/tag suggestions) can score without importing the UI modal.

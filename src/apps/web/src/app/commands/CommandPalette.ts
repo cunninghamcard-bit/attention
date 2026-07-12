@@ -1,6 +1,13 @@
 import type { App } from "../App";
 import { runCommandCallback, type Command } from "./CommandManager";
-import { FuzzySuggestModal, fuzzyMatch, prepareFuzzyQuery, type FuzzySuggestion, renderFuzzyText, sortFuzzySuggestions } from "../../ui/suggest/SuggestModal";
+import {
+  FuzzySuggestModal,
+  fuzzyMatch,
+  prepareFuzzyQuery,
+  type FuzzySuggestion,
+  renderFuzzyText,
+  sortFuzzySuggestions,
+} from "../../ui/suggest/SuggestModal";
 import type { InternalPluginDefinition } from "../../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../../plugin/InternalPluginWrapper";
 import type { SettingTab } from "../SettingRegistry";
@@ -81,7 +88,9 @@ export class CommandPaletteCorePlugin {
       commands = rest;
     }
 
-    commands.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true }));
+    commands.sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true }),
+    );
     orderByIds(commands, this.recentCommands);
     return [...pinned, ...commands];
   }
@@ -102,7 +111,10 @@ export class CommandPaletteCorePlugin {
 export class CommandPalette extends FuzzySuggestModal<Command> {
   private commands: Command[] | null = null;
 
-  constructor(app: App, readonly plugin: CommandPaletteCorePlugin) {
+  constructor(
+    app: App,
+    readonly plugin: CommandPaletteCorePlugin,
+  ) {
     super(app);
     this.emptyStateText = "No commands found";
     this.setInstructions([
@@ -269,12 +281,11 @@ class CommandPaletteSettingTab implements SettingTab {
       if (!query) return;
       const pinned = new Set(this.plugin.options.pinned ?? []);
       const fuzzyQuery = prepareFuzzyQuery(query);
-      const matches = this.plugin.getCommands()
-        .flatMap((command) => {
-          if (pinned.has(command.id)) return [];
-          const match = fuzzyMatch(fuzzyQuery, command.name);
-          return match ? [{ item: command, match }] : [];
-        });
+      const matches = this.plugin.getCommands().flatMap((command) => {
+        if (pinned.has(command.id)) return [];
+        const match = fuzzyMatch(fuzzyQuery, command.name);
+        return match ? [{ item: command, match }] : [];
+      });
       sortFuzzySuggestions(matches);
       for (const { item: command } of matches.slice(0, 20)) {
         const itemEl = document.createElement("div");
@@ -301,8 +312,8 @@ class CommandPaletteSettingTab implements SettingTab {
 
 export function getDisplayHotkeys(app: App, command: Command): readonly Hotkey[] {
   return app.hotkeys.hasHotkeyOverride(command.id)
-    ? app.hotkeys.getHotkeys(command.id) ?? []
-    : app.hotkeys.getDefaultHotkeys(command.id) ?? [];
+    ? (app.hotkeys.getHotkeys(command.id) ?? [])
+    : (app.hotkeys.getDefaultHotkeys(command.id) ?? []);
 }
 
 export function formatHotkey(hotkey: Hotkey): string {
@@ -310,13 +321,25 @@ export function formatHotkey(hotkey: Hotkey): string {
   for (const modifier of ["Mod", "Ctrl", "Meta", "Alt", "Shift"]) {
     if (hotkey.modifiers.includes(modifier)) labels.push(formatModifier(modifier));
   }
-  labels.push(formatHotkeyKey(hotkey.code ? normalizeCode(hotkey.code) : hotkey.key ?? ""));
+  labels.push(formatHotkeyKey(hotkey.code ? normalizeCode(hotkey.code) : (hotkey.key ?? "")));
   return labels.join(isMacLike() ? " " : " + ");
 }
 
 function formatModifier(modifier: string): string {
-  const macLabels: Record<string, string> = { Mod: "⌘", Ctrl: "⌃", Meta: "⌘", Alt: "⌥", Shift: "⇧" };
-  const desktopLabels: Record<string, string> = { Mod: "Ctrl", Ctrl: "Ctrl", Meta: "Win", Alt: "Alt", Shift: "Shift" };
+  const macLabels: Record<string, string> = {
+    Mod: "⌘",
+    Ctrl: "⌃",
+    Meta: "⌘",
+    Alt: "⌥",
+    Shift: "⇧",
+  };
+  const desktopLabels: Record<string, string> = {
+    Mod: "Ctrl",
+    Ctrl: "Ctrl",
+    Meta: "Win",
+    Alt: "Alt",
+    Shift: "Shift",
+  };
   return (isMacLike() ? macLabels : desktopLabels)[modifier] ?? modifier;
 }
 
@@ -343,7 +366,10 @@ function isMacLike(): boolean {
 
 function orderByIds(commands: Command[], ids: readonly string[]): void {
   const order = new Map(ids.map((id, index) => [id, index]));
-  commands.sort((a, b) => (order.get(a.id) ?? Number.POSITIVE_INFINITY) - (order.get(b.id) ?? Number.POSITIVE_INFINITY));
+  commands.sort(
+    (a, b) =>
+      (order.get(a.id) ?? Number.POSITIVE_INFINITY) - (order.get(b.id) ?? Number.POSITIVE_INFINITY),
+  );
 }
 
 function makeIconButton(icon: string, label: string, onClick?: () => void): HTMLButtonElement {
@@ -356,7 +382,12 @@ function makeIconButton(icon: string, label: string, onClick?: () => void): HTML
   return button;
 }
 
-function reorderPinned(ids: readonly string[], id: string, targetIndex: number, plugin: CommandPaletteCorePlugin): void {
+function reorderPinned(
+  ids: readonly string[],
+  id: string,
+  targetIndex: number,
+  plugin: CommandPaletteCorePlugin,
+): void {
   const next = [...ids];
   const from = next.indexOf(id);
   if (from === -1 || targetIndex < 0 || targetIndex >= next.length || from === targetIndex) return;

@@ -41,7 +41,9 @@ export interface GithubRepoListItem {
  */
 export class GitHubService {
   transportFactory: (app: App) => HttpTransport = defaultTransport;
-  clientFactory: ((token: string | null, host: string, transport: HttpTransport) => GitHubClient) | null = null;
+  clientFactory:
+    | ((token: string | null, host: string, transport: HttpTransport) => GitHubClient)
+    | null = null;
 
   private authCache: GitHubAuthState | null = null;
   /** Explicit user selection wins over prefs and origin. */
@@ -81,7 +83,10 @@ export class GitHubService {
     if (!auth.login) {
       this.clearTokenStorage();
       this.invalidate();
-      return { error: "Token was rejected by GitHub. Need a classic PAT with `repo` (or fine-grained read on the target repos)." };
+      return {
+        error:
+          "Token was rejected by GitHub. Need a classic PAT with `repo` (or fine-grained read on the target repos).",
+      };
     }
     return auth;
   }
@@ -121,7 +126,8 @@ export class GitHubService {
   peekRepository(): GitHubRepositoryRef | null {
     if (this.overrideRepo) return this.overrideRepo;
     const prefs = readGithubPrPrefs();
-    if (prefs.owner && prefs.repo) return { owner: prefs.owner, repo: prefs.repo, host: "github.com" };
+    if (prefs.owner && prefs.repo)
+      return { owner: prefs.owner, repo: prefs.repo, host: "github.com" };
     return this.originRepo ?? null;
   }
 
@@ -162,7 +168,11 @@ export class GitHubService {
     return client.getPullRequestDiff(active, number);
   }
 
-  async createComment(number: number, body: string, repo?: GitHubRepositoryRef): Promise<string | null> {
+  async createComment(
+    number: number,
+    body: string,
+    repo?: GitHubRepositoryRef,
+  ): Promise<string | null> {
     try {
       const { client, repo: active } = await this.requireClient(repo);
       await client.createIssueComment(active, number, body);
@@ -216,7 +226,10 @@ export class GitHubService {
     return client.getCommitDiff(active, sha);
   }
 
-  async listIssues(state: "open" | "closed" | "all" = "open", repo?: GitHubRepositoryRef): Promise<IssueSummary[]> {
+  async listIssues(
+    state: "open" | "closed" | "all" = "open",
+    repo?: GitHubRepositoryRef,
+  ): Promise<IssueSummary[]> {
     const { client, repo: active } = await this.requireClient(repo);
     return client.listIssues(active, state);
   }
@@ -226,7 +239,11 @@ export class GitHubService {
     return client.getIssue(active, number);
   }
 
-  async createIssueComment(number: number, body: string, repo?: GitHubRepositoryRef): Promise<string | null> {
+  async createIssueComment(
+    number: number,
+    body: string,
+    repo?: GitHubRepositoryRef,
+  ): Promise<string | null> {
     try {
       const { client, repo: active } = await this.requireClient(repo);
       await client.createIssueComment(active, number, body);
@@ -246,17 +263,28 @@ export class GitHubService {
     return client.getWorkflowRun(active, runId);
   }
 
-  async listContents(path = "", ref?: string, repo?: GitHubRepositoryRef): Promise<RepoContentItem[]> {
+  async listContents(
+    path = "",
+    ref?: string,
+    repo?: GitHubRepositoryRef,
+  ): Promise<RepoContentItem[]> {
     const { client, repo: active } = await this.requireClient(repo);
     return client.listContents(active, path, ref);
   }
 
-  async getFileContent(path: string, ref?: string, repo?: GitHubRepositoryRef): Promise<RepoFileContent> {
+  async getFileContent(
+    path: string,
+    ref?: string,
+    repo?: GitHubRepositoryRef,
+  ): Promise<RepoFileContent> {
     const { client, repo: active } = await this.requireClient(repo);
     return client.getFileContent(active, path, ref);
   }
 
-  async listNotifications(options?: { all?: boolean; participating?: boolean }): Promise<NotificationItem[]> {
+  async listNotifications(options?: {
+    all?: boolean;
+    participating?: boolean;
+  }): Promise<NotificationItem[]> {
     const token = this.readToken();
     if (!token) throw Object.assign(new Error("Sign in required"), { status: 401 });
     return this.client(token, "github.com").listNotifications(options);
@@ -300,7 +328,9 @@ export class GitHubService {
   private readToken(): string | null {
     const fromSecret = this.app.secretStorage.getSecret(TOKEN_SECRET_ID)?.trim();
     if (fromSecret) return fromSecret;
-    const env = (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env;
+    const env = (
+      globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }
+    ).process?.env;
     return env?.GITHUB_TOKEN?.trim() || null;
   }
 
@@ -318,10 +348,15 @@ export class GitHubService {
     return new GitHubClient(transport, token, host);
   }
 
-  private async requireClient(repo?: GitHubRepositoryRef): Promise<{ client: GitHubClient; repo: GitHubRepositoryRef }> {
+  private async requireClient(
+    repo?: GitHubRepositoryRef,
+  ): Promise<{ client: GitHubClient; repo: GitHubRepositoryRef }> {
     const token = this.readToken();
     if (!token) {
-      throw Object.assign(new Error("Sign in with a GitHub personal access token to browse pull requests."), { status: 401 });
+      throw Object.assign(
+        new Error("Sign in with a GitHub personal access token to browse pull requests."),
+        { status: 401 },
+      );
     }
     const active = repo ?? (await this.resolveRepository());
     if (!active) {
@@ -354,7 +389,12 @@ function defaultTransport(app: App): HttpTransport {
 }
 
 function errorMessage(error: unknown): string {
-  if (error && typeof error === "object" && "message" in error && typeof (error as Error).message === "string") {
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof (error as Error).message === "string"
+  ) {
     return (error as Error).message;
   }
   return String(error);

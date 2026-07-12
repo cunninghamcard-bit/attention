@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { GitHubClient, type HttpResponse, type HttpTransport } from "@web/builtin/github/GitHubClient";
+import {
+  GitHubClient,
+  type HttpResponse,
+  type HttpTransport,
+} from "@web/builtin/github/GitHubClient";
 
 function mock(routes: Record<string, HttpResponse>): HttpTransport {
   return async ({ url, method, headers }) => {
@@ -8,7 +12,9 @@ function mock(routes: Record<string, HttpResponse>): HttpTransport {
     if (headers?.Accept?.includes("diff") && path.includes("/commits/")) {
       return routes[`DIFF ${path}`] ?? { status: 404, text: "no diff", json: null };
     }
-    return routes[key] ?? { status: 404, text: `missing ${key}`, json: { message: `missing ${key}` } };
+    return (
+      routes[key] ?? { status: 404, text: `missing ${key}`, json: { message: `missing ${key}` } }
+    );
   };
 }
 
@@ -80,8 +86,20 @@ describe("GitHubClient commits/branches", () => {
             parents: [{ sha: "parentsha000", html_url: "" }],
             stats: { additions: 103, deletions: 2, total: 105 },
             files: [
-              { filename: "lib/renderer.ts", status: "modified", additions: 81, deletions: 1, patch: "@@ -1 +1 @@\n-a\n+b\n" },
-              { filename: "lib/renderer.test.ts", status: "modified", additions: 22, deletions: 1, patch: "@@ -1 +1 @@\n-c\n+d\n" },
+              {
+                filename: "lib/renderer.ts",
+                status: "modified",
+                additions: 81,
+                deletions: 1,
+                patch: "@@ -1 +1 @@\n-a\n+b\n",
+              },
+              {
+                filename: "lib/renderer.test.ts",
+                status: "modified",
+                additions: 22,
+                deletions: 1,
+                patch: "@@ -1 +1 @@\n-c\n+d\n",
+              },
             ],
           },
         },

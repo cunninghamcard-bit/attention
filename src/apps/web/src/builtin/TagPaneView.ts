@@ -11,9 +11,15 @@ interface TagTreeNode {
 export class TagPaneView extends ItemView {
   private collapsed = new Set<string>();
 
-  getViewType(): string { return "tag"; }
-  getDisplayText(): string { return "Tags"; }
-  getIcon(): string { return "lucide-tags"; }
+  getViewType(): string {
+    return "tag";
+  }
+  getDisplayText(): string {
+    return "Tags";
+  }
+  getIcon(): string {
+    return "lucide-tags";
+  }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("tag-pane");
@@ -36,7 +42,8 @@ export class TagPaneView extends ItemView {
     const root = buildTagTree(tags);
     const containerEl = this.contentEl.ownerDocument.createElement("div");
     containerEl.className = "tag-container tree-item-children";
-    for (const child of [...root.children.values()].sort(sortTagNodes)) this.renderTagNode(child, containerEl, 0);
+    for (const child of [...root.children.values()].sort(sortTagNodes))
+      this.renderTagNode(child, containerEl, 0);
     this.contentEl.appendChild(containerEl);
   }
 
@@ -73,7 +80,8 @@ export class TagPaneView extends ItemView {
     if (node.children.size > 0 && !this.collapsed.has(node.tag)) {
       const childrenEl = doc.createElement("div");
       childrenEl.className = "tree-item-children tag-pane-tag-children";
-      for (const child of [...node.children.values()].sort(sortTagNodes)) this.renderTagNode(child, childrenEl, depth + 1);
+      for (const child of [...node.children.values()].sort(sortTagNodes))
+        this.renderTagNode(child, childrenEl, depth + 1);
       itemEl.appendChild(childrenEl);
     }
 
@@ -87,10 +95,12 @@ export class TagPaneView extends ItemView {
   }
 
   private searchTag(tag: string): void {
-    void this.app.workspace.ensureSideLeaf("search", "left", { active: true, reveal: true }).then((leaf) => {
-      const view = leaf.view as unknown as { focusSearch?: (query: string) => void };
-      view.focusSearch?.(tag);
-    });
+    void this.app.workspace
+      .ensureSideLeaf("search", "left", { active: true, reveal: true })
+      .then((leaf) => {
+        const view = leaf.view as unknown as { focusSearch?: (query: string) => void };
+        view.focusSearch?.(tag);
+      });
   }
 }
 

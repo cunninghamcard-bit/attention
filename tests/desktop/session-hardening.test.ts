@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-vi.mock("electron", () => ({ session: {}, }));
+vi.mock("electron", () => ({ session: {} }));
 import {
   isPermissionAllowed,
   rewriteRequestHeaders,
@@ -12,7 +12,8 @@ describe("rewriteRequestHeaders", () => {
       Referer: "md.obsidian",
     });
     expect(
-      rewriteRequestHeaders("https://www.youtube-nocookie.com/embed/x", { Referer: "keep" }).Referer,
+      rewriteRequestHeaders("https://www.youtube-nocookie.com/embed/x", { Referer: "keep" })
+        .Referer,
     ).toBe("keep");
   });
 
@@ -29,7 +30,11 @@ describe("rewriteRequestHeaders", () => {
 describe("rewriteResponseHeaders", () => {
   it("strips x-frame-options and COOP", () => {
     const out = rewriteResponseHeaders(
-      { "X-Frame-Options": ["DENY"], "Cross-Origin-Opener-Policy": ["same-origin"], "Content-Length": ["5"] },
+      {
+        "X-Frame-Options": ["DENY"],
+        "Cross-Origin-Opener-Policy": ["same-origin"],
+        "Content-Length": ["5"],
+      },
       false,
     );
     expect(out).toEqual({ "Content-Length": ["5"] });

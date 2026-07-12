@@ -4,7 +4,8 @@ function installAnimationFrame(target: Window): void {
   if (!target.requestAnimationFrame) {
     Object.defineProperty(target, "requestAnimationFrame", {
       configurable: true,
-      value: (callback: FrameRequestCallback) => setTimeout(() => callback(Date.now()), 0) as unknown as number,
+      value: (callback: FrameRequestCallback) =>
+        setTimeout(() => callback(Date.now()), 0) as unknown as number,
     });
   }
   if (!target.cancelAnimationFrame) {

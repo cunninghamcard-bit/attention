@@ -1,7 +1,10 @@
 import { focusLastPill, renderEditablePropertyPill } from "./EditablePropertyPill";
 import type { PropertyWidgetContext, PropertyValue } from "./PropertyTypes";
 
-export function renderAliasPropertyWidget(parent: HTMLElement, context: PropertyWidgetContext): void {
+export function renderAliasPropertyWidget(
+  parent: HTMLElement,
+  context: PropertyWidgetContext,
+): void {
   const containerEl = document.createElement("div");
   containerEl.className = "multi-select-container metadata-aliases-container";
   const inputEl = document.createElement("input");
@@ -48,7 +51,12 @@ export function renderAliasPropertyWidget(parent: HTMLElement, context: Property
       focusLastPill(containerEl);
       return;
     }
-    if (event.key === "ArrowLeft" && inputEl.value === "" && inputEl.selectionStart === 0 && values.length > 0) {
+    if (
+      event.key === "ArrowLeft" &&
+      inputEl.value === "" &&
+      inputEl.selectionStart === 0 &&
+      values.length > 0
+    ) {
       event.preventDefault();
       focusLastPill(containerEl);
     }
@@ -59,7 +67,11 @@ export function renderAliasPropertyWidget(parent: HTMLElement, context: Property
   parent.appendChild(containerEl);
 }
 
-function commitInput(inputEl: HTMLInputElement, values: string[], commitValues: (values: string[]) => void): void {
+function commitInput(
+  inputEl: HTMLInputElement,
+  values: string[],
+  commitValues: (values: string[]) => void,
+): void {
   const alias = inputEl.value.trim();
   if (!alias || values.includes(alias)) return;
   inputEl.value = "";

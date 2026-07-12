@@ -36,7 +36,9 @@ afterEach(() => {
 async function openSwitcherMenu() {
   const app = new App(document.createElement("div"));
   await app.ready;
-  const switcherEl = app.workspace.leftSplit.containerEl.querySelector<HTMLElement>(".workspace-drawer-vault-switcher");
+  const switcherEl = app.workspace.leftSplit.containerEl.querySelector<HTMLElement>(
+    ".workspace-drawer-vault-switcher",
+  );
   expect(switcherEl).not.toBeNull();
   switcherEl!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   const menu = document.body.querySelector<HTMLElement>(".menu");
@@ -47,7 +49,9 @@ describe("vault switcher menu", () => {
   it("is a silent no-op in browser builds without the electron bridge", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const switcherEl = app.workspace.leftSplit.containerEl.querySelector<HTMLElement>(".workspace-drawer-vault-switcher");
+    const switcherEl = app.workspace.leftSplit.containerEl.querySelector<HTMLElement>(
+      ".workspace-drawer-vault-switcher",
+    );
     switcherEl!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(document.body.querySelector(".menu")).toBeNull();
   });
@@ -68,7 +72,9 @@ describe("vault switcher menu", () => {
     const ipc = installIpc();
     const { menu } = await openSwitcherMenu();
     const items = [...menu!.querySelectorAll<HTMLElement>(".menu-item")];
-    const manage = items.find((el) => el.querySelector(".menu-item-title")?.textContent === "Manage vaults...");
+    const manage = items.find(
+      (el) => el.querySelector(".menu-item-title")?.textContent === "Manage vaults...",
+    );
     manage!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(ipc.sendSync).toHaveBeenCalledWith("starter");
   });
@@ -81,5 +87,4 @@ describe("vault switcher menu", () => {
     notes!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(ipc.sendSync).toHaveBeenCalledWith("vault-open", "/vaults/notes", false);
   });
-
 });

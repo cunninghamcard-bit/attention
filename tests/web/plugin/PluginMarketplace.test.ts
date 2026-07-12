@@ -5,25 +5,29 @@ describe("PluginMarketplace", () => {
   it("imports Obsidian community plugin catalog data with stats and deprecations", () => {
     const marketplace = new PluginMarketplace();
 
-    marketplace.registerObsidianReleaseData([
+    marketplace.registerObsidianReleaseData(
+      [
+        {
+          id: "sample",
+          name: "Sample Plugin",
+          author: "Ada",
+          description: "Catalog entry",
+          repo: "ada/sample-plugin",
+        },
+      ],
       {
-        id: "sample",
-        name: "Sample Plugin",
-        author: "Ada",
-        description: "Catalog entry",
-        repo: "ada/sample-plugin",
+        sample: {
+          downloads: 12345,
+          updated: Date.UTC(2026, 5, 20),
+          "1.0.0": 10,
+          "1.2.0": 20,
+          "2.0.0": 1,
+        },
       },
-    ], {
-      sample: {
-        downloads: 12345,
-        updated: Date.UTC(2026, 5, 20),
-        "1.0.0": 10,
-        "1.2.0": 20,
-        "2.0.0": 1,
+      {
+        sample: ["2.0.0"],
       },
-    }, {
-      sample: ["2.0.0"],
-    });
+    );
 
     const entry = marketplace.getEntry("sample");
 
@@ -47,13 +51,15 @@ describe("PluginMarketplace", () => {
       async fetchJson<T>(url: string): Promise<T> {
         requested.push(url);
         if (url.endsWith("community-plugins.json")) {
-          return [{
-            id: "remote",
-            name: "Remote Plugin",
-            author: "Grace",
-            description: "Loaded remotely",
-            repo: "grace/remote-plugin",
-          }] as T;
+          return [
+            {
+              id: "remote",
+              name: "Remote Plugin",
+              author: "Grace",
+              description: "Loaded remotely",
+              repo: "grace/remote-plugin",
+            },
+          ] as T;
         }
         if (url.endsWith("community-plugin-stats.json")) {
           return {
@@ -92,7 +98,15 @@ describe("PluginMarketplace", () => {
           throw new Error("offline");
         }
         if (url.endsWith("community-plugins.json")) {
-          return [{ id: "retry", name: "Retry Plugin", author: "Ada", description: "Works", repo: "ada/retry" }] as T;
+          return [
+            {
+              id: "retry",
+              name: "Retry Plugin",
+              author: "Ada",
+              description: "Works",
+              repo: "ada/retry",
+            },
+          ] as T;
         }
         return {} as T;
       },
@@ -132,7 +146,9 @@ describe("PluginMarketplace", () => {
     await expect(marketplace.loadReadme("readme")).resolves.toBe("# Remote README");
     await expect(marketplace.loadReadme("readme")).resolves.toBe("# Remote README");
 
-    expect(requested).toEqual(["https://raw.githubusercontent.com/ada/readme-plugin/HEAD/README.md"]);
+    expect(requested).toEqual([
+      "https://raw.githubusercontent.com/ada/readme-plugin/HEAD/README.md",
+    ]);
     expect(marketplace.getEntry("readme")?.readmeState).toBe("loaded");
   });
 
@@ -168,13 +184,17 @@ describe("PluginMarketplace", () => {
       repo: "ada/compat",
     });
 
-    await expect(marketplace.resolveLatestCompatibleVersion("compat", "1.0.0")).resolves.toBe("1.5.0");
+    await expect(marketplace.resolveLatestCompatibleVersion("compat", "1.0.0")).resolves.toBe(
+      "1.5.0",
+    );
 
     expect(requested).toEqual([
       "https://raw.githubusercontent.com/ada/compat/HEAD/manifest.json",
       "https://raw.githubusercontent.com/ada/compat/HEAD/versions.json",
     ]);
     expect(marketplace.createPackage("compat")?.source?.version).toBe("1.5.0");
-    expect(marketplace.createPackage("compat")?.source?.manifestUrl).toBe("https://github.com/ada/compat/releases/download/1.5.0/manifest.json");
+    expect(marketplace.createPackage("compat")?.source?.manifestUrl).toBe(
+      "https://github.com/ada/compat/releases/download/1.5.0/manifest.json",
+    );
   });
 });

@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
 import { getActiveDocument, resetActiveWindow } from "@web/dom/ActiveDocument";
-import { desktopWorkspaceFileName, mobileWorkspaceFileName } from "@web/views/workspace/WorkspaceLayoutPersistence";
+import {
+  desktopWorkspaceFileName,
+  mobileWorkspaceFileName,
+} from "@web/views/workspace/WorkspaceLayoutPersistence";
 import { WorkspaceWindow } from "@web/views/workspace/WorkspaceWindow";
 import { WorkspaceSidedock } from "@web/views/workspace/WorkspaceSidedock";
 import { WorkspaceLeaf } from "@web/views/workspace/WorkspaceLeaf";
@@ -35,8 +38,12 @@ describe("WorkspaceLayoutPersistence", () => {
     const layout = await app.workspaceLayouts.saveCurrentLayout();
 
     expect(app.workspaceLayouts.fileName).toBe(desktopWorkspaceFileName);
-    expect(app.workspaceLayouts.getWorkspaceFilePath()).toBe(`${app.vault.configDir}/${desktopWorkspaceFileName}`);
-    await expect(app.vault.readJson(app.workspaceLayouts.getWorkspaceFilePath())).resolves.toEqual(layout);
+    expect(app.workspaceLayouts.getWorkspaceFilePath()).toBe(
+      `${app.vault.configDir}/${desktopWorkspaceFileName}`,
+    );
+    await expect(app.vault.readJson(app.workspaceLayouts.getWorkspaceFilePath())).resolves.toEqual(
+      layout,
+    );
   });
 
   it("keeps workspace saveLayout void and swallows write failures", async () => {
@@ -45,7 +52,9 @@ describe("WorkspaceLayoutPersistence", () => {
 
     await expect(app.workspace.saveLayout()).resolves.toBeUndefined();
 
-    vi.spyOn(app.workspaceLayouts, "writeWorkspaceFile").mockRejectedValueOnce(new Error("disk full"));
+    vi.spyOn(app.workspaceLayouts, "writeWorkspaceFile").mockRejectedValueOnce(
+      new Error("disk full"),
+    );
 
     await expect(app.workspace.saveLayout()).resolves.toBeUndefined();
   });
@@ -64,7 +73,11 @@ describe("WorkspaceLayoutPersistence", () => {
     const app = new App(document.createElement("div"));
     await app.ready;
 
-    const item = await app.workspace.deserializeLayout({ id: "restored-leaf", type: "leaf", state: { type: "empty" } });
+    const item = await app.workspace.deserializeLayout({
+      id: "restored-leaf",
+      type: "leaf",
+      state: { type: "empty" },
+    });
 
     expect(item).toBeInstanceOf(WorkspaceLeaf);
     expect(item?.id).toBe("restored-leaf");
@@ -89,8 +102,12 @@ describe("WorkspaceLayoutPersistence", () => {
     if (layout.left.type !== "mobile-drawer") throw new Error("Expected mobile drawer layout");
     expect(layout.left.children.map((child) => child.type)).toEqual(["leaf", "leaf"]);
     expect(layout.right).toEqual(expect.objectContaining({ type: "mobile-drawer", currentTab: 0 }));
-    await expect(app.vault.readJson(`${app.vault.configDir}/${mobileWorkspaceFileName}`)).resolves.toEqual(layout);
-    await expect(app.vault.readJson(`${app.vault.configDir}/${desktopWorkspaceFileName}`)).resolves.toBeNull();
+    await expect(
+      app.vault.readJson(`${app.vault.configDir}/${mobileWorkspaceFileName}`),
+    ).resolves.toEqual(layout);
+    await expect(
+      app.vault.readJson(`${app.vault.configDir}/${desktopWorkspaceFileName}`),
+    ).resolves.toBeNull();
   });
 
   it("restores mobile drawer layout nodes only in mobile runtime", async () => {
@@ -117,14 +134,18 @@ describe("WorkspaceLayoutPersistence", () => {
     expect(drawer.children.every((child) => child instanceof WorkspaceLeaf)).toBe(true);
     expect(drawer.innerEl.children.item(0)).toBe(app.workspace.leftRibbon.containerEl);
     expect(app.workspace.leftRibbon.containerEl.classList.contains("workspace-ribbon")).toBe(false);
-    expect(app.workspace.leftRibbon.containerEl.classList.contains("workspace-drawer-ribbon")).toBe(true);
+    expect(app.workspace.leftRibbon.containerEl.classList.contains("workspace-drawer-ribbon")).toBe(
+      true,
+    );
     expect(app.workspace.leftRibbon.containerEl.classList.contains("side-dock-ribbon")).toBe(true);
-    expect(app.workspace.getLayout().left).toEqual(expect.objectContaining({
-      id: "left-drawer",
-      type: "mobile-drawer",
-      currentTab: 0,
-      pinned: true,
-    }));
+    expect(app.workspace.getLayout().left).toEqual(
+      expect.objectContaining({
+        id: "left-drawer",
+        type: "mobile-drawer",
+        currentTab: 0,
+        pinned: true,
+      }),
+    );
   });
 
   it("creates mobile side leaves directly inside drawers without wrapping tabs", async () => {
@@ -183,7 +204,9 @@ describe("WorkspaceLayoutPersistence", () => {
     const saved = await app.workspaceLayouts.saveCurrentLayout();
 
     expect(saved.lastOpenFiles).toEqual(["Recent.md"]);
-    await expect(app.vault.readJson(app.workspaceLayouts.getWorkspaceFilePath())).resolves.toEqual(saved);
+    await expect(app.vault.readJson(app.workspaceLayouts.getWorkspaceFilePath())).resolves.toEqual(
+      saved,
+    );
   });
 
   it("opens the most recent file when restoring a layout without a main split", async () => {
@@ -200,7 +223,8 @@ describe("WorkspaceLayoutPersistence", () => {
   it("persists sidedock width and restores it through setLayout", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    if (!(app.workspace.leftSplit instanceof WorkspaceSidedock)) throw new Error("Expected desktop sidedock");
+    if (!(app.workspace.leftSplit instanceof WorkspaceSidedock))
+      throw new Error("Expected desktop sidedock");
     Object.defineProperty(app.workspace.containerEl, "clientWidth", {
       configurable: true,
       value: 1000,
@@ -230,17 +254,26 @@ describe("WorkspaceLayoutPersistence", () => {
 
     app.workspace.leftRibbon.load({ hiddenItems: { b: true, a: false } });
 
-    const serialized = app.workspace.leftRibbon.serialize() as { hiddenItems: Record<string, boolean> };
+    const serialized = app.workspace.leftRibbon.serialize() as {
+      hiddenItems: Record<string, boolean>;
+    };
     const keys = Object.keys(serialized.hiddenItems);
     expect(keys.indexOf("b")).toBeLessThan(keys.indexOf("a"));
     expect(serialized.hiddenItems.b).toBe(true);
     expect(serialized.hiddenItems.a).toBe(false);
-    const actions = [...app.workspace.leftRibbon.actionsEl?.children ?? []] as HTMLElement[];
-    const visibleActions = actions.filter((el) => el.style.display !== "none").map((el) => el.getAttribute("aria-label"));
-    const hiddenActions = actions.filter((el) => el.style.display === "none").map((el) => el.getAttribute("aria-label"));
+    const actions = [...(app.workspace.leftRibbon.actionsEl?.children ?? [])] as HTMLElement[];
+    const visibleActions = actions
+      .filter((el) => el.style.display !== "none")
+      .map((el) => el.getAttribute("aria-label"));
+    const hiddenActions = actions
+      .filter((el) => el.style.display === "none")
+      .map((el) => el.getAttribute("aria-label"));
     expect(visibleActions).toContain("Action A");
     expect(hiddenActions).toContain("Action B");
-    const layoutKeys = Object.keys((app.workspace.getLayout()["left-ribbon"] as { hiddenItems: Record<string, boolean> }).hiddenItems);
+    const layoutKeys = Object.keys(
+      (app.workspace.getLayout()["left-ribbon"] as { hiddenItems: Record<string, boolean> })
+        .hiddenItems,
+    );
     expect(layoutKeys.indexOf("b")).toBeLessThan(layoutKeys.indexOf("a"));
     expect(app.workspace.getLayout()).not.toHaveProperty("right-ribbon");
   });
@@ -318,17 +351,19 @@ describe("WorkspaceLayoutPersistence", () => {
     if (floating?.type !== "floating") throw new Error("Expected floating layout");
     expect(floating.children).toHaveLength(1);
     const windowNode = floating.children[0];
-    expect(windowNode).toEqual(expect.objectContaining({
-      id: "window-a",
-      type: "window",
-      direction: "vertical",
-      x: 10,
-      y: 20,
-      width: 800,
-      height: 600,
-      maximize: true,
-      zoom: 1.25,
-    }));
+    expect(windowNode).toEqual(
+      expect.objectContaining({
+        id: "window-a",
+        type: "window",
+        direction: "vertical",
+        x: 10,
+        y: 20,
+        width: 800,
+        height: 600,
+        maximize: true,
+        zoom: 1.25,
+      }),
+    );
     expect(windowNode).not.toHaveProperty("size");
     expect(windowNode.type).toBe("window");
     if (windowNode.type !== "window") throw new Error("Expected window layout");
@@ -342,11 +377,13 @@ describe("WorkspaceLayoutPersistence", () => {
       floating: {
         id: "floating",
         type: "floating",
-        children: [{
-          id: "window-a",
-          type: "window",
-          children: [{ id: "floating-leaf", type: "leaf", state: { type: "empty" } }],
-        }],
+        children: [
+          {
+            id: "window-a",
+            type: "window",
+            children: [{ id: "floating-leaf", type: "leaf", state: { type: "empty" } }],
+          },
+        ],
       },
     });
     const popout = app.workspace.floatingSplit.children[0];
@@ -408,11 +445,13 @@ describe("WorkspaceLayoutPersistence", () => {
       floating: {
         id: "floating",
         type: "floating",
-        children: [{
-          id: "window-a",
-          type: "window",
-          children: [{ id: "floating-leaf", type: "leaf", state: { type: "empty" } }],
-        }],
+        children: [
+          {
+            id: "window-a",
+            type: "window",
+            children: [{ id: "floating-leaf", type: "leaf", state: { type: "empty" } }],
+          },
+        ],
       },
     });
     const popout = app.workspace.floatingSplit.children[0];

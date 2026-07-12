@@ -8,7 +8,7 @@ export class TextFileView extends EditableFileView {
   protected lastSavedData = "";
   protected saving = false;
   protected saveAgain = false;
-  private saveTimer:  number | null = null;
+  private saveTimer: number | null = null;
   requestSave = (): void => {
     this.dirty = true;
     this.scheduleSave();
@@ -24,9 +24,11 @@ export class TextFileView extends EditableFileView {
 
   async onOpen(): Promise<void> {
     await super.onOpen();
-    this.registerEvent(this.app.vault.on("modify", (file: TFile) => {
-      void this.onExternalModify(file);
-    }));
+    this.registerEvent(
+      this.app.vault.on("modify", (file: TFile) => {
+        void this.onExternalModify(file);
+      }),
+    );
   }
 
   getViewData(): string {
@@ -87,7 +89,8 @@ export class TextFileView extends EditableFileView {
       if (unload) {
         this.clear();
       }
-      if (file && data !== this.lastSavedData && this.lastSavedData !== null) await this.app.vault.modify(file, data);
+      if (file && data !== this.lastSavedData && this.lastSavedData !== null)
+        await this.app.vault.modify(file, data);
       if (!unload) {
         this.lastSavedData = data;
         this.dirty = false;

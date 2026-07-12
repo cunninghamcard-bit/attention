@@ -29,7 +29,11 @@ export class ItemView extends View {
     this.headerEl = createDiv("view-header", this.containerEl);
     this.headerLeftEl = createDiv("view-header-left", this.headerEl);
     if (Platform.isMobile) {
-      this.leftSidebarToggleEl = createEl("button", "view-action clickable-icon mod-left-split-toggle mod-raised sidebar-toggle-button mod-left", this.headerLeftEl);
+      this.leftSidebarToggleEl = createEl(
+        "button",
+        "view-action clickable-icon mod-left-split-toggle mod-raised sidebar-toggle-button mod-left",
+        this.headerLeftEl,
+      );
       setTooltip(this.leftSidebarToggleEl, "Expand");
       setIcon(this.leftSidebarToggleEl, "sidebar-toggle-button-icon");
       this.leftSidebarToggleEl.addEventListener("click", () => {
@@ -41,21 +45,28 @@ export class ItemView extends View {
     this.backButtonEl = this.createNavButton("Back", "lucide-arrow-left", -1);
     this.forwardButtonEl = this.createNavButton("Forward", "lucide-arrow-right", 1);
     this.navButtonsEl.append(this.backButtonEl, this.forwardButtonEl);
-    this.titleContainerEl = createDiv("view-header-title-container mod-at-start mod-fade", this.headerEl);
+    this.titleContainerEl = createDiv(
+      "view-header-title-container mod-at-start mod-fade",
+      this.headerEl,
+    );
     this.titleParentEl = createDiv("view-header-title-parent", this.titleContainerEl);
     this.titleEl = createDiv("view-header-title", this.titleContainerEl);
     this.titleEl.addEventListener("scroll", () => this.scheduleTitleFadeUpdate());
     this.updateTitleFade();
     this.actionsEl = createDiv("view-actions", this.headerEl);
     if (Platform.isPhone) this.actionsEl.classList.add("mod-raised");
-    this.moreOptionsButtonEl = this.addAction("lucide-more-vertical", "More options", (event) => this.onMoreOptions(event));
+    this.moreOptionsButtonEl = this.addAction("lucide-more-vertical", "More options", (event) =>
+      this.onMoreOptions(event),
+    );
     this.moreOptionsButtonEl.addEventListener("contextmenu", (event) => {
       if (!Platform.isPhone) return;
       event.preventDefault();
       this.app.workspace.rightSplit.expand();
     });
     this.contentEl = createDiv("view-content", this.containerEl);
-    this.app.dragManager.handleDrop(this.containerEl, (event, source, hovering) => this.handleDrop(event, source, hovering));
+    this.app.dragManager.handleDrop(this.containerEl, (event, source, hovering) =>
+      this.handleDrop(event, source, hovering),
+    );
   }
 
   override onload(): void {
@@ -73,43 +84,67 @@ export class ItemView extends View {
   onMoreOptions(event: MouseEvent): void {
     event.preventDefault();
     const target = event.target instanceof Element ? event.target : this.moreOptionsButtonEl;
-    const menu = new Menu(target.ownerDocument).addSections(["close", "pane", "open", "action", "find", "info", "info.copy", "view", "view.linked", "system", "", "danger"]);
+    const menu = new Menu(target.ownerDocument).addSections([
+      "close",
+      "pane",
+      "open",
+      "action",
+      "find",
+      "info",
+      "info.copy",
+      "view",
+      "view.linked",
+      "system",
+      "",
+      "danger",
+    ]);
     menu.setSectionSubmenu("info.copy", { title: "Copy path", icon: "lucide-clipboard" });
     menu.setSectionSubmenu("view.linked", { title: "Open linked view", icon: "lucide-link" });
     this.onPaneMenu(menu, "more-options");
     this.onMoreOptionsMenu(menu);
     this.app.workspace.trigger("leaf-menu", menu, this.leaf);
     const rect = target.getBoundingClientRect();
-    menu.setParentElement(target).showAtPosition({ x: rect.x, y: rect.bottom, width: rect.width, overlap: true, left: true });
+    menu
+      .setParentElement(target)
+      .showAtPosition({ x: rect.x, y: rect.bottom, width: rect.width, overlap: true, left: true });
   }
 
   override onPaneMenu(menu: Menu, source?: string): void {
     super.onPaneMenu(menu, source);
     const leaf = this.leaf;
     if (Platform.isPhone && source === "more-options") {
-      menu.addItem((item) => item
-        .setSection("close")
-        .setTitle("Close")
-        .setIcon("lucide-x")
-        .onClick(() => leaf.detach()));
-      menu.addItem((item) => item
-        .setSection("action")
-        .setTitle(leaf.pinned ? "Unpin" : "Pin")
-        .setIcon(leaf.pinned ? "lucide-pin-off" : "lucide-pin")
-        .onClick(() => leaf.togglePinned()));
+      menu.addItem((item) =>
+        item
+          .setSection("close")
+          .setTitle("Close")
+          .setIcon("lucide-x")
+          .onClick(() => leaf.detach()),
+      );
+      menu.addItem((item) =>
+        item
+          .setSection("action")
+          .setTitle(leaf.pinned ? "Unpin" : "Pin")
+          .setIcon(leaf.pinned ? "lucide-pin-off" : "lucide-pin")
+          .onClick(() => leaf.togglePinned()),
+      );
     }
     if (Platform.canSplit && leaf.canPin()) {
-      menu.addItem((item) => item
-        .setSection("open")
-        .setTitle("Split right")
-        .setDisabled(this.app.workspace.isInSidebar(leaf))
-        .setIcon("lucide-separator-vertical")
-        .onClick(() => this.duplicateIntoSplit("vertical")))
-      .addItem((item) => item
-        .setSection("open")
-        .setTitle("Split down")
-        .setIcon("lucide-separator-horizontal")
-        .onClick(() => this.duplicateIntoSplit("horizontal")));
+      menu
+        .addItem((item) =>
+          item
+            .setSection("open")
+            .setTitle("Split right")
+            .setDisabled(this.app.workspace.isInSidebar(leaf))
+            .setIcon("lucide-separator-vertical")
+            .onClick(() => this.duplicateIntoSplit("vertical")),
+        )
+        .addItem((item) =>
+          item
+            .setSection("open")
+            .setTitle("Split down")
+            .setIcon("lucide-separator-horizontal")
+            .onClick(() => this.duplicateIntoSplit("horizontal")),
+        );
     }
   }
 
@@ -117,33 +152,41 @@ export class ItemView extends View {
     super.onTabMenu(menu);
     const leaf = this.leaf;
     if (leaf.canPin()) {
-      menu.addItem((item) => item
-        .setSection("pane")
-        .setTitle(leaf.pinned ? "Unpin" : "Pin")
-        .setIcon("lucide-pin")
-        .onClick(() => leaf.togglePinned()));
+      menu.addItem((item) =>
+        item
+          .setSection("pane")
+          .setTitle(leaf.pinned ? "Unpin" : "Pin")
+          .setIcon("lucide-pin")
+          .onClick(() => leaf.togglePinned()),
+      );
     }
     if (leaf.group) {
-      menu.addItem((item) => item
-        .setSection("pane")
-        .setTitle("Unlink tab")
-        .setIcon("lucide-link")
-        .onClick(() => leaf.setGroup(null)));
+      menu.addItem((item) =>
+        item
+          .setSection("pane")
+          .setTitle("Unlink tab")
+          .setIcon("lucide-link")
+          .onClick(() => leaf.setGroup(null)),
+      );
     } else if (leaf.canPin()) {
-      menu.addItem((item) => item
-        .setSection("pane")
-        .setTitle("Link tab")
-        .setIcon("lucide-link")
-        .onClick(() => this.app.workspace.onStartLink(leaf)));
+      menu.addItem((item) =>
+        item
+          .setSection("pane")
+          .setTitle("Link tab")
+          .setIcon("lucide-link")
+          .onClick(() => this.app.workspace.onStartLink(leaf)),
+      );
     }
     if (Platform.canPopoutWindow) {
-      menu.addItem((item) => item
-        .setSection("open")
-        .setTitle("Move to new window")
-        .setIcon("lucide-picture-in-picture")
-        .onClick(() => {
-          this.app.workspace.moveLeafToPopout(leaf);
-        }));
+      menu.addItem((item) =>
+        item
+          .setSection("open")
+          .setTitle("Move to new window")
+          .setIcon("lucide-picture-in-picture")
+          .onClick(() => {
+            this.app.workspace.moveLeafToPopout(leaf);
+          }),
+      );
     }
   }
 
@@ -160,9 +203,18 @@ export class ItemView extends View {
     return button;
   }
 
-  override handleDrop(event: DragEvent, source: DragSource | null, hovering: boolean): DragDropResult {
+  override handleDrop(
+    event: DragEvent,
+    source: DragSource | null,
+    hovering: boolean,
+  ): DragDropResult {
     if (!source) return undefined;
-    if (!this.canDropAnywhere && !isOpenInCurrentLeafModifier(event) && !this.headerEl.contains(event.target as Node | null)) return undefined;
+    if (
+      !this.canDropAnywhere &&
+      !isOpenInCurrentLeafModifier(event) &&
+      !this.headerEl.contains(event.target as Node | null)
+    )
+      return undefined;
     const result = this.leaf.handleDrop(event, source, hovering);
     if (!result) return undefined;
     return {
@@ -193,8 +245,12 @@ export class ItemView extends View {
       if (event.button === 2) return;
       void this.navigateHistory(direction, event);
     });
-    button.addEventListener("contextmenu", (event) => this.openHistoryMenu(event, button, direction, false));
-    button.addEventListener("mousedown", (event) => this.armHistoryMenuPress(event, button, direction));
+    button.addEventListener("contextmenu", (event) =>
+      this.openHistoryMenu(event, button, direction, false),
+    );
+    button.addEventListener("mousedown", (event) =>
+      this.armHistoryMenuPress(event, button, direction),
+    );
     return button;
   }
 
@@ -202,27 +258,40 @@ export class ItemView extends View {
     await this.navigateHistoryDelta(direction, event);
   }
 
-  private async navigateHistoryDelta(delta: number, event?: MouseEvent | KeyboardEvent): Promise<void> {
+  private async navigateHistoryDelta(
+    delta: number,
+    event?: MouseEvent | KeyboardEvent,
+  ): Promise<void> {
     const paneType = event ? Keymap.isModEvent(event) : false;
     const leaf = paneType ? await this.app.workspace.duplicateLeaf(this.leaf, paneType) : this.leaf;
     await leaf.history.go(delta);
   }
 
-  private openHistoryMenu(event: MouseEvent, button: HTMLElement, direction: -1 | 1, selectOnMouseUp: boolean): Menu | null {
+  private openHistoryMenu(
+    event: MouseEvent,
+    button: HTMLElement,
+    direction: -1 | 1,
+    selectOnMouseUp: boolean,
+  ): Menu | null {
     event.preventDefault();
-    const entries = direction < 0 ? this.leaf.history.backHistory : this.leaf.history.forwardHistory;
+    const entries =
+      direction < 0 ? this.leaf.history.backHistory : this.leaf.history.forwardHistory;
     if (entries.length === 0) return null;
     const menu = new Menu(button.ownerDocument);
     for (let index = entries.length - 1; index >= 0; index -= 1) {
       const entry = entries[index];
       const distance = direction * (entries.length - index);
-      menu.addItem((item) => item
-        .setTitle(truncateHistoryTitle(entry.title ?? "", 50))
-        .setIcon(entry.icon ?? null)
-        .onClick((clickEvent) => void this.navigateHistoryDelta(distance, clickEvent)));
+      menu.addItem((item) =>
+        item
+          .setTitle(truncateHistoryTitle(entry.title ?? "", 50))
+          .setIcon(entry.icon ?? null)
+          .onClick((clickEvent) => void this.navigateHistoryDelta(distance, clickEvent)),
+      );
     }
     const rect = button.getBoundingClientRect();
-    menu.setParentElement(button).showAtPosition({ x: rect.x, y: rect.bottom, width: rect.width, overlap: true });
+    menu
+      .setParentElement(button)
+      .showAtPosition({ x: rect.x, y: rect.bottom, width: rect.width, overlap: true });
     if (selectOnMouseUp) {
       menu.dom.addEventListener("mouseup", (mouseUpEvent) => {
         const target = mouseUpEvent.target instanceof Node ? mouseUpEvent.target : null;
@@ -273,7 +342,10 @@ export class ItemView extends View {
     const scrollWidth = this.titleEl.scrollWidth;
     const offsetWidth = this.titleEl.offsetWidth;
     this.titleContainerEl.classList.toggle("mod-at-start", scrollLeft === 0);
-    this.titleContainerEl.classList.toggle("mod-at-end", Math.ceil(scrollLeft) >= scrollWidth - offsetWidth);
+    this.titleContainerEl.classList.toggle(
+      "mod-at-end",
+      Math.ceil(scrollLeft) >= scrollWidth - offsetWidth,
+    );
   }
 
   private scheduleTitleFadeUpdate(): void {
@@ -295,5 +367,7 @@ function truncateHistoryTitle(title: string, maxLength: number): string {
 }
 
 function isOpenInCurrentLeafModifier(event: DragEvent): boolean {
-  return /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent) ? event.shiftKey : event.altKey;
+  return /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent)
+    ? event.shiftKey
+    : event.altKey;
 }

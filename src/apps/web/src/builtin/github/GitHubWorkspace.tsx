@@ -52,13 +52,17 @@ export class GitHubWorkspaceView extends ItemView {
   private root: Root | null = null;
   private section: GithubWorkspaceSection = "pulls";
 
-  getViewType(): string { return GitHubWorkspaceView.VIEW_TYPE; }
+  getViewType(): string {
+    return GitHubWorkspaceView.VIEW_TYPE;
+  }
   getDisplayText(): string {
     const prefs = readGithubPrPrefs();
     if (prefs.owner && prefs.repo) return `${prefs.owner}/${prefs.repo}`;
     return "GitHub";
   }
-  getIcon(): string { return "lucide-github"; }
+  getIcon(): string {
+    return "lucide-github";
+  }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("gh-workspace");
@@ -110,11 +114,15 @@ export class GitCommitView extends ItemView {
   private owner: string | null = null;
   private repo: string | null = null;
 
-  getViewType(): string { return GitCommitView.VIEW_TYPE; }
+  getViewType(): string {
+    return GitCommitView.VIEW_TYPE;
+  }
   getDisplayText(): string {
     return this.sha ? `Commit ${this.sha.slice(0, 7)}` : "Commit";
   }
-  getIcon(): string { return "lucide-git-commit"; }
+  getIcon(): string {
+    return "lucide-git-commit";
+  }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("gh-workspace");
@@ -140,9 +148,10 @@ export class GitCommitView extends ItemView {
 
   private render(): void {
     if (!this.root || !this.sha) return;
-    const repo = this.owner && this.repo
-      ? { owner: this.owner, repo: this.repo, host: "github.com" as const }
-      : null;
+    const repo =
+      this.owner && this.repo
+        ? { owner: this.owner, repo: this.repo, host: "github.com" as const }
+        : null;
     this.root.render(<CommitDetailPanel app={this.app} sha={this.sha} repo={repo} />);
   }
 
@@ -257,8 +266,14 @@ function WorkspaceShell({
         <div className="gh-sidebar-repo">
           <Icon name="lucide-github" />
           <div className="gh-sidebar-repo-text">
-            <div className="gh-sidebar-repo-name">{repo.owner}/{repo.repo}</div>
-            <button type="button" className="gh-linkish" onClick={() => void openPullRequestsView(app)}>
+            <div className="gh-sidebar-repo-name">
+              {repo.owner}/{repo.repo}
+            </div>
+            <button
+              type="button"
+              className="gh-linkish"
+              onClick={() => void openPullRequestsView(app)}
+            >
               Switch repo
             </button>
           </div>
@@ -283,7 +298,9 @@ function WorkspaceShell({
           ))}
         </nav>
         <div className="gh-sidebar-user">
-          {auth.avatarUrl && <img src={auth.avatarUrl} alt="" className="gh-avatar" width={20} height={20} />}
+          {auth.avatarUrl && (
+            <img src={auth.avatarUrl} alt="" className="gh-avatar" width={20} height={20} />
+          )}
           <span>{auth.login}</span>
         </div>
       </aside>
@@ -311,7 +328,11 @@ function CommitsPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef }): R
   const [branches, setBranches] = useState<GitHubBranch[]>([]);
   const [ref, setRef] = useState("");
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<{ items: CommitSummary[]; hasNext: boolean; hasPrev: boolean } | null>(null);
+  const [data, setData] = useState<{
+    items: CommitSummary[];
+    hasNext: boolean;
+    hasPrev: boolean;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [branchQuery, setBranchQuery] = useState("");
@@ -326,7 +347,10 @@ function CommitsPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef }): R
         ]);
         setBranches(list);
         const preferred = readGithubPrPrefs().lastBranch;
-        setRef((current) => current || (preferred && list.some((b) => b.name === preferred) ? preferred : def));
+        setRef(
+          (current) =>
+            current || (preferred && list.some((b) => b.name === preferred) ? preferred : def),
+        );
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }
@@ -352,7 +376,9 @@ function CommitsPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef }): R
     }
   }, [app, page, ref, repo]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const filteredBranches = useMemo(() => {
     const q = branchQuery.trim().toLowerCase();
@@ -364,11 +390,18 @@ function CommitsPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef }): R
       <header className="gh-commits-header">
         <div>
           <h1 className="gh-page-title">Commits</h1>
-          <p className="gh-muted">{repo.owner}/{repo.repo}{ref ? ` @ ${ref}` : ""}</p>
+          <p className="gh-muted">
+            {repo.owner}/{repo.repo}
+            {ref ? ` @ ${ref}` : ""}
+          </p>
         </div>
         <div className="gh-commits-controls">
           <div className="gh-branch-select">
-            <button type="button" className="gh-branch-trigger" onClick={() => setBranchOpen((o) => !o)}>
+            <button
+              type="button"
+              className="gh-branch-trigger"
+              onClick={() => setBranchOpen((o) => !o)}
+            >
               <Icon name="lucide-git-branch" />
               <span>{ref || "Select branch"}</span>
               <Icon name="lucide-chevrons-up-down" />
@@ -405,7 +438,12 @@ function CommitsPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef }): R
               </div>
             )}
           </div>
-          <button type="button" className="clickable-icon" aria-label="Refresh" onClick={() => void load()}>
+          <button
+            type="button"
+            className="clickable-icon"
+            aria-label="Refresh"
+            onClick={() => void load()}
+          >
             <Icon name="lucide-rotate-ccw" />
           </button>
         </div>
@@ -414,11 +452,19 @@ function CommitsPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef }): R
       {error && (
         <div className="gh-error">
           {error}
-          <button type="button" className="gh-linkish" onClick={() => void load()}>Retry</button>
+          <button type="button" className="gh-linkish" onClick={() => void load()}>
+            Retry
+          </button>
         </div>
       )}
 
-      {loading && !data && <div className="gh-skeleton">{Array.from({ length: 8 }, (_, i) => <div key={i} className="gh-skeleton-row" />)}</div>}
+      {loading && !data && (
+        <div className="gh-skeleton">
+          {Array.from({ length: 8 }, (_, i) => (
+            <div key={i} className="gh-skeleton-row" />
+          ))}
+        </div>
+      )}
 
       {data && data.items.length === 0 && !loading && (
         <div className="gh-empty">No commits on this branch.</div>
@@ -433,9 +479,19 @@ function CommitsPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef }): R
               className="gh-commit-row"
               onClick={() => void openCommitDetail(app, commit.sha, repo)}
             >
-              {commit.author.avatarUrl
-                ? <img className="gh-avatar" src={commit.author.avatarUrl} alt="" width={28} height={28} />
-                : <span className="gh-avatar-fallback">{commit.author.login.slice(0, 1).toUpperCase()}</span>}
+              {commit.author.avatarUrl ? (
+                <img
+                  className="gh-avatar"
+                  src={commit.author.avatarUrl}
+                  alt=""
+                  width={28}
+                  height={28}
+                />
+              ) : (
+                <span className="gh-avatar-fallback">
+                  {commit.author.login.slice(0, 1).toUpperCase()}
+                </span>
+              )}
               <div className="gh-commit-main">
                 <div className="gh-commit-headline">{commit.headline}</div>
                 <div className="gh-muted">
@@ -451,7 +507,9 @@ function CommitsPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef }): R
                 aria-label="Copy SHA"
                 onClick={(e) => {
                   e.stopPropagation();
-                  void navigator.clipboard.writeText(commit.sha).then(() => new Notice("SHA copied"));
+                  void navigator.clipboard
+                    .writeText(commit.sha)
+                    .then(() => new Notice("SHA copied"));
                 }}
               >
                 <Icon name="lucide-copy" />
@@ -463,11 +521,19 @@ function CommitsPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef }): R
 
       {data && (data.hasNext || data.hasPrev) && (
         <div className="gh-pagination">
-          <button type="button" disabled={!data.hasPrev || loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+          <button
+            type="button"
+            disabled={!data.hasPrev || loading}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
             Previous
           </button>
           <span className="gh-muted">Page {page}</span>
-          <button type="button" disabled={!data.hasNext || loading} onClick={() => setPage((p) => p + 1)}>
+          <button
+            type="button"
+            disabled={!data.hasNext || loading}
+            onClick={() => setPage((p) => p + 1)}
+          >
             Next
           </button>
         </div>
@@ -528,7 +594,11 @@ function CommitDetailPanel({
     return (
       <div className="gh-empty-center">
         <p>{error}</p>
-        <button type="button" className="mod-cta" onClick={() => void openGitHubWorkspace(app, { section: "commits" })}>
+        <button
+          type="button"
+          className="mod-cta"
+          onClick={() => void openGitHubWorkspace(app, { section: "commits" })}
+        >
           Back to commits
         </button>
       </div>
@@ -545,37 +615,67 @@ function CommitDetailPanel({
     <div className="gh-commit-detail">
       <header className="gh-commit-detail-header">
         <div className="gh-breadcrumb">
-          <button type="button" className="gh-linkish" onClick={() => void openGitHubWorkspace(app, { section: "commits", owner: repo.owner, repo: repo.repo })}>
+          <button
+            type="button"
+            className="gh-linkish"
+            onClick={() =>
+              void openGitHubWorkspace(app, {
+                section: "commits",
+                owner: repo.owner,
+                repo: repo.repo,
+              })
+            }
+          >
             ← Commits
           </button>
-          <span className="gh-chip">{repo.owner}/{repo.repo}</span>
+          <span className="gh-chip">
+            {repo.owner}/{repo.repo}
+          </span>
         </div>
         <h1 className="gh-page-title">{detail.headline}</h1>
         <div className="gh-commit-meta">
-          {detail.author.avatarUrl && <img className="gh-avatar" src={detail.author.avatarUrl} alt="" width={22} height={22} />}
+          {detail.author.avatarUrl && (
+            <img
+              className="gh-avatar"
+              src={detail.author.avatarUrl}
+              alt=""
+              width={22}
+              height={22}
+            />
+          )}
           <strong>{detail.author.login}</strong>
           <span className="gh-muted">committed {moment(detail.committedDate).fromNow()}</span>
           <code className="gh-sha">{detail.shortSha}</code>
           <button
             type="button"
             className="gh-linkish"
-            onClick={() => void navigator.clipboard.writeText(detail.sha).then(() => new Notice("SHA copied"))}
+            onClick={() =>
+              void navigator.clipboard.writeText(detail.sha).then(() => new Notice("SHA copied"))
+            }
           >
             Copy
           </button>
           {detail.verification?.verified && <span className="gh-chip mod-ok">Verified</span>}
-          {detail.ciState && <span className={`gh-chip mod-ci-${detail.ciState}`}>{detail.ciState}</span>}
+          {detail.ciState && (
+            <span className={`gh-chip mod-ci-${detail.ciState}`}>{detail.ciState}</span>
+          )}
           <span className="gh-diffstat">
             <ins>+{detail.stats.additions}</ins> <del>−{detail.stats.deletions}</del>
             {" · "}
             {detail.files.length} files
           </span>
-          <button type="button" className="gh-linkish" onClick={() => window.open(detail.url, "_blank")}>
+          <button
+            type="button"
+            className="gh-linkish"
+            onClick={() => window.open(detail.url, "_blank")}
+          >
             Open on GitHub
           </button>
         </div>
         {detail.message.includes("\n") && (
-          <pre className="gh-commit-body">{detail.message.split("\n").slice(1).join("\n").trim()}</pre>
+          <pre className="gh-commit-body">
+            {detail.message.split("\n").slice(1).join("\n").trim()}
+          </pre>
         )}
         {detail.parents.length > 0 && (
           <div className="gh-muted">
@@ -609,8 +709,12 @@ function CommitDetailPanel({
               className={`gh-file-row${selectedPath === file.path ? " is-active" : ""}`}
               onClick={() => setSelectedPath(file.path)}
             >
-              <span className={`gh-file-status mod-${file.status}`}>{statusGlyph(file.status)}</span>
-              <span className="gh-file-name" title={file.path}>{file.path}</span>
+              <span className={`gh-file-status mod-${file.status}`}>
+                {statusGlyph(file.status)}
+              </span>
+              <span className="gh-file-name" title={file.path}>
+                {file.path}
+              </span>
               <span className="gh-diffstat">
                 {file.additions > 0 && <ins>+{file.additions}</ins>}
                 {file.deletions > 0 && <del>−{file.deletions}</del>}
@@ -672,11 +776,17 @@ function BranchesPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef }): 
       <header className="gh-commits-header">
         <div>
           <h1 className="gh-page-title">Branches</h1>
-          <p className="gh-muted">{repo.owner}/{repo.repo}</p>
+          <p className="gh-muted">
+            {repo.owner}/{repo.repo}
+          </p>
         </div>
         <label className="gh-search">
           <Icon name="lucide-search" />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter branches…" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter branches…"
+          />
         </label>
       </header>
       {error && <div className="gh-error">{error}</div>}
@@ -692,20 +802,30 @@ function BranchesPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef }): 
                   {b.name === defaultBranch && <span className="gh-chip">default</span>}
                   {b.protected && <span className="gh-chip">protected</span>}
                 </div>
-                <div className="gh-muted"><code>{b.commitSha.slice(0, 7)}</code></div>
+                <div className="gh-muted">
+                  <code>{b.commitSha.slice(0, 7)}</code>
+                </div>
               </div>
               <button
                 type="button"
                 className="gh-linkish"
                 onClick={() => {
                   writeGithubPrPrefs({ owner: repo.owner, repo: repo.repo, lastBranch: b.name });
-                  void openGitHubWorkspace(app, { section: "commits", owner: repo.owner, repo: repo.repo });
+                  void openGitHubWorkspace(app, {
+                    section: "commits",
+                    owner: repo.owner,
+                    repo: repo.repo,
+                  });
                 }}
               >
                 View commits
               </button>
               {b.commitSha && (
-                <button type="button" className="gh-linkish" onClick={() => void openCommitDetail(app, b.commitSha, repo)}>
+                <button
+                  type="button"
+                  className="gh-linkish"
+                  onClick={() => void openCommitDetail(app, b.commitSha, repo)}
+                >
                   Tip commit
                 </button>
               )}
@@ -721,12 +841,16 @@ function LocalPanel({ app }: { app: App }): ReactNode {
   return (
     <div className="gh-local-panel">
       <h1 className="gh-page-title">Local vault</h1>
-      <p className="gh-muted">Working-tree tools for the vault on disk (independent of GitHub auth).</p>
+      <p className="gh-muted">
+        Working-tree tools for the vault on disk (independent of GitHub auth).
+      </p>
       <div className="gh-local-actions">
         <button
           type="button"
           className="mod-cta"
-          onClick={() => void app.workspace.getLeaf("tab").setViewState({ type: "git-changes", active: true })}
+          onClick={() =>
+            void app.workspace.getLeaf("tab").setViewState({ type: "git-changes", active: true })
+          }
         >
           Open local changes
         </button>

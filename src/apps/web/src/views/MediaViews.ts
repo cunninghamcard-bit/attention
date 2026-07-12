@@ -175,9 +175,10 @@ export class ReleaseNotesView extends ItemView {
 
   async setState(state: unknown, result?: InternalViewStateResult): Promise<void> {
     await super.setState(state, result);
-    const version = state && typeof state === "object" && "currentVersion" in state
-      ? (state as { currentVersion?: unknown }).currentVersion
-      : null;
+    const version =
+      state && typeof state === "object" && "currentVersion" in state
+        ? (state as { currentVersion?: unknown }).currentVersion
+        : null;
     const nextVersion = typeof version === "string" && version.trim() ? version.trim() : "current";
     if (nextVersion === this.currentVersion && this.contentEl.childElementCount > 0) return;
     this.currentVersion = nextVersion;

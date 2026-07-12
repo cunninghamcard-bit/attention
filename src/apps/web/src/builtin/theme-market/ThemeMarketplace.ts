@@ -9,7 +9,8 @@ export interface ThemeMarketplaceEntry {
 }
 
 /** The official community theme catalog (same source real Obsidian uses). */
-const CATALOG_URL = "https://raw.githubusercontent.com/obsidianmd/obsidian-releases/HEAD/community-css-themes.json";
+const CATALOG_URL =
+  "https://raw.githubusercontent.com/obsidianmd/obsidian-releases/HEAD/community-css-themes.json";
 
 interface CommunityCatalogEntry {
   name: string;
@@ -19,7 +20,9 @@ interface CommunityCatalogEntry {
   modes?: Array<"light" | "dark">;
 }
 
-export type MarketplaceFetcher = (url: string) => Promise<{ ok: boolean; status: number; text(): Promise<string> }>;
+export type MarketplaceFetcher = (
+  url: string,
+) => Promise<{ ok: boolean; status: number; text(): Promise<string> }>;
 
 export class ThemeMarketplace {
   private entries = new Map<string, ThemeMarketplaceEntry>();
@@ -36,7 +39,13 @@ export class ThemeMarketplace {
     for (const item of catalog) {
       if (!item?.name || !item.repo) continue;
       this.registerEntry({
-        manifest: { id: item.name, name: item.name, author: item.author, version: "", modes: item.modes ?? ["light", "dark"] },
+        manifest: {
+          id: item.name,
+          name: item.name,
+          author: item.author,
+          version: "",
+          modes: item.modes ?? ["light", "dark"],
+        },
         repository: item.repo,
         screenshot: item.screenshot,
       });
@@ -56,11 +65,14 @@ export class ThemeMarketplace {
   search(query = ""): ThemeMarketplaceEntry[] {
     const q = query.toLowerCase();
     return [...this.entries.values()]
-      .filter((entry) => !q
-        || entry.manifest.name.toLowerCase().includes(q)
-        || entry.manifest.author?.toLowerCase().includes(q)
-        || entry.manifest.description?.toLowerCase().includes(q)
-        || entry.manifest.id.toLowerCase().includes(q))
+      .filter(
+        (entry) =>
+          !q ||
+          entry.manifest.name.toLowerCase().includes(q) ||
+          entry.manifest.author?.toLowerCase().includes(q) ||
+          entry.manifest.description?.toLowerCase().includes(q) ||
+          entry.manifest.id.toLowerCase().includes(q),
+      )
       .sort((a, b) => a.manifest.name.localeCompare(b.manifest.name));
   }
 
@@ -77,7 +89,11 @@ export class ThemeMarketplace {
     if (manifestResponse?.ok) {
       try {
         const remote = JSON.parse(await manifestResponse.text()) as Partial<ThemeManifest>;
-        manifest = { ...manifest, version: remote.version ?? manifest.version, author: remote.author ?? manifest.author };
+        manifest = {
+          ...manifest,
+          version: remote.version ?? manifest.version,
+          author: remote.author ?? manifest.author,
+        };
       } catch {
         // Malformed remote manifest: the catalog entry is enough.
       }

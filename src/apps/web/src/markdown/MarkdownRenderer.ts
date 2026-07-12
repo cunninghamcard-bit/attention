@@ -1,7 +1,11 @@
 import type { App } from "../app/App";
 import { removeChildren } from "../dom/dom";
 import { Menu } from "../ui/Menu";
-import { MarkdownBlockParser, type MarkdownBlock, type MarkdownListItem } from "./MarkdownBlockParser";
+import {
+  MarkdownBlockParser,
+  type MarkdownBlock,
+  type MarkdownListItem,
+} from "./MarkdownBlockParser";
 import { MarkdownInlineRenderer } from "./MarkdownInlineRenderer";
 import { MarkdownCodeBlockRegistry } from "./MarkdownCodeBlockRegistry";
 import { MarkdownPostProcessorRegistry } from "./MarkdownPostProcessorRegistry";
@@ -58,7 +62,10 @@ export interface MarkdownRenderOptions {
   onSectionPostProcess?(el: HTMLElement, context: MarkdownPostProcessorContext): void;
 }
 
-export abstract class MarkdownRenderer extends MarkdownRenderChild implements MarkdownPreviewEvents {
+export abstract class MarkdownRenderer
+  extends MarkdownRenderChild
+  implements MarkdownPreviewEvents
+{
   private static parser = new MarkdownBlockParser();
   private static inlineRenderer = new MarkdownInlineRenderer();
   private static codeBlocks = new MarkdownCodeBlockRegistry();
@@ -81,7 +88,10 @@ export abstract class MarkdownRenderer extends MarkdownRenderChild implements Ma
     this.postProcessors.unregister(processor);
   }
 
-  static registerCodeBlockPostProcessor(language: string, processor: MarkdownCodeBlockProcessor): void {
+  static registerCodeBlockPostProcessor(
+    language: string,
+    processor: MarkdownCodeBlockProcessor,
+  ): void {
     this.codeBlocks.register(language, processor);
   }
 
@@ -89,7 +99,10 @@ export abstract class MarkdownRenderer extends MarkdownRenderChild implements Ma
     this.codeBlocks.unregister(language);
   }
 
-  static createCodeBlockPostProcessor(language: string, processor: MarkdownCodeBlockProcessor): MarkdownPostProcessor {
+  static createCodeBlockPostProcessor(
+    language: string,
+    processor: MarkdownCodeBlockProcessor,
+  ): MarkdownPostProcessor {
     return (element, context) => {
       const internalContext = context as InternalMarkdownPostProcessorContext;
       const selector = `language-${language}`;
@@ -113,7 +126,12 @@ export abstract class MarkdownRenderer extends MarkdownRenderChild implements Ma
     };
   }
 
-  static renderMarkdown(markdown: string, container: HTMLElement, sourcePath: string, component?: Component): Promise<void> {
+  static renderMarkdown(
+    markdown: string,
+    container: HTMLElement,
+    sourcePath: string,
+    component?: Component,
+  ): Promise<void> {
     return this.render(null, markdown, container, sourcePath, component);
   }
 
@@ -147,14 +165,18 @@ export abstract class MarkdownRenderer extends MarkdownRenderChild implements Ma
         }
         if (!this.warnedMissingComponent) {
           this.warnedMissingComponent = true;
-          console.warn("MarkdownRenderer.render called without a Component; MarkdownRenderChild cleanup is not managed.");
+          console.warn(
+            "MarkdownRenderer.render called without a Component; MarkdownRenderChild cleanup is not managed.",
+          );
         }
         child.load();
       },
       getSectionInfo: options.getSectionInfo ?? (() => null),
       replace: () => null,
     };
-    const root = container.classList.contains("markdown-rendered") ? container : document.createElement("div");
+    const root = container.classList.contains("markdown-rendered")
+      ? container
+      : document.createElement("div");
     if (root !== container) {
       root.className = "markdown-rendered";
       container.appendChild(root);
@@ -173,7 +195,7 @@ export abstract class MarkdownRenderer extends MarkdownRenderChild implements Ma
       const sectionContext: InternalMarkdownPostProcessorContext = {
         ...context,
         el: section,
-        replace: (source) => options.replace ? options.replace(source, section) : null,
+        replace: (source) => (options.replace ? options.replace(source, section) : null),
       };
       this.postProcessors.run(section, sectionContext);
       options.onSectionPostProcess?.(section, sectionContext);
@@ -185,7 +207,11 @@ export abstract class MarkdownRenderer extends MarkdownRenderChild implements Ma
     }
   }
 
-  private static installInternalLinkHandlers(app: App, root: HTMLElement, sourcePath: string): void {
+  private static installInternalLinkHandlers(
+    app: App,
+    root: HTMLElement,
+    sourcePath: string,
+  ): void {
     const existing = this.linkHandlerState.get(root);
     if (existing) {
       existing.app = app;
@@ -195,18 +221,26 @@ export abstract class MarkdownRenderer extends MarkdownRenderChild implements Ma
     const state = { app, sourcePath };
     this.linkHandlerState.set(root, state);
     root.addEventListener("click", (event) => {
-      const target = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>(".internal-link") : null;
+      const target =
+        event.target instanceof HTMLElement
+          ? event.target.closest<HTMLElement>(".internal-link")
+          : null;
       if (!target) return;
-      const linktext = target.dataset.href ?? target.getAttribute("href") ?? target.textContent ?? "";
+      const linktext =
+        target.dataset.href ?? target.getAttribute("href") ?? target.textContent ?? "";
       if (!linktext || /^https?:/.test(linktext)) return;
       event.preventDefault();
       const resolver = new MarkdownLinkResolver(state.app);
       void resolver.openLinkText(linktext, state.sourcePath);
     });
     root.addEventListener("mouseover", (event) => {
-      const target = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>(".internal-link") : null;
+      const target =
+        event.target instanceof HTMLElement
+          ? event.target.closest<HTMLElement>(".internal-link")
+          : null;
       if (!target) return;
-      const linktext = target.dataset.href ?? target.getAttribute("href") ?? target.textContent ?? "";
+      const linktext =
+        target.dataset.href ?? target.getAttribute("href") ?? target.textContent ?? "";
       if (!linktext || /^https?:/.test(linktext)) return;
       state.app.workspace.trigger("hover-link", {
         event,
@@ -266,7 +300,11 @@ export abstract class MarkdownRenderer extends MarkdownRenderChild implements Ma
     return linktext.length > 0 ? linktext : null;
   }
 
-  private static async renderBlock(block: MarkdownBlock, root: HTMLElement, context: InternalMarkdownPostProcessorContext): Promise<HTMLElement> {
+  private static async renderBlock(
+    block: MarkdownBlock,
+    root: HTMLElement,
+    context: InternalMarkdownPostProcessorContext,
+  ): Promise<HTMLElement> {
     if (block.type === "heading") {
       const heading = document.createElement(`h${block.level}`);
       heading.appendChild(this.inlineRenderer.render(block.text, context));
@@ -304,7 +342,11 @@ export abstract class MarkdownRenderer extends MarkdownRenderChild implements Ma
     return pre;
   }
 
-  private static renderList(items: MarkdownListItem[], sectionStartLine: number, context: InternalMarkdownPostProcessorContext): HTMLUListElement {
+  private static renderList(
+    items: MarkdownListItem[],
+    sectionStartLine: number,
+    context: InternalMarkdownPostProcessorContext,
+  ): HTMLUListElement {
     const list = document.createElement("ul");
     let containsTasks = false;
     for (const item of items) {
@@ -316,7 +358,11 @@ export abstract class MarkdownRenderer extends MarkdownRenderChild implements Ma
     return list;
   }
 
-  private static renderListItem(item: MarkdownListItem, sectionStartLine: number, context: InternalMarkdownPostProcessorContext): HTMLLIElement {
+  private static renderListItem(
+    item: MarkdownListItem,
+    sectionStartLine: number,
+    context: InternalMarkdownPostProcessorContext,
+  ): HTMLLIElement {
     const li = document.createElement("li");
     const line = String(Math.max(0, item.lineStart - sectionStartLine));
     li.dataset.line = line;
@@ -374,10 +420,7 @@ function getBlockSectionInfo(block: MarkdownBlock, markdown: string): MarkdownSe
   };
 }
 
-function setSectionInfo(
-  el: HTMLElement,
-  info: MarkdownSectionInformation,
-): void {
+function setSectionInfo(el: HTMLElement, info: MarkdownSectionInformation): void {
   el.dataset.line = String(info.lineStart);
   el.dataset.lineStart = String(info.lineStart);
   el.dataset.lineEnd = String(info.lineEnd);
@@ -404,5 +447,8 @@ function cleanupRenderChildren(
 }
 
 function belongsToSections(el: HTMLElement, sections: HTMLElement[], root?: HTMLElement): boolean {
-  return Boolean(root?.contains(el)) || sections.some((section) => section === el || section.contains(el));
+  return (
+    Boolean(root?.contains(el)) ||
+    sections.some((section) => section === el || section.contains(el))
+  );
 }

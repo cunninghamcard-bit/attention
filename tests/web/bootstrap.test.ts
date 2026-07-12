@@ -8,7 +8,7 @@ import { FileSystemAdapter } from "@web/vault/FileSystemAdapter";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type NodeFs = any;
 async function nodeModule(id: string): Promise<NodeFs> {
-  return import(/* @vite-ignore */ (id as string));
+  return import(/* @vite-ignore */ id as string);
 }
 
 describe("application bootstrap", () => {
@@ -36,7 +36,9 @@ describe("application bootstrap", () => {
     expect(app.vault.getFileByPath("Welcome.md")).not.toBeNull();
     expect(app.vault.getFileByPath("Plugin Architecture.md")).not.toBeNull();
     expect(app.workspace.activeLeaf?.view?.getViewType()).toBe("markdown");
-    expect((app.workspace.activeLeaf?.view as { file?: { path: string } | null } | null)?.file?.path).toBe("Welcome.md");
+    expect(
+      (app.workspace.activeLeaf?.view as { file?: { path: string } | null } | null)?.file?.path,
+    ).toBe("Welcome.md");
     expect(app.workspace.activeLeaf?.view?.getState()).toMatchObject({ mode: "preview" });
     expect(document.body.textContent).toContain("Workbench");
   });
@@ -55,7 +57,8 @@ describe("application bootstrap", () => {
         configurable: true,
         value: {
           ipcRenderer: {
-            sendSync: (channel: string) => (channel === "vault" ? { id: "v1", path: vaultDir } : undefined),
+            sendSync: (channel: string) =>
+              channel === "vault" ? { id: "v1", path: vaultDir } : undefined,
             send: () => {},
             on: () => {},
           },

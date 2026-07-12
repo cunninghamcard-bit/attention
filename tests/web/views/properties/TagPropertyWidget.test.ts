@@ -19,14 +19,10 @@ describe("TagPropertyWidget", () => {
   it("renders tags without a leading hash, marks invalid tags, and prevents hash-insensitive duplicates", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const source = await app.vault.create("Note.md", [
-      "---",
-      "tags:",
-      "  - project/alpha",
-      "  - \"#bad tag\"",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Note.md",
+      ["---", "tags:", "  - project/alpha", '  - "#bad tag"', "---", "Body"].join("\n"),
+    );
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
@@ -35,7 +31,9 @@ describe("TagPropertyWidget", () => {
     const inputEl = rowEl?.querySelector<HTMLInputElement>(".multi-select-input");
     if (!rowEl || !inputEl) throw new Error("missing tags widget");
 
-    expect([...rowEl.querySelectorAll(".multi-select-pill-content")].map((el) => el.textContent)).toEqual(["project/alpha", "bad tag"]);
+    expect(
+      [...rowEl.querySelectorAll(".multi-select-pill-content")].map((el) => el.textContent),
+    ).toEqual(["project/alpha", "bad tag"]);
     expect(rowEl.querySelectorAll(".multi-select-pill.is-invalid")).toHaveLength(1);
 
     inputEl.value = "#project/alpha";
@@ -44,7 +42,7 @@ describe("TagPropertyWidget", () => {
 
     inputEl.value = "new-tag";
     inputEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    expect(view.getViewData()).toContain("  - \"new-tag\"");
+    expect(view.getViewData()).toContain('  - "new-tag"');
   });
 
   it("tabs through existing tag suggestions before enter commits them", async () => {
@@ -52,24 +50,26 @@ describe("TagPropertyWidget", () => {
     await app.ready;
     const existing = await app.vault.create("Existing.md", "Body #project/beta");
     await app.metadataCache.computeFileMetadataAsync(existing);
-    const source = await app.vault.create("Note.md", [
-      "---",
-      "tags:",
-      "  - alpha",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Note.md",
+      ["---", "tags:", "  - alpha", "---", "Body"].join("\n"),
+    );
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const inputEl = view.metadataContainerEl.querySelector<HTMLInputElement>('[data-property-key="tags"] .multi-select-input');
+    const inputEl = view.metadataContainerEl.querySelector<HTMLInputElement>(
+      '[data-property-key="tags"] .multi-select-input',
+    );
     if (!inputEl) throw new Error("missing tags input");
 
     inputEl.value = "proj";
     inputEl.dispatchEvent(new InputEvent("input", { bubbles: true }));
     await waitForSuggestions();
-    expect(document.body.querySelector(".metadata-tag-suggestion-container .suggestion-highlight")?.textContent).toBe("proj");
+    expect(
+      document.body.querySelector(".metadata-tag-suggestion-container .suggestion-highlight")
+        ?.textContent,
+    ).toBe("proj");
     inputEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
 
     expect(inputEl.value).toBe("project/");
@@ -85,18 +85,17 @@ describe("TagPropertyWidget", () => {
     await app.ready;
     const existing = await app.vault.create("Existing.md", "Body #project/beta");
     await app.metadataCache.computeFileMetadataAsync(existing);
-    const source = await app.vault.create("Note.md", [
-      "---",
-      "tags:",
-      "  - alpha",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Note.md",
+      ["---", "tags:", "  - alpha", "---", "Body"].join("\n"),
+    );
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const inputEl = view.metadataContainerEl.querySelector<HTMLInputElement>('[data-property-key="tags"] .multi-select-input');
+    const inputEl = view.metadataContainerEl.querySelector<HTMLInputElement>(
+      '[data-property-key="tags"] .multi-select-input',
+    );
     if (!inputEl) throw new Error("missing tags input");
 
     inputEl.value = "#proj";
@@ -107,34 +106,39 @@ describe("TagPropertyWidget", () => {
     expect(inputEl.value).toBe("#project/");
     inputEl.value = "#project/beta";
     inputEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    expect(view.getViewData()).toContain("  - \"#project/beta\"");
+    expect(view.getViewData()).toContain('  - "#project/beta"');
   });
 
   it("edits existing tag pills using hash-insensitive duplicate rules", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const source = await app.vault.create("Note.md", [
-      "---",
-      "tags:",
-      "  - alpha",
-      "  - beta",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Note.md",
+      ["---", "tags:", "  - alpha", "  - beta", "---", "Body"].join("\n"),
+    );
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const firstPill = view.metadataContainerEl.querySelector<HTMLElement>('[data-property-key="tags"] .multi-select-pill');
+    const firstPill = view.metadataContainerEl.querySelector<HTMLElement>(
+      '[data-property-key="tags"] .multi-select-pill',
+    );
     if (!firstPill) throw new Error("missing tag pill");
     firstPill.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    const editInput = [...view.metadataContainerEl.querySelectorAll<HTMLInputElement>('[data-property-key="tags"] .multi-select-input')]
-      .find((input) => input.value === "alpha");
+    const editInput = [
+      ...view.metadataContainerEl.querySelectorAll<HTMLInputElement>(
+        '[data-property-key="tags"] .multi-select-input',
+      ),
+    ].find((input) => input.value === "alpha");
     if (!editInput) throw new Error("missing tag edit input");
     editInput.value = "#beta";
     editInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     expect(view.getViewData()).toContain("  - alpha");
-    expect(view.metadataContainerEl.querySelector('[data-property-key="tags"] .multi-select-pill.multi-select-duplicate')).not.toBeNull();
+    expect(
+      view.metadataContainerEl.querySelector(
+        '[data-property-key="tags"] .multi-select-pill.multi-select-duplicate',
+      ),
+    ).not.toBeNull();
 
     editInput.value = "gamma";
     editInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));

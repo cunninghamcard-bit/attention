@@ -25,7 +25,12 @@ function starterEnv(base: string): NodeJS.ProcessEnv {
 
 test("a fresh profile boots into the starter with Quick start", async ({}, testInfo) => {
   const base = mkdtempSync(join(tmpdir(), "workbench-starter-e2e-"));
-  const app = await electron.launch({ args: [MAIN_CJS], cwd: REPO_ROOT, env: starterEnv(base), timeout: 60_000 });
+  const app = await electron.launch({
+    args: [MAIN_CJS],
+    cwd: REPO_ROOT,
+    env: starterEnv(base),
+    timeout: 60_000,
+  });
   try {
     const page = await app.firstWindow();
     await expect(page.locator(".starter-screen")).toBeVisible();
@@ -33,7 +38,9 @@ test("a fresh profile boots into the starter with Quick start", async ({}, testI
     await expect(page.locator(".recent-vaults")).toBeHidden();
     await expect(page.locator(".quick-start-container button")).toHaveText("Quick start");
     await expect(page.locator(".setting-item-name", { hasText: "Create new vault" })).toBeVisible();
-    await expect(page.locator(".setting-item-name", { hasText: "Open folder as vault" })).toBeVisible();
+    await expect(
+      page.locator(".setting-item-name", { hasText: "Open folder as vault" }),
+    ).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath("starter-fresh.png") });
   } finally {
     await app.close();
@@ -52,7 +59,12 @@ test("clicking a registered vault opens its window and the starter closes itself
     join(base, "userData", "obsidian.json"),
     JSON.stringify({ vaults: { e2evault0000: { path: vaultPath, ts: 1 } } }),
   );
-  const app = await electron.launch({ args: [MAIN_CJS], cwd: REPO_ROOT, env: starterEnv(base), timeout: 60_000 });
+  const app = await electron.launch({
+    args: [MAIN_CJS],
+    cwd: REPO_ROOT,
+    env: starterEnv(base),
+    timeout: 60_000,
+  });
   try {
     const page = await app.firstWindow();
     const item = page.locator(".recent-vaults-list-item", { hasText: "picked-vault" });
@@ -63,10 +75,15 @@ test("clicking a registered vault opens its window and the starter closes itself
     await item.click();
     // vault-open acks true -> the starter renderer window.close()es; the
     // vault window is the survivor.
-    await expect.poll(async () => {
-      const titles = await Promise.all(app.windows().map((win) => win.title().catch(() => "")));
-      return titles.length;
-    }, { timeout: 15_000 }).toBe(1);
+    await expect
+      .poll(
+        async () => {
+          const titles = await Promise.all(app.windows().map((win) => win.title().catch(() => "")));
+          return titles.length;
+        },
+        { timeout: 15_000 },
+      )
+      .toBe(1);
     const [vaultWindow] = app.windows();
     await expect(vaultWindow.locator(".workspace")).toBeVisible({ timeout: 15_000 });
   } finally {

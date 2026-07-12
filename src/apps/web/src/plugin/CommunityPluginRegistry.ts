@@ -1,4 +1,8 @@
-import { normalizePluginManifest, type PluginManifest, type PluginManifestInput } from "./PluginManifest";
+import {
+  normalizePluginManifest,
+  type PluginManifest,
+  type PluginManifestInput,
+} from "./PluginManifest";
 
 export interface CommunityPluginRecord {
   manifest: PluginManifest;
@@ -45,7 +49,12 @@ export class CommunityPluginRegistry {
     }
   }
 
-  setUpdateStatus(id: string, updateAvailable: boolean, latestVersion: string, checkedAt = new Date().toISOString()): void {
+  setUpdateStatus(
+    id: string,
+    updateAvailable: boolean,
+    latestVersion: string,
+    checkedAt = new Date().toISOString(),
+  ): void {
     const record = this.records.get(id);
     if (record) {
       record.updateAvailable = updateAvailable;

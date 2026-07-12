@@ -3,7 +3,11 @@ import type { SettingTab } from "../app/SettingRegistry";
 import { CorePluginSettingTab, PluginSettingTab } from "../plugin/PluginSettingTab";
 import { setIcon } from "../ui/Icon";
 import { SearchComponent } from "../ui/Setting";
-import { registerActiveCloseable, unregisterActiveCloseable, type ActiveCloseable } from "../ui/ActiveCloseableRegistry";
+import {
+  registerActiveCloseable,
+  unregisterActiveCloseable,
+  type ActiveCloseable,
+} from "../ui/ActiveCloseableRegistry";
 
 export type SettingsSectionId = "options" | "core-plugins" | "community-plugins";
 
@@ -40,9 +44,12 @@ export class SettingsRenderer {
     this.headerEl.className = "vertical-tab-header";
     this.searchContainerEl = document.createElement("div");
     this.searchContainerEl.className = "vertical-tab-header-search";
-    this.searchComponent = new SearchComponent(this.searchContainerEl)
-      .setPlaceholder("Search settings");
-    this.searchContainerEl.addEventListener("input", () => this.setQuery(this.searchComponent.getValue()));
+    this.searchComponent = new SearchComponent(this.searchContainerEl).setPlaceholder(
+      "Search settings",
+    );
+    this.searchContainerEl.addEventListener("input", () =>
+      this.setQuery(this.searchComponent.getValue()),
+    );
     this.headerEl.appendChild(this.searchContainerEl);
     const optionsGroup = this.createHeaderGroup("Options", "options");
     this.tabContainer = optionsGroup.itemsEl;
@@ -99,7 +106,9 @@ export class SettingsRenderer {
       previous.hide?.();
     }
     this.activeTab = tab;
-    this.headerEl.querySelectorAll(".vertical-tab-nav-item").forEach((item) => item.classList.remove("is-active"));
+    this.headerEl
+      .querySelectorAll(".vertical-tab-nav-item")
+      .forEach((item) => item.classList.remove("is-active"));
     const navEl = this.ensureNavEl(tab);
     navEl.classList.add("is-active");
     this.contentContainerEl.replaceChildren();
@@ -206,7 +215,10 @@ export class SettingsRenderer {
       } else if (evaluateSearchBoolean(record.searchable, true)) {
         if (typeof record.name === "string") texts.push(record.name);
         texts.push(getSearchText(record.desc));
-        if (Array.isArray(record.aliases)) texts.push(...record.aliases.filter((alias): alias is string => typeof alias === "string"));
+        if (Array.isArray(record.aliases))
+          texts.push(
+            ...record.aliases.filter((alias): alias is string => typeof alias === "string"),
+          );
       }
       const children = Array.isArray(record.items) ? record.items : [];
       for (const child of children) visit(child);
@@ -215,7 +227,10 @@ export class SettingsRenderer {
     return texts;
   }
 
-  private createHeaderGroup(title: string, section: SettingsSectionId): { titleEl: HTMLElement; itemsEl: HTMLElement } {
+  private createHeaderGroup(
+    title: string,
+    section: SettingsSectionId,
+  ): { titleEl: HTMLElement; itemsEl: HTMLElement } {
     const groupEl = document.createElement("div");
     groupEl.className = "vertical-tab-header-group";
     const titleEl = document.createElement("div");
@@ -289,7 +304,9 @@ function getDisplayValueSearchText(value: unknown): string {
 }
 
 function sortTabs(tabs: readonly SettingTab[]): SettingTab[] {
-  return [...tabs].sort((left, right) => (left.name ?? left.id ?? "").localeCompare(right.name ?? right.id ?? ""));
+  return [...tabs].sort((left, right) =>
+    (left.name ?? left.id ?? "").localeCompare(right.name ?? right.id ?? ""),
+  );
 }
 
 function getTabSection(tab: SettingTab): SettingsSectionId {

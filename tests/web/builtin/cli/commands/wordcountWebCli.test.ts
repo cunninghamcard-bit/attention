@@ -43,12 +43,16 @@ describe("wordcount CLI command", () => {
 
   it("falls through to the two-line shape when BOTH flags are set", async () => {
     const app = await wordcountApp();
-    expect(await app.cli.handleCli(["wordcount", "path=Note.md", "words", "characters"])).toBe("words: 2\ncharacters: 11");
+    expect(await app.cli.handleCli(["wordcount", "path=Note.md", "words", "characters"])).toBe(
+      "words: 2\ncharacters: 11",
+    );
   });
 
   it("excludes frontmatter from both counts", async () => {
     const app = await wordcountApp();
-    expect(await app.cli.handleCli(["wordcount", "path=Frontmatter.md"])).toBe("words: 2\ncharacters: 11");
+    expect(await app.cli.handleCli(["wordcount", "path=Frontmatter.md"])).toBe(
+      "words: 2\ncharacters: 11",
+    );
   });
 
   it("resolves file= as a linkpath", async () => {
@@ -73,9 +77,15 @@ describe("wordcount CLI command", () => {
 
   it("throws the resolver error strings verbatim", async () => {
     const app = await wordcountApp();
-    await expect(app.cli.handleCli(["wordcount", "path=Nope.md"])).rejects.toBe('File "Nope.md" not found.');
-    await expect(app.cli.handleCli(["wordcount", "path=Folder"])).rejects.toBe('"Folder" is a folder, not a file.');
-    await expect(app.cli.handleCli(["wordcount", "file=Ghost"])).rejects.toBe('File "Ghost" not found.');
+    await expect(app.cli.handleCli(["wordcount", "path=Nope.md"])).rejects.toBe(
+      'File "Nope.md" not found.',
+    );
+    await expect(app.cli.handleCli(["wordcount", "path=Folder"])).rejects.toBe(
+      '"Folder" is a folder, not a file.',
+    );
+    await expect(app.cli.handleCli(["wordcount", "file=Ghost"])).rejects.toBe(
+      'File "Ghost" not found.',
+    );
     await expect(app.cli.handleCli(["wordcount"])).rejects.toBe(
       "No active file. Use file=<name> or path=<path> to specify a file.",
     );
@@ -121,7 +131,9 @@ describe("web CLI command", () => {
 
   it("leaves urls that already contain :// untouched", async () => {
     const app = await webApp();
-    expect(await app.cli.handleCli(["web", "url=ftp://files.example"])).toBe("Opened: ftp://files.example");
+    expect(await app.cli.handleCli(["web", "url=ftp://files.example"])).toBe(
+      "Opened: ftp://files.example",
+    );
   });
 
   it("reuses the active leaf without newtab and opens a new tab with it", async () => {
@@ -140,7 +152,9 @@ describe("web CLI command", () => {
   it("requires url (framework validation plus the handler's own guard)", async () => {
     const app = await webApp();
     // The dispatcher's required-flag check fires first...
-    await expect(app.cli.handleCli(["web"])).rejects.toMatch(/^Missing required parameter: url=<url>/);
+    await expect(app.cli.handleCli(["web"])).rejects.toMatch(
+      /^Missing required parameter: url=<url>/,
+    );
     // ...so exercise the real handler's verbatim manual guard directly.
     const cmd = app.cli.handlers.get("web");
     if (!cmd) throw new Error("Expected web handler");

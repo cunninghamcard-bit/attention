@@ -21,7 +21,9 @@ describe("SimpleEditor", () => {
     expect(editor.somethingSelected()).toBe(true);
     expect(editor.getCursor("from")).toEqual({ line: 0, ch: 1 });
     expect(editor.getCursor("to")).toEqual({ line: 0, ch: 4 });
-    expect(editor.listSelections()).toEqual([{ anchor: { line: 0, ch: 1 }, head: { line: 0, ch: 4 } }]);
+    expect(editor.listSelections()).toEqual([
+      { anchor: { line: 0, ch: 1 }, head: { line: 0, ch: 4 } },
+    ]);
 
     editor.replaceSelection("X");
 
@@ -46,11 +48,18 @@ describe("SimpleEditor", () => {
 
     expect(editor.getValue()).toBe("ONE\nTWO\nTHREE");
     expect(editor.getSelection()).toBe("WO");
-    expect(editor.wordAt({ line: 2, ch: 2 })).toEqual({ from: { line: 2, ch: 0 }, to: { line: 2, ch: 5 } });
+    expect(editor.wordAt({ line: 2, ch: 2 })).toEqual({
+      from: { line: 2, ch: 0 },
+      to: { line: 2, ch: 5 },
+    });
 
     editor.processLines(
       (_line, text) => text.toLowerCase(),
-      (line, _text, value) => ({ from: { line, ch: 0 }, to: { line, ch: editor.getLine(line).length }, text: value ?? "" }),
+      (line, _text, value) => ({
+        from: { line, ch: 0 },
+        to: { line, ch: editor.getLine(line).length },
+        text: value ?? "",
+      }),
     );
 
     expect(editor.getValue()).toBe("one\ntwo\nthree");
@@ -75,10 +84,13 @@ describe("SimpleEditor", () => {
     });
     editor.setValue("one");
     editor.replaceRange("two", { line: 0, ch: 0 }, { line: 0, ch: 3 }, "+input");
-    editor.transaction({
-      changes: [{ from: { line: 0, ch: 0 }, to: { line: 0, ch: 3 }, text: "three" }],
-      selection: { from: { line: 0, ch: 5 } },
-    }, "+plugin");
+    editor.transaction(
+      {
+        changes: [{ from: { line: 0, ch: 0 }, to: { line: 0, ch: 3 }, text: "three" }],
+        selection: { from: { line: 0, ch: 5 } },
+      },
+      "+plugin",
+    );
 
     expect(changes).toEqual([
       { value: "one" },

@@ -11,7 +11,8 @@ function toFile(value: unknown, view: FileView): TFile | null {
   if (!value) return null;
   if (value instanceof TFile) return view.app.vault.getFileByPath(value.path) ?? value;
   if (typeof value === "string") return view.app.vault.getFileByPath(value);
-  if (typeof value === "object" && "path" in value && typeof value.path === "string") return view.app.vault.getFileByPath(value.path);
+  if (typeof value === "object" && "path" in value && typeof value.path === "string")
+    return view.app.vault.getFileByPath(value.path);
   return null;
 }
 
@@ -22,12 +23,16 @@ export class FileView extends ItemView {
 
   override async onOpen(): Promise<void> {
     await super.onOpen();
-    this.registerEvent(this.app.vault.on<[TFile, string]>("rename", (file, oldPath) => {
-      if (file === this.file) void this.onRename(file, oldPath);
-    }));
-    this.registerEvent(this.app.vault.on<[TAbstractFile]>("delete", (file) => {
-      void this.onDelete(file);
-    }));
+    this.registerEvent(
+      this.app.vault.on<[TFile, string]>("rename", (file, oldPath) => {
+        if (file === this.file) void this.onRename(file, oldPath);
+      }),
+    );
+    this.registerEvent(
+      this.app.vault.on<[TAbstractFile]>("delete", (file) => {
+        void this.onDelete(file);
+      }),
+    );
   }
 
   getDisplayText(): string {
@@ -98,7 +103,12 @@ export class FileView extends ItemView {
       const leaf = this.leaf;
       if (leaf.history.backHistory.length > 0) await leaf.history.back();
       else await leaf.open(null);
-      if (leaf.view instanceof EmptyView && leaf.parent?.children.length && leaf.parent.children.length > 1) leaf.detach();
+      if (
+        leaf.view instanceof EmptyView &&
+        leaf.parent?.children.length &&
+        leaf.parent.children.length > 1
+      )
+        leaf.detach();
     }
     this.app.workspace.onLayoutChange();
   }
@@ -122,8 +132,15 @@ export class FileView extends ItemView {
     if (!this.file && !this.allowNoFile && internalResult) {
       internalResult.close = true;
     }
-    const isSync = state && typeof state === "object" && Boolean((state as { sync?: unknown }).sync);
-    if (internalResult && state && typeof state === "object" && !isSync && (internalResult.layout || internalResult.history)) {
+    const isSync =
+      state && typeof state === "object" && Boolean((state as { sync?: unknown }).sync);
+    if (
+      internalResult &&
+      state &&
+      typeof state === "object" &&
+      !isSync &&
+      (internalResult.layout || internalResult.history)
+    ) {
       internalResult.done = () => this.syncState();
     }
   }
@@ -157,10 +174,14 @@ export class FileView extends ItemView {
         event.preventDefault();
         void this.revealBreadcrumbFolder(folderPath);
       });
-      breadcrumbEl.addEventListener("contextmenu", (event) => this.openBreadcrumbFolderMenu(folderPath, breadcrumbEl, event));
+      breadcrumbEl.addEventListener("contextmenu", (event) =>
+        this.openBreadcrumbFolderMenu(folderPath, breadcrumbEl, event),
+      );
       this.app.dragManager.handleDrag(breadcrumbEl, (event) => {
         const folder = this.app.vault.getFolderByPath(folderPath);
-        return folder ? this.app.dragManager.dragFolder(event, folder, "file-explorer", [breadcrumbEl]) : null;
+        return folder
+          ? this.app.dragManager.dragFolder(event, folder, "file-explorer", [breadcrumbEl])
+          : null;
       });
       const separatorEl = document.createElement("span");
       separatorEl.className = "view-header-breadcrumb-separator";
@@ -177,16 +198,33 @@ export class FileView extends ItemView {
     view.revealFile?.(folder);
   }
 
-  private openBreadcrumbFolderMenu(folderPath: string, parentEl: HTMLElement, event: MouseEvent): void {
+  private openBreadcrumbFolderMenu(
+    folderPath: string,
+    parentEl: HTMLElement,
+    event: MouseEvent,
+  ): void {
     event.preventDefault();
     const folder = this.app.vault.getFolderByPath(folderPath);
     if (!folder) return;
-    const menu = new Menu(parentEl.ownerDocument).addSections(["title", "open", "action-primary", "action", "info", "info.copy", "view", "system", "", "danger"]);
-    menu.addItem((item) => item
-      .setSection("action-primary")
-      .setTitle("New note")
-      .setIcon("lucide-edit")
-      .onClick(() => void this.createBreadcrumbNote(folder)));
+    const menu = new Menu(parentEl.ownerDocument).addSections([
+      "title",
+      "open",
+      "action-primary",
+      "action",
+      "info",
+      "info.copy",
+      "view",
+      "system",
+      "",
+      "danger",
+    ]);
+    menu.addItem((item) =>
+      item
+        .setSection("action-primary")
+        .setTitle("New note")
+        .setIcon("lucide-edit")
+        .onClick(() => void this.createBreadcrumbNote(folder)),
+    );
     menu.setParentElement(parentEl);
     this.app.workspace.trigger("file-menu", menu, folder, "file-explorer-context-menu", this.leaf);
     menu.showAtMouseEvent(event);
@@ -194,7 +232,9 @@ export class FileView extends ItemView {
 
   private async createBreadcrumbNote(folder: TFolder): Promise<void> {
     const file = await this.app.fileManager.createNewMarkdownFile(folder);
-    await this.app.workspace.getLeaf(false).openFile(file, { active: true, state: { mode: "source" }, eState: { rename: "all" } });
+    await this.app.workspace
+      .getLeaf(false)
+      .openFile(file, { active: true, state: { mode: "source" }, eState: { rename: "all" } });
   }
 
   syncState(): void {

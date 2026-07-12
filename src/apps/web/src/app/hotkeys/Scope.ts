@@ -17,7 +17,10 @@ export interface NormalizedKeymapEvent extends KeymapContext {
   vkey: string;
 }
 
-export type KeyHandler = (event: KeyboardEvent, keymapEvent?: NormalizedKeymapEvent) => boolean | void;
+export type KeyHandler = (
+  event: KeyboardEvent,
+  keymapEvent?: NormalizedKeymapEvent,
+) => boolean | void;
 
 export interface KeymapEventHandler extends KeymapInfo {
   scope: Scope;
@@ -32,7 +35,11 @@ export class Scope {
 
   constructor(readonly parent: Scope | null = null) {}
 
-  register(modifiers: string[] | null, key: string | null, handler: KeyHandler): KeymapEventHandler {
+  register(
+    modifiers: string[] | null,
+    key: string | null,
+    handler: KeyHandler,
+  ): KeymapEventHandler {
     const ref = {
       scope: this,
       modifiers: modifiers == null ? null : compileModifiers(modifiers),
@@ -52,7 +59,10 @@ export class Scope {
     this.tabFocusContainerEl = el;
   }
 
-  handleKey(event: KeyboardEvent, keymapEvent: NormalizedKeymapEvent = normalizedKeymapEventFromKeyboardEvent(event)): boolean | void {
+  handleKey(
+    event: KeyboardEvent,
+    keymapEvent: NormalizedKeymapEvent = normalizedKeymapEventFromKeyboardEvent(event),
+  ): boolean | void {
     for (const item of this.keys) {
       if (matches(item, keymapEvent)) {
         const result = item.func(event, keymapEvent);
@@ -65,11 +75,17 @@ export class Scope {
 }
 
 export class DynamicScope extends Scope {
-  constructor(parent: Scope | null, private readonly scopeProvider: () => Scope | null) {
+  constructor(
+    parent: Scope | null,
+    private readonly scopeProvider: () => Scope | null,
+  ) {
     super(parent);
   }
 
-  override handleKey(event: KeyboardEvent, keymapEvent: NormalizedKeymapEvent = normalizedKeymapEventFromKeyboardEvent(event)): boolean | void {
+  override handleKey(
+    event: KeyboardEvent,
+    keymapEvent: NormalizedKeymapEvent = normalizedKeymapEventFromKeyboardEvent(event),
+  ): boolean | void {
     const scope = this.scopeProvider();
     if (scope) return scope.handleKey(event, keymapEvent);
     return super.handleKey(event, keymapEvent);
@@ -78,11 +94,14 @@ export class DynamicScope extends Scope {
 
 function matches(ref: KeymapEventHandler, event: NormalizedKeymapEvent): boolean {
   const modifiersMatch = ref.modifiers === null || ref.modifiers === event.modifiers;
-  const keyMatch = !ref.key || ref.key === event.vkey || normalizeKey(ref.key) === normalizeKey(event.key);
+  const keyMatch =
+    !ref.key || ref.key === event.vkey || normalizeKey(ref.key) === normalizeKey(event.key);
   return modifiersMatch && keyMatch;
 }
 
-export function normalizedKeymapEventFromKeyboardEvent(event: KeyboardEvent): NormalizedKeymapEvent {
+export function normalizedKeymapEventFromKeyboardEvent(
+  event: KeyboardEvent,
+): NormalizedKeymapEvent {
   return {
     modifiers: getModifiers(event),
     key: keyFromKeyboardEvent(event),
@@ -101,7 +120,9 @@ export function getModifiers(event: KeyboardEvent | MouseEvent): string {
 
 export function compileModifiers(modifiers: string[]): string {
   return modifiers
-    .map((modifier) => modifier === "Mod" ? (isMacLike() ? "Meta" : "Ctrl") : normalizeModifier(modifier))
+    .map((modifier) =>
+      modifier === "Mod" ? (isMacLike() ? "Meta" : "Ctrl") : normalizeModifier(modifier),
+    )
     .sort()
     .join(",");
 }
@@ -109,7 +130,11 @@ export function compileModifiers(modifiers: string[]): string {
 export function decompileModifiers(modifiers: string): string[] {
   return modifiers
     .split(",")
-    .map((modifier) => isMacLike() && modifier === "Meta" || !isMacLike() && modifier === "Ctrl" ? "Mod" : modifier)
+    .map((modifier) =>
+      (isMacLike() && modifier === "Meta") || (!isMacLike() && modifier === "Ctrl")
+        ? "Mod"
+        : modifier,
+    )
     .filter(Boolean);
 }
 
@@ -130,9 +155,13 @@ function keyFromKeyboardEvent(event: KeyboardEvent): string {
 }
 
 function virtualKeyFromKeyboardEvent(event: KeyboardEvent): string {
-  if ((event.which || event.keyCode) === 54 && event.key === "^" && event.code === "KeyI") return "KeyI";
+  if ((event.which || event.keyCode) === 54 && event.key === "^" && event.code === "KeyI")
+    return "KeyI";
   const keyCode = event.which || event.keyCode;
-  return keyCodeMap[keyCode] || (keyCode ? `Key${keyCode}` : event.code ? normalizeCode(event.code) : event.key || "");
+  return (
+    keyCodeMap[keyCode] ||
+    (keyCode ? `Key${keyCode}` : event.code ? normalizeCode(event.code) : event.key || "")
+  );
 }
 
 function normalizeCode(code: string): string {

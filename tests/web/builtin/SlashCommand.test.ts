@@ -18,7 +18,9 @@ interface SlashSuggestHarness {
 describe("SlashCommand Obsidian command-palette bridge", () => {
   it("uses the registered command-palette instance as its suggestion source", () => {
     const app = createAppWithCorePlugins();
-    const palette = app.internalPlugins.getPluginById("command-palette")?.instance as { getCommands: () => Command[] };
+    const palette = app.internalPlugins.getPluginById("command-palette")?.instance as {
+      getCommands: () => Command[];
+    };
     const slash = getSlashSuggest(app);
     const command: Command = { id: "palette-only", name: "Palette Only", callback: () => {} };
     const getCommands = vi.fn(() => [command]);
@@ -32,7 +34,9 @@ describe("SlashCommand Obsidian command-palette bridge", () => {
 
   it("renders fuzzy command suggestions with default hotkeys and pinned flair", () => {
     const app = createAppWithCorePlugins();
-    const palette = app.internalPlugins.getPluginById("command-palette")?.instance as { options: { pinned?: string[] | null } };
+    const palette = app.internalPlugins.getPluginById("command-palette")?.instance as {
+      options: { pinned?: string[] | null };
+    };
     const slash = getSlashSuggest(app);
     app.commands.addCommand({
       id: "palette:custom",
@@ -53,7 +57,9 @@ describe("SlashCommand Obsidian command-palette bridge", () => {
 
   it("selects by clearing the slash text and running the raw command helper without recording recent commands", () => {
     const app = createAppWithCorePlugins();
-    const palette = app.internalPlugins.getPluginById("command-palette")?.instance as { recentCommands: string[] };
+    const palette = app.internalPlugins.getPluginById("command-palette")?.instance as {
+      recentCommands: string[];
+    };
     const slash = getSlashSuggest(app);
     const callback = vi.fn();
     const editor = { replaceRange: vi.fn() } as unknown as Editor;
@@ -88,7 +94,10 @@ function getSlashSuggest(app: App): SlashSuggestHarness {
   return instance as SlashSuggestHarness;
 }
 
-function makeContext(query: string, editor: Editor = { replaceRange: vi.fn() } as unknown as Editor): EditorSuggestContext {
+function makeContext(
+  query: string,
+  editor: Editor = { replaceRange: vi.fn() } as unknown as Editor,
+): EditorSuggestContext {
   return {
     editor,
     file: null,

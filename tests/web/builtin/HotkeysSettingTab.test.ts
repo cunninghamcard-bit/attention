@@ -31,7 +31,9 @@ describe("HotkeysSettingTab Obsidian settings contract", () => {
     expect(controlsEl).not.toBeNull();
     expect(hotkeyEl?.textContent).toMatch(/A/);
     expect(controlsEl?.querySelector(".setting-add-hotkey-button .svg-icon")).not.toBeNull();
-    expect(app.hotkeys.getDefaultHotkeys("alpha-command")).toEqual([{ modifiers: ["Mod"], key: "A" }]);
+    expect(app.hotkeys.getDefaultHotkeys("alpha-command")).toEqual([
+      { modifiers: ["Mod"], key: "A" },
+    ]);
   });
 
   it("appends newly recorded hotkeys instead of replacing the existing default hotkey", async () => {
@@ -40,7 +42,9 @@ describe("HotkeysSettingTab Obsidian settings contract", () => {
     tab.display();
 
     tab.containerEl.querySelector<HTMLElement>(".setting-add-hotkey-button")?.click();
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "K", metaKey: true, bubbles: true, cancelable: true }));
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "K", metaKey: true, bubbles: true, cancelable: true }),
+    );
 
     expect(app.hotkeys.getHotkeys("alpha-command")).toEqual([
       { modifiers: ["Mod"], key: "A" },
@@ -61,14 +65,16 @@ describe("HotkeysSettingTab Obsidian settings contract", () => {
     tab.containerEl.querySelector<HTMLElement>(".setting-delete-hotkey")?.click();
 
     expect(app.hotkeys.getHotkeys("alpha-command")).toEqual([{ modifiers: ["Mod"], key: "K" }]);
-    expect(tab.containerEl.querySelector(".setting-restore-hotkey-button.mod-active")).not.toBeNull();
+    expect(
+      tab.containerEl.querySelector(".setting-restore-hotkey-button.mod-active"),
+    ).not.toBeNull();
 
     tab.containerEl.querySelector<HTMLElement>(".setting-restore-hotkey-button")?.click();
 
     expect(app.hotkeys.hasHotkeyOverride("alpha-command")).toBe(false);
-    expect([...tab.containerEl.querySelectorAll(".setting-hotkey")].map((el) => el.textContent?.trim())).toEqual([
-      expect.stringMatching(/A/),
-    ]);
+    expect(
+      [...tab.containerEl.querySelectorAll(".setting-hotkey")].map((el) => el.textContent?.trim()),
+    ).toEqual([expect.stringMatching(/A/)]);
   });
 
   it("marks conflicting hotkey chips with the app.css conflict class", async () => {
@@ -79,14 +85,18 @@ describe("HotkeysSettingTab Obsidian settings contract", () => {
     tab.setQuery("conflict");
     tab.display();
 
-    const conflicts = [...tab.containerEl.querySelectorAll<HTMLElement>(".setting-hotkey.has-conflict")];
+    const conflicts = [
+      ...tab.containerEl.querySelectorAll<HTMLElement>(".setting-hotkey.has-conflict"),
+    ];
 
     expect(conflicts).toHaveLength(2);
     expect(conflicts[0]?.title).toContain("Conflict");
   });
 });
 
-async function createHotkeysTab(extraCommands: Array<{ id: string; name: string; hotkeys: Hotkey[] }> = []): Promise<{
+async function createHotkeysTab(
+  extraCommands: Array<{ id: string; name: string; hotkeys: Hotkey[] }> = [],
+): Promise<{
   app: App;
   tab: HotkeysSettingTab;
 }> {

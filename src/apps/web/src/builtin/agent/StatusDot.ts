@@ -10,8 +10,15 @@ export type StatusDotState = "idle" | "on" | "running" | "done" | "failed";
 
 const STATES: StatusDotState[] = ["idle", "on", "running", "done", "failed"];
 
-export function createStatusDot(parentEl: HTMLElement, state: StatusDotState, extraCls = ""): HTMLElement {
-  const el = createSpan({ cls: `chat-status-dot${extraCls ? ` ${extraCls}` : ""}`, parent: parentEl });
+export function createStatusDot(
+  parentEl: HTMLElement,
+  state: StatusDotState,
+  extraCls = "",
+): HTMLElement {
+  const el = createSpan({
+    cls: `chat-status-dot${extraCls ? ` ${extraCls}` : ""}`,
+    parent: parentEl,
+  });
   setStatusDot(el, state);
   return el;
 }

@@ -32,7 +32,9 @@ describe("FileSystemJsonStoreAdapter", () => {
     await store.write("app.json", { theme: "moonstone" });
 
     expect(await store.read<{ theme: string }>("app.json")).toEqual({ theme: "moonstone" });
-    expect(await fs.readFile(path.join(basePath, ".obsidian", "app.json"), "utf8")).toBe("{\n  \"theme\": \"moonstone\"\n}");
+    expect(await fs.readFile(path.join(basePath, ".obsidian", "app.json"), "utf8")).toBe(
+      '{\n  "theme": "moonstone"\n}',
+    );
     expect(rawPaths).toEqual([".obsidian/app.json"]);
     await fs.rm(basePath, { force: true, recursive: true });
     void os;
@@ -71,7 +73,12 @@ describe("FileSystemJsonStoreAdapter", () => {
   });
 });
 
-async function createTempVault(): Promise<{ fs: TestFsModule; os: TestOsModule; path: TestPathModule; basePath: string }> {
+async function createTempVault(): Promise<{
+  fs: TestFsModule;
+  os: TestOsModule;
+  path: TestPathModule;
+  basePath: string;
+}> {
   const fs = await importRuntimeModule<TestFsModule>(fsPromisesSpecifier);
   const os = await importRuntimeModule<TestOsModule>(osSpecifier);
   const path = await importRuntimeModule<TestPathModule>(pathSpecifier);

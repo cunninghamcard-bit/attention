@@ -63,13 +63,15 @@ export const STRINGS = {
     provenance: (model: string, effort?: string) => (effort ? `${model} · ${effort}` : model),
     compacting: "Compacting context…",
     compactFailed: "Context compaction failed",
-    forkedFrom: (id: string) => `Forked from ${id} — the agent remembers everything before this line`,
+    forkedFrom: (id: string) =>
+      `Forked from ${id} — the agent remembers everything before this line`,
     showMore: "Show more",
     showLess: "Show less",
     runFailed: (error: string) => `Run failed: ${error}`,
     attachmentLines: (lines: number) => `${lines} lines`,
     compacted: "Context compacted",
-    compactedTokens: (preTokens: number) => `Context compacted · ${Math.round(preTokens / 1000)}k tokens condensed`,
+    compactedTokens: (preTokens: number) =>
+      `Context compacted · ${Math.round(preTokens / 1000)}k tokens condensed`,
   },
   room: {
     participants: "Participants",
@@ -124,7 +126,8 @@ export const STRINGS = {
     instructions: "Instructions",
     instructionsPlaceholder: "System prompt for this agent",
     envSection: "Environment",
-    envHint: "Values are write-only ($NAME references resolve from the daemon's env). Edit via agent file or CLI.",
+    envHint:
+      "Values are write-only ($NAME references resolve from the daemon's env). Edit via agent file or CLI.",
     fileOrigin: "Managed by file — edit the agent's .md, the daemon hot-reloads it.",
     editModel: (hint?: string) => (hint ? `Model… (${hint})` : "Model…"),
     memberAgentFor: (id: string) => `Member agent — ${id}`,
@@ -168,7 +171,8 @@ export const STRINGS = {
     conversationCopied: "Conversation copied",
     retryFailed: (error: string) => `Retry failed: ${error}`,
     bridgeUnreachable: (error: string) => `Cannot reach the chat bridge: ${error}`,
-    noMemberAgent: "No member agent on this thread — link one first (loom link <agentId> <threadId>).",
+    noMemberAgent:
+      "No member agent on this thread — link one first (loom link <agentId> <threadId>).",
     agentSaved: "Agent saved",
   },
   commands: {
@@ -207,7 +211,8 @@ export const STRINGS = {
     bridgeUrlDesc: "REST + SSE endpoint of the chat bridge. Applies to newly opened threads.",
     chatHeading: "Chat",
     typewriter: "Typewriter reveal",
-    typewriterDesc: "Pace streamed text at a smooth reading rate. Off shows deltas the moment they arrive.",
+    typewriterDesc:
+      "Pace streamed text at a smooth reading rate. Off shows deltas the moment they arrive.",
     collapseThinking: "Collapse finished thinking",
     collapseThinkingDesc: "Fold reasoning to its header once it completes. Off keeps it expanded.",
     composerHeading: "Composer",

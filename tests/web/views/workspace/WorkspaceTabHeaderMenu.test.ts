@@ -48,7 +48,9 @@ function firstLeaf(tabs: WorkspaceTabs): WorkspaceLeaf {
 }
 
 async function openHeaderMenu(leaf: WorkspaceLeaf): Promise<HTMLElement> {
-  leaf.tabHeaderEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 11, clientY: 13 }));
+  leaf.tabHeaderEl.dispatchEvent(
+    new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 11, clientY: 13 }),
+  );
   await vi.waitFor(() => expect(document.body.querySelector(".menu")).toBeTruthy());
   const menu = document.body.querySelector<HTMLElement>(".menu");
   if (!menu) throw new Error("Expected menu");
@@ -56,7 +58,9 @@ async function openHeaderMenu(leaf: WorkspaceLeaf): Promise<HTMLElement> {
 }
 
 function menuTitles(menu: HTMLElement): string[] {
-  return Array.from(menu.querySelectorAll<HTMLElement>(".menu-item-title")).map((el) => el.textContent ?? "");
+  return Array.from(menu.querySelectorAll<HTMLElement>(".menu-item-title")).map(
+    (el) => el.textContent ?? "",
+  );
 }
 
 function menuItemTitles(items: MenuItem[]): string[] {
@@ -66,7 +70,9 @@ function menuItemTitles(items: MenuItem[]): string[] {
 function linkedViewItems(app: App, file: TFile, source: string, leaf: WorkspaceLeaf): MenuItem[] {
   const menu = new Menu(document);
   app.workspace.trigger("file-menu", menu, file, source, leaf);
-  return menu.items.filter((item): item is MenuItem => item instanceof MenuItem && item.section === "view.linked");
+  return menu.items.filter(
+    (item): item is MenuItem => item instanceof MenuItem && item.section === "view.linked",
+  );
 }
 
 function findMenuItem(items: MenuItem[], title: string): MenuItem {
@@ -76,8 +82,9 @@ function findMenuItem(items: MenuItem[], title: string): MenuItem {
 }
 
 function clickMenuItem(title: string): void {
-  const item = Array.from(document.body.querySelectorAll<HTMLElement>(".menu-item"))
-    .find((el) => el.querySelector(".menu-item-title")?.textContent === title);
+  const item = Array.from(document.body.querySelectorAll<HTMLElement>(".menu-item")).find(
+    (el) => el.querySelector(".menu-item-title")?.textContent === title,
+  );
   if (!item) throw new Error(`Expected menu item ${title}`);
   item.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 }
@@ -100,9 +107,15 @@ async function waitForPrompt(): Promise<HTMLElement> {
   throw new Error("Expected prompt");
 }
 
-async function waitForMovedFile(app: App, oldPath: string, newPath: string, file: TFile): Promise<void> {
+async function waitForMovedFile(
+  app: App,
+  oldPath: string,
+  newPath: string,
+  file: TFile,
+): Promise<void> {
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    if (app.vault.getFileByPath(oldPath) === null && app.vault.getFileByPath(newPath) === file) return;
+    if (app.vault.getFileByPath(oldPath) === null && app.vault.getFileByPath(newPath) === file)
+      return;
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
   throw new Error("Expected file to move");
@@ -178,8 +191,12 @@ describe("WorkspaceLeaf tab header menu", () => {
     expect(leaf.pinned).toBe(true);
     expect(leaf.tabHeaderEl.classList.contains("has-active-menu")).toBe(false);
 
-    second.tabHeaderEl.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 1 }));
-    second.tabHeaderEl.dispatchEvent(new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 }));
+    second.tabHeaderEl.dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 1 }),
+    );
+    second.tabHeaderEl.dispatchEvent(
+      new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 }),
+    );
     expect(tabs.children).not.toContain(second);
   });
 
@@ -195,12 +212,15 @@ describe("WorkspaceLeaf tab header menu", () => {
     let seenFile: TFile | null = null;
     let seenContext = "";
     let seenLeaf: WorkspaceLeaf | null = null;
-    app.workspace.on<[Menu, TFile, string, WorkspaceLeaf]>("file-menu", (_menu, menuFile, context, menuLeaf) => {
-      seenFile = menuFile;
-      seenContext = context;
-      seenLeaf = menuLeaf;
-      _menu.addItem((item) => item.setSection("action").setTitle("Plugin action"));
-    });
+    app.workspace.on<[Menu, TFile, string, WorkspaceLeaf]>(
+      "file-menu",
+      (_menu, menuFile, context, menuLeaf) => {
+        seenFile = menuFile;
+        seenContext = context;
+        seenLeaf = menuLeaf;
+        _menu.addItem((item) => item.setSection("action").setTitle("Plugin action"));
+      },
+    );
 
     const menu = await openHeaderMenu(leaf);
     const titles = menuTitles(menu);
@@ -210,7 +230,9 @@ describe("WorkspaceLeaf tab header menu", () => {
     expect(titles).toContain("Open linked view");
     expect(menu.querySelector(".menu-item-icon svg.lucide-edit-3")).not.toBeNull();
     expect(menu.querySelector(".menu-item-icon svg.lucide-trash-2")).not.toBeNull();
-    expect(menu.querySelector<HTMLElement>(".menu-item.is-warning .menu-item-title")?.textContent).toBe("Delete");
+    expect(
+      menu.querySelector<HTMLElement>(".menu-item.is-warning .menu-item-title")?.textContent,
+    ).toBe("Delete");
     expect(titles.indexOf("Rename")).toBeLessThan(titles.indexOf("Plugin action"));
     expect(seenFile).toBe(file);
     expect(seenContext).toBe("tab-header");
@@ -249,20 +271,33 @@ describe("WorkspaceLeaf tab header menu", () => {
     const titles = menuItemTitles(items);
 
     expect(titles).toHaveLength(4);
-    expect(titles).toEqual(expect.arrayContaining([
-      "Open local graph",
-      "Open backlinks",
-      "Open outgoing links",
-      "Open outline",
-    ]));
-    expect(findMenuItem(items, "Open local graph").iconEl.querySelector("svg.lucide-git-fork")).not.toBeNull();
-    expect(findMenuItem(items, "Open backlinks").iconEl.querySelector("svg.links-coming-in")).not.toBeNull();
-    expect(findMenuItem(items, "Open outgoing links").iconEl.querySelector("svg.links-going-out")).not.toBeNull();
-    expect(findMenuItem(items, "Open outline").iconEl.querySelector("svg.lucide-list")).not.toBeNull();
+    expect(titles).toEqual(
+      expect.arrayContaining([
+        "Open local graph",
+        "Open backlinks",
+        "Open outgoing links",
+        "Open outline",
+      ]),
+    );
+    expect(
+      findMenuItem(items, "Open local graph").iconEl.querySelector("svg.lucide-git-fork"),
+    ).not.toBeNull();
+    expect(
+      findMenuItem(items, "Open backlinks").iconEl.querySelector("svg.links-coming-in"),
+    ).not.toBeNull();
+    expect(
+      findMenuItem(items, "Open outgoing links").iconEl.querySelector("svg.links-going-out"),
+    ).not.toBeNull();
+    expect(
+      findMenuItem(items, "Open outline").iconEl.querySelector("svg.lucide-list"),
+    ).not.toBeNull();
 
     const fileMenu = new Menu(document);
     app.workspace.trigger("file-menu", fileMenu, file, "tab-header", sourceLeaf);
-    const backlinksToggle = findMenuItem(fileMenu.items.filter((item): item is MenuItem => item instanceof MenuItem), "Backlinks in document");
+    const backlinksToggle = findMenuItem(
+      fileMenu.items.filter((item): item is MenuItem => item instanceof MenuItem),
+      "Backlinks in document",
+    );
     expect(backlinksToggle.section).toBe("pane");
     expect(backlinksToggle.checked).toBe(false);
     backlinksToggle.handleEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
@@ -270,15 +305,26 @@ describe("WorkspaceLeaf tab header menu", () => {
 
     const nextFileMenu = new Menu(document);
     app.workspace.trigger("file-menu", nextFileMenu, file, "tab-header", sourceLeaf);
-    expect(findMenuItem(nextFileMenu.items.filter((item): item is MenuItem => item instanceof MenuItem), "Backlinks in document").checked).toBe(true);
+    expect(
+      findMenuItem(
+        nextFileMenu.items.filter((item): item is MenuItem => item instanceof MenuItem),
+        "Backlinks in document",
+      ).checked,
+    ).toBe(true);
 
-    findMenuItem(items, "Open outline").handleEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    findMenuItem(items, "Open outline").handleEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
     await new Promise((resolve) => window.setTimeout(resolve, 0));
-    const outlineLeaf = app.workspace.getGroupLeaves(sourceLeaf.group ?? "").find((leaf) => leaf.view?.getViewType() === "outline");
+    const outlineLeaf = app.workspace
+      .getGroupLeaves(sourceLeaf.group ?? "")
+      .find((leaf) => leaf.view?.getViewType() === "outline");
     expect(outlineLeaf).not.toBeNull();
     expect(outlineLeaf).not.toBe(sourceLeaf);
 
-    expect(menuItemTitles(linkedViewItems(app, textFile, "tab-header", sourceLeaf))).toEqual(["Open backlinks"]);
+    expect(menuItemTitles(linkedViewItems(app, textFile, "tab-header", sourceLeaf))).toEqual([
+      "Open backlinks",
+    ]);
     expect(linkedViewItems(app, file, "sidebar-context-menu", sourceLeaf)).toHaveLength(0);
   });
 
@@ -319,17 +365,21 @@ describe("WorkspaceLeaf tab header menu", () => {
 
     const items = menu.items.filter((item): item is MenuItem => item instanceof MenuItem);
     const titles = menuItemTitles(items);
-    expect(titles).toEqual(expect.arrayContaining([
-      "Copy Obsidian URL",
-      "Open in default app",
-      "Move file to...",
-      "Copy path",
-      "Open in new window",
-    ]));
+    expect(titles).toEqual(
+      expect.arrayContaining([
+        "Copy Obsidian URL",
+        "Open in default app",
+        "Move file to...",
+        "Copy path",
+        "Open in new window",
+      ]),
+    );
     expect(findMenuItem(items, "Copy Obsidian URL").section).toBe("info.copy");
     expect(findMenuItem(items, "Open in default app").section).toBe("system");
     expect(findMenuItem(items, "Move file to...").section).toBe("action");
-    expect(findMenuItem(items, "Move file to...").iconEl.querySelector("svg.lucide-folder-tree")).not.toBeNull();
+    expect(
+      findMenuItem(items, "Move file to...").iconEl.querySelector("svg.lucide-folder-tree"),
+    ).not.toBeNull();
     expect(findMenuItem(items, "Open in new window").section).toBe("open");
     expect(findMenuItem(items, "Copy path").iconEl.querySelector("svg.vault")).not.toBeNull();
   });
@@ -342,12 +392,16 @@ describe("WorkspaceLeaf tab header menu", () => {
     const leaf = await app.workspace.openFile(file, { active: true });
     const menu = new Menu(document);
     app.workspace.trigger("file-menu", menu, file, "tab-header", leaf);
-    const moveItem = findMenuItem(menu.items.filter((item): item is MenuItem => item instanceof MenuItem), "Move file to...");
+    const moveItem = findMenuItem(
+      menu.items.filter((item): item is MenuItem => item instanceof MenuItem),
+      "Move file to...",
+    );
 
     moveItem.handleEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     const prompt = await waitForPrompt();
-    const targetSuggestion = Array.from(prompt.querySelectorAll<HTMLElement>(".suggestion-item"))
-      .find((item) => item.textContent?.includes("Target"));
+    const targetSuggestion = Array.from(
+      prompt.querySelectorAll<HTMLElement>(".suggestion-item"),
+    ).find((item) => item.textContent?.includes("Target"));
     if (!targetSuggestion) throw new Error("Expected Target folder suggestion");
     targetSuggestion.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     await waitForMovedFile(app, "Source.md", "Target/Source.md", file);
@@ -365,7 +419,13 @@ describe("WorkspaceLeaf tab header menu", () => {
       seen = event as HoverLinkPayload;
     });
 
-    leaf.tabHeaderEl.dispatchEvent(new MouseEvent("mouseover", { bubbles: true, cancelable: true, relatedTarget: document.body }));
+    leaf.tabHeaderEl.dispatchEvent(
+      new MouseEvent("mouseover", {
+        bubbles: true,
+        cancelable: true,
+        relatedTarget: document.body,
+      }),
+    );
 
     expect(seen?.event).toBeInstanceOf(MouseEvent);
     expect(seen?.source).toBe("tab-header");
@@ -384,12 +444,16 @@ describe("WorkspaceLeaf tab header menu", () => {
     const linkedLeaf = app.workspace.splitLeafOrActive(sourceLeaf, "vertical");
     await linkedLeaf.openFile(second, { active: true, group: sourceLeaf });
 
-    const linkedIcon = sourceLeaf.tabHeaderEl.querySelector<HTMLElement>(".workspace-tab-header-status-icon.mod-linked");
+    const linkedIcon = sourceLeaf.tabHeaderEl.querySelector<HTMLElement>(
+      ".workspace-tab-header-status-icon.mod-linked",
+    );
     if (!linkedIcon) throw new Error("Expected linked status icon");
 
     expect(linkedIcon.querySelector("svg.lucide-link")).not.toBeNull();
     sourceLeaf.updateHeader();
-    expect(sourceLeaf.tabHeaderEl.querySelector(".workspace-tab-header-status-icon.mod-linked")).toBe(linkedIcon);
+    expect(
+      sourceLeaf.tabHeaderEl.querySelector(".workspace-tab-header-status-icon.mod-linked"),
+    ).toBe(linkedIcon);
     linkedIcon.dispatchEvent(new MouseEvent("mouseover", { bubbles: true, cancelable: true }));
     expect(linkedIcon.querySelector("svg.lucide-unlink")).not.toBeNull();
     expect(sourceLeaf.containerEl.classList.contains("is-highlighted")).toBe(true);
@@ -403,7 +467,9 @@ describe("WorkspaceLeaf tab header menu", () => {
 
     linkedIcon.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     expect(sourceLeaf.group).toBeNull();
-    expect(sourceLeaf.tabHeaderEl.querySelector(".workspace-tab-header-status-icon.mod-linked")).toBeNull();
+    expect(
+      sourceLeaf.tabHeaderEl.querySelector(".workspace-tab-header-status-icon.mod-linked"),
+    ).toBeNull();
   });
 
   it("keeps pinned tab status icon stable across header refreshes", async () => {
@@ -417,14 +483,18 @@ describe("WorkspaceLeaf tab header menu", () => {
 
     leaf.setPinned(true);
     leaf.setPinned(true);
-    const pinnedIcon = leaf.tabHeaderEl.querySelector<HTMLElement>(".workspace-tab-header-status-icon.mod-pinned");
+    const pinnedIcon = leaf.tabHeaderEl.querySelector<HTMLElement>(
+      ".workspace-tab-header-status-icon.mod-pinned",
+    );
     if (!pinnedIcon) throw new Error("Expected pinned status icon");
 
     leaf.updateHeader();
 
     expect(pinnedEvents).toEqual([true, true]);
     expect(saveLayout).toHaveBeenCalledTimes(2);
-    expect(leaf.tabHeaderEl.querySelector(".workspace-tab-header-status-icon.mod-pinned")).toBe(pinnedIcon);
+    expect(leaf.tabHeaderEl.querySelector(".workspace-tab-header-status-icon.mod-pinned")).toBe(
+      pinnedIcon,
+    );
     expect(leaf.tabHeaderEl.getAttribute("aria-label")).toBe(leaf.getDisplayText());
     expect(leaf.tabHeaderEl.dataset.tooltipDelay).toBe("300");
     expect(leaf.tabHeaderEl.hasAttribute("title")).toBe(false);
@@ -436,7 +506,9 @@ describe("WorkspaceLeaf tab header menu", () => {
 
     pinnedIcon.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     expect(leaf.pinned).toBe(false);
-    expect(leaf.tabHeaderEl.querySelector(".workspace-tab-header-status-icon.mod-pinned")).toBeNull();
+    expect(
+      leaf.tabHeaderEl.querySelector(".workspace-tab-header-status-icon.mod-pinned"),
+    ).toBeNull();
     expect(leaf.tabHeaderCloseEl.style.display).toBe("");
   });
 
@@ -471,7 +543,9 @@ describe("WorkspaceLeaf tab header menu", () => {
       seenSource = source;
     });
 
-    view.moreOptionsButtonEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    view.moreOptionsButtonEl.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
     const menu = document.body.querySelector<HTMLElement>(".menu");
     if (!menu) throw new Error("Expected menu");
 

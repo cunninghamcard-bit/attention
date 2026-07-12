@@ -53,8 +53,12 @@ describe("resolveAppUrl (real e())", () => {
   it("flags remote file paths as noframe via the injected predicate (real ft)", () => {
     // isRemotePath runs on the resolved absolute path.
     const isRemotePath = (p: string) => p.startsWith("/net/");
-    expect(resolveAppUrl(`${FILE_ORIGIN}net/share/x`, { ...deps, isRemotePath }).noframe).toBe(true);
-    expect(resolveAppUrl(`${FILE_ORIGIN}Users/me/a.png`, { ...deps, isRemotePath }).noframe).toBe(false);
+    expect(resolveAppUrl(`${FILE_ORIGIN}net/share/x`, { ...deps, isRemotePath }).noframe).toBe(
+      true,
+    );
+    expect(resolveAppUrl(`${FILE_ORIGIN}Users/me/a.png`, { ...deps, isRemotePath }).noframe).toBe(
+      false,
+    );
   });
 
   it("returns '' (400) for an unknown origin", () => {

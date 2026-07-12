@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
 import type { InternalPluginWrapper } from "@web/plugin/InternalPluginWrapper";
-import { QuickSwitcherController, QuickSwitcherModal, type QuickSwitcherItem } from "@web/builtin/QuickSwitcher";
+import {
+  QuickSwitcherController,
+  QuickSwitcherModal,
+  type QuickSwitcherItem,
+} from "@web/builtin/QuickSwitcher";
 
 describe("QuickSwitcher Obsidian core plugin behavior", () => {
   beforeEach(() => {
@@ -90,7 +94,11 @@ describe("QuickSwitcher Obsidian core plugin behavior", () => {
     modal.inputEl.value = "New Note";
     modal.inputEl.dispatchEvent(new Event("input", { bubbles: true }));
 
-    expect([...modal.instructionsEl.querySelectorAll(".prompt-instruction-command")].map((el) => el.textContent)).toEqual([
+    expect(
+      [...modal.instructionsEl.querySelectorAll(".prompt-instruction-command")].map(
+        (el) => el.textContent,
+      ),
+    ).toEqual([
       "↑↓",
       "↵",
       isMacLike() ? "⌘ ↵" : "ctrl ↵",
@@ -99,7 +107,9 @@ describe("QuickSwitcher Obsidian core plugin behavior", () => {
       "esc",
     ]);
 
-    expect(modal.scope.handleKey(new KeyboardEvent("keydown", { key: "Enter", shiftKey: true }))).toBe(false);
+    expect(
+      modal.scope.handleKey(new KeyboardEvent("keydown", { key: "Enter", shiftKey: true })),
+    ).toBe(false);
     await Promise.resolve();
 
     expect(openLinkText).toHaveBeenCalledWith("New Note", "", false, { active: true });
@@ -129,7 +139,9 @@ describe("QuickSwitcher Obsidian core plugin behavior", () => {
     await app.vault.create("Alpha.md", "alpha");
     const modal = new QuickSwitcherModal(app, controller);
 
-    expect(modal.getSuggestions("Alpha").some((suggestion) => suggestion.item?.type === "create")).toBe(false);
+    expect(
+      modal.getSuggestions("Alpha").some((suggestion) => suggestion.item?.type === "create"),
+    ).toBe(false);
     const missing = modal.getSuggestions("Missing Note");
 
     expect(missing).toHaveLength(1);
@@ -151,8 +163,12 @@ describe("QuickSwitcher Obsidian core plugin behavior", () => {
     await app.vault.create("Projects/Alpha.md", "alpha");
     const modal = new QuickSwitcherModal(app, controller);
 
-    expect(modal.getSuggestions("Projects/Alpha.md").map((suggestion) => itemLabel(suggestion.item))).toEqual([]);
-    expect(modal.getSuggestions("Projects/Alpha").map((suggestion) => itemLabel(suggestion.item))).toEqual(["Projects/Alpha.md"]);
+    expect(
+      modal.getSuggestions("Projects/Alpha.md").map((suggestion) => itemLabel(suggestion.item)),
+    ).toEqual([]);
+    expect(
+      modal.getSuggestions("Projects/Alpha").map((suggestion) => itemLabel(suggestion.item)),
+    ).toEqual(["Projects/Alpha.md"]);
   });
 
   it("renders file rows with markdown path titles and create rows with suggestion actions", async () => {
@@ -164,7 +180,10 @@ describe("QuickSwitcher Obsidian core plugin behavior", () => {
     const fileEl = document.createElement("div");
     const createEl = document.createElement("div");
 
-    modal.renderSuggestion({ item: { type: "file", file }, match: { score: 0, matches: [] } }, fileEl);
+    modal.renderSuggestion(
+      { item: { type: "file", file }, match: { score: 0, matches: [] } },
+      fileEl,
+    );
     modal.inputEl.value = "Missing";
     modal.renderSuggestion({ item: null, match: { score: 0, matches: [] } }, createEl);
 
@@ -184,14 +203,18 @@ describe("QuickSwitcher Obsidian core plugin behavior", () => {
     await app.vault.create("Archive.pdf", "");
     await app.vault.create("Raw.bin", "");
 
-    controller.options = { showExistingOnly: false, showAttachments: false, showAllFileTypes: false };
-    expect(controller.getItems().map(itemLabel)).toEqual([
-      "Board.canvas",
-      "Note.md",
-      "Table.base",
-    ]);
+    controller.options = {
+      showExistingOnly: false,
+      showAttachments: false,
+      showAllFileTypes: false,
+    };
+    expect(controller.getItems().map(itemLabel)).toEqual(["Board.canvas", "Note.md", "Table.base"]);
 
-    controller.options = { showExistingOnly: false, showAttachments: true, showAllFileTypes: false };
+    controller.options = {
+      showExistingOnly: false,
+      showAttachments: true,
+      showAllFileTypes: false,
+    };
     expect(controller.getItems().map(itemLabel)).toEqual([
       "Archive.pdf",
       "Board.canvas",
@@ -200,7 +223,11 @@ describe("QuickSwitcher Obsidian core plugin behavior", () => {
       "Table.base",
     ]);
 
-    controller.options = { showExistingOnly: false, showAttachments: false, showAllFileTypes: true };
+    controller.options = {
+      showExistingOnly: false,
+      showAttachments: false,
+      showAllFileTypes: true,
+    };
     expect(controller.getItems().map(itemLabel)).toEqual([
       "Archive.pdf",
       "Board.canvas",
@@ -217,10 +244,16 @@ describe("QuickSwitcher Obsidian core plugin behavior", () => {
     const note = await app.vault.create("Note.md", "");
     const image = await app.vault.create("Image.png", "");
     app.workspace.recentFilePaths = [image.path, note.path];
-    controller.options = { showExistingOnly: false, showAttachments: false, showAllFileTypes: true };
+    controller.options = {
+      showExistingOnly: false,
+      showAttachments: false,
+      showAllFileTypes: true,
+    };
     const modal = new QuickSwitcherModal(app, controller);
 
-    expect(modal.getSuggestions("").map((suggestion) => itemLabel(suggestion.item))).toEqual(["Note.md"]);
+    expect(modal.getSuggestions("").map((suggestion) => itemLabel(suggestion.item))).toEqual([
+      "Note.md",
+    ]);
   });
 
   it("includes unresolved link suggestions and opens them through workspace openLinkText", async () => {
@@ -228,10 +261,13 @@ describe("QuickSwitcher Obsidian core plugin behavior", () => {
     const controller = new QuickSwitcherController(app);
     const source = await app.vault.create("Source.md", "[[Missing Target]]");
     await app.metadataCache.computeFileMetadataAsync(source);
-    await vi.waitFor(() => expect(app.metadataCache.unresolvedLinks[source.path]).toEqual({ "Missing Target": 1 }));
+    await vi.waitFor(() =>
+      expect(app.metadataCache.unresolvedLinks[source.path]).toEqual({ "Missing Target": 1 }),
+    );
     const modal = new QuickSwitcherModal(app, controller);
     const suggestion = modal.getSuggestions("Missing")[0];
-    if (!suggestion?.item || suggestion.item.type !== "unresolved") throw new Error("missing unresolved suggestion");
+    if (!suggestion?.item || suggestion.item.type !== "unresolved")
+      throw new Error("missing unresolved suggestion");
     const el = document.createElement("div");
     const openLinkText = vi.spyOn(app.workspace.getLeaf(), "openLinkText").mockResolvedValue();
 
@@ -240,7 +276,9 @@ describe("QuickSwitcher Obsidian core plugin behavior", () => {
 
     expect(el.querySelector(".suggestion-title")?.textContent).toBe("Missing Target");
     expect(el.querySelector(".suggestion-note")).toBeNull();
-    expect(el.querySelector<HTMLElement>(".suggestion-flair")?.dataset.icon).toBe("lucide-file-plus");
+    expect(el.querySelector<HTMLElement>(".suggestion-flair")?.dataset.icon).toBe(
+      "lucide-file-plus",
+    );
     expect(el.querySelector<HTMLElement>(".suggestion-flair")?.title).toBe("Not created yet");
     expect(openLinkText).toHaveBeenCalledWith("Missing Target", "", { active: true });
   });

@@ -6,17 +6,27 @@ import type { ElectronGitApi, GitExecResult } from "@web/builtin/git/GitService"
 // CodeView drags the full shiki/highlighter stack into jsdom; a structural
 // stub keeps these tests about OUR surface: headers, sidebar, commit flow.
 vi.mock("@pierre/diffs/react", () => ({
-  CodeView: ({ items, renderCustomHeader, renderAnnotation, renderGutterUtility }: {
+  CodeView: ({
+    items,
+    renderCustomHeader,
+    renderAnnotation,
+    renderGutterUtility,
+  }: {
     items: { id: string; annotations?: { metadata?: unknown }[] }[];
     renderCustomHeader?: (item: unknown) => ReactNode;
     renderAnnotation?: (annotation: unknown, item: unknown) => ReactNode;
-    renderGutterUtility?: (getHoveredLine: () => { lineNumber: number; side: "additions" }, item: unknown) => ReactNode;
+    renderGutterUtility?: (
+      getHoveredLine: () => { lineNumber: number; side: "additions" },
+      item: unknown,
+    ) => ReactNode;
   }) => (
     <div data-testid="codeview">
       {items.map((item) => (
         <div key={item.id} data-item={item.id}>
           {renderCustomHeader?.(item)}
-          <div data-gutter={item.id}>{renderGutterUtility?.(() => ({ lineNumber: 5, side: "additions" }), item)}</div>
+          <div data-gutter={item.id}>
+            {renderGutterUtility?.(() => ({ lineNumber: 5, side: "additions" }), item)}
+          </div>
           {item.annotations?.map((annotation, index) => (
             <div key={index}>{renderAnnotation?.(annotation, item)}</div>
           ))}
@@ -37,9 +47,12 @@ function fakeBridge(): ElectronGitApi & { calls: string[][] } {
     async exec(args: string[]): Promise<GitExecResult> {
       calls.push(args);
       if (args[0] === "rev-parse") return { code: 0, stdout: "true\n", stderr: "" };
-      if (args[0] === "status") return { code: 0, stdout: " M agent.ts\n?? notes.md\n", stderr: "" };
-      if (args[0] === "diff" && args.includes("--numstat")) return { code: 0, stdout: "3\t1\tagent.ts\n", stderr: "" };
-      if (args[0] === "show" && args[1] === "HEAD:agent.ts") return { code: 0, stdout: "line one\nline two\n", stderr: "" };
+      if (args[0] === "status")
+        return { code: 0, stdout: " M agent.ts\n?? notes.md\n", stderr: "" };
+      if (args[0] === "diff" && args.includes("--numstat"))
+        return { code: 0, stdout: "3\t1\tagent.ts\n", stderr: "" };
+      if (args[0] === "show" && args[1] === "HEAD:agent.ts")
+        return { code: 0, stdout: "line one\nline two\n", stderr: "" };
       if (args[0] === "show") return { code: 128, stdout: "", stderr: "fatal: bad object" };
       if (args[0] === "reset" || args[0] === "add") return { code: 0, stdout: "", stderr: "" };
       if (args[0] === "commit") return { code: 0, stdout: "[main abc] ok", stderr: "" };
@@ -68,7 +81,10 @@ async function until(condition: () => boolean, what: string): Promise<void> {
 }
 
 function setInputValue(input: HTMLInputElement | HTMLTextAreaElement, value: string): void {
-  const proto = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+  const proto =
+    input instanceof HTMLTextAreaElement
+      ? HTMLTextAreaElement.prototype
+      : HTMLInputElement.prototype;
   Object.getOwnPropertyDescriptor(proto, "value")!.set!.call(input, value);
   input.dispatchEvent(new Event("input", { bubbles: true }));
 }
@@ -79,8 +95,13 @@ describe("GitReviewView", () => {
     await openGitReview(app);
     const view = app.workspace.getLeavesOfType(GitReviewView.VIEW_TYPE)[0].view as GitReviewView;
 
-    await until(() => view.contentEl.querySelectorAll(".review-file-row").length === 2, "sidebar rows");
-    const rows = [...view.contentEl.querySelectorAll(".review-file-row")].map((el) => el.textContent);
+    await until(
+      () => view.contentEl.querySelectorAll(".review-file-row").length === 2,
+      "sidebar rows",
+    );
+    const rows = [...view.contentEl.querySelectorAll(".review-file-row")].map(
+      (el) => el.textContent,
+    );
     expect(rows[0]).toContain("agent.ts");
     expect(rows[0]).toContain("+3");
     expect(rows[1]).toContain("notes.md");
@@ -93,10 +114,16 @@ describe("GitReviewView", () => {
     const { app } = await reviewApp();
     await openGitReview(app);
     const view = app.workspace.getLeavesOfType(GitReviewView.VIEW_TYPE)[0].view as GitReviewView;
-    await until(() => view.contentEl.querySelectorAll(".review-viewed input").length === 2, "viewed checkboxes");
+    await until(
+      () => view.contentEl.querySelectorAll(".review-viewed input").length === 2,
+      "viewed checkboxes",
+    );
 
     (view.contentEl.querySelector(".review-viewed input") as HTMLInputElement).click();
-    await until(() => view.contentEl.querySelector(".review-progress-text")!.textContent === "1 / 2 viewed", "progress update");
+    await until(
+      () => view.contentEl.querySelector(".review-progress-text")!.textContent === "1 / 2 viewed",
+      "progress update",
+    );
     expect(Object.keys(readViewed("/fake/vault"))).toEqual(["agent.ts"]);
     expect(view.contentEl.querySelector(".review-file-row.is-viewed")).not.toBeNull();
   });
@@ -105,14 +132,27 @@ describe("GitReviewView", () => {
     const { app, bridge } = await reviewApp();
     await openGitReview(app);
     const view = app.workspace.getLeavesOfType(GitReviewView.VIEW_TYPE)[0].view as GitReviewView;
-    await until(() => view.contentEl.querySelectorAll(".review-include-checkbox").length === 2, "include checkboxes");
+    await until(
+      () => view.contentEl.querySelectorAll(".review-include-checkbox").length === 2,
+      "include checkboxes",
+    );
 
     // Deselect notes.md, keep agent.ts.
-    const checkboxes = [...view.contentEl.querySelectorAll<HTMLInputElement>(".review-include-checkbox")];
+    const checkboxes = [
+      ...view.contentEl.querySelectorAll<HTMLInputElement>(".review-include-checkbox"),
+    ];
     checkboxes[1].click();
-    await until(() => view.contentEl.querySelector(".review-commit-meta")!.textContent === "1 of 2 files selected", "selection count");
+    await until(
+      () =>
+        view.contentEl.querySelector(".review-commit-meta")!.textContent ===
+        "1 of 2 files selected",
+      "selection count",
+    );
 
-    setInputValue(view.contentEl.querySelector(".review-commit-subject") as HTMLInputElement, "feat: agent edges");
+    setInputValue(
+      view.contentEl.querySelector(".review-commit-subject") as HTMLInputElement,
+      "feat: agent edges",
+    );
     const button = view.contentEl.querySelector(".review-commit-button") as HTMLButtonElement;
     await until(() => !button.disabled, "commit enabled");
     button.click();
@@ -127,22 +167,41 @@ describe("GitReviewView", () => {
     const { app } = await reviewApp();
     await openGitReview(app);
     const view = app.workspace.getLeavesOfType(GitReviewView.VIEW_TYPE)[0].view as GitReviewView;
-    await until(() => view.contentEl.querySelectorAll(".review-add-comment").length === 2, "gutter buttons");
+    await until(
+      () => view.contentEl.querySelectorAll(".review-add-comment").length === 2,
+      "gutter buttons",
+    );
 
-    const addButton = view.contentEl.querySelector('[data-gutter="agent.ts"] .review-add-comment') as HTMLButtonElement;
+    const addButton = view.contentEl.querySelector(
+      '[data-gutter="agent.ts"] .review-add-comment',
+    ) as HTMLButtonElement;
     addButton.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-    await until(() => view.contentEl.querySelector(".review-comment-input") !== null, "draft editor");
+    await until(
+      () => view.contentEl.querySelector(".review-comment-input") !== null,
+      "draft editor",
+    );
 
-    setInputValue(view.contentEl.querySelector(".review-comment-input") as HTMLTextAreaElement, "Should notify be async?");
-    const save = [...view.contentEl.querySelectorAll<HTMLButtonElement>(".review-comment-actions .review-card-action")]
-      .find((el) => el.textContent === "Save")!;
+    setInputValue(
+      view.contentEl.querySelector(".review-comment-input") as HTMLTextAreaElement,
+      "Should notify be async?",
+    );
+    const save = [
+      ...view.contentEl.querySelectorAll<HTMLButtonElement>(
+        ".review-comment-actions .review-card-action",
+      ),
+    ].find((el) => el.textContent === "Save")!;
     await until(() => !save.disabled, "save enabled");
     save.click();
 
     await until(
-      () => [...view.contentEl.querySelectorAll(".review-action")].some((el) => el.textContent?.includes("Copy 1 note")),
+      () =>
+        [...view.contentEl.querySelectorAll(".review-action")].some((el) =>
+          el.textContent?.includes("Copy 1 note"),
+        ),
       "copy-notes action",
     );
-    expect(view.contentEl.querySelector(".review-comment-body")!.textContent).toBe("Should notify be async?");
+    expect(view.contentEl.querySelector(".review-comment-body")!.textContent).toBe(
+      "Should notify be async?",
+    );
   });
 });

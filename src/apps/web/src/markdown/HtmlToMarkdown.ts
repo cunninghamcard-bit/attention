@@ -13,16 +13,27 @@ function renderNode(node: Node): string {
   if (tag === "script" || tag === "style" || tag === "title") return "";
   if (tag === "br") return "  \n";
   if (tag === "hr") return block("---");
-  if (tag === "p" || tag === "div" || tag === "section" || tag === "article") return block(renderChildren(node).trim());
-  if (/^h[1-6]$/.test(tag)) return block(`${"#".repeat(Number(tag[1]))} ${renderChildren(node).trim()}`);
-  if (tag === "blockquote") return block(renderChildren(node).trim().replace(/\n{2,}/g, "\n").replace(/^/gm, "> "));
+  if (tag === "p" || tag === "div" || tag === "section" || tag === "article")
+    return block(renderChildren(node).trim());
+  if (/^h[1-6]$/.test(tag))
+    return block(`${"#".repeat(Number(tag[1]))} ${renderChildren(node).trim()}`);
+  if (tag === "blockquote")
+    return block(
+      renderChildren(node)
+        .trim()
+        .replace(/\n{2,}/g, "\n")
+        .replace(/^/gm, "> "),
+    );
   if (tag === "strong" || tag === "b") return wrapInline("**", renderChildren(node));
   if (tag === "em" || tag === "i") return wrapInline("_", renderChildren(node));
   if (tag === "del" || tag === "s") return wrapInline("~~", renderChildren(node));
   if (tag === "mark") return wrapInline("==", renderChildren(node));
   if (tag === "a") return renderLink(node);
   if (tag === "img") return renderImage(node);
-  if (tag === "code") return node.parentElement?.tagName.toLowerCase() === "pre" ? node.textContent ?? "" : renderInlineCode(node.textContent ?? "");
+  if (tag === "code")
+    return node.parentElement?.tagName.toLowerCase() === "pre"
+      ? (node.textContent ?? "")
+      : renderInlineCode(node.textContent ?? "");
   if (tag === "pre") return renderCodeBlock(node);
   if (tag === "ul" || tag === "ol") return block(renderList(node));
   if (tag === "li") return renderListItem(node);
@@ -61,7 +72,10 @@ function renderImage(node: HTMLElement): string {
 
 function renderInlineCode(text: string): string {
   const normalized = text.replace(/\s*\n\s*/g, " ");
-  const longestRun = Math.max(0, ...Array.from(normalized.matchAll(/`+/g), (match) => match[0].length));
+  const longestRun = Math.max(
+    0,
+    ...Array.from(normalized.matchAll(/`+/g), (match) => match[0].length),
+  );
   const ticks = "`".repeat(longestRun + 1);
   const padding = normalized.startsWith("`") || normalized.endsWith("`") ? " " : "";
   return `${ticks}${padding}${normalized}${padding}${ticks}`;
@@ -78,7 +92,10 @@ function renderList(node: HTMLElement): string {
   const ordered = node.tagName.toLowerCase() === "ol";
   const start = Number(node.getAttribute("start") ?? "1");
   return Array.from(node.children)
-    .filter((child): child is HTMLElement => child instanceof HTMLElement && child.tagName.toLowerCase() === "li")
+    .filter(
+      (child): child is HTMLElement =>
+        child instanceof HTMLElement && child.tagName.toLowerCase() === "li",
+    )
     .map((li, index) => renderListItem(li, ordered ? start + index : null))
     .join("\n");
 }
@@ -90,7 +107,12 @@ function renderListItem(node: HTMLElement, order: number | null = null): string 
 }
 
 function renderTaskCheckbox(node: HTMLElement): string {
-  if (!(node instanceof HTMLInputElement) || node.type !== "checkbox" || node.parentElement?.tagName.toLowerCase() !== "li") return "";
+  if (
+    !(node instanceof HTMLInputElement) ||
+    node.type !== "checkbox" ||
+    node.parentElement?.tagName.toLowerCase() !== "li"
+  )
+    return "";
   return node.checked ? "[x] " : "[ ] ";
 }
 
@@ -104,11 +126,18 @@ function renderTable(node: HTMLElement): string {
   const columnCount = getTableColumnCount(rows[0]);
   const header = `|${"   |".repeat(columnCount)}`;
   const separator = `|${"---|".repeat(columnCount)}`;
-  return block(`${header}\n${separator}\n${renderedRows.replace(/^[\r\n]+/, "").replace(/[\r\n]+/g, "\n").trim()}`);
+  return block(
+    `${header}\n${separator}\n${renderedRows
+      .replace(/^[\r\n]+/, "")
+      .replace(/[\r\n]+/g, "\n")
+      .trim()}`,
+  );
 }
 
 function renderTableRow(node: HTMLElement): string {
-  const cells = Array.from(node instanceof HTMLTableRowElement ? node.cells : []).filter((cell): cell is HTMLTableCellElement => cell instanceof HTMLTableCellElement);
+  const cells = Array.from(node instanceof HTMLTableRowElement ? node.cells : []).filter(
+    (cell): cell is HTMLTableCellElement => cell instanceof HTMLTableCellElement,
+  );
   let separator = "";
   if (isHeaderRow(node)) {
     separator = `\n${cells.map((cell, index) => `${index === 0 ? "|" : ""}${getAlignment(cell)}|${repeatForColspan(cell, `${getAlignment(cell)}|`)}`).join("")}`;
@@ -126,7 +155,11 @@ function isHeaderRow(row: Element | undefined): row is HTMLTableRowElement {
   const parent = row.parentElement;
   if (parent?.tagName === "THEAD") return true;
   const previous = parent?.previousElementSibling;
-  const firstBodyRow = parent?.firstElementChild === row && (parent?.tagName === "TABLE" || parent?.tagName === "TBODY" && (!previous || previous.tagName === "THEAD" && !previous.textContent?.trim()));
+  const firstBodyRow =
+    parent?.firstElementChild === row &&
+    (parent?.tagName === "TABLE" ||
+      (parent?.tagName === "TBODY" &&
+        (!previous || (previous.tagName === "THEAD" && !previous.textContent?.trim()))));
   return Boolean(firstBodyRow && Array.from(row.children).every((child) => child.tagName === "TH"));
 }
 
@@ -195,5 +228,5 @@ function formatUrl(url: string): string {
 }
 
 function formatTitle(title: string): string {
-  return title.replace(/(\n+\s*)+/g, "\n").replace(/"/g, "\\\"");
+  return title.replace(/(\n+\s*)+/g, "\n").replace(/"/g, '\\"');
 }

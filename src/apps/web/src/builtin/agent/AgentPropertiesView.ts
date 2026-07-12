@@ -37,7 +37,9 @@ export class AgentPropertiesView extends ItemView {
   }
 
   getDisplayText(): string {
-    return this.agentId ? STRINGS.properties.displayTextFor(this.agentId) : STRINGS.properties.displayText;
+    return this.agentId
+      ? STRINGS.properties.displayTextFor(this.agentId)
+      : STRINGS.properties.displayText;
   }
 
   async onOpen(): Promise<void> {
@@ -75,7 +77,8 @@ export class AgentPropertiesView extends ItemView {
     void this.transport.memberAgents(agentId).then(async (members) => {
       this.member = members[0] ?? null;
       this.capabilities = this.member
-        ? (await this.transport.listHarnesses()).find((h) => h.name === this.member?.harness) ?? null
+        ? ((await this.transport.listHarnesses()).find((h) => h.name === this.member?.harness) ??
+          null)
         : null;
       this.render();
     });
@@ -92,18 +95,34 @@ export class AgentPropertiesView extends ItemView {
     this.prop(identityEl, "id", STRINGS.properties.id, this.agentId);
 
     const statusEl = this.section(rootEl, "status", STRINGS.properties.status);
-    this.prop(statusEl, "state", STRINGS.properties.state, state.running ? STRINGS.agentState.running : STRINGS.agentState.idle);
-    if (state.lastError) this.prop(statusEl, "error", STRINGS.properties.lastError, state.lastError);
+    this.prop(
+      statusEl,
+      "state",
+      STRINGS.properties.state,
+      state.running ? STRINGS.agentState.running : STRINGS.agentState.idle,
+    );
+    if (state.lastError)
+      this.prop(statusEl, "error", STRINGS.properties.lastError, state.lastError);
 
     const activityEl = this.section(rootEl, "activity", STRINGS.properties.activity);
     this.prop(activityEl, "messages", STRINGS.properties.messages, String(state.messages.length));
-    this.prop(activityEl, "compactions", STRINGS.properties.compactions, String(state.compactions.length));
-    if (state.usage) this.prop(activityEl, "usage", STRINGS.properties.lastRun, formatUsage(state.usage));
+    this.prop(
+      activityEl,
+      "compactions",
+      STRINGS.properties.compactions,
+      String(state.compactions.length),
+    );
+    if (state.usage)
+      this.prop(activityEl, "usage", STRINGS.properties.lastRun, formatUsage(state.usage));
 
     this.renderConfig(rootEl);
 
     const actionsEl = this.section(rootEl, "actions", STRINGS.properties.actions);
-    const openEl = createEl("button", { cls: "agent-view-action", text: STRINGS.properties.openChat, parent: actionsEl });
+    const openEl = createEl("button", {
+      cls: "agent-view-action",
+      text: STRINGS.properties.openChat,
+      parent: actionsEl,
+    });
     openEl.addEventListener("click", () => void openAgent(this.app, this.agentId));
   }
 
@@ -119,37 +138,67 @@ export class AgentPropertiesView extends ItemView {
       createDiv({ cls: "agent-view-hint", text: STRINGS.properties.noMembers, parent: configEl });
       return;
     }
-    createDiv({ cls: "agent-view-hint", text: STRINGS.properties.memberAgentFor(member.id), parent: configEl });
+    createDiv({
+      cls: "agent-view-hint",
+      text: STRINGS.properties.memberAgentFor(member.id),
+      parent: configEl,
+    });
     const readOnly = member.origin === "file";
-    if (readOnly) createDiv({ cls: "agent-view-hint", text: STRINGS.properties.fileOrigin, parent: configEl });
+    if (readOnly)
+      createDiv({ cls: "agent-view-hint", text: STRINGS.properties.fileOrigin, parent: configEl });
 
     this.prop(configEl, "harness", STRINGS.properties.harness, member.harness);
     if (member.origin) this.prop(configEl, "origin", "Origin", member.origin);
 
-    this.textRow(configEl, "name", "Name", member.name, readOnly, (value) => this.save({ name: value || member.id }));
-    this.textRow(configEl, "model", STRINGS.properties.model, member.model ?? "", readOnly,
-      (value) => this.save({ model: value || undefined }), this.capabilities?.modelHint || STRINGS.properties.modelPlaceholder);
+    this.textRow(configEl, "name", "Name", member.name, readOnly, (value) =>
+      this.save({ name: value || member.id }),
+    );
+    this.textRow(
+      configEl,
+      "model",
+      STRINGS.properties.model,
+      member.model ?? "",
+      readOnly,
+      (value) => this.save({ model: value || undefined }),
+      this.capabilities?.modelHint || STRINGS.properties.modelPlaceholder,
+    );
 
     const thinkingRow = createDiv("agent-prop", configEl);
     thinkingRow.dataset.prop = "thinking";
     createDiv({ cls: "agent-prop-label", text: STRINGS.properties.thinking, parent: thinkingRow });
     const thinkingSelect = createEl("select", { cls: "agent-prop-input", parent: thinkingRow });
     for (const level of ["", ...(this.capabilities?.thinkingLevels ?? [])]) {
-      const option = createEl("option", { parent: thinkingSelect, text: level || STRINGS.properties.effortDefault });
+      const option = createEl("option", {
+        parent: thinkingSelect,
+        text: level || STRINGS.properties.effortDefault,
+      });
       option.value = level;
     }
     thinkingSelect.value = member.thinking ?? "";
     thinkingSelect.disabled = readOnly;
-    thinkingSelect.addEventListener("change", () => void this.save({ thinking: thinkingSelect.value || undefined }));
+    thinkingSelect.addEventListener(
+      "change",
+      () => void this.save({ thinking: thinkingSelect.value || undefined }),
+    );
 
     const instructionsRow = createDiv("agent-prop agent-prop-block", configEl);
     instructionsRow.dataset.prop = "instructions";
-    createDiv({ cls: "agent-prop-label", text: STRINGS.properties.instructions, parent: instructionsRow });
-    const instructionsInput = createEl("textarea", { cls: "agent-prop-input agent-prop-textarea", parent: instructionsRow });
+    createDiv({
+      cls: "agent-prop-label",
+      text: STRINGS.properties.instructions,
+      parent: instructionsRow,
+    });
+    const instructionsInput = createEl("textarea", {
+      cls: "agent-prop-input agent-prop-textarea",
+      parent: instructionsRow,
+    });
     instructionsInput.placeholder = STRINGS.properties.instructionsPlaceholder;
     instructionsInput.value = member.instructions ?? "";
     instructionsInput.disabled = readOnly;
-    instructionsInput.addEventListener("change", () => void this.save({ instructions: instructionsInput.value }));
+    instructionsInput.addEventListener(
+      "change",
+      () => void this.save({ instructions: instructionsInput.value }),
+    );
 
     const envEntries = Object.entries(member.env ?? {});
     if (envEntries.length > 0) {

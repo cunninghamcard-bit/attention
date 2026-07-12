@@ -29,7 +29,13 @@ interface RunState {
   openParts: Map<number, { partType: string; toolId?: string }>;
 }
 
-function handleLine(agentId: string, state: ClaudeAgentState, run: RunState, line: string, emit: EngineEmit): void {
+function handleLine(
+  agentId: string,
+  state: ClaudeAgentState,
+  run: RunState,
+  line: string,
+  emit: EngineEmit,
+): void {
   let payload: any;
   try {
     payload = JSON.parse(line);
@@ -64,7 +70,8 @@ function handleLine(agentId: string, state: ClaudeAgentState, run: RunState, lin
       case "content_block_start": {
         if (!run.currentMessageId) return;
         const block = event.content_block ?? {};
-        const partType = block.type === "tool_use" ? "tool" : block.type === "thinking" ? "thinking" : "text";
+        const partType =
+          block.type === "tool_use" ? "tool" : block.type === "thinking" ? "thinking" : "text";
         run.openParts.set(event.index, { partType, toolId: block.id });
         if (partType === "tool" && block.id) {
           run.toolParts.set(block.id, { messageId: run.currentMessageId, partIndex: event.index });
@@ -83,7 +90,12 @@ function handleLine(agentId: string, state: ClaudeAgentState, run: RunState, lin
         const delta = event.delta ?? {};
         const text = delta.text ?? delta.thinking ?? delta.partial_json ?? "";
         if (!text) return;
-        emit({ type: "part.delta", messageId: run.currentMessageId, partIndex: event.index, delta: text });
+        emit({
+          type: "part.delta",
+          messageId: run.currentMessageId,
+          partIndex: event.index,
+          delta: text,
+        });
         return;
       }
       case "content_block_stop": {
@@ -131,7 +143,15 @@ export const claudeEngine: Engine = {
 
   async run({ agentId, runId, prompt, emit }) {
     const state = getAgent(agentId);
-    const args = ["claude", "-p", prompt, "--output-format", "stream-json", "--include-partial-messages", "--verbose"];
+    const args = [
+      "claude",
+      "-p",
+      prompt,
+      "--output-format",
+      "stream-json",
+      "--include-partial-messages",
+      "--verbose",
+    ];
     if (state.sessionId) args.push("--resume", state.sessionId);
     args.push(...EXTRA_CLAUDE_ARGS);
 
@@ -166,12 +186,17 @@ export const claudeEngine: Engine = {
               if (payload.is_error) sawError = payload.result ?? "engine error";
               const raw = payload.usage;
               if (raw) {
-                const inputTokens = (raw.input_tokens ?? 0) + (raw.cache_read_input_tokens ?? 0) + (raw.cache_creation_input_tokens ?? 0);
+                const inputTokens =
+                  (raw.input_tokens ?? 0) +
+                  (raw.cache_read_input_tokens ?? 0) +
+                  (raw.cache_creation_input_tokens ?? 0);
                 usage = {
                   inputTokens,
                   outputTokens: raw.output_tokens ?? 0,
                   totalTokens: inputTokens + (raw.output_tokens ?? 0),
-                  ...(payload.total_cost_usd !== undefined ? { costUsd: payload.total_cost_usd } : {}),
+                  ...(payload.total_cost_usd !== undefined
+                    ? { costUsd: payload.total_cost_usd }
+                    : {}),
                 };
               }
             }
@@ -186,7 +211,14 @@ export const claudeEngine: Engine = {
     state.proc = null;
     if (run.currentMessageId) emit({ type: "message.closed", messageId: run.currentMessageId });
     if (sawError) emit({ type: "run.closed", runId, status: "error", error: sawError, usage });
-    else if (exitCode !== 0) emit({ type: "run.closed", runId, status: "error", error: `engine exited with ${exitCode}`, usage });
+    else if (exitCode !== 0)
+      emit({
+        type: "run.closed",
+        runId,
+        status: "error",
+        error: `engine exited with ${exitCode}`,
+        usage,
+      });
     else emit({ type: "run.closed", runId, status: "completed", usage });
   },
 

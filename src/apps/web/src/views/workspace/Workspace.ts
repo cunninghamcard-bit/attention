@@ -13,7 +13,11 @@ import { MobileDrawer } from "../../platform/mobile/MobileDrawer";
 import { WorkspaceRibbon } from "./WorkspaceRibbon";
 import { WorkspaceDragManager, type WorkspaceDropTarget } from "./WorkspaceDragManager";
 import { WorkspaceParent } from "./WorkspaceParent";
-import { HoverLinkSourceRegistry, type HoverLinkSource, type HoverLinkSourceConfig } from "./WorkspaceHover";
+import {
+  HoverLinkSourceRegistry,
+  type HoverLinkSource,
+  type HoverLinkSourceConfig,
+} from "./WorkspaceHover";
 import { WorkspaceLayoutSerializer } from "./WorkspaceLayoutSerializer";
 import { RecentFileTracker, type RecentFilesOptions } from "./RecentFileTracker";
 import type { Editor } from "../../editor/Editor";
@@ -31,7 +35,11 @@ import { ItemView } from "../ItemView";
 import { FileView } from "../FileView";
 import { MarkdownView } from "../MarkdownView";
 import { DeferredView } from "../DeferredView";
-import { parseObsidianUri, type ObsidianProtocolData, type ObsidianProtocolHandler } from "../../app/protocol/UriRouter";
+import {
+  parseObsidianUri,
+  type ObsidianProtocolData,
+  type ObsidianProtocolHandler,
+} from "../../app/protocol/UriRouter";
 import type { Menu } from "../../ui/Menu";
 import { setIcon } from "../../ui/Icon";
 import { Notice } from "../../ui/Notice";
@@ -64,7 +72,9 @@ type WorkspaceOpenState = Omit<OpenViewState, "state" | "eState" | "group"> & {
 
 type WorkspaceActiveTabGroup = WorkspaceTabs | MobileDrawer;
 
-function getWorkspaceActiveTabGroup(item: WorkspaceItem | null | undefined): WorkspaceActiveTabGroup | null {
+function getWorkspaceActiveTabGroup(
+  item: WorkspaceItem | null | undefined,
+): WorkspaceActiveTabGroup | null {
   return item instanceof WorkspaceTabs || item instanceof MobileDrawer ? item : null;
 }
 
@@ -157,50 +167,148 @@ export class Workspace extends Events {
   private onLayoutReadyCallbacks: LayoutReadyCallbackRecord[] | null = [];
   private layoutReadyCallbacksPromise: Promise<void> = Promise.resolve();
   readonly requestUpdateLayout = createMicrotaskWorkspaceRequest(() => this.updateLayout());
-  readonly requestResize = createDebouncedWorkspaceRequest(async () => {
-    this.trigger("resize");
-  }, () => true, 0);
-  readonly requestActiveLeafEvents = createDebouncedWorkspaceRequest(async () => {
-    this.activeLeafEvents();
-  }, () => true, 0);
-  readonly requestSaveLayout = createDebouncedWorkspaceRequest(async () => {
-    await this.saveLayout();
-  }, () => true, 1000, false, true);
-  readonly requestLayoutChangeEvents = createDebouncedWorkspaceRequest(async () => {
-    if (this.layoutReady) this.trigger("layout-change");
-  }, () => true, 10);
+  readonly requestResize = createDebouncedWorkspaceRequest(
+    async () => {
+      this.trigger("resize");
+    },
+    () => true,
+    0,
+  );
+  readonly requestActiveLeafEvents = createDebouncedWorkspaceRequest(
+    async () => {
+      this.activeLeafEvents();
+    },
+    () => true,
+    0,
+  );
+  readonly requestSaveLayout = createDebouncedWorkspaceRequest(
+    async () => {
+      await this.saveLayout();
+    },
+    () => true,
+    1000,
+    false,
+    true,
+  );
+  readonly requestLayoutChangeEvents = createDebouncedWorkspaceRequest(
+    async () => {
+      if (this.layoutReady) this.trigger("layout-change");
+    },
+    () => true,
+    10,
+  );
 
-  override on(name: "quick-preview", callback: (file: TFile, data: string) => any, ctx?: any): EventRef;
+  override on(
+    name: "quick-preview",
+    callback: (file: TFile, data: string) => any,
+    ctx?: any,
+  ): EventRef;
   override on(name: "resize", callback: () => any, ctx?: any): EventRef;
-  override on(name: "active-leaf-change", callback: (leaf: WorkspaceLeaf | null) => any, ctx?: any): EventRef;
+  override on(
+    name: "active-leaf-change",
+    callback: (leaf: WorkspaceLeaf | null) => any,
+    ctx?: any,
+  ): EventRef;
   override on(name: "file-open", callback: (file: TFile | null) => any, ctx?: any): EventRef;
   override on(name: "layout-ready", callback: () => any, ctx?: any): EventRef;
   override on(name: "layout-change", callback: () => any, ctx?: any): EventRef;
   override on(name: "window-frame-change", callback: () => any, ctx?: any): EventRef;
-  override on(name: "window-open", callback: (win: WorkspaceWindow, window: Window) => any, ctx?: any): EventRef;
-  override on(name: "window-close", callback: (win: WorkspaceWindow, window: Window) => any, ctx?: any): EventRef;
+  override on(
+    name: "window-open",
+    callback: (win: WorkspaceWindow, window: Window) => any,
+    ctx?: any,
+  ): EventRef;
+  override on(
+    name: "window-close",
+    callback: (win: WorkspaceWindow, window: Window) => any,
+    ctx?: any,
+  ): EventRef;
   override on(name: "css-change", callback: () => any, ctx?: any): EventRef;
   override on(name: "post-processor-change", callback: () => any, ctx?: any): EventRef;
-  override on(name: "file-menu", callback: (menu: Menu, file: TAbstractFile, source: string, leaf?: WorkspaceLeaf) => any, ctx?: any): EventRef;
-  override on(name: "files-menu", callback: (menu: Menu, files: TAbstractFile[], source: string, leaf?: WorkspaceLeaf) => any, ctx?: any): EventRef;
+  override on(
+    name: "file-menu",
+    callback: (menu: Menu, file: TAbstractFile, source: string, leaf?: WorkspaceLeaf) => any,
+    ctx?: any,
+  ): EventRef;
+  override on(
+    name: "files-menu",
+    callback: (menu: Menu, files: TAbstractFile[], source: string, leaf?: WorkspaceLeaf) => any,
+    ctx?: any,
+  ): EventRef;
   override on(name: "url-menu", callback: (menu: Menu, url: string) => any, ctx?: any): EventRef;
-  override on(name: "link-menu", callback: (menu: Menu, linktext: string, sourcePath: string, source: string) => any, ctx?: any): EventRef;
-  override on(name: "leaf-menu", callback: (menu: Menu, leaf: WorkspaceLeaf) => any, ctx?: any): EventRef;
-  override on(name: "tab-group-menu", callback: (menu: Menu, tabs: WorkspaceTabs) => any, ctx?: any): EventRef;
+  override on(
+    name: "link-menu",
+    callback: (menu: Menu, linktext: string, sourcePath: string, source: string) => any,
+    ctx?: any,
+  ): EventRef;
+  override on(
+    name: "leaf-menu",
+    callback: (menu: Menu, leaf: WorkspaceLeaf) => any,
+    ctx?: any,
+  ): EventRef;
+  override on(
+    name: "tab-group-menu",
+    callback: (menu: Menu, tabs: WorkspaceTabs) => any,
+    ctx?: any,
+  ): EventRef;
   override on(name: "hover-link", callback: (event: unknown) => any, ctx?: any): EventRef;
-  override on(name: "editor-menu", callback: (menu: Menu, editor: Editor, info: MarkdownView | MarkdownFileInfo) => any, ctx?: any): EventRef;
-  override on(name: "editor-change", callback: (editor: Editor, info: MarkdownView | MarkdownFileInfo) => any, ctx?: any): EventRef;
-  override on(name: "editor-selection-change", callback: (editor: Editor, info: MarkdownView | MarkdownFileInfo) => any, ctx?: any): EventRef;
-  override on(name: "editor-paste", callback: (evt: ClipboardEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) => any, ctx?: any): EventRef;
-  override on(name: "editor-drop", callback: (evt: DragEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) => any, ctx?: any): EventRef;
+  override on(
+    name: "editor-menu",
+    callback: (menu: Menu, editor: Editor, info: MarkdownView | MarkdownFileInfo) => any,
+    ctx?: any,
+  ): EventRef;
+  override on(
+    name: "editor-change",
+    callback: (editor: Editor, info: MarkdownView | MarkdownFileInfo) => any,
+    ctx?: any,
+  ): EventRef;
+  override on(
+    name: "editor-selection-change",
+    callback: (editor: Editor, info: MarkdownView | MarkdownFileInfo) => any,
+    ctx?: any,
+  ): EventRef;
+  override on(
+    name: "editor-paste",
+    callback: (evt: ClipboardEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) => any,
+    ctx?: any,
+  ): EventRef;
+  override on(
+    name: "editor-drop",
+    callback: (evt: DragEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) => any,
+    ctx?: any,
+  ): EventRef;
   override on(name: "markdown-scroll", callback: (view: MarkdownView) => any, ctx?: any): EventRef;
-  override on(name: "markdown-properties-menu", callback: (menu: Menu, file: TFile | null) => any, ctx?: any): EventRef;
-  override on(name: "markdown-viewport-menu", callback: (menu: Menu, view: MarkdownView, mode: "source" | "preview", source: string) => any, ctx?: any): EventRef;
-  override on(name: "receive-text-menu", callback: (menu: Menu, text: string) => any, ctx?: any): EventRef;
-  override on(name: "receive-files-menu", callback: (menu: Menu, files: File[]) => any, ctx?: any): EventRef;
+  override on(
+    name: "markdown-properties-menu",
+    callback: (menu: Menu, file: TFile | null) => any,
+    ctx?: any,
+  ): EventRef;
+  override on(
+    name: "markdown-viewport-menu",
+    callback: (menu: Menu, view: MarkdownView, mode: "source" | "preview", source: string) => any,
+    ctx?: any,
+  ): EventRef;
+  override on(
+    name: "receive-text-menu",
+    callback: (menu: Menu, text: string) => any,
+    ctx?: any,
+  ): EventRef;
+  override on(
+    name: "receive-files-menu",
+    callback: (menu: Menu, files: File[]) => any,
+    ctx?: any,
+  ): EventRef;
   override on(name: "quit", callback: (tasks: Tasks) => any, ctx?: any): EventRef;
-  override on<TArgs extends unknown[]>(name: string, callback: (...args: TArgs) => any, ctx?: object): EventRef<TArgs>;
-  override on<TArgs extends unknown[]>(name: string, callback: (...args: TArgs) => any, ctx?: object): EventRef<TArgs> {
+  override on<TArgs extends unknown[]>(
+    name: string,
+    callback: (...args: TArgs) => any,
+    ctx?: object,
+  ): EventRef<TArgs>;
+  override on<TArgs extends unknown[]>(
+    name: string,
+    callback: (...args: TArgs) => any,
+    ctx?: object,
+  ): EventRef<TArgs> {
     return super.on(name, callback, ctx);
   }
 
@@ -211,7 +319,11 @@ export class Workspace extends Events {
   }
 
   set activeEditor(activeEditor: MarkdownFileInfo | null) {
-    if (this.isActiveEditorView(activeEditor) && (activeEditor as unknown) === activeEditor.leaf.view) return;
+    if (
+      this.isActiveEditorView(activeEditor) &&
+      (activeEditor as unknown) === activeEditor.leaf.view
+    )
+      return;
     this._activeEditor = activeEditor;
   }
 
@@ -223,7 +335,10 @@ export class Workspace extends Events {
     this._layoutReady = value;
   }
 
-  constructor(readonly app: App, parent: HTMLElement) {
+  constructor(
+    readonly app: App,
+    parent: HTMLElement,
+  ) {
     super();
     const mobile = isMobileRuntime();
     this.scope = new DynamicScope(this.app.scope, () => this.activeLeaf?.view?.scope ?? null);
@@ -236,23 +351,37 @@ export class Workspace extends Events {
     this.leftSidebarToggleButtonEl = this.createSidebarToggleButton("left", ownerDocument);
     this.rightSidebarToggleButtonEl = this.createSidebarToggleButton("right", ownerDocument);
     this.leftRibbon = new WorkspaceRibbon(this, "left");
-    this.leftSplit = mobile ? new MobileDrawer(this, "left") : new WorkspaceSidedock(this, "left", ownerDocument);
+    this.leftSplit = mobile
+      ? new MobileDrawer(this, "left")
+      : new WorkspaceSidedock(this, "left", ownerDocument);
     this.rootSplit = new WorkspaceRoot(this, undefined, ownerDocument);
-    this.rightSplit = mobile ? new MobileDrawer(this, "right") : new WorkspaceSidedock(this, "right", ownerDocument);
+    this.rightSplit = mobile
+      ? new MobileDrawer(this, "right")
+      : new WorkspaceSidedock(this, "right", ownerDocument);
     this.rightRibbon = new WorkspaceRibbon(this, "right");
     if (this.rightSplit instanceof WorkspaceSidedock) this.rightSplit.updateEmptyState();
-    this.leftRibbon.addRibbonSettingButton("app:open-settings", "lucide-settings", "Open settings", () => this.app.setting.open());
+    this.leftRibbon.addRibbonSettingButton(
+      "app:open-settings",
+      "lucide-settings",
+      "Open settings",
+      () => this.app.setting.open(),
+    );
     this.floatingSplit = new WorkspaceFloating(this, undefined, ownerDocument);
     const ownerWindow = ownerDocument.defaultView ?? window;
     this.app.viewRegistry.on<[string]>("view-registered", (type) => this.rebuildLeavesOfType(type));
-    this.app.viewRegistry.on<[string]>("view-unregistered", (type) => this.rebuildLeavesOfType(type));
-    this.app.vault.on<[TFile, string]>("rename", (file, oldPath) => this.onFileRename(file, oldPath));
+    this.app.viewRegistry.on<[string]>("view-unregistered", (type) =>
+      this.rebuildLeavesOfType(type),
+    );
+    this.app.vault.on<[TFile, string]>("rename", (file, oldPath) =>
+      this.onFileRename(file, oldPath),
+    );
     ownerWindow.addEventListener("resize", this.requestResize.bind(this));
     ownerWindow.addEventListener("focus", () => {
       setActiveWindow(ownerWindow);
       this.rootSplit.onFocus();
     });
-    if (Platform.isDesktopApp) ownerWindow.addEventListener("fullscreenchange", () => this.updateFrameless());
+    if (Platform.isDesktopApp)
+      ownerWindow.addEventListener("fullscreenchange", () => this.updateFrameless());
     this.installBrowserHistoryNavigation(ownerWindow);
     this.registerClipboardEvents(ownerWindow);
 
@@ -287,10 +416,14 @@ export class Workspace extends Events {
     // Real resolves the text lazily at hover time — mirror that by refreshing
     // on mouseenter, which also survives command-driven toggles and the fact
     // that the splits don't exist yet while this button is constructed.
-    const tooltipPlacement = side === "left" ? "right" as const : "left" as const;
+    const tooltipPlacement = side === "left" ? ("right" as const) : ("left" as const);
     const refreshToggleTooltip = () => {
       const dock = side === "left" ? this.leftSplit : this.rightSplit;
-      setTooltip(buttonEl, (dock as { collapsed?: boolean } | undefined)?.collapsed ? "Expand" : "Collapse", { placement: tooltipPlacement });
+      setTooltip(
+        buttonEl,
+        (dock as { collapsed?: boolean } | undefined)?.collapsed ? "Expand" : "Collapse",
+        { placement: tooltipPlacement },
+      );
     };
     buttonEl.addEventListener("mouseenter", refreshToggleTooltip);
     refreshToggleTooltip();
@@ -330,11 +463,21 @@ export class Workspace extends Events {
       activeElement?.dispatchEvent(createClipboardEvent(activeDocument, "copy"));
     });
     win.addEventListener("paste", (event) => {
-      if (event.defaultPrevented || !this.activeLeaf || isInputLike(getActiveDocument().activeElement)) return;
+      if (
+        event.defaultPrevented ||
+        !this.activeLeaf ||
+        isInputLike(getActiveDocument().activeElement)
+      )
+        return;
       this.activeLeaf.view?.handlePaste(event);
     });
     win.addEventListener("cut", (event) => {
-      if (event.defaultPrevented || !this.activeLeaf || isInputLike(getActiveDocument().activeElement)) return;
+      if (
+        event.defaultPrevented ||
+        !this.activeLeaf ||
+        isInputLike(getActiveDocument().activeElement)
+      )
+        return;
       this.activeLeaf.view?.handleCut(event);
     });
   }
@@ -380,11 +523,17 @@ export class Workspace extends Events {
   async ensureSideLeaf(
     type: string,
     side: "left" | "right",
-    options?: { active?: boolean; split?: boolean; reveal?: boolean | null; state?: unknown } | null,
+    options?: {
+      active?: boolean;
+      split?: boolean;
+      reveal?: boolean | null;
+      state?: unknown;
+    } | null,
   ): Promise<WorkspaceLeaf> {
     const opts = options || {};
-    const leaf = this.getLeavesOfType(type)[0]
-      ?? (side === "left" ? this.getLeftLeaf(opts.split) : this.getRightLeaf(opts.split));
+    const leaf =
+      this.getLeavesOfType(type)[0] ??
+      (side === "left" ? this.getLeftLeaf(opts.split) : this.getRightLeaf(opts.split));
     if (!leaf) throw new Error(`Unable to create ${side} side leaf for "${type}".`);
     const reveal = opts.reveal === undefined ? true : opts.reveal;
     if (opts.active || reveal) await leaf.loadIfDeferred();
@@ -397,64 +546,86 @@ export class Workspace extends Events {
     return leaf;
   }
 
-  async openLinkText(linktext: string, sourcePath: string, paneType?: LeafOpenMode, openState?: OpenViewState): Promise<void> {
+  async openLinkText(
+    linktext: string,
+    sourcePath: string,
+    paneType?: LeafOpenMode,
+    openState?: OpenViewState,
+  ): Promise<void> {
     await this.getLeaf(paneType).openLinkText(linktext, sourcePath, openState);
   }
 
-  handleLinkContextMenu(menu: Menu, linktext: string, sourcePath: string, leaf?: WorkspaceLeaf): boolean {
+  handleLinkContextMenu(
+    menu: Menu,
+    linktext: string,
+    sourcePath: string,
+    leaf?: WorkspaceLeaf,
+  ): boolean {
     if (!linktext.trim()) return false;
     const file = this.app.metadataCache.getFirstLinkpathDest(linktext, sourcePath);
     if (file) {
-      menu.addItem((item) => item
-        .setTitle("Open in new tab")
-        .setIcon("lucide-file-plus")
-        .setSection("open")
-        .onClick(() => {
-          void this.getLeaf("tab").openFile(file, { active: true });
-        }));
-      menu.addItem((item) => item
-        .setTitle("Open to the right")
-        .setIcon("lucide-separator-vertical")
-        .setSection("open")
-        .onClick(() => {
-          void this.getLeaf("split").openFile(file, { active: true });
-        }));
-      menu.addItem((item) => item
-        .setTitle("Rename")
-        .setIcon("lucide-edit-3")
-        .setSection("action")
-        .onClick(() => {
-          void this.app.fileManager.promptForFileRename(file);
-        }));
+      menu.addItem((item) =>
+        item
+          .setTitle("Open in new tab")
+          .setIcon("lucide-file-plus")
+          .setSection("open")
+          .onClick(() => {
+            void this.getLeaf("tab").openFile(file, { active: true });
+          }),
+      );
+      menu.addItem((item) =>
+        item
+          .setTitle("Open to the right")
+          .setIcon("lucide-separator-vertical")
+          .setSection("open")
+          .onClick(() => {
+            void this.getLeaf("split").openFile(file, { active: true });
+          }),
+      );
+      menu.addItem((item) =>
+        item
+          .setTitle("Rename")
+          .setIcon("lucide-edit-3")
+          .setSection("action")
+          .onClick(() => {
+            void this.app.fileManager.promptForFileRename(file);
+          }),
+      );
       this.trigger("file-menu", menu, file, "link-context-menu", leaf ?? this.getLeaf(false));
       return true;
     }
 
-    menu.addItem((item) => item
-      .setTitle("Create file")
-      .setIcon("lucide-file-plus")
-      .setSection("open")
-      .onClick(() => {
-        void this.openLinkText(linktext, sourcePath, false, { active: true });
-      }));
+    menu.addItem((item) =>
+      item
+        .setTitle("Create file")
+        .setIcon("lucide-file-plus")
+        .setSection("open")
+        .onClick(() => {
+          void this.openLinkText(linktext, sourcePath, false, { active: true });
+        }),
+    );
     return true;
   }
 
   handleExternalLinkContextMenu(menu: Menu, url: string): void {
-    menu.addItem((item) => item
-      .setTitle("Open link")
-      .setIcon("lucide-external-link")
-      .setSection("open")
-      .onClick(() => {
-        window.open(url, "_blank");
-      }));
-    menu.addItem((item) => item
-      .setTitle("Copy URL")
-      .setIcon("lucide-copy")
-      .setSection("info")
-      .onClick(() => {
-        void navigator.clipboard?.writeText?.(url);
-      }));
+    menu.addItem((item) =>
+      item
+        .setTitle("Open link")
+        .setIcon("lucide-external-link")
+        .setSection("open")
+        .onClick(() => {
+          window.open(url, "_blank");
+        }),
+    );
+    menu.addItem((item) =>
+      item
+        .setTitle("Copy URL")
+        .setIcon("lucide-copy")
+        .setSection("info")
+        .onClick(() => {
+          void navigator.clipboard?.writeText?.(url);
+        }),
+    );
     this.trigger("url-menu", menu, url);
   }
 
@@ -487,7 +658,10 @@ export class Workspace extends Events {
     return this.getActiveFileView()?.file ?? null;
   }
 
-  getAdjacentLeafInDirection(leaf: WorkspaceLeaf | null | undefined, direction: "top" | "bottom" | "left" | "right"): WorkspaceLeaf | null {
+  getAdjacentLeafInDirection(
+    leaf: WorkspaceLeaf | null | undefined,
+    direction: "top" | "bottom" | "left" | "right",
+  ): WorkspaceLeaf | null {
     if (!leaf) return null;
     const sourceRect = getLeafRect(leaf);
     if (!sourceRect) return null;
@@ -500,7 +674,13 @@ export class Workspace extends Events {
       const candidateRect = getLeafRect(candidate);
       if (!candidateRect) return;
       const candidateCenter = getRectCenter(candidateRect);
-      const score = getDirectionalLeafScore(sourceRect, sourceCenter, candidateRect, candidateCenter, direction);
+      const score = getDirectionalLeafScore(
+        sourceRect,
+        sourceCenter,
+        candidateRect,
+        candidateCenter,
+        direction,
+      );
       if (!score) return;
       if (!bestScore || compareDirectionalScore(score, bestScore) < 0) {
         bestLeaf = candidate;
@@ -513,11 +693,19 @@ export class Workspace extends Events {
 
   splitActiveLeaf(direction: SplitDirection = "vertical", id?: string): WorkspaceLeaf {
     const leaf = this.getMostRecentLeaf();
-    return leaf ? this.createLeafBySplit(leaf, direction, false, id) : this.createLeafInRootSplit(direction, id);
+    return leaf
+      ? this.createLeafBySplit(leaf, direction, false, id)
+      : this.createLeafInRootSplit(direction, id);
   }
 
-  splitLeafOrActive(leaf: WorkspaceLeaf | null = this.activeLeaf, direction: SplitDirection = "vertical", id?: string): WorkspaceLeaf {
-    return leaf ? this.createLeafBySplit(leaf, direction, false, id) : this.splitActiveLeaf(direction, id);
+  splitLeafOrActive(
+    leaf: WorkspaceLeaf | null = this.activeLeaf,
+    direction: SplitDirection = "vertical",
+    id?: string,
+  ): WorkspaceLeaf {
+    return leaf
+      ? this.createLeafBySplit(leaf, direction, false, id)
+      : this.splitActiveLeaf(direction, id);
   }
 
   getGroupLeaves(group: string): WorkspaceLeaf[] {
@@ -532,7 +720,7 @@ export class Workspace extends Events {
   getLeafForFile(path: string): WorkspaceLeaf | null {
     let found: WorkspaceLeaf | null = null;
     this.iterateAllLeaves((leaf) => {
-      const view = leaf.view as ({ file?: { path: string } | null } | null);
+      const view = leaf.view as { file?: { path: string } | null } | null;
       if (!found && view?.file?.path === path) found = leaf;
     });
     return found;
@@ -560,7 +748,8 @@ export class Workspace extends Events {
       const index = leaf.parent.children.indexOf(leaf);
       const tabChanged = index !== -1 && leaf.parent.currentTab !== index;
       if (index !== -1) leaf.parent.selectTabIndex(index, false);
-      if (expanded || tabChanged) leaf.tabHeaderEl.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+      if (expanded || tabChanged)
+        leaf.tabHeaderEl.scrollIntoView?.({ block: "nearest", inline: "nearest" });
     }
     leaf.containerEl.focus({ preventScroll: true });
     await leaf.loadIfDeferred();
@@ -584,7 +773,8 @@ export class Workspace extends Events {
 
     container.iterateLeaves((leaf) => {
       const parent = leaf.parent;
-      const isCurrentTab = parent instanceof WorkspaceTabs && parent.children[parent.currentTab] === leaf;
+      const isCurrentTab =
+        parent instanceof WorkspaceTabs && parent.children[parent.currentTab] === leaf;
       const isStackedTab = parent instanceof WorkspaceTabs && parent.isStacked;
 
       if (!leaf.canNavigate() || (!isCurrentTab && !isStackedTab)) return;
@@ -657,7 +847,8 @@ export class Workspace extends Events {
       if (!this.layoutReady) this.markLayoutReady();
       return null;
     }
-    if (Object.prototype.hasOwnProperty.call(layout, "lastOpenFiles")) this.recentFileTracker.load(layout.lastOpenFiles);
+    if (Object.prototype.hasOwnProperty.call(layout, "lastOpenFiles"))
+      this.recentFileTracker.load(layout.lastOpenFiles);
     await this.setLayout(layout);
     this.fireLayoutReady();
     return layout;
@@ -741,7 +932,11 @@ export class Workspace extends Events {
     return found;
   }
 
-  private async replaceSplitFromLayout(split: WorkspaceSplit | MobileDrawer, node?: WorkspaceLayoutNode, side?: "left" | "right"): Promise<void> {
+  private async replaceSplitFromLayout(
+    split: WorkspaceSplit | MobileDrawer,
+    node?: WorkspaceLayoutNode,
+    side?: "left" | "right",
+  ): Promise<void> {
     this.clearChildren(split);
     if (!node) return;
 
@@ -767,7 +962,11 @@ export class Workspace extends Events {
       split.setDirection(node.direction);
       if (node.dimension !== undefined) split.setDimension(node.dimension);
       for (const child of node.children) {
-        const item = await this.deserializeLayoutNode(child, undefined, split.containerEl.ownerDocument);
+        const item = await this.deserializeLayoutNode(
+          child,
+          undefined,
+          split.containerEl.ownerDocument,
+        );
         if (item instanceof WorkspaceLeaf) {
           const tabs = new WorkspaceTabs(this, undefined, split.containerEl.ownerDocument);
           tabs.appendChild(item, false);
@@ -798,11 +997,21 @@ export class Workspace extends Events {
     }
   }
 
-  async deserializeLayout(node: WorkspaceLayoutNode, side?: "root" | "left" | "right" | null): Promise<WorkspaceItem | null> {
-    const ownerDocument = side === "left"
-      ? this.leftSplit.containerEl.ownerDocument
-      : side === "right" ? this.rightSplit.containerEl.ownerDocument : this.rootSplit.containerEl.ownerDocument;
-    return this.deserializeLayoutNode(node, side === "left" || side === "right" ? side : undefined, ownerDocument);
+  async deserializeLayout(
+    node: WorkspaceLayoutNode,
+    side?: "root" | "left" | "right" | null,
+  ): Promise<WorkspaceItem | null> {
+    const ownerDocument =
+      side === "left"
+        ? this.leftSplit.containerEl.ownerDocument
+        : side === "right"
+          ? this.rightSplit.containerEl.ownerDocument
+          : this.rootSplit.containerEl.ownerDocument;
+    return this.deserializeLayoutNode(
+      node,
+      side === "left" || side === "right" ? side : undefined,
+      ownerDocument,
+    );
   }
 
   private async deserializeLayoutNode(
@@ -815,7 +1024,10 @@ export class Workspace extends Events {
       if (node.dimension !== undefined) leaf.setDimension(node.dimension);
       leaf.group = node.group ?? null;
       leaf.pinned = node.pinned ?? false;
-      leaf.setDeferredViewState({ ...(node.state ?? { type: "empty" }), active: false } as InternalViewState);
+      leaf.setDeferredViewState({
+        ...(node.state ?? { type: "empty" }),
+        active: false,
+      } as InternalViewState);
       return leaf;
     }
 
@@ -827,7 +1039,8 @@ export class Workspace extends Events {
         const item = await this.deserializeLayoutNode(child, side, ownerDocument);
         if (item instanceof WorkspaceLeaf) tabs.appendChild(item, false);
       }
-      if (tabs.children.length === 0) tabs.appendChild(new WorkspaceLeaf(this, undefined, ownerDocument), false);
+      if (tabs.children.length === 0)
+        tabs.appendChild(new WorkspaceLeaf(this, undefined, ownerDocument), false);
       tabs.selectTabIndex(Math.min(node.currentTab ?? 0, tabs.children.length - 1), false);
       return tabs;
     }
@@ -841,7 +1054,11 @@ export class Workspace extends Events {
       if (node.dimension !== undefined) drawer.setDimension(node.dimension);
       drawer.setPinned(node.pinned ?? false, { layout: false });
       for (const child of node.children) {
-        const item = await this.deserializeLayoutNode(child, side, drawer.containerEl.ownerDocument);
+        const item = await this.deserializeLayoutNode(
+          child,
+          side,
+          drawer.containerEl.ownerDocument,
+        );
         if (item instanceof WorkspaceLeaf) {
           drawer.appendChild(item, false);
         } else if (item) {
@@ -904,7 +1121,10 @@ export class Workspace extends Events {
     return null;
   }
 
-  private clearChildren(item: WorkspaceSplit | WorkspaceTabs | MobileDrawer, options: { detach?: boolean } = {}): void {
+  private clearChildren(
+    item: WorkspaceSplit | WorkspaceTabs | MobileDrawer,
+    options: { detach?: boolean } = {},
+  ): void {
     if (item instanceof MobileDrawer) {
       item.clear();
       return;
@@ -938,7 +1158,11 @@ export class Workspace extends Events {
     item.containerEl.remove();
   }
 
-  setActiveLeaf(leaf: WorkspaceLeaf | undefined | null, options: boolean | { focus?: boolean } = {}, focus = false): void {
+  setActiveLeaf(
+    leaf: WorkspaceLeaf | undefined | null,
+    options: boolean | { focus?: boolean } = {},
+    focus = false,
+  ): void {
     if (!leaf || !this.isAttached(leaf)) return;
     const shouldFocus = options && typeof options !== "boolean" ? options.focus === true : focus;
     const previous = this.activeLeaf;
@@ -965,7 +1189,8 @@ export class Workspace extends Events {
       if (index !== -1 && leaf.parent.currentTab !== index) leaf.parent.selectTabIndex(index);
       leaf.parent.containerEl.classList.add("mod-active");
     }
-    if (previousTabGroup instanceof WorkspaceTabs && previousTabGroup !== this.activeTabGroup) previousTabGroup.updateTabDisplay();
+    if (previousTabGroup instanceof WorkspaceTabs && previousTabGroup !== this.activeTabGroup)
+      previousTabGroup.updateTabDisplay();
     leaf.containerEl.classList.add("mod-active");
     leaf.tabHeaderEl.classList.add("mod-active");
     this.iterateAllLeaves((item) => item.updateHeader());
@@ -1000,11 +1225,11 @@ export class Workspace extends Events {
 
   private isActiveEditorView(view: unknown): view is WorkspaceActiveEditor {
     return Boolean(
-      view
-        && typeof view === "object"
-        && "editor" in view
-        && "leaf" in view
-        && (view as { leaf?: unknown }).leaf instanceof WorkspaceLeaf,
+      view &&
+      typeof view === "object" &&
+      "editor" in view &&
+      "leaf" in view &&
+      (view as { leaf?: unknown }).leaf instanceof WorkspaceLeaf,
     );
   }
 
@@ -1016,8 +1241,14 @@ export class Workspace extends Events {
   }
 
   iterateLeaves(callback: (leaf: WorkspaceLeaf) => boolean | void): boolean;
-  iterateLeaves(root: WorkspaceItem | WorkspaceItem[], callback: (leaf: WorkspaceLeaf) => boolean | void): boolean;
-  iterateLeaves(callback: (leaf: WorkspaceLeaf) => boolean | void, root: WorkspaceItem | WorkspaceItem[]): boolean;
+  iterateLeaves(
+    root: WorkspaceItem | WorkspaceItem[],
+    callback: (leaf: WorkspaceLeaf) => boolean | void,
+  ): boolean;
+  iterateLeaves(
+    callback: (leaf: WorkspaceLeaf) => boolean | void,
+    root: WorkspaceItem | WorkspaceItem[],
+  ): boolean;
   iterateLeaves(
     rootOrCallback: WorkspaceItem | WorkspaceItem[] | ((leaf: WorkspaceLeaf) => boolean | void),
     callbackOrRoot?: ((leaf: WorkspaceLeaf) => boolean | void) | WorkspaceItem | WorkspaceItem[],
@@ -1025,7 +1256,8 @@ export class Workspace extends Events {
     let roots: WorkspaceItem | WorkspaceItem[];
     let callback: (leaf: WorkspaceLeaf) => boolean | void;
     if (typeof rootOrCallback === "function") {
-      if (!(callbackOrRoot instanceof WorkspaceItem) && !Array.isArray(callbackOrRoot)) return false;
+      if (!(callbackOrRoot instanceof WorkspaceItem) && !Array.isArray(callbackOrRoot))
+        return false;
       callback = rootOrCallback;
       roots = callbackOrRoot;
     } else {
@@ -1092,7 +1324,8 @@ export class Workspace extends Events {
 
   closeActiveLeaf(): boolean {
     let leaf = this.activeLeaf;
-    if (leaf && this.isInSidebar(leaf) && !isFileBackedLeaf(leaf)) leaf = this.getMostRecentRootLeaf();
+    if (leaf && this.isInSidebar(leaf) && !isFileBackedLeaf(leaf))
+      leaf = this.getMostRecentRootLeaf();
     if (!leaf) return false;
     if (leaf.pinned) leaf.setPinned(false);
     else leaf.detach();
@@ -1109,7 +1342,9 @@ export class Workspace extends Events {
 
   canCloseOtherLeaves(): boolean {
     const leaf = this.activeLeaf;
-    return Boolean(leaf && this.getContainerLeaves(leaf).some((item) => item !== leaf && !item.pinned));
+    return Boolean(
+      leaf && this.getContainerLeaves(leaf).some((item) => item !== leaf && !item.pinned),
+    );
   }
 
   closeTabGroup(): boolean {
@@ -1128,7 +1363,13 @@ export class Workspace extends Events {
 
   closeOthersInTabGroup(): boolean {
     const leaf = this.activeLeaf;
-    if (!leaf || this.isInSidebar(leaf) || !(leaf.parent instanceof WorkspaceTabs) || leaf.parent.children.length <= 1) return false;
+    if (
+      !leaf ||
+      this.isInSidebar(leaf) ||
+      !(leaf.parent instanceof WorkspaceTabs) ||
+      leaf.parent.children.length <= 1
+    )
+      return false;
     for (const item of [...leaf.parent.children]) {
       if (item instanceof WorkspaceLeaf && item !== leaf && !item.pinned) item.detach();
     }
@@ -1137,7 +1378,12 @@ export class Workspace extends Events {
 
   canCloseOthersInTabGroup(): boolean {
     const leaf = this.activeLeaf;
-    return Boolean(leaf && !this.isInSidebar(leaf) && leaf.parent instanceof WorkspaceTabs && leaf.parent.children.length > 1);
+    return Boolean(
+      leaf &&
+      !this.isInSidebar(leaf) &&
+      leaf.parent instanceof WorkspaceTabs &&
+      leaf.parent.children.length > 1,
+    );
   }
 
   canPopoutActiveLeaf(): boolean {
@@ -1177,7 +1423,9 @@ export class Workspace extends Events {
 
   canSelectTab(index: number): boolean {
     const leaf = this.activeLeaf;
-    return Boolean(leaf?.parent instanceof WorkspaceTabs && leaf.parent.children[index] instanceof WorkspaceLeaf);
+    return Boolean(
+      leaf?.parent instanceof WorkspaceTabs && leaf.parent.children[index] instanceof WorkspaceLeaf,
+    );
   }
 
   selectLastTab(): boolean {
@@ -1188,7 +1436,9 @@ export class Workspace extends Events {
 
   canSelectLastTab(): boolean {
     const leaf = this.activeLeaf;
-    return Boolean(leaf?.parent instanceof WorkspaceTabs && leaf.parent.children.at(-1) instanceof WorkspaceLeaf);
+    return Boolean(
+      leaf?.parent instanceof WorkspaceTabs && leaf.parent.children.at(-1) instanceof WorkspaceLeaf,
+    );
   }
 
   pushUndoHistory(leaf: WorkspaceLeaf, parentId: string | null, rootId: string): void {
@@ -1225,7 +1475,10 @@ export class Workspace extends Events {
     }
 
     if (!leaf || leaf.view?.getViewType() !== "empty") {
-      leaf = root === this.floatingSplit ? this.createLeafInFloatingSplit(undefined, entry.leafId) : this.splitActiveLeaf("vertical", entry.leafId);
+      leaf =
+        root === this.floatingSplit
+          ? this.createLeafInFloatingSplit(undefined, entry.leafId)
+          : this.splitActiveLeaf("vertical", entry.leafId);
       if (entry.parentId && leaf.parent) leaf.parent.id = entry.parentId;
     }
 
@@ -1235,7 +1488,10 @@ export class Workspace extends Events {
     return true;
   }
 
-  iterateTabs(roots: WorkspaceItem[] | WorkspaceItem, callback: (tabs: WorkspaceTabs) => boolean | void): boolean {
+  iterateTabs(
+    roots: WorkspaceItem[] | WorkspaceItem,
+    callback: (tabs: WorkspaceTabs) => boolean | void,
+  ): boolean {
     const items = Array.isArray(roots) ? roots : [roots];
     const visit = (item: WorkspaceItem): boolean => {
       if (item instanceof WorkspaceTabs && callback(item)) return true;
@@ -1306,7 +1562,10 @@ export class Workspace extends Events {
   getFocusedContainer(): WorkspaceRoot | WorkspaceWindow {
     const activeWindow = getActiveWindow();
     if (activeWindow === window) return this.rootSplit;
-    const focused = this.floatingSplit.children.find((child): child is WorkspaceWindow => child instanceof WorkspaceWindow && child.win === activeWindow);
+    const focused = this.floatingSplit.children.find(
+      (child): child is WorkspaceWindow =>
+        child instanceof WorkspaceWindow && child.win === activeWindow,
+    );
     return focused ?? this.rootSplit;
   }
 
@@ -1404,7 +1663,8 @@ export class Workspace extends Events {
   }
 
   registerObsidianProtocolHandler(action: string, handler: ObsidianProtocolHandler): void {
-    if (this.protocolHandlers.has(action)) throw new Error(`Action "${action}" is already registered as a handler.`);
+    if (this.protocolHandlers.has(action))
+      throw new Error(`Action "${action}" is already registered as a handler.`);
     this.protocolHandlers.set(action, handler);
   }
 
@@ -1441,9 +1701,16 @@ export class Workspace extends Events {
 
   registerHoverLinkSource(id: string, source: HoverLinkSourceConfig): void;
   registerHoverLinkSource(source: HoverLinkSource): void;
-  registerHoverLinkSource(idOrSource: string | HoverLinkSource, source?: HoverLinkSourceConfig): void {
-    const normalized = typeof idOrSource === "string" ? { id: idOrSource, ...(source ?? { display: idOrSource }) } : idOrSource;
-    if (typeof idOrSource === "string") this.hoverLinkSources.register(idOrSource, source ?? { display: idOrSource });
+  registerHoverLinkSource(
+    idOrSource: string | HoverLinkSource,
+    source?: HoverLinkSourceConfig,
+  ): void {
+    const normalized =
+      typeof idOrSource === "string"
+        ? { id: idOrSource, ...(source ?? { display: idOrSource }) }
+        : idOrSource;
+    if (typeof idOrSource === "string")
+      this.hoverLinkSources.register(idOrSource, source ?? { display: idOrSource });
     else this.hoverLinkSources.register(idOrSource);
     this.trigger("hover-link-source-change", normalized);
   }
@@ -1487,7 +1754,11 @@ export class Workspace extends Events {
   }
 
   private getTabContext(): WorkspaceTabs | null {
-    if (this.activeLeaf && !this.isInSidebar(this.activeLeaf) && this.activeLeaf.parent instanceof WorkspaceTabs) {
+    if (
+      this.activeLeaf &&
+      !this.isInSidebar(this.activeLeaf) &&
+      this.activeLeaf.parent instanceof WorkspaceTabs
+    ) {
       return this.activeLeaf.parent;
     }
     const rootLeaf = this.getMostRecentRootLeaf();
@@ -1516,7 +1787,10 @@ export class Workspace extends Events {
     return leaf;
   }
 
-  private createLeafInRootSplit(direction: SplitDirection = "vertical", id?: string): WorkspaceLeaf {
+  private createLeafInRootSplit(
+    direction: SplitDirection = "vertical",
+    id?: string,
+  ): WorkspaceLeaf {
     const ownerDocument = this.rootSplit.containerEl.ownerDocument;
     const leaf = new WorkspaceLeaf(this, id, ownerDocument);
     const tabs = new WorkspaceTabs(this, undefined, ownerDocument);
@@ -1531,7 +1805,12 @@ export class Workspace extends Events {
     return leaf;
   }
 
-  createLeafBySplit(leaf: WorkspaceLeaf, direction: SplitDirection = "vertical", before = false, id?: string): WorkspaceLeaf {
+  createLeafBySplit(
+    leaf: WorkspaceLeaf,
+    direction: SplitDirection = "vertical",
+    before = false,
+    id?: string,
+  ): WorkspaceLeaf {
     const nextLeaf = new WorkspaceLeaf(this, id, leaf.containerEl.ownerDocument);
     this.splitLeaf(leaf, nextLeaf, direction, before);
     this.setActiveLeaf(nextLeaf);
@@ -1539,14 +1818,22 @@ export class Workspace extends Events {
   }
 
   async duplicateLeaf(leaf: WorkspaceLeaf, direction?: SplitDirection): Promise<WorkspaceLeaf>;
-  async duplicateLeaf(leaf: WorkspaceLeaf, leafType: PaneType | boolean, direction?: SplitDirection): Promise<WorkspaceLeaf>;
+  async duplicateLeaf(
+    leaf: WorkspaceLeaf,
+    leafType: PaneType | boolean,
+    direction?: SplitDirection,
+  ): Promise<WorkspaceLeaf>;
   async duplicateLeaf(
     leaf: WorkspaceLeaf,
     leafTypeOrDirection: PaneType | boolean | SplitDirection = "split",
     direction: SplitDirection = "vertical",
   ): Promise<WorkspaceLeaf> {
     const targetLeaf = this.createDuplicateTargetLeaf(leaf, leafTypeOrDirection, direction);
-    await targetLeaf.setViewState(leaf.getViewState(), withFocusEphemeralState(leaf.getEphemeralState()), { history: false });
+    await targetLeaf.setViewState(
+      leaf.getViewState(),
+      withFocusEphemeralState(leaf.getEphemeralState()),
+      { history: false },
+    );
     targetLeaf.history.deserialize(leaf.history.serialize());
     this.setActiveLeaf(targetLeaf, { focus: true });
     return targetLeaf;
@@ -1577,7 +1864,10 @@ export class Workspace extends Events {
         this.dragManager.hideOverlay();
         return;
       }
-      this.dragManager.showOverlay(target.containerEl.getBoundingClientRect(), target.containerEl.ownerDocument);
+      this.dragManager.showOverlay(
+        target.containerEl.getBoundingClientRect(),
+        target.containerEl.ownerDocument,
+      );
     };
     const onMouseUp = (event: MouseEvent): void => {
       cleanup();
@@ -1593,7 +1883,13 @@ export class Workspace extends Events {
     this.iterateAllLeaves((leaf) => {
       if (target || leaf === source || !(leaf.view instanceof ItemView)) return;
       const rect = leaf.containerEl.getBoundingClientRect();
-      if (event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom) target = leaf;
+      if (
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom
+      )
+        target = leaf;
     });
     return target;
   }
@@ -1621,7 +1917,8 @@ export class Workspace extends Events {
         sessionWindow.removeEventListener("drop", drop);
         sessionWindow.removeEventListener("dragend", finish, { capture: true });
       }
-      for (const sessionDocument of sessionDocuments) sessionDocument.body.classList.remove("is-grabbing");
+      for (const sessionDocument of sessionDocuments)
+        sessionDocument.body.classList.remove("is-grabbing");
       this.dragManager.clearPreview();
     };
     const setMoveDropEffect = (dragEvent: DragEvent) => {
@@ -1650,7 +1947,8 @@ export class Workspace extends Events {
         const dy = dragEvent.clientY - startY;
         if (dx * dx + dy * dy < 25) return;
         isDragging = true;
-        for (const sessionDocument of sessionDocuments) sessionDocument.body.classList.add("is-grabbing");
+        for (const sessionDocument of sessionDocuments)
+          sessionDocument.body.classList.add("is-grabbing");
       }
       const targetDoc = target.ownerDocument ?? dragEvent.view?.document ?? document;
       if (target.overlayRect) this.dragManager.showOverlay(target.overlayRect, targetDoc);
@@ -1698,17 +1996,20 @@ export class Workspace extends Events {
   moveLeafToDropTarget(sourceLeaf: WorkspaceLeaf, target: WorkspaceDropTarget): boolean {
     if (this.isSelfLeafDropTarget(target, sourceLeaf)) return false;
     if (!sourceLeaf.parent) return false;
-    if (!target.leaf && target.parent) return this.moveLeafIntoParentTarget(sourceLeaf, target.parent);
+    if (!target.leaf && target.parent)
+      return this.moveLeafIntoParentTarget(sourceLeaf, target.parent);
     if (!target.leaf?.parent) return false;
 
     if (target.side === "center") {
-      if (target.leaf.view?.getViewType() === "empty") return this.replaceEmptyTargetLeaf(sourceLeaf, target.leaf);
+      if (target.leaf.view?.getViewType() === "empty")
+        return this.replaceEmptyTargetLeaf(sourceLeaf, target.leaf);
       const targetTabs = target.leaf.parent instanceof WorkspaceTabs ? target.leaf.parent : null;
       if (targetTabs) return this.moveLeafIntoTabGroup(sourceLeaf, targetTabs, target);
       return this.swapLeaves(sourceLeaf, target.leaf);
     }
 
-    const direction: SplitDirection = target.side === "top" || target.side === "bottom" ? "horizontal" : "vertical";
+    const direction: SplitDirection =
+      target.side === "top" || target.side === "bottom" ? "horizontal" : "vertical";
     const before = target.side === "top" || target.side === "left";
     const splitTarget = target.item instanceof WorkspaceTabs ? target.item : target.leaf;
     if (!splitTarget) return false;
@@ -1745,12 +2046,18 @@ export class Workspace extends Events {
     return true;
   }
 
-  private moveLeafIntoParentTarget(sourceLeaf: WorkspaceLeaf, targetParent: WorkspaceParent): boolean {
+  private moveLeafIntoParentTarget(
+    sourceLeaf: WorkspaceLeaf,
+    targetParent: WorkspaceParent,
+  ): boolean {
     sourceLeaf.parent?.removeChild(sourceLeaf);
     sourceLeaf.setDimension(null);
-    let tabs = targetParent === this.leftSplit || targetParent === this.rightSplit
-      ? targetParent.children.find((child): child is WorkspaceTabs => child instanceof WorkspaceTabs) ?? null
-      : null;
+    let tabs =
+      targetParent === this.leftSplit || targetParent === this.rightSplit
+        ? (targetParent.children.find(
+            (child): child is WorkspaceTabs => child instanceof WorkspaceTabs,
+          ) ?? null)
+        : null;
     if (!tabs) {
       tabs = this.createTabsForParent(targetParent);
       targetParent.appendChild(tabs);
@@ -1769,7 +2076,8 @@ export class Workspace extends Events {
 
   createLeafInTabGroup(tabs?: WorkspaceTabs | null, id?: string): WorkspaceLeaf {
     const mostRecentLeaf = this.getMostRecentLeaf();
-    const targetTabs = tabs ?? (mostRecentLeaf?.parent instanceof WorkspaceTabs ? mostRecentLeaf.parent : null);
+    const targetTabs =
+      tabs ?? (mostRecentLeaf?.parent instanceof WorkspaceTabs ? mostRecentLeaf.parent : null);
     if (!targetTabs) throw new Error("No tab group found.");
 
     let recentLeaf: WorkspaceLeaf | null = null;
@@ -1790,12 +2098,23 @@ export class Workspace extends Events {
     return leaf;
   }
 
-  splitLeaf(sourceLeaf: WorkspaceLeaf, nextLeaf: WorkspaceLeaf, direction: SplitDirection = "vertical", before = false): void {
-    const sourceItem: WorkspaceItem = sourceLeaf.parent instanceof WorkspaceTabs ? sourceLeaf.parent : sourceLeaf;
+  splitLeaf(
+    sourceLeaf: WorkspaceLeaf,
+    nextLeaf: WorkspaceLeaf,
+    direction: SplitDirection = "vertical",
+    before = false,
+  ): void {
+    const sourceItem: WorkspaceItem =
+      sourceLeaf.parent instanceof WorkspaceTabs ? sourceLeaf.parent : sourceLeaf;
     this.splitItemWithLeaf(sourceItem, nextLeaf, direction, before);
   }
 
-  private splitItemWithLeaf(sourceItem: WorkspaceItem, nextLeaf: WorkspaceLeaf, direction: SplitDirection = "vertical", before = false): void {
+  private splitItemWithLeaf(
+    sourceItem: WorkspaceItem,
+    nextLeaf: WorkspaceLeaf,
+    direction: SplitDirection = "vertical",
+    before = false,
+  ): void {
     const parentSplit = this.findParentSplit(sourceItem);
     const nextTabs = new WorkspaceTabs(this, undefined, sourceItem.containerEl.ownerDocument);
     nextTabs.appendChild(nextLeaf, false);
@@ -1837,10 +2156,15 @@ export class Workspace extends Events {
     return null;
   }
 
-  private moveLeafIntoTabGroup(sourceLeaf: WorkspaceLeaf, targetTabs: WorkspaceTabs, target: WorkspaceDropTarget): boolean {
+  private moveLeafIntoTabGroup(
+    sourceLeaf: WorkspaceLeaf,
+    targetTabs: WorkspaceTabs,
+    target: WorkspaceDropTarget,
+  ): boolean {
     const sourceTabs = sourceLeaf.parent instanceof WorkspaceTabs ? sourceLeaf.parent : null;
     let insertIndex = target.tabInsert?.index ?? target.tabInsertIndex;
-    if (insertIndex == null && target.clientX != null) insertIndex = targetTabs.getTabInsertLocation(target.clientX).index;
+    if (insertIndex == null && target.clientX != null)
+      insertIndex = targetTabs.getTabInsertLocation(target.clientX).index;
     if (insertIndex == null) insertIndex = targetTabs.children.indexOf(target.leaf) + 1;
 
     if (sourceTabs === targetTabs) {
@@ -1885,7 +2209,12 @@ export class Workspace extends Events {
 
     const targetLeaf = this.getLeafForDropLocation(item);
     if (!targetLeaf) return null;
-    const targetTabs = item instanceof WorkspaceTabs ? item : targetLeaf.parent instanceof WorkspaceTabs ? targetLeaf.parent : null;
+    const targetTabs =
+      item instanceof WorkspaceTabs
+        ? item
+        : targetLeaf.parent instanceof WorkspaceTabs
+          ? targetLeaf.parent
+          : null;
     const root = item.getRoot();
     const side = this.getDropDirectionFromEvent(event, targetLeaf, {
       blockedSides: this.getBlockedDropSidesForRoot(root),
@@ -1917,17 +2246,28 @@ export class Workspace extends Events {
     const mainWindow = this.rootSplit.containerEl.ownerDocument.defaultView ?? window;
     if (eventWindow !== mainWindow) {
       for (const child of this.floatingSplit.children) {
-        if (child instanceof WorkspaceWindow && child.win === eventWindow) return this.recursiveGetTarget(event, child);
+        if (child instanceof WorkspaceWindow && child.win === eventWindow)
+          return this.recursiveGetTarget(event, child);
       }
     }
-    if (eventInsideElement(event, this.leftRibbon.containerEl) || eventInsideElement(event, this.leftSidebarToggleButtonEl)) return this.leftSplit;
-    if (eventInsideElement(event, this.rightRibbon.containerEl) || eventInsideElement(event, this.rightSidebarToggleButtonEl)) return this.rightSplit;
-    const leftTarget = this.leftSplit.children.length > 0 ? this.recursiveGetTarget(event, this.leftSplit) : null;
+    if (
+      eventInsideElement(event, this.leftRibbon.containerEl) ||
+      eventInsideElement(event, this.leftSidebarToggleButtonEl)
+    )
+      return this.leftSplit;
+    if (
+      eventInsideElement(event, this.rightRibbon.containerEl) ||
+      eventInsideElement(event, this.rightSidebarToggleButtonEl)
+    )
+      return this.rightSplit;
+    const leftTarget =
+      this.leftSplit.children.length > 0 ? this.recursiveGetTarget(event, this.leftSplit) : null;
     if (eventInsideElement(event, this.leftSplit.containerEl)) {
       return this.leftSplit.children.length === 0 ? this.leftSplit : leftTarget;
     }
     if (leftTarget) return leftTarget;
-    const rightTarget = this.rightSplit.children.length > 0 ? this.recursiveGetTarget(event, this.rightSplit) : null;
+    const rightTarget =
+      this.rightSplit.children.length > 0 ? this.recursiveGetTarget(event, this.rightSplit) : null;
     if (eventInsideElement(event, this.rightSplit.containerEl)) {
       return this.rightSplit.children.length === 0 ? this.rightSplit : rightTarget;
     }
@@ -1939,7 +2279,8 @@ export class Workspace extends Events {
 
   recursiveGetTarget(event: DragEvent, parent: WorkspaceParent): WorkspaceItem | null {
     for (const child of parent.children) {
-      const nestedTarget = child instanceof WorkspaceParent ? this.recursiveGetTarget(event, child) : null;
+      const nestedTarget =
+        child instanceof WorkspaceParent ? this.recursiveGetTarget(event, child) : null;
       if (!eventInsideElement(event, child.containerEl) && !nestedTarget) continue;
       if (child instanceof WorkspaceTabs) return child;
       if (child instanceof WorkspaceParent) return nestedTarget;
@@ -1957,7 +2298,9 @@ export class Workspace extends Events {
     return null;
   }
 
-  private getBlockedDropSidesForRoot(root: WorkspaceItem): ReadonlySet<WorkspaceDropTarget["side"]> | undefined {
+  private getBlockedDropSidesForRoot(
+    root: WorkspaceItem,
+  ): ReadonlySet<WorkspaceDropTarget["side"]> | undefined {
     if (root instanceof WorkspaceSidedock) return new Set(["left", "right", "top", "bottom"]);
     if (root === this.leftSplit || root === this.rightSplit) return new Set(["left", "right"]);
     return undefined;
@@ -1984,7 +2327,11 @@ export class Workspace extends Events {
     const x = event.clientX;
     const y = event.clientY;
     const blocked = new Set(blockedSides ?? []);
-    if (item instanceof WorkspaceTabs && item.isStacked && !pointInRect(x, y, item.tabHeaderContainerEl.getBoundingClientRect())) {
+    if (
+      item instanceof WorkspaceTabs &&
+      item.isStacked &&
+      !pointInRect(x, y, item.tabHeaderContainerEl.getBoundingClientRect())
+    ) {
       blocked.add("left");
       blocked.add("right");
     }
@@ -2035,10 +2382,16 @@ export class Workspace extends Events {
     return side;
   }
 
-  private getDropOverlayRect(event: DragEvent, leaf: WorkspaceLeaf, side: WorkspaceDropTarget["side"], item: WorkspaceItem = leaf): DOMRect | null {
+  private getDropOverlayRect(
+    event: DragEvent,
+    leaf: WorkspaceLeaf,
+    side: WorkspaceDropTarget["side"],
+    item: WorkspaceItem = leaf,
+  ): DOMRect | null {
     const sourceRect = item.containerEl.getBoundingClientRect();
     if (sourceRect.width <= 0 || sourceRect.height <= 0) return null;
-    if (side === "center") return new DOMRect(sourceRect.x, sourceRect.y, sourceRect.width, sourceRect.height);
+    if (side === "center")
+      return new DOMRect(sourceRect.x, sourceRect.y, sourceRect.width, sourceRect.height);
 
     const rect = new DOMRect(sourceRect.x, sourceRect.y, sourceRect.width, sourceRect.height);
     if (side === "left" || side === "right") {
@@ -2062,26 +2415,54 @@ export class Workspace extends Events {
   private getSidedockDropOverlayRect(item: WorkspaceParent): DOMRect | null {
     const collapsed = (item as WorkspaceParent & { collapsed?: boolean }).collapsed === true;
     if (!collapsed) return this.getDropOverlayRectForItem(item);
-    const toggleEl = item === this.leftSplit
-      ? this.leftSidebarToggleButtonEl
-      : item === this.rightSplit
-        ? this.rightSidebarToggleButtonEl
-        : null;
+    const toggleEl =
+      item === this.leftSplit
+        ? this.leftSidebarToggleButtonEl
+        : item === this.rightSplit
+          ? this.rightSidebarToggleButtonEl
+          : null;
     if (!toggleEl) return this.getDropOverlayRectForItem(item);
     const rect = toggleEl.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return this.getDropOverlayRectForItem(item);
     return new DOMRect(rect.x, rect.y, rect.width, rect.height);
   }
 
-  private getFakeTargetRect(leaf: WorkspaceLeaf, side: WorkspaceDropTarget["side"], item: WorkspaceItem = leaf): DOMRect | null {
+  private getFakeTargetRect(
+    leaf: WorkspaceLeaf,
+    side: WorkspaceDropTarget["side"],
+    item: WorkspaceItem = leaf,
+  ): DOMRect | null {
     if (side === "center") return null;
     const sourceRect = item.containerEl.getBoundingClientRect();
     const edgeRect = this.getDropOverlayRect({} as DragEvent, leaf, side, item);
     if (!edgeRect) return null;
-    if (side === "top") return new DOMRect(sourceRect.x, sourceRect.y + edgeRect.height, sourceRect.width, sourceRect.height - edgeRect.height);
-    if (side === "bottom") return new DOMRect(sourceRect.x, sourceRect.y, sourceRect.width, sourceRect.height - edgeRect.height);
-    if (side === "left") return new DOMRect(sourceRect.x + edgeRect.width, sourceRect.y, sourceRect.width - edgeRect.width, sourceRect.height);
-    return new DOMRect(sourceRect.x, sourceRect.y, sourceRect.width - edgeRect.width, sourceRect.height);
+    if (side === "top")
+      return new DOMRect(
+        sourceRect.x,
+        sourceRect.y + edgeRect.height,
+        sourceRect.width,
+        sourceRect.height - edgeRect.height,
+      );
+    if (side === "bottom")
+      return new DOMRect(
+        sourceRect.x,
+        sourceRect.y,
+        sourceRect.width,
+        sourceRect.height - edgeRect.height,
+      );
+    if (side === "left")
+      return new DOMRect(
+        sourceRect.x + edgeRect.width,
+        sourceRect.y,
+        sourceRect.width - edgeRect.width,
+        sourceRect.height,
+      );
+    return new DOMRect(
+      sourceRect.x,
+      sourceRect.y,
+      sourceRect.width - edgeRect.width,
+      sourceRect.height,
+    );
   }
 
   private swapLeaves(sourceLeaf: WorkspaceLeaf, targetLeaf: WorkspaceLeaf): boolean {
@@ -2133,7 +2514,10 @@ export class Workspace extends Events {
     return this.createLeafInFloatingSplit(data);
   }
 
-  moveLeafToPopout(leaf: WorkspaceLeaf, data?: WorkspaceWindowInitData): WorkspaceWindow | undefined {
+  moveLeafToPopout(
+    leaf: WorkspaceLeaf,
+    data?: WorkspaceWindowInitData,
+  ): WorkspaceWindow | undefined {
     this.assertPopoutSupported();
     if (!this.canPopoutLeaf(leaf)) return undefined;
     const popoutData = this.getPopoutInitData(leaf, data);
@@ -2147,10 +2531,19 @@ export class Workspace extends Events {
     return workspaceWindow;
   }
 
-  private getPopoutInitData(leaf: WorkspaceLeaf, data: WorkspaceWindowInitData = {}): WorkspaceWindowInitData {
+  private getPopoutInitData(
+    leaf: WorkspaceLeaf,
+    data: WorkspaceWindowInitData = {},
+  ): WorkspaceWindowInitData {
     const rect = leaf.containerEl.getBoundingClientRect();
-    const size = data.size ?? (rect.width > 0 && rect.height > 0 ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : undefined);
-    const win = leaf.containerEl.ownerDocument.defaultView as Window & { electron?: { webFrame?: { getZoomLevel?: () => number } } } | null;
+    const size =
+      data.size ??
+      (rect.width > 0 && rect.height > 0
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        : undefined);
+    const win = leaf.containerEl.ownerDocument.defaultView as
+      | (Window & { electron?: { webFrame?: { getZoomLevel?: () => number } } })
+      | null;
     const zoom = data.zoom ?? win?.electron?.webFrame?.getZoomLevel?.();
     return {
       ...data,
@@ -2206,7 +2599,8 @@ export class Workspace extends Events {
   closeActiveWindow(): boolean {
     const leaf = this.activeLeaf;
     const container = leaf?.getContainer();
-    if (!(container instanceof WorkspaceWindow) || container.parent !== this.floatingSplit) return false;
+    if (!(container instanceof WorkspaceWindow) || container.parent !== this.floatingSplit)
+      return false;
     container.close();
     if (this.floatingSplit.children.length === 0) this.floatingSplit.closePopout();
     return true;
@@ -2215,7 +2609,8 @@ export class Workspace extends Events {
   private getContainerLeaves(leaf: WorkspaceLeaf): WorkspaceLeaf[] {
     const root = leaf.getRoot();
     const leaves: WorkspaceLeaf[] = [];
-    if (root instanceof WorkspaceSplit || root instanceof WorkspaceTabs) root.iterateLeaves((item) => leaves.push(item));
+    if (root instanceof WorkspaceSplit || root instanceof WorkspaceTabs)
+      root.iterateLeaves((item) => leaves.push(item));
     return leaves;
   }
 
@@ -2263,9 +2658,11 @@ export class Workspace extends Events {
       const candidate = this.activeTabGroup.children[this.activeTabGroup.currentTab];
       if (candidate instanceof WorkspaceLeaf) return candidate;
     }
-    return this.getMostRecentLeaf(this.getFocusedContainer())
-      ?? this.getMostRecentLeafAcrossAllRoots()
-      ?? this.createLeafInParent(this.rootSplit, 0);
+    return (
+      this.getMostRecentLeaf(this.getFocusedContainer()) ??
+      this.getMostRecentLeafAcrossAllRoots() ??
+      this.createLeafInParent(this.rootSplit, 0)
+    );
   }
 
   private installBrowserHistoryNavigation(ownerWindow: Window): void {
@@ -2276,12 +2673,16 @@ export class Workspace extends Events {
     ownerWindow.history.back = () => this.activeLeaf?.history.back();
     ownerWindow.history.go = (delta?: number) => this.activeLeaf?.history.go(delta ?? 0);
     if (!Platform.isLinux) {
-      ownerWindow.addEventListener("mousedown", (event) => {
-        if (event.button !== 3 && event.button !== 4) return;
-        event.preventDefault();
-        event.stopPropagation();
-        void (event.button === 3 ? ownerWindow.history.back() : ownerWindow.history.forward());
-      }, { capture: true });
+      ownerWindow.addEventListener(
+        "mousedown",
+        (event) => {
+          if (event.button !== 3 && event.button !== 4) return;
+          event.preventDefault();
+          event.stopPropagation();
+          void (event.button === 3 ? ownerWindow.history.back() : ownerWindow.history.forward());
+        },
+        { capture: true },
+      );
     } else {
       this.installLinuxMiddleClickPasteGuard(ownerWindow);
     }
@@ -2297,7 +2698,11 @@ export class Workspace extends Events {
       const onMouseUp = (upEvent: MouseEvent) => {
         if (upEvent.button !== 1) return;
         ownerWindow.removeEventListener("mouseup", onMouseUp);
-        if (downEvent.defaultPrevented || doc.activeElement !== activeElement || shouldPreventPaste) {
+        if (
+          downEvent.defaultPrevented ||
+          doc.activeElement !== activeElement ||
+          shouldPreventPaste
+        ) {
           upEvent.preventDefault();
           return;
         }
@@ -2322,7 +2727,8 @@ export class Workspace extends Events {
 
       ownerWindow.addEventListener("mouseup", onMouseUp);
       if (activeElement instanceof runtimeWindow.HTMLElement && activeElement !== doc.body) {
-        let target: Node | null = downEvent.target instanceof runtimeWindow.Node ? downEvent.target : null;
+        let target: Node | null =
+          downEvent.target instanceof runtimeWindow.Node ? downEvent.target : null;
         if (target && activeElement.contains(target)) {
           if (!(activeElement instanceof runtimeWindow.HTMLInputElement)) {
             while (target && target !== activeElement) {
@@ -2349,13 +2755,16 @@ export class Workspace extends Events {
 
   updateTitle(): void {
     const leaf = this.getMostRecentLeaf(this.rootSplit);
-    this.app.dom.appContainerEl.ownerDocument.title = this.app.getAppTitle(leaf?.getDisplayText() ?? "");
+    this.app.dom.appContainerEl.ownerDocument.title = this.app.getAppTitle(
+      leaf?.getDisplayText() ?? "",
+    );
   }
 
   private updateMobileVisibleTabGroup(): void {
     if (!isMobileRuntime()) return;
     const visible = new Set<WorkspaceItem>();
-    const leaf = this.activeTabGroup instanceof MobileDrawer ? this.getMostRecentLeaf() : this.activeLeaf;
+    const leaf =
+      this.activeTabGroup instanceof MobileDrawer ? this.getMostRecentLeaf() : this.activeLeaf;
     let item: WorkspaceItem | null = leaf?.parent ?? null;
     while (item) {
       visible.add(item);
@@ -2411,9 +2820,12 @@ export class Workspace extends Events {
     collectAllTabs(this.leftSplit);
     collectAllTabs(this.rightSplit);
     collectAllTabs(this.floatingSplit);
-    for (const tabs of allTabs) tabs.containerEl.classList.remove("mod-top", "mod-top-left-space", "mod-top-right-space");
+    for (const tabs of allTabs)
+      tabs.containerEl.classList.remove("mod-top", "mod-top-left-space", "mod-top-right-space");
 
-    const markTopTabs = (item: WorkspaceItem): { first: WorkspaceTabs | null; last: WorkspaceTabs | null } => {
+    const markTopTabs = (
+      item: WorkspaceItem,
+    ): { first: WorkspaceTabs | null; last: WorkspaceTabs | null } => {
       const topTabs: WorkspaceTabs[] = [];
       const visit = (candidate: WorkspaceItem | undefined): void => {
         if (!candidate) return;
@@ -2447,17 +2859,23 @@ export class Workspace extends Events {
 
     if (leftSidedockTabs instanceof WorkspaceTabs) {
       leftSidedockTabs.containerEl.classList.add("mod-top", "mod-top-left-space");
-      if (!(this.leftSplit instanceof WorkspaceSidedock) || !this.leftSplit.collapsed) leftSpaceTabs = leftSidedockTabs;
+      if (!(this.leftSplit instanceof WorkspaceSidedock) || !this.leftSplit.collapsed)
+        leftSpaceTabs = leftSidedockTabs;
     }
     if (rightSidedockTabs instanceof WorkspaceTabs) {
       rightSidedockTabs.containerEl.classList.add("mod-top", "mod-top-right-space");
-      if (!(this.rightSplit instanceof WorkspaceSidedock) || !this.rightSplit.collapsed) rightSpaceTabs = rightSidedockTabs;
+      if (!(this.rightSplit instanceof WorkspaceSidedock) || !this.rightSplit.collapsed)
+        rightSpaceTabs = rightSidedockTabs;
     }
 
     if (!isMobileRuntime()) {
       leftSpaceTabs?.containerEl.classList.add("mod-top-left-space");
       rightSpaceTabs?.containerEl.classList.add("mod-top-right-space");
-      this.updateSidebarTogglePlacement(rootTopTabs, leftSidedockTabs instanceof WorkspaceTabs ? leftSidedockTabs : null, rightSidedockTabs instanceof WorkspaceTabs ? rightSidedockTabs : null);
+      this.updateSidebarTogglePlacement(
+        rootTopTabs,
+        leftSidedockTabs instanceof WorkspaceTabs ? leftSidedockTabs : null,
+        rightSidedockTabs instanceof WorkspaceTabs ? rightSidedockTabs : null,
+      );
     }
 
     for (const child of this.floatingSplit.children) {
@@ -2481,23 +2899,30 @@ export class Workspace extends Events {
     }
 
     const body = this.containerEl.ownerDocument.body;
-    const isMacHiddenTitlebar = body.classList.contains("mod-macos") && body.classList.contains("is-hidden-frameless");
-    const shouldPlaceLeftToggleInTabs = !body.classList.contains("show-ribbon") || isMacHiddenTitlebar;
-    const leftSidedockOpen = !(this.leftSplit instanceof WorkspaceSidedock) || !this.leftSplit.collapsed;
-    const leftTarget = leftSidedockOpen && leftSidedockTabs
-      ? leftSidedockTabs
-      : rootTopTabs?.first ?? this.getFirstTopTabsFallback(this.rootSplit);
+    const isMacHiddenTitlebar =
+      body.classList.contains("mod-macos") && body.classList.contains("is-hidden-frameless");
+    const shouldPlaceLeftToggleInTabs =
+      !body.classList.contains("show-ribbon") || isMacHiddenTitlebar;
+    const leftSidedockOpen =
+      !(this.leftSplit instanceof WorkspaceSidedock) || !this.leftSplit.collapsed;
+    const leftTarget =
+      leftSidedockOpen && leftSidedockTabs
+        ? leftSidedockTabs
+        : (rootTopTabs?.first ?? this.getFirstTopTabsFallback(this.rootSplit));
     if (shouldPlaceLeftToggleInTabs && leftTarget) {
-      if (leftSidedockOpen && leftTarget === leftSidedockTabs) leftTarget.tabHeaderContainerEl.appendChild(this.leftSidebarToggleButtonEl);
+      if (leftSidedockOpen && leftTarget === leftSidedockTabs)
+        leftTarget.tabHeaderContainerEl.appendChild(this.leftSidebarToggleButtonEl);
       else leftTarget.tabHeaderContainerEl.prepend(this.leftSidebarToggleButtonEl);
     } else {
       this.leftRibbon.containerEl.prepend(this.leftSidebarToggleButtonEl);
     }
 
-    const rightSidedockOpen = !(this.rightSplit instanceof WorkspaceSidedock) || !this.rightSplit.collapsed;
-    const rightTarget = rightSidedockOpen && rightSidedockTabs
-      ? rightSidedockTabs
-      : rootTopTabs?.last ?? this.getTopTabsFallback(this.rootSplit);
+    const rightSidedockOpen =
+      !(this.rightSplit instanceof WorkspaceSidedock) || !this.rightSplit.collapsed;
+    const rightTarget =
+      rightSidedockOpen && rightSidedockTabs
+        ? rightSidedockTabs
+        : (rootTopTabs?.last ?? this.getTopTabsFallback(this.rootSplit));
 
     if (rightTarget) rightTarget.tabHeaderContainerEl.appendChild(this.rightSidebarToggleButtonEl);
     else this.rightSidebarToggleButtonEl.remove();
@@ -2532,7 +2957,8 @@ export class Workspace extends Events {
   }
 
   onLayoutReady(callback: () => any, pluginId?: string | null): void {
-    const callbackPluginId = pluginId === undefined ? this.app.pluginInstaller.loadingPluginId : pluginId;
+    const callbackPluginId =
+      pluginId === undefined ? this.app.pluginInstaller.loadingPluginId : pluginId;
     if (this.onLayoutReadyCallbacks === null) {
       callback();
       return;
@@ -2573,7 +2999,9 @@ export class Workspace extends Events {
       try {
         const result = callback();
         if (isPromiseLike(result)) {
-          void result.catch((error: unknown) => this.reportLayoutReadyCallbackError(pluginId, error));
+          void result.catch((error: unknown) =>
+            this.reportLayoutReadyCallbackError(pluginId, error),
+          );
         }
       } catch (error) {
         this.reportLayoutReadyCallbackError(pluginId, error);
@@ -2587,7 +3015,11 @@ export class Workspace extends Events {
   }
 
   private findUndoHistoryRoot(rootId: string): WorkspaceSplit | MobileDrawer {
-    return [this.rootSplit, this.floatingSplit, this.leftSplit, this.rightSplit].find((root) => root.id === rootId) ?? this.rootSplit;
+    return (
+      [this.rootSplit, this.floatingSplit, this.leftSplit, this.rightSplit].find(
+        (root) => root.id === rootId,
+      ) ?? this.rootSplit
+    );
   }
 
   private canPopoutLeaf(leaf: WorkspaceLeaf | null | undefined): leaf is WorkspaceLeaf {
@@ -2597,7 +3029,12 @@ export class Workspace extends Events {
   isAttached<T extends WorkspaceItem>(item: T | null | undefined): item is T {
     if (!item) return false;
     const root = item.getRoot();
-    return root === this.leftSplit || root === this.rootSplit || root === this.floatingSplit || root === this.rightSplit;
+    return (
+      root === this.leftSplit ||
+      root === this.rootSplit ||
+      root === this.floatingSplit ||
+      root === this.rightSplit
+    );
   }
 }
 
@@ -2661,7 +3098,7 @@ function nextLayoutReadyCallbackTurn(): Promise<void> {
 }
 
 function isFileBackedLeaf(leaf: WorkspaceLeaf): boolean {
-  const view = leaf.view as ({ file?: unknown } | null);
+  const view = leaf.view as { file?: unknown } | null;
   return Boolean(view?.file);
 }
 
@@ -2677,7 +3114,14 @@ function isInputLike(activeElement: Element | null): boolean {
 }
 
 function pointInRect(x: number, y: number, rect: DOMRect): boolean {
-  return rect.width > 0 && rect.height > 0 && x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  return (
+    rect.width > 0 &&
+    rect.height > 0 &&
+    x >= rect.left &&
+    x <= rect.right &&
+    y >= rect.top &&
+    y <= rect.bottom
+  );
 }
 
 function getLeafRect(leaf: WorkspaceLeaf): DOMRect | null {
@@ -2728,13 +3172,21 @@ function getDirectionalLeafScore(
   ];
 }
 
-function getAxisGap(sourceStart: number, sourceEnd: number, candidateStart: number, candidateEnd: number): number {
+function getAxisGap(
+  sourceStart: number,
+  sourceEnd: number,
+  candidateStart: number,
+  candidateEnd: number,
+): number {
   if (candidateEnd < sourceStart) return sourceStart - candidateEnd;
   if (candidateStart > sourceEnd) return candidateStart - sourceEnd;
   return 0;
 }
 
-function compareDirectionalScore(left: [number, number, number], right: [number, number, number]): number {
+function compareDirectionalScore(
+  left: [number, number, number],
+  right: [number, number, number],
+): number {
   for (let index = 0; index < left.length; index += 1) {
     const diff = left[index]! - right[index]!;
     if (diff !== 0) return diff;
@@ -2752,16 +3204,24 @@ function getDragEventWindow(event: DragEvent): Window {
 }
 
 function isMobileRuntime(): boolean {
-  return Boolean(globalThis.document?.body?.classList.contains("is-mobile") || globalThis.navigator?.userAgent.includes("Mobile"));
+  return Boolean(
+    globalThis.document?.body?.classList.contains("is-mobile") ||
+    globalThis.navigator?.userAgent.includes("Mobile"),
+  );
 }
 
 function createClipboardEvent(doc: Document, type: "copy" | "paste" | "cut"): ClipboardEvent {
   const ClipboardEventCtor = doc.defaultView?.ClipboardEvent ?? ClipboardEvent;
-  if (typeof ClipboardEventCtor === "function") return new ClipboardEventCtor(type, { bubbles: true, cancelable: true });
+  if (typeof ClipboardEventCtor === "function")
+    return new ClipboardEventCtor(type, { bubbles: true, cancelable: true });
   return new Event(type, { bubbles: true, cancelable: true }) as ClipboardEvent;
 }
 
-function updateViewStateFilePath(state: InternalViewState, nextPath: string, oldPath: string): boolean {
+function updateViewStateFilePath(
+  state: InternalViewState,
+  nextPath: string,
+  oldPath: string,
+): boolean {
   const payload = state.state;
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
   const fileState = payload as { file?: unknown };

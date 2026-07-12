@@ -30,7 +30,11 @@ export interface VaultAdapter {
   writeBinary?(path: string, data: ArrayBuffer, options?: DataWriteOptions): Promise<void>;
   append?(path: string, data: string, options?: DataWriteOptions): Promise<void>;
   appendBinary?(path: string, data: ArrayBuffer, options?: DataWriteOptions): Promise<void>;
-  process?(path: string, updater: (data: string) => string, options?: DataWriteOptions): Promise<string>;
+  process?(
+    path: string,
+    updater: (data: string) => string,
+    options?: DataWriteOptions,
+  ): Promise<string>;
   copy?(path: string, newPath: string): Promise<void>;
   delete(path: string): Promise<void>;
   mkdir?(path: string): Promise<void>;
@@ -56,19 +60,43 @@ export class Vault extends Events {
   private unwatchAdapter: (() => void) | null = null;
   private unwatchHiddenConfig: (() => void) | null = null;
   private processQueues = new Map<string, Promise<unknown>>();
-  readonly requestSaveConfig = createDebouncedRequest(() => this.saveConfig(), () => this.canPersistConfig(), 1000);
-  readonly requestReloadConfig = createDebouncedRequest(() => this.reloadConfig(), () => this.canPersistConfig(), 500);
+  readonly requestSaveConfig = createDebouncedRequest(
+    () => this.saveConfig(),
+    () => this.canPersistConfig(),
+    1000,
+  );
+  readonly requestReloadConfig = createDebouncedRequest(
+    () => this.reloadConfig(),
+    () => this.canPersistConfig(),
+    500,
+  );
 
   override on(name: "create", callback: (file: TAbstractFile) => any, ctx?: any): EventRef;
   override on(name: "modify", callback: (file: TAbstractFile) => any, ctx?: any): EventRef;
   override on(name: "delete", callback: (file: TAbstractFile) => any, ctx?: any): EventRef;
-  override on(name: "rename", callback: (file: TAbstractFile, oldPath: string) => any, ctx?: any): EventRef;
-  override on<TArgs extends unknown[]>(name: string, callback: (...args: TArgs) => any, ctx?: object): EventRef<TArgs>;
-  override on<TArgs extends unknown[]>(name: string, callback: (...args: TArgs) => any, ctx?: object): EventRef<TArgs> {
+  override on(
+    name: "rename",
+    callback: (file: TAbstractFile, oldPath: string) => any,
+    ctx?: any,
+  ): EventRef;
+  override on<TArgs extends unknown[]>(
+    name: string,
+    callback: (...args: TArgs) => any,
+    ctx?: object,
+  ): EventRef<TArgs>;
+  override on<TArgs extends unknown[]>(
+    name: string,
+    callback: (...args: TArgs) => any,
+    ctx?: object,
+  ): EventRef<TArgs> {
     return super.on(name, callback, ctx);
   }
 
-  constructor(readonly adapter?: VaultAdapter, readonly pluginData?: PluginDataStore, readonly jsonStore?: JsonStore) {
+  constructor(
+    readonly adapter?: VaultAdapter,
+    readonly pluginData?: PluginDataStore,
+    readonly jsonStore?: JsonStore,
+  ) {
     super();
     this.files.set(this.root.path, this.root);
     this.jsonStore?.setRoot(this.configDir);
@@ -78,7 +106,10 @@ export class Vault extends Events {
     if (this.loaded) return;
     this.loaded = true;
     if (this.usesAdapterEvents()) {
-      if (this.adapter?.watch) this.unwatchAdapter = await this.adapter.watch((event, path, oldPath) => this.handleAdapterEvent(event, path, oldPath));
+      if (this.adapter?.watch)
+        this.unwatchAdapter = await this.adapter.watch((event, path, oldPath) =>
+          this.handleAdapterEvent(event, path, oldPath),
+        );
       else {
         this.bindAdapterEvents(this.adapter);
         await this.adapter?.load?.();
@@ -141,8 +172,9 @@ export class Vault extends Events {
     if (!this.canPersistConfig()) return;
     await this.ensureConfigDir();
     this.configTs = Date.now();
-    const appConfig = await this.readConfigJson<Record<string, unknown>>("app") ?? {};
-    const appearanceConfig = await this.readConfigJson<Record<string, unknown>>("appearance") ?? {};
+    const appConfig = (await this.readConfigJson<Record<string, unknown>>("app")) ?? {};
+    const appearanceConfig =
+      (await this.readConfigJson<Record<string, unknown>>("appearance")) ?? {};
     this.config = migrateVaultConfig({ ...appearanceConfig, ...appConfig, ...this.config });
     this.requestSaveConfig();
   }
@@ -169,11 +201,11 @@ export class Vault extends Events {
 
   async reloadConfig(): Promise<void> {
     this.requestReloadConfig.cancel();
-    if (!this.canPersistConfig() || this.savingConfig || await this.configFilesAreFresh()) return;
+    if (!this.canPersistConfig() || this.savingConfig || (await this.configFilesAreFresh())) return;
     this.configTs = Date.now();
     const next = migrateVaultConfig({
-      ...(await this.readConfigJson<Record<string, unknown>>("appearance") ?? {}),
-      ...(await this.readConfigJson<Record<string, unknown>>("app") ?? {}),
+      ...((await this.readConfigJson<Record<string, unknown>>("appearance")) ?? {}),
+      ...((await this.readConfigJson<Record<string, unknown>>("app")) ?? {}),
     });
     const previous = this.config;
     this.config = { ...previous };
@@ -192,7 +224,9 @@ export class Vault extends Events {
   }
 
   getConfig<T = unknown>(key: string): T | undefined {
-    const value = Object.prototype.hasOwnProperty.call(this.config, key) ? this.config[key] : defaultVaultConfig[key];
+    const value = Object.prototype.hasOwnProperty.call(this.config, key)
+      ? this.config[key]
+      : defaultVaultConfig[key];
     return cloneConfigValue(value) as T | undefined;
   }
 
@@ -212,7 +246,11 @@ export class Vault extends Events {
 
   getAbstractFileByPathInsensitive(path: string): TAbstractFile | null {
     const normalized = path.toLowerCase();
-    return this.getAbstractFileByPath(path) ?? [...this.files.values()].find((file) => file.path.toLowerCase() === normalized) ?? null;
+    return (
+      this.getAbstractFileByPath(path) ??
+      [...this.files.values()].find((file) => file.path.toLowerCase() === normalized) ??
+      null
+    );
   }
 
   isEmpty(): boolean {
@@ -262,7 +300,11 @@ export class Vault extends Events {
     path = normalizeVaultPath(path);
     this.checkPath(path);
     const existingPath = this.pathExistsForCreate(path);
-    if (this.files.has(path) || (typeof existingPath === "boolean" ? existingPath : await existingPath)) throw new Error("File already exists.");
+    if (
+      this.files.has(path) ||
+      (typeof existingPath === "boolean" ? existingPath : await existingPath)
+    )
+      throw new Error("File already exists.");
     const parentPath = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
     if (parentPath && !this.files.has(parentPath)) await this.ensureFolder(parentPath);
     if (this.adapter) await this.adapter.write(path, data, options);
@@ -286,7 +328,11 @@ export class Vault extends Events {
     path = normalizeVaultPath(path);
     this.checkPath(path);
     const existingPath = this.pathExistsForCreate(path);
-    if (this.files.has(path) || (typeof existingPath === "boolean" ? existingPath : await existingPath)) throw new Error("File already exists.");
+    if (
+      this.files.has(path) ||
+      (typeof existingPath === "boolean" ? existingPath : await existingPath)
+    )
+      throw new Error("File already exists.");
     const parentPath = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
     if (parentPath && !this.files.has(parentPath)) await this.ensureFolder(parentPath);
     if (this.adapter?.writeBinary) await this.adapter.writeBinary(path, data, options);
@@ -312,7 +358,8 @@ export class Vault extends Events {
     const normalized = normalizeVaultPath(path);
     this.checkPath(normalized);
     const existingPath = this.pathExistsForCreate(normalized);
-    if (typeof existingPath === "boolean" ? existingPath : await existingPath) throw new Error("Folder already exists.");
+    if (typeof existingPath === "boolean" ? existingPath : await existingPath)
+      throw new Error("Folder already exists.");
     return this.createFolderAtPath(normalized);
   }
 
@@ -323,7 +370,9 @@ export class Vault extends Events {
   }
 
   private async createFolderAtPath(normalized: string): Promise<TFolder> {
-    const parentPath = normalized.includes("/") ? normalized.slice(0, normalized.lastIndexOf("/")) : "";
+    const parentPath = normalized.includes("/")
+      ? normalized.slice(0, normalized.lastIndexOf("/"))
+      : "";
     if (parentPath && !this.files.has(parentPath)) await this.ensureFolder(parentPath);
     if (this.adapter?.mkdir) await this.adapter.mkdir(normalized);
     if (this.usesAdapterEvents()) {
@@ -404,7 +453,11 @@ export class Vault extends Events {
     return this.readJson<T>(this.getConfigFile(name));
   }
 
-  writeConfigJson<T = unknown>(name: string, data: T, options?: JsonStoreWriteOptions): Promise<void> {
+  writeConfigJson<T = unknown>(
+    name: string,
+    data: T,
+    options?: JsonStoreWriteOptions,
+  ): Promise<void> {
     return this.writeJson(this.getConfigFile(name), data, options);
   }
 
@@ -425,7 +478,11 @@ export class Vault extends Events {
     }
   }
 
-  async writeJson<T = unknown>(path: string, data: T, options?: JsonStoreWriteOptions): Promise<void> {
+  async writeJson<T = unknown>(
+    path: string,
+    data: T,
+    options?: JsonStoreWriteOptions,
+  ): Promise<void> {
     const normalized = normalizeJsonPath(path);
     try {
       if (this.jsonStore) {
@@ -490,7 +547,11 @@ export class Vault extends Events {
     return this.pluginData?.load<T>(pluginDir) ?? null;
   }
 
-  async writePluginData<T = unknown>(pluginDir: string, data: T, options?: JsonStoreWriteOptions): Promise<void> {
+  async writePluginData<T = unknown>(
+    pluginDir: string,
+    data: T,
+    options?: JsonStoreWriteOptions,
+  ): Promise<void> {
     if (this.jsonStore || this.adapter) {
       await this.writeJson(`${pluginDir}/data.json`, data, options);
       return;
@@ -528,8 +589,10 @@ export class Vault extends Events {
     file.saving = true;
     try {
       const writeOptions = withImmediate(options, () => file.cache(null));
-      if (this.adapter?.writeBinary) await this.adapter.writeBinary(file.path, toArrayBuffer(bytes), writeOptions);
-      else if (this.adapter) await this.adapter.write(file.path, new TextDecoder().decode(bytes), writeOptions);
+      if (this.adapter?.writeBinary)
+        await this.adapter.writeBinary(file.path, toArrayBuffer(bytes), writeOptions);
+      else if (this.adapter)
+        await this.adapter.write(file.path, new TextDecoder().decode(bytes), writeOptions);
       file.cache(null);
       if (this.usesAdapterEvents()) {
         await this.refreshFileStat(file);
@@ -587,7 +650,9 @@ export class Vault extends Events {
         await this.refreshFileStat(file);
         return;
       }
-      const next = this.adapter.readBinary ? copyBytes(await this.adapter.readBinary(file.path)) : concatBytes(current, data);
+      const next = this.adapter.readBinary
+        ? copyBytes(await this.adapter.readBinary(file.path))
+        : concatBytes(current, data);
       this.binaryData.set(file.path, next);
       this.data.delete(file.path);
       this.updateFileStat(file, next.byteLength, options);
@@ -597,7 +662,11 @@ export class Vault extends Events {
     }
   }
 
-  async process(file: TFile, updater: (data: string) => string, options?: DataWriteOptions): Promise<string> {
+  async process(
+    file: TFile,
+    updater: (data: string) => string,
+    options?: DataWriteOptions,
+  ): Promise<string> {
     if (this.adapter?.process) {
       const previousSaving = file.saving;
       file.saving = true;
@@ -621,13 +690,15 @@ export class Vault extends Events {
 
     const path = file.path;
     const previous = this.processQueues.get(path) ?? Promise.resolve();
-    const task = previous.catch(() => undefined).then(async () => {
-      const current = await this.read(file);
-      const next = updater(current);
-      if (next === current) return next;
-      await this.modify(file, next, options);
-      return next;
-    });
+    const task = previous
+      .catch(() => undefined)
+      .then(async () => {
+        const current = await this.read(file);
+        const next = updater(current);
+        if (next === current) return next;
+        await this.modify(file, next, options);
+        return next;
+      });
     this.processQueues.set(path, task);
 
     try {
@@ -641,12 +712,18 @@ export class Vault extends Events {
     if (file === this.root) return;
     if (this.usesAdapterEvents()) {
       this.invalidateCachedReadTree(file);
-      if (file instanceof TFolder && this.adapter?.rmdir) await this.adapter.rmdir(file.path, force);
+      if (file instanceof TFolder && this.adapter?.rmdir)
+        await this.adapter.rmdir(file.path, force);
       else if (file instanceof TFile && this.adapter?.remove) await this.adapter.remove(file.path);
       else if (this.adapter) await this.adapter.delete(file.path);
       return;
     }
-    const descendants = file instanceof TFolder ? this.getAllLoadedFiles().filter((item) => item.path === file.path || item.path.startsWith(`${file.path}/`)) : [file];
+    const descendants =
+      file instanceof TFolder
+        ? this.getAllLoadedFiles().filter(
+            (item) => item.path === file.path || item.path.startsWith(`${file.path}/`),
+          )
+        : [file];
     for (const item of descendants.sort((a, b) => b.path.length - a.path.length)) {
       this.invalidateCachedRead(item.path);
       if (this.adapter) await this.adapter.delete(item.path);
@@ -661,7 +738,7 @@ export class Vault extends Events {
 
   async trash(file: TAbstractFile, system: boolean): Promise<void> {
     if (file === this.root) return;
-    if (system && this.adapter?.trashSystem && await this.adapter.trashSystem(file.path)) {
+    if (system && this.adapter?.trashSystem && (await this.adapter.trashSystem(file.path))) {
       if (this.usesAdapterEvents()) return;
       this.removeAfterExternalTrash(file);
       return;
@@ -674,7 +751,8 @@ export class Vault extends Events {
   }
 
   async rename(file: TAbstractFile, newPath: string): Promise<void> {
-    const normalized = file instanceof TFolder ? normalizeFolderPath(newPath) : normalizeFilePath(newPath);
+    const normalized =
+      file instanceof TFolder ? normalizeFolderPath(newPath) : normalizeFilePath(newPath);
     if (!normalized || normalized === file.path) return;
     this.checkPath(normalized);
     if (this.usesAdapterEvents() && this.adapter?.rename) {
@@ -688,17 +766,24 @@ export class Vault extends Events {
     // folder is missing; the in-memory tree must refuse identically instead
     // of silently reparenting.
     const slash = normalized.lastIndexOf("/");
-    if (slash !== -1 && !(this.getAbstractFileByPath(normalized.slice(0, slash)) instanceof TFolder)) {
-      throw new Error(`ENOENT: no such file or directory, rename '${file.path}' -> '${normalized}'`);
+    if (
+      slash !== -1 &&
+      !(this.getAbstractFileByPath(normalized.slice(0, slash)) instanceof TFolder)
+    ) {
+      throw new Error(
+        `ENOENT: no such file or directory, rename '${file.path}' -> '${normalized}'`,
+      );
     }
     if (file instanceof TFolder) await this.renameFolder(file, normalized);
     else if (file instanceof TFile) await this.renameFile(file, normalized);
   }
 
   async copy<T extends TAbstractFile>(file: T, newPath: string): Promise<T> {
-    const normalized = file instanceof TFolder ? normalizeFolderPath(newPath) : normalizeFilePath(newPath);
+    const normalized =
+      file instanceof TFolder ? normalizeFolderPath(newPath) : normalizeFilePath(newPath);
     const existing = this.getAbstractFileByPathInsensitive(normalized);
-    if (!normalized || (existing && !(file instanceof TFolder && existing instanceof TFolder))) throw new Error(`File already exists: ${normalized}`);
+    if (!normalized || (existing && !(file instanceof TFolder && existing instanceof TFolder)))
+      throw new Error(`File already exists: ${normalized}`);
     if (file instanceof TFolder) {
       const folder = existing instanceof TFolder ? existing : await this.createFolder(normalized);
       for (const child of file.children) await this.copy(child, `${folder.path}/${child.name}`);
@@ -747,24 +832,34 @@ export class Vault extends Events {
     return files;
   }
 
-  async *iterateFiles(files: TFile[], useCache = false): AsyncGenerator<{ file: TFile; content: string }> {
+  async *iterateFiles(
+    files: TFile[],
+    useCache = false,
+  ): AsyncGenerator<{ file: TFile; content: string }> {
     for (const file of files) {
       let content = "";
-      if (file.extension === "md") content = useCache ? await this.cachedRead(file) : await this.read(file);
+      if (file.extension === "md")
+        content = useCache ? await this.cachedRead(file) : await this.read(file);
       yield { file, content };
     }
   }
 
-  async *generateFiles(files: Iterable<TFile> | AsyncIterable<TFile>, useCache = false): AsyncGenerator<{ file: TFile; content: string }> {
+  async *generateFiles(
+    files: Iterable<TFile> | AsyncIterable<TFile>,
+    useCache = false,
+  ): AsyncGenerator<{ file: TFile; content: string }> {
     for await (const file of files) {
       let content = "";
-      if (file.extension === "md" || file.extension === "canvas") content = useCache ? await this.cachedRead(file) : await this.read(file);
+      if (file.extension === "md" || file.extension === "canvas")
+        content = useCache ? await this.cachedRead(file) : await this.read(file);
       yield { file, content };
     }
   }
 
   getAllFolders(includeRoot = false): TFolder[] {
-    return [...this.files.values()].filter((file): file is TFolder => file instanceof TFolder && (includeRoot || file !== this.root));
+    return [...this.files.values()].filter(
+      (file): file is TFolder => file instanceof TFolder && (includeRoot || file !== this.root),
+    );
   }
 
   getAvailablePath(path: string, extension = "md"): string {
@@ -777,7 +872,11 @@ export class Vault extends Events {
     return candidate;
   }
 
-  async getAvailablePathForAttachments(filename: string, extension: string, sourceFile?: TFile | null): Promise<string> {
+  async getAvailablePathForAttachments(
+    filename: string,
+    extension: string,
+    sourceFile?: TFile | null,
+  ): Promise<string> {
     const configuredPath = this.getConfig<string>("attachmentFolderPath") ?? "/";
     const folderPath = this.resolveAttachmentFolderPath(configuredPath, sourceFile ?? null);
     const clippedBase = sanitizeAttachmentName(filename).slice(0, 250);
@@ -804,11 +903,17 @@ export class Vault extends Events {
 
   private bindAdapterEvents(adapter: VaultAdapter): void {
     adapter.on?.("folder-created", (path) => this.handleAdapterCreate(String(path), "folder"));
-    adapter.on?.("file-created", (path, stat) => this.handleAdapterCreate(String(path), "file", asAdapterStat(stat)));
-    adapter.on?.("modified", (path, stat) => this.handleAdapterModify(String(path), asAdapterStat(stat)));
+    adapter.on?.("file-created", (path, stat) =>
+      this.handleAdapterCreate(String(path), "file", asAdapterStat(stat)),
+    );
+    adapter.on?.("modified", (path, stat) =>
+      this.handleAdapterModify(String(path), asAdapterStat(stat)),
+    );
     adapter.on?.("folder-removed", (path) => this.handleAdapterDelete(String(path)));
     adapter.on?.("file-removed", (path) => this.handleAdapterDelete(String(path)));
-    adapter.on?.("renamed", (path, oldPath) => this.handleAdapterRename(String(path), String(oldPath)));
+    adapter.on?.("renamed", (path, oldPath) =>
+      this.handleAdapterRename(String(path), String(oldPath)),
+    );
   }
 
   private handleAdapterEvent(event: string, path: string, oldPath?: string): void {
@@ -824,7 +929,11 @@ export class Vault extends Events {
     }
   }
 
-  private handleAdapterCreate(path: string, type: "file" | "folder", stat?: VaultAdapterStat): void {
+  private handleAdapterCreate(
+    path: string,
+    type: "file" | "folder",
+    stat?: VaultAdapterStat,
+  ): void {
     if (!path || path === "/") {
       this.files.set(this.root.path, this.root);
       return;
@@ -835,9 +944,10 @@ export class Vault extends Events {
     // When the adapter's reconcile already read the entry's stat, apply it
     // synchronously instead of issuing a second stat per file (mtime 0 marks
     // the stat as unknown until the async refresh lands).
-    const file = type === "folder"
-      ? new TFolder(this, path)
-      : new TFile(this, path, stat ? toFileStats(stat) : { ctime: 0, mtime: 0, size: 0 });
+    const file =
+      type === "folder"
+        ? new TFolder(this, path)
+        : new TFile(this, path, stat ? toFileStats(stat) : { ctime: 0, mtime: 0, size: 0 });
     this.files.set(path, file);
     this.attachToParent(file);
     if (file instanceof TFile && !stat) void this.refreshFileStat(file);
@@ -856,7 +966,12 @@ export class Vault extends Events {
   private handleAdapterDelete(path: string): void {
     const file = this.getAbstractFileByPath(path);
     if (!file) return;
-    const descendants = file instanceof TFolder ? this.getAllLoadedFiles().filter((item) => item.path === file.path || item.path.startsWith(`${file.path}/`)) : [file];
+    const descendants =
+      file instanceof TFolder
+        ? this.getAllLoadedFiles().filter(
+            (item) => item.path === file.path || item.path.startsWith(`${file.path}/`),
+          )
+        : [file];
     for (const item of descendants.sort((a, b) => b.path.length - a.path.length)) {
       this.invalidateCachedRead(item.path);
       this.files.delete(item.path);
@@ -871,7 +986,12 @@ export class Vault extends Events {
   private handleAdapterRename(path: string, oldPath: string): void {
     const file = this.getAbstractFileByPath(oldPath);
     if (!file) return;
-    const descendants = file instanceof TFolder ? this.getAllLoadedFiles().filter((item) => item.path === oldPath || item.path.startsWith(`${oldPath}/`)) : [file];
+    const descendants =
+      file instanceof TFolder
+        ? this.getAllLoadedFiles().filter(
+            (item) => item.path === oldPath || item.path.startsWith(`${oldPath}/`),
+          )
+        : [file];
     const records = descendants
       .sort((a, b) => a.path.length - b.path.length)
       .map((item) => ({
@@ -899,7 +1019,8 @@ export class Vault extends Events {
   }
 
   private handleConfigRawEvent(path: string): void {
-    if (path === this.getConfigFile("app") || path === this.getConfigFile("appearance")) this.requestReloadConfig();
+    if (path === this.getConfigFile("app") || path === this.getConfigFile("appearance"))
+      this.requestReloadConfig();
   }
 
   private usesAdapterEvents(): boolean {
@@ -907,7 +1028,8 @@ export class Vault extends Events {
   }
 
   private pathExistsForCreate(path: string): boolean | Promise<boolean> {
-    if (this.adapter instanceof InMemoryAdapter) return Boolean(this.getAbstractFileByPathInsensitive(path));
+    if (this.adapter instanceof InMemoryAdapter)
+      return Boolean(this.getAbstractFileByPathInsensitive(path));
     if (this.adapter?.exists) return this.adapter.exists(path);
     return Boolean(this.getAbstractFileByPathInsensitive(path));
   }
@@ -919,7 +1041,7 @@ export class Vault extends Events {
   private async ensureConfigDir(): Promise<void> {
     if (!this.adapter?.mkdir) return;
     if (this.adapter.exists) {
-      if (!await this.adapter.exists(this.configDir)) await this.adapter.mkdir(this.configDir);
+      if (!(await this.adapter.exists(this.configDir))) await this.adapter.mkdir(this.configDir);
       return;
     }
     try {
@@ -933,7 +1055,12 @@ export class Vault extends Events {
     if (!this.jsonStore) return false;
     const appStat = await this.jsonStore.stat("app.json");
     const appearanceStat = await this.jsonStore.stat("appearance.json");
-    return Boolean(appStat && appearanceStat && appStat.mtime <= this.configTs && appearanceStat.mtime <= this.configTs);
+    return Boolean(
+      appStat &&
+      appearanceStat &&
+      appStat.mtime <= this.configTs &&
+      appearanceStat.mtime <= this.configTs,
+    );
   }
 
   private toJsonStoreName(path: string): string {
@@ -965,7 +1092,12 @@ export class Vault extends Events {
   }
 
   private removeAfterExternalTrash(file: TAbstractFile): void {
-    const descendants = file instanceof TFolder ? this.getAllLoadedFiles().filter((item) => item.path === file.path || item.path.startsWith(`${file.path}/`)) : [file];
+    const descendants =
+      file instanceof TFolder
+        ? this.getAllLoadedFiles().filter(
+            (item) => item.path === file.path || item.path.startsWith(`${file.path}/`),
+          )
+        : [file];
     for (const item of descendants.sort((a, b) => b.path.length - a.path.length)) {
       this.invalidateCachedRead(item.path);
       this.files.delete(item.path);
@@ -992,16 +1124,24 @@ export class Vault extends Events {
       const descendants = this.getAllLoadedFiles()
         .filter((item) => item.path === file.path || item.path.startsWith(`${file.path}/`))
         .sort((a, b) => a.path.length - b.path.length);
-      const records: Array<{ item: TAbstractFile; targetPath: string; data?: string; binary?: ArrayBuffer }> = [];
+      const records: Array<{
+        item: TAbstractFile;
+        targetPath: string;
+        data?: string;
+        binary?: ArrayBuffer;
+      }> = [];
       for (const item of descendants) {
         const suffix = item.path === file.path ? "" : item.path.slice(file.path.length + 1);
         const nextPath = suffix ? `${targetPath}/${suffix}` : targetPath;
         records.push({
           item,
-          targetPath: item instanceof TFolder ? normalizeFolderPath(nextPath) : normalizeFilePath(nextPath),
+          targetPath:
+            item instanceof TFolder ? normalizeFolderPath(nextPath) : normalizeFilePath(nextPath),
           ...(item instanceof TFile && this.binaryData.has(item.path)
             ? { binary: await this.readBinary(item) }
-            : item instanceof TFile ? { data: await this.read(item) } : {}),
+            : item instanceof TFile
+              ? { data: await this.read(item) }
+              : {}),
         });
       }
       await this.delete(file, false);
@@ -1033,7 +1173,8 @@ export class Vault extends Events {
     const binary = this.binaryData.get(oldPath);
     const data = binary ? "" : await this.read(file);
     if (this.adapter) {
-      if (binary && this.adapter.writeBinary) await this.adapter.writeBinary(newPath, toArrayBuffer(binary));
+      if (binary && this.adapter.writeBinary)
+        await this.adapter.writeBinary(newPath, toArrayBuffer(binary));
       else await this.adapter.write(newPath, binary ? new TextDecoder().decode(binary) : data);
       await this.adapter.delete(oldPath);
     }
@@ -1061,25 +1202,42 @@ export class Vault extends Events {
       .filter((item) => item.path === oldRootPath || item.path.startsWith(`${oldRootPath}/`))
       .sort((a, b) => a.path.length - b.path.length);
     const oldPaths = new Set(descendants.map((item) => item.path));
-    const records: Array<{ item: TAbstractFile; oldPath: string; newPath: string; data?: string; binary?: Uint8Array }> = [];
+    const records: Array<{
+      item: TAbstractFile;
+      oldPath: string;
+      newPath: string;
+      data?: string;
+      binary?: Uint8Array;
+    }> = [];
 
     for (const item of descendants) {
-      const nextPath = item.path === oldRootPath ? newPath : `${newPath}/${item.path.slice(oldRootPath.length + 1)}`;
+      const nextPath =
+        item.path === oldRootPath
+          ? newPath
+          : `${newPath}/${item.path.slice(oldRootPath.length + 1)}`;
       this.ensureRenameTargetAvailable(item, nextPath, oldPaths);
       records.push({
         item,
         oldPath: item.path,
-        newPath: item instanceof TFolder ? normalizeFolderPath(nextPath) : normalizeFilePath(nextPath),
+        newPath:
+          item instanceof TFolder ? normalizeFolderPath(nextPath) : normalizeFilePath(nextPath),
         ...(item instanceof TFile && this.binaryData.has(item.path)
           ? { binary: copyBytes(await this.readBinary(item)) }
-          : item instanceof TFile ? { data: await this.read(item) } : {}),
+          : item instanceof TFile
+            ? { data: await this.read(item) }
+            : {}),
       });
     }
 
     if (this.adapter) {
       for (const record of records) {
-        if (record.item instanceof TFile && record.binary && this.adapter.writeBinary) await this.adapter.writeBinary(record.newPath, toArrayBuffer(record.binary));
-        else if (record.item instanceof TFile) await this.adapter.write(record.newPath, record.binary ? new TextDecoder().decode(record.binary) : record.data ?? "");
+        if (record.item instanceof TFile && record.binary && this.adapter.writeBinary)
+          await this.adapter.writeBinary(record.newPath, toArrayBuffer(record.binary));
+        else if (record.item instanceof TFile)
+          await this.adapter.write(
+            record.newPath,
+            record.binary ? new TextDecoder().decode(record.binary) : (record.data ?? ""),
+          );
       }
       for (const record of [...records].reverse()) {
         if (record.item instanceof TFile) await this.adapter.delete(record.oldPath);
@@ -1111,15 +1269,20 @@ export class Vault extends Events {
     return folder;
   }
 
-  private ensureRenameTargetAvailable(file: TAbstractFile, newPath: string, oldPaths: Set<string>): void {
+  private ensureRenameTargetAvailable(
+    file: TAbstractFile,
+    newPath: string,
+    oldPaths: Set<string>,
+  ): void {
     const existing = this.files.get(newPath);
-    if (existing && existing !== file && !oldPaths.has(newPath)) throw new Error(`File already exists: ${newPath}`);
+    if (existing && existing !== file && !oldPaths.has(newPath))
+      throw new Error(`File already exists: ${newPath}`);
     const insensitiveExisting = this.getAbstractFileByPathInsensitive(newPath);
     if (
-      insensitiveExisting
-      && insensitiveExisting !== file
-      && !oldPaths.has(insensitiveExisting.path)
-      && insensitiveExisting.path.toLowerCase() !== file.path.toLowerCase()
+      insensitiveExisting &&
+      insensitiveExisting !== file &&
+      !oldPaths.has(insensitiveExisting.path) &&
+      insensitiveExisting.path.toLowerCase() !== file.path.toLowerCase()
     ) {
       throw new Error(`File already exists: ${newPath}`);
     }
@@ -1171,10 +1334,17 @@ function normalizeJsonPath(path: string): string {
 }
 
 function sanitizeAttachmentName(filename: string): string {
-  return normalizeVaultPath(filename).replace(/([:#|^\\\r\n]|%%|\[\[|]])/g, " ").replace(/\s+/g, " ").trim();
+  return normalizeVaultPath(filename)
+    .replace(/([:#|^\\\r\n]|%%|\[\[|]])/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function createFileStats(size: number, options?: DataWriteOptions, previous?: FileStats): FileStats {
+function createFileStats(
+  size: number,
+  options?: DataWriteOptions,
+  previous?: FileStats,
+): FileStats {
   const now = Date.now();
   return {
     ctime: options?.ctime ?? previous?.ctime ?? now,
@@ -1224,7 +1394,10 @@ function toArrayBuffer(data: Uint8Array): ArrayBuffer {
   return copy.buffer;
 }
 
-function withImmediate(options: DataWriteOptions | undefined, immediate: () => void): DataWriteOptions {
+function withImmediate(
+  options: DataWriteOptions | undefined,
+  immediate: () => void,
+): DataWriteOptions {
   return {
     ...options,
     immediate,
@@ -1236,7 +1409,12 @@ function isValidConfigDir(path: string): boolean {
 }
 
 function isNotFoundError(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "ENOENT";
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "ENOENT"
+  );
 }
 
 const defaultVaultConfig: Record<string, unknown> = {
@@ -1321,12 +1499,14 @@ const appearanceConfigKeys = new Set([
 function migrateVaultConfig(config: Record<string, unknown>): Record<string, unknown> {
   const editorFontFamily = config.editorFontFamily;
   delete config.editorFontFamily;
-  if (!Object.prototype.hasOwnProperty.call(config, "textFontFamily") && editorFontFamily) config.textFontFamily = editorFontFamily;
+  if (!Object.prototype.hasOwnProperty.call(config, "textFontFamily") && editorFontFamily)
+    config.textFontFamily = editorFontFamily;
   return config;
 }
 
 function cloneConfigValue(value: unknown): unknown {
-  if (Array.isArray(value) || value && typeof value === "object") return JSON.parse(JSON.stringify(value));
+  if (Array.isArray(value) || (value && typeof value === "object"))
+    return JSON.parse(JSON.stringify(value));
   return value;
 }
 
@@ -1334,7 +1514,11 @@ function hasEqualConfigValue(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-function createDebouncedRequest(save: () => Promise<void>, canRun: () => boolean, delay: number): (() => void) & { run: () => Promise<void>; cancel: () => void } {
+function createDebouncedRequest(
+  save: () => Promise<void>,
+  canRun: () => boolean,
+  delay: number,
+): (() => void) & { run: () => Promise<void>; cancel: () => void } {
   let timer: ReturnType<typeof setTimeout> | null = null;
   const cancel = (): void => {
     if (timer == null) return;

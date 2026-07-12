@@ -21,7 +21,16 @@ export interface DataWriteOptions {
 
 export type DataAdapterWatchHandler = (event: string, path: string, oldPath?: string) => void;
 
-const adapterWatchEvents = ["raw", "folder-created", "file-created", "modified", "folder-removed", "file-removed", "renamed", "closed"];
+const adapterWatchEvents = [
+  "raw",
+  "folder-created",
+  "file-created",
+  "modified",
+  "folder-removed",
+  "file-removed",
+  "renamed",
+  "closed",
+];
 
 export abstract class DataAdapter extends Events {
   private processQueues = new Map<string, Promise<unknown>>();
@@ -38,7 +47,7 @@ export abstract class DataAdapter extends Events {
   abstract list(path: string): Promise<ListedFiles>;
 
   async stat(path: string): Promise<Stat | null> {
-    if (!await this.exists(path)) return null;
+    if (!(await this.exists(path))) return null;
     const data = await this.read(path);
     const now = Date.now();
     return { type: "file", ctime: now, mtime: now, size: byteLength(data) };
@@ -60,15 +69,21 @@ export abstract class DataAdapter extends Events {
     await this.writeBinary(path, concatArrayBuffers(await this.readBinary(path), data), options);
   }
 
-  async process(path: string, fn: (data: string) => string, options?: DataWriteOptions): Promise<string> {
+  async process(
+    path: string,
+    fn: (data: string) => string,
+    options?: DataWriteOptions,
+  ): Promise<string> {
     const previous = this.processQueues.get(path) ?? Promise.resolve();
-    const task = previous.catch(() => undefined).then(async () => {
-      const current = await this.read(path);
-      const next = fn(current);
-      if (next === current) return next;
-      await this.write(path, next, options);
-      return next;
-    });
+    const task = previous
+      .catch(() => undefined)
+      .then(async () => {
+        const current = await this.read(path);
+        const next = fn(current);
+        if (next === current) return next;
+        await this.write(path, next, options);
+        return next;
+      });
     this.processQueues.set(path, task);
 
     try {
@@ -104,7 +119,8 @@ export abstract class DataAdapter extends Events {
 
   async rename(path: string, newPath: string): Promise<void> {
     if (path === newPath) return;
-    if (await this.renameDestinationExists(path, newPath)) throw new Error("Destination file already exists!");
+    if (await this.renameDestinationExists(path, newPath))
+      throw new Error("Destination file already exists!");
     const data = await this.readBinary(path);
     await this.writeBinary(newPath, data);
     await this.delete(path);
@@ -118,13 +134,17 @@ export abstract class DataAdapter extends Events {
   async load(): Promise<void> {}
 
   async watch(handler: DataAdapterWatchHandler): Promise<() => void> {
-    const refs = adapterWatchEvents.map((event) => this.on(event, (...args) => handler(event, String(args[0] ?? ""), args[1] == null ? undefined : String(args[1]))));
+    const refs = adapterWatchEvents.map((event) =>
+      this.on(event, (...args) =>
+        handler(event, String(args[0] ?? ""), args[1] == null ? undefined : String(args[1])),
+      ),
+    );
     return () => refs.forEach((ref) => unregisterEventRef(ref));
   }
 
   protected async renameDestinationExists(path: string, newPath: string): Promise<boolean> {
-    if (!await this.exists(newPath)) return false;
-    return !(path.toLowerCase() === newPath.toLowerCase() && !await this.exists(newPath, true));
+    if (!(await this.exists(newPath))) return false;
+    return !(path.toLowerCase() === newPath.toLowerCase() && !(await this.exists(newPath, true)));
   }
 }
 
@@ -153,7 +173,11 @@ export class InMemoryAdapter extends DataAdapter {
     options?.immediate?.();
   }
 
-  override async writeBinary(path: string, data: ArrayBuffer, options?: DataWriteOptions): Promise<void> {
+  override async writeBinary(
+    path: string,
+    data: ArrayBuffer,
+    options?: DataWriteOptions,
+  ): Promise<void> {
     const bytes = new Uint8Array(data.byteLength);
     bytes.set(new Uint8Array(data));
     this.files.set(path, bytes);
@@ -169,7 +193,9 @@ export class InMemoryAdapter extends DataAdapter {
       this.files.delete(file);
       this.stats.delete(file);
     }
-    for (const folder of [...this.folders].filter((folder) => folder === path || folder.startsWith(`${path}/`))) {
+    for (const folder of [...this.folders].filter(
+      (folder) => folder === path || folder.startsWith(`${path}/`),
+    )) {
       this.folders.delete(folder);
       this.stats.delete(folder);
     }
@@ -179,8 +205,10 @@ export class InMemoryAdapter extends DataAdapter {
     if (this.files.has(path) || this.folders.has(path)) return true;
     if (sensitive) return false;
     const normalized = path.toLowerCase();
-    return [...this.files.keys()].some((file) => file.toLowerCase() === normalized)
-      || [...this.folders].some((folder) => folder.toLowerCase() === normalized);
+    return (
+      [...this.files.keys()].some((file) => file.toLowerCase() === normalized) ||
+      [...this.folders].some((folder) => folder.toLowerCase() === normalized)
+    );
   }
 
   override async stat(path: string): Promise<Stat | null> {
@@ -213,7 +241,8 @@ export class InMemoryAdapter extends DataAdapter {
 
   override async rename(path: string, newPath: string): Promise<void> {
     if (path === newPath) return;
-    if (await this.renameDestinationExists(path, newPath)) throw new Error("Destination file already exists!");
+    if (await this.renameDestinationExists(path, newPath))
+      throw new Error("Destination file already exists!");
     if (this.files.has(path)) {
       const data = this.files.get(path);
       if (data) this.files.set(newPath, data);
@@ -230,7 +259,9 @@ export class InMemoryAdapter extends DataAdapter {
       const destination = `${newPath}/${folder.slice(path.length + 1)}`;
       this.ensureFolderPath(destination);
     }
-    for (const [file, data] of [...this.files.entries()].filter(([file]) => file.startsWith(`${path}/`))) {
+    for (const [file, data] of [...this.files.entries()].filter(([file]) =>
+      file.startsWith(`${path}/`),
+    )) {
       const destination = `${newPath}/${file.slice(path.length + 1)}`;
       this.files.set(destination, data);
       const stat = this.stats.get(file);
@@ -247,7 +278,10 @@ export class InMemoryAdapter extends DataAdapter {
     copy.set(data);
     this.files.set(newPath, copy);
     this.ensureParentFolder(newPath);
-    this.stats.set(newPath, { ...(this.stats.get(path) ?? createStat("file", data.byteLength)), ctime: Date.now() });
+    this.stats.set(newPath, {
+      ...(this.stats.get(path) ?? createStat("file", data.byteLength)),
+      ctime: Date.now(),
+    });
   }
 
   private getAvailableTrashPath(path: string): string {
@@ -298,7 +332,12 @@ export class CapacitorAdapter extends InMemoryAdapter {
   }
 }
 
-function createStat(type: "file" | "folder", size: number, options?: DataWriteOptions, previous?: Stat): Stat {
+function createStat(
+  type: "file" | "folder",
+  size: number,
+  options?: DataWriteOptions,
+  previous?: Stat,
+): Stat {
   const now = Date.now();
   return {
     type,

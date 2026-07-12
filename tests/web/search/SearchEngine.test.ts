@@ -4,16 +4,22 @@ import { App } from "@web/app/App";
 async function createSearchApp(): Promise<App> {
   const app = new App(document.createElement("div"));
   await app.ready;
-  await app.vault.create("notes/alpha.md", "---\nstatus: draft\ntags: [research]\n---\n\n# Intro\n\nneedle in the intro\n\n# Detail\n\nhay and needle together\n");
-  await app.vault.create("notes/beta.md", "# Other\n\nonly hay here\nneedle on its own line\n#inline-tag\n");
+  await app.vault.create(
+    "notes/alpha.md",
+    "---\nstatus: draft\ntags: [research]\n---\n\n# Intro\n\nneedle in the intro\n\n# Detail\n\nhay and needle together\n",
+  );
+  await app.vault.create(
+    "notes/beta.md",
+    "# Other\n\nonly hay here\nneedle on its own line\n#inline-tag\n",
+  );
   await app.vault.create("agent/server.go", "package main\n// needle in code\n");
   await app.metadataCache.initialize();
   // initialize() fires metadata computation without awaiting it; wait until
   // every fixture this suite asserts on has landed in the cache.
   const ready = () =>
-    Boolean(app.metadataCache.getCache("notes/alpha.md")?.frontmatter)
-    && Boolean(app.metadataCache.getCache("notes/alpha.md")?.headings?.length)
-    && Boolean(app.metadataCache.getCache("notes/beta.md")?.tags?.length);
+    Boolean(app.metadataCache.getCache("notes/alpha.md")?.frontmatter) &&
+    Boolean(app.metadataCache.getCache("notes/alpha.md")?.headings?.length) &&
+    Boolean(app.metadataCache.getCache("notes/beta.md")?.tags?.length);
   for (let i = 0; i < 400 && !ready(); i++) {
     await new Promise((resolve) => setTimeout(resolve, 5));
   }
@@ -95,13 +101,23 @@ describe("SearchEngine operators", () => {
     app.search.unregisterOperator("agent");
     const fallback = await app.search.search({ query: "agent:agent" });
     expect(fallback).toEqual([]);
-    expect(() => app.search.registerOperator({ name: "path", token: "path:", description: "", filter: () => true }))
-      .toThrow(/already registered/);
+    expect(() =>
+      app.search.registerOperator({
+        name: "path",
+        token: "path:",
+        description: "",
+        filter: () => true,
+      }),
+    ).toThrow(/already registered/);
   });
 
   it("plain keywords still search every text file", async () => {
     const app = await createSearchApp();
     const results = await app.search.search({ query: "needle" });
-    expect(results.map((result) => result.path)).toEqual(["agent/server.go", "notes/alpha.md", "notes/beta.md"]);
+    expect(results.map((result) => result.path)).toEqual([
+      "agent/server.go",
+      "notes/alpha.md",
+      "notes/beta.md",
+    ]);
   });
 });

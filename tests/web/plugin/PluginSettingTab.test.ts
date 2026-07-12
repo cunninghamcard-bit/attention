@@ -64,7 +64,7 @@ class DeclarativeSettingTab extends PluginSettingTab {
               type: "text",
               key: "name",
               defaultValue: "Pi",
-              validate: (value) => value.trim().length > 0 ? undefined : "Required",
+              validate: (value) => (value.trim().length > 0 ? undefined : "Required"),
             },
           },
           {
@@ -110,7 +110,14 @@ class DeclarativeSettingTab extends PluginSettingTab {
           {
             name: "Temperature",
             visible: () => this.showAdvanced,
-            control: { type: "slider", key: "temperature", defaultValue: 1, min: 0, max: 2, step: 0.5 },
+            control: {
+              type: "slider",
+              key: "temperature",
+              defaultValue: 1,
+              min: 0,
+              max: 2,
+              step: 0.5,
+            },
           },
           {
             name: "Run action",
@@ -251,11 +258,15 @@ describe("PluginSettingTab", () => {
     const host = document.createElement("div");
     const renderer = new SettingsRenderer(app, host);
     renderer.render("settings-runtime");
-    const navEl = host.querySelector<HTMLElement>('[data-section="community-plugins"] [data-setting-id="settings-runtime"]');
+    const navEl = host.querySelector<HTMLElement>(
+      '[data-section="community-plugins"] [data-setting-id="settings-runtime"]',
+    );
 
     expect(navEl).not.toBeNull();
     expect(navEl?.classList.contains("tappable")).toBe(true);
-    expect(navEl?.querySelector(".vertical-tab-nav-item-title")?.textContent).toBe("Settings Runtime");
+    expect(navEl?.querySelector(".vertical-tab-nav-item-title")?.textContent).toBe(
+      "Settings Runtime",
+    );
     expect(navEl?.querySelector(".vertical-tab-nav-item-chevron")).not.toBeNull();
 
     await app.pluginInstaller.disable("settings-runtime", true);
@@ -287,7 +298,11 @@ describe("PluginSettingTab", () => {
     if (!tab) throw new Error("Expected plugin setting tab");
     expect(tab.displayCount).toBe(1);
     expect(document.body.textContent).toContain("Displayed Active Settings Runtime");
-    expect(document.body.querySelector('[data-setting-id="active-settings-runtime"]')?.classList.contains("is-active")).toBe(true);
+    expect(
+      document.body
+        .querySelector('[data-setting-id="active-settings-runtime"]')
+        ?.classList.contains("is-active"),
+    ).toBe(true);
 
     await app.pluginInstaller.disable("active-settings-runtime", true);
 
@@ -349,13 +364,23 @@ describe("PluginSettingTab", () => {
     expect(tab.displayCount).toBe(0);
     expect(tab.settingItems).toHaveLength(2);
     expect(host.querySelector(".setting-group.chat-settings")).not.toBeNull();
-    expect(host.querySelector(".setting-group.agent-list.setting-list.mod-reorderable")).not.toBeNull();
-    expect(settingRow(host, "Enabled").querySelector(".checkbox-container")?.classList.contains("is-enabled")).toBe(true);
+    expect(
+      host.querySelector(".setting-group.agent-list.setting-list.mod-reorderable"),
+    ).not.toBeNull();
+    expect(
+      settingRow(host, "Enabled")
+        .querySelector(".checkbox-container")
+        ?.classList.contains("is-enabled"),
+    ).toBe(true);
     expect(settingRow(host, "Name").querySelector<HTMLInputElement>("input")?.value).toBe("Ada");
-    expect(settingRow(host, "Mode").querySelector<HTMLSelectElement>("select")?.value).toBe("careful");
+    expect(settingRow(host, "Mode").querySelector<HTMLSelectElement>("select")?.value).toBe(
+      "careful",
+    );
     expect(settingRow(host, "Prompt").querySelector<HTMLTextAreaElement>("textarea")?.rows).toBe(3);
 
-    const chatSearch = host.querySelector<HTMLInputElement>(".chat-settings .setting-group-search input");
+    const chatSearch = host.querySelector<HTMLInputElement>(
+      ".chat-settings .setting-group-search input",
+    );
     if (!chatSearch) throw new Error("Missing chat settings search");
     expect(chatSearch.placeholder).toBe("Filter chat settings");
     chatSearch.value = "mode";
@@ -364,7 +389,9 @@ describe("PluginSettingTab", () => {
     expect(settingRow(host, "Mode").style.display).toBe("");
 
     renderer.render("declarative-render");
-    const restoredChatSearch = host.querySelector<HTMLInputElement>(".chat-settings .setting-group-search input");
+    const restoredChatSearch = host.querySelector<HTMLInputElement>(
+      ".chat-settings .setting-group-search input",
+    );
     if (!restoredChatSearch) throw new Error("Missing restored chat settings search");
     expect(restoredChatSearch.value).toBe("mode");
     expect(settingRow(host, "Enabled").style.display).toBe("none");
@@ -383,7 +410,9 @@ describe("PluginSettingTab", () => {
     fileInput.focus();
     fileInput.value = "alpha";
     fileInput.dispatchEvent(new Event("input", { bubbles: true }));
-    expect(document.body.querySelector<HTMLElement>(".suggestion-item")?.textContent).toBe("Notes/Alpha.md");
+    expect(document.body.querySelector<HTMLElement>(".suggestion-item")?.textContent).toBe(
+      "Notes/Alpha.md",
+    );
     document.body.querySelector<HTMLElement>(".suggestion-item")?.click();
     await flushAsync();
     expect((plugin.settings as Record<string, unknown>).sourceFile).toBe("Notes/Alpha.md");
@@ -398,7 +427,9 @@ describe("PluginSettingTab", () => {
     await flushAsync();
     expect((plugin.settings as Record<string, unknown>).vaultFolder).toBe("Notes");
 
-    const enabledInput = settingRow(host, "Enabled").querySelector<HTMLInputElement>('input[type="checkbox"]');
+    const enabledInput = settingRow(host, "Enabled").querySelector<HTMLInputElement>(
+      'input[type="checkbox"]',
+    );
     if (!enabledInput) throw new Error("Missing enabled input");
     enabledInput.checked = false;
     enabledInput?.dispatchEvent(new Event("change", { bubbles: true }));
@@ -410,7 +441,9 @@ describe("PluginSettingTab", () => {
     nameInput.value = "";
     nameInput.dispatchEvent(new Event("input", { bubbles: true }));
     await flushAsync();
-    expect(settingRow(host, "Name").querySelector(".setting-item-error")?.textContent).toBe("Required");
+    expect(settingRow(host, "Name").querySelector(".setting-item-error")?.textContent).toBe(
+      "Required",
+    );
     expect((plugin.settings as Record<string, unknown>).name).toBe("Ada");
 
     nameInput.value = "Grace";
@@ -425,7 +458,9 @@ describe("PluginSettingTab", () => {
     await flushAsync();
     expect((plugin.settings as Record<string, unknown>).mode).toBe("fast");
 
-    const limitInput = settingRow(host, "Limit").querySelector<HTMLInputElement>('input[type="number"]');
+    const limitInput = settingRow(host, "Limit").querySelector<HTMLInputElement>(
+      'input[type="number"]',
+    );
     if (!limitInput) throw new Error("Missing limit input");
     limitInput.value = "99";
     limitInput.dispatchEvent(new Event("input", { bubbles: true }));
@@ -446,14 +481,18 @@ describe("PluginSettingTab", () => {
     tab.refreshDomState();
     expect(temperatureRow.style.display).toBe("none");
 
-    host.querySelector<HTMLElement>(".agent-list .setting-item-heading .extra-setting-button")?.click();
+    host
+      .querySelector<HTMLElement>(".agent-list .setting-item-heading .extra-setting-button")
+      ?.click();
     expect(tab.addCount).toBe(1);
 
     const plannerRow = settingRow(host, "Planner");
     const detailRow = settingRow(host, "Agent detail");
     expect(detailRow.classList.contains("mod-warning")).toBe(true);
     expect(detailRow.querySelector(".setting-item-display-value")?.textContent).toBe("Careful");
-    expect(detailRow.querySelector(".setting-item-display-value")?.classList.contains("mod-warning")).toBe(true);
+    expect(
+      detailRow.querySelector(".setting-item-display-value")?.classList.contains("mod-warning"),
+    ).toBe(true);
 
     dispatchDrag(plannerRow, detailRow);
     expect(tab.reorders).toEqual([[0, 2]]);
@@ -467,11 +506,15 @@ describe("PluginSettingTab", () => {
     tab.refreshDomState();
     expect(detailRow.classList.contains("mod-warning")).toBe(false);
     expect(detailRow.querySelector(".setting-item-display-value")?.textContent).toBe("Fast");
-    expect(detailRow.querySelector(".setting-item-display-value")?.classList.contains("mod-warning")).toBe(false);
+    expect(
+      detailRow.querySelector(".setting-item-display-value")?.classList.contains("mod-warning"),
+    ).toBe(false);
 
     detailRow.click();
     expect(host.querySelector(".setting-page-title")?.textContent).toBe("Agent detail");
-    expect(settingRow(host, "Agent model").querySelector<HTMLInputElement>("input")?.value).toBe("gpt-5");
+    expect(settingRow(host, "Agent model").querySelector<HTMLInputElement>("input")?.value).toBe(
+      "gpt-5",
+    );
 
     renderer.render("declarative-render");
     expect(tab.cleanupCount).toBeGreaterThan(0);

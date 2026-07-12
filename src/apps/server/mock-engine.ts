@@ -16,9 +16,18 @@ function nextMessageId(agentId: string): string {
 // Rooms (id prefix "room-") script a three-agent exchange: same event
 // stream, each message stamped with its author — the UI contract for
 // MultiAgentView before the backend can route agent-to-agent.
-async function runRoomScript(agentId: string, runId: string, prompt: string, emit: EngineEmit): Promise<void> {
+async function runRoomScript(
+  agentId: string,
+  runId: string,
+  prompt: string,
+  emit: EngineEmit,
+): Promise<void> {
   const roster: Array<[string, string, string]> = [
-    ["researcher", "研究员", `关于「${prompt.slice(0, 24)}」,我先查了一下相关背景:这是一个多智能体协作的演示场景。`],
+    [
+      "researcher",
+      "研究员",
+      `关于「${prompt.slice(0, 24)}」,我先查了一下相关背景:这是一个多智能体协作的演示场景。`,
+    ],
     ["coder", "工程师", "我来验证一下可行性,先跑个命令。"],
     ["reviewer", "评审", "两位的结论我都看过了,**方案可行**,建议直接推进。"],
   ];
@@ -50,25 +59,47 @@ async function runRoomScript(agentId: string, runId: string, prompt: string, emi
     type: "run.closed",
     runId,
     status: "completed",
-    usage: { inputTokens: 6400, outputTokens: 420, totalTokens: 6820, costUsd: 0.012, contextTokens: 6820, contextWindow: 200000 },
+    usage: {
+      inputTokens: 6400,
+      outputTokens: 420,
+      totalTokens: 6820,
+      costUsd: 0.012,
+      contextTokens: 6820,
+      contextWindow: 200000,
+    },
   });
 }
 
-async function runScript(agentId: string, runId: string, prompt: string, emit: EngineEmit, profile?: { model?: string; effort?: string }): Promise<void> {
+async function runScript(
+  agentId: string,
+  runId: string,
+  prompt: string,
+  emit: EngineEmit,
+  profile?: { model?: string; effort?: string },
+): Promise<void> {
   if (agentId.startsWith("room-")) return runRoomScript(agentId, runId, prompt, emit);
-  const profileNote = profile?.model || profile?.effort
-    ? `\n\n> 本轮配置:${profile.model ?? "默认模型"}${profile.effort ? ` · ${profile.effort}` : ""}`
-    : "";
+  const profileNote =
+    profile?.model || profile?.effort
+      ? `\n\n> 本轮配置:${profile.model ?? "默认模型"}${profile.effort ? ` · ${profile.effort}` : ""}`
+      : "";
   if (prompt.includes("compact")) {
     emit({ type: "context.compacted", phase: "started", trigger: "auto" });
     await sleep(1600);
     emit({ type: "context.compacted", phase: "completed", preTokens: 52000, trigger: "auto" });
   }
   const messageId = nextMessageId(agentId);
-  emit({ type: "message.started", messageId, role: "assistant", model: profile?.model ?? "mock-1", effort: profile?.effort });
+  emit({
+    type: "message.started",
+    messageId,
+    role: "assistant",
+    model: profile?.model ?? "mock-1",
+    effort: profile?.effort,
+  });
 
   emit({ type: "part.opened", messageId, partIndex: 0, partType: "thinking" });
-  for (const chunk of "用户想看演示。先流式输出一段包含各种元素的 markdown,然后跑几个工具,其中一个故意失败。".match(/.{1,6}/gs) ?? []) {
+  for (const chunk of "用户想看演示。先流式输出一段包含各种元素的 markdown,然后跑几个工具,其中一个故意失败。".match(
+    /.{1,6}/gs,
+  ) ?? []) {
     emit({ type: "part.delta", messageId, partIndex: 0, delta: chunk });
     await sleep(80);
   }
@@ -84,7 +115,11 @@ async function runScript(agentId: string, runId: string, prompt: string, emit: E
 
   const toolCalls: Array<[string, string, string, string?]> = [
     ["Bash", '{"command":"echo hello"}', "hello"],
-    ["Edit", '{"file_path":"src/main.ts","old_string":"const a = 1;\\nconst b = 2;","new_string":"const a = 1;\\nconst b = 3;\\nconst c = 4;"}', "ok"],
+    [
+      "Edit",
+      '{"file_path":"src/main.ts","old_string":"const a = 1;\\nconst b = 2;","new_string":"const a = 1;\\nconst b = 3;\\nconst c = 4;"}',
+      "ok",
+    ],
     ["Read", '{"file_path":"src/missing.ts"}', "ENOENT: no such file", "ENOENT: no such file"],
     ["Grep", '{"pattern":"ChatView"}', "12 matches"],
   ];
@@ -98,8 +133,16 @@ async function runScript(agentId: string, runId: string, prompt: string, emit: E
     emit({ type: "part.closed", messageId, partIndex, result, ...(error ? { error } : {}) });
   }
 
-  emit({ type: "part.opened", messageId, partIndex: 6, partType: "artifact", name: "总结报告.md", kind: "markdown" });
-  const artifact = "# 总结报告\n\n本轮演示覆盖了以下能力:\n\n- 流式 markdown 渲染\n- 工具调用与失败态\n- 上下文压缩三相\n\n> 产物可以 Open 预览、Copy 或存回 vault。\n";
+  emit({
+    type: "part.opened",
+    messageId,
+    partIndex: 6,
+    partType: "artifact",
+    name: "总结报告.md",
+    kind: "markdown",
+  });
+  const artifact =
+    "# 总结报告\n\n本轮演示覆盖了以下能力:\n\n- 流式 markdown 渲染\n- 工具调用与失败态\n- 上下文压缩三相\n\n> 产物可以 Open 预览、Copy 或存回 vault。\n";
   for (const chunk of artifact.match(/.{1,10}/gs) ?? []) {
     emit({ type: "part.delta", messageId, partIndex: 6, delta: chunk });
     await sleep(35);
@@ -118,7 +161,14 @@ async function runScript(agentId: string, runId: string, prompt: string, emit: E
     type: "run.closed",
     runId,
     status: "completed",
-    usage: { inputTokens: 12400, outputTokens: 860, totalTokens: 13260, costUsd: 0.021, contextTokens: 13260, contextWindow: 200000 },
+    usage: {
+      inputTokens: 12400,
+      outputTokens: 860,
+      totalTokens: 13260,
+      costUsd: 0.021,
+      contextTokens: 13260,
+      contextWindow: 200000,
+    },
   });
 }
 
@@ -126,6 +176,7 @@ export const mockEngine: Engine = {
   name: "mock",
   listModels: () => ["deepseek-chat", "claude-sonnet-4-5", "gpt-5-codex", "kimi-k2"],
   listEfforts: () => ["low", "medium", "high"],
-  run: ({ agentId, runId, prompt, emit, profile }) => runScript(agentId, runId, prompt, emit, profile),
+  run: ({ agentId, runId, prompt, emit, profile }) =>
+    runScript(agentId, runId, prompt, emit, profile),
   stop: () => {},
 };

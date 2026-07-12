@@ -66,7 +66,10 @@ class MarkdownImporterModal extends ConfirmationModal {
   private readonly converters = createConverters();
   private statusEl: HTMLElement | null = null;
 
-  constructor(app: App, readonly controller: MarkdownImporterController) {
+  constructor(
+    app: App,
+    readonly controller: MarkdownImporterController,
+  ) {
     super(app);
     this.setTitle("Markdown format converter");
     this.modalEl.classList.add("mod-markdown-importer");
@@ -90,9 +93,11 @@ class MarkdownImporterModal extends ConfirmationModal {
       new Setting(group.itemsEl)
         .setName(converter.name)
         .setDesc(converter.description)
-        .addToggle((toggle) => toggle.setValue(converter.enabled).onChange((enabled) => {
-          converter.enabled = enabled;
-        }));
+        .addToggle((toggle) =>
+          toggle.setValue(converter.enabled).onChange((enabled) => {
+            converter.enabled = enabled;
+          }),
+        );
     }
 
     this.statusEl = document.createElement("div");
@@ -133,35 +138,50 @@ function createConverters(): MarkdownConverter[] {
       name: "Roam Research tags",
       description: "Convert #[[tag]] and #[[nested tag]] to Obsidian tags.",
       enabled: true,
-      convert: (source) => replaceAll(source, /#\[\[([^\]]+)\]\]/g, (_match, tag: string) => `#${tag.trim().replace(/\s+/g, "-")}`),
+      convert: (source) =>
+        replaceAll(
+          source,
+          /#\[\[([^\]]+)\]\]/g,
+          (_match, tag: string) => `#${tag.trim().replace(/\s+/g, "-")}`,
+        ),
     },
     {
       id: "roam-highlights",
       name: "Roam highlights",
       description: "Convert ^^highlight^^ to ==highlight==.",
       enabled: true,
-      convert: (source) => replaceAll(source, /\^\^([\s\S]*?)\^\^/g, (_match, text: string) => `==${text}==`),
+      convert: (source) =>
+        replaceAll(source, /\^\^([\s\S]*?)\^\^/g, (_match, text: string) => `==${text}==`),
     },
     {
       id: "roam-todos",
       name: "Roam todos",
       description: "Convert Roam TODO/DONE markers to Markdown task checkboxes.",
       enabled: true,
-      convert: (source) => replaceAll(source, /\{\{\[\[(TODO|DONE)\]\]\}\}/g, (_match, state: string) => state === "DONE" ? "[x]" : "[ ]"),
+      convert: (source) =>
+        replaceAll(source, /\{\{\[\[(TODO|DONE)\]\]\}\}/g, (_match, state: string) =>
+          state === "DONE" ? "[x]" : "[ ]",
+        ),
     },
     {
       id: "bear-highlights",
       name: "Bear highlights",
       description: "Convert ::highlight:: to ==highlight==.",
       enabled: true,
-      convert: (source) => replaceAll(source, /::([^:\n][\s\S]*?[^:\n])::/g, (_match, text: string) => `==${text}==`),
+      convert: (source) =>
+        replaceAll(source, /::([^:\n][\s\S]*?[^:\n])::/g, (_match, text: string) => `==${text}==`),
     },
     {
       id: "zettelkasten-links",
       name: "Zettelkasten links",
       description: "Convert [[UID Title]] links into [[UID Title|Title]] aliases.",
       enabled: false,
-      convert: (source) => replaceAll(source, /\[\[((?:\d{8,14})\s+([^\]|#]+))\]\]/g, (_match, full: string, title: string) => `[[${full}|${title.trim()}]]`),
+      convert: (source) =>
+        replaceAll(
+          source,
+          /\[\[((?:\d{8,14})\s+([^\]|#]+))\]\]/g,
+          (_match, full: string, title: string) => `[[${full}|${title.trim()}]]`,
+        ),
     },
     {
       id: "frontmatter-tags",
@@ -173,7 +193,11 @@ function createConverters(): MarkdownConverter[] {
   ];
 }
 
-function replaceAll(source: string, pattern: RegExp, replacer: (...args: string[]) => string): MarkdownConversion {
+function replaceAll(
+  source: string,
+  pattern: RegExp,
+  replacer: (...args: string[]) => string,
+): MarkdownConversion {
   let replaced = 0;
   const output = source.replace(pattern, (...args) => {
     replaced += 1;
@@ -187,7 +211,10 @@ function normalizeFrontmatterTags(source: string): MarkdownConversion {
   if (!match) return { output: source, replaced: 0 };
   const body = match[1];
   const next = body.replace(/^tags:\s*([^\n\[\{][^\n]*)$/m, (_line, tags: string) => {
-    const items = tags.split(",").map((tag) => tag.trim()).filter(Boolean);
+    const items = tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
     if (items.length === 0) return "tags: []";
     return `tags:\n${items.map((tag) => `  - ${tag}`).join("\n")}`;
   });
@@ -211,7 +238,9 @@ export function createMarkdownImporterPluginDefinition(): InternalPluginDefiniti
         icon: "lucide-import",
         callback: () => controller?.open(),
       });
-      plugin.registerRibbonItem("Open Markdown converter", "lucide-import", () => controller?.open());
+      plugin.registerRibbonItem("Open Markdown converter", "lucide-import", () =>
+        controller?.open(),
+      );
     },
   };
 }

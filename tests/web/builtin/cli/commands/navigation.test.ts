@@ -83,7 +83,9 @@ describe("random:read", () => {
 
   it("returns the soft-failure string on an empty folder", async () => {
     const app = await seededApp();
-    expect(await app.cli.handleCli(["random:read", "folder=Nope"])).toBe("No markdown files found.");
+    expect(await app.cli.handleCli(["random:read", "folder=Nope"])).toBe(
+      "No markdown files found.",
+    );
   });
 });
 
@@ -156,20 +158,26 @@ describe("tab:open", () => {
   it("file= beats view= when both are given", async () => {
     const app = await seededApp();
     await app.cli.handleCli(["random", "folder=Folder"]);
-    expect(await app.cli.handleCli(["tab:open", "file=Note.md", "view=graph"])).toBe("Opened: Note.md");
+    expect(await app.cli.handleCli(["tab:open", "file=Note.md", "view=graph"])).toBe(
+      "Opened: Note.md",
+    );
   });
 
   it("view= sets the view state without validating the type", async () => {
     const app = await seededApp();
     await app.cli.handleCli(["random"]);
-    expect(await app.cli.handleCli(["tab:open", "view=some-unregistered-view"])).toBe("Opened view: some-unregistered-view");
+    expect(await app.cli.handleCli(["tab:open", "view=some-unregistered-view"])).toBe(
+      "Opened view: some-unregistered-view",
+    );
   });
 
   it("throws the not-found string for a missing file — and still leaves the orphan tab", async () => {
     const app = await seededApp();
     await app.cli.handleCli(["random"]);
     const before = leafCount(app);
-    await expect(app.cli.handleCli(["tab:open", "file=Nope.md"])).rejects.toBe('File "Nope.md" not found.');
+    await expect(app.cli.handleCli(["tab:open", "file=Nope.md"])).rejects.toBe(
+      'File "Nope.md" not found.',
+    );
     // Real gotcha: the leaf is created before file validation.
     expect(leafCount(app)).toBe(before + 1);
   });
@@ -177,7 +185,9 @@ describe("tab:open", () => {
   it("throws the folder string when file= points at a folder", async () => {
     const app = await seededApp();
     await app.cli.handleCli(["random"]);
-    await expect(app.cli.handleCli(["tab:open", "file=Folder"])).rejects.toBe('"Folder" is a folder, not a file.');
+    await expect(app.cli.handleCli(["tab:open", "file=Folder"])).rejects.toBe(
+      '"Folder" is a folder, not a file.',
+    );
   });
 
   it("group= targets the matching tab group; unknown ids throw", async () => {
@@ -203,7 +213,9 @@ describe("workspace", () => {
   it("renders the ascii tree of leaves under their containers", async () => {
     const app = await seededApp();
     await app.cli.handleCli(["random"]);
-    expect(await app.cli.handleCli(["workspace"])).toMatch(/^main\n└── tabs\n {4}└── \[markdown\] (Note|Sub)\nleft\nright$/);
+    expect(await app.cli.handleCli(["workspace"])).toMatch(
+      /^main\n└── tabs\n {4}└── \[markdown\] (Note|Sub)\nleft\nright$/,
+    );
   });
 
   it("ids decorates every item with a parenthesized id", async () => {

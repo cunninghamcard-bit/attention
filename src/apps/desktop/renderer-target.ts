@@ -10,9 +10,7 @@
 export const APP_ORIGIN = "app://obsidian.md/";
 export const APP_INDEX_URL = `${APP_ORIGIN}index.html`;
 
-export function resolveRendererUrl(
-  env: NodeJS.ProcessEnv = process.env,
-): string {
+export function resolveRendererUrl(env: NodeJS.ProcessEnv = process.env): string {
   const devUrl = env.ELECTRON_RENDERER_URL;
   if (devUrl && devUrl.length > 0) return devUrl;
   return APP_INDEX_URL;
@@ -23,16 +21,12 @@ export function resolveRendererUrl(
  * resolution as the index: Vite dev server page in development, `app://` in
  * production (starter.html is a second Vite entry).
  */
-export function resolveStarterUrl(
-  env: NodeJS.ProcessEnv = process.env,
-): string {
+export function resolveStarterUrl(env: NodeJS.ProcessEnv = process.env): string {
   const devUrl = env.ELECTRON_RENDERER_URL;
   if (devUrl && devUrl.length > 0) return new URL("starter.html", devUrl).href;
   return `${APP_ORIGIN}starter.html`;
 }
 
-export function isDevRendererTarget(
-  env: NodeJS.ProcessEnv = process.env,
-): boolean {
+export function isDevRendererTarget(env: NodeJS.ProcessEnv = process.env): boolean {
   return Boolean(env.ELECTRON_RENDERER_URL);
 }

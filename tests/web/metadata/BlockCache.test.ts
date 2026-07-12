@@ -1,12 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { MarkdownBlockCache, computeBlockIdInsertion, createBlockId } from "@web/metadata/BlockCache";
+import {
+  MarkdownBlockCache,
+  computeBlockIdInsertion,
+  createBlockId,
+} from "@web/metadata/BlockCache";
 import { Vault, type VaultAdapter } from "@web/vault/Vault";
 
 describe("BlockCache", () => {
   it("builds markdown block records from content and caches by file object plus mtime", async () => {
     const adapter = new TimestampedAdapter();
     const vault = new Vault(adapter);
-    const file = await vault.create("Note.md", "---\ntags: [skip]\n---\n# Heading ^head-id\n\nParagraph text\n^para-id\n\n- First item ^item-id\n- Second item");
+    const file = await vault.create(
+      "Note.md",
+      "---\ntags: [skip]\n---\n# Heading ^head-id\n\nParagraph text\n^para-id\n\n- First item ^item-id\n- Second item",
+    );
     const blockCache = new MarkdownBlockCache(vault);
 
     const first = await blockCache.getForFile(null, file);
@@ -52,18 +59,28 @@ describe("BlockCache", () => {
     const paragraph = record?.blocks.find((block) => block.node.type === "paragraph");
     const parent = record?.blocks.find((block) => block.display === "Parent");
 
-    expect(paragraph && computeBlockIdInsertion({ content: record?.content ?? "", node: paragraph.node }, "abc123")).toMatchObject({
+    expect(
+      paragraph &&
+        computeBlockIdInsertion({ content: record?.content ?? "", node: paragraph.node }, "abc123"),
+    ).toMatchObject({
       addition: " ^abc123",
       newlines: 0,
     });
-    expect(heading && computeBlockIdInsertion({ content: record?.content ?? "", node: heading.node }, "def456")).toMatchObject({
+    expect(
+      heading &&
+        computeBlockIdInsertion({ content: record?.content ?? "", node: heading.node }, "def456"),
+    ).toMatchObject({
       addition: "\n\n^def456",
       newlines: 2,
     });
 
-    const parentInsertion = parent && computeBlockIdInsertion({ content: record?.content ?? "", node: parent.node }, "fedcba");
+    const parentInsertion =
+      parent &&
+      computeBlockIdInsertion({ content: record?.content ?? "", node: parent.node }, "fedcba");
     expect(parentInsertion?.addition).toBe(" ^fedcba");
-    expect(record?.content.slice(parentInsertion?.blockEnd, parentInsertion?.blockEnd + 10)).toBe("\n  - Child");
+    expect(record?.content.slice(parentInsertion?.blockEnd, parentInsertion?.blockEnd + 10)).toBe(
+      "\n  - Child",
+    );
   });
 
   it("generates lowercase hexadecimal block ids", () => {
@@ -86,7 +103,11 @@ class TimestampedAdapter implements VaultAdapter {
 
   async writeBinary(path: string, data: ArrayBuffer): Promise<void> {
     this.clock += 1;
-    this.files.set(path, { data: `[binary:${data.byteLength}]`, mtime: this.clock, size: data.byteLength });
+    this.files.set(path, {
+      data: `[binary:${data.byteLength}]`,
+      mtime: this.clock,
+      size: data.byteLength,
+    });
   }
 
   async delete(path: string): Promise<void> {

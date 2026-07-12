@@ -59,14 +59,20 @@ describe("Obsidian workspace DOM structure", () => {
     expect(document.body.querySelectorAll(":scope > .app-container")).toHaveLength(1);
     expect(app.windowManager.getActiveWindow()?.win).toBe(window);
     expect(app.windowManager.getActiveWindow()?.workspaceWindow).toBeNull();
-    expect(["mod-macos", "mod-windows", "mod-linux"].some((cls) => document.body.classList.contains(cls))).toBe(true);
+    expect(
+      ["mod-macos", "mod-windows", "mod-linux"].some((cls) =>
+        document.body.classList.contains(cls),
+      ),
+    ).toBe(true);
     expect(app.frameDom.titleBarEl.className).toBe("titlebar");
     expect(app.frameDom.titleBarInnerEl.parentElement).toBe(app.frameDom.titleBarEl);
     expect(app.frameDom.titleBarInnerEl.className).toBe("titlebar-inner");
     expect(app.frameDom.titleBarTextEl.className).toBe("titlebar-text");
     expect(app.frameDom.titleBarTextEl.textContent).toBe("Obsidian");
     expect(app.frameDom.leftButtonContainerEl.className).toBe("titlebar-button-container mod-left");
-    expect(app.frameDom.rightButtonContainerEl.className).toBe("titlebar-button-container mod-right");
+    expect(app.frameDom.rightButtonContainerEl.className).toBe(
+      "titlebar-button-container mod-right",
+    );
     expect(app.dom.appContainerEl.previousElementSibling).toBe(app.frameDom.titleBarEl);
   });
 
@@ -156,7 +162,10 @@ describe("Obsidian workspace DOM structure", () => {
       expect(electronWindow.unmaximize).toHaveBeenCalledOnce();
       expect(electronWindow.close).toHaveBeenCalledOnce();
     } finally {
-      Object.defineProperty(window.navigator, "platform", { configurable: true, value: previousPlatform });
+      Object.defineProperty(window.navigator, "platform", {
+        configurable: true,
+        value: previousPlatform,
+      });
       win.electronWindow = previousElectronWindow;
     }
   });
@@ -181,44 +190,77 @@ describe("Obsidian workspace DOM structure", () => {
     expect(children[2]).toBe(app.workspace.rootSplit.containerEl);
     expect(children[3]).toBe(app.workspace.rightSplit.containerEl);
     expect(children[4]).toBe(app.workspace.rightRibbon.containerEl);
-    expect(app.workspace.leftRibbon.containerEl.className).toContain("workspace-ribbon side-dock-ribbon");
-    expect(app.workspace.leftSidebarToggleButtonEl.className).toBe("sidebar-toggle-button mod-left");
-    expect(app.workspace.leftRibbon.containerEl.contains(app.workspace.leftSidebarToggleButtonEl)).toBe(false);
+    expect(app.workspace.leftRibbon.containerEl.className).toContain(
+      "workspace-ribbon side-dock-ribbon",
+    );
+    expect(app.workspace.leftSidebarToggleButtonEl.className).toBe(
+      "sidebar-toggle-button mod-left",
+    );
+    expect(
+      app.workspace.leftRibbon.containerEl.contains(app.workspace.leftSidebarToggleButtonEl),
+    ).toBe(false);
     const leftToggleParent = app.workspace.leftSidebarToggleButtonEl.parentElement;
     expect(leftToggleParent?.classList.contains("workspace-tab-header-container")).toBe(true);
     expect(leftToggleParent?.contains(app.workspace.leftSidebarToggleButtonEl)).toBe(true);
     expect(app.workspace.leftRibbon.containerEl.classList.contains("mod-left")).toBe(true);
-    expect(app.workspace.leftRibbon.containerEl.querySelector(":scope > .side-dock-actions")).toBeTruthy();
-    expect(app.workspace.leftRibbon.containerEl.querySelector(":scope > .side-dock-settings")).toBeTruthy();
+    expect(
+      app.workspace.leftRibbon.containerEl.querySelector(":scope > .side-dock-actions"),
+    ).toBeTruthy();
+    expect(
+      app.workspace.leftRibbon.containerEl.querySelector(":scope > .side-dock-settings"),
+    ).toBeTruthy();
     expect(app.workspace.rightRibbon.containerEl.classList.contains("mod-right")).toBe(true);
     expect(app.workspace.rightRibbon.containerEl.hasAttribute("hidden")).toBe(false);
-    expect(app.workspace.rightSidebarToggleButtonEl.className).toBe("sidebar-toggle-button mod-right");
-    expect(app.workspace.rightRibbon.containerEl.contains(app.workspace.rightSidebarToggleButtonEl)).toBe(false);
+    expect(app.workspace.rightSidebarToggleButtonEl.className).toBe(
+      "sidebar-toggle-button mod-right",
+    );
+    expect(
+      app.workspace.rightRibbon.containerEl.contains(app.workspace.rightSidebarToggleButtonEl),
+    ).toBe(false);
     expect(app.workspace.leftSplit.containerEl.classList.contains("workspace-split")).toBe(true);
     expect(app.workspace.leftSplit.containerEl.classList.contains("mod-sidedock")).toBe(true);
     expect(app.workspace.leftSplit.containerEl.classList.contains("mod-left-split")).toBe(true);
     expect(app.workspace.rightSplit.containerEl.classList.contains("mod-right-split")).toBe(true);
     expect(app.workspace.rootSplit.containerEl.classList.contains("mod-root")).toBe(true);
-    expect(app.workspace.rootSplit.containerEl.firstElementChild).toBe(app.workspace.rootSplit.resizeHandleEl);
+    expect(app.workspace.rootSplit.containerEl.firstElementChild).toBe(
+      app.workspace.rootSplit.resizeHandleEl,
+    );
     expect(app.workspace.leftSplit.collapsed).toBe(false);
     expect(app.workspace.containerEl.classList.contains("is-left-sidedock-open")).toBe(true);
     expect(app.workspace.rightSplit.collapsed).toBe(true);
     expect(app.workspace.containerEl.classList.contains("is-right-sidedock-open")).toBe(false);
-    expect(app.workspace.leftSplit.containerEl.querySelector(".workspace-sidedock-empty-state > p.u-muted")?.textContent).toBe("No views");
+    expect(
+      app.workspace.leftSplit.containerEl.querySelector(
+        ".workspace-sidedock-empty-state > p.u-muted",
+      )?.textContent,
+    ).toBe("No views");
     const rightToggleParent = app.workspace.rightSidebarToggleButtonEl.parentElement;
     expect(rightToggleParent?.classList.contains("workspace-tab-header-container")).toBe(true);
 
     const leftSplit = app.workspace.leftSplit;
-    if (!(leftSplit instanceof WorkspaceSidedock)) throw new Error("Expected desktop left sidedock");
+    if (!(leftSplit instanceof WorkspaceSidedock))
+      throw new Error("Expected desktop left sidedock");
     Object.defineProperty(app.workspace.containerEl, "clientWidth", {
       configurable: true,
       value: 1000,
     });
     Object.defineProperty(leftSplit.containerEl, "getBoundingClientRect", {
       configurable: true,
-      value: () => ({ width: 300, height: 500, x: 0, y: 0, top: 0, left: 0, right: 300, bottom: 500, toJSON: () => ({}) }),
+      value: () => ({
+        width: 300,
+        height: 500,
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: 300,
+        bottom: 500,
+        toJSON: () => ({}),
+      }),
     });
-    leftSplit.resizeHandleEl.dispatchEvent(new MouseEvent("mousedown", { button: 0, clientX: 300, bubbles: true, cancelable: true }));
+    leftSplit.resizeHandleEl.dispatchEvent(
+      new MouseEvent("mousedown", { button: 0, clientX: 300, bubbles: true, cancelable: true }),
+    );
     window.dispatchEvent(new MouseEvent("mousemove", { clientX: 360 }));
     window.dispatchEvent(new MouseEvent("mouseup"));
 
@@ -254,7 +296,8 @@ describe("Obsidian workspace DOM structure", () => {
     await app.ready;
     const rootLeaf = app.workspace.getMostRecentLeaf(app.workspace.rootSplit);
     const leftSplit = app.workspace.leftSplit;
-    if (!(leftSplit instanceof WorkspaceSidedock) || !rootLeaf) throw new Error("Expected desktop root and sidedock");
+    if (!(leftSplit instanceof WorkspaceSidedock) || !rootLeaf)
+      throw new Error("Expected desktop root and sidedock");
     const sideLeaf = app.workspace.getLeftLeaf();
     if (!sideLeaf) throw new Error("Expected side leaf");
     app.workspace.setActiveLeaf(sideLeaf);
@@ -271,15 +314,19 @@ describe("Obsidian workspace DOM structure", () => {
     await app.ready;
     await app.vault.createFolder("Folder");
     await app.vault.create("Folder/Note.md", "Body");
-    (app.vault.adapter as { getBasePath?: () => string }).getBasePath = () => "/Users/example/Vault";
+    (app.vault.adapter as { getBasePath?: () => string }).getBasePath = () =>
+      "/Users/example/Vault";
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: { writeText: vi.fn().mockResolvedValue(undefined) },
     });
     const showInFolder = vi.spyOn(app, "showInFolder").mockImplementation(() => undefined);
     const leftSplit = app.workspace.leftSplit;
-    if (!(leftSplit instanceof WorkspaceSidedock)) throw new Error("Expected desktop left sidedock");
-    const switcherEl = leftSplit.containerEl.querySelector<HTMLElement>(".workspace-drawer-vault-switcher");
+    if (!(leftSplit instanceof WorkspaceSidedock))
+      throw new Error("Expected desktop left sidedock");
+    const switcherEl = leftSplit.containerEl.querySelector<HTMLElement>(
+      ".workspace-drawer-vault-switcher",
+    );
     const nameEl = leftSplit.containerEl.querySelector<HTMLElement>(".workspace-drawer-vault-name");
     if (!switcherEl || !nameEl) throw new Error("Expected vault profile");
 
@@ -288,39 +335,64 @@ describe("Obsidian workspace DOM structure", () => {
     expect(nameEl.getAttribute("aria-label")).toContain("/Users/example/Vault");
     expect(nameEl.getAttribute("aria-label")).toContain("1 file, 1 folder");
 
-    switcherEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 20 }));
+    switcherEl.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 20 }),
+    );
     await vi.waitFor(() => expect(document.body.querySelector(".menu")).toBeTruthy());
     const menuTitles = Array.from(document.body.querySelectorAll<HTMLElement>(".menu-item-title"));
     const showTitle = menuTitles.find((el) => el.textContent === "Show in folder");
     const copyTitle = menuTitles.find((el) => el.textContent === "Copy path");
     if (!showTitle || !copyTitle) throw new Error("Expected vault profile menu items");
 
-    showTitle.closest<HTMLElement>(".menu-item")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    showTitle
+      .closest<HTMLElement>(".menu-item")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(showInFolder).toHaveBeenCalledWith("");
 
-    switcherEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 20 }));
+    switcherEl.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 20 }),
+    );
     await vi.waitFor(() => expect(document.body.querySelector(".menu")).toBeTruthy());
-    const copyMenuTitle = Array.from(document.body.querySelectorAll<HTMLElement>(".menu-item-title")).find((el) => el.textContent === "Copy path");
-    copyMenuTitle?.closest<HTMLElement>(".menu-item")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    const copyMenuTitle = Array.from(
+      document.body.querySelectorAll<HTMLElement>(".menu-item-title"),
+    ).find((el) => el.textContent === "Copy path");
+    copyMenuTitle
+      ?.closest<HTMLElement>(".menu-item")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
-    await vi.waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith("/Users/example/Vault"));
+    await vi.waitFor(() =>
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith("/Users/example/Vault"),
+    );
   });
 
   it("clamps sidedock resizing to Obsidian's workspace-relative bounds", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
     const leftSplit = app.workspace.leftSplit;
-    if (!(leftSplit instanceof WorkspaceSidedock)) throw new Error("Expected desktop left sidedock");
+    if (!(leftSplit instanceof WorkspaceSidedock))
+      throw new Error("Expected desktop left sidedock");
     Object.defineProperty(app.workspace.containerEl, "clientWidth", {
       configurable: true,
       value: 500,
     });
     Object.defineProperty(leftSplit.containerEl, "getBoundingClientRect", {
       configurable: true,
-      value: () => ({ width: 300, height: 500, x: 0, y: 0, top: 0, left: 0, right: 300, bottom: 500, toJSON: () => ({}) }),
+      value: () => ({
+        width: 300,
+        height: 500,
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: 300,
+        bottom: 500,
+        toJSON: () => ({}),
+      }),
     });
 
-    leftSplit.resizeHandleEl.dispatchEvent(new MouseEvent("mousedown", { button: 0, clientX: 300, bubbles: true, cancelable: true }));
+    leftSplit.resizeHandleEl.dispatchEvent(
+      new MouseEvent("mousedown", { button: 0, clientX: 300, bubbles: true, cancelable: true }),
+    );
     window.dispatchEvent(new MouseEvent("mousemove", { clientX: 900 }));
     window.dispatchEvent(new MouseEvent("mouseup"));
 
@@ -332,7 +404,8 @@ describe("Obsidian workspace DOM structure", () => {
     const app = new App(document.createElement("div"));
     await app.ready;
     const rightSplit = app.workspace.rightSplit;
-    if (!(rightSplit instanceof WorkspaceSidedock)) throw new Error("Expected desktop right sidedock");
+    if (!(rightSplit instanceof WorkspaceSidedock))
+      throw new Error("Expected desktop right sidedock");
     for (const child of [...rightSplit.children]) rightSplit.removeChild(child);
     app.workspace.updateLayout();
 
@@ -362,10 +435,22 @@ describe("Obsidian workspace DOM structure", () => {
   it("keeps hidden ribbon actions in DOM order while toggling display", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const hiddenButton = app.workspace.leftRibbon.addRibbonIcon("lucide-star", "Hidden action", () => {}, "hidden-action");
-    const visibleButton = app.workspace.leftRibbon.addRibbonIcon("lucide-search", "Visible action", () => {}, "visible-action");
+    const hiddenButton = app.workspace.leftRibbon.addRibbonIcon(
+      "lucide-star",
+      "Hidden action",
+      () => {},
+      "hidden-action",
+    );
+    const visibleButton = app.workspace.leftRibbon.addRibbonIcon(
+      "lucide-search",
+      "Visible action",
+      () => {},
+      "visible-action",
+    );
 
-    app.workspace.leftRibbon.load({ hiddenItems: { "hidden-action": true, "visible-action": false } });
+    app.workspace.leftRibbon.load({
+      hiddenItems: { "hidden-action": true, "visible-action": false },
+    });
 
     const actions = Array.from(app.workspace.leftRibbon.actionsEl?.children ?? []);
     expect(actions).toContain(hiddenButton);
@@ -381,19 +466,32 @@ describe("Obsidian workspace DOM structure", () => {
   it("opens the Obsidian ribbon context menu for hidden actions and hiding the ribbon", async () => {
     const app = new App(document.body.appendChild(document.createElement("div")));
     await app.ready;
-    const button = app.workspace.leftRibbon.addRibbonIcon("lucide-star", "Toggle action", () => {}, "toggle-action");
+    const button = app.workspace.leftRibbon.addRibbonIcon(
+      "lucide-star",
+      "Toggle action",
+      () => {},
+      "toggle-action",
+    );
 
-    app.workspace.leftRibbon.containerEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
-    const actionItem = [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
-      .find((item) => item.textContent?.includes("Toggle action"));
-    const hideRibbonItem = [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
-      .find((item) => item.textContent?.includes("Hide ribbon"));
+    app.workspace.leftRibbon.containerEl.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true }),
+    );
+    const actionItem = [...document.body.querySelectorAll<HTMLElement>(".menu-item")].find((item) =>
+      item.textContent?.includes("Toggle action"),
+    );
+    const hideRibbonItem = [...document.body.querySelectorAll<HTMLElement>(".menu-item")].find(
+      (item) => item.textContent?.includes("Hide ribbon"),
+    );
 
     expect(actionItem?.classList.contains("mod-checked")).toBe(true);
     actionItem?.click();
 
     expect(button.style.display).toBe("none");
-    expect((app.workspace.leftRibbon.serialize().hiddenItems as Record<string, boolean>)["toggle-action"]).toBe(true);
+    expect(
+      (app.workspace.leftRibbon.serialize().hiddenItems as Record<string, boolean>)[
+        "toggle-action"
+      ],
+    ).toBe(true);
 
     hideRibbonItem?.click();
 
@@ -416,7 +514,9 @@ describe("Obsidian workspace DOM structure", () => {
     const childCount = tabs.children.length;
     tabs.newTabButtonEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     expect(tabs.children).toHaveLength(childCount);
-    tabs.newTabButtonIconEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    tabs.newTabButtonIconEl.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
     expect(tabs.children).toHaveLength(childCount + 1);
     expect(tabs.tabListEl.firstElementChild?.tagName).toBe("SPAN");
     expect(tabs.tabsContainerEl.parentElement).toBe(tabs.containerEl);
@@ -448,7 +548,9 @@ describe("Obsidian workspace DOM structure", () => {
     expect(itemView.actionsEl.className).toBe("view-actions");
     expect(itemView.moreOptionsButtonEl.tagName).toBe("BUTTON");
     expect(itemView.moreOptionsButtonEl.className).toBe("clickable-icon view-action");
-    expect(itemView.moreOptionsButtonEl.firstElementChild?.classList.contains("lucide-more-vertical")).toBe(true);
+    expect(
+      itemView.moreOptionsButtonEl.firstElementChild?.classList.contains("lucide-more-vertical"),
+    ).toBe(true);
   });
 
   it("resynchronizes the active tab group during layout updates", async () => {
@@ -536,7 +638,9 @@ describe("Obsidian workspace DOM structure", () => {
     drawer.appendChild(second, false);
 
     expect(drawer.tabOptionsEl.parentElement).toBe(drawer.activeTabContainerEl);
-    expect(drawer.activeTabHeaderEl.className).toBe("workspace-tab-header workspace-drawer-tab-select");
+    expect(drawer.activeTabHeaderEl.className).toBe(
+      "workspace-tab-header workspace-drawer-tab-select",
+    );
     expect(drawer.activeTabHeaderEl.getAttribute("data-ignore-swipe")).toBe("true");
     expect(drawer.activeTabHeaderInnerEl.className).toBe("workspace-tab-header-inner");
     expect(drawer.activeTabHeaderIconEl.className).toBe("workspace-tab-header-inner-icon");

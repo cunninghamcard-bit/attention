@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  APP_INDEX_URL,
-  isDevRendererTarget,
-  resolveRendererUrl,
-} from "@desktop/renderer-target";
+import { APP_INDEX_URL, isDevRendererTarget, resolveRendererUrl } from "@desktop/renderer-target";
 
 describe("resolveRendererUrl", () => {
   it("uses the Vite dev server URL when ELECTRON_RENDERER_URL is set", () => {

@@ -7,7 +7,11 @@ import { GraphDataEngine } from "./GraphDataEngine";
 import type { GraphNode } from "./GraphDataEngine";
 import { GraphRenderer } from "./GraphRenderer";
 import type { GraphPluginOptions } from "./GraphOptions";
-import { assignGraphPluginOptions, cloneGraphPluginOptions, createDefaultGraphPluginOptions } from "./GraphOptions";
+import {
+  assignGraphPluginOptions,
+  cloneGraphPluginOptions,
+  createDefaultGraphPluginOptions,
+} from "./GraphOptions";
 import { ensureGraphStyles } from "./GraphStyles";
 
 export interface GraphViewCallbacks {
@@ -29,13 +33,19 @@ export class GraphView extends ItemView {
   protected local = false;
   protected animating = false;
 
-  constructor(leaf: WorkspaceLeaf, options: GraphPluginOptions = createDefaultGraphPluginOptions(), protected readonly callbacks: GraphViewCallbacks = {}) {
+  constructor(
+    leaf: WorkspaceLeaf,
+    options: GraphPluginOptions = createDefaultGraphPluginOptions(),
+    protected readonly callbacks: GraphViewCallbacks = {},
+  ) {
     super(leaf);
     this.options = options;
     this.dataEngine = new GraphDataEngine(this.app as App);
   }
 
-  getViewType(): string { return "graph"; }
+  getViewType(): string {
+    return "graph";
+  }
 
   getDisplayText(): string {
     return "Graph view";
@@ -48,15 +58,17 @@ export class GraphView extends ItemView {
     this.renderFrame();
     this.registerEvent(this.app.metadataCache.on("changed", () => this.refresh()));
     this.registerEvent(this.app.metadataCache.on("deleted", () => this.refresh()));
-    this.registerEvent(this.app.workspace.on("file-open", () => {
-      if (!this.local) return;
-      const linkedFile = this.getLinkedFile();
-      const nextPath = linkedFile?.path ?? this.options.filterOptions.localFile;
-      if (nextPath === this.options.filterOptions.localFile) return;
-      this.options.filterOptions.localFile = nextPath;
-      this.renderer?.resetPan();
-      this.refresh();
-    }));
+    this.registerEvent(
+      this.app.workspace.on("file-open", () => {
+        if (!this.local) return;
+        const linkedFile = this.getLinkedFile();
+        const nextPath = linkedFile?.path ?? this.options.filterOptions.localFile;
+        if (nextPath === this.options.filterOptions.localFile) return;
+        this.options.filterOptions.localFile = nextPath;
+        this.renderer?.resetPan();
+        this.refresh();
+      }),
+    );
     this.refresh();
   }
 
@@ -104,10 +116,12 @@ export class GraphView extends ItemView {
   }
 
   onMoreOptionsMenu(menu: Menu): void {
-    menu.addItem((item) => item
-      .setTitle("Copy screenshot")
-      .setIcon("lucide-camera")
-      .onClick(() => this.copyScreenshot()));
+    menu.addItem((item) =>
+      item
+        .setTitle("Copy screenshot")
+        .setIcon("lucide-camera")
+        .onClick(() => this.copyScreenshot()),
+    );
   }
 
   protected renderFrame(): void {
@@ -144,7 +158,11 @@ export class GraphView extends ItemView {
     if (this.local && !this.options.filterOptions.localFile) {
       this.options.filterOptions.localFile = this.getLinkedFile()?.path ?? null;
     }
-    const data = this.dataEngine.collect(this.options.filterOptions, this.local, this.options.colorGroups);
+    const data = this.dataEngine.collect(
+      this.options.filterOptions,
+      this.local,
+      this.options.colorGroups,
+    );
     this.renderer.setScale(this.options.scale);
     this.renderer.setRenderOptions(this.options.displayOptions);
     this.renderer.setForces(this.options.forceOptions);
@@ -176,22 +194,36 @@ export class GraphView extends ItemView {
   }
 
   protected openGlobalSearch(query: string): void {
-    void this.app.workspace.ensureSideLeaf("search", "left", { active: true, reveal: true }).then((leaf) => {
-      const view = leaf.view as unknown as { focusSearch?: (query: string) => void };
-      view.focusSearch?.(query);
-    });
+    void this.app.workspace
+      .ensureSideLeaf("search", "left", { active: true, reveal: true })
+      .then((leaf) => {
+        const view = leaf.view as unknown as { focusSearch?: (query: string) => void };
+        view.focusSearch?.(query);
+      });
   }
 
   protected installActions(): void {
-    this.actionsEl.appendChild(this.createActionButton("Search graph", "lucide-search", () => this.showSearch()));
-    this.actionsEl.appendChild(this.createActionButton("Reset graph", "lucide-refresh-cw", () => {
-      this.renderer?.resetPan();
-      this.refresh();
-    }));
-    this.actionsEl.appendChild(this.createActionButton("Copy graph screenshot", "lucide-camera", () => this.copyScreenshot()));
+    this.actionsEl.appendChild(
+      this.createActionButton("Search graph", "lucide-search", () => this.showSearch()),
+    );
+    this.actionsEl.appendChild(
+      this.createActionButton("Reset graph", "lucide-refresh-cw", () => {
+        this.renderer?.resetPan();
+        this.refresh();
+      }),
+    );
+    this.actionsEl.appendChild(
+      this.createActionButton("Copy graph screenshot", "lucide-camera", () =>
+        this.copyScreenshot(),
+      ),
+    );
   }
 
-  protected createActionButton(title: string, icon: string, callback: () => void): HTMLButtonElement {
+  protected createActionButton(
+    title: string,
+    icon: string,
+    callback: () => void,
+  ): HTMLButtonElement {
     const button = document.createElement("button");
     button.className = "view-action clickable-icon";
     button.type = "button";
@@ -211,7 +243,7 @@ export class GraphView extends ItemView {
       const leaves = this.app.workspace.getGroupLeaves(this.leaf.group);
       for (const leaf of leaves) {
         if (leaf === this.leaf) continue;
-        const groupedView = leaf.view as ({ file?: { path: string } | null } | null);
+        const groupedView = leaf.view as { file?: { path: string } | null } | null;
         if (groupedView?.file) return groupedView.file;
       }
     }
@@ -224,12 +256,17 @@ function isModEvent(event: MouseEvent | PointerEvent | undefined): boolean {
 }
 
 export class LocalGraphView extends GraphView {
-  constructor(leaf: WorkspaceLeaf, options: GraphPluginOptions = createDefaultGraphPluginOptions()) {
+  constructor(
+    leaf: WorkspaceLeaf,
+    options: GraphPluginOptions = createDefaultGraphPluginOptions(),
+  ) {
     super(leaf, cloneGraphPluginOptions(options));
     this.local = true;
   }
 
-  getViewType(): string { return "localgraph"; }
+  getViewType(): string {
+    return "localgraph";
+  }
 
   getDisplayText(): string {
     const path = this.options.filterOptions.localFile ?? this.getLinkedFile()?.path;

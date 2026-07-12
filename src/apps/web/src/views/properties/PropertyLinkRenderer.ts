@@ -11,7 +11,12 @@ interface ParsedPropertyLink {
   label: string;
 }
 
-export function renderPropertyLinkValue(value: string, parent: HTMLElement, context: PropertyWidgetContext, options: PropertyLinkRenderOptions = {}): boolean {
+export function renderPropertyLinkValue(
+  value: string,
+  parent: HTMLElement,
+  context: PropertyWidgetContext,
+  options: PropertyLinkRenderOptions = {},
+): boolean {
   const parsed = parsePropertyLink(value);
   if (!parsed || !context.app) return false;
 
@@ -24,19 +29,28 @@ export function renderPropertyLinkValue(value: string, parent: HTMLElement, cont
   linkEl.classList.toggle("internal-link", parsed.internal);
   linkEl.classList.toggle("external-link", parsed.external);
   if (parsed.internal) {
-    const unresolved = !context.app.metadataCache.getFirstLinkpathDest(parsed.href, context.sourcePath ?? "");
+    const unresolved = !context.app.metadataCache.getFirstLinkpathDest(
+      parsed.href,
+      context.sourcePath ?? "",
+    );
     linkEl.classList.toggle("is-unresolved", unresolved);
   }
 
   linkEl.addEventListener("click", (event) => {
     if (event.defaultPrevented) return;
     event.preventDefault();
-    if (parsed.internal) void context.app?.workspace.openLinkText(parsed.href, context.sourcePath ?? "", undefined, { active: !isModEvent(event) });
+    if (parsed.internal)
+      void context.app?.workspace.openLinkText(parsed.href, context.sourcePath ?? "", undefined, {
+        active: !isModEvent(event),
+      });
     else window.open(parsed.href, "_blank");
   });
   linkEl.addEventListener("open-link", (event) => {
     event.preventDefault();
-    if (parsed.internal) void context.app?.workspace.openLinkText(parsed.href, context.sourcePath ?? "", undefined, { active: true });
+    if (parsed.internal)
+      void context.app?.workspace.openLinkText(parsed.href, context.sourcePath ?? "", undefined, {
+        active: true,
+      });
     else window.open(parsed.href, "_blank");
   });
   if (parsed.internal) {
@@ -97,7 +111,8 @@ export function parsePropertyLink(value: string): ParsedPropertyLink | null {
   }
 
   if (isExternalUrl(text)) return { internal: false, external: true, href: text, label: text };
-  if (isEmailAddress(text)) return { internal: false, external: true, href: `mailto:${text}`, label: text };
+  if (isEmailAddress(text))
+    return { internal: false, external: true, href: `mailto:${text}`, label: text };
   return null;
 }
 

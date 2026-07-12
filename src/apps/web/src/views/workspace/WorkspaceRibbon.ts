@@ -24,8 +24,12 @@ export class WorkspaceRibbon {
 
   constructor(parentOrWorkspace: HTMLElement | Workspace, side: "left" | "right" = "left") {
     this.workspace = "requestSaveLayout" in parentOrWorkspace ? parentOrWorkspace : null;
-    const parent = this.workspace ? undefined : parentOrWorkspace as HTMLElement;
-    this.containerEl = createEl("div", ["workspace-ribbon", "side-dock-ribbon", `mod-${side}`], parent);
+    const parent = this.workspace ? undefined : (parentOrWorkspace as HTMLElement);
+    this.containerEl = createEl(
+      "div",
+      ["workspace-ribbon", "side-dock-ribbon", `mod-${side}`],
+      parent,
+    );
     if (side === "left") {
       this.actionsEl = createEl("div", "side-dock-actions", this.containerEl);
       this.settingsEl = createEl("div", "side-dock-settings", this.containerEl);
@@ -33,7 +37,12 @@ export class WorkspaceRibbon {
     this.containerEl.addEventListener("contextmenu", (event) => this.onContextMenu(event));
   }
 
-  addRibbonItemButton(id: string, icon: string, title: string, callback: (event: MouseEvent) => unknown): HTMLElement {
+  addRibbonItemButton(
+    id: string,
+    icon: string,
+    title: string,
+    callback: (event: MouseEvent) => unknown,
+  ): HTMLElement {
     const button = this.makeRibbonItemButton(icon, title, callback);
     this.installRibbonItemDrag(button, id);
     const existing = this.items.find((item) => item.id === id);
@@ -77,7 +86,10 @@ export class WorkspaceRibbon {
   }
 
   private getDraggedRibbonItemId(event: DragEvent): string | null {
-    const id = event.dataTransfer?.getData("application/x-obsidian-ribbon-action") || event.dataTransfer?.getData("text/plain") || this.draggingItemId;
+    const id =
+      event.dataTransfer?.getData("application/x-obsidian-ribbon-action") ||
+      event.dataTransfer?.getData("text/plain") ||
+      this.draggingItemId;
     return id && this.items.some((item) => item.id === id) ? id : null;
   }
 
@@ -95,7 +107,11 @@ export class WorkspaceRibbon {
     this.onChange(true);
   }
 
-  private makeRibbonItemButton(icon: string, title: string, callback: (event: MouseEvent) => unknown): HTMLElement {
+  private makeRibbonItemButton(
+    icon: string,
+    title: string,
+    callback: (event: MouseEvent) => unknown,
+  ): HTMLElement {
     const button = createEl("div", "clickable-icon side-dock-ribbon-action");
     // Real ribbon buttons use the app tooltip (placement right), never the
     // native title attribute — that pops the delayed OS tooltip in the wrong
@@ -106,12 +122,26 @@ export class WorkspaceRibbon {
     return button;
   }
 
-  addRibbonIcon(icon: string, title: string, callback: (event: MouseEvent) => unknown, id = title): HTMLElement {
+  addRibbonIcon(
+    icon: string,
+    title: string,
+    callback: (event: MouseEvent) => unknown,
+    id = title,
+  ): HTMLElement {
     return this.addRibbonItemButton(id, icon, title, callback);
   }
 
-  addRibbonSettingButton(id: string, icon: string, title: string, callback: (event: MouseEvent) => unknown): HTMLElement {
-    const button = createEl("div", "clickable-icon side-dock-ribbon-action", this.settingsEl ?? this.containerEl);
+  addRibbonSettingButton(
+    id: string,
+    icon: string,
+    title: string,
+    callback: (event: MouseEvent) => unknown,
+  ): HTMLElement {
+    const button = createEl(
+      "div",
+      "clickable-icon side-dock-ribbon-action",
+      this.settingsEl ?? this.containerEl,
+    );
     setTooltip(button, title, { placement: "right" });
     setIcon(button, icon);
     button.addEventListener("click", callback);
@@ -142,7 +172,11 @@ export class WorkspaceRibbon {
   }
 
   load(state: unknown): void {
-    if (!state || typeof state !== "object" || !Object.prototype.hasOwnProperty.call(state, "hiddenItems")) {
+    if (
+      !state ||
+      typeof state !== "object" ||
+      !Object.prototype.hasOwnProperty.call(state, "hiddenItems")
+    ) {
       this.onChange(false);
       return;
     }
@@ -184,21 +218,25 @@ export class WorkspaceRibbon {
     const menu = new Menu(this.containerEl.ownerDocument);
     for (const item of this.items) {
       if (!item.buttonEl) continue;
-      menu.addItem((menuItem) => menuItem
-        .setSection("order")
-        .setTitle(item.title)
-        .setIcon(item.icon)
-        .setChecked(!item.hidden)
-        .onClick(() => {
-          item.hidden = !item.hidden;
-          this.onChange(true);
-        }));
+      menu.addItem((menuItem) =>
+        menuItem
+          .setSection("order")
+          .setTitle(item.title)
+          .setIcon(item.icon)
+          .setChecked(!item.hidden)
+          .onClick(() => {
+            item.hidden = !item.hidden;
+            this.onChange(true);
+          }),
+      );
     }
-    menu.addItem((item) => item
-      .setSection("ribbon")
-      .setTitle("Hide ribbon")
-      .setIcon("lucide-panel-left-close")
-      .onClick(() => this.workspace?.app.vault.setConfig("showRibbon", false)));
+    menu.addItem((item) =>
+      item
+        .setSection("ribbon")
+        .setTitle("Hide ribbon")
+        .setIcon("lucide-panel-left-close")
+        .onClick(() => this.workspace?.app.vault.setConfig("showRibbon", false)),
+    );
     menu.showAtMouseEvent(event);
   }
 }

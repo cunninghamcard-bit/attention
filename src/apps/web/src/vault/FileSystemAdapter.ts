@@ -1,4 +1,10 @@
-import { DataAdapter, type DataAdapterWatchHandler, type DataWriteOptions, type ListedFiles, type Stat } from "./DataAdapter";
+import {
+  DataAdapter,
+  type DataAdapterWatchHandler,
+  type DataWriteOptions,
+  type ListedFiles,
+  type Stat,
+} from "./DataAdapter";
 import { Platform } from "../platform/Platform";
 
 type FileSystemModule = {
@@ -9,7 +15,10 @@ type FileSystemModule = {
   readFile(path: string): Promise<Uint8Array>;
   readdir(path: string, options: { withFileTypes: true }): Promise<DirEntry[]>;
   rename(oldPath: string, newPath: string): Promise<void>;
-  rm(path: string, options?: { force?: boolean; maxRetries?: number; recursive?: boolean }): Promise<void>;
+  rm(
+    path: string,
+    options?: { force?: boolean; maxRetries?: number; recursive?: boolean },
+  ): Promise<void>;
   rmdir(path: string): Promise<void>;
   stat(path: string): Promise<FileSystemStat>;
   unlink(path: string): Promise<void>;
@@ -19,7 +28,11 @@ type FileSystemModule = {
 };
 
 type WatchModule = {
-  watch(path: string, options: { recursive?: boolean }, listener: (eventType: string, filename: unknown) => void): FileSystemWatcher;
+  watch(
+    path: string,
+    options: { recursive?: boolean },
+    listener: (eventType: string, filename: unknown) => void,
+  ): FileSystemWatcher;
 };
 
 type PathModule = {
@@ -101,7 +114,9 @@ export const VAULT_INDEX_SKIP_NAMES = new Set([
 /** True when any path segment is a known heavy/generated directory. */
 export function isVaultIndexSkippedPath(path: string): boolean {
   if (!path || path === "/" || path === ".") return false;
-  return path.split("/").some((segment) => segment.length > 0 && VAULT_INDEX_SKIP_NAMES.has(segment));
+  return path
+    .split("/")
+    .some((segment) => segment.length > 0 && VAULT_INDEX_SKIP_NAMES.has(segment));
 }
 
 const RECONCILE_CONCURRENCY = 24;
@@ -135,7 +150,9 @@ export class FileSystemAdapter extends DataAdapter {
 
   getFullPath(path: string): string {
     const realPath = this.getRealPath(path);
-    return realPath !== "/" && isFullFilesystemPath(realPath) ? realPath : this.getFullRealPath(realPath);
+    return realPath !== "/" && isFullFilesystemPath(realPath)
+      ? realPath
+      : this.getFullRealPath(realPath);
   }
 
   private getFullRealPath(path: string): string {
@@ -146,7 +163,11 @@ export class FileSystemAdapter extends DataAdapter {
 
   private getRealPath(path: string): string {
     const normalized = normalizeVaultPath(path);
-    for (let parentPath: string | null = normalized; parentPath; parentPath = getParentVaultPath(parentPath)) {
+    for (
+      let parentPath: string | null = normalized;
+      parentPath;
+      parentPath = getParentVaultPath(parentPath)
+    ) {
       const entry = this.files.get(parentPath);
       if (!entry) continue;
       return `${entry.realpath}${normalized.slice(parentPath.length)}`;
@@ -155,7 +176,12 @@ export class FileSystemAdapter extends DataAdapter {
   }
 
   override getName(): string {
-    return this.basePath.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || this.basePath;
+    return (
+      this.basePath
+        .replace(/[\\/]+$/, "")
+        .split(/[\\/]/)
+        .pop() || this.basePath
+    );
   }
 
   getBasePath(): string {
@@ -172,7 +198,8 @@ export class FileSystemAdapter extends DataAdapter {
     const version = entry?.type === "file" && entry.mtime ? entry.mtime : Date.now();
     let resourcePath = this.getFilePath(normalized);
     if (resourcePath.startsWith("file:///")) resourcePath = resourcePath.substring(8);
-    else if (resourcePath.startsWith("file://")) resourcePath = `%5C%5C${resourcePath.substring(7)}`;
+    else if (resourcePath.startsWith("file://"))
+      resourcePath = `%5C%5C${resourcePath.substring(7)}`;
     return `${Platform.resourcePathPrefix}${resourcePath}?${version}`;
   }
 
@@ -181,7 +208,12 @@ export class FileSystemAdapter extends DataAdapter {
     if (!fullPath) return null;
     const base = normalizeFilesystemPath(this.basePath);
     const candidate = normalizeFilesystemPath(fullPath);
-    const relative = candidate === base ? "" : candidate.startsWith(`${base}/`) ? candidate.slice(base.length + 1) : null;
+    const relative =
+      candidate === base
+        ? ""
+        : candidate.startsWith(`${base}/`)
+          ? candidate.slice(base.length + 1)
+          : null;
     return relative === null ? null : normalizeVaultPath(relative);
   }
 
@@ -239,7 +271,7 @@ export class FileSystemAdapter extends DataAdapter {
   async exists(path: string, sensitive = false): Promise<boolean> {
     const { fs, path: pathModule } = await this.loadDesktopModules();
     const fullPath = this.getFullPath(path);
-    if (!await this.existsFullPath(fullPath, fs)) return false;
+    if (!(await this.existsFullPath(fullPath, fs))) return false;
     if (!sensitive) return true;
     try {
       const entries = await fs.readdir(pathModule.dirname(fullPath), { withFileTypes: true });
@@ -264,7 +296,11 @@ export class FileSystemAdapter extends DataAdapter {
     await this.write(path, `${await this.read(path)}${data}`, options);
   }
 
-  override async appendBinary(path: string, data: ArrayBuffer, options?: DataWriteOptions): Promise<void> {
+  override async appendBinary(
+    path: string,
+    data: ArrayBuffer,
+    options?: DataWriteOptions,
+  ): Promise<void> {
     const current = await this.readBinary(path);
     const merged = new Uint8Array(current.byteLength + data.byteLength);
     merged.set(new Uint8Array(current), 0);
@@ -272,7 +308,11 @@ export class FileSystemAdapter extends DataAdapter {
     await this.writeBinary(path, merged.buffer, options);
   }
 
-  override async process(path: string, fn: (data: string) => string, options?: DataWriteOptions): Promise<string> {
+  override async process(
+    path: string,
+    fn: (data: string) => string,
+    options?: DataWriteOptions,
+  ): Promise<string> {
     return super.process(path, fn, options);
   }
 
@@ -303,7 +343,8 @@ export class FileSystemAdapter extends DataAdapter {
 
   async rename(path: string, newPath: string): Promise<void> {
     if (path === newPath) return;
-    if (await this.renameDestinationExists(path, newPath)) throw new Error("Destination file already exists!");
+    if (await this.renameDestinationExists(path, newPath))
+      throw new Error("Destination file already exists!");
     const { fs } = await this.loadDesktopModules();
     await this.primePath(path);
     await fs.rename(this.getFullPath(path), this.getFullPath(newPath));
@@ -413,17 +454,28 @@ export class FileSystemAdapter extends DataAdapter {
     }
   }
 
-  private async copyRecursive(sourcePath: string, destinationPath: string, fs: FileSystemModule, pathModule: PathModule): Promise<void> {
+  private async copyRecursive(
+    sourcePath: string,
+    destinationPath: string,
+    fs: FileSystemModule,
+    pathModule: PathModule,
+  ): Promise<void> {
     const stat = await fs.stat(sourcePath);
     if (stat.isFile()) {
-      if (await this.existsFullPath(destinationPath, fs)) throw new Error(`File already exists: ${destinationPath}`);
+      if (await this.existsFullPath(destinationPath, fs))
+        throw new Error(`File already exists: ${destinationPath}`);
       await fs.copyFile(sourcePath, destinationPath);
       return;
     }
     if (!stat.isDirectory()) return;
     await fs.mkdir(destinationPath, { recursive: true });
     for (const entry of await fs.readdir(sourcePath, { withFileTypes: true })) {
-      await this.copyRecursive(pathModule.join(sourcePath, entry.name), pathModule.join(destinationPath, entry.name), fs, pathModule);
+      await this.copyRecursive(
+        pathModule.join(sourcePath, entry.name),
+        pathModule.join(destinationPath, entry.name),
+        fs,
+        pathModule,
+      );
     }
   }
 
@@ -469,7 +521,11 @@ export class FileSystemAdapter extends DataAdapter {
 
     if (!previous) {
       this.files.set(path, entry);
-      this.trigger(entry.type === "folder" ? "folder-created" : "file-created", path, entry.type === "file" ? entry : undefined);
+      this.trigger(
+        entry.type === "folder" ? "folder-created" : "file-created",
+        path,
+        entry.type === "file" ? entry : undefined,
+      );
       if (entry.type === "folder") {
         if (!this.usesRecursiveWatcher()) await this.startWatchPath(path);
         await this.reconcileFolderChildren(path);
@@ -480,7 +536,11 @@ export class FileSystemAdapter extends DataAdapter {
     if (previous.type !== entry.type) {
       this.removeIndexedEntry(path, previous.type);
       this.files.set(path, entry);
-      this.trigger(entry.type === "folder" ? "folder-created" : "file-created", path, entry.type === "file" ? entry : undefined);
+      this.trigger(
+        entry.type === "folder" ? "folder-created" : "file-created",
+        path,
+        entry.type === "file" ? entry : undefined,
+      );
       if (entry.type === "folder") {
         if (!this.usesRecursiveWatcher()) await this.startWatchPath(path);
         await this.reconcileFolderChildren(path);
@@ -489,16 +549,19 @@ export class FileSystemAdapter extends DataAdapter {
     }
 
     this.files.set(path, entry);
-    if (entry.type === "file" && (previous.mtime !== entry.mtime || previous.size !== entry.size)) this.trigger("modified", path, entry);
+    if (entry.type === "file" && (previous.mtime !== entry.mtime || previous.size !== entry.size))
+      this.trigger("modified", path, entry);
   }
 
   private removeIndexedEntry(path: string, type: "file" | "folder"): void {
-    const descendants = type === "folder"
-      ? [...this.files.entries()].filter(([item]) => item === path || item.startsWith(`${path}/`))
-      : [[path, this.files.get(path)] as [string, FileSystemEntry | undefined]];
+    const descendants =
+      type === "folder"
+        ? [...this.files.entries()].filter(([item]) => item === path || item.startsWith(`${path}/`))
+        : [[path, this.files.get(path)] as [string, FileSystemEntry | undefined]];
     for (const [descendant, entry] of descendants.sort(([a], [b]) => b.length - a.length)) {
       this.files.delete(descendant);
-      if (entry) this.trigger(entry.type === "folder" ? "folder-removed" : "file-removed", descendant);
+      if (entry)
+        this.trigger(entry.type === "folder" ? "folder-removed" : "file-removed", descendant);
     }
   }
 
@@ -508,19 +571,27 @@ export class FileSystemAdapter extends DataAdapter {
     const files = [...listed.files].sort((a, b) => a.length - b.length);
     // Sibling folders/files are independent; parallelize to cut serial I/O latency
     // when indexing large code vaults (still bounded so we don't stampede the FS).
-    await mapWithConcurrency(folders, RECONCILE_CONCURRENCY, (folder) => this.reconcileInternalFile(folder));
-    await mapWithConcurrency(files, RECONCILE_CONCURRENCY, (file) => this.reconcileInternalFile(file));
+    await mapWithConcurrency(folders, RECONCILE_CONCURRENCY, (folder) =>
+      this.reconcileInternalFile(folder),
+    );
+    await mapWithConcurrency(files, RECONCILE_CONCURRENCY, (file) =>
+      this.reconcileInternalFile(file),
+    );
   }
 
   private async startWatchPath(path: string): Promise<void> {
     const modules = await this.loadDesktopModules();
     const fs = await this.loadWatchModule();
     try {
-      const watcher = fs.watch(this.getFullPath(path), { recursive: this.usesRecursiveWatcher() }, (_eventType, filename) => {
-        if (filename == null) return;
-        const changedPath = normalizeVaultPath(modules.path.join(path, String(filename)));
-        this.onExternalFileChange(changedPath);
-      });
+      const watcher = fs.watch(
+        this.getFullPath(path),
+        { recursive: this.usesRecursiveWatcher() },
+        (_eventType, filename) => {
+          if (filename == null) return;
+          const changedPath = normalizeVaultPath(modules.path.join(path, String(filename)));
+          this.onExternalFileChange(changedPath);
+        },
+      );
       this.watchers.push(watcher);
     } catch {
       // Some runtimes do not support recursive fs.watch. Obsidian falls back per platform;
@@ -531,17 +602,20 @@ export class FileSystemAdapter extends DataAdapter {
   private onExternalFileChange(path: string): void {
     const normalized = normalizeVaultPath(path);
     clearTimeout(this.externalReconcileTimers.get(normalized));
-    this.externalReconcileTimers.set(normalized, setTimeout(() => {
-      this.externalReconcileTimers.delete(normalized);
-      void this.reconcileInternalFile(normalized);
-    }, 100));
+    this.externalReconcileTimers.set(
+      normalized,
+      setTimeout(() => {
+        this.externalReconcileTimers.delete(normalized);
+        void this.reconcileInternalFile(normalized);
+      }, 100),
+    );
   }
 
   private async startHiddenWatchPath(path: string): Promise<void> {
     const modules = await this.loadDesktopModules();
     const fs = await this.loadWatchModule();
     const fullPath = this.getFullPath(path);
-    if (!await this.existsFullPath(fullPath, modules.fs)) return;
+    if (!(await this.existsFullPath(fullPath, modules.fs))) return;
     try {
       const watcher = fs.watch(fullPath, { recursive: false }, (_eventType, filename) => {
         if (filename == null) return;
@@ -557,7 +631,7 @@ export class FileSystemAdapter extends DataAdapter {
   private async watchHiddenChildFolders(path: string): Promise<void> {
     const modules = await this.loadDesktopModules();
     const fullPath = this.getFullPath(path);
-    if (!await this.existsFullPath(fullPath, modules.fs)) return;
+    if (!(await this.existsFullPath(fullPath, modules.fs))) return;
     const listed = await this.list(path);
     for (const folder of listed.folders) await this.startHiddenWatchPath(folder);
   }
@@ -565,10 +639,13 @@ export class FileSystemAdapter extends DataAdapter {
   private onHiddenFileChange(path: string): void {
     const normalized = normalizeVaultPath(path);
     clearTimeout(this.hiddenRawTimers.get(normalized));
-    this.hiddenRawTimers.set(normalized, setTimeout(() => {
-      this.hiddenRawTimers.delete(normalized);
-      this.trigger("raw", normalized);
-    }, 100));
+    this.hiddenRawTimers.set(
+      normalized,
+      setTimeout(() => {
+        this.hiddenRawTimers.delete(normalized);
+        this.trigger("raw", normalized);
+      }, 100),
+    );
   }
 
   private isHiddenPath(path: string): boolean {
@@ -668,7 +745,11 @@ function pathToFileUrl(path: string): string {
   return `file://${encodeFileUrlPath(normalized.startsWith("/") ? normalized : `/${normalized}`)}`;
 }
 
-async function mapWithConcurrency<T>(items: readonly T[], concurrency: number, worker: (item: T) => Promise<void>): Promise<void> {
+async function mapWithConcurrency<T>(
+  items: readonly T[],
+  concurrency: number,
+  worker: (item: T) => Promise<void>,
+): Promise<void> {
   if (items.length === 0) return;
   let next = 0;
   const limit = Math.max(1, Math.min(concurrency, items.length));
@@ -683,5 +764,8 @@ async function mapWithConcurrency<T>(items: readonly T[], concurrency: number, w
 }
 
 function encodeFileUrlPath(path: string): string {
-  return path.split("/").map((segment) => /^[A-Za-z]:$/.test(segment) ? segment : encodeURIComponent(segment)).join("/");
+  return path
+    .split("/")
+    .map((segment) => (/^[A-Za-z]:$/.test(segment) ? segment : encodeURIComponent(segment)))
+    .join("/");
 }

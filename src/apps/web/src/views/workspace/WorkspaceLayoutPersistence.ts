@@ -6,11 +6,15 @@ export class WorkspaceLayoutPersistence {
   readonly serializer = new WorkspaceLayoutSerializer();
   private lastSaved: WorkspaceLayout | null = null;
 
-  constructor(readonly app: App, readonly fileName = getWorkspaceLayoutFileName()) {}
+  constructor(
+    readonly app: App,
+    readonly fileName = getWorkspaceLayoutFileName(),
+  ) {}
 
   async saveCurrentLayout(): Promise<WorkspaceLayout> {
     const layout = this.serializer.serialize(this.app.workspace);
-    if (this.app.workspace.recentFilePaths.length > 0) layout.lastOpenFiles = [...this.app.workspace.recentFilePaths];
+    if (this.app.workspace.recentFilePaths.length > 0)
+      layout.lastOpenFiles = [...this.app.workspace.recentFilePaths];
     this.lastSaved = layout;
     await this.writeWorkspaceFile(layout);
     return layout;

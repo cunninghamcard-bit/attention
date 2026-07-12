@@ -9,7 +9,12 @@ export class WorkspaceSplit extends WorkspaceParent {
   direction: SplitDirection;
   private readonly minChildSize = 200;
 
-  constructor(workspace: Workspace, direction: SplitDirection, id?: string, ownerDocument?: Document) {
+  constructor(
+    workspace: Workspace,
+    direction: SplitDirection,
+    id?: string,
+    ownerDocument?: Document,
+  ) {
     super(workspace, id, ownerDocument);
     this.containerEl.classList.add("workspace-split");
     this.direction = direction;
@@ -80,7 +85,12 @@ export class WorkspaceSplit extends WorkspaceParent {
     this.resizeItemGroupByDiff(afterHandle, applied, 1, startSizes);
   }
 
-  private resizeItemGroupByDiff(items: WorkspaceItem[], diff: number, direction: 1 | -1, startSizes: number[]): number {
+  private resizeItemGroupByDiff(
+    items: WorkspaceItem[],
+    diff: number,
+    direction: 1 | -1,
+    startSizes: number[],
+  ): number {
     let consumed = 0;
     let remaining = diff;
     for (const item of items) {

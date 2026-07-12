@@ -7,7 +7,11 @@ export class PluginDataStore {
     return this.store.read<T>(`${normalizePluginDataDir(pluginDirOrId)}/data.json`);
   }
 
-  save<T = unknown>(pluginDirOrId: string, data: T, options?: JsonStoreWriteOptions): Promise<void> {
+  save<T = unknown>(
+    pluginDirOrId: string,
+    data: T,
+    options?: JsonStoreWriteOptions,
+  ): Promise<void> {
     return this.store.write(`${normalizePluginDataDir(pluginDirOrId)}/data.json`, data, options);
   }
 

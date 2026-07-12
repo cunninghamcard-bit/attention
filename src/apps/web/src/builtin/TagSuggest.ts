@@ -1,8 +1,17 @@
 import type { App } from "../app/App";
 import type { Editor, EditorPosition } from "../editor/Editor";
-import { completeTagSuggestionText, getTagSuggestions, renderTagSuggestion, type TagSuggestion } from "../metadata/TagSuggestion";
+import {
+  completeTagSuggestionText,
+  getTagSuggestions,
+  renderTagSuggestion,
+  type TagSuggestion,
+} from "../metadata/TagSuggestion";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
-import { EditorSuggest, type EditorSuggestContext, type EditorSuggestTriggerInfo } from "../ui/suggest/EditorSuggest";
+import {
+  EditorSuggest,
+  type EditorSuggestContext,
+  type EditorSuggestTriggerInfo,
+} from "../ui/suggest/EditorSuggest";
 import { MarkdownView } from "../views/MarkdownView";
 
 const TAG_TRIGGER = /(^|\s)#[^\u2000-\u206F\u2E00-\u2E7F'!"#$%&()*+,.:;<=>?@^`{|}~\[\]\\\s]*$/u;
@@ -40,15 +49,22 @@ export class TagSuggest extends EditorSuggest<TagSuggestion> {
   selectSuggestion(value: TagSuggestion, event: MouseEvent | KeyboardEvent): void {
     const context = this.context;
     if (!context) return;
-    const text = event instanceof KeyboardEvent && event.key === "Tab"
-      ? `#${completeTagSuggestionText(value)}`
-      : `#${value.tag} `;
+    const text =
+      event instanceof KeyboardEvent && event.key === "Tab"
+        ? `#${completeTagSuggestionText(value)}`
+        : `#${value.tag} `;
     const activeEditor = this.app.workspace.activeEditor;
-    const activeView = activeEditor instanceof MarkdownView ? activeEditor : this.app.workspace.getActiveViewOfType(MarkdownView);
+    const activeView =
+      activeEditor instanceof MarkdownView
+        ? activeEditor
+        : this.app.workspace.getActiveViewOfType(MarkdownView);
     if (activeView instanceof MarkdownView) {
       const lineOffset = offsetAtLine(activeView.editor.getValue(), context.start.line);
       const start = lineOffset + context.start.ch;
-      activeView.applyTextEdits([{ start, end: lineOffset + context.end.ch, text }], start + text.length);
+      activeView.applyTextEdits(
+        [{ start, end: lineOffset + context.end.ch, text }],
+        start + text.length,
+      );
       this.close();
       return;
     }
@@ -81,6 +97,7 @@ export function createTagSuggestPluginDefinition(): InternalPluginDefinition {
 function offsetAtLine(source: string, line: number): number {
   const lines = source.split(/\r?\n/);
   let offset = 0;
-  for (let index = 0; index < Math.min(line, lines.length); index += 1) offset += lines[index].length + 1;
+  for (let index = 0; index < Math.min(line, lines.length); index += 1)
+    offset += lines[index].length + 1;
   return offset;
 }

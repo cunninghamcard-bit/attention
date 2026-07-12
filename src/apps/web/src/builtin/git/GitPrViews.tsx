@@ -38,9 +38,15 @@ export class PrListView extends ItemView {
   static readonly VIEW_TYPE = "git-prs";
   private root: Root | null = null;
 
-  getViewType(): string { return PrListView.VIEW_TYPE; }
-  getDisplayText(): string { return "Pull requests"; }
-  getIcon(): string { return "lucide-git-pull-request"; }
+  getViewType(): string {
+    return PrListView.VIEW_TYPE;
+  }
+  getDisplayText(): string {
+    return "Pull requests";
+  }
+  getIcon(): string {
+    return "lucide-git-pull-request";
+  }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("git-pr-view");
@@ -62,12 +68,16 @@ export class PrDetailView extends ItemView {
   private owner: string | null = null;
   private repo: string | null = null;
 
-  getViewType(): string { return PrDetailView.VIEW_TYPE; }
+  getViewType(): string {
+    return PrDetailView.VIEW_TYPE;
+  }
   getDisplayText(): string {
     if (this.number && this.owner && this.repo) return `${this.owner}/${this.repo}#${this.number}`;
     return this.number ? `PR #${this.number}` : "Pull request";
   }
-  getIcon(): string { return "lucide-git-pull-request"; }
+  getIcon(): string {
+    return "lucide-git-pull-request";
+  }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("git-pr-view");
@@ -93,9 +103,8 @@ export class PrDetailView extends ItemView {
 
   private renderPanel(): void {
     if (!this.root || this.number === null) return;
-    const repoRef = this.owner && this.repo
-      ? { owner: this.owner, repo: this.repo, host: "github.com" }
-      : null;
+    const repoRef =
+      this.owner && this.repo ? { owner: this.owner, repo: this.repo, host: "github.com" } : null;
     this.root.render(<PrDetailPanel app={this.app} number={this.number} repo={repoRef} />);
   }
 
@@ -197,18 +206,24 @@ function PrListPanel({ app }: { app: App }): ReactNode {
     }
   }, [app, auth?.login, filter, repo]);
 
-  useEffect(() => { void bootstrap(); }, [bootstrap]);
-  useEffect(() => { void loadList(); }, [loadList]);
+  useEffect(() => {
+    void bootstrap();
+  }, [bootstrap]);
+  useEffect(() => {
+    void loadList();
+  }, [loadList]);
 
   const filtered = useMemo(() => {
     if (!prs) return null;
     const q = query.trim().toLowerCase();
     if (!q) return prs;
-    return prs.filter((pr) =>
-      pr.title.toLowerCase().includes(q)
-      || String(pr.number).includes(q)
-      || pr.author.login.toLowerCase().includes(q)
-      || pr.headRefName.toLowerCase().includes(q));
+    return prs.filter(
+      (pr) =>
+        pr.title.toLowerCase().includes(q) ||
+        String(pr.number).includes(q) ||
+        pr.author.login.toLowerCase().includes(q) ||
+        pr.headRefName.toLowerCase().includes(q),
+    );
   }, [prs, query]);
 
   const selectRepo = (next: { owner: string; repo: string }) => {
@@ -271,7 +286,12 @@ function PrListPanel({ app }: { app: App }): ReactNode {
           <div className="git-pr-toolbar-title-row">
             <Icon name="lucide-git-pull-request" />
             <h1 className="git-pr-toolbar-title">Pull requests</h1>
-            <button type="button" className="git-pr-repo-badge tappable" onClick={() => setPickingRepo(true)} title="Switch repository">
+            <button
+              type="button"
+              className="git-pr-repo-badge tappable"
+              onClick={() => setPickingRepo(true)}
+              title="Switch repository"
+            >
               {repo.owner}/{repo.repo}
               <Icon name="lucide-chevrons-up-down" />
             </button>
@@ -279,14 +299,26 @@ function PrListPanel({ app }: { app: App }): ReactNode {
               type="button"
               className="git-pr-action"
               title="Repository workspace"
-              onClick={() => void openGitHubWorkspace(app, { section: "commits", owner: repo.owner, repo: repo.repo })}
+              onClick={() =>
+                void openGitHubWorkspace(app, {
+                  section: "commits",
+                  owner: repo.owner,
+                  repo: repo.repo,
+                })
+              }
             >
               Commits
             </button>
             <button
               type="button"
               className="git-pr-action"
-              onClick={() => void openGitHubWorkspace(app, { section: "branches", owner: repo.owner, repo: repo.repo })}
+              onClick={() =>
+                void openGitHubWorkspace(app, {
+                  section: "branches",
+                  owner: repo.owner,
+                  repo: repo.repo,
+                })
+              }
             >
               Branches
             </button>
@@ -323,18 +355,30 @@ function PrListPanel({ app }: { app: App }): ReactNode {
             <input
               value={jump}
               onChange={(e) => setJump(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") openJump(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") openJump();
+              }}
               placeholder="#123 or owner/repo#123"
               aria-label="Jump to pull request"
             />
-            <button type="button" className="git-pr-action" onClick={openJump}>Go</button>
+            <button type="button" className="git-pr-action" onClick={openJump}>
+              Go
+            </button>
           </label>
-          <AccountChip auth={auth} onSignOut={() => {
-            app.github.clearToken();
-            setAuth({ hasToken: false, login: null, avatarUrl: null, name: null });
-            setPrs(null);
-          }} />
-          <button type="button" className="clickable-icon" aria-label="Refresh" onClick={() => void loadList()}>
+          <AccountChip
+            auth={auth}
+            onSignOut={() => {
+              app.github.clearToken();
+              setAuth({ hasToken: false, login: null, avatarUrl: null, name: null });
+              setPrs(null);
+            }}
+          />
+          <button
+            type="button"
+            className="clickable-icon"
+            aria-label="Refresh"
+            onClick={() => void loadList()}
+          >
             <Icon name="lucide-rotate-ccw" />
           </button>
         </div>
@@ -344,10 +388,14 @@ function PrListPanel({ app }: { app: App }): ReactNode {
         <button
           type="button"
           className="git-pr-local-banner"
-          onClick={() => void app.workspace.getLeaf("tab").setViewState({ type: "git-changes", active: true })}
+          onClick={() =>
+            void app.workspace.getLeaf("tab").setViewState({ type: "git-changes", active: true })
+          }
         >
           <Icon name="lucide-file-diff" />
-          <span><strong>{localDirty}</strong> local change{localDirty === 1 ? "" : "s"} in this vault</span>
+          <span>
+            <strong>{localDirty}</strong> local change{localDirty === 1 ? "" : "s"} in this vault
+          </span>
           <span className="git-pr-local-banner-action">View</span>
         </button>
       )}
@@ -356,7 +404,9 @@ function PrListPanel({ app }: { app: App }): ReactNode {
         <div className="git-pr-error" role="alert">
           <Icon name="lucide-alert-circle" />
           <span>{error}</span>
-          <button type="button" className="git-pr-action" onClick={() => void loadList()}>Retry</button>
+          <button type="button" className="git-pr-action" onClick={() => void loadList()}>
+            Retry
+          </button>
         </div>
       )}
 
@@ -366,13 +416,19 @@ function PrListPanel({ app }: { app: App }): ReactNode {
         <EmptyState
           icon="lucide-git-pull-request"
           title="No pull requests"
-          body={query ? "Nothing matches this filter." : `No ${filter === "all" ? "" : filter + " "}pull requests in ${repo.owner}/${repo.repo}.`}
+          body={
+            query
+              ? "Nothing matches this filter."
+              : `No ${filter === "all" ? "" : filter + " "}pull requests in ${repo.owner}/${repo.repo}.`
+          }
         />
       )}
 
       {filtered && filtered.length > 0 && (
         <div className="git-pr-list" role="list">
-          <div className="git-pr-list-count">{filtered.length} pull request{filtered.length === 1 ? "" : "s"}</div>
+          <div className="git-pr-list-count">
+            {filtered.length} pull request{filtered.length === 1 ? "" : "s"}
+          </div>
           {filtered.map((pr) => (
             <button
               key={pr.number}
@@ -389,7 +445,11 @@ function PrListPanel({ app }: { app: App }): ReactNode {
                 <span className="git-pr-row-title-line">
                   <span className="git-pr-row-title">{pr.title}</span>
                   {pr.labels.slice(0, 4).map((label) => (
-                    <span key={label.name} className="git-pr-label" style={{ ["--label-color" as string]: `#${label.color}` }}>
+                    <span
+                      key={label.name}
+                      className="git-pr-label"
+                      style={{ ["--label-color" as string]: `#${label.color}` }}
+                    >
                       {label.name}
                     </span>
                   ))}
@@ -412,7 +472,9 @@ function PrListPanel({ app }: { app: App }): ReactNode {
                     <ins>+{pr.additions}</ins> <del>−{pr.deletions}</del>
                   </span>
                 )}
-                {pr.changedFiles > 0 && <span className="git-pr-file-count">{pr.changedFiles} files</span>}
+                {pr.changedFiles > 0 && (
+                  <span className="git-pr-file-count">{pr.changedFiles} files</span>
+                )}
                 <StateChip state={pr.state} isDraft={pr.isDraft} />
               </span>
             </button>
@@ -462,7 +524,9 @@ function PrDetailPanel({
       ]);
       setDetail(view);
       setUnifiedDiff(diff);
-      setSelectedPath((prev) => prev && view.files.some((f) => f.path === prev) ? prev : view.files[0]?.path ?? null);
+      setSelectedPath((prev) =>
+        prev && view.files.some((f) => f.path === prev) ? prev : (view.files[0]?.path ?? null),
+      );
     } catch (err) {
       setDetail(null);
       setError(err instanceof Error ? err.message : String(err));
@@ -471,7 +535,9 @@ function PrDetailPanel({
     }
   }, [app, number, repoProp]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const patchByPath = useMemo(() => {
     const map = new Map<string, FileDiffMetadata>();
@@ -534,7 +600,8 @@ function PrDetailPanel({
 
   const selectedFile = detail.files.find((f) => f.path === selectedPath) ?? detail.files[0] ?? null;
   const selectedMeta = selectedFile
-    ? (patchByPath.get(selectedFile.path) ?? fileDiffFromGithubPatch(selectedFile.path, selectedFile.patch))
+    ? (patchByPath.get(selectedFile.path) ??
+      fileDiffFromGithubPatch(selectedFile.path, selectedFile.patch))
     : null;
 
   const timeline = buildTimeline(detail);
@@ -546,7 +613,9 @@ function PrDetailPanel({
           <button type="button" className="git-pr-action" onClick={() => void openPrList(app)}>
             ← Pull requests
           </button>
-          <span className="git-pr-repo-badge">{repo.owner}/{repo.repo}</span>
+          <span className="git-pr-repo-badge">
+            {repo.owner}/{repo.repo}
+          </span>
         </div>
         <div className="git-pr-title-row">
           <h2 className="git-pr-title">
@@ -559,16 +628,24 @@ function PrDetailPanel({
                 type="button"
                 className="mod-cta git-pr-action"
                 disabled={detail.mergeable === false}
-                title={detail.mergeable === false ? "Resolve conflicts first" : "Merge pull request"}
+                title={
+                  detail.mergeable === false ? "Resolve conflicts first" : "Merge pull request"
+                }
                 onClick={() => setMergeOpen((o) => !o)}
               >
                 Merge
               </button>
             )}
-            <button type="button" className="git-pr-action" onClick={() => window.open(detail.url, "_blank")}>
+            <button
+              type="button"
+              className="git-pr-action"
+              onClick={() => window.open(detail.url, "_blank")}
+            >
               Open on GitHub
             </button>
-            <button type="button" className="git-pr-action" onClick={() => void load()}>Refresh</button>
+            <button type="button" className="git-pr-action" onClick={() => void load()}>
+              Refresh
+            </button>
           </div>
         </div>
         {mergeOpen && detail.state === "open" && (
@@ -582,12 +659,18 @@ function PrDetailPanel({
                     checked={mergeMethod === method}
                     onChange={() => setMergeMethod(method)}
                   />
-                  {method === "squash" ? "Squash and merge" : method === "merge" ? "Create a merge commit" : "Rebase and merge"}
+                  {method === "squash"
+                    ? "Squash and merge"
+                    : method === "merge"
+                      ? "Create a merge commit"
+                      : "Rebase and merge"}
                 </label>
               ))}
             </div>
             <div className="git-pr-merge-actions">
-              <button type="button" className="git-pr-action" onClick={() => setMergeOpen(false)}>Cancel</button>
+              <button type="button" className="git-pr-action" onClick={() => setMergeOpen(false)}>
+                Cancel
+              </button>
               <button
                 type="button"
                 className="mod-cta"
@@ -619,10 +702,14 @@ function PrDetailPanel({
         <div className="git-pr-meta-row">
           <StateChip state={detail.state} isDraft={detail.isDraft} />
           {detail.ciState && <CiChip state={detail.ciState} />}
-          {detail.mergeable === false && <span className="git-pr-chip mod-conflict">Conflicts</span>}
-          {detail.mergeStateStatus && detail.mergeStateStatus !== "clean" && detail.mergeable !== false && (
-            <span className="git-pr-chip">{detail.mergeStateStatus}</span>
+          {detail.mergeable === false && (
+            <span className="git-pr-chip mod-conflict">Conflicts</span>
           )}
+          {detail.mergeStateStatus &&
+            detail.mergeStateStatus !== "clean" &&
+            detail.mergeable !== false && (
+              <span className="git-pr-chip">{detail.mergeStateStatus}</span>
+            )}
           <span className="git-pr-row-meta">
             <Avatar actor={detail.author} size={18} />
             <strong>{detail.author.login}</strong>
@@ -645,7 +732,9 @@ function PrDetailPanel({
             <TabButton active={tab === "files"} onClick={() => setTab("files")}>
               Files
               <span className="git-pr-tab-count">{detail.files.length}</span>
-              <span className="git-pr-diffstat"><ins>+{detail.additions}</ins> <del>−{detail.deletions}</del></span>
+              <span className="git-pr-diffstat">
+                <ins>+{detail.additions}</ins> <del>−{detail.deletions}</del>
+              </span>
             </TabButton>
             <TabButton active={tab === "conversation"} onClick={() => setTab("conversation")}>
               Conversation
@@ -669,10 +758,18 @@ function PrDetailPanel({
                   />
                 </label>
                 <div className="git-pr-files-mode">
-                  <button type="button" className={filesMode === "tree" ? "is-active" : ""} onClick={() => setFilesMode("tree")}>
+                  <button
+                    type="button"
+                    className={filesMode === "tree" ? "is-active" : ""}
+                    onClick={() => setFilesMode("tree")}
+                  >
                     File tree
                   </button>
-                  <button type="button" className={filesMode === "review" ? "is-active" : ""} onClick={() => setFilesMode("review")}>
+                  <button
+                    type="button"
+                    className={filesMode === "review" ? "is-active" : ""}
+                    onClick={() => setFilesMode("review")}
+                  >
                     Full review
                   </button>
                 </div>
@@ -708,7 +805,9 @@ function PrDetailPanel({
                         className={`git-pr-file-row${selectedPath === file.path ? " is-active" : ""}`}
                         onClick={() => setSelectedPath(file.path)}
                       >
-                        <span className={`git-pr-file-status mod-${file.status}`}>{fileStatusGlyph(file.status)}</span>
+                        <span className={`git-pr-file-status mod-${file.status}`}>
+                          {fileStatusGlyph(file.status)}
+                        </span>
                         <span className="git-pr-file-name" title={file.path}>
                           {file.previousPath ? `${file.previousPath} → ${file.path}` : file.path}
                         </span>
@@ -718,10 +817,14 @@ function PrDetailPanel({
                         </span>
                       </button>
                     ))}
-                    {visibleFiles.length === 0 && <div className="git-pr-empty">No files match.</div>}
+                    {visibleFiles.length === 0 && (
+                      <div className="git-pr-empty">No files match.</div>
+                    )}
                   </aside>
                   <div className="git-pr-file-preview">
-                    {!selectedFile && <div className="git-pr-empty">Select a file to preview its diff.</div>}
+                    {!selectedFile && (
+                      <div className="git-pr-empty">Select a file to preview its diff.</div>
+                    )}
                     {selectedFile && (
                       <PierrePatchView
                         path={selectedFile.path}
@@ -740,11 +843,24 @@ function PrDetailPanel({
 
           {tab === "conversation" && (
             <div className="git-pr-conversation">
-              <CommentCard author={detail.author} date={detail.createdAt} body={detail.body || "*No description provided.*"} badge="Author" />
+              <CommentCard
+                author={detail.author}
+                date={detail.createdAt}
+                body={detail.body || "*No description provided.*"}
+                badge="Author"
+              />
               {timeline.map((item) => {
-                if (item.kind === "review") return <ReviewCard key={item.id} review={item.review} />;
+                if (item.kind === "review")
+                  return <ReviewCard key={item.id} review={item.review} />;
                 if (item.kind === "comment") {
-                  return <CommentCard key={item.id} author={item.comment.author} date={item.comment.createdAt} body={item.comment.body} />;
+                  return (
+                    <CommentCard
+                      key={item.id}
+                      author={item.comment.author}
+                      date={item.comment.createdAt}
+                      body={item.comment.body}
+                    />
+                  );
                 }
                 return <InlineCommentCard key={item.id} comment={item.comment} />;
               })}
@@ -752,7 +868,10 @@ function PrDetailPanel({
               {detail.checks.length === 0 && detail.ciState && (
                 <div className="git-pr-checks">
                   <h3 className="git-pr-section-title">Status</h3>
-                  <div className="git-pr-check-row"><CiDot state={detail.ciState} /><span>Combined status: {detail.ciState}</span></div>
+                  <div className="git-pr-check-row">
+                    <CiDot state={detail.ciState} />
+                    <span>Combined status: {detail.ciState}</span>
+                  </div>
                 </div>
               )}
               <ReviewBar app={app} number={number} repo={repo} onDone={() => void load()} />
@@ -761,7 +880,9 @@ function PrDetailPanel({
 
           {tab === "commits" && (
             <div className="git-pr-commits">
-              {detail.commits.length === 0 && <div className="git-pr-empty">No commits on this pull request.</div>}
+              {detail.commits.length === 0 && (
+                <div className="git-pr-empty">No commits on this pull request.</div>
+              )}
               {detail.commits.map((commit) => (
                 <CommitRow
                   key={commit.sha}
@@ -798,7 +919,9 @@ function PrDetailPanel({
               ))}
           </SidebarSection>
           <SidebarSection title="Assignees">
-            {detail.assignees.length === 0 && <span className="git-pr-sidebar-empty">No one assigned</span>}
+            {detail.assignees.length === 0 && (
+              <span className="git-pr-sidebar-empty">No one assigned</span>
+            )}
             {detail.assignees.map((actor) => (
               <div key={actor.login} className="git-pr-sidebar-actor">
                 <Avatar actor={actor} size={20} />
@@ -810,7 +933,11 @@ function PrDetailPanel({
             {detail.labels.length === 0 && <span className="git-pr-sidebar-empty">None yet</span>}
             <div className="git-pr-label-list">
               {detail.labels.map((label) => (
-                <span key={label.name} className="git-pr-label" style={{ ["--label-color" as string]: `#${label.color}` }}>
+                <span
+                  key={label.name}
+                  className="git-pr-label"
+                  style={{ ["--label-color" as string]: `#${label.color}` }}
+                >
                   {label.name}
                 </span>
               ))}
@@ -818,7 +945,11 @@ function PrDetailPanel({
           </SidebarSection>
           <SidebarSection title="Milestone">
             {detail.milestone ? (
-              <button type="button" className="git-pr-sidebar-link" onClick={() => window.open(detail.milestone!.url, "_blank")}>
+              <button
+                type="button"
+                className="git-pr-sidebar-link"
+                onClick={() => window.open(detail.milestone!.url, "_blank")}
+              >
                 {detail.milestone.title}
               </button>
             ) : (
@@ -826,13 +957,21 @@ function PrDetailPanel({
             )}
           </SidebarSection>
           <SidebarSection title="Local vault">
-            <button type="button" className="git-pr-action mod-block" onClick={() => void openGitReview(app)}>
+            <button
+              type="button"
+              className="git-pr-action mod-block"
+              onClick={() => void openGitReview(app)}
+            >
               Review working tree
             </button>
             <button
               type="button"
               className="git-pr-action mod-block"
-              onClick={() => void app.workspace.getLeaf("tab").setViewState({ type: "git-changes", active: true })}
+              onClick={() =>
+                void app.workspace
+                  .getLeaf("tab")
+                  .setViewState({ type: "git-changes", active: true })
+              }
             >
               Open local changes
             </button>
@@ -886,8 +1025,10 @@ function RepoPicker({
     if (!repos) return null;
     const q = query.trim().toLowerCase();
     if (!q) return repos;
-    return repos.filter((r) =>
-      r.fullName.toLowerCase().includes(q) || (r.description ?? "").toLowerCase().includes(q));
+    return repos.filter(
+      (r) =>
+        r.fullName.toLowerCase().includes(q) || (r.description ?? "").toLowerCase().includes(q),
+    );
   }, [repos, query]);
 
   const applyManual = () => {
@@ -911,24 +1052,33 @@ function RepoPicker({
       <div className="git-pr-repo-picker">
         <section className="git-pr-repo-picker-card">
           <h2>Open repository</h2>
-          <p className="git-pr-muted">Cloud-first: browse any GitHub repo your token can read. Local git is optional.</p>
+          <p className="git-pr-muted">
+            Cloud-first: browse any GitHub repo your token can read. Local git is optional.
+          </p>
           <label className="git-pr-signin-field">
             <span>owner/repo</span>
             <div className="git-pr-manual-row">
               <input
                 value={manual}
                 onChange={(e) => setManual(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") applyManual(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") applyManual();
+                }}
                 placeholder="coder/ghostty-web"
                 spellCheck={false}
               />
-              <button type="button" className="mod-cta" onClick={applyManual}>Open</button>
+              <button type="button" className="mod-cta" onClick={applyManual}>
+                Open
+              </button>
             </div>
           </label>
           {origin && (
             <button type="button" className="git-pr-origin-btn" onClick={() => onSelect(origin)}>
               <Icon name="lucide-git-branch" />
-              Use vault origin: <strong>{origin.owner}/{origin.repo}</strong>
+              Use vault origin:{" "}
+              <strong>
+                {origin.owner}/{origin.repo}
+              </strong>
             </button>
           )}
           <button
@@ -949,12 +1099,18 @@ function RepoPicker({
             <h2>Your repositories</h2>
             <label className="git-pr-search">
               <Icon name="lucide-search" />
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter…" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filter…"
+              />
             </label>
           </div>
           {error && <div className="git-pr-error">{error}</div>}
           {filtered === null && <ListSkeleton />}
-          {filtered && filtered.length === 0 && <div className="git-pr-empty">No repositories found for this token.</div>}
+          {filtered && filtered.length === 0 && (
+            <div className="git-pr-empty">No repositories found for this token.</div>
+          )}
           {filtered && filtered.length > 0 && (
             <div className="git-pr-repo-list">
               {filtered.map((item) => (
@@ -979,7 +1135,13 @@ function RepoPicker({
   );
 }
 
-function SignInPanel({ app, onSignedIn }: { app: App; onSignedIn: (auth: GitHubAuthState) => void }): ReactNode {
+function SignInPanel({
+  app,
+  onSignedIn,
+}: {
+  app: App;
+  onSignedIn: (auth: GitHubAuthState) => void;
+}): ReactNode {
   const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1003,20 +1165,30 @@ function SignInPanel({ app, onSignedIn }: { app: App; onSignedIn: (auth: GitHubA
   return (
     <div className="git-pr-signin">
       <div className="git-pr-signin-card">
-        <div className="git-pr-signin-icon"><Icon name="lucide-github" /></div>
+        <div className="git-pr-signin-icon">
+          <Icon name="lucide-github" />
+        </div>
         <h2>Connect GitHub</h2>
         <p>
-          Browse pull requests with an app-owned personal access token.
-          Auth stays inside this app — no GitHub CLI.
+          Browse pull requests with an app-owned personal access token. Auth stays inside this app —
+          no GitHub CLI.
         </p>
         <ol className="git-pr-signin-steps">
-          <li>Create a classic PAT with the <code>repo</code> scope (private repos) or <code>public_repo</code>.</li>
+          <li>
+            Create a classic PAT with the <code>repo</code> scope (private repos) or{" "}
+            <code>public_repo</code>.
+          </li>
           <li>Paste it below. Stored only in this app&apos;s secret storage on this machine.</li>
         </ol>
         <button
           type="button"
           className="git-pr-action"
-          onClick={() => window.open("https://github.com/settings/tokens/new?scopes=repo&description=Workbench", "_blank")}
+          onClick={() =>
+            window.open(
+              "https://github.com/settings/tokens/new?scopes=repo&description=Workbench",
+              "_blank",
+            )
+          }
         >
           Create a token on GitHub →
         </button>
@@ -1029,11 +1201,22 @@ function SignInPanel({ app, onSignedIn }: { app: App; onSignedIn: (auth: GitHubA
             placeholder="ghp_… or github_pat_…"
             value={token}
             onChange={(e) => setToken(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && token.trim()) void submit(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && token.trim()) void submit();
+            }}
           />
         </label>
-        {error && <div className="git-pr-error" role="alert">{error}</div>}
-        <button type="button" className="mod-cta git-pr-signin-submit" disabled={busy || !token.trim()} onClick={() => void submit()}>
+        {error && (
+          <div className="git-pr-error" role="alert">
+            {error}
+          </div>
+        )}
+        <button
+          type="button"
+          className="mod-cta git-pr-signin-submit"
+          disabled={busy || !token.trim()}
+          onClick={() => void submit()}
+        >
           {busy ? "Signing in…" : "Sign in"}
         </button>
       </div>
@@ -1177,7 +1360,9 @@ function ReviewBar({
           type="button"
           className="git-pr-action mod-cta"
           disabled={busy || !body.trim()}
-          onClick={() => void submit(() => app.github.createComment(number, body.trim(), repo), "Comment posted")}
+          onClick={() =>
+            void submit(() => app.github.createComment(number, body.trim(), repo), "Comment posted")
+          }
         >
           Comment
         </button>
@@ -1185,7 +1370,12 @@ function ReviewBar({
           type="button"
           className="git-pr-action mod-approve"
           disabled={busy}
-          onClick={() => void submit(() => app.github.submitReview(number, "APPROVE", body.trim(), [], repo), "Approved")}
+          onClick={() =>
+            void submit(
+              () => app.github.submitReview(number, "APPROVE", body.trim(), [], repo),
+              "Approved",
+            )
+          }
         >
           Approve
         </button>
@@ -1193,7 +1383,12 @@ function ReviewBar({
           type="button"
           className="git-pr-action mod-request-changes"
           disabled={busy || !body.trim()}
-          onClick={() => void submit(() => app.github.submitReview(number, "REQUEST_CHANGES", body.trim(), [], repo), "Changes requested")}
+          onClick={() =>
+            void submit(
+              () => app.github.submitReview(number, "REQUEST_CHANGES", body.trim(), [], repo),
+              "Changes requested",
+            )
+          }
         >
           Request changes
         </button>
@@ -1233,12 +1428,18 @@ function ReviewCard({ review }: { review: PrReview }): ReactNode {
       <header className="git-pr-comment-header">
         <Avatar actor={review.author} size={22} />
         <span className="git-pr-comment-author">{review.author.login}</span>
-        <span className={`git-pr-chip mod-${review.state.toLowerCase()}`}>{prettyReviewState(review.state)}</span>
-        {review.submittedAt && <span className="git-pr-comment-date">{moment(review.submittedAt).fromNow()}</span>}
+        <span className={`git-pr-chip mod-${review.state.toLowerCase()}`}>
+          {prettyReviewState(review.state)}
+        </span>
+        {review.submittedAt && (
+          <span className="git-pr-comment-date">{moment(review.submittedAt).fromNow()}</span>
+        )}
       </header>
-      {review.body
-        ? <Markdown text={review.body} />
-        : <div className="git-pr-markdown git-pr-muted">No review body.</div>}
+      {review.body ? (
+        <Markdown text={review.body} />
+      ) : (
+        <div className="git-pr-markdown git-pr-muted">No review body.</div>
+      )}
     </article>
   );
 }
@@ -1249,7 +1450,10 @@ function InlineCommentCard({ comment }: { comment: PrReviewComment }): ReactNode
       <header className="git-pr-comment-header">
         <Avatar actor={comment.author} size={18} />
         <span className="git-pr-comment-author">{comment.author.login}</span>
-        <code className="git-pr-inline-path">{comment.path}{comment.line != null ? `:${comment.line}` : ""}</code>
+        <code className="git-pr-inline-path">
+          {comment.path}
+          {comment.line != null ? `:${comment.line}` : ""}
+        </code>
         <span className="git-pr-comment-date">{moment(comment.createdAt).fromNow()}</span>
       </header>
       {comment.diffHunk && <pre className="git-pr-diff-hunk">{comment.diffHunk}</pre>}
@@ -1260,7 +1464,11 @@ function InlineCommentCard({ comment }: { comment: PrReviewComment }): ReactNode
 
 function CommitRow({ commit, onOpen }: { commit: PrCommit; onOpen?: () => void }): ReactNode {
   return (
-    <div className="git-pr-commit-row tappable" onClick={onOpen} role={onOpen ? "button" : undefined}>
+    <div
+      className="git-pr-commit-row tappable"
+      onClick={onOpen}
+      role={onOpen ? "button" : undefined}
+    >
       <Avatar actor={commit.author} size={22} />
       <div className="git-pr-commit-main">
         <div className="git-pr-commit-headline">{commit.messageHeadline}</div>
@@ -1295,7 +1503,12 @@ function ChecksPanel({ checks }: { checks: PrCheck[] }): ReactNode {
             <span className="git-pr-check-name">{check.name}</span>
             <span className="git-pr-row-meta">{check.conclusion ?? check.status}</span>
             {check.detailsUrl && (
-              <button type="button" className="clickable-icon" aria-label="Details" onClick={() => window.open(check.detailsUrl!, "_blank")}>
+              <button
+                type="button"
+                className="clickable-icon"
+                aria-label="Details"
+                onClick={() => window.open(check.detailsUrl!, "_blank")}
+              >
                 <Icon name="lucide-external-link" />
               </button>
             )}
@@ -1315,19 +1528,35 @@ function SidebarSection({ title, children }: { title: string; children: ReactNod
   );
 }
 
-function AccountChip({ auth, onSignOut }: { auth: GitHubAuthState; onSignOut: () => void }): ReactNode {
+function AccountChip({
+  auth,
+  onSignOut,
+}: {
+  auth: GitHubAuthState;
+  onSignOut: () => void;
+}): ReactNode {
   return (
     <div className="git-pr-account">
-      {auth.avatarUrl
-        ? <img className="git-pr-avatar" src={auth.avatarUrl} alt="" width={20} height={20} />
-        : <Icon name="lucide-user" />}
+      {auth.avatarUrl ? (
+        <img className="git-pr-avatar" src={auth.avatarUrl} alt="" width={20} height={20} />
+      ) : (
+        <Icon name="lucide-user" />
+      )}
       <span>{auth.login}</span>
-      <button type="button" className="git-pr-action" onClick={onSignOut}>Sign out</button>
+      <button type="button" className="git-pr-action" onClick={onSignOut}>
+        Sign out
+      </button>
     </div>
   );
 }
 
-function Avatar({ actor, size }: { actor: { login: string; avatarUrl: string }; size: number }): ReactNode {
+function Avatar({
+  actor,
+  size,
+}: {
+  actor: { login: string; avatarUrl: string };
+  size: number;
+}): ReactNode {
   if (actor.avatarUrl) {
     return (
       <img
@@ -1367,7 +1596,11 @@ function Icon({ name }: { name: string }): ReactNode {
 }
 
 function StateChip({ state, isDraft }: { state: string; isDraft: boolean }): ReactNode {
-  return <span className={`git-pr-chip mod-${isDraft ? "draft" : state}`}>{isDraft ? "Draft" : state}</span>;
+  return (
+    <span className={`git-pr-chip mod-${isDraft ? "draft" : state}`}>
+      {isDraft ? "Draft" : state}
+    </span>
+  );
 }
 
 function CiChip({ state }: { state: CiState }): ReactNode {
@@ -1391,9 +1624,23 @@ function CiDot({ state }: { state: CiState }): ReactNode {
   return <span className={`git-pr-ci-dot mod-${state}`} title={state} aria-label={state} />;
 }
 
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }): ReactNode {
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}): ReactNode {
   return (
-    <button type="button" role="tab" aria-selected={active} className={`git-pr-tab${active ? " is-active" : ""}`} onClick={onClick}>
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      className={`git-pr-tab${active ? " is-active" : ""}`}
+      onClick={onClick}
+    >
       {children}
     </button>
   );
@@ -1414,11 +1661,15 @@ function EmptyState({
 }): ReactNode {
   return (
     <div className="git-pr-empty-state">
-      <div className="git-pr-empty-icon"><Icon name={icon} /></div>
+      <div className="git-pr-empty-icon">
+        <Icon name={icon} />
+      </div>
       <h2>{title}</h2>
       <p>{body}</p>
       {actionLabel && onAction && (
-        <button type="button" className="mod-cta" onClick={onAction}>{actionLabel}</button>
+        <button type="button" className="mod-cta" onClick={onAction}>
+          {actionLabel}
+        </button>
       )}
     </div>
   );
@@ -1438,7 +1689,9 @@ function ShellSkeleton({ title }: { title: string }): ReactNode {
 function ListSkeleton(): ReactNode {
   return (
     <div className="git-pr-skeleton" aria-busy="true">
-      {Array.from({ length: 6 }, (_, i) => <div key={i} className="git-pr-skeleton-row" />)}
+      {Array.from({ length: 6 }, (_, i) => (
+        <div key={i} className="git-pr-skeleton-row" />
+      ))}
     </div>
   );
 }
@@ -1474,11 +1727,16 @@ function buildTimeline(detail: PrDetail): TimelineItem[] {
 
 function prettyReviewState(state: string): string {
   switch (state) {
-    case "APPROVED": return "Approved";
-    case "CHANGES_REQUESTED": return "Changes requested";
-    case "COMMENTED": return "Commented";
-    case "DISMISSED": return "Dismissed";
-    default: return state;
+    case "APPROVED":
+      return "Approved";
+    case "CHANGES_REQUESTED":
+      return "Changes requested";
+    case "COMMENTED":
+      return "Commented";
+    case "DISMISSED":
+      return "Dismissed";
+    default:
+      return state;
   }
 }
 
@@ -1487,17 +1745,22 @@ function conclusionToCi(conclusion: string | null, status: string): CiState {
   if (value === "success" || value === "completed") return "success";
   if (value === "failure" || value === "timed_out" || value === "action_required") return "failure";
   if (value === "cancelled" || value === "error" || value === "startup_failure") return "error";
-  if (value === "pending" || value === "queued" || value === "in_progress" || value === "waiting") return "pending";
+  if (value === "pending" || value === "queued" || value === "in_progress" || value === "waiting")
+    return "pending";
   if (value === "neutral" || value === "skipped") return "neutral";
   return "unknown";
 }
 
 function fileStatusGlyph(status: string): string {
   switch (status) {
-    case "added": return "A";
-    case "removed": return "D";
-    case "renamed": return "R";
-    default: return "M";
+    case "added":
+      return "A";
+    case "removed":
+      return "D";
+    case "renamed":
+      return "R";
+    default:
+      return "M";
   }
 }
 

@@ -21,9 +21,18 @@ interface CliSearchResult {
 // tokenizer (parseSearchQuery is module-private): `[property]` and known
 // `operator:` tokens are not words; an unknown prefix stays a plain word.
 function plainWords(app: App, query: string): string[] {
-  const operators = new Set(["path", "file", "tag", "line", "section", ...app.search.getRegisteredOperators().map((op) => op.name)]);
+  const operators = new Set([
+    "path",
+    "file",
+    "tag",
+    "line",
+    "section",
+    ...app.search.getRegisteredOperators().map((op) => op.name),
+  ]);
   const words: string[] = [];
-  for (const token of query.matchAll(/(\[[^\]]+\])|(\w+):(?:\([^)]*\)|"[^"]*"|\S*)|"([^"]*)"|(\S+)/g)) {
+  for (const token of query.matchAll(
+    /(\[[^\]]+\])|(\w+):(?:\([^)]*\)|"[^"]*"|\S*)|"([^"]*)"|(\S+)/g,
+  )) {
     const [full, property, operator, quoted, plain] = token;
     if (property !== undefined) continue;
     if (operator !== undefined) {
@@ -39,12 +48,22 @@ function plainWords(app: App, query: string): string[] {
 // The shared search closure (real `i(query, path, caseSensitive)`), mapped
 // onto our SearchEngine. Divergence forced by the engine: its parser cannot
 // fail, so the real 'Invalid search query.' throw is unreachable.
-async function searchVault(app: App, query: string, path: string | undefined, caseSensitive: boolean): Promise<CliSearchResult[]> {
+async function searchVault(
+  app: App,
+  query: string,
+  path: string | undefined,
+  caseSensitive: boolean,
+): Promise<CliSearchResult[]> {
   const pathPrefix = path ? (path.endsWith("/") ? path : `${path}/`) : undefined;
   // The engine sorts results by path; real output is vault traversal order,
   // so reorder by iterating getMarkdownFiles() (which also drops the engine's
   // non-markdown hits, as the real helper never reads them).
-  const engineResults = new Map((await app.search.search({ query, caseSensitive, pathPrefix })).map((result) => [result.path, result]));
+  const engineResults = new Map(
+    (await app.search.search({ query, caseSensitive, pathPrefix })).map((result) => [
+      result.path,
+      result,
+    ]),
+  );
   const fold = (text: string) => (caseSensitive ? text : text.toLowerCase());
   const words = plainWords(app, fold(query.trim()));
   const results: CliSearchResult[] = [];
@@ -56,7 +75,10 @@ async function searchVault(app: App, query: string, path: string | undefined, ca
     if (result) {
       // Real output shape: 1-based line numbers with trimmed line text (engine
       // matches are 0-based and carry the raw line).
-      results.push({ file: file.path, matches: result.matches.map((match) => ({ line: match.line + 1, text: match.text.trim() })) });
+      results.push({
+        file: file.path,
+        matches: result.matches.map((match) => ({ line: match.line + 1, text: match.text.trim() })),
+      });
     } else if (words.length > 0 && words.every((word) => fold(file.name).includes(word))) {
       // Real BH also matches plain words against the file name; a filename-only
       // hit has no content offsets, so it surfaces as a bare-path entry.
@@ -87,7 +109,10 @@ export function registerSearchCliHandlers(plugin: InternalPluginWrapper): void {
       const results = await searchVault(app, args.query, args.path, !!args.case);
       const n = args.limit ? parseInt(args.limit, 10) : 0;
       // total counts matched files and ignores limit.
-      if (args.total) return args.format === "json" ? JSON.stringify({ total: results.length }) : String(results.length);
+      if (args.total)
+        return args.format === "json"
+          ? JSON.stringify({ total: results.length })
+          : String(results.length);
       // The empty check precedes the format check: json also gets this text.
       if (results.length === 0) return "No matches found.";
       let paths = results.map((result) => result.file);
@@ -118,7 +143,9 @@ export function registerSearchCliHandlers(plugin: InternalPluginWrapper): void {
       for (const result of results) {
         // A match without content offsets (e.g. filename-only) is a bare path line.
         if (result.matches.length === 0) lines.push(result.file);
-        else for (const match of result.matches) lines.push(`${result.file}:${match.line}: ${match.text}`);
+        else
+          for (const match of result.matches)
+            lines.push(`${result.file}:${match.line}: ${match.text}`);
       }
       return lines.join("\n");
     },
@@ -130,7 +157,11 @@ export function registerSearchCliHandlers(plugin: InternalPluginWrapper): void {
     { query: { value: "<text>", description: "Initial search query" } },
     (args) => {
       // Real openGlobalSearch is fire-and-forget; the handler stays synchronous.
-      void app.workspace.ensureSideLeaf("search", "left", { active: true, reveal: true, state: { query: args.query || "" } });
+      void app.workspace.ensureSideLeaf("search", "left", {
+        active: true,
+        reveal: true,
+        state: { query: args.query || "" },
+      });
       return args.query ? `Opened search: ${args.query}` : "Opened search";
     },
   );

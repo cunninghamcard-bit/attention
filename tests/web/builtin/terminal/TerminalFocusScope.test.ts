@@ -48,7 +48,9 @@ describe("createTerminalFocusScope", () => {
     // away from ghostty separately.
     expect(handle(scope, key({ key: "q", code: "KeyQ", metaKey: true }))).toBeUndefined();
     expect(handle(scope, key({ key: "h", code: "KeyH", metaKey: true }))).toBeUndefined();
-    expect(handle(scope, key({ key: "h", code: "KeyH", metaKey: true, altKey: true }))).toBeUndefined();
+    expect(
+      handle(scope, key({ key: "h", code: "KeyH", metaKey: true, altKey: true })),
+    ).toBeUndefined();
     expect(handle(scope, key({ key: "m", code: "KeyM", metaKey: true }))).toBeUndefined();
     expect(dispatch).not.toHaveBeenCalled();
   });

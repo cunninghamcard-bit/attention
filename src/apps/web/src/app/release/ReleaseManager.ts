@@ -12,7 +12,12 @@ export interface ReleaseRecord {
 export class ReleaseManager {
   private releases: ReleaseRecord[] = [];
 
-  createRelease(version: string, channel: ReleaseChannel["id"], artifacts: BuildArtifact[], notes = ""): ReleaseRecord {
+  createRelease(
+    version: string,
+    channel: ReleaseChannel["id"],
+    artifacts: BuildArtifact[],
+    notes = "",
+  ): ReleaseRecord {
     const release = { version, channel, artifacts, notes, createdAt: new Date().toISOString() };
     this.releases.unshift(release);
     return release;

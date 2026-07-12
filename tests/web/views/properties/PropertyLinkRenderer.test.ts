@@ -19,18 +19,18 @@ describe("PropertyLinkRenderer", () => {
   it("renders text property wikilinks as clickable internal metadata links", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const source = await app.vault.create("Source.md", [
-      "---",
-      "related: \"[[Target|Shown]]\"",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Source.md",
+      ["---", 'related: "[[Target|Shown]]"', "---", "Body"].join("\n"),
+    );
     await app.vault.create("Target.md", "Target body");
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const linkEl = view.metadataContainerEl.querySelector<HTMLElement>('[data-property-key="related"] .metadata-link-inner');
+    const linkEl = view.metadataContainerEl.querySelector<HTMLElement>(
+      '[data-property-key="related"] .metadata-link-inner',
+    );
     if (!linkEl) throw new Error("missing metadata link");
 
     expect(linkEl.textContent).toBe("Shown");
@@ -41,25 +41,28 @@ describe("PropertyLinkRenderer", () => {
     const hover = vi.fn();
     app.workspace.on("hover-link", hover);
     linkEl.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
-    expect(hover).toHaveBeenCalledWith(expect.objectContaining({ linktext: "Target", sourcePath: "Source.md" }));
+    expect(hover).toHaveBeenCalledWith(
+      expect.objectContaining({ linktext: "Target", sourcePath: "Source.md" }),
+    );
   });
 
   it("marks unresolved links and renders external property links", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const source = await app.vault.create("Source.md", [
-      "---",
-      "missing: \"[[Missing]]\"",
-      "website: https://example.com",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Source.md",
+      ["---", 'missing: "[[Missing]]"', "website: https://example.com", "---", "Body"].join("\n"),
+    );
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const missingEl = view.metadataContainerEl.querySelector<HTMLElement>('[data-property-key="missing"] .metadata-link-inner');
-    const websiteEl = view.metadataContainerEl.querySelector<HTMLElement>('[data-property-key="website"] .metadata-link-inner');
+    const missingEl = view.metadataContainerEl.querySelector<HTMLElement>(
+      '[data-property-key="missing"] .metadata-link-inner',
+    );
+    const websiteEl = view.metadataContainerEl.querySelector<HTMLElement>(
+      '[data-property-key="website"] .metadata-link-inner',
+    );
 
     expect(missingEl?.classList.contains("is-unresolved")).toBe(true);
     expect(websiteEl?.classList.contains("external-link")).toBe(true);
@@ -69,19 +72,18 @@ describe("PropertyLinkRenderer", () => {
   it("renders internal markdown links inside multi-value pills", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
-    const source = await app.vault.create("Source.md", [
-      "---",
-      "items:",
-      "  - \"[Shown](Target.md)\"",
-      "---",
-      "Body",
-    ].join("\n"));
+    const source = await app.vault.create(
+      "Source.md",
+      ["---", "items:", '  - "[Shown](Target.md)"', "---", "Body"].join("\n"),
+    );
     await app.vault.create("Target.md", "Target body");
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(source, { active: true, state: { mode: "source" } });
     const view = leaf.view as MarkdownView;
-    const pillLinkEl = view.metadataContainerEl.querySelector<HTMLElement>('[data-property-key="items"] .multi-select-pill-content .metadata-link-inner');
+    const pillLinkEl = view.metadataContainerEl.querySelector<HTMLElement>(
+      '[data-property-key="items"] .multi-select-pill-content .metadata-link-inner',
+    );
 
     expect(pillLinkEl?.textContent).toBe("Shown");
     expect(pillLinkEl?.dataset.href).toBe("Target.md");

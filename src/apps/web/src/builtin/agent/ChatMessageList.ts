@@ -6,7 +6,14 @@ import { getChatToolRenderer, listChatMessageActions } from "./ChatRegistry";
 import type { App } from "../../app/App";
 import { writeClipboardText } from "../../dom/Clipboard";
 import { Notice } from "../../ui/Notice";
-import type { ArtifactChatPart, ChatMessage, ChatPart, Agent, TextChatPart, ToolChatPart } from "./Agent";
+import type {
+  ArtifactChatPart,
+  ChatMessage,
+  ChatPart,
+  Agent,
+  TextChatPart,
+  ToolChatPart,
+} from "./Agent";
 import { openArtifact } from "./ArtifactView";
 import { openAgent } from "./AgentBuiltin";
 import { STRINGS } from "./AgentStrings";
@@ -40,7 +47,8 @@ function autoCollapseThinking(): boolean {
 // color without any roster configuration. Same trick avatars everywhere use.
 export function authorHue(authorId: string): number {
   let hash = 0;
-  for (let index = 0; index < authorId.length; index++) hash = (hash * 31 + authorId.charCodeAt(index)) | 0;
+  for (let index = 0; index < authorId.length; index++)
+    hash = (hash * 31 + authorId.charCodeAt(index)) | 0;
   return Math.abs(hash) % 360;
 }
 
@@ -88,13 +96,19 @@ class ChatPartRenderer extends Component {
     this.el.empty();
     const headerEl = createDiv("chat-attachment-header", this.el);
     createSpan({ cls: "chat-attachment-name", text: part.name, parent: headerEl });
-    createSpan({ cls: "chat-attachment-meta", text: STRINGS.message.attachmentLines(part.content.split("\n").length), parent: headerEl });
+    createSpan({
+      cls: "chat-attachment-meta",
+      text: STRINGS.message.attachmentLines(part.content.split("\n").length),
+      parent: headerEl,
+    });
     createEl("pre", { cls: "chat-attachment-content", text: part.content, parent: this.el });
   }
 
   private signatureOf(part: ChatPart): string {
-    if (part.type === "tool") return `tool:${part.closed}:${part.input.length}:${part.result?.length ?? -1}:${part.error?.length ?? -1}`;
-    if (part.type === "attachment" || part.type === "artifact") return `${part.type}:${part.closed}:${part.content.length}`;
+    if (part.type === "tool")
+      return `tool:${part.closed}:${part.input.length}:${part.result?.length ?? -1}:${part.error?.length ?? -1}`;
+    if (part.type === "attachment" || part.type === "artifact")
+      return `${part.type}:${part.closed}:${part.content.length}`;
     return `${part.type}:${part.closed}:${part.markdown.length}`;
   }
 
@@ -109,17 +123,32 @@ class ChatPartRenderer extends Component {
     if (part.kind) createSpan({ cls: "chat-artifact-kind", text: part.kind, parent: headerEl });
     createSpan({
       cls: "chat-artifact-meta",
-      text: part.closed ? STRINGS.message.attachmentLines(part.content.split("\n").length) : STRINGS.artifact.generating,
+      text: part.closed
+        ? STRINGS.message.attachmentLines(part.content.split("\n").length)
+        : STRINGS.artifact.generating,
       parent: headerEl,
     });
     const actionsEl = createDiv("chat-artifact-actions", this.el);
-    const openEl = createEl("button", { cls: "chat-artifact-action", text: STRINGS.artifact.open, parent: actionsEl });
-    openEl.addEventListener("click", () => {
-      if (this.app) void openArtifact(this.app, this.session.agentId, this.messageId, this.partIndex);
+    const openEl = createEl("button", {
+      cls: "chat-artifact-action",
+      text: STRINGS.artifact.open,
+      parent: actionsEl,
     });
-    const copyEl = createEl("button", { cls: "chat-artifact-action", text: STRINGS.artifact.copy, parent: actionsEl });
+    openEl.addEventListener("click", () => {
+      if (this.app)
+        void openArtifact(this.app, this.session.agentId, this.messageId, this.partIndex);
+    });
+    const copyEl = createEl("button", {
+      cls: "chat-artifact-action",
+      text: STRINGS.artifact.copy,
+      parent: actionsEl,
+    });
     copyEl.addEventListener("click", () => void writeClipboardText(part.content));
-    const saveEl = createEl("button", { cls: "chat-artifact-action", text: STRINGS.artifact.save, parent: actionsEl });
+    const saveEl = createEl("button", {
+      cls: "chat-artifact-action",
+      text: STRINGS.artifact.save,
+      parent: actionsEl,
+    });
     saveEl.addEventListener("click", () => void this.saveArtifact(part));
   }
 
@@ -127,12 +156,16 @@ class ChatPartRenderer extends Component {
   // real file, linkable like any note.
   private async saveArtifact(part: ArtifactChatPart): Promise<void> {
     if (!this.app) return;
-    const name = this.app.vault.getAbstractFileByPath(part.name) ? part.name.replace(/(\.\w+)?$/, `-${Date.now()}$1`) : part.name;
+    const name = this.app.vault.getAbstractFileByPath(part.name)
+      ? part.name.replace(/(\.\w+)?$/, `-${Date.now()}$1`)
+      : part.name;
     try {
       await this.app.vault.create(name, part.content);
       new Notice(STRINGS.artifact.saved(name));
     } catch (error) {
-      new Notice(STRINGS.artifact.saveFailed(error instanceof Error ? error.message : String(error)));
+      new Notice(
+        STRINGS.artifact.saveFailed(error instanceof Error ? error.message : String(error)),
+      );
     }
   }
 
@@ -156,9 +189,14 @@ class ChatPartRenderer extends Component {
     this.el.classList.add("chat-part-thinking");
     this.thinkingPart = part;
     if (!this.thinkingCollapse) {
-      this.thinkingCollapse = new Collapse(this.el, { header: "chat-thinking-header", clip: "chat-thinking-clip", body: "chat-thinking-body" });
+      this.thinkingCollapse = new Collapse(this.el, {
+        header: "chat-thinking-header",
+        clip: "chat-thinking-clip",
+        body: "chat-thinking-body",
+      });
     }
-    if (!this.thinkingCollapse.userToggled) this.thinkingCollapse.setCollapsed(part.closed && autoCollapseThinking());
+    if (!this.thinkingCollapse.userToggled)
+      this.thinkingCollapse.setCollapsed(part.closed && autoCollapseThinking());
     this.updateThinkingHeader();
     // The clock ticks between deltas too, so a silent engine still reads as
     // alive; the interval dies with the component or the part's close.
@@ -178,12 +216,20 @@ class ChatPartRenderer extends Component {
     const part = this.thinkingPart;
     if (!part || !this.thinkingCollapse) return;
     const elapsed = part.openedAt ? ((part.closedAt ?? Date.now()) - part.openedAt) / 1000 : null;
-    this.thinkingCollapse.headerEl.setText(part.closed ? STRINGS.thinking.done(elapsed) : STRINGS.thinking.active(elapsed));
+    this.thinkingCollapse.headerEl.setText(
+      part.closed ? STRINGS.thinking.done(elapsed) : STRINGS.thinking.active(elapsed),
+    );
   }
 
   private ensureMarkdownTarget(parentEl: HTMLElement): void {
-    if (!this.renderer) this.renderer = new StreamMarkdownRenderer(parentEl, this, `agent://${this.messageId}/${this.partIndex}`);
-    if (!this.typewriter) this.typewriter = new Typewriter((visible, done) => this.renderMarkdown(visible, done));
+    if (!this.renderer)
+      this.renderer = new StreamMarkdownRenderer(
+        parentEl,
+        this,
+        `agent://${this.messageId}/${this.partIndex}`,
+      );
+    if (!this.typewriter)
+      this.typewriter = new Typewriter((visible, done) => this.renderMarkdown(visible, done));
   }
 
   private renderMarkdown(visible: string, done: boolean): void {
@@ -210,7 +256,13 @@ class ChatPartRenderer extends Component {
     createSpan({ cls: "chat-tool-name", text: part.toolName, parent: headerEl });
     createSpan({
       cls: `chat-tool-status ${failed ? "is-failed" : part.closed ? "is-done" : "is-running"}`,
-      text: failed ? STRINGS.tool.failed : part.closed ? (part.result !== undefined ? STRINGS.tool.done : STRINGS.tool.called) : STRINGS.tool.running,
+      text: failed
+        ? STRINGS.tool.failed
+        : part.closed
+          ? part.result !== undefined
+            ? STRINGS.tool.done
+            : STRINGS.tool.called
+          : STRINGS.tool.running,
       parent: headerEl,
     });
     // Rows stay compact once done; the details expand on click, and stay
@@ -218,9 +270,11 @@ class ChatPartRenderer extends Component {
     // open so the error is never hidden behind a click.
     if (failed) this.toolExpanded = true;
     const detailsEl = createDiv("chat-tool-details", this.el);
-    if (part.input) createEl("pre", { cls: "chat-tool-input", text: part.input, parent: detailsEl });
+    if (part.input)
+      createEl("pre", { cls: "chat-tool-input", text: part.input, parent: detailsEl });
     if (failed) createEl("pre", { cls: "chat-tool-error", text: part.error, parent: detailsEl });
-    else if (part.result !== undefined) createEl("pre", { cls: "chat-tool-result", text: part.result, parent: detailsEl });
+    else if (part.result !== undefined)
+      createEl("pre", { cls: "chat-tool-result", text: part.result, parent: detailsEl });
     detailsEl.toggle(!part.closed || this.toolExpanded);
     headerEl.addEventListener("click", () => {
       this.toolExpanded = !this.toolExpanded;
@@ -262,7 +316,11 @@ class ChatMessageItem extends Component {
     // app's rule). Only a room's author name earns a header line.
     if (message.role === "assistant" && message.authorName) {
       const headerEl = createDiv("chat-message-header", this.el);
-      createSpan({ cls: "chat-author-avatar", text: message.authorName.slice(0, 1), parent: headerEl });
+      createSpan({
+        cls: "chat-author-avatar",
+        text: message.authorName.slice(0, 1),
+        parent: headerEl,
+      });
       createDiv({ cls: "chat-message-role", text: message.authorName, parent: headerEl });
     }
     this.partsEl = createDiv("chat-message-parts", this.el);
@@ -270,11 +328,19 @@ class ChatMessageItem extends Component {
     // Provenance rides the hover row: always the GENERATING model, never
     // the agent's current one (metadata-first, DeepChat's rule).
     if (message.role === "assistant" && message.model) {
-      createSpan({ cls: "chat-message-provenance", text: STRINGS.message.provenance(message.model, message.effort), parent: actionsEl });
+      createSpan({
+        cls: "chat-message-provenance",
+        text: STRINGS.message.provenance(message.model, message.effort),
+        parent: actionsEl,
+      });
     }
     for (const action of listChatMessageActions()) {
       if (action.appliesTo && !action.appliesTo(message)) continue;
-      const buttonEl = createEl("button", { cls: "chat-message-action", parent: actionsEl, title: action.title });
+      const buttonEl = createEl("button", {
+        cls: "chat-message-action",
+        parent: actionsEl,
+        title: action.title,
+      });
       buttonEl.setText(action.title.toLowerCase());
       buttonEl.addEventListener("click", () => {
         action.run(this.message, { agent: this.session });
@@ -291,8 +357,18 @@ class ChatMessageItem extends Component {
       if (!part) continue;
       let renderer = this.partRenderers[index];
       if (!renderer) {
-        const parentEl = part.type === "tool" ? this.timelineFor(index).collapse.bodyEl : this.partsEl;
-        renderer = this.addChild(new ChatPartRenderer(parentEl, this.session, this.message.id, index, this.onGrow, this.app));
+        const parentEl =
+          part.type === "tool" ? this.timelineFor(index).collapse.bodyEl : this.partsEl;
+        renderer = this.addChild(
+          new ChatPartRenderer(
+            parentEl,
+            this.session,
+            this.message.id,
+            index,
+            this.onGrow,
+            this.app,
+          ),
+        );
         this.partRenderers[index] = renderer;
       }
       renderer.sync(part);
@@ -311,7 +387,11 @@ class ChatMessageItem extends Component {
     if (this.message.role !== "user" || this.showMoreEl || !this.message.closed) return;
     if (this.partsEl.scrollHeight <= 220) return;
     this.el.addClass("is-collapsible");
-    this.showMoreEl = createEl("button", { cls: "chat-show-more", text: STRINGS.message.showMore, parent: this.el });
+    this.showMoreEl = createEl("button", {
+      cls: "chat-show-more",
+      text: STRINGS.message.showMore,
+      parent: this.el,
+    });
     this.showMoreEl.addEventListener("click", () => {
       const expanded = this.el.hasClass("is-expanded");
       this.el.toggleClass("is-expanded", !expanded);
@@ -329,10 +409,23 @@ class ChatMessageItem extends Component {
       return previous;
     }
     const el = createDiv("chat-tool-timeline", this.partsEl);
-    const collapse = new Collapse(el, { header: "chat-tool-timeline-header", clip: "chat-tool-timeline-clip", body: "chat-tool-timeline-body" });
+    const collapse = new Collapse(el, {
+      header: "chat-tool-timeline-header",
+      clip: "chat-tool-timeline-clip",
+      body: "chat-tool-timeline-body",
+    });
     const dotEl = createStatusDot(collapse.headerEl, "running");
-    const headerTextEl = createSpan({ cls: "chat-tool-timeline-summary", parent: collapse.headerEl });
-    const timeline: ToolTimeline = { collapse, dotEl, headerTextEl, partIndexes: [index], autoCollapsed: false };
+    const headerTextEl = createSpan({
+      cls: "chat-tool-timeline-summary",
+      parent: collapse.headerEl,
+    });
+    const timeline: ToolTimeline = {
+      collapse,
+      dotEl,
+      headerTextEl,
+      partIndexes: [index],
+      autoCollapsed: false,
+    };
     this.timelines.set(index, timeline);
     return timeline;
   }
@@ -342,17 +435,29 @@ class ChatMessageItem extends Component {
       const parts = timeline.partIndexes.map((index) => this.message.parts[index]).filter(Boolean);
       const total = parts.length;
       const running = parts.some((part) => !part.closed);
-      const failedCount = parts.filter((part) => part.type === "tool" && part.error !== undefined).length;
+      const failedCount = parts.filter(
+        (part) => part.type === "tool" && part.error !== undefined,
+      ).length;
       const opened = parts[0]?.openedAt;
       const closed = parts[parts.length - 1]?.closedAt;
-      const duration = !running && opened && closed && closed > opened ? (closed - opened) / 1000 : null;
-      const status = running ? STRINGS.tool.running : failedCount ? STRINGS.timeline.failedStatus(failedCount) : STRINGS.tool.done;
+      const duration =
+        !running && opened && closed && closed > opened ? (closed - opened) / 1000 : null;
+      const status = running
+        ? STRINGS.tool.running
+        : failedCount
+          ? STRINGS.timeline.failedStatus(failedCount)
+          : STRINGS.tool.done;
       timeline.headerTextEl.setText(STRINGS.timeline.summary(total, status, duration));
       setStatusDot(timeline.dotEl, running ? "running" : failedCount ? "failed" : "done");
       timeline.collapse.rootEl.toggleClass("is-running", running);
       timeline.collapse.rootEl.toggleClass("has-failed", failedCount > 0);
       // Failures keep the timeline open; a fully green run tucks itself away.
-      if (!running && failedCount === 0 && !timeline.collapse.userToggled && !timeline.autoCollapsed) {
+      if (
+        !running &&
+        failedCount === 0 &&
+        !timeline.collapse.userToggled &&
+        !timeline.autoCollapsed
+      ) {
         timeline.autoCollapsed = true;
         timeline.collapse.setCollapsed(true);
       }
@@ -385,7 +490,8 @@ export class ChatMessageList extends Component {
     this.forkSeamEl = createDiv("chat-fork-seam", this.el);
     this.forkSeamEl.hide();
     this.thinkingEl = createDiv("chat-thinking-indicator", this.el);
-    for (let index = 0; index < 3; index++) createSpan({ cls: "chat-thinking-dot", parent: this.thinkingEl });
+    for (let index = 0; index < 3; index++)
+      createSpan({ cls: "chat-thinking-dot", parent: this.thinkingEl });
     this.thinkingEl.hide();
     // Queued prompts render after the thinking indicator, one card per item;
     // they are UI staging (Agent.queued), not conversation history.
@@ -411,7 +517,11 @@ export class ChatMessageList extends Component {
     if (!forkedFrom || this.forkSeamEl.dataset.forkedFrom === forkedFrom) return;
     this.forkSeamEl.dataset.forkedFrom = forkedFrom;
     this.forkSeamEl.empty();
-    const labelEl = createSpan({ cls: "chat-fork-label", text: STRINGS.message.forkedFrom(forkedFrom), parent: this.forkSeamEl });
+    const labelEl = createSpan({
+      cls: "chat-fork-label",
+      text: STRINGS.message.forkedFrom(forkedFrom),
+      parent: this.forkSeamEl,
+    });
     labelEl.addEventListener("click", () => {
       if (this.app) void openAgent(this.app, forkedFrom);
     });
@@ -425,7 +535,9 @@ export class ChatMessageList extends Component {
       let item = this.items.get(message.id);
       if (!item) {
         this.renderCompactionsAfter(messages[messages.indexOf(message) - 1]?.id ?? null);
-        item = this.addChild(new ChatMessageItem(this.el, message, this.session, this.onGrow, this.app));
+        item = this.addChild(
+          new ChatMessageItem(this.el, message, this.session, this.onGrow, this.app),
+        );
         this.items.set(message.id, item);
         this.el.appendChild(this.thinkingEl);
         this.el.appendChild(this.queuedEl);
@@ -456,7 +568,11 @@ export class ChatMessageList extends Component {
       cardEl.dataset.index = String(index);
       createSpan({ cls: "chat-queued-label", text: STRINGS.queued.label, parent: cardEl });
       createDiv({ cls: "chat-queued-text", text: item.text, parent: cardEl });
-      const cancelEl = createEl("button", { cls: "chat-queued-cancel", text: STRINGS.queued.cancel, parent: cardEl });
+      const cancelEl = createEl("button", {
+        cls: "chat-queued-cancel",
+        text: STRINGS.queued.cancel,
+        parent: cardEl,
+      });
       cancelEl.addEventListener("click", () => this.session.cancelQueued(index));
     });
   }
@@ -466,7 +582,10 @@ export class ChatMessageList extends Component {
     for (const permission of this.session.state.permissions) {
       if (permission.outcome) {
         const rowEl = createDiv("chat-permission is-resolved", this.permissionsEl);
-        const outcomeLabel = STRINGS.permission.outcome[permission.outcome as keyof typeof STRINGS.permission.outcome] ?? permission.outcome;
+        const outcomeLabel =
+          STRINGS.permission.outcome[
+            permission.outcome as keyof typeof STRINGS.permission.outcome
+          ] ?? permission.outcome;
         rowEl.setText(`${permission.toolName} · ${outcomeLabel}`);
         continue;
       }
@@ -474,12 +593,25 @@ export class ChatMessageList extends Component {
       cardEl.dataset.requestId = permission.requestId;
       createDiv({ cls: "chat-permission-title", text: STRINGS.permission.title, parent: cardEl });
       createSpan({ cls: "chat-permission-tool", text: permission.toolName, parent: cardEl });
-      if (permission.input) createEl("pre", { cls: "chat-permission-input", text: permission.input, parent: cardEl });
+      if (permission.input)
+        createEl("pre", { cls: "chat-permission-input", text: permission.input, parent: cardEl });
       const actionsEl = createDiv("chat-permission-actions", cardEl);
-      const allowEl = createEl("button", { cls: "chat-permission-allow", text: STRINGS.permission.allow, parent: actionsEl });
-      allowEl.addEventListener("click", () => this.session.resolvePermission(permission.requestId, "allow"));
-      const denyEl = createEl("button", { cls: "chat-permission-deny", text: STRINGS.permission.deny, parent: actionsEl });
-      denyEl.addEventListener("click", () => this.session.resolvePermission(permission.requestId, "deny"));
+      const allowEl = createEl("button", {
+        cls: "chat-permission-allow",
+        text: STRINGS.permission.allow,
+        parent: actionsEl,
+      });
+      allowEl.addEventListener("click", () =>
+        this.session.resolvePermission(permission.requestId, "allow"),
+      );
+      const denyEl = createEl("button", {
+        cls: "chat-permission-deny",
+        text: STRINGS.permission.deny,
+        parent: actionsEl,
+      });
+      denyEl.addEventListener("click", () =>
+        this.session.resolvePermission(permission.requestId, "deny"),
+      );
     }
   }
 
@@ -488,18 +620,25 @@ export class ChatMessageList extends Component {
   // A compaction is a process: the divider shimmers while it runs, settles
   // into the token summary when done, goes red if the engine's summarizer
   // failed.
-  private syncCompactionEl(dividerEl: HTMLElement, compaction: { preTokens?: number; trigger?: string; phase: string }): void {
+  private syncCompactionEl(
+    dividerEl: HTMLElement,
+    compaction: { preTokens?: number; trigger?: string; phase: string },
+  ): void {
     dividerEl.classList.toggle("is-running", compaction.phase === "started");
     dividerEl.classList.toggle("is-failed", compaction.phase === "failed");
-    const base = compaction.phase === "started"
-      ? STRINGS.message.compacting
-      : compaction.phase === "failed"
-        ? STRINGS.message.compactFailed
-        : compaction.preTokens
-          ? STRINGS.message.compactedTokens(compaction.preTokens)
-          : STRINGS.message.compacted;
+    const base =
+      compaction.phase === "started"
+        ? STRINGS.message.compacting
+        : compaction.phase === "failed"
+          ? STRINGS.message.compactFailed
+          : compaction.preTokens
+            ? STRINGS.message.compactedTokens(compaction.preTokens)
+            : STRINGS.message.compacted;
     // The engine-reported trigger (manual / auto) is provenance worth a word.
-    const label = compaction.phase === "completed" && compaction.trigger ? `${base} · ${compaction.trigger}` : base;
+    const label =
+      compaction.phase === "completed" && compaction.trigger
+        ? `${base} · ${compaction.trigger}`
+        : base;
     let labelEl = dividerEl.querySelector(".chat-compact-label") as HTMLElement | null;
     if (!labelEl) labelEl = createSpan({ cls: "chat-compact-label", parent: dividerEl });
     labelEl.setText(label);

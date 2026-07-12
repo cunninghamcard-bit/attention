@@ -63,6 +63,9 @@ describe("Workspace event parity", () => {
     app.workspace.markLayoutReady();
     await app.workspace.waitForLayoutReadyCallbacks();
 
-    expect(errorSpy).toHaveBeenCalledWith("Plugin layout-plugin failed in onLayoutReady callback", error);
+    expect(errorSpy).toHaveBeenCalledWith(
+      "Plugin layout-plugin failed in onLayoutReady callback",
+      error,
+    );
   });
 });

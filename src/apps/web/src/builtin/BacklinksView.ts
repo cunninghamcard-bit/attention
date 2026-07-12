@@ -6,13 +6,21 @@ import { MarkdownView } from "../views/MarkdownView";
 export class BacklinksView extends ItemView {
   file: TFile | null = null;
 
-  getViewType(): string { return "backlink"; }
-  getDisplayText(): string { return "Backlinks"; }
-  getIcon(): string { return "links-coming-in"; }
+  getViewType(): string {
+    return "backlink";
+  }
+  getDisplayText(): string {
+    return "Backlinks";
+  }
+  getIcon(): string {
+    return "links-coming-in";
+  }
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("backlink-pane");
-    this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.updateFromActiveFile()));
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", () => this.updateFromActiveFile()),
+    );
     this.registerEvent(this.app.metadataCache.on("changed", () => this.render()));
     this.registerEvent(this.app.metadataCache.on("deleted", () => this.render()));
     this.updateFromActiveFile();
@@ -20,7 +28,10 @@ export class BacklinksView extends ItemView {
 
   updateFromActiveFile(): void {
     const activeView = this.app.workspace.activeLeaf?.view;
-    this.setFile(this.app.workspace.activeEditor?.file ?? (activeView instanceof MarkdownView ? activeView.file : null));
+    this.setFile(
+      this.app.workspace.activeEditor?.file ??
+        (activeView instanceof MarkdownView ? activeView.file : null),
+    );
   }
 
   setFile(file: TFile | null): void {
@@ -57,7 +68,8 @@ export class BacklinksView extends ItemView {
       emptyEl.textContent = emptyText;
       childrenEl.appendChild(emptyEl);
     } else {
-      for (const backlink of backlinks.sort((a, b) => a.from.localeCompare(b.from))) this.renderBacklink(backlink, childrenEl);
+      for (const backlink of backlinks.sort((a, b) => a.from.localeCompare(b.from)))
+        this.renderBacklink(backlink, childrenEl);
     }
 
     this.contentEl.appendChild(sectionEl);
@@ -80,7 +92,13 @@ export class BacklinksView extends ItemView {
     lineEl.textContent = backlink.position ? String(backlink.position.line + 1) : "";
     const textEl = doc.createElement("span");
     textEl.className = "search-result-file-match-text";
-    if (backlink.position) appendHighlightedText(textEl, backlink.position.text, backlink.position.start, backlink.position.end);
+    if (backlink.position)
+      appendHighlightedText(
+        textEl,
+        backlink.position.text,
+        backlink.position.start,
+        backlink.position.end,
+      );
     else textEl.textContent = backlink.original;
     matchEl.append(lineEl, textEl);
     matchEl.addEventListener("click", () => this.openBacklink(backlink));
@@ -100,12 +118,23 @@ export class BacklinksView extends ItemView {
     if (!file) return;
     void this.app.workspace.openFile(file, {
       active: true,
-      eState: backlink.position ? { line: backlink.position.line, matchStart: backlink.position.start, matchEnd: backlink.position.end } : undefined,
+      eState: backlink.position
+        ? {
+            line: backlink.position.line,
+            matchStart: backlink.position.start,
+            matchEnd: backlink.position.end,
+          }
+        : undefined,
     });
   }
 }
 
-function appendHighlightedText(parentEl: HTMLElement, text: string, start: number, end: number): void {
+function appendHighlightedText(
+  parentEl: HTMLElement,
+  text: string,
+  start: number,
+  end: number,
+): void {
   const doc = parentEl.ownerDocument;
   if (start > 0) parentEl.appendChild(doc.createTextNode(text.slice(0, start)));
   const highlightEl = doc.createElement("span");

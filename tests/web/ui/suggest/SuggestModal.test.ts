@@ -2,13 +2,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
 import { Platform } from "@web/platform/Platform";
 import { fuzzySearch, prepareQuery } from "@web/search/SearchHelpers";
-import { FuzzySuggestModal, fuzzyMatch, GroupedSuggestChooser, prepareFuzzyQuery, SuggestChooser, SuggestModal, type SuggestOwner } from "@web/ui/suggest/SuggestModal";
+import {
+  FuzzySuggestModal,
+  fuzzyMatch,
+  GroupedSuggestChooser,
+  prepareFuzzyQuery,
+  SuggestChooser,
+  SuggestModal,
+  type SuggestOwner,
+} from "@web/ui/suggest/SuggestModal";
 
 class RecordingSuggestModal extends SuggestModal<string> {
   readonly chosen: Array<{ value: string; event: MouseEvent | KeyboardEvent }> = [];
   readonly selected: Array<{ value: string; event: MouseEvent | KeyboardEvent | null }> = [];
 
-  constructor(app: App, readonly values: string[]) {
+  constructor(
+    app: App,
+    readonly values: string[],
+  ) {
     super(app);
   }
 
@@ -30,7 +41,10 @@ class RecordingSuggestModal extends SuggestModal<string> {
 }
 
 class RecordingFuzzySuggestModal extends FuzzySuggestModal<string> {
-  constructor(app: App, readonly values: string[]) {
+  constructor(
+    app: App,
+    readonly values: string[],
+  ) {
     super(app);
   }
 
@@ -69,7 +83,12 @@ describe("SuggestModal Obsidian chooser behavior", () => {
     const modal = new RecordingSuggestModal(app, ["Alpha", "Beta"]);
     modal.chooser.setSuggestions(["Alpha", "Beta"]);
     const betaEl = modal.resultContainerEl.querySelectorAll<HTMLElement>(".suggestion-item")[1];
-    const event = new MouseEvent("click", { bubbles: true, cancelable: true, ctrlKey: true, shiftKey: true });
+    const event = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      ctrlKey: true,
+      shiftKey: true,
+    });
 
     betaEl.dispatchEvent(event);
 
@@ -87,26 +106,39 @@ describe("SuggestModal Obsidian chooser behavior", () => {
     modal.inputEl.value = "a";
     modal.inputEl.dispatchEvent(new Event("input"));
 
-    expect([...modal.resultContainerEl.querySelectorAll(".suggestion-item")].map((el) => el.textContent)).toEqual(["Alpha", "Beta"]);
+    expect(
+      [...modal.resultContainerEl.querySelectorAll(".suggestion-item")].map((el) => el.textContent),
+    ).toEqual(["Alpha", "Beta"]);
   });
 
   it("uses the shared Obsidian fuzzy helpers in FuzzySuggestModal", () => {
     const app = new App(document.createElement("div"));
-    const modal = new RecordingFuzzySuggestModal(app, ["Quick Switcher", "Quiet Space", "Search files"]);
+    const modal = new RecordingFuzzySuggestModal(app, [
+      "Quick Switcher",
+      "Quiet Space",
+      "Search files",
+    ]);
     const query = prepareFuzzyQuery("qs");
 
-    expect(fuzzyMatch(query, "Quick Switcher")).toEqual(fuzzySearch(prepareQuery("qs"), "Quick Switcher"));
+    expect(fuzzyMatch(query, "Quick Switcher")).toEqual(
+      fuzzySearch(prepareQuery("qs"), "Quick Switcher"),
+    );
 
     const suggestions = modal.getSuggestions(" qs ");
     const scores = suggestions.map((suggestion) => suggestion.match.score);
 
-    expect(suggestions.map((suggestion) => suggestion.item).sort()).toEqual(["Quick Switcher", "Quiet Space"]);
+    expect(suggestions.map((suggestion) => suggestion.item).sort()).toEqual([
+      "Quick Switcher",
+      "Quiet Space",
+    ]);
     expect(scores).toEqual([...scores].sort((a, b) => b - a));
 
     const el = document.createElement("div");
     modal.renderSuggestion(suggestions[0], el);
 
-    expect(el.querySelectorAll(".suggestion-highlight")).toHaveLength(suggestions[0].match.matches.length);
+    expect(el.querySelectorAll(".suggestion-highlight")).toHaveLength(
+      suggestions[0].match.matches.length,
+    );
   });
 
   it("wraps keyboard selection and fires onSelectedChange", () => {
@@ -127,10 +159,15 @@ describe("SuggestModal Obsidian chooser behavior", () => {
     const values = Array.from({ length: 10 }, (_, index) => `Item ${index}`);
     const modal = new RecordingSuggestModal(app, values);
     modal.chooser.setSuggestions(values);
-    Object.defineProperty(modal.resultContainerEl, "clientHeight", { configurable: true, value: 80 });
+    Object.defineProperty(modal.resultContainerEl, "clientHeight", {
+      configurable: true,
+      value: 80,
+    });
     modal.resultContainerEl.scrollTop = 40;
     modal.resultContainerEl.style.paddingTop = "0px";
-    for (const itemEl of modal.resultContainerEl.querySelectorAll<HTMLElement>(".suggestion-item")) {
+    for (const itemEl of modal.resultContainerEl.querySelectorAll<HTMLElement>(
+      ".suggestion-item",
+    )) {
       Object.defineProperty(itemEl, "clientHeight", { configurable: true, value: 20 });
     }
 
@@ -152,9 +189,13 @@ describe("SuggestModal Obsidian chooser behavior", () => {
     const modal = new RecordingSuggestModal(app, ["Alpha", "Beta"]);
     modal.chooser.setSuggestions(["Alpha", "Beta"]);
 
-    expect(modal.scope.handleKey(new KeyboardEvent("keydown", { key: "ArrowDown", isComposing: true }))).toBeUndefined();
+    expect(
+      modal.scope.handleKey(new KeyboardEvent("keydown", { key: "ArrowDown", isComposing: true })),
+    ).toBeUndefined();
     expect(modal.chooser.selectedItem).toBe(0);
-    expect(modal.scope.handleKey(new KeyboardEvent("keydown", { key: "PageDown", isComposing: true }))).toBeUndefined();
+    expect(
+      modal.scope.handleKey(new KeyboardEvent("keydown", { key: "PageDown", isComposing: true })),
+    ).toBeUndefined();
     expect(modal.chooser.selectedItem).toBe(0);
   });
 
@@ -212,10 +253,14 @@ describe("SuggestModal Obsidian chooser behavior", () => {
 
       modal.chooser.setSuggestions(["Alpha", "Beta"]);
 
-      expect(modal.scope.handleKey(new KeyboardEvent("keydown", { key: "p", ctrlKey: true }))).toBe(false);
+      expect(modal.scope.handleKey(new KeyboardEvent("keydown", { key: "p", ctrlKey: true }))).toBe(
+        false,
+      );
       expect(modal.chooser.selectedItem).toBe(1);
 
-      expect(modal.scope.handleKey(new KeyboardEvent("keydown", { key: "n", ctrlKey: true }))).toBe(false);
+      expect(modal.scope.handleKey(new KeyboardEvent("keydown", { key: "n", ctrlKey: true }))).toBe(
+        false,
+      );
       expect(modal.chooser.selectedItem).toBe(0);
     } finally {
       Platform.isPhone = originalPhone;
@@ -255,7 +300,9 @@ describe("SuggestModal Obsidian chooser behavior", () => {
     expect(groups.map((group) => group.dataset.group)).toEqual(["views", "actions"]);
     expect(groups[0]?.querySelectorAll(".suggestion-item")).toHaveLength(2);
     expect(groups[1]?.querySelector(".suggestion-item")?.textContent).toBe("Add view");
-    expect(containerEl.querySelector(".suggestion-item")?.classList.contains("is-selected")).toBe(true);
+    expect(containerEl.querySelector(".suggestion-item")?.classList.contains("is-selected")).toBe(
+      true,
+    );
 
     groups[1]?.querySelector<HTMLElement>(".suggestion-item")?.click();
 

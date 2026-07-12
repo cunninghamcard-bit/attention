@@ -37,9 +37,13 @@ export function highlightMentionsIn(rootEl: HTMLElement): void {
 }
 
 export function registerMentionPostProcessor(): void {
-  (MarkdownRenderer as unknown as {
-    registerPostProcessor(processor: (el: HTMLElement, ctx: { sourcePath?: string }) => void): void;
-  }).registerPostProcessor((el, ctx) => {
+  (
+    MarkdownRenderer as unknown as {
+      registerPostProcessor(
+        processor: (el: HTMLElement, ctx: { sourcePath?: string }) => void,
+      ): void;
+    }
+  ).registerPostProcessor((el, ctx) => {
     if (!ctx.sourcePath?.startsWith("agent://")) return;
     highlightMentionsIn(el);
   });

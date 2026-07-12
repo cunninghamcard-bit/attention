@@ -105,7 +105,8 @@ async function seedCodeDemoFiles(app: App): Promise<void> {
     'ENTRYPOINT ["server"]',
     "",
   ].join("\n");
-  if (!app.vault.getFileByPath("agent/server.go")) await app.vault.create("agent/server.go", goSource);
+  if (!app.vault.getFileByPath("agent/server.go"))
+    await app.vault.create("agent/server.go", goSource);
   if (!app.vault.getFileByPath("Dockerfile")) await app.vault.create("Dockerfile", dockerfile);
 }
 
@@ -128,9 +129,11 @@ function provideDesktopAdapter(parent: HTMLElement): void {
 
 function resolveElectronVaultPath(win: Window): string | null {
   try {
-    const electron = (win as Window & {
-      electron?: { ipcRenderer?: { sendSync?: (channel: string) => unknown } };
-    }).electron;
+    const electron = (
+      win as Window & {
+        electron?: { ipcRenderer?: { sendSync?: (channel: string) => unknown } };
+      }
+    ).electron;
     const info = electron?.ipcRenderer?.sendSync?.("vault") as { path?: string } | undefined;
     if (info && typeof info.path === "string" && info.path.length > 0) return info.path;
   } catch {

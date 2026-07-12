@@ -66,7 +66,9 @@ class IndexedDbMetadataCacheStore implements MetadataCachePersistentStore {
     const entries: Array<[string, unknown]> = [];
     let index = 0;
     while (index < keys.length) {
-      const values = await requestToPromise<unknown[]>(store.getAll(IDBKeyRange.lowerBound(keys[index]), batchSize));
+      const values = await requestToPromise<unknown[]>(
+        store.getAll(IDBKeyRange.lowerBound(keys[index]), batchSize),
+      );
       if (values.length === 0) break;
       for (let offset = 0; offset < values.length; offset += 1) {
         entries.push([String(keys[index + offset]), values[offset]]);
@@ -80,7 +82,11 @@ class IndexedDbMetadataCacheStore implements MetadataCachePersistentStore {
     void this.saveAsync(storeName, key, value);
   }
 
-  private async saveAsync(storeName: MetadataCacheStoreName, key: string, value: unknown | null): Promise<void> {
+  private async saveAsync(
+    storeName: MetadataCacheStoreName,
+    key: string,
+    value: unknown | null,
+  ): Promise<void> {
     const db = await this.open();
     if (!db) return;
     let transaction = this.writeTransaction;

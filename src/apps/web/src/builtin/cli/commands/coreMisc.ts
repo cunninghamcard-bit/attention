@@ -39,7 +39,12 @@ export function registerCoreMiscCommands(app: App): void {
 
   // The reference registers `version` with literally no flags and reads the
   // platform/app-info global (`Yl.version`/`Yl.build` — our Platform).
-  cli.registerHandler("version", "Show Obsidian version", null, () => `${Platform.version} (installer ${Platform.build})`);
+  cli.registerHandler(
+    "version",
+    "Show Obsidian version",
+    null,
+    () => `${Platform.version} (installer ${Platform.build})`,
+  );
 
   cli.registerHandler(
     "vaults",
@@ -52,12 +57,18 @@ export function registerCoreMiscCommands(app: App): void {
       if (Platform.isMobile) throw "This command is only available on desktop.";
       // Real: `u.ipcRenderer.sendSync("vault-list")` — the renderer always has
       // the electron bridge; without one this crashes, same as the reference.
-      const bridge = (globalThis as { electron?: { ipcRenderer?: { sendSync(channel: string): unknown } } }).electron!.ipcRenderer!;
+      const bridge = (
+        globalThis as { electron?: { ipcRenderer?: { sendSync(channel: string): unknown } } }
+      ).electron!.ipcRenderer!;
       const vaults = Object.values(bridge.sendSync("vault-list") as Record<string, VaultRecord>);
       // Count before sort, most-recently-opened first (faithful ordering).
       if (params.total) return String(vaults.length);
       vaults.sort((a, b) => b.ts - a.ts);
-      return vaults.map((vault) => (params.verbose ? `${basename(vault.path)}\t${vault.path}` : basename(vault.path))).join("\n");
+      return vaults
+        .map((vault) =>
+          params.verbose ? `${basename(vault.path)}\t${vault.path}` : basename(vault.path),
+        )
+        .join("\n");
     },
   );
 
@@ -71,7 +82,8 @@ export function registerCoreMiscCommands(app: App): void {
     (params) => {
       // The reference duplicates its required-flag check at runtime (dead via
       // the dispatcher's own validation, kept for fidelity).
-      if (!params.path) throw "Missing required parameter: path\nUsage: folder path=<folder-path> [info=files|folders|size]";
+      if (!params.path)
+        throw "Missing required parameter: path\nUsage: folder path=<folder-path> [info=files|folders|size]";
       const folder = app.vault.getAbstractFileByPath(params.path);
       if (!folder) throw `Folder "${params.path}" not found.`;
       if (!(folder instanceof TFolder)) throw `"${params.path}" is a file, not a folder.`;

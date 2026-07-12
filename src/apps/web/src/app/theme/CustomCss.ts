@@ -42,12 +42,22 @@ export class CustomCss {
 
     for (const themeFolder of listed.folders) {
       if (themeFolder.startsWith(".")) continue;
-      const manifest = await this.app.vault.readJson<{ name?: string; author?: string; version?: string }>(`${folder}/${themeFolder}/manifest.json`);
+      const manifest = await this.app.vault.readJson<{
+        name?: string;
+        author?: string;
+        version?: string;
+      }>(`${folder}/${themeFolder}/manifest.json`);
       const cssText = await this.loadCss(`${folder}/${themeFolder}/theme.css`);
       if (!cssText || manifest?.name !== themeFolder) continue;
       const id = manifest.name;
       this.folderThemes.add(id);
-      this.app.themes.registerTheme({ id, name: id, author: manifest?.author, variables: {}, cssText });
+      this.app.themes.registerTheme({
+        id,
+        name: id,
+        author: manifest?.author,
+        variables: {},
+        cssText,
+      });
     }
 
     if (reload) this.requestLoadTheme();
@@ -74,8 +84,13 @@ export class CustomCss {
     const extension = filename.split(".").pop() ?? "";
     const activeTheme = this.app.vault.getConfig<string>("cssTheme") ?? "";
     if (path === this.getThemePath(activeTheme)) this.requestLoadTheme();
-    if (path.startsWith(this.getThemeFolder()) && (filename === "theme.css" || filename === "manifest.json" || extension === "css")) this.requestReadThemes();
-    if (path.startsWith(this.getSnippetsFolder()) && extension === "css") void this.readSnippets(true);
+    if (
+      path.startsWith(this.getThemeFolder()) &&
+      (filename === "theme.css" || filename === "manifest.json" || extension === "css")
+    )
+      this.requestReadThemes();
+    if (path.startsWith(this.getSnippetsFolder()) && extension === "css")
+      void this.readSnippets(true);
   }
 
   isCssConfigPath(path: string): boolean {
@@ -83,7 +98,10 @@ export class CustomCss {
   }
 
   loadData(): void {
-    document.body.classList.toggle("is-translucent", Boolean(this.app.vault.getConfig("translucency")));
+    document.body.classList.toggle(
+      "is-translucent",
+      Boolean(this.app.vault.getConfig("translucency")),
+    );
   }
 
   loadTheme(): void {
@@ -103,7 +121,8 @@ export class CustomCss {
   }
 
   getThemePath(id: string): string {
-    if (this.legacyThemes.has(id) && !this.folderThemes.has(id)) return `${this.getThemeFolder()}/${id}.css`;
+    if (this.legacyThemes.has(id) && !this.folderThemes.has(id))
+      return `${this.getThemeFolder()}/${id}.css`;
     return `${this.getThemeFolder()}/${id}/theme.css`;
   }
 
@@ -193,7 +212,7 @@ export class CustomCss {
   private async loadCss(path: string): Promise<string> {
     const cached = this.cssCache.get(path);
     if (cached !== undefined) return cached;
-    const cssText = await this.app.vault.readText(path) ?? "";
+    const cssText = (await this.app.vault.readText(path)) ?? "";
     this.cssCache.set(path, cssText);
     return cssText;
   }
@@ -205,7 +224,10 @@ function getCssBasename(file: string): string | null {
   return filename.slice(0, -4);
 }
 
-function createDebouncedCustomCssRequest(run: () => void | Promise<void>, delay: number): (() => void) & { run: () => Promise<void>; cancel: () => void } {
+function createDebouncedCustomCssRequest(
+  run: () => void | Promise<void>,
+  delay: number,
+): (() => void) & { run: () => Promise<void>; cancel: () => void } {
   let timer: ReturnType<typeof setTimeout> | null = null;
   const cancel = (): void => {
     if (timer == null) return;

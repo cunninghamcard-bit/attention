@@ -22,21 +22,33 @@ function makeCli(): Cli {
   cli.registerHandler(
     "files",
     "List files in the vault",
-    { ext: { description: "extension" }, total: { description: "count" }, format: { value: "json|tsv|csv", description: "output format" } },
+    {
+      ext: { description: "extension" },
+      total: { description: "count" },
+      format: { value: "json|tsv|csv", description: "output format" },
+    },
     (args) => `files ${JSON.stringify(args)}`,
   );
   cli.registerHandler(
     "search",
     "Search vault for text",
-    { query: { description: "query", required: true }, format: { value: "text|json", description: "output format" } },
+    {
+      query: { description: "query", required: true },
+      format: { value: "text|json", description: "output format" },
+    },
     (args) => `search ${JSON.stringify(args)}`,
   );
-  cli.registerHandler("daily", "Open daily note", { read: { description: "read it" } }, (args) => `daily ${JSON.stringify(args)}`);
+  cli.registerHandler(
+    "daily",
+    "Open daily note",
+    { read: { description: "read it" } },
+    (args) => `daily ${JSON.stringify(args)}`,
+  );
   return cli;
 }
 
 describe("Cli parsing", () => {
-  it("key=value keeps the value; a bare flag becomes the string \"true\"", async () => {
+  it('key=value keeps the value; a bare flag becomes the string "true"', async () => {
     const out = await makeCli().handleCli(["files", "ext=ts", "total"]);
     expect(JSON.parse(out.slice("files ".length))).toEqual({ ext: "ts", total: "true" });
   });
@@ -75,13 +87,17 @@ describe("Cli colon fallback", () => {
   it("an unknown colon command with no matching parent flag stays unknown", async () => {
     // `bogus` is not a `daily` flag, so it never folds into `daily` — it is
     // dispatched as-is and rejected as an unknown command.
-    await expect(makeCli().handleCli(["daily:bogus"])).rejects.toMatch(/^Command "daily:bogus" not found\./);
+    await expect(makeCli().handleCli(["daily:bogus"])).rejects.toMatch(
+      /^Command "daily:bogus" not found\./,
+    );
   });
 });
 
 describe("Cli unknown command", () => {
   it("suggests near matches (fuzzy) and throws a plain string, best match first", async () => {
-    await expect(makeCli().handleCli(["fils"])).rejects.toMatch(/^Command "fils" not found\. Did you mean: files/);
+    await expect(makeCli().handleCli(["fils"])).rejects.toMatch(
+      /^Command "fils" not found\. Did you mean: files/,
+    );
   });
 
   it("falls back to the plugin hint when nothing is close", async () => {
@@ -152,13 +168,13 @@ describe("Cli help output", () => {
     const help = await makeCli().handleCli(["help"]);
     expect(help).toContain(
       "Workbench CLI\n\nUsage: workbench <command> [options]\n\n" +
-      "Options:\n  vault=<name>          Target a specific vault by name\n\n" +
-      "Notes:\n" +
-      "  file resolves by name (like wikilinks), path is exact (folder/note.md)\n" +
-      "  Most commands default to the active file when file/path is omitted\n" +
-      '  Quote values with spaces: name="My Note"\n' +
-      "  Use \\n for newline, \\t for tab in content values\n\n" +
-      "Commands:\n",
+        "Options:\n  vault=<name>          Target a specific vault by name\n\n" +
+        "Notes:\n" +
+        "  file resolves by name (like wikilinks), path is exact (folder/note.md)\n" +
+        "  Most commands default to the active file when file/path is omitted\n" +
+        '  Quote values with spaces: name="My Note"\n' +
+        "  Use \\n for newline, \\t for tab in content values\n\n" +
+        "Commands:\n",
     );
     // Developer: is emitted even with no developer commands registered.
     expect(help).toMatch(/\n\nDeveloper:\n/);
@@ -176,7 +192,12 @@ describe("Cli help output", () => {
 
   it("a flag atom of 20+ chars gets exactly two trailing spaces, not padEnd", async () => {
     const cli = makeCli();
-    cli.registerHandler("wide", "Wide flags", { "a-very-long-flag-name": { value: "<v>", description: "wide" } }, () => "");
+    cli.registerHandler(
+      "wide",
+      "Wide flags",
+      { "a-very-long-flag-name": { value: "<v>", description: "wide" } },
+      () => "",
+    );
     const help = await cli.handleCli(["help", "wide"]);
     expect(help).toContain("    a-very-long-flag-name=<v>  - wide");
   });
@@ -194,12 +215,18 @@ describe("Cli.init", () => {
     const resolve = vi.fn();
     const target = globalThis as unknown as {
       handleCli?: unknown;
-      cliQueue?: Array<{ argv: string[]; resolve: (o: string) => void; reject: (e: unknown) => void }> | null;
+      cliQueue?: Array<{
+        argv: string[];
+        resolve: (o: string) => void;
+        reject: (e: unknown) => void;
+      }> | null;
     };
     target.cliQueue = [{ argv: ["help"], resolve, reject: () => {} }];
     let layoutReady: (() => void) | null = null;
     const cli = new Cli();
-    cli.init({ workspace: { onLayoutReady: (callback: () => void) => (layoutReady = callback) } } as never);
+    cli.init({
+      workspace: { onLayoutReady: (callback: () => void) => (layoutReady = callback) },
+    } as never);
     expect(typeof target.handleCli).toBe("function");
     await Promise.resolve();
     // The real boundary: nothing runs against a half-built workspace.

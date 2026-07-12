@@ -7,13 +7,17 @@ import type { CachedMetadata } from "./MetadataCache";
 export function parseFrontMatterEntry(frontmatter: unknown, key: string | RegExp): unknown | null {
   if (!frontmatter || typeof frontmatter !== "object") return null;
   const entries = Object.entries(frontmatter as Record<string, unknown>);
-  const found = typeof key === "string"
-    ? entries.find(([entryKey]) => entryKey === key)
-    : entries.find(([entryKey]) => key.test(entryKey));
+  const found =
+    typeof key === "string"
+      ? entries.find(([entryKey]) => entryKey === key)
+      : entries.find(([entryKey]) => key.test(entryKey));
   return found ? found[1] : null;
 }
 
-export function parseFrontMatterStringArray(frontmatter: unknown, key: string | RegExp): string[] | null {
+export function parseFrontMatterStringArray(
+  frontmatter: unknown,
+  key: string | RegExp,
+): string[] | null {
   const value = parseFrontMatterEntry(frontmatter, key);
   return coerceStringArray(value);
 }
@@ -26,7 +30,9 @@ export function parseFrontMatterAliases(frontmatter: unknown): string[] | null {
 export function parseFrontMatterTags(frontmatter: unknown): string[] | null {
   const tags = parseFrontMatterStringArray(frontmatter, /^tags$/i);
   if (!tags) return null;
-  return tags.filter((tag) => tag.length > 0 && !tag.includes(" ")).map((tag) => tag.startsWith("#") ? tag : `#${tag}`);
+  return tags
+    .filter((tag) => tag.length > 0 && !tag.includes(" "))
+    .map((tag) => (tag.startsWith("#") ? tag : `#${tag}`));
 }
 
 export function getAllTags(cache: CachedMetadata | null | undefined): string[] | null {
@@ -40,6 +46,9 @@ export function getAllTags(cache: CachedMetadata | null | undefined): string[] |
 function coerceStringArray(value: unknown): string[] | null {
   if (!value) return null;
   if (typeof value === "string") return [value.trim()];
-  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string").map((item) => item.trim());
+  if (Array.isArray(value))
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim());
   return null;
 }

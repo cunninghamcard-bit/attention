@@ -1,7 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
-import type { CanvasFileNodeData, CanvasLinkNodeData, CanvasTextNodeData } from "@web/builtin/canvas/CanvasData";
-import type { FileDragSource, FilesDragSource, FolderDragSource, LinkDragSource } from "@web/ui/drag/DragManager";
+import type {
+  CanvasFileNodeData,
+  CanvasLinkNodeData,
+  CanvasTextNodeData,
+} from "@web/builtin/canvas/CanvasData";
+import type {
+  FileDragSource,
+  FilesDragSource,
+  FolderDragSource,
+  LinkDragSource,
+} from "@web/ui/drag/DragManager";
 import { CanvasView } from "@web/builtin/canvas/CanvasView";
 
 describe("CanvasView external drops", () => {
@@ -47,9 +56,17 @@ describe("CanvasView external drops", () => {
       expect(view.canvas.nodes.size).toBe(2);
     });
 
-    const nodes = [...view.canvas.nodes.values()].map((node) => node.getData() as CanvasFileNodeData);
-    expect(nodes.map((node) => node.file)).toEqual(["Boards/assets/image.png", "Boards/assets/diagram.svg"]);
-    expect(nodes.map((node) => ({ x: node.x, y: node.y }))).toEqual([{ x: 120, y: 80 }, { x: 485, y: 80 }]);
+    const nodes = [...view.canvas.nodes.values()].map(
+      (node) => node.getData() as CanvasFileNodeData,
+    );
+    expect(nodes.map((node) => node.file)).toEqual([
+      "Boards/assets/image.png",
+      "Boards/assets/diagram.svg",
+    ]);
+    expect(nodes.map((node) => ({ x: node.x, y: node.y }))).toEqual([
+      { x: 120, y: 80 },
+      { x: 485, y: 80 },
+    ]);
   });
 
   it("uses text/plain URL drops for centered link nodes and ignores uri-list-only drops", async () => {
@@ -97,20 +114,43 @@ describe("CanvasView external drops", () => {
     const view = await openCanvasView(app, "Board.canvas");
     const wrapper = queryRequired<HTMLElement>(view.contentEl, ".canvas-wrapper");
 
-    const fileSource: FileDragSource = { type: "file", payload: target, elements: [], file: target };
+    const fileSource: FileDragSource = {
+      type: "file",
+      payload: target,
+      elements: [],
+      file: target,
+    };
     app.dragManager.setSource(fileSource);
-    const fileDragover = dispatchDragEvent(wrapper, "dragover", createDropDataTransfer({}), 100, 90);
+    const fileDragover = dispatchDragEvent(
+      wrapper,
+      "dragover",
+      createDropDataTransfer({}),
+      100,
+      90,
+    );
     expect(fileDragover.defaultPrevented).toBe(true);
     expect(fileDragover.dataTransfer?.dropEffect).toBe("copy");
     dispatchDragEvent(wrapper, "drop", createDropDataTransfer({}), 100, 90);
 
-    const linkSource: LinkDragSource = { type: "link", payload: linked, elements: [], linktext: "Linked", sourcePath: "", file: linked };
+    const linkSource: LinkDragSource = {
+      type: "link",
+      payload: linked,
+      elements: [],
+      linktext: "Linked",
+      sourcePath: "",
+      file: linked,
+    };
     app.dragManager.setSource(linkSource);
     dispatchDragEvent(wrapper, "drop", createDropDataTransfer({}), 200, 190);
 
-    const nodes = [...view.canvas.nodes.values()].map((node) => node.getData() as CanvasFileNodeData);
+    const nodes = [...view.canvas.nodes.values()].map(
+      (node) => node.getData() as CanvasFileNodeData,
+    );
     expect(nodes.map((node) => node.file)).toEqual(["Target.md", "Linked.md"]);
-    expect(nodes.map((node) => ({ x: node.x, y: node.y }))).toEqual([{ x: 100, y: 90 }, { x: 200, y: 190 }]);
+    expect(nodes.map((node) => ({ x: node.x, y: node.y }))).toEqual([
+      { x: 100, y: 90 },
+      { x: 200, y: 190 },
+    ]);
   });
 
   it("expands internal files drops, sorts them by basename, and selects the created nodes", async () => {
@@ -123,14 +163,25 @@ describe("CanvasView external drops", () => {
     if (!folder) throw new Error("missing folder");
     const view = await openCanvasView(app, "Board.canvas");
     const wrapper = queryRequired<HTMLElement>(view.contentEl, ".canvas-wrapper");
-    const source: FilesDragSource = { type: "files", payload: [folder, loose, alpha], elements: [], files: [folder, loose, alpha] };
+    const source: FilesDragSource = {
+      type: "files",
+      payload: [folder, loose, alpha],
+      elements: [],
+      files: [folder, loose, alpha],
+    };
     app.dragManager.setSource(source);
 
     dispatchDragEvent(wrapper, "drop", createDropDataTransfer({}), 20, 30);
 
-    const nodes = [...view.canvas.nodes.values()].map((node) => node.getData() as CanvasFileNodeData);
+    const nodes = [...view.canvas.nodes.values()].map(
+      (node) => node.getData() as CanvasFileNodeData,
+    );
     expect(nodes.map((node) => node.file)).toEqual([alpha.path, loose.path, zeta.path]);
-    expect(nodes.map((node) => ({ x: node.x, y: node.y }))).toEqual([{ x: 20, y: 30 }, { x: 385, y: 30 }, { x: 750, y: 30 }]);
+    expect(nodes.map((node) => ({ x: node.x, y: node.y }))).toEqual([
+      { x: 20, y: 30 },
+      { x: 385, y: 30 },
+      { x: 750, y: 30 },
+    ]);
     expect([...view.canvas.selection]).toHaveLength(3);
   });
 
@@ -145,7 +196,12 @@ describe("CanvasView external drops", () => {
     const existing = view.canvas.createTextNode("selected", -100, -100);
     view.canvas.selectOnly(existing.id);
     const wrapper = queryRequired<HTMLElement>(view.contentEl, ".canvas-wrapper");
-    const source: FolderDragSource = { type: "folder", payload: folder, elements: [], file: folder };
+    const source: FolderDragSource = {
+      type: "folder",
+      payload: folder,
+      elements: [],
+      file: folder,
+    };
     app.dragManager.setSource(source);
 
     dispatchDragEvent(wrapper, "drop", createDropDataTransfer({}), 40, 50);
@@ -161,7 +217,7 @@ describe("CanvasView external drops", () => {
 async function openCanvasView(app: App, path: string): Promise<CanvasView> {
   await app.corePluginsReady;
   await app.internalPlugins.enable("canvas");
-  const file = await app.vault.create(path, "{\n  \"nodes\": [],\n  \"edges\": []\n}\n");
+  const file = await app.vault.create(path, '{\n  "nodes": [],\n  "edges": []\n}\n');
   const leaf = await app.workspace.openFile(file, { active: true });
   expect(leaf.view).toBeInstanceOf(CanvasView);
   return leaf.view as CanvasView;
@@ -173,7 +229,13 @@ function queryRequired<T extends Element>(parent: ParentNode, selector: string):
   return el;
 }
 
-function dispatchDragEvent(target: HTMLElement, type: string, dataTransfer: DataTransfer, clientX: number, clientY: number): DragEvent {
+function dispatchDragEvent(
+  target: HTMLElement,
+  type: string,
+  dataTransfer: DataTransfer,
+  clientX: number,
+  clientY: number,
+): DragEvent {
   const event = new Event(type, { bubbles: true, cancelable: true }) as DragEvent;
   Object.defineProperties(event, {
     clientX: { configurable: true, value: clientX },

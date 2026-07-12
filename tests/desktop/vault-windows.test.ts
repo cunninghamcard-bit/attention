@@ -5,77 +5,103 @@ import { tmpdir } from "node:os";
 
 const { FakeBrowserWindow, enableRemote } = vi.hoisted(() => {
   const enableRemote = vi.fn();
-/**
- * A minimal in-memory BrowserWindow standing in for Electron's, with just the
- * surface VaultWindowManager touches. Event emitter semantics included.
- */
-class FakeBrowserWindow {
-  static instances: FakeBrowserWindow[] = [];
-  static nextWebContentsId = 100;
+  /**
+   * A minimal in-memory BrowserWindow standing in for Electron's, with just the
+   * surface VaultWindowManager touches. Event emitter semantics included.
+   */
+  class FakeBrowserWindow {
+    static instances: FakeBrowserWindow[] = [];
+    static nextWebContentsId = 100;
 
-  options: Record<string, unknown>;
-  destroyed = false;
-  minimized = false;
-  maximized = false;
-  fullScreen = false;
-  shown = false;
-  focused = false;
-  bounds = { x: 10, y: 20, width: 800, height: 600 };
-  loadedUrl: string | null = null;
-  menuBarVisible = true;
-  webContents = {
-    id: FakeBrowserWindow.nextWebContentsId++,
-    zoomLevel: 0,
-    on: vi.fn(),
-    executeJavaScript: vi.fn(() => Promise.resolve()),
-    openDevTools: vi.fn(),
-    isDevToolsOpened: () => false,
-  };
-  private listeners = new Map<string, Array<(...args: unknown[]) => void>>();
-
-  constructor(options: Record<string, unknown>) {
-    this.options = options;
-    FakeBrowserWindow.instances.push(this);
-  }
-
-  on(event: string, handler: (...args: unknown[]) => void): this {
-    const list = this.listeners.get(event) ?? [];
-    list.push(handler);
-    this.listeners.set(event, list);
-    return this;
-  }
-  once(event: string, handler: (...args: unknown[]) => void): this {
-    const wrapped = (...args: unknown[]) => {
-      handler(...args);
-      const list = this.listeners.get(event) ?? [];
-      this.listeners.set(event, list.filter((h) => h !== wrapped));
+    options: Record<string, unknown>;
+    destroyed = false;
+    minimized = false;
+    maximized = false;
+    fullScreen = false;
+    shown = false;
+    focused = false;
+    bounds = { x: 10, y: 20, width: 800, height: 600 };
+    loadedUrl: string | null = null;
+    menuBarVisible = true;
+    webContents = {
+      id: FakeBrowserWindow.nextWebContentsId++,
+      zoomLevel: 0,
+      on: vi.fn(),
+      executeJavaScript: vi.fn(() => Promise.resolve()),
+      openDevTools: vi.fn(),
+      isDevToolsOpened: () => false,
     };
-    return this.on(event, wrapped);
-  }
-  emit(event: string, ...args: unknown[]): void {
-    for (const handler of [...(this.listeners.get(event) ?? [])]) handler(...args);
-  }
+    private listeners = new Map<string, Array<(...args: unknown[]) => void>>();
 
-  isDestroyed() { return this.destroyed; }
-  isMinimized() { return this.minimized; }
-  isMaximized() { return this.maximized; }
-  isFullScreen() { return this.fullScreen; }
-  getBounds() { return this.bounds; }
-  restore() { this.minimized = false; }
-  focus() { this.focused = true; }
-  show() { this.shown = true; }
-  maximize() { this.maximized = true; }
-  setMenuBarVisibility(visible: boolean) { this.menuBarVisible = visible; }
-  loadURL(url: string) { this.loadedUrl = url; return Promise.resolve(); }
-  destroy() {
-    this.destroyed = true;
-    this.emit("closed");
+    constructor(options: Record<string, unknown>) {
+      this.options = options;
+      FakeBrowserWindow.instances.push(this);
+    }
+
+    on(event: string, handler: (...args: unknown[]) => void): this {
+      const list = this.listeners.get(event) ?? [];
+      list.push(handler);
+      this.listeners.set(event, list);
+      return this;
+    }
+    once(event: string, handler: (...args: unknown[]) => void): this {
+      const wrapped = (...args: unknown[]) => {
+        handler(...args);
+        const list = this.listeners.get(event) ?? [];
+        this.listeners.set(
+          event,
+          list.filter((h) => h !== wrapped),
+        );
+      };
+      return this.on(event, wrapped);
+    }
+    emit(event: string, ...args: unknown[]): void {
+      for (const handler of [...(this.listeners.get(event) ?? [])]) handler(...args);
+    }
+
+    isDestroyed() {
+      return this.destroyed;
+    }
+    isMinimized() {
+      return this.minimized;
+    }
+    isMaximized() {
+      return this.maximized;
+    }
+    isFullScreen() {
+      return this.fullScreen;
+    }
+    getBounds() {
+      return this.bounds;
+    }
+    restore() {
+      this.minimized = false;
+    }
+    focus() {
+      this.focused = true;
+    }
+    show() {
+      this.shown = true;
+    }
+    maximize() {
+      this.maximized = true;
+    }
+    setMenuBarVisibility(visible: boolean) {
+      this.menuBarVisible = visible;
+    }
+    loadURL(url: string) {
+      this.loadedUrl = url;
+      return Promise.resolve();
+    }
+    destroy() {
+      this.destroyed = true;
+      this.emit("closed");
+    }
+    close() {
+      this.emit("close", { defaultPrevented: false });
+      this.destroy();
+    }
   }
-  close() {
-    this.emit("close", { defaultPrevented: false });
-    this.destroy();
-  }
-}
   return { FakeBrowserWindow, enableRemote };
 });
 
@@ -158,7 +184,7 @@ describe("VaultWindowManager (real de/H/ve)", () => {
     manager.openVault(vaultId);
     expect(registry.vaults[vaultId].open).toBe(true);
     starterOpen = true;
-    (FakeBrowserWindow.instances[0]).close();
+    FakeBrowserWindow.instances[0].close();
     expect(registry.vaults[vaultId].open).toBeUndefined();
     expect(manager.openCount).toBe(0);
   });
@@ -180,7 +206,14 @@ describe("VaultWindowManager (real de/H/ve)", () => {
   });
 
   it("restores saved bounds and applies maximize/zoom on reveal", () => {
-    saveWindowState(store, vaultId, { x: 50, y: 60, width: 900, height: 700, isMaximized: true, zoom: 1.5 });
+    saveWindowState(store, vaultId, {
+      x: 50,
+      y: 60,
+      width: 900,
+      height: 700,
+      isMaximized: true,
+      zoom: 1.5,
+    });
     manager.openVault(vaultId);
     const win = FakeBrowserWindow.instances[0];
     expect(win.options.x).toBe(50);

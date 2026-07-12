@@ -11,7 +11,6 @@ import {
 } from "@web/builtin/git/review/reviewModel";
 
 describe("reviewModel", () => {
-
   it("maps porcelain codes to review statuses", () => {
     expect(statusFromPorcelain("??")).toBe("untracked");
     expect(statusFromPorcelain("A ")).toBe("added");

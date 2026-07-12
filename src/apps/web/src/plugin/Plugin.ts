@@ -17,10 +17,18 @@ import type { WorkspaceLeaf } from "../views/workspace/WorkspaceLeaf";
 import type { EditorSuggest } from "../ui/suggest/EditorSuggest";
 import type { SearchOperatorDefinition } from "../search/SearchEngine";
 import { debounce } from "../core/ApiUtils";
-import { MarkdownRenderer, type MarkdownCodeBlockProcessor, type MarkdownPostProcessor } from "../markdown/MarkdownRenderer";
+import {
+  MarkdownRenderer,
+  type MarkdownCodeBlockProcessor,
+  type MarkdownPostProcessor,
+} from "../markdown/MarkdownRenderer";
 import { MarkdownPreviewRenderer } from "../markdown/MarkdownPreviewRenderer";
 import { createPluginContext, type PluginContext } from "./PluginContext";
-import { normalizePluginManifest, type PluginManifest, type PluginManifestInput } from "./PluginManifest";
+import {
+  normalizePluginManifest,
+  type PluginManifest,
+  type PluginManifestInput,
+} from "./PluginManifest";
 import type { PluginSettingTab } from "./PluginSettingTab";
 export type { PluginManifest, PluginManifestInput } from "./PluginManifest";
 
@@ -54,7 +62,8 @@ export class Plugin extends Component {
 
   async loadData<T = any>(): Promise<T> {
     const data = await this.app.vault.readPluginData<T>(this.manifest.dir);
-    if (data && this.onExternalSettingsChange) this._lastDataModifiedTime = await this.getModifiedTime();
+    if (data && this.onExternalSettingsChange)
+      this._lastDataModifiedTime = await this.getModifiedTime();
     return data as T;
   }
 
@@ -98,7 +107,11 @@ export class Plugin extends Component {
     this.app.commands.removeCommand(commandId);
   }
 
-  addRibbonIcon(icon: string, title: string, callback: (event: MouseEvent) => unknown): HTMLElement {
+  addRibbonIcon(
+    icon: string,
+    title: string,
+    callback: (event: MouseEvent) => unknown,
+  ): HTMLElement {
     const id = `${this.manifest.id}:${title}`;
     const el = this.app.workspace.leftRibbon.addRibbonIcon(icon, title, callback, id);
     this.register(() => {
@@ -130,7 +143,10 @@ export class Plugin extends Component {
 
   registerHoverLinkSource(id: string, info: HoverLinkSourceConfig): void;
   registerHoverLinkSource(source: HoverLinkSource): void;
-  registerHoverLinkSource(idOrSource: string | HoverLinkSource, info?: HoverLinkSourceConfig): void {
+  registerHoverLinkSource(
+    idOrSource: string | HoverLinkSource,
+    info?: HoverLinkSourceConfig,
+  ): void {
     if (typeof idOrSource === "string") {
       this.app.workspace.registerHoverLinkSource(idOrSource, info ?? { display: idOrSource });
       this.register(() => this.app.workspace.unregisterHoverLinkSource(idOrSource));
@@ -141,15 +157,21 @@ export class Plugin extends Component {
     this.register(() => this.app.workspace.unregisterHoverLinkSource(idOrSource.id));
   }
 
-  registerFileMenu(handler: (menu: Menu, file: TAbstractFile, source: string, leaf?: WorkspaceLeaf) => void): void {
+  registerFileMenu(
+    handler: (menu: Menu, file: TAbstractFile, source: string, leaf?: WorkspaceLeaf) => void,
+  ): void {
     this.registerEvent(this.app.workspace.on("file-menu", handler));
   }
 
-  registerEditorMenu(handler: (menu: Menu, editor: Editor, info: MarkdownView | MarkdownFileInfo) => void): void {
+  registerEditorMenu(
+    handler: (menu: Menu, editor: Editor, info: MarkdownView | MarkdownFileInfo) => void,
+  ): void {
     this.registerEvent(this.app.workspace.on("editor-menu", handler));
   }
 
-  registerLinkMenu(handler: (menu: Menu, linktext: string, sourcePath: string, source: string) => void): void {
+  registerLinkMenu(
+    handler: (menu: Menu, linktext: string, sourcePath: string, source: string) => void,
+  ): void {
     this.registerEvent(this.app.workspace.on("link-menu", handler));
   }
 
@@ -158,7 +180,10 @@ export class Plugin extends Component {
     this.register(() => this.app.workspace.unregisterObsidianProtocolHandler(action, handler));
   }
 
-  registerMarkdownPostProcessor(processor: MarkdownPostProcessor, sortOrder?: number): MarkdownPostProcessor {
+  registerMarkdownPostProcessor(
+    processor: MarkdownPostProcessor,
+    sortOrder?: number,
+  ): MarkdownPostProcessor {
     MarkdownPreviewRenderer.registerPostProcessor(processor, sortOrder);
     this.app.workspace.trigger("post-processor-change");
     this.register(() => {
@@ -168,7 +193,11 @@ export class Plugin extends Component {
     return processor;
   }
 
-  registerMarkdownCodeBlockProcessor(language: string, processor: MarkdownCodeBlockProcessor, sortOrder?: number): MarkdownPostProcessor {
+  registerMarkdownCodeBlockProcessor(
+    language: string,
+    processor: MarkdownCodeBlockProcessor,
+    sortOrder?: number,
+  ): MarkdownPostProcessor {
     const wrapper = MarkdownPreviewRenderer.createCodeBlockPostProcessor(language, processor);
     MarkdownPreviewRenderer.registerPostProcessor(wrapper, sortOrder);
     MarkdownPreviewRenderer.registerCodeBlockPostProcessor(language, processor);
@@ -193,8 +222,18 @@ export class Plugin extends Component {
     this.register(() => this.app.workspace.editorSuggest.removeSuggest(suggest));
   }
 
-  registerCliHandler(command: string, description: string, flags: CliFlags | null, handler: CliHandler): void {
-    this.app.cli.registerHandler(command, `[${this.manifest.name}]: ${description}`, flags, handler);
+  registerCliHandler(
+    command: string,
+    description: string,
+    flags: CliFlags | null,
+    handler: CliHandler,
+  ): void {
+    this.app.cli.registerHandler(
+      command,
+      `[${this.manifest.name}]: ${description}`,
+      flags,
+      handler,
+    );
     this.register(() => this.app.cli.unregisterHandler(command, handler));
   }
 
@@ -207,7 +246,7 @@ export class Plugin extends Component {
   async loadCSS(): Promise<void> {
     if (!this.manifest.dir) return;
     const path = `${this.manifest.dir}/styles.css`;
-    const loaded = await this.app.vault.readText(path) ?? "";
+    const loaded = (await this.app.vault.readText(path)) ?? "";
     if (loaded.trim()) this.registerCss(loaded);
   }
 

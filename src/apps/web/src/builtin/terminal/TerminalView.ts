@@ -4,7 +4,11 @@ import { Menu } from "../../ui/Menu";
 import { setIcon } from "../../ui/Icon";
 import { Scope } from "../../app/hotkeys/Scope";
 import { TERMINAL_VIEW_TYPE, type TTerminal } from "./TerminalService";
-import { createGhosttyRenderer, type TerminalRenderer, type TerminalRendererFactory } from "./GhosttyTerminalRenderer";
+import {
+  createGhosttyRenderer,
+  type TerminalRenderer,
+  type TerminalRendererFactory,
+} from "./GhosttyTerminalRenderer";
 
 interface TerminalViewState extends Record<string, unknown> {
   terminalId?: string;
@@ -33,17 +37,21 @@ export class TerminalView extends ItemView {
   // terminals (a shell can't meaningfully receive Super, and ghostty-web would
   // otherwise swallow them as CSI-u SUPER sequences). Cmd+C/Cmd+V stay with
   // the terminal for copy/paste, mirroring ghostty's own clipboard carve-out.
-  private readonly focusScope = createTerminalFocusScope(
-    (evt, ctx) => this.app.keymap.rootScope.handleKey(evt, ctx),
+  private readonly focusScope = createTerminalFocusScope((evt, ctx) =>
+    this.app.keymap.rootScope.handleKey(evt, ctx),
   );
   private focusScopePushed = false;
 
-  getViewType(): string { return TERMINAL_VIEW_TYPE; }
+  getViewType(): string {
+    return TERMINAL_VIEW_TYPE;
+  }
   getDisplayText(): string {
     const terminal = this.getTerminal();
     return terminal ? `Terminal — ${shellName(terminal.shell)}` : "Terminal";
   }
-  getIcon(): string { return "lucide-terminal"; }
+  getIcon(): string {
+    return "lucide-terminal";
+  }
 
   getTerminal(): TTerminal | null {
     return this.terminalId ? this.app.terminals.getTerminal(this.terminalId) : null;
@@ -64,7 +72,9 @@ export class TerminalView extends ItemView {
     // ghostty's own listener on this same element.
     this.surfaceEl.addEventListener(
       "keydown",
-      (event) => { if (isSystemChord(event)) event.stopImmediatePropagation(); },
+      (event) => {
+        if (isSystemChord(event)) event.stopImmediatePropagation();
+      },
       { capture: true },
     );
     this.addAction("lucide-rotate-ccw", "Restart terminal", () => void this.restart());
@@ -128,14 +138,20 @@ export class TerminalView extends ItemView {
     if (!this.surfaceEl) return;
     let id = this.pendingState.terminalId ?? this.terminalId;
     if (!id || !this.app.terminals.getTerminal(id)) {
-      const terminal = this.app.terminals.createSession({ cwd: this.pendingState.cwd, shell: this.pendingState.shell });
+      const terminal = this.app.terminals.createSession({
+        cwd: this.pendingState.cwd,
+        shell: this.pendingState.shell,
+      });
       id = terminal.id;
     }
     this.terminalId = id;
     const terminal = this.app.terminals.getTerminal(id);
     if (terminal?.status === "error") {
       const error = this.app.terminals.getError(id);
-      this.showError(error?.message ?? "The terminal could not start. Check the configured shell path, then restart.");
+      this.showError(
+        error?.message ??
+          "The terminal could not start. Check the configured shell path, then restart.",
+      );
       return;
     }
     this.hideOverlay();
@@ -148,7 +164,9 @@ export class TerminalView extends ItemView {
           scrollback: settings.scrollback,
         });
       } catch (error) {
-        this.showError(`Terminal renderer failed to load: ${error instanceof Error ? error.message : String(error)}`);
+        this.showError(
+          `Terminal renderer failed to load: ${error instanceof Error ? error.message : String(error)}`,
+        );
         return;
       }
       this.renderer.mount(this.surfaceEl);
@@ -192,15 +210,30 @@ export class TerminalView extends ItemView {
     const terminal = this.getTerminal();
     if (!terminal) return;
     const menu = new Menu(this.contentEl.ownerDocument);
-    menu.addItem((item) => item.setTitle("Copy").setIcon("lucide-copy").onClick(() => {
-      const selection = this.renderer?.getSelection() ?? "";
-      if (selection) void navigator.clipboard.writeText(selection);
-    }));
-    menu.addItem((item) => item.setTitle("Paste").setIcon("lucide-clipboard-paste").onClick(async () => {
-      const text = await navigator.clipboard.readText();
-      if (text && this.terminalId) this.app.terminals.write(this.terminalId, text);
-    }));
-    menu.addItem((item) => item.setTitle("Restart terminal").setIcon("lucide-rotate-ccw").onClick(() => void this.restart()));
+    menu.addItem((item) =>
+      item
+        .setTitle("Copy")
+        .setIcon("lucide-copy")
+        .onClick(() => {
+          const selection = this.renderer?.getSelection() ?? "";
+          if (selection) void navigator.clipboard.writeText(selection);
+        }),
+    );
+    menu.addItem((item) =>
+      item
+        .setTitle("Paste")
+        .setIcon("lucide-clipboard-paste")
+        .onClick(async () => {
+          const text = await navigator.clipboard.readText();
+          if (text && this.terminalId) this.app.terminals.write(this.terminalId, text);
+        }),
+    );
+    menu.addItem((item) =>
+      item
+        .setTitle("Restart terminal")
+        .setIcon("lucide-rotate-ccw")
+        .onClick(() => void this.restart()),
+    );
     this.app.workspace.trigger("terminal-menu", menu, {
       terminalId: terminal.id,
       cwd: terminal.cwd,
@@ -262,8 +295,11 @@ function shellName(shell: string): string {
  * the terminal surface stops their DOM propagation without touching default.
  */
 export function isSystemChord(evt: KeyboardEvent): boolean {
-  return evt.metaKey && !evt.ctrlKey
-    && (evt.code === "KeyQ" || evt.code === "KeyH" || evt.code === "KeyM" || evt.code === "Backquote");
+  return (
+    evt.metaKey &&
+    !evt.ctrlKey &&
+    (evt.code === "KeyQ" || evt.code === "KeyH" || evt.code === "KeyM" || evt.code === "Backquote")
+  );
 }
 
 /**

@@ -58,7 +58,9 @@ export class MobileDrawer extends WorkspaceParent {
     this.activeTabHeaderEl = document.createElement("div");
     this.activeTabHeaderEl.className = "workspace-tab-header workspace-drawer-tab-select";
     this.activeTabHeaderEl.setAttribute("data-ignore-swipe", "true");
-    this.activeTabHeaderEl.addEventListener("click", () => this.setTabOptionsCollapsed(!this.tabOptionsCollapsed));
+    this.activeTabHeaderEl.addEventListener("click", () =>
+      this.setTabOptionsCollapsed(!this.tabOptionsCollapsed),
+    );
     this.activeTabHeaderEl.addEventListener("contextmenu", (event) => {
       event.preventDefault();
       const leaf = this.children[this.currentTab];
@@ -73,7 +75,11 @@ export class MobileDrawer extends WorkspaceParent {
     this.activeTabHeaderChevronEl = document.createElement("div");
     this.activeTabHeaderChevronEl.className = "workspace-tab-header-inner-chevron";
     setIcon(this.activeTabHeaderChevronEl, "lucide-chevrons-up-down");
-    this.activeTabHeaderInnerEl.append(this.activeTabHeaderIconEl, this.activeTabHeaderTitleEl, this.activeTabHeaderChevronEl);
+    this.activeTabHeaderInnerEl.append(
+      this.activeTabHeaderIconEl,
+      this.activeTabHeaderTitleEl,
+      this.activeTabHeaderChevronEl,
+    );
     this.activeTabHeaderEl.append(this.activeTabHeaderInnerEl);
     this.tabSelectEl = this.activeTabHeaderEl;
     this.tabOptionsListEl = document.createElement("div");
@@ -238,9 +244,12 @@ export class MobileDrawer extends WorkspaceParent {
   }
 
   private onTabOptionsClick(event: MouseEvent): void {
-    const target = event.target instanceof Element ? event.target.closest(".workspace-tab-header") : null;
+    const target =
+      event.target instanceof Element ? event.target.closest(".workspace-tab-header") : null;
     if (!target) return;
-    const index = this.children.findIndex((child) => child instanceof WorkspaceLeaf && child.tabHeaderEl === target);
+    const index = this.children.findIndex(
+      (child) => child instanceof WorkspaceLeaf && child.tabHeaderEl === target,
+    );
     if (index === -1) return;
     this.selectTabIndex(index);
     if (!this.isPinned || !document.body.classList.contains("is-phone")) {

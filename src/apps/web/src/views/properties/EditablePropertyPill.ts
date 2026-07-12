@@ -14,7 +14,10 @@ export interface EditablePropertyPillOptions {
   onContentClick?(event: MouseEvent, value: string): void;
 }
 
-export function renderEditablePropertyPill(containerEl: HTMLElement, options: EditablePropertyPillOptions): HTMLElement {
+export function renderEditablePropertyPill(
+  containerEl: HTMLElement,
+  options: EditablePropertyPillOptions,
+): HTMLElement {
   const pillEl = document.createElement("div");
   pillEl.className = "multi-select-pill";
   pillEl.tabIndex = 0;
@@ -46,18 +49,24 @@ export function renderEditablePropertyPill(containerEl: HTMLElement, options: Ed
   pillEl.addEventListener("contextmenu", (event) => {
     event.stopPropagation();
     const menu = new Menu();
-    menu.addItem((item) => item
-      .setTitle("Edit")
-      .setIcon("lucide-pencil")
-      .onClick(() => startEdit(containerEl, pillEl, options)));
-    menu.addItem((item) => item
-      .setTitle("Copy")
-      .setIcon("lucide-copy")
-      .onClick(() => void copyText(String(options.value))));
-    menu.addItem((item) => item
-      .setTitle("Remove")
-      .setIcon("lucide-x")
-      .onClick(() => removeValue(options)));
+    menu.addItem((item) =>
+      item
+        .setTitle("Edit")
+        .setIcon("lucide-pencil")
+        .onClick(() => startEdit(containerEl, pillEl, options)),
+    );
+    menu.addItem((item) =>
+      item
+        .setTitle("Copy")
+        .setIcon("lucide-copy")
+        .onClick(() => void copyText(String(options.value))),
+    );
+    menu.addItem((item) =>
+      item
+        .setTitle("Remove")
+        .setIcon("lucide-x")
+        .onClick(() => removeValue(options)),
+    );
     menu.showAtMouseEvent(event);
   });
   pillEl.addEventListener("dblclick", (event) => {
@@ -111,7 +120,11 @@ async function copyText(value: string): Promise<void> {
   await navigator.clipboard?.writeText?.(value);
 }
 
-function startEdit(containerEl: HTMLElement, pillEl: HTMLElement, options: EditablePropertyPillOptions): void {
+function startEdit(
+  containerEl: HTMLElement,
+  pillEl: HTMLElement,
+  options: EditablePropertyPillOptions,
+): void {
   if (!pillEl.parentElement) return;
   let editing = true;
   const inputEl = document.createElement("input");
@@ -134,11 +147,16 @@ function startEdit(containerEl: HTMLElement, pillEl: HTMLElement, options: Edita
     if (!nextValue) return false;
     const duplicateIndex = options.findDuplicate?.(nextValue, options.values) ?? -1;
     if (duplicateIndex >= 0 && duplicateIndex !== options.index) {
-      highlightDuplicate(containerEl, duplicateIndex > options.index ? duplicateIndex - 1 : duplicateIndex);
+      highlightDuplicate(
+        containerEl,
+        duplicateIndex > options.index ? duplicateIndex - 1 : duplicateIndex,
+      );
       return false;
     }
     editing = false;
-    const nextValues = options.values.map((value, index) => index === options.index ? nextValue : value);
+    const nextValues = options.values.map((value, index) =>
+      index === options.index ? nextValue : value,
+    );
     options.commitValues(nextValues);
     if (focusAfter) window.setTimeout(() => focusPill(containerEl, options.index));
     return true;

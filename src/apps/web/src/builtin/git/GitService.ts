@@ -146,7 +146,10 @@ export class GitService {
     return result.stdout
       .split("\n")
       .filter((line) => line.length > 3)
-      .map((line) => ({ status: line.slice(0, 2), path: line.slice(3).trim().replace(/^"|"$/g, "") }));
+      .map((line) => ({
+        status: line.slice(0, 2),
+        path: line.slice(3).trim().replace(/^"|"$/g, ""),
+      }));
   }
 
   async stage(paths: string[]): Promise<boolean> {
@@ -171,7 +174,8 @@ export class GitService {
   async commit(message: string): Promise<string | null> {
     const result = await this.exec(["commit", "-m", message]);
     if (!result) return "git is not available";
-    if (result.code !== 0) return result.stderr.trim() || result.stdout.trim() || `git commit exited ${result.code}`;
+    if (result.code !== 0)
+      return result.stderr.trim() || result.stdout.trim() || `git commit exited ${result.code}`;
     this.app.workspace.trigger("git-commit", message);
     return null;
   }
@@ -220,7 +224,11 @@ export class GitService {
       .filter(Boolean)
       .map((line) => {
         const [added, deleted, ...rest] = line.split("\t");
-        return { path: rest.join("\t"), additions: Number(added) || 0, deletions: Number(deleted) || 0 };
+        return {
+          path: rest.join("\t"),
+          additions: Number(added) || 0,
+          deletions: Number(deleted) || 0,
+        };
       })
       .filter((entry) => entry.path);
   }
@@ -258,7 +266,13 @@ export class GitService {
   }
 
   async prView(number: number): Promise<PrDetail | null> {
-    const result = await this.gh(["pr", "view", String(number), "--json", `${PR_SUMMARY_FIELDS},body,additions,deletions,headRefOid,files,comments`]);
+    const result = await this.gh([
+      "pr",
+      "view",
+      String(number),
+      "--json",
+      `${PR_SUMMARY_FIELDS},body,additions,deletions,headRefOid,files,comments`,
+    ]);
     if (!result || result.code !== 0) return null;
     const raw = parseJson<RawPr | null>(result.stdout, null);
     if (!raw) return null;
@@ -269,7 +283,11 @@ export class GitService {
       deletions: raw.deletions ?? 0,
       headRefOid: raw.headRefOid ?? "",
       files: raw.files ?? [],
-      comments: (raw.comments ?? []).map((c) => ({ author: c.author?.login ?? "", body: c.body, createdAt: c.createdAt })),
+      comments: (raw.comments ?? []).map((c) => ({
+        author: c.author?.login ?? "",
+        body: c.body,
+        createdAt: c.createdAt,
+      })),
     };
   }
 
@@ -289,7 +307,11 @@ export class GitService {
     return this.ghAction(["pr", "comment", String(number), "--body", body]);
   }
 
-  async prReview(number: number, verdict: "approve" | "request-changes" | "comment", body?: string): Promise<string | null> {
+  async prReview(
+    number: number,
+    verdict: "approve" | "request-changes" | "comment",
+    body?: string,
+  ): Promise<string | null> {
     const args = ["pr", "review", String(number), `--${verdict}`];
     if (body) args.push("--body", body);
     return this.ghAction(args);
@@ -308,7 +330,11 @@ export class GitService {
    * Same recipe as codiff: gh api with the JSON body on stdin, line anchored
    * via side LEFT/RIGHT + commit_id of the PR head.
    */
-  async prAddInlineComment(number: number, headSha: string, comment: PrDraftComment): Promise<string | null> {
+  async prAddInlineComment(
+    number: number,
+    headSha: string,
+    comment: PrDraftComment,
+  ): Promise<string | null> {
     const body = JSON.stringify({
       body: comment.body,
       commit_id: headSha,
@@ -316,7 +342,10 @@ export class GitService {
       line: comment.line,
       side: comment.side === "deletions" ? "LEFT" : "RIGHT",
     });
-    return this.ghAction(["api", "-X", "POST", `repos/{owner}/{repo}/pulls/${number}/comments`, "--input", "-"], body);
+    return this.ghAction(
+      ["api", "-X", "POST", `repos/{owner}/{repo}/pulls/${number}/comments`, "--input", "-"],
+      body,
+    );
   }
 
   /**
@@ -331,7 +360,9 @@ export class GitService {
     comments: PrDraftComment[],
   ): Promise<string | null> {
     const payload = JSON.stringify({
-      body: body || (event === "REQUEST_CHANGES" && comments.length === 0 ? "Requesting changes." : body),
+      body:
+        body ||
+        (event === "REQUEST_CHANGES" && comments.length === 0 ? "Requesting changes." : body),
       event,
       comments: comments.map((comment) => ({
         body: comment.body,
@@ -340,13 +371,17 @@ export class GitService {
         side: comment.side === "deletions" ? "LEFT" : "RIGHT",
       })),
     });
-    return this.ghAction(["api", "-X", "POST", `repos/{owner}/{repo}/pulls/${number}/reviews`, "--input", "-"], payload);
+    return this.ghAction(
+      ["api", "-X", "POST", `repos/{owner}/{repo}/pulls/${number}/reviews`, "--input", "-"],
+      payload,
+    );
   }
 
   private async ghAction(args: string[], input?: string): Promise<string | null> {
     const result = await this.gh(args, input);
     if (!result) return "gh is not available";
-    if (result.code !== 0) return result.stderr.trim() || result.stdout.trim() || `gh exited ${result.code}`;
+    if (result.code !== 0)
+      return result.stderr.trim() || result.stdout.trim() || `gh exited ${result.code}`;
     return null;
   }
 
@@ -375,7 +410,8 @@ export class GitService {
   }
 }
 
-const PR_SUMMARY_FIELDS = "number,title,author,headRefName,baseRefName,state,isDraft,reviewDecision,updatedAt,url";
+const PR_SUMMARY_FIELDS =
+  "number,title,author,headRefName,baseRefName,state,isDraft,reviewDecision,updatedAt,url";
 
 interface RawPr {
   number: number;

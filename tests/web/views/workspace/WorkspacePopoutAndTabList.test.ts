@@ -83,7 +83,9 @@ describe("Obsidian popout and tab list DOM", () => {
 
     expect(app.workspace.floatingSplit.autoManageDOM).toBe(false);
     expect(app.workspace.containerEl.children).toHaveLength(5);
-    expect(Array.from(app.workspace.containerEl.children)).not.toContain(app.workspace.floatingSplit.containerEl);
+    expect(Array.from(app.workspace.containerEl.children)).not.toContain(
+      app.workspace.floatingSplit.containerEl,
+    );
   });
 
   it("builds popout windows with their own app-container root", async () => {
@@ -154,16 +156,22 @@ describe("Obsidian popout and tab list DOM", () => {
     tabs.appendChild(second, false);
     tabs.selectTabIndex(0, false);
 
-    tabs.tabListIconEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }));
+    tabs.tabListIconEl.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
 
     const menu = document.body.querySelector<HTMLElement>(".menu.mod-tab-list");
     expect(menu).not.toBeNull();
     expect(tabs.tabListIconEl.classList.contains("has-active-menu")).toBe(true);
-    const titles = Array.from(menu?.querySelectorAll<HTMLElement>(".menu-item-title") ?? []).map((el) => el.textContent);
+    const titles = Array.from(menu?.querySelectorAll<HTMLElement>(".menu-item-title") ?? []).map(
+      (el) => el.textContent,
+    );
     expect(titles).toContain("Stack tabs");
     expect(titles).toContain("Close all");
     expect(titles.filter((title) => title === "New tab").length).toBeGreaterThanOrEqual(2);
-    expect(menu?.querySelector<HTMLElement>(".menu-item.mod-checked .menu-item-title")?.textContent).toBe(first.getDisplayText());
+    expect(
+      menu?.querySelector<HTMLElement>(".menu-item.mod-checked .menu-item-title")?.textContent,
+    ).toBe(first.getDisplayText());
     expect(menu?.querySelector(".menu-item-icon svg.lucide-layers")).not.toBeNull();
   });
 
@@ -180,7 +188,10 @@ describe("Obsidian popout and tab list DOM", () => {
 
     expect(tabs.tabHeaderEls).toEqual([first.tabHeaderEl, second.tabHeaderEl]);
     expect(Array.from(tabs.tabsInnerEl.children)).toEqual([first.tabHeaderEl, second.tabHeaderEl]);
-    expect(Array.from(tabs.tabsContainerEl.children)).toEqual([first.containerEl, second.containerEl]);
+    expect(Array.from(tabs.tabsContainerEl.children)).toEqual([
+      first.containerEl,
+      second.containerEl,
+    ]);
 
     tabs.setStacked(true, false);
 
@@ -197,7 +208,10 @@ describe("Obsidian popout and tab list DOM", () => {
 
     expect(tabs.containerEl.classList.contains("mod-stacked")).toBe(false);
     expect(Array.from(tabs.tabsInnerEl.children)).toEqual([first.tabHeaderEl, second.tabHeaderEl]);
-    expect(Array.from(tabs.tabsContainerEl.children)).toEqual([first.containerEl, second.containerEl]);
+    expect(Array.from(tabs.tabsContainerEl.children)).toEqual([
+      first.containerEl,
+      second.containerEl,
+    ]);
   });
 
   it("throws Desktop-only when opening a popout on a non-desktop platform (real V0)", () => {
@@ -354,8 +368,12 @@ describe("Obsidian popout and tab list DOM", () => {
       const tabs = app.workspace.rootSplit.children[0];
       if (!(tabs instanceof WorkspaceTabs)) throw new Error("Expected root tabs");
 
-      tabs.tabHeaderContainerEl.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, button: 0 }));
-      tabs.tabHeaderContainerEl.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, button: 0 }));
+      tabs.tabHeaderContainerEl.dispatchEvent(
+        new MouseEvent("dblclick", { bubbles: true, button: 0 }),
+      );
+      tabs.tabHeaderContainerEl.dispatchEvent(
+        new MouseEvent("dblclick", { bubbles: true, button: 0 }),
+      );
 
       expect(getUserDefault).toHaveBeenCalledWith("AppleActionOnDoubleClick", "string");
       expect(electronWindow.maximize).toHaveBeenCalledOnce();
@@ -381,12 +399,24 @@ describe("Obsidian popout and tab list DOM", () => {
     const tabs = app.workspace.rootSplit.children[0];
     if (!(tabs instanceof WorkspaceTabs)) throw new Error("Expected root tabs");
     forceShown(tabs.tabsInnerEl);
-    const animations: Array<{ target: HTMLElement; keyframes: Keyframe[]; options: KeyframeAnimationOptions }> = [];
+    const animations: Array<{
+      target: HTMLElement;
+      keyframes: Keyframe[];
+      options: KeyframeAnimationOptions;
+    }> = [];
     const originalAnimate = HTMLElement.prototype.animate;
     Object.defineProperty(HTMLElement.prototype, "animate", {
       configurable: true,
-      value(this: HTMLElement, keyframes: Keyframe[] | PropertyIndexedKeyframes | null, options?: number | KeyframeAnimationOptions) {
-        animations.push({ target: this, keyframes: keyframes as Keyframe[], options: options as KeyframeAnimationOptions });
+      value(
+        this: HTMLElement,
+        keyframes: Keyframe[] | PropertyIndexedKeyframes | null,
+        options?: number | KeyframeAnimationOptions,
+      ) {
+        animations.push({
+          target: this,
+          keyframes: keyframes as Keyframe[],
+          options: options as KeyframeAnimationOptions,
+        });
         return { addEventListener: () => {} } as unknown as Animation;
       },
     });
@@ -416,7 +446,10 @@ describe("Obsidian popout and tab list DOM", () => {
       expect(animations[0]?.options.duration).toBe(200);
     } finally {
       if (originalAnimate) {
-        Object.defineProperty(HTMLElement.prototype, "animate", { configurable: true, value: originalAnimate });
+        Object.defineProperty(HTMLElement.prototype, "animate", {
+          configurable: true,
+          value: originalAnimate,
+        });
       } else {
         delete (HTMLElement.prototype as Partial<typeof HTMLElement.prototype>).animate;
       }
@@ -499,12 +532,16 @@ describe("Obsidian popout and tab list DOM", () => {
     setMetric(first.tabHeaderEl, "clientWidth", 72);
     setMetric(second.tabHeaderEl, "clientWidth", 88);
 
-    first.tabHeaderCloseEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    first.tabHeaderCloseEl.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
 
     expect(tabs.hasLockedTabWidths).toBe(true);
     expect(second.tabHeaderEl.style.width).toBe("88px");
 
-    second.tabHeaderCloseEl.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    second.tabHeaderCloseEl.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
 
     expect(tabs.hasLockedTabWidths).toBe(false);
     expect(second.tabHeaderEl.style.width).toBe("");
@@ -581,7 +618,8 @@ describe("Obsidian popout and tab list DOM", () => {
     expect(tabs.children).toHaveLength(3);
     const insertedAlpha = tabs.children[1];
     const insertedBeta = tabs.children[2];
-    if (!(insertedAlpha instanceof WorkspaceLeaf) || !(insertedBeta instanceof WorkspaceLeaf)) throw new Error("Expected inserted leaves");
+    if (!(insertedAlpha instanceof WorkspaceLeaf) || !(insertedBeta instanceof WorkspaceLeaf))
+      throw new Error("Expected inserted leaves");
     expect(viewFile(insertedAlpha)).toBe(alpha);
     expect(viewFile(insertedBeta)).toBe(beta);
     expect(app.workspace.activeLeaf).toBe(insertedBeta);
@@ -599,13 +637,18 @@ describe("Obsidian popout and tab list DOM", () => {
     const opened: Array<{ item: unknown; leaf: WorkspaceLeaf; active?: boolean }> = [];
     Object.defineProperty(app.internalPlugins, "getEnabledPluginById", {
       configurable: true,
-      value: (id: string) => id === "bookmarks"
-        ? {
-          openItemInLeaf: (item: unknown, leaf: WorkspaceLeaf, openState: { active?: boolean } = {}) => {
-            opened.push({ item, leaf, active: openState.active });
-          },
-        }
-        : null,
+      value: (id: string) =>
+        id === "bookmarks"
+          ? {
+              openItemInLeaf: (
+                item: unknown,
+                leaf: WorkspaceLeaf,
+                openState: { active?: boolean } = {},
+              ) => {
+                opened.push({ item, leaf, active: openState.active });
+              },
+            }
+          : null,
     });
     setRect(first.tabHeaderEl, { x: 0, width: 80, height: 24 });
     setRect(second.tabHeaderEl, { x: 100, width: 80, height: 24 });
@@ -637,13 +680,18 @@ describe("Obsidian popout and tab list DOM", () => {
     const opened: Array<{ item: unknown; leaf: WorkspaceLeaf; active?: boolean }> = [];
     Object.defineProperty(app.internalPlugins, "getEnabledPluginById", {
       configurable: true,
-      value: (id: string) => id === "bookmarks"
-        ? {
-          openItemInLeaf: (item: unknown, leaf: WorkspaceLeaf, openState: { active?: boolean } = {}) => {
-            opened.push({ item, leaf, active: openState.active });
-          },
-        }
-        : null,
+      value: (id: string) =>
+        id === "bookmarks"
+          ? {
+              openItemInLeaf: (
+                item: unknown,
+                leaf: WorkspaceLeaf,
+                openState: { active?: boolean } = {},
+              ) => {
+                opened.push({ item, leaf, active: openState.active });
+              },
+            }
+          : null,
     });
     setRect(first.tabHeaderEl, { x: 0, width: 80, height: 24 });
     setRect(second.tabHeaderEl, { x: 100, width: 80, height: 24 });
@@ -676,13 +724,14 @@ describe("Obsidian popout and tab list DOM", () => {
     const opened: unknown[] = [];
     Object.defineProperty(app.internalPlugins, "getEnabledPluginById", {
       configurable: true,
-      value: (id: string) => id === "bookmarks"
-        ? {
-          openItemInLeaf: (...args: unknown[]) => {
-            opened.push(args);
-          },
-        }
-        : null,
+      value: (id: string) =>
+        id === "bookmarks"
+          ? {
+              openItemInLeaf: (...args: unknown[]) => {
+                opened.push(args);
+              },
+            }
+          : null,
     });
     setRect(first.tabHeaderEl, { x: 0, width: 80, height: 24 });
     setDragSource(app, {
@@ -713,7 +762,8 @@ describe("Obsidian popout and tab list DOM", () => {
     const rightLeaf = app.workspace.getRightLeaf();
     const leftTabs = leftLeaf.parent;
     const rightTabs = rightLeaf.parent;
-    if (!(leftTabs instanceof WorkspaceTabs) || !(rightTabs instanceof WorkspaceTabs)) throw new Error("Expected sidedock tabs");
+    if (!(leftTabs instanceof WorkspaceTabs) || !(rightTabs instanceof WorkspaceTabs))
+      throw new Error("Expected sidedock tabs");
     const popout = new WorkspaceWindow(app.workspace, window);
     app.workspace.floatingSplit.appendChild(popout);
     const popoutTabs = new WorkspaceTabs(app.workspace);

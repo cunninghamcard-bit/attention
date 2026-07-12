@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createAttachmentImportFile, getAttachmentFilesFromDataTransfer } from "@web/app/AttachmentImport";
+import {
+  createAttachmentImportFile,
+  getAttachmentFilesFromDataTransfer,
+} from "@web/app/AttachmentImport";
 
 const originalRequire = Object.getOwnPropertyDescriptor(globalThis, "require");
 
@@ -15,7 +18,8 @@ describe("AttachmentImport", () => {
     Object.defineProperty(file, "path", { configurable: true, value: "/legacy/external.png" });
     Object.defineProperty(globalThis, "require", {
       configurable: true,
-      value: (moduleName: string) => moduleName === "electron" ? { webUtils: { getPathForFile } } : {},
+      value: (moduleName: string) =>
+        moduleName === "electron" ? { webUtils: { getPathForFile } } : {},
     });
 
     const record = createAttachmentImportFile(file, false);

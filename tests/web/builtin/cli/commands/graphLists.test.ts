@@ -31,7 +31,9 @@ describe("backlinks", () => {
 
   it("counts adds a tab-separated count column", async () => {
     const app = await seededApp(linkedVault());
-    expect(await app.cli.handleCli(["backlinks", "path=Note.md", "counts"])).toBe("A.md\t2\nB.md\t1");
+    expect(await app.cli.handleCli(["backlinks", "path=Note.md", "counts"])).toBe(
+      "A.md\t2\nB.md\t1",
+    );
   });
 
   it("total sums link occurrences, not linking files, and runs before the empty message", async () => {
@@ -48,7 +50,14 @@ describe("backlinks", () => {
   it("format=json emits 2-space-indented objects with string counts", async () => {
     const app = await seededApp(linkedVault());
     expect(await app.cli.handleCli(["backlinks", "path=Note.md", "counts", "format=json"])).toBe(
-      JSON.stringify([{ file: "A.md", count: "2" }, { file: "B.md", count: "1" }], null, 2),
+      JSON.stringify(
+        [
+          { file: "A.md", count: "2" },
+          { file: "B.md", count: "1" },
+        ],
+        null,
+        2,
+      ),
     );
     // Bare `json` is the dispatch format shorthand.
     expect(await app.cli.handleCli(["backlinks", "path=Note.md", "json"])).toBe(
@@ -58,8 +67,12 @@ describe("backlinks", () => {
 
   it("format=csv separates with commas and an unrecognized format falls through to tsv", async () => {
     const app = await seededApp(linkedVault());
-    expect(await app.cli.handleCli(["backlinks", "path=Note.md", "counts", "format=csv"])).toBe("A.md,2\nB.md,1");
-    expect(await app.cli.handleCli(["backlinks", "path=Note.md", "counts", "format=xml"])).toBe("A.md\t2\nB.md\t1");
+    expect(await app.cli.handleCli(["backlinks", "path=Note.md", "counts", "format=csv"])).toBe(
+      "A.md,2\nB.md,1",
+    );
+    expect(await app.cli.handleCli(["backlinks", "path=Note.md", "counts", "format=xml"])).toBe(
+      "A.md\t2\nB.md\t1",
+    );
   });
 
   it("resolves file= like a wikilink and falls back to the active file", async () => {
@@ -72,9 +85,15 @@ describe("backlinks", () => {
 
   it("throws the exact resolution error strings", async () => {
     const app = await seededApp({ ...linkedVault(), "Folder/Sub.md": "sub" });
-    await expect(app.cli.handleCli(["backlinks", "path=Nope.md"])).rejects.toBe('File "Nope.md" not found.');
-    await expect(app.cli.handleCli(["backlinks", "path=Folder"])).rejects.toBe('"Folder" is a folder, not a file.');
-    await expect(app.cli.handleCli(["backlinks", "file=Nope"])).rejects.toBe('File "Nope" not found.');
+    await expect(app.cli.handleCli(["backlinks", "path=Nope.md"])).rejects.toBe(
+      'File "Nope.md" not found.',
+    );
+    await expect(app.cli.handleCli(["backlinks", "path=Folder"])).rejects.toBe(
+      '"Folder" is a folder, not a file.',
+    );
+    await expect(app.cli.handleCli(["backlinks", "file=Nope"])).rejects.toBe(
+      'File "Nope" not found.',
+    );
     await expect(app.cli.handleCli(["backlinks"])).rejects.toBe(
       "No active file. Use file=<name> or path=<path> to specify a file.",
     );
@@ -110,10 +129,14 @@ describe("unresolved", () => {
       'Ghost,1,B.md\nMissing,2,"A.md, B.md"',
     );
     expect(await app.cli.handleCli(["unresolved", "verbose", "format=json"])).toBe(
-      JSON.stringify([
-        { link: "Ghost", count: "1", sources: "B.md" },
-        { link: "Missing", count: "2", sources: "A.md, B.md" },
-      ], null, 2),
+      JSON.stringify(
+        [
+          { link: "Ghost", count: "1", sources: "B.md" },
+          { link: "Missing", count: "2", sources: "A.md, B.md" },
+        ],
+        null,
+        2,
+      ),
     );
   });
 

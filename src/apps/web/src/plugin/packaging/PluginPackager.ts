@@ -12,10 +12,15 @@ export class PluginPackager {
 
   packagePlugin(pkg: PluginPackage, mainJs = "", stylesCss = ""): PackagedPluginArtifact {
     const validation = this.validator.validate(pkg.manifest);
-    if (!validation.valid) throw new Error(validation.issues.map((issue) => `${issue.field}: ${issue.message}`).join("\n"));
+    if (!validation.valid)
+      throw new Error(
+        validation.issues.map((issue) => `${issue.field}: ${issue.message}`).join("\n"),
+      );
     return {
       id: pkg.manifest.id,
-      warnings: validation.issues.filter((issue) => issue.severity === "warning").map((issue) => issue.message),
+      warnings: validation.issues
+        .filter((issue) => issue.severity === "warning")
+        .map((issue) => issue.message),
       files: {
         "manifest.json": JSON.stringify(pkg.manifest, null, 2),
         [pkg.entry || "main.js"]: mainJs,

@@ -23,12 +23,16 @@ describe("ensureZshShim", () => {
     expect(zshenv).toContain('source "$HOME/.zshenv"');
     expect(zshrc.indexOf('source "$HOME/.zshrc"')).toBeLessThan(zshrc.indexOf("starship"));
     // syntax highlighting is layered last
-    expect(zshrc.indexOf("zsh-autosuggestions.zsh")).toBeLessThan(zshrc.indexOf("fast-syntax-highlighting.plugin.zsh"));
+    expect(zshrc.indexOf("zsh-autosuggestions.zsh")).toBeLessThan(
+      zshrc.indexOf("fast-syntax-highlighting.plugin.zsh"),
+    );
   });
 
   it("keeps history in the user's home, not the shim dir", () => {
     const dir = ensureZshShim({ homeDir: home });
-    expect(fs.readFileSync(join(dir!, ".zshrc"), "utf8")).toContain('HISTFILE="$HOME/.zsh_history"');
+    expect(fs.readFileSync(join(dir!, ".zshrc"), "utf8")).toContain(
+      'HISTFILE="$HOME/.zsh_history"',
+    );
   });
 
   it("is idempotent but regenerates when the version stamp changes", () => {

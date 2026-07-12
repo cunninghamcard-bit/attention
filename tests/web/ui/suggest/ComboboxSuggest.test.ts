@@ -8,7 +8,9 @@ import { ComboboxSuggest, type ComboboxItem } from "@web/ui/suggest/ComboboxSugg
 let dom: JSDOM | null = null;
 
 beforeEach(() => {
-  dom = new JSDOM("<!doctype html><html><body><div id=\"host\"></div></body></html>", { pretendToBeVisual: true });
+  dom = new JSDOM('<!doctype html><html><body><div id="host"></div></body></html>', {
+    pretendToBeVisual: true,
+  });
   vi.stubGlobal("window", dom.window);
   vi.stubGlobal("document", dom.window.document);
   vi.stubGlobal("HTMLElement", dom.window.HTMLElement);
@@ -46,7 +48,10 @@ describe("ComboboxSuggest DOM parity", () => {
     const combobox = new ComboboxSuggest(createApp(), hostEl());
 
     expect(combobox.suggestEl.className).toBe("suggestion-container combobox");
-    expect([...combobox.suggestEl.children].map((child) => child.className)).toEqual(["search-input-container", "suggestion"]);
+    expect([...combobox.suggestEl.children].map((child) => child.className)).toEqual([
+      "search-input-container",
+      "suggestion",
+    ]);
     expect(combobox.bgEl.className).toBe("suggestion-bg");
     expect(combobox.bgEl.style.opacity).toBe("0");
     expect(combobox.buttonEl.className).toBe("combobox-button");
@@ -76,10 +81,11 @@ describe("ComboboxSuggest DOM parity", () => {
     expect(combobox.isOpen).toBe(true);
     expect(combobox.buttonEl.classList.contains("has-focus")).toBe(true);
     expect(combobox.suggestEl.parentElement).toBe(document.body);
-    expect([...combobox.suggestInnerEl.querySelectorAll<HTMLElement>(".suggestion-item")].map((item) => item.textContent)).toEqual([
-      "Sort A to Z",
-      "Sort Z to A",
-    ]);
+    expect(
+      [...combobox.suggestInnerEl.querySelectorAll<HTMLElement>(".suggestion-item")].map(
+        (item) => item.textContent,
+      ),
+    ).toEqual(["Sort A to Z", "Sort Z to A"]);
 
     combobox.searchComponent.setValue("desc");
     combobox.searchComponent.onChanged();

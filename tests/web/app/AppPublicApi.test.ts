@@ -169,7 +169,9 @@ describe("App public plugin API", () => {
     expect(document.body.style.getPropertyValue("--accent-h")).toBe("0");
     expect(document.body.style.getPropertyValue("--accent-s")).toBe("0%");
     expect(document.body.style.getPropertyValue("--accent-l")).toBe("100%");
-    expect(document.body.style.getPropertyValue("--text-on-accent")).toBe("var(--text-on-accent-inverted)");
+    expect(document.body.style.getPropertyValue("--text-on-accent")).toBe(
+      "var(--text-on-accent-inverted)",
+    );
     expect(app.vault.getConfig("accentColor")).toBe(initialAccentConfig);
 
     app.vault.setConfig("accentColor", "#123456");
@@ -205,10 +207,14 @@ describe("App public plugin API", () => {
     app.vault.setConfig("monospaceFontFamily", "JetBrains Mono");
     app.updateFontFamily();
 
-    expect(document.body.style.getPropertyValue("--font-interface-override")).toBe("\"Avenir Next\", system-ui");
-    expect(document.body.style.getPropertyValue("--font-text-override")).toBe("\"Iowan Old Style\"");
-    expect(document.body.style.getPropertyValue("--font-print-override")).toBe("\"Iowan Old Style\"");
-    expect(document.body.style.getPropertyValue("--font-monospace-override")).toBe("\"JetBrains Mono\"");
+    expect(document.body.style.getPropertyValue("--font-interface-override")).toBe(
+      '"Avenir Next", system-ui',
+    );
+    expect(document.body.style.getPropertyValue("--font-text-override")).toBe('"Iowan Old Style"');
+    expect(document.body.style.getPropertyValue("--font-print-override")).toBe('"Iowan Old Style"');
+    expect(document.body.style.getPropertyValue("--font-monospace-override")).toBe(
+      '"JetBrains Mono"',
+    );
 
     app.vault.setConfig("baseFontSize", 42);
     app.updateFontSize();
@@ -295,7 +301,9 @@ describe("App public plugin API", () => {
       expect(windowOpen).toHaveBeenCalledWith("file:///vault/Folder/Note.md", "_external");
 
       expect(app.showInFolder("Folder/Note.md")).toBeUndefined();
-      await vi.waitFor(() => expect(showItemInFolder).toHaveBeenCalledWith("/vault/Folder/Note.md"));
+      await vi.waitFor(() =>
+        expect(showItemInFolder).toHaveBeenCalledWith("/vault/Folder/Note.md"),
+      );
 
       expect(app.showInFolder("Missing.md")).toBeUndefined();
       await vi.waitFor(() => expect(document.body.textContent).toContain("/vault/Missing.md"));
@@ -310,7 +318,9 @@ describe("App public plugin API", () => {
       const mobileOpen = vi.fn();
       Platform.isMobile = true;
       Platform.isMobileApp = true;
-      (app.vault as unknown as { adapter: { open(path: string): void } }).adapter = { open: mobileOpen };
+      (app.vault as unknown as { adapter: { open(path: string): void } }).adapter = {
+        open: mobileOpen,
+      };
       await app.openWithDefaultApp("Mobile.md");
       expect(mobileOpen).toHaveBeenCalledWith("Mobile.md");
 

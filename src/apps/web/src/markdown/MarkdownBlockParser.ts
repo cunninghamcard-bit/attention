@@ -36,14 +36,26 @@ export class MarkdownBlockParser {
           body.push(lines[index]);
           index += 1;
         }
-        blocks.push({ type: "code", language, source: body.join("\n"), lineStart: start, lineEnd: index });
+        blocks.push({
+          type: "code",
+          language,
+          source: body.join("\n"),
+          lineStart: start,
+          lineEnd: index,
+        });
         index += 1;
         continue;
       }
 
       const heading = line.match(/^(#{1,6})\s+(.+)$/);
       if (heading) {
-        blocks.push({ type: "heading", level: heading[1].length, text: heading[2], lineStart: index, lineEnd: index });
+        blocks.push({
+          type: "heading",
+          level: heading[1].length,
+          text: heading[2],
+          lineStart: index,
+          lineEnd: index,
+        });
         index += 1;
         continue;
       }
@@ -55,7 +67,12 @@ export class MarkdownBlockParser {
           body.push(lines[index].replace(/^>\s?/, ""));
           index += 1;
         }
-        blocks.push({ type: "blockquote", text: body.join("\n"), lineStart: start, lineEnd: index - 1 });
+        blocks.push({
+          type: "blockquote",
+          text: body.join("\n"),
+          lineStart: start,
+          lineEnd: index - 1,
+        });
         continue;
       }
 
@@ -76,17 +93,32 @@ export class MarkdownBlockParser {
           }
           index += 1;
         }
-        blocks.push({ type: "list", items: buildListTree(listLines), lineStart: start, lineEnd: index - 1 });
+        blocks.push({
+          type: "list",
+          items: buildListTree(listLines),
+          lineStart: start,
+          lineEnd: index - 1,
+        });
         continue;
       }
 
       const start = index;
       const body: string[] = [];
-      while (index < lines.length && lines[index].trim() && !/^```/.test(lines[index]) && !/^(#{1,6})\s+/.test(lines[index])) {
+      while (
+        index < lines.length &&
+        lines[index].trim() &&
+        !/^```/.test(lines[index]) &&
+        !/^(#{1,6})\s+/.test(lines[index])
+      ) {
         body.push(lines[index]);
         index += 1;
       }
-      blocks.push({ type: "paragraph", text: body.join("\n"), lineStart: start, lineEnd: index - 1 });
+      blocks.push({
+        type: "paragraph",
+        text: body.join("\n"),
+        lineStart: start,
+        lineEnd: index - 1,
+      });
     }
 
     return blocks;
@@ -114,7 +146,8 @@ function parseListItemText(text: string): Pick<MarkdownListItem, "text" | "check
 
 function buildListTree(lines: ParsedListLine[]): MarkdownListItem[] {
   const root: MarkdownListItem[] = [];
-  const stack: Array<{ indent: number; items: MarkdownListItem[]; item: MarkdownListItem | null }> = [{ indent: -1, items: root, item: null }];
+  const stack: Array<{ indent: number; items: MarkdownListItem[]; item: MarkdownListItem | null }> =
+    [{ indent: -1, items: root, item: null }];
 
   for (const line of lines) {
     while (stack.length > 1 && line.indent <= stack[stack.length - 1].indent) stack.pop();

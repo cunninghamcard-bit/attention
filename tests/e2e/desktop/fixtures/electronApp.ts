@@ -1,4 +1,10 @@
-import { _electron as electron, expect, test as base, type ElectronApplication, type Page } from "@playwright/test";
+import {
+  _electron as electron,
+  expect,
+  test as base,
+  type ElectronApplication,
+  type Page,
+} from "@playwright/test";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -38,7 +44,10 @@ interface DesktopFixtures {
 function seedVault(vault: string): void {
   mkdirSync(join(vault, "Pics"), { recursive: true });
   writeFileSync(join(vault, "Pics", "pic.png"), TINY_PNG);
-  writeFileSync(join(vault, "Note.md"), "# Demo\n\nEmbedded image:\n\n![[pic.png]]\n\nSee [[Doc]].\n");
+  writeFileSync(
+    join(vault, "Note.md"),
+    "# Demo\n\nEmbedded image:\n\n![[pic.png]]\n\nSee [[Doc]].\n",
+  );
   writeFileSync(join(vault, "Doc.md"), "# A\n## B\nbody text\n");
 }
 
@@ -58,7 +67,9 @@ export const test = base.extend<DesktopFixtures>({
 
   launchApp: async ({ vaultPath }, use, testInfo) => {
     if (!existsSync(MAIN_CJS)) {
-      throw new Error("dist-electron/main.cjs missing — run: pnpm run build && pnpm run build:electron");
+      throw new Error(
+        "dist-electron/main.cjs missing — run: pnpm run build && pnpm run build:electron",
+      );
     }
 
     const base = dirname(vaultPath);
@@ -77,7 +88,12 @@ export const test = base.extend<DesktopFixtures>({
     const launchApp = async (): Promise<DesktopAppInstance> => {
       launchCount += 1;
       const label = `launch-${launchCount}`;
-      const electronApp = await electron.launch({ args: [MAIN_CJS], cwd: REPO_ROOT, env, timeout: 60_000 });
+      const electronApp = await electron.launch({
+        args: [MAIN_CJS],
+        cwd: REPO_ROOT,
+        env,
+        timeout: 60_000,
+      });
 
       const instance: DesktopAppInstance = {
         electronApp,
@@ -90,7 +106,9 @@ export const test = base.extend<DesktopFixtures>({
       launched.add(instance);
 
       const page = await electronApp.firstWindow();
-      page.on("console", (message) => consoleLogs.push(`[${label}][${message.type()}] ${message.text()}`));
+      page.on("console", (message) =>
+        consoleLogs.push(`[${label}][${message.type()}] ${message.text()}`),
+      );
       page.on("pageerror", (error) => pageErrors.push(`[${label}] ${error.message}`));
       await page.waitForLoadState("domcontentloaded");
       // App-ready contract: the workspace shell and the file tree are up.

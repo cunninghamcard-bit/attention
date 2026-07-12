@@ -186,7 +186,7 @@ export class Menu extends Component implements HistoryHandler {
   private hiding = false;
   private outsideCleanup: (() => void) | null = null;
   private parentElementCleanup: (() => void) | null = null;
-  private submenuOpenTimer:  number | null = null;
+  private submenuOpenTimer: number | null = null;
   private shownDoc: Document | null = null;
 
   constructor(doc: Document = getActiveDocument()) {
@@ -262,7 +262,10 @@ export class Menu extends Component implements HistoryHandler {
   }
 
   showAtMouseEvent(event: (MouseEvent | PointerEvent) & { doc?: Document }): this {
-    return this.showAtPosition({ x: event.clientX, y: event.clientY }, event.doc ?? eventDocument(event));
+    return this.showAtPosition(
+      { x: event.clientX, y: event.clientY },
+      event.doc ?? eventDocument(event),
+    );
   }
 
   showAtPosition(position: MenuPosition, doc: Document = this.doc): this {
@@ -349,11 +352,15 @@ export class Menu extends Component implements HistoryHandler {
       if (!bucket || bucket.length === 0) continue;
       const submenuPrefix = this.findSubmenuPrefix(section);
       if (submenuPrefix) {
-        const submenuItem = renderedSubmenus.get(submenuPrefix) ?? this.createSectionSubmenuItem(submenuPrefix, ordered, renderedSubmenus);
+        const submenuItem =
+          renderedSubmenus.get(submenuPrefix) ??
+          this.createSectionSubmenuItem(submenuPrefix, ordered, renderedSubmenus);
         if (submenuItem.submenu) {
-          if (submenuItem.submenu.items.length > 0) submenuItem.submenu.items.push(new MenuSeparator(submenuItem.submenu));
+          if (submenuItem.submenu.items.length > 0)
+            submenuItem.submenu.items.push(new MenuSeparator(submenuItem.submenu));
           for (const item of bucket) {
-            if (item instanceof MenuItem) item.setSection(trimSubmenuSection(item.section, submenuPrefix));
+            if (item instanceof MenuItem)
+              item.setSection(trimSubmenuSection(item.section, submenuPrefix));
             submenuItem.submenu.items.push(item);
           }
         }
@@ -364,7 +371,8 @@ export class Menu extends Component implements HistoryHandler {
       // Real: separator when the full previous section differs from this
       // section's top prefix (c !== g).
       const nextTopSection = topSection(section);
-      if (previousSection !== null && previousSection !== nextTopSection) ordered.push(new MenuSeparator(this));
+      if (previousSection !== null && previousSection !== nextTopSection)
+        ordered.push(new MenuSeparator(this));
       ordered.push(...bucket);
       previousSection = section;
     }
@@ -420,7 +428,10 @@ export class Menu extends Component implements HistoryHandler {
     this.currentSubmenu = item.submenu;
     item.submenu.parentMenu = this;
     const rect = item.dom.getBoundingClientRect();
-    item.submenu.showAtPosition({ x: rect.left, y: rect.top, width: rect.width }, item.dom.ownerDocument);
+    item.submenu.showAtPosition(
+      { x: rect.left, y: rect.top, width: rect.width },
+      item.dom.ownerDocument,
+    );
   }
 
   closeSubmenu(): void {
@@ -448,7 +459,8 @@ export class Menu extends Component implements HistoryHandler {
     const bridge = getElectronBridge(win);
     const remote = bridge?.remote;
     const buildFromTemplate = remote?.Menu?.buildFromTemplate;
-    if (!buildFromTemplate || !remote.getCurrentWebContents || !remote.getCurrentWindow) return false;
+    if (!buildFromTemplate || !remote.getCurrentWebContents || !remote.getCurrentWindow)
+      return false;
 
     const nativeMenu = buildFromTemplate(toNativeMenuTemplate(this.items));
     nativeMenu.on?.("menu-will-close", () => this.hide());
@@ -507,7 +519,11 @@ export class Menu extends Component implements HistoryHandler {
     this.parentElementCleanup = () => win.clearInterval(interval);
   }
 
-  private createSectionSubmenuItem(prefix: string, ordered: Array<MenuItem | MenuSeparator>, rendered: Map<string, MenuItem>): MenuItem {
+  private createSectionSubmenuItem(
+    prefix: string,
+    ordered: Array<MenuItem | MenuSeparator>,
+    rendered: Map<string, MenuItem>,
+  ): MenuItem {
     const item = new MenuItem(this);
     const config = this.submenuConfigs[prefix];
     item.setTitle(config.title);
@@ -541,8 +557,10 @@ export class Menu extends Component implements HistoryHandler {
         right = position.x;
       }
     }
-    const shouldOpenLeft = position.left === true || (left + width > win.innerWidth && right - width >= 0);
-    const top = position.y + height > win.innerHeight ? Math.max(0, position.y - height) : position.y + 2;
+    const shouldOpenLeft =
+      position.left === true || (left + width > win.innerWidth && right - width >= 0);
+    const top =
+      position.y + height > win.innerHeight ? Math.max(0, position.y - height) : position.y + 2;
     this.dom.style.left = shouldOpenLeft ? `${Math.max(0, right - width)}px` : `${left}px`;
     this.dom.style.top = `${top}px`;
   }
@@ -666,7 +684,9 @@ interface MenuElectronBridge {
   };
 }
 
-function getElectronBridge(win: Window & { electron?: MenuElectronBridge }): MenuElectronBridge | null {
+function getElectronBridge(
+  win: Window & { electron?: MenuElectronBridge },
+): MenuElectronBridge | null {
   const host = globalThis as { electron?: MenuElectronBridge };
   return win.electron ?? host.electron ?? null;
 }
@@ -734,7 +754,9 @@ function trimSeparators(items: Array<MenuItem | MenuSeparator>): Array<MenuItem 
   const next = [...items];
   while (next[0] instanceof MenuSeparator) next.shift();
   while (next[next.length - 1] instanceof MenuSeparator) next.pop();
-  return next.filter((item, index) => !(item instanceof MenuSeparator && next[index - 1] instanceof MenuSeparator));
+  return next.filter(
+    (item, index) => !(item instanceof MenuSeparator && next[index - 1] instanceof MenuSeparator),
+  );
 }
 
 function normalizeIndex(index: number, length: number): number {

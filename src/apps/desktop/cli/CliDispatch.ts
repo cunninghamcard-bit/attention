@@ -34,7 +34,8 @@ export interface CliDispatchDeps extends VaultRouterDeps {
   executeCliRequest(vaultId: string | null, argv: string[]): Promise<string>;
 }
 
-const CLI_DISABLED = "Command line interface is not enabled. Please turn it on in Settings > General > Advanced.";
+const CLI_DISABLED =
+  "Command line interface is not enabled. Please turn it on in Settings > General > Advanced.";
 
 export async function dispatchCli(request: CliRequest, deps: CliDispatchDeps): Promise<string> {
   const { argv, tty, cwd } = request;

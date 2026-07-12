@@ -15,7 +15,9 @@ import { MarkdownBlockCache, parseMarkdownBlocks, type BlockCacheBlock } from ".
 export interface MetadataCacheApp {
   appId: string;
   vault: Vault;
-  metadataTypeManager: { assignedWidgets: Iterable<readonly [string, { name: string; widget: PropertyType }]> };
+  metadataTypeManager: {
+    assignedWidgets: Iterable<readonly [string, { name: string; widget: PropertyType }]>;
+  };
   viewRegistry: { isExtensionRegistered(extension: string): boolean };
 }
 
@@ -91,7 +93,21 @@ export interface FrontMatterCache {
 
 export interface SectionCache extends CacheItem {
   id?: string | undefined;
-  type: "blockquote" | "callout" | "code" | "element" | "footnoteDefinition" | "heading" | "html" | "list" | "paragraph" | "table" | "text" | "thematicBreak" | "yaml" | string;
+  type:
+    | "blockquote"
+    | "callout"
+    | "code"
+    | "element"
+    | "footnoteDefinition"
+    | "heading"
+    | "html"
+    | "list"
+    | "paragraph"
+    | "table"
+    | "text"
+    | "thematicBreak"
+    | "yaml"
+    | string;
 }
 
 export interface HeadingCache extends CacheItem {
@@ -152,7 +168,10 @@ export interface LinkSuggestion {
   alias?: string;
 }
 
-export function iterateRefs(refs: Reference[] | null | undefined, cb: (ref: Reference) => boolean | void): boolean {
+export function iterateRefs(
+  refs: Reference[] | null | undefined,
+  cb: (ref: Reference) => boolean | void,
+): boolean {
   if (!refs) return false;
   for (const ref of refs) {
     if (cb(ref)) return true;
@@ -160,10 +179,14 @@ export function iterateRefs(refs: Reference[] | null | undefined, cb: (ref: Refe
   return false;
 }
 
-export function iterateCacheRefs(cache: CachedMetadata | null | undefined, cb: (ref: ReferenceCache) => boolean | void): boolean {
-  return !!cache && (
-    iterateRefs(cache.links, cb as (ref: Reference) => boolean | void)
-    || iterateRefs(cache.embeds, cb as (ref: Reference) => boolean | void)
+export function iterateCacheRefs(
+  cache: CachedMetadata | null | undefined,
+  cb: (ref: ReferenceCache) => boolean | void,
+): boolean {
+  return (
+    !!cache &&
+    (iterateRefs(cache.links, cb as (ref: Reference) => boolean | void) ||
+      iterateRefs(cache.embeds, cb as (ref: Reference) => boolean | void))
   );
 }
 
@@ -189,17 +212,39 @@ export class MetadataCache extends Events {
   private workerResolve: ((metadata: CachedMetadata) => void) | null = null;
   private workerReject: ((reason: unknown) => void) | null = null;
 
-  override on(name: "changed", callback: (file: TFile, data: string, cache: CachedMetadata) => any, ctx?: any): EventRef;
-  override on(name: "deleted", callback: (file: TFile, prevCache: CachedMetadata | null) => any, ctx?: any): EventRef;
+  override on(
+    name: "changed",
+    callback: (file: TFile, data: string, cache: CachedMetadata) => any,
+    ctx?: any,
+  ): EventRef;
+  override on(
+    name: "deleted",
+    callback: (file: TFile, prevCache: CachedMetadata | null) => any,
+    ctx?: any,
+  ): EventRef;
   override on(name: "resolve", callback: (file: TFile) => any, ctx?: any): EventRef;
   override on(name: "resolved", callback: () => any, ctx?: any): EventRef;
   override on(name: "indexing-slow", callback: (path: string) => any, ctx?: any): EventRef;
-  override on<TArgs extends unknown[]>(name: string, callback: (...args: TArgs) => any, ctx?: object): EventRef<TArgs>;
-  override on<TArgs extends unknown[]>(name: string, callback: (...args: TArgs) => any, ctx?: object): EventRef<TArgs> {
+  override on<TArgs extends unknown[]>(
+    name: string,
+    callback: (...args: TArgs) => any,
+    ctx?: object,
+  ): EventRef<TArgs>;
+  override on<TArgs extends unknown[]>(
+    name: string,
+    callback: (...args: TArgs) => any,
+    ctx?: object,
+  ): EventRef<TArgs> {
     return super.on(name, callback, ctx);
   }
 
-  constructor(readonly vault: Vault, readonly app?: MetadataCacheApp, private readonly persistentStore: MetadataCachePersistentStore | null = createMetadataCacheStore(app?.appId ?? "obsidian-reconstructed")) {
+  constructor(
+    readonly vault: Vault,
+    readonly app?: MetadataCacheApp,
+    private readonly persistentStore: MetadataCachePersistentStore | null = createMetadataCacheStore(
+      app?.appId ?? "obsidian-reconstructed",
+    ),
+  ) {
     super();
     this.blockCache = new MarkdownBlockCache(this.vault);
     this.on("finished", () => this.checkCleanCache());
@@ -247,7 +292,12 @@ export class MetadataCache extends Events {
     const values = new Set<string>();
     for (const path of this.getCachedFiles()) {
       const cache = this.getCache(path);
-      if (this.isUserIgnored(path) || !cache?.frontmatter || !Object.prototype.hasOwnProperty.call(cache.frontmatter, key)) continue;
+      if (
+        this.isUserIgnored(path) ||
+        !cache?.frontmatter ||
+        !Object.prototype.hasOwnProperty.call(cache.frontmatter, key)
+      )
+        continue;
       const value = cache.frontmatter[key];
       if (Array.isArray(value)) {
         for (const item of value) {
@@ -257,7 +307,9 @@ export class MetadataCache extends Events {
         values.add(value);
       }
     }
-    return [...values].sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base", numeric: true }));
+    return [...values].sort((left, right) =>
+      left.localeCompare(right, undefined, { sensitivity: "base", numeric: true }),
+    );
   }
 
   getAllPropertyInfos(): FrontmatterPropertyInfoMap {
@@ -350,9 +402,10 @@ export class MetadataCache extends Events {
 
   fileToLinktext(file: TFile, sourcePath = "", omitMdExtension = true): string {
     const format = this.vault.getConfig<string>("newLinkFormat") ?? "shortest";
-    const fullPath = file.extension === "md" && omitMdExtension && file.path.endsWith(".md")
-      ? file.path.slice(0, -3)
-      : file.path;
+    const fullPath =
+      file.extension === "md" && omitMdExtension && file.path.endsWith(".md")
+        ? file.path.slice(0, -3)
+        : file.path;
 
     if (format === "absolute") return fullPath;
     if (format === "relative") return relativePath(sourcePath, fullPath);
@@ -371,7 +424,11 @@ export class MetadataCache extends Events {
   }
 
   isCacheClean(): boolean {
-    return this.inProgressTaskCount === 0 && this.linkResolverQueue.length === 0 && !this.linkResolverRunning;
+    return (
+      this.inProgressTaskCount === 0 &&
+      this.linkResolverQueue.length === 0 &&
+      !this.linkResolverRunning
+    );
   }
 
   onCleanCache(callback: () => void): void {
@@ -387,12 +444,22 @@ export class MetadataCache extends Events {
     this.addUniqueFile(file);
     const stat = await this.getVaultFileStat(file);
     if (file.extension !== "md") {
-      this.saveFileCache(file.path, { mtime: stat?.mtime ?? Date.now(), size: stat?.size ?? 0, hash: "" });
+      this.saveFileCache(file.path, {
+        mtime: stat?.mtime ?? Date.now(),
+        size: stat?.size ?? 0,
+        hash: "",
+      });
       return {};
     }
     const cachedInfo = this.fileCache.get(file.path);
     const cachedMetadata = cachedInfo ? this.metadataCache.get(cachedInfo.hash) : null;
-    if (cachedInfo && cachedMetadata && stat && cachedInfo.mtime === stat.mtime && cachedInfo.size === stat.size) {
+    if (
+      cachedInfo &&
+      cachedMetadata &&
+      stat &&
+      cachedInfo.mtime === stat.mtime &&
+      cachedInfo.size === stat.size
+    ) {
       this.queueFileForLinkResolution(file);
       return cachedMetadata;
     }
@@ -453,7 +520,8 @@ export class MetadataCache extends Events {
     for (const path of this.getCachedFiles()) this.saveFileCache(path, null);
     for (const hash of [...this.metadataCache.keys()]) this.saveMetaCache(hash, null);
     this.clearResolvedLinks();
-    const tasks = this.vault.getAllLoadedFiles()
+    const tasks = this.vault
+      .getAllLoadedFiles()
       .filter((file): file is TFile => file instanceof TFile)
       .map((file) => this.computeFileMetadataAsync(file));
     await Promise.all(tasks);
@@ -468,7 +536,9 @@ export class MetadataCache extends Events {
     const markdownLinks = collectMarkdownLinks(lines, lineOffsets);
     const frontmatterPosition = getFrontmatterPosition(source);
     const frontmatter = this.extractFrontmatter(source);
-    const contentReferences = [...wikiLinks, ...markdownLinks].filter((match) => isContentReference(match.position, frontmatterPosition));
+    const contentReferences = [...wikiLinks, ...markdownLinks].filter((match) =>
+      isContentReference(match.position, frontmatterPosition),
+    );
     return {
       frontmatter,
       ...(frontmatterPosition ? { frontmatterPosition } : {}),
@@ -478,22 +548,42 @@ export class MetadataCache extends Events {
       listItems: collectListItems(blockEntries),
       headings: lines.flatMap((line, index) => {
         const match = /^(#{1,6})\s+(.+)$/.exec(line);
-        return match ? [{
-          heading: match[2],
-          level: match[1].length,
-          position: {
-            line: index,
-            start: { line: index, col: 0, offset: lineOffsets[index] ?? 0 },
-            end: { line: index, col: line.length, offset: (lineOffsets[index] ?? 0) + line.length },
-          },
-        }] : [];
+        return match
+          ? [
+              {
+                heading: match[2],
+                level: match[1].length,
+                position: {
+                  line: index,
+                  start: { line: index, col: 0, offset: lineOffsets[index] ?? 0 },
+                  end: {
+                    line: index,
+                    col: line.length,
+                    offset: (lineOffsets[index] ?? 0) + line.length,
+                  },
+                },
+              },
+            ]
+          : [];
       }),
       links: contentReferences
         .filter((match) => !match.embed)
-        .map((match) => ({ link: this.normalizeLinkpath(match.link), original: match.original, ...(match.displayText ? { displayText: match.displayText } : {}), position: match.position, source: match.source })),
+        .map((match) => ({
+          link: this.normalizeLinkpath(match.link),
+          original: match.original,
+          ...(match.displayText ? { displayText: match.displayText } : {}),
+          position: match.position,
+          source: match.source,
+        })),
       embeds: contentReferences
         .filter((match) => match.embed)
-        .map((match) => ({ link: this.normalizeLinkpath(match.link), original: match.original, ...(match.displayText ? { displayText: match.displayText } : {}), position: match.position, source: match.source })),
+        .map((match) => ({
+          link: this.normalizeLinkpath(match.link),
+          original: match.original,
+          ...(match.displayText ? { displayText: match.displayText } : {}),
+          position: match.position,
+          source: match.source,
+        })),
       referenceLinks: collectReferenceLinks(lines, lineOffsets),
       footnotes: collectFootnotes(source),
       footnoteRefs: collectFootnoteRefs(source),
@@ -534,7 +624,10 @@ export class MetadataCache extends Events {
     return next;
   }
 
-  private async workWithSlowIndexingNotice(file: TFile, buffer: ArrayBuffer): Promise<CachedMetadata> {
+  private async workWithSlowIndexingNotice(
+    file: TFile,
+    buffer: ArrayBuffer,
+  ): Promise<CachedMetadata> {
     const timer = setTimeout(() => {
       this.trigger("indexing-slow", file.path);
     }, 10_000);
@@ -553,7 +646,9 @@ export class MetadataCache extends Events {
       this.workerReject = reject;
       queueMicrotask(() => {
         try {
-          this.onReceiveMessageFromWorker({ data: this.parseMetadata(new TextDecoder().decode(buffer)) });
+          this.onReceiveMessageFromWorker({
+            data: this.parseMetadata(new TextDecoder().decode(buffer)),
+          });
         } catch (error) {
           this.workerResolve = null;
           this.workerReject = null;
@@ -631,7 +726,9 @@ export class MetadataCache extends Events {
     this.migrateResolvedLinks(oldPath, file.path);
     const oldName = basename(oldPath);
     const newName = file.name;
-    this.updateRelatedLinks(oldName.toLowerCase() === newName.toLowerCase() ? [oldName] : [oldName, newName]);
+    this.updateRelatedLinks(
+      oldName.toLowerCase() === newName.toLowerCase() ? [oldName] : [oldName, newName],
+    );
     this.queueFileForLinkResolution(null);
   }
 
@@ -745,11 +842,16 @@ export class MetadataCache extends Events {
 
   private updateRelatedLinks(names: string[]): void {
     const resolvedNames = names.map((name) => name.toLowerCase());
-    const unresolvedNames = resolvedNames.flatMap((name) => name.endsWith(".md") ? [name.slice(0, -3), name] : [name]);
+    const unresolvedNames = resolvedNames.flatMap((name) =>
+      name.endsWith(".md") ? [name.slice(0, -3), name] : [name],
+    );
     for (const source of this.getCachedFiles()) {
       const file = this.vault.getFileByPath(source);
       if (!(file instanceof TFile)) continue;
-      if (hasRelatedLink(resolvedNames, this.resolvedLinks[source]) || hasRelatedLink(unresolvedNames, this.unresolvedLinks[source])) {
+      if (
+        hasRelatedLink(resolvedNames, this.resolvedLinks[source]) ||
+        hasRelatedLink(unresolvedNames, this.unresolvedLinks[source])
+      ) {
         this.queueFileForLinkResolution(file);
       }
     }
@@ -768,7 +870,9 @@ export class MetadataCache extends Events {
   }
 
   private cleanupDeletedCache(): void {
-    const referenced = new Set([...this.fileCache.values()].map((info) => info.hash).filter(Boolean));
+    const referenced = new Set(
+      [...this.fileCache.values()].map((info) => info.hash).filter(Boolean),
+    );
     for (const hash of [...this.metadataCache.keys()]) {
       if (!referenced.has(hash)) this.saveMetaCache(hash, null);
     }
@@ -797,7 +901,11 @@ export class MetadataCache extends Events {
     return Boolean(stat && stat.mtime === info.mtime && stat.size === info.size);
   }
 
-  private async getFileCacheInfo(file: TFile, source: string, hash: string): Promise<FileCacheInfo> {
+  private async getFileCacheInfo(
+    file: TFile,
+    source: string,
+    hash: string,
+  ): Promise<FileCacheInfo> {
     const stat = await this.getVaultFileStat(file);
     return {
       mtime: stat?.mtime ?? Date.now(),
@@ -811,7 +919,9 @@ export class MetadataCache extends Events {
     // skip one adapter stat round-trip per indexed file (mtime 0 = unknown,
     // e.g. an adapter event that carried no stat and hasn't refreshed yet).
     if (file.stat.mtime > 0) return { mtime: file.stat.mtime, size: file.stat.size };
-    const adapter = this.vault.adapter as { stat?: (path: string) => Promise<{ mtime?: number; size?: number } | null> } | undefined;
+    const adapter = this.vault.adapter as
+      | { stat?: (path: string) => Promise<{ mtime?: number; size?: number } | null> }
+      | undefined;
     const stat = await adapter?.stat?.(file.path);
     if (stat?.mtime == null || stat.size == null) return null;
     return { mtime: stat.mtime, size: stat.size };
@@ -843,7 +953,9 @@ export class MetadataCache extends Events {
     const sourceFolder = dirname(sourcePath).toLowerCase();
     if (lowerLink.startsWith("./") || lowerLink.startsWith("../")) {
       const relativePath = resolveRelativeLinkpath(matchPath, sourcePath)?.toLowerCase();
-      const exact = relativePath ? candidates.find((file) => file.path.toLowerCase() === relativePath) : null;
+      const exact = relativePath
+        ? candidates.find((file) => file.path.toLowerCase() === relativePath)
+        : null;
       if (exact) return [exact];
     }
 
@@ -890,14 +1002,18 @@ export class MetadataCache extends Events {
 
   private getUniqueFiles(name: string): TFile[] {
     this.syncUniqueFileLookup();
-    return [...this.uniqueFileLookup.get(name.toLowerCase()) ?? []];
+    return [...(this.uniqueFileLookup.get(name.toLowerCase()) ?? [])];
   }
 
   private syncUniqueFileLookup(): void {
-    const loaded = this.vault.getAllLoadedFiles().filter((file): file is TFile => file instanceof TFile);
+    const loaded = this.vault
+      .getAllLoadedFiles()
+      .filter((file): file is TFile => file instanceof TFile);
     const loadedSet = new Set(loaded);
     for (const [key, bucket] of [...this.uniqueFileLookup]) {
-      const current = bucket.filter((file) => loadedSet.has(file) && file.name.toLowerCase() === key);
+      const current = bucket.filter(
+        (file) => loadedSet.has(file) && file.name.toLowerCase() === key,
+      );
       if (current.length > 0) this.uniqueFileLookup.set(key, current);
       else this.uniqueFileLookup.delete(key);
     }
@@ -932,7 +1048,8 @@ function matchesIgnoreFilter(path: string, filter: string): boolean {
 
   const normalized = normalizePath(value);
   if (normalized.endsWith("/")) return path.startsWith(normalized);
-  if (normalized.includes("*") || normalized.includes("?")) return globToRegExp(normalized).test(path);
+  if (normalized.includes("*") || normalized.includes("?"))
+    return globToRegExp(normalized).test(path);
   return path === normalized || path.startsWith(`${normalized}/`);
 }
 
@@ -1001,7 +1118,9 @@ function normalizeUnresolvedLinkpath(linkpath: string): string {
 }
 
 function relativePath(sourcePath: string, targetPath: string): string {
-  const sourceParts = sourcePath.includes("/") ? sourcePath.slice(0, sourcePath.lastIndexOf("/")).split("/").filter(Boolean) : [];
+  const sourceParts = sourcePath.includes("/")
+    ? sourcePath.slice(0, sourcePath.lastIndexOf("/")).split("/").filter(Boolean)
+    : [];
   const targetParts = targetPath.split("/").filter(Boolean);
   while (sourceParts.length > 0 && targetParts.length > 0 && sourceParts[0] === targetParts[0]) {
     sourceParts.shift();
@@ -1012,11 +1131,7 @@ function relativePath(sourcePath: string, targetPath: string): string {
 }
 
 function iterateRefsForCache(cache: CachedMetadata): Array<{ link: string }> {
-  return [
-    ...cache.frontmatterLinks ?? [],
-    ...cache.links ?? [],
-    ...cache.embeds ?? [],
-  ];
+  return [...(cache.frontmatterLinks ?? []), ...(cache.links ?? []), ...(cache.embeds ?? [])];
 }
 
 function getFrontmatterAliases(frontmatter: Record<string, unknown> | undefined): string[] {
@@ -1024,7 +1139,12 @@ function getFrontmatterAliases(frontmatter: Record<string, unknown> | undefined)
   const entry = Object.entries(frontmatter).find(([key]) => /^aliases$/i.test(key));
   if (!entry) return [];
   const value = entry[1];
-  const values = typeof value === "string" ? [value] : Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  const values =
+    typeof value === "string"
+      ? [value]
+      : Array.isArray(value)
+        ? value.filter((item): item is string => typeof item === "string")
+        : [];
   return values.map((item) => item.trim()).filter(Boolean);
 }
 
@@ -1032,7 +1152,6 @@ function hasRelatedLink(names: string[], links: Record<string, number> | undefin
   if (!links) return false;
   return Object.keys(links).some((path) => names.includes(basename(path).toLowerCase()));
 }
-
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -1054,10 +1173,13 @@ async function sha256Hex(buffer: ArrayBuffer): Promise<string> {
 }
 
 function isFileCacheInfo(value: unknown): value is FileCacheInfo {
-  return Boolean(value && typeof value === "object"
-    && typeof (value as FileCacheInfo).mtime === "number"
-    && typeof (value as FileCacheInfo).size === "number"
-    && typeof (value as FileCacheInfo).hash === "string");
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    typeof (value as FileCacheInfo).mtime === "number" &&
+    typeof (value as FileCacheInfo).size === "number" &&
+    typeof (value as FileCacheInfo).hash === "string",
+  );
 }
 
 function isCachedMetadata(value: unknown): value is CachedMetadata {
@@ -1069,7 +1191,9 @@ function compactMetadata(metadata: CachedMetadata): unknown {
 }
 
 function inflateMetadata(metadata: CachedMetadata): CachedMetadata {
-  return upgradeLegacyInlinePositions(transformStoredPositions(structuredClone(metadata), "inflate")) as CachedMetadata;
+  return upgradeLegacyInlinePositions(
+    transformStoredPositions(structuredClone(metadata), "inflate"),
+  ) as CachedMetadata;
 }
 
 function transformStoredPositions(value: unknown, mode: "compact" | "inflate"): unknown {
@@ -1098,7 +1222,8 @@ function transformStoredPositions(value: unknown, mode: "compact" | "inflate"): 
       delete record.pos;
     }
   }
-  for (const [key, child] of Object.entries(record)) record[key] = transformStoredPositions(child, mode);
+  for (const [key, child] of Object.entries(record))
+    record[key] = transformStoredPositions(child, mode);
   return record;
 }
 
@@ -1114,21 +1239,28 @@ function upgradeLegacyInlinePositions(value: unknown): unknown {
       end: { line: legacy.line, col: legacy.end, offset: 0 },
     };
   }
-  for (const [key, child] of Object.entries(record)) record[key] = upgradeLegacyInlinePositions(child);
+  for (const [key, child] of Object.entries(record))
+    record[key] = upgradeLegacyInlinePositions(child);
   return record;
 }
 
 function isLegacyInlinePosition(value: unknown): value is SourceMatchPosition {
-  return Boolean(value && typeof value === "object"
-    && typeof (value as SourceMatchPosition).line === "number"
-    && typeof (value as SourceMatchPosition).start === "number"
-    && typeof (value as SourceMatchPosition).end === "number"
-    && typeof (value as SourceMatchPosition).text === "string");
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    typeof (value as SourceMatchPosition).line === "number" &&
+    typeof (value as SourceMatchPosition).start === "number" &&
+    typeof (value as SourceMatchPosition).end === "number" &&
+    typeof (value as SourceMatchPosition).text === "string",
+  );
 }
 
 function positionToTuple(position: unknown): number[] | null {
   if (!position || typeof position !== "object") return null;
-  const record = position as { start?: { line?: unknown; col?: unknown; offset?: unknown }; end?: { line?: unknown; col?: unknown; offset?: unknown } };
+  const record = position as {
+    start?: { line?: unknown; col?: unknown; offset?: unknown };
+    end?: { line?: unknown; col?: unknown; offset?: unknown };
+  };
   if (!record.start || !record.end) return null;
   return [
     Number(record.start.line ?? 0),
@@ -1140,9 +1272,16 @@ function positionToTuple(position: unknown): number[] | null {
   ];
 }
 
-function tupleToPosition(tuple: unknown[]): { start: { line: number; col: number; offset: number }; end: { line: number; col: number; offset: number } } {
+function tupleToPosition(tuple: unknown[]): {
+  start: { line: number; col: number; offset: number };
+  end: { line: number; col: number; offset: number };
+} {
   return {
-    start: { line: Number(tuple[0] ?? 0), col: Number(tuple[1] ?? 0), offset: Number(tuple[2] ?? 0) },
+    start: {
+      line: Number(tuple[0] ?? 0),
+      col: Number(tuple[1] ?? 0),
+      offset: Number(tuple[2] ?? 0),
+    },
     end: { line: Number(tuple[3] ?? 0), col: Number(tuple[4] ?? 0), offset: Number(tuple[5] ?? 0) },
   };
 }
@@ -1162,8 +1301,13 @@ function inferFrontmatterWidget(value: unknown): PropertyType {
 function resolveRelativeLinkpath(linkpath: string, sourcePath: string): string | null {
   if (!sourcePath || !linkpath || linkpath.startsWith("/")) return null;
   if (!linkpath.includes("/") && !linkpath.startsWith(".")) return null;
-  const sourceFolder = sourcePath.includes("/") ? sourcePath.slice(0, sourcePath.lastIndexOf("/")) : "";
-  const parts = [...sourceFolder.split("/").filter(Boolean), ...linkpath.split("/").filter(Boolean)];
+  const sourceFolder = sourcePath.includes("/")
+    ? sourcePath.slice(0, sourcePath.lastIndexOf("/"))
+    : "";
+  const parts = [
+    ...sourceFolder.split("/").filter(Boolean),
+    ...linkpath.split("/").filter(Boolean),
+  ];
   const normalized: string[] = [];
   for (const part of parts) {
     if (part === ".") continue;
@@ -1173,8 +1317,12 @@ function resolveRelativeLinkpath(linkpath: string, sourcePath: string): string |
   return normalized.join("/");
 }
 
-function collectTags(lines: string[], lineOffsets: number[]): Array<{ tag: string; position: SourceRangePosition; source: SourceMatchPosition }> {
-  const tags: Array<{ tag: string; position: SourceRangePosition; source: SourceMatchPosition }> = [];
+function collectTags(
+  lines: string[],
+  lineOffsets: number[],
+): Array<{ tag: string; position: SourceRangePosition; source: SourceMatchPosition }> {
+  const tags: Array<{ tag: string; position: SourceRangePosition; source: SourceMatchPosition }> =
+    [];
   lines.forEach((line, lineNumber) => {
     for (const match of line.matchAll(/(^|\s)#([\p{L}\p{N}/_-]+)/gu)) {
       const prefix = match[1] ?? "";
@@ -1195,7 +1343,10 @@ function collectTags(lines: string[], lineOffsets: number[]): Array<{ tag: strin
   return tags;
 }
 
-function collectWikiLinks(lines: string[], lineOffsets: number[]): Array<{
+function collectWikiLinks(
+  lines: string[],
+  lineOffsets: number[],
+): Array<{
   original: string;
   link: string;
   displayText?: string;
@@ -1302,10 +1453,18 @@ function collectSections(
     const sectionType = getSectionType(line);
     if (sectionType === "code") {
       index = findCodeFenceEnd(lines, index) + 1;
-    } else if (sectionType === "heading" || sectionType === "thematicBreak" || sectionType === "html") {
+    } else if (
+      sectionType === "heading" ||
+      sectionType === "thematicBreak" ||
+      sectionType === "html"
+    ) {
       index += 1;
     } else if (sectionType === "list") {
-      index = collectUntilBlankOrRootBlock(lines, index + 1, (nextLine) => getSectionType(nextLine) === "list");
+      index = collectUntilBlankOrRootBlock(
+        lines,
+        index + 1,
+        (nextLine) => getSectionType(nextLine) === "list",
+      );
     } else if (sectionType === "blockquote" || sectionType === "callout") {
       index = collectUntilBlankOrRootBlock(lines, index + 1, (nextLine) => /^>\s?/.test(nextLine));
     } else if (sectionType === "table") {
@@ -1356,7 +1515,11 @@ function findCodeFenceEnd(lines: string[], start: number): number {
   return lines.length - 1;
 }
 
-function collectUntilBlankOrRootBlock(lines: string[], index: number, sameBlock: (line: string) => boolean): number {
+function collectUntilBlankOrRootBlock(
+  lines: string[],
+  index: number,
+  sameBlock: (line: string) => boolean,
+): number {
   while (index < lines.length) {
     const line = lines[index];
     if (!line.trim()) break;
@@ -1368,13 +1531,15 @@ function collectUntilBlankOrRootBlock(lines: string[], index: number, sameBlock:
 
 function isRootSectionStart(line: string): boolean {
   const type = getSectionType(line);
-  return type === "heading"
-    || type === "code"
-    || type === "thematicBreak"
-    || type === "html"
-    || type === "blockquote"
-    || type === "callout"
-    || type === "list";
+  return (
+    type === "heading" ||
+    type === "code" ||
+    type === "thematicBreak" ||
+    type === "html" ||
+    type === "blockquote" ||
+    type === "callout" ||
+    type === "list"
+  );
 }
 
 function findSectionBlockId(lines: string[], start: number, end: number): string | null {
@@ -1385,7 +1550,12 @@ function findSectionBlockId(lines: string[], start: number, end: number): string
   return null;
 }
 
-function lineRangeToPosition(lines: string[], lineOffsets: number[], start: number, end: number): SourceRangePosition {
+function lineRangeToPosition(
+  lines: string[],
+  lineOffsets: number[],
+  start: number,
+  end: number,
+): SourceRangePosition {
   const startOffset = lineOffsets[start] ?? 0;
   const endOffset = (lineOffsets[end] ?? startOffset) + (lines[end]?.length ?? 0);
   return {
@@ -1394,7 +1564,10 @@ function lineRangeToPosition(lines: string[], lineOffsets: number[], start: numb
   };
 }
 
-function collectMarkdownLinks(lines: string[], lineOffsets: number[]): Array<{
+function collectMarkdownLinks(
+  lines: string[],
+  lineOffsets: number[],
+): Array<{
   original: string;
   link: string;
   displayText?: string;
@@ -1432,7 +1605,10 @@ function collectMarkdownLinks(lines: string[], lineOffsets: number[]): Array<{
   return links.filter((link) => !isExternalLink(link.link));
 }
 
-function collectReferenceLinks(lines: string[], lineOffsets: number[]): Array<{
+function collectReferenceLinks(
+  lines: string[],
+  lineOffsets: number[],
+): Array<{
   id: string;
   link: string;
   position: SourceRangePosition;
@@ -1463,10 +1639,13 @@ function collectReferenceLinks(lines: string[], lineOffsets: number[]): Array<{
   return links;
 }
 
-function collectFrontmatterLinks(frontmatter: Record<string, unknown> | undefined): Array<{ key: string; link: string; original: string; displayText?: string }> | undefined {
+function collectFrontmatterLinks(
+  frontmatter: Record<string, unknown> | undefined,
+): Array<{ key: string; link: string; original: string; displayText?: string }> | undefined {
   if (!frontmatter) return undefined;
   const links: Array<{ key: string; link: string; original: string; displayText?: string }> = [];
-  for (const [key, value] of Object.entries(frontmatter)) collectFrontmatterLinksFromValue(key, value, links);
+  for (const [key, value] of Object.entries(frontmatter))
+    collectFrontmatterLinksFromValue(key, value, links);
   return links.length > 0 ? links : undefined;
 }
 
@@ -1500,7 +1679,12 @@ function parseWikiReference(value: string): { link: string; displayText?: string
   };
 }
 
-function inlineRangeToPosition(lineOffsets: number[], line: number, start: number, end: number): SourceRangePosition {
+function inlineRangeToPosition(
+  lineOffsets: number[],
+  line: number,
+  start: number,
+  end: number,
+): SourceRangePosition {
   const lineOffset = lineOffsets[line] ?? 0;
   return {
     start: { line, col: start, offset: lineOffset + start },
@@ -1508,13 +1692,18 @@ function inlineRangeToPosition(lineOffsets: number[], line: number, start: numbe
   };
 }
 
-function isContentReference(position: SourceRangePosition, frontmatterPosition: SourceRangePosition | null): boolean {
+function isContentReference(
+  position: SourceRangePosition,
+  frontmatterPosition: SourceRangePosition | null,
+): boolean {
   return !frontmatterPosition || position.start.offset >= frontmatterPosition.end.offset;
 }
 
 function collectFootnotes(source: string): Array<{ id: string; position: SourceRangePosition }> {
   const footnotes: Array<{ id: string; position: SourceRangePosition }> = [];
-  for (const match of source.matchAll(/(^|\n)([ \t]{0,3}\[\^([^\]\s]+)\]:[^\n]*(?:\n[ \t]+[^\n]*)*)/g)) {
+  for (const match of source.matchAll(
+    /(^|\n)([ \t]{0,3}\[\^([^\]\s]+)\]:[^\n]*(?:\n[ \t]+[^\n]*)*)/g,
+  )) {
     const prefix = match[1] ?? "";
     const definition = match[2] ?? "";
     const id = match[3] ?? "";

@@ -18,9 +18,24 @@ export class SystemMenuBuilder {
 
   buildDefaultMenu(): SystemMenuItem[] {
     this.menu = [
-      { id: "app", label: "Obsidian", submenu: [{ id: "about", label: "About Obsidian", role: "about" }] },
-      { id: "file", label: "File", submenu: [{ id: "new-note", label: "New note", accelerator: "CmdOrCtrl+N" }] },
-      { id: "edit", label: "Edit", submenu: [{ id: "copy", label: "Copy", role: "copy" }, { id: "paste", label: "Paste", role: "paste" }] },
+      {
+        id: "app",
+        label: "Obsidian",
+        submenu: [{ id: "about", label: "About Obsidian", role: "about" }],
+      },
+      {
+        id: "file",
+        label: "File",
+        submenu: [{ id: "new-note", label: "New note", accelerator: "CmdOrCtrl+N" }],
+      },
+      {
+        id: "edit",
+        label: "Edit",
+        submenu: [
+          { id: "copy", label: "Copy", role: "copy" },
+          { id: "paste", label: "Paste", role: "paste" },
+        ],
+      },
       { id: "view", label: "View", submenu: [{ id: "reload", label: "Reload", role: "reload" }] },
     ];
     return this.menu;

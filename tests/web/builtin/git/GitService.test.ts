@@ -16,7 +16,10 @@ const FAKE_PR = {
   url: "https://github.com/x/y/pull/7",
 };
 
-function fakeGit(headFiles: Record<string, string>, isRepo = true): ElectronGitApi & { calls: string[][]; ghCalls: string[][]; ghInputs: (string | undefined)[] } {
+function fakeGit(
+  headFiles: Record<string, string>,
+  isRepo = true,
+): ElectronGitApi & { calls: string[][]; ghCalls: string[][]; ghInputs: (string | undefined)[] } {
   const calls: string[][] = [];
   const ghCalls: string[][] = [];
   const ghInputs: (string | undefined)[] = [];
@@ -31,26 +34,33 @@ function fakeGit(headFiles: Record<string, string>, isRepo = true): ElectronGitA
       if (args[0] === "api") return { code: 0, stdout: "{}", stderr: "" };
       if (args[0] === "auth") return { code: 0, stdout: "Logged in", stderr: "" };
       if (args[1] === "list") return { code: 0, stdout: JSON.stringify([FAKE_PR]), stderr: "" };
-      if (args[1] === "view") return {
-        code: 0,
-        stdout: JSON.stringify({
-          ...FAKE_PR,
-          body: "Links agents together.",
-          additions: 10,
-          deletions: 2,
-          files: [{ path: "agent.ts", additions: 10, deletions: 2 }],
-          comments: [{ author: { login: "reviewer" }, body: "LGTM", createdAt: "2026-07-02T00:00:00Z" }],
-        }),
-        stderr: "",
-      };
-      if (args[1] === "diff") return { code: 0, stdout: "diff --git a/agent.ts b/agent.ts\n", stderr: "" };
-      if (args[1] === "checkout" || args[1] === "comment" || args[1] === "review") return { code: 0, stdout: "", stderr: "" };
-      if (args[1] === "create") return { code: 0, stdout: "https://github.com/x/y/pull/8\n", stderr: "" };
+      if (args[1] === "view")
+        return {
+          code: 0,
+          stdout: JSON.stringify({
+            ...FAKE_PR,
+            body: "Links agents together.",
+            additions: 10,
+            deletions: 2,
+            files: [{ path: "agent.ts", additions: 10, deletions: 2 }],
+            comments: [
+              { author: { login: "reviewer" }, body: "LGTM", createdAt: "2026-07-02T00:00:00Z" },
+            ],
+          }),
+          stderr: "",
+        };
+      if (args[1] === "diff")
+        return { code: 0, stdout: "diff --git a/agent.ts b/agent.ts\n", stderr: "" };
+      if (args[1] === "checkout" || args[1] === "comment" || args[1] === "review")
+        return { code: 0, stdout: "", stderr: "" };
+      if (args[1] === "create")
+        return { code: 0, stdout: "https://github.com/x/y/pull/8\n", stderr: "" };
       return { code: 1, stdout: "", stderr: "unknown gh command" };
     },
     async exec(args: string[]): Promise<GitExecResult> {
       calls.push(args);
-      if (args[0] === "rev-parse") return { code: 0, stdout: isRepo ? "true\n" : "false\n", stderr: "" };
+      if (args[0] === "rev-parse")
+        return { code: 0, stdout: isRepo ? "true\n" : "false\n", stderr: "" };
       if (args[0] === "show" && args.includes("--name-status")) {
         return { code: 0, stdout: "M\tagent.ts\nR100\told.ts\tnew.ts\n", stderr: "" };
       }
@@ -64,12 +74,20 @@ function fakeGit(headFiles: Record<string, string>, isRepo = true): ElectronGitA
       }
       if (args[0] === "status") return { code: 0, stdout: " M agent.ts\n?? new.ts\n", stderr: "" };
       if (args[0] === "add" || args[0] === "restore") return { code: 0, stdout: "", stderr: "" };
-      if (args[0] === "commit") return args[2] === "fail me"
-        ? { code: 1, stdout: "", stderr: "nothing to commit" }
-        : { code: 0, stdout: "[main abc123] ok", stderr: "" };
-      if (args[0] === "log") return { code: 0, stdout: "aaa111\x1faaa\x1fCard\x1f2026-07-01T00:00:00+08:00\x1ffirst commit\nbbb222\x1fbbb\x1fCard\x1f2026-07-02T00:00:00+08:00\x1fsecond commit\n", stderr: "" };
+      if (args[0] === "commit")
+        return args[2] === "fail me"
+          ? { code: 1, stdout: "", stderr: "nothing to commit" }
+          : { code: 0, stdout: "[main abc123] ok", stderr: "" };
+      if (args[0] === "log")
+        return {
+          code: 0,
+          stdout:
+            "aaa111\x1faaa\x1fCard\x1f2026-07-01T00:00:00+08:00\x1ffirst commit\nbbb222\x1fbbb\x1fCard\x1f2026-07-02T00:00:00+08:00\x1fsecond commit\n",
+          stderr: "",
+        };
       if (args[0] === "reset") return { code: 0, stdout: "", stderr: "" };
-      if (args[0] === "diff" && args.includes("--numstat")) return { code: 0, stdout: "3\t1\tagent.ts\n0\t2\tsrc/old name.ts\n", stderr: "" };
+      if (args[0] === "diff" && args.includes("--numstat"))
+        return { code: 0, stdout: "3\t1\tagent.ts\n0\t2\tsrc/old name.ts\n", stderr: "" };
       return { code: 1, stdout: "", stderr: "unknown" };
     },
   };
@@ -152,13 +170,19 @@ describe("GitService", () => {
     await app.vault.create("agent.ts", "current content\n");
 
     await openFileHistory(app, "agent.ts");
-    const view = app.workspace.getLeavesOfType("git-history")[0].view as InstanceType<typeof GitHistoryView>;
+    const view = app.workspace.getLeavesOfType("git-history")[0].view as InstanceType<
+      typeof GitHistoryView
+    >;
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    const subjects = [...view.contentEl.querySelectorAll(".git-history-subject")].map((el) => el.textContent);
+    const subjects = [...view.contentEl.querySelectorAll(".git-history-subject")].map(
+      (el) => el.textContent,
+    );
     expect(subjects).toEqual(["first commit", "second commit"]);
 
-    const diffButton = [...view.contentEl.querySelectorAll(".git-history-action")].find((el) => el.textContent === "Diff vs working") as HTMLButtonElement;
+    const diffButton = [...view.contentEl.querySelectorAll(".git-history-action")].find(
+      (el) => el.textContent === "Diff vs working",
+    ) as HTMLButtonElement;
     diffButton.click();
     await new Promise((resolve) => setTimeout(resolve, 100));
     const diffLeaf = app.workspace.getLeavesOfType("diff")[0];
@@ -176,18 +200,27 @@ describe("GitService", () => {
     await expect(app.git.ghAvailable()).resolves.toBe(true);
     const prs = await app.git.prList();
     expect(prs).toHaveLength(1);
-    expect(prs[0]).toMatchObject({ number: 7, title: "Add agent relations", author: "card", headRefName: "feat/relations" });
+    expect(prs[0]).toMatchObject({
+      number: 7,
+      title: "Add agent relations",
+      author: "card",
+      headRefName: "feat/relations",
+    });
 
     const detail = await app.git.prView(7);
     expect(detail).toMatchObject({ body: "Links agents together.", additions: 10 });
     expect(detail!.files).toEqual([{ path: "agent.ts", additions: 10, deletions: 2 }]);
-    expect(detail!.comments).toEqual([{ author: "reviewer", body: "LGTM", createdAt: "2026-07-02T00:00:00Z" }]);
+    expect(detail!.comments).toEqual([
+      { author: "reviewer", body: "LGTM", createdAt: "2026-07-02T00:00:00Z" },
+    ]);
 
     await expect(app.git.prDiff(7)).resolves.toContain("diff --git");
     await expect(app.git.prCheckout(7)).resolves.toBeNull();
     await expect(app.git.prComment(7, "nice")).resolves.toBeNull();
     await expect(app.git.prReview(7, "approve", "ship it")).resolves.toBeNull();
-    await expect(app.git.prCreate("t", "b")).resolves.toEqual({ url: "https://github.com/x/y/pull/8" });
+    await expect(app.git.prCreate("t", "b")).resolves.toEqual({
+      url: "https://github.com/x/y/pull/8",
+    });
     expect(bridge.ghCalls).toContainEqual(["pr", "checkout", "7"]);
     expect(bridge.ghCalls).toContainEqual(["pr", "review", "7", "--approve", "--body", "ship it"]);
   });
@@ -229,20 +262,47 @@ describe("GitService", () => {
     (app.vault.adapter as { getBasePath?: () => string }).getBasePath = () => "/fake/vault";
     await app.ready;
 
-    await expect(app.git.prAddInlineComment(7, "headsha", {
-      path: "agent.ts", line: 12, side: "additions", body: "why sync?",
-    })).resolves.toBeNull();
-    await expect(app.git.prSubmitReview(7, "REQUEST_CHANGES", "needs work", [
-      { path: "agent.ts", line: 12, side: "deletions", body: "old path" },
-    ])).resolves.toBeNull();
+    await expect(
+      app.git.prAddInlineComment(7, "headsha", {
+        path: "agent.ts",
+        line: 12,
+        side: "additions",
+        body: "why sync?",
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      app.git.prSubmitReview(7, "REQUEST_CHANGES", "needs work", [
+        { path: "agent.ts", line: 12, side: "deletions", body: "old path" },
+      ]),
+    ).resolves.toBeNull();
     // GitHub requires a body for a comment-less REQUEST_CHANGES; it gets defaulted.
     await expect(app.git.prSubmitReview(7, "REQUEST_CHANGES", "", [])).resolves.toBeNull();
 
     const apiCalls = bridge.ghCalls.filter((call) => call[0] === "api");
-    expect(apiCalls[0]).toEqual(["api", "-X", "POST", "repos/{owner}/{repo}/pulls/7/comments", "--input", "-"]);
-    expect(apiCalls[1]).toEqual(["api", "-X", "POST", "repos/{owner}/{repo}/pulls/7/reviews", "--input", "-"]);
+    expect(apiCalls[0]).toEqual([
+      "api",
+      "-X",
+      "POST",
+      "repos/{owner}/{repo}/pulls/7/comments",
+      "--input",
+      "-",
+    ]);
+    expect(apiCalls[1]).toEqual([
+      "api",
+      "-X",
+      "POST",
+      "repos/{owner}/{repo}/pulls/7/reviews",
+      "--input",
+      "-",
+    ]);
     const single = JSON.parse(bridge.ghInputs.find((input) => input?.includes("commit_id"))!);
-    expect(single).toMatchObject({ body: "why sync?", commit_id: "headsha", path: "agent.ts", line: 12, side: "RIGHT" });
+    expect(single).toMatchObject({
+      body: "why sync?",
+      commit_id: "headsha",
+      path: "agent.ts",
+      line: 12,
+      side: "RIGHT",
+    });
     const inputs = bridge.ghInputs.filter(Boolean) as string[];
     const withComment = JSON.parse(inputs[1]);
     expect(withComment).toMatchObject({ event: "REQUEST_CHANGES", body: "needs work" });

@@ -1,8 +1,4 @@
-import {
-  parseObsidianUrl,
-  resolveVaultForAction,
-  type ObsidianAction,
-} from "./obsidian-url";
+import { parseObsidianUrl, resolveVaultForAction, type ObsidianAction } from "./obsidian-url";
 import type { VaultRegistry } from "./vault-registry";
 import { URL_SCHEME } from "@app/web/app/protocol/scheme";
 

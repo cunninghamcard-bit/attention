@@ -29,12 +29,32 @@ export class ViewRegistry extends Events {
 
   constructor() {
     super();
-    this.registerViewWithExtensions(["md"], MarkdownView.VIEW_TYPE, (leaf) => new MarkdownView(leaf));
-    this.registerViewWithExtensions(IMAGE_EXTENSIONS, ImageView.VIEW_TYPE, (leaf) => new ImageView(leaf));
-    this.registerViewWithExtensions(AUDIO_EXTENSIONS, AudioView.VIEW_TYPE, (leaf) => new AudioView(leaf));
-    this.registerViewWithExtensions(VIDEO_EXTENSIONS, VideoView.VIEW_TYPE, (leaf) => new VideoView(leaf));
+    this.registerViewWithExtensions(
+      ["md"],
+      MarkdownView.VIEW_TYPE,
+      (leaf) => new MarkdownView(leaf),
+    );
+    this.registerViewWithExtensions(
+      IMAGE_EXTENSIONS,
+      ImageView.VIEW_TYPE,
+      (leaf) => new ImageView(leaf),
+    );
+    this.registerViewWithExtensions(
+      AUDIO_EXTENSIONS,
+      AudioView.VIEW_TYPE,
+      (leaf) => new AudioView(leaf),
+    );
+    this.registerViewWithExtensions(
+      VIDEO_EXTENSIONS,
+      VideoView.VIEW_TYPE,
+      (leaf) => new VideoView(leaf),
+    );
     this.registerViewWithExtensions(PDF_EXTENSIONS, PdfView.VIEW_TYPE, (leaf) => new PdfView(leaf));
-    this.registerViewWithExtensions(CODE_EXTENSIONS, CodeFileView.VIEW_TYPE, (leaf) => new CodeFileView(leaf));
+    this.registerViewWithExtensions(
+      CODE_EXTENSIONS,
+      CodeFileView.VIEW_TYPE,
+      (leaf) => new CodeFileView(leaf),
+    );
     this.registerView(DiffView.DIFF_VIEW_TYPE, (leaf) => new DiffView(leaf));
     this.registerView(GitChangesView.VIEW_TYPE, (leaf) => new GitChangesView(leaf));
     this.registerView(GitHistoryView.VIEW_TYPE, (leaf) => new GitHistoryView(leaf));
@@ -47,7 +67,8 @@ export class ViewRegistry extends Events {
   }
 
   registerView(type: string, creator: ViewCreator): void {
-    if (this.viewByType.has(type)) throw new Error(`Attempting to register an existing view type "${type}"`);
+    if (this.viewByType.has(type))
+      throw new Error(`Attempting to register an existing view type "${type}"`);
     this.viewByType.set(type, creator);
     this.trigger("view-registered", type);
   }
@@ -60,7 +81,8 @@ export class ViewRegistry extends Events {
 
   registerExtensions(extensions: string[], viewType: string): void {
     for (const extension of extensions) {
-      if (this.typeByExtension.has(extension)) throw new Error(`Attempting to register an existing file extension "${extension}"`);
+      if (this.typeByExtension.has(extension))
+        throw new Error(`Attempting to register an existing file extension "${extension}"`);
     }
     for (const extension of extensions) this.typeByExtension.set(extension, viewType);
     this.trigger("extensions-updated");

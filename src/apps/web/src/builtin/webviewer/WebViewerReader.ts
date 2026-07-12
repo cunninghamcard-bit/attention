@@ -35,11 +35,17 @@ export class WebViewerReader {
   async extractFromPage(host: ReaderHost, url: string): Promise<WebViewerReaderResult> {
     const library = await this.loadLibrary();
     await host.executeJavaScript(library);
-    const article = await host.executeJavaScript("new Readability(document.cloneNode(true)).parse()") as ReadabilityArticle | null;
-    if (!article || typeof article.content !== "string") throw new Error("No readable content found on this page");
-    const title = typeof article.title === "string" && article.title.trim()
-      ? article.title
-      : typeof article.siteName === "string" && article.siteName.trim() ? article.siteName : "Untitled";
+    const article = (await host.executeJavaScript(
+      "new Readability(document.cloneNode(true)).parse()",
+    )) as ReadabilityArticle | null;
+    if (!article || typeof article.content !== "string")
+      throw new Error("No readable content found on this page");
+    const title =
+      typeof article.title === "string" && article.title.trim()
+        ? article.title
+        : typeof article.siteName === "string" && article.siteName.trim()
+          ? article.siteName
+          : "Untitled";
     // Sanitize before conversion, like the real pipeline — the article HTML
     // comes from an arbitrary page.
     const fragment = sanitizeHTMLToDom(article.content);

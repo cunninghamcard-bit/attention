@@ -49,8 +49,12 @@ export function normalizePluginId(id: string): string {
   return id.toLowerCase().replace(/[^a-z0-9_-]/g, "-");
 }
 
-export function normalizePluginManifest(manifest: PluginManifestInput, dir = manifest.dir): RuntimePluginManifest {
-  const author = manifest.author && manifest.author.toLowerCase() !== "obsidian" ? manifest.author : "";
+export function normalizePluginManifest(
+  manifest: PluginManifestInput,
+  dir = manifest.dir,
+): RuntimePluginManifest {
+  const author =
+    manifest.author && manifest.author.toLowerCase() !== "obsidian" ? manifest.author : "";
   return {
     ...manifest,
     ...(dir ? { dir } : {}),

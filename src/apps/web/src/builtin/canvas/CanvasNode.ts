@@ -5,12 +5,24 @@ export class CanvasNode<T extends CanvasNodeData = CanvasNodeData> {
 
   constructor(readonly data: T) {}
 
-  get id(): string { return this.data.id; }
-  get type(): string { return this.data.type; }
-  get x(): number { return this.data.x; }
-  get y(): number { return this.data.y; }
-  get width(): number { return this.data.width; }
-  get height(): number { return this.data.height; }
+  get id(): string {
+    return this.data.id;
+  }
+  get type(): string {
+    return this.data.type;
+  }
+  get x(): number {
+    return this.data.x;
+  }
+  get y(): number {
+    return this.data.y;
+  }
+  get width(): number {
+    return this.data.width;
+  }
+  get height(): number {
+    return this.data.height;
+  }
 
   moveTo(x: number, y: number): void {
     this.data.x = x;

@@ -13,8 +13,14 @@ describe("Core plugin non-parity scope", () => {
     for (const id of scopedCorePluginIds) {
       const definition = definitions.get(id);
       expect(definition, `Expected ${id} to stay registered as a thin seam`).toBeDefined();
-      expect(definition?.hiddenFromList, `Expected ${id} to stay out of user-facing core plugin scope`).toBe(true);
-      expect(definition?.defaultOn, `Expected ${id} to stay outside the default feature scope`).toBe(false);
+      expect(
+        definition?.hiddenFromList,
+        `Expected ${id} to stay out of user-facing core plugin scope`,
+      ).toBe(true);
+      expect(
+        definition?.defaultOn,
+        `Expected ${id} to stay outside the default feature scope`,
+      ).toBe(false);
     }
   });
 
@@ -26,7 +32,9 @@ describe("Core plugin non-parity scope", () => {
     for (const id of scopedCorePluginIds) {
       const plugin = app.internalPlugins.getPluginById(id);
       expect(plugin, `Expected ${id} to be registered for compatibility`).not.toBeNull();
-      expect(plugin?.enabled, `Expected ${id} to remain disabled unless explicitly enabled`).toBe(false);
+      expect(plugin?.enabled, `Expected ${id} to remain disabled unless explicitly enabled`).toBe(
+        false,
+      );
     }
   });
 });

@@ -14,7 +14,8 @@ export function parseGitRemoteUrl(remoteUrl: string): GitHubRepositoryRef | null
     const host = scp[1];
     const path = scp[2].replace(/^\/+/, "");
     const parts = path.split("/").filter(Boolean);
-    if (parts.length >= 2) return { host, owner: parts[parts.length - 2], repo: parts[parts.length - 1] };
+    if (parts.length >= 2)
+      return { host, owner: parts[parts.length - 2], repo: parts[parts.length - 1] };
     return null;
   }
 
@@ -23,7 +24,8 @@ export function parseGitRemoteUrl(remoteUrl: string): GitHubRepositoryRef | null
   if (ssh) {
     const host = ssh[1];
     const parts = ssh[2].split("/").filter(Boolean);
-    if (parts.length >= 2) return { host, owner: parts[parts.length - 2], repo: parts[parts.length - 1] };
+    if (parts.length >= 2)
+      return { host, owner: parts[parts.length - 2], repo: parts[parts.length - 1] };
     return null;
   }
 

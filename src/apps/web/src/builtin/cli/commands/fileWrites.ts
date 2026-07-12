@@ -20,7 +20,10 @@ function unescapeContent(content: string): string {
 // Real `cu()` path normalize, used by create's overwrite lookup and the
 // template resolver's folder path.
 function normalizePath(path: string): string {
-  const collapsed = path.replace(/[\u00a0\u202f]/g, " ").replace(/[\\/]+/g, "/").replace(/^\/+|\/+$/g, "");
+  const collapsed = path
+    .replace(/[\u00a0\u202f]/g, " ")
+    .replace(/[\\/]+/g, "/")
+    .replace(/^\/+|\/+$/g, "");
   return (collapsed === "" ? "/" : collapsed).normalize("NFC");
 }
 
@@ -34,28 +37,41 @@ function resolveTemplateFile(app: App, folder: string, name: string): TFile | st
   if (!name) return "Missing required parameter: name\nUsage: name=<template>";
   if (!folder) return "No template folder configured.";
   const folderPath = normalizePath(folder);
-  if (!(app.vault.getAbstractFileByPath(folderPath) instanceof TFolder)) return `Template folder "${folder}" not found.`;
+  if (!(app.vault.getAbstractFileByPath(folderPath) instanceof TFolder))
+    return `Template folder "${folder}" not found.`;
   let exactPath = `${folderPath}/${name}`;
   if (!exactPath.endsWith(".md")) exactPath += ".md";
   const exact = app.vault.getAbstractFileByPath(exactPath);
   if (exact instanceof TFile) return exact;
   const lowered = name.toLowerCase();
-  const match = app.vault.getMarkdownFiles().find(
-    (file) => file.path.startsWith(`${folderPath}/`) && file.path.slice(folderPath.length + 1, -3).toLowerCase() === lowered,
-  );
+  const match = app.vault
+    .getMarkdownFiles()
+    .find(
+      (file) =>
+        file.path.startsWith(`${folderPath}/`) &&
+        file.path.slice(folderPath.length + 1, -3).toLowerCase() === lowered,
+    );
   return match ?? `Template "${name}" not found.`;
 }
 
 // Real `QD()`: {{title}} first (case-insensitive, global), then every
 // {{date}}/{{time}}/{{date:FMT}}/{{time:FMT}} from ONE shared instant.
 // Divergence: our formatDate supports a moment-token subset, not full moment.
-function substituteTemplateVars(text: string, title: string, dateFormat: string | undefined, timeFormat: string | undefined): string {
+function substituteTemplateVars(
+  text: string,
+  title: string,
+  dateFormat: string | undefined,
+  timeFormat: string | undefined,
+): string {
   let now: Date | null = null;
-  return text.replace(/{{title}}/gi, title).replace(/{{(date|time)(?::(.*?))?}}/gi, (_match, kind: string, format?: string) => {
-    now ??= new Date();
-    const fallback = kind.toLowerCase() === "date" ? dateFormat || "YYYY-MM-DD" : timeFormat || "HH:mm";
-    return formatDate(now, format || fallback);
-  });
+  return text
+    .replace(/{{title}}/gi, title)
+    .replace(/{{(date|time)(?::(.*?))?}}/gi, (_match, kind: string, format?: string) => {
+      now ??= new Date();
+      const fallback =
+        kind.toLowerCase() === "date" ? dateFormat || "YYYY-MM-DD" : timeFormat || "HH:mm";
+      return formatDate(now, format || fallback);
+    });
 }
 
 // Real `Xx()` frontmatter locator: prepend inserts after a terminated YAML
@@ -87,10 +103,12 @@ export function registerFileWriteCommands(app: App): void {
       newtab: { description: "Open in new tab" },
     },
     async (params) => {
-      if (params.name && params.name.includes("/")) throw 'name cannot contain "/". Use path for a full file path.';
-      let basePath = params.path && params.name
-        ? `${params.path.replace(/\/+$/, "")}/${params.name}`
-        : params.path || params.name || "Untitled";
+      if (params.name && params.name.includes("/"))
+        throw 'name cannot contain "/". Use path for a full file path.';
+      let basePath =
+        params.path && params.name
+          ? `${params.path.replace(/\/+$/, "")}/${params.name}`
+          : params.path || params.name || "Untitled";
       let extension = "md";
       const dot = basePath.lastIndexOf(".");
       // Strictly > 0 so a leading dot does not split off an extension.
@@ -104,19 +122,28 @@ export function registerFileWriteCommands(app: App): void {
       // the content branch, so the resolver's missing-name error is
       // unreachable from here. Template wins; content is ignored.
       if (params.template) {
-        const templates = app.internalPlugins.getEnabledPluginById<TemplatesController>("templates");
+        const templates =
+          app.internalPlugins.getEnabledPluginById<TemplatesController>("templates");
         if (!templates) throw "Templates plugin is not enabled.";
         const resolved = resolveTemplateFile(app, templates.options.folder ?? "", params.template);
         if (typeof resolved === "string") throw resolved;
         const title = basePath.split("/").pop() ?? "";
-        content = substituteTemplateVars(await app.vault.cachedRead(resolved), title, templates.options.dateFormat, templates.options.timeFormat);
+        content = substituteTemplateVars(
+          await app.vault.cachedRead(resolved),
+          title,
+          templates.options.dateFormat,
+          templates.options.timeFormat,
+        );
       } else if (params.content) {
         content = unescapeContent(params.content);
       }
 
       const openIfRequested = async (file: TFile) => {
         // Real shape `!!args.newtab && "tab"`, spelled as a ternary for TS.
-        if (params.open) await app.workspace.getLeaf(params.newtab ? "tab" : false).openFile(file, { active: true });
+        if (params.open)
+          await app.workspace
+            .getLeaf(params.newtab ? "tab" : false)
+            .openFile(file, { active: true });
       };
 
       if (params.overwrite) {
@@ -151,7 +178,8 @@ export function registerFileWriteCommands(app: App): void {
     },
     async (params) => {
       const file = cli.tryResolveFile(params);
-      if (!params.content) throw "Missing required parameter: content\nUsage: append [file=<name>] [path=<path>] content=<text> [inline]";
+      if (!params.content)
+        throw "Missing required parameter: content\nUsage: append [file=<name>] [path=<path>] content=<text> [inline]";
       const content = unescapeContent(params.content);
       // Unconditional "\n" before the content unless inline, even if the file
       // is empty or already ends with a newline; nothing appended after.
@@ -171,7 +199,8 @@ export function registerFileWriteCommands(app: App): void {
     },
     async (params) => {
       const file = cli.tryResolveFile(params);
-      if (!params.content) throw "Missing required parameter: content\nUsage: prepend [file=<name>] [path=<path>] content=<text> [inline]";
+      if (!params.content)
+        throw "Missing required parameter: content\nUsage: prepend [file=<name>] [path=<path>] content=<text> [inline]";
       const content = unescapeContent(params.content);
       await app.vault.process(file, (data) => {
         const at = frontmatterContentStart(data);
@@ -197,7 +226,11 @@ export function registerFileWriteCommands(app: App): void {
       const target = params.to.replace(/^\/+|\/+$/g, "");
       // A dot ANYWHERE makes it a full file path; else folder move keeping
       // the filename; only-slashes means vault root.
-      const destination = target.includes(".") ? target : target ? `${target}/${file.name}` : file.name;
+      const destination = target.includes(".")
+        ? target
+        : target
+          ? `${target}/${file.name}`
+          : file.name;
       const oldPath = file.path;
       await app.fileManager.renameFile(file, destination);
       return `Moved: ${oldPath} -> ${destination}`;

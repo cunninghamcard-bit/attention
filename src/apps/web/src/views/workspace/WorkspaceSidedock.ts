@@ -109,11 +109,14 @@ export class WorkspaceSidedock extends WorkspaceSplit {
   }
 
   updateEmptyState(): void {
-    if (!this.containerEl.contains(this.emptyStateEl)) this.containerEl.appendChild(this.emptyStateEl);
+    if (!this.containerEl.contains(this.emptyStateEl))
+      this.containerEl.appendChild(this.emptyStateEl);
     const empty = this.children.length === 0;
     this.emptyStateEl.style.display = empty ? "" : "none";
     if (this.side === "right") {
-      const ribbon = (this.workspace as unknown as { rightRibbon?: { hide: () => void; show: () => void } }).rightRibbon;
+      const ribbon = (
+        this.workspace as unknown as { rightRibbon?: { hide: () => void; show: () => void } }
+      ).rightRibbon;
       if (empty) ribbon?.hide();
       else ribbon?.show();
     }
@@ -136,7 +139,8 @@ export class WorkspaceSidedock extends WorkspaceSplit {
     nameEl.className = "workspace-drawer-vault-name";
     const vault = this.workspace.app.vault as { getName?: () => string; name?: string };
     nameEl.textContent = vault.getName?.() ?? vault.name ?? "Obsidian";
-    const updateTooltip = () => setTooltip(nameEl, this.getVaultProfileTooltip(), { placement: "top", delay: 300 });
+    const updateTooltip = () =>
+      setTooltip(nameEl, this.getVaultProfileTooltip(), { placement: "top", delay: 300 });
     updateTooltip();
     switcherEl.addEventListener("mouseover", updateTooltip);
     switcherEl.addEventListener("click", (event) => this.openVaultSwitcherMenu(event, switcherEl));
@@ -182,9 +186,16 @@ export class WorkspaceSidedock extends WorkspaceSplit {
    */
   private openVaultSwitcherMenu(event: MouseEvent, switcherEl: HTMLElement): void {
     if (switcherEl.classList.contains("has-active-menu")) return;
-    const ipc = (globalThis as {
-      electron?: { ipcRenderer?: { sendSync?: (channel: string, ...args: unknown[]) => unknown; invoke?: (channel: string, ...args: unknown[]) => Promise<unknown> } };
-    }).electron?.ipcRenderer;
+    const ipc = (
+      globalThis as {
+        electron?: {
+          ipcRenderer?: {
+            sendSync?: (channel: string, ...args: unknown[]) => unknown;
+            invoke?: (channel: string, ...args: unknown[]) => Promise<unknown>;
+          };
+        };
+      }
+    ).electron?.ipcRenderer;
     if (!ipc?.sendSync) return;
     const current = (ipc.sendSync("vault") as { path?: string } | undefined)?.path;
     const vaults = (ipc.sendSync("vault-list") ?? {}) as Record<string, { path: string }>;
@@ -194,21 +205,26 @@ export class WorkspaceSidedock extends WorkspaceSplit {
       if (!vault?.path) continue;
       const name = vault.path.split(/[\\/]/).pop() || vault.path;
       const isCurrent = current === vault.path;
-      menu.addItem((item) => item
-        .setTitle(name)
-        .setChecked(isCurrent)
-        .onClick(() => {
-          if (isCurrent) return;
-          if (ipc.sendSync?.("vault-open", vault.path, false) !== true) new Notice("Failed to open vault");
-        }));
+      menu.addItem((item) =>
+        item
+          .setTitle(name)
+          .setChecked(isCurrent)
+          .onClick(() => {
+            if (isCurrent) return;
+            if (ipc.sendSync?.("vault-open", vault.path, false) !== true)
+              new Notice("Failed to open vault");
+          }),
+      );
     }
     menu.addSeparator();
-    menu.addItem((item) => item
-      // Real `gm.interface.manageVaults()` — opens the starter (vault
-      // chooser) singleton; the current vault window stays open.
-      .setTitle("Manage vaults...")
-      .setIcon("open-vault")
-      .onClick(() => ipc.sendSync?.("starter")));
+    menu.addItem((item) =>
+      item
+        // Real `gm.interface.manageVaults()` — opens the starter (vault
+        // chooser) singleton; the current vault window stays open.
+        .setTitle("Manage vaults...")
+        .setIcon("open-vault")
+        .onClick(() => ipc.sendSync?.("starter")),
+    );
     menu.setParentElement(switcherEl);
     menu.showAtMouseEvent(event);
   }
@@ -219,20 +235,24 @@ export class WorkspaceSidedock extends WorkspaceSplit {
     const adapter = this.workspace.app.vault.adapter as { getBasePath?: () => string };
     const basePath = adapter.getBasePath?.() ?? "";
     menu.addSections(["open", "action"]);
-    menu.addItem((item) => item
-      .setSection("open")
-      .setTitle("Show in folder")
-      .setIcon("lucide-arrow-up-right")
-      .onClick(() => void this.workspace.app.showInFolder("")));
-    menu.addItem((item) => item
-      .setSection("action")
-      .setTitle("Copy path")
-      .setIcon("lucide-clipboard")
-      .setDisabled(!basePath)
-      .onClick(() => {
-        void writeClipboardText(basePath);
-        new Notice("Copied");
-      }));
+    menu.addItem((item) =>
+      item
+        .setSection("open")
+        .setTitle("Show in folder")
+        .setIcon("lucide-arrow-up-right")
+        .onClick(() => void this.workspace.app.showInFolder("")),
+    );
+    menu.addItem((item) =>
+      item
+        .setSection("action")
+        .setTitle("Copy path")
+        .setIcon("lucide-clipboard")
+        .setDisabled(!basePath)
+        .onClick(() => {
+          void writeClipboardText(basePath);
+          new Notice("Copied");
+        }),
+    );
   }
 
   private onSidedockResizeStart(event: MouseEvent): void {
@@ -275,7 +295,11 @@ export class WorkspaceSidedock extends WorkspaceSplit {
   }
 
   private getWorkspaceWidth(): number {
-    return this.workspace.containerEl.clientWidth || this.workspace.containerEl.getBoundingClientRect().width || SIDEDOCK_MIN_WIDTH;
+    return (
+      this.workspace.containerEl.clientWidth ||
+      this.workspace.containerEl.getBoundingClientRect().width ||
+      SIDEDOCK_MIN_WIDTH
+    );
   }
 }
 

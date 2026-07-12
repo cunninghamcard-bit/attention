@@ -40,23 +40,33 @@ export function IssuesPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef
     }
   }, [app, repo, state]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   useEffect(() => {
     if (selected == null) {
       setDetail(null);
       return;
     }
-    void app.github.getIssue(selected, repo).then(setDetail).catch((err) => {
-      setError(err instanceof Error ? err.message : String(err));
-    });
+    void app.github
+      .getIssue(selected, repo)
+      .then(setDetail)
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : String(err));
+      });
   }, [app, repo, selected]);
 
   const filtered = useMemo(() => {
     if (!items) return null;
     const q = query.trim().toLowerCase();
     if (!q) return items;
-    return items.filter((i) => i.title.toLowerCase().includes(q) || String(i.number).includes(q) || i.author.login.toLowerCase().includes(q));
+    return items.filter(
+      (i) =>
+        i.title.toLowerCase().includes(q) ||
+        String(i.number).includes(q) ||
+        i.author.login.toLowerCase().includes(q),
+    );
   }, [items, query]);
 
   const postComment = async () => {
@@ -79,11 +89,21 @@ export function IssuesPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef
         <header className="gh-panel-header">
           <div>
             <h1 className="gh-page-title">Issues</h1>
-            <p className="gh-muted">{repo.owner}/{repo.repo}</p>
+            <p className="gh-muted">
+              {repo.owner}/{repo.repo}
+            </p>
           </div>
           <div className="gh-filter-pills">
             {(["open", "closed", "all"] as const).map((s) => (
-              <button key={s} type="button" className={state === s ? "is-active" : ""} onClick={() => { setState(s); setSelected(null); }}>
+              <button
+                key={s}
+                type="button"
+                className={state === s ? "is-active" : ""}
+                onClick={() => {
+                  setState(s);
+                  setSelected(null);
+                }}
+              >
                 {s}
               </button>
             ))}
@@ -91,7 +111,11 @@ export function IssuesPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef
         </header>
         <label className="gh-search gh-search-block">
           <Icon name="lucide-search" />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter issues…" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter issues…"
+          />
         </label>
         {error && <div className="gh-error">{error}</div>}
         {filtered === null && <div className="gh-empty">Loading…</div>}
@@ -113,7 +137,13 @@ export function IssuesPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef
                 </div>
               </div>
               {issue.labels.slice(0, 2).map((l) => (
-                <span key={l.name} className="gh-label" style={{ ["--label-color" as string]: `#${l.color}` }}>{l.name}</span>
+                <span
+                  key={l.name}
+                  className="gh-label"
+                  style={{ ["--label-color" as string]: `#${l.color}` }}
+                >
+                  {l.name}
+                </span>
               ))}
             </button>
           ))}
@@ -125,11 +155,19 @@ export function IssuesPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef
           <div className="gh-detail-scroll">
             <div className="gh-detail-head">
               <span className={`gh-chip mod-${detail.state}`}>{detail.state}</span>
-              <h2 className="gh-page-title">{detail.title} <span className="gh-muted">#{detail.number}</span></h2>
+              <h2 className="gh-page-title">
+                {detail.title} <span className="gh-muted">#{detail.number}</span>
+              </h2>
               <div className="gh-muted">
                 {detail.author.login} opened {moment(detail.createdAt).fromNow()}
                 {" · "}
-                <button type="button" className="gh-linkish" onClick={() => window.open(detail.url, "_blank")}>Open on GitHub</button>
+                <button
+                  type="button"
+                  className="gh-linkish"
+                  onClick={() => window.open(detail.url, "_blank")}
+                >
+                  Open on GitHub
+                </button>
               </div>
             </div>
             <article className="gh-card">
@@ -145,8 +183,18 @@ export function IssuesPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef
               </article>
             ))}
             <div className="gh-composer">
-              <textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Leave a comment" />
-              <button type="button" className="mod-cta" disabled={busy || !comment.trim()} onClick={() => void postComment()}>
+              <textarea
+                rows={3}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Leave a comment"
+              />
+              <button
+                type="button"
+                className="mod-cta"
+                disabled={busy || !comment.trim()}
+                onClick={() => void postComment()}
+              >
                 Comment
               </button>
             </div>
@@ -177,16 +225,21 @@ export function ActionsPanel({ app, repo }: { app: App; repo: GitHubRepositoryRe
     }
   }, [app, repo]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   useEffect(() => {
     if (selected == null) {
       setDetail(null);
       return;
     }
-    void app.github.getWorkflowRun(selected, repo).then(setDetail).catch((err) => {
-      setError(err instanceof Error ? err.message : String(err));
-    });
+    void app.github
+      .getWorkflowRun(selected, repo)
+      .then(setDetail)
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : String(err));
+      });
   }, [app, repo, selected]);
 
   return (
@@ -195,9 +248,16 @@ export function ActionsPanel({ app, repo }: { app: App; repo: GitHubRepositoryRe
         <header className="gh-panel-header">
           <div>
             <h1 className="gh-page-title">Actions</h1>
-            <p className="gh-muted">{repo.owner}/{repo.repo}</p>
+            <p className="gh-muted">
+              {repo.owner}/{repo.repo}
+            </p>
           </div>
-          <button type="button" className="clickable-icon" aria-label="Refresh" onClick={() => void load()}>
+          <button
+            type="button"
+            className="clickable-icon"
+            aria-label="Refresh"
+            onClick={() => void load()}
+          >
             <Icon name="lucide-rotate-ccw" />
           </button>
         </header>
@@ -216,7 +276,8 @@ export function ActionsPanel({ app, repo }: { app: App; repo: GitHubRepositoryRe
               <div className="gh-item-main">
                 <div className="gh-item-title">{run.displayTitle}</div>
                 <div className="gh-muted">
-                  {run.name} · #{run.runNumber} · {run.headBranch} · {moment(run.updatedAt).fromNow()}
+                  {run.name} · #{run.runNumber} · {run.headBranch} ·{" "}
+                  {moment(run.updatedAt).fromNow()}
                 </div>
               </div>
               <span className="gh-chip">{run.conclusion ?? run.status}</span>
@@ -233,10 +294,18 @@ export function ActionsPanel({ app, repo }: { app: App; repo: GitHubRepositoryRe
               <div className="gh-muted">
                 {detail.name} · {detail.headBranch} @ <code>{detail.headSha.slice(0, 7)}</code>
                 {" · "}
-                <button type="button" className="gh-linkish" onClick={() => window.open(detail.htmlUrl, "_blank")}>Open on GitHub</button>
+                <button
+                  type="button"
+                  className="gh-linkish"
+                  onClick={() => window.open(detail.htmlUrl, "_blank")}
+                >
+                  Open on GitHub
+                </button>
               </div>
               <div className="gh-chip-row">
-                <span className={`gh-chip mod-ci-${conclusionClass(detail.conclusion, detail.status)}`}>
+                <span
+                  className={`gh-chip mod-ci-${conclusionClass(detail.conclusion, detail.status)}`}
+                >
                   {detail.conclusion ?? detail.status}
                 </span>
                 <span className="gh-chip">{detail.event}</span>
@@ -246,14 +315,18 @@ export function ActionsPanel({ app, repo }: { app: App; repo: GitHubRepositoryRe
             {detail.jobs.map((job) => (
               <div key={job.id} className="gh-card">
                 <div className="gh-card-meta">
-                  <span className={`gh-ci-dot mod-${conclusionClass(job.conclusion, job.status)}`} />
+                  <span
+                    className={`gh-ci-dot mod-${conclusionClass(job.conclusion, job.status)}`}
+                  />
                   <strong>{job.name}</strong>
                   <span className="gh-muted">{job.conclusion ?? job.status}</span>
                 </div>
                 <div className="gh-steps">
                   {job.steps.map((step) => (
                     <div key={step.number} className="gh-step-row">
-                      <span className={`gh-ci-dot mod-${conclusionClass(step.conclusion, step.status)}`} />
+                      <span
+                        className={`gh-ci-dot mod-${conclusionClass(step.conclusion, step.status)}`}
+                      />
                       <span>{step.name}</span>
                       <span className="gh-muted">{step.conclusion ?? step.status}</span>
                     </div>
@@ -296,22 +369,27 @@ export function FilesPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef 
     })();
   }, [app, repo]);
 
-  const loadDir = useCallback(async (dir: string, branch: string) => {
-    if (!branch) return;
-    setError(null);
-    setFile(null);
-    try {
-      const list = await app.github.listContents(dir, branch, repo);
-      setItems(list.slice().sort((a, b) => {
-        if (a.type !== b.type) return a.type === "dir" ? -1 : 1;
-        return a.name.localeCompare(b.name);
-      }));
-      setPath(dir);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setItems([]);
-    }
-  }, [app, repo]);
+  const loadDir = useCallback(
+    async (dir: string, branch: string) => {
+      if (!branch) return;
+      setError(null);
+      setFile(null);
+      try {
+        const list = await app.github.listContents(dir, branch, repo);
+        setItems(
+          list.slice().sort((a, b) => {
+            if (a.type !== b.type) return a.type === "dir" ? -1 : 1;
+            return a.name.localeCompare(b.name);
+          }),
+        );
+        setPath(dir);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        setItems([]);
+      }
+    },
+    [app, repo],
+  );
 
   useEffect(() => {
     if (ref) void loadDir("", ref);
@@ -337,20 +415,32 @@ export function FilesPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef 
         <div>
           <h1 className="gh-page-title">Files</h1>
           <div className="gh-crumbs">
-            <button type="button" className="gh-linkish" onClick={() => void loadDir("", ref)}>{repo.repo}</button>
+            <button type="button" className="gh-linkish" onClick={() => void loadDir("", ref)}>
+              {repo.repo}
+            </button>
             {crumbs.map((part, i) => {
               const sub = crumbs.slice(0, i + 1).join("/");
               return (
                 <span key={sub}>
                   <span className="gh-muted"> / </span>
-                  <button type="button" className="gh-linkish" onClick={() => void loadDir(sub, ref)}>{part}</button>
+                  <button
+                    type="button"
+                    className="gh-linkish"
+                    onClick={() => void loadDir(sub, ref)}
+                  >
+                    {part}
+                  </button>
                 </span>
               );
             })}
           </div>
         </div>
         <select className="gh-select" value={ref} onChange={(e) => setRef(e.target.value)}>
-          {branches.map((b) => <option key={b} value={b}>{b}</option>)}
+          {branches.map((b) => (
+            <option key={b} value={b}>
+              {b}
+            </option>
+          ))}
         </select>
       </header>
       {error && <div className="gh-error">{error}</div>}
@@ -358,7 +448,12 @@ export function FilesPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef 
         <div className="gh-file-browser">
           {items === null && <div className="gh-empty">Loading…</div>}
           {items?.map((item) => (
-            <button key={item.path} type="button" className="gh-file-browser-row" onClick={() => void openItem(item)}>
+            <button
+              key={item.path}
+              type="button"
+              className="gh-file-browser-row"
+              onClick={() => void openItem(item)}
+            >
               <Icon name={item.type === "dir" ? "lucide-folder" : "lucide-file"} />
               <span>{item.name}</span>
               {item.type === "file" && <span className="gh-muted">{formatSize(item.size)}</span>}
@@ -373,12 +468,20 @@ export function FilesPanel({ app, repo }: { app: App; repo: GitHubRepositoryRef 
                 <code>{file.path}</code>
                 <span className="gh-muted">{formatSize(file.size)}</span>
                 {file.htmlUrl && (
-                  <button type="button" className="gh-linkish" onClick={() => window.open(file.htmlUrl, "_blank")}>GitHub</button>
+                  <button
+                    type="button"
+                    className="gh-linkish"
+                    onClick={() => window.open(file.htmlUrl, "_blank")}
+                  >
+                    GitHub
+                  </button>
                 )}
               </div>
-              {file.text == null
-                ? <div className="gh-empty">Binary or large file — open on GitHub to view.</div>
-                : <pre className="gh-code-pre">{file.text}</pre>}
+              {file.text == null ? (
+                <div className="gh-empty">Binary or large file — open on GitHub to view.</div>
+              ) : (
+                <pre className="gh-code-pre">{file.text}</pre>
+              )}
             </>
           )}
         </div>
@@ -406,16 +509,19 @@ export function InboxPanel({ app }: { app: App }): ReactNode {
     }
   }, [app, showAll]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const openNotification = async (n: NotificationItem) => {
     if (n.unread) {
       await app.github.markNotificationRead(n.id);
-      setItems((prev) => prev?.map((x) => x.id === n.id ? { ...x, unread: false } : x) ?? null);
+      setItems((prev) => prev?.map((x) => (x.id === n.id ? { ...x, unread: false } : x)) ?? null);
     }
     // Best-effort navigation from API subject URL
-    const match = n.url?.match(/\/repos\/([^/]+)\/([^/]+)\/(issues|pulls)\/(\d+)/)
-      ?? n.subjectUrl?.match(/\/repos\/([^/]+)\/([^/]+)\/(issues|pulls)\/(\d+)/);
+    const match =
+      n.url?.match(/\/repos\/([^/]+)\/([^/]+)\/(issues|pulls)\/(\d+)/) ??
+      n.subjectUrl?.match(/\/repos\/([^/]+)\/([^/]+)\/(issues|pulls)\/(\d+)/);
     if (match) {
       const owner = match[1];
       const repo = match[2];
@@ -450,23 +556,34 @@ export function InboxPanel({ app }: { app: App }): ReactNode {
         </div>
         <div className="gh-commits-controls">
           <label className="gh-check">
-            <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={showAll}
+              onChange={(e) => setShowAll(e.target.checked)}
+            />
             Include read
           </label>
           <button
             type="button"
             className="gh-linkish"
-            onClick={() => void app.github.markAllNotificationsRead().then((err) => {
-              if (err) new Notice(err);
-              else {
-                new Notice("Marked all as read");
-                void load();
-              }
-            })}
+            onClick={() =>
+              void app.github.markAllNotificationsRead().then((err) => {
+                if (err) new Notice(err);
+                else {
+                  new Notice("Marked all as read");
+                  void load();
+                }
+              })
+            }
           >
             Mark all read
           </button>
-          <button type="button" className="clickable-icon" aria-label="Refresh" onClick={() => void load()}>
+          <button
+            type="button"
+            className="clickable-icon"
+            aria-label="Refresh"
+            onClick={() => void load()}
+          >
             <Icon name="lucide-rotate-ccw" />
           </button>
         </div>
@@ -476,7 +593,12 @@ export function InboxPanel({ app }: { app: App }): ReactNode {
       {items && items.length === 0 && <div className="gh-empty">You&apos;re all caught up.</div>}
       <div className="gh-item-list">
         {items?.map((n) => (
-          <button key={n.id} type="button" className={`gh-item-row${n.unread ? " is-unread" : ""}`} onClick={() => void openNotification(n)}>
+          <button
+            key={n.id}
+            type="button"
+            className={`gh-item-row${n.unread ? " is-unread" : ""}`}
+            onClick={() => void openNotification(n)}
+          >
             <span className={`gh-dot ${n.unread ? "mod-open" : ""}`} />
             <div className="gh-item-main">
               <div className="gh-item-title">{n.title}</div>
@@ -528,4 +650,3 @@ function formatSize(n: number): string {
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
-

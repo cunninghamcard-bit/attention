@@ -10,8 +10,14 @@ describe("MetadataCache", () => {
   it("keeps ignored files cached but filters aggregate metadata queries", async () => {
     const vault = new Vault();
     const metadataCache = new MetadataCache(vault);
-    const kept = await vault.create("Notes/Kept.md", "---\nstatus: kept\n---\n# Kept\n[[Archive/Hidden]]");
-    const folderIgnored = await vault.create("Archive/Hidden.md", "---\nstatus: hidden\n---\n# Hidden");
+    const kept = await vault.create(
+      "Notes/Kept.md",
+      "---\nstatus: kept\n---\n# Kept\n[[Archive/Hidden]]",
+    );
+    const folderIgnored = await vault.create(
+      "Archive/Hidden.md",
+      "---\nstatus: hidden\n---\n# Hidden",
+    );
     const regexIgnored = await vault.create("Secret.md", "---\nstatus: secret\n---\n# Secret");
 
     vault.setConfig("userIgnoreFilters", ["Archive/", "/^Secret\\.md$/"]);
@@ -23,7 +29,11 @@ describe("MetadataCache", () => {
     expect(metadataCache.getFileCache(kept)?.headings?.[0]?.heading).toBe("Kept");
     expect(metadataCache.getFileCache(folderIgnored)?.headings?.[0]?.heading).toBe("Hidden");
     expect(metadataCache.getFileCache(regexIgnored)?.headings?.[0]?.heading).toBe("Secret");
-    expect(metadataCache.getAllPropertyInfos().status).toMatchObject({ name: "status", widget: "text", occurrences: 1 });
+    expect(metadataCache.getAllPropertyInfos().status).toMatchObject({
+      name: "status",
+      widget: "text",
+      occurrences: 1,
+    });
     expect(metadataCache.getFrontmatterPropertyValuesForKey("status")).toEqual(["kept"]);
 
     vault.setConfig("userIgnoreFilters", null);
@@ -106,7 +116,9 @@ describe("MetadataCache", () => {
 
       expect(changed[0]?.[0]).toBe(file);
       expect(changed[0]?.[1]).toBe("# Two");
-      expect((changed[0]?.[2] as { headings?: Array<{ heading: string }> }).headings?.[0]?.heading).toBe("Two");
+      expect(
+        (changed[0]?.[2] as { headings?: Array<{ heading: string }> }).headings?.[0]?.heading,
+      ).toBe("Two");
       expect(finished).toEqual([]);
 
       await vi.advanceTimersByTimeAsync(9);
@@ -212,7 +224,11 @@ describe("MetadataCache", () => {
         parent: -8,
         position: {
           start: { line: 8, col: 0, offset: source.indexOf("- item ^abc") },
-          end: { line: 8, col: "- item ^abc".length, offset: source.indexOf("- item ^abc") + "- item ^abc".length },
+          end: {
+            line: 8,
+            col: "- item ^abc".length,
+            offset: source.indexOf("- item ^abc") + "- item ^abc".length,
+          },
         },
       },
     ]);
@@ -239,12 +255,13 @@ describe("MetadataCache", () => {
   it("uses official cache item positions for links, embeds, tags, and frontmatter links", async () => {
     const vault = new Vault();
     const metadataCache = new MetadataCache(vault);
-    const body = "See [[Target#Heading|Shown]] and ![[Image.png]] plus [Docs](Docs/File.md) and ![Alt](Pic.png) #tag/sub";
+    const body =
+      "See [[Target#Heading|Shown]] and ![[Image.png]] plus [Docs](Docs/File.md) and ![Alt](Pic.png) #tag/sub";
     const source = [
       "---",
-      "related: \"[[Front#A|Front shown]]\"",
+      'related: "[[Front#A|Front shown]]"',
       "aliases:",
-      "  - \"[[AliasTarget]]\"",
+      '  - "[[AliasTarget]]"',
       "---",
       body,
       "[docs]: https://example.com",
@@ -257,7 +274,12 @@ describe("MetadataCache", () => {
     const targetStart = body.indexOf("[[Target");
     const tagStart = body.indexOf("#tag/sub");
     expect(cache?.frontmatterLinks).toEqual([
-      { key: "related", link: "Front#A", original: "[[Front#A|Front shown]]", displayText: "Front shown" },
+      {
+        key: "related",
+        link: "Front#A",
+        original: "[[Front#A|Front shown]]",
+        displayText: "Front shown",
+      },
       { key: "aliases", link: "AliasTarget", original: "[[AliasTarget]]" },
     ]);
     expect(cache?.links?.[0]).toMatchObject({
@@ -266,7 +288,11 @@ describe("MetadataCache", () => {
       displayText: "Shown",
       position: {
         start: { line: 5, col: targetStart, offset: source.indexOf("[[Target") },
-        end: { line: 5, col: targetStart + "[[Target#Heading|Shown]]".length, offset: source.indexOf("[[Target") + "[[Target#Heading|Shown]]".length },
+        end: {
+          line: 5,
+          col: targetStart + "[[Target#Heading|Shown]]".length,
+          offset: source.indexOf("[[Target") + "[[Target#Heading|Shown]]".length,
+        },
       },
       source: {
         line: 5,
@@ -275,13 +301,19 @@ describe("MetadataCache", () => {
         text: body,
       },
     });
-    expect(cache?.links?.some((link) => link.link === "Docs/File.md" && link.displayText === "Docs")).toBe(true);
+    expect(
+      cache?.links?.some((link) => link.link === "Docs/File.md" && link.displayText === "Docs"),
+    ).toBe(true);
     expect(cache?.embeds?.map((embed) => embed.link)).toEqual(["Image.png", "Pic.png"]);
     expect(cache?.tags?.[0]).toMatchObject({
       tag: "#tag/sub",
       position: {
         start: { line: 5, col: tagStart, offset: source.indexOf("#tag/sub") },
-        end: { line: 5, col: tagStart + "#tag/sub".length, offset: source.indexOf("#tag/sub") + "#tag/sub".length },
+        end: {
+          line: 5,
+          col: tagStart + "#tag/sub".length,
+          offset: source.indexOf("#tag/sub") + "#tag/sub".length,
+        },
       },
     });
   });
@@ -289,7 +321,10 @@ describe("MetadataCache", () => {
   it("exposes official reference iteration helpers for links and embeds", async () => {
     const vault = new Vault();
     const metadataCache = new MetadataCache(vault);
-    const file = await vault.create("Refs.md", "---\nrelated: \"[[Front]]\"\n---\n[[Target]] ![[Image.png]] [Docs](Docs.md)");
+    const file = await vault.create(
+      "Refs.md",
+      '---\nrelated: "[[Front]]"\n---\n[[Target]] ![[Image.png]] [Docs](Docs.md)',
+    );
 
     await metadataCache.computeFileMetadata(file);
 
@@ -303,10 +338,13 @@ describe("MetadataCache", () => {
       return ref.link === "Image.png";
     });
     const allRefs: string[] = [];
-    const allStopped = iterateRefs([...(cache.frontmatterLinks ?? []), ...(cache.links ?? []), ...(cache.embeds ?? [])], (ref) => {
-      allRefs.push(ref.link);
-      return false;
-    });
+    const allStopped = iterateRefs(
+      [...(cache.frontmatterLinks ?? []), ...(cache.links ?? []), ...(cache.embeds ?? [])],
+      (ref) => {
+        allRefs.push(ref.link);
+        return false;
+      },
+    );
 
     expect(stopped).toBe(true);
     expect(cacheRefs).toEqual(["Target", "Docs.md", "Image.png"]);
@@ -317,7 +355,10 @@ describe("MetadataCache", () => {
   it("indexes reference links and footnote definition positions", async () => {
     const vault = new Vault();
     const metadataCache = new MetadataCache(vault);
-    const file = await vault.create("Note.md", "Read [Docs][docs] and note [^one]\n\n[docs]: https://example.com\n[^one]: Footnote\n  continuation");
+    const file = await vault.create(
+      "Note.md",
+      "Read [Docs][docs] and note [^one]\n\n[docs]: https://example.com\n[^one]: Footnote\n  continuation",
+    );
 
     await metadataCache.computeFileMetadata(file);
 
@@ -328,7 +369,11 @@ describe("MetadataCache", () => {
         link: "https://example.com",
         position: {
           start: { line: 2, col: 0, offset: "Read [Docs][docs] and note [^one]\n\n".length },
-          end: { line: 2, col: "[docs]: https://example.com".length, offset: "Read [Docs][docs] and note [^one]\n\n[docs]: https://example.com".length },
+          end: {
+            line: 2,
+            col: "[docs]: https://example.com".length,
+            offset: "Read [Docs][docs] and note [^one]\n\n[docs]: https://example.com".length,
+          },
         },
       }),
     ]);
@@ -336,8 +381,18 @@ describe("MetadataCache", () => {
       {
         id: "one",
         position: {
-          start: { line: 3, col: 0, offset: "Read [Docs][docs] and note [^one]\n\n[docs]: https://example.com\n".length },
-          end: { line: 4, col: "  continuation".length, offset: "Read [Docs][docs] and note [^one]\n\n[docs]: https://example.com\n[^one]: Footnote\n  continuation".length },
+          start: {
+            line: 3,
+            col: 0,
+            offset: "Read [Docs][docs] and note [^one]\n\n[docs]: https://example.com\n".length,
+          },
+          end: {
+            line: 4,
+            col: "  continuation".length,
+            offset:
+              "Read [Docs][docs] and note [^one]\n\n[docs]: https://example.com\n[^one]: Footnote\n  continuation"
+                .length,
+          },
         },
       },
     ]);
@@ -345,8 +400,16 @@ describe("MetadataCache", () => {
       {
         id: "one",
         position: {
-          start: { line: 0, col: "Read [Docs][docs] and note ".length, offset: "Read [Docs][docs] and note ".length },
-          end: { line: 0, col: "Read [Docs][docs] and note [^one]".length, offset: "Read [Docs][docs] and note [^one]".length },
+          start: {
+            line: 0,
+            col: "Read [Docs][docs] and note ".length,
+            offset: "Read [Docs][docs] and note ".length,
+          },
+          end: {
+            line: 0,
+            col: "Read [Docs][docs] and note [^one]".length,
+            offset: "Read [Docs][docs] and note [^one]".length,
+          },
         },
       },
     ]);
@@ -445,7 +508,10 @@ describe("MetadataCache", () => {
     const metadataCache = new MetadataCache(vault);
     await vault.create("A/Target.md", "# A");
     await vault.create("B/Target.md", "# B");
-    const source = await vault.create("A/Sub/Source.md", "[[../Target]] [[/B/Target]] [[/Missing/Target]]");
+    const source = await vault.create(
+      "A/Sub/Source.md",
+      "[[../Target]] [[/B/Target]] [[/Missing/Target]]",
+    );
 
     await metadataCache.clear();
     await waitForClean(metadataCache);
@@ -476,12 +542,17 @@ describe("MetadataCache", () => {
     const viewRegistry = new ViewRegistry();
     const app = { appId: "test", vault, viewRegistry } as unknown as App;
     const metadataCache = new MetadataCache(vault, app);
-    const note = await vault.create("Folder/Note.md", "---\nAliases:\n  - Nick\n  - '  Trimmed  '\n  - 7\n  - ''\n---\n[[Missing.md]]");
+    const note = await vault.create(
+      "Folder/Note.md",
+      "---\nAliases:\n  - Nick\n  - '  Trimmed  '\n  - 7\n  - ''\n---\n[[Missing.md]]",
+    );
     await vault.createBinary("Folder/Attachment.pdf", new Uint8Array([1, 2, 3]).buffer);
     await vault.createBinary("Folder/Archive.bin", new Uint8Array([4, 5, 6]).buffer);
 
     await metadataCache.computeFileMetadataAsync(note);
-    await vi.waitFor(() => expect(metadataCache.unresolvedLinks[note.path]).toEqual({ Missing: 1 }));
+    await vi.waitFor(() =>
+      expect(metadataCache.unresolvedLinks[note.path]).toEqual({ Missing: 1 }),
+    );
 
     const suggestions = metadataCache.getLinkSuggestions();
 
@@ -489,11 +560,17 @@ describe("MetadataCache", () => {
     expect(suggestions).toContainEqual({ file: note, path: "Folder/Note", alias: "Nick" });
     expect(suggestions).toContainEqual({ file: note, path: "Folder/Note", alias: "Trimmed" });
     expect(suggestions).toContainEqual({ file: null, path: "Missing" });
-    expect(suggestions.some((suggestion) => suggestion.path === "Folder/Attachment.pdf")).toBe(true);
+    expect(suggestions.some((suggestion) => suggestion.path === "Folder/Attachment.pdf")).toBe(
+      true,
+    );
     expect(suggestions.some((suggestion) => suggestion.path === "Folder/Archive.bin")).toBe(false);
 
     vault.setConfig("showUnsupportedFiles", true);
-    expect(metadataCache.getLinkSuggestions().some((suggestion) => suggestion.path === "Folder/Archive.bin")).toBe(true);
+    expect(
+      metadataCache
+        .getLinkSuggestions()
+        .some((suggestion) => suggestion.path === "Folder/Archive.bin"),
+    ).toBe(true);
   });
 
   it("exposes Obsidian fileToLinktext link format semantics", async () => {
@@ -528,7 +605,11 @@ describe("MetadataCache", () => {
 
     await metadataCache.computeFileMetadataAsync(note);
 
-    expect(metadataCache.getLinkSuggestions()).toContainEqual({ file: note, path: "Real", alias: "Alias Name" });
+    expect(metadataCache.getLinkSuggestions()).toContainEqual({
+      file: note,
+      path: "Real",
+      alias: "Alias Name",
+    });
     expect(metadataCache.getFirstLinkpathDest("Alias Name", "")).toBeNull();
   });
 
@@ -642,15 +723,20 @@ describe("MetadataCache", () => {
   it("runs direct metadata worker requests through the same strict queue", async () => {
     const vault = new Vault();
     const metadataCache = new MetadataCache(vault);
-    const originalWork = (metadataCache as unknown as { work(buffer: ArrayBuffer): Promise<unknown> }).work.bind(metadataCache);
+    const originalWork = (
+      metadataCache as unknown as { work(buffer: ArrayBuffer): Promise<unknown> }
+    ).work.bind(metadataCache);
     const started: string[] = [];
     let releaseFirst: (() => void) | null = null;
-    (metadataCache as unknown as { work(buffer: ArrayBuffer): Promise<unknown> }).work = async (buffer) => {
+    (metadataCache as unknown as { work(buffer: ArrayBuffer): Promise<unknown> }).work = async (
+      buffer,
+    ) => {
       const source = new TextDecoder().decode(buffer);
       started.push(source);
-      if (source === "# First") await new Promise<void>((resolve) => {
-        releaseFirst = resolve;
-      });
+      if (source === "# First")
+        await new Promise<void>((resolve) => {
+          releaseFirst = resolve;
+        });
       return originalWork(buffer);
     };
 
@@ -678,21 +764,26 @@ describe("MetadataCache", () => {
       const started = new Promise<void>((resolve) => {
         workStarted = resolve;
       });
-      (metadataCache as unknown as { work(buffer: ArrayBuffer): Promise<unknown> }).work = async () => {
-        workStarted?.();
-        await new Promise<void>((resolve) => setTimeout(resolve, 10_001));
-        return { headings: [{ heading: "Slow", level: 1, position: { line: 0 } }] };
-      };
+      (metadataCache as unknown as { work(buffer: ArrayBuffer): Promise<unknown> }).work =
+        async () => {
+          workStarted?.();
+          await new Promise<void>((resolve) => setTimeout(resolve, 10_001));
+          return { headings: [{ heading: "Slow", level: 1, position: { line: 0 } }] };
+        };
 
       const compute = metadataCache.computeFileMetadataAsync(file);
       await started;
       await vi.advanceTimersByTimeAsync(9_999);
 
-      expect([...document.querySelectorAll(".notice")].some((el) => el.textContent?.includes("Slow.md"))).toBe(false);
+      expect(
+        [...document.querySelectorAll(".notice")].some((el) => el.textContent?.includes("Slow.md")),
+      ).toBe(false);
 
       await vi.advanceTimersByTimeAsync(1);
 
-      expect([...document.querySelectorAll(".notice")].some((el) => el.textContent?.includes("Slow.md"))).toBe(true);
+      expect(
+        [...document.querySelectorAll(".notice")].some((el) => el.textContent?.includes("Slow.md")),
+      ).toBe(true);
 
       await vi.advanceTimersByTimeAsync(1);
       await compute;

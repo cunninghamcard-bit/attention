@@ -33,7 +33,9 @@ describe("CommandPalette Obsidian command execution behavior", () => {
     expect(callback).toHaveBeenCalledTimes(1);
     expect(app.lastEvent).toBe(event);
     expect(plugin.recentCommands).toEqual(["test-command"]);
-    expect(window.localStorage.getItem("obsidian-reconstructed-recent-commands")).toBe(JSON.stringify(["test-command"]));
+    expect(window.localStorage.getItem("obsidian-reconstructed-recent-commands")).toBe(
+      JSON.stringify(["test-command"]),
+    );
   });
 
   it("runs commands through the palette helper without recording recent commands when they throw", () => {
@@ -41,7 +43,13 @@ describe("CommandPalette Obsidian command execution behavior", () => {
     const plugin = new CommandPaletteCorePlugin(app);
     const palette = new CommandPalette(app, plugin);
     const error = new Error("boom");
-    const command: Command = { id: "throws", name: "Throws", callback: () => { throw error; } };
+    const command: Command = {
+      id: "throws",
+      name: "Throws",
+      callback: () => {
+        throw error;
+      },
+    };
     const event = new KeyboardEvent("keydown", { key: "Enter" });
 
     expect(() => palette.onChooseItem(command, event)).toThrow(error);
@@ -65,12 +73,15 @@ describe("CommandPalette Obsidian command execution behavior", () => {
     expect(commandIds.indexOf("beta")).toBeLessThan(commandIds.indexOf("alpha"));
     expect(commandIds.indexOf("alpha")).toBeLessThan(commandIds.indexOf("zeta"));
 
-    for (let index = 0; index < 105; index++) plugin.recordRecent({ id: `recent-${index}`, name: `Recent ${index}` });
+    for (let index = 0; index < 105; index++)
+      plugin.recordRecent({ id: `recent-${index}`, name: `Recent ${index}` });
 
     expect(plugin.recentCommands).toHaveLength(100);
     expect(plugin.recentCommands[0]).toBe("recent-104");
     expect(plugin.recentCommands).not.toContain("recent-4");
-    expect(window.localStorage.getItem("obsidian-reconstructed-recent-commands")).toBe(JSON.stringify(plugin.recentCommands));
+    expect(window.localStorage.getItem("obsidian-reconstructed-recent-commands")).toBe(
+      JSON.stringify(plugin.recentCommands),
+    );
   });
 
   it("removes app localStorage keys when saving null values", () => {
@@ -98,7 +109,9 @@ describe("CommandPalette Obsidian command execution behavior", () => {
     const defaultEl = document.createElement("div");
     palette.renderSuggestion({ item: command, match: { score: 1, matches: [] } }, defaultEl);
 
-    expect(defaultEl.querySelector(".suggestion-hotkey")?.textContent).toBe(isMacLike() ? "⌘ P" : "Ctrl + P");
+    expect(defaultEl.querySelector(".suggestion-hotkey")?.textContent).toBe(
+      isMacLike() ? "⌘ P" : "Ctrl + P",
+    );
     expect(app.hotkeys.getHotkeys(command.id)).toBeUndefined();
     expect(app.hotkeys.getDefaultHotkeys(command.id)).toEqual([{ modifiers: ["Mod"], key: "P" }]);
 
@@ -106,7 +119,9 @@ describe("CommandPalette Obsidian command execution behavior", () => {
     const customEl = document.createElement("div");
     palette.renderSuggestion({ item: command, match: { score: 1, matches: [] } }, customEl);
 
-    expect(customEl.querySelector(".suggestion-hotkey")?.textContent).toBe(isMacLike() ? "⌘ ⇧ K" : "Ctrl + Shift + K");
+    expect(customEl.querySelector(".suggestion-hotkey")?.textContent).toBe(
+      isMacLike() ? "⌘ ⇧ K" : "Ctrl + Shift + K",
+    );
   });
 
   it("renders pinned command settings with Obsidian mobile-option rows and drag handles", async () => {
@@ -128,11 +143,15 @@ describe("CommandPalette Obsidian command execution behavior", () => {
     if (!settingTab) throw new Error("missing setting tab");
     settingTab.display();
 
-    const rows = [...settingTab.containerEl.querySelectorAll<HTMLElement>(".mobile-option-setting-item")];
+    const rows = [
+      ...settingTab.containerEl.querySelectorAll<HTMLElement>(".mobile-option-setting-item"),
+    ];
     expect(rows).toHaveLength(2);
     expect(rows[0].querySelector(".mobile-option-setting-item-name")?.textContent).toBe("Alpha");
     expect(rows[0].querySelector(".clickable-icon .svg-icon.lucide-x")).not.toBeNull();
-    expect(rows[0].querySelector(".mobile-option-setting-drag-icon .svg-icon.lucide-menu")).not.toBeNull();
+    expect(
+      rows[0].querySelector(".mobile-option-setting-drag-icon .svg-icon.lucide-menu"),
+    ).not.toBeNull();
     expect(rows[0].querySelector<HTMLElement>(".clickable-icon")?.dataset.icon).toBeUndefined();
 
     rows[0].querySelector<HTMLElement>(".clickable-icon")?.click();
@@ -142,13 +161,22 @@ describe("CommandPalette Obsidian command execution behavior", () => {
     if (!search) throw new Error("missing search");
     search.value = "ogv";
     search.dispatchEvent(new Event("input", { bubbles: true }));
-    expect([...settingTab.containerEl.querySelectorAll<HTMLElement>(".command-palette-pin-results .suggestion-item")]
-      .map((item) => item.textContent)).toEqual(["Open graph view"]);
+    expect(
+      [
+        ...settingTab.containerEl.querySelectorAll<HTMLElement>(
+          ".command-palette-pin-results .suggestion-item",
+        ),
+      ].map((item) => item.textContent),
+    ).toEqual(["Open graph view"]);
 
     plugin.setPinned(["alpha", "beta"]);
     settingTab.display();
-    const dragHandle = settingTab.containerEl.querySelector<HTMLElement>(".mobile-option-setting-drag-icon");
-    const targetRow = settingTab.containerEl.querySelectorAll<HTMLElement>(".mobile-option-setting-item")[1];
+    const dragHandle = settingTab.containerEl.querySelector<HTMLElement>(
+      ".mobile-option-setting-drag-icon",
+    );
+    const targetRow = settingTab.containerEl.querySelectorAll<HTMLElement>(
+      ".mobile-option-setting-item",
+    )[1];
     if (!dragHandle || !targetRow) throw new Error("missing drag controls");
     const dataTransfer = createDataTransfer();
     dispatchDragEvent(dragHandle, "dragstart", dataTransfer);

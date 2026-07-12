@@ -34,16 +34,18 @@ const DETAIL: PrDetail = {
   comments: [],
   reviews: [],
   reviewComments: [],
-  commits: [{
-    sha: "deadbeef01",
-    shortSha: "deadbee",
-    messageHeadline: "fix: powerline",
-    message: "fix: powerline",
-    author: { login: "cunninghamcard-bit", avatarUrl: "", url: "" },
-    committedDate: "2026-07-11T10:00:00Z",
-    url: "",
-    ciState: null,
-  }],
+  commits: [
+    {
+      sha: "deadbeef01",
+      shortSha: "deadbee",
+      messageHeadline: "fix: powerline",
+      message: "fix: powerline",
+      author: { login: "cunninghamcard-bit", avatarUrl: "", url: "" },
+      committedDate: "2026-07-11T10:00:00Z",
+      url: "",
+      ciState: null,
+    },
+  ],
   files: [
     {
       path: "lib/renderer.ts",
@@ -72,7 +74,8 @@ function fakeGitBridge(isRepo = true): ElectronGitApi {
   return {
     available: true,
     async exec(args: string[]): Promise<GitExecResult> {
-      if (args[0] === "rev-parse") return { code: 0, stdout: isRepo ? "true\n" : "false\n", stderr: "" };
+      if (args[0] === "rev-parse")
+        return { code: 0, stdout: isRepo ? "true\n" : "false\n", stderr: "" };
       if (args[0] === "remote" && args[1] === "get-url") {
         return isRepo
           ? { code: 0, stdout: "https://github.com/coder/ghostty-web.git\n", stderr: "" }
@@ -88,75 +91,112 @@ function json(data: unknown, status = 200): HttpResponse {
   return { status, text: data == null ? "" : JSON.stringify(data), json: data };
 }
 
-function installGithubMocks(app: App, options: {
-  authed?: boolean;
-  list?: PrSummary[];
-  detail?: PrDetail;
-  submitCalls?: string[];
-} = {}): void {
+function installGithubMocks(
+  app: App,
+  options: {
+    authed?: boolean;
+    list?: PrSummary[];
+    detail?: PrDetail;
+    submitCalls?: string[];
+  } = {},
+): void {
   const authed = options.authed ?? true;
   const list = options.list ?? [SUMMARY];
   const detail = options.detail ?? DETAIL;
   const submitCalls = options.submitCalls ?? [];
   if (authed) app.secretStorage.setSecret("github-token", "test-token");
 
-  app.github.transportFactory = (): HttpTransport => async ({ url, method, body, headers }) => {
-    const path = url.replace(/^https:\/\/api\.github\.com/, "");
-    const verb = method ?? "GET";
-    if (verb === "GET" && path === "/user") {
-      return json(authed ? { login: "cunninghamcard-bit", avatar_url: "", name: "Card" } : null, authed ? 200 : 401);
-    }
-    if (verb === "GET" && path.startsWith("/user/repos")) {
-      return json([
-        { name: "ghostty-web", full_name: "coder/ghostty-web", private: false, description: "web", open_issues_count: 1, owner: { login: "coder" } },
-        { name: "along", full_name: "cunninghamcard-bit/along", private: false, description: "along", open_issues_count: 0, owner: { login: "cunninghamcard-bit" } },
-      ]);
-    }
-    if (verb === "GET" && path.startsWith("/repos/coder/ghostty-web/pulls?") && path.includes("state=")) {
-      return json(list.map(rawPull));
-    }
-    if (verb === "GET" && path === "/repos/coder/ghostty-web/pulls/185") {
-      if (headers?.Accept?.includes("diff")) {
-        return {
-          status: 200,
-          text: "diff --git a/lib/renderer.ts b/lib/renderer.ts\n--- a/lib/renderer.ts\n+++ b/lib/renderer.ts\n@@ -1,3 +1,4 @@\n line\n-old\n+new\n keep\n",
-          json: null,
-        };
+  app.github.transportFactory =
+    (): HttpTransport =>
+    async ({ url, method, body, headers }) => {
+      const path = url.replace(/^https:\/\/api\.github\.com/, "");
+      const verb = method ?? "GET";
+      if (verb === "GET" && path === "/user") {
+        return json(
+          authed ? { login: "cunninghamcard-bit", avatar_url: "", name: "Card" } : null,
+          authed ? 200 : 401,
+        );
       }
-      return json(rawPull(detail));
-    }
-    if (verb === "GET" && path.startsWith("/repos/coder/ghostty-web/issues/185/comments")) return json([]);
-    if (verb === "GET" && path.startsWith("/repos/coder/ghostty-web/pulls/185/reviews")) return json([]);
-    if (verb === "GET" && path.startsWith("/repos/coder/ghostty-web/pulls/185/comments")) return json([]);
-    if (verb === "GET" && path.startsWith("/repos/coder/ghostty-web/pulls/185/commits")) {
-      return json(detail.commits.map((c) => ({
-        sha: c.sha,
-        html_url: c.url,
-        author: { login: c.author.login },
-        commit: { message: c.message, author: { date: c.committedDate }, committer: { date: c.committedDate } },
-      })));
-    }
-    if (verb === "GET" && path.startsWith("/repos/coder/ghostty-web/pulls/185/files")) {
-      return json(detail.files.map((f) => ({
-        filename: f.path,
-        status: f.status,
-        additions: f.additions,
-        deletions: f.deletions,
-        patch: f.patch,
-      })));
-    }
-    if (verb === "GET" && path.includes("/check-runs")) return json({ check_runs: [] });
-    if (verb === "GET" && path.includes("/status")) return json({ state: "success" });
-    if (verb === "POST" && path === "/repos/coder/ghostty-web/pulls/185/reviews") {
-      submitCalls.push(JSON.parse(body ?? "{}").event);
-      return json({ id: 1 }, 200);
-    }
-    if (verb === "POST" && path === "/repos/coder/ghostty-web/issues/185/comments") {
-      submitCalls.push("comment");
-      return json({ id: 1 }, 201);
-    }
-    return json({ message: `unmocked ${verb} ${path}` }, 404);
-  };
+      if (verb === "GET" && path.startsWith("/user/repos")) {
+        return json([
+          {
+            name: "ghostty-web",
+            full_name: "coder/ghostty-web",
+            private: false,
+            description: "web",
+            open_issues_count: 1,
+            owner: { login: "coder" },
+          },
+          {
+            name: "along",
+            full_name: "cunninghamcard-bit/along",
+            private: false,
+            description: "along",
+            open_issues_count: 0,
+            owner: { login: "cunninghamcard-bit" },
+          },
+        ]);
+      }
+      if (
+        verb === "GET" &&
+        path.startsWith("/repos/coder/ghostty-web/pulls?") &&
+        path.includes("state=")
+      ) {
+        return json(list.map(rawPull));
+      }
+      if (verb === "GET" && path === "/repos/coder/ghostty-web/pulls/185") {
+        if (headers?.Accept?.includes("diff")) {
+          return {
+            status: 200,
+            text: "diff --git a/lib/renderer.ts b/lib/renderer.ts\n--- a/lib/renderer.ts\n+++ b/lib/renderer.ts\n@@ -1,3 +1,4 @@\n line\n-old\n+new\n keep\n",
+            json: null,
+          };
+        }
+        return json(rawPull(detail));
+      }
+      if (verb === "GET" && path.startsWith("/repos/coder/ghostty-web/issues/185/comments"))
+        return json([]);
+      if (verb === "GET" && path.startsWith("/repos/coder/ghostty-web/pulls/185/reviews"))
+        return json([]);
+      if (verb === "GET" && path.startsWith("/repos/coder/ghostty-web/pulls/185/comments"))
+        return json([]);
+      if (verb === "GET" && path.startsWith("/repos/coder/ghostty-web/pulls/185/commits")) {
+        return json(
+          detail.commits.map((c) => ({
+            sha: c.sha,
+            html_url: c.url,
+            author: { login: c.author.login },
+            commit: {
+              message: c.message,
+              author: { date: c.committedDate },
+              committer: { date: c.committedDate },
+            },
+          })),
+        );
+      }
+      if (verb === "GET" && path.startsWith("/repos/coder/ghostty-web/pulls/185/files")) {
+        return json(
+          detail.files.map((f) => ({
+            filename: f.path,
+            status: f.status,
+            additions: f.additions,
+            deletions: f.deletions,
+            patch: f.patch,
+          })),
+        );
+      }
+      if (verb === "GET" && path.includes("/check-runs")) return json({ check_runs: [] });
+      if (verb === "GET" && path.includes("/status")) return json({ state: "success" });
+      if (verb === "POST" && path === "/repos/coder/ghostty-web/pulls/185/reviews") {
+        submitCalls.push(JSON.parse(body ?? "{}").event);
+        return json({ id: 1 }, 200);
+      }
+      if (verb === "POST" && path === "/repos/coder/ghostty-web/issues/185/comments") {
+        submitCalls.push("comment");
+        return json({ id: 1 }, 201);
+      }
+      return json({ message: `unmocked ${verb} ${path}` }, 404);
+    };
 }
 
 function rawPull(detail: PrSummary | PrDetail) {
@@ -167,13 +207,21 @@ function rawPull(detail: PrSummary | PrDetail) {
     merged: detail.state === "merged",
     draft: detail.isDraft,
     body: "body" in detail ? detail.body : "",
-    user: { login: detail.author.login, avatar_url: detail.author.avatarUrl, html_url: detail.author.url },
+    user: {
+      login: detail.author.login,
+      avatar_url: detail.author.avatarUrl,
+      html_url: detail.author.url,
+    },
     head: { ref: detail.headRefName, sha: "body" in detail ? detail.headRefOid : "deadbeef" },
     base: { ref: detail.baseRefName },
     html_url: detail.url,
     created_at: detail.createdAt,
     updated_at: detail.updatedAt,
-    labels: detail.labels.map((l) => ({ name: l.name, color: l.color, description: l.description })),
+    labels: detail.labels.map((l) => ({
+      name: l.name,
+      color: l.color,
+      description: l.description,
+    })),
     additions: detail.additions,
     deletions: detail.deletions,
     changed_files: detail.changedFiles,
@@ -212,12 +260,17 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     const listView = app.workspace.getLeavesOfType(PrListView.VIEW_TYPE)[0].view as PrListView;
 
     await until(() => listView.contentEl.querySelector(".git-pr-row-title") !== null, "PR row");
-    expect(listView.contentEl.querySelector(".git-pr-row-title")!.textContent).toContain("Powerline");
+    expect(listView.contentEl.querySelector(".git-pr-row-title")!.textContent).toContain(
+      "Powerline",
+    );
     expect(listView.contentEl.textContent).toContain("coder/ghostty-web");
     expect(listView.contentEl.textContent).toContain("fix/powerline-vector-glyphs");
 
     (listView.contentEl.querySelector(".git-pr-row") as HTMLElement).click();
-    await until(() => app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE).length > 0, "detail leaf");
+    await until(
+      () => app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE).length > 0,
+      "detail leaf",
+    );
   });
 
   it("opens files tab with tree and renders PR metadata from real shape", async () => {
@@ -243,9 +296,14 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
 
     await until(() => view.contentEl.querySelector(".git-pr-title") !== null, "title");
     // switch to conversation for review bar
-    const convTab = [...view.contentEl.querySelectorAll(".git-pr-tab")].find((el) => el.textContent?.includes("Conversation")) as HTMLButtonElement;
+    const convTab = [...view.contentEl.querySelectorAll(".git-pr-tab")].find((el) =>
+      el.textContent?.includes("Conversation"),
+    ) as HTMLButtonElement;
     convTab?.click();
-    await until(() => view.contentEl.querySelector(".git-pr-action.mod-approve") !== null, "approve");
+    await until(
+      () => view.contentEl.querySelector(".git-pr-action.mod-approve") !== null,
+      "approve",
+    );
     (view.contentEl.querySelector(".git-pr-action.mod-approve") as HTMLButtonElement).click();
     await until(() => submitCalls.includes("APPROVE"), "approve call");
   });
@@ -273,8 +331,9 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     await openPrList(app);
     const listView = app.workspace.getLeavesOfType(PrListView.VIEW_TYPE)[0].view as PrListView;
     await until(
-      () => listView.contentEl.querySelector(".git-pr-repo-picker") !== null
-        || listView.contentEl.querySelector(".git-pr-row") !== null,
+      () =>
+        listView.contentEl.querySelector(".git-pr-repo-picker") !== null ||
+        listView.contentEl.querySelector(".git-pr-row") !== null,
       "picker or list",
     );
     // Without origin/prefs may still pick from empty — ensure we don't crash

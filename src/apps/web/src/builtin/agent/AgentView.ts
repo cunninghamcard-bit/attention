@@ -18,41 +18,61 @@ export const AGENT_VIEW_TYPE = "agent-board";
 const REFRESH_INTERVAL_MS = 3000;
 
 // The context menu for one agent card: Properties / Rename / Delete.
-export function showAgentMenu(app: App, transport: AgentTransport, agent: AgentSummary, event: MouseEvent, onChanged: () => void): void {
+export function showAgentMenu(
+  app: App,
+  transport: AgentTransport,
+  agent: AgentSummary,
+  event: MouseEvent,
+  onChanged: () => void,
+): void {
   event.preventDefault();
   const menu = new Menu((event.target as HTMLElement | null)?.ownerDocument ?? document);
-  menu.addItem((item) => item
-    .setTitle(STRINGS.menu.properties)
-    .setIcon("bot")
-    .onClick(() => void openAgentProperties(app, agent.id)));
-  menu.addItem((item) => item
-    .setTitle(STRINGS.menu.rename)
-    .setIcon("lucide-pencil")
-    .onClick(() => {
-      // ponytail: window.prompt over a custom modal; upgrade when a shared
-      // prompt modal exists in the ui module.
-      const title = window.prompt(STRINGS.menu.renamePrompt, agent.title ?? agent.id);
-      if (title?.trim()) void transport.rename(agent.id, title.trim()).then(onChanged);
-    }));
-  menu.addItem((item) => item
-    .setTitle(STRINGS.menu.fork)
-    .setIcon("lucide-git-branch")
-    .onClick(() => {
-      void transport.forkThread(agent.id)
-        .then(({ id }) => {
-          new Notice(STRINGS.menu.forked(id));
-          onChanged();
-        })
-        .catch((error: unknown) => new Notice(STRINGS.menu.forkFailed(error instanceof Error ? error.message : String(error))));
-    }));
-  menu.addItem((item) => item
-    .setTitle(STRINGS.menu.delete)
-    .setIcon("lucide-trash-2")
-    .onClick(() => {
-      if (window.confirm(STRINGS.menu.deleteConfirm(agent.title ?? agent.id))) {
-        void transport.delete(agent.id).then(onChanged);
-      }
-    }));
+  menu.addItem((item) =>
+    item
+      .setTitle(STRINGS.menu.properties)
+      .setIcon("bot")
+      .onClick(() => void openAgentProperties(app, agent.id)),
+  );
+  menu.addItem((item) =>
+    item
+      .setTitle(STRINGS.menu.rename)
+      .setIcon("lucide-pencil")
+      .onClick(() => {
+        // ponytail: window.prompt over a custom modal; upgrade when a shared
+        // prompt modal exists in the ui module.
+        const title = window.prompt(STRINGS.menu.renamePrompt, agent.title ?? agent.id);
+        if (title?.trim()) void transport.rename(agent.id, title.trim()).then(onChanged);
+      }),
+  );
+  menu.addItem((item) =>
+    item
+      .setTitle(STRINGS.menu.fork)
+      .setIcon("lucide-git-branch")
+      .onClick(() => {
+        void transport
+          .forkThread(agent.id)
+          .then(({ id }) => {
+            new Notice(STRINGS.menu.forked(id));
+            onChanged();
+          })
+          .catch(
+            (error: unknown) =>
+              new Notice(
+                STRINGS.menu.forkFailed(error instanceof Error ? error.message : String(error)),
+              ),
+          );
+      }),
+  );
+  menu.addItem((item) =>
+    item
+      .setTitle(STRINGS.menu.delete)
+      .setIcon("lucide-trash-2")
+      .onClick(() => {
+        if (window.confirm(STRINGS.menu.deleteConfirm(agent.title ?? agent.id))) {
+          void transport.delete(agent.id).then(onChanged);
+        }
+      }),
+  );
   menu.showAtMouseEvent(event);
 }
 
@@ -89,9 +109,17 @@ export class AgentView extends ItemView {
     const headerEl = createDiv("agent-board-header", this.contentEl);
     createDiv({ cls: "agent-board-title", text: STRINGS.board.title, parent: headerEl });
     const buttonsEl = createDiv("agent-board-buttons", headerEl);
-    const newAgentEl = createEl("button", { cls: "agent-board-create", text: STRINGS.board.newAgent, parent: buttonsEl });
+    const newAgentEl = createEl("button", {
+      cls: "agent-board-create",
+      text: STRINGS.board.newAgent,
+      parent: buttonsEl,
+    });
     newAgentEl.addEventListener("click", () => void openAgent(this.app, newAgentId()));
-    const newRoomEl = createEl("button", { cls: "agent-board-create", text: STRINGS.board.newRoom, parent: buttonsEl });
+    const newRoomEl = createEl("button", {
+      cls: "agent-board-create",
+      text: STRINGS.board.newRoom,
+      parent: buttonsEl,
+    });
     newRoomEl.addEventListener("click", () => void openRoom(this.app, newRoomId()));
     this.gridEl = createDiv("agent-board-grid", this.contentEl);
     this.registerInterval(window.setInterval(() => void this.refresh(), REFRESH_INTERVAL_MS));
@@ -126,8 +154,16 @@ export class AgentView extends ItemView {
     createDiv({ cls: "agent-card-title", text: agent.title ?? agent.id, parent: headerEl });
 
     const metaEl = createDiv("agent-card-meta", cardEl);
-    createSpan({ cls: "agent-card-state", text: agent.running ? STRINGS.agentState.running : STRINGS.agentState.idle, parent: metaEl });
-    createSpan({ cls: "agent-card-time", text: formatRelativeTime(agent.updatedAt), parent: metaEl });
+    createSpan({
+      cls: "agent-card-state",
+      text: agent.running ? STRINGS.agentState.running : STRINGS.agentState.idle,
+      parent: metaEl,
+    });
+    createSpan({
+      cls: "agent-card-time",
+      text: formatRelativeTime(agent.updatedAt),
+      parent: metaEl,
+    });
 
     // Usage renders only for agents this window has already connected to;
     // the board never opens SSE connections just to fill a cell.
@@ -137,18 +173,28 @@ export class AgentView extends ItemView {
     const isRoom = agent.id.startsWith("room-");
     const open = isRoom ? openRoom : openAgent;
     const actionsEl = createDiv("agent-card-actions", cardEl);
-    const chatEl = createEl("button", { cls: "agent-card-action", text: isRoom ? STRINGS.board.openRoom : STRINGS.board.openChat, parent: actionsEl });
+    const chatEl = createEl("button", {
+      cls: "agent-card-action",
+      text: isRoom ? STRINGS.board.openRoom : STRINGS.board.openChat,
+      parent: actionsEl,
+    });
     chatEl.addEventListener("click", (event) => {
       event.stopPropagation();
       void open(this.app, agent.id);
     });
-    const propsEl = createEl("button", { cls: "agent-card-action", text: STRINGS.board.openProperties, parent: actionsEl });
+    const propsEl = createEl("button", {
+      cls: "agent-card-action",
+      text: STRINGS.board.openProperties,
+      parent: actionsEl,
+    });
     propsEl.addEventListener("click", (event) => {
       event.stopPropagation();
       void openAgentProperties(this.app, agent.id);
     });
 
     cardEl.addEventListener("click", () => void open(this.app, agent.id));
-    cardEl.addEventListener("contextmenu", (event) => showAgentMenu(this.app, this.transport, agent, event, () => void this.refresh()));
+    cardEl.addEventListener("contextmenu", (event) =>
+      showAgentMenu(this.app, this.transport, agent, event, () => void this.refresh()),
+    );
   }
 }

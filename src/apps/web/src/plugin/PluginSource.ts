@@ -1,4 +1,5 @@
-export const INLINE_SOURCE_MAP_COMMENT = /^\/\/[@#] sourceMappingURL=data:application\/json(?:;charset[:=][^;]+)?;base64,.*$/gm;
+export const INLINE_SOURCE_MAP_COMMENT =
+  /^\/\/[@#] sourceMappingURL=data:application\/json(?:;charset[:=][^;]+)?;base64,.*$/gm;
 export const NO_SOURCE_MAP_MARKER = "\n/* nosourcemap */";
 
 export function prepareDownloadedMainJs(mainJs: string): string {

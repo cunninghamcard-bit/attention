@@ -78,7 +78,7 @@ export class ThemeManager {
   }
 
   getActiveTheme(): ThemeDefinition | null {
-    return this.activeThemeId ? this.themes.get(this.activeThemeId) ?? null : null;
+    return this.activeThemeId ? (this.themes.get(this.activeThemeId) ?? null) : null;
   }
 
   listThemes(): readonly ThemeDefinition[] {

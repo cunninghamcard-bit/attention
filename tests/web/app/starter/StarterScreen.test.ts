@@ -14,11 +14,16 @@ function makeIpc(vaults: Record<string, { path: string; ts?: number; open?: bool
   return {
     sendSync: vi.fn((channel: string, ...args: unknown[]) => {
       switch (channel) {
-        case "version": return "1.2.3";
-        case "vault-list": return vaults;
-        case "get-default-vault-path": return "/docs/Workbench Vault";
-        case "vault-open": return true;
-        case "vault-move": return "";
+        case "version":
+          return "1.2.3";
+        case "vault-list":
+          return vaults;
+        case "get-default-vault-path":
+          return "/docs/Workbench Vault";
+        case "vault-open":
+          return true;
+        case "vault-move":
+          return "";
         case "vault-remove": {
           const [path] = args as [string];
           const id = Object.keys(vaults).find((key) => vaults[key].path === path);
@@ -26,7 +31,8 @@ function makeIpc(vaults: Record<string, { path: string; ts?: number; open?: bool
           delete vaults[id];
           return true;
         }
-        default: return undefined;
+        default:
+          return undefined;
       }
     }),
     invoke: vi.fn(async () => ["/picked"]),
@@ -58,9 +64,13 @@ describe("StarterScreen", () => {
       old: { path: "/vaults/old-notes", ts: 1 },
       fresh: { path: "/vaults/fresh-notes", ts: 9 },
     });
-    const names = [...parent.querySelectorAll(".recent-vaults-list-item-name")].map((el) => el.textContent);
+    const names = [...parent.querySelectorAll(".recent-vaults-list-item-name")].map(
+      (el) => el.textContent,
+    );
     expect(names).toEqual(["fresh-notes", "old-notes"]);
-    const paths = [...parent.querySelectorAll(".recent-vaults-list-item-path")].map((el) => el.textContent);
+    const paths = [...parent.querySelectorAll(".recent-vaults-list-item-path")].map(
+      (el) => el.textContent,
+    );
     expect(paths).toEqual(["/vaults", "/vaults"]);
     expect(parent.querySelector(".quick-start-container")).toHaveProperty("style.display", "none");
   });
@@ -86,7 +96,8 @@ describe("StarterScreen", () => {
   it("shows the failure Notice and stays open when vault-open acks an error", () => {
     const { parent, ipc, closeWindow } = makeScreen({ a: { path: "/vaults/demo", ts: 1 } });
     ipc.sendSync.mockImplementation((channel: string) =>
-      channel === "vault-open" ? "folder not found" : {});
+      channel === "vault-open" ? "folder not found" : {},
+    );
     parent.querySelector<HTMLElement>(".recent-vaults-list-item")!.click();
     expect(closeWindow).not.toHaveBeenCalled();
     expect(lastNoticeText()).toContain("Failed to open.");
@@ -94,20 +105,24 @@ describe("StarterScreen", () => {
 
   it("walks the create pane: browse location, name, create=true IPC, close", async () => {
     const { parent, ipc, closeWindow } = makeScreen({ a: { path: "/vaults/demo", ts: 1 } });
-    const createAction = [...parent.querySelectorAll<HTMLButtonElement>(".mod-open-vault button")]
-      .find((el) => el.textContent === "Create");
+    const createAction = [
+      ...parent.querySelectorAll<HTMLButtonElement>(".mod-open-vault button"),
+    ].find((el) => el.textContent === "Create");
     createAction!.click();
     const pane = parent.querySelector<HTMLElement>(".mod-create-vault");
     expect(pane).not.toBeNull();
-    expect(pane!.querySelector(".setting-item-heading .setting-item-name")?.textContent).toBe("Create local vault");
+    expect(pane!.querySelector(".setting-item-heading .setting-item-name")?.textContent).toBe(
+      "Create local vault",
+    );
 
     // Create without a name: validation Notice, no IPC.
     pane!.querySelector<HTMLButtonElement>(".button-container button")!.click();
     expect(lastNoticeText()).toBe("Vault name cannot be empty.");
     expect(ipc.sendSync).not.toHaveBeenCalledWith("vault-open", expect.anything(), true);
 
-    const browse = [...pane!.querySelectorAll<HTMLButtonElement>("button")]
-      .find((el) => el.textContent === "Browse");
+    const browse = [...pane!.querySelectorAll<HTMLButtonElement>("button")].find(
+      (el) => el.textContent === "Browse",
+    );
     browse!.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(pane!.querySelector(".u-pop")?.textContent).toBe("/picked");
@@ -129,7 +144,9 @@ describe("StarterScreen", () => {
     // real one — a Map-backed Storage stub covers the purge contract.
     const backing = new Map<string, string>();
     const storageStub = {
-      get length() { return backing.size; },
+      get length() {
+        return backing.size;
+      },
       key: (index: number) => [...backing.keys()][index] ?? null,
       getItem: (key: string) => backing.get(key) ?? null,
       setItem: (key: string, value: string) => void backing.set(key, value),
@@ -139,16 +156,20 @@ describe("StarterScreen", () => {
     Object.defineProperty(window, "localStorage", { configurable: true, value: storageStub });
     storageStub.setItem("gone-history", "x");
     storageStub.setItem("kept-history", "y");
-    const item = [...parent.querySelectorAll<HTMLElement>(".recent-vaults-list-item")]
-      .find((el) => el.querySelector(".recent-vaults-list-item-name")?.textContent === "gone");
+    const item = [...parent.querySelectorAll<HTMLElement>(".recent-vaults-list-item")].find(
+      (el) => el.querySelector(".recent-vaults-list-item-name")?.textContent === "gone",
+    );
     item!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }));
-    const remove = [...document.body.querySelectorAll<HTMLElement>(".menu-item")]
-      .find((el) => el.querySelector(".menu-item-title")?.textContent === "Remove from list");
+    const remove = [...document.body.querySelectorAll<HTMLElement>(".menu-item")].find(
+      (el) => el.querySelector(".menu-item-title")?.textContent === "Remove from list",
+    );
     remove!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(ipc.sendSync).toHaveBeenCalledWith("vault-remove", "/vaults/gone");
     expect(storageStub.getItem("gone-history")).toBeNull();
     expect(storageStub.getItem("kept-history")).toBe("y");
-    const names = [...parent.querySelectorAll(".recent-vaults-list-item-name")].map((el) => el.textContent);
+    const names = [...parent.querySelectorAll(".recent-vaults-list-item-name")].map(
+      (el) => el.textContent,
+    );
     expect(names).toEqual(["kept"]);
   });
 });

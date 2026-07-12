@@ -7,8 +7,10 @@ export class MobileWorkspace {
   readonly drawer: MobileDrawer | null;
 
   constructor(readonly app: App) {
-    this.leftDrawer = app.workspace.leftSplit instanceof MobileDrawer ? app.workspace.leftSplit : null;
-    this.rightDrawer = app.workspace.rightSplit instanceof MobileDrawer ? app.workspace.rightSplit : null;
+    this.leftDrawer =
+      app.workspace.leftSplit instanceof MobileDrawer ? app.workspace.leftSplit : null;
+    this.rightDrawer =
+      app.workspace.rightSplit instanceof MobileDrawer ? app.workspace.rightSplit : null;
     this.drawer = this.leftDrawer;
   }
 

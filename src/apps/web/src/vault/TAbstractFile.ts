@@ -55,7 +55,9 @@ export class TFile extends TAbstractFile {
 
   get extension(): string {
     const index = this.name.lastIndexOf(".");
-    return index <= 0 || index === this.name.length - 1 ? "" : this.name.slice(index + 1).toLowerCase();
+    return index <= 0 || index === this.name.length - 1
+      ? ""
+      : this.name.slice(index + 1).toLowerCase();
   }
 
   get basename(): string {
@@ -115,11 +117,17 @@ export class TFolder extends TAbstractFile {
   }
 
   getFileCount(): number {
-    return this.children.reduce((count, child) => count + (child instanceof TFolder ? child.getFileCount() : 1), 0);
+    return this.children.reduce(
+      (count, child) => count + (child instanceof TFolder ? child.getFileCount() : 1),
+      0,
+    );
   }
 
   getFolderCount(): number {
-    return this.children.reduce((count, child) => count + (child instanceof TFolder ? 1 + child.getFolderCount() : 0), 0);
+    return this.children.reduce(
+      (count, child) => count + (child instanceof TFolder ? 1 + child.getFolderCount() : 0),
+      0,
+    );
   }
 }
 

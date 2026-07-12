@@ -21,10 +21,15 @@ export class SettingsModal extends Modal {
   onOpen(): void {
     this.contentEl.replaceChildren();
     this.updateModalTitle();
-    this.renderer = new SettingsRenderer(this.app, this.contentEl, (tab) => {
-      this.updateModalTitle(tab);
-      this.onTabOpen?.(tab);
-    }, () => this.updateModalTitle());
+    this.renderer = new SettingsRenderer(
+      this.app,
+      this.contentEl,
+      (tab) => {
+        this.updateModalTitle(tab);
+        this.onTabOpen?.(tab);
+      },
+      () => this.updateModalTitle(),
+    );
     this.renderer.render(this.preferredTabId);
   }
 

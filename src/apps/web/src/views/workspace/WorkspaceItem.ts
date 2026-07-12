@@ -27,7 +27,11 @@ export class WorkspaceItem extends Events {
   dimension: number | null = null;
   component: unknown = null;
 
-  constructor(workspace: Workspace, id: string = crypto.randomUUID(), ownerDocument: Document = getActiveDocument()) {
+  constructor(
+    workspace: Workspace,
+    id: string = crypto.randomUUID(),
+    ownerDocument: Document = getActiveDocument(),
+  ) {
     super();
     this.workspace = workspace;
     this.app = workspace.app;
@@ -61,7 +65,7 @@ export class WorkspaceItem extends Events {
       if (root.isWorkspaceContainer) return root as WorkspaceContainer;
       item = root;
     }
-    return item.isWorkspaceContainer ? item as WorkspaceContainer : this.workspace.rootSplit;
+    return item.isWorkspaceContainer ? (item as WorkspaceContainer) : this.workspace.rootSplit;
   }
 
   setParent(parent: WorkspaceParent | null): void {
@@ -117,5 +121,7 @@ type WorkspaceItemElement = HTMLElement & {
 function isResizableParent(parent: WorkspaceParent | null): parent is WorkspaceParent & {
   onChildResizeStart(child: WorkspaceItem, event: MouseEvent): void;
 } {
-  return typeof (parent as { onChildResizeStart?: unknown } | null)?.onChildResizeStart === "function";
+  return (
+    typeof (parent as { onChildResizeStart?: unknown } | null)?.onChildResizeStart === "function"
+  );
 }

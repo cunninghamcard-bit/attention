@@ -67,13 +67,19 @@ describe("handleObsidianUrl (real $e end to end)", () => {
   it("delivers to the vault containing the path, with a relative file", () => {
     const notePath = join(dir, "Notes", "sub", "n.md");
     dispatch(`workbench://open?path=${encodeURIComponent(notePath)}`);
-    expect(deliverAction).toHaveBeenCalledWith(vaultId, expect.objectContaining({ file: "/sub/n.md" }));
+    expect(deliverAction).toHaveBeenCalledWith(
+      vaultId,
+      expect.objectContaining({ file: "/sub/n.md" }),
+    );
   });
 
   it("uses the most-recent vault when none is specified", () => {
     mostRecent = vaultId;
     dispatch("workbench://search?query=x");
-    expect(deliverAction).toHaveBeenCalledWith(vaultId, expect.objectContaining({ action: "search" }));
+    expect(deliverAction).toHaveBeenCalledWith(
+      vaultId,
+      expect.objectContaining({ action: "search" }),
+    );
   });
 
   it("opens persisted vaults then retries most-recent when none is open", () => {
@@ -106,7 +112,9 @@ describe("handleObsidianUrl (real $e end to end)", () => {
 
 describe("obsidianUrlFromArgv", () => {
   it("returns a trailing workbench:// argument", () => {
-    expect(obsidianUrlFromArgv(["electron", ".", "workbench://open?x=1"])).toBe("workbench://open?x=1");
+    expect(obsidianUrlFromArgv(["electron", ".", "workbench://open?x=1"])).toBe(
+      "workbench://open?x=1",
+    );
   });
   it("returns null when absent", () => {
     expect(obsidianUrlFromArgv(["electron", "."])).toBeNull();

@@ -1,6 +1,9 @@
 import type { App } from "../../app/App";
 import { BrowserSessionBridge, type WebViewerClearDataKind } from "./BrowserSessionBridge";
-import { WebViewerAddressSuggest, type WebViewerAddressSuggestion } from "./WebViewerAddressSuggest";
+import {
+  WebViewerAddressSuggest,
+  type WebViewerAddressSuggestion,
+} from "./WebViewerAddressSuggest";
 import { WebViewerReader, type WebViewerReaderResult } from "./WebViewerReader";
 
 export interface WebViewerSession {
@@ -75,7 +78,10 @@ export class WebViewerService {
     this.activeSessionId = session.id;
   }
 
-  createBrowserSession(options: Partial<Pick<WebViewerSession, "name" | "partition" | "adblockLists">> = {}, announce = true): WebViewerSession {
+  createBrowserSession(
+    options: Partial<Pick<WebViewerSession, "name" | "partition" | "adblockLists">> = {},
+    announce = true,
+  ): WebViewerSession {
     const id = crypto.randomUUID?.() ?? `session-${Date.now()}`;
     const session: WebViewerSession = {
       id,
@@ -92,7 +98,9 @@ export class WebViewerService {
   }
 
   getActiveSession(): WebViewerSession {
-    const session = this.sessions.get(this.activeSessionId) ?? this.createBrowserSession({ name: "Default" }, false);
+    const session =
+      this.sessions.get(this.activeSessionId) ??
+      this.createBrowserSession({ name: "Default" }, false);
     return { ...session, adblockLists: [...session.adblockLists] };
   }
 
@@ -103,7 +111,10 @@ export class WebViewerService {
   }
 
   listSessions(): readonly WebViewerSession[] {
-    return [...this.sessions.values()].map((session) => ({ ...session, adblockLists: [...session.adblockLists] }));
+    return [...this.sessions.values()].map((session) => ({
+      ...session,
+      adblockLists: [...session.adblockLists],
+    }));
   }
 
   setAdblockLists(sessionId: string, lists: string[]): void {
@@ -111,7 +122,10 @@ export class WebViewerService {
     if (!session) return;
     session.adblockLists = [...new Set(lists.map((item) => item.trim()).filter(Boolean))];
     this.bridge.setAdblockLists(session.partition, session.adblockLists);
-    this.app.workspace.trigger("webviewer-adblock-lists-change", { ...session, adblockLists: [...session.adblockLists] });
+    this.app.workspace.trigger("webviewer-adblock-lists-change", {
+      ...session,
+      adblockLists: [...session.adblockLists],
+    });
   }
 
   clearCookies(sessionId = this.activeSessionId): void {
@@ -143,7 +157,10 @@ export class WebViewerService {
     if (!trimmed) return "about:blank";
     if (/^(https?|file|about):/i.test(trimmed)) return trimmed;
     if (/^[\w.-]+\.[a-z]{2,}(?:\/.*)?$/i.test(trimmed)) return `https://${trimmed}`;
-    const engine = this.options.searchEngine === "google" ? "https://www.google.com/search?q=" : "https://duckduckgo.com/?q=";
+    const engine =
+      this.options.searchEngine === "google"
+        ? "https://www.google.com/search?q="
+        : "https://duckduckgo.com/?q=";
     return `${engine}${encodeURIComponent(trimmed)}`;
   }
 
@@ -201,9 +218,16 @@ export class WebViewerService {
   }
 
   async saveToVault(url: string, title = url, body = ""): Promise<WebViewerSavedPage> {
-    const safeTitle = title.replace(/[\\/:*?"<>|]/g, "-").replace(/\s+/g, " ").trim() || "Web page";
+    const safeTitle =
+      title
+        .replace(/[\\/:*?"<>|]/g, "-")
+        .replace(/\s+/g, " ")
+        .trim() || "Web page";
     const prefix = this.options.markdownPath.replace(/\/+$/, "");
-    const path = this.app.vault.getAvailablePath(prefix ? `${prefix}/${safeTitle}` : safeTitle, "md");
+    const path = this.app.vault.getAvailablePath(
+      prefix ? `${prefix}/${safeTitle}` : safeTitle,
+      "md",
+    );
     const reader = this.extractReader(url, title, body);
     const content = [
       "---",
@@ -221,20 +245,40 @@ export class WebViewerService {
     return saved;
   }
 
-  async saveImageToVault(url: string, filename = imageNameFromUrl(url)): Promise<WebViewerSavedAsset> {
+  async saveImageToVault(
+    url: string,
+    filename = imageNameFromUrl(url),
+  ): Promise<WebViewerSavedAsset> {
     const extension = extensionFromFilename(filename) || "png";
     try {
       const response = await fetch(url);
       const buffer = await response.arrayBuffer();
-      const path = await this.app.vault.getAvailablePathForAttachments(filename, extension, this.app.workspace.getActiveFile());
+      const path = await this.app.vault.getAvailablePathForAttachments(
+        filename,
+        extension,
+        this.app.workspace.getActiveFile(),
+      );
       const file = await this.app.vault.createBinary(path, buffer);
-      const saved = { url, savedPath: file.path, savedAt: new Date().toISOString(), kind: "image" as const };
+      const saved = {
+        url,
+        savedPath: file.path,
+        savedAt: new Date().toISOString(),
+        kind: "image" as const,
+      };
       this.app.workspace.trigger("webviewer-save-image-to-vault", saved);
       return saved;
     } catch {
-      const fallbackPath = this.app.vault.getAvailablePath(`Web viewer/${filename.replace(/\.[^.]+$/, "")}`, "md");
+      const fallbackPath = this.app.vault.getAvailablePath(
+        `Web viewer/${filename.replace(/\.[^.]+$/, "")}`,
+        "md",
+      );
       const file = await this.app.vault.create(fallbackPath, `![Saved image](${url})\n`);
-      const saved = { url, savedPath: file.path, savedAt: new Date().toISOString(), kind: "note" as const };
+      const saved = {
+        url,
+        savedPath: file.path,
+        savedAt: new Date().toISOString(),
+        kind: "note" as const,
+      };
       this.app.workspace.trigger("webviewer-save-image-to-vault", saved);
       return saved;
     }
@@ -264,5 +308,5 @@ function imageNameFromUrl(url: string): string {
 }
 
 function extensionFromFilename(filename: string): string {
-  return filename.includes(".") ? filename.split(".").pop()?.replace(/^\./, "") ?? "" : "";
+  return filename.includes(".") ? (filename.split(".").pop()?.replace(/^\./, "") ?? "") : "";
 }

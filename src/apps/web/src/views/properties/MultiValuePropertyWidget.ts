@@ -3,7 +3,10 @@ import { focusLastPill, renderEditablePropertyPill } from "./EditablePropertyPil
 import { renderPropertyLinkValue } from "./PropertyLinkRenderer";
 import type { PropertyWidgetContext, PropertyValue } from "./PropertyTypes";
 
-export function renderMultiValuePropertyWidget(parent: HTMLElement, context: PropertyWidgetContext): void {
+export function renderMultiValuePropertyWidget(
+  parent: HTMLElement,
+  context: PropertyWidgetContext,
+): void {
   const containerEl = document.createElement("div");
   containerEl.className = "multi-select-container";
   const inputEl = document.createElement("input");
@@ -47,7 +50,12 @@ export function renderMultiValuePropertyWidget(parent: HTMLElement, context: Pro
       focusLastPill(containerEl);
       return;
     }
-    if (event.key === "ArrowLeft" && inputEl.value === "" && inputEl.selectionStart === 0 && values.length > 0) {
+    if (
+      event.key === "ArrowLeft" &&
+      inputEl.value === "" &&
+      inputEl.selectionStart === 0 &&
+      values.length > 0
+    ) {
       event.preventDefault();
       focusLastPill(containerEl);
     }
@@ -58,7 +66,11 @@ export function renderMultiValuePropertyWidget(parent: HTMLElement, context: Pro
   parent.appendChild(containerEl);
 }
 
-function commitInput(inputEl: HTMLInputElement, values: string[], commitValues: (values: string[]) => void): void {
+function commitInput(
+  inputEl: HTMLInputElement,
+  values: string[],
+  commitValues: (values: string[]) => void,
+): void {
   const incoming = splitInput(inputEl.value);
   if (incoming.length === 0) return;
   inputEl.value = "";
@@ -66,7 +78,11 @@ function commitInput(inputEl: HTMLInputElement, values: string[], commitValues: 
 }
 
 function normalizeValues(value: PropertyValue): string[] {
-  if (Array.isArray(value)) return value.map(String).map((item) => item.trim()).filter(Boolean);
+  if (Array.isArray(value))
+    return value
+      .map(String)
+      .map((item) => item.trim())
+      .filter(Boolean);
   if (typeof value === "string") return splitInput(value);
   return [];
 }

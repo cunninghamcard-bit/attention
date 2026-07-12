@@ -33,7 +33,13 @@ export class LinkGraph {
       for (const link of cache.links ?? []) {
         const dest = this.app.metadataCache.getFirstLinkpathDest(link.link, sourcePath);
         if ((dest?.path ?? link.link) === path) {
-          edges.push({ from: sourcePath, to: path, original: link.original, resolved: Boolean(dest), position: link.source });
+          edges.push({
+            from: sourcePath,
+            to: path,
+            original: link.original,
+            resolved: Boolean(dest),
+            position: link.source,
+          });
         }
       }
     }

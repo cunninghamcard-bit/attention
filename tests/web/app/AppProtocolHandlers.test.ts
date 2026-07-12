@@ -21,10 +21,17 @@ describe("App protocol handlers", () => {
     const app = new App(document.createElement("div"));
     await app.vault.create("Target.md", "# Heading#Child");
 
-    await app.uriRouter.handleUri("workbench://open?file=Target%23Heading%23Child%7CAlias&paneType=tab");
+    await app.uriRouter.handleUri(
+      "workbench://open?file=Target%23Heading%23Child%7CAlias&paneType=tab",
+    );
 
-    expect((app.workspace.activeLeaf?.view as { file?: { path: string } | null } | null)?.file?.path).toBe("Target.md");
-    expect(app.workspace.activeLeaf?.view?.getEphemeralState()).toEqual({ subpath: "Heading#Child", line: 0 });
+    expect(
+      (app.workspace.activeLeaf?.view as { file?: { path: string } | null } | null)?.file?.path,
+    ).toBe("Target.md");
+    expect(app.workspace.activeLeaf?.view?.getEphemeralState()).toEqual({
+      subpath: "Heading#Child",
+      line: 0,
+    });
     expect(document.body.textContent).toContain("Opened Target.md");
   });
 
@@ -35,24 +42,34 @@ describe("App protocol handlers", () => {
     await app.uriRouter.handleUri("workbench://search?query=needle");
 
     expect(app.workspace.activeLeaf?.view?.getViewType()).toBe("search");
-    expect((app.workspace.activeLeaf?.view as { getQuery?: () => string } | null)?.getQuery?.()).toBe("needle");
+    expect(
+      (app.workspace.activeLeaf?.view as { getQuery?: () => string } | null)?.getQuery?.(),
+    ).toBe("needle");
   });
 
   it("creates, appends, overwrites, and silently updates files from workbench://new", async () => {
     const app = new App(document.createElement("div"));
 
-    await app.uriRouter.handleUri(`workbench://new?${new URLSearchParams({ name: "Protocol", content: "Hello", paneType: "tab" })}`);
+    await app.uriRouter.handleUri(
+      `workbench://new?${new URLSearchParams({ name: "Protocol", content: "Hello", paneType: "tab" })}`,
+    );
 
     const created = app.vault.getFileByPath("Protocol.md");
     expect(created).not.toBeNull();
     expect(created ? await app.vault.read(created) : "").toBe("Hello");
-    expect((app.workspace.activeLeaf?.view as { file?: { path: string } | null } | null)?.file?.path).toBe("Protocol.md");
+    expect(
+      (app.workspace.activeLeaf?.view as { file?: { path: string } | null } | null)?.file?.path,
+    ).toBe("Protocol.md");
 
-    await app.uriRouter.handleUri(`workbench://new?${new URLSearchParams({ name: "Protocol", append: "true", content: "World", silent: "true" })}`);
+    await app.uriRouter.handleUri(
+      `workbench://new?${new URLSearchParams({ name: "Protocol", append: "true", content: "World", silent: "true" })}`,
+    );
 
     expect(created ? await app.vault.read(created) : "").toBe("Hello\n\nWorld");
 
-    await app.uriRouter.handleUri(`workbench://new?${new URLSearchParams({ file: "Protocol.md", overwrite: "true", content: "Replaced", silent: "true" })}`);
+    await app.uriRouter.handleUri(
+      `workbench://new?${new URLSearchParams({ file: "Protocol.md", overwrite: "true", content: "Replaced", silent: "true" })}`,
+    );
 
     expect(created ? await app.vault.read(created) : "").toBe("Replaced");
   });
@@ -76,12 +93,14 @@ describe("App protocol handlers", () => {
     Object.defineProperty(window, "open", { configurable: true, value: open });
     app.vault.setConfig("uriCallbacks", true);
 
-    await app.uriRouter.handleUri(`workbench://new?${new URLSearchParams({
-      name: "Callback",
-      content: "Done",
-      silent: "true",
-      "x-success": "callback://created?token=1",
-    })}`);
+    await app.uriRouter.handleUri(
+      `workbench://new?${new URLSearchParams({
+        name: "Callback",
+        content: "Done",
+        silent: "true",
+        "x-success": "callback://created?token=1",
+      })}`,
+    );
 
     expect(open).toHaveBeenCalledOnce();
     const url = new URL(String(open.mock.calls[0]?.[0]));
@@ -103,10 +122,14 @@ describe("App protocol handlers", () => {
     await app.workspace.openFile(file, { active: true });
     await app.uriRouter.handleUri("workbench://hook-get-address");
 
-    expect(writeText).toHaveBeenCalledWith("[Address](workbench://open?vault=In-memory&file=Address)");
+    expect(writeText).toHaveBeenCalledWith(
+      "[Address](workbench://open?vault=In-memory&file=Address)",
+    );
 
     await app.workspace.activeLeaf?.setViewState({ type: "empty", active: true });
-    await app.uriRouter.handleUri(`workbench://hook-get-address?${new URLSearchParams({ "x-error": "callback://error" })}`);
+    await app.uriRouter.handleUri(
+      `workbench://hook-get-address?${new URLSearchParams({ "x-error": "callback://error" })}`,
+    );
 
     expect(open).toHaveBeenCalledOnce();
     const errorUrl = new URL(String(open.mock.calls[0]?.[0]));
@@ -125,7 +148,9 @@ describe("App protocol handlers", () => {
     await app.workspace.openFile(file, { active: true });
     await app.uriRouter.handleUri("workbench://hook-get-address");
     await app.workspace.activeLeaf?.setViewState({ type: "empty", active: true });
-    await app.uriRouter.handleUri(`workbench://hook-get-address?${new URLSearchParams({ "x-error": "callback://error" })}`);
+    await app.uriRouter.handleUri(
+      `workbench://hook-get-address?${new URLSearchParams({ "x-error": "callback://error" })}`,
+    );
 
     expect(writeText).not.toHaveBeenCalled();
     expect(open).not.toHaveBeenCalled();

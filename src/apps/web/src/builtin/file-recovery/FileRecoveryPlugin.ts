@@ -35,7 +35,9 @@ export class FileRecoveryController {
     plugin.addSettingTab(new FileRecoverySettingTab(this.app, this));
     plugin.registerEvent(this.app.vault.on("modify", (file) => void this.onFileChanged(file)));
     plugin.registerEvent(this.app.vault.on("create", (file) => void this.onFileChanged(file)));
-    plugin.registerEvent(this.app.workspace.on("file-open", (file) => void this.onFileChanged(file)));
+    plugin.registerEvent(
+      this.app.workspace.on("file-open", (file) => void this.onFileChanged(file)),
+    );
     this.cleanupTimer = window.setInterval(() => this.cleanup(), 60 * 60 * 1000);
     plugin.register(() => {
       if (this.cleanupTimer !== undefined) window.clearInterval(this.cleanupTimer);
@@ -104,7 +106,11 @@ class FileRecoveryModal extends ConfirmationModal {
   private readonly sidebarEl = document.createElement("div");
   private readonly previewEl = document.createElement("textarea");
 
-  constructor(app: App, readonly controller: FileRecoveryController, initialPath?: string) {
+  constructor(
+    app: App,
+    readonly controller: FileRecoveryController,
+    initialPath?: string,
+  ) {
     super(app);
     this.selectedPath = initialPath ?? controller.listPaths()[0] ?? "";
     this.setTitle("File recovery");
@@ -180,7 +186,8 @@ class FileRecoveryModal extends ConfirmationModal {
         this.sidebarEl.appendChild(revisionEl);
       }
     }
-    if (!this.selectedRevision && this.selectedPath) this.selectedRevision = this.controller.listRevisions(this.selectedPath)[0] ?? null;
+    if (!this.selectedRevision && this.selectedPath)
+      this.selectedRevision = this.controller.listRevisions(this.selectedPath)[0] ?? null;
   }
 
   private renderPreview(): void {
@@ -202,7 +209,10 @@ class FileRecoverySettingTab implements SettingTab {
   readonly navEl = document.createElement("div");
   readonly containerEl = document.createElement("div");
 
-  constructor(readonly app: App, readonly controller: FileRecoveryController) {
+  constructor(
+    readonly app: App,
+    readonly controller: FileRecoveryController,
+  ) {
     this.navEl.className = "vertical-tab-nav-item tappable";
     const iconEl = document.createElement("div");
     iconEl.className = "vertical-tab-nav-item-icon";
@@ -222,19 +232,25 @@ class FileRecoverySettingTab implements SettingTab {
     new Setting(group.itemsEl)
       .setName("Snapshot interval")
       .setDesc("How often to save a recovery snapshot, in minutes.")
-      .addText((text) => text.setValue(String(this.controller.options.intervalMinutes)).onChange((value) => {
-        void this.controller.saveOptions({ intervalMinutes: Number(value) });
-      }));
+      .addText((text) =>
+        text.setValue(String(this.controller.options.intervalMinutes)).onChange((value) => {
+          void this.controller.saveOptions({ intervalMinutes: Number(value) });
+        }),
+      );
     new Setting(group.itemsEl)
       .setName("Keep snapshots")
       .setDesc("Delete recovery snapshots older than this many days.")
-      .addText((text) => text.setValue(String(this.controller.options.keepDays)).onChange((value) => {
-        void this.controller.saveOptions({ keepDays: Number(value) });
-      }));
+      .addText((text) =>
+        text.setValue(String(this.controller.options.keepDays)).onChange((value) => {
+          void this.controller.saveOptions({ keepDays: Number(value) });
+        }),
+      );
     new Setting(group.itemsEl)
       .setName("Open recovery")
       .setDesc("Browse and restore available snapshots.")
-      .addButton((button) => button.setButtonText("Open").onClick(() => this.controller.openModal()));
+      .addButton((button) =>
+        button.setButtonText("Open").onClick(() => this.controller.openModal()),
+      );
   }
 
   hide(): void {
@@ -269,7 +285,10 @@ function normalizeOptions(raw: Partial<FileRecoveryOptions> | null): FileRecover
   const intervalMinutes = Number(raw?.intervalMinutes ?? DEFAULT_OPTIONS.intervalMinutes);
   const keepDays = Number(raw?.keepDays ?? DEFAULT_OPTIONS.keepDays);
   return {
-    intervalMinutes: Number.isFinite(intervalMinutes) && intervalMinutes > 0 ? intervalMinutes : DEFAULT_OPTIONS.intervalMinutes,
+    intervalMinutes:
+      Number.isFinite(intervalMinutes) && intervalMinutes > 0
+        ? intervalMinutes
+        : DEFAULT_OPTIONS.intervalMinutes,
     keepDays: Number.isFinite(keepDays) && keepDays > 0 ? keepDays : DEFAULT_OPTIONS.keepDays,
   };
 }

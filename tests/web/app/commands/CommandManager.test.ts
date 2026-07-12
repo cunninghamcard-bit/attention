@@ -93,7 +93,12 @@ describe("CommandManager plugin command behavior", () => {
     const commands = new CommandManager();
     commands.addCommand({ id: "plain", name: "Plain", callback: () => {} });
     commands.addCommand({ id: "editor", name: "Editor", editorCallback: () => {} });
-    commands.addCommand({ id: "toolbar", name: "Toolbar", showOnMobileToolbar: true, callback: () => {} });
+    commands.addCommand({
+      id: "toolbar",
+      name: "Toolbar",
+      showOnMobileToolbar: true,
+      callback: () => {},
+    });
 
     expect(commands.commands.plain?.name).toBe("Plain");
     expect(commands.commands.editor).toBe(commands.findCommand("editor"));
@@ -128,9 +133,10 @@ describe("CommandManager plugin command behavior", () => {
     commands.addCommand({
       id: "async",
       name: "Async",
-      callback: () => Promise.resolve().then(() => {
-        log.push("settled");
-      }),
+      callback: () =>
+        Promise.resolve().then(() => {
+          log.push("settled");
+        }),
     });
     commands.addCommand({ id: "empty", name: "Empty" });
 
@@ -150,7 +156,12 @@ describe("CommandManager plugin command behavior", () => {
     const previewView = { getMode: () => "preview" } as unknown as View;
     commands.setEditorContextProvider(() => ({ editor, view: previewView }));
     commands.addCommand({ id: "editor", name: "Editor", editorCallback: callback });
-    commands.addCommand({ id: "preview", name: "Preview", allowPreview: true, editorCallback: callback });
+    commands.addCommand({
+      id: "preview",
+      name: "Preview",
+      allowPreview: true,
+      editorCallback: callback,
+    });
 
     expect(commands.listCommands().map((command) => command.id)).toEqual(["preview"]);
     expect(await commands.executeCommandById("editor")).toBe(true);
@@ -175,7 +186,12 @@ describe("CommandManager plugin command behavior", () => {
     metadataInput.focus();
     const metadataView = markdownViewStub({ getMode: () => "source" });
     commands.setEditorContextProvider(() => ({ editor, view: metadataView }));
-    commands.addCommand({ id: "properties", name: "Properties", allowProperties: true, editorCallback: callback });
+    commands.addCommand({
+      id: "properties",
+      name: "Properties",
+      allowProperties: true,
+      editorCallback: callback,
+    });
 
     expect(commands.listCommands().map((command) => command.id)).toEqual(["properties"]);
 
@@ -212,7 +228,12 @@ describe("CommandManager plugin command behavior", () => {
     document.body.appendChild(metadataContainerEl);
     input.focus();
     commands.addCommand({ id: "editor", name: "Editor", editorCallback: () => {} });
-    commands.addCommand({ id: "properties", name: "Properties", allowProperties: true, editorCallback: () => {} });
+    commands.addCommand({
+      id: "properties",
+      name: "Properties",
+      allowProperties: true,
+      editorCallback: () => {},
+    });
     commands.setEditorContextProvider(() => ({
       editor,
       view: markdownViewStub({ getMode: () => "source" }),
@@ -224,7 +245,9 @@ describe("CommandManager plugin command behavior", () => {
   });
 
   it("uses the markdown view document when blocking metadata-focused editor commands", () => {
-    const popout = new JSDOM("<!doctype html><html><body></body></html>", { pretendToBeVisual: true });
+    const popout = new JSDOM("<!doctype html><html><body></body></html>", {
+      pretendToBeVisual: true,
+    });
     try {
       const editor = new SimpleEditor();
       const commands = new CommandManager();
@@ -236,7 +259,12 @@ describe("CommandManager plugin command behavior", () => {
       popout.window.document.body.append(titleEl, metadataContainerEl);
       input.focus();
       commands.addCommand({ id: "editor", name: "Editor", editorCallback: () => {} });
-      commands.addCommand({ id: "properties", name: "Properties", allowProperties: true, editorCallback: () => {} });
+      commands.addCommand({
+        id: "properties",
+        name: "Properties",
+        allowProperties: true,
+        editorCallback: () => {},
+      });
       commands.setEditorContextProvider(() => ({
         editor,
         view: markdownViewStub({ getMode: () => "source", titleEl }),
@@ -256,8 +284,12 @@ describe("CommandManager plugin command behavior", () => {
       { id: "mod", name: "Mod", hotkeys: [{ modifiers: ["Mod", "Shift"], key: "P" }] },
     ];
 
-    expect(manager.findMatchingCommand(keyboardEvent("k", { ctrlKey: true }), commands)?.id).toBe("ctrl");
-    expect(manager.findMatchingCommand(keyboardEvent("k", { metaKey: true }), commands)?.id).toBe("meta");
+    expect(manager.findMatchingCommand(keyboardEvent("k", { ctrlKey: true }), commands)?.id).toBe(
+      "ctrl",
+    );
+    expect(manager.findMatchingCommand(keyboardEvent("k", { metaKey: true }), commands)?.id).toBe(
+      "meta",
+    );
     const modEvent = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent)
       ? keyboardEvent("p", { metaKey: true, shiftKey: true })
       : keyboardEvent("p", { ctrlKey: true, shiftKey: true });
@@ -307,7 +339,9 @@ describe("CommandManager plugin command behavior", () => {
     const customKeys = manager.customKeys;
     customKeys.open = [];
 
-    expect(manager.getCustomHotkeys("open")).toEqual([{ modifiers: ["Mod", "Shift"], code: "KeyP" }]);
+    expect(manager.getCustomHotkeys("open")).toEqual([
+      { modifiers: ["Mod", "Shift"], code: "KeyP" },
+    ]);
 
     manager.clearHotkeys("open");
 
@@ -325,7 +359,7 @@ describe("CommandManager plugin command behavior", () => {
       commands: {
         listCommands: () => [command],
         getCommands: () => [command],
-        findCommand: (id: string) => id === command.id ? command : null,
+        findCommand: (id: string) => (id === command.id ? command : null),
         executeCommand,
       },
     } as never);
@@ -473,8 +507,17 @@ describe("CommandManager plugin command behavior", () => {
 
   it("matches hotkey code entries and ignores key repeat unless the command is repeatable", () => {
     const scope = new Scope();
-    const normal = { id: "normal", name: "Normal", hotkeys: [{ modifiers: ["Mod"], code: "KeyJ" }] };
-    const repeatable = { id: "repeatable", name: "Repeatable", repeatable: true, hotkeys: [{ modifiers: ["Mod"], key: "K" }] };
+    const normal = {
+      id: "normal",
+      name: "Normal",
+      hotkeys: [{ modifiers: ["Mod"], code: "KeyJ" }],
+    };
+    const repeatable = {
+      id: "repeatable",
+      name: "Repeatable",
+      repeatable: true,
+      hotkeys: [{ modifiers: ["Mod"], key: "K" }],
+    };
     const executeCommand = vi.fn((_command: unknown, _event?: Event) => true);
     const manager = new HotkeyManager({
       scope,
@@ -482,7 +525,8 @@ describe("CommandManager plugin command behavior", () => {
       commands: {
         listCommands: () => [normal, repeatable],
         getCommands: () => [normal, repeatable],
-        findCommand: (id: string) => [normal, repeatable].find((command) => command.id === id) ?? null,
+        findCommand: (id: string) =>
+          [normal, repeatable].find((command) => command.id === id) ?? null,
         executeCommand,
       },
     } as never);

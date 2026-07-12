@@ -28,7 +28,11 @@ describe("FileView menu parity", () => {
     const file = await app.vault.create("Menu.md", "menu");
     app.viewRegistry.registerView("basic-file-view-menu-test", (leaf) => new BasicFileView(leaf));
     const leaf = app.workspace.getLeaf();
-    await leaf.setViewState({ type: "basic-file-view-menu-test", state: { file: file.path }, active: true });
+    await leaf.setViewState({
+      type: "basic-file-view-menu-test",
+      state: { file: file.path },
+      active: true,
+    });
     const calls: Array<{ file: TAbstractFile; source: string; leaf?: WorkspaceLeaf }> = [];
     app.workspace.on("file-menu", (_menu, menuFile, source, menuLeaf) => {
       calls.push({ file: menuFile, source, leaf: menuLeaf });
@@ -45,7 +49,11 @@ describe("FileView menu parity", () => {
     app.viewRegistry.registerView("basic-file-view-menu-test", (leaf) => new BasicFileView(leaf));
     const leaf = app.workspace.getLeaf();
 
-    await leaf.setViewState({ type: "basic-file-view-menu-test", state: { file: file.path }, active: true });
+    await leaf.setViewState({
+      type: "basic-file-view-menu-test",
+      state: { file: file.path },
+      active: true,
+    });
     const view = leaf.view as BasicFileView;
     view.contentEl.createDiv("stale-content");
 
@@ -64,7 +72,11 @@ describe("FileView menu parity", () => {
     const sibling = app.workspace.createNewTab();
     if (!sibling) throw new Error("Expected sibling tab");
 
-    await leaf.setViewState({ type: "basic-file-view-menu-test", state: { file: file.path }, active: true });
+    await leaf.setViewState({
+      type: "basic-file-view-menu-test",
+      state: { file: file.path },
+      active: true,
+    });
     await app.vault.delete(file, false);
 
     await vi.waitFor(() => expect(app.workspace.getLeafById(leaf.id)).toBeNull());
@@ -77,7 +89,11 @@ describe("FileView menu parity", () => {
     app.viewRegistry.registerView("basic-file-view-menu-test", (leaf) => new BasicFileView(leaf));
     const leaf = app.workspace.getLeaf();
 
-    await leaf.setViewState({ type: "basic-file-view-menu-test", state: { file: file.path }, active: true });
+    await leaf.setViewState({
+      type: "basic-file-view-menu-test",
+      state: { file: file.path },
+      active: true,
+    });
     const view = leaf.view as BasicFileView;
     view.allowNoFile = true;
     await app.vault.delete(file, false);
@@ -93,7 +109,11 @@ describe("FileView menu parity", () => {
     const leaf = app.workspace.getLeaf();
     const layoutChange = vi.spyOn(app.workspace, "onLayoutChange");
 
-    await leaf.setViewState({ type: "basic-file-view-menu-test", state: { file: file.path }, active: true });
+    await leaf.setViewState({
+      type: "basic-file-view-menu-test",
+      state: { file: file.path },
+      active: true,
+    });
     layoutChange.mockClear();
     await app.vault.rename(file, "Renamed.md");
 
@@ -108,7 +128,11 @@ describe("FileView menu parity", () => {
     const leaf = app.workspace.getLeaf();
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    await leaf.setViewState({ type: "basic-file-view-menu-test", state: { file: loadedFile.path }, active: true });
+    await leaf.setViewState({
+      type: "basic-file-view-menu-test",
+      state: { file: loadedFile.path },
+      active: true,
+    });
     const view = leaf.view as BasicFileView;
     view.failOnLoad = true;
 
@@ -124,7 +148,11 @@ describe("FileView menu parity", () => {
     app.viewRegistry.registerView("basic-file-view-menu-test", (leaf) => new BasicFileView(leaf));
     const leaf = app.workspace.getLeaf();
 
-    await leaf.setViewState({ type: "basic-file-view-menu-test", state: { file: file.path }, active: true });
+    await leaf.setViewState({
+      type: "basic-file-view-menu-test",
+      state: { file: file.path },
+      active: true,
+    });
     const view = leaf.view as BasicFileView;
     const replacement = new TFile(app.vault, file.path, file.stat, file.parent);
 

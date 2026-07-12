@@ -10,7 +10,12 @@ export interface HoverLinkSourceConfig {
 }
 
 export class HoverLinkSourceRegistry {
-  [id: string]: HoverLinkSourceConfig | ((idOrSource: string | HoverLinkSource, config?: HoverLinkSourceConfig) => void) | ((id: string) => void) | ((id: string) => HoverLinkSource | null) | (() => readonly HoverLinkSource[]);
+  [id: string]:
+    | HoverLinkSourceConfig
+    | ((idOrSource: string | HoverLinkSource, config?: HoverLinkSourceConfig) => void)
+    | ((id: string) => void)
+    | ((id: string) => HoverLinkSource | null)
+    | (() => readonly HoverLinkSource[]);
 
   register(source: HoverLinkSource): void;
   register(id: string, config: HoverLinkSourceConfig): void;

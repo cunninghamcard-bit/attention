@@ -18,9 +18,10 @@ export class UpdateManager {
   }
 
   checkPlugin(id: string, currentVersion: string): UpdateCheckResult {
-    const latestVersion = this.latestVersions.get(id)
-      ?? this.app.pluginMarketplace.getEntry(id)?.manifest.version
-      ?? currentVersion;
+    const latestVersion =
+      this.latestVersions.get(id) ??
+      this.app.pluginMarketplace.getEntry(id)?.manifest.version ??
+      currentVersion;
     return {
       id,
       currentVersion,
@@ -30,6 +31,8 @@ export class UpdateManager {
   }
 
   checkInstalledPlugins(): UpdateCheckResult[] {
-    return this.app.pluginInstaller.listInstalled().map((record) => this.checkPlugin(record.id, record.version));
+    return this.app.pluginInstaller
+      .listInstalled()
+      .map((record) => this.checkPlugin(record.id, record.version));
   }
 }

@@ -110,7 +110,8 @@ export function registerNavigationCommands(app: App): void {
       let leaf: WorkspaceLeaf;
       if (params.group) {
         const group = findTabGroup(app, params.group);
-        if (!group) throw `Tab group "${params.group}" not found. Use "workspace ids=true" to list tab group IDs.`;
+        if (!group)
+          throw `Tab group "${params.group}" not found. Use "workspace ids=true" to list tab group IDs.`;
         // Real Obsidian passes a matched MobileDrawer here too; only the
         // WorkspaceParent surface (children/insertChild) is used.
         leaf = app.workspace.createLeafInTabGroup(group as WorkspaceTabs);
@@ -141,23 +142,40 @@ export function registerNavigationCommands(app: App): void {
       const idSuffix = (item: WorkspaceItem): string => (params.ids ? ` (${item.id})` : "");
       const map = (node: WorkspaceItem): AsciiTreeNode => {
         if (node instanceof WorkspaceLeaf) {
-          return { label: `[${node.view.getViewType()}] ${node.getDisplayText()}${idSuffix(node)}` };
+          return {
+            label: `[${node.view.getViewType()}] ${node.getDisplayText()}${idSuffix(node)}`,
+          };
         }
         if (node instanceof WorkspaceParent) {
-          const label = node instanceof WorkspaceSplit ? `${node.type}:${node.direction}` : node.type;
+          const label =
+            node instanceof WorkspaceSplit ? `${node.type}:${node.direction}` : node.type;
           return { label: label + idSuffix(node), children: node.children.map(map) };
         }
         return { label: "unknown" };
       };
       const workspace = app.workspace;
       const sections = [
-        cli.formatAsciiTreeWithRoot(`main${idSuffix(workspace.rootSplit)}`, workspace.rootSplit.children.map(map)),
-        cli.formatAsciiTreeWithRoot(`left${idSuffix(workspace.leftSplit)}`, workspace.leftSplit.children.map(map)),
-        cli.formatAsciiTreeWithRoot(`right${idSuffix(workspace.rightSplit)}`, workspace.rightSplit.children.map(map)),
+        cli.formatAsciiTreeWithRoot(
+          `main${idSuffix(workspace.rootSplit)}`,
+          workspace.rootSplit.children.map(map),
+        ),
+        cli.formatAsciiTreeWithRoot(
+          `left${idSuffix(workspace.leftSplit)}`,
+          workspace.leftSplit.children.map(map),
+        ),
+        cli.formatAsciiTreeWithRoot(
+          `right${idSuffix(workspace.rightSplit)}`,
+          workspace.rightSplit.children.map(map),
+        ),
       ];
       // "floating" is omitted entirely (even with ids) when it has no children.
       if (workspace.floatingSplit.children.length > 0) {
-        sections.push(cli.formatAsciiTreeWithRoot(`floating${idSuffix(workspace.floatingSplit)}`, workspace.floatingSplit.children.map(map)));
+        sections.push(
+          cli.formatAsciiTreeWithRoot(
+            `floating${idSuffix(workspace.floatingSplit)}`,
+            workspace.floatingSplit.children.map(map),
+          ),
+        );
       }
       return sections.join("\n");
     },
@@ -168,7 +186,8 @@ export function registerNavigationCommands(app: App): void {
 // will not), search order rootSplit → leftSplit → rightSplit → floatingSplit.
 function findTabGroup(app: App, id: string): WorkspaceTabs | MobileDrawer | null {
   const search = (node: WorkspaceItem): WorkspaceTabs | MobileDrawer | null => {
-    if ((node instanceof WorkspaceTabs || node instanceof MobileDrawer) && node.id === id) return node;
+    if ((node instanceof WorkspaceTabs || node instanceof MobileDrawer) && node.id === id)
+      return node;
     if (node instanceof WorkspaceParent) {
       for (const child of node.children) {
         const found = search(child);

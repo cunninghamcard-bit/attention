@@ -34,7 +34,11 @@ describe("Workspace hover link source parity", () => {
 
   it("removes plugin hover link sources on unload", async () => {
     const app = new App(document.createElement("div"));
-    const plugin = new HoverSourcePlugin(app, { id: "hover-plugin", name: "Hover Plugin", version: "1.0.0" });
+    const plugin = new HoverSourcePlugin(app, {
+      id: "hover-plugin",
+      name: "Hover Plugin",
+      version: "1.0.0",
+    });
 
     await plugin.load();
 

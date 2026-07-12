@@ -20,7 +20,10 @@ describe("ShellIntegration", () => {
     (globalThis as { electron?: unknown }).electron = { ipcRenderer: { invoke } };
 
     const shell = new ShellIntegration();
-    const result = await shell.bridge.invoke({ channel: "dialog:open", payload: { multiple: true } });
+    const result = await shell.bridge.invoke({
+      channel: "dialog:open",
+      payload: { multiple: true },
+    });
 
     expect(invoke).toHaveBeenCalledWith("dialog:open", { multiple: true });
     expect(result).toEqual(["/picked/file.md"]);

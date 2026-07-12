@@ -48,11 +48,13 @@ describe("Workspace layout-ready parity", () => {
         id: "layout-ready-root",
         type: "split",
         direction: "vertical",
-        children: [{
-          id: "layout-ready-leaf",
-          type: "leaf",
-          state: { type: "layout-ready-test", state: {} },
-        }],
+        children: [
+          {
+            id: "layout-ready-leaf",
+            type: "leaf",
+            state: { type: "layout-ready-test", state: {} },
+          },
+        ],
       },
     });
     await app.workspace.loadLayout();

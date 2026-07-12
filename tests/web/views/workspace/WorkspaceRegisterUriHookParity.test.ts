@@ -54,10 +54,12 @@ describe("Workspace registerUriHook parity", () => {
     app.workspace.registerUriHook();
     appUrlOpen?.({ url: "workbench://plugin-action?source=native&empty" });
 
-    await vi.waitFor(() => expect(handler).toHaveBeenCalledWith({
-      action: "plugin-action",
-      source: "native",
-      empty: "true",
-    }));
+    await vi.waitFor(() =>
+      expect(handler).toHaveBeenCalledWith({
+        action: "plugin-action",
+        source: "native",
+        empty: "true",
+      }),
+    );
   });
 });

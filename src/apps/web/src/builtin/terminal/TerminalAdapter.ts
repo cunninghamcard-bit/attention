@@ -22,14 +22,24 @@ export interface ElectronTerminalApi {
   platform: string;
   defaultShell: string;
   homeDir: string;
-  spawn(options: { shell?: string; args?: string[]; cwd?: string; cols?: number; rows?: number; env?: Record<string, string> }): PtyHandle;
+  spawn(options: {
+    shell?: string;
+    args?: string[];
+    cwd?: string;
+    cols?: number;
+    rows?: number;
+    env?: Record<string, string>;
+  }): PtyHandle;
   prepareShellIntegration?(): string | null;
 }
 
 export type TerminalErrorCode = "unsupported-runtime" | "spawn-failed";
 
 export class TerminalSpawnError extends Error {
-  constructor(readonly code: TerminalErrorCode, message: string) {
+  constructor(
+    readonly code: TerminalErrorCode,
+    message: string,
+  ) {
     super(message);
     this.name = "TerminalSpawnError";
   }
@@ -78,7 +88,10 @@ export class DesktopTerminalAdapter implements TerminalAdapter {
     try {
       return this.bridge.spawn(request);
     } catch (error) {
-      throw new TerminalSpawnError("spawn-failed", error instanceof Error ? error.message : String(error));
+      throw new TerminalSpawnError(
+        "spawn-failed",
+        error instanceof Error ? error.message : String(error),
+      );
     }
   }
 }

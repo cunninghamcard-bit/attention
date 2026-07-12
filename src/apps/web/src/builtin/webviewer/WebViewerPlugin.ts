@@ -41,7 +41,10 @@ export class WebViewerController {
     this.app.workspace.registerObsidianProtocolHandler("web", handler);
     plugin.register(() => this.app.workspace.unregisterObsidianProtocolHandler("web", handler));
     const session = this.app.webViewer.getActiveSession();
-    this.app.webViewer.bridge.createBrowserSession(session.partition, this.app.webViewer.options.enableAdblocking);
+    this.app.webViewer.bridge.createBrowserSession(
+      session.partition,
+      this.app.webViewer.options.enableAdblocking,
+    );
     this.app.workspace.trigger("webviewer-session-ready", session);
   }
 
@@ -51,11 +54,15 @@ export class WebViewerController {
   }
 
   openHistory(): void {
-    void this.app.workspace.ensureSideLeaf(WEBVIEWER_HISTORY_VIEW_TYPE, "left", { active: true, reveal: true });
+    void this.app.workspace.ensureSideLeaf(WEBVIEWER_HISTORY_VIEW_TYPE, "left", {
+      active: true,
+      reveal: true,
+    });
   }
 
   activeView(): WebViewerView | null {
-    if (this.app.workspace.activeLeaf?.view instanceof WebViewerView) return this.app.workspace.activeLeaf.view;
+    if (this.app.workspace.activeLeaf?.view instanceof WebViewerView)
+      return this.app.workspace.activeLeaf.view;
     for (const leaf of this.app.workspace.getLeavesOfType(WEBVIEWER_VIEW_TYPE)) {
       if (leaf.view instanceof WebViewerView) return leaf.view;
     }
@@ -144,7 +151,10 @@ export class WebViewerView extends ItemView {
   /** Last reader render, awaitable in tests. */
   readerRender: Promise<void> = Promise.resolve();
 
-  constructor(leaf: WorkspaceLeaf, readonly controller: WebViewerController) {
+  constructor(
+    leaf: WorkspaceLeaf,
+    readonly controller: WebViewerController,
+  ) {
     super(leaf);
   }
 
@@ -165,7 +175,7 @@ export class WebViewerView extends ItemView {
 
   async setState(state: unknown): Promise<void> {
     await super.setState(state);
-    const next = state && typeof state === "object" ? state as WebViewerState : {};
+    const next = state && typeof state === "object" ? (state as WebViewerState) : {};
     this.readerMode = Boolean(next.readerMode);
     // The leaf already recorded the previous view state for this setViewState
     // (openInternal does it for history !== false), so don't record again.
@@ -217,7 +227,9 @@ export class WebViewerView extends ItemView {
       this.addressInputEl.blur();
       this.navigate(suggestion.url);
     });
-    this.readerActionEl = this.addAction("lucide-glasses", "Reader view", () => this.toggleReaderMode());
+    this.readerActionEl = this.addAction("lucide-glasses", "Reader view", () =>
+      this.toggleReaderMode(),
+    );
 
     // Content: the class lives on view-content ITSELF (real CSS:
     // .view-content.webviewer-content { padding: 0 }); children mount once
@@ -231,7 +243,8 @@ export class WebViewerView extends ItemView {
     const errorTitleEl = document.createElement("h1");
     errorTitleEl.textContent = "Failed to load";
     const errorBodyEl = document.createElement("p");
-    errorBodyEl.textContent = "The page could not be loaded. Check the address or your connection, then reload.";
+    errorBodyEl.textContent =
+      "The page could not be loaded. Check the address or your connection, then reload.";
     this.errorEl.append(errorTitleEl, errorBodyEl);
     this.errorEl.hidden = true;
     this.contentEl.append(this.readerEl, this.errorEl);
@@ -335,14 +348,23 @@ export class WebViewerView extends ItemView {
       }
     }
     if (!this.readerMode || this.url !== url) return;
-    this.readerEl.classList.toggle("is-readable-line-width", Boolean(this.app.vault.getConfig("readableLineLength")));
+    this.readerEl.classList.toggle(
+      "is-readable-line-width",
+      Boolean(this.app.vault.getConfig("readableLineLength")),
+    );
     this.readerSizerEl.replaceChildren();
     const titleEl = document.createElement("h1");
     titleEl.textContent = this.readerResult.title;
     this.readerSizerEl.appendChild(titleEl);
     const bodyEl = document.createElement("div");
     this.readerSizerEl.appendChild(bodyEl);
-    await MarkdownPreviewRenderer.renderMarkdown(this.app, this.readerResult.markdown, bodyEl, "", this);
+    await MarkdownPreviewRenderer.renderMarkdown(
+      this.app,
+      this.readerResult.markdown,
+      bodyEl,
+      "",
+      this,
+    );
   }
 
   private ensureAdapter(): WebViewerElementAdapter {
@@ -352,9 +374,11 @@ export class WebViewerView extends ItemView {
     // Mounted once, before the (hidden) reader/error layers. setState can run
     // before onOpen has appended those layers — appendChild keeps the same
     // final order either way (onOpen appends reader/error after the element).
-    if (this.readerEl.parentElement === this.contentEl) this.contentEl.insertBefore(this.adapter.element, this.readerEl);
+    if (this.readerEl.parentElement === this.contentEl)
+      this.contentEl.insertBefore(this.adapter.element, this.readerEl);
     else this.contentEl.appendChild(this.adapter.element);
-    const commit = (payload: unknown) => this.handleCommittedNavigation(payload as { url?: string; isMainFrame?: boolean });
+    const commit = (payload: unknown) =>
+      this.handleCommittedNavigation(payload as { url?: string; isMainFrame?: boolean });
     this.adapter.webContents.on("did-navigate", commit);
     this.adapter.webContents.on("did-navigate-in-page", commit);
     this.adapter.webContents.on("did-redirect-navigation", commit);
@@ -370,12 +394,18 @@ export class WebViewerView extends ItemView {
       if (failure?.errorCode !== -3 && failure?.isMainFrame !== false) this.errorEl.hidden = false;
     });
     this.adapter.webContents.on("page-title-updated", (payload) => {
-      const title = payload && typeof payload === "object" && "title" in payload ? String((payload as { title?: unknown }).title) : titleFromUrl(this.url);
+      const title =
+        payload && typeof payload === "object" && "title" in payload
+          ? String((payload as { title?: unknown }).title)
+          : titleFromUrl(this.url);
       this.title = title;
       this.refreshHeader();
     });
     this.adapter.webContents.on("page-favicon-updated", (payload) => {
-      const favicons = payload && typeof payload === "object" && "favicons" in payload ? (payload as { favicons?: unknown }).favicons : null;
+      const favicons =
+        payload && typeof payload === "object" && "favicons" in payload
+          ? (payload as { favicons?: unknown }).favicons
+          : null;
       if (Array.isArray(favicons) && favicons.length > 0) {
         const urls = favicons.filter((f): f is string => typeof f === "string");
         this.faviconUrl = urls.find((f) => f.includes("32")) ?? urls[0] ?? null;
@@ -450,65 +480,91 @@ export class WebViewerView extends ItemView {
     const imageEl = target?.closest<HTMLImageElement>("img[src]");
     const linkUrl = linkEl?.href ? absolutizeUrl(linkEl.href, this.url) : null;
     const imageUrl = imageEl?.src ? absolutizeUrl(imageEl.src, this.url) : null;
-    menu.addItem((item) => item
-      .setTitle("Copy URL")
-      .setIcon("lucide-copy")
-      .onClick(() => void navigator.clipboard?.writeText(this.url)));
-    if (linkUrl) {
-      menu.addItem((item) => item
-        .setTitle("Open link in Web viewer")
-        .setIcon("lucide-globe")
-        .onClick(() => this.controller.openLink(linkUrl, "tab")));
-      menu.addItem((item) => item
-        .setTitle("Open link in split")
-        .setIcon("lucide-columns")
-        .onClick(() => this.controller.openLink(linkUrl, "split")));
-      menu.addItem((item) => item
-        .setTitle("Open link in browser")
-        .setIcon("lucide-external-link")
-        .onClick(() => this.controller.openLink(linkUrl, "browser")));
-      menu.addItem((item) => item
-        .setTitle("Copy link URL")
+    menu.addItem((item) =>
+      item
+        .setTitle("Copy URL")
         .setIcon("lucide-copy")
-        .onClick(() => void navigator.clipboard?.writeText(linkUrl)));
+        .onClick(() => void navigator.clipboard?.writeText(this.url)),
+    );
+    if (linkUrl) {
+      menu.addItem((item) =>
+        item
+          .setTitle("Open link in Web viewer")
+          .setIcon("lucide-globe")
+          .onClick(() => this.controller.openLink(linkUrl, "tab")),
+      );
+      menu.addItem((item) =>
+        item
+          .setTitle("Open link in split")
+          .setIcon("lucide-columns")
+          .onClick(() => this.controller.openLink(linkUrl, "split")),
+      );
+      menu.addItem((item) =>
+        item
+          .setTitle("Open link in browser")
+          .setIcon("lucide-external-link")
+          .onClick(() => this.controller.openLink(linkUrl, "browser")),
+      );
+      menu.addItem((item) =>
+        item
+          .setTitle("Copy link URL")
+          .setIcon("lucide-copy")
+          .onClick(() => void navigator.clipboard?.writeText(linkUrl)),
+      );
     }
     if (imageUrl) {
-      menu.addItem((item) => item
-        .setTitle("Save image to vault")
-        .setIcon("lucide-image-down")
-        .onClick(() => void this.controller.saveImageToVault(imageUrl)));
-      menu.addItem((item) => item
-        .setTitle("Copy image URL")
-        .setIcon("lucide-copy")
-        .onClick(() => void navigator.clipboard?.writeText(imageUrl)));
+      menu.addItem((item) =>
+        item
+          .setTitle("Save image to vault")
+          .setIcon("lucide-image-down")
+          .onClick(() => void this.controller.saveImageToVault(imageUrl)),
+      );
+      menu.addItem((item) =>
+        item
+          .setTitle("Copy image URL")
+          .setIcon("lucide-copy")
+          .onClick(() => void navigator.clipboard?.writeText(imageUrl)),
+      );
     }
     // Real webviewer context menu: zoom section driven by the LIVE factor.
     const factor = this.adapter?.getZoomFactor() ?? 1;
-    menu.addItem((item) => item
-      .setTitle("Zoom in")
-      .setIcon("lucide-zoom-in")
-      .setDisabled(factor >= 3)
-      .onClick(() => this.zoomIn()));
-    menu.addItem((item) => item
-      .setTitle("Reset zoom")
-      .setIcon("lucide-rotate-cw")
-      .setDisabled(factor === 1)
-      .onClick(() => this.zoomReset()));
-    menu.addItem((item) => item
-      .setTitle("Zoom out")
-      .setIcon("lucide-zoom-out")
-      .setDisabled(factor <= 0.5)
-      .onClick(() => this.zoomOut()));
-    menu.addItem((item) => item
-      .setTitle("Save page to vault")
-      .setIcon("lucide-save")
-      .onClick(() => void this.controller.saveToVault()));
+    menu.addItem((item) =>
+      item
+        .setTitle("Zoom in")
+        .setIcon("lucide-zoom-in")
+        .setDisabled(factor >= 3)
+        .onClick(() => this.zoomIn()),
+    );
+    menu.addItem((item) =>
+      item
+        .setTitle("Reset zoom")
+        .setIcon("lucide-rotate-cw")
+        .setDisabled(factor === 1)
+        .onClick(() => this.zoomReset()),
+    );
+    menu.addItem((item) =>
+      item
+        .setTitle("Zoom out")
+        .setIcon("lucide-zoom-out")
+        .setDisabled(factor <= 0.5)
+        .onClick(() => this.zoomOut()),
+    );
+    menu.addItem((item) =>
+      item
+        .setTitle("Save page to vault")
+        .setIcon("lucide-save")
+        .onClick(() => void this.controller.saveToVault()),
+    );
     const selection = window.getSelection()?.toString().trim();
     if (selection) {
-      menu.addItem((item) => item
-        .setTitle("Save selection to vault")
-        .setIcon("lucide-file-plus")
-        .onClick(() => void this.controller.saveSelectionToVault(this.url, this.title, selection)));
+      menu.addItem((item) =>
+        item
+          .setTitle("Save selection to vault")
+          .setIcon("lucide-file-plus")
+          .onClick(
+            () => void this.controller.saveSelectionToVault(this.url, this.title, selection),
+          ),
+      );
     }
     menu.showAtMouseEvent(event);
   }
@@ -525,10 +581,14 @@ class AddressBarSuggest extends AbstractInputSuggest<WebViewerAddressSuggestion>
     el.classList.add("mod-complex", "webviewer-addressbar-suggestion");
     const iconEl = document.createElement("div");
     iconEl.className = "suggestion-icon suggestion-flair-left";
-    const icon = suggestion.type === "search" ? "lucide-search"
-      : suggestion.type === "history" ? "lucide-history"
-      : suggestion.type === "bookmark" ? "lucide-bookmark"
-      : "lucide-globe-2";
+    const icon =
+      suggestion.type === "search"
+        ? "lucide-search"
+        : suggestion.type === "history"
+          ? "lucide-history"
+          : suggestion.type === "bookmark"
+            ? "lucide-bookmark"
+            : "lucide-globe-2";
     setIcon(iconEl, icon);
     const contentEl = document.createElement("div");
     contentEl.className = "suggestion-content";
@@ -552,7 +612,10 @@ class AddressBarSuggest extends AbstractInputSuggest<WebViewerAddressSuggestion>
 class WebViewerHistoryView extends ItemView {
   icon = "lucide-history";
 
-  constructor(leaf: WorkspaceLeaf, readonly controller: WebViewerController) {
+  constructor(
+    leaf: WorkspaceLeaf,
+    readonly controller: WebViewerController,
+  ) {
     super(leaf);
   }
 
@@ -600,14 +663,18 @@ class WebViewerHistoryView extends ItemView {
     itemEl.addEventListener("contextmenu", (event) => {
       event.preventDefault();
       const menu = new Menu();
-      menu.addItem((item) => item
-        .setTitle("Copy URL")
-        .setIcon("lucide-copy")
-        .onClick(() => void navigator.clipboard?.writeText(entry.url)));
-      menu.addItem((item) => item
-        .setTitle("Remove from history")
-        .setIcon("lucide-trash")
-        .onClick(() => this.app.webViewer.removeHistoryEntry(entry.id)));
+      menu.addItem((item) =>
+        item
+          .setTitle("Copy URL")
+          .setIcon("lucide-copy")
+          .onClick(() => void navigator.clipboard?.writeText(entry.url)),
+      );
+      menu.addItem((item) =>
+        item
+          .setTitle("Remove from history")
+          .setIcon("lucide-trash")
+          .onClick(() => this.app.webViewer.removeHistoryEntry(entry.id)),
+      );
       menu.showAtMouseEvent(event);
     });
     parent.appendChild(itemEl);
@@ -622,7 +689,10 @@ class WebViewerSettingTab implements SettingTab {
   readonly navEl = document.createElement("div");
   readonly containerEl = document.createElement("div");
 
-  constructor(readonly app: App, readonly controller: WebViewerController) {
+  constructor(
+    readonly app: App,
+    readonly controller: WebViewerController,
+  ) {
     this.navEl.className = "vertical-tab-nav-item tappable";
     const iconEl = document.createElement("div");
     iconEl.className = "vertical-tab-nav-item-icon";
@@ -643,41 +713,60 @@ class WebViewerSettingTab implements SettingTab {
     new Setting(group.itemsEl)
       .setName("Open external URLs")
       .setDesc("Route web links through the built-in Web viewer when possible.")
-      .addToggle((toggle) => toggle.setValue(options.openExternalURLs).onChange((value) => {
-        this.app.webViewer.updateOptions({ openExternalURLs: value });
-      }));
+      .addToggle((toggle) =>
+        toggle.setValue(options.openExternalURLs).onChange((value) => {
+          this.app.webViewer.updateOptions({ openExternalURLs: value });
+        }),
+      );
     new Setting(group.itemsEl)
       .setName("Enable ad blocking")
       .setDesc("Use the browser session adblock list model for Web viewer requests.")
-      .addToggle((toggle) => toggle.setValue(options.enableAdblocking).onChange((value) => {
-        this.app.webViewer.updateOptions({ enableAdblocking: value });
-      }));
+      .addToggle((toggle) =>
+        toggle.setValue(options.enableAdblocking).onChange((value) => {
+          this.app.webViewer.updateOptions({ enableAdblocking: value });
+        }),
+      );
     new Setting(group.itemsEl)
       .setName("Search engine")
       .setDesc("Used when the address bar input is not a URL.")
-      .addDropdown((dropdown) => dropdown
-        .addOption("duckduckgo", "DuckDuckGo")
-        .addOption("google", "Google")
-        .setValue(options.searchEngine)
-        .onChange((value) => {
-          this.app.webViewer.updateOptions({ searchEngine: value === "google" ? "google" : "duckduckgo" });
-        }));
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("duckduckgo", "DuckDuckGo")
+          .addOption("google", "Google")
+          .setValue(options.searchEngine)
+          .onChange((value) => {
+            this.app.webViewer.updateOptions({
+              searchEngine: value === "google" ? "google" : "duckduckgo",
+            });
+          }),
+      );
     new Setting(group.itemsEl)
       .setName("Markdown save path")
       .setDesc("Folder prefix for pages saved to the vault.")
-      .addText((text) => text.setValue(options.markdownPath).onChange((value) => {
-        this.app.webViewer.updateOptions({ markdownPath: value });
-      }));
+      .addText((text) =>
+        text.setValue(options.markdownPath).onChange((value) => {
+          this.app.webViewer.updateOptions({ markdownPath: value });
+        }),
+      );
     new Setting(group.itemsEl)
       .setName("Adblock lists")
       .setDesc("One list URL per comma, mirrored into the active browser session.")
-      .addText((text) => text.setValue(this.app.webViewer.getActiveSession().adblockLists.join(", ")).onChange((value) => {
-        this.app.webViewer.setAdblockLists(this.app.webViewer.getActiveSession().id, value.split(","));
-      }));
+      .addText((text) =>
+        text
+          .setValue(this.app.webViewer.getActiveSession().adblockLists.join(", "))
+          .onChange((value) => {
+            this.app.webViewer.setAdblockLists(
+              this.app.webViewer.getActiveSession().id,
+              value.split(","),
+            );
+          }),
+      );
     new Setting(group.itemsEl)
       .setName("Clear browsing data")
       .setDesc("Clear local Web viewer history, cache, cookies, or all data.")
-      .addButton((button) => button.setButtonText("Open").onClick(() => this.controller.openClearDataModal()));
+      .addButton((button) =>
+        button.setButtonText("Open").onClick(() => this.controller.openClearDataModal()),
+      );
   }
 
   hide(): void {
@@ -686,7 +775,10 @@ class WebViewerSettingTab implements SettingTab {
 }
 
 class WebViewerClearDataModal extends ConfirmationModal {
-  constructor(app: App, readonly controller: WebViewerController) {
+  constructor(
+    app: App,
+    readonly controller: WebViewerController,
+  ) {
     super(app);
     this.setTitle("Clear Web viewer data");
   }
@@ -696,7 +788,8 @@ class WebViewerClearDataModal extends ConfirmationModal {
     const buttonEl = this.buttonContainerEl;
     buttonEl.replaceChildren();
     const descEl = document.createElement("p");
-    descEl.textContent = "Choose which local Web viewer browsing data to clear for the active browser session.";
+    descEl.textContent =
+      "Choose which local Web viewer browsing data to clear for the active browser session.";
     this.contentEl.appendChild(descEl);
     buttonEl.append(
       this.button("History", () => this.clear("history")),
@@ -726,13 +819,20 @@ export function createWebViewerPluginDefinition(): InternalPluginDefinition {
   return {
     id: "webviewer",
     name: "Web viewer",
-    description: "Desktop web viewer with session, history, reader mode, and save-to-vault integration.",
+    description:
+      "Desktop web viewer with session, history, reader mode, and save-to-vault integration.",
     defaultOn: false,
     init(app: App, plugin: InternalPluginWrapper) {
       controller = new WebViewerController(app);
       plugin.instance = controller;
-      plugin.registerViewType(WEBVIEWER_VIEW_TYPE, (leaf) => new WebViewerView(leaf, controller as WebViewerController));
-      plugin.registerViewType(WEBVIEWER_HISTORY_VIEW_TYPE, (leaf) => new WebViewerHistoryView(leaf, controller as WebViewerController));
+      plugin.registerViewType(
+        WEBVIEWER_VIEW_TYPE,
+        (leaf) => new WebViewerView(leaf, controller as WebViewerController),
+      );
+      plugin.registerViewType(
+        WEBVIEWER_HISTORY_VIEW_TYPE,
+        (leaf) => new WebViewerHistoryView(leaf, controller as WebViewerController),
+      );
       registerWebCliHandlers(plugin);
       plugin.registerGlobalCommand({
         id: "webviewer:open",

@@ -2,11 +2,27 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
 import type { SettingTab } from "@web/app/SettingRegistry";
 import { SimpleEditor, type Editor, type EditorPosition } from "@web/editor/Editor";
-import { editorDomClass, editorTransactionFilter, editorUpdateListener, editorViewPlugin } from "@web/editor/EditorExtension";
-import { editorEditorField, editorInfoField, editorLivePreviewField, editorViewField, StateEffect, Transaction } from "@web/editor/EditorStateField";
+import {
+  editorDomClass,
+  editorTransactionFilter,
+  editorUpdateListener,
+  editorViewPlugin,
+} from "@web/editor/EditorExtension";
+import {
+  editorEditorField,
+  editorInfoField,
+  editorLivePreviewField,
+  editorViewField,
+  StateEffect,
+  Transaction,
+} from "@web/editor/EditorStateField";
 import { MarkdownRenderChild } from "@web/markdown/MarkdownRenderChild";
 import { MarkdownPreviewRenderer } from "@web/markdown/MarkdownPreviewRenderer";
-import { MarkdownRenderer, type MarkdownCodeBlockProcessor, type MarkdownPostProcessor } from "@web/markdown/MarkdownRenderer";
+import {
+  MarkdownRenderer,
+  type MarkdownCodeBlockProcessor,
+  type MarkdownPostProcessor,
+} from "@web/markdown/MarkdownRenderer";
 import { EditorSuggest, type EditorSuggestTriggerInfo } from "@web/ui/suggest/EditorSuggest";
 import { ItemView } from "@web/views/ItemView";
 import { MarkdownView } from "@web/views/MarkdownView";
@@ -35,7 +51,8 @@ class LifecyclePlugin extends Plugin {
   async onload(): Promise<void> {
     await Promise.resolve();
     this.didLoad = true;
-    this.sawStyleDuringLoad = document.head.querySelector('style[data-obsidian-reconstructed-css="plugin:life"]') !== null;
+    this.sawStyleDuringLoad =
+      document.head.querySelector('style[data-obsidian-reconstructed-css="plugin:life"]') !== null;
     this.addCommand({ id: "hello", name: "Hello", callback: () => {} });
     this.addRibbonIcon("lucide-star", "Run", () => {});
     await this.saveData({ loaded: true });
@@ -182,14 +199,19 @@ class ChromeApiPlugin extends Plugin {
     });
     this.suggest = new ChromeSuggest(this.app);
     this.registerEditorSuggest(this.suggest);
-    this.registerCliHandler("chrome-api", "Run the Chrome API plugin", {
-      "dry-run": {
-        description: "Run without changing state",
+    this.registerCliHandler(
+      "chrome-api",
+      "Run the Chrome API plugin",
+      {
+        "dry-run": {
+          description: "Run without changing state",
+        },
       },
-    }, (params) => {
-      this.cliHits.push(params);
-      return params["dry-run"] === "true" ? "chrome-cli" : "wrong-flags";
-    });
+      (params) => {
+        this.cliHits.push(params);
+        return params["dry-run"] === "true" ? "chrome-cli" : "wrong-flags";
+      },
+    );
   }
 }
 
@@ -214,7 +236,8 @@ class MarkdownProcessorPlugin extends Plugin {
     }, -50);
     const processor: MarkdownCodeBlockProcessor = (source, el, context) => {
       this.codeSources.push(source);
-      this.replaceCodeAvailable = typeof (context as InternalMarkdownCodeBlockContext).replaceCode === "function";
+      this.replaceCodeAvailable =
+        typeof (context as InternalMarkdownCodeBlockContext).replaceCode === "function";
       context.addChild(new CountingMarkdownRenderChild(el, this));
       el.classList.add("plugin-code-block");
       el.textContent = `plugin:${source}`;
@@ -225,7 +248,10 @@ class MarkdownProcessorPlugin extends Plugin {
 }
 
 class CountingMarkdownRenderChild extends MarkdownRenderChild {
-  constructor(containerEl: HTMLElement, readonly plugin: MarkdownProcessorPlugin) {
+  constructor(
+    containerEl: HTMLElement,
+    readonly plugin: MarkdownProcessorPlugin,
+  ) {
     super(containerEl);
   }
 
@@ -253,11 +279,12 @@ class EditorExtensionPlugin extends Plugin {
       };
     }),
     editorUpdateListener((update) => {
-      update.view.dom.dataset.pluginUpdateListener = update.transactions.length > 0
-        ? "dispatch"
-        : update.docChanged ? "doc" : "selection";
+      update.view.dom.dataset.pluginUpdateListener =
+        update.transactions.length > 0 ? "dispatch" : update.docChanged ? "doc" : "selection";
     }),
-    editorTransactionFilter((transaction) => new Transaction([...transaction.effects, new StateEffect("filtered")])),
+    editorTransactionFilter(
+      (transaction) => new Transaction([...transaction.effects, new StateEffect("filtered")]),
+    ),
   ];
 
   async onload(): Promise<void> {
@@ -266,7 +293,11 @@ class EditorExtensionPlugin extends Plugin {
 }
 
 class LiveSettingsTab extends PluginSettingTab {
-  constructor(app: App, plugin: Plugin, readonly owner: LiveSettingsPlugin) {
+  constructor(
+    app: App,
+    plugin: Plugin,
+    readonly owner: LiveSettingsPlugin,
+  ) {
     super(app, plugin);
     this.containerEl.textContent = "Live plugin settings";
   }
@@ -333,12 +364,20 @@ describe("community plugin lifecycle", () => {
     await app.pluginInstaller.enable("life");
 
     expect(instance?.didLoad).toBe(true);
-    expect(triggerSpy.mock.calls.some(([event]) => event === "community-plugin-loaded")).toBe(false);
+    expect(triggerSpy.mock.calls.some(([event]) => event === "community-plugin-loaded")).toBe(
+      false,
+    );
     expect(instance?.sawStyleDuringLoad).toBe(false);
-    expect(document.head.querySelector('style[data-obsidian-reconstructed-css="plugin:life"]')).not.toBeNull();
+    expect(
+      document.head.querySelector('style[data-obsidian-reconstructed-css="plugin:life"]'),
+    ).not.toBeNull();
     expect(app.plugins.getPlugin("life")).toBe(instance);
     expect(app.commands.findCommand("life:hello")?.name).toBe("Lifecycle: Hello");
-    expect(app.workspace.leftRibbon.containerEl.querySelector('.side-dock-ribbon-action[aria-label="Run"]')).not.toBeNull();
+    expect(
+      app.workspace.leftRibbon.containerEl.querySelector(
+        '.side-dock-ribbon-action[aria-label="Run"]',
+      ),
+    ).not.toBeNull();
     await expect(instance?.loadData()).resolves.toEqual({ loaded: true });
     await expect(app.vault.readPluginData("plugins/life")).resolves.toEqual({ loaded: true });
     await expect(app.jsonStore.read("plugins/life/data.json")).resolves.toEqual({ loaded: true });
@@ -348,11 +387,19 @@ describe("community plugin lifecycle", () => {
     await app.pluginInstaller.disable("life");
 
     expect(instance?.didUnload).toBe(true);
-    expect(triggerSpy.mock.calls.some(([event]) => event === "community-plugin-unloaded")).toBe(false);
+    expect(triggerSpy.mock.calls.some(([event]) => event === "community-plugin-unloaded")).toBe(
+      false,
+    );
     expect(app.plugins.getPlugin("life")).toBeNull();
     expect(app.commands.findCommand("life:hello")).toBeUndefined();
-    expect(app.workspace.leftRibbon.containerEl.querySelector('.side-dock-ribbon-action[aria-label="Run"]')).toBeNull();
-    expect(document.head.querySelector('style[data-obsidian-reconstructed-css="plugin:life"]')).toBeNull();
+    expect(
+      app.workspace.leftRibbon.containerEl.querySelector(
+        '.side-dock-ribbon-action[aria-label="Run"]',
+      ),
+    ).toBeNull();
+    expect(
+      document.head.querySelector('style[data-obsidian-reconstructed-css="plugin:life"]'),
+    ).toBeNull();
     expect(app.communityPlugins.get("life")?.enabled).toBe(false);
     await expect(app.jsonStore.read("community-plugins.json")).resolves.toEqual([]);
   });
@@ -444,8 +491,13 @@ describe("community plugin lifecycle", () => {
 
     expect(instance?.changes).toBe(1);
 
-    await app.jsonStore.write("plugins/external-settings/manifest.json", { id: "external-settings" });
-    await app.jsonStore.writeText("plugins/external-settings/main.js", "module.exports = class {};");
+    await app.jsonStore.write("plugins/external-settings/manifest.json", {
+      id: "external-settings",
+    });
+    await app.jsonStore.writeText(
+      "plugins/external-settings/main.js",
+      "module.exports = class {};",
+    );
     await app.jsonStore.writeText("plugins/external-settings/styles.css", ".external-settings {}");
     await new Promise((resolve) => window.setTimeout(resolve, 70));
 
@@ -650,7 +702,8 @@ describe("community plugin lifecycle", () => {
 
     await app.pluginInstaller.disable("view-plugin", true);
     const openWithDefaultApp = vi.fn();
-    (app as unknown as { openWithDefaultApp: (path: string) => void }).openWithDefaultApp = openWithDefaultApp;
+    (app as unknown as { openWithDefaultApp: (path: string) => void }).openWithDefaultApp =
+      openWithDefaultApp;
 
     await app.workspace.openFile(file, { active: true });
 
@@ -708,8 +761,12 @@ describe("community plugin lifecycle", () => {
     expect(app.commands.findCommand("chrome-api:manual-remove")).toBeUndefined();
     expect(app.hotkeys.getHotkeys("chrome-api:manual-remove")).toBeUndefined();
     expect(app.commands.findCommand("chrome-api:kept")?.name).toBe("Chrome API: Kept");
-    expect(app.hotkeys.getDefaultHotkeys("chrome-api:kept")).toEqual([{ modifiers: ["Mod"], key: "k" }]);
-    const ribbonEl = app.workspace.leftRibbon.containerEl.querySelector<HTMLButtonElement>('.side-dock-ribbon-action[aria-label="Mouse event"]');
+    expect(app.hotkeys.getDefaultHotkeys("chrome-api:kept")).toEqual([
+      { modifiers: ["Mod"], key: "k" },
+    ]);
+    const ribbonEl = app.workspace.leftRibbon.containerEl.querySelector<HTMLButtonElement>(
+      '.side-dock-ribbon-action[aria-label="Mouse event"]',
+    );
     expect(ribbonEl?.classList.contains("clickable-icon")).toBe(true);
     expect(ribbonEl?.classList.contains("side-dock-ribbon-action")).toBe(true);
     ribbonEl?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -718,7 +775,9 @@ describe("community plugin lifecycle", () => {
     expect(instance?.statusEl?.classList.contains("plugin-chrome-api")).toBe(true);
     expect(instance?.statusEl?.textContent).toBe("Plugin status");
     expect(instance?.statusEl?.parentElement).toBe(app.statusBar.containerEl);
-    await app.uriRouter.handleUri("workbench://chrome-api?file=Folder%2FNote.md&empty&dry-run=true");
+    await app.uriRouter.handleUri(
+      "workbench://chrome-api?file=Folder%2FNote.md&empty&dry-run=true",
+    );
     expect(instance?.protocolHits).toBe(1);
     expect(instance?.protocolPayload).toMatchObject({
       action: "chrome-api",
@@ -749,7 +808,9 @@ describe("community plugin lifecycle", () => {
     expect(instance?.statusEl?.parentElement).toBeNull();
     await expect(app.uriRouter.handleUri("workbench://chrome-api")).resolves.toBe(false);
     // Disabled → the command is unregistered, so the CLI rejects it as unknown.
-    await expect(app.cli.handleCli(["chrome-api", "dry-run"])).rejects.toMatch(/^Command "chrome-api" not found/);
+    await expect(app.cli.handleCli(["chrome-api", "dry-run"])).rejects.toMatch(
+      /^Command "chrome-api" not found/,
+    );
     await app.workspace.editorSuggest.trigger(editor, anchorEl);
     expect(document.body.textContent).not.toContain("Plugin suggestion");
     anchorEl.remove();
@@ -793,7 +854,9 @@ describe("community plugin lifecycle", () => {
     expect(instance?.renderChildUnloads).toBe(0);
     expect(instance?.replaceCodeAvailable).toBe(true);
     expect(container.querySelector("pre")).toBeNull();
-    expect(container.querySelector(".block-language-plugin-block")?.textContent).toBe("plugin:hello");
+    expect(container.querySelector(".block-language-plugin-block")?.textContent).toBe(
+      "plugin:hello",
+    );
 
     renderer.set("After");
     await renderer.whenIdle();
@@ -899,7 +962,9 @@ describe("community plugin lifecycle", () => {
     expect(instance?.tab?.navEl?.parentElement).not.toBeNull();
     expect(instance?.tab?.navEl?.dataset.settingId).toBe("live-settings");
     expect(instance?.tab).toBeInstanceOf(PluginSettingTab);
-    expect(instance?.tab?.navEl?.closest("[data-section]")?.getAttribute("data-section")).toBe("community-plugins");
+    expect(instance?.tab?.navEl?.closest("[data-section]")?.getAttribute("data-section")).toBe(
+      "community-plugins",
+    );
 
     const openedTab = app.setting.openTabById("live-settings");
 
@@ -923,12 +988,16 @@ describe("community plugin lifecycle", () => {
       display: vi.fn(),
       hide: vi.fn(),
     };
-    const wrapper = new InternalPluginWrapper(app, {
-      id: "core-identity",
-      name: "Core Identity",
-      defaultOn: true,
-      init: () => {},
-    }, app.internalPlugins);
+    const wrapper = new InternalPluginWrapper(
+      app,
+      {
+        id: "core-identity",
+        name: "Core Identity",
+        defaultOn: true,
+        init: () => {},
+      },
+      app.internalPlugins,
+    );
     const coreTab = new CorePluginSettingTab(app, wrapper, delegate);
 
     wrapper.addSettingTab(coreTab);
@@ -943,23 +1012,29 @@ describe("community plugin lifecycle", () => {
 
     expect(openedTab).toBe(tab);
     expect(delegate.display).toHaveBeenCalled();
-    expect((tab as SettingTab).navEl?.closest("[data-section]")?.getAttribute("data-section")).toBe("core-plugins");
+    expect((tab as SettingTab).navEl?.closest("[data-section]")?.getAttribute("data-section")).toBe(
+      "core-plugins",
+    );
   });
 
   it("registers and cleans internal plugin CLI handlers with core plugin enablement", async () => {
     const app = new App(document.createElement("div"));
     const hits: string[][] = [];
-    const wrapper = new InternalPluginWrapper(app, {
-      id: "core-cli",
-      name: "Core CLI",
-      defaultOn: false,
-      init: (_app, plugin) => {
-        plugin.registerCliHandler("core-cli", "Run core CLI", null, (params) => {
-          hits.push(Object.keys(params));
-          return "core-cli";
-        });
+    const wrapper = new InternalPluginWrapper(
+      app,
+      {
+        id: "core-cli",
+        name: "Core CLI",
+        defaultOn: false,
+        init: (_app, plugin) => {
+          plugin.registerCliHandler("core-cli", "Run core CLI", null, (params) => {
+            hits.push(Object.keys(params));
+            return "core-cli";
+          });
+        },
       },
-    }, app.internalPlugins);
+      app.internalPlugins,
+    );
 
     wrapper.init();
     await wrapper.enable();
@@ -969,22 +1044,29 @@ describe("community plugin lifecycle", () => {
 
     await wrapper.disable(true);
 
-    await expect(app.cli.handleCli(["core-cli", "list"])).rejects.toMatch(/^Command "core-cli" not found/);
+    await expect(app.cli.handleCli(["core-cli", "list"])).rejects.toMatch(
+      /^Command "core-cli" not found/,
+    );
   });
 
   it("enforces unique CLI commands and required flag metadata", async () => {
     const app = new App(document.createElement("div"));
-    app.cli.registerHandler("sample", "Run sample", {
-      path: {
-        value: "<path>",
-        description: "Path to open",
-        required: true,
+    app.cli.registerHandler(
+      "sample",
+      "Run sample",
+      {
+        path: {
+          value: "<path>",
+          description: "Path to open",
+          required: true,
+        },
       },
-    }, (params) => params.path);
-
-    expect(() => app.cli.registerHandler("sample", "Duplicate sample", null, () => "duplicate")).toThrow(
-      'Command "sample" is already registered as a handler.',
+      (params) => params.path,
     );
+
+    expect(() =>
+      app.cli.registerHandler("sample", "Duplicate sample", null, () => "duplicate"),
+    ).toThrow('Command "sample" is already registered as a handler.');
     await expect(app.cli.handleCli(["sample"])).rejects.toBe(
       "Missing required parameter: path=<path>\nUsage: sample path=<path>",
     );
@@ -1046,17 +1128,25 @@ describe("community plugin lifecycle", () => {
     const record = await app.pluginInstaller.install(pkg);
 
     expect(record.version).toBe("1.0.0");
-    await expect(app.jsonStore.read("plugins/remote/manifest.json")).resolves.toMatchObject({ id: "remote", version: "1.0.0" });
+    await expect(app.jsonStore.read("plugins/remote/manifest.json")).resolves.toMatchObject({
+      id: "remote",
+      version: "1.0.0",
+    });
     const installedMainJs = await app.jsonStore.readText("plugins/remote/main.js");
     expect(installedMainJs).toContain("RemotePlugin");
     expect(installedMainJs).not.toContain("sourceMappingURL=data:application/json");
     expect(installedMainJs).toContain("\n/* nosourcemap */");
-    await expect(app.jsonStore.readText("plugins/remote/styles.css")).resolves.toContain("remote-plugin");
+    await expect(app.jsonStore.readText("plugins/remote/styles.css")).resolves.toContain(
+      "remote-plugin",
+    );
 
     await app.pluginInstaller.enable("remote");
 
     expect(app.commands.findCommand("remote:downloaded")?.name).toBe("Remote Plugin: Downloaded");
-    expect(document.head.querySelector('style[data-obsidian-reconstructed-css="plugin:remote"]')?.textContent).toContain("remote-plugin");
+    expect(
+      document.head.querySelector('style[data-obsidian-reconstructed-css="plugin:remote"]')
+        ?.textContent,
+    ).toContain("remote-plugin");
   });
 
   it("continues installing marketplace source packages when optional plugin files are missing", async () => {
@@ -1088,9 +1178,14 @@ describe("community plugin lifecycle", () => {
 
     const pkg = app.pluginMarketplace.createPackage("manifest-only");
     if (!pkg) throw new Error("Expected marketplace package");
-    await expect(app.pluginInstaller.install(pkg)).resolves.toMatchObject({ id: "manifest-only", version: "1.0.0" });
+    await expect(app.pluginInstaller.install(pkg)).resolves.toMatchObject({
+      id: "manifest-only",
+      version: "1.0.0",
+    });
 
-    await expect(app.jsonStore.read("plugins/manifest-only/manifest.json")).resolves.toMatchObject({ id: "manifest-only" });
+    await expect(app.jsonStore.read("plugins/manifest-only/manifest.json")).resolves.toMatchObject({
+      id: "manifest-only",
+    });
     await expect(app.jsonStore.readText("plugins/manifest-only/main.js")).resolves.toBeNull();
     await expect(app.jsonStore.readText("plugins/manifest-only/styles.css")).resolves.toBeNull();
   });
@@ -1236,7 +1331,7 @@ describe("community plugin lifecycle", () => {
     app.pluginSecurity.setCommunityPluginsEnabled(true);
     Object.defineProperty(window, "require", {
       configurable: true,
-      value: (id: string) => id === "node:magic" ? { answer: 42 } : undefined,
+      value: (id: string) => (id === "node:magic" ? { answer: 42 } : undefined),
     });
     await app.pluginInstaller.install({
       manifest: {
@@ -1258,7 +1353,9 @@ describe("community plugin lifecycle", () => {
 
     await app.pluginInstaller.enable("desktop-require");
 
-    await expect(app.jsonStore.read("plugins/desktop-require/data.json")).resolves.toEqual({ answer: 42 });
+    await expect(app.jsonStore.read("plugins/desktop-require/data.json")).resolves.toEqual({
+      answer: 42,
+    });
 
     document.body.classList.add("emulate-mobile");
     await app.pluginInstaller.install({
@@ -1281,8 +1378,12 @@ describe("community plugin lifecycle", () => {
 
     await app.pluginInstaller.enable("mobile-require");
 
-    await expect(app.jsonStore.read("plugins/mobile-require/data.json")).resolves.toEqual({ blocked: true });
-    expect(document.body.textContent).toContain('mobile-require attempted to load NodeJS package: "node:magic"');
+    await expect(app.jsonStore.read("plugins/mobile-require/data.json")).resolves.toEqual({
+      blocked: true,
+    });
+    expect(document.body.textContent).toContain(
+      'mobile-require attempted to load NodeJS package: "node:magic"',
+    );
   });
 
   it("provides Obsidian's CodeMirror and Lezer require mappings", async () => {
@@ -1344,12 +1445,18 @@ describe("community plugin lifecycle", () => {
       deprecatedRangesetIsState: true,
       deprecatedTooltipIsView: true,
     });
-    expect(deprecatedSpy).toHaveBeenCalledWith(expect.objectContaining({
-      message: expect.stringContaining('[CM6][cm-require] Using a deprecated package: "@codemirror/rangeset".'),
-    }));
-    expect(deprecatedSpy).toHaveBeenCalledWith(expect.objectContaining({
-      message: expect.stringContaining("https://discuss.codemirror.net/t/release-0-20-0/4302"),
-    }));
+    expect(deprecatedSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining(
+          '[CM6][cm-require] Using a deprecated package: "@codemirror/rangeset".',
+        ),
+      }),
+    );
+    expect(deprecatedSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("https://discuss.codemirror.net/t/release-0-20-0/4302"),
+      }),
+    );
   });
 
   it("blocks deprecated community plugin versions when enabling", async () => {
@@ -1394,7 +1501,9 @@ describe("community plugin lifecycle", () => {
       deprecatedVersions: [manifest.version],
     });
 
-    await expect(app.pluginInstaller.checkForDeprecations()).resolves.toEqual(["loaded-deprecated"]);
+    await expect(app.pluginInstaller.checkForDeprecations()).resolves.toEqual([
+      "loaded-deprecated",
+    ]);
 
     expect(app.plugins.getPlugin("loaded-deprecated")).toBeNull();
     expect(app.commands.findCommand("loaded-deprecated:hello")).toBeUndefined();
@@ -1409,7 +1518,9 @@ describe("community plugin lifecycle", () => {
     app.pluginSecurity.setCommunityPluginsEnabled(true);
     app.pluginMarketplace.setDataSource({
       async fetchJson<T>(url: string): Promise<T> {
-        expect(url).toBe("https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-deprecation.json");
+        expect(url).toBe(
+          "https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-deprecation.json",
+        );
         return { "remote-deprecated": ["1.0.0"] } as T;
       },
     });
@@ -1432,7 +1543,9 @@ describe("community plugin lifecycle", () => {
     });
     await app.pluginInstaller.enable("remote-deprecated");
 
-    await expect(app.pluginInstaller.checkForDeprecations()).resolves.toEqual(["remote-deprecated"]);
+    await expect(app.pluginInstaller.checkForDeprecations()).resolves.toEqual([
+      "remote-deprecated",
+    ]);
 
     expect(app.plugins.getPlugin("remote-deprecated")).toBeNull();
     expect(app.communityPlugins.get("remote-deprecated")?.enabled).toBe(false);
@@ -1442,10 +1555,13 @@ describe("community plugin lifecycle", () => {
 describe("community plugin source processing", () => {
   it("matches Obsidian's inline sourcemap and sourceURL rules", () => {
     const inlineMap = [
-      'module.exports = class Demo {};',
+      "module.exports = class Demo {};",
       "//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozfQ==",
     ].join("\n");
-    const externalMap = ['module.exports = class Demo {};', "//# sourceMappingURL=main.js.map"].join("\n");
+    const externalMap = [
+      "module.exports = class Demo {};",
+      "//# sourceMappingURL=main.js.map",
+    ].join("\n");
 
     const downloaded = prepareDownloadedMainJs(inlineMap);
 
@@ -1453,7 +1569,9 @@ describe("community plugin source processing", () => {
     expect(downloaded.endsWith(NO_SOURCE_MAP_MARKER)).toBe(true);
     expect(prepareLoadedMainJs(downloaded)).toBe(downloaded);
     expect(prepareLoadedMainJs(externalMap)).toBe(externalMap);
-    expect(appendPluginSourceUrl("module.exports = {}", "space plugin")).toContain("sourceURL=plugin:space%20plugin");
+    expect(appendPluginSourceUrl("module.exports = {}", "space plugin")).toContain(
+      "sourceURL=plugin:space%20plugin",
+    );
     expect(wrapCommonJsPluginSource(inlineMap, "demo")).toBe(
       [
         "(function anonymous(require,module,exports){module.exports = class Demo {};",
@@ -1466,7 +1584,11 @@ describe("community plugin source processing", () => {
 });
 
 function getPluginStyleEls(pluginId: string): HTMLStyleElement[] {
-  return [...document.head.querySelectorAll<HTMLStyleElement>(`style[data-obsidian-reconstructed-css="plugin:${pluginId}"]`)];
+  return [
+    ...document.head.querySelectorAll<HTMLStyleElement>(
+      `style[data-obsidian-reconstructed-css="plugin:${pluginId}"]`,
+    ),
+  ];
 }
 
 function isBefore(left: HTMLElement, right: HTMLElement): boolean {

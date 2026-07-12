@@ -69,12 +69,17 @@ export function registerOutlineCliHandlers(plugin: InternalPluginWrapper): void 
       if (params.total) return String(headings.length);
       if (params.format === "json") {
         return JSON.stringify(
-          headings.map((h) => ({ level: h.level, heading: h.heading, line: h.position.start.line + 1 })),
+          headings.map((h) => ({
+            level: h.level,
+            heading: h.heading,
+            line: h.position.start.line + 1,
+          })),
           null,
           2,
         );
       }
-      if (params.format === "md") return headings.map((h) => `${"#".repeat(h.level)} ${h.heading}`).join("\n");
+      if (params.format === "md")
+        return headings.map((h) => `${"#".repeat(h.level)} ${h.heading}`).join("\n");
       // Any other format value (including "tree") falls through to the tree —
       // the real handler has no format validation. Stack-built forest: pop
       // while the top's level >= this heading's level, then attach.

@@ -6,7 +6,8 @@ function makeSuggest(history: Array<{ url: string; title: string }> = []) {
   const app = {
     webViewer: {
       listHistory: () => history,
-      normalizeUrl: (input: string) => /^[a-z]+:/i.test(input) ? input : `https://duckduckgo.com/?q=${encodeURIComponent(input)}`,
+      normalizeUrl: (input: string) =>
+        /^[a-z]+:/i.test(input) ? input : `https://duckduckgo.com/?q=${encodeURIComponent(input)}`,
     },
     internalPlugins: { getEnabledPluginById: () => null },
   } as unknown as App;
@@ -21,7 +22,10 @@ describe("WebViewerAddressSuggest (real composition)", () => {
     ]);
     const results = suggest.getSuggestions("");
     expect(results[0]).toMatchObject({ type: "about", url: "about:blank", title: "Blank" });
-    expect(results.slice(1).map((s) => s.url)).toEqual(["https://a.example/", "https://b.example/"]);
+    expect(results.slice(1).map((s) => s.url)).toEqual([
+      "https://a.example/",
+      "https://b.example/",
+    ]);
   });
 
   it("dedupes history by URL", () => {

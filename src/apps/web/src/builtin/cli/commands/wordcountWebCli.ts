@@ -53,7 +53,11 @@ export function registerWebCliHandlers(plugin: InternalPluginWrapper): void {
       // view. Fire-and-forget — the real handler is synchronous, and it
       // null-guards the leaf (null==i||i.setViewState(...)).
       const leaf = app.workspace.getLeaf(Boolean(params.newtab));
-      void leaf?.setViewState({ type: "webviewer", active: true, state: { url, title: url, navigate: true } });
+      void leaf?.setViewState({
+        type: "webviewer",
+        active: true,
+        state: { url, title: url, navigate: true },
+      });
       return `Opened: ${url}`;
     },
   );

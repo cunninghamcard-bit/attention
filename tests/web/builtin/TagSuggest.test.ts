@@ -31,7 +31,11 @@ describe("TagSuggest", () => {
 
     await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl);
     expect(document.body.querySelector(".suggestion-highlight")?.textContent).toBe("proj");
-    await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl, new KeyboardEvent("keydown", { key: "Tab" }));
+    await app.workspace.editorSuggest.trigger(
+      view.editor,
+      view.editorViewHost.contentEl,
+      new KeyboardEvent("keydown", { key: "Tab" }),
+    );
 
     expect(view.editor.getValue()).toBe("Tag #project/");
   });
@@ -50,7 +54,11 @@ describe("TagSuggest", () => {
     view.editor.setCursor({ line: 0, ch: "Tag #proj".length });
 
     await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl);
-    await app.workspace.editorSuggest.trigger(view.editor, view.editorViewHost.contentEl, new KeyboardEvent("keydown", { key: "Enter" }));
+    await app.workspace.editorSuggest.trigger(
+      view.editor,
+      view.editorViewHost.contentEl,
+      new KeyboardEvent("keydown", { key: "Enter" }),
+    );
 
     expect(view.editor.getValue()).toBe("Tag #project/beta ");
   });

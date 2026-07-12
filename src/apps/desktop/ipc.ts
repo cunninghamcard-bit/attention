@@ -106,10 +106,8 @@ export function createIpcHandlers(deps: IpcDeps): Record<string, IpcListener> {
       e.returnValue = registry.removeByPath(pathArg as string, (id) => vaultWindows.isOpen(id));
     },
     "vault-move": (e, fromArg, toArg) => {
-      e.returnValue = registry.moveByPath(
-        fromArg as string,
-        toArg as string,
-        (id) => vaultWindows.isOpen(id),
+      e.returnValue = registry.moveByPath(fromArg as string, toArg as string, (id) =>
+        vaultWindows.isOpen(id),
       );
     },
 

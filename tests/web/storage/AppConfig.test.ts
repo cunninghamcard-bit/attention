@@ -5,7 +5,11 @@ import { JsonStore } from "@web/storage/JsonStore";
 describe("AppConfigManager", () => {
   it("loads app and appearance config with app values taking precedence", async () => {
     const store = new JsonStore();
-    await store.write("appearance.json", { theme: "moonstone", accentColor: "#fff", editorFontFamily: "Legacy" });
+    await store.write("appearance.json", {
+      theme: "moonstone",
+      accentColor: "#fff",
+      editorFontFamily: "Legacy",
+    });
     await store.write("app.json", { theme: "obsidian", hotkeys: { hotkeys: {} } });
     const config = new AppConfigManager(store);
 
@@ -25,13 +29,22 @@ describe("AppConfigManager", () => {
     await config.set("accentColor", "#123456");
     await config.set("hotkeys", { hotkeys: { "app:open": [{ modifiers: ["Mod"], key: "O" }] } });
 
-    expect(await store.read("appearance.json")).toEqual({ theme: "moonstone", accentColor: "#123456" });
-    expect(await store.read("app.json")).toEqual({ hotkeys: { hotkeys: { "app:open": [{ modifiers: ["Mod"], key: "O" }] } } });
+    expect(await store.read("appearance.json")).toEqual({
+      theme: "moonstone",
+      accentColor: "#123456",
+    });
+    expect(await store.read("app.json")).toEqual({
+      hotkeys: { hotkeys: { "app:open": [{ modifiers: ["Mod"], key: "O" }] } },
+    });
   });
 
   it("reloads changed app and appearance config from raw file updates", async () => {
     const store = new JsonStore();
-    await store.write("appearance.json", { theme: "moonstone", accentColor: "#fff" }, { mtime: 100 });
+    await store.write(
+      "appearance.json",
+      { theme: "moonstone", accentColor: "#fff" },
+      { mtime: 100 },
+    );
     await store.write("app.json", { hotkeys: { hotkeys: {} } }, { mtime: 100 });
     const config = new AppConfigManager(store);
     await config.load();

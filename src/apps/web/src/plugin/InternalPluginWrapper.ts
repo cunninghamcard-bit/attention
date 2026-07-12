@@ -31,7 +31,11 @@ export class InternalPluginWrapper extends Component {
   enabled = false;
   private configFileChangeTimer: number | null = null;
 
-  constructor(readonly app: App, readonly definition: InternalPluginDefinition, readonly manager: CorePluginManager) {
+  constructor(
+    readonly app: App,
+    readonly definition: InternalPluginDefinition,
+    readonly manager: CorePluginManager,
+  ) {
     super();
   }
 
@@ -47,14 +51,19 @@ export class InternalPluginWrapper extends Component {
       this.app.commands.addCommand(command);
     }
     for (const item of this.ribbonItems) {
-      this.addedRibbonEls.push(this.app.workspace.leftRibbon.addRibbonIcon(item.icon, item.title, item.callback, item.id));
+      this.addedRibbonEls.push(
+        this.app.workspace.leftRibbon.addRibbonIcon(item.icon, item.title, item.callback, item.id),
+      );
     }
     if (this.hasStatusBarItem) {
       this.statusBarEl = this.app.statusBar.registerStatusBarItem();
-      this.statusBarEl.classList.add(`plugin-${this.definition.id.toLowerCase().replace(/[^_a-z0-9-]/g, "-")}`);
+      this.statusBarEl.classList.add(
+        `plugin-${this.definition.id.toLowerCase().replace(/[^_a-z0-9-]/g, "-")}`,
+      );
     }
     for (const [type, creator] of this.views) this.app.viewRegistry.registerView(type, creator);
-    for (const [type, extensions] of this.extensions) this.app.viewRegistry.registerExtensions(extensions, type);
+    for (const [type, extensions] of this.extensions)
+      this.app.viewRegistry.registerExtensions(extensions, type);
     for (const entry of this.cliHandlers) {
       this.app.cli.registerHandler(entry.id, entry.description, entry.flags, entry.handler);
       this.addedCliHandlers.push(entry);
@@ -81,11 +90,13 @@ export class InternalPluginWrapper extends Component {
     for (const el of this.addedRibbonEls) el.remove();
     this.addedRibbonEls = [];
     for (const item of this.ribbonItems) this.app.workspace.leftRibbon.removeRibbonAction(item.id);
-    for (const entry of this.addedCliHandlers) this.app.cli.unregisterHandler(entry.id, entry.handler);
+    for (const entry of this.addedCliHandlers)
+      this.app.cli.unregisterHandler(entry.id, entry.handler);
     this.addedCliHandlers = [];
     this.statusBarEl?.remove();
     this.statusBarEl = null;
-    for (const [type, extensions] of this.extensions) this.app.viewRegistry.unregisterExtensions(extensions);
+    for (const [type, extensions] of this.extensions)
+      this.app.viewRegistry.unregisterExtensions(extensions);
     for (const type of this.views.keys()) {
       this.app.viewRegistry.unregisterView(type);
       if (userInitiated) this.app.workspace.detachLeavesOfType(type);
@@ -122,7 +133,12 @@ export class InternalPluginWrapper extends Component {
     this.hasStatusBarItem = true;
   }
 
-  registerCliHandler(command: string, description: string, flags: CliFlags | null, handler: CliHandler): void {
+  registerCliHandler(
+    command: string,
+    description: string,
+    flags: CliFlags | null,
+    handler: CliHandler,
+  ): void {
     const entry = { id: command, description, flags, handler };
     this.cliHandlers.push(entry);
     if (this.enabled) {
@@ -140,7 +156,11 @@ export class InternalPluginWrapper extends Component {
     return this.registerGlobalCommand({ ...command, id });
   }
 
-  addRibbonIcon(icon: string, title: string, callback: (event: MouseEvent) => unknown): HTMLElement {
+  addRibbonIcon(
+    icon: string,
+    title: string,
+    callback: (event: MouseEvent) => unknown,
+  ): HTMLElement {
     this.registerRibbonItem(title, icon, callback);
     if (!this.enabled) {
       const placeholder = document.createElement("button");
@@ -169,7 +189,8 @@ export class InternalPluginWrapper extends Component {
 
   async loadData<T = unknown>(): Promise<T | null> {
     const data = await this.app.vault.readConfigJson<T>(this.definition.id);
-    if (data !== null && this.definition.onExternalSettingsChange) this.lastDataModifiedTime = await this.getModifiedTime();
+    if (data !== null && this.definition.onExternalSettingsChange)
+      this.lastDataModifiedTime = await this.getModifiedTime();
     return data;
   }
 

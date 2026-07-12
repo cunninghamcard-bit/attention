@@ -67,15 +67,59 @@ export interface Debouncer<T extends unknown[], V> {
   run(): V | void;
 }
 
-export type DebouncedFunction<T extends (...args: never[]) => unknown> = Debouncer<Parameters<T>, ReturnType<T>>;
+export type DebouncedFunction<T extends (...args: never[]) => unknown> = Debouncer<
+  Parameters<T>,
+  ReturnType<T>
+>;
 
 const STRIP_HEADING_RE = /[!"#$%&()*+,.:;<=>?@^`{|}~/\[\]\\\r\n]/g;
 const STRIP_HEADING_FOR_LINK_RE = /([:#|^\\\r\n]|%%|\[\[|\]\])/g;
 const DEFAULT_LANGUAGE = "en";
 const SUPPORTED_LANGUAGES = new Set([
-  "am", "ar", "be", "bn", "ca", "cs", "da", "de", "en", "en-GB", "es", "fa", "fi", "fr", "ga", "he", "hu", "id",
-  "it", "ja", "ka", "kh", "ko", "lv", "ms", "ne", "nl", "no", "pl", "pt", "pt-BR", "ro", "ru", "sk", "sq", "sr",
-  "sv", "th", "tr", "uk", "uz", "vi", "zh", "zh-TW",
+  "am",
+  "ar",
+  "be",
+  "bn",
+  "ca",
+  "cs",
+  "da",
+  "de",
+  "en",
+  "en-GB",
+  "es",
+  "fa",
+  "fi",
+  "fr",
+  "ga",
+  "he",
+  "hu",
+  "id",
+  "it",
+  "ja",
+  "ka",
+  "kh",
+  "ko",
+  "lv",
+  "ms",
+  "ne",
+  "nl",
+  "no",
+  "pl",
+  "pt",
+  "pt-BR",
+  "ro",
+  "ru",
+  "sk",
+  "sq",
+  "sr",
+  "sv",
+  "th",
+  "tr",
+  "uk",
+  "uz",
+  "vi",
+  "zh",
+  "zh-TW",
 ]);
 
 export interface FrontMatterInfo {
@@ -151,7 +195,10 @@ export function request(request: RequestUrlParam | string, app?: App): Promise<s
   return requestUrl(request, app).text;
 }
 
-export function requestUrl(request: RequestUrlParam | string, app?: App): RequestUrlResponsePromise {
+export function requestUrl(
+  request: RequestUrlParam | string,
+  app?: App,
+): RequestUrlResponsePromise {
   const rawRequest = typeof request === "string" ? { url: request } : request;
   const responsePromise = requestUrlViaPlatform(rawRequest, app).then((response) => {
     if (rawRequest.throw !== false && response.status >= 400) {
@@ -171,7 +218,11 @@ export function requestUrl(request: RequestUrlParam | string, app?: App): Reques
   return responsePromise;
 }
 
-export function debounce<T extends unknown[], V>(cb: (...args: T) => V, timeout = 0, resetTimer = false): Debouncer<T, V> {
+export function debounce<T extends unknown[], V>(
+  cb: (...args: T) => V,
+  timeout = 0,
+  resetTimer = false,
+): Debouncer<T, V> {
   let timeoutId: number | null = null;
   let timerWindow: Window = getActiveWindow();
   let pendingArgs: T | null = null;
@@ -199,7 +250,7 @@ export function debounce<T extends unknown[], V>(cb: (...args: T) => V, timeout 
     timeoutId = null;
     return call();
   };
-  const debounced = (function (this: unknown, ...args: T) {
+  const debounced = function (this: unknown, ...args: T) {
     pendingArgs = args;
     pendingThis = this;
     const now = Date.now();
@@ -217,7 +268,7 @@ export function debounce<T extends unknown[], V>(cb: (...args: T) => V, timeout 
     scheduledUntil = now + timeout;
     timeoutId = timerWindow.setTimeout(flush, timeout);
     return debounced;
-  }) as Debouncer<T, V>;
+  } as Debouncer<T, V>;
   debounced.cancel = () => {
     if (timeoutId !== null) timerWindow.clearTimeout(timeoutId);
     timeoutId = null;
@@ -243,7 +294,8 @@ export function stringifyYaml(obj: any): string {
 }
 
 export function getLanguage(): string {
-  const localStorageLanguage = typeof localStorage === "undefined" ? null : localStorage.getItem("language");
+  const localStorageLanguage =
+    typeof localStorage === "undefined" ? null : localStorage.getItem("language");
   if (localStorageLanguage) return localStorageLanguage;
   const navigatorLanguage = typeof navigator === "undefined" ? "" : navigator.language;
   if (SUPPORTED_LANGUAGES.has(navigatorLanguage)) return navigatorLanguage;
@@ -264,7 +316,9 @@ export function loadMermaid(): Promise<any> {
   };
   global.mermaid ??= {
     initialize: () => {},
-    render: async (_id: string, source: string) => ({ svg: `<svg data-mermaid-source="${escapeHtmlAttribute(source)}"></svg>` }),
+    render: async (_id: string, source: string) => ({
+      svg: `<svg data-mermaid-source="${escapeHtmlAttribute(source)}"></svg>`,
+    }),
   };
   return Promise.resolve(global.mermaid);
 }
@@ -376,7 +430,13 @@ export function resolveSubpath(
 
 // Frontmatter tag/alias readers live in the kernel (metadata/FrontmatterTags);
 // re-exported here to keep the public plugin API surface unchanged.
-export { getAllTags, parseFrontMatterAliases, parseFrontMatterEntry, parseFrontMatterStringArray, parseFrontMatterTags } from "../metadata/FrontmatterTags";
+export {
+  getAllTags,
+  parseFrontMatterAliases,
+  parseFrontMatterEntry,
+  parseFrontMatterStringArray,
+  parseFrontMatterTags,
+} from "../metadata/FrontmatterTags";
 
 export function getFrontMatterInfo(content: string): FrontMatterInfo {
   const startMatch = /^---(\r?\n)/g.exec(content);
@@ -429,15 +489,20 @@ function resolveBlockSubpath(cache: CachedMetadata, rawId: string): BlockSubpath
 function resolveFootnoteSubpath(cache: CachedMetadata, id: string): FootnoteSubpathResult | null {
   if (!id) return null;
   const footnote = cache.footnotes?.find((item) => item.id === id);
-  return footnote ? {
-    type: "footnote",
-    footnote,
-    start: getRangeStart(footnote.position),
-    end: getRangeEnd(footnote.position),
-  } : null;
+  return footnote
+    ? {
+        type: "footnote",
+        footnote,
+        start: getRangeStart(footnote.position),
+        end: getRangeEnd(footnote.position),
+      }
+    : null;
 }
 
-function resolveHeadingSubpath(cache: CachedMetadata, parts: string[]): HeadingSubpathResult | null {
+function resolveHeadingSubpath(
+  cache: CachedMetadata,
+  parts: string[],
+): HeadingSubpathResult | null {
   const headings = cache.headings;
   if (!headings?.length) return null;
   let partIndex = 0;
@@ -450,22 +515,24 @@ function resolveHeadingSubpath(cache: CachedMetadata, parts: string[]): HeadingS
       break;
     }
     if (
-      !current
-      && heading.level > currentLevel
-      && stripHeading(heading.heading).toLowerCase() === stripHeading(parts[partIndex]).toLowerCase()
+      !current &&
+      heading.level > currentLevel &&
+      stripHeading(heading.heading).toLowerCase() === stripHeading(parts[partIndex]).toLowerCase()
     ) {
       partIndex += 1;
       currentLevel = heading.level;
       if (partIndex === parts.length) current = heading;
     }
   }
-  return current ? {
-    type: "heading",
-    current,
-    next,
-    start: getRangeStart(current.position),
-    end: next ? getRangeStart(next.position) : null,
-  } : null;
+  return current
+    ? {
+        type: "heading",
+        current,
+        next,
+        start: getRangeStart(current.position),
+        end: next ? getRangeStart(next.position) : null,
+      }
+    : null;
 }
 
 function getRangeStart(position: unknown): unknown {
@@ -491,7 +558,10 @@ function htmlToString(html: string | HTMLElement | Document | DocumentFragment):
   return html.outerHTML;
 }
 
-async function requestUrlViaPlatform(request: RequestUrlParam, app?: App): Promise<RequestUrlResponse> {
+async function requestUrlViaPlatform(
+  request: RequestUrlParam,
+  app?: App,
+): Promise<RequestUrlResponse> {
   if (app?.shell.bridge.hasHandler("request-url")) {
     const response = await app.shell.bridge.invoke<RequestUrlParam, NativeRequestUrlResponse>({
       channel: "request-url",
@@ -509,7 +579,11 @@ async function requestUrlViaFetch(request: RequestUrlParam): Promise<RequestUrlR
     body: request.body,
   });
   const arrayBuffer = await response.arrayBuffer();
-  return createRequestUrlResponse(response.status, Object.fromEntries(response.headers.entries()), arrayBuffer);
+  return createRequestUrlResponse(
+    response.status,
+    Object.fromEntries(response.headers.entries()),
+    arrayBuffer,
+  );
 }
 
 function normalizeNativeRequestUrlResponse(response: NativeRequestUrlResponse): RequestUrlResponse {
@@ -520,7 +594,11 @@ function normalizeNativeRequestUrlResponse(response: NativeRequestUrlResponse): 
   return createRequestUrlResponse(response.status, headers, arrayBuffer);
 }
 
-function createRequestUrlResponse(status: number, headers: Record<string, string>, arrayBuffer: ArrayBuffer): RequestUrlResponse {
+function createRequestUrlResponse(
+  status: number,
+  headers: Record<string, string>,
+  arrayBuffer: ArrayBuffer,
+): RequestUrlResponse {
   return {
     status,
     headers,

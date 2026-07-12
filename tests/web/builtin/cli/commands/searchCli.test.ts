@@ -28,22 +28,32 @@ describe("search", () => {
 
   it("path= is a folder prefix: Folder does not match Folder2", async () => {
     const app = await seededApp();
-    expect(await app.cli.handleCli(["search", "query=hello", "path=Folder"])).toBe("Folder/Beta.md");
-    expect(await app.cli.handleCli(["search", "query=hello", "path=Folder/"])).toBe("Folder/Beta.md");
+    expect(await app.cli.handleCli(["search", "query=hello", "path=Folder"])).toBe(
+      "Folder/Beta.md",
+    );
+    expect(await app.cli.handleCli(["search", "query=hello", "path=Folder/"])).toBe(
+      "Folder/Beta.md",
+    );
   });
 
   it("limit caps files in vault order; limit=0 means unlimited", async () => {
     const app = await seededApp();
     expect(await app.cli.handleCli(["search", "query=hello", "limit=1"])).toBe("Alpha.md");
     // Vault order, not engine path order (which would put Folder/Beta.md second).
-    expect(await app.cli.handleCli(["search", "query=hello", "limit=2"])).toBe("Alpha.md\nFolder2/Trick.md");
-    expect((await app.cli.handleCli(["search", "query=hello", "limit=0"])).split("\n")).toHaveLength(3);
+    expect(await app.cli.handleCli(["search", "query=hello", "limit=2"])).toBe(
+      "Alpha.md\nFolder2/Trick.md",
+    );
+    expect(
+      (await app.cli.handleCli(["search", "query=hello", "limit=0"])).split("\n"),
+    ).toHaveLength(3);
   });
 
   it("a filename-only hit (word in name, not body) is a bare path line and counts in total", async () => {
     const app = await seededApp();
     await app.vault.create("Hello.md", "no greeting in the body");
-    expect(await app.cli.handleCli(["search", "query=hello"])).toBe("Hello.md\nAlpha.md\nFolder2/Trick.md\nFolder/Beta.md");
+    expect(await app.cli.handleCli(["search", "query=hello"])).toBe(
+      "Hello.md\nAlpha.md\nFolder2/Trick.md\nFolder/Beta.md",
+    );
     expect(await app.cli.handleCli(["search", "query=hello", "total"])).toBe("4");
   });
 
@@ -51,9 +61,13 @@ describe("search", () => {
     const app = await seededApp();
     expect(await app.cli.handleCli(["search", "query=hello", "total"])).toBe("3");
     expect(await app.cli.handleCli(["search", "query=hello", "total", "limit=1"])).toBe("3");
-    expect(await app.cli.handleCli(["search", "query=hello", "total", "format=json"])).toBe('{"total":3}');
+    expect(await app.cli.handleCli(["search", "query=hello", "total", "format=json"])).toBe(
+      '{"total":3}',
+    );
     expect(await app.cli.handleCli(["search", "query=zzzz", "total"])).toBe("0");
-    expect(await app.cli.handleCli(["search", "query=zzzz", "total", "format=json"])).toBe('{"total":0}');
+    expect(await app.cli.handleCli(["search", "query=zzzz", "total", "format=json"])).toBe(
+      '{"total":0}',
+    );
   });
 
   it("format=json returns a bare JSON array of paths", async () => {
@@ -64,7 +78,9 @@ describe("search", () => {
   it("zero matches returns 'No matches found.' even with format=json", async () => {
     const app = await seededApp();
     expect(await app.cli.handleCli(["search", "query=zzzz"])).toBe("No matches found.");
-    expect(await app.cli.handleCli(["search", "query=zzzz", "format=json"])).toBe("No matches found.");
+    expect(await app.cli.handleCli(["search", "query=zzzz", "format=json"])).toBe(
+      "No matches found.",
+    );
   });
 
   it("case makes the search case sensitive", async () => {
@@ -76,17 +92,25 @@ describe("search", () => {
   it("throws the raw missing-query string", async () => {
     const app = await seededApp();
     // Absent flag is caught by the registry's required validation...
-    await expect(app.cli.handleCli(["search"])).rejects.toMatch(/^Missing required parameter: query/);
+    await expect(app.cli.handleCli(["search"])).rejects.toMatch(
+      /^Missing required parameter: query/,
+    );
     // ...an empty value reaches the handler's own check (raw string, not Error).
-    await expect(app.cli.handleCli(["search", "query="])).rejects.toBe("Missing required parameter: query");
+    await expect(app.cli.handleCli(["search", "query="])).rejects.toBe(
+      "Missing required parameter: query",
+    );
   });
 });
 
 describe("search:context", () => {
   it("formats matches as 'file:LINE: text' with 1-based lines and trimmed text", async () => {
     const app = await seededApp();
-    expect(await app.cli.handleCli(["search:context", "query=indented"])).toBe("Alpha.md:2: indented hello");
-    expect(await app.cli.handleCli(["search:context", "query=hello", "path=Folder"])).toBe("Folder/Beta.md:1: hello there");
+    expect(await app.cli.handleCli(["search:context", "query=indented"])).toBe(
+      "Alpha.md:2: indented hello",
+    );
+    expect(await app.cli.handleCli(["search:context", "query=hello", "path=Folder"])).toBe(
+      "Folder/Beta.md:1: hello there",
+    );
   });
 
   it("repeats duplicate lines for multiple matches on one line; limit caps files not lines", async () => {
@@ -98,7 +122,9 @@ describe("search:context", () => {
 
   it("a match without content offsets contributes a bare path line", async () => {
     const app = await seededApp();
-    expect(await app.cli.handleCli(["search:context", "query=file:trick"])).toBe("Folder2/Trick.md");
+    expect(await app.cli.handleCli(["search:context", "query=file:trick"])).toBe(
+      "Folder2/Trick.md",
+    );
   });
 
   it("a filename-only hit contributes a bare path line", async () => {
@@ -118,24 +144,34 @@ describe("search:context", () => {
   it("zero matches returns 'No matches found.' even with format=json", async () => {
     const app = await seededApp();
     expect(await app.cli.handleCli(["search:context", "query=zzzz"])).toBe("No matches found.");
-    expect(await app.cli.handleCli(["search:context", "query=zzzz", "format=json"])).toBe("No matches found.");
+    expect(await app.cli.handleCli(["search:context", "query=zzzz", "format=json"])).toBe(
+      "No matches found.",
+    );
   });
 
   it("throws the raw missing-query string", async () => {
     const app = await seededApp();
-    await expect(app.cli.handleCli(["search:context"])).rejects.toMatch(/^Missing required parameter: query/);
-    await expect(app.cli.handleCli(["search:context", "query="])).rejects.toBe("Missing required parameter: query");
+    await expect(app.cli.handleCli(["search:context"])).rejects.toMatch(
+      /^Missing required parameter: query/,
+    );
+    await expect(app.cli.handleCli(["search:context", "query="])).rejects.toBe(
+      "Missing required parameter: query",
+    );
   });
 });
 
 describe("search:open", () => {
   it("opens the search side leaf with the query and echoes it", async () => {
     const app = await seededApp();
-    expect(await app.cli.handleCli(["search:open", "query=foo bar"])).toBe("Opened search: foo bar");
+    expect(await app.cli.handleCli(["search:open", "query=foo bar"])).toBe(
+      "Opened search: foo bar",
+    );
     // The handler is fire-and-forget; wait until the leaf state lands.
     await vi.waitFor(() => {
       const leaf = app.workspace.getLeavesOfType("search")[0];
-      expect((leaf?.view as unknown as { getQuery(): string } | undefined)?.getQuery()).toBe("foo bar");
+      expect((leaf?.view as unknown as { getQuery(): string } | undefined)?.getQuery()).toBe(
+        "foo bar",
+      );
     });
   });
 
