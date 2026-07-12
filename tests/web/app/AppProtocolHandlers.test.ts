@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
+import { Vault } from "@web/vault/Vault";
+
+// This suite exercises EDITOR behaviors; pin new views to source mode so the
+// product's preview-first default (Vault defaultViewMode) stays out of frame.
+const origGetConfig = Vault.prototype.getConfig;
+Vault.prototype.getConfig = function (key: string) {
+  if (key === "defaultViewMode") return "source";
+  return origGetConfig.call(this, key);
+};
 
 describe("App protocol handlers", () => {
   beforeEach(() => {

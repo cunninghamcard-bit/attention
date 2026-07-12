@@ -891,6 +891,13 @@ describe("rename into a missing folder (adapter-parity ENOENT)", () => {
   });
 });
 
+describe("Vault config factory defaults", () => {
+  it("new markdown views default to preview mode", () => {
+    const vault = new Vault();
+    expect(vault.getConfig("defaultViewMode")).toBe("preview");
+  });
+});
+
 describe("Vault adapter stat threading", () => {
   it("vault applies adapter-provided stats without re-statting", async () => {
     const handlers = new Map<string, (...args: unknown[]) => void>();

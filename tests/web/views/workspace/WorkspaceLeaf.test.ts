@@ -11,6 +11,7 @@ import type { WorkspaceLeaf } from "@web/views/workspace/WorkspaceLeaf";
 import { WorkspaceSplit } from "@web/views/workspace/WorkspaceSplit";
 import { WorkspaceTabs } from "@web/views/workspace/WorkspaceTabs";
 import { WorkspaceWindow } from "@web/views/workspace/WorkspaceWindow";
+import { Vault } from "@web/vault/Vault";
 
 class NoHistoryView extends View {
   navigation = true;
@@ -243,6 +244,14 @@ class AsyncEmptyCloseView extends EmptyView {
     this.closeFinished = true;
   }
 }
+
+// This suite exercises EDITOR behaviors; pin new views to source mode so the
+// product's preview-first default (Vault defaultViewMode) stays out of frame.
+const origGetConfig = Vault.prototype.getConfig;
+Vault.prototype.getConfig = function (key: string) {
+  if (key === "defaultViewMode") return "source";
+  return origGetConfig.call(this, key);
+};
 
 describe("WorkspaceLeaf", () => {
   beforeEach(() => {

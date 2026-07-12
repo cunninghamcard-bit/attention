@@ -1420,7 +1420,7 @@ function isNotFoundError(error: unknown): boolean {
 const defaultVaultConfig: Record<string, unknown> = {
   alwaysUpdateLinks: false,
   attachmentFolderPath: "/",
-  defaultViewMode: "source",
+  defaultViewMode: "preview",
   deleteUnlinkedAttachments: "ask",
   foldHeading: true,
   foldIndent: true,

@@ -3,6 +3,7 @@ import { App } from "@web/app/App";
 import type { DragSource } from "@web/ui/drag/DragManager";
 import type { TFile } from "@web/vault/TAbstractFile";
 import { MarkdownView } from "@web/views/MarkdownView";
+import { Vault } from "@web/vault/Vault";
 
 interface TestDragSource {
   type: string;
@@ -10,6 +11,14 @@ interface TestDragSource {
   elements?: Element[];
   [key: string]: unknown;
 }
+
+// This suite exercises EDITOR behaviors; pin new views to source mode so the
+// product's preview-first default (Vault defaultViewMode) stays out of frame.
+const origGetConfig = Vault.prototype.getConfig;
+Vault.prototype.getConfig = function (key: string) {
+  if (key === "defaultViewMode") return "source";
+  return origGetConfig.call(this, key);
+};
 
 describe("MarkdownView drag and drop", () => {
   beforeEach(() => {
