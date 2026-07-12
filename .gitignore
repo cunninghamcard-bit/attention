@@ -14,3 +14,4 @@ playwright-report/
 decode-obsidian
 .obsidian/
 .agent-spec/
+.docwright/
