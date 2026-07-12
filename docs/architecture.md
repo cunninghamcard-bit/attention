@@ -29,6 +29,10 @@ product name appears in the tree, only in the git remote.
 ├── examples/            sample community plugins exercising the public api/ facade
 ├── fixtures/            test vaults and other read-only test inputs
 ├── docs/                this file, the project constitution, and SDD goal folders
+├── out/                 ALL transient outputs (reports, coverage) — gitignored
+├── .githooks/           tracked git hooks (pre-commit guard + commit-msg lint),
+│                        auto-armed by the `prepare` script on every install
+├── .github/             CI: the full local gate battery on push/PR
 ├── scripts/             build/e2e helper scripts (dts fixup, CLI e2e driver)
 ├── patches/             pnpm dependency patches (ghostty-web)
 └── decode-obsidian/     read-only reference symlink to Obsidian's source (never edited)
@@ -172,6 +176,6 @@ cover the three runtimes, and `typecheck:tools` covers e2e specs, scripts,
 examples, and the root config files themselves. `mise.toml` pins the
 toolchain (plus `engines`/`packageManager` for non-mise users); `oxfmt` formats
 `src tests scripts` (one-time reformat lives in `.git-blame-ignore-revs`);
-`pnpm run hooks:install` arms both git hooks — the docwright pre-commit guard
+hooks live in the tracked `.githooks/` (auto-armed via core.hooksPath by `prepare`) — the docwright pre-commit guard
 and the commitlint commit-msg check. The IPC channel table and the public
 plugin surface are frozen by budget alarms.

@@ -33,7 +33,8 @@
     "typecheck:tools": "tsc -p tsconfig.tools.json",
     "format": "oxfmt src tests scripts",
     "format:check": "oxfmt --check src tests scripts",
-    "hooks:install": "docwright install-hooks && install -m 755 scripts/hooks/commit-msg .git/hooks/commit-msg"
+    "hooks:install": "git config core.hooksPath .githooks",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.3",

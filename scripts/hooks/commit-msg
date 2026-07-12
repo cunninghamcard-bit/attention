@@ -1,3 +1,0 @@
-#!/bin/sh
-# Conventional-commit message lint. Installed by `pnpm run hooks:install`.
-pnpm exec commitlint --edit "$1"

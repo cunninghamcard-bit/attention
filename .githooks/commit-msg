@@ -1,0 +1,3 @@
+#!/bin/sh
+# Conventional-commit message lint (armed via core.hooksPath, see hooks:install).
+pnpm exec commitlint --edit "$1"

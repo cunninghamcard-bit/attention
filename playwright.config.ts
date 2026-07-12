@@ -8,13 +8,15 @@ export default defineConfig({
   testIgnore: ["**/desktop/**"],
   timeout: 30_000,
   fullyParallel: true,
-  reporter: [["list"], ["html", { open: "never" }]],
+  reporter: [["list"], ["html", { open: "never", outputFolder: "out/playwright-report" }]],
+  outputDir: "out/test-results",
   use: {
     baseURL: "http://127.0.0.1:5173",
     trace: "on-first-retry",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "chromium", outputDir: "out/test-results",
+  use: { ...devices["Desktop Chrome"] } },
   ],
   webServer: {
     command: "pnpm run dev",

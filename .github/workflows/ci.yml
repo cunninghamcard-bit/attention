@@ -1,0 +1,35 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # reads packageManager from package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26.3.0"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        env:
+          CI: "true"
+      - run: pnpm run lint
+      - run: pnpm run format:check
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm run typecheck:electron
+      - run: pnpm run typecheck:server
+      - run: pnpm run typecheck:tools
+      - run: pnpm test
+      - run: pnpm run build
+      - run: pnpm run build:api
+      - run: pnpm run build:electron
+      - run: pnpm run build:server
+      # Not here yet (documented follow-ups): the docwright guard (rust
+      # binary, needs a cargo install step), and the electron e2e / perf
+      # harness (needs xvfb + a display) — both stay local-only for now.

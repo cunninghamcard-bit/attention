@@ -10,8 +10,8 @@ export default defineConfig({
   retries: 0,
   timeout: 120_000,
   expect: { timeout: 15_000 },
-  reporter: [["list"], ["html", { open: "never" }]],
-  outputDir: "./test-results/desktop",
+  reporter: [["list"], ["html", { open: "never", outputFolder: "out/playwright-report-desktop" }]],
+  outputDir: "out/test-results-desktop",
   use: {
     screenshot: "only-on-failure",
     video: "retain-on-failure",
