@@ -1,7 +1,12 @@
 import type {
   CiState,
+  CommitDetail,
+  CommitFileChange,
+  CommitPage,
+  CommitSummary,
   GitHubActor,
   GitHubAuthState,
+  GitHubBranch,
   GitHubRepositoryRef,
   PrCheck,
   PrComment,
@@ -176,6 +181,100 @@ export class GitHubClient {
     if (res.status >= 400) throw apiError(res);
   }
 
+  async listBranches(repo: GitHubRepositoryRef): Promise<GitHubBranch[]> {
+    const res = await this.request("GET", `/repos/${repo.owner}/${repo.repo}/branches?per_page=100`);
+    if (res.status >= 400) throw apiError(res);
+    const items = (res.json as RawBranch[]) ?? [];
+    return items.map((item) => ({
+      name: item.name ?? "",
+      commitSha: item.commit?.sha ?? "",
+      protected: Boolean(item.protected),
+    })).filter((b) => b.name);
+  }
+
+  async getDefaultBranch(repo: GitHubRepositoryRef): Promise<string> {
+    const res = await this.request("GET", `/repos/${repo.owner}/${repo.repo}`);
+    if (res.status >= 400) throw apiError(res);
+    return String((res.json as { default_branch?: string })?.default_branch ?? "main");
+  }
+
+  async listCommits(repo: GitHubRepositoryRef, options: { ref?: string; page?: number; perPage?: number } = {}): Promise<CommitPage> {
+    const page = options.page ?? 1;
+    const perPage = options.perPage ?? 30;
+    const ref = options.ref?.trim() || undefined;
+    const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
+    if (ref) params.set("sha", ref);
+    const res = await this.request("GET", `/repos/${repo.owner}/${repo.repo}/commits?${params}`);
+    if (res.status >= 400) throw apiError(res);
+    const items = ((res.json as RawCommitListItem[]) ?? []).map(mapCommitSummary);
+    return {
+      items,
+      page,
+      perPage,
+      hasPreviousPage: page > 1,
+      hasNextPage: items.length === perPage,
+      ref: ref ?? "",
+    };
+  }
+
+  async getCommit(repo: GitHubRepositoryRef, sha: string): Promise<CommitDetail> {
+    const res = await this.request("GET", `/repos/${repo.owner}/${repo.repo}/commits/${encodeURIComponent(sha)}`);
+    if (res.status >= 400) throw apiError(res);
+    const raw = res.json as RawCommitDetail;
+    const fullSha = raw.sha ?? sha;
+    const [checks, combined] = await Promise.all([
+      this.listChecks(repo, fullSha),
+      this.combinedStatus(repo, fullSha),
+    ]);
+    const message = raw.commit?.message ?? "";
+    const headline = message.split("\n")[0] ?? "";
+    const login = raw.author?.login ?? raw.commit?.author?.name ?? "unknown";
+    return {
+      sha: fullSha,
+      shortSha: fullSha.slice(0, 7),
+      headline,
+      message,
+      author: {
+        login,
+        avatarUrl: raw.author?.avatar_url ?? "",
+        url: raw.author?.html_url ?? "",
+      },
+      authorName: raw.commit?.author?.name ?? null,
+      committer: raw.committer
+        ? mapActor(raw.committer)
+        : raw.commit?.committer?.name
+          ? { login: raw.commit.committer.name, avatarUrl: "", url: "" }
+          : null,
+      committedDate: raw.commit?.committer?.date ?? raw.commit?.author?.date ?? "",
+      authoredDate: raw.commit?.author?.date ?? "",
+      url: raw.html_url ?? "",
+      parents: (raw.parents ?? []).map((p) => ({
+        sha: p.sha ?? "",
+        shortSha: (p.sha ?? "").slice(0, 7),
+        url: p.html_url ?? "",
+      })),
+      stats: {
+        additions: raw.stats?.additions ?? 0,
+        deletions: raw.stats?.deletions ?? 0,
+        total: raw.stats?.total ?? 0,
+      },
+      files: (raw.files ?? []).map(mapCommitFile),
+      verification: raw.commit?.verification
+        ? { verified: Boolean(raw.commit.verification.verified), reason: raw.commit.verification.reason ?? null }
+        : null,
+      checks,
+      ciState: rollupCi(checks) ?? combined,
+    };
+  }
+
+  async getCommitDiff(repo: GitHubRepositoryRef, sha: string): Promise<string> {
+    const res = await this.request("GET", `/repos/${repo.owner}/${repo.repo}/commits/${encodeURIComponent(sha)}`, {
+      accept: "application/vnd.github.v3.diff",
+    });
+    if (res.status >= 400) throw apiError(res);
+    return res.text;
+  }
+
   private async listChecks(repo: GitHubRepositoryRef, sha: string): Promise<PrCheck[]> {
     const res = await this.request("GET", `/repos/${repo.owner}/${repo.repo}/commits/${sha}/check-runs?per_page=100`);
     if (res.status >= 400) return [];
@@ -329,22 +428,47 @@ function mapReviewComment(raw: RawReviewComment): PrReviewComment {
 }
 
 function mapCommit(raw: RawCommit): PrCommit {
+  const summary = mapCommitSummary(raw);
+  return {
+    sha: summary.sha,
+    shortSha: summary.shortSha,
+    messageHeadline: summary.headline,
+    message: summary.message,
+    author: summary.author,
+    committedDate: summary.committedDate,
+    url: summary.url,
+    ciState: null,
+  };
+}
+
+function mapCommitSummary(raw: RawCommitListItem | RawCommit): CommitSummary {
   const message = raw.commit?.message ?? "";
   const headline = message.split("\n")[0] ?? "";
   const login = raw.author?.login ?? raw.commit?.author?.name ?? "unknown";
   return {
     sha: raw.sha ?? "",
     shortSha: (raw.sha ?? "").slice(0, 7),
-    messageHeadline: headline,
     message,
+    headline,
     author: {
       login,
       avatarUrl: raw.author?.avatar_url ?? "",
       url: raw.author?.html_url ?? "",
     },
+    authorName: raw.commit?.author?.name ?? null,
     committedDate: raw.commit?.committer?.date ?? raw.commit?.author?.date ?? "",
     url: raw.html_url ?? "",
-    ciState: null,
+  };
+}
+
+function mapCommitFile(raw: RawFile): CommitFileChange {
+  return {
+    path: raw.filename ?? "",
+    previousPath: raw.previous_filename ?? null,
+    status: (raw.status ?? "modified") as CommitFileChange["status"],
+    additions: raw.additions ?? 0,
+    deletions: raw.deletions ?? 0,
+    patch: raw.patch ?? null,
   };
 }
 
@@ -467,11 +591,25 @@ interface RawCommit {
   sha?: string;
   html_url?: string;
   author?: RawUser | null;
+  committer?: RawUser | null;
   commit?: {
     message?: string;
     author?: { name?: string; date?: string };
-    committer?: { date?: string };
+    committer?: { name?: string; date?: string };
+    verification?: { verified?: boolean; reason?: string | null };
   };
+  parents?: Array<{ sha?: string; html_url?: string }>;
+  stats?: { additions?: number; deletions?: number; total?: number };
+  files?: RawFile[];
+}
+
+type RawCommitListItem = RawCommit;
+type RawCommitDetail = RawCommit;
+
+interface RawBranch {
+  name?: string;
+  protected?: boolean;
+  commit?: { sha?: string };
 }
 
 interface RawFile {

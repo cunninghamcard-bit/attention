@@ -8,6 +8,8 @@ export interface GithubPrPrefs {
   filter: PrListFilter;
   /** Last opened PR number in this repo, if any. */
   lastPr?: number;
+  /** Last selected branch for the Commits section. */
+  lastBranch?: string;
 }
 
 export function readGithubPrPrefs(): Partial<GithubPrPrefs> {

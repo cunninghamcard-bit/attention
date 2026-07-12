@@ -27,6 +27,7 @@ import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import { setIcon } from "../ui/Icon";
 import { Notice } from "../ui/Notice";
 import { openGitReview } from "./review/GitReviewView";
+import { openCommitDetail, openGitHubWorkspace } from "./GitHubWorkspace";
 
 /**
  * Cloud GitHub pull-request workspace (app-owned token — no gh CLI).
@@ -273,6 +274,21 @@ function PrListPanel({ app }: { app: App }): ReactNode {
             <button type="button" className="git-pr-repo-badge tappable" onClick={() => setPickingRepo(true)} title="Switch repository">
               {repo.owner}/{repo.repo}
               <Icon name="lucide-chevrons-up-down" />
+            </button>
+            <button
+              type="button"
+              className="git-pr-action"
+              title="Repository workspace"
+              onClick={() => void openGitHubWorkspace(app, { section: "commits", owner: repo.owner, repo: repo.repo })}
+            >
+              Commits
+            </button>
+            <button
+              type="button"
+              className="git-pr-action"
+              onClick={() => void openGitHubWorkspace(app, { section: "branches", owner: repo.owner, repo: repo.repo })}
+            >
+              Branches
             </button>
           </div>
           <div className="git-pr-filter-tabs" role="tablist">
@@ -688,7 +704,11 @@ function PrDetailPanel({
             <div className="git-pr-commits">
               {detail.commits.length === 0 && <div className="git-pr-empty">No commits on this pull request.</div>}
               {detail.commits.map((commit) => (
-                <CommitRow key={commit.sha} commit={commit} />
+                <CommitRow
+                  key={commit.sha}
+                  commit={commit}
+                  onOpen={() => void openCommitDetail(app, commit.sha, repo)}
+                />
               ))}
             </div>
           )}
@@ -1179,9 +1199,9 @@ function InlineCommentCard({ comment }: { comment: PrReviewComment }): ReactNode
   );
 }
 
-function CommitRow({ commit }: { commit: PrCommit }): ReactNode {
+function CommitRow({ commit, onOpen }: { commit: PrCommit; onOpen?: () => void }): ReactNode {
   return (
-    <div className="git-pr-commit-row">
+    <div className="git-pr-commit-row tappable" onClick={onOpen} role={onOpen ? "button" : undefined}>
       <Avatar actor={commit.author} size={22} />
       <div className="git-pr-commit-main">
         <div className="git-pr-commit-headline">{commit.messageHeadline}</div>
@@ -1190,7 +1210,15 @@ function CommitRow({ commit }: { commit: PrCommit }): ReactNode {
         </div>
       </div>
       <code className="git-pr-commit-sha">{commit.shortSha}</code>
-      <button type="button" className="clickable-icon" aria-label="Open on GitHub" onClick={() => window.open(commit.url, "_blank")}>
+      <button
+        type="button"
+        className="clickable-icon"
+        aria-label="Open on GitHub"
+        onClick={(e) => {
+          e.stopPropagation();
+          window.open(commit.url, "_blank");
+        }}
+      >
         <Icon name="lucide-external-link" />
       </button>
     </div>

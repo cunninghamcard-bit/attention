@@ -138,3 +138,64 @@ export interface GitHubApiError {
   status: number;
   message: string;
 }
+
+/** Branch list entry for the Commits / Branches sections. */
+export interface GitHubBranch {
+  name: string;
+  commitSha: string;
+  protected: boolean;
+}
+
+/** One row in the repository commits timeline. */
+export interface CommitSummary {
+  sha: string;
+  shortSha: string;
+  message: string;
+  headline: string;
+  author: GitHubActor;
+  /** Git author name when not linked to a GitHub user. */
+  authorName: string | null;
+  committedDate: string;
+  url: string;
+}
+
+export interface CommitPage {
+  items: CommitSummary[];
+  page: number;
+  perPage: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+  /** Branch / ref used for the query. */
+  ref: string;
+}
+
+export interface CommitFileChange {
+  path: string;
+  previousPath: string | null;
+  status: "added" | "removed" | "modified" | "renamed" | "copied" | "changed" | "unchanged";
+  additions: number;
+  deletions: number;
+  patch: string | null;
+}
+
+/** Full commit detail (Oh My GitHub commit page). */
+export interface CommitDetail {
+  sha: string;
+  shortSha: string;
+  headline: string;
+  message: string;
+  author: GitHubActor;
+  authorName: string | null;
+  committer: GitHubActor | null;
+  committedDate: string;
+  authoredDate: string;
+  url: string;
+  parents: Array<{ sha: string; shortSha: string; url: string }>;
+  stats: { additions: number; deletions: number; total: number };
+  files: CommitFileChange[];
+  verification: { verified: boolean; reason: string | null } | null;
+  ciState: CiState | null;
+  checks: PrCheck[];
+}
+
+export type GithubWorkspaceSection = "pulls" | "commits" | "branches" | "local";

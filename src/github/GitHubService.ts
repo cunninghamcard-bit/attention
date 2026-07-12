@@ -4,7 +4,10 @@ import { GitHubClient, type HttpTransport } from "./GitHubClient";
 import { readGithubPrPrefs, writeGithubPrPrefs } from "./prefs";
 import { parseGitRemoteUrl } from "./resolveRepository";
 import type {
+  CommitDetail,
+  CommitPage,
   GitHubAuthState,
+  GitHubBranch,
   GitHubRepositoryRef,
   PrDetail,
   PrDraftComment,
@@ -174,6 +177,34 @@ export class GitHubService {
     } catch (error) {
       return errorMessage(error);
     }
+  }
+
+  async listBranches(repo?: GitHubRepositoryRef): Promise<GitHubBranch[]> {
+    const { client, repo: active } = await this.requireClient(repo);
+    return client.listBranches(active);
+  }
+
+  async getDefaultBranch(repo?: GitHubRepositoryRef): Promise<string> {
+    const { client, repo: active } = await this.requireClient(repo);
+    return client.getDefaultBranch(active);
+  }
+
+  async listCommits(
+    options: { ref?: string; page?: number; perPage?: number } = {},
+    repo?: GitHubRepositoryRef,
+  ): Promise<CommitPage> {
+    const { client, repo: active } = await this.requireClient(repo);
+    return client.listCommits(active, options);
+  }
+
+  async getCommit(sha: string, repo?: GitHubRepositoryRef): Promise<CommitDetail> {
+    const { client, repo: active } = await this.requireClient(repo);
+    return client.getCommit(active, sha);
+  }
+
+  async getCommitDiff(sha: string, repo?: GitHubRepositoryRef): Promise<string> {
+    const { client, repo: active } = await this.requireClient(repo);
+    return client.getCommitDiff(active, sha);
   }
 
   private readToken(): string | null {

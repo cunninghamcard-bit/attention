@@ -39,6 +39,7 @@ import { createTerminalPluginDefinition } from "./TerminalPlugin";
 import { openFileCompare, openGitDiff } from "../views/DiffView";
 import { openFileHistory } from "./GitHistoryView";
 import { openPrList } from "./GitPrViews";
+import { openGitHubWorkspace } from "./GitHubWorkspace";
 import { openGitReview } from "./review/GitReviewView";
 import { createBookmarksPluginDefinition } from "./Bookmarks";
 import { createSlidesPluginDefinition } from "./Slides";
@@ -117,11 +118,25 @@ export const corePlugins: InternalPluginDefinition[] = [
         id: "git:open-pull-requests",
         name: "Open pull requests",
         icon: "lucide-git-pull-request",
-        checkCallback: (checking) => {
-          if (!plugin.app.git.isAvailable()) return false;
-          if (!checking) void openPrList(plugin.app);
-          return true;
-        },
+        callback: () => { void openPrList(plugin.app); },
+      });
+      plugin.registerGlobalCommand({
+        id: "github:open-workspace",
+        name: "Open GitHub workspace",
+        icon: "lucide-github",
+        callback: () => { void openGitHubWorkspace(plugin.app, { section: "pulls" }); },
+      });
+      plugin.registerGlobalCommand({
+        id: "github:open-commits",
+        name: "Open GitHub commits",
+        icon: "lucide-git-commit",
+        callback: () => { void openGitHubWorkspace(plugin.app, { section: "commits" }); },
+      });
+      plugin.registerGlobalCommand({
+        id: "github:open-branches",
+        name: "Open GitHub branches",
+        icon: "lucide-git-branch",
+        callback: () => { void openGitHubWorkspace(plugin.app, { section: "branches" }); },
       });
       plugin.registerGlobalCommand({
         id: "git:diff-active-file",
