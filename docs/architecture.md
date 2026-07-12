@@ -22,9 +22,10 @@ product name appears in the tree, only in the git remote.
 ├── tests/               ALL unit tests, centralized (workspace member @app/tests):
 │   ├── web/             mirrors src/apps/web/src/** — imports via @web/*
 │   ├── desktop/         mirrors src/apps/desktop/** — imports via @desktop/*
+│   ├── e2e/             Playwright end-to-end + the large-vault perf harness (PERF_VAULT)
 │   ├── architecture.test.ts   the architecture alarms (direction/lane/facade/freeze)
 │   └── package.json     declares the bare deps tests need (own pnpm lane)
-├── e2e/                 Playwright end-to-end + the large-vault perf harness (PERF_VAULT)
+
 ├── examples/            sample community plugins exercising the public api/ facade
 ├── fixtures/            test vaults and other read-only test inputs
 ├── docs/                this file, the project constitution, and SDD goal folders
@@ -166,7 +167,7 @@ Node builtins stay external.
 member so its bare imports and `vi.mock` specifiers resolve in its own
 dependency lane — a structural consequence of per-runtime dependency lanes.
 Every root-level sibling of `src/` is covered by a named gate: `lint` sweeps
-`src tests e2e scripts`, `typecheck`/`typecheck:electron`/`typecheck:server`
+`src tests scripts` (e2e now lives inside tests/), `typecheck`/`typecheck:electron`/`typecheck:server`
 cover the three runtimes, and `typecheck:tools` covers e2e specs, scripts,
 examples, and the root config files themselves. `mise.toml` pins the
 toolchain; a docwright pre-commit hook runs the repo guard.

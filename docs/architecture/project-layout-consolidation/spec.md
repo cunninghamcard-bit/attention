@@ -83,7 +83,7 @@ learning-records/ 0001–0009.
   passes after every phase; the perf harness keeps openFile median
   under 50ms and explorerClick median under 120ms on the 20k-file
   vault (`PERF_VAULT=1 pnpm exec playwright test
-  e2e/perf/large-vault.spec.ts`, env var renamed by the debrand
+  tests/e2e/perf/large-vault.spec.ts`, env var renamed by the debrand
   decision; main baseline 32ms / 82ms); file
   moves preserve git history (verify with `git log --follow` on
   Vault.ts and ChatView.ts); no new production dependencies; the

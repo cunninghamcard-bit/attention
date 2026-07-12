@@ -10,7 +10,7 @@
     "preview": "vite preview --host 127.0.0.1 -c src/apps/web/vite.config.ts",
     "typecheck": "tsc --noEmit",
     "typecheck:electron": "tsc -p src/apps/desktop/tsconfig.json",
-    "lint": "oxlint -c oxlint.json src tests e2e scripts --quiet",
+    "lint": "oxlint -c oxlint.json src tests scripts --quiet",
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",

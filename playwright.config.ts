@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "./e2e",
+  testDir: "./tests/e2e",
   // Desktop specs launch Electron and run under their own deliberate regime
   // (playwright.desktop.config.ts: workers 1, no webServer, 120s timeout) —
   // without this ignore, plain `pnpm run e2e` would re-run them here too.

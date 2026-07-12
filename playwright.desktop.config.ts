@@ -4,7 +4,7 @@ import { defineConfig } from "@playwright/test";
 // failure artifacts retained. Run `pnpm run build && pnpm run build:electron`
 // first; then `pnpm run e2e:desktop`.
 export default defineConfig({
-  testDir: "./e2e/desktop/specs",
+  testDir: "./tests/e2e/desktop/specs",
   fullyParallel: false,
   workers: 1,
   retries: 0,

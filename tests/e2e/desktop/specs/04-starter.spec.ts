@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 // starter comes up instead of a vault window.
 
 const SPEC_DIR = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(SPEC_DIR, "..", "..", "..");
+const REPO_ROOT = resolve(SPEC_DIR, "..", "..", "..", "..");
 const MAIN_CJS = join(REPO_ROOT, "dist-electron", "main.cjs");
 
 function starterEnv(base: string): NodeJS.ProcessEnv {

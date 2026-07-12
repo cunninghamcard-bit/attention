@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 //   test, so a failure ships with its full context
 
 const FIXTURE_DIR = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(FIXTURE_DIR, "..", "..", "..");
+const REPO_ROOT = resolve(FIXTURE_DIR, "..", "..", "..", "..");
 const MAIN_CJS = join(REPO_ROOT, "dist-electron", "main.cjs");
 
 // A valid 1x1 red PNG — enough for a real decode (naturalWidth === 1).

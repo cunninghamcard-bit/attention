@@ -342,7 +342,7 @@ describe("Rule: architecture-docs — the new documentation set exists", () => {
 describe("Rule: name-agnostic code — the retired product name is gone", () => {
   it("no retired product-name literals remain in code", () => {
     const textExtensions = [".ts", ".tsx", ".js", ".mjs", ".cjs", ".json", ".md", ".yaml", ".yml", ".html", ".css", ".scss"];
-    const scanDirs = ["src/apps", "tests", "e2e", "scripts", "examples"];
+    const scanDirs = ["src/apps", "tests", "scripts", "examples"];
     const rootConfigFiles = [
       "package.json",
       "pnpm-workspace.yaml",

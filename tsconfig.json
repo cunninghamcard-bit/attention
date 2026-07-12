@@ -20,5 +20,6 @@
       "@app/web/*": ["./src/apps/web/src/*"]
     }
   },
-  "include": ["src/apps/web/src", "tests"]
+  "include": ["src/apps/web/src", "tests"],
+  "exclude": ["tests/e2e"]
 }
