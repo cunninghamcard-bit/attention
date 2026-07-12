@@ -4,6 +4,10 @@
 .markdown-reading-view {
   display: flex;
   flex-direction: column;
+  /* Pin to .view-content: without this the flex column grows to content
+   * height past the parent's overflow:hidden clip, and the preview inside
+   * (height:100%, overflow-y:auto) never gets a scrollable box. */
+  height: 100%;
 }
 .markdown-preview-view {
   font-size: var(--font-text-size);
