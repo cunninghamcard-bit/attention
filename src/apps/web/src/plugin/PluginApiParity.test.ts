@@ -11,7 +11,7 @@ import {
   parseYaml,
   renderMath,
   stringifyYaml,
-} from "../api/ApiUtils";
+} from "../core/ApiUtils";
 import { Component } from "../core/Component";
 import { Keymap } from "../app/hotkeys/Keymap";
 import { Scope } from "../app/hotkeys/Scope";

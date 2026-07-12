@@ -2,7 +2,7 @@ import { ItemView } from "../views/ItemView";
 import { setIcon } from "../ui/Icon";
 import { getFileTypeInfo } from "../ui/FileTypeIcon";
 import { displayTooltip, hideTooltip, setTooltip } from "../ui/Popover";
-import { moment } from "../api/ApiUtils";
+import moment from "moment";
 import { Menu } from "../ui/Menu";
 import { TAbstractFile, TFile, TFolder } from "../vault/TAbstractFile";
 import { setAllowedDropEffect, type DragDropResult, type DragSource, type FileDragSource, type FilesDragSource, type FolderDragSource } from "../ui/drag/DragManager";

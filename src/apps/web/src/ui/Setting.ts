@@ -1,5 +1,5 @@
 import type { App } from "../app/App";
-import type { HSL, RGB } from "../api/ApiUtils";
+import type { HSL, RGB } from "../core/ApiUtils";
 import { Platform } from "../platform/Platform";
 import { setIcon as renderIcon } from "./Icon";
 import { setTooltip as setElementTooltip, type TooltipOptions } from "./Popover";

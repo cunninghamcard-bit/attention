@@ -2,7 +2,7 @@ import type { CachedMetadata } from "./MetadataCache";
 
 // Pure frontmatter tag/alias readers. They live in the kernel (metadata) rather
 // than the api facade so MetadataCache and TagIndex can read tags without an
-// upward import; api/ApiUtils re-exports them to keep the public surface intact.
+// upward import; core/ApiUtils re-exports them to keep the public surface intact.
 
 export function parseFrontMatterEntry(frontmatter: unknown, key: string | RegExp): unknown | null {
   if (!frontmatter || typeof frontmatter !== "object") return null;

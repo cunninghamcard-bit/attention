@@ -1,5 +1,5 @@
 import type { App } from "../../app/App";
-import { requestUrl } from "../../api/ApiUtils";
+import { requestUrl } from "../../core/ApiUtils";
 import { GitHubClient, type HttpTransport } from "./GitHubClient";
 import { readGithubPrPrefs, writeGithubPrPrefs } from "./prefs";
 import { parseGitRemoteUrl } from "./resolveRepository";

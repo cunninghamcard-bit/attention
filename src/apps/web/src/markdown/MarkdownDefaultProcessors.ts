@@ -1,6 +1,6 @@
 import type { App } from "../app/App";
 import type { TFile } from "../vault/TAbstractFile";
-import { finishRenderMath, loadMermaid, renderMath } from "../api/ApiUtils";
+import { finishRenderMath, loadMermaid, renderMath } from "../core/ApiUtils";
 import { AUDIO_EXTENSIONS, IMAGE_EXTENSIONS, PDF_EXTENSIONS, VIDEO_EXTENSIONS, mimeForExtension } from "../views/MediaViews";
 import { MarkdownRenderer, type MarkdownCodeBlockProcessor, type MarkdownPostProcessorContext } from "./MarkdownRenderer";
 

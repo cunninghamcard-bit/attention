@@ -1,7 +1,7 @@
 import { stringify as stringifyYaml } from "yaml";
 import type { App } from "../../../app/App";
 import { alphaCompare } from "../Cli";
-import { getAllTags, parseFrontMatterAliases } from "../../../api/ApiUtils";
+import { getAllTags, parseFrontMatterAliases } from "../../../metadata/FrontmatterTags";
 import type { PropertyType } from "../../../views/properties/PropertyTypes";
 
 /**

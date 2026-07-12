@@ -16,7 +16,7 @@ import type { MarkdownView } from "../views/MarkdownView";
 import type { WorkspaceLeaf } from "../views/workspace/WorkspaceLeaf";
 import type { EditorSuggest } from "../ui/suggest/EditorSuggest";
 import type { SearchOperatorDefinition } from "../search/SearchEngine";
-import { debounce } from "../api/ApiUtils";
+import { debounce } from "../core/ApiUtils";
 import { MarkdownRenderer, type MarkdownCodeBlockProcessor, type MarkdownPostProcessor } from "../markdown/MarkdownRenderer";
 import { MarkdownPreviewRenderer } from "../markdown/MarkdownPreviewRenderer";
 import { createPluginContext, type PluginContext } from "./PluginContext";

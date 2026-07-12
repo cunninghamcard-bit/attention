@@ -14,6 +14,7 @@ export default defineConfig({
       "src/apps/web/src/**/*.test.{ts,tsx}",
       "src/apps/desktop/**/*.test.ts",
       "src/apps/server/**/*.test.ts",
+      "tests/**/*.test.ts",
     ],
     setupFiles: ["./src/apps/web/src/test-setup.ts"],
     coverage: {

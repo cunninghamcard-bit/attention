@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { HSL, RGB } from "../api/ApiUtils";
+import type { HSL, RGB } from "../core/ApiUtils";
 import { Platform } from "../platform/Platform";
 import {
   ButtonComponent,

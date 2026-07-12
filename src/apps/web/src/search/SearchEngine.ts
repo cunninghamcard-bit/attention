@@ -1,6 +1,6 @@
 import type { App } from "../app/App";
 import type { TFile } from "../vault/TAbstractFile";
-import { getAllTags } from "../api/ApiUtils";
+import { getAllTags } from "../metadata/FrontmatterTags";
 import { CODE_EXTENSIONS } from "../views/CodeFileView";
 
 // Search every text file the workspace can open: notes plus source code.

@@ -1,6 +1,6 @@
 import { Events, type EventRef } from "../../core/Events";
 import type { App } from "../../app/App";
-import type { Debouncer } from "../../api/ApiUtils";
+import type { Debouncer } from "../../core/ApiUtils";
 import type { Tasks } from "../../app/QuitEvent";
 import { WorkspaceSplit, type SplitDirection } from "./WorkspaceSplit";
 import { WorkspaceRoot } from "./WorkspaceRoot";

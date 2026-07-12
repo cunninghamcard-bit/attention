@@ -52,7 +52,7 @@ export * from "./editor/CodeMirrorFacet";
 export * from "./editor/Decoration";
 export * from "./editor/ViewPlugin";
 export * from "./dom/dom";
-export * from "./api/ApiUtils";
+export * from "./core/ApiUtils";
 export * from "./vault/TAbstractFile";
 export * from "./vault/Vault";
 export * from "./app/FileManager";
@@ -230,7 +230,6 @@ export * from "./app/release/ReleaseNotes";
 export * from "./api/PublicApi";
 export * from "./api/PluginApiFacade";
 export * from "./api/ObsidianPluginModule";
-export * from "./api/ApiUtils";
 
 export * from "./app/AppDom";
 export * from "./views/DeferredView";

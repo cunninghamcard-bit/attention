@@ -1,5 +1,5 @@
 import { htmlToMarkdown } from "../../markdown/HtmlToMarkdown";
-import { sanitizeHTMLToDom } from "../../api/ApiUtils";
+import { sanitizeHTMLToDom } from "../../core/ApiUtils";
 
 export interface WebViewerReaderResult {
   title: string;

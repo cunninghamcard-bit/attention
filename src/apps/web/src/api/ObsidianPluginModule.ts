@@ -110,7 +110,7 @@ import {
   type RequestUrlParam,
   type RequestUrlResponse,
   type RequestUrlResponsePromise,
-} from "./ApiUtils";
+} from "../core/ApiUtils";
 
 export type {
   DebouncedFunction,
@@ -119,7 +119,7 @@ export type {
   RequestUrlParam,
   RequestUrlResponse,
   RequestUrlResponsePromise,
-} from "./ApiUtils";
+} from "../core/ApiUtils";
 
 export interface ObsidianPluginModule {
   App: typeof App;
