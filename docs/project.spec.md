@@ -1,6 +1,8 @@
 spec: project
 name: "project constitution"
 tags: [constitution, project]
+test_command: pnpm vitest run -t "{selectors}" --reporter=junit --outputFile=.docwright/report.xml
+test_report: .docwright/report.xml
 ---
 
 ## Intent
@@ -44,3 +46,40 @@ re-litigate them.
 - The docs household is docwright goals under
   `docs/{features,issues,architecture}` plus promoted capabilities in
   `docs/capabilities/`.
+
+<!-- lint-ack: error-path — constitution invariants are standing structural
+     assertions; their failure mode IS the assertion failing, and three of
+     the bound checkers carry their own synthetic-violation tests in
+     tests/architecture.test.ts -->
+
+## Completion Criteria
+
+Scenario: the workspace stays three app packages
+  Test: workspace declares desktop web and server app packages
+  Given the repository root
+  When the workspace configuration is read
+  Then pnpm-workspace.yaml lists the three src/apps packages, each with its own package.json
+
+Scenario: dependency tables stay in their runtime lanes
+  Test: app package dependencies stay in their runtime lane
+  Given the three app manifests and the root package.json
+  When their dependency tables are inspected
+  Then the root declares no runtime dependencies and no app declares another runtime's dependencies
+
+Scenario: the kernel stays headless-ready
+  Test: kernel directories import nothing above the kernel
+  Given the vault, metadata and storage directories
+  When every relative import in them is resolved
+  Then no import target lies outside the kernel, core, dom or platform
+
+Scenario: the public facade serves only community plugins
+  Test: internal code never imports the public api facade
+  Given all web app sources outside api/
+  When their imports are resolved
+  Then none of them imports from api/
+
+Scenario: the tree stays name-agnostic
+  Test: no retired product-name literals remain in code
+  Given all code directories and root config files
+  When they are scanned for product-name literals
+  Then zero matches are found

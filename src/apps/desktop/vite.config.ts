@@ -6,9 +6,11 @@ import { builtinModules } from "node:module";
  * Build target for the Electron main process + preload.
  *
  * Emits CommonJS `dist-electron/main.cjs` and `dist-electron/preload.cjs`
- * (launched via `electron dist-electron/main.cjs`). Electron, @electron/remote
- * and all Node builtins stay external — they are provided by the Electron
- * runtime, not bundled. This target is completely separate from the renderer
+ * (launched via `electron dist-electron/main.cjs`). Electron, node-pty and
+ * all Node builtins stay external — Electron provides the former, the latter
+ * is a native module. @electron/remote is an ordinary npm package living in
+ * this app's own pnpm lane, unreachable from the repo-root bundle location,
+ * so it gets bundled. This target is completely separate from the renderer
  * (`vite.config.ts`) and the library (`vite.api.config.ts`).
  */
 const nodeBuiltins = new Set([
@@ -44,7 +46,6 @@ export default defineConfig({
       external: (source) =>
         source === "electron" ||
         source === "node-pty" ||
-        source.startsWith("@electron/remote") ||
         nodeBuiltins.has(source),
     },
   },

@@ -149,3 +149,10 @@ protocol consumers; below that threshold it is one indirection for no payoff.
 intended future path is a three-rung ladder: internal track → rewritten onto
 `PublicApi` (dogfooding the public surface) → extracted into a real package.
 These are documented goals, not executed work — the code stays on rung one.
+
+**Desktop bundle resolves its own lane.** The desktop main bundle is emitted
+to the repo-root `dist-electron/` (so launch paths stay stable), which sits
+outside the desktop package's own `node_modules`. Ordinary npm dependencies
+of `@app/desktop` (e.g. `@electron/remote`) are therefore *bundled* rather
+than externalized; only Electron itself, native modules (`node-pty`), and
+Node builtins stay external.

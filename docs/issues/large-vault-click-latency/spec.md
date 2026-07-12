@@ -1,8 +1,8 @@
 spec: task
 name: "large vault click latency"
 tags: [issue, sdd, performance]
-test_command: pnpm vitest run -t "{selectors}" --reporter=junit --outputFile=.agent-spec/report.xml
-test_report: .agent-spec/report.xml
+test_command: pnpm vitest run -t "{selectors}" --reporter=junit --outputFile=.docwright/report.xml
+test_report: .docwright/report.xml
 ---
 
 ## Intent
@@ -109,7 +109,7 @@ Vault --> User: index ready without redundant per-file stat round-trips
 
 Scenario: Quick switcher reuses its item list across keystrokes
   Test:
-    Package: src/builtin/QuickSwitcher.test.ts
+    Package: src/apps/web/src/builtin/QuickSwitcher.test.ts
     Filter: quick switcher computes its item list once per open
     Level: unit
   Given a vault with many files and an open quick switcher modal
@@ -119,7 +119,7 @@ Scenario: Quick switcher reuses its item list across keystrokes
 
 Scenario: Metadata indexing reuses in-memory file stats
   Test:
-    Package: src/metadata/MetadataCache.test.ts
+    Package: src/apps/web/src/metadata/MetadataCache.test.ts
     Filter: metadata indexing reuses in-memory file stats
     Level: unit
   Given a loaded vault whose TFile entries carry fresh stat data
@@ -128,7 +128,7 @@ Scenario: Metadata indexing reuses in-memory file stats
 
 Scenario: Metadata indexing falls back to adapter stat when in-memory stat is unknown
   Test:
-    Package: src/metadata/MetadataCache.test.ts
+    Package: src/apps/web/src/metadata/MetadataCache.test.ts
     Filter: metadata indexing falls back to adapter stat when in-memory stat is unknown
     Level: unit
   Given a TFile whose stat carries no real mtime
@@ -137,7 +137,7 @@ Scenario: Metadata indexing falls back to adapter stat when in-memory stat is un
 
 Scenario: Vault applies adapter-provided stats without re-statting
   Test:
-    Package: src/vault/Vault.test.ts
+    Package: src/apps/web/src/vault/Vault.test.ts
     Filter: vault applies adapter-provided stats without re-statting
     Level: unit
   Given the adapter reconciles a file and already holds its stat entry
