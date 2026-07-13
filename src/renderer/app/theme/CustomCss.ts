@@ -104,6 +104,12 @@ export class CustomCss {
     );
   }
 
+  setTranslucency(enabled: boolean): void {
+    this.app.vault.setConfig("translucency", enabled);
+    document.body.classList.toggle("is-translucent", enabled);
+    this.app.workspace.trigger("css-change", "translucency");
+  }
+
   loadTheme(): void {
     this.app.themes.applyConfiguredTheme();
   }

@@ -28,6 +28,11 @@ export class ThemeManager {
 
   setTheme(id: string): void {
     this.app.vault.setConfig("cssTheme", id);
+    if (!id) {
+      this.activeThemeId = null;
+      this.app.customCss.setThemeCss("", "");
+      return;
+    }
     this.app.customCss.requestLoadTheme();
   }
 

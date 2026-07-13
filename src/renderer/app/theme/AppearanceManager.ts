@@ -92,6 +92,12 @@ export class AppearanceManager {
     this.applyFontSize(this.app.vault.getConfig<number>("baseFontSize") ?? 16);
   }
 
+  setFontSize(size: number): void {
+    const baseFontSize = clampNumber(size, 10, 30);
+    this.applyFontSize(baseFontSize);
+    this.app.vault.setConfig("baseFontSize", baseFontSize);
+  }
+
   updateTabSize(): void {
     this.applyTabSize(this.app.vault.getConfig<number>("tabSize") ?? 4);
   }
