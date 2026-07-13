@@ -4,11 +4,6 @@ import type { View } from "../View";
 import { MarkdownView } from "../MarkdownView";
 import { CODE_EXTENSIONS, CodeFileView } from "../CodeFileView";
 import { DiffView } from "../DiffView";
-import { GitChangesView } from "../../builtin/git/GitChangesView";
-import { GitHistoryView } from "../../builtin/git/GitHistoryView";
-import { PrDetailView, PrListView } from "../../builtin/git/GitPrViews";
-import { GitCommitView, GitHubWorkspaceView } from "../../builtin/github/GitHubWorkspace";
-import { GitReviewView } from "../../builtin/git/review/GitReviewView";
 import {
   AUDIO_EXTENSIONS,
   AudioView,
@@ -56,13 +51,6 @@ export class ViewRegistry extends Events {
       (leaf) => new CodeFileView(leaf),
     );
     this.registerView(DiffView.DIFF_VIEW_TYPE, (leaf) => new DiffView(leaf));
-    this.registerView(GitChangesView.VIEW_TYPE, (leaf) => new GitChangesView(leaf));
-    this.registerView(GitHistoryView.VIEW_TYPE, (leaf) => new GitHistoryView(leaf));
-    this.registerView(PrListView.VIEW_TYPE, (leaf) => new PrListView(leaf));
-    this.registerView(PrDetailView.VIEW_TYPE, (leaf) => new PrDetailView(leaf));
-    this.registerView(GitHubWorkspaceView.VIEW_TYPE, (leaf) => new GitHubWorkspaceView(leaf));
-    this.registerView(GitCommitView.VIEW_TYPE, (leaf) => new GitCommitView(leaf));
-    this.registerView(GitReviewView.VIEW_TYPE, (leaf) => new GitReviewView(leaf));
     this.registerView(ReleaseNotesView.VIEW_TYPE, (leaf) => new ReleaseNotesView(leaf));
   }
 

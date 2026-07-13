@@ -21,12 +21,12 @@ test("renders the ![[...]] image embed inside markdown preview", async ({ app })
   const { page } = app;
 
   await page.locator('.nav-file-title[data-path="Note.md"]').click();
-  // Ensure reading view; the default open mode may be the editor.
+  // Ensure reading view by ASSERTING the mode, not by blind-toggling — the
+  // factory default is preview now, and a blind toggle would leave it.
   await page.evaluate(() => {
-    const app = (
-      window as unknown as { app: { commands: { executeCommandById(id: string): boolean } } }
-    ).app;
-    app.commands.executeCommandById("markdown:toggle-preview");
+    const app = (window as unknown as { app: any }).app;
+    const view = app.workspace.getLeavesOfType("markdown")[0]?.view;
+    if (view?.getMode?.() !== "preview") app.commands.executeCommandById("markdown:toggle-preview");
   });
 
   const embed = page.locator(".internal-embed.image-embed.is-loaded img");

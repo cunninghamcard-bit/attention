@@ -39,6 +39,8 @@ import { createMarkdownImporterPluginDefinition } from "./MarkdownImporter";
 import { createFileRecoveryPluginDefinition } from "./file-recovery/FileRecoveryPlugin";
 import { createWebViewerPluginDefinition } from "./webviewer/WebViewerPlugin";
 import { createTerminalPluginDefinition } from "./terminal/TerminalPlugin";
+import { createGitPluginDefinition } from "./git/GitPlugin";
+import { createGitHubPluginDefinition } from "./github/GitHubPlugin";
 import { openFileCompare, openGitDiff } from "../views/DiffView";
 import { openFileHistory } from "./git/GitHistoryView";
 import { openPrList } from "./git/GitPrViews";
@@ -135,109 +137,6 @@ export const corePlugins: InternalPluginDefinition[] = [
           },
         ),
       );
-      plugin.registerGlobalCommand({
-        id: "git:open-changes",
-        name: "Open git changes",
-        icon: "lucide-file-diff",
-        checkCallback: (checking) => {
-          if (!plugin.app.git.isAvailable()) return false;
-          if (!checking) {
-            void plugin.app.workspace
-              .getLeaf("tab")
-              .setViewState({ type: "git-changes", active: true });
-          }
-          return true;
-        },
-      });
-      plugin.registerGlobalCommand({
-        id: "git:review-changes",
-        name: "Review working tree changes",
-        icon: "lucide-file-diff",
-        checkCallback: (checking) => {
-          if (!plugin.app.git.isAvailable()) return false;
-          if (!checking) void openGitReview(plugin.app);
-          return true;
-        },
-      });
-      plugin.registerGlobalCommand({
-        id: "git:open-pull-requests",
-        name: "Open pull requests",
-        icon: "lucide-git-pull-request",
-        callback: () => {
-          void openPrList(plugin.app);
-        },
-      });
-      plugin.registerGlobalCommand({
-        id: "github:open-workspace",
-        name: "Open GitHub workspace",
-        icon: "lucide-github",
-        callback: () => {
-          void openGitHubWorkspace(plugin.app, { section: "pulls" });
-        },
-      });
-      plugin.registerGlobalCommand({
-        id: "github:open-commits",
-        name: "Open GitHub commits",
-        icon: "lucide-git-commit",
-        callback: () => {
-          void openGitHubWorkspace(plugin.app, { section: "commits" });
-        },
-      });
-      plugin.registerGlobalCommand({
-        id: "github:open-branches",
-        name: "Open GitHub branches",
-        icon: "lucide-git-branch",
-        callback: () => {
-          void openGitHubWorkspace(plugin.app, { section: "branches" });
-        },
-      });
-      plugin.registerGlobalCommand({
-        id: "github:open-issues",
-        name: "Open GitHub issues",
-        icon: "lucide-circle-dot",
-        callback: () => {
-          void openGitHubWorkspace(plugin.app, { section: "issues" });
-        },
-      });
-      plugin.registerGlobalCommand({
-        id: "github:open-actions",
-        name: "Open GitHub actions",
-        icon: "lucide-play",
-        callback: () => {
-          void openGitHubWorkspace(plugin.app, { section: "actions" });
-        },
-      });
-      plugin.registerGlobalCommand({
-        id: "github:open-files",
-        name: "Open GitHub files",
-        icon: "lucide-folder",
-        callback: () => {
-          void openGitHubWorkspace(plugin.app, { section: "files" });
-        },
-      });
-      plugin.registerGlobalCommand({
-        id: "github:open-inbox",
-        name: "Open GitHub inbox",
-        icon: "lucide-inbox",
-        callback: () => {
-          void openGitHubWorkspace(plugin.app, { section: "inbox" });
-        },
-      });
-      plugin.registerGlobalCommand({
-        id: "git:diff-active-file",
-        name: "Open git diff for active file",
-        icon: "lucide-file-diff",
-        checkCallback: (checking) => {
-          const file = plugin.app.workspace.getActiveFileView()?.file;
-          if (!file || !plugin.app.git.isAvailable()) return false;
-          if (!checking) {
-            void openGitDiff(plugin.app, file).then((leaf) => {
-              if (!leaf) new Notice("Git is not available for this vault");
-            });
-          }
-          return true;
-        },
-      });
     },
   },
   createQuickSwitcherPluginDefinition(),
@@ -261,6 +160,8 @@ export const corePlugins: InternalPluginDefinition[] = [
   createFileRecoveryPluginDefinition(),
   createWebViewerPluginDefinition(),
   createTerminalPluginDefinition(),
+  createGitPluginDefinition(),
+  createGitHubPluginDefinition(),
   {
     id: "file-explorer",
     name: "File explorer",
