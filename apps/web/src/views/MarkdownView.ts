@@ -292,6 +292,10 @@ export class MarkdownView extends TextFileView {
     if (key === "spellcheck") this.inlineTitleEl.spellcheck = this.getSpellcheckEnabled();
   }
 
+  onResize(): void {
+    this.currentMode.onResize();
+  }
+
   getSourceMode(): MarkdownSourceMode {
     return this.editMode.getSourceMode();
   }
@@ -4013,7 +4017,9 @@ class MarkdownReadingMode implements MarkdownViewModeComponent {
     this.owner.previewRendererEl.onscroll = () => this.owner.syncScroll();
   }
 
-  onResize(): void {}
+  onResize(): void {
+    this.renderer.onResize();
+  }
 
   setEphemeralState(state: unknown): void {
     if (!state || typeof state !== "object") return;

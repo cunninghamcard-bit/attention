@@ -193,12 +193,20 @@ export class MarkdownPreviewRenderer {
   }
 
   onResize(): void {
-    this.renderedWidth = this.previewEl.offsetWidth;
     this.viewportHeight = this.previewEl.clientHeight;
     if (this.addBottomPadding)
       this.sizerEl.style.paddingBottom = `${Math.floor(this.viewportHeight / 2)}px`;
-    for (const section of this.sections) section.resetCompute();
-    this.updateVirtualDisplay();
+    const width = this.previewEl.offsetWidth;
+    if (width !== this.renderedWidth) {
+      // Width changed: every stored section height came from a dead layout
+      // (a pane mid-construction can be near zero wide, wrapping text one
+      // word per line), so re-render to re-stamp them at the new geometry.
+      this.renderedWidth = width;
+      for (const section of this.sections) section.resetCompute();
+      this.queueRender();
+    } else {
+      this.updateVirtualDisplay();
+    }
   }
 
   getScroll(): number | null {
@@ -398,7 +406,7 @@ export class MarkdownPreviewRenderer {
     this.updateVirtualDisplay();
     this.lastText = this.text;
     this.lastRender = Date.now();
-    this.renderedWidth = this.previewEl.clientWidth;
+    this.renderedWidth = this.previewEl.offsetWidth;
     this.cleanupParentComponents();
     const callbacks = this.rendered ?? [];
     this.rendered = this.dirty ? [] : null;
