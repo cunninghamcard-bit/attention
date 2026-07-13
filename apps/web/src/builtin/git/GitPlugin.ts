@@ -6,27 +6,26 @@ import { openGitDiff } from "../../views/DiffView";
 import { GitChangesView } from "./GitChangesView";
 import { GitHistoryView } from "./GitHistoryView";
 import { GitLogView } from "./GitLogView";
-import { openPrList, PrDetailView, PrListView } from "./GitPrViews";
 import { GitReviewView, openGitReview } from "./review/GitReviewView";
 
 /**
- * Core plugin wrapping the local git surface: changes/history/PR/review
- * views plus their commands, all releasable through the core-plugin toggle.
- * `app.git` (the service) stays on the App — plugins gate the SURFACE, the
- * headless verbs stay available exactly like the original's app managers.
+ * Core plugin wrapping the LOCAL git surface (reference: nkzw-tech/codiff):
+ * changes/history/log/review views plus their commands, all releasable
+ * through the core-plugin toggle. Everything here works offline; the cloud
+ * twin is the github plugin. `app.git` (the service) stays on the App —
+ * plugins gate the SURFACE, the headless verbs stay available exactly like
+ * the original's app managers.
  */
 export function createGitPluginDefinition(): InternalPluginDefinition {
   return {
     id: "git",
     name: "Git",
-    description: "Source control for the vault: changes, history, reviews and pull requests.",
+    description: "Local source control for the vault: changes, commit log, history and review.",
     defaultOn: true,
     init(app: App, plugin: InternalPluginWrapper) {
       plugin.registerViewType(GitChangesView.VIEW_TYPE, (leaf) => new GitChangesView(leaf));
       plugin.registerViewType(GitHistoryView.VIEW_TYPE, (leaf) => new GitHistoryView(leaf));
       plugin.registerViewType(GitLogView.VIEW_TYPE, (leaf) => new GitLogView(leaf));
-      plugin.registerViewType(PrListView.VIEW_TYPE, (leaf) => new PrListView(leaf));
-      plugin.registerViewType(PrDetailView.VIEW_TYPE, (leaf) => new PrDetailView(leaf));
       plugin.registerViewType(GitReviewView.VIEW_TYPE, (leaf) => new GitReviewView(leaf));
       plugin.registerGlobalCommand({
         id: "git:open-changes",
@@ -60,14 +59,6 @@ export function createGitPluginDefinition(): InternalPluginDefinition {
             void app.workspace.getLeaf("tab").setViewState({ type: "git-log", active: true });
           }
           return true;
-        },
-      });
-      plugin.registerGlobalCommand({
-        id: "git:open-pull-requests",
-        name: "Open pull requests",
-        icon: "lucide-git-pull-request",
-        callback: () => {
-          void openPrList(app);
         },
       });
       plugin.registerGlobalCommand({

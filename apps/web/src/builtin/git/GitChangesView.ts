@@ -1,7 +1,7 @@
 import { FileDiff } from "@pierre/diffs";
 import { ItemView } from "../../views/ItemView";
 import { openGitDiff } from "../../views/DiffView";
-import { openPrList } from "./GitPrViews";
+import { openPrList } from "../github/GitPrViews";
 import { openGitReview } from "./review/GitReviewView";
 import { setIcon } from "../../ui/Icon";
 import { setTooltip } from "../../ui/Popover";

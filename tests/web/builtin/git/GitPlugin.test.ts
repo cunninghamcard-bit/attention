@@ -27,4 +27,15 @@ describe("git and github core plugins", () => {
     await app.internalPlugins.enable("git", true);
     expect(app.viewRegistry.getViewCreatorByType("git-changes")).toBeTruthy();
   });
+
+  it("owns pull requests on the cloud side; local surface survives without it", async () => {
+    const app = await readyApp();
+    expect(app.commands.findCommand("github:open-pull-requests")).toBeTruthy();
+    await app.internalPlugins.disable("github", true);
+    expect(app.viewRegistry.getViewCreatorByType("git-prs")).toBeFalsy();
+    expect(app.commands.findCommand("github:open-pull-requests")).toBeFalsy();
+    expect(app.viewRegistry.getViewCreatorByType("git-changes")).toBeTruthy();
+    expect(app.viewRegistry.getViewCreatorByType("git-log")).toBeTruthy();
+    expect(app.viewRegistry.getViewCreatorByType("git-review")).toBeTruthy();
+  });
 });

@@ -17,17 +17,21 @@ import type {
   PrReview,
   PrReviewComment,
   PrSummary,
-} from "../github/types";
-import type { GithubRepoListItem } from "../github/GitHubService";
-import { fileDiffFromGithubPatch, fileDiffsFromUnifiedDiff } from "../github/patchUtils";
-import { readGithubPrPrefs, writeGithubPrPrefs } from "../github/prefs";
-import { ReviewSurface } from "./review/ReviewSurface";
-import { fingerprintContents, type ReviewFile, type ReviewFileStatus } from "./review/reviewModel";
+} from "./types";
+import type { GithubRepoListItem } from "./GitHubService";
+import { fileDiffFromGithubPatch, fileDiffsFromUnifiedDiff } from "./patchUtils";
+import { readGithubPrPrefs, writeGithubPrPrefs } from "./prefs";
+import { ReviewSurface } from "../git/review/ReviewSurface";
+import {
+  fingerprintContents,
+  type ReviewFile,
+  type ReviewFileStatus,
+} from "../git/review/reviewModel";
 import { MarkdownRenderer } from "../../markdown/MarkdownRenderer";
 import { setIcon } from "../../ui/Icon";
 import { Notice } from "../../ui/Notice";
-import { openGitReview } from "./review/GitReviewView";
-import { openCommitDetail, openGitHubWorkspace } from "../github/GitHubWorkspace";
+import { openGitReview } from "../git/review/GitReviewView";
+import { openCommitDetail, openGitHubWorkspace } from "./GitHubWorkspace";
 
 /**
  * Cloud GitHub pull-request workspace (app-owned token — no gh CLI).

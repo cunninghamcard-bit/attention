@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { App } from "@web/app/App";
-import { openPrDetail, openPrList, PrDetailView, PrListView } from "@web/builtin/git/GitPrViews";
+import { openPrDetail, openPrList, PrDetailView, PrListView } from "@web/builtin/github/GitPrViews";
 import type { ElectronGitApi, GitExecResult } from "@web/builtin/git/GitService";
 import type { HttpResponse, HttpTransport } from "@web/builtin/github/GitHubClient";
 import type { PrDetail, PrSummary } from "@web/builtin/github/types";

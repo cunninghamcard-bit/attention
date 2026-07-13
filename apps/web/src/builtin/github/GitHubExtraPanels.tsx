@@ -14,7 +14,7 @@ import type {
 import { MarkdownRenderer } from "../../markdown/MarkdownRenderer";
 import { setIcon } from "../../ui/Icon";
 import { Notice } from "../../ui/Notice";
-import { openPrDetail } from "../git/GitPrViews";
+import { openPrDetail } from "./GitPrViews";
 
 // ---------------------------------------------------------------------------
 // Issues

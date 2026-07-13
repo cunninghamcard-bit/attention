@@ -2,6 +2,7 @@ import type { App } from "../../app/App";
 import type { InternalPluginDefinition } from "../../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../../plugin/InternalPluginWrapper";
 import { GitCommitView, GitHubWorkspaceView, openGitHubWorkspace } from "./GitHubWorkspace";
+import { openPrList, PrDetailView, PrListView } from "./GitPrViews";
 import type { GithubWorkspaceSection } from "./types";
 
 const SECTION_COMMANDS: Array<{ section: GithubWorkspaceSection; name: string; icon: string }> = [
@@ -14,7 +15,11 @@ const SECTION_COMMANDS: Array<{ section: GithubWorkspaceSection; name: string; i
   { section: "inbox", name: "Open GitHub inbox", icon: "lucide-inbox" },
 ];
 
-/** Core plugin wrapping the Oh-My-GitHub-style cloud workspace surface. */
+/**
+ * Core plugin wrapping the CLOUD surface (reference: jiacai2050/oh-my-github):
+ * the workspace sections plus the pull-request list/detail views. Everything
+ * here talks to the GitHub API; the offline twin is the git plugin.
+ */
 export function createGitHubPluginDefinition(): InternalPluginDefinition {
   return {
     id: "github",
@@ -27,6 +32,16 @@ export function createGitHubPluginDefinition(): InternalPluginDefinition {
         (leaf) => new GitHubWorkspaceView(leaf),
       );
       plugin.registerViewType(GitCommitView.VIEW_TYPE, (leaf) => new GitCommitView(leaf));
+      plugin.registerViewType(PrListView.VIEW_TYPE, (leaf) => new PrListView(leaf));
+      plugin.registerViewType(PrDetailView.VIEW_TYPE, (leaf) => new PrDetailView(leaf));
+      plugin.registerGlobalCommand({
+        id: "github:open-pull-requests",
+        name: "Open pull requests",
+        icon: "lucide-git-pull-request",
+        callback: () => {
+          void openPrList(app);
+        },
+      });
       for (const { section, name, icon } of SECTION_COMMANDS) {
         plugin.registerGlobalCommand({
           id: `github:open-${section === "pulls" ? "workspace" : section}`,
