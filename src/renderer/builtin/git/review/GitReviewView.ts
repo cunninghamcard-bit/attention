@@ -64,6 +64,7 @@ export class GitReviewView extends ItemView {
       }),
       session.on<[string, number]>("path-activate", (path) => this.surface?.activatePath(path)),
       session.on<[GitNavMode]>("mode-change", () => this.syncHeaderActions()),
+      this.app.workspace.on("css-change", () => this.surface?.refreshTheme()),
     ];
     this.syncHeaderActions();
     await this.reloadReview();

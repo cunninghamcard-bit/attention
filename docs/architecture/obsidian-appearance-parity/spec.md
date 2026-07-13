@@ -9,11 +9,12 @@ test_report: .docwright/report.xml
 
 ## Intent
 
-Make Settings → Appearance read and behave like an Obsidian-owned surface instead of an
-internal configuration form. The panel must use the repository's native `Setting` primitives,
-present the sections and controls in the order established by the bundled Obsidian 1.12.7
-reference, expose the appearance capabilities Attention already implements, and remove all
-developer-facing copy from the user interface.
+Make appearance changes propagate through Obsidian-native seams. Settings → Appearance must read
+and behave like an Obsidian-owned surface instead of an internal configuration form, and the
+local Git surfaces must consume the same live theme tokens instead of retaining Pierre's isolated
+default palette or product-owned literal colors. The panel must use the repository's native
+`Setting` primitives, present the source-backed section order, expose capabilities Attention
+already implements, and remove developer-facing copy from the user interface.
 
 ## Current State
 
@@ -32,6 +33,10 @@ developer-facing copy from the user interface.
 - The shared `Setting`, `SettingGroup`, `ColorComponent`, `SliderComponent`, toggles, buttons and
   dropdowns already provide the required Obsidian DOM classes and styling. No new control system
   is needed.
+- User validation after the first implementation slice found that enabling the bundled Primary
+  theme changed core Obsidian surfaces but left Git diffs visually unchanged. Pierre renders
+  inside a shadow root with its own `--diffs-*` palette, and mounted instances only read
+  `themeType` at construction; local Git CSS also retains a few literal status/border colors.
 
 ## UX Shape
 
@@ -77,6 +82,12 @@ Appearance
   the existing vault and app file APIs and reports failures through the existing Notice surface.
 - Existing `setting-group`/`setting-item` CSS is authoritative. Add CSS only if source-backed DOM
   still lacks a local layout rule; do not compensate for wrong markup with bespoke selectors.
+- Git chrome uses only Obsidian semantic tokens. The Pierre custom-element host bridges those
+  tokens into `--diffs-*` background, foreground, gutter, font and semantic change variables so
+  shadow-root content follows every community theme without knowing theme names.
+- Mounted `CodeView` and `FileDiff` instances react to the existing workspace `css-change` event:
+  CSS variables update naturally, while the light/dark syntax theme is refreshed in place. No Git
+  view is torn down and no theme-specific stylesheet is introduced.
 
 <!-- lint-ack: decision-coverage — the proprietary-source non-copy rule and native Setting reuse are architectural constraints enforced by boundaries and review; all observable decisions have scenarios -->
 <!-- lint-ack: error-path — the no-themes and no-snippets scenarios are the user-visible empty/error paths; linter does not classify empty-state wording as failure language -->
@@ -92,9 +103,18 @@ Appearance
 - src/renderer/app/theme/CssSnippetManager.ts
 - src/renderer/ui/Setting.ts
 - src/renderer/styles/features/settings-item.css
+- src/renderer/styles/product/git-changes.css
+- src/renderer/styles/product/git-review.css
+- src/renderer/builtin/git/GitChangesView.ts
+- src/renderer/builtin/git/GitLogView.ts
+- src/renderer/builtin/git/review/GitReviewView.ts
+- src/renderer/builtin/git/review/ReviewSurface.ts
 - tests/web/builtin/AppearanceSettingTab.test.ts
+- tests/web/builtin/git/GitThemeContract.test.ts
+- tests/web/builtin/git/review/GitReviewView.test.ts
 - tests/web/app/theme/**
 - tests/web/app/AppPublicApi.test.ts
+- docs/architecture.md
 - docs/architecture/obsidian-appearance-parity/**
 
 ### Forbidden
@@ -106,6 +126,8 @@ Appearance
   custom app icon or hardware acceleration in this goal.
 - Do not redesign the theme marketplace or change theme/snippet storage formats.
 - Do not weaken existing appearance, config, theme marketplace or CSS snippet assertions.
+- Do not add a Git-specific palette, community-theme allowlist, selector patch for an individual
+  theme, or reach into Pierre's shadow root after render.
 
 ## Completion Criteria
 
@@ -233,12 +255,47 @@ Scenario: snippet toggles persist their enabled state
   When its native toggle is enabled
   Then enabledCssSnippets contains its id and its style load is requested
 
+### Rule: git-theme-inheritance — local Git consumes the active Obsidian theme
+
+Scenario: git diff hosts bridge native theme tokens into Pierre
+  Test:
+    Filter: bridges Obsidian theme tokens into git diff hosts
+    Level: architecture
+  Given Pierre diffs render inside their custom-element shadow roots
+  When the local Git styles define the custom-element host contract
+  Then backgrounds, foregrounds, gutters, fonts and change colors resolve from Obsidian tokens
+
+Scenario: mounted review diffs refresh after a theme change
+  Test:
+    Filter: refreshes mounted review diffs when the theme changes
+    Level: component
+  Given a dark local review is already mounted
+  When Appearance changes the base scheme to Light and emits css-change
+  Then the existing code view receives light options and rerenders without reopening the leaf
+
+Scenario: mounted file diffs refresh after a theme change
+  Test:
+    Filter: refreshes mounted file diffs on css-change
+    Level: architecture
+  Given Git changes and commit log have already rendered file diffs
+  When the workspace emits css-change
+  Then both views update their existing FileDiff theme type without rebuilding the view
+
+Scenario: local Git chrome owns no literal palette
+  Test:
+    Filter: keeps local git chrome free of literal palette colors
+    Level: architecture
+  Given the local Git product styles
+  When their color declarations are inspected
+  Then semantic colors use Obsidian variables with no hex, rgb, hsl or theme-name override
+
 ## Out of Scope
 
 - Obsidian's OS font enumeration/search modal and missing-font diagnostics.
 - Mobile-only appearance controls and desktop shell controls not already implemented by Attention.
 - Theme update checks, marketplace redesign, plugin appearance settings and editor tab-size settings.
-- A global visual audit of views outside Settings → Appearance.
+- A global visual audit outside Settings → Appearance and the local Git surfaces.
+- Cloud GitHub theme inheritance; it can adopt the same host bridge in a separate bounded goal.
 
 ## Open Questions
 

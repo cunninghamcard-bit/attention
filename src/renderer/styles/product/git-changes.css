@@ -37,8 +37,8 @@
   background: var(--background-modifier-hover);
   color: var(--text-muted);
 }
-.git-changes-file-status.mod-added, .git-changes-file-status.mod-untracked { color: #2f8f5b; }
-.git-changes-file-status.mod-deleted { color: #d64541; }
+.git-changes-file-status.mod-added, .git-changes-file-status.mod-untracked { color: var(--color-green); }
+.git-changes-file-status.mod-deleted { color: var(--color-red); }
 .git-changes-message, .git-changes-binary {
   color: var(--text-muted);
   padding: var(--size-4-2);

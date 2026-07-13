@@ -4,6 +4,7 @@ import type { ElectronGitApi, GitExecResult } from "@web/builtin/git/GitService"
 
 interface FakeCodeViewHandle {
   scrollCalls: Array<{ id: string }>;
+  themeTypes: string[];
   emitScroll(scrollTop: number, tops: Record<string, number>): void;
 }
 
@@ -13,6 +14,7 @@ vi.mock("@pierre/diffs", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@pierre/diffs")>();
   type Item = { id: string; annotations?: unknown[]; fileDiff?: unknown };
   type Options = {
+    themeType?: string;
     renderCustomHeader?: (metadata: unknown, context: { item: Item }) => Element | null;
     renderGutterUtility?: (
       getLine: () => { lineNumber: number; side: "additions" },
@@ -22,6 +24,7 @@ vi.mock("@pierre/diffs", async (importOriginal) => {
   };
   class FakeCodeView implements FakeCodeViewHandle {
     scrollCalls: Array<{ id: string }> = [];
+    themeTypes: string[] = [];
     private root: HTMLElement | null = null;
     private items: Item[] = [];
     private options: Options;
@@ -31,6 +34,7 @@ vi.mock("@pierre/diffs", async (importOriginal) => {
 
     constructor(options: Options = {}) {
       this.options = options;
+      if (options.themeType) this.themeTypes.push(options.themeType);
       codeViews.push(this);
     }
 
@@ -40,6 +44,7 @@ vi.mock("@pierre/diffs", async (importOriginal) => {
 
     setOptions(options: Options): void {
       this.options = options;
+      if (options.themeType) this.themeTypes.push(options.themeType);
     }
 
     setItems(items: Item[]): void {
@@ -205,6 +210,21 @@ describe("GitReviewView", () => {
     expect(codeViews).toHaveLength(1);
     expect(view.contentEl.querySelector(".review-surface.is-nav-external")).not.toBeNull();
     expect(app.workspace.getLeavesOfType("git-nav")[0].getRoot()).toBe(app.workspace.rightSplit);
+  });
+
+  it("refreshes mounted review diffs when the theme changes", async () => {
+    codeViews.length = 0;
+    const { app } = await reviewApp();
+    app.appearance.setBaseTheme("obsidian");
+    await openGitReview(app);
+    await until(() => codeViews.length === 1, "code view");
+
+    const mounted = codeViews[0];
+    expect(mounted.themeTypes.at(-1)).toBe("dark");
+    app.appearance.setBaseTheme("moonstone");
+
+    expect(codeViews[0]).toBe(mounted);
+    expect(mounted.themeTypes.at(-1)).toBe("light");
   });
 
   it("keeps file paths on center diff cards", async () => {

@@ -74,6 +74,12 @@ export class GitChangesView extends ItemView {
     this.addAction("lucide-file-diff", "Review all changes", () => void openGitReview(this.app));
     this.addAction("lucide-git-pull-request", "Pull requests", () => void openPrList(this.app));
     this.addAction("lucide-rotate-ccw", "Refresh", () => void this.refresh());
+    this.registerEvent(
+      this.app.workspace.on("css-change", () => {
+        const themeType = document.body.classList.contains("theme-dark") ? "dark" : "light";
+        for (const diff of this.diffs) diff.setThemeType(themeType);
+      }),
+    );
     await this.refresh();
   }
 

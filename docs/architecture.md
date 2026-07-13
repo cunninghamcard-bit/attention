@@ -89,6 +89,10 @@ QuickSwitcher, FileExplorerView, …); the larger ones each own a subdirectory:
 Code under `src/**` and `tests/**` must not import React, React DOM, or the
 `@pierre/diffs/react` wrapper, and the dependency table must not contain
 React, Vue or a zod presenter layer. `tests/architecture.test.ts` enforces both.
+Local Git diffs use Pierre custom elements through their public CSS-variable
+contract: host styles bridge Obsidian semantic tokens into the shadow root,
+and mounted diff instances refresh their light/dark syntax mode on the
+workspace `css-change` event.
 
 ## Runtime topology
 

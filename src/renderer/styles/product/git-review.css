@@ -1,6 +1,28 @@
 /* Review surface: center CodeView + optional in-pane sidebar.
  * Codiff Tree/History lives in the right git-nav dock (see .git-nav). */
 
+/* Pierre renders inside a shadow root. Bridge its public custom properties to
+ * Obsidian's live tokens on the host so community themes remain authoritative. */
+.git-review-view diffs-container,
+.git-changes-view diffs-container,
+.git-log-view diffs-container {
+  --diffs-light-bg: var(--background-primary);
+  --diffs-dark-bg: var(--background-primary);
+  --diffs-light: var(--text-normal);
+  --diffs-dark: var(--text-normal);
+  --diffs-bg-buffer-override: var(--background-primary);
+  --diffs-bg-context-override: var(--background-primary);
+  --diffs-bg-context-gutter-override: var(--background-secondary);
+  --diffs-bg-separator-override: var(--background-secondary);
+  --diffs-bg-hover-override: var(--background-modifier-hover);
+  --diffs-fg-number-override: var(--text-faint);
+  --diffs-addition-color: var(--color-green);
+  --diffs-deletion-color: var(--color-red);
+  --diffs-modified-color: var(--color-blue);
+  --diffs-font-family: var(--font-monospace);
+  --diffs-header-font-family: var(--font-interface);
+}
+
 .git-review-view {
   padding: 0;
   overflow: hidden;
@@ -148,10 +170,10 @@
 }
 
 .review-status-dot.mod-added,
-.review-status-dot.mod-untracked { background-color: var(--color-green, #3fb950); }
-.review-status-dot.mod-deleted { background-color: var(--color-red, #f85149); }
-.review-status-dot.mod-renamed { background-color: var(--color-yellow, #d29922); }
-.review-status-dot.mod-modified { background-color: var(--color-orange, #d29922); }
+.review-status-dot.mod-untracked { background-color: var(--color-green); }
+.review-status-dot.mod-deleted { background-color: var(--color-red); }
+.review-status-dot.mod-renamed { background-color: var(--color-yellow); }
+.review-status-dot.mod-modified { background-color: var(--color-orange); }
 
 .review-sidebar-footer {
   display: flex;
@@ -336,10 +358,10 @@
 }
 
 .review-card-status.mod-added,
-.review-card-status.mod-untracked { color: var(--color-green, #3a9a4a); }
-.review-card-status.mod-deleted { color: var(--color-red, #c04040); }
+.review-card-status.mod-untracked { color: var(--color-green); }
+.review-card-status.mod-deleted { color: var(--color-red); }
 .review-card-status.mod-modified,
-.review-card-status.mod-renamed { color: var(--color-orange, #c48a20); }
+.review-card-status.mod-renamed { color: var(--color-orange); }
 
 .review-card-binary {
   color: var(--text-faint);
@@ -376,13 +398,13 @@
 
 .review-surface ins,
 .git-pr-view ins {
-  color: var(--color-green, #3fb950);
+  color: var(--color-green);
   text-decoration: none;
 }
 
 .review-surface del,
 .git-pr-view del {
-  color: var(--color-red, #f85149);
+  color: var(--color-red);
   text-decoration: none;
 }
 
@@ -469,7 +491,7 @@
 }
 
 .review-commit-counter.is-over {
-  color: var(--color-red, #f85149);
+  color: var(--color-red);
 }
 
 .review-commit-body,
@@ -493,8 +515,8 @@
   font-size: var(--font-ui-small);
 }
 
-.review-action.mod-approve { color: var(--color-green, #3fb950); }
-.review-action.mod-request-changes { color: var(--color-red, #f85149); }
+.review-action.mod-approve { color: var(--color-green); }
+.review-action.mod-request-changes { color: var(--color-red); }
 
 /* --- Keyboard help -------------------------------------------------------- */
 
@@ -505,7 +527,7 @@
   align-items: flex-start;
   justify-content: center;
   padding-top: 60px;
-  background-color: rgb(0 0 0 / 0.28);
+  background-color: var(--background-modifier-cover);
   z-index: var(--layer-modal, 50);
 }
 
@@ -658,7 +680,7 @@
   width: 18px;
   height: 18px;
   border-radius: 24px;
-  border: 1.5px solid rgb(127 127 127 / 0.42);
+  border: 1.5px solid var(--checkbox-border-color);
   background: var(--background-primary);
   color: transparent;
   --icon-size: 12px;
@@ -710,12 +732,12 @@
 }
 
 .git-nav-file-stat ins {
-  color: var(--color-green, #3a9a4a);
+  color: var(--color-green);
   text-decoration: none;
 }
 
 .git-nav-file-stat del {
-  color: var(--color-red, #c04040);
+  color: var(--color-red);
   text-decoration: none;
 }
 
@@ -729,16 +751,16 @@
 
 .git-nav-file-status.mod-added,
 .git-nav-file-status.mod-untracked {
-  color: var(--color-green, #3a9a4a);
+  color: var(--color-green);
 }
 
 .git-nav-file-status.mod-deleted {
-  color: var(--color-red, #c04040);
+  color: var(--color-red);
 }
 
 .git-nav-file-status.mod-modified,
 .git-nav-file-status.mod-renamed {
-  color: var(--color-orange, #c48a20);
+  color: var(--color-orange);
 }
 
 /* codiff shape: fixed hash lane, then subject over avatar/author and relative time. */
@@ -823,11 +845,11 @@
 }
 
 .git-nav-footer-stat ins {
-  color: var(--color-green, #3a9a4a);
+  color: var(--color-green);
   text-decoration: none;
 }
 
 .git-nav-footer-stat del {
-  color: var(--color-red, #c04040);
+  color: var(--color-red);
   text-decoration: none;
 }

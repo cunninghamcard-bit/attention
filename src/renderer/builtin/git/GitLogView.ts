@@ -61,6 +61,12 @@ export class GitLogView extends ItemView {
     this.listEl.className = "git-log-list";
     this.contentEl.appendChild(this.listEl);
     this.addAction("lucide-rotate-ccw", "Refresh", () => void this.refresh());
+    this.registerEvent(
+      this.app.workspace.on("css-change", () => {
+        const themeType = document.body.classList.contains("theme-dark") ? "dark" : "light";
+        for (const diff of this.diffs) diff.setThemeType(themeType);
+      }),
+    );
     await this.refresh();
   }
 

@@ -246,6 +246,11 @@ export class ReviewSurface {
     return this.diffStyle;
   }
 
+  refreshTheme(): void {
+    this.codeView.setOptions(this.codeViewOptions());
+    this.codeView.render(true);
+  }
+
   /** Flip unified ⟷ split. Driven by the leaf view-header for the local
    * review, or by the surface's own toolbar for the PR tab. */
   toggleDiffStyle(): void {
