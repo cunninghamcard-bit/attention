@@ -256,6 +256,28 @@ describe("WorkspaceSplit", () => {
     expect(app.workspace.activeLeaf).toBe(firstLeaf);
   });
 
+  it("keeps a moved leaf header when the source tab group updates", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const first = await app.vault.create("First.md", "first");
+    const moved = await app.vault.create("Moved.md", "moved");
+    const target = await app.vault.create("Target.md", "target");
+    const firstLeaf = await app.workspace.openFile(first, { active: true });
+    const movedLeaf = app.workspace.getLeaf("tab");
+    await movedLeaf.openFile(moved, { active: true });
+    const targetLeaf = app.workspace.getLeaf("split");
+    await targetLeaf.openFile(target, { active: true });
+    const sourceTabs = firstLeaf.parent;
+    const targetTabs = targetLeaf.parent;
+    if (!(sourceTabs instanceof WorkspaceTabs) || !(targetTabs instanceof WorkspaceTabs))
+      throw new Error("Expected separate tab groups");
+
+    app.workspace.moveLeafToDropTarget(movedLeaf, { leaf: targetLeaf, side: "center" });
+    sourceTabs.updateTabDisplay();
+
+    expect(movedLeaf.tabHeaderEl.parentElement).toBe(targetTabs.tabsInnerEl);
+  });
+
   it("splits target leaves for edge drops and routes DragManager drops through workspace movement", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;

@@ -644,10 +644,7 @@ function animateTabHeaderRemoval(
   header: HTMLElement,
   animate: boolean,
 ): void {
-  if (header.parentElement !== container) {
-    header.remove();
-    return;
-  }
+  if (header.parentElement !== container) return;
   const width = getTabHeaderAnimationWidth(header);
   if (!animate || width <= 0 || typeof header.animate !== "function") {
     header.remove();
