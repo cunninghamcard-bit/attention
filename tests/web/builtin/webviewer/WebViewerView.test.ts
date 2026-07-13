@@ -94,6 +94,22 @@ describe("WebViewerView structural parity", () => {
     expect(app.webViewer.listHistory()[0]?.url).toBe("https://typed.example");
   });
 
+  it("lists history when the about:blank address gains focus", async () => {
+    const { app, view } = await createWebViewer("about:blank");
+    document.body.appendChild(app.containerEl);
+    app.webViewer.recordHistory("https://previous.example/", "Previous");
+
+    view.focusAddressBar();
+
+    const urls = Array.from(
+      document.querySelectorAll<HTMLElement>(".webviewer-addressbar-suggestion .suggestion-url"),
+      (el) => el.textContent,
+    );
+    expect(urls).toContain("https://previous.example/");
+    await view.onClose();
+    app.containerEl.remove();
+  });
+
   it("shows the favicon in the tab header with a container the real CSS knows", async () => {
     const { view, leaf, adapter } = await createWebViewer();
     adapter.webContents.emit("page-favicon-updated", {

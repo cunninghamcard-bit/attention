@@ -577,6 +577,10 @@ export class WebViewerView extends ItemView {
 /** Address bar suggestions in the standard suggestion popover (real classes:
  * suggestion-item mod-complex webviewer-addressbar-suggestion). */
 class AddressBarSuggest extends AbstractInputSuggest<WebViewerAddressSuggestion> {
+  override onInputFocus(): void {
+    this.showSuggestions(this.getSuggestions(""));
+  }
+
   getSuggestions(input: string): WebViewerAddressSuggestion[] {
     return this.app.webViewer.getAddressSuggestions(input);
   }
