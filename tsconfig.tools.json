@@ -35,6 +35,5 @@
     "vitest.config.ts",
     "apps/web/vite.config.ts",
     "apps/web/vite.api.config.ts",
-    "apps/server/vite.config.ts"
   ]
 }

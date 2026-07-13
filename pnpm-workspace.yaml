@@ -1,7 +1,6 @@
 packages:
   - apps/desktop
   - apps/web
-  - apps/server
   - tests
 
 # @pierre/diffs exposes a vanilla core but declares React as a peer for its

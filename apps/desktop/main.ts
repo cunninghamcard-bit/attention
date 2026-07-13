@@ -18,7 +18,6 @@ import { performNetRequest } from "./net-request";
 import { handleObsidianUrl, obsidianUrlFromArgv } from "./obsidian-protocol";
 import { registerSessionHardening } from "./session-hardening";
 import { registerDesktopBridgeIpc } from "./desktop-bridge";
-import { LoomSidecar, resolveLoomSidecarConfig } from "./loom-sidecar";
 import { applyMenu, updateMenuItems } from "./menu";
 import type { SystemMenuItem } from "@app/web/platform/desktop/SystemMenuBuilder";
 import { CliServer, defaultCliSocketPath } from "./cli/CliServer";
@@ -193,13 +192,8 @@ if (!gotLock) {
     app.setAsDefaultProtocolClient("workbench");
   }
 
-  const loomSidecar = new LoomSidecar(resolveLoomSidecarConfig(app.getPath("userData")), (url) => {
-    mainState.loomUrl = url;
-  });
-
   app.on("before-quit", () => {
     mainState.isQuitting = true;
-    loomSidecar.stop();
     cliServer.stop();
   });
 
@@ -221,7 +215,6 @@ if (!gotLock) {
     });
     registerSessionHardening();
     registerDesktopBridgeIpc();
-    loomSidecar.start();
     ipcMain.on("set-menu", (event, arg: { template: SystemMenuItem[] }) => {
       const win = BrowserWindow.fromWebContents(event.sender);
       if (win) applyMenu(win, arg.template);

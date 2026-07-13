@@ -202,14 +202,13 @@ function listTopLevelDirNames(dirAbs: string): string[] {
 // ---------------------------------------------------------------------------
 
 describe("Rule: runtime-walls — the workspace splits by runtime", () => {
-  it("workspace declares desktop web and server app packages", () => {
+  it("workspace declares desktop and web app packages", () => {
     const packages = parseWorkspacePackages(readText("pnpm-workspace.yaml"));
 
     expect(packages).toContain("apps/desktop");
     expect(packages).toContain("apps/web");
-    expect(packages).toContain("apps/server");
 
-    for (const pkgDir of ["apps/desktop", "apps/web", "apps/server"]) {
+    for (const pkgDir of ["apps/desktop", "apps/web"]) {
       expect(existsSync(abs(pkgDir, "package.json")), `${pkgDir}/package.json should exist`).toBe(
         true,
       );
@@ -346,7 +345,6 @@ describe("Rule: builtin-roof — one core plugin per slice", () => {
       "webviewer",
       "theme-market",
       "terminal",
-      "agent",
     ];
     const builtinDirs = new Set(listTopLevelDirNames(abs(WEB_SRC, "builtin")));
     const topLevelDirs = listTopLevelDirNames(abs(WEB_SRC));
@@ -560,7 +558,6 @@ describe("Rule: ipc surface freeze", () => {
       "get-documents-path",
       "get-sandbox-vault-path",
       "is-quitting",
-      "loom-url",
       "open-url",
       "request-url",
       "resources",

@@ -16,12 +16,9 @@ export interface MainState {
    * which is a correct prefix for a file-backed vault.
    */
   fileUrlPrefix: string;
-  /** Resolved loom kernel URL (sidecar or external), or null if none is configured yet. */
-  loomUrl: string | null;
 }
 
 export const mainState: MainState = {
   isQuitting: false,
   fileUrlPrefix: "file://",
-  loomUrl: null,
 };

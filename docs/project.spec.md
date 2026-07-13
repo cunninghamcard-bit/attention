@@ -56,11 +56,11 @@ re-litigate them.
 
 ## Completion Criteria
 
-Scenario: the workspace stays three app packages
-  Test: workspace declares desktop web and server app packages
+Scenario: the workspace declares its app packages
+  Test: workspace declares desktop and web app packages
   Given the repository root
   When the workspace configuration is read
-  Then pnpm-workspace.yaml lists the three src/apps packages, each with its own package.json
+  Then pnpm-workspace.yaml lists the app packages, each with its own package.json
 
 Scenario: dependency tables stay in their runtime lanes
   Test: app package dependencies stay in their runtime lane

@@ -37,9 +37,6 @@ import { HotkeyManager } from "./hotkeys/HotkeyManager";
 import { Keymap } from "./hotkeys/Keymap";
 import { WorkspaceServices } from "./WorkspaceServices";
 import { registerAppCommands } from "./AppCommands";
-import { registerAgentBuiltin } from "../builtin/agent/AgentBuiltin";
-import { AgentManager } from "../builtin/agent/AgentManager";
-import { ChatSettingTab } from "../builtin/agent/ChatSettingTab";
 import { registerAppProtocolHandlers } from "./AppProtocolHandlers";
 import { registerMarkdownDefaultProcessors } from "../markdown/MarkdownDefaultProcessors";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
@@ -216,7 +213,6 @@ export class App {
   readonly hoverPreview: WorkspaceServices["hoverPreview"];
   readonly themes = new ThemeManager(this);
   readonly customCss = new CustomCss(this);
-  readonly agents = new AgentManager(this);
   readonly cssSnippets = new CssSnippetManager(this);
   readonly appearance = new AppearanceManager(this);
   readonly settingSections = new SettingsSectionRegistry();
@@ -273,9 +269,6 @@ export class App {
     this.desktopMenu.refresh();
     MarkdownRenderer.resetProcessors();
     registerMarkdownDefaultProcessors(this);
-    // After the processor reset: the agent builtin registers its own
-    // postProcessor (mention highlighting) into the same chain.
-    registerAgentBuiltin(this);
     this.registerSettings();
     this.registerGlobalHotkeys();
     this.corePluginsReady = registerCorePlugins(this);
@@ -523,7 +516,6 @@ export class App {
     this.setting.addSettingTab(new AppearanceSettingTab(this));
     this.setting.addSettingTab(new MobileSettingTab(this));
     this.setting.addSettingTab(new HotkeysSettingTab(this));
-    this.setting.addSettingTab(new ChatSettingTab(this));
     this.setting.addSettingTab(new CorePluginsSettingTab(this));
     this.setting.addSettingTab(new CommunityPluginsSettingTab(this));
   }

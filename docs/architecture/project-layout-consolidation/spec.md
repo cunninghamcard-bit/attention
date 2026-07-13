@@ -30,12 +30,13 @@ directories form one strongly-connected component through the App hub
 All decisions were grilled and recorded; see research.md and
 learning-records/ 0001–0009.
 
-- Workspace: pnpm monorepo; the only packages are the three runtimes
-  `apps/desktop` (current electron/, main+preload thin shell),
-  `apps/web` (current src/, the product), `apps/server`
-  (current server/). Root package.json becomes a pure workspace yard
-  with no runtime dependencies. Package names `@app/desktop`,
-  `@app/web`, `@app/server` — deliberately product-name-free — all
+- Workspace: pnpm monorepo; the runtime packages are `apps/desktop`
+  (current electron/, main+preload thin shell) and `apps/web` (current
+  src/, the product). (A third runtime `apps/server` existed for the TS
+  agent engines; it was removed when the agent surface was purged —
+  the future agent backend is redesigned separately.) Root package.json
+  is a pure workspace yard with no runtime dependencies. Package names
+  `@app/desktop`, `@app/web` — deliberately product-name-free — all
   `private: true` (records 0004, 0006, 0008, 0010; research.md F1, F3).
 - Zero library packages today: no base/platform/kernel/ui packages.
   kernel (vault+metadata+storage) graduates to a package only when a
@@ -58,7 +59,7 @@ learning-records/ 0001–0009.
 - Enforcement is alarm-level inside the web app: a vitest architecture
   test asserts the direction table (kernel imports nothing above
   itself; internals never import api/; runtime dependency lanes).
-  Physical walls exist only between the three app packages
+  Physical walls exist only between the app packages
   (record 0006; research.md F2).
 - Storage stays behind the `VaultAdapter` seam inside web
   (FileSystemAdapter keeps direct node fs via the shell's
@@ -130,11 +131,11 @@ learning-records/ 0001–0009.
 
 ### Rule: runtime-walls — the workspace splits by runtime
 
-Scenario: three app packages exist (critical)
-  Test: workspace declares desktop web and server app packages
+Scenario: app packages exist (critical)
+  Test: workspace declares desktop and web app packages
   Given the repository root
   When the workspace configuration is read
-  Then pnpm-workspace.yaml lists apps/desktop, apps/web and apps/server
+  Then pnpm-workspace.yaml lists apps/desktop and apps/web
   And each app directory contains its own package.json
 
 Scenario: dependency tables are split by runtime
