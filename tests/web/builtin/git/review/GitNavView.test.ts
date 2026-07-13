@@ -54,6 +54,10 @@ describe("GitNavView", () => {
     expect(view.contentEl.querySelectorAll('[role="tab"]')).toHaveLength(0);
     expect(view.contentEl.querySelector(".git-nav-header")).toBeNull();
     expect(view.contentEl.textContent).not.toMatch(/Walkthrough/i);
+    expect(view.contentEl.querySelector(".git-nav-search.search-input-container")).not.toBeNull();
+    expect(
+      view.contentEl.querySelector(".git-nav-search .search-input-clear-button"),
+    ).not.toBeNull();
   });
 
   it("selecting a history commit sets commit source", async () => {
@@ -67,6 +71,7 @@ describe("GitNavView", () => {
     const rows = [...nav.contentEl.querySelectorAll<HTMLButtonElement>(".git-nav-history-entry")];
     const workingTree = rows.find((row) => row.textContent?.includes("Uncommitted changes"));
     const commit = rows.find((row) => row.textContent?.includes("seed"));
+    expect(commit?.querySelector(".git-nav-history-meta")?.children).toHaveLength(2);
     commit?.click();
     expect(app.git.reviewSession.source).toMatchObject({ kind: "commit", ref: "aaa" });
     workingTree?.click();
@@ -174,7 +179,7 @@ describe("GitNavView", () => {
     await until(() => !nav.contentEl.textContent?.includes("Loading history…"), "history load");
     expect(log).toHaveBeenCalledTimes(1);
 
-    const filter = nav.contentEl.querySelector(".git-nav-search") as HTMLInputElement;
+    const filter = nav.contentEl.querySelector(".git-nav-search input") as HTMLInputElement;
     filter.value = "commit";
     filter.dispatchEvent(new Event("input", { bubbles: true }));
     nav.contentEl.querySelector(".git-nav-history")?.dispatchEvent(new Event("scroll"));

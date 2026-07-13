@@ -3,6 +3,7 @@ import { createDiv, createEl, createSpan } from "../../../dom/dom";
 import type { EventRef } from "../../../core/Events";
 import { setIcon } from "../../../ui/Icon";
 import { setFileTypeIcon } from "../../../ui/FileTypeIcon";
+import { SearchComponent } from "../../../ui/Setting";
 import { ItemView } from "../../../views/ItemView";
 import type { GitLogEntry } from "../GitService";
 import type { GitNavMode, GitReviewSource, ReviewFileSummary } from "../reviewSession";
@@ -45,7 +46,7 @@ export class GitNavView extends ItemView {
   private collapsed = new Set<string>();
   private sessionRefs: EventRef[] = [];
 
-  private searchEl: HTMLInputElement | null = null;
+  private searchComponent: SearchComponent | null = null;
   private bodyEl: HTMLDivElement | null = null;
   private footerEl: HTMLDivElement | null = null;
 
@@ -111,18 +112,13 @@ export class GitNavView extends ItemView {
     // The Tree/History switch lives in the center review toolbar, not here —
     // a sidebar is a poor home for a mode toggle. This leaf is a pure list.
     const searchRow = createDiv("git-nav-search-row", root);
-    this.searchEl = createEl(
-      "input",
-      {
-        cls: "git-nav-search",
-        attr: { type: "search", spellcheck: "false", "aria-label": "Filter changed files" },
-      },
-      searchRow,
-    );
-    this.searchEl.addEventListener("input", () => {
-      this.filter = this.searchEl?.value ?? "";
-      this.renderBody();
-    });
+    this.searchComponent = new SearchComponent(searchRow)
+      .setClass("git-nav-search")
+      .onChange((value) => {
+        this.filter = value;
+        this.renderBody();
+      });
+    this.searchComponent.inputEl.setAttribute("aria-label", "Filter changed files");
 
     this.bodyEl = createDiv("git-nav-tree", root);
     this.bodyEl.addEventListener("scroll", () => this.maybeLoadMoreHistory(), { passive: true });
@@ -130,10 +126,11 @@ export class GitNavView extends ItemView {
   }
 
   private render(): void {
-    if (!this.searchEl) return;
-    this.searchEl.value = this.filter;
-    this.searchEl.placeholder = this.mode === "history" ? "Filter history" : "Filter files";
-    this.searchEl.setAttribute(
+    if (!this.searchComponent) return;
+    this.searchComponent
+      .setValue(this.filter)
+      .setPlaceholder(this.mode === "history" ? "Filter history" : "Filter files");
+    this.searchComponent.inputEl.setAttribute(
       "aria-label",
       this.mode === "history" ? "Filter history" : "Filter changed files",
     );
@@ -261,11 +258,9 @@ export class GitNavView extends ItemView {
       button,
     );
     if (row.kind === "commit") {
-      const lines = createDiv("git-nav-history-lines", button);
-      createSpan({ cls: "git-nav-history-subject", text: row.subject }, lines);
-      const meta = createSpan("git-nav-history-meta", lines);
-      createSpan({ text: row.author }, meta);
-      createSpan({ text: "·" }, meta);
+      createSpan({ cls: "git-nav-history-subject", text: row.subject }, button);
+      const meta = createSpan("git-nav-history-meta", button);
+      createSpan({ cls: "git-nav-history-author", text: row.author }, meta);
       createSpan({ text: formatRelativeDate(row.date) }, meta);
       button.addEventListener("click", () => {
         this.app.git.reviewSession.setSource({
