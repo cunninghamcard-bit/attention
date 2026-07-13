@@ -85,7 +85,7 @@ describe("Workbench style system", () => {
 
   it("defines the design tokens themes depend on", async () => {
     const fs = (await load(fileSystemSpecifier)) as FsModule;
-    const tokens = fs.readFileSync("apps/web/src/styles/tokens/tokens.css", "utf8");
+    const tokens = fs.readFileSync("src/renderer/styles/tokens/tokens.css", "utf8");
     for (const token of REQUIRED_TOKENS) {
       expect(tokens, `missing design token ${token}`).toContain(`${token}:`);
     }
@@ -95,7 +95,7 @@ describe("Workbench style system", () => {
 async function loadStyleTree(): Promise<{ imports: string[]; allFiles: string[] }> {
   const fs = (await load(fileSystemSpecifier)) as FsModule;
   const path = (await load(pathSpecifier)) as PathModule;
-  const index = fs.readFileSync("apps/web/src/styles/index.css", "utf8");
+  const index = fs.readFileSync("src/renderer/styles/index.css", "utf8");
   const imports = [...index.matchAll(/@import\s+"\.\/([^"]+\.css)";/g)].map((match) => match[1]);
   const allFiles: string[] = [];
   const walk = (dir: string): void => {
@@ -105,11 +105,11 @@ async function loadStyleTree(): Promise<{ imports: string[]; allFiles: string[] 
         // reveal/ hosts standalone demo styles outside the app cascade.
         if (entry.name !== "reveal") walk(full);
       } else if (entry.name.endsWith(".css") && entry.name !== "index.css") {
-        allFiles.push(path.relative("apps/web/src/styles", full));
+        allFiles.push(path.relative("src/renderer/styles", full));
       }
     }
   };
-  walk("apps/web/src/styles");
+  walk("src/renderer/styles");
   return { imports, allFiles };
 }
 

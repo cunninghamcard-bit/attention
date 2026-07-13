@@ -19,13 +19,19 @@
     "noEmit": true,
     "paths": {
       "@web/*": [
-        "./apps/web/src/*"
+        "./src/renderer/*"
       ],
       "@desktop/*": [
-        "./apps/desktop/*"
+        "./src/main/*"
+      ],
+      "@preload/*": [
+        "./src/preload/*"
       ],
       "@app/web/*": [
-        "./apps/web/src/*"
+        "./src/renderer/*"
+      ],
+      "@shared/*": [
+        "./src/shared/*"
       ]
     }
   },
@@ -33,7 +39,8 @@
     "tests/e2e",
     "scripts",
     "vitest.config.ts",
-    "apps/web/vite.config.ts",
-    "apps/web/vite.api.config.ts",
+    "src/renderer/vite.config.ts",
+    "src/renderer/vite.api.config.ts",
+    "src/main/vite.config.ts"
   ]
 }

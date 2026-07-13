@@ -1,10 +1,11 @@
-// Architecture alarm for docs/architecture/project-layout-consolidation/spec.md.
+// Architecture alarm for docs/architecture/single-package-shell/spec.md (and
+// the project constitution it inherits).
 //
 // Every rule below is enforced by a small pure checker function: give it data
 // (parsed yaml text, manifest objects, or {path, imports} records) and it
 // returns violations. Each `it` exercises a checker twice where the spec asks
-// for it — once against data read from the real tree (the alarm), once
-// against a synthetic record (the alarm's own self-test).
+// for it — once against data read from the real tree (the alarm), once against
+// a synthetic record (the alarm's own self-test).
 
 import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync, readdirSync, type Dirent } from "node:fs";
@@ -12,7 +13,8 @@ import { join, posix } from "node:path";
 
 // vitest's root config lives at the repo root, so tests always run with cwd there.
 const ROOT = process.cwd();
-const WEB_SRC = "apps/web/src";
+// The single-package renderer lane (formerly apps/web/src).
+const WEB_SRC = "src/renderer";
 
 function abs(...segments: string[]): string {
   return join(ROOT, ...segments);
@@ -26,15 +28,20 @@ function readText(relPath: string): string {
 // Pure checkers
 // ---------------------------------------------------------------------------
 
-/** Rule: runtime-walls. Parses the plain-text `packages:` list of a pnpm workspace file. */
+/** Parses the plain-text `packages:` list of a pnpm workspace file. */
 function parseWorkspacePackages(yamlText: string): string[] {
   const lines = yamlText.split("\n");
   const start = lines.findIndex((line) => /^packages:\s*$/.test(line.trim()));
   if (start === -1) return [];
   const entries: string[] = [];
   for (let i = start + 1; i < lines.length; i++) {
-    const match = lines[i].match(/^\s*-\s*(.+?)\s*$/);
-    if (!match) break;
+    const line = lines[i];
+    if (/^\s*#/.test(line)) continue; // comments interleave the list
+    const match = line.match(/^\s*-\s*(.+?)\s*$/);
+    if (!match) {
+      if (line.trim() === "") continue;
+      break;
+    }
     entries.push(match[1]);
   }
   return entries;
@@ -46,14 +53,14 @@ interface Manifest {
   devDependencies?: Record<string, string>;
 }
 
-/** Rule: runtime-walls. Reports which of `forbidden` show up in a manifest's dependency tables. */
+/** Reports which of `forbidden` show up in a manifest's dependency tables. */
 function findLaneViolations(manifest: Manifest, forbidden: string[]): string[] {
   const deps = { ...(manifest.dependencies ?? {}), ...(manifest.devDependencies ?? {}) };
   return forbidden.filter((name) => name in deps);
 }
 
 interface SourceFile {
-  /** repo-relative, posix-separated, e.g. "apps/web/src/vault/Vault.ts" */
+  /** repo-relative, posix-separated, e.g. "src/renderer/vault/Vault.ts" */
   path: string;
   /** raw import specifiers as written in the file */
   imports: string[];
@@ -64,7 +71,7 @@ function resolveRelativeImport(fromFile: string, specifier: string): string {
   return posix.normalize(posix.join(posix.dirname(fromFile), specifier));
 }
 
-/** First path segment under `apps/web/src/` that `resolvedPath` lands in, else null. */
+/** First path segment under `src/renderer/` that `resolvedPath` lands in, else null. */
 function topLevelWebSrcDir(resolvedPath: string): string | null {
   const marker = `${WEB_SRC}/`;
   const idx = resolvedPath.indexOf(marker);
@@ -109,6 +116,35 @@ function findApiFacadeViolations(
       if (!spec.startsWith(".")) continue;
       const target = topLevelWebSrcDir(resolveRelativeImport(file.path, spec));
       if (target === "api") violations.push({ path: file.path, import: spec });
+    }
+  }
+  return violations;
+}
+
+/**
+ * Rule: single-package. The renderer may not import the shell. A shell import
+ * is a bare `electron` / `@electron/remote`, a `@desktop`/`@main`/`@preload`
+ * alias, or a relative import that escapes into src/main or src/preload.
+ */
+const SHELL_BARE = ["electron", "@electron/remote"];
+const SHELL_ALIASES = ["@desktop", "@main", "@preload"];
+
+function findRendererShellImports(files: SourceFile[]): Array<{ path: string; import: string }> {
+  const violations: Array<{ path: string; import: string }> = [];
+  for (const file of files) {
+    for (const spec of file.imports) {
+      const bare = SHELL_BARE.some((name) => spec === name || spec.startsWith(`${name}/`));
+      const aliased = SHELL_ALIASES.some((name) => spec === name || spec.startsWith(`${name}/`));
+      let relative = false;
+      if (spec.startsWith(".")) {
+        const resolved = resolveRelativeImport(file.path, spec);
+        relative =
+          resolved === "src/main" ||
+          resolved === "src/preload" ||
+          resolved.startsWith("src/main/") ||
+          resolved.startsWith("src/preload/");
+      }
+      if (bare || aliased || relative) violations.push({ path: file.path, import: spec });
     }
   }
   return violations;
@@ -197,38 +233,166 @@ function listTopLevelDirNames(dirAbs: string): string[] {
     .map((entry) => entry.name);
 }
 
+/**
+ * A native-seam file consumes a port from src/shared when it imports the port
+ * name from a `shared/…` specifier and does NOT re-declare the interface itself.
+ */
+function importsPortFromShared(relFile: string, port: string): boolean {
+  const source = readText(relFile);
+  const hasLocalDecl = new RegExp(`\\binterface\\s+${port}\\b`).test(source);
+  const importsPort = [
+    ...source.matchAll(/import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']([^"']+)["']/g),
+  ].some(
+    ([, names, specifier]) =>
+      specifier.includes("shared/") &&
+      names
+        .split(",")
+        .map((piece) => piece.replace(/\btype\b/, "").trim())
+        .includes(port),
+  );
+  return importsPort && !hasLocalDecl;
+}
+
 // ---------------------------------------------------------------------------
-// Rule: runtime-walls — the workspace splits by runtime
+// Rule: single-package — one app, one package
 // ---------------------------------------------------------------------------
 
-describe("Rule: runtime-walls — the workspace splits by runtime", () => {
-  it("workspace declares desktop and web app packages", () => {
+describe("Rule: single-package — one app, one package", () => {
+  it("declares a single-package src layout", () => {
     const packages = parseWorkspacePackages(readText("pnpm-workspace.yaml"));
 
-    expect(packages).toContain("apps/desktop");
-    expect(packages).toContain("apps/web");
+    // No apps/* package remains; the workspace is the root app plus the tests lane.
+    expect(packages.some((pkg) => pkg.startsWith("apps/"))).toBe(false);
+    expect(existsSync(abs("apps"))).toBe(false);
 
-    for (const pkgDir of ["apps/desktop", "apps/web"]) {
-      expect(existsSync(abs(pkgDir, "package.json")), `${pkgDir}/package.json should exist`).toBe(
-        true,
-      );
+    // src holds the five conventional electron lanes.
+    const srcDirs = new Set(listTopLevelDirNames(abs("src")));
+    for (const lane of ["main", "preload", "renderer", "shared", "types"]) {
+      expect(srcDirs.has(lane), `src/${lane} should exist`).toBe(true);
     }
   });
 
-  it("app package dependencies stay in their runtime lane", () => {
-    const root: Manifest = JSON.parse(readText("package.json"));
-    const desktop: Manifest = JSON.parse(readText("apps/desktop/package.json"));
-    const web: Manifest = JSON.parse(readText("apps/web/package.json"));
+  it("keeps the renderer free of shell imports", () => {
+    const files = sourceFilesUnder([WEB_SRC], [".ts", ".tsx"], true);
 
-    expect(Object.keys(root.dependencies ?? {})).toEqual([]);
-    expect(findLaneViolations(desktop, ["react", "react-dom"])).toEqual([]);
-    expect(findLaneViolations(web, ["electron"])).toEqual([]);
+    expect(findRendererShellImports(files)).toEqual([]);
+
+    const synthetic: SourceFile = {
+      path: `${WEB_SRC}/vault/X.ts`,
+      imports: ["electron", "@desktop/ipc", "../../main/state"],
+    };
+    expect(findRendererShellImports([synthetic])).toHaveLength(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rule: shared-contracts — the native seam is one typed contract
+// ---------------------------------------------------------------------------
+
+describe("Rule: shared-contracts — the native seam is one typed contract", () => {
+  it("declares the native port contracts in shared", () => {
+    const git = readText("src/shared/gitApi.ts");
+    const terminal = readText("src/shared/terminalApi.ts");
+    const data = readText("src/shared/dataAdapter.ts");
+    const ipc = readText("src/shared/ipc.ts");
+
+    expect(git).toMatch(/export interface ElectronGitApi\b/);
+    expect(terminal).toMatch(/export interface ElectronTerminalApi\b/);
+    expect(data).toMatch(/export interface DataAdapter\b/);
+    // a typed IPC channel table: channel name → request/response types
+    expect(ipc).toMatch(/export interface SyncChannels\b/);
+    expect(ipc).toMatch(/export type IpcChannelName\b/);
   });
 
-  it("flags a dependency outside its runtime lane", () => {
-    const synthetic: Manifest = { name: "@app/web", dependencies: { electron: "1.0.0" } };
+  it("imports the shared contracts from both main and renderer", () => {
+    // git port: renderer caller + main handler both compile against src/shared
+    expect(importsPortFromShared("src/renderer/builtin/git/GitService.ts", "ElectronGitApi")).toBe(
+      true,
+    );
+    expect(importsPortFromShared("src/main/git-bridge.ts", "ElectronGitApi")).toBe(true);
+    // terminal port: same on both sides
+    expect(
+      importsPortFromShared(
+        "src/renderer/builtin/terminal/TerminalAdapter.ts",
+        "ElectronTerminalApi",
+      ),
+    ).toBe(true);
+    expect(importsPortFromShared("src/main/terminal-bridge.ts", "ElectronTerminalApi")).toBe(true);
+  });
 
-    expect(findLaneViolations(synthetic, ["electron"])).toEqual(["electron"]);
+  it("keeps zod presenters and UI frameworks out of the dependency table", () => {
+    const root: Manifest = JSON.parse(readText("package.json"));
+    const tests: Manifest = JSON.parse(readText("tests/package.json"));
+    const forbidden = ["zod", "react", "react-dom", "vue"];
+
+    expect(findLaneViolations(root, forbidden)).toEqual([]);
+    expect(findLaneViolations(tests, forbidden)).toEqual([]);
+    expect(readText("pnpm-lock.yaml")).not.toMatch(/^\s{2}(?:react|react-dom|vue|zod)@/m);
+
+    // self-test
+    expect(findLaneViolations({ dependencies: { react: "1" } }, forbidden)).toEqual(["react"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rule: perf-red-line — vault reads stay in-process (structural guard; the
+// openFile-median measurement itself is the e2e:perf gate, human-signed-off).
+// ---------------------------------------------------------------------------
+
+describe("Rule: perf-red-line — vault reads stay in-process", () => {
+  it("keeps vault reads in-process (the perf red line)", () => {
+    const adapter = readText("src/renderer/vault/FileSystemAdapter.ts");
+    // the vault fs adapter loads node fs in-process — not an IPC/kernel backend
+    expect(adapter).toMatch(/node:fs\/promises/);
+    expect(adapter).toContain("loadDesktopModules");
+    // the read/write path never routes over IPC — the measured-and-rejected design
+    const readSection = adapter.slice(
+      adapter.indexOf("async read("),
+      adapter.indexOf("async delete("),
+    );
+    expect(readSection).not.toMatch(/ipcRenderer|\.invoke\(|sendSync/);
+    // bootstrap installs FileSystemAdapter as the vault adapter through the seam
+    const bootstrap = readText("src/renderer/bootstrap.ts");
+    expect(bootstrap).toContain("FileSystemAdapter");
+    expect(bootstrap).toContain("provideAppAdapter");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rule: kernel-seam — reserved, not built
+// ---------------------------------------------------------------------------
+
+describe("Rule: kernel-seam — reserved, not built", () => {
+  it("reserves the kernel port without an implementation", () => {
+    const kernel = readText("src/shared/kernelApi.ts");
+    expect(kernel).toMatch(/export interface KernelApi\b/);
+
+    // Interface only: nothing implements it and nothing outside the declaration
+    // imports it (default-absent).
+    const files = sourceFilesUnder(["src"], [".ts", ".tsx"], false).filter(
+      (file) => file.path !== "src/shared/kernelApi.ts", // the declaration itself
+    );
+    const implementers = files.filter((file) =>
+      /\bimplements\b[^{]*\bKernelApi\b/.test(readText(file.path)),
+    );
+    expect(implementers).toEqual([]);
+    const importers = files.filter((file) => file.imports.some((spec) => /kernelApi/i.test(spec)));
+    expect(importers).toEqual([]);
+
+    // No kernel binary is a workspace member.
+    const packages = parseWorkspacePackages(readText("pnpm-workspace.yaml"));
+    expect(packages.some((pkg) => /kernel/i.test(pkg))).toBe(false);
+  });
+
+  it("keeps renderer rendering free of the kernel port", () => {
+    // markdown/ is the block-render pipeline; editor/ is the CodeMirror render layer.
+    const files = sourceFilesUnder(
+      [`${WEB_SRC}/markdown`, `${WEB_SRC}/editor`],
+      [".ts", ".tsx"],
+      true,
+    );
+    const offenders = files.filter((file) => file.imports.some((spec) => /kernelApi/i.test(spec)));
+    expect(offenders).toEqual([]);
   });
 });
 
@@ -238,7 +402,7 @@ describe("Rule: runtime-walls — the workspace splits by runtime", () => {
 
 describe("Rule: zero-react — the source tree has one UI paradigm", () => {
   it("keeps the source tree free of react imports", () => {
-    const files = sourceFilesUnder(["apps", "tests"], [".ts", ".tsx", ".js", ".jsx"], false);
+    const files = sourceFilesUnder(["src", "tests"], [".ts", ".tsx", ".js", ".jsx"], false);
     const forbidden = ["react", "react-dom", "@pierre/diffs/react"];
     const syntheticSource = `import "${["rea", "ct"].join("")}"; import("${[
       "react",
@@ -250,7 +414,7 @@ describe("Rule: zero-react — the source tree has one UI paradigm", () => {
       findForbiddenImportViolations(
         [
           {
-            path: "apps/web/src/example.ts",
+            path: "src/renderer/example.ts",
             imports: extractImports(syntheticSource),
           },
         ],
@@ -261,12 +425,10 @@ describe("Rule: zero-react — the source tree has one UI paradigm", () => {
 
   it("keeps react and moment out of the dependency table", () => {
     const root: Manifest = JSON.parse(readText("package.json"));
-    const web: Manifest = JSON.parse(readText("apps/web/package.json"));
     const tests: Manifest = JSON.parse(readText("tests/package.json"));
     const forbidden = ["react", "react-dom", "@types/react", "@types/react-dom", "moment"];
 
     expect(findLaneViolations(root, forbidden)).toEqual([]);
-    expect(findLaneViolations(web, forbidden)).toEqual([]);
     expect(findLaneViolations(tests, forbidden)).toEqual([]);
     expect(readText("pnpm-workspace.yaml")).toContain("autoInstallPeers: false");
     expect(readText("pnpm-lock.yaml")).not.toMatch(/^\s{2}(?:react|react-dom|moment)@/m);
@@ -315,7 +477,7 @@ describe("Rule: dual-track-api — the public facade serves only community plugi
         imports: extractImports(readFileSync(fileAbs, "utf8")),
       }))
       .filter((file) => topLevelWebSrcDir(file.path) !== "api")
-      // index.ts is the public entry point itself (dist/api/index.js) — it IS the facade's composition root.
+      // index.ts is the public entry point itself (out/api/index.js) — it IS the facade's composition root.
       .filter((file) => file.path !== `${WEB_SRC}/index.ts`);
 
     expect(findApiFacadeViolations(allFiles, API_FACADE_ALLOWED_CALLERS)).toEqual([]);
@@ -347,13 +509,15 @@ describe("Rule: builtin-roof — one core plugin per slice", () => {
       "terminal",
     ];
     const builtinDirs = new Set(listTopLevelDirNames(abs(WEB_SRC, "builtin")));
-    const topLevelDirs = listTopLevelDirNames(abs(WEB_SRC));
+    // `public/` holds static assets served verbatim (readability.js, fonts) — a
+    // sibling of the source directories, not one of them.
+    const sourceDirs = listTopLevelDirNames(abs(WEB_SRC)).filter((name) => name !== "public");
 
     for (const plugin of corePlugins) {
       expect(builtinDirs.has(plugin), `builtin/${plugin} should exist`).toBe(true);
-      expect(topLevelDirs.includes(plugin), `${plugin} should not be a top-level dir`).toBe(false);
+      expect(sourceDirs.includes(plugin), `${plugin} should not be a top-level dir`).toBe(false);
     }
-    expect(topLevelDirs.length).toBeLessThanOrEqual(16);
+    expect(sourceDirs.length).toBeLessThanOrEqual(16);
   });
 });
 
@@ -429,7 +593,7 @@ describe("Rule: architecture-docs — the new documentation set exists", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Extra: no retired product-name literals remain in code (beyond the 11 spec
+// Extra: no retired product-name literals remain in code (beyond the spec
 // scenarios; docs/ is excluded on purpose — learning records keep the old
 // name as history, not a live literal to purge).
 // ---------------------------------------------------------------------------
@@ -450,7 +614,7 @@ describe("Rule: name-agnostic code — the retired product name is gone", () => 
       ".css",
       ".scss",
     ];
-    const scanDirs = ["src/apps", "tests", "scripts"];
+    const scanDirs = ["src", "tests", "scripts"];
     const rootConfigFiles = [
       "package.json",
       "pnpm-workspace.yaml",
@@ -475,7 +639,7 @@ describe("Rule: name-agnostic code — the retired product name is gone", () => 
 });
 
 // ---------------------------------------------------------------------------
-// Extra: budget-style surface freeze (beyond the 11 spec scenarios). The
+// Extra: budget-style surface freeze (beyond the spec scenarios). The
 // community-plugin surface is a compatibility contract: exports may only be
 // ADDED deliberately — update the baseline in the same commit as the change.
 // ---------------------------------------------------------------------------
@@ -502,7 +666,7 @@ describe("Rule: public-api surface freeze", () => {
   };
 
   it("public plugin surface stays frozen", () => {
-    expect(exportedNames("apps/web/src/api/PublicApi.ts")).toEqual([
+    expect(exportedNames("src/renderer/api/PublicApi.ts")).toEqual([
       "AppearancePublicApi",
       "BasesPublicApi",
       "ObsidianPublicApi",
@@ -511,7 +675,7 @@ describe("Rule: public-api surface freeze", () => {
       "WorkspacePublicApi",
       "createPublicApi",
     ]);
-    expect(exportedNames("apps/web/src/api/ObsidianPluginModule.ts")).toEqual([
+    expect(exportedNames("src/renderer/api/ObsidianPluginModule.ts")).toEqual([
       "DebouncedFunction",
       "Debouncer",
       "ObsidianPluginModule",
@@ -526,7 +690,7 @@ describe("Rule: public-api surface freeze", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Extra: IPC channel table freeze (budget guard). The desktop<->web IPC
+// Extra: IPC channel table freeze (budget guard). The main<->renderer IPC
 // surface is a protocol: channels may only be ADDED deliberately — update the
 // baseline in the same commit as the change.
 // ---------------------------------------------------------------------------
@@ -540,9 +704,9 @@ describe("Rule: ipc surface freeze", () => {
     const stub: unknown = new Proxy(() => stub, { get: () => stub, apply: () => stub });
     const mapChannels = Object.keys(createIpcHandlers(stub as never));
     const direct = [
-      "apps/desktop/main.ts",
-      "apps/desktop/foundation-ipc.ts",
-      "apps/desktop/desktop-bridge.ts",
+      "src/main/main.ts",
+      "src/main/foundation-ipc.ts",
+      "src/main/desktop-bridge.ts",
     ].flatMap((file) =>
       [...readText(file).matchAll(/ipcMain\s*\.\s*(?:handle|on)\s*\(\s*"([^"]+)"/g)].map(
         (m) => m[1],

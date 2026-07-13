@@ -7,12 +7,12 @@ test_report: .docwright/report.xml
 
 ## Intent
 
-Project-level invariants that every goal contract inherits. This repository
-is a three-runtime workspace — a thin desktop shell, a browser-hosted
-product, and a headless server — over one reconstructed local-first notes
-workbench. The constitution fixes the toolchain, the fail-fast contract,
-the perf budget, and the layering walls once, so individual goals never
-re-litigate them.
+Project-level invariants that every goal contract inherits. This repository is
+**one Electron app in one package** — a thin native shell (main + preload) over
+a browser-hosted product (renderer), with the native-seam port contracts in a
+shared lane — reconstructing a local-first notes workbench. The constitution
+fixes the toolchain, the fail-fast contract, the perf budget, and the layering
+walls once, so individual goals never re-litigate them.
 
 ## Constraints
 
@@ -24,7 +24,7 @@ re-litigate them.
 - Keep the perf budget on the 20k-file vault: openFile median under 50ms
   and explorerClick median under 120ms, measured by the PERF_VAULT harness.
 - Code stays name-agnostic: no product-name literal appears anywhere in the
-  tree — package names, URL scheme, env vars, titles, docs — the product
+  tree — package name, URL scheme, env vars, titles, docs — the product
   identity lives only in the git remote.
 
 ### Must Not
@@ -34,15 +34,22 @@ re-litigate them.
 
 ## Decisions
 
-- The workspace is three pnpm app packages — `@app/desktop`, `@app/web`,
-  and `@app/server` — each `private: true`; the root package.json holds no
-  runtime dependencies.
-- Dual-track plugin architecture: `builtin/` is the internal track and may
-  use internal APIs; `api/` is the community track; no internal module
-  imports `api/`.
-- Kernel direction rule: `vault/`, `metadata/`, and `storage/` import only
-  from the kernel, `core`, `dom`, and `platform` — never upward.
-- Disk access stays behind the `VaultAdapter` seam inside the web app.
+- One app, one package: the repo root is the single application package; its
+  `src/` tree splits by runtime lane — `main` (Electron main), `preload`
+  (the bridge), `renderer` (the product) — with the native-seam port contracts
+  in `shared` and ambient declarations in `types`. `tests/` is the one
+  remaining pnpm workspace member (its own bare-import lane).
+- The native seam is ports-and-adapters: the shell fills the ports the renderer
+  declares; the renderer never imports `src/main`, `src/preload` or `electron`.
+  The port CONTRACTS (`dataAdapter`, `gitApi`, `terminalApi`, the IPC channel
+  table) live once in `src/shared`, imported by both sides — plain TS
+  interfaces, no zod/presenter/route layer, no UI framework.
+- Dual-track plugin architecture: `builtin/` is the internal track and may use
+  internal APIs; `api/` is the community track; no internal module imports `api/`.
+- Kernel direction rule: `vault/`, `metadata/`, and `storage/` import only from
+  the kernel, `core`, `dom`, and `platform` — never upward.
+- Disk access stays in-process behind the `DataAdapter` seam in the renderer
+  (the perf red line) — never routed over IPC or a kernel.
 - Unit tests are centralized under `tests/` (workspace member), mirroring
   source paths; no test file lives next to source.
 - The docs household is docwright goals under
@@ -56,17 +63,17 @@ re-litigate them.
 
 ## Completion Criteria
 
-Scenario: the workspace declares its app packages
-  Test: workspace declares desktop and web app packages
-  Given the repository root
-  When the workspace configuration is read
-  Then pnpm-workspace.yaml lists the app packages, each with its own package.json
+Scenario: the source tree is a single package
+  Test: declares a single-package src layout
+  Given the workspace configuration and the source tree
+  When the workspace packages and top-level src directories are read
+  Then no apps package remains and src holds main, preload, renderer, shared and types
 
-Scenario: dependency tables stay in their runtime lanes
-  Test: app package dependencies stay in their runtime lane
-  Given the three app manifests and the root package.json
+Scenario: the dependency table stays framework-free
+  Test: keeps zod presenters and UI frameworks out of the dependency table
+  Given package.json and the tests lane manifest
   When their dependency tables are inspected
-  Then the root declares no runtime dependencies and no app declares another runtime's dependencies
+  Then zod, react, react-dom and vue appear in none of them
 
 Scenario: the kernel stays headless-ready
   Test: kernel directories import nothing above the kernel
@@ -76,7 +83,7 @@ Scenario: the kernel stays headless-ready
 
 Scenario: the public facade serves only community plugins
   Test: internal code never imports the public api facade
-  Given all web app sources outside api/
+  Given all renderer sources outside api/
   When their imports are resolved
   Then none of them imports from api/
 

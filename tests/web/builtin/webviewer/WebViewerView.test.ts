@@ -82,6 +82,18 @@ describe("WebViewerView structural parity", () => {
     expect(view.url).toBe("https://example.com/next");
   });
 
+  it("records direct address navigation when the guest commits it", async () => {
+    const { app, view, adapter } = await createWebViewer();
+
+    view.navigate("typed.example");
+    adapter.webContents.emit("did-navigate", {
+      url: "https://typed.example",
+      isMainFrame: true,
+    });
+
+    expect(app.webViewer.listHistory()[0]?.url).toBe("https://typed.example");
+  });
+
   it("shows the favicon in the tab header with a container the real CSS knows", async () => {
     const { view, leaf, adapter } = await createWebViewer();
     adapter.webContents.emit("page-favicon-updated", {

@@ -423,7 +423,9 @@ describe("WorkspaceSplit", () => {
     setRect(firstLeaf.tabHeaderEl, { x: 0, y: 0, width: 80, height: 24 });
     const dataTransfer = createDataTransfer();
 
-    secondLeaf.tabHeaderEl.dispatchEvent(createDragEvent("dragstart", dataTransfer, 10, 10));
+    const dragStart = createDragEvent("dragstart", dataTransfer, 10, 10);
+    secondLeaf.tabHeaderEl.dispatchEvent(dragStart);
+    expect(dragStart.defaultPrevented).toBe(false);
     expect(dataTransfer.getData("text/plain")).toBe("");
     expect(dataTransfer.effectAllowed).toBe("all");
     expect(secondLeaf.containerEl.classList.contains("is-being-dragged")).toBe(false);

@@ -1,6 +1,6 @@
 packages:
-  - apps/desktop
-  - apps/web
+  # One app package (the repo root) plus the centralized test lane. The former
+  # apps/desktop + apps/web packages collapsed into the single src/ layout.
   - tests
 
 # @pierre/diffs exposes a vanilla core but declares React as a peer for its

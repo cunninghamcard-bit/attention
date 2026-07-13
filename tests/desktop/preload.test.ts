@@ -14,7 +14,7 @@ vi.mock("electron", () => ({
 }));
 vi.mock("@electron/remote", () => ({ getCurrentWindow: () => fakeWindow }));
 
-import { installElectronBridge } from "@desktop/preload";
+import { installElectronBridge } from "@preload/preload";
 
 describe("installElectronBridge", () => {
   it("exposes window.electron with ipcRenderer, shell and webUtils", () => {

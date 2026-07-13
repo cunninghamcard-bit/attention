@@ -3,12 +3,14 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
-    // Tests live centralized under tests/{web,desktop}/** (mirror paths)
-    // and reach their subjects through these aliases.
+    // Tests live centralized under tests/{web,desktop}/** (mirror paths) and
+    // reach their subjects through these aliases into the single-package src/.
     alias: {
-      "@app/web": resolve(__dirname, "apps/web/src"),
-      "@web": resolve(__dirname, "apps/web/src"),
-      "@desktop": resolve(__dirname, "apps/desktop"),
+      "@app/web": resolve(__dirname, "src/renderer"),
+      "@web": resolve(__dirname, "src/renderer"),
+      "@desktop": resolve(__dirname, "src/main"),
+      "@preload": resolve(__dirname, "src/preload"),
+      "@shared": resolve(__dirname, "src/shared"),
     },
   },
   test: {
