@@ -41,4 +41,15 @@ test("git changes view shows branch header and sections on a real repo", async (
   await expect(page.locator(".git-changes-discard").first()).toBeVisible();
 
   await page.screenshot({ path: testInfo.outputPath("git-changes.png"), fullPage: true });
+
+  // LOCAL commit log — offline twin of the cloud Commits section.
+  await page.evaluate(async () => {
+    const app = (window as unknown as { app: any }).app;
+    await app.workspace.getLeaf(true).setViewState({ type: "git-log", active: true });
+  });
+  const entry = page.locator(".git-log-entry", { hasText: "seed" });
+  await expect(entry).toBeVisible();
+  await entry.locator(".git-log-header").click();
+  await expect(entry.locator(".git-log-file", { hasText: "Note.md" })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("git-log.png"), fullPage: true });
 });

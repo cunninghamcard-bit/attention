@@ -141,3 +141,28 @@
   color: var(--text-muted);
   font-size: var(--font-smallest);
 }
+
+/* Local commit log */
+.git-log-list { padding: var(--size-4-2); }
+.git-log-entry { border-bottom: 1px solid var(--background-modifier-border); }
+.git-log-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--size-4-2);
+  padding: var(--size-4-2);
+  cursor: pointer;
+}
+.git-log-header:hover { background: var(--background-modifier-hover); }
+.git-log-subject { flex: 1; }
+.git-log-meta { color: var(--text-muted); font-size: var(--font-smaller); }
+.git-log-detail { padding: 0 var(--size-4-4) var(--size-4-2); }
+.git-log-file {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--size-4-2);
+  padding: var(--size-4-1) var(--size-4-2);
+  cursor: pointer;
+  font-size: var(--font-smaller);
+}
+.git-log-file:hover { background: var(--background-modifier-hover); }
+.git-log-file-stats { color: var(--text-muted); font-variant-numeric: tabular-nums; }

@@ -5,6 +5,7 @@ import { Notice } from "../../ui/Notice";
 import { openGitDiff } from "../../views/DiffView";
 import { GitChangesView } from "./GitChangesView";
 import { GitHistoryView } from "./GitHistoryView";
+import { GitLogView } from "./GitLogView";
 import { openPrList, PrDetailView, PrListView } from "./GitPrViews";
 import { GitReviewView, openGitReview } from "./review/GitReviewView";
 
@@ -23,6 +24,7 @@ export function createGitPluginDefinition(): InternalPluginDefinition {
     init(app: App, plugin: InternalPluginWrapper) {
       plugin.registerViewType(GitChangesView.VIEW_TYPE, (leaf) => new GitChangesView(leaf));
       plugin.registerViewType(GitHistoryView.VIEW_TYPE, (leaf) => new GitHistoryView(leaf));
+      plugin.registerViewType(GitLogView.VIEW_TYPE, (leaf) => new GitLogView(leaf));
       plugin.registerViewType(PrListView.VIEW_TYPE, (leaf) => new PrListView(leaf));
       plugin.registerViewType(PrDetailView.VIEW_TYPE, (leaf) => new PrDetailView(leaf));
       plugin.registerViewType(GitReviewView.VIEW_TYPE, (leaf) => new GitReviewView(leaf));
@@ -45,6 +47,18 @@ export function createGitPluginDefinition(): InternalPluginDefinition {
         checkCallback: (checking) => {
           if (!app.git.isAvailable()) return false;
           if (!checking) void openGitReview(app);
+          return true;
+        },
+      });
+      plugin.registerGlobalCommand({
+        id: "git:open-log",
+        name: "Open commit log (local)",
+        icon: "lucide-history",
+        checkCallback: (checking) => {
+          if (!app.git.isAvailable()) return false;
+          if (!checking) {
+            void app.workspace.getLeaf("tab").setViewState({ type: "git-log", active: true });
+          }
           return true;
         },
       });

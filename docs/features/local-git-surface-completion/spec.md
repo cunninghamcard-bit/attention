@@ -46,6 +46,12 @@ any view; discarding a file requires the terminal.
   its entry-building logic is a pure exported function.
 - Stash is OUT of scope for this goal (no consumer demand yet); the
   header verbs cover the sync loop.
+- Local commit log view (`git-log`): repo-wide `git log` rendered
+  OFFLINE — commits are local-first data and must not require the
+  cloud Commits section. Click a commit to expand its files (status +
+  numstat merged by a pure helper), click a file for the pierre
+  unified diff of that commit against its parent (root commits diff
+  against empty). Registered through the git core plugin.
 - No new production dependencies; browser mode keeps reporting
   unavailable exactly like today.
 
@@ -106,6 +112,20 @@ Scenario: switcher offers creation for unknown names
   When the switcher entries are built for query "hotfix"
   Then a create entry for hotfix appears after no name matches
 
+### Rule: local-commits — history is local-first
+
+Scenario: commit file rows merge status and stats
+  Test: merges commit file status with numstat rows
+  Given a commit touching a modified file and an added file with counts
+  When the file rows are built
+  Then each row carries its status letter and its addition and deletion counts
+
+Scenario: root commit diffs against empty
+  Test: uses an empty baseline for root commits
+  Given a file row for a commit whose parent lacks the file
+  When the diff baseline resolves
+  Then the baseline is empty text instead of an error
+
 ### Rule: worktree-verbs — mistakes are recoverable
 
 Scenario: discard routes tracked and untracked correctly
@@ -130,7 +150,6 @@ Scenario: amend failure returns the git error
 
 - Merge/rebase conflict resolution UI.
 - Stash family.
-- Repo-wide local commit browser (the cloud Commits section covers it).
 - File-history view changes (already complete for its charter).
 
 ## Open Questions
