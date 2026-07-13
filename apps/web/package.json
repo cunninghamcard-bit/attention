@@ -21,10 +21,8 @@
     "@lezer/highlight": "^1.2.3",
     "@lezer/lr": "^1.4.10",
     "@pierre/diffs": "^1.2.12",
+    "@pierre/trees": "1.0.0-beta.5",
     "ghostty-web": "^0.4.0",
-    "moment": "^2.30.1",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
     "stream-markdown-parser": "1.0.9",
     "yaml": "^2.9.0"
   }

@@ -1,4 +1,3 @@
-import momentFactory from "moment";
 import { parse as parseYamlSource, stringify as stringifyYamlSource } from "yaml";
 import type { App } from "../app/App";
 import { htmlToMarkdown as convertHtmlToMarkdown } from "../markdown/HtmlToMarkdown";
@@ -7,7 +6,42 @@ import type { CachedMetadata } from "../metadata/MetadataCache";
 import { getActiveWindow } from "../dom/ActiveDocument";
 
 export const apiVersion = "1.12.7";
-export const moment = momentFactory;
+
+const MOMENT_VALUE = Symbol("moment-value");
+
+/** Minimal compatibility shape retained for community plugins after uprooting moment. */
+export const moment = Object.assign(
+  (input?: string | number | Date) => {
+    const date = input === undefined ? new Date() : new Date(input);
+    return {
+      [MOMENT_VALUE]: true,
+      // ponytail: supports the token subset this app exposes; extend only when a real plugin needs more.
+      format(pattern: string): string {
+        const pad = (value: number) => String(value).padStart(2, "0");
+        const values: Record<string, string> = {
+          YYYY: String(date.getFullYear()),
+          YY: String(date.getFullYear()).slice(-2),
+          MM: pad(date.getMonth() + 1),
+          M: String(date.getMonth() + 1),
+          DD: pad(date.getDate()),
+          D: String(date.getDate()),
+          HH: pad(date.getHours()),
+          H: String(date.getHours()),
+          mm: pad(date.getMinutes()),
+          m: String(date.getMinutes()),
+          ss: pad(date.getSeconds()),
+          s: String(date.getSeconds()),
+        };
+        return pattern.replace(/YYYY|YY|MM|M|DD|D|HH|H|mm|m|ss|s/g, (token) => values[token]);
+      },
+    };
+  },
+  {
+    isMoment(value: unknown): boolean {
+      return Boolean(value && typeof value === "object" && MOMENT_VALUE in value);
+    },
+  },
+);
 
 export type Constructor<T> = abstract new (...args: any[]) => T;
 export type Side = "left" | "right";

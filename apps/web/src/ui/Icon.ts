@@ -1,3 +1,5 @@
+import { createFileTypeIcon } from "./FileTypeIcon";
+
 const ICON_PATHS: Record<string, string> = {
   "lucide-arrow-left": '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
   "lucide-arrow-right": '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
@@ -354,7 +356,9 @@ export function addIcon(iconId: string, svgContent: string): void {
 export function getIcon(iconId: string): SVGSVGElement | null {
   const normalizedIcon = normalizeIconName(iconId);
   const icon = getIconDefinition(normalizedIcon);
-  return icon ? createSvgIcon(document, normalizedIcon, icon) : null;
+  return icon
+    ? createSvgIcon(document, normalizedIcon, icon)
+    : createFileTypeIcon(document, normalizedIcon);
 }
 
 export function getIconIds(): string[] {
@@ -372,9 +376,10 @@ export function setIcon(parent: HTMLElement, icon: string): SVGSVGElement | null
   const SVG = parent.ownerDocument.defaultView?.SVGSVGElement;
   if (SVG && firstChild instanceof SVG && firstChild.classList.contains(icon)) return firstChild;
   firstChild?.remove();
-  if (!definition) return null;
-
-  const svg = createSvgIcon(parent.ownerDocument, normalizedIcon, definition);
+  const svg = definition
+    ? createSvgIcon(parent.ownerDocument, normalizedIcon, definition)
+    : createFileTypeIcon(parent.ownerDocument, normalizedIcon);
+  if (!svg) return null;
   parent.appendChild(svg);
   return svg;
 }

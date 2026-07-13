@@ -1430,6 +1430,12 @@
 
 /* --- Extra workspace panels (issues/actions/files/inbox) ------------ */
 
+.gh-extra-panel-host {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
 .gh-split-panel {
   display: grid;
   grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);

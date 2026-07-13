@@ -14,7 +14,7 @@ describe("CodeFileView", () => {
     const view = leaf.view as CodeFileView;
     expect(view.getViewData()).toBe("const x: number = 1;\n");
     expect(view.getDisplayText()).toBe("main.ts");
-    expect(view.getIcon()).toBe("lucide-file-code");
+    expect(view.getIcon()).toBe("file-tree-builtin-typescript");
     expect(view.contentEl.querySelector(".cm-content")?.textContent).toContain(
       "const x: number = 1;",
     );

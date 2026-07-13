@@ -45,24 +45,6 @@
   text-align: center;
 }
 
-.git-commit-row {
-  display: flex;
-  gap: var(--size-2-2);
-  padding: var(--size-4-2) var(--size-4-2) 0;
-  align-items: flex-start;
-}
-.git-commit-message {
-  flex: 1 1 auto;
-  resize: vertical;
-  font-family: inherit;
-}
-.git-commit-button {
-  flex: 0 0 auto;
-}
-.git-commit-button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
 .git-changes-section {
   font-weight: var(--font-semibold, 600);
   font-size: var(--font-ui-small, 13px);
@@ -125,14 +107,6 @@
 .git-sync-busy .git-sync-button { opacity: 0.5; pointer-events: none; }
 .git-changes-discard { color: var(--text-muted); }
 .git-changes-discard:hover { color: var(--text-error); }
-.git-amend-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--size-4-1);
-  color: var(--text-muted);
-  font-size: var(--font-smaller);
-  user-select: none;
-}
 .git-branch-current-badge {
   margin-left: var(--size-4-2);
   padding: 0 var(--size-4-1);

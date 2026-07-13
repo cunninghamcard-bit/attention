@@ -1,100 +1,53 @@
-/**
- * File-type presentation for the workspace: which icon a file gets and which
- * language key drives its accent color (styles/product/explorer.css). Used by
- * the file explorer rows and code tab headers, VS Code-style.
- */
+import { createFileTreeIconResolver, getBuiltInSpriteSheet } from "@pierre/trees";
 
 export interface FileTypeInfo {
   icon: string;
-  /** Color key for CSS [data-lang]; empty for neutral files. */
+  /** Pierre's semantic icon token, used for presentation and tests. */
   lang: string;
 }
 
-const BY_EXTENSION: Record<string, FileTypeInfo> = {
-  md: { icon: "lucide-file-text", lang: "md" },
-  ts: { icon: "lucide-file-code", lang: "ts" },
-  tsx: { icon: "lucide-file-code", lang: "ts" },
-  js: { icon: "lucide-file-code", lang: "js" },
-  jsx: { icon: "lucide-file-code", lang: "js" },
-  mjs: { icon: "lucide-file-code", lang: "js" },
-  cjs: { icon: "lucide-file-code", lang: "js" },
-  go: { icon: "lucide-file-code", lang: "go" },
-  py: { icon: "lucide-file-code", lang: "py" },
-  rs: { icon: "lucide-file-code", lang: "rs" },
-  java: { icon: "lucide-file-code", lang: "java" },
-  kt: { icon: "lucide-file-code", lang: "java" },
-  swift: { icon: "lucide-file-code", lang: "swift" },
-  rb: { icon: "lucide-file-code", lang: "rb" },
-  php: { icon: "lucide-file-code", lang: "php" },
-  lua: { icon: "lucide-file-code", lang: "lua" },
-  c: { icon: "lucide-file-code", lang: "c" },
-  h: { icon: "lucide-file-code", lang: "c" },
-  cc: { icon: "lucide-file-code", lang: "c" },
-  cpp: { icon: "lucide-file-code", lang: "c" },
-  hpp: { icon: "lucide-file-code", lang: "c" },
-  cs: { icon: "lucide-file-code", lang: "cs" },
-  sh: { icon: "lucide-terminal", lang: "sh" },
-  bash: { icon: "lucide-terminal", lang: "sh" },
-  zsh: { icon: "lucide-terminal", lang: "sh" },
-  fish: { icon: "lucide-terminal", lang: "sh" },
-  json: { icon: "lucide-braces", lang: "json" },
-  jsonc: { icon: "lucide-braces", lang: "json" },
-  yaml: { icon: "lucide-braces", lang: "yaml" },
-  yml: { icon: "lucide-braces", lang: "yaml" },
-  toml: { icon: "lucide-braces", lang: "yaml" },
-  ini: { icon: "lucide-braces", lang: "yaml" },
-  conf: { icon: "lucide-braces", lang: "yaml" },
-  base: { icon: "lucide-braces", lang: "yaml" },
-  xml: { icon: "lucide-code", lang: "html" },
-  html: { icon: "lucide-code", lang: "html" },
-  vue: { icon: "lucide-code", lang: "vue" },
-  svelte: { icon: "lucide-code", lang: "vue" },
-  css: { icon: "lucide-palette", lang: "css" },
-  scss: { icon: "lucide-palette", lang: "css" },
-  less: { icon: "lucide-palette", lang: "css" },
-  sql: { icon: "lucide-database", lang: "sql" },
-  graphql: { icon: "lucide-database", lang: "sql" },
-  proto: { icon: "lucide-file-code", lang: "cs" },
-  csv: { icon: "lucide-table", lang: "csv" },
-  txt: { icon: "lucide-file-text", lang: "" },
-  log: { icon: "lucide-file-text", lang: "" },
-  dockerfile: { icon: "lucide-terminal", lang: "docker" },
-  canvas: { icon: "lucide-layout-dashboard", lang: "canvas" },
-  pdf: { icon: "lucide-file-text", lang: "pdf" },
-  png: { icon: "lucide-image", lang: "image" },
-  jpg: { icon: "lucide-image", lang: "image" },
-  jpeg: { icon: "lucide-image", lang: "image" },
-  gif: { icon: "lucide-image", lang: "image" },
-  svg: { icon: "lucide-image", lang: "image" },
-  webp: { icon: "lucide-image", lang: "image" },
-  bmp: { icon: "lucide-image", lang: "image" },
-  mp3: { icon: "lucide-file-audio", lang: "media" },
-  wav: { icon: "lucide-file-audio", lang: "media" },
-  m4a: { icon: "lucide-file-audio", lang: "media" },
-  ogg: { icon: "lucide-file-audio", lang: "media" },
-  flac: { icon: "lucide-file-audio", lang: "media" },
-  mp4: { icon: "lucide-file-video", lang: "media" },
-  webm: { icon: "lucide-file-video", lang: "media" },
-  mov: { icon: "lucide-file-video", lang: "media" },
-  mkv: { icon: "lucide-file-video", lang: "media" },
-};
+const SPRITE_ID = "attention-file-icon-sprite";
+const { resolveIcon } = createFileTreeIconResolver("complete");
 
-// Extensionless files are identified by name (TFile.extension is "" for
-// Dockerfile, Makefile and dotfiles).
-const BY_NAME: Record<string, FileTypeInfo> = {
-  dockerfile: { icon: "lucide-terminal", lang: "docker" },
-  makefile: { icon: "lucide-terminal", lang: "sh" },
-  ".gitignore": { icon: "lucide-braces", lang: "yaml" },
-  ".gitattributes": { icon: "lucide-braces", lang: "yaml" },
-  ".env": { icon: "lucide-braces", lang: "yaml" },
-  license: { icon: "lucide-file-text", lang: "" },
-};
+export function getFileTypeInfo(name: string, extension = ""): FileTypeInfo {
+  const path = name.includes(".") || !extension ? name : `${name}.${extension}`;
+  const resolved = resolveIcon("file-tree-icon-file", path);
+  return { icon: resolved.name, lang: resolved.token ?? "default" };
+}
 
-export function getFileTypeInfo(name: string, extension: string): FileTypeInfo {
-  const byName = BY_NAME[name.toLowerCase()];
-  if (byName) return byName;
-  const byExtension = BY_EXTENSION[extension.toLowerCase()];
-  if (byExtension) return byExtension;
-  if (extension === "") return { icon: "lucide-file-code", lang: "" };
-  return { icon: "lucide-file", lang: "" };
+export function createFileTypeIcon(
+  doc: Document,
+  icon: string,
+  token = icon.replace(/^file-tree-builtin-/, ""),
+): SVGSVGElement | null {
+  if (!icon.startsWith("file-tree-builtin-")) return null;
+  ensureSprite(doc);
+  const svg = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.classList.add("svg-icon", "file-type-icon", icon);
+  svg.dataset.iconToken = token;
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("width", "16");
+  svg.setAttribute("height", "16");
+  const use = doc.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", `#${icon}`);
+  svg.append(use);
+  return svg;
+}
+
+export function setFileTypeIcon(parent: HTMLElement, path: string): SVGSVGElement {
+  const { icon, lang } = getFileTypeInfo(path);
+  parent.replaceChildren(createFileTypeIcon(parent.ownerDocument, icon, lang)!);
+  parent.dataset.iconToken = lang;
+  return parent.firstElementChild as SVGSVGElement;
+}
+
+function ensureSprite(doc: Document): void {
+  if (doc.getElementById(SPRITE_ID)) return;
+  const host = doc.createElement("div");
+  host.id = SPRITE_ID;
+  host.hidden = true;
+  host.setAttribute("aria-hidden", "true");
+  host.innerHTML = getBuiltInSpriteSheet("complete");
+  (doc.body ?? doc.documentElement).prepend(host);
 }

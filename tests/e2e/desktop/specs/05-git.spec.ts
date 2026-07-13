@@ -39,8 +39,24 @@ test("git changes view shows branch header and sections on a real repo", async (
   await expect(page.locator(".git-changes-file-name", { hasText: "Note.md" })).toBeVisible();
   await expect(page.locator(".git-changes-file-name", { hasText: "Scratch.md" })).toBeVisible();
   await expect(page.locator(".git-changes-discard").first()).toBeVisible();
+  // Commit authoring was removed — the changes view has no commit box.
+  await expect(page.locator(".git-commit-row")).toHaveCount(0);
 
   await page.screenshot({ path: testInfo.outputPath("git-changes.png"), fullPage: true });
+
+  // Codiff layout: vanilla review center with the Tree/History navigator on the right.
+  await page.evaluate(() => {
+    const app = (window as unknown as { app: any }).app;
+    app.commands.executeCommandById("git:review-changes");
+  });
+  await expect(page.locator(".git-review-view .review-surface")).toBeVisible();
+  await expect(page.locator(".git-nav-view")).toBeVisible();
+  // Mode switches live in the center leaf's view-header; sidebar is a pure list.
+  await expect(page.locator('.view-action[aria-label="Switch to history"]')).toBeVisible();
+  await expect(page.locator('.view-action[aria-label="Switch to split view"]')).toBeVisible();
+  await expect(page.locator(".git-nav-view .git-nav-mode-toggle")).toHaveCount(0);
+  await expect(page.locator(".git-nav-file-row", { hasText: "Note.md" })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("git-review.png"), fullPage: true });
 
   // LOCAL commit log — offline twin of the cloud Commits section.
   await page.evaluate(async () => {

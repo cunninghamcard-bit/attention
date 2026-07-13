@@ -29,6 +29,26 @@ describe("FileExplorerView external folder drops", () => {
     vi.useRealTimers();
   });
 
+  it("uses pierre complete file icons in explorer rows", async () => {
+    const app = new App(document.createElement("div"));
+    await app.vault.create("main.ts", "");
+    await app.vault.create("README.md", "");
+    const view = await openFileExplorerView(app);
+
+    const typescriptIcon = queryRequired<SVGSVGElement>(
+      view.contentEl,
+      '.nav-file-title[data-path="main.ts"] .nav-file-icon svg',
+    );
+    expect(typescriptIcon.dataset.iconToken).toBe("typescript");
+    expect(typescriptIcon.classList.contains("file-type-icon")).toBe(true);
+    expect(
+      queryRequired<SVGSVGElement>(
+        view.contentEl,
+        '.nav-file-title[data-path="README.md"] .nav-file-icon svg',
+      ).dataset.iconToken,
+    ).toBe("markdown");
+  });
+
   it("imports external dropped files into the target folder", async () => {
     const app = new App(document.createElement("div"));
     await app.vault.createFolder("Assets");

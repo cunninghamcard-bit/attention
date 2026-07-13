@@ -1,4 +1,5 @@
-/* Review surface: sidebar + virtualized multi-file diff (codiff-class). */
+/* Review surface: center CodeView + optional in-pane sidebar.
+ * Codiff Tree/History lives in the right git-nav dock (see .git-nav). */
 
 .git-review-view {
   padding: 0;
@@ -10,6 +11,15 @@
   grid-template-columns: 240px minmax(0, 1fr);
   height: 100%;
   outline: none;
+}
+
+.review-surface.is-nav-external {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* The nav-external sidebar is [hidden], but display:flex would win over it. */
+.review-surface.is-nav-external .review-sidebar {
+  display: none;
 }
 
 /* --- Sidebar ---------------------------------------------------------- */
@@ -76,18 +86,28 @@
   padding: 0 var(--size-4-1) var(--size-4-2);
 }
 
-.review-file-row {
+/* Scoped under .review-sidebar to beat the global button pill styling. */
+.review-sidebar .review-file-row {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: var(--size-4-2);
+  width: 100%;
+  height: auto;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  font-weight: var(--font-normal);
+  text-align: left;
   padding: 3px var(--size-4-2);
   border-radius: var(--radius-s);
   cursor: var(--cursor);
   font-size: var(--font-ui-small);
 }
 
-.review-file-row:hover {
+.review-sidebar .review-file-row:hover {
   background-color: var(--background-modifier-hover);
+  box-shadow: none;
 }
 
 .review-file-row.is-active {
@@ -159,25 +179,16 @@
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.review-toolbar-tabs {
-  display: inline-flex;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-m);
-  overflow: hidden;
+/* Mode switches are click-to-flip icons (Obsidian reading-toggle idiom). */
+.review-toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-1);
 }
 
-.review-toolbar-tab {
-  background: none;
-  box-shadow: none;
-  border-radius: 0;
-  padding: 2px var(--size-4-3);
-  font-size: var(--font-ui-small);
-  color: var(--text-muted);
-}
-
-.review-toolbar-tab.is-active {
+.review-toolbar-toggle.is-active {
+  color: var(--icon-color-focused, var(--text-normal));
   background-color: var(--background-modifier-hover);
-  color: var(--text-normal);
 }
 
 .review-toolbar-actions {
@@ -199,6 +210,16 @@
   min-height: 0;
   overflow-y: auto;
   padding: 0 var(--size-4-3);
+  container-type: inline-size;
+}
+
+/* Narrow panes shed header extras in priority order (codiff-style degrade):
+ * the basename, stats and Viewed survive; buttons and the badge yield. */
+@container (max-width: 430px) {
+  .review-card-action,
+  .review-chip {
+    display: none;
+  }
 }
 
 .review-empty {
@@ -213,17 +234,30 @@
 
 /* --- File card headers (rendered inside CodeView items) ----------------- */
 
+/* Flat section header (Obsidian nav/outline idiom), not a GitHub card:
+ * no rounded box, no border ring — just a hairline under it. */
 .review-card-header {
   display: flex;
   align-items: center;
   gap: var(--size-4-2);
   width: 100%;
-  height: 44px;
+  height: 40px;
   padding: 0 var(--size-4-2);
   cursor: var(--cursor);
   font-size: var(--font-ui-small);
-  background-color: var(--background-secondary);
+  background-color: var(--background-primary);
   border-bottom: 1px solid var(--background-modifier-border);
+  overflow: hidden;
+}
+
+.review-card-header:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+/* Active file: a subtle tint + accent left rule, no glowing ring. */
+.review-card-header.is-active {
+  background-color: var(--background-modifier-hover);
+  box-shadow: inset 2px 0 0 var(--interactive-accent);
 }
 
 .review-chevron {
@@ -235,22 +269,40 @@
   transform: rotate(-90deg);
 }
 
+/* The directory segment collapses first; the basename never disappears. */
 .review-card-path {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 1 1 0;
+  min-width: 10ch;
+  display: flex;
+  align-items: baseline;
   font-family: var(--font-monospace);
   font-size: 12px;
 }
 
 .review-card-dir {
   color: var(--text-faint);
+  flex: 0 9999 auto;
+  min-width: 3ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .review-card-name {
   font-weight: var(--font-medium);
+  flex: 0 1 auto;
+  min-width: 5ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-card-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  flex-shrink: 0;
 }
 
 .review-card-stat {
@@ -258,35 +310,57 @@
   gap: var(--size-2-1);
   font-variant-numeric: tabular-nums;
   font-size: var(--font-ui-smaller);
+  flex-shrink: 0;
 }
 
-.review-chip {
+/* Single-letter git status token (codiff-style), colored by kind. */
+.review-card-status {
+  flex-shrink: 0;
+  width: 1.1em;
+  text-align: center;
+  font-family: var(--font-monospace);
   font-size: var(--font-ui-smaller);
-  padding: 0 var(--size-4-2);
-  border-radius: var(--radius-l);
-  border: 1px solid var(--background-modifier-border);
-  color: var(--text-muted);
-  text-transform: capitalize;
-  white-space: nowrap;
+  font-weight: var(--font-medium);
+  color: var(--text-faint);
 }
 
-.review-chip.mod-added,
-.review-chip.mod-untracked { color: var(--color-green, #3fb950); border-color: currentcolor; }
-.review-chip.mod-deleted { color: var(--color-red, #f85149); border-color: currentcolor; }
-.review-chip.mod-renamed { color: var(--color-yellow, #d29922); border-color: currentcolor; }
+.review-card-status.mod-added,
+.review-card-status.mod-untracked { color: var(--color-green, #3a9a4a); }
+.review-card-status.mod-deleted { color: var(--color-red, #c04040); }
+.review-card-status.mod-modified,
+.review-card-status.mod-renamed { color: var(--color-orange, #c48a20); }
 
+.review-card-binary {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+
+/* Comment draft buttons (PR review) keep the compact text-button look. */
 .review-card-action {
   font-size: var(--font-ui-smaller);
   padding: 1px var(--size-4-2);
 }
 
-.review-viewed {
+.review-card-actions .review-viewed {
   display: inline-flex;
   align-items: center;
   gap: var(--size-2-2);
+  height: auto;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   font-size: var(--font-ui-smaller);
+  font-weight: var(--font-normal);
   color: var(--text-muted);
   white-space: nowrap;
+  cursor: var(--cursor);
+}
+
+.review-card-actions .review-viewed:hover {
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-normal);
 }
 
 .review-surface ins,
@@ -474,4 +548,262 @@
 .review-icon {
   display: inline-flex;
   --icon-size: var(--icon-s);
+}
+
+.review-toolbar-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  margin-right: var(--size-4-2);
+}
+
+/* --- Right-docked git nav (codiff Tree | History, on the right) ---------- */
+
+.git-nav-view {
+  padding: 0;
+  overflow: hidden;
+  height: 100%;
+}
+
+.git-nav {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background-color: var(--background-secondary);
+}
+
+.git-nav-search-row {
+  padding: var(--size-4-2) var(--size-4-3) 0;
+}
+
+.git-nav-search {
+  width: 100%;
+}
+
+.git-nav-tree,
+.git-nav-history {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--size-4-1) var(--size-4-2);
+}
+
+.git-nav-empty {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  padding: var(--size-4-3);
+}
+
+/* Scoped under .git-nav to beat the global button:not(.clickable-icon) pill. */
+.git-nav .git-nav-folder-row,
+.git-nav .git-nav-file-row,
+.git-nav .git-nav-history-entry {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--size-4-1);
+  width: 100%;
+  height: auto;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-normal);
+  font-weight: var(--font-normal);
+  text-align: left;
+  cursor: var(--cursor);
+  font-size: var(--font-ui-small);
+  padding: 3px var(--size-4-2);
+  border-radius: var(--radius-s);
+}
+
+.git-nav .git-nav-folder-row:hover,
+.git-nav .git-nav-file-row:hover,
+.git-nav .git-nav-history-entry:hover {
+  background-color: var(--background-modifier-hover);
+  box-shadow: none;
+}
+
+.git-nav .git-nav-file-row.is-selected,
+.git-nav .git-nav-history-entry.is-selected {
+  background-color: var(--background-modifier-active-hover, var(--background-modifier-hover));
+}
+
+.git-nav-file-row.is-viewed {
+  color: var(--text-faint);
+  opacity: 0.62;
+}
+
+/* codiff's wt-check: 18px rounded toggle shared by commit selection and Viewed. */
+.git-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 24px;
+  border: 1.5px solid rgb(127 127 127 / 0.42);
+  background: var(--background-primary);
+  color: transparent;
+  --icon-size: 12px;
+}
+
+.git-check.is-on {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.git-check.is-partial {
+  background: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+  border-color: var(--interactive-accent);
+  color: var(--interactive-accent);
+}
+
+.git-check-dash {
+  width: 9px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.git-nav-folder-chevron {
+  display: inline-flex;
+  color: var(--text-faint);
+  --icon-size: var(--icon-xs, 14px);
+}
+
+.git-nav-folder-name {
+  font-weight: var(--font-medium);
+  color: var(--text-muted);
+}
+
+.git-nav-file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-nav-file-stat {
+  display: flex;
+  gap: var(--size-2-1);
+  font-size: var(--font-ui-smaller);
+  font-variant-numeric: tabular-nums;
+}
+
+.git-nav-file-stat ins {
+  color: var(--color-green, #3a9a4a);
+  text-decoration: none;
+}
+
+.git-nav-file-stat del {
+  color: var(--color-red, #c04040);
+  text-decoration: none;
+}
+
+.git-nav-file-status {
+  width: 12px;
+  flex: none;
+  text-align: center;
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold);
+}
+
+.git-nav-file-status.mod-added,
+.git-nav-file-status.mod-untracked {
+  color: var(--color-green, #3a9a4a);
+}
+
+.git-nav-file-status.mod-deleted {
+  color: var(--color-red, #c04040);
+}
+
+.git-nav-file-status.mod-modified,
+.git-nav-file-status.mod-renamed {
+  color: var(--color-orange, #c48a20);
+}
+
+/* codiff shape: hash column, then subject over author · relative time. */
+.git-nav .git-nav-history-entry {
+  padding: 5px var(--size-4-2);
+  gap: var(--size-4-2);
+}
+
+.git-nav .git-nav-history-entry.with-metadata {
+  align-items: flex-start;
+}
+
+.git-nav-history-ref {
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-accent, var(--interactive-accent));
+  flex-shrink: 0;
+}
+
+.git-nav-history-lines {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.git-nav-history-subject {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-ui-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-nav-history-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.git-nav-file-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  --icon-size: var(--icon-xs, 14px);
+  color: var(--text-faint);
+}
+
+.git-nav-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-4-2);
+  padding: var(--size-4-2) var(--size-4-3);
+  border-top: 1px solid var(--background-modifier-border);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.git-nav-footer-stat {
+  display: flex;
+  gap: var(--size-2-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.git-nav-footer-stat ins {
+  color: var(--color-green, #3a9a4a);
+  text-decoration: none;
+}
+
+.git-nav-footer-stat del {
+  color: var(--color-red, #c04040);
+  text-decoration: none;
 }

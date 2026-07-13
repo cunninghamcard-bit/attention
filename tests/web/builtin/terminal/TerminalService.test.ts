@@ -249,7 +249,7 @@ describe("TerminalService", () => {
     expect(terminal.status).toBe("error");
     expect(errors).toHaveLength(1);
     const view = app.workspace.getLeavesOfType("terminal")[0].view as TerminalView;
-    expect(view.contentEl.querySelector(".terminal-view-overlay-message")?.textContent).toContain(
+    expect(view.contentEl.querySelector(".empty-state-description")?.textContent).toContain(
       "bad shell path",
     );
 
@@ -273,7 +273,7 @@ describe("TerminalService", () => {
     expect(terminal.status).toBe("error");
     expect(errors[0]?.code).toBe("unsupported-runtime");
     const view = app.workspace.getLeavesOfType("terminal")[0].view as TerminalView;
-    expect(view.contentEl.querySelector(".terminal-view-overlay")).not.toBeNull();
+    expect(view.contentEl.querySelector(".terminal-view-overlay.empty-state")).not.toBeNull();
     warn.mockRestore();
   });
 });

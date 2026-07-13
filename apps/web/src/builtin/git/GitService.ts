@@ -1,4 +1,5 @@
 import type { App } from "../../app/App";
+import { GitReviewSession } from "./reviewSession";
 
 /**
  * `app.git` — read-side git access for the vault working tree, backed by the
@@ -107,6 +108,8 @@ export class GitService {
   bridgeFactory: () => ElectronGitApi | null = () =>
     (globalThis as { electronGit?: ElectronGitApi }).electronGit ?? null;
   private bridgeInstance: ElectronGitApi | null | undefined;
+  /** Bridges center git-review and right git-nav (codiff Tree/History). */
+  readonly reviewSession = new GitReviewSession();
 
   constructor(readonly app: App) {}
 

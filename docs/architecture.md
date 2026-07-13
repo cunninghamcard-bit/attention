@@ -76,6 +76,11 @@ QuickSwitcher, FileExplorerView, …); the larger ones each own a subdirectory:
 `terminal/`, `theme-market/`, `webviewer/`. Each slice holds exactly one core
 plugin, reuniting the view and logic halves that used to live apart.
 
+**UI paradigm.** Product UI is vanilla TypeScript with direct DOM ownership.
+Code under `apps/**` and `tests/**` must not import React, React DOM, or the
+`@pierre/diffs/react` wrapper, and the web dependency table must not contain
+React or moment. `tests/architecture.test.ts` enforces both rules.
+
 ## Runtime topology
 
 Three processes, one product:

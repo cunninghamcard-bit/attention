@@ -155,10 +155,18 @@ function listFilesRecursive(
   return out.filter((file) => extensions.some((ext) => file.endsWith(ext)));
 }
 
-const IMPORT_RE = /\bfrom\s+["'](\.[^"']+)["']/g;
+const IMPORT_RE = /\b(?:from\s+|import\s*\(\s*|import\s+|require\(\s*)["']([^"']+)["']/g;
 
 function extractImports(source: string): string[] {
   return [...source.matchAll(IMPORT_RE)].map((match) => match[1]);
+}
+
+function findForbiddenImportViolations(files: SourceFile[], forbidden: string[]): SourceFile[] {
+  return files.filter((file) =>
+    file.imports.some((specifier) =>
+      forbidden.some((name) => specifier === name || specifier.startsWith(`${name}/`)),
+    ),
+  );
 }
 
 function sourceFilesUnder(
@@ -222,6 +230,48 @@ describe("Rule: runtime-walls — the workspace splits by runtime", () => {
     const synthetic: Manifest = { name: "@app/web", dependencies: { electron: "1.0.0" } };
 
     expect(findLaneViolations(synthetic, ["electron"])).toEqual(["electron"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rule: zero-react — the source tree has one UI paradigm
+// ---------------------------------------------------------------------------
+
+describe("Rule: zero-react — the source tree has one UI paradigm", () => {
+  it("keeps the source tree free of react imports", () => {
+    const files = sourceFilesUnder(["apps", "tests"], [".ts", ".tsx", ".js", ".jsx"], false);
+    const forbidden = ["react", "react-dom", "@pierre/diffs/react"];
+    const syntheticSource = `import "${["rea", "ct"].join("")}"; import("${[
+      "react",
+      "dom/client",
+    ].join("-")}")`;
+
+    expect(findForbiddenImportViolations(files, forbidden)).toEqual([]);
+    expect(
+      findForbiddenImportViolations(
+        [
+          {
+            path: "apps/web/src/example.ts",
+            imports: extractImports(syntheticSource),
+          },
+        ],
+        forbidden,
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("keeps react and moment out of the dependency table", () => {
+    const root: Manifest = JSON.parse(readText("package.json"));
+    const web: Manifest = JSON.parse(readText("apps/web/package.json"));
+    const tests: Manifest = JSON.parse(readText("tests/package.json"));
+    const forbidden = ["react", "react-dom", "@types/react", "@types/react-dom", "moment"];
+
+    expect(findLaneViolations(root, forbidden)).toEqual([]);
+    expect(findLaneViolations(web, forbidden)).toEqual([]);
+    expect(findLaneViolations(tests, forbidden)).toEqual([]);
+    expect(readText("pnpm-workspace.yaml")).toContain("autoInstallPeers: false");
+    expect(readText("pnpm-lock.yaml")).not.toMatch(/^\s{2}(?:react|react-dom|moment)@/m);
+    expect(findLaneViolations({ dependencies: { react: "1" } }, forbidden)).toEqual(["react"]);
   });
 });
 

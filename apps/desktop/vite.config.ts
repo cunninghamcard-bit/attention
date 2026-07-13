@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { cpSync, realpathSync } from "node:fs";
 import { defineConfig } from "vite";
 import { builtinModules } from "node:module";
 
@@ -14,8 +15,21 @@ import { builtinModules } from "node:module";
  * (`vite.config.ts`) and the library (`vite.api.config.ts`).
  */
 const nodeBuiltins = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
+const desktopOut = resolve(__dirname, "../../out/desktop");
 
 export default defineConfig({
+  plugins: [
+    {
+      name: "copy-node-pty-runtime",
+      closeBundle() {
+        cpSync(
+          realpathSync(resolve(__dirname, "node_modules/node-pty")),
+          resolve(desktopOut, "node_modules/node-pty"),
+          { recursive: true },
+        );
+      },
+    },
+  ],
   // The desktop main imports its two shared items (SystemMenuItem, URL_SCHEME)
   // from the web package as `@app/web/*`; alias it to the web source so the
   // electron bundle resolves the .ts directly (web exports "./*": "./src/*").
@@ -27,7 +41,7 @@ export default defineConfig({
   build: {
     // Emit into the single out/ roof (electron out/desktop/main.cjs); the web
     // bundle sits at the sibling out/web so main resolves it relatively.
-    outDir: resolve(__dirname, "../../out/desktop"),
+    outDir: desktopOut,
     emptyOutDir: true,
     target: "node20",
     minify: false,

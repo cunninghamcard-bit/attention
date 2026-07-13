@@ -13,18 +13,16 @@ import { ConfirmationModal } from "../../ui/Modal";
 const MAX_RENDERED_FILES = 50;
 
 /**
- * Source control: staged/unstaged sections with per-file stage buttons and a
- * commit box, each file rendered as a read-only unified diff via
- * @pierre/diffs (Shiki highlighting, inline word diffs, collapsed context).
- * Clicking a file header opens the editable @codemirror/merge review. The
- * split of libraries is deliberate: read-many here, edit-one there.
+ * Source control: branch/sync header plus staged/unstaged sections with
+ * per-file stage and discard buttons, each file rendered as a read-only
+ * unified diff via @pierre/diffs (Shiki highlighting, inline word diffs,
+ * collapsed context). Clicking a file header opens the editable
+ * @codemirror/merge review. Committing is out of scope — this vault is a
+ * review tool; author commits from the terminal.
  */
 export class GitChangesView extends ItemView {
   static readonly VIEW_TYPE = "git-changes";
   private listEl: HTMLElement | null = null;
-  private commitEl: HTMLTextAreaElement | null = null;
-  private commitButtonEl: HTMLButtonElement | null = null;
-  private amendEl: HTMLInputElement | null = null;
   private branchEl: HTMLButtonElement | null = null;
   private divergenceEl: HTMLElement | null = null;
   private syncBusy = false;
@@ -70,26 +68,6 @@ export class GitChangesView extends ItemView {
     headerRow.append(this.branchEl, this.divergenceEl, syncActions);
     this.contentEl.appendChild(headerRow);
 
-    const commitRow = doc.createElement("div");
-    commitRow.className = "git-commit-row";
-    this.commitEl = doc.createElement("textarea");
-    this.commitEl.className = "git-commit-message";
-    this.commitEl.placeholder = "Commit message";
-    this.commitEl.rows = 2;
-    this.commitEl.addEventListener("input", () => this.updateCommitButton());
-    this.commitButtonEl = doc.createElement("button");
-    this.commitButtonEl.className = "git-commit-button mod-cta";
-    this.commitButtonEl.textContent = "Commit";
-    this.commitButtonEl.addEventListener("click", () => void this.commit());
-    const amendLabel = doc.createElement("label");
-    amendLabel.className = "git-amend-label";
-    this.amendEl = doc.createElement("input");
-    this.amendEl.type = "checkbox";
-    this.amendEl.addEventListener("change", () => this.updateCommitButton());
-    amendLabel.append(this.amendEl, doc.createTextNode("Amend"));
-    commitRow.append(this.commitEl, amendLabel, this.commitButtonEl);
-    this.contentEl.appendChild(commitRow);
-
     this.listEl = doc.createElement("div");
     this.listEl.className = "git-changes-list";
     this.contentEl.appendChild(this.listEl);
@@ -112,7 +90,6 @@ export class GitChangesView extends ItemView {
       this.listEl.replaceChildren();
       if (!this.app.git.isAvailable()) {
         this.setHeaderVisible(false);
-        this.setCommitVisible(false);
         this.renderMessage(
           "Git is not available in this runtime. Open the desktop app inside a git repository.",
         );
@@ -120,21 +97,17 @@ export class GitChangesView extends ItemView {
       }
       if (!(await this.app.git.isRepository())) {
         this.setHeaderVisible(false);
-        this.setCommitVisible(false);
         this.renderMessage("This vault is not a git repository.");
         return;
       }
-      this.setCommitVisible(true);
       await this.refreshHeader();
       const status = await this.app.git.status();
       if (status.length === 0) {
         this.renderMessage("Working tree clean — no changes.");
-        this.updateCommitButton(0);
         return;
       }
       const staged = status.filter(isStaged);
       const unstaged = status.filter(hasUnstagedChanges);
-      this.updateCommitButton(staged.length);
       let budget = MAX_RENDERED_FILES;
       budget = await this.renderSection("Staged", staged, budget, true);
       await this.renderSection("Changes", unstaged, budget, false);
@@ -249,40 +222,6 @@ export class GitChangesView extends ItemView {
       containerWrapper: diffContainer,
     });
     this.diffs.push(diff);
-  }
-
-  private async commit(): Promise<void> {
-    const message = this.commitEl?.value.trim() ?? "";
-    if (!message) return;
-    const amend = this.amendEl?.checked ?? false;
-    const error = await this.app.git.commit(message, { amend });
-    if (error) {
-      new Notice(`Commit failed: ${error}`);
-      return;
-    }
-    new Notice(amend ? "Amended" : "Committed");
-    if (this.commitEl) this.commitEl.value = "";
-    if (this.amendEl) this.amendEl.checked = false;
-    await this.refresh();
-  }
-
-  private updateCommitButton(stagedCount?: number): void {
-    if (!this.commitButtonEl) return;
-    const message = this.commitEl?.value.trim() ?? "";
-    if (stagedCount !== undefined) this.commitButtonEl.dataset.staged = String(stagedCount);
-    const staged = Number(this.commitButtonEl.dataset.staged ?? "0");
-    const amend = this.amendEl?.checked ?? false;
-    this.commitButtonEl.disabled = (staged === 0 && !amend) || message.length === 0;
-    this.commitButtonEl.textContent = amend
-      ? "Amend"
-      : staged > 0
-        ? `Commit (${staged})`
-        : "Commit";
-  }
-
-  private setCommitVisible(visible: boolean): void {
-    const row = this.contentEl.querySelector<HTMLElement>(".git-commit-row");
-    if (row) row.style.display = visible ? "" : "none";
   }
 
   private async refreshHeader(): Promise<void> {

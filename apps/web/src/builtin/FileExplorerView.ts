@@ -1,8 +1,7 @@
 import { ItemView } from "../views/ItemView";
 import { setIcon } from "../ui/Icon";
-import { getFileTypeInfo } from "../ui/FileTypeIcon";
+import { setFileTypeIcon } from "../ui/FileTypeIcon";
 import { displayTooltip, hideTooltip, setTooltip } from "../ui/Popover";
-import moment from "moment";
 import { Menu } from "../ui/Menu";
 import { TAbstractFile, TFile, TFolder } from "../vault/TAbstractFile";
 import {
@@ -346,9 +345,7 @@ export class FileExplorerView extends ItemView {
     this.applySelectionState(titleEl, file);
     const iconEl = document.createElement("div");
     iconEl.className = "tree-item-icon nav-file-icon";
-    const typeInfo = getFileTypeInfo(file.name, file.extension);
-    if (typeInfo.lang) iconEl.dataset.lang = typeInfo.lang;
-    setIcon(iconEl, typeInfo.icon);
+    setFileTypeIcon(iconEl, file.path);
     titleEl.appendChild(iconEl);
     const titleContentEl = document.createElement("div");
     titleContentEl.className = "tree-item-inner nav-file-title-content";
@@ -382,8 +379,8 @@ export class FileExplorerView extends ItemView {
       const sections: string[] = [];
       if (!isFullTitleShown(titleEl, contentEl)) sections.push(file.name);
       if (file instanceof TFile) {
-        const modified = moment(file.stat.mtime).format("YYYY-MM-DD HH:mm");
-        const created = moment(file.stat.ctime).format("YYYY-MM-DD HH:mm");
+        const modified = formatFileTime(file.stat.mtime);
+        const created = formatFileTime(file.stat.ctime);
         sections.push(`Last modified at ${modified}\nCreated at ${created}`);
       } else if (file instanceof TFolder) {
         const counts = countDescendants(file);
@@ -1156,6 +1153,16 @@ export class FileExplorerView extends ItemView {
     return el;
   }
 }
+
+const formatFileTime = (time: number) =>
+  new Intl.DateTimeFormat("sv-SE", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(time);
 
 function cssEscape(value: string): string {
   return value.replace(/["\\]/g, "\\$&");

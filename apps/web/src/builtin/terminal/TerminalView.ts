@@ -1,7 +1,6 @@
 import { ItemView } from "../../views/ItemView";
 import type { ViewStateResult } from "../../views/View";
 import { Menu } from "../../ui/Menu";
-import { setIcon } from "../../ui/Icon";
 import { Scope } from "../../app/hotkeys/Scope";
 import { TERMINAL_VIEW_TYPE, type TTerminal } from "./TerminalService";
 import {
@@ -250,17 +249,24 @@ export class TerminalView extends ItemView {
     this.hideOverlay();
     const doc = this.contentEl.ownerDocument;
     this.overlayEl = doc.createElement("div");
-    this.overlayEl.className = "terminal-view-overlay";
+    this.overlayEl.className = "terminal-view-overlay empty-state";
+    const containerEl = doc.createElement("div");
+    containerEl.className = "empty-state-container";
+    const titleEl = doc.createElement("div");
+    titleEl.className = "empty-state-title";
+    titleEl.textContent = "Terminal unavailable";
     const messageEl = doc.createElement("div");
-    messageEl.className = "terminal-view-overlay-message";
+    messageEl.className = "empty-state-description";
     messageEl.textContent = message;
-    const buttonEl = doc.createElement("button");
-    buttonEl.className = "terminal-view-restart mod-cta";
-    const iconEl = doc.createElement("span");
-    setIcon(iconEl, "lucide-rotate-ccw");
-    buttonEl.append(iconEl, doc.createTextNode(` ${actionLabel}`));
-    buttonEl.addEventListener("click", () => void this.restart());
-    this.overlayEl.append(messageEl, buttonEl);
+    const actionListEl = doc.createElement("div");
+    actionListEl.className = "empty-state-action-list";
+    const actionEl = doc.createElement("div");
+    actionEl.className = "empty-state-action tappable";
+    actionEl.textContent = actionLabel;
+    actionEl.addEventListener("click", () => void this.restart());
+    actionListEl.appendChild(actionEl);
+    containerEl.append(titleEl, messageEl, actionListEl);
+    this.overlayEl.appendChild(containerEl);
     this.contentEl.appendChild(this.overlayEl);
   }
 

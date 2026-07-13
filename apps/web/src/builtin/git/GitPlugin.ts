@@ -6,15 +6,13 @@ import { openGitDiff } from "../../views/DiffView";
 import { GitChangesView } from "./GitChangesView";
 import { GitHistoryView } from "./GitHistoryView";
 import { GitLogView } from "./GitLogView";
+import { GitNavView, openGitNav } from "./review/GitNavView";
 import { GitReviewView, openGitReview } from "./review/GitReviewView";
 
 /**
  * Core plugin wrapping the LOCAL git surface (reference: nkzw-tech/codiff):
- * changes/history/log/review views plus their commands, all releasable
- * through the core-plugin toggle. Everything here works offline; the cloud
- * twin is the github plugin. `app.git` (the service) stays on the App —
- * plugins gate the SURFACE, the headless verbs stay available exactly like
- * the original's app managers.
+ * SCM changes view, center review CodeView, right-docked Tree/History nav,
+ * file history and log. Cloud twin is the github plugin.
  */
 export function createGitPluginDefinition(): InternalPluginDefinition {
   return {
@@ -27,6 +25,7 @@ export function createGitPluginDefinition(): InternalPluginDefinition {
       plugin.registerViewType(GitHistoryView.VIEW_TYPE, (leaf) => new GitHistoryView(leaf));
       plugin.registerViewType(GitLogView.VIEW_TYPE, (leaf) => new GitLogView(leaf));
       plugin.registerViewType(GitReviewView.VIEW_TYPE, (leaf) => new GitReviewView(leaf));
+      plugin.registerViewType(GitNavView.VIEW_TYPE, (leaf) => new GitNavView(leaf));
       plugin.registerGlobalCommand({
         id: "git:open-changes",
         name: "Open git changes",
@@ -45,19 +44,28 @@ export function createGitPluginDefinition(): InternalPluginDefinition {
         icon: "lucide-file-diff",
         checkCallback: (checking) => {
           if (!app.git.isAvailable()) return false;
-          if (!checking) void openGitReview(app);
+          if (!checking) void openGitReview(app, { kind: "working-tree" }, "tree");
           return true;
         },
       });
       plugin.registerGlobalCommand({
+        id: "git:open-nav",
+        name: "Open git navigator",
+        icon: "lucide-git-branch",
+        checkCallback: (checking) => {
+          if (!app.git.isAvailable()) return false;
+          if (!checking) void openGitNav(app, true, "tree");
+          return true;
+        },
+      });
+      // "git log" in the palette → codiff History on the right, not the old accordion view.
+      plugin.registerGlobalCommand({
         id: "git:open-log",
-        name: "Open commit log (local)",
+        name: "Open commit history",
         icon: "lucide-history",
         checkCallback: (checking) => {
           if (!app.git.isAvailable()) return false;
-          if (!checking) {
-            void app.workspace.getLeaf("tab").setViewState({ type: "git-log", active: true });
-          }
+          if (!checking) void openGitReview(app, { kind: "working-tree" }, "history");
           return true;
         },
       });

@@ -1,43 +1,124 @@
-/* VS Code-style file-type icons in the file explorer. */
+/* Pierre's complete semantic file icons, shared by explorer, tabs and Git. */
 .nav-file-icon {
   display: flex;
   align-items: center;
   flex: 0 0 auto;
   margin-inline-end: var(--size-2-2);
-  color: var(--text-muted);
 }
 .nav-file-icon svg.svg-icon {
   width: 15px;
   height: 15px;
-  stroke-width: 1.8px;
+  fill: currentColor;
 }
-/* Language accents — one hue per ecosystem, readable on light and dark. */
-.nav-file-icon[data-lang="md"] { color: var(--text-muted); }
-.nav-file-icon[data-lang="ts"] { color: #3178c6; }
-.nav-file-icon[data-lang="js"] { color: #d4a72c; }
-.nav-file-icon[data-lang="go"] { color: #00a7c7; }
-.nav-file-icon[data-lang="py"] { color: #3776ab; }
-.nav-file-icon[data-lang="rs"] { color: #c6763c; }
-.nav-file-icon[data-lang="java"] { color: #b07219; }
-.nav-file-icon[data-lang="swift"] { color: #f05138; }
-.nav-file-icon[data-lang="rb"] { color: #cc342d; }
-.nav-file-icon[data-lang="php"] { color: #7a86b8; }
-.nav-file-icon[data-lang="lua"] { color: #000080; }
-.nav-file-icon[data-lang="c"] { color: #6a6fbf; }
-.nav-file-icon[data-lang="cs"] { color: #178600; }
-.nav-file-icon[data-lang="sh"] { color: #4ea44e; }
-.nav-file-icon[data-lang="json"] { color: #c98a1b; }
-.nav-file-icon[data-lang="yaml"] { color: #a074c4; }
-.nav-file-icon[data-lang="html"] { color: #e44d26; }
-.nav-file-icon[data-lang="vue"] { color: #41b883; }
-.nav-file-icon[data-lang="css"] { color: #663399; }
-.nav-file-icon[data-lang="sql"] { color: #d38a3c; }
-.nav-file-icon[data-lang="csv"] { color: #2f8f5b; }
-.nav-file-icon[data-lang="docker"] { color: #2496ed; }
-.nav-file-icon[data-lang="canvas"] { color: var(--interactive-accent); }
-.nav-file-icon[data-lang="pdf"] { color: #d64541; }
-.nav-file-icon[data-lang="image"] { color: #6c9e4f; }
-.nav-file-icon[data-lang="media"] { color: #8a63b8; }
+
+/* Keep Pierre's colored-icon palette when its sprite is used outside FileTree. */
+.file-type-icon {
+  color: light-dark(#84848a, #adadb1);
+}
+
+.file-type-icon:is(
+  [data-icon-token="astro"],
+  [data-icon-token="database"],
+  [data-icon-token="vite"]
+) {
+  color: light-dark(#a631be, #d568ea);
+}
+
+.file-type-icon:is(
+  [data-icon-token="babel"],
+  [data-icon-token="browserslist"],
+  [data-icon-token="javascript"]
+) {
+  color: light-dark(#d5a910, #ffd452);
+}
+
+.file-type-icon:is(
+  [data-icon-token="bash"],
+  [data-icon-token="markdown"],
+  [data-icon-token="svgo"],
+  [data-icon-token="vue"]
+) {
+  color: light-dark(#199f43, #5ecc71);
+}
+
+.file-type-icon:is(
+  [data-icon-token="biome"],
+  [data-icon-token="c"],
+  [data-icon-token="cpp"],
+  [data-icon-token="docker"],
+  [data-icon-token="python"],
+  [data-icon-token="typescript"],
+  [data-icon-token="vscode"],
+  [data-icon-token="webpack"]
+) {
+  color: light-dark(#1a85d4, #69b1ff);
+}
+
+.file-type-icon:is(
+  [data-icon-token="bootstrap"],
+  [data-icon-token="css"],
+  [data-icon-token="eslint"],
+  [data-icon-token="terraform"],
+  [data-icon-token="wasm"]
+) {
+  color: light-dark(#693acf, #9d6afb);
+}
+
+.file-type-icon[data-icon-token="bun"] {
+  color: light-dark(#594c5b, #79697b);
+}
+
+.file-type-icon:is(
+  [data-icon-token="claude"],
+  [data-icon-token="html"],
+  [data-icon-token="json"],
+  [data-icon-token="rust"],
+  [data-icon-token="svg"],
+  [data-icon-token="swift"],
+  [data-icon-token="zig"],
+  [data-icon-token="zip"]
+) {
+  color: light-dark(#d47628, #ffa359);
+}
+
+.file-type-icon[data-icon-token="git"] {
+  color: light-dark(#ff8c5b, #d5512f);
+}
+
+.file-type-icon:is(
+  [data-icon-token="go"],
+  [data-icon-token="oxc"],
+  [data-icon-token="react"],
+  [data-icon-token="tailwind"]
+) {
+  color: light-dark(#1ca1c7, #68cdf2);
+}
+
+.file-type-icon:is(
+  [data-icon-token="graphql"],
+  [data-icon-token="image"],
+  [data-icon-token="sass"]
+) {
+  color: light-dark(#d32a61, #ff678d);
+}
+
+.file-type-icon:is(
+  [data-icon-token="mcp"],
+  [data-icon-token="prettier"],
+  [data-icon-token="table"]
+) {
+  color: light-dark(#17a5af, #64d1db);
+}
+
+.file-type-icon:is(
+  [data-icon-token="npm"],
+  [data-icon-token="postcss"],
+  [data-icon-token="ruby"],
+  [data-icon-token="svelte"],
+  [data-icon-token="yml"]
+) {
+  color: light-dark(#d52c36, #ff6762);
+}
 
 /* Make the extension badge read as a chip instead of faint text. */
 .nav-file-tag {
