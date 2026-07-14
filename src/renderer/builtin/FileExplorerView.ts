@@ -322,10 +322,12 @@ export class FileExplorerView extends ItemView {
   }
 
   private renderFile(file: TFile, parentEl: HTMLElement): void {
-    const fileEl = document.createElement("div");
-    fileEl.className = "tree-item nav-file";
-    const titleEl = document.createElement("div");
-    titleEl.className = "tree-item-self nav-file-title tappable is-clickable";
+    const item = new TreeItem(parentEl, {
+      itemClass: "nav-file",
+      selfClass: "nav-file-title tappable is-clickable",
+      innerClass: "nav-file-title-content",
+    });
+    const { selfEl: titleEl, innerEl: titleContentEl } = item;
     titleEl.dataset.path = file.path;
     titleEl.classList.toggle(
       "is-active",
@@ -339,11 +341,8 @@ export class FileExplorerView extends ItemView {
     const iconEl = document.createElement("div");
     iconEl.className = "tree-item-icon nav-file-icon";
     setFileTypeIcon(iconEl, file.path);
-    titleEl.appendChild(iconEl);
-    const titleContentEl = document.createElement("div");
-    titleContentEl.className = "tree-item-inner nav-file-title-content";
+    titleEl.insertBefore(iconEl, titleContentEl);
     titleContentEl.textContent = file.name;
-    titleEl.appendChild(titleContentEl);
     this.applyRenameState(titleEl, titleContentEl, file);
     titleEl.addEventListener("click", (event) => this.onFileClick(file, event));
     titleEl.addEventListener("contextmenu", (event) => this.openFileContextMenu(file, event));
@@ -351,8 +350,6 @@ export class FileExplorerView extends ItemView {
     this.app.dragManager.handleDrag(titleEl, (event) =>
       this.createDragSource(event, file, titleEl),
     );
-    fileEl.appendChild(titleEl);
-    parentEl.appendChild(fileEl);
   }
 
   /**
