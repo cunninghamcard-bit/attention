@@ -17,10 +17,12 @@ import { ThemeManager } from "./theme/ThemeManager";
 import { CustomCss } from "./theme/CustomCss";
 import { CssSnippetManager } from "./theme/CssSnippetManager";
 import { AppearanceManager, type BaseTheme } from "./theme/AppearanceManager";
+import { StyleSettingsManager } from "./theme/StyleSettingsManager";
 import { registerBuiltinViews } from "../builtin/BuiltinViews";
 import { registerCorePlugins } from "../builtin/CorePlugins";
 import { FilesSettingTab } from "../builtin/FilesSettingTab";
 import { AppearanceSettingTab } from "../builtin/AppearanceSettingTab";
+import { StyleSettingsTab } from "../builtin/StyleSettingsTab";
 import { CorePluginsSettingTab } from "../builtin/CorePluginsSettingTab";
 import { CommunityPluginsSettingTab } from "../builtin/CommunityPluginsSettingTab";
 import { HotkeysSettingTab } from "../builtin/HotkeysSettingTab";
@@ -215,6 +217,7 @@ export class App {
   readonly customCss = new CustomCss(this);
   readonly cssSnippets = new CssSnippetManager(this);
   readonly appearance = new AppearanceManager(this);
+  readonly styleSettings = new StyleSettingsManager(this);
   readonly settingSections = new SettingsSectionRegistry();
   readonly workspace: Workspace;
   readonly workspaceLayouts: WorkspaceLayoutPersistence;
@@ -514,6 +517,7 @@ export class App {
     });
     this.setting.addSettingTab(new FilesSettingTab(this));
     this.setting.addSettingTab(new AppearanceSettingTab(this));
+    this.setting.addSettingTab(new StyleSettingsTab(this));
     this.setting.addSettingTab(new MobileSettingTab(this));
     this.setting.addSettingTab(new HotkeysSettingTab(this));
     this.setting.addSettingTab(new CorePluginsSettingTab(this));
