@@ -17,9 +17,6 @@ export class AppLifecycle {
     this.app.themes.applyConfiguredTheme();
     this.app.appearance.applyFromConfig();
     this.app.cssSnippets.applyEnabledSnippetsFromConfig();
-    // After the theme and the enabled snippets are applied: their CSS is where the
-    // `@settings` blocks live, so loading any earlier would find nothing to parse.
-    await this.app.styleSettings.load();
     await this.app.metadataTypeManager.load();
     await this.app.corePluginsReady;
     await this.app.hotkeys.load();
@@ -51,7 +48,6 @@ export class AppLifecycle {
     this.app.mobileBackButton.detach();
     this.app.hotkeys.unregisterListeners();
     this.app.metadataTypeManager.unregisterListeners();
-    this.app.styleSettings.unload();
     this.app.vault.unload();
     this.started = false;
     this.app.workspace.trigger("app-unloaded");

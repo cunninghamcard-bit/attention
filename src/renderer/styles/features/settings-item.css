@@ -586,25 +586,3 @@
   font-size: var(--font-ui-small);
   padding: var(--size-4-1) var(--size-4-3) var(--size-4-3) var(--size-4-4);
 }
-/* A setting group whose heading carries a collapse icon: a theme's settings nest
-   four levels deep, and the group card is a descendant rule, so a nested group
-   would otherwise paint a card inside a card. */
-.setting-group .setting-item-heading:has(> .collapse-icon) {
-  cursor: var(--cursor);
-}
-.setting-group.is-collapsed > .setting-items {
-  display: none;
-}
-.setting-group .setting-group {
-  margin-top: var(--size-4-4);
-}
-.setting-group .setting-group .setting-items {
-  background-color: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 0;
-}
-.setting-group .setting-group .setting-item-heading {
-  padding: 0;
-  margin-bottom: var(--size-4-2);
-}
