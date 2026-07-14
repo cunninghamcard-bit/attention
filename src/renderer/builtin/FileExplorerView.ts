@@ -1,7 +1,7 @@
 import { ItemView } from "../views/ItemView";
 import { setIcon } from "../ui/Icon";
 import { setFileTypeIcon } from "../ui/FileTypeIcon";
-import { createNavFolder } from "../ui/NavFolder";
+import { TreeItem } from "../ui/TreeItem";
 import { displayTooltip, hideTooltip, setTooltip } from "../ui/Popover";
 import { Menu } from "../ui/Menu";
 import { TAbstractFile, TFile, TFolder } from "../vault/TAbstractFile";
@@ -289,15 +289,22 @@ export class FileExplorerView extends ItemView {
 
   private renderFolder(folder: TFolder, parentEl: HTMLElement): void {
     const isCollapsed = this.collapsedFolders.has(folder.path);
-    const { folderEl, titleEl, childrenEl } = createNavFolder(parentEl, isCollapsed);
+    const item = new TreeItem(parentEl, {
+      itemClass: "nav-folder",
+      selfClass: "nav-folder-title tappable is-clickable",
+      innerClass: "nav-folder-title-content",
+      childrenClass: "nav-folder-children",
+      collapseClass: "nav-folder-collapse-indicator",
+    });
+    item.setCollapsible(true);
+    item.setCollapsed(isCollapsed);
+    const { el: folderEl, selfEl: titleEl, childrenEl, innerEl: titleContentEl } = item;
     titleEl.dataset.path = folder.path;
     const folderIconEl = document.createElement("div");
     folderIconEl.className = "tree-item-icon nav-folder-icon";
     setIcon(folderIconEl, isCollapsed ? "lucide-folder-closed" : "lucide-folder-open");
-    const titleContentEl = document.createElement("div");
-    titleContentEl.className = "tree-item-inner nav-folder-title-content";
     titleContentEl.textContent = folder.name;
-    titleEl.append(folderIconEl, titleContentEl);
+    titleContentEl.before(folderIconEl);
     this.applySelectionState(titleEl, folder);
     this.applyRenameState(titleEl, titleContentEl, folder);
     titleEl.addEventListener("click", (event) => this.onFolderClick(folder, event));
