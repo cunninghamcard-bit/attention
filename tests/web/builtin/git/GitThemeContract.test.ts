@@ -63,17 +63,17 @@ describe("local Git theme contract", () => {
       readProjectFile("src/renderer/styles/product/git-review.css"),
     ]);
 
-    expect(changes).toContain("tree-item-self nav-file-title tappable is-clickable");
-    expect(history).toContain("tree-item-self git-history-row");
+    expect(changes).toContain("nav-file-title tappable is-clickable git-changes-file-header");
+    expect(history).toContain('selfClass: "git-history-row"');
     expect(log).toContain('selfClass: "nav-folder-title tappable is-clickable git-log-header"');
     expect(log).toContain('selfClass: "nav-folder-title tappable is-clickable git-log-file"');
-    expect(nav).toContain("tree-item-self nav-folder-title tappable is-clickable");
-    expect(nav).toContain("tree-item-self nav-file-title tappable is-clickable");
-    expect(nav).toContain("tree-item-self git-nav-history-entry is-clickable");
+    expect(nav).toContain("nav-folder-title tappable is-clickable git-nav-folder-row");
+    expect(nav).toContain("nav-file-title tappable is-clickable git-nav-file-row");
+    expect(nav).toContain("git-nav-history-entry is-clickable");
     expect(nav).not.toContain("style.paddingLeft");
-    expect(review).toContain("tree-item-self review-card-header is-clickable");
+    expect(review).toContain("review-card-header is-clickable");
     expect(review).toContain("new SearchComponent(searchRow)");
-    expect(review).toContain("tree-item-self nav-file-title tappable is-clickable review-file-row");
+    expect(review).toContain("nav-file-title tappable is-clickable review-file-row");
     expect(review).toContain("clickable-icon review-viewed");
     expect(review).not.toContain("review-status-dot");
     expect(changeStyles).not.toMatch(

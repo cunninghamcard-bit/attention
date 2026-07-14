@@ -4,6 +4,7 @@ import { openGitDiff } from "../../views/DiffView";
 import { openPrList } from "../github/GitPrViews";
 import { openGitReview } from "./review/GitReviewView";
 import { setIcon } from "../../ui/Icon";
+import { TreeItem } from "../../ui/TreeItem";
 import { setTooltip } from "../../ui/Popover";
 import { Notice } from "../../ui/Notice";
 import { hasUnstagedChanges, isStaged, type GitFileStatus } from "./GitService";
@@ -131,41 +132,53 @@ export class GitChangesView extends ItemView {
   ): Promise<number> {
     if (!this.listEl || entries.length === 0) return budget;
     const doc = this.listEl.ownerDocument;
-    const headingEl = doc.createElement("div");
-    headingEl.className = "tree-item-self git-changes-section";
-    const headingText = doc.createElement("span");
-    headingText.className = "tree-item-inner";
-    headingText.textContent = title;
+    // Native source-control shape: the section is a collapsible tree parent,
+    // its files nested in the shared tree-item-children box.
+    const section = new TreeItem(this.listEl, {
+      itemClass: "nav-folder git-changes-section-item",
+      selfClass: "nav-folder-title tappable is-clickable git-changes-section",
+      childrenClass: "nav-folder-children",
+      collapseClass: "nav-folder-collapse-indicator",
+    });
+    section.setCollapsible(true);
+    section.setCollapsed(false);
+    section.innerEl.textContent = title;
     const countEl = doc.createElement("span");
     countEl.className = "tree-item-flair";
     countEl.textContent = String(entries.length);
-    headingEl.append(headingText, countEl);
-    this.listEl.appendChild(headingEl);
+    section.innerEl.after(countEl);
+    // Clicking anywhere on the header toggles; the chevron click bubbles to
+    // selfEl, so neuter onCollapseClick to avoid a double toggle (GitLogView idiom).
+    section.onSelfClick = () => section.toggleCollapsed();
+    section.onCollapseClick = () => {};
     for (const entry of entries) {
       if (budget <= 0) {
         this.renderMessage(`…and ${entries.length} more changed files.`);
         break;
       }
       budget -= 1;
-      await this.renderEntry(entry, stagedSection);
+      await this.renderEntry(entry, stagedSection, section.childrenEl);
     }
     return budget;
   }
 
-  private async renderEntry(entry: GitFileStatus, stagedSection: boolean): Promise<void> {
-    if (!this.listEl) return;
-    const doc = this.listEl.ownerDocument;
-    const sectionEl = doc.createElement("div");
-    sectionEl.className = "tree-item nav-file git-changes-file";
-
-    const headerEl = doc.createElement("div");
-    headerEl.className =
-      "tree-item-self nav-file-title tappable is-clickable git-changes-file-header";
+  private async renderEntry(
+    entry: GitFileStatus,
+    stagedSection: boolean,
+    parentEl: HTMLElement,
+  ): Promise<void> {
+    const doc = parentEl.ownerDocument;
+    // The TreeItem constructor attaches el to parentEl, so the row is connected
+    // before the async highlight pass below measures the DOM.
+    const item = new TreeItem(parentEl, {
+      itemClass: "nav-file git-changes-file",
+      selfClass: "nav-file-title tappable is-clickable git-changes-file-header",
+      innerClass: "nav-file-title-content git-changes-file-name",
+    });
+    const { el: sectionEl, innerEl: nameEl } = item;
     const iconEl = doc.createElement("span");
     iconEl.className = "tree-item-icon nav-file-icon";
     setFileTypeIcon(iconEl, entry.path);
-    const nameEl = doc.createElement("span");
-    nameEl.className = "tree-item-inner nav-file-title-content git-changes-file-name";
     nameEl.textContent = entry.path;
     const flairEl = doc.createElement("span");
     flairEl.className = "tree-item-flair-outer";
@@ -196,14 +209,13 @@ export class GitChangesView extends ItemView {
     } else {
       flairEl.append(stageEl);
     }
-    headerEl.append(iconEl, nameEl, flairEl);
-    headerEl.addEventListener("click", () => {
+    // Row content order: icon, name (innerEl), flair — same as the hand-built row.
+    nameEl.before(iconEl);
+    nameEl.after(flairEl);
+    item.onSelfClick = () => {
       const file = this.app.vault.getFileByPath(entry.path);
       if (file) void openGitDiff(this.app, file);
-    });
-    sectionEl.appendChild(headerEl);
-    // Attach before rendering: the async highlight pass measures the DOM.
-    this.listEl.appendChild(sectionEl);
+    };
 
     // Staged section diffs HEAD→index; Changes section diffs index→worktree,
     // so each hunk appears exactly once, in the section that owns it.
@@ -222,11 +234,13 @@ export class GitChangesView extends ItemView {
       const binaryEl = doc.createElement("div");
       binaryEl.className = "tree-item-inner-subtext git-changes-binary";
       binaryEl.textContent = "Binary file";
-      sectionEl.appendChild(binaryEl);
+      // Diff is the file's own content, not a nested tree row: keep it a direct
+      // child of the tree-item (before the unused leaf childrenEl), full-width.
+      sectionEl.insertBefore(binaryEl, item.childrenEl);
       return;
     }
     const diffContainer = doc.createElement("div");
-    sectionEl.appendChild(diffContainer);
+    sectionEl.insertBefore(diffContainer, item.childrenEl);
     const diff = new FileDiff({
       diffStyle: "unified",
       themeType: document.body.classList.contains("theme-dark") ? "dark" : "light",

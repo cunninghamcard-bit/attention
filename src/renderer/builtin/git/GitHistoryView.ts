@@ -6,6 +6,7 @@ import type { GitLogEntry } from "./GitService";
 import { openGitReview } from "./review/GitReviewView";
 import { setIcon } from "../../ui/Icon";
 import { setTooltip } from "../../ui/Popover";
+import { TreeItem } from "../../ui/TreeItem";
 
 /**
  * Commit history for one file (git log --follow). Each entry offers the two
@@ -71,12 +72,13 @@ export class GitHistoryView extends ItemView {
   private renderEntry(entry: GitLogEntry): void {
     if (!this.listEl || !this.path) return;
     const doc = this.listEl.ownerDocument;
-    const itemEl = doc.createElement("div");
-    itemEl.className = "tree-item git-history-entry";
-    const rowEl = doc.createElement("div");
-    rowEl.className = "tree-item-self git-history-row";
-    const contentEl = doc.createElement("div");
-    contentEl.className = "tree-item-inner";
+    // Leaf history row via the shared primitive: TreeItem builds .tree-item /
+    // .tree-item-self / .tree-item-inner; the view only layers its git classes
+    // and hangs the actions flair off the self row. Not collapsible.
+    const { selfEl: rowEl, innerEl: contentEl } = new TreeItem(this.listEl, {
+      itemClass: "git-history-entry",
+      selfClass: "git-history-row",
+    });
     const subjectEl = doc.createElement("div");
     subjectEl.className = "git-history-subject";
     subjectEl.textContent = entry.subject;
@@ -100,9 +102,7 @@ export class GitHistoryView extends ItemView {
         () => void this.diffAgainstWorking(entry),
       ),
     );
-    rowEl.append(contentEl, actionsEl);
-    itemEl.appendChild(rowEl);
-    this.listEl.appendChild(itemEl);
+    rowEl.appendChild(actionsEl);
   }
 
   private actionButton(icon: string, label: string, onClick: () => void): HTMLButtonElement {

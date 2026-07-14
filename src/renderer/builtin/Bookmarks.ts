@@ -1,5 +1,6 @@
 import type { App } from "../app/App";
 import { setIcon } from "../ui/Icon";
+import { TreeItem } from "../ui/TreeItem";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../plugin/InternalPluginWrapper";
 import { ItemView } from "../views/ItemView";
@@ -313,39 +314,32 @@ class BookmarksView extends ItemView {
     }
     const rootEl = document.createElement("div");
     rootEl.className = "tree-item-children";
-    for (const item of this.controller.items) rootEl.appendChild(this.renderItem(item));
+    for (const item of this.controller.items) this.renderItem(item, rootEl);
     this.contentEl.appendChild(rootEl);
   }
 
-  private renderItem(item: BookmarkItem): HTMLElement {
-    const itemEl = document.createElement("div");
-    itemEl.className = "tree-item";
+  private renderItem(item: BookmarkItem, parentEl: HTMLElement): void {
+    const treeItem = new TreeItem(parentEl, { selfClass: "bookmark is-clickable" });
+    const { el: itemEl, selfEl, innerEl, childrenEl } = treeItem;
     if ("path" in item) itemEl.dataset.path = item.path;
-    const selfEl = document.createElement("div");
-    selfEl.className = "tree-item-self bookmark is-clickable";
-    const itemDom: BookmarkItemDom = {
-      item,
-      itemEl,
-      selfEl,
-      titleEl: document.createElement("span"),
-    };
+    const titleEl = document.createElement("span");
+    const itemDom: BookmarkItemDom = { item, itemEl, selfEl, titleEl };
     this.itemDoms.set(item, itemDom);
+    titleEl.className = "tree-item-inner-text";
+    titleEl.textContent = getBookmarkTitle(item);
+    innerEl.appendChild(titleEl);
     if (item.type === "group") {
-      const collapseIconEl = document.createElement("div");
-      collapseIconEl.className = "tree-item-icon collapse-icon";
-      setIcon(collapseIconEl, "right-triangle");
-      selfEl.appendChild(collapseIconEl);
+      // Shared collapse chevron in the gutter. Groups keep their children
+      // always rendered (Bookmarks never wired a functional fold), so the
+      // chevron stays inert — clicks fall through to row selection as before.
+      treeItem.setCollapsible(true);
+      treeItem.onCollapseClick = () => {};
     } else {
       const iconEl = document.createElement("div");
       iconEl.className = "tree-item-icon";
       setIcon(iconEl, getBookmarkIcon(item));
-      selfEl.appendChild(iconEl);
+      innerEl.before(iconEl);
     }
-    const innerEl = document.createElement("div");
-    innerEl.className = "tree-item-inner";
-    const titleEl = itemDom.titleEl;
-    titleEl.className = "tree-item-inner-text";
-    titleEl.textContent = getBookmarkTitle(item);
     const removeEl = document.createElement("button");
     removeEl.className = "clickable-icon mod-bookmark";
     removeEl.dataset.icon = "lucide-x";
@@ -354,18 +348,13 @@ class BookmarksView extends ItemView {
       event.stopPropagation();
       this.controller.removeItem(item);
     });
-    innerEl.appendChild(titleEl);
-    selfEl.append(innerEl, removeEl);
-    selfEl.addEventListener("click", (event) => this.handleItemClick(event, itemDom));
+    // Row order: chevron/icon, inner (title), remove button.
+    innerEl.after(removeEl);
+    treeItem.onSelfClick = (event) => this.handleItemClick(event, itemDom);
     this.app.dragManager.handleDrag(selfEl, () => this.createDragSource(itemDom));
-    itemEl.appendChild(selfEl);
     if (item.type === "group") {
-      const childrenEl = document.createElement("div");
-      childrenEl.className = "tree-item-children";
-      for (const child of item.items) childrenEl.appendChild(this.renderItem(child));
-      itemEl.appendChild(childrenEl);
+      for (const child of item.items) this.renderItem(child, childrenEl);
     }
-    return itemEl;
   }
 
   private handleItemClick(event: MouseEvent, itemDom: BookmarkItemDom): void {

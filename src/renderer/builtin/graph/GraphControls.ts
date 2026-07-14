@@ -1,3 +1,4 @@
+import { TreeItem } from "../../ui/TreeItem";
 import type { GraphPluginOptions } from "./GraphOptions";
 import { cssColorToGraphColor, graphColorToCss } from "./GraphOptions";
 
@@ -68,17 +69,15 @@ export class GraphControls {
     const bodyEl = document.createElement("div");
     bodyEl.className = "graph-controls-body";
     bodyEl.hidden = this.closed;
-    bodyEl.append(
-      this.renderFilters(),
-      this.renderGroups(),
-      this.renderDisplay(),
-      this.renderForces(),
-    );
+    this.renderFilters(bodyEl);
+    this.renderGroups(bodyEl);
+    this.renderDisplay(bodyEl);
+    this.renderForces(bodyEl);
     this.rootEl.appendChild(bodyEl);
   }
 
-  private renderFilters(): HTMLElement {
-    const { sectionEl, bodyEl } = this.section("Filters", "filters");
+  private renderFilters(parentEl: HTMLElement): void {
+    const bodyEl = this.section(parentEl, "Filters", "filters");
     this.searchInputEl = document.createElement("input");
     this.searchInputEl.className = "search-input graph-search-input";
     this.searchInputEl.type = "search";
@@ -145,12 +144,10 @@ export class GraphControls {
         ),
       );
     }
-
-    return sectionEl;
   }
 
-  private renderGroups(): HTMLElement {
-    const { sectionEl, bodyEl } = this.section("Groups", "color-groups");
+  private renderGroups(parentEl: HTMLElement): void {
+    const bodyEl = this.section(parentEl, "Groups", "color-groups");
     const groupsEl = document.createElement("div");
     groupsEl.className = "graph-color-groups-container";
 
@@ -210,11 +207,10 @@ export class GraphControls {
     });
 
     bodyEl.append(groupsEl, newGroupEl);
-    return sectionEl;
   }
 
-  private renderDisplay(): HTMLElement {
-    const { sectionEl, bodyEl } = this.section("Display", "display");
+  private renderDisplay(parentEl: HTMLElement): void {
+    const bodyEl = this.section(parentEl, "Display", "display");
     bodyEl.append(
       this.checkbox(
         "Show arrows",
@@ -246,11 +242,10 @@ export class GraphControls {
         (value) => (this.options.displayOptions.lineSizeMultiplier = value),
       ),
     );
-    return sectionEl;
   }
 
-  private renderForces(): HTMLElement {
-    const { sectionEl, bodyEl } = this.section("Forces", "forces");
+  private renderForces(parentEl: HTMLElement): void {
+    const bodyEl = this.section(parentEl, "Forces", "forces");
     bodyEl.append(
       this.slider(
         "Center force",
@@ -285,38 +280,28 @@ export class GraphControls {
         (value) => (this.options.forceOptions.linkDistance = value),
       ),
     );
-    return sectionEl;
   }
 
-  private section(title: string, key: string): { sectionEl: HTMLElement; bodyEl: HTMLElement } {
-    const sectionEl = document.createElement("div");
-    sectionEl.className = `tree-item graph-control-section mod-${key}`;
+  /** A collapsible section built on the shared TreeItem; returns its children box. */
+  private section(parentEl: HTMLElement, title: string, key: string): HTMLElement {
     const closeKey = `collapse-${key}`;
     const collapsed = this.options.close[closeKey] === true;
-    sectionEl.classList.toggle("is-collapsed", collapsed);
-
-    const titleEl = document.createElement("button");
-    titleEl.className = "tree-item-self graph-control-section-header";
-    titleEl.type = "button";
-    titleEl.setAttribute("aria-expanded", String(!collapsed));
-    const collapseEl = document.createElement("span");
-    collapseEl.className = "collapse-indicator collapse-icon";
-    collapseEl.dataset.icon = collapsed ? "lucide-chevron-right" : "lucide-chevron-down";
-    const titleTextEl = document.createElement("span");
-    titleTextEl.className = "graph-control-section-title";
-    titleTextEl.textContent = title;
-    titleEl.append(collapseEl, titleTextEl);
-    titleEl.addEventListener("click", () => {
+    const item = new TreeItem(parentEl, {
+      itemClass: `graph-control-section mod-${key}`,
+      selfClass: "graph-control-section-header",
+    });
+    item.setCollapsible(true);
+    item.setCollapsed(collapsed);
+    item.innerEl.textContent = title;
+    // Row and chevron toggle identically: the chevron click bubbles to selfEl,
+    // and onCollapseClick is neutered so it does not fight this handler.
+    item.onSelfClick = (): void => {
       this.options.close[closeKey] = !collapsed;
       this.callbacks.onChange();
       this.sync();
-    });
-
-    const bodyEl = document.createElement("div");
-    bodyEl.className = "graph-control-section-body";
-    bodyEl.hidden = collapsed;
-    sectionEl.append(titleEl, bodyEl);
-    return { sectionEl, bodyEl };
+    };
+    item.onCollapseClick = (): void => {};
+    return item.childrenEl;
   }
 
   private checkbox(

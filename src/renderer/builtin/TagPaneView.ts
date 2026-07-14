@@ -1,5 +1,5 @@
 import { ItemView } from "../views/ItemView";
-import { setIcon } from "../ui/Icon";
+import { TreeItem } from "../ui/TreeItem";
 
 interface TagTreeNode {
   name: string;
@@ -43,49 +43,48 @@ export class TagPaneView extends ItemView {
     const containerEl = this.contentEl.ownerDocument.createElement("div");
     containerEl.className = "tag-container tree-item-children";
     for (const child of [...root.children.values()].sort(sortTagNodes))
-      this.renderTagNode(child, containerEl, 0);
+      this.renderTagNode(child, containerEl);
     this.contentEl.appendChild(containerEl);
   }
 
-  private renderTagNode(node: TagTreeNode, parentEl: HTMLElement, depth: number): void {
-    const doc = parentEl.ownerDocument;
-    const itemEl = doc.createElement("div");
-    itemEl.className = "tree-item tag-pane-tag";
-    itemEl.dataset.tag = node.tag;
-    const selfEl = doc.createElement("div");
-    selfEl.className = "tree-item-self tag-pane-tag-self tappable";
-    selfEl.style.setProperty("--tag-pane-padding", `${depth * 14 + 8}px`);
-    const collapseEl = doc.createElement("div");
-    collapseEl.className = "tree-item-icon collapse-icon";
-    if (node.children.size > 0) {
-      collapseEl.classList.toggle("is-collapsed", this.collapsed.has(node.tag));
-      setIcon(collapseEl, "right-triangle");
+  private renderTagNode(node: TagTreeNode, parentEl: HTMLElement): void {
+    const hasChildren = node.children.size > 0;
+    const isCollapsed = this.collapsed.has(node.tag);
+    const item = new TreeItem(parentEl, {
+      itemClass: "tag-pane-tag",
+      selfClass: "tag-pane-tag-self tappable",
+      innerClass: "tag-pane-tag-text",
+      childrenClass: "tag-pane-tag-children",
+    });
+    item.el.dataset.tag = node.tag;
+    if (hasChildren) {
+      item.setCollapsible(true);
+      item.setCollapsed(isCollapsed);
     }
-    const titleEl = doc.createElement("div");
-    titleEl.className = "tree-item-inner tag-pane-tag-text";
-    titleEl.textContent = node.name;
-    const countEl = doc.createElement("div");
+    item.innerEl.textContent = node.name;
+    const countEl = parentEl.ownerDocument.createElement("div");
     countEl.className = "tag-pane-tag-count";
     countEl.textContent = String(node.count);
-    selfEl.append(collapseEl, titleEl, countEl);
-    selfEl.addEventListener("click", (event) => {
-      if (node.children.size > 0 && (event.target === collapseEl || event.altKey)) {
+    item.selfEl.appendChild(countEl);
+    // Chevron click bubbles to selfEl; neuter onCollapseClick so the single
+    // onSelfClick handler decides toggle-vs-search exactly as before.
+    item.onSelfClick = (event) => {
+      if (hasChildren && (event.target === item.collapseEl || event.altKey)) {
         this.toggleTag(node.tag);
         return;
       }
       this.searchTag(node.tag);
-    });
-    itemEl.appendChild(selfEl);
+    };
+    item.onCollapseClick = () => {};
 
-    if (node.children.size > 0 && !this.collapsed.has(node.tag)) {
-      const childrenEl = doc.createElement("div");
-      childrenEl.className = "tree-item-children tag-pane-tag-children";
+    if (hasChildren && !isCollapsed) {
       for (const child of [...node.children.values()].sort(sortTagNodes))
-        this.renderTagNode(child, childrenEl, depth + 1);
-      itemEl.appendChild(childrenEl);
+        this.renderTagNode(child, item.childrenEl);
+    } else {
+      // Faithful to the original: a leaf or collapsed tag renders no children
+      // box at all (TreeItem creates one eagerly, so drop it here).
+      item.childrenEl.remove();
     }
-
-    parentEl.appendChild(itemEl);
   }
 
   private toggleTag(tag: string): void {

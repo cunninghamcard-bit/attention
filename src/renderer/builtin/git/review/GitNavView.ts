@@ -1,9 +1,9 @@
 import type { App } from "../../../app/App";
 import { createDiv, createEl, createSpan } from "../../../dom/dom";
 import type { EventRef } from "../../../core/Events";
-import { setIcon } from "../../../ui/Icon";
 import { setFileTypeIcon } from "../../../ui/FileTypeIcon";
 import { SearchComponent } from "../../../ui/Setting";
+import { TreeItem } from "../../../ui/TreeItem";
 import { ItemView } from "../../../views/ItemView";
 import type { GitLogEntry } from "../GitService";
 import type { GitNavMode, GitReviewSource, ReviewFileSummary } from "../reviewSession";
@@ -163,61 +163,62 @@ export class GitNavView extends ItemView {
       );
       return;
     }
-    for (const node of tree) this.bodyEl.append(this.renderTreeNode(node));
+    for (const node of tree) this.renderTreeNode(node, this.bodyEl);
   }
 
-  private renderTreeNode(node: TreeNode): HTMLElement {
+  private renderTreeNode(node: TreeNode, parentEl: HTMLElement): void {
     if (node.kind === "folder") {
       const collapsed = this.collapsed.has(node.path);
-      const folder = createDiv(
-        `tree-item nav-folder git-nav-folder${collapsed ? " is-collapsed" : ""}`,
-      );
-      const row = createDiv(
-        {
-          cls: "tree-item-self nav-folder-title tappable is-clickable mod-collapsible git-nav-folder-row",
-          attr: { role: "button", tabindex: "0", "aria-expanded": String(!collapsed) },
-        },
-        folder,
-      );
-      const chevron = createSpan(
-        `tree-item-icon collapse-icon nav-folder-collapse-indicator${collapsed ? " is-collapsed" : ""}`,
-        row,
-      );
-      setIcon(chevron, "right-triangle");
-      createSpan({ cls: "tree-item-inner nav-folder-title-content", text: node.name }, row);
+      const item = new TreeItem(parentEl, {
+        itemClass: "nav-folder git-nav-folder",
+        selfClass: "nav-folder-title tappable is-clickable git-nav-folder-row",
+        innerClass: "nav-folder-title-content",
+        childrenClass: "nav-folder-children",
+        collapseClass: "nav-folder-collapse-indicator",
+      });
+      item.setCollapsible(true);
+      item.setCollapsed(collapsed);
+      const { selfEl: row, innerEl, childrenEl } = item;
+      row.setAttribute("role", "button");
+      row.tabIndex = 0;
+      innerEl.textContent = node.name;
       const toggle = (): void => {
         if (collapsed) this.collapsed.delete(node.path);
         else this.collapsed.add(node.path);
         this.renderBody();
       };
-      row.addEventListener("click", toggle);
+      // Row and chevron toggle identically: the chevron click bubbles to selfEl
+      // (onSelfClick), so onCollapseClick is neutered to avoid a double-toggle.
+      item.onSelfClick = toggle;
+      item.onCollapseClick = () => {};
       row.addEventListener("keydown", (event) => {
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
         toggle();
       });
-      const children = createDiv("tree-item-children nav-folder-children", folder);
-      children.hidden = collapsed;
       if (!collapsed) {
-        for (const child of node.children) children.append(this.renderTreeNode(child));
+        for (const child of node.children) this.renderTreeNode(child, childrenEl);
       }
-      return folder;
+      return;
     }
 
-    const file = createDiv("tree-item nav-file");
-    const row = createDiv(
-      {
-        cls: `tree-item-self nav-file-title tappable is-clickable git-nav-file-row${
-          this.selectedPath === node.path ? " is-active" : ""
-        }${this.viewedPaths.has(node.path) ? " is-viewed is-cut" : ""}`,
-        attr: { role: "button", tabindex: "0", title: node.path },
-      },
-      file,
-    );
+    const item = new TreeItem(parentEl, {
+      itemClass: "nav-file",
+      selfClass: `nav-file-title tappable is-clickable git-nav-file-row${
+        this.selectedPath === node.path ? " is-active" : ""
+      }${this.viewedPaths.has(node.path) ? " is-viewed is-cut" : ""}`,
+      innerClass: "nav-file-title-content",
+    });
+    const { selfEl: row, innerEl } = item;
     row.dataset.path = node.path;
+    row.setAttribute("role", "button");
+    row.tabIndex = 0;
+    row.title = node.path;
+    innerEl.textContent = node.name;
+    // Row order: file-type icon, name (innerEl), stats flair.
     const icon = createSpan("tree-item-icon nav-file-icon git-nav-file-icon", row);
     setFileTypeIcon(icon, node.path);
-    createSpan({ cls: "tree-item-inner nav-file-title-content", text: node.name }, row);
+    row.prepend(icon);
     const flair = createSpan("tree-item-flair-outer", row);
     const stat = createSpan("tree-item-flair git-nav-file-stat", flair);
     if (node.additions > 0) createEl("ins", { text: `+${node.additions}` }, stat);
@@ -234,20 +235,19 @@ export class GitNavView extends ItemView {
       this.app.git.reviewSession.activatePath(node.path);
       void this.ensureReviewLeaf();
     };
-    row.addEventListener("click", activate);
+    item.onSelfClick = activate;
     row.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
       activate();
     });
-    return file;
   }
 
   private renderHistory(): void {
     if (!this.bodyEl) return;
     const query = this.query();
     const rows = buildHistoryRows(this.history).filter((row) => this.historyMatches(row, query));
-    for (const row of rows) this.bodyEl.append(this.renderHistoryRow(row));
+    for (const row of rows) this.renderHistoryRow(row, this.bodyEl);
     if (rows.length === 0 && !this.historyLoading) {
       createDiv(
         { cls: "git-nav-empty", text: query ? "No history matches." : "No history." },
@@ -266,19 +266,18 @@ export class GitNavView extends ItemView {
     );
   }
 
-  private renderHistoryRow(row: HistoryRow): HTMLElement {
+  private renderHistoryRow(row: HistoryRow, parentEl: HTMLElement): void {
     const selected = historyRowSelected(row, this.source);
-    const item = createDiv({
-      cls: `tree-item-self git-nav-history-entry is-clickable${selected ? " is-active" : ""}`,
-      attr: {
-        role: "button",
-        tabindex: "0",
-        title: row.subject,
-        "aria-current": selected ? "true" : "false",
-      },
+    const item = new TreeItem(parentEl, {
+      itemClass: "git-nav-history-item",
+      selfClass: `git-nav-history-entry is-clickable${selected ? " is-active" : ""}`,
     });
-    const inner = createDiv("tree-item-inner", item);
-    createDiv({ cls: "tree-item-inner-text", text: row.subject }, inner);
+    const { selfEl, innerEl } = item;
+    selfEl.setAttribute("role", "button");
+    selfEl.tabIndex = 0;
+    selfEl.title = row.subject;
+    selfEl.setAttribute("aria-current", selected ? "true" : "false");
+    createDiv({ cls: "tree-item-inner-text", text: row.subject }, innerEl);
     createDiv(
       {
         cls: "tree-item-inner-subtext",
@@ -287,7 +286,7 @@ export class GitNavView extends ItemView {
             ? "local"
             : `${row.shortHash} · ${row.author} · ${formatRelativeDate(row.date)}`,
       },
-      inner,
+      innerEl,
     );
     const activate = (): void => {
       if (row.kind === "commit") {
@@ -301,13 +300,12 @@ export class GitNavView extends ItemView {
       }
       void this.ensureReviewLeaf();
     };
-    item.addEventListener("click", activate);
-    item.addEventListener("keydown", (event) => {
+    item.onSelfClick = activate;
+    selfEl.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
       activate();
     });
-    return item;
   }
 
   private renderFooter(): void {

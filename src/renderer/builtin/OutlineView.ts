@@ -1,4 +1,5 @@
 import { ItemView } from "../views/ItemView";
+import { TreeItem } from "../ui/TreeItem";
 import type { CachedMetadata } from "../metadata/MetadataCache";
 import type { TFile } from "../vault/TAbstractFile";
 import { MarkdownView } from "../views/MarkdownView";
@@ -86,22 +87,18 @@ export class OutlineView extends ItemView {
   }
 
   private renderSymbol(view: CodeFileView, symbol: CodeSymbol, parentEl: HTMLElement): void {
-    const doc = parentEl.ownerDocument;
-    const itemEl = doc.createElement("div");
-    itemEl.className = `tree-item outline-symbol mod-symbol-${symbol.kind}`;
-    itemEl.style.setProperty("--outline-heading-padding", `${symbol.depth * 14 + 8}px`);
-    const selfEl = doc.createElement("div");
-    selfEl.className = "tree-item-self outline-heading-self tappable";
-    const kindEl = doc.createElement("span");
+    const item = new TreeItem(parentEl, {
+      itemClass: `outline-symbol mod-symbol-${symbol.kind}`,
+      selfClass: "outline-heading-self tappable",
+      innerClass: "outline-heading-title",
+    });
+    item.el.style.setProperty("--outline-heading-padding", `${symbol.depth * 14 + 8}px`);
+    const kindEl = item.el.ownerDocument.createElement("span");
     kindEl.className = "outline-symbol-kind";
     kindEl.textContent = SYMBOL_KIND_BADGES[symbol.kind];
-    const titleEl = doc.createElement("div");
-    titleEl.className = "tree-item-inner outline-heading-title";
-    titleEl.textContent = symbol.name;
-    selfEl.append(kindEl, titleEl);
-    selfEl.addEventListener("click", () => view.revealLine(symbol.line));
-    itemEl.appendChild(selfEl);
-    parentEl.appendChild(itemEl);
+    item.innerEl.textContent = symbol.name;
+    item.innerEl.before(kindEl);
+    item.onSelfClick = () => view.revealLine(symbol.line);
   }
 
   private renderHeading(
@@ -109,27 +106,22 @@ export class OutlineView extends ItemView {
     heading: NonNullable<CachedMetadata["headings"]>[number],
     parentEl: HTMLElement,
   ): void {
-    const doc = parentEl.ownerDocument;
-    const itemEl = doc.createElement("div");
-    itemEl.className = `tree-item outline-heading mod-heading-${heading.level}`;
-    itemEl.style.setProperty(
+    const item = new TreeItem(parentEl, {
+      itemClass: `outline-heading mod-heading-${heading.level}`,
+      selfClass: "outline-heading-self tappable",
+      innerClass: "outline-heading-title",
+    });
+    item.el.style.setProperty(
       "--outline-heading-padding",
       `${Math.max(0, heading.level - 1) * 14 + 8}px`,
     );
-    const selfEl = doc.createElement("div");
-    selfEl.className = "tree-item-self outline-heading-self tappable";
-    const titleEl = doc.createElement("div");
-    titleEl.className = "tree-item-inner outline-heading-title";
-    titleEl.textContent = heading.heading;
-    selfEl.appendChild(titleEl);
-    selfEl.addEventListener("click", () => {
+    item.innerEl.textContent = heading.heading;
+    item.onSelfClick = () => {
       void this.app.workspace.openFile(file, {
         active: true,
         eState: heading.position ? { line: heading.position.line } : undefined,
       });
-    });
-    itemEl.appendChild(selfEl);
-    parentEl.appendChild(itemEl);
+    };
   }
 
   private renderEmpty(text: string): void {

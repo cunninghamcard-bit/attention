@@ -73,7 +73,7 @@ async function settle(): Promise<void> {
 beforeEach(() => renderedDiffs.splice(0));
 
 describe("native Git views", () => {
-  it("renders Git Changes with native rows and controls", async () => {
+  it("nests Git Changes files under collapsible sections", async () => {
     const fake = bridge({ statusText: "M  staged.ts\n M working.ts\n" });
     const app = await appWithBridge(fake);
     await app.vault.create("staged.ts", "staged\n");
@@ -83,8 +83,24 @@ describe("native Git views", () => {
     const view = leaf.view as GitChangesView;
     await settle();
 
-    expect(view.contentEl.querySelectorAll(".git-changes-section.tree-item-self")).toHaveLength(2);
-    expect(view.contentEl.querySelectorAll(".git-changes-file.tree-item.nav-file")).toHaveLength(2);
+    // Sections are collapsible TreeItem parents with a native collapse chevron.
+    const sections = view.contentEl.querySelectorAll(
+      ".git-changes-section-item.tree-item.nav-folder",
+    );
+    expect(sections).toHaveLength(2);
+    expect(
+      view.contentEl.querySelectorAll(".git-changes-section.tree-item-self.mod-collapsible"),
+    ).toHaveLength(2);
+    expect(
+      view.contentEl.querySelectorAll(".git-changes-section .nav-folder-collapse-indicator"),
+    ).toHaveLength(2);
+
+    // Each file row is nested inside its section's tree-item-children box.
+    expect(
+      view.contentEl.querySelectorAll(
+        ".git-changes-section-item > .tree-item-children > .git-changes-file.tree-item.nav-file",
+      ),
+    ).toHaveLength(2);
     expect(view.contentEl.querySelectorAll(".git-changes-file-header.tree-item-self")).toHaveLength(
       2,
     );
@@ -94,6 +110,14 @@ describe("native Git views", () => {
     ).toHaveLength(2);
     expect(view.contentEl.querySelectorAll(".git-changes-stage.clickable-icon")).toHaveLength(2);
     expect(renderedDiffs).toHaveLength(2);
+
+    // Clicking a section header toggles its nested files (collapse state).
+    const section = sections[0];
+    const header = section.querySelector(".git-changes-section") as HTMLElement;
+    const children = section.querySelector(":scope > .tree-item-children") as HTMLElement;
+    expect(children.hidden).toBe(false);
+    header.click();
+    expect(children.hidden).toBe(true);
   });
 
   it("preserves Git Changes unavailable and empty states", async () => {

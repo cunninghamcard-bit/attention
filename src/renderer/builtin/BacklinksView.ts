@@ -2,6 +2,7 @@ import { ItemView } from "../views/ItemView";
 import type { LinkGraphEdge } from "../metadata/LinkGraph";
 import type { TFile } from "../vault/TAbstractFile";
 import { MarkdownView } from "../views/MarkdownView";
+import { TreeItem } from "../ui/TreeItem";
 
 export class BacklinksView extends ItemView {
   file: TFile | null = null;
@@ -52,18 +53,18 @@ export class BacklinksView extends ItemView {
   }
 
   private renderSection(title: string, backlinks: LinkGraphEdge[], emptyText: string): void {
-    const doc = this.contentEl.ownerDocument;
-    const sectionEl = doc.createElement("div");
-    sectionEl.className = "backlink-pane-section";
-    const titleEl = doc.createElement("div");
-    titleEl.className = "tree-item-self backlink-pane-section-header";
+    // The section IS a tree row: header = selfEl, results box = childrenEl.
+    // Not collapsible (unchanged behaviour) — construction only moves to TreeItem.
+    const section = new TreeItem(this.contentEl, {
+      itemClass: "backlink-pane-section",
+      selfClass: "backlink-pane-section-header",
+      childrenClass: "search-results-children backlink-pane-results",
+    });
+    const { innerEl: titleEl, childrenEl } = section;
     titleEl.textContent = `${title}${backlinks.length ? ` ${backlinks.length}` : ""}`;
-    const childrenEl = doc.createElement("div");
-    childrenEl.className = "search-results-children backlink-pane-results";
-    sectionEl.append(titleEl, childrenEl);
 
     if (backlinks.length === 0) {
-      const emptyEl = doc.createElement("div");
+      const emptyEl = childrenEl.ownerDocument.createElement("div");
       emptyEl.className = "search-empty-state";
       emptyEl.textContent = emptyText;
       childrenEl.appendChild(emptyEl);
@@ -71,8 +72,6 @@ export class BacklinksView extends ItemView {
       for (const backlink of backlinks.sort((a, b) => a.from.localeCompare(b.from)))
         this.renderBacklink(backlink, childrenEl);
     }
-
-    this.contentEl.appendChild(sectionEl);
   }
 
   private renderBacklink(backlink: LinkGraphEdge, parentEl: HTMLElement): void {

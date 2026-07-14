@@ -2,6 +2,7 @@ import { ItemView } from "../views/ItemView";
 import type { LinkGraphEdge } from "../metadata/LinkGraph";
 import type { TFile } from "../vault/TAbstractFile";
 import { MarkdownView } from "../views/MarkdownView";
+import { TreeItem } from "../ui/TreeItem";
 
 export class OutgoingLinksView extends ItemView {
   private file: TFile | null = null;
@@ -49,18 +50,18 @@ export class OutgoingLinksView extends ItemView {
   }
 
   private renderSection(title: string, links: LinkGraphEdge[], emptyText: string): void {
-    const doc = this.contentEl.ownerDocument;
-    const sectionEl = doc.createElement("div");
-    sectionEl.className = "outgoing-link-pane-section";
-    const titleEl = doc.createElement("div");
-    titleEl.className = "tree-item-self outgoing-link-pane-section-header";
+    // The section IS a tree row: header = selfEl, results box = childrenEl.
+    // Not collapsible (unchanged behaviour) — construction only moves to TreeItem.
+    const section = new TreeItem(this.contentEl, {
+      itemClass: "outgoing-link-pane-section",
+      selfClass: "outgoing-link-pane-section-header",
+      childrenClass: "search-results-children outgoing-link-pane-results",
+    });
+    const { innerEl: titleEl, childrenEl } = section;
     titleEl.textContent = `${title}${links.length ? ` ${links.length}` : ""}`;
-    const childrenEl = doc.createElement("div");
-    childrenEl.className = "search-results-children outgoing-link-pane-results";
-    sectionEl.append(titleEl, childrenEl);
 
     if (links.length === 0) {
-      const emptyEl = doc.createElement("div");
+      const emptyEl = childrenEl.ownerDocument.createElement("div");
       emptyEl.className = "search-empty-state";
       emptyEl.textContent = emptyText;
       childrenEl.appendChild(emptyEl);
@@ -68,8 +69,6 @@ export class OutgoingLinksView extends ItemView {
       for (const link of links.sort((a, b) => a.to.localeCompare(b.to)))
         this.renderLink(link, childrenEl);
     }
-
-    this.contentEl.appendChild(sectionEl);
   }
 
   private renderLink(link: LinkGraphEdge, parentEl: HTMLElement): void {

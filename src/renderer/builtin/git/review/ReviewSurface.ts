@@ -10,6 +10,7 @@ import { setIcon } from "../../../ui/Icon";
 import { Notice } from "../../../ui/Notice";
 import { setFileTypeIcon } from "../../../ui/FileTypeIcon";
 import { ProgressBarComponent, SearchComponent } from "../../../ui/Setting";
+import { TreeItem } from "../../../ui/TreeItem";
 import {
   isViewed,
   readDiffStyle,
@@ -230,22 +231,25 @@ export class ReviewSurface {
     this.rowEls.clear();
     list.empty();
     for (const file of this.visibleFiles()) {
-      const item = createDiv("tree-item nav-file", list);
-      const row = createDiv(
-        {
-          cls: `tree-item-self nav-file-title tappable is-clickable review-file-row${this.activePath === file.path ? " is-active" : ""}${isViewed(this.viewed, file) ? " is-viewed is-cut" : ""}`,
-          attr: { role: "button", tabindex: "0", title: file.path },
-        },
-        item,
-      );
+      // Leaf file row: the shared tree-item structure, no chevron (not collapsible).
+      const item = new TreeItem(list, {
+        itemClass: "nav-file",
+        selfClass: "nav-file-title tappable is-clickable review-file-row",
+        innerClass: "nav-file-title-content review-file-row-name",
+      });
+      const row = item.selfEl;
+      row.classList.toggle("is-active", this.activePath === file.path);
+      if (isViewed(this.viewed, file)) row.classList.add("is-viewed", "is-cut");
+      row.setAttribute("role", "button");
+      row.setAttribute("tabindex", "0");
+      row.setAttribute("title", file.path);
       this.rowEls.set(file.path, row);
-      const icon = createSpan("tree-item-icon nav-file-icon", row);
+      const icon = createSpan("tree-item-icon nav-file-icon");
       setFileTypeIcon(icon, file.path);
-      createSpan(
-        { cls: "tree-item-inner nav-file-title-content review-file-row-name", text: file.path },
-        row,
-      );
-      const flair = createSpan("tree-item-flair-outer", row);
+      item.innerEl.textContent = file.path;
+      item.innerEl.before(icon);
+      const flair = createSpan("tree-item-flair-outer");
+      item.innerEl.after(flair);
       const stat = createSpan("tree-item-flair review-file-row-stat", flair);
       if (file.additions > 0) createEl("ins", { text: `+${file.additions}` }, stat);
       if (file.deletions > 0) createEl("del", { text: `−${file.deletions}` }, stat);
@@ -258,7 +262,7 @@ export class ReviewSurface {
         flair,
       );
       const activate = (): void => this.activatePath(file.path);
-      row.addEventListener("click", activate);
+      item.onSelfClick = activate;
       row.addEventListener("keydown", (event) => {
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
@@ -407,26 +411,22 @@ export class ReviewSurface {
   private renderHeader(path: string): HTMLElement | null {
     const file = this.props.files.find((candidate) => candidate.path === path);
     if (!file) return null;
-    const header = createDiv(
-      `tree-item-self review-card-header is-clickable mod-collapsible${
-        this.activePath === path ? " is-active" : ""
-      }`,
-    );
+    // Collapsible diff-card header. TreeItem builds the row and chevron; the card
+    // body is pierre's, so we return the bare selfEl (the wrapper/children box the
+    // constructor makes is discarded when pierre re-parents the header).
+    const item = new TreeItem(document.createElement("div"), {
+      selfClass: "review-card-header is-clickable",
+      innerClass: "nav-file-title-content review-card-path",
+    });
+    item.setCollapsible(true);
+    item.setCollapsed(this.collapsed.has(path));
+    const header = item.selfEl;
+    header.classList.toggle("is-active", this.activePath === path);
     this.headerEls.set(path, header);
-    const chevron = createSpan(
-      `tree-item-icon collapse-icon${this.collapsed.has(path) ? " is-collapsed" : ""}`,
-      header,
-    );
-    setIcon(chevron, "right-triangle");
-    createSpan(
-      {
-        cls: "tree-item-inner nav-file-title-content review-card-path",
-        text: path,
-        attr: { title: path },
-      },
-      header,
-    );
-    const actionsEl = createSpan("tree-item-flair-outer review-card-actions", header);
+    item.innerEl.textContent = path;
+    item.innerEl.setAttribute("title", path);
+    const actionsEl = createSpan("tree-item-flair-outer review-card-actions");
+    item.innerEl.after(actionsEl);
     const stat = createSpan("tree-item-flair review-card-stat", actionsEl);
     if (file.binary) createSpan({ cls: "review-card-binary", text: "binary" }, stat);
     else {
@@ -456,11 +456,14 @@ export class ReviewSurface {
       event.stopPropagation();
       this.markViewed(file, !viewedState);
     });
-    header.addEventListener("click", () => {
+    // Row and chevron toggle identically: the chevron click bubbles to selfEl and
+    // onCollapseClick is neutered so it does not fight this collapse-state toggle.
+    item.onSelfClick = () => {
       if (this.collapsed.has(path)) this.collapsed.delete(path);
       else this.collapsed.add(path);
       this.render();
-    });
+    };
+    item.onCollapseClick = () => {};
     return header;
   }
 
