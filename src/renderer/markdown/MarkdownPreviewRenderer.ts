@@ -362,6 +362,13 @@ export class MarkdownPreviewRenderer {
     this.clearSizer();
     const pusherEl = document.createElement("div");
     pusherEl.className = "markdown-preview-pusher";
+    // A non-zero height (matching the reference renderer's 1px x 0.1px) keeps
+    // the pusher from self-collapsing its margins: with height 0 the large
+    // margin-bottom set during virtual scrolling collapses up through the
+    // empty div and becomes the sizer's top margin, displacing the whole sizer
+    // downward and doubling the scroll height (a huge blank gap below content).
+    pusherEl.style.width = "1px";
+    pusherEl.style.height = "0.1px";
     this.pusherEl = pusherEl;
     const contentEl = document.createElement("div");
     contentEl.className = "markdown-preview-section";
