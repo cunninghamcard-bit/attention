@@ -65,8 +65,8 @@ describe("local Git theme contract", () => {
 
     expect(changes).toContain("tree-item-self nav-file-title tappable is-clickable");
     expect(history).toContain("tree-item-self git-history-row");
-    expect(log).toContain("createNavFolder(this.listEl, true)");
-    expect(log).toContain("createNavFolder(detailEl, true)");
+    expect(log).toContain('selfClass: "nav-folder-title tappable is-clickable git-log-header"');
+    expect(log).toContain('selfClass: "nav-folder-title tappable is-clickable git-log-file"');
     expect(nav).toContain("tree-item-self nav-folder-title tappable is-clickable");
     expect(nav).toContain("tree-item-self nav-file-title tappable is-clickable");
     expect(nav).toContain("tree-item-self git-nav-history-entry is-clickable");
