@@ -108,6 +108,7 @@ vi.mock("@pierre/diffs", async (importOriginal) => {
 
 import { GitReviewView, openGitReview } from "@web/builtin/git/review/GitReviewView";
 import { readViewed } from "@web/builtin/git/review/reviewModel";
+import { ReviewSurface } from "@web/builtin/git/review/ReviewSurface";
 
 function fakeBridge(options: { numstat?: string } = {}): ElectronGitApi & {
   calls: string[][];
@@ -155,6 +156,49 @@ async function until(condition: () => boolean, what: string): Promise<void> {
 }
 
 describe("GitReviewView", () => {
+  it("renders shared review navigation with native primitives", () => {
+    const host = document.createElement("div");
+    const surface = new ReviewSurface(host, {
+      title: "Files changed",
+      storageRoot: null,
+      files: [
+        {
+          path: "src/agent.ts",
+          status: "modified",
+          additions: 3,
+          deletions: 2,
+          fingerprint: "one",
+          binary: false,
+          fileDiff: {} as never,
+        },
+        {
+          path: "notes.md",
+          status: "added",
+          additions: 1,
+          deletions: 0,
+          fingerprint: "two",
+          binary: false,
+          fileDiff: {} as never,
+        },
+      ],
+    });
+
+    expect(host.querySelector(".review-filter.search-input-container input")).not.toBeNull();
+    expect(host.querySelectorAll(".review-file-row.tree-item-self.nav-file-title")).toHaveLength(2);
+    expect(host.querySelector(".review-file-row .file-type-icon")).not.toBeNull();
+    expect(host.querySelector(".review-file-row-stat")?.textContent).toBe("+3−2");
+    expect(
+      host.querySelector('.review-file-row-status[aria-label="Git status: modified"]'),
+    ).not.toBeNull();
+
+    const search = host.querySelector(".review-filter input") as HTMLInputElement;
+    search.value = "notes";
+    search.dispatchEvent(new Event("input"));
+    expect(host.querySelectorAll(".review-file-row")).toHaveLength(1);
+    expect(search).toBe(host.querySelector(".review-filter input"));
+    surface.destroy();
+  });
+
   it("opens git-nav on the right beside git-review", async () => {
     const { app } = await reviewApp();
     await openGitReview(app);
@@ -182,6 +226,9 @@ describe("GitReviewView", () => {
     await openGitReview(app);
     const view = app.workspace.getLeavesOfType(GitReviewView.VIEW_TYPE)[0].view as GitReviewView;
     await until(() => view.contentEl.querySelectorAll(".review-card-header").length === 2, "cards");
+    expect(view.contentEl.querySelector(".review-card-header.tree-item-self")).not.toBeNull();
+    expect(view.contentEl.querySelector(".review-card-path.tree-item-inner")).not.toBeNull();
+    expect(view.contentEl.querySelector(".review-viewed.clickable-icon")).not.toBeNull();
     expect(view.contentEl.querySelector(".review-card-actions .review-card-action")).toBeNull();
     expect(view.contentEl.textContent).not.toMatch(/\b(Open|Edit)\b/);
     expect(view.contentEl.querySelector(".review-add-comment")).toBeNull();
@@ -200,7 +247,7 @@ describe("GitReviewView", () => {
     expect(view.contentEl.querySelector(".review-toolbar-toggle")).toBeNull();
   });
 
-  it("uses the vanilla code view core in the review surface", async () => {
+  it("keeps local review navigation external", async () => {
     codeViews.length = 0;
     const { app } = await reviewApp();
     await openGitReview(app);
@@ -209,6 +256,8 @@ describe("GitReviewView", () => {
 
     expect(codeViews).toHaveLength(1);
     expect(view.contentEl.querySelector(".review-surface.is-nav-external")).not.toBeNull();
+    expect((view.contentEl.querySelector(".review-sidebar") as HTMLElement).hidden).toBe(true);
+    expect((view.contentEl.querySelector(".review-toolbar") as HTMLElement).hidden).toBe(true);
     expect(app.workspace.getLeavesOfType("git-nav")[0].getRoot()).toBe(app.workspace.rightSplit);
   });
 
@@ -283,7 +332,7 @@ describe("GitReviewView", () => {
     await openGitReview(app);
     const view = app.workspace.getLeavesOfType(GitReviewView.VIEW_TYPE)[0].view as GitReviewView;
     await until(
-      () => view.contentEl.querySelectorAll(".review-viewed .git-check").length === 2,
+      () => view.contentEl.querySelectorAll(".review-viewed").length === 2,
       "viewed controls",
     );
     (view.contentEl.querySelector(".review-viewed") as HTMLButtonElement).click();

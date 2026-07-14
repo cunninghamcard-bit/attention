@@ -51,6 +51,46 @@ describe("local Git theme contract", () => {
       expect(source).toContain("diff.setThemeType(themeType)");
     }
   });
+
+  it("contains Git styling to native primitives", async () => {
+    const [changes, history, log, nav, review, changeStyles, reviewStyles] = await Promise.all([
+      readProjectFile("src/renderer/builtin/git/GitChangesView.ts"),
+      readProjectFile("src/renderer/builtin/git/GitHistoryView.ts"),
+      readProjectFile("src/renderer/builtin/git/GitLogView.ts"),
+      readProjectFile("src/renderer/builtin/git/review/GitNavView.ts"),
+      readProjectFile("src/renderer/builtin/git/review/ReviewSurface.ts"),
+      readProjectFile("src/renderer/styles/product/git-changes.css"),
+      readProjectFile("src/renderer/styles/product/git-review.css"),
+    ]);
+
+    expect(changes).toContain("tree-item-self nav-file-title tappable is-clickable");
+    expect(history).toContain("tree-item-self git-history-row");
+    expect(log).toContain("tree-item-self nav-folder-title tappable is-clickable");
+    expect(log).toContain("tree-item-self nav-file-title tappable is-clickable");
+    expect(nav).toContain("tree-item-self nav-folder-title tappable is-clickable");
+    expect(nav).toContain("tree-item-self nav-file-title tappable is-clickable");
+    expect(nav).toContain("tree-item-self git-nav-history-entry is-clickable");
+    expect(nav).not.toContain("style.paddingLeft");
+    expect(review).toContain("tree-item-self review-card-header is-clickable");
+    expect(review).toContain("new SearchComponent(searchRow)");
+    expect(review).toContain("tree-item-self nav-file-title tappable is-clickable review-file-row");
+    expect(review).toContain("clickable-icon review-viewed");
+    expect(review).not.toContain("review-status-dot");
+    expect(changeStyles).not.toMatch(
+      /\.git-(changes-file|history-entry|log-entry)\s*\{[^}]*border/s,
+    );
+    for (const selector of [
+      ".git-nav .git-nav-folder-row",
+      ".git-nav .git-nav-file-row",
+      ".git-nav .git-nav-history-entry",
+      ".review-card-header {",
+      ".review-sidebar .review-file-row",
+      ".review-status-dot",
+      ".review-commit-",
+    ]) {
+      expect(reviewStyles).not.toContain(selector);
+    }
+  });
 });
 
 async function readProjectFile(path: string): Promise<string> {

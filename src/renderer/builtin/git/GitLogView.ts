@@ -1,6 +1,7 @@
 import { FileDiff } from "@pierre/diffs";
 import { ItemView } from "../../views/ItemView";
 import { setIcon } from "../../ui/Icon";
+import { setFileTypeIcon } from "../../ui/FileTypeIcon";
 import type { GitFileStatus, GitLogEntry, GitNumstatEntry, GitService } from "./GitService";
 
 const LOG_LIMIT = 100;
@@ -97,27 +98,33 @@ export class GitLogView extends ItemView {
     if (!this.listEl) return;
     const doc = this.listEl.ownerDocument;
     const itemEl = doc.createElement("div");
-    itemEl.className = "git-log-entry";
+    itemEl.className = "tree-item nav-folder git-log-entry";
     const headerEl = doc.createElement("div");
-    headerEl.className = "git-log-header tappable";
+    headerEl.className =
+      "tree-item-self nav-folder-title tappable is-clickable mod-collapsible git-log-header";
     const iconEl = doc.createElement("span");
-    setIcon(iconEl, "lucide-git-commit");
+    iconEl.className = "tree-item-icon collapse-icon is-collapsed";
+    setIcon(iconEl, "right-triangle");
+    const contentEl = doc.createElement("span");
+    contentEl.className = "tree-item-inner";
     const subjectEl = doc.createElement("span");
     subjectEl.className = "git-log-subject";
     subjectEl.textContent = entry.subject;
     const metaEl = doc.createElement("span");
-    metaEl.className = "git-log-meta";
+    metaEl.className = "tree-item-inner-subtext git-log-meta";
     metaEl.textContent = `${entry.shortHash} · ${entry.author} · ${new Date(entry.date).toLocaleString()}`;
-    headerEl.append(iconEl, subjectEl, metaEl);
+    contentEl.append(subjectEl, metaEl);
+    headerEl.append(iconEl, contentEl);
     itemEl.appendChild(headerEl);
     const detailEl = doc.createElement("div");
-    detailEl.className = "git-log-detail";
-    detailEl.style.display = "none";
+    detailEl.className = "tree-item-children nav-folder-children git-log-detail";
+    detailEl.hidden = true;
     itemEl.appendChild(detailEl);
     let loaded = false;
     headerEl.addEventListener("click", () => {
-      const open = detailEl.style.display !== "none";
-      detailEl.style.display = open ? "none" : "";
+      const open = !detailEl.hidden;
+      detailEl.hidden = open;
+      iconEl.classList.toggle("is-collapsed", open);
       itemEl.classList.toggle("is-expanded", !open);
       if (!open && !loaded) {
         loaded = true;
@@ -143,22 +150,26 @@ export class GitLogView extends ItemView {
     }
     for (const row of rows) {
       const rowEl = doc.createElement("div");
-      rowEl.className = "git-log-file tappable";
+      rowEl.className =
+        "tree-item-self nav-file-title tappable is-clickable mod-collapsible git-log-file";
+      const iconEl = doc.createElement("span");
+      iconEl.className = "tree-item-icon nav-file-icon";
+      setFileTypeIcon(iconEl, row.path);
       const nameEl = doc.createElement("span");
-      nameEl.className = "git-log-file-name";
+      nameEl.className = "tree-item-inner nav-file-title-content git-log-file-name";
       nameEl.textContent = row.path;
       const statEl = doc.createElement("span");
-      statEl.className = "git-log-file-stats";
-      statEl.textContent = `${row.status} +${row.additions} −${row.deletions}`;
-      rowEl.append(nameEl, statEl);
+      statEl.className = "tree-item-flair git-log-file-stats";
+      statEl.textContent = `${row.status}  +${row.additions}  −${row.deletions}`;
+      rowEl.append(iconEl, nameEl, statEl);
       detailEl.appendChild(rowEl);
       const diffHost = doc.createElement("div");
-      diffHost.style.display = "none";
+      diffHost.hidden = true;
       detailEl.appendChild(diffHost);
       let diffLoaded = false;
       rowEl.addEventListener("click", () => {
-        const open = diffHost.style.display !== "none";
-        diffHost.style.display = open ? "none" : "";
+        const open = !diffHost.hidden;
+        diffHost.hidden = open;
         if (!open && !diffLoaded) {
           diffLoaded = true;
           void this.renderFileDiff(entry.hash, row.path, diffHost);
@@ -192,7 +203,7 @@ export class GitLogView extends ItemView {
   private renderMessage(text: string): void {
     if (!this.listEl) return;
     const messageEl = this.listEl.ownerDocument.createElement("div");
-    messageEl.className = "git-changes-message";
+    messageEl.className = "empty-state git-changes-message";
     messageEl.textContent = text;
     this.listEl.appendChild(messageEl);
   }

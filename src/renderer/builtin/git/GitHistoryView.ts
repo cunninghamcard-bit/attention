@@ -4,6 +4,8 @@ import type { ViewStateResult } from "../../views/View";
 import { Notice } from "../../ui/Notice";
 import type { GitLogEntry } from "./GitService";
 import { openGitReview } from "./review/GitReviewView";
+import { setIcon } from "../../ui/Icon";
+import { setTooltip } from "../../ui/Popover";
 
 /**
  * Commit history for one file (git log --follow). Each entry offers the two
@@ -70,32 +72,45 @@ export class GitHistoryView extends ItemView {
     if (!this.listEl || !this.path) return;
     const doc = this.listEl.ownerDocument;
     const itemEl = doc.createElement("div");
-    itemEl.className = "git-history-entry";
+    itemEl.className = "tree-item git-history-entry";
+    const rowEl = doc.createElement("div");
+    rowEl.className = "tree-item-self git-history-row";
+    const contentEl = doc.createElement("div");
+    contentEl.className = "tree-item-inner";
     const subjectEl = doc.createElement("div");
     subjectEl.className = "git-history-subject";
     subjectEl.textContent = entry.subject;
     const metaEl = doc.createElement("div");
     metaEl.className = "git-history-meta";
     metaEl.textContent = `${entry.shortHash} · ${entry.author} · ${new Date(entry.date).toLocaleString()}`;
+    contentEl.append(subjectEl, metaEl);
     const actionsEl = doc.createElement("div");
-    actionsEl.className = "git-history-actions";
+    actionsEl.className = "tree-item-flair-outer git-history-actions";
     actionsEl.append(
       this.actionButton(
+        "lucide-file-diff",
         "Review commit",
         () =>
           void openGitReview(this.app, { kind: "commit", ref: entry.hash, subject: entry.subject }),
       ),
-      this.actionButton("View version", () => void this.viewVersion(entry)),
-      this.actionButton("Diff vs working", () => void this.diffAgainstWorking(entry)),
+      this.actionButton("lucide-eye", "View version", () => void this.viewVersion(entry)),
+      this.actionButton(
+        "lucide-git-compare",
+        "Diff vs working",
+        () => void this.diffAgainstWorking(entry),
+      ),
     );
-    itemEl.append(subjectEl, metaEl, actionsEl);
+    rowEl.append(contentEl, actionsEl);
+    itemEl.appendChild(rowEl);
     this.listEl.appendChild(itemEl);
   }
 
-  private actionButton(label: string, onClick: () => void): HTMLButtonElement {
+  private actionButton(icon: string, label: string, onClick: () => void): HTMLButtonElement {
     const buttonEl = this.contentEl.ownerDocument.createElement("button");
-    buttonEl.className = "git-history-action";
-    buttonEl.textContent = label;
+    buttonEl.className = "clickable-icon git-history-action";
+    setIcon(buttonEl, icon);
+    setTooltip(buttonEl, label);
+    buttonEl.setAttribute("aria-label", label);
     buttonEl.addEventListener("click", onClick);
     return buttonEl;
   }
@@ -147,7 +162,7 @@ export class GitHistoryView extends ItemView {
   private renderMessage(text: string): void {
     if (!this.listEl) return;
     const messageEl = this.listEl.ownerDocument.createElement("div");
-    messageEl.className = "git-changes-message";
+    messageEl.className = "empty-state git-changes-message";
     messageEl.textContent = text;
     this.listEl.appendChild(messageEl);
   }

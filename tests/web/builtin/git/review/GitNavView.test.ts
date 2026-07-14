@@ -68,10 +68,12 @@ describe("GitNavView", () => {
       () => nav.contentEl.querySelectorAll(".git-nav-history-entry").length >= 2,
       "history rows",
     );
-    const rows = [...nav.contentEl.querySelectorAll<HTMLButtonElement>(".git-nav-history-entry")];
+    const rows = [...nav.contentEl.querySelectorAll<HTMLElement>(".git-nav-history-entry")];
     const workingTree = rows.find((row) => row.textContent?.includes("Uncommitted changes"));
     const commit = rows.find((row) => row.textContent?.includes("seed"));
-    expect(commit?.querySelector(".git-nav-history-meta")?.children).toHaveLength(2);
+    expect(commit?.classList).toContain("tree-item-self");
+    expect(commit?.classList).toContain("is-clickable");
+    expect(commit?.querySelector(".tree-item-inner-subtext")?.textContent).toContain("aaa · Ada ·");
     commit?.click();
     expect(app.git.reviewSession.source).toMatchObject({ kind: "commit", ref: "aaa" });
     workingTree?.click();
@@ -82,8 +84,8 @@ describe("GitNavView", () => {
     const app = await createApp();
     app.git.reviewSession.publishFiles(FILES);
     const nav = await openNav(app);
-    const file = [...nav.contentEl.querySelectorAll<HTMLButtonElement>(".git-nav-file-row")].find(
-      (row) => row.textContent?.includes("a.ts"),
+    const file = [...nav.contentEl.querySelectorAll<HTMLElement>(".git-nav-file-row")].find((row) =>
+      row.textContent?.includes("a.ts"),
     );
     file?.click();
     file?.click();
@@ -111,6 +113,12 @@ describe("GitNavView", () => {
     expect(icon?.dataset.iconToken).toBe("typescript");
     expect(icon?.querySelector("svg")?.dataset.iconToken).toBe("typescript");
     const row = nav.contentEl.querySelector('[data-path="src/a.ts"]') as HTMLElement;
+    expect(row.matches(".tree-item-self.nav-file-title.is-clickable")).toBe(true);
+    expect(row.closest(".tree-item.nav-file")).not.toBeNull();
+    expect(row.querySelector(".tree-item-inner.nav-file-title-content")).not.toBeNull();
+    expect(row.querySelector(".tree-item-flair-outer .tree-item-flair")).not.toBeNull();
+    expect(nav.contentEl.querySelector(".tree-item.nav-folder > .nav-folder-title")).not.toBeNull();
+    expect(nav.contentEl.querySelector(".nav-folder > .tree-item-children")).not.toBeNull();
     expect(row.querySelector(".git-nav-file-stat")?.textContent).toBe("+1−2");
     expect(row.querySelector(".git-nav-file-status")?.textContent).toBe("M");
     expect(row.querySelector(".git-nav-status-dot")).toBeNull();
@@ -123,10 +131,10 @@ describe("GitNavView", () => {
     const row = nav.contentEl.querySelector('[data-path="src/a.ts"]') as HTMLElement;
     app.git.reviewSession.selectPath("src/a.ts");
     expect(nav.contentEl.contains(row)).toBe(true);
-    expect(row.classList).toContain("is-selected");
+    expect(row.classList).toContain("is-active");
     app.git.reviewSession.selectPath("src/lib/b.ts");
     expect(nav.contentEl.contains(row)).toBe(true);
-    expect(row.classList).not.toContain("is-selected");
+    expect(row.classList).not.toContain("is-active");
   });
 
   it("mutes viewed files in the nav tree", async () => {
@@ -135,6 +143,7 @@ describe("GitNavView", () => {
     const nav = await openNav(app);
     app.git.reviewSession.publishViewed(["src/a.ts"]);
     expect(nav.contentEl.querySelector('[data-path="src/a.ts"]')?.classList).toContain("is-viewed");
+    expect(nav.contentEl.querySelector('[data-path="src/a.ts"]')?.classList).toContain("is-cut");
     expect(nav.contentEl.querySelector('[data-path="src/lib/b.ts"]')?.classList).not.toContain(
       "is-viewed",
     );
@@ -156,12 +165,13 @@ describe("GitNavView", () => {
     const nav = await openNav(app);
     app.git.reviewSession.setMode("history");
     await until(
-      () => nav.contentEl.querySelector(".git-nav-history-entry.with-metadata") !== null,
+      () => nav.contentEl.querySelector(".git-nav-history-entry") !== null,
       "commit history row",
     );
-    expect(
-      nav.contentEl.querySelector(".git-nav-history-meta")?.lastElementChild?.textContent,
-    ).toBe("2h ago");
+    const metadata = [...nav.contentEl.querySelectorAll(".tree-item-inner-subtext")].find((el) =>
+      el.textContent?.includes("Ada"),
+    );
+    expect(metadata?.textContent).toContain("2h ago");
   });
 
   it("suppresses history load-more while filtering", async () => {
@@ -196,7 +206,7 @@ describe("GitNavView", () => {
       "tree rows",
     );
     expect(app.workspace.getLeavesOfType("git-review")).toHaveLength(0);
-    nav.contentEl.querySelector<HTMLButtonElement>(".git-nav-file-row")?.click();
+    nav.contentEl.querySelector<HTMLElement>(".git-nav-file-row")?.click();
     await until(
       () => app.workspace.getLeavesOfType("git-review").length === 1,
       "review center leaf",

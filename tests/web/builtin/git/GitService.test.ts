@@ -164,7 +164,7 @@ describe("GitService", () => {
     await expect(app.git.readFileAt("v1.0", "agent.ts")).resolves.toBe("tagged content\n");
   });
 
-  it("renders file history and diffs a historical version", async () => {
+  it("renders File History with native rows and actions", async () => {
     const { GitHistoryView, openFileHistory } = await import("@web/builtin/git/GitHistoryView");
     const app = await appWithGit({ "agent.ts": "historic content\n" });
     await app.vault.create("agent.ts", "current content\n");
@@ -179,9 +179,12 @@ describe("GitService", () => {
       (el) => el.textContent,
     );
     expect(subjects).toEqual(["first commit", "second commit"]);
+    expect(view.contentEl.querySelectorAll(".git-history-entry.tree-item")).toHaveLength(2);
+    expect(view.contentEl.querySelectorAll(".git-history-row.tree-item-self")).toHaveLength(2);
+    expect(view.contentEl.querySelectorAll(".git-history-action.clickable-icon")).toHaveLength(6);
 
-    const diffButton = [...view.contentEl.querySelectorAll(".git-history-action")].find(
-      (el) => el.textContent === "Diff vs working",
+    const diffButton = view.contentEl.querySelector(
+      '.git-history-action[aria-label="Diff vs working"]',
     ) as HTMLButtonElement;
     diffButton.click();
     await new Promise((resolve) => setTimeout(resolve, 100));

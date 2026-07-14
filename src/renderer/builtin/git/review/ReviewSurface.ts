@@ -8,7 +8,8 @@ import { getOrCreateWorkerPoolSingleton, type WorkerPoolManager } from "@pierre/
 import { createDiv, createEl, createSpan } from "../../../dom/dom";
 import { setIcon } from "../../../ui/Icon";
 import { Notice } from "../../../ui/Notice";
-import { renderCheck } from "./checkControl";
+import { setFileTypeIcon } from "../../../ui/FileTypeIcon";
+import { ProgressBarComponent, SearchComponent } from "../../../ui/Setting";
 import {
   isViewed,
   readDiffStyle,
@@ -188,19 +189,23 @@ export class ReviewSurface {
     if (this.props.showFileSidebar === false) return;
     this.rowEls.clear();
     this.sidebarEl.empty();
-    createDiv({ cls: "review-sidebar-title", text: this.props.title }, this.sidebarEl);
+    const heading = createDiv("tree-item-self review-sidebar-title", this.sidebarEl);
+    createSpan({ cls: "tree-item-inner", text: this.props.title }, heading);
     if (this.props.subtitle) {
-      createDiv({ cls: "review-sidebar-subtitle", text: this.props.subtitle }, this.sidebarEl);
+      createDiv(
+        { cls: "tree-item-inner-subtext review-sidebar-subtitle", text: this.props.subtitle },
+        this.sidebarEl,
+      );
     }
-    const filter = createEl(
-      "input",
-      { cls: "review-filter", attr: { type: "search" }, placeholder: "Filter files" },
-      this.sidebarEl,
-    );
-    filter.value = this.filter;
-    filter.addEventListener("input", () => {
-      this.filter = filter.value;
-      this.renderSidebar();
+    const searchRow = createDiv("review-search-row", this.sidebarEl);
+    const filter = new SearchComponent(searchRow)
+      .setClass("review-filter")
+      .setPlaceholder("Filter files")
+      .setValue(this.filter);
+    const list = createDiv("tree-item-children review-file-list", this.sidebarEl);
+    filter.onChange((value) => {
+      this.filter = value;
+      this.renderSidebarFiles(list);
       this.renderCodeView();
     });
     const viewedCount = this.viewedCount();
@@ -209,34 +214,56 @@ export class ReviewSurface {
         cls: "review-progress",
         attr: { "aria-label": `${viewedCount} of ${this.props.files.length} files viewed` },
       },
-      this.sidebarEl,
+      searchRow,
     );
-    const track = createDiv("review-progress-track", progress);
-    const fill = createDiv("review-progress-fill", track);
-    fill.style.width = this.props.files.length
-      ? `${(viewedCount / this.props.files.length) * 100}%`
-      : "0%";
+    new ProgressBarComponent(progress).setValue(
+      this.props.files.length ? (viewedCount / this.props.files.length) * 100 : 0,
+    );
     createSpan(
       { cls: "review-progress-text", text: `${viewedCount} / ${this.props.files.length} viewed` },
       progress,
     );
-    const list = createDiv("review-file-list", this.sidebarEl);
+    this.renderSidebarFiles(list);
+  }
+
+  private renderSidebarFiles(list: HTMLElement): void {
+    this.rowEls.clear();
+    list.empty();
     for (const file of this.visibleFiles()) {
-      const row = createEl(
-        "button",
+      const item = createDiv("tree-item nav-file", list);
+      const row = createDiv(
         {
-          cls: `review-file-row tappable${this.activePath === file.path ? " is-active" : ""}${isViewed(this.viewed, file) ? " is-viewed" : ""}`,
-          attr: { type: "button", title: file.path },
+          cls: `tree-item-self nav-file-title tappable is-clickable review-file-row${this.activePath === file.path ? " is-active" : ""}${isViewed(this.viewed, file) ? " is-viewed is-cut" : ""}`,
+          attr: { role: "button", tabindex: "0", title: file.path },
         },
-        list,
+        item,
       );
       this.rowEls.set(file.path, row);
-      createSpan(`review-status-dot mod-${file.status}`, row);
-      createSpan({ cls: "review-file-row-name", text: file.path }, row);
-      const stat = createSpan("review-file-row-stat", row);
+      const icon = createSpan("tree-item-icon nav-file-icon", row);
+      setFileTypeIcon(icon, file.path);
+      createSpan(
+        { cls: "tree-item-inner nav-file-title-content review-file-row-name", text: file.path },
+        row,
+      );
+      const flair = createSpan("tree-item-flair-outer", row);
+      const stat = createSpan("tree-item-flair review-file-row-stat", flair);
       if (file.additions > 0) createEl("ins", { text: `+${file.additions}` }, stat);
       if (file.deletions > 0) createEl("del", { text: `−${file.deletions}` }, stat);
-      row.addEventListener("click", () => this.activatePath(file.path));
+      createSpan(
+        {
+          cls: `tree-item-flair review-file-row-status mod-${file.status}`,
+          text: statusLetter(file.status),
+          attr: { title: `Git status: ${file.status}`, "aria-label": `Git status: ${file.status}` },
+        },
+        flair,
+      );
+      const activate = (): void => this.activatePath(file.path);
+      row.addEventListener("click", activate);
+      row.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        activate();
+      });
     }
     if (this.visibleFiles().length === 0)
       createDiv({ cls: "review-empty", text: "No files match." }, list);
@@ -331,10 +358,10 @@ export class ReviewSurface {
       renderGutterUtility: this.props.review
         ? (getHoveredLine, context) => {
             const button = createEl("button", {
-              cls: "review-add-comment",
-              text: "+",
+              cls: "clickable-icon review-add-comment",
               attr: { type: "button", "aria-label": "Add review comment" },
             });
+            setIcon(button, "lucide-plus");
             button.addEventListener("mousedown", (event) => {
               event.preventDefault();
               const line = getHoveredLine();
@@ -380,18 +407,27 @@ export class ReviewSurface {
   private renderHeader(path: string): HTMLElement | null {
     const file = this.props.files.find((candidate) => candidate.path === path);
     if (!file) return null;
-    const header = createDiv(`review-card-header${this.activePath === path ? " is-active" : ""}`);
+    const header = createDiv(
+      `tree-item-self review-card-header is-clickable mod-collapsible${
+        this.activePath === path ? " is-active" : ""
+      }`,
+    );
     this.headerEls.set(path, header);
     const chevron = createSpan(
-      `review-chevron${this.collapsed.has(path) ? " is-collapsed" : ""}`,
+      `tree-item-icon collapse-icon${this.collapsed.has(path) ? " is-collapsed" : ""}`,
       header,
     );
-    setIcon(chevron, "lucide-chevron-down");
-    const pathEl = createSpan({ cls: "review-card-path", attr: { title: path } }, header);
-    const slash = path.lastIndexOf("/");
-    if (slash >= 0) createSpan({ cls: "review-card-dir", text: path.slice(0, slash + 1) }, pathEl);
-    createSpan({ cls: "review-card-name", text: path.slice(slash + 1) }, pathEl);
-    const stat = createSpan("review-card-stat", header);
+    setIcon(chevron, "right-triangle");
+    createSpan(
+      {
+        cls: "tree-item-inner nav-file-title-content review-card-path",
+        text: path,
+        attr: { title: path },
+      },
+      header,
+    );
+    const actionsEl = createSpan("tree-item-flair-outer review-card-actions", header);
+    const stat = createSpan("tree-item-flair review-card-stat", actionsEl);
     if (file.binary) createSpan({ cls: "review-card-binary", text: "binary" }, stat);
     else {
       if (file.additions > 0) createEl("ins", { text: `+${file.additions}` }, stat);
@@ -399,22 +435,26 @@ export class ReviewSurface {
     }
     createSpan(
       { cls: `review-card-status mod-${file.status}`, text: statusLetter(file.status) },
-      header,
+      stat,
     );
-    const actionsEl = createDiv("review-card-actions", header);
+    const viewedState = isViewed(this.viewed, file);
     const viewed = createEl(
       "button",
       {
-        cls: "review-viewed",
-        attr: { type: "button", "aria-pressed": String(isViewed(this.viewed, file)) },
+        cls: `clickable-icon review-viewed${viewedState ? " is-active" : ""}`,
+        attr: {
+          type: "button",
+          title: viewedState ? "Mark as unviewed" : "Mark as viewed",
+          "aria-label": viewedState ? "Mark as unviewed" : "Mark as viewed",
+          "aria-pressed": String(viewedState),
+        },
       },
       actionsEl,
     );
-    renderCheck(isViewed(this.viewed, file) ? "on" : "off", viewed);
-    createSpan({ text: "Viewed" }, viewed);
+    setIcon(viewed, "lucide-eye");
     viewed.addEventListener("click", (event) => {
       event.stopPropagation();
-      this.markViewed(file, !isViewed(this.viewed, file));
+      this.markViewed(file, !viewedState);
     });
     header.addEventListener("click", () => {
       if (this.collapsed.has(path)) this.collapsed.delete(path);
@@ -464,11 +504,7 @@ export class ReviewSurface {
   }
 
   private draftButton(parent: HTMLElement, label: string, action: () => void): HTMLButtonElement {
-    const button = createEl(
-      "button",
-      { cls: "review-card-action", text: label, attr: { type: "button" } },
-      parent,
-    );
+    const button = createEl("button", { text: label, attr: { type: "button" } }, parent);
     button.addEventListener("click", action);
     return button;
   }

@@ -1,88 +1,51 @@
-/* Git change-set browser (@pierre/diffs). */
-.git-changes-view {
-  padding: var(--size-4-2);
+/* Native Git surfaces. Row, control, icon, and selection geometry comes from
+ * Obsidian's tree-item/nav/clickable-icon primitives. */
+.git-changes-view,
+.git-history-view,
+.git-log-view {
   overflow-y: auto;
 }
+
+.git-changes-list,
+.git-history-list,
+.git-log-list {
+  padding: var(--size-4-2);
+}
+
 .git-changes-file {
   margin-bottom: var(--size-4-3);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-m);
-  overflow: hidden;
-}
-.git-changes-file-header {
-  display: flex;
-  align-items: center;
-  gap: var(--size-2-2);
-  padding: var(--size-2-2) var(--size-4-2);
-  background: var(--background-secondary);
-  cursor: pointer;
-  font-size: var(--font-ui-small, 13px);
-}
-.git-changes-file-header:hover {
-  background: var(--background-modifier-hover);
-}
-.git-changes-file-icon { display: flex; color: var(--text-muted); }
-.git-changes-file-icon svg.svg-icon { width: 14px; height: 14px; }
-.git-changes-file-name {
-  font-family: var(--font-monospace);
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.git-changes-file-status {
-  font-size: var(--font-ui-smaller, 11px);
-  padding: 0 var(--size-2-2);
-  border-radius: 999px;
-  background: var(--background-modifier-hover);
-  color: var(--text-muted);
-}
-.git-changes-file-status.mod-added, .git-changes-file-status.mod-untracked { color: var(--color-green); }
-.git-changes-file-status.mod-deleted { color: var(--color-red); }
-.git-changes-message, .git-changes-binary {
-  color: var(--text-muted);
-  padding: var(--size-4-2);
-  text-align: center;
 }
 
 .git-changes-section {
-  font-weight: var(--font-semibold, 600);
-  font-size: var(--font-ui-small, 13px);
-  color: var(--text-muted);
-  margin: var(--size-4-3) 0 var(--size-2-2);
+  margin-top: var(--size-4-2);
 }
-.git-changes-stage {
-  flex: 0 0 auto;
-  padding: 0 var(--size-2-1);
-}
-.git-changes-stage svg.svg-icon { width: 14px; height: 14px; }
 
-/* File history view. */
-.git-history-view { padding: var(--size-4-2); overflow-y: auto; }
-.git-history-entry {
-  padding: var(--size-2-3) var(--size-4-2);
-  border-bottom: 1px solid var(--background-modifier-border);
-}
-.git-history-subject { font-weight: var(--font-semibold, 600); }
-.git-history-meta {
-  color: var(--text-muted);
-  font-size: var(--font-ui-smaller, 11px);
+.git-changes-file-name,
+.git-history-meta,
+.git-log-meta {
   font-family: var(--font-monospace);
-  margin: var(--size-2-1) 0;
 }
-.git-history-actions { display: flex; gap: var(--size-2-2); }
-.git-history-action {
-  font-size: var(--font-ui-smaller, 11px);
-  padding: 1px var(--size-2-3);
-  border-radius: var(--radius-s);
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-secondary);
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.git-history-action:hover { color: var(--text-normal); background: var(--background-modifier-hover); }
 
-/* Branch/sync header */
+.git-changes-file-status.mod-added,
+.git-changes-file-status.mod-untracked {
+  color: var(--color-green);
+}
+
+.git-changes-file-status.mod-deleted {
+  color: var(--color-red);
+}
+
+.git-changes-file-status.mod-modified,
+.git-changes-file-status.mod-renamed {
+  color: var(--color-orange);
+}
+
+.git-changes-binary {
+  padding: var(--size-4-2);
+}
+
+/* Branch and sync are a view toolbar; each action remains a native
+ * clickable-icon. */
 .git-header-row {
   display: flex;
   align-items: center;
@@ -90,53 +53,52 @@
   padding: var(--size-4-2) var(--size-4-3);
   border-bottom: 1px solid var(--background-modifier-border);
 }
-.git-branch-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--size-4-1);
-  padding: 2px var(--size-4-2);
-  border-radius: var(--radius-s);
-  background: var(--background-secondary);
-  color: var(--text-normal);
+
+.git-divergence {
+  color: var(--text-muted);
   font-size: var(--font-smaller);
-  cursor: pointer;
 }
-.git-branch-pill:hover { background: var(--background-modifier-hover); }
-.git-divergence { color: var(--text-muted); font-size: var(--font-smaller); }
-.git-sync-actions { margin-left: auto; display: flex; gap: var(--size-4-1); }
-.git-sync-busy .git-sync-button { opacity: 0.5; pointer-events: none; }
-.git-changes-discard { color: var(--text-muted); }
-.git-changes-discard:hover { color: var(--text-error); }
+
+.git-sync-actions {
+  margin-left: auto;
+  display: flex;
+  gap: var(--size-4-1);
+}
+
+.git-sync-busy .git-sync-button {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.git-changes-discard:hover {
+  color: var(--text-error);
+}
+
 .git-branch-current-badge {
   margin-left: var(--size-4-2);
-  padding: 0 var(--size-4-1);
-  border-radius: var(--radius-s);
-  background: var(--background-modifier-hover);
   color: var(--text-muted);
   font-size: var(--font-smallest);
 }
 
-/* Local commit log */
-.git-log-list { padding: var(--size-4-2); }
-.git-log-entry { border-bottom: 1px solid var(--background-modifier-border); }
-.git-log-header {
-  display: flex;
-  align-items: baseline;
-  gap: var(--size-4-2);
-  padding: var(--size-4-2);
-  cursor: pointer;
+.git-history-row {
+  align-items: flex-start;
 }
-.git-log-header:hover { background: var(--background-modifier-hover); }
-.git-log-subject { flex: 1; }
-.git-log-meta { color: var(--text-muted); font-size: var(--font-smaller); }
-.git-log-detail { padding: 0 var(--size-4-4) var(--size-4-2); }
-.git-log-file {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--size-4-2);
-  padding: var(--size-4-1) var(--size-4-2);
-  cursor: pointer;
-  font-size: var(--font-smaller);
+
+.git-history-meta,
+.git-log-meta {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
 }
-.git-log-file:hover { background: var(--background-modifier-hover); }
-.git-log-file-stats { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.git-history-actions {
+  align-self: center;
+}
+
+.git-log-subject {
+  display: block;
+}
+
+.git-log-file-stats {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}

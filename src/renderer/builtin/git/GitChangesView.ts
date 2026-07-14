@@ -9,6 +9,7 @@ import { Notice } from "../../ui/Notice";
 import { hasUnstagedChanges, isStaged, type GitFileStatus } from "./GitService";
 import { BranchSwitchModal } from "./BranchSwitchModal";
 import { ConfirmationModal } from "../../ui/Modal";
+import { setFileTypeIcon } from "../../ui/FileTypeIcon";
 
 const MAX_RENDERED_FILES = 50;
 
@@ -131,8 +132,14 @@ export class GitChangesView extends ItemView {
     if (!this.listEl || entries.length === 0) return budget;
     const doc = this.listEl.ownerDocument;
     const headingEl = doc.createElement("div");
-    headingEl.className = "git-changes-section";
-    headingEl.textContent = `${title} (${entries.length})`;
+    headingEl.className = "tree-item-self git-changes-section";
+    const headingText = doc.createElement("span");
+    headingText.className = "tree-item-inner";
+    headingText.textContent = title;
+    const countEl = doc.createElement("span");
+    countEl.className = "tree-item-flair";
+    countEl.textContent = String(entries.length);
+    headingEl.append(headingText, countEl);
     this.listEl.appendChild(headingEl);
     for (const entry of entries) {
       if (budget <= 0) {
@@ -149,19 +156,23 @@ export class GitChangesView extends ItemView {
     if (!this.listEl) return;
     const doc = this.listEl.ownerDocument;
     const sectionEl = doc.createElement("div");
-    sectionEl.className = "git-changes-file";
+    sectionEl.className = "tree-item nav-file git-changes-file";
 
     const headerEl = doc.createElement("div");
-    headerEl.className = "git-changes-file-header tappable";
+    headerEl.className =
+      "tree-item-self nav-file-title tappable is-clickable git-changes-file-header";
     const iconEl = doc.createElement("span");
-    iconEl.className = "git-changes-file-icon";
-    setIcon(iconEl, "lucide-file-diff");
+    iconEl.className = "tree-item-icon nav-file-icon";
+    setFileTypeIcon(iconEl, entry.path);
     const nameEl = doc.createElement("span");
-    nameEl.className = "git-changes-file-name";
+    nameEl.className = "tree-item-inner nav-file-title-content git-changes-file-name";
     nameEl.textContent = entry.path;
+    const flairEl = doc.createElement("span");
+    flairEl.className = "tree-item-flair-outer";
     const statusEl = doc.createElement("span");
-    statusEl.className = `git-changes-file-status mod-${statusLabel(entry.status)}`;
+    statusEl.className = `tree-item-flair git-changes-file-status mod-${statusLabel(entry.status)}`;
     statusEl.textContent = statusLabel(entry.status);
+    flairEl.appendChild(statusEl);
     const stageEl = doc.createElement("button");
     stageEl.className = "git-changes-stage clickable-icon";
     setIcon(stageEl, stagedSection ? "lucide-minus" : "lucide-plus");
@@ -181,10 +192,11 @@ export class GitChangesView extends ItemView {
         event.stopPropagation();
         this.confirmDiscard(entry);
       });
-      headerEl.append(iconEl, nameEl, statusEl, discardEl, stageEl);
+      flairEl.append(discardEl, stageEl);
     } else {
-      headerEl.append(iconEl, nameEl, statusEl, stageEl);
+      flairEl.append(stageEl);
     }
+    headerEl.append(iconEl, nameEl, flairEl);
     headerEl.addEventListener("click", () => {
       const file = this.app.vault.getFileByPath(entry.path);
       if (file) void openGitDiff(this.app, file);
@@ -208,7 +220,7 @@ export class GitChangesView extends ItemView {
         : await this.app.vault.read(workingFile);
     if (isProbablyBinary(baseContents) || isProbablyBinary(targetContents)) {
       const binaryEl = doc.createElement("div");
-      binaryEl.className = "git-changes-binary";
+      binaryEl.className = "tree-item-inner-subtext git-changes-binary";
       binaryEl.textContent = "Binary file";
       sectionEl.appendChild(binaryEl);
       return;
@@ -298,7 +310,7 @@ export class GitChangesView extends ItemView {
   private renderMessage(text: string): void {
     if (!this.listEl) return;
     const messageEl = this.listEl.ownerDocument.createElement("div");
-    messageEl.className = "git-changes-message";
+    messageEl.className = "empty-state git-changes-message";
     messageEl.textContent = text;
     this.listEl.appendChild(messageEl);
   }
