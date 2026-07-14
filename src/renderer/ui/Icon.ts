@@ -194,7 +194,7 @@ const ICON_PATHS: Record<string, string> = {
     '<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M7 7V3h10v4"/><path d="M8 12h8"/><path d="M8 16h8"/>',
   "sidebar-toggle-button-icon":
     '<rect x="1" y="2" width="22" height="20" rx="4"/><rect x="4" y="5" width="2" height="14" rx="2" fill="currentColor" class="sidebar-toggle-icon-inner"/>',
-  "right-triangle": '<path d="M9 18 15 12 9 6z" fill="currentColor" stroke="none"/>',
+  "right-triangle": '<path d="M3 8L12 17L21 8"/>',
   "lucide-bold":
     '<path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"/>',
   "lucide-bookmark":
