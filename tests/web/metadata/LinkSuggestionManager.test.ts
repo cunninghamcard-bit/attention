@@ -11,6 +11,11 @@ describe("LinkSuggestionManager", () => {
     const older = await vault.create("Older.md", "---\naliases: Old Nick\n---\n# Older");
     const hidden = await vault.create("Hidden.md", "---\naliases: Secret\n---\n# Hidden");
     const newer = await vault.create("Newer.md", "# Newer\n[[Missing]]");
+    // create() stamps Date.now(); all three land in the same millisecond, and the
+    // stable sort then falls back to creation order. Pin the mtimes it reads.
+    older.stat.mtime = 1;
+    hidden.stat.mtime = 2;
+    newer.stat.mtime = 3;
     vault.setConfig("userIgnoreFilters", ["Hidden.md"]);
     await metadataCache.computeFileMetadataAsync(older);
     await metadataCache.computeFileMetadataAsync(hidden);
