@@ -27,6 +27,7 @@ export class InternalPluginWrapper extends Component {
   private hasStatusBarItem = false;
   lastSave = 0;
   lastDataModifiedTime = 0;
+  private dataUnreadable = false;
   statusBarEl: HTMLElement | null = null;
   enabled = false;
   private configFileChangeTimer: number | null = null;
@@ -187,20 +188,30 @@ export class InternalPluginWrapper extends Component {
     this.register(() => this.app.setting.removeSettingTab(tab));
   }
 
-  async loadData<T = unknown>(): Promise<T | null> {
+  /** `null` when the config file is missing, `undefined` when it exists but will not parse. */
+  async loadData<T = unknown>(): Promise<T | null | undefined> {
     const data = await this.app.vault.readConfigJson<T>(this.definition.id);
+    // Every core plugin merges this read over its defaults (`?? {}`) and later hands the
+    // whole document back to `saveData`. A file that exists but will not parse must not
+    // become that default document, so latch it and refuse the write instead.
+    this.dataUnreadable = data === undefined;
     if (data !== null && this.definition.onExternalSettingsChange)
       this.lastDataModifiedTime = await this.getModifiedTime();
     return data;
   }
 
   async saveData<T = unknown>(data: T): Promise<void> {
+    if (this.dataUnreadable) {
+      console.error(`refusing to overwrite unreadable ${this.getConfigFileName()}`);
+      return;
+    }
     this.lastSave = Date.now();
     this.lastDataModifiedTime = this.lastSave;
     await this.app.vault.writeConfigJson(this.definition.id, data, { mtime: this.lastSave });
   }
 
   async deleteData(): Promise<void> {
+    this.dataUnreadable = false;
     this.lastSave = Date.now();
     this.lastDataModifiedTime = this.lastSave;
     await this.app.vault.deleteConfigJson(this.definition.id);

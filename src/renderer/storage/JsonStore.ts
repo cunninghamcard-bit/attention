@@ -9,7 +9,8 @@ export interface JsonStoreStat {
 }
 
 export interface JsonStoreAdapter {
-  readJson<T>(path: string): Promise<T | null>;
+  /** `null` when the file is missing, `undefined` when it exists but will not parse. */
+  readJson<T>(path: string): Promise<T | null | undefined>;
   writeJson<T>(path: string, value: T, options?: JsonStoreWriteOptions): Promise<void>;
   readText?(path: string): Promise<string | null>;
   writeText?(path: string, value: string, options?: JsonStoreWriteOptions): Promise<void>;
@@ -108,7 +109,7 @@ export class JsonStore extends Events {
       : `${this.root}/${normalized}`;
   }
 
-  read<T>(name: string): Promise<T | null> {
+  read<T>(name: string): Promise<T | null | undefined> {
     return this.adapter.readJson<T>(this.path(name));
   }
 

@@ -56,6 +56,7 @@ export class AppConfigManager extends Events {
   private cache: AppConfigShape = {};
   private configTs = 0;
   private saving = false;
+  private unreadable = false;
   private reloadTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
@@ -67,12 +68,16 @@ export class AppConfigManager extends Events {
   }
 
   async load(): Promise<AppConfigShape> {
-    this.cache = await this.readConfigFiles();
+    this.cache = (await this.readConfigFiles()) ?? {};
     this.configTs = Date.now();
     return this.getAll();
   }
 
   async save(): Promise<void> {
+    // A config file that exists but will not parse reads back as `undefined`. This save
+    // rewrites both files whole from memory, so it would replace a hand-repairable file
+    // with defaults. Hold the write until the file reads cleanly again.
+    if (this.unreadable) return;
     this.saving = true;
     const appConfig: AppConfigShape = {};
     const appearanceConfig: AppConfigShape = {};
@@ -106,6 +111,7 @@ export class AppConfigManager extends Events {
 
     this.configTs = Date.now();
     const next = await this.readConfigFiles();
+    if (!next) return;
     const previous = this.cache;
     this.cache = { ...previous };
 
@@ -151,10 +157,13 @@ export class AppConfigManager extends Events {
     this.clearReloadTimer();
   }
 
-  private async readConfigFiles(): Promise<AppConfigShape> {
-    const appConfig = (await this.store.read<AppConfigShape>(this.fileName)) ?? {};
-    const appearanceConfig = (await this.store.read<AppConfigShape>(this.appearanceFileName)) ?? {};
-    return migrateConfig({ ...appearanceConfig, ...appConfig });
+  /** `undefined` when a config file exists but will not parse — see `save`. */
+  private async readConfigFiles(): Promise<AppConfigShape | undefined> {
+    const appConfig = await this.store.read<AppConfigShape>(this.fileName);
+    const appearanceConfig = await this.store.read<AppConfigShape>(this.appearanceFileName);
+    this.unreadable = appConfig === undefined || appearanceConfig === undefined;
+    if (this.unreadable) return undefined;
+    return migrateConfig({ ...(appearanceConfig ?? {}), ...(appConfig ?? {}) });
   }
 
   private clearReloadTimer(): void {

@@ -54,6 +54,20 @@ describe("FileSystemJsonStoreAdapter", () => {
     await fs.rm(basePath, { force: true, recursive: true });
   });
 
+  it("distinguishes a corrupt json file from a missing one", async () => {
+    const { fs, basePath } = await createTempVault();
+    const adapter = new FileSystemAdapter(basePath);
+    const store = new JsonStore(new FileSystemJsonStoreAdapter(adapter), ".obsidian");
+    await store.writeText("style-settings.json", '{"theme": ');
+
+    // A whole-document writer replaces its file from memory. If a file that exists
+    // but will not parse were indistinguishable from one that is absent, that write
+    // would silently destroy a hand-repairable file.
+    expect(await store.read("style-settings.json")).toBeUndefined();
+    expect(await store.read("never-written.json")).toBeNull();
+    await fs.rm(basePath, { force: true, recursive: true });
+  });
+
   it("lists, deletes files, and removes plugin data folders through the filesystem adapter", async () => {
     const { fs, basePath } = await createTempVault();
     const adapter = new FileSystemAdapter(basePath);

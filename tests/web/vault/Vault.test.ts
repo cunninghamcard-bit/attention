@@ -125,6 +125,38 @@ describe("Vault config JSON helpers", () => {
     }
   });
 
+  it("does not rewrite a config file that exists but will not parse", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const corruptWrite = vi.fn(async () => {});
+    const corruptVault = new Vault({
+      read: vi.fn(async (path: string) => (path.endsWith("app.json") ? '{"theme":' : "{}")),
+      write: corruptWrite,
+      delete: vi.fn(async () => {}),
+      list: vi.fn(async () => []),
+    });
+    const healthyWrite = vi.fn(async () => {});
+    const healthyVault = new Vault({
+      read: vi.fn(async () => "{}"),
+      write: healthyWrite,
+      delete: vi.fn(async () => {}),
+      list: vi.fn(async () => []),
+    });
+
+    try {
+      await corruptVault.setupConfig();
+      await corruptVault.saveConfig();
+      await healthyVault.setupConfig();
+      await healthyVault.saveConfig();
+
+      // saveConfig rewrites app.json and appearance.json whole from memory, so a file it
+      // could not read must lock the write rather than be replaced by defaults.
+      expect(corruptWrite).not.toHaveBeenCalled();
+      expect(healthyWrite).toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   it("routes plugin data through the same config JSON root", async () => {
     const store = new JsonStore();
     const vault = new Vault(undefined, undefined, store);

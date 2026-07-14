@@ -4,14 +4,17 @@ import type { JsonStoreAdapter, JsonStoreStat, JsonStoreWriteOptions } from "./J
 export class FileSystemJsonStoreAdapter implements JsonStoreAdapter {
   constructor(readonly adapter: FileSystemAdapter) {}
 
-  async readJson<T>(path: string): Promise<T | null> {
+  async readJson<T>(path: string): Promise<T | null | undefined> {
     const text = await this.readText(path);
     if (text == null) return null;
     try {
       return JSON.parse(text) as T;
     } catch (error) {
+      // `undefined` is a file that exists but could not be parsed; `null` is one
+      // that is not there. Callers that write the whole document back rely on the
+      // difference to avoid replacing a recoverable file with defaults.
       console.error("failed to read JSON", path, error);
-      return null;
+      return undefined;
     }
   }
 

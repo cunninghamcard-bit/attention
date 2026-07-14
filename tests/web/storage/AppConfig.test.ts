@@ -1,8 +1,37 @@
 import { describe, expect, it } from "vitest";
 import { AppConfigManager } from "@web/storage/AppConfig";
-import { JsonStore } from "@web/storage/JsonStore";
+import { JsonStore, MemoryJsonStoreAdapter, type JsonStoreAdapter } from "@web/storage/JsonStore";
 
 describe("AppConfigManager", () => {
+  it("does not overwrite a config file that exists but will not parse", async () => {
+    const memory = new MemoryJsonStoreAdapter();
+    const written: string[] = [];
+    // The memory adapter cannot hold an unparseable document, so stand in for the file
+    // system adapter's corrupt read: `undefined` is a file that exists but will not parse.
+    const adapter: JsonStoreAdapter = {
+      readJson: (path) =>
+        path === ".obsidian/app.json" ? Promise.resolve(undefined) : memory.readJson(path),
+      writeJson: (path, value, options) => {
+        written.push(path);
+        return memory.writeJson(path, value, options);
+      },
+      stat: (path) => memory.stat(path),
+      delete: (path) => memory.delete(path),
+    };
+    const store = new JsonStore(adapter);
+    await store.write("appearance.json", { theme: "moonstone" });
+    written.length = 0;
+    const config = new AppConfigManager(store);
+
+    await config.load();
+    await config.set("theme", "obsidian");
+
+    // save() rewrites both files whole from memory, so it must not run while app.json is
+    // unreadable — that write would replace a hand-repairable file with defaults.
+    expect(written).toEqual([]);
+    expect(config.get("theme")).toBe("obsidian");
+  });
+
   it("loads app and appearance config with app values taking precedence", async () => {
     const store = new JsonStore();
     await store.write("appearance.json", {

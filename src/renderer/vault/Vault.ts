@@ -56,6 +56,7 @@ export class Vault extends Events {
   private config: Record<string, unknown> = {};
   private configTs = 0;
   private savingConfig = false;
+  private configUnreadable = false;
   private loaded = false;
   private unwatchAdapter: (() => void) | null = null;
   private unwatchHiddenConfig: (() => void) | null = null;
@@ -172,15 +173,22 @@ export class Vault extends Events {
     if (!this.canPersistConfig()) return;
     await this.ensureConfigDir();
     this.configTs = Date.now();
-    const appConfig = (await this.readConfigJson<Record<string, unknown>>("app")) ?? {};
-    const appearanceConfig =
-      (await this.readConfigJson<Record<string, unknown>>("appearance")) ?? {};
-    this.config = migrateVaultConfig({ ...appearanceConfig, ...appConfig, ...this.config });
+    const appConfig = await this.readConfigJson<Record<string, unknown>>("app");
+    const appearanceConfig = await this.readConfigJson<Record<string, unknown>>("appearance");
+    // `undefined` is a config file that exists but will not parse. `saveConfig` rewrites
+    // both files whole from memory, so saving now would replace a hand-repairable file
+    // with defaults. Load what we can, and hold every write until it reads cleanly again.
+    this.configUnreadable = appConfig === undefined || appearanceConfig === undefined;
+    this.config = migrateVaultConfig({
+      ...(appearanceConfig ?? {}),
+      ...(appConfig ?? {}),
+      ...this.config,
+    });
     this.requestSaveConfig();
   }
 
   async saveConfig(): Promise<void> {
-    if (!this.canPersistConfig()) return;
+    if (!this.canPersistConfig() || this.configUnreadable) return;
     this.savingConfig = true;
     await this.ensureConfigDir();
     const appConfig: Record<string, unknown> = {};
@@ -203,10 +211,16 @@ export class Vault extends Events {
     this.requestReloadConfig.cancel();
     if (!this.canPersistConfig() || this.savingConfig || (await this.configFilesAreFresh())) return;
     this.configTs = Date.now();
-    const next = migrateVaultConfig({
-      ...((await this.readConfigJson<Record<string, unknown>>("appearance")) ?? {}),
-      ...((await this.readConfigJson<Record<string, unknown>>("app")) ?? {}),
-    });
+    const appearanceConfig = await this.readConfigJson<Record<string, unknown>>("appearance");
+    const appConfig = await this.readConfigJson<Record<string, unknown>>("app");
+    if (appConfig === undefined || appearanceConfig === undefined) {
+      // Corrupt on disk — a partial external write, or a bad hand edit. Keep the config
+      // we have in memory rather than deleting every key a file we could not read.
+      this.configUnreadable = true;
+      return;
+    }
+    this.configUnreadable = false;
+    const next = migrateVaultConfig({ ...(appearanceConfig ?? {}), ...(appConfig ?? {}) });
     const previous = this.config;
     this.config = { ...previous };
 

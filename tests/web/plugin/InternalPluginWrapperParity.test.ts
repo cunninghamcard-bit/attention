@@ -1,8 +1,46 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
 import { InternalPluginWrapper } from "@web/plugin/InternalPluginWrapper";
 
 describe("InternalPluginWrapper Obsidian parity", () => {
+  it("refuses to save over a config file that exists but will not parse", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const app = new App(document.createElement("div"));
+    const wrapper = new InternalPluginWrapper(
+      app,
+      { id: "core-corrupt-data", name: "Core Corrupt Data", defaultOn: false, init: () => {} },
+      app.internalPlugins,
+    );
+    const read = vi.spyOn(app.vault, "readConfigJson");
+    const write = vi.spyOn(app.vault, "writeConfigJson").mockResolvedValue();
+
+    try {
+      // Core plugins merge loadData over their defaults (`?? {}`) and hand the whole
+      // document back to saveData. `undefined` is a file that exists but will not parse,
+      // so writing that merged document would destroy a hand-repairable file.
+      read.mockResolvedValue(undefined);
+      expect(await wrapper.loadData()).toBeUndefined();
+      await wrapper.saveData({ folder: "Daily" });
+
+      expect(write).not.toHaveBeenCalled();
+
+      // A missing file is safe to write, and repairing the file releases the lock.
+      read.mockResolvedValue(null);
+      expect(await wrapper.loadData()).toBeNull();
+      await wrapper.saveData({ folder: "Daily" });
+
+      expect(write).toHaveBeenCalledWith(
+        "core-corrupt-data",
+        { folder: "Daily" },
+        { mtime: wrapper.lastSave },
+      );
+    } finally {
+      read.mockRestore();
+      write.mockRestore();
+      consoleError.mockRestore();
+    }
+  });
+
   it("does not wait for user enable hooks before completing core plugin enablement", async () => {
     const app = new App(document.createElement("div"));
     let finishUserEnable: (() => void) | null = null;

@@ -3,7 +3,8 @@ import type { JsonStore, JsonStoreWriteOptions } from "./JsonStore";
 export class PluginDataStore {
   constructor(readonly store: JsonStore) {}
 
-  load<T = unknown>(pluginDirOrId: string): Promise<T | null> {
+  /** `null` when the file is missing, `undefined` when it exists but will not parse. */
+  load<T = unknown>(pluginDirOrId: string): Promise<T | null | undefined> {
     return this.store.read<T>(`${normalizePluginDataDir(pluginDirOrId)}/data.json`);
   }
 
