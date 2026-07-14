@@ -94,6 +94,12 @@ body:not(.is-phone) .workspace-leaf.mod-active .tree-item-self.has-focus:focus-w
 .tree-item-self .tree-item-icon {
   position: absolute;
   margin-inline-start: calc(-1 * var(--size-4-5));
+  /* Span the row's full height so align-items:center puts the chevron in the
+   * vertical middle. Without this the absolute icon sits at its static
+   * (top-ish) position — invisible on single-line nav rows but visibly high
+   * on taller rows like the review diff-file headers. */
+  top: 0;
+  bottom: 0;
   width: var(--size-4-4);
   display: flex;
   align-items: center;
