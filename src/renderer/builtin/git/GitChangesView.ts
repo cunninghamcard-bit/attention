@@ -174,11 +174,10 @@ export class GitChangesView extends ItemView {
       itemClass: "nav-file git-changes-file",
       selfClass: "nav-file-title tappable is-clickable git-changes-file-header",
       innerClass: "nav-file-title-content git-changes-file-name",
+      iconClass: "nav-file-icon",
     });
     const { el: sectionEl, innerEl: nameEl } = item;
-    const iconEl = doc.createElement("span");
-    iconEl.className = "tree-item-icon nav-file-icon";
-    setFileTypeIcon(iconEl, entry.path);
+    setFileTypeIcon(item.iconEl, entry.path);
     nameEl.textContent = entry.path;
     const flairEl = doc.createElement("span");
     flairEl.className = "tree-item-flair-outer";
@@ -209,8 +208,7 @@ export class GitChangesView extends ItemView {
     } else {
       flairEl.append(stageEl);
     }
-    // Row content order: icon, name (innerEl), flair — same as the hand-built row.
-    nameEl.before(iconEl);
+    // Row content order: icon (TreeItem's slot), name (innerEl), flair.
     nameEl.after(flairEl);
     item.onSelfClick = () => {
       const file = this.app.vault.getFileByPath(entry.path);

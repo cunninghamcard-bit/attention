@@ -1,17 +1,37 @@
-/* Pierre's complete semantic file icons, shared by explorer, tabs and Git. */
-.nav-file-icon {
-  display: flex;
-  align-items: center;
-  flex: 0 0 auto;
-  margin-inline-end: var(--size-2-2);
-}
+/* Pierre's complete semantic file icons, shared by explorer, tabs and Git.
+ * Layout comes from the tree-item icon slot; this only sizes and tints the glyph. */
 .nav-file-icon svg.svg-icon {
   width: 15px;
   height: 15px;
   fill: currentColor;
 }
+/* Obsidian dims its nav icons with --icon-opacity because they are monochrome.
+ * These carry hue, so the wash would only mute the palette. Matches the slot
+ * rules' specificity so it wins wherever the icon lands. */
+.tree-item-self .nav-file-icon {
+  opacity: 1;
+}
 
-/* Keep Pierre's colored-icon palette when its sprite is used outside FileTree. */
+/* The palette below is written with light-dark(), which resolves against the
+ * `color-scheme` property — NOT against the .theme-dark/.theme-light class that
+ * is this app's actual source of truth. `color-scheme` is declared once, in
+ * tokens.css, and a community theme is appended to <head> after it, so any
+ * theme that sets `color-scheme` (`light dark` is common) silently flips all of
+ * these to their light branch. Pinning it on the icon itself puts the palette
+ * back under the theme class, where the rest of the app already lives. */
+.theme-dark .file-type-icon {
+  color-scheme: dark;
+}
+.theme-light .file-type-icon {
+  color-scheme: light;
+}
+
+/* Keep Pierre's colored-icon palette when its sprite is used outside FileTree.
+ * Every sprite token below joins one of Pierre's twelve hue families — no new
+ * hex values. `default` and `text` deliberately stay on this neutral fallback:
+ * they are the catch-all buckets (any unrecognised extension, and .txt/.log/
+ * .env), and an unknown file type has no brand hue to wear. That is a design
+ * choice, not a gap — the token-coverage test treats them as such. */
 .file-type-icon {
   color: light-dark(#84848a, #adadb1);
 }
@@ -58,13 +78,15 @@
   [data-icon-token="bootstrap"],
   [data-icon-token="css"],
   [data-icon-token="eslint"],
+  [data-icon-token="stylelint"],
   [data-icon-token="terraform"],
   [data-icon-token="wasm"]
 ) {
   color: light-dark(#693acf, #9d6afb);
 }
 
-.file-type-icon[data-icon-token="bun"] {
+/* Pierre's one neutral family — for the marks that are themselves monochrome. */
+.file-type-icon:is([data-icon-token="bun"], [data-icon-token="nextjs"]) {
   color: light-dark(#594c5b, #79697b);
 }
 
@@ -94,7 +116,9 @@
   color: light-dark(#1ca1c7, #68cdf2);
 }
 
+/* Assets rather than code — fonts sit with images. */
 .file-type-icon:is(
+  [data-icon-token="font"],
   [data-icon-token="graphql"],
   [data-icon-token="image"],
   [data-icon-token="sass"]
@@ -126,19 +150,6 @@
   color: var(--text-muted);
   font-size: 8.5px;
   font-weight: 600;
-}
-
-.nav-folder-icon {
-  display: flex;
-  align-items: center;
-  flex: 0 0 auto;
-  margin-inline-end: var(--size-2-2);
-  color: var(--text-muted);
-}
-.nav-folder-icon svg.svg-icon {
-  width: 15px;
-  height: 15px;
-  stroke-width: 1.8px;
 }
 
 /* Product choice: file-explorer header buttons align left (newer Obsidian

@@ -181,6 +181,7 @@ export class GitNavView extends ItemView {
       const { selfEl: row, innerEl, childrenEl } = item;
       row.setAttribute("role", "button");
       row.tabIndex = 0;
+      // Chevron only, same as the file explorer — themeable, no glyph of our own.
       innerEl.textContent = node.name;
       const toggle = (): void => {
         if (collapsed) this.collapsed.delete(node.path);
@@ -208,17 +209,16 @@ export class GitNavView extends ItemView {
         this.selectedPath === node.path ? " is-active" : ""
       }${this.viewedPaths.has(node.path) ? " is-viewed is-cut" : ""}`,
       innerClass: "nav-file-title-content",
+      iconClass: "nav-file-icon git-nav-file-icon",
     });
     const { selfEl: row, innerEl } = item;
     row.dataset.path = node.path;
     row.setAttribute("role", "button");
     row.tabIndex = 0;
     row.title = node.path;
+    // Row order: file-type icon (TreeItem's slot), name (innerEl), stats flair.
+    setFileTypeIcon(item.iconEl, node.path);
     innerEl.textContent = node.name;
-    // Row order: file-type icon, name (innerEl), stats flair.
-    const icon = createSpan("tree-item-icon nav-file-icon git-nav-file-icon", row);
-    setFileTypeIcon(icon, node.path);
-    row.prepend(icon);
     const flair = createSpan("tree-item-flair-outer", row);
     const stat = createSpan("tree-item-flair git-nav-file-stat", flair);
     if (node.additions > 0) createEl("ins", { text: `+${node.additions}` }, stat);

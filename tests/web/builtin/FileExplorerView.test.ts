@@ -727,7 +727,10 @@ describe("FileExplorerView external folder drops", () => {
 
     expect(folderEl.dataset.path).toBeUndefined();
     expect(folderTitleEl.dataset.path).toBe("Folder");
+    // The chevron holds the gutter, as in Obsidian: that is the slot a theme
+    // masks into its own folder glyph, so we ship no folder icon of our own.
     expect(folderTitleEl.querySelector(".tree-item-icon.collapse-icon")).not.toBeNull();
+    expect(folderTitleEl.querySelector(".tree-item-icon-inline")).toBeNull();
     expect(
       folderTitleEl.querySelector(".tree-item-inner.nav-folder-title-content")?.textContent,
     ).toBe("Folder");

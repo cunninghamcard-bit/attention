@@ -12,6 +12,8 @@ export interface TreeItemOptions {
   childrenClass?: string;
   /** Extra classes for the `.tree-item-icon collapse-icon` chevron, e.g. "nav-folder-collapse-indicator". */
   collapseClass?: string;
+  /** Extra classes for the type-icon slot, e.g. "nav-file-icon". */
+  iconClass?: string;
 }
 
 /**
@@ -34,11 +36,14 @@ export class TreeItem extends Component {
   private collapsible = false;
   private collapsed = false;
   private readonly collapseClass: string;
+  private readonly iconClass?: string;
+  private typeIconEl: HTMLElement | null = null;
 
   constructor(parent: HTMLElement, options: TreeItemOptions = {}) {
     super();
     const doc = parent.ownerDocument;
     this.collapseClass = joinClasses("tree-item-icon collapse-icon", options.collapseClass);
+    this.iconClass = options.iconClass;
     this.el = doc.createElement("div");
     this.el.className = joinClasses("tree-item", options.itemClass);
     this.selfEl = doc.createElement("div");
@@ -54,6 +59,33 @@ export class TreeItem extends Component {
       if (event.button === 0 && !event.defaultPrevented) this.onSelfClick(event);
     });
     parent.appendChild(this.el);
+  }
+
+  /**
+   * The type-icon slot: an in-flow box between the gutter and the title,
+   * created on first access.
+   *
+   * Deliberately NOT a `.tree-item-icon`. That class is the row's single
+   * absolutely-positioned gutter box, and every consumer — Obsidian itself and
+   * every community theme — reads it as "the collapse chevron". Primary, for
+   * one, ships `.nav-folder .tree-item-icon svg.svg-icon { color: … }` at
+   * specificity 0,3,0 and injects it after the app stylesheet, so a type icon
+   * wearing that class gets repainted the chevron's grey and loses its palette
+   * — throughout the whole subtree of any folder. A second `.tree-item-icon`
+   * also lands in the same 16px box as the chevron and paints over it.
+   *
+   * Obsidian keeps its own type icons out of the gutter for the same reason
+   * (`.file-tree-item-icon`, beside the title). So does this. The gutter stays
+   * the chevron's — and therefore the theme's, which is the point: masking that
+   * chevron is how a theme ships its own folder glyph.
+   */
+  get iconEl(): HTMLElement {
+    if (!this.typeIconEl) {
+      const el = (this.typeIconEl = this.el.ownerDocument.createElement("div"));
+      el.className = joinClasses("tree-item-icon-inline", this.iconClass);
+      this.selfEl.insertBefore(el, this.innerEl);
+    }
+    return this.typeIconEl;
   }
 
   /** Add or remove the collapse chevron and the `mod-collapsible` gutter. */

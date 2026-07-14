@@ -54,6 +54,27 @@ describe("shared tree item component", () => {
     expect(offenders).toEqual([]);
   });
 
+  // Regression guard (not a spec selector). `.tree-item-icon` is the row's one
+  // absolutely-positioned gutter box, and Obsidian plus every community theme
+  // reads it as "the collapse chevron" — Primary repaints it grey at 0,3,0 and
+  // loads after us, so a type icon wearing that class loses its palette across
+  // a folder's whole subtree, and stacks on top of the chevron besides. Type
+  // icons go in TreeItem's in-flow `iconEl` slot.
+  it("keeps type icons out of the chevron gutter", () => {
+    const gutterIcon = /["'`][^"'`]*\btree-item-icon\b[^"'`]*\bnav-[a-z]+-icon\b/;
+    const offenders = walkTs(join(ROOT, "src", "renderer"))
+      .filter((f) => rel(f) !== "src/renderer/ui/TreeItem.ts")
+      .filter((f) => gutterIcon.test(readFileSync(f, "utf8")))
+      .map(rel);
+    expect(offenders).toEqual([]);
+  });
+
+  it("exposes the tree item type-icon slot", () => {
+    const src = read("src/renderer/ui/TreeItem.ts");
+    expect(src).toContain("get iconEl");
+    expect(src).toContain("tree-item-icon-inline");
+  });
+
   it("replaces NavFolder with the tree item component", () => {
     expect(existsSync(join(ROOT, "src/renderer/ui/NavFolder.ts"))).toBe(false);
     expect(existsSync(join(ROOT, "src/renderer/ui/TreeItem.ts"))).toBe(true);

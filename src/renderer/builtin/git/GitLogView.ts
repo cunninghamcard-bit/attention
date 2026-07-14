@@ -152,19 +152,17 @@ export class GitLogView extends ItemView {
         innerClass: "nav-file-title-content git-log-file-name",
         childrenClass: "nav-folder-children",
         collapseClass: "nav-folder-collapse-indicator",
+        iconClass: "nav-file-icon git-log-file-icon",
       });
       item.setCollapsible(true);
       item.setCollapsed(true);
       const { childrenEl: diffHost, innerEl: nameEl } = item;
-      const iconEl = doc.createElement("span");
-      iconEl.className = "nav-folder-icon git-log-file-icon";
-      setFileTypeIcon(iconEl, row.path);
+      setFileTypeIcon(item.iconEl, row.path);
       nameEl.textContent = row.path;
       const statEl = doc.createElement("span");
       statEl.className = "tree-item-flair git-log-file-stats";
       statEl.textContent = `${row.status}  +${row.additions}  −${row.deletions}`;
-      // Row order: chevron, file-type icon, name (innerEl), stats flair.
-      nameEl.before(iconEl);
+      // Row order: chevron (gutter), file-type icon, name (innerEl), stats flair.
       nameEl.after(statEl);
       let diffLoaded = false;
       const toggle = (): void => {

@@ -300,11 +300,9 @@ export class FileExplorerView extends ItemView {
     item.setCollapsed(isCollapsed);
     const { el: folderEl, selfEl: titleEl, childrenEl, innerEl: titleContentEl } = item;
     titleEl.dataset.path = folder.path;
-    const folderIconEl = document.createElement("div");
-    folderIconEl.className = "tree-item-icon nav-folder-icon";
-    setIcon(folderIconEl, isCollapsed ? "lucide-folder-closed" : "lucide-folder-open");
+    // No folder glyph of our own: the chevron holds the gutter, exactly as in
+    // Obsidian, so a theme is free to mask it into whatever folder icon it ships.
     titleContentEl.textContent = folder.name;
-    titleContentEl.before(folderIconEl);
     this.applySelectionState(titleEl, folder);
     this.applyRenameState(titleEl, titleContentEl, folder);
     titleEl.addEventListener("click", (event) => this.onFolderClick(folder, event));
@@ -326,6 +324,7 @@ export class FileExplorerView extends ItemView {
       itemClass: "nav-file",
       selfClass: "nav-file-title tappable is-clickable",
       innerClass: "nav-file-title-content",
+      iconClass: "nav-file-icon",
     });
     const { selfEl: titleEl, innerEl: titleContentEl } = item;
     titleEl.dataset.path = file.path;
@@ -338,10 +337,7 @@ export class FileExplorerView extends ItemView {
       !this.app.viewRegistry.getTypeByExtension(file.extension),
     );
     this.applySelectionState(titleEl, file);
-    const iconEl = document.createElement("div");
-    iconEl.className = "tree-item-icon nav-file-icon";
-    setFileTypeIcon(iconEl, file.path);
-    titleEl.insertBefore(iconEl, titleContentEl);
+    setFileTypeIcon(item.iconEl, file.path);
     titleContentEl.textContent = file.name;
     this.applyRenameState(titleEl, titleContentEl, file);
     titleEl.addEventListener("click", (event) => this.onFileClick(file, event));

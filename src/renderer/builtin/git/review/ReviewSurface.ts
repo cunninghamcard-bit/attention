@@ -236,6 +236,7 @@ export class ReviewSurface {
         itemClass: "nav-file",
         selfClass: "nav-file-title tappable is-clickable review-file-row",
         innerClass: "nav-file-title-content review-file-row-name",
+        iconClass: "nav-file-icon",
       });
       const row = item.selfEl;
       row.classList.toggle("is-active", this.activePath === file.path);
@@ -244,10 +245,8 @@ export class ReviewSurface {
       row.setAttribute("tabindex", "0");
       row.setAttribute("title", file.path);
       this.rowEls.set(file.path, row);
-      const icon = createSpan("tree-item-icon nav-file-icon");
-      setFileTypeIcon(icon, file.path);
+      setFileTypeIcon(item.iconEl, file.path);
       item.innerEl.textContent = file.path;
-      item.innerEl.before(icon);
       const flair = createSpan("tree-item-flair-outer");
       item.innerEl.after(flair);
       const stat = createSpan("tree-item-flair review-file-row-stat", flair);
