@@ -1,7 +1,7 @@
 import { FileDiff } from "@pierre/diffs";
 import { ItemView } from "../../views/ItemView";
-import { setIcon } from "../../ui/Icon";
 import { setFileTypeIcon } from "../../ui/FileTypeIcon";
+import { createNavFolder } from "../../ui/NavFolder";
 import type { GitFileStatus, GitLogEntry, GitNumstatEntry, GitService } from "./GitService";
 
 const LOG_LIMIT = 100;
@@ -97,14 +97,15 @@ export class GitLogView extends ItemView {
   private renderEntry(entry: GitLogEntry): void {
     if (!this.listEl) return;
     const doc = this.listEl.ownerDocument;
-    const itemEl = doc.createElement("div");
-    itemEl.className = "tree-item nav-folder git-log-entry";
-    const headerEl = doc.createElement("div");
-    headerEl.className =
-      "tree-item-self nav-folder-title tappable is-clickable mod-collapsible git-log-header";
-    const iconEl = doc.createElement("span");
-    iconEl.className = "tree-item-icon collapse-icon is-collapsed";
-    setIcon(iconEl, "right-triangle");
+    const {
+      folderEl: itemEl,
+      titleEl: headerEl,
+      childrenEl: detailEl,
+      setCollapsed,
+    } = createNavFolder(this.listEl, true);
+    itemEl.classList.add("git-log-entry");
+    headerEl.classList.add("git-log-header");
+    detailEl.classList.add("git-log-detail");
     const contentEl = doc.createElement("span");
     contentEl.className = "tree-item-inner";
     const subjectEl = doc.createElement("span");
@@ -114,24 +115,19 @@ export class GitLogView extends ItemView {
     metaEl.className = "tree-item-inner-subtext git-log-meta";
     metaEl.textContent = `${entry.shortHash} · ${entry.author} · ${new Date(entry.date).toLocaleString()}`;
     contentEl.append(subjectEl, metaEl);
-    headerEl.append(iconEl, contentEl);
-    itemEl.appendChild(headerEl);
-    const detailEl = doc.createElement("div");
-    detailEl.className = "tree-item-children nav-folder-children git-log-detail";
-    detailEl.hidden = true;
-    itemEl.appendChild(detailEl);
+    headerEl.appendChild(contentEl);
     let loaded = false;
     headerEl.addEventListener("click", () => {
-      const open = !detailEl.hidden;
-      detailEl.hidden = open;
-      iconEl.classList.toggle("is-collapsed", open);
-      itemEl.classList.toggle("is-expanded", !open);
-      if (!open && !loaded) {
+      // .hidden is typed string | boolean (hidden="until-found"); it is only
+      // ever set to a real boolean here, so coerce for classList.toggle.
+      const expanding = Boolean(detailEl.hidden);
+      setCollapsed(!expanding);
+      itemEl.classList.toggle("is-expanded", expanding);
+      if (expanding && !loaded) {
         loaded = true;
         void this.renderDetail(entry, detailEl);
       }
     });
-    this.listEl.appendChild(itemEl);
   }
 
   private async renderDetail(entry: GitLogEntry, detailEl: HTMLElement): Promise<void> {
@@ -149,11 +145,16 @@ export class GitLogView extends ItemView {
       return;
     }
     for (const row of rows) {
-      const rowEl = doc.createElement("div");
-      rowEl.className =
-        "tree-item-self nav-file-title tappable is-clickable mod-collapsible git-log-file";
+      const {
+        folderEl,
+        titleEl: rowEl,
+        childrenEl: diffHost,
+        setCollapsed,
+      } = createNavFolder(detailEl, true);
+      folderEl.classList.add("git-log-file-item");
+      rowEl.classList.add("git-log-file");
       const iconEl = doc.createElement("span");
-      iconEl.className = "tree-item-icon nav-file-icon";
+      iconEl.className = "nav-folder-icon git-log-file-icon";
       setFileTypeIcon(iconEl, row.path);
       const nameEl = doc.createElement("span");
       nameEl.className = "tree-item-inner nav-file-title-content git-log-file-name";
@@ -162,15 +163,11 @@ export class GitLogView extends ItemView {
       statEl.className = "tree-item-flair git-log-file-stats";
       statEl.textContent = `${row.status}  +${row.additions}  −${row.deletions}`;
       rowEl.append(iconEl, nameEl, statEl);
-      detailEl.appendChild(rowEl);
-      const diffHost = doc.createElement("div");
-      diffHost.hidden = true;
-      detailEl.appendChild(diffHost);
       let diffLoaded = false;
       rowEl.addEventListener("click", () => {
-        const open = !diffHost.hidden;
-        diffHost.hidden = open;
-        if (!open && !diffLoaded) {
+        const expanding = diffHost.hidden;
+        setCollapsed(!expanding);
+        if (expanding && !diffLoaded) {
           diffLoaded = true;
           void this.renderFileDiff(entry.hash, row.path, diffHost);
         }

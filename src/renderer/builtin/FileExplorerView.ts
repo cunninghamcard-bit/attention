@@ -1,6 +1,7 @@
 import { ItemView } from "../views/ItemView";
 import { setIcon } from "../ui/Icon";
 import { setFileTypeIcon } from "../ui/FileTypeIcon";
+import { createNavFolder } from "../ui/NavFolder";
 import { displayTooltip, hideTooltip, setTooltip } from "../ui/Popover";
 import { Menu } from "../ui/Menu";
 import { TAbstractFile, TFile, TFolder } from "../vault/TAbstractFile";
@@ -288,23 +289,15 @@ export class FileExplorerView extends ItemView {
 
   private renderFolder(folder: TFolder, parentEl: HTMLElement): void {
     const isCollapsed = this.collapsedFolders.has(folder.path);
-    const folderEl = document.createElement("div");
-    folderEl.className = "tree-item nav-folder";
-    folderEl.classList.toggle("is-collapsed", isCollapsed);
-    const titleEl = document.createElement("div");
-    titleEl.className = "tree-item-self nav-folder-title tappable is-clickable mod-collapsible";
+    const { folderEl, titleEl, childrenEl } = createNavFolder(parentEl, isCollapsed);
     titleEl.dataset.path = folder.path;
-    const collapseEl = document.createElement("div");
-    collapseEl.className = "tree-item-icon collapse-icon nav-folder-collapse-indicator";
-    collapseEl.classList.toggle("is-collapsed", isCollapsed);
-    setIcon(collapseEl, "right-triangle");
     const folderIconEl = document.createElement("div");
     folderIconEl.className = "tree-item-icon nav-folder-icon";
     setIcon(folderIconEl, isCollapsed ? "lucide-folder-closed" : "lucide-folder-open");
     const titleContentEl = document.createElement("div");
     titleContentEl.className = "tree-item-inner nav-folder-title-content";
     titleContentEl.textContent = folder.name;
-    titleEl.append(collapseEl, folderIconEl, titleContentEl);
+    titleEl.append(folderIconEl, titleContentEl);
     this.applySelectionState(titleEl, folder);
     this.applyRenameState(titleEl, titleContentEl, folder);
     titleEl.addEventListener("click", (event) => this.onFolderClick(folder, event));
@@ -314,18 +307,11 @@ export class FileExplorerView extends ItemView {
       this.createDragSource(event, folder, titleEl),
     );
     this.installFolderDrop(titleEl, folder, folderEl);
-    folderEl.appendChild(titleEl);
-
-    const childrenEl = document.createElement("div");
-    childrenEl.className = "tree-item-children nav-folder-children";
-    childrenEl.hidden = isCollapsed;
     // Skip building DOM for collapsed subtrees — the dominant cost on large vaults.
     if (!isCollapsed) {
       for (const child of [...folder.children].sort(this.compareFiles))
         this.renderTreeItem(child, childrenEl);
     }
-    folderEl.appendChild(childrenEl);
-    parentEl.appendChild(folderEl);
   }
 
   private renderFile(file: TFile, parentEl: HTMLElement): void {

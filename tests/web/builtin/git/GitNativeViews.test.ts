@@ -134,8 +134,9 @@ describe("native Git views", () => {
     expect((commit?.querySelector(".git-log-detail") as HTMLElement).hidden).toBe(true);
     header.click();
     await settle();
-    const file = commit?.querySelector(".git-log-file.tree-item-self.nav-file-title");
+    const file = commit?.querySelector(".git-log-file.tree-item-self.nav-folder-title");
     expect(file).not.toBeNull();
+    expect(file?.querySelector(".nav-folder-collapse-indicator")).not.toBeNull();
     expect(file?.querySelector(".file-type-icon")).not.toBeNull();
     expect(file?.querySelector(".git-log-file-stats")?.textContent).toContain("+3  −2");
   });
