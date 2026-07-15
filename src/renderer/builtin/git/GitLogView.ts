@@ -146,9 +146,15 @@ export class GitLogView extends ItemView {
       return;
     }
     for (const row of rows) {
+      // A changed file that expands to its diff — semantically a FILE, so it
+      // wears nav-file(-title), not nav-folder. The distinction is load-bearing
+      // under themes: a theme paints .nav-folder-title with folder colours and
+      // reserves the file press/active treatment for .nav-file-title, so a file
+      // row in folder clothes gets rendered as a folder. It stays collapsible;
+      // the commit ABOVE it keeps nav-folder, which is the real container.
       const item = new TreeItem(detailEl, {
-        itemClass: "nav-folder git-log-file-item",
-        selfClass: "nav-folder-title tappable is-clickable git-log-file",
+        itemClass: "nav-file git-log-file-item",
+        selfClass: "nav-file-title tappable is-clickable git-log-file",
         innerClass: "nav-file-title-content git-log-file-name",
         childrenClass: "nav-folder-children",
         collapseClass: "nav-folder-collapse-indicator",
