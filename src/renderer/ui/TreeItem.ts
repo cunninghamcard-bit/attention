@@ -14,6 +14,12 @@ export interface TreeItemOptions {
   collapseClass?: string;
   /** Extra classes for the type-icon slot, e.g. "nav-file-icon". */
   iconClass?: string;
+  /**
+   * Whether `setCollapsible` renders a chevron. A row whose icon already shows
+   * open/closed state — a folder glyph — turns this off: the icon IS the
+   * affordance, so a chevron beside it would say the same thing twice.
+   */
+  collapseIcon?: boolean;
 }
 
 /**
@@ -37,6 +43,7 @@ export class TreeItem extends Component {
   private collapsed = false;
   private readonly collapseClass: string;
   private readonly iconClass?: string;
+  private readonly wantsCollapseIcon: boolean;
   private typeIconEl: HTMLElement | null = null;
 
   constructor(parent: HTMLElement, options: TreeItemOptions = {}) {
@@ -44,6 +51,7 @@ export class TreeItem extends Component {
     const doc = parent.ownerDocument;
     this.collapseClass = joinClasses("tree-item-icon collapse-icon", options.collapseClass);
     this.iconClass = options.iconClass;
+    this.wantsCollapseIcon = options.collapseIcon ?? true;
     this.el = doc.createElement("div");
     this.el.className = joinClasses("tree-item", options.itemClass);
     this.selfEl = doc.createElement("div");
@@ -92,7 +100,7 @@ export class TreeItem extends Component {
   setCollapsible(value: boolean): void {
     if (this.collapsible === value) return;
     this.collapsible = value;
-    if (value) {
+    if (value && this.wantsCollapseIcon) {
       if (!this.collapseEl) {
         const collapseEl = (this.collapseEl = this.el.ownerDocument.createElement("div"));
         collapseEl.className = this.collapseClass;

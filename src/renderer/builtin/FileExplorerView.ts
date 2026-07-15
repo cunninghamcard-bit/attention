@@ -295,13 +295,15 @@ export class FileExplorerView extends ItemView {
       innerClass: "nav-folder-title-content",
       childrenClass: "nav-folder-children",
       collapseClass: "nav-folder-collapse-indicator",
+      iconClass: "nav-folder-icon",
+      // The open/closed glyph below is the collapse affordance; no chevron too.
+      collapseIcon: false,
     });
     item.setCollapsible(true);
     item.setCollapsed(isCollapsed);
     const { el: folderEl, selfEl: titleEl, childrenEl, innerEl: titleContentEl } = item;
     titleEl.dataset.path = folder.path;
-    // No folder glyph of our own: the chevron holds the gutter, exactly as in
-    // Obsidian, so a theme is free to mask it into whatever folder icon it ships.
+    setIcon(item.iconEl, isCollapsed ? "lucide-folder-closed" : "lucide-folder-open");
     titleContentEl.textContent = folder.name;
     this.applySelectionState(titleEl, folder);
     this.applyRenameState(titleEl, titleContentEl, folder);

@@ -158,3 +158,49 @@
 .workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container {
   justify-content: flex-start;
 }
+
+/* Folder rows carry a folder glyph instead of a chevron: the open/closed icon
+ * IS the collapse affordance. Obsidian has no folder icons at all, so there is
+ * no native rule to copy — but there IS a native mechanism, the icon slot a
+ * tree row already owns (its Bookmarks leaf rows use exactly this), and the
+ * icon goes there rather than being masked onto the chevron in CSS. */
+.nav-folder-icon {
+  color: var(--icon-color);
+  opacity: var(--icon-opacity);
+}
+.nav-folder-icon svg.svg-icon {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.8px;
+}
+
+/* PRODUCT: the in-flow type-icon slot. Obsidian's tree has no type icons at
+ * all, so this is ours, not a native rule — it lives here, not in the faithful
+ * components/tree-item.css. Deliberately NOT a `.tree-item-icon`: that class is
+ * the row's one absolutely-positioned gutter box, which a collapsible row
+ * spends on its chevron, and which themes target as "the chevron". The type
+ * icon sits beside the title instead (Obsidian's own `.file-tree-item-icon`
+ * does the same). */
+.tree-item-self .tree-item-icon-inline {
+  display: flex;
+  /* .tree-item-self is align-items: baseline; an icon has no baseline to share. */
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin-inline-end: var(--size-2-3);
+  color: var(--icon-color);
+}
+/* A chevron-less row leaves the gutter empty; pull the icon into it so the tree
+ * keeps Obsidian's original indentation instead of a dead 20px column. */
+.tree-item-self:not(:has(> .collapse-icon)) > .tree-item-icon-inline {
+  margin-inline-start: calc(-1 * var(--size-4-5));
+}
+/* PRODUCT: our review/git rows can be taller than Obsidian's single-line nav
+ * rows, and the native chevron rule pins the absolute icon to its static
+ * (top-ish) position. Span the row height so it centres. A no-op on single-line
+ * rows, so it is safe to apply broadly. */
+.tree-item-self .tree-item-icon {
+  top: 0;
+  bottom: 0;
+}

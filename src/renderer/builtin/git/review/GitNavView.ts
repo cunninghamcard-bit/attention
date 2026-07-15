@@ -2,6 +2,7 @@ import type { App } from "../../../app/App";
 import { createDiv, createEl, createSpan } from "../../../dom/dom";
 import type { EventRef } from "../../../core/Events";
 import { setFileTypeIcon } from "../../../ui/FileTypeIcon";
+import { setIcon } from "../../../ui/Icon";
 import { SearchComponent } from "../../../ui/Setting";
 import { TreeItem } from "../../../ui/TreeItem";
 import { ItemView } from "../../../views/ItemView";
@@ -175,13 +176,16 @@ export class GitNavView extends ItemView {
         innerClass: "nav-folder-title-content",
         childrenClass: "nav-folder-children",
         collapseClass: "nav-folder-collapse-indicator",
+        iconClass: "nav-folder-icon",
+        // Same as the file explorer: the folder glyph is the affordance.
+        collapseIcon: false,
       });
       item.setCollapsible(true);
       item.setCollapsed(collapsed);
       const { selfEl: row, innerEl, childrenEl } = item;
       row.setAttribute("role", "button");
       row.tabIndex = 0;
-      // Chevron only, same as the file explorer — themeable, no glyph of our own.
+      setIcon(item.iconEl, collapsed ? "lucide-folder-closed" : "lucide-folder-open");
       innerEl.textContent = node.name;
       const toggle = (): void => {
         if (collapsed) this.collapsed.delete(node.path);
