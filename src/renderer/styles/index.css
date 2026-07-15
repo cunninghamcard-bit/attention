@@ -68,6 +68,7 @@
 @import "./features/webviewer-workspaces.css";
 @import "./workspace/starter-splash.css";
 @import "./base/platform-mobile.css";
+@import "./product/reading-view.css";
 @import "./product/code-view.css";
 @import "./product/terminal.css";
 @import "./product/explorer.css";

@@ -1,0 +1,23 @@
+/* Reading-mode scroll — a reconstruction-only necessity, not in Obsidian's CSS.
+ *
+ * Obsidian's app.css does NOT bound the reading container: `.markdown-reading-view`
+ * ships only `display: flex; flex-direction: column`, and its parent
+ * `.view-content` is a plain block with `height: calc(100% - header)` — both
+ * byte-identical to ours. Under that CSS alone the flex column has no height
+ * constraint, so it grows to the document's full content height and overflows
+ * `.view-content`'s `overflow: hidden` clip; the preview inside
+ * (`.markdown-preview-view { height: 100%; overflow-y: auto }`) then never gets a
+ * scrollable box and reading mode cannot reach content below the fold.
+ *
+ * Measured to confirm (bounded 800px root, reproducing the Electron window):
+ * view-content = 717px, but reading-view = 19257px, preview not scrollable.
+ * Obsidian avoids this by sizing the container from its layout runtime (JS),
+ * which app.css does not encode. We render CSS-only, so we supply the bound
+ * ourselves. This is the CSS equivalent of what Obsidian's runtime does — hence
+ * it lives here in product/, and editor/reading-view.css stays a faithful extract.
+ *
+ * Verified originally in ab4f3a3 (80-section note, viewport 642 vs content 8701,
+ * scrollTop sticks, properties bar coexists). */
+.markdown-reading-view {
+  height: 100%;
+}

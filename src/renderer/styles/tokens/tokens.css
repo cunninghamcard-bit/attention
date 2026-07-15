@@ -1043,7 +1043,7 @@ iframe {
 }
 body {
   --font-default: ui-sans-serif, -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", "Google Sans Flex", Roboto, "Inter Variable", "Inter", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
-  --font-monospace-default: "Workbench JetBrains Mono", ui-monospace, SFMono-Regular, "Cascadia Mono", "Roboto Mono", "DejaVu Sans Mono", "Liberation Mono", Menlo, Monaco, "Consolas", "Source Code Pro", monospace;
+  --font-monospace-default: ui-monospace, SFMono-Regular, "Cascadia Mono", "Roboto Mono", "DejaVu Sans Mono", "Liberation Mono", Menlo, Monaco, "Consolas", "Source Code Pro", monospace;
   --font-interface-override: '??';
   --font-interface-theme: '??';
   --font-interface: var(--font-interface-override), var(--font-interface-theme), var(--default-font, '??'), var(--font-default);
@@ -1122,22 +1122,4 @@ body {
   body {
     --font-text: var(--font-print) !important;
   }
-}
-
-/* Code palette: One Light (Atom) — light theme only; dark keeps the accent-
- * variable mapping above. Consumed by markdown code blocks and CodeFileView
- * alike via the --code-* slots. */
-.theme-light {
-  --code-background: #fafafa;
-  --code-normal: #383a42;
-  --code-comment: #a0a1a7;
-  --code-keyword: #a626a4;
-  --code-string: #50a14f;
-  --code-value: #986801;
-  --code-function: #4078f2;
-  --code-property: #e45649;
-  --code-operator: #0184bc;
-  --code-tag: #e45649;
-  --code-important: #c18401;
-  --code-punctuation: #383a42;
 }
