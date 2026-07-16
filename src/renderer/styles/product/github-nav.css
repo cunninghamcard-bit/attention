@@ -332,8 +332,15 @@ not a form button — so themes
   height: 100%;
   padding: 0;
 }
+/* The header icons and the tree rows below them must share one left origin.
+   A tree row's icon sits at the body's padding plus `--nav-item-padding`'s
+   leading gutter; a header icon sits at the header's padding plus the
+   clickable-icon's own. Express the header's indent from those same tokens so
+   the two columns track together instead of drifting apart when either
+   changes. */
 .github-nav-view .nav-header {
   padding: var(--size-4-2) var(--size-4-2) var(--size-2-2);
+  padding-inline-start: calc(var(--size-2-2) + var(--size-4-6) - var(--size-2-3));
 }
 .github-nav-body {
   flex: 1;
