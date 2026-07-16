@@ -150,16 +150,18 @@ Nav -> Detail: reuse the same center leaf (no new tab)
   **only** door into a `github-repo` tab. Richer profile content (contribution
   heatmap, stars / followers / sponsors sub-views) is a follow-up goal, not
   this contract.
-- **Global search = a fixed top-right panel** (owner's round-5 call: one
-  fixed position, not a centered pop-up). Provenance, stated honestly: **no
-  precedent exists** — this codebase's document search is a centered in-flow
-  top bar (`document-search.css`, no positioning), the host's prompt family
-  is centered, and OMG's search sits in its sidebar. The top-right anchor is
-  therefore a **deliberate owner-directed invention**, awaiting the owner's
-  confirmation now that this has been told to them (their alternative: point
-  at where they saw one). Invoking `github:search` (⌘P command, or the
-  "Search GitHub for …" tail row of any page's search field) opens the
-  search at that fixed anchor — never a centered modal.
+- **Global search = the host's document-search idiom, hidden until summoned**
+  (owner's final round-5 call: "像 Obsidian 原生的，平时不出现，Command F 再
+  出现"). On an active GitHub center leaf, the find command (⌘F, the same
+  hotkey the host's document search answers) slides in the
+  **document-search-style bar at the top of that leaf**
+  (`document-search.css` idiom — in-flow, panel-width, no floating chrome);
+  the as-you-type suggestion list (task #8's engine, reskinned only) drops
+  below it; Esc dismisses and the bar is gone without trace. `github:search`
+  (⌘P) and the "Search GitHub for …" tail row of any page's search field
+  summon the same bar. The editor's own ⌘F behavior on non-GitHub leaves is
+  untouched. No sidebar entry, no ribbon icon, no centered modal, no
+  invented top-right chrome.
   Merging into the host's file search was ruled out on signature grounds,
   not taste: `registerSearchOperator` filters `TFile` and `search()` returns
   `VaultSearchResult[]` — the engine cannot yield GitHub entities without
@@ -323,12 +325,18 @@ Scenario: The search command suggests targets and opens the pick
   When the user types a repo name fragment and picks the suggestion
   Then a `github-repo` center leaf opens for the picked repository
 
-Scenario: The global search anchors top-right, not in a centered modal
-  Test: anchors the github search at the workspace top right
-  Given the github:search command is invoked
-  When the search panel renders
-  Then it is anchored in the workspace's top-right document-search position
+Scenario: The global search appears as the leaf's document-search bar
+  Test: summons the github search bar on the active leaf
+  Given an active GitHub center leaf with no search bar visible
+  When the user invokes the find command on that leaf
+  Then a document-search-style bar appears at the top of that leaf
   And no centered modal container is created
+
+Scenario: Escape dismisses the search bar without a trace
+  Test: dismisses the github search bar on escape
+  Given the GitHub search bar is open on the active leaf
+  When the user presses Escape
+  Then the bar is removed and the leaf's content is unchanged
 
 Scenario: An inbox qualifier filters the rows without any button row
   Test: filters the inbox through a typed qualifier
@@ -492,9 +500,6 @@ Scenario: Repo-scoped view state does not leak across repositories
 
 ## Open Questions
 
-- Global search anchor: the owner asked for a fixed top-right position, but
-  no such precedent exists in this codebase or in OMG (both were checked at
-  source level). Awaiting the owner's confirmation to invent it deliberately
-  (option B) or a pointer to where they saw one (option C). The two
-  search-panel scenarios are suspended until then; the qualifier-field and
-  header-state-switch work is unaffected.
+None. (The search-anchor question was resolved by the owner on 2026-07-16:
+the host document-search idiom — hidden until ⌘F — replaced the earlier
+top-right idea once its lack of precedent was surfaced.)
