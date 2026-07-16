@@ -1,7 +1,7 @@
 import { FileDiff } from "@pierre/diffs";
 import { ItemView } from "../../views/ItemView";
 import { openGitDiff } from "../../views/DiffView";
-import { openPrList } from "../github/GitPrViews";
+import { openQueryList } from "../github/open";
 import { openGitReview } from "./review/GitReviewView";
 import { setIcon } from "../../ui/Icon";
 import { TreeItem } from "../../ui/TreeItem";
@@ -74,7 +74,11 @@ export class GitChangesView extends ItemView {
     this.listEl.className = "git-changes-list";
     this.contentEl.appendChild(this.listEl);
     this.addAction("lucide-file-diff", "Review all changes", () => void openGitReview(this.app));
-    this.addAction("lucide-git-pull-request", "Pull requests", () => void openPrList(this.app));
+    this.addAction(
+      "lucide-git-pull-request",
+      "Pull requests",
+      () => void openQueryList(this.app, "pr", "review-requested"),
+    );
     this.addAction("lucide-rotate-ccw", "Refresh", () => void this.refresh());
     this.registerEvent(
       this.app.workspace.on("css-change", () => {

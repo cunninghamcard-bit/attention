@@ -43,7 +43,6 @@ import { createGitPluginDefinition } from "./git/GitPlugin";
 import { createGitHubPluginDefinition } from "./github/GitHubPlugin";
 import { openFileCompare, openGitDiff } from "../views/DiffView";
 import { openFileHistory } from "./git/GitHistoryView";
-import { openGitHubWorkspace } from "./github/GitHubWorkspace";
 import { openGitReview } from "./git/review/GitReviewView";
 import { createBookmarksPluginDefinition } from "./Bookmarks";
 import { createSlidesPluginDefinition } from "./Slides";

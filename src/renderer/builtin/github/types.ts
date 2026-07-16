@@ -231,6 +231,26 @@ export interface IssueDetail extends IssueSummary {
   closedAt: string | null;
 }
 
+/** Cross-repo involvement query (author/review-requested/mentioned). The search
+ * API returns PRs and issues uniformly, each carrying its own repository. */
+export type InvolvementQuery = "created" | "review-requested" | "mentioned" | "assigned";
+
+export interface GitHubSearchItem {
+  owner: string;
+  repo: string;
+  number: number;
+  title: string;
+  state: IssueState;
+  isDraft: boolean;
+  isPullRequest: boolean;
+  author: GitHubActor;
+  createdAt: string;
+  updatedAt: string;
+  url: string;
+  labels: PrLabel[];
+  comments: number;
+}
+
 export interface ActionRunSummary {
   id: number;
   name: string;

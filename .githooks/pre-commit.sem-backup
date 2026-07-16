@@ -1,0 +1,11 @@
+#!/bin/sh
+# docwright pre-commit guard
+# Auto-installed by: docwright install-hooks
+
+if command -v docwright >/dev/null 2>&1; then
+    docwright guard --spec-dir docs --code . --min-score 0.6
+    exit $?
+else
+    echo "warning: docwright not found, skipping spec guard"
+    exit 0
+fi

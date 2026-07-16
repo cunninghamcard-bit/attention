@@ -1,10 +1,25 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
-import { openPrDetail, openPrList, PrDetailView, PrListView } from "@web/builtin/github/GitPrViews";
+import { PrDetailView } from "@web/builtin/github/GitPrViews";
+import { GitHubNavView } from "@web/builtin/github/GitHubNavView";
+import { GitHubRepoView } from "@web/builtin/github/GitHubRepoView";
+import { openGitHubNav, openPrDetail, openRepo } from "@web/builtin/github/open";
 import type { ElectronGitApi, GitExecResult } from "@web/builtin/git/GitService";
 import type { HttpResponse, HttpTransport } from "@web/builtin/github/GitHubClient";
 import type { PrDetail, PrSummary } from "@web/builtin/github/types";
 import { writeGithubPrPrefs } from "@web/builtin/github/prefs";
+
+afterEach(() => vi.unstubAllGlobals());
+
+// jsdom lacks ResizeObserver; the shared ReviewSurface's pierre CodeView needs
+// it. Real desktop/web runtimes provide it natively.
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  } as unknown as typeof ResizeObserver;
+}
 
 const SUMMARY: PrSummary = {
   number: 185,
@@ -78,7 +93,11 @@ function fakeGitBridge(isRepo = true): ElectronGitApi {
         return { code: 0, stdout: isRepo ? "true\n" : "false\n", stderr: "" };
       if (args[0] === "remote" && args[1] === "get-url") {
         return isRepo
-          ? { code: 0, stdout: "https://github.com/coder/ghostty-web.git\n", stderr: "" }
+          ? {
+              code: 0,
+              stdout: "https://github.com/coder/ghostty-web.git\n",
+              stderr: "",
+            }
           : { code: 1, stdout: "", stderr: "missing" };
       }
       if (args[0] === "status") return { code: 0, stdout: "", stderr: "" };
@@ -116,6 +135,9 @@ function installGithubMocks(
           authed ? { login: "cunninghamcard-bit", avatar_url: "", name: "Card" } : null,
           authed ? 200 : 401,
         );
+      }
+      if (verb === "GET" && path.startsWith("/user/orgs")) {
+        return json([{ login: "acme-corp", avatar_url: "", description: "Acme" }]);
       }
       if (verb === "GET" && path.startsWith("/user/repos")) {
         return json([
@@ -212,7 +234,10 @@ function rawPull(detail: PrSummary | PrDetail) {
       avatar_url: detail.author.avatarUrl,
       html_url: detail.author.url,
     },
-    head: { ref: detail.headRefName, sha: "body" in detail ? detail.headRefOid : "deadbeef" },
+    head: {
+      ref: detail.headRefName,
+      sha: "body" in detail ? detail.headRefOid : "deadbeef",
+    },
     base: { ref: detail.baseRefName },
     html_url: detail.url,
     created_at: detail.createdAt,
@@ -252,46 +277,47 @@ async function until(condition: () => boolean, what: string): Promise<void> {
   }
 }
 
+function navOf(app: App): GitHubNavView {
+  return app.workspace.getLeavesOfType(GitHubNavView.VIEW_TYPE)[0].view as GitHubNavView;
+}
+
 describe("PR views (cloud, ghostty-web calibrated)", () => {
-  it("lists pull requests for the selected repo", async () => {
+  it("lists pull requests in a repository tab", async () => {
     const app = await appWithGit();
     installGithubMocks(app);
-    await openPrList(app);
-    const listView = app.workspace.getLeavesOfType(PrListView.VIEW_TYPE)[0].view as PrListView;
+    await openRepo(app, "coder", "ghostty-web", "pulls");
+    const view = app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)[0].view as GitHubRepoView;
 
-    await until(() => listView.contentEl.querySelector(".git-pr-row-title") !== null, "PR row");
-    expect(listView.contentEl.querySelector(".git-pr-row-title")!.textContent).toContain(
-      "Powerline",
-    );
-    expect(listView.contentEl.textContent).toContain("coder/ghostty-web");
-    expect(listView.contentEl.textContent).toContain("fix/powerline-vector-glyphs");
+    await until(() => view.contentEl.querySelector(".github-row") !== null, "PR row");
+    expect(view.contentEl.textContent).toContain("Powerline");
+    expect(view.contentEl.textContent).toContain("fix/powerline-vector-glyphs");
 
-    (listView.contentEl.querySelector(".git-pr-row") as HTMLElement).click();
+    (view.contentEl.querySelector(".github-row") as HTMLElement).click();
     await until(
       () => app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE).length > 0,
       "detail leaf",
     );
   });
 
-  it("opens files tab with tree and renders PR metadata from real shape", async () => {
+  it("renders PR metadata and files through the review surface", async () => {
     const app = await appWithGit();
     installGithubMocks(app);
-    await openPrDetail(app, 185, { owner: "coder", repo: "ghostty-web" });
+    await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
 
     await until(() => view.contentEl.querySelector(".git-pr-title") !== null, "title");
     expect(view.contentEl.querySelector(".git-pr-title")!.textContent).toContain("Powerline");
-    await until(() => view.contentEl.querySelector(".git-pr-file-row") !== null, "file rows");
+    await until(() => view.contentEl.querySelector(".review-sidebar") !== null, "review surface");
     expect(view.contentEl.textContent).toContain("lib/renderer.ts");
     expect(view.contentEl.textContent).toContain("lib/renderer.test.ts");
-    expect(view.contentEl.textContent).toMatch(/\+103|\+81/);
+    expect(view.contentEl.textContent).toMatch(/\+103/);
   });
 
   it("approves through the GitHub API", async () => {
     const submitCalls: string[] = [];
     const app = await appWithGit();
     installGithubMocks(app, { submitCalls });
-    await openPrDetail(app, 185, { owner: "coder", repo: "ghostty-web" });
+    await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
 
     await until(() => view.contentEl.querySelector(".git-pr-title") !== null, "title");
@@ -308,35 +334,73 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     await until(() => submitCalls.includes("APPROVE"), "approve call");
   });
 
-  it("shows sign-in when no token is stored", async () => {
+  it("opens browser device login from the signed-out view", async () => {
+    const openExternal = vi.fn(async () => {});
+    vi.stubGlobal("electron", { shell: { openExternal } });
     const app = await appWithGit();
     installGithubMocks(app, { authed: false });
     app.github.clearToken();
+    app.github.oauthClientId = "test-client-id";
+    vi.spyOn(app.github, "startDeviceLogin").mockResolvedValue({
+      clientId: "test-client-id",
+      deviceCode: "device-code",
+      userCode: "ABCD-EFGH",
+      verificationUri: "https://github.com/login/device",
+      verificationUriComplete: "https://github.com/login/device/authorize",
+      expiresIn: 900,
+      interval: 5,
+    });
+    vi.spyOn(app.github, "completeDeviceLogin").mockReturnValue(new Promise(() => {}));
     app.github.invalidate();
-    await openPrList(app);
-    const listView = app.workspace.getLeavesOfType(PrListView.VIEW_TYPE)[0].view as PrListView;
-    await until(() => listView.contentEl.querySelector(".git-pr-signin") !== null, "sign-in");
-    expect(listView.contentEl.textContent).toContain("Connect GitHub");
-    expect(listView.contentEl.textContent).not.toContain("gh auth login");
+    await openGitHubNav(app);
+    const nav = navOf(app);
+    await until(() => nav.contentEl.querySelector(".git-pr-signin") !== null, "sign-in");
+    expect(nav.contentEl.textContent).toContain("Connect GitHub");
+    const login = [...nav.contentEl.querySelectorAll("button")].find(
+      (element) => element.textContent === "Login with GitHub",
+    ) as HTMLButtonElement;
+    expect(login.disabled).toBe(false);
+    login.click();
+    await until(() => nav.contentEl.textContent?.includes("ABCD-EFGH") ?? false, "device code");
+    const connect = [...nav.contentEl.querySelectorAll("button")].find(
+      (element) => element.textContent === "Copy code and open GitHub",
+    ) as HTMLButtonElement;
+    connect.click();
+    expect(openExternal).toHaveBeenCalledWith("https://github.com/login/device");
+    const fallback = [...nav.contentEl.querySelectorAll("button")].find(
+      (element) => element.textContent === "Login with personal GitHub token",
+    ) as HTMLButtonElement;
+    fallback.click();
+    expect(login.hidden).toBe(true);
+    expect(nav.contentEl.querySelector<HTMLElement>(".git-pr-device-state")?.hidden).toBe(true);
+    fallback.click();
+    expect(login.hidden).toBe(false);
+    expect(nav.contentEl.querySelector<HTMLElement>(".git-pr-device-state")?.hidden).toBe(false);
   });
 
-  it("shows repo picker when no repo is selected and no origin", async () => {
-    const app = await appWithGit(false);
-    writeGithubPrPrefs({ owner: "", repo: "", filter: "open" });
-    app.github.setRepository(null);
+  it("keeps personal-token login available without an OAuth client ID", async () => {
+    const app = await appWithGit();
+    installGithubMocks(app, { authed: false });
+    app.github.clearToken();
+    app.github.oauthClientId = "";
     app.github.invalidate();
-    installGithubMocks(app);
-    // clear prefs after setRepository null
-    writeGithubPrPrefs({ owner: "", repo: "", filter: "open" });
-    await openPrList(app);
-    const listView = app.workspace.getLeavesOfType(PrListView.VIEW_TYPE)[0].view as PrListView;
-    await until(
-      () =>
-        listView.contentEl.querySelector(".git-pr-repo-picker") !== null ||
-        listView.contentEl.querySelector(".git-pr-row") !== null,
-      "picker or list",
+    await openGitHubNav(app);
+    const nav = navOf(app);
+    await until(() => nav.contentEl.querySelector(".git-pr-signin") !== null, "sign-in");
+
+    const login = [...nav.contentEl.querySelectorAll("button")].find(
+      (element) => element.textContent === "Login with GitHub",
+    ) as HTMLButtonElement;
+    expect(login.disabled).toBe(true);
+    expect(nav.contentEl.textContent).toContain(
+      "GitHub browser login is not configured in this build.",
     );
-    // Without origin/prefs may still pick from empty — ensure we don't crash
-    expect(listView.contentEl.textContent).toBeTruthy();
+
+    const fallback = [...nav.contentEl.querySelectorAll("button")].find(
+      (element) => element.textContent === "Login with personal GitHub token",
+    ) as HTMLButtonElement;
+    fallback.click();
+    expect(login.hidden).toBe(true);
+    expect(nav.contentEl.querySelector('input[type="password"]')).not.toBeNull();
   });
 });

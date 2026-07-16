@@ -1,0 +1,518 @@
+/* Oh My GitHub-style cloud surface. Product layer only; the nav-header /
+ * nav-folder / nav-file / segmented-control primitives are faithful,
+styled by
+ * the workspace/explorer extracts — this file only adds the GitHub chrome. */
+
+/* ============================ Shared rows ============================ */
+
+.github-row.github-row {
+  height: auto;
+  align-items: flex-start;
+  gap: var(--size-2-2);
+  padding: var(--size-2-2) var(--size-2-3);
+}
+/* Center list rows are not file-tree leaves — keep the type icon inside the
+ * active background (explorer's negative gutter margin would pull it out). */
+.github-row > .tree-item-icon-inline,
+.github-row > .github-row-icon {
+  margin-inline-start: 0;
+}
+.github-row-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+.github-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.github-row-title-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--size-2-2);
+  min-width: 0;
+}
+.github-row-title-line .tree-item-inner-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.github-row-number {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+.github-row .tree-item-inner-subtext {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+.github-row .tree-item-flair-outer {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-2);
+}
+
+.github-repo-chip {
+  flex: 0 0 auto;
+  padding: 0 var(--size-2-2);
+  border-radius: var(--radius-s);
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-medium);
+}
+
+.github-avatar {
+  border-radius: 50%;
+  object-fit: cover;
+}
+.github-avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: var(--font-bold);
+}
+
+.github-label {
+  padding: 0 var(--size-2-2);
+  border-radius: var(--radius-s);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-normal);
+  border: 1px solid var(--label-color, var(--background-modifier-border));
+}
+.github-sha {
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+}
+.github-diffstat {
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+}
+.github-diffstat ins {
+  color: var(--color-green);
+  text-decoration: none;
+}
+.github-diffstat del {
+  color: var(--color-red);
+  text-decoration: none;
+}
+.github-time {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+}
+.github-comments {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+.github-comments svg {
+  width: 13px;
+  height: 13px;
+}
+
+.github-dot,
+.github-ci-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  display: inline-block;
+}
+.github-dot.mod-open {
+  background: var(--color-green);
+}
+.github-dot.mod-closed {
+  background: var(--color-red);
+}
+.github-ci-dot.mod-success {
+  background: var(--color-green);
+}
+.github-ci-dot.mod-failure,
+.github-ci-dot.mod-error {
+  background: var(--color-red);
+}
+.github-ci-dot.mod-pending {
+  background: var(--color-yellow);
+}
+.github-pr-state {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-green);
+}
+.github-pr-state.mod-merged {
+  color: var(--color-purple);
+}
+.github-pr-state.mod-closed {
+  color: var(--color-red);
+}
+.github-pr-state.mod-draft {
+  color: var(--text-faint);
+}
+.github-pr-state svg {
+  width: 15px;
+  height: 15px;
+}
+.github-chip {
+  padding: 0 var(--size-2-2);
+  border-radius: var(--radius-s);
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+.github-muted {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+.github-empty {
+  padding: var(--size-4-4);
+  color: var(--text-muted);
+  text-align: center;
+  font-size: var(--font-ui-smaller);
+}
+.github-error {
+  padding: var(--size-4-3);
+  color: var(--text-error);
+  font-size: var(--font-ui-smaller);
+}
+
+/* Per-section control rows (filters,
+search,
+pills,
+branch selector). */
+.github-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--size-2-2);
+  padding: var(--size-2-2) var(--size-4-2) var(--size-2-3);
+}
+.github-controls .search-input-container {
+  flex: 1;
+  min-width: 160px;
+}
+.github-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-2-1);
+  padding: var(--size-2-1) var(--size-2-3);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--interactive-normal);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+}
+.github-filter-caret svg {
+  width: 12px;
+  height: 12px;
+}
+.github-pills {
+  display: inline-flex;
+  gap: var(--size-2-1);
+}
+.github-pill {
+  padding: var(--size-2-1) var(--size-2-3);
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  text-transform: capitalize;
+  cursor: pointer;
+}
+.github-pill.is-active {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.github-branch-select {
+  max-width: 220px;
+}
+.github-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--size-2-1);
+  padding: var(--size-2-2) var(--size-4-2);
+  font-size: var(--font-ui-small);
+}
+.github-crumbs button {
+  padding: 0;
+  background: transparent;
+  color: var(--text-accent);
+  cursor: pointer;
+}
+.github-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--size-2-3);
+  padding: var(--size-4-2);
+}
+.github-branch-name {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-2);
+  min-width: 0;
+}
+.github-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-2-1);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+/* Lightweight text action (div[role=button]),
+not a form button — so themes
+ * keep ownership of input-shadow / raised chrome on real <button>s. */
+.github-linkish {
+  color: var(--text-accent);
+  font-size: var(--font-ui-smaller);
+  cursor: var(--cursor);
+  user-select: none;
+}
+.github-linkish:hover {
+  color: var(--text-accent-hover, var(--text-accent));
+}
+
+/* ============================ Left-dock nav (query + org tree) =========== */
+
+.github-nav-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+}
+.github-nav-view .nav-header {
+  padding: var(--size-4-2) var(--size-4-2) var(--size-2-2);
+}
+.github-nav-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--size-2-1) var(--size-2-2) var(--size-4-4);
+}
+/* Nav tree rows: keep labels ellipsis; type icon stays in the row chrome. */
+.github-nav-view .nav-file-title-content,
+.github-nav-view .nav-folder-title-content {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Semantic icons only — not the file-explorer folder-glyph slot. */
+.github-nav-view .github-nav-icon {
+  color: var(--icon-color);
+  opacity: var(--icon-opacity);
+}
+.github-nav-view .github-nav-icon svg.svg-icon {
+  width: 16px;
+  height: 16px;
+}
+/*
+ * File-explorer pulls chevron-less leaf icons into the collapse gutter
+ * (margin-inline-start: -20px). Inbox is a top-level leaf while PR/Issues/
+ * Orgs are folders with a chevron — that pull made Inbox sit further left
+ * and look "higher" in the hierarchy. Keep icons in the content flow so
+ * Inbox lines up with the group titles at the same tree level.
+ */
+.github-nav-view
+  .tree-item-self:not(:has(> .collapse-icon))
+  > .tree-item-icon-inline {
+  margin-inline-start: 0;
+}
+.github-nav-empty {
+  padding: var(--size-2-3) var(--size-4-2);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+.github-nav-error {
+  padding: var(--size-2-3) var(--size-4-2);
+  color: var(--text-error);
+  font-size: var(--font-ui-smaller);
+}
+
+/* ============================ Center: query list ============================ */
+
+.github-list-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+}
+.github-list-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-3);
+  padding: var(--size-4-3) var(--size-4-4) var(--size-2-3);
+}
+.github-list-controls .search-input-container {
+  min-width: 200px;
+}
+.github-list-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--size-2-3) var(--size-4-4) var(--size-4-6);
+}
+.github-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================ Center: repository tab ============================ */
+
+.github-repo-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+}
+/* Sub-view / query switchers ride the tab's real view-header,
+beside the
+   title and before the actions — no content-drawn header bar. */
+.view-header > .github-repo-nav,
+.view-header > .github-list-nav {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--size-2-1);
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin-inline: var(--size-4-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+/* Icon switchers: the host's clickable-icon language,
+sized for a view-header.
+   Text labels live in the tooltip — a header is chrome,
+not a menu. */
+.github-repo-nav .github-segmented-control-item,
+.github-list-nav .github-segmented-control-item {
+  padding: var(--size-2-2);
+  border: none;
+  border-radius: var(--radius-s);
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  cursor: var(--cursor);
+}
+.github-repo-nav .github-segmented-control-item:hover,
+.github-list-nav .github-segmented-control-item:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.github-repo-nav .github-segmented-control-item.is-active,
+.github-list-nav .github-segmented-control-item.is-active {
+  background: var(--background-modifier-active-hover);
+  /* The generic segmented `.is-active` (git-prs.css) raises a shadow at equal
+     specificity — an icon button in a header must stay flat. */
+  box-shadow: none;
+  color: var(--text-accent);
+}
+
+.github-repo-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--size-2-3) 0 var(--size-4-6);
+}
+.github-repo-body .github-list {
+  padding: 0 var(--size-4-4);
+}
+.github-repo-body .github-controls {
+  padding-left: var(--size-4-4);
+  padding-right: var(--size-4-4);
+}
+.github-overview {
+  padding: var(--size-4-2) var(--size-4-4);
+}
+.github-overview-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-2-2);
+  margin-bottom: var(--size-4-4);
+}
+.github-overview-chip {
+  padding: var(--size-2-2) var(--size-4-2);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--interactive-normal);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+}
+.github-overview-chip:hover {
+  background: var(--background-modifier-hover);
+}
+.github-overview-recent h3 {
+  margin: 0 0 var(--size-2-2);
+  font-size: var(--font-ui-medium);
+  color: var(--text-muted);
+}
+
+/* ============================ Center: detail shells ============================ */
+
+.github-detail-view {
+  height: 100%;
+  overflow-y: auto;
+  padding: 0;
+}
+.github-detail-view .gh-detail-scroll {
+  padding: var(--size-4-6);
+  max-width: 900px;
+  margin: 0 auto;
+}
+.github-detail-empty {
+  padding: var(--size-4-8);
+  color: var(--text-muted);
+  text-align: center;
+}
+.github-detail-error {
+  padding: var(--size-4-6);
+  color: var(--text-error);
+}
+.github-detail-review {
+  height: calc(100% - var(--size-4-1));
+  min-height: 0;
+}
+
+/* GitHub workspace search modal — host SuggestModal chrome,
+product flair only. */
+.github-search-suggestion .suggestion-flair {
+  display: flex;
+  align-items: center;
+  color: var(--icon-color);
+  opacity: var(--icon-opacity);
+}
+.github-search-suggestion .suggestion-flair svg.svg-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* `button:not(.clickable-icon)` (components/button-card.css) dresses every bare
+   button as a themed form control — shadow and interactive fill. These are text
+   affordances inside content,
+so they opt out explicitly. */
+.github-pager-button,
+.github-crumb,
+.github-overview-chip {
+  box-shadow: none;
+}
+.github-pager-button,
+.github-crumb {
+  background: transparent;
+}

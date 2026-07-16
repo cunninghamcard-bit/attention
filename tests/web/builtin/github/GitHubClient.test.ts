@@ -188,4 +188,70 @@ describe("GitHubClient", () => {
     const client = new GitHubClient(mockTransport({}), null);
     await expect(client.listPullRequests(REPO)).rejects.toMatchObject({ status: 401 });
   });
+
+  it("searches involvement across repositories with the right qualifier", async () => {
+    // The only network behaviour this goal adds: exact qualifier + the
+    // repository_url mapper that gives each row its own repo.
+    const seen: string[] = [];
+    const client = new GitHubClient(
+      async ({ url }) => {
+        seen.push(url.replace(/^https:\/\/api\.github\.com/, ""));
+        return {
+          status: 200,
+          text: "",
+          json: {
+            items: [
+              {
+                number: 185,
+                title: "Fix separators",
+                state: "open",
+                repository_url: "https://api.github.com/repos/coder/ghostty-web",
+                pull_request: {},
+                user: { login: "ada", avatar_url: "", html_url: "" },
+                created_at: "2026-07-11T00:00:00Z",
+                updated_at: "2026-07-15T00:00:00Z",
+                html_url: "",
+                labels: [],
+              },
+              // No repository_url: unmappable, must be dropped rather than faked.
+              { number: 9, title: "orphan", state: "open" },
+            ],
+          },
+        } satisfies HttpResponse;
+      },
+      "t",
+      "github.com",
+    );
+
+    const items = await client.searchInvolvement("pr", "review-requested");
+    expect(seen[0]).toBe(
+      `/search/issues?q=${encodeURIComponent("is:pr review-requested:@me")}` +
+        "&sort=updated&order=desc&per_page=40",
+    );
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      owner: "coder",
+      repo: "ghostty-web",
+      number: 185,
+      isPullRequest: true,
+    });
+  });
+
+  it("maps each involvement query to its search qualifier", async () => {
+    const seen: string[] = [];
+    const client = new GitHubClient(
+      async ({ url }) => {
+        seen.push(decodeURIComponent(url));
+        return { status: 200, text: "", json: { items: [] } } satisfies HttpResponse;
+      },
+      "t",
+      "github.com",
+    );
+    await client.searchInvolvement("pr", "created");
+    await client.searchInvolvement("issue", "assigned");
+    await client.searchInvolvement("issue", "mentioned");
+    expect(seen[0]).toContain("is:pr author:@me");
+    expect(seen[1]).toContain("is:issue assignee:@me");
+    expect(seen[2]).toContain("is:issue mentions:@me");
+  });
 });

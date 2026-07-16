@@ -205,33 +205,33 @@ Scenario: the review center is built on the core code view
 ### Rule: cloud-parity — the cloud shells survive their rewrite unchanged
 
 Scenario: pull requests list at parity
-  Test: lists pull requests for the selected repo
+  Test: lists pull requests in a repository tab
   Given a repo with open pull requests behind a fake transport
-  When the PR list renders
+  When the navigator's pull-requests section renders
   Then each pull request appears with its number, title and state
 
 Scenario: files tab at parity
-  Test: opens files tab with tree and renders PR metadata from real shape
+  Test: renders PR metadata and files through the review surface
   Given a real-shaped PR detail payload
-  When the files tab opens
-  Then the changed-file tree and the PR metadata render
+  When the PR detail's files tab opens
+  Then the PR metadata and its diff render through the shared review surface
 
 Scenario: commit detail at parity
-  Test: opens commit detail with files
+  Test: renders commit diff via the shared review surface
   Given a commit with changed files behind a fake transport
   When the commit detail view opens
-  Then the commit message and its file diffs render
+  Then the commit's file diffs render through the shared review surface
 
 Scenario: signed-out state at parity
-  Test: shows sign-in when no token is stored
+  Test: shows a connect prompt when unauthenticated
   Given no GitHub token in secret storage
-  When the cloud workspace opens
-  Then the sign-in prompt renders instead of repo content
+  When the navigator opens
+  Then the connect-GitHub prompt renders instead of repo content
 
 Scenario: repo-less state at parity
-  Test: shows repo picker when no repo is selected and no origin
+  Test: shows the repository picker from the navigator action
   Given no selected repo and a vault without a GitHub origin
-  When the cloud workspace opens
+  When the navigator opens
   Then the repo picker renders instead of repo content
 
 ### Rule: nav-sync — the center and the right nav stay in lockstep

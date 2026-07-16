@@ -11,6 +11,8 @@ import type {
   GitHubAuthState,
   GitHubBranch,
   GitHubRepositoryRef,
+  GitHubSearchItem,
+  InvolvementQuery,
   IssueDetail,
   IssueSummary,
   MergeMethod,
@@ -117,17 +119,47 @@ export class GitHubClient {
       `/user/repos?sort=updated&per_page=${Math.min(limit, 100)}&affiliation=owner,collaborator,organization_member`,
     );
     if (res.status >= 400) throw apiError(res);
-    const items = (res.json as RawRepo[]) ?? [];
+    return mapRepoList((res.json as RawRepo[]) ?? []);
+  }
+
+  /** Organizations the authenticated user belongs to (sidebar tree). */
+  async listOrganizations(): Promise<
+    Array<{ login: string; avatarUrl: string; description: string | null }>
+  > {
+    const res = await this.request("GET", "/user/orgs?per_page=100");
+    if (res.status >= 400) throw apiError(res);
+    const items = (res.json as RawOrg[]) ?? [];
     return items
       .map((item) => ({
-        owner: item.owner?.login ?? item.full_name?.split("/")[0] ?? "",
-        repo: item.name ?? item.full_name?.split("/")[1] ?? "",
-        fullName: item.full_name ?? `${item.owner?.login}/${item.name}`,
-        private: Boolean(item.private),
+        login: item.login ?? "",
+        avatarUrl: item.avatar_url ?? "",
         description: item.description ?? null,
-        openIssues: item.open_issues_count ?? 0,
       }))
-      .filter((item) => item.owner && item.repo);
+      .filter((item) => item.login);
+  }
+
+  /** Repositories under one organization (center list after picking an org). */
+  async listOrgRepositories(
+    org: string,
+    limit = 50,
+  ): Promise<
+    Array<{
+      owner: string;
+      repo: string;
+      fullName: string;
+      private: boolean;
+      description: string | null;
+      openIssues: number;
+    }>
+  > {
+    const clean = org.trim();
+    if (!clean) return [];
+    const res = await this.request(
+      "GET",
+      `/orgs/${encodeURIComponent(clean)}/repos?sort=updated&per_page=${Math.min(limit, 100)}`,
+    );
+    if (res.status >= 400) throw apiError(res);
+    return mapRepoList((res.json as RawRepo[]) ?? []);
   }
 
   async getPullRequest(repo: GitHubRepositoryRef, number: number): Promise<PrDetail> {
@@ -536,6 +568,32 @@ export class GitHubClient {
     return state ? "unknown" : null;
   }
 
+  /** Cross-repo involvement search (Oh My GitHub queries): the caller's PRs or
+   * issues by author / review-requested / mentioned / assigned, spanning every
+   * accessible repo. Each item carries its own repo. */
+  async searchInvolvement(
+    kind: "pr" | "issue",
+    query: InvolvementQuery,
+  ): Promise<GitHubSearchItem[]> {
+    const type = kind === "pr" ? "is:pr" : "is:issue";
+    const qualifier =
+      query === "created"
+        ? "author:@me"
+        : query === "review-requested"
+          ? "review-requested:@me"
+          : query === "assigned"
+            ? "assignee:@me"
+            : "mentions:@me";
+    const q = encodeURIComponent(`${type} ${qualifier}`);
+    const res = await this.request(
+      "GET",
+      `/search/issues?q=${q}&sort=updated&order=desc&per_page=40`,
+    );
+    if (res.status >= 400) throw apiError(res);
+    const items = (res.json as { items?: RawSearchIssue[] })?.items ?? [];
+    return items.map(mapSearchItem).filter((item): item is GitHubSearchItem => item !== null);
+  }
+
   private async searchPullRequests(
     repo: GitHubRepositoryRef,
     filter: "mine" | "review-requested",
@@ -606,6 +664,27 @@ function mapLabel(raw: RawLabel): PrLabel {
     name: raw.name,
     color: raw.color ?? "ededed",
     description: raw.description ?? null,
+  };
+}
+
+function mapSearchItem(raw: RawSearchIssue): GitHubSearchItem | null {
+  if (typeof raw.number !== "number") return null;
+  const match = /\/repos\/([^/]+)\/([^/]+)\/?$/.exec(raw.repository_url ?? "");
+  if (!match) return null;
+  return {
+    owner: match[1],
+    repo: match[2],
+    number: raw.number,
+    title: raw.title ?? "",
+    state: raw.state === "closed" ? "closed" : "open",
+    isDraft: Boolean(raw.draft),
+    isPullRequest: raw.pull_request != null,
+    author: mapActor(raw.user),
+    createdAt: raw.created_at ?? "",
+    updatedAt: raw.updated_at ?? "",
+    url: raw.html_url ?? "",
+    labels: (raw.labels ?? []).map(mapLabel),
+    comments: raw.comments ?? 0,
   };
 }
 
@@ -999,6 +1078,19 @@ interface RawCheckRun {
 
 interface RawSearchIssue {
   number?: number;
+  title?: string;
+  state?: string;
+  draft?: boolean;
+  user?: RawUser;
+  labels?: RawLabel[];
+  created_at?: string;
+  updated_at?: string;
+  html_url?: string;
+  comments?: number;
+  /** e.g. https://api.github.com/repos/octo/notes — the item's home repo. */
+  repository_url?: string;
+  /** Present on the search item only when it is a pull request. */
+  pull_request?: unknown;
 }
 
 interface RawRepo {
@@ -1008,6 +1100,32 @@ interface RawRepo {
   description?: string | null;
   open_issues_count?: number;
   owner?: { login?: string };
+}
+
+interface RawOrg {
+  login?: string;
+  avatar_url?: string;
+  description?: string | null;
+}
+
+function mapRepoList(items: RawRepo[]): Array<{
+  owner: string;
+  repo: string;
+  fullName: string;
+  private: boolean;
+  description: string | null;
+  openIssues: number;
+}> {
+  return items
+    .map((item) => ({
+      owner: item.owner?.login ?? item.full_name?.split("/")[0] ?? "",
+      repo: item.name ?? item.full_name?.split("/")[1] ?? "",
+      fullName: item.full_name ?? `${item.owner?.login}/${item.name}`,
+      private: Boolean(item.private),
+      description: item.description ?? null,
+      openIssues: item.open_issues_count ?? 0,
+    }))
+    .filter((item) => item.owner && item.repo);
 }
 
 interface RawIssue {

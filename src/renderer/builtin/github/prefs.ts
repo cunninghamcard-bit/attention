@@ -1,3 +1,4 @@
+import type { RepoSection } from "./session";
 import type { PrListFilter } from "./types";
 
 const STORAGE_KEY = "workbench-github-pr-prefs";
@@ -10,6 +11,7 @@ export interface GithubPrPrefs {
   lastPr?: number;
   /** Last selected branch for the Commits section. */
   lastBranch?: string;
+  /** Last active sub-view in a repository tab. */
 }
 
 export function readGithubPrPrefs(): Partial<GithubPrPrefs> {

@@ -18,7 +18,7 @@ describe("git and github core plugins", () => {
     const app = await readyApp();
     expect(app.viewRegistry.getViewCreatorByType("git-changes")).toBeTruthy();
     expect(app.viewRegistry.getViewCreatorByType("git-nav")).toBeTruthy();
-    expect(app.viewRegistry.getViewCreatorByType("github-workspace")).toBeTruthy();
+    expect(app.viewRegistry.getViewCreatorByType("github-nav")).toBeTruthy();
     expect(app.commands.findCommand("git:open-changes")).toBeTruthy();
     expect(app.commands.findCommand("git:open-nav")).toBeTruthy();
     expect(app.commands.findCommand("github:open-workspace")).toBeTruthy();
@@ -62,7 +62,7 @@ describe("git and github core plugins", () => {
     const app = await readyApp();
     expect(app.commands.findCommand("github:open-pull-requests")).toBeTruthy();
     await app.internalPlugins.disable("github", true);
-    expect(app.viewRegistry.getViewCreatorByType("git-prs")).toBeFalsy();
+    expect(app.viewRegistry.getViewCreatorByType("github-nav")).toBeFalsy();
     expect(app.commands.findCommand("github:open-pull-requests")).toBeFalsy();
     expect(app.viewRegistry.getViewCreatorByType("git-changes")).toBeTruthy();
     expect(app.viewRegistry.getViewCreatorByType("git-log")).toBeTruthy();

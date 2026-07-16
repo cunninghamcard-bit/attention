@@ -1,0 +1,85 @@
+import { createEl, createSpan } from "../../dom/dom";
+import type { UserEvent } from "../../app/hotkeys/Keymap";
+import { TreeItem } from "../../ui/TreeItem";
+
+/** A faithful nav-file row (shared by the list and repo center views), keyed
+ * for selection sync, with click + keyboard wired via `activate`. */
+export interface Row {
+  selfEl: HTMLElement;
+  innerEl: HTMLElement;
+  iconEl: HTMLElement;
+  /** The activating event reaches `run` so callers can read `isModEvent` —
+   * dropping it here would silently disable cmd/ctrl-activate for every row. */
+  activate(run: (event: UserEvent) => void): void;
+}
+
+export function treeRow(
+  parent: HTMLElement,
+  opts: { cls?: string; key?: string; active?: boolean } = {},
+): Row {
+  const item = new TreeItem(parent, {
+    itemClass: `nav-file github-item ${opts.cls ?? ""}`.trim(),
+    selfClass: `nav-file-title tappable is-clickable github-row${opts.active ? " is-active" : ""}`,
+    innerClass: "nav-file-title-content github-row-main",
+    iconClass: "nav-file-icon github-row-icon",
+  });
+  const { selfEl, innerEl, iconEl } = item;
+  if (opts.key) selfEl.dataset.key = opts.key;
+  selfEl.setAttribute("role", "button");
+  selfEl.tabIndex = 0;
+  return {
+    selfEl,
+    innerEl,
+    iconEl,
+    activate(run: (event: UserEvent) => void): void {
+      item.onSelfClick = (event) => run(event);
+      selfEl.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        run(event);
+      });
+    },
+  };
+}
+
+export function avatar(parent: HTMLElement, login: string, url: string, size = 18): void {
+  if (url) {
+    createEl(
+      "img",
+      {
+        cls: "github-avatar",
+        attr: { src: url, alt: "", width: size, height: size },
+      },
+      parent,
+    );
+  } else {
+    const fallback = createSpan(
+      {
+        cls: "github-avatar-fallback",
+        text: login.slice(0, 1).toUpperCase() || "?",
+      },
+      parent,
+    );
+    fallback.style.width = `${size}px`;
+    fallback.style.height = `${size}px`;
+  }
+}
+
+export function conclusionClass(conclusion: string | null, status: string): string {
+  const value = (conclusion ?? status).toLowerCase();
+  if (value === "success" || value === "completed") return "success";
+  if (value === "failure" || value === "timed_out" || value === "action_required") return "failure";
+  if (value === "cancelled" || value === "error") return "error";
+  if (["pending", "queued", "in_progress", "waiting"].includes(value)) return "pending";
+  return "unknown";
+}
+
+export function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}

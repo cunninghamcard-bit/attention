@@ -1,57 +1,77 @@
 import type { App } from "../../app/App";
 import type { InternalPluginDefinition } from "../../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../../plugin/InternalPluginWrapper";
-import { GitCommitView, GitHubWorkspaceView, openGitHubWorkspace } from "./GitHubWorkspace";
-import { openPrList, PrDetailView, PrListView } from "./GitPrViews";
-import type { GithubWorkspaceSection } from "./types";
-
-const SECTION_COMMANDS: Array<{ section: GithubWorkspaceSection; name: string; icon: string }> = [
-  { section: "pulls", name: "Open GitHub workspace", icon: "lucide-github" },
-  { section: "commits", name: "Open GitHub commits", icon: "lucide-git-commit" },
-  { section: "branches", name: "Open GitHub branches", icon: "lucide-git-branch" },
-  { section: "issues", name: "Open GitHub issues", icon: "lucide-circle-dot" },
-  { section: "actions", name: "Open GitHub actions", icon: "lucide-play" },
-  { section: "files", name: "Open GitHub files", icon: "lucide-folder" },
-  { section: "inbox", name: "Open GitHub inbox", icon: "lucide-inbox" },
-];
+import { GitCommitView } from "./GitCommitView";
+import { GitHubDetailView } from "./GitHubDetailView";
+import { GitHubListView } from "./GitHubListView";
+import { GitHubNavView } from "./GitHubNavView";
+import { GitHubRepoView } from "./GitHubRepoView";
+import { PrDetailView } from "./GitPrViews";
+import { GitHubSearchModal } from "./GitHubSearchModal";
+import { openGitHubNav, openInbox, openQueryList, refreshGitHub } from "./open";
 
 /**
- * Core plugin wrapping the CLOUD surface (reference: jiacai2050/oh-my-github):
- * the workspace sections plus the pull-request list/detail views. Everything
- * here talks to the GitHub API; the offline twin is the git plugin.
+ * Core plugin wrapping the CLOUD surface, modeled on Oh My GitHub: a persistent
+ * left-dock query navigator (Inbox / Pull Requests / Issues / Repositories)
+ * drives center tabs — cross-repo query lists and single-repo tabs — with
+ * PR / commit / issue detail as their own tabs. Offline twin is the git plugin.
  */
 export function createGitHubPluginDefinition(): InternalPluginDefinition {
   return {
     id: "github",
     name: "GitHub",
-    description: "Cloud workspace for a repository: PRs, commits, branches, issues, actions.",
+    description: "Cloud workspace for GitHub: pull requests, issues, repositories, notifications.",
     defaultOn: true,
     init(app: App, plugin: InternalPluginWrapper) {
-      plugin.registerViewType(
-        GitHubWorkspaceView.VIEW_TYPE,
-        (leaf) => new GitHubWorkspaceView(leaf),
-      );
-      plugin.registerViewType(GitCommitView.VIEW_TYPE, (leaf) => new GitCommitView(leaf));
-      plugin.registerViewType(PrListView.VIEW_TYPE, (leaf) => new PrListView(leaf));
+      plugin.registerViewType(GitHubNavView.VIEW_TYPE, (leaf) => new GitHubNavView(leaf));
+      plugin.registerViewType(GitHubListView.VIEW_TYPE, (leaf) => new GitHubListView(leaf));
+      plugin.registerViewType(GitHubRepoView.VIEW_TYPE, (leaf) => new GitHubRepoView(leaf));
       plugin.registerViewType(PrDetailView.VIEW_TYPE, (leaf) => new PrDetailView(leaf));
+      plugin.registerViewType(GitCommitView.VIEW_TYPE, (leaf) => new GitCommitView(leaf));
+      plugin.registerViewType(GitHubDetailView.VIEW_TYPE, (leaf) => new GitHubDetailView(leaf));
+
+      plugin.registerGlobalCommand({
+        id: "github:open-workspace",
+        name: "Open GitHub",
+        icon: "lucide-github",
+        callback: () => void openGitHubNav(app),
+      });
+      plugin.registerGlobalCommand({
+        id: "github:search",
+        name: "Search GitHub workspace",
+        icon: "lucide-search",
+        callback: () => new GitHubSearchModal(app).open(),
+      });
+      plugin.registerGlobalCommand({
+        id: "github:refresh",
+        name: "Refresh GitHub view",
+        icon: "lucide-rotate-ccw",
+        callback: () => refreshGitHub(app),
+      });
       plugin.registerGlobalCommand({
         id: "github:open-pull-requests",
-        name: "Open pull requests",
+        name: "Open pull requests I need to review",
         icon: "lucide-git-pull-request",
-        callback: () => {
-          void openPrList(app);
-        },
+        callback: () => void openQueryList(app, "pr", "review-requested"),
       });
-      for (const { section, name, icon } of SECTION_COMMANDS) {
-        plugin.registerGlobalCommand({
-          id: `github:open-${section === "pulls" ? "workspace" : section}`,
-          name,
-          icon,
-          callback: () => {
-            void openGitHubWorkspace(app, { section });
-          },
-        });
-      }
+      plugin.registerGlobalCommand({
+        id: "github:my-pull-requests",
+        name: "Open my pull requests",
+        icon: "lucide-git-pull-request",
+        callback: () => void openQueryList(app, "pr", "created"),
+      });
+      plugin.registerGlobalCommand({
+        id: "github:my-issues",
+        name: "Open my issues",
+        icon: "lucide-circle-dot",
+        callback: () => void openQueryList(app, "issue", "created"),
+      });
+      plugin.registerGlobalCommand({
+        id: "github:inbox",
+        name: "Open GitHub inbox",
+        icon: "lucide-inbox",
+        callback: () => void openInbox(app),
+      });
     },
   };
 }
