@@ -29,9 +29,3 @@ derived_from:
 ## Documentation Impact
 
 - [x] Keep the completed behavior and boundaries recorded in `spec.md` and `plan.md`.
-
-## Quality Gates
-
-- [ ] `docwright lint spec.md --min-score 0.7`
-- [ ] `docwright lifecycle spec.md --code .`
-- [ ] `docwright guard --spec-dir . --code .`
