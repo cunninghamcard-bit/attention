@@ -1,6 +1,7 @@
-/* The org / user profile center tab (github-profile). Identity head + stat
- * tiles + repository rows; every control inherits the flat GitHub language —
- * no form-control chrome anywhere on this surface. */
+/* The org / user profile center tab (github-profile). Identity head + pinned
+ * grid + contribution heatmap + stat tiles + repository/star/follower rows;
+ * every control inherits the flat GitHub language — no form-control chrome
+ * anywhere on this surface. */
 
 .github-profile-view {
   padding: 0;
@@ -8,7 +9,7 @@
 
 .github-profile-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--size-4-4);
   padding: var(--size-4-6) var(--size-4-6) var(--size-4-2);
 }
@@ -28,47 +29,290 @@
   line-height: var(--line-height-tight);
 }
 
+.github-profile-handle {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
 .github-profile-subtitle {
   color: var(--text-muted);
   font-size: var(--font-ui-small);
+  margin-top: var(--size-2-1);
+}
+
+.github-profile-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-2-1) var(--size-4-3);
+  margin-top: var(--size-2-3);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.github-profile-fact {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-2-1);
+}
+
+.github-profile-fact-icon svg {
+  width: var(--font-ui-smaller);
+  height: var(--font-ui-smaller);
+}
+
+.github-profile-body {
+  padding: 0 var(--size-4-3) var(--size-4-6);
+}
+
+.github-profile-block {
+  padding: var(--size-4-2) var(--size-4-3);
+}
+
+.github-profile-heading {
+  margin: 0 0 var(--size-2-3);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+  color: var(--text-muted);
+}
+
+.github-profile-pending {
+  font-style: italic;
+}
+
+/* --- Pinned repositories -------------------------------------------------- */
+
+.github-profile-pinned {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--size-4-2);
+}
+
+.github-profile-pin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-2-2);
+  padding: var(--size-4-2) var(--size-4-3);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  cursor: var(--cursor);
+}
+
+.github-profile-pin:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.github-profile-pin-title {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-2);
+  min-width: 0;
+}
+
+.github-profile-pin-icon svg {
+  width: var(--font-ui-small);
+  height: var(--font-ui-small);
+  color: var(--text-muted);
+}
+
+.github-profile-pin-name {
+  font-weight: var(--font-semibold);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.github-profile-body {
-  padding: 0 var(--size-4-3) var(--size-4-3);
+.github-profile-pin-desc {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
+
+.github-profile-pin-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-3);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.github-profile-pin-lang {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-2-1);
+}
+
+.github-profile-lang-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  /* The language's identity color (GitHub's hex), not a theme step. */
+  background-color: var(--lang-color, var(--text-faint));
+}
+
+/* --- Contribution heatmap --------------------------------------------------
+ * Sequential scale: one hue, stepped light→dark from the host's green over the
+ * primary surface, so both themes derive their own ramp (never GitHub's raw
+ * light-mode hex). Level 0 is the "no data" neutral. */
+
+.github-profile-heat-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--size-4-3);
+  flex-wrap: wrap;
+}
+
+.github-profile-heat-head .github-profile-heading {
+  margin-bottom: 0;
+}
+
+.github-profile-heat-note {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+
+.github-profile-year {
+  margin-left: auto;
+  padding: var(--size-2-1) var(--size-2-3);
+  font-size: var(--font-ui-smaller);
+  font-variant-numeric: tabular-nums;
+}
+
+.github-profile-heat {
+  --heat-cell: 10px;
+  --heat-gap: 3px;
+  --heat-0: var(--background-modifier-hover);
+  --heat-1: color-mix(in oklab, rgb(var(--color-green-rgb)) 30%, var(--background-primary));
+  --heat-2: color-mix(in oklab, rgb(var(--color-green-rgb)) 55%, var(--background-primary));
+  --heat-3: color-mix(in oklab, rgb(var(--color-green-rgb)) 80%, var(--background-primary));
+  --heat-4: rgb(var(--color-green-rgb));
+  margin-top: var(--size-2-3);
+}
+
+.github-profile-heat-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: var(--size-2-1);
+}
+
+.github-profile-heat-months {
+  display: flex;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  margin-bottom: var(--size-2-1);
+}
+
+.github-profile-heat-gutter {
+  /* Space above the day-label column. */
+  flex: 0 0 34px;
+}
+
+.github-profile-heat-month {
+  flex: 0 0 calc(var(--week-span) * (var(--heat-cell) + var(--heat-gap)));
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.github-profile-heat-rows {
+  display: flex;
+}
+
+.github-profile-heat-days {
+  display: flex;
+  flex-direction: column;
+  gap: var(--heat-gap);
+  flex: 0 0 34px;
+  font-size: 9px;
+  color: var(--text-faint);
+}
+
+.github-profile-heat-day-label {
+  height: var(--heat-cell);
+  line-height: var(--heat-cell);
+}
+
+.github-profile-heat-weeks {
+  display: flex;
+  gap: var(--heat-gap);
+}
+
+.github-profile-heat-week {
+  display: flex;
+  flex-direction: column;
+  gap: var(--heat-gap);
+}
+
+.github-profile-heat-cell {
+  width: var(--heat-cell);
+  height: var(--heat-cell);
+  border-radius: 2px;
+  background-color: var(--heat-0);
+}
+
+.github-profile-heat-cell.mod-level-1 {
+  background-color: var(--heat-1);
+}
+.github-profile-heat-cell.mod-level-2 {
+  background-color: var(--heat-2);
+}
+.github-profile-heat-cell.mod-level-3 {
+  background-color: var(--heat-3);
+}
+.github-profile-heat-cell.mod-level-4 {
+  background-color: var(--heat-4);
+}
+
+.github-profile-heat-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--heat-gap);
+  justify-content: flex-end;
+  margin-top: var(--size-2-2);
+  --heat-cell: 10px;
+}
+
+.github-profile-heat-legend-text {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  margin: 0 var(--size-2-2);
+}
+
+/* --- Stat tiles ------------------------------------------------------------ */
 
 .github-profile-tiles {
   display: flex;
   gap: var(--size-4-2);
-  padding: var(--size-4-2) var(--size-4-3);
+  margin-top: var(--size-4-3);
 }
 
 .github-profile-tile {
   flex: 1;
   min-width: 0;
   padding: var(--size-4-2) var(--size-4-3);
+  border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
-  background-color: var(--background-secondary);
+}
+
+.github-profile-tile-label {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-2);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.github-profile-tile-icon svg {
+  width: var(--font-ui-smaller);
+  height: var(--font-ui-smaller);
 }
 
 .github-profile-tile-value {
   font-size: var(--font-ui-large);
   font-weight: var(--font-semibold);
-}
-
-.github-profile-tile-label {
-  color: var(--text-muted);
-  font-size: var(--font-ui-smaller);
-}
-
-.github-profile-heading {
-  margin: var(--size-4-3) var(--size-4-3) var(--size-2-2);
-  font-size: var(--font-ui-small);
-  font-weight: var(--font-semibold);
-  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  margin-top: var(--size-2-1);
 }
 
 .github-profile-issues {

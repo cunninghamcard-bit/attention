@@ -465,11 +465,14 @@ describe("GitHub native navigation (A+B)", () => {
       "org profile tab",
     );
     expect(profile()?.getDisplayText()).toBe("acme-corp");
-    // Its header offers the Overview | Repositories sub-views.
+    // Its header offers sub-views, Overview and Repositories first. Without a
+    // profile fetch (this harness mocks no data layer) the account kind is
+    // unknown, so the header offers the full user set; the org-only trimming
+    // is covered by the profile view's own suite.
     const labels = [
       ...(profile()?.headerEl.querySelectorAll(".github-profile-nav button") ?? []),
     ].map((el) => el.getAttribute("aria-label"));
-    expect(labels).toEqual(["Overview", "Repositories"]);
+    expect(labels.slice(0, 2)).toEqual(["Overview", "Repositories"]);
     expect(app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)).toHaveLength(0);
   });
 
