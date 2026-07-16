@@ -22,8 +22,8 @@ export type GitHubTarget =
   | { kind: "org"; org: string }
   | { kind: "repo"; owner: string; repo: string; section: RepoSection };
 
-/** The active detail leaf, so a list can highlight its open row. */
-/** Every selection carries its repository: a deliberate second repo tab makes
+/** The active detail leaf, so a list can highlight its open row. Every
+ * selection carries its repository: a deliberate second repo tab makes
  * `README.md` (or #1, or a run id) ambiguous without it. */
 export type GitHubSelection =
   | { kind: "pr"; owner: string; repo: string; number: number }
