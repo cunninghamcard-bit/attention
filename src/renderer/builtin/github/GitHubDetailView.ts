@@ -5,7 +5,15 @@ import { ItemView } from "../../views/ItemView";
 import type { ViewStateResult } from "../../views/View";
 import { formatRelativeDate } from "../git/relativeDate";
 import { GITHUB_VIEW, type GitHubDetailTarget } from "./open";
-import type { ActionRunDetail, GitHubRepositoryRef, IssueDetail, RepoFileContent } from "./types";
+import type {
+  ActionRunDetail,
+  GitHubActor,
+  GitHubRepositoryRef,
+  IssueDetail,
+  IssueTimelineEvent,
+  RepoFileContent,
+} from "./types";
+import { avatar, linkButton, openInSystemBrowser } from "./widgets";
 
 /**
  * Center detail for the light sections — issues, workflow runs and repository
@@ -22,6 +30,9 @@ export class GitHubDetailView extends ItemView {
   private target: GitHubDetailTarget | null = null;
   private issueComment = "";
   private request = 0;
+  /** The header's Close/Reopen action. `addAction` prepends a fresh button
+   * every call, so the old one is dropped before a reload adds the next. */
+  private stateAction: HTMLElement | null = null;
 
   getViewType(): string {
     return GitHubDetailView.VIEW_TYPE;
@@ -116,6 +127,9 @@ export class GitHubDetailView extends ItemView {
     if (!target) return;
     const request = ++this.request;
     this.contentEl.empty();
+    // Runs and files have no state to toggle, and a failed load has nothing to
+    // act on: clear first, and only an issue puts it back.
+    this.setStateAction(null);
     createDiv({ cls: "github-detail-empty", text: "Loading…" }, this.contentEl);
     try {
       if (target.kind === "issue") {
@@ -148,26 +162,32 @@ export class GitHubDetailView extends ItemView {
     this.contentEl.empty();
     const scroll = createDiv("gh-detail-scroll", this.contentEl);
     const head = createDiv("gh-detail-head", scroll);
-    createSpan({ cls: `gh-chip mod-${detail.state}`, text: detail.state }, head);
-    const title = createEl("h1", { cls: "gh-page-title", text: `${detail.title} ` }, head);
+    const titleRow = createDiv("gh-detail-title-row", head);
+    createSpan({ cls: `gh-chip mod-${detail.state}`, text: detail.state }, titleRow);
+    const title = createEl("h1", { cls: "gh-page-title", text: `${detail.title} ` }, titleRow);
     createSpan({ cls: "gh-muted", text: `#${detail.number}` }, title);
     const meta = createDiv(
       {
         cls: "gh-muted",
-        text: `${detail.author.login} opened ${formatRelativeDate(detail.createdAt)} · `,
+        text:
+          `${detail.author.login} opened ${formatRelativeDate(detail.createdAt)}` +
+          ` · updated ${formatRelativeDate(detail.updatedAt)} · `,
       },
       head,
     );
-    linkButton(meta, "Open on GitHub", () => window.open(detail.url, "_blank"));
-    markdown(createEl("article", "gh-card", scroll), detail.body || "*No description*");
-    for (const comment of detail.commentsList) {
-      const card = createEl("article", "gh-card", scroll);
-      const cardMeta = createDiv("gh-card-meta", card);
-      createEl("strong", { text: comment.author.login }, cardMeta);
-      createSpan({ cls: "gh-muted", text: formatRelativeDate(comment.createdAt) }, cardMeta);
-      markdown(card, comment.body);
-    }
-    const composer = createDiv("gh-composer", scroll);
+    linkButton(meta, "Open on GitHub", () => openInSystemBrowser(detail.url));
+
+    // Body beside a meta column — the OMG issue-page shape. The column carries
+    // content, not navigation, so it is not the in-page nav column the spec bans.
+    this.setStateAction(detail);
+    const layout = createDiv("gh-issue-layout", scroll);
+    const main = createDiv("gh-issue-main", layout);
+    this.renderIssueMeta(createEl("aside", "gh-issue-meta", layout), detail);
+
+    markdown(createEl("article", "gh-card", main), detail.body || "*No description*");
+    this.renderTimeline(main, detail);
+
+    const composer = createDiv("gh-composer", main);
     const textarea = createEl(
       "textarea",
       { placeholder: "Leave a comment", attr: { rows: 3 } },
@@ -187,6 +207,78 @@ export class GitHubDetailView extends ItemView {
     submit.addEventListener("click", () => void this.postComment(detail.number));
   }
 
+  /** Comments and events in one chronological run. Events GitHub itself keeps
+   * out of the issue body (subscribed, mentioned, referenced noise) have no
+   * sentence here and are skipped rather than printed as a bare event name. */
+  private renderTimeline(parent: HTMLElement, detail: IssueDetail): void {
+    for (const item of detail.timeline) {
+      if (item.kind === "comment") {
+        const card = createEl("article", "gh-card", parent);
+        const cardMeta = createDiv("gh-card-meta", card);
+        createEl("strong", { text: item.author.login }, cardMeta);
+        createSpan({ cls: "gh-muted", text: formatRelativeDate(item.createdAt) }, cardMeta);
+        markdown(card, item.body);
+        continue;
+      }
+      const sentence = timelineSentence(item);
+      if (!sentence) continue;
+      const row = createDiv("gh-timeline-event", parent);
+      createSpan(`gh-timeline-dot mod-${item.event}`, row);
+      createEl("strong", { text: item.actor.login }, row);
+      createSpan({ text: ` ${sentence} ` }, row);
+      createSpan({ cls: "gh-muted", text: formatRelativeDate(item.createdAt) }, row);
+    }
+  }
+
+  /** Close/Reopen lives in the real view header (owner's call), not in the
+   * body: it is a view action, and the header is where this app puts actions. */
+  private setStateAction(detail: IssueDetail | null): void {
+    this.stateAction?.remove();
+    this.stateAction = null;
+    if (!detail) return;
+    const open = detail.state === "open";
+    this.stateAction = this.addAction(
+      open ? "lucide-circle-check" : "lucide-circle-dot",
+      open ? "Close issue" : "Reopen issue",
+      () => void this.setIssueState(detail.number, open ? "closed" : "open"),
+    );
+  }
+
+  /** Assignees / Labels / Milestone / Participants. */
+  private renderIssueMeta(parent: HTMLElement, detail: IssueDetail): void {
+    const section = (label: string): HTMLElement => {
+      const block = createDiv("gh-meta-section", parent);
+      createDiv({ cls: "gh-meta-heading", text: label }, block);
+      return block;
+    };
+
+    const assignees = section("Assignees");
+    if (detail.assignees.length) for (const person of detail.assignees) person_(assignees, person);
+    else createDiv({ cls: "gh-muted", text: "No one assigned" }, assignees);
+
+    const labels = section("Labels");
+    if (detail.labels.length)
+      for (const label of detail.labels) {
+        const chip = createSpan({ cls: "github-label-chip", text: label.name }, labels);
+        chip.style.setProperty(
+          "--github-label-color",
+          `#${(label.color || "888888").replace(/^#/, "")}`,
+        );
+        if (label.description) chip.title = label.description;
+      }
+    else createDiv({ cls: "gh-muted", text: "None yet" }, labels);
+
+    const milestone = section("Milestone");
+    if (detail.milestone) {
+      const url = detail.milestone.url;
+      if (url) linkButton(milestone, detail.milestone.title, () => openInSystemBrowser(url));
+      else createDiv({ text: detail.milestone.title }, milestone);
+    } else createDiv({ cls: "gh-muted", text: "No milestone" }, milestone);
+
+    const participants = section("Participants");
+    for (const person of issueParticipants(detail)) person_(participants, person);
+  }
+
   private async postComment(number: number): Promise<void> {
     if (!this.issueComment.trim()) return;
     const error = await this.app.github.createIssueComment(
@@ -197,6 +289,13 @@ export class GitHubDetailView extends ItemView {
     if (error) return void new Notice(error);
     this.issueComment = "";
     new Notice("Comment posted");
+    await this.loadTarget();
+  }
+
+  private async setIssueState(number: number, state: "open" | "closed"): Promise<void> {
+    const error = await this.app.github.updateIssueState(number, state, this.repo());
+    if (error) return void new Notice(error);
+    new Notice(state === "closed" ? "Issue closed" : "Issue reopened");
     await this.loadTarget();
   }
 
@@ -212,7 +311,7 @@ export class GitHubDetailView extends ItemView {
       },
       head,
     );
-    linkButton(meta, "Open on GitHub", () => window.open(detail.htmlUrl, "_blank"));
+    linkButton(meta, "Open on GitHub", () => openInSystemBrowser(detail.htmlUrl));
     const chips = createDiv("gh-chip-row", head);
     createSpan(
       {
@@ -245,8 +344,7 @@ export class GitHubDetailView extends ItemView {
     const header = createDiv("gh-preview-header", this.contentEl);
     createEl("code", { text: file.path }, header);
     createSpan({ cls: "gh-muted", text: formatSize(file.size) }, header);
-    if (file.htmlUrl)
-      linkButton(header, "Open on GitHub", () => window.open(file.htmlUrl, "_blank"));
+    if (file.htmlUrl) linkButton(header, "Open on GitHub", () => openInSystemBrowser(file.htmlUrl));
     if (file.text == null)
       createDiv(
         {
@@ -259,9 +357,51 @@ export class GitHubDetailView extends ItemView {
   }
 }
 
-function linkButton(parent: HTMLElement, text: string, action: () => void): void {
-  const button = createEl("button", { cls: "gh-linkish", text, attr: { type: "button" } }, parent);
-  button.addEventListener("click", action);
+function person_(parent: HTMLElement, actor: GitHubActor): void {
+  const item = createDiv("github-meta-person", parent);
+  avatar(item, actor.login, actor.avatarUrl, 16);
+  createSpan({ cls: "github-meta-person-login", text: actor.login }, item);
+}
+
+/** Derived, not fetched: REST exposes no participants field, so this is the
+ * author plus whoever commented. GitHub's own (GraphQL) list also counts
+ * people who only reacted or were assigned — they are missing here. */
+function issueParticipants(detail: IssueDetail): GitHubActor[] {
+  const seen = new Map<string, GitHubActor>([[detail.author.login, detail.author]]);
+  for (const item of detail.timeline)
+    if (item.kind === "comment" && !seen.has(item.author.login))
+      seen.set(item.author.login, item.author);
+  return [...seen.values()];
+}
+
+/** The events worth a line in the body, phrased the way GitHub phrases them.
+ * Anything absent returns null and is skipped — an unknown event name printed
+ * raw is noise, not information. */
+function timelineSentence(item: IssueTimelineEvent): string | null {
+  switch (item.event) {
+    case "closed":
+      return "closed this";
+    case "reopened":
+      return "reopened this";
+    case "merged":
+      return "merged this";
+    case "labeled":
+      return item.label ? `added the ${item.label.name} label` : null;
+    case "unlabeled":
+      return item.label ? `removed the ${item.label.name} label` : null;
+    case "assigned":
+      return item.assignee ? `assigned ${item.assignee.login}` : null;
+    case "unassigned":
+      return item.assignee ? `unassigned ${item.assignee.login}` : null;
+    case "milestoned":
+      return item.milestone ? `added this to ${item.milestone}` : null;
+    case "demilestoned":
+      return item.milestone ? `removed this from ${item.milestone}` : null;
+    case "renamed":
+      return item.rename ? `renamed this to ${item.rename.to}` : null;
+    default:
+      return null;
+  }
 }
 
 function markdown(parent: HTMLElement, text: string): void {

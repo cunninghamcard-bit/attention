@@ -9,6 +9,7 @@ import { ReviewSurface } from "../git/review/ReviewSurface";
 import { GITHUB_VIEW, openCommitDetail } from "./open";
 import { toReviewFiles } from "./patchUtils";
 import type { GitHubRepositoryRef, PrDetail } from "./types";
+import { prStateLabel, renderMetaStrip } from "./widgets";
 
 /**
  * Center detail for a single pull request: a header, three in-view tabs
@@ -141,6 +142,9 @@ export class PrDetailView extends ItemView {
     const header = createEl("header", "git-pr-detail-header", root);
     createEl("h1", { cls: "git-pr-title", text: detail.title }, header);
     const meta = createDiv("git-pr-meta", header);
+    // Same chip primitive the issue detail uses.
+    const state = prStateLabel(detail.state, detail.isDraft);
+    createSpan({ cls: `gh-chip mod-${state}`, text: state }, meta);
     createSpan(
       {
         text: `${detail.author.login} · #${detail.number} · ${detail.headRefName} → ${detail.baseRefName}`,
@@ -150,6 +154,11 @@ export class PrDetailView extends ItemView {
     const stat = createSpan("git-pr-diffstat", meta);
     createEl("ins", { text: `+${detail.additions}` }, stat);
     createEl("del", { text: `−${detail.deletions}` }, stat);
+    renderMetaStrip(header, {
+      labels: detail.labels,
+      assignees: detail.assignees,
+      milestone: detail.milestone,
+    });
     const tabs = createDiv("github-segmented-control git-pr-tabs", root);
     this.tabButton(tabs, "conversation", "Conversation");
     this.tabButton(tabs, "commits", `Commits ${detail.commits.length}`);
@@ -231,6 +240,30 @@ export class PrDetailView extends ItemView {
     const comment = button(actions, "Comment", "git-pr-action mod-cta");
     const approve = button(actions, "Approve", "git-pr-action mod-approve");
     const changes = button(actions, "Request changes", "git-pr-action mod-request-changes");
+    // A merged pull request has no open/closed toggle left to offer. No new
+    // API: GitHub keeps pull requests in the issues namespace, so the issue
+    // state PATCH already drives them.
+    if (detail.state !== "merged") {
+      const open = detail.state === "open";
+      const state = button(
+        actions,
+        open ? "Close pull request" : "Reopen pull request",
+        "git-pr-action",
+      );
+      state.addEventListener(
+        "click",
+        () =>
+          void this.submit(
+            () =>
+              this.app.github.updateIssueState(
+                detail.number,
+                open ? "closed" : "open",
+                this.repo ?? undefined,
+              ),
+            open ? "Pull request closed" : "Pull request reopened",
+          ),
+      );
+    }
     comment.disabled = true;
     changes.disabled = true;
     input.addEventListener("input", () => {

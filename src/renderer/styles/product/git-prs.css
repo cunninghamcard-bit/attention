@@ -332,6 +332,10 @@
   border-radius: 2em; border: 1px solid var(--background-modifier-border); color: var(--text-muted);
 }
 .gh-chip.mod-ok { color: var(--color-green,#3fb950); border-color: currentcolor; }
+.gh-chip.mod-open { color: var(--color-green,#3fb950); border-color: currentcolor; }
+.gh-chip.mod-closed { color: var(--color-red,#f85149); border-color: currentcolor; }
+.gh-chip.mod-merged { color: var(--color-purple,#a371f7); border-color: currentcolor; }
+.gh-chip.mod-draft { color: var(--text-faint); border-color: currentcolor; }
 .gh-chip.mod-ci-success { color: var(--color-green,#3fb950); border-color: currentcolor; }
 .gh-chip.mod-ci-failure,
 .gh-chip.mod-ci-error { color: var(--color-red,#f85149); border-color: currentcolor; }
@@ -405,8 +409,67 @@ and review mode. */
   border-bottom: 0;
   padding: 4px 10px;
 }
-.gh-detail-scroll { overflow: auto; flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+/* container-type so the issue layout below can answer to the leaf's width and
+   not the window's — a leaf in a split is narrow while the window is not.
+   Same idiom as .review-scroll in git-review.css. */
+.gh-detail-scroll { overflow: auto; flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px; container-type: inline-size; }
 .gh-detail-head { display: flex; flex-direction: column; gap: 6px; }
+
+/* Issue body beside its meta column (the OMG issue-page shape). */
+.gh-issue-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.gh-issue-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gh-issue-meta {
+  flex: 0 0 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* The column is the first thing to go when the leaf is narrow: the body reads
+   without it, and GitHub drops it at the same sort of width. */
+@container (max-width: 720px) {
+  .gh-issue-layout { flex-direction: column; }
+  .gh-issue-meta { flex-basis: auto; width: 100%; }
+}
+.gh-meta-section {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.gh-meta-heading {
+  width: 100%;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-medium);
+}
+.gh-timeline-event {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+.gh-timeline-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--background-modifier-border);
+}
+.gh-timeline-dot.mod-closed { background: var(--color-red, #f85149); }
+.gh-timeline-dot.mod-reopened { background: var(--color-green, #3fb950); }
+.gh-timeline-dot.mod-merged { background: var(--color-purple, #a371f7); }
 .gh-card {
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
@@ -444,3 +507,181 @@ and review mode. */
   line-height: 1.45; white-space: pre; overflow: auto;
 }
 .gh-markdown { font-size: var(--font-ui-small); }
+
+
+/* --- Issue/PR meta strip + orphan class layout (task #5) --------------- */
+
+.github-meta-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+}
+
+.github-meta-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.github-meta-label {
+  min-width: 72px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 22px;
+}
+
+.github-meta-chips,
+.github-meta-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.github-label-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--github-label-color, #888) 55%, transparent);
+  background: color-mix(in srgb, var(--github-label-color, #888) 18%, transparent);
+  color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.github-meta-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.github-meta-person-login,
+.github-meta-milestone {
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+}
+
+.github-meta-milestone {
+  color: var(--text-accent);
+  text-decoration: none;
+}
+
+.gh-detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gh-detail-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.gh-detail-action {
+  padding: 4px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.gh-detail-action:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.github-create-issue {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.github-create-issue-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.github-create-issue-title,
+.github-create-issue-body {
+  width: 100%;
+}
+
+.github-create-issue-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.github-new-issue {
+  margin-right: 8px;
+}
+
+/* Orphan class names emitted by PR views — host-token layout only. */
+.git-pr-detail-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--size-4-3) var(--size-4-3) var(--size-4-2);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.git-pr-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.git-pr-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.git-pr-review {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.git-pr-commit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.git-pr-commit-sub {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.git-pr-signin-error {
+  color: var(--text-error);
+  font-size: var(--font-ui-small);
+  margin-top: 8px;
+}

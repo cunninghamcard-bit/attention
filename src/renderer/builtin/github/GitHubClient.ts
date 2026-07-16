@@ -14,6 +14,7 @@ import type {
   GitHubSearchItem,
   InvolvementQuery,
   IssueDetail,
+  IssueTimelineItem,
   IssueSummary,
   MergeMethod,
   MergeResult,
@@ -233,6 +234,32 @@ export class GitHubClient {
     if (res.status >= 400) throw apiError(res);
   }
 
+  /** Close or reopen an issue (or the issue side of a PR). */
+  async updateIssueState(
+    repo: GitHubRepositoryRef,
+    number: number,
+    state: "open" | "closed",
+  ): Promise<void> {
+    const res = await this.request("PATCH", `/repos/${repo.owner}/${repo.repo}/issues/${number}`, {
+      body: { state },
+    });
+    if (res.status >= 400) throw apiError(res);
+  }
+
+  /** Create an issue; returns the new number. */
+  async createIssue(
+    repo: GitHubRepositoryRef,
+    input: { title: string; body?: string },
+  ): Promise<{ number: number; url: string }> {
+    const res = await this.request("POST", `/repos/${repo.owner}/${repo.repo}/issues`, {
+      body: { title: input.title, body: input.body ?? "" },
+    });
+    if (res.status >= 400) throw apiError(res);
+    const raw = res.json as { number?: number; html_url?: string };
+    if (typeof raw.number !== "number") throw new Error("GitHub create issue returned no number");
+    return { number: raw.number, url: raw.html_url ?? "" };
+  }
+
   async submitReview(
     repo: GitHubRepositoryRef,
     number: number,
@@ -391,11 +418,13 @@ export class GitHubClient {
   }
 
   async getIssue(repo: GitHubRepositoryRef, number: number): Promise<IssueDetail> {
-    const [issueRes, commentsRes] = await Promise.all([
+    // The timeline carries `commented` entries with their bodies, so it stands
+    // in for the comments endpoint rather than joining it.
+    const [issueRes, timelineRes] = await Promise.all([
       this.request("GET", `/repos/${repo.owner}/${repo.repo}/issues/${number}`),
       this.request(
         "GET",
-        `/repos/${repo.owner}/${repo.repo}/issues/${number}/comments?per_page=100`,
+        `/repos/${repo.owner}/${repo.repo}/issues/${number}/timeline?per_page=100`,
       ),
     ]);
     if (issueRes.status >= 400) throw apiError(issueRes);
@@ -405,7 +434,7 @@ export class GitHubClient {
       body: raw.body ?? "",
       assignees: (raw.assignees ?? []).map(mapActor),
       milestone: raw.milestone ? { title: raw.milestone.title, url: raw.milestone.html_url } : null,
-      commentsList: okList(commentsRes).map(mapIssueComment),
+      timeline: okList(timelineRes).map(mapTimelineItem),
       closedAt: raw.closed_at ?? null,
     };
   }
@@ -727,6 +756,28 @@ function mapIssueComment(raw: RawIssueComment): PrComment {
   };
 }
 
+/** GitHub's timeline mixes comments and events in one array, told apart by
+ * `event === "commented"`. Every entry keeps its own `event` name; picking
+ * which ones are worth showing is the view's call, not the client's. */
+function mapTimelineItem(raw: RawTimelineItem): IssueTimelineItem {
+  if (raw.event === "commented") {
+    return { kind: "comment", ...mapIssueComment(raw as RawIssueComment) };
+  }
+  return {
+    kind: "event",
+    // Events carry no id of their own until they are a comment; the node id
+    // keeps keys stable, and the timestamp disambiguates the rest.
+    id: String(raw.id ?? raw.node_id ?? `${raw.event}-${raw.created_at ?? ""}`),
+    event: raw.event ?? "",
+    actor: mapActor(raw.actor),
+    createdAt: raw.created_at ?? "",
+    label: raw.label ? mapLabel(raw.label) : null,
+    assignee: raw.assignee ? mapActor(raw.assignee) : null,
+    milestone: raw.milestone?.title ?? null,
+    rename: raw.rename ? { from: raw.rename.from, to: raw.rename.to } : null,
+  };
+}
+
 function mapReview(raw: RawReview): PrReview {
   return {
     id: String(raw.id),
@@ -1007,6 +1058,21 @@ interface RawIssueComment {
   created_at?: string;
   updated_at?: string;
   html_url?: string;
+}
+
+/** One `/issues/{n}/timeline` entry. Comments arrive shaped like
+ * `RawIssueComment` with `event: "commented"`; the other fields are each only
+ * present for the events that carry them. */
+interface RawTimelineItem {
+  id?: number;
+  node_id?: string;
+  event?: string;
+  actor?: RawUser | null;
+  created_at?: string;
+  label?: RawLabel;
+  assignee?: RawUser | null;
+  milestone?: { title?: string };
+  rename?: { from: string; to: string };
 }
 
 interface RawReview {

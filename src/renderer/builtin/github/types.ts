@@ -223,11 +223,39 @@ export interface IssueSummary {
   isPullRequest: boolean;
 }
 
+/** A comment in the issue timeline. The REST timeline returns these as
+ * `commented` entries carrying the body, so they arrive with the events. */
+export interface IssueTimelineComment extends PrComment {
+  kind: "comment";
+}
+
+/** Anything that happened to the issue that is not a comment. `event` is
+ * GitHub's own name (labeled / assigned / closed / renamed / referenced …);
+ * the view renders the ones it knows and skips the rest. */
+export interface IssueTimelineEvent {
+  kind: "event";
+  id: string;
+  event: string;
+  actor: GitHubActor;
+  createdAt: string;
+  /** labeled / unlabeled */
+  label: PrLabel | null;
+  /** assigned / unassigned */
+  assignee: GitHubActor | null;
+  /** milestoned / demilestoned */
+  milestone: string | null;
+  /** renamed */
+  rename: { from: string; to: string } | null;
+}
+
+export type IssueTimelineItem = IssueTimelineComment | IssueTimelineEvent;
+
 export interface IssueDetail extends IssueSummary {
   body: string;
   assignees: GitHubActor[];
   milestone: { title: string; url: string } | null;
-  commentsList: PrComment[];
+  /** Comments and events interleaved, oldest first — the OMG/GitHub issue body. */
+  timeline: IssueTimelineItem[];
   closedAt: string | null;
 }
 
