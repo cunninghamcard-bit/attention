@@ -1,6 +1,7 @@
 import type { EventRef } from "../../core/Events";
 import { createDiv, createEl, createSpan } from "../../dom/dom";
 import { setIcon } from "../../ui/Icon";
+import { setFileTypeIcon } from "../../ui/FileTypeIcon";
 import { setTooltip } from "../../ui/Popover";
 import { Menu } from "../../ui/Menu";
 import { Notice } from "../../ui/Notice";
@@ -789,7 +790,11 @@ export class GitHubRepoView extends ItemView {
         cls: "github-file",
         key: `file:${item.path}`,
       });
-      setIcon(row.iconEl, item.type === "dir" ? "lucide-folder" : "lucide-file");
+      // The same resolver the file explorer, the git log and the review surface
+      // use — a repository's files are files, and there is no reason GitHub's
+      // are the only ones in the app drawn as a generic grey sheet.
+      if (item.type === "dir") setIcon(row.iconEl, "lucide-folder-closed");
+      else setFileTypeIcon(row.iconEl, item.path);
       createDiv({ cls: "tree-item-inner-text", text: item.name }, row.innerEl);
       if (item.type === "file") {
         const flair = createSpan("tree-item-flair-outer", row.selfEl);

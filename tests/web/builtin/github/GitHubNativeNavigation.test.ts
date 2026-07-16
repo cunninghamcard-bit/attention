@@ -1042,6 +1042,34 @@ describe("GitHub native navigation (A+B)", () => {
     await until(() => list().contentEl.querySelector(".github-repo-chip") !== null, "query rows");
   });
 
+  it("draws repository files with the host's own file-type icons", async () => {
+    // Every other place in this app that lists files — the file explorer, the
+    // git log, the changes view, the review surface — resolves its icon through
+    // `setFileTypeIcon`. GitHub's file rows used to hand-pick a generic
+    // `lucide-file` for all of them, which is why a repository's files were the
+    // only ones in the app drawn as an untyped grey sheet.
+    const app = await createApp();
+    vi.spyOn(app.github, "listContents").mockResolvedValue([
+      { name: "src", path: "src", type: "dir", size: 0, sha: "", url: "" },
+      { name: "main.ts", path: "main.ts", type: "file", size: 1, sha: "", url: "" },
+    ] as RepoContentItem[]);
+    await openRepo(app, "octo", "notes", "files");
+    const repo = (): GitHubRepoView =>
+      app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)[0].view as GitHubRepoView;
+    await until(() => repo().contentEl.querySelectorAll(".github-row").length === 2, "file rows");
+    const icons = (): HTMLElement[] => [
+      ...repo().contentEl.querySelectorAll<HTMLElement>(".github-row .tree-item-icon-inline"),
+    ];
+
+    // The resolver stamps the semantic language token it picked; a hand-drawn
+    // lucide glyph carries none, so this cannot pass on the old code.
+    const [dir, file] = icons();
+    expect(file.dataset.iconToken).toBeTruthy();
+    expect(file.querySelector("svg.file-type-icon")).not.toBeNull();
+    // A directory is still a directory — the host draws it as a closed folder.
+    expect(dir.dataset.iconToken).toBeUndefined();
+  });
+
   it("forks a second tab from a modified file row activation", async () => {
     const app = await createApp();
     vi.spyOn(app.github, "listContents").mockResolvedValue([
