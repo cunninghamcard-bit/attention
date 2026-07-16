@@ -332,21 +332,20 @@ not a form button — so themes
   height: 100%;
   padding: 0;
 }
-/* The header icons and the tree rows below them must share one left origin.
-   A tree row's icon sits at the body's padding plus `--nav-item-padding`'s
-   leading gutter; a header icon sits at the header's padding plus the
-   clickable-icon's own. Express the header's indent from those same tokens so
-   the two columns track together instead of drifting apart when either
-   changes. */
+/* One left origin for the header and the tree under it: `--size-4-3` is what
+   the host's own nav tree container uses (bookmarks-nav.css:22), so the GitHub
+   dock lines up with file explorer and bookmarks instead of inventing a number.
+   The clickable-icon's own padding is the only remaining inset. */
 .github-nav-view .nav-header {
-  padding: var(--size-4-2) var(--size-4-2) var(--size-2-2);
-  padding-inline-start: calc(var(--size-2-2) + var(--size-4-6) - var(--size-2-3));
+  padding: var(--size-4-2) var(--size-4-3) var(--size-2-2);
 }
+/* No padding here: this element already carries `.nav-files-container`, whose
+   host rule sets the tree's gutter. Overriding it with a smaller value is what
+   pulled the rows off the header's line in the first place. */
 .github-nav-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--size-2-1) var(--size-2-2) var(--size-4-4);
 }
 /* Nav tree rows: keep labels ellipsis; type icon stays in the row chrome. */
 .github-nav-view .nav-file-title-content,
