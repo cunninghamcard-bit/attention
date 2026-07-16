@@ -1,6 +1,7 @@
 import type { App } from "../../app/App";
 import { requestUrl } from "../../core/ApiUtils";
 import { GitHubClient, type HttpTransport } from "./GitHubClient";
+import { GitHubGraphQLClient } from "./GitHubGraphQL";
 import { readGithubPrPrefs, writeGithubPrPrefs } from "./prefs";
 import { parseGitRemoteUrl } from "./resolveRepository";
 import { GitHubSession } from "./session";
@@ -9,10 +10,12 @@ import type {
   ActionRunSummary,
   CommitDetail,
   CommitPage,
+  ContributionCalendar,
   GitHubActor,
   GitHubAuthState,
   GitHubBranch,
   GitHubProfile,
+  GitHubProfileOverview,
   GitHubRepositoryRef,
   GitHubSearchItem,
   InvolvementQuery,
@@ -283,6 +286,31 @@ export class GitHubService {
     return this.client(token, "github.com").listFollowers(login, 50);
   }
 
+  /** The Overview section in one call: the identity head over REST, its pinned
+   * grid and year list over GraphQL.
+   *
+   * The head has to come first — `isOrganization` decides which query the
+   * pinned grid can even be asked for, because the GraphQL `Organization` type
+   * carries no `contributionsCollection`. Oh My GitHub resolves it in the same
+   * order for the same reason (`accounts.ts` getOverview). */
+  async getProfileOverview(login: string): Promise<GitHubProfileOverview> {
+    const profile = await this.getProfile(login);
+    const graphql = this.graphql();
+    // A profile whose pins fail to load is still a profile: the head is the
+    // page, the grid is a section of it.
+    const { pinned, contributionYears } = await graphql
+      .getProfileOverview(login, profile.isOrganization)
+      .catch(() => ({ pinned: [], contributionYears: [] }));
+    return { profile, pinned, contributionYears };
+  }
+
+  /** One year of the heatmap and the tiles beneath it. Defaults to the current
+   * year — the same one `contributionYears` lists first. Organizations have no
+   * contributions to ask for; callers branch on `isOrganization` first. */
+  async getContributions(login: string, year?: number): Promise<ContributionCalendar> {
+    return this.graphql().getContributions(login, year ?? new Date().getFullYear());
+  }
+
   async listPullRequests(filter?: PrListFilter, repo?: GitHubRepositoryRef): Promise<PrSummary[]> {
     const { client, repo: active } = await this.requireClient(repo);
     const prefs = readGithubPrPrefs();
@@ -510,6 +538,12 @@ export class GitHubService {
     } catch {
       // ignore
     }
+  }
+
+  /** GraphQL's own client — same token and transport as REST, different
+   * endpoint and error protocol. */
+  private graphql(host = "github.com"): GitHubGraphQLClient {
+    return new GitHubGraphQLClient(this.transportFactory(this.app), this.readToken(), host);
   }
 
   private client(token: string | null, host: string): GitHubClient {
