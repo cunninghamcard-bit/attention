@@ -92,6 +92,7 @@ export class SearchEngine {
     if (!rawQuery) return [];
     const fold = (text: string) => (query.caseSensitive ? text : text.toLowerCase());
     const parsed = parseSearchQuery(fold(rawQuery), (name) => this.operators.has(name));
+    if (Object.values(parsed).every((terms) => terms.length === 0)) return [];
     const results: VaultSearchResult[] = [];
 
     for (const file of this.app.vault.getFiles()) {

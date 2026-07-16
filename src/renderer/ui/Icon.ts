@@ -194,6 +194,8 @@ const ICON_PATHS: Record<string, string> = {
     '<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M7 7V3h10v4"/><path d="M8 12h8"/><path d="M8 16h8"/>',
   "sidebar-toggle-button-icon":
     '<rect x="1" y="2" width="22" height="20" rx="4"/><rect x="4" y="5" width="2" height="14" rx="2" fill="currentColor" class="sidebar-toggle-icon-inner"/>',
+  "lucide-uppercase-lowercase-a":
+    '<path d="M10.5 14L4.5 14"/><path d="M12.5 18L7.5 6"/><path d="M3 18L7.5 6"/><path d="M15.9526 10.8322C15.9526 10.8322 16.6259 10 18.3832 10C20.1406 9.99999 20.9986 11.0587 20.9986 11.9682V16.7018C20.9986 17.1624 21.2815 17.7461 21.7151 18"/><path d="M20.7151 13.5C18.7151 13.5 15.7151 14.2837 15.7151 16C15.7151 17.7163 17.5908 18.2909 18.7151 18C19.5635 17.7804 20.5265 17.3116 20.889 16.6199"/>',
   "right-triangle": '<path d="M3 8L12 17L21 8"/>',
   "lucide-bold":
     '<path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"/>',
@@ -314,6 +316,8 @@ const ICON_PATHS: Record<string, string> = {
     '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M16 8.9V7H8l4 5-4 5h8v-1.9"/>',
   "lucide-sort-asc":
     '<path d="m3 8 4-4 4 4"/><path d="M7 4v16"/><path d="M11 12h4"/><path d="M11 16h7"/><path d="M11 20h10"/>',
+  "lucide-sliders-horizontal":
+    '<path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/>',
   "lucide-square-dashed":
     '<path d="M5 3a2 2 0 0 0-2 2"/><path d="M19 3a2 2 0 0 1 2 2"/><path d="M21 19a2 2 0 0 1-2 2"/><path d="M5 21a2 2 0 0 1-2-2"/><path d="M9 3h1"/><path d="M9 21h1"/><path d="M14 3h1"/><path d="M14 21h1"/><path d="M3 9v1"/><path d="M21 9v1"/><path d="M3 14v1"/><path d="M21 14v1"/>',
   "lucide-sticky-note":
