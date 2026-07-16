@@ -55,6 +55,21 @@ export function openInSystemBrowser(url: string): void {
   else window.open(url, "_blank", "noopener");
 }
 
+/** Text that reads as a link but acts as a button. The click event reaches
+ * `action` so callers can read `isModEvent` — dropping it would silently
+ * disable cmd/ctrl-activate on the rows that fork a second tab. */
+export function linkButton(
+  parent: HTMLElement,
+  text: string,
+  action: (event: MouseEvent) => void,
+): void {
+  const button = createEl("button", { cls: "gh-linkish", text, attr: { type: "button" } }, parent);
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    action(event);
+  });
+}
+
 export function avatar(parent: HTMLElement, login: string, url: string, size = 18): void {
   if (url) {
     createEl(

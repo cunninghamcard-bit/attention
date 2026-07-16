@@ -6,7 +6,7 @@ import type { ViewStateResult } from "../../views/View";
 import { formatRelativeDate } from "../git/relativeDate";
 import { GITHUB_VIEW, type GitHubDetailTarget } from "./open";
 import type { ActionRunDetail, GitHubRepositoryRef, IssueDetail, RepoFileContent } from "./types";
-import { openInSystemBrowser, renderMetaStrip } from "./widgets";
+import { linkButton, openInSystemBrowser, renderMetaStrip } from "./widgets";
 
 /**
  * Center detail for the light sections — issues, workflow runs and repository
@@ -246,7 +246,7 @@ export class GitHubDetailView extends ItemView {
       },
       head,
     );
-    linkButton(meta, "Open on GitHub", () => window.open(detail.htmlUrl, "_blank"));
+    linkButton(meta, "Open on GitHub", () => openInSystemBrowser(detail.htmlUrl));
     const chips = createDiv("gh-chip-row", head);
     createSpan(
       {
@@ -279,8 +279,7 @@ export class GitHubDetailView extends ItemView {
     const header = createDiv("gh-preview-header", this.contentEl);
     createEl("code", { text: file.path }, header);
     createSpan({ cls: "gh-muted", text: formatSize(file.size) }, header);
-    if (file.htmlUrl)
-      linkButton(header, "Open on GitHub", () => window.open(file.htmlUrl, "_blank"));
+    if (file.htmlUrl) linkButton(header, "Open on GitHub", () => openInSystemBrowser(file.htmlUrl));
     if (file.text == null)
       createDiv(
         {
@@ -291,11 +290,6 @@ export class GitHubDetailView extends ItemView {
       );
     else createEl("pre", { cls: "gh-code-pre", text: file.text }, this.contentEl);
   }
-}
-
-function linkButton(parent: HTMLElement, text: string, action: () => void): void {
-  const button = createEl("button", { cls: "gh-linkish", text, attr: { type: "button" } }, parent);
-  button.addEventListener("click", action);
 }
 
 function markdown(parent: HTMLElement, text: string): void {

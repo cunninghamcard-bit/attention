@@ -206,4 +206,40 @@ describe("GitHub issue detail (#5)", () => {
       host: "github.com",
     });
   });
+
+  it("sends the file preview's Open on GitHub through the shared exit", async () => {
+    const app = await boot();
+    const openExternal = vi.fn().mockResolvedValue(undefined);
+    const windowOpen = vi.fn();
+    vi.stubGlobal("electron", { shell: { openExternal } });
+    vi.stubGlobal("open", windowOpen);
+    vi.spyOn(app.github, "getFileContent").mockResolvedValue({
+      path: "src/main.ts",
+      name: "main.ts",
+      sha: "abc123",
+      size: 12,
+      encoding: "utf-8",
+      text: "const a = 1;",
+      htmlUrl: "https://github.com/acme/attention/blob/main/src/main.ts",
+      downloadUrl: null,
+    });
+
+    await openGitHubDetail(app, {
+      kind: "file",
+      path: "src/main.ts",
+      ref: "main",
+      owner: "acme",
+      repo: "attention",
+    });
+    const view = app.workspace.getLeavesOfType(GitHubDetailView.VIEW_TYPE)[0]
+      ?.view as GitHubDetailView;
+    await until(() => view.contentEl.querySelector(".gh-linkish") !== null, "Open on GitHub");
+    (view.contentEl.querySelector(".gh-linkish") as HTMLButtonElement).click();
+
+    expect(openExternal).toHaveBeenCalledWith(
+      "https://github.com/acme/attention/blob/main/src/main.ts",
+    );
+    // window.open is the bypass this fix removed; the Electron shell is the only exit.
+    expect(windowOpen).not.toHaveBeenCalled();
+  });
 });
