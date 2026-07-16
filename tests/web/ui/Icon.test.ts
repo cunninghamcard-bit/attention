@@ -26,6 +26,11 @@ describe("setIcon", () => {
     expect(el.querySelector("svg")).toBeNull();
   });
 
+  it("ships the users glyph used by follower surfaces", () => {
+    const icon = setIcon(document.createElement("span"), "lucide-users");
+    expect(icon?.classList.contains("lucide-users")).toBe(true);
+  });
+
   it("resolves legacy icon aliases to their targets (real Ym map)", () => {
     // "create-new" -> "edit" -> lucide-edit; back it with a custom icon so the
     // resolution is verified without depending on the loaded lucide set.
