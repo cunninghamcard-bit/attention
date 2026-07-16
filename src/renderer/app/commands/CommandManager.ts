@@ -138,8 +138,7 @@ export class CommandManager {
   executeCommand(command: Command, event?: Event): boolean {
     if (this.app) this.app.lastEvent = event ?? null;
     try {
-      runCommandCallback(command);
-      return true;
+      return runCommandCallback(command);
     } catch (error) {
       console.error(`Command failed to execute: ${command.id}`, error);
       return false;
@@ -155,16 +154,22 @@ export class CommandManager {
   }
 }
 
-export function runCommandCallback(command: Command): void {
+/** Runs a command and reports whether it executed. The upstream contract
+ * (obsidian.d.ts, `Command.checkCallback`: "@returns Whether this command can
+ * be executed at the moment") makes the return value meaningful with
+ * `checking` false too: a command that answers false has declined, and a
+ * hotkey shared with other commands must fall through to the next one
+ * (`HotkeyManager.onTrigger` stops on the first executor). */
+export function runCommandCallback(command: Command): boolean {
   if (command.checkCallback) {
-    command.checkCallback(false);
-    return;
+    return command.checkCallback(false) !== false;
   }
   if (command.callback) {
     command.callback();
-    return;
+    return true;
   }
   console.error(`Command ${command.id} did not provide a callback`);
+  return false;
 }
 
 function isMobileRuntime(): boolean {

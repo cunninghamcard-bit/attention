@@ -41,14 +41,24 @@ describe("CommandManager plugin command behavior", () => {
     expect(callback).toHaveBeenCalledTimes(1);
   });
 
-  it("treats checkCallback execution as handled even when the callback returns false", async () => {
+  // The upstream contract ("@returns Whether this command can be executed at
+  // the moment", obsidian.d.ts) makes a false answer a decline — reporting it
+  // as handled would swallow a hotkey shared with another command.
+  it("reports a checkCallback that answers false as not executed", async () => {
     const commands = new CommandManager();
     const callback = vi.fn(() => false);
     commands.addCommand({ id: "guarded", name: "Guarded", checkCallback: callback });
 
     expect(commands.listCommands()).toEqual([]);
-    expect(await commands.executeCommandById("guarded")).toBe(true);
+    expect(await commands.executeCommandById("guarded")).toBe(false);
     expect(callback).toHaveBeenCalledWith(false);
+  });
+
+  it("treats a void checkCallback answer as executed", async () => {
+    const commands = new CommandManager();
+    commands.addCommand({ id: "quiet", name: "Quiet", checkCallback: () => undefined });
+
+    expect(await commands.executeCommandById("quiet")).toBe(true);
   });
 
   it("uses JavaScript truthiness for command availability checks", () => {
@@ -145,7 +155,9 @@ describe("CommandManager plugin command behavior", () => {
     expect(log).toEqual([]);
     await Promise.resolve();
     expect(log).toEqual(["settled"]);
-    expect(commands.executeCommandById("empty")).toBe(true);
+    // A command with no callback runs nothing — reporting it executed would
+    // stop a shared hotkey from reaching its real handler.
+    expect(commands.executeCommandById("empty")).toBe(false);
     expect(app.lastEvent).toBeNull();
   });
 
@@ -274,6 +286,62 @@ describe("CommandManager plugin command behavior", () => {
     } finally {
       popout.window.close();
     }
+  });
+
+  it("lets a declined hotkey fall through to the next command on the same keys", () => {
+    const scope = new Scope();
+    const commands = new CommandManager();
+    // HotkeyManager registers its dispatcher into app.scope — the same wiring
+    // App performs; the loop below is the real production dispatch path.
+    new HotkeyManager({ scope, commands } as unknown as ConstructorParameters<
+      typeof HotkeyManager
+    >[0]);
+    const order: string[] = [];
+    commands.addCommand({
+      id: "declines",
+      name: "Declines",
+      hotkeys: [{ modifiers: ["Mod"], key: "G" }],
+      checkCallback: (checking) => {
+        order.push(`declines:${checking}`);
+        return false;
+      },
+    });
+    commands.addCommand({
+      id: "accepts",
+      name: "Accepts",
+      hotkeys: [{ modifiers: ["Mod"], key: "G" }],
+      callback: () => order.push("accepts"),
+    });
+
+    expect(scope.handleKey(modKey("g"))).toBe(false);
+    expect(order).toEqual(["declines:false", "accepts"]);
+  });
+
+  it("stops a shared hotkey at the first command that executes", () => {
+    const scope = new Scope();
+    const commands = new CommandManager();
+    new HotkeyManager({ scope, commands } as unknown as ConstructorParameters<
+      typeof HotkeyManager
+    >[0]);
+    const order: string[] = [];
+    commands.addCommand({
+      id: "first",
+      name: "First",
+      hotkeys: [{ modifiers: ["Mod"], key: "G" }],
+      checkCallback: (checking) => {
+        if (!checking) order.push("first");
+        return true;
+      },
+    });
+    commands.addCommand({
+      id: "second",
+      name: "Second",
+      hotkeys: [{ modifiers: ["Mod"], key: "G" }],
+      callback: () => order.push("second"),
+    });
+
+    expect(scope.handleKey(modKey("g"))).toBe(false);
+    expect(order).toEqual(["first"]);
   });
 
   it("matches explicit control/meta modifiers and platform mod hotkeys", () => {
