@@ -1,7 +1,10 @@
 import { FileDiff } from "@pierre/diffs";
 import { ItemView } from "../../views/ItemView";
 import { setFileTypeIcon } from "../../ui/FileTypeIcon";
+import { setIcon } from "../../ui/Icon";
 import { TreeItem } from "../../ui/TreeItem";
+import { renderGitAvatar } from "./GitAvatar";
+import { formatRelativeDate } from "./relativeDate";
 import type { GitFileStatus, GitLogEntry, GitNumstatEntry, GitService } from "./GitService";
 
 const LOG_LIMIT = 100;
@@ -107,11 +110,22 @@ export class GitLogView extends ItemView {
     item.setCollapsed(true);
     const { el: itemEl, childrenEl: detailEl, innerEl: contentEl } = item;
     const subjectEl = doc.createElement("span");
-    subjectEl.className = "git-log-subject";
+    subjectEl.className = "tree-item-inner-text git-log-subject";
     subjectEl.textContent = entry.subject;
     const metaEl = doc.createElement("span");
     metaEl.className = "tree-item-inner-subtext git-log-meta";
-    metaEl.textContent = `${entry.shortHash} · ${entry.author} · ${new Date(entry.date).toLocaleString()}`;
+    const authorEl = doc.createElement("span");
+    authorEl.className = "git-commit-author";
+    renderGitAvatar(authorEl, entry.author, entry.avatarUrl);
+    const hashEl = doc.createElement("span");
+    hashEl.className = "git-commit-hash";
+    hashEl.textContent = entry.shortHash;
+    metaEl.append(
+      authorEl,
+      doc.createTextNode(" · "),
+      hashEl,
+      doc.createTextNode(` · ${formatRelativeDate(entry.date)}`),
+    );
     contentEl.append(subjectEl, metaEl);
     let loaded = false;
     const toggle = (): void => {

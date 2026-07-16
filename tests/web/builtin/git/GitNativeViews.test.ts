@@ -35,6 +35,7 @@ function bridge(
     statusText: options.statusText ?? "",
     logText: options.logText ?? "",
     detailLoads: 0,
+    gravatarUrl: (email: string) => `https://www.gravatar.com/avatar/${email}`,
     async exec(args: string[]): Promise<GitExecResult> {
       if (args[0] === "rev-parse" && args.includes("--is-inside-work-tree")) {
         return { code: this.repo ? 0 : 1, stdout: this.repo ? "true\n" : "", stderr: "" };
@@ -142,9 +143,10 @@ describe("native Git views", () => {
     );
   });
 
-  it("renders Commit Log with native collapsible rows", async () => {
+  it("renders Git commit avatars with initial fallback", async () => {
     const fake = bridge({
-      logText: "abc123\u001fabc123\u001fCard\u001f2026-07-01T00:00:00Z\u001fNative rows\n",
+      logText:
+        "abc123\u001fabc123\u001fCard\u001fcard@example.com\u001f2026-07-01T00:00:00Z\u001fNative rows\n",
     });
     const app = await appWithBridge(fake);
     const leaf = app.workspace.getLeaf("tab");
@@ -155,6 +157,15 @@ describe("native Git views", () => {
     const commit = view.contentEl.querySelector(".git-log-entry.tree-item.nav-folder");
     const header = commit?.querySelector(".git-log-header.tree-item-self") as HTMLElement;
     expect(header).not.toBeNull();
+    const avatar = header.querySelector(".git-avatar") as HTMLElement;
+    const author = header.querySelector(".git-commit-author") as HTMLElement;
+    const image = avatar.querySelector(".git-avatar-image") as HTMLImageElement;
+    expect(image.src).toBe("https://www.gravatar.com/avatar/card@example.com");
+    expect(author.childNodes[1]?.textContent).toBe("Card");
+    expect(header.querySelector(".git-log-meta")?.textContent).toContain("Card · abc123 ·");
+    image.dispatchEvent(new Event("error"));
+    expect(avatar.querySelector(".git-avatar-image")).toBeNull();
+    expect(avatar.querySelector(".git-avatar-fallback")?.textContent).toBe("C");
     expect((commit?.querySelector(".git-log-detail") as HTMLElement).hidden).toBe(true);
     header.click();
     await settle();
@@ -169,7 +180,8 @@ describe("native Git views", () => {
 
   it("preserves Commit Log lazy and empty behavior", async () => {
     const fake = bridge({
-      logText: "abc123\u001fabc123\u001fCard\u001f2026-07-01T00:00:00Z\u001fLazy detail\n",
+      logText:
+        "abc123\u001fabc123\u001fCard\u001fcard@example.com\u001f2026-07-01T00:00:00Z\u001fLazy detail\n",
     });
     const app = await appWithBridge(fake);
     const leaf = app.workspace.getLeaf("tab");

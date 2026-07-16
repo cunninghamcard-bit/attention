@@ -5,6 +5,7 @@ import { setFileTypeIcon } from "../../../ui/FileTypeIcon";
 import { setIcon } from "../../../ui/Icon";
 import { SearchComponent } from "../../../ui/Setting";
 import { TreeItem } from "../../../ui/TreeItem";
+import { renderGitAvatar } from "../GitAvatar";
 import { ItemView } from "../../../views/ItemView";
 import type { GitLogEntry } from "../GitService";
 import type { GitNavMode, GitReviewSource, ReviewFileSummary } from "../reviewSession";
@@ -282,16 +283,14 @@ export class GitNavView extends ItemView {
     selfEl.title = row.subject;
     selfEl.setAttribute("aria-current", selected ? "true" : "false");
     createDiv({ cls: "tree-item-inner-text", text: row.subject }, innerEl);
-    createDiv(
-      {
-        cls: "tree-item-inner-subtext",
-        text:
-          row.kind === "working-tree"
-            ? "local"
-            : `${row.shortHash} · ${row.author} · ${formatRelativeDate(row.date)}`,
-      },
-      innerEl,
-    );
+    const meta = createDiv("tree-item-inner-subtext", innerEl);
+    if (row.kind === "working-tree") {
+      meta.textContent = "local";
+    } else {
+      const author = createSpan("git-commit-author", meta);
+      renderGitAvatar(author, row.author, row.avatarUrl);
+      createSpan({ text: ` · ${row.shortHash} · ${formatRelativeDate(row.date)}` }, meta);
+    }
     const activate = (): void => {
       if (row.kind === "commit") {
         this.app.git.reviewSession.setSource({

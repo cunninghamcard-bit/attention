@@ -12,11 +12,12 @@ const FILES: ReviewFileSummary[] = [
 function fakeBridge(): ElectronGitApi {
   return {
     available: true,
+    gravatarUrl: (email: string) => `https://www.gravatar.com/avatar/${email}`,
     async exec(args: string[]): Promise<GitExecResult> {
       if (args[0] === "log") {
         return {
           code: 0,
-          stdout: "aaa\x1faaa\x1fAda\x1f2026-07-13T00:00:00Z\x1fseed\n",
+          stdout: "aaa\x1faaa\x1fAda\x1fada@example.com\x1f2026-07-13T00:00:00Z\x1fseed\n",
           stderr: "",
         };
       }
@@ -73,7 +74,8 @@ describe("GitNavView", () => {
     const commit = rows.find((row) => row.textContent?.includes("seed"));
     expect(commit?.classList).toContain("tree-item-self");
     expect(commit?.classList).toContain("is-clickable");
-    expect(commit?.querySelector(".tree-item-inner-subtext")?.textContent).toContain("aaa · Ada ·");
+    expect(commit?.querySelector(".tree-item-inner-subtext")?.textContent).toContain("Ada · aaa ·");
+    expect(commit?.querySelector(".git-avatar-image")).not.toBeNull();
     commit?.click();
     expect(app.git.reviewSession.source).toMatchObject({ kind: "commit", ref: "aaa" });
     workingTree?.click();

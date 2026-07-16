@@ -70,6 +70,7 @@ export interface GitLogEntry {
   hash: string;
   shortHash: string;
   author: string;
+  avatarUrl?: string;
   date: string;
   subject: string;
 }
@@ -280,7 +281,7 @@ export class GitService {
 
   /** Recent commits touching `path` (or the whole repo when omitted). */
   async log(path?: string, limit = 50): Promise<GitLogEntry[]> {
-    const args = ["log", `-n${limit}`, "--format=%H%x1f%h%x1f%an%x1f%aI%x1f%s"];
+    const args = ["log", `-n${limit}`, "--format=%H%x1f%h%x1f%an%x1f%aE%x1f%aI%x1f%s"];
     if (path) args.push("--follow", "--", path);
     const result = await this.exec(args);
     if (!result || result.code !== 0) return [];
@@ -288,8 +289,9 @@ export class GitService {
       .split("\n")
       .filter(Boolean)
       .map((line) => {
-        const [hash, shortHash, author, date, subject] = line.split("\x1f");
-        return { hash, shortHash, author, date, subject };
+        const [hash, shortHash, author, email, date, subject] = line.split("\x1f");
+        const avatarUrl = email ? this.bridge?.gravatarUrl?.(email) : undefined;
+        return { hash, shortHash, author, avatarUrl, date, subject };
       })
       .filter((entry) => entry.hash && entry.subject !== undefined);
   }

@@ -128,6 +128,7 @@ export type HistoryRow =
       shortHash: string;
       subject: string;
       author: string;
+      avatarUrl?: string;
       date: string;
     };
 
@@ -142,6 +143,7 @@ export function buildHistoryRows(entries: readonly GitLogEntry[]): HistoryRow[] 
       shortHash: entry.shortHash,
       subject: entry.subject,
       author: entry.author,
+      avatarUrl: entry.avatarUrl,
       date: entry.date,
     })),
   ];

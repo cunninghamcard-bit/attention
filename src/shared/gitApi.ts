@@ -16,6 +16,8 @@ export interface GitExecResult {
 export interface ElectronGitApi {
   available: boolean;
   exec(args: string[], cwd: string): Promise<GitExecResult>;
+  /** Local commit author email → Gravatar URL, hashed in the Node preload. */
+  gravatarUrl?(email: string): string;
   /** GitHub CLI; optional so older bridges and test fakes keep working. */
   execGh?(args: string[], cwd: string, input?: string): Promise<GitExecResult>;
 }

@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import type { ElectronGitApi, GitExecResult } from "../shared/gitApi";
 
@@ -19,6 +20,11 @@ export function resolveGhBinary(exists: (path: string) => boolean = existsSync):
     if (exists(candidate)) return candidate;
   }
   return null;
+}
+
+export function gravatarUrl(email: string): string {
+  const hash = createHash("md5").update(email.trim().toLowerCase()).digest("hex");
+  return `https://www.gravatar.com/avatar/${hash}?s=80&d=identicon`;
 }
 
 export function createElectronGitApi(execFileImpl: ExecFileFn = execFile): ElectronGitApi {
@@ -51,6 +57,7 @@ export function createElectronGitApi(execFileImpl: ExecFileFn = execFile): Elect
   return {
     available: true,
     exec: (args, cwd) => run("git", args, cwd),
+    gravatarUrl,
     execGh(args, cwd, input) {
       const gh = resolveGhBinary();
       if (!gh) return Promise.resolve({ code: 127, stdout: "", stderr: "gh: command not found" });

@@ -64,7 +64,7 @@ describe("local Git theme contract", () => {
     ]);
 
     expect(changes).toContain("nav-file-title tappable is-clickable git-changes-file-header");
-    expect(history).toContain('selfClass: "git-history-row"');
+    expect(history).toContain('selfClass: "nav-file-title tappable git-history-row"');
     // The commit is a container (nav-folder); the file inside it is a file
     // (nav-file), so a theme's file-row treatment reaches it.
     expect(log).toContain('selfClass: "nav-folder-title tappable is-clickable git-log-header"');

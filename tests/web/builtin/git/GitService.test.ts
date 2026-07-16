@@ -28,6 +28,7 @@ function fakeGit(
     calls,
     ghCalls,
     ghInputs,
+    gravatarUrl: (email: string) => `https://www.gravatar.com/avatar/${email}`,
     async execGh(args: string[], _cwd: string, input?: string): Promise<GitExecResult> {
       ghCalls.push(args);
       ghInputs.push(input);
@@ -82,7 +83,7 @@ function fakeGit(
         return {
           code: 0,
           stdout:
-            "aaa111\x1faaa\x1fCard\x1f2026-07-01T00:00:00+08:00\x1ffirst commit\nbbb222\x1fbbb\x1fCard\x1f2026-07-02T00:00:00+08:00\x1fsecond commit\n",
+            "aaa111\x1faaa\x1fCard\x1fcard@example.com\x1f2026-07-01T00:00:00+08:00\x1ffirst commit\nbbb222\x1fbbb\x1fCard\x1fcard@example.com\x1f2026-07-02T00:00:00+08:00\x1fsecond commit\n",
           stderr: "",
         };
       if (args[0] === "reset") return { code: 0, stdout: "", stderr: "" };
@@ -160,7 +161,12 @@ describe("GitService", () => {
 
     const log = await app.git.log("agent.ts");
     expect(log).toHaveLength(2);
-    expect(log[0]).toMatchObject({ shortHash: "aaa", author: "Card", subject: "first commit" });
+    expect(log[0]).toMatchObject({
+      shortHash: "aaa",
+      author: "Card",
+      avatarUrl: "https://www.gravatar.com/avatar/card@example.com",
+      subject: "first commit",
+    });
     await expect(app.git.readFileAt("v1.0", "agent.ts")).resolves.toBe("tagged content\n");
   });
 
@@ -182,6 +188,7 @@ describe("GitService", () => {
     expect(view.contentEl.querySelectorAll(".git-history-entry.tree-item")).toHaveLength(2);
     expect(view.contentEl.querySelectorAll(".git-history-row.tree-item-self")).toHaveLength(2);
     expect(view.contentEl.querySelectorAll(".git-history-action.clickable-icon")).toHaveLength(6);
+    expect(view.contentEl.querySelectorAll(".git-history-entry .git-avatar-image")).toHaveLength(2);
 
     const diffButton = view.contentEl.querySelector(
       '.git-history-action[aria-label="Diff vs working"]',

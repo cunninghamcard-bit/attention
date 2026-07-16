@@ -2,6 +2,8 @@ import { ItemView } from "../../views/ItemView";
 import { openFileDiff } from "../../views/DiffView";
 import type { ViewStateResult } from "../../views/View";
 import { Notice } from "../../ui/Notice";
+import { renderGitAvatar } from "./GitAvatar";
+import { formatRelativeDate } from "./relativeDate";
 import type { GitLogEntry } from "./GitService";
 import { openGitReview } from "./review/GitReviewView";
 import { setIcon } from "../../ui/Icon";
@@ -76,15 +78,27 @@ export class GitHistoryView extends ItemView {
     // .tree-item-self / .tree-item-inner; the view only layers its git classes
     // and hangs the actions flair off the self row. Not collapsible.
     const { selfEl: rowEl, innerEl: contentEl } = new TreeItem(this.listEl, {
-      itemClass: "git-history-entry",
-      selfClass: "git-history-row",
+      itemClass: "nav-file git-history-entry",
+      selfClass: "nav-file-title tappable git-history-row",
+      innerClass: "nav-file-title-content",
     });
     const subjectEl = doc.createElement("div");
-    subjectEl.className = "git-history-subject";
+    subjectEl.className = "tree-item-inner-text git-history-subject";
     subjectEl.textContent = entry.subject;
     const metaEl = doc.createElement("div");
-    metaEl.className = "git-history-meta";
-    metaEl.textContent = `${entry.shortHash} · ${entry.author} · ${new Date(entry.date).toLocaleString()}`;
+    metaEl.className = "tree-item-inner-subtext git-history-meta";
+    const authorEl = doc.createElement("span");
+    authorEl.className = "git-commit-author";
+    renderGitAvatar(authorEl, entry.author, entry.avatarUrl);
+    const hashEl = doc.createElement("span");
+    hashEl.className = "git-commit-hash";
+    hashEl.textContent = entry.shortHash;
+    metaEl.append(
+      authorEl,
+      doc.createTextNode(" · "),
+      hashEl,
+      doc.createTextNode(` · ${formatRelativeDate(entry.date)}`),
+    );
     contentEl.append(subjectEl, metaEl);
     const actionsEl = doc.createElement("div");
     actionsEl.className = "tree-item-flair-outer git-history-actions";
