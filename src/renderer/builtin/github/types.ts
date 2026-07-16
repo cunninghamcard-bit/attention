@@ -377,3 +377,95 @@ export interface MergeResult {
   message: string;
   sha: string | null;
 }
+
+// --- Profile (account overview) -------------------------------------------
+
+/** A user or organization page's identity head.
+ *
+ * `isOrganization` is not cosmetic — it decides which sections can exist at
+ * all. The GraphQL `Organization` type has no `contributionsCollection`,
+ * `starredRepositories` or `followers` (verified by schema introspection), so
+ * an org has no heatmap, no stat tiles, no Stars and no Followers. Oh My
+ * GitHub branches the same way (`accounts.ts:548`, returning
+ * `contributionYears: []` for orgs). */
+export interface GitHubProfile {
+  login: string;
+  name: string | null;
+  avatarUrl: string;
+  bio: string | null;
+  isOrganization: boolean;
+  followers: number;
+  following: number;
+  publicRepos: number;
+  publicGists: number;
+  /** ISO date; the head's "Joined <date>". */
+  createdAt: string;
+  htmlUrl: string;
+}
+
+/** A repository as it appears in a pinned grid (GraphQL `pinnedItems`). */
+export interface PinnedRepository {
+  owner: string;
+  repo: string;
+  nameWithOwner: string;
+  description: string | null;
+  language: string | null;
+  /** GitHub's language dot colour — the one hex we do keep, because it is the
+   * language's identity (Rust orange), not a theme decision. */
+  languageColor: string | null;
+  stars: number;
+  forks: number;
+  isPrivate: boolean;
+  url: string;
+}
+
+/** Heat of one day, 0–4.
+ *
+ * Mapped from GraphQL's `contributionLevel` enum
+ * (NONE | FIRST_QUARTILE | … | FOURTH_QUARTILE — verified by introspection),
+ * deliberately *not* from the sibling `color` field. `color` is GitHub's own
+ * light-mode green; Oh My GitHub passes it through, but this app is themed and
+ * must render the scale in host variables, so the view needs a level, not a
+ * hex. GitHub does the quartile maths server-side — we neither invent it nor
+ * re-derive it. */
+export type ContributionLevel = 0 | 1 | 2 | 3 | 4;
+
+export interface ContributionDay {
+  /** ISO date (YYYY-MM-DD). */
+  date: string;
+  count: number;
+  level: ContributionLevel;
+}
+
+export interface ContributionWeek {
+  firstDay: string;
+  days: ContributionDay[];
+}
+
+/** The four tiles under the heatmap. */
+export interface ContributionStats {
+  commits: number;
+  pullRequests: number;
+  codeReviews: number;
+  issues: number;
+}
+
+export interface ContributionCalendar {
+  year: number;
+  /** The head line: "<n> contributions in <year>". */
+  totalContributions: number;
+  /** Contributions the token cannot see through to; GitHub reports the count
+   * so the page can say so instead of silently under-reporting. */
+  restrictedContributions: number;
+  weeks: ContributionWeek[];
+  stats: ContributionStats;
+}
+
+/** Everything the Overview section needs in one round trip. */
+export interface GitHubProfileOverview {
+  profile: GitHubProfile;
+  pinned: PinnedRepository[];
+  /** Years the year-picker may offer, newest first. **Empty for an
+   * organization** — see `GitHubProfile.isOrganization`. */
+  contributionYears: number[];
+}
