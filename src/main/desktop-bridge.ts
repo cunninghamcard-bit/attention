@@ -1,9 +1,10 @@
 import { dialog, ipcMain, BrowserWindow } from "electron";
 import { performNetRequest } from "./net-request";
+import { listSystemFontFamilies } from "./system-fonts";
 
 /**
  * Main-process handlers for the renderer's NativeBridge channels (dialog,
- * fullscreen, request-url). The renderer forwards these via
+ * fullscreen, request-url, get-fonts). The renderer forwards these via
  * `window.electron.ipcRenderer.invoke` when running under Electron; in the
  * browser/tests they fall back to the in-process mocks in `src/native`.
  */
@@ -69,4 +70,7 @@ export function registerDesktopBridgeIpc(): void {
   ipcMain.handle("request-url", (_event, params: Parameters<typeof performNetRequest>[0]) =>
     performNetRequest(params),
   );
+
+  // Obsidian: require("get-fonts").getFonts() — same seam name, open-source impl.
+  ipcMain.handle("get-fonts", () => listSystemFontFamilies());
 }

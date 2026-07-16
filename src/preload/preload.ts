@@ -1,4 +1,4 @@
-import { ipcRenderer, shell, webUtils } from "electron";
+import { ipcRenderer, shell, webFrame, webUtils } from "electron";
 import { getCurrentWindow } from "@electron/remote";
 import { installTerminalBridge } from "../main/terminal-bridge";
 import { installGitBridge } from "../main/git-bridge";
@@ -22,10 +22,11 @@ export interface ElectronBridgeApi {
   ipcRenderer: typeof ipcRenderer;
   shell: typeof shell;
   webUtils: typeof webUtils;
+  webFrame: typeof webFrame;
 }
 
 export function installElectronBridge(target: typeof globalThis): void {
-  const api: ElectronBridgeApi = { ipcRenderer, shell, webUtils };
+  const api: ElectronBridgeApi = { ipcRenderer, shell, webUtils, webFrame };
   // `window.electron` — the renderer's channel/shell entry point.
   Object.defineProperty(target, "electron", {
     value: api,

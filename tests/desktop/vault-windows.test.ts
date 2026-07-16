@@ -172,6 +172,24 @@ describe("VaultWindowManager (real de/H/ve)", () => {
     expect(win.loadedUrl).toBeTruthy();
   });
 
+  it("applies desktop appearance settings to vault windows", () => {
+    const configured = new VaultWindowManager({
+      store,
+      registry,
+      displays: DISPLAYS,
+      preloadPath: "/tmp/preload.cjs",
+      isQuitting: () => quitting,
+      frameStyle: () => "native",
+      iconPath: () => "/tmp/custom-icon.png",
+    });
+
+    configured.openVault(vaultId);
+    const [win] = FakeBrowserWindow.instances;
+    expect(win.options.frame).toBe(true);
+    expect(win.options.titleBarStyle).toBeUndefined();
+    expect(win.options.icon).toBe("/tmp/custom-icon.png");
+  });
+
   it("open-or-focus: a second openVault focuses instead of duplicating", () => {
     const first = manager.openVault(vaultId);
     const again = manager.openVault(vaultId);

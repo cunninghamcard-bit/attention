@@ -34,6 +34,8 @@ export interface VaultWindowDeps {
   // Whether the starter (vault chooser) window is open — real `le` in the
   // closed handler. Absent means no starter window exists.
   isStarterOpen?: () => boolean;
+  frameStyle?: () => string;
+  iconPath?: () => string | undefined;
 }
 
 /**
@@ -67,14 +69,16 @@ export class VaultWindowManager {
 
     const state = loadWindowState(this.deps.store, vaultId);
     const bounds = resolveWindowBounds(state, this.deps.displays);
+    const nativeFrame = this.deps.frameStyle?.() === "native";
     const win = new BrowserWindow({
       minWidth: 200,
       minHeight: 150,
       backgroundColor: "#00000000",
       trafficLightPosition: { x: 19, y: 12 },
       show: false,
-      frame: false,
-      titleBarStyle: "hidden",
+      frame: nativeFrame,
+      ...(nativeFrame ? {} : { titleBarStyle: "hidden" as const }),
+      icon: this.deps.iconPath?.(),
       webPreferences: {
         ...OBSIDIAN_WEB_PREFERENCES,
         preload: this.deps.preloadPath,
@@ -137,6 +141,8 @@ export class VaultWindowManager {
     };
     win.on("resize", captureSoon);
     win.on("move", captureSoon);
+    // Menu/pinch zoom updates webContents.zoomLevel; capture so restarts restore it.
+    win.webContents.on("zoom-changed", captureSoon);
     win.once("ready-to-show", reveal);
 
     win.on("close", (event) => {

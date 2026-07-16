@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain, screen, shell } from "electron";
+import { app, BrowserWindow, ipcMain, nativeImage, screen, shell } from "electron";
 import { initialize as initializeRemote } from "@electron/remote/main";
 import { join } from "node:path";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { defaultPreloadPath } from "./window";
 import { isStarterOpen, openStarter } from "./starter-window";
 import { registerFoundationIpc } from "./foundation-ipc";
@@ -82,6 +82,24 @@ if (!gotLock) {
 
   const store = new JsonStore(join(app.getPath("userData")));
   const settings = loadSettings(store);
+  if (settings.disableGpu) app.disableHardwareAcceleration();
+  const customIconPath = join(app.getPath("userData"), "custom-icon.png");
+  const configuredIconPath = (): string | undefined =>
+    settings.icon && existsSync(customIconPath) ? customIconPath : undefined;
+  const getCustomIcon = (): string | null => {
+    const path = configuredIconPath();
+    if (!path) return null;
+    const image = nativeImage.createFromPath(path);
+    return image.isEmpty() ? null : image.toDataURL();
+  };
+  const applyCustomIcon = (): void => {
+    const path = configuredIconPath();
+    if (!path) return;
+    const image = nativeImage.createFromPath(path);
+    if (image.isEmpty()) return;
+    app.dock?.setIcon(image);
+    for (const win of BrowserWindow.getAllWindows()) win.setIcon(image);
+  };
   const registry = new VaultRegistry(settings, store, () => saveSettings(store, settings));
 
   const displays: DisplayProvider = {
@@ -99,6 +117,8 @@ if (!gotLock) {
     // off behind Settings > General > Advanced. `cli: false` still gates.
     isCliEnabled: () => settings.cli !== false,
     isStarterOpen,
+    frameStyle: () => settings.frame ?? "hidden",
+    iconPath: configuredIconPath,
   });
 
   const openStarterWindow = () => openStarter({ preloadPath: defaultPreloadPath(here) });
@@ -241,8 +261,45 @@ if (!gotLock) {
       performRequest: performNetRequest,
       existsSync,
       mkdirp: (p) => void mkdirSync(p, { recursive: true }),
+      appearance: {
+        frame: (value) => {
+          if (value) {
+            settings.frame = value;
+            saveSettings(store, settings);
+          }
+          return settings.frame ?? "hidden";
+        },
+        disableGpu: (value) => {
+          if (value !== undefined) {
+            settings.disableGpu = value;
+            saveSettings(store, settings);
+          }
+          return Boolean(settings.disableGpu);
+        },
+        getIcon: getCustomIcon,
+        setIcon: (path) => {
+          if (!path) {
+            rmSync(customIconPath, { force: true });
+            delete settings.icon;
+            saveSettings(store, settings);
+            return null;
+          }
+          const image = nativeImage.createFromPath(path);
+          if (image.isEmpty()) return getCustomIcon();
+          writeFileSync(customIconPath, image.toPNG());
+          settings.icon = "custom-icon.png";
+          saveSettings(store, settings);
+          applyCustomIcon();
+          return image.toDataURL();
+        },
+        relaunch: () => {
+          app.relaunch();
+          app.quit();
+        },
+      },
       onError: (error) => console.error(error),
     });
+    applyCustomIcon();
     openStartupWindows();
     cliServer.start();
     if (pendingUrl) {

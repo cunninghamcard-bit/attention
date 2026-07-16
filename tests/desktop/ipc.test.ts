@@ -22,6 +22,7 @@ let trashItem: ReturnType<typeof vi.fn<(path: string) => Promise<void>>>;
 let openExternal: ReturnType<typeof vi.fn<(url: string) => void>>;
 let openStarter: ReturnType<typeof vi.fn<() => void>>;
 let performRequest: ReturnType<typeof vi.fn<(p: RequestUrlParams) => Promise<RequestUrlResult>>>;
+let appearance: NonNullable<IpcDeps["appearance"]>;
 let handlers: Record<string, (event: IpcSyncEvent, ...args: unknown[]) => void>;
 
 const PATHS: IpcDeps["paths"] = {
@@ -56,6 +57,13 @@ beforeEach(() => {
   performRequest = vi.fn<(p: RequestUrlParams) => Promise<RequestUrlResult>>(() =>
     Promise.resolve({ status: 200, headers: {}, body: new ArrayBuffer(0) }),
   );
+  appearance = {
+    frame: vi.fn((value) => value ?? "hidden"),
+    disableGpu: vi.fn((value) => value ?? false),
+    getIcon: vi.fn(() => "data:image/png;base64,icon"),
+    setIcon: vi.fn((path) => (path ? "data:image/png;base64,updated" : null)),
+    relaunch: vi.fn(),
+  };
 
   handlers = createIpcHandlers({
     registry,
@@ -71,6 +79,7 @@ beforeEach(() => {
     performRequest,
     existsSync: fs.existsSync,
     mkdirp: (p) => fs.mkdirSync(p, { recursive: true }),
+    appearance,
   });
 });
 
@@ -172,6 +181,29 @@ describe("IPC vault channels", () => {
 });
 
 describe("IPC actions", () => {
+  it("persists desktop appearance channels and relaunches", () => {
+    const frame = makeEvent();
+    handlers.frame(frame, "native");
+    expect(appearance.frame).toHaveBeenCalledWith("native");
+    expect(frame.returnValue).toBe("native");
+
+    const gpu = makeEvent();
+    handlers["disable-gpu"](gpu, true);
+    expect(appearance.disableGpu).toHaveBeenCalledWith(true);
+    expect(gpu.returnValue).toBe(true);
+
+    const getIcon = makeEvent();
+    handlers["get-icon"](getIcon);
+    expect(getIcon.returnValue).toBe("data:image/png;base64,icon");
+    const setIcon = makeEvent();
+    handlers["set-icon"](setIcon, "/tmp/icon.png");
+    expect(appearance.setIcon).toHaveBeenCalledWith("/tmp/icon.png");
+    expect(setIcon.returnValue).toBe("data:image/png;base64,updated");
+
+    handlers.relaunch(makeEvent());
+    expect(appearance.relaunch).toHaveBeenCalledOnce();
+  });
+
   it("trash acks true only after trashItem settles, false on failure", async () => {
     // Real handler shape: async, returnValue set after shell.trashItem — the
     // renderer's sendSync blocks until then, so deletes are strictly ordered.

@@ -3,7 +3,7 @@ name: "obsidian appearance parity"
 inherits: project
 tags: [architecture, ui, appearance, obsidian-parity]
 estimate: 2d
-test_command: pnpm vitest run -t "{selectors}" --reporter=junit --outputFile=.docwright/report.xml
+test_command: pnpm vitest run tests/web/builtin/AppearanceSettingTab.test.ts tests/web/builtin/theme-market/ThemeMarket.test.ts tests/web/builtin/theme-market/ThemeMarketplaceModal.test.ts tests/desktop/ipc.test.ts tests/desktop/preload.test.ts tests/desktop/vault-windows.test.ts tests/web/builtin/git/GitThemeContract.test.ts tests/web/builtin/git/review/GitReviewView.test.ts -t "{selectors}" --reporter=junit --outputFile=.docwright/report.xml
 test_report: .docwright/report.xml
 ---
 
@@ -42,10 +42,10 @@ already implements, and remove developer-facing copy from the user interface.
 
 ```text
 Appearance
-├─ Theme: Base color scheme · Accent color · Themes · Installed count
-├─ Interface: Inline title · View header · Ribbon
-├─ Font: Interface · Text · Monospace · Font size
-├─ Advanced: Native menus · Translucent window
+├─ Theme: Base color scheme · Accent color · Themes · update manager
+├─ Interface: Inline title · View header · Ribbon manager
+├─ Font: Interface · Text · Monospace · availability · Font size
+├─ Advanced (desktop): Zoom · Native menus · Frame · Icon · Translucency · GPU
 └─ CSS snippets [Reload] [Open folder]
    ├─ empty-state guidance, or
    └─ one native toggle row per snippet
@@ -68,13 +68,31 @@ Appearance
 - Interface controls expose only behaviors already supported by `App`: inline title, view header
   and ribbon visibility. Changes go through vault config so existing config-change handlers own
   body/workspace updates.
-- Font rows use native text controls for comma-separated CSS font families. This is a deliberate
-  smaller interaction than Obsidian's searchable OS-font manager: it exposes the same persisted
-  values without adding a second font discovery subsystem. Font size uses the existing native
-  slider with 10–30 limits, a live value tooltip and a reset-to-16 action.
-- Advanced exposes native menus and translucency only. Translucency needs one explicit
-  `CustomCss.setTranslucency` seam so config persistence and the `is-translucent` body class are
-  updated together.
+- Font rows open a native manager view built from the shared modal, setting and input-suggestion
+  primitives. The manager supports adding, removing and reordering comma-separated CSS font
+  families, shows the source-shaped applied summary and found/missing status icons, offers a
+  searchable suggestion popup, and saves through `AppearanceManager`. Font suggestions follow
+  Obsidian's get-fonts seam: the main process enumerates OS font families via the open-source
+  `font-list` package (Obsidian's proprietary `get-fonts` addon is UNLICENSED and not copied),
+  exposed as `ipcRenderer.invoke("get-fonts")`, merged with a source-shaped seed list, then
+  canvas-filtered to families that actually resolve. Availability checks await
+  `document.fonts.ready` before `fonts.check`. Font size uses the existing native slider with
+  10–30 limits, a live value tooltip and a reset-to-16 action; the mobile base-font-size action
+  is exposed beside it.
+- Ribbon configuration opens a native manager view over the existing `WorkspaceRibbon` items.
+  Visible and hidden sections use Obsidian's source classes, minus/plus actions and drag order;
+  every mutation updates the shared ribbon state and its existing layout persistence seam.
+- Current themes checks the community catalog against installed manifest versions. The row exposes
+  Check for updates, View updates and Update all states, while the existing theme marketplace is
+  reused in update-only mode instead of adding a second theme-management surface.
+- Font rows describe the configured fallback order and mark unavailable families with the native
+  warning icon before opening the existing font manager.
+- Desktop Advanced uses Electron's existing renderer/main seam: `webFrame` owns zoom; main-process
+  settings own frame style, custom icon and GPU disablement; changes that require restart reveal one
+  Relaunch action. Custom icons are normalized to a persisted PNG before being applied. Native menus
+  and translucency retain their existing immediate behavior.
+- No additional mobile Appearance controls or mobile ribbon configuration are implemented in this
+  goal; the already-present mobile base-font-size compatibility toggle is left unchanged.
 - The CSS snippets heading owns Reload and Open folder extra buttons. Reload awaits discovery and
   rebuilds the panel exactly once; the empty state names the vault-relative snippets directory;
   populated rows show that snippet's vault-relative file path.
@@ -97,11 +115,26 @@ Appearance
 ### Allowed Changes
 
 - src/renderer/builtin/AppearanceSettingTab.ts
+- src/renderer/builtin/AppearanceModals.ts
+- src/renderer/builtin/theme-market/ThemeInstaller.ts
+- src/renderer/builtin/theme-market/ThemeMarketplace.ts
+- src/renderer/builtin/theme-market/ThemeMarketplaceModal.ts
 - src/renderer/app/theme/AppearanceManager.ts
 - src/renderer/app/theme/CustomCss.ts
 - src/renderer/app/theme/ThemeManager.ts
 - src/renderer/app/theme/CssSnippetManager.ts
 - src/renderer/ui/Setting.ts
+- src/renderer/views/workspace/WorkspaceRibbon.ts
+- src/renderer/app/App.ts
+- src/renderer/app/FrameDom.ts
+- src/preload/preload.ts
+- src/shared/ipc.ts
+- src/main/ipc.ts
+- src/main/main.ts
+- src/main/settings.ts
+- src/main/vault-windows.ts
+- src/main/desktop-bridge.ts
+- src/main/system-fonts.ts
 - src/renderer/styles/features/settings-item.css
 - src/renderer/styles/product/git-changes.css
 - src/renderer/styles/product/git-review.css
@@ -110,6 +143,12 @@ Appearance
 - src/renderer/builtin/git/review/GitReviewView.ts
 - src/renderer/builtin/git/review/ReviewSurface.ts
 - tests/web/builtin/AppearanceSettingTab.test.ts
+- tests/web/builtin/theme-market/ThemeMarketplaceModal.test.ts
+- tests/web/builtin/theme-market/ThemeMarket.test.ts
+- tests/desktop/ipc.test.ts
+- tests/desktop/preload.test.ts
+- tests/desktop/vault-windows.test.ts
+- tests/architecture.test.ts
 - tests/web/builtin/git/GitThemeContract.test.ts
 - tests/web/builtin/git/review/GitReviewView.test.ts
 - tests/web/app/theme/**
@@ -122,9 +161,8 @@ Appearance
 - Do not modify `decode-obsidian/**`; it is read-only evidence.
 - Do not add a dependency, React surface, copied Obsidian implementation, or parallel setting
   component hierarchy.
-- Do not implement unsupported desktop appearance features such as zoom level, frame style,
-  custom app icon or hardware acceleration in this goal.
 - Do not redesign the theme marketplace or change theme/snippet storage formats.
+- Do not add the remaining mobile Interface settings or mobile quick-ribbon selector.
 - Do not weaken existing appearance, config, theme marketplace or CSS snippet assertions.
 - Do not add a Git-specific palette, community-theme allowlist, selector patch for an individual
   theme, or reach into Pierre's shadow root after render.
@@ -183,6 +221,14 @@ Scenario: installed community themes remain browsable
   When the panel renders and Manage is activated
   Then both themes appear in the selector, the installed count is two and the marketplace opens
 
+Scenario: installed themes can be checked and updated
+  Test:
+    Filter: checks and updates installed community themes
+    Level: component
+  Given an installed theme has an older manifest version than the community catalog
+  When the user checks updates, opens View updates and activates Update all themes
+  Then the update-only manager lists that theme and its vault package is replaced by the newer version
+
 ### Rule: interface-controls — supported workspace chrome is configurable here
 
 Scenario: interface toggles persist and update workspace chrome
@@ -193,15 +239,48 @@ Scenario: interface toggles persist and update workspace chrome
   When each corresponding toggle is turned off
   Then each config value is false and its existing body-class behavior is updated
 
+Scenario: ribbon actions are configurable
+  Test:
+    Filter: opens the ribbon configuration view
+    Level: component
+  Given the Configure ribbon setting is visible
+  When the user opens it and hides a ribbon action
+  Then the action is hidden through the shared ribbon state
+
+Scenario: ribbon manager separates hidden actions and persists drag order
+  Test:
+    Filter: manages visible hidden and ordered ribbon actions
+    Level: component
+  Given the ribbon contains visible and hidden actions
+  When the user removes, adds and drags an action in Configure ribbon
+  Then the source-shaped sections reflect the new visibility and the shared ribbon order is persisted
+
+
 ### Rule: font-controls — implemented typography settings are usable
 
-Scenario: font families update the existing appearance manager
+Scenario: font manager updates the existing appearance manager
   Test:
-    Filter: changes all appearance font families
+    Filter: manages all appearance font families
     Level: component
   Given the three font family controls are visible
-  When interface, text and monospace families are entered
-  Then their vault config keys and CSS override variables contain the entered families
+  When each Manage view adds a family and saves
+  Then the modal closes and their vault config keys and CSS override variables contain the entered families
+
+Scenario: font rows show fallback order and missing-family status
+  Test:
+    Filter: describes configured font fallback status
+    Level: component
+  Given a font setting contains one available and one unavailable family
+  When Appearance renders the Font group
+  Then both families are listed in fallback order and the unavailable family has a Font not found warning
+
+Scenario: font manager offers source-shaped font suggestions
+  Test:
+    Filter: opens the Obsidian-style font suggestion list
+    Level: component
+  Given a Font manager is open
+  When the font name input receives focus
+  Then a searchable suggestion popup lists available seeded font families
 
 Scenario: font size is bounded and resettable
   Test:
@@ -210,6 +289,14 @@ Scenario: font size is bounded and resettable
   Given base font size is 20
   When the slider changes and Restore default is activated
   Then the configured and rendered font size returns to 16 pixels
+
+Scenario: mobile base font size action persists
+  Test:
+    Filter: toggles the mobile base font size action
+    Level: component
+  Given the mobile base font size action is disabled
+  When the user enables it
+  Then baseFontSizeAction is true
 
 ### Rule: advanced-controls — native desktop appearance switches stay in sync
 
@@ -220,6 +307,30 @@ Scenario: native menus and translucency apply immediately
   Given both advanced settings are disabled
   When the user enables both toggles
   Then both config values are true and the translucent body class is present
+
+Scenario: desktop zoom updates the current Electron web frame
+  Test:
+    Filter: changes and resets desktop zoom
+    Level: component
+  Given the current desktop zoom level is nonzero
+  When the user changes the Zoom level slider and activates Restore default
+  Then Electron webFrame receives the changed level and then zero
+
+Scenario: restart-bound desktop settings persist and relaunch
+  Test:
+    Filter: configures desktop frame icon and hardware acceleration
+    Level: component
+  Given desktop frame, icon and GPU channels are available
+  When the user changes frame style, chooses a valid custom icon and disables hardware acceleration
+  Then each main-process setting is persisted, the icon preview is shown and the Relaunch action invokes Electron relaunch
+
+Scenario: desktop native settings drive the next vault window
+  Test:
+    Filter: applies desktop appearance settings to vault windows
+    Level: integration
+  Given native frame style and a persisted custom icon are configured
+  When a vault window is created after relaunch
+  Then BrowserWindow uses the native frame and configured icon path
 
 ### Rule: snippet-controls — snippet discovery has complete actions and states
 
@@ -291,9 +402,9 @@ Scenario: local Git chrome owns no literal palette
 
 ## Out of Scope
 
-- Obsidian's OS font enumeration/search modal and missing-font diagnostics.
-- Mobile-only appearance controls and desktop shell controls not already implemented by Attention.
-- Theme update checks, marketplace redesign, plugin appearance settings and editor tab-size settings.
+- OS-wide font enumeration beyond browser font availability checks.
+- Mobile Interface controls and mobile quick-ribbon selection.
+- Plugin appearance settings and editor tab-size settings.
 - A global visual audit outside Settings → Appearance and the local Git surfaces.
 - Cloud GitHub theme inheritance; it can adopt the same host bridge in a separate bounded goal.
 

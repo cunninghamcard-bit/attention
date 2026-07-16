@@ -30,6 +30,11 @@ export interface SyncChannels {
   "request-url": { request: [replyId: string, params: unknown]; response: void };
   "set-menu": { request: [arg: { template: unknown[] }]; response: void };
   "update-menu-items": { request: [items: unknown[], updateShareMenu?: boolean]; response: void };
+  frame: { request: [value?: "hidden" | "custom" | "native"]; response: string };
+  "disable-gpu": { request: [value?: boolean]; response: boolean };
+  "get-icon": { request: []; response: string | null };
+  "set-icon": { request: [path: string | null]; response: string | null };
+  relaunch: { request: []; response: void };
 }
 
 /** Invoke channels: `ipcRenderer.invoke(channel, ...request)` → Promise<response>. */
@@ -38,6 +43,8 @@ export interface InvokeChannels {
   "dialog:save": { request: [opts?: unknown]; response: string | null };
   "window:set-fullscreen": { request: [value: unknown]; response: void };
   "request-url": { request: [params: unknown]; response: unknown };
+  /** OS font families — Obsidian's `get-fonts` seam (open-source `font-list`). */
+  "get-fonts": { request: []; response: string[] };
 }
 
 export type IpcChannels = SyncChannels & InvokeChannels;

@@ -5,6 +5,7 @@ import { setTooltip } from "../ui/Popover";
 
 export interface FrameDomOptions {
   hidden?: boolean;
+  native?: boolean;
   win?: Window;
 }
 
@@ -37,11 +38,15 @@ export class FrameDom {
     this.win = options.win ?? doc.defaultView ?? window;
     (this.win as Window & { frameDom?: FrameDom }).frameDom = this;
     const body = doc.body;
-    body.classList.add("is-frameless");
-    body.classList.toggle("is-hidden-frameless", options.hidden !== false);
+    body.classList.toggle("is-frameless", options.native !== true);
+    body.classList.toggle(
+      "is-hidden-frameless",
+      options.native !== true && options.hidden !== false,
+    );
 
     this.titleBarEl = doc.createElement("div");
     this.titleBarEl.className = "titlebar";
+    this.titleBarEl.hidden = options.native === true;
     body.insertBefore(this.titleBarEl, body.firstChild);
 
     this.titleBarInnerEl = createDiv("titlebar-inner", this.titleBarEl);

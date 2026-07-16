@@ -231,7 +231,16 @@ export class App {
     applyObsidianBodyClasses(doc.body, win);
     installFocusBodyClassSync(win);
     syncObsidianConfigBodyClasses(doc.body, this);
-    this.frameDom = new FrameDom(doc, { hidden: true, win });
+    const frameStyle = (
+      win as Window & {
+        electron?: { ipcRenderer?: { sendSync?: (channel: "frame") => unknown } };
+      }
+    ).electron?.ipcRenderer?.sendSync?.("frame");
+    this.frameDom = new FrameDom(doc, {
+      hidden: frameStyle !== "custom",
+      native: frameStyle === "native",
+      win,
+    });
     this.dom = new AppDom(parent);
     this.containerEl = this.dom.appContainerEl;
     this.renderContext = new RenderContext(this, "", this.containerEl);

@@ -93,7 +93,7 @@ export class WorkspaceRibbon {
     return id && this.items.some((item) => item.id === id) ? id : null;
   }
 
-  private moveRibbonItem(draggedId: string, targetId: string, afterTarget: boolean): void {
+  moveRibbonItem(draggedId: string, targetId: string, afterTarget: boolean): void {
     const from = this.items.findIndex((item) => item.id === draggedId);
     if (from === -1) return;
     const [item] = this.items.splice(from, 1);
@@ -159,6 +159,13 @@ export class WorkspaceRibbon {
       this.actions.get(id)?.remove();
     }
     this.actions.delete(id);
+  }
+
+  setItemHidden(id: string, hidden: boolean): void {
+    const item = this.items.find((entry) => entry.id === id);
+    if (!item) return;
+    item.hidden = hidden;
+    this.onChange(true);
   }
 
   serialize(): Record<string, unknown> {

@@ -5,6 +5,15 @@ import { Setting, SettingGroup } from "../ui/Setting";
 import { setIcon } from "../ui/Icon";
 import { Notice } from "../ui/Notice";
 import { ThemeMarketplaceModal } from "./theme-market/ThemeMarketplaceModal";
+import type { ThemeMarketplaceEntry } from "./theme-market/ThemeMarketplace";
+import {
+  FontManagerModal,
+  RibbonConfigurationModal,
+  fontAvailable,
+  parseFontFamilies,
+} from "./AppearanceModals";
+import { Platform } from "../platform/Platform";
+import { setTooltip } from "../ui/Popover";
 
 const DEFAULT_FONT_SIZE = 16;
 
@@ -14,6 +23,7 @@ export class AppearanceSettingTab implements SettingTab {
   readonly icon = "palette";
   readonly navEl = document.createElement("div");
   readonly containerEl = document.createElement("div");
+  private themeUpdates: ThemeMarketplaceEntry[] | null = null;
 
   constructor(readonly app: App) {
     this.navEl.className = "vertical-tab-nav-item tappable";
@@ -115,9 +125,38 @@ export class AppearanceSettingTab implements SettingTab {
         ),
     );
 
-    group.addSetting((setting) =>
-      setting.setName("Current themes").setDesc(`${communityThemes.length} installed`),
-    );
+    group.addSetting((setting) => {
+      setting
+        .setName("Current themes")
+        .setDesc(
+          this.themeUpdates?.length
+            ? `${communityThemes.length} installed · ${this.themeUpdates.length} update${this.themeUpdates.length === 1 ? "" : "s"} available`
+            : `${communityThemes.length} installed${this.themeUpdates ? " · Themes are up to date" : ""}`,
+        );
+      if (this.themeUpdates?.length) {
+        setting
+          .addButton((button) =>
+            button
+              .setButtonText("View updates")
+              .onClick(() =>
+                new ThemeMarketplaceModal(
+                  this.app,
+                  new Set(this.themeUpdates?.map((entry) => entry.manifest.id)),
+                ).open(),
+              ),
+          )
+          .addButton((button) =>
+            button
+              .setButtonText("Update all themes")
+              .setCta()
+              .onClick(() => this.updateAllThemes()),
+          );
+      } else if (communityThemes.length) {
+        setting.addButton((button) =>
+          button.setButtonText("Check for updates").onClick(() => this.checkThemeUpdates()),
+        );
+      }
+    });
   }
 
   private renderInterfaceSettings(): void {
@@ -136,13 +175,34 @@ export class AppearanceSettingTab implements SettingTab {
       "showViewHeader",
       true,
     );
-    this.addConfigToggle(
-      group,
-      "Show ribbon",
-      "Display the ribbon on the left side of the window.",
-      "showRibbon",
-      true,
+    group.addSetting((setting) =>
+      setting
+        .setName("Show ribbon")
+        .setDesc("Display the ribbon on the left side of the window.")
+        .addToggle((toggle) =>
+          toggle
+            .setValue(this.app.vault.getConfig<boolean>("showRibbon") ?? true)
+            .onChange((value) => {
+              this.app.vault.setConfig("showRibbon", value);
+              this.display();
+            }),
+        ),
     );
+    if (
+      Platform.canDisplayRibbon &&
+      (Platform.isMobile || this.app.vault.getConfig("showRibbon"))
+    ) {
+      group.addSetting((setting) =>
+        setting
+          .setName("Configure ribbon")
+          .setDesc("Choose which actions appear in the ribbon.")
+          .addButton((button) =>
+            button
+              .setButtonText("Manage")
+              .onClick(() => new RibbonConfigurationModal(this.app).open()),
+          ),
+      );
+    }
   }
 
   private renderFontSettings(): void {
@@ -151,21 +211,21 @@ export class AppearanceSettingTab implements SettingTab {
     this.addFontSetting(
       group,
       "Interface font",
-      "Font used by menus, buttons, and navigation.",
+      "Choose the font used by menus, buttons, and navigation.",
       "uiFont",
       settings.uiFont,
     );
     this.addFontSetting(
       group,
       "Text font",
-      "Font used in the editor and reading view.",
+      "Choose the font used in the editor and reading view.",
       "textFont",
       settings.textFont,
     );
     this.addFontSetting(
       group,
       "Monospace font",
-      "Font used for code blocks and code editors.",
+      "Choose the font used for code blocks and code editors.",
       "monospaceFont",
       settings.monospaceFont,
     );
@@ -202,10 +262,53 @@ export class AppearanceSettingTab implements SettingTab {
         }),
     );
     syncFontReset();
+    this.addConfigToggle(
+      group,
+      "Increase base font size on mobile",
+      "Increase the base font size when editing on a mobile device.",
+      "baseFontSizeAction",
+      false,
+    );
   }
 
   private renderAdvancedSettings(): void {
     const group = new SettingGroup(this.containerEl).setHeading("Advanced");
+    const electron = desktopElectron();
+    if (Platform.isDesktop) {
+      let zoomSlider: HTMLInputElement;
+      let zoomReset: { setDisabled(disabled: boolean): unknown };
+      const syncZoomReset = (): void => {
+        zoomReset.setDisabled(zoomSlider.valueAsNumber === 0);
+      };
+      group.addSetting((setting) =>
+        setting
+          .setName("Zoom level")
+          .setDesc("Adjust the overall zoom level of the app.")
+          .addExtraButton((button) => {
+            zoomReset = button
+              .setIcon("lucide-rotate-ccw")
+              .setTooltip("Restore default")
+              .onClick(() => {
+                zoomSlider.valueAsNumber = 0;
+                electron?.webFrame?.setZoomLevel?.(0);
+                syncZoomReset();
+              });
+          })
+          .addSlider((slider) => {
+            zoomSlider = slider.sliderEl;
+            slider
+              .setLimits(-2.5, 3, 0.5)
+              .setDisplayFormat((value) => `${Math.round(100 * 1.2 ** value)}%`)
+              .setDynamicTooltip()
+              .setValue(electron?.webFrame?.getZoomLevel?.() ?? 0)
+              .onChange((value) => {
+                electron?.webFrame?.setZoomLevel?.(value);
+                syncZoomReset();
+              });
+          }),
+      );
+      syncZoomReset();
+    }
     this.addConfigToggle(
       group,
       "Native menus",
@@ -213,6 +316,65 @@ export class AppearanceSettingTab implements SettingTab {
       "nativeMenus",
       false,
     );
+    if (Platform.isDesktopApp) {
+      group.addSetting((setting) => {
+        const showRelaunch = this.addRelaunchButton(setting);
+        setting
+          .setName("Frame style")
+          .setDesc("Choose how the application window frame is displayed.")
+          .addDropdown((dropdown) =>
+            dropdown
+              .addOption("hidden", "Hidden (default)")
+              .addOption("custom", "Custom")
+              .addOption("native", "Native")
+              .setValue(String(electron?.ipcRenderer?.sendSync?.("frame") ?? "hidden"))
+              .onChange((value) => {
+                electron?.ipcRenderer?.sendSync?.("frame", value);
+                showRelaunch();
+              }),
+          );
+      });
+
+      group.addSetting((setting) => {
+        const iconData = electron?.ipcRenderer?.sendSync?.("get-icon");
+        const preview = this.containerEl.ownerDocument.createElement("img");
+        preview.className = "setting-icon-preview";
+        preview.alt = "Custom icon preview";
+        preview.width = 64;
+        preview.height = 64;
+        if (typeof iconData === "string") preview.src = iconData;
+        else preview.hidden = true;
+        setting.descEl.appendChild(preview);
+        const showRelaunch = this.addRelaunchButton(setting);
+        setting
+          .setName("Custom icon")
+          .addExtraButton((button) =>
+            button
+              .setIcon("lucide-rotate-ccw")
+              .setTooltip("Restore default")
+              .onClick(() => {
+                electron?.ipcRenderer?.sendSync?.("set-icon", null);
+                preview.hidden = true;
+                showRelaunch();
+              }),
+          )
+          .addButton((button) =>
+            button.setButtonText("Choose").onClick(async () => {
+              const paths = await electron?.ipcRenderer?.invoke?.("dialog:open", {
+                title: "Choose custom icon",
+                extensions: ["png", "ico", "icns"],
+              });
+              const path = Array.isArray(paths) && typeof paths[0] === "string" ? paths[0] : null;
+              if (!path) return;
+              const data = electron?.ipcRenderer?.sendSync?.("set-icon", path);
+              if (typeof data !== "string") return;
+              preview.src = data;
+              preview.hidden = false;
+              showRelaunch();
+            }),
+          );
+      });
+    }
     group.addSetting((setting) =>
       setting
         .setName("Translucent window")
@@ -223,6 +385,22 @@ export class AppearanceSettingTab implements SettingTab {
             .onChange((value) => this.app.customCss.setTranslucency(value)),
         ),
     );
+    if (Platform.isDesktopApp) {
+      group.addSetting((setting) => {
+        const showRelaunch = this.addRelaunchButton(setting);
+        setting
+          .setName("Hardware acceleration")
+          .setDesc("Use the graphics processor to improve rendering performance.")
+          .addToggle((toggle) =>
+            toggle
+              .setValue(!Boolean(electron?.ipcRenderer?.sendSync?.("disable-gpu")))
+              .onChange((enabled) => {
+                electron?.ipcRenderer?.sendSync?.("disable-gpu", !enabled);
+                showRelaunch();
+              }),
+          );
+      });
+    }
   }
 
   private renderSnippetSettings(): void {
@@ -283,6 +461,18 @@ export class AppearanceSettingTab implements SettingTab {
     );
   }
 
+  private addRelaunchButton(setting: Setting): () => void {
+    let relaunch: HTMLButtonElement;
+    setting.addButton((button) => {
+      relaunch = button.buttonEl;
+      relaunch.hidden = true;
+      button
+        .setButtonText("Relaunch")
+        .onClick(() => desktopElectron()?.ipcRenderer?.send?.("relaunch"));
+    });
+    return () => (relaunch.hidden = false);
+  }
+
   private addFontSetting(
     group: SettingGroup,
     name: string,
@@ -290,15 +480,58 @@ export class AppearanceSettingTab implements SettingTab {
     key: "uiFont" | "textFont" | "monospaceFont",
     value: string,
   ): void {
+    const doc = this.containerEl.ownerDocument;
+    const fonts = parseFontFamilies(value);
+    // Source shape: description text, then either a single u-pop name or a ul of families.
+    const desc = doc.createDocumentFragment();
+    desc.append(doc.createTextNode(description));
+    if (fonts.length === 1) {
+      const label = doc.createElement("span");
+      label.textContent = "Currently in effect: ";
+      const pop = doc.createElement("span");
+      pop.className = "u-pop";
+      pop.textContent = fonts[0];
+      desc.append(label, pop);
+    } else if (fonts.length > 1) {
+      const label = doc.createElement("span");
+      label.textContent = "Fonts currently in effect:";
+      const list = doc.createElement("ul");
+      for (const font of fonts) {
+        const item = doc.createElement("li");
+        const nameEl = doc.createElement("span");
+        nameEl.textContent = font;
+        item.append(nameEl);
+        // Source attaches missing-font warnings after fonts.ready. The list
+        // item may still be in a DocumentFragment when the promise starts, so
+        // do not gate on isConnected — only skip if the row was removed/replaced.
+        void fontAvailable(font, doc).then((available) => {
+          if (available || item.querySelector(".mod-warning")) return;
+          item.append(" ");
+          const warning = doc.createElement("span");
+          warning.className = "mod-warning";
+          setIcon(warning, "lucide-alert-circle");
+          setTooltip(warning, "Font not found");
+          item.append(warning);
+        });
+        list.appendChild(item);
+      }
+      desc.append(label, list);
+    }
     group.addSetting((setting) =>
       setting
         .setName(name)
-        .setDesc(description)
-        .addText((text) =>
-          text
-            .setPlaceholder("Default")
-            .setValue(value)
-            .onChange((font) => this.app.appearance.setFonts({ [key]: font })),
+        .setDesc(desc)
+        .addButton((button) =>
+          button
+            .setButtonText("Manage")
+            .setCta()
+            .onClick(() =>
+              new FontManagerModal(this.app, name, value, (font) =>
+                this.app.appearance.setFonts({ [key]: font }),
+              )
+                .setCloseCallback(() => this.display())
+                .open(),
+            ),
         ),
     );
   }
@@ -307,6 +540,31 @@ export class AppearanceSettingTab implements SettingTab {
     return this.app.themes
       .listThemes()
       .filter((theme) => !theme.id.startsWith("obsidian-default-"));
+  }
+
+  private async checkThemeUpdates(): Promise<void> {
+    try {
+      this.themeUpdates = await this.app.themeMarketplace.findUpdates(this.communityThemes());
+      if (this.themeUpdates.length === 0) new Notice("Themes are up to date");
+      this.display();
+    } catch (error) {
+      new Notice(
+        `Theme update check failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  private async updateAllThemes(): Promise<void> {
+    try {
+      for (const entry of this.themeUpdates ?? []) {
+        await this.app.themeInstaller.update(entry.manifest.id);
+      }
+      this.themeUpdates = [];
+      new Notice("Themes updated");
+      this.display();
+    } catch (error) {
+      new Notice(`Theme update failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   private async reloadSnippets(): Promise<void> {
@@ -325,4 +583,20 @@ export class AppearanceSettingTab implements SettingTab {
       );
     }
   }
+}
+
+interface DesktopElectron {
+  webFrame?: {
+    getZoomLevel?: () => number;
+    setZoomLevel?: (value: number) => void;
+  };
+  ipcRenderer?: {
+    send?: (channel: string, ...args: unknown[]) => void;
+    sendSync?: (channel: string, ...args: unknown[]) => unknown;
+    invoke?: (channel: string, ...args: unknown[]) => Promise<unknown>;
+  };
+}
+
+function desktopElectron(): DesktopElectron | undefined {
+  return (globalThis as typeof globalThis & { electron?: DesktopElectron }).electron;
 }

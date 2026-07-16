@@ -59,6 +59,9 @@ importers:
       '@pierre/trees':
         specifier: 1.0.0-beta.5
         version: 1.0.0-beta.5(@pierre/theme@1.1.0)(@shikijs/themes@4.3.1)(shiki@4.3.1)
+      font-list:
+        specifier: ^2.1.0
+        version: 2.1.0
       ghostty-web:
         specifier: ^0.4.0
         version: 0.4.0(patch_hash=81d53f3e452eeed2e0b36bc7f91f4b9d46ad2f1ef6c2d481ddd327b1ce4200ff)
@@ -1456,6 +1459,9 @@ packages:
 
   fflate@0.8.3:
     resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
+
+  font-list@2.1.0:
+    resolution: {integrity: sha512-GMDcD8Wymmhz7pxOzu+Gm/bbVzxvUHJJSiLPCF/rt02g2W7P08Nhz6XiaYjXo8xklXWhLoCiyi1cBPwwASC2fQ==}
 
   fsevents@2.3.2:
     resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
@@ -3612,6 +3618,8 @@ snapshots:
       picomatch: 4.0.5
 
   fflate@0.8.3: {}
+
+  font-list@2.1.0: {}
 
   fsevents@2.3.2:
     optional: true

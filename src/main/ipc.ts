@@ -58,6 +58,13 @@ export interface IpcDeps {
   performRequest(params: RequestUrlParams): Promise<RequestUrlResult>;
   existsSync(path: string): boolean;
   mkdirp(path: string): void;
+  appearance?: {
+    frame(value?: "hidden" | "custom" | "native"): string;
+    disableGpu(value?: boolean): boolean;
+    getIcon(): string | null;
+    setIcon(path: string | null): string | null;
+    relaunch(): void;
+  };
   onError?(error: unknown): void;
 }
 
@@ -74,6 +81,19 @@ export function createIpcHandlers(deps: IpcDeps): Record<string, IpcListener> {
     "get-documents-path": (e) => (e.returnValue = paths.documentsDir),
     "get-sandbox-vault-path": (e) => (e.returnValue = paths.sandboxVaultPath),
     "get-default-vault-path": (e) => (e.returnValue = paths.defaultVaultPath),
+    frame: (e, value) =>
+      (e.returnValue = deps.appearance?.frame(
+        value === "hidden" || value === "custom" || value === "native" ? value : undefined,
+      )),
+    "disable-gpu": (e, value) =>
+      (e.returnValue = deps.appearance?.disableGpu(typeof value === "boolean" ? value : undefined)),
+    "get-icon": (e) => (e.returnValue = deps.appearance?.getIcon() ?? null),
+    "set-icon": (e, path) =>
+      (e.returnValue = deps.appearance?.setIcon(typeof path === "string" ? path : null) ?? null),
+    relaunch: (e) => {
+      deps.appearance?.relaunch();
+      e.returnValue = undefined;
+    },
 
     // --- Vault registry (sync) ---
     vault: (e) => {
