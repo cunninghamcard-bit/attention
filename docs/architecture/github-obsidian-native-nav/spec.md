@@ -92,12 +92,15 @@ Nav -> Detail: reuse the same center leaf (no new tab)
 - **A — nav header = four section icons, nothing else.** `GitHubNavView`
   (VIEW_TYPE `github-nav`) opens via
   `workspace.ensureSideLeaf("github-nav", "left", …)`. Its `nav-header`
-  buttons row (`nav-action-button`, the FileExplorer pattern) carries four
-  mutually exclusive section icons — **Inbox | Pull Requests | Issues |
-  Organizations** — and nothing else. **Search is not a header icon** (owner's
-  round-3 call: the header was crowded): it is a **fixed first row of the nav
-  body**, visible in every section — where OMG's "Search workspace" sits — and
-  activating it opens the GitHub suggest modal. **No Refresh button in any
+  buttons row (`nav-action-button`, the FileExplorer pattern) carries three
+  mutually exclusive section icons — **Pull Requests | Issues |
+  Organizations** — plus the **Inbox action**, and nothing else. Inbox follows
+  the installed OMG app (a pure entry, zero sidebar content) with one
+  addition the owner asked for: the icon carries an **unread-count badge**.
+  Activating it opens (or focuses) the center inbox and leaves the body on
+  the current section — the sidebar never renders notification rows. **Search has no sidebar presence at
+  all** (owner's round-4 call — no header icon, no body row): the GitHub
+  suggest modal is reached only through the `github:search` command. **No Refresh button in any
   GitHub header** — neither the nav's nor the list/repo/detail view-headers
   (owner's call: every surface reloads when entered or retargeted; the
   `github:refresh` command remains for manual refresh).
@@ -110,26 +113,25 @@ Nav -> Detail: reuse the same center leaf (no new tab)
   Mentioned Me, Assigned to Me}; Issue queries {Created by Me, Mentioned Me,
   Assigned to Me}; Organizations = **the signed-in user first** (their profile
   entry, the OMG shape), then org logins — so the section is never empty for
-  an account with no orgs. **Inbox is a section with a minimal body** (owner's
-  calls, round 3: less inbox in the sidebar, richness in the center): the body
-  shows at most a handful of unread rows — one type icon + truncated title
-  each, never a text wall — plus an "Open inbox" row; activating the section
-  also opens (or focuses) the center notifications list, and activating a row
-  opens that notification's target. **The center inbox rows carry the
-  richness**: type icon, repository, reason and relative age per row, laid out
-  readably rather than densely. No repo dump, no avatars, no filters in the
+  an account with no orgs. **The center inbox carries all notification
+  content and richness** (the OMG inbox-page shape): an Unread | All view
+  toggle, reason filter chips (assigned / participating / review-requested /
+  mentioned), a Mark-all-as-read action, and rows of `unread dot + type icon
+  + repo (small) / title (bold when unread) + reason badge + relative age`,
+  laid out readably rather than densely. Hover row actions (done /
+  unsubscribe) are a follow-up. No repo dump, no avatars, no filters in the
   sidebar: content density belongs to center tabs.
-- **Notification rows jump to the web.** Activating a notification row —
-  sidebar or center inbox — opens that notification's github.com page in the
-  external browser (the OMG behavior, owner's round-3 call). The notifications
-  API exposes only api.github.com subject URLs, so the web URL is derived by
-  **string mapping for the certain types only** (issue / pull / commit —
-  e.g. `repos/{o}/{r}/pulls/{n}` → `github.com/{o}/{r}/pull/{n}`); a subject
-  that cannot be mapped with certainty (null URL, Discussion / Release /
-  CheckSuite) **focuses the center inbox row instead** — never a repo tab, an
-  in-app detail leaf or an invented URL. In-app PR / issue details remain
-  reachable from query lists and repo tabs. Mark-read still runs in the
-  background and never gates the jump.
+- **Notification clicks use the OMG hybrid semantics** (verified against the
+  installed app's `resolveNotificationTarget` and `notificationHtmlUrl`,
+  two branches only): a PR or issue notification with a number opens the
+  **in-app detail leaf**; everything else opens the **external browser** via
+  `notificationWebUrl(subjectUrl, repositoryHtmlUrl)` — the OMG mapper shape:
+  string-map the certain subject types (`pulls`→`pull`, `commits`→`commit`,
+  `issues`), and for anything unmappable fall back to the notification's
+  `repository.html_url` (the field exists on the notifications API;
+  `NotificationItem` carries it). The mapper **always returns a URL** — there
+  is no "unmappable" state, no in-app repo tab, no invented URLs. Mark-read
+  runs optimistically in the background and never gates navigation.
 - **A — cross-repo query lists.** `GitHubListView` (VIEW_TYPE `github-list`) is a
   center tab rendering a cross-repo involvement query (PRs / issues by created /
   review-requested / mentioned / assigned), an organization's repositories, or
@@ -147,13 +149,22 @@ Nav -> Detail: reuse the same center leaf (no new tab)
   **only** door into a `github-repo` tab. Richer profile content (contribution
   heatmap, stars / followers / sponsors sub-views) is a follow-up goal, not
   this contract.
-- **Global search = one `SuggestModal`.** The nav body's fixed Search row (the
-  first row of every section — never a header icon) opens a GitHub suggest
-  modal (the host's `SuggestModal` primitive, the shape OMG's
+- **Global search = one `SuggestModal`, command-only.** The `github:search`
+  command (no sidebar entry of any kind, owner's round-4 call) opens a GitHub
+  suggest modal (the host's `SuggestModal` primitive, the shape OMG's
   "Search workspace" has): as-you-type suggestions over the signed-in user's
   and orgs' repositories, the fixed PR/issue queries and the inbox; picking a
   suggestion opens its target through the same open helpers. The in-list
   `SearchComponent` remains a local row filter — it does not grow suggestions.
+- **Issue detail = the OMG issue-page shape** (task #5's acceptance basis,
+  verified against the installed app): header carries the state chip, number
+  and created/updated meta; a **right-hand meta column** holds Assignees,
+  Labels, Milestone, Participants and the Close/Reopen actions. The in-page
+  column ban applies to **navigation** columns only — meta content columns
+  are the OMG/GitHub idiom and allowed. The body is a **mixed timeline**:
+  comments and events (labeled / assigned / closed / referenced …)
+  interleaved chronologically, not a bare comment list. Editable title,
+  subscribe / lock / pin / delete are follow-ups.
 - **Real view-header, no fake headers.** The `ItemView` base already builds the
   real chrome (`headerEl` / `navButtonsEl` / `titleEl` / `actionsEl` /
   `addAction()`, with back/forward wired to `history-change`). GitHub views
@@ -274,19 +285,19 @@ Scenario: Unauthenticated navigator shows a connect prompt, not a tree
 
 ### Rule: nav-header-sections — The nav header switches sections; Inbox is an action
 
-Scenario: The navigator header offers the four sections, search lives in the body
+Scenario: The navigator header offers the four sections and nothing else
   Test: renders four header sections without a repo picker
   Given an authenticated GitHub session
   When the GitHub navigator loads
   Then the nav header shows Inbox, Pull Requests, Issues and Organizations
     icons and no Refresh and no Search action
-  And the body's first row is the Search entry
+  And no Search row appears anywhere in the body
   And the default body lists the pull-request queries
   But no Open-repository action and no Repositories group is rendered
 
-Scenario: The Search row suggests targets and opens the pick
+Scenario: The search command suggests targets and opens the pick
   Test: opens a target from the github search suggest modal
-  Given the GitHub suggest modal is open with repositories loaded
+  Given the GitHub suggest modal was opened via the github:search command
   When the user types a repo name fragment and picks the suggestion
   Then a `github-repo` center leaf opens for the picked repository
 
@@ -297,27 +308,36 @@ Scenario: A header section icon swaps the body in place
   Then the same nav leaf's body lists the issue queries instead
   And the total workspace leaf count is unchanged
 
-Scenario: The Inbox section shows thin rows and opens the center list
+Scenario: The Inbox action badges its count and opens the center list
   Test: opens the inbox from the nav header icon
   Given the GitHub navigator on the Pull Requests section
   When the user activates the Inbox icon in the nav header
   Then a `github-list` center leaf renders the notifications inbox
-  And the nav body lists the unread notifications as thin title rows
+  And the nav body still lists the pull-request queries
+  And the Inbox icon carries the unread count badge
 
-Scenario: A notification row jumps to its GitHub web page
-  Test: opens the browser from an inbox row
+Scenario: An issue notification opens the in-app detail
+  Test: opens issue detail from an inbox row
   Given the notifications inbox lists an issue notification
   When the user activates that row
-  Then the notification's github.com page opens in the external browser
+  Then a `github-detail` center leaf renders the issue
+  And no browser page or notice pop-up appears
+
+Scenario: A commit notification jumps to its GitHub web page
+  Test: opens the browser from an inbox row
+  Given the notifications inbox lists a commit notification
+  When the user activates that row
+  Then the commit's github.com page opens in the external browser
   And no in-app detail leaf, repo tab or notice pop-up appears
 
-Scenario: An unmappable notification stays in the center inbox
-  Test: keeps unmappable notifications in the center inbox
+Scenario: An unmappable subject falls back to the repository web page
+  Test: opens the repository web page for unmappable subjects
   Given the notifications inbox lists a Discussion notification with no
     mappable subject URL
   When the user activates that row
-  Then the center inbox focuses that row
-  And no browser page, repo tab or detail leaf opens
+  Then the notification's repository github.com page opens in the external
+    browser
+  And no in-app repo tab or detail leaf opens
 
 Scenario: The Organizations section lists the signed-in user first
   Test: lists the signed-in user before organizations
