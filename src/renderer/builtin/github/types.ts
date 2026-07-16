@@ -382,12 +382,24 @@ export interface MergeResult {
 
 /** A user or organization page's identity head.
  *
- * `isOrganization` is not cosmetic — it decides which sections can exist at
- * all. The GraphQL `Organization` type has no `contributionsCollection`,
- * `starredRepositories` or `followers` (verified by schema introspection), so
- * an org has no heatmap, no stat tiles, no Stars and no Followers. Oh My
- * GitHub branches the same way (`accounts.ts:548`, returning
- * `contributionYears: []` for orgs). */
+ * `isOrganization` decides which sections an account can have, but only two of
+ * them for a real reason. The GraphQL `Organization` type carries no
+ * `contributionsCollection` and no `starredRepositories`, so an org genuinely
+ * has no heatmap, no stat tiles and no Stars — Oh My GitHub branches the same
+ * way (`accounts.ts:548` returns `contributionYears: []` for an org, and its
+ * account page sends an org away from the stars section).
+ *
+ * Followers are a different story, and an earlier version of this comment got
+ * it wrong: the GraphQL type has no `followers` field either, and I read that
+ * as "an org has no followers". It does. REST `/users/{login}` answers for an
+ * org as well, which is where the count below comes from, and Oh My GitHub
+ * shows an org its Followers section. **A field missing from one API's type is
+ * not a fact about the product.**
+ *
+ * For the record, Oh My GitHub's real section list is
+ * `overview | repositories | stars | people | followers | sponsors`, gated by
+ * `isOrganization && "stars" || !isOrganization && "people"` — so an org drops
+ * Stars and gains People (its members), which this app does not have yet. */
 export interface GitHubProfile {
   login: string;
   name: string | null;
