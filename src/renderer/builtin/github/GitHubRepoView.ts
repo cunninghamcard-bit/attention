@@ -22,7 +22,7 @@ import type {
   PrSummary,
   RepoContentItem,
 } from "./types";
-import { avatar, conclusionClass, errorText, formatSize, treeRow } from "./widgets";
+import { avatar, conclusionClass, errorText, formatSize, prStateLabel, treeRow } from "./widgets";
 
 const SECTIONS: { id: RepoSection; label: string; icon: string }[] = [
   { id: "overview", label: "Overview", icon: "lucide-book-open" },
@@ -356,7 +356,7 @@ export class GitHubRepoView extends ItemView {
     );
     const flair = createSpan("tree-item-flair-outer", row.selfEl);
     const state = createSpan(
-      `tree-item-flair github-pr-state mod-${pr.isDraft ? "draft" : pr.state}`,
+      `tree-item-flair github-pr-state mod-${prStateLabel(pr.state, pr.isDraft)}`,
       flair,
     );
     setIcon(state, "lucide-git-pull-request");

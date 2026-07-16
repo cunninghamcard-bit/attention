@@ -20,7 +20,7 @@ import {
 } from "./open";
 import type { GitHubSelection, GitHubTarget } from "./session";
 import type { GitHubSearchItem, InvolvementQuery, NotificationItem } from "./types";
-import { avatar, errorText, treeRow } from "./widgets";
+import { avatar, errorText, prStateLabel, treeRow } from "./widgets";
 import { GitHubFilterSuggest, type FilterOperator } from "./GitHubFilterSuggest";
 
 type ListKind = "pr" | "issue" | "notifications" | "org";
@@ -450,7 +450,7 @@ export class GitHubListView extends ItemView {
       createSpan({ text: String(item.comments) }, comments);
     }
     const glyph = createSpan(
-      `tree-item-flair github-pr-state mod-${item.isDraft ? "draft" : item.state}`,
+      `tree-item-flair github-pr-state mod-${prStateLabel(item.state, item.isDraft)}`,
       flair,
     );
     setIcon(glyph, item.isPullRequest ? "lucide-git-pull-request" : "lucide-circle-dot");

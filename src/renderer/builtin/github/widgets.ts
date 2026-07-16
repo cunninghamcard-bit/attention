@@ -1,7 +1,7 @@
 import { createDiv, createEl, createSpan } from "../../dom/dom";
 import type { UserEvent } from "../../app/hotkeys/Keymap";
 import { TreeItem } from "../../ui/TreeItem";
-import type { GitHubActor, PrLabel } from "./types";
+import type { GitHubActor, PrLabel, PrState } from "./types";
 
 /** A faithful nav-file row (shared by the list and repo center views), keyed
  * for selection sync, with click + keyboard wired via `activate`. */
@@ -53,6 +53,14 @@ export function openInSystemBrowser(url: string): void {
   ).electron?.shell;
   if (shell?.openExternal) void shell.openExternal(url);
   else window.open(url, "_blank", "noopener");
+}
+
+/** The one place a pull request's state becomes a word. GitHub keeps
+ * `draft: true` on a draft closed without merging, so an unconditional draft
+ * check reports "draft" for a PR that is actually closed. Draft only outranks
+ * open. Accepts an `IssueState` too — that union is a subset. */
+export function prStateLabel(state: PrState, isDraft: boolean): string {
+  return isDraft && state === "open" ? "draft" : state;
 }
 
 /** Text that reads as a link but acts as a button. The click event reaches

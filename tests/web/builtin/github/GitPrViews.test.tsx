@@ -340,6 +340,25 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     expect(chip.classList.contains("mod-draft")).toBe(true);
   });
 
+  // GitHub leaves draft:true on a draft closed without merging. An
+  // unconditional draft check reports "draft" and hides that it is closed.
+  it("shows a closed draft PR as closed, not draft", async () => {
+    const chip = await stateChipFor({ ...DETAIL, state: "closed", isDraft: true });
+    expect(chip.textContent).toBe("closed");
+    expect(chip.classList.contains("mod-closed")).toBe(true);
+  });
+
+  it("flairs a closed draft PR as closed in the repo list", async () => {
+    const app = await appWithGit();
+    installGithubMocks(app, { list: [{ ...SUMMARY, state: "closed", isDraft: true }] });
+    await openRepo(app, "coder", "ghostty-web", "pulls");
+    const view = app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)[0].view as GitHubRepoView;
+    await until(() => view.contentEl.querySelector(".github-pr-state") !== null, "state flair");
+    const flair = view.contentEl.querySelector(".github-pr-state") as HTMLElement;
+    expect(flair.classList.contains("mod-closed")).toBe(true);
+    expect(flair.classList.contains("mod-draft")).toBe(false);
+  });
+
   it("approves through the GitHub API", async () => {
     const submitCalls: string[] = [];
     const app = await appWithGit();
