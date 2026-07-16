@@ -150,11 +150,17 @@ Nav -> Detail: reuse the same center leaf (no new tab)
   **only** door into a `github-repo` tab. Richer profile content (contribution
   heatmap, stars / followers / sponsors sub-views) is a follow-up goal, not
   this contract.
-- **Global search = a fixed top-right panel** (owner's round-5 call: "one
-  fixed position like OMG, not the middle"). Invoking `github:search` (⌘P
-  command, or the "Search GitHub for …" tail row of any page's search field)
-  opens the search **anchored top-right of the workspace — the host's own
-  document-search (Ctrl+F) position and look** — never a centered modal. The
+- **Global search = a fixed top-right panel** (owner's round-5 call: one
+  fixed position, not a centered pop-up). The position's provenance is the
+  **host's own document-search (Ctrl+F) floating panel** — the native
+  top-right idiom — not OMG (whose search verifiably sits in its sidebar,
+  not its toolbar). Invoking `github:search` (⌘P command, or the "Search
+  GitHub for …" tail row of any page's search field) opens the search
+  anchored in that document-search position — never a centered modal.
+  Merging into the host's file search was ruled out on signature grounds,
+  not taste: `registerSearchOperator` filters `TFile` and `search()` returns
+  `VaultSearchResult[]` — the engine cannot yield GitHub entities without
+  rewriting the faithful layer. The
   input and its as-you-type suggestion list (the signed-in user's and orgs'
   repositories, the fixed PR/issue queries, the inbox — the engine task #8
   shipped, reskinned only) drop down from that fixed anchor; Esc dismisses.
