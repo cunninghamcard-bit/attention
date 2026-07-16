@@ -21,11 +21,38 @@ import {
 import type { GitHubSelection, GitHubTarget } from "./session";
 import type { GitHubSearchItem, InvolvementQuery, NotificationItem } from "./types";
 import { avatar, errorText, treeRow } from "./widgets";
+import { GitHubFilterSuggest, type FilterOperator } from "./GitHubFilterSuggest";
 
 type ListKind = "pr" | "issue" | "notifications" | "org";
 
-/** The reasons Oh My GitHub offers as inbox filters. */
-const INBOX_REASONS = ["assign", "participating", "review_requested", "mention"] as const;
+/** The inbox's filter language. Oh My GitHub spends four chips and a toggle on
+ * the first five of these; a qualifier costs a line and composes. */
+const INBOX_OPERATORS: FilterOperator[] = [
+  { operator: "is:unread", description: "only unread notifications" },
+  { operator: "is:all", description: "include notifications already read" },
+  { operator: "reason:assign", description: "assigned to you" },
+  { operator: "reason:participating", description: "threads you took part in" },
+  { operator: "reason:review_requested", description: "your review was requested" },
+  { operator: "reason:mention", description: "you were mentioned" },
+  { operator: "repo:", description: "match a repository, e.g. repo:octo/notes" },
+];
+
+/** Free text matches title or repo; qualifiers narrow. Unknown text is a plain
+ * substring match, so typing before learning the language still works. */
+export function matchNotifications(items: NotificationItem[], query: string): NotificationItem[] {
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return items.filter((item) =>
+    terms.every((term) => {
+      if (term === "is:all") return true;
+      if (term === "is:unread") return item.unread;
+      if (term.startsWith("reason:")) return item.reason === term.slice(7);
+      if (term.startsWith("repo:")) return item.repository.toLowerCase().includes(term.slice(5));
+      return (
+        item.title.toLowerCase().includes(term) || item.repository.toLowerCase().includes(term)
+      );
+    }),
+  );
+}
 
 function notificationIcon(type: string): string {
   if (type === "PullRequest") return "lucide-git-pull-request";
@@ -78,7 +105,6 @@ export class GitHubListView extends ItemView {
   private query: InvolvementQuery = "review-requested";
   private org = "";
   private inboxAll = false;
-  private inboxReason: string | null = null;
   private filter = "";
   private request = 0;
   private selectionRef: EventRef | null = null;
@@ -133,6 +159,17 @@ export class GitHubListView extends ItemView {
     this.leaf.updateHeader();
   }
 
+  /** `is:` selects the server-side set (read included or not); the rest narrow
+   * what is already on screen. Only a change of set costs a request. */
+  private applyInboxFilter(): void {
+    const all = /(^|\s)is:all(\s|$)/.test(this.filter);
+    if (all !== this.inboxAll) {
+      this.inboxAll = all;
+      return void this.reload();
+    }
+    this.draw();
+  }
+
   private sessionTarget(): GitHubTarget {
     if (this.kind === "notifications") return { kind: "inbox" };
     if (this.kind === "org") return { kind: "org", org: this.org };
@@ -170,41 +207,18 @@ export class GitHubListView extends ItemView {
     // tab's title, segmented switcher and actions live in the real view-header.
     const controls = createDiv("github-list-controls", this.contentEl);
     if (this.kind === "notifications") {
-      // The OMG inbox shape: a view toggle and reason chips, not a checkbox.
-      const views = createDiv("github-segmented-control github-inbox-views", controls);
-      for (const view of ["unread", "all"] as const) {
-        const button = createEl(
-          "button",
-          {
-            cls: `github-segmented-control-item${this.inboxAll === (view === "all") ? " is-active" : ""}`,
-            text: view === "all" ? "All" : "Unread",
-            attr: { type: "button" },
-          },
-          views,
-        );
-        button.addEventListener("click", () => {
-          if (this.inboxAll === (view === "all")) return;
-          this.inboxAll = view === "all";
-          this.reload();
-        });
-      }
-      const chips = createDiv("github-pills github-inbox-reasons", controls);
-      for (const reason of INBOX_REASONS) {
-        const chip = createEl(
-          "button",
-          {
-            cls: `github-pill${this.inboxReason === reason ? " is-active" : ""}`,
-            text: reason.replace(/_/g, " "),
-            attr: { type: "button" },
-          },
-          chips,
-        );
-        // A second click clears the filter — chips are a toggle, not a radio.
-        chip.addEventListener("click", () => {
-          this.inboxReason = this.inboxReason === reason ? null : reason;
-          this.draw();
-        });
-      }
+      const search = new SearchComponent(controls).setPlaceholder("Filter…").setValue(this.filter);
+      search.inputEl.setAttribute("aria-label", "Filter");
+      // The qualifiers are the controls: `is:` replaces the Unread/All toggle,
+      // `reason:` the chip row, and `repo:` is a filter no button offered.
+      new GitHubFilterSuggest(this.app, search.inputEl, INBOX_OPERATORS, (value) => {
+        this.filter = value;
+        this.applyInboxFilter();
+      });
+      search.onChange((value) => {
+        this.filter = value;
+        this.applyInboxFilter();
+      });
       const markAll = createEl(
         "div",
         {
@@ -433,9 +447,7 @@ export class GitHubListView extends ItemView {
 
   private drawNotifications(): void {
     const list = createDiv("github-list", this.bodyEl!);
-    const items = (this.notifications ?? []).filter(
-      (item) => !this.inboxReason || item.reason === this.inboxReason,
-    );
+    const items = matchNotifications(this.notifications ?? [], this.filter);
     if (!items.length) {
       createDiv({ cls: "github-empty", text: "You're all caught up." }, list);
       return;
