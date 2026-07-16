@@ -888,6 +888,144 @@ describe("GitHub native navigation (A+B)", () => {
   const listOf = (app: App): GitHubListView =>
     app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0]?.view as GitHubListView;
 
+  it("drives its own leaf from a second list tab header", async () => {
+    const app = await createApp();
+    await openQueryList(app, "pr", "review-requested");
+    // A deliberate second list tab, exactly as cmd-activate produces.
+    await openQueryList(app, "pr", "created", "tab");
+    const leaves = () => app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE);
+    await until(() => leaves().length === 2, "two list tabs");
+    const second = leaves()[1].view as GitHubListView;
+    await until(() => second.headerEl.querySelector(".github-list-nav") !== null, "second header");
+
+    const segment = second.headerEl.querySelector(
+      '.github-segmented-control-item[aria-label="Mentioned me"]',
+    ) as HTMLElement;
+    segment.click();
+    await until(() => second.getState().query === "mentioned", "second tab re-targeted");
+    // The first tab must not be driven from another tab's header.
+    expect((leaves()[0].view as GitHubListView).getState().query).toBe("review-requested");
+    expect(leaves()).toHaveLength(2);
+  });
+
+  it("does not clobber a re-targeted list when a pending mark-read lands", async () => {
+    const app = await createApp();
+    let settleRead: (v: string | null) => void = () => {};
+    vi.spyOn(app.github, "markNotificationRead").mockReturnValue(
+      new Promise((resolve) => {
+        settleRead = resolve;
+      }),
+    );
+    await openInbox(app);
+    const list = (): GitHubListView =>
+      app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0].view as GitHubListView;
+    await until(() => list().contentEl.querySelector(".github-row") !== null, "inbox rows");
+    (list().contentEl.querySelector(".github-row") as HTMLElement).click();
+
+    // Re-target this leaf while the PATCH is still in flight, and hold the new
+    // query in its loading state.
+    let settleSearch: (v: GitHubSearchItem[]) => void = () => {};
+    vi.spyOn(app.github, "searchInvolvement").mockReturnValue(
+      new Promise((resolve) => {
+        settleSearch = resolve;
+      }),
+    );
+    await openQueryList(app, "pr", "created");
+    await until(() => list().getState().kind === "pr", "re-targeted to a query");
+    await until(
+      () => list().contentEl.textContent?.includes("Loading") === true,
+      "query is loading",
+    );
+
+    // The PATCH lands late: it must not repaint this leaf with inbox data.
+    settleRead(null);
+    await settle();
+    expect(list().contentEl.textContent).toContain("Loading");
+    expect(list().contentEl.querySelector(".github-row")).toBeNull();
+
+    settleSearch(searchItems("pr"));
+    await until(() => list().contentEl.querySelector(".github-repo-chip") !== null, "query rows");
+  });
+
+  it("forks a second tab from a modified file row activation", async () => {
+    const app = await createApp();
+    vi.spyOn(app.github, "listContents").mockResolvedValue([
+      { name: "a.ts", path: "a.ts", type: "file", size: 1, sha: "", url: "" },
+      { name: "b.ts", path: "b.ts", type: "file", size: 1, sha: "", url: "" },
+    ] as RepoContentItem[]);
+    vi.spyOn(app.github, "getFileContent").mockResolvedValue({
+      path: "a.ts",
+      size: 1,
+      text: "x",
+      isBinary: false,
+      htmlUrl: "",
+    } as never);
+    await openRepo(app, "octo", "notes", "files");
+    const repo = (): GitHubRepoView =>
+      app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)[0].view as GitHubRepoView;
+    await until(() => repo().contentEl.querySelectorAll(".github-row").length === 2, "file rows");
+    const rows = (): HTMLElement[] => [
+      ...repo().contentEl.querySelectorAll<HTMLElement>(".github-row"),
+    ];
+    rows()[0].click();
+    await until(() => app.workspace.getLeavesOfType("github-detail").length === 1, "first file");
+    await settle();
+    rows()[1].dispatchEvent(
+      new MouseEvent("click", { bubbles: true, [Platform.isMacOS ? "metaKey" : "ctrlKey"]: true }),
+    );
+    await until(
+      () => app.workspace.getLeavesOfType("github-detail").length === 2,
+      "second file tab",
+    );
+  });
+
+  it("forks a second tab from a modified pull-request commit row activation", async () => {
+    const app = await createApp();
+    // The shared PR fixture carries no commits; this case needs rows to click.
+    vi.spyOn(app.github, "getPullRequest").mockResolvedValue({
+      ...PR_DETAIL,
+      commits: [
+        {
+          sha: "aaa1111deadbeef",
+          shortSha: "aaa1111",
+          messageHeadline: "first commit",
+          message: "first commit",
+          author: ACTOR,
+          committedDate: "2026-07-14T00:00:00Z",
+          url: "",
+          ciState: null,
+        },
+      ],
+    });
+    await openPrDetail(app, "octo", "notes", 7);
+    const detail = (): PrDetailView =>
+      app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
+    await until(() => detail().contentEl.querySelector(".git-pr-tab") !== null, "detail tabs");
+    const commitsTab = [...detail().contentEl.querySelectorAll(".git-pr-tab")].find((el) =>
+      el.textContent?.toLowerCase().startsWith("commits"),
+    ) as HTMLElement;
+    expect(commitsTab).toBeDefined();
+    commitsTab.click();
+    await until(
+      () => detail().contentEl.querySelector(".git-pr-commit-row") !== null,
+      "commit rows",
+    );
+    const row = detail().contentEl.querySelector(".git-pr-commit-row") as HTMLElement;
+    row.click();
+    await until(
+      () => app.workspace.getLeavesOfType(GitCommitView.VIEW_TYPE).length === 1,
+      "commit",
+    );
+    await settle();
+    row.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, [Platform.isMacOS ? "metaKey" : "ctrlKey"]: true }),
+    );
+    await until(
+      () => app.workspace.getLeavesOfType(GitCommitView.VIEW_TYPE).length === 2,
+      "second commit tab",
+    );
+  });
+
   it("reuses one query list leaf across queries", async () => {
     const app = await createApp();
     await openGitHubNav(app);
