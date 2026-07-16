@@ -1,13 +1,82 @@
 import { describe, expect, it } from "vitest";
 import {
   buildFileTree,
+  type TreeFileNode,
   buildHistoryRows,
   historyRowSelected,
   sourceKey,
   type ReviewFileSummary,
 } from "@web/builtin/git/review/reviewNavModel";
 
+/** A remote tree entry: `kind` is a literal union, which is what makes this the
+ * interesting case — a widened `string` would intersect with "file" harmlessly. */
+interface RemoteEntry {
+  path: string;
+  kind: "blob" | "tree";
+  size: number;
+}
+
+/** Compile-time guard, and it has to be one: the runtime spread overwrites
+ * `kind` either way, so no assertion about behaviour can tell a sound model from
+ * an unsound one. Only the type differs. Under a plain `T & { kind: "file" }`
+ * this leaf type reduces to `never` and the line below stops compiling — which
+ * is the whole defect, and the only place it is visible. */
+const _remoteLeafStaysConstructible: TreeFileNode<RemoteEntry> = {
+  path: "src/main.ts",
+  size: 1,
+  kind: "file",
+  name: "main.ts",
+};
+void _remoteLeafStaysConstructible;
+
 describe("reviewNavModel tree", () => {
+  it("lets a payload that names its own kind still discriminate", () => {
+    // A remote tree entry carries `kind`/`type` of its own. Under a plain
+    // intersection TypeScript reduced the whole node to `never` ("conflicting
+    // types in some constituents") while the runtime spread just overwrote it —
+    // a type describing something the code does not do. The leaf's own kind must
+    // win, and the union must still discriminate.
+    const entries: RemoteEntry[] = [
+      { path: "src/main.ts", kind: "blob", size: 1 },
+      { path: "docs/readme.md", kind: "blob", size: 2 },
+    ];
+
+    const tree = buildFileTree(entries);
+    const folder = tree.find((node) => node.name === "src");
+    if (folder?.kind !== "folder") throw new Error("expected a src folder");
+    const leaf = folder.children[0];
+
+    // `kind` discriminates to the tree's own value, not the payload's…
+    expect(leaf.kind).toBe("file");
+    // …and nothing else the caller sent was lost.
+    expect(leaf).toMatchObject({ name: "main.ts", size: 1 });
+  });
+
+  it("carries a foreign payload through, so a second caller need not copy the tree", () => {
+    // The review's status/additions were never load-bearing — the algorithm only
+    // reads `path`. GitHub's repository files want the same folder structure with
+    // their own record on the leaf, and a 95%-identical second tree model is the
+    // duplication this generalisation exists to avoid.
+    const entries = [
+      { path: "src/main.ts", size: 120, sha: "aaa" },
+      { path: "src/ui/Button.ts", size: 40, sha: "bbb" },
+      { path: "README.md", size: 8, sha: "ccc" },
+    ];
+
+    const tree = buildFileTree(entries);
+
+    expect(tree.map((node) => node.name)).toEqual(["src", "README.md"]);
+    const src = tree.find((node) => node.name === "src");
+    if (src?.kind !== "folder") throw new Error("src should be a folder");
+    // Folders sort ahead of files, so `ui` leads and `main.ts` follows.
+    expect(src.children.map((node) => node.name)).toEqual(["ui", "main.ts"]);
+    const ui = src.children[0];
+    if (ui.kind !== "folder") throw new Error("ui should be a folder");
+
+    // The leaf is the caller's own record plus where it sits — not a lossy copy.
+    expect(ui.children[0]).toMatchObject({ kind: "file", name: "Button.ts", size: 40, sha: "bbb" });
+  });
+
   it("builds a hierarchical tree from changed paths", () => {
     const files: ReviewFileSummary[] = [
       { path: "src/a.ts", status: "modified", additions: 1, deletions: 0 },

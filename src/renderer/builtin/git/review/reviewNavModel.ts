@@ -40,32 +40,54 @@ export async function loadFileSummaries(
 
 // --- Hierarchical tree ----------------------------------------------------
 
-export interface TreeFileNode {
-  kind: "file";
-  name: string;
+/** Anything with a path can be hung in this tree.
+ *
+ * The shape is generic because the algorithm below only ever reads `path` — the
+ * review's status/additions/deletions were never load-bearing, they just rode
+ * along on the leaf. A second caller (GitHub's remote repository files) wants
+ * the same folder structure with a different payload, and copying a 95%
+ * identical tree model to get it is the thing we keep having to undo. */
+export interface TreeFileSource {
   path: string;
-  status: ReviewFileStatus;
-  additions: number;
-  deletions: number;
 }
 
-export interface TreeFolderNode {
+/** A leaf *is* the caller's own record, plus where it sits.
+ *
+ * `Omit` rather than a plain intersection, because the intersection was a type
+ * that described something the code does not do: for a payload carrying its own
+ * `kind` (a remote tree entry naming its blob/tree, say) `T & { kind: "file" }`
+ * makes TypeScript reduce **the whole node** to `never` — "property 'kind' has
+ * conflicting types in some constituents" — while at runtime `{...file, kind,
+ * name}` simply overwrites it and carries on. Omitting first says exactly what
+ * the spread does: the leaf's own `kind`/`name` win, and the union keeps
+ * discriminating. Payloads without them (ReviewFileSummary) are unaffected. */
+export type TreeFileNode<T extends TreeFileSource = ReviewFileSummary> = Omit<
+  T,
+  "kind" | "name"
+> & {
+  kind: "file";
+  name: string;
+};
+
+export interface TreeFolderNode<T extends TreeFileSource = ReviewFileSummary> {
   kind: "folder";
   name: string;
   path: string;
-  children: TreeNode[];
+  children: TreeNode<T>[];
 }
 
-export type TreeNode = TreeFileNode | TreeFolderNode;
+export type TreeNode<T extends TreeFileSource = ReviewFileSummary> =
+  | TreeFileNode<T>
+  | TreeFolderNode<T>;
 
-function orderTree(nodes: TreeNode[]): TreeNode[] {
+function orderTree<T extends TreeFileSource>(nodes: TreeNode<T>[]): TreeNode<T>[] {
   return nodes.sort((left, right) => {
     if (left.kind !== right.kind) return left.kind === "folder" ? -1 : 1;
     return left.name.localeCompare(right.name);
   });
 }
 
-function compressFolder(folder: TreeFolderNode): TreeFolderNode {
+function compressFolder<T extends TreeFileSource>(folder: TreeFolderNode<T>): TreeFolderNode<T> {
   let name = folder.name;
   let path = folder.path;
   let children = orderTree(
@@ -80,9 +102,9 @@ function compressFolder(folder: TreeFolderNode): TreeFolderNode {
   return { kind: "folder", name, path, children };
 }
 
-/** Builds a hierarchical folder tree from flat changed paths (codiff Tree). */
-export function buildFileTree(files: readonly ReviewFileSummary[]): TreeNode[] {
-  const root: TreeFolderNode = { kind: "folder", name: "", path: "", children: [] };
+/** Builds a hierarchical folder tree from flat paths (codiff Tree). */
+export function buildFileTree<T extends TreeFileSource>(files: readonly T[]): TreeNode<T>[] {
+  const root: TreeFolderNode<T> = { kind: "folder", name: "", path: "", children: [] };
   const sorted = [...files].sort((a, b) => a.path.localeCompare(b.path));
   for (const file of sorted) {
     const parts = file.path.split("/").filter(Boolean);
@@ -92,17 +114,10 @@ export function buildFileTree(files: readonly ReviewFileSummary[]): TreeNode[] {
       const isFile = i === parts.length - 1;
       const path = parts.slice(0, i + 1).join("/");
       if (isFile) {
-        cursor.children.push({
-          kind: "file",
-          name,
-          path: file.path,
-          status: file.status,
-          additions: file.additions,
-          deletions: file.deletions,
-        });
+        cursor.children.push({ ...file, kind: "file", name });
       } else {
         let folder = cursor.children.find(
-          (child): child is TreeFolderNode => child.kind === "folder" && child.name === name,
+          (child): child is TreeFolderNode<T> => child.kind === "folder" && child.name === name,
         );
         if (!folder) {
           folder = { kind: "folder", name, path, children: [] };
