@@ -29,6 +29,7 @@ import type {
   PrListFilter,
   PrSummary,
   RepoContentItem,
+  RepoTree,
   RepoFileContent,
   RepositoryCard,
 } from "./types";
@@ -472,6 +473,13 @@ export class GitHubService {
   ): Promise<RepoContentItem[]> {
     const { client, repo: active } = await this.requireClient(repo);
     return client.listContents(active, path, ref);
+  }
+
+  /** Every path at one ref, for a tree. `listContents` above answers a single
+   * level, which is what a breadcrumb walk wants; a tree needs all of them. */
+  async listTree(ref = "", repo?: GitHubRepositoryRef): Promise<RepoTree> {
+    const { client, repo: active } = await this.requireClient(repo);
+    return client.listTree(active, ref);
   }
 
   async getFileContent(
