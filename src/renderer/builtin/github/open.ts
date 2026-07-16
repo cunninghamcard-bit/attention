@@ -66,22 +66,14 @@ export async function openQueryList(
   app.workspace.setActiveLeaf(leaf, { focus: true });
 }
 
-/** The notifications inbox. `eState` focuses one row — the host's ephemeral
- * state, the same mechanism a link uses to land on a heading. */
-export async function openInbox(
-  app: App,
-  openIn?: OpenIn,
-  eState?: { notificationId: string },
-): Promise<void> {
+/** The notifications inbox. */
+export async function openInbox(app: App, openIn?: OpenIn): Promise<void> {
   const leaf = centerLeaf(app, GITHUB_VIEW.list, openIn);
-  await leaf.setViewState(
-    {
-      type: GITHUB_VIEW.list,
-      active: true,
-      state: { kind: "notifications" },
-    },
-    eState,
-  );
+  await leaf.setViewState({
+    type: GITHUB_VIEW.list,
+    active: true,
+    state: { kind: "notifications" },
+  });
   app.workspace.setActiveLeaf(leaf, { focus: true });
 }
 
@@ -186,56 +178,43 @@ function isRefreshable(view: View): view is View & RefreshableView {
   return typeof (view as Partial<RefreshableView>).refresh === "function";
 }
 
-/** Map a notification's API subject URL to its github.com page.
- *
- * The notifications API hands back `api.github.com/repos/o/r/issues/42` and no
- * `html_url`, so the web address has to be derived. Only the three shapes whose
- * web paths we actually know are mapped — and the REST plural becomes the web
- * singular (`pulls` -> `pull`, `commits` -> `commit`). Anything else (a null
- * subject URL, a Discussion, a Release, a CheckSuite) returns null rather than
- * an invented address. */
-export function notificationWebUrl(item: NotificationItem): string | null {
+/** A notification's github.com page, mirroring Oh My GitHub's
+ * `notificationHtmlUrl`. The notifications API hands back an api.github.com
+ * subject URL and no `html_url`, so the page address is derived: string-map the
+ * three subject shapes whose web path is certain (REST plural to web singular),
+ * and fall back to the notification's own repository page for everything else —
+ * a Discussion, a Release, a CheckSuite, a null subject. Always returns a URL;
+ * there is nothing to "not map". */
+export function notificationWebUrl(item: NotificationItem): string {
   const source = item.url ?? item.subjectUrl;
-  if (!source) return null;
-  const match = /\/repos\/([^/]+)\/([^/]+)\/(issues|pulls|commits)\/([^/?#]+)/.exec(source);
-  if (!match) return null;
-  const [, owner, repo, kind, id] = match;
-  const path = kind === "pulls" ? "pull" : kind === "commits" ? "commit" : "issues";
+  const match = source?.match(/\/repos\/([^/]+)\/([^/]+)\/(issues|pulls|commits)\/([^/?#]+)/);
+  if (!match) return item.repositoryHtmlUrl;
+  const [, owner, repo, segment, id] = match;
+  const path = segment === "pulls" ? "pull" : segment === "commits" ? "commit" : "issues";
   return `https://github.com/${owner}/${repo}/${path}/${id}`;
 }
 
-/** Activating a notification goes to its real GitHub page — the app has no
- * faithful view of a notification's world (Discussions, Releases, CI). What we
- * cannot map, we do not guess: those stay in the center inbox, focused on their
- * own row, rather than being translated into some other repository page. */
+/** Activating a notification follows Oh My GitHub's two branches: a PR or issue
+ * we can render opens in-app; everything else — the worlds this app has no view
+ * of — opens its real GitHub page. */
 export async function openNotificationTarget(
   app: App,
   item: NotificationItem,
   openIn?: OpenIn,
-  /** The leaf the row was activated from. A center row supplies its own leaf so
-   * it drives its own tab; the dock has none and reuses an open inbox. */
-  source?: WorkspaceLeaf,
 ): Promise<void> {
-  const url = notificationWebUrl(item);
-  if (url) return void openInSystemBrowser(url);
-  // A modifier still forks deliberately — the reuse path must not swallow it.
-  if (!openIn) {
-    const inbox = isInbox(source)
-      ? source
-      : app.workspace.getLeavesOfType(GITHUB_VIEW.list).find(isInbox);
-    if (inbox) {
-      // Focus in place: setViewState would rebuild and refetch the very list we
-      // are looking at, and that reload's draw would wipe the focus.
-      inbox.view.setEphemeralState({ notificationId: item.id });
-      app.workspace.setActiveLeaf(inbox, { focus: true });
-      return;
-    }
+  const subject = /\/repos\/([^/]+)\/([^/]+)\/(issues|pulls)\/(\d+)/.exec(
+    item.url ?? item.subjectUrl ?? "",
+  );
+  if (subject) {
+    const [, owner, repo, segment, number] = subject;
+    if (segment === "pulls") return void openPrDetail(app, owner, repo, Number(number), openIn);
+    return void openGitHubDetail(
+      app,
+      { kind: "issue", number: Number(number), owner, repo },
+      openIn,
+    );
   }
-  await openInbox(app, openIn, { notificationId: item.id });
-}
-
-function isInbox(leaf?: WorkspaceLeaf): leaf is WorkspaceLeaf {
-  return leaf?.view?.getState?.().kind === "notifications";
+  openInSystemBrowser(notificationWebUrl(item));
 }
 
 export type { GitHubTarget };

@@ -185,6 +185,7 @@ const NOTIFICATIONS: NotificationItem[] = [
     owner: "octo",
     repo: "notes",
     subjectUrl: "https://api.github.com/repos/octo/notes/issues/42",
+    repositoryHtmlUrl: "https://github.com/octo/notes",
   },
 ];
 
@@ -327,9 +328,10 @@ describe("GitHub native navigation (A+B)", () => {
     );
     for (const label of ["Inbox", "Pull requests", "Issues", "Organizations"])
       expect(section(view, label)).not.toBeNull();
-    // Owner's call: Search left the crowded header for the body's first row.
+    // Owner's calls: a section reloads when activated, and Search left the
+    // sidebar altogether — it lives on the github:search command now.
     expect(section(view, "Search")).toBeNull();
-    expect(view.contentEl.querySelector('[data-key="search"]')).not.toBeNull();
+    expect(view.contentEl.querySelector('[data-key="search"]')).toBeNull();
     // Default body = the pull-request queries.
     const text = view.contentEl.textContent ?? "";
     expect(text).toContain("Created by me");
@@ -372,12 +374,14 @@ describe("GitHub native navigation (A+B)", () => {
       app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0]?.view as GitHubListView;
     await until(() => list()?.getDisplayText() === "Inbox", "inbox list");
     expect(list().getState().kind).toBe("notifications");
-    // The dock is never blank: Inbox carries thin unread title rows of its own.
+    // Inbox is an entry, not a body state: the dock keeps its section and never
+    // carries notification rows — the badge is its whole inbox presence.
+    expect(view.contentEl.querySelector('[data-key="query:pr:review-requested"]')).not.toBeNull();
+    expect(view.contentEl.querySelector('[data-key^="notification:"]')).toBeNull();
     await until(
-      () => view.contentEl.querySelector('[data-key="notification:n1"]') !== null,
-      "unread rows",
+      () => section(view, "Inbox").querySelector(".github-nav-badge")?.textContent === "1",
+      "unread badge",
     );
-    expect(view.contentEl.textContent).toContain("Inbox issue notification");
   });
 
   it("lists the signed-in user before organizations", async () => {
@@ -480,20 +484,62 @@ describe("GitHub native navigation (A+B)", () => {
     expect(chips).toContain("octo/notes");
   });
 
-  it("opens the browser from an inbox row", async () => {
+  it("opens issue detail from an inbox row", async () => {
     const app = await createApp();
+    vi.spyOn(app.github, "getIssue").mockResolvedValue({
+      number: 42,
+      title: "Inbox issue notification",
+      state: "open",
+      author: ACTOR,
+      createdAt: "2026-07-14T00:00:00Z",
+      updatedAt: "2026-07-15T00:00:00Z",
+      url: "",
+      labels: [],
+      comments: 0,
+      isPullRequest: false,
+      body: "issue body",
+      assignees: [],
+      milestone: null,
+      commentsList: [],
+      closedAt: null,
+    } satisfies IssueDetail);
     const opened: string[] = [];
     vi.stubGlobal("open", (url: string) => {
       opened.push(url);
       return null;
     });
-    const notices: string[] = [];
-    const noticeSpy = vi.spyOn(Notice.prototype, "setMessage").mockImplementation(function (
-      this: Notice,
-      message: string,
-    ) {
-      notices.push(String(message));
-      return this;
+    await openInbox(app);
+    const list = (): GitHubListView =>
+      app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0]?.view as GitHubListView;
+    await until(() => list()?.contentEl.querySelector(".github-row") !== null, "inbox rows");
+    (list().contentEl.querySelector(".github-row") as HTMLElement).click();
+    // We can render an issue, so it opens in-app — Oh My GitHub's first branch.
+    const detail = (): HTMLElement | undefined =>
+      (app.workspace.getLeavesOfType("github-detail")[0]?.view as GitHubDetailView | undefined)
+        ?.contentEl;
+    await until(
+      () => detail()?.textContent?.includes("Inbox issue notification") === true,
+      "issue detail rendered",
+    );
+    expect(opened).toEqual([]);
+  });
+
+  it("opens the browser from an inbox row", async () => {
+    const app = await createApp();
+    vi.spyOn(app.github, "listNotifications").mockResolvedValue([
+      {
+        ...NOTIFICATIONS[0],
+        id: "c1",
+        title: "A commit notification",
+        type: "Commit",
+        url: "https://api.github.com/repos/octo/notes/commits/deadbeef",
+        subjectUrl: "https://api.github.com/repos/octo/notes/commits/deadbeef",
+      },
+    ]);
+    const opened: string[] = [];
+    vi.stubGlobal("open", (url: string) => {
+      opened.push(url);
+      return null;
     });
     await openInbox(app);
     const list = (): GitHubListView =>
@@ -501,28 +547,21 @@ describe("GitHub native navigation (A+B)", () => {
     await until(() => list()?.contentEl.querySelector(".github-row") !== null, "inbox rows");
     (list().contentEl.querySelector(".github-row") as HTMLElement).click();
     await settle();
-    // We have no faithful view of a notification's world — go to the real page.
-    expect(opened).toEqual(["https://github.com/octo/notes/issues/42"]);
+    // No commit-notification view exists in-app: go to the real page.
+    expect(opened).toEqual(["https://github.com/octo/notes/commit/deadbeef"]);
     expect(app.workspace.getLeavesOfType("github-detail")).toHaveLength(0);
     expect(app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)).toHaveLength(0);
-    expect(notices).toHaveLength(0);
-    noticeSpy.mockRestore();
   });
 
-  it("keeps unmappable notifications in the center inbox", async () => {
+  it("opens the repository web page for unmappable subjects", async () => {
     const app = await createApp();
     vi.spyOn(app.github, "listNotifications").mockResolvedValue([
       {
-        id: "n2",
-        unread: true,
-        reason: "subscribed",
-        updatedAt: "2026-07-15T00:00:00Z",
+        ...NOTIFICATIONS[0],
+        id: "d1",
         title: "A new discussion",
         type: "Discussion",
         url: null,
-        repository: "octo/notes",
-        owner: "octo",
-        repo: "notes",
         subjectUrl: null,
       },
     ]);
@@ -537,15 +576,10 @@ describe("GitHub native navigation (A+B)", () => {
     await until(() => list()?.contentEl.querySelector(".github-row") !== null, "inbox rows");
     (list().contentEl.querySelector(".github-row") as HTMLElement).click();
     await settle();
-    // No web path we can honestly derive: no guess, no repo tab, no detail.
-    expect(opened).toEqual([]);
+    // The payload's own repository page — not an invented URL, not a repo tab.
+    expect(opened).toEqual(["https://github.com/octo/notes"]);
     expect(app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)).toHaveLength(0);
     expect(app.workspace.getLeavesOfType("github-detail")).toHaveLength(0);
-    expect(list().getState().kind).toBe("notifications");
-    await until(
-      () => list().contentEl.querySelector('[data-key="notification:n2"].is-active') !== null,
-      "row focused in the center inbox",
-    );
   });
 
   it("retargets the detail leaf while the first request is pending", async () => {
@@ -700,7 +734,7 @@ describe("GitHub native navigation (A+B)", () => {
       () => view.contentEl.querySelector('[data-key="query:pr:review-requested"]') !== null,
       "pr queries",
     );
-    (view.contentEl.querySelector('[data-key="search"]') as HTMLElement).click();
+    app.commands.findCommand("github:search")?.callback?.();
     const modalEl = () => document.body.querySelector(".prompt") as HTMLElement | null;
     await until(() => modalEl() !== null, "search modal");
     // Wait for listUserRepositories to fill suggestions (octo/notes from createApp).
@@ -759,13 +793,11 @@ describe("GitHub native navigation (A+B)", () => {
       () => list()?.contentEl.textContent?.includes("Inbox issue notification") === true,
       "inbox rows",
     );
-    const opened: string[] = [];
-    vi.stubGlobal("open", (url: string) => {
-      opened.push(url);
-      return null;
-    });
     (list().contentEl.querySelector(".github-row") as HTMLElement).click();
-    await until(() => opened.length === 1, "navigated despite pending mark-read");
+    await until(
+      () => app.workspace.getLeavesOfType("github-detail").length === 1,
+      "navigated despite pending mark-read",
+    );
   });
 
   it("keeps a notification unread when mark-read fails", async () => {
@@ -776,13 +808,8 @@ describe("GitHub native navigation (A+B)", () => {
     const list = (): GitHubListView =>
       app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0]?.view as GitHubListView;
     await until(() => list()?.contentEl.querySelector(".github-row") !== null, "inbox rows");
-    const opened: string[] = [];
-    vi.stubGlobal("open", (url: string) => {
-      opened.push(url);
-      return null;
-    });
     (list().contentEl.querySelector(".github-row") as HTMLElement).click();
-    await until(() => opened.length === 1, "navigated");
+    await until(() => app.workspace.getLeavesOfType("github-detail").length === 1, "navigated");
     await settle();
     // Navigation still happens; the unread flag must not claim a write landed.
     expect(list().contentEl.querySelector(".github-row.is-unread")).not.toBeNull();
@@ -872,123 +899,6 @@ describe("GitHub native navigation (A+B)", () => {
     await settle();
     expect(view(1).contentEl.querySelectorAll(".github-row.is-active")).toHaveLength(1);
     expect(view(0).contentEl.querySelectorAll(".github-row.is-active")).toHaveLength(0);
-  });
-
-  it("keeps the focused row when a reload lands after an unmappable click", async () => {
-    const app = await createApp();
-    const discussion: NotificationItem = {
-      id: "n2",
-      unread: true,
-      reason: "subscribed",
-      updatedAt: "2026-07-15T00:00:00Z",
-      title: "A new discussion",
-      type: "Discussion",
-      url: null,
-      repository: "octo/notes",
-      owner: "octo",
-      repo: "notes",
-      subjectUrl: null,
-    };
-    const fetches = vi
-      .spyOn(app.github, "listNotifications")
-      .mockImplementation(async () => [{ ...discussion }]);
-    await openInbox(app);
-    const list = (): GitHubListView =>
-      app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0].view as GitHubListView;
-    await until(() => list().contentEl.querySelector(".github-row") !== null, "inbox rows");
-
-    // mark-read resolves late, so its draw() races the focus we set on click.
-    let settleRead: (v: string | null) => void = () => {};
-    vi.spyOn(app.github, "markNotificationRead").mockReturnValue(
-      new Promise((resolve) => {
-        settleRead = resolve;
-      }),
-    );
-    vi.stubGlobal("open", () => null);
-    (list().contentEl.querySelector(".github-row") as HTMLElement).click();
-    await settle();
-    settleRead(null);
-    await settle();
-    await settle();
-
-    // Focus must survive the interleaved redraw — and only one leaf, no reload
-    // of the list we were already standing on.
-    expect(app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)).toHaveLength(1);
-    expect(list().contentEl.querySelector('[data-key="notification:n2"].is-active')).not.toBeNull();
-    // Focusing a row in the list you are already standing on must not refetch
-    // it — that reload is what raced the focus in the first place.
-    expect(fetches).toHaveBeenCalledTimes(1);
-  });
-
-  it("caps the dock at five rows and counts the rest on Open inbox", async () => {
-    const app = await createApp();
-    const many: NotificationItem[] = Array.from({ length: 8 }, (_, i) => ({
-      ...NOTIFICATIONS[0],
-      id: `m${i}`,
-      title: `Notification ${i}`,
-    }));
-    vi.spyOn(app.github, "listNotifications").mockResolvedValue(many);
-    await openGitHubNav(app);
-    const view = nav(app);
-    section(view, "Inbox").click();
-    await until(
-      () => view.contentEl.querySelector('[data-key="inbox:open"]') !== null,
-      "inbox dock",
-    );
-    // A glance, not a wall: the dock caps, the centre tab carries the rest.
-    expect(view.contentEl.querySelectorAll('[data-key^="notification:"]')).toHaveLength(5);
-    expect(view.contentEl.querySelector('[data-key="inbox:open"]')?.textContent).toContain("8");
-  });
-
-  it("keeps Search as the body's first row in every section", async () => {
-    const app = await createApp();
-    await openGitHubNav(app);
-    const view = nav(app);
-    for (const label of ["Inbox", "Pull requests", "Issues", "Organizations"]) {
-      section(view, label).click();
-      await settle();
-      const first = view.contentEl.querySelector(".github-nav-body [data-key]") as HTMLElement;
-      expect(first?.dataset.key, `Search must lead the ${label} body`).toBe("search");
-    }
-  });
-
-  it("focuses the row in the inbox tab it was clicked from", async () => {
-    const app = await createApp();
-    const discussion: NotificationItem = {
-      id: "n2",
-      unread: true,
-      reason: "subscribed",
-      updatedAt: "2026-07-15T00:00:00Z",
-      title: "A new discussion",
-      type: "Discussion",
-      url: null,
-      repository: "octo/notes",
-      owner: "octo",
-      repo: "notes",
-      subjectUrl: null,
-    };
-    vi.spyOn(app.github, "listNotifications").mockImplementation(async () => [{ ...discussion }]);
-    await openInbox(app);
-    // A deliberate second inbox tab, as cmd-activate produces.
-    await openInbox(app, "tab");
-    const tabs = () => app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE);
-    await until(() => tabs().length === 2, "two inbox tabs");
-    const view = (i: number): GitHubListView => tabs()[i].view as GitHubListView;
-    await until(
-      () =>
-        view(0).contentEl.querySelector(".github-row") !== null &&
-        view(1).contentEl.querySelector(".github-row") !== null,
-      "rows in both",
-    );
-
-    // Click in the *second* tab: it must focus itself, not the first.
-    (view(1).contentEl.querySelector(".github-row") as HTMLElement).click();
-    await settle();
-    expect(
-      view(1).contentEl.querySelector('[data-key="notification:n2"].is-active'),
-    ).not.toBeNull();
-    expect(view(0).contentEl.querySelector('[data-key="notification:n2"].is-active')).toBeNull();
-    expect(tabs()).toHaveLength(2);
   });
 
   const listOf = (app: App): GitHubListView =>

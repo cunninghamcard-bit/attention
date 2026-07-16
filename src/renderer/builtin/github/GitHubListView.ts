@@ -24,6 +24,9 @@ import { avatar, errorText, treeRow } from "./widgets";
 
 type ListKind = "pr" | "issue" | "notifications" | "org";
 
+/** The reasons Oh My GitHub offers as inbox filters. */
+const INBOX_REASONS = ["assign", "participating", "review_requested", "mention"] as const;
+
 function notificationIcon(type: string): string {
   if (type === "PullRequest") return "lucide-git-pull-request";
   if (type === "Issue") return "lucide-circle-dot";
@@ -75,13 +78,12 @@ export class GitHubListView extends ItemView {
   private query: InvolvementQuery = "review-requested";
   private org = "";
   private inboxAll = false;
+  private inboxReason: string | null = null;
   private filter = "";
   private request = 0;
   private selectionRef: EventRef | null = null;
   private bodyEl: HTMLElement | null = null;
   private segmentedEl: HTMLElement | null = null;
-  private focusId: string | null = null;
-  private focusScrolled = false;
 
   getViewType(): string {
     return GitHubListView.VIEW_TYPE;
@@ -123,7 +125,6 @@ export class GitHubListView extends ItemView {
     // (the FileView pattern) — that is what feeds the native back/forward.
     // Guarded on an actual target change so a re-render never stacks history.
     if (result && this.targetKey() !== previous) result.history = true;
-    if (this.targetKey() !== previous) this.focusId = null;
     // The session follows what is rendered. back()/forward() call setState
     // directly, so this is the only place that can stay in step with them.
     this.app.github.session.setTarget(this.sessionTarget());
@@ -169,21 +170,46 @@ export class GitHubListView extends ItemView {
     // tab's title, segmented switcher and actions live in the real view-header.
     const controls = createDiv("github-list-controls", this.contentEl);
     if (this.kind === "notifications") {
-      const toggle = createEl("label", { cls: "github-check", text: " Include read" }, controls);
-      const input = createEl("input", { attr: { type: "checkbox" }, prepend: true }, toggle);
-      input.checked = this.inboxAll;
-      input.addEventListener("change", () => {
-        this.inboxAll = input.checked;
-        this.reload();
-      });
-      // Text action — not a form <button>. Global button rules apply
-      // `box-shadow: var(--input-shadow)` to every button:not(.clickable-icon);
-      // that chrome belongs to themed form controls, not a header link.
+      // The OMG inbox shape: a view toggle and reason chips, not a checkbox.
+      const views = createDiv("github-segmented-control github-inbox-views", controls);
+      for (const view of ["unread", "all"] as const) {
+        const button = createEl(
+          "button",
+          {
+            cls: `github-segmented-control-item${this.inboxAll === (view === "all") ? " is-active" : ""}`,
+            text: view === "all" ? "All" : "Unread",
+            attr: { type: "button" },
+          },
+          views,
+        );
+        button.addEventListener("click", () => {
+          if (this.inboxAll === (view === "all")) return;
+          this.inboxAll = view === "all";
+          this.reload();
+        });
+      }
+      const chips = createDiv("github-pills github-inbox-reasons", controls);
+      for (const reason of INBOX_REASONS) {
+        const chip = createEl(
+          "button",
+          {
+            cls: `github-pill${this.inboxReason === reason ? " is-active" : ""}`,
+            text: reason.replace(/_/g, " "),
+            attr: { type: "button" },
+          },
+          chips,
+        );
+        // A second click clears the filter — chips are a toggle, not a radio.
+        chip.addEventListener("click", () => {
+          this.inboxReason = this.inboxReason === reason ? null : reason;
+          this.draw();
+        });
+      }
       const markAll = createEl(
         "div",
         {
           cls: "github-linkish",
-          text: "Mark all read",
+          text: "Mark all as read",
           attr: { role: "button", tabindex: "0" },
         },
         controls,
@@ -407,7 +433,9 @@ export class GitHubListView extends ItemView {
 
   private drawNotifications(): void {
     const list = createDiv("github-list", this.bodyEl!);
-    const items = this.notifications ?? [];
+    const items = (this.notifications ?? []).filter(
+      (item) => !this.inboxReason || item.reason === this.inboxReason,
+    );
     if (!items.length) {
       createDiv({ cls: "github-empty", text: "You're all caught up." }, list);
       return;
@@ -430,41 +458,13 @@ export class GitHubListView extends ItemView {
       createSpan({ cls: "github-muted", text: formatRelativeDate(item.updatedAt) }, meta);
       row.activate((event) => this.openNotification(item, Keymap.isModEvent(event)));
     }
-    this.focusPendingRow();
-  }
-
-  /** The host's ephemeral state: an unmappable notification lands here instead
-   * of being translated into some other page. */
-  setEphemeralState(state: unknown): void {
-    const next = state as { notificationId?: string } | null;
-    if (!next?.notificationId) return;
-    this.focusId = next.notificationId;
-    this.focusScrolled = false;
-    this.focusPendingRow();
-  }
-
-  /** Re-applied after every draw, not consumed once: a background mark-read
-   * redraws the list, and a one-shot focus would be wiped by whichever redraw
-   * happened to land last. The focus is state, so it survives its own list. */
-  private focusPendingRow(): void {
-    if (!this.focusId || !this.bodyEl) return;
-    const escaped = this.focusId.replace(/["\\]/g, "\\$&");
-    const row = this.bodyEl.querySelector(`[data-key="notification:${escaped}"]`);
-    if (!row) return;
-    for (const el of this.bodyEl.querySelectorAll(".github-row.is-active"))
-      el.classList.remove("is-active");
-    row.classList.add("is-active");
-    if (this.focusScrolled) return;
-    // Scroll once per request, and only after the class is safely applied.
-    this.focusScrolled = true;
-    row.scrollIntoView({ block: "nearest" });
   }
 
   private openNotification(item: NotificationItem, openIn?: OpenIn): void {
     // Navigate first. Marking read is bookkeeping: awaiting it would stall the
     // first open on the network and, worse, let two quick clicks arrive in
     // PATCH-completion order — the last click has to win.
-    void openNotificationTarget(this.app, item, openIn, this.leaf);
+    void openNotificationTarget(this.app, item, openIn);
     if (!item.unread) return;
     // The service reports failure as a *returned string*, never a rejection —
     // same shape as markAllNotificationsRead below. Clearing unread on a failed

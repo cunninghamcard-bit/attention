@@ -889,6 +889,7 @@ function mapNotification(raw: RawNotification): NotificationItem {
     owner,
     repo,
     subjectUrl: raw.subject?.latest_comment_url ?? raw.subject?.url ?? null,
+    repositoryHtmlUrl: raw.repository?.html_url ?? "",
   };
 }
 
@@ -1196,5 +1197,5 @@ interface RawNotification {
     url?: string | null;
     latest_comment_url?: string | null;
   };
-  repository?: { full_name?: string };
+  repository?: { full_name?: string; html_url?: string };
 }

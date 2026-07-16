@@ -14,6 +14,7 @@ const base: NotificationItem = {
   owner: "octo",
   repo: "notes",
   subjectUrl: null,
+  repositoryHtmlUrl: "https://github.com/octo/notes",
 };
 
 describe("notificationWebUrl", () => {
@@ -28,10 +29,23 @@ describe("notificationWebUrl", () => {
       notificationWebUrl({ ...base, url: "https://api.github.com/repos/octo/notes/issues/42" }),
     ).toBe("https://github.com/octo/notes/issues/42");
   });
-  it("refuses to invent a URL it cannot derive", () => {
-    expect(notificationWebUrl({ ...base, url: null })).toBeNull();
+
+  it("falls back to the repository page for subjects it cannot map", () => {
+    // Discussion, Release, CheckSuite, null subject: no web path can be
+    // derived, so use the one the payload already carries instead of inventing
+    // one. This is Oh My GitHub's behaviour, verified in its source.
+    expect(notificationWebUrl({ ...base, url: null })).toBe("https://github.com/octo/notes");
     expect(
       notificationWebUrl({ ...base, url: "https://api.github.com/repos/octo/notes/releases/9" }),
-    ).toBeNull();
+    ).toBe("https://github.com/octo/notes");
+    expect(
+      notificationWebUrl({ ...base, url: "https://api.github.com/repos/octo/notes/discussions/3" }),
+    ).toBe("https://github.com/octo/notes");
+  });
+
+  it("always returns a url", () => {
+    // There is no "unmappable" state for callers to handle.
+    for (const url of [null, "", "nonsense", "https://api.github.com/notifications/threads/1"])
+      expect(notificationWebUrl({ ...base, url })).toBeTruthy();
   });
 });

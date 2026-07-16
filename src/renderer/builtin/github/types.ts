@@ -337,6 +337,9 @@ export interface NotificationItem {
   owner: string;
   repo: string;
   subjectUrl: string | null;
+  /** The repository's github.com page. The web fallback for any subject we
+   * cannot map — it ships in the notifications payload. */
+  repositoryHtmlUrl: string;
 }
 
 export type MergeMethod = "merge" | "squash" | "rebase";

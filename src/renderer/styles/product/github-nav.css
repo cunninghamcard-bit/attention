@@ -528,3 +528,21 @@ so they opt out explicitly. */
 .github-crumb {
   background: transparent;
 }
+
+/* The dock's only inbox content: a count on the icon. */
+.github-nav-badge {
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+  min-width: 14px;
+  padding: 0 3px;
+  border-radius: var(--radius-l);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: 9px;
+  line-height: 14px;
+  text-align: center;
+}
+.nav-action-button:has(> .github-nav-badge) {
+  position: relative;
+}

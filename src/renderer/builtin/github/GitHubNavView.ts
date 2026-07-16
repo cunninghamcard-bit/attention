@@ -5,7 +5,6 @@ import { setIcon } from "../../ui/Icon";
 import { setTooltip } from "../../ui/Popover";
 import { TreeItem } from "../../ui/TreeItem";
 import { ItemView } from "../../views/ItemView";
-import { GitHubSearchModal } from "./GitHubSearchModal";
 import { GITHUB_VIEW, openInbox, openNotificationTarget, openOrg, openQueryList } from "./open";
 import { renderGitHubSignIn, type SignInHandle } from "./signin";
 import { targetKey, type GitHubTarget } from "./session";
@@ -138,18 +137,17 @@ export class GitHubNavView extends ItemView {
     return button;
   }
 
-  private openSearch(): void {
-    new GitHubSearchModal(this.app).open();
-  }
-
   /** Sections are mutually exclusive and swap the body in place — never a leaf.
    * Inbox additionally opens (or focuses) the center list: the notifications
    * are worth a full tab, while the dock keeps only their titles. */
   private activateSection(section: NavSection, event?: MouseEvent): void {
+    // Inbox is an entry, not a body state: its icon opens the center list and
+    // the dock keeps whatever section it was showing. The dock never carries
+    // notification content — the badge is the whole of its inbox presence.
+    if (section === "inbox") return void openInbox(this.app, Keymap.isModEvent(event));
     this.section = section;
     this.markSection();
     this.renderSection();
-    if (section === "inbox") void openInbox(this.app, Keymap.isModEvent(event));
   }
 
   private markSection(): void {
@@ -160,6 +158,24 @@ export class GitHubNavView extends ItemView {
   /** Manual reload entry (`github:refresh`) — the header has no button. */
   refresh(): void {
     void this.bootstrap();
+  }
+
+  /** The dock's entire inbox presence: a count, not a list. Owner asked for
+   * "some content" in the sidebar; Oh My GitHub carries none at all — a badge
+   * is the smallest thing that answers both. */
+  private async refreshInboxBadge(): Promise<void> {
+    const button = this.sectionButtons.get("inbox");
+    if (!button) return;
+    try {
+      const unread = (await this.app.github.listNotifications({})).filter((n) => n.unread).length;
+      if (!button.isConnected) return;
+      let badge = button.querySelector(".github-nav-badge");
+      if (!unread) return void badge?.remove();
+      if (!badge) badge = createSpan({ cls: "github-nav-badge" }, button);
+      badge.textContent = unread > 99 ? "99+" : String(unread);
+    } catch {
+      // A badge is decoration: never let its fetch surface as an error state.
+    }
   }
 
   private async bootstrap(): Promise<void> {
@@ -175,6 +191,7 @@ export class GitHubNavView extends ItemView {
     }
     this.markSection();
     this.renderSection();
+    void this.refreshInboxBadge();
   }
 
   private renderSignIn(): void {
@@ -201,17 +218,9 @@ export class GitHubNavView extends ItemView {
     if (!this.bodyEl) return;
     const epoch = ++this.bodyEpoch;
     this.bodyEl.empty();
-    this.item(this.bodyEl, {
-      key: "search",
-      icon: "lucide-search",
-      label: "Search GitHub…",
-      onClick: () => this.openSearch(),
-    });
-    if (this.section === "inbox") {
-      this.renderInbox(this.bodyEl, epoch);
-    } else if (this.section === "org") {
+    if (this.section === "org") {
       this.renderOrgs(this.bodyEl, epoch);
-    } else {
+    } else if (this.section !== "inbox") {
       const entity = this.section;
       for (const q of entity === "pr" ? PR_QUERIES : ISSUE_QUERIES)
         this.item(this.bodyEl, {
@@ -223,40 +232,6 @@ export class GitHubNavView extends ItemView {
         });
     }
     this.markTarget(this.app.github.session.target);
-  }
-
-  /** Unread notifications as thin title rows — the dock is a remote control,
-   * so the full list lives in the center tab this section also opens. */
-  private renderInbox(parent: HTMLElement, epoch: number): void {
-    const loading = createDiv({ cls: "github-nav-empty", text: "Loading…" }, parent);
-    void this.app.github
-      .listNotifications({})
-      .then((items) => {
-        if (epoch !== this.bodyEpoch) return;
-        loading.remove();
-        const unread = items.filter((item) => item.unread);
-        // A glance, not a wall: the dock is narrow, so it shows a handful of
-        // type-icon + truncated-title rows and hands density to the center tab.
-        for (const item of unread.slice(0, INBOX_DOCK_ROWS))
-          this.item(parent, {
-            key: `notification:${item.id}`,
-            icon: notificationIcon(item.type),
-            label: item.title,
-            onClick: (event) =>
-              void openNotificationTarget(this.app, item, Keymap.isModEvent(event)),
-          });
-        this.item(parent, {
-          key: "inbox:open",
-          icon: "lucide-inbox",
-          label: unread.length > INBOX_DOCK_ROWS ? `Open inbox (${unread.length})` : "Open inbox",
-          onClick: (event) => void openInbox(this.app, Keymap.isModEvent(event)),
-        });
-      })
-      .catch((error) => {
-        if (epoch !== this.bodyEpoch) return;
-        loading.remove();
-        createDiv({ cls: "github-nav-error", text: errorText(error) }, parent);
-      });
   }
 
   /** You are always the first entry — `/user/orgs` only returns organizations
