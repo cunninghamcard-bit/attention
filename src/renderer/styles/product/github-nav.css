@@ -11,10 +11,17 @@ styled by
   gap: var(--size-2-2);
   padding: var(--size-2-2) var(--size-2-3);
 }
-/* Center list rows are not file-tree leaves — keep the type icon inside the
- * active background (explorer's negative gutter margin would pull it out). */
-.github-row > .tree-item-icon-inline,
-.github-row > .github-row-icon {
+/* Center list rows are not file-tree leaves — keep the avatar / type icon
+ * inside the active background.
+ *
+ * `explorer.css`'s `.tree-item-self:not(:has(> .collapse-icon)) >
+ * .tree-item-icon-inline` pulls a chevron-less row's icon into the gutter, and
+ * it scores 0,3,0 (`:not()`/`:has()` carry their argument's specificity). A
+ * 0,2,0 override loses no matter how late it loads, so this one matches it on
+ * specificity: both classes are on the same element (TreeItem joins
+ * `tree-item-icon-inline` with the caller's iconClass), and github-nav.css is
+ * imported after explorer.css, so the tie breaks our way. */
+.github-row > .tree-item-icon-inline.github-row-icon {
   margin-inline-start: 0;
 }
 .github-row-icon {
