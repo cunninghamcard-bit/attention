@@ -144,13 +144,17 @@ Nav -> Detail: reuse the same center leaf (no new tab)
   user) opens `GitHubProfileView` (VIEW_TYPE `github-profile`), a center tab
   modeled on Oh My GitHub's profile page: identity head (avatar, login, counts)
   and a header-segmented sub-view switch. **The sub-view set forks on
-  `profile.isOrganization`** (schema-verified via GraphQL introspection, not
-  a design choice: `Organization` has no `contributionsCollection`,
-  `starredRepositories` or `followers` fields): a **user** profile offers
-  **Overview | Repositories | Stars | Followers | Sponsors** (the OMG
-  screenshot's full set, switched as view-header handlers); an **org**
-  profile offers Overview | Repositories | Sponsors only, and its Overview
-  has no heatmap (contribution years empty, the OMG fork too). OMG renders these sections as an in-page
+  `profile.isOrganization`**: a **user** profile offers **Overview |
+  Repositories | Stars | Followers | Sponsors** (OMG's user set); an **org**
+  profile offers Overview | Repositories | Sponsors, and its Overview has no
+  heatmap. Rationale, stated precisely (corrected after a second
+  introspection pass): the heatmap and Stars are **schema-impossible** for
+  orgs (`Organization` lacks `contributionsCollection` and
+  `starredRepositories`); org **Followers is a v1 scope choice, not an
+  impossibility** (REST `/users/{login}` returns followers for orgs — OMG
+  keeps the tab); OMG additionally gives orgs a People tab
+  (`membersWithRole`, GraphQL) that we defer. Followers/People for orgs sit
+  in the follow-up basket, blocked by nothing but priority. OMG renders these sections as an in-page
   vertical nav card; we deliberately map that to the tab's **view-header**
   segmented control (owner's call) — never a second in-page sidebar column.
   The **Overview body carries the OMG content blocks in order**: Pinned
