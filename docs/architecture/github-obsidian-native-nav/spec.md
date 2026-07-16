@@ -143,16 +143,23 @@ Nav -> Detail: reuse the same center leaf (no new tab)
 - **A — org/user profile tab.** Activating an organization (or the signed-in
   user) opens `GitHubProfileView` (VIEW_TYPE `github-profile`), a center tab
   modeled on Oh My GitHub's profile page: identity head (avatar, login, counts)
-  and a header-segmented sub-view switch — **Overview | Repositories | Stars
-  | Followers | Sponsors** (owner's final call: the OMG screenshot's full set,
-  switched as view-header handlers). OMG renders these sections as an in-page
+  and a header-segmented sub-view switch. **The sub-view set forks on
+  `profile.isOrganization`** (schema-verified via GraphQL introspection, not
+  a design choice: `Organization` has no `contributionsCollection`,
+  `starredRepositories` or `followers` fields): a **user** profile offers
+  **Overview | Repositories | Stars | Followers | Sponsors** (the OMG
+  screenshot's full set, switched as view-header handlers); an **org**
+  profile offers Overview | Repositories | Sponsors only, and its Overview
+  has no heatmap (contribution years empty, the OMG fork too). OMG renders these sections as an in-page
   vertical nav card; we deliberately map that to the tab's **view-header**
   segmented control (owner's call) — never a second in-page sidebar column.
   The **Overview body carries the OMG content blocks in order**: Pinned
   repositories (Custom Pins deferred), the contribution heatmap (year
-  switcher, GraphQL `contributionsCollection` — copy OMG's query shape, do
-  not invent one), and the four stat tiles (Commits / Pull requests / Code
-  review / Issues). Stars and Followers lists ride REST where it suffices;
+  switcher, GraphQL `contributionsCollection`; cell intensity maps the
+  schema's own `contributionLevel` five-level enum onto the host's theme
+  color scale — never GitHub's raw hex `color`, which breaks dark themes;
+  language dots keep their hex `languageColor`, which is identity not theme),
+  and the four stat tiles (Commits / Pull requests / Code review / Issues). Stars and Followers lists ride REST where it suffices;
   pinned items and contribution data come from the repo's first GraphQL
   client module (data layer and view layer are split between owners with a
   typed interface boundary). The profile's repository rows are the **only**
@@ -407,8 +414,14 @@ Scenario: An organization opens its profile as a center tab
   Given the GitHub navigator on the Organizations section
   When the user activates an organization
   Then a `github-profile` center leaf renders that organization's identity head
-  And its header offers Overview, Repositories, Stars, Followers and Sponsors
-    sub-views
+  And its header offers Overview, Repositories and Sponsors sub-views
+  But no Stars, Followers or heatmap surface exists on an organization
+
+Scenario: A user profile offers the full OMG sub-view set
+  Test: offers the five sub-views on a user profile
+  Given the signed-in user's profile tab is open
+  When its header renders
+  Then it offers Overview, Repositories, Stars, Followers and Sponsors
 
 Scenario: The profile overview carries the OMG content blocks
   Test: renders pinned repos, the heatmap and stat tiles on the overview

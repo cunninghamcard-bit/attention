@@ -324,6 +324,16 @@ not a form button — so themes
    the four section icons read from the left edge (owner's call). */
 .workspace-leaf-content[data-type="github-nav"] .nav-buttons-container {
   justify-content: flex-start;
+  /* …and the icons sit on the tree's icon column, not just at the same left
+     edge as its container. Both chains already start at the same x: the header
+     and the body carry the same `--size-4-3` gutter. They diverge only on the
+     last step — a tree row indents its icon by `--nav-item-padding`'s left
+     (`--size-4-6`, the chevron gutter), while a `.clickable-icon` indents its
+     glyph by its own `--size-2-3`. That 18px difference is the whole gap the
+     owner kept seeing; close it with the two tokens that cause it rather than
+     with a measured constant, so a theme retuning either one stays aligned.
+     Measured, not reasoned: tests/e2e/github-nav-alignment.spec.ts. */
+  padding-inline-start: calc(var(--size-4-6) - var(--size-2-3));
 }
 
 .github-nav-view {
