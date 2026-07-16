@@ -151,12 +151,15 @@ Nav -> Detail: reuse the same center leaf (no new tab)
   heatmap, stars / followers / sponsors sub-views) is a follow-up goal, not
   this contract.
 - **Global search = a fixed top-right panel** (owner's round-5 call: one
-  fixed position, not a centered pop-up). The position's provenance is the
-  **host's own document-search (Ctrl+F) floating panel** — the native
-  top-right idiom — not OMG (whose search verifiably sits in its sidebar,
-  not its toolbar). Invoking `github:search` (⌘P command, or the "Search
-  GitHub for …" tail row of any page's search field) opens the search
-  anchored in that document-search position — never a centered modal.
+  fixed position, not a centered pop-up). Provenance, stated honestly: **no
+  precedent exists** — this codebase's document search is a centered in-flow
+  top bar (`document-search.css`, no positioning), the host's prompt family
+  is centered, and OMG's search sits in its sidebar. The top-right anchor is
+  therefore a **deliberate owner-directed invention**, awaiting the owner's
+  confirmation now that this has been told to them (their alternative: point
+  at where they saw one). Invoking `github:search` (⌘P command, or the
+  "Search GitHub for …" tail row of any page's search field) opens the
+  search at that fixed anchor — never a centered modal.
   Merging into the host's file search was ruled out on signature grounds,
   not taste: `registerSearchOperator` filters `TFile` and `search()` returns
   `VaultSearchResult[]` — the engine cannot yield GitHub entities without
@@ -489,4 +492,9 @@ Scenario: Repo-scoped view state does not leak across repositories
 
 ## Open Questions
 
-None.
+- Global search anchor: the owner asked for a fixed top-right position, but
+  no such precedent exists in this codebase or in OMG (both were checked at
+  source level). Awaiting the owner's confirmation to invent it deliberately
+  (option B) or a pointer to where they saw one (option C). The two
+  search-panel scenarios are suspended until then; the qualifier-field and
+  header-state-switch work is unaffected.
