@@ -5,6 +5,7 @@ import { GitHubRepoView } from "@web/builtin/github/GitHubRepoView";
 import { openGitHubDetail, openRepo } from "@web/builtin/github/open";
 import type { IssueDetail } from "@web/builtin/github/types";
 import { renderMetaStrip } from "@web/builtin/github/widgets";
+import { getFileTypeInfo } from "@web/ui/FileTypeIcon";
 
 const ACTOR = { login: "ada", avatarUrl: "", url: "" };
 
@@ -224,6 +225,37 @@ describe("GitHub issue detail (#5)", () => {
       repo: "attention",
       host: "github.com",
     });
+  });
+
+  // A remote file is still a file: the tab names its type through the host's
+  // own resolver, like every other place in the app that lists one. Asserting
+  // the resolver's answer rather than a literal is deliberate — a hardcoded
+  // "lucide-file" cannot produce a per-language icon, so it cannot pass.
+  it("names a file tab by its type, not a generic page", async () => {
+    const app = await boot();
+    vi.spyOn(app.github, "getFileContent").mockResolvedValue({
+      path: "src/main.ts",
+      name: "main.ts",
+      sha: "abc",
+      size: 1,
+      encoding: "utf-8",
+      text: "const a = 1;",
+      htmlUrl: "",
+      downloadUrl: null,
+    });
+    await openGitHubDetail(app, {
+      kind: "file",
+      path: "src/main.ts",
+      ref: "main",
+      owner: "acme",
+      repo: "attention",
+    });
+    const view = app.workspace.getLeavesOfType(GitHubDetailView.VIEW_TYPE)[0]
+      ?.view as GitHubDetailView;
+    await until(() => view.contentEl.querySelector(".gh-preview-header") !== null, "file preview");
+
+    expect(view.getIcon()).toBe(getFileTypeInfo("src/main.ts").icon);
+    expect(view.getIcon()).not.toBe("lucide-file");
   });
 
   it("keeps the state action off runs and files", async () => {

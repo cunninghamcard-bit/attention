@@ -1,5 +1,6 @@
 import { createDiv, createEl, createSpan } from "../../dom/dom";
 import { MarkdownRenderer } from "../../markdown/MarkdownRenderer";
+import { getFileTypeInfo } from "../../ui/FileTypeIcon";
 import { Notice } from "../../ui/Notice";
 import { ItemView } from "../../views/ItemView";
 import type { ViewStateResult } from "../../views/View";
@@ -48,7 +49,10 @@ export class GitHubDetailView extends ItemView {
 
   getIcon(): string {
     if (this.target?.kind === "run") return "lucide-play";
-    if (this.target?.kind === "file") return "lucide-file";
+    // A file tab gets the host's real icon for its type, the same resolver
+    // `CodeFileView` uses — a remote file is still a file, and every other
+    // place in the app that names one says which kind it is.
+    if (this.target?.kind === "file") return getFileTypeInfo(this.target.path).icon;
     return "lucide-circle-dot";
   }
 
