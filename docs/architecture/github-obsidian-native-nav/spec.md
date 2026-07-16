@@ -171,18 +171,15 @@ Nav -> Detail: reuse the same center leaf (no new tab)
   shipped, reskinned only) drop down from that fixed anchor; Esc dismisses.
   No sidebar entry, no second ribbon search icon (the host ribbon's Search
   stays file search alone).
-- **One search UI, and it is the summoned bar.** There is **no resident
-  search field on any GitHub page** — the owner's two calls ("只留一个
-  search" and "平时不出现") both forbid one. The ⌘F bar carries everything:
-  typing filters the current list's rows; typed qualifiers surface as
-  suggestions (`is:unread` / `reason:…` on the inbox, `repo:…` on cross-repo
-  lists, `state:…` on issue/PR lists) and **replace the inbox's button row**
-  (Unread | All toggle and reason chips are gone; Mark-all-as-read stays as
-  a single header action); the suggestion dropdown's last row is "Search
-  GitHub for …", the global search. The qualifier engine is mount-agnostic
-  pure functions — the bar is its only mount. The issue/PR open-closed state
-  switch lives in the **view-header** as segmented icons (owner's explicit
-  call), with `state:` as a supplementary qualifier.
+- **Every center list carries one native `SearchComponent`** (owner's
+  round-5 call: operators over buttons): typing filters the current rows;
+  typed qualifiers surface as suggestions (`is:unread` / `reason:…` on the
+  inbox, `repo:…` on cross-repo lists) and **replace the inbox's button row**
+  (Unread | All toggle and reason chips are gone; Mark-all-as-read stays as a
+  single header action). The issue/PR open-closed state switch lives in the
+  **view-header** as segmented icons (owner's explicit call), with `state:`
+  available as a supplementary qualifier. The suggestion dropdown's last row
+  is "Search GitHub for …", which opens the fixed top-right global search.
 - **Issue detail = the OMG issue-page shape** (task #5's acceptance basis,
   verified against the installed app): header carries the state chip, number
   and created/updated meta; a **right-hand meta column** holds Assignees,
@@ -343,11 +340,10 @@ Scenario: Escape dismisses the search bar without a trace
 
 Scenario: An inbox qualifier filters the rows without any button row
   Test: filters the inbox through a typed qualifier
-  Given the search bar is summoned on the center inbox
-  When the user types the `is:unread` qualifier into it
+  Given the center inbox lists read and unread notifications
+  When the user types the `is:unread` qualifier into the inbox search field
   Then only unread rows remain visible
   And no Unread/All toggle or reason chip buttons exist on the page
-  And no resident search field exists when the bar is dismissed
 
 Scenario: A header section icon swaps the body in place
   Test: switches nav sections from the header icons
