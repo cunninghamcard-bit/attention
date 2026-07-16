@@ -176,7 +176,9 @@ describe("CommandManager plugin command behavior", () => {
     });
 
     expect(commands.listCommands().map((command) => command.id)).toEqual(["preview"]);
-    expect(await commands.executeCommandById("editor")).toBe(true);
+    // A gated editor command declines — reporting it executed would swallow
+    // a hotkey it shares (the callback assertion shows nothing ran).
+    expect(await commands.executeCommandById("editor")).toBe(false);
     expect(callback).not.toHaveBeenCalled();
     expect(await commands.executeCommandById("preview")).toBe(true);
     expect(callback).toHaveBeenCalledTimes(1);
@@ -315,6 +317,34 @@ describe("CommandManager plugin command behavior", () => {
 
     expect(scope.handleKey(modKey("g"))).toBe(false);
     expect(order).toEqual(["declines:false", "accepts"]);
+  });
+
+  // The editor wrapper's "not applicable" exits must answer the explicit
+  // false: runCommandCallback treats a void answer as executed, so a
+  // null/undefined would report "executed" and swallow the shared hotkey
+  // (31 editor commands route through this wrapper).
+  it("lets an editor hotkey fall through when there is no editor context", () => {
+    const scope = new Scope();
+    const commands = new CommandManager();
+    new HotkeyManager({ scope, commands } as unknown as ConstructorParameters<
+      typeof HotkeyManager
+    >[0]);
+    const order: string[] = [];
+    commands.addCommand({
+      id: "editor-only",
+      name: "Editor only",
+      hotkeys: [{ modifiers: ["Mod"], key: "G" }],
+      editorCallback: () => order.push("editor-only"),
+    });
+    commands.addCommand({
+      id: "plain",
+      name: "Plain",
+      hotkeys: [{ modifiers: ["Mod"], key: "G" }],
+      callback: () => order.push("plain"),
+    });
+
+    expect(scope.handleKey(modKey("g"))).toBe(false);
+    expect(order).toEqual(["plain"]);
   });
 
   it("stops a shared hotkey at the first command that executes", () => {

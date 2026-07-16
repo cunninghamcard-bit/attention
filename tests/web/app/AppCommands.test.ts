@@ -650,7 +650,9 @@ describe("AppCommands Obsidian file operation commands", () => {
     expect(app.commands.findCommand("editor:toggle-fold-properties")?.checkCallback?.(true)).toBe(
       false,
     );
-    expect(app.commands.findCommand("editor:toggle-fold")?.checkCallback?.(true)).toBeNull();
+    // The editor wrapper's "not applicable" is the explicit false now — null
+    // would read as executed to the hotkey dispatcher and swallow shared keys.
+    expect(app.commands.findCommand("editor:toggle-fold")?.checkCallback?.(true)).toBe(false);
     expect(app.commands.findCommand("workspace:copy-path")?.checkCallback?.(true)).toBe(false);
     expect(app.commands.findCommand("workspace:copy-full-path")?.checkCallback?.(true)).toBe(false);
     expect(app.commands.findCommand("workspace:copy-url")?.checkCallback?.(true)).toBe(false);

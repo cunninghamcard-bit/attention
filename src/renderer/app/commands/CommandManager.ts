@@ -57,23 +57,27 @@ export class CommandManager {
     if (command.mobileOnly && !isMobileRuntime()) return;
     if (command.editorCallback || command.editorCheckCallback) {
       command.checkCallback = (checking) => {
+        // "Not applicable" must be the explicit false: runCommandCallback treats
+        // a void answer as executed (the plain-checkCallback contract), so a
+        // null/undefined here would report "executed" and swallow a hotkey
+        // shared with another command.
         const context = this.getEditorContext();
-        if (!context) return null;
+        if (!context) return false;
         const view = context.view as View & {
           getMode?: () => string;
           inlineTitleEl?: HTMLElement;
           titleEl?: HTMLElement;
         };
         const mode = view.getMode?.();
-        if (!command.allowPreview && mode === "preview") return undefined;
+        if (!command.allowPreview && mode === "preview") return false;
         if (isMarkdownView(view)) {
-          if (view.inlineTitleEl && isActiveElement(view.inlineTitleEl)) return undefined;
-          if (view.titleEl && isActiveElement(view.titleEl)) return undefined;
+          if (view.inlineTitleEl && isActiveElement(view.inlineTitleEl)) return false;
+          if (view.titleEl && isActiveElement(view.titleEl)) return false;
           if (
             !command.allowProperties &&
             isMetadataFocused(view.inlineTitleEl?.ownerDocument ?? view.titleEl?.ownerDocument)
           )
-            return undefined;
+            return false;
         }
         if (command.editorCheckCallback)
           return command.editorCheckCallback(
@@ -89,7 +93,10 @@ export class CommandManager {
             );
           return true;
         }
-        return undefined;
+        // Unreachable while the wrapper installs only for editor commands —
+        // but if it ever runs, nothing executed, and only the explicit false
+        // keeps a shared hotkey alive.
+        return false;
       };
       this.editorCommands[command.id] = command;
     }
