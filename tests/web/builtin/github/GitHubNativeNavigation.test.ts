@@ -938,7 +938,7 @@ describe("GitHub native navigation (A+B)", () => {
       app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0].view as GitHubListView;
     await until(() => list().contentEl.querySelectorAll(".github-row").length === 2, "rows");
 
-    typeFilter(list(), "reason:assign");
+    typeFilter(list(), "reason:assigned");
     await until(() => list().contentEl.querySelectorAll(".github-row").length === 1, "narrowed");
     expect(list().contentEl.textContent).toContain("Assigned one");
     expect(list().contentEl.textContent).not.toContain("Mentioned one");

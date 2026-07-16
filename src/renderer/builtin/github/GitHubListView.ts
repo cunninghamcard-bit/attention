@@ -30,10 +30,10 @@ type ListKind = "pr" | "issue" | "notifications" | "org";
 const INBOX_OPERATORS: FilterOperator[] = [
   { operator: "is:unread", description: "only unread notifications" },
   { operator: "is:all", description: "include notifications already read" },
-  { operator: "reason:assign", description: "assigned to you" },
+  { operator: "reason:assigned", description: "assigned to you" },
   { operator: "reason:participating", description: "threads you took part in" },
-  { operator: "reason:review_requested", description: "your review was requested" },
-  { operator: "reason:mention", description: "you were mentioned" },
+  { operator: "reason:review-requested", description: "your review was requested" },
+  { operator: "reason:mentioned", description: "you were mentioned" },
   { operator: "repo:", description: "match a repository, e.g. repo:octo/notes" },
 ];
 
@@ -69,13 +69,35 @@ export function matchSearchItems(items: GitHubSearchItem[], query: string): GitH
   );
 }
 
+/** What a user filters by is not what the API says. GitHub's `reason` values
+ * map onto these four by hand, and not one-to-one: `mentioned` also covers a
+ * team mention, and `participating` covers every way you end up in a thread —
+ * including `mention`, so one notification answers to two filters. Copied from
+ * the reference app's own table (`REASON_FILTER_MATCHERS`, verified in the
+ * installed OMG bundle), which mirrors GitHub's semantics. Comparing the filter
+ * word to `reason` directly is what made `participating` match nothing: no
+ * notification's reason is ever literally "participating". */
+const REASON_MATCHERS: Record<string, (reason: string) => boolean> = {
+  assigned: (reason) => reason === "assign",
+  "review-requested": (reason) => reason === "review_requested",
+  mentioned: (reason) => reason === "mention" || reason === "team_mention",
+  participating: (reason) =>
+    ["comment", "author", "manual", "state_change", "mention"].includes(reason),
+};
+
 export function matchNotifications(items: NotificationItem[], query: string): NotificationItem[] {
   const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   return items.filter((item) =>
     terms.every((term) => {
       if (term === "is:all") return true;
       if (term === "is:unread") return item.unread;
-      if (term.startsWith("reason:")) return item.reason === term.slice(7);
+      if (term.startsWith("reason:")) {
+        const filter = term.slice(7);
+        // Bare `reason:` is a half-typed qualifier, not a demand for nothing —
+        // same as bare `repo:`.
+        if (!filter) return true;
+        return REASON_MATCHERS[filter]?.(item.reason) ?? false;
+      }
       if (term.startsWith("repo:")) return item.repository.toLowerCase().includes(term.slice(5));
       return (
         item.title.toLowerCase().includes(term) || item.repository.toLowerCase().includes(term)

@@ -88,9 +88,10 @@ export class GitHubNavView extends ItemView {
     this.contentEl.classList.add("github-nav-view");
     const header = createDiv("nav-header", this.contentEl);
     const buttons = createDiv("nav-buttons-container", header);
-    // Header is section icons only. Search sits in the body (OMG's "Search
-    // workspace" position) and Refresh is gone — a section reloads when
-    // activated, and `github:refresh` covers a deliberate reload.
+    // Header is section icons only. The sidebar carries no Search at all
+    // (owner's call): ⌘F summons it on the active GitHub leaf, and
+    // `github:search` opens the same bar. Refresh is gone too — a section
+    // reloads when activated, and `github:refresh` covers a deliberate reload.
     for (const section of SECTIONS)
       this.sectionButtons.set(
         section.id,
@@ -139,7 +140,7 @@ export class GitHubNavView extends ItemView {
 
   /** Sections are mutually exclusive and swap the body in place — never a leaf.
    * Inbox additionally opens (or focuses) the center list: the notifications
-   * are worth a full tab, while the dock keeps only their titles. */
+   * are worth a full tab, and the dock shows none of them. */
   private activateSection(section: NavSection, event?: MouseEvent): void {
     // Inbox is an entry, not a body state: its icon opens the center list and
     // the dock keeps whatever section it was showing. The dock never carries
