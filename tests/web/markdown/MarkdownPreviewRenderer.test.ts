@@ -71,6 +71,201 @@ describe("MarkdownPreviewRenderer", () => {
     owner.unload();
   });
 
+  it("renders a multi-line HTML block as one sanitized unit around its markdown", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const owner = new Component();
+    owner.load();
+    const container = document.createElement("div");
+
+    await MarkdownRenderer.render(
+      app,
+      '# Title\n\n<div align="center">\n  <img src="https://example.com/a.png">\n  <br>\n</div>\n\n## Rest',
+      container,
+      "note.md",
+      owner,
+    );
+
+    // The container keeps its child (grouped), rather than each line self-closing.
+    const block = container.querySelector<HTMLElement>(
+      ".markdown-html-block > div[align='center']",
+    );
+    expect(block?.querySelector("img")?.getAttribute("src")).toBe("https://example.com/a.png");
+    expect(block?.querySelector("br")).not.toBeNull();
+    // Surrounding markdown still renders as markdown, not swallowed into the block.
+    expect([...container.querySelectorAll("h1,h2")].map((h) => h.textContent)).toEqual([
+      "Title",
+      "Rest",
+    ]);
+    owner.unload();
+  });
+
+  it("renders complete Obsidian inline markdown globally", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const owner = new Component();
+    owner.load();
+    const container = document.createElement("div");
+
+    await MarkdownRenderer.render(
+      app,
+      [
+        '[id]: https://example.net "Reference"',
+        "[^Note]: foot **bold**",
+        "",
+        '***both*** **foo **bar** baz** a_b_c ~~gone~~ ==marked== `code` [**Obsidian**](https://obsidian.md "Docs") [reference][id] <a href="https://example.com" onclick="evil()"><strong>HTML</strong></a> <https://example.org> <user@example.com> &amp; \\*literal\\* \\a',
+        "",
+        "[[Folder#Heading]] [[Folder#Heading|Alias]] ![[image.png|Alt|300x200]] #tag/sub %%hidden%% $x+y$ $ x $ ++plain++ ~plain~ ^plain^ \\[[Literal]] \\#plain \\%%visible%% ^block-id",
+        "",
+        "inline^[inline **note**] named[^note] repeated[^NOTE]",
+        "",
+        "%%",
+        "hidden block",
+        "%%",
+        "%%hidden%% visible",
+      ].join("\n"),
+      container,
+      "note.md",
+      owner,
+    );
+
+    const paragraph = container.querySelector("p")!;
+    expect(paragraph.querySelector("em > strong")?.textContent).toBe("both");
+    expect(paragraph.querySelector("strong strong")?.textContent).toBe("bar");
+    expect(paragraph.textContent).toContain("a_b_c");
+    expect(paragraph.querySelector("del")?.textContent).toBe("gone");
+    expect(paragraph.querySelector("mark")?.textContent).toBe("marked");
+    expect(paragraph.querySelector("code")?.textContent).toBe("code");
+    expect(paragraph.querySelector('a[href="https://obsidian.md"] strong')?.textContent).toBe(
+      "Obsidian",
+    );
+    expect(paragraph.querySelector('a[href="https://obsidian.md"]')?.getAttribute("title")).toBe(
+      "Docs",
+    );
+    expect(paragraph.querySelector('a[href="https://example.net"]')?.getAttribute("title")).toBe(
+      "Reference",
+    );
+    expect(paragraph.querySelector('a[href="https://example.com"] strong')?.textContent).toBe(
+      "HTML",
+    );
+    expect(paragraph.querySelector('a[href="https://example.com"]')?.getAttribute("onclick")).toBe(
+      null,
+    );
+    const autolink = [...paragraph.querySelectorAll<HTMLAnchorElement>("a")].find(
+      (link) => link.textContent === "https://example.org",
+    );
+    expect(autolink?.href).toBe("https://example.org/");
+    expect(
+      paragraph.querySelector<HTMLAnchorElement>('a[href="mailto:user@example.com"]'),
+    ).not.toBe(null);
+    expect(paragraph.textContent).toContain("*literal*");
+    expect(paragraph.textContent).toContain("&");
+    expect(paragraph.textContent).toContain("\\a");
+
+    const extensionParagraph = container.querySelector<HTMLElement>("#block-id")!;
+    expect(extensionParagraph.dataset.blockId).toBe("block-id");
+    expect(
+      extensionParagraph.querySelector('a.internal-link[data-href="Folder#Heading"]')?.textContent,
+    ).toBe("Folder > Heading");
+    expect(
+      extensionParagraph.querySelector('a.internal-link[aria-label="Folder > Heading"]')
+        ?.textContent,
+    ).toBe("Alias");
+    const embed = extensionParagraph.querySelector<HTMLElement>(
+      '.internal-embed[data-href="image.png"]',
+    );
+    expect(embed?.getAttribute("alt")).toBe("Alt");
+    expect(embed?.getAttribute("width")).toBe("300");
+    expect(embed?.getAttribute("height")).toBe("200");
+    expect(extensionParagraph.querySelector("a.tag")?.textContent).toBe("#tag/sub");
+    expect(extensionParagraph.querySelector(".math.math-inline")?.textContent).toBe("x+y");
+    expect(extensionParagraph.textContent).not.toContain("hidden");
+    expect(extensionParagraph.textContent).toContain("[[Literal]] #plain %%visible%%");
+    expect(extensionParagraph.textContent).toContain("$ x $ ++plain++ ~plain~ ^plain^");
+
+    expect([...container.querySelectorAll(".footnote-ref")].map((el) => el.textContent)).toEqual([
+      "[1]",
+      "[2]",
+      "[2-1]",
+    ]);
+    const footnotes = container.querySelector("section.footnotes")!;
+    expect(footnotes.querySelector("li#fn-1 strong")?.textContent).toBe("note");
+    expect(footnotes.querySelector("li#fn-2 strong")?.textContent).toBe("bold");
+    expect(footnotes.querySelectorAll(".footnote-backref")).toHaveLength(3);
+    expect(container.textContent).not.toContain("[id]:");
+    expect(container.textContent).not.toContain("hidden block");
+    expect(container.textContent).toContain("visible");
+    owner.unload();
+  });
+
+  it("preserves sections and postprocessors with the unified block parser", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const owner = new Component();
+    owner.load();
+    const container = document.createElement("div");
+    const markdown = [
+      "# Heading",
+      "",
+      "- [x] Task",
+      "- Item",
+      "",
+      "> [!note] Quote",
+      "",
+      "| A | B |",
+      "| - | - |",
+      "| C | D |",
+      "",
+      "```probe",
+      "code",
+      "```",
+    ].join("\n");
+    let processed:
+      | { source: string; info: { text: string; lineStart: number; lineEnd: number } | null }
+      | undefined;
+    const processor = MarkdownRenderer.createCodeBlockPostProcessor(
+      "probe",
+      (source, el, context) => {
+        processed = { source, info: context.getSectionInfo(el) };
+      },
+    );
+    MarkdownPreviewRenderer.registerPostProcessor(processor);
+
+    try {
+      await MarkdownRenderer.render(app, markdown, container, "note.md", owner, {
+        getSectionInfo: (el) => {
+          const lineStart = Number(el.dataset.lineStart);
+          const lineEnd = Number(el.dataset.lineEnd);
+          return Number.isFinite(lineStart) && Number.isFinite(lineEnd)
+            ? { text: markdown, lineStart, lineEnd }
+            : null;
+        },
+      });
+
+      const root = container.querySelector<HTMLElement>(".markdown-rendered")!;
+      expect([...root.children]).toHaveLength(5);
+      expect([...root.children].map((el) => (el as HTMLElement).dataset.lineStart)).toEqual([
+        "0",
+        "2",
+        "5",
+        "7",
+        "11",
+      ]);
+      expect(root.querySelector("ul.contains-task-list input.task-list-item-checkbox")).not.toBe(
+        null,
+      );
+      expect(root.querySelector("blockquote .callout.callout-note")?.textContent).toBe("Quote");
+      expect(root.querySelector("table tbody td")?.textContent).toBe("C");
+      expect(processed).toEqual({
+        source: "code",
+        info: { text: markdown, lineStart: 11, lineEnd: 13 },
+      });
+    } finally {
+      MarkdownPreviewRenderer.unregisterPostProcessor(processor);
+      owner.unload();
+    }
+  });
+
   it("renders public renderMarkdown without an app-bound component like Obsidian", async () => {
     const owner = new Component();
     owner.load();

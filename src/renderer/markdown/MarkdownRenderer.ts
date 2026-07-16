@@ -2,11 +2,10 @@ import type { App } from "../app/App";
 import { removeChildren } from "../dom/dom";
 import { Menu } from "../ui/Menu";
 import {
-  MarkdownBlockParser,
-  type MarkdownBlock,
-  type MarkdownListItem,
-} from "./MarkdownBlockParser";
-import { MarkdownInlineRenderer } from "./MarkdownInlineRenderer";
+  MarkdownInlineRenderer,
+  type MarkdownInlineState,
+  type MarkdownParserToken,
+} from "./MarkdownInlineRenderer";
 import { MarkdownCodeBlockRegistry } from "./MarkdownCodeBlockRegistry";
 import { MarkdownPostProcessorRegistry } from "./MarkdownPostProcessorRegistry";
 import { RenderContext } from "./RenderContext";
@@ -31,6 +30,7 @@ export interface MarkdownPostProcessorContext {
 
 interface InternalMarkdownPostProcessorContext extends MarkdownPostProcessorContext {
   app: App | null;
+  inlineState: MarkdownInlineState;
   containerEl: HTMLElement;
   el: HTMLElement;
   displayMode: boolean;
@@ -66,7 +66,6 @@ export abstract class MarkdownRenderer
   extends MarkdownRenderChild
   implements MarkdownPreviewEvents
 {
-  private static parser = new MarkdownBlockParser();
   private static inlineRenderer = new MarkdownInlineRenderer();
   private static codeBlocks = new MarkdownCodeBlockRegistry();
   private static postProcessors = new MarkdownPostProcessorRegistry();
@@ -146,6 +145,7 @@ export abstract class MarkdownRenderer
     if (component) cleanupRenderChildren(component, this.renderChildren.get(container), []);
     removeChildren(container);
     const renderContext = new RenderContext(app, sourcePath, container);
+    const inlineState = this.inlineRenderer.createState(markdown);
     const currentChildren = new Set<MarkdownRenderChild>();
     const context: InternalMarkdownPostProcessorContext = {
       app,
@@ -156,6 +156,7 @@ export abstract class MarkdownRenderer
       displayMode: options.displayMode ?? true,
       frontmatter: getFrontmatter(markdown),
       renderContext,
+      inlineState,
       promises: [],
       addChild: (child) => {
         if (component) {
@@ -184,11 +185,18 @@ export abstract class MarkdownRenderer
     if (app) this.installInternalLinkHandlers(app, options.containerEl ?? root, sourcePath);
 
     const sections: HTMLElement[] = [];
-    for (const block of this.parser.parse(markdown)) {
-      const section = await this.renderBlock(block, root, context);
+    const bodyStartLine = getBodyStartLine(markdown);
+    for (const block of groupMarkdownTokens(this.inlineRenderer.parse(markdown, inlineState))) {
+      if (isNonRenderableBlock(block) || getBlockStartLine(block) < bodyStartLine) continue;
+      const section = this.renderBlock(block, root, context);
       const info = getBlockSectionInfo(block, markdown);
       setSectionInfo(section, info);
       sections.push(section);
+    }
+    const footnotes = this.inlineRenderer.renderFootnotes(context);
+    if (footnotes) {
+      root.appendChild(footnotes);
+      sections.push(footnotes);
     }
 
     for (const section of sections) {
@@ -300,89 +308,44 @@ export abstract class MarkdownRenderer
     return linktext.length > 0 ? linktext : null;
   }
 
-  private static async renderBlock(
-    block: MarkdownBlock,
+  private static renderBlock(
+    block: MarkdownParserToken[],
     root: HTMLElement,
     context: InternalMarkdownPostProcessorContext,
-  ): Promise<HTMLElement> {
-    if (block.type === "heading") {
-      const heading = document.createElement(`h${block.level}`);
-      heading.appendChild(this.inlineRenderer.render(block.text, context));
-      root.appendChild(heading);
-      return heading;
+  ): HTMLElement {
+    let blockId: string | undefined;
+    const fragment = this.inlineRenderer.renderTokens(block, {
+      ...context,
+      onBlockId: (id) => {
+        blockId = id;
+      },
+    });
+    const children = [...fragment.childNodes].filter(
+      (child) => child.nodeType !== Node.TEXT_NODE || Boolean(child.textContent?.trim()),
+    );
+    const section = document.createElement("div");
+    const isHtmlBlock = block[0]?.type === "html_block";
+    if (isHtmlBlock) section.className = "markdown-html-block";
+    if (!isHtmlBlock && children.length === 1 && children[0] instanceof HTMLElement) {
+      children[0].remove();
+      normalizeTaskLists(children[0], block, getBlockStartLine(block));
+      root.appendChild(children[0]);
+      if (blockId) {
+        children[0].id = blockId;
+        children[0].dataset.blockId = blockId;
+      }
+      if (block[0]?.type === "fence") {
+        children[0].querySelector<HTMLElement>("code")?.setAttribute("data-line", "0");
+      }
+      return children[0];
     }
-
-    if (block.type === "paragraph") {
-      const paragraph = document.createElement("p");
-      paragraph.appendChild(this.inlineRenderer.render(block.text, context));
-      root.appendChild(paragraph);
-      return paragraph;
+    section.appendChild(fragment);
+    if (blockId) {
+      section.id = blockId;
+      section.dataset.blockId = blockId;
     }
-
-    if (block.type === "blockquote") {
-      const quote = document.createElement("blockquote");
-      quote.appendChild(this.inlineRenderer.render(block.text, context));
-      root.appendChild(quote);
-      return quote;
-    }
-
-    if (block.type === "list") {
-      const list = this.renderList(block.items, block.lineStart, context);
-      root.appendChild(list);
-      return list;
-    }
-
-    const pre = document.createElement("pre");
-    const code = document.createElement("code");
-    code.className = block.language ? `language-${block.language}` : "";
-    code.dataset.line = "0";
-    code.textContent = block.source;
-    pre.appendChild(code);
-    root.appendChild(pre);
-    return pre;
-  }
-
-  private static renderList(
-    items: MarkdownListItem[],
-    sectionStartLine: number,
-    context: InternalMarkdownPostProcessorContext,
-  ): HTMLUListElement {
-    const list = document.createElement("ul");
-    let containsTasks = false;
-    for (const item of items) {
-      const li = this.renderListItem(item, sectionStartLine, context);
-      if (li.classList.contains("task-list-item")) containsTasks = true;
-      list.appendChild(li);
-    }
-    if (containsTasks) list.classList.add("contains-task-list");
-    return list;
-  }
-
-  private static renderListItem(
-    item: MarkdownListItem,
-    sectionStartLine: number,
-    context: InternalMarkdownPostProcessorContext,
-  ): HTMLLIElement {
-    const li = document.createElement("li");
-    const line = String(Math.max(0, item.lineStart - sectionStartLine));
-    li.dataset.line = line;
-    if (item.checklist !== undefined) {
-      li.classList.add("task-list-item");
-      li.classList.toggle("is-checked", item.checked === true);
-      li.dataset.task = item.checklist;
-      const checkbox = document.createElement("input");
-      checkbox.className = "task-list-item-checkbox";
-      checkbox.type = "checkbox";
-      checkbox.checked = item.checked === true;
-      checkbox.dataset.line = line;
-      if (item.checked) checkbox.setAttribute("checked", "");
-      li.appendChild(checkbox);
-    }
-    li.appendChild(this.inlineRenderer.render(item.text, context));
-    if (item.children.length > 0) {
-      li.appendChild(this.renderList(item.children, sectionStartLine, context));
-    }
-    return li;
+    root.appendChild(section);
+    return section;
   }
 }
 
@@ -412,12 +375,114 @@ function getFrontmatter(markdown: string): Record<string, unknown> | null | unde
 
 export const getMarkdownFrontmatter = getFrontmatter;
 
-function getBlockSectionInfo(block: MarkdownBlock, markdown: string): MarkdownSectionInformation {
+function getBlockSectionInfo(
+  block: MarkdownParserToken[],
+  markdown: string,
+): MarkdownSectionInformation {
+  const maps = block
+    .map((token) => token.map)
+    .filter((map): map is [number, number] => Array.isArray(map) && map.length === 2);
+  const lineStart = getBlockStartLine(block);
+  const lineEndExclusive = maps.length ? Math.max(...maps.map(([, end]) => end)) : lineStart + 1;
   return {
     text: markdown,
-    lineStart: block.lineStart,
-    lineEnd: block.lineEnd,
+    lineStart,
+    lineEnd: Math.max(lineStart, lineEndExclusive - 1),
   };
+}
+
+function groupMarkdownTokens(tokens: MarkdownParserToken[]): MarkdownParserToken[][] {
+  const blocks: MarkdownParserToken[][] = [];
+  let current: MarkdownParserToken[] = [];
+  let depth = 0;
+
+  for (const token of tokens) {
+    current.push(token);
+    depth += token.nesting;
+    if (depth === 0) {
+      blocks.push(current);
+      current = [];
+    }
+  }
+  if (current.length) blocks.push(current);
+  return blocks;
+}
+
+function isNonRenderableBlock(block: MarkdownParserToken[]): boolean {
+  const type = block[0]?.type;
+  return (
+    type === "definition" ||
+    type === "footnote_open" ||
+    type === "footnote_block_open" ||
+    type === "obsidian_comment_block"
+  );
+}
+
+function getBlockStartLine(block: MarkdownParserToken[]): number {
+  return block.find((token) => token.map)?.map?.[0] ?? 0;
+}
+
+function getBodyStartLine(markdown: string): number {
+  const parsed = parseFrontmatter(markdown);
+  if (!parsed.hasFrontmatter) return 0;
+  const prefix = markdown.slice(0, markdown.length - parsed.body.length);
+  return prefix.match(/\r?\n/g)?.length ?? 0;
+}
+
+function normalizeTaskLists(
+  section: HTMLElement,
+  block: MarkdownParserToken[],
+  sectionStartLine: number,
+): void {
+  const items: Array<{ token: MarkdownParserToken; marker?: string }> = [];
+  const stack: number[] = [];
+  for (const token of block) {
+    if (token.type === "list_item_open") {
+      stack.push(items.push({ token }) - 1);
+    } else if (token.type === "list_item_close") {
+      stack.pop();
+    } else if (token.type === "inline" && stack.length) {
+      const current = items[stack[stack.length - 1]];
+      current.marker ??= token.content.match(/^\[([^\]])\][ \t]/)?.[1];
+    }
+  }
+
+  section.querySelectorAll<HTMLLIElement>("li").forEach((item, index) => {
+    const info = items[index];
+    const map = info?.token.map;
+    const line = map ? Math.max(0, map[0] - sectionStartLine) : 0;
+    item.dataset.line = String(line);
+    if (!info?.marker) return;
+
+    let checkbox = item.querySelector<HTMLInputElement>(":scope > input[type='checkbox']");
+    if (!checkbox) {
+      const text = [...item.childNodes].find((child) => child.nodeType === Node.TEXT_NODE);
+      if (text) text.textContent = text.textContent?.replace(/^\s*\[[^\]]\][ \t]*/, "") ?? "";
+      checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      item.prepend(checkbox);
+    }
+
+    const marker = info.marker;
+    item.classList.add("task-list-item");
+    item.classList.toggle("is-checked", marker !== " ");
+    item.dataset.task = marker;
+    checkbox.className = "task-list-item-checkbox";
+    checkbox.disabled = false;
+    checkbox.dataset.line = String(line);
+    checkbox.checked = marker !== " ";
+    if (checkbox.checked) checkbox.setAttribute("checked", "");
+    else checkbox.removeAttribute("checked");
+
+    const label = checkbox.nextElementSibling;
+    if (label?.tagName === "LABEL")
+      label.replaceWith(document.createTextNode(label.textContent ?? ""));
+  });
+
+  section.querySelectorAll<HTMLElement>("ul.task-list").forEach((list) => {
+    list.classList.add("contains-task-list");
+  });
+  if (section.matches("ul.task-list")) section.classList.add("contains-task-list");
 }
 
 function setSectionInfo(el: HTMLElement, info: MarkdownSectionInformation): void {
