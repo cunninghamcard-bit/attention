@@ -6,8 +6,8 @@ import {
 } from "@web/builtin/theme-market/ThemeMarketplace";
 
 const CATALOG = JSON.stringify([
-  { name: "Minimal", author: "kepano", repo: "kepano/obsidian-minimal", modes: ["light", "dark"] },
   { name: "Things", author: "colineckert", repo: "colineckert/obsidian-things", modes: ["light"] },
+  { name: "Minimal", author: "kepano", repo: "kepano/obsidian-minimal", modes: ["light", "dark"] },
 ]);
 
 function fakeFetcher(routes: Record<string, string | number>): MarketplaceFetcher {
@@ -22,11 +22,17 @@ function fakeFetcher(routes: Record<string, string | number>): MarketplaceFetche
 
 describe("theme marketplace", () => {
   it("loads the community catalog and searches it", async () => {
-    const market = new ThemeMarketplace(fakeFetcher({ "community-css-themes.json": CATALOG }));
+    const market = new ThemeMarketplace(
+      fakeFetcher({
+        "community-css-themes.json": CATALOG,
+        "stats/theme": JSON.stringify({ Minimal: { download: 123 } }),
+      }),
+    );
     await expect(market.loadCatalog()).resolves.toBe(2);
     expect(market.search("minimal")).toHaveLength(1);
-    expect(market.search("").map((entry) => entry.manifest.name)).toEqual(["Minimal", "Things"]);
+    expect(market.search("").map((entry) => entry.manifest.name)).toEqual(["Things", "Minimal"]);
     expect(market.getEntry("Minimal")?.repository).toBe("kepano/obsidian-minimal");
+    expect(market.getEntry("Minimal")?.downloads).toBe(123);
   });
 
   it("downloads theme.css and merges the remote manifest", async () => {
@@ -35,15 +41,40 @@ describe("theme marketplace", () => {
         "community-css-themes.json": CATALOG,
         "kepano/obsidian-minimal/HEAD/theme.css": "body { --minimal-marker: 1; }",
         "kepano/obsidian-minimal/HEAD/manifest.json": JSON.stringify({ version: "8.1.0" }),
+        "kepano/obsidian-minimal/HEAD/README.md": "# Minimal\n\nTheme documentation.",
       }),
     );
     await market.loadCatalog();
+
+    const details = await market.loadDetails("Minimal");
+    expect(details.manifest.version).toBe("8.1.0");
+    expect(details.readme).toContain("Theme documentation.");
 
     const pkg = await market.downloadPackage("Minimal");
 
     expect(pkg.cssText).toContain("--minimal-marker");
     expect(pkg.manifest.version).toBe("8.1.0");
     expect(pkg.manifest.name).toBe("Minimal");
+  });
+
+  it("detects only installed themes with newer remote versions", async () => {
+    const market = new ThemeMarketplace(
+      fakeFetcher({
+        "community-css-themes.json": CATALOG,
+        "kepano/obsidian-minimal/HEAD/manifest.json": JSON.stringify({ version: "8.1.0" }),
+        "kepano/obsidian-minimal/HEAD/README.md": "# Minimal",
+        "colineckert/obsidian-things/HEAD/manifest.json": JSON.stringify({ version: "1.0.0" }),
+        "colineckert/obsidian-things/HEAD/README.md": "# Things",
+      }),
+    );
+
+    const updates = await market.findUpdates([
+      { id: "Minimal", version: "8.0.0" },
+      { id: "Things", version: "1.0.0" },
+      { id: "Legacy" },
+    ]);
+
+    expect(updates.map((entry) => entry.manifest.id)).toEqual(["Minimal"]);
   });
 
   it("installs into the vault theme folder and enables end to end", async () => {

@@ -6,6 +6,7 @@ export interface ThemeDefinition {
   variables: Record<string, string>;
   cssText?: string;
   author?: string;
+  version?: string;
 }
 
 export class ThemeManager {

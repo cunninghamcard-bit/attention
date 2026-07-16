@@ -40,10 +40,18 @@ export class ThemeInstaller {
         name: pkg.manifest.name,
         variables: pkg.manifest.variables,
         author: pkg.manifest.author,
+        version: pkg.manifest.version,
         cssText: pkg.cssText,
       });
     }
     this.app.workspace.trigger("theme-installed", record);
+    return record;
+  }
+
+  async update(id: string): Promise<InstalledThemeRecord> {
+    const active = (this.app.vault.getConfig<string>("cssTheme") ?? "") === id;
+    const record = await this.install(await this.app.themeMarketplace.downloadPackage(id));
+    if (active) await this.app.customCss.requestLoadTheme.run();
     return record;
   }
 
@@ -60,6 +68,30 @@ export class ThemeInstaller {
     if (!record) return;
     record.enabled = false;
     this.app.workspace.trigger("theme-disabled", record);
+  }
+
+  async uninstall(id: string): Promise<void> {
+    if (!id || id.startsWith("obsidian-default-")) return;
+    if ((this.app.vault.getConfig<string>("cssTheme") ?? "") === id) this.app.themes.setTheme("");
+
+    const folderPath = `${this.app.customCss.getThemeFolder()}/${id}`;
+    if (this.app.vault.jsonStore) {
+      await this.app.vault.jsonStore.deleteFolder(folderPath);
+      await this.app.vault.jsonStore.delete(`${folderPath}/theme.css`);
+      await this.app.vault.jsonStore.delete(`${folderPath}/manifest.json`);
+      await this.app.vault.jsonStore.delete(this.app.customCss.getThemePath(id));
+    } else {
+      const folder = this.app.vault.getAbstractFileByPath(folderPath);
+      if (folder) await this.app.vault.delete(folder, true);
+      else {
+        const file = this.app.vault.getAbstractFileByPath(this.app.customCss.getThemePath(id));
+        if (file) await this.app.vault.delete(file, true);
+      }
+    }
+    this.installed.delete(id);
+    this.app.themes.unregisterTheme(id);
+    await this.app.customCss.readThemes();
+    this.app.workspace.trigger("theme-uninstalled", id);
   }
 
   listInstalled(): readonly InstalledThemeRecord[] {

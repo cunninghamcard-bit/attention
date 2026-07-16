@@ -55,6 +55,7 @@ export class CustomCss {
         id,
         name: id,
         author: manifest?.author,
+        version: manifest?.version,
         variables: {},
         cssText,
       });
