@@ -128,11 +128,49 @@ describe("profile REST", () => {
     ]);
   });
 
+  // The endpoint that answers for anyone. `/orgs/{login}/repos` 404s for a
+  // plain user, which is what made "not me ⇒ org" wrong once follower rows
+  // could retarget the profile at any account.
+  it("reads any account's repositories from the user endpoint", async () => {
+    const asked: string[] = [];
+    const client = new GitHubClient(async ({ url }) => {
+      const path = url.replace(/^https:\/\/api\.github\.com/, "");
+      asked.push(path);
+      if (path.startsWith("/users/grace/repos"))
+        return json([
+          {
+            name: "notes",
+            full_name: "grace/notes",
+            owner: { login: "grace" },
+            description: "her notes",
+            private: false,
+            open_issues_count: 2,
+          },
+        ]);
+      return { status: 404, text: "no", json: { message: "Not Found" } };
+    }, "tok");
+
+    const repos = await client.listAccountRepositories("grace");
+    expect(repos).toEqual([
+      {
+        owner: "grace",
+        repo: "notes",
+        fullName: "grace/notes",
+        private: false,
+        description: "her notes",
+        openIssues: 2,
+      },
+    ]);
+    // The org endpoint must never be tried for an account we were not told is one.
+    expect(asked.some((path) => path.startsWith("/orgs/"))).toBe(false);
+  });
+
   it("asks for nothing when the login is blank", async () => {
     // A 404 route would throw; returning early proves no request was made.
     const client = new GitHubClient(mock({}), "tok");
     expect(await client.listStarredRepositories("  ")).toEqual([]);
     expect(await client.listFollowers("")).toEqual([]);
+    expect(await client.listAccountRepositories("  ")).toEqual([]);
   });
 
   it("surfaces a missing account instead of inventing an empty one", async () => {

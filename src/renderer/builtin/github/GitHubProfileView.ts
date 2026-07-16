@@ -19,9 +19,11 @@ import { avatar, errorText, treeRow } from "./widgets";
 
 /** The profile tab's sub-views — the OMG profile sections, mapped to the
  * view-header segmented control (owner's call: never an in-page nav column).
- * Which of them exist depends on the account: the GraphQL `Organization` type
- * has no contributions, stars or followers (schema fact, not a choice), so an
- * org offers Overview | Repositories | Sponsors only. */
+ * Which of them exist depends on the account (rationale pinned in 8997fe2):
+ * an org has no heatmap or Stars — the GraphQL `Organization` type lacks the
+ * fields — while org Followers is a v1 trade-off (REST could supply it) and
+ * People (`membersWithRole`) is an unbuilt section; both sit in the
+ * follow-up basket, not behind a false "impossible". */
 type ProfileSection = "overview" | "repositories" | "stars" | "followers" | "sponsors";
 
 const SECTIONS: { id: ProfileSection; label: string; icon: string; userOnly?: boolean }[] = [
@@ -31,9 +33,6 @@ const SECTIONS: { id: ProfileSection; label: string; icon: string; userOnly?: bo
   { id: "followers", label: "Followers", icon: "lucide-users", userOnly: true },
   { id: "sponsors", label: "Sponsors", icon: "lucide-heart" },
 ];
-
-/** Overview shows the top of the list; the full list lives one segment over. */
-const OVERVIEW_REPO_LIMIT = 6;
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -465,10 +464,22 @@ export class GitHubProfileView extends ItemView {
 
   // --- Repositories ----------------------------------------------------------
 
+  /** Three doors, by account: your own tab reads `/user/repos` (the only
+   * endpoint that sees private repositories), an organization reads the org
+   * endpoint, and any other person — a follower hop lands here — reads their
+   * public `/users/{login}/repos`. The old "not me = organization" shortcut
+   * was true only while profiles opened from the Organizations list; the
+   * follower hop broke that premise (a plain user 404s on the org endpoint).
+   *
+   * Do not fold the last two branches into one: `/users/{login}/repos` answers
+   * for organizations too, but only with public repositories — the org
+   * endpoint is the one that can carry an org's private repos, so the
+   * "simpler" single call silently loses data. */
   private async fetchRepositories(): Promise<GithubRepoListItem[]> {
     const auth = await this.app.github.getAuth();
     if (this.login === auth.login) return this.app.github.listUserRepositories();
-    return this.app.github.listOrgRepositories(this.login);
+    if (this.profile?.isOrganization) return this.app.github.listOrgRepositories(this.login);
+    return this.app.github.listAccountRepositories(this.login);
   }
 
   private async renderRepositories(request: number): Promise<void> {

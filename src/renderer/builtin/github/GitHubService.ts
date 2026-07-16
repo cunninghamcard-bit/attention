@@ -286,6 +286,15 @@ export class GitHubService {
     return this.client(token, "github.com").listFollowers(login, 50);
   }
 
+  /** Another account's public repositories — the profile's Repositories tab
+   * for anyone who is not the signed-in user (their own tab keeps
+   * `listUserRepositories`, the only path that sees private repos). */
+  async listAccountRepositories(login: string): Promise<GithubRepoListItem[]> {
+    const token = this.readToken();
+    if (!token) return [];
+    return this.client(token, "github.com").listAccountRepositories(login, 50);
+  }
+
   /** The Overview section in one call: the identity head over REST, its pinned
    * grid and year list over GraphQL.
    *

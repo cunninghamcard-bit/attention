@@ -218,6 +218,33 @@ export class GitHubClient {
     return mapRepoList((res.json as RawRepo[]) ?? []);
   }
 
+  /** Another account's public repositories (a profile that is not yours).
+   * `/users/{login}/repos` answers for users and organizations alike, but only
+   * with what the public can see — your own repositories keep going through
+   * `/user/repos`, the sole endpoint that includes private ones. */
+  async listAccountRepositories(
+    login: string,
+    limit = 50,
+  ): Promise<
+    Array<{
+      owner: string;
+      repo: string;
+      fullName: string;
+      private: boolean;
+      description: string | null;
+      openIssues: number;
+    }>
+  > {
+    const clean = login.trim();
+    if (!clean) return [];
+    const res = await this.request(
+      "GET",
+      `/users/${encodeURIComponent(clean)}/repos?sort=updated&per_page=${Math.min(limit, 100)}`,
+    );
+    if (res.status >= 400) throw apiError(res);
+    return mapRepoList((res.json as RawRepo[]) ?? []);
+  }
+
   async getPullRequest(repo: GitHubRepositoryRef, number: number): Promise<PrDetail> {
     const [prRes, commentsRes, reviewsRes, reviewCommentsRes, commitsRes, filesRes] =
       await Promise.all([

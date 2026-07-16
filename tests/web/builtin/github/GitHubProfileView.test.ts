@@ -388,6 +388,37 @@ describe("GitHubProfileView (org/user profile tab)", () => {
     await until(() => profile(app).getState().login === "ada", "back to ada");
   });
 
+  it("reads another user's repositories from the user endpoint, not the org one", async () => {
+    const app = await createApp();
+    const accountRepos = vi.spyOn(app.github, "listAccountRepositories").mockResolvedValue([
+      {
+        owner: "grace",
+        repo: "hopper",
+        fullName: "grace/hopper",
+        private: false,
+        description: "Compilers",
+        openIssues: 1,
+      },
+    ]);
+    const orgRepos = vi.mocked(app.github.listOrgRepositories);
+    await openOrg(app, "ada");
+    await toSection(app, "Followers");
+    const view = profile(app);
+    await until(
+      () => view.contentEl.querySelector(".github-profile-follower .github-row") !== null,
+      "follower rows",
+    );
+    // The follower hop re-targets this leaf at a plain user — the premise the
+    // old "not me = organization" shortcut silently broke (404 on /orgs/…).
+    (view.contentEl.querySelector(".github-profile-follower .github-row") as HTMLElement).click();
+    await until(() => profile(app).getState().login === "grace", "grace's profile");
+    await toSection(app, "Repositories");
+    await until(() => accountRepos.mock.calls.length > 0, "user endpoint fetched");
+    expect(accountRepos).toHaveBeenCalledWith("grace");
+    expect(orgRepos).not.toHaveBeenCalled();
+    expect(view.contentEl.textContent).toContain("hopper");
+  });
+
   it("walks profile sub-view switches with the native back control", async () => {
     const app = await createApp();
     await openOrg(app, "ada");
