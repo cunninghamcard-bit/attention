@@ -1,5 +1,18 @@
 import { beforeEach } from "vitest";
 
+// jsdom has no ResizeObserver and every real runtime does. Anything hosting
+// pierre's CodeView needs one, which is why three GitHub suites had each grown
+// their own copy of this stub; the file preview would have made a fourth, so it
+// lives here once instead. Those copies are guarded on `typeof` and simply stop
+// being reached; removing them is a separate change.
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  } as unknown as typeof ResizeObserver;
+}
+
 function installAnimationFrame(target: Window): void {
   if (!target.requestAnimationFrame) {
     Object.defineProperty(target, "requestAnimationFrame", {

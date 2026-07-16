@@ -502,10 +502,9 @@ and review mode. */
 .gh-ci-dot.mod-failure,
 .gh-ci-dot.mod-error { background: var(--color-red, #f85149); }
 .gh-ci-dot.mod-pending { background: var(--color-orange, #d29922); }
-.gh-code-pre {
-  margin: 0; padding: 14px; font-family: var(--font-monospace); font-size: 12px;
-  line-height: 1.45; white-space: pre; overflow: auto;
-}
+/* .gh-code-view deliberately has no rule: the CodeView measures and sizes
+   itself, and .view-content above it already scrolls. The review surface styles
+   its own mount only because that one sits in a flex column. */
 .gh-markdown { font-size: var(--font-ui-small); }
 
 

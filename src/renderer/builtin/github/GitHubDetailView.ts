@@ -1,4 +1,6 @@
+import { CodeView } from "@pierre/diffs";
 import { createDiv, createEl, createSpan } from "../../dom/dom";
+import { highlightWorkers } from "../../ui/highlightWorkers";
 import { MarkdownRenderer } from "../../markdown/MarkdownRenderer";
 import { getFileTypeInfo } from "../../ui/FileTypeIcon";
 import { Notice } from "../../ui/Notice";
@@ -31,6 +33,7 @@ export class GitHubDetailView extends ItemView {
   private target: GitHubDetailTarget | null = null;
   private issueComment = "";
   private request = 0;
+  private codeView: CodeView | null = null;
   /** The header's Close/Reopen action. `addAction` prepends a fresh button
    * every call, so the old one is dropped before a reload adds the next. */
   private stateAction: HTMLElement | null = null;
@@ -118,6 +121,7 @@ export class GitHubDetailView extends ItemView {
 
   async onClose(): Promise<void> {
     this.request += 1;
+    this.disposeCodeView();
     await super.onClose();
   }
 
@@ -130,6 +134,7 @@ export class GitHubDetailView extends ItemView {
     const target = this.target;
     if (!target) return;
     const request = ++this.request;
+    this.disposeCodeView();
     this.contentEl.empty();
     // Runs and files have no state to toggle, and a failed load has nothing to
     // act on: clear first, and only an issue puts it back.
@@ -349,7 +354,7 @@ export class GitHubDetailView extends ItemView {
     createEl("code", { text: file.path }, header);
     createSpan({ cls: "gh-muted", text: formatSize(file.size) }, header);
     if (file.htmlUrl) linkButton(header, "Open on GitHub", () => openInSystemBrowser(file.htmlUrl));
-    if (file.text == null)
+    if (file.text == null) {
       createDiv(
         {
           cls: "github-detail-empty",
@@ -357,7 +362,30 @@ export class GitHubDetailView extends ItemView {
         },
         this.contentEl,
       );
-    else createEl("pre", { cls: "gh-code-pre", text: file.text }, this.contentEl);
+      return;
+    }
+    // The same pierre CodeView the review surface renders diffs with, in its
+    // file mode: a remote blob is still code, and it gets the syntax
+    // highlighting and wrapping that a bare <pre> cannot.
+    this.codeView = new CodeView(
+      {
+        themeType: document.body.classList.contains("theme-dark") ? "dark" : "light",
+        layout: { gap: 12, paddingTop: 10, paddingBottom: 10 },
+      },
+      highlightWorkers(),
+    );
+    this.codeView.setup(createDiv("gh-code-view", this.contentEl));
+    this.codeView.setItems([
+      { id: file.path, type: "file", file: { name: file.path, contents: file.text } },
+    ]);
+    this.codeView.render(true);
+  }
+
+  /** The CodeView owns workers and listeners, which emptying contentEl does not
+   * reclaim — every path that replaces the content comes through here first. */
+  private disposeCodeView(): void {
+    this.codeView?.cleanUp();
+    this.codeView = null;
   }
 }
 

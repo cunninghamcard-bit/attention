@@ -4,8 +4,8 @@ import {
   type CodeViewOptions,
   type DiffLineAnnotation,
 } from "@pierre/diffs";
-import { getOrCreateWorkerPoolSingleton, type WorkerPoolManager } from "@pierre/diffs/worker";
 import { createDiv, createEl, createSpan } from "../../../dom/dom";
+import { highlightWorkers } from "../../../ui/highlightWorkers";
 import { setIcon } from "../../../ui/Icon";
 import { Notice } from "../../../ui/Notice";
 import { setFileTypeIcon } from "../../../ui/FileTypeIcon";
@@ -58,23 +58,6 @@ export interface ReviewSurfaceProps {
 
 const ACTIVATION_PADDING = 11;
 const PROGRAMMATIC_SCROLL_TIMEOUT = 1200;
-
-/** Shiki highlighting runs in pierre's worker pool (codiff's recipe: 3
- * workers, same limits) so big diffs never block the main thread. Absent in
- * jsdom, where Worker does not exist. */
-function highlightWorkers(): WorkerPoolManager | undefined {
-  if (typeof Worker === "undefined") return undefined;
-  return getOrCreateWorkerPoolSingleton({
-    poolOptions: {
-      poolSize: Math.min(3, Math.max(1, navigator.hardwareConcurrency || 3)),
-      workerFactory: () =>
-        new Worker(new URL("@pierre/diffs/worker/worker.js", import.meta.url), {
-          type: "module",
-        }),
-    },
-    highlighterOptions: { maxLineDiffLength: 2000, tokenizeMaxLineLength: 20_000 },
-  });
-}
 
 /** Vanilla owner of the shared multi-file pierre CodeView. */
 export class ReviewSurface {
