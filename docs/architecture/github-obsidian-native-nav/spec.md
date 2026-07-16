@@ -143,13 +143,20 @@ Nav -> Detail: reuse the same center leaf (no new tab)
 - **A — org/user profile tab.** Activating an organization (or the signed-in
   user) opens `GitHubProfileView` (VIEW_TYPE `github-profile`), a center tab
   modeled on Oh My GitHub's profile page: identity head (avatar, login, counts)
-  and a header-segmented sub-view switch — Overview (pinned / top repositories)
-  and Repositories (the full list). OMG renders these sections as an in-page
+  and a header-segmented sub-view switch — **Overview | Repositories | Stars
+  | Followers | Sponsors** (owner's final call: the OMG screenshot's full set,
+  switched as view-header handlers). OMG renders these sections as an in-page
   vertical nav card; we deliberately map that to the tab's **view-header**
-  segmented control (owner's call) — never a second in-page sidebar column. The profile's repository rows are the
-  **only** door into a `github-repo` tab. Richer profile content (contribution
-  heatmap, stars / followers / sponsors sub-views) is a follow-up goal, not
-  this contract.
+  segmented control (owner's call) — never a second in-page sidebar column.
+  The **Overview body carries the OMG content blocks in order**: Pinned
+  repositories (Custom Pins deferred), the contribution heatmap (year
+  switcher, GraphQL `contributionsCollection` — copy OMG's query shape, do
+  not invent one), and the four stat tiles (Commits / Pull requests / Code
+  review / Issues). Stars and Followers lists ride REST where it suffices;
+  pinned items and contribution data come from the repo's first GraphQL
+  client module (data layer and view layer are split between owners with a
+  typed interface boundary). The profile's repository rows are the **only**
+  door into a `github-repo` tab.
 - **Global search = the host's document-search idiom, hidden until summoned**
   (owner's final round-5 call: "像 Obsidian 原生的，平时不出现，Command F 再
   出现"). **⌘F reaches the GitHub view through its own view scope, not a
@@ -400,7 +407,22 @@ Scenario: An organization opens its profile as a center tab
   Given the GitHub navigator on the Organizations section
   When the user activates an organization
   Then a `github-profile` center leaf renders that organization's identity head
-  And its header offers Overview and Repositories sub-views
+  And its header offers Overview, Repositories, Stars, Followers and Sponsors
+    sub-views
+
+Scenario: The profile overview carries the OMG content blocks
+  Test: renders pinned repos, the heatmap and stat tiles on the overview
+  Given a profile tab whose GraphQL data has loaded
+  When the Overview sub-view renders
+  Then it shows the Pinned repositories block, the contribution heatmap and
+    the four stat tiles in that order
+
+Scenario: A failed GraphQL load degrades without killing the profile
+  Test: keeps the profile alive when the contribution query fails
+  Given the contribution GraphQL query rejects
+  When the Overview sub-view renders
+  Then the identity head and repository blocks still render
+  And the heatmap block shows its error state instead of the page failing
 
 Scenario: A profile repository row is the door into the repo tab
   Test: opens a repo tab from the profile repositories
