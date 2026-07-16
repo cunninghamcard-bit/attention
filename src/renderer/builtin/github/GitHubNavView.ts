@@ -31,6 +31,19 @@ const ISSUE_QUERIES: {
 
 type NavSection = "inbox" | "pr" | "issue" | "org";
 
+/** The dock is a remote control: a few rows to scan, never the whole inbox. */
+const INBOX_DOCK_ROWS = 5;
+
+function notificationIcon(type: string): string {
+  if (type === "PullRequest") return "lucide-git-pull-request";
+  if (type === "Issue") return "lucide-circle-dot";
+  if (type === "Discussion") return "lucide-messages-square";
+  if (type === "Release") return "lucide-tag";
+  if (type === "Commit") return "lucide-git-commit";
+  if (type === "CheckSuite") return "lucide-play";
+  return "lucide-bell";
+}
+
 const SECTIONS: { id: NavSection; label: string; icon: string }[] = [
   { id: "inbox", label: "Inbox", icon: "lucide-inbox" },
   { id: "pr", label: "Pull requests", icon: "lucide-git-pull-request" },
@@ -76,9 +89,9 @@ export class GitHubNavView extends ItemView {
     this.contentEl.classList.add("github-nav-view");
     const header = createDiv("nav-header", this.contentEl);
     const buttons = createDiv("nav-buttons-container", header);
-    // Search first (OMG "Search workspace"), then the four section icons.
-    // No Refresh — a section refreshes when activated (owner's call).
-    this.action(buttons, "Search", "lucide-search", () => this.openSearch());
+    // Header is section icons only. Search sits in the body (OMG's "Search
+    // workspace" position) and Refresh is gone — a section reloads when
+    // activated, and `github:refresh` covers a deliberate reload.
     for (const section of SECTIONS)
       this.sectionButtons.set(
         section.id,
@@ -188,6 +201,12 @@ export class GitHubNavView extends ItemView {
     if (!this.bodyEl) return;
     const epoch = ++this.bodyEpoch;
     this.bodyEl.empty();
+    this.item(this.bodyEl, {
+      key: "search",
+      icon: "lucide-search",
+      label: "Search GitHub…",
+      onClick: () => this.openSearch(),
+    });
     if (this.section === "inbox") {
       this.renderInbox(this.bodyEl, epoch);
     } else if (this.section === "org") {
@@ -216,18 +235,22 @@ export class GitHubNavView extends ItemView {
         if (epoch !== this.bodyEpoch) return;
         loading.remove();
         const unread = items.filter((item) => item.unread);
-        if (!unread.length) {
-          createDiv({ cls: "github-nav-empty", text: "No unread notifications." }, parent);
-          return;
-        }
-        for (const item of unread)
+        // A glance, not a wall: the dock is narrow, so it shows a handful of
+        // type-icon + truncated-title rows and hands density to the center tab.
+        for (const item of unread.slice(0, INBOX_DOCK_ROWS))
           this.item(parent, {
             key: `notification:${item.id}`,
-            icon: item.type === "PullRequest" ? "lucide-git-pull-request" : "lucide-circle-dot",
+            icon: notificationIcon(item.type),
             label: item.title,
             onClick: (event) =>
               void openNotificationTarget(this.app, item, Keymap.isModEvent(event)),
           });
+        this.item(parent, {
+          key: "inbox:open",
+          icon: "lucide-inbox",
+          label: unread.length > INBOX_DOCK_ROWS ? `Open inbox (${unread.length})` : "Open inbox",
+          onClick: (event) => void openInbox(this.app, Keymap.isModEvent(event)),
+        });
       })
       .catch((error) => {
         if (epoch !== this.bodyEpoch) return;

@@ -4,6 +4,7 @@ import type { PaneType } from "../../views/workspace/Workspace";
 import type { WorkspaceLeaf } from "../../views/workspace/WorkspaceLeaf";
 import type { GitHubTarget, RepoSection } from "./session";
 import type { InvolvementQuery, NotificationItem } from "./types";
+import { openInSystemBrowser } from "./widgets";
 
 /** cmd/ctrl-activate opts into a second tab; `Keymap.isModEvent` hands us the
  * PaneType directly, so callers forward its result verbatim. */
@@ -65,14 +66,22 @@ export async function openQueryList(
   app.workspace.setActiveLeaf(leaf, { focus: true });
 }
 
-/** The notifications inbox. */
-export async function openInbox(app: App, openIn?: OpenIn): Promise<void> {
+/** The notifications inbox. `eState` focuses one row — the host's ephemeral
+ * state, the same mechanism a link uses to land on a heading. */
+export async function openInbox(
+  app: App,
+  openIn?: OpenIn,
+  eState?: { notificationId: string },
+): Promise<void> {
   const leaf = centerLeaf(app, GITHUB_VIEW.list, openIn);
-  await leaf.setViewState({
-    type: GITHUB_VIEW.list,
-    active: true,
-    state: { kind: "notifications" },
-  });
+  await leaf.setViewState(
+    {
+      type: GITHUB_VIEW.list,
+      active: true,
+      state: { kind: "notifications" },
+    },
+    eState,
+  );
   app.workspace.setActiveLeaf(leaf, { focus: true });
 }
 
@@ -177,34 +186,36 @@ function isRefreshable(view: View): view is View & RefreshableView {
   return typeof (view as Partial<RefreshableView>).refresh === "function";
 }
 
-/** Resolve a notification's subject to a center destination. Subjects we have
- * no view for (Discussion / Release / CheckSuite carry a null or unparseable
- * subject URL) land on the owning repository rather than dead-ending. Shared so
- * the dock and the center list resolve a row the same way. */
+/** Map a notification's API subject URL to its github.com page.
+ *
+ * The notifications API hands back `api.github.com/repos/o/r/issues/42` and no
+ * `html_url`, so the web address has to be derived. Only the three shapes whose
+ * web paths we actually know are mapped — and the REST plural becomes the web
+ * singular (`pulls` -> `pull`, `commits` -> `commit`). Anything else (a null
+ * subject URL, a Discussion, a Release, a CheckSuite) returns null rather than
+ * an invented address. */
+export function notificationWebUrl(item: NotificationItem): string | null {
+  const source = item.url ?? item.subjectUrl;
+  if (!source) return null;
+  const match = /\/repos\/([^/]+)\/([^/]+)\/(issues|pulls|commits)\/([^/?#]+)/.exec(source);
+  if (!match) return null;
+  const [, owner, repo, kind, id] = match;
+  const path = kind === "pulls" ? "pull" : kind === "commits" ? "commit" : "issues";
+  return `https://github.com/${owner}/${repo}/${path}/${id}`;
+}
+
+/** Activating a notification goes to its real GitHub page — the app has no
+ * faithful view of a notification's world (Discussions, Releases, CI). What we
+ * cannot map, we do not guess: those stay in the center inbox, focused on their
+ * own row, rather than being translated into some other repository page. */
 export async function openNotificationTarget(
   app: App,
   item: NotificationItem,
   openIn?: OpenIn,
 ): Promise<void> {
-  const subject = /\/repos\/([^/]+)\/([^/]+)\/(?:issues|pulls)\/(\d+)/;
-  const match = item.url?.match(subject) ?? item.subjectUrl?.match(subject);
-  if (match) {
-    const isPull = /pulls/.test(item.url ?? item.subjectUrl ?? "");
-    if (isPull) await openPrDetail(app, match[1], match[2], Number(match[3]), openIn);
-    else
-      await openGitHubDetail(
-        app,
-        { kind: "issue", number: Number(match[3]), owner: match[1], repo: match[2] },
-        openIn,
-      );
-    return;
-  }
-  const commit = item.url?.match(/\/repos\/([^/]+)\/([^/]+)\/commits\/([a-f0-9]+)/i);
-  if (commit) {
-    await openCommitDetail(app, commit[1], commit[2], commit[3], openIn);
-    return;
-  }
-  if (item.owner && item.repo) await openRepo(app, item.owner, item.repo, "overview", openIn);
+  const url = notificationWebUrl(item);
+  if (url) return void openInSystemBrowser(url);
+  await openInbox(app, openIn, { notificationId: item.id });
 }
 
 export type { GitHubTarget };

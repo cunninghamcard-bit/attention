@@ -42,6 +42,18 @@ export function treeRow(
   };
 }
 
+/** Hand a URL to the real browser. Electron's shell when we have it, a plain
+ * window otherwise. */
+export function openInSystemBrowser(url: string): void {
+  const shell = (
+    globalThis as {
+      electron?: { shell?: { openExternal?: (url: string) => Promise<void> } };
+    }
+  ).electron?.shell;
+  if (shell?.openExternal) void shell.openExternal(url);
+  else window.open(url, "_blank", "noopener");
+}
+
 export function avatar(parent: HTMLElement, login: string, url: string, size = 18): void {
   if (url) {
     createEl(

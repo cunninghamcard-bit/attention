@@ -321,8 +321,11 @@ describe("GitHub native navigation (A+B)", () => {
       () => view.contentEl.querySelector('[data-key="query:pr:review-requested"]') !== null,
       "pr queries",
     );
-    for (const label of ["Search", "Inbox", "Pull requests", "Issues", "Organizations"])
+    for (const label of ["Inbox", "Pull requests", "Issues", "Organizations"])
       expect(section(view, label)).not.toBeNull();
+    // Owner's call: Search left the crowded header for the body's first row.
+    expect(section(view, "Search")).toBeNull();
+    expect(view.contentEl.querySelector('[data-key="search"]')).not.toBeNull();
     // Default body = the pull-request queries.
     const text = view.contentEl.textContent ?? "";
     expect(text).toContain("Created by me");
@@ -473,25 +476,13 @@ describe("GitHub native navigation (A+B)", () => {
     expect(chips).toContain("octo/notes");
   });
 
-  it("opens issue detail from an inbox row", async () => {
+  it("opens the browser from an inbox row", async () => {
     const app = await createApp();
-    vi.spyOn(app.github, "getIssue").mockResolvedValue({
-      number: 42,
-      title: "Inbox issue notification",
-      state: "open",
-      author: ACTOR,
-      createdAt: "2026-07-14T00:00:00Z",
-      updatedAt: "2026-07-15T00:00:00Z",
-      url: "",
-      labels: [],
-      comments: 0,
-      isPullRequest: false,
-      body: "issue body",
-      assignees: [],
-      milestone: null,
-      commentsList: [],
-      closedAt: null,
-    } satisfies IssueDetail);
+    const opened: string[] = [];
+    vi.stubGlobal("open", (url: string) => {
+      opened.push(url);
+      return null;
+    });
     const notices: string[] = [];
     const noticeSpy = vi.spyOn(Notice.prototype, "setMessage").mockImplementation(function (
       this: Notice,
@@ -503,33 +494,23 @@ describe("GitHub native navigation (A+B)", () => {
     await openInbox(app);
     const list = (): GitHubListView =>
       app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0]?.view as GitHubListView;
-    await until(
-      () => list()?.contentEl.textContent?.includes("Inbox issue notification") === true,
-      "inbox rows",
-    );
+    await until(() => list()?.contentEl.querySelector(".github-row") !== null, "inbox rows");
     (list().contentEl.querySelector(".github-row") as HTMLElement).click();
-    // Prove the issue actually rendered — a leaf whose body threw and fell back
-    // to an error would satisfy a bare "leaf exists" check.
-    const detail = (): HTMLElement | undefined =>
-      (app.workspace.getLeavesOfType("github-detail")[0]?.view as GitHubDetailView | undefined)
-        ?.contentEl;
-    await until(
-      () => detail()?.textContent?.includes("Inbox issue notification") === true,
-      "issue detail rendered",
-    );
-    expect(detail()?.querySelector(".github-detail-error")).toBeNull();
+    await settle();
+    // We have no faithful view of a notification's world — go to the real page.
+    expect(opened).toEqual(["https://github.com/octo/notes/issues/42"]);
+    expect(app.workspace.getLeavesOfType("github-detail")).toHaveLength(0);
+    expect(app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)).toHaveLength(0);
     expect(notices).toHaveLength(0);
     noticeSpy.mockRestore();
   });
 
-  it("opens the repository tab for unparseable notifications", async () => {
+  it("keeps unmappable notifications in the center inbox", async () => {
     const app = await createApp();
-    // A Discussion carries no parseable subject URL — the shape we have no view
-    // for. It must still land somewhere real instead of a notice pop-up.
     vi.spyOn(app.github, "listNotifications").mockResolvedValue([
       {
         id: "n2",
-        unread: false,
+        unread: true,
         reason: "subscribed",
         updatedAt: "2026-07-15T00:00:00Z",
         title: "A new discussion",
@@ -541,29 +522,26 @@ describe("GitHub native navigation (A+B)", () => {
         subjectUrl: null,
       },
     ]);
-    const notices: string[] = [];
-    const noticeSpy = vi.spyOn(Notice.prototype, "setMessage").mockImplementation(function (
-      this: Notice,
-      message: string,
-    ) {
-      notices.push(String(message));
-      return this;
+    const opened: string[] = [];
+    vi.stubGlobal("open", (url: string) => {
+      opened.push(url);
+      return null;
     });
     await openInbox(app);
     const list = (): GitHubListView =>
       app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0]?.view as GitHubListView;
-    await until(
-      () => list()?.contentEl.textContent?.includes("A new discussion") === true,
-      "inbox rows",
-    );
+    await until(() => list()?.contentEl.querySelector(".github-row") !== null, "inbox rows");
     (list().contentEl.querySelector(".github-row") as HTMLElement).click();
-    const repoState = (): Record<string, unknown> | undefined =>
-      app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)[0]?.view?.getState();
-    await until(() => repoState()?.owner === "octo", "repository tab");
-    expect(repoState()).toMatchObject({ owner: "octo", repo: "notes" });
-    expect(app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)).toHaveLength(1);
-    expect(notices).toHaveLength(0);
-    noticeSpy.mockRestore();
+    await settle();
+    // No web path we can honestly derive: no guess, no repo tab, no detail.
+    expect(opened).toEqual([]);
+    expect(app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)).toHaveLength(0);
+    expect(app.workspace.getLeavesOfType("github-detail")).toHaveLength(0);
+    expect(list().getState().kind).toBe("notifications");
+    await until(
+      () => list().contentEl.querySelector('[data-key="notification:n2"].is-active') !== null,
+      "row focused in the center inbox",
+    );
   });
 
   it("retargets the detail leaf while the first request is pending", async () => {
@@ -718,7 +696,7 @@ describe("GitHub native navigation (A+B)", () => {
       () => view.contentEl.querySelector('[data-key="query:pr:review-requested"]') !== null,
       "pr queries",
     );
-    section(view, "Search").click();
+    (view.contentEl.querySelector('[data-key="search"]') as HTMLElement).click();
     const modalEl = () => document.body.querySelector(".prompt") as HTMLElement | null;
     await until(() => modalEl() !== null, "search modal");
     // Wait for listUserRepositories to fill suggestions (octo/notes from createApp).
@@ -777,11 +755,13 @@ describe("GitHub native navigation (A+B)", () => {
       () => list()?.contentEl.textContent?.includes("Inbox issue notification") === true,
       "inbox rows",
     );
+    const opened: string[] = [];
+    vi.stubGlobal("open", (url: string) => {
+      opened.push(url);
+      return null;
+    });
     (list().contentEl.querySelector(".github-row") as HTMLElement).click();
-    await until(
-      () => app.workspace.getLeavesOfType("github-detail").length === 1,
-      "issue detail despite pending mark-read",
-    );
+    await until(() => opened.length === 1, "navigated despite pending mark-read");
   });
 
   it("keeps a notification unread when mark-read fails", async () => {
@@ -792,11 +772,16 @@ describe("GitHub native navigation (A+B)", () => {
     const list = (): GitHubListView =>
       app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0]?.view as GitHubListView;
     await until(() => list()?.contentEl.querySelector(".github-row") !== null, "inbox rows");
+    const opened: string[] = [];
+    vi.stubGlobal("open", (url: string) => {
+      opened.push(url);
+      return null;
+    });
     (list().contentEl.querySelector(".github-row") as HTMLElement).click();
+    await until(() => opened.length === 1, "navigated");
     await settle();
     // Navigation still happens; the unread flag must not claim a write landed.
-    await until(() => app.workspace.getLeavesOfType("github-detail").length === 1, "detail");
-    expect(list().contentEl.querySelector(".github-row.is-unread, .github-unread")).not.toBeNull();
+    expect(list().contentEl.querySelector(".github-row.is-unread")).not.toBeNull();
   });
 
   it("refreshes the github views from the command", async () => {

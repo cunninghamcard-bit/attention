@@ -24,6 +24,16 @@ import { avatar, errorText, treeRow } from "./widgets";
 
 type ListKind = "pr" | "issue" | "notifications" | "org";
 
+function notificationIcon(type: string): string {
+  if (type === "PullRequest") return "lucide-git-pull-request";
+  if (type === "Issue") return "lucide-circle-dot";
+  if (type === "Discussion") return "lucide-messages-square";
+  if (type === "Release") return "lucide-tag";
+  if (type === "Commit") return "lucide-git-commit";
+  if (type === "CheckSuite") return "lucide-play";
+  return "lucide-bell";
+}
+
 const TITLES: Record<string, string> = {
   "pr:created": "My pull requests",
   "pr:review-requested": "Needs review",
@@ -70,6 +80,7 @@ export class GitHubListView extends ItemView {
   private selectionRef: EventRef | null = null;
   private bodyEl: HTMLElement | null = null;
   private segmentedEl: HTMLElement | null = null;
+  private focusId: string | null = null;
 
   getViewType(): string {
     return GitHubListView.VIEW_TYPE;
@@ -400,19 +411,44 @@ export class GitHubListView extends ItemView {
       return;
     }
     for (const item of items) {
-      const row = treeRow(list, { cls: "github-notification" });
+      const row = treeRow(list, {
+        cls: "github-notification",
+        key: `notification:${item.id}`,
+      });
       row.selfEl.classList.toggle("is-unread", item.unread);
-      createSpan(`github-dot ${item.unread ? "mod-open" : ""}`, row.iconEl);
+      // The type is what tells a PR from a Discussion at a glance; the dot only
+      // ever said "unread". This is the center tab, so it carries the detail
+      // the dock deliberately leaves out.
+      setIcon(row.iconEl, notificationIcon(item.type));
+      row.iconEl.classList.toggle("is-unread", item.unread);
       createDiv({ cls: "tree-item-inner-text", text: item.title }, row.innerEl);
-      createDiv(
-        {
-          cls: "tree-item-inner-subtext",
-          text: `${item.repository} · ${item.reason} · ${formatRelativeDate(item.updatedAt)}`,
-        },
-        row.innerEl,
-      );
+      const meta = createDiv({ cls: "tree-item-inner-subtext" }, row.innerEl);
+      createSpan({ cls: "github-repo-chip", text: item.repository }, meta);
+      createSpan({ cls: "github-muted", text: item.reason.replace(/_/g, " ") }, meta);
+      createSpan({ cls: "github-muted", text: formatRelativeDate(item.updatedAt) }, meta);
       row.activate((event) => this.openNotification(item, Keymap.isModEvent(event)));
     }
+    this.focusPendingRow();
+  }
+
+  /** The host's ephemeral state: an unmappable notification lands here instead
+   * of being translated into some other page. */
+  setEphemeralState(state: unknown): void {
+    const next = state as { notificationId?: string } | null;
+    this.focusId = next?.notificationId ?? null;
+    this.focusPendingRow();
+  }
+
+  private focusPendingRow(): void {
+    if (!this.focusId || !this.bodyEl) return;
+    const escaped = this.focusId.replace(/["\\]/g, "\\$&");
+    const row = this.bodyEl.querySelector(`[data-key="notification:${escaped}"]`);
+    if (!row) return;
+    for (const el of this.bodyEl.querySelectorAll(".github-row.is-active"))
+      el.classList.remove("is-active");
+    row.classList.add("is-active");
+    row.scrollIntoView({ block: "nearest" });
+    this.focusId = null;
   }
 
   private openNotification(item: NotificationItem, openIn?: OpenIn): void {

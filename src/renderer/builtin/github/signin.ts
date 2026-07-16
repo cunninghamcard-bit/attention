@@ -1,4 +1,5 @@
 import type { App } from "../../app/App";
+import { openInSystemBrowser } from "./widgets";
 import { createDiv, createEl, createSpan } from "../../dom/dom";
 import { setIcon } from "../../ui/Icon";
 import type { GitHubAuthState } from "./types";
@@ -14,16 +15,6 @@ export interface SignInHandle {
 
 function button(parent: HTMLElement, text?: string, cls?: string): HTMLButtonElement {
   return createEl("button", { cls, text, attr: { type: "button" } }, parent);
-}
-
-function openInSystemBrowser(url: string): void {
-  const shell = (
-    globalThis as {
-      electron?: { shell?: { openExternal?: (url: string) => Promise<void> } };
-    }
-  ).electron?.shell;
-  if (shell?.openExternal) void shell.openExternal(url);
-  else window.open(url, "_blank", "noopener");
 }
 
 function errorText(error: unknown): string {
