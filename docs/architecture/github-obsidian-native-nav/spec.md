@@ -108,13 +108,15 @@ Nav -> Detail: reuse the same center leaf (no new tab)
   Mentioned Me, Assigned to Me}; Issue queries {Created by Me, Mentioned Me,
   Assigned to Me}; Organizations = **the signed-in user first** (their profile
   entry, the OMG shape), then org logins — so the section is never empty for
-  an account with no orgs. **Inbox is a section with a thin body** (owner's
-  call after the action-only body felt empty): its body lists unread
-  notifications as thin rows (title only), activating the section also opens
-  (or focuses) the center notifications list, and activating a row opens that
-  notification's target — the body is never blank. No content rows beyond
-  those thin titles, no repo dump, no avatars, no filters in the sidebar:
-  content density belongs to center tabs.
+  an account with no orgs. **Inbox is a section with a minimal body** (owner's
+  calls, round 3: less inbox in the sidebar, richness in the center): the body
+  shows at most a handful of unread rows — one type icon + truncated title
+  each, never a text wall — plus an "Open inbox" row; activating the section
+  also opens (or focuses) the center notifications list, and activating a row
+  opens that notification's target. **The center inbox rows carry the
+  richness**: type icon, repository, reason and relative age per row, laid out
+  readably rather than densely. No repo dump, no avatars, no filters in the
+  sidebar: content density belongs to center tabs.
 - **A — cross-repo query lists.** `GitHubListView` (VIEW_TYPE `github-list`) is a
   center tab rendering a cross-repo involvement query (PRs / issues by created /
   review-requested / mentioned / assigned), an organization's repositories, or
@@ -147,7 +149,10 @@ Nav -> Detail: reuse the same center leaf (no new tab)
   `addAction()` only makes icon buttons. **Segment items are icon buttons with
   tooltips** (owner's call): native `button type=button` elements carrying the
   host's `clickable-icon` styling — never raw browser button chrome (no
-  default borders/shadows) and no text labels crowding the header.
+  default borders/shadows) and no text labels crowding the header. This flat
+  treatment extends to **every row, pager, chip and nav control** on GitHub
+  surfaces: themed form-control styling (shadow/background) is reserved for
+  true form buttons only (sign-in, comment submit).
 - **History opt-in per view — two declarations, both required.** History for
   same-type in-place re-targets only records when the view opts in **twice**
   (the full `FileView` pattern): (1) the view declares `navigation = true`
@@ -291,13 +296,13 @@ Scenario: An issue notification row opens the issue detail, not a notice
   Then a `github-detail` center leaf renders the issue
   And no notice pop-up is shown
 
-Scenario: An unparseable notification falls back to its repository tab
-  Test: opens the repository tab for unparseable notifications
+Scenario: An unparseable notification jumps to its GitHub web page
+  Test: opens the browser for unparseable notifications
   Given the notifications inbox lists a notification whose subject resolves to
     no PR, issue or commit (e.g. a Discussion or Release)
   When the user activates that row
-  Then a `github-repo` center leaf opens for that notification's repository
-  And no notice pop-up is shown
+  Then the notification's github.com page opens in the external browser
+  And no repository tab and no notice pop-up appears
 
 Scenario: The Organizations section lists the signed-in user first
   Test: lists the signed-in user before organizations

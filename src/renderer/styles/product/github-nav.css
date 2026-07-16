@@ -507,9 +507,14 @@ product flair only. */
    button as a themed form control — shadow and interactive fill. These are text
    affordances inside content,
 so they opt out explicitly. */
+/* Content affordances, not themed form controls. Setting `background` alone is
+   not enough: the global rule's `box-shadow` rides along unless it is answered
+   explicitly. */
 .github-pager-button,
 .github-crumb,
-.github-overview-chip {
+.github-overview-chip,
+.github-filter,
+.github-pill {
   box-shadow: none;
 }
 .github-pager-button,
