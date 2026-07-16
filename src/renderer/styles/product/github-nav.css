@@ -59,6 +59,22 @@ styled by
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);
 }
+/* The meta line ran together as one word — repo, reason and age are three
+   facts and need to read as three. */
+.github-notification .tree-item-inner-subtext {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-2);
+  margin-block-start: 2px;
+}
+/* Notifications are two-line rows; the dense single-line rhythm made a wall. */
+.github-notification .github-row,
+.github-row.github-notification {
+  padding-block: var(--size-2-2);
+}
+.github-list .github-notification + .github-notification {
+  margin-block-start: var(--size-2-1);
+}
 .github-row .tree-item-flair-outer {
   display: flex;
   align-items: center;
@@ -285,17 +301,30 @@ branch selector). */
 /* Lightweight text action (div[role=button]),
 not a form button — so themes
  * keep ownership of input-shadow / raised chrome on real <button>s. */
+/* A quiet control, not an accent-coloured sentence: the host's own subtle
+   button language (muted until hovered), so it stops competing with the rows. */
 .github-linkish {
-  color: var(--text-accent);
+  padding: var(--size-2-1) var(--size-2-2);
+  border-radius: var(--radius-s);
+  color: var(--text-muted);
   font-size: var(--font-ui-smaller);
   cursor: var(--cursor);
   user-select: none;
+  white-space: nowrap;
 }
 .github-linkish:hover {
-  color: var(--text-accent-hover, var(--text-accent));
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
 }
 
 /* ============================ Left-dock nav (query + org tree) =========== */
+
+/* The host centres nav buttons by default; the file explorer left-aligns its
+   own with exactly this selector shape (explorer.css:158). Same idiom here —
+   the four section icons read from the left edge (owner's call). */
+.workspace-leaf-content[data-type="github-nav"] .nav-buttons-container {
+  justify-content: flex-start;
+}
 
 .github-nav-view {
   display: flex;
@@ -366,8 +395,12 @@ not a form button — so themes
   gap: var(--size-2-3);
   padding: var(--size-4-3) var(--size-4-4) var(--size-2-3);
 }
+/* The filter sits on the right (owner's call): actions read from the left edge,
+   the box anchors to the right like a find field. */
 .github-list-controls .search-input-container {
   min-width: 200px;
+  margin-inline-start: auto;
+  order: 2;
 }
 .github-list-body {
   flex: 1;
