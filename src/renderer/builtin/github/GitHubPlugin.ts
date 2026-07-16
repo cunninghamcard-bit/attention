@@ -7,8 +7,9 @@ import { GitHubListView } from "./GitHubListView";
 import { GitHubNavView } from "./GitHubNavView";
 import { GitHubRepoView } from "./GitHubRepoView";
 import { PrDetailView } from "./GitPrViews";
-import { GitHubSearchModal } from "./GitHubSearchModal";
-import { openGitHubNav, openInbox, openQueryList, refreshGitHub } from "./open";
+import type { Scope } from "../../app/hotkeys/Scope";
+import { GitHubSearchBar } from "./GitHubSearchBar";
+import { GITHUB_VIEW, openGitHubNav, openInbox, openQueryList, refreshGitHub } from "./open";
 
 /**
  * Core plugin wrapping the CLOUD surface, modeled on Oh My GitHub: a persistent
@@ -23,12 +24,39 @@ export function createGitHubPluginDefinition(): InternalPluginDefinition {
     description: "Cloud workspace for GitHub: pull requests, issues, repositories, notifications.",
     defaultOn: true,
     init(app: App, plugin: InternalPluginWrapper) {
+      // ⌘F belongs to the view, not to a global command. `Workspace` pushes the
+      // active leaf's own scope (View.scope) above the root one the hotkey
+      // manager registers on, so a GitHub leaf answers ⌘F first and a note
+      // still gets the editor's search. A second *global* ⌘F command would not
+      // work: the dispatcher stops at the first match and drops
+      // checkCallback's verdict, so whichever bakes first silently wins.
+      const withSearchBar = <T extends { scope: Scope | null; contentEl: HTMLElement }>(
+        view: T,
+      ): T => {
+        view.scope?.register(["Mod"], "F", (event) => {
+          event.preventDefault();
+          GitHubSearchBar.toggle(app, view);
+          return false;
+        });
+        return view;
+      };
+
       plugin.registerViewType(GitHubNavView.VIEW_TYPE, (leaf) => new GitHubNavView(leaf));
-      plugin.registerViewType(GitHubListView.VIEW_TYPE, (leaf) => new GitHubListView(leaf));
-      plugin.registerViewType(GitHubRepoView.VIEW_TYPE, (leaf) => new GitHubRepoView(leaf));
-      plugin.registerViewType(PrDetailView.VIEW_TYPE, (leaf) => new PrDetailView(leaf));
-      plugin.registerViewType(GitCommitView.VIEW_TYPE, (leaf) => new GitCommitView(leaf));
-      plugin.registerViewType(GitHubDetailView.VIEW_TYPE, (leaf) => new GitHubDetailView(leaf));
+      plugin.registerViewType(GitHubListView.VIEW_TYPE, (leaf) =>
+        withSearchBar(new GitHubListView(leaf)),
+      );
+      plugin.registerViewType(GitHubRepoView.VIEW_TYPE, (leaf) =>
+        withSearchBar(new GitHubRepoView(leaf)),
+      );
+      plugin.registerViewType(PrDetailView.VIEW_TYPE, (leaf) =>
+        withSearchBar(new PrDetailView(leaf)),
+      );
+      plugin.registerViewType(GitCommitView.VIEW_TYPE, (leaf) =>
+        withSearchBar(new GitCommitView(leaf)),
+      );
+      plugin.registerViewType(GitHubDetailView.VIEW_TYPE, (leaf) =>
+        withSearchBar(new GitHubDetailView(leaf)),
+      );
 
       plugin.registerGlobalCommand({
         id: "github:open-workspace",
@@ -40,7 +68,13 @@ export function createGitHubPluginDefinition(): InternalPluginDefinition {
         id: "github:search",
         name: "Search GitHub workspace",
         icon: "lucide-search",
-        callback: () => new GitHubSearchModal(app).open(),
+        // Same bar ⌘F summons, on the GitHub leaf in front of the user. With no
+        // GitHub leaf there is nothing to mount on, so open the workspace first.
+        callback: () => {
+          const view = activeGitHubView(app);
+          if (view) GitHubSearchBar.toggle(app, view);
+          else void openGitHubNav(app);
+        },
       });
       plugin.registerGlobalCommand({
         id: "github:refresh",
@@ -74,4 +108,20 @@ export function createGitHubPluginDefinition(): InternalPluginDefinition {
       });
     },
   };
+}
+
+/** The bar mounts on a center view; the dock nav is not one of them. */
+const SEARCHABLE_VIEWS: ReadonlySet<string> = new Set([
+  GITHUB_VIEW.list,
+  GITHUB_VIEW.repo,
+  GITHUB_VIEW.prDetail,
+  GITHUB_VIEW.commit,
+  GITHUB_VIEW.detail,
+]);
+
+/** The GitHub center view in front of the user, if there is one. */
+function activeGitHubView(app: App): { contentEl: HTMLElement } | null {
+  const view = app.workspace.activeLeaf?.view;
+  if (!view || !SEARCHABLE_VIEWS.has(view.getViewType())) return null;
+  return view as unknown as { contentEl: HTMLElement };
 }

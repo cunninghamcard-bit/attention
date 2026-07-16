@@ -726,36 +726,42 @@ describe("GitHub native navigation (A+B)", () => {
     expect(view.contentEl.querySelector('[data-key="query:pr:review-requested"]')).not.toBeNull();
   });
 
-  it("opens a target from the github search suggest modal", async () => {
+  // Round-5 contract: search is the host's document-search bar on the active
+  // leaf, not a centered prompt. The chain this guards is unchanged — picking a
+  // suggestion opens its target through the shared open helpers.
+  it("opens a target from the github search bar", async () => {
     const app = await createApp();
-    await openGitHubNav(app);
-    const view = nav(app);
-    await until(
-      () => view.contentEl.querySelector('[data-key="query:pr:review-requested"]') !== null,
-      "pr queries",
-    );
+    await openQueryList(app, "pr", "created");
+    const view = listOf(app) as unknown as { contentEl: HTMLElement };
     app.commands.findCommand("github:search")?.callback?.();
-    const modalEl = () => document.body.querySelector(".prompt") as HTMLElement | null;
-    await until(() => modalEl() !== null, "search modal");
-    // Wait for listUserRepositories to fill suggestions (octo/notes from createApp).
     await until(
-      () => (modalEl()?.textContent ?? "").includes("octo/notes"),
-      "repo suggestions loaded",
+      () => view.contentEl.querySelector(".document-search-input") !== null,
+      "search bar",
     );
-    const input = modalEl()!.querySelector(".prompt-input") as HTMLInputElement;
+
+    const input = view.contentEl.querySelector(".document-search-input") as HTMLInputElement;
     input.value = "notes";
     input.dispatchEvent(new Event("input", { bubbles: true }));
-    await settle();
-    const suggestion = [...modalEl()!.querySelectorAll(".suggestion-item")].find((el) =>
+    // The popover hangs off the input, appended to the body by the host.
+    await until(
+      () =>
+        [...document.body.querySelectorAll(".suggestion-item")].some((el) =>
+          (el.textContent ?? "").includes("octo/notes"),
+        ),
+      "repo suggestion",
+    );
+    const suggestion = [...document.body.querySelectorAll(".suggestion-item")].find((el) =>
       (el.textContent ?? "").includes("octo/notes"),
-    ) as HTMLElement | undefined;
-    expect(suggestion).toBeTruthy();
-    suggestion!.click();
+    ) as HTMLElement;
+    suggestion.click();
+
     await until(() => {
       const leaf = app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)[0];
       const state = leaf?.view?.getState?.() as { owner?: string; repo?: string } | undefined;
       return state?.owner === "octo" && state?.repo === "notes";
     }, "repo leaf from search");
+    // The bar leaves once it has done its job.
+    expect(view.contentEl.querySelector(".document-search-container")).toBeNull();
   });
 
   it("switches sub-views on its own leaf when a second repo tab is open", async () => {
