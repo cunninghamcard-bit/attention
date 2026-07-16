@@ -9,6 +9,7 @@ import { ReviewSurface } from "../git/review/ReviewSurface";
 import { GITHUB_VIEW, openCommitDetail } from "./open";
 import { toReviewFiles } from "./patchUtils";
 import type { GitHubRepositoryRef, PrDetail } from "./types";
+import { renderMetaStrip } from "./widgets";
 
 /**
  * Center detail for a single pull request: a header, three in-view tabs
@@ -150,6 +151,11 @@ export class PrDetailView extends ItemView {
     const stat = createSpan("git-pr-diffstat", meta);
     createEl("ins", { text: `+${detail.additions}` }, stat);
     createEl("del", { text: `−${detail.deletions}` }, stat);
+    renderMetaStrip(header, {
+      labels: detail.labels,
+      assignees: detail.assignees,
+      milestone: detail.milestone,
+    });
     const tabs = createDiv("github-segmented-control git-pr-tabs", root);
     this.tabButton(tabs, "conversation", "Conversation");
     this.tabButton(tabs, "commits", `Commits ${detail.commits.length}`);

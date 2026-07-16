@@ -6,6 +6,7 @@ import type { ViewStateResult } from "../../views/View";
 import { formatRelativeDate } from "../git/relativeDate";
 import { GITHUB_VIEW, type GitHubDetailTarget } from "./open";
 import type { ActionRunDetail, GitHubRepositoryRef, IssueDetail, RepoFileContent } from "./types";
+import { openInSystemBrowser, renderMetaStrip } from "./widgets";
 
 /**
  * Center detail for the light sections — issues, workflow runs and repository
@@ -148,8 +149,9 @@ export class GitHubDetailView extends ItemView {
     this.contentEl.empty();
     const scroll = createDiv("gh-detail-scroll", this.contentEl);
     const head = createDiv("gh-detail-head", scroll);
-    createSpan({ cls: `gh-chip mod-${detail.state}`, text: detail.state }, head);
-    const title = createEl("h1", { cls: "gh-page-title", text: `${detail.title} ` }, head);
+    const titleRow = createDiv("gh-detail-title-row", head);
+    createSpan({ cls: `gh-chip mod-${detail.state}`, text: detail.state }, titleRow);
+    const title = createEl("h1", { cls: "gh-page-title", text: `${detail.title} ` }, titleRow);
     createSpan({ cls: "gh-muted", text: `#${detail.number}` }, title);
     const meta = createDiv(
       {
@@ -158,7 +160,32 @@ export class GitHubDetailView extends ItemView {
       },
       head,
     );
-    linkButton(meta, "Open on GitHub", () => window.open(detail.url, "_blank"));
+    linkButton(meta, "Open on GitHub", () => openInSystemBrowser(detail.url));
+
+    renderMetaStrip(head, {
+      labels: detail.labels,
+      assignees: detail.assignees,
+      milestone: detail.milestone,
+    });
+
+    const actions = createDiv("gh-detail-actions", head);
+    const toggle = createEl(
+      "button",
+      {
+        cls: "clickable-icon gh-detail-action",
+        text: detail.state === "open" ? "Close issue" : "Reopen issue",
+        attr: {
+          type: "button",
+          "aria-label": detail.state === "open" ? "Close issue" : "Reopen issue",
+        },
+      },
+      actions,
+    );
+    toggle.addEventListener(
+      "click",
+      () => void this.setIssueState(detail.number, detail.state === "open" ? "closed" : "open"),
+    );
+
     markdown(createEl("article", "gh-card", scroll), detail.body || "*No description*");
     for (const comment of detail.commentsList) {
       const card = createEl("article", "gh-card", scroll);
@@ -197,6 +224,13 @@ export class GitHubDetailView extends ItemView {
     if (error) return void new Notice(error);
     this.issueComment = "";
     new Notice("Comment posted");
+    await this.loadTarget();
+  }
+
+  private async setIssueState(number: number, state: "open" | "closed"): Promise<void> {
+    const error = await this.app.github.updateIssueState(number, state, this.repo());
+    if (error) return void new Notice(error);
+    new Notice(state === "closed" ? "Issue closed" : "Issue reopened");
     await this.loadTarget();
   }
 

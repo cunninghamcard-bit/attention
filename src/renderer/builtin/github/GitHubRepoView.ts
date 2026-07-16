@@ -9,6 +9,7 @@ import { ItemView } from "../../views/ItemView";
 import type { ViewStateResult } from "../../views/View";
 import { formatRelativeDate } from "../git/relativeDate";
 import { Keymap } from "../../app/hotkeys/Keymap";
+import { CreateIssueModal } from "./CreateIssueModal";
 import { GITHUB_VIEW, openCommitDetail, openGitHubDetail, openPrDetail } from "./open";
 import { readGithubPrPrefs, writeGithubPrPrefs } from "./prefs";
 import type { GitHubSelection, RepoSection } from "./session";
@@ -595,6 +596,16 @@ export class GitHubRepoView extends ItemView {
   private async renderIssues(repo: GitHubRepositoryRef): Promise<void> {
     const request = ++this.request;
     const controls = this.controls();
+    const newIssue = createEl(
+      "button",
+      {
+        cls: "mod-cta github-new-issue",
+        text: "New issue",
+        attr: { type: "button" },
+      },
+      controls,
+    );
+    newIssue.addEventListener("click", () => new CreateIssueModal(this.app, repo).open());
     const pills = createDiv("github-pills", controls);
     for (const state of ["open", "closed", "all"] as const) {
       const pill = createEl(

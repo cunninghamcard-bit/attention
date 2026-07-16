@@ -233,6 +233,32 @@ export class GitHubClient {
     if (res.status >= 400) throw apiError(res);
   }
 
+  /** Close or reopen an issue (or the issue side of a PR). */
+  async updateIssueState(
+    repo: GitHubRepositoryRef,
+    number: number,
+    state: "open" | "closed",
+  ): Promise<void> {
+    const res = await this.request("PATCH", `/repos/${repo.owner}/${repo.repo}/issues/${number}`, {
+      body: { state },
+    });
+    if (res.status >= 400) throw apiError(res);
+  }
+
+  /** Create an issue; returns the new number. */
+  async createIssue(
+    repo: GitHubRepositoryRef,
+    input: { title: string; body?: string },
+  ): Promise<{ number: number; url: string }> {
+    const res = await this.request("POST", `/repos/${repo.owner}/${repo.repo}/issues`, {
+      body: { title: input.title, body: input.body ?? "" },
+    });
+    if (res.status >= 400) throw apiError(res);
+    const raw = res.json as { number?: number; html_url?: string };
+    if (typeof raw.number !== "number") throw new Error("GitHub create issue returned no number");
+    return { number: raw.number, url: raw.html_url ?? "" };
+  }
+
   async submitReview(
     repo: GitHubRepositoryRef,
     number: number,

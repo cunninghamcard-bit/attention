@@ -444,3 +444,181 @@ and review mode. */
   line-height: 1.45; white-space: pre; overflow: auto;
 }
 .gh-markdown { font-size: var(--font-ui-small); }
+
+
+/* --- Issue/PR meta strip + orphan class layout (task #5) --------------- */
+
+.github-meta-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+}
+
+.github-meta-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.github-meta-label {
+  min-width: 72px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 22px;
+}
+
+.github-meta-chips,
+.github-meta-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.github-label-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--github-label-color, #888) 55%, transparent);
+  background: color-mix(in srgb, var(--github-label-color, #888) 18%, transparent);
+  color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.github-meta-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.github-meta-person-login,
+.github-meta-milestone {
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+}
+
+.github-meta-milestone {
+  color: var(--text-accent);
+  text-decoration: none;
+}
+
+.gh-detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gh-detail-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.gh-detail-action {
+  padding: 4px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.gh-detail-action:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.github-create-issue {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.github-create-issue-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.github-create-issue-title,
+.github-create-issue-body {
+  width: 100%;
+}
+
+.github-create-issue-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.github-new-issue {
+  margin-right: 8px;
+}
+
+/* Orphan class names emitted by PR views — host-token layout only. */
+.git-pr-detail-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--size-4-3) var(--size-4-3) var(--size-4-2);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.git-pr-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.git-pr-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.git-pr-review {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.git-pr-commit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.git-pr-commit-sub {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.git-pr-signin-error {
+  color: var(--text-error);
+  font-size: var(--font-ui-small);
+  margin-top: 8px;
+}

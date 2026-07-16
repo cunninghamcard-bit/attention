@@ -361,6 +361,32 @@ export class GitHubService {
     }
   }
 
+  async updateIssueState(
+    number: number,
+    state: "open" | "closed",
+    repo?: GitHubRepositoryRef,
+  ): Promise<string | null> {
+    try {
+      const { client, repo: active } = await this.requireClient(repo);
+      await client.updateIssueState(active, number, state);
+      return null;
+    } catch (error) {
+      return errorMessage(error);
+    }
+  }
+
+  async createIssue(
+    input: { title: string; body?: string },
+    repo?: GitHubRepositoryRef,
+  ): Promise<{ number: number; url: string } | string> {
+    try {
+      const { client, repo: active } = await this.requireClient(repo);
+      return await client.createIssue(active, input);
+    } catch (error) {
+      return errorMessage(error);
+    }
+  }
+
   async listWorkflowRuns(page = 1, repo?: GitHubRepositoryRef): Promise<ActionRunSummary[]> {
     const { client, repo: active } = await this.requireClient(repo);
     return client.listWorkflowRuns(active, page);
