@@ -33,6 +33,7 @@ import type {
   PrState,
   PrSummary,
   RepoContentItem,
+  RepoTree,
   RepoFileContent,
   RepositoryCard,
 } from "./types";
@@ -564,6 +565,30 @@ export class GitHubClient {
     const data = res.json;
     const items = Array.isArray(data) ? data : [data];
     return (items as RawContent[]).map(mapContent).filter((item) => item.name);
+  }
+
+  /**
+   * Every path in the repository at one ref, in a single request.
+   *
+   * `listContents` answers one level at a time, which a breadcrumb walk wants
+   * and a tree cannot use — a tree needs all the paths at once. When the repo
+   * is large enough that GitHub truncates, `truncated` comes back true and the
+   * caller falls back to per-level browsing; that is why `truncated` is
+   * reported rather than swallowed.
+   */
+  async listTree(repo: GitHubRepositoryRef, ref: string): Promise<RepoTree> {
+    const clean = ref.trim();
+    if (!clean) return { entries: [], truncated: false };
+    const res = await this.request(
+      "GET",
+      `/repos/${repo.owner}/${repo.repo}/git/trees/${encodeURIComponent(clean)}?recursive=1`,
+    );
+    if (res.status >= 400) throw apiError(res);
+    const data = res.json as { tree?: RawTreeEntry[]; truncated?: boolean } | null;
+    const entries = (data?.tree ?? [])
+      .filter((raw) => raw?.path && (raw.type === "blob" || raw.type === "tree"))
+      .map((raw) => ({ path: raw.path, type: raw.type }));
+    return { entries, truncated: data?.truncated === true };
   }
 
   async getFileContent(
@@ -1361,6 +1386,11 @@ interface RawJob {
   started_at?: string | null;
   completed_at?: string | null;
   steps?: Array<{ name?: string; status?: string; conclusion?: string | null; number?: number }>;
+}
+
+interface RawTreeEntry {
+  path: string;
+  type: "blob" | "tree";
 }
 
 interface RawContent {

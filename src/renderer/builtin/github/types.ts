@@ -326,6 +326,31 @@ export interface RepoContentItem {
   downloadUrl: string | null;
 }
 
+/**
+ * One entry of a whole-repository tree. `path` is the full path from the repo
+ * root, not a name, and directories are listed alongside blobs. `type` keeps
+ * git's own words rather than translating to file/dir: the tree model does that
+ * mapping, and the client's job is to report what the API said.
+ */
+export interface RepoTreeEntry {
+  path: string;
+  type: "blob" | "tree";
+}
+
+/**
+ * Every path in a repository at one ref, from a single request.
+ *
+ * `truncated` is load-bearing, not diagnostic: GitHub caps the recursive tree
+ * and, when it does, still returns a *partial* list — so `entries` looks
+ * perfectly healthy and only this flag says the tree is incomplete. Callers
+ * must branch on `truncated`, never on `entries.length`, and fall back to
+ * per-level browsing (`listContents`) when it is set.
+ */
+export interface RepoTree {
+  entries: RepoTreeEntry[];
+  truncated: boolean;
+}
+
 export interface RepoFileContent {
   path: string;
   name: string;
