@@ -30,6 +30,5 @@ jobs:
       - run: pnpm run build:api
       - run: pnpm run build:electron
       - run: pnpm run build:server
-      # Not here yet (documented follow-ups): the docwright guard (rust
-      # binary, needs a cargo install step), and the electron e2e / perf
-      # harness (needs xvfb + a display) — both stay local-only for now.
+      # Not here yet (documented follow-up): the electron e2e / perf
+      # harness (needs xvfb + a display) — stays local-only for now.

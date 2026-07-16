@@ -55,9 +55,6 @@ for the full module map.
 
 ## Development
 
-- **Spec-Driven Development.** Substantial changes get a durable contract under
-  `docs/` (`features/`, `issues/`, `architecture/`), authored and mechanically
-  verified with docwright. See `AGENTS.md` for the workflow.
 - **Perf harness.** Run the large-vault benchmark with
   `PERF_VAULT=1 pnpm exec playwright test e2e/perf/large-vault.spec.ts`.
   Baseline on a 20k-file vault: 32ms openFile median, 82ms explorer-click median.
