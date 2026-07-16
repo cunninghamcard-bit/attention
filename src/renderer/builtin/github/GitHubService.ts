@@ -1,6 +1,7 @@
 import type { App } from "../../app/App";
 import { requestUrl } from "../../core/ApiUtils";
 import { GitHubClient, type HttpTransport } from "./GitHubClient";
+import { GitHubGraphQLClient } from "./GitHubGraphQL";
 import { readGithubPrPrefs, writeGithubPrPrefs } from "./prefs";
 import { parseGitRemoteUrl } from "./resolveRepository";
 import { GitHubSession } from "./session";
@@ -9,8 +10,12 @@ import type {
   ActionRunSummary,
   CommitDetail,
   CommitPage,
+  ContributionCalendar,
+  GitHubActor,
   GitHubAuthState,
   GitHubBranch,
+  GitHubProfile,
+  GitHubProfileOverview,
   GitHubRepositoryRef,
   GitHubSearchItem,
   InvolvementQuery,
@@ -25,6 +30,7 @@ import type {
   PrSummary,
   RepoContentItem,
   RepoFileContent,
+  RepositoryCard,
 } from "./types";
 
 const TOKEN_SECRET_ID = "github-token";
@@ -257,6 +263,59 @@ export class GitHubService {
     return client.listOrgRepositories(org, 50);
   }
 
+  /** The profile head. Throws rather than returning null when signed out: the
+   * page cannot render an identity it does not have, and the view shows the
+   * error instead of a head full of zeroes pretending to be an empty account. */
+  async getProfile(login: string): Promise<GitHubProfile> {
+    const token = this.readToken();
+    if (!token) throw new Error("Sign in to GitHub to view a profile.");
+    return this.client(token, "github.com").getProfile(login);
+  }
+
+  /** Empty is a truthful answer for a list — unlike the head above, "no stars"
+   * and "not signed in" render the same way and neither misleads. */
+  async listStarredRepositories(login: string): Promise<RepositoryCard[]> {
+    const token = this.readToken();
+    if (!token) return [];
+    return this.client(token, "github.com").listStarredRepositories(login, 50);
+  }
+
+  async listFollowers(login: string): Promise<GitHubActor[]> {
+    const token = this.readToken();
+    if (!token) return [];
+    return this.client(token, "github.com").listFollowers(login, 50);
+  }
+
+  /** The Overview section in one call: the identity head over REST, its pinned
+   * grid and year list over GraphQL.
+   *
+   * The head has to come first — `isOrganization` decides which query the
+   * pinned grid can even be asked for, because the GraphQL `Organization` type
+   * carries no `contributionsCollection`. Oh My GitHub resolves it in the same
+   * order for the same reason (`accounts.ts` getOverview).
+   *
+   * Either half failing rejects the call. Swallowing a GraphQL failure into an
+   * empty grid would be a lie the view cannot see through: an account with no
+   * pins and a query that failed would arrive identical, and "no pinned
+   * repositories yet" is the common case — the owner's own account has none.
+   * The view owns the choice between an empty state and an error state, so it
+   * has to be given the difference. */
+  async getProfileOverview(login: string): Promise<GitHubProfileOverview> {
+    const profile = await this.getProfile(login);
+    const { pinned, contributionYears } = await this.graphql().getProfileOverview(
+      login,
+      profile.isOrganization,
+    );
+    return { profile, pinned, contributionYears };
+  }
+
+  /** One year of the heatmap and the tiles beneath it. Defaults to the current
+   * year — the same one `contributionYears` lists first. Organizations have no
+   * contributions to ask for; callers branch on `isOrganization` first. */
+  async getContributions(login: string, year?: number): Promise<ContributionCalendar> {
+    return this.graphql().getContributions(login, year ?? new Date().getFullYear());
+  }
+
   async listPullRequests(filter?: PrListFilter, repo?: GitHubRepositoryRef): Promise<PrSummary[]> {
     const { client, repo: active } = await this.requireClient(repo);
     const prefs = readGithubPrPrefs();
@@ -484,6 +543,12 @@ export class GitHubService {
     } catch {
       // ignore
     }
+  }
+
+  /** GraphQL's own client — same token and transport as REST, different
+   * endpoint and error protocol. */
+  private graphql(host = "github.com"): GitHubGraphQLClient {
+    return new GitHubGraphQLClient(this.transportFactory(this.app), this.readToken(), host);
   }
 
   private client(token: string | null, host: string): GitHubClient {
