@@ -114,9 +114,10 @@ Nav -> Detail: reuse the same center leaf (no new tab)
   Assigned to Me}; Organizations = **the signed-in user first** (their profile
   entry, the OMG shape), then org logins — so the section is never empty for
   an account with no orgs. **The center inbox carries all notification
-  content and richness** (the OMG inbox-page shape): an Unread | All view
-  toggle, reason filter chips (assigned / participating / review-requested /
-  mentioned), a Mark-all-as-read action, and rows of `unread dot + type icon
+  content and richness** (the OMG inbox-page shape, filtered through the
+  round-5 search-field decision): one native `SearchComponent` with qualifier
+  suggestions (`is:unread` / `is:all`, `reason:…`) in place of any button
+  row, a single Mark-all-as-read action, and rows of `unread dot + type icon
   + repo (small) / title (bold when unread) + reason badge + relative age`,
   laid out readably rather than densely. Hover row actions (done /
   unsubscribe) are a follow-up. No repo dump, no avatars, no filters in the
@@ -149,13 +150,25 @@ Nav -> Detail: reuse the same center leaf (no new tab)
   **only** door into a `github-repo` tab. Richer profile content (contribution
   heatmap, stars / followers / sponsors sub-views) is a follow-up goal, not
   this contract.
-- **Global search = one `SuggestModal`, command-only.** The `github:search`
-  command (no sidebar entry of any kind, owner's round-4 call) opens a GitHub
-  suggest modal (the host's `SuggestModal` primitive, the shape OMG's
-  "Search workspace" has): as-you-type suggestions over the signed-in user's
-  and orgs' repositories, the fixed PR/issue queries and the inbox; picking a
-  suggestion opens its target through the same open helpers. The in-list
-  `SearchComponent` remains a local row filter — it does not grow suggestions.
+- **Global search = a fixed top-right panel** (owner's round-5 call: "one
+  fixed position like OMG, not the middle"). Invoking `github:search` (⌘P
+  command, or the "Search GitHub for …" tail row of any page's search field)
+  opens the search **anchored top-right of the workspace — the host's own
+  document-search (Ctrl+F) position and look** — never a centered modal. The
+  input and its as-you-type suggestion list (the signed-in user's and orgs'
+  repositories, the fixed PR/issue queries, the inbox — the engine task #8
+  shipped, reskinned only) drop down from that fixed anchor; Esc dismisses.
+  No sidebar entry, no second ribbon search icon (the host ribbon's Search
+  stays file search alone).
+- **Every center list carries one native `SearchComponent`** (owner's
+  round-5 call: operators over buttons): typing filters the current rows;
+  typed qualifiers surface as suggestions (`is:unread` / `reason:…` on the
+  inbox, `repo:…` on cross-repo lists) and **replace the inbox's button row**
+  (Unread | All toggle and reason chips are gone; Mark-all-as-read stays as a
+  single header action). The issue/PR open-closed state switch lives in the
+  **view-header** as segmented icons (owner's explicit call), with `state:`
+  available as a supplementary qualifier. The suggestion dropdown's last row
+  is "Search GitHub for …", which opens the fixed top-right global search.
 - **Issue detail = the OMG issue-page shape** (task #5's acceptance basis,
   verified against the installed app): header carries the state chip, number
   and created/updated meta; a **right-hand meta column** holds Assignees,
@@ -297,9 +310,23 @@ Scenario: The navigator header offers the four sections and nothing else
 
 Scenario: The search command suggests targets and opens the pick
   Test: opens a target from the github search suggest modal
-  Given the GitHub suggest modal was opened via the github:search command
+  Given the GitHub search panel was opened via the github:search command
   When the user types a repo name fragment and picks the suggestion
   Then a `github-repo` center leaf opens for the picked repository
+
+Scenario: The global search anchors top-right, not in a centered modal
+  Test: anchors the github search at the workspace top right
+  Given the github:search command is invoked
+  When the search panel renders
+  Then it is anchored in the workspace's top-right document-search position
+  And no centered modal container is created
+
+Scenario: An inbox qualifier filters the rows without any button row
+  Test: filters the inbox through a typed qualifier
+  Given the center inbox lists read and unread notifications
+  When the user types the `is:unread` qualifier into the inbox search field
+  Then only unread rows remain visible
+  And no Unread/All toggle or reason chip buttons exist on the page
 
 Scenario: A header section icon swaps the body in place
   Test: switches nav sections from the header icons
