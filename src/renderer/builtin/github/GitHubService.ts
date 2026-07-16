@@ -292,15 +292,20 @@ export class GitHubService {
    * The head has to come first — `isOrganization` decides which query the
    * pinned grid can even be asked for, because the GraphQL `Organization` type
    * carries no `contributionsCollection`. Oh My GitHub resolves it in the same
-   * order for the same reason (`accounts.ts` getOverview). */
+   * order for the same reason (`accounts.ts` getOverview).
+   *
+   * Either half failing rejects the call. Swallowing a GraphQL failure into an
+   * empty grid would be a lie the view cannot see through: an account with no
+   * pins and a query that failed would arrive identical, and "no pinned
+   * repositories yet" is the common case — the owner's own account has none.
+   * The view owns the choice between an empty state and an error state, so it
+   * has to be given the difference. */
   async getProfileOverview(login: string): Promise<GitHubProfileOverview> {
     const profile = await this.getProfile(login);
-    const graphql = this.graphql();
-    // A profile whose pins fail to load is still a profile: the head is the
-    // page, the grid is a section of it.
-    const { pinned, contributionYears } = await graphql
-      .getProfileOverview(login, profile.isOrganization)
-      .catch(() => ({ pinned: [], contributionYears: [] }));
+    const { pinned, contributionYears } = await this.graphql().getProfileOverview(
+      login,
+      profile.isOrganization,
+    );
     return { profile, pinned, contributionYears };
   }
 

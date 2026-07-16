@@ -93,16 +93,17 @@ describe("app.github.getProfileOverview", () => {
     expect(overview.pinned).toHaveLength(1);
   });
 
-  it("keeps the head when the grid fails — a profile is not its pins", async () => {
+  it("rejects when the grid fails rather than passing off an empty one", async () => {
+    // An account with no pins and a query that failed must not arrive looking
+    // the same — "no pinned repositories yet" is the common case (the owner's
+    // own account has none), so an empty grid has to mean empty. The view owns
+    // the choice between an empty state and an error state and needs the
+    // difference to make it.
     const { instance } = app((url) =>
       url.includes("/graphql") ? { data: null, errors: [{ message: "rate limited" }] } : PROFILE,
     );
 
-    const overview = await instance.github.getProfileOverview("octocat");
-
-    expect(overview.profile.login).toBe("octocat");
-    expect(overview.pinned).toEqual([]);
-    expect(overview.contributionYears).toEqual([]);
+    await expect(instance.github.getProfileOverview("octocat")).rejects.toThrow(/rate limited/);
   });
 
   it("propagates a head failure — there is no page without it", async () => {
