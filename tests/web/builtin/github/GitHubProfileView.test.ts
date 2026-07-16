@@ -120,41 +120,37 @@ const ORG_REPOS: GithubRepoListItem[] = [
   },
 ];
 
-/** The data layer's methods do not exist on the service yet — the tests attach
- * them the way the merged GraphQL/REST branches will. */
-function attachProfileSource(app: App): void {
-  Object.assign(app.github, {
-    getProfile: vi.fn(async (login: string) =>
-      login === "acme-corp" ? ORG_PROFILE : { ...USER_PROFILE, login },
-    ),
-    getProfileOverview: vi.fn(async (login: string) =>
-      login === "acme-corp"
-        ? { ...OVERVIEW, profile: ORG_PROFILE, contributionYears: [] }
-        : OVERVIEW,
-    ),
-    getContributions: vi.fn(async () => CALENDAR),
-    listStarredRepositories: vi.fn(async () => [
-      {
-        owner: "octo",
-        repo: "spoon-knife",
-        nameWithOwner: "octo/spoon-knife",
-        description: "Forkable",
-        language: "HTML",
-        // REST starred carries no language colour — the card renders no dot.
-        languageColor: null,
-        stars: 12000,
-        forks: 100,
-        isPrivate: false,
-        url: "https://github.com/octo/spoon-knife",
-      },
-    ]),
-    listFollowers: vi.fn(async () => [
-      { login: "grace", avatarUrl: "https://example.test/grace.png", url: "" },
-    ]),
-  });
+/** Spies on the service's real profile methods — the same names the merged
+ * GraphQL/REST layers implement, so the wiring under test is production's. */
+function mockProfileSource(app: App): void {
+  vi.spyOn(app.github, "getProfile").mockImplementation(async (login: string) =>
+    login === "acme-corp" ? ORG_PROFILE : { ...USER_PROFILE, login },
+  );
+  vi.spyOn(app.github, "getProfileOverview").mockImplementation(async (login: string) =>
+    login === "acme-corp" ? { ...OVERVIEW, profile: ORG_PROFILE, contributionYears: [] } : OVERVIEW,
+  );
+  vi.spyOn(app.github, "getContributions").mockResolvedValue(CALENDAR);
+  vi.spyOn(app.github, "listStarredRepositories").mockResolvedValue([
+    {
+      owner: "octo",
+      repo: "spoon-knife",
+      nameWithOwner: "octo/spoon-knife",
+      description: "Forkable",
+      language: "HTML",
+      // REST starred carries no language colour — the card renders no dot.
+      languageColor: null,
+      stars: 12000,
+      forks: 100,
+      isPrivate: false,
+      url: "https://github.com/octo/spoon-knife",
+    },
+  ]);
+  vi.spyOn(app.github, "listFollowers").mockResolvedValue([
+    { login: "grace", avatarUrl: "https://example.test/grace.png", url: "" },
+  ]);
 }
 
-async function createApp(opts?: { dataLayer?: boolean }): Promise<App> {
+async function createApp(): Promise<App> {
   const root = document.createElement("div");
   document.body.appendChild(root);
   const app = new App(root);
@@ -170,7 +166,7 @@ async function createApp(opts?: { dataLayer?: boolean }): Promise<App> {
     { login: "acme-corp", avatarUrl: "", description: "Acme" },
   ]);
   vi.spyOn(app.github, "listOrgRepositories").mockResolvedValue(ORG_REPOS);
-  if (opts?.dataLayer !== false) attachProfileSource(app);
+  mockProfileSource(app);
   return app;
 }
 
@@ -286,8 +282,7 @@ describe("GitHubProfileView (org/user profile tab)", () => {
     // from the visible calendar (which would drop years the fixture has).
     const items = (): HTMLElement[] => [...document.querySelectorAll<HTMLElement>(".menu-item")];
     await until(() => items().some((item) => item.textContent?.includes("2025")), "2025 offered");
-    const fetches = (app.github as unknown as { getContributions: ReturnType<typeof vi.fn> })
-      .getContributions;
+    const fetches = vi.mocked(app.github.getContributions);
     items()
       .find((item) => item.textContent?.includes("2025"))!
       .click();
@@ -299,11 +294,10 @@ describe("GitHubProfileView (org/user profile tab)", () => {
 
   it("shows an honest empty state when the account has no pins", async () => {
     const app = await createApp();
-    (app.github as unknown as { getProfileOverview: ReturnType<typeof vi.fn> }).getProfileOverview =
-      vi.fn(async () => ({
-        ...OVERVIEW,
-        pinned: [],
-      }));
+    vi.spyOn(app.github, "getProfileOverview").mockResolvedValue({
+      ...OVERVIEW,
+      pinned: [],
+    });
     await openOrg(app, "ada");
     const view = profile(app);
     // The data layer answered "none" — no top-repositories dressed up as pins.
@@ -333,10 +327,7 @@ describe("GitHubProfileView (org/user profile tab)", () => {
 
   it("keeps the page alive when the contribution graph fails", async () => {
     const app = await createApp();
-    (app.github as unknown as { getContributions: ReturnType<typeof vi.fn> }).getContributions =
-      vi.fn(async () => {
-        throw new Error("GraphQL unavailable");
-      });
+    vi.spyOn(app.github, "getContributions").mockRejectedValue(new Error("GraphQL unavailable"));
     await openOrg(app, "ada");
     const view = profile(app);
     // The graph degrades to its own error state…
@@ -351,20 +342,6 @@ describe("GitHubProfileView (org/user profile tab)", () => {
       "pinned still renders",
     );
     expect(segmentLabels(view)).toHaveLength(5);
-  });
-
-  it("renders quiet placeholders while the data layer is not wired", async () => {
-    const app = await createApp({ dataLayer: false });
-    await openOrg(app, "ada");
-    const view = profile(app);
-    await until(
-      () => view.contentEl.querySelectorAll(".github-profile-pending").length > 0,
-      "placeholders",
-    );
-    // No profile fetch → the legacy head still identifies the account…
-    expect(view.contentEl.querySelector(".github-profile-login")?.textContent).toBe("ada");
-    // …and nothing crashed: the leaf is alive with its segments.
-    expect(segmentLabels(view).length).toBeGreaterThanOrEqual(2);
   });
 
   it("lists starred repositories as cards and opens them as repo tabs", async () => {
@@ -462,8 +439,7 @@ describe("GitHubProfileView (org/user profile tab)", () => {
       () => profile(app).contentEl.querySelector(".github-profile-pin") !== null,
       "initial overview",
     );
-    const fetches = (app.github as unknown as { getProfileOverview: ReturnType<typeof vi.fn> })
-      .getProfileOverview;
+    const fetches = vi.mocked(app.github.getProfileOverview);
     const before = fetches.mock.calls.length;
     refreshGitHub(app);
     await until(() => fetches.mock.calls.length > before, "refetch on refresh");

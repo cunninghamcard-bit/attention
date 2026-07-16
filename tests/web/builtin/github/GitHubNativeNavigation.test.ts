@@ -251,6 +251,46 @@ async function createApp(opts?: { authed?: boolean }): Promise<App> {
     NOTIFICATIONS.map((item) => ({ ...item })),
   );
   vi.spyOn(app.github, "markNotificationRead").mockResolvedValue(undefined);
+  // The profile tab loads its identity head before anything else; this
+  // harness only needs it to resolve (the profile view's own suite covers
+  // the sections in depth).
+  vi.spyOn(app.github, "getProfile").mockImplementation(async (login: string) => ({
+    login,
+    name: null,
+    avatarUrl: "",
+    bio: null,
+    isOrganization: login === "acme-corp",
+    followers: 0,
+    following: 0,
+    publicRepos: 1,
+    publicGists: 0,
+    createdAt: "2026-01-01T00:00:00Z",
+    htmlUrl: `https://github.com/${login}`,
+  }));
+  vi.spyOn(app.github, "getProfileOverview").mockResolvedValue({
+    profile: {
+      login: "acme-corp",
+      name: null,
+      avatarUrl: "",
+      bio: null,
+      isOrganization: true,
+      followers: 0,
+      following: 0,
+      publicRepos: 1,
+      publicGists: 0,
+      createdAt: "2026-01-01T00:00:00Z",
+      htmlUrl: "https://github.com/acme-corp",
+    },
+    pinned: [],
+    contributionYears: [],
+  });
+  vi.spyOn(app.github, "getContributions").mockResolvedValue({
+    year: 2026,
+    totalContributions: 0,
+    restrictedContributions: 0,
+    weeks: [],
+    stats: { commits: 0, pullRequests: 0, codeReviews: 0, issues: 0 },
+  });
   return app;
 }
 
@@ -414,6 +454,23 @@ describe("GitHub native navigation (A+B)", () => {
     section(view, "Organizations").click();
     await until(() => view.contentEl.querySelector('[data-key="org:ada"]') !== null, "self row");
     (view.contentEl.querySelector('[data-key="org:ada"]') as HTMLElement).click();
+    // The repository list lives in the profile's Repositories sub-view now.
+    const profileView = (): GitHubProfileView | undefined =>
+      app.workspace.getLeavesOfType(GitHubProfileView.VIEW_TYPE)[0]?.view as
+        | GitHubProfileView
+        | undefined;
+    await until(
+      () =>
+        profileView()?.headerEl.querySelector(
+          '.github-segmented-control-item[aria-label="Repositories"]',
+        ) != null,
+      "profile tab",
+    );
+    (
+      profileView()!.headerEl.querySelector(
+        '.github-segmented-control-item[aria-label="Repositories"]',
+      ) as HTMLElement
+    ).click();
     await until(() => userRepos.mock.calls.length > 0, "user repositories fetched");
     expect(orgRepos).not.toHaveBeenCalled();
   });

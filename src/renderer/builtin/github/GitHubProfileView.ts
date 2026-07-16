@@ -15,7 +15,6 @@ import type {
   GitHubProfileOverview,
   RepositoryCard,
 } from "./types";
-import type { ProfileDataSource } from "./profileTypes";
 import { avatar, errorText, treeRow } from "./widgets";
 
 /** The profile tab's sub-views — the OMG profile sections, mapped to the
@@ -38,10 +37,6 @@ const OVERVIEW_REPO_LIMIT = 6;
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-/** The data layer behind `app.github`. Methods land with the GraphQL/REST
- * branches; the view degrades per-block until they do. */
-type ProfileSource = Partial<ProfileDataSource>;
 
 /**
  * The org / user profile center tab (spec 7d13216). Identity head with the
@@ -126,10 +121,6 @@ export class GitHubProfileView extends ItemView {
     this.build();
   }
 
-  private source(): ProfileSource {
-    return this.app.github as unknown as ProfileSource;
-  }
-
   private build(): void {
     this.contentEl.empty();
     this.buildHeader();
@@ -192,19 +183,17 @@ export class GitHubProfileView extends ItemView {
     this.renderHead();
     createDiv({ cls: "github-empty", text: "Loading profile…" }, this.bodyEl);
     // The REST profile decides everything downstream (org accounts have no
-    // heatmap/stars/followers), so it loads first; its absence (data layer
-    // not merged yet) falls back to the legacy head.
+    // heatmap/stars/followers), so it loads first; without it there is no
+    // page to render, so its failure is the page's error state.
     try {
-      const profile = await this.source().getProfile?.(this.login);
+      const profile = await this.app.github.getProfile(this.login);
       if (request !== this.request) return;
-      if (profile) {
-        this.profile = profile;
-        if (profile.isOrganization && this.sectionIsUserOnly(this.section)) {
-          this.section = "overview";
-        }
-        this.buildHeader();
-        this.leaf.updateHeader();
+      this.profile = profile;
+      if (profile.isOrganization && this.sectionIsUserOnly(this.section)) {
+        this.section = "overview";
       }
+      this.buildHeader();
+      this.leaf.updateHeader();
     } catch (error) {
       if (request !== this.request) return;
       this.bodyEl.empty();
@@ -281,35 +270,26 @@ export class GitHubProfileView extends ItemView {
     // One GraphQL round trip feeds both blocks (pinned + the year list), but
     // each block still fails alone: an overview rejection degrades Pinned to
     // its error state while the heatmap loads from its own call.
-    const fetch = this.source().getProfileOverview;
     let overview: GitHubProfileOverview | null = null;
     let overviewError: unknown = null;
-    if (fetch) {
-      createEl("h3", { cls: "github-profile-heading", text: "Pinned repositories" }, pinnedEl);
-      const body = createDiv("github-profile-pinned", pinnedEl);
-      createDiv({ cls: "github-empty", text: "Loading…" }, body);
-      try {
-        overview = await fetch.call(this.app.github, this.login);
-      } catch (error) {
-        overviewError = error;
-      }
-      if (request !== this.request) return;
-      body.empty();
-      if (overviewError) {
-        createDiv({ cls: "github-error", text: errorText(overviewError) }, body);
-      } else if (!overview || !overview.pinned.length) {
-        // The data layer answered and the answer is "none" — say so. Dressing
-        // top repositories up as pins would contradict github.com itself.
-        createDiv({ cls: "github-empty", text: "No pinned repositories yet." }, body);
-      } else {
-        for (const pinned of overview.pinned) this.repoCard(body, pinned);
-      }
+    createEl("h3", { cls: "github-profile-heading", text: "Pinned repositories" }, pinnedEl);
+    const body = createDiv("github-profile-pinned", pinnedEl);
+    createDiv({ cls: "github-empty", text: "Loading…" }, body);
+    try {
+      overview = await this.app.github.getProfileOverview(this.login);
+    } catch (error) {
+      overviewError = error;
+    }
+    if (request !== this.request) return;
+    body.empty();
+    if (overviewError) {
+      createDiv({ cls: "github-error", text: errorText(overviewError) }, body);
+    } else if (!overview || !overview.pinned.length) {
+      // The data layer answered and the answer is "none" — say so. Dressing
+      // top repositories up as pins would contradict github.com itself.
+      createDiv({ cls: "github-empty", text: "No pinned repositories yet." }, body);
     } else {
-      // No GraphQL layer yet → the round-1 behavior: top repositories stand
-      // in, so the overview is useful rather than a wall of placeholders.
-      createEl("h3", { cls: "github-profile-heading", text: "Top repositories" }, pinnedEl);
-      const body = createDiv("github-profile-pinned", pinnedEl);
-      void this.renderTopRepositories(body, request);
+      for (const pinned of overview.pinned) this.repoCard(body, pinned);
     }
     if (heatEl) void this.renderContributions(heatEl, request, overview?.contributionYears ?? []);
   }
@@ -355,15 +335,13 @@ export class GitHubProfileView extends ItemView {
     request: number,
     years: number[],
   ): Promise<void> {
-    const fetch = this.source().getContributions;
     const heading = createDiv("github-profile-heat-head", root);
     const title = createEl("h3", { cls: "github-profile-heading", text: "Contributions" }, heading);
     const body = createDiv("github-profile-heat", root);
-    if (!fetch) return this.pending(body, "The contribution graph arrives with the data layer.");
     createDiv({ cls: "github-empty", text: "Loading contributions…" }, body);
     let calendar: ContributionCalendar;
     try {
-      calendar = await fetch.call(this.app.github, this.login, this.year ?? undefined);
+      calendar = await this.app.github.getContributions(this.login, this.year ?? undefined);
     } catch (error) {
       if (request !== this.request) return;
       body.empty();
@@ -485,25 +463,6 @@ export class GitHubProfileView extends ItemView {
     createDiv({ cls: "github-profile-tile-value", text: String(value) }, tile);
   }
 
-  private async renderTopRepositories(parent: HTMLElement, request: number): Promise<void> {
-    createDiv({ cls: "github-empty", text: "Loading…" }, parent);
-    let repos: GithubRepoListItem[];
-    try {
-      repos = await this.fetchRepositories();
-    } catch (error) {
-      if (request !== this.request) return;
-      parent.empty();
-      createDiv({ cls: "github-error", text: errorText(error) }, parent);
-      return;
-    }
-    if (request !== this.request) return;
-    parent.empty();
-    if (!repos.length)
-      return void createDiv({ cls: "github-empty", text: "No repositories." }, parent);
-    const list = createDiv("github-list", parent);
-    for (const repo of repos.slice(0, OVERVIEW_REPO_LIMIT)) this.repoRow(list, repo);
-  }
-
   // --- Repositories ----------------------------------------------------------
 
   private async fetchRepositories(): Promise<GithubRepoListItem[]> {
@@ -578,13 +537,10 @@ export class GitHubProfileView extends ItemView {
   // --- Stars -----------------------------------------------------------------
 
   private async renderStars(request: number): Promise<void> {
-    const fetch = this.source().listStarredRepositories;
-    if (!fetch)
-      return this.pending(this.bodyEl!, "Starred repositories arrive with the data layer.");
     createDiv({ cls: "github-empty", text: "Loading stars…" }, this.bodyEl!);
     let starred: RepositoryCard[];
     try {
-      starred = await fetch.call(this.app.github, this.login);
+      starred = await this.app.github.listStarredRepositories(this.login);
     } catch (error) {
       if (request !== this.request) return;
       this.bodyEl!.empty();
@@ -607,12 +563,10 @@ export class GitHubProfileView extends ItemView {
   // --- Followers ---------------------------------------------------------------
 
   private async renderFollowers(request: number): Promise<void> {
-    const fetch = this.source().listFollowers;
-    if (!fetch) return this.pending(this.bodyEl!, "Followers arrive with the data layer.");
     createDiv({ cls: "github-empty", text: "Loading followers…" }, this.bodyEl!);
     let followers: GitHubActor[];
     try {
-      followers = await fetch.call(this.app.github, this.login);
+      followers = await this.app.github.listFollowers(this.login);
     } catch (error) {
       if (request !== this.request) return;
       this.bodyEl!.empty();
@@ -640,14 +594,5 @@ export class GitHubProfileView extends ItemView {
     // GitHub's sponsors listing is GraphQL-only and unbuilt — an honest empty
     // state keeps the OMG section present without inventing data.
     createDiv({ cls: "github-empty", text: "No sponsor data yet." }, this.bodyEl!);
-  }
-
-  // --- Shared -----------------------------------------------------------------
-
-  /** The quiet placeholder for a block whose data-layer method has not been
-   * merged yet — distinguishable from an error and from emptiness. */
-  private pending(parent: HTMLElement, text: string): void {
-    parent.empty();
-    createDiv({ cls: "github-empty github-profile-pending", text }, parent);
   }
 }
