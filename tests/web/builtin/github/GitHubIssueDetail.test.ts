@@ -80,6 +80,22 @@ describe("GitHub issue detail (#5)", () => {
     }
   }
 
+  it("carries the state chip, number and created/updated meta in the header", async () => {
+    const app = await boot();
+    vi.spyOn(app.github, "getIssue").mockResolvedValue(ISSUE);
+    await openGitHubDetail(app, { kind: "issue", number: 42, owner: "acme", repo: "attention" });
+    const view = app.workspace.getLeavesOfType(GitHubDetailView.VIEW_TYPE)[0]
+      ?.view as GitHubDetailView;
+    await until(() => view.contentEl.querySelector(".gh-detail-head") !== null, "header");
+
+    const head = view.contentEl.querySelector(".gh-detail-head") as HTMLElement;
+    expect(head.querySelector(".gh-chip")!.textContent).toBe("open");
+    expect(head.textContent).toContain("#42");
+    // The contract asks for both dates, not just the opening one.
+    expect(head.textContent).toContain("opened");
+    expect(head.textContent).toContain("updated");
+  });
+
   it("renders assignees, labels, milestone and participants in the meta column", async () => {
     const app = await boot();
     vi.spyOn(app.github, "getIssue").mockResolvedValue(ISSUE);
@@ -92,8 +108,6 @@ describe("GitHub issue detail (#5)", () => {
     const view = app.workspace.getLeavesOfType(GitHubDetailView.VIEW_TYPE)[0]
       ?.view as GitHubDetailView;
     await until(() => view.contentEl.querySelector(".gh-issue-meta") !== null, "meta column");
-    // The spec puts all four, and Close/Reopen, in the column — not a strip
-    // over the body.
     const column = view.contentEl.querySelector(".gh-issue-meta")!.textContent ?? "";
     expect(column).toContain("Assignees");
     expect(column).toContain("bob");
@@ -103,8 +117,10 @@ describe("GitHub issue detail (#5)", () => {
     expect(column).toContain("Milestone");
     expect(column).toContain("v1");
     expect(column).toContain("Participants");
-    expect(column).toContain("Close issue");
     expect(view.contentEl.querySelector(".github-meta-strip")).toBeNull();
+    // Close/Reopen is a header action (owner's round-5 call), so the column
+    // carries meta only.
+    expect(column).not.toContain("Close issue");
   });
 
   it("derives participants from the author and the people who commented", async () => {
@@ -149,7 +165,11 @@ describe("GitHub issue detail (#5)", () => {
     expect([...logins].map((el) => el.textContent)).toEqual(["ada", "grace"]);
   });
 
-  it("closes an issue through updateIssueState and reloads", async () => {
+  function headerAction(view: GitHubDetailView, label: string): HTMLElement | null {
+    return view.headerEl.querySelector(`.view-action[aria-label="${label}"]`);
+  }
+
+  it("closes an issue from the header action and reloads", async () => {
     const app = await boot();
     const closed: IssueDetail = {
       ...ISSUE,
@@ -169,18 +189,71 @@ describe("GitHub issue detail (#5)", () => {
     });
     const view = app.workspace.getLeavesOfType(GitHubDetailView.VIEW_TYPE)[0]
       ?.view as GitHubDetailView;
-    await until(() => (view.contentEl.textContent ?? "").includes("Close issue"), "close button");
-    const button = [...view.contentEl.querySelectorAll("button")].find((el) =>
-      (el.textContent ?? "").includes("Close issue"),
-    ) as HTMLButtonElement;
-    button.click();
-    await until(() => (view.contentEl.textContent ?? "").includes("Reopen issue"), "reopened UI");
+    await until(() => headerAction(view, "Close issue") !== null, "close action");
+    (headerAction(view, "Close issue") as HTMLElement).click();
+
+    await until(() => headerAction(view, "Reopen issue") !== null, "reopened action");
     expect(update).toHaveBeenCalledWith(42, "closed", {
       owner: "acme",
       repo: "attention",
       host: "github.com",
     });
     expect(getIssue).toHaveBeenCalledTimes(2);
+    // addAction prepends a new button each call: the reload must not leave the
+    // stale Close beside the new Reopen.
+    expect(headerAction(view, "Close issue")).toBeNull();
+    expect(view.headerEl.querySelectorAll('.view-action[aria-label$="issue"]')).toHaveLength(1);
+  });
+
+  // The other direction: a toggle hardcoded to "closed" still passes the close
+  // test above, so reopen needs its own assertion on the state it sends.
+  it("reopens a closed issue from the header action", async () => {
+    const app = await boot();
+    const closed: IssueDetail = { ...ISSUE, state: "closed", closedAt: "2026-07-03T00:00:00Z" };
+    vi.spyOn(app.github, "getIssue").mockResolvedValue(closed);
+    const update = vi.spyOn(app.github, "updateIssueState").mockResolvedValue(null);
+    await openGitHubDetail(app, { kind: "issue", number: 42, owner: "acme", repo: "attention" });
+    const view = app.workspace.getLeavesOfType(GitHubDetailView.VIEW_TYPE)[0]
+      ?.view as GitHubDetailView;
+    await until(() => headerAction(view, "Reopen issue") !== null, "reopen action");
+    (headerAction(view, "Reopen issue") as HTMLElement).click();
+
+    await until(() => update.mock.calls.length > 0, "updateIssueState call");
+    expect(update).toHaveBeenCalledWith(42, "open", {
+      owner: "acme",
+      repo: "attention",
+      host: "github.com",
+    });
+  });
+
+  it("keeps the state action off runs and files", async () => {
+    const app = await boot();
+    vi.spyOn(app.github, "getIssue").mockResolvedValue(ISSUE);
+    vi.spyOn(app.github, "getFileContent").mockResolvedValue({
+      path: "src/main.ts",
+      name: "main.ts",
+      sha: "abc",
+      size: 1,
+      encoding: "utf-8",
+      text: "x",
+      htmlUrl: "",
+      downloadUrl: null,
+    });
+    await openGitHubDetail(app, { kind: "issue", number: 42, owner: "acme", repo: "attention" });
+    const view = app.workspace.getLeavesOfType(GitHubDetailView.VIEW_TYPE)[0]
+      ?.view as GitHubDetailView;
+    await until(() => headerAction(view, "Close issue") !== null, "close action");
+
+    // The same leaf re-targeted at a file has no state to toggle.
+    await openGitHubDetail(app, {
+      kind: "file",
+      path: "src/main.ts",
+      ref: "main",
+      owner: "acme",
+      repo: "attention",
+    });
+    await until(() => view.contentEl.querySelector(".gh-preview-header") !== null, "file preview");
+    expect(headerAction(view, "Close issue")).toBeNull();
   });
 
   it("interleaves comments and events in one timeline", async () => {

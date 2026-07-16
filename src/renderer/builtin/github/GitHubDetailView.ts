@@ -30,6 +30,9 @@ export class GitHubDetailView extends ItemView {
   private target: GitHubDetailTarget | null = null;
   private issueComment = "";
   private request = 0;
+  /** The header's Close/Reopen action. `addAction` prepends a fresh button
+   * every call, so the old one is dropped before a reload adds the next. */
+  private stateAction: HTMLElement | null = null;
 
   getViewType(): string {
     return GitHubDetailView.VIEW_TYPE;
@@ -124,6 +127,9 @@ export class GitHubDetailView extends ItemView {
     if (!target) return;
     const request = ++this.request;
     this.contentEl.empty();
+    // Runs and files have no state to toggle, and a failed load has nothing to
+    // act on: clear first, and only an issue puts it back.
+    this.setStateAction(null);
     createDiv({ cls: "github-detail-empty", text: "Loading…" }, this.contentEl);
     try {
       if (target.kind === "issue") {
@@ -163,7 +169,9 @@ export class GitHubDetailView extends ItemView {
     const meta = createDiv(
       {
         cls: "gh-muted",
-        text: `${detail.author.login} opened ${formatRelativeDate(detail.createdAt)} · `,
+        text:
+          `${detail.author.login} opened ${formatRelativeDate(detail.createdAt)}` +
+          ` · updated ${formatRelativeDate(detail.updatedAt)} · `,
       },
       head,
     );
@@ -171,6 +179,7 @@ export class GitHubDetailView extends ItemView {
 
     // Body beside a meta column — the OMG issue-page shape. The column carries
     // content, not navigation, so it is not the in-page nav column the spec bans.
+    this.setStateAction(detail);
     const layout = createDiv("gh-issue-layout", scroll);
     const main = createDiv("gh-issue-main", layout);
     this.renderIssueMeta(createEl("aside", "gh-issue-meta", layout), detail);
@@ -221,25 +230,22 @@ export class GitHubDetailView extends ItemView {
     }
   }
 
-  /** Assignees / Labels / Milestone / Participants plus Close/Reopen. */
-  private renderIssueMeta(parent: HTMLElement, detail: IssueDetail): void {
-    const toggle = createEl(
-      "button",
-      {
-        cls: "clickable-icon gh-detail-action",
-        text: detail.state === "open" ? "Close issue" : "Reopen issue",
-        attr: {
-          type: "button",
-          "aria-label": detail.state === "open" ? "Close issue" : "Reopen issue",
-        },
-      },
-      createDiv("gh-detail-actions", parent),
+  /** Close/Reopen lives in the real view header (owner's call), not in the
+   * body: it is a view action, and the header is where this app puts actions. */
+  private setStateAction(detail: IssueDetail | null): void {
+    this.stateAction?.remove();
+    this.stateAction = null;
+    if (!detail) return;
+    const open = detail.state === "open";
+    this.stateAction = this.addAction(
+      open ? "lucide-circle-check" : "lucide-circle-dot",
+      open ? "Close issue" : "Reopen issue",
+      () => void this.setIssueState(detail.number, open ? "closed" : "open"),
     );
-    toggle.addEventListener(
-      "click",
-      () => void this.setIssueState(detail.number, detail.state === "open" ? "closed" : "open"),
-    );
+  }
 
+  /** Assignees / Labels / Milestone / Participants. */
+  private renderIssueMeta(parent: HTMLElement, detail: IssueDetail): void {
     const section = (label: string): HTMLElement => {
       const block = createDiv("gh-meta-section", parent);
       createDiv({ cls: "gh-meta-heading", text: label }, block);
