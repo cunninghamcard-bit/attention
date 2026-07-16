@@ -119,6 +119,7 @@ export function createGitHubPluginDefinition(): InternalPluginDefinition {
 const SEARCHABLE_VIEWS: ReadonlySet<string> = new Set([
   GITHUB_VIEW.list,
   GITHUB_VIEW.repo,
+  GITHUB_VIEW.profile,
   GITHUB_VIEW.prDetail,
   GITHUB_VIEW.commit,
   GITHUB_VIEW.detail,

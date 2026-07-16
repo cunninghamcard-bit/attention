@@ -235,6 +235,21 @@ describe("GitHubProfileView (org/user profile tab)", () => {
     await until(() => fetches.mock.calls.length > before, "refetch on refresh");
   });
 
+  // ⌘F (view scope) and the github:search command are two entries to one bar;
+  // the command routes through SEARCHABLE_VIEWS, so a center view missing from
+  // that set silently navigates to the dock instead of searching.
+  it("summons the search bar on the profile through the github:search command", async () => {
+    const app = await createApp();
+    await openOrg(app, "acme-corp");
+    const view = profile(app);
+    await until(() => view.headerEl.querySelector(".github-profile-nav") !== null, "profile tab");
+    app.commands.executeCommandById("github:search");
+    await until(
+      () => view.contentEl.querySelector(".document-search-input") !== null,
+      "search bar on the profile leaf",
+    );
+  });
+
   it("keeps the profile nav inside the shared flat header selectors", () => {
     // jsdom does not compute styles, so lock the structure: the profile nav
     // must ride the same flat-header rules as the repo/list navs (never a
