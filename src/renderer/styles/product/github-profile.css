@@ -1,0 +1,78 @@
+/* The org / user profile center tab (github-profile). Identity head + stat
+ * tiles + repository rows; every control inherits the flat GitHub language —
+ * no form-control chrome anywhere on this surface. */
+
+.github-profile-view {
+  padding: 0;
+}
+
+.github-profile-head {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-4);
+  padding: var(--size-4-6) var(--size-4-6) var(--size-4-2);
+}
+
+.github-profile-head img {
+  border-radius: var(--radius-l);
+  flex-shrink: 0;
+}
+
+.github-profile-identity {
+  min-width: 0;
+}
+
+.github-profile-login {
+  margin: 0;
+  font-size: var(--font-ui-large);
+  line-height: var(--line-height-tight);
+}
+
+.github-profile-subtitle {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.github-profile-body {
+  padding: 0 var(--size-4-3) var(--size-4-3);
+}
+
+.github-profile-tiles {
+  display: flex;
+  gap: var(--size-4-2);
+  padding: var(--size-4-2) var(--size-4-3);
+}
+
+.github-profile-tile {
+  flex: 1;
+  min-width: 0;
+  padding: var(--size-4-2) var(--size-4-3);
+  border-radius: var(--radius-m);
+  background-color: var(--background-secondary);
+}
+
+.github-profile-tile-value {
+  font-size: var(--font-ui-large);
+  font-weight: var(--font-semibold);
+}
+
+.github-profile-tile-label {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.github-profile-heading {
+  margin: var(--size-4-3) var(--size-4-3) var(--size-2-2);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+  color: var(--text-muted);
+}
+
+.github-profile-issues {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-2-1);
+}
