@@ -10,6 +10,7 @@ import type {
   GitHubActor,
   GitHubAuthState,
   GitHubBranch,
+  GitHubProfile,
   GitHubRepositoryRef,
   GitHubSearchItem,
   InvolvementQuery,
@@ -33,6 +34,7 @@ import type {
   PrSummary,
   RepoContentItem,
   RepoFileContent,
+  RepositoryCard,
 } from "./types";
 import { apiBaseUrlForHost } from "./resolveRepository";
 
@@ -137,6 +139,59 @@ export class GitHubClient {
         description: item.description ?? null,
       }))
       .filter((item) => item.login);
+  }
+
+  /** The identity head of a user or organization page.
+   *
+   * Runs before anything else on the profile: its `isOrganization` decides
+   * whether Stars / Followers / the heatmap can exist at all (the GraphQL
+   * `Organization` type has none of those fields). `/users/{login}` answers for
+   * organizations too — `following` and `publicGists` simply come back 0, which
+   * is the API being accurate, not a miss. */
+  async getProfile(login: string): Promise<GitHubProfile> {
+    const clean = login.trim();
+    const res = await this.request("GET", `/users/${encodeURIComponent(clean)}`);
+    if (res.status >= 400) throw apiError(res);
+    const raw = res.json as RawProfile;
+    return {
+      login: raw.login ?? clean,
+      name: raw.name ?? null,
+      avatarUrl: raw.avatar_url ?? "",
+      bio: raw.bio ?? null,
+      isOrganization: raw.type === "Organization",
+      followers: raw.followers ?? 0,
+      following: raw.following ?? 0,
+      publicRepos: raw.public_repos ?? 0,
+      publicGists: raw.public_gists ?? 0,
+      createdAt: raw.created_at ?? "",
+      htmlUrl: raw.html_url ?? `https://github.com/${clean}`,
+    };
+  }
+
+  /** Repositories this account has starred. Users only — an organization
+   * cannot star anything, and the caller is expected to have branched on
+   * `isOrganization` before asking. */
+  async listStarredRepositories(login: string, limit = 50): Promise<RepositoryCard[]> {
+    const clean = login.trim();
+    if (!clean) return [];
+    const res = await this.request(
+      "GET",
+      `/users/${encodeURIComponent(clean)}/starred?sort=updated&per_page=${Math.min(limit, 100)}`,
+    );
+    if (res.status >= 400) throw apiError(res);
+    return okList(res).map((raw: RawRepo) => mapRepositoryCard(raw));
+  }
+
+  /** People following this account. Users only, same as starred. */
+  async listFollowers(login: string, limit = 50): Promise<GitHubActor[]> {
+    const clean = login.trim();
+    if (!clean) return [];
+    const res = await this.request(
+      "GET",
+      `/users/${encodeURIComponent(clean)}/followers?per_page=${Math.min(limit, 100)}`,
+    );
+    if (res.status >= 400) throw apiError(res);
+    return okList(res).map((raw: RawUser) => mapActor(raw));
   }
 
   /** Repositories under one organization (center list after picking an org). */
@@ -1167,12 +1222,54 @@ interface RawRepo {
   description?: string | null;
   open_issues_count?: number;
   owner?: { login?: string };
+  /** Card fields — only the starred list reads these; nav rows ignore them.
+   * There is no language *colour* here: REST does not carry one. */
+  language?: string | null;
+  stargazers_count?: number;
+  forks_count?: number;
+  html_url?: string;
+}
+
+/** `/users/{login}`. `type` is what tells a user from an organization. */
+interface RawProfile {
+  login?: string;
+  name?: string | null;
+  avatar_url?: string;
+  bio?: string | null;
+  type?: string;
+  followers?: number;
+  following?: number;
+  public_repos?: number;
+  public_gists?: number;
+  created_at?: string;
+  html_url?: string;
 }
 
 interface RawOrg {
   login?: string;
   avatar_url?: string;
   description?: string | null;
+}
+
+/** REST fills every card field but the language colour: `/users/{login}/starred`
+ * carries `language` and no colour for it — that lives on GraphQL's
+ * `primaryLanguage { color }`, which is where the pinned grid gets its dot. Oh
+ * My GitHub's REST mapper hardcodes the same null. */
+function mapRepositoryCard(item: RawRepo): RepositoryCard {
+  const owner = item.owner?.login ?? item.full_name?.split("/")[0] ?? "";
+  const repo = item.name ?? item.full_name?.split("/")[1] ?? "";
+  return {
+    owner,
+    repo,
+    nameWithOwner: item.full_name ?? `${owner}/${repo}`,
+    description: item.description ?? null,
+    language: item.language ?? null,
+    languageColor: null,
+    stars: item.stargazers_count ?? 0,
+    forks: item.forks_count ?? 0,
+    isPrivate: Boolean(item.private),
+    url: item.html_url ?? `https://github.com/${owner}/${repo}`,
+  };
 }
 
 function mapRepoList(items: RawRepo[]): Array<{

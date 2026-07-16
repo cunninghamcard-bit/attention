@@ -9,8 +9,10 @@ import type {
   ActionRunSummary,
   CommitDetail,
   CommitPage,
+  GitHubActor,
   GitHubAuthState,
   GitHubBranch,
+  GitHubProfile,
   GitHubRepositoryRef,
   GitHubSearchItem,
   InvolvementQuery,
@@ -25,6 +27,7 @@ import type {
   PrSummary,
   RepoContentItem,
   RepoFileContent,
+  RepositoryCard,
 } from "./types";
 
 const TOKEN_SECRET_ID = "github-token";
@@ -255,6 +258,29 @@ export class GitHubService {
     if (!token) return [];
     const client = this.client(token, "github.com");
     return client.listOrgRepositories(org, 50);
+  }
+
+  /** The profile head. Throws rather than returning null when signed out: the
+   * page cannot render an identity it does not have, and the view shows the
+   * error instead of a head full of zeroes pretending to be an empty account. */
+  async getProfile(login: string): Promise<GitHubProfile> {
+    const token = this.readToken();
+    if (!token) throw new Error("Sign in to GitHub to view a profile.");
+    return this.client(token, "github.com").getProfile(login);
+  }
+
+  /** Empty is a truthful answer for a list — unlike the head above, "no stars"
+   * and "not signed in" render the same way and neither misleads. */
+  async listStarredRepositories(login: string): Promise<RepositoryCard[]> {
+    const token = this.readToken();
+    if (!token) return [];
+    return this.client(token, "github.com").listStarredRepositories(login, 50);
+  }
+
+  async listFollowers(login: string): Promise<GitHubActor[]> {
+    const token = this.readToken();
+    if (!token) return [];
+    return this.client(token, "github.com").listFollowers(login, 50);
   }
 
   async listPullRequests(filter?: PrListFilter, repo?: GitHubRepositoryRef): Promise<PrSummary[]> {
