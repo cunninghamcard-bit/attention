@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
 import { GitHubDetailView } from "@web/builtin/github/GitHubDetailView";
-import { openGitHubDetail } from "@web/builtin/github/open";
+import { GitHubRepoView } from "@web/builtin/github/GitHubRepoView";
+import { openGitHubDetail, openRepo } from "@web/builtin/github/open";
 import type { IssueDetail } from "@web/builtin/github/types";
 import { renderMetaStrip } from "@web/builtin/github/widgets";
 
@@ -43,6 +44,7 @@ describe("GitHub issue detail (#5)", () => {
   afterEach(() => {
     root?.remove();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     document.body.replaceChildren();
   });
 
@@ -135,5 +137,73 @@ describe("GitHub issue detail (#5)", () => {
     const host = document.createElement("div");
     expect(renderMetaStrip(host, {})).toBeNull();
     expect(host.childElementCount).toBe(0);
+  });
+
+  it("sends the milestone link through the shared system-browser exit", () => {
+    const openExternal = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("electron", { shell: { openExternal } });
+    const host = document.createElement("div");
+    renderMetaStrip(host, { milestone: ISSUE.milestone });
+    const link = host.querySelector(".github-meta-milestone") as HTMLAnchorElement;
+    const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+    link.dispatchEvent(event);
+
+    expect(openExternal).toHaveBeenCalledWith(ISSUE.milestone!.url);
+    // A bare target=_blank would let the anchor navigate itself, bypassing the
+    // one exit every other GitHub link uses.
+    expect(event.defaultPrevented).toBe(true);
+    expect(link.getAttribute("target")).toBeNull();
+  });
+
+  it("creates an issue from the repo Issues section and opens the new issue", async () => {
+    const app = await boot();
+    vi.spyOn(app.github, "listIssues").mockResolvedValue([]);
+    const create = vi
+      .spyOn(app.github, "createIssue")
+      .mockResolvedValue({ number: 99, url: "https://github.com/acme/attention/issues/99" });
+    const created: IssueDetail = { ...ISSUE, number: 99, title: "Created from modal" };
+    const getIssue = vi.spyOn(app.github, "getIssue").mockResolvedValue(created);
+
+    await openRepo(app, "acme", "attention", "issues");
+    const repoView = app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)[0]
+      ?.view as GitHubRepoView;
+    await until(
+      () => repoView.contentEl.querySelector(".github-new-issue") !== null,
+      "New issue button",
+    );
+    (repoView.contentEl.querySelector(".github-new-issue") as HTMLButtonElement).click();
+
+    await until(
+      () => document.querySelector(".github-create-issue-title") !== null,
+      "create issue modal",
+    );
+    const title = document.querySelector(".github-create-issue-title") as HTMLInputElement;
+    const body = document.querySelector(".github-create-issue-body") as HTMLTextAreaElement;
+    title.value = "Created from modal";
+    title.dispatchEvent(new Event("input"));
+    body.value = "Reported by the reviewer";
+    body.dispatchEvent(new Event("input"));
+    const submit = [...document.querySelectorAll(".github-create-issue-actions button")].find(
+      (el) => (el.textContent ?? "").includes("Create issue"),
+    ) as HTMLButtonElement;
+    expect(submit.disabled).toBe(false);
+    submit.click();
+
+    await until(() => create.mock.calls.length > 0, "createIssue call");
+    expect(create).toHaveBeenCalledWith(
+      { title: "Created from modal", body: "Reported by the reviewer" },
+      { owner: "acme", repo: "attention", host: "github.com" },
+    );
+
+    await until(
+      () => app.workspace.getLeavesOfType(GitHubDetailView.VIEW_TYPE).length > 0,
+      "new issue detail leaf",
+    );
+    await until(() => getIssue.mock.calls.length > 0, "detail load");
+    expect(getIssue).toHaveBeenCalledWith(99, {
+      owner: "acme",
+      repo: "attention",
+      host: "github.com",
+    });
   });
 });

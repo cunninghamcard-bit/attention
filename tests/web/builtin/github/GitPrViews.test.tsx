@@ -313,6 +313,33 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     expect(view.contentEl.textContent).toMatch(/\+103/);
   });
 
+  async function stateChipFor(detail: PrDetail): Promise<HTMLElement> {
+    const app = await appWithGit();
+    installGithubMocks(app, { detail });
+    await openPrDetail(app, "coder", "ghostty-web", 185);
+    const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
+    await until(() => view.contentEl.querySelector(".gh-chip") !== null, "PR state chip");
+    return view.contentEl.querySelector(".gh-chip") as HTMLElement;
+  }
+
+  it("shows an open PR's state chip in the detail header", async () => {
+    const chip = await stateChipFor(DETAIL);
+    expect(chip.textContent).toBe("open");
+    expect(chip.classList.contains("mod-open")).toBe(true);
+  });
+
+  it("maps a merged PR to the merged state chip", async () => {
+    const chip = await stateChipFor({ ...DETAIL, state: "merged" });
+    expect(chip.textContent).toBe("merged");
+    expect(chip.classList.contains("mod-merged")).toBe(true);
+  });
+
+  it("shows a draft PR as draft rather than open", async () => {
+    const chip = await stateChipFor({ ...DETAIL, isDraft: true });
+    expect(chip.textContent).toBe("draft");
+    expect(chip.classList.contains("mod-draft")).toBe(true);
+  });
+
   it("approves through the GitHub API", async () => {
     const submitCalls: string[] = [];
     const app = await appWithGit();

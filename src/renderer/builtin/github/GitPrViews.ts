@@ -142,6 +142,10 @@ export class PrDetailView extends ItemView {
     const header = createEl("header", "git-pr-detail-header", root);
     createEl("h1", { cls: "git-pr-title", text: detail.title }, header);
     const meta = createDiv("git-pr-meta", header);
+    // Same chip primitive the issue detail uses; draft outranks open, matching
+    // the list/repo flair so one PR never reads two ways across the surface.
+    const state = detail.isDraft && detail.state === "open" ? "draft" : detail.state;
+    createSpan({ cls: `gh-chip mod-${state}`, text: state }, meta);
     createSpan(
       {
         text: `${detail.author.login} · #${detail.number} · ${detail.headRefName} → ${detail.baseRefName}`,

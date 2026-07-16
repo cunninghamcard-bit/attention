@@ -332,6 +332,10 @@
   border-radius: 2em; border: 1px solid var(--background-modifier-border); color: var(--text-muted);
 }
 .gh-chip.mod-ok { color: var(--color-green,#3fb950); border-color: currentcolor; }
+.gh-chip.mod-open { color: var(--color-green,#3fb950); border-color: currentcolor; }
+.gh-chip.mod-closed { color: var(--color-red,#f85149); border-color: currentcolor; }
+.gh-chip.mod-merged { color: var(--color-purple,#a371f7); border-color: currentcolor; }
+.gh-chip.mod-draft { color: var(--text-faint); border-color: currentcolor; }
 .gh-chip.mod-ci-success { color: var(--color-green,#3fb950); border-color: currentcolor; }
 .gh-chip.mod-ci-failure,
 .gh-chip.mod-ci-error { color: var(--color-red,#f85149); border-color: currentcolor; }

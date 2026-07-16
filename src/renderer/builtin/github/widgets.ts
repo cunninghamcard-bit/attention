@@ -140,16 +140,23 @@ export function renderMetaStrip(
     const row = createDiv("github-meta-row", strip);
     createSpan({ cls: "github-meta-label", text: "Milestone" }, row);
     if (milestone.url) {
+      const url = milestone.url;
       const link = createEl(
         "a",
         {
           cls: "github-meta-milestone",
           text: milestone.title,
-          attr: { href: milestone.url, target: "_blank", rel: "noopener" },
+          attr: { href: url, rel: "noopener" },
         },
         row,
       );
-      link.addEventListener("click", (event) => event.stopPropagation());
+      // The href is here for hover/a11y only; every external jump on the GitHub
+      // surface leaves through openInSystemBrowser, never the anchor default.
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openInSystemBrowser(url);
+      });
     } else {
       createSpan({ cls: "github-meta-milestone", text: milestone.title }, row);
     }
