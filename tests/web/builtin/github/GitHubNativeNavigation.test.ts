@@ -904,6 +904,7 @@ describe("GitHub native navigation (A+B)", () => {
         settleRead = resolve;
       }),
     );
+    vi.stubGlobal("open", () => null);
     (list().contentEl.querySelector(".github-row") as HTMLElement).click();
     await settle();
     settleRead(null);
@@ -1025,6 +1026,8 @@ describe("GitHub native navigation (A+B)", () => {
     const list = (): GitHubListView =>
       app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0].view as GitHubListView;
     await until(() => list().contentEl.querySelector(".github-row") !== null, "inbox rows");
+    // This row is mappable: activating it jumps to the browser.
+    vi.stubGlobal("open", () => null);
     (list().contentEl.querySelector(".github-row") as HTMLElement).click();
 
     // Re-target this leaf while the PATCH is still in flight, and hold the new

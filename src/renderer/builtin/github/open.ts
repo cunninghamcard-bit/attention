@@ -212,10 +212,8 @@ export async function openNotificationTarget(
   app: App,
   item: NotificationItem,
   openIn?: OpenIn,
-  /** The leaf the row was activated from, when there is one. A center row must
-   * drive its own tab; the dock has no source leaf and reuses whichever inbox
-   * is open. Third time this bit: a global helper that picks
-   * `getLeavesOfType(...)[0]` always drives someone else's tab. */
+  /** The leaf the row was activated from. A center row supplies its own leaf so
+   * it drives its own tab; the dock has none and reuses an open inbox. */
   source?: WorkspaceLeaf,
 ): Promise<void> {
   const url = notificationWebUrl(item);
