@@ -70,6 +70,38 @@ test("github dock header icons sit on the tree's icon column", async ({ page }) 
   expect(header[0]).toBeCloseTo(tree[0], 0);
 });
 
+/** The owner's actual requirement was never a number — it was "like the file
+ * explorer". So measure it against the file explorer, in the same window, and
+ * let the host be the assertion.
+ *
+ * This is what caught the second half of the bug: the columns can agree with
+ * each other while both sit 20px right of every other dock, because this view
+ * used to cancel the host's reclaim of the empty collapse gutter. */
+test("the dock's rows start where the file explorer's do", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator(".workspace")).toBeVisible();
+
+  // The e2e vault is empty; make one real row to measure the host against.
+  await page.locator('[aria-label="New note"]').first().click();
+  const explorer = page.locator('.workspace-leaf-content[data-type="file-explorer"]');
+  await expect(explorer.locator(".tree-item-self").first()).toBeVisible();
+  const explorerText = await explorer
+    .locator(".tree-item-inner")
+    .first()
+    .evaluate((el) => el.getBoundingClientRect().left);
+
+  const dock = await openDock(page);
+  await expect(dock.locator(".tree-item-self").first()).toBeVisible();
+  const dockText = await dock
+    .locator(".tree-item-inner")
+    .first()
+    .evaluate((el) => el.getBoundingClientRect().left);
+
+  // Within a pixel: the explorer spends the gutter on a folder's chevron, this
+  // dock spends it on a row icon — the same column either way.
+  expect(Math.abs(dockText - explorerText)).toBeLessThanOrEqual(2);
+});
+
 /** Every section is drawn by the same `item()` helper, so in principle one
  * measurement covers them all — but "same code path" is an argument, and the
  * column being off by 18px was also an argument that read fine. Measure the

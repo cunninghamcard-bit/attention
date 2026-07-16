@@ -333,7 +333,7 @@ not a form button — so themes
      owner kept seeing; close it with the two tokens that cause it rather than
      with a measured constant, so a theme retuning either one stays aligned.
      Measured, not reasoned: tests/e2e/github-nav-alignment.spec.ts. */
-  padding-inline-start: calc(var(--size-4-6) - var(--size-2-3));
+  margin-inline-start: calc(var(--size-4-6) - var(--size-4-5) - var(--size-2-3));
 }
 
 .github-nav-view {
@@ -374,18 +374,16 @@ not a form button — so themes
   width: 16px;
   height: 16px;
 }
-/*
- * File-explorer pulls chevron-less leaf icons into the collapse gutter
- * (margin-inline-start: -20px). Inbox is a top-level leaf while PR/Issues/
- * Orgs are folders with a chevron — that pull made Inbox sit further left
- * and look "higher" in the hierarchy. Keep icons in the content flow so
- * Inbox lines up with the group titles at the same tree level.
+/* The host reclaims the collapse gutter for a chevron-less row
+ * (explorer.css: `margin-inline-start: calc(-1 * var(--size-4-5))`), which is
+ * what keeps the file explorer's rows against the left edge. This view used to
+ * cancel that: back when the body mixed chevron-less leaves with real folders,
+ * the pull made the lone leaf read as a level higher than its neighbours.
+ * The body has drawn nothing but leaves since the section switcher moved into
+ * the header, so the override now only spends 20px on a gutter no row fills —
+ * which is exactly the distance from the left edge the owner could see against
+ * the file explorer. Let the host's rule stand.
  */
-.github-nav-view
-  .tree-item-self:not(:has(> .collapse-icon))
-  > .tree-item-icon-inline {
-  margin-inline-start: 0;
-}
 .github-nav-empty {
   padding: var(--size-2-3) var(--size-4-2);
   color: var(--text-muted);
