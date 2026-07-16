@@ -8,6 +8,7 @@ import { ReviewSurface } from "../git/review/ReviewSurface";
 import { GITHUB_VIEW, openCommitDetail } from "./open";
 import { toReviewFiles } from "./patchUtils";
 import type { CommitDetail, GitHubRepositoryRef } from "./types";
+import { linkButton, openInSystemBrowser } from "./widgets";
 
 /** Center detail for a single cloud commit: a compact header plus the shared
  * `ReviewSurface` for the files+diff. No breadcrumb — the persistent left nav
@@ -160,7 +161,7 @@ export class GitCommitView extends ItemView {
     createEl("ins", { text: `+${detail.stats.additions}` }, stats);
     createEl("del", { text: `−${detail.stats.deletions}` }, stats);
     stats.append(` · ${detail.files.length} files`);
-    linkButton(meta, "Open on GitHub", () => window.open(detail.url, "_blank"));
+    linkButton(meta, "Open on GitHub", () => openInSystemBrowser(detail.url));
     if (detail.message.includes("\n"))
       createEl(
         "pre",
@@ -205,12 +206,4 @@ export class GitCommitView extends ItemView {
       onRefresh: () => void this.loadCommit(),
     });
   }
-}
-
-function linkButton(parent: HTMLElement, text: string, action: (event: MouseEvent) => void): void {
-  const button = createEl("button", { cls: "gh-linkish", text, attr: { type: "button" } }, parent);
-  button.addEventListener("click", (event) => {
-    event.stopPropagation();
-    action(event);
-  });
 }
