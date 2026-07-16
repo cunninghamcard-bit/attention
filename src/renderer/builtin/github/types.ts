@@ -403,8 +403,15 @@ export interface GitHubProfile {
   htmlUrl: string;
 }
 
-/** A repository as it appears in a pinned grid (GraphQL `pinnedItems`). */
-export interface PinnedRepository {
+/** A repository rendered as a card — the pinned grid and the Stars list show
+ * the same facts in the same shape, so they share one type and one renderer
+ * rather than two that drift.
+ *
+ * `languageColor` is null when the card came from REST: `/users/{login}/starred`
+ * carries `language` but no colour (checked against the live API), while
+ * GraphQL's `pinnedItems` carries `primaryLanguage.color`. The field was
+ * already nullable, so the difference costs the view nothing. */
+export interface RepositoryCard {
   owner: string;
   repo: string;
   nameWithOwner: string;
@@ -464,7 +471,7 @@ export interface ContributionCalendar {
 /** Everything the Overview section needs in one round trip. */
 export interface GitHubProfileOverview {
   profile: GitHubProfile;
-  pinned: PinnedRepository[];
+  pinned: RepositoryCard[];
   /** Years the year-picker may offer, newest first. **Empty for an
    * organization** — see `GitHubProfile.isOrganization`. */
   contributionYears: number[];
