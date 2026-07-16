@@ -29,6 +29,10 @@ import type {
 
 // jsdom lacks ResizeObserver; the shared ReviewSurface's pierre CodeView needs
 // it. Real desktop/web runtimes provide it natively.
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = function scrollIntoView(): void {};
+}
+
 if (typeof globalThis.ResizeObserver === "undefined") {
   globalThis.ResizeObserver = class {
     observe(): void {}
@@ -868,6 +872,83 @@ describe("GitHub native navigation (A+B)", () => {
     await settle();
     expect(view(1).contentEl.querySelectorAll(".github-row.is-active")).toHaveLength(1);
     expect(view(0).contentEl.querySelectorAll(".github-row.is-active")).toHaveLength(0);
+  });
+
+  it("keeps the focused row when a reload lands after an unmappable click", async () => {
+    const app = await createApp();
+    const discussion: NotificationItem = {
+      id: "n2",
+      unread: true,
+      reason: "subscribed",
+      updatedAt: "2026-07-15T00:00:00Z",
+      title: "A new discussion",
+      type: "Discussion",
+      url: null,
+      repository: "octo/notes",
+      owner: "octo",
+      repo: "notes",
+      subjectUrl: null,
+    };
+    const fetches = vi
+      .spyOn(app.github, "listNotifications")
+      .mockImplementation(async () => [{ ...discussion }]);
+    await openInbox(app);
+    const list = (): GitHubListView =>
+      app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0].view as GitHubListView;
+    await until(() => list().contentEl.querySelector(".github-row") !== null, "inbox rows");
+
+    // mark-read resolves late, so its draw() races the focus we set on click.
+    let settleRead: (v: string | null) => void = () => {};
+    vi.spyOn(app.github, "markNotificationRead").mockReturnValue(
+      new Promise((resolve) => {
+        settleRead = resolve;
+      }),
+    );
+    (list().contentEl.querySelector(".github-row") as HTMLElement).click();
+    await settle();
+    settleRead(null);
+    await settle();
+    await settle();
+
+    // Focus must survive the interleaved redraw — and only one leaf, no reload
+    // of the list we were already standing on.
+    expect(app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)).toHaveLength(1);
+    expect(list().contentEl.querySelector('[data-key="notification:n2"].is-active')).not.toBeNull();
+    // Focusing a row in the list you are already standing on must not refetch
+    // it — that reload is what raced the focus in the first place.
+    expect(fetches).toHaveBeenCalledTimes(1);
+  });
+
+  it("caps the dock at five rows and counts the rest on Open inbox", async () => {
+    const app = await createApp();
+    const many: NotificationItem[] = Array.from({ length: 8 }, (_, i) => ({
+      ...NOTIFICATIONS[0],
+      id: `m${i}`,
+      title: `Notification ${i}`,
+    }));
+    vi.spyOn(app.github, "listNotifications").mockResolvedValue(many);
+    await openGitHubNav(app);
+    const view = nav(app);
+    section(view, "Inbox").click();
+    await until(
+      () => view.contentEl.querySelector('[data-key="inbox:open"]') !== null,
+      "inbox dock",
+    );
+    // A glance, not a wall: the dock caps, the centre tab carries the rest.
+    expect(view.contentEl.querySelectorAll('[data-key^="notification:"]')).toHaveLength(5);
+    expect(view.contentEl.querySelector('[data-key="inbox:open"]')?.textContent).toContain("8");
+  });
+
+  it("keeps Search as the body's first row in every section", async () => {
+    const app = await createApp();
+    await openGitHubNav(app);
+    const view = nav(app);
+    for (const label of ["Inbox", "Pull requests", "Issues", "Organizations"]) {
+      section(view, label).click();
+      await settle();
+      const first = view.contentEl.querySelector(".github-nav-body [data-key]") as HTMLElement;
+      expect(first?.dataset.key, `Search must lead the ${label} body`).toBe("search");
+    }
   });
 
   const listOf = (app: App): GitHubListView =>

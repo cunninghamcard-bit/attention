@@ -215,6 +215,16 @@ export async function openNotificationTarget(
 ): Promise<void> {
   const url = notificationWebUrl(item);
   if (url) return void openInSystemBrowser(url);
+  // Already standing in the center inbox: focus the row in place. Going through
+  // setViewState would rebuild and refetch the very list we are looking at.
+  const inbox = app.workspace
+    .getLeavesOfType(GITHUB_VIEW.list)
+    .find((leaf) => leaf.view?.getState?.()?.kind === "notifications");
+  if (inbox && !openIn) {
+    inbox.view.setEphemeralState({ notificationId: item.id });
+    app.workspace.setActiveLeaf(inbox, { focus: true });
+    return;
+  }
   await openInbox(app, openIn, { notificationId: item.id });
 }
 

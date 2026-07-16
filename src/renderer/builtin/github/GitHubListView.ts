@@ -81,6 +81,7 @@ export class GitHubListView extends ItemView {
   private bodyEl: HTMLElement | null = null;
   private segmentedEl: HTMLElement | null = null;
   private focusId: string | null = null;
+  private focusScrolled = false;
 
   getViewType(): string {
     return GitHubListView.VIEW_TYPE;
@@ -122,6 +123,7 @@ export class GitHubListView extends ItemView {
     // (the FileView pattern) — that is what feeds the native back/forward.
     // Guarded on an actual target change so a re-render never stacks history.
     if (result && this.targetKey() !== previous) result.history = true;
+    if (this.targetKey() !== previous) this.focusId = null;
     // The session follows what is rendered. back()/forward() call setState
     // directly, so this is the only place that can stay in step with them.
     this.app.github.session.setTarget(this.sessionTarget());
@@ -435,10 +437,15 @@ export class GitHubListView extends ItemView {
    * of being translated into some other page. */
   setEphemeralState(state: unknown): void {
     const next = state as { notificationId?: string } | null;
-    this.focusId = next?.notificationId ?? null;
+    if (!next?.notificationId) return;
+    this.focusId = next.notificationId;
+    this.focusScrolled = false;
     this.focusPendingRow();
   }
 
+  /** Re-applied after every draw, not consumed once: a background mark-read
+   * redraws the list, and a one-shot focus would be wiped by whichever redraw
+   * happened to land last. The focus is state, so it survives its own list. */
   private focusPendingRow(): void {
     if (!this.focusId || !this.bodyEl) return;
     const escaped = this.focusId.replace(/["\\]/g, "\\$&");
@@ -447,8 +454,10 @@ export class GitHubListView extends ItemView {
     for (const el of this.bodyEl.querySelectorAll(".github-row.is-active"))
       el.classList.remove("is-active");
     row.classList.add("is-active");
+    if (this.focusScrolled) return;
+    // Scroll once per request, and only after the class is safely applied.
+    this.focusScrolled = true;
     row.scrollIntoView({ block: "nearest" });
-    this.focusId = null;
   }
 
   private openNotification(item: NotificationItem, openIn?: OpenIn): void {
