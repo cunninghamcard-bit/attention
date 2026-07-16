@@ -26,6 +26,7 @@ import type {
   IssueDetail,
   PrSummary,
   RepoContentItem,
+  RepoTreeEntry,
 } from "@web/builtin/github/types";
 
 // jsdom lacks ResizeObserver; the shared ReviewSurface's pierre CodeView needs
@@ -189,6 +190,14 @@ const NOTIFICATIONS: NotificationItem[] = [
     repositoryHtmlUrl: "https://github.com/octo/notes",
   },
 ];
+
+/** Answer `listTree` with a whole (or deliberately truncated) repository.
+ *
+ * The default path reads the tree; `listContents` only answers when GitHub
+ * truncates, so a files-section case has to say which of the two it is testing. */
+function mockTree(app: App, entries: RepoTreeEntry[], truncated = false) {
+  return vi.spyOn(app.github, "listTree").mockResolvedValue({ entries, truncated });
+}
 
 async function createApp(opts?: { authed?: boolean }): Promise<App> {
   const root = document.createElement("div");
@@ -681,8 +690,13 @@ describe("GitHub native navigation (A+B)", () => {
     expect(detail().contentEl.textContent).not.toContain("Repo PR one");
   });
 
-  it("resets transient state when the repo leaf is retargeted", async () => {
+  it("truncated fallback resets its directory cursor when the leaf is retargeted", async () => {
+    // Scoped to the fallback on purpose: `filesPath` is a breadcrumb cursor, and
+    // walking into a subdirectory only exists on the path GitHub forces us onto
+    // when it truncates the tree. Naming the title after the main path would
+    // leave a green test guarding a road nobody drives.
     const app = await createApp();
+    mockTree(app, [{ path: "src/main.ts", type: "blob" }], true);
     const contents = vi
       .spyOn(app.github, "listContents")
       .mockResolvedValue([
@@ -954,10 +968,11 @@ describe("GitHub native navigation (A+B)", () => {
   });
 
   it("highlights only the source repo when two repo tabs share a file path", async () => {
+    // On the tree path, which is where a user actually is: selection identity is
+    // a product behaviour of both UIs, so it must not be left covering only the
+    // fallback.
     const app = await createApp();
-    vi.spyOn(app.github, "listContents").mockResolvedValue([
-      { name: "README.md", path: "README.md", type: "file", size: 1, sha: "", url: "" },
-    ] as RepoContentItem[]);
+    mockTree(app, [{ path: "README.md", type: "blob" }]);
     await openRepo(app, "octo", "notes", "files");
     await openRepo(app, "acme-corp", "platform", "files", "tab");
     const tabs = () => app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE);
@@ -1109,33 +1124,138 @@ describe("GitHub native navigation (A+B)", () => {
     // `lucide-file` for all of them, which is why a repository's files were the
     // only ones in the app drawn as an untyped grey sheet.
     const app = await createApp();
-    vi.spyOn(app.github, "listContents").mockResolvedValue([
-      { name: "src", path: "src", type: "dir", size: 0, sha: "", url: "" },
-      { name: "main.ts", path: "main.ts", type: "file", size: 1, sha: "", url: "" },
-    ] as RepoContentItem[]);
+    mockTree(app, [{ path: "src/main.ts", type: "blob" }]);
     await openRepo(app, "octo", "notes", "files");
     const repo = (): GitHubRepoView =>
       app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)[0].view as GitHubRepoView;
-    await until(() => repo().contentEl.querySelectorAll(".github-row").length === 2, "file rows");
-    const icons = (): HTMLElement[] => [
-      ...repo().contentEl.querySelectorAll<HTMLElement>(".github-row .tree-item-icon-inline"),
-    ];
+    await until(() => repo().contentEl.querySelector(".github-row") !== null, "file rows");
 
     // The resolver stamps the semantic language token it picked; a hand-drawn
     // lucide glyph carries none, so this cannot pass on the old code.
-    const [dir, file] = icons();
-    expect(file.dataset.iconToken).toBeTruthy();
-    expect(file.querySelector("svg.file-type-icon")).not.toBeNull();
-    // A directory is still a directory — the host draws it as a closed folder.
-    expect(dir.dataset.iconToken).toBeUndefined();
+    const file = repo().contentEl.querySelector<HTMLElement>(".github-row .tree-item-icon-inline");
+    expect(file?.dataset.iconToken).toBeTruthy();
+    expect(file?.querySelector("svg.file-type-icon")).not.toBeNull();
+    // A folder is still a folder — the host draws it as a closed/open glyph,
+    // which carries no language token.
+    const folder = repo().contentEl.querySelector<HTMLElement>(".nav-folder-icon");
+    expect(folder?.dataset.iconToken).toBeUndefined();
+  });
+
+  it("folds a directory in place, without buying the tree again", async () => {
+    // The whole case for one listTree over 139 listContents calls evaporates if
+    // every fold re-fetches it. GitNavView's toggle calls its renderBody(),
+    // which redraws loaded data — the same call here would re-enter renderFiles.
+    const app = await createApp();
+    const tree = mockTree(app, [{ path: "src/main.ts", type: "blob" }]);
+    await openRepo(app, "octo", "notes", "files");
+    const repo = (): GitHubRepoView =>
+      app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)[0].view as GitHubRepoView;
+    await until(() => repo().contentEl.querySelector(".nav-folder") !== null, "folder");
+    const row = (): HTMLElement =>
+      repo().contentEl.querySelector(".nav-folder-title") as HTMLElement;
+    // Name the glyph, not its existence: an icon that never changes is still an
+    // svg, so `!== null` would pass on a toggle that forgot to swap it.
+    const glyph = (): string =>
+      repo().contentEl.querySelector(".nav-folder-icon svg")?.getAttribute("class") ?? "";
+    expect(tree).toHaveBeenCalledTimes(1);
+    expect(row().getAttribute("aria-expanded")).toBe("true");
+    expect(glyph()).toContain("lucide-folder-open");
+
+    row().click();
+    expect(row().getAttribute("aria-expanded")).toBe("false");
+    expect(glyph()).toContain("lucide-folder-closed");
+
+    // Keyboard reaches it too: the row says role=button/tabIndex=0, and a row
+    // that claims to be a button has to answer Enter and Space.
+    row().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(row().getAttribute("aria-expanded")).toBe("true");
+    expect(glyph()).toContain("lucide-folder-open");
+    row().dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+    expect(row().getAttribute("aria-expanded")).toBe("false");
+    expect(glyph()).toContain("lucide-folder-closed");
+
+    // Three toggles, still one request.
+    expect(tree).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not carry one repository's folded folders into the next", async () => {
+    // `collapsedFolders` is keyed by path, and paths are a repository's own: two
+    // repos both have a `src`, and the same leaf serves both.
+    const app = await createApp();
+    mockTree(app, [{ path: "src/main.ts", type: "blob" }]);
+    await openRepo(app, "octo", "notes", "files");
+    const repo = (): GitHubRepoView =>
+      app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)[0].view as GitHubRepoView;
+    await until(() => repo().contentEl.querySelector(".nav-folder") !== null, "folder");
+    const row = (): HTMLElement =>
+      repo().contentEl.querySelector(".nav-folder-title") as HTMLElement;
+    row().click();
+    expect(row().getAttribute("aria-expanded")).toBe("false");
+
+    // Same leaf, different repository, same path.
+    await openRepo(app, "acme-corp", "platform", "files");
+    await until(
+      () => repo().contentEl.querySelector(".nav-folder-title") !== null,
+      "second repository's folder",
+    );
+    expect(row().getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("grows one node per directory, not a file leaf beside it", async () => {
+    // `buildFileTree` takes flat *file* paths and derives folders from them, so a
+    // `tree` entry handed to it would grow both a `src` leaf and a `src/` folder
+    // for the same directory. The filter is what keeps the tree honest.
+    const app = await createApp();
+    mockTree(app, [
+      { path: "src", type: "tree" },
+      { path: "src/main.ts", type: "blob" },
+    ]);
+    await openRepo(app, "octo", "notes", "files");
+    const repo = (): GitHubRepoView =>
+      app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)[0].view as GitHubRepoView;
+    await until(() => repo().contentEl.querySelector(".github-row") !== null, "file rows");
+
+    // One folder named src, and no file row claiming to be it.
+    expect(repo().contentEl.querySelectorAll(".nav-folder").length).toBe(1);
+    const fileRows = [...repo().contentEl.querySelectorAll(".github-row")];
+    expect(fileRows.map((row) => row.textContent)).toEqual(["main.ts"]);
+  });
+
+  it("falls back to walking directories when GitHub truncates the tree", async () => {
+    // A truncated response still carries entries — a prefix of them — so a view
+    // that trusted the payload would draw a plausible, silently incomplete tree.
+    // `truncated` is the only signal that says so.
+    const app = await createApp();
+    const tree = mockTree(app, [{ path: "src/main.ts", type: "blob" }], true);
+    const contents = vi
+      .spyOn(app.github, "listContents")
+      .mockResolvedValue([
+        { name: "README.md", path: "README.md", type: "file", size: 1, sha: "", url: "" },
+      ] as RepoContentItem[]);
+    await openRepo(app, "octo", "notes", "files");
+    const repo = (): GitHubRepoView =>
+      app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)[0].view as GitHubRepoView;
+    await until(() => repo().contentEl.querySelector(".github-row") !== null, "file rows");
+
+    expect(tree).toHaveBeenCalled();
+    // It walked the directory instead…
+    expect(contents).toHaveBeenCalled();
+    // …and drew nothing from the partial tree it was handed.
+    expect(repo().contentEl.querySelectorAll(".nav-folder").length).toBe(0);
+    expect(repo().contentEl.textContent).toContain("README.md");
+    expect(repo().contentEl.textContent).not.toContain("main.ts");
+    // The breadcrumb is the fallback's own affordance.
+    expect(repo().contentEl.querySelector(".github-crumbs")).not.toBeNull();
   });
 
   it("forks a second tab from a modified file row activation", async () => {
+    // Also on the tree path: ⌘-activation is shared behaviour, not a breadcrumb
+    // affordance.
     const app = await createApp();
-    vi.spyOn(app.github, "listContents").mockResolvedValue([
-      { name: "a.ts", path: "a.ts", type: "file", size: 1, sha: "", url: "" },
-      { name: "b.ts", path: "b.ts", type: "file", size: 1, sha: "", url: "" },
-    ] as RepoContentItem[]);
+    mockTree(app, [
+      { path: "a.ts", type: "blob" },
+      { path: "b.ts", type: "blob" },
+    ]);
     vi.spyOn(app.github, "getFileContent").mockResolvedValue({
       path: "a.ts",
       size: 1,

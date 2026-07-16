@@ -22,8 +22,12 @@ import type {
   PrListFilter,
   PrSummary,
   RepoContentItem,
+  RepoTree,
+  RepoTreeEntry,
 } from "./types";
 import { avatar, conclusionClass, errorText, formatSize, prStateLabel, treeRow } from "./widgets";
+import { TreeItem } from "../../ui/TreeItem";
+import { buildFileTree, type TreeNode } from "../git/review/reviewNavModel";
 
 const SECTIONS: { id: RepoSection; label: string; icon: string }[] = [
   { id: "overview", label: "Overview", icon: "lucide-book-open" },
@@ -70,6 +74,9 @@ export class GitHubRepoView extends ItemView {
   private issueState: "open" | "closed" | "all" = "open";
   private filesRef = "";
   private filesPath = "";
+  /** Folders the user closed, by path. Collapsed rather than expanded state is
+   * stored so a freshly loaded tree opens up, like the file explorer's. */
+  private collapsedFolders = new Set<string>();
   private query = "";
 
   private bodyEl: HTMLElement | null = null;
@@ -138,6 +145,9 @@ export class GitHubRepoView extends ItemView {
     this.issueState = "open";
     this.filesRef = "";
     this.filesPath = "";
+    // Paths are a repository's own: "src closed" in one repo must not close the
+    // next repository's src when the same leaf is retargeted.
+    this.collapsedFolders.clear();
   }
 
   getState(): Record<string, unknown> {
@@ -734,17 +744,129 @@ export class GitHubRepoView extends ItemView {
 
   // --- Files ---------------------------------------------------------------
 
+  /** A repository's files, as a tree when GitHub will give us one.
+   *
+   * One `listTree` call returns every path in the repository, which is what a
+   * tree needs — `listContents` answers a single directory, and a tree cannot be
+   * built a directory at a time. Oh My GitHub mounts the same file-tree
+   * component here that it uses for a diff's changed files; this is the same
+   * move, onto the tree the git review already had.
+   *
+   * The per-directory browser below is not dead code: GitHub truncates the tree
+   * response for very large repositories, and then the only honest thing left is
+   * to walk it a directory at a time. Deleting it would take the fallback with
+   * it. */
   private async renderFiles(repo: GitHubRepositoryRef): Promise<void> {
     const request = ++this.request;
-    if (!this.filesRef) {
-      try {
-        this.filesRef = await this.app.github.getDefaultBranch(repo);
-      } catch (error) {
-        if (request !== this.request) return;
-        return this.fail(this.list(), error);
-      }
+    if (!(await this.ensureFilesRef(repo, request))) return;
+
+    let tree: RepoTree;
+    try {
+      tree = await this.app.github.listTree(this.filesRef, repo);
+    } catch (error) {
       if (request !== this.request) return;
+      return this.fail(this.list(), error);
     }
+    if (request !== this.request) return;
+    // `truncated` is the only reliable signal — GitHub still returns a prefix of
+    // the entries alongside it, so counting them would answer the wrong question.
+    if (tree.truncated) return this.renderFilesByDirectory(repo, request);
+    this.renderFileTree(repo, tree);
+  }
+
+  private async ensureFilesRef(repo: GitHubRepositoryRef, request: number): Promise<boolean> {
+    if (this.filesRef) return true;
+    try {
+      this.filesRef = await this.app.github.getDefaultBranch(repo);
+    } catch (error) {
+      if (request === this.request) this.fail(this.list(), error);
+      return false;
+    }
+    return request === this.request;
+  }
+
+  /** Every path at once, hung on the tree model the git review uses. */
+  private renderFileTree(repo: GitHubRepositoryRef, tree: RepoTree): void {
+    // Only blobs. `buildFileTree` takes flat *file* paths and derives folders
+    // from them, so feeding it a `tree` entry would grow both a `src` leaf and a
+    // `src/` folder for the same directory.
+    const files = tree.entries.filter((entry) => entry.type === "blob");
+    const list = this.list();
+    if (!files.length) return this.empty(list, "This repository has no files.");
+    for (const node of buildFileTree(files)) this.renderTreeNode(node, list, repo);
+  }
+
+  private renderTreeNode(
+    node: TreeNode<RepoTreeEntry>,
+    parentEl: HTMLElement,
+    repo: GitHubRepositoryRef,
+  ): void {
+    if (node.kind === "folder") {
+      const collapsed = this.collapsedFolders.has(node.path);
+      const item = new TreeItem(parentEl, {
+        itemClass: "nav-folder github-nav-folder",
+        selfClass: "nav-folder-title tappable is-clickable",
+        innerClass: "nav-folder-title-content",
+        childrenClass: "nav-folder-children",
+        collapseClass: "nav-folder-collapse-indicator",
+        iconClass: "nav-folder-icon",
+        collapseIcon: false,
+      });
+      item.setCollapsible(true);
+      item.setCollapsed(collapsed);
+      item.selfEl.setAttribute("role", "button");
+      item.selfEl.tabIndex = 0;
+      setIcon(item.iconEl, collapsed ? "lucide-folder-closed" : "lucide-folder-open");
+      item.innerEl.textContent = node.name;
+      // Fold in place. GitNavView's toggle calls its `renderBody()`, which
+      // redraws already-loaded data — the same call here would re-enter
+      // renderFiles() and buy the whole tree again over the network, so opening
+      // a folder would cost another 800-odd paths. `setCollapsed` hides the
+      // children and sets aria-expanded itself; nothing needs re-rendering.
+      const toggle = (): void => {
+        const next = !this.collapsedFolders.has(node.path);
+        if (next) this.collapsedFolders.add(node.path);
+        else this.collapsedFolders.delete(node.path);
+        item.setCollapsed(next);
+        setIcon(item.iconEl, next ? "lucide-folder-closed" : "lucide-folder-open");
+      };
+      // The chevron's click bubbles to selfEl, so let the row own the toggle and
+      // neuter the chevron's own handler — otherwise it fires twice and no-ops.
+      item.onSelfClick = toggle;
+      item.onCollapseClick = () => {};
+      item.selfEl.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        toggle();
+      });
+      for (const child of node.children) this.renderTreeNode(child, item.childrenEl, repo);
+      return;
+    }
+
+    const row = treeRow(parentEl, { cls: "github-file", key: `file:${node.path}` });
+    // `kind` is the tree's discriminant; the payload's own `type` is GitHub's
+    // word for the same thing and must not be read as one — `type === "file"` is
+    // silently never true.
+    setFileTypeIcon(row.iconEl, node.path);
+    createDiv({ cls: "tree-item-inner-text", text: node.name }, row.innerEl);
+    row.activate(
+      (event) =>
+        void openGitHubDetail(
+          this.app,
+          {
+            kind: "file",
+            path: node.path,
+            ref: this.filesRef,
+            owner: repo.owner,
+            repo: repo.repo,
+          },
+          Keymap.isModEvent(event),
+        ),
+    );
+  }
+
+  /** The pre-tree browser, kept for `truncated: true`. See renderFiles. */
+  private async renderFilesByDirectory(repo: GitHubRepositoryRef, request: number): Promise<void> {
     const crumbs = createDiv("github-crumbs", this.bodyEl!);
     const rootCrumb = createEl(
       "button",
