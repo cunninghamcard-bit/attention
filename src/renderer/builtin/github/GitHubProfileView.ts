@@ -274,44 +274,44 @@ export class GitHubProfileView extends ItemView {
 
   // --- Overview ------------------------------------------------------------
 
-  private renderOverview(request: number): void {
+  private async renderOverview(request: number): Promise<void> {
     const root = createDiv("github-profile-overview", this.bodyEl!);
     const pinnedEl = createDiv("github-profile-block", root);
-    const heatEl = createDiv("github-profile-block", root);
-    // Each block loads and fails alone: a dead GraphQL layer degrades the
-    // block, never the leaf (spec scenario).
-    void this.renderPinned(pinnedEl, request);
-    if (this.profile?.isOrganization) {
-      heatEl.remove();
-    } else {
-      void this.renderContributions(heatEl, request);
-    }
-  }
-
-  private async renderPinned(root: HTMLElement, request: number): Promise<void> {
-    createEl("h3", { cls: "github-profile-heading", text: "Pinned repositories" }, root);
-    const body = createDiv("github-profile-pinned", root);
+    const heatEl = this.profile?.isOrganization ? null : createDiv("github-profile-block", root);
+    // One GraphQL round trip feeds both blocks (pinned + the year list), but
+    // each block still fails alone: an overview rejection degrades Pinned to
+    // its error state while the heatmap loads from its own call.
     const fetch = this.source().getProfileOverview;
-    // No GraphQL layer yet → the round-1 behavior: top repositories stand in,
-    // so the overview is useful rather than a wall of placeholders.
-    if (!fetch) return this.renderTopRepositories(body, request);
-    createDiv({ cls: "github-empty", text: "Loading…" }, body);
-    let overview: GitHubProfileOverview;
-    try {
-      overview = await fetch.call(this.app.github, this.login);
-    } catch (error) {
+    let overview: GitHubProfileOverview | null = null;
+    let overviewError: unknown = null;
+    if (fetch) {
+      createEl("h3", { cls: "github-profile-heading", text: "Pinned repositories" }, pinnedEl);
+      const body = createDiv("github-profile-pinned", pinnedEl);
+      createDiv({ cls: "github-empty", text: "Loading…" }, body);
+      try {
+        overview = await fetch.call(this.app.github, this.login);
+      } catch (error) {
+        overviewError = error;
+      }
       if (request !== this.request) return;
       body.empty();
-      createDiv({ cls: "github-error", text: errorText(error) }, body);
-      return;
+      if (overviewError) {
+        createDiv({ cls: "github-error", text: errorText(overviewError) }, body);
+      } else if (!overview || !overview.pinned.length) {
+        // The data layer answered and the answer is "none" — say so. Dressing
+        // top repositories up as pins would contradict github.com itself.
+        createDiv({ cls: "github-empty", text: "No pinned repositories yet." }, body);
+      } else {
+        for (const pinned of overview.pinned) this.repoCard(body, pinned);
+      }
+    } else {
+      // No GraphQL layer yet → the round-1 behavior: top repositories stand
+      // in, so the overview is useful rather than a wall of placeholders.
+      createEl("h3", { cls: "github-profile-heading", text: "Top repositories" }, pinnedEl);
+      const body = createDiv("github-profile-pinned", pinnedEl);
+      void this.renderTopRepositories(body, request);
     }
-    if (request !== this.request) return;
-    body.empty();
-    if (!overview.pinned.length) {
-      // Fall back to the busiest repositories so the block is never a hole.
-      return void this.renderTopRepositories(body, request);
-    }
-    for (const pinned of overview.pinned) this.repoCard(body, pinned);
+    if (heatEl) void this.renderContributions(heatEl, request, overview?.contributionYears ?? []);
   }
 
   /** One card for pinned and starred alike — one shape, one renderer
@@ -350,7 +350,11 @@ export class GitHubProfileView extends ItemView {
     });
   }
 
-  private async renderContributions(root: HTMLElement, request: number): Promise<void> {
+  private async renderContributions(
+    root: HTMLElement,
+    request: number,
+    years: number[],
+  ): Promise<void> {
     const fetch = this.source().getContributions;
     const heading = createDiv("github-profile-heat-head", root);
     const title = createEl("h3", { cls: "github-profile-heading", text: "Contributions" }, heading);
@@ -377,14 +381,21 @@ export class GitHubProfileView extends ItemView {
         },
         heading,
       );
-    this.yearButton(heading, calendar, request);
+    this.yearButton(heading, calendar, request, years);
     body.empty();
     this.renderHeatmap(body, calendar);
     this.renderStatTiles(root, calendar);
   }
 
-  private yearButton(parent: HTMLElement, calendar: ContributionCalendar, request: number): void {
-    const years = this.contributionYears(calendar);
+  private yearButton(
+    parent: HTMLElement,
+    calendar: ContributionCalendar,
+    request: number,
+    // GraphQL's own contributionYears — the account's real range. Only when
+    // the overview could not supply it does the current calendar stand in.
+    overviewYears: number[],
+  ): void {
+    const years = overviewYears.length ? overviewYears : [calendar.year];
     const button = createEl(
       "button",
       {
@@ -413,17 +424,6 @@ export class GitHubProfileView extends ItemView {
       }
       menu.showAtMouseEvent(event);
     });
-  }
-
-  private contributionYears(calendar: ContributionCalendar): number[] {
-    // Until the overview's contributionYears is threaded through, offer the
-    // account's current year back to its first weeks' year.
-    const first = calendar.weeks[0]?.firstDay?.slice(0, 4);
-    const start = first ? Number(first) : calendar.year;
-    const years: number[] = [];
-    for (let year = Math.max(calendar.year, start); year >= Math.min(calendar.year, start); year--)
-      years.push(year);
-    return years.length ? years : [calendar.year];
   }
 
   /** One cell per day, one column per week — a sequential single-hue scale

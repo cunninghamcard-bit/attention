@@ -276,6 +276,45 @@ describe("GitHubProfileView (org/user profile tab)", () => {
     expect(app.github.session.target).toMatchObject({ kind: "org", org: "ada" });
   });
 
+  it("offers the account's real contribution years and refetches the picked one", async () => {
+    const app = await createApp();
+    await openOrg(app, "ada");
+    const view = profile(app);
+    await until(() => view.contentEl.querySelector(".github-profile-year") !== null, "year button");
+    (view.contentEl.querySelector(".github-profile-year") as HTMLElement).click();
+    // The picker offers GraphQL's own contributionYears — not a range derived
+    // from the visible calendar (which would drop years the fixture has).
+    const items = (): HTMLElement[] => [...document.querySelectorAll<HTMLElement>(".menu-item")];
+    await until(() => items().some((item) => item.textContent?.includes("2025")), "2025 offered");
+    const fetches = (app.github as unknown as { getContributions: ReturnType<typeof vi.fn> })
+      .getContributions;
+    items()
+      .find((item) => item.textContent?.includes("2025"))!
+      .click();
+    await until(
+      () => fetches.mock.calls.some((call) => call[1] === 2025),
+      "refetch for the picked year",
+    );
+  });
+
+  it("shows an honest empty state when the account has no pins", async () => {
+    const app = await createApp();
+    (app.github as unknown as { getProfileOverview: ReturnType<typeof vi.fn> }).getProfileOverview =
+      vi.fn(async () => ({
+        ...OVERVIEW,
+        pinned: [],
+      }));
+    await openOrg(app, "ada");
+    const view = profile(app);
+    // The data layer answered "none" — no top-repositories dressed up as pins.
+    await until(
+      () => view.contentEl.textContent?.includes("No pinned repositories yet.") === true,
+      "empty pinned state",
+    );
+    expect(view.contentEl.querySelectorAll(".github-profile-pin")).toHaveLength(0);
+    expect(view.contentEl.querySelector(".github-profile-pinned .github-row")).toBeNull();
+  });
+
   it("offers an organization only the sections its schema has", async () => {
     const app = await createApp();
     await openOrg(app, "acme-corp");
