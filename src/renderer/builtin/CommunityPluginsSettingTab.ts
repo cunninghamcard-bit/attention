@@ -1,9 +1,14 @@
 import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
-import { Setting, SettingGroup } from "../ui/Setting";
-import { ConfirmationModal } from "../ui/Modal";
-import { CommunityPluginMarketplaceModal } from "./CommunityPluginMarketplaceModal";
+import { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch } from "../core/fuzzy";
+import { Platform } from "../platform/Platform";
+import { renderResults } from "../search/SearchHelpers";
 import { setIcon } from "../ui/Icon";
+import { ConfirmationModal } from "../ui/Modal";
+import { Notice } from "../ui/Notice";
+import { Setting, SettingGroup } from "../ui/Setting";
+import type { CommunityPluginRecord } from "../plugin/CommunityPluginRegistry";
+import { CommunityPluginMarketplaceModal } from "./CommunityPluginMarketplaceModal";
 
 export class CommunityPluginsSettingTab implements SettingTab {
   readonly id = "community-plugins";
@@ -34,83 +39,28 @@ export class CommunityPluginsSettingTab implements SettingTab {
       this.renderRestrictedModeDisclaimer();
       return;
     }
-    this.renderRestrictedModeToggle();
-    this.renderBrowseCommunityPlugins();
-    this.renderCurrentPlugins();
-    this.renderInstalledPlugins();
+    this.renderEnabledSettings();
   }
 
   hide(): void {
     this.containerEl.remove();
   }
 
-  private renderRestrictedModeDisclaimer(): void {
-    const disclaimerEl = document.createElement("div");
-    disclaimerEl.className = "community-plugins-disclaimer";
-    const titleEl = document.createElement("div");
-    titleEl.className = "setting-item-name";
-    titleEl.textContent = "Community plugins are currently restricted";
-    const descEl = document.createElement("div");
-    descEl.className = "setting-item-description";
-    descEl.textContent =
-      "Community plugins can run third-party code. Review plugins carefully before enabling them.";
-    disclaimerEl.append(titleEl, descEl);
-
-    const checklistEl = document.createElement("ul");
-    checklistEl.className = "community-plugins-security-list";
-    for (const text of [
-      "Review the plugin code when possible.",
-      "Prefer open-source plugins.",
-      "Check community audit and reputation.",
-      "Report suspicious behavior.",
-    ]) {
-      const itemEl = document.createElement("li");
-      itemEl.textContent = text;
-      checklistEl.appendChild(itemEl);
-    }
-    disclaimerEl.appendChild(checklistEl);
-    this.containerEl.appendChild(disclaimerEl);
-
-    new Setting(this.containerEl)
-      .setName("Turn on community plugins")
-      .setDesc("Exit restricted mode and allow installed community plugins to load.")
-      .addButton((button) =>
-        button
-          .setCta()
-          .setButtonText("Turn on community plugins")
-          .onClick(() =>
-            this.app.pluginInstaller.setCommunityPluginsEnabled(true).then(() => this.display()),
-          ),
-      );
-
-    new Setting(this.containerEl)
-      .setName("Learn more")
-      .setDesc("Read about plugin security before turning on community plugins.")
-      .addButton((button) =>
-        button.setButtonText("Plugin security").onClick(() => {
-          window.open("https://help.obsidian.md/plugin-security", "_blank");
-        }),
-      );
-  }
-
-  private renderRestrictedModeToggle(): void {
-    const group = new SettingGroup(this.containerEl).setHeading("Restricted mode");
-    group.groupEl.classList.add("community-plugins-restricted-mode", "is-enabled");
-    new Setting(group.itemsEl)
+  private renderEnabledSettings(): void {
+    const root = new SettingGroup(this.containerEl);
+    new Setting(root.itemsEl)
       .setName("Restricted mode")
-      .setDesc("Turn restricted mode on to disable all community plugins in this vault.")
+      .setDesc("Restricted mode is off. Turn on to disable community plugins.")
       .addButton((button) =>
-        button.setButtonText("Turn on restricted mode").onClick(async () => {
+        button.setButtonText("Turn on and reload").onClick(async () => {
           await this.app.pluginInstaller.setCommunityPluginsEnabled(false);
           window.location.reload();
         }),
       );
-  }
 
-  private renderBrowseCommunityPlugins(): void {
-    new Setting(this.containerEl)
-      .setName("Browse community plugins")
-      .setDesc("Search and install community plugins from the marketplace.")
+    new Setting(root.itemsEl)
+      .setName("Community plugins")
+      .setDesc("Browse and install community plugins made by our amazing community.")
       .addButton((button) =>
         button
           .setCta()
@@ -121,155 +71,287 @@ export class CommunityPluginsSettingTab implements SettingTab {
               .open(),
           ),
       );
-  }
 
-  private renderCurrentPlugins(): void {
-    const installed = this.app.communityPlugins.list().filter((record) => record.installed);
+    const installed = this.installedRecords();
     const updates = installed.filter((record) => record.updateAvailable);
-    const group = new SettingGroup(this.containerEl).setHeading("Current plugins");
-    group.groupEl.classList.add("current-community-plugins");
-    new Setting(group.itemsEl)
-      .setName(`${installed.length} installed plugin${installed.length === 1 ? "" : "s"}`)
+    new Setting(root.itemsEl)
+      .setName("Current plugins")
       .setDesc(
-        updates.length > 0
-          ? `${updates.length} update${updates.length === 1 ? "" : "s"} available.`
-          : "All installed plugins are up to date.",
+        `You currently have ${installed.length} plugin${installed.length === 1 ? "" : "s"} installed. ${
+          updates.length > 0
+            ? `Found ${updates.length} plugin${updates.length === 1 ? "" : "s"} to update.`
+            : ""
+        }`,
       )
-      .addButton((button) =>
-        button
-          .setButtonText(updates.length > 0 ? "Update all plugins" : "Check for updates")
-          .onClick(() => {
-            const action =
-              updates.length > 0
-                ? this.app.pluginInstaller.updateAll()
-                : this.app.pluginInstaller.checkForUpdates();
-            return action.then(() => this.display());
-          }),
-      );
-    new Setting(group.itemsEl)
-      .setName("Automatic update check")
-      .setDesc("Check installed community plugins for updates automatically.")
+      .then((setting) => {
+        if (updates.length > 0) {
+          setting.addButton((button) =>
+            button
+              .setCta()
+              .setButtonText("Update all")
+              .onClick(async () => {
+                await this.app.pluginInstaller.updateAll();
+                this.display();
+              }),
+          );
+        } else if (installed.length > 0) {
+          setting.addButton((button) =>
+            button
+              .setCta()
+              .setButtonText("Check for updates")
+              .onClick(async () => {
+                await this.app.pluginInstaller.checkForUpdates();
+                this.display();
+              }),
+          );
+        }
+      });
+
+    new Setting(root.itemsEl)
+      .setName("Automatically check for plugin updates")
+      .setDesc("Periodically check for plugin updates.")
       .addToggle((toggle) =>
         toggle
           .setValue(this.app.pluginInstaller.autoCheckForUpdates)
           .onChange((enabled) => this.app.pluginInstaller.setAutomaticUpdateCheck(enabled)),
       );
-  }
 
-  private renderInstalledPlugins(): void {
-    const group = new SettingGroup(this.containerEl).setHeading("Installed plugins");
-    group.groupEl.classList.add("installed-plugins-container");
-    const searchEl = document.createElement("input");
-    searchEl.className = "setting-group-search";
-    searchEl.type = "text";
-    searchEl.placeholder = "Search installed plugins...";
-    searchEl.value = this.query;
-    group.groupEl.insertBefore(searchEl, group.itemsEl);
-    searchEl.addEventListener("input", () => {
-      this.query = searchEl.value;
-      this.display();
-    });
-
-    const tokens = this.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    const records = this.app.communityPlugins
-      .list()
-      .filter((record) => record.installed)
-      .filter((record) => {
-        const manifest = record.manifest;
-        const haystack =
-          `${manifest.name} ${manifest.author ?? ""} ${manifest.description ?? ""} ${manifest.id}`.toLowerCase();
-        return tokens.length === 0 || tokens.every((token) => haystack.includes(token));
-      })
-      .sort((a, b) => a.manifest.name.localeCompare(b.manifest.name));
-
-    if (records.length === 0) {
-      new Setting(group.itemsEl)
-        .setName("No community plugins installed")
-        .setDesc("Installed community plugins will appear here.")
-        .setDisabled(true);
-      return;
-    }
-
-    for (const record of records) {
-      const manifest = record.manifest;
-      const entry = this.app.pluginMarketplace.getEntry(manifest.id);
-      const setting = new Setting(group.itemsEl)
-        .setName(manifest.name)
-        .setDesc(
-          pluginDescription([
-            record.enabled ? "Enabled" : "Disabled",
-            record.updateAvailable ? "Update available" : null,
-            manifest.version,
-            manifest.author,
-            manifest.description,
-            entry?.downloads === undefined ? null : `${entry.downloads.toLocaleString()} downloads`,
-            entry?.updatedAt ? `Updated ${entry.updatedAt}` : null,
-          ]),
-        )
-        .addToggle((toggle) =>
-          toggle
-            .setValue(record.enabled)
-            .setDisabled(this.app.pluginSecurity.isRestrictedMode())
-            .onChange((enabled) => {
-              const previous = record.enabled;
-              toggle.setDisabled(true);
-              const action = enabled
-                ? this.app.pluginInstaller.enable(manifest.id, true).then((success) => {
-                    if (!success) toggle.setValue(false);
-                  })
-                : this.app.pluginInstaller.disable(manifest.id, true);
-              void action.catch(() => toggle.setValue(previous)).finally(() => this.display());
-            }),
-        );
-      setting.settingEl.classList.add("installed-community-plugin");
-      setting.settingEl.dataset.pluginId = manifest.id;
-      setting.settingEl.classList.toggle("is-enabled", record.enabled);
-      setting.settingEl.classList.toggle("mod-update-available", Boolean(record.updateAvailable));
-      setting.infoEl.classList.add("tappable");
-      setting.infoEl.addEventListener("click", () => this.openPluginInMarketplace(manifest.id));
-      const fundingUrl = (manifest as { fundingUrl?: string }).fundingUrl ?? entry?.fundingUrl;
-      if (fundingUrl) {
-        setting.addExtraButton((button) =>
-          button
-            .setIcon("lucide-heart")
-            .setTooltip("Donate")
-            .onClick(() => window.open(fundingUrl, "_blank")),
-        );
-      }
-      if (record.updateAvailable) {
-        setting.addButton((button) =>
-          button
-            .setCta()
-            .setButtonText("Update")
-            .onClick(() => this.app.pluginInstaller.update(manifest.id).then(() => this.display())),
-        );
-      }
-      if (this.app.plugins.getPlugin(manifest.id) && this.app.setting.getTabById(manifest.id)) {
-        setting.addExtraButton((button) =>
-          button
-            .setIcon("lucide-settings")
-            .setTooltip("Options")
-            .onClick(() => this.app.setting.openTabById(manifest.id)),
-        );
-      }
-      if (this.app.plugins.getPlugin(manifest.id) && this.hasPluginCommands(manifest.id)) {
-        setting.addExtraButton((button) =>
-          button
-            .setIcon("lucide-plus-circle")
-            .setTooltip("Hotkeys")
-            .onClick(() => {
-              this.app.setting.getTabById("hotkeys")?.setQuery?.(manifest.id);
-              this.app.setting.openTabById("hotkeys");
-            }),
-        );
-      }
-      setting.addExtraButton((button) =>
+    const installedGroup = new SettingGroup(this.containerEl)
+      .setHeading("Installed plugins")
+      .addClass("installed-plugins-container")
+      .addExtraButton((button) =>
         button
-          .setIcon("lucide-trash-2")
-          .setTooltip("Uninstall")
-          .onClick(() => this.openUninstallModal(manifest.id)),
+          .setIcon("lucide-refresh-cw")
+          .setTooltip("Reload plugins")
+          .onClick(async () => {
+            await this.app.pluginInstaller.loadManifests();
+            new Notice("Reloaded third-party plugins.");
+            this.display();
+          }),
+      );
+
+    if (Platform.isDesktopApp) {
+      installedGroup.addExtraButton((button) =>
+        button
+          .setIcon("lucide-folder-open")
+          .setTooltip("Open plugins folder")
+          .onClick(() => void this.openPluginsFolder()),
       );
     }
+    if (installed.length > 0) {
+      installedGroup.addSearch((search) =>
+        search
+          .setValue(this.query)
+          .setPlaceholder("Search installed plugins...")
+          .onChange((value) => {
+            this.query = value;
+            this.renderInstalledPluginRows(installedGroup);
+          }),
+      );
+    }
+    this.renderInstalledPluginRows(installedGroup);
+  }
+
+  private renderRestrictedModeDisclaimer(): void {
+    const group = new SettingGroup(this.containerEl).addClass("community-plugins-disclaimer");
+    group.listEl.append(
+      paragraph(
+        "Community plugins, like any other software you install, could potentially cause data integrity and security issues.",
+      ),
+      paragraph("Plugin security is important to us. Here's what we do:"),
+    );
+    this.addSecuritySetting(
+      group,
+      "lucide-inspect",
+      "Initial code review",
+      "Plugins in the official community directory undergo an initial code review by our team before they are listed.",
+    );
+    this.addSecuritySetting(
+      group,
+      "lucide-github",
+      "Open source",
+      "Most plugins are open source on GitHub, so you can inspect the code yourself.",
+    );
+    this.addSecuritySetting(
+      group,
+      "lucide-users",
+      "Peer audit",
+      "We have a large community of developers who watch out for each other.",
+    );
+    this.addSecuritySetting(
+      group,
+      "lucide-bug",
+      "Report mechanism",
+      "We follow up and remove faulty plugins upon user report.",
+    );
+    group.listEl.appendChild(
+      paragraph(
+        "Would you like to exit Restricted Mode to enable community plugins? We strongly recommend making backups of your data before doing so.",
+      ),
+    );
+
+    const actionsEl = document.createElement("div");
+    actionsEl.className = "community-modal-button-container";
+    const enableEl = document.createElement("button");
+    enableEl.className = "mod-cta";
+    enableEl.textContent = "Turn on community plugins";
+    enableEl.addEventListener("click", async () => {
+      enableEl.disabled = true;
+      try {
+        await this.app.pluginInstaller.setCommunityPluginsEnabled(true);
+        this.display();
+      } finally {
+        enableEl.disabled = false;
+      }
+    });
+    actionsEl.appendChild(enableEl);
+    this.containerEl.appendChild(actionsEl);
+
+    const learnMoreEl = paragraph("");
+    const linkEl = document.createElement("a");
+    linkEl.href = "https://help.obsidian.md/plugin-security";
+    linkEl.target = "_blank";
+    linkEl.rel = "noopener";
+    linkEl.textContent = "Learn more about plugin security";
+    learnMoreEl.appendChild(linkEl);
+    this.containerEl.appendChild(learnMoreEl);
+  }
+
+  private addSecuritySetting(
+    group: SettingGroup,
+    icon: string,
+    name: string,
+    description: string,
+  ): void {
+    const setting = new Setting(group.itemsEl).setName(name).setDesc(description);
+    const iconEl = document.createElement("div");
+    iconEl.className = "setting-icon";
+    setIcon(iconEl, icon);
+    setting.settingEl.prepend(iconEl);
+  }
+
+  private renderInstalledPluginRows(group: SettingGroup): void {
+    group.itemsEl.replaceChildren();
+    const query = this.query.trim();
+    const preparedQuery = prepareFuzzyQuery(query);
+    for (const record of this.installedRecords()) {
+      const manifest = record.manifest;
+      const nameMatch = query ? fuzzyMatch(preparedQuery, manifest.name) : null;
+      const authorMatch =
+        query && manifest.author ? fuzzyMatch(preparedQuery, manifest.author) : null;
+      const descMatch =
+        query && manifest.description ? fuzzyMatch(preparedQuery, manifest.description) : null;
+      if (query && !nameMatch && !authorMatch && !descMatch) continue;
+      this.renderInstalledPlugin(group, record, nameMatch, authorMatch, descMatch);
+    }
+  }
+
+  private renderInstalledPlugin(
+    group: SettingGroup,
+    record: CommunityPluginRecord,
+    nameMatch: FuzzyMatch | null,
+    authorMatch: FuzzyMatch | null,
+    descMatch: FuzzyMatch | null,
+  ): void {
+    const manifest = record.manifest;
+    const entry = this.app.pluginMarketplace.getEntry(manifest.id);
+    const description = document.createDocumentFragment();
+    if (manifest.version) {
+      const versionEl = document.createElement("div");
+      versionEl.textContent = `Version: ${manifest.version}`;
+      description.appendChild(versionEl);
+    }
+    if (manifest.author) {
+      const authorEl = document.createElement("div");
+      authorEl.append("By ");
+      renderResults(authorEl, manifest.author, authorMatch);
+      description.appendChild(authorEl);
+    }
+    if (manifest.description) {
+      const descEl = document.createElement("div");
+      renderResults(descEl, manifest.description, descMatch);
+      description.appendChild(descEl);
+    }
+
+    const setting = new Setting(group.itemsEl).setDesc(description);
+    setting.settingEl.classList.add("installed-community-plugin");
+    setting.settingEl.dataset.pluginId = manifest.id;
+    renderResults(setting.nameEl, manifest.name, nameMatch);
+
+    if (record.updateAvailable) {
+      setting.addButton((button) =>
+        button
+          .setCta()
+          .setButtonText("Update")
+          .setTooltip(`Update to version ${record.latestVersion ?? entry?.manifest.version ?? ""}`)
+          .onClick(async () => {
+            await this.app.pluginInstaller.update(manifest.id);
+            this.display();
+          }),
+      );
+    }
+
+    let optionsEl: HTMLElement | null = null;
+    setting.addExtraButton((button) => {
+      optionsEl = button.extraSettingsEl;
+      button
+        .setIcon("lucide-settings")
+        .setTooltip("Options")
+        .onClick(() => this.app.setting.openTabById(manifest.id));
+    });
+    let hotkeysEl: HTMLElement | null = null;
+    setting.addExtraButton((button) => {
+      hotkeysEl = button.extraSettingsEl;
+      button
+        .setIcon("lucide-plus-circle")
+        .setTooltip("Hotkeys")
+        .onClick(() => {
+          this.app.setting.getTabById("hotkeys")?.setQuery?.(manifest.id);
+          this.app.setting.openTabById("hotkeys");
+        });
+    });
+    const loaded = Boolean(this.app.plugins.getPlugin(manifest.id));
+    if (optionsEl)
+      optionsEl.style.display =
+        loaded && Boolean(this.app.setting.getTabById(manifest.id)) ? "" : "none";
+    if (hotkeysEl)
+      hotkeysEl.style.display = loaded && this.hasPluginCommands(manifest.id) ? "" : "none";
+
+    const fundingUrl =
+      (manifest as typeof manifest & { fundingUrl?: string }).fundingUrl ?? entry?.fundingUrl;
+    if (fundingUrl) {
+      setting.addExtraButton((button) =>
+        button
+          .setIcon("lucide-heart")
+          .setTooltip(`Donate to support ${manifest.name}`)
+          .onClick(() => window.open(String(fundingUrl), "_blank", "noopener")),
+      );
+    }
+    setting.addExtraButton((button) =>
+      button
+        .setIcon("lucide-trash-2")
+        .setTooltip("Uninstall")
+        .onClick(() => this.openUninstallModal(manifest.id)),
+    );
+    setting.addToggle((toggle) =>
+      toggle.setValue(record.enabled).onChange(async (enabled) => {
+        if (enabled) {
+          const success = await this.app.pluginInstaller.enable(manifest.id, true);
+          if (!success) toggle.setValue(false);
+        } else await this.app.pluginInstaller.disable(manifest.id, true);
+        this.display();
+      }),
+    );
+
+    setting.infoEl.style.cursor = "pointer";
+    setting.infoEl.addEventListener("click", () => this.openPluginInMarketplace(manifest.id));
+  }
+
+  private installedRecords(): CommunityPluginRecord[] {
+    return this.app.communityPlugins
+      .list()
+      .filter((record) => record.installed)
+      .sort((left, right) => left.manifest.name.localeCompare(right.manifest.name));
   }
 
   private hasPluginCommands(pluginId: string): boolean {
@@ -286,7 +368,9 @@ export class CommunityPluginsSettingTab implements SettingTab {
   private openUninstallModal(pluginId: string): void {
     const modal = new ConfirmationModal(this.app)
       .setTitle("Uninstall plugin")
-      .setContent("Are you sure you want to uninstall this plugin?")
+      .setContent(
+        "Are you sure you want to uninstall this plugin? This will delete the folder of the plugin.",
+      )
       .addButton("mod-warning", "Uninstall", async () => {
         await this.app.pluginInstaller.uninstall(pluginId);
         modal.close();
@@ -295,8 +379,16 @@ export class CommunityPluginsSettingTab implements SettingTab {
       .addCancelButton();
     modal.open();
   }
+
+  private async openPluginsFolder(): Promise<void> {
+    const path = this.app.pluginInstaller.getPluginFolder();
+    if (!(await this.app.vault.exists(path))) await this.app.vault.createFolder(path);
+    await this.app.openWithDefaultApp(path);
+  }
 }
 
-function pluginDescription(parts: Array<string | null | undefined>): string {
-  return parts.filter((part): part is string => Boolean(part)).join(" · ");
+function paragraph(text: string): HTMLParagraphElement {
+  const el = document.createElement("p");
+  el.textContent = text;
+  return el;
 }

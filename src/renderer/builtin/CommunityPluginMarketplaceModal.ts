@@ -1,7 +1,14 @@
 import type { App } from "../app/App";
+import { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch } from "../core/fuzzy";
 import { ConfirmationModal, Modal } from "../ui/Modal";
 import { Menu } from "../ui/Menu";
 import { Notice } from "../ui/Notice";
+import { setIcon } from "../ui/Icon";
+import { Setting } from "../ui/Setting";
+import { renderResults } from "../search/SearchHelpers";
+import { Platform } from "../platform/Platform";
+import { formatRelativeDate } from "./git/relativeDate";
+import { compareVersions } from "../core/Version";
 import {
   registerActiveCloseable,
   unregisterActiveCloseable,
@@ -22,8 +29,7 @@ export class CommunityPluginMarketplaceModal extends Modal {
   private readonly detailEl = document.createElement("div");
   private catalogLoading = false;
   private catalogError: string | null = null;
-  private autoOpenRequested = false;
-  private detailClosed = false;
+  private readonly searchMatches = new Map<string, FuzzyMatch>();
   private selectedItemCloseable: ActiveCloseable | null = null;
 
   constructor(app: App) {
@@ -54,49 +60,32 @@ export class CommunityPluginMarketplaceModal extends Modal {
 
   setAutoOpen(pluginId: string): this {
     this.selectedId = pluginId;
-    this.autoOpenRequested = true;
-    this.detailClosed = false;
     return this;
   }
 
   render(): void {
-    this.contentEl.replaceChildren();
     this.sidebarEl.className = "modal-sidebar";
     this.detailEl.className = "community-modal-details";
-    this.contentEl.append(this.sidebarEl, this.detailEl);
-    if (
-      this.selectedId &&
-      !this.app.pluginMarketplace.getEntry(this.selectedId) &&
-      this.autoOpenRequested &&
-      !this.query
-    ) {
+    if (this.sidebarEl.parentElement !== this.contentEl) this.contentEl.prepend(this.sidebarEl);
+    if (this.selectedId && !this.app.pluginMarketplace.getEntry(this.selectedId) && !this.query) {
       this.query = this.selectedId.split("-").join(" ");
     }
     const entries = this.getEntries();
-    let selectedEntry = this.selectedId
+    const selectedEntry = this.selectedId
       ? this.app.pluginMarketplace.getEntry(this.selectedId)
       : null;
     if (this.selectedId && !selectedEntry) {
       this.selectedId = null;
       this.unregisterSelectedItemCloseable();
     }
-    if (!this.selectedId && !this.autoOpenRequested && !this.detailClosed) {
-      this.selectedId = entries[0]?.manifest.id ?? null;
-      selectedEntry = entries[0] ?? null;
-    }
     this.renderSidebar(entries);
     if (selectedEntry) {
-      this.detailClosed = false;
-      if (!this.detailEl.parentElement) this.contentEl.appendChild(this.detailEl);
+      this.contentEl.appendChild(this.detailEl);
       this.renderDetail(selectedEntry);
       this.registerSelectedItemCloseable();
-    } else if (this.autoOpenRequested || this.detailClosed) {
-      this.unregisterSelectedItemCloseable();
-      this.detailEl.replaceChildren();
-      this.detailEl.remove();
     } else {
       this.unregisterSelectedItemCloseable();
-      this.renderDetail(null);
+      this.detailEl.remove();
     }
   }
 
@@ -121,13 +110,22 @@ export class CommunityPluginMarketplaceModal extends Modal {
   }
 
   private getEntries(): MarketplacePluginEntry[] {
-    const entries = this.app.pluginMarketplace
-      .search({ query: this.query })
-      .filter(
-        (entry) =>
-          !this.installedOnly ||
-          Boolean(this.app.communityPlugins.get(entry.manifest.id)?.installed),
+    const query = this.query.trim();
+    const preparedQuery = prepareFuzzyQuery(query);
+    this.searchMatches.clear();
+    const entries = this.app.pluginMarketplace.search().filter((entry) => {
+      if (this.installedOnly && !this.app.communityPlugins.get(entry.manifest.id)?.installed)
+        return false;
+      if (!query) return true;
+      const manifest = entry.manifest;
+      const match = fuzzyMatch(
+        preparedQuery,
+        `${manifest.name}${manifest.author ?? ""}${manifest.description ?? ""}`,
       );
+      if (!match) return false;
+      this.searchMatches.set(manifest.id, match);
+      return true;
+    });
     entries.sort((a, b) => {
       if (this.sort === "alphabetical")
         return a.manifest.name.localeCompare(b.manifest.name, undefined, { sensitivity: "base" });
@@ -140,48 +138,51 @@ export class CommunityPluginMarketplaceModal extends Modal {
   }
 
   private renderSidebar(entries: MarketplacePluginEntry[]): void {
-    this.sidebarEl.replaceChildren();
-    const searchEl = document.createElement("input");
-    searchEl.className = "community-plugin-search";
-    searchEl.type = "search";
-    searchEl.placeholder = "Search community plugins...";
-    searchEl.value = this.query;
-    searchEl.addEventListener("input", () => {
-      this.query = searchEl.value;
-      this.render();
-    });
+    if (this.sidebarEl.childElementCount === 0) {
+      const controlsEl = document.createElement("div");
+      controlsEl.className = "community-modal-controls";
+      new Setting(controlsEl)
+        .addSearch((search) =>
+          search
+            .setValue(this.query)
+            .setPlaceholder("Search community plugins...")
+            .onChange((value) => {
+              this.query = value;
+              this.renderSidebar(this.getEntries());
+            }),
+        )
+        .addButton((button) =>
+          button
+            .setIcon("lucide-sort-asc")
+            .setTooltip("Change sort order")
+            .setClass("clickable-icon")
+            .setClass("community-plugin-sort")
+            .onClick((event) => this.showSortMenu(event)),
+        );
+      new Setting(controlsEl).setName("Show installed only").addToggle((toggle) =>
+        toggle.setValue(this.installedOnly).onChange((value) => {
+          this.installedOnly = value;
+          this.renderSidebar(this.getEntries());
+        }),
+      );
+      const summaryEl = document.createElement("div");
+      summaryEl.className = "community-modal-search-summary u-muted";
+      controlsEl.appendChild(summaryEl);
 
-    const controlsEl = document.createElement("div");
-    controlsEl.className = "community-modal-controls";
-    const sortEl = document.createElement("button");
-    sortEl.type = "button";
-    sortEl.className = "clickable-icon community-plugin-sort";
-    sortEl.dataset.icon = "lucide-sort-asc";
-    sortEl.title = "Sort";
-    sortEl.textContent = sortLabel(this.sort);
-    sortEl.addEventListener("click", (event) => this.showSortMenu(event));
+      const wrapperEl = document.createElement("div");
+      wrapperEl.className = "community-modal-search-results-wrapper";
+      const statusEl = document.createElement("div");
+      statusEl.className = "community-modal-search-results-status";
+      const listEl = document.createElement("div");
+      listEl.className = "community-modal-search-results";
+      wrapperEl.append(statusEl, listEl);
+      this.sidebarEl.append(controlsEl, wrapperEl);
+    }
 
-    const installedLabelEl = document.createElement("label");
-    installedLabelEl.className = "community-plugin-installed-only";
-    const installedInputEl = document.createElement("input");
-    installedInputEl.type = "checkbox";
-    installedInputEl.checked = this.installedOnly;
-    installedInputEl.addEventListener("change", () => {
-      this.installedOnly = installedInputEl.checked;
-      this.render();
-    });
-    installedLabelEl.append(installedInputEl, " Installed only");
-
-    controlsEl.append(searchEl, sortEl, installedLabelEl);
-    const wrapperEl = document.createElement("div");
-    wrapperEl.className = "community-modal-search-results-wrapper";
-    const statusEl = document.createElement("div");
-    statusEl.className = "community-modal-search-results-status";
-    statusEl.textContent = this.catalogLoading
-      ? "Loading community plugins..."
-      : `${entries.length} plugin${entries.length === 1 ? "" : "s"}`;
-    const listEl = document.createElement("div");
-    listEl.className = "community-modal-search-results";
+    const summaryEl = this.sidebarEl.querySelector<HTMLElement>(".community-modal-search-summary")!;
+    summaryEl.textContent = `Showing ${entries.length} plugin${entries.length === 1 ? "" : "s"}`;
+    const listEl = this.sidebarEl.querySelector<HTMLElement>(".community-modal-search-results")!;
+    listEl.replaceChildren();
     if (this.catalogLoading) {
       const loadingEl = document.createElement("div");
       loadingEl.className = "community-modal-empty-state is-loading";
@@ -204,57 +205,68 @@ export class CommunityPluginMarketplaceModal extends Modal {
     }
     if (!this.catalogLoading && !this.catalogError && entries.length === 0) {
       const emptyEl = document.createElement("div");
-      emptyEl.className = "community-modal-empty-state";
-      emptyEl.textContent = "No community plugins found.";
+      emptyEl.className = "community-item";
+      emptyEl.textContent = "No results found.";
       listEl.appendChild(emptyEl);
     }
-    wrapperEl.append(statusEl, listEl);
-
-    this.sidebarEl.append(controlsEl, wrapperEl);
   }
 
   private renderListItem(entry: MarketplacePluginEntry, parentEl: HTMLElement): void {
     const manifest = entry.manifest;
     const record = this.app.communityPlugins.get(manifest.id);
-    const itemEl = document.createElement("button");
-    itemEl.type = "button";
+    const itemEl = document.createElement("div");
     itemEl.className = "community-item tappable";
     itemEl.classList.toggle("is-selected", this.selectedId === manifest.id);
     itemEl.dataset.pluginId = manifest.id;
+    itemEl.tabIndex = 0;
+    itemEl.setAttribute("role", "button");
     const nameEl = document.createElement("div");
     nameEl.className = "community-item-name";
-    nameEl.textContent = manifest.name;
-    if (record?.installed) {
-      const flairEl = document.createElement("span");
-      flairEl.className = "flair mod-pop";
-      flairEl.textContent = "Installed";
-      nameEl.appendChild(flairEl);
-    }
-    if (record?.updateAvailable) {
-      const badgeEl = document.createElement("span");
-      badgeEl.className = "community-item-badge mod-update";
-      badgeEl.textContent = "Update";
-      nameEl.appendChild(badgeEl);
-    }
+    const match = this.searchMatches.get(manifest.id) ?? null;
+    renderResults(nameEl, manifest.name, match);
+    if (record?.installed) appendFlair(nameEl, "Installed", true);
     const authorEl = document.createElement("div");
     authorEl.className = "community-item-author";
-    authorEl.textContent = manifest.author ?? "Unknown author";
-    const descEl = document.createElement("div");
-    descEl.className = "community-item-desc";
-    descEl.textContent = manifest.description ?? "";
-    const downloadsEl = document.createElement("div");
-    downloadsEl.className = "community-item-downloads";
-    const downloadsTextEl = document.createElement("span");
-    downloadsTextEl.className = "community-item-downloads-text";
-    downloadsTextEl.textContent =
-      entry.downloads === undefined ? "" : `${entry.downloads.toLocaleString()} downloads`;
-    downloadsEl.appendChild(downloadsTextEl);
-    const updatedEl = document.createElement("div");
-    updatedEl.className = "community-item-updated";
-    updatedEl.textContent = entry.updatedAt ? `Updated ${entry.updatedAt}` : "";
-    itemEl.append(nameEl, authorEl, downloadsEl, updatedEl, descEl);
-    itemEl.addEventListener("click", () => {
-      this.selectItem(manifest.id);
+    if (manifest.author) {
+      authorEl.append("By ");
+      renderResults(authorEl, manifest.author, match, -manifest.name.length);
+    }
+    itemEl.append(nameEl, authorEl);
+    if (entry.downloads) {
+      const downloadsEl = document.createElement("div");
+      downloadsEl.className = "community-item-downloads";
+      const iconEl = document.createElement("span");
+      setIcon(iconEl, "lucide-download-cloud");
+      const downloadsTextEl = document.createElement("span");
+      downloadsTextEl.className = "community-item-downloads-text";
+      downloadsTextEl.textContent = entry.downloads.toLocaleString();
+      downloadsEl.append(iconEl, downloadsTextEl);
+      itemEl.appendChild(downloadsEl);
+    }
+    if (entry.updatedAt) {
+      const updatedEl = document.createElement("div");
+      updatedEl.className = "community-item-updated";
+      updatedEl.textContent = `Updated ${formatRelativeDate(entry.updatedAt)}`;
+      itemEl.appendChild(updatedEl);
+    }
+    if (manifest.description) {
+      const descEl = document.createElement("div");
+      descEl.className = "community-item-desc";
+      renderResults(
+        descEl,
+        truncate(manifest.description, 200),
+        match,
+        -(manifest.name.length + (manifest.author?.length ?? 0)),
+      );
+      itemEl.appendChild(descEl);
+    }
+    const select = (): void => this.selectItem(manifest.id);
+    itemEl.addEventListener("click", select);
+    itemEl.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        select();
+      }
     });
     parentEl.appendChild(itemEl);
   }
@@ -264,18 +276,27 @@ export class CommunityPluginMarketplaceModal extends Modal {
       this.returnToGridView();
       return;
     }
+    const entry = this.app.pluginMarketplace.getEntry(id);
+    if (!entry) return;
+    this.sidebarEl
+      .querySelector<HTMLElement>(".community-item.is-selected")
+      ?.classList.remove("is-selected");
+    for (const item of this.sidebarEl.querySelectorAll<HTMLElement>(".community-item")) {
+      if (item.dataset.pluginId === id) item.classList.add("is-selected");
+    }
     this.selectedId = id;
-    this.autoOpenRequested = false;
-    this.detailClosed = false;
-    this.render();
+    if (!this.detailEl.parentElement) this.contentEl.appendChild(this.detailEl);
+    this.renderDetail(entry);
+    this.registerSelectedItemCloseable();
   }
 
   private returnToGridView(): void {
     this.unregisterSelectedItemCloseable();
+    this.sidebarEl
+      .querySelector<HTMLElement>(".community-item.is-selected")
+      ?.classList.remove("is-selected");
     this.selectedId = null;
-    this.autoOpenRequested = false;
-    this.detailClosed = true;
-    this.render();
+    this.detailEl.remove();
   }
 
   private registerSelectedItemCloseable(): void {
@@ -291,68 +312,133 @@ export class CommunityPluginMarketplaceModal extends Modal {
     this.selectedItemCloseable = null;
   }
 
-  private renderDetail(entry: MarketplacePluginEntry | null): void {
+  private renderDetail(entry: MarketplacePluginEntry): void {
     this.detailEl.replaceChildren();
-    if (!entry) {
-      const emptyEl = document.createElement("div");
-      emptyEl.className = "community-plugin-detail-empty";
-      emptyEl.textContent = "Select a community plugin.";
-      this.detailEl.appendChild(emptyEl);
-      return;
-    }
-
     const manifest = entry.manifest;
     const record = this.app.communityPlugins.get(manifest.id);
     const installed = Boolean(record?.installed);
     const enabled = Boolean(record?.enabled);
-    const headerEl = document.createElement("div");
-    headerEl.className = "community-modal-info";
-    const titleEl = document.createElement("h2");
+    const updateAvailable = Boolean(
+      record?.updateAvailable ||
+      (record?.manifest.version && compareVersions(manifest.version, record.manifest.version) > 0),
+    );
+
+    const navEl = document.createElement("div");
+    navEl.className = "modal-setting-nav-bar";
+    const backEl = document.createElement("div");
+    backEl.className = "clickable-icon";
+    backEl.setAttribute("aria-label", "Back");
+    setIcon(backEl, "lucide-chevron-left");
+    backEl.addEventListener("click", () => this.returnToGridView());
+    navEl.appendChild(backEl);
+
+    const infoEl = document.createElement("div");
+    infoEl.className = "community-modal-info";
+    const metaEl = document.createElement("div");
+    metaEl.className = "community-modal-meta";
+    const titleEl = document.createElement("div");
     titleEl.className = "community-modal-info-name";
     titleEl.textContent = manifest.name;
-    if (installed) {
-      const flairEl = document.createElement("span");
-      flairEl.className = "flair mod-pop";
-      flairEl.textContent = "Installed";
-      titleEl.appendChild(flairEl);
-    }
-    const statsEl = document.createElement("div");
-    statsEl.className = "community-modal-meta";
-    statsEl.textContent = pluginDescription([
-      entry.downloads === undefined ? null : `${entry.downloads.toLocaleString()} downloads`,
-      `Latest ${manifest.version}`,
-      installed ? `Current ${record?.manifest.version ?? manifest.version}` : null,
-      manifest.author,
-      entry.updatedAt ? `Updated ${entry.updatedAt}` : null,
-      entry.repo,
-    ]);
-    headerEl.append(titleEl, statsEl);
+    if (installed) appendFlair(titleEl, "Installed", true);
+    metaEl.appendChild(titleEl);
 
-    const descEl = document.createElement("p");
-    descEl.className = "community-modal-info-desc";
-    descEl.textContent = manifest.description ?? "";
+    if (entry.downloads) {
+      const downloadsEl = document.createElement("div");
+      downloadsEl.className = "community-modal-info-downloads";
+      const iconEl = document.createElement("span");
+      setIcon(iconEl, "lucide-download-cloud");
+      const textEl = document.createElement("span");
+      textEl.className = "community-modal-info-downloads-text";
+      textEl.textContent = entry.downloads.toLocaleString();
+      downloadsEl.append(iconEl, textEl);
+      metaEl.appendChild(downloadsEl);
+    }
+
+    if (manifest.version) {
+      const versionEl = document.createElement("div");
+      versionEl.className = "community-modal-info-version";
+      versionEl.textContent = `Version: ${manifest.version}`;
+      if (installed && record?.manifest.version)
+        versionEl.append(` (currently installed: ${record.manifest.version})`);
+      metaEl.appendChild(versionEl);
+    }
+
+    if (manifest.author) {
+      const authorEl = document.createElement("div");
+      authorEl.className = "community-modal-info-author";
+      authorEl.append("By ");
+      if (manifest.authorUrl) {
+        const linkEl = document.createElement("a");
+        linkEl.href = manifest.authorUrl;
+        linkEl.target = "_blank";
+        linkEl.rel = "noopener";
+        linkEl.textContent = manifest.author;
+        authorEl.appendChild(linkEl);
+      } else authorEl.append(manifest.author);
+      metaEl.appendChild(authorEl);
+    }
+
+    const repository = repositoryUrl(entry);
+    if (repository) {
+      const repositoryEl = document.createElement("div");
+      repositoryEl.className = "community-modal-info-repo";
+      repositoryEl.append("Repository: ");
+      const linkEl = document.createElement("a");
+      linkEl.href = repository;
+      linkEl.target = "_blank";
+      linkEl.rel = "noopener";
+      linkEl.textContent = repository;
+      repositoryEl.appendChild(linkEl);
+      metaEl.appendChild(repositoryEl);
+    }
+
+    if (entry.updatedAt && repository) {
+      const updatedEl = document.createElement("div");
+      updatedEl.className = "community-modal-info-repo";
+      updatedEl.append("Last update: ");
+      const linkEl = document.createElement("a");
+      linkEl.href = `${repository}/releases/latest`;
+      linkEl.target = "_blank";
+      linkEl.rel = "noopener";
+      linkEl.textContent = formatRelativeDate(entry.updatedAt);
+      updatedEl.appendChild(linkEl);
+      metaEl.appendChild(updatedEl);
+    }
+
+    if (manifest.description) {
+      const descEl = document.createElement("div");
+      descEl.className = "community-modal-info-desc";
+      descEl.textContent = manifest.description;
+      metaEl.appendChild(descEl);
+    }
+
+    if (!Platform.isDesktopApp && manifest.isDesktopOnly) {
+      const unsupportedEl = document.createElement("div");
+      unsupportedEl.className = "mod-warning";
+      unsupportedEl.textContent = "This plugin does not support your device.";
+      metaEl.appendChild(unsupportedEl);
+    }
 
     const actionsEl = document.createElement("div");
     actionsEl.className = "community-modal-button-container";
-    this.renderActions(entry, actionsEl, installed, enabled, Boolean(record?.updateAvailable));
-
-    const linksEl = document.createElement("div");
-    linksEl.className = "community-modal-info-repo";
-    if (manifest.authorUrl)
-      linksEl.appendChild(this.createExternalButton("Author", manifest.authorUrl));
-    if (entry.repository)
-      linksEl.appendChild(this.createExternalButton("Repository", entry.repository));
+    this.renderActions(entry, actionsEl, installed, enabled, updateAvailable);
+    metaEl.appendChild(actionsEl);
 
     const readmeEl = document.createElement("div");
     readmeEl.className = "community-modal-readme markdown-rendered";
     this.renderReadme(entry, readmeEl);
-
-    this.detailEl.append(headerEl, descEl, actionsEl, linksEl, readmeEl);
+    infoEl.append(metaEl, readmeEl);
+    this.detailEl.append(navEl, infoEl);
   }
 
   private renderReadme(entry: MarketplacePluginEntry, readmeEl: HTMLElement): void {
     if (entry.readme !== undefined) {
-      void MarkdownRenderer.render(this.app, entry.readme || "No README provided.", readmeEl, "");
+      void MarkdownRenderer.render(
+        this.app,
+        resolveReadmeMedia(entry.readme || "This plugin did not provide a README file.", entry),
+        readmeEl,
+        "",
+      ).then(() => fixReadmeMediaUrls(readmeEl, entry));
       return;
     }
     if (entry.readmeState === "loading") {
@@ -366,7 +452,7 @@ export class CommunityPluginMarketplaceModal extends Modal {
       return;
     }
     if (!entry.readmeUrl) {
-      readmeEl.textContent = "No README provided.";
+      readmeEl.textContent = "This plugin did not provide a README file.";
       return;
     }
     readmeEl.textContent = "Loading README...";
@@ -445,6 +531,10 @@ export class CommunityPluginMarketplaceModal extends Modal {
   }
 
   private async install(entry: MarketplacePluginEntry): Promise<void> {
+    if (!Platform.isDesktopApp && entry.manifest.isDesktopOnly) {
+      new Notice("This plugin does not support your device.");
+      return;
+    }
     const pkg = this.app.pluginMarketplace.createPackage(entry.manifest.id);
     if (!pkg) {
       new Notice(`Plugin package is not available: ${entry.manifest.id}`);
@@ -483,8 +573,13 @@ export class CommunityPluginMarketplaceModal extends Modal {
   }
 
   private async uninstall(entry: MarketplacePluginEntry): Promise<void> {
-    await this.app.pluginInstaller.uninstall(entry.manifest.id);
-    this.render();
+    try {
+      await this.app.pluginInstaller.uninstall(entry.manifest.id);
+    } catch (error) {
+      new Notice(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.render();
+    }
   }
 
   private async copyShareLink(entry: MarketplacePluginEntry): Promise<void> {
@@ -504,10 +599,6 @@ export class CommunityPluginMarketplaceModal extends Modal {
     buttonEl.textContent = text;
     buttonEl.addEventListener("click", callback);
     return buttonEl;
-  }
-
-  private createExternalButton(text: string, url: string): HTMLButtonElement {
-    return this.createActionButton(text, () => window.open(url, "_blank"), "");
   }
 
   private showSortMenu(event: MouseEvent): void {
@@ -542,7 +633,7 @@ export class CommunityPluginMarketplaceModal extends Modal {
   private setSort(sort: SortMode): void {
     this.sort = sort;
     window.localStorage?.setItem("communityPluginSortOrder", sort);
-    this.render();
+    this.renderSidebar(this.getEntries());
   }
 }
 
@@ -607,6 +698,7 @@ function fundingLink(url: string): HTMLAnchorElement {
   linkEl.href = url;
   linkEl.textContent = url;
   linkEl.target = "_blank";
+  linkEl.rel = "noopener";
   return linkEl;
 }
 
@@ -614,18 +706,59 @@ function timestamp(value: string | undefined): number {
   return value ? Date.parse(value) || 0 : 0;
 }
 
-function pluginDescription(parts: Array<string | null | undefined>): string {
-  return parts.filter((part): part is string => Boolean(part)).join(" · ");
+function truncate(value: string, limit: number): string {
+  return value.length > limit ? `${value.slice(0, limit)}…` : value;
+}
+
+function appendFlair(parentEl: HTMLElement, text: string, pop = false): void {
+  const flairEl = document.createElement("span");
+  flairEl.className = `flair${pop ? " mod-pop" : ""}`;
+  flairEl.textContent = text;
+  parentEl.appendChild(flairEl);
+}
+
+function repositorySlug(entry: MarketplacePluginEntry): string | null {
+  if (entry.repo) return entry.repo.replace(/^\/+|\/+$/g, "");
+  const match = entry.repository?.match(/^https?:\/\/github\.com\/([^/]+\/[^/#]+)(?:[\/#]|$)/i);
+  return match?.[1]?.replace(/\.git$/i, "") ?? null;
+}
+
+function repositoryUrl(entry: MarketplacePluginEntry): string | null {
+  if (entry.repository) return entry.repository.replace(/\/$/, "");
+  const slug = repositorySlug(entry);
+  return slug ? `https://github.com/${slug}` : null;
+}
+
+function resolveReadmeMedia(markdown: string, entry: MarketplacePluginEntry): string {
+  const slug = repositorySlug(entry);
+  if (!slug) return markdown;
+  const base = `https://raw.githubusercontent.com/${slug}/HEAD/`;
+  return markdown.replace(/(!\[[^\]]*\]\()([^)]+)(\))/g, (whole, prefix, target, suffix) => {
+    const match = target.match(/^<?([^>\s]+)>?(.*)$/);
+    if (!match || /^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(match[1])) return whole;
+    return `${prefix}${base}${match[1].replace(/^\/+/, "")}${match[2]}${suffix}`;
+  });
+}
+
+function fixReadmeMediaUrls(root: HTMLElement, entry: MarketplacePluginEntry): void {
+  const slug = repositorySlug(entry);
+  if (!slug) return;
+  const base = `https://raw.githubusercontent.com/${slug}/HEAD/`;
+  const blobUrl = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.*)$/;
+  for (const media of root.querySelectorAll<HTMLImageElement | HTMLVideoElement>("img, video")) {
+    const src = media.getAttribute("src");
+    if (!src) continue;
+    if (!src.includes(":")) {
+      media.src = `${base}${src.replace(/^\/+/, "")}`;
+      continue;
+    }
+    const match = src.match(blobUrl);
+    if (match)
+      media.src = `https://raw.githubusercontent.com/${match[1]}/${match[2]}/${match[3]}/${match[4]}`;
+  }
 }
 
 function readSortOrder(): SortMode {
   const value = window.localStorage?.getItem("communityPluginSortOrder");
   return value === "update" || value === "release" || value === "alphabetical" ? value : "download";
-}
-
-function sortLabel(sort: SortMode): string {
-  if (sort === "update") return "Recently updated";
-  if (sort === "release") return "Recently released";
-  if (sort === "alphabetical") return "Alphabetical";
-  return "Most downloaded";
 }

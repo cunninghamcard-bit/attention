@@ -28,107 +28,104 @@ describe("CommunityPluginsSettingTab", () => {
     document.querySelectorAll(".modal-container, .notice").forEach((el) => el.remove());
   });
 
-  it("renders restricted mode security guidance and exits restricted mode from the CTA", async () => {
+  it("renders Obsidian restricted-mode disclaimer and exits from the CTA", async () => {
     const app = new App(document.createElement("div"));
     const tab = new CommunityPluginsSettingTab(app);
     tab.display();
 
     expect(tab.containerEl.querySelector(".community-plugins-disclaimer")).not.toBeNull();
-    expect(tab.containerEl.textContent).toContain("Community plugins are currently restricted");
-    expect(tab.containerEl.textContent).toContain("Review the plugin code when possible.");
+    expect(tab.containerEl.querySelectorAll(".setting-icon")).toHaveLength(4);
+    expect(tab.containerEl.textContent).toContain(
+      "Community plugins, like any other software you install, could potentially cause data integrity and security issues.",
+    );
+    expect(tab.containerEl.textContent).toContain("Initial code review");
+    expect(tab.containerEl.textContent).toContain("Open source");
+    expect(tab.containerEl.textContent).toContain("Peer audit");
+    expect(tab.containerEl.textContent).toContain("Report mechanism");
     expect(tab.containerEl.textContent).toContain("Turn on community plugins");
-    expect(tab.containerEl.textContent).toContain("Plugin security");
+    expect(tab.containerEl.textContent).toContain("Learn more about plugin security");
 
     clickButton(tab.containerEl, "Turn on community plugins");
     await flushAsync();
 
     expect(app.pluginSecurity.isRestrictedMode()).toBe(false);
-    expect(tab.containerEl.textContent).toContain("Browse community plugins");
+    expect(tab.containerEl.querySelector(".community-plugins-disclaimer")).toBeNull();
+    expect(tab.containerEl.textContent).toContain("Restricted mode is off");
+    expect(tab.containerEl.textContent).toContain("Community plugins");
   });
 
-  it("renders browse, current plugins and installed plugin state when enabled", () => {
+  it("renders enabled settings in Obsidian order with installed plugin controls", async () => {
     const app = new App(document.createElement("div"));
     app.pluginSecurity.setCommunityPluginsEnabled(true);
+    const manifest = {
+      id: "sample",
+      name: "Sample Plugin",
+      version: "1.2.3",
+      author: "Ada",
+      description: "Adds sample behavior",
+    };
     app.pluginMarketplace.registerEntry({
-      manifest: {
-        id: "sample",
-        name: "Sample Plugin",
-        version: "1.2.3",
-        author: "Ada",
-        description: "Adds sample behavior",
-      },
+      manifest,
       downloads: 1200,
       stars: 42,
       updatedAt: "2026-06-01",
       repository: "https://example.com/repo",
       fundingUrl: "https://example.com/fund",
     });
-    app.communityPlugins.add({
-      manifest: {
-        id: "sample",
-        name: "Sample Plugin",
-        version: "1.2.3",
-        author: "Ada",
-        description: "Adds sample behavior",
-      },
-      installed: true,
-      enabled: true,
-      updateAvailable: true,
-      error: "Failed previously",
+    await app.pluginInstaller.install({
+      manifest,
+      entry: "plugins/sample/main.js",
+      factory: (pluginApp, pluginManifest) =>
+        new SettingsCommunityPlugin(pluginApp, pluginManifest),
     });
+    await app.pluginInstaller.enable("sample");
+    app.communityPlugins.setEnabled("sample", true);
 
     const tab = new CommunityPluginsSettingTab(app);
     tab.display();
 
-    expect(
-      tab.containerEl
-        .querySelector(".community-plugins-restricted-mode")
-        ?.classList.contains("is-enabled"),
-    ).toBe(true);
-    expect(tab.containerEl.textContent).toContain("Browse community plugins");
-    expect(tab.containerEl.textContent).toContain("Current plugins");
-    expect(tab.containerEl.textContent).toContain("1,200 downloads");
-    expect(tab.containerEl.textContent).toContain("Update available");
-    expect(tab.containerEl.textContent).not.toContain("Failed previously");
-    expect(
-      tab.containerEl
-        .querySelector('.installed-community-plugin[data-plugin-id="sample"]')
-        ?.classList.contains("mod-update-available"),
-    ).toBe(true);
-  });
-
-  it("shows enabled community plugin controls when restricted mode is off", () => {
-    const app = new App(document.createElement("div"));
-    app.pluginSecurity.setCommunityPluginsEnabled(true);
-    app.communityPlugins.add({
-      manifest: {
-        id: "enabled",
-        name: "Enabled Plugin",
-        version: "1.0.0",
-      },
-      installed: true,
-      enabled: false,
-    });
-
-    const tab = new CommunityPluginsSettingTab(app);
-    tab.display();
-
-    expect(
-      tab.containerEl
-        .querySelector(".community-plugins-restricted-mode")
-        ?.classList.contains("is-enabled"),
-    ).toBe(true);
-    expect(tab.containerEl.textContent).toContain("Turn on restricted mode");
-    expect(
-      tab.containerEl.querySelector<HTMLInputElement>(
-        '.installed-community-plugin[data-plugin-id="enabled"] input[type="checkbox"]',
-      )?.disabled,
-    ).toBe(false);
-    expect(
-      tab.containerEl.querySelector(
-        '.installed-community-plugin[data-plugin-id="enabled"] .extra-setting-button[aria-label="Uninstall"]',
+    const rootNames = [
+      ...tab.containerEl.querySelectorAll<HTMLElement>(
+        ".setting-group:first-child > .setting-items > .setting-item > .setting-item-info > .setting-item-name",
       ),
-    ).not.toBeNull();
+    ].map((element) => element.textContent);
+    expect(rootNames).toEqual([
+      "Restricted mode",
+      "Community plugins",
+      "Current plugins",
+      "Automatically check for plugin updates",
+    ]);
+    expect(buttonTexts(tab.containerEl)).toContain("Turn on and reload");
+    expect(buttonTexts(tab.containerEl)).toContain("Browse");
+    expect(buttonTexts(tab.containerEl)).toContain("Check for updates");
+
+    const installedGroup = tab.containerEl.querySelector<HTMLElement>(
+      ".installed-plugins-container",
+    );
+    expect(installedGroup?.querySelector(".setting-item-heading")?.textContent).toContain(
+      "Installed plugins",
+    );
+    expect(installedGroup?.querySelector('[aria-label="Reload plugins"]')).not.toBeNull();
+    expect(installedGroup?.querySelector('[aria-label="Open plugins folder"]')).not.toBeNull();
+    expect(installedGroup?.querySelector(".setting-group-search input")).not.toBeNull();
+
+    const row = installedGroup?.querySelector<HTMLElement>(
+      '.installed-community-plugin[data-plugin-id="sample"]',
+    );
+    expect(row?.querySelector(".setting-item-name")?.textContent).toBe("Sample Plugin");
+    expect(row?.querySelector(".setting-item-description")?.textContent).toContain(
+      "Version: 1.2.3",
+    );
+    expect(row?.querySelector(".setting-item-description")?.textContent).toContain("By Ada");
+    expect(row?.querySelector(".setting-item-description")?.textContent).toContain(
+      "Adds sample behavior",
+    );
+    expect(
+      [...(row?.querySelectorAll<HTMLElement>(".extra-setting-button") ?? [])].map((element) =>
+        element.getAttribute("aria-label"),
+      ),
+    ).toEqual(["Options", "Hotkeys", "Donate to support Sample Plugin", "Uninstall"]);
+    expect(row?.querySelector(".checkbox-container")?.classList.contains("is-enabled")).toBe(true);
   });
 
   it("shows loaded plugin options, hotkeys and uninstall confirmation controls", async () => {
@@ -249,9 +246,9 @@ describe("CommunityPluginsSettingTab", () => {
     await flushAsync();
 
     expect(app.communityPlugins.get("updates")?.updateAvailable).toBe(true);
-    expect(tab.containerEl.textContent).toContain("Update all plugins");
+    expect(tab.containerEl.textContent).toContain("Update all");
 
-    clickButton(tab.containerEl, "Update all plugins");
+    clickButton(tab.containerEl, "Update all");
     await flushAsync();
 
     expect(app.communityPlugins.get("updates")?.manifest.version).toBe("1.2.0");
@@ -265,6 +262,12 @@ function clickButton(root: HTMLElement, text: string): void {
   );
   if (!button) throw new Error(`Button not found: ${text}`);
   button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+}
+
+function buttonTexts(root: HTMLElement): string[] {
+  return [...root.querySelectorAll<HTMLButtonElement>("button")].map(
+    (button) => button.textContent?.trim() ?? "",
+  );
 }
 
 function flushAsync(): Promise<void> {
