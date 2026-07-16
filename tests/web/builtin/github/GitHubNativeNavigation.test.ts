@@ -1063,6 +1063,38 @@ describe("GitHub native navigation (A+B)", () => {
     expect(app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)).toHaveLength(1);
   });
 
+  // GitHub keeps draft:true on a draft closed without merging, so an
+  // unconditional draft check would flair this row "draft" and hide that it is
+  // closed. The state word comes from prStateLabel for every surface.
+  it("flairs a closed draft pull request as closed in a query list", async () => {
+    const app = await createApp();
+    vi.spyOn(app.github, "searchInvolvement").mockResolvedValue([
+      {
+        owner: "coder",
+        repo: "ghostty-web",
+        number: 900,
+        title: "Closed while still a draft",
+        state: "closed",
+        isDraft: true,
+        isPullRequest: true,
+        author: ACTOR,
+        createdAt: "2026-07-11T00:00:00Z",
+        updatedAt: "2026-07-15T00:00:00Z",
+        url: "",
+        labels: [],
+        comments: 0,
+      },
+    ]);
+    await openQueryList(app, "pr", "created");
+    await until(
+      () => listOf(app)?.contentEl.querySelector(".github-pr-state") !== null,
+      "state flair",
+    );
+    const flair = listOf(app).contentEl.querySelector(".github-pr-state") as HTMLElement;
+    expect(flair.classList.contains("mod-closed")).toBe(true);
+    expect(flair.classList.contains("mod-draft")).toBe(false);
+  });
+
   it("switches the list query from its tab header", async () => {
     const app = await createApp();
     await openQueryList(app, "pr", "review-requested");
