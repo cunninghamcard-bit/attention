@@ -500,7 +500,7 @@ describe("GitHub native navigation (A+B)", () => {
       body: "issue body",
       assignees: [],
       milestone: null,
-      commentsList: [],
+      timeline: [],
       closedAt: null,
     } satisfies IssueDetail);
     const opened: string[] = [];

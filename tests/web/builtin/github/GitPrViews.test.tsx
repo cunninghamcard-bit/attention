@@ -359,6 +359,68 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     expect(flair.classList.contains("mod-draft")).toBe(false);
   });
 
+  async function conversationOf(app: App): Promise<PrDetailView> {
+    const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
+    await until(() => view.contentEl.querySelector(".git-pr-tab") !== null, "detail tabs");
+    const tab = [...view.contentEl.querySelectorAll(".git-pr-tab")].find((el) =>
+      el.textContent?.includes("Conversation"),
+    ) as HTMLButtonElement;
+    tab?.click();
+    await until(() => view.contentEl.querySelector(".git-pr-review-actions") !== null, "actions");
+    return view;
+  }
+
+  function actionByText(view: PrDetailView, text: string): HTMLButtonElement | undefined {
+    return [...view.contentEl.querySelectorAll(".git-pr-action")].find((el) =>
+      (el.textContent ?? "").includes(text),
+    ) as HTMLButtonElement | undefined;
+  }
+
+  // No new client method: GitHub keeps PRs in the issues namespace, so the
+  // issue state PATCH is what closes a pull request.
+  it("closes a pull request through the issue state endpoint", async () => {
+    const app = await appWithGit();
+    installGithubMocks(app);
+    const update = vi.spyOn(app.github, "updateIssueState").mockResolvedValue(null);
+    await openPrDetail(app, "coder", "ghostty-web", 185);
+    const view = await conversationOf(app);
+
+    actionByText(view, "Close pull request")!.click();
+    await until(() => update.mock.calls.length > 0, "updateIssueState call");
+    expect(update).toHaveBeenCalledWith(185, "closed", {
+      owner: "coder",
+      repo: "ghostty-web",
+      host: "github.com",
+    });
+  });
+
+  it("offers reopen on a closed pull request", async () => {
+    const app = await appWithGit();
+    installGithubMocks(app, { detail: { ...DETAIL, state: "closed" } });
+    const update = vi.spyOn(app.github, "updateIssueState").mockResolvedValue(null);
+    await openPrDetail(app, "coder", "ghostty-web", 185);
+    const view = await conversationOf(app);
+
+    actionByText(view, "Reopen pull request")!.click();
+    await until(() => update.mock.calls.length > 0, "updateIssueState call");
+    expect(update).toHaveBeenCalledWith(185, "open", {
+      owner: "coder",
+      repo: "ghostty-web",
+      host: "github.com",
+    });
+  });
+
+  it("offers no state toggle on a merged pull request", async () => {
+    const app = await appWithGit();
+    installGithubMocks(app, { detail: { ...DETAIL, state: "merged" } });
+    await openPrDetail(app, "coder", "ghostty-web", 185);
+    const view = await conversationOf(app);
+
+    // Merged is terminal — neither action is on offer.
+    expect(actionByText(view, "Close pull request")).toBeUndefined();
+    expect(actionByText(view, "Reopen pull request")).toBeUndefined();
+  });
+
   it("approves through the GitHub API", async () => {
     const submitCalls: string[] = [];
     const app = await appWithGit();

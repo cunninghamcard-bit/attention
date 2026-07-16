@@ -76,17 +76,25 @@ describe("GitHubClient issues/actions/files/inbox/merge", () => {
             assignees: [],
           },
         },
-        "GET /repos/coder/ghostty-web/issues/10/comments?per_page=100": {
+        "GET /repos/coder/ghostty-web/issues/10/timeline?per_page=100": {
           status: 200,
           text: "",
           json: [
             {
+              event: "commented",
               id: 1,
               user: { login: "rev" },
               body: "hi",
               created_at: "2026-01-02T00:00:00Z",
               updated_at: "",
               html_url: "",
+            },
+            {
+              event: "labeled",
+              id: 2,
+              actor: { login: "card" },
+              created_at: "2026-01-02T01:00:00Z",
+              label: { name: "bug", color: "d73a4a" },
             },
           ],
         },
@@ -95,7 +103,19 @@ describe("GitHubClient issues/actions/files/inbox/merge", () => {
     );
     const detail = await client.getIssue(REPO, 10);
     expect(detail.body).toBe("Body");
-    expect(detail.commentsList[0].body).toBe("hi");
+    // The timeline stands in for the comments endpoint: comments and events
+    // arrive from one call, told apart by kind.
+    expect(detail.timeline).toHaveLength(2);
+    const comment = detail.timeline[0];
+    expect(comment.kind).toBe("comment");
+    if (comment.kind === "comment") expect(comment.body).toBe("hi");
+    const event = detail.timeline[1];
+    expect(event.kind).toBe("event");
+    if (event.kind === "event") {
+      expect(event.event).toBe("labeled");
+      expect(event.label?.name).toBe("bug");
+      expect(event.actor.login).toBe("card");
+    }
   });
 
   it("lists workflow runs and run detail jobs", async () => {

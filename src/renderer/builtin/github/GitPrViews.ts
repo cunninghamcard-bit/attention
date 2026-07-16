@@ -240,6 +240,30 @@ export class PrDetailView extends ItemView {
     const comment = button(actions, "Comment", "git-pr-action mod-cta");
     const approve = button(actions, "Approve", "git-pr-action mod-approve");
     const changes = button(actions, "Request changes", "git-pr-action mod-request-changes");
+    // A merged pull request has no open/closed toggle left to offer. No new
+    // API: GitHub keeps pull requests in the issues namespace, so the issue
+    // state PATCH already drives them.
+    if (detail.state !== "merged") {
+      const open = detail.state === "open";
+      const state = button(
+        actions,
+        open ? "Close pull request" : "Reopen pull request",
+        "git-pr-action",
+      );
+      state.addEventListener(
+        "click",
+        () =>
+          void this.submit(
+            () =>
+              this.app.github.updateIssueState(
+                detail.number,
+                open ? "closed" : "open",
+                this.repo ?? undefined,
+              ),
+            open ? "Pull request closed" : "Pull request reopened",
+          ),
+      );
+    }
     comment.disabled = true;
     changes.disabled = true;
     input.addEventListener("input", () => {

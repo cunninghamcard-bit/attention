@@ -409,8 +409,67 @@ and review mode. */
   border-bottom: 0;
   padding: 4px 10px;
 }
-.gh-detail-scroll { overflow: auto; flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+/* container-type so the issue layout below can answer to the leaf's width and
+   not the window's — a leaf in a split is narrow while the window is not.
+   Same idiom as .review-scroll in git-review.css. */
+.gh-detail-scroll { overflow: auto; flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px; container-type: inline-size; }
 .gh-detail-head { display: flex; flex-direction: column; gap: 6px; }
+
+/* Issue body beside its meta column (the OMG issue-page shape). */
+.gh-issue-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.gh-issue-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gh-issue-meta {
+  flex: 0 0 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* The column is the first thing to go when the leaf is narrow: the body reads
+   without it, and GitHub drops it at the same sort of width. */
+@container (max-width: 720px) {
+  .gh-issue-layout { flex-direction: column; }
+  .gh-issue-meta { flex-basis: auto; width: 100%; }
+}
+.gh-meta-section {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.gh-meta-heading {
+  width: 100%;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-medium);
+}
+.gh-timeline-event {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+.gh-timeline-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--background-modifier-border);
+}
+.gh-timeline-dot.mod-closed { background: var(--color-red, #f85149); }
+.gh-timeline-dot.mod-reopened { background: var(--color-green, #3fb950); }
+.gh-timeline-dot.mod-merged { background: var(--color-purple, #a371f7); }
 .gh-card {
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);

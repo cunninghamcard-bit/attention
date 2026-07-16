@@ -25,8 +25,9 @@ const ISSUE: IssueDetail = {
   body: "Body text",
   assignees: [{ login: "bob", avatarUrl: "", url: "" }],
   milestone: { title: "v1", url: "https://github.com/acme/attention/milestone/1" },
-  commentsList: [
+  timeline: [
     {
+      kind: "comment",
       id: "1",
       author: ACTOR,
       body: "Looks good",
@@ -79,7 +80,7 @@ describe("GitHub issue detail (#5)", () => {
     }
   }
 
-  it("renders labels, assignees and milestone from issue detail", async () => {
+  it("renders assignees, labels, milestone and participants in the meta column", async () => {
     const app = await boot();
     vi.spyOn(app.github, "getIssue").mockResolvedValue(ISSUE);
     await openGitHubDetail(app, {
@@ -90,13 +91,62 @@ describe("GitHub issue detail (#5)", () => {
     });
     const view = app.workspace.getLeavesOfType(GitHubDetailView.VIEW_TYPE)[0]
       ?.view as GitHubDetailView;
-    await until(() => view.contentEl.querySelector(".github-meta-strip") !== null, "meta strip");
-    const text = view.contentEl.textContent ?? "";
-    expect(text).toContain("bug");
-    expect(text).toContain("ux");
-    expect(text).toContain("bob");
-    expect(text).toContain("v1");
-    expect(text).toContain("Close issue");
+    await until(() => view.contentEl.querySelector(".gh-issue-meta") !== null, "meta column");
+    // The spec puts all four, and Close/Reopen, in the column — not a strip
+    // over the body.
+    const column = view.contentEl.querySelector(".gh-issue-meta")!.textContent ?? "";
+    expect(column).toContain("Assignees");
+    expect(column).toContain("bob");
+    expect(column).toContain("Labels");
+    expect(column).toContain("bug");
+    expect(column).toContain("ux");
+    expect(column).toContain("Milestone");
+    expect(column).toContain("v1");
+    expect(column).toContain("Participants");
+    expect(column).toContain("Close issue");
+    expect(view.contentEl.querySelector(".github-meta-strip")).toBeNull();
+  });
+
+  it("derives participants from the author and the people who commented", async () => {
+    const app = await boot();
+    // grace comments first and ada (the author) comments after, so the author
+    // can only lead this list by being seeded — not by falling out of the
+    // comment order. ada commenting twice must not double her.
+    vi.spyOn(app.github, "getIssue").mockResolvedValue({
+      ...ISSUE,
+      timeline: [
+        {
+          kind: "comment",
+          id: "c1",
+          author: { login: "grace", avatarUrl: "", url: "" },
+          body: "first",
+          createdAt: "2026-07-02T00:10:00Z",
+          updatedAt: "",
+          url: "",
+        },
+        ISSUE.timeline[0],
+        {
+          kind: "comment",
+          id: "c3",
+          author: ACTOR,
+          body: "again",
+          createdAt: "2026-07-02T02:00:00Z",
+          updatedAt: "",
+          url: "",
+        },
+      ],
+    });
+    await openGitHubDetail(app, { kind: "issue", number: 42, owner: "acme", repo: "attention" });
+    const view = app.workspace.getLeavesOfType(GitHubDetailView.VIEW_TYPE)[0]
+      ?.view as GitHubDetailView;
+    await until(() => view.contentEl.querySelector(".gh-issue-meta") !== null, "meta column");
+
+    const logins = [...view.contentEl.querySelectorAll(".gh-meta-section")]
+      .find((s) => (s.textContent ?? "").startsWith("Participants"))!
+      .querySelectorAll(".github-meta-person-login");
+    // Author first, then commenters, each once. bob is only an assignee, so
+    // REST cannot see him as a participant at all.
+    expect([...logins].map((el) => el.textContent)).toEqual(["ada", "grace"]);
   });
 
   it("closes an issue through updateIssueState and reloads", async () => {
@@ -131,6 +181,65 @@ describe("GitHub issue detail (#5)", () => {
       host: "github.com",
     });
     expect(getIssue).toHaveBeenCalledTimes(2);
+  });
+
+  it("interleaves comments and events in one timeline", async () => {
+    const app = await boot();
+    vi.spyOn(app.github, "getIssue").mockResolvedValue({
+      ...ISSUE,
+      timeline: [
+        {
+          kind: "event",
+          id: "e1",
+          event: "labeled",
+          actor: { login: "grace", avatarUrl: "", url: "" },
+          createdAt: "2026-07-02T00:30:00Z",
+          label: { name: "bug", color: "d73a4a", description: null },
+          assignee: null,
+          milestone: null,
+          rename: null,
+        },
+        ISSUE.timeline[0],
+        {
+          kind: "event",
+          id: "e2",
+          event: "closed",
+          actor: { login: "grace", avatarUrl: "", url: "" },
+          createdAt: "2026-07-02T02:00:00Z",
+          label: null,
+          assignee: null,
+          milestone: null,
+          rename: null,
+        },
+        {
+          // GitHub emits plenty the issue body never shows; an unknown event
+          // must be skipped, not printed as a bare name.
+          kind: "event",
+          id: "e3",
+          event: "subscribed",
+          actor: { login: "grace", avatarUrl: "", url: "" },
+          createdAt: "2026-07-02T03:00:00Z",
+          label: null,
+          assignee: null,
+          milestone: null,
+          rename: null,
+        },
+      ],
+    });
+    await openGitHubDetail(app, { kind: "issue", number: 42, owner: "acme", repo: "attention" });
+    const view = app.workspace.getLeavesOfType(GitHubDetailView.VIEW_TYPE)[0]
+      ?.view as GitHubDetailView;
+    await until(() => view.contentEl.querySelector(".gh-timeline-event") !== null, "timeline");
+
+    const main = view.contentEl.querySelector(".gh-issue-main") as HTMLElement;
+    const rows = [...main.querySelectorAll(".gh-card, .gh-timeline-event")].map(
+      (el) => el.textContent ?? "",
+    );
+    // Body card first, then the run in order: event, comment, event.
+    expect(rows[1]).toContain("added the bug label");
+    expect(rows[2]).toContain("Looks good");
+    expect(rows[3]).toContain("closed this");
+    expect(main.textContent).not.toContain("subscribed");
   });
 
   it("renderMetaStrip is a no-op when there is no meta", () => {
