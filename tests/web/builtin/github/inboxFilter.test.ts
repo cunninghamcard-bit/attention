@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { matchNotifications } from "@web/builtin/github/GitHubListView";
-import type { NotificationItem } from "@web/builtin/github/types";
+import { matchNotifications, matchSearchItems } from "@web/builtin/github/GitHubListView";
+import type { GitHubSearchItem, NotificationItem } from "@web/builtin/github/types";
 
 const item = (over: Partial<NotificationItem>): NotificationItem => ({
   id: "n",
@@ -54,5 +54,60 @@ describe("inbox filter language", () => {
     expect(ids("alpha")).toEqual(["a"]);
     expect(ids("platform")).toEqual(["b", "c"]);
     expect(ids("is:unread gamma")).toEqual(["c"]);
+  });
+});
+
+const pr = (over: Partial<GitHubSearchItem>): GitHubSearchItem => ({
+  owner: "octo",
+  repo: "notes",
+  number: 1,
+  title: "Some change",
+  state: "open",
+  isDraft: false,
+  isPullRequest: true,
+  author: { login: "ada", avatarUrl: "", url: "" },
+  createdAt: "",
+  updatedAt: "",
+  url: "",
+  labels: [],
+  comments: 0,
+  ...over,
+});
+
+describe("query list filter language", () => {
+  const items = [
+    pr({
+      number: 1,
+      title: "Alpha",
+      state: "open",
+      author: { login: "ada", avatarUrl: "", url: "" },
+    }),
+    pr({
+      number: 2,
+      title: "Beta",
+      state: "closed",
+      repo: "platform",
+      owner: "acme",
+      author: { login: "grace", avatarUrl: "", url: "" },
+    }),
+    pr({ number: 3, title: "Gamma", state: "open", isDraft: true }),
+  ];
+  const nums = (query: string): number[] => matchSearchItems(items, query).map((i) => i.number);
+
+  it("filters by state, the qualifier form of the header control", () => {
+    expect(nums("state:open")).toEqual([1, 3]);
+    expect(nums("state:closed")).toEqual([2]);
+  });
+
+  it("filters by draft, repo and author", () => {
+    expect(nums("is:draft")).toEqual([3]);
+    expect(nums("repo:acme")).toEqual([2]);
+    expect(nums("author:ada")).toEqual([1, 3]);
+  });
+
+  it("composes, and still matches plain text", () => {
+    expect(nums("state:open is:draft")).toEqual([3]);
+    expect(nums("alpha")).toEqual([1]);
+    expect(nums("state:open alpha")).toEqual([1]);
   });
 });

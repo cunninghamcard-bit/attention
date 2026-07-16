@@ -39,6 +39,36 @@ const INBOX_OPERATORS: FilterOperator[] = [
 
 /** Free text matches title or repo; qualifiers narrow. Unknown text is a plain
  * substring match, so typing before learning the language still works. */
+/** The query list's filter language. `state:` is the qualifier form of the
+ * header's open/closed control — the header stays the primary switch. */
+const QUERY_OPERATORS: FilterOperator[] = [
+  { operator: "state:open", description: "open only" },
+  { operator: "state:closed", description: "closed only" },
+  { operator: "is:draft", description: "draft pull requests" },
+  { operator: "repo:", description: "match a repository, e.g. repo:octo/notes" },
+  { operator: "author:", description: "match the author, e.g. author:ada" },
+];
+
+/** Same shape as the inbox language: qualifiers narrow, bare words match text. */
+export function matchSearchItems(items: GitHubSearchItem[], query: string): GitHubSearchItem[] {
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return items.filter((item) =>
+    terms.every((term) => {
+      if (term === "is:draft") return item.isDraft;
+      if (term.startsWith("state:")) return item.state === term.slice(6);
+      if (term.startsWith("repo:"))
+        return `${item.owner}/${item.repo}`.toLowerCase().includes(term.slice(5));
+      if (term.startsWith("author:"))
+        return item.author.login.toLowerCase().includes(term.slice(7));
+      return (
+        item.title.toLowerCase().includes(term) ||
+        `${item.owner}/${item.repo}`.toLowerCase().includes(term) ||
+        item.author.login.toLowerCase().includes(term)
+      );
+    }),
+  );
+}
+
 export function matchNotifications(items: NotificationItem[], query: string): NotificationItem[] {
   const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   return items.filter((item) =>
@@ -246,6 +276,10 @@ export class GitHubListView extends ItemView {
     } else {
       const search = new SearchComponent(controls).setPlaceholder("Filter…").setValue(this.filter);
       search.inputEl.setAttribute("aria-label", "Filter");
+      new GitHubFilterSuggest(this.app, search.inputEl, QUERY_OPERATORS, (value) => {
+        this.filter = value;
+        this.draw();
+      });
       search.onChange((value) => {
         this.filter = value;
         this.draw();
@@ -338,14 +372,7 @@ export class GitHubListView extends ItemView {
     if (this.kind === "notifications") return this.drawNotifications();
     if (this.kind === "org") return this.drawOrgRepos();
     const list = createDiv("github-list", this.bodyEl);
-    const q = this.filter.trim().toLowerCase();
-    const matched = (this.items ?? []).filter(
-      (item) =>
-        !q ||
-        item.title.toLowerCase().includes(q) ||
-        `${item.owner}/${item.repo}`.toLowerCase().includes(q) ||
-        item.author.login.toLowerCase().includes(q),
-    );
+    const matched = matchSearchItems(this.items ?? [], this.filter);
     if (!matched.length) {
       createDiv({ cls: "github-empty", text: "Nothing here." }, list);
       return;
