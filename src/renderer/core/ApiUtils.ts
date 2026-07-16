@@ -90,6 +90,7 @@ export interface RequestUrlResponsePromise extends Promise<RequestUrlResponse> {
 interface NativeRequestUrlResponse {
   status: number;
   headers?: Record<string, string>;
+  body?: ArrayBuffer | ArrayBufferView;
   arrayBuffer?: ArrayBuffer | ArrayBufferView;
   text?: string;
   json?: any;
@@ -622,8 +623,9 @@ async function requestUrlViaFetch(request: RequestUrlParam): Promise<RequestUrlR
 
 function normalizeNativeRequestUrlResponse(response: NativeRequestUrlResponse): RequestUrlResponse {
   const headers = response.headers ?? {};
-  const arrayBuffer = response.arrayBuffer
-    ? normalizeArrayBuffer(response.arrayBuffer)
+  const body = response.arrayBuffer ?? response.body;
+  const arrayBuffer = body
+    ? normalizeArrayBuffer(body)
     : new TextEncoder().encode(response.text ?? "").buffer;
   return createRequestUrlResponse(response.status, headers, arrayBuffer);
 }
@@ -647,8 +649,9 @@ function createRequestUrlResponse(
 }
 
 function normalizeArrayBuffer(data: ArrayBuffer | ArrayBufferView): ArrayBuffer {
-  if (data instanceof ArrayBuffer) return data;
-  const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+  const bytes = ArrayBuffer.isView(data)
+    ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+    : new Uint8Array(data);
   const copy = new Uint8Array(bytes.byteLength);
   copy.set(bytes);
   return copy.buffer;

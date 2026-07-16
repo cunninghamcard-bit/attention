@@ -862,7 +862,7 @@ describe("Obsidian plugin API parity", () => {
       return {
         status: 202,
         headers: { "x-native": "yes" },
-        text: '{"native":true}',
+        body: new TextEncoder().encode('{"native":true}').buffer,
       };
     });
 
