@@ -1,7 +1,10 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
 import { GitHubProfileView } from "@web/builtin/github/GitHubProfileView";
 import { GitHubRepoView } from "@web/builtin/github/GitHubRepoView";
+import { openOrg, refreshGitHub } from "@web/builtin/github/open";
 import type { GithubRepoListItem } from "@web/builtin/github/GitHubService";
 
 // jsdom lacks ResizeObserver; the shared surfaces need it. Real desktop/web
@@ -49,9 +52,6 @@ async function createApp(): Promise<App> {
   document.body.appendChild(root);
   const app = new App(root);
   await app.ready;
-  // The profile view registers through GitHubPlugin once openOrg is re-pointed
-  // (deferred to the #3 merge by contract); tests register it the same way.
-  app.viewRegistry.registerView(GitHubProfileView.VIEW_TYPE, (leaf) => new GitHubProfileView(leaf));
   vi.spyOn(app.github, "getAuth").mockResolvedValue({
     hasToken: true,
     login: "ada",
@@ -66,23 +66,6 @@ async function createApp(): Promise<App> {
   return app;
 }
 
-/** The door openOrg will use once re-pointed at the profile (the #3 merge
- * alignment); tests drive the same view state it will hand over. */
-async function openProfile(
-  app: App,
-  login: string,
-  section: "overview" | "repositories" = "overview",
-): Promise<void> {
-  const leaf =
-    app.workspace.getLeavesOfType(GitHubProfileView.VIEW_TYPE)[0] ?? app.workspace.getLeaf("tab");
-  await leaf.setViewState({
-    type: GitHubProfileView.VIEW_TYPE,
-    active: true,
-    state: { login, section },
-  });
-  app.workspace.setActiveLeaf(leaf, { focus: true });
-}
-
 function profile(app: App): GitHubProfileView {
   return app.workspace.getLeavesOfType(GitHubProfileView.VIEW_TYPE)[0].view as GitHubProfileView;
 }
@@ -93,6 +76,18 @@ async function until(condition: () => boolean, what: string): Promise<void> {
     if (Date.now() - started > 4000) throw new Error(`timeout: ${what}`);
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
+}
+
+/** Sub-view switches go through the header segment — the user's real path. */
+async function toRepositories(app: App): Promise<void> {
+  const view = profile(app);
+  await until(() => view.headerEl.querySelector(".github-profile-nav") !== null, "profile header");
+  (
+    view.headerEl.querySelector(
+      '.github-segmented-control-item[aria-label="Repositories"]',
+    ) as HTMLElement
+  ).click();
+  await until(() => view.getState().section === "repositories", "repositories sub-view");
 }
 
 beforeEach(() => {
@@ -116,7 +111,9 @@ afterEach(() => vi.unstubAllGlobals());
 describe("GitHubProfileView (org/user profile tab)", () => {
   it("opens an organization profile tab", async () => {
     const app = await createApp();
-    await openProfile(app, "acme-corp");
+    // The real production door — GitHubPlugin registers the view type and
+    // openOrg targets it; no test-local registration or open helper.
+    await openOrg(app, "acme-corp");
     const view = profile(app);
     await until(
       () => view.contentEl.querySelector(".github-profile-login")?.textContent === "acme-corp",
@@ -147,7 +144,8 @@ describe("GitHubProfileView (org/user profile tab)", () => {
 
   it("opens a repo tab from the profile repositories", async () => {
     const app = await createApp();
-    await openProfile(app, "acme-corp", "repositories");
+    await openOrg(app, "acme-corp");
+    await toRepositories(app);
     const view = profile(app);
     await until(() => view.contentEl.querySelector(".github-row") !== null, "repo rows");
     (view.contentEl.querySelector(".github-row") as HTMLElement).click();
@@ -167,7 +165,7 @@ describe("GitHubProfileView (org/user profile tab)", () => {
 
   it("renders the signed-in user's profile from the user endpoint", async () => {
     const app = await createApp();
-    await openProfile(app, "ada");
+    await openOrg(app, "ada");
     const view = profile(app);
     await until(
       () => view.contentEl.querySelector(".github-profile-subtitle")?.textContent === "Ada",
@@ -179,15 +177,9 @@ describe("GitHubProfileView (org/user profile tab)", () => {
 
   it("walks profile sub-view switches with the native back control", async () => {
     const app = await createApp();
-    await openProfile(app, "acme-corp");
+    await openOrg(app, "acme-corp");
+    await toRepositories(app);
     const view = profile(app);
-    await until(() => view.headerEl.querySelector(".github-profile-nav") !== null, "header");
-    (
-      view.headerEl.querySelector(
-        '.github-segmented-control-item[aria-label="Repositories"]',
-      ) as HTMLElement
-    ).click();
-    await until(() => view.getState().section === "repositories", "repositories sub-view");
     const leaf = app.workspace.getLeavesOfType(GitHubProfileView.VIEW_TYPE)[0];
     // Sub-views are destinations: back returns to Overview, not out of the tab.
     leaf.history.back();
@@ -199,13 +191,13 @@ describe("GitHubProfileView (org/user profile tab)", () => {
 
   it("re-targets one profile leaf across logins and records history", async () => {
     const app = await createApp();
-    await openProfile(app, "acme-corp");
+    await openOrg(app, "acme-corp");
     await until(
       () =>
         profile(app).contentEl.querySelector(".github-profile-login")?.textContent === "acme-corp",
       "org profile",
     );
-    await openProfile(app, "ada");
+    await openOrg(app, "ada");
     await until(() => profile(app).getState().login === "ada", "user profile");
     expect(app.workspace.getLeavesOfType(GitHubProfileView.VIEW_TYPE)).toHaveLength(1);
     const leaf = app.workspace.getLeavesOfType(GitHubProfileView.VIEW_TYPE)[0];
@@ -215,7 +207,8 @@ describe("GitHubProfileView (org/user profile tab)", () => {
 
   it("filters the repositories list locally", async () => {
     const app = await createApp();
-    await openProfile(app, "acme-corp", "repositories");
+    await openOrg(app, "acme-corp");
+    await toRepositories(app);
     const view = profile(app);
     await until(
       () => view.contentEl.querySelectorAll(".github-row").length === ORG_REPOS.length,
@@ -228,5 +221,37 @@ describe("GitHubProfileView (org/user profile tab)", () => {
     expect(view.contentEl.querySelector(".github-row .tree-item-inner-text")?.textContent).toBe(
       "secrets",
     );
+  });
+
+  it("reloads the active profile through the manual refresh command", async () => {
+    const app = await createApp();
+    await openOrg(app, "acme-corp");
+    await until(() => profile(app).contentEl.querySelector(".github-row") !== null, "initial rows");
+    const fetches = app.github.listOrgRepositories as ReturnType<typeof vi.fn>;
+    const before = fetches.mock.calls.length;
+    // GITHUB_VIEW_TYPES derives from GITHUB_VIEW — the profile must be in it,
+    // or the refresh command silently skips this tab.
+    refreshGitHub(app);
+    await until(() => fetches.mock.calls.length > before, "refetch on refresh");
+  });
+
+  it("keeps the profile nav inside the shared flat header selectors", () => {
+    // jsdom does not compute styles, so lock the structure: the profile nav
+    // must ride the same flat-header rules as the repo/list navs (never a
+    // second copied rule set). The final visual word stays with the owner's
+    // rebuilt-app check.
+    const css = readFileSync(
+      resolve(__dirname, "../../../../src/renderer/styles/product/github-nav.css"),
+      "utf8",
+    );
+    expect(css).toContain(".view-header > .github-profile-nav");
+    expect(css).toContain(".github-profile-nav .github-segmented-control-item");
+    expect(css).toContain(".github-profile-nav .github-segmented-control-item:hover");
+    expect(css).toContain(".github-profile-nav .github-segmented-control-item.is-active");
+    const profileCss = readFileSync(
+      resolve(__dirname, "../../../../src/renderer/styles/product/github-profile.css"),
+      "utf8",
+    );
+    expect(profileCss).not.toContain(".github-segmented-control");
   });
 });

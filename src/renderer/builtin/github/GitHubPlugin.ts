@@ -5,6 +5,7 @@ import { GitCommitView } from "./GitCommitView";
 import { GitHubDetailView } from "./GitHubDetailView";
 import { GitHubListView } from "./GitHubListView";
 import { GitHubNavView } from "./GitHubNavView";
+import { GitHubProfileView } from "./GitHubProfileView";
 import { GitHubRepoView } from "./GitHubRepoView";
 import { PrDetailView } from "./GitPrViews";
 import type { Scope } from "../../app/hotkeys/Scope";
@@ -47,6 +48,10 @@ export function createGitHubPluginDefinition(): InternalPluginDefinition {
       );
       plugin.registerViewType(GitHubRepoView.VIEW_TYPE, (leaf) =>
         withSearchBar(new GitHubRepoView(leaf)),
+      );
+      // The profile is a GitHub center leaf like the rest — ⌘F answers here too.
+      plugin.registerViewType(GitHubProfileView.VIEW_TYPE, (leaf) =>
+        withSearchBar(new GitHubProfileView(leaf)),
       );
       plugin.registerViewType(PrDetailView.VIEW_TYPE, (leaf) =>
         withSearchBar(new PrDetailView(leaf)),

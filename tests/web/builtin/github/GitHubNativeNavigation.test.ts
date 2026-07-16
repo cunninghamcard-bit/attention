@@ -4,6 +4,7 @@ import { Platform } from "@web/platform/Platform";
 import { GitCommitView } from "@web/builtin/github/GitCommitView";
 import { GitHubListView } from "@web/builtin/github/GitHubListView";
 import { GitHubNavView } from "@web/builtin/github/GitHubNavView";
+import { GitHubProfileView } from "@web/builtin/github/GitHubProfileView";
 import { GitHubDetailView } from "@web/builtin/github/GitHubDetailView";
 import { GitHubRepoView } from "@web/builtin/github/GitHubRepoView";
 import { PrDetailView } from "@web/builtin/github/GitPrViews";
@@ -443,9 +444,9 @@ describe("GitHub native navigation (A+B)", () => {
     expect(view.contentEl.querySelector('[data-key="query:pr:review-requested"]')).not.toBeNull();
   });
 
-  // The profile tab replaces this door in the github-profile goal; until then
-  // an organization opens its repository list.
-  it("opens an organization center list of repositories", async () => {
+  // Spec: "An organization opens its profile as a center tab" — the profile
+  // replaced the old org repository list as this door (github-profile goal).
+  it("opens an organization profile tab", async () => {
     const app = await createApp();
     await openGitHubNav(app);
     const view = nav(app);
@@ -455,13 +456,21 @@ describe("GitHub native navigation (A+B)", () => {
       "org row",
     );
     (view.contentEl.querySelector('[data-key="org:acme-corp"]') as HTMLElement).click();
-    const list = (): GitHubListView =>
-      app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0]?.view as GitHubListView;
+    const profile = (): GitHubProfileView | undefined =>
+      app.workspace.getLeavesOfType(GitHubProfileView.VIEW_TYPE)[0]?.view as
+        | GitHubProfileView
+        | undefined;
     await until(
-      () => list()?.contentEl.textContent?.includes("platform") === true,
-      "org repo list",
+      () => profile()?.contentEl.textContent?.includes("acme-corp") === true,
+      "org profile tab",
     );
-    expect(list().getDisplayText()).toBe("acme-corp");
+    expect(profile()?.getDisplayText()).toBe("acme-corp");
+    // Its header offers the Overview | Repositories sub-views.
+    const labels = [
+      ...(profile()?.headerEl.querySelectorAll(".github-profile-nav button") ?? []),
+    ].map((el) => el.getAttribute("aria-label"));
+    expect(labels).toEqual(["Overview", "Repositories"]);
+    expect(app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)).toHaveLength(0);
   });
 
   it("opens a cross-repo query list tab", async () => {

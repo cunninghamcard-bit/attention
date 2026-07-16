@@ -19,6 +19,7 @@ export const GITHUB_VIEW = {
   prDetail: "git-pr",
   commit: "git-commit",
   detail: "github-detail",
+  profile: "github-profile",
 } as const;
 
 /** Light-section center targets (issue / run / file) share one leaf type. */
@@ -77,16 +78,17 @@ export async function openInbox(app: App, openIn?: OpenIn): Promise<void> {
   app.workspace.setActiveLeaf(leaf, { focus: true });
 }
 
-/** An organization — center tab lists that org's repositories (repos stay out of the side).
- * The profile tab replaces this door in the github-profile goal. */
+/** An organization (or the signed-in user) — its profile center tab, identity
+ * head plus Overview | Repositories. The profile's repository rows are the
+ * only door into a repo tab. */
 export async function openOrg(app: App, org: string, openIn?: OpenIn): Promise<void> {
   const login = org.trim();
   if (!login) return;
-  const leaf = centerLeaf(app, GITHUB_VIEW.list, openIn);
+  const leaf = centerLeaf(app, GITHUB_VIEW.profile, openIn);
   await leaf.setViewState({
-    type: GITHUB_VIEW.list,
+    type: GITHUB_VIEW.profile,
     active: true,
-    state: { kind: "org", org: login },
+    state: { login, section: "overview" },
   });
   app.workspace.setActiveLeaf(leaf, { focus: true });
 }

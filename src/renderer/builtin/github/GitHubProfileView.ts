@@ -5,7 +5,7 @@ import { SearchComponent } from "../../ui/Setting";
 import { ItemView } from "../../views/ItemView";
 import type { ViewStateResult } from "../../views/View";
 import { Keymap } from "../../app/hotkeys/Keymap";
-import { openRepo } from "./open";
+import { GITHUB_VIEW, openRepo } from "./open";
 import type { GithubRepoListItem } from "./GitHubService";
 import { avatar, errorText, treeRow } from "./widgets";
 
@@ -28,7 +28,7 @@ const OVERVIEW_REPO_LIMIT = 6;
  * (contribution heatmap, stars / followers) is a follow-up goal by contract.
  */
 export class GitHubProfileView extends ItemView {
-  static readonly VIEW_TYPE = "github-profile";
+  static readonly VIEW_TYPE = GITHUB_VIEW.profile;
 
   /** A navigable center destination: `recordHistory` ignores views that do not
    * declare this, so it is required alongside `result.history` for back/forward. */
