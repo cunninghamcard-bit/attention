@@ -464,7 +464,7 @@ export class GitHubListView extends ItemView {
     // Navigate first. Marking read is bookkeeping: awaiting it would stall the
     // first open on the network and, worse, let two quick clicks arrive in
     // PATCH-completion order — the last click has to win.
-    void openNotificationTarget(this.app, item, openIn);
+    void openNotificationTarget(this.app, item, openIn, this.leaf);
     if (!item.unread) return;
     // The service reports failure as a *returned string*, never a rejection —
     // same shape as markAllNotificationsRead below. Clearing unread on a failed

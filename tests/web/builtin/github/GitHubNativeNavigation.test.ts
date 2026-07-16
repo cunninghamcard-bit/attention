@@ -951,6 +951,45 @@ describe("GitHub native navigation (A+B)", () => {
     }
   });
 
+  it("focuses the row in the inbox tab it was clicked from", async () => {
+    const app = await createApp();
+    const discussion: NotificationItem = {
+      id: "n2",
+      unread: true,
+      reason: "subscribed",
+      updatedAt: "2026-07-15T00:00:00Z",
+      title: "A new discussion",
+      type: "Discussion",
+      url: null,
+      repository: "octo/notes",
+      owner: "octo",
+      repo: "notes",
+      subjectUrl: null,
+    };
+    vi.spyOn(app.github, "listNotifications").mockImplementation(async () => [{ ...discussion }]);
+    await openInbox(app);
+    // A deliberate second inbox tab, as cmd-activate produces.
+    await openInbox(app, "tab");
+    const tabs = () => app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE);
+    await until(() => tabs().length === 2, "two inbox tabs");
+    const view = (i: number): GitHubListView => tabs()[i].view as GitHubListView;
+    await until(
+      () =>
+        view(0).contentEl.querySelector(".github-row") !== null &&
+        view(1).contentEl.querySelector(".github-row") !== null,
+      "rows in both",
+    );
+
+    // Click in the *second* tab: it must focus itself, not the first.
+    (view(1).contentEl.querySelector(".github-row") as HTMLElement).click();
+    await settle();
+    expect(
+      view(1).contentEl.querySelector('[data-key="notification:n2"].is-active'),
+    ).not.toBeNull();
+    expect(view(0).contentEl.querySelector('[data-key="notification:n2"].is-active')).toBeNull();
+    expect(tabs()).toHaveLength(2);
+  });
+
   const listOf = (app: App): GitHubListView =>
     app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0]?.view as GitHubListView;
 
