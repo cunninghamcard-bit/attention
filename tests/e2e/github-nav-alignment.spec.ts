@@ -48,8 +48,19 @@ async function openDock(page: import("@playwright/test").Page) {
   return page.locator('.workspace-leaf-content[data-type="github-nav"]');
 }
 
-const leftEdgesOf = (locator: import("@playwright/test").Locator) =>
-  locator.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().left));
+/** Inset of each element from the left edge of the panel it lives in, rather
+ * than from the window.
+ *
+ * "Distance from the left" is what the eye judges and what the owner reported,
+ * and a panel-relative number says it directly. Window coordinates say it only
+ * once the ribbon and the split have settled — under a loaded machine they read
+ * 0 for a beat, which is not a position at all. Measuring the inset removes the
+ * timing from the question instead of waiting the flake out. */
+const insetsIn = (leaf: import("@playwright/test").Locator, selector: string) =>
+  leaf.evaluate((root, sel) => {
+    const origin = root.getBoundingClientRect().left;
+    return [...root.querySelectorAll(sel)].map((el) => el.getBoundingClientRect().left - origin);
+  }, selector);
 
 test("github dock header icons sit on the tree's icon column", async ({ page }) => {
   const dock = await openDock(page);
@@ -58,8 +69,8 @@ test("github dock header icons sit on the tree's icon column", async ({ page }) 
   await expect(headerIcons.first()).toBeVisible();
   await expect(treeIcons.first()).toBeVisible();
 
-  const header = await leftEdgesOf(headerIcons);
-  const tree = await leftEdgesOf(treeIcons);
+  const header = await insetsIn(dock, ".nav-header .nav-action-button svg.svg-icon");
+  const tree = await insetsIn(dock, ".github-nav-body .tree-item-icon-inline svg.svg-icon");
 
   expect(header.length).toBe(4);
   expect(tree.length).toBeGreaterThan(0);
@@ -82,20 +93,26 @@ test("the dock's rows start where the file explorer's do", async ({ page }) => {
   await expect(page.locator(".workspace")).toBeVisible();
 
   // The e2e vault is empty; make one real row to measure the host against.
+  // A fresh note opens in rename, so commit it and then wait on the element
+  // actually being measured. Waiting for `.tree-item-self` and measuring
+  // `.tree-item-inner` is a proxy: under load the row exists while its label is
+  // still unlaid, `getBoundingClientRect()` returns 0, and the case fails on a
+  // number nobody could see on screen.
   await page.locator('[aria-label="New note"]').first().click();
+  await page.keyboard.press("Enter");
   const explorer = page.locator('.workspace-leaf-content[data-type="file-explorer"]');
-  await expect(explorer.locator(".tree-item-self").first()).toBeVisible();
-  const explorerText = await explorer
-    .locator(".tree-item-inner")
-    .first()
-    .evaluate((el) => el.getBoundingClientRect().left);
+  await expect(explorer.locator(".tree-item-inner").first()).toBeVisible();
+  const [explorerText] = await insetsIn(explorer, ".tree-item-inner");
 
   const dock = await openDock(page);
-  await expect(dock.locator(".tree-item-self").first()).toBeVisible();
-  const dockText = await dock
-    .locator(".tree-item-inner")
-    .first()
-    .evaluate((el) => el.getBoundingClientRect().left);
+  await expect(dock.locator(".tree-item-inner").first()).toBeVisible();
+  const [dockText] = await insetsIn(dock, ".tree-item-inner");
+
+  // An inset of 0 would mean the label sits on the panel's own edge, which no
+  // row does — read it as "not laid out" and refuse it, rather than let two
+  // zeroes cancel into a passing diff.
+  expect(explorerText).toBeGreaterThan(0);
+  expect(dockText).toBeGreaterThan(0);
 
   // Within a pixel: the explorer spends the gutter on a folder's chevron, this
   // dock spends it on a row icon — the same column either way.
@@ -115,11 +132,10 @@ test("organizations rows hold the same column, selected or not", async ({ page }
   const orgRow = dock.locator(".github-nav-body .tree-item-self").first();
   await expect(orgRow).toBeVisible();
 
-  const headerIcons = dock.locator(".nav-header .nav-action-button svg.svg-icon");
   const treeIcons = dock.locator(".github-nav-body .tree-item-icon-inline svg.svg-icon");
-  const header = await leftEdgesOf(headerIcons);
+  const header = await insetsIn(dock, ".nav-header .nav-action-button svg.svg-icon");
 
-  expect(await leftEdgesOf(treeIcons)).toEqual(
+  expect(await insetsIn(dock, ".github-nav-body .tree-item-icon-inline svg.svg-icon")).toEqual(
     Array.from({ length: (await treeIcons.count()) as number }, () => header[0]),
   );
 
@@ -129,7 +145,7 @@ test("organizations rows hold the same column, selected or not", async ({ page }
   await orgRow.click();
   await expect(orgRow).toHaveClass(/is-active/);
 
-  const afterSelect = await leftEdgesOf(treeIcons);
+  const afterSelect = await insetsIn(dock, ".github-nav-body .tree-item-icon-inline svg.svg-icon");
   expect(afterSelect[0]).toBeCloseTo(header[0], 0);
 
   const contained = await orgRow.evaluate((row) => {
