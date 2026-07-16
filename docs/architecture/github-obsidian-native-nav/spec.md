@@ -152,15 +152,20 @@ Nav -> Detail: reuse the same center leaf (no new tab)
   this contract.
 - **Global search = the host's document-search idiom, hidden until summoned**
   (owner's final round-5 call: "像 Obsidian 原生的，平时不出现，Command F 再
-  出现"). On an active GitHub center leaf, the find command (⌘F, the same
-  hotkey the host's document search answers) slides in the
-  **document-search-style bar at the top of that leaf**
-  (`document-search.css` idiom — in-flow, panel-width, no floating chrome);
-  the as-you-type suggestion list (task #8's engine, reskinned only) drops
-  below it; Esc dismisses and the bar is gone without trace. `github:search`
-  (⌘P) and the "Search GitHub for …" tail row of any page's search field
-  summon the same bar. The editor's own ⌘F behavior on non-GitHub leaves is
-  untouched. No sidebar entry, no ribbon icon, no centered modal, no
+  出现"). **⌘F reaches the GitHub view through its own view scope, not a
+  second global hotkey**: each `View` owns a child `Scope` (`View.ts:46`)
+  that the workspace pushes for the active leaf (`Workspace.ts:345`) and the
+  keymap consults innermost-first (`Keymap.ts:57`) — so a ⌘F registered on
+  the GitHub view's scope fires only while that leaf is active, and the
+  editor's global `editor:open-search` is never contended. (A global second
+  ⌘F command would be silently swallowed: the hotkey dispatcher discards
+  `checkCallback` results — probe-verified — so there is no fall-through.)
+  The summoned UI is the **document-search-style bar at the top of that
+  leaf** (`document-search.css` idiom — in-flow, panel-width, no floating
+  chrome); the as-you-type suggestion list (task #8's engine, reskinned
+  only) drops below it; Esc dismisses and the bar is gone without trace.
+  `github:search` (⌘P) and the "Search GitHub for …" tail row of any page's
+  search field summon the same bar. No sidebar entry, no ribbon icon, no centered modal, no
   invented top-right chrome.
   Merging into the host's file search was ruled out on signature grounds,
   not taste: `registerSearchOperator` filters `TFile` and `search()` returns
