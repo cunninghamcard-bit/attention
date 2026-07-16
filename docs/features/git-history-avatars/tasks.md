@@ -29,3 +29,8 @@ derived_from:
 ## Documentation Impact
 
 - [x] Keep the local-only and no-GitHub boundary recorded in `spec.md`.
+
+## Quality Gates
+
+- [x] `docwright lint spec.md --min-score 0.7`
+- [x] Scoped `docwright lifecycle spec.md --code .`

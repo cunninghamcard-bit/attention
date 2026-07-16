@@ -29,3 +29,9 @@ derived_from:
 ## Documentation Impact
 
 - [x] Update the goal contract; no product documentation change is required.
+
+## Quality Gates
+
+- [x] `docwright lint spec.md --min-score 0.7`
+- [x] `docwright lifecycle spec.md --code .` (8/8 scenarios passed)
+- [ ] `docwright guard --spec-dir docs --code .` (full scan stalled; target lifecycle passed)

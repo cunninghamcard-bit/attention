@@ -38,3 +38,9 @@ derived_from:
 
 - [x] No maintained product documentation changes are required; this ports an
       existing built-in surface without changing its public API.
+
+## Quality Gates
+
+- [x] `docwright lint spec.md --min-score 0.7`
+- [x] `docwright lifecycle spec.md --code .`
+- [x] `docwright guard` scoped to this goal and its allowed changed files
