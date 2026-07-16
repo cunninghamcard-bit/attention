@@ -901,6 +901,68 @@ describe("GitHub native navigation (A+B)", () => {
     expect(view(0).contentEl.querySelectorAll(".github-row.is-active")).toHaveLength(0);
   });
 
+  /** Types into the real filter box, the way a user does. Unit-testing the
+   * filter language proves the language; only this proves the box is wired to
+   * it — deleting the onChange left every language test green. */
+  const typeFilter = (view: GitHubListView, value: string): void => {
+    const input = view.contentEl.querySelector(
+      '.github-list-controls input[aria-label="Filter"]',
+    ) as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event("input"));
+  };
+
+  it("filters the inbox through a typed qualifier", async () => {
+    const app = await createApp();
+    vi.spyOn(app.github, "listNotifications").mockResolvedValue([
+      { ...NOTIFICATIONS[0], id: "m1", title: "Mentioned one", reason: "mention" },
+      { ...NOTIFICATIONS[0], id: "a1", title: "Assigned one", reason: "assign" },
+    ]);
+    await openInbox(app);
+    const list = (): GitHubListView =>
+      app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0].view as GitHubListView;
+    await until(() => list().contentEl.querySelectorAll(".github-row").length === 2, "rows");
+
+    typeFilter(list(), "reason:assign");
+    await until(() => list().contentEl.querySelectorAll(".github-row").length === 1, "narrowed");
+    expect(list().contentEl.textContent).toContain("Assigned one");
+    expect(list().contentEl.textContent).not.toContain("Mentioned one");
+
+    typeFilter(list(), "");
+    await until(() => list().contentEl.querySelectorAll(".github-row").length === 2, "restored");
+  });
+
+  it("refetches the inbox when is:all changes the requested set", async () => {
+    const app = await createApp();
+    const fetches = vi.spyOn(app.github, "listNotifications");
+    await openInbox(app);
+    const list = (): GitHubListView =>
+      app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0].view as GitHubListView;
+    await until(() => list().contentEl.querySelector(".github-row") !== null, "rows");
+    fetches.mockClear();
+
+    // `is:` is the one qualifier that changes what the server is asked for.
+    typeFilter(list(), "is:all");
+    await until(() => fetches.mock.calls.length > 0, "refetched");
+    expect(fetches.mock.calls[0][0]).toMatchObject({ all: true });
+  });
+
+  it("filters a query list through a typed qualifier", async () => {
+    const app = await createApp();
+    vi.spyOn(app.github, "searchInvolvement").mockResolvedValue([
+      { ...searchItems("pr")[0], number: 1, title: "Open one", state: "open" },
+      { ...searchItems("pr")[1], number: 2, title: "Closed one", state: "closed" },
+    ]);
+    await openQueryList(app, "pr", "review-requested");
+    const list = (): GitHubListView =>
+      app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0].view as GitHubListView;
+    await until(() => list().contentEl.querySelectorAll(".github-row").length === 2, "rows");
+
+    typeFilter(list(), "state:closed");
+    await until(() => list().contentEl.querySelectorAll(".github-row").length === 1, "narrowed");
+    expect(list().contentEl.textContent).toContain("Closed one");
+  });
+
   const listOf = (app: App): GitHubListView =>
     app.workspace.getLeavesOfType(GitHubListView.VIEW_TYPE)[0]?.view as GitHubListView;
 
