@@ -92,10 +92,12 @@ Nav -> Detail: reuse the same center leaf (no new tab)
 - **A — nav header = four section icons, nothing else.** `GitHubNavView`
   (VIEW_TYPE `github-nav`) opens via
   `workspace.ensureSideLeaf("github-nav", "left", …)`. Its `nav-header`
-  buttons row (`nav-action-button`, the FileExplorer pattern) carries a
-  **Search action** (OMG's "Search workspace" analog — opens the GitHub
-  suggest modal) followed by four mutually exclusive section icons — **Inbox |
-  Pull Requests | Issues | Organizations** — and nothing else. **No Refresh button in any
+  buttons row (`nav-action-button`, the FileExplorer pattern) carries four
+  mutually exclusive section icons — **Inbox | Pull Requests | Issues |
+  Organizations** — and nothing else. **Search is not a header icon** (owner's
+  round-3 call: the header was crowded): it is a **fixed first row of the nav
+  body**, visible in every section — where OMG's "Search workspace" sits — and
+  activating it opens the GitHub suggest modal. **No Refresh button in any
   GitHub header** — neither the nav's nor the list/repo/detail view-headers
   (owner's call: every surface reloads when entered or retargeted; the
   `github:refresh` command remains for manual refresh).
@@ -117,6 +119,17 @@ Nav -> Detail: reuse the same center leaf (no new tab)
   richness**: type icon, repository, reason and relative age per row, laid out
   readably rather than densely. No repo dump, no avatars, no filters in the
   sidebar: content density belongs to center tabs.
+- **Notification rows jump to the web.** Activating a notification row —
+  sidebar or center inbox — opens that notification's github.com page in the
+  external browser (the OMG behavior, owner's round-3 call). The notifications
+  API exposes only api.github.com subject URLs, so the web URL is derived by
+  **string mapping for the certain types only** (issue / pull / commit —
+  e.g. `repos/{o}/{r}/pulls/{n}` → `github.com/{o}/{r}/pull/{n}`); a subject
+  that cannot be mapped with certainty (null URL, Discussion / Release /
+  CheckSuite) **focuses the center inbox row instead** — never a repo tab, an
+  in-app detail leaf or an invented URL. In-app PR / issue details remain
+  reachable from query lists and repo tabs. Mark-read still runs in the
+  background and never gates the jump.
 - **A — cross-repo query lists.** `GitHubListView` (VIEW_TYPE `github-list`) is a
   center tab rendering a cross-repo involvement query (PRs / issues by created /
   review-requested / mentioned / assigned), an organization's repositories, or
@@ -134,8 +147,9 @@ Nav -> Detail: reuse the same center leaf (no new tab)
   **only** door into a `github-repo` tab. Richer profile content (contribution
   heatmap, stars / followers / sponsors sub-views) is a follow-up goal, not
   this contract.
-- **Global search = one `SuggestModal`.** The nav header's Search action opens
-  a GitHub suggest modal (the host's `SuggestModal` primitive, the shape OMG's
+- **Global search = one `SuggestModal`.** The nav body's fixed Search row (the
+  first row of every section — never a header icon) opens a GitHub suggest
+  modal (the host's `SuggestModal` primitive, the shape OMG's
   "Search workspace" has): as-you-type suggestions over the signed-in user's
   and orgs' repositories, the fixed PR/issue queries and the inbox; picking a
   suggestion opens its target through the same open helpers. The in-list
@@ -260,16 +274,17 @@ Scenario: Unauthenticated navigator shows a connect prompt, not a tree
 
 ### Rule: nav-header-sections — The nav header switches sections; Inbox is an action
 
-Scenario: The navigator header offers search plus the four sections
+Scenario: The navigator header offers the four sections, search lives in the body
   Test: renders four header sections without a repo picker
   Given an authenticated GitHub session
   When the GitHub navigator loads
-  Then the nav header shows Search, Inbox, Pull Requests, Issues and
-    Organizations icons and no Refresh action
+  Then the nav header shows Inbox, Pull Requests, Issues and Organizations
+    icons and no Refresh and no Search action
+  And the body's first row is the Search entry
   And the default body lists the pull-request queries
   But no Open-repository action and no Repositories group is rendered
 
-Scenario: The Search action suggests targets and opens the pick
+Scenario: The Search row suggests targets and opens the pick
   Test: opens a target from the github search suggest modal
   Given the GitHub suggest modal is open with repositories loaded
   When the user types a repo name fragment and picks the suggestion
@@ -289,20 +304,20 @@ Scenario: The Inbox section shows thin rows and opens the center list
   Then a `github-list` center leaf renders the notifications inbox
   And the nav body lists the unread notifications as thin title rows
 
-Scenario: An issue notification row opens the issue detail, not a notice
-  Test: opens issue detail from an inbox row
+Scenario: A notification row jumps to its GitHub web page
+  Test: opens the browser from an inbox row
   Given the notifications inbox lists an issue notification
   When the user activates that row
-  Then a `github-detail` center leaf renders the issue
-  And no notice pop-up is shown
-
-Scenario: An unparseable notification jumps to its GitHub web page
-  Test: opens the browser for unparseable notifications
-  Given the notifications inbox lists a notification whose subject resolves to
-    no PR, issue or commit (e.g. a Discussion or Release)
-  When the user activates that row
   Then the notification's github.com page opens in the external browser
-  And no repository tab and no notice pop-up appears
+  And no in-app detail leaf, repo tab or notice pop-up appears
+
+Scenario: An unmappable notification stays in the center inbox
+  Test: keeps unmappable notifications in the center inbox
+  Given the notifications inbox lists a Discussion notification with no
+    mappable subject URL
+  When the user activates that row
+  Then the center inbox focuses that row
+  And no browser page, repo tab or detail leaf opens
 
 Scenario: The Organizations section lists the signed-in user first
   Test: lists the signed-in user before organizations
