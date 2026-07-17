@@ -325,6 +325,10 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
 
     await until(() => view.contentEl.querySelector(".gh-page-title") !== null, "title");
     expect(view.contentEl.querySelector(".gh-page-title")!.textContent).toContain("Powerline");
+    // The number rides the chip row, never the h1 — appended to the title it
+    // wraps onto its own orphan line as soon as the title is long.
+    expect(view.contentEl.querySelector(".gh-page-title")!.textContent).not.toContain("#185");
+    expect(view.contentEl.querySelector(".gh-detail-title-row")!.textContent).toContain("#185");
     await until(() => view.contentEl.querySelector(".review-sidebar") !== null, "review surface");
     expect(view.contentEl.textContent).toContain("lib/renderer.ts");
     expect(view.contentEl.textContent).toContain("lib/renderer.test.ts");
@@ -377,13 +381,16 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     expect(flair.classList.contains("mod-draft")).toBe(false);
   });
 
+  /** The tab switcher lives in the real view-header now (icon buttons, labels
+   * in aria/tooltip) — the repo view's pattern, not an in-body pill. */
+  function headerTab(view: PrDetailView, label: string): HTMLButtonElement | null {
+    return view.headerEl.querySelector(`.github-pr-nav [aria-label^="${label}"]`);
+  }
+
   async function conversationOf(app: App): Promise<PrDetailView> {
     const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
-    await until(() => view.contentEl.querySelector(".git-pr-tab") !== null, "detail tabs");
-    const tab = [...view.contentEl.querySelectorAll(".git-pr-tab")].find((el) =>
-      el.textContent?.includes("Conversation"),
-    ) as HTMLButtonElement;
-    tab?.click();
+    await until(() => headerTab(view, "Conversation") !== null, "detail tabs");
+    headerTab(view, "Conversation")!.click();
     await until(() => view.contentEl.querySelector(".gh-composer-actions") !== null, "actions");
     return view;
   }
@@ -444,6 +451,26 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     expect(headerAction(view, "Reopen pull request")).toBeNull();
   });
 
+  // Tabs are an in-memory redraw from the cached detail — switching must not
+  // re-download the pull request. Wiring tabs through setViewState would make
+  // every click a full refetch (setState loads unconditionally); this pins
+  // the cheap path until tabs formally join history with a refetch gate.
+  it("switches tabs without re-downloading the pull request", async () => {
+    const app = await appWithGit();
+    installGithubMocks(app);
+    const load = vi.spyOn(app.github, "getPullRequest");
+    await openPrDetail(app, "coder", "ghostty-web", 185);
+    const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
+    await until(() => headerTab(view, "Conversation") !== null, "detail tabs");
+    const loadsAfterOpen = load.mock.calls.length;
+
+    headerTab(view, "Conversation")!.click();
+    headerTab(view, "Commits")!.click();
+    headerTab(view, "Files changed")!.click();
+    await until(() => view.contentEl.querySelector(".review-sidebar") !== null, "files tab back");
+    expect(load.mock.calls.length).toBe(loadsAfterOpen);
+  });
+
   // The conversation drew only the description before: the comments and
   // reviews sat unrendered in PrDetail. A comment becomes a card; a submitted
   // review becomes a card wearing its verdict chip.
@@ -498,12 +525,8 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
 
-    await until(() => view.contentEl.querySelector(".gh-page-title") !== null, "title");
-    // switch to conversation for the composer
-    const convTab = [...view.contentEl.querySelectorAll(".git-pr-tab")].find((el) =>
-      el.textContent?.includes("Conversation"),
-    ) as HTMLButtonElement;
-    convTab?.click();
+    await until(() => headerTab(view, "Conversation") !== null, "detail tabs");
+    headerTab(view, "Conversation")!.click();
     await until(() => actionByText(view, "Approve") !== undefined, "approve");
     actionByText(view, "Approve")!.click();
     await until(() => submitCalls.includes("APPROVE"), "approve call");
@@ -523,11 +546,8 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
 
-    await until(() => view.contentEl.querySelector(".gh-page-title") !== null, "title");
-    const convTab = [...view.contentEl.querySelectorAll(".git-pr-tab")].find((el) =>
-      el.textContent?.includes("Conversation"),
-    ) as HTMLButtonElement;
-    convTab?.click();
+    await until(() => headerTab(view, "Conversation") !== null, "detail tabs");
+    headerTab(view, "Conversation")!.click();
     await until(
       () => view.contentEl.querySelector(".gh-composer-action.mod-cta") !== null,
       "comment",

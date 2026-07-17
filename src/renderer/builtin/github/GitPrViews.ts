@@ -1,7 +1,9 @@
 import { Keymap, type UserEvent } from "../../app/hotkeys/Keymap";
 import { createDiv, createEl, createSpan } from "../../dom/dom";
 import { MarkdownRenderer } from "../../markdown/MarkdownRenderer";
+import { setIcon } from "../../ui/Icon";
 import { Notice } from "../../ui/Notice";
+import { setTooltip } from "../../ui/Popover";
 import { ItemView } from "../../views/ItemView";
 import type { ViewStateResult } from "../../views/View";
 import { formatRelativeDate } from "../git/relativeDate";
@@ -18,6 +20,14 @@ import { avatar, linkButton, openInSystemBrowser, prStateLabel } from "./widgets
  * the diff. No breadcrumb and no "File tree | Full review" sub-toggle — the
  * left nav is the way back, and the review surface is the only diff pane.
  */
+type PrTab = "conversation" | "commits" | "files";
+
+const PR_TABS: { id: PrTab; label: string; icon: string }[] = [
+  { id: "conversation", label: "Conversation", icon: "lucide-message-square" },
+  { id: "commits", label: "Commits", icon: "lucide-git-commit" },
+  { id: "files", label: "Files changed", icon: "lucide-file-diff" },
+];
+
 export class PrDetailView extends ItemView {
   static readonly VIEW_TYPE = GITHUB_VIEW.prDetail;
 
@@ -32,12 +42,15 @@ export class PrDetailView extends ItemView {
   private repo: GitHubRepositoryRef | null = null;
   private detail: PrDetail | null = null;
   private unifiedDiff = "";
-  private tab: "conversation" | "commits" | "files" = "files";
+  private tab: PrTab = "files";
   private surface: ReviewSurface | null = null;
   private request = 0;
   /** The header's Close/Reopen action — same replace-before-add dance as the
    * issue view, because `addAction` prepends a fresh button every call. */
   private stateAction: HTMLElement | null = null;
+  /** The header's tab switcher (the GitHubRepoView pattern): `addAction` only
+   * makes single icon buttons, so the segmented control attaches to headerEl. */
+  private segmentedEl: HTMLElement | null = null;
 
   getViewType(): string {
     return PrDetailView.VIEW_TYPE;
@@ -151,11 +164,17 @@ export class PrDetailView extends ItemView {
     // sizes against it); only the conversation column scrolls.
     const root = createDiv("git-pr-detail", this.contentEl);
     const head = createDiv("gh-detail-head", root);
+    // The OMG header shape: chip and number on a small top row, the title
+    // alone on its own line. A number appended inside the h1 wraps onto its
+    // own orphan line the moment the title is long (owner's screenshot).
     const titleRow = createDiv("gh-detail-title-row", head);
     const state = prStateLabel(detail.state, detail.isDraft);
     createSpan({ cls: `gh-chip mod-${state}`, text: state }, titleRow);
-    const title = createEl("h1", { cls: "gh-page-title", text: `${detail.title} ` }, titleRow);
-    createSpan({ cls: "gh-muted", text: `#${detail.number}` }, title);
+    createSpan(
+      { cls: "gh-muted", text: `${this.repo.owner}/${this.repo.repo} #${detail.number}` },
+      titleRow,
+    );
+    createEl("h1", { cls: "gh-page-title", text: detail.title }, head);
     const meta = createDiv(
       {
         cls: "gh-muted",
@@ -171,30 +190,52 @@ export class PrDetailView extends ItemView {
     createSpan({ text: " · " }, meta);
     linkButton(meta, "Open on GitHub", () => openInSystemBrowser(detail.url));
     this.setStateAction(detail);
-    const tabs = createDiv("github-segmented-control git-pr-tabs", root);
-    this.tabButton(tabs, "conversation", "Conversation");
-    this.tabButton(tabs, "commits", `Commits ${detail.commits.length}`);
-    this.tabButton(tabs, "files", `Files changed ${detail.files.length}`);
+    this.buildHeaderTabs(detail);
     const body = createDiv("git-pr-body", root);
     if (this.tab === "files") this.renderFiles(body, detail);
     else if (this.tab === "conversation") this.renderConversation(body, detail);
     else this.renderCommits(body, detail);
   }
 
-  private tabButton(parent: HTMLElement, tab: typeof this.tab, label: string): void {
-    const button = createEl(
-      "button",
-      {
-        cls: `github-segmented-control-item git-pr-tab${this.tab === tab ? " is-active" : ""}`,
-        text: label,
-        attr: { type: "button" },
-      },
-      parent,
-    );
-    button.addEventListener("click", () => {
-      this.tab = tab;
-      this.renderDetail();
-    });
+  /** The tab switcher lives in the tab's real `view-header`, the same icon
+   * segmented control GitHubRepoView keeps there — not a pill box drawn into
+   * the body. Counts ride in the tooltips, where the labels already are. */
+  private buildHeaderTabs(detail: PrDetail): void {
+    this.segmentedEl?.remove();
+    const nav = createDiv("github-segmented-control github-pr-nav");
+    for (const tab of PR_TABS) {
+      const count =
+        tab.id === "commits"
+          ? detail.commits.length
+          : tab.id === "files"
+            ? detail.files.length
+            : null;
+      const label = count === null ? tab.label : `${tab.label} · ${count}`;
+      const button = createEl(
+        "button",
+        {
+          cls: `clickable-icon github-segmented-control-item${
+            this.tab === tab.id ? " is-active" : ""
+          }`,
+          attr: { type: "button", "aria-label": label },
+        },
+        nav,
+      );
+      setIcon(button, tab.icon);
+      setTooltip(button, label);
+      button.addEventListener("click", () => this.setTab(tab.id));
+    }
+    this.headerEl.insertBefore(nav, this.actionsEl);
+    this.segmentedEl = nav;
+  }
+
+  /** A redraw from the cached detail, exactly what the old in-body pill did —
+   * no setViewState, no refetch. Wiring tabs into history (the RepoView
+   * navigation-target treatment) is a queued follow-up, not tonight's cut. */
+  private setTab(tab: PrTab): void {
+    if (this.tab === tab) return;
+    this.tab = tab;
+    this.renderDetail();
   }
 
   private renderFiles(parent: HTMLElement, detail: PrDetail): void {

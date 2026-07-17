@@ -163,38 +163,6 @@
   padding: var(--size-4-3) var(--size-4-3) var(--size-4-2);
 }
 
-/* --- Tabs ------------------------------------------------------------ */
-
-.git-pr-tabs {
-  display: flex;
-  gap: var(--size-4-2);
-  padding: 0 var(--size-4-4);
-  border-bottom: 1px solid var(--background-modifier-border);
-  flex-shrink: 0;
-  background: var(--background-primary);
-}
-
-.git-pr-tab {
-  background: none;
-  box-shadow: none;
-  border-radius: 0;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-muted);
-  padding: 10px 6px;
-  cursor: var(--cursor);
-  font-size: var(--font-ui-small);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.git-pr-tab.is-active {
-  color: var(--text-normal);
-  border-bottom-color: var(--interactive-accent);
-  font-weight: var(--font-medium);
-}
-
 .git-pr-diffstat {
   margin-left: 2px;
   font-size: var(--font-ui-smaller);
@@ -340,15 +308,6 @@ and review mode. */
   font-weight: var(--font-medium);
 }
 
-.git-pr-tabs.github-segmented-control {
-  margin: var(--size-4-2) var(--size-4-4);
-  width: max-content;
-}
-
-.git-pr-tabs.github-segmented-control > .git-pr-tab {
-  border-bottom: 0;
-  padding: 4px 10px;
-}
 /* container-type so the issue layout below can answer to the leaf's width and
    not the window's — a leaf in a split is narrow while the window is not.
    Same idiom as .review-scroll in git-review.css. */

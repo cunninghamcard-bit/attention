@@ -175,10 +175,16 @@ export class GitHubDetailView extends ItemView {
     this.contentEl.empty();
     const scroll = createDiv("gh-detail-scroll", this.contentEl);
     const head = createDiv("gh-detail-head", scroll);
+    // The OMG header shape: chip and number on a small top row, the title
+    // alone on its own line. A number appended inside the h1 wraps onto its
+    // own orphan line the moment the title is long (owner's screenshot).
     const titleRow = createDiv("gh-detail-title-row", head);
     createSpan({ cls: `gh-chip mod-${detail.state}`, text: detail.state }, titleRow);
-    const title = createEl("h1", { cls: "gh-page-title", text: `${detail.title} ` }, titleRow);
-    createSpan({ cls: "gh-muted", text: `#${detail.number}` }, title);
+    createSpan(
+      { cls: "gh-muted", text: `${this.target?.owner}/${this.target?.repo} #${detail.number}` },
+      titleRow,
+    );
+    createEl("h1", { cls: "gh-page-title", text: detail.title }, head);
     const meta = createDiv(
       {
         cls: "gh-muted",

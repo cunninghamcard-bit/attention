@@ -93,6 +93,9 @@ describe("GitHub issue detail (#5)", () => {
     const head = view.contentEl.querySelector(".gh-detail-head") as HTMLElement;
     expect(head.querySelector(".gh-chip")!.textContent).toBe("open");
     expect(head.textContent).toContain("#42");
+    // The number rides the chip row, never the h1 — appended to the title it
+    // wraps onto its own orphan line as soon as the title is long.
+    expect(head.querySelector(".gh-page-title")!.textContent).not.toContain("#42");
     // The contract asks for both dates, not just the opening one.
     expect(head.textContent).toContain("opened");
     expect(head.textContent).toContain("updated");

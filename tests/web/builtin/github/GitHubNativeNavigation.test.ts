@@ -1303,9 +1303,14 @@ describe("GitHub native navigation (A+B)", () => {
     await openPrDetail(app, "octo", "notes", 7);
     const detail = (): PrDetailView =>
       app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
-    await until(() => detail().contentEl.querySelector(".git-pr-tab") !== null, "detail tabs");
-    const commitsTab = [...detail().contentEl.querySelectorAll(".git-pr-tab")].find((el) =>
-      el.textContent?.toLowerCase().startsWith("commits"),
+    // The tab switcher rides the real view-header now (icon buttons, labels in
+    // aria-label) — the repo view's pattern.
+    await until(
+      () => detail().headerEl.querySelector('.github-pr-nav [aria-label^="Commits"]') !== null,
+      "detail tabs",
+    );
+    const commitsTab = detail().headerEl.querySelector(
+      '.github-pr-nav [aria-label^="Commits"]',
     ) as HTMLElement;
     expect(commitsTab).toBeDefined();
     commitsTab.click();

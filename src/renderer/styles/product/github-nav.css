@@ -440,7 +440,8 @@ beside the
    title and before the actions — no content-drawn header bar. */
 .view-header > .github-repo-nav,
 .view-header > .github-list-nav,
-.view-header > .github-profile-nav {
+.view-header > .github-profile-nav,
+.view-header > .github-pr-nav {
   display: flex;
   flex-wrap: nowrap;
   gap: var(--size-2-1);
@@ -457,7 +458,8 @@ sized for a view-header.
 not a menu. */
 .github-repo-nav .github-segmented-control-item,
 .github-list-nav .github-segmented-control-item,
-.github-profile-nav .github-segmented-control-item {
+.github-profile-nav .github-segmented-control-item,
+.github-pr-nav .github-segmented-control-item {
   padding: var(--size-2-2);
   border: none;
   border-radius: var(--radius-s);
@@ -468,13 +470,15 @@ not a menu. */
 }
 .github-repo-nav .github-segmented-control-item:hover,
 .github-list-nav .github-segmented-control-item:hover,
-.github-profile-nav .github-segmented-control-item:hover {
+.github-profile-nav .github-segmented-control-item:hover,
+.github-pr-nav .github-segmented-control-item:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 .github-repo-nav .github-segmented-control-item.is-active,
 .github-list-nav .github-segmented-control-item.is-active,
-.github-profile-nav .github-segmented-control-item.is-active {
+.github-profile-nav .github-segmented-control-item.is-active,
+.github-pr-nav .github-segmented-control-item.is-active {
   background: var(--background-modifier-active-hover);
   /* The generic segmented `.is-active` (git-prs.css) raises a shadow at equal
      specificity — an icon button in a header must stay flat. */
