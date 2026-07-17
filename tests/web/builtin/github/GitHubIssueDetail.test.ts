@@ -170,6 +170,15 @@ describe("GitHub issue detail (#5)", () => {
     return view.headerEl.querySelector(`.view-action[aria-label="${label}"]`);
   }
 
+  /** The glyph a header action actually drew, not whether it drew one.
+   *
+   * `setIcon` is silent about a name it cannot resolve: it leaves the button
+   * empty and returns null. So an aria-label assertion passes on a blank
+   * button, which is how Close issue shipped with no icon at all. */
+  function actionGlyph(view: GitHubDetailView, label: string): string {
+    return headerAction(view, label)?.querySelector("svg")?.getAttribute("class") ?? "";
+  }
+
   it("closes an issue from the header action and reloads", async () => {
     const app = await boot();
     const closed: IssueDetail = {
@@ -204,6 +213,32 @@ describe("GitHub issue detail (#5)", () => {
     // stale Close beside the new Reopen.
     expect(headerAction(view, "Close issue")).toBeNull();
     expect(view.headerEl.querySelectorAll('.view-action[aria-label$="issue"]')).toHaveLength(1);
+  });
+
+  // Each state's button must carry its own glyph. An icon-existence check
+  // cannot see the two swapped — both names would resolve and both would draw —
+  // so this names the glyph each state is supposed to show.
+  it("gives each issue state its own header glyph", async () => {
+    const app = await boot();
+    const closed: IssueDetail = { ...ISSUE, state: "closed", closedAt: "2026-07-03T00:00:00Z" };
+    const getIssue = vi
+      .spyOn(app.github, "getIssue")
+      .mockResolvedValueOnce(ISSUE)
+      .mockResolvedValueOnce(closed);
+    vi.spyOn(app.github, "updateIssueState").mockResolvedValue(null);
+    await openGitHubDetail(app, { kind: "issue", number: 42, owner: "acme", repo: "attention" });
+    const view = app.workspace.getLeavesOfType(GitHubDetailView.VIEW_TYPE)[0]
+      ?.view as GitHubDetailView;
+
+    // Open is the state nearly every issue is in, and the one whose glyph was
+    // missing: the button users see most often is the one that drew nothing.
+    await until(() => headerAction(view, "Close issue") !== null, "close action");
+    expect(actionGlyph(view, "Close issue")).toContain("lucide-circle-check");
+
+    (headerAction(view, "Close issue") as HTMLElement).click();
+    await until(() => headerAction(view, "Reopen issue") !== null, "reopened action");
+    expect(actionGlyph(view, "Reopen issue")).toContain("lucide-circle-dot");
+    expect(getIssue).toHaveBeenCalledTimes(2);
   });
 
   // The other direction: a toggle hardcoded to "closed" still passes the close
