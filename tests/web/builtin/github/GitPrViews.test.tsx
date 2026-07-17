@@ -386,6 +386,14 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     ]);
   });
 
+  // The dock tree names what it navigates: a PR's files under the bare title
+  // "Git" read as local changes. The title follows the source.
+  it("titles the dock tree after the cloud review it is navigating", async () => {
+    const app = await cloudDockedPr();
+    await until(() => dockNav(app) !== null, "materialized nav");
+    expect(dockNav(app)!.getDisplayText()).toBe("PR #185");
+  });
+
   // Leaving the files tab detaches the center from the dock; the tree must
   // not stay behind as rows that activate nothing — a dead tree reads worse
   // than the honest empty state.

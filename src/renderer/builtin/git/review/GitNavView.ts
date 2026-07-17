@@ -57,7 +57,10 @@ export class GitNavView extends ItemView {
   }
 
   getDisplayText(): string {
-    return "Git";
+    // The tree names what it is navigating: a cloud review's files under the
+    // bare title "Git" read as local changes (owner's call) — the cloud source
+    // carries its title precisely for this.
+    return this.source.kind === "cloud" ? this.source.title : "Git";
   }
 
   getIcon(): string {
@@ -76,6 +79,9 @@ export class GitNavView extends ItemView {
     this.sessionRefs = [
       session.on<[GitReviewSource]>("source-change", (source) => {
         this.source = source;
+        // The tab title follows the source (getDisplayText) — without this,
+        // the header keeps the previous world's name.
+        this.leaf.updateHeader();
         this.render();
         if (this.centerless()) void this.loadSummaries();
       }),
