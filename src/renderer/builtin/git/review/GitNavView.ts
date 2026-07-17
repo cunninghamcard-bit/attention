@@ -403,6 +403,10 @@ export class GitNavView extends ItemView {
   /** The nav is self-sufficient: without a center leaf, it computes its own
    * file summaries (status + numstat, no diff bodies) for the active source. */
   private async loadSummaries(): Promise<void> {
+    // A cloud source's files come from its own center (PR / commit review),
+    // which is not a git-review leaf — self-loading here would overwrite the
+    // published cloud list with the local working tree.
+    if (this.source.kind === "cloud") return;
     const request = ++this.summaryRequest;
     const git = this.app.git;
     if (!git.isAvailable() || !(await git.isRepository())) return;
@@ -415,6 +419,11 @@ export class GitNavView extends ItemView {
    * otherwise (outline-view idiom). View type by string — a GitReviewView
    * import here would be circular. */
   private async ensureReviewLeaf(): Promise<void> {
+    // A cloud center listens to path-activate itself and is not a git-review
+    // leaf — opening one here would put a local working-tree review on top of
+    // the PR / commit the user is looking at. (History rows set a local
+    // source before arriving here, so they still pass.)
+    if (this.source.kind === "cloud") return;
     const leaves = this.app.workspace.getLeavesOfType("git-review");
     if (leaves.length === 0) {
       await this.app.workspace

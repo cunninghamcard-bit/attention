@@ -9,6 +9,7 @@ import { formatRelativeDate } from "../git/relativeDate";
 import { ReviewSurface } from "../git/review/ReviewSurface";
 import { GITHUB_VIEW, openCommitDetail } from "./open";
 import { toReviewFiles } from "./patchUtils";
+import { dockCloudReview } from "./reviewDock";
 import type { CommitDetail, GitHubRepositoryRef } from "./types";
 import { linkButton, openInSystemBrowser } from "./widgets";
 
@@ -26,6 +27,8 @@ export class GitCommitView extends ItemView {
   private owner: string | null = null;
   private repoName: string | null = null;
   private surface: ReviewSurface | null = null;
+  /** Detaches the right-dock tree bridge; runs wherever the surface dies. */
+  private dockCleanup: (() => void) | null = null;
   private request = 0;
 
   getViewType(): string {
@@ -81,6 +84,8 @@ export class GitCommitView extends ItemView {
 
   async onClose(): Promise<void> {
     this.request += 1;
+    this.dockCleanup?.();
+    this.dockCleanup = null;
     this.surface?.destroy();
     this.surface = null;
     await super.onClose();
@@ -89,6 +94,8 @@ export class GitCommitView extends ItemView {
   private async loadCommit(): Promise<void> {
     if (!this.sha) return;
     const request = ++this.request;
+    this.dockCleanup?.();
+    this.dockCleanup = null;
     this.surface?.destroy();
     this.surface = null;
     this.contentEl.empty();
@@ -204,12 +211,20 @@ export class GitCommitView extends ItemView {
       createDiv({ cls: "github-detail-empty", text: "No files in this commit." }, host);
       return;
     }
+    // Tree in the right dock, diff alone in the center — the git plugin's
+    // review arrangement, shared through the same session (owner's call).
+    const files = toReviewFiles(detail.files, diff, detail.sha);
+    const session = this.app.git.reviewSession;
     this.surface = new ReviewSurface(host, {
-      files: toReviewFiles(detail.files, diff, detail.sha),
+      files,
       storageRoot: null,
       title: `Commit ${detail.shortSha}`,
       subtitle: detail.headline,
+      showFileSidebar: false,
+      onActivePathChange: (path) => session.selectPath(path),
+      onViewedPathsChange: (paths) => session.publishViewed(paths),
       onRefresh: () => void this.loadCommit(),
     });
+    this.dockCleanup = dockCloudReview(this.app, this.surface, files, `Commit ${detail.shortSha}`);
   }
 }

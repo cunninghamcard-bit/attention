@@ -6,7 +6,7 @@ import { setIcon } from "../../../ui/Icon";
 import { setTooltip } from "../../../ui/Popover";
 import { ItemView } from "../../../views/ItemView";
 import type { ViewStateResult } from "../../../views/View";
-import type { GitNavMode, GitReviewSource } from "../reviewSession";
+import type { GitNavMode, GitReviewSource, LocalGitReviewSource } from "../reviewSession";
 import { openGitNav } from "./GitNavView";
 import { fingerprintContents, statusFromPorcelain, type ReviewFile } from "./reviewModel";
 import { toFileSummary } from "./reviewNavModel";
@@ -20,7 +20,9 @@ export type { GitReviewSource } from "../reviewSession";
 export class GitReviewView extends ItemView {
   static readonly VIEW_TYPE = "git-review";
 
-  private source: GitReviewSource = { kind: "working-tree" };
+  // Only the local kinds land here: the source-change handler filters cloud
+  // sources out before assignment, and this leaf's own state is always local.
+  private source: LocalGitReviewSource = { kind: "working-tree" };
   private sessionRefs: EventRef[] = [];
   private surface: ReviewSurface | null = null;
   private loadRequest = 0;
@@ -44,7 +46,9 @@ export class GitReviewView extends ItemView {
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("git-review-view");
     const session = this.app.git.reviewSession;
-    this.source = session.source;
+    // Same filter as the source-change handler: a cloud source in the session
+    // (a PR / commit center was here last) is not this leaf's target.
+    if (session.source.kind !== "cloud") this.source = session.source;
     // Both mode switches are click-to-flip icons in the leaf view-header
     // (Obsidian reading-toggle idiom). Added right-to-left so they land
     // as: Tree/History, Unified/Split, Refresh — left of "More options".
@@ -58,6 +62,11 @@ export class GitReviewView extends ItemView {
     });
     this.sessionRefs = [
       session.on<[GitReviewSource]>("source-change", (source) => {
+        // A cloud source belongs to a PR / commit center, not this leaf — it
+        // has no local ref, and reloading against it would call loadCommit
+        // with undefined. This leaf keeps its last local source and goes
+        // stale-but-consistent until a local source comes back.
+        if (source.kind === "cloud") return;
         this.source = source;
         this.leaf.updateHeader();
         void this.reloadReview();
@@ -85,9 +94,9 @@ export class GitReviewView extends ItemView {
 
   async setState(state: unknown, result?: ViewStateResult): Promise<void> {
     await super.setState(state, result);
-    if (!state || typeof state !== "object" || !(state as { source?: GitReviewSource }).source)
+    if (!state || typeof state !== "object" || !(state as { source?: LocalGitReviewSource }).source)
       return;
-    this.source = (state as { source: GitReviewSource }).source;
+    this.source = (state as { source: LocalGitReviewSource }).source;
     if (!sameSource(this.app.git.reviewSession.source, this.source)) {
       this.app.git.reviewSession.setSource(this.source);
     }
@@ -170,7 +179,7 @@ export class GitReviewView extends ItemView {
   }
 }
 
-function sameSource(left: GitReviewSource, right: GitReviewSource): boolean {
+function sameSource(left: GitReviewSource, right: LocalGitReviewSource): boolean {
   return (
     left.kind === right.kind &&
     (left.kind === "working-tree" || left.ref === (right as { ref: string }).ref)
@@ -180,7 +189,7 @@ function sameSource(left: GitReviewSource, right: GitReviewSource): boolean {
 /** Open center review + right Tree/History nav (codiff shell, nav on the right). */
 export async function openGitReview(
   app: App,
-  source: GitReviewSource = { kind: "working-tree" },
+  source: LocalGitReviewSource = { kind: "working-tree" },
   navMode: GitNavMode = "tree",
 ): Promise<void> {
   app.git.reviewSession.setSource(source);

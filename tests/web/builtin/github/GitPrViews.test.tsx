@@ -8,6 +8,8 @@ import type { ElectronGitApi, GitExecResult } from "@web/builtin/git/GitService"
 import type { HttpResponse, HttpTransport } from "@web/builtin/github/GitHubClient";
 import type { PrDetail, PrSummary } from "@web/builtin/github/types";
 import { writeGithubPrPrefs } from "@web/builtin/github/prefs";
+import { openGitReview } from "@web/builtin/git/review/GitReviewView";
+import { GitNavView } from "@web/builtin/git/review/GitNavView";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -329,10 +331,99 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     // wraps onto its own orphan line as soon as the title is long.
     expect(view.contentEl.querySelector(".gh-page-title")!.textContent).not.toContain("#185");
     expect(view.contentEl.querySelector(".gh-detail-title-row")!.textContent).toContain("#185");
-    await until(() => view.contentEl.querySelector(".review-sidebar") !== null, "review surface");
-    expect(view.contentEl.textContent).toContain("lib/renderer.ts");
-    expect(view.contentEl.textContent).toContain("lib/renderer.test.ts");
+    await until(() => view.contentEl.querySelector(".review-surface") !== null, "review surface");
+    // The tree moved to the right dock (the git plugin's arrangement): the
+    // surface runs nav-external, the files publish to the shared session for
+    // the docked git-nav leaf, and the dock leaf is actually open.
+    const surface = view.contentEl.querySelector(".review-surface") as HTMLElement;
+    expect(surface.classList.contains("is-nav-external")).toBe(true);
+    expect(app.git.reviewSession.source).toEqual({ kind: "cloud", title: "PR #185" });
+    expect(app.git.reviewSession.files.map((file) => file.path)).toEqual([
+      "lib/renderer.ts",
+      "lib/renderer.test.ts",
+    ]);
+    // Re-query the leaf inside the predicate (a side leaf can open deferred
+    // and swap its view object); the tree nests basenames under folder rows,
+    // so the full path lives in data-path, not in text.
+    await until(
+      () => dockNav(app)?.contentEl.querySelector('[data-path="lib/renderer.ts"]') != null,
+      "dock tree",
+    );
     expect(view.contentEl.textContent).toMatch(/\+103/);
+  });
+
+  /** The docked git-nav leaf's live view — GitNavView once materialized. */
+  function dockNav(app: App): GitNavView | null {
+    const view = app.workspace.getLeavesOfType(GitNavView.VIEW_TYPE)[0]?.view;
+    return view instanceof GitNavView ? view : null;
+  }
+
+  /** Opens the PR files tab far enough that the cloud dock bridge is live. */
+  async function cloudDockedPr(): Promise<App> {
+    const app = await appWithGit();
+    installGithubMocks(app);
+    await openPrDetail(app, "coder", "ghostty-web", 185);
+    const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
+    await until(() => view.contentEl.querySelector(".review-surface") !== null, "review surface");
+    await until(
+      () => app.workspace.getLeavesOfType(GitNavView.VIEW_TYPE).length > 0,
+      "git-nav leaf",
+    );
+    return app;
+  }
+
+  // Without its cloud guard, the nav's self-load (it fires on source-change
+  // whenever no git-review center exists — and a PR center is not one) asks
+  // local git for files and publishes the answer, silently replacing the PR
+  // list with the working tree.
+  it("keeps the dock tree on the PR's files when the nav self-load path fires", async () => {
+    const app = await cloudDockedPr();
+    app.git.reviewSession.setSource({ kind: "cloud", title: "PR #185" });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(app.git.reviewSession.files.map((file) => file.path)).toEqual([
+      "lib/renderer.ts",
+      "lib/renderer.test.ts",
+    ]);
+  });
+
+  // Leaving the files tab detaches the center from the dock; the tree must
+  // not stay behind as rows that activate nothing — a dead tree reads worse
+  // than the honest empty state.
+  it("clears the dock tree when the files tab is left", async () => {
+    const app = await cloudDockedPr();
+    const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
+    expect(app.git.reviewSession.files.length).toBeGreaterThan(0);
+    headerTab(view, "Conversation")!.click();
+    await until(() => app.git.reviewSession.files.length === 0, "cleared dock tree");
+  });
+
+  // Without its cloud guard, a tree click "ensures" a git-review center —
+  // opening a local working-tree review on top of the PR the user is reading.
+  it("keeps a cloud tree click inside the PR center", async () => {
+    const app = await cloudDockedPr();
+    await until(
+      () => dockNav(app)?.contentEl.querySelector('[data-path="lib/renderer.ts"]') != null,
+      "row",
+    );
+    (dockNav(app)!.contentEl.querySelector('[data-path="lib/renderer.ts"]') as HTMLElement).click();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(app.git.reviewSession.selectedPath).toBe("lib/renderer.ts");
+    expect(app.workspace.getLeavesOfType("git-review").length).toBe(0);
+  });
+
+  // Without its cloud guard, the local git-review leaf reloads against the
+  // cloud source (no local ref) and republishes local git's answer over the
+  // cloud file list.
+  it("leaves the local git review leaf alone when a cloud source arrives", async () => {
+    const app = await appWithGit();
+    installGithubMocks(app);
+    await openGitReview(app);
+    await until(() => app.workspace.getLeavesOfType("git-review").length > 0, "git-review leaf");
+    const session = app.git.reviewSession;
+    session.setSource({ kind: "cloud", title: "PR #185" });
+    session.publishFiles([{ path: "cloud.ts", status: "modified", additions: 1, deletions: 0 }]);
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(session.files.map((file) => file.path)).toEqual(["cloud.ts"]);
   });
 
   async function stateChipFor(detail: PrDetail): Promise<HTMLElement> {

@@ -10,6 +10,7 @@ import { formatRelativeDate } from "../git/relativeDate";
 import { ReviewSurface } from "../git/review/ReviewSurface";
 import { GITHUB_VIEW, openCommitDetail } from "./open";
 import { toReviewFiles } from "./patchUtils";
+import { dockCloudReview } from "./reviewDock";
 import type { GitHubActor, GitHubRepositoryRef, PrDetail } from "./types";
 import { composer } from "../../ui/Composer";
 import { avatar, linkButton, openInSystemBrowser, prStateLabel } from "./widgets";
@@ -51,6 +52,8 @@ export class PrDetailView extends ItemView {
   /** The header's tab switcher (the GitHubRepoView pattern): `addAction` only
    * makes single icon buttons, so the segmented control attaches to headerEl. */
   private segmentedEl: HTMLElement | null = null;
+  /** Detaches the right-dock tree bridge; runs wherever the surface dies. */
+  private dockCleanup: (() => void) | null = null;
 
   getViewType(): string {
     return PrDetailView.VIEW_TYPE;
@@ -112,6 +115,8 @@ export class PrDetailView extends ItemView {
 
   async onClose(): Promise<void> {
     this.request += 1;
+    this.dockCleanup?.();
+    this.dockCleanup = null;
     this.surface?.destroy();
     this.surface = null;
     await super.onClose();
@@ -120,6 +125,8 @@ export class PrDetailView extends ItemView {
   private async loadDetail(): Promise<void> {
     if (this.number === null) return;
     const request = ++this.request;
+    this.dockCleanup?.();
+    this.dockCleanup = null;
     this.surface?.destroy();
     this.surface = null;
     this.contentEl.empty();
@@ -154,6 +161,8 @@ export class PrDetailView extends ItemView {
 
   private renderDetail(): void {
     if (!this.detail || !this.repo || this.number === null) return;
+    this.dockCleanup?.();
+    this.dockCleanup = null;
     this.surface?.destroy();
     this.surface = null;
     const detail = this.detail;
@@ -244,11 +253,18 @@ export class PrDetailView extends ItemView {
       createDiv({ cls: "git-pr-empty", text: "No files changed." }, host);
       return;
     }
+    // Tree in the right dock, diff alone in the center — the git plugin's
+    // review arrangement, shared through the same session (owner's call).
+    const files = toReviewFiles(detail.files, this.unifiedDiff, detail.headRefOid);
+    const session = this.app.git.reviewSession;
     this.surface = new ReviewSurface(host, {
-      files: toReviewFiles(detail.files, this.unifiedDiff, detail.headRefOid),
+      files,
       storageRoot: null,
       title: `PR #${detail.number}`,
       subtitle: detail.title,
+      showFileSidebar: false,
+      onActivePathChange: (path) => session.selectPath(path),
+      onViewedPathsChange: (paths) => session.publishViewed(paths),
       review: {
         onSubmit: async (event, body, comments) => {
           const error = await this.app.github.submitReview(
@@ -264,6 +280,7 @@ export class PrDetailView extends ItemView {
       },
       onRefresh: () => void this.loadDetail(),
     });
+    this.dockCleanup = dockCloudReview(this.app, this.surface, files, `PR #${detail.number}`);
   }
 
   /** Close/Reopen lives in the real view header, exactly where the issue page

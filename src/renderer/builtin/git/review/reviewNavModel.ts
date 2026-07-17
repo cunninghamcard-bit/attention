@@ -25,6 +25,9 @@ export async function loadFileSummaries(
   git: SummaryGit,
   source: GitReviewSource,
 ): Promise<ReviewFileSummary[]> {
+  // Cloud files come from their own center; there is no local ref to ask git
+  // about. (GitNavView already skips the call — this is the model's own belt.)
+  if (source.kind === "cloud") return [];
   const [entries, numstat] =
     source.kind === "working-tree"
       ? await Promise.all([git.status(), git.numstat()])
@@ -165,7 +168,8 @@ export function buildHistoryRows(entries: readonly GitLogEntry[]): HistoryRow[] 
 }
 
 export function sourceKey(source: GitReviewSource): string {
-  return source.kind === "working-tree" ? "working-tree" : `commit:${source.ref}`;
+  if (source.kind === "working-tree") return "working-tree";
+  return source.kind === "cloud" ? `cloud:${source.title}` : `commit:${source.ref}`;
 }
 
 export function historyRowSelected(row: HistoryRow, source: GitReviewSource): boolean {

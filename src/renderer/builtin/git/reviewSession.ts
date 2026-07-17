@@ -1,9 +1,15 @@
 import { Events } from "../../core/Events";
 
 /** Local review target — working tree or a single commit (codiff ReviewSource). */
-export type GitReviewSource =
+export type LocalGitReviewSource =
   | { kind: "working-tree" }
   | { kind: "commit"; ref: string; subject?: string };
+
+/** Review target — the two local kinds, or a cloud center (GitHub PR / commit
+ * review) that publishes its own files into the session. A cloud source has no
+ * local ref: everything that shells out to git for the current source must
+ * skip it. */
+export type GitReviewSource = LocalGitReviewSource | { kind: "cloud"; title: string };
 
 /** Navigator mode — codiff has walkthrough too; we deliberately omit it. */
 export type GitNavMode = "tree" | "history";
