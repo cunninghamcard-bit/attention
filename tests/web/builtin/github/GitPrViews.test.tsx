@@ -177,9 +177,27 @@ function installGithubMocks(
         return json(rawPull(detail));
       }
       if (verb === "GET" && path.startsWith("/repos/coder/ghostty-web/issues/185/comments"))
-        return json([]);
+        return json(
+          detail.comments.map((comment) => ({
+            id: comment.id,
+            user: { login: comment.author.login, avatar_url: comment.author.avatarUrl },
+            body: comment.body,
+            created_at: comment.createdAt,
+            updated_at: comment.updatedAt,
+            html_url: comment.url,
+          })),
+        );
       if (verb === "GET" && path.startsWith("/repos/coder/ghostty-web/pulls/185/reviews"))
-        return json([]);
+        return json(
+          detail.reviews.map((review) => ({
+            id: review.id,
+            user: { login: review.author.login, avatar_url: review.author.avatarUrl },
+            state: review.state,
+            body: review.body,
+            submitted_at: review.submittedAt,
+            html_url: review.url,
+          })),
+        );
       if (verb === "GET" && path.startsWith("/repos/coder/ghostty-web/pulls/185/comments"))
         return json([]);
       if (verb === "GET" && path.startsWith("/repos/coder/ghostty-web/pulls/185/commits")) {
@@ -305,8 +323,8 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
 
-    await until(() => view.contentEl.querySelector(".git-pr-title") !== null, "title");
-    expect(view.contentEl.querySelector(".git-pr-title")!.textContent).toContain("Powerline");
+    await until(() => view.contentEl.querySelector(".gh-page-title") !== null, "title");
+    expect(view.contentEl.querySelector(".gh-page-title")!.textContent).toContain("Powerline");
     await until(() => view.contentEl.querySelector(".review-sidebar") !== null, "review surface");
     expect(view.contentEl.textContent).toContain("lib/renderer.ts");
     expect(view.contentEl.textContent).toContain("lib/renderer.test.ts");
@@ -366,14 +384,19 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
       el.textContent?.includes("Conversation"),
     ) as HTMLButtonElement;
     tab?.click();
-    await until(() => view.contentEl.querySelector(".git-pr-review-actions") !== null, "actions");
+    await until(() => view.contentEl.querySelector(".gh-composer-actions") !== null, "actions");
     return view;
   }
 
   function actionByText(view: PrDetailView, text: string): HTMLButtonElement | undefined {
-    return [...view.contentEl.querySelectorAll(".git-pr-action")].find((el) =>
+    return [...view.contentEl.querySelectorAll(".gh-composer-action")].find((el) =>
       (el.textContent ?? "").includes(text),
     ) as HTMLButtonElement | undefined;
+  }
+
+  /** Close/Reopen lives in the real view header now — the issue page's spot. */
+  function headerAction(view: PrDetailView, label: string): HTMLElement | null {
+    return view.headerEl.querySelector(`.view-action[aria-label="${label}"]`);
   }
 
   // No new client method: GitHub keeps PRs in the issues namespace, so the
@@ -385,7 +408,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = await conversationOf(app);
 
-    actionByText(view, "Close pull request")!.click();
+    headerAction(view, "Close pull request")!.click();
     await until(() => update.mock.calls.length > 0, "updateIssueState call");
     expect(update).toHaveBeenCalledWith(185, "closed", {
       owner: "coder",
@@ -401,7 +424,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = await conversationOf(app);
 
-    actionByText(view, "Reopen pull request")!.click();
+    headerAction(view, "Reopen pull request")!.click();
     await until(() => update.mock.calls.length > 0, "updateIssueState call");
     expect(update).toHaveBeenCalledWith(185, "open", {
       owner: "coder",
@@ -417,8 +440,55 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     const view = await conversationOf(app);
 
     // Merged is terminal — neither action is on offer.
-    expect(actionByText(view, "Close pull request")).toBeUndefined();
-    expect(actionByText(view, "Reopen pull request")).toBeUndefined();
+    expect(headerAction(view, "Close pull request")).toBeNull();
+    expect(headerAction(view, "Reopen pull request")).toBeNull();
+  });
+
+  // The conversation drew only the description before: the comments and
+  // reviews sat unrendered in PrDetail. A comment becomes a card; a submitted
+  // review becomes a card wearing its verdict chip.
+  it("renders comments and review verdicts as conversation cards", async () => {
+    const app = await appWithGit();
+    installGithubMocks(app, {
+      detail: {
+        ...DETAIL,
+        comments: [
+          {
+            id: "c1",
+            author: { login: "reviewer-a", avatarUrl: "", url: "" },
+            body: "Looks close — one nit inline.",
+            createdAt: "2026-07-11T11:00:00Z",
+            updatedAt: "2026-07-11T11:00:00Z",
+            url: "",
+          },
+        ],
+        reviews: [
+          {
+            id: "r1",
+            author: { login: "reviewer-b", avatarUrl: "", url: "" },
+            state: "APPROVED",
+            body: "Ship it.",
+            submittedAt: "2026-07-11T12:00:00Z",
+            url: "",
+          },
+        ],
+      },
+    });
+    await openPrDetail(app, "coder", "ghostty-web", 185);
+    const view = await conversationOf(app);
+
+    // Card bodies land asynchronously — the markdown renderer fills them in.
+    const cards = (): Element[] => [...view.contentEl.querySelectorAll(".gh-issue-main .gh-card")];
+    await until(
+      () => cards().some((card) => card.textContent?.includes("one nit inline")),
+      "comment card",
+    );
+    await until(
+      () => cards().some((card) => card.textContent?.includes("Ship it.")),
+      "review card",
+    );
+    const reviewCard = cards().find((card) => card.textContent?.includes("Ship it."));
+    expect(reviewCard!.querySelector(".gh-chip.mod-approved")?.textContent).toBe("approved");
   });
 
   it("approves through the GitHub API", async () => {
@@ -428,17 +498,14 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
 
-    await until(() => view.contentEl.querySelector(".git-pr-title") !== null, "title");
-    // switch to conversation for review bar
+    await until(() => view.contentEl.querySelector(".gh-page-title") !== null, "title");
+    // switch to conversation for the composer
     const convTab = [...view.contentEl.querySelectorAll(".git-pr-tab")].find((el) =>
       el.textContent?.includes("Conversation"),
     ) as HTMLButtonElement;
     convTab?.click();
-    await until(
-      () => view.contentEl.querySelector(".git-pr-action.mod-approve") !== null,
-      "approve",
-    );
-    (view.contentEl.querySelector(".git-pr-action.mod-approve") as HTMLButtonElement).click();
+    await until(() => actionByText(view, "Approve") !== undefined, "approve");
+    actionByText(view, "Approve")!.click();
     await until(() => submitCalls.includes("APPROVE"), "approve call");
   });
 
@@ -456,15 +523,20 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
 
-    await until(() => view.contentEl.querySelector(".git-pr-title") !== null, "title");
+    await until(() => view.contentEl.querySelector(".gh-page-title") !== null, "title");
     const convTab = [...view.contentEl.querySelectorAll(".git-pr-tab")].find((el) =>
       el.textContent?.includes("Conversation"),
     ) as HTMLButtonElement;
     convTab?.click();
-    await until(() => view.contentEl.querySelector(".git-pr-action.mod-cta") !== null, "comment");
+    await until(
+      () => view.contentEl.querySelector(".gh-composer-action.mod-cta") !== null,
+      "comment",
+    );
 
-    const input = view.contentEl.querySelector("textarea") as HTMLTextAreaElement;
-    const comment = view.contentEl.querySelector(".git-pr-action.mod-cta") as HTMLButtonElement;
+    const input = view.contentEl.querySelector(".gh-composer textarea") as HTMLTextAreaElement;
+    const comment = view.contentEl.querySelector(
+      ".gh-composer-action.mod-cta",
+    ) as HTMLButtonElement;
     input.value = "looks good";
     input.dispatchEvent(new Event("input"));
     // Proves the first click is a real click: a permanently disabled button
@@ -509,6 +581,42 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     await new Promise((resolve) => setTimeout(resolve, 120));
 
     expect(submit).toHaveBeenCalledTimes(1);
+  });
+
+  // The review footer is the same shared composer the issue and PR
+  // conversation pages use — the third box of the three. Typing must render a
+  // live markdown preview, and Comment must gate on an empty body while
+  // Approve stays available (an approval needs no summary).
+  it("gives the review footer the shared composer with a live preview", async () => {
+    const app = await appWithGit();
+    installGithubMocks(app);
+    await openPrDetail(app, "coder", "ghostty-web", 185);
+    const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
+
+    await until(
+      () => view.contentEl.querySelector(".review-submit-bar .gh-composer textarea") !== null,
+      "footer composer",
+    );
+    const ta = view.contentEl.querySelector(
+      ".review-submit-bar .gh-composer textarea",
+    ) as HTMLTextAreaElement;
+    const preview = view.contentEl.querySelector(
+      ".review-submit-bar .gh-composer-preview",
+    ) as HTMLElement;
+    const comment = [...view.contentEl.querySelectorAll(".gh-composer-action")].find((el) =>
+      el.textContent?.includes("Comment"),
+    ) as HTMLButtonElement;
+    const approve = view.contentEl.querySelector(
+      ".gh-composer-action.mod-approve",
+    ) as HTMLButtonElement;
+    expect(comment.disabled).toBe(true);
+    expect(approve.disabled).toBe(false);
+
+    ta.value = "**needs work**";
+    ta.dispatchEvent(new Event("input"));
+    expect(comment.disabled).toBe(false);
+    await until(() => preview.querySelector("strong") !== null, "rendered preview");
+    expect(preview.querySelector("strong")!.textContent).toBe("needs work");
   });
 
   it("opens browser device login from the signed-out view", async () => {

@@ -5,6 +5,7 @@ import {
   type DiffLineAnnotation,
 } from "@pierre/diffs";
 import { createDiv, createEl, createSpan } from "../../../dom/dom";
+import { composer } from "../../../ui/Composer";
 import { highlightWorkers } from "../../../ui/highlightWorkers";
 import { setIcon } from "../../../ui/Icon";
 import { Notice } from "../../../ui/Notice";
@@ -499,41 +500,39 @@ export class ReviewSurface {
     if (!this.props.review) return;
     this.footerEl.className = "review-submit-bar";
     const draftCount = this.completedDrafts().length;
-    const body = createEl(
-      "textarea",
-      {
-        cls: "review-submit-body",
-        placeholder: draftCount
-          ? `Review summary (submits ${draftCount} inline comment${draftCount === 1 ? "" : "s"})`
-          : "Review summary",
-        attr: { rows: 2 },
+    // The shared conversation composer (editor + live markdown preview in one
+    // card) — the same widget the issue and PR conversation pages use. The
+    // submit gating it cannot express stays here: a COMMENT with pending
+    // inline drafts needs no summary text, so requireBody only when there is
+    // nothing else to submit. Re-entry stays guarded at submitReview (`busy`),
+    // exactly as before — the composer never replaced that.
+    composer(this.footerEl, {
+      placeholder: draftCount
+        ? `Review summary (submits ${draftCount} inline comment${draftCount === 1 ? "" : "s"})`
+        : "Review summary",
+      initial: this.reviewBody,
+      onInput: (body) => {
+        this.reviewBody = body;
       },
-      this.footerEl,
-    );
-    body.value = this.reviewBody;
-    body.addEventListener("input", () => {
-      this.reviewBody = body.value;
-      this.renderFooter();
-    });
-    const actions = createDiv("review-submit-actions", this.footerEl);
-    for (const [label, event] of [
-      ["Comment", "COMMENT"],
-      ["Approve", "APPROVE"],
-      ["Request changes", "REQUEST_CHANGES"],
-    ] as const) {
-      const button = createEl(
-        "button",
+      actions: [
         {
-          cls: `review-action${event === "APPROVE" ? " mod-approve" : event === "REQUEST_CHANGES" ? " mod-request-changes" : ""}`,
-          text: label,
-          attr: { type: "button" },
+          label: "Comment",
+          cls: "mod-cta review-action",
+          requireBody: draftCount === 0,
+          run: () => void this.submitReview("COMMENT"),
         },
-        actions,
-      );
-      button.disabled =
-        this.busy || (event === "COMMENT" && draftCount === 0 && !this.reviewBody.trim());
-      button.addEventListener("click", () => void this.submitReview(event));
-    }
+        {
+          label: "Approve",
+          cls: "review-action mod-approve",
+          run: () => void this.submitReview("APPROVE"),
+        },
+        {
+          label: "Request changes",
+          cls: "review-action mod-request-changes",
+          run: () => void this.submitReview("REQUEST_CHANGES"),
+        },
+      ],
+    });
   }
 
   private markViewed(file: ReviewFile, nextViewed: boolean): void {
@@ -621,11 +620,10 @@ export class ReviewSurface {
 
   private async submitReview(event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT"): Promise<void> {
     if (!this.props.review || this.busy) return;
-    // `busy` already disables the footer buttons, and a pointer's second click
-    // lands on the redrawn disabled one — but that holds only while the redraw
-    // stays synchronous, keeps replacing the node, and keeps reading `busy`.
-    // Submitting a review twice posts it twice, so the operation refuses
-    // re-entry itself rather than trusting three conditions elsewhere.
+    // The footer buttons do not disable on `busy` — a second click during the
+    // round trip reaches this entry, and this check is the only thing that
+    // refuses it. Submitting a review twice posts it twice, so re-entry is
+    // refused here at the operation, not at the button.
     this.busy = true;
     this.renderFooter();
     try {

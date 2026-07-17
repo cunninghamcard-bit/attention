@@ -8,8 +8,9 @@ import { formatRelativeDate } from "../git/relativeDate";
 import { ReviewSurface } from "../git/review/ReviewSurface";
 import { GITHUB_VIEW, openCommitDetail } from "./open";
 import { toReviewFiles } from "./patchUtils";
-import type { GitHubRepositoryRef, PrDetail } from "./types";
-import { prStateLabel, renderMetaStrip } from "./widgets";
+import type { GitHubActor, GitHubRepositoryRef, PrDetail } from "./types";
+import { composer } from "../../ui/Composer";
+import { avatar, linkButton, openInSystemBrowser, prStateLabel } from "./widgets";
 
 /**
  * Center detail for a single pull request: a header, three in-view tabs
@@ -34,6 +35,9 @@ export class PrDetailView extends ItemView {
   private tab: "conversation" | "commits" | "files" = "files";
   private surface: ReviewSurface | null = null;
   private request = 0;
+  /** The header's Close/Reopen action — same replace-before-add dance as the
+   * issue view, because `addAction` prepends a fresh button every call. */
+  private stateAction: HTMLElement | null = null;
 
   getViewType(): string {
     return PrDetailView.VIEW_TYPE;
@@ -106,6 +110,8 @@ export class PrDetailView extends ItemView {
     this.surface?.destroy();
     this.surface = null;
     this.contentEl.empty();
+    // A failed load has no state to toggle: clear first, render puts it back.
+    this.setStateAction(null);
     createDiv({ cls: "git-pr-empty", text: `Loading PR #${this.number}…` }, this.contentEl);
     try {
       const repo =
@@ -139,27 +145,32 @@ export class PrDetailView extends ItemView {
     this.surface = null;
     const detail = this.detail;
     this.contentEl.empty();
+    // The issue page's vocabulary, not a parallel one: same head, same title
+    // row, same chip — a pull request page is the issue page with tabs. The
+    // root keeps the PR view's fixed column (the files tab's review surface
+    // sizes against it); only the conversation column scrolls.
     const root = createDiv("git-pr-detail", this.contentEl);
-    const header = createEl("header", "git-pr-detail-header", root);
-    createEl("h1", { cls: "git-pr-title", text: detail.title }, header);
-    const meta = createDiv("git-pr-meta", header);
-    // Same chip primitive the issue detail uses.
+    const head = createDiv("gh-detail-head", root);
+    const titleRow = createDiv("gh-detail-title-row", head);
     const state = prStateLabel(detail.state, detail.isDraft);
-    createSpan({ cls: `gh-chip mod-${state}`, text: state }, meta);
-    createSpan(
+    createSpan({ cls: `gh-chip mod-${state}`, text: state }, titleRow);
+    const title = createEl("h1", { cls: "gh-page-title", text: `${detail.title} ` }, titleRow);
+    createSpan({ cls: "gh-muted", text: `#${detail.number}` }, title);
+    const meta = createDiv(
       {
-        text: `${detail.author.login} · #${detail.number} · ${detail.headRefName} → ${detail.baseRefName}`,
+        cls: "gh-muted",
+        text:
+          `${detail.author.login} opened ${formatRelativeDate(detail.createdAt)}` +
+          ` · ${detail.headRefName} → ${detail.baseRefName} · `,
       },
-      meta,
+      head,
     );
     const stat = createSpan("git-pr-diffstat", meta);
     createEl("ins", { text: `+${detail.additions}` }, stat);
     createEl("del", { text: `−${detail.deletions}` }, stat);
-    renderMetaStrip(header, {
-      labels: detail.labels,
-      assignees: detail.assignees,
-      milestone: detail.milestone,
-    });
+    createSpan({ text: " · " }, meta);
+    linkButton(meta, "Open on GitHub", () => openInSystemBrowser(detail.url));
+    this.setStateAction(detail);
     const tabs = createDiv("github-segmented-control git-pr-tabs", root);
     this.tabButton(tabs, "conversation", "Conversation");
     this.tabButton(tabs, "commits", `Commits ${detail.commits.length}`);
@@ -214,106 +225,147 @@ export class PrDetailView extends ItemView {
     });
   }
 
+  /** Close/Reopen lives in the real view header, exactly where the issue page
+   * puts it. A merged pull request has no toggle left to offer. No new API:
+   * GitHub keeps pull requests in the issues namespace, so the issue state
+   * PATCH already drives them. */
+  private setStateAction(detail: PrDetail | null): void {
+    this.stateAction?.remove();
+    this.stateAction = null;
+    if (!detail || detail.state === "merged") return;
+    const open = detail.state === "open";
+    this.stateAction = this.addAction(
+      open ? "lucide-circle-check" : "lucide-circle-dot",
+      open ? "Close pull request" : "Reopen pull request",
+      () =>
+        void this.submit(
+          () =>
+            this.app.github.updateIssueState(
+              detail.number,
+              open ? "closed" : "open",
+              this.repo ?? undefined,
+            ),
+          open ? "Pull request closed" : "Pull request reopened",
+        ),
+    );
+  }
+
   private renderConversation(parent: HTMLElement, detail: PrDetail): void {
-    const root = createDiv("git-pr-conversation", parent);
-    const card = createDiv("git-pr-comment", root);
-    const cardMeta = createDiv("git-pr-comment-header", card);
-    createEl("strong", { text: detail.author.login }, cardMeta);
-    createSpan(
-      {
-        cls: "git-pr-comment-date",
-        text: formatRelativeDate(detail.createdAt),
-      },
-      cardMeta,
-    );
-    markdown(card, detail.body || "*No description provided.*");
-    const review = createDiv("git-pr-review-bar", root);
-    const input = createEl(
-      "textarea",
-      {
-        cls: "git-pr-review-input",
-        placeholder: "Leave a comment on this pull request",
-        attr: { rows: 3 },
-      },
-      review,
-    );
-    const actions = createDiv("git-pr-review-actions", review);
-    const comment = button(actions, "Comment", "git-pr-action mod-cta");
-    const approve = button(actions, "Approve", "git-pr-action mod-approve");
-    const changes = button(actions, "Request changes", "git-pr-action mod-request-changes");
-    // A merged pull request has no open/closed toggle left to offer. No new
-    // API: GitHub keeps pull requests in the issues namespace, so the issue
-    // state PATCH already drives them.
-    if (detail.state !== "merged") {
-      const open = detail.state === "open";
-      const state = button(
-        actions,
-        open ? "Close pull request" : "Reopen pull request",
-        "git-pr-action",
-      );
-      state.addEventListener(
-        "click",
-        () =>
-          void this.submit(
-            () =>
-              this.app.github.updateIssueState(
-                detail.number,
-                open ? "closed" : "open",
-                this.repo ?? undefined,
-              ),
-            open ? "Pull request closed" : "Pull request reopened",
-          ),
-      );
+    // The issue page's conversation, on the issue page's layout: cards down the
+    // main column, the meta column beside it. The comments and reviews were
+    // always in `PrDetail` — this page just never drew them. The scroller and
+    // the layout are separate elements: git-pr-conversation is a scrolling
+    // column, gh-issue-layout is a row, and one element cannot be both.
+    const scroll = createDiv("git-pr-conversation", parent);
+    const layout = createDiv("gh-issue-layout", scroll);
+    const main = createDiv("gh-issue-main", layout);
+    this.renderPrMeta(createEl("aside", "gh-issue-meta", layout), detail);
+
+    const description = createEl("article", "gh-card", main);
+    const descriptionMeta = createDiv("gh-card-meta", description);
+    createEl("strong", { text: detail.author.login }, descriptionMeta);
+    createSpan({ cls: "gh-muted", text: formatRelativeDate(detail.createdAt) }, descriptionMeta);
+    markdown(description, detail.body || "*No description provided.*");
+
+    for (const item of conversationItems(detail)) {
+      const card = createEl("article", "gh-card", main);
+      const cardMeta = createDiv("gh-card-meta", card);
+      createEl("strong", { text: item.author.login }, cardMeta);
+      if (item.chip)
+        createSpan({ cls: `gh-chip mod-${item.chip.cls}`, text: item.chip.text }, cardMeta);
+      createSpan({ cls: "gh-muted", text: formatRelativeDate(item.date) }, cardMeta);
+      if (item.body) markdown(card, item.body);
     }
-    comment.disabled = true;
-    changes.disabled = true;
-    input.addEventListener("input", () => {
-      comment.disabled = !input.value.trim();
-      changes.disabled = !input.value.trim();
+
+    composer(main, {
+      placeholder: "Leave a comment on this pull request",
+      actions: [
+        {
+          label: "Comment",
+          cls: "mod-cta",
+          requireBody: true,
+          run: (body) =>
+            void this.submit(
+              () => this.app.github.createComment(detail.number, body, this.repo ?? undefined),
+              "Comment posted",
+            ),
+        },
+        {
+          label: "Approve",
+          run: (body) =>
+            void this.submit(
+              () =>
+                this.app.github.submitReview(
+                  detail.number,
+                  "APPROVE",
+                  body,
+                  [],
+                  this.repo ?? undefined,
+                ),
+              "Approved",
+            ),
+        },
+        {
+          label: "Request changes",
+          requireBody: true,
+          run: (body) =>
+            void this.submit(
+              () =>
+                this.app.github.submitReview(
+                  detail.number,
+                  "REQUEST_CHANGES",
+                  body,
+                  [],
+                  this.repo ?? undefined,
+                ),
+              "Changes requested",
+            ),
+        },
+      ],
     });
-    comment.addEventListener(
-      "click",
-      () =>
-        void this.submit(
-          () =>
-            this.app.github.createComment(
-              detail.number,
-              input.value.trim(),
-              this.repo ?? undefined,
-            ),
-          "Comment posted",
-        ),
-    );
-    approve.addEventListener(
-      "click",
-      () =>
-        void this.submit(
-          () =>
-            this.app.github.submitReview(
-              detail.number,
-              "APPROVE",
-              input.value.trim(),
-              [],
-              this.repo ?? undefined,
-            ),
-          "Approved",
-        ),
-    );
-    changes.addEventListener(
-      "click",
-      () =>
-        void this.submit(
-          () =>
-            this.app.github.submitReview(
-              detail.number,
-              "REQUEST_CHANGES",
-              input.value.trim(),
-              [],
-              this.repo ?? undefined,
-            ),
-          "Changes requested",
-        ),
-    );
+  }
+
+  /** Reviewers / Assignees / Labels / Milestone — the issue page's meta column
+   * with the pull request's own sections. Same classes, same look. */
+  private renderPrMeta(parent: HTMLElement, detail: PrDetail): void {
+    const section = (label: string): HTMLElement => {
+      const block = createDiv("gh-meta-section", parent);
+      createDiv({ cls: "gh-meta-heading", text: label }, block);
+      return block;
+    };
+    const person = (parentEl: HTMLElement, actor: GitHubActor): void => {
+      const item = createDiv("github-meta-person", parentEl);
+      avatar(item, actor.login, actor.avatarUrl, 16);
+      createSpan({ cls: "github-meta-person-login", text: actor.login }, item);
+    };
+
+    const reviewers = section("Reviewers");
+    if (detail.requestedReviewers.length)
+      for (const actor of detail.requestedReviewers) person(reviewers, actor);
+    else createDiv({ cls: "gh-muted", text: "No reviews requested" }, reviewers);
+
+    const assignees = section("Assignees");
+    if (detail.assignees.length) for (const actor of detail.assignees) person(assignees, actor);
+    else createDiv({ cls: "gh-muted", text: "No one assigned" }, assignees);
+
+    const labels = section("Labels");
+    if (detail.labels.length)
+      for (const label of detail.labels) {
+        const chip = createSpan({ cls: "github-label-chip", text: label.name }, labels);
+        chip.style.setProperty(
+          "--github-label-color",
+          `#${(label.color || "888888").replace(/^#/, "")}`,
+        );
+        if (label.description) chip.title = label.description;
+      }
+    else createDiv({ cls: "gh-muted", text: "None yet" }, labels);
+
+    const milestone = section("Milestone");
+    if (detail.milestone) {
+      const url = detail.milestone.url;
+      if (url) linkButton(milestone, detail.milestone.title, () => openInSystemBrowser(url));
+      else createDiv({ text: detail.milestone.title }, milestone);
+    } else createDiv({ cls: "gh-muted", text: "No milestone" }, milestone);
   }
 
   /** Every write on this view goes through here, and each one is a POST that
@@ -384,8 +436,37 @@ function markdown(parent: HTMLElement, text: string): void {
   void MarkdownRenderer.renderMarkdown(text, host, "");
 }
 
-function button(parent: HTMLElement, text: string, cls: string): HTMLButtonElement {
-  return createEl("button", { cls, text, attr: { type: "button" } }, parent);
+/** Comments and submitted reviews in one chronological run. Pending reviews
+ * and empty COMMENTED shells (the container rows GitHub emits around inline
+ * review comments) carry no readable content and are skipped. */
+function conversationItems(detail: PrDetail): Array<{
+  author: GitHubActor;
+  body: string;
+  date: string;
+  chip: { text: string; cls: string } | null;
+}> {
+  const chips: Record<string, { text: string; cls: string }> = {
+    APPROVED: { text: "approved", cls: "approved" },
+    CHANGES_REQUESTED: { text: "requested changes", cls: "changes" },
+    DISMISSED: { text: "review dismissed", cls: "dismissed" },
+  };
+  const items = [
+    ...detail.comments.map((comment) => ({
+      author: comment.author,
+      body: comment.body,
+      date: comment.createdAt,
+      chip: null,
+    })),
+    ...detail.reviews
+      .filter((review) => review.submittedAt && (review.body.trim() || chips[review.state]))
+      .map((review) => ({
+        author: review.author,
+        body: review.body,
+        date: review.submittedAt!,
+        chip: chips[review.state] ?? null,
+      })),
+  ];
+  return items.sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function errorText(error: unknown): string {

@@ -16,6 +16,7 @@ import type {
   IssueTimelineEvent,
   RepoFileContent,
 } from "./types";
+import { composer } from "../../ui/Composer";
 import { avatar, linkButton, openInSystemBrowser } from "./widgets";
 
 /**
@@ -199,24 +200,21 @@ export class GitHubDetailView extends ItemView {
     markdown(createEl("article", "gh-card", main), detail.body || "*No description*");
     this.renderTimeline(main, detail);
 
-    const composer = createDiv("gh-composer", main);
-    const textarea = createEl(
-      "textarea",
-      { placeholder: "Leave a comment", attr: { rows: 3 } },
-      composer,
-    );
-    textarea.value = this.issueComment;
-    const submit = createEl(
-      "button",
-      { cls: "mod-cta", text: "Comment", attr: { type: "button" } },
-      composer,
-    );
-    submit.disabled = !this.issueComment.trim();
-    textarea.addEventListener("input", () => {
-      this.issueComment = textarea.value;
-      submit.disabled = !this.issueComment.trim();
+    composer(main, {
+      placeholder: "Leave a comment",
+      initial: this.issueComment,
+      onInput: (body) => {
+        this.issueComment = body;
+      },
+      actions: [
+        {
+          label: "Comment",
+          cls: "mod-cta",
+          requireBody: true,
+          run: () => void this.postComment(detail.number),
+        },
+      ],
     });
-    submit.addEventListener("click", () => void this.postComment(detail.number));
   }
 
   /** Comments and events in one chronological run. Events GitHub itself keeps

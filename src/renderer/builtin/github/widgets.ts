@@ -1,7 +1,7 @@
 import { createDiv, createEl, createSpan } from "../../dom/dom";
 import type { UserEvent } from "../../app/hotkeys/Keymap";
 import { TreeItem } from "../../ui/TreeItem";
-import type { GitHubActor, PrLabel, PrState } from "./types";
+import type { GitHubActor, PrState } from "./types";
 
 /** A faithful nav-file row (shared by the list and repo center views), keyed
  * for selection sync, with click + keyboard wired via `activate`. */
@@ -118,72 +118,4 @@ export function formatSize(bytes: number): string {
 
 export function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-/** Shared issue/PR meta strip: labels, assignees, milestone. Data-only — no API. */
-export function renderMetaStrip(
-  parent: HTMLElement,
-  opts: {
-    labels?: PrLabel[];
-    assignees?: GitHubActor[];
-    milestone?: { title: string; url: string } | null;
-  },
-): HTMLElement | null {
-  const labels = opts.labels ?? [];
-  const assignees = opts.assignees ?? [];
-  const milestone = opts.milestone ?? null;
-  if (!labels.length && !assignees.length && !milestone) return null;
-
-  const strip = createDiv("github-meta-strip", parent);
-
-  if (labels.length) {
-    const row = createDiv("github-meta-row", strip);
-    createSpan({ cls: "github-meta-label", text: "Labels" }, row);
-    const chips = createDiv("github-meta-chips", row);
-    for (const label of labels) {
-      const chip = createSpan({ cls: "github-label-chip", text: label.name }, chips);
-      const color = (label.color || "888888").replace(/^#/, "");
-      chip.style.setProperty("--github-label-color", `#${color}`);
-      if (label.description) chip.title = label.description;
-    }
-  }
-
-  if (assignees.length) {
-    const row = createDiv("github-meta-row", strip);
-    createSpan({ cls: "github-meta-label", text: "Assignees" }, row);
-    const people = createDiv("github-meta-people", row);
-    for (const person of assignees) {
-      const item = createDiv("github-meta-person", people);
-      avatar(item, person.login, person.avatarUrl, 16);
-      createSpan({ cls: "github-meta-person-login", text: person.login }, item);
-    }
-  }
-
-  if (milestone) {
-    const row = createDiv("github-meta-row", strip);
-    createSpan({ cls: "github-meta-label", text: "Milestone" }, row);
-    if (milestone.url) {
-      const url = milestone.url;
-      const link = createEl(
-        "a",
-        {
-          cls: "github-meta-milestone",
-          text: milestone.title,
-          attr: { href: url, rel: "noopener" },
-        },
-        row,
-      );
-      // The href is here for hover/a11y only; every external jump on the GitHub
-      // surface leaves through openInSystemBrowser, never the anchor default.
-      link.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        openInSystemBrowser(url);
-      });
-    } else {
-      createSpan({ cls: "github-meta-milestone", text: milestone.title }, row);
-    }
-  }
-
-  return strip;
 }

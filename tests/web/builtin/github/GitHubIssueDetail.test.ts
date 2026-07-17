@@ -4,7 +4,8 @@ import { GitHubDetailView } from "@web/builtin/github/GitHubDetailView";
 import { GitHubRepoView } from "@web/builtin/github/GitHubRepoView";
 import { openGitHubDetail, openRepo } from "@web/builtin/github/open";
 import type { IssueDetail } from "@web/builtin/github/types";
-import { renderMetaStrip } from "@web/builtin/github/widgets";
+import { MarkdownRenderer } from "@web/markdown/MarkdownRenderer";
+
 import { getFileTypeInfo } from "@web/ui/FileTypeIcon";
 
 const ACTOR = { login: "ada", avatarUrl: "", url: "" };
@@ -262,6 +263,62 @@ describe("GitHub issue detail (#5)", () => {
     });
   });
 
+  // The composer previews through the host MarkdownRenderer, live. Asserting
+  // a <strong> element (not the text) is deliberate: a preview that merely
+  // echoes the raw body would contain "**bold move**" and still read green on
+  // a substring check — only real rendering produces the element.
+  it("previews the comment as rendered markdown while typing", async () => {
+    const app = await boot();
+    vi.spyOn(app.github, "getIssue").mockResolvedValue(ISSUE);
+    await openGitHubDetail(app, { kind: "issue", number: 42, owner: "acme", repo: "attention" });
+    const view = app.workspace.getLeavesOfType(GitHubDetailView.VIEW_TYPE)[0]
+      ?.view as GitHubDetailView;
+    await until(() => view.contentEl.querySelector(".gh-composer textarea") !== null, "composer");
+    const preview = view.contentEl.querySelector(".gh-composer-preview") as HTMLElement;
+    expect(preview.textContent).toContain("Nothing to preview");
+
+    const ta = view.contentEl.querySelector(".gh-composer textarea") as HTMLTextAreaElement;
+    ta.value = "**bold move**";
+    ta.dispatchEvent(new Event("input"));
+    await until(() => preview.querySelector("strong") !== null, "rendered preview");
+    expect(preview.querySelector("strong")!.textContent).toBe("bold move");
+  });
+
+  // Renders are async and typing outruns them: a keystroke's render that
+  // resolves after a newer keystroke already started the next one must be
+  // dropped, or the slow render overwrites the fresh preview with stale
+  // content. Only the composer's render token guards this — the first render
+  // here is made slower than the second, so without the token the first one
+  // lands last and wins.
+  it("shows the last keystroke's preview even when an earlier render finishes late", async () => {
+    const app = await boot();
+    vi.spyOn(app.github, "getIssue").mockResolvedValue(ISSUE);
+    let renderDelay = 100;
+    vi.spyOn(MarkdownRenderer, "renderMarkdown").mockImplementation((text, el) => {
+      el.textContent = text;
+      return new Promise((resolve) => setTimeout(resolve, renderDelay));
+    });
+    await openGitHubDetail(app, { kind: "issue", number: 42, owner: "acme", repo: "attention" });
+    const view = app.workspace.getLeavesOfType(GitHubDetailView.VIEW_TYPE)[0]
+      ?.view as GitHubDetailView;
+    await until(() => view.contentEl.querySelector(".gh-composer textarea") !== null, "composer");
+    const preview = view.contentEl.querySelector(".gh-composer-preview") as HTMLElement;
+    const ta = view.contentEl.querySelector(".gh-composer textarea") as HTMLTextAreaElement;
+
+    ta.value = "first keystroke";
+    ta.dispatchEvent(new Event("input")); // resolves in ~100ms
+    renderDelay = 0;
+    ta.value = "second keystroke";
+    ta.dispatchEvent(new Event("input")); // resolves immediately
+
+    await until(() => preview.textContent?.includes("second keystroke") ?? false, "fresh preview");
+    // Give the slow first render time to land — dropped, it changes nothing;
+    // undropped, it overwrites the preview with the stale first keystroke.
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(preview.textContent).toContain("second keystroke");
+    expect(preview.textContent).not.toContain("first keystroke");
+  });
+
   // Write operations guard their own re-entry: a second activation inside the
   // round trip must not create a second resource. The mock keeps a real
   // latency window (two sync clicks are caught either way — both handlers run
@@ -427,28 +484,6 @@ describe("GitHub issue detail (#5)", () => {
     expect(rows[2]).toContain("Looks good");
     expect(rows[3]).toContain("closed this");
     expect(main.textContent).not.toContain("subscribed");
-  });
-
-  it("renderMetaStrip is a no-op when there is no meta", () => {
-    const host = document.createElement("div");
-    expect(renderMetaStrip(host, {})).toBeNull();
-    expect(host.childElementCount).toBe(0);
-  });
-
-  it("sends the milestone link through the shared system-browser exit", () => {
-    const openExternal = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal("electron", { shell: { openExternal } });
-    const host = document.createElement("div");
-    renderMetaStrip(host, { milestone: ISSUE.milestone });
-    const link = host.querySelector(".github-meta-milestone") as HTMLAnchorElement;
-    const event = new MouseEvent("click", { bubbles: true, cancelable: true });
-    link.dispatchEvent(event);
-
-    expect(openExternal).toHaveBeenCalledWith(ISSUE.milestone!.url);
-    // A bare target=_blank would let the anchor navigate itself, bypassing the
-    // one exit every other GitHub link uses.
-    expect(event.defaultPrevented).toBe(true);
-    expect(link.getAttribute("target")).toBeNull();
   });
 
   it("creates an issue from the repo Issues section and opens the new issue", async () => {
