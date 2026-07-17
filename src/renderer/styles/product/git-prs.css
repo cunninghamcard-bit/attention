@@ -487,7 +487,20 @@ and review mode. */
   padding: 12px;
   background: var(--background-secondary);
 }
-.gh-composer textarea { width: 100%; resize: vertical; }
+/* The container above carries the composer's single frame — the OMG shape is
+ * one bordered card with internal separations, so the textarea sheds the
+ * host's own field chrome (no double frame), sits at a fixed height with no
+ * drag corner, and the action keeps to the right edge instead of stretching. */
+.gh-composer textarea {
+  width: 100%;
+  height: 192px;
+  resize: none;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+.gh-composer .mod-cta { align-self: flex-end; }
 .gh-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .gh-steps { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 .gh-step-row {

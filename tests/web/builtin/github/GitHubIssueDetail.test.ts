@@ -262,6 +262,53 @@ describe("GitHub issue detail (#5)", () => {
     });
   });
 
+  // Write operations guard their own re-entry: a second activation inside the
+  // round trip must not create a second resource. The mock keeps a real
+  // latency window (two sync clicks are caught either way — both handlers run
+  // before any microtask — but the window mirrors production timing).
+  it("posts one comment however fast the button is clicked twice", async () => {
+    const app = await boot();
+    vi.spyOn(app.github, "getIssue").mockResolvedValue(ISSUE);
+    const create = vi
+      .spyOn(app.github, "createIssueComment")
+      .mockImplementation(() => new Promise((r) => setTimeout(() => r(null), 50)));
+    await openGitHubDetail(app, { kind: "issue", number: 42, owner: "acme", repo: "attention" });
+    const view = app.workspace.getLeavesOfType(GitHubDetailView.VIEW_TYPE)[0]
+      ?.view as GitHubDetailView;
+    await until(() => view.contentEl.querySelector(".gh-composer textarea") !== null, "composer");
+    const ta = view.contentEl.querySelector(".gh-composer textarea") as HTMLTextAreaElement;
+    const btn = view.contentEl.querySelector(".gh-composer .mod-cta") as HTMLButtonElement;
+    ta.value = "hello";
+    // Assigning value alone does not fire the listener that enables the button.
+    ta.dispatchEvent(new Event("input"));
+    // A forever-disabled button also "posts once" — that green would be empty.
+    expect(btn.disabled).toBe(false);
+
+    btn.click();
+    btn.click();
+    await until(() => create.mock.calls.length > 0, "first post");
+    await new Promise((r) => setTimeout(r, 120));
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends one state change however fast Close is clicked twice", async () => {
+    const app = await boot();
+    vi.spyOn(app.github, "getIssue").mockResolvedValue(ISSUE);
+    const update = vi
+      .spyOn(app.github, "updateIssueState")
+      .mockImplementation(() => new Promise((r) => setTimeout(() => r(null), 50)));
+    await openGitHubDetail(app, { kind: "issue", number: 42, owner: "acme", repo: "attention" });
+    const view = app.workspace.getLeavesOfType(GitHubDetailView.VIEW_TYPE)[0]
+      ?.view as GitHubDetailView;
+    await until(() => headerAction(view, "Close issue") !== null, "close action");
+    const close = headerAction(view, "Close issue") as HTMLElement;
+    close.click();
+    close.click();
+    await until(() => update.mock.calls.length > 0, "first state change");
+    await new Promise((r) => setTimeout(r, 120));
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
   // A remote file is still a file: the tab names its type through the host's
   // own resolver, like every other place in the app that lists one. Asserting
   // the resolver's answer rather than a literal is deliberate — a hardcoded

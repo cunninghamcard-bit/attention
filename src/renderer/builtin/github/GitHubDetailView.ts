@@ -32,6 +32,9 @@ export class GitHubDetailView extends ItemView {
 
   private target: GitHubDetailTarget | null = null;
   private issueComment = "";
+  /** One in-flight write at a time (comment or close/reopen) — see the guard
+   * comment above postComment. */
+  private submitting = false;
   private request = 0;
   private codeView: CodeView | null = null;
   /** The header's Close/Reopen action. `addAction` prepends a fresh button
@@ -288,24 +291,40 @@ export class GitHubDetailView extends ItemView {
     for (const person of issueParticipants(detail)) person_(participants, person);
   }
 
+  // Write operations guard their own re-entry (the CreateIssueModal shape:
+  // the flag flips before the await) — a second activation inside the round
+  // trip must not create a second resource. The guard sits on the operation,
+  // not on the button: disabling UI only decides whether a user can *reach*
+  // a second call, not whether the call can run twice.
   private async postComment(number: number): Promise<void> {
-    if (!this.issueComment.trim()) return;
-    const error = await this.app.github.createIssueComment(
-      number,
-      this.issueComment.trim(),
-      this.repo(),
-    );
-    if (error) return void new Notice(error);
-    this.issueComment = "";
-    new Notice("Comment posted");
-    await this.loadTarget();
+    if (!this.issueComment.trim() || this.submitting) return;
+    this.submitting = true;
+    try {
+      const error = await this.app.github.createIssueComment(
+        number,
+        this.issueComment.trim(),
+        this.repo(),
+      );
+      if (error) return void new Notice(error);
+      this.issueComment = "";
+      new Notice("Comment posted");
+      await this.loadTarget();
+    } finally {
+      this.submitting = false;
+    }
   }
 
   private async setIssueState(number: number, state: "open" | "closed"): Promise<void> {
-    const error = await this.app.github.updateIssueState(number, state, this.repo());
-    if (error) return void new Notice(error);
-    new Notice(state === "closed" ? "Issue closed" : "Issue reopened");
-    await this.loadTarget();
+    if (this.submitting) return;
+    this.submitting = true;
+    try {
+      const error = await this.app.github.updateIssueState(number, state, this.repo());
+      if (error) return void new Notice(error);
+      new Notice(state === "closed" ? "Issue closed" : "Issue reopened");
+      await this.loadTarget();
+    } finally {
+      this.submitting = false;
+    }
   }
 
   private renderRun(detail: ActionRunDetail): void {
