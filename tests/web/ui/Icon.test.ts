@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { addIcon, getIcon, getIconIds, removeIcon, setIcon } from "@web/ui/Icon";
 
@@ -29,6 +31,35 @@ describe("setIcon", () => {
   it("ships the users glyph used by follower surfaces", () => {
     const icon = setIcon(document.createElement("span"), "lucide-users");
     expect(icon?.classList.contains("lucide-users")).toBe(true);
+  });
+
+  // A name the table lacks renders NOTHING and nothing shouts — the owner
+  // found the Followers tab blank by eye, and it was one of nine. This probes
+  // the resolver itself (setIcon into an element) for every literal lucide-*
+  // name the builtin surfaces use, so an unknown icon name is unwritable:
+  // grepping the table would be a proxy (aliases and fallbacks make hit
+  // counts lie in both directions); "did it draw" is the real question.
+  it("draws every lucide icon the builtin surfaces name", () => {
+    const root = resolve(__dirname, "../../../src/renderer/builtin");
+    const names = new Set<string>();
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = join(dir, entry.name);
+        if (entry.isDirectory()) walk(path);
+        else if (entry.name.endsWith(".ts") || entry.name.endsWith(".tsx")) {
+          for (const match of readFileSync(path, "utf8").matchAll(/"(lucide-[a-z0-9-]+)"/g))
+            names.add(match[1]);
+        }
+      }
+    };
+    walk(root);
+    expect(names.size).toBeGreaterThan(20);
+    const missing = [...names].filter((name) => {
+      const el = document.createElement("div");
+      setIcon(el, name);
+      return el.firstElementChild === null;
+    });
+    expect(missing).toEqual([]);
   });
 
   it("resolves legacy icon aliases to their targets (real Ym map)", () => {
