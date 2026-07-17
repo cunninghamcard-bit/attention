@@ -442,6 +442,43 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     await until(() => submitCalls.includes("APPROVE"), "approve call");
   });
 
+  // Every write on this view is a POST that creates something, and GitHub keeps
+  // both copies. The mock takes 50ms to stand in for a real round trip; that
+  // delay is not what exposes the bug, though — two synchronous clicks both run
+  // before any microtask, so the second lands mid-flight however fast the
+  // request resolves. The delay is realism, not the mechanism.
+  it("posts one comment when an impatient user clicks twice", async () => {
+    const app = await appWithGit();
+    installGithubMocks(app);
+    const create = vi
+      .spyOn(app.github, "createComment")
+      .mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve(null), 50)));
+    await openPrDetail(app, "coder", "ghostty-web", 185);
+    const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
+
+    await until(() => view.contentEl.querySelector(".git-pr-title") !== null, "title");
+    const convTab = [...view.contentEl.querySelectorAll(".git-pr-tab")].find((el) =>
+      el.textContent?.includes("Conversation"),
+    ) as HTMLButtonElement;
+    convTab?.click();
+    await until(() => view.contentEl.querySelector(".git-pr-action.mod-cta") !== null, "comment");
+
+    const input = view.contentEl.querySelector("textarea") as HTMLTextAreaElement;
+    const comment = view.contentEl.querySelector(".git-pr-action.mod-cta") as HTMLButtonElement;
+    input.value = "looks good";
+    input.dispatchEvent(new Event("input"));
+    // Proves the first click is a real click: a permanently disabled button
+    // would also "post once", and that green would mean nothing.
+    expect(comment.disabled).toBe(false);
+
+    comment.click();
+    comment.click();
+    await until(() => create.mock.calls.length > 0, "comment call");
+    await new Promise((resolve) => setTimeout(resolve, 120));
+
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
   it("opens browser device login from the signed-out view", async () => {
     const openExternal = vi.fn(async () => {});
     vi.stubGlobal("electron", { shell: { openExternal } });

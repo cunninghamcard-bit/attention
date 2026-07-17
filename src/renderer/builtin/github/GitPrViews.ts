@@ -24,6 +24,7 @@ export class PrDetailView extends ItemView {
    * declare this, so it is required alongside `result.history` for back/forward. */
   navigation = true;
 
+  private submitting = false;
   private number: number | null = null;
   private owner: string | null = null;
   private repoName: string | null = null;
@@ -315,12 +316,26 @@ export class PrDetailView extends ItemView {
     );
   }
 
+  /** Every write on this view goes through here, and each one is a POST that
+   * creates something: a comment, a review. A second click while the first is
+   * still in flight posts it twice, and GitHub keeps both — so the guard is on
+   * the operation, not on the button. Guarding a button only covers the clicks
+   * that button knows about; this covers every caller. */
   private async submit(action: () => Promise<string | null>, success: string): Promise<void> {
-    const error = await action();
-    if (error) new Notice(`Failed: ${error}`);
-    else {
-      new Notice(success);
-      await this.loadDetail();
+    if (this.submitting) return;
+    this.submitting = true;
+    try {
+      const error = await action();
+      if (error) new Notice(`Failed: ${error}`);
+      else {
+        new Notice(success);
+        await this.loadDetail();
+      }
+    } finally {
+      // finally, not a plain assignment after the await: the service returns
+      // its errors today, but a throw would otherwise leave the flag set and
+      // the view permanently unable to submit again.
+      this.submitting = false;
     }
   }
 
