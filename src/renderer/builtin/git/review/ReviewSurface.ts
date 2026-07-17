@@ -620,7 +620,12 @@ export class ReviewSurface {
   }
 
   private async submitReview(event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT"): Promise<void> {
-    if (!this.props.review) return;
+    if (!this.props.review || this.busy) return;
+    // `busy` already disables the footer buttons, and a pointer's second click
+    // lands on the redrawn disabled one — but that holds only while the redraw
+    // stays synchronous, keeps replacing the node, and keeps reading `busy`.
+    // Submitting a review twice posts it twice, so the operation refuses
+    // re-entry itself rather than trusting three conditions elsewhere.
     this.busy = true;
     this.renderFooter();
     try {

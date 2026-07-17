@@ -479,6 +479,38 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     expect(create).toHaveBeenCalledTimes(1);
   });
 
+  // The review surface disables its footer while a submit is in flight, and a
+  // pointer's second click lands on the redrawn disabled button — so clicking
+  // the *current* button twice proves nothing about the operation. Holding the
+  // reference from before the redraw is what asks the real question: can the
+  // submit be entered twice at all?
+  it("submits one review even when the click beats the redraw", async () => {
+    const app = await appWithGit();
+    installGithubMocks(app);
+    const submit = vi
+      .spyOn(app.github, "submitReview")
+      .mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve(null), 50)));
+    await openPrDetail(app, "coder", "ghostty-web", 185);
+    const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
+
+    await until(() => view.contentEl.querySelector(".review-sidebar") !== null, "review surface");
+    await until(
+      () => view.contentEl.querySelector(".review-action.mod-approve") !== null,
+      "approve button",
+    );
+    const approve = view.contentEl.querySelector(".review-action.mod-approve") as HTMLButtonElement;
+    // Not disabled to begin with: a button that could never fire would also
+    // "submit once", and that green would mean nothing.
+    expect(approve.disabled).toBe(false);
+
+    approve.click();
+    approve.click();
+    await until(() => submit.mock.calls.length > 0, "review call");
+    await new Promise((resolve) => setTimeout(resolve, 120));
+
+    expect(submit).toHaveBeenCalledTimes(1);
+  });
+
   it("opens browser device login from the signed-out view", async () => {
     const openExternal = vi.fn(async () => {});
     vi.stubGlobal("electron", { shell: { openExternal } });
