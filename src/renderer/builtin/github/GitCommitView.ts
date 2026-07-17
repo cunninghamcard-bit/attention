@@ -1,6 +1,8 @@
 import { Keymap } from "../../app/hotkeys/Keymap";
 import { createDiv, createEl, createSpan } from "../../dom/dom";
+import { setIcon } from "../../ui/Icon";
 import { Notice } from "../../ui/Notice";
+import { setTooltip } from "../../ui/Popover";
 import { ItemView } from "../../views/ItemView";
 import type { ViewStateResult } from "../../views/View";
 import { formatRelativeDate } from "../git/relativeDate";
@@ -148,9 +150,13 @@ export class GitCommitView extends ItemView {
       meta,
     );
     createEl("code", { cls: "gh-sha", text: detail.shortSha }, meta);
-    linkButton(
-      meta,
-      "Copy",
+    // clickable-icon, the host's copy-button language: an icon out of the
+    // form-control chrome, not a "Copy" text button in a box.
+    const copy = createEl("button", { cls: "clickable-icon", attr: { type: "button" } }, meta);
+    setIcon(copy, "lucide-copy");
+    setTooltip(copy, "Copy SHA");
+    copy.addEventListener(
+      "click",
       () => void navigator.clipboard.writeText(detail.sha).then(() => new Notice("SHA copied")),
     );
     if (detail.verification?.verified)

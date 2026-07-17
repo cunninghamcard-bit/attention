@@ -123,6 +123,27 @@ test("a remote file is highlighted like code, not dumped into a <pre>", async ({
   await expect(leaf.locator(".gh-code-pre")).toHaveCount(0);
 });
 
+test("a link-styled button wears no form-control chrome", async ({ page }) => {
+  await stubGitHub(page, SOURCE);
+  const leaf = await openFile(page);
+
+  // "Open on GitHub" is a linkButton (button.gh-linkish). The host's global
+  // `button:not(.clickable-icon)` (button-card.css) paints a background+shadow
+  // at 0-1-1; a bare `.gh-linkish` is 0-1-0 and loses, so the button wore
+  // browser chrome. This asserts on a github-detail view — NOT the commit page
+  // the owner flagged — so a pass here proves one CSS selector fix heals the
+  // whole gh-linkish family, not just the page under the microscope. jsdom
+  // cannot compute this; only a real cascade can.
+  const open = leaf.locator("button.gh-linkish", { hasText: "Open on GitHub" });
+  await expect(open).toBeVisible();
+  const chrome = await open.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { boxShadow: cs.boxShadow, background: cs.backgroundColor };
+  });
+  expect(chrome.boxShadow).toBe("none");
+  expect(["rgba(0, 0, 0, 0)", "transparent"]).toContain(chrome.background);
+});
+
 test("a long file stays inside the leaf instead of running off the bottom", async ({ page }) => {
   await stubGitHub(page, LONG_SOURCE);
   const leaf = await openFile(page);

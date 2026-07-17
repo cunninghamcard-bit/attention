@@ -231,9 +231,18 @@
 
 .gh-page-title { margin: 0; font-size: var(--font-ui-large); }
 .gh-muted { color: var(--text-muted); font-size: var(--font-ui-smaller); }
-.gh-linkish {
+/* `button.gh-linkish`, not `.gh-linkish`: the host's `button:not(.clickable-icon)`
+   (button-card.css) is 0-1-1 and paints a form-control background+shadow; a bare
+   class is 0-1-0 and loses, so every link-styled button wore browser chrome. The
+   qualified selector ties at 0-1-1 and wins on load order (git-prs imports after
+   button-card). The :hover pair beats the global `button:hover`, which repaints
+   the same background+shadow. */
+button.gh-linkish {
   appearance: none; border: none; background: none; color: var(--text-accent);
   cursor: var(--cursor); font-size: var(--font-ui-smaller); padding: 0; box-shadow: none;
+}
+button.gh-linkish:hover {
+  background: none; box-shadow: none; text-decoration: underline;
 }
 .gh-chip {
   display: inline-flex; align-items: center; font-size: 11px; padding: 1px 7px;
