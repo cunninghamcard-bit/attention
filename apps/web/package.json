@@ -4,7 +4,8 @@
   "private": true,
   "description": "The product: the Obsidian-reconstruction renderer (browser-hosted, node-privileged). Directionally the web surface; the desktop shell loads its build output.",
   "files": [
-    "out/api"
+    "dist",
+    "README.md"
   ],
   "type": "module",
   "types": "out/api/index.d.ts",
