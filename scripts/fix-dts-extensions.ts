@@ -1,4 +1,4 @@
-import { copyFile, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
 const root = await firstExistingDirectory([
@@ -9,7 +9,7 @@ const root = await firstExistingDirectory([
   join(process.cwd(), "out", "api"),
 ]);
 const relativeSpecifier =
-  /((?:from\s+|export\s+\*\s+from\s+|import\s*\(\s*)["'])(\.{1,2}\/[^"']+?)(["'])/g;
+  /((?:from\s+|export\s+\*\s+from\s+|import\s*\(\s*)["'])(\.{1,2}(?:\/[^"']+?)?)(["'])/g;
 
 async function walk(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -34,6 +34,8 @@ for (const file of await walk(root)) {
     (match, prefix: string, specifier: string, suffix: string) => {
       if (hasKnownExtension(specifier)) return match;
       changed += 1;
+      // A bare "." or ".." is a directory import; point it at the index file.
+      if (specifier === "." || specifier === "..") return `${prefix}${specifier}/index.js${suffix}`;
       return `${prefix}${specifier}.js${suffix}`;
     },
   );
@@ -44,10 +46,12 @@ console.log(
   `Fixed ${changed} declaration import specifier${changed === 1 ? "" : "s"} under ${relative(process.cwd(), root)}`,
 );
 
-await copyFile(join(root, "index.d.ts"), join(root, "index.d.cts"));
-console.log(
-  `Wrote CommonJS declaration entry ${relative(process.cwd(), join(root, "index.d.cts"))}`,
-);
+// The package is ESM-only; no CommonJS declaration entry is written. The
+// entry may sit flat (bundled) or nested under the package path (unbundled
+// with a repo-root entryRoot) — verify it exists so a layout change fails
+// loudly here instead of at pack time.
+const entryDir = await firstExistingDirectory([join(root, "apps", "web"), root]);
+await stat(join(entryDir, "index.d.ts"));
 
 async function firstExistingDirectory(paths: string[]): Promise<string> {
   for (const path of paths) {

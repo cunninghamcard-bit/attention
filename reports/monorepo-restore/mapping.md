@@ -526,11 +526,11 @@
 
 ## 4. 删除
 
-| 路径                         | 原因                                                           |
-| ---------------------------- | -------------------------------------------------------------- |
-| src/                         | 单包布局废止（446 文件全部迁出，见 §1）                        |
-| Makefile                     | 任务注册表唯一化到 mise                                        |
-| packages/shared/kernelApi.ts | KernelApi 端口删除（owner override 99a3a09，独立提交 49a1fb2） |
+| 路径                         | 原因                                                                                          |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| src/                         | 单包布局废止（446 文件全部迁出，见 §1）                                                       |
+| Makefile                     | 任务注册表唯一化到 mise                                                                       |
+| packages/shared/kernelApi.ts | KernelApi 端口删除（owner override 99a3a09，落于 49a1fb2 —— 该提交并非单纯删除，见 §6 NOTES） |
 
 ## 5. 静止 hash 结论
 
@@ -538,3 +538,25 @@
 - §3 全部内核文件与 agent-form/main 完全一致（diff 为空）
 - §2 机械改写文件为允许例外类（import 路径/配置路径字符串），逐文件列明
 - §4 删除逐条列明
+
+## 6. NOTES — commit 边界如实说明
+
+本分支经历了一天内多执行者交错作业（多写者共享 worktree 时期），两个 commit 的
+边界与 spec 原定形状不符。按裁定（不在活跃多写者分支上做历史手术），历史保持
+原样，此节把偏差写实：
+
+- **`49a1fb2`** 名义上是 KernelApi 删除，实际混入了同 worktree 中他人未提交的
+  内核 merge 收尾（Makefile→mise 任务、`.git-blame-ignore-revs`）以及
+  architecture 墙调整。spec "deletion is its own commit" 的字面要求未满足；
+  删除的**内容**正确且完整（KernelApi 标识符全仓 0 定义 0 引用，由后续
+  `f57983f` 完成墙退役）。
+- **`f57983f`** 与 `49a1fb2` 都触碰 `tests/architecture.test.ts` 的
+  kernel-seam 墙（先删端口、后退役墙），是接力而非冲突。
+- 事故根因与修复：未提交 WIP 滞留共享树引发三次撞车 → 已翻转为单执行人 +
+  沙箱写入模型（AGENTS.md「Collaboration」节），后续 commit 均为单写者产物。
+- **审后修正批次**（山神庙终审 4 阻断的修复，见对应 commit message）：
+  内核 specs/ 还原为 agent-form 原样（撤销 vp fmt 误格式化，.prettierignore
+  屏蔽全部内核树与 vendored 树）；apps/web 清单 files/exports 对齐 out/api
+  实产物（ESM-only，去除伪 CJS 声明入口）；`tsconfig.api.json` 使 API 声明
+  构建零 TS 错误；`fix-dts-extensions` 处理裸 `..` 目录导入；packcheck
+  （publint + attw esm-only）纳入 `mise run gate`。

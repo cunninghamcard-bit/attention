@@ -13,10 +13,10 @@ export default defineConfig({
   },
   plugins: [
     dts({
-      entryRoot: resolve(__dirname, "."),
+      entryRoot: resolve(__dirname, "../.."),
       outDirs: resolve(__dirname, "out/api"),
-      bundleTypes: true,
-      tsconfigPath: resolve(__dirname, "tsconfig.json"),
+      bundleTypes: false,
+      tsconfigPath: resolve(__dirname, "tsconfig.api.json"),
     }),
   ],
   build: {
@@ -25,8 +25,8 @@ export default defineConfig({
     emptyOutDir: false,
     lib: {
       entry: resolve(__dirname, "index.ts"),
-      formats: ["es", "cjs"],
-      fileName: (format) => (format === "es" ? "index.js" : "index.cjs"),
+      formats: ["es"],
+      fileName: () => "index.js",
     },
   },
 });

@@ -54,7 +54,13 @@ run = "cd apps/web && pnpm exec vp dev"
 
 [tasks.gate]
 description = "The review gate, in one command. Non-mutating: format is checked, not rewritten. Its output is the delivery receipt."
-run = ["pnpm exec vp check", "mise run typecheck", "pnpm exec vp test", "mise run kernel:test"]
+run = [
+  "pnpm exec vp check",
+  "mise run typecheck",
+  "pnpm exec vp test",
+  "pnpm run packcheck",
+  "mise run kernel:test",
+]
 
 [tasks."kernel:build"]
 description = "Build the Go kernel binary to bin/along (former Makefile `kernel` target)"
