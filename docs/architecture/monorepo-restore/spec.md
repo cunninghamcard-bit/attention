@@ -89,8 +89,13 @@ its RPC protocol.
     single-package-shell retires to learning records as history, and
     `docs/architecture.md` is rewritten. The red lines do NOT move: the LOCAL
     vault fs stays in-process node (the kernel never owns it), the renderer
-    owns markdown/block rendering in ALL forms, `KernelApi` stays
-    reserved-not-built through this ticket.
+    owns markdown/block rendering in ALL forms.
+  - `KernelApi` is DELETED in this ticket (owner override, 07-20): the port
+    interface, its wall test and every reference go, in a SEPARATE commit
+    after the relocation commits so the static-hash receipt stays clean. The
+    "rendering never imports KernelApi" wall retires with it; its successor
+    ("rendering never imports @app/sdk") lands with SDK generation in the
+    kernel-integration ticket. `@app/sdk` stays an empty seat.
   - Receipt on the branch (suggested name `feat/monorepo-restore`):
     `reports/monorepo-restore/mapping.md` lists old → new for every moved
     path, each landing exactly once; the blob-hash baseline shows every moved
@@ -108,10 +113,10 @@ its RPC protocol.
     is the contract of record; `@app/sdk` is GENERATED from it. The
     SiYuan-style envelope is retired; Pi-RPC remains the kernel's INTERNAL
     protocol (its TUI stays an RPC client) and never crosses into JS.
-  - The `KernelApi` port is DELETED in that ticket — a hand-written second
-    contract beside a generated client drifts; the renderer calls `@app/sdk`
-    directly. The architecture wall rewrites from "rendering never imports
-    KernelApi" to "rendering never imports @app/sdk".
+  - The `KernelApi` port is already deleted in THIS ticket (owner override) —
+    a hand-written second contract beside a generated client drifts; the
+    renderer will call `@app/sdk` directly. That ticket adds the new wall
+    "rendering never imports @app/sdk" alongside SDK generation.
 
 <!-- lint-ack: decision-coverage — the wholesale-move, subtree-merge, package-split, Makefile-dissolution and docs-rewrite decisions are structural/mechanical, verified by the re-greened gate plus the hash receipt, not by report-mode selectors -->
 <!-- lint-ack: platform-decision-tag — electron-vite, pnpm, go, echo and mise mentions are this repo family's own toolchain, not a parity reference -->
@@ -167,8 +172,9 @@ its RPC protocol.
   UI framework.
 - Do not weaken, skip or delete existing tests to make a gate pass — re-laning
   a wall keeps its intent, anything else is a violation.
-- Do not implement the `KernelApi`, spawn or wire the kernel, or touch any
-  transport concern.
+- Do not spawn or wire the kernel, or touch any transport concern. The
+  `KernelApi` deletion is the ONLY non-relocation change allowed, and only as
+  its own commit.
 - Do not prune the kernel tree (the TUI, the file plugin and the specs
   household arrive whole).
 - Do not introduce product-name literals; the arkloop scan stays at zero.
@@ -234,21 +240,15 @@ Scenario: kernel history is preserved and reachable
   Then the kernel repository's commits are reachable from the branch HEAD and
   the relocation commits are listed in .git-blame-ignore-revs
 
-### Rule: kernel-seam — reserved, not built
+### Rule: kernel-seam — the port is gone, the seat stays empty
 
-Scenario: the kernel port is reserved but unimplemented
-  Test: reserves the kernel port without an implementation
-  Given @app/shared and the workspace
-  When the KernelApi port is inspected
-  Then it is an interface with no implementation, absent by default, no
-  kernel package is a pnpm workspace member, and @app/sdk carries no runtime
-  code and no dependencies
-
-Scenario: block rendering never depends on the kernel port
-  Test: keeps renderer rendering free of the kernel port
-  Given the renderer markdown and block-render modules
-  When their imports are resolved
-  Then none imports the KernelApi port
+Scenario: the KernelApi port is deleted (critical)
+  Test: removes the kernel port and every reference
+  Given the workspace after the deletion commit
+  When all code lanes are searched for the KernelApi identifier
+  Then zero definitions and zero references remain, the deletion is its own
+  commit separate from every relocation commit, no kernel package is a pnpm
+  workspace member, and @app/sdk carries no runtime code and no dependencies
 
 ### Rule: name-agnostic — the retired name stays gone
 
@@ -260,9 +260,9 @@ Scenario: no retired product-name literals remain in code
 
 ## Out of Scope
 
-- The kernel transport and facade implementation, the `KernelApi` deletion,
-  and `@app/sdk` generation — the kernel-integration ticket (owner direction
-  for it is recorded in Decisions).
+- The kernel transport and facade implementation and `@app/sdk` generation —
+  the kernel-integration ticket (owner direction for it is recorded in
+  Decisions).
 - Making apps/web browser-runnable: the remote DataAdapter, auth, and web
   packaging — the web ticket.
 - The cloud origin/auth model.
