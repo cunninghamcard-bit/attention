@@ -20,14 +20,14 @@ derived_from:
 
 - [x] Port the Community plugins marketplace grid, detail selection, README media,
       and retry behavior from Obsidian. Covers: `opens marketplace as an unselected
-    Obsidian grid`, `sets the search query from a missing auto-open plugin id
-    instead of selecting the first item`, `selects a plugin into Obsidian detail
-    layout`, `resolves plugin README media against repository HEAD`, and `shows
-    catalog load errors and retries from the modal`.
+Obsidian grid`, `sets the search query from a missing auto-open plugin id
+instead of selecting the first item`, `selects a plugin into Obsidian detail
+layout`, `resolves plugin README media against repository HEAD`, and `shows
+catalog load errors and retries from the modal`.
 - [x] Port the enabled and restricted Community plugins settings surfaces from
       Obsidian. Covers: `renders enabled settings in Obsidian order with installed
-    plugin controls` and `renders Obsidian restricted-mode disclaimer and exits
-    from the CTA`.
+plugin controls` and `renders Obsidian restricted-mode disclaimer and exits
+from the CTA`.
 
 ## Tests
 
