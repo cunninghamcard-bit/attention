@@ -1,6 +1,7 @@
 node_modules/
 out/
-reports/
+reports/*
+!reports/monorepo-restore/
 .DS_Store
 *.log
 .env
