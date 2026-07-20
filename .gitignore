@@ -11,3 +11,15 @@ reports/
 decode-obsidian
 .obsidian/
 .agent-spec/
+
+# Go kernel (merged from the kernel repository's .gitignore)
+/along
+*.exe
+*.test
+*.out
+/vendor/
+go.work
+go.work.sum
+.idea/
+.vscode/
+/bin/
