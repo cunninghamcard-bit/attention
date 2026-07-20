@@ -91,11 +91,16 @@ its RPC protocol.
     vault fs stays in-process node (the kernel never owns it), the renderer
     owns markdown/block rendering in ALL forms.
   - `KernelApi` is DELETED in this ticket (owner override, 07-20): the port
-    interface, its wall test and every reference go, in a SEPARATE commit
-    after the relocation commits so the static-hash receipt stays clean. The
-    "rendering never imports KernelApi" wall retires with it; its successor
-    ("rendering never imports @app/sdk") lands with SDK generation in the
-    kernel-integration ticket. `@app/sdk` stays an empty seat.
+    interface, its wall test and every reference go, outside every relocation
+    commit so the static-hash receipt stays clean. The deletion landed inside
+    `49a1fb2`, a mixed commit from the multi-writer period — EXEMPTED as-is
+    (07-21): rewriting history on that branch was ruled out after live
+    collisions, the receipt's NOTES section documents the commit's true
+    contents, and the acceptance standard is the FINAL STATE (zero KernelApi
+    definitions and references repo-wide), which holds. The "rendering never
+    imports KernelApi" wall retires with it; its successor ("rendering never
+    imports @app/sdk") lands with SDK generation in the kernel-integration
+    ticket. `@app/sdk` stays an empty seat.
   - Receipt on the branch (suggested name `feat/monorepo-restore`):
     `reports/monorepo-restore/mapping.md` lists old → new for every moved
     path, each landing exactly once; the blob-hash baseline shows every moved
@@ -172,8 +177,9 @@ its RPC protocol.
 - Do not weaken, skip or delete existing tests to make a gate pass — re-laning
   a wall keeps its intent, anything else is a violation.
 - Do not spawn or wire the kernel, or touch any transport concern. The
-  `KernelApi` deletion is the ONLY non-relocation change allowed, and only as
-  its own commit.
+  `KernelApi` deletion is the ONLY non-relocation change allowed, and it must
+  not ride inside a relocation commit (see the Decisions exemption for the
+  commit it actually landed in).
 - Do not prune the kernel tree (the TUI, the file plugin and the specs
   household arrive whole).
 - Do not introduce product-name literals; the arkloop scan stays at zero.
@@ -245,9 +251,11 @@ Scenario: the KernelApi port is deleted (critical)
 Test: removes the kernel port and every reference
 Given the workspace after the deletion commit
 When all code lanes are searched for the KernelApi identifier
-Then zero definitions and zero references remain, the deletion is its own
-commit separate from every relocation commit, no kernel package is a pnpm
-workspace member, and @app/sdk carries no runtime code and no dependencies
+Then zero definitions and zero references remain, no relocation commit
+contains any part of the deletion (the mixed non-relocation commit it landed
+in is exempted in Decisions and documented in the receipt's NOTES), no
+kernel package is a pnpm workspace member, and @app/sdk carries no runtime
+code and no dependencies
 
 ### Rule: name-agnostic — the retired name stays gone
 
