@@ -6,6 +6,7 @@
 node = "26.3.0"
 pnpm = "11.7.0"
 bun = "1.3.14"
+go = "1.26"
 
 [tasks.install]
 description = "Install dependencies — pnpm only (a preinstall hook enforces it)"
@@ -44,4 +45,21 @@ run = [
   "bun run lint",
   "bun run typecheck",
   "bun run test",
+  "mise run kernel:test",
 ]
+
+[tasks."kernel:build"]
+description = "Build the Go kernel binary to bin/along (former Makefile `kernel` target)"
+run = "go build -o bin/along ./cmd/along"
+
+[tasks."kernel:test"]
+description = "Go kernel tests — root module plus the nested cmd/tui module"
+run = ["go test ./...", "go -C cmd/tui test ./..."]
+
+[tasks."kernel:tui"]
+description = "Build the kernel and launch the TUI against it (former Makefile `run` target)"
+run = ["go build -o bin/along ./cmd/along", "go -C cmd/tui run . --along-path ../../bin/along"]
+
+[tasks."kernel:clean"]
+description = "Remove kernel build output (former Makefile `clean` target)"
+run = "rm -rf bin"

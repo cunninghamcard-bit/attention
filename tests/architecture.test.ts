@@ -8,6 +8,7 @@
 // a synthetic record (the alarm's own self-test).
 
 import { describe, expect, it } from "vitest";
+import { execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, type Dirent } from "node:fs";
 import { join, posix } from "node:path";
 
@@ -271,6 +272,11 @@ describe("Rule: monorepo-shape — one repo, three lanes", () => {
 
     // No top-level src remains: the single-package layout is gone.
     expect(existsSync(abs("src"))).toBe(false);
+
+    // The Go kernel lane sits at the repo root, outside the pnpm workspace.
+    for (const kernelLane of ["cmd", "internal", "go.mod"]) {
+      expect(existsSync(abs(kernelLane)), `${kernelLane} should sit at the repo root`).toBe(true);
+    }
   });
 
   it("keeps the renderer free of shell imports", () => {
@@ -393,6 +399,32 @@ describe("Rule: kernel-seam — reserved, not built", () => {
     );
     const offenders = files.filter((file) => file.imports.some((spec) => /kernelApi/i.test(spec)));
     expect(offenders).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rule: kernel-history — the subtree keeps its past
+// ---------------------------------------------------------------------------
+
+describe("Rule: kernel-history — the subtree keeps its past", () => {
+  it("keeps the kernel commit history reachable and blame honest", () => {
+    // log --follow on a kernel path reaches back past the merge: the kernel
+    // repository's own commits are on this branch, under their original hashes.
+    const log = execSync("git log --format=%s --follow -- cmd/along/main.go", {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+    const subjects = log.split("\n").filter(Boolean);
+    expect(subjects.length).toBeGreaterThan(1);
+
+    // The pure-relocation commit that would swamp blame is recorded for
+    // --ignore-revs (looked up by subject so a rebase does not stale it).
+    const renameHash = execSync('git log --format=%H --grep="split src into apps/web" -1', {
+      cwd: ROOT,
+      encoding: "utf8",
+    }).trim();
+    expect(renameHash).toMatch(/^[0-9a-f]{40}$/);
+    expect(readText(".git-blame-ignore-revs")).toContain(renameHash);
   });
 });
 
