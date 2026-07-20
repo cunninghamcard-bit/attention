@@ -148,7 +148,7 @@ ul > li.is-collapsed::marker {
 }
 /* Remove default bullets so we can replace them */
 .markdown-rendered ul.has-list-bullet {
-  list-style-type: '\200B';
+  list-style-type: "\200B";
 }
 .markdown-rendered ul.has-list-bullet > li::marker {
   color: transparent;
@@ -162,11 +162,11 @@ ul > li.is-collapsed::marker {
   align-items: center;
 }
 .list-bullet:before {
-  content: '\200B';
+  content: "\200B";
 }
 .list-bullet:after {
   position: absolute;
-  content: '\200B';
+  content: "\200B";
   pointer-events: none;
   color: var(--list-marker-color);
   border-radius: var(--list-bullet-radius);
@@ -175,7 +175,9 @@ ul > li.is-collapsed::marker {
   border: var(--list-bullet-border);
   transform: var(--list-bullet-transform);
   background-color: var(--list-marker-color);
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
 }
 .list-bullet::selection {
   background-color: transparent !important;
@@ -190,10 +192,16 @@ li.is-collapsed .list-bullet:after,
 .markdown-source-view.mod-cm6.is-live-preview {
   /* only allow this if line is not active, so that it's still editable */
 }
-.markdown-source-view.mod-cm6.is-live-preview .cm-line.HyperMD-list-line .cm-fold-indicator .collapse-indicator {
+.markdown-source-view.mod-cm6.is-live-preview
+  .cm-line.HyperMD-list-line
+  .cm-fold-indicator
+  .collapse-indicator {
   padding-inline-end: 0;
 }
-.markdown-source-view.mod-cm6.is-live-preview .cm-line.HyperMD-list-line:not(.cm-active):not(.HyperMD-task-line) .cm-fold-indicator .collapse-indicator {
+.markdown-source-view.mod-cm6.is-live-preview
+  .cm-line.HyperMD-list-line:not(.cm-active):not(.HyperMD-task-line)
+  .cm-fold-indicator
+  .collapse-indicator {
   padding-inline-end: var(--list-bullet-end-padding);
   inset-inline-end: calc(var(--list-bullet-end-padding) * -1);
 }
@@ -220,7 +228,10 @@ li.is-collapsed .list-bullet:after,
 .cm-s-obsidian .HyperMD-list-line.HyperMD-list-line-nobullet {
   padding-top: initial;
 }
-.cm-s-obsidian .HyperMD-list-line.HyperMD-list-line-nobullet > .cm-hmd-list-indent > .cm-indent-spacing:last-child {
+.cm-s-obsidian
+  .HyperMD-list-line.HyperMD-list-line-nobullet
+  > .cm-hmd-list-indent
+  > .cm-indent-spacing:last-child {
   padding-inline-start: calc(var(--list-indent-editing) + var(--list-marker-space));
 }
 .markdown-source-view.mod-cm6 .cm-hmd-list-indent {
@@ -255,7 +266,8 @@ a.mobile-tap {
   text-decoration-line: var(--link-external-decoration);
   background-position: center right;
   background-repeat: no-repeat;
-  background-image: linear-gradient(transparent, transparent), url(public/images/6155340132a851f6089e.svg);
+  background-image:
+    linear-gradient(transparent, transparent), url(public/images/6155340132a851f6089e.svg);
   background-size: 0.825em;
   padding-inline-end: 0.9em;
   background-position-y: 0.25em;
@@ -275,7 +287,8 @@ a.mobile-tap {
 @supports selector(:dir(rtl)) {
   :dir(rtl) .external-link {
     background-position: center left;
-    background-image: linear-gradient(transparent, transparent), url(public/images/2308ab1944a6bfa5c5b8.svg);
+    background-image:
+      linear-gradient(transparent, transparent), url(public/images/2308ab1944a6bfa5c5b8.svg);
     background-repeat: no-repeat;
   }
 }
@@ -482,7 +495,7 @@ body.is-ios .markdown-source-view.mod-cm6 .cm-editor:not(.cm-focused) .cm-underl
 .cm-s-obsidian .hmd-link-icon:after {
   content: "🔗»";
   color: #009;
-  text-shadow: 0 0 2px #69F;
+  text-shadow: 0 0 2px #69f;
 }
 .cm-s-obsidian img.hmd-emoji {
   height: 1.2em;
@@ -526,12 +539,12 @@ body.is-ios .markdown-source-view.mod-cm6 .cm-editor:not(.cm-focused) .cm-underl
   color: var(--text-muted);
 }
 .cm-s-obsidian .hmd-file-uploading {
-  outline: 2px dashed #CCC;
+  outline: 2px dashed #ccc;
   outline-offset: -2px;
   animation: hmd-file-uploading-ani 1.5s linear infinite;
 }
 .cm-s-obsidian .hmd-file-uploaded {
-  outline: 2px solid #6C3;
+  outline: 2px solid #6c3;
   outline-offset: -2px;
 }
 .cm-s-obsidian .HyperMD-goback {

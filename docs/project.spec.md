@@ -20,6 +20,7 @@ walls once, so individual goals never re-litigate them.
 ## Constraints
 
 ### Must
+
 - pnpm is the only package manager; a preinstall hook rejects npm and yarn.
 - Fail fast on product paths: a missing configuration raises an explicit
   error naming the missing key and how to set it — never a silent fallback.
@@ -31,6 +32,7 @@ walls once, so individual goals never re-litigate them.
   identity lives only in the git remote.
 
 ### Must Not
+
 - Do not add a production dependency without a goal contract that adopts it.
 - Do not weaken, skip, or delete an existing test to make a gate pass.
 - Do not source a default from anywhere but the user's explicit configuration.
@@ -73,33 +75,33 @@ walls once, so individual goals never re-litigate them.
 ## Completion Criteria
 
 Scenario: the workspace is a monorepo with the kernel seated at the root
-  Test: declares the monorepo layout with the kernel seated
-  Given the workspace configuration and the source tree
-  When the workspace packages and top-level directories are read
-  Then apps/desktop, apps/web, packages/shared and packages/sdk are workspace
-  packages alongside tests, no top-level src remains, and cmd, internal and
-  go.mod sit at the repo root
+Test: declares the monorepo layout with the kernel seated
+Given the workspace configuration and the source tree
+When the workspace packages and top-level directories are read
+Then apps/desktop, apps/web, packages/shared and packages/sdk are workspace
+packages alongside tests, no top-level src remains, and cmd, internal and
+go.mod sit at the repo root
 
 Scenario: the dependency table stays framework-free
-  Test: keeps zod presenters and UI frameworks out of the dependency table
-  Given package.json and the tests lane manifest
-  When their dependency tables are inspected
-  Then zod, react, react-dom and vue appear in none of them
+Test: keeps zod presenters and UI frameworks out of the dependency table
+Given package.json and the tests lane manifest
+When their dependency tables are inspected
+Then zod, react, react-dom and vue appear in none of them
 
 Scenario: the kernel stays headless-ready
-  Test: kernel directories import nothing above the kernel
-  Given the vault, metadata and storage directories
-  When every relative import in them is resolved
-  Then no import target lies outside the kernel, core, dom or platform
+Test: kernel directories import nothing above the kernel
+Given the vault, metadata and storage directories
+When every relative import in them is resolved
+Then no import target lies outside the kernel, core, dom or platform
 
 Scenario: the public facade serves only community plugins
-  Test: internal code never imports the public api facade
-  Given all renderer sources outside api/
-  When their imports are resolved
-  Then none of them imports from api/
+Test: internal code never imports the public api facade
+Given all renderer sources outside api/
+When their imports are resolved
+Then none of them imports from api/
 
 Scenario: the tree stays name-agnostic
-  Test: no retired product-name literals remain in code
-  Given all code directories and root config files
-  When they are scanned for retired product-name literals
-  Then zero matches are found
+Test: no retired product-name literals remain in code
+Given all code directories and root config files
+When they are scanned for retired product-name literals
+Then zero matches are found

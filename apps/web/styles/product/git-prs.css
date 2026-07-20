@@ -20,7 +20,8 @@
   margin: var(--size-4-3) var(--size-4-4) 0;
   padding: 8px 12px;
   border-radius: var(--radius-m);
-  border: 1px solid color-mix(in srgb, var(--color-red, #f85149) 40%, var(--background-modifier-border));
+  border: 1px solid
+    color-mix(in srgb, var(--color-red, #f85149) 40%, var(--background-modifier-border));
   background: color-mix(in srgb, var(--color-red, #f85149) 10%, var(--background-primary));
   color: var(--text-normal);
   font-size: var(--font-ui-small);
@@ -143,8 +144,12 @@
 }
 
 @keyframes git-pr-shimmer {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 /* --- Detail -------------------------------------------------------- */
@@ -229,8 +234,14 @@
   flex-shrink: 0;
 }
 
-.gh-page-title { margin: 0; font-size: var(--font-ui-large); }
-.gh-muted { color: var(--text-muted); font-size: var(--font-ui-smaller); }
+.gh-page-title {
+  margin: 0;
+  font-size: var(--font-ui-large);
+}
+.gh-muted {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
 /* `button.gh-linkish`, not `.gh-linkish`: the host's `button:not(.clickable-icon)`
    (button-card.css) is 0-1-1 and paints a form-control background+shadow; a bare
    class is 0-1-0 and loses, so every link-styled button wore browser chrome. The
@@ -238,50 +249,124 @@
    button-card). The :hover pair beats the global `button:hover`, which repaints
    the same background+shadow. */
 button.gh-linkish {
-  appearance: none; border: none; background: none; color: var(--text-accent);
-  cursor: var(--cursor); font-size: var(--font-ui-smaller); padding: 0; box-shadow: none;
+  appearance: none;
+  border: none;
+  background: none;
+  color: var(--text-accent);
+  cursor: var(--cursor);
+  font-size: var(--font-ui-smaller);
+  padding: 0;
+  box-shadow: none;
 }
 button.gh-linkish:hover {
-  background: none; box-shadow: none; text-decoration: underline;
+  background: none;
+  box-shadow: none;
+  text-decoration: underline;
 }
 .gh-chip {
-  display: inline-flex; align-items: center; font-size: 11px; padding: 1px 7px;
-  border-radius: 2em; border: 1px solid var(--background-modifier-border); color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 2em;
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-muted);
 }
-.gh-chip.mod-ok { color: var(--color-green,#3fb950); border-color: currentcolor; }
-.gh-chip.mod-open { color: var(--color-green,#3fb950); border-color: currentcolor; }
-.gh-chip.mod-closed { color: var(--color-red,#f85149); border-color: currentcolor; }
-.gh-chip.mod-merged { color: var(--color-purple,#a371f7); border-color: currentcolor; }
-.gh-chip.mod-draft { color: var(--text-faint); border-color: currentcolor; }
-.gh-chip.mod-ci-success { color: var(--color-green,#3fb950); border-color: currentcolor; }
+.gh-chip.mod-ok {
+  color: var(--color-green, #3fb950);
+  border-color: currentcolor;
+}
+.gh-chip.mod-open {
+  color: var(--color-green, #3fb950);
+  border-color: currentcolor;
+}
+.gh-chip.mod-closed {
+  color: var(--color-red, #f85149);
+  border-color: currentcolor;
+}
+.gh-chip.mod-merged {
+  color: var(--color-purple, #a371f7);
+  border-color: currentcolor;
+}
+.gh-chip.mod-draft {
+  color: var(--text-faint);
+  border-color: currentcolor;
+}
+.gh-chip.mod-ci-success {
+  color: var(--color-green, #3fb950);
+  border-color: currentcolor;
+}
 .gh-chip.mod-ci-failure,
-.gh-chip.mod-ci-error { color: var(--color-red,#f85149); border-color: currentcolor; }
-.gh-chip.mod-ci-pending { color: var(--color-orange,#d29922); border-color: currentcolor; }
+.gh-chip.mod-ci-error {
+  color: var(--color-red, #f85149);
+  border-color: currentcolor;
+}
+.gh-chip.mod-ci-pending {
+  color: var(--color-orange, #d29922);
+  border-color: currentcolor;
+}
 
-.gh-diffstat ins { color: var(--color-green,#3fb950); text-decoration: none; }
-.gh-diffstat del { color: var(--color-red,#f85149); text-decoration: none; }
-.gh-diffstat { font-size: var(--font-ui-smaller); font-variant-numeric: tabular-nums; }
+.gh-diffstat ins {
+  color: var(--color-green, #3fb950);
+  text-decoration: none;
+}
+.gh-diffstat del {
+  color: var(--color-red, #f85149);
+  text-decoration: none;
+}
+.gh-diffstat {
+  font-size: var(--font-ui-smaller);
+  font-variant-numeric: tabular-nums;
+}
 .gh-sha {
   font-family: var(--font-monospace);
   font-size: 11px;
   color: var(--text-muted);
 }
 
-.gh-commit-detail { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-.gh-commit-detail-header {
-  padding: 16px 20px; border-bottom: 1px solid var(--background-modifier-border);
-  background: var(--background-secondary); display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
+.gh-commit-detail {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
-.gh-commit-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: var(--font-ui-small); }
+.gh-commit-detail-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.gh-commit-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-ui-small);
+}
 .gh-commit-body {
-  margin: 0; padding: 10px 12px; background: var(--background-primary);
-  border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m);
-  font-size: var(--font-ui-smaller); white-space: pre-wrap; color: var(--text-muted);
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  font-size: var(--font-ui-smaller);
+  white-space: pre-wrap;
+  color: var(--text-muted);
 }
 .gh-preview-header {
-  position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px;
-  padding: 8px 12px; border-bottom: 1px solid var(--background-modifier-border);
-  background: var(--background-secondary); font-size: var(--font-ui-smaller);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  font-size: var(--font-ui-smaller);
 }
 
 /* One state-switch protocol across Issues,
@@ -320,8 +405,20 @@ and review mode. */
 /* container-type so the issue layout below can answer to the leaf's width and
    not the window's — a leaf in a split is narrow while the window is not.
    Same idiom as .review-scroll in git-review.css. */
-.gh-detail-scroll { overflow: auto; flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px; container-type: inline-size; }
-.gh-detail-head { display: flex; flex-direction: column; gap: 6px; }
+.gh-detail-scroll {
+  overflow: auto;
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  container-type: inline-size;
+}
+.gh-detail-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
 /* Issue body beside its meta column (the OMG issue-page shape). */
 .gh-issue-layout {
@@ -345,8 +442,13 @@ and review mode. */
 /* The column is the first thing to go when the leaf is narrow: the body reads
    without it, and GitHub drops it at the same sort of width. */
 @container (max-width: 720px) {
-  .gh-issue-layout { flex-direction: column; }
-  .gh-issue-meta { flex-basis: auto; width: 100%; }
+  .gh-issue-layout {
+    flex-direction: column;
+  }
+  .gh-issue-meta {
+    flex-basis: auto;
+    width: 100%;
+  }
 }
 .gh-meta-section {
   display: flex;
@@ -375,9 +477,15 @@ and review mode. */
   border-radius: 50%;
   background: var(--background-modifier-border);
 }
-.gh-timeline-dot.mod-closed { background: var(--color-red, #f85149); }
-.gh-timeline-dot.mod-reopened { background: var(--color-green, #3fb950); }
-.gh-timeline-dot.mod-merged { background: var(--color-purple, #a371f7); }
+.gh-timeline-dot.mod-closed {
+  background: var(--color-red, #f85149);
+}
+.gh-timeline-dot.mod-reopened {
+  background: var(--color-green, #3fb950);
+}
+.gh-timeline-dot.mod-merged {
+  background: var(--color-purple, #a371f7);
+}
 .gh-card {
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
@@ -385,11 +493,16 @@ and review mode. */
   background: var(--background-primary);
 }
 .gh-card-meta {
-  display: flex; align-items: center; gap: 8px;
-  margin-bottom: 8px; font-size: var(--font-ui-small);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: var(--font-ui-small);
 }
 .gh-composer {
-  display: flex; flex-direction: column; gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
   padding: 12px;
@@ -418,7 +531,9 @@ and review mode. */
   border-left: 1px solid var(--background-modifier-border);
   padding-left: 12px;
 }
-.gh-composer-preview .gh-markdown > :first-child { margin-top: 0; }
+.gh-composer-preview .gh-markdown > :first-child {
+  margin-top: 0;
+}
 .gh-composer-foot {
   display: flex;
   align-items: center;
@@ -428,15 +543,31 @@ and review mode. */
   padding-top: 8px;
   font-size: var(--font-ui-smaller);
 }
-.gh-composer-actions { display: flex; gap: 8px; }
-.gh-composer-action { display: inline-flex; align-items: center; gap: 6px; }
-.gh-composer-send { display: inline-flex; }
-.gh-composer-send svg { width: 14px; height: 14px; }
+.gh-composer-actions {
+  display: flex;
+  gap: 8px;
+}
+.gh-composer-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.gh-composer-send {
+  display: inline-flex;
+}
+.gh-composer-send svg {
+  width: 14px;
+  height: 14px;
+}
 /* The editor stacks above the preview when the leaf is narrow — OMG's own
  * md: breakpoint, expressed against the leaf instead of the window. */
 @container (max-width: 720px) {
-  .gh-composer-panes { grid-template-columns: 1fr; }
-  .gh-composer textarea { padding: 0; }
+  .gh-composer-panes {
+    grid-template-columns: 1fr;
+  }
+  .gh-composer textarea {
+    padding: 0;
+  }
   .gh-composer-preview {
     border-left: none;
     border-top: 1px solid var(--background-modifier-border);
@@ -445,27 +576,55 @@ and review mode. */
 }
 /* Review verdict chips on conversation cards — the chip family's outline
  * shape, colored like the states they echo (approve=open, changes=closed). */
-.gh-chip.mod-approved { color: var(--color-green, #3fb950); border-color: currentcolor; }
-.gh-chip.mod-changes { color: var(--color-red, #f85149); border-color: currentcolor; }
-.gh-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
-.gh-steps { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.gh-chip.mod-approved {
+  color: var(--color-green, #3fb950);
+  border-color: currentcolor;
+}
+.gh-chip.mod-changes {
+  color: var(--color-red, #f85149);
+  border-color: currentcolor;
+}
+.gh-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gh-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
 .gh-step-row {
-  display: flex; align-items: center; gap: 8px;
-  font-size: var(--font-ui-smaller); padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-ui-smaller);
+  padding: 4px 0;
 }
 .gh-ci-dot {
-  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
   background: var(--text-muted);
 }
-.gh-ci-dot.mod-success { background: var(--color-green, #3fb950); }
+.gh-ci-dot.mod-success {
+  background: var(--color-green, #3fb950);
+}
 .gh-ci-dot.mod-failure,
-.gh-ci-dot.mod-error { background: var(--color-red, #f85149); }
-.gh-ci-dot.mod-pending { background: var(--color-orange, #d29922); }
+.gh-ci-dot.mod-error {
+  background: var(--color-red, #f85149);
+}
+.gh-ci-dot.mod-pending {
+  background: var(--color-orange, #d29922);
+}
 /* .gh-code-view deliberately has no rule: the CodeView measures and sizes
    itself, and .view-content above it already scrolls. The review surface styles
    its own mount only because that one sits in a flex column. */
-.gh-markdown { font-size: var(--font-ui-small); }
-
+.gh-markdown {
+  font-size: var(--font-ui-small);
+}
 
 /* --- Issue/PR meta column chips + people (task #5) --------------------- */
 

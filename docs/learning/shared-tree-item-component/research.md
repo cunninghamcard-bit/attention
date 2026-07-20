@@ -51,7 +51,9 @@ derived_into: spec.md
 ## Current Codebase State
 
 <!-- docwright:generated:start -->
+
 Files (439):
+
 - docs/architecture.md
 - docs/architecture/native-git-surfaces/spec.md
 - docs/architecture/obsidian-appearance-parity/spec.md
@@ -491,9 +493,11 @@ Files (439):
 - tests/web/views/workspace/WorkspaceSplit.test.ts
 - tests/web/views/workspace/WorkspaceTabHeaderMenu.test.ts
 - tests/web/views/workspace/WorkspaceTraversalParity.test.ts
+
 <!-- docwright:generated:end -->
 
 Manual survey (grep of `src/renderer`, excluding styles):
+
 - ~13 sites hand-build tree-item DOM: FileExplorerView (19 refs), git/review
   GitNavView (17) & ReviewSurface (16), git GitChangesView (10),
   OutlineView (8), Bookmarks (8), TagPaneView (6), git GitLogView (5),

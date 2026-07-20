@@ -178,7 +178,9 @@
     width: 100%;
     justify-content: flex-start;
   }
-  .setting-item:not(.mod-toggle):not(.setting-item-heading) .setting-item-control button:not(.clickable-icon),
+  .setting-item:not(.mod-toggle):not(.setting-item-heading)
+    .setting-item-control
+    button:not(.clickable-icon),
   .setting-item:not(.mod-toggle):not(.setting-item-heading) .setting-item-control input,
   .setting-item:not(.mod-toggle):not(.setting-item-heading) .setting-item-control select {
     width: 100%;

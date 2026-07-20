@@ -80,8 +80,8 @@
 .workspace-split:not(.mod-root) .graph-controls.is-close {
   background-color: var(--background-secondary);
 }
-.graph-controls input[type='text'],
-.graph-controls input[type='range'] {
+.graph-controls input[type="text"],
+.graph-controls input[type="range"] {
   width: 100%;
   font-size: var(--font-ui-small);
 }
@@ -161,13 +161,15 @@
   transition: none;
   pointer-events: none;
 }
-.graph-color-group.drag-ghost input[type='text'] {
+.graph-color-group.drag-ghost input[type="text"] {
   width: 100%;
 }
-.graph-color-group.drag-ghost input[type='color'] {
+.graph-color-group.drag-ghost input[type="color"] {
   margin-inline-start: 6px;
 }
-.graph-control-section.mod-color-groups .tree-item-children.is-grabbing .graph-color-groups-container {
+.graph-control-section.mod-color-groups
+  .tree-item-children.is-grabbing
+  .graph-color-groups-container {
   padding-bottom: 40px;
 }
 .graph-controls-button {
@@ -235,11 +237,11 @@
 .graph-control-section.mod-display .setting-item:not(.mod-slider):last-child .setting-item-info {
   display: none;
 }
-.workspace-leaf-content[data-type='outline'] .view-content {
+.workspace-leaf-content[data-type="outline"] .view-content {
   padding-top: var(--size-4-1);
 }
-.workspace-leaf-content[data-type=all-properties] .view-content,
-.workspace-leaf-content[data-type=properties] .view-content {
+.workspace-leaf-content[data-type="all-properties"] .view-content,
+.workspace-leaf-content[data-type="properties"] .view-content {
   padding-top: var(--size-4-1);
 }
 .is-phone .metadata-container,
@@ -271,14 +273,21 @@
 .workspace > .workspace-split:not(.mod-root) .metadata-container .metadata-properties {
   --metadata-gap: 0;
 }
-.workspace > .workspace-split:not(.mod-root) .metadata-container .metadata-property:hover:not(:focus-within) {
+.workspace
+  > .workspace-split:not(.mod-root)
+  .metadata-container
+  .metadata-property:hover:not(:focus-within) {
   box-shadow: none;
 }
-.workspace > .workspace-split:not(.mod-root) .metadata-container .metadata-property-value .clickable-icon {
+.workspace
+  > .workspace-split:not(.mod-root)
+  .metadata-container
+  .metadata-property-value
+  .clickable-icon {
   --icon-size: var(--icon-xs);
   --icon-stroke: var(--icon-xs-stroke-width);
 }
-.workspace-leaf-content[data-type=file-properties] .metadata-properties-heading {
+.workspace-leaf-content[data-type="file-properties"] .metadata-properties-heading {
   display: none;
 }
 .metadata-container {

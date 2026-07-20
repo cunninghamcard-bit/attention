@@ -9,7 +9,7 @@
 .workspace-leaf-content:not([data-type="browser"]) .view-action.mod-bookmarked {
   display: flex;
 }
-.workspace-leaf-content[data-type=bookmarks] .view-content {
+.workspace-leaf-content[data-type="bookmarks"] .view-content {
   padding: var(--size-4-1) var(--size-4-3) var(--size-4-8);
 }
 .modal.mod-bookmark .setting-item-control input {

@@ -98,52 +98,52 @@ Center -> Right: publish current files for Tree
 ### Rule: right-nav-shell — Tree and History live on the right
 
 Scenario: open review docks navigator on the right
-  Test: opens git-nav on the right beside git-review
-  Given git is available for the vault
-  When the user opens the working-tree review
-  Then a git-review leaf is active in the main area and a git-nav leaf
-  is ensured on the right sidebar with mode Tree
+Test: opens git-nav on the right beside git-review
+Given git is available for the vault
+When the user opens the working-tree review
+Then a git-review leaf is active in the main area and a git-nav leaf
+is ensured on the right sidebar with mode Tree
 
 Scenario: modes are Tree and History only
-  Test: offers only Tree and History modes
-  Given the review center is open
-  When its toolbar nav-mode toggle is used
-  Then the toggle flips between Tree and History only (no Walkthrough)
+Test: offers only Tree and History modes
+Given the review center is open
+When its toolbar nav-mode toggle is used
+Then the toggle flips between Tree and History only (no Walkthrough)
 
 ### Rule: tree-nav — hierarchical files drive the center
 
 Scenario: tree lists hierarchical changed paths
-  Test: builds a hierarchical tree from changed paths
-  Given review files at src/a.ts and src/lib/b.ts
-  When the tree model is built
-  Then a folder node src contains a.ts and a folder lib containing b.ts
+Test: builds a hierarchical tree from changed paths
+Given review files at src/a.ts and src/lib/b.ts
+When the tree model is built
+Then a folder node src contains a.ts and a folder lib containing b.ts
 
 Scenario: tree selection targets the center review
-  Test: selecting a tree path requests center scroll
-  Given git-nav is showing the current review files
-  When the user selects path src/a.ts in the tree
-  Then the coordinator selected path becomes src/a.ts
+Test: selecting a tree path requests center scroll
+Given git-nav is showing the current review files
+When the user selects path src/a.ts in the tree
+Then the coordinator selected path becomes src/a.ts
 
 ### Rule: history-source — History switches the review source
 
 Scenario: uncommitted row is always first
-  Test: history rows lead with uncommitted changes
-  Given a non-empty local commit log
-  When history rows are built
-  Then the first row is the working-tree uncommitted entry
-  and subsequent rows are commits
+Test: history rows lead with uncommitted changes
+Given a non-empty local commit log
+When history rows are built
+Then the first row is the working-tree uncommitted entry
+and subsequent rows are commits
 
 Scenario: picking a commit reloads review source
-  Test: selecting a history commit sets commit source
-  Given the navigator is in History mode
-  When the user selects commit abcdef1
-  Then the review source becomes kind commit with that ref
+Test: selecting a history commit sets commit source
+Given the navigator is in History mode
+When the user selects commit abcdef1
+Then the review source becomes kind commit with that ref
 
 Scenario: picking uncommitted restores working tree
-  Test: selecting uncommitted restores working-tree source
-  Given the review source is a commit
-  When the user selects Uncommitted changes
-  Then the review source becomes working-tree
+Test: selecting uncommitted restores working-tree source
+Given the review source is a commit
+When the user selects Uncommitted changes
+Then the review source becomes working-tree
 
 ## Out of Scope
 

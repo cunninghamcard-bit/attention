@@ -7,14 +7,15 @@ implements the ports and the renderer never imports the shell. **We already
 have it; nothing structural needs redoing.**
 
 **Two references, both partly rejected:**
+
 - **DeepChat presenter/route/zod** — DROP. It polices an untrusted,
-  secret-holding, dozens-of-capability *sandbox*. We are a trusted renderer
+  secret-holding, dozens-of-capability _sandbox_. We are a trusted renderer
   with a ~7-capability first-party seam; the machinery is pure overhead. A
   typed channel table in `src/shared` gives the same call-site safety for
   near-zero code.
 - **SiYuan** — the best desktop reference for the FUTURE renderer↔Go-kernel
-  *transport* (spawned child on a negotiated port, one `HTTP /api/<domain>/
-  <action>` + one WS push, uniform `{code,msg,data}` envelope). But its
+  _transport_ (spawned child on a negotiated port, one `HTTP /api/<domain>/
+<action>` + one WS push, uniform `{code,msg,data}` envelope). But its
   kernel OWNS the vault (files-as-truth in Go, server-rendered block HTML) —
   copying that moves fs reads behind local HTTP and blows the 32ms/20k-file
   budget we protected by rejecting disk-over-IPC. Learn its transport, reject
@@ -22,6 +23,7 @@ have it; nothing structural needs redoing.**
   god-object, the `switch(cmd)` push router, one-WebSocket-per-view.
 
 **The real work (small, mechanical):**
+
 1. Collapse to one package `src/{main,preload,renderer,shared,types}` (0001).
 2. Lift the native-seam CONTRACTS into `src/shared`: a typed IPC channel
    table (channel → {req,res}), `DataAdapter`, `ElectronGitApi`,

@@ -144,7 +144,6 @@ leave package.json, and an alarm keeps them out for good.
 <!-- lint-ack: bdd-implementation-detail-step — "without a click" 是 scroll-spy 行为的本质区分(滚动同步 vs 点击同步),非 UI 机械细节 -->
 <!-- lint-ack: verification-metadata-suggestion — 卡片头显示路径是纯 DOM 渲染断言(jsdom 组件测试),无外部 I/O -->
 
-
 ## Boundaries
 
 ### Allowed Changes
@@ -185,198 +184,198 @@ leave package.json, and an alarm keeps them out for good.
 ### Rule: zero-react — the repo has no framework layer
 
 Scenario: react imports anywhere trip the alarm (critical)
-  Test: keeps the source tree free of react imports
-  Given the source tree under apps and tests
-  When the zero-react alarm scans import statements
-  Then no file imports react, react-dom or the pierre react wrapper
+Test: keeps the source tree free of react imports
+Given the source tree under apps and tests
+When the zero-react alarm scans import statements
+Then no file imports react, react-dom or the pierre react wrapper
 
 Scenario: the dependency table is framework-free
-  Test: keeps react and moment out of the dependency table
-  Given apps/web/package.json
-  When its dependencies and devDependencies are read
-  Then react, react-dom and moment appear in neither table
+Test: keeps react and moment out of the dependency table
+Given apps/web/package.json
+When its dependencies and devDependencies are read
+Then react, react-dom and moment appear in neither table
 
 Scenario: the review center is built on the core code view
-  Test: uses the vanilla code view core in the review surface
-  Given the rewritten review surface
-  When the review center renders a change set
-  Then it drives the core CodeView class and lists the changed files
+Test: uses the vanilla code view core in the review surface
+Given the rewritten review surface
+When the review center renders a change set
+Then it drives the core CodeView class and lists the changed files
 
 ### Rule: cloud-parity — the cloud shells survive their rewrite unchanged
 
 Scenario: pull requests list at parity
-  Test: lists pull requests in a repository tab
-  Given a repo with open pull requests behind a fake transport
-  When the navigator's pull-requests section renders
-  Then each pull request appears with its number, title and state
+Test: lists pull requests in a repository tab
+Given a repo with open pull requests behind a fake transport
+When the navigator's pull-requests section renders
+Then each pull request appears with its number, title and state
 
 Scenario: files tab at parity
-  Test: renders PR metadata and files through the review surface
-  Given a real-shaped PR detail payload
-  When the PR detail's files tab opens
-  Then the PR metadata and its diff render through the shared review surface
+Test: renders PR metadata and files through the review surface
+Given a real-shaped PR detail payload
+When the PR detail's files tab opens
+Then the PR metadata and its diff render through the shared review surface
 
 Scenario: commit detail at parity
-  Test: renders commit diff via the shared review surface
-  Given a commit with changed files behind a fake transport
-  When the commit detail view opens
-  Then the commit's file diffs render through the shared review surface
+Test: renders commit diff via the shared review surface
+Given a commit with changed files behind a fake transport
+When the commit detail view opens
+Then the commit's file diffs render through the shared review surface
 
 Scenario: signed-out state at parity
-  Test: shows a connect prompt when unauthenticated
-  Given no GitHub token in secret storage
-  When the navigator opens
-  Then the connect-GitHub prompt renders instead of repo content
+Test: shows a connect prompt when unauthenticated
+Given no GitHub token in secret storage
+When the navigator opens
+Then the connect-GitHub prompt renders instead of repo content
 
 Scenario: repo-less state at parity
-  Test: shows the repository picker from the navigator action
-  Given no selected repo and a vault without a GitHub origin
-  When the navigator opens
-  Then the repo picker renders instead of repo content
+Test: shows the repository picker from the navigator action
+Given no selected repo and a vault without a GitHub origin
+When the navigator opens
+Then the repo picker renders instead of repo content
 
 ### Rule: nav-sync — the center and the right nav stay in lockstep
 
 Scenario: scrolling the center updates the tree selection
-  Test:
-    Filter: updates nav selection while scrolling the code view
-    Level: component
-  Given a review with files a and b where b sits below the fold
-  When the code view scrolls to bring file b to the reading position
-  Then the session selected path becomes b without a click
+Test:
+Filter: updates nav selection while scrolling the code view
+Level: component
+Given a review with files a and b where b sits below the fold
+When the code view scrolls to bring file b to the reading position
+Then the session selected path becomes b without a click
 
 Scenario: re-selecting the active file scrolls again
-  Test:
-    Filter: re-selecting the active file scrolls the code view again
-    Level: component
-  Given file a is the selected path and the user has scrolled away
-  When the user activates file a in the nav tree again
-  Then the code view receives a second scroll-to for file a
+Test:
+Filter: re-selecting the active file scrolls the code view again
+Level: component
+Given file a is the selected path and the user has scrolled away
+When the user activates file a in the nav tree again
+Then the code view receives a second scroll-to for file a
 
 Scenario: review file contents load concurrently
-  Test: loads review file contents concurrently
-  Given a working-tree review with several changed files
-  When the review loads
-  Then the per-file content reads are issued before the first one resolves
+Test: loads review file contents concurrently
+Given a working-tree review with several changed files
+When the review loads
+Then the per-file content reads are issued before the first one resolves
 
 Scenario: scroll selection sync never rebuilds the tree
-  Test: updates tree selection without rebuilding rows
-  Given a rendered tree row element
-  When the selected path changes twice
-  Then the same row element stays connected and only its selection class flips
+Test: updates tree selection without rebuilding rows
+Given a rendered tree row element
+When the selected path changes twice
+Then the same row element stays connected and only its selection class flips
 
 Scenario: nav activation opens the missing center
-  Test: opens the review center when activating from the nav
-  Given the right nav is open with no review center leaf
-  When the user activates a file in the tree
-  Then a git-review leaf opens on the current source
+Test: opens the review center when activating from the nav
+Given the right nav is open with no review center leaf
+When the user activates a file in the tree
+Then a git-review leaf opens on the current source
 
 Scenario: blocked review empties the nav
-  Test: clears nav files when the review is blocked
-  Given the session holds a previous file snapshot
-  When the review loads against a vault that is not a repository
-  Then the session file list becomes empty and the nav shows its empty state
+Test: clears nav files when the review is blocked
+Given the session holds a previous file snapshot
+When the review loads against a vault that is not a repository
+Then the session file list becomes empty and the nav shows its empty state
 
 ### Rule: tree-fidelity — the nav tree reads like the reference
 
 Scenario: folders sort before files at every level
-  Test:
-    Filter: orders folders before files at every level
-    Level: unit
-  Given changed paths zz.ts and lib/a.ts at the same level
-  When the tree model is built
-  Then the lib folder node precedes the zz.ts file node
+Test:
+Filter: orders folders before files at every level
+Level: unit
+Given changed paths zz.ts and lib/a.ts at the same level
+When the tree model is built
+Then the lib folder node precedes the zz.ts file node
 
 Scenario: single-child folder chains compress
-  Test: compresses single-child folder chains
-  Given the only changed file is src/app/components/x.ts
-  When the tree model is built
-  Then one folder row named src/app/components contains x.ts
+Test: compresses single-child folder chains
+Given the only changed file is src/app/components/x.ts
+When the tree model is built
+Then one folder row named src/app/components contains x.ts
 
 Scenario: the tree stays pure navigation
-  Test: keeps the tree free of selection controls
-  Given a working-tree review with the right nav open
-  When Tree mode renders
-  Then tree file rows carry no selection toggles or checkboxes
+Test: keeps the tree free of selection controls
+Given a working-tree review with the right nav open
+When Tree mode renders
+Then tree file rows carry no selection toggles or checkboxes
 
 Scenario: no commit affordance in the git surface
-  Test: keeps the git surface free of commit affordances
-  Given the git core plugin is enabled
-  When its views and commands are inspected
-  Then no git-composer view, no git open-commit command, and no commit
-  box in the changes view exist
+Test: keeps the git surface free of commit affordances
+Given the git core plugin is enabled
+When its views and commands are inspected
+Then no git-composer view, no git open-commit command, and no commit
+box in the changes view exist
 
 Scenario: the local review is view-only
-  Test: keeps the local review view only
-  Given a working-tree review open in the center
-  When its file headers and gutters render
-  Then no Open or Edit action and no add-comment gutter appear
+Test: keeps the local review view only
+Given a working-tree review open in the center
+When its file headers and gutters render
+Then no Open or Edit action and no add-comment gutter appear
 
 Scenario: mode switches sit in the leaf header
-  Test: puts both mode switches in the leaf header
-  Given a working-tree review open in the center
-  When its view-header renders
-  Then it holds a Tree/History flip toggle and a Unified/Split flip toggle
-  and the surface renders no internal toolbar
+Test: puts both mode switches in the leaf header
+Given a working-tree review open in the center
+When its view-header renders
+Then it holds a Tree/History flip toggle and a Unified/Split flip toggle
+and the surface renders no internal toolbar
 
 Scenario: workspace tree icons come from the shared pierre resolver
-  Test: uses pierre complete file icons in explorer rows
-  Given TypeScript and Markdown files in the workspace explorer
-  When their rows render
-  Then their icons carry the pierre typescript and markdown tokens and colored palette surface
+Test: uses pierre complete file icons in explorer rows
+Given TypeScript and Markdown files in the workspace explorer
+When their rows render
+Then their icons carry the pierre typescript and markdown tokens and colored palette surface
 
 Scenario: git tree rows separate icon stats and status
-  Test: shows icon stats and git status without a status dot
-  Given a modified TypeScript file with one addition and two deletions
-  When its Git tree row renders
-  Then it shows the shared typescript icon, both line counts, and the modified status label
-  And no leading status dot renders
+Test: shows icon stats and git status without a status dot
+Given a modified TypeScript file with one addition and two deletions
+When its Git tree row renders
+Then it shows the shared typescript icon, both line counts, and the modified status label
+And no leading status dot renders
 
 Scenario: viewed files render muted in the tree
-  Test: mutes viewed files in the nav tree
-  Given file a is marked viewed in the review center
-  When the nav tree renders
-  Then the row for file a carries the viewed marker class
+Test: mutes viewed files in the nav tree
+Given file a is marked viewed in the review center
+When the nav tree renders
+Then the row for file a carries the viewed marker class
 
 ### Rule: history-polish — the history list is scannable
 
 Scenario: history dates render relatively
-  Test: formats history dates relatively
-  Given a commit dated two hours before now
-  When its history row renders
-  Then the date reads as an hours-ago form instead of a calendar date
+Test: formats history dates relatively
+Given a commit dated two hours before now
+When its history row renders
+Then the date reads as an hours-ago form instead of a calendar date
 
 Scenario: filtering suppresses load-more
-  Test: suppresses history load-more while filtering
-  Given the history list has more commits to load
-  When the user scrolls to the bottom with an active filter query
-  Then no further log request is issued
+Test: suppresses history load-more while filtering
+Given the history list has more commits to load
+When the user scrolls to the bottom with an active filter query
+Then no further log request is issued
 
 ### Rule: surface-cleanup — the seams left by the first draft close
 
 Scenario: the navigator command is renamed
-  Test: names the navigator command open git navigator
-  Given the git core plugin is enabled
-  When the palette command git:open-nav is looked up
-  Then its display name is "Open git navigator"
+Test: names the navigator command open git navigator
+Given the git core plugin is enabled
+When the palette command git:open-nav is looked up
+Then its display name is "Open git navigator"
 
 Scenario: center cards keep their file path
-  Test: keeps file paths on center diff cards
-  Given the right nav owns the file list for the review
-  When the center renders a file's diff card
-  Then the card header shows that file's path
+Test: keeps file paths on center diff cards
+Given the right nav owns the file list for the review
+When the center renders a file's diff card
+Then the card header shows that file's path
 
 Scenario: the shell reads like the reference side by side
-  Review: human
-  Test: keeps file paths on center diff cards
-  Given fresh real-app screenshots of the review center and right nav
-  When they are compared against the reference screenshots
-  Then the interaction language matches and the user signs off
+Review: human
+Test: keeps file paths on center diff cards
+Given fresh real-app screenshots of the review center and right nav
+When they are compared against the reference screenshots
+Then the interaction language matches and the user signs off
 
 Scenario: deletions fall back symmetrically
-  Test: falls back to symmetric line counts
-  Given a review file without numstat data whose old content ends in a newline
-  When the review file model is built
-  Then additions and deletions use the same non-empty-line counting rule
+Test: falls back to symmetric line counts
+Given a review file without numstat data whose old content ends in a newline
+When the review file model is built
+Then additions and deletions use the same non-empty-line counting rule
 
 ## Out of Scope
 

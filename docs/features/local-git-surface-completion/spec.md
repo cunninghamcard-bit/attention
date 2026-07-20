@@ -75,76 +75,76 @@ any view; discarding a file requires the terminal.
 ### Rule: sync-verbs — the sync loop is one header away
 
 Scenario: branch and divergence are reported (critical)
-  Test: reports branch and divergence
-  Given a repository on branch main with an upstream two behind and one ahead
-  When currentBranch and aheadBehind run
-  Then the branch name is main and the divergence is ahead 1 behind 2
+Test: reports branch and divergence
+Given a repository on branch main with an upstream two behind and one ahead
+When currentBranch and aheadBehind run
+Then the branch name is main and the divergence is ahead 1 behind 2
 
 Scenario: pull fast-forwards and push sets upstream
-  Test: pull fast-forwards and push sets upstream when missing
-  Given a repository whose push has no upstream configured
-  When pull and push run
-  Then pull passes --ff-only and push retries with -u origin and the current branch
+Test: pull fast-forwards and push sets upstream when missing
+Given a repository whose push has no upstream configured
+When pull and push run
+Then pull passes --ff-only and push retries with -u origin and the current branch
 
 Scenario: sync failures surface as text
-  Test: surfaces sync failures as error text
-  Given a pull that exits non-zero with divergence advice on stderr
-  When pull runs
-  Then the returned error contains the git stderr text
+Test: surfaces sync failures as error text
+Given a pull that exits non-zero with divergence advice on stderr
+When pull runs
+Then the returned error contains the git stderr text
 
 ### Rule: branch-verbs — switching is first-class
 
 Scenario: branches list switch and create
-  Test: lists switches and creates branches
-  Given a repository with branches main and feature marked with HEAD
-  When branches switchBranch and createBranch run
-  Then the current branch is flagged and switch and create pass the right arguments
+Test: lists switches and creates branches
+Given a repository with branches main and feature marked with HEAD
+When branches switchBranch and createBranch run
+Then the current branch is flagged and switch and create pass the right arguments
 
 Scenario: switch failure propagates
-  Test: propagates switch failure text
-  Given a switch target that git rejects
-  When switchBranch runs
-  Then the returned error contains the git stderr text
+Test: propagates switch failure text
+Given a switch target that git rejects
+When switchBranch runs
+Then the returned error contains the git stderr text
 
 Scenario: switcher offers creation for unknown names
-  Test: offers a create entry for unknown branch names
-  Given local branches main and feature
-  When the switcher entries are built for query "hotfix"
-  Then a create entry for hotfix appears after no name matches
+Test: offers a create entry for unknown branch names
+Given local branches main and feature
+When the switcher entries are built for query "hotfix"
+Then a create entry for hotfix appears after no name matches
 
 ### Rule: local-commits — history is local-first
 
 Scenario: commit file rows merge status and stats
-  Test: merges commit file status with numstat rows
-  Given a commit touching a modified file and an added file with counts
-  When the file rows are built
-  Then each row carries its status letter and its addition and deletion counts
+Test: merges commit file status with numstat rows
+Given a commit touching a modified file and an added file with counts
+When the file rows are built
+Then each row carries its status letter and its addition and deletion counts
 
 Scenario: root commit diffs against empty
-  Test: uses an empty baseline for root commits
-  Given a file row for a commit whose parent lacks the file
-  When the diff baseline resolves
-  Then the baseline is empty text instead of an error
+Test: uses an empty baseline for root commits
+Given a file row for a commit whose parent lacks the file
+When the diff baseline resolves
+Then the baseline is empty text instead of an error
 
 ### Rule: worktree-verbs — mistakes are recoverable
 
 Scenario: discard routes tracked and untracked correctly
-  Test: discards tracked edits and deletes untracked files
-  Given a modified tracked file and an untracked file
-  When discard runs on both
-  Then the tracked file goes through restore worktree and the untracked one through clean
+Test: discards tracked edits and deletes untracked files
+Given a modified tracked file and an untracked file
+When discard runs on both
+Then the tracked file goes through restore worktree and the untracked one through clean
 
 Scenario: amend rewrites the previous commit
-  Test: amends the previous commit
-  Given a staged fix and a previous commit
-  When commit runs with amend
-  Then git receives commit --amend and the commit event still fires
+Test: amends the previous commit
+Given a staged fix and a previous commit
+When commit runs with amend
+Then git receives commit --amend and the commit event still fires
 
 Scenario: amend failure returns the git error
-  Test: returns amend failure text
-  Given an amend that git rejects
-  When commit runs with amend
-  Then the returned error contains the git stderr text
+Test: returns amend failure text
+Given an amend that git rejects
+When commit runs with amend
+Then the returned error contains the git stderr text
 
 ## Out of Scope
 

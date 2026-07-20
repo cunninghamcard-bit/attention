@@ -308,7 +308,7 @@ body {
   position: relative;
 }
 .multi-select-pill:focus:after {
-  content: '';
+  content: "";
   display: block;
   position: absolute;
   pointer-events: none;
@@ -316,7 +316,9 @@ body {
   inset-inline-end: var(--pill-focus-left-adjust);
   width: var(--pill-focus-width);
   height: 100%;
-  box-shadow: 0 0 0 1px var(--background-modifier-border-focus), inset 0 0 0 1px var(--background-modifier-border-focus);
+  box-shadow:
+    0 0 0 1px var(--background-modifier-border-focus),
+    inset 0 0 0 1px var(--background-modifier-border-focus);
 }
 @media (hover: hover) {
   .multi-select-pill:hover {
@@ -332,7 +334,7 @@ body {
   overflow: hidden;
 }
 .multi-select-pill-remove-button {
-  margin-inline-end: min(var(--size-2-3),var(--pill-padding-x));
+  margin-inline-end: min(var(--size-2-3), var(--pill-padding-x));
   cursor: var(--cursor);
   color: var(--pill-color-remove);
   border-radius: var(--radius-s);
@@ -361,7 +363,7 @@ body {
   display: none;
 }
 .multi-select-input:empty:before {
-  content: attr(placeholder, '\200B');
+  content: attr(placeholder, "\200B");
   color: var(--input-placeholder-color);
   pointer-events: none;
 }

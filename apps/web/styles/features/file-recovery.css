@@ -23,7 +23,9 @@
   display: flex;
   padding: var(--size-4-2);
   border-radius: var(--radius-s);
-  transition: background-color 200ms ease-in-out, color 200ms ease-in-out;
+  transition:
+    background-color 200ms ease-in-out,
+    color 200ms ease-in-out;
 }
 .file-recovery-list-item-header:not(:last-child) {
   margin-bottom: var(--size-4-2);

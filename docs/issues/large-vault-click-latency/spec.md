@@ -42,7 +42,7 @@ of the ~20k the directory walk already performed.
 - `Vault.handleAdapterCreate` calls `refreshFileStat` (one
   `adapter.stat` per file) even though the adapter's reconcile already
   read the entry's stat moments earlier; `MetadataCache
-  .computeFileMetadataAsync` then stats the same file a third time via
+.computeFileMetadataAsync` then stats the same file a third time via
   `getVaultFileStat` instead of using the in-memory `TFile.stat`.
 
 ## UX Shape
@@ -108,42 +108,42 @@ Vault --> User: index ready without redundant per-file stat round-trips
 ## Completion Criteria
 
 Scenario: Quick switcher reuses its item list across keystrokes
-  Test:
-    Package: tests/web/builtin/QuickSwitcher.test.ts
-    Filter: quick switcher computes its item list once per open
-    Level: unit
-  Given a vault with many files and an open quick switcher modal
-  When the user types several characters
-  Then the file list is enumerated and sorted only once per modal open
-  And each keystroke only fuzzy-matches against the cached list
+Test:
+Package: tests/web/builtin/QuickSwitcher.test.ts
+Filter: quick switcher computes its item list once per open
+Level: unit
+Given a vault with many files and an open quick switcher modal
+When the user types several characters
+Then the file list is enumerated and sorted only once per modal open
+And each keystroke only fuzzy-matches against the cached list
 
 Scenario: Metadata indexing reuses in-memory file stats
-  Test:
-    Package: tests/web/metadata/MetadataCache.test.ts
-    Filter: metadata indexing reuses in-memory file stats
-    Level: unit
-  Given a loaded vault whose TFile entries carry fresh stat data
-  When the metadata cache indexes those files
-  Then it does not issue adapter stat calls for files with fresh stats
+Test:
+Package: tests/web/metadata/MetadataCache.test.ts
+Filter: metadata indexing reuses in-memory file stats
+Level: unit
+Given a loaded vault whose TFile entries carry fresh stat data
+When the metadata cache indexes those files
+Then it does not issue adapter stat calls for files with fresh stats
 
 Scenario: Metadata indexing falls back to adapter stat when in-memory stat is unknown
-  Test:
-    Package: tests/web/metadata/MetadataCache.test.ts
-    Filter: metadata indexing falls back to adapter stat when in-memory stat is unknown
-    Level: unit
-  Given a TFile whose stat carries no real mtime
-  When the metadata cache validates its cache entry
-  Then it queries the adapter for the real stat instead of trusting the placeholder
+Test:
+Package: tests/web/metadata/MetadataCache.test.ts
+Filter: metadata indexing falls back to adapter stat when in-memory stat is unknown
+Level: unit
+Given a TFile whose stat carries no real mtime
+When the metadata cache validates its cache entry
+Then it queries the adapter for the real stat instead of trusting the placeholder
 
 Scenario: Vault applies adapter-provided stats without re-statting
-  Test:
-    Package: tests/web/vault/Vault.test.ts
-    Filter: vault applies adapter-provided stats without re-statting
-    Level: unit
-  Given the adapter reconciles a file and already holds its stat entry
-  When the vault materializes the TFile for the create event
-  Then the TFile stat comes from the event payload
-  And no additional adapter stat round-trip is issued for that file
+Test:
+Package: tests/web/vault/Vault.test.ts
+Filter: vault applies adapter-provided stats without re-statting
+Level: unit
+Given the adapter reconciles a file and already holds its stat entry
+When the vault materializes the TFile for the create event
+Then the TFile stat comes from the event payload
+And no additional adapter stat round-trip is issued for that file
 
 ## Out of Scope
 

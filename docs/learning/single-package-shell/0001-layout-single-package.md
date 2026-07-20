@@ -10,6 +10,7 @@ main/preload/renderer split is the honest structure. The user explicitly
 rejected the monorepo framing ("根本不是 monorepo").
 
 **Mapping:**
+
 - `apps/desktop/` (main.ts, bridges, ipc, protocol, windows) → `src/main/`
 - `apps/desktop/preload.ts` → `src/preload/`
 - `apps/web/` (the Obsidian-faithful renderer) → `src/renderer/`

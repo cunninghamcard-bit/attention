@@ -74,7 +74,12 @@
 .popover.hover-popover > .markdown-embed > .markdown-embed-content {
   width: 100%;
 }
-.popover.hover-popover > .markdown-embed > .markdown-embed-content > .markdown-source-view.mod-cm6 > .cm-editor > .cm-scroller,
+.popover.hover-popover
+  > .markdown-embed
+  > .markdown-embed-content
+  > .markdown-source-view.mod-cm6
+  > .cm-editor
+  > .cm-scroller,
 .popover.hover-popover > .markdown-embed > .markdown-embed-content .markdown-preview-view {
   padding: var(--file-margins);
 }
@@ -92,12 +97,20 @@
 .popover.hover-popover > .markdown-embed[data-type="footnote"]:not(.mod-empty) {
   --popover-font-size: var(--footnote-size);
 }
-.popover.hover-popover > .markdown-embed[data-type="footnote"] > .markdown-embed-content .cm-scroller,
-.popover.hover-popover > .markdown-embed[data-type="footnote"] > .markdown-embed-content .markdown-preview-view {
+.popover.hover-popover
+  > .markdown-embed[data-type="footnote"]
+  > .markdown-embed-content
+  .cm-scroller,
+.popover.hover-popover
+  > .markdown-embed[data-type="footnote"]
+  > .markdown-embed-content
+  .markdown-preview-view {
   --file-margins: var(--size-4-3) var(--size-4-4);
 }
 .follow-link-popover {
-  transition: opacity var(--anim-duration-fast) ease-in-out, transform var(--anim-duration-fast) ease-in-out;
+  transition:
+    opacity var(--anim-duration-fast) ease-in-out,
+    transform var(--anim-duration-fast) ease-in-out;
   box-shadow: 0 2px 8px var(--background-modifier-box-shadow);
   background-color: rgba(0, 0, 0, 0.9);
   border-radius: var(--radius-m);

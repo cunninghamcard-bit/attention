@@ -4,7 +4,7 @@
    `[data-type]` override — terminal was the one type missing it, which left a
    ~12px side / ~32px bottom padding inset around the surface. Match the pattern
    at equal specificity; product/ is imported last so this wins the tie. */
-.workspace-leaf-content[data-type='terminal'] .view-content {
+.workspace-leaf-content[data-type="terminal"] .view-content {
   padding: 0;
   overflow: hidden;
 }

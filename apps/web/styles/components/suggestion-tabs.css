@@ -23,7 +23,7 @@
   font-size: 11px;
   font-weight: var(--font-medium);
   line-height: var(--line-height-tight);
-  color: #FAFAFA;
+  color: #fafafa;
   padding: var(--size-2-3) var(--size-4-2);
   border: none;
   max-width: 200px;
@@ -81,7 +81,11 @@
 .cm-tooltip.cm-tooltip-autocomplete > ul > li[role="option"].mod-downranked {
   color: var(--text-muted);
 }
-.cm-tooltip.cm-tooltip-autocomplete > ul > li[role="option"].mod-complex .suggestion-icon .suggestion-flair {
+.cm-tooltip.cm-tooltip-autocomplete
+  > ul
+  > li[role="option"].mod-complex
+  .suggestion-icon
+  .suggestion-flair {
   margin: 0;
   margin-inline-end: var(--size-4-2);
 }
@@ -162,7 +166,7 @@
   margin-inline-end: auto;
 }
 .suggestion-item.mod-complex .suggestion-prefix:after {
-  content: ': ';
+  content: ": ";
 }
 .suggestion-item.mod-complex .suggestion-highlight {
   font-weight: bold;

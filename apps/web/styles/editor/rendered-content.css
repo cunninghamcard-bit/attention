@@ -98,18 +98,18 @@
 .embedded-backlinks .backlink-pane .search-empty-state,
 .embedded-backlinks .backlink-pane .tree-item-self {
   /* Use quotes because Less overrides CSS math */
-  font-size: max(var(--font-ui-small),var(--font-smaller));
+  font-size: max(var(--font-ui-small), var(--font-smaller));
   align-items: center;
 }
 .embedded-backlinks .backlink-pane > .tree-item-self {
-  font-size: max(var(--font-ui-small),1em);
+  font-size: max(var(--font-ui-small), 1em);
   width: fit-content;
 }
 .embedded-backlinks .backlink-pane > .tree-item-self .tree-item-inner {
   margin-inline-end: var(--size-2-3);
 }
 .embedded-backlinks .backlink-pane .tree-item-flair {
-  font-size: max(var(--font-ui-small),var(--font-smallest));
+  font-size: max(var(--font-ui-small), var(--font-smallest));
 }
 .embedded-backlinks .nav-header {
   padding: var(--size-4-3) 0 0 0;
@@ -150,7 +150,7 @@
   position: relative;
 }
 .bases-view.is-being-dragged-over:after {
-  content: '';
+  content: "";
   pointer-events: none;
   position: absolute;
   top: 0;

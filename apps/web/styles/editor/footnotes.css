@@ -58,7 +58,7 @@
   font-size: var(--font-smaller);
 }
 .markdown-rendered .frontmatter.mod-failed:after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   inset-inline-end: 0;

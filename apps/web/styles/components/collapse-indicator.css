@@ -113,7 +113,7 @@ h6:hover .collapse-indicator,
   z-index: 1;
 }
 .markdown-source-view.mod-cm6 .cm-fold-indicator:before {
-  content: '\200B';
+  content: "\200B";
 }
 .markdown-source-view.mod-cm6 .cm-fold-indicator .collapse-indicator {
   position: absolute;

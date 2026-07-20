@@ -14,7 +14,7 @@
   background-color: var(--background-modifier-message);
   border-radius: var(--radius-m);
   box-shadow: 0 2px 8px var(--background-modifier-box-shadow);
-  color: #FAFAFA;
+  color: #fafafa;
   font-size: var(--font-ui-small);
   line-height: var(--line-height-tight);
   padding: 0.75em 1em 0.75em 1em;

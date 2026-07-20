@@ -228,7 +228,7 @@ body:not(.is-mobile) div.image-embed:focus-within .edit-block-button {
 }
 body:not(.is-mobile) div.image-embed:focus-within .image-wrapper::after {
   pointer-events: none;
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   inset-inline-start: 0;
@@ -255,10 +255,14 @@ body:not(.is-mobile) div.image-embed:focus-within .image-resize-corner::after {
     overflow: hidden;
     cursor: text;
   }
-  .markdown-source-view.mod-cm6 .cm-embed-block:not(.cm-table-widget, .cm-lang-base):hover .edit-block-button {
+  .markdown-source-view.mod-cm6
+    .cm-embed-block:not(.cm-table-widget, .cm-lang-base):hover
+    .edit-block-button {
     opacity: 1;
   }
-  .markdown-source-view.mod-cm6 .cm-embed-block:not(.cm-table-widget, .cm-lang-base):hover .edit-block-button:hover {
+  .markdown-source-view.mod-cm6
+    .cm-embed-block:not(.cm-table-widget, .cm-lang-base):hover
+    .edit-block-button:hover {
     background-color: var(--background-modifier-hover);
   }
 }

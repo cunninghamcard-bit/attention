@@ -8,10 +8,20 @@
   font-size: 0.85em;
   color: var(--text-muted);
 }
-.outline-symbol.mod-symbol-class .outline-symbol-kind { color: #d4863c; }
-.outline-symbol.mod-symbol-type .outline-symbol-kind { color: #3f9e8a; }
-.outline-symbol.mod-symbol-enum .outline-symbol-kind { color: #a074c4; }
+.outline-symbol.mod-symbol-class .outline-symbol-kind {
+  color: #d4863c;
+}
+.outline-symbol.mod-symbol-type .outline-symbol-kind {
+  color: #3f9e8a;
+}
+.outline-symbol.mod-symbol-enum .outline-symbol-kind {
+  color: #a074c4;
+}
 .outline-symbol.mod-symbol-function .outline-symbol-kind,
-.outline-symbol.mod-symbol-method .outline-symbol-kind { color: #6a8fd8; }
+.outline-symbol.mod-symbol-method .outline-symbol-kind {
+  color: #6a8fd8;
+}
 /* --outline-heading-padding is set per-row by OutlineView.ts (depth-based). */
-.outline-symbol .tree-item-self { padding-inline-start: var(--outline-heading-padding); }
+.outline-symbol .tree-item-self {
+  padding-inline-start: var(--outline-heading-padding);
+}

@@ -3,13 +3,13 @@
    for folding indicators
 */
 body,
-[dir='ltr'] {
+[dir="ltr"] {
   --direction: 1;
   --inset-start: left;
   --inset-end: right;
 }
 .mod-rtl,
-[dir='rtl'] {
+[dir="rtl"] {
   --direction: -1;
   --inset-start: right;
   --inset-end: left;
@@ -59,20 +59,20 @@ body,
     direction: rtl;
   }
 }
-.mod-rtl input[type='date'],
-.is-rtl input[type='date'],
-.rtl input[type='date'],
-.mod-rtl input[type='datetime-local'],
-.is-rtl input[type='datetime-local'],
-.rtl input[type='datetime-local'] {
+.mod-rtl input[type="date"],
+.is-rtl input[type="date"],
+.rtl input[type="date"],
+.mod-rtl input[type="datetime-local"],
+.is-rtl input[type="datetime-local"],
+.rtl input[type="datetime-local"] {
   direction: rtl;
 }
-.mod-rtl input[type='date']::-webkit-calendar-picker-indicator,
-.is-rtl input[type='date']::-webkit-calendar-picker-indicator,
-.rtl input[type='date']::-webkit-calendar-picker-indicator,
-.mod-rtl input[type='datetime-local']::-webkit-calendar-picker-indicator,
-.is-rtl input[type='datetime-local']::-webkit-calendar-picker-indicator,
-.rtl input[type='datetime-local']::-webkit-calendar-picker-indicator {
+.mod-rtl input[type="date"]::-webkit-calendar-picker-indicator,
+.is-rtl input[type="date"]::-webkit-calendar-picker-indicator,
+.rtl input[type="date"]::-webkit-calendar-picker-indicator,
+.mod-rtl input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.is-rtl input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.rtl input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   right: var(--size-4-1);
   left: auto;
 }
@@ -82,16 +82,22 @@ body,
 */
 @supports selector(:has(*)) {
   .cm-callout:has(.callout .callout-title .callout-title-inner:dir(rtl)),
-  .callout:has( > .callout-title .callout-title-inner:dir(rtl)) {
+  .callout:has(> .callout-title .callout-title-inner:dir(rtl)) {
     direction: rtl;
   }
   .cm-callout:has(.callout .callout-title .callout-title-inner:dir(rtl)) > .callout-title,
-  .callout:has( > .callout-title .callout-title-inner:dir(rtl)) > .callout-title {
+  .callout:has(> .callout-title .callout-title-inner:dir(rtl)) > .callout-title {
     direction: rtl;
     --direction: -1;
   }
-  .cm-callout:has(.callout .callout-title .callout-title-inner:dir(rtl)) > .callout-title .callout-icon svg.svg-icon,
-  .callout:has( > .callout-title .callout-title-inner:dir(rtl)) > .callout-title .callout-icon svg.svg-icon {
+  .cm-callout:has(.callout .callout-title .callout-title-inner:dir(rtl))
+    > .callout-title
+    .callout-icon
+    svg.svg-icon,
+  .callout:has(> .callout-title .callout-title-inner:dir(rtl))
+    > .callout-title
+    .callout-icon
+    svg.svg-icon {
     transform: scale(-1, 1);
   }
 }
@@ -154,29 +160,32 @@ body,
 .mod-rtl .workspace .mod-root .workspace-tabs.mod-stacked .workspace-tab-container {
   flex-direction: row-reverse;
 }
-.mod-rtl .workspace .mod-root .workspace-tabs.mod-stacked .workspace-tab-container .workspace-tab-header-inner {
+.mod-rtl
+  .workspace
+  .mod-root
+  .workspace-tabs.mod-stacked
+  .workspace-tab-container
+  .workspace-tab-header-inner {
   flex-direction: row-reverse;
 }
 .mod-rtl .search-input-container:before,
 .mod-rtl .checkbox-container {
   transform: scale(-1, 1);
 }
-.mod-rtl svg.svg-icon:not(
-		.check-small,
-		.lucide-binary,
-		.lucide-check,
-		.lucide-check-square,
-		.lucide-clock,
-		.lucide-code-2,
-		.lucide-square-function,
-		.lucide-timer,
-		.sidebar-toggle-button-icon
-	) {
+.mod-rtl
+  svg.svg-icon:not(
+    .check-small,
+    .lucide-binary,
+    .lucide-check,
+    .lucide-check-square,
+    .lucide-clock,
+    .lucide-code-2,
+    .lucide-square-function,
+    .lucide-timer,
+    .sidebar-toggle-button-icon
+  ) {
   transform: scale(-1, 1);
 }
-[lang="he"] svg.svg-icon:is(
-		.lucide-help-circle,
-		.help
-	) {
+[lang="he"] svg.svg-icon:is(.lucide-help-circle, .help) {
   transform: scale(1, 1);
 }

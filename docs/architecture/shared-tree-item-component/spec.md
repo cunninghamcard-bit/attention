@@ -97,54 +97,54 @@ API fragments are recorded in research.md.
 ### Rule: single-primitive — one component, every tree view uses it
 
 Scenario: no view hand-rolls tree-item DOM (critical)
-  Test: builds every tree row through the shared tree item
-  Given the migrated tree views
-  When their sources are scanned for tree-item-self, nav-folder-title and
-  nav-file-title class construction
-  Then only the TreeItem component constructs that DOM
+Test: builds every tree row through the shared tree item
+Given the migrated tree views
+When their sources are scanned for tree-item-self, nav-folder-title and
+nav-file-title class construction
+Then only the TreeItem component constructs that DOM
 
 Scenario: the partial NavFolder helper is folded in
-  Test: replaces NavFolder with the tree item component
-  Given src/renderer/ui
-  When it is inspected
-  Then NavFolder is absent and TreeItem is the sole tree-row builder
+Test: replaces NavFolder with the tree item component
+Given src/renderer/ui
+When it is inspected
+Then NavFolder is absent and TreeItem is the sole tree-row builder
 
 ### Rule: faithful-api — TreeItem mirrors Obsidian
 
 Scenario: the tree item exposes Obsidian's surface
-  Test: exposes the Obsidian tree item surface
-  Given the TreeItem class
-  When its DOM and methods are inspected
-  Then it builds tree-item, tree-item-self, tree-item-icon collapse-icon,
-  tree-item-inner and tree-item-children and exposes setCollapsed,
-  setCollapsible and addChild
+Test: exposes the Obsidian tree item surface
+Given the TreeItem class
+When its DOM and methods are inspected
+Then it builds tree-item, tree-item-self, tree-item-icon collapse-icon,
+tree-item-inner and tree-item-children and exposes setCollapsed,
+setCollapsible and addChild
 
 ### Rule: native-alignment — rows align by construction
 
 Scenario: leaf and collapsible rows align at equal depth (critical)
-  Review: human
-  Test: keeps tree rows aligned across views
-  Given a leaf file row and a collapsible row at the same depth
-  When their content inset is measured
-  Then they share one inset — the machine check guards the shared
-  construction path; the pixel alignment is the human sign-off
+Review: human
+Test: keeps tree rows aligned across views
+Given a leaf file row and a collapsible row at the same depth
+When their content inset is measured
+Then they share one inset — the machine check guards the shared
+construction path; the pixel alignment is the human sign-off
 
 ### Rule: changes-native-structure — sections collapsible, files nested
 
 Scenario: Git Changes sections are collapsible tree parents
-  Test: nests Git Changes files under collapsible sections
-  Given GitChangesView rendered on a repo with staged and unstaged files
-  When the section and file DOM is inspected
-  Then each section is a collapsible TreeItem and its files are nested in
-  tree-item-children
+Test: nests Git Changes files under collapsible sections
+Given GitChangesView rendered on a repo with staged and unstaged files
+When the section and file DOM is inspected
+Then each section is a collapsible TreeItem and its files are nested in
+tree-item-children
 
 ### Rule: markdown-fold-separate — fold stays its own mechanism
 
 Scenario: markdown fold does not import the tree item
-  Test: keeps markdown fold off the tree component
-  Given the markdown heading and list fold modules
-  When their imports are resolved
-  Then none imports the TreeItem component
+Test: keeps markdown fold off the tree component
+Given the markdown heading and list fold modules
+When their imports are resolved
+Then none imports the TreeItem component
 
 ## Out of Scope
 

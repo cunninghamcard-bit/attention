@@ -183,20 +183,20 @@ The layering rule the whole structure exists to protect. A vitest
 architecture test asserts it — it walks every relative import and fails on
 any edge that breaks a row.
 
-| Layer | May import | Must NOT import |
-|-------|-----------|-----------------|
-| **renderer** (`apps/web`) | own lane + `@app/shared` | `apps/desktop`, the `electron` module |
-| **main** (`apps/desktop/main`) | own lane + `@app/shared` + renderer contracts | a UI-framework dependency |
-| **kernel** — `vault/`, `metadata/`, `storage/` | kernel + `core/` + `dom/` + `platform/` only | anything above itself (app, views, ui, builtin, plugin, …) |
-| **`api/`** (public facade) | internal modules (it wraps them) | — |
-| everything **outside `api/`** | internal modules | `api/` — no internal module may import the facade |
+| Layer                                          | May import                                    | Must NOT import                                            |
+| ---------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------- |
+| **renderer** (`apps/web`)                      | own lane + `@app/shared`                      | `apps/desktop`, the `electron` module                      |
+| **main** (`apps/desktop/main`)                 | own lane + `@app/shared` + renderer contracts | a UI-framework dependency                                  |
+| **kernel** — `vault/`, `metadata/`, `storage/` | kernel + `core/` + `dom/` + `platform/` only  | anything above itself (app, views, ui, builtin, plugin, …) |
+| **`api/`** (public facade)                     | internal modules (it wraps them)              | —                                                          |
+| everything **outside `api/`**                  | internal modules                              | `api/` — no internal module may import the facade          |
 
 **Dual-track plugin architecture** (faithful to Obsidian). Two tracks into
 the same engine, by design:
 
-- *Internal track* — `builtin/` slices and other internals call internal APIs
+- _Internal track_ — `builtin/` slices and other internals call internal APIs
   directly. This is intentional, not debt.
-- *Public track* — `api/` (`PublicApi`, `PluginApiFacade`) is the frozen
+- _Public track_ — `api/` (`PublicApi`, `PluginApiFacade`) is the frozen
   surface for **community plugins only**. Because it exists solely for
   outside code, nothing inside the app may import it — the direction table's
   row.
@@ -216,7 +216,7 @@ the renderer is trusted with `nodeIntegration`.
 **Kernel is a directory, not a package.** `vault`/`metadata`/`storage` are
 guarded by the direction table but not physically walled into their own
 package. A package boundary with a single consumer is ceremony; the kernel
-graduates to a real package the moment a *second* consumer appears, and the
+graduates to a real package the moment a _second_ consumer appears, and the
 direction test already keeps its imports clean for that day.
 
 **Ports are contracts, not a presenter framework.** `@app/shared` holds plain

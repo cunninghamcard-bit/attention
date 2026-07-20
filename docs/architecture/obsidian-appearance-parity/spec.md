@@ -172,233 +172,232 @@ Appearance
 ### Rule: source-shape — the panel follows Obsidian's native information architecture
 
 Scenario: appearance groups render in source order
-  Test:
-    Filter: renders Obsidian appearance groups in source order
-    Level: component
-  Given the Appearance settings tab is opened
-  When its content is rendered
-  Then the unheaded theme block is followed by Interface, Font, Advanced and CSS snippets
+Test:
+Filter: renders Obsidian appearance groups in source order
+Level: component
+Given the Appearance settings tab is opened
+When its content is rendered
+Then the unheaded theme block is followed by Interface, Font, Advanced and CSS snippets
 
 Scenario: implementation copy never reaches the user
-  Test:
-    Filter: uses user-facing appearance copy
-    Level: component
-  Given the Appearance settings tab is rendered
-  When its visible descriptions are read
-  Then they describe user outcomes and contain no source-code or CSS-cascade terminology
+Test:
+Filter: uses user-facing appearance copy
+Level: component
+Given the Appearance settings tab is rendered
+When its visible descriptions are read
+Then they describe user outcomes and contain no source-code or CSS-cascade terminology
 
 ### Rule: theme-controls — base theme, accent and community themes are complete
 
 Scenario: base scheme changes through the native dropdown
-  Test:
-    Filter: changes the base color scheme
-    Level: component
-  Given the panel reflects the persisted system color scheme
-  When the user chooses Dark
-  Then theme config becomes obsidian and the dark body class is applied
+Test:
+Filter: changes the base color scheme
+Level: component
+Given the panel reflects the persisted system color scheme
+When the user chooses Dark
+Then theme config becomes obsidian and the dark body class is applied
 
 Scenario: accent picker changes and resets the accent
-  Test:
-    Filter: changes and resets the accent color
-    Level: component
-  Given no custom accent is configured
-  When the user chooses a color and then activates Restore default
-  Then accent config is cleared and the picker reflects the computed theme accent
+Test:
+Filter: changes and resets the accent color
+Level: component
+Given no custom accent is configured
+When the user chooses a color and then activates Restore default
+Then accent config is cleared and the picker reflects the computed theme accent
 
 Scenario: a vault without community themes still has Default selected
-  Test:
-    Filter: shows Default when no community theme is installed
-    Level: component
-  Given no community themes are registered
-  When the theme control renders
-  Then Default is its selected option and selecting it clears cssTheme
+Test:
+Filter: shows Default when no community theme is installed
+Level: component
+Given no community themes are registered
+When the theme control renders
+Then Default is its selected option and selecting it clears cssTheme
 
 Scenario: installed community themes remain browsable
-  Test:
-    Filter: lists installed themes and opens the community browser
-    Level: component
-  Given two installed themes are registered
-  When the panel renders and Manage is activated
-  Then both themes appear in the selector, the installed count is two and the marketplace opens
+Test:
+Filter: lists installed themes and opens the community browser
+Level: component
+Given two installed themes are registered
+When the panel renders and Manage is activated
+Then both themes appear in the selector, the installed count is two and the marketplace opens
 
 Scenario: installed themes can be checked and updated
-  Test:
-    Filter: checks and updates installed community themes
-    Level: component
-  Given an installed theme has an older manifest version than the community catalog
-  When the user checks updates, opens View updates and activates Update all themes
-  Then the update-only manager lists that theme and its vault package is replaced by the newer version
+Test:
+Filter: checks and updates installed community themes
+Level: component
+Given an installed theme has an older manifest version than the community catalog
+When the user checks updates, opens View updates and activates Update all themes
+Then the update-only manager lists that theme and its vault package is replaced by the newer version
 
 ### Rule: interface-controls — supported workspace chrome is configurable here
 
 Scenario: interface toggles persist and update workspace chrome
-  Test:
-    Filter: toggles supported interface chrome
-    Level: component
-  Given inline title, view header and ribbon are visible
-  When each corresponding toggle is turned off
-  Then each config value is false and its existing body-class behavior is updated
+Test:
+Filter: toggles supported interface chrome
+Level: component
+Given inline title, view header and ribbon are visible
+When each corresponding toggle is turned off
+Then each config value is false and its existing body-class behavior is updated
 
 Scenario: ribbon actions are configurable
-  Test:
-    Filter: opens the ribbon configuration view
-    Level: component
-  Given the Configure ribbon setting is visible
-  When the user opens it and hides a ribbon action
-  Then the action is hidden through the shared ribbon state
+Test:
+Filter: opens the ribbon configuration view
+Level: component
+Given the Configure ribbon setting is visible
+When the user opens it and hides a ribbon action
+Then the action is hidden through the shared ribbon state
 
 Scenario: ribbon manager separates hidden actions and persists drag order
-  Test:
-    Filter: manages visible hidden and ordered ribbon actions
-    Level: component
-  Given the ribbon contains visible and hidden actions
-  When the user removes, adds and drags an action in Configure ribbon
-  Then the source-shaped sections reflect the new visibility and the shared ribbon order is persisted
-
+Test:
+Filter: manages visible hidden and ordered ribbon actions
+Level: component
+Given the ribbon contains visible and hidden actions
+When the user removes, adds and drags an action in Configure ribbon
+Then the source-shaped sections reflect the new visibility and the shared ribbon order is persisted
 
 ### Rule: font-controls — implemented typography settings are usable
 
 Scenario: font manager updates the existing appearance manager
-  Test:
-    Filter: manages all appearance font families
-    Level: component
-  Given the three font family controls are visible
-  When each Manage view adds a family and saves
-  Then the modal closes and their vault config keys and CSS override variables contain the entered families
+Test:
+Filter: manages all appearance font families
+Level: component
+Given the three font family controls are visible
+When each Manage view adds a family and saves
+Then the modal closes and their vault config keys and CSS override variables contain the entered families
 
 Scenario: font rows show fallback order and missing-family status
-  Test:
-    Filter: describes configured font fallback status
-    Level: component
-  Given a font setting contains one available and one unavailable family
-  When Appearance renders the Font group
-  Then both families are listed in fallback order and the unavailable family has a Font not found warning
+Test:
+Filter: describes configured font fallback status
+Level: component
+Given a font setting contains one available and one unavailable family
+When Appearance renders the Font group
+Then both families are listed in fallback order and the unavailable family has a Font not found warning
 
 Scenario: font manager offers source-shaped font suggestions
-  Test:
-    Filter: opens the Obsidian-style font suggestion list
-    Level: component
-  Given a Font manager is open
-  When the font name input receives focus
-  Then a searchable suggestion popup lists available seeded font families
+Test:
+Filter: opens the Obsidian-style font suggestion list
+Level: component
+Given a Font manager is open
+When the font name input receives focus
+Then a searchable suggestion popup lists available seeded font families
 
 Scenario: font size is bounded and resettable
-  Test:
-    Filter: changes and resets the base font size
-    Level: component
-  Given base font size is 20
-  When the slider changes and Restore default is activated
-  Then the configured and rendered font size returns to 16 pixels
+Test:
+Filter: changes and resets the base font size
+Level: component
+Given base font size is 20
+When the slider changes and Restore default is activated
+Then the configured and rendered font size returns to 16 pixels
 
 Scenario: mobile base font size action persists
-  Test:
-    Filter: toggles the mobile base font size action
-    Level: component
-  Given the mobile base font size action is disabled
-  When the user enables it
-  Then baseFontSizeAction is true
+Test:
+Filter: toggles the mobile base font size action
+Level: component
+Given the mobile base font size action is disabled
+When the user enables it
+Then baseFontSizeAction is true
 
 ### Rule: advanced-controls — native desktop appearance switches stay in sync
 
 Scenario: native menus and translucency apply immediately
-  Test:
-    Filter: toggles native menus and translucency
-    Level: component
-  Given both advanced settings are disabled
-  When the user enables both toggles
-  Then both config values are true and the translucent body class is present
+Test:
+Filter: toggles native menus and translucency
+Level: component
+Given both advanced settings are disabled
+When the user enables both toggles
+Then both config values are true and the translucent body class is present
 
 Scenario: desktop zoom updates the current Electron web frame
-  Test:
-    Filter: changes and resets desktop zoom
-    Level: component
-  Given the current desktop zoom level is nonzero
-  When the user changes the Zoom level slider and activates Restore default
-  Then Electron webFrame receives the changed level and then zero
+Test:
+Filter: changes and resets desktop zoom
+Level: component
+Given the current desktop zoom level is nonzero
+When the user changes the Zoom level slider and activates Restore default
+Then Electron webFrame receives the changed level and then zero
 
 Scenario: restart-bound desktop settings persist and relaunch
-  Test:
-    Filter: configures desktop frame icon and hardware acceleration
-    Level: component
-  Given desktop frame, icon and GPU channels are available
-  When the user changes frame style, chooses a valid custom icon and disables hardware acceleration
-  Then each main-process setting is persisted, the icon preview is shown and the Relaunch action invokes Electron relaunch
+Test:
+Filter: configures desktop frame icon and hardware acceleration
+Level: component
+Given desktop frame, icon and GPU channels are available
+When the user changes frame style, chooses a valid custom icon and disables hardware acceleration
+Then each main-process setting is persisted, the icon preview is shown and the Relaunch action invokes Electron relaunch
 
 Scenario: desktop native settings drive the next vault window
-  Test:
-    Filter: applies desktop appearance settings to vault windows
-    Level: integration
-  Given native frame style and a persisted custom icon are configured
-  When a vault window is created after relaunch
-  Then BrowserWindow uses the native frame and configured icon path
+Test:
+Filter: applies desktop appearance settings to vault windows
+Level: integration
+Given native frame style and a persisted custom icon are configured
+When a vault window is created after relaunch
+Then BrowserWindow uses the native frame and configured icon path
 
 ### Rule: snippet-controls — snippet discovery has complete actions and states
 
 Scenario: snippet heading reloads discovery without duplicate rows
-  Test:
-    Filter: reloads CSS snippets without duplicate rows
-    Level: component
-  Given one snippet is present on disk
-  When Reload snippets is activated twice
-  Then the panel contains one row for that snippet with its vault-relative path
+Test:
+Filter: reloads CSS snippets without duplicate rows
+Level: component
+Given one snippet is present on disk
+When Reload snippets is activated twice
+Then the panel contains one row for that snippet with its vault-relative path
 
 Scenario: missing snippet folder shows actionable guidance
-  Test:
-    Filter: shows the CSS snippets empty state
-    Level: component
-  Given no CSS snippets are discovered
-  When the panel renders
-  Then it says no snippets were found and names vault/.obsidian/snippets
+Test:
+Filter: shows the CSS snippets empty state
+Level: component
+Given no CSS snippets are discovered
+When the panel renders
+Then it says no snippets were found and names vault/.obsidian/snippets
 
 Scenario: theme and snippet folders open after on-demand creation
-  Test:
-    Filter: creates and opens appearance folders
-    Level: component
-  Given the theme and snippet folders do not exist
-  When each Open folder action is activated
-  Then each folder is created and passed to the app's default opener
+Test:
+Filter: creates and opens appearance folders
+Level: component
+Given the theme and snippet folders do not exist
+When each Open folder action is activated
+Then each folder is created and passed to the app's default opener
 
 Scenario: snippet toggles persist their enabled state
-  Test:
-    Filter: toggles a CSS snippet from Appearance
-    Level: component
-  Given a discovered disabled snippet
-  When its native toggle is enabled
-  Then enabledCssSnippets contains its id and its style load is requested
+Test:
+Filter: toggles a CSS snippet from Appearance
+Level: component
+Given a discovered disabled snippet
+When its native toggle is enabled
+Then enabledCssSnippets contains its id and its style load is requested
 
 ### Rule: git-theme-inheritance — local Git consumes the active Obsidian theme
 
 Scenario: git diff hosts bridge native theme tokens into Pierre
-  Test:
-    Filter: bridges Obsidian theme tokens into git diff hosts
-    Level: architecture
-  Given Pierre diffs render inside their custom-element shadow roots
-  When the local Git styles define the custom-element host contract
-  Then backgrounds, foregrounds, gutters, fonts and change colors resolve from Obsidian tokens
+Test:
+Filter: bridges Obsidian theme tokens into git diff hosts
+Level: architecture
+Given Pierre diffs render inside their custom-element shadow roots
+When the local Git styles define the custom-element host contract
+Then backgrounds, foregrounds, gutters, fonts and change colors resolve from Obsidian tokens
 
 Scenario: mounted review diffs refresh after a theme change
-  Test:
-    Filter: refreshes mounted review diffs when the theme changes
-    Level: component
-  Given a dark local review is already mounted
-  When Appearance changes the base scheme to Light and emits css-change
-  Then the existing code view receives light options and rerenders without reopening the leaf
+Test:
+Filter: refreshes mounted review diffs when the theme changes
+Level: component
+Given a dark local review is already mounted
+When Appearance changes the base scheme to Light and emits css-change
+Then the existing code view receives light options and rerenders without reopening the leaf
 
 Scenario: mounted file diffs refresh after a theme change
-  Test:
-    Filter: refreshes mounted file diffs on css-change
-    Level: architecture
-  Given Git changes and commit log have already rendered file diffs
-  When the workspace emits css-change
-  Then both views update their existing FileDiff theme type without rebuilding the view
+Test:
+Filter: refreshes mounted file diffs on css-change
+Level: architecture
+Given Git changes and commit log have already rendered file diffs
+When the workspace emits css-change
+Then both views update their existing FileDiff theme type without rebuilding the view
 
 Scenario: local Git chrome owns no literal palette
-  Test:
-    Filter: keeps local git chrome free of literal palette colors
-    Level: architecture
-  Given the local Git product styles
-  When their color declarations are inspected
-  Then semantic colors use Obsidian variables with no hex, rgb, hsl or theme-name override
+Test:
+Filter: keeps local git chrome free of literal palette colors
+Level: architecture
+Given the local Git product styles
+When their color declarations are inspected
+Then semantic colors use Obsidian variables with no hex, rgb, hsl or theme-name override
 
 ## Out of Scope
 

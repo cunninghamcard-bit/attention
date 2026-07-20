@@ -27,43 +27,43 @@ plugins and generic protocols over feature-specific TUI branches.
 ## Completion Criteria
 
 Scenario: kernel command list remains the slash-command source
-  Test: TestSlashCommandsRemainKernelDriven
-  Given the kernel returns builtin, prompt, skill, and extension commands
-  When the TUI builds slash-command completion candidates
-  Then the candidates come from `get_commands`
-  And the TUI does not maintain a separate plugin command list
+Test: TestSlashCommandsRemainKernelDriven
+Given the kernel returns builtin, prompt, skill, and extension commands
+When the TUI builds slash-command completion candidates
+Then the candidates come from `get_commands`
+And the TUI does not maintain a separate plugin command list
 
 Scenario: mutated lifecycle events reach RPC and TUI
-  Test: TestToolLifecyclePublishesFinalMutatedState
-  Given a native hook mutates a tool lifecycle event before publication
-  When the orchestrator publishes the event to subscribers
-  Then RPC receives the final mutated event state
-  And TUI rendering receives the final mutated event state
+Test: TestToolLifecyclePublishesFinalMutatedState
+Given a native hook mutates a tool lifecycle event before publication
+When the orchestrator publishes the event to subscribers
+Then RPC receives the final mutated event state
+And TUI rendering receives the final mutated event state
 
 Scenario: plugin hook command absence does not break startup
-  Test: TestFilePluginHookCommandDoesNotBreakStartup
-  Given a file plugin hook command names an unavailable executable
-  When Attention starts a session
-  Then startup succeeds
-  And the hook command is not executed until its matching event fires
+Test: TestFilePluginHookCommandDoesNotBreakStartup
+Given a file plugin hook command names an unavailable executable
+When Attention starts a session
+Then startup succeeds
+And the hook command is not executed until its matching event fires
 
 Scenario: plugin behavior stays out of TUI dispatch
-  Test: TestTUIDispatchesExtensionCommandOverRPC
-  Given the TUI dispatches a command with source "extension"
-  When the command name belongs to a plugin
-  Then the TUI uses the generic extension command RPC path
-  And no plugin-specific branch is required
+Test: TestTUIDispatchesExtensionCommandOverRPC
+Given the TUI dispatches a command with source "extension"
+When the command name belongs to a plugin
+Then the TUI uses the generic extension command RPC path
+And no plugin-specific branch is required
 
 Scenario: TypeScript extension runtime is not introduced
-  Test: TestFilePluginSystemDoesNotAddTypeScriptRuntime
-  Given a file plugin is enabled
-  When the runtime loads plugin hooks, skills, commands, and bin paths
-  Then it uses Go `extension.Factory` registration
-  And it does not execute npm or TypeScript extension loaders
+Test: TestFilePluginSystemDoesNotAddTypeScriptRuntime
+Given a file plugin is enabled
+When the runtime loads plugin hooks, skills, commands, and bin paths
+Then it uses Go `extension.Factory` registration
+And it does not execute npm or TypeScript extension loaders
 
 Scenario: new dependency is rejected when existing code suffices
-  Test: TestFilePluginSystemAvoidsUnneededDependencies
-  Given the file plugin system needs path resolution, JSON parsing, shell hooks, and PATH updates
-  When implementation code is reviewed
-  Then existing repository packages or Go standard library APIs provide those behaviors
-  And no new dependency is added for them
+Test: TestFilePluginSystemAvoidsUnneededDependencies
+Given the file plugin system needs path resolution, JSON parsing, shell hooks, and PATH updates
+When implementation code is reviewed
+Then existing repository packages or Go standard library APIs provide those behaviors
+And no new dependency is added for them

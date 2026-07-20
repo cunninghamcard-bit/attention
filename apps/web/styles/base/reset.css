@@ -37,7 +37,9 @@ body.is-translucent {
   animation-name: node-inserted;
 }
 .is-flashing {
-  transition: color 0.25s ease, background-color 0.25s ease;
+  transition:
+    color 0.25s ease,
+    background-color 0.25s ease;
   background-color: var(--text-highlight-bg) !important;
   color: var(--text-normal);
   mix-blend-mode: var(--highlight-mix-blend-mode);

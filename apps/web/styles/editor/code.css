@@ -18,7 +18,11 @@
 .cm-s-obsidian span.cm-inline-code span.cm-inline-code.cm-hmd-indented-code {
   background-color: transparent;
 }
-.cm-s-obsidian span.cm-inline-code span.cm-inline-code:not(.cm-formatting):not(.cm-hmd-indented-code):not(.obsidian-search-match-highlight) {
+.cm-s-obsidian
+  span.cm-inline-code
+  span.cm-inline-code:not(.cm-formatting):not(.cm-hmd-indented-code):not(
+    .obsidian-search-match-highlight
+  ) {
   background-color: var(--code-background);
   vertical-align: baseline;
 }

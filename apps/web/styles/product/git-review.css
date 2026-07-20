@@ -94,10 +94,16 @@
 }
 
 .review-file-row-status.mod-added,
-.review-file-row-status.mod-untracked { color: var(--color-green); }
-.review-file-row-status.mod-deleted { color: var(--color-red); }
+.review-file-row-status.mod-untracked {
+  color: var(--color-green);
+}
+.review-file-row-status.mod-deleted {
+  color: var(--color-red);
+}
 .review-file-row-status.mod-renamed,
-.review-file-row-status.mod-modified { color: var(--color-orange); }
+.review-file-row-status.mod-modified {
+  color: var(--color-orange);
+}
 
 .review-sidebar-footer {
   display: flex;
@@ -185,10 +191,16 @@
 }
 
 .review-card-status.mod-added,
-.review-card-status.mod-untracked { color: var(--color-green); }
-.review-card-status.mod-deleted { color: var(--color-red); }
+.review-card-status.mod-untracked {
+  color: var(--color-green);
+}
+.review-card-status.mod-deleted {
+  color: var(--color-red);
+}
 .review-card-status.mod-modified,
-.review-card-status.mod-renamed { color: var(--color-orange); }
+.review-card-status.mod-renamed {
+  color: var(--color-orange);
+}
 
 .review-surface ins,
 .git-pr-view ins {
@@ -253,8 +265,12 @@
   font-size: var(--font-ui-small);
 }
 
-.review-action.mod-approve { color: var(--color-green); }
-.review-action.mod-request-changes { color: var(--color-red); }
+.review-action.mod-approve {
+  color: var(--color-green);
+}
+.review-action.mod-request-changes {
+  color: var(--color-red);
+}
 
 /* --- Keyboard help -------------------------------------------------------- */
 

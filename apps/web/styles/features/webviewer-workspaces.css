@@ -82,10 +82,16 @@
   font-size: var(--font-ui-small);
   color: var(--text-muted);
 }
-.webviewer-addressbar-suggestion.suggestion-item > .suggestion-content .suggestion-title + .suggestion-url {
+.webviewer-addressbar-suggestion.suggestion-item
+  > .suggestion-content
+  .suggestion-title
+  + .suggestion-url {
   margin-left: var(--size-4-2);
 }
-.webviewer-addressbar-suggestion.suggestion-item > .suggestion-content .suggestion-title:empty + .suggestion-url {
+.webviewer-addressbar-suggestion.suggestion-item
+  > .suggestion-content
+  .suggestion-title:empty
+  + .suggestion-url {
   margin-left: 0;
 }
 .view-content.webviewer-content {

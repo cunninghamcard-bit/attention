@@ -68,74 +68,74 @@ Theme --> Review: search, file rows, controls, semantic tokens
 Rule: native-local-changes
 
 Scenario: Git Changes uses native rows and controls
-  Test:
-    Filter: renders Git Changes with native rows and controls
-    Level: component
-  Given a repository has staged and unstaged files
-  When Git Changes renders its sections and file entries
-  Then headings, file rows, status flairs, and actions use native Obsidian primitives while each diff remains operable
+Test:
+Filter: renders Git Changes with native rows and controls
+Level: component
+Given a repository has staged and unstaged files
+When Git Changes renders its sections and file entries
+Then headings, file rows, status flairs, and actions use native Obsidian primitives while each diff remains operable
 
 Scenario: Git Changes preserves unavailable and empty states
-  Test:
-    Filter: preserves Git Changes unavailable and empty states
-    Level: component
-  Given Git is unavailable, the vault is not a repository, or the working tree is clean
-  When Git Changes refreshes
-  Then it shows the corresponding native empty message without stale file rows or header actions
+Test:
+Filter: preserves Git Changes unavailable and empty states
+Level: component
+Given Git is unavailable, the vault is not a repository, or the working tree is clean
+When Git Changes refreshes
+Then it shows the corresponding native empty message without stale file rows or header actions
 
 Rule: native-history-surfaces
 
 Scenario: File History uses native commit rows and actions
-  Test:
-    Filter: renders File History with native rows and actions
-    Level: component
-  Given commits touch the selected file
-  When File History renders
-  Then each commit and its review, view, and compare actions use native rows and controls
+Test:
+Filter: renders File History with native rows and actions
+Level: component
+Given commits touch the selected file
+When File History renders
+Then each commit and its review, view, and compare actions use native rows and controls
 
 Scenario: Commit Log uses native collapsible rows
-  Test:
-    Filter: renders Commit Log with native collapsible rows
-    Level: component
-  Given the repository has commit history
-  When a commit row is expanded
-  Then the native disclosure row lazily shows native changed-file rows with status and symmetric additions and deletions
+Test:
+Filter: renders Commit Log with native collapsible rows
+Level: component
+Given the repository has commit history
+When a commit row is expanded
+Then the native disclosure row lazily shows native changed-file rows with status and symmetric additions and deletions
 
 Scenario: Commit Log preserves lazy failure and empty behavior
-  Test:
-    Filter: preserves Commit Log lazy and empty behavior
-    Level: component
-  Given the repository is unavailable, empty, or a selected commit file has no readable content
-  When Commit Log renders or expands the row
-  Then it shows the applicable empty state and loads detail at most once without a partial duplicate diff
+Test:
+Filter: preserves Commit Log lazy and empty behavior
+Level: component
+Given the repository is unavailable, empty, or a selected commit file has no readable content
+When Commit Log renders or expands the row
+Then it shows the applicable empty state and loads detail at most once without a partial duplicate diff
 
 Rule: native-shared-review
 
 Scenario: Shared review sidebar uses native search and file rows
-  Test:
-    Filter: renders shared review navigation with native primitives
-    Level: component
-  Given GitHub PR detail embeds the shared review surface
-  When its file navigator renders and filters files
-  Then it uses native search, file icons, active and viewed row states, status flairs, and symmetric additions and deletions
+Test:
+Filter: renders shared review navigation with native primitives
+Level: component
+Given GitHub PR detail embeds the shared review surface
+When its file navigator renders and filters files
+Then it uses native search, file icons, active and viewed row states, status flairs, and symmetric additions and deletions
 
 Scenario: Local review remains externally navigated
-  Test:
-    Filter: keeps local review navigation external
-    Level: component
-  Given local Git review supplies its own right navigator and view-header actions
-  When the shared review surface renders
-  Then the embedded sidebar and toolbar stay hidden while activation and theme refresh continue to work
+Test:
+Filter: keeps local review navigation external
+Level: component
+Given local Git review supplies its own right navigator and view-header actions
+When the shared review surface renders
+Then the embedded sidebar and toolbar stay hidden while activation and theme refresh continue to work
 
 Rule: custom-ui-containment
 
 Scenario: Git styles contain no reimplemented primitives
-  Test:
-    Filter: contains Git styling to native primitives
-    Level: contract
-  Given the Git product styles and view sources
-  When the native-surface contract is checked
-  Then custom card, row, button, status-dot, literal-color, and dead commit-composer styling is absent
+Test:
+Filter: contains Git styling to native primitives
+Level: contract
+Given the Git product styles and view sources
+When the native-surface contract is checked
+Then custom card, row, button, status-dot, literal-color, and dead commit-composer styling is absent
 
 ## Out of Scope
 

@@ -82,6 +82,7 @@ Handler stdout must be JSON; `notifications` are returned through
 on `PATH`.
 
 Known test failures (all pre-existing at `a4702cc`, none are code regressions):
+
 - `internal/execenv/local` and `internal/resource` — macOS-only env quirks
   (symlinked `/var`, case-insensitive FS).
 - `internal/extension/jshost` and `internal/orchestrator` — two JS-extension

@@ -19,7 +19,7 @@ derived_from:
 ## Implementation
 
 - [x] Complete the Obsidian-shaped search view, persisted controls, grouped results,
-  exact result navigation, and stale/error handling. Covers: all five scenarios in `spec.md`.
+      exact result navigation, and stale/error handling. Covers: all five scenarios in `spec.md`.
 
 ## Tests
 

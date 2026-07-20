@@ -38,6 +38,7 @@ the application or return a token.
 ## Boundaries
 
 ### Allowed Changes
+
 - src/renderer/builtin/github/GitHubService.ts
 - src/renderer/builtin/github/GitPrViews.ts
 - src/renderer/styles/product/git-prs.css
@@ -45,6 +46,7 @@ the application or return a token.
 - docs/features/github-device-login/**
 
 ### Forbidden
+
 - Do not use or import credentials from Oh My GitHub, GitHub CLI, or another application.
 - Do not add production dependencies or new IPC channels.
 - Do not persist a device code, pending session, or rejected access token.
@@ -55,37 +57,37 @@ the application or return a token.
 ### Rule: device-login — Browser authorization is the primary login path
 
 Scenario: GitHub device authorization signs the user in (critical)
-  Tags: critical
-  Test: completes GitHub device login and stores the returned token
-  Given a configured OAuth client ID and GitHub device endpoints returning a user code then an access token
-  When the device login service starts and completes authorization
-  Then it sends the configured scopes, verifies the returned token, and stores that token in SecretStorage
+Tags: critical
+Test: completes GitHub device login and stores the returned token
+Given a configured OAuth client ID and GitHub device endpoints returning a user code then an access token
+When the device login service starts and completes authorization
+Then it sends the configured scopes, verifies the returned token, and stores that token in SecretStorage
 
 Scenario: Pending authorization respects GitHub polling responses
-  Test: waits through pending and slow-down device responses
-  Given GitHub returns `authorization_pending`, `slow_down`, and then an access token
-  When the device login service polls for completion
-  Then polling continues and the next wait includes GitHub's five-second slow-down increment
+Test: waits through pending and slow-down device responses
+Given GitHub returns `authorization_pending`, `slow_down`, and then an access token
+When the device login service polls for completion
+Then polling continues and the next wait includes GitHub's five-second slow-down increment
 
 Scenario: Rejected authorization stores no token
-  Test: rejects denied device login without storing a token
-  Given GitHub returns `access_denied` for a pending device authorization
-  When the device login service polls for completion
-  Then it returns the GitHub error and SecretStorage remains empty
+Test: rejects denied device login without storing a token
+Given GitHub returns `access_denied` for a pending device authorization
+When the device login service polls for completion
+Then it returns the GitHub error and SecretStorage remains empty
 
 ### Rule: login-surface — OAuth and PAT remain explicit alternatives
 
 Scenario: Login view opens GitHub device verification
-  Test: opens browser device login from the signed-out view
-  Given the GitHub workspace is signed out and an OAuth client ID is configured
-  When the user chooses the primary GitHub login and then the browser action
-  Then the view shows the user code and opens GitHub's verification URL
+Test: opens browser device login from the signed-out view
+Given the GitHub workspace is signed out and an OAuth client ID is configured
+When the user chooses the primary GitHub login and then the browser action
+Then the view shows the user code and opens GitHub's verification URL
 
 Scenario: Missing OAuth configuration preserves PAT login
-  Test: keeps personal-token login available without an OAuth client ID
-  Given the GitHub workspace is signed out and no OAuth client ID is configured
-  When the sign-in view renders
-  Then the primary GitHub login is disabled, the missing-client message is visible, and the PAT form remains reachable
+Test: keeps personal-token login available without an OAuth client ID
+Given the GitHub workspace is signed out and no OAuth client ID is configured
+When the sign-in view renders
+Then the primary GitHub login is disabled, the missing-client message is visible, and the PAT form remains reachable
 
 ## Out of Scope
 

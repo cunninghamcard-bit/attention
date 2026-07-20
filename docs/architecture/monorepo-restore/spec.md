@@ -68,7 +68,7 @@ its RPC protocol.
     centralized lane (`@app/tests`).
   - The kernel subtree lands at the ROOT: `cmd/`, `internal/`, `extension/`,
     `specs/`, `go.mod`, `go.sum` — via `git merge
-    --allow-unrelated-histories`, NOT `subtree --prefix`. Historical paths
+--allow-unrelated-histories`, NOT `subtree --prefix`. Historical paths
     match 1:1, so log/blame stay seamless across the merge. The kernel
     arrives WHOLE — TUI, file plugin, specs household, all of it; no pruning.
     Its Makefile dissolves into mise tasks (mise stays the single task
@@ -121,7 +121,6 @@ its RPC protocol.
 <!-- lint-ack: decision-coverage — the wholesale-move, subtree-merge, package-split, Makefile-dissolution and docs-rewrite decisions are structural/mechanical, verified by the re-greened gate plus the hash receipt, not by report-mode selectors -->
 <!-- lint-ack: platform-decision-tag — electron-vite, pnpm, go, echo and mise mentions are this repo family's own toolchain, not a parity reference -->
 <!-- lint-ack: error-path — a structure-only relocation has no runtime error path; the re-laned walls and the gate-green rule ARE the regression-failure guards -->
-
 
 ## Boundaries
 
@@ -185,78 +184,78 @@ its RPC protocol.
 ### Rule: monorepo-shape — one repo, three lanes
 
 Scenario: the workspace is a monorepo with the kernel seated at the root (critical)
-  Test: declares the monorepo layout with the kernel seated
-  Given pnpm-workspace.yaml, go.mod and the source tree
-  When the workspace packages and top-level directories are read
-  Then apps/desktop, apps/web, packages/shared and packages/sdk are workspace
-  packages alongside tests, no top-level src remains, and cmd, internal and
-  go.mod sit at the repo root
+Test: declares the monorepo layout with the kernel seated
+Given pnpm-workspace.yaml, go.mod and the source tree
+When the workspace packages and top-level directories are read
+Then apps/desktop, apps/web, packages/shared and packages/sdk are workspace
+packages alongside tests, no top-level src remains, and cmd, internal and
+go.mod sit at the repo root
 
 ### Rule: gate-green — the gate is the standard
 
 Scenario: the full gate passes in the new layout (critical)
-  Review: human
-  Test: keeps the full gate green in the monorepo layout
-  Given the relocated tree
-  When lint, format check, typecheck, vitest, builds, e2e and packcheck run
-  Then all of them pass with no test weakened, skipped or deleted
+Review: human
+Test: keeps the full gate green in the monorepo layout
+Given the relocated tree
+When lint, format check, typecheck, vitest, builds, e2e and packcheck run
+Then all of them pass with no test weakened, skipped or deleted
 
 ### Rule: renderer-wall — the native seam is a package boundary
 
 Scenario: the renderer never imports the shell (critical)
-  Test: keeps the renderer free of shell imports
-  Given every import statement under apps/web
-  When their targets are resolved
-  Then none resolves into apps/desktop or the electron module, and every port
-  contract import resolves into @app/shared, not a local copy
+Test: keeps the renderer free of shell imports
+Given every import statement under apps/web
+When their targets are resolved
+Then none resolves into apps/desktop or the electron module, and every port
+contract import resolves into @app/shared, not a local copy
 
 ### Rule: shared-contracts — one contract, both sides compile against it
 
 Scenario: the port contracts live in @app/shared
-  Test: declares the native port contracts in the shared package
-  Given packages/shared
-  When it is inspected
-  Then it declares the DataAdapter, ElectronGitApi and ElectronTerminalApi
-  interfaces and a typed IPC channel table, and no apps package re-declares
-  any of them
+Test: declares the native port contracts in the shared package
+Given packages/shared
+When it is inspected
+Then it declares the DataAdapter, ElectronGitApi and ElectronTerminalApi
+interfaces and a typed IPC channel table, and no apps package re-declares
+any of them
 
 ### Rule: static-hash — pure relocation, proven
 
 Scenario: moved files are byte-identical outside mechanical rewrites (critical)
-  Review: human
-  Test: holds every moved file byte-identical outside mechanical rewrites
-  Given the pre-move tree and the post-move branch
-  When blob hashes and the diff are compared
-  Then every moved file's blob is identical except files whose only diff is
-  an import-path or config-path rewrite, and mapping.md accounts for every
-  moved path exactly once
+Review: human
+Test: holds every moved file byte-identical outside mechanical rewrites
+Given the pre-move tree and the post-move branch
+When blob hashes and the diff are compared
+Then every moved file's blob is identical except files whose only diff is
+an import-path or config-path rewrite, and mapping.md accounts for every
+moved path exactly once
 
 ### Rule: kernel-history — the subtree keeps its past
 
 Scenario: kernel history is preserved and reachable
-  Test: keeps the kernel commit history reachable
-  Given the merged branch
-  When git log follows cmd/along and internal/
-  Then the kernel repository's commits are reachable from the branch HEAD and
-  the relocation commits are listed in .git-blame-ignore-revs
+Test: keeps the kernel commit history reachable
+Given the merged branch
+When git log follows cmd/along and internal/
+Then the kernel repository's commits are reachable from the branch HEAD and
+the relocation commits are listed in .git-blame-ignore-revs
 
 ### Rule: kernel-seam — the port is gone, the seat stays empty
 
 Scenario: the KernelApi port is deleted (critical)
-  Test: removes the kernel port and every reference
-  Given the workspace after the deletion commit
-  When all code lanes are searched for the KernelApi identifier
-  Then zero definitions and zero references remain, the deletion is its own
-  commit separate from every relocation commit, no kernel package is a pnpm
-  workspace member, and @app/sdk carries no runtime code and no dependencies
+Test: removes the kernel port and every reference
+Given the workspace after the deletion commit
+When all code lanes are searched for the KernelApi identifier
+Then zero definitions and zero references remain, the deletion is its own
+commit separate from every relocation commit, no kernel package is a pnpm
+workspace member, and @app/sdk carries no runtime code and no dependencies
 
 ### Rule: name-agnostic — the retired name stays gone
 
 Scenario: no retired product-name literals remain in code
-  Test: no retired product-name literals remain in code
-  Given all code lanes and root config files in the new layout
-  When they are scanned for retired product-name literals
-  Then zero matches are found
+Test: no retired product-name literals remain in code
+Given all code lanes and root config files in the new layout
+When they are scanned for retired product-name literals
+Then zero matches are found
 
 ## Out of Scope
 

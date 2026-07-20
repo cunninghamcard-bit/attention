@@ -461,19 +461,20 @@
 
 ## 2. 机械改写（import 路径 / 配置路径字符串，wiring 提交 a6c0897 + 30184fc）
 
-### 2.1 跨包 import 改写（7 文件，@app/shared  specifier）
+### 2.1 跨包 import 改写（7 文件，@app/shared specifier）
 
-| 文件 | 改写 |
-|---|---|
-| apps/desktop/main/git-bridge.ts | ../shared/* → @app/shared/* |
-| apps/desktop/main/terminal-bridge.ts | ../shared/* → @app/shared/* |
-| apps/desktop/main/ipc.ts | ../shared/* → @app/shared/* |
-| apps/web/vault/DataAdapter.ts | @shared/* → @app/shared/* |
-| apps/web/platform/Platform.ts | @shared/* → @app/shared/* |
-| apps/web/builtin/git/GitService.ts | @shared/* → @app/shared/* |
-| apps/web/builtin/terminal/TerminalAdapter.ts | @shared/* → @app/shared/* |
+| 文件                                         | 改写                        |
+| -------------------------------------------- | --------------------------- |
+| apps/desktop/main/git-bridge.ts              | ../shared/* → @app/shared/* |
+| apps/desktop/main/terminal-bridge.ts         | ../shared/* → @app/shared/* |
+| apps/desktop/main/ipc.ts                     | ../shared/* → @app/shared/* |
+| apps/web/vault/DataAdapter.ts                | @shared/* → @app/shared/*   |
+| apps/web/platform/Platform.ts                | @shared/* → @app/shared/*   |
+| apps/web/builtin/git/GitService.ts           | @shared/* → @app/shared/*   |
+| apps/web/builtin/terminal/TerminalAdapter.ts | @shared/* → @app/shared/*   |
 
 ### 2.2 tests 相对路径改写（11 文件，src/* → apps|packages/*）
+
 - tests/package.json
 - tests/web/app/theme/CssContract.test.ts
 - tests/web/builtin/git/GitThemeContract.test.ts
@@ -487,21 +488,21 @@
 
 ### 2.3 清单与配置（路径/转发改写）
 
-| 文件 | 改动 |
-|---|---|
-| package.json | root 应用包 → 私有 orchestrator，脚本名不变、pnpm --filter 转发；依赖下发到车道 |
-| pnpm-workspace.yaml | packages += apps/*, packages/*；tests 保留 |
-| pnpm-lock.yaml | 随依赖下发重新生成 |
-| tsconfig.json | 别名 @web/@desktop/@preload/@app/web/@shared → 新车道；include 换车道 |
-| tsconfig.tools.json | 同上 |
-| vitest.config.ts | 别名指向 apps/web、apps/desktop/{main,preload}、packages/shared |
-| apps/web/vite.config.ts | @shared 别名 → @app/shared |
-| apps/web/vite.api.config.ts | 同上；api 产物落 apps/web/out/api（声明与 JS 同层） |
-| apps/desktop/main/vite.config.ts | @app/web 别名 → ../../web；outDir 修正到仓库 root out/desktop |
-| apps/desktop/main/tsconfig.json | paths 换新车道；include 去掉已迁目录 |
-| tests/package.json | += @pierre/trees、font-list（原经 root 父链解析，pnpm 严格性下需自声明） |
-| tests/architecture.test.ts | 墙 re-lane（src/* → 包车道；单包场景→monorepo 场景；新增 kernel-history 规则） |
-| tests/architecture-tree-item.test.ts | 路径常量 re-lane |
+| 文件                                 | 改动                                                                            |
+| ------------------------------------ | ------------------------------------------------------------------------------- |
+| package.json                         | root 应用包 → 私有 orchestrator，脚本名不变、pnpm --filter 转发；依赖下发到车道 |
+| pnpm-workspace.yaml                  | packages += apps/_, packages/_；tests 保留                                      |
+| pnpm-lock.yaml                       | 随依赖下发重新生成                                                              |
+| tsconfig.json                        | 别名 @web/@desktop/@preload/@app/web/@shared → 新车道；include 换车道           |
+| tsconfig.tools.json                  | 同上                                                                            |
+| vitest.config.ts                     | 别名指向 apps/web、apps/desktop/{main,preload}、packages/shared                 |
+| apps/web/vite.config.ts              | @shared 别名 → @app/shared                                                      |
+| apps/web/vite.api.config.ts          | 同上；api 产物落 apps/web/out/api（声明与 JS 同层）                             |
+| apps/desktop/main/vite.config.ts     | @app/web 别名 → ../../web；outDir 修正到仓库 root out/desktop                   |
+| apps/desktop/main/tsconfig.json      | paths 换新车道；include 去掉已迁目录                                            |
+| tests/package.json                   | += @pierre/trees、font-list（原经 root 父链解析，pnpm 严格性下需自声明）        |
+| tests/architecture.test.ts           | 墙 re-lane（src/* → 包车道；单包场景→monorepo 场景；新增 kernel-history 规则）  |
+| tests/architecture-tree-item.test.ts | 路径常量 re-lane                                                                |
 
 ### 2.4 新增清单（无旧路径）
 
@@ -512,23 +513,23 @@
 
 ## 3. 内核并入（merge --allow-unrelated-histories，字节一致）
 
-| 旧路径（attention-agent-form） | 新路径 | 备注 |
-|---|---|---|
-| cmd/ | cmd/ | 含嵌套模块 cmd/tui |
-| internal/ | internal/ | |
-| extension/ | extension/ | |
-| specs/ | specs/ | 内核自带 spec household，原样保留 |
-| go.mod / go.sum | go.mod / go.sum | module path 本单不动 |
-| Makefile | （删除） | 目标溶解进 mise tasks: kernel:build/test/tui/clean |
-| README.md | docs/kernel.md | 根 README 保留本仓版 |
-| .gitignore | .gitignore | 并集（/bin/、Go 条目并入） |
+| 旧路径（attention-agent-form） | 新路径          | 备注                                               |
+| ------------------------------ | --------------- | -------------------------------------------------- |
+| cmd/                           | cmd/            | 含嵌套模块 cmd/tui                                 |
+| internal/                      | internal/       |                                                    |
+| extension/                     | extension/      |                                                    |
+| specs/                         | specs/          | 内核自带 spec household，原样保留                  |
+| go.mod / go.sum                | go.mod / go.sum | module path 本单不动                               |
+| Makefile                       | （删除）        | 目标溶解进 mise tasks: kernel:build/test/tui/clean |
+| README.md                      | docs/kernel.md  | 根 README 保留本仓版                               |
+| .gitignore                     | .gitignore      | 并集（/bin/、Go 条目并入）                         |
 
 ## 4. 删除
 
-| 路径 | 原因 |
-|---|---|
-| src/ | 单包布局废止（446 文件全部迁出，见 §1） |
-| Makefile | 任务注册表唯一化到 mise |
+| 路径                         | 原因                                                           |
+| ---------------------------- | -------------------------------------------------------------- |
+| src/                         | 单包布局废止（446 文件全部迁出，见 §1）                        |
+| Makefile                     | 任务注册表唯一化到 mise                                        |
 | packages/shared/kernelApi.ts | KernelApi 端口删除（owner override 99a3a09，独立提交 49a1fb2） |
 
 ## 5. 静止 hash 结论

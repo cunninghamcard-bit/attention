@@ -57,6 +57,7 @@ Community themes
 ## Boundaries
 
 ### Allowed Changes
+
 - src/renderer/builtin/theme-market/ThemeMarketplaceModal.ts
 - src/renderer/builtin/theme-market/ThemeInstaller.ts
 - src/renderer/builtin/theme-market/ThemeMarketplace.ts
@@ -72,6 +73,7 @@ Community themes
 - docs/features/appearance-theme-manager/**
 
 ### Forbidden
+
 - 不添加依赖、React 组件或第二套市场数据模型。
 - 不修改社区插件管理器的行为或主题的 vault 存储格式。
 - 不复制 `decode-obsidian/**` 的实现代码，只复现可观察的交互结构。
@@ -80,85 +82,86 @@ Community themes
 
 Rule: manager-layout — 管理器沿用社区插件的侧栏详情交互
 Scenario: 主题管理器渲染侧栏和详情
-  Test:
-    Filter: renders the Obsidian-style theme manager
-    Level: component
-  Given 社区主题目录中有两个主题
-  When 用户打开 Manage
-  Then 弹窗包含搜索、排序、Installed only 和主题卡片
-  And Default 与已安装主题出现在可浏览列表中
-  And 选择主题后出现详情区域
-  And 详情展示下载量、版本、作者、仓库和 README
+Test:
+Filter: renders the Obsidian-style theme manager
+Level: component
+Given 社区主题目录中有两个主题
+When 用户打开 Manage
+Then 弹窗包含搜索、排序、Installed only 和主题卡片
+And Default 与已安装主题出现在可浏览列表中
+And 选择主题后出现详情区域
+And 详情展示下载量、版本、作者、仓库和 README
 
 Scenario: 搜索排序和已安装筛选更新列表
-  Test:
-    Filter: filters and sorts theme manager entries
-    Level: component
-  Given 社区主题目录中有两个主题且其中一个已安装
-  When 用户输入搜索词、切换排序并打开 Installed only
-  Then 列表只显示匹配且已安装的主题
-  And 名称或作者中的模糊命中字符被高亮
-  And 排序偏好被保存
+Test:
+Filter: filters and sorts theme manager entries
+Level: component
+Given 社区主题目录中有两个主题且其中一个已安装
+When 用户输入搜索词、切换排序并打开 Installed only
+Then 列表只显示匹配且已安装的主题
+And 名称或作者中的模糊命中字符被高亮
+And 排序偏好被保存
 
 Rule: manager-actions — 详情操作改变主题状态
 Scenario: 安装并使用主题
-  Test:
-    Filter: installs and uses a theme from the manager
-    Level: component
-  Given 用户打开一个未安装社区主题的详情
-  When 用户点击 Install and use
-  Then 主题写入 vault、主题配置变为该主题并显示 Stop using
+Test:
+Filter: installs and uses a theme from the manager
+Level: component
+Given 用户打开一个未安装社区主题的详情
+When 用户点击 Install and use
+Then 主题写入 vault、主题配置变为该主题并显示 Stop using
 
 Scenario: 使用和卸载已安装主题
-  Test:
-    Filter: uses and uninstalls an installed theme
-    Level: component
-  Given 一个已安装但未使用的主题正在展示
-  When 用户点击 Use 后再点击 Uninstall
-  Then 主题配置先切换到该主题、随后恢复 Default
-  And 主题目录被删除且列表不再标记为 Installed
+Test:
+Filter: uses and uninstalls an installed theme
+Level: component
+Given 一个已安装但未使用的主题正在展示
+When 用户点击 Use 后再点击 Uninstall
+Then 主题配置先切换到该主题、随后恢复 Default
+And 主题目录被删除且列表不再标记为 Installed
 
 Rule: manager-fallbacks — 目录状态可恢复
 Scenario: 目录加载失败可重试
-  Test:
-    Filter: retries a failed theme catalog load
-    Level: component
-  Given 社区主题目录第一次加载失败
-  When 用户打开 Manage 并点击 Retry
-  Then 弹窗显示可操作的失败状态
-  And 第二次加载成功后主题卡片恢复显示
+Test:
+Filter: retries a failed theme catalog load
+Level: component
+Given 社区主题目录第一次加载失败
+When 用户打开 Manage 并点击 Retry
+Then 弹窗显示可操作的失败状态
+And 第二次加载成功后主题卡片恢复显示
 
 Scenario: 主题没有预览图仍可使用
-  Test:
-    Filter: handles a theme without a screenshot
-    Level: component
-  Given 主题目录条目没有 screenshot
-  When 用户打开该主题详情
-  Then 主题卡片显示原生预览占位
-  And 使用操作仍然可用
+Test:
+Filter: handles a theme without a screenshot
+Level: component
+Given 主题目录条目没有 screenshot
+When 用户打开该主题详情
+Then 主题卡片显示原生预览占位
+And 使用操作仍然可用
 
 Rule: global-inline-markdown — README 使用全局 Obsidian 内联 Markdown 语义
 Scenario: 全局渲染标准 Markdown、Obsidian 扩展和安全 HTML
-  Test:
-    Filter: renders complete Obsidian inline markdown globally
-    Level: integration
-  Given 文档同时包含嵌套 emphasis、链接图片、HTML、wiki/embed、tag、math、comment、block id 和 footnote
-  When 文档通过全局 MarkdownRenderer 渲染
-  Then 标准 Markdown 使用正确的嵌套 DOM 结构
-  And Obsidian 扩展生成与源码一致的 class、data 属性和 footnote 区域
-  And 危险 HTML 属性被移除且转义语法保持为普通文本
+Test:
+Filter: renders complete Obsidian inline markdown globally
+Level: integration
+Given 文档同时包含嵌套 emphasis、链接图片、HTML、wiki/embed、tag、math、comment、block id 和 footnote
+When 文档通过全局 MarkdownRenderer 渲染
+Then 标准 Markdown 使用正确的嵌套 DOM 结构
+And Obsidian 扩展生成与源码一致的 class、data 属性和 footnote 区域
+And 危险 HTML 属性被移除且转义语法保持为普通文本
 
 Scenario: 统一块级解析保留 section 和 postprocessor 语义
-  Test:
-    Filter: preserves sections and postprocessors with the unified block parser
-    Level: integration
-  Given 文档包含 heading、task list、blockquote、table 和 fenced code block
-  When 文档通过全局 MarkdownRenderer 渲染
-  Then 每个顶层 block 都生成独立 section 并保留 0-based 行号范围
-  And task checkbox、blockquote、table 和 fenced code block 的 DOM 结构保持可用
-  And 注册的 code-block postprocessor 能替换对应 section 并读取原始行号
+Test:
+Filter: preserves sections and postprocessors with the unified block parser
+Level: integration
+Given 文档包含 heading、task list、blockquote、table 和 fenced code block
+When 文档通过全局 MarkdownRenderer 渲染
+Then 每个顶层 block 都生成独立 section 并保留 0-based 行号范围
+And task checkbox、blockquote、table 和 fenced code block 的 DOM 结构保持可用
+And 注册的 code-block postprocessor 能替换对应 section 并读取原始行号
 
 ## Out of Scope
+
 - 重新实现 Obsidian 编辑器的 Live Preview Markdown 引擎
 - 为 Theme Market 单独维护 Markdown parser 或 Markdown DOM renderer
 

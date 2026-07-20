@@ -11,7 +11,8 @@
 }
 .theme-dark .pdf-container.mod-themed .popupWrapper > div {
   background-color: var(--background-secondary-alt);
-  filter: drop-shadow(0px 0px 1px var(--color-base-60)) drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.4)) drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0px 0px 1px var(--color-base-60)) drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.4))
+    drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.4));
 }
 .theme-dark .pdf-container.mod-themed .popupWrapper > div::after {
   background-color: var(--background-secondary-alt);
@@ -327,7 +328,7 @@
   --background-modifier-border-focus: rgba(var(--background-modifier-error-rgb), 0.6);
 }
 .pdf-findbar .mod-pending::before {
-  -webkit-mask-image: url("data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M21 12a9 9 0 1 1-6.219-8.56\"></path></svg>");
+  -webkit-mask-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>');
   animation: rotation 1s infinite linear;
 }
 .is-phone .pdf-findbar {
@@ -515,7 +516,10 @@
 .pdf-container .annotationLayer > section.hasPopup:not(.textAnnotation) {
   pointer-events: none;
 }
-.pdf-container .annotationLayer :is(.linkAnnotation, .buttonWidgetAnnotation.pushButton):not(.hasBorder) > a:hover {
+.pdf-container
+  .annotationLayer
+  :is(.linkAnnotation, .buttonWidgetAnnotation.pushButton):not(.hasBorder)
+  > a:hover {
   opacity: 1;
   background-color: hsla(var(--color-accent-hsl), 0.1);
   box-shadow: none;
@@ -535,7 +539,8 @@
   margin: var(--size-4-3);
   background-color: var(--background-primary);
   border-radius: var(--radius-s);
-  filter: drop-shadow(0px 0px 1px rgba(0, 0, 0, 0.2)) drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3)) drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0px 0px 1px rgba(0, 0, 0, 0.2)) drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3))
+    drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.3));
   position: relative;
 }
 .popupWrapper > div:after {

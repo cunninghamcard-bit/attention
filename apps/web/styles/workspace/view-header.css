@@ -20,7 +20,7 @@ body:not(.show-view-header):not(.is-phone) .view-header {
   display: none;
 }
 .view-header.is-highlighted:after {
-  content: ' ';
+  content: " ";
   position: absolute;
   width: 100%;
   height: 100%;

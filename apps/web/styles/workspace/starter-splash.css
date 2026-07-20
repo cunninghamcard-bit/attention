@@ -3,7 +3,7 @@
 }
 .starter {
   -webkit-user-select: none;
-  padding-top: 0! important;
+  padding-top: 0 !important;
 }
 .starter .titlebar {
   background-color: transparent;
@@ -90,7 +90,7 @@
   display: flex;
   flex-direction: column;
 }
-.open-vault-options input[type='text'] {
+.open-vault-options input[type="text"] {
   width: 150px;
 }
 .open-vault-options .setting-item-control button {
@@ -122,7 +122,7 @@
 .open-vault-options.mod-login {
   justify-content: flex-start;
 }
-.open-vault-options.mod-login input[type='text'] {
+.open-vault-options.mod-login input[type="text"] {
   width: 250px;
 }
 .open-vault-options .button-container {
@@ -139,7 +139,7 @@
 .quick-start-container + .setting-item {
   border-top: none;
 }
-.open-folder-input[type='text'] {
+.open-folder-input[type="text"] {
   font-size: var(--font-ui-small);
   width: 200px;
   height: 28px;
@@ -203,7 +203,7 @@
 .recent-vaults-list:after {
   -webkit-app-region: drag;
   display: block;
-  content: ' ';
+  content: " ";
   width: 100%;
   height: 100px;
   flex-grow: 1;

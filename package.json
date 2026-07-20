@@ -2,8 +2,8 @@
   "name": "workbench",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "description": "Monorepo orchestrator: apps/desktop shell, apps/web product, packages/* shared lanes, the Go kernel at the root. Toolchain entry is mise; the script names below are unchanged and forward into the lanes.",
+  "type": "module",
   "scripts": {
     "dev": "pnpm --filter @app/web run dev",
     "build": "pnpm --filter @app/web run build",
@@ -54,9 +54,9 @@
     "vite-plus": "0.2.5",
     "vitest": "^4.1.9"
   },
-  "packageManager": "pnpm@11.7.0",
   "engines": {
     "node": ">=26.0.0",
     "pnpm": ">=11"
-  }
+  },
+  "packageManager": "pnpm@11.7.0"
 }

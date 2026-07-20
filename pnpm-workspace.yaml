@@ -20,7 +20,7 @@ supportedArchitectures:
 # run); node-pty's postinstall arranges its prebuilds.
 allowBuilds:
   # pure-JS SDK, no native build needed
-  '@google/genai': false
+  "@google/genai": false
   electron: set this to true or false
   node-pty: true
   # postinstall only stamps version files

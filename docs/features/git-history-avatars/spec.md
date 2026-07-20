@@ -24,6 +24,7 @@ The Git history service reads author names but not emails. File History, Commit 
 ## Boundaries
 
 ### Allowed Changes
+
 - src/main/git-bridge.ts
 - src/shared/gitApi.ts
 - src/renderer/builtin/git/**
@@ -33,6 +34,7 @@ The Git history service reads author names but not emails. File History, Commit 
 - docs/features/git-history-avatars/**
 
 ### Forbidden
+
 - Do not call GitHub, `gh`, or a repository hosting API for avatars.
 - Do not add a package dependency.
 - Do not change faithful styles outside `src/renderer/styles/product/**`.
@@ -41,24 +43,25 @@ The Git history service reads author names but not emails. File History, Commit 
 ## Completion Criteria
 
 ### Rule: local-author-avatar — Derive avatars from local Git metadata
+
 Scenario: Git log author email produces a Gravatar URL
-  Test: hashes normalized Git author email for Gravatar
-  Given a local commit author email with uppercase letters and surrounding whitespace
-  When the preload Git bridge derives its avatar URL
-  Then the URL contains the MD5 hash of the trimmed lowercase email
-  And the URL requests an identicon fallback at size "80"
+Test: hashes normalized Git author email for Gravatar
+Given a local commit author email with uppercase letters and surrounding whitespace
+When the preload Git bridge derives its avatar URL
+Then the URL contains the MD5 hash of the trimmed lowercase email
+And the URL requests an identicon fallback at size "80"
 
 Scenario: Local history surfaces render author avatars
-  Test: renders Git commit avatars with initial fallback
-  Given a local Git log entry containing an author name, email, and derived avatar URL
-  When Commit Log renders the entry
-  Then the row contains an image for the derived Gravatar URL beside the author name
+Test: renders Git commit avatars with initial fallback
+Given a local Git log entry containing an author name, email, and derived avatar URL
+When Commit Log renders the entry
+Then the row contains an image for the derived Gravatar URL beside the author name
 
 Scenario: Failed avatar image keeps the author identifiable
-  Test: renders Git commit avatars with initial fallback
-  Given a rendered local commit avatar
-  When its image emits an error
-  Then the image is removed and the author's first visible character remains
+Test: renders Git commit avatars with initial fallback
+Given a rendered local commit avatar
+When its image emits an error
+Then the image is removed and the author's first visible character remains
 
 ## Out of Scope
 

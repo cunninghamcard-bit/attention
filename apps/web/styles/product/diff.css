@@ -1,6 +1,6 @@
 /* Unified diff/review view (@codemirror/merge). */
 .workspace-leaf-content[data-type="diff"] .cm-changedLine {
-  background: rgba(80, 180, 100, 0.10);
+  background: rgba(80, 180, 100, 0.1);
 }
 .workspace-leaf-content[data-type="diff"] .cm-changedText {
   background: rgba(80, 180, 100, 0.28);

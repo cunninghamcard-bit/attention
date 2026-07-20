@@ -100,22 +100,22 @@ Renderer --> User: full content, scrollable to the end
 ## Completion Criteria
 
 Scenario: resize reaches the renderer in reading mode
-  Test: forwards resize to the preview renderer
-  Given a markdown view in reading mode
-  When the view receives onResize
-  Then the preview renderer's onResize runs
+Test: forwards resize to the preview renderer
+Given a markdown view in reading mode
+When the view receives onResize
+Then the preview renderer's onResize runs
 
 Scenario: width change invalidates and re-renders
-  Test: re-renders when the preview width changes
-  Given a renderer whose sections were measured at a stale width
-  When onResize runs with a different width
-  Then every section's compute flag resets and a re-render is queued
+Test: re-renders when the preview width changes
+Given a renderer whose sections were measured at a stale width
+When onResize runs with a different width
+Then every section's compute flag resets and a re-render is queued
 
 Scenario: unchanged width only refreshes the virtual window
-  Test: refreshes the virtual display when width is unchanged
-  Given a renderer already rendered at the current width
-  When onResize runs at the same width
-  Then no re-render is queued and the virtual display is refreshed
+Test: refreshes the virtual display when width is unchanged
+Given a renderer already rendered at the current width
+When onResize runs at the same width
+Then no re-render is queued and the virtual display is refreshed
 
 ## Out of Scope
 

@@ -69,6 +69,7 @@ SearchView --> User: open the file at line and match range
 ## Boundaries
 
 ### Allowed Changes
+
 - `src/renderer/builtin/SearchView.ts`
 - `src/renderer/search/SearchEngine.ts`
 - `src/renderer/styles/features/search.css`
@@ -80,6 +81,7 @@ SearchView --> User: open the file at line and match range
 - `docs/features/file-search/tasks.md`
 
 ### Forbidden
+
 - Do not reimplement query parsing or file scanning inside `SearchView`.
 - Do not add a second search result model or a second renderer for code files.
 - Do not change the existing query operator semantics while completing the view.
@@ -91,54 +93,54 @@ SearchView --> User: open the file at line and match range
 ## Completion Criteria
 
 Scenario: Happy path
-  Test:
-    Package: tests/web/builtin/SearchView.test.ts
-    Filter: renders Obsidian search structure and grouped matches
-    Level: integration
-  Given a vault contains matching Markdown and code files
-  When the user enters a query in the global Search view
-  Then the view renders the reference search-row/input structure, a result
-  container, a result count, grouped file results, and highlighted match text
+Test:
+Package: tests/web/builtin/SearchView.test.ts
+Filter: renders Obsidian search structure and grouped matches
+Level: integration
+Given a vault contains matching Markdown and code files
+When the user enters a query in the global Search view
+Then the view renders the reference search-row/input structure, a result
+container, a result count, grouped file results, and highlighted match text
 
 Scenario: Search state and controls
-  Test:
-    Package: tests/web/builtin/SearchView.test.ts
-    Filter: persists matching case, collapse, and sort state
-    Level: integration
-  Given the global Search view is open with results
-  When the user toggles matching case, filter parameters, collapse-all, or sort
-  Then the visible results and `getState` reflect the selected option and a
-  restored state produces the same view state
+Test:
+Package: tests/web/builtin/SearchView.test.ts
+Filter: persists matching case, collapse, and sort state
+Level: integration
+Given the global Search view is open with results
+When the user toggles matching case, filter parameters, collapse-all, or sort
+Then the visible results and `getState` reflect the selected option and a
+restored state produces the same view state
 
 Scenario: Exact result navigation
-  Test:
-    Package: tests/web/builtin/SearchView.test.ts
-    Filter: opens a result with the exact match range
-    Level: integration
-  Given a visible result contains a known line and match range
-  When the user clicks the result line
-  Then the target file opens with the existing line, matchStart, and matchEnd
-  ephemeral state
+Test:
+Package: tests/web/builtin/SearchView.test.ts
+Filter: opens a result with the exact match range
+Level: integration
+Given a visible result contains a known line and match range
+When the user clicks the result line
+Then the target file opens with the existing line, matchStart, and matchEnd
+ephemeral state
 
 Scenario: Empty and stale searches
-  Test:
-    Package: tests/web/builtin/SearchView.test.ts
-    Filter: handles empty queries and ignores stale results
-    Level: integration
-  Given a search is running or the query is empty
-  When the query is cleared or replaced before the previous search resolves
-  Then the view shows the empty/loading state as appropriate and never paints
-  results for the superseded query
+Test:
+Package: tests/web/builtin/SearchView.test.ts
+Filter: handles empty queries and ignores stale results
+Level: integration
+Given a search is running or the query is empty
+When the query is cleared or replaced before the previous search resolves
+Then the view shows the empty/loading state as appropriate and never paints
+results for the superseded query
 
 Scenario: Invalid query
-  Test:
-    Package: tests/web/builtin/SearchView.test.ts
-    Filter: reports a search error without partial results
-    Level: integration
-  Given the user enters an unsupported or malformed search operator
-  When the global Search view starts the query
-  Then the view exposes the parser error and does not display stale results from
-  the previous query
+Test:
+Package: tests/web/builtin/SearchView.test.ts
+Filter: reports a search error without partial results
+Level: integration
+Given the user enters an unsupported or malformed search operator
+When the global Search view starts the query
+Then the view exposes the parser error and does not display stale results from
+the previous query
 
 ## Out of Scope
 

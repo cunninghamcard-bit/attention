@@ -99,13 +99,13 @@ svg.svg-icon {
 .clickable-icon.mobile-tap svg {
   opacity: var(--icon-opacity-hover);
 }
-.clickable-icon[aria-disabled='true'] {
+.clickable-icon[aria-disabled="true"] {
   background-color: unset;
   color: var(--text-muted);
   opacity: 0.4;
 }
 @media (hover: hover) {
-  .clickable-icon[aria-disabled='true']:hover {
+  .clickable-icon[aria-disabled="true"]:hover {
     background-color: unset;
   }
 }
@@ -236,7 +236,8 @@ svg.svg-icon {
   margin-inline-start: var(--indentation-guide-editing-indent);
 }
 .markdown-source-view.mod-cm6 .cm-active-indent::before {
-  border-inline-end: var(--indentation-guide-width-active) solid var(--indentation-guide-color-active);
+  border-inline-end: var(--indentation-guide-width-active) solid
+    var(--indentation-guide-color-active);
 }
 .input-button {
   padding: 6px 14px;

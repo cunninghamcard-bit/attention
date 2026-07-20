@@ -58,7 +58,7 @@
   padding: var(--size-4-1) 0;
 }
 .metadata-properties-heading:before {
-  content: '';
+  content: "";
   border-radius: var(--metadata-property-radius);
   corner-shape: var(--metadata-property-corner-shape);
   position: absolute;
@@ -104,7 +104,7 @@
 .metadata-error-cta:hover {
   color: var(--text-accent-hover);
 }
-input[type=checkbox].metadata-input-checkbox {
+input[type="checkbox"].metadata-input-checkbox {
   margin: var(--input-padding);
 }
 .metadata-input-text {
@@ -176,7 +176,7 @@ input[type=checkbox].metadata-input-checkbox {
     color: var(--icon-color-focused);
   }
 }
-.metadata-property-icon[aria-disabled='true'] {
+.metadata-property-icon[aria-disabled="true"] {
   color: var(--text-muted);
   opacity: 0.4;
 }
@@ -263,7 +263,7 @@ input.metadata-property-key-input:focus {
   position: relative;
 }
 .metadata-property-value.is-being-dragged-over:after {
-  content: '';
+  content: "";
   position: absolute;
   pointer-events: none;
   top: 0;
@@ -482,11 +482,15 @@ input.metadata-property-key-input:focus {
 .markdown-preview-view.show-properties .metadata-container {
   display: var(--metadata-display-reading);
 }
-.markdown-source-view.is-live-preview.show-properties .metadata-container[data-property-count="0"]:not(.mod-error),
-.markdown-preview-view.show-properties .metadata-container[data-property-count="0"]:not(.mod-error) {
+.markdown-source-view.is-live-preview.show-properties
+  .metadata-container[data-property-count="0"]:not(.mod-error),
+.markdown-preview-view.show-properties
+  .metadata-container[data-property-count="0"]:not(.mod-error) {
   display: none;
 }
-.inline-embed .markdown-source-view.is-live-preview.show-properties .metadata-container:not(.mod-error),
+.inline-embed
+  .markdown-source-view.is-live-preview.show-properties
+  .metadata-container:not(.mod-error),
 .inline-embed .markdown-preview-view.show-properties .metadata-container:not(.mod-error) {
   display: none;
 }
@@ -498,7 +502,10 @@ input.metadata-property-key-input:focus {
   margin-top: 0;
   margin-bottom: 0;
 }
-.markdown-rendered :is(p,pre,table,ul,ol) + :is(h1,h2,h3,h4,h5,h6),
-.markdown-rendered div:is(.el-blockquote,.el-p,.el-pre,.el-table,.el-ul,.el-ol) + div > :is(h1,h2,h3,h4,h5,h6) {
+.markdown-rendered :is(p, pre, table, ul, ol) + :is(h1, h2, h3, h4, h5, h6),
+.markdown-rendered
+  div:is(.el-blockquote, .el-p, .el-pre, .el-table, .el-ul, .el-ol)
+  + div
+  > :is(h1, h2, h3, h4, h5, h6) {
   margin-top: var(--heading-spacing);
 }

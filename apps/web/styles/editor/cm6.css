@@ -3,7 +3,11 @@
   background-color: var(--text-selection);
 }
 .markdown-source-view.mod-cm6 .cm-selectionBackground,
-.markdown-source-view.mod-cm6 .cm-editor > .cm-scroller > .cm-selectionLayer > .cm-selectionBackground {
+.markdown-source-view.mod-cm6
+  .cm-editor
+  > .cm-scroller
+  > .cm-selectionLayer
+  > .cm-selectionBackground {
   background-color: var(--text-selection);
 }
 .markdown-source-view.mod-cm6.is-readable-line-width .cm-sizer {
@@ -62,7 +66,7 @@
 .markdown-source-view.mod-cm6 .cm-content > .image-embed {
   display: flex;
 }
-.markdown-source-view.mod-cm6 .cm-content > [contenteditable=false] {
+.markdown-source-view.mod-cm6 .cm-content > [contenteditable="false"] {
   contain: paint !important;
 }
 .markdown-source-view.mod-cm6 .cm-gutters {
@@ -261,8 +265,16 @@
 .is-mobile .markdown-source-view.mod-cm6 .cm-table-widget .table-col-drag-handle {
   display: none;
 }
-.is-mobile .markdown-source-view.mod-cm6 .cm-table-widget .mod-active-row-handle > .table-row-drag-handle,
-.is-mobile .markdown-source-view.mod-cm6 .cm-table-widget .mod-active-col-handle > .table-col-drag-handle {
+.is-mobile
+  .markdown-source-view.mod-cm6
+  .cm-table-widget
+  .mod-active-row-handle
+  > .table-row-drag-handle,
+.is-mobile
+  .markdown-source-view.mod-cm6
+  .cm-table-widget
+  .mod-active-col-handle
+  > .table-col-drag-handle {
   opacity: 1;
   display: flex;
 }

@@ -72,7 +72,7 @@ select:focus-visible,
   --search-icon-color: var(--text-faint);
   margin-top: 2px;
 }
-.combobox .search-input-container input[type=search] {
+.combobox .search-input-container input[type="search"] {
   border: 0;
   box-shadow: none;
   background-color: transparent;
@@ -155,7 +155,7 @@ select:focus-visible,
 .is-phone .combobox .search-input-container {
   margin: var(--size-4-1) var(--size-4-3);
 }
-.is-phone .combobox .search-input-container input[type=search] {
+.is-phone .combobox .search-input-container input[type="search"] {
   border-radius: var(--radius-l);
   background-color: var(--background-modifier-form-field);
 }
