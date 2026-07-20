@@ -41,3 +41,26 @@ container wears `nav-folder` — never by *what it can do* (collapsible is not
 the same as folder). Get this wrong and themes render the element as the wrong
 thing (a file painted as a folder), because themes key off these exact class
 names.
+
+## Collaboration: sandboxed writes, committed handoffs
+
+Multiple agents work this repo. Two rules keep them from destroying each
+other's work — both were paid for with real accidents:
+
+**Write in a sandbox, land as a commit.** No agent edits a shared worktree
+directly. Do the work in your own isolated copy (a boxsh COW sandbox —
+`--bind cow:<repo>:<dst>` — or a detached git worktree), then land it as a
+COMPLETE commit on the branch. Uncommitted WIP must never sit in a tree
+another agent can touch: every collision we have had was ignited by exactly
+that. Finish → commit → hand off; never leave state behind.
+
+**One branch, one committer.** Each branch has a single owner who lands
+commits on it. Everyone else is read-only there: contribute by handing the
+owner a committed hash to adopt (git show/log/diff to audit), never by
+pushing your own commits into someone else's branch. Before any commit in a
+shared tree, run `git branch --show-current` and make sure you are where
+you think you are.
+
+Verification runs before every handoff: the full gate green in YOUR sandbox
+on YOUR hash, receipts included. A green you borrowed from another tree or
+an earlier HEAD is not a green.
