@@ -45,11 +45,13 @@
     "jsdom": "^29.1.1",
     "oxfmt": "^0.58.0",
     "oxlint": "^1.70.0",
+    "prettier": "3.8.4",
     "publint": "^0.3.21",
     "rollup-plugin-visualizer": "^7.0.1",
     "typescript": "^7.0.2",
     "vite": "latest",
     "vite-plugin-dts": "^5.0.2",
+    "vite-plus": "0.2.5",
     "vitest": "^4.1.9"
   },
   "packageManager": "pnpm@11.7.0",

@@ -1,6 +1,10 @@
-# Toolchain control (owner's three layers): mise pins tool versions and is the
-# task entry point, bun executes commands, pnpm alone manages dependencies and
-# the workspace. New machine: `mise install && mise run gate`.
+# Toolchain control (owner's layers): mise pins tool versions and is the task
+# entry point; vp (Vite+) fronts the JS toolchain where it is a proven drop-in
+# (test/lint/install — it wraps vitest/oxlint/pnpm, so pnpm still owns
+# dependencies underneath); bun executes the remaining scripts; the Go kernel
+# is mise-direct (vp is JS-only). New machine: `mise install && mise run gate`.
+# Still on bun pending vp config: format/check (surface decision), build
+# (per-app orchestration), dev/e2e/desktop.
 
 [tools]
 node = "26.3.0"
@@ -9,7 +13,7 @@ bun = "1.3.14"
 go = "1.26"
 
 [tasks.install]
-description = "Install dependencies — pnpm only (a preinstall hook enforces it)"
+description = "Install dependencies — pnpm bootstraps (vp lives in node_modules, so it cannot install itself); after bootstrap `pnpm exec vp install` is equivalent"
 run = "pnpm install --frozen-lockfile"
 
 [tasks.dev]
@@ -17,8 +21,8 @@ description = "Vite dev server at http://127.0.0.1:5173"
 run = "bun run dev"
 
 [tasks.test]
-description = "Full vitest suite"
-run = "bun run test"
+description = "Full vitest suite, via vp"
+run = "pnpm exec vp test"
 
 [tasks.e2e]
 description = "Playwright end-to-end tests (web)"
@@ -33,7 +37,8 @@ description = "Rewrite formatting (oxfmt)"
 run = "bun run format"
 
 [tasks.lint]
-run = "bun run lint"
+description = "oxlint, via vp"
+run = "pnpm exec vp lint"
 
 [tasks.typecheck]
 run = "bun run typecheck"
@@ -42,9 +47,9 @@ run = "bun run typecheck"
 description = "The review gate, in one command. Non-mutating: format is checked, not rewritten. Its output is the delivery receipt."
 run = [
   "bun run format:check",
-  "bun run lint",
+  "pnpm exec vp lint",
   "bun run typecheck",
-  "bun run test",
+  "pnpm exec vp test",
   "mise run kernel:test",
 ]
 
