@@ -15,13 +15,14 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "paths": {
-      "@web/*": ["./src/renderer/*"],
-      "@desktop/*": ["./src/main/*"],
-      "@preload/*": ["./src/preload/*"],
-      "@app/web/*": ["./src/renderer/*"],
-      "@shared/*": ["./src/shared/*"]
+      "@web/*": ["./apps/web/*"],
+      "@desktop/*": ["./apps/desktop/main/*"],
+      "@preload/*": ["./apps/desktop/preload/*"],
+      "@app/web/*": ["./apps/web/*"],
+      "@app/shared/*": ["./packages/shared/*"],
+      "@shared/*": ["./packages/shared/*"]
     }
   },
-  "include": ["src/renderer", "src/shared", "src/types", "tests"],
+  "include": ["apps/web", "packages/shared", "tests"],
   "exclude": ["tests/e2e"]
 }

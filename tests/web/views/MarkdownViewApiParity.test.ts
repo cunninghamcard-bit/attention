@@ -291,7 +291,7 @@ describe("MarkdownView public API parity", () => {
       readFileSync(path: string, encoding: "utf8"): string;
     };
     const cwd = (globalThis as unknown as { process: { cwd(): string } }).process.cwd();
-    const source = fs.readFileSync(`${cwd}/src/renderer/views/MarkdownView.ts`, "utf8");
+    const source = fs.readFileSync(`${cwd}/apps/web/views/MarkdownView.ts`, "utf8");
 
     expect(source).not.toContain("dataset.icon");
   });

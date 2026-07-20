@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import type { ElectronGitApi, GitExecResult } from "../shared/gitApi";
+import type { ElectronGitApi, GitExecResult } from "@app/shared/gitApi";
 
 /**
  * Preload-side git bridge (`window.electronGit`). Runs the real git binary

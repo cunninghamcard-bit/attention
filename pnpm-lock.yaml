@@ -10,70 +10,6 @@ patchedDependencies:
 importers:
 
   .:
-    dependencies:
-      '@codemirror/autocomplete':
-        specifier: ^6.20.3
-        version: 6.20.3
-      '@codemirror/collab':
-        specifier: ^6.1.1
-        version: 6.1.1
-      '@codemirror/commands':
-        specifier: ^6.10.3
-        version: 6.10.4
-      '@codemirror/language':
-        specifier: ^6.12.3
-        version: 6.12.4
-      '@codemirror/language-data':
-        specifier: ^6.5.2
-        version: 6.5.2
-      '@codemirror/lint':
-        specifier: ^6.9.7
-        version: 6.9.7
-      '@codemirror/merge':
-        specifier: ^6.12.2
-        version: 6.12.2
-      '@codemirror/search':
-        specifier: ^6.7.1
-        version: 6.7.1
-      '@codemirror/state':
-        specifier: ^6.6.0
-        version: 6.7.1
-      '@codemirror/view':
-        specifier: ^6.43.1
-        version: 6.43.6
-      '@electron/remote':
-        specifier: ^2.1.3
-        version: 2.1.3(electron@43.1.0)
-      '@lezer/common':
-        specifier: ^1.5.2
-        version: 1.5.2
-      '@lezer/highlight':
-        specifier: ^1.2.3
-        version: 1.2.3
-      '@lezer/lr':
-        specifier: ^1.4.10
-        version: 1.4.10
-      '@pierre/diffs':
-        specifier: ^1.2.12
-        version: 1.2.12(@shikijs/themes@4.3.1)
-      '@pierre/trees':
-        specifier: 1.0.0-beta.5
-        version: 1.0.0-beta.5(@pierre/theme@1.1.0)(@shikijs/themes@4.3.1)(shiki@4.3.1)
-      font-list:
-        specifier: ^2.1.0
-        version: 2.1.0
-      ghostty-web:
-        specifier: ^0.4.0
-        version: 0.4.0(patch_hash=81d53f3e452eeed2e0b36bc7f91f4b9d46ad2f1ef6c2d481ddd327b1ce4200ff)
-      node-pty:
-        specifier: ^1.1.0
-        version: 1.1.0
-      stream-markdown-parser:
-        specifier: 1.0.9
-        version: 1.0.9
-      yaml:
-        specifier: ^2.9.0
-        version: 2.9.0
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: ^0.18.3
@@ -116,13 +52,98 @@ importers:
         version: 7.0.2
       vite:
         specifier: latest
-        version: 8.1.4(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0)
+        version: 8.1.5(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0)
       vite-plugin-dts:
         specifier: ^5.0.2
-        version: 5.0.3(rolldown@1.1.5)(typescript@7.0.2)(vite@8.1.4(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0))
+        version: 5.0.3(rolldown@1.1.5)(typescript@7.0.2)(vite@8.1.5(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.9
-        version: 4.1.10(@types/node@26.1.1)(jsdom@29.1.1)(vite@8.1.4(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0))
+        version: 4.1.10(@types/node@26.1.1)(jsdom@29.1.1)(vite@8.1.5(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0))
+
+  apps/desktop:
+    dependencies:
+      '@app/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@app/web':
+        specifier: workspace:*
+        version: link:../web
+      '@electron/remote':
+        specifier: ^2.1.3
+        version: 2.1.3(electron@43.1.0)
+      electron:
+        specifier: ^43.0.0
+        version: 43.1.0
+      font-list:
+        specifier: ^2.1.0
+        version: 2.1.0
+      node-pty:
+        specifier: ^1.1.0
+        version: 1.1.0
+
+  apps/web:
+    dependencies:
+      '@app/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@codemirror/autocomplete':
+        specifier: ^6.20.3
+        version: 6.20.3
+      '@codemirror/collab':
+        specifier: ^6.1.1
+        version: 6.1.1
+      '@codemirror/commands':
+        specifier: ^6.10.3
+        version: 6.10.4
+      '@codemirror/language':
+        specifier: ^6.12.3
+        version: 6.12.4
+      '@codemirror/language-data':
+        specifier: ^6.5.2
+        version: 6.5.2
+      '@codemirror/lint':
+        specifier: ^6.9.7
+        version: 6.9.7
+      '@codemirror/merge':
+        specifier: ^6.12.2
+        version: 6.12.2
+      '@codemirror/search':
+        specifier: ^6.7.1
+        version: 6.7.1
+      '@codemirror/state':
+        specifier: ^6.6.0
+        version: 6.7.1
+      '@codemirror/view':
+        specifier: ^6.43.1
+        version: 6.43.6
+      '@lezer/common':
+        specifier: ^1.5.2
+        version: 1.5.2
+      '@lezer/highlight':
+        specifier: ^1.2.3
+        version: 1.2.3
+      '@lezer/lr':
+        specifier: ^1.4.10
+        version: 1.4.10
+      '@pierre/diffs':
+        specifier: ^1.2.12
+        version: 1.2.12(@shikijs/themes@4.3.1)
+      '@pierre/trees':
+        specifier: 1.0.0-beta.5
+        version: 1.0.0-beta.5(@pierre/theme@1.1.0)(@shikijs/themes@4.3.1)(shiki@4.3.1)
+      ghostty-web:
+        specifier: ^0.4.0
+        version: 0.4.0(patch_hash=81d53f3e452eeed2e0b36bc7f91f4b9d46ad2f1ef6c2d481ddd327b1ce4200ff)
+      stream-markdown-parser:
+        specifier: 1.0.9
+        version: 1.0.9
+      yaml:
+        specifier: ^2.9.0
+        version: 2.9.0
+
+  packages/sdk: {}
+
+  packages/shared: {}
 
   tests:
     devDependencies:
@@ -147,9 +168,15 @@ importers:
       '@pierre/diffs':
         specifier: ^1.2.12
         version: 1.2.12(@shikijs/themes@4.3.1)
+      '@pierre/trees':
+        specifier: 1.0.0-beta.5
+        version: 1.0.0-beta.5(@pierre/theme@1.1.0)(@shikijs/themes@4.3.1)(shiki@4.3.1)
       electron:
         specifier: ^43.0.0
         version: 43.1.0
+      font-list:
+        specifier: ^2.1.0
+        version: 2.1.0
       jsdom:
         specifier: ^29.1.1
         version: 29.1.1
@@ -1747,8 +1774,8 @@ packages:
   mz@2.7.0:
     resolution: {integrity: sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q==}
 
-  nanoid@3.3.15:
-    resolution: {integrity: sha512-y7Wygv/7mEOvxTuEQDB8StXdMRBWf1kR/tlhAzBRUFkB2jfcLOAxO/SHmOO2zgz1pVgK29/kyupn059/bCHdjA==}
+  nanoid@3.3.16:
+    resolution: {integrity: sha512-bzlKTyNJ7+LdGIIwy8ijFpIqEQIvafahV7eYykJ8Cvh42EdJeODoJ6gUJXpQJvej1BddH8OqTXZNE/KfbWAu8Q==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
@@ -1858,8 +1885,8 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  postcss@8.5.16:
-    resolution: {integrity: sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg==}
+  postcss@8.5.20:
+    resolution: {integrity: sha512-lW616l85ucIQL+FocMmL7pQFPqBmwejrCMg+iPxyImlrANNJG9NHq/RkyCZopDhd8C3LA03PHRJDjkbGu8vvug==}
     engines: {node: ^10 || ^12 || >=14}
 
   powershell-utils@0.1.0:
@@ -2180,8 +2207,8 @@ packages:
       vite:
         optional: true
 
-  vite@8.1.4:
-    resolution: {integrity: sha512-bTT9PsdWO+MQMNG9ZXIP/qM9wGh37DFxTV/sPq9cFpHr3w4jkgef032PkAL9jAqhk3Nz8NQw3O8n6/xFkqO4QQ==}
+  vite@8.1.5:
+    resolution: {integrity: sha512-7ULLwsCdYx/nRyrpiEwvqb5TFHrMVZyBt+rg/OAXT7rgj/z+DtTDyKFeLAdDkubDVDKD8jOsndmy7m55XcfUsw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
     peerDependencies:
@@ -3348,13 +3375,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.0
 
-  '@vitest/mocker@4.1.10(vite@8.1.4(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0))':
+  '@vitest/mocker@4.1.10(vite@8.1.5(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0))':
     dependencies:
       '@vitest/spy': 4.1.10
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 8.1.4(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0)
+      vite: 8.1.5(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0)
 
   '@vitest/pretty-format@4.1.10':
     dependencies:
@@ -3892,7 +3919,7 @@ snapshots:
       object-assign: 4.1.1
       thenify-all: 1.6.0
 
-  nanoid@3.3.15: {}
+  nanoid@3.3.16: {}
 
   node-addon-api@7.1.1: {}
 
@@ -4027,9 +4054,9 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.2
 
-  postcss@8.5.16:
+  postcss@8.5.20:
     dependencies:
-      nanoid: 3.3.15
+      nanoid: 3.3.16
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -4302,7 +4329,7 @@ snapshots:
       unist-util-is: 6.0.1
       unist-util-visit-parents: 6.0.2
 
-  unplugin-dts@1.0.3(rolldown@1.1.5)(typescript@7.0.2)(vite@8.1.4(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0)):
+  unplugin-dts@1.0.3(rolldown@1.1.5)(typescript@7.0.2)(vite@8.1.5(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0)):
     dependencies:
       '@rollup/pluginutils': 5.4.0
       '@volar/typescript': 2.4.28
@@ -4315,7 +4342,7 @@ snapshots:
       unplugin: 2.3.11
     optionalDependencies:
       rolldown: 1.1.5
-      vite: 8.1.4(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0)
+      vite: 8.1.5(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -4338,11 +4365,11 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite-plugin-dts@5.0.3(rolldown@1.1.5)(typescript@7.0.2)(vite@8.1.4(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0)):
+  vite-plugin-dts@5.0.3(rolldown@1.1.5)(typescript@7.0.2)(vite@8.1.5(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0)):
     dependencies:
-      unplugin-dts: 1.0.3(rolldown@1.1.5)(typescript@7.0.2)(vite@8.1.4(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0))
+      unplugin-dts: 1.0.3(rolldown@1.1.5)(typescript@7.0.2)(vite@8.1.5(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0))
     optionalDependencies:
-      vite: 8.1.4(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0)
+      vite: 8.1.5(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@rspack/core'
       - '@vue/language-core'
@@ -4352,11 +4379,11 @@ snapshots:
       - typescript
       - webpack
 
-  vite@8.1.4(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0):
+  vite@8.1.5(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0):
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.5
-      postcss: 8.5.16
+      postcss: 8.5.20
       rolldown: 1.1.5
       tinyglobby: 0.2.17
     optionalDependencies:
@@ -4365,10 +4392,10 @@ snapshots:
       jiti: 2.6.1
       yaml: 2.9.0
 
-  vitest@4.1.10(@types/node@26.1.1)(jsdom@29.1.1)(vite@8.1.4(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0)):
+  vitest@4.1.10(@types/node@26.1.1)(jsdom@29.1.1)(vite@8.1.5(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.10
-      '@vitest/mocker': 4.1.10(vite@8.1.4(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0))
+      '@vitest/mocker': 4.1.10(vite@8.1.5(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0))
       '@vitest/pretty-format': 4.1.10
       '@vitest/runner': 4.1.10
       '@vitest/snapshot': 4.1.10
@@ -4385,7 +4412,7 @@ snapshots:
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.0
-      vite: 8.1.4(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0)
+      vite: 8.1.5(@types/node@26.1.1)(jiti@2.6.1)(yaml@2.9.0)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 26.1.1

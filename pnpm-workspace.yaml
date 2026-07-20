@@ -1,6 +1,9 @@
 packages:
-  # One app package (the repo root) plus the centralized test lane. The former
-  # apps/desktop + apps/web packages collapsed into the single src/ layout.
+  # The monorepo lanes: the desktop shell and the web product under apps/, the
+  # shared contracts and the sdk seat under packages/, plus the centralized
+  # test lane. The Go kernel at the repo root is NOT a workspace member.
+  - apps/*
+  - packages/*
   - tests
 
 # @pierre/diffs exposes a vanilla core but declares React as a peer for its

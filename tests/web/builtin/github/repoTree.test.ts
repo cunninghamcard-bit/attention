@@ -31,7 +31,7 @@ describe("repository tree", () => {
         [TREE_ROUTE]: json({
           tree: [
             { path: "src", type: "tree" },
-            { path: "src/renderer/GitHubClient.ts", type: "blob" },
+            { path: "apps/web/GitHubClient.ts", type: "blob" },
           ],
           truncated: false,
         }),
@@ -44,7 +44,7 @@ describe("repository tree", () => {
         { path: "src", type: "tree" },
         // Full path from the repo root, not a basename: the tree model needs
         // the parentage, and "GitHubClient.ts" alone cannot say where it sits.
-        { path: "src/renderer/GitHubClient.ts", type: "blob" },
+        { path: "apps/web/GitHubClient.ts", type: "blob" },
       ],
       truncated: false,
     });

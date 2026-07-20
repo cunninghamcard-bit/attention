@@ -14,7 +14,7 @@ export default defineConfig({
   // The native-seam port contracts live one level up in src/shared.
   resolve: {
     alias: {
-      "@shared": resolve(__dirname, "../shared"),
+      "@app/shared": resolve(__dirname, "../../packages/shared"),
     },
   },
   plugins: [

@@ -1,0 +1,56 @@
+{
+  "name": "@app/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The product: the Obsidian-reconstruction renderer (browser-hosted, node-privileged). Directionally the web surface; the desktop shell loads its build output.",
+  "files": [
+    "out/api"
+  ],
+  "type": "module",
+  "types": "out/api/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./out/api/index.d.ts",
+        "default": "./out/api/index.js"
+      },
+      "require": {
+        "types": "./out/api/index.d.cts",
+        "default": "./out/api/index.cjs"
+      },
+      "default": "./out/api/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 -c vite.config.ts",
+    "build": "vite build -c vite.config.ts",
+    "preview": "vite preview --host 127.0.0.1 -c vite.config.ts",
+    "build:api": "vite build --config vite.api.config.ts && node ../../scripts/fix-dts-extensions.ts",
+    "build:analyze": "ANALYZE=1 vite build -c vite.config.ts",
+    "packcheck": "publint && attw --pack ."
+  },
+  "dependencies": {
+    "@app/shared": "workspace:*",
+    "@codemirror/autocomplete": "^6.20.3",
+    "@codemirror/collab": "^6.1.1",
+    "@codemirror/commands": "^6.10.3",
+    "@codemirror/language": "^6.12.3",
+    "@codemirror/language-data": "^6.5.2",
+    "@codemirror/lint": "^6.9.7",
+    "@codemirror/merge": "^6.12.2",
+    "@codemirror/search": "^6.7.1",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "^6.43.1",
+    "@lezer/common": "^1.5.2",
+    "@lezer/highlight": "^1.2.3",
+    "@lezer/lr": "^1.4.10",
+    "@pierre/diffs": "^1.2.12",
+    "@pierre/trees": "1.0.0-beta.5",
+    "ghostty-web": "^0.4.0",
+    "stream-markdown-parser": "1.0.9",
+    "yaml": "^2.9.0"
+  },
+  "engines": {
+    "node": ">=26.0.0"
+  }
+}

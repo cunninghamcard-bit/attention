@@ -10,11 +10,11 @@ import { builtinModules } from "node:module";
  * (launched via `electron out/desktop/main.cjs`). Electron, node-pty and all
  * Node builtins stay external — Electron provides the former, the latter is a
  * native module. @electron/remote is an ordinary npm package that gets bundled.
- * This target is completely separate from the renderer (`../renderer/vite.config.ts`)
- * and the library (`../renderer/vite.api.config.ts`).
+ * This target is completely separate from the renderer (`../../web/vite.config.ts`)
+ * and the library (`../../web/vite.api.config.ts`).
  */
 const nodeBuiltins = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
-const desktopOut = resolve(__dirname, "../../out/desktop");
+const desktopOut = resolve(__dirname, "../../../out/desktop");
 
 export default defineConfig({
   plugins: [
@@ -22,7 +22,7 @@ export default defineConfig({
       name: "copy-node-pty-runtime",
       closeBundle() {
         cpSync(
-          realpathSync(resolve(__dirname, "../../node_modules/node-pty")),
+          realpathSync(resolve(__dirname, "../node_modules/node-pty")),
           resolve(desktopOut, "node_modules/node-pty"),
           { recursive: true },
         );
@@ -34,7 +34,7 @@ export default defineConfig({
   // electron bundle resolves the .ts directly.
   resolve: {
     alias: {
-      "@app/web": resolve(__dirname, "../renderer"),
+      "@app/web": resolve(__dirname, "../../web"),
     },
   },
   build: {

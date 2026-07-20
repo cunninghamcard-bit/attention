@@ -1,6 +1,6 @@
 import type { App } from "../../app/App";
 import { GitReviewSession } from "./reviewSession";
-import type { ElectronGitApi, GitExecResult } from "@shared/gitApi";
+import type { ElectronGitApi, GitExecResult } from "@app/shared/gitApi";
 
 /**
  * `app.git` — read-side git access for the vault working tree, backed by the

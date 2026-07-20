@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { ensureZshShim } from "./zsh-shim";
-import type { ElectronTerminalApi, PtyHandle, PtySpawnOptions } from "../shared/terminalApi";
+import type { ElectronTerminalApi, PtyHandle, PtySpawnOptions } from "@app/shared/terminalApi";
 
 /**
  * Preload-side PTY bridge (`window.electronTerminal`).

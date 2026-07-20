@@ -5,10 +5,10 @@ import {
   filterGitHubSearchSuggestions,
   GitHubSearchBar,
   type GitHubSearchSuggestion,
-} from "../../../../src/renderer/builtin/github/GitHubSearchBar";
-import type { GithubRepoListItem } from "../../../../src/renderer/builtin/github/GitHubService";
-import * as open from "../../../../src/renderer/builtin/github/open";
-import { GitHubListView } from "../../../../src/renderer/builtin/github/GitHubListView";
+} from "../../../../apps/web/builtin/github/GitHubSearchBar";
+import type { GithubRepoListItem } from "../../../../apps/web/builtin/github/GitHubService";
+import * as open from "../../../../apps/web/builtin/github/open";
+import { GitHubListView } from "../../../../apps/web/builtin/github/GitHubListView";
 
 const repos: GithubRepoListItem[] = [
   {

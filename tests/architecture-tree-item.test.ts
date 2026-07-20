@@ -38,16 +38,16 @@ const MIGRATED_VIEWS = [
 // TITLES — not collapsible/nesting tree rows (no chevron, no children, no
 // cross-view alignment concern). Documented exceptions to single-primitive.
 const HEADER_STYLING_ALLOWLIST = [
-  "src/renderer/views/MarkdownView.ts", // embedded backlinks section headers
-  "src/renderer/builtin/git/review/ReviewSurface.ts", // review sidebar title
+  "apps/web/views/MarkdownView.ts", // embedded backlinks section headers
+  "apps/web/builtin/git/review/ReviewSurface.ts", // review sidebar title
 ];
 
 describe("shared tree item component", () => {
   it("builds every tree row through the shared tree item", () => {
     // A className literal `"tree-item-self…` (quote, no dot) BUILDS a row's
     // self element; `".tree-item-self"` (quote-dot) merely queries one.
-    const offenders = walkTs(join(ROOT, "src", "renderer"))
-      .filter((f) => rel(f) !== "src/renderer/ui/TreeItem.ts")
+    const offenders = walkTs(join(ROOT, "apps", "web"))
+      .filter((f) => rel(f) !== "apps/web/ui/TreeItem.ts")
       .filter((f) => /["'`]tree-item-self\b/.test(readFileSync(f, "utf8")))
       .map(rel)
       .filter((r) => !HEADER_STYLING_ALLOWLIST.includes(r));
@@ -62,26 +62,26 @@ describe("shared tree item component", () => {
   // icons go in TreeItem's in-flow `iconEl` slot.
   it("keeps type icons out of the chevron gutter", () => {
     const gutterIcon = /["'`][^"'`]*\btree-item-icon\b[^"'`]*\bnav-[a-z]+-icon\b/;
-    const offenders = walkTs(join(ROOT, "src", "renderer"))
-      .filter((f) => rel(f) !== "src/renderer/ui/TreeItem.ts")
+    const offenders = walkTs(join(ROOT, "apps", "web"))
+      .filter((f) => rel(f) !== "apps/web/ui/TreeItem.ts")
       .filter((f) => gutterIcon.test(readFileSync(f, "utf8")))
       .map(rel);
     expect(offenders).toEqual([]);
   });
 
   it("exposes the tree item type-icon slot", () => {
-    const src = read("src/renderer/ui/TreeItem.ts");
+    const src = read("apps/web/ui/TreeItem.ts");
     expect(src).toContain("get iconEl");
     expect(src).toContain("tree-item-icon-inline");
   });
 
   it("replaces NavFolder with the tree item component", () => {
-    expect(existsSync(join(ROOT, "src/renderer/ui/NavFolder.ts"))).toBe(false);
-    expect(existsSync(join(ROOT, "src/renderer/ui/TreeItem.ts"))).toBe(true);
+    expect(existsSync(join(ROOT, "apps/web/ui/NavFolder.ts"))).toBe(false);
+    expect(existsSync(join(ROOT, "apps/web/ui/TreeItem.ts"))).toBe(true);
   });
 
   it("exposes the Obsidian tree item surface", () => {
-    const src = read("src/renderer/ui/TreeItem.ts");
+    const src = read("apps/web/ui/TreeItem.ts");
     expect(src).toContain("class TreeItem");
     for (const method of ["setCollapsible", "setCollapsed", "addChild"]) {
       expect(src).toContain(method);
@@ -102,14 +102,14 @@ describe("shared tree item component", () => {
     // view builds rows through the one shared component, so gutter / indent /
     // chevron geometry is identical by construction (the pixel median is the
     // human sign-off).
-    const missing = MIGRATED_VIEWS.filter((v) => !/\bTreeItem\b/.test(read("src/renderer/" + v)));
+    const missing = MIGRATED_VIEWS.filter((v) => !/\bTreeItem\b/.test(read("apps/web/" + v)));
     expect(missing).toEqual([]);
   });
 
   it("keeps markdown fold off the tree component", () => {
     for (const mod of [
-      "src/renderer/views/MarkdownView.ts",
-      "src/renderer/markdown/MarkdownPreviewRenderer.ts",
+      "apps/web/views/MarkdownView.ts",
+      "apps/web/markdown/MarkdownPreviewRenderer.ts",
     ]) {
       expect(read(mod)).not.toMatch(/import[^;]*\bTreeItem\b[^;]*from\s+["'][^"']*TreeItem["']/);
     }

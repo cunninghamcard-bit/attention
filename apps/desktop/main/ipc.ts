@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import type { VaultRegistry } from "./vault-registry";
-import type { IpcChannelName } from "../shared/ipc";
+import type { IpcChannelName } from "@app/shared/ipc";
 
 /**
  * The main-process IPC channel table (reverse note "IPC channels").

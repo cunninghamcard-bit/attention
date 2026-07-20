@@ -4,7 +4,7 @@ const fileSystemSpecifier = "node:fs";
 
 describe("local Git theme contract", () => {
   it("bridges Obsidian theme tokens into git diff hosts", async () => {
-    const source = await readProjectFile("src/renderer/styles/product/git-review.css");
+    const source = await readProjectFile("apps/web/styles/product/git-review.css");
 
     for (const selector of [
       ".git-review-view diffs-container",
@@ -32,8 +32,8 @@ describe("local Git theme contract", () => {
   it("keeps local git chrome free of literal palette colors", async () => {
     const source = (
       await Promise.all([
-        readProjectFile("src/renderer/styles/product/git-changes.css"),
-        readProjectFile("src/renderer/styles/product/git-review.css"),
+        readProjectFile("apps/web/styles/product/git-changes.css"),
+        readProjectFile("apps/web/styles/product/git-review.css"),
       ])
     ).join("\n");
 
@@ -43,8 +43,8 @@ describe("local Git theme contract", () => {
 
   it("refreshes mounted file diffs on css-change", async () => {
     for (const path of [
-      "src/renderer/builtin/git/GitChangesView.ts",
-      "src/renderer/builtin/git/GitLogView.ts",
+      "apps/web/builtin/git/GitChangesView.ts",
+      "apps/web/builtin/git/GitLogView.ts",
     ]) {
       const source = await readProjectFile(path);
       expect(source).toContain('workspace.on("css-change"');
@@ -54,13 +54,13 @@ describe("local Git theme contract", () => {
 
   it("contains Git styling to native primitives", async () => {
     const [changes, history, log, nav, review, changeStyles, reviewStyles] = await Promise.all([
-      readProjectFile("src/renderer/builtin/git/GitChangesView.ts"),
-      readProjectFile("src/renderer/builtin/git/GitHistoryView.ts"),
-      readProjectFile("src/renderer/builtin/git/GitLogView.ts"),
-      readProjectFile("src/renderer/builtin/git/review/GitNavView.ts"),
-      readProjectFile("src/renderer/builtin/git/review/ReviewSurface.ts"),
-      readProjectFile("src/renderer/styles/product/git-changes.css"),
-      readProjectFile("src/renderer/styles/product/git-review.css"),
+      readProjectFile("apps/web/builtin/git/GitChangesView.ts"),
+      readProjectFile("apps/web/builtin/git/GitHistoryView.ts"),
+      readProjectFile("apps/web/builtin/git/GitLogView.ts"),
+      readProjectFile("apps/web/builtin/git/review/GitNavView.ts"),
+      readProjectFile("apps/web/builtin/git/review/ReviewSurface.ts"),
+      readProjectFile("apps/web/styles/product/git-changes.css"),
+      readProjectFile("apps/web/styles/product/git-review.css"),
     ]);
 
     expect(changes).toContain("nav-file-title tappable is-clickable git-changes-file-header");

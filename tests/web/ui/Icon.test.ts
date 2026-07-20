@@ -40,7 +40,7 @@ describe("setIcon", () => {
   // grepping the table would be a proxy (aliases and fallbacks make hit
   // counts lie in both directions); "did it draw" is the real question.
   it("draws every lucide icon the builtin surfaces name", () => {
-    const root = resolve(__dirname, "../../../src/renderer/builtin");
+    const root = resolve(__dirname, "../../../apps/web/builtin");
     const names = new Set<string>();
     const walk = (dir: string): void => {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {

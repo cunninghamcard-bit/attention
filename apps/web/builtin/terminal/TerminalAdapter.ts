@@ -8,7 +8,7 @@
  * in `src/shared` and filled by the shell's `terminal-bridge.ts`.
  */
 
-import type { ElectronTerminalApi, PtyHandle } from "@shared/terminalApi";
+import type { ElectronTerminalApi, PtyHandle } from "@app/shared/terminalApi";
 
 export type { ElectronTerminalApi, PtyHandle };
 

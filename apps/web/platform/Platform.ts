@@ -1,4 +1,4 @@
-import type { SyncChannelName } from "@shared/ipc";
+import type { SyncChannelName } from "@app/shared/ipc";
 
 export interface PlatformApi {
   isDesktop: boolean;

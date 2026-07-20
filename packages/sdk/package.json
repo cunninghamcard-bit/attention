@@ -1,0 +1,7 @@
+{
+  "name": "@app/sdk",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Empty seat for the future kernel API client, generated from the kernel OpenAPI contract in the kernel-integration ticket. No runtime code, no dependencies.",
+  "type": "module"
+}

@@ -6,7 +6,7 @@ import type {
   DataWriteOptions,
   ListedFiles,
   Stat,
-} from "@shared/dataAdapter";
+} from "@app/shared/dataAdapter";
 
 // The value types and the port contract live once in src/shared; re-export them
 // so the renderer's many `./DataAdapter` importers keep resolving unchanged.
