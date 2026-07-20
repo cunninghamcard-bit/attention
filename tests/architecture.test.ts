@@ -365,40 +365,33 @@ describe("Rule: perf-red-line — vault reads stay in-process", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Rule: kernel-seam — reserved, not built
+// Rule: kernel-seam — the port is gone, the seat stays empty
 // ---------------------------------------------------------------------------
 
-describe("Rule: kernel-seam — reserved, not built", () => {
-  it("reserves the kernel port without an implementation", () => {
-    const kernel = readText("packages/shared/kernelApi.ts");
-    expect(kernel).toMatch(/export interface KernelApi\b/);
-
-    // Interface only: nothing implements it and nothing outside the declaration
-    // imports it (default-absent).
-    const files = sourceFilesUnder(["apps", "packages"], [".ts", ".tsx"], false).filter(
-      (file) => file.path !== "packages/shared/kernelApi.ts", // the declaration itself
+describe("Rule: kernel-seam — the port is gone, the seat stays empty", () => {
+  it("removes the kernel port and every reference", () => {
+    // The KernelApi port is deleted this ticket (owner override); its generated
+    // successor sits in @app/sdk, which stays an empty seat until the
+    // kernel-integration ticket.
+    const files = sourceFilesUnder(["apps", "packages"], [".ts", ".tsx"], false);
+    const offenders = files.filter(
+      (file) =>
+        /\bKernelApi\b/.test(readText(file.path)) ||
+        file.imports.some((spec) => /kernelApi/i.test(spec)),
     );
-    const implementers = files.filter((file) =>
-      /\bimplements\b[^{]*\bKernelApi\b/.test(readText(file.path)),
-    );
-    expect(implementers).toEqual([]);
-    const importers = files.filter((file) => file.imports.some((spec) => /kernelApi/i.test(spec)));
-    expect(importers).toEqual([]);
+    expect(offenders.map((file) => file.path)).toEqual([]);
 
     // No kernel binary is a workspace member.
     const packages = parseWorkspacePackages(readText("pnpm-workspace.yaml"));
     expect(packages.some((pkg) => /kernel/i.test(pkg))).toBe(false);
-  });
 
-  it("keeps renderer rendering free of the kernel port", () => {
-    // markdown/ is the block-render pipeline; editor/ is the CodeMirror render layer.
-    const files = sourceFilesUnder(
-      [`${WEB_SRC}/markdown`, `${WEB_SRC}/editor`],
-      [".ts", ".tsx"],
-      true,
-    );
-    const offenders = files.filter((file) => file.imports.some((spec) => /kernelApi/i.test(spec)));
-    expect(offenders).toEqual([]);
+    // @app/sdk is an empty seat: a manifest only, no runtime code, no deps.
+    const sdk = JSON.parse(readText("packages/sdk/package.json")) as {
+      dependencies?: Record<string, string>;
+    };
+    expect(sdk.dependencies ?? {}).toEqual({});
+    const sdkSource = sourceFilesUnder(["packages/sdk"], [".ts", ".tsx", ".js"], false);
+    expect(sdkSource.map((file) => file.path)).toEqual([]);
   });
 });
 
