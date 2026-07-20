@@ -8,10 +8,13 @@ test_report: .docwright/report.xml
 ## Intent
 
 Project-level invariants that every goal contract inherits. This repository is
-**one Electron app in one package** — a thin native shell (main + preload) over
-a browser-hosted product (renderer), with the native-seam port contracts in a
-shared lane — reconstructing a local-first notes workbench. The constitution
-fixes the toolchain, the fail-fast contract, the perf budget, and the layering
+a **monorepo for a server + web + desktop product**: the web product
+(`apps/web`, the faithful Obsidian-reconstruction renderer), the desktop
+shell (`apps/desktop`, Electron main + preload), the shared lanes
+(`packages/shared` contracts, `packages/sdk` an empty seat for the future
+kernel client), and the Go agent kernel at the repo root (`cmd/`, `internal/`
+— a spawned binary, never a pnpm workspace member). The constitution fixes
+the toolchain, the fail-fast contract, the perf budget, and the layering
 walls once, so individual goals never re-litigate them.
 
 ## Constraints
@@ -34,40 +37,48 @@ walls once, so individual goals never re-litigate them.
 
 ## Decisions
 
-- One app, one package: the repo root is the single application package; its
-  `src/` tree splits by runtime lane — `main` (Electron main), `preload`
-  (the bridge), `renderer` (the product) — with the native-seam port contracts
-  in `shared` and ambient declarations in `types`. `tests/` is the one
-  remaining pnpm workspace member (its own bare-import lane).
-- The native seam is ports-and-adapters: the shell fills the ports the renderer
-  declares; the renderer never imports `src/main`, `src/preload` or `electron`.
-  The port CONTRACTS (`dataAdapter`, `gitApi`, `terminalApi`, the IPC channel
-  table) live once in `src/shared`, imported by both sides — plain TS
-  interfaces, no zod/presenter/route layer, no UI framework.
+- One repo, lanes: `apps/web` is the product package (`@app/web`);
+  `apps/desktop` is the shell package (`@app/desktop`) and loads the web
+  build output; `packages/shared` (`@app/shared`) holds the native-seam port
+  CONTRACTS once — `dataAdapter`, `gitApi`, `terminalApi`, the IPC channel
+  table — imported by both app lanes, never re-declared per side;
+  `packages/sdk` (`@app/sdk`) is an empty manifest seat. `tests/` is the
+  centralized test lane (`@app/tests`). The Go kernel lives at the repo root
+  with its own go.mod, merged with its history, and is NOT a workspace
+  member.
+- The native seam is ports-and-adapters: the shell fills the ports the
+  renderer declares; the renderer never imports `apps/desktop` or `electron`.
+  Plain TS interfaces, no zod/presenter/route layer, no UI framework.
 - Dual-track plugin architecture: `builtin/` is the internal track and may use
-  internal APIs; `api/` is the community track; no internal module imports `api/`.
-- Kernel direction rule: `vault/`, `metadata/`, and `storage/` import only from
-  the kernel, `core`, `dom`, and `platform` — never upward.
+  internal APIs; `api/` is the community track; no internal module imports
+  `api/`.
+- Kernel direction rule: `vault/`, `metadata/`, and `storage/` import only
+  from the kernel, `core`, `dom`, and `platform` — never upward.
 - Disk access stays in-process behind the `DataAdapter` seam in the renderer
-  (the perf red line) — never routed over IPC or a kernel.
+  (the perf red line) — never routed over IPC or the kernel. The kernel owns
+  the agent backend (and, in cloud, DB-as-truth) — NEVER the local vault fs,
+  NEVER block rendering.
 - Unit tests are centralized under `tests/` (workspace member), mirroring
   source paths; no test file lives next to source.
 - The docs household is docwright goals under
   `docs/{features,issues,architecture}` plus promoted capabilities in
-  `docs/capabilities/`.
+  `docs/capabilities/`; the kernel keeps its own `specs/` household at the
+  root until a later contract consolidates them.
 
 <!-- lint-ack: error-path — constitution invariants are standing structural
-     assertions; their failure mode IS the assertion failing, and three of
-     the bound checkers carry their own synthetic-violation tests in
+     assertions; their failure mode IS the assertion failing, and the bound
+     checkers carry their own synthetic-violation tests in
      tests/architecture.test.ts -->
 
 ## Completion Criteria
 
-Scenario: the source tree is a single package
-  Test: declares a single-package src layout
+Scenario: the workspace is a monorepo with the kernel seated at the root
+  Test: declares the monorepo layout with the kernel seated
   Given the workspace configuration and the source tree
-  When the workspace packages and top-level src directories are read
-  Then no apps package remains and src holds main, preload, renderer, shared and types
+  When the workspace packages and top-level directories are read
+  Then apps/desktop, apps/web, packages/shared and packages/sdk are workspace
+  packages alongside tests, no top-level src remains, and cmd, internal and
+  go.mod sit at the repo root
 
 Scenario: the dependency table stays framework-free
   Test: keeps zod presenters and UI frameworks out of the dependency table
@@ -90,5 +101,5 @@ Scenario: the public facade serves only community plugins
 Scenario: the tree stays name-agnostic
   Test: no retired product-name literals remain in code
   Given all code directories and root config files
-  When they are scanned for product-name literals
+  When they are scanned for retired product-name literals
   Then zero matches are found
