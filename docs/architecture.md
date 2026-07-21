@@ -189,13 +189,13 @@ The layering rule the whole structure exists to protect. A vitest
 architecture test asserts it — it walks every relative import and fails on
 any edge that breaks a row.
 
-| Layer                                          | May import                                    | Must NOT import                                            |
-| ---------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------- |
-| **renderer** (`apps/web`)                      | own lane + `@app/shared`                      | `apps/desktop`, the `electron` module                      |
-| **main** (`apps/desktop/main`)                 | own lane + `@app/shared`                      | `apps/web` source, a UI-framework dependency               |
-| **kernel** — `vault/`, `metadata/`, `storage/` | kernel + `core/` + `dom/` + `platform/` only  | anything above itself (app, views, ui, builtin, plugin, …) |
-| **`api/`** (public facade)                     | internal modules (it wraps them)              | —                                                          |
-| everything **outside `api/`**                  | internal modules                              | `api/` — no internal module may import the facade          |
+| Layer                                          | May import                                   | Must NOT import                                            |
+| ---------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------- |
+| **renderer** (`apps/web`)                      | own lane + `@app/shared`                     | `apps/desktop`, the `electron` module                      |
+| **main** (`apps/desktop/main`)                 | own lane + `@app/shared`                     | `apps/web` source, a UI-framework dependency               |
+| **kernel** — `vault/`, `metadata/`, `storage/` | kernel + `core/` + `dom/` + `platform/` only | anything above itself (app, views, ui, builtin, plugin, …) |
+| **`api/`** (public facade)                     | internal modules (it wraps them)             | —                                                          |
+| everything **outside `api/`**                  | internal modules                             | `api/` — no internal module may import the facade          |
 
 **Dual-track plugin architecture** (faithful to Obsidian). Two tracks into
 the same engine, by design:
