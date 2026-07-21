@@ -21,7 +21,7 @@ run = "go mod download"
 
 [tasks.setup]
 description = "Setup development environment"
-depends = ["//:pnpm-install", "//:go-install"]
+depends = ["pnpm-install", "go-install"]
 
 [tasks.dev]
 description = "Vite dev server at http://127.0.0.1:5173"
@@ -77,7 +77,7 @@ run = "pnpm run build:api"
 
 [tasks.packcheck]
 description = "Validate the @app/web package manifest against its built artifacts (publint + attw)"
-depends = ["//:api:build"]
+depends = ["api:build"]
 run = "pnpm run packcheck"
 
 [tasks."desktop:dev"]
