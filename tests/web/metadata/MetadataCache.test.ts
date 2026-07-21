@@ -457,7 +457,11 @@ describe("MetadataCache", () => {
       const initialized = metadataCache.initialize();
       await vi.advanceTimersByTimeAsync(0);
       await initialized;
-      await vi.advanceTimersByTimeAsync(0);
+      // Condition-driven, not turn-count-driven: the queue needs more timer
+      // turns on slow runners and exactly-two-advances flakes on CI.
+      for (let i = 0; i < 50 && !fileResolved.includes(source.path); i++) {
+        await vi.advanceTimersByTimeAsync(1);
+      }
 
       expect(fileResolved).toContain(source.path);
       expect(metadataCache.unresolvedLinks[source.path]).toEqual({ Missing: 1 });
@@ -477,11 +481,15 @@ describe("MetadataCache", () => {
       const initialized = metadataCache.initialize();
       await vi.advanceTimersByTimeAsync(0);
       await initialized;
-      await vi.advanceTimersByTimeAsync(0);
+      for (let i = 0; i < 50 && !metadataCache.unresolvedLinks[source.path]; i++) {
+        await vi.advanceTimersByTimeAsync(1);
+      }
       expect(metadataCache.unresolvedLinks[source.path]).toEqual({ Target: 1 });
 
       await vault.create("Target.md", "");
-      await vi.advanceTimersByTimeAsync(0);
+      for (let i = 0; i < 50 && !metadataCache.resolvedLinks[source.path]?.["Target.md"]; i++) {
+        await vi.advanceTimersByTimeAsync(1);
+      }
 
       expect(metadataCache.resolvedLinks[source.path]).toEqual({ "Target.md": 1 });
       expect(metadataCache.unresolvedLinks[source.path]).toEqual({});
