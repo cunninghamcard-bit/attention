@@ -8,27 +8,19 @@ on:
 jobs:
   gates:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4 # reads packageManager from package.json
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "26.3.0"
-          cache: pnpm
+      # mise is the single toolchain entry (node/pnpm/go pins from mise.toml);
+      # CI runs the same gate as every local machine — no hand-copied step
+      # list to drift (this file previously called typecheck:server and
+      # build:server, scripts that never existed in this tree).
+      - uses: jdx/mise-action@v2
       - run: pnpm install --frozen-lockfile
         env:
           CI: "true"
-      - run: pnpm run lint
-      - run: pnpm run format:check
-      - run: pnpm exec tsc --noEmit
-      - run: pnpm run typecheck:electron
-      - run: pnpm run typecheck:server
-      - run: pnpm run typecheck:tools
-      - run: pnpm test
+      - run: mise run gate
       - run: pnpm run build
-      - run: pnpm run build:api
       - run: pnpm run build:electron
-      - run: pnpm run build:server
       # Not here yet (documented follow-up): the electron e2e / perf
       # harness (needs xvfb + a display) — stays local-only for now.
