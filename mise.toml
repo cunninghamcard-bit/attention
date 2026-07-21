@@ -1,15 +1,14 @@
 # Toolchain control (owner's layers): mise pins tool versions and is the task
-# entry point; vp (Vite+) fronts the JS toolchain — check/fmt/lint/test, and
-# per-app build/dev (vp wraps vitest/oxlint/prettier/rolldown/pnpm, so pnpm
-# still owns dependencies underneath); bun executes the remaining scripts
-# (e2e/desktop, and tsc — vp check's type stage does not engage this repo,
-# red-probed); the Go kernel is mise-direct (vp is JS-only).
-# New machine: `mise install && mise run gate`.
+# entry point; vp (Vite+) fronts the ENTIRE JS toolchain — check/fmt/lint/
+# test, per-app build/dev, and every remaining script via `vp run` (vp wraps
+# vitest/oxlint/prettier/rolldown/pnpm, so pnpm still owns dependencies
+# underneath; tsc lanes stay explicit scripts because vp check's type stage
+# does not engage this repo, red-probed); the Go kernel is mise-direct
+# (vp is JS-only). New machine: `mise install && mise run gate`.
 
 [tools]
 node = "26.3.0"
 pnpm = "11.7.0"
-bun = "1.3.14"
 go = "1.26"
 
 [tasks.install]
@@ -18,7 +17,7 @@ run = "pnpm install --frozen-lockfile"
 
 [tasks.dev]
 description = "Vite dev server at http://127.0.0.1:5173"
-run = "bun run dev"
+run = "pnpm exec vp run dev"
 
 [tasks.test]
 description = "Full vitest suite, via vp"
@@ -26,11 +25,11 @@ run = "pnpm exec vp test"
 
 [tasks.e2e]
 description = "Playwright end-to-end tests (web)"
-run = "bun run e2e"
+run = "pnpm exec vp run e2e"
 
 [tasks.desktop]
 description = "Build + launch the Electron app"
-run = "bun run desktop"
+run = "pnpm exec vp run desktop"
 
 [tasks.format]
 description = "Rewrite formatting, via vp (vendored trees excluded by .prettierignore). NEVER `vp check --fix`: its lint autofixes rewrite semantics."
@@ -42,7 +41,11 @@ run = "pnpm exec vp lint"
 
 [tasks.typecheck]
 description = "All three tsc lanes. Stays explicit: red-probed vp check and it passes a bare type error — its type stage does not engage this repo."
-run = ["bun run typecheck", "bun run typecheck:electron", "bun run typecheck:tools"]
+run = [
+  "pnpm exec vp run typecheck",
+  "pnpm exec vp run typecheck:electron",
+  "pnpm exec vp run typecheck:tools",
+]
 
 [tasks."web:build"]
 description = "Build apps/web via vp (Rolldown). vp only discovers the config from inside the package."
@@ -58,6 +61,7 @@ run = [
   "pnpm exec vp check",
   "mise run typecheck",
   "pnpm exec vp test",
+  "pnpm run build:api",
   "pnpm run packcheck",
   "mise run kernel:test",
 ]
