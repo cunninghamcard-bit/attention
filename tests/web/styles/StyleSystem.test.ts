@@ -7,8 +7,8 @@ const pathSpecifier = "node:path";
  * The style-system contracts (docs/style-system.md):
  *  1. index.css is the single entry point and its import order IS the
  *     cascade — the faithful layers in legacy artifact order, then every
- *     own stylesheet (component styles under builtin/, views/, app/, plus
- *     the frozen product/ remainder pending the deviations ticket).
+ *     own stylesheet (component styles under ui/, builtin/, views/, app/,
+ *     plus the registered deviations under styles/deviations/).
  *  2. Every stylesheet — faithful under styles/ and own next to its
  *     component — is imported exactly once (no orphans, no doubles).
  *  3. The design tokens themes and plugins depend on stay defined.
@@ -27,13 +27,13 @@ const FAITHFUL_LAYERS = [
 ];
 
 // Own styles: component stylesheets living WITH their components, plus the
-// frozen product/ remainder (explorer, outline, reading view) awaiting the
-// deviations ticket. Nothing new may land under product/.
-const OWN_PREFIXES = ["product/", "../builtin/", "../views/", "../app/"];
+// registered deviations under styles/deviations/ (one file per deviation,
+// each carrying its rationale — docs/architecture/style-deviations).
+const OWN_PREFIXES = ["deviations/", "../ui/", "../builtin/", "../views/", "../app/"];
 
 // Component-stylesheet roots, relative to apps/web — walked so an own
 // stylesheet that is never imported still fails the exactly-once contract.
-const OWN_ROOTS = ["builtin", "views", "app"];
+const OWN_ROOTS = ["ui", "builtin", "views", "app"];
 
 // Directories whose stylesheets are deliberately OUTSIDE the index.css
 // cascade: reveal/ hosts standalone demo styles; app/theme/ holds the
@@ -130,12 +130,19 @@ describe("Workbench style system", () => {
  * goal state is an empty set; a new entry requires a recorded decision.
  */
 const RESTYLE_ALLOWLIST = new Set([
-  // unscoped overrides of nav/tree primitives — judge: fix usage vs deviation
-  "product/explorer.css",
-  // unscoped override of markdown-reading-view — judge: fix vs deviation
-  "product/reading-view.css",
-  // restyles splash-brand-* owned by workspace/starter-splash.css
+  // VERDICT (07-21, owner-delegated): colored semantic type icons lift
+  // Obsidian's monochrome icon dimming on the nav icon slot — a recorded
+  // product choice; the palette itself is own-namespaced.
+  "../ui/file-type-icon.css",
+  // VERDICT: nav-file-tag chip + tall-row icon sizing are recorded product
+  // choices (rationale in the file's comments).
+  "../builtin/file-explorer.css",
+  // VERDICT: the product brand deliberately replaces Obsidian's
+  // splash-brand on the starter screen.
   "../app/starter/starter.css",
+  // VERDICT: CSS stand-in for Obsidian's runtime container sizing —
+  // measured and documented in the file header; reconstruction necessity.
+  "deviations/reading-view.css",
 ]);
 
 const CLASS_RE = /\.(-?[A-Za-z_][\w-]*)/g;
@@ -283,7 +290,7 @@ async function loadWallInputs(): Promise<{
       });
     });
   }
-  walkCss("apps/web/styles/product", (full) => {
+  walkCss("apps/web/styles/deviations", (full) => {
     ownSheets.push({
       rel: path.relative("apps/web/styles", full),
       css: fs.readFileSync(full, "utf8"),

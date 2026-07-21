@@ -30,15 +30,17 @@ missing a capability, extend the shared primitive — do not clone it.
 **The stylesheet layering is the boundary, and it is load-bearing.**
 Everything under `styles/{tokens,base,components,features,workspace,editor}`
 is a _faithful extract_ of app.css and must stay byte-identical to it. Our
-own CSS lives WITH its component (`builtin/<slice>/`, `views/`, `app/`),
-imported by `styles/index.css` after every faithful layer, and behaves like
-a well-mannered community plugin: selectors stay in the component's own
-namespace — faithful classes appear only as ancestor context or under an
-own attribute qualifier — and faithful design tokens are consumed or
-locally parameterized, never redefined globally. There is NO override
-layer: `styles/product/` is frozen at three recorded exceptions pending
-the deviations ticket. Never put a product choice in a faithful file;
-never let a faithful file drift from app.css. (Guarded by
+own CSS lives WITH its component (`ui/`, `builtin/<slice>/`, `views/`,
+`app/`), imported by `styles/index.css` after every faithful layer, and
+behaves like a well-mannered community plugin: selectors stay in the
+component's own namespace — faithful classes appear only as ancestor
+context or under an own attribute qualifier — and faithful design tokens
+are consumed or locally parameterized, never redefined globally. There is
+NO override layer: deliberate deviations live one-per-file under
+`styles/deviations/` with their measured rationale, and every recorded
+restyle carries its verdict in the wall's allowlist
+(docs/architecture/style-deviations). Never put a product choice in a
+faithful file; never let a faithful file drift from app.css. (Guarded by
 `StyleSystem.test.ts`: the exactly-once manifest, own-last order, and the
 restyle/token walls.)
 

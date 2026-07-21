@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getBuiltInSpriteSheet } from "@pierre/trees";
 
-const PALETTE = readFileSync(join(process.cwd(), "apps/web/styles/product/explorer.css"), "utf8");
+const PALETTE = readFileSync(join(process.cwd(), "apps/web/ui/file-type-icon.css"), "utf8");
 
 /** Catch-all buckets: `default` is any unrecognised extension, `text` is
  * .txt/.log/.env. An unknown file type has no brand hue, so both stay on the

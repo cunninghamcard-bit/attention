@@ -8,11 +8,12 @@
  *   workspace/  app shell (ribbon, docks, tabs, titlebar, status bar)
  *   editor/     markdown + code editing surfaces
  *   features/   feature panes (search, explorer, outline, ...)
- *   product/    FROZEN — three unjudged overrides of faithful surfaces
- *               (explorer, outline, reading view), pending the deviations
- *               ticket. Own feature styles live WITH their components
- *               (builtin/, views/, app/) and are imported below, after
- *               every faithful layer.
+ *   deviations/ registered deliberate deviations from faithful behavior,
+ *               one file per deviation, each carrying its measured
+ *               rationale (docs/architecture/style-deviations). Own
+ *               feature styles live WITH their components (ui/, builtin/,
+ *               views/, app/) and are imported below, after every
+ *               faithful layer.
  *
  * The import sequence preserves the legacy cascade exactly (see
  * docs/style-system.md); reordering imports changes which rules win.
@@ -72,11 +73,12 @@
 @import "./features/webviewer-workspaces.css";
 @import "./workspace/starter-splash.css";
 @import "./base/platform-mobile.css";
-@import "./product/reading-view.css";
+@import "./deviations/reading-view.css";
 @import "../views/code-view.css";
 @import "../builtin/terminal/terminal.css";
-@import "./product/explorer.css";
-@import "./product/outline.css";
+@import "../ui/file-type-icon.css";
+@import "../builtin/file-explorer.css";
+@import "../builtin/outline.css";
 @import "../views/diff.css";
 @import "../builtin/git/git-changes.css";
 @import "../builtin/git/git-prs.css";
