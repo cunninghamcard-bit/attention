@@ -6,13 +6,15 @@ const pathSpecifier = "node:path";
 /**
  * The style-system contracts (docs/style-system.md):
  *  1. index.css is the single entry point and its import order IS the
- *     cascade — the legacy artifact order followed by product overrides.
- *  2. Every stylesheet under src/styles is imported exactly once (no
- *     orphans, no double-imports).
+ *     cascade — the faithful layers in legacy artifact order, then every
+ *     own stylesheet (component styles under builtin/, views/, app/, plus
+ *     the frozen product/ remainder pending the deviations ticket).
+ *  2. Every stylesheet — faithful under styles/ and own next to its
+ *     component — is imported exactly once (no orphans, no doubles).
  *  3. The design tokens themes and plugins depend on stay defined.
  */
 
-const LAYER_ORDER = [
+const FAITHFUL_LAYERS = [
   "tokens/",
   "base/",
   "vendor/",
@@ -20,8 +22,16 @@ const LAYER_ORDER = [
   "workspace/",
   "editor/",
   "features/",
-  "product/",
 ];
+
+// Own styles: component stylesheets living WITH their components, plus the
+// frozen product/ remainder (explorer, outline, reading view) awaiting the
+// deviations ticket. Nothing new may land under product/.
+const OWN_PREFIXES = ["product/", "../builtin/", "../views/", "../app/"];
+
+// Component-stylesheet roots, relative to apps/web — walked so an own
+// stylesheet that is never imported still fails the exactly-once contract.
+const OWN_ROOTS = ["builtin", "views", "app"];
 
 // Tokens the theme ecosystem and our own views target. Removing one breaks
 // installed themes silently — extend freely, trim only with a migration.
@@ -68,18 +78,20 @@ describe("Workbench style system", () => {
     expect([...importSet].sort()).toEqual(allFiles.sort());
   });
 
-  it("keeps product overrides last and known layers only", async () => {
+  it("keeps own styles last and known layers only", async () => {
     const { imports } = await loadStyleTree();
+    const isOwn = (entry: string): boolean =>
+      OWN_PREFIXES.some((prefix) => entry.startsWith(prefix));
     for (const entry of imports) {
       expect(
-        LAYER_ORDER.some((layer) => entry.startsWith(layer)),
+        isOwn(entry) || FAITHFUL_LAYERS.some((layer) => entry.startsWith(layer)),
         `unknown layer for ${entry}`,
       ).toBe(true);
     }
-    const firstProduct = imports.findIndex((entry) => entry.startsWith("product/"));
-    expect(firstProduct, "product/ must exist").toBeGreaterThan(-1);
-    for (const entry of imports.slice(firstProduct)) {
-      expect(entry.startsWith("product/"), `${entry} imported after product overrides`).toBe(true);
+    const firstOwn = imports.findIndex(isOwn);
+    expect(firstOwn, "own styles must exist").toBeGreaterThan(-1);
+    for (const entry of imports.slice(firstOwn)) {
+      expect(isOwn(entry), `faithful layer ${entry} imported after own styles`).toBe(true);
     }
   });
 
@@ -96,20 +108,30 @@ async function loadStyleTree(): Promise<{ imports: string[]; allFiles: string[] 
   const fs = (await load(fileSystemSpecifier)) as FsModule;
   const path = (await load(pathSpecifier)) as PathModule;
   const index = fs.readFileSync("apps/web/styles/index.css", "utf8");
-  const imports = [...index.matchAll(/@import\s+"\.\/([^"]+\.css)";/g)].map((match) => match[1]);
+  const imports = [...index.matchAll(/@import\s+"(\.\.?\/[^"]+\.css)";/g)].map((match) =>
+    match[1].startsWith("./") ? match[1].slice(2) : match[1],
+  );
   const allFiles: string[] = [];
-  const walk = (dir: string): void => {
+  // Directories whose stylesheets are deliberately OUTSIDE the index.css
+  // cascade: reveal/ hosts standalone demo styles; app/theme/ holds the
+  // quarantined, intentionally-empty placeholders and runtime theme
+  // machinery (see their header comments and the retirement rules).
+  const skipDirs = new Set(["apps/web/styles/reveal", "apps/web/app/theme"]);
+  const walk = (dir: string, collect: (full: string) => string | null): void => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        // reveal/ hosts standalone demo styles outside the app cascade.
-        if (entry.name !== "reveal") walk(full);
+        if (!skipDirs.has(full)) walk(full, collect);
       } else if (entry.name.endsWith(".css") && entry.name !== "index.css") {
-        allFiles.push(path.relative("apps/web/styles", full));
+        const mapped = collect(full);
+        if (mapped !== null) allFiles.push(mapped);
       }
     }
   };
-  walk("apps/web/styles");
+  walk("apps/web/styles", (full) => path.relative("apps/web/styles", full));
+  for (const root of OWN_ROOTS) {
+    walk(path.join("apps/web", root), (full) => `../${path.relative("apps/web", full)}`);
+  }
   return { imports, allFiles };
 }
 

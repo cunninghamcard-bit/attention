@@ -494,13 +494,13 @@ describe("GitHubProfileView (org/user profile tab)", () => {
     // second copied rule set). The final visual word stays with the owner's
     // rebuilt-app check.
     const css = readFileSync(
-      resolve(__dirname, "../../../../apps/web/styles/product/github-nav.css"),
+      resolve(__dirname, "../../../../apps/web/builtin/github/github-nav.css"),
       "utf8",
     );
     expect(css).toContain(".view-header > .github-profile-nav");
     expect(css).toContain(".github-profile-nav .github-segmented-control-item");
     const profileCss = readFileSync(
-      resolve(__dirname, "../../../../apps/web/styles/product/github-profile.css"),
+      resolve(__dirname, "../../../../apps/web/builtin/github/github-profile.css"),
       "utf8",
     );
     expect(profileCss).not.toContain(".github-segmented-control");

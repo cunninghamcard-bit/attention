@@ -4,7 +4,7 @@ const fileSystemSpecifier = "node:fs";
 
 describe("local Git theme contract", () => {
   it("bridges Obsidian theme tokens into git diff hosts", async () => {
-    const source = await readProjectFile("apps/web/styles/product/git-review.css");
+    const source = await readProjectFile("apps/web/builtin/git/review/git-review.css");
 
     for (const selector of [
       ".git-review-view diffs-container",
@@ -32,8 +32,8 @@ describe("local Git theme contract", () => {
   it("keeps local git chrome free of literal palette colors", async () => {
     const source = (
       await Promise.all([
-        readProjectFile("apps/web/styles/product/git-changes.css"),
-        readProjectFile("apps/web/styles/product/git-review.css"),
+        readProjectFile("apps/web/builtin/git/git-changes.css"),
+        readProjectFile("apps/web/builtin/git/review/git-review.css"),
       ])
     ).join("\n");
 
@@ -59,8 +59,8 @@ describe("local Git theme contract", () => {
       readProjectFile("apps/web/builtin/git/GitLogView.ts"),
       readProjectFile("apps/web/builtin/git/review/GitNavView.ts"),
       readProjectFile("apps/web/builtin/git/review/ReviewSurface.ts"),
-      readProjectFile("apps/web/styles/product/git-changes.css"),
-      readProjectFile("apps/web/styles/product/git-review.css"),
+      readProjectFile("apps/web/builtin/git/git-changes.css"),
+      readProjectFile("apps/web/builtin/git/review/git-review.css"),
     ]);
 
     expect(changes).toContain("nav-file-title tappable is-clickable git-changes-file-header");

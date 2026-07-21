@@ -8,7 +8,11 @@
  *   workspace/  app shell (ribbon, docks, tabs, titlebar, status bar)
  *   editor/     markdown + code editing surfaces
  *   features/   feature panes (search, explorer, outline, ...)
- *   product/    Workbench additions & overrides — always imported last
+ *   product/    FROZEN — three unjudged overrides of faithful surfaces
+ *               (explorer, outline, reading view), pending the deviations
+ *               ticket. Own feature styles live WITH their components
+ *               (builtin/, views/, app/) and are imported below, after
+ *               every faithful layer.
  *
  * The import sequence preserves the legacy cascade exactly (see
  * docs/style-system.md); reordering imports changes which rules win.
@@ -69,14 +73,14 @@
 @import "./workspace/starter-splash.css";
 @import "./base/platform-mobile.css";
 @import "./product/reading-view.css";
-@import "./product/code-view.css";
-@import "./product/terminal.css";
+@import "../views/code-view.css";
+@import "../builtin/terminal/terminal.css";
 @import "./product/explorer.css";
 @import "./product/outline.css";
-@import "./product/diff.css";
-@import "./product/git-changes.css";
-@import "./product/git-prs.css";
-@import "./product/github-nav.css";
-@import "./product/github-profile.css";
-@import "./product/git-review.css";
-@import "./product/starter.css";
+@import "../views/diff.css";
+@import "../builtin/git/git-changes.css";
+@import "../builtin/git/git-prs.css";
+@import "../builtin/github/github-nav.css";
+@import "../builtin/github/github-profile.css";
+@import "../builtin/git/review/git-review.css";
+@import "../app/starter/starter.css";
