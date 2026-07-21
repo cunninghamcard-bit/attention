@@ -27,9 +27,10 @@ function hasKnownExtension(specifier: string): boolean {
 }
 
 let changed = 0;
+let redepthed = 0;
 for (const file of await walk(root)) {
   const source = await readFile(file, "utf8");
-  const next = source.replace(
+  let next = source.replace(
     relativeSpecifier,
     (match, prefix: string, specifier: string, suffix: string) => {
       if (hasKnownExtension(specifier)) return match;
@@ -37,6 +38,20 @@ for (const file of await walk(root)) {
       // A bare "." or ".." is a directory import; point it at the index file.
       if (specifier === "." || specifier === "..") return `${prefix}${specifier}/index.js${suffix}`;
       return `${prefix}${specifier}.js${suffix}`;
+    },
+  );
+  // The dts emitter rewrites @app/shared imports to relative paths against
+  // the wrong base once the package mechanism (not an alias) resolves them.
+  // Recompute the true depth from each declaration file to the emitted
+  // packages/shared copies.
+  next = next.replace(
+    /((?:from\s+|export\s+\*\s+from\s+|import\s*\(\s*)["'])((?:\.\.\/)+)packages\/shared\//g,
+    (match, prefix: string) => {
+      const correct = relative(join(file, ".."), join(root, "packages", "shared"))
+        .split("\\")
+        .join("/");
+      redepthed += 1;
+      return `${prefix}${correct}/`;
     },
   );
   if (next !== source) await writeFile(file, next);
