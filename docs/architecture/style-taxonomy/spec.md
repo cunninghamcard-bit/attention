@@ -57,7 +57,7 @@ gate green is the standard.
     (rightmost compound) may be a bare faithful class. Referencing
     faithful classes as ancestor context, or scoping a faithful container
     by an own attribute qualifier (`.workspace-leaf-content
-    [data-type="diff"]` — the community-plugin protocol), stays legal.
+[data-type="diff"]` — the community-plugin protocol), stays legal.
   - Own CSS consumes faithful design tokens, never redefines them.
   - Explicit allowlist for recorded exceptions; empty is the goal.
 - styles/product/ shrinks to the three unjudged override files and is
