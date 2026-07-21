@@ -163,7 +163,7 @@ export function createIpcHandlers(deps: IpcDeps): Record<string, IpcListener> {
         .catch((error) => e.reply(replyId, { error }));
     },
     // `satisfies` binds this handler map to the shared IPC channel table: every
-    // channel name here must be declared in src/shared/ipc.ts.
+    // channel name here must be declared in @app/shared/ipc.ts.
   } satisfies Partial<Record<IpcChannelName, IpcListener>>;
 }
 

@@ -260,7 +260,7 @@ function listTopLevelDirNames(dirAbs: string): string[] {
 }
 
 /**
- * A native-seam file consumes a port from src/shared when it imports the port
+ * A native-seam file consumes a port from @app/shared when it imports the port
  * name from a `shared/…` specifier and does NOT re-declare the interface itself.
  */
 function importsPortFromShared(relFile: string, port: string): boolean {
@@ -375,13 +375,13 @@ describe("Rule: shared-contracts — the native seam is one typed contract", () 
     expect(importsPortFromShared("apps/web/builtin/git/GitService.ts", "ElectronGitApi")).toBe(
       true,
     );
-    expect(importsPortFromShared("apps/desktop/main/git-bridge.ts", "ElectronGitApi")).toBe(true);
+    expect(importsPortFromShared("apps/desktop/preload/git-bridge.ts", "ElectronGitApi")).toBe(true);
     // terminal port: same on both sides
     expect(
       importsPortFromShared("apps/web/builtin/terminal/TerminalAdapter.ts", "ElectronTerminalApi"),
     ).toBe(true);
     expect(
-      importsPortFromShared("apps/desktop/main/terminal-bridge.ts", "ElectronTerminalApi"),
+      importsPortFromShared("apps/desktop/preload/terminal-bridge.ts", "ElectronTerminalApi"),
     ).toBe(true);
   });
 

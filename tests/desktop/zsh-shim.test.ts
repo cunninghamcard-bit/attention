@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { ensureZshShim } from "@desktop/zsh-shim";
+import { ensureZshShim } from "@preload/zsh-shim";
 
 let home: string;
 

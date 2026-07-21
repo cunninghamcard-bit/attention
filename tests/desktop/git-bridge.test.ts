@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gravatarUrl } from "@desktop/git-bridge";
+import { gravatarUrl } from "@preload/git-bridge";
 
 describe("git bridge avatars", () => {
   it("hashes normalized Git author email for Gravatar", () => {

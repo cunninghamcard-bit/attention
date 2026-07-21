@@ -8,7 +8,7 @@ import type { ElectronGitApi, GitExecResult } from "@app/shared/gitApi";
  * against the vault working tree; the renderer's GitClient only sees this
  * function surface. Same pattern as the terminal bridge: capability lives in
  * the preload, browser mode gets a clean unavailable. The port contract
- * (`ElectronGitApi`) is declared once in `src/shared` and consumed by both
+ * (`ElectronGitApi`) is declared once in `@app/shared` and consumed by both
  * this bridge and the renderer's `GitService`.
  */
 

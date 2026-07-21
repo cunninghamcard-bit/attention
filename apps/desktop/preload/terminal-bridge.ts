@@ -9,7 +9,7 @@ import type { ElectronTerminalApi, PtyHandle, PtySpawnOptions } from "@app/share
  * preload module: `node-pty` is required lazily on first spawn and never
  * leaves this file. The renderer's DesktopTerminalAdapter only sees the
  * function-based handle. The port contract (`ElectronTerminalApi`) is declared
- * once in `src/shared` and consumed by both this bridge and the renderer.
+ * once in `@app/shared` and consumed by both this bridge and the renderer.
  */
 
 interface NodePtyProcess {

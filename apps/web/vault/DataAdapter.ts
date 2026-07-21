@@ -8,7 +8,7 @@ import type {
   Stat,
 } from "@app/shared/dataAdapter";
 
-// The value types and the port contract live once in src/shared; re-export them
+// The value types and the port contract live once in @app/shared; re-export them
 // so the renderer's many `./DataAdapter` importers keep resolving unchanged.
 export type { DataAdapterWatchHandler, DataWriteOptions, ListedFiles, Stat };
 

@@ -1,7 +1,7 @@
 import { ipcRenderer, shell, webFrame, webUtils } from "electron";
 import { getCurrentWindow } from "@electron/remote";
-import { installTerminalBridge } from "../main/terminal-bridge";
-import { installGitBridge } from "../main/git-bridge";
+import { installTerminalBridge } from "./terminal-bridge";
+import { installGitBridge } from "./git-bridge";
 
 /**
  * Preload bridge — installs the exact globals the reconstructed renderer reads.

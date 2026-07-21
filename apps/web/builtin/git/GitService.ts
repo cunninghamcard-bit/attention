@@ -6,7 +6,7 @@ import type { ElectronGitApi, GitExecResult } from "@app/shared/gitApi";
  * `app.git` — read-side git access for the vault working tree, backed by the
  * preload git bridge (desktop). Browser mode reports unavailable, same pattern
  * as the terminal. The `ElectronGitApi` port contract is declared once in
- * `src/shared` and filled by the shell's `git-bridge.ts`.
+ * `@app/shared` and filled by the shell's `git-bridge.ts`.
  */
 
 export type { ElectronGitApi, GitExecResult };

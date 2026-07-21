@@ -5,7 +5,7 @@
  * error instead of pretending it can spawn shells.
  *
  * The bridge shape (`ElectronTerminalApi`) is the port contract declared once
- * in `src/shared` and filled by the shell's `terminal-bridge.ts`.
+ * in `@app/shared` and filled by the shell's `terminal-bridge.ts`.
  */
 
 import type { ElectronTerminalApi, PtyHandle } from "@app/shared/terminalApi";
