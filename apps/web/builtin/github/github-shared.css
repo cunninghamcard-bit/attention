@@ -1,0 +1,264 @@
+/* Styles shared across github views (chips, page titles, segmented
+ * controls, markdown body, cross-view rules). Split from git-prs.css —
+ * rules verbatim; class sets across the split files are pairwise disjoint,
+ * so cascade order between them is immaterial. */
+
+.git-pr-error {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  margin: var(--size-4-3) var(--size-4-4) 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-m);
+  border: 1px solid
+    color-mix(in srgb, var(--color-red, #f85149) 40%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--color-red, #f85149) 10%, var(--background-primary));
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+}
+
+/* --- Detail -------------------------------------------------------- */
+
+.git-pr-detail {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The PR head reuses the issue page's gh-detail-head; only the padding is
+   local, because this root (unlike gh-detail-scroll) carries none of its own. */
+.git-pr-detail > .gh-detail-head {
+  padding: var(--size-4-3) var(--size-4-3) var(--size-4-2);
+}
+
+.gh-page-title {
+  margin: 0;
+  font-size: var(--font-ui-large);
+}
+.gh-muted {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+/* `button.gh-linkish`, not `.gh-linkish`: the host's `button:not(.clickable-icon)`
+   (button-card.css) is 0-1-1 and paints a form-control background+shadow; a bare
+   class is 0-1-0 and loses, so every link-styled button wore browser chrome. The
+   qualified selector ties at 0-1-1 and wins on load order (git-prs imports after
+   button-card). The :hover pair beats the global `button:hover`, which repaints
+   the same background+shadow. */
+button.gh-linkish {
+  appearance: none;
+  border: none;
+  background: none;
+  color: var(--text-accent);
+  cursor: var(--cursor);
+  font-size: var(--font-ui-smaller);
+  padding: 0;
+  box-shadow: none;
+}
+button.gh-linkish:hover {
+  background: none;
+  box-shadow: none;
+  text-decoration: underline;
+}
+.gh-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 2em;
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-muted);
+}
+.gh-chip.mod-ok {
+  color: var(--color-green, #3fb950);
+  border-color: currentcolor;
+}
+.gh-chip.mod-open {
+  color: var(--color-green, #3fb950);
+  border-color: currentcolor;
+}
+.gh-chip.mod-closed {
+  color: var(--color-red, #f85149);
+  border-color: currentcolor;
+}
+.gh-chip.mod-merged {
+  color: var(--color-purple, #a371f7);
+  border-color: currentcolor;
+}
+.gh-chip.mod-draft {
+  color: var(--text-faint);
+  border-color: currentcolor;
+}
+.gh-chip.mod-ci-success {
+  color: var(--color-green, #3fb950);
+  border-color: currentcolor;
+}
+.gh-chip.mod-ci-failure,
+.gh-chip.mod-ci-error {
+  color: var(--color-red, #f85149);
+  border-color: currentcolor;
+}
+.gh-chip.mod-ci-pending {
+  color: var(--color-orange, #d29922);
+  border-color: currentcolor;
+}
+
+/* One state-switch protocol across Issues,
+PR content,
+and review mode. */
+.github-segmented-control {
+  display: flex;
+  width: max-content;
+  max-width: 100%;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+}
+
+.github-segmented-control > .github-segmented-control-item {
+  appearance: none;
+  border: 0;
+  border-radius: calc(var(--radius-m) - 2px);
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  cursor: var(--cursor);
+  font-size: var(--font-ui-smaller);
+  padding: 4px 10px;
+}
+
+.github-segmented-control > .github-segmented-control-item.is-active {
+  background: var(--background-primary);
+  box-shadow: var(--shadow-s);
+  color: var(--text-normal);
+  font-weight: var(--font-medium);
+}
+.gh-detail-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.gh-timeline-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--background-modifier-border);
+}
+.gh-timeline-dot.mod-closed {
+  background: var(--color-red, #f85149);
+}
+.gh-timeline-dot.mod-reopened {
+  background: var(--color-green, #3fb950);
+}
+.gh-timeline-dot.mod-merged {
+  background: var(--color-purple, #a371f7);
+}
+.gh-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  padding: 12px;
+  background: var(--background-secondary);
+}
+/* The card carries the composer's single frame — the OMG shape is one bordered
+ * card with internal separations: editor beside live preview, split by one
+ * inner rule, actions on the footer row. The textarea sheds the host's own
+ * field chrome (no double frame) and its drag corner. */
+.gh-composer-panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.gh-composer textarea {
+  width: 100%;
+  height: 192px;
+  resize: none;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0 12px 0 0;
+}
+.gh-composer-preview {
+  height: 192px;
+  overflow: auto;
+  border-left: 1px solid var(--background-modifier-border);
+  padding-left: 12px;
+}
+.gh-composer-preview .gh-markdown > :first-child {
+  margin-top: 0;
+}
+/* The editor stacks above the preview when the leaf is narrow — OMG's own
+ * md: breakpoint, expressed against the leaf instead of the window. */
+@container (max-width: 720px) {
+  .gh-composer-panes {
+    grid-template-columns: 1fr;
+  }
+  .gh-composer textarea {
+    padding: 0;
+  }
+  .gh-composer-preview {
+    border-left: none;
+    border-top: 1px solid var(--background-modifier-border);
+    padding: 8px 0 0;
+  }
+}
+/* Review verdict chips on conversation cards — the chip family's outline
+ * shape, colored like the states they echo (approve=open, changes=closed). */
+.gh-chip.mod-approved {
+  color: var(--color-green, #3fb950);
+  border-color: currentcolor;
+}
+.gh-chip.mod-changes {
+  color: var(--color-red, #f85149);
+  border-color: currentcolor;
+}
+.gh-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+/* .gh-code-view deliberately has no rule: the CodeView measures and sizes
+   itself, and .view-content above it already scrolls. The review surface styles
+   its own mount only because that one sits in a flex column. */
+.gh-markdown {
+  font-size: var(--font-ui-small);
+}
+
+/* --- Issue/PR meta column chips + people (task #5) --------------------- */
+
+.github-label-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--github-label-color, #888) 55%, transparent);
+  background: color-mix(in srgb, var(--github-label-color, #888) 18%, transparent);
+  color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.github-meta-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.github-meta-person-login {
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+}
+
+.github-new-issue {
+  margin-right: 8px;
+}

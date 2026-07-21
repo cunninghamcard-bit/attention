@@ -77,11 +77,16 @@
 @import "../views/code-view.css";
 @import "../builtin/terminal/terminal.css";
 @import "../ui/file-type-icon.css";
+@import "../ui/composer.css";
 @import "../builtin/file-explorer.css";
 @import "../builtin/outline.css";
 @import "../views/diff.css";
+@import "../builtin/git/git-commit-meta.css";
 @import "../builtin/git/git-changes.css";
-@import "../builtin/git/git-prs.css";
+@import "../builtin/github/github-shared.css";
+@import "../builtin/github/github-pr.css";
+@import "../builtin/github/github-detail.css";
+@import "../builtin/github/github-signin.css";
 @import "../builtin/github/github-nav.css";
 @import "../builtin/github/github-profile.css";
 @import "../builtin/git/review/git-review.css";

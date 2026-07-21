@@ -1,0 +1,153 @@
+/* Cloud GitHub PR workspace (list + detail). */
+
+.git-pr-view {
+  padding: 0;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.git-pr-view > * {
+  min-height: 0;
+  flex: 1;
+}
+
+.git-pr-empty {
+  padding: var(--size-4-4);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+@keyframes git-pr-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.git-pr-diffstat {
+  margin-left: 2px;
+  font-size: var(--font-ui-smaller);
+  font-variant-numeric: tabular-nums;
+}
+
+.git-pr-diffstat ins {
+  color: var(--color-green, #3fb950);
+  text-decoration: none;
+}
+
+.git-pr-diffstat del {
+  color: var(--color-red, #f85149);
+  text-decoration: none;
+}
+
+/* --- Conversation ----------------------------------------------------- */
+
+.git-pr-conversation,
+.git-pr-commits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+  padding: var(--size-4-2) var(--size-4-3);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+/* The conversation column is the layout's container so the issue page's
+   narrow-leaf query (drop the meta column) applies here too. */
+.git-pr-conversation {
+  container-type: inline-size;
+}
+
+/* --- Commits ------------------------------------------------------- */
+
+.git-pr-commit-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.git-pr-commit-headline {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--font-medium);
+}
+
+.git-pr-commit-sha {
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.gh-diffstat ins {
+  color: var(--color-green, #3fb950);
+  text-decoration: none;
+}
+.gh-diffstat del {
+  color: var(--color-red, #f85149);
+  text-decoration: none;
+}
+.gh-diffstat {
+  font-size: var(--font-ui-smaller);
+  font-variant-numeric: tabular-nums;
+}
+.gh-sha {
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.gh-meta-section {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.gh-meta-heading {
+  width: 100%;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-medium);
+}
+.gh-timeline-event {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.git-pr-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.git-pr-review {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.git-pr-commit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.git-pr-commit-sub {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}

@@ -1,0 +1,117 @@
+
+
+/* --- Sign-in / empty ----------------------------------------------- */
+
+.git-pr-signin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--size-4-8) var(--size-4-4);
+  height: 100%;
+}
+
+.git-pr-signin-card {
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+}
+
+.git-pr-signin-card {
+  text-align: left;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-l);
+  padding: var(--size-4-5);
+  background: var(--background-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-3);
+}
+
+.git-pr-signin-card h2 {
+  margin: 0;
+  font-size: var(--font-ui-large);
+}
+
+.git-pr-signin-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  line-height: 1.5;
+}
+
+.git-pr-signin-icon {
+  display: flex;
+  justify-content: center;
+  --icon-size: 32px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.git-pr-signin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-medium);
+}
+
+.git-pr-signin-field input {
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-small);
+}
+
+.git-pr-signin-submit {
+  align-self: flex-start;
+}
+
+.git-pr-signin-primary,
+.git-pr-device-state > button {
+  width: 100%;
+}
+
+.git-pr-device-state,
+.git-pr-token-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+}
+
+.git-pr-device-state[hidden],
+.git-pr-token-form[hidden],
+.git-pr-signin-primary[hidden],
+.git-pr-signin-config[hidden] {
+  display: none;
+}
+
+.git-pr-device-state {
+  padding: var(--size-4-3);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  text-align: center;
+}
+
+.git-pr-device-code {
+  padding: var(--size-4-2);
+  border-radius: var(--radius-s);
+  background: var(--background-modifier-hover);
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-large);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.08em;
+  user-select: text;
+}
+
+.git-pr-signin-fallback,
+.git-pr-signin-token-link {
+  align-self: center;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-accent);
+}
+
+.git-pr-signin-error {
+  color: var(--text-error);
+  font-size: var(--font-ui-small);
+  margin-top: 8px;
+}

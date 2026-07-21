@@ -1,0 +1,192 @@
+
+.gh-avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--background-modifier-border);
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.gh-commit-detail {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.gh-commit-detail-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.gh-commit-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-ui-small);
+}
+.gh-commit-body {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  font-size: var(--font-ui-smaller);
+  white-space: pre-wrap;
+  color: var(--text-muted);
+}
+.gh-preview-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  font-size: var(--font-ui-smaller);
+}
+
+/* container-type so the issue layout below can answer to the leaf's width and
+   not the window's — a leaf in a split is narrow while the window is not.
+   Same idiom as .review-scroll in git-review.css. */
+.gh-detail-scroll {
+  overflow: auto;
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  container-type: inline-size;
+}
+
+/* Issue body beside its meta column (the OMG issue-page shape). */
+.gh-issue-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.gh-issue-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gh-issue-meta {
+  flex: 0 0 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* The column is the first thing to go when the leaf is narrow: the body reads
+   without it, and GitHub drops it at the same sort of width. */
+@container (max-width: 720px) {
+  .gh-issue-layout {
+    flex-direction: column;
+  }
+  .gh-issue-meta {
+    flex-basis: auto;
+    width: 100%;
+  }
+}
+.gh-card {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  padding: 12px;
+  background: var(--background-primary);
+}
+.gh-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: var(--font-ui-small);
+}
+.gh-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+.gh-step-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-ui-smaller);
+  padding: 4px 0;
+}
+.gh-ci-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-muted);
+}
+.gh-ci-dot.mod-success {
+  background: var(--color-green, #3fb950);
+}
+.gh-ci-dot.mod-failure,
+.gh-ci-dot.mod-error {
+  background: var(--color-red, #f85149);
+}
+.gh-ci-dot.mod-pending {
+  background: var(--color-orange, #d29922);
+}
+
+.gh-detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gh-detail-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.gh-detail-action {
+  padding: 4px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.gh-detail-action:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.github-create-issue {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.github-create-issue-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.github-create-issue-title,
+.github-create-issue-body {
+  width: 100%;
+}
+
+.github-create-issue-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

@@ -254,13 +254,6 @@
   border-top: 1px solid var(--background-modifier-border);
 }
 
-/* The shared composer card, at footer height: a review bar under a diff gets
- * a third of the conversation composer's editor, not 192px of it. */
-.review-submit-bar .gh-composer textarea,
-.review-submit-bar .gh-composer-preview {
-  height: 64px;
-}
-
 .review-action {
   font-size: var(--font-ui-small);
 }

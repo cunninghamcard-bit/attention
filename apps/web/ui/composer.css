@@ -1,0 +1,36 @@
+/* The gh-composer component (ui/Composer): the shared comment/markdown
+ * composer used by the github detail, commit and PR views. Extracted from
+ * git-prs.css and git-review.css — rules verbatim. */
+
+.gh-composer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: 8px;
+  font-size: var(--font-ui-smaller);
+}
+.gh-composer-actions {
+  display: flex;
+  gap: 8px;
+}
+.gh-composer-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.gh-composer-send {
+  display: inline-flex;
+}
+.gh-composer-send svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* The shared composer card, at footer height: a review bar under a diff gets
+ * a third of the conversation composer's editor, not 192px of it. */
+.review-submit-bar .gh-composer textarea,
+.review-submit-bar .gh-composer-preview {
+  height: 64px;
+}
