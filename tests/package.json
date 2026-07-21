@@ -2,7 +2,7 @@
   "name": "@app/tests",
   "version": "0.0.0",
   "private": true,
-  "description": "Centralized test tree (mirrors src/{renderer,main} paths via vitest aliases). A workspace member so bare imports and vi.mock specifiers resolve in its own dependency lane.",
+  "description": "Centralized test tree (mirrors apps/{web,desktop} paths via vitest aliases). A workspace member so bare imports and vi.mock specifiers resolve in its own dependency lane.",
   "type": "module",
   "devDependencies": {
     "@codemirror/autocomplete": "^6.20.3",

@@ -125,7 +125,7 @@ function findApiFacadeViolations(
 /**
  * Rule: single-package. The renderer may not import the shell. A shell import
  * is a bare `electron` / `@electron/remote`, a `@desktop`/`@main`/`@preload`
- * alias, or a relative import that escapes into src/main or src/preload.
+ * alias, or a relative import that escapes into apps/desktop/{main,preload}.
  */
 const SHELL_BARE = ["electron", "@electron/remote"];
 const SHELL_ALIASES = ["@desktop", "@main", "@preload"];

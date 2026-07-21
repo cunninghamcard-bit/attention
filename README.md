@@ -11,8 +11,10 @@ the perf harness opens files in a 20,000-file vault at a 32ms median.
 
 ## What this is
 
-- A three-runtime pnpm monorepo: a **web app** (the product), an **Electron
-  desktop** shell, and a **server** runtime, each with its own dependency lane.
+- A pnpm monorepo: a **web app** (the product) and an **Electron desktop**
+  shell under apps/, shared contract packages under packages/, and the **Go
+  agent kernel** seated at the repo root — each app lane with its own
+  dependency table.
 - A faithful reconstruction of Obsidian's core systems — Vault, Workspace,
   MetadataCache, the plugin lifecycle, themes and CSS-variable theming — and
   the dual-track plugin architecture: internal builtins use internal APIs; a
@@ -45,11 +47,11 @@ Other entry points:
 ```text
 apps/web              the product: vault, workspace, metadata, plugin system, builtin views
 apps/desktop          Electron main + preload — a thin native shell (@app/desktop)
-apps/server           server runtime (@app/server)
-apps/web/src/builtin  core plugins: agent, github, terminal, graph, canvas, git, webviewer, theme-market
+apps/web/builtin  core plugins: agent, github, terminal, graph, canvas, git, webviewer, theme-market
 docs/architecture.md      the real map — annotated tree, direction table, runtime topology, tradeoffs
 docs/architecture/        Spec-Driven Development records for structural work
-e2e/                      Playwright specs, including the large-vault perf harness
+tests/e2e/                Playwright specs, including the large-vault perf harness
+cmd/ + internal/          the Go agent kernel (own module at the repo root)
 ```
 
 `docs/architecture.md` is the authoritative structural reference; start there
@@ -58,7 +60,7 @@ for the full module map.
 ## Development
 
 - **Perf harness.** Run the large-vault benchmark with
-  `PERF_VAULT=1 pnpm exec playwright test e2e/perf/large-vault.spec.ts`.
+  `pnpm e2e:perf`.
   Baseline on a 20k-file vault: 32ms openFile median, 82ms explorer-click median.
 - **End-to-end.** `pnpm e2e` (web), `pnpm e2e:desktop` (Electron), `pnpm e2e:cli`.
 

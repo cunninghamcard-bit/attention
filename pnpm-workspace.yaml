@@ -21,7 +21,7 @@ supportedArchitectures:
 allowBuilds:
   # pure-JS SDK, no native build needed
   "@google/genai": false
-  electron: set this to true or false
+  electron: false
   node-pty: true
   # postinstall only stamps version files
   protobufjs: false
