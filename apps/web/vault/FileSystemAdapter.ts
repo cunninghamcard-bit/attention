@@ -644,7 +644,14 @@ export class FileSystemAdapter extends DataAdapter {
     const modules = await this.loadDesktopModules();
     const fullPath = this.getFullPath(path);
     if (!(await this.existsFullPath(fullPath, modules.fs))) return;
-    const listed = await this.list(path);
+    // Callers hand this hidden FILE paths too (.obsidian/app.json), and a
+    // child can vanish between the exists check and the scandir. Both are
+    // ordinary on the non-recursive (linux) walk — a file simply has no
+    // child folders to watch. macOS never gets here (recursive watcher).
+    const listed = await this.list(path).catch((error: NodeJS.ErrnoException) => {
+      if (error?.code === "ENOTDIR" || error?.code === "ENOENT") return { files: [], folders: [] };
+      throw error;
+    });
     for (const folder of listed.folders) await this.startHiddenWatchPath(folder);
   }
 

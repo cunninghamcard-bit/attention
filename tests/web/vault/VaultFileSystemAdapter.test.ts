@@ -161,3 +161,32 @@ describe("Vault with FileSystemAdapter events", () => {
 async function importRuntimeModule<T>(specifier: string): Promise<T> {
   return import(/* @vite-ignore */ specifier) as Promise<T>;
 }
+
+describe("hidden watch on the non-recursive (linux) walk", () => {
+  let basePath: string;
+  let fs: TestFsModule;
+  let os: TestOsModule;
+  let path: TestPathModule;
+
+  beforeEach(async () => {
+    fs ??= await importRuntimeModule<TestFsModule>(fsPromisesSpecifier);
+    os ??= await importRuntimeModule<TestOsModule>(osSpecifier);
+    path ??= await importRuntimeModule<TestPathModule>(pathSpecifier);
+    basePath = await fs.mkdtemp(path.join(os.tmpdir(), "obsidian-reconstructed-hidden-"));
+  });
+
+  afterEach(async () => {
+    await fs.rm(basePath, { force: true, recursive: true });
+  });
+
+  it("tolerates a hidden FILE path without an unhandled scandir rejection", async () => {
+    await fs.mkdir(path.join(basePath, ".obsidian"), { recursive: true });
+    await fs.writeFile(path.join(basePath, ".obsidian", "app.json"), "{}", "utf8");
+    const adapter = new FileSystemAdapter(basePath);
+    // Force the linux walk: macOS's recursive watcher early-returns and
+    // never reaches the child-folder scandir this regression pins.
+    Object.defineProperty(adapter, "usesRecursiveWatcher", { value: () => false });
+    const stop = await adapter.watchHiddenRecursive(".obsidian/app.json");
+    stop();
+  });
+});
