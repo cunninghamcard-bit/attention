@@ -1,6 +1,5 @@
 import type { SystemMenuItem } from "@app/shared/menu";
 
-
 export class SystemMenuBuilder {
   private menu: SystemMenuItem[] = [];
 

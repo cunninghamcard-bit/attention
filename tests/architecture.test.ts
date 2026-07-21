@@ -344,9 +344,9 @@ describe("Rule: shell-wall — the boundary points both ways", () => {
     expect(importsPortFromShared("apps/web/app/protocol/UriRouter.ts", "URL_SCHEME")).toBe(true);
     expect(importsPortFromShared("apps/desktop/main/obsidian-url.ts", "URL_SCHEME")).toBe(true);
     // system-menu template: renderer builder + main consumer share one shape
-    expect(importsPortFromShared("apps/web/platform/desktop/DesktopMenu.ts", "SystemMenuItem")).toBe(
-      true,
-    );
+    expect(
+      importsPortFromShared("apps/web/platform/desktop/DesktopMenu.ts", "SystemMenuItem"),
+    ).toBe(true);
     expect(importsPortFromShared("apps/desktop/main/menu.ts", "SystemMenuItem")).toBe(true);
   });
 });
@@ -375,7 +375,9 @@ describe("Rule: shared-contracts — the native seam is one typed contract", () 
     expect(importsPortFromShared("apps/web/builtin/git/GitService.ts", "ElectronGitApi")).toBe(
       true,
     );
-    expect(importsPortFromShared("apps/desktop/preload/git-bridge.ts", "ElectronGitApi")).toBe(true);
+    expect(importsPortFromShared("apps/desktop/preload/git-bridge.ts", "ElectronGitApi")).toBe(
+      true,
+    );
     // terminal port: same on both sides
     expect(
       importsPortFromShared("apps/web/builtin/terminal/TerminalAdapter.ts", "ElectronTerminalApi"),
