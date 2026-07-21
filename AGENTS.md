@@ -30,10 +30,17 @@ missing a capability, extend the shared primitive — do not clone it.
 **The stylesheet layering is the boundary, and it is load-bearing.**
 Everything under `styles/{tokens,base,components,features,workspace,editor}`
 is a _faithful extract_ of app.css and must stay byte-identical to it. Our
-own additions and overrides live **only** in `styles/product/**`, imported
-last. Never put a product choice in a faithful file; never let a faithful
-file drift from app.css. (Guarded by `StyleSystem.test.ts` and a
-property-level diff against app.css.)
+own CSS lives WITH its component (`builtin/<slice>/`, `views/`, `app/`),
+imported by `styles/index.css` after every faithful layer, and behaves like
+a well-mannered community plugin: selectors stay in the component's own
+namespace — faithful classes appear only as ancestor context or under an
+own attribute qualifier — and faithful design tokens are consumed or
+locally parameterized, never redefined globally. There is NO override
+layer: `styles/product/` is frozen at three recorded exceptions pending
+the deviations ticket. Never put a product choice in a faithful file;
+never let a faithful file drift from app.css. (Guarded by
+`StyleSystem.test.ts`: the exactly-once manifest, own-last order, and the
+restyle/token walls.)
 
 **Semantics drive structure, not behavior.** An element's classes are decided
 by _what it is_ — a file wears `nav-file` / `nav-file-title`, a folder or
