@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import { visualizer } from "rollup-plugin-visualizer";
 
-// The renderer is its own vite root (src/renderer). Its bundle emits to the
+// The renderer is its own vite root (apps/web). Its bundle emits to the
 // single out/ roof at out/web, which the Electron main serves via the app://
 // protocol from the sibling out/desktop (join(here, "..", "web") in main.ts).
 const rootDist = resolve(__dirname, "../../out/web");
@@ -11,12 +11,6 @@ export default defineConfig({
   root: __dirname,
   // Static assets (fonts, scripts like /lib/readability.js) served verbatim.
   publicDir: resolve(__dirname, "public"),
-  // The native-seam port contracts live one level up in src/shared.
-  resolve: {
-    alias: {
-      "@app/shared": resolve(__dirname, "../../packages/shared"),
-    },
-  },
   plugins: [
     ...(process.env.ANALYZE
       ? [

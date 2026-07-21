@@ -6,11 +6,6 @@ import dts from "vite-plugin-dts";
 // the vite/source root); artifacts land in this package's out/api (JS bundle
 // plus the bundled declarations the package exports point at).
 export default defineConfig({
-  resolve: {
-    alias: {
-      "@app/shared": resolve(__dirname, "../../packages/shared"),
-    },
-  },
   plugins: [
     dts({
       entryRoot: resolve(__dirname, "../.."),

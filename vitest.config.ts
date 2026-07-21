@@ -10,7 +10,6 @@ export default defineConfig({
       "@desktop": resolve(__dirname, "apps/desktop/main"),
       "@preload": resolve(__dirname, "apps/desktop/preload"),
       "@app/shared": resolve(__dirname, "packages/shared"),
-      "@shared": resolve(__dirname, "packages/shared"),
     },
   },
   test: {

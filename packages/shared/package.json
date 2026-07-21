@@ -5,6 +5,6 @@
   "description": "Native-seam port contracts (DataAdapter, ElectronGitApi, ElectronTerminalApi), the typed IPC channel table, and ambient declarations — one definition imported by both the shell and the renderer.",
   "type": "module",
   "exports": {
-    "./*": "./*"
+    "./*": "./*.ts"
   }
 }

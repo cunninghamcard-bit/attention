@@ -18,8 +18,10 @@
       "@web/*": ["./apps/web/*"],
       "@desktop/*": ["./apps/desktop/main/*"],
       "@preload/*": ["./apps/desktop/preload/*"],
+      // tests-lane exception: tests/ has no workspace dep on @app/shared yet
+      // (adding one regenerates the lockfile); app lanes resolve it via the
+      // package mechanism (workspace link + exports), not this path.
       "@app/shared/*": ["./packages/shared/*"],
-      "@shared/*": ["./packages/shared/*"]
     }
   },
   "include": ["apps/web", "packages/shared", "tests"],

@@ -371,7 +371,7 @@ describe("Rule: shared-contracts — the native seam is one typed contract", () 
   });
 
   it("imports the shared contracts from both main and renderer", () => {
-    // git port: renderer caller + main handler both compile against src/shared
+    // git port: renderer caller + main handler both compile against @app/shared
     expect(importsPortFromShared("apps/web/builtin/git/GitService.ts", "ElectronGitApi")).toBe(
       true,
     );
