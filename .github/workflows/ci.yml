@@ -11,6 +11,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The kernel-history wall follows the merged kernel commits; a
+          # shallow clone makes them unreachable and the wall reds.
+          fetch-depth: 0
       # mise is the single toolchain entry (node/pnpm/go pins from mise.toml);
       # CI runs the same gate as every local machine — no hand-copied step
       # list to drift (this file previously called typecheck:server and
@@ -20,6 +24,11 @@ jobs:
         env:
           CI: "true"
       - run: mise run gate
+        env:
+          # The runner exports a real GITHUB_TOKEN; the service's env fallback
+          # would pick it up and the refuses-without-a-token test could never
+          # refuse. The gate runs token-hermetic.
+          GITHUB_TOKEN: ""
       - run: pnpm run build
       - run: pnpm run build:electron
       # Not here yet (documented follow-up): the electron e2e / perf
