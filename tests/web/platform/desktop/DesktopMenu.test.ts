@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
 import { formatElectronAccelerator } from "@web/platform/desktop/DesktopMenu";
-import type { SystemMenuItem } from "@web/platform/desktop/SystemMenuBuilder";
+import type { SystemMenuItem } from "@app/shared/menu";
 
 describe("DesktopMenu Obsidian application menu bridge", () => {
   beforeEach(() => {

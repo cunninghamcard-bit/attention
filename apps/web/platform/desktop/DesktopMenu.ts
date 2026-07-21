@@ -4,7 +4,7 @@ import type { Hotkey } from "../../app/hotkeys/Keymap";
 import { Platform } from "../Platform";
 import type { Vault } from "../../vault/Vault";
 import type { DesktopMain } from "./DesktopMain";
-import type { SystemMenuItem } from "./SystemMenuBuilder";
+import type { SystemMenuItem } from "@app/shared/menu";
 
 export interface DesktopMenuApp {
   appId: string;

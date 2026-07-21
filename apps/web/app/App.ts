@@ -91,7 +91,7 @@ import {
 
 import { Cli } from "../app/cli/Cli";
 import { registerCliCommands } from "../app/cli/registerCliCommands";
-import { URL_SCHEME } from "./protocol/scheme";
+import { URL_SCHEME } from "@app/shared/scheme";
 const localStorageFallback = new Map<string, string>();
 
 function installAnimationFrameFallback(win: Window): void {

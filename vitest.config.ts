@@ -6,7 +6,6 @@ export default defineConfig({
     // Tests live centralized under tests/{web,desktop}/** (mirror paths) and
     // reach their subjects through these aliases into the workspace lanes.
     alias: {
-      "@app/web": resolve(__dirname, "apps/web"),
       "@web": resolve(__dirname, "apps/web"),
       "@desktop": resolve(__dirname, "apps/desktop/main"),
       "@preload": resolve(__dirname, "apps/desktop/preload"),

@@ -33,7 +33,8 @@ tree, only in the git remote.
 ├── packages/
 │   ├── shared/           @app/shared — the native-seam port CONTRACTS, one
 │   │                     definition each: gitApi, terminalApi, dataAdapter,
-│   │                     ipc (channel table) — imported by BOTH app lanes,
+│   │                     ipc (channel table), scheme (URL_SCHEME), menu
+│   │                     (SystemMenuItem) — imported by BOTH app lanes,
 │   │                     never re-declared per side; plus ambient types
 │   ├── sdk/              @app/sdk — an EMPTY seat (manifest only) for the
 │   │                     future kernel API client generated from the kernel
@@ -165,6 +166,11 @@ twice:
   Main's handler map and the renderer's callers both reference it, so channel
   names are one source of truth. Plain TS types, no zod and no runtime
   validation: the seam is a trusted, small, in-process surface.
+- **`scheme` / `menu`** — the two wire literals both processes speak: the
+  product URL scheme (renderer URI router, main URL parser, the CLI
+  short-circuit) and the system-menu template shape (the renderer builds it,
+  main feeds it to `Menu.buildFromTemplate`). Lifted here so the shell never
+  imports renderer source — the shell-wall's counterpart to the renderer-wall.
 
 The Go agent kernel sits at the repo root (`cmd/`, `internal/`, its own
 go.mod) — merged from its repository with full history, NOT a workspace
@@ -186,7 +192,7 @@ any edge that breaks a row.
 | Layer                                          | May import                                    | Must NOT import                                            |
 | ---------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------- |
 | **renderer** (`apps/web`)                      | own lane + `@app/shared`                      | `apps/desktop`, the `electron` module                      |
-| **main** (`apps/desktop/main`)                 | own lane + `@app/shared` + renderer contracts | a UI-framework dependency                                  |
+| **main** (`apps/desktop/main`)                 | own lane + `@app/shared`                      | `apps/web` source, a UI-framework dependency               |
 | **kernel** — `vault/`, `metadata/`, `storage/` | kernel + `core/` + `dom/` + `platform/` only  | anything above itself (app, views, ui, builtin, plugin, …) |
 | **`api/`** (public facade)                     | internal modules (it wraps them)              | —                                                          |
 | everything **outside `api/`**                  | internal modules                              | `api/` — no internal module may import the facade          |

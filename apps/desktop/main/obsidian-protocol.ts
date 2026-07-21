@@ -1,6 +1,6 @@
 import { parseObsidianUrl, resolveVaultForAction, type ObsidianAction } from "./obsidian-url";
 import type { VaultRegistry } from "./vault-registry";
-import { URL_SCHEME } from "@app/web/app/protocol/scheme";
+import { URL_SCHEME } from "@app/shared/scheme";
 
 /**
  * `obsidian://` routing orchestrator — real `$e(url)` end to end, plus the OS

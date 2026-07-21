@@ -16,7 +16,7 @@ import {
 } from "../ui/ActiveCloseableRegistry";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import type { MarketplacePluginEntry } from "../plugin/PluginMarketplace";
-import { URL_SCHEME } from "../app/protocol/scheme";
+import { URL_SCHEME } from "@app/shared/scheme";
 
 type SortMode = "download" | "update" | "release" | "alphabetical";
 

@@ -1,4 +1,4 @@
-import { URL_SCHEME } from "./scheme";
+import { URL_SCHEME } from "@app/shared/scheme";
 export interface ObsidianProtocolData {
   action: string;
   [key: string]: string | "true";

@@ -29,14 +29,6 @@ export default defineConfig({
       },
     },
   ],
-  // The main process imports its two shared items (SystemMenuItem, URL_SCHEME)
-  // from the renderer as `@app/web/*`; alias it to the renderer source so the
-  // electron bundle resolves the .ts directly.
-  resolve: {
-    alias: {
-      "@app/web": resolve(__dirname, "../../web"),
-    },
-  },
   build: {
     // Emit into the single out/ roof (electron out/desktop/main.cjs); the web
     // bundle sits at the sibling out/web so main resolves it relatively.

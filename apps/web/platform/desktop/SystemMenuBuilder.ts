@@ -1,17 +1,5 @@
-export interface SystemMenuItem {
-  id?: string;
-  label?: string;
-  type?: "separator" | "radio" | "checkbox";
-  role?: string;
-  accelerator?: string;
-  registerAccelerator?: boolean;
-  enabled?: boolean;
-  visible?: boolean;
-  checked?: boolean;
-  appCommand?: string;
-  before?: string[];
-  submenu?: SystemMenuItem[];
-}
+import type { SystemMenuItem } from "@app/shared/menu";
+
 
 export class SystemMenuBuilder {
   private menu: SystemMenuItem[] = [];

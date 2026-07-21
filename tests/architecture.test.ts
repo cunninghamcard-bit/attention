@@ -151,6 +151,31 @@ function findRendererShellImports(files: SourceFile[]): Array<{ path: string; im
   return violations;
 }
 
+/**
+ * Rule: shell-wall. The boundary points both ways: the shell may not import
+ * renderer SOURCE either — its shared symbols come from @app/shared, and it
+ * consumes the renderer only as build output. A renderer import is a
+ * `@app/web`/`@web` alias or a relative import that escapes into apps/web
+ * (docs/architecture/web-desktop-boundary/spec.md).
+ */
+const RENDERER_ALIASES = ["@app/web", "@web"];
+
+function findShellRendererImports(files: SourceFile[]): Array<{ path: string; import: string }> {
+  const violations: Array<{ path: string; import: string }> = [];
+  for (const file of files) {
+    for (const spec of file.imports) {
+      const aliased = RENDERER_ALIASES.some((name) => spec === name || spec.startsWith(`${name}/`));
+      let relative = false;
+      if (spec.startsWith(".")) {
+        const resolved = resolveRelativeImport(file.path, spec);
+        relative = resolved === "apps/web" || resolved.startsWith("apps/web/");
+      }
+      if (aliased || relative) violations.push({ path: file.path, import: spec });
+    }
+  }
+  return violations;
+}
+
 // ---------------------------------------------------------------------------
 // fs helpers (kept separate from the pure checkers above)
 // ---------------------------------------------------------------------------
@@ -289,6 +314,40 @@ describe("Rule: monorepo-shape — one repo, three lanes", () => {
       imports: ["electron", "@desktop/ipc", "../../desktop/main/state"],
     };
     expect(findRendererShellImports([synthetic])).toHaveLength(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rule: shell-wall — the boundary points both ways
+// (docs/architecture/web-desktop-boundary/spec.md)
+// ---------------------------------------------------------------------------
+
+describe("Rule: shell-wall — the boundary points both ways", () => {
+  it("keeps the shell free of renderer-source imports", () => {
+    const files = sourceFilesUnder(["apps/desktop"], [".ts", ".tsx"], true);
+
+    expect(findShellRendererImports(files)).toEqual([]);
+
+    const synthetic: SourceFile = {
+      path: "apps/desktop/main/X.ts",
+      imports: [
+        "@app/web/app/protocol/scheme",
+        "../../web/platform/Platform",
+        "@app/shared/scheme",
+      ],
+    };
+    expect(findShellRendererImports([synthetic])).toHaveLength(2);
+  });
+
+  it("imports the wire contracts from @app/shared on both sides", () => {
+    // URL scheme: renderer URI router + main URL parser share one constant
+    expect(importsPortFromShared("apps/web/app/protocol/UriRouter.ts", "URL_SCHEME")).toBe(true);
+    expect(importsPortFromShared("apps/desktop/main/obsidian-url.ts", "URL_SCHEME")).toBe(true);
+    // system-menu template: renderer builder + main consumer share one shape
+    expect(importsPortFromShared("apps/web/platform/desktop/DesktopMenu.ts", "SystemMenuItem")).toBe(
+      true,
+    );
+    expect(importsPortFromShared("apps/desktop/main/menu.ts", "SystemMenuItem")).toBe(true);
   });
 });
 

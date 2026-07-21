@@ -19,7 +19,7 @@ import { handleObsidianUrl, obsidianUrlFromArgv } from "./obsidian-protocol";
 import { registerSessionHardening } from "./session-hardening";
 import { registerDesktopBridgeIpc } from "./desktop-bridge";
 import { applyMenu, updateMenuItems } from "./menu";
-import type { SystemMenuItem } from "@app/web/platform/desktop/SystemMenuBuilder";
+import type { SystemMenuItem } from "@app/shared/menu";
 import { CliServer, defaultCliSocketPath } from "./cli/CliServer";
 import { runCliClient } from "./cli/CliClient";
 import { dispatchCli } from "./cli/CliDispatch";
