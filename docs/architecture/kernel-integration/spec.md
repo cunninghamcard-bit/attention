@@ -106,7 +106,7 @@ persistent agent, close the window, reopen — the session is still there.
 - **The wall, machine-enforced:** "rendering never imports @app/sdk"
   (shared pure-UI/rendering packages may not import the SDK; the app
   layers of apps/desktop and apps/web may) ships as an oxlint
-  no-restricted-imports rule inside `mise run gate`, not as prose.
+  no-restricted-imports rule inside the mise lint battery, not as prose.
 - **Plugins split (restated):** UI plugins stay client-side unchanged;
   agent-capability extensions are server-side via MCP/Skill. The kernel's
   own md/JS plugin system continues as its capability surface.
@@ -194,7 +194,7 @@ Scenario: the full gate passes with the new pieces (critical)
 Review: human
 Test: keeps the full gate green through kernel integration
 Given the integrated tree
-When mise run gate plus e2e and builds run
+When the mise lint/typecheck/test/packcheck battery plus e2e and builds run
 Then all pass with no test weakened, skipped or deleted
 
 ## Out of Scope

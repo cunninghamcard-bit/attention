@@ -26,7 +26,8 @@ the perf harness opens files in a 20,000-file vault at a 32ms median.
 ## Quick start
 
 ```bash
-mise install && mise run gate   # one command to a pinned toolchain + the full review gate
+mise run setup                  # pinned toolchain + all dependencies
+mise run lint && mise run typecheck && mise run test && mise run test:go
 
 pnpm install       # pnpm only — a preinstall hook enforces it
 

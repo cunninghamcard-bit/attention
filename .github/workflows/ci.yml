@@ -20,16 +20,20 @@ jobs:
       # list to drift (this file previously called typecheck:server and
       # build:server, scripts that never existed in this tree).
       - uses: jdx/mise-action@v2
-      - run: pnpm install --frozen-lockfile
+      - run: mise run setup
         env:
           CI: "true"
-      - run: mise run gate
+      - run: mise run lint
+      - run: mise run typecheck
+      # The runner exports a real GITHUB_TOKEN; the service's env fallback
+      # would pick it up and the refuses-without-a-token test could never
+      # refuse. Tests run token-hermetic.
+      - run: mise run test
         env:
-          # The runner exports a real GITHUB_TOKEN; the service's env fallback
-          # would pick it up and the refuses-without-a-token test could never
-          # refuse. The gate runs token-hermetic.
           GITHUB_TOKEN: ""
-      - run: pnpm run build
-      - run: pnpm run build:electron
+      - run: mise run test:go
+      - run: mise run packcheck
+      - run: mise run web:build
+      - run: mise run desktop:build
       # Not here yet (documented follow-up): the electron e2e / perf
       # harness (needs xvfb + a display) — stays local-only for now.

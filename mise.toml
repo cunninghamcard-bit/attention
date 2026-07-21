@@ -1,43 +1,47 @@
-# Toolchain control (owner's layers): mise pins tool versions and is the task
-# entry point; vp (Vite+) fronts the ENTIRE JS toolchain — check/fmt/lint/
-# test, per-app build/dev, and every remaining script via `vp run` (vp wraps
-# vitest/oxlint/prettier/rolldown/pnpm, so pnpm still owns dependencies
-# underneath; tsc lanes stay explicit scripts because vp check's type stage
-# does not engage this repo, red-probed); the Go kernel is mise-direct
-# (vp is JS-only). New machine: `mise install && mise run gate`.
+# Toolchain control: mise pins tool versions and is the task entry point; vp
+# (Vite+) fronts the JS toolchain (it wraps vitest/oxlint/prettier/rolldown/
+# pnpm, so pnpm still owns dependencies underneath; tsc lanes stay explicit
+# scripts because vp check's type stage does not engage this repo); the Go
+# kernel is mise-direct. Task taxonomy mirrors memoh.
+# New machine: `mise run setup`, then `mise run lint && mise run typecheck &&
+# mise run test && mise run test:go`.
 
 [tools]
 node = "26.3.0"
 pnpm = "11.7.0"
 go = "1.26"
 
-[tasks.install]
-description = "Install dependencies — pnpm bootstraps (vp lives in node_modules, so it cannot install itself); after bootstrap `pnpm exec vp install` is equivalent"
+[tasks.pnpm-install]
+description = "Install dependencies — pnpm (a preinstall hook enforces pnpm-only)"
 run = "pnpm install --frozen-lockfile"
+
+[tasks.go-install]
+description = "Install Go dependencies"
+run = "go mod download"
+
+[tasks.setup]
+description = "Setup development environment"
+depends = ["//:pnpm-install", "//:go-install"]
 
 [tasks.dev]
 description = "Vite dev server at http://127.0.0.1:5173"
 run = "pnpm exec vp run dev"
 
-[tasks.test]
-description = "Full vitest suite, via vp"
-run = "pnpm exec vp test"
+[tasks.lint]
+description = "Run all linters (non-mutating; format is checked, not rewritten)"
+run = ["pnpm exec vp check", "mise run lint:go"]
 
-[tasks.e2e]
-description = "Playwright end-to-end tests (web)"
-run = "pnpm exec vp run e2e"
+[tasks."lint:es"]
+description = "Run the JS/TS linter"
+run = "pnpm exec vp lint"
 
-[tasks.desktop]
-description = "Build + launch the Electron app"
-run = "pnpm exec vp run desktop"
+[tasks."lint:go"]
+description = "Run the Go vet pass over the kernel"
+run = "go vet ./..."
 
 [tasks.format]
 description = "Rewrite formatting, via vp (vendored trees excluded by .prettierignore). NEVER `vp check --fix`: its lint autofixes rewrite semantics."
 run = "pnpm exec vp fmt"
-
-[tasks.lint]
-description = "oxlint, via vp"
-run = "pnpm exec vp lint"
 
 [tasks.typecheck]
 description = "All three tsc lanes. Stays explicit: red-probed vp check and it passes a bare type error — its type stage does not engage this repo."
@@ -47,6 +51,18 @@ run = [
   "pnpm exec vp run typecheck:tools",
 ]
 
+[tasks.test]
+description = "Full vitest suite, via vp"
+run = "pnpm exec vp test"
+
+[tasks."test:go"]
+description = "Go kernel tests — root module plus the nested cmd/tui module"
+run = ["go test ./...", "go -C cmd/tui test ./..."]
+
+[tasks."test:e2e"]
+description = "Playwright end-to-end tests (web)"
+run = "pnpm exec vp run e2e"
+
 [tasks."web:build"]
 description = "Build apps/web via vp (Rolldown). vp only discovers the config from inside the package."
 run = "cd apps/web && pnpm exec vp build"
@@ -55,29 +71,31 @@ run = "cd apps/web && pnpm exec vp build"
 description = "Vite dev server via vp, from inside apps/web"
 run = "cd apps/web && pnpm exec vp dev"
 
-[tasks.gate]
-description = "The review gate, in one command. Non-mutating: format is checked, not rewritten. Its output is the delivery receipt."
-run = [
-  "pnpm exec vp check",
-  "mise run typecheck",
-  "pnpm exec vp test",
-  "pnpm run build:api",
-  "pnpm run packcheck",
-  "mise run kernel:test",
-]
+[tasks."api:build"]
+description = "Build the public API bundle and declarations (packcheck validates these artifacts)"
+run = "pnpm run build:api"
+
+[tasks.packcheck]
+description = "Validate the @app/web package manifest against its built artifacts (publint + attw)"
+depends = ["//:api:build"]
+run = "pnpm run packcheck"
+
+[tasks."desktop:dev"]
+description = "Build + launch the Electron app"
+run = "pnpm exec vp run desktop"
+
+[tasks."desktop:build"]
+description = "Build the Electron main/preload bundles"
+run = "pnpm run build:electron"
 
 [tasks."kernel:build"]
-description = "Build the Go kernel binary to bin/along (former Makefile `kernel` target)"
+description = "Build the Go kernel binary to bin/along"
 run = "go build -o bin/along ./cmd/along"
 
-[tasks."kernel:test"]
-description = "Go kernel tests — root module plus the nested cmd/tui module"
-run = ["go test ./...", "go -C cmd/tui test ./..."]
-
 [tasks."kernel:tui"]
-description = "Build the kernel and launch the TUI against it (former Makefile `run` target)"
+description = "Build the kernel and launch the TUI against it"
 run = ["go build -o bin/along ./cmd/along", "go -C cmd/tui run . --along-path ../../bin/along"]
 
 [tasks."kernel:clean"]
-description = "Remove kernel build output (former Makefile `clean` target)"
+description = "Remove kernel build output"
 run = "rm -rf bin"
