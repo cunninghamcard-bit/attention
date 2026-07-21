@@ -85,6 +85,7 @@ Known test failures (all pre-existing at `a4702cc`, none are code regressions):
 
 - `internal/execenv/local` and `internal/resource` — macOS-only env quirks
   (symlinked `/var`, case-insensitive FS).
-- `internal/extension/jshost` and `internal/orchestrator` — two JS-extension
-  tests need `bun` on PATH plus a `pi` example-extension fixture that is not part
-  of the kernel. The extension JS host runs extensions via `bun` (pi-style).
+- (removed 07-21: a bullet here described `internal/extension/jshost` JS
+  tests needing `bun` — that package does not exist in this kernel and no
+  Go source invokes bun; the extension host is native Go. Documentation
+  drift from the pre-extraction snapshot.)
