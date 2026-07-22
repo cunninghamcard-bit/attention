@@ -44,6 +44,16 @@
   text-decoration: none;
 }
 
+.git-pr-view ins {
+  color: var(--color-green);
+  text-decoration: none;
+}
+
+.git-pr-view del {
+  color: var(--color-red);
+  text-decoration: none;
+}
+
 /* --- Conversation ----------------------------------------------------- */
 
 .git-pr-conversation,

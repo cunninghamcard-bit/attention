@@ -105,15 +105,6 @@
   color: var(--color-orange);
 }
 
-.review-sidebar-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--size-4-2) var(--size-4-3);
-  border-top: 1px solid var(--background-modifier-border);
-  font-variant-numeric: tabular-nums;
-}
-
 /* --- Main pane --------------------------------------------------------- */
 
 .review-main {
@@ -202,14 +193,12 @@
   color: var(--color-orange);
 }
 
-.review-surface ins,
-.git-pr-view ins {
+.review-surface ins {
   color: var(--color-green);
   text-decoration: none;
 }
 
-.review-surface del,
-.git-pr-view del {
+.review-surface del {
   color: var(--color-red);
   text-decoration: none;
 }
@@ -263,82 +252,6 @@
 }
 .review-action.mod-request-changes {
   color: var(--color-red);
-}
-
-/* --- Keyboard help -------------------------------------------------------- */
-
-.review-help {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: 60px;
-  background-color: var(--background-modifier-cover);
-  z-index: var(--layer-modal, 50);
-}
-
-.review-help-panel {
-  min-width: 260px;
-  padding: var(--size-4-3);
-  border-radius: var(--radius-m);
-  border: 1px solid var(--background-modifier-border);
-  background-color: var(--background-primary);
-  box-shadow: var(--shadow-s);
-}
-
-.review-help-title {
-  font-weight: var(--font-semibold);
-  margin-bottom: var(--size-4-2);
-}
-
-.review-help-row {
-  display: flex;
-  align-items: center;
-  gap: var(--size-4-3);
-  padding: 2px 0;
-  font-size: var(--font-ui-small);
-}
-
-.review-help-row kbd {
-  min-width: 48px;
-  text-align: center;
-  padding: 1px var(--size-4-1);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-s);
-  background-color: var(--background-secondary);
-  font-family: var(--font-monospace);
-  font-size: var(--font-ui-smaller);
-}
-
-/* --- PR files tab hosts the surface ------------------------------------- */
-
-.git-pr-files {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  padding: 0;
-}
-
-.git-pr-detail {
-  height: 100%;
-}
-
-.review-icon {
-  display: inline-flex;
-  --icon-size: var(--icon-s);
-}
-
-.review-toolbar-title {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--font-ui-small);
-  color: var(--text-muted);
-  margin-right: var(--size-4-2);
 }
 
 /* --- Right-docked git nav (codiff Tree | History, on the right) ---------- */

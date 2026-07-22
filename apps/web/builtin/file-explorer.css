@@ -1,11 +1,3 @@
-/* Make the extension badge read as a chip instead of faint text. */
-.nav-file-tag {
-  background-color: var(--background-modifier-hover);
-  color: var(--text-muted);
-  font-size: 8.5px;
-  font-weight: 600;
-}
-
 /* Product choice: file-explorer header buttons align left (newer Obsidian
    look) — scoped here so the shared centered default for view-actions and
    other button rows stays untouched. */

@@ -14,7 +14,7 @@
  * Obsidian avoids this by sizing the container from its layout runtime (JS),
  * which app.css does not encode. We render CSS-only, so we supply the bound
  * ourselves. This is the CSS equivalent of what Obsidian's runtime does — hence
- * it lives here in product/, and editor/reading-view.css stays a faithful extract.
+ * it lives under deviations/, and editor/reading-view.css stays a faithful extract.
  *
  * Verified originally in ab4f3a3 (80-section note, viewport 642 vs content 8701,
  * scrollTop sticks, properties bar coexists). */

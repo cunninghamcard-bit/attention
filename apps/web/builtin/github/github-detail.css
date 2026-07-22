@@ -54,7 +54,7 @@
 
 /* container-type so the issue layout below can answer to the leaf's width and
    not the window's — a leaf in a split is narrow while the window is not.
-   Same idiom as .review-scroll in git-review.css. */
+   Same idiom as .review-codeview in git-review.css. */
 .gh-detail-scroll {
   overflow: auto;
   flex: 1;
@@ -144,27 +144,6 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.gh-detail-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.gh-detail-action {
-  padding: 4px 10px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-s);
-  background: transparent;
-  box-shadow: none;
-  color: var(--text-muted);
-  font-size: var(--font-ui-smaller);
-}
-
-.gh-detail-action:hover {
-  color: var(--text-normal);
-  background: var(--background-modifier-hover);
 }
 
 .github-create-issue {

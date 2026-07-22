@@ -3,7 +3,8 @@
    (splits-tabs.css); markdown/backlink/canvas each cancel it with their own
    `[data-type]` override — terminal was the one type missing it, which left a
    ~12px side / ~32px bottom padding inset around the surface. Match the pattern
-   at equal specificity; product/ is imported last so this wins the tie. */
+   at equal specificity; own component CSS follows the faithful layers, so
+   this wins the tie. */
 .workspace-leaf-content[data-type="terminal"] .view-content {
   padding: 0;
   overflow: hidden;

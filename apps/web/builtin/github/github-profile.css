@@ -75,10 +75,6 @@
   color: var(--text-muted);
 }
 
-.github-profile-pending {
-  font-style: italic;
-}
-
 /* --- Pinned repositories -------------------------------------------------- */
 
 .github-profile-pinned {

@@ -11,10 +11,6 @@
 .git-pr-signin-card {
   max-width: 440px;
   width: 100%;
-  text-align: center;
-}
-
-.git-pr-signin-card {
   text-align: left;
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-l);

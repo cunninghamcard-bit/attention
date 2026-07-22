@@ -126,16 +126,16 @@ describe("Workbench style system", () => {
 // ---------------------------------------------------------------------------
 
 /**
- * Recorded exceptions, each awaiting the deviations ticket's verdict. The
- * goal state is an empty set; a new entry requires a recorded decision.
+ * Recorded exceptions, each carrying the deviations ticket's verdict. The goal
+ * state is an empty set; a new entry requires a recorded decision.
  */
 const RESTYLE_ALLOWLIST = new Set([
   // VERDICT (07-21, owner-delegated): colored semantic type icons lift
   // Obsidian's monochrome icon dimming on the nav icon slot — a recorded
   // product choice; the palette itself is own-namespaced.
   "../ui/file-type-icon.css",
-  // VERDICT: nav-file-tag chip + tall-row icon sizing are recorded product
-  // choices (rationale in the file's comments).
+  // VERDICT: inline type-icon layout + tall-row icon sizing are recorded
+  // product choices (rationale in the file's comments).
   "../builtin/file-explorer.css",
   // VERDICT: the product brand deliberately replaces Obsidian's
   // splash-brand on the starter screen.
