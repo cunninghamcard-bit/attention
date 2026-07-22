@@ -73,7 +73,6 @@
 @import "./features/webviewer-workspaces.css";
 @import "./workspace/starter-splash.css";
 @import "./base/platform-mobile.css";
-@import "./deviations/reading-view.css";
 @import "../views/code-view.css";
 @import "../builtin/terminal/terminal.css";
 @import "../ui/file-type-icon.css";

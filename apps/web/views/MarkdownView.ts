@@ -226,6 +226,8 @@ export class MarkdownView extends TextFileView {
     this.backlinksEl.hidden = true;
     this.previewContainerEl = document.createElement("div");
     this.previewContainerEl.className = "markdown-reading-view";
+    this.previewContainerEl.style.width = "100%";
+    this.previewContainerEl.style.height = "100%";
     this.previewRendererEl = document.createElement("div");
     this.previewRendererEl.className = "markdown-preview-view markdown-rendered";
     this.previewContainerEl.appendChild(this.previewRendererEl);

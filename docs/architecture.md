@@ -99,7 +99,7 @@ platform/   platform family (platform + native + shell + window + desktop + mobi
 plugin/     plugin runtime — manager, loader, manifest, security, marketplace, internal + community machinery
 search/     global search engine over notes and code
 storage/    kernel — app config, JSON stores, secret storage (behind the JSON-store adapter seam)
-styles/     the faithful app.css extract (tokens, base, vendor, components, workspace, editor, features) + reveal demos + deviations/ (registered, one file per deviation); own component styles live WITH their components (ui/, builtin/, views/, app/), imported last via index.css
+styles/     the faithful app.css extract (tokens, base, vendor, components, workspace, editor, features) + reveal demos + optional deviations/ (registered, one file per deviation); own component styles live WITH their components (ui/, builtin/, views/, app/), imported last via index.css
 ui/         ui family (ui + drag + hover + suggest): Modal, Menu, Notice, Setting, Icon, Popover primitives
 vault/      kernel — Vault, the DataAdapter/FileSystemAdapter seam, TAbstractFile, file watcher
 views/      view layer + views family (workspace + properties): ItemView, MarkdownView, FileView, WorkspaceLeaf/Split
