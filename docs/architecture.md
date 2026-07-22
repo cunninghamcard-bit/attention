@@ -1,11 +1,9 @@
-<!-- docwright:governs: apps/**, packages/**, cmd/**, internal/** -->
-
 # Architecture
 
 This document governs `apps/**`, `packages/**`, and the Go kernel lanes
-`cmd/**` + `internal/**`. `docwright guard` flags it as drift when the
-directory tree, the runtime split, or the import rules below stop matching
-the code — keep the doc and the tree in step or the guard goes red.
+`cmd/**` + `internal/**`. The architecture tests under
+`tests/architecture.test.ts` enforce the directory layout and import walls in
+CI; keep this document and those executable constraints in step with the code.
 
 This workbench is a clean-room, runnable reconstruction of Obsidian's frontend
 architecture, grown into an agent workspace. It is a **monorepo for a

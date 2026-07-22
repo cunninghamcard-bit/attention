@@ -672,15 +672,17 @@ describe("Rule: retirement — museum code and legacy docs are gone", () => {
 // ---------------------------------------------------------------------------
 
 describe("Rule: architecture-docs — the new documentation set exists", () => {
-  it("architecture doc and constitution exist with governs markers", () => {
+  it("architecture doc and constitution declare their governed structure", () => {
     expect(existsSync(abs("docs", "architecture.md"))).toBe(true);
     const architectureDoc = readText("docs/architecture.md");
-    expect(architectureDoc).toContain("docwright:governs");
+    expect(architectureDoc).toMatch(
+      /governs `apps\/\*\*`, `packages\/\*\*`, and the Go kernel lanes\s+`cmd\/\*\*` \+ `internal\/\*\*`/,
+    );
     expect(architectureDoc).toMatch(/^#+.*direction table/im);
 
     expect(existsSync(abs("docs", "project.spec.md"))).toBe(true);
     const projectSpec = readText("docs/project.spec.md");
-    // docwright frontmatter has no leading "---": it's key: value lines up to the first "---".
+    // Project-spec frontmatter has no leading "---": it ends at the first delimiter.
     const frontmatter = projectSpec.split(/^---\s*$/m)[0] ?? "";
     expect(frontmatter).toMatch(/^spec:\s*project\s*$/m);
   });
