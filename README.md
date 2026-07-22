@@ -71,3 +71,4 @@ This workbench was reconstructed from a behavioral study of Obsidian — its
 bundled app shape, public API names, DOM classes, and plugin extension points
 (the `decode-obsidian` reference tree). It contains no original Obsidian source
 code and is not affiliated with, endorsed by, or a product of Obsidian.
+probe

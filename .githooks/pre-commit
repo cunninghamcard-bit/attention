@@ -4,3 +4,27 @@ if command -v sem >/dev/null 2>&1; then
     sem diff --staged 2>/dev/null
 fi
 # === end sem ===
+
+# === shared-tree branch guard ===
+# The primary clone commits to main only (AGENTS.md "Collaboration": work
+# happens in sandboxes/worktrees; the shared tree is not an editing surface).
+# Two real accidents landed commits on someone else's live branch here.
+# Override deliberately: SKIP_BRANCH_GUARD=1 git commit ...
+if [ -z "$SKIP_BRANCH_GUARD" ]; then
+    toplevel=$(git rev-parse --show-toplevel 2>/dev/null)
+    gitdir=$(git rev-parse --git-dir 2>/dev/null)
+    branch=$(git branch --show-current 2>/dev/null)
+    # Only the primary clone (its git-dir is .git, not a worktree pointer),
+    # and only when parked on a non-main branch.
+    case "$gitdir" in
+        */.git|.git)
+            if [ -n "$branch" ] && [ "$branch" != "main" ]; then
+                echo "pre-commit: the shared tree is on '$branch', not main." >&2
+                echo "Committing here has twice landed work on someone else's branch." >&2
+                echo "Use your own worktree, or override: SKIP_BRANCH_GUARD=1 git commit" >&2
+                exit 1
+            fi
+            ;;
+    esac
+fi
+# === end shared-tree branch guard ===
