@@ -43,8 +43,6 @@ tree, only in the git remote.
 ├── internal/             the Go kernel's engine packages (orchestrator,
 │                         harness, hook, extension, tool, resource, session…)
 ├── extension/            the kernel's file plugins
-├── specs/                the kernel's own spec household (docwright-style,
-│                         kept as-is until a later contract consolidates)
 ├── go.mod / go.sum       the kernel's module — at the ROOT, never a pnpm
 │                         workspace member
 ├── tests/                ALL unit tests, centralized (workspace member
@@ -229,12 +227,12 @@ presenter layer. That machinery polices an untrusted, secret-holding sandbox
 we do not have; our trusted small-surface seam needs only typed interfaces.
 
 **The kernel is seated, not wired.** The Go agent kernel lives at the repo
-root with its own module and its own spec household — present but dark:
-nothing spawns it and no JS imports it. Seating it in-tree (history intact)
-precedes wiring it; the wiring — transport, `@app/sdk` generation, capability
-gating — is the kernel-integration ticket's scope, on owner-recorded
-direction (memoh-style HTTP facade + WS, OpenAPI-generated client, the
-retired hand-written `KernelApi` port never returns).
+root with its own module, but nothing spawns it and no JS imports it. Seating
+it in-tree (history intact) precedes wiring it; the wiring — transport,
+`@app/sdk` generation, capability gating — is the kernel-integration ticket's
+scope, on owner-recorded direction (memoh-style HTTP facade + WS,
+OpenAPI-generated client, the retired hand-written `KernelApi` port never
+returns).
 
 **Tests are centralized, gates are total.** Unit tests live under `tests/`
 (never next to source), mirroring source paths; `tests/` is its own

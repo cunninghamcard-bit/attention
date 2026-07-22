@@ -16,9 +16,9 @@ jobs:
           # shallow clone makes them unreachable and the wall reds.
           fetch-depth: 0
       # mise is the single toolchain entry (node/pnpm/go pins from mise.toml);
-      # CI runs the same gate as every local machine — no hand-copied step
-      # list to drift (this file previously called typecheck:server and
-      # build:server, scripts that never existed in this tree).
+      # CI composes the same discrete mise tasks used by local workflows below
+      # (this file previously called typecheck:server and build:server, tasks
+      # that never existed in this tree).
       - uses: jdx/mise-action@v2
       - run: mise run setup
         env:
