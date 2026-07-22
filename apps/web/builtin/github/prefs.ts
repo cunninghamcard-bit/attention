@@ -1,6 +1,6 @@
 import type { PrListFilter } from "./types";
 
-const STORAGE_KEY = "workbench-github-pr-prefs";
+const STORAGE_KEY = "attention-github-pr-prefs";
 
 export interface GitHubPrPrefs {
   owner: string;
