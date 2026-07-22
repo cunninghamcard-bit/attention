@@ -5,7 +5,7 @@ import { App } from "@web/app/App";
 import { GitHubProfileView } from "@web/builtin/github/GitHubProfileView";
 import { GitHubRepoView } from "@web/builtin/github/GitHubRepoView";
 import { openOrg, refreshGitHub } from "@web/builtin/github/open";
-import type { GithubRepoListItem } from "@web/builtin/github/GitHubService";
+import type { GitHubRepoListItem } from "@web/builtin/github/GitHubService";
 import type {
   ContributionCalendar,
   GitHubProfile,
@@ -101,7 +101,7 @@ const CALENDAR: ContributionCalendar = {
   stats: { commits: 930, pullRequests: 18, codeReviews: 0, issues: 12 },
 };
 
-const ORG_REPOS: GithubRepoListItem[] = [
+const ORG_REPOS: GitHubRepoListItem[] = [
   {
     owner: "acme-corp",
     repo: "platform",

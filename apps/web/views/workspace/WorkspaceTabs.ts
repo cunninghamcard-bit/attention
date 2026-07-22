@@ -436,7 +436,7 @@ export class WorkspaceTabs extends WorkspaceParent {
   private async openFilesInNewTabs(files: TFile[], startIndex: number): Promise<void> {
     const leaves: WorkspaceLeaf[] = [];
     let index = startIndex;
-    for (const file of files) {
+    for (let fileIndex = 0; fileIndex < files.length; fileIndex += 1) {
       const leaf = new WorkspaceLeaf(this.workspace, undefined, this.containerEl.ownerDocument);
       this.insertChild(index, leaf, false);
       index += 1;
@@ -458,7 +458,7 @@ export class WorkspaceTabs extends WorkspaceParent {
     if (!openBookmarkInLeaf) return;
     const leaves: WorkspaceLeaf[] = [];
     let index = startIndex;
-    for (const item of items) {
+    for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
       const leaf = new WorkspaceLeaf(this.workspace, undefined, this.containerEl.ownerDocument);
       this.insertChild(index, leaf, false);
       index += 1;

@@ -8,7 +8,6 @@ import { GitHubProfileView } from "@web/builtin/github/GitHubProfileView";
 import { GitHubDetailView } from "@web/builtin/github/GitHubDetailView";
 import { GitHubRepoView } from "@web/builtin/github/GitHubRepoView";
 import { PrDetailView } from "@web/builtin/github/GitPrViews";
-import { Notice } from "@web/ui/Notice";
 import {
   openGitHubNav,
   openInbox,

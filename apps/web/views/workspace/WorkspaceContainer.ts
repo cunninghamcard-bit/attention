@@ -1,6 +1,5 @@
 import type { Workspace } from "./Workspace";
 import { WorkspaceSplit } from "./WorkspaceSplit";
-import type { WorkspaceLeaf } from "./WorkspaceLeaf";
 
 export class WorkspaceContainer extends WorkspaceSplit {
   override isWorkspaceContainer = true;

@@ -261,7 +261,7 @@ describe("FileExplorerView external folder drops", () => {
     const app = new App(document.createElement("div"));
     await app.vault.createFolder("Folder");
     const note = await app.vault.create("Folder/Note.md", "");
-    const other = await app.vault.create("Other.md", "");
+    await app.vault.create("Other.md", "");
     const view = await openFileExplorerView(app);
     const folderTitleEl = queryRequired<HTMLElement>(
       view.contentEl,

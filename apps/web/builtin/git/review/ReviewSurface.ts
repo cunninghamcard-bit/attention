@@ -19,7 +19,6 @@ import {
   type ReviewDiffStyle,
   type ReviewDraftComment,
   type ReviewFile,
-  type ReviewFileStatus,
   statusLetter,
   writeDiffStyle,
   writeViewed,

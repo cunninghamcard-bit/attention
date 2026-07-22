@@ -145,7 +145,7 @@ describe("FileInputSuggest DOM and behavior parity", () => {
     const selected: FolderSuggestion[] = [];
     const inputListener = vi.fn();
     const changeListener = vi.fn();
-    const suggest = new FolderInputSuggest(createApp(vault), input, true, true).onSelect((value) =>
+    new FolderInputSuggest(createApp(vault), input, true, true).onSelect((value) =>
       selected.push(value),
     );
     input.addEventListener("input", inputListener);

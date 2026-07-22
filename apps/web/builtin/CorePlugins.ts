@@ -43,14 +43,9 @@ import { createGitPluginDefinition } from "./git/GitPlugin";
 import { createGitHubPluginDefinition } from "./github/GitHubPlugin";
 import { openFileCompare, openGitDiff } from "../views/DiffView";
 import { openFileHistory } from "./git/GitHistoryView";
-import { openGitReview } from "./git/review/GitReviewView";
 import { createBookmarksPluginDefinition } from "./Bookmarks";
 import { createSlidesPluginDefinition } from "./Slides";
 import { createAudioRecorderPluginDefinition } from "./AudioRecorder";
-
-const openRootView = (app: App, viewType: string, mode: "tab" | "split" = "tab") => {
-  void app.workspace.getLeaf(mode).setViewState({ type: viewType, active: true });
-};
 
 export const nonParityFeatureScope = [
   {

@@ -162,7 +162,6 @@ export class Workspace extends Events {
   private lastActiveFile: TFile | null = null;
   private protocolHandlers = new Map<string, ObsidianProtocolHandler>();
   private uriHookRegistered = false;
-  private appUrlOpenListener: { remove?: () => void } | null = null;
   private _layoutReady = false;
   private onLayoutReadyCallbacks: LayoutReadyCallbackRecord[] | null = [];
   private layoutReadyCallbacksPromise: Promise<void> = Promise.resolve();
@@ -1621,7 +1620,6 @@ export class Workspace extends Events {
     const pendingAction = hookWindow.OBS_ACT;
     const handleAction = (data?: ObsidianProtocolData | null): void => {
       if (!data) return;
-      console.log("Received URL action", data);
       (this.getFocusedContainer() as { focus?: () => void }).focus?.();
       void this.handleProtocolData(data).then((handled) => {
         if (!handled && data.action) new Notice(`Invalid URI action "${data.action}"`);
@@ -1632,7 +1630,7 @@ export class Workspace extends Events {
     if (pendingAction && typeof pendingAction !== "function") handleAction(pendingAction);
 
     const bridge = getAppUrlOpenBridge(hookWindow);
-    const listener = bridge?.addListener?.("appUrlOpen", (event) => {
+    void bridge?.addListener?.("appUrlOpen", (event) => {
       const uri = typeof event === "string" ? event : event?.url;
       if (!uri) return;
       const data = parseObsidianUri(uri);
@@ -1645,13 +1643,6 @@ export class Workspace extends Events {
       }
       handleAction(data);
     });
-    if (isPromiseLike(listener)) {
-      void listener.then((resolved) => {
-        this.appUrlOpenListener = resolved;
-      });
-    } else {
-      this.appUrlOpenListener = listener ?? null;
-    }
   }
 
   updateOptions(): void {
@@ -2946,13 +2937,6 @@ export class Workspace extends Events {
       if (tabs) return tabs;
     }
     return null;
-  }
-
-  private visitLayoutItems(item: WorkspaceItem, callback: (item: WorkspaceItem) => void): void {
-    callback(item);
-    if (item instanceof WorkspaceParent) {
-      for (const child of item.children) this.visitLayoutItems(child, callback);
-    }
   }
 
   onLayoutReady(callback: () => any, pluginId?: string | null): void {

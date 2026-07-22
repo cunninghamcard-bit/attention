@@ -4,7 +4,6 @@ import { setIcon } from "../../ui/Icon";
 import { setFileTypeIcon } from "../../ui/FileTypeIcon";
 import { setTooltip } from "../../ui/Popover";
 import { Menu } from "../../ui/Menu";
-import { Notice } from "../../ui/Notice";
 import { SearchComponent } from "../../ui/Setting";
 import { ItemView } from "../../views/ItemView";
 import type { ViewStateResult } from "../../views/View";
@@ -12,7 +11,7 @@ import { formatRelativeDate } from "../git/relativeDate";
 import { Keymap } from "../../app/hotkeys/Keymap";
 import { CreateIssueModal } from "./CreateIssueModal";
 import { GITHUB_VIEW, openCommitDetail, openGitHubDetail, openPrDetail } from "./open";
-import { readGithubPrPrefs, writeGithubPrPrefs } from "./prefs";
+import { readGitHubPrPrefs, writeGitHubPrPrefs } from "./prefs";
 import type { GitHubSelection, RepoSection } from "./session";
 import type {
   ActionRunSummary,
@@ -393,7 +392,7 @@ export class GitHubRepoView extends ItemView {
           .onClick(() => {
             if (filter.id === this.prFilter) return;
             this.prFilter = filter.id;
-            writeGithubPrPrefs({ filter: filter.id });
+            writeGitHubPrPrefs({ filter: filter.id });
             this.renderSection();
           }),
       );
@@ -422,7 +421,7 @@ export class GitHubRepoView extends ItemView {
         this.app.github.getDefaultBranch(repo),
       ]);
       if (request !== this.request) return;
-      const preferred = this.commitRef || readGithubPrPrefs().lastBranch;
+      const preferred = this.commitRef || readGitHubPrPrefs().lastBranch;
       this.commitRef =
         preferred && branches.some((b) => b.name === preferred) ? preferred : defaultBranch;
       for (const branch of branches)
@@ -431,7 +430,7 @@ export class GitHubRepoView extends ItemView {
       select.addEventListener("change", () => {
         this.commitRef = select.value;
         this.commitPage = 1;
-        writeGithubPrPrefs({ lastBranch: this.commitRef });
+        writeGitHubPrPrefs({ lastBranch: this.commitRef });
         this.renderSection();
       });
       const data = await this.app.github.listCommits(
@@ -597,7 +596,7 @@ export class GitHubRepoView extends ItemView {
     row.activate(() => {
       this.commitRef = branch.name;
       this.commitPage = 1;
-      writeGithubPrPrefs({ lastBranch: branch.name });
+      writeGitHubPrPrefs({ lastBranch: branch.name });
       this.setSection("commits");
     });
   }

@@ -8,11 +8,7 @@ import {
   VIDEO_EXTENSIONS,
   mimeForExtension,
 } from "../views/MediaViews";
-import {
-  MarkdownRenderer,
-  type MarkdownCodeBlockProcessor,
-  type MarkdownPostProcessorContext,
-} from "./MarkdownRenderer";
+import { MarkdownRenderer, type MarkdownCodeBlockProcessor } from "./MarkdownRenderer";
 
 export function registerMarkdownDefaultProcessors(app: App): void {
   registerCodeBlockPostProcessor("mermaid", async (source, el) => {

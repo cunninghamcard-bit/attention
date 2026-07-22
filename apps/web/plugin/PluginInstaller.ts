@@ -5,7 +5,6 @@ import { Notice } from "../ui/Notice";
 import type { UpdateCheckResult } from "../app/release/UpdateManager";
 import {
   normalizePluginManifest,
-  type PluginManifest,
   type PluginManifestInput,
   type PluginPackage,
 } from "./PluginManifest";
@@ -604,15 +603,6 @@ class FetchPluginPackageDownloader implements PluginPackageDownloader {
     if (!response.ok) throw new Error(`Failed to download plugin file: ${url}`);
     return response.text();
   }
-}
-
-function withEnabledPlugin(config: unknown, id: string): string[] {
-  const ids = enabledPluginIds(config);
-  return ids.includes(id) ? ids : [...ids, id];
-}
-
-function withoutEnabledPlugin(config: unknown, id: string): string[] {
-  return enabledPluginIds(config).filter((item) => item !== id);
 }
 
 function enabledPluginIds(config: unknown): string[] {

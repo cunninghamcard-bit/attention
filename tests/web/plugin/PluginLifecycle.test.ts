@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
 import type { SettingTab } from "@web/app/SettingRegistry";
-import { SimpleEditor, type Editor, type EditorPosition } from "@web/editor/Editor";
+import { SimpleEditor, type EditorPosition } from "@web/editor/Editor";
 import {
   editorDomClass,
   editorTransactionFilter,

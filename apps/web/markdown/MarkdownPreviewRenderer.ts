@@ -13,7 +13,6 @@ import {
   MarkdownPreviewSection,
   type MarkdownHighlightRange,
   type MarkdownHighlightRect,
-  zeroPosition,
 } from "./MarkdownPreviewSection";
 import type { FoldInfo } from "./FoldManager";
 import { toggleCheckboxAtLine } from "./MarkdownTaskList";

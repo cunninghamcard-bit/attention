@@ -238,9 +238,9 @@ export class PrDetailView extends ItemView {
     this.segmentedEl = nav;
   }
 
-  /** A redraw from the cached detail, exactly what the old in-body pill did —
-   * no setViewState, no refetch. Wiring tabs into history (the RepoView
-   * navigation-target treatment) is a queued follow-up, not tonight's cut. */
+  /** Redraw from cached detail without setViewState or refetch. Tab changes do
+   * not enter workspace history; that requires the RepoView navigation-target
+   * treatment and is intentionally deferred. */
   private setTab(tab: PrTab): void {
     if (this.tab === tab) return;
     this.tab = tab;

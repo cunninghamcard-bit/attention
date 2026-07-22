@@ -79,8 +79,8 @@ export class GitNavView extends ItemView {
     this.sessionRefs = [
       session.on<[GitReviewSource]>("source-change", (source) => {
         this.source = source;
-        // The tab title follows the source (getDisplayText) — without this,
-        // the header keeps the previous world's name.
+        // The tab title follows the source (getDisplayText); update it here so
+        // the header does not retain the previous source's title.
         this.leaf.updateHeader();
         this.render();
         if (this.centerless()) void this.loadSummaries();

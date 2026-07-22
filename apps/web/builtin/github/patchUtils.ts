@@ -9,7 +9,7 @@ import {
  * Turn a GitHub `files[].patch` (hunk-only) into FileDiffMetadata for @pierre/diffs.
  * Full `git` style patches pass through unchanged.
  */
-export function fileDiffFromGithubPatch(
+export function fileDiffFromGitHubPatch(
   path: string,
   patch: string | null | undefined,
 ): FileDiffMetadata | null {
@@ -39,7 +39,7 @@ export function fileDiffsFromUnifiedDiff(diffText: string): FileDiffMetadata[] {
   }
 }
 
-export interface GithubFileChange {
+export interface GitHubFileChange {
   path: string;
   status: string;
   patch: string | null;
@@ -61,13 +61,13 @@ function reviewStatus(status: string): ReviewFileStatus {
  * and commit detail views so neither hand-rolls a diff pane.
  */
 export function toReviewFiles(
-  files: GithubFileChange[],
+  files: GitHubFileChange[],
   unifiedDiff: string,
   fingerprintSeed: string,
 ): ReviewFile[] {
   const byPath = new Map(fileDiffsFromUnifiedDiff(unifiedDiff).map((file) => [file.name, file]));
   return files.map((file) => {
-    const fileDiff = byPath.get(file.path) ?? fileDiffFromGithubPatch(file.path, file.patch);
+    const fileDiff = byPath.get(file.path) ?? fileDiffFromGitHubPatch(file.path, file.patch);
     return {
       path: file.path,
       status: reviewStatus(file.status),

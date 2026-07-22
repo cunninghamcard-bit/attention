@@ -1,4 +1,3 @@
-import type { App } from "../../../app/App";
 import type { InternalPluginWrapper } from "../../../plugin/InternalPluginWrapper";
 import { splitLinkpath } from "../../../metadata/Linkpath";
 

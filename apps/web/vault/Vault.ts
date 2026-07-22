@@ -297,10 +297,6 @@ export class Vault extends Events {
     return file instanceof TFolder ? file : null;
   }
 
-  private getParentFolderByPath(path: string): TFolder | null {
-    return path ? this.getFolderByPath(path) : this.root;
-  }
-
   getAllLoadedFiles(): TAbstractFile[] {
     return [...this.files.values()];
   }

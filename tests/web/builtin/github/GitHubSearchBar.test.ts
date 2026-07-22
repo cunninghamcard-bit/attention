@@ -6,11 +6,11 @@ import {
   GitHubSearchBar,
   type GitHubSearchSuggestion,
 } from "../../../../apps/web/builtin/github/GitHubSearchBar";
-import type { GithubRepoListItem } from "../../../../apps/web/builtin/github/GitHubService";
+import type { GitHubRepoListItem } from "../../../../apps/web/builtin/github/GitHubService";
 import * as open from "../../../../apps/web/builtin/github/open";
 import { GitHubListView } from "../../../../apps/web/builtin/github/GitHubListView";
 
-const repos: GithubRepoListItem[] = [
+const repos: GitHubRepoListItem[] = [
   {
     owner: "acme",
     repo: "attention",
@@ -185,7 +185,7 @@ describe("GitHubSearchBar behavior", () => {
 
   it("loads fixed suggestions immediately and fills repos independently", async () => {
     const app = await bootApp();
-    let releaseRepos!: (value: GithubRepoListItem[]) => void;
+    let releaseRepos!: (value: GitHubRepoListItem[]) => void;
     vi.spyOn(app.github, "listUserRepositories").mockReturnValue(
       new Promise((resolve) => {
         releaseRepos = resolve;
@@ -217,7 +217,7 @@ describe("GitHubSearchBar behavior", () => {
 
   it("ignores late network replies after the bar is dismissed", async () => {
     const app = await bootApp();
-    let releaseRepos!: (value: GithubRepoListItem[]) => void;
+    let releaseRepos!: (value: GitHubRepoListItem[]) => void;
     vi.spyOn(app.github, "listUserRepositories").mockReturnValue(
       new Promise((resolve) => {
         releaseRepos = resolve;

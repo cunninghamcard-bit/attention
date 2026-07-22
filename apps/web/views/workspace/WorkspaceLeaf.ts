@@ -976,17 +976,6 @@ function isSyncState(state: unknown): boolean {
   return !!state && typeof state === "object" && (state as { sync?: unknown }).sync === true;
 }
 
-function mergeEphemeralState(primary: unknown, secondary: unknown): unknown {
-  if (primary === undefined) return secondary;
-  if (secondary === undefined) return primary;
-  if (isPlainObject(primary) && isPlainObject(secondary)) return { ...primary, ...secondary };
-  return secondary;
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === "object" && !Array.isArray(value);
-}
-
 function isFocusEphemeralState(state: unknown): boolean {
   return !!state && typeof state === "object" && (state as { focus?: unknown }).focus === true;
 }

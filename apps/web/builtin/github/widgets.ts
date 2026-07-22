@@ -1,7 +1,7 @@
-import { createDiv, createEl, createSpan } from "../../dom/dom";
+import { createEl, createSpan } from "../../dom/dom";
 import type { UserEvent } from "../../app/hotkeys/Keymap";
 import { TreeItem } from "../../ui/TreeItem";
-import type { GitHubActor, PrState } from "./types";
+import type { PrState } from "./types";
 
 /** A faithful nav-file row (shared by the list and repo center views), keyed
  * for selection sync, with click + keyboard wired via `activate`. */

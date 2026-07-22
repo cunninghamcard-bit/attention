@@ -579,14 +579,6 @@ async function waitForModal(): Promise<HTMLElement> {
   throw new Error("Modal did not open");
 }
 
-async function waitForModalClose(): Promise<void> {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    if (!document.body.querySelector(".modal")) return;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-  throw new Error("Modal did not close");
-}
-
 async function waitForFileRename(
   app: App,
   oldPath: string,

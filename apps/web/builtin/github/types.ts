@@ -198,16 +198,6 @@ export interface CommitDetail {
   checks: PrCheck[];
 }
 
-export type GithubWorkspaceSection =
-  | "pulls"
-  | "issues"
-  | "commits"
-  | "files"
-  | "actions"
-  | "branches"
-  | "inbox"
-  | "local";
-
 export type IssueState = "open" | "closed";
 
 export interface IssueSummary {

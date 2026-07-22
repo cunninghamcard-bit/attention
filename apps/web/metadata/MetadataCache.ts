@@ -210,7 +210,6 @@ export class MetadataCache extends Events {
   private workQueue: Promise<unknown> = Promise.resolve();
   private uniqueFileLookup = new Map<string, TFile[]>();
   private workerResolve: ((metadata: CachedMetadata) => void) | null = null;
-  private workerReject: ((reason: unknown) => void) | null = null;
 
   override on(
     name: "changed",
@@ -643,7 +642,6 @@ export class MetadataCache extends Events {
     if (this.workerResolve) throw new Error("Work queue must be sequential!");
     return new Promise<CachedMetadata>((resolve, reject) => {
       this.workerResolve = resolve;
-      this.workerReject = reject;
       queueMicrotask(() => {
         try {
           this.onReceiveMessageFromWorker({
@@ -651,7 +649,6 @@ export class MetadataCache extends Events {
           });
         } catch (error) {
           this.workerResolve = null;
-          this.workerReject = null;
           reject(error);
         }
       });
@@ -662,7 +659,6 @@ export class MetadataCache extends Events {
     const resolve = this.workerResolve;
     if (!resolve) return;
     this.workerResolve = null;
-    this.workerReject = null;
     resolve(event.data);
   }
 

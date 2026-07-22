@@ -96,7 +96,7 @@ export class InternalPluginWrapper extends Component {
     this.addedCliHandlers = [];
     this.statusBarEl?.remove();
     this.statusBarEl = null;
-    for (const [type, extensions] of this.extensions)
+    for (const extensions of this.extensions.values())
       this.app.viewRegistry.unregisterExtensions(extensions);
     for (const type of this.views.keys()) {
       this.app.viewRegistry.unregisterView(type);

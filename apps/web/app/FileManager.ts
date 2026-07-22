@@ -889,10 +889,6 @@ function getExtensionFromPath(path: string): string {
   return filename.slice(dotIndex + 1).toLowerCase();
 }
 
-function isAttachmentExtension(extension: string): boolean {
-  return extension !== "" && extension !== "md" && extension !== "canvas";
-}
-
 function splitLinktextTarget(linktext: string): { path: string } {
   const withoutAlias = linktext.split("|", 1)[0] ?? "";
   const subpathIndex = withoutAlias.indexOf("#");
@@ -929,24 +925,6 @@ function normalizeNewFileName(
       ? normalizedName.slice(0, -(targetExtension.length + 1))
       : normalizedName;
   return { basename: basename || "Untitled", extension: targetExtension };
-}
-
-function usesAttachmentLocation(newFilePath: string): boolean {
-  return isAttachmentExtension(getExtensionFromPath(newFilePath));
-}
-
-function resolveAttachmentParentPath(configuredPath: string, sourcePath: string): string {
-  const normalized = configuredPath.replace(/\\/g, "/");
-  if (normalized === "/" || normalized === "") return "";
-  const sourceParentPath = sourcePath.includes("/")
-    ? sourcePath.slice(0, sourcePath.lastIndexOf("/"))
-    : "";
-  if (normalized === "." || normalized === "./") return sourceParentPath;
-  if (normalized.startsWith("./")) {
-    const subfolder = normalizeConfiguredPath(normalized.slice(2));
-    return sourceParentPath ? `${sourceParentPath}/${subfolder}` : subfolder;
-  }
-  return normalizeConfiguredPath(normalized.replace(/^\/+/, ""));
 }
 
 function normalizeConfiguredPath(path: string): string {

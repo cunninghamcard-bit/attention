@@ -7,7 +7,7 @@ import { ItemView } from "../../views/ItemView";
 import type { ViewStateResult } from "../../views/View";
 import { Keymap } from "../../app/hotkeys/Keymap";
 import { GITHUB_VIEW, openOrg, openRepo } from "./open";
-import type { GithubRepoListItem } from "./GitHubService";
+import type { GitHubRepoListItem } from "./GitHubService";
 import type {
   ContributionCalendar,
   GitHubActor,
@@ -475,7 +475,7 @@ export class GitHubProfileView extends ItemView {
    * for organizations too, but only with public repositories — the org
    * endpoint is the one that can carry an org's private repos, so the
    * "simpler" single call silently loses data. */
-  private async fetchRepositories(): Promise<GithubRepoListItem[]> {
+  private async fetchRepositories(): Promise<GitHubRepoListItem[]> {
     const auth = await this.app.github.getAuth();
     if (this.login === auth.login) return this.app.github.listUserRepositories();
     if (this.profile?.isOrganization) return this.app.github.listOrgRepositories(this.login);
@@ -484,7 +484,7 @@ export class GitHubProfileView extends ItemView {
 
   private async renderRepositories(request: number): Promise<void> {
     createDiv({ cls: "github-empty", text: "Loading repositories…" }, this.bodyEl!);
-    let repos: GithubRepoListItem[];
+    let repos: GitHubRepoListItem[];
     try {
       repos = await this.fetchRepositories();
     } catch (error) {
@@ -525,7 +525,7 @@ export class GitHubProfileView extends ItemView {
   }
 
   /** The only door into a `github-repo` tab, by contract. */
-  private repoRow(parent: HTMLElement, repo: GithubRepoListItem): void {
+  private repoRow(parent: HTMLElement, repo: GitHubRepoListItem): void {
     const row = treeRow(parent, { cls: "github-profile-repo", key: `repo:${repo.fullName}` });
     setIcon(row.iconEl, "lucide-book-marked");
     const title = createSpan("github-row-title-line", row.innerEl);

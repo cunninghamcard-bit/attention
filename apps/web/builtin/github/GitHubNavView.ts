@@ -5,7 +5,7 @@ import { setIcon } from "../../ui/Icon";
 import { setTooltip } from "../../ui/Popover";
 import { TreeItem } from "../../ui/TreeItem";
 import { ItemView } from "../../views/ItemView";
-import { GITHUB_VIEW, openInbox, openNotificationTarget, openOrg, openQueryList } from "./open";
+import { GITHUB_VIEW, openInbox, openOrg, openQueryList } from "./open";
 import { renderGitHubSignIn, type SignInHandle } from "./signin";
 import { targetKey, type GitHubTarget } from "./session";
 import type { GitHubAuthState, InvolvementQuery } from "./types";
@@ -29,19 +29,6 @@ const ISSUE_QUERIES: {
 ];
 
 type NavSection = "inbox" | "pr" | "issue" | "org";
-
-/** The dock is a remote control: a few rows to scan, never the whole inbox. */
-const INBOX_DOCK_ROWS = 5;
-
-function notificationIcon(type: string): string {
-  if (type === "PullRequest") return "lucide-git-pull-request";
-  if (type === "Issue") return "lucide-circle-dot";
-  if (type === "Discussion") return "lucide-messages-square";
-  if (type === "Release") return "lucide-tag";
-  if (type === "Commit") return "lucide-git-commit";
-  if (type === "CheckSuite") return "lucide-play";
-  return "lucide-bell";
-}
 
 const SECTIONS: { id: NavSection; label: string; icon: string }[] = [
   { id: "inbox", label: "Inbox", icon: "lucide-inbox" },

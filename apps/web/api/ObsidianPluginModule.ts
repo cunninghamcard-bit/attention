@@ -118,11 +118,8 @@ import {
   stripHeading,
   stripHeadingForLink,
   stringifyYaml,
-  type DebouncedFunction,
   type Debouncer,
-  type RequestUrlError,
   type RequestUrlParam,
-  type RequestUrlResponse,
   type RequestUrlResponsePromise,
 } from "../core/ApiUtils";
 

@@ -1,6 +1,6 @@
 import type { GitLogEntry } from "../GitService";
 import type { GitReviewSource, ReviewFileSummary } from "../reviewSession";
-import { statusFromPorcelain, type ReviewFile, type ReviewFileStatus } from "./reviewModel";
+import { statusFromPorcelain, type ReviewFile } from "./reviewModel";
 
 export type { ReviewFileSummary } from "../reviewSession";
 

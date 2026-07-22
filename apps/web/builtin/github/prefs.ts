@@ -1,9 +1,8 @@
-import type { RepoSection } from "./session";
 import type { PrListFilter } from "./types";
 
 const STORAGE_KEY = "workbench-github-pr-prefs";
 
-export interface GithubPrPrefs {
+export interface GitHubPrPrefs {
   owner: string;
   repo: string;
   filter: PrListFilter;
@@ -11,26 +10,25 @@ export interface GithubPrPrefs {
   lastPr?: number;
   /** Last selected branch for the Commits section. */
   lastBranch?: string;
-  /** Last active sub-view in a repository tab. */
 }
 
-export function readGithubPrPrefs(): Partial<GithubPrPrefs> {
+export function readGitHubPrPrefs(): Partial<GitHubPrPrefs> {
   try {
     const raw = globalThis.localStorage?.getItem(STORAGE_KEY);
     if (!raw) return {};
-    const parsed = JSON.parse(raw) as Partial<GithubPrPrefs>;
+    const parsed = JSON.parse(raw) as Partial<GitHubPrPrefs>;
     return parsed && typeof parsed === "object" ? parsed : {};
   } catch {
     return {};
   }
 }
 
-export function writeGithubPrPrefs(patch: Partial<GithubPrPrefs>): GithubPrPrefs {
-  const next: GithubPrPrefs = {
+export function writeGitHubPrPrefs(patch: Partial<GitHubPrPrefs>): GitHubPrPrefs {
+  const next: GitHubPrPrefs = {
     owner: "",
     repo: "",
     filter: "open",
-    ...readGithubPrPrefs(),
+    ...readGitHubPrPrefs(),
     ...patch,
   };
   try {

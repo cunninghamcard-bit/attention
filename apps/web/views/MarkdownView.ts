@@ -1872,8 +1872,6 @@ export class MarkdownView extends TextFileView {
     this.inlineTitleEl.textContent = this.file?.basename ?? "";
   }
 
-  private renderEmbeddedBacklinks(): void {}
-
   private updateShowBacklinks(): void {
     if (this.showBacklinks && !this.backlinks) {
       this.backlinksEl.hidden = false;
@@ -2861,16 +2859,6 @@ export class MarkdownView extends TextFileView {
     this.emitEditorSelectionChange(start, end);
   }
 
-  private handleSourceInput(): void {
-    const data = this.editor.getValue();
-    this.metadataDisplayOrder = null;
-    super.setViewData(data);
-    this.triggerEditorContentChange();
-    this.handleSourceSelectionChange();
-    this.scheduleSave();
-    void this.app.workspace.editorSuggest.trigger(this.editor, this.editorViewHost.contentEl);
-  }
-
   private async handleSourceKeyup(event: KeyboardEvent): Promise<void> {
     await this.handleEditorSuggest(event);
     this.handleSourceSelectionChange();
@@ -3464,11 +3452,6 @@ export class MarkdownView extends TextFileView {
       return match ? normalizeSubpath(match[2]) === target : false;
     });
     return index === -1 ? null : index;
-  }
-
-  private focusSubpath(subpath: string): void {
-    const line = this.getSubpathLine(subpath);
-    if (line !== null) this.focusLine(line);
   }
 }
 
@@ -4135,39 +4118,6 @@ function getSourceFoldRanges(source: string): SourceFoldRange[] {
 function getHeadingLevelFromLine(line: string): number {
   const match = line.match(/^(#{1,6})\s+\S/);
   return match ? match[1].length : 0;
-}
-
-function renderEmbeddedBacklinkSection(
-  parentEl: HTMLElement,
-  title: string,
-  backlinks: string[],
-  emptyText: string,
-): void {
-  const sectionEl = document.createElement("div");
-  sectionEl.className = "backlink-pane-section";
-  const titleEl = document.createElement("div");
-  titleEl.className = "tree-item-self backlink-pane-section-header";
-  titleEl.textContent = `${title}${backlinks.length ? ` ${backlinks.length}` : ""}`;
-  const childrenEl = document.createElement("div");
-  childrenEl.className = "search-results-children backlink-pane-results";
-  sectionEl.append(titleEl, childrenEl);
-  if (backlinks.length === 0) {
-    const emptyEl = document.createElement("div");
-    emptyEl.className = "search-empty-state";
-    emptyEl.textContent = emptyText;
-    childrenEl.appendChild(emptyEl);
-  } else {
-    for (const backlink of backlinks.sort((left, right) => left.localeCompare(right))) {
-      const fileEl = document.createElement("div");
-      fileEl.className = "search-result-file backlink-result";
-      const titleItemEl = document.createElement("div");
-      titleItemEl.className = "search-result-file-title tappable";
-      titleItemEl.textContent = backlink;
-      fileEl.appendChild(titleItemEl);
-      childrenEl.appendChild(fileEl);
-    }
-  }
-  parentEl.appendChild(sectionEl);
 }
 
 function getInlineTitleText(element: HTMLElement): string {

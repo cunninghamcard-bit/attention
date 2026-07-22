@@ -11,7 +11,7 @@ import { GitHubProfileView } from "./GitHubProfileView";
 import { GitHubRepoView } from "./GitHubRepoView";
 import { PrDetailView } from "./GitPrViews";
 import { GitHubSearchBar } from "./GitHubSearchBar";
-import { GITHUB_VIEW, openGitHubNav, openInbox, openQueryList, refreshGitHub } from "./open";
+import { openGitHubNav, openInbox, openQueryList, refreshGitHub } from "./open";
 
 /**
  * Core plugin wrapping the CLOUD surface, modeled on Oh My GitHub: a persistent

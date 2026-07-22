@@ -1,13 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
-import type { InternalPluginWrapper } from "@web/plugin/InternalPluginWrapper";
 import { countWords } from "@web/builtin/WordCount";
-
-function pluginOrThrow(app: App, id: string): InternalPluginWrapper {
-  const plugin = app.internalPlugins.getPluginById(id);
-  if (!plugin) throw new Error(`Expected core plugin ${id}`);
-  return plugin;
-}
 
 // word-count is defaultOn, so awaiting corePluginsReady flips the buffered
 // CLI handler live — the same path the real wiring takes.

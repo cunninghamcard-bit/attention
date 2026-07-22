@@ -6,7 +6,6 @@ import type { Hotkey } from "./Keymap";
 import {
   compileModifiers,
   normalizedKeymapEventFromKeyboardEvent,
-  type KeymapEventHandler,
   type NormalizedKeymapEvent,
 } from "./Scope";
 
@@ -18,13 +17,11 @@ export class HotkeyManager {
   private hotkeysDirty = true;
   private hotkeyReloadTimer: ReturnType<typeof setTimeout> | null = null;
   private rawListenerRef: EventRef | null = null;
-  private readonly globalScopeRef: KeymapEventHandler | null = null;
 
   constructor(private readonly app?: App) {
-    this.globalScopeRef =
-      this.app?.scope.register(null, null, (event, keymapEvent) =>
-        this.onTrigger(event, keymapEvent),
-      ) ?? null;
+    this.app?.scope.register(null, null, (event, keymapEvent) =>
+      this.onTrigger(event, keymapEvent),
+    );
   }
 
   registerListeners(): void {

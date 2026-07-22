@@ -2,7 +2,7 @@ import type { App } from "../../app/App";
 import { requestUrl } from "../../core/ApiUtils";
 import { GitHubClient, type HttpTransport } from "./GitHubClient";
 import { GitHubGraphQLClient } from "./GitHubGraphQL";
-import { readGithubPrPrefs, writeGithubPrPrefs } from "./prefs";
+import { readGitHubPrPrefs, writeGitHubPrPrefs } from "./prefs";
 import { parseGitRemoteUrl } from "./resolveRepository";
 import { GitHubSession } from "./session";
 import type {
@@ -49,7 +49,7 @@ export interface GitHubDeviceSession {
   interval: number;
 }
 
-export interface GithubRepoListItem {
+export interface GitHubRepoListItem {
   owner: string;
   repo: string;
   fullName: string;
@@ -58,7 +58,7 @@ export interface GithubRepoListItem {
   openIssues: number;
 }
 
-export interface GithubOrgListItem {
+export interface GitHubOrgListItem {
   login: string;
   avatarUrl: string;
   description: string | null;
@@ -201,7 +201,7 @@ export class GitHubService {
   setRepository(ref: { owner: string; repo: string; host?: string } | null): void {
     if (!ref) {
       this.overrideRepo = null;
-      writeGithubPrPrefs({ owner: "", repo: "" });
+      writeGitHubPrPrefs({ owner: "", repo: "" });
       this.session.setRepo(null);
       return;
     }
@@ -209,7 +209,7 @@ export class GitHubService {
     const repo = ref.repo.trim().replace(/\.git$/i, "");
     if (!owner || !repo) return;
     this.overrideRepo = { owner, repo, host: ref.host?.trim() || "github.com" };
-    writeGithubPrPrefs({ owner, repo });
+    writeGitHubPrPrefs({ owner, repo });
     // Idempotent inside the session, so repeated resolve-time pins are quiet.
     this.session.setRepo(this.overrideRepo);
   }
@@ -217,7 +217,7 @@ export class GitHubService {
   /** Active repo: override → prefs → vault origin. */
   async resolveRepository(): Promise<GitHubRepositoryRef | null> {
     if (this.overrideRepo) return this.overrideRepo;
-    const prefs = readGithubPrPrefs();
+    const prefs = readGitHubPrPrefs();
     if (prefs.owner && prefs.repo) {
       return { owner: prefs.owner, repo: prefs.repo, host: "github.com" };
     }
@@ -226,7 +226,7 @@ export class GitHubService {
 
   peekRepository(): GitHubRepositoryRef | null {
     if (this.overrideRepo) return this.overrideRepo;
-    const prefs = readGithubPrPrefs();
+    const prefs = readGitHubPrPrefs();
     if (prefs.owner && prefs.repo)
       return { owner: prefs.owner, repo: prefs.repo, host: "github.com" };
     return this.originRepo ?? null;
@@ -243,21 +243,21 @@ export class GitHubService {
     return this.originRepo;
   }
 
-  async listUserRepositories(): Promise<GithubRepoListItem[]> {
+  async listUserRepositories(): Promise<GitHubRepoListItem[]> {
     const token = this.readToken();
     if (!token) return [];
     const client = this.client(token, "github.com");
     return client.listRepositories(50);
   }
 
-  async listUserOrganizations(): Promise<GithubOrgListItem[]> {
+  async listUserOrganizations(): Promise<GitHubOrgListItem[]> {
     const token = this.readToken();
     if (!token) return [];
     const client = this.client(token, "github.com");
     return client.listOrganizations();
   }
 
-  async listOrgRepositories(org: string): Promise<GithubRepoListItem[]> {
+  async listOrgRepositories(org: string): Promise<GitHubRepoListItem[]> {
     const token = this.readToken();
     if (!token) return [];
     const client = this.client(token, "github.com");
@@ -290,7 +290,7 @@ export class GitHubService {
   /** Another account's public repositories — the profile's Repositories tab
    * for anyone who is not the signed-in user (their own tab keeps
    * `listUserRepositories`, the only path that sees private repos). */
-  async listAccountRepositories(login: string): Promise<GithubRepoListItem[]> {
+  async listAccountRepositories(login: string): Promise<GitHubRepoListItem[]> {
     const token = this.readToken();
     if (!token) return [];
     return this.client(token, "github.com").listAccountRepositories(login, 50);
@@ -328,15 +328,15 @@ export class GitHubService {
 
   async listPullRequests(filter?: PrListFilter, repo?: GitHubRepositoryRef): Promise<PrSummary[]> {
     const { client, repo: active } = await this.requireClient(repo);
-    const prefs = readGithubPrPrefs();
+    const prefs = readGitHubPrPrefs();
     const resolvedFilter = filter ?? prefs.filter ?? "open";
-    writeGithubPrPrefs({ owner: active.owner, repo: active.repo, filter: resolvedFilter });
+    writeGitHubPrPrefs({ owner: active.owner, repo: active.repo, filter: resolvedFilter });
     return client.listPullRequests(active, resolvedFilter);
   }
 
   async getPullRequest(number: number, repo?: GitHubRepositoryRef): Promise<PrDetail> {
     const { client, repo: active } = await this.requireClient(repo);
-    writeGithubPrPrefs({ owner: active.owner, repo: active.repo, lastPr: number });
+    writeGitHubPrPrefs({ owner: active.owner, repo: active.repo, lastPr: number });
     return client.getPullRequest(active, number);
   }
 

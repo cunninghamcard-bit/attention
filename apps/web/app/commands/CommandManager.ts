@@ -121,8 +121,7 @@ export class CommandManager {
       try {
         return Boolean(command.checkCallback(true));
       } catch (error) {
-        console.log("Command failed to execute: ", command.id);
-        console.error(error);
+        console.error(`Command failed to execute: ${command.id}`, error);
         return false;
       }
     });

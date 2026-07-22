@@ -7,7 +7,7 @@ import { SearchComponent } from "../../ui/Setting";
 import { ItemView } from "../../views/ItemView";
 import type { ViewStateResult } from "../../views/View";
 import { formatRelativeDate } from "../git/relativeDate";
-import type { GithubRepoListItem } from "./GitHubService";
+import type { GitHubRepoListItem } from "./GitHubService";
 import { Keymap } from "../../app/hotkeys/Keymap";
 import {
   GITHUB_VIEW,
@@ -355,7 +355,7 @@ export class GitHubListView extends ItemView {
 
   private items: GitHubSearchItem[] | null = null;
   private notifications: NotificationItem[] | null = null;
-  private orgRepos: GithubRepoListItem[] | null = null;
+  private orgRepos: GitHubRepoListItem[] | null = null;
 
   private async reload(): Promise<void> {
     if (!this.bodyEl) return;

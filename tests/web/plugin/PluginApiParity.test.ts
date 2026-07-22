@@ -53,7 +53,7 @@ import {
 import { RenderContext } from "@web/markdown/RenderContext";
 import { Platform } from "@web/platform/Platform";
 import { AbstractTextComponent } from "@web/ui/Setting";
-import { SettingPage, SettingTab } from "@web/app/SettingTab";
+import { SettingTab } from "@web/app/SettingTab";
 import { PluginSettingTab } from "@web/plugin/PluginSettingTab";
 import { normalizePluginManifest, type PluginManifest } from "@web/plugin/PluginManifest";
 

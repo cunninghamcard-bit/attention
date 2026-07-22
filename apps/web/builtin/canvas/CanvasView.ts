@@ -39,7 +39,6 @@ export class CanvasView extends TextFileView {
   private moverEl: HTMLElement | null = null;
   private nodesEl: HTMLElement | null = null;
   private edgesEl: SVGSVGElement | null = null;
-  private selectionEl: HTMLElement | null = null;
   private suppressBackgroundClick = false;
   private suppressChange = false;
 
@@ -462,7 +461,6 @@ export class CanvasView extends TextFileView {
     const selectionEl = document.createElement("div");
     selectionEl.className = "canvas-selection";
     this.wrapperEl?.appendChild(selectionEl);
-    this.selectionEl = selectionEl;
     const move = (moveEvent: PointerEvent) => {
       this.suppressBackgroundClick = true;
       const left = Math.min(screenStart.x, moveEvent.clientX);
@@ -480,7 +478,6 @@ export class CanvasView extends TextFileView {
     };
     const up = () => {
       selectionEl.remove();
-      this.selectionEl = null;
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       this.renderCanvas();

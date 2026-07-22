@@ -182,7 +182,6 @@ export class Menu extends Component implements HistoryHandler {
   showMacWritingTools = false;
   private parentEl: Element | null = null;
   private hideCallback: (() => void) | null = null;
-  private shown = false;
   private hiding = false;
   private outsideCleanup: (() => void) | null = null;
   private parentElementCleanup: (() => void) | null = null;
@@ -274,7 +273,6 @@ export class Menu extends Component implements HistoryHandler {
     if (this.items.length === 0) return this;
 
     this.sort();
-    this.shown = true;
     this.hiding = false;
     this.shownDoc = doc;
     this.dom.style.position = "fixed";
@@ -315,7 +313,6 @@ export class Menu extends Component implements HistoryHandler {
     this.parentMenu = null;
     const callback = this.hideCallback;
     this.hideCallback = null;
-    this.shown = false;
     this.hiding = false;
     callback?.();
     return this;
@@ -600,7 +597,6 @@ export class Menu extends Component implements HistoryHandler {
     this.bgEl.remove();
     if (!this.parentMenu) getOpenTopMenus(this.shownDoc ?? this.doc).delete(this);
     this.shownDoc = null;
-    this.shown = false;
     this.hiding = false;
   }
 

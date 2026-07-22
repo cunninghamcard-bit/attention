@@ -7,7 +7,7 @@ import { openGitHubNav, openPrDetail, openRepo } from "@web/builtin/github/open"
 import type { ElectronGitApi, GitExecResult } from "@web/builtin/git/GitService";
 import type { HttpResponse, HttpTransport } from "@web/builtin/github/GitHubClient";
 import type { PrDetail, PrSummary } from "@web/builtin/github/types";
-import { writeGithubPrPrefs } from "@web/builtin/github/prefs";
+import { writeGitHubPrPrefs } from "@web/builtin/github/prefs";
 import { openGitReview } from "@web/builtin/git/review/GitReviewView";
 import { GitNavView } from "@web/builtin/git/review/GitNavView";
 
@@ -112,7 +112,7 @@ function json(data: unknown, status = 200): HttpResponse {
   return { status, text: data == null ? "" : JSON.stringify(data), json: data };
 }
 
-function installGithubMocks(
+function installGitHubMocks(
   app: App,
   options: {
     authed?: boolean;
@@ -283,7 +283,7 @@ async function appWithGit(isRepo = true): Promise<App> {
   app.git.bridgeFactory = () => fakeGitBridge(isRepo);
   (app.vault.adapter as { getBasePath?: () => string }).getBasePath = () => "/fake/vault";
   await app.ready;
-  writeGithubPrPrefs({ owner: "coder", repo: "ghostty-web", filter: "open" });
+  writeGitHubPrPrefs({ owner: "coder", repo: "ghostty-web", filter: "open" });
   app.github.setRepository({ owner: "coder", repo: "ghostty-web" });
   app.github.invalidate();
   return app;
@@ -304,7 +304,7 @@ function navOf(app: App): GitHubNavView {
 describe("PR views (cloud, ghostty-web calibrated)", () => {
   it("lists pull requests in a repository tab", async () => {
     const app = await appWithGit();
-    installGithubMocks(app);
+    installGitHubMocks(app);
     await openRepo(app, "coder", "ghostty-web", "pulls");
     const view = app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)[0].view as GitHubRepoView;
 
@@ -321,7 +321,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
 
   it("renders PR metadata and files through the review surface", async () => {
     const app = await appWithGit();
-    installGithubMocks(app);
+    installGitHubMocks(app);
     await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
 
@@ -361,7 +361,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
   /** Opens the PR files tab far enough that the cloud dock bridge is live. */
   async function cloudDockedPr(): Promise<App> {
     const app = await appWithGit();
-    installGithubMocks(app);
+    installGitHubMocks(app);
     await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
     await until(() => view.contentEl.querySelector(".review-surface") !== null, "review surface");
@@ -424,7 +424,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
   // cloud file list.
   it("leaves the local git review leaf alone when a cloud source arrives", async () => {
     const app = await appWithGit();
-    installGithubMocks(app);
+    installGitHubMocks(app);
     await openGitReview(app);
     await until(() => app.workspace.getLeavesOfType("git-review").length > 0, "git-review leaf");
     const session = app.git.reviewSession;
@@ -436,7 +436,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
 
   async function stateChipFor(detail: PrDetail): Promise<HTMLElement> {
     const app = await appWithGit();
-    installGithubMocks(app, { detail });
+    installGitHubMocks(app, { detail });
     await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
     await until(() => view.contentEl.querySelector(".gh-chip") !== null, "PR state chip");
@@ -471,7 +471,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
 
   it("flairs a closed draft PR as closed in the repo list", async () => {
     const app = await appWithGit();
-    installGithubMocks(app, { list: [{ ...SUMMARY, state: "closed", isDraft: true }] });
+    installGitHubMocks(app, { list: [{ ...SUMMARY, state: "closed", isDraft: true }] });
     await openRepo(app, "coder", "ghostty-web", "pulls");
     const view = app.workspace.getLeavesOfType(GitHubRepoView.VIEW_TYPE)[0].view as GitHubRepoView;
     await until(() => view.contentEl.querySelector(".github-pr-state") !== null, "state flair");
@@ -509,7 +509,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
   // issue state PATCH is what closes a pull request.
   it("closes a pull request through the issue state endpoint", async () => {
     const app = await appWithGit();
-    installGithubMocks(app);
+    installGitHubMocks(app);
     const update = vi.spyOn(app.github, "updateIssueState").mockResolvedValue(null);
     await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = await conversationOf(app);
@@ -525,7 +525,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
 
   it("offers reopen on a closed pull request", async () => {
     const app = await appWithGit();
-    installGithubMocks(app, { detail: { ...DETAIL, state: "closed" } });
+    installGitHubMocks(app, { detail: { ...DETAIL, state: "closed" } });
     const update = vi.spyOn(app.github, "updateIssueState").mockResolvedValue(null);
     await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = await conversationOf(app);
@@ -541,7 +541,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
 
   it("offers no state toggle on a merged pull request", async () => {
     const app = await appWithGit();
-    installGithubMocks(app, { detail: { ...DETAIL, state: "merged" } });
+    installGitHubMocks(app, { detail: { ...DETAIL, state: "merged" } });
     await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = await conversationOf(app);
 
@@ -556,7 +556,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
   // the cheap path until tabs formally join history with a refetch gate.
   it("switches tabs without re-downloading the pull request", async () => {
     const app = await appWithGit();
-    installGithubMocks(app);
+    installGitHubMocks(app);
     const load = vi.spyOn(app.github, "getPullRequest");
     await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
@@ -575,7 +575,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
   // review becomes a card wearing its verdict chip.
   it("renders comments and review verdicts as conversation cards", async () => {
     const app = await appWithGit();
-    installGithubMocks(app, {
+    installGitHubMocks(app, {
       detail: {
         ...DETAIL,
         comments: [
@@ -620,7 +620,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
   it("approves through the GitHub API", async () => {
     const submitCalls: string[] = [];
     const app = await appWithGit();
-    installGithubMocks(app, { submitCalls });
+    installGitHubMocks(app, { submitCalls });
     await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
 
@@ -638,7 +638,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
   // request resolves. The delay is realism, not the mechanism.
   it("posts one comment when an impatient user clicks twice", async () => {
     const app = await appWithGit();
-    installGithubMocks(app);
+    installGitHubMocks(app);
     const create = vi
       .spyOn(app.github, "createComment")
       .mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve(null), 50)));
@@ -677,7 +677,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
   // submit be entered twice at all?
   it("submits one review even when the click beats the redraw", async () => {
     const app = await appWithGit();
-    installGithubMocks(app);
+    installGitHubMocks(app);
     const submit = vi
       .spyOn(app.github, "submitReview")
       .mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve(null), 50)));
@@ -708,7 +708,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
   // Approve stays available (an approval needs no summary).
   it("gives the review footer the shared composer with a live preview", async () => {
     const app = await appWithGit();
-    installGithubMocks(app);
+    installGitHubMocks(app);
     await openPrDetail(app, "coder", "ghostty-web", 185);
     const view = app.workspace.getLeavesOfType(PrDetailView.VIEW_TYPE)[0].view as PrDetailView;
 
@@ -742,7 +742,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     const openExternal = vi.fn(async () => {});
     vi.stubGlobal("electron", { shell: { openExternal } });
     const app = await appWithGit();
-    installGithubMocks(app, { authed: false });
+    installGitHubMocks(app, { authed: false });
     app.github.clearToken();
     app.github.oauthClientId = "test-client-id";
     vi.spyOn(app.github, "startDeviceLogin").mockResolvedValue({
@@ -784,7 +784,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
 
   it("keeps personal-token login available without an OAuth client ID", async () => {
     const app = await appWithGit();
-    installGithubMocks(app, { authed: false });
+    installGitHubMocks(app, { authed: false });
     app.github.clearToken();
     app.github.oauthClientId = "";
     app.github.invalidate();

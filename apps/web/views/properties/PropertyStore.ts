@@ -135,8 +135,3 @@ function normalize(value: unknown): PropertyValue {
     return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalize(item)]));
   return String(value);
 }
-
-function isReservedProperty(id: string): boolean {
-  const normalized = id.toLowerCase();
-  return normalized === "aliases" || normalized === "cssclasses" || normalized === "tags";
-}

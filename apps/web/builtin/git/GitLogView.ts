@@ -1,7 +1,6 @@
 import { FileDiff } from "@pierre/diffs";
 import { ItemView } from "../../views/ItemView";
 import { setFileTypeIcon } from "../../ui/FileTypeIcon";
-import { setIcon } from "../../ui/Icon";
 import { TreeItem } from "../../ui/TreeItem";
 import { renderGitAvatar } from "./GitAvatar";
 import { formatRelativeDate } from "./relativeDate";

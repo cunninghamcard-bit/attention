@@ -82,7 +82,7 @@ export class GraphRenderer {
   constructor(
     private readonly containerEl: HTMLElement,
     private readonly callbacks: GraphRendererCallbacks = {},
-    private readonly options: GraphRendererOptions = {},
+    options: GraphRendererOptions = {},
   ) {
     this.worker = options.worker ?? createGraphWorker();
     this.worker.onmessage = (event) => {

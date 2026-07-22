@@ -2,7 +2,7 @@ import type { App } from "../../app/App";
 import { Keymap } from "../../app/hotkeys/Keymap";
 import { setIcon } from "../../ui/Icon";
 import { AbstractInputSuggest } from "../../ui/suggest/AbstractInputSuggest";
-import type { GithubRepoListItem } from "./GitHubService";
+import type { GitHubRepoListItem } from "./GitHubService";
 import { openInbox, openOrg, openQueryList, openRepo } from "./open";
 import type { InvolvementQuery } from "./types";
 
@@ -26,7 +26,7 @@ const QUERY_SUGGESTIONS: Extract<GitHubSearchSuggestion, { kind: "query" }>[] = 
 /** Pure filter used by the modal and unit tests — keeps network out of ranking. */
 export function filterGitHubSearchSuggestions(
   query: string,
-  repos: GithubRepoListItem[],
+  repos: GitHubRepoListItem[],
   orgs: string[] = [],
 ): GitHubSearchSuggestion[] {
   const needle = query.trim().toLowerCase();
@@ -147,7 +147,7 @@ export class GitHubSearchBar {
 
   private containerEl: HTMLElement | null = null;
   private suggest: GitHubSearchSuggest | null = null;
-  private repos: GithubRepoListItem[] = [];
+  private repos: GitHubRepoListItem[] = [];
   private orgLogins: string[] = [];
   private selfLogin: string | null = null;
   /** Bumped on every open/close so a late network reply cannot fill a bar that
