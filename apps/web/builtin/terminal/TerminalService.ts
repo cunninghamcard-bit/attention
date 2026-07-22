@@ -211,6 +211,7 @@ export class TerminalService {
   }
 
   killAll(): void {
+    // oxlint-disable-next-line unicorn/no-useless-spread -- kill mutates sessions, so preserve stable snapshot semantics during the port migration.
     for (const id of [...this.sessions.keys()]) this.kill(id);
   }
 

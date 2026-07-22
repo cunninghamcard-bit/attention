@@ -191,6 +191,7 @@ function expectMobileDrawer(drawer: MobileDrawer | null): MobileDrawer {
 }
 
 function drainActiveCloseables(): void {
+  // oxlint-disable-next-line unicorn/no-useless-spread -- unregister mutates the registry; the test intentionally drains a stable snapshot.
   for (const closeable of [...getActiveCloseables()]) unregisterActiveCloseable(closeable);
   while (closeTopActiveCloseable()) {
     // A defensive drain for closeables that unregister themselves during close.

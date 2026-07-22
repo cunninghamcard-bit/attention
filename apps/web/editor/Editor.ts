@@ -83,11 +83,13 @@ export abstract class Editor {
 
   protected changed(origin?: string): void {
     if (this.suppressChangeNotifications > 0) return;
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Listeners may unsubscribe during notification, so emit over a stable snapshot.
     for (const listener of [...this.changeListeners]) listener(this, origin);
   }
 
   protected selectionChanged(): void {
     if (this.suppressSelectionNotifications > 0) return;
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Listeners may unsubscribe during notification, so emit over a stable snapshot.
     for (const listener of [...this.selectionListeners]) listener(this);
   }
 

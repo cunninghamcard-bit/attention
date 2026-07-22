@@ -186,6 +186,7 @@ export class GraphDataEngine {
 
   private collectTagNodes(nodeMap: Map<string, GraphNode>, links: GraphLink[]): void {
     const canonicalTags = this.collectCanonicalTags();
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Tag collection adds nodes, so iteration must use the pre-existing node snapshot.
     for (const node of [...nodeMap.values()]) {
       if (node.type === "tag" || node.type === "attachment" || node.type === "unresolved") continue;
       for (const tag of this.getTagsForPath(node.id)) {
@@ -345,6 +346,7 @@ export class GraphDataEngine {
       connected.add(link.from);
       connected.add(link.to);
     }
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Orphan cleanup deletes nodes during iteration, so use a stable key snapshot.
     for (const id of [...nodeMap.keys()]) {
       if (!connected.has(id)) nodeMap.delete(id);
     }

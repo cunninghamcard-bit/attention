@@ -23,6 +23,7 @@ describe("Events", () => {
     const events = new Events();
     let seen: unknown = "unset";
     function handler(this: unknown): void {
+      // oxlint-disable-next-line typescript/no-this-alias -- The assertion intentionally captures the handler receiver.
       seen = this;
     }
 

@@ -728,10 +728,12 @@ function getOpenTopMenus(doc: Document): Set<Menu> {
 
 /** Real `jg()`: close every open top-level menu in a document (used when a modal opens). */
 export function closeAllMenus(doc: Document): void {
+  // oxlint-disable-next-line unicorn/no-useless-spread -- Hiding menus mutates the open-menu registry, so use a stable snapshot.
   for (const menu of [...getOpenTopMenus(doc)]) menu.hide();
 }
 
 function hideOtherTopMenus(doc: Document, except: Menu): void {
+  // oxlint-disable-next-line unicorn/no-useless-spread -- Hiding menus mutates the open-menu registry, so use a stable snapshot.
   for (const menu of [...getOpenTopMenus(doc)]) {
     if (menu !== except) menu.hide();
   }

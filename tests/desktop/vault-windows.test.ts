@@ -56,6 +56,7 @@ const { FakeBrowserWindow, enableRemote } = vi.hoisted(() => {
       return this.on(event, wrapped);
     }
     emit(event: string, ...args: unknown[]): void {
+      // oxlint-disable-next-line unicorn/no-useless-spread -- Handlers may unsubscribe while emitting, so the fake preserves snapshot semantics.
       for (const handler of [...(this.listeners.get(event) ?? [])]) handler(...args);
     }
 

@@ -504,6 +504,7 @@ function cleanupRenderChildren(
   root?: HTMLElement,
 ): void {
   if (!children) return;
+  // oxlint-disable-next-line unicorn/no-useless-spread -- Cleanup deletes children during iteration, so use a stable snapshot.
   for (const child of [...children]) {
     if (belongsToSections(child.containerEl, sections, root)) continue;
     owner.removeChild(child);

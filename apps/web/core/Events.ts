@@ -50,6 +50,7 @@ export class Events {
   }
 
   trigger(name: string, ...args: unknown[]): void {
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Event handlers may unsubscribe while firing, matching Obsidian snapshot semantics.
     for (const ref of [...(this._[name] ?? [])]) this.tryTrigger(ref, args);
   }
 

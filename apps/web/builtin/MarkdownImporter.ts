@@ -210,7 +210,7 @@ function normalizeFrontmatterTags(source: string): MarkdownConversion {
   const match = /^---\n([\s\S]*?)\n---/.exec(source);
   if (!match) return { output: source, replaced: 0 };
   const body = match[1];
-  const next = body.replace(/^tags:\s*([^\n\[\{][^\n]*)$/m, (_line, tags: string) => {
+  const next = body.replace(/^tags:\s*([^\n[{][^\n]*)$/m, (_line, tags: string) => {
     const items = tags
       .split(",")
       .map((tag) => tag.trim())

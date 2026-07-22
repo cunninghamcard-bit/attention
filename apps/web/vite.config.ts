@@ -11,17 +11,15 @@ export default defineConfig({
   root: __dirname,
   // Static assets (fonts, scripts like /lib/readability.js) served verbatim.
   publicDir: resolve(__dirname, "public"),
-  plugins: [
-    ...(process.env.ANALYZE
-      ? [
-          visualizer({
-            filename: resolve(rootDist, "stats.html"),
-            gzipSize: true,
-            brotliSize: true,
-          }),
-        ]
-      : []),
-  ],
+  plugins: process.env.ANALYZE
+    ? [
+        visualizer({
+          filename: resolve(rootDist, "stats.html"),
+          gzipSize: true,
+          brotliSize: true,
+        }),
+      ]
+    : [],
   server: {
     port: Number(process.env.PORT) || 5173,
     strictPort: false,

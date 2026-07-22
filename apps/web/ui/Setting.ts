@@ -47,6 +47,7 @@ function clamp(value: number, min: number, max: number): number {
 export class BaseComponent {
   disabled = false;
 
+  // oxlint-disable-next-line unicorn/no-thenable -- Obsidian exposes this fluent compatibility method as `then`.
   then(callback: (component: this) => unknown): this {
     callback(this);
     return this;
@@ -813,6 +814,7 @@ export class Setting {
     return this;
   }
 
+  // oxlint-disable-next-line unicorn/no-thenable -- Obsidian exposes Setting.then as a fluent compatibility method.
   then(callback: (setting: this) => unknown): this {
     callback(this);
     return this;

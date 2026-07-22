@@ -203,7 +203,7 @@ export async function openGitReview(
 /** Bounded-concurrency map: file loads fan out instead of queueing serially. */
 const LOAD_POOL = 8;
 async function mapPool<T, R>(items: T[], fn: (item: T) => Promise<R>): Promise<R[]> {
-  const results = new Array<R>(items.length);
+  const results = Array<R>(items.length);
   let next = 0;
   await Promise.all(
     Array.from({ length: Math.min(LOAD_POOL, items.length) }, async () => {

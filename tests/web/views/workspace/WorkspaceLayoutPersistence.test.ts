@@ -428,6 +428,7 @@ describe("WorkspaceLayoutPersistence", () => {
       expect(popout.height).toBe(1700);
       expect(saveLayout).toHaveBeenCalled();
 
+      // oxlint-disable-next-line unicorn/no-useless-spread -- detach mutates children; the test intentionally drains a stable snapshot.
       for (const child of [...popout.children]) child.detach();
 
       expect(app.workspace.floatingSplit.children).not.toContain(popout);

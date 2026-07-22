@@ -236,7 +236,7 @@ export class MarkdownView extends TextFileView {
       source: this.editMode,
       preview: this.previewMode,
     };
-    this.editMode.sourceMode = !Boolean(this.app.vault.getConfig("livePreview"));
+    this.editMode.sourceMode = !this.app.vault.getConfig("livePreview");
     const defaultMode = this.app.vault.getConfig("defaultViewMode");
     this.currentMode = defaultMode === "preview" ? this.previewMode : this.editMode;
     for (const mode of Object.values(this.modes)) mode.hide();
@@ -303,7 +303,7 @@ export class MarkdownView extends TextFileView {
   toggleMode(): void {
     const viewState = this.leaf.getViewState();
     viewState.state = {
-      ...(viewState.state ?? {}),
+      ...viewState.state,
       mode: this.getMode() === "preview" ? "source" : "preview",
     };
     void this.leaf.setViewState(viewState, { focus: true });

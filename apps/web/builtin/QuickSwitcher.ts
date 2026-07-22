@@ -38,7 +38,7 @@ export class QuickSwitcherController {
     this.plugin = plugin;
     this.options = {
       ...DEFAULT_OPTIONS,
-      ...((await plugin.loadData<Partial<QuickSwitcherOptions>>()) ?? {}),
+      ...(await plugin.loadData<Partial<QuickSwitcherOptions>>()),
     };
     plugin.addSettingTab(new QuickSwitcherSettingTab(this.app, this));
   }

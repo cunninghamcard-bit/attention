@@ -125,7 +125,7 @@ export class WorkspaceLeaf extends WorkspaceItem {
     this.tabHeaderCloseEl = createDiv("workspace-tab-header-inner-close-button", inner);
     setIcon(this.tabHeaderCloseEl, "lucide-x");
     setTooltip(this.tabHeaderCloseEl, "Close");
-    this.tabHeaderCloseEl.addEventListener("click", (event) => {
+    this.tabHeaderCloseEl.addEventListener("click", () => {
       this.closeFromTabHeader();
     });
 

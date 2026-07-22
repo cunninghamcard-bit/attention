@@ -490,6 +490,7 @@ export class MetadataCache extends Events {
     // vault would otherwise leak into this one's fileCache and pollute every
     // vault-wide read (getTags, resolved/unresolved links, properties). Real
     // Obsidian never carries cache for files absent from the open vault.
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Cache cleanup deletes entries during iteration, so use a stable key snapshot.
     for (const path of [...this.fileCache.keys()]) {
       if (!present.has(path)) {
         this.fileCache.delete(path);
@@ -517,6 +518,7 @@ export class MetadataCache extends Events {
 
   async clear(): Promise<void> {
     for (const path of this.getCachedFiles()) this.saveFileCache(path, null);
+    // oxlint-disable-next-line unicorn/no-useless-spread -- saveMetaCache deletes entries, so use a stable key snapshot.
     for (const hash of [...this.metadataCache.keys()]) this.saveMetaCache(hash, null);
     this.clearResolvedLinks();
     const tasks = this.vault
@@ -542,7 +544,7 @@ export class MetadataCache extends Events {
       frontmatter,
       ...(frontmatterPosition ? { frontmatterPosition } : {}),
       frontmatterLinks: collectFrontmatterLinks(frontmatter),
-      sections: collectSections(source, lines, lineOffsets, frontmatterPosition),
+      sections: collectSections(lines, lineOffsets, frontmatterPosition),
       blocks: collectBlocks(blockEntries),
       listItems: collectListItems(blockEntries),
       headings: lines.flatMap((line, index) => {
@@ -869,6 +871,7 @@ export class MetadataCache extends Events {
     const referenced = new Set(
       [...this.fileCache.values()].map((info) => info.hash).filter(Boolean),
     );
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Orphan cleanup deletes cache entries during iteration, so use a stable key snapshot.
     for (const hash of [...this.metadataCache.keys()]) {
       if (!referenced.has(hash)) this.saveMetaCache(hash, null);
     }
@@ -1006,6 +1009,7 @@ export class MetadataCache extends Events {
       .getAllLoadedFiles()
       .filter((file): file is TFile => file instanceof TFile);
     const loadedSet = new Set(loaded);
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Lookup cleanup rewrites the map during iteration, so use a stable entry snapshot.
     for (const [key, bucket] of [...this.uniqueFileLookup]) {
       const current = bucket.filter(
         (file) => loadedSet.has(file) && file.name.toLowerCase() === key,
@@ -1024,7 +1028,7 @@ export class MetadataCache extends Events {
 
 // Real `$A` tag-validity check: '#' followed by characters that are not
 // punctuation or whitespace, and not purely numeric.
-const VALID_TAG_RE = /^#[^\u2000-\u206F\u2E00-\u2E7F'!"#$%&()*+,.:;<=>?@^`{|}~\[\]\\\s]+$/;
+const VALID_TAG_RE = /^#[^\u2000-\u206F\u2E00-\u2E7F'!"#$%&()*+,.:;<=>?@^`{|}~[\]\\\s]+$/;
 const NUMERIC_TAG_RE = /^#\d+$/;
 
 function isValidTag(tag: string): boolean {
@@ -1428,7 +1432,6 @@ function collectListItems(blocks: BlockCacheBlock[]): ListItemCache[] | undefine
 }
 
 function collectSections(
-  source: string,
   lines: string[],
   lineOffsets: number[],
   frontmatterPosition: SourceRangePosition | null,

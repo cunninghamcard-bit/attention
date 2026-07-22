@@ -30,8 +30,12 @@ describe("preprocessHtmlDrop", () => {
 
     expect(result.detachedImages).toHaveLength(2);
     expect(result.detachedImages.map((image) => image.extension)).toEqual(["png", "jpg"]);
-    expect([...new Uint8Array(result.detachedImages[0]!.data).slice(0, 3)]).toEqual([7, 7, 7]);
-    expect([...new Uint8Array(result.detachedImages[1]!.data).slice(0, 3)]).toEqual([9, 9, 9]);
+    expect(Array.from(new Uint8Array(result.detachedImages[0]!.data).slice(0, 3))).toEqual([
+      7, 7, 7,
+    ]);
+    expect(Array.from(new Uint8Array(result.detachedImages[1]!.data).slice(0, 3))).toEqual([
+      9, 9, 9,
+    ]);
     expect(result.html).toContain("<p>Before</p>");
     expect(result.html).toContain(short);
     expect(result.html).toContain("<p>After</p>");

@@ -31,7 +31,7 @@ export class WorkspacesController {
     this.options = {
       workspaces: {},
       active: "",
-      ...((await plugin.loadData<WorkspacesOptions>()) ?? {}),
+      ...(await plugin.loadData<WorkspacesOptions>()),
     };
     plugin.addSettingTab(new WorkspacesSettingTab(this.app, this));
   }

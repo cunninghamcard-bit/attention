@@ -352,7 +352,7 @@ function indentLines(lines: string[], spaces: number): string[] {
 function quoteIfNeeded(value: string | number | boolean): string {
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   if (value === "") return '""';
-  if (/[:#\[\]{},&*?|\-<>=!%@`]/.test(value) || /^\s|\s$/.test(value)) return JSON.stringify(value);
+  if (/[:#[\]{},&*?|\-<>=!%@`]/.test(value) || /^\s|\s$/.test(value)) return JSON.stringify(value);
   return value;
 }
 

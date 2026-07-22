@@ -320,6 +320,7 @@ export class WorkspaceTabs extends WorkspaceParent {
           .setTitle("Close all")
           .setIcon("lucide-x")
           .onClick(() => {
+            // oxlint-disable-next-line unicorn/no-useless-spread -- detach mutates children, so close-others iterates a stable snapshot.
             for (const child of [...this.children]) {
               if (child instanceof WorkspaceLeaf && !child.pinned) child.detach();
             }

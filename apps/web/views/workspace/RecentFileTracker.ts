@@ -55,7 +55,7 @@ export class RecentFileTracker {
     this.lastOpenFiles = next;
   }
 
-  onFileOpen(activeFile: TFile | null, previousFile: TFile | null): void {
+  onFileOpen(_activeFile: TFile | null, previousFile: TFile | null): void {
     if (!this.workspace.isLayoutReady() || !previousFile) return;
     this.collect(previousFile);
     this.workspace.requestSaveLayout();

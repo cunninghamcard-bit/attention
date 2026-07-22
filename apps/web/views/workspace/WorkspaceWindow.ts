@@ -182,6 +182,7 @@ export class WorkspaceWindow extends WorkspaceRoot {
       const fallback = this.workspace.getMostRecentRootLeaf() ?? this.workspace.getMostRecentLeaf();
       if (fallback && fallback.getRoot() !== this) this.workspace.setActiveLeaf(fallback);
     }
+    // oxlint-disable-next-line unicorn/no-useless-spread -- detach mutates children, so close iterates a stable snapshot.
     for (const child of [...this.children]) child.detach();
     this.children = [];
     this.win.removeEventListener("beforeunload", this.beforeUnloadHandler);

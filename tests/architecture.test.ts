@@ -56,7 +56,7 @@ interface Manifest {
 
 /** Reports which of `forbidden` show up in a manifest's dependency tables. */
 function findLaneViolations(manifest: Manifest, forbidden: string[]): string[] {
-  const deps = { ...(manifest.dependencies ?? {}), ...(manifest.devDependencies ?? {}) };
+  const deps = { ...manifest.dependencies, ...manifest.devDependencies };
   return forbidden.filter((name) => name in deps);
 }
 

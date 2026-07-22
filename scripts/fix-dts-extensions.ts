@@ -46,7 +46,7 @@ for (const file of await walk(root)) {
   // packages/shared copies.
   next = next.replace(
     /((?:from\s+|export\s+\*\s+from\s+|import\s*\(\s*)["'])((?:\.\.\/)+)packages\/shared\//g,
-    (match, prefix: string) => {
+    (_match, prefix: string) => {
       const correct = relative(join(file, ".."), join(root, "packages", "shared"))
         .split("\\")
         .join("/");

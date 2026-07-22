@@ -180,8 +180,8 @@ export class Vault extends Events {
     // with defaults. Load what we can, and hold every write until it reads cleanly again.
     this.configUnreadable = appConfig === undefined || appearanceConfig === undefined;
     this.config = migrateVaultConfig({
-      ...(appearanceConfig ?? {}),
-      ...(appConfig ?? {}),
+      ...appearanceConfig,
+      ...appConfig,
       ...this.config,
     });
     this.requestSaveConfig();
@@ -220,7 +220,7 @@ export class Vault extends Events {
       return;
     }
     this.configUnreadable = false;
-    const next = migrateVaultConfig({ ...(appearanceConfig ?? {}), ...(appConfig ?? {}) });
+    const next = migrateVaultConfig({ ...appearanceConfig, ...appConfig });
     const previous = this.config;
     this.config = { ...previous };
 

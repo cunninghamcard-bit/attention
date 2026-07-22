@@ -53,12 +53,14 @@ export class WorkspaceItem extends Events {
   }
 
   getRoot(): WorkspaceItem {
+    // oxlint-disable-next-line typescript/no-this-alias -- Tree traversal needs a mutable cursor initialized at the current item.
     let item: WorkspaceItem = this;
     while (item.parent) item = item.parent;
     return item;
   }
 
   getContainer(): WorkspaceContainer {
+    // oxlint-disable-next-line typescript/no-this-alias -- Container traversal needs a mutable cursor initialized at the current item.
     let item: WorkspaceItem = this;
     while (item.parent) {
       const root = item.parent;

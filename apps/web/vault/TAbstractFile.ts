@@ -32,6 +32,7 @@ export abstract class TAbstractFile {
   }
 
   getNewPathAfterRename(name: string): string {
+    // oxlint-disable-next-line no-control-regex -- Vault names intentionally sanitize the full ASCII control-character range.
     name = name.replace(/[\x00-\x1F]/g, " ").trim();
     const parentPrefix = this.parentPath ? `${this.parentPath}/` : "";
     return `${parentPrefix}${name}`;
@@ -70,6 +71,7 @@ export class TFile extends TAbstractFile {
   }
 
   override getNewPathAfterRename(name: string): string {
+    // oxlint-disable-next-line no-control-regex -- File names intentionally sanitize the full ASCII control-character range.
     name = name.replace(/[\x00-\x1F]/g, " ").trim();
     return super.getNewPathAfterRename(this.extension ? `${name}.${this.extension}` : name);
   }

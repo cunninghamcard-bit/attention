@@ -46,7 +46,7 @@ export class EditorStatusController {
     const leaf = this.app.workspace.activeLeaf;
     if (!(leaf?.view instanceof MarkdownView)) return;
     const viewState = leaf.getViewState() as { type: string; state?: Record<string, unknown> };
-    const state = { ...(viewState.state ?? {}) };
+    const state = { ...viewState.state };
     if (status === "read") {
       state.mode = "preview";
     } else if (status === "source") {

@@ -406,6 +406,7 @@ describe("Obsidian workspace DOM structure", () => {
     const rightSplit = app.workspace.rightSplit;
     if (!(rightSplit instanceof WorkspaceSidedock))
       throw new Error("Expected desktop right sidedock");
+    // oxlint-disable-next-line unicorn/no-useless-spread -- removeChild mutates children; the test intentionally drains a stable snapshot.
     for (const child of [...rightSplit.children]) rightSplit.removeChild(child);
     app.workspace.updateLayout();
 

@@ -109,6 +109,7 @@ export class PluginInstaller {
   async setCommunityPluginsEnabled(enabled: boolean): Promise<void> {
     this.app.pluginSecurity.setCommunityPluginsEnabled(enabled);
     if (!enabled) {
+      // oxlint-disable-next-line unicorn/no-useless-spread -- Disabling plugins mutates the registry, so iteration requires a stable snapshot.
       for (const plugin of [...this.app.plugins.listPlugins()]) {
         await this.app.plugins.disablePlugin(plugin.manifest.id, false);
         const record = this.installed.get(plugin.manifest.id);
@@ -392,6 +393,7 @@ export class PluginInstaller {
       console.error(error);
     });
     const disabled: string[] = [];
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Disabling deprecated plugins mutates the registry, so iteration requires a stable snapshot.
     for (const plugin of [...this.app.plugins.listPlugins()]) {
       if (!this.app.pluginMarketplace.isDeprecated(plugin.manifest)) continue;
       const reason = `The plugin ${plugin.manifest.name} has been disabled. This version has been reported to cause issues. Please check for a newer version of the plugin.`;

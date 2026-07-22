@@ -371,7 +371,7 @@ export class MarkdownPreviewRenderer {
     this.pusherEl = pusherEl;
     const contentEl = document.createElement("div");
     contentEl.className = "markdown-preview-section";
-    this.sections = [...(this.header ? [this.header] : [])];
+    this.sections = this.header ? [this.header] : [];
     this.sizerEl.append(
       pusherEl,
       ...(this.header ? [this.header.el] : []),

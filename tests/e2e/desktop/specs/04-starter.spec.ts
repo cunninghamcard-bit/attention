@@ -23,7 +23,7 @@ function starterEnv(base: string): NodeJS.ProcessEnv {
   return env;
 }
 
-test("a fresh profile boots into the starter with Quick start", async ({}, testInfo) => {
+test("a fresh profile boots into the starter with Quick start", async (_fixtures, testInfo) => {
   const base = mkdtempSync(join(tmpdir(), "workbench-starter-e2e-"));
   const app = await electron.launch({
     args: [MAIN_CJS],
@@ -48,7 +48,7 @@ test("a fresh profile boots into the starter with Quick start", async ({}, testI
   }
 });
 
-test("clicking a registered vault opens its window and the starter closes itself", async ({}, testInfo) => {
+test("clicking a registered vault opens its window and the starter closes itself", async (_fixtures, testInfo) => {
   const base = mkdtempSync(join(tmpdir(), "workbench-starter-e2e-"));
   const vaultPath = join(base, "picked-vault");
   mkdirSync(vaultPath, { recursive: true });

@@ -459,9 +459,9 @@ export class GraphRenderer {
       if (!this.dragMoved && movedDistance <= 25) return;
       this.dragMoved = true;
       this.workerResults = {
-        ...(this.workerResults ?? {}),
+        ...this.workerResults,
         nodes: {
-          ...(this.workerResults?.nodes ?? {}),
+          ...this.workerResults?.nodes,
           [node.id]: point,
         },
       };

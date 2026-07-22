@@ -863,6 +863,7 @@ export class Workspace extends Events {
     });
     await Promise.all(leaves.map((leaf) => leaf.open(null)));
 
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Closing windows mutates children; retain stable snapshot semantics during capability migration.
     for (const child of [...this.floatingSplit.children]) {
       if (child instanceof WorkspaceWindow) child.close();
     }
@@ -1128,6 +1129,7 @@ export class Workspace extends Events {
       item.clear();
       return;
     }
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Releasing layout items mutates children, so use a stable snapshot.
     for (const child of [...item.children]) {
       if (options.detach === false) this.releaseLayoutItem(child);
       else child.detach();
@@ -1150,6 +1152,7 @@ export class Workspace extends Events {
 
   private releaseLayoutItem(item: WorkspaceItem): void {
     if (item instanceof WorkspaceParent) {
+      // oxlint-disable-next-line unicorn/no-useless-spread -- Releasing layout items mutates children, so use a stable snapshot.
       for (const child of [...item.children]) this.releaseLayoutItem(child);
       item.children = [];
     }
@@ -1349,6 +1352,7 @@ export class Workspace extends Events {
   closeTabGroup(): boolean {
     const leaf = this.activeLeaf;
     if (!leaf || this.isInSidebar(leaf) || !(leaf.parent instanceof WorkspaceTabs)) return false;
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Detaching tabs mutates children, so use a stable snapshot.
     for (const item of [...leaf.parent.children]) {
       if (item instanceof WorkspaceLeaf && !item.pinned) item.detach();
     }
@@ -1369,6 +1373,7 @@ export class Workspace extends Events {
       leaf.parent.children.length <= 1
     )
       return false;
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Detaching sibling tabs mutates children, so use a stable snapshot.
     for (const item of [...leaf.parent.children]) {
       if (item instanceof WorkspaceLeaf && item !== leaf && !item.pinned) item.detach();
     }
@@ -2373,7 +2378,7 @@ export class Workspace extends Events {
   }
 
   private getDropOverlayRect(
-    event: DragEvent,
+    _event: DragEvent,
     leaf: WorkspaceLeaf,
     side: WorkspaceDropTarget["side"],
     item: WorkspaceItem = leaf,

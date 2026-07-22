@@ -107,7 +107,7 @@ export type DebouncedFunction<T extends (...args: never[]) => unknown> = Debounc
   ReturnType<T>
 >;
 
-const STRIP_HEADING_RE = /[!"#$%&()*+,.:;<=>?@^`{|}~/\[\]\\\r\n]/g;
+const STRIP_HEADING_RE = /[!"#$%&()*+,.:;<=>?@^`{|}~/[\]\\\r\n]/g;
 const STRIP_HEADING_FOR_LINK_RE = /([:#|^\\\r\n]|%%|\[\[|\]\])/g;
 const DEFAULT_LANGUAGE = "en";
 const SUPPORTED_LANGUAGES = new Set([
@@ -287,6 +287,7 @@ export function debounce<T extends unknown[], V>(
   };
   const debounced = function (this: unknown, ...args: T) {
     pendingArgs = args;
+    // oxlint-disable-next-line typescript/no-this-alias -- Debounce must retain the dynamic call receiver for the delayed invocation.
     pendingThis = this;
     const now = Date.now();
     const activeWindow = getActiveWindow();

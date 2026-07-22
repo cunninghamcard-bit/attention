@@ -132,6 +132,7 @@ export class EditorViewHost {
       if (result) current = result;
     }
     for (const effect of current.effects) {
+      // oxlint-disable-next-line unicorn/no-useless-spread -- Field updates rewrite the map, so each effect uses a stable entry snapshot.
       for (const [field, value] of [...this.stateFields])
         this.stateFields.set(field, field.update(value, effect));
     }
@@ -296,7 +297,9 @@ export class EditorViewHost {
   }
 
   private emitUpdate(update: EditorViewUpdate): void {
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Update hooks may reconfigure plugins, so emit over a stable snapshot.
     for (const plugin of [...this.viewPlugins]) plugin.update?.(update);
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Update hooks may unsubscribe listeners, so emit over a stable snapshot.
     for (const listener of [...this.updateListeners]) listener.update(update);
   }
 

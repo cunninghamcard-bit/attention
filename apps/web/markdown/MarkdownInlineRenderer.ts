@@ -128,9 +128,9 @@ export class MarkdownInlineRenderer {
   }
 
   private decorate(fragment: DocumentFragment, context: InlineRenderContext): void {
-    for (const image of [
-      ...fragment.querySelectorAll<HTMLImageElement>("img[data-markdown-image][src]"),
-    ]) {
+    for (const image of fragment.querySelectorAll<HTMLImageElement>(
+      "img[data-markdown-image][src]",
+    )) {
       image.removeAttribute("data-markdown-image");
       const src = image.getAttribute("src") ?? "";
       const alt = image.getAttribute("alt") ?? "";
@@ -254,7 +254,7 @@ function installObsidianRules(markdown: MarkdownIt): void {
     const className = getMeta(token).display === true ? "math math-block" : "math math-inline";
     return `<span class="${className}">${esc(token.content)}</span>`;
   };
-  markdown.renderer.rules.footnote_ref = (tokens, index, _options, environment) => {
+  markdown.renderer.rules.footnote_ref = (tokens, index, _options, _environment) => {
     const meta = getMeta(tokens[index]);
     const number = Number(meta.id ?? 0) + 1;
     const subId = Number(meta.subId ?? 0);
@@ -384,7 +384,7 @@ function readMath(state: InlineParserState, silent: boolean): boolean {
   return true;
 }
 
-const TAG_PATTERN = /^#[^\u2000-\u206f\u2e00-\u2e7f'!"#$%&()*+,.:;<=>?@^`{|}~\[\]\\\s]+/u;
+const TAG_PATTERN = /^#[^\u2000-\u206f\u2e00-\u2e7f'!"#$%&()*+,.:;<=>?@^`{|}~[\]\\\s]+/u;
 
 function parseWikiLink(value: string): { href: string; title: string; alias: boolean } {
   const pipe = value.indexOf("|");

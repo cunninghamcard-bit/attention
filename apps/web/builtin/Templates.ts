@@ -27,7 +27,7 @@ export class TemplatesController {
 
   async onEnable(plugin: InternalPluginWrapper): Promise<void> {
     this.plugin = plugin;
-    this.options = { ...this.options, ...((await plugin.loadData<TemplatesOptions>()) ?? {}) };
+    this.options = { ...this.options, ...(await plugin.loadData<TemplatesOptions>()) };
     plugin.addSettingTab(new TemplatesSettingTab(this.app, this));
   }
 

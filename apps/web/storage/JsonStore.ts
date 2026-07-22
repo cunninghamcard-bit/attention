@@ -71,10 +71,12 @@ export class MemoryJsonStoreAdapter implements JsonStoreAdapter {
 
   async deleteFolder(path: string): Promise<void> {
     const prefix = path.endsWith("/") ? path : `${path}/`;
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Prefix cleanup deletes entries during iteration, so use a stable key snapshot.
     for (const file of [...this.jsonValues.keys()]) {
       if (file === path || file.startsWith(prefix)) this.jsonValues.delete(file);
       if (file === path || file.startsWith(prefix)) this.mtimes.delete(file);
     }
+    // oxlint-disable-next-line unicorn/no-useless-spread -- Prefix cleanup deletes entries during iteration, so use a stable key snapshot.
     for (const file of [...this.textValues.keys()]) {
       if (file === path || file.startsWith(prefix)) this.textValues.delete(file);
       if (file === path || file.startsWith(prefix)) this.mtimes.delete(file);

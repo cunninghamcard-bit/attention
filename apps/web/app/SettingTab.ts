@@ -221,6 +221,7 @@ export abstract class SettingPage {
   }
 }
 
+// oxlint-disable-next-line typescript/no-unsafe-declaration-merging -- Obsidian compatibility requires the public interface to merge with the runtime constructor below.
 export interface SettingTab {
   app?: App | null;
   setting?: SettingRegistry | null;

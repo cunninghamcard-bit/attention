@@ -116,7 +116,7 @@ describe("app.github.getProfileOverview", () => {
 describe("app.github.getContributions", () => {
   it("defaults to the current year", async () => {
     const bodies: string[] = [];
-    const { instance } = app((url, body) => {
+    const { instance } = app((_url, body) => {
       bodies.push(body);
       return {
         data: {
@@ -137,7 +137,7 @@ describe("app.github.getContributions", () => {
 
   it("honours an explicit year", async () => {
     const bodies: string[] = [];
-    const { instance } = app((url, body) => {
+    const { instance } = app((_url, body) => {
       bodies.push(body);
       return {
         data: {

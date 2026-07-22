@@ -74,7 +74,7 @@ export class HotkeysSettingTab implements SettingTab {
     return [...this.app.commands.getCommands()]
       .filter((command) => {
         const haystack = `${command.name} ${command.id}`.toLowerCase();
-        return tokens.length === 0 || tokens.every((token) => haystack.includes(token));
+        return tokens.every((token) => haystack.includes(token));
       })
       .sort((a, b) => a.name.localeCompare(b.name));
   }

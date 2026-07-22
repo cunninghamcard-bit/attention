@@ -225,6 +225,7 @@ export class MobileDrawer extends WorkspaceParent {
   }
 
   clear(): void {
+    // oxlint-disable-next-line unicorn/no-useless-spread -- detach mutates children, so clear iterates a stable snapshot.
     for (const child of [...this.children]) child.detach();
     this.children = [];
     this.activeTabContentEl.replaceChildren();

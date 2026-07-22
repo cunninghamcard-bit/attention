@@ -48,7 +48,7 @@ export class CommandPaletteCorePlugin {
 
   async onEnable(plugin: InternalPluginWrapper): Promise<void> {
     this.modal = new CommandPalette(this.app, this);
-    this.options = { ...((await plugin.loadData<CommandPaletteOptions>()) ?? {}) };
+    this.options = { ...(await plugin.loadData<CommandPaletteOptions>()) };
     const recent = this.app.loadLocalStorage<string[]>("recent-commands");
     if (Array.isArray(recent)) this.recentCommands = recent;
     plugin.addSettingTab(new CommandPaletteSettingTab(this.app, plugin, this));
@@ -60,7 +60,7 @@ export class CommandPaletteCorePlugin {
   }
 
   async onExternalSettingsChange(): Promise<void> {
-    this.options = { ...((await this.plugin?.loadData<CommandPaletteOptions>()) ?? {}) };
+    this.options = { ...(await this.plugin?.loadData<CommandPaletteOptions>()) };
   }
 
   async saveSettings(): Promise<void> {

@@ -719,7 +719,7 @@ function appendFlair(parentEl: HTMLElement, text: string, pop = false): void {
 
 function repositorySlug(entry: MarketplacePluginEntry): string | null {
   if (entry.repo) return entry.repo.replace(/^\/+|\/+$/g, "");
-  const match = entry.repository?.match(/^https?:\/\/github\.com\/([^/]+\/[^/#]+)(?:[\/#]|$)/i);
+  const match = entry.repository?.match(/^https?:\/\/github\.com\/([^/]+\/[^/#]+)(?:[/#]|$)/i);
   return match?.[1]?.replace(/\.git$/i, "") ?? null;
 }
 

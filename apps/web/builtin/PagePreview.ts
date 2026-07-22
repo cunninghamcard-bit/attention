@@ -34,7 +34,7 @@ export class PagePreviewController {
   async onEnable(plugin: InternalPluginWrapper): Promise<void> {
     this.plugin = plugin;
     this.ensureDefaultSources();
-    this.overrides = { ...((await plugin.loadData<PagePreviewOverrides>()) ?? {}) };
+    this.overrides = { ...(await plugin.loadData<PagePreviewOverrides>()) };
     plugin.registerEvent(
       this.app.workspace.on(
         "hover-link",

@@ -393,6 +393,7 @@ export class AppearanceSettingTab implements SettingTab {
           .setDesc("Use the graphics processor to improve rendering performance.")
           .addToggle((toggle) =>
             toggle
+              // oxlint-disable-next-line no-extra-boolean-cast -- Explicitly normalize the untyped Electron IPC result before inverting it; retained during capability migration.
               .setValue(!Boolean(electron?.ipcRenderer?.sendSync?.("disable-gpu")))
               .onChange((enabled) => {
                 electron?.ipcRenderer?.sendSync?.("disable-gpu", !enabled);

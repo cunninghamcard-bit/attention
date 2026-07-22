@@ -339,6 +339,7 @@ function stopHoverPollingIfIdle(): void {
 }
 
 function closeDetachedHovers(event: Event): void {
+  // oxlint-disable-next-line unicorn/no-useless-spread -- hide mutates hover registries, so iterate a stable snapshot.
   for (const popover of [...pendingHoverPopovers]) popover.hide();
   const target = event.target instanceof Node ? event.target : null;
   const candidates = shownHoverPopovers.filter((popover) => {
@@ -368,6 +369,7 @@ function pollHoverTargets(): void {
   if (!lastMouse) return;
   const el = lastMouse.doc.elementFromPoint(lastMouse.x, lastMouse.y);
   for (const popover of shownHoverPopovers) popover.detect(el);
+  // oxlint-disable-next-line unicorn/no-useless-spread -- transition can mutate the shown registry, so iterate a stable snapshot.
   for (const popover of [...shownHoverPopovers]) popover.transition();
   stopHoverPollingIfIdle();
 }

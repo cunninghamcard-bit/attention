@@ -24,7 +24,7 @@ export class DailyNotesController {
 
   async onEnable(plugin: InternalPluginWrapper): Promise<void> {
     this.plugin = plugin;
-    this.options = { ...this.options, ...((await plugin.loadData<DailyNotesOptions>()) ?? {}) };
+    this.options = { ...this.options, ...(await plugin.loadData<DailyNotesOptions>()) };
     plugin.addSettingTab(new DailyNotesSettingTab(this.app, this));
   }
 

@@ -33,7 +33,7 @@ export class UnknownView extends EmptyView {
   async onOpen(): Promise<void> {
     this.renderEmptyState({
       title: "Unknown pane",
-      description: `No registered view can render the \"${this.viewType}\" pane type.`,
+      description: `No registered view can render the "${this.viewType}" pane type.`,
       actions: [
         { label: "Close this pane", run: () => this.leaf.detach(), danger: true },
         {

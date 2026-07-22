@@ -117,7 +117,7 @@ describe("MetadataCache", () => {
       expect(changed[0]?.[0]).toBe(file);
       expect(changed[0]?.[1]).toBe("# Two");
       expect(
-        (changed[0]?.[2] as { headings?: Array<{ heading: string }> }).headings?.[0]?.heading,
+        (changed[0]![2] as { headings?: Array<{ heading: string }> }).headings?.[0]?.heading,
       ).toBe("Two");
       expect(finished).toEqual([]);
 

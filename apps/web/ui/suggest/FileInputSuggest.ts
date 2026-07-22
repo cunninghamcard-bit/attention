@@ -43,7 +43,7 @@ export class FileInputSuggest extends AbstractInputSuggest<InputFileSuggestion<T
 
   override selectSuggestion(
     value: InputFileSuggestion<TFile>,
-    event: MouseEvent | KeyboardEvent,
+    _event: MouseEvent | KeyboardEvent,
   ): void {
     this.setValue(this.getSelectedPath(value.item));
     triggerTextInputEvents(this.textInputEl, true);

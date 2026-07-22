@@ -592,6 +592,7 @@ describe("WorkspaceSplit", () => {
     await app.ready;
     const file = await app.vault.create("Side.md", "side");
     const leaf = await app.workspace.openFile(file, { active: true });
+    // oxlint-disable-next-line unicorn/no-useless-spread -- detach mutates children; the test intentionally drains a stable snapshot.
     for (const child of [...app.workspace.leftSplit.children]) child.detach();
     (app.workspace.leftSplit as { expand?: () => void }).expand?.();
     setRect(app.workspace.leftSplit.containerEl, { x: 0, y: 0, width: 300, height: 600 });
@@ -622,6 +623,7 @@ describe("WorkspaceSplit", () => {
     await app.ready;
     const file = await app.vault.create("CollapsedSide.md", "side");
     const leaf = await app.workspace.openFile(file, { active: true });
+    // oxlint-disable-next-line unicorn/no-useless-spread -- detach mutates children; the test intentionally drains a stable snapshot.
     for (const child of [...app.workspace.leftSplit.children]) child.detach();
     (app.workspace.leftSplit as { collapse?: () => void }).collapse?.();
     setRect(app.workspace.leftSidebarToggleButtonEl, { x: 8, y: 12, width: 36, height: 32 });

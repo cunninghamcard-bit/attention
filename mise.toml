@@ -1,8 +1,9 @@
 # Toolchain control: mise pins tool versions and is the task entry point; vp
-# (Vite+) fronts the JS toolchain (it wraps vitest/oxlint/prettier/rolldown/
-# pnpm, so pnpm still owns dependencies underneath; tsc lanes stay explicit
-# scripts because vp check's type stage does not engage this repo); the Go
-# kernel is mise-direct. Task taxonomy mirrors memoh.
+# (Vite+) fronts dev, test, build, and formatting, while repository-owned
+# oxfmt/oxlint versions are the lint authority so warnings can fail the gate.
+# pnpm still owns dependencies underneath; tsc lanes stay explicit because vp
+# check's type stage does not engage this repo. The Go kernel is mise-direct.
+# Task taxonomy mirrors memoh.
 # New machine: `mise run setup`, then `mise run lint && mise run typecheck &&
 # mise run test && mise run test:go`.
 
@@ -29,11 +30,11 @@ run = "pnpm exec vp run dev"
 
 [tasks.lint]
 description = "Run all linters (non-mutating; format is checked, not rewritten)"
-run = ["pnpm exec vp check", "mise run lint:go"]
+run = ["pnpm run format:check", "pnpm run lint", "mise run lint:go"]
 
 [tasks."lint:es"]
 description = "Run the JS/TS linter"
-run = "pnpm exec vp lint"
+run = "pnpm run lint"
 
 [tasks."lint:go"]
 description = "Run the Go vet pass over the kernel"

@@ -166,7 +166,7 @@ describe("native Git views", () => {
     image.dispatchEvent(new Event("error"));
     expect(avatar.querySelector(".git-avatar-image")).toBeNull();
     expect(avatar.querySelector(".git-avatar-fallback")?.textContent).toBe("C");
-    expect((commit?.querySelector(".git-log-detail") as HTMLElement).hidden).toBe(true);
+    expect((commit!.querySelector(".git-log-detail") as HTMLElement).hidden).toBe(true);
     header.click();
     await settle();
     // The changed file is a FILE (nav-file-title), collapsible to its diff — so a

@@ -322,6 +322,7 @@ describe("MarkdownPreviewRenderer", () => {
       "thenable",
       () =>
         ({
+          // oxlint-disable-next-line unicorn/no-thenable -- This fixture intentionally verifies Promise-like postprocessor handling.
           then(resolve: () => void) {
             thenCalled = true;
             resolve();

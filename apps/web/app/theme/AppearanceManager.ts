@@ -202,7 +202,7 @@ function formatFontFamilyOverride(value: string): string {
     .map((font) => {
       if (
         /^['"]/.test(font) ||
-        /^var\(/.test(font) ||
+        font.startsWith("var(") ||
         /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-serif|ui-sans-serif|ui-monospace)$/i.test(
           font,
         )

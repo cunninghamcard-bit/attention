@@ -120,7 +120,7 @@ export class GitHubDetailView extends ItemView {
   }
 
   getState(): Record<string, unknown> {
-    return { ...(this.target ?? {}) };
+    return { ...this.target };
   }
 
   async onClose(): Promise<void> {

@@ -10,7 +10,7 @@
     "preview": "pnpm --filter @app/web run preview",
     "typecheck": "tsc --noEmit",
     "typecheck:electron": "tsc -p apps/desktop/main/tsconfig.json",
-    "lint": "oxlint -c oxlint.json apps packages tests scripts --quiet",
+    "lint": "oxlint -c oxlint.json apps packages tests scripts --deny-warnings --report-unused-disable-directives",
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test -c tests/e2e/playwright.config.ts",

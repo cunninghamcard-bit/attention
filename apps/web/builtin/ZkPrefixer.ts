@@ -23,7 +23,7 @@ export class ZkPrefixerController {
 
   async onEnable(plugin: InternalPluginWrapper): Promise<void> {
     this.plugin = plugin;
-    this.options = { ...((await plugin.loadData<ZkPrefixerOptions>()) ?? {}) };
+    this.options = { ...(await plugin.loadData<ZkPrefixerOptions>()) };
     plugin.addSettingTab(new ZkPrefixerSettingTab(this.app, this));
   }
 

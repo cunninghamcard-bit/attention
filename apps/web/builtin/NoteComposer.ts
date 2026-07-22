@@ -35,7 +35,7 @@ export class NoteComposerController {
     this.plugin = plugin;
     this.options = {
       ...DEFAULT_OPTIONS,
-      ...((await plugin.loadData<Partial<NoteComposerOptions>>()) ?? {}),
+      ...(await plugin.loadData<Partial<NoteComposerOptions>>()),
     };
     plugin.addSettingTab(new NoteComposerSettingTab(this.app, this));
     plugin.registerEvent(

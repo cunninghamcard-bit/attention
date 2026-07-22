@@ -5,7 +5,6 @@ import { FileSystemAdapter } from "@web/vault/FileSystemAdapter";
 // The renderer tsconfig is DOM-only (no node types), so load Node builtins via
 // a non-literal specifier: TS types `import(<string>)` as `any` and skips
 // module/global resolution, keeping node's globals out of the renderer program.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type NodeFs = any;
 async function nodeModule(id: string): Promise<NodeFs> {
   return import(/* @vite-ignore */ id as string);

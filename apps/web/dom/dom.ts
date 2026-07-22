@@ -250,6 +250,7 @@ export function installDomExtensions(win: Window & typeof globalThis = window): 
       listener: () => unknown,
       once = false,
     ): () => void {
+      // oxlint-disable-next-line typescript/no-this-alias -- The returned disposer must retain the exact EventTarget receiver.
       const target = this;
       const doc = target.ownerDocument;
       const root = doc.documentElement ?? doc;

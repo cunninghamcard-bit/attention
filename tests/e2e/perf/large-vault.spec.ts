@@ -55,7 +55,7 @@ function median(values: number[]): number {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
-test("per-click latency on a huge vault", async ({}, testInfo) => {
+test("per-click latency on a huge vault", async (_fixtures, testInfo) => {
   test.setTimeout(600_000);
   const base = mkdtempSync(join(tmpdir(), "perf-vault-"));
   const vault = join(base, "vault");

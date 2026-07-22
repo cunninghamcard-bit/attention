@@ -54,7 +54,7 @@ function seedVault(vault: string): void {
 export const test = base.extend<DesktopFixtures>({
   // Owns the throwaway workspace: tests that read/write vault files depend on
   // this for the real on-disk path; launchApp builds its env from it.
-  vaultPath: async ({}, use) => {
+  vaultPath: async (_fixtures, use) => {
     const base = mkdtempSync(join(tmpdir(), "workbench-desktop-e2e-"));
     const vault = join(base, "vault");
     seedVault(vault);

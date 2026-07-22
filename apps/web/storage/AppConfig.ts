@@ -163,7 +163,7 @@ export class AppConfigManager extends Events {
     const appearanceConfig = await this.store.read<AppConfigShape>(this.appearanceFileName);
     this.unreadable = appConfig === undefined || appearanceConfig === undefined;
     if (this.unreadable) return undefined;
-    return migrateConfig({ ...(appearanceConfig ?? {}), ...(appConfig ?? {}) });
+    return migrateConfig({ ...appearanceConfig, ...appConfig });
   }
 
   private clearReloadTimer(): void {
