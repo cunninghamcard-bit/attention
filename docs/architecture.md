@@ -242,7 +242,7 @@ workspace member so its bare imports and `vi.mock` specifiers resolve in
 their own dependency lane. `lint`/`format` sweep `apps packages tests
 scripts`; `typecheck` covers the renderer + shared, `typecheck:electron` the
 main/preload shell, and `typecheck:tools` the e2e specs, scripts and root
-config files. `mise.toml` pins the toolchain (node, pnpm, go) and the
-gate runs the JS lane plus `kernel:test` (go test on both Go modules); hooks
-live in the tracked `.githooks/`. The IPC channel table and the public
-plugin surface are frozen by budget alarms.
+config files. `mise.toml` pins the toolchain (node, pnpm, go); CI composes its
+discrete `lint`, `typecheck`, `test`, `test:go`, `packcheck`, `web:build`, and
+`desktop:build` tasks. Hooks live in the tracked `.githooks/`. The IPC channel
+table and the public plugin surface are frozen by budget alarms.

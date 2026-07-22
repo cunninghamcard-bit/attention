@@ -6,8 +6,8 @@ how Obsidian's bundled app is structured has grown into a working Electron
 application: a real vault, workspace and plugin runtime carrying a chat/agent
 view, a GitHub workspace, an embedded terminal and a web viewer.
 
-It runs, and it is exercised. The full test suite has 1576+ passing tests, and
-the perf harness opens files in a 20,000-file vault at a 32ms median.
+It runs, and it is exercised by unit, integration and end-to-end suites. The
+perf harness opens files in a 20,000-file vault at a 32ms median.
 
 ## What this is
 
@@ -29,12 +29,11 @@ the perf harness opens files in a 20,000-file vault at a 32ms median.
 mise run setup                  # pinned toolchain + all dependencies
 mise run lint && mise run typecheck && mise run test && mise run test:go
 
-pnpm install       # pnpm only — a preinstall hook enforces it
-
-pnpm dev           # web renderer via Vite at http://127.0.0.1:5173 (in-memory vault)
-pnpm desktop       # build + launch the Electron app against a real vault on disk
-pnpm build         # production build of the web app
-pnpm test          # full vitest suite (1576+ tests)
+# Direct package aliases after setup:
+pnpm dev       # web renderer via Vite at http://127.0.0.1:5173 (in-memory vault)
+pnpm desktop   # build + launch the Electron app against a real vault on disk
+pnpm build     # production build of the web app
+pnpm test      # full vitest suite
 ```
 
 Other entry points:
