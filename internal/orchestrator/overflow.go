@@ -31,7 +31,7 @@ func (o *Orchestrator) recoverOverflowBeforePrompt(
 	if err != nil || !last.ok {
 		return ai.Message{}, err
 	}
-	msg, _, err := o.recoverContextOverflow(ctx, state, last)
+	msg, err := o.recoverContextOverflow(ctx, state, last)
 	return msg, err
 }
 
@@ -44,7 +44,7 @@ func (o *Orchestrator) recoverOverflowAfterAssistant(
 	if err != nil || !entry.ok {
 		return msg, err
 	}
-	recovered, _, err := o.recoverContextOverflow(ctx, state, entry)
+	recovered, err := o.recoverContextOverflow(ctx, state, entry)
 	return recovered, err
 }
 
@@ -52,29 +52,29 @@ func (o *Orchestrator) recoverContextOverflow(
 	ctx context.Context,
 	state harness.TurnState,
 	assistant assistantEntryResult,
-) (ai.Message, bool, error) {
+) (ai.Message, error) {
 	msg := assistant.message
 	if !ai.IsContextOverflow(msg, state.Model.ContextWindow) {
 		if msg.StopReason != ai.StopReasonError {
 			o.setOverflowRecoveryAttempted(false)
 		}
-		return msg, false, nil
+		return msg, nil
 	}
 
 	if !o.isAutoCompactionEnabled() {
-		return msg, false, nil
+		return msg, nil
 	}
 	if !sameAssistantModel(msg, state.Model) {
-		return msg, false, nil
+		return msg, nil
 	}
 	if !sameRuntimeModel(o.currentModel(), state.Model) {
-		return msg, false, nil
+		return msg, nil
 	}
 	if assistantIsBeforeLatestCompaction(assistant.branch, assistant.entry, msg) {
-		return msg, false, nil
+		return msg, nil
 	}
 	if o.overflowRecoveryWasAttempted() {
-		return msg, false, contextOverflowRecoveryError(msg)
+		return msg, contextOverflowRecoveryError(msg)
 	}
 
 	o.setOverflowRecoveryAttempted(true)
@@ -85,12 +85,12 @@ func (o *Orchestrator) recoverContextOverflow(
 	if _, err := o.session.MoveTo(ctx, parentID, nil); err != nil {
 		wrapped := fmt.Errorf("context overflow recovery move: %w", err)
 		o.publishCompactionEnd(overflowCompactionReason, nil, false, false, wrapped)
-		return msg, true, wrapped
+		return msg, wrapped
 	}
 	compactResult, err := o.harness.Compact(ctx, state, overflowCompactionReason)
 	if err != nil {
 		o.publishCompactionEnd(overflowCompactionReason, nil, false, false, err)
-		return msg, true, fmt.Errorf("context overflow recovery compact: %w", err)
+		return msg, fmt.Errorf("context overflow recovery compact: %w", err)
 	}
 	// pi emits overflow compaction_end before retrying the assistant turn:
 	// .agents/references/pi/packages/coding-agent/src/core/agent-session.ts:1996.
@@ -98,16 +98,16 @@ func (o *Orchestrator) recoverContextOverflow(
 
 	continued, err := o.harness.Continue(ctx, state)
 	if err != nil {
-		return continued, true, fmt.Errorf("context overflow recovery continue: %w", err)
+		return continued, fmt.Errorf("context overflow recovery continue: %w", err)
 	}
 	if ai.IsContextOverflow(continued, state.Model.ContextWindow) {
-		return continued, true, contextOverflowRecoveryError(continued)
+		return continued, contextOverflowRecoveryError(continued)
 	}
 	if continued.StopReason == ai.StopReasonError {
-		return continued, true, continueAssistantError(continued)
+		return continued, continueAssistantError(continued)
 	}
 	o.setOverflowRecoveryAttempted(false)
-	return continued, true, nil
+	return continued, nil
 }
 
 // SetAutoCompaction mirrors pi set_auto_compaction -> setAutoCompactionEnabled:

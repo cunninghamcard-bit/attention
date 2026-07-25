@@ -20,10 +20,7 @@ import (
 // message.
 func (h *Harness) Prompt(ctx context.Context, messages []message.AgentMessage, state TurnState) (ai.Message, error) {
 	systemPrompt := state.SystemPrompt
-	beforeStart, err := h.emitBeforeAgentStart(ctx, messages, state)
-	if err != nil {
-		return ai.Message{}, err
-	}
+	beforeStart := h.emitBeforeAgentStart(ctx, messages, state)
 	if beforeStart.systemPrompt != nil {
 		systemPrompt = *beforeStart.systemPrompt
 	}
@@ -105,9 +102,9 @@ type beforeAgentStart struct {
 
 // emitBeforeAgentStart fires the before_agent_start hook and returns any
 // injected messages or system prompt replacement.
-func (h *Harness) emitBeforeAgentStart(ctx context.Context, messages []message.AgentMessage, state TurnState) (beforeAgentStart, error) {
+func (h *Harness) emitBeforeAgentStart(ctx context.Context, messages []message.AgentMessage, state TurnState) beforeAgentStart {
 	if !h.cfg.Hooks.HasHandlers(hook.EventBeforeAgentStart) {
-		return beforeAgentStart{}, nil
+		return beforeAgentStart{}
 	}
 
 	var prompt string
@@ -163,7 +160,7 @@ func (h *Harness) emitBeforeAgentStart(ctx context.Context, messages []message.A
 	if modified {
 		out.systemPrompt = &running
 	}
-	return out, nil
+	return out
 }
 
 // createEventSink returns the EventSink closure that bridges agentloop events

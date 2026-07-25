@@ -37,8 +37,13 @@ description = "Run the JS/TS linter"
 run = "pnpm run lint"
 
 [tasks."lint:go"]
-description = "Run the Go vet pass over the kernel"
-run = "go vet ./..."
+description = "Go vet + golangci-lint over the kernel — BOTH modules. cmd/tui is a nested module; root-level `go`/golangci-lint never descend into it, so it gets its own invocation (same asymmetry test:go already handles)."
+run = [
+  "go vet ./...",
+  "go -C cmd/tui vet ./...",
+  "golangci-lint run ./...",
+  "cd cmd/tui && golangci-lint run -c ../../.golangci.yml ./...",
+]
 
 [tasks.format]
 description = "Rewrite formatting, via vp (vendored trees excluded by .prettierignore). NEVER `vp check --fix`: its lint autofixes rewrite semantics."

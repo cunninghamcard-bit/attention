@@ -442,16 +442,6 @@ func collapseBlankLines(s string) string {
 	return strings.Join(out, "\n")
 }
 
-// countByRole counts messages with the given role.
-func countByRole(msgs []message, role string) int {
-	n := 0
-	for _, msg := range msgs {
-		if msg.role == role {
-			n++
-		}
-	}
-	return n
-}
 
 // formatTokenCount formats a token count with K/M suffixes.
 func formatTokenCount(n int64) string {

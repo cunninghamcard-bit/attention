@@ -277,7 +277,7 @@ func TestBoolFlagRegistersLongAndAlias(t *testing.T) {
 func TestStringFlagRegistersLongAndAlias(t *testing.T) {
 	fs := flag.NewFlagSet("t", flag.ContinueOnError)
 	p := new(string)
-	stringFlag(fs, p, "tools", "t", "", "comma-separated allowlist of tool names to enable")
+	stringFlag(fs, p, "tools", "t", "comma-separated allowlist of tool names to enable")
 
 	if got := fs.Lookup("tools"); got == nil || got.Usage != "comma-separated allowlist of tool names to enable" || got.DefValue != "" {
 		t.Fatalf("tools flag = %+v", got)

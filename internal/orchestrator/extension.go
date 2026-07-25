@@ -52,10 +52,7 @@ func registerExtensionProviders(
 	defs map[string]extension.ProviderDefinition,
 ) error {
 	for name, def := range defs {
-		cfg, err := adaptProviderDefinition(name, def)
-		if err != nil {
-			return err
-		}
+		cfg := adaptProviderDefinition(def)
 		if err := registry.RegisterProvider(name, cfg); err != nil {
 			return fmt.Errorf("orchestrator: register extension provider %q: %w", name, err)
 		}
@@ -63,10 +60,7 @@ func registerExtensionProviders(
 	return nil
 }
 
-func adaptProviderDefinition(
-	_ string,
-	def extension.ProviderDefinition,
-) (provider.ProviderConfig, error) {
+func adaptProviderDefinition(def extension.ProviderDefinition) provider.ProviderConfig {
 	return provider.ProviderConfig{
 		Name:           copyStringPtr(def.Name),
 		BaseURL:        copyStringPtr(def.BaseURL),
@@ -77,7 +71,7 @@ func adaptProviderDefinition(
 		Compat:         def.Compat,
 		Models:         adaptProviderModels(def.Models),
 		ModelOverrides: adaptProviderModelOverrides(def.ModelOverrides),
-	}, nil
+	}
 }
 
 func adaptProviderModels(defs []extension.ProviderModel) []provider.ModelDefinition {

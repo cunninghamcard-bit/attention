@@ -4,10 +4,8 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 const (
@@ -97,59 +95,7 @@ func migrateHistoryFormat(lines []string) []HistoryEntry {
 	return entries
 }
 
-// truncateHistory limits history to the most recent maxSize entries.
-func truncateHistory(entries []HistoryEntry, maxSize int) []HistoryEntry {
-	if len(entries) <= maxSize {
-		return entries
-	}
-	return entries[len(entries)-maxSize:]
-}
 
-// formatHistoryOutput formats history entries for display, with optional query filter.
-// Entries are reversed (most recent first) and deduplicated by text.
-func formatHistoryOutput(entries []HistoryEntry, query string) string {
-	seen := make(map[string]bool)
-	var filtered []HistoryEntry
-
-	// Reverse iteration for most-recent-first order.
-	for i := len(entries) - 1; i >= 0; i-- {
-		h := entries[i]
-		if query != "" && !strings.Contains(strings.ToLower(h.Text), query) {
-			continue
-		}
-		if seen[h.Text] {
-			continue
-		}
-		seen[h.Text] = true
-		filtered = append(filtered, h)
-	}
-
-	if len(filtered) == 0 {
-		if query != "" {
-			return fmt.Sprintf("No history matching `%s`.", query)
-		}
-		return "No command history."
-	}
-
-	display := filtered
-	if len(display) > 20 {
-		display = display[:20]
-	}
-	var sb strings.Builder
-	if query != "" {
-		fmt.Fprintf(&sb, "**History matching `%s`** (%d total):\n", query, len(filtered))
-	} else {
-		fmt.Fprintf(&sb, "**Command history** (%d total, showing last %d):\n", len(filtered), len(display))
-	}
-	for _, entry := range display {
-		if len(entry.Mentions) > 0 {
-			fmt.Fprintf(&sb, "- `%s` (refs: %s)\n", entry.Text, strings.Join(entry.Mentions, ", "))
-		} else {
-			fmt.Fprintf(&sb, "- `%s`\n", entry.Text)
-		}
-	}
-	return sb.String()
-}
 
 // loadHistoryJSON reads JSONL history entries.
 func loadHistoryJSON(path string) []HistoryEntry {
@@ -220,13 +166,4 @@ func appendHistory(entry HistoryEntry) {
 	defer f.Close()
 
 	_ = json.NewEncoder(f).Encode(entry)
-}
-
-// handleHistoryCommand shows command history, optionally filtered by a query.
-func (m *model) handleHistoryCommand(args []string) {
-	query := strings.ToLower(strings.Join(args, " "))
-	m.chatModel.Messages = append(m.chatModel.Messages, message{
-		role:    "assistant",
-		content: formatHistoryOutput(m.inputModel.History, query),
-	})
 }

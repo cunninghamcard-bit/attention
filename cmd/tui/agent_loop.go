@@ -20,11 +20,6 @@ const (
 	// before the loop is considered stuck and aborted.
 	maxRepeatToolCalls = 10
 
-	// maxRepeatErrorCalls aliases maxRepeatToolCalls for callers that frame
-	// the threshold as an error-streak rather than a call-streak. The
-	// underlying detector is identical — identical fingerprint = stuck.
-	maxRepeatErrorCalls = maxRepeatToolCalls
-
 	// maxToolErrorStreak is the number of consecutive failures of the same
 	// tool name (regardless of args) before the loop is aborted. Catches the
 	// "flailing" pattern where the model tries a different argument each

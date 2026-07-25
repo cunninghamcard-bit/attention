@@ -69,9 +69,9 @@ func run(ctx context.Context) error {
 	thinkingFlag := fs.String("thinking", "", "thinking level: low, medium, or high")
 	// Tools.
 	toolsFlag := new(string)
-	stringFlag(fs, toolsFlag, "tools", "t", "", "comma-separated allowlist of tool names to enable")
+	stringFlag(fs, toolsFlag, "tools", "t", "comma-separated allowlist of tool names to enable")
 	excludeToolsFlag := new(string)
-	stringFlag(fs, excludeToolsFlag, "exclude-tools", "xt", "", "comma-separated denylist of tool names to disable")
+	stringFlag(fs, excludeToolsFlag, "exclude-tools", "xt", "comma-separated denylist of tool names to disable")
 	noToolsFlag := new(bool)
 	boolFlag(fs, noToolsFlag, "no-tools", "nt", "disable all tools")
 	noBuiltinToolsFlag := new(bool)
@@ -91,7 +91,7 @@ func run(ctx context.Context) error {
 	boolFlag(fs, noContextFilesFlag, "no-context-files", "nc", "disable AGENTS.md and CLAUDE.md discovery and loading")
 	// Session name / fork.
 	nameFlag := new(string)
-	stringFlag(fs, nameFlag, "name", "n", "", "set session display name")
+	stringFlag(fs, nameFlag, "name", "n", "set session display name")
 	forkFlag := fs.String("fork", "", "fork a session file or partial id into a new session")
 	// Early-exit flags.
 	listModelsFlag := fs.Bool("list-models", false, "list available models and exit")

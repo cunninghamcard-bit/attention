@@ -1759,7 +1759,7 @@ func TestBeforeAgentStartIncludesPromptImagesAndResources(t *testing.T) {
 	})
 
 	h := New(HarnessConfig{Session: stub, Hooks: reg})
-	got, err := h.emitBeforeAgentStart(
+	got := h.emitBeforeAgentStart(
 		context.Background(),
 		[]message.AgentMessage{ai.Message{
 			Role: ai.RoleUser,
@@ -1777,9 +1777,6 @@ func TestBeforeAgentStartIncludesPromptImagesAndResources(t *testing.T) {
 			Resources: resources,
 		},
 	)
-	if err != nil {
-		t.Fatalf("emitBeforeAgentStart: %v", err)
-	}
 	if got.systemPrompt == nil || *got.systemPrompt != "override" {
 		t.Fatalf("systemPrompt = %v, want override", got.systemPrompt)
 	}
@@ -1822,14 +1819,11 @@ func TestBeforeAgentStartChainsSystemPromptAndMessages(t *testing.T) {
 	})
 
 	h := New(HarnessConfig{Session: newStubSession(), Hooks: reg})
-	got, err := h.emitBeforeAgentStart(
+	got := h.emitBeforeAgentStart(
 		context.Background(),
 		[]message.AgentMessage{ai.Message{Role: ai.RoleUser}},
 		TurnState{SystemPrompt: "base"},
 	)
-	if err != nil {
-		t.Fatalf("emitBeforeAgentStart: %v", err)
-	}
 	if secondReceived != "first prompt" {
 		t.Fatalf("second handler SystemPrompt = %q, want first prompt", secondReceived)
 	}
@@ -1873,14 +1867,11 @@ func TestBeforeAgentStartSkipsHandlerError(t *testing.T) {
 	})
 
 	h := New(HarnessConfig{Session: newStubSession(), Hooks: reg})
-	got, err := h.emitBeforeAgentStart(
+	got := h.emitBeforeAgentStart(
 		context.Background(),
 		[]message.AgentMessage{ai.Message{Role: ai.RoleUser}},
 		TurnState{SystemPrompt: "base"},
 	)
-	if err != nil {
-		t.Fatalf("emitBeforeAgentStart: %v", err)
-	}
 	if got.systemPrompt == nil || *got.systemPrompt != "recovered" {
 		t.Fatalf("systemPrompt = %v, want recovered", got.systemPrompt)
 	}
@@ -1891,14 +1882,11 @@ func TestBeforeAgentStartSkipsHandlerError(t *testing.T) {
 
 func TestBeforeAgentStartNoHandlersReturnsNoChanges(t *testing.T) {
 	h := New(HarnessConfig{Session: newStubSession(), Hooks: hook.NewRegistry()})
-	got, err := h.emitBeforeAgentStart(
+	got := h.emitBeforeAgentStart(
 		context.Background(),
 		[]message.AgentMessage{ai.Message{Role: ai.RoleUser}},
 		TurnState{SystemPrompt: "base"},
 	)
-	if err != nil {
-		t.Fatalf("emitBeforeAgentStart: %v", err)
-	}
 	if got.systemPrompt != nil {
 		t.Fatalf("systemPrompt = %v, want nil", got.systemPrompt)
 	}
@@ -1915,14 +1903,11 @@ func TestBeforeAgentStartAllowsEmptySystemPromptOverride(t *testing.T) {
 	})
 
 	h := New(HarnessConfig{Session: newStubSession(), Hooks: reg})
-	got, err := h.emitBeforeAgentStart(
+	got := h.emitBeforeAgentStart(
 		context.Background(),
 		[]message.AgentMessage{ai.Message{Role: ai.RoleUser}},
 		TurnState{SystemPrompt: "base"},
 	)
-	if err != nil {
-		t.Fatalf("emitBeforeAgentStart: %v", err)
-	}
 	if got.systemPrompt == nil {
 		t.Fatal("systemPrompt = nil, want empty override")
 	}

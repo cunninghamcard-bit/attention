@@ -44,9 +44,9 @@ func boolFlag(fs *flag.FlagSet, p *bool, name, alias, usage string) {
 
 // stringFlag registers a string flag under its long name and a short alias in
 // one call, binding both to the same target so either spelling sets it.
-func stringFlag(fs *flag.FlagSet, p *string, name, alias, value, usage string) {
-	fs.StringVar(p, name, value, usage)
-	fs.StringVar(p, alias, value, "alias for --"+name)
+func stringFlag(fs *flag.FlagSet, p *string, name, alias, usage string) {
+	fs.StringVar(p, name, "", usage)
+	fs.StringVar(p, alias, "", "alias for --"+name)
 }
 
 // toolSelection holds the parsed tool-related flags. Precedence (highest first):

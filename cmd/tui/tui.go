@@ -72,9 +72,6 @@ type model struct {
 	// Unified search popup for slash commands and history.
 	searchPopup *searchPopupState
 
-	// Legacy selection index for slash commands (used in tests).
-	slashCommandSelected int
-
 	// Quit.
 	quitting bool
 
@@ -437,10 +434,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleSlashCommand(msg.Text)
 		}
 		return m.submitPrompt(msg.Text, msg.Mentions)
-
-	case restartMsg:
-		execRestart()
-		return m, tea.Quit
 
 	case agentThinkingMsg:
 		return m.handleAgentThinking(msg)
