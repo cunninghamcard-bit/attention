@@ -12,172 +12,82 @@ package, shared contract lanes, and the Go agent kernel at the repo root. The
 application is deliberately name-agnostic: no product name appears in the
 tree, only in the git remote.
 
-## Directory tree
+The governing rules for how code is written — reconstruct Obsidian rather than
+invent a parallel system, one shared primitive per protocol, faithful style
+layers stay byte-identical — live in `CLAUDE.md` / `AGENTS.md`. This document
+covers where code lives and what it may import.
+
+## Lanes
+
+Three lanes, one repo. Each row is a real directory with its current file
+count.
+
+| Lane | Path | Files | What it is |
+|---|---|---|---|
+| Renderer | `apps/web` | 415 | The product — the faithful Obsidian reconstruction |
+| Shell | `apps/desktop` | 32 | Electron main + preload |
+| Contracts | `packages/shared`, `packages/sdk` | 10 | The typed seam between the two above |
+| Kernel | `internal/**`, `cmd/**` | 204 | The Go agent kernel |
+| Tests | `tests/**` | 212 | web / desktop / e2e / architecture |
+
+## Directory map
+
+### `apps/web` — the renderer
 
 ```
-.
-├── apps/
-│   ├── web/              @app/web — the product: the faithful Obsidian
-│   │                     reconstruction (browser tech with node powers), its
-│   │                     vite root (index.html, starter.html, public/), the
-│   │                     vite configs, and the public plugin API build
-│   ├── desktop/          @app/desktop — the Electron shell: loads apps/web's
-│   │   ├── main/           build output. Electron main process: composition
-│   │   │                   root, windows, app:// protocol, IPC table, native
-│   │   │                   bridges (git, terminal, dialog, net, menu), CLI
-│   │   │                   socket server
-│   │   └── preload/        the preload bridge — installs the exact globals the
-│   │                       renderer probes (window.electron, electronGit, …)
-├── packages/
-│   ├── shared/           @app/shared — the native-seam port CONTRACTS, one
-│   │                     definition each: gitApi, terminalApi, dataAdapter,
-│   │                     ipc (channel table), scheme (URL_SCHEME), menu
-│   │                     (SystemMenuItem) — imported by BOTH app lanes,
-│   │                     never re-declared per side; plus ambient types
-│   ├── sdk/              @app/sdk — an EMPTY seat (manifest only) for the
-│   │                     future kernel API client generated from the kernel
-│   │                     OpenAPI contract; no runtime code, no dependencies
-├── cmd/                  Go kernel binaries (along headless kernel, tui
-│   └── tui/              client) — the agent kernel, merged with full history;
-│                         cmd/tui is its own nested Go module
-├── internal/             the Go kernel's engine packages (orchestrator,
-│                         harness, hook, extension, tool, resource, session…)
-├── extension/            the kernel's file plugins
-├── go.mod / go.sum       the kernel's module — at the ROOT, never a pnpm
-│                         workspace member
-├── tests/                ALL unit tests, centralized (workspace member
-│   │                     @app/tests):
-│   ├── web/             mirrors apps/web/** — imports via @web/* aliases
-│   ├── desktop/         mirrors apps/desktop/{main,preload} — @desktop/*,
-│   │                    @preload/*
-│   ├── e2e/             Playwright end-to-end + the large-vault perf harness
-│   │                    (PERF_VAULT)
-│   ├── architecture.test.ts   the architecture alarms (layout/walls/ports/
-│   │                    freeze/history)
-│   └── package.json     declares the bare deps tests need (own pnpm lane)
-├── docs/                 this file, the project constitution, and SDD goal
-│   │                     folders
-├── out/                  build outputs, one roof — out/{web,desktop}
-│                         (deliverables; the electron-vite geometry) — the
-│                         public API bundle is package-local at
-│                         apps/web/out/api — gitignored
-├── reports/              test observability, one roof — coverage + playwright
-├── .githooks/            tracked git hooks (pre-commit guard + commit-msg lint)
-├── .github/              CI: the full local gate battery on push/PR
-├── scripts/              build/e2e helper scripts (dts fixup, CLI e2e driver)
-├── patches/              pnpm dependency patches (ghostty-web)
-└── decode-obsidian/      read-only reference symlink to Obsidian's source
-                          (never edited)
+apps/web/
+├── builtin/      121  feature slices (git, chat, terminal, search, …)
+├── styles/        59  faithful extracts + own component CSS + deviations/
+├── app/           58  composition root, workspace, settings surface
+├── views/         49  view classes seated in the workspace
+├── ui/            22  the shared primitives — TreeItem, Setting, Notice, Modal
+├── plugin/        19  plugin runtime (internal track)
+├── platform/      17  platform capabilities behind interfaces
+├── markdown/      15  markdown pipeline
+├── metadata/      10  the metadata cache          ┐
+├── vault/          7  the vault                    │ kernel lane —
+├── storage/        5  persistence                  │ imports nothing
+├── core/           7  core primitives              │ above itself
+├── dom/            3  DOM helpers                  ┘
+├── editor/         7  editor integration
+├── search/         2  search
+├── api/            3  the public facade — community plugins only
+└── public/         1
 ```
 
-The root `package.json` is a **private orchestrator**: no runtime dependency
-table of its own — the lanes carry their own (`@app/web` the browser stack:
-codemirror, @pierre/\*, ghostty-web, yaml, stream-markdown-parser;
-`@app/desktop` the node stack: electron, @electron/remote, node-pty,
-font-list) — and keeps the familiar script names, forwarding into the lanes
-via `pnpm --filter` so `mise.toml` tasks and muscle memory are unchanged.
-`tests/` stays a workspace member with its own bare-import lane.
-
-### `apps/web/` — the 16 source directories
-
-The renderer collapses what used to be 55 flat directories into 16. Kernel
-domain names stay visible at the top; features live under one roof; families
-merge. (`public/` sits alongside as static assets served verbatim, not a
-source directory; `node_modules/` and `out/` are tooling artifacts, also not
-source directories.)
+### `apps/desktop` — the shell
 
 ```
-api/        public plugin facade (PublicApi, PluginApiFacade) — the community-plugin surface
-app/        App service locator + composition root; app family (commands, protocol, hotkeys, menus, diagnostics, starter, theme, release)
-builtin/    feature roof — one core plugin per slice (see below)
-core/       foundation primitives: Component, Events, fuzzy match, Version (utils absorbed here)
-dom/        DOM helpers, clipboard, active-document tracking
-editor/     CodeMirror wrappers: Editor, EditorView, extensions, decorations
-markdown/   markdown parse + render pipeline and the post-processor registry
-metadata/   kernel — metadata cache, link graph, tags, frontmatter, block cache
-platform/   platform family (platform + native + shell + window + desktop + mobile): env detection + node/electron bridges
-plugin/     plugin runtime — manager, loader, manifest, security, marketplace, internal + community machinery
-search/     global search engine over notes and code
-storage/    kernel — app config, JSON stores, secret storage (behind the JSON-store adapter seam)
-styles/     the faithful app.css extract (tokens, base, vendor, components, workspace, editor, features) + reveal demos + deviations/ (registered, one file per deviation); own component styles live WITH their components (ui/, builtin/, views/, app/), imported last via index.css
-ui/         ui family (ui + drag + hover + suggest): Modal, Menu, Notice, Setting, Icon, Popover primitives
-vault/      kernel — Vault, the DataAdapter/FileSystemAdapter seam, TAbstractFile, file watcher
-views/      view layer + views family (workspace + properties): ItemView, MarkdownView, FileView, WorkspaceLeaf/Split
+apps/desktop/
+├── main/     27  Electron main: composition root, windows, app:// protocol,
+│                 IPC table, native bridges (git, terminal, dialog, net, menu),
+│                 CLI socket server
+└── preload/   4  the preload bridge — installs the globals the renderer probes
 ```
 
-`builtin/` is the feature roof (VS Code `contrib` pattern). The smaller core
-plugins and their setting tabs sit as loose files (Bookmarks, DailyNotes,
-QuickSwitcher, FileExplorerView, …); the larger ones each own a subdirectory:
-`canvas/`, `file-recovery/`, `git/`, `github/`, `graph/`, `terminal/`,
-`theme-market/`, `webviewer/`. Each slice holds exactly one core plugin.
+### Go kernel
 
-**UI paradigm.** Product UI is vanilla TypeScript with direct DOM ownership.
-Code under `apps/**`, `packages/**` and `tests/**` must not import React,
-React DOM, or the `@pierre/diffs/react` wrapper, and the dependency tables
-must not contain React, Vue or a zod presenter layer.
-`tests/architecture.test.ts` enforces both. Local Git diffs use Pierre custom
-elements through their public CSS-variable contract: host styles bridge
-Obsidian semantic tokens into the shadow root, and mounted diff instances
-refresh their light/dark syntax mode on the workspace `css-change` event.
+```
+internal/
+├── ai/           48  provider adapters (anthropic, openai completions/
+│                     responses/codex), oauth, retry, overflow, caching
+├── tool/         29  builtin tools
+├── orchestrator/ 14  turn orchestration
+├── resource/     12
+├── session/       9
+├── execenv/       7
+├── mode/          6   harness/ 6   plugin/ 5   hook/ 5
+├── provider/      4   extension/ 4   config/ 4   auth/ 4
+└── obs/ message/ agentloop/  3 each
 
-## Runtime topology
+cmd/
+├── along/   8  the CLI
+└── tui/    30  the terminal UI — a NESTED Go module (own go.mod)
+```
 
-One product, three runtime lanes across two packages:
-
-- **main** (`apps/desktop/main`) is the Electron main process — full node
-  privileges, the composition root: single-instance lock, `obsidian.json`
-  settings + vault registry, vault-window lifecycle, the `app://` file
-  protocol, the IPC table, `workbench://` URL routing, and the CLI socket
-  server.
-- **preload** (`apps/desktop/preload`) installs the exact globals the product
-  probes for — `window.electron` (ipcRenderer/shell/webUtils),
-  `electronWindow`, and the `electronGit` / `electronTerminal` bridges.
-- **renderer** (`apps/web`) is the product — DOM, CodeMirror, the whole
-  Obsidian-shaped UI. The shell loads it into a `BrowserWindow` with
-  `contextIsolation:false` + `nodeIntegration:true`, so browser technology
-  gets **node powers via the shell**: the renderer touches the filesystem
-  directly.
-
-The main bundle emits to `out/desktop/main.cjs`; the renderer to the sibling
-`out/web`, which main serves over `app://` (`join(here, "..", "web")`). The
-renderer never imports the shell; the shell fills the renderer's ports.
-
-## Native seam — one typed contract (`@app/shared`)
-
-The renderer↔shell seam is ports-and-adapters, and the port CONTRACTS live
-once in `packages/shared`, imported by both lanes instead of duck-typed
-twice:
-
-- **`dataAdapter`** — the vault filesystem port. Satisfied IN-PROCESS in the
-  renderer (`FileSystemAdapter`, node `fs`), the perf red line; never routed
-  over IPC or the kernel. `bootstrap.ts` picks the backend at startup
-  (`provideAppAdapter`): under the shell it installs `FileSystemAdapter`, in a
-  plain browser it keeps the in-memory adapter, and tests inject a fake
-  through the same seam — which is what lets the product boot headless.
-- **`gitApi` / `terminalApi`** — git and PTY bridges. The renderer's
-  `GitService` / `DesktopTerminalAdapter` consume the port; the preload
-  (`git-bridge`, `terminal-bridge`) fills it. Both sides import the one
-  interface from `@app/shared`.
-- **`ipc`** — the typed IPC channel table (channel name → request/response).
-  Main's handler map and the renderer's callers both reference it, so channel
-  names are one source of truth. Plain TS types, no zod and no runtime
-  validation: the seam is a trusted, small, in-process surface.
-- **`scheme` / `menu`** — the two wire literals both processes speak: the
-  product URL scheme (renderer URI router, main URL parser, the CLI
-  short-circuit) and the system-menu template shape (the renderer builds it,
-  main feeds it to `Menu.buildFromTemplate`). Lifted here so the shell never
-  imports renderer source — the shell-wall's counterpart to the renderer-wall.
-
-The Go agent kernel sits at the repo root (`cmd/`, `internal/`, its own
-go.mod) — merged from its repository with full history, NOT a workspace
-member, NOT wired into the app: nothing spawns it, nothing imports it. Its
-product-facing transport and the renderer's access path are decided for the
-kernel-integration ticket (memoh-style: an Echo HTTP facade + one WebSocket
-push channel, OpenAPI as the contract of record, `@app/sdk` generated from
-it); the retired `KernelApi` port was deleted with this migration — a
-hand-written second contract beside a generated client would drift. RED
-LINE, unchanged: the kernel owns the agent backend (and, in cloud,
-DB-as-truth) — never the local vault fs, never block rendering.
+> `cmd/tui` is a separate module. Root-level `go` commands do not descend into
+> it. `mise run test:go` handles both (`go -C cmd/tui test ./...`);
+> `mise run lint:go` currently does not.
 
 ## Direction table (normative)
 
@@ -201,46 +111,42 @@ the same engine, by design:
 - _Public track_ — `api/` (`PublicApi`, `PluginApiFacade`) is the frozen
   surface for **community plugins only**. Because it exists solely for
   outside code, nothing inside the app may import it — the direction table's
-  row.
+  last row.
 
-**builtin roof** — each `builtin/` slice holds exactly one core plugin, so
-the feature boundary is the directory boundary.
+## Enforced rules
 
-## Known tradeoffs
+`tests/architecture.test.ts` (843 lines) fails CI on any of these:
 
-**Disk stays in the renderer.** `FileSystemAdapter` calls node `fs` straight
-from the renderer instead of routing every read and write over IPC to main.
-The IPC route was measured and rejected: keeping disk in-renderer holds
-`openFile` under the 50ms budget on the 20k-file vault (`PERF_VAULT`
-harness), and per-call IPC round-trips regressed past it. The cost is that
-the renderer is trusted with `nodeIntegration`.
+| Rule | Asserts |
+|---|---|
+| `monorepo-shape` | the three lanes exist, kernel seated; renderer free of shell imports |
+| `shell-wall` | shell free of renderer source; both sides import wire contracts from `@app/shared` |
+| `shared-contracts` | native port contracts declared in shared; no zod presenters or UI frameworks in the dependency table |
+| `perf-red-line` | vault reads stay in-process |
+| `kernel-seam` | the removed kernel port stays removed |
+| `kernel-history` | the kernel subtree keeps reachable history, blame honest |
+| `zero-react` | no react imports in source; react and moment out of the dependency table |
+| `kernel-direction` | kernel directories import nothing above the kernel |
+| `dual-track-api` | internal code never imports the public api facade |
+| `architecture-docs` | this file and `project.spec.md` exist and declare their governed structure |
+| `name-agnostic code` | no retired product-name literals in `apps` / `packages` / `tests` / `scripts` |
 
-**Kernel is a directory, not a package.** `vault`/`metadata`/`storage` are
-guarded by the direction table but not physically walled into their own
-package. A package boundary with a single consumer is ceremony; the kernel
-graduates to a real package the moment a _second_ consumer appears, and the
-direction test already keeps its imports clean for that day.
+`tests/web/styles/StyleSystem.test.ts` (317 lines) additionally guards the
+stylesheet layering: the exactly-once manifest, own-last import order, and the
+restyle/token walls. Faithful extracts under
+`styles/{tokens,base,components,features,workspace,editor}` must stay
+byte-identical to `decode-obsidian/ref/obsidian/app.css`; deliberate
+deviations live one-per-file under `styles/deviations/`.
 
-**Ports are contracts, not a presenter framework.** `@app/shared` holds plain
-TS interfaces and a channel-name table — deliberately not a zod/route/
-presenter layer. That machinery polices an untrusted, secret-holding sandbox
-we do not have; our trusted small-surface seam needs only typed interfaces.
+## Gates
 
-**The kernel is seated, not wired.** The Go agent kernel lives at the repo
-root with its own module, but nothing spawns it and no JS imports it. Seating
-it in-tree (history intact) precedes wiring it; the wiring — transport,
-`@app/sdk` generation, capability gating — is the kernel-integration ticket's
-scope, on owner-recorded direction (memoh-style HTTP facade + WS,
-OpenAPI-generated client, the retired hand-written `KernelApi` port never
-returns).
+| Gate | Command | Covers |
+|---|---|---|
+| Format | `pnpm run format:check` | all |
+| JS/TS lint | `oxlint --deny-warnings` | `apps packages tests scripts` |
+| Typecheck | three `tsc` lanes | web, electron, tools |
+| Go vet | `go vet ./...` | root module only — **not `cmd/tui`**, and no dead-code detection |
+| Tests | `vitest run`, `go test ./...`, `go -C cmd/tui test ./...` | all |
+| E2E | `playwright` | web |
 
-**Tests are centralized, gates are total.** Unit tests live under `tests/`
-(never next to source), mirroring source paths; `tests/` is its own
-workspace member so its bare imports and `vi.mock` specifiers resolve in
-their own dependency lane. `lint`/`format` sweep `apps packages tests
-scripts`; `typecheck` covers the renderer + shared, `typecheck:electron` the
-main/preload shell, and `typecheck:tools` the e2e specs, scripts and root
-config files. `mise.toml` pins the toolchain (node, pnpm, go); CI composes its
-discrete `lint`, `typecheck`, `test`, `test:go`, `packcheck`, `web:build`, and
-`desktop:build` tasks. Hooks live in the tracked `.githooks/`. The IPC channel
-table and the public plugin surface are frozen by budget alarms.
+Full chain: `mise run lint && mise run typecheck && mise run test && mise run test:go`.

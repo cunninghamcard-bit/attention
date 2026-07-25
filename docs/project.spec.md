@@ -1,8 +1,6 @@
 spec: project
 name: "project constitution"
 tags: [constitution, project]
-test_command: pnpm vitest run -t "{selectors}" --reporter=junit --outputFile=.docwright/report.xml
-test_report: .docwright/report.xml
 ---
 
 ## Intent
@@ -62,10 +60,14 @@ walls once, so individual goals never re-litigate them.
   NEVER block rendering.
 - Unit tests are centralized under `tests/` (workspace member), mirroring
   source paths; no test file lives next to source.
-- The docs household is docwright goals under
-  `docs/{features,issues,architecture}` plus promoted capabilities in
-  `docs/capabilities/`; the kernel keeps its own `specs/` household at the
-  root until a later contract consolidates them.
+- `cmd/tui` is a nested Go module with its own `go.mod`. Root-level `go`
+  commands do not descend into it; every gate that claims to cover the kernel
+  must invoke it explicitly (`go -C cmd/tui ...`).
+- The docs household is `docs/architecture.md` (the governed structure and the
+  normative direction table) plus this constitution. Both are asserted by
+  `tests/architecture.test.ts`; the previous goal-contract households under
+  `docs/{features,issues,architecture/,learning/}` were retired and live in
+  git history at `76daf79`.
 
 <!-- lint-ack: error-path — constitution invariants are standing structural
      assertions; their failure mode IS the assertion failing, and the bound
