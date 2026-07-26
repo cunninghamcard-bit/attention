@@ -137,18 +137,18 @@ export class GitNavView extends ItemView {
       tree: this.createModeButton(buttonsEl, "tree", "lucide-list-tree", "Tree"),
       history: this.createModeButton(buttonsEl, "history", "lucide-history", "History"),
     };
-    const searchRow = createDiv("git-nav-search-row", root);
-    this.searchComponent = new SearchComponent(searchRow)
+    this.bodyEl = createDiv("git-nav-tree", root);
+    this.bodyEl.addEventListener("scroll", () => this.maybeLoadMoreHistory(), { passive: true });
+    this.footerEl = createDiv("git-nav-footer", root);
+    // The filter lives under the list, not above it: the list is what you came
+    // for, and a filter you reach for occasionally does not deserve the top.
+    this.searchComponent = new SearchComponent(createDiv("git-nav-search-row", root))
       .setClass("git-nav-search")
       .onChange((value) => {
         this.filter = value;
         this.renderBody();
       });
     this.searchComponent.inputEl.setAttribute("aria-label", "Filter changed files");
-
-    this.bodyEl = createDiv("git-nav-tree", root);
-    this.bodyEl.addEventListener("scroll", () => this.maybeLoadMoreHistory(), { passive: true });
-    this.footerEl = createDiv("git-nav-footer", root);
   }
 
   private createModeButton(
