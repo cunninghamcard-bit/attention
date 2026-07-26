@@ -61,6 +61,9 @@ export interface ReviewSurfaceProps {
   hostControls?: boolean;
   onRefresh?(): void;
   showFileSidebar?: boolean;
+  /** Local review only: the card header gets an "open file" action. The PR
+   * surface omits it — its files are the remote head, not this working tree. */
+  onOpenFile?(path: string): void;
   onActivePathChange?(path: string | null): void;
   onViewedPathsChange?(paths: ReadonlySet<string>): void;
 }
@@ -429,6 +432,22 @@ export class ReviewSurface {
       { cls: `review-card-status mod-${file.status}`, text: statusLetter(file.status) },
       stat,
     );
+    const onOpenFile = this.props.onOpenFile;
+    if (onOpenFile) {
+      const open = createEl(
+        "button",
+        {
+          cls: "clickable-icon review-open-file",
+          attr: { type: "button", title: "Open file", "aria-label": "Open file" },
+        },
+        actionsEl,
+      );
+      setIcon(open, "lucide-file-plus");
+      open.addEventListener("click", (event) => {
+        event.stopPropagation();
+        onOpenFile(path);
+      });
+    }
     const viewedState = isViewed(this.viewed, file);
     const viewed = createEl(
       "button",

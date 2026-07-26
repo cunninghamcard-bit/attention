@@ -179,6 +179,10 @@ export class GitReviewView extends ItemView {
       hostControls: true,
       onRefresh: () => void this.reloadReview(),
       showFileSidebar: false,
+      onOpenFile: (path) => {
+        const file = this.app.vault.getFileByPath(path);
+        if (file) void this.app.workspace.openFile(file, { active: true });
+      },
       onActivePathChange: (path) => session.selectPath(path),
       onViewedPathsChange: (paths) => session.publishViewed(paths),
     });
