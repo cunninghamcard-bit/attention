@@ -169,6 +169,24 @@
 /* File headers use the same tree-item structure and theme tokens as Obsidian's
  * explorer. Only Git-specific trailing metadata needs local layout. */
 
+/* Each file reads as a card. Obsidian's recipe for this exact shape — a
+ * collapsible file header over a result body — is .search-result-file-matches
+ * in app.css: a ring at --radius-s over --search-result-background. Here the
+ * body paints pierre's --diffs-bg (= --background-primary), so a primary card
+ * on a primary pane leaves the ring as the only edge; the fill goes one step
+ * back to --background-secondary and the header band inherits it. The fill is
+ * on the container, not on .review-card-header: that row is a native
+ * tree-item and the theme owns its paint. */
+.review-codeview diffs-container {
+  display: block;
+  background-color: var(--background-secondary);
+  border-radius: var(--radius-s);
+  box-shadow: 0 0 0 var(--border-width) var(--background-modifier-border);
+  /* clip, not hidden: it rounds the fill against the ring without creating a
+   * scrollport, so pierre keeps its sticky header. */
+  overflow: clip;
+}
+
 .review-card-actions {
   gap: var(--size-4-1);
 }
