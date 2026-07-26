@@ -47,6 +47,9 @@ interface VaultEntry {
 
 const FAILED_TO_OPEN = "Failed to open.";
 
+/** Same destination the in-app help links already use (SearchView, community plugins). */
+const HELP_URL = "https://help.obsidian.md";
+
 function basename(path: string): string {
   const parts = path.split(/[\\/]/).filter(Boolean);
   return parts[parts.length - 1] ?? path;
@@ -159,6 +162,22 @@ export class StarterScreen {
           button.setButtonText("Open").onClick(() => void this.openFolderAsVault()),
         ),
     );
+    // Real's last row is the language dropdown, whose name slot doubles as the
+    // help button (`setIcon(nameEl, "help")`, tooltip, click → `help`), and the
+    // row wears `mod-change-language`. Attention has no i18n layer, so the
+    // dropdown is cut and the row keeps only the help affordance — which is
+    // what `.setting-item.mod-change-language .setting-item-name` (and its
+    // hover rule) in the faithful extract is styling. Real's `help` icon is
+    // Obsidian's own; `lucide-help-circle` is what the sidedock already uses
+    // for this same affordance.
+    group.addSetting((setting) => {
+      setting.setClass("mod-change-language");
+      setIcon(setting.nameEl, "lucide-help-circle");
+      setTooltip(setting.nameEl, "Get help");
+      setting.nameEl.addEventListener("click", () => {
+        this.ipc.sendSync("open-url", HELP_URL);
+      });
+    });
   }
 
   private async openFolderAsVault(): Promise<void> {

@@ -68,6 +68,18 @@ describe("vault switcher menu", () => {
     expect(checked?.textContent).toBe("demo");
   });
 
+  it("routes the vault-actions help button through App.openHelp", async () => {
+    const ipc = installIpc();
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const helpEl = app.workspace.leftSplit.containerEl.querySelector<HTMLElement>(
+      ".workspace-drawer-vault-actions .clickable-icon",
+    );
+    expect(helpEl).not.toBeNull();
+    helpEl!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(ipc.sendSync).toHaveBeenCalledWith("open-url", "https://help.obsidian.md/");
+  });
+
   it("opens the starter through the sync starter IPC from Manage vaults...", async () => {
     const ipc = installIpc();
     const { menu } = await openSwitcherMenu();

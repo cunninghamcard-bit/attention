@@ -59,6 +59,16 @@ function lastNoticeText(): string | undefined {
 }
 
 describe("StarterScreen", () => {
+  it("puts the help affordance in the mod-change-language row's name slot", () => {
+    const { parent, ipc } = makeScreen({ a: { path: "/vaults/a", ts: 1 } });
+    const row = parent.querySelector<HTMLElement>(".setting-item.mod-change-language");
+    expect(row).not.toBeNull();
+    const nameEl = row!.querySelector<HTMLElement>(".setting-item-name");
+    expect(nameEl?.querySelector(".lucide-help-circle")).not.toBeNull();
+    nameEl!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(ipc.sendSync).toHaveBeenCalledWith("open-url", "https://help.obsidian.md");
+  });
+
   it("renders recent vaults most-recently-opened first with name and parent path", () => {
     const { parent } = makeScreen({
       old: { path: "/vaults/old-notes", ts: 1 },

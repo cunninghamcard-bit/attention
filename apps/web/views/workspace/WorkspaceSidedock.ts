@@ -155,6 +155,7 @@ export class WorkspaceSidedock extends WorkspaceSplit {
     helpEl.className = "clickable-icon";
     // Real: no tooltip/title on the vault-actions help button.
     setIcon(helpEl, "lucide-help-circle");
+    helpEl.addEventListener("click", () => this.workspace.app.openHelp());
 
     const settingsEl = ownerDocument.createElement("span");
     settingsEl.className = "clickable-icon";

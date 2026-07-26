@@ -94,6 +94,9 @@ import { registerCliCommands } from "../app/cli/registerCliCommands";
 import { URL_SCHEME } from "@app/shared/scheme";
 const localStorageFallback = new Map<string, string>();
 
+/** Real's help destination, already linked from search and the plugin browser. */
+const HELP_URL = "https://help.obsidian.md/";
+
 function installAnimationFrameFallback(win: Window): void {
   if (!win.requestAnimationFrame) {
     win.requestAnimationFrame = (callback) => win.setTimeout(() => callback(Date.now()), 16);
@@ -319,6 +322,28 @@ export class App {
         );
       }
     }
+  }
+
+  /**
+   * Real `App.openHelp`: desktop sends the `help` channel, web opens the docs
+   * in a new tab. Real's `help` channel opens Obsidian's bundled help vault;
+   * Attention ships no such vault, so desktop routes the same destination
+   * through `open-url` (shell.openExternal) instead.
+   */
+  openHelp(): void {
+    if (!Platform.isDesktopApp) {
+      window.open(HELP_URL, "_blank");
+      return;
+    }
+    const ipc = (
+      window as unknown as {
+        electron?: {
+          ipcRenderer?: { sendSync?: (channel: string, ...args: unknown[]) => unknown };
+        };
+      }
+    ).electron?.ipcRenderer;
+    if (ipc?.sendSync) ipc.sendSync("open-url", HELP_URL);
+    else window.open(HELP_URL, "_blank");
   }
 
   showInFolder(path: string): void {
