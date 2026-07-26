@@ -21,6 +21,13 @@
   --diffs-modified-color: var(--color-blue);
   --diffs-font-family: var(--font-monospace);
   --diffs-header-font-family: var(--font-interface);
+  /* body sets `user-select: none` (app.css) and that inherits through the
+   * shadow boundary, so the diff text could be line-selected but never copied.
+   * Obsidian re-enables selection per reading surface (.markdown-preview-view);
+   * this is that surface. Pierre already marks its gutters, line numbers and
+   * separators unselectable, so a copy takes the code and nothing else. */
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .git-review-view {
