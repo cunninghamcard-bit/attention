@@ -305,6 +305,21 @@
   padding: 0 var(--size-4-1) var(--size-4-2);
 }
 
+/* Each commit is a card, same recipe as the review file cards: the ring from
+ * .search-result-file-matches at --radius-s, and the fill one surface away
+ * from the pane behind it. The pane here is the sidebar (--background-secondary),
+ * so the card steps to --background-primary — the opposite direction from the
+ * review cards, which sit on a primary pane. The fill is on our own wrapper,
+ * not on .git-nav-history-entry: that row is a native tree-item-self and the
+ * theme owns its hover and is-active paint. */
+.git-nav-history-item {
+  background-color: var(--background-primary);
+  border-radius: var(--radius-s);
+  box-shadow: 0 0 0 var(--border-width) var(--background-modifier-border);
+  overflow: clip;
+  margin-bottom: var(--size-2-3);
+}
+
 .git-nav-empty {
   color: var(--text-muted);
   font-size: var(--font-ui-small);
