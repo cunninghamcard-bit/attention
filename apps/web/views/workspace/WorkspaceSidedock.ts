@@ -51,12 +51,37 @@ export class WorkspaceSidedock extends WorkspaceSplit {
     this.width = value;
   }
 
+  // The placeholder's visibility is a function of `children.length`, so it has
+  // to be recomputed exactly where that changes. Restoring a layout clears the
+  // dock (which puts the placeholder back), re-appends the saved children, then
+  // expands — with nothing in between recomputing it, an expanded, populated
+  // sidebar was left sitting under a stale "No views".
   appendChild(child: WorkspaceItem): void {
     super.appendChild(child);
+    this.syncEmptyPlaceholder();
   }
 
   removeChild(child: WorkspaceItem): void {
     super.removeChild(child);
+    this.syncEmptyPlaceholder();
+  }
+
+  /**
+   * The placeholder's visibility is a function of `children.length` and nothing
+   * else, so it is recomputed wherever that changes. Restoring a layout clears
+   * the dock (which puts the placeholder back), re-appends the saved children,
+   * then expands — with nothing in between recomputing it, an expanded and
+   * populated sidebar was left sitting under a stale "No views".
+   *
+   * Kept apart from {@link updateEmptyState} deliberately: that one also
+   * collapses the dock and toggles the ribbon, which must not fire on every
+   * child mutation — a move is a remove followed by an append, and collapsing
+   * in the middle of one tears down the dock the append is landing in.
+   */
+  private syncEmptyPlaceholder(): void {
+    if (!this.containerEl.contains(this.emptyStateEl))
+      this.containerEl.appendChild(this.emptyStateEl);
+    this.emptyStateEl.style.display = this.children.length === 0 ? "" : "none";
   }
 
   override recomputeChildrenDimensions(): void {
@@ -117,10 +142,8 @@ export class WorkspaceSidedock extends WorkspaceSplit {
   }
 
   updateEmptyState(): void {
-    if (!this.containerEl.contains(this.emptyStateEl))
-      this.containerEl.appendChild(this.emptyStateEl);
+    this.syncEmptyPlaceholder();
     const empty = this.children.length === 0;
-    this.emptyStateEl.style.display = empty ? "" : "none";
     if (this.side === "right") {
       const ribbon = (
         this.workspace as unknown as { rightRibbon?: { hide: () => void; show: () => void } }
