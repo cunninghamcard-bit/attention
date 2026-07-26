@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { App } from "@web/app/App";
-import { DiffView, openGitDiff } from "@web/views/DiffView";
 import type { ElectronGitApi, GitExecResult } from "@web/builtin/git/GitService";
 
 const FAKE_PR = {
@@ -123,21 +122,6 @@ describe("GitService", () => {
     const app = new App(document.createElement("div"));
     await app.ready;
     expect(app.git.isAvailable()).toBe(false);
-    const file = await app.vault.create("x.ts", "content\n");
-    await expect(openGitDiff(app, file)).resolves.toBeNull();
-  });
-
-  it("opens the git diff of a modified file against HEAD", async () => {
-    const app = await appWithGit({ "agent.ts": "line one\nline two\n" });
-    const file = await app.vault.create("agent.ts", "line one\nline CHANGED\n");
-
-    const leaf = await openGitDiff(app, file);
-    const view = leaf!.view as DiffView;
-
-    expect(view).toBeInstanceOf(DiffView);
-    expect(view.getChunkCount()).toBe(1);
-    view.rejectAll();
-    expect(view.getViewData()).toContain("line two");
   });
 
   it("stages, unstages and commits through the bridge", async () => {
@@ -187,17 +171,8 @@ describe("GitService", () => {
     expect(subjects).toEqual(["first commit", "second commit"]);
     expect(view.contentEl.querySelectorAll(".git-history-entry.tree-item")).toHaveLength(2);
     expect(view.contentEl.querySelectorAll(".git-history-row.tree-item-self")).toHaveLength(2);
-    expect(view.contentEl.querySelectorAll(".git-history-action.clickable-icon")).toHaveLength(6);
+    expect(view.contentEl.querySelectorAll(".git-history-action.clickable-icon")).toHaveLength(4);
     expect(view.contentEl.querySelectorAll(".git-history-entry .git-avatar-image")).toHaveLength(2);
-
-    const diffButton = view.contentEl.querySelector(
-      '.git-history-action[aria-label="Diff vs working"]',
-    ) as HTMLButtonElement;
-    diffButton.click();
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    const diffLeaf = app.workspace.getLeavesOfType("diff")[0];
-    expect(diffLeaf).toBeDefined();
-    expect((diffLeaf.view as unknown as { getChunkCount(): number }).getChunkCount()).toBe(1);
   });
 
   it("lists, views and acts on PRs through the gh bridge", async () => {
@@ -318,16 +293,6 @@ describe("GitService", () => {
     expect(withComment).toMatchObject({ event: "REQUEST_CHANGES", body: "needs work" });
     expect(withComment.comments[0]).toMatchObject({ path: "agent.ts", line: 12, side: "LEFT" });
     expect(JSON.parse(inputs[2])).toMatchObject({ body: "Requesting changes." });
-  });
-
-  it("diffs untracked files against empty", async () => {
-    const app = await appWithGit({});
-    const file = await app.vault.create("fresh.ts", "all new\n");
-
-    const leaf = await openGitDiff(app, file);
-    const view = leaf!.view as DiffView;
-
-    expect(view.getChunkCount()).toBe(1);
   });
 });
 

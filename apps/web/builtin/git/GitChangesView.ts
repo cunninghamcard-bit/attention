@@ -1,5 +1,5 @@
 /**
- * Input: @pierre/diffs, ../../views/ItemView, ../../views/DiffView, ../github/open, ./review/GitReviewView, ../../ui/Icon, ../../ui/TreeItem, ../../ui/Popover, ../../ui/Notice, ./GitService
+ * Input: @pierre/diffs, ../../views/ItemView, ../github/open, ./review/GitReviewView, ../../ui/Icon, ../../ui/TreeItem, ../../ui/Popover, ../../ui/Notice, ./GitService
  * Output: GitChangesView
  * Pos: Application code
  *
@@ -8,7 +8,6 @@
 
 import { FileDiff } from "@pierre/diffs";
 import { ItemView } from "../../views/ItemView";
-import { openGitDiff } from "../../views/DiffView";
 import { openQueryList } from "../github/open";
 import { openGitReview } from "./review/GitReviewView";
 import { setIcon } from "../../ui/Icon";
@@ -27,9 +26,9 @@ const MAX_RENDERED_FILES = 50;
  * Source control: branch/sync header plus staged/unstaged sections with
  * per-file stage and discard buttons, each file rendered as a read-only
  * unified diff via @pierre/diffs (Shiki highlighting, inline word diffs,
- * collapsed context). Clicking a file header opens the editable
- * @codemirror/merge review. Committing is out of scope — this vault is a
- * review tool; author commits from the terminal.
+ * collapsed context). Clicking a file header opens the file. Committing is
+ * out of scope — this vault is a review tool; author commits from the
+ * terminal.
  */
 export class GitChangesView extends ItemView {
   static readonly VIEW_TYPE = "git-changes";
@@ -223,9 +222,13 @@ export class GitChangesView extends ItemView {
     }
     // Row content order: icon (TreeItem's slot), name (innerEl), flair.
     nameEl.after(flairEl);
+    // Opens the file itself, not the merge view: the row already renders the
+    // diff inline, so the click is for getting to the text. The accept/reject
+    // merge view stays behind its explicit entry points (the file menu's "Open
+    // git diff" and the git:diff-active-file command), where it is asked for.
     item.onSelfClick = () => {
       const file = this.app.vault.getFileByPath(entry.path);
-      if (file) void openGitDiff(this.app, file);
+      if (file) void this.app.workspace.openFile(file, { active: true });
     };
 
     // Staged section diffs HEAD→index; Changes section diffs index→worktree,

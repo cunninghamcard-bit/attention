@@ -49,7 +49,6 @@ import { createWebViewerPluginDefinition } from "./webviewer/WebViewerPlugin";
 import { createTerminalPluginDefinition } from "./terminal/TerminalPlugin";
 import { createGitPluginDefinition } from "./git/GitPlugin";
 import { createGitHubPluginDefinition } from "./github/GitHubPlugin";
-import { openFileCompare, openGitDiff } from "../views/DiffView";
 import { openFileHistory } from "./git/GitHistoryView";
 import { createBookmarksPluginDefinition } from "./Bookmarks";
 import { createSlidesPluginDefinition } from "./Slides";
@@ -563,18 +562,6 @@ function addWorkspaceFileMenuItems(app: App, menu: Menu, file: TAbstractFile): v
       .addItem((item) =>
         item
           .setSection("system")
-          .setTitle("Open git diff")
-          .setIcon("lucide-file-diff")
-          .onClick(
-            () =>
-              void openGitDiff(app, file).then((leaf) => {
-                if (!leaf) new Notice("Git is not available for this vault");
-              }),
-          ),
-      )
-      .addItem((item) =>
-        item
-          .setSection("system")
           .setTitle("Open in default app")
           .setIcon("lucide-arrow-up-right")
           .onClick(() => void app.openWithDefaultApp(file.path)),
@@ -614,16 +601,6 @@ function addWorkspaceFilesMenuItems(app: App, menu: Menu, files: TAbstractFile[]
       .setIcon("lucide-folder-tree")
       .onClick(() => new MoveFileModal(app, files).open()),
   );
-  if (files.length === 2 && files.every((file): file is TFile => file instanceof TFile)) {
-    const [baseline, target] = files;
-    menu.addItem((item) =>
-      item
-        .setSection("action")
-        .setTitle("Compare files")
-        .setIcon("lucide-file-diff")
-        .onClick(() => void openFileCompare(app, target, baseline)),
-    );
-  }
 }
 
 async function copyVaultPath(path: string): Promise<void> {

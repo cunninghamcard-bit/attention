@@ -80,7 +80,6 @@
 @import "../ui/composer.css";
 @import "../builtin/file-explorer.css";
 @import "../builtin/outline.css";
-@import "../views/diff.css";
 @import "../builtin/git/git-commit-meta.css";
 @import "../builtin/git/git-changes.css";
 @import "../builtin/github/github-shared.css";

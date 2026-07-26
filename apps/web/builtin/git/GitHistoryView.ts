@@ -1,5 +1,5 @@
 /**
- * Input: ../../views/ItemView, ../../views/DiffView, ../../views/View, ../../ui/Notice, ./GitAvatar, ./relativeDate, ./GitService, ./review/GitReviewView, ../../ui/Icon, ../../ui/Popover
+ * Input: ../../views/ItemView, ../../views/View, ../../ui/Notice, ./GitAvatar, ./relativeDate, ./GitService, ./review/GitReviewView, ../../ui/Icon, ../../ui/Popover
  * Output: GitHistoryView, openFileHistory
  * Pos: Application code
  *
@@ -7,7 +7,6 @@
  */
 
 import { ItemView } from "../../views/ItemView";
-import { openFileDiff } from "../../views/DiffView";
 import type { ViewStateResult } from "../../views/View";
 import { Notice } from "../../ui/Notice";
 import { renderGitAvatar } from "./GitAvatar";
@@ -19,10 +18,9 @@ import { setTooltip } from "../../ui/Popover";
 import { TreeItem } from "../../ui/TreeItem";
 
 /**
- * Commit history for one file (git log --follow). Each entry offers the two
- * things a history is for: read the file as it was at that commit, and diff
- * the working copy against it — both through the existing DiffView, with the
- * historical version as the baseline.
+ * Commit history for one file (git log --follow). Each entry can be read as
+ * it was at that commit (a scratch snapshot in the code view) or reviewed as
+ * a whole commit through the multi-file review surface.
  */
 export class GitHistoryView extends ItemView {
   static readonly VIEW_TYPE = "git-history";
@@ -118,11 +116,6 @@ export class GitHistoryView extends ItemView {
           void openGitReview(this.app, { kind: "commit", ref: entry.hash, subject: entry.subject }),
       ),
       this.actionButton("lucide-eye", "View version", () => void this.viewVersion(entry)),
-      this.actionButton(
-        "lucide-git-compare",
-        "Diff vs working",
-        () => void this.diffAgainstWorking(entry),
-      ),
     );
     rowEl.appendChild(actionsEl);
   }
@@ -152,17 +145,6 @@ export class GitHistoryView extends ItemView {
       active: true,
       state: { file: await this.materializeSnapshot(entry, content) },
     });
-  }
-
-  private async diffAgainstWorking(entry: GitLogEntry): Promise<void> {
-    if (!this.path) return;
-    const file = this.app.vault.getFileByPath(this.path);
-    if (!file) {
-      new Notice("The file no longer exists in the working tree");
-      return;
-    }
-    const original = (await this.app.git.readFileAt(entry.hash, this.path)) ?? "";
-    await openFileDiff(this.app, file, original);
   }
 
   /** Historical snapshots land in a scratch folder so the code view (a file

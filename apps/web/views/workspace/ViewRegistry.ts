@@ -1,5 +1,5 @@
 /**
- * Input: ../../core/Events, ./WorkspaceLeaf, ../View, ../MarkdownView, ../CodeFileView, ../DiffView, ../MediaViews
+ * Input: ../../core/Events, ./WorkspaceLeaf, ../View, ../MarkdownView, ../CodeFileView, ../MediaViews
  * Output: ViewCreator, ViewRegistry
  * Pos: UI Layer - View templates
  *
@@ -11,7 +11,6 @@ import type { WorkspaceLeaf } from "./WorkspaceLeaf";
 import type { View } from "../View";
 import { MarkdownView } from "../MarkdownView";
 import { CODE_EXTENSIONS, CodeFileView } from "../CodeFileView";
-import { DiffView } from "../DiffView";
 import {
   AUDIO_EXTENSIONS,
   AudioView,
@@ -58,7 +57,6 @@ export class ViewRegistry extends Events {
       CodeFileView.VIEW_TYPE,
       (leaf) => new CodeFileView(leaf),
     );
-    this.registerView(DiffView.DIFF_VIEW_TYPE, (leaf) => new DiffView(leaf));
     this.registerView(ReleaseNotesView.VIEW_TYPE, (leaf) => new ReleaseNotesView(leaf));
   }
 

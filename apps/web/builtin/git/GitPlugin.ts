@@ -1,5 +1,5 @@
 /**
- * Input: ../../app/App, ../../plugin/InternalPlugin, ../../plugin/InternalPluginWrapper, ../../ui/Notice, ../../views/DiffView, ./GitChangesView, ./GitHistoryView, ./GitLogView, ./review/GitNavView, ./review/GitReviewView
+ * Input: ../../app/App, ../../plugin/InternalPlugin, ../../plugin/InternalPluginWrapper, ./GitChangesView, ./GitHistoryView, ./GitLogView, ./review/GitNavView, ./review/GitReviewView
  * Output: createGitPluginDefinition
  * Pos: Application code
  *
@@ -9,8 +9,6 @@
 import type { App } from "../../app/App";
 import type { InternalPluginDefinition } from "../../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../../plugin/InternalPluginWrapper";
-import { Notice } from "../../ui/Notice";
-import { openGitDiff } from "../../views/DiffView";
 import { GitChangesView } from "./GitChangesView";
 import { GitHistoryView } from "./GitHistoryView";
 import { GitLogView } from "./GitLogView";
@@ -74,21 +72,6 @@ export function createGitPluginDefinition(): InternalPluginDefinition {
         checkCallback: (checking) => {
           if (!app.git.isAvailable()) return false;
           if (!checking) void openGitReview(app, { kind: "working-tree" }, "history");
-          return true;
-        },
-      });
-      plugin.registerGlobalCommand({
-        id: "git:diff-active-file",
-        name: "Open git diff for active file",
-        icon: "lucide-file-diff",
-        checkCallback: (checking) => {
-          const file = app.workspace.getActiveFileView()?.file;
-          if (!file || !app.git.isAvailable()) return false;
-          if (!checking) {
-            void openGitDiff(app, file).then((leaf) => {
-              if (!leaf) new Notice("Git is not available for this vault");
-            });
-          }
           return true;
         },
       });
