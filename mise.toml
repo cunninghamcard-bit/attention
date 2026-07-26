@@ -87,21 +87,59 @@ depends = ["api:build"]
 run = "pnpm run packcheck"
 
 [tasks."desktop:dev"]
-description = "Build + launch the Electron app"
-run = "pnpm exec vp run desktop"
+description = "Launch Electron against the dev server (HMR), starting one if 127.0.0.1:5173 is not already serving. Set ELECTRON_RENDERER_URL to point elsewhere. Ctrl+C is the way out — the trap keeps that from being reported as a task failure, and takes a server this task started down with it."
+run = """
+# Electron loads 127.0.0.1:5173 and shows a white window with
+# ERR_CONNECTION_REFUSED if nobody serves it, so own that dependency here
+# instead of documenting it. An already-running `mise run dev` is reused and
+# left alone; one started here dies with this task.
+trap 'exit 0' INT
+if ! curl -sfo /dev/null --max-time 1 http://127.0.0.1:5173/; then
+  echo "no dev server on 5173 — starting one"
+  # `set -m` so the server gets its own process group and the trap can take the
+  # whole tree down: vite is a grandchild of `vp run dev`, so killing the pid
+  # alone orphans a live server on 5173 (measured).
+  set -m
+  pnpm exec vp run dev &
+  dev=$!
+  trap 'kill -- -$dev 2>/dev/null; exit 0' INT EXIT
+  until curl -sfo /dev/null --max-time 1 http://127.0.0.1:5173/; do
+    kill -0 $dev 2>/dev/null || { echo "dev server exited before it served"; exit 1; }
+    sleep 0.3
+  done
+fi
+pnpm exec vp run start:desktop
+"""
+
+[tasks."desktop:start"]
+description = "Build web + Electron and launch the built app (no dev server, no HMR) — what you want when verifying a real build."
+run = "trap 'exit 0' INT; pnpm exec vp run desktop"
 
 [tasks."desktop:build"]
-description = "Build the Electron main/preload bundles"
-run = "pnpm run build:electron"
+description = "Build the Electron main/preload bundles, cached"
+run = "pnpm exec vp run --cache build:electron"
 
 [tasks."kernel:build"]
 description = "Build the Go kernel binary to bin/along"
-run = "go build -o bin/along ./cmd/along"
+run = 'PATH="$GOROOT/bin:$PATH" go build -o bin/along ./cmd/along'
 
 [tasks."kernel:tui"]
 description = "Build the kernel and launch the TUI against it"
-run = ["go build -o bin/along ./cmd/along", "go -C cmd/tui run . --along-path ../../bin/along"]
+run = [
+  'PATH="$GOROOT/bin:$PATH" go build -o bin/along ./cmd/along',
+  'PATH="$GOROOT/bin:$PATH" go -C cmd/tui run . --along-path ../../bin/along',
+]
 
 [tasks."kernel:clean"]
 description = "Remove kernel build output"
 run = "rm -rf bin"
+
+[tasks.gate]
+description = "The full pre-handoff gate: lint, all tsc lanes, vitest, Go tests, and both builds. Green here is what a handoff claims — so lint and the test suites always execute; only the deterministic build/type stages may come from cache."
+depends = ["lint", "typecheck", "test", "test:go"]
+run = ["pnpm exec vp run --cache build", "pnpm exec vp run --cache build:electron"]
+
+[tasks."cache:clean"]
+description = "Drop the vp task cache — the escape hatch when a cached result looks wrong."
+run = "pnpm exec vp cache clean"
+
