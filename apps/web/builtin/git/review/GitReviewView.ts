@@ -1,5 +1,5 @@
 /**
- * Input: @pierre/diffs, ../../../app/App, ../../../core/Events, ../../../dom/dom, ../../../ui/Icon, ../../../ui/Popover, ../../../views/ItemView, ../../../views/View, ../reviewSession, ./GitNavView
+ * Input: @pierre/diffs, ../../../app/App, ../../../core/Events, ../../../dom/dom, ../../../ui/Popover, ../../../views/ItemView, ../../../views/View, ../reviewSession, ./GitNavView
  * Output: GitReviewSource, GitReviewView, openGitReview
  * Pos: Application code
  *
@@ -10,7 +10,6 @@ import { parseDiffFromFile } from "@pierre/diffs";
 import type { App } from "../../../app/App";
 import type { EventRef } from "../../../core/Events";
 import { createDiv } from "../../../dom/dom";
-import { setIcon } from "../../../ui/Icon";
 import { setTooltip } from "../../../ui/Popover";
 import { ItemView } from "../../../views/ItemView";
 import type { ViewStateResult } from "../../../views/View";
@@ -22,9 +21,9 @@ import { ReviewSurface } from "./ReviewSurface";
 
 export type { GitReviewSource } from "../reviewSession";
 
-/** Vanilla center-pane review. The leaf view-header owns both mode switches
- * (Tree/History, Unified/Split) plus Refresh; the right git-nav leaf is a
- * pure list, and the surface renders no internal toolbar. */
+/** Vanilla center-pane review. The leaf view-header owns Unified/Split and
+ * Refresh; Tree/History lives in the right git-nav leaf beside its list, and
+ * the surface renders no internal toolbar. */
 export class GitReviewView extends ItemView {
   static readonly VIEW_TYPE = "git-review";
 
@@ -34,7 +33,6 @@ export class GitReviewView extends ItemView {
   private sessionRefs: EventRef[] = [];
   private surface: ReviewSurface | null = null;
   private loadRequest = 0;
-  private navActionEl: HTMLElement | null = null;
   private layoutActionEl: HTMLElement | null = null;
 
   getViewType(): string {
@@ -57,16 +55,13 @@ export class GitReviewView extends ItemView {
     // Same filter as the source-change handler: a cloud source in the session
     // (a PR / commit center was here last) is not this leaf's target.
     if (session.source.kind !== "cloud") this.source = session.source;
-    // Both mode switches are click-to-flip icons in the leaf view-header
-    // (Obsidian reading-toggle idiom). Added right-to-left so they land
-    // as: Tree/History, Unified/Split, Refresh — left of "More options".
+    // Unified/Split is a click-to-flip icon in the leaf view-header (Obsidian
+    // reading-toggle idiom). Tree/History is not here: it belongs with the list
+    // it switches, in the right git-nav leaf's own nav-header.
     this.addAction("lucide-rotate-ccw", "Refresh", () => void this.reloadReview());
     this.layoutActionEl = this.addAction("lucide-columns", "Switch to split view", () => {
       this.surface?.toggleDiffStyle();
       this.syncHeaderActions();
-    });
-    this.navActionEl = this.addAction("lucide-list-tree", "Switch to history", () => {
-      session.setMode(session.mode === "tree" ? "history" : "tree");
     });
     this.sessionRefs = [
       session.on<[GitReviewSource]>("source-change", (source) => {
@@ -80,7 +75,6 @@ export class GitReviewView extends ItemView {
         void this.reloadReview();
       }),
       session.on<[string, number]>("path-activate", (path) => this.surface?.activatePath(path)),
-      session.on<[GitNavMode]>("mode-change", () => this.syncHeaderActions()),
       this.app.workspace.on("css-change", () => this.surface?.refreshTheme()),
     ];
     this.syncHeaderActions();
@@ -88,11 +82,6 @@ export class GitReviewView extends ItemView {
   }
 
   private syncHeaderActions(): void {
-    const mode = this.app.git.reviewSession.mode;
-    if (this.navActionEl) {
-      setIcon(this.navActionEl, mode === "tree" ? "lucide-list-tree" : "lucide-history");
-      setTooltip(this.navActionEl, mode === "tree" ? "Switch to history" : "Switch to tree");
-    }
     if (this.layoutActionEl) {
       const split = this.surface?.getDiffStyle() === "split";
       this.layoutActionEl.classList.toggle("is-active", split);

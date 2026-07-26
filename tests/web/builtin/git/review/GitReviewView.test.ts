@@ -109,6 +109,7 @@ vi.mock("@pierre/diffs", async (importOriginal) => {
 import { GitReviewView, openGitReview } from "@web/builtin/git/review/GitReviewView";
 import { readViewed } from "@web/builtin/git/review/reviewModel";
 import { ReviewSurface } from "@web/builtin/git/review/ReviewSurface";
+import type { ItemView } from "@web/views/ItemView";
 
 function fakeBridge(options: { numstat?: string } = {}): ElectronGitApi & {
   calls: string[][];
@@ -208,16 +209,23 @@ describe("GitReviewView", () => {
     expect(nav.getRoot()).toBe(app.workspace.rightSplit);
   });
 
-  it("offers only Tree and History modes", async () => {
+  it("offers only Tree and History modes, switched from the nav leaf", async () => {
     const { app } = await reviewApp();
     await openGitReview(app);
     const view = app.workspace.getLeavesOfType(GitReviewView.VIEW_TYPE)[0].view as GitReviewView;
-    const nav = view.actionsEl.querySelector(
-      '[aria-label="Switch to history"]',
-    ) as HTMLButtonElement;
+    const navEl = (app.workspace.getLeavesOfType("git-nav")[0].view as ItemView).contentEl;
+    const buttons = [...navEl.querySelectorAll(".nav-header .nav-action-button")].map((el) =>
+      el.getAttribute("aria-label"),
+    );
+    expect(buttons).toEqual(["Tree", "History"]);
     expect(app.git.reviewSession.mode).toBe("tree");
-    nav.click();
+    (navEl.querySelector('.nav-action-button[aria-label="History"]') as HTMLElement).click();
     expect(app.git.reviewSession.mode).toBe("history");
+    expect(
+      navEl
+        .querySelector('.nav-action-button[aria-label="History"]')
+        ?.classList.contains("is-active"),
+    ).toBe(true);
     expect(view.contentEl.textContent).not.toMatch(/Walkthrough/i);
   });
 
@@ -234,15 +242,16 @@ describe("GitReviewView", () => {
     expect(view.contentEl.querySelector(".review-add-comment")).toBeNull();
   });
 
-  it("puts both mode switches in the leaf header", async () => {
+  it("keeps Unified/Split in the leaf header and Tree/History out of it", async () => {
     const { app } = await reviewApp();
     await openGitReview(app);
     const view = app.workspace.getLeavesOfType(GitReviewView.VIEW_TYPE)[0].view as GitReviewView;
     const labels = [...view.actionsEl.querySelectorAll(".view-action")].map((el) =>
       el.getAttribute("aria-label"),
     );
-    expect(labels).toContain("Switch to history");
     expect(labels).toContain("Switch to split view");
+    // Tree/History moved to the nav leaf, beside the list it switches.
+    expect(labels).not.toContain("Switch to history");
     // The surface renders no internal toolbar when the header owns controls.
     expect(view.contentEl.querySelector(".review-toolbar-toggle")).toBeNull();
   });

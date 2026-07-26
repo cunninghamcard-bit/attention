@@ -1,5 +1,5 @@
 /**
- * Input: ../../../app/App, ../../../dom/dom, ../../../core/Events, ../../../ui/FileTypeIcon, ../../../ui/Icon, ../../../ui/Setting, ../../../ui/TreeItem, ../GitAvatar, ../../../views/ItemView, ../GitService
+ * Input: ../../../app/App, ../../../dom/dom, ../../../core/Events, ../../../ui/FileTypeIcon, ../../../ui/Icon, ../../../ui/Popover, ../../../ui/Setting, ../../../ui/TreeItem, ../GitAvatar, ../../../views/ItemView, ../GitService
  * Output: GitNavView, openGitNav
  * Pos: Application code
  *
@@ -11,6 +11,7 @@ import { createDiv, createEl, createSpan } from "../../../dom/dom";
 import type { EventRef } from "../../../core/Events";
 import { setFileTypeIcon } from "../../../ui/FileTypeIcon";
 import { setIcon } from "../../../ui/Icon";
+import { setTooltip } from "../../../ui/Popover";
 import { SearchComponent } from "../../../ui/Setting";
 import { TreeItem } from "../../../ui/TreeItem";
 import { renderGitAvatar } from "../GitAvatar";
@@ -59,6 +60,7 @@ export class GitNavView extends ItemView {
   private searchComponent: SearchComponent | null = null;
   private bodyEl: HTMLDivElement | null = null;
   private footerEl: HTMLDivElement | null = null;
+  private modeButtonEls: Record<GitNavMode, HTMLElement> | null = null;
 
   getViewType(): string {
     return GitNavView.VIEW_TYPE;
@@ -125,8 +127,16 @@ export class GitNavView extends ItemView {
   private buildShell(): void {
     this.contentEl.empty();
     const root = createDiv("git-nav", this.contentEl);
-    // The Tree/History switch lives in the center review toolbar, not here —
-    // a sidebar is a poor home for a mode toggle. This leaf is a pure list.
+    // Tree | History sits with the list it switches, in the explorer's own
+    // toolbar shape (app.js ~3218382): nav-header > nav-buttons-container with
+    // clickable-icon nav-action-button entries, the current one .is-active.
+    // Two buttons rather than one flip icon — a sidebar shows its state.
+    const headerEl = createDiv("nav-header", root);
+    const buttonsEl = createDiv("nav-buttons-container", headerEl);
+    this.modeButtonEls = {
+      tree: this.createModeButton(buttonsEl, "tree", "lucide-list-tree", "Tree"),
+      history: this.createModeButton(buttonsEl, "history", "lucide-history", "History"),
+    };
     const searchRow = createDiv("git-nav-search-row", root);
     this.searchComponent = new SearchComponent(searchRow)
       .setClass("git-nav-search")
@@ -141,6 +151,20 @@ export class GitNavView extends ItemView {
     this.footerEl = createDiv("git-nav-footer", root);
   }
 
+  private createModeButton(
+    parentEl: HTMLElement,
+    mode: GitNavMode,
+    icon: string,
+    label: string,
+  ): HTMLElement {
+    const buttonEl = createDiv("clickable-icon nav-action-button", parentEl);
+    setIcon(buttonEl, icon);
+    setTooltip(buttonEl, label);
+    buttonEl.setAttribute("aria-label", label);
+    buttonEl.addEventListener("click", () => this.app.git.reviewSession.setMode(mode));
+    return buttonEl;
+  }
+
   private render(): void {
     if (!this.searchComponent) return;
     this.searchComponent
@@ -150,6 +174,10 @@ export class GitNavView extends ItemView {
       "aria-label",
       this.mode === "history" ? "Filter history" : "Filter changed files",
     );
+    if (this.modeButtonEls) {
+      this.modeButtonEls.tree.classList.toggle("is-active", this.mode === "tree");
+      this.modeButtonEls.history.classList.toggle("is-active", this.mode === "history");
+    }
     this.renderBody();
     this.renderFooter();
   }
