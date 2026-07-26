@@ -1,3 +1,11 @@
+/**
+ * Input: ./MetadataCache
+ * Output: parseFrontMatterEntry, parseFrontMatterStringArray, parseFrontMatterAliases, parseFrontMatterTags, getAllTags
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { CachedMetadata } from "./MetadataCache";
 
 // Pure frontmatter tag/alias readers. They live in the kernel (metadata) rather

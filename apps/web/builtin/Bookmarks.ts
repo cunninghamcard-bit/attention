@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../ui/Icon, ../ui/TreeItem, ../plugin/InternalPlugin, ../plugin/InternalPluginWrapper, ../views/ItemView, ../views/MarkdownView, ../views/workspace/WorkspaceLeaf, ../vault/TAbstractFile, ../ui/drag/DragManager
+ * Output: BookmarkItem, BookmarksData, BookmarksController, createBookmarksPluginDefinition
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import { setIcon } from "../ui/Icon";
 import { TreeItem } from "../ui/TreeItem";

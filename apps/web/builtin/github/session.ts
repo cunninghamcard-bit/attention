@@ -1,3 +1,11 @@
+/**
+ * Input: ../../core/Events, ./types
+ * Output: RepoSection, GitHubTarget, GitHubSelection, targetKey, GitHubSession
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Events } from "../../core/Events";
 import type { GitHubRepositoryRef, InvolvementQuery } from "./types";
 

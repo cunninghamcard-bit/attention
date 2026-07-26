@@ -1,3 +1,11 @@
+/**
+ * Input: ../core/Events, ./JsonStore
+ * Output: CorePluginConfig, HotkeyConfig, AppConfigShape, AppConfigManager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Events } from "../core/Events";
 import type { JsonStore } from "./JsonStore";
 

@@ -1,3 +1,11 @@
+/**
+ * Input: ../search/SearchHelpers
+ * Output: FuzzyMatch, PreparedFuzzyQuery, prepareFuzzyQuery, fuzzyMatch
+ * Pos: Core - Fundamental logic
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import {
   fuzzySearch,
   prepareQuery,

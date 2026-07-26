@@ -1,3 +1,11 @@
+/**
+ * Input: node:path, vitest/config
+ * Output: default
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { resolve } from "node:path";
 import { defineConfig } from "vitest/config";
 

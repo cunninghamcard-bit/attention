@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../dom/dom, ../../ui/Modal, ../../ui/Notice, ./open, ./types
+ * Output: CreateIssueModal
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { createDiv, createEl } from "../../dom/dom";
 import { Modal } from "../../ui/Modal";

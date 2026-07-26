@@ -1,3 +1,9 @@
+// Input: fmt
+// Output: NewSourceInfo, ParseFrontmatter, SourceKind, SourceInfo
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 // Package resource contains shared resource metadata and frontmatter helpers.
 package resource
 

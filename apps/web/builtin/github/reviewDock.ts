@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../git/review/GitNavView, ../git/review/ReviewSurface, ../git/review/reviewModel
+ * Output: dockCloudReview
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { openGitNav } from "../git/review/GitNavView";
 import type { ReviewSurface } from "../git/review/ReviewSurface";

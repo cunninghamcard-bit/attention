@@ -1,3 +1,11 @@
+/**
+ * Input: ../views/ItemView, ../ui/Icon, ../ui/FileTypeIcon, ../ui/TreeItem, ../ui/Popover, ../ui/Menu, ../vault/TAbstractFile, ../ui/drag/DragManager, ../app/AttachmentImport, ../platform/Platform
+ * Output: FileExplorerView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { ItemView } from "../views/ItemView";
 import { setIcon } from "../ui/Icon";
 import { setFileTypeIcon } from "../ui/FileTypeIcon";

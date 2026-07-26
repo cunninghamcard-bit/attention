@@ -1,3 +1,11 @@
+/**
+ * Input: ../../dom/dom, ../../ui/drag/DragManager, ../../ui/Icon, ../../ui/Menu, ../../platform/Platform, ../../vault/TAbstractFile, ./WorkspaceParent, ./Workspace, ./WorkspaceItem, ./WorkspaceLeaf
+ * Output: WorkspaceTabInsertLocation, WorkspaceTabs
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { createDiv, createSpan } from "../../dom/dom";
 import type {
   DragDropResult,

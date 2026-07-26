@@ -1,3 +1,11 @@
+/**
+ * Input: ./JsonStore
+ * Output: PluginDataStore
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { JsonStore, JsonStoreWriteOptions } from "./JsonStore";
 
 export class PluginDataStore {

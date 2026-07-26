@@ -1,3 +1,11 @@
+/**
+ * Input: node:path, ./vault-registry, @app/shared/scheme
+ * Output: ObsidianAction, ParsedObsidianUrl, parseObsidianUrl, ResolvedVault, resolveVaultForAction, buildObsActScript
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { resolve } from "node:path";
 import type { VaultRegistryData } from "./vault-registry";
 import { URL_SCHEME } from "@app/shared/scheme";

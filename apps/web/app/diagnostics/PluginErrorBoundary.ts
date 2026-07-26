@@ -1,3 +1,11 @@
+/**
+ * Input: ../../plugin/Plugin, ./ErrorReporter, ./Logger
+ * Output: PluginErrorBoundary
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { Plugin } from "../../plugin/Plugin";
 import type { ErrorReporter } from "./ErrorReporter";
 import type { Logger } from "./Logger";

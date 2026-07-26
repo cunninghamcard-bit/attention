@@ -1,3 +1,11 @@
+/**
+ * Input: ./View, ./workspace/WorkspaceLeaf
+ * Output: DeferredView
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { normalizeViewStatePayload, View } from "./View";
 import type { WorkspaceLeaf } from "./workspace/WorkspaceLeaf";
 

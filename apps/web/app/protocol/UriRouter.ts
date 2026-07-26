@@ -1,3 +1,11 @@
+/**
+ * Input: @app/shared/scheme
+ * Output: ObsidianProtocolData, ObsidianProtocolHandler, UriHandlerContext, UriHandler, ObsidianProtocolDispatcher, UriRouter, parseObsidianUri, toObsidianProtocolData
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { URL_SCHEME } from "@app/shared/scheme";
 export interface ObsidianProtocolData {
   action: string;

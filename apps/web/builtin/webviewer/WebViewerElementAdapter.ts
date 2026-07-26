@@ -1,3 +1,11 @@
+/**
+ * Input: ./WebContentsBridge
+ * Output: WebViewerElementAdapterOptions, WebViewerElementAdapter
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { WebContentsBridge } from "./WebContentsBridge";
 
 export interface WebViewerElementAdapterOptions {

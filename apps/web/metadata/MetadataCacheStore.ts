@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: MetadataCacheStoreName, MetadataCachePersistentStore, createMetadataCacheStore, MemoryMetadataCacheStore
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export type MetadataCacheStoreName = "file" | "metadata";
 
 export interface MetadataCachePersistentStore {

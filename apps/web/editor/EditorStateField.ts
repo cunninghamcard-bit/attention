@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ./Editor, ./EditorView, ../vault/TAbstractFile, ../ui/Popover, ./ViewPlugin
+ * Output: StateEffect, MarkdownFileInfo, StateFieldInit, StateField, Transaction, editorEditorField, editorInfoField, editorViewField, editorLivePreviewField, LivePreviewStateType
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { Editor } from "./Editor";
 import type { EditorViewHost } from "./EditorView";

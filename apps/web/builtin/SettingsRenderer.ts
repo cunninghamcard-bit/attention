@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../app/SettingRegistry, ../plugin/PluginSettingTab, ../ui/Icon, ../ui/Setting, ../ui/ActiveCloseableRegistry
+ * Output: SettingsSectionId, SettingsRenderer
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import { CorePluginSettingTab, PluginSettingTab } from "../plugin/PluginSettingTab";

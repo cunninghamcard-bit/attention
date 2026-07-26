@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ./WorkspaceLayout, ./WorkspaceLayoutSerializer
+ * Output: WorkspaceLayoutPersistence, desktopWorkspaceFileName, mobileWorkspaceFileName
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import type { WorkspaceLayout } from "./WorkspaceLayout";
 import { WorkspaceLayoutSerializer } from "./WorkspaceLayoutSerializer";

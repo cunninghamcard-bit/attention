@@ -19,7 +19,7 @@ function makeIpc(vaults: Record<string, { path: string; ts?: number; open?: bool
         case "vault-list":
           return vaults;
         case "get-default-vault-path":
-          return "/docs/Workbench Vault";
+          return "/docs/Attention Vault";
         case "vault-open":
           return true;
         case "vault-move":
@@ -92,7 +92,7 @@ describe("StarterScreen", () => {
     const quickStart = parent.querySelector<HTMLElement>(".quick-start-container button");
     expect(quickStart?.textContent).toBe("Quick start");
     quickStart!.click();
-    expect(ipc.sendSync).toHaveBeenCalledWith("vault-open", "/docs/Workbench Vault", true);
+    expect(ipc.sendSync).toHaveBeenCalledWith("vault-open", "/docs/Attention Vault", true);
     expect(closeWindow).toHaveBeenCalled();
   });
 

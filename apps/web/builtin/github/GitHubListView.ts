@@ -1,3 +1,11 @@
+/**
+ * Input: ../../core/Events, ../../dom/dom, ../../ui/Icon, ../../ui/Popover, ../../ui/Notice, ../../ui/Setting, ../../views/ItemView, ../../views/View, ../git/relativeDate, ./GitHubService
+ * Output: matchSearchItems, matchNotifications, GitHubListView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { EventRef } from "../../core/Events";
 import { createDiv, createEl, createSpan } from "../../dom/dom";
 import { setIcon } from "../../ui/Icon";

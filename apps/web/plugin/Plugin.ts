@@ -1,3 +1,11 @@
+/**
+ * Input: ../core/Component, ../app/App, ../app/cli/Cli, ../app/commands/CommandManager, ../app/theme/ThemeManager, ../app/theme/CssSnippetManager, ../app/SettingsSection, ../views/workspace/ViewRegistry, ../views/workspace/WorkspaceHover, ../app/protocol/UriRouter
+ * Output: PluginManifest, PluginManifestInput, Plugin
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Component } from "../core/Component";
 import type { App } from "../app/App";
 import type { CliFlags, CliHandler } from "../app/cli/Cli";

@@ -1,3 +1,11 @@
+/**
+ * Input: ./FileTypeIcon
+ * Output: IconName, addIcon, getIcon, getIconIds, removeIcon, setIcon
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { createFileTypeIcon } from "./FileTypeIcon";
 
 const ICON_PATHS: Record<string, string> = {

@@ -1,3 +1,9 @@
+// Input: bytes
+// Output: Load, AgentDir, SessionDir, AuthJSONPath, ResolveValue, ExpandTildePath, Config, Settings
+// Pos: Configuration - App settings
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package config
 
 import (

@@ -1,3 +1,11 @@
+/**
+ * Input: ./EditablePropertyPill, ./PropertyTypes
+ * Output: renderAliasPropertyWidget
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { focusLastPill, renderEditablePropertyPill } from "./EditablePropertyPill";
 import type { PropertyWidgetContext, PropertyValue } from "./PropertyTypes";
 

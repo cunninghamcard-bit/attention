@@ -1,3 +1,11 @@
+/**
+ * Input: ./App, ./AttachmentImport, ../metadata/Frontmatter, ../views/properties/PropertyTypes, ../ui/Modal, ../vault/DataAdapter, ../vault/FileNameValidation, ../vault/TAbstractFile
+ * Output: FileManager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "./App";
 import {
   getTimestampForPastedImage,

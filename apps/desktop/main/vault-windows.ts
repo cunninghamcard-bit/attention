@@ -1,3 +1,11 @@
+/**
+ * Input: electron, @electron/remote/main, ./json-store, ./vault-registry, ./window-state, ./window, ./renderer-target, ./obsidian-url
+ * Output: VaultWindowDeps, VaultWindowManager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { BrowserWindow } from "electron";
 import { enable as enableRemote } from "@electron/remote/main";
 import type { JsonStore } from "./json-store";
@@ -9,7 +17,7 @@ import {
   type DisplayProvider,
   type WindowState,
 } from "./window-state";
-import { OBSIDIAN_WEB_PREFERENCES } from "./window";
+import { denyChildWindows, OBSIDIAN_WEB_PREFERENCES } from "./window";
 import { resolveRendererUrl } from "./renderer-target";
 import { buildObsActScript, type ObsidianAction } from "./obsidian-url";
 
@@ -89,6 +97,7 @@ export class VaultWindowManager {
     this.tracked.set(vaultId, entry);
 
     enableRemote(win.webContents);
+    denyChildWindows(win);
     win.setMenuBarVisibility(false);
 
     // Shown once the renderer is ready (real `t()`): apply maximize/devTools/

@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: PropertyType, PropertyValue
+ * Pos: Core - Fundamental logic
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 // Pure property value/type unions shared by the kernel (metadata frontmatter)
 // and the app-side property widgets. Kept in core so vault/metadata can
 // reference them without importing the App-flavored PropertyTypes module.

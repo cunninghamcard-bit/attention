@@ -1,3 +1,11 @@
+/**
+ * Input: ./WorkspaceParent, ./Workspace, ./WorkspaceItem
+ * Output: SplitDirection, WorkspaceSplit
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { WorkspaceParent } from "./WorkspaceParent";
 import type { Workspace } from "./Workspace";
 import type { WorkspaceItem } from "./WorkspaceItem";

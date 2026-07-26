@@ -1,3 +1,11 @@
+/**
+ * Input: ../commands/CommandManager, ../App, ../../core/Events, ../../core/EventRefInternal, ./Keymap, ./Scope
+ * Output: HotkeyManager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { Command } from "../commands/CommandManager";
 import type { App } from "../App";
 import type { EventRef } from "../../core/Events";

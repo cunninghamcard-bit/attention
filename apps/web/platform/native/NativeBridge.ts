@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: NativeBridgeRequest, NativeBridgeHandler, NativeBridge
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface NativeBridgeRequest<T = unknown> {
   channel: string;
   payload?: T;

@@ -1,3 +1,11 @@
+/**
+ * Input: ./GraphOptions, ./GraphDataEngine
+ * Output: GraphRendererCallbacks, GraphWorkerLike, GraphRendererOptions, GraphRenderer
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { GraphDisplayOptions, GraphForceOptions } from "./GraphOptions";
 import { DEFAULT_GRAPH_DISPLAY_OPTIONS, DEFAULT_GRAPH_FORCE_OPTIONS } from "./GraphOptions";
 import type { GraphData, GraphLink, GraphNode } from "./GraphDataEngine";

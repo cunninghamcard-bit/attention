@@ -1,3 +1,9 @@
+// Input: fmt
+// Output: LoadSkills, FormatSkillsForPrompt, ExpandSkillCommand, DedupeSkills, Skill, LoadSkillsOptions
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package resource
 
 import (

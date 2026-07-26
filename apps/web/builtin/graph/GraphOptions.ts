@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: GraphColor, GraphColorGroupOptions, GraphFilterOptions, GraphDisplayOptions, GraphForceOptions, GraphPluginOptions, DEFAULT_GRAPH_FILTER_OPTIONS, DEFAULT_GRAPH_DISPLAY_OPTIONS, DEFAULT_GRAPH_FORCE_OPTIONS, createDefaultGraphPluginOptions
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface GraphColor {
   a: number;
   rgb: number;

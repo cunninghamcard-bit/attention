@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../plugin/InternalPluginWrapper, ../plugin/InternalPlugin, ../ui/Menu, ../vault/TAbstractFile, ../views/workspace/WorkspaceLeaf, ../dom/Clipboard, ../ui/Notice, ../app/MoveFileModal, ./FileExplorerView
+ * Output: nonParityFeatureScope, corePlugins, registerCorePlugins
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { InternalPluginWrapper } from "../plugin/InternalPluginWrapper";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";

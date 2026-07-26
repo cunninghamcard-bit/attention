@@ -1,3 +1,11 @@
+/**
+ * Input: ../dom/dom, ../markdown/MarkdownRenderer, ./Icon
+ * Output: ComposerAction, composer
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { createDiv, createEl, createSpan } from "../dom/dom";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import { setIcon } from "./Icon";

@@ -1,5 +1,12 @@
+/**
+ * Input: node:os, @app/shared/terminalApi, node-pty
+ * Output: createElectronTerminalApi, installTerminalBridge
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { homedir } from "node:os";
-import { ensureZshShim } from "./zsh-shim";
 import type { ElectronTerminalApi, PtyHandle, PtySpawnOptions } from "@app/shared/terminalApi";
 
 /**
@@ -45,11 +52,6 @@ export function createElectronTerminalApi(
     platform,
     defaultShell,
     homeDir: homedir(),
-    prepareShellIntegration(): string | null {
-      // Respect a user who already runs their own ZDOTDIR arrangement.
-      if (process.env.ZDOTDIR) return null;
-      return ensureZshShim({ homeDir: homedir() });
-    },
     spawn(options: PtySpawnOptions): PtyHandle {
       if (platform === "win32") {
         throw new Error("Terminal is not supported on Windows yet.");
@@ -70,7 +72,6 @@ export function createElectronTerminalApi(
           COLORTERM: "truecolor",
           COLUMNS: String(cols),
           LINES: String(rows),
-          ...options.env,
         },
       });
       let killed = false;

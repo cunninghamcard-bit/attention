@@ -23,8 +23,9 @@ function starterEnv(base: string): NodeJS.ProcessEnv {
   return env;
 }
 
-test("a fresh profile boots into the starter with Quick start", async (_fixtures, testInfo) => {
-  const base = mkdtempSync(join(tmpdir(), "workbench-starter-e2e-"));
+// oxlint-disable-next-line eslint/no-empty-pattern -- Playwright requires a fixture argument in destructuring form; this test uses none.
+test("a fresh profile boots into the starter with Quick start", async ({}, testInfo) => {
+  const base = mkdtempSync(join(tmpdir(), "attention-starter-e2e-"));
   const app = await electron.launch({
     args: [MAIN_CJS],
     cwd: REPO_ROOT,
@@ -48,8 +49,9 @@ test("a fresh profile boots into the starter with Quick start", async (_fixtures
   }
 });
 
-test("clicking a registered vault opens its window and the starter closes itself", async (_fixtures, testInfo) => {
-  const base = mkdtempSync(join(tmpdir(), "workbench-starter-e2e-"));
+// oxlint-disable-next-line eslint/no-empty-pattern -- Playwright requires a fixture argument in destructuring form; this test uses none.
+test("clicking a registered vault opens its window and the starter closes itself", async ({}, testInfo) => {
+  const base = mkdtempSync(join(tmpdir(), "attention-starter-e2e-"));
   const vaultPath = join(base, "picked-vault");
   mkdirSync(vaultPath, { recursive: true });
   // Registered but NOT open — startup still lands on the starter, with the

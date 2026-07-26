@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../app/SettingRegistry, ../app/theme/AppearanceManager, ../ui/Setting, ../ui/Icon, ../ui/Notice, ./theme-market/ThemeMarketplaceModal, ./theme-market/ThemeMarketplace, ./AppearanceModals, ../platform/Platform
+ * Output: AppearanceSettingTab
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import type { BaseTheme } from "../app/theme/AppearanceManager";

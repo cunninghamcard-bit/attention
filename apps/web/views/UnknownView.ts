@@ -1,3 +1,11 @@
+/**
+ * Input: ./EmptyView, ./View, ./workspace/WorkspaceLeaf
+ * Output: UnknownView
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { EmptyView } from "./EmptyView";
 import { normalizeViewStatePayload } from "./View";
 import type { WorkspaceLeaf } from "./workspace/WorkspaceLeaf";

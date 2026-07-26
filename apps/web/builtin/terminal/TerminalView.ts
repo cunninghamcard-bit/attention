@@ -1,3 +1,11 @@
+/**
+ * Input: ../../views/ItemView, ../../views/View, ../../ui/Menu, ../../app/hotkeys/Scope, ./TerminalService, ./GhosttyTerminalRenderer
+ * Output: TerminalView, isSystemChord, createTerminalFocusScope
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { ItemView } from "../../views/ItemView";
 import type { ViewStateResult } from "../../views/View";
 import { Menu } from "../../ui/Menu";

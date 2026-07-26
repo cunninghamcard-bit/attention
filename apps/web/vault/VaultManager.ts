@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: VaultRecord, VaultManager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 // Minimal host: VaultManager only broadcasts record changes on the workspace
 // event bus, so it needs nothing else from App.
 interface VaultManagerHost {

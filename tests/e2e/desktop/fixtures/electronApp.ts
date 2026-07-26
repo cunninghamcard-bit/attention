@@ -54,8 +54,9 @@ function seedVault(vault: string): void {
 export const test = base.extend<DesktopFixtures>({
   // Owns the throwaway workspace: tests that read/write vault files depend on
   // this for the real on-disk path; launchApp builds its env from it.
-  vaultPath: async (_fixtures, use) => {
-    const base = mkdtempSync(join(tmpdir(), "workbench-desktop-e2e-"));
+  // oxlint-disable-next-line eslint/no-empty-pattern -- Playwright requires a fixture argument in destructuring form; this one depends on no other fixture.
+  vaultPath: async ({}, use) => {
+    const base = mkdtempSync(join(tmpdir(), "attention-desktop-e2e-"));
     const vault = join(base, "vault");
     seedVault(vault);
     try {

@@ -1,3 +1,11 @@
+/**
+ * Input: @pierre/diffs, ../../../dom/dom, ../../../ui/Composer, ../../../ui/highlightWorkers, ../../../ui/Icon, ../../../ui/Notice, ../../../ui/FileTypeIcon, ../../../ui/Setting, ../../../ui/TreeItem, ../diffSeparatorCss, ./reviewModel
+ * Output: ReviewSubmitOptions, ReviewSurfaceProps, ReviewSurface
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import {
   CodeView,
   type CodeViewItem,

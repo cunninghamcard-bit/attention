@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../app/SettingTab, ../core/Component, ../core/Events, ../editor/Editor, ../editor/EditorStateField, ../app/hotkeys/Keymap, ../app/hotkeys/Scope, ../markdown/MarkdownRenderChild, ../markdown/RenderContext
+ * Output: DebouncedFunction, Debouncer, RequestUrlError, RequestUrlParam, RequestUrlResponse, RequestUrlResponsePromise, ObsidianPluginModule, createObsidianPluginModule, setIcon
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { App } from "../app/App";
 import { SettingTab } from "../app/SettingTab";
 import { Component } from "../core/Component";

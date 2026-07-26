@@ -1,3 +1,9 @@
+// Input: bufio
+// Output: WithShell, New, Env, Option
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package local
 
 import (

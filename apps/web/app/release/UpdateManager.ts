@@ -1,3 +1,11 @@
+/**
+ * Input: ../App, ../../core/Version
+ * Output: UpdateCheckResult, UpdateManager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../App";
 import { compareVersions } from "../../core/Version";
 

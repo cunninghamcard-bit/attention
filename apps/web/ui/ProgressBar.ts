@@ -1,3 +1,11 @@
+/**
+ * Input: ../dom/ActiveDocument
+ * Output: ProgressBar
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { getActiveDocument } from "../dom/ActiveDocument";
 
 export class ProgressBar {

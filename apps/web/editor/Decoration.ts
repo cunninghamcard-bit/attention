@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: DecorationSpec, WidgetType, Decoration, DecorationRange, DecorationSet
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface DecorationSpec {
   class?: string;
   attributes?: Record<string, string>;

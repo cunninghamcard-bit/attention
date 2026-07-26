@@ -1,3 +1,9 @@
+// Input: encoding/json
+// Output: ParseModelsConfig
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package provider
 
 import (

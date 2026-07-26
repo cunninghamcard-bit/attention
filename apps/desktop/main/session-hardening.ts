@@ -1,3 +1,11 @@
+/**
+ * Input: electron, ./renderer-target
+ * Output: rewriteRequestHeaders, rewriteResponseHeaders, isPermissionAllowed, registerSessionHardening
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { session } from "electron";
 import { APP_ORIGIN } from "./renderer-target";
 

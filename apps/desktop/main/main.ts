@@ -1,3 +1,11 @@
+/**
+ * Input: electron, @electron/remote/main, node:path, node:fs, ./window, ./starter-window, ./foundation-ipc, ./state, ./json-store, ./settings
+ * Output: None
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { app, BrowserWindow, ipcMain, nativeImage, screen, shell } from "electron";
 import { initialize as initializeRemote } from "@electron/remote/main";
 import { join } from "node:path";
@@ -44,10 +52,10 @@ function cliArgvFromProcess(argv: string[]): string[] {
 // build output dir where `preload.cjs` sits beside it.
 const here = __dirname;
 
-// Our own identity: userData resolves to ~/Library/Application Support/Workbench
+// Our own identity: userData resolves to ~/Library/Application Support/Attention
 // (etc.), never the generic Electron dir and never anything of real Obsidian's.
 // Must run before the first app.getPath("userData").
-app.setName("Workbench");
+app.setName("Attention");
 // Hermetic-test seam (mirrors E2E_VAULT_PATH): an isolated userData also
 // isolates the single-instance lock, so e2e runs never touch the real profile.
 if (process.env.E2E_USER_DATA) app.setPath("userData", process.env.E2E_USER_DATA);
@@ -112,7 +120,7 @@ if (!gotLock) {
     displays,
     preloadPath: defaultPreloadPath(here),
     isQuitting: () => mainState.isQuitting,
-    // Workbench product divergence: the CLI is ON by default (an agent
+    // Attention product divergence: the CLI is ON by default (an agent
     // workbench wants its command surface always up); real Obsidian defaults
     // off behind Settings > General > Advanced. `cli: false` still gates.
     isCliEnabled: () => settings.cli !== false,
@@ -166,7 +174,7 @@ if (!gotLock) {
         getIdByName: (name) => registry.getIdByName(name),
         getIdByContainedPath: (path) => registry.getIdByContainedPath(path),
         mostRecentVaultId: () => vaultWindows.mostRecentVaultId(),
-        // Real `C.cli` gate, kept verbatim in shape — but Workbench defaults it ON
+        // Real `C.cli` gate, kept verbatim in shape — but Attention defaults it ON
         // (deliberate product divergence; set `cli: false` in obsidian.json to
         // disable, same persisted flag as real Obsidian).
         isCliEnabled: () => settings.cli !== false,
@@ -208,8 +216,8 @@ if (!gotLock) {
   // Our own scheme. Registering "obsidian" would hijack the real app's links
   // at the OS level; obsidian:// URLs arriving via the CLI/second instance are
   // still parsed internally.
-  if (!app.isDefaultProtocolClient("workbench")) {
-    app.setAsDefaultProtocolClient("workbench");
+  if (!app.isDefaultProtocolClient("attention")) {
+    app.setAsDefaultProtocolClient("attention");
   }
 
   app.on("before-quit", () => {
@@ -253,8 +261,8 @@ if (!gotLock) {
         version: app.getVersion(),
         desktopDir: safePath("desktop"),
         documentsDir: safePath("documents"),
-        sandboxVaultPath: join(app.getPath("userData"), "Workbench Sandbox"),
-        defaultVaultPath: join(safePath("documents"), "Workbench Vault"),
+        sandboxVaultPath: join(app.getPath("userData"), "Attention Sandbox"),
+        defaultVaultPath: join(safePath("documents"), "Attention Vault"),
       },
       trashItem: (p) => shell.trashItem(p),
       openExternal: (url) => void shell.openExternal(url),

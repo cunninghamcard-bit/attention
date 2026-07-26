@@ -1,3 +1,11 @@
+/**
+ * Input: ../dom/dom, ../ui/Icon, ./BodyClasses, ../ui/Popover
+ * Output: FrameDomOptions, FrameDom
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { createDiv } from "../dom/dom";
 import { setIcon } from "../ui/Icon";
 import { getObsidianPlatformClass } from "./BodyClasses";

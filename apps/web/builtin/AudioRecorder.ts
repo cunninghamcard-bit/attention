@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../plugin/InternalPlugin, ../plugin/InternalPluginWrapper, ../ui/Notice, ../views/MarkdownView
+ * Output: AudioRecorderController, createAudioRecorderPluginDefinition
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../plugin/InternalPluginWrapper";

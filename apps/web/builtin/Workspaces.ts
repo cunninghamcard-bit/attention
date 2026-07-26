@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../app/SettingRegistry, ../plugin/InternalPlugin, ../plugin/InternalPluginWrapper, ../views/workspace/WorkspaceLayout, ../ui/suggest/SuggestModal, ../ui/Setting, ../ui/Icon, ../app/cli/commands/workspacesCli
+ * Output: SavedWorkspace, WorkspacesOptions, WorkspacesController, createWorkspacesPluginDefinition
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";

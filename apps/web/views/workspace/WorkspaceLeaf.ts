@@ -1,3 +1,11 @@
+/**
+ * Input: ./WorkspaceItem, ../../core/Events, ../../dom/dom, ./Workspace, ../../ui/Notice, ../../ui/Menu, ../../ui/Icon, ../../platform/Platform, ../View, ../EmptyView
+ * Output: LeafHistoryState, LeafHistorySnapshot, WorkspaceLeafHistory, WorkspaceLeaf
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { WorkspaceItem } from "./WorkspaceItem";
 import type { EventRef } from "../../core/Events";
 import { createDiv, setChildrenInPlace } from "../../dom/dom";

@@ -1,3 +1,11 @@
+/**
+ * Input: ./CanvasData, ./CanvasNode
+ * Output: CanvasEdge
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { CanvasEdgeData } from "./CanvasData";
 import type { CanvasNode } from "./CanvasNode";
 

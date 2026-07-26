@@ -1,3 +1,9 @@
+// Input: context
+// Output: Run, Continue
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package agentloop
 
 import (

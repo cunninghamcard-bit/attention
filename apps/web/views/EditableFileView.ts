@@ -1,3 +1,11 @@
+/**
+ * Input: ./FileView, ../vault/TAbstractFile, ../vault/FileNameValidation, ../ui/Menu
+ * Output: EditableFileView
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { FileView } from "./FileView";
 import type { TFile } from "../vault/TAbstractFile";
 import { validateRenameName, type RenameValidationResult } from "../vault/FileNameValidation";

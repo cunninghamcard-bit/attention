@@ -1,3 +1,11 @@
+/**
+ * Input: ./Events
+ * Output: unregisterEventRef
+ * Pos: Core - Fundamental logic
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { EventRef } from "./Events";
 
 interface RuntimeEventRef {

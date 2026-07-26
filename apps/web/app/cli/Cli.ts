@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../vault/TAbstractFile
+ * Output: CliData, CliFlag, CliFlags, CliHandler, CliCommand, Cli, AsciiTreeNode, alphaCompare, fuzzySuggest
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { TFile } from "../../vault/TAbstractFile";
 
@@ -258,7 +266,7 @@ export class Cli {
       (id.startsWith("dev:") || id === "devtools" || id === "eval" ? developer : main).push(block);
     }
     return (
-      "Workbench CLI\n\nUsage: workbench <command> [options]\n\n" +
+      "Attention CLI\n\nUsage: attention <command> [options]\n\n" +
       "Options:\n  vault=<name>          Target a specific vault by name\n\n" +
       "Notes:\n" +
       "  file resolves by name (like wikilinks), path is exact (folder/note.md)\n" +

@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../app/commands/CommandPalette, ../app/commands/CommandManager, ../editor/Editor, ../plugin/InternalPlugin, ../plugin/InternalPluginWrapper, ../ui/suggest/EditorSuggest, ../ui/suggest/SuggestModal, ../ui/Icon
+ * Output: createSlashCommandPluginDefinition
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import { formatHotkey, getDisplayHotkeys } from "../app/commands/CommandPalette";
 import { runCommandCallback, type Command } from "../app/commands/CommandManager";

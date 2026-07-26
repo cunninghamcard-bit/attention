@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: Typewriter
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 // Adaptive typewriter for streaming text, part of the stream family: the
 // producer keeps feeding the full target buffer, the typewriter reveals a
 // growing prefix at a rate that drains the backlog exponentially (~dt/DRAIN_MS

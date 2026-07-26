@@ -1,3 +1,11 @@
+/**
+ * Input: ./obsidian-url, ./vault-registry, @app/shared/scheme
+ * Output: ObsidianUrlDeps, handleObsidianUrl, obsidianUrlFromArgv
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { parseObsidianUrl, resolveVaultForAction, type ObsidianAction } from "./obsidian-url";
 import type { VaultRegistry } from "./vault-registry";
 import { URL_SCHEME } from "@app/shared/scheme";

@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: DesktopProtocolRequest, DesktopProtocolCallback, DesktopProtocolHandler
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface DesktopProtocolRequest {
   protocol: string;
   url: string;

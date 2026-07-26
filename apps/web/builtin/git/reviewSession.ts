@@ -1,3 +1,11 @@
+/**
+ * Input: ../../core/Events
+ * Output: LocalGitReviewSource, GitReviewSource, GitNavMode, ReviewFileStatus, ReviewFileSummary, GitReviewSession
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Events } from "../../core/Events";
 
 /** Local review target — working tree or a single commit (codiff ReviewSource). */

@@ -1,3 +1,11 @@
+/**
+ * Input: ./ActiveDocument
+ * Output: ClassValue, AttributeValue, DomParent, DomElementInfo, DomElementSpec, DomElementCallback, createDiv, createSpan, createFragment, createEl
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { getActiveDocument } from "./ActiveDocument";
 
 export type ClassValue = string | string[] | undefined;

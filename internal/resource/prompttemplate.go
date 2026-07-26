@@ -1,3 +1,9 @@
+// Input: fmt
+// Output: ParseCommandArgs, SubstituteArgs, LoadPromptTemplates, DedupePromptTemplates, ExpandPromptTemplate, PromptTemplate, LoadPromptTemplatesOptions
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package resource
 
 import (

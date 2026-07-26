@@ -1,3 +1,11 @@
+/**
+ * Input: ../core/Events, ./TAbstractFile, ./Vault
+ * Output: FileWatchEventType, FileWatchEvent, FileWatcher
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Events } from "../core/Events";
 import type { TAbstractFile } from "./TAbstractFile";
 import type { Vault } from "./Vault";

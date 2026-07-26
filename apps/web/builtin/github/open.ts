@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../views/View, ../../views/workspace/Workspace, ../../views/workspace/WorkspaceLeaf, ./session, ./types, ./widgets
+ * Output: OpenIn, GITHUB_VIEW, GitHubDetailTarget, openGitHubNav, openQueryList, openInbox, openOrg, openRepo, openPrDetail, openCommitDetail
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import type { View } from "../../views/View";
 import type { PaneType } from "../../views/workspace/Workspace";

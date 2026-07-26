@@ -1,3 +1,11 @@
+/**
+ * Input: yaml, ../../../app/App, ../Cli, ../../../metadata/FrontmatterTags, ../../../views/properties/PropertyTypes
+ * Output: registerMetadataCommands
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { stringify as stringifyYaml } from "yaml";
 import type { App } from "../../../app/App";
 import { alphaCompare } from "../Cli";

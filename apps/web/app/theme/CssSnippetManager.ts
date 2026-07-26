@@ -1,3 +1,11 @@
+/**
+ * Input: ../App
+ * Output: CssSnippet, CssSnippetManager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../App";
 
 export interface CssSnippet {

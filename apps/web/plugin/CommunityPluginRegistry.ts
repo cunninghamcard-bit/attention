@@ -1,3 +1,11 @@
+/**
+ * Input: ./PluginManifest
+ * Output: CommunityPluginRecord, CommunityPluginRecordInput, CommunityPluginRegistry
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import {
   normalizePluginManifest,
   type PluginManifest,

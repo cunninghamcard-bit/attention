@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: SplitLinkpath, ParsedLinktext, splitLinkpath, parseLinktext
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface SplitLinkpath {
   path: string;
   subpath: string;

@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: getActiveWindow, getActiveDocument, setActiveWindow, resetActiveWindow
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 let activeWindowRef: Window = window;
 let activeDocumentRef: Document = document;
 

@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: Tasks, QuitEvent
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export class Tasks {
   private readonly promises: Array<Promise<unknown>> = [];
 

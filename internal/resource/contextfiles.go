@@ -1,3 +1,9 @@
+// Input: errors
+// Output: LoadContextFiles, ContextFile
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package resource
 
 import (

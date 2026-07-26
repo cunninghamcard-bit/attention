@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../dom/ActiveDocument, ../../views/workspace/WorkspaceWindow
+ * Output: AppWindowState, WindowManager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { setActiveWindow } from "../../dom/ActiveDocument";
 import type { WorkspaceWindow } from "../../views/workspace/WorkspaceWindow";

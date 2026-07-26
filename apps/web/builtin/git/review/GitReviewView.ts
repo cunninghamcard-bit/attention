@@ -1,3 +1,11 @@
+/**
+ * Input: @pierre/diffs, ../../../app/App, ../../../core/Events, ../../../dom/dom, ../../../ui/Icon, ../../../ui/Popover, ../../../views/ItemView, ../../../views/View, ../reviewSession, ./GitNavView
+ * Output: GitReviewSource, GitReviewView, openGitReview
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { parseDiffFromFile } from "@pierre/diffs";
 import type { App } from "../../../app/App";
 import type { EventRef } from "../../../core/Events";

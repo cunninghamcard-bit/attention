@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: tabbed
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 // Shared helpers for the CLI command batches (core + internal-plugin lanes).
 // File resolution lives on the Cli class itself (`cli.tryResolveFile`), the
 // real home.

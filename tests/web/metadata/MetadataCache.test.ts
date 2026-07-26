@@ -157,7 +157,7 @@ describe("MetadataCache", () => {
     const store = new MemoryMetadataCacheStore();
     const first = new Vault();
     const seeded = new MetadataCache(first, undefined, store);
-    const ghost = await first.create("Plugin Architecture.md", "body #workbench tag");
+    const ghost = await first.create("Plugin Architecture.md", "body #attention tag");
     await seeded.computeFileMetadata(ghost);
     expect(store.getFile("Plugin Architecture.md")).not.toBeNull();
 

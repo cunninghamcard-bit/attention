@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ./Plugin, ./PluginManifest, ../storage/JsonStore, ./PluginRequire, ./PluginSource
+ * Output: PluginModuleFactory, PluginPackageSource, PluginLoader
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import { Plugin } from "./Plugin";
 import {

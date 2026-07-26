@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: OpenDialogOptions, SaveDialogOptions, FileDialogService
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface OpenDialogOptions {
   title?: string;
   directory?: boolean;

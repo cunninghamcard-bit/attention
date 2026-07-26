@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: renderGitAvatar
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 /** Renders a local Git author avatar with the same initial fallback as Codiff. */
 export function renderGitAvatar(
   parentEl: HTMLElement,

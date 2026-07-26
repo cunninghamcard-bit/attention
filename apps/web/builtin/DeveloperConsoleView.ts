@@ -1,3 +1,11 @@
+/**
+ * Input: ../views/ItemView
+ * Output: DeveloperConsoleView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { ItemView } from "../views/ItemView";
 
 export class DeveloperConsoleView extends ItemView {

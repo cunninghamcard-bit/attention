@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../ui/Modal, ../ui/Icon, ../ui/Popover, ../ui/Setting, ../ui/suggest/AbstractInputSuggest
+ * Output: FontSettingKey, FontManagerModal, RibbonConfigurationModal, parseFontFamilies, fontAvailable, resetFontCatalogForTests
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import { ConfirmationModal } from "../ui/Modal";
 import { setIcon } from "../ui/Icon";

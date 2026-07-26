@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../app/SettingRegistry, ./RevisionHistory, ../../plugin/InternalPlugin, ../../plugin/InternalPluginWrapper, ../../ui/Modal, ../../ui/Setting, ../../ui/Notice, ../../vault/TAbstractFile, ../../ui/Icon
+ * Output: FileRecoveryOptions, FileRecoveryController, createFileRecoveryPluginDefinition
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import type { SettingTab } from "../../app/SettingRegistry";
 import type { FileRevision } from "./RevisionHistory";

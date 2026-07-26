@@ -1,3 +1,11 @@
+/**
+ * Input: ../App
+ * Output: BaseTheme, AppearanceSettings, AppearanceManager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../App";
 
 export type BaseTheme = "obsidian" | "moonstone" | "system";

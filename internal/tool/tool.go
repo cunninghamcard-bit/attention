@@ -1,3 +1,9 @@
+// Input: context
+// Output: ToolExecutionMode, Result, UpdateCallback, Tool
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 // Package tool defines the runtime tool contracts (the shape the agent loop
 // executes) and the tool registry. The rich, extension-facing tool definition
 // lives in internal/extension; builtin tools and the extension adapter live in

@@ -1,3 +1,9 @@
+// Input: context
+// Output: LoginAnthropic, RefreshAnthropicToken
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package oauth
 
 import (

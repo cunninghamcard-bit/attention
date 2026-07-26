@@ -1,3 +1,11 @@
+/**
+ * Input: ./SystemMenuBuilder, ./DesktopProtocolHandler, ./AutoUpdateService
+ * Output: DesktopWindowOptions, DesktopMain
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { SystemMenuBuilder } from "./SystemMenuBuilder";
 import { DesktopProtocolHandler } from "./DesktopProtocolHandler";
 import { AutoUpdateService } from "./AutoUpdateService";

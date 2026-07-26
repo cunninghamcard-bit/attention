@@ -1,3 +1,11 @@
+/**
+ * Input: node:fs/promises, node:path
+ * Output: None
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 

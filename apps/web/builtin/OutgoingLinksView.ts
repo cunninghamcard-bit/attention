@@ -1,3 +1,11 @@
+/**
+ * Input: ../views/ItemView, ../metadata/LinkGraph, ../vault/TAbstractFile, ../views/MarkdownView, ../ui/TreeItem
+ * Output: OutgoingLinksView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { ItemView } from "../views/ItemView";
 import type { LinkGraphEdge } from "../metadata/LinkGraph";
 import type { TFile } from "../vault/TAbstractFile";

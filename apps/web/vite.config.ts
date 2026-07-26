@@ -1,3 +1,11 @@
+/**
+ * Input: node:path, vite, rollup-plugin-visualizer
+ * Output: default
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import { visualizer } from "rollup-plugin-visualizer";

@@ -1,3 +1,11 @@
+/**
+ * Input: electron, @app/shared/menu
+ * Output: toElectronTemplate, applyMenu, updateMenuItems
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Menu, BrowserWindow, type MenuItemConstructorOptions } from "electron";
 import type { SystemMenuItem } from "@app/shared/menu";
 

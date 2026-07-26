@@ -1,3 +1,11 @@
+/**
+ * Input: ./GraphDataEngine
+ * Output: CompiledGraphSearchQuery, compileGraphSearchQuery
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { GraphNode } from "./GraphDataEngine";
 
 type Expr =

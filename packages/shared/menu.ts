@@ -1,4 +1,12 @@
 /**
+ * Input: None
+ * Output: SystemMenuItem
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
+/**
  * The system-menu wire shape — the template the renderer assembles
  * (SystemMenuBuilder / DesktopMenu) and the Electron main process feeds to
  * Menu.buildFromTemplate over the `set-menu` / `update-menu-items` channels.

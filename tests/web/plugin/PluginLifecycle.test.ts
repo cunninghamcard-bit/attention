@@ -776,7 +776,7 @@ describe("community plugin lifecycle", () => {
     expect(instance?.statusEl?.textContent).toBe("Plugin status");
     expect(instance?.statusEl?.parentElement).toBe(app.statusBar.containerEl);
     await app.uriRouter.handleUri(
-      "workbench://chrome-api?file=Folder%2FNote.md&empty&dry-run=true",
+      "attention://chrome-api?file=Folder%2FNote.md&empty&dry-run=true",
     );
     expect(instance?.protocolHits).toBe(1);
     expect(instance?.protocolPayload).toMatchObject({
@@ -806,7 +806,7 @@ describe("community plugin lifecycle", () => {
     expect(app.commands.findCommand("chrome-api:kept")).toBeUndefined();
     expect(app.hotkeys.getDefaultHotkeys("chrome-api:kept")).toBeUndefined();
     expect(instance?.statusEl?.parentElement).toBeNull();
-    await expect(app.uriRouter.handleUri("workbench://chrome-api")).resolves.toBe(false);
+    await expect(app.uriRouter.handleUri("attention://chrome-api")).resolves.toBe(false);
     // Disabled → the command is unregistered, so the CLI rejects it as unknown.
     await expect(app.cli.handleCli(["chrome-api", "dry-run"])).rejects.toMatch(
       /^Command "chrome-api" not found/,

@@ -1,3 +1,9 @@
+// Input: context
+// Output: NewReadTool
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package builtin
 
 import (

@@ -1,4 +1,12 @@
 /**
+ * Input: None
+ * Output: APP_ORIGIN, APP_INDEX_URL, resolveRendererUrl, resolveStarterUrl, isDevRendererTarget
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
+/**
  * Resolves where a BrowserWindow loads the reconstructed renderer from.
  *
  * - Development: the Vite dev server URL (passed via `ELECTRON_RENDERER_URL`),

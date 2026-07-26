@@ -1,3 +1,11 @@
+/**
+ * Input: ./types, ./resolveRepository
+ * Output: HttpResponse, HttpTransport, GitHubClient
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type {
   ActionJob,
   ActionRunDetail,
@@ -774,7 +782,7 @@ export class GitHubClient {
       Accept: options.accept ?? ACCEPT,
       Authorization: `Bearer ${this.token}`,
       "X-GitHub-Api-Version": API_VERSION,
-      "User-Agent": "Workbench-GitHub",
+      "User-Agent": "Attention-GitHub",
     };
     let body: string | undefined;
     if (options.body !== undefined) {

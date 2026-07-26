@@ -1,4 +1,12 @@
 /**
+ * Input: None
+ * Output: ListedFiles, Stat, DataWriteOptions, DataAdapterWatchHandler, DataAdapter
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
+/**
  * Native-seam port: the vault filesystem (`DataAdapter`).
  *
  * ONE definition of the disk-access contract. Unlike git/terminal this port is

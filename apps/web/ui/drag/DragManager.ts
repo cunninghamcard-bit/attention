@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../vault/TAbstractFile
+ * Output: DragSource, FileDragSource, FilesDragSource, FolderDragSource, LinkDragSource, DragDropResult, DragManager, setAllowedDropEffect, isDropEffectAllowed
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { TFile, TFolder } from "../../vault/TAbstractFile";
 

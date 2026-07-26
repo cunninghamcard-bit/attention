@@ -1,3 +1,11 @@
+/**
+ * Input: node:path, ./vault-registry, @app/shared/ipc
+ * Output: IpcSyncEvent, IpcListener, RequestUrlParams, RequestUrlResult, IpcDeps, createIpcHandlers, IpcMainLike, registerIpcHandlers
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { resolve } from "node:path";
 import type { VaultRegistry } from "./vault-registry";
 import type { IpcChannelName } from "@app/shared/ipc";

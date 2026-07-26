@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../editor/Editor, ../metadata/BlockCache, ../metadata/LinkSuggestionManager, ../plugin/InternalPlugin, ../ui/suggest/EditorSuggest, ../vault/TAbstractFile, ../views/MarkdownView
+ * Output: LinkSuggest, createLinkSuggestPluginDefinition
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { Editor, EditorPosition } from "../editor/Editor";
 import { computeBlockIdInsertion } from "../metadata/BlockCache";

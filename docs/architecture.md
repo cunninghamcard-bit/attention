@@ -5,7 +5,7 @@ This document governs `apps/**`, `packages/**`, and the Go kernel lanes
 `tests/architecture.test.ts` enforce the directory layout and import walls in
 CI; keep this document and those executable constraints in step with the code.
 
-This workbench is a clean-room, runnable reconstruction of Obsidian's frontend
+Attention is a clean-room, runnable reconstruction of Obsidian's frontend
 architecture, grown into an agent workspace. It is a **monorepo for a
 server + web + desktop product**: the web product package, the desktop shell
 package, shared contract lanes, and the Go agent kernel at the repo root. The

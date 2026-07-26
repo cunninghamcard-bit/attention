@@ -1,3 +1,11 @@
+/**
+ * Input: ../dom/ActiveDocument, ../core/Component
+ * Output: HoverPopoverState, HoverParent, Point, HoverPopover, TooltipOptions, displayTooltip, setTooltip, hideTooltip
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { getActiveDocument, getActiveWindow } from "../dom/ActiveDocument";
 import { Component } from "../core/Component";
 

@@ -1,3 +1,11 @@
+/**
+ * Input: node:crypto, node:path, ./renderer-target
+ * Output: createFileOrigin, ResolveDeps, ResolvedAppUrl, resolveAppUrl, contentTypeFor, ContentRange, computeContentRange
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { randomBytes } from "node:crypto";
 import { join, resolve } from "node:path";
 import { APP_ORIGIN } from "./renderer-target";

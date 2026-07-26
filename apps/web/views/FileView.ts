@@ -1,3 +1,11 @@
+/**
+ * Input: ./ItemView, ../ui/Menu, ../vault/TAbstractFile, ./View, ./EmptyView, ../ui/Notice
+ * Output: TFileLike, FileView
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { ItemView } from "./ItemView";
 import { Menu } from "../ui/Menu";
 import { TFile, type TAbstractFile, type TFolder } from "../vault/TAbstractFile";

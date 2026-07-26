@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: DetachedHtmlImage, PreprocessedHtmlDrop, HtmlDropPreprocessOptions, preprocessHtmlDrop
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface DetachedHtmlImage {
   data: ArrayBuffer;
   extension: "jpg" | "png";

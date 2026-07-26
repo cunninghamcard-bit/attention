@@ -1,3 +1,11 @@
+/**
+ * Input: ../../core/Events, ../../dom/ActiveDocument, ../../dom/dom, ../../app/App, ./Workspace, ./WorkspaceContainer, ./WorkspaceParent
+ * Output: SerializedWorkspaceItem, WorkspaceItem, getWorkspaceItemFromElement
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Events } from "../../core/Events";
 import { getActiveDocument } from "../../dom/ActiveDocument";
 import { detach } from "../../dom/dom";

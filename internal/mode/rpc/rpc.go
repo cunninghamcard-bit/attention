@@ -1,3 +1,9 @@
+// Input: bufio
+// Output: Run
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 // Package rpc implements the JSON-line print-mode subset.
 package rpc
 

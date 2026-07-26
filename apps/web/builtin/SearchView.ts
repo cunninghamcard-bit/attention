@@ -1,3 +1,11 @@
+/**
+ * Input: ../views/ItemView, ../search/SearchEngine, ../ui/suggest/AbstractInputSuggest, ../ui/Setting, ../ui/Icon, ../ui/Popover, ../ui/TreeItem, ../app/App
+ * Output: SearchView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { ItemView } from "../views/ItemView";
 import type { SearchMatch, VaultSearchResult } from "../search/SearchEngine";
 import { AbstractInputSuggest } from "../ui/suggest/AbstractInputSuggest";

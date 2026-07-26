@@ -1,3 +1,9 @@
+// Input: context
+// Output: RegisterBuiltins, RegisterProvider, GetProvider, Login, Providers, UnregisterProvider, Provider
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package oauth
 
 import (

@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ./RevisionHistory
+ * Output: RecoverySnapshot, FileRecoveryService
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import type { FileRevision } from "./RevisionHistory";
 

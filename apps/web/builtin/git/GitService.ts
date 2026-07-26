@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ./reviewSession, @app/shared/gitApi
+ * Output: ElectronGitApi, GitExecResult, PrDraftComment, PrSummary, PrFileChange, PrComment, PrDetail, GitNumstatEntry, GitFileStatus, GitLogEntry
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { GitReviewSession } from "./reviewSession";
 import type { ElectronGitApi, GitExecResult } from "@app/shared/gitApi";

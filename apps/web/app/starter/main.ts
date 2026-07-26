@@ -1,3 +1,11 @@
+/**
+ * Input: ../../styles/index.css, ../BodyClasses, ../FrameDom, ./StarterScreen
+ * Output: None
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import "../../styles/index.css";
 import { applyObsidianBodyClasses, installFocusBodyClassSync } from "../BodyClasses";
 import { FrameDom } from "../FrameDom";
@@ -33,7 +41,7 @@ function resolveIpc(): StarterIpc {
 
 function createDevFakeIpc(): StarterIpc {
   const vaults: Record<string, { path: string; ts: number; open?: boolean }> = {
-    dev1: { path: "/Users/dev/Vaults/workbench-demo-vault", ts: 3, open: true },
+    dev1: { path: "/Users/dev/Vaults/attention-demo-vault", ts: 3, open: true },
     dev2: { path: "/Users/dev/Vaults/work-notes", ts: 2 },
     dev3: { path: "/Users/dev/Documents/research", ts: 1 },
   };
@@ -45,7 +53,7 @@ function createDevFakeIpc(): StarterIpc {
         case "vault-list":
           return vaults;
         case "get-default-vault-path":
-          return "/Users/dev/Documents/Workbench Vault";
+          return "/Users/dev/Documents/Attention Vault";
         case "vault-open":
           return true;
         case "vault-move": {

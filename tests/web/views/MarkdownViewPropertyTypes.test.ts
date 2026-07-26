@@ -52,6 +52,31 @@ describe("MarkdownView property type menu", () => {
       "number",
     );
   });
+
+  it("hides the type warning on a matching property, as a div and via display", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const source = await app.vault.create("Plain.md", "---\nname: twilight-ai\n---\nBody");
+
+    const leaf = app.workspace.getLeaf();
+    await leaf.openFile(source, { active: true, state: { mode: "source" } });
+    const view = leaf.view as MarkdownView;
+    const warningEl = view.metadataContainerEl.querySelector<HTMLElement>(
+      '[data-property-key="name"] .metadata-property-warning-icon',
+    );
+    if (!warningEl) throw new Error("missing warning icon");
+
+    // A div, like Obsidian: `.clickable-icon` has no appearance reset, so a
+    // <button> draws the UA border and background around the icon.
+    expect(warningEl.tagName).toBe("DIV");
+    // Hidden via display, NOT the `hidden` attribute: `.clickable-icon` sets
+    // `display: flex`, an author rule that outranks the UA's
+    // `[hidden] { display: none }` — which left the warning triangle lit on
+    // every property row. jsdom loads no stylesheet, so only the mechanism is
+    // assertable here, not the computed result.
+    expect(warningEl.style.display).toBe("none");
+    expect(warningEl.hasAttribute("hidden")).toBe(false);
+  });
 });
 
 function findMenuItem(root: ParentNode, title: string): HTMLElement {

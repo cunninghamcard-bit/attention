@@ -1,3 +1,11 @@
+/**
+ * Input: ../../../app/App, ../../../dom/dom, ../../../core/Events, ../../../ui/FileTypeIcon, ../../../ui/Icon, ../../../ui/Setting, ../../../ui/TreeItem, ../GitAvatar, ../../../views/ItemView, ../GitService
+ * Output: GitNavView, openGitNav
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../../app/App";
 import { createDiv, createEl, createSpan } from "../../../dom/dom";
 import type { EventRef } from "../../../core/Events";

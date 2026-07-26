@@ -1,3 +1,11 @@
+/**
+ * Input: node:fs, node:path
+ * Output: JsonStore
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import * as fs from "node:fs";
 import { join } from "node:path";
 

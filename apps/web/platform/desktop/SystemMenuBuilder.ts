@@ -1,3 +1,11 @@
+/**
+ * Input: @app/shared/menu
+ * Output: SystemMenuBuilder
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { SystemMenuItem } from "@app/shared/menu";
 
 export class SystemMenuBuilder {

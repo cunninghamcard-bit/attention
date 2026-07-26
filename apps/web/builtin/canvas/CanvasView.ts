@@ -1,3 +1,11 @@
+/**
+ * Input: ./Canvas, ./CanvasData, ./CanvasEdge, ./CanvasNode, ../../markdown/MarkdownRenderer, ../../ui/Menu, ../../views/TextFileView, ../../ui/drag/DragManager, ../../vault/TAbstractFile, ../../app/AttachmentImport
+ * Output: CanvasView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import {
   Canvas,
   CANVAS_DEFAULT_FILE_NODE_DIMENSIONS,

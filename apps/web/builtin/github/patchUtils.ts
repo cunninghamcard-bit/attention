@@ -1,3 +1,11 @@
+/**
+ * Input: @pierre/diffs, ../git/review/reviewModel
+ * Output: fileDiffFromGitHubPatch, fileDiffsFromUnifiedDiff, GitHubFileChange, toReviewFiles
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { parsePatchFiles, type FileDiffMetadata } from "@pierre/diffs";
 import {
   fingerprintContents,

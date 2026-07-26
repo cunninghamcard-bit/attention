@@ -1,3 +1,11 @@
+/**
+ * Input: ./MarkdownRenderer
+ * Output: OrderedMarkdownPostProcessor, MarkdownPostProcessorRegistry
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { MarkdownPostProcessor, MarkdownPostProcessorContext } from "./MarkdownRenderer";
 
 export interface OrderedMarkdownPostProcessor {

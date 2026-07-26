@@ -1,3 +1,11 @@
+/**
+ * Input: ./BlockCache, ./MetadataCache, ../vault/TAbstractFile, ../core/fuzzy, ./Linkpath
+ * Output: LinkSuggestionMatchRange, LinkFileSuggestion, LinkSuggestionCancelToken, LinkSuggestionReplacement, LinkSuggestionReplacementOptions, LinkSuggestionManager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import {
   computeBlockIdInsertion,
   createBlockId,

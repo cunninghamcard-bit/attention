@@ -1,3 +1,9 @@
+// Input: os
+// Output: None
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 // Adapted from github.com/dimetron/pi-go internal/tui
 //go:build windows
 

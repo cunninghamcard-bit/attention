@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../core/Events, ./InternalPlugin, ./InternalPluginWrapper
+ * Output: CorePluginState, CORE_PLUGIN_MIGRATION_IDS, CorePluginManager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import { Events } from "../core/Events";
 import type { InternalPluginDefinition } from "./InternalPlugin";

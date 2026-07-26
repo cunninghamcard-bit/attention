@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../core/Events, ../../core/EventRefInternal, ../../metadata/MetadataCache, ./PropertyRegistry, ./PropertyTypes
+ * Output: TypesConfig, MetadataPropertyInfo, MetadataTypeManager
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import type { EventRef } from "../../core/Events";
 import { unregisterEventRef } from "../../core/EventRefInternal";

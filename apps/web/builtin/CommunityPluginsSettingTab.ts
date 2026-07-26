@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../app/SettingRegistry, ../core/fuzzy, ../platform/Platform, ../search/SearchHelpers, ../ui/Icon, ../ui/Modal, ../ui/Notice, ../ui/Setting, ../plugin/CommunityPluginRegistry
+ * Output: CommunityPluginsSettingTab
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch } from "../core/fuzzy";

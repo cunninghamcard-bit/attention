@@ -1,6 +1,6 @@
 # Obsidian Reconstructed
 
-This workbench is a desktop agent workbench built on a clean-room
+Attention is a desktop agent workbench built on a clean-room
 reconstruction of Obsidian's frontend architecture. What began as a study of
 how Obsidian's bundled app is structured has grown into a working Electron
 application: a real vault, workspace and plugin runtime carrying a chat/agent
@@ -66,7 +66,7 @@ for the full module map.
 
 ## Provenance
 
-This workbench was reconstructed from a behavioral study of Obsidian — its
+Attention was reconstructed from a behavioral study of Obsidian — its
 bundled app shape, public API names, DOM classes, and plugin extension points
 (the `decode-obsidian` reference tree). It contains no original Obsidian source
 code and is not affiliated with, endorsed by, or a product of Obsidian.

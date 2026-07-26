@@ -1,3 +1,9 @@
+// Input: context
+// Output: Run, SearchItem
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 // Adapted from github.com/dimetron/pi-go internal/tui
 // Package tui implements the interactive terminal UI using Bubble Tea v2.
 package main

@@ -1,3 +1,9 @@
+// Input: context
+// Output: NewStore, Store, FileStore
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package auth
 
 import (

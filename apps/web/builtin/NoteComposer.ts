@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../app/SettingRegistry, ../ui/Menu, ../plugin/InternalPlugin, ../plugin/InternalPluginWrapper, ../ui/suggest/SuggestModal, ../ui/Setting, ../vault/TAbstractFile, ../views/MarkdownView, ../ui/Icon
+ * Output: NoteComposerReplacementText, NoteComposerOptions, NoteComposerController, createNoteComposerPluginDefinition
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import type { Menu } from "../ui/Menu";

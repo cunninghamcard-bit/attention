@@ -1,4 +1,12 @@
 /**
+ * Input: None
+ * Output: GitExecResult, ElectronGitApi
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
+/**
  * Native-seam port: the git working-tree bridge.
  *
  * ONE definition of the contract. The shell fills it in the preload

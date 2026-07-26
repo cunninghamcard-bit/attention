@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../vault/TAbstractFile, ../metadata/FrontmatterTags, ../views/CodeFileView
+ * Output: SearchMatch, VaultSearchResult, SearchQuery, SearchOperatorDefinition, SearchEngine
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { TFile } from "../vault/TAbstractFile";
 import { getAllTags } from "../metadata/FrontmatterTags";

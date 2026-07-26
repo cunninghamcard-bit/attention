@@ -1,3 +1,9 @@
+// Input: sync
+// Output: NewRegistry, Registry
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package tool
 
 import (

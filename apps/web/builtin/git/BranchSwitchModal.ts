@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../ui/suggest/SuggestModal, ../../ui/Notice, ./GitService
+ * Output: BranchEntry, isPlausibleBranchName, buildBranchEntries, BranchSwitchModal
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { SuggestModal } from "../../ui/suggest/SuggestModal";
 import { Notice } from "../../ui/Notice";

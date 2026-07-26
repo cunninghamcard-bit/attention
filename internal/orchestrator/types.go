@@ -1,3 +1,9 @@
+// Input: context
+// Output: BusyError, PluginSource, NewOptions, OpenOptions, ResourceSummary, ResourcesSnapshot, Event, PromptInput, UserInput, PromptResult
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 // Package orchestrator owns mutable session state and assembles hooks, tools,
 // extensions, and the stateless harness into a mode-facing facade.
 package orchestrator

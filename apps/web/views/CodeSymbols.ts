@@ -1,3 +1,11 @@
+/**
+ * Input: @codemirror/language, @codemirror/view, @lezer/common
+ * Output: CodeSymbolKind, CodeSymbol, extractCodeSymbols
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { syntaxTree } from "@codemirror/language";
 import type { EditorView } from "@codemirror/view";
 import type { SyntaxNode } from "@lezer/common";

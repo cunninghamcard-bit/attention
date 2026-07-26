@@ -1,3 +1,11 @@
+/**
+ * Input: ../dom/ActiveDocument
+ * Output: Notice
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { getActiveWindow } from "../dom/ActiveDocument";
 
 const noticeContainers = new WeakMap<Window, HTMLElement>();

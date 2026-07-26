@@ -1,3 +1,9 @@
+// Input: context
+// Output: NewRegistry, Handler, Registry
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 // Package hook provides an event registry for lifecycle hooks.
 package hook
 

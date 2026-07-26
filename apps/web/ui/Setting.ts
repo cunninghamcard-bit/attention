@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../core/ApiUtils, ../platform/Platform, ./Icon, ./Popover
+ * Output: TooltipOptions, SettingText, BaseComponent, ValueComponent, ButtonComponent, ExtraButtonComponent, AbstractTextComponent, TextComponent, SecretComponent, SearchComponent
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { HSL, RGB } from "../core/ApiUtils";
 import { Platform } from "../platform/Platform";

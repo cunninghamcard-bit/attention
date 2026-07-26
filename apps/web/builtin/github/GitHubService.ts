@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../core/ApiUtils, ./GitHubClient, ./GitHubGraphQL, ./prefs, ./resolveRepository, ./session, ./types
+ * Output: GitHubDeviceSession, GitHubRepoListItem, GitHubOrgListItem, GitHubService
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { requestUrl } from "../../core/ApiUtils";
 import { GitHubClient, type HttpTransport } from "./GitHubClient";

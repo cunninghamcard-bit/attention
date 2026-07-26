@@ -1,3 +1,9 @@
+// Input: context
+// Output: Handler, Factory, Source, ExtensionAPI, ToolExecutionMode, ToolCall, ToolResult, ToolUpdateCallback, ToolDefinition, CommandDefinition
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package extension
 
 import (

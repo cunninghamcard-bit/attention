@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: ActiveCloseable, getActiveCloseables, registerActiveCloseable, unregisterActiveCloseable, closeTopActiveCloseable
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface ActiveCloseable {
   close(): void;
 }

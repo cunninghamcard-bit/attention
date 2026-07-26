@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ./BrowserSessionBridge, ./WebViewerAddressSuggest, ./WebViewerReader
+ * Output: WebViewerSession, WebViewerHistoryEntry, WebViewerSavedPage, WebViewerSavedAsset, WebViewerOptions, WebViewerService
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { BrowserSessionBridge, type WebViewerClearDataKind } from "./BrowserSessionBridge";
 import {

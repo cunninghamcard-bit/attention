@@ -1,3 +1,11 @@
+/**
+ * Input: @codemirror/state, @codemirror/merge, ../app/App, ../vault/TAbstractFile, ./View, ./workspace/WorkspaceLeaf, ./CodeFileView
+ * Output: DiffView, openFileDiff, openFileCompare, openGitDiff
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Compartment, type Extension } from "@codemirror/state";
 import {
   acceptChunk,

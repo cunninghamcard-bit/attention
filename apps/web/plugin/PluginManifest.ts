@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: PluginManifest, PluginManifestInput, RuntimePluginManifest, PluginPackage, PluginPackageSourceMetadata, normalizePluginId, normalizePluginManifest
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface PluginManifest {
   dir?: string;
   id: string;

@@ -1,3 +1,11 @@
+/**
+ * Input: ../../dom/dom, ../../ui/Icon, ../../ui/Popover, ../../ui/Menu, ../../ui/Setting, ../../views/ItemView, ../../views/View, ../../app/hotkeys/Keymap, ./open, ./GitHubService
+ * Output: GitHubProfileView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { createDiv, createEl, createSpan } from "../../dom/dom";
 import { setIcon } from "../../ui/Icon";
 import { setTooltip } from "../../ui/Popover";

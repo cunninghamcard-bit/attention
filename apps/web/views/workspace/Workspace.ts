@@ -1,3 +1,11 @@
+/**
+ * Input: ../../core/Events, ../../app/App, ../../core/ApiUtils, ../../app/QuitEvent, ./WorkspaceSplit, ./WorkspaceRoot, ./WorkspaceTabs, ./WorkspaceLeaf, ./WorkspaceSidedock, ./WorkspaceFloating
+ * Output: PaneType, LeafOpenMode, OpenViewState, WorkspaceWindowInitData, WorkspaceUndoHistoryEntry, OperatorFuncConfig, Workspace
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Events, type EventRef } from "../../core/Events";
 import type { App } from "../../app/App";
 import type { Debouncer } from "../../core/ApiUtils";

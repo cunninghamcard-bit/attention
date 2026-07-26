@@ -1,3 +1,9 @@
+// Input: github.com/cunninghamcard-bit/Attention/internal/execenv
+// Output: NewCodingTools, NewReadOnlyTools, NewAllTools
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package builtin
 
 import (

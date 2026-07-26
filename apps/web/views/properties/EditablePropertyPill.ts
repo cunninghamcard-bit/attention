@@ -1,3 +1,11 @@
+/**
+ * Input: ../../ui/Menu
+ * Output: EditablePropertyPillOptions, renderEditablePropertyPill, focusLastPill
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Menu } from "../../ui/Menu";
 
 export interface EditablePropertyPillOptions {

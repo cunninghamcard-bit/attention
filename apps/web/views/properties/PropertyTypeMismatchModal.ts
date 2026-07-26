@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../ui/Modal
+ * Output: PropertyTypeMismatchModalOptions, PropertyTypeMismatchModal
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { ConfirmationModal } from "../../ui/Modal";
 

@@ -1,3 +1,11 @@
+/**
+ * Input: ../../dom/dom, ../../app/hotkeys/Keymap, ../../ui/TreeItem, ./types
+ * Output: Row, treeRow, openInSystemBrowser, prStateLabel, linkButton, avatar, conclusionClass, formatSize, errorText
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { createEl, createSpan } from "../../dom/dom";
 import type { UserEvent } from "../../app/hotkeys/Keymap";
 import { TreeItem } from "../../ui/TreeItem";

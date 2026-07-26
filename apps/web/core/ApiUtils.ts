@@ -1,3 +1,11 @@
+/**
+ * Input: yaml, ../app/App, ../markdown/HtmlToMarkdown, ../markdown/HtmlDropPreprocessor, ../metadata/MetadataCache, ../dom/ActiveDocument
+ * Output: apiVersion, moment, Constructor, Side, TooltipPlacement, RGB, HSL, RequestUrlParam, RequestUrlResponse, RequestUrlError
+ * Pos: Core - Fundamental logic
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { parse as parseYamlSource, stringify as stringifyYamlSource } from "yaml";
 import type { App } from "../app/App";
 import { htmlToMarkdown as convertHtmlToMarkdown } from "../markdown/HtmlToMarkdown";

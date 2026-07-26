@@ -1,3 +1,9 @@
+// Input: encoding/json
+// Output: Credential, OAuthCredential
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package auth
 
 import (

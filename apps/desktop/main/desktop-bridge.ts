@@ -1,3 +1,11 @@
+/**
+ * Input: electron, ./net-request, ./system-fonts
+ * Output: OpenDialogOptions, SaveDialogOptions, toOpenProperties, toFilters, registerDesktopBridgeIpc
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { dialog, ipcMain, BrowserWindow } from "electron";
 import { performNetRequest } from "./net-request";
 import { listSystemFontFamilies } from "./system-fonts";

@@ -1,3 +1,11 @@
+/**
+ * Input: stream-markdown-parser, ../app/App, ../core/ApiUtils
+ * Output: MarkdownParserToken, MarkdownInlineState, InlineRenderContext, MarkdownInlineRenderer
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { getMarkdown, type MarkdownIt } from "stream-markdown-parser";
 import type { App } from "../app/App";
 import { sanitizeHTMLToDom } from "../core/ApiUtils";

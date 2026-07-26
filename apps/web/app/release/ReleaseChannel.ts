@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: ReleaseChannel, releaseChannels
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface ReleaseChannel {
   id: "stable" | "insider" | "dev";
   name: string;

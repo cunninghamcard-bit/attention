@@ -1,3 +1,11 @@
+/**
+ * Input: ../../builtin/theme-market/ThemeManifest, ../../builtin/theme-market/ThemeManifestValidator
+ * Output: PackagedThemeArtifact, ThemePackager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { ThemePackage } from "../../builtin/theme-market/ThemeManifest";
 import { ThemeManifestValidator } from "../../builtin/theme-market/ThemeManifestValidator";
 

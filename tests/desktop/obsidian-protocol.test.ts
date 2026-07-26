@@ -55,18 +55,18 @@ describe("handleObsidianUrl (real $e end to end)", () => {
   });
 
   it("opens the starter for sync-setup", () => {
-    dispatch("workbench://sync-setup");
+    dispatch("attention://sync-setup");
     expect(openStarter).toHaveBeenCalled();
   });
 
   it("delivers an open action to the vault resolved by name", () => {
-    dispatch("workbench://open?vault=notes&file=Daily");
+    dispatch("attention://open?vault=notes&file=Daily");
     expect(deliverAction).toHaveBeenCalledWith(vaultId, expect.objectContaining({ file: "Daily" }));
   });
 
   it("delivers to the vault containing the path, with a relative file", () => {
     const notePath = join(dir, "Notes", "sub", "n.md");
-    dispatch(`workbench://open?path=${encodeURIComponent(notePath)}`);
+    dispatch(`attention://open?path=${encodeURIComponent(notePath)}`);
     expect(deliverAction).toHaveBeenCalledWith(
       vaultId,
       expect.objectContaining({ file: "/sub/n.md" }),
@@ -75,7 +75,7 @@ describe("handleObsidianUrl (real $e end to end)", () => {
 
   it("uses the most-recent vault when none is specified", () => {
     mostRecent = vaultId;
-    dispatch("workbench://search?query=x");
+    dispatch("attention://search?query=x");
     expect(deliverAction).toHaveBeenCalledWith(
       vaultId,
       expect.objectContaining({ action: "search" }),
@@ -89,7 +89,7 @@ describe("handleObsidianUrl (real $e end to end)", () => {
       return 1;
     });
     // mostRecent starts null; becomes the vault only after openAllPersisted runs.
-    handleObsidianUrl("workbench://command?id=x", {
+    handleObsidianUrl("attention://command?id=x", {
       registry,
       vaultWindows: {
         deliverAction,
@@ -104,16 +104,16 @@ describe("handleObsidianUrl (real $e end to end)", () => {
   });
 
   it("reports vault-not-found when nothing resolves", () => {
-    dispatch("workbench://open?vault=ghost");
+    dispatch("attention://open?vault=ghost");
     expect(deliverAction).not.toHaveBeenCalled();
-    expect(showVaultNotFound).toHaveBeenCalledWith("workbench://open?vault=ghost");
+    expect(showVaultNotFound).toHaveBeenCalledWith("attention://open?vault=ghost");
   });
 });
 
 describe("obsidianUrlFromArgv", () => {
-  it("returns a trailing workbench:// argument", () => {
-    expect(obsidianUrlFromArgv(["electron", ".", "workbench://open?x=1"])).toBe(
-      "workbench://open?x=1",
+  it("returns a trailing attention:// argument", () => {
+    expect(obsidianUrlFromArgv(["electron", ".", "attention://open?x=1"])).toBe(
+      "attention://open?x=1",
     );
   });
   it("returns null when absent", () => {

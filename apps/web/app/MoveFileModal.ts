@@ -1,3 +1,11 @@
+/**
+ * Input: ./App, ../ui/suggest/SuggestModal, ../vault/TAbstractFile
+ * Output: MoveFileModal
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "./App";
 import { SuggestModal } from "../ui/suggest/SuggestModal";
 import { TAbstractFile, TFolder } from "../vault/TAbstractFile";

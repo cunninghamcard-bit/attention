@@ -1,3 +1,11 @@
+/**
+ * Input: ../views/MarkdownView, ./MarkdownPreviewSection
+ * Output: MarkdownPreviewView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { MarkdownView } from "../views/MarkdownView";
 import { MarkdownPreviewSection } from "./MarkdownPreviewSection";
 

@@ -1,3 +1,11 @@
+/**
+ * Input: @pierre/diffs/worker
+ * Output: highlightWorkers
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { getOrCreateWorkerPoolSingleton, type WorkerPoolManager } from "@pierre/diffs/worker";
 
 /** Shiki highlighting runs in pierre's worker pool (codiff's recipe: 3

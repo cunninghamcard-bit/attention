@@ -1,3 +1,11 @@
+/**
+ * Input: electron, @electron/remote, ./terminal-bridge, ./git-bridge
+ * Output: ElectronBridgeApi, installElectronBridge
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { ipcRenderer, shell, webFrame, webUtils } from "electron";
 import { getCurrentWindow } from "@electron/remote";
 import { installTerminalBridge } from "./terminal-bridge";

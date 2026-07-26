@@ -1,3 +1,11 @@
+/**
+ * Input: @app/shared/ipc
+ * Output: PlatformApi, Platform
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { SyncChannelName } from "@app/shared/ipc";
 
 export interface PlatformApi {

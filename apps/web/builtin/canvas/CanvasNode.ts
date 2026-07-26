@@ -1,3 +1,11 @@
+/**
+ * Input: ./CanvasData
+ * Output: CanvasNode
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { CanvasNodeData } from "./CanvasData";
 
 export class CanvasNode<T extends CanvasNodeData = CanvasNodeData> {

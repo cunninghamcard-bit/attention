@@ -1,3 +1,9 @@
+// Input: context
+// Output: AuthResolver, ModelsConfig, ProviderConfig, ModelDefinition, ModelOverride, ModelCost, ResolvedRequestAuth
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package provider
 
 import (

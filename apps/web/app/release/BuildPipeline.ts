@@ -1,3 +1,11 @@
+/**
+ * Input: ./BuildTarget
+ * Output: BuildStep, BuildPipeline
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { BuildArtifact, BuildTarget } from "./BuildTarget";
 
 export interface BuildStep {

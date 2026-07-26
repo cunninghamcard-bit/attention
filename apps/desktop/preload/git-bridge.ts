@@ -1,3 +1,11 @@
+/**
+ * Input: node:child_process, node:crypto, node:fs, @app/shared/gitApi
+ * Output: resolveGhBinary, gravatarUrl, createElectronGitApi, installGitBridge
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";

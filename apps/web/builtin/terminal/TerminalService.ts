@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ./TerminalAdapter, ../../views/workspace/WorkspaceLeaf
+ * Output: TerminalStatus, TTerminal, TerminalOpenOptions, TerminalSettings, TERMINAL_VIEW_TYPE, TerminalService
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import {
   createTerminalAdapter,
@@ -30,19 +38,7 @@ export interface TerminalOpenOptions {
   reveal?: boolean;
 }
 
-/**
- * The product-level terminal choice:
- * - "enhanced" (default): zsh with the batteries-included integration layer —
- *   prompt, autosuggestions, syntax highlighting — layered over the user's
- *   existing shell configuration like Kaku's setup flow.
- * - "system": the user's login shell and their own dotfiles, no injection.
- * - "custom": the shell/font detail fields below take effect.
- */
-export type TerminalProfile = "enhanced" | "system" | "custom";
-
 export interface TerminalSettings {
-  profile: TerminalProfile;
-  shell: string;
   location: "tab" | "split" | "right";
   fontFamily: string;
   fontSize: number;
@@ -83,8 +79,6 @@ export class TerminalService {
   getSettings(): TerminalSettings {
     const stored = this.app.loadLocalStorage<Partial<TerminalSettings>>(SETTINGS_KEY) ?? {};
     return {
-      profile: stored.profile ?? "enhanced",
-      shell: stored.shell ?? "",
       location: stored.location ?? "tab",
       fontFamily: stored.fontFamily ?? "",
       fontSize: stored.fontSize ?? 15,
@@ -93,25 +87,13 @@ export class TerminalService {
   }
 
   /**
-   * Resolve the active profile into a concrete spawn config. This is the only
-   * place profile semantics live — adapters and the bridge receive plain
-   * `{ shell, env }` and execute it verbatim.
+   * The shell to spawn: the caller's explicit choice, otherwise the user's
+   * login shell from `$SHELL`. Nothing is injected — the shell reads the
+   * user's own dotfiles, exactly as it would in any other terminal. There is
+   * no app-level shell setting and no wrapper profile.
    */
-  resolveSpawnConfig(requestedShell?: string): { shell: string; env?: Record<string, string> } {
-    const settings = this.getSettings();
-    if (settings.profile === "system") {
-      return { shell: requestedShell || this.adapter.defaultShell() };
-    }
-    if (settings.profile === "custom") {
-      return { shell: requestedShell || settings.shell || this.adapter.defaultShell() };
-    }
-    // enhanced: always zsh (matching the vendor terminal this profile mirrors),
-    // with the integration shim's ZDOTDIR when it can be provisioned.
-    const loginShell = this.adapter.defaultShell();
-    const shell =
-      requestedShell || (loginShell.split("/").pop() === "zsh" ? loginShell : "/bin/zsh");
-    const zdotdir = this.adapter.prepareShellIntegration();
-    return zdotdir ? { shell, env: { ZDOTDIR: zdotdir } } : { shell };
+  resolveShell(requestedShell?: string): string {
+    return requestedShell || this.adapter.defaultShell();
   }
 
   saveSettings(settings: Partial<TerminalSettings>): void {
@@ -133,7 +115,7 @@ export class TerminalService {
   /** Start a PTY session without opening a leaf (the view calls this too). */
   createSession(options: Pick<TerminalOpenOptions, "cwd" | "shell"> = {}): TTerminal {
     const id = `terminal-${++this.counter}`;
-    const { shell } = this.resolveSpawnConfig(options.shell);
+    const shell = this.resolveShell(options.shell);
     const cwd = options.cwd || this.defaultCwd();
     const terminal: TTerminal = { id, cwd, shell, status: "starting" };
     const session: TerminalSession = {
@@ -225,24 +207,28 @@ export class TerminalService {
     const { terminal } = session;
     session.lastError = null;
     try {
-      // Re-resolve on every (re)spawn so a profile change applies to restarts.
-      const { env } = this.resolveSpawnConfig(terminal.shell);
       const handle = this.adapter.spawn({
         shell: terminal.shell,
         cwd: terminal.cwd,
         cols: 80,
         rows: 24,
-        env,
       });
       session.process = handle;
       terminal.status = "running";
+      // Both callbacks are scoped to THIS handle, not to the session. kill()
+      // returns synchronously but the PTY's exit lands a tick later, so on
+      // restart the dead shell's exit arrives AFTER the replacement is already
+      // running — unguarded, it marked the live terminal "exited", nulled its
+      // handle (dropping input/resize), and reported "exited with code 1".
       handle.onData((data) => {
+        if (session.process !== handle) return;
         session.buffer.push(data);
         if (session.buffer.length > MAX_BUFFER_CHUNKS)
           session.buffer.splice(0, session.buffer.length - MAX_BUFFER_CHUNKS);
         for (const consumer of session.consumers) consumer(data);
       });
       handle.onExit((code) => {
+        if (session.process !== handle) return;
         terminal.status = "exited";
         session.process = null;
         for (const callback of session.exitCallbacks) callback(code);

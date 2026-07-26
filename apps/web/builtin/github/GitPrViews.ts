@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/hotkeys/Keymap, ../../dom/dom, ../../markdown/MarkdownRenderer, ../../ui/Icon, ../../ui/Notice, ../../ui/Popover, ../../views/ItemView, ../../views/View, ../git/relativeDate, ../git/review/ReviewSurface
+ * Output: PrDetailView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Keymap, type UserEvent } from "../../app/hotkeys/Keymap";
 import { createDiv, createEl, createSpan } from "../../dom/dom";
 import { MarkdownRenderer } from "../../markdown/MarkdownRenderer";

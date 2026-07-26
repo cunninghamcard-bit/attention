@@ -1,3 +1,9 @@
+// Input: time
+// Output: BeforeAgentStartEvent, SystemPromptOptions, ContextFileInfo, SkillInfo, ImageContent, BeforeAgentStartResult, ContextEvent, ContextResult, BeforeProviderRequestEvent, BeforeProviderRequestResult
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package hook
 
 import (

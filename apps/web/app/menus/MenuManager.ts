@@ -1,3 +1,11 @@
+/**
+ * Input: ../App, ../../editor/Editor, ../../vault/TAbstractFile, ../../views/View, ../../views/MarkdownView, ../../views/workspace/WorkspaceLeaf, ../../ui/Menu, ../../dom/Clipboard
+ * Output: FileMenuSource, LinkMenuSource, MarkdownViewportMenuMode, MarkdownViewportMenuSource, EditorMenuLinkContext, EditorMenuTagContext, EditorMenuFootrefContext, EditorMenuExternalRefLinkContext, EditorMenuContext, MenuManager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../App";
 import type { Editor } from "../../editor/Editor";
 import { TFile, type TAbstractFile } from "../../vault/TAbstractFile";

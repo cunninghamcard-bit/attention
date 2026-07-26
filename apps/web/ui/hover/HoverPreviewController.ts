@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../Popover, ../../markdown/MarkdownRenderer, ../../vault/TAbstractFile
+ * Output: HoverPreviewRequest, HoverPreviewController
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { HoverPopover } from "../Popover";
 import { MarkdownRenderer } from "../../markdown/MarkdownRenderer";

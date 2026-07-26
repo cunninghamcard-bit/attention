@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../vault/TAbstractFile, ../../metadata/Frontmatter, ./PropertyTypes
+ * Output: PropertyStore
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { TFile } from "../../vault/TAbstractFile";
 import {

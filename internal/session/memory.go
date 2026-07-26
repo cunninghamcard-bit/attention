@@ -1,3 +1,9 @@
+// Input: fmt
+// Output: NewInMemorySessionStorage, NewInMemorySession, InMemorySessionStorage
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package session
 
 import (

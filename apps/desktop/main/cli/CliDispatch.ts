@@ -1,3 +1,11 @@
+/**
+ * Input: ./CliVaultRouter, @app/shared/scheme
+ * Output: CliRequest, CliDispatchDeps, dispatchCli
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { routeVault, type VaultRouterDeps } from "./CliVaultRouter";
 import { URL_SCHEME } from "@app/shared/scheme";
 

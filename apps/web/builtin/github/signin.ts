@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ./widgets, ../../dom/dom, ../../ui/Icon, ./types
+ * Output: SignInHandle, renderGitHubSignIn
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { openInSystemBrowser } from "./widgets";
 import { createDiv, createEl, createSpan } from "../../dom/dom";
@@ -5,7 +13,7 @@ import { setIcon } from "../../ui/Icon";
 import type { GitHubAuthState } from "./types";
 
 const GITHUB_TOKEN_URL =
-  "https://github.com/settings/personal-access-tokens/new?name=Workbench&description=Connect%20Workbench%20GitHub%20workspace&contents=read&pull_requests=write&issues=write&actions=read";
+  "https://github.com/settings/personal-access-tokens/new?name=Attention&description=Connect%20Attention%20GitHub%20workspace&contents=read&pull_requests=write&issues=write&actions=read";
 
 /** Handle returned by the sign-in renderer so the host can abort a pending
  * device-login poll on close. */

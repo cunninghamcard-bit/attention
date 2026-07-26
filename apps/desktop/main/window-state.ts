@@ -1,3 +1,11 @@
+/**
+ * Input: ./json-store
+ * Output: WindowState, Rect, DisplayProvider, loadWindowState, saveWindowState, resolveWindowBounds
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { JsonStore } from "./json-store";
 
 /**

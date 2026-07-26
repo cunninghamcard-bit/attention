@@ -1,3 +1,11 @@
+/**
+ * Input: ../../../plugin/InternalPluginWrapper, ../../../builtin/Workspaces
+ * Output: registerWorkspacesCliHandlers
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { InternalPluginWrapper } from "../../../plugin/InternalPluginWrapper";
 import type { WorkspacesController } from "../../../builtin/Workspaces";
 

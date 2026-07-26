@@ -1,3 +1,11 @@
+/**
+ * Input: ./PluginManifest
+ * Output: ManifestValidationIssue, ManifestValidationResult, PluginManifestValidator
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { PluginManifestInput } from "./PluginManifest";
 
 export interface ManifestValidationIssue {

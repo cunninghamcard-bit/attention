@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: PrListFilter, PrState, CiState, GitHubActor, PrLabel, PrSummary, PrFileChange, PrComment, PrReviewComment, PrReview
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 /** Cloud GitHub pull-request model — app-owned auth, no gh CLI. */
 
 export type PrListFilter = "open" | "mine" | "review-requested" | "all";

@@ -1,3 +1,11 @@
+/**
+ * Input: ../core/Component, ../dom/ActiveDocument, ../platform/Platform, ./Icon, ./Modal, ./Popover, ./ActiveCloseableRegistry
+ * Output: MenuPositionDef, MenuPosition, MenuSectionSubmenuConfig, MenuItem, MenuSeparator, Menu, closeAllMenus
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Component } from "../core/Component";
 import { getActiveDocument } from "../dom/ActiveDocument";
 import { Platform } from "../platform/Platform";

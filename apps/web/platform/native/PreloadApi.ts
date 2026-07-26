@@ -1,3 +1,11 @@
+/**
+ * Input: ./NativeBridge
+ * Output: PreloadApiShape, PreloadApi
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { NativeBridge } from "./NativeBridge";
 
 export interface PreloadApiShape {

@@ -1,3 +1,11 @@
+/**
+ * Input: ../../views/ItemView, ../../views/DiffView, ../../views/View, ../../ui/Notice, ./GitAvatar, ./relativeDate, ./GitService, ./review/GitReviewView, ../../ui/Icon, ../../ui/Popover
+ * Output: GitHistoryView, openFileHistory
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { ItemView } from "../../views/ItemView";
 import { openFileDiff } from "../../views/DiffView";
 import type { ViewStateResult } from "../../views/View";
@@ -161,9 +169,9 @@ export class GitHistoryView extends ItemView {
    * view) can host them without touching the real file. */
   private async materializeSnapshot(entry: GitLogEntry, content: string): Promise<string> {
     const name = this.path!.split("/").pop()!;
-    const folder = ".workbench/git-snapshots";
+    const folder = ".attention/git-snapshots";
     if (!this.app.vault.getFolderByPath(folder)) {
-      await this.app.vault.createFolder(".workbench").catch(() => {});
+      await this.app.vault.createFolder(".attention").catch(() => {});
       await this.app.vault.createFolder(folder).catch(() => {});
     }
     const snapshotPath = `${folder}/${entry.shortHash}-${name}`;

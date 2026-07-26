@@ -1,3 +1,11 @@
+/**
+ * Input: ../../core/Events, ../../dom/dom, ../../app/hotkeys/Keymap, ../../ui/Icon, ../../ui/Popover, ../../ui/TreeItem, ../../views/ItemView, ./open, ./signin, ./session
+ * Output: GitHubNavView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { EventRef } from "../../core/Events";
 import { createDiv, createEl, createSpan } from "../../dom/dom";
 import { Keymap, type UserEvent } from "../../app/hotkeys/Keymap";

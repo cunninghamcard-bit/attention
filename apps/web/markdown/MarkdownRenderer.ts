@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../dom/dom, ../ui/Menu, ./MarkdownInlineRenderer, ./MarkdownCodeBlockRegistry, ./MarkdownPostProcessorRegistry, ./RenderContext, ./MarkdownLinkResolver, ../core/Component, ./MarkdownRenderChild
+ * Output: MarkdownSectionInformation, MarkdownPostProcessorContext, MarkdownPreviewEvents, MarkdownPostProcessor, MarkdownCodeBlockProcessor, MarkdownRenderOptions, MarkdownRenderer, getMarkdownFrontmatter
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import { removeChildren } from "../dom/dom";
 import { Menu } from "../ui/Menu";

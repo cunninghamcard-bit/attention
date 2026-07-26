@@ -1,3 +1,11 @@
+/**
+ * Input: ../../markdown/HtmlToMarkdown, ../../core/ApiUtils
+ * Output: WebViewerReaderResult, ReaderHost, WebViewerReader
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { htmlToMarkdown } from "../../markdown/HtmlToMarkdown";
 import { sanitizeHTMLToDom } from "../../core/ApiUtils";
 

@@ -1,3 +1,11 @@
+/**
+ * Input: ./PropertyLinkSuggest, ./EditablePropertyPill, ./PropertyLinkRenderer, ./PropertyTypes
+ * Output: renderMultiValuePropertyWidget
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { bindPropertyLinkSuggest } from "./PropertyLinkSuggest";
 import { focusLastPill, renderEditablePropertyPill } from "./EditablePropertyPill";
 import { renderPropertyLinkValue } from "./PropertyLinkRenderer";

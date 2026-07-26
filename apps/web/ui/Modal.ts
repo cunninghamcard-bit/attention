@@ -1,3 +1,11 @@
+/**
+ * Input: ../core/Component, ../app/App, ../dom/ActiveDocument, ../app/hotkeys/Scope, ../platform/Platform, ./Setting, ./Icon, ./Menu, ./Popover, ./ActiveCloseableRegistry
+ * Output: HistoryHandler, Modal, ConfirmationButton, ConfirmationModal
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Component } from "../core/Component";
 import type { App } from "../app/App";
 import { getActiveDocument, getActiveWindow } from "../dom/ActiveDocument";

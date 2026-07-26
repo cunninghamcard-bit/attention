@@ -1,3 +1,11 @@
+/**
+ * Input: ../native/NativeBridge, ../native/PreloadApi, ../native/FileDialogService, ../native/WindowFrameController
+ * Output: ShellIntegration
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { NativeBridge } from "../native/NativeBridge";
 import { PreloadApi } from "../native/PreloadApi";
 import { FileDialogService } from "../native/FileDialogService";

@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../core/Component, ../dom/dom, ./MarkdownRenderer, ./MarkdownRenderChild, ./MarkdownPreviewSection, ./FoldManager, ./MarkdownTaskList, ../views/View
+ * Output: MarkdownPreviewRenderer
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { Component } from "../core/Component";
 import { removeChildren } from "../dom/dom";

@@ -1,3 +1,11 @@
+/**
+ * Input: ../../views/workspace/Workspace, ../../views/workspace/WorkspaceParent, ../../views/workspace/WorkspaceItem, ../../views/workspace/WorkspaceLeaf, ../../dom/dom, ../../ui/Icon
+ * Output: MobileDrawerSide, MobileDrawer, WorkspaceMobileDrawer
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { Workspace } from "../../views/workspace/Workspace";
 import { WorkspaceParent } from "../../views/workspace/WorkspaceParent";
 import type { WorkspaceItem } from "../../views/workspace/WorkspaceItem";

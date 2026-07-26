@@ -1,3 +1,11 @@
+/**
+ * Input: ./EditableFileView, ./View, ../vault/TAbstractFile
+ * Output: TextFileView
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { EditableFileView } from "./EditableFileView";
 import type { ViewStateResult } from "./View";
 import type { TFile } from "../vault/TAbstractFile";

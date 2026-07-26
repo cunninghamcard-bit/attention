@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: WebContentsBridgeEvent, WebContentsBridgeHandler, WebContentsBridge
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export type WebContentsBridgeEvent =
   | "did-start-navigation"
   | "did-redirect-navigation"

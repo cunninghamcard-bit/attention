@@ -1,3 +1,11 @@
+/**
+ * Input: ../vault/TAbstractFile, ../vault/Vault
+ * Output: BlockCacheCancelToken, BlockCachePosition, BlockCacheNode, BlockCacheBlock, BlockCacheRecord, BlockIdInsertion, MarkdownBlockCache, createBlockId, computeBlockIdInsertion, parseMarkdownBlocks
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { TFile } from "../vault/TAbstractFile";
 import type { Vault } from "../vault/Vault";
 

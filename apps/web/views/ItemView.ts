@@ -1,3 +1,11 @@
+/**
+ * Input: ../dom/dom, ./View, ../ui/Menu, ../ui/Icon, ./workspace/WorkspaceLeaf, ../ui/drag/DragManager, ../app/hotkeys/Keymap, ../platform/Platform, ../ui/Popover
+ * Output: ItemView
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { createDiv, createEl } from "../dom/dom";
 import { View } from "./View";
 import { Menu, MenuItem } from "../ui/Menu";

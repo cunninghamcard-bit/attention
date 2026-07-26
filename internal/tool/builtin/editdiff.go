@@ -1,3 +1,9 @@
+// Input: fmt
+// Output: DetectLineEnding, NormalizeToLF, RestoreLineEndings, NormalizeForFuzzyMatch, FuzzyFindText, StripBOM, ApplyEdits, DiffString, UnifiedPatch, FuzzyMatch
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 // editdiff.go ports pi's content-based edit matching and display diff
 // behavior from packages/coding-agent/src/core/tools/edit-diff.ts:11-454.
 package builtin

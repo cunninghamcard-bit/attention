@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../editor/Editor, ../metadata/TagSuggestion, ../plugin/InternalPlugin, ../ui/suggest/EditorSuggest, ../views/MarkdownView
+ * Output: TagSuggest, createTagSuggestPluginDefinition
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { Editor, EditorPosition } from "../editor/Editor";
 import {

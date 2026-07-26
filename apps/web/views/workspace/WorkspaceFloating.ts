@@ -1,3 +1,11 @@
+/**
+ * Input: ./Workspace, ./WorkspaceSplit
+ * Output: WorkspaceFloating
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { Workspace } from "./Workspace";
 import { WorkspaceSplit } from "./WorkspaceSplit";
 

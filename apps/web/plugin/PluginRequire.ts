@@ -1,3 +1,11 @@
+/**
+ * Input: @codemirror/autocomplete, @codemirror/collab, @codemirror/commands, @codemirror/language, @codemirror/lint, @codemirror/search, @codemirror/state, @codemirror/view, @lezer/common, @lezer/highlight
+ * Output: PluginRequire, createPluginRequire
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import * as codemirrorAutocomplete from "@codemirror/autocomplete";
 import * as codemirrorCollab from "@codemirror/collab";
 import * as codemirrorCommands from "@codemirror/commands";

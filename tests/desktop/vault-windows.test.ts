@@ -30,6 +30,7 @@ const { FakeBrowserWindow, enableRemote } = vi.hoisted(() => {
       executeJavaScript: vi.fn(() => Promise.resolve()),
       openDevTools: vi.fn(),
       isDevToolsOpened: () => false,
+      setWindowOpenHandler: vi.fn(),
     };
     private listeners = new Map<string, Array<(...args: unknown[]) => void>>();
 

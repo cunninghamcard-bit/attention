@@ -1,3 +1,11 @@
+/**
+ * Input: ./ActiveDocument
+ * Output: readClipboardText, writeClipboardText
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { getActiveDocument, getActiveWindow } from "./ActiveDocument";
 
 export async function readClipboardText(): Promise<string> {

@@ -1,3 +1,9 @@
+// Input: maps
+// Output: GetModel, BuiltinModels, ModelSupportsInput, CalculateCost, InputCapability, Model
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package ai
 
 import (

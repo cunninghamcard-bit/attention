@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: SettingTab, addIcon, getIcon, getIconIds, removeIcon, GitHubService
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export { SettingTab } from "./app/SettingTab";
 export * from "./app/App";
 export * from "./app/AttachmentImport";

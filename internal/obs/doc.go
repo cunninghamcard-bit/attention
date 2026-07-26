@@ -1,3 +1,9 @@
+// Input: None
+// Output: None
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 // Package obs contains process-local observability helpers.
 //
 // No telemetry is mirrored here: pi's telemetry flag only checks whether

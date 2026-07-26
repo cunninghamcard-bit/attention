@@ -1,3 +1,11 @@
+/**
+ * Input: node:fs, node:path, node:crypto, ./json-store, ./settings
+ * Output: VaultEntry, VaultRegistryData, generateVaultId, VaultRegistry
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import * as fs from "node:fs";
 import { basename, resolve, sep } from "node:path";
 import { randomBytes } from "node:crypto";

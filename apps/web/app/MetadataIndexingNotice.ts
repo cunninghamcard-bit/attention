@@ -1,3 +1,11 @@
+/**
+ * Input: ../core/EventRefInternal, ../metadata/MetadataCache, ../ui/Notice
+ * Output: installSlowIndexingNotice, showIndexingNotice
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { unregisterEventRef } from "../core/EventRefInternal";
 import type { MetadataCache } from "../metadata/MetadataCache";
 import { Notice } from "../ui/Notice";

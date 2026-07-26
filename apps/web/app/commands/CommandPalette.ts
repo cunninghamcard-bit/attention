@@ -1,3 +1,11 @@
+/**
+ * Input: ../App, ./CommandManager, ../../ui/suggest/SuggestModal, ../../plugin/InternalPlugin, ../../plugin/InternalPluginWrapper, ../SettingRegistry, ../hotkeys/Keymap, ../../ui/Icon, ../../ui/Popover
+ * Output: CommandPaletteOptions, CommandPaletteCorePlugin, CommandPalette, getDisplayHotkeys, formatHotkey, createCommandPalettePluginDefinition
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../App";
 import { runCommandCallback, type Command } from "./CommandManager";
 import {

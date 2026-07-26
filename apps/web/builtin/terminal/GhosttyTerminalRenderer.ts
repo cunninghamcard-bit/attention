@@ -1,4 +1,12 @@
 /**
+ * Input: None
+ * Output: TerminalRendererOptions, TerminalRenderer, TerminalRendererFactory, buildTerminalTheme, createGhosttyRenderer
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
+/**
  * Thin wrapper around ghostty-web (libghostty-vt over WASM) so the rest of
  * the app never imports the package directly. Rendering, input capture, fit,
  * selection, focus and disposal only — PTY concerns stay in TerminalService.
@@ -25,134 +33,104 @@ export type TerminalRendererFactory = (
 ) => Promise<TerminalRenderer>;
 
 /**
- * Terminal color schemes, transcribed from the Kaku terminal's local install
- * (/Applications/Kaku.app/Contents/Resources/kaku.lua — tw93/Kaku, WezTerm
- * `Kaku Dark` / `Kaku Light`). Dark is Aura-derived; light is Flexoki paper.
- * Selected by the app's theme-dark body class, captured per terminal spawn.
+ * The ANSI palette, mapped onto the app's OWN design tokens. There is no
+ * bundled color scheme: the terminal paints with the same tokens as the rest of
+ * the app, so it follows light/dark and any community theme for free, and the
+ * canvas can never be a near-miss of the surface it sits in.
  *
- * Both themes are COMPLETE (all 16 ANSI + fg/bg/cursor) on purpose:
+ * The resulting theme must be COMPLETE (all 16 ANSI + fg/bg/cursor):
  * ghostty-web's buildWasmConfig parses every field with undefined → 0x000000,
- * so a partial theme silently turns the missing colors black. ghostty-web also
- * can't do real alpha (its allowTransparency option is stored but never read;
- * no clearRect in the renderer), so the dark scheme's rgba() selection color is
- * pre-blended against the background here (#29263c ≈ its SURFACE_ACTIVE).
+ * so one missing entry silently renders black.
+ *
+ * Three deliberate choices:
+ * - `black` / `white` ride the base ramp, which INVERTS between light and dark
+ *   (`--color-base-70` is dark grey on light, light grey on dark). ANSI black is
+ *   what CLIs use for dim text, so it has to stay readable in both appearances.
+ * - selection uses a solid ramp step rather than `--text-selection`: that token
+ *   is `hsla(…, 0.2)` and ghostty-web cannot blend alpha (its allowTransparency
+ *   option is stored but never read; the renderer never clears).
+ * - the token layer has no bright* variants, so bright colors reuse their base
+ *   hue — which is what most modern terminal themes do anyway.
  */
-const LIGHT_SCHEME = {
-  background: "#fffcf0",
-  foreground: "#100f0f",
-  cursor: "#343331",
-  selectionBackground: "#e8e6db",
-  selectionForeground: "#100f0f",
-  black: "#100f0f",
-  red: "#af3029",
-  green: "#536907",
-  yellow: "#8e6b02",
-  blue: "#205ea6",
-  magenta: "#a02f6f",
-  cyan: "#1c6c66",
-  white: "#575653",
-  brightBlack: "#6f6e69",
-  brightRed: "#c03e35",
-  brightGreen: "#66790d",
-  brightYellow: "#8e6b02",
-  brightBlue: "#3171b2",
-  brightMagenta: "#b74583",
-  brightCyan: "#2f968d",
-  brightWhite: "#403e3c",
-};
-const DARK_SCHEME = {
-  background: "#15141b",
-  foreground: "#d5d4d6",
-  cursor: "#8e6ad9",
-  selectionBackground: "#29263c",
-  // The source scheme renders ANSI-black foregrounds as light text on dark bg.
-  black: "#c8c6cc",
-  red: "#d85d5d",
-  green: "#58d8ad",
-  yellow: "#daae76",
-  blue: "#68afda",
-  magenta: "#8e6ad9",
-  cyan: "#58d8ad",
-  white: "#d5d4d6",
-  brightBlack: "#6d6d6d",
-  brightRed: "#d85d5d",
-  brightGreen: "#58d8ad",
-  brightYellow: "#daae76",
-  brightBlue: "#90c9e6",
-  brightMagenta: "#8e6ad9",
-  brightCyan: "#58d8ad",
-  brightWhite: "#d5d4d6",
-};
+const TERMINAL_PALETTE = {
+  background: "--background-primary",
+  foreground: "--text-normal",
+  cursor: "--text-accent",
+  selectionBackground: "--color-base-30",
+  black: "--color-base-70",
+  red: "--color-red",
+  green: "--color-green",
+  yellow: "--color-yellow",
+  blue: "--color-blue",
+  magenta: "--color-purple",
+  cyan: "--color-cyan",
+  white: "--color-base-60",
+  brightBlack: "--color-base-50",
+  brightRed: "--color-red",
+  brightGreen: "--color-green",
+  brightYellow: "--color-yellow",
+  brightBlue: "--color-blue",
+  brightMagenta: "--color-purple",
+  brightCyan: "--color-cyan",
+  brightWhite: "--text-normal",
+} as const;
 
-export function buildTerminalTheme(dark: boolean): Record<string, string> {
-  return { ...(dark ? DARK_SCHEME : LIGHT_SCHEME) };
+/** Resolve every palette entry through `resolve` (injected so this stays pure). */
+export function buildTerminalTheme(resolve: (token: string) => string): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(TERMINAL_PALETTE).map(([field, token]) => [field, resolve(token)]),
+  );
+}
+
+/**
+ * A design token as a concrete hex. ghostty-web parses the color itself and
+ * understands hex only, so the token's authored form (hex, rgb(), hsl(),
+ * color-mix()) is normalized through a probe element — the same off-screen
+ * probe GraphRenderer.testCSS uses to read theme colors the canvas can't
+ * consume directly. Throws rather than substituting a color: a terminal
+ * painted a different black than the surface it sits in is a defect, and the
+ * renderer's caller already turns this into a visible "failed to load" state.
+ */
+function resolveTokenColor(token: string): string {
+  const raw = getComputedStyle(document.body).getPropertyValue(token).trim();
+  if (!raw) throw new Error(`Terminal: the ${token} design token is not defined.`);
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:absolute;left:-9999px;top:-9999px";
+  probe.style.color = raw;
+  document.body.append(probe);
+  const computed = getComputedStyle(probe).color;
+  probe.remove();
+  const rgb = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/.exec(computed);
+  if (!rgb) throw new Error(`Terminal: ${token} resolved to "${computed}", not a color.`);
+  return `#${rgb
+    .slice(1, 4)
+    .map((channel) => Math.round(Number(channel)).toString(16).padStart(2, "0"))
+    .join("")}`;
 }
 
 function resolveThemeFromDocument(): Record<string, string> {
-  return buildTerminalTheme(document.body.classList.contains("theme-dark"));
+  return buildTerminalTheme(resolveTokenColor);
 }
 
 /**
- * Starship and the user's Kaku shell profile use Nerd Font glyphs
- * (private-use icons); a plain `monospace` canvas font draws them as tofu
- * boxes. ghostty-web passes this stack straight into ctx.font and canvas
- * falls back per glyph like CSS.
+ * The monospace font stack, from the app's own `--font-monospace` — which is
+ * `--font-monospace-override` (Appearance ▸ Monospace font) → the theme's →
+ * the platform default stack. So the terminal renders in whatever the user
+ * picked for monospace app-wide; picking a Nerd Font there is what makes
+ * prompt/CLI glyphs (private-use icons) render instead of tofu boxes.
+ *
+ * Resolved through a probe element, not read raw: the token's value is nested
+ * `var()`s, while ghostty-web passes this string straight into ctx.font.
  */
-export const DEFAULT_FONT_STACK =
-  '"Workbench JetBrains Mono", "Workbench Nerd Symbols", "PingFang SC", "Apple Color Emoji", monospace';
-
-export const BUNDLED_FONT_FACES = [
-  { family: "Workbench JetBrains Mono", file: "JetBrainsMono-Regular.ttf", weight: "400" },
-  // SemiBold, not Medium: Medium's usWeightClass is 500 — registering it as
-  // 700 renders bold cells barely heavier than regular.
-  { family: "Workbench JetBrains Mono", file: "JetBrainsMono-SemiBold.ttf", weight: "700" },
-  { family: "Workbench Nerd Symbols", file: "SymbolsNerdFontMono-Regular.ttf", weight: "400" },
-  // ghostty-web emits CSS `bold` for ANSI bold cells. Registering the same
-  // symbol face at 700 prevents Chromium from synthesizing a swollen glyph,
-  // which blurred Powerline edges and shifted eza icons inside their cells.
-  { family: "Workbench Nerd Symbols", file: "SymbolsNerdFontMono-Regular.ttf", weight: "700" },
-] as const;
-
-/**
- * Register Kaku's bundled JetBrains Mono + Symbols Nerd Font with the
- * document so the stack above works even when nothing suitable is installed
- * system-wide. Desktop only (needs the non-sandboxed require for node:fs);
- * silently a no-op in the browser build or without Kaku.app.
- */
-async function registerBundledFonts(doc: Document): Promise<void> {
-  const requireFn = (globalThis as { require?: (id: string) => unknown }).require;
-  if (!requireFn) return;
-  try {
-    const fs = requireFn("node:fs") as {
-      existsSync(path: string): boolean;
-      readFileSync(path: string): Uint8Array;
-    };
-    for (const { family, file, weight } of BUNDLED_FONT_FACES) {
-      // NOT fonts.check(): per spec it returns a vacuous TRUE for a family
-      // with no matching FontFace (treated as "system font, nothing to load"),
-      // so it skipped every registration and the whole stack silently fell
-      // through to PingFang. Scan the FontFaceSet for a real match instead.
-      let registered = false;
-      doc.fonts.forEach((face) => {
-        if (face.family.replace(/["']/g, "") === family && face.weight === weight)
-          registered = true;
-      });
-      if (registered) continue;
-      const path = `/Applications/Kaku.app/Contents/Resources/fonts/${file}`;
-      if (!fs.existsSync(path)) continue;
-      const bytes = fs.readFileSync(path);
-      // Copy only the font bytes. Node Buffer's backing store can be larger
-      // than its byte range, so passing `.buffer` directly is not valid font
-      // data; a fresh Uint8Array is an exact browser BufferSource.
-      const data = new Uint8Array(bytes);
-      const face = new FontFace(family, data, { weight });
-      await face.load();
-      doc.fonts.add(face);
-    }
-  } catch {
-    // ponytail: fonts are progressive enhancement — the stack still ends in
-    // monospace, so failure here degrades to today's rendering, never breaks.
-  }
+function resolveTokenFontFamily(token: string): string {
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:absolute;left:-9999px;top:-9999px";
+  probe.style.fontFamily = `var(${token})`;
+  document.body.append(probe);
+  const family = getComputedStyle(probe).fontFamily;
+  probe.remove();
+  if (!family) throw new Error(`Terminal: the ${token} design token is not defined.`);
+  return family;
 }
 
 interface GhosttyTerminal {
@@ -176,14 +154,12 @@ interface GhosttyFitAddon {
 export const createGhosttyRenderer: TerminalRendererFactory = async (options) => {
   const ghostty = await import("ghostty-web");
   await ghostty.init();
-  // Fonts must be available before the terminal measures its cell size.
-  await registerBundledFonts(document);
-  // ponytail: theme is captured once at spawn — ghostty-web warns that theme
-  // changes after open() are unsupported, so a mid-session appearance switch
-  // applies to the next terminal, not running ones.
+  // ponytail: theme and font are captured once at spawn — ghostty-web warns
+  // that theme changes after open() are unsupported, so a mid-session
+  // appearance switch applies to the next terminal, not running ones.
   const theme = resolveThemeFromDocument();
   const term = new ghostty.Terminal({
-    fontFamily: options.fontFamily || DEFAULT_FONT_STACK,
+    fontFamily: options.fontFamily || resolveTokenFontFamily("--font-monospace"),
     fontSize: options.fontSize ?? 13,
     scrollback: options.scrollback ?? 10000,
     cursorBlink: true,

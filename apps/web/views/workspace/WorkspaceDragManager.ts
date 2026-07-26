@@ -1,3 +1,11 @@
+/**
+ * Input: ./WorkspaceParent, ./WorkspaceLeaf, ./WorkspaceItem, ./WorkspaceTabs, ../../ui/Icon
+ * Output: WorkspaceDropSide, WorkspaceDropTarget, WorkspaceDragManager
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { WorkspaceParent } from "./WorkspaceParent";
 import type { WorkspaceLeaf } from "./WorkspaceLeaf";
 import type { WorkspaceItem } from "./WorkspaceItem";

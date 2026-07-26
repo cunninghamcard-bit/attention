@@ -1,3 +1,11 @@
+/**
+ * Input: ../vault/FileSystemAdapter, ./JsonStore
+ * Output: FileSystemJsonStoreAdapter
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { FileSystemAdapter } from "../vault/FileSystemAdapter";
 import type { JsonStoreAdapter, JsonStoreStat, JsonStoreWriteOptions } from "./JsonStore";
 

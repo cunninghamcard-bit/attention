@@ -1,3 +1,11 @@
+/**
+ * Input: @pierre/diffs, ../../dom/dom, ../../ui/highlightWorkers, ../../markdown/MarkdownRenderer, ../../ui/FileTypeIcon, ../../ui/Notice, ../../views/ItemView, ../../views/View, ../git/relativeDate, ./open
+ * Output: GitHubDetailView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { CodeView } from "@pierre/diffs";
 import { createDiv, createEl, createSpan } from "../../dom/dom";
 import { highlightWorkers } from "../../ui/highlightWorkers";

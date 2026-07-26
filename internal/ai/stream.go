@@ -1,3 +1,9 @@
+// Input: context
+// Output: Stream, StreamSimple, NewAssistantMessageEventStream, Complete, CompleteSimple, AssistantMessageEventStream
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package ai
 
 import (

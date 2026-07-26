@@ -1,3 +1,11 @@
+/**
+ * Input: ../hotkeys/Keymap, ../hotkeys/HotkeyManager, ../../editor/Editor, ../../editor/EditorStateField, ../../ui/Icon, ../../views/View, ../../views/MarkdownView, ../../platform/Platform
+ * Output: Command, EditorCommandContext, CommandManager, runCommandCallback
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { Hotkey } from "../hotkeys/Keymap";
 import type { HotkeyManager } from "../hotkeys/HotkeyManager";
 import type { Editor } from "../../editor/Editor";

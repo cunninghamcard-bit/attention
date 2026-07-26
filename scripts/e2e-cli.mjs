@@ -1,5 +1,13 @@
 #!/usr/bin/env node
-// True desktop e2e for the CLI: spawns the PRIMARY Workbench instance on a
+/**
+ * Input: node:child_process, node:fs, node:os, node:path, node:url, node:util
+ * Output: None
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
+// True desktop e2e for the CLI: spawns the PRIMARY Attention instance on a
 // throwaway vault + userData + socket, then drives it through real
 // SECOND-INSTANCE invocations (the same `electron main.cjs <argv>` path a
 // user types) and asserts exact outputs. Fully hermetic — never touches the
@@ -22,7 +30,7 @@ if (!existsSync(mainJs)) {
   process.exit(2);
 }
 
-const base = mkdtempSync(join(tmpdir(), "workbench-e2e-"));
+const base = mkdtempSync(join(tmpdir(), "attention-e2e-"));
 const vault = join(base, "vault");
 mkdirSync(join(vault, "Sub"), { recursive: true });
 writeFileSync(
@@ -75,7 +83,7 @@ const CHECKS = [
     ["help"],
     (out) =>
       out.startsWith(
-        "Workbench CLI\n\nUsage: workbench <command> [options]\n\nOptions:\n  vault=<name>",
+        "Attention CLI\n\nUsage: attention <command> [options]\n\nOptions:\n  vault=<name>",
       ),
   ],
 ];

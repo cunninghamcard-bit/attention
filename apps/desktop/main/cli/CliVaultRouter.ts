@@ -1,4 +1,12 @@
 /**
+ * Input: None
+ * Output: VaultRouterDeps, routeVault
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
+/**
  * Vault routing for a CLI request, reconstructed from real Obsidian's `et`:
  *
  *   let m = argv[0]?.startsWith("vault=") ? argv.shift() : "";

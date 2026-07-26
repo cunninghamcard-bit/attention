@@ -1,3 +1,9 @@
+// Input: context
+// Output: Session
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 // Package harness provides the stateless execution layer between Orchestrator
 // and agentloop. It owns event dispatch, session writes, and hook calls.
 package harness

@@ -1,3 +1,11 @@
+/**
+ * Input: ../vault/TAbstractFile
+ * Output: FoldRange, FoldInfo, FoldManager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { TFile } from "../vault/TAbstractFile";
 
 export interface FoldRange {

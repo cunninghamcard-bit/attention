@@ -1,3 +1,11 @@
+/**
+ * Input: ./BuildTarget, ./ReleaseChannel
+ * Output: ReleaseRecord, ReleaseManager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { BuildArtifact } from "./BuildTarget";
 import type { ReleaseChannel } from "./ReleaseChannel";
 

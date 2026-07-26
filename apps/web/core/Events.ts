@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: EventHandler, EventRef, Events
+ * Pos: Core - Fundamental logic
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 declare const eventRefBrand: unique symbol;
 
 export type EventHandler<TArgs extends unknown[] = unknown[]> = (...args: TArgs) => unknown;

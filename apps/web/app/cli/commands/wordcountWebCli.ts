@@ -1,3 +1,11 @@
+/**
+ * Input: ../../../plugin/InternalPluginWrapper, ../../../builtin/WordCount
+ * Output: registerWordCountCliHandlers, registerWebCliHandlers
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { InternalPluginWrapper } from "../../../plugin/InternalPluginWrapper";
 import { countWords, stripFrontmatter } from "../../../builtin/WordCount";
 

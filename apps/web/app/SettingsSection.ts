@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: SettingsSectionDefinition, SettingsSectionRegistry
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface SettingsSectionDefinition {
   id: string;
   name: string;

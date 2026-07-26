@@ -1,3 +1,11 @@
+/**
+ * Input: node:net
+ * Output: CliClientIo, runCliClient
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { createConnection } from "node:net";
 
 /**

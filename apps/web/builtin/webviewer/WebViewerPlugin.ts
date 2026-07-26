@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../plugin/InternalPlugin, ../../app/cli/commands/wordcountWebCli, ../../plugin/InternalPluginWrapper, ../../ui/Notice, ../../ui/Modal, ../../ui/Menu, ../../ui/Setting, ../../views/ItemView, ../../views/workspace/WorkspaceLeaf
+ * Output: WebViewerController, WebViewerView, createWebViewerPluginDefinition
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import type { InternalPluginDefinition } from "../../plugin/InternalPlugin";
 import { registerWebCliHandlers } from "../../app/cli/commands/wordcountWebCli";
@@ -16,6 +24,20 @@ import { AbstractInputSuggest } from "../../ui/suggest/AbstractInputSuggest";
 import { MarkdownPreviewRenderer } from "../../markdown/MarkdownPreviewRenderer";
 import { setIcon } from "../../ui/Icon";
 import type { ObsidianProtocolData } from "../../app/protocol/UriRouter";
+import type { OpenUrlDetail } from "../../app/ExternalLinks";
+import type { PaneType } from "../../views/workspace/Workspace";
+import { getActiveDocument } from "../../dom/ActiveDocument";
+
+type WebviewPopupListener = (event: unknown, url: string) => void;
+
+interface WebviewPopupHost extends Window {
+  electron?: {
+    ipcRenderer?: {
+      on(channel: string, listener: WebviewPopupListener): void;
+      removeListener(channel: string, listener: WebviewPopupListener): void;
+    };
+  };
+}
 
 const WEBVIEWER_VIEW_TYPE = "webviewer";
 const WEBVIEWER_HISTORY_VIEW_TYPE = "webviewer-history";
@@ -40,6 +62,11 @@ export class WebViewerController {
     };
     this.app.workspace.registerObsidianProtocolHandler("web", handler);
     plugin.register(() => this.app.workspace.unregisterObsidianProtocolHandler("web", handler));
+    const openUrlHandler = (event: Event): void =>
+      this.handleOpenUrl(event as CustomEvent<OpenUrlDetail>);
+    window.addEventListener("open-url", openUrlHandler);
+    plugin.register(() => window.removeEventListener("open-url", openUrlHandler));
+    this.registerWebviewPopups(plugin);
     const session = this.app.webViewer.getActiveSession();
     this.app.webViewer.bridge.createBrowserSession(
       session.partition,
@@ -49,8 +76,39 @@ export class WebViewerController {
   }
 
   async open(url = "about:blank"): Promise<void> {
-    const leaf = this.app.workspace.getLeaf("tab");
-    await leaf.setViewState({ type: WEBVIEWER_VIEW_TYPE, state: { url }, active: true });
+    await this.openUrl(url);
+  }
+
+  async openUrl(url: string, leafType: PaneType = "tab", active = true): Promise<void> {
+    const leaf = this.app.workspace.getLeaf(leafType);
+    await leaf.setViewState({ type: WEBVIEWER_VIEW_TYPE, state: { url }, active });
+  }
+
+  /**
+   * A pop-up from inside a page the Web viewer is showing stays in the Web
+   * viewer: the main process denies the native window and forwards the URL here
+   * (`denyChildWindows`). This is webview-internal navigation, so it does not
+   * consult "Open external URLs" — that option governs links elsewhere in the app.
+   */
+  private registerWebviewPopups(plugin: InternalPluginWrapper): void {
+    const ipc = (window as WebviewPopupHost).electron?.ipcRenderer;
+    if (!ipc) return;
+    const onPopup = (_event: unknown, url: string): void => void this.openUrl(url, "tab");
+    ipc.on("webview-open-url", onPopup);
+    plugin.register(() => ipc.removeListener("webview-open-url", onPopup));
+  }
+
+  /**
+   * Claims the renderer's `open-url` event while "Open external URLs" is on;
+   * declining it lets the URL fall through to the OS browser. A URL opened from
+   * on top of a modal gets its own window, since the modal covers the workspace.
+   */
+  private handleOpenUrl(event: CustomEvent<OpenUrlDetail>): void {
+    if (!this.app.webViewer.options.openExternalURLs) return;
+    const { url, leaf, active } = event.detail;
+    const leafType = getActiveDocument().querySelector(".modal-container") ? "window" : leaf;
+    event.preventDefault();
+    void this.openUrl(url, leafType, active);
   }
 
   openHistory(): void {

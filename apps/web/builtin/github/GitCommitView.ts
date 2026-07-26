@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/hotkeys/Keymap, ../../dom/dom, ../../ui/Icon, ../../ui/Notice, ../../ui/Popover, ../../views/ItemView, ../../views/View, ../git/relativeDate, ../git/review/ReviewSurface, ./open
+ * Output: GitCommitView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Keymap } from "../../app/hotkeys/Keymap";
 import { createDiv, createEl, createSpan } from "../../dom/dom";
 import { setIcon } from "../../ui/Icon";

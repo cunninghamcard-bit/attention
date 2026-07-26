@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ./Cli, ../../vault/FileSystemAdapter, ../../vault/TAbstractFile, ../../vault/Vault, ./commands/coreMisc, ./commands/fileWrites, ./commands/graphLists, ./commands/metadata, ./commands/navigation
+ * Output: registerCliCommands
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { alphaCompare } from "./Cli";
 import { FileSystemAdapter } from "../../vault/FileSystemAdapter";

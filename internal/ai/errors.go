@@ -1,3 +1,9 @@
+// Input: errors
+// Output: APIError
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package ai
 
 import (

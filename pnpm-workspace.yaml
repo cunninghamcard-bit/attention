@@ -26,5 +26,3 @@ allowBuilds:
   # postinstall only stamps version files
   protobufjs: false
 
-patchedDependencies:
-  ghostty-web: patches/ghostty-web.patch

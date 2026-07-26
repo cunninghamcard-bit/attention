@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../editor/Editor, ../../vault/TAbstractFile, ./AbstractInputSuggest, ./SuggestModal
+ * Output: EditorSuggestTriggerInfo, EditorSuggestContext, EditorSuggest, EditorSuggestManager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import type { Editor, EditorPosition } from "../../editor/Editor";
 import { TFile } from "../../vault/TAbstractFile";

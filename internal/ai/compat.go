@@ -1,3 +1,9 @@
+// Input: None
+// Output: Compat, OpenRouterRouting, VercelGatewayRouting
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package ai
 
 type Compat struct {

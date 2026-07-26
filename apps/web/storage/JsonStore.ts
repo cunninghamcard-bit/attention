@@ -1,3 +1,11 @@
+/**
+ * Input: ../core/Events
+ * Output: JsonStoreWriteOptions, JsonStoreStat, JsonStoreAdapter, MemoryJsonStoreAdapter, JsonStore
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Events } from "../core/Events";
 
 export interface JsonStoreWriteOptions {

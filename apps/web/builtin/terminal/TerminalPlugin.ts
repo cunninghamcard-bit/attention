@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../plugin/InternalPlugin, ../../plugin/InternalPluginWrapper, ../../app/SettingRegistry, ../../ui/Menu, ../../ui/Setting, ../../ui/Icon, ../../vault/TAbstractFile, ../../views/workspace/WorkspaceLeaf, ./TerminalService
+ * Output: TerminalController, createTerminalPluginDefinition
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import type { InternalPluginDefinition } from "../../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../../plugin/InternalPluginWrapper";
@@ -75,44 +83,16 @@ class TerminalSettingTab implements SettingTab {
     this.containerEl.replaceChildren();
     const settings = this.app.terminals.getSettings();
     const group = new SettingGroup(this.containerEl).setHeading("Terminal");
-    // Profile is the product-level choice; only Custom exposes the detail
-    // fields. Semantics live in TerminalService.resolveSpawnConfig.
+    // There is no shell setting: terminals spawn the login shell from $SHELL
+    // and read the user's own dotfiles, uninjected (see resolveShell).
     new Setting(group.itemsEl)
-      .setName("Profile")
-      .setDesc(
-        "Enhanced: zsh with prompt, autosuggestions and syntax highlighting, on top of your own config. System: your login shell and dotfiles, untouched. Custom: pick the details below.",
-      )
-      .addDropdown((dropdown) =>
-        dropdown
-          .addOption("enhanced", "Enhanced zsh (default)")
-          .addOption("system", "System shell")
-          .addOption("custom", "Custom")
-          .setValue(settings.profile)
-          .onChange((value) => {
-            this.app.terminals.saveSettings({
-              profile: value === "system" || value === "custom" ? value : "enhanced",
-            });
-            this.display();
-          }),
+      .setName("Font family")
+      .setDesc("Leave empty to use the bundled terminal font stack.")
+      .addText((text) =>
+        text.setValue(settings.fontFamily).onChange((value) => {
+          this.app.terminals.saveSettings({ fontFamily: value.trim() });
+        }),
       );
-    if (settings.profile === "custom") {
-      new Setting(group.itemsEl)
-        .setName("Shell path")
-        .setDesc("Leave empty to use the login shell from $SHELL.")
-        .addText((text) =>
-          text.setValue(settings.shell).onChange((value) => {
-            this.app.terminals.saveSettings({ shell: value.trim() });
-          }),
-        );
-      new Setting(group.itemsEl)
-        .setName("Font family")
-        .setDesc("Leave empty to use the bundled terminal font stack.")
-        .addText((text) =>
-          text.setValue(settings.fontFamily).onChange((value) => {
-            this.app.terminals.saveSettings({ fontFamily: value.trim() });
-          }),
-        );
-    }
     new Setting(group.itemsEl)
       .setName("Default location")
       .setDesc("Where new terminals open in the workspace.")

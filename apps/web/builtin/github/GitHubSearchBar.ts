@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../app/hotkeys/Keymap, ../../ui/Icon, ../../ui/suggest/AbstractInputSuggest, ./GitHubService, ./open, ./types
+ * Output: GitHubSearchSuggestion, filterGitHubSearchSuggestions, GitHubSearchBar
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { Keymap } from "../../app/hotkeys/Keymap";
 import { setIcon } from "../../ui/Icon";

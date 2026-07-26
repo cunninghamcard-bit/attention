@@ -1,3 +1,11 @@
+/**
+ * Input: ./json-store, ./vault-registry
+ * Output: ObsidianSettings, SETTINGS_STORE_NAME, loadSettings, saveSettings
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { JsonStore } from "./json-store";
 import type { VaultRegistryData } from "./vault-registry";
 

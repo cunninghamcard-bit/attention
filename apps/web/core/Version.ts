@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: compareVersions, latestVersion
+ * Pos: Core - Fundamental logic
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export function compareVersions(a: string, b: string): number {
   const left = parseVersion(a);
   const right = parseVersion(b);

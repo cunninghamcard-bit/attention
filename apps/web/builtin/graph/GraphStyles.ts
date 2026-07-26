@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: ensureGraphStyles
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 let installed = false;
 
 export function ensureGraphStyles(): void {

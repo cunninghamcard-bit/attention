@@ -1,3 +1,9 @@
+// Input: fmt
+// Output: Enabled, Reset, Time, Report
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package obs
 
 import (

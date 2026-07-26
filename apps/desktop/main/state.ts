@@ -1,4 +1,12 @@
 /**
+ * Input: None
+ * Output: MainState, mainState
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
+/**
  * Shared mutable state for the Electron main process.
  *
  * Mirrors the module-scoped flags in the real Obsidian `obsidian.asar/main.js`

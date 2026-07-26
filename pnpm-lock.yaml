@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: false
   excludeLinksFromLockfile: false
 
-patchedDependencies:
-  ghostty-web: 81d53f3e452eeed2e0b36bc7f91f4b9d46ad2f1ef6c2d481ddd327b1ce4200ff
-
 importers:
 
   .:
@@ -139,7 +136,7 @@ importers:
         version: 1.0.0-beta.5(@pierre/theme@1.1.0)(@shikijs/themes@4.3.1)(shiki@4.3.1)
       ghostty-web:
         specifier: ^0.4.0
-        version: 0.4.0(patch_hash=81d53f3e452eeed2e0b36bc7f91f4b9d46ad2f1ef6c2d481ddd327b1ce4200ff)
+        version: 0.4.0
       stream-markdown-parser:
         specifier: 1.0.9
         version: 1.0.9
@@ -4237,7 +4234,7 @@ snapshots:
 
   get-east-asian-width@1.6.0: {}
 
-  ghostty-web@0.4.0(patch_hash=81d53f3e452eeed2e0b36bc7f91f4b9d46ad2f1ef6c2d481ddd327b1ce4200ff): {}
+  ghostty-web@0.4.0: {}
 
   global-directory@5.0.0:
     dependencies:

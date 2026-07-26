@@ -1,3 +1,9 @@
+// Input: time
+// Output: ContentBlockType, ContentBlock, Role, Message, EventType, StreamEvent, API, StopReason, Usage, Cost
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package ai
 
 import "time"

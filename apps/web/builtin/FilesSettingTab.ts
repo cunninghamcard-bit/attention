@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../app/SettingRegistry, ../ui/Setting, ../ui/Modal, ../ui/Icon
+ * Output: FilesSettingTab
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import { Setting, SettingGroup } from "../ui/Setting";

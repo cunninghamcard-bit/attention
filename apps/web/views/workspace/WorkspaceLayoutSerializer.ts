@@ -1,3 +1,11 @@
+/**
+ * Input: ./Workspace, ./WorkspaceLeaf, ./WorkspaceParent, ./WorkspaceSplit, ./WorkspaceSidedock, ./WorkspaceTabs, ./WorkspaceFloating, ./WorkspaceWindow, ../../platform/mobile/MobileDrawer, ./WorkspaceItem
+ * Output: WorkspaceLayoutSerializer
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { Workspace } from "./Workspace";
 import { WorkspaceLeaf } from "./WorkspaceLeaf";
 import { WorkspaceParent } from "./WorkspaceParent";

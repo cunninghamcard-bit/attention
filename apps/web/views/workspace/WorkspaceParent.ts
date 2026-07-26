@@ -1,3 +1,11 @@
+/**
+ * Input: ./WorkspaceItem, ./WorkspaceLeaf
+ * Output: WorkspaceParent
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { WorkspaceItem } from "./WorkspaceItem";
 import type { WorkspaceLeaf } from "./WorkspaceLeaf";
 

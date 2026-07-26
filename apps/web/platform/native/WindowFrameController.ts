@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: TrafficLightPosition, WindowFrameController
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface TrafficLightPosition {
   x: number;
   y: number;

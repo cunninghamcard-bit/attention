@@ -1,3 +1,11 @@
+/**
+ * Input: ../../../plugin/InternalPluginWrapper, ../../../metadata/Linkpath
+ * Output: registerLinksCliHandlers, registerOutlineCliHandlers
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { InternalPluginWrapper } from "../../../plugin/InternalPluginWrapper";
 import { splitLinkpath } from "../../../metadata/Linkpath";
 

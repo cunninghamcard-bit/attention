@@ -1,3 +1,11 @@
+/**
+ * Input: ./WorkspaceSplit, ../../ui/Icon, ./Workspace, ./WorkspaceItem, ../../ui/Menu, ../../ui/Notice, ../../ui/Popover, ../../dom/Clipboard
+ * Output: WorkspaceSidedock
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { WorkspaceSplit } from "./WorkspaceSplit";
 import { setIcon } from "../../ui/Icon";
 import type { Workspace } from "./Workspace";

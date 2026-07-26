@@ -1,3 +1,11 @@
+/**
+ * Input: ./App, ./SettingRegistry, ../ui/suggest/FileInputSuggest, ../ui/Setting, ../ui/Icon, ../vault/TAbstractFile
+ * Output: SettingSection, HexString, SettingControlBase, SettingToggleControl, SettingDropdownControl, SettingTextControl, SettingTextAreaControl, SettingNumberControl, SettingFileControl, SettingFolderControl
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "./App";
 import type { SettingRegistry } from "./SettingRegistry";
 import {

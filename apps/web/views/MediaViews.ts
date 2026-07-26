@@ -1,3 +1,11 @@
+/**
+ * Input: ../dom/dom, ./FileView, ./ItemView, ./View, ../vault/TAbstractFile, ../app/release/ReleaseNotes
+ * Output: IMAGE_EXTENSIONS, AUDIO_EXTENSIONS, VIDEO_EXTENSIONS, PDF_EXTENSIONS, ImageView, AudioView, VideoView, PdfView, ReleaseNotesView, mimeForExtension
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { createDiv } from "../dom/dom";
 import { FileView } from "./FileView";
 import { ItemView } from "./ItemView";

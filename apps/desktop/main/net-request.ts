@@ -1,3 +1,11 @@
+/**
+ * Input: electron, ./ipc
+ * Output: performNetRequest
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { net } from "electron";
 import type { RequestUrlParams, RequestUrlResult } from "./ipc";
 

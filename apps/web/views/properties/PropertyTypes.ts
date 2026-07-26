@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../vault/TAbstractFile, ../../core/PropertyValue
+ * Output: PropertyType, PropertyValue, PropertyDefinition, FileProperties, PropertyTypeDefinition, PropertyTypeInfo, PropertyWidgetContext, PropertyTypeWidget, PropertyUsage
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import type { TFile } from "../../vault/TAbstractFile";
 import type { PropertyType, PropertyValue } from "../../core/PropertyValue";

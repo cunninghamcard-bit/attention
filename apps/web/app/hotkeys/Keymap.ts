@@ -1,3 +1,11 @@
+/**
+ * Input: ../../dom/ActiveDocument, ../../platform/Platform, ../../views/workspace/Workspace, ./Scope
+ * Output: Hotkey, Modifier, UserEvent, Keymap
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { getActiveDocument } from "../../dom/ActiveDocument";
 import { Platform } from "../../platform/Platform";
 import type { PaneType } from "../../views/workspace/Workspace";

@@ -1,3 +1,11 @@
+/**
+ * Input: ../../core/Events, ../../metadata/Frontmatter, ./AliasPropertyWidget, ./MultiValuePropertyWidget, ./PropertyLinkRenderer, ./PropertyLinkSuggest, ./TagPropertyWidget, ./PropertyTypes
+ * Output: AssignedPropertyWidget, PropertyRegistry
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Events } from "../../core/Events";
 import { coercePropertyValue } from "../../metadata/Frontmatter";
 import { renderAliasPropertyWidget } from "./AliasPropertyWidget";

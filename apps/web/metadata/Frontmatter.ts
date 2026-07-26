@@ -1,3 +1,11 @@
+/**
+ * Input: ../core/PropertyValue
+ * Output: ParsedFrontmatter, parseFrontmatter, getFrontmatterValues, setFrontmatterProperty, insertFrontmatterProperty, deleteFrontmatterProperty, deleteFrontmatterProperties, mergeFrontmatterProperties, renameFrontmatterProperty, reorderFrontmatterProperty
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { PropertyValue } from "../core/PropertyValue";
 
 export interface ParsedFrontmatter {

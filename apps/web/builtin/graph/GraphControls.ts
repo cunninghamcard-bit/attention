@@ -1,3 +1,11 @@
+/**
+ * Input: ../../ui/TreeItem, ./GraphOptions
+ * Output: GraphControlsCallbacks, GraphControls
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { TreeItem } from "../../ui/TreeItem";
 import type { GraphPluginOptions } from "./GraphOptions";
 import { cssColorToGraphColor, graphColorToCss } from "./GraphOptions";

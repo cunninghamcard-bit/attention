@@ -1,3 +1,11 @@
+/**
+ * Input: ../core/fuzzy
+ * Output: TagSuggestion, getTagSuggestions, completeTagSuggestionText, renderTagSuggestion, stripHash
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch } from "../core/fuzzy";
 
 export interface TagSuggestion {

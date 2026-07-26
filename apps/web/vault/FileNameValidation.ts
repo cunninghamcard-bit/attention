@@ -1,3 +1,11 @@
+/**
+ * Input: ./TAbstractFile
+ * Output: RenameValidationResult, validateVaultPath, validateRenameName, validateRenamePromptName
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { TAbstractFile } from "./TAbstractFile";
 
 export interface RenameValidationResult {

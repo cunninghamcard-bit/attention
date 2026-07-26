@@ -1,4 +1,12 @@
 /**
+ * Input: None
+ * Output: listSystemFontFamilies
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
+/**
  * Main-process system font enumeration.
  *
  * Obsidian ships a proprietary native addon named `get-fonts`. That package is

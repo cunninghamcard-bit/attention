@@ -1,3 +1,9 @@
+// Input: fmt
+// Output: FileErrorCode, FileError, ExecutionErrorCode, ExecutionError
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package execenv
 
 import "fmt"

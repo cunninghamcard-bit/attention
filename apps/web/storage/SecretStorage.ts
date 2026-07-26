@@ -1,3 +1,11 @@
+/**
+ * Input: ../core/Events
+ * Output: SecretStorage
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Events } from "../core/Events";
 
 const STORAGE_KEY = "obsidian-reconstructed-secret-storage";

@@ -1,3 +1,11 @@
+/**
+ * Input: ../../../app/App, ../Cli, ../../../vault/TAbstractFile, ../../../views/workspace/WorkspaceLeaf, ../../../views/workspace/WorkspaceParent, ../../../views/workspace/WorkspaceSplit, ../../../views/workspace/WorkspaceTabs, ../../../platform/mobile/MobileDrawer, ../../../views/workspace/WorkspaceItem
+ * Output: registerNavigationCommands
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../../app/App";
 import type { AsciiTreeNode } from "../Cli";
 import { TFile } from "../../../vault/TAbstractFile";

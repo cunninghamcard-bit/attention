@@ -1,3 +1,11 @@
+/**
+ * Input: ../../core/Events
+ * Output: LogLevel, LogEntry, Logger
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Events } from "../../core/Events";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";

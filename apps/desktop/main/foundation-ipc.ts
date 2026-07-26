@@ -1,3 +1,11 @@
+/**
+ * Input: electron, ./state
+ * Output: registerFoundationIpc
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { ipcMain } from "electron";
 import { mainState } from "./state";
 

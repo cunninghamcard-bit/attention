@@ -1,3 +1,11 @@
+/**
+ * Input: ../core/Component, ./Icon
+ * Output: TreeItemOptions, TreeItem
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Component } from "../core/Component";
 import { setIcon } from "./Icon";
 

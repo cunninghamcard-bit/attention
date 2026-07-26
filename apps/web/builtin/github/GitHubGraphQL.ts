@@ -1,3 +1,11 @@
+/**
+ * Input: ./GitHubClient, ./types
+ * Output: graphqlUrlForHost, GitHubGraphQLClient
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { HttpResponse, HttpTransport } from "./GitHubClient";
 import type {
   ContributionCalendar,
@@ -221,7 +229,7 @@ export class GitHubGraphQLClient {
         Accept: "application/json",
         Authorization: `Bearer ${this.token}`,
         "Content-Type": "application/json",
-        "User-Agent": "Workbench-GitHub",
+        "User-Agent": "Attention-GitHub",
       },
       body: JSON.stringify({ query, variables }),
     });

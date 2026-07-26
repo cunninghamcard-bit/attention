@@ -1,3 +1,9 @@
+// Input: bufio
+// Output: NewRPCAgent, CommandInfo, PickerItem
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 // Adapted from github.com/dimetron/pi-go internal/tui — Phase 2 RPC adapter.
 package main
 

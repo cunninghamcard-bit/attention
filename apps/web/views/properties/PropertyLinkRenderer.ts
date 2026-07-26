@@ -1,3 +1,11 @@
+/**
+ * Input: ./PropertyTypes
+ * Output: PropertyLinkRenderOptions, renderPropertyLinkValue, parsePropertyLink
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { PropertyWidgetContext } from "./PropertyTypes";
 
 export interface PropertyLinkRenderOptions {

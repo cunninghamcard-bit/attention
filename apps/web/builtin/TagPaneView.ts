@@ -1,3 +1,11 @@
+/**
+ * Input: ../views/ItemView, ../ui/TreeItem
+ * Output: TagPaneView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { ItemView } from "../views/ItemView";
 import { TreeItem } from "../ui/TreeItem";
 

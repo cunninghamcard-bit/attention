@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: AttachmentImportData, AttachmentImportFile, AttachmentImportMode, getAttachmentFilesFromDataTransfer, hasDataTransferAttachmentFiles, createAttachmentImportFile, getTimestampForPastedImage, splitAttachmentFilename
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export type AttachmentImportData =
   | ArrayBuffer
   | ArrayBufferView

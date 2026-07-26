@@ -1,3 +1,11 @@
+/**
+ * Input: ../core/Events, ./FrontmatterTags, ./MetadataCacheStore, ./Frontmatter, ../core/PropertyValue, ../vault/TAbstractFile, ../vault/Vault, ./BlockCache
+ * Output: MetadataCacheApp, MetadataHost, CachedMetadata, Reference, ReferenceCache, LinkCache, EmbedCache, FrontmatterLinkCache, Loc, Pos
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Events } from "../core/Events";
 import type { EventRef } from "../core/Events";
 import { getAllTags } from "./FrontmatterTags";

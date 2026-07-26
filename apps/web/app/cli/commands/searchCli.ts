@@ -1,3 +1,11 @@
+/**
+ * Input: ../../../app/App, ../../../plugin/InternalPluginWrapper
+ * Output: registerSearchCliHandlers
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../../app/App";
 import type { InternalPluginWrapper } from "../../../plugin/InternalPluginWrapper";
 

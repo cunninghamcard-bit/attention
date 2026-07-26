@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: EditorPosition, EditorRange, EditorRangeOrCaret, EditorChange, EditorSelection, EditorSelectionOrCaret, EditorScrollInfo, EditorCommandName, EditorTransaction, EditorChangeListener
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface EditorPosition {
   line: number;
   ch: number;

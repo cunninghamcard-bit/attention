@@ -1,3 +1,11 @@
+/**
+ * Input: ../../core/Events, ./WorkspaceLeaf, ../View, ../MarkdownView, ../CodeFileView, ../DiffView, ../MediaViews
+ * Output: ViewCreator, ViewRegistry
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Events } from "../../core/Events";
 import type { WorkspaceLeaf } from "./WorkspaceLeaf";
 import type { View } from "../View";

@@ -1,3 +1,11 @@
+/**
+ * Input: ../core/Events, ../core/EventRefInternal, @app/shared/dataAdapter
+ * Output: DataAdapterWatchHandler, DataWriteOptions, ListedFiles, Stat, DataAdapter, InMemoryAdapter, CapacitorAdapter
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Events } from "../core/Events";
 import { unregisterEventRef } from "../core/EventRefInternal";
 import type {

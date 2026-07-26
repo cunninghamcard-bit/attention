@@ -1,3 +1,11 @@
+/**
+ * Input: @codemirror/state, @codemirror/view, @codemirror/commands, ./Editor, ./EditorExtension, ./EditorStateField
+ * Output: EditorViewHost, ensureRangeGeometry
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import {
   Compartment,
   EditorSelection as CodeMirrorSelection,

@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../ui/suggest/AbstractInputSuggest
+ * Output: FilterOperator, GitHubFilterSuggest
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { AbstractInputSuggest } from "../../ui/suggest/AbstractInputSuggest";
 

@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: formatRelativeDate
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 /** Compact relative date copied from codiff's history sidebar. */
 export function formatRelativeDate(value: string | number, now = Date.now()): string {
   const timestamp = typeof value === "number" ? value : Date.parse(value);

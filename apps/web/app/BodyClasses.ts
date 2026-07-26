@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: ObsidianBodyConfigSource, applyObsidianBodyClasses, syncObsidianConfigBodyClasses, syncBodyThemeClasses, installPopoutBodyClassSync, syncPopoutBodyFromMain, installFocusBodyClassSync, syncFocusBodyClass, getObsidianPlatformClass
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface ObsidianBodyConfigSource {
   vault: {
     getConfig<T = unknown>(key: string): T | undefined;

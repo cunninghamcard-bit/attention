@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App
+ * Output: WorkspacePublicApi, VaultPublicApi, AppearancePublicApi, BasesPublicApi, ShellPublicApi, ObsidianPublicApi, createPublicApi
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 
 export interface WorkspacePublicApi {

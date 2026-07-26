@@ -1,3 +1,9 @@
+// Input: context
+// Output: Snapshot, SessionStats, SessionStatsTokens
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package orchestrator
 
 import (

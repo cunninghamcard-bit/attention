@@ -1,3 +1,11 @@
+/**
+ * Input: ./MetadataCache
+ * Output: LinkGraphEdge, LinkGraph
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { MetadataHost } from "./MetadataCache";
 import type { SourceMatchPosition } from "./MetadataCache";
 

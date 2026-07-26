@@ -1,3 +1,11 @@
+/**
+ * Input: @codemirror/state, @codemirror/view, @codemirror/commands, @codemirror/language, @codemirror/language-data, @lezer/highlight, ../editor/EditorView, ../ui/FileTypeIcon, ./CodeSymbols, ./TextFileView
+ * Output: CODE_EXTENSIONS, CODE_LARGE_FILE_CHARS, CodeFileView
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Compartment, EditorSelection, EditorState, type Extension } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";

@@ -24,9 +24,11 @@ class FakePty implements PtyHandle {
   resize(cols: number, rows: number): void {
     this.resizes.push([cols, rows]);
   }
+  // Real node-pty returns from kill() synchronously and delivers exit a tick
+  // later. Tests emit it explicitly so that ordering is visible — a fake that
+  // exits synchronously inside kill() cannot reproduce the restart race.
   kill(): void {
     this.killed = true;
-    this.emitExit(0);
   }
   onData(callback: (data: string) => void): void {
     this.dataCallbacks.push(callback);
@@ -47,9 +49,8 @@ class FakePty implements PtyHandle {
 class FakeAdapter implements TerminalAdapter {
   readonly available = true;
   ptys: FakePty[] = [];
-  spawnRequests: Array<{ shell?: string; cwd?: string; env?: Record<string, string> }> = [];
+  spawnRequests: Array<{ shell?: string; cwd?: string }> = [];
   failNext: string | null = null;
-  integrationDir: string | null = "/fake/zdotdir";
 
   defaultShell(): string {
     return "/bin/fake-sh";
@@ -57,10 +58,7 @@ class FakeAdapter implements TerminalAdapter {
   defaultCwd(): string {
     return "/home/fake";
   }
-  prepareShellIntegration(): string | null {
-    return this.integrationDir;
-  }
-  spawn(request: { shell?: string; cwd?: string; env?: Record<string, string> }): PtyHandle {
+  spawn(request: { shell?: string; cwd?: string }): PtyHandle {
     if (this.failNext) {
       const message = this.failNext;
       this.failNext = null;
@@ -112,9 +110,10 @@ describe("TerminalService", () => {
     const terminal = await app.terminals.open();
 
     expect(terminal.status).toBe("running");
-    // Default profile is "enhanced": zsh + the shell-integration ZDOTDIR.
-    expect(terminal.shell).toBe("/bin/zsh");
-    expect(adapter.spawnRequests[0].env).toEqual({ ZDOTDIR: "/fake/zdotdir" });
+    // The login shell from $SHELL, spawned with nothing injected: the user's
+    // own dotfiles are the entire configuration.
+    expect(terminal.shell).toBe("/bin/fake-sh");
+    expect(adapter.spawnRequests[0]).not.toHaveProperty("env");
     const leaves = app.workspace.getLeavesOfType("terminal");
     expect(leaves).toHaveLength(1);
     expect(leaves[0].view).toBeInstanceOf(TerminalView);
@@ -122,36 +121,13 @@ describe("TerminalService", () => {
     expect(renderer.output.join("")).toContain("fake-prompt$ ");
   });
 
-  it("TerminalProfile: system profile spawns the login shell with no injection", async () => {
+  it("TerminalShell: an explicit shell request wins over the login shell", async () => {
     const { app, adapter } = await createAppWithFakeTerminal();
-    app.terminals.saveSettings({ profile: "system" });
 
-    const terminal = await app.terminals.open();
-
-    expect(terminal.shell).toBe("/bin/fake-sh");
-    expect(adapter.spawnRequests[0].env).toBeUndefined();
-  });
-
-  it("TerminalProfile: custom profile honors the configured shell, no injection", async () => {
-    const { app, adapter } = await createAppWithFakeTerminal();
-    app.terminals.saveSettings({ profile: "custom", shell: "/opt/weird/sh" });
-
-    const terminal = await app.terminals.open();
+    const terminal = await app.terminals.open({ shell: "/opt/weird/sh" });
 
     expect(terminal.shell).toBe("/opt/weird/sh");
-    expect(adapter.spawnRequests[0].env).toBeUndefined();
-  });
-
-  it("TerminalProfile: enhanced degrades to plain zsh when integration is unavailable", async () => {
-    const { app, adapter } = await createAppWithFakeTerminal();
-    // localStorage persists across tests in this file — pin the profile.
-    app.terminals.saveSettings({ profile: "enhanced", shell: "" });
-    adapter.integrationDir = null;
-
-    const terminal = await app.terminals.open();
-
-    expect(terminal.shell).toBe("/bin/zsh");
-    expect(adapter.spawnRequests[0].env).toBeUndefined();
+    expect(adapter.spawnRequests[0].shell).toBe("/opt/weird/sh");
   });
 
   it("TerminalInput: renderer input reaches the PTY", async () => {
@@ -203,6 +179,23 @@ describe("TerminalService", () => {
     expect(adapter.spawnRequests).toHaveLength(2);
     expect(adapter.spawnRequests[1].cwd).toBe("/home/fake/projects");
     expect(app.terminals.getTerminal(terminal.id)?.status).toBe("running");
+  });
+
+  it("TerminalRestart: the dead shell's exit must not kill its replacement", async () => {
+    const { app, adapter } = await createAppWithFakeTerminal();
+    const terminal = await app.terminals.open();
+    const dead = adapter.ptys[0];
+
+    await app.terminals.restart(terminal.id);
+    // A real PTY delivers exit a tick AFTER kill() returns, so it lands with
+    // the replacement already running; a shell killed this way reports 1.
+    // Without the per-handle guard this marked the live terminal "exited",
+    // nulled its handle, and the view showed "exited with code 1" on restart.
+    dead.emitExit(1);
+
+    expect(app.terminals.getTerminal(terminal.id)?.status).toBe("running");
+    app.terminals.write(terminal.id, "still-alive\r");
+    expect(adapter.ptys[1].written.join("")).toContain("still-alive");
   });
 
   it("TerminalMenu: plugins can extend the terminal context menu", async () => {

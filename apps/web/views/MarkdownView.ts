@@ -1,3 +1,11 @@
+/**
+ * Input: ./TextFileView, ../markdown/MarkdownPreviewView, ../markdown/MarkdownPreviewRenderer, ../markdown/MarkdownTaskList, ../markdown/HtmlToMarkdown, ../markdown/HtmlDropPreprocessor, ../markdown/FoldManager, ../editor/Editor, ../editor/EditorView, ../editor/EditorStateField
+ * Output: MarkdownViewModeType, MarkdownMode, MarkdownSourceMode, MarkdownViewState, MarkdownSubView, MarkdownView, MarkdownEditView
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { TextFileView } from "./TextFileView";
 import { MarkdownPreviewView } from "../markdown/MarkdownPreviewView";
 import { MarkdownPreviewRenderer } from "../markdown/MarkdownPreviewRenderer";
@@ -2062,9 +2070,12 @@ export class MarkdownView extends TextFileView {
     const valueEl = document.createElement("div");
     valueEl.className = "metadata-property-value";
 
-    const warningEl = document.createElement("button");
+    // A div, matching Obsidian: `createDiv({cls:"clickable-icon
+    // metadata-property-warning-icon"})`. `.clickable-icon` carries no
+    // appearance reset — it never wraps a <button> there — so a button renders
+    // with the UA border and background around the icon.
+    const warningEl = document.createElement("div");
     warningEl.className = "clickable-icon metadata-property-warning-icon";
-    warningEl.type = "button";
     setIcon(warningEl, "lucide-alert-triangle");
     warningEl.addEventListener("click", () => {
       const typeInfo = this.app.propertyRegistry.getPropertyTypeInfo(property.id, value);
@@ -2098,7 +2109,10 @@ export class MarkdownView extends TextFileView {
       setIcon(iconEl, typeInfo.expected.icon);
       warningEl.title = `Type mismatch: expected ${typeInfo.expected.name}`;
       warningEl.setAttribute("aria-label", warningEl.title);
-      warningEl.hidden = !hasTypeMismatch || forceExpected;
+      // NOT the `hidden` attribute: `.clickable-icon` sets `display: flex`, an
+      // author rule that outranks the UA's `[hidden] { display: none }`, so the
+      // warning stayed lit on every row. Obsidian toggles display (`r.toggle`).
+      warningEl.toggle(hasTypeMismatch && !forceExpected);
       rowEl.classList.toggle("has-type-mismatch", hasTypeMismatch && !forceExpected);
 
       const widget = this.app.propertyRegistry.getTypeWidget(renderType);

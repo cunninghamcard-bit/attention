@@ -1,3 +1,11 @@
+/**
+ * Input: ./EditorStateField, ./EditorView
+ * Output: EditorExtensionContext, EditorExtension, EditorViewUpdate, EditorViewPluginValue, EditorViewPluginSpec, EditorUpdateListenerSpec, EditorTransactionFilterSpec, EditorDomClassSpec, editorViewPlugin, editorUpdateListener
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { Transaction } from "./EditorStateField";
 import type { EditorViewHost } from "./EditorView";
 

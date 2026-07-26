@@ -1,3 +1,11 @@
+/**
+ * Input: ../View
+ * Output: WorkspaceLayoutNode, WorkspaceLayout
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { InternalViewState } from "../View";
 
 export type WorkspaceLayoutNode =

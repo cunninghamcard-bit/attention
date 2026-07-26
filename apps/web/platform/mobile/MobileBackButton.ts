@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../ui/ActiveCloseableRegistry, ../../ui/Notice, ./MobileDrawer
+ * Output: MobileBackButtonBridge, MobileBackButtonOptions, MobileBackButtonController, createDefaultMobileBackButtonBridge
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { closeTopActiveCloseable } from "../../ui/ActiveCloseableRegistry";
 import { Notice } from "../../ui/Notice";

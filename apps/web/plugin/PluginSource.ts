@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: INLINE_SOURCE_MAP_COMMENT, NO_SOURCE_MAP_MARKER, prepareDownloadedMainJs, prepareLoadedMainJs, appendPluginSourceUrl, wrapCommonJsPluginSource
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export const INLINE_SOURCE_MAP_COMMENT =
   /^\/\/[@#] sourceMappingURL=data:application\/json(?:;charset[:=][^;]+)?;base64,.*$/gm;
 export const NO_SOURCE_MAP_MARKER = "\n/* nosourcemap */";

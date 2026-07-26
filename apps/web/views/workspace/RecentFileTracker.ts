@@ -1,3 +1,11 @@
+/**
+ * Input: ../../vault/Vault, ../../vault/TAbstractFile, ./Workspace
+ * Output: RecentFilesOptions, RecentFileTracker
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { Vault } from "../../vault/Vault";
 import { TAbstractFile, TFile } from "../../vault/TAbstractFile";
 import type { Workspace } from "./Workspace";

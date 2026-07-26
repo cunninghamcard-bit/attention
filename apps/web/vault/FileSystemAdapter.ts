@@ -1,3 +1,11 @@
+/**
+ * Input: ./DataAdapter, ../platform/Platform
+ * Output: VAULT_INDEX_SKIP_NAMES, HIDDEN_VAULT_ENTRIES, isVaultIndexSkippedPath, FileSystemAdapter
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import {
   DataAdapter,
   type DataAdapterWatchHandler,

@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: ViewUpdate, PluginValue, ViewPlugin
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface ViewUpdate {
   docChanged: boolean;
   selectionSet: boolean;

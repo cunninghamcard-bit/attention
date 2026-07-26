@@ -1,3 +1,11 @@
+/**
+ * Input: ../Modal, ../../app/App, ../../platform/Platform, ../../search/SearchHelpers, ../../core/fuzzy
+ * Output: fuzzyMatch, prepareFuzzyQuery, FuzzyMatch, PreparedFuzzyQuery, Instruction, PromptInstruction, FuzzySuggestion, ISuggestOwner, SuggestOwner, SuggestModal
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Modal } from "../Modal";
 import type { App } from "../../app/App";
 import { Platform } from "../../platform/Platform";

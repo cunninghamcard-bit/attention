@@ -39,7 +39,7 @@ describe("application bootstrap", () => {
       (app.workspace.activeLeaf?.view as { file?: { path: string } | null } | null)?.file?.path,
     ).toBe("Welcome.md");
     expect(app.workspace.activeLeaf?.view?.getState()).toMatchObject({ mode: "preview" });
-    expect(document.body.textContent).toContain("Workbench");
+    expect(document.body.textContent).toContain("Attention");
   });
 
   describe("under the Electron desktop shell", () => {
@@ -79,7 +79,7 @@ describe("application bootstrap", () => {
       // The Welcome docs are real files on disk, not just in-memory entries.
       const welcomePath = nodePath.join(vaultDir, "Welcome.md");
       expect(fs.existsSync(welcomePath)).toBe(true);
-      expect(fs.readFileSync(welcomePath, "utf8")).toContain("Welcome to Workbench");
+      expect(fs.readFileSync(welcomePath, "utf8")).toContain("Welcome to Attention");
       expect(fs.existsSync(nodePath.join(vaultDir, "Plugin Architecture.md"))).toBe(true);
     });
 

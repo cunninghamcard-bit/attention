@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: CanvasSide, CanvasEdgeEnd, CanvasNodeType, CanvasBaseNodeData, CanvasFileNodeData, CanvasTextNodeData, CanvasLinkNodeData, CanvasGroupNodeData, CanvasNodeData, CanvasEdgeData
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export type CanvasSide = "top" | "right" | "bottom" | "left";
 export type CanvasEdgeEnd = "none" | "arrow";
 export type CanvasNodeType = "file" | "text" | "link" | "group";

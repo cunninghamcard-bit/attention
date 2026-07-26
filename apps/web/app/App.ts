@@ -1,3 +1,11 @@
+/**
+ * Input: ./commands/CommandManager, ../views/workspace/ViewRegistry, ../views/workspace/Workspace, ../plugin/PluginManager, ./StatusBar, ./SettingRegistry, ../vault/DataAdapter, ../vault/Vault, ./FileManager, ../metadata/MetadataCache
+ * Output: provideAppAdapter, provideJsonStoreAdapter, App
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { CommandManager } from "./commands/CommandManager";
 import { ViewRegistry } from "../views/workspace/ViewRegistry";
 import { Workspace } from "../views/workspace/Workspace";
@@ -83,6 +91,7 @@ import { ProgressBar } from "../ui/ProgressBar";
 import { QuitEvent } from "./QuitEvent";
 import type { AttachmentImportData, AttachmentImportFile } from "./AttachmentImport";
 import { FrameDom } from "./FrameDom";
+import { installExternalLinkHandler } from "./ExternalLinks";
 import {
   applyObsidianBodyClasses,
   installFocusBodyClassSync,
@@ -166,7 +175,7 @@ export class App {
   readonly terminals = new TerminalService(this);
   readonly git = new GitService(this);
   readonly github = new GitHubService(this);
-  readonly themeMarketplace = new ThemeMarketplace();
+  readonly themeMarketplace = new ThemeMarketplace(undefined, this);
   readonly themeInstaller = new ThemeInstaller(this);
   readonly buildPipeline = new BuildPipeline();
   readonly releases = new ReleaseManager();
@@ -198,7 +207,7 @@ export class App {
   readonly internalPlugins = new CorePluginManager(this);
   readonly corePluginsReady: Promise<void>;
   readonly communityPlugins = new CommunityPluginRegistry();
-  readonly pluginMarketplace = new PluginMarketplace();
+  readonly pluginMarketplace = new PluginMarketplace(undefined, this);
   readonly pluginSecurity = new PluginSecurityManager();
   readonly pluginInstaller = new PluginInstaller(this);
   readonly pluginLoader = new PluginLoader(this);
@@ -246,6 +255,7 @@ export class App {
     });
     this.dom = new AppDom(parent);
     this.containerEl = this.dom.appContainerEl;
+    installExternalLinkHandler(doc);
     this.renderContext = new RenderContext(this, "", this.containerEl);
     this.pluginSecurity.setAppId(this.appId);
     this.jsonStore.on<[string]>("raw", (path) => this.vault.trigger("raw", path));

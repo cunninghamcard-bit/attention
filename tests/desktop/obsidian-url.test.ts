@@ -9,33 +9,33 @@ describe("parseObsidianUrl (real $e parse)", () => {
   });
 
   it("parses a leading-slash path into an open action", () => {
-    expect(parseObsidianUrl("workbench:///Users/me/note.md")).toEqual({
+    expect(parseObsidianUrl("attention:///Users/me/note.md")).toEqual({
       kind: "action",
       action: { action: "open", path: "/Users/me/note.md" },
     });
   });
 
   it("drops the leading slash on Windows", () => {
-    expect(parseObsidianUrl("workbench:///C:/n.md", { isWindows: true })).toEqual({
+    expect(parseObsidianUrl("attention:///C:/n.md", { isWindows: true })).toEqual({
       kind: "action",
       action: { action: "open", path: "C:/n.md" },
     });
   });
 
   it("routes sync-setup / choose-vault to the starter", () => {
-    expect(parseObsidianUrl("workbench://sync-setup").kind).toBe("starter");
-    expect(parseObsidianUrl("workbench://choose-vault").kind).toBe("starter");
+    expect(parseObsidianUrl("attention://sync-setup").kind).toBe("starter");
+    expect(parseObsidianUrl("attention://choose-vault").kind).toBe("starter");
   });
 
   it("parses vault/<name>/<file> (decoded)", () => {
-    expect(parseObsidianUrl("workbench://vault/My%20Vault/dir/a%20b.md")).toEqual({
+    expect(parseObsidianUrl("attention://vault/My%20Vault/dir/a%20b.md")).toEqual({
       kind: "action",
       action: { action: "open", vault: "My Vault", file: "dir/a b.md" },
     });
   });
 
   it("parses a generic action with query and hash", () => {
-    const parsed = parseObsidianUrl("workbench://advanced-uri?file=Note&mode=append#heading");
+    const parsed = parseObsidianUrl("attention://advanced-uri?file=Note&mode=append#heading");
     expect(parsed).toEqual({
       kind: "action",
       action: { action: "advanced-uri", file: "Note", mode: "append", hash: "heading" },
@@ -43,7 +43,7 @@ describe("parseObsidianUrl (real $e parse)", () => {
   });
 
   it("defaults a valueless query param to 'true' and strips trailing slashes", () => {
-    const parsed = parseObsidianUrl("workbench://open/?flag");
+    const parsed = parseObsidianUrl("attention://open/?flag");
     expect(parsed).toEqual({ kind: "action", action: { action: "open", flag: "true" } });
   });
 });

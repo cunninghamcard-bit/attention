@@ -1,3 +1,11 @@
+/**
+ * Input: node:path, node:fs, vite, node:module
+ * Output: default
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { resolve } from "node:path";
 import { cpSync, realpathSync } from "node:fs";
 import { defineConfig } from "vite";

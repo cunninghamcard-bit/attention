@@ -1,4 +1,12 @@
-import { BrowserWindow } from "electron";
+/**
+ * Input: electron, @electron/remote/main, node:path, ./renderer-target
+ * Output: OBSIDIAN_WEB_PREFERENCES, CreateWindowOptions, createRendererWindow, denyChildWindows, defaultPreloadPath
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
+import { BrowserWindow, shell } from "electron";
 import { enable as enableRemote } from "@electron/remote/main";
 import { join } from "node:path";
 import { resolveRendererUrl } from "./renderer-target";
@@ -34,6 +42,34 @@ export interface CreateWindowOptions {
   preloadPath: string;
 }
 
+/**
+ * Real Obsidian never lets Chromium build a child window: an external
+ * `window.open` / `target="_blank"` leaves for the OS browser instead. Without
+ * a handler Electron opens a bare BrowserWindow — the stray "app window" that
+ * is neither the Web viewer nor the system browser.
+ *
+ * The renderer routes links through its own `open-url` event first, so anything
+ * that still reaches here is by definition meant to leave the app.
+ */
+export function denyChildWindows(win: BrowserWindow): void {
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:/i.test(url)) void shell.openExternal(url);
+    return { action: "deny" };
+  });
+
+  // A `<webview>` guest is its own webContents, so the handler above never sees
+  // its pop-ups: a `target="_blank"` link inside a page the Web viewer is
+  // showing would open a bare native window. Those belong to the Web viewer,
+  // not to the OS browser — deny the window and hand the URL back to the
+  // renderer, which opens it as another Web viewer tab.
+  win.webContents.on("did-attach-webview", (_event, guest) => {
+    guest.setWindowOpenHandler(({ url }) => {
+      win.webContents.send("webview-open-url", url);
+      return { action: "deny" };
+    });
+  });
+}
+
 export function createRendererWindow(options: CreateWindowOptions): BrowserWindow {
   const win = new BrowserWindow({
     width: 1024,
@@ -55,6 +91,7 @@ export function createRendererWindow(options: CreateWindowOptions): BrowserWindo
   // renderer a remote proxy of this BrowserWindow, exposed by the preload as
   // `window.electronWindow` (minimize/maximize/isMaximized/... contract).
   enableRemote(win.webContents);
+  denyChildWindows(win);
 
   win.setMenuBarVisibility(false);
 

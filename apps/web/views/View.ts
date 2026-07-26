@@ -1,3 +1,11 @@
+/**
+ * Input: ../core/Component, ../dom/dom, ../app/App, ./workspace/WorkspaceLeaf, ../app/hotkeys/Scope, ../ui/Menu
+ * Output: ViewState, InternalViewState, ViewStateResult, InternalViewStateResult, View, normalizeViewStatePayload
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Component } from "../core/Component";
 import { createDiv, detach } from "../dom/dom";
 import type { App } from "../app/App";

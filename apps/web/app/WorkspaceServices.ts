@@ -1,3 +1,11 @@
+/**
+ * Input: ../ui/drag/DragManager, ./protocol/UriRouter, ./App, ../platform/window/WindowManager, ../platform/window/PopoutManager, ../platform/mobile/MobileWorkspace, ../ui/hover/HoverPreviewController
+ * Output: WorkspaceServices
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { DragManager } from "../ui/drag/DragManager";
 import { UriRouter } from "./protocol/UriRouter";
 import type { App } from "./App";

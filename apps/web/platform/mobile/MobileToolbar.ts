@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../Platform, ../../ui/Icon
+ * Output: MobileToolbar
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { Platform } from "../Platform";
 import { setIcon } from "../../ui/Icon";

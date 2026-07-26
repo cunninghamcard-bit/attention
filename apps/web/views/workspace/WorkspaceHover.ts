@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: HoverLinkSource, HoverLinkSourceConfig, HoverLinkSourceRegistry
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface HoverLinkSource {
   id: string;
   display: string;

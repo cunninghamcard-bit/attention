@@ -1,3 +1,11 @@
+/**
+ * Input: ../plugin/Plugin, ./PublicApi
+ * Output: PluginApiFacade, createPluginApiFacade
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { Plugin } from "../plugin/Plugin";
 import type { ObsidianPublicApi } from "./PublicApi";
 import { createPublicApi } from "./PublicApi";

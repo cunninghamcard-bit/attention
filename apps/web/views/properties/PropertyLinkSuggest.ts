@@ -1,3 +1,11 @@
+/**
+ * Input: ../../metadata/BlockCache, ../../metadata/LinkSuggestionManager, ./PropertyTypes
+ * Output: bindPropertyLinkSuggest
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { computeBlockIdInsertion, createBlockId } from "../../metadata/BlockCache";
 import type { LinkFileSuggestion } from "../../metadata/LinkSuggestionManager";
 import type { PropertyWidgetContext } from "./PropertyTypes";

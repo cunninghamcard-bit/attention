@@ -1,3 +1,9 @@
+// Input: context
+// Output: ThinkingLevel, ThinkingBudgets, EventType, Event, StreamFunc, Config, Context, BeforeToolCallContext, BeforeToolCallResult, AfterToolCallContext
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package agentloop
 
 import (

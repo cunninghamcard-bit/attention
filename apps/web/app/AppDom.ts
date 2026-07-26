@@ -1,3 +1,11 @@
+/**
+ * Input: ../dom/dom
+ * Output: AppDom
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { createDiv } from "../dom/dom";
 
 export class AppDom {

@@ -1,3 +1,11 @@
+/**
+ * Input: ./MetadataCache, ./FrontmatterTags
+ * Output: TagOccurrence, TagIndex
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { MetadataHost, SourceMatchPosition } from "./MetadataCache";
 import { getAllTags } from "./FrontmatterTags";
 

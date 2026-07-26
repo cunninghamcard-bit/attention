@@ -1,3 +1,9 @@
+// Input: context
+// Output: NewSession, Session
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package session
 
 import (

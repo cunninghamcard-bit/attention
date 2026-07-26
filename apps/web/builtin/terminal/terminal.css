@@ -17,11 +17,10 @@
 .terminal-view-surface {
   height: 100%;
   width: 100%;
-  /* Pre-mount fallback only: GhosttyTerminalRenderer.mount() paints the surface
-     inline with the terminal's exact theme background (blended from
-     --background-primary, see buildTerminalTheme), which also hides the
-     <1-cell fit seam on the right/bottom. This keeps the brief pre-mount state
-     from flashing a mismatched color in either app theme. */
+  /* The canvas background IS this token — buildTerminalTheme resolves it per
+     spawn and mount() repaints the host with the resolved value, which also
+     hides the <1-cell fit seam on the right/bottom. Declaring it here keeps
+     the brief pre-mount state from flashing a different color. */
   background: var(--background-primary);
 }
 .terminal-view-surface canvas {

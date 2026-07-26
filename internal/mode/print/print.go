@@ -1,3 +1,9 @@
+// Input: context
+// Output: Run
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 // Package print implements the one-shot stdout presentation mode.
 package print
 

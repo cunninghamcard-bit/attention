@@ -1,3 +1,9 @@
+// Input: context
+// Output: New, Harness, HarnessConfig, ProviderAuth, TurnState, Resources, CompactionResult, NavigationResult, NavigationOptions
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package harness
 
 import (

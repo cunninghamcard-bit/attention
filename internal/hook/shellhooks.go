@@ -1,3 +1,9 @@
+// Input: context
+// Output: LoadShellHooks, LoadShellHooksWithOptions, LoadShellHooksData, ShellHookInputFormat, ShellHooksOptions, ShellHooksRunner, ShellHookHandler
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package hook
 
 // shellhooks.go is a declarative shell-hooks runner: a hooks.json file maps a

@@ -19,6 +19,7 @@ require (
 	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/memohai/twilight-ai v0.4.1-0.20260708041258-f7bcb57fcaab // indirect
 	github.com/standard-webhooks/standard-webhooks/libraries v0.0.1 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
@@ -27,3 +28,5 @@ require (
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	golang.org/x/sync v0.17.0 // indirect
 )
+
+replace github.com/memohai/twilight-ai => ../twilight-ai

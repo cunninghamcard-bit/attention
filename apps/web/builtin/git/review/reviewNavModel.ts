@@ -1,3 +1,11 @@
+/**
+ * Input: ../GitService, ../reviewSession, ./reviewModel
+ * Output: ReviewFileSummary, toFileSummary, SummaryGit, loadFileSummaries, TreeFileSource, TreeFileNode, TreeFolderNode, TreeNode, buildFileTree, HistoryRow
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { GitLogEntry } from "../GitService";
 import type { GitReviewSource, ReviewFileSummary } from "../reviewSession";
 import { statusFromPorcelain, type ReviewFile } from "./reviewModel";

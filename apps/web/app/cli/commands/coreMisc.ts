@@ -1,3 +1,11 @@
+/**
+ * Input: ../../../app/App, ../../../platform/Platform, ../../../vault/TAbstractFile, ./helpers
+ * Output: registerCoreMiscCommands
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../../app/App";
 import { Platform } from "../../../platform/Platform";
 import { TFile, TFolder } from "../../../vault/TAbstractFile";

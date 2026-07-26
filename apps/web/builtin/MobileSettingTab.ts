@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../app/SettingRegistry, ../app/commands/CommandManager, ../ui/suggest/SuggestModal, ../ui/Icon
+ * Output: MobileSettingTab
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import type { Command } from "../app/commands/CommandManager";

@@ -1,3 +1,11 @@
+/**
+ * Input: ./App, ../views/MarkdownView, ../views/EditableFileView, ../views/EmptyView, ../views/TextFileView, ../dom/ActiveDocument, ../dom/Clipboard, ../ui/Notice, ../ui/Menu, ./MoveFileModal
+ * Output: registerAppCommands
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "./App";
 import { MarkdownView } from "../views/MarkdownView";
 import { EditableFileView } from "../views/EditableFileView";

@@ -1,3 +1,11 @@
+/**
+ * Input: ../dom/dom, ../core/Component
+ * Output: StreamScroller
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { createEl } from "../dom/dom";
 import { Component } from "../core/Component";
 

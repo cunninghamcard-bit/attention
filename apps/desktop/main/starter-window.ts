@@ -1,6 +1,15 @@
+/**
+ * Input: electron, @electron/remote/main, ./renderer-target
+ * Output: StarterWindowDeps, openStarter, isStarterOpen
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { BrowserWindow } from "electron";
 import { enable as enableRemote } from "@electron/remote/main";
 import { resolveStarterUrl } from "./renderer-target";
+import { denyChildWindows } from "./window";
 
 /**
  * The starter (vault chooser) window — real symbols `Ze` (utility-window
@@ -56,6 +65,7 @@ export function openStarter(deps: StarterWindowDeps): BrowserWindow {
   });
   starterWindow = win;
   enableRemote(win.webContents);
+  denyChildWindows(win);
   win.setMenuBarVisibility(false);
   win.on("closed", () => {
     starterWindow = null;

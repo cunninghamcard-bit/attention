@@ -1,3 +1,11 @@
+/**
+ * Input: ./ThemeManifest
+ * Output: ThemeManifestValidationIssue, ThemeManifestValidator
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { ThemeManifest } from "./ThemeManifest";
 
 export interface ThemeManifestValidationIssue {

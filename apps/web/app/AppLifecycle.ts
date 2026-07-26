@@ -1,3 +1,11 @@
+/**
+ * Input: ./App, ../builtin/DailyNotes, ./MetadataIndexingNotice, ../vault/TAbstractFile
+ * Output: AppLifecycle
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "./App";
 import type { DailyNotesController } from "../builtin/DailyNotes";
 import { installSlowIndexingNotice, showIndexingNotice } from "./MetadataIndexingNotice";

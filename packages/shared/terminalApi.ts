@@ -1,4 +1,12 @@
 /**
+ * Input: None
+ * Output: PtySpawnOptions, PtyHandle, ElectronTerminalApi
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
+/**
  * Native-seam port: the PTY (terminal) bridge.
  *
  * ONE definition of the contract. The shell fills it in the preload
@@ -13,9 +21,6 @@ export interface PtySpawnOptions {
   cwd?: string;
   cols?: number;
   rows?: number;
-  /** Extra environment merged over the defaults — already resolved by the
-   * caller (TerminalService profile resolution); the bridge applies it verbatim. */
-  env?: Record<string, string>;
 }
 
 export interface PtyHandle {
@@ -33,8 +38,4 @@ export interface ElectronTerminalApi {
   defaultShell: string;
   homeDir: string;
   spawn(options: PtySpawnOptions): PtyHandle;
-  /** Provision the enhanced-zsh shim and return the ZDOTDIR to spawn with, or
-   * null when it can't be provisioned. Pure capability — whether to use it is
-   * the renderer's profile decision. Optional so test fakes keep working. */
-  prepareShellIntegration?(): string | null;
 }

@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../vault/TAbstractFile, ./AbstractInputSuggest, ./SuggestModal
+ * Output: InputFileSuggestion, FolderSuggestion, FileInputSuggest, MarkdownFileInputSuggest, FilteredFileInputSuggest, FullPathFileInputSuggest, FolderInputSuggest, FilteredFolderInputSuggest
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { TFile, TFolder } from "../../vault/TAbstractFile";
 import { AbstractInputSuggest } from "./AbstractInputSuggest";

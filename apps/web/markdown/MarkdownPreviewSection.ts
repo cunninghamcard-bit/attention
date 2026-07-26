@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: MarkdownPreviewPosition, MarkdownHighlightRect, MarkdownHighlightRange, MarkdownPreviewSection, zeroPosition
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface MarkdownPreviewPosition {
   line: number;
   col: number;

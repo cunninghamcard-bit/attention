@@ -1,3 +1,9 @@
+// Input: embed
+// Output: NewThemeManager, NewThemeManagerFromJSON, ThemeColors, Theme, ThemeManager
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 // Adapted from github.com/dimetron/pi-go internal/tui
 package main
 

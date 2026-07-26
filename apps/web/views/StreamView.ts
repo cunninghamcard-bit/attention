@@ -1,3 +1,11 @@
+/**
+ * Input: ../dom/dom, ./ItemView, ./StreamScroller
+ * Output: StreamView
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { createDiv } from "../dom/dom";
 import { ItemView } from "./ItemView";
 import { StreamScroller } from "./StreamScroller";

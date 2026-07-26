@@ -1,3 +1,11 @@
+/**
+ * Input: stream-markdown-parser, ../dom/dom, ../core/Component, ../markdown/MarkdownRenderChild, ../markdown/MarkdownRenderer, ../markdown/MarkdownPostProcessorRegistry
+ * Output: StreamMarkdownRenderer
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { ParsedNode } from "stream-markdown-parser";
 import { createEl } from "../dom/dom";
 import { Component } from "../core/Component";

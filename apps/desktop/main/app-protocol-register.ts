@@ -1,3 +1,11 @@
+/**
+ * Input: electron, node:fs, node:stream, ./app-protocol
+ * Output: registerAppProtocol, registerAppSchemePrivileges
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { protocol } from "electron";
 import { createReadStream, promises as fsp } from "node:fs";
 import { Readable } from "node:stream";

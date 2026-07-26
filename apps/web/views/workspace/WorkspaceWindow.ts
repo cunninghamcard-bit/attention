@@ -1,3 +1,11 @@
+/**
+ * Input: ./Workspace, ./WorkspaceItem, ./WorkspaceRoot, ./WorkspaceSplit, ../../dom/ActiveDocument, ../../dom/dom, ../../core/Events, ../../core/EventRefInternal, ../../app/FrameDom, ../../app/BodyClasses
+ * Output: WorkspaceWindowState, WorkspaceWindow
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { Workspace } from "./Workspace";
 import type { WorkspaceItem } from "./WorkspaceItem";
 import { WorkspaceRoot } from "./WorkspaceRoot";

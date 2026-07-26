@@ -1,3 +1,11 @@
+/**
+ * Input: ../../dom/dom, ../../ui/Icon, ../../ui/Popover, ../../ui/Menu, ./Workspace
+ * Output: WorkspaceRibbon
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { createEl } from "../../dom/dom";
 import { setIcon } from "../../ui/Icon";
 import { setTooltip } from "../../ui/Popover";

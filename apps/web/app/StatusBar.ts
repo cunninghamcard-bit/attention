@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: StatusBar
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export class StatusBar {
   readonly containerEl: HTMLElement;
 

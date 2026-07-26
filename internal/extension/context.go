@@ -1,3 +1,9 @@
+// Input: context
+// Output: ReadonlySessionView, ThinkingLevel, UserInput, ContextUsage, ModelInfo, ExtensionContext
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 // Package extension provides the extension loading framework.
 //
 // Extensions are the primary producers of hook handlers and tools.

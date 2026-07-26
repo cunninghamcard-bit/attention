@@ -1,3 +1,11 @@
+/**
+ * Input: ../views/ItemView, ./SettingsRenderer
+ * Output: SettingsView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { ItemView } from "../views/ItemView";
 import { SettingsRenderer } from "./SettingsRenderer";
 

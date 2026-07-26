@@ -1,3 +1,9 @@
+// Input: context
+// Output: FileInfo, FileSystem, ExecOptions, ExecResult, Shell, ExecutionEnv
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package execenv
 
 import (

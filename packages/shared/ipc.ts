@@ -1,4 +1,12 @@
 /**
+ * Input: None
+ * Output: SyncChannels, InvokeChannels, IpcChannels, SyncChannelName, InvokeChannelName, IpcChannelName, IpcRequest, IpcResponse
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
+/**
  * The typed IPC channel table — the one contract the main-process handlers and
  * the renderer callers both reference. Channel name → request tuple + response.
  *

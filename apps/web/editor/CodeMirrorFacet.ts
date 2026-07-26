@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: Facet, Compartment
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export class Facet<TInput, TOutput = readonly TInput[]> {
   constructor(
     readonly combine: (values: readonly TInput[]) => TOutput = (values) =>

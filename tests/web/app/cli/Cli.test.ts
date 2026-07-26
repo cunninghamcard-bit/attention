@@ -138,8 +138,8 @@ describe("Cli help output", () => {
     cli.registerHandler("__completions", "internal", {}, () => "");
     cli.registerHandler("dev:reload", "Reload for developers", {}, () => "");
     const help = await cli.handleCli(["help"]);
-    expect(help).toContain("Workbench CLI");
-    expect(help).toContain("Usage: workbench <command> [options]");
+    expect(help).toContain("Attention CLI");
+    expect(help).toContain("Usage: attention <command> [options]");
     expect(help).not.toContain("__completions");
     expect(help).toContain("Developer:");
     expect(help.indexOf("dev:reload")).toBeGreaterThan(help.indexOf("Developer:"));
@@ -167,7 +167,7 @@ describe("Cli help output", () => {
   it("renders the real header: Options, Notes, unconditional Developer section", async () => {
     const help = await makeCli().handleCli(["help"]);
     expect(help).toContain(
-      "Workbench CLI\n\nUsage: workbench <command> [options]\n\n" +
+      "Attention CLI\n\nUsage: attention <command> [options]\n\n" +
         "Options:\n  vault=<name>          Target a specific vault by name\n\n" +
         "Notes:\n" +
         "  file resolves by name (like wikilinks), path is exact (folder/note.md)\n" +

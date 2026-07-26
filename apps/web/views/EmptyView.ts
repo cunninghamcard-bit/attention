@@ -1,3 +1,11 @@
+/**
+ * Input: ./ItemView
+ * Output: EmptyViewAction, EmptyViewStateOptions, EmptyView
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { ItemView } from "./ItemView";
 
 export interface EmptyViewAction {

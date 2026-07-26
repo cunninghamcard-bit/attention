@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../dom/ActiveDocument, ../../app/hotkeys/Scope, ../../platform/Platform, ../ActiveCloseableRegistry, ./SuggestModal
+ * Output: ISuggestOwner, PopoverSuggest, AbstractInputSuggest
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { getActiveDocument } from "../../dom/ActiveDocument";
 import { Scope } from "../../app/hotkeys/Scope";

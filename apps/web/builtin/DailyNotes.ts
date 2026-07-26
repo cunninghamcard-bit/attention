@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../app/SettingRegistry, ../plugin/InternalPlugin, ../plugin/InternalPluginWrapper, ../vault/TAbstractFile, ../ui/Setting, ../ui/Icon
+ * Output: DailyNotesOptions, DailyNotesController, createDailyNotesPluginDefinition, formatDate, renderTemplate
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";

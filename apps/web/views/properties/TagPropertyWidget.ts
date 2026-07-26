@@ -1,3 +1,11 @@
+/**
+ * Input: ./EditablePropertyPill, ../../metadata/TagSuggestion, ./PropertyTypes, ../../ui/Popover
+ * Output: renderTagPropertyWidget
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { focusLastPill, renderEditablePropertyPill } from "./EditablePropertyPill";
 import {
   completeTagSuggestionText,

@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../plugin/InternalPlugin, ../app/cli/commands/wordcountWebCli, ../plugin/InternalPluginWrapper, ../views/MarkdownView
+ * Output: WordCountResult, WordCountController, stripFrontmatter, countWords, createWordCountPluginDefinition
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { InternalPluginDefinition } from "../plugin/InternalPlugin";
 import { registerWordCountCliHandlers } from "../app/cli/commands/wordcountWebCli";

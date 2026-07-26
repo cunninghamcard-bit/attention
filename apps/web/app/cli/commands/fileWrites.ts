@@ -1,3 +1,11 @@
+/**
+ * Input: ../../../app/App, ../../../builtin/DailyNotes, ../../../builtin/Templates, ../../../vault/TAbstractFile
+ * Output: registerFileWriteCommands
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../../app/App";
 import { formatDate } from "../../../builtin/DailyNotes";
 import type { TemplatesController } from "../../../builtin/Templates";

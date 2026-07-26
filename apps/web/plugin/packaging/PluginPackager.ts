@@ -1,3 +1,11 @@
+/**
+ * Input: ../PluginManifest, ../PluginManifestValidator
+ * Output: PackagedPluginArtifact, PluginPackager
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { PluginPackage } from "../PluginManifest";
 import { PluginManifestValidator } from "../PluginManifestValidator";
 

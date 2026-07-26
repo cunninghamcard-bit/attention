@@ -1,3 +1,11 @@
+/**
+ * Input: @pierre/diffs, ../../views/ItemView, ../../views/DiffView, ../github/open, ./review/GitReviewView, ../../ui/Icon, ../../ui/TreeItem, ../../ui/Popover, ../../ui/Notice, ./GitService
+ * Output: GitChangesView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { FileDiff } from "@pierre/diffs";
 import { ItemView } from "../../views/ItemView";
 import { openGitDiff } from "../../views/DiffView";

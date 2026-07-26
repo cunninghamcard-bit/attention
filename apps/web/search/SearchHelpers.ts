@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: SearchMatchPart, SearchMatches, SearchResult, SearchResultContainer, PreparedQuery, prepareFuzzySearch, prepareSimpleSearch, sortSearchResults, renderResults, renderMatches
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export type SearchMatchPart = [number, number];
 export type SearchMatches = SearchMatchPart[];
 

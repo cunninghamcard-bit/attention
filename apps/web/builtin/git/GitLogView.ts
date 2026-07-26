@@ -1,3 +1,11 @@
+/**
+ * Input: @pierre/diffs, ../../views/ItemView, ../../ui/FileTypeIcon, ../../ui/TreeItem, ./GitAvatar, ./relativeDate, ./GitService
+ * Output: CommitFileRow, mergeCommitFileRows, commitDiffBaseline, GitLogView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { FileDiff } from "@pierre/diffs";
 import { ItemView } from "../../views/ItemView";
 import { setFileTypeIcon } from "../../ui/FileTypeIcon";

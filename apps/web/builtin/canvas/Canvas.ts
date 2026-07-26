@@ -1,3 +1,11 @@
+/**
+ * Input: ./CanvasData, ./CanvasEdge, ./CanvasNode
+ * Output: CanvasViewport, CANVAS_DEFAULT_TEXT_NODE_DIMENSIONS, CANVAS_DEFAULT_FILE_NODE_DIMENSIONS, CANVAS_FILE_NODE_GAP, CANVAS_FILE_NODE_COLUMNS, Canvas
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import {
   createCanvasId,
   normalizeCanvasData,

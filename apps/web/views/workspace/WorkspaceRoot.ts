@@ -1,3 +1,11 @@
+/**
+ * Input: ./Workspace, ./WorkspaceContainer
+ * Output: WorkspaceRoot
+ * Pos: UI Layer - View templates
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { Workspace } from "./Workspace";
 import { WorkspaceContainer } from "./WorkspaceContainer";
 

@@ -1,3 +1,11 @@
+/**
+ * Input: ../core/Events, ../storage/JsonStore, ../storage/PluginDataStore, ./DataAdapter, ./FileNameValidation, ./TAbstractFile
+ * Output: VaultAdapterStat, VaultAdapter, Vault
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { Events, type EventRef } from "../core/Events";
 import type { JsonStore, JsonStoreWriteOptions } from "../storage/JsonStore";
 import type { PluginDataStore } from "../storage/PluginDataStore";

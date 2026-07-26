@@ -1,3 +1,9 @@
+// Input: bytes
+// Output: ToolDisplayModel
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 // Adapted from github.com/dimetron/pi-go internal/tui
 package main
 

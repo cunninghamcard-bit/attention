@@ -1,3 +1,11 @@
+/**
+ * Input: ./App, ./SettingTab, ../builtin/SettingsModal
+ * Output: SettingTab, SettingSection, SettingRegistry
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "./App";
 import type { SettingTab } from "./SettingTab";
 export { SettingTab } from "./SettingTab";

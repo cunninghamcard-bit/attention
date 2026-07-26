@@ -78,7 +78,7 @@ const REQUIRED_TOKENS = [
   "--prompt-border-color",
 ];
 
-describe("Workbench style system", () => {
+describe("Attention style system", () => {
   it("imports every stylesheet exactly once from index.css", async () => {
     const { imports, allFiles } = await loadStyleTree();
     const importSet = new Set(imports);
@@ -194,7 +194,7 @@ function findTokenHijacks(
   return hijacks;
 }
 
-describe("Workbench style wall", () => {
+describe("Attention style wall", () => {
   it("refuses own selectors that restyle faithful surfaces", async () => {
     const { faithfulClasses, ownSheets } = await loadWallInputs();
     for (const sheet of ownSheets) {

@@ -1,3 +1,11 @@
+/**
+ * Input: ../app/App, ../vault/TAbstractFile, ../core/ApiUtils, ../views/MediaViews, ./MarkdownRenderer
+ * Output: registerMarkdownDefaultProcessors, addCopyCodeButtons
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import type { TFile } from "../vault/TAbstractFile";
 import { finishRenderMath, loadMermaid, renderMath } from "../core/ApiUtils";

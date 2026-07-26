@@ -1,3 +1,9 @@
+// Input: context
+// Output: EntryID, CreateOptions, Metadata, JsonlSessionCreateOptions, JsonlSessionListOptions, ForkPosition, JsonlSessionForkOptions, SessionRepo, JsonlSessionRepoAPI, Context
+// Pos: Application code
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package session
 
 import (

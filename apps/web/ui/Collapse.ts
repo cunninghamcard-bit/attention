@@ -1,3 +1,11 @@
+/**
+ * Input: ../dom/dom
+ * Output: CollapseClasses, Collapse
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import { createDiv } from "../dom/dom";
 
 // Animated collapsible region, the vanilla counterpart of a motion-height

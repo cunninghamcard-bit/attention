@@ -1,4 +1,12 @@
 /**
+ * Input: None
+ * Output: None
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
+/**
  * The Electron main/preload sources are authored as ES modules but bundled to
  * CommonJS (`dist-electron/*.cjs`) by `vite.electron.config.ts`, so Node's
  * CommonJS `__dirname` exists at runtime. Declare it for the type checker,

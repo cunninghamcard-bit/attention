@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: htmlToMarkdown
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export function htmlToMarkdown(html: string): string {
   const template = document.createElement("template");
   template.innerHTML = html.trim();

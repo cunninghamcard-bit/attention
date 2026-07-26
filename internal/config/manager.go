@@ -1,3 +1,9 @@
+// Input: encoding/json
+// Output: NewManager, Scope, SettingsError, Manager
+// Pos: Configuration - App settings
+//
+// 🔄 Self-reference: When this file changes, update this header
+
 package config
 
 import (

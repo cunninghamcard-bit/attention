@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App, ../../views/ItemView, ../../ui/Menu, ../../views/workspace/WorkspaceLeaf, ./GraphControls, ./GraphDataEngine, ./GraphRenderer, ./GraphOptions, ./GraphStyles
+ * Output: GraphViewCallbacks, GraphView, LocalGraphView
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import { ItemView } from "../../views/ItemView";
 import type { Menu } from "../../ui/Menu";

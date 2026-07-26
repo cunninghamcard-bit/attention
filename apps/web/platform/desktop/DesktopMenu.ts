@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/commands/CommandManager, ../../app/hotkeys/HotkeyManager, ../../app/hotkeys/Keymap, ../Platform, ../../vault/Vault, ./DesktopMain, @app/shared/menu
+ * Output: DesktopMenuApp, DesktopMenuIpcRenderer, DesktopMenuElectronBridge, NativeMenuItemUpdate, DesktopMenu, formatElectronAccelerator
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { CommandManager } from "../../app/commands/CommandManager";
 import type { HotkeyManager } from "../../app/hotkeys/HotkeyManager";
 import type { Hotkey } from "../../app/hotkeys/Keymap";

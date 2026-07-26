@@ -1,3 +1,11 @@
+/**
+ * Input: None
+ * Output: KeymapInfo, KeymapContext, KeymapEventListener, NormalizedKeymapEvent, KeyHandler, KeymapEventHandler, Scope, DynamicScope, normalizedKeymapEventFromKeyboardEvent, getModifiers
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 export interface KeymapInfo {
   modifiers: string | null;
   key: string | null;

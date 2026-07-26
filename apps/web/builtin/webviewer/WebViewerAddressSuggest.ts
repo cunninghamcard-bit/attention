@@ -1,3 +1,11 @@
+/**
+ * Input: ../../app/App
+ * Output: WebViewerAddressSuggestion, WebViewerAddressSuggest
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 
 export interface WebViewerAddressSuggestion {
