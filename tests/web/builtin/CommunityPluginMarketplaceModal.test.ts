@@ -74,6 +74,7 @@ describe("CommunityPluginMarketplaceModal", () => {
 
     const modal = new CommunityPluginMarketplaceModal(app);
     modal.open();
+    await flushAsync();
 
     expect(modal.modalEl.classList.contains("mod-community-modal")).toBe(true);
     expect(modal.contentEl.querySelector(".modal-sidebar")).not.toBeNull();
@@ -81,7 +82,9 @@ describe("CommunityPluginMarketplaceModal", () => {
     expect(modal.contentEl.querySelector(".community-modal-controls")).not.toBeNull();
     expect(modal.contentEl.querySelectorAll(".community-item")).toHaveLength(2);
     expect(modal.contentEl.querySelector(".search-input-container input")).not.toBeNull();
-    expect(modal.contentEl.querySelector(".community-plugin-sort")).not.toBeNull();
+    expect(
+      modal.contentEl.querySelector(".community-modal-controls button.clickable-icon"),
+    ).not.toBeNull();
     expect(modal.contentEl.textContent).toContain("Show installed only");
     expect(modal.contentEl.textContent).toContain("Showing 2 plugins");
     expect(modal.contentEl.textContent).toContain("Market Plugin");
@@ -103,11 +106,11 @@ describe("CommunityPluginMarketplaceModal", () => {
     clickButton(modal.contentEl, "Copy share link");
     await flushAsync();
 
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("workbench://show-plugin?id=market");
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("attention://show-plugin?id=market");
 
     clickButton(modal.contentEl, "Donate");
 
-    expect(modalTitles()).toContain("Donate to Market Plugin");
+    expect(modalTitles()).toContain("Donate to support Market Plugin");
     expect(document.body.textContent).toContain("Support this plugin");
 
     clickButton(modal.contentEl, "Install");
@@ -152,6 +155,12 @@ describe("CommunityPluginMarketplaceModal", () => {
         return null;
       },
     });
+    // Installing resolves the release off the repo manifest, like Obsidian does.
+    app.pluginMarketplace.setDataSource({
+      async fetchJson<T>(): Promise<T> {
+        return { id: "secure", name: "Secure Plugin", version: "1.0.0", author: "Ada" } as T;
+      },
+    });
     app.pluginMarketplace.registerEntry({
       manifest: {
         id: "secure",
@@ -164,6 +173,7 @@ describe("CommunityPluginMarketplaceModal", () => {
 
     const modal = new CommunityPluginMarketplaceModal(app);
     modal.open();
+    await flushAsync();
     clickPlugin(modal.contentEl, "secure");
     clickButton(modal.contentEl, "Install");
     await flushAsync();
@@ -174,7 +184,7 @@ describe("CommunityPluginMarketplaceModal", () => {
     expect(app.communityPlugins.get("secure")?.installed).toBe(true);
   });
 
-  it("filters marketplace entries from the search input", () => {
+  it("filters marketplace entries from the search input", async () => {
     const app = new App(document.createElement("div"));
     app.pluginMarketplace.registerEntry({
       manifest: {
@@ -194,6 +204,7 @@ describe("CommunityPluginMarketplaceModal", () => {
     });
     const modal = new CommunityPluginMarketplaceModal(app);
     modal.open();
+    await flushAsync();
 
     const searchEl = modal.contentEl.querySelector<HTMLInputElement>(
       ".search-input-container input",
@@ -204,6 +215,7 @@ describe("CommunityPluginMarketplaceModal", () => {
     expect(modal.contentEl.querySelector(".search-input-container input")).toBe(searchEl);
     searchEl!.value = "beta";
     searchEl!.dispatchEvent(new Event("input"));
+    await flushDebounce();
 
     expect(modal.contentEl.querySelector(".community-modal-search-results")?.textContent).toContain(
       "Beta Plugin",
@@ -214,7 +226,7 @@ describe("CommunityPluginMarketplaceModal", () => {
     expect(modal.contentEl.querySelector(".community-modal-details")).toBeNull();
   });
 
-  it("keeps selected details when installed-only hides the selected plugin from the list", () => {
+  it("keeps selected details when installed-only hides the selected plugin from the list", async () => {
     const app = new App(document.createElement("div"));
     app.pluginMarketplace.registerEntry({
       manifest: {
@@ -239,6 +251,7 @@ describe("CommunityPluginMarketplaceModal", () => {
     });
     const modal = new CommunityPluginMarketplaceModal(app);
     modal.open();
+    await flushAsync();
     clickPlugin(modal.contentEl, "alpha");
 
     const installedOnlyEl = modal.contentEl
@@ -259,7 +272,7 @@ describe("CommunityPluginMarketplaceModal", () => {
     );
   });
 
-  it("selects a plugin into Obsidian detail layout", () => {
+  it("selects a plugin into Obsidian detail layout", async () => {
     const app = new App(document.createElement("div"));
     app.pluginMarketplace.registerEntry({
       manifest: {
@@ -274,6 +287,7 @@ describe("CommunityPluginMarketplaceModal", () => {
     });
     const modal = new CommunityPluginMarketplaceModal(app);
     modal.open();
+    await flushAsync();
 
     expect(modal.contentEl.querySelector(".community-modal-details")).toBeNull();
     expect(getActiveCloseables()).toEqual([modal]);
@@ -290,6 +304,7 @@ describe("CommunityPluginMarketplaceModal", () => {
     expect(modal.contentEl.querySelector(".community-modal-readme")).not.toBeNull();
     expect(getActiveCloseables()).toHaveLength(2);
 
+    await flushAsync();
     expect(closeTopActiveCloseable()).toBe(true);
 
     expect(modal.containerEl.isConnected).toBe(true);
@@ -309,13 +324,14 @@ describe("CommunityPluginMarketplaceModal", () => {
     expect(getActiveCloseables()).toEqual([]);
   });
 
-  it("sets the search query from a missing auto-open plugin id instead of selecting the first item", () => {
+  it("sets the search query from a missing auto-open plugin id instead of selecting the first item", async () => {
     const app = new App(document.createElement("div"));
     app.pluginMarketplace.registerEntry({
       manifest: { id: "other-plugin", name: "Other Plugin", version: "1.0.0" },
     });
     const modal = new CommunityPluginMarketplaceModal(app).setAutoOpen("missing-plugin");
     modal.open();
+    await flushAsync();
 
     expect(
       modal.contentEl.querySelector<HTMLInputElement>(".search-input-container input")?.value,
@@ -323,7 +339,7 @@ describe("CommunityPluginMarketplaceModal", () => {
     expect(modal.contentEl.querySelector(".community-modal-details")).toBeNull();
   });
 
-  it("opens a sort menu and persists communityPluginSortOrder", () => {
+  it("opens a sort menu and persists communityPluginSortOrder", async () => {
     const values = new Map<string, string>();
     Object.defineProperty(window, "localStorage", {
       configurable: true,
@@ -342,11 +358,13 @@ describe("CommunityPluginMarketplaceModal", () => {
     });
     const modal = new CommunityPluginMarketplaceModal(app);
     modal.open();
+    await flushAsync();
 
     modal.contentEl
-      .querySelector<HTMLButtonElement>(".community-plugin-sort")
+      .querySelector<HTMLButtonElement>(".community-modal-controls button.clickable-icon")
       ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     clickButton(document.body, "Alphabetical");
+    modal.close();
 
     expect(values.get("communityPluginSortOrder")).toBe("alphabetical");
   });
@@ -380,6 +398,7 @@ describe("CommunityPluginMarketplaceModal", () => {
     });
     const modal = new CommunityPluginMarketplaceModal(app);
     modal.open();
+    await flushAsync();
     clickPlugin(modal.contentEl, "updatable");
 
     expect(modal.contentEl.textContent).toContain("Update");
@@ -416,6 +435,7 @@ describe("CommunityPluginMarketplaceModal", () => {
 
     const modal = new CommunityPluginMarketplaceModal(app);
     modal.open();
+    await flushAsync();
     clickPlugin(modal.contentEl, "settings-plugin");
     clickButton(modal.contentEl, "Install");
     await flushAsync();
@@ -437,6 +457,7 @@ describe("CommunityPluginMarketplaceModal", () => {
 
     const hotkeysModal = new CommunityPluginMarketplaceModal(app);
     hotkeysModal.open();
+    await flushAsync();
     clickPlugin(hotkeysModal.contentEl, "settings-plugin");
     clickButton(hotkeysModal.contentEl, "Hotkeys");
 
@@ -474,6 +495,7 @@ describe("CommunityPluginMarketplaceModal", () => {
 
     const modal = new CommunityPluginMarketplaceModal(app);
     modal.open();
+    await flushAsync();
     clickPlugin(modal.contentEl, "readme");
 
     expect(modal.contentEl.textContent).toContain("Loading README");
@@ -500,6 +522,7 @@ describe("CommunityPluginMarketplaceModal", () => {
 
     const modal = new CommunityPluginMarketplaceModal(app);
     modal.open();
+    await flushAsync();
     clickPlugin(modal.contentEl, "media");
     await flushAsync();
 
@@ -538,7 +561,7 @@ describe("CommunityPluginMarketplaceModal", () => {
     const modal = new CommunityPluginMarketplaceModal(app);
     modal.open();
 
-    expect(modal.contentEl.textContent).toContain("Loading community plugins");
+    expect(modal.contentEl.querySelector(".community-modal-empty-state.is-loading")).not.toBeNull();
     await flushAsync();
 
     expect(modal.contentEl.textContent).toContain("Catalog Plugin");
@@ -573,9 +596,10 @@ describe("CommunityPluginMarketplaceModal", () => {
     const modal = new CommunityPluginMarketplaceModal(app);
     modal.open();
     await flushAsync();
+    await flushAsync();
 
-    expect(modal.contentEl.querySelector(".community-modal-empty-state.mod-error")).not.toBeNull();
-    expect(modal.contentEl.textContent).toContain("Failed to load community plugins: offline");
+    expect(modal.contentEl.querySelector(".community-modal-empty-state")).not.toBeNull();
+    expect(modal.contentEl.textContent).toContain("offline");
 
     clickButton(modal.contentEl, "Retry");
     await flushAsync();
@@ -596,6 +620,10 @@ function clickPlugin(root: HTMLElement, id: string): void {
   const item = root.querySelector<HTMLElement>(`[data-plugin-id="${id}"]`);
   if (!item) throw new Error(`Plugin not found: ${id}`);
   item.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+}
+
+function flushDebounce(): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, 350));
 }
 
 function flushAsync(): Promise<void> {

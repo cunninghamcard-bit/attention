@@ -168,7 +168,7 @@ describe("CommunityPluginsSettingTab", () => {
     expect(document.body.textContent).toContain("Are you sure you want to uninstall this plugin?");
   });
 
-  it("opens the marketplace details for an installed plugin from the settings list", () => {
+  it("opens the marketplace details for an installed plugin from the settings list", async () => {
     const app = new App(document.createElement("div"));
     app.pluginSecurity.setCommunityPluginsEnabled(true);
     app.pluginMarketplace.registerEntry({
@@ -198,6 +198,7 @@ describe("CommunityPluginsSettingTab", () => {
         '.installed-community-plugin[data-plugin-id="open-me"] .setting-item-info',
       )
       ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await flushAsync();
 
     expect(document.body.querySelector(".modal.mod-community-plugin")).not.toBeNull();
     expect(document.body.querySelector(".community-item.is-selected")?.textContent).toContain(

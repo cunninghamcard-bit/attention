@@ -12,6 +12,7 @@ import { Notice } from "../../../ui/Notice";
 import { setFileTypeIcon } from "../../../ui/FileTypeIcon";
 import { ProgressBarComponent, SearchComponent } from "../../../ui/Setting";
 import { TreeItem } from "../../../ui/TreeItem";
+import { DIFF_SEPARATOR_CSS } from "../diffSeparatorCss";
 import {
   isViewed,
   readDiffStyle,
@@ -335,6 +336,7 @@ export class ReviewSurface {
       expandUnchanged: false,
       expansionLineCount: 100,
       hunkSeparators: "line-info-basic",
+      unsafeCSS: DIFF_SEPARATOR_CSS,
       itemMetrics: { diffHeaderHeight: 44 },
       layout: { gap: 12, paddingTop: 10, paddingBottom: 10 },
       lineHoverHighlight: "both",

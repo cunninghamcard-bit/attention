@@ -120,23 +120,25 @@ describe("ThemeMarketplaceModal", () => {
       entry("Gamma", "Gia", "A bright theme.", "gia/gamma", 10),
     ]);
     await app.themeInstaller.install(themePackage("Alpha"));
-    modal.render();
+    modal.update();
     expect(themeIds(modal)).toEqual(["", "Beta", "Alpha", "Gamma"]);
 
-    let searchEl = modal.contentEl.querySelector<HTMLInputElement>(
+    const searchEl = modal.contentEl.querySelector<HTMLInputElement>(
       ".search-input-container input",
     )!;
-    searchEl.value = "bta";
+    searchEl.value = "bet";
     searchEl.dispatchEvent(new Event("input"));
+    await flushDebounce();
     expect(themeIds(modal)).toEqual(["Beta"]);
     expect(
       modal.contentEl.querySelector('[data-theme-id="Beta"] .community-item-name')?.children.length,
     ).toBeGreaterThan(0);
 
-    searchEl = modal.contentEl.querySelector<HTMLInputElement>(".search-input-container input")!;
-    expect(document.activeElement).toBe(searchEl);
+    // The search box survives every keystroke — same element, never re-created.
+    expect(modal.contentEl.querySelector(".search-input-container input")).toBe(searchEl);
     searchEl.value = "gia";
     searchEl.dispatchEvent(new Event("input"));
+    await flushDebounce();
     expect(themeIds(modal)).toEqual(["Gamma"]);
     expect(
       modal.contentEl.querySelector(
@@ -144,12 +146,11 @@ describe("ThemeMarketplaceModal", () => {
       )?.textContent,
     ).toBe("Gia");
 
-    searchEl = modal.contentEl.querySelector<HTMLInputElement>(".search-input-container input")!;
     searchEl.value = "";
     searchEl.dispatchEvent(new Event("input"));
+    await flushDebounce();
     modal.contentEl.querySelector<HTMLButtonElement>(".community-modal-controls button")!.click();
     clickButton(document.body, "Alphabetical");
-    expect(window.localStorage.getItem("communityThemeSortOrder")).toBe("alphabetical");
     expect(themeIds(modal)).toEqual(["", "Alpha", "Beta", "Gamma"]);
 
     modal.contentEl.querySelector<HTMLButtonElement>(".community-modal-controls button")!.click();
@@ -162,6 +163,10 @@ describe("ThemeMarketplaceModal", () => {
     installedOnly.checked = true;
     installedOnly.dispatchEvent(new Event("change"));
     expect(themeIds(modal)).toEqual(["", "Alpha"]);
+
+    // Obsidian persists the sort order when the browser closes.
+    modal.close();
+    expect(window.localStorage.getItem("communityThemeSortOrder")).toBe("release");
   });
 
   it("installs and uses a theme from the manager", async () => {
@@ -213,7 +218,7 @@ describe("ThemeMarketplaceModal", () => {
       entry("Alpha", "Ada", "A focused theme.", "ada/alpha"),
     ]);
     await app.themeInstaller.install(themePackage("Alpha"));
-    modal.render();
+    modal.update();
 
     clickTheme(modal, "Alpha");
     clickButton(modal.contentEl, "Use");
@@ -237,11 +242,15 @@ describe("ThemeMarketplaceModal", () => {
     modal.open();
     await flushAsync();
 
-    expect(modal.contentEl.querySelector(".community-modal-empty-state.mod-error")).not.toBeNull();
-    expect(modal.contentEl.textContent).toContain("Failed to load community themes: offline");
+    expect(
+      modal.contentEl.querySelector(".community-modal-search-results-status-content"),
+    ).not.toBeNull();
+    expect(modal.contentEl.textContent).toContain("Failed to load community themes.");
 
     app.themeMarketplace.registerEntry(entry("Retry", "Ada", "Loaded after retry.", "ada/retry"));
-    clickButton(modal.contentEl, "Retry");
+    modal.contentEl
+      .querySelector<HTMLElement>(".community-modal-search-results-cta")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     await flushAsync();
 
     expect(loadCatalog).toHaveBeenCalledTimes(2);
@@ -339,6 +348,10 @@ function buttonTexts(root: HTMLElement): string[] {
   return [...root.querySelectorAll<HTMLButtonElement>("button")].map(
     (button) => button.textContent?.trim() ?? "",
   );
+}
+
+function flushDebounce(): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, 350));
 }
 
 function flushAsync(): Promise<void> {

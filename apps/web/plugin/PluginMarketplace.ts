@@ -1,3 +1,11 @@
+/**
+ * Input: ./PluginManifest, ../core/Version
+ * Output: MarketplacePluginEntry, MarketplaceSearchQuery, ObsidianCommunityPluginListItem, ObsidianCommunityPluginStats, ObsidianCommunityPluginStatsMap, ObsidianCommunityPluginDeprecations, MarketplaceDataSource, MarketplaceLoadState, OBSIDIAN_RELEASES_COMMUNITY_PLUGINS_URL, OBSIDIAN_RELEASES_COMMUNITY_PLUGIN_STATS_URL
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import {
   normalizePluginManifest,
   type PluginManifest,
@@ -5,6 +13,8 @@ import {
   type PluginPackage,
 } from "./PluginManifest";
 import { compareVersions, latestVersion } from "../core/Version";
+import { apiVersion, requestUrl } from "../core/ApiUtils";
+import type { App } from "../app/App";
 
 export interface MarketplacePluginEntry {
   manifest: PluginManifestInput;
@@ -75,7 +85,11 @@ export class PluginMarketplace {
   loadedAt: string | null = null;
   loadError: string | null = null;
 
-  constructor(private dataSource: MarketplaceDataSource = new FetchMarketplaceDataSource()) {}
+  private dataSource: MarketplaceDataSource;
+
+  constructor(dataSource?: MarketplaceDataSource, app?: App) {
+    this.dataSource = dataSource ?? new FetchMarketplaceDataSource(app);
+  }
 
   setDataSource(dataSource: MarketplaceDataSource): void {
     this.dataSource = dataSource;
@@ -242,7 +256,10 @@ export class PluginMarketplace {
     return this.deprecations.get(manifest.id)?.has(manifest.version) ?? false;
   }
 
-  async resolveLatestCompatibleVersion(id: string, appVersion = "1.0.0"): Promise<string | null> {
+  async resolveLatestCompatibleVersion(
+    id: string,
+    appVersion = apiVersion,
+  ): Promise<string | null> {
     const entry = this.entries.get(id);
     if (!entry) return null;
     if (!entry.repo) return entry.manifest.version;
@@ -311,17 +328,20 @@ export class PluginMarketplace {
   }
 }
 
+/** Same main-process hop as the installer: a renderer `fetch` is CORS-bound, `requestUrl` is not. */
 class FetchMarketplaceDataSource implements MarketplaceDataSource {
+  constructor(private readonly app?: App) {}
+
   async fetchJson<T>(url: string): Promise<T> {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to load marketplace data: ${url}`);
-    return response.json() as Promise<T>;
+    const response = await requestUrl({ url, throw: false }, this.app);
+    if (response.status >= 400) throw new Error(`Failed to load marketplace data: ${url}`);
+    return response.json as T;
   }
 
   async fetchText(url: string): Promise<string> {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to load marketplace text: ${url}`);
-    return response.text();
+    const response = await requestUrl({ url, throw: false }, this.app);
+    if (response.status >= 400) throw new Error(`Failed to load marketplace text: ${url}`);
+    return response.text;
   }
 }
 

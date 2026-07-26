@@ -1,34 +1,42 @@
+/**
+ * Input: ../../app/App, ../../app/theme/ThemeManager, ../../dom/dom, ../../markdown/MarkdownRenderer, ../../search/SearchHelpers, ../../ui/CommunityModal, ../../ui/Notice, ../../ui/Icon
+ * Output: ThemeMarketplaceModal
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../../app/App";
 import type { ThemeDefinition } from "../../app/theme/ThemeManager";
-import { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch } from "../../core/fuzzy";
+import { createDiv } from "../../dom/dom";
 import { MarkdownRenderer } from "../../markdown/MarkdownRenderer";
-import { renderResults } from "../../search/SearchHelpers";
-import { Menu } from "../../ui/Menu";
-import { Modal } from "../../ui/Modal";
+import { prepareSimpleSearch, renderResults, type SearchResult } from "../../search/SearchHelpers";
+import {
+  CommunityModal,
+  withButtonLoading,
+  withLoading,
+  type CommunityModalItem,
+  type CommunitySortOrder,
+} from "../../ui/CommunityModal";
 import { Notice } from "../../ui/Notice";
 import { setIcon } from "../../ui/Icon";
-import { Setting } from "../../ui/Setting";
-import {
-  registerActiveCloseable,
-  unregisterActiveCloseable,
-  type ActiveCloseable,
-} from "../../ui/ActiveCloseableRegistry";
 import type { ThemeMarketplaceEntry } from "./ThemeMarketplace";
 
-type SortMode = "download" | "release" | "alphabetical";
+interface ThemeItem extends CommunityModalItem {
+  entry: ThemeMarketplaceEntry;
+  matches: SearchResult | null;
+  nameEl: HTMLElement | null;
+  authorEl: HTMLElement | null;
+}
 
-/** Browse, install and switch community themes using the same shell as plugins. */
-export class ThemeMarketplaceModal extends Modal {
-  private query = "";
-  private sort: SortMode = "download";
-  private installedOnly = false;
-  private selectedId: string | null = null;
-  private catalogLoading = false;
-  private catalogError: string | null = null;
-  private readonly searchMatches = new Map<string, FuzzyMatch>();
-  private selectedItemCloseable: ActiveCloseable | null = null;
-  private readonly sidebarEl = document.createElement("div");
-  private readonly detailEl = document.createElement("div");
+/** Browse, install and switch community themes — same shell as community plugins. */
+export class ThemeMarketplaceModal extends CommunityModal<ThemeItem> {
+  protected override sortOrderOptions: readonly CommunitySortOrder[] = [
+    "download",
+    "release",
+    "alphabetical",
+  ];
+  protected override emptyResultsText = "No community themes found.";
 
   constructor(
     app: App,
@@ -36,68 +44,31 @@ export class ThemeMarketplaceModal extends Modal {
   ) {
     super(app);
     this.setTitle(updateIds ? "Theme updates" : "Community themes");
-    this.modalEl.classList.add("mod-community-modal", "mod-sidebar-layout", "mod-community-theme");
-    this.sort = readSortOrder();
+    this.modalEl.addClass("mod-community-theme");
+    this.search.setPlaceholder("Search community themes...");
+    this.sortOrder = readSortOrder();
+    if (updateIds) this.installedOnlyToggleSetting.settingEl.detach();
   }
 
-  onOpen(): void {
-    this.render();
-    void this.loadCatalogIfNeeded();
+  override onClose(): void {
+    super.onClose();
+    window.localStorage?.setItem("communityThemeSortOrder", this.sortOrder);
   }
 
-  onClose(): void {
-    this.unregisterSelectedItemCloseable();
-    window.localStorage?.setItem("communityThemeSortOrder", this.sort);
-  }
-
-  override onEscapeKey(event: KeyboardEvent): void {
-    if (this.selectedItemCloseable) {
-      event.preventDefault();
-      this.returnToGridView();
-      return;
-    }
-    super.onEscapeKey(event);
-  }
-
-  render(): void {
-    this.sidebarEl.className = "modal-sidebar";
-    this.detailEl.className = "community-modal-details";
-    this.contentEl.replaceChildren(this.sidebarEl);
-
-    const entries = this.getEntries();
-    const selectedEntry = entries.find((entry) => entry.manifest.id === this.selectedId) ?? null;
-    if (!selectedEntry && this.selectedId) {
-      this.selectedId = null;
-      this.unregisterSelectedItemCloseable();
-    }
-    this.renderSidebar(entries);
-    const current = entries.find((entry) => entry.manifest.id === this.selectedId) ?? null;
-    if (current) {
-      if (!this.detailEl.parentElement) this.contentEl.appendChild(this.detailEl);
-      this.renderDetail(current);
-      this.registerSelectedItemCloseable();
-    } else {
-      this.unregisterSelectedItemCloseable();
-      this.detailEl.remove();
-    }
-  }
-
-  private async loadCatalogIfNeeded(force = false): Promise<void> {
-    if (this.catalogLoading) return;
-    this.catalogLoading = true;
-    this.catalogError = null;
-    this.render();
+  /**
+   * A failed catalog fetch is not fatal here: locally installed themes still list,
+   * and the failure surfaces as the retryable status strip Obsidian shows.
+   */
+  protected async loadItems(): Promise<Map<string, ThemeItem>> {
+    let loaded = true;
     try {
-      await this.app.themeMarketplace.loadCatalog(force);
+      await this.app.themeMarketplace.loadCatalog();
     } catch (error) {
-      this.catalogError = error instanceof Error ? error.message : String(error);
-    } finally {
-      this.catalogLoading = false;
-      this.render();
+      console.error(error);
+      loaded = false;
     }
-  }
+    this.renderListStatus(loaded);
 
-  private getEntries(): ThemeMarketplaceEntry[] {
     const entries = new Map<string, ThemeMarketplaceEntry>();
     entries.set("", createDefaultEntry(this.app));
     for (const entry of this.app.themeMarketplace.search("")) entries.set(entry.manifest.id, entry);
@@ -106,239 +77,164 @@ export class ThemeMarketplaceModal extends Modal {
       if (!entries.has(theme.id)) entries.set(theme.id, entryFromTheme(theme));
     }
 
-    const query = this.query.trim();
-    const preparedQuery = prepareFuzzyQuery(query);
-    this.searchMatches.clear();
-    const filtered = [...entries.values()].filter((entry) => {
-      if (this.updateIds && !this.updateIds.has(entry.manifest.id)) return false;
-      if (this.installedOnly && !this.isInstalled(entry.manifest.id)) return false;
-      if (!query) return true;
-      if (!entry.manifest.id) return false;
-      const match = fuzzyMatch(
-        preparedQuery,
-        `${entry.manifest.name}${entry.manifest.author ?? ""}`,
-      );
-      if (!match) return false;
-      this.searchMatches.set(entry.manifest.id, match);
-      return true;
-    });
-
-    const defaultEntry = filtered.find((entry) => !entry.manifest.id);
-    const themes = filtered.filter((entry) => entry.manifest.id);
-    if (this.sort === "alphabetical")
-      themes.sort((left, right) =>
-        left.manifest.name.localeCompare(right.manifest.name, undefined, {
-          sensitivity: "base",
-        }),
-      );
-    else if (this.sort === "release") themes.reverse();
-    else themes.sort((left, right) => (right.downloads ?? 0) - (left.downloads ?? 0));
-    return defaultEntry ? [defaultEntry, ...themes] : themes;
-  }
-
-  private renderSidebar(entries: ThemeMarketplaceEntry[]): void {
-    this.sidebarEl.replaceChildren();
-    const controlsEl = document.createElement("div");
-    controlsEl.className = "community-modal-controls";
-    new Setting(controlsEl)
-      .addSearch((search) =>
-        search
-          .setValue(this.query)
-          .setPlaceholder("Search community themes...")
-          .onChange((value) => {
-            this.query = value;
-            this.render();
-            const inputEl = this.sidebarEl.querySelector<HTMLInputElement>(
-              ".search-input-container input",
-            );
-            inputEl?.focus();
-            inputEl?.setSelectionRange(value.length, value.length);
-          }),
-      )
-      .addButton((button) =>
-        button
-          .setIcon("lucide-sort-asc")
-          .setTooltip("Sort")
-          .setClass("clickable-icon")
-          .onClick((event) => this.showSortMenu(event)),
-      );
-    new Setting(controlsEl).setName("Installed only").addToggle((toggle) =>
-      toggle.setValue(this.installedOnly).onChange((value) => {
-        this.installedOnly = value;
-        this.render();
-      }),
-    );
-    const summaryEl = document.createElement("div");
-    summaryEl.className = "community-modal-search-summary u-muted";
-    summaryEl.textContent = `${entries.length} theme${entries.length === 1 ? "" : "s"}`;
-
-    const wrapperEl = document.createElement("div");
-    wrapperEl.className = "community-modal-search-results-wrapper";
-    const listEl = document.createElement("div");
-    listEl.className = "community-modal-search-results";
-
-    if (this.catalogLoading) {
-      const loadingEl = document.createElement("div");
-      loadingEl.className = "community-modal-empty-state is-loading";
-      loadingEl.textContent = "Loading community themes...";
-      listEl.appendChild(loadingEl);
-    } else if (this.catalogError) {
-      const errorEl = document.createElement("div");
-      errorEl.className = "community-modal-empty-state mod-error";
-      const messageEl = document.createElement("div");
-      messageEl.textContent = `Failed to load community themes: ${this.catalogError}`;
-      const retryEl = document.createElement("button");
-      retryEl.type = "button";
-      retryEl.className = "mod-cta";
-      retryEl.textContent = "Retry";
-      retryEl.addEventListener("click", () => void this.loadCatalogIfNeeded(true));
-      errorEl.append(messageEl, retryEl);
-      listEl.appendChild(errorEl);
-    } else {
-      for (const entry of entries) this.renderListItem(entry, listEl);
-      if (entries.length === 0) {
-        const emptyEl = document.createElement("div");
-        emptyEl.className = "community-modal-empty-state";
-        emptyEl.textContent = "No community themes found.";
-        listEl.appendChild(emptyEl);
-      }
-    }
-    wrapperEl.append(listEl);
-    controlsEl.append(summaryEl);
-    this.sidebarEl.append(controlsEl, wrapperEl);
-  }
-
-  private renderListItem(entry: ThemeMarketplaceEntry, parentEl: HTMLElement): void {
-    const manifest = entry.manifest;
-    const itemEl = document.createElement("div");
-    itemEl.className = "community-item tappable";
-    itemEl.classList.toggle("is-selected", this.selectedId === manifest.id);
-    itemEl.dataset.themeId = manifest.id;
-    itemEl.tabIndex = 0;
-    itemEl.setAttribute("role", "button");
-
-    const nameEl = document.createElement("div");
-    nameEl.className = "community-item-name";
-    const match = this.searchMatches.get(manifest.id) ?? null;
-    renderResults(nameEl, manifest.name, match);
-    if (this.isActive(manifest.id)) appendFlair(nameEl, "Currently active", true);
-    else if (this.isInstalled(manifest.id)) appendFlair(nameEl, "Installed");
-
-    const authorEl = document.createElement("div");
-    authorEl.className = "community-item-author";
-    if (manifest.author) {
-      authorEl.append("By ");
-      renderResults(authorEl, manifest.author, match, -manifest.name.length);
-    }
-    const downloadsEl = document.createElement("div");
-    downloadsEl.className = "community-item-downloads";
-    downloadsEl.textContent = entry.downloads
-      ? `${entry.downloads.toLocaleString()} downloads`
-      : "";
-    itemEl.append(nameEl, authorEl, downloadsEl, createPreview(entry, manifest.name));
-    const select = (): void => this.selectItem(entry);
-    itemEl.addEventListener("click", select);
-    itemEl.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
+    const items = new Map<string, ThemeItem>();
+    for (const entry of entries.values()) {
+      const id = entry.manifest.id;
+      const el = createDiv("community-item tappable");
+      el.dataset.themeId = id;
+      el.tabIndex = 0;
+      el.setAttribute("role", "button");
+      el.addEventListener("click", () => this.selectItem(id));
+      el.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
-        select();
-      }
-    });
-    parentEl.appendChild(itemEl);
+        this.selectItem(id);
+      });
+      items.set(id, {
+        id,
+        name: entry.manifest.name,
+        downloads: entry.downloads ?? 0,
+        updated: entry.updatedAt ? Date.parse(entry.updatedAt) || 0 : 0,
+        el,
+        init: false,
+        entry,
+        matches: null,
+        nameEl: null,
+        authorEl: null,
+      });
+    }
+    return items;
   }
 
-  private renderDetail(entry: ThemeMarketplaceEntry | null): void {
-    this.detailEl.replaceChildren();
-    if (!entry) {
-      const emptyEl = document.createElement("div");
-      emptyEl.className = "community-modal-details-empty-state community-modal-empty-state";
-      emptyEl.textContent = "Select a community theme.";
-      this.detailEl.appendChild(emptyEl);
-      return;
+  private renderListStatus(loaded: boolean): void {
+    this.listStatusEl.empty();
+    this.listStatusEl.toggle(!loaded);
+    if (loaded) return;
+    this.listStatusEl.createDiv("community-modal-search-results-status-content", (statusEl) => {
+      statusEl.createDiv({ text: "Failed to load community themes." });
+      statusEl
+        .createDiv({ cls: "community-modal-search-results-cta", text: "Retry" })
+        .addEventListener("click", () => {
+          void withLoading(this.emptyStateEl, async () => {
+            this.items = await this.loadItems();
+            this.update();
+          });
+        });
+    });
+  }
+
+  protected updateItems(): ThemeItem[] {
+    const query = this.search.getValue().trim().toLowerCase();
+    const search = query ? prepareSimpleSearch(query) : null;
+    const installedOnly = this.installedOnlyToggle.getValue();
+    const visible: ThemeItem[] = [];
+    for (const item of this.items.values()) {
+      item.matches = null;
+      if (this.updateIds && !this.updateIds.has(item.id)) continue;
+      if (installedOnly && !this.isInstalled(item.id)) continue;
+      if (!search) {
+        visible.push(item);
+        continue;
+      }
+      if (!item.id) continue;
+      const manifest = item.entry.manifest;
+      const match = search(`${manifest.name}${manifest.author ?? ""}`.toLowerCase());
+      if (!match) continue;
+      item.matches = match;
+      visible.push(item);
     }
+    this.sortItems(visible);
+    // The default theme is not a catalog entry — it always leads the list.
+    const defaultIndex = visible.findIndex((item) => !item.id);
+    if (defaultIndex > 0) visible.unshift(...visible.splice(defaultIndex, 1));
+    this.queueRender(visible, (item) => this.renderItem(item));
+    this.searchSummaryEl.setText(`${visible.length} theme${visible.length === 1 ? "" : "s"}`);
+    return visible;
+  }
 
-    const navEl = document.createElement("div");
-    navEl.className = "modal-setting-nav-bar";
-    const backEl = document.createElement("div");
-    backEl.className = "clickable-icon";
-    setIcon(backEl, "lucide-chevron-left");
-    backEl.addEventListener("click", () => this.returnToGridView());
-    navEl.appendChild(backEl);
+  private renderItem(item: ThemeItem): void {
+    const manifest = item.entry.manifest;
+    if (!item.init) {
+      item.nameEl = item.el.createDiv("community-item-name");
+      item.authorEl = item.el.createDiv("community-item-author");
+      item.el.createDiv({
+        cls: "community-item-downloads",
+        text: item.downloads ? `${item.downloads.toLocaleString()} downloads` : "",
+      });
+      item.el.appendChild(createPreview(item.entry, manifest.name));
+      item.init = true;
+    }
+    const nameEl = item.nameEl!;
+    const authorEl = item.authorEl!;
+    nameEl.empty();
+    authorEl.empty();
+    renderResults(nameEl, manifest.name, item.matches);
+    if (this.isActive(item.id)) appendFlair(nameEl, "Currently active", true);
+    else if (this.isInstalled(item.id)) appendFlair(nameEl, "Installed");
+    if (manifest.author) {
+      authorEl.setText("By ");
+      renderResults(authorEl, manifest.author, item.matches, -manifest.name.length);
+    }
+    item.el.show();
+  }
 
+  protected showItem(item: ThemeItem): void {
+    const entry = item.entry;
     const manifest = entry.manifest;
-    const infoEl = document.createElement("div");
-    infoEl.className = "community-modal-info";
-    const metaEl = document.createElement("div");
-    metaEl.className = "community-modal-meta";
+    const infoEl = this.detailsEl.createDiv("community-modal-info");
+    const metaEl = infoEl.createDiv("community-modal-meta");
 
-    const titleEl = document.createElement("h2");
-    titleEl.className = "community-modal-info-name";
-    titleEl.textContent = manifest.name;
-    if (this.isActive(manifest.id)) appendFlair(titleEl, "Currently active", true);
-    else if (this.isInstalled(manifest.id)) appendFlair(titleEl, "Installed", true);
-    metaEl.appendChild(titleEl);
+    const titleEl = metaEl.createEl("h2", {
+      cls: "community-modal-info-name",
+      text: manifest.name,
+    });
+    if (this.isActive(item.id)) appendFlair(titleEl, "Currently active", true);
+    else if (this.isInstalled(item.id)) appendFlair(titleEl, "Installed", true);
 
     if (entry.downloads) {
-      const downloadsEl = document.createElement("div");
-      downloadsEl.className = "community-modal-info-downloads";
-      const iconEl = document.createElement("span");
-      setIcon(iconEl, "lucide-download-cloud");
-      const textEl = document.createElement("span");
-      textEl.className = "community-modal-info-downloads-text";
-      textEl.textContent = entry.downloads.toLocaleString();
-      downloadsEl.append(iconEl, textEl);
-      metaEl.appendChild(downloadsEl);
+      metaEl.createDiv("community-modal-info-downloads", (downloadsEl) => {
+        downloadsEl.createSpan({}, (iconEl) => setIcon(iconEl, "lucide-download-cloud"));
+        downloadsEl.createSpan({
+          cls: "community-modal-info-downloads-text",
+          text: entry.downloads!.toLocaleString(),
+        });
+      });
     }
 
     if (manifest.version) {
-      const versionEl = document.createElement("div");
-      versionEl.className = "community-modal-info-version";
-      versionEl.textContent = `Version ${manifest.version}`;
+      const versionEl = metaEl.createDiv({
+        cls: "community-modal-info-version",
+        text: `Version ${manifest.version}`,
+      });
       const installed = this.app.themeInstaller
         .listInstalled()
         .find((record) => record.id === manifest.id);
-      if (installed?.version) versionEl.append(` · Installed ${installed.version}`);
-      metaEl.appendChild(versionEl);
+      if (installed?.version) versionEl.appendText(` · Installed ${installed.version}`);
     }
 
-    if (manifest.author) {
-      const authorEl = document.createElement("div");
-      authorEl.className = "community-modal-info-author";
-      authorEl.textContent = `By ${manifest.author}`;
-      metaEl.appendChild(authorEl);
-    }
+    if (manifest.author)
+      metaEl.createDiv({ cls: "community-modal-info-author", text: `By ${manifest.author}` });
 
     if (entry.repository) {
-      const repositoryEl = document.createElement("div");
-      repositoryEl.className = "community-modal-info-repo";
-      repositoryEl.append("Repository: ");
-      const linkEl = document.createElement("a");
-      linkEl.href = repositoryUrl(entry.repository);
-      linkEl.target = "_blank";
-      linkEl.rel = "noopener";
-      linkEl.textContent = repositoryUrl(entry.repository);
-      repositoryEl.appendChild(linkEl);
-      metaEl.appendChild(repositoryEl);
+      metaEl.createDiv(
+        { cls: "community-modal-info-repo", text: "Repository: " },
+        (repositoryEl) => {
+          const url = repositoryUrl(entry.repository!);
+          repositoryEl.createEl("a", {
+            href: url,
+            text: url,
+            attr: { target: "_blank", rel: "noopener" },
+          });
+        },
+      );
     }
 
-    if (manifest.description) {
-      const descEl = document.createElement("div");
-      descEl.className = "community-modal-info-desc";
-      descEl.textContent = manifest.description;
-      metaEl.appendChild(descEl);
-    }
+    if (manifest.description)
+      metaEl.createDiv({ cls: "community-modal-info-desc", text: manifest.description });
 
-    const actionsEl = document.createElement("div");
-    actionsEl.className = "community-modal-button-container";
-    this.renderActions(entry, actionsEl);
-    metaEl.appendChild(actionsEl);
-
-    const readmeEl = document.createElement("div");
-    readmeEl.className = "community-modal-readme markdown-rendered";
-    this.renderReadme(entry, readmeEl);
-
-    infoEl.append(metaEl, readmeEl);
-    this.detailEl.append(navEl, infoEl);
+    this.renderActions(item, metaEl.createDiv("community-modal-button-container"));
+    this.renderReadme(entry, infoEl.createDiv("community-modal-readme markdown-rendered"));
+    this.scrollIntoView(item.id);
   }
 
   private renderReadme(entry: ThemeMarketplaceEntry, readmeEl: HTMLElement): void {
@@ -352,87 +248,105 @@ export class ThemeMarketplaceModal extends Modal {
       return;
     }
     if (!entry.manifest.id || !entry.repository) {
-      readmeEl.textContent = "No README provided.";
+      readmeEl.setText("No README provided.");
       return;
     }
-    readmeEl.textContent = "Loading README...";
+    readmeEl.setText("Loading README...");
     if (entry.detailsState === "loading") return;
     const rerender = (): void => {
-      if (this.selectedId === entry.manifest.id && this.detailEl.parentElement) {
-        this.renderDetail(entry);
-      }
+      if (this.selectedItemId !== entry.manifest.id) return;
+      readmeEl.empty();
+      this.renderReadme(entry, readmeEl);
     };
     void this.app.themeMarketplace.loadDetails(entry.manifest.id).then(rerender, rerender);
   }
 
-  private renderActions(entry: ThemeMarketplaceEntry, parentEl: HTMLElement): void {
-    const id = entry.manifest.id;
+  private renderActions(item: ThemeItem, parentEl: HTMLElement): void {
+    const id = item.id;
     const installed = this.isInstalled(id);
     const active = this.isActive(id);
 
-    if (id && this.updateIds?.has(id)) {
-      parentEl.appendChild(this.createActionButton("Update", () => void this.updateTheme(entry)));
-    }
+    if (id && this.updateIds?.has(id))
+      this.createActionButton(parentEl, "Update", "mod-cta", (buttonEl) =>
+        withButtonLoading(buttonEl, () => this.updateTheme(item)),
+      );
 
     if (active) {
-      if (!id)
-        parentEl.appendChild(this.createActionButton("Currently active", () => {}, "", true));
-      else parentEl.appendChild(this.createActionButton("Stop using", () => this.useTheme("")));
+      if (!id) this.createActionButton(parentEl, "Currently active", "", () => {}).disabled = true;
+      else
+        this.createActionButton(parentEl, "Stop using", "mod-cta", () => this.useTheme(item, ""));
     } else if (installed) {
-      parentEl.appendChild(this.createActionButton("Use", () => this.useTheme(id)));
+      this.createActionButton(parentEl, "Use", "mod-cta", () => this.useTheme(item, id));
     } else {
-      parentEl.appendChild(
-        this.createActionButton("Install and use", () => void this.installAndUse(entry)),
+      this.createActionButton(parentEl, "Install and use", "mod-cta", (buttonEl) =>
+        withButtonLoading(buttonEl, () => this.installAndUse(item)),
       );
     }
     if (id && installed)
-      parentEl.appendChild(
-        this.createActionButton("Uninstall", () => void this.uninstall(id), "mod-destructive"),
+      this.createActionButton(parentEl, "Uninstall", "mod-destructive", (buttonEl) =>
+        withButtonLoading(buttonEl, () => this.uninstall(item)),
       );
   }
 
-  private async installAndUse(entry: ThemeMarketplaceEntry): Promise<void> {
+  private createActionButton(
+    parentEl: HTMLElement,
+    text: string,
+    cls: string,
+    callback: (buttonEl: HTMLButtonElement) => unknown,
+  ): HTMLButtonElement {
+    const buttonEl = parentEl.createEl("button", cls ? { cls, text } : { text });
+    buttonEl.addEventListener("click", () => void callback(buttonEl));
+    return buttonEl;
+  }
+
+  private async installAndUse(item: ThemeItem): Promise<void> {
+    const entry = item.entry;
     try {
-      if (!this.isInstalled(entry.manifest.id)) {
-        const pkg = await this.app.themeMarketplace.downloadPackage(entry.manifest.id);
+      if (!this.isInstalled(item.id)) {
+        const pkg = await this.app.themeMarketplace.downloadPackage(item.id);
         await this.app.themeInstaller.install(pkg);
       }
-      this.useTheme(entry.manifest.id);
+      this.app.themes.setTheme(item.id);
       new Notice(`Theme "${entry.manifest.name}" enabled`);
     } catch (error) {
       new Notice(`Theme install failed: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
-      this.render();
+      this.refresh(item);
     }
   }
 
-  private async updateTheme(entry: ThemeMarketplaceEntry): Promise<void> {
+  private async updateTheme(item: ThemeItem): Promise<void> {
     try {
-      await this.app.themeInstaller.update(entry.manifest.id);
-      new Notice(`Theme "${entry.manifest.name}" updated`);
+      await this.app.themeInstaller.update(item.id);
+      new Notice(`Theme "${item.entry.manifest.name}" updated`);
     } catch (error) {
       new Notice(`Theme update failed: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
-      this.render();
+      this.refresh(item);
     }
   }
 
-  private async uninstall(id: string): Promise<void> {
+  private async uninstall(item: ThemeItem): Promise<void> {
     try {
-      await this.app.themeInstaller.uninstall(id);
-      new Notice(`Theme "${id}" uninstalled`);
+      await this.app.themeInstaller.uninstall(item.id);
+      new Notice(`Theme "${item.id}" uninstalled`);
     } catch (error) {
       new Notice(
         `Theme uninstall failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     } finally {
-      this.render();
+      this.refresh(item);
     }
   }
 
-  private useTheme(id: string): void {
+  private useTheme(item: ThemeItem, id: string): void {
     this.app.themes.setTheme(id);
-    this.render();
+    this.refresh(item);
+  }
+
+  private refresh(item: ThemeItem): void {
+    this.update();
+    this.selectItem(item.id);
   }
 
   private isInstalled(id: string): boolean {
@@ -445,82 +359,6 @@ export class ThemeMarketplaceModal extends Modal {
 
   private isActive(id: string): boolean {
     return (this.app.vault.getConfig<string>("cssTheme") ?? "") === id;
-  }
-
-  private selectItem(entry: ThemeMarketplaceEntry): void {
-    this.sidebarEl
-      .querySelector<HTMLElement>(".community-item.is-selected")
-      ?.classList.remove("is-selected");
-    for (const item of this.sidebarEl.querySelectorAll<HTMLElement>(".community-item")) {
-      if (item.dataset.themeId === entry.manifest.id) item.classList.add("is-selected");
-    }
-    this.selectedId = entry.manifest.id;
-    if (!this.detailEl.parentElement) this.contentEl.appendChild(this.detailEl);
-    this.renderDetail(entry);
-    this.registerSelectedItemCloseable();
-  }
-
-  private returnToGridView(): void {
-    this.unregisterSelectedItemCloseable();
-    this.sidebarEl
-      .querySelector<HTMLElement>(".community-item.is-selected")
-      ?.classList.remove("is-selected");
-    this.selectedId = null;
-    this.detailEl.remove();
-  }
-
-  private registerSelectedItemCloseable(): void {
-    this.selectedItemCloseable ??= { close: () => this.returnToGridView() };
-    registerActiveCloseable(this.selectedItemCloseable);
-  }
-
-  private unregisterSelectedItemCloseable(): void {
-    if (!this.selectedItemCloseable) return;
-    unregisterActiveCloseable(this.selectedItemCloseable);
-    this.selectedItemCloseable = null;
-  }
-
-  private createActionButton(
-    text: string,
-    callback: () => void,
-    className = "mod-cta",
-    disabled = false,
-  ): HTMLButtonElement {
-    const buttonEl = document.createElement("button");
-    buttonEl.className = className;
-    buttonEl.textContent = text;
-    buttonEl.disabled = disabled;
-    buttonEl.addEventListener("click", callback);
-    return buttonEl;
-  }
-
-  private showSortMenu(event: MouseEvent): void {
-    new Menu()
-      .addItem((item) =>
-        item
-          .setTitle("Most downloaded")
-          .setChecked(this.sort === "download")
-          .onClick(() => this.setSort("download")),
-      )
-      .addItem((item) =>
-        item
-          .setTitle("Recently released")
-          .setChecked(this.sort === "release")
-          .onClick(() => this.setSort("release")),
-      )
-      .addItem((item) =>
-        item
-          .setTitle("Alphabetical")
-          .setChecked(this.sort === "alphabetical")
-          .onClick(() => this.setSort("alphabetical")),
-      )
-      .showAtMouseEvent(event);
-  }
-
-  private setSort(sort: SortMode): void {
-    this.sort = sort;
-    window.localStorage?.setItem("communityThemeSortOrder", sort);
-    this.render();
   }
 }
 
@@ -628,15 +466,10 @@ function repositoryUrl(repository: string): string {
 }
 
 function appendFlair(parentEl: HTMLElement, text: string, pop = false): void {
-  const flairEl = document.createElement("span");
-  flairEl.className = `flair${pop ? " mod-pop" : ""}`;
-  flairEl.textContent = text;
-  parentEl.appendChild(flairEl);
+  parentEl.createSpan({ cls: `flair${pop ? " mod-pop" : ""}`, text });
 }
 
-function readSortOrder(): SortMode {
+function readSortOrder(): CommunitySortOrder {
   const value = window.localStorage?.getItem("communityThemeSortOrder");
-  return value === "download" || value === "release" || value === "alphabetical"
-    ? value
-    : "download";
+  return value === "release" || value === "alphabetical" ? value : "download";
 }

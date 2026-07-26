@@ -1,5 +1,14 @@
+/**
+ * Input: ../app/App, ../builtin/CommunityPluginTrustModal, ../platform/Platform, ../ui/Notice, ../app/release/UpdateManager, ./PluginManifest, ./Plugin, ./PluginSource
+ * Output: PluginInstallRecord, PluginUpdateRecord, PluginPackageDownloader, PluginInstaller
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { App } from "../app/App";
 import { CommunityPluginTrustModal } from "../builtin/CommunityPluginTrustModal";
+import { requestUrl, type RequestUrlResponse } from "../core/ApiUtils";
 import { Platform } from "../platform/Platform";
 import { Notice } from "../ui/Notice";
 import type { UpdateCheckResult } from "../app/release/UpdateManager";
@@ -51,7 +60,7 @@ export class PluginInstaller {
 
   constructor(
     readonly app: App,
-    private downloader: PluginPackageDownloader = new FetchPluginPackageDownloader(),
+    private downloader: PluginPackageDownloader = new FetchPluginPackageDownloader(app),
   ) {
     this.app.vault.on<[string]>("raw", (path) => this.onRaw(path));
   }
@@ -586,24 +595,36 @@ export class PluginInstaller {
   }
 }
 
+/**
+ * Release assets live on github.com and redirect to release-assets.githubusercontent.com;
+ * neither sends `access-control-allow-origin`, so a renderer `fetch` from the app:// origin
+ * dies with "Failed to fetch". `requestUrl` hops through the main process (`request-url` →
+ * net-request.ts) on desktop and falls back to `fetch` on the web build.
+ */
 class FetchPluginPackageDownloader implements PluginPackageDownloader {
+  constructor(private readonly app: App) {}
+
   async fetchJson<T>(url: string): Promise<T> {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to download plugin manifest: ${url}`);
-    return response.json() as Promise<T>;
+    const response = await this.request(url);
+    if (response.status >= 400) throw new Error(`Failed to download plugin manifest: ${url}`);
+    return response.json as T;
   }
 
   async fetchText(url: string): Promise<string> {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to download plugin file: ${url}`);
-    return response.text();
+    const response = await this.request(url);
+    if (response.status >= 400) throw new Error(`Failed to download plugin file: ${url}`);
+    return response.text;
   }
 
   async fetchOptionalText(url: string): Promise<string | null> {
-    const response = await fetch(url);
+    const response = await this.request(url);
     if (response.status === 404) return null;
-    if (!response.ok) throw new Error(`Failed to download plugin file: ${url}`);
-    return response.text();
+    if (response.status >= 400) throw new Error(`Failed to download plugin file: ${url}`);
+    return response.text;
+  }
+
+  private request(url: string): Promise<RequestUrlResponse> {
+    return requestUrl({ url, throw: false }, this.app);
   }
 }
 

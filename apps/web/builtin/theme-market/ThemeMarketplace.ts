@@ -1,5 +1,15 @@
+/**
+ * Input: ./ThemeManifest, ../../core/Version
+ * Output: ThemeMarketplaceEntry, MarketplaceFetcher, ThemeMarketplace
+ * Pos: Application code
+ *
+ * 🔄 Self-reference: When this file changes, update this header
+ */
+
 import type { ThemeManifest, ThemePackage } from "./ThemeManifest";
 import { compareVersions } from "../../core/Version";
+import { requestUrl } from "../../core/ApiUtils";
+import type { App } from "../../app/App";
 
 export interface ThemeMarketplaceEntry {
   manifest: ThemeManifest;
@@ -35,7 +45,11 @@ export class ThemeMarketplace {
   private detailLoads = new Map<string, Promise<ThemeMarketplaceEntry>>();
   private catalogLoaded = false;
 
-  constructor(private readonly fetcher: MarketplaceFetcher = (url) => fetch(url)) {}
+  private readonly fetcher: MarketplaceFetcher;
+
+  constructor(fetcher?: MarketplaceFetcher, app?: App) {
+    this.fetcher = fetcher ?? ((url) => requestUrlFetch(url, app));
+  }
 
   /** Fetches the community catalog once; re-fetch with force. */
   async loadCatalog(force = false): Promise<number> {
@@ -177,4 +191,17 @@ export class ThemeMarketplace {
     }
     return { manifest, cssText };
   }
+}
+
+/** Renderer `fetch` is CORS-bound; `requestUrl` hops through the main process on desktop. */
+async function requestUrlFetch(
+  url: string,
+  app?: App,
+): Promise<{ ok: boolean; status: number; text(): Promise<string> }> {
+  const response = await requestUrl({ url, throw: false }, app);
+  return {
+    ok: response.status < 400,
+    status: response.status,
+    text: async () => response.text,
+  };
 }

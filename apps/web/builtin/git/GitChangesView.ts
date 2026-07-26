@@ -11,6 +11,7 @@ import { hasUnstagedChanges, isStaged, type GitFileStatus } from "./GitService";
 import { BranchSwitchModal } from "./BranchSwitchModal";
 import { ConfirmationModal } from "../../ui/Modal";
 import { setFileTypeIcon } from "../../ui/FileTypeIcon";
+import { DIFF_SEPARATOR_CSS } from "./diffSeparatorCss";
 
 const MAX_RENDERED_FILES = 50;
 
@@ -245,6 +246,11 @@ export class GitChangesView extends ItemView {
     sectionEl.insertBefore(diffContainer, item.childrenEl);
     const diff = new FileDiff({
       diffStyle: "unified",
+      // "line-info" (the default) floats the separator as its own block with
+      // 8px of margin above and below; "line-info-basic" sits flat in the
+      // flow, matching ReviewSurface.
+      hunkSeparators: "line-info-basic",
+      unsafeCSS: DIFF_SEPARATOR_CSS,
       themeType: document.body.classList.contains("theme-dark") ? "dark" : "light",
     });
     // containerWrapper (not fileContainer): the library creates its own
