@@ -7,7 +7,7 @@ import {
   type TerminalAdapter,
   type PtyHandle,
 } from "@web/builtin/terminal/TerminalAdapter";
-import type { TerminalRenderer } from "@web/builtin/terminal/GhosttyTerminalRenderer";
+import type { TerminalRenderer } from "@web/builtin/terminal/ResttyTerminalRenderer";
 import { Menu, MenuItem } from "@web/ui/Menu";
 
 class FakePty implements PtyHandle {
@@ -74,6 +74,7 @@ class FakeAdapter implements TerminalAdapter {
 function fakeRenderer(): TerminalRenderer & {
   output: string[];
   inputCallback: ((data: string) => void) | null;
+  resizeCallback: ((size: { cols: number; rows: number }) => void) | null;
 } {
   const renderer = {
     output: [] as string[],
@@ -85,9 +86,13 @@ function fakeRenderer(): TerminalRenderer & {
     onInput: (callback: (data: string) => void) => {
       renderer.inputCallback = callback;
     },
-    fit: () => ({ cols: 120, rows: 40 }),
-    getSelection: () => "",
+    resizeCallback: null as ((size: { cols: number; rows: number }) => void) | null,
+    onResize: (callback: (size: { cols: number; rows: number }) => void) => {
+      renderer.resizeCallback = callback;
+    },
+    copySelection: () => Promise.resolve(false),
     focus: () => {},
+    applyTheme: () => {},
     dispose: () => {},
   };
   return renderer;
@@ -139,9 +144,13 @@ describe("TerminalService", () => {
     expect(adapter.ptys[0].written.join("")).toContain("printf terminal-ready");
   });
 
-  it("TerminalResize: fit dimensions propagate to the PTY", async () => {
-    const { app, adapter } = await createAppWithFakeTerminal();
+  it("TerminalResize: the grid the renderer drew is the grid the PTY hears", async () => {
+    const { app, adapter, renderer } = await createAppWithFakeTerminal();
     await app.terminals.open();
+
+    // The renderer owns sizing and reports what it actually drew; nothing in
+    // the view measures independently, so these numbers cannot drift apart.
+    renderer.resizeCallback?.({ cols: 120, rows: 40 });
 
     expect(adapter.ptys[0].resizes).toContainEqual([120, 40]);
   });

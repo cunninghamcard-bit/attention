@@ -1,5 +1,5 @@
 /**
- * Input: ../../views/ItemView, ../../views/View, ../../ui/Menu, ../../app/hotkeys/Scope, ./TerminalService, ./GhosttyTerminalRenderer
+ * Input: ../../views/ItemView, ../../views/View, ../../ui/Menu, ../../app/hotkeys/Scope, ./TerminalService, ./ResttyTerminalRenderer
  * Output: TerminalView, isSystemChord, createTerminalFocusScope
  * Pos: Application code
  *
@@ -12,10 +12,10 @@ import { Menu } from "../../ui/Menu";
 import { Scope } from "../../app/hotkeys/Scope";
 import { TERMINAL_VIEW_TYPE, type TTerminal } from "./TerminalService";
 import {
-  createGhosttyRenderer,
+  createResttyRenderer,
   type TerminalRenderer,
   type TerminalRendererFactory,
-} from "./GhosttyTerminalRenderer";
+} from "./ResttyTerminalRenderer";
 
 interface TerminalViewState extends Record<string, unknown> {
   terminalId?: string;
@@ -27,13 +27,12 @@ interface TerminalViewState extends Record<string, unknown> {
 
 export class TerminalView extends ItemView {
   /** Swappable in tests — jsdom has no canvas for the WASM renderer. */
-  static rendererFactory: TerminalRendererFactory = createGhosttyRenderer;
+  static rendererFactory: TerminalRendererFactory = createResttyRenderer;
 
   private terminalId: string | null = null;
   private renderer: TerminalRenderer | null = null;
   private surfaceEl: HTMLElement | null = null;
   private overlayEl: HTMLElement | null = null;
-  private resizeObserver: ResizeObserver | null = null;
   private detachOutput: (() => void) | null = null;
   private detachExit: (() => void) | null = null;
   private pendingState: TerminalViewState = {};
@@ -134,8 +133,6 @@ export class TerminalView extends ItemView {
     this.popFocusScope();
     this.detachSession();
     if (this.terminalId) this.app.terminals.dispose(this.terminalId);
-    this.resizeObserver?.disconnect();
-    this.resizeObserver = null;
     this.renderer?.dispose();
     this.renderer = null;
     await super.onClose();
@@ -180,13 +177,14 @@ export class TerminalView extends ItemView {
       this.renderer.onInput((data) => {
         if (this.terminalId) this.app.terminals.write(this.terminalId, data);
       });
-      if (typeof ResizeObserver !== "undefined") {
-        this.resizeObserver = new ResizeObserver(() => this.fit());
-        this.resizeObserver.observe(this.surfaceEl);
-      }
+      // The renderer owns sizing and tells us the grid it actually drew; the
+      // PTY hears those exact numbers. A second sizing path here is what wraps
+      // prompts mid-glyph when the two disagree.
+      this.renderer.onResize(({ cols, rows }) => {
+        if (this.terminalId) this.app.terminals.resize(this.terminalId, cols, rows);
+      });
     }
     this.attachSession(id);
-    this.fit();
     this.renderer.focus();
     this.leaf.updateHeader();
   }
@@ -206,12 +204,6 @@ export class TerminalView extends ItemView {
     this.detachExit = null;
   }
 
-  private fit(): void {
-    if (!this.renderer || !this.terminalId) return;
-    const { cols, rows } = this.renderer.fit();
-    this.app.terminals.resize(this.terminalId, cols, rows);
-  }
-
   private showContextMenu(event: MouseEvent): void {
     event.preventDefault();
     const terminal = this.getTerminal();
@@ -222,8 +214,7 @@ export class TerminalView extends ItemView {
         .setTitle("Copy")
         .setIcon("lucide-copy")
         .onClick(() => {
-          const selection = this.renderer?.getSelection() ?? "";
-          if (selection) void navigator.clipboard.writeText(selection);
+          void this.renderer?.copySelection();
         }),
     );
     menu.addItem((item) =>
@@ -246,7 +237,6 @@ export class TerminalView extends ItemView {
       cwd: terminal.cwd,
       shell: terminal.shell,
       status: terminal.status,
-      selection: this.renderer?.getSelection() ?? "",
       view: this,
     });
     menu.showAtMouseEvent(event);

@@ -116,7 +116,7 @@ export * from "./builtin/terminal/TerminalPlugin";
 export * from "./builtin/terminal/TerminalView";
 export * from "./builtin/terminal/TerminalService";
 export * from "./builtin/terminal/TerminalAdapter";
-export * from "./builtin/terminal/GhosttyTerminalRenderer";
+export * from "./builtin/terminal/ResttyTerminalRenderer";
 export * from "./builtin/git/GitService";
 export { GitHubService } from "./builtin/github/GitHubService";
 export * from "./builtin/git/GitChangesView";
