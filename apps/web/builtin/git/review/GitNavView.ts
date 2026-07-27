@@ -1,5 +1,5 @@
 /**
- * Input: ../../../app/App, ../../../dom/dom, ../../../core/Events, ../../../ui/FileTypeIcon, ../../../ui/Icon, ../../../ui/Popover, ../../../ui/Setting, ../../../ui/TreeItem, ../GitAvatar, ../../../views/ItemView, ../GitService
+ * Input: ../../../app/App, ../../../dom/dom, ../../../core/Events, ../../../ui/FileTypeIcon, ../../../ui/Icon, ../../../ui/Setting, ../../../ui/TreeItem, ../GitAvatar, ../../../views/ItemView, ../GitService
  * Output: GitNavView, openGitNav
  * Pos: Application code
  *
@@ -11,7 +11,6 @@ import { createDiv, createEl, createSpan } from "../../../dom/dom";
 import type { EventRef } from "../../../core/Events";
 import { setFileTypeIcon } from "../../../ui/FileTypeIcon";
 import { setIcon } from "../../../ui/Icon";
-import { setTooltip } from "../../../ui/Popover";
 import { SearchComponent } from "../../../ui/Setting";
 import { TreeItem } from "../../../ui/TreeItem";
 import { renderGitAvatar } from "../GitAvatar";
@@ -86,6 +85,18 @@ export class GitNavView extends ItemView {
     this.viewedPaths = new Set(session.viewedPaths);
     this.files = [...session.files];
     this.buildShell();
+    // Tree | History rides the leaf's own view-header, the same row the right
+    // sidebar's other icons sit in — a second icon row inside the content sat
+    // at its own height and read as a different level of the UI.
+    // Added right-to-left, the way the leaf header stacks actions, so they read
+    // as: Tree, History, then More options.
+    const history = this.addAction("lucide-history", "History", () =>
+      this.app.git.reviewSession.setMode("history"),
+    );
+    const tree = this.addAction("lucide-list-tree", "Tree", () =>
+      this.app.git.reviewSession.setMode("tree"),
+    );
+    this.modeButtonEls = { tree, history };
     this.sessionRefs = [
       session.on<[GitReviewSource]>("source-change", (source) => {
         this.source = source;
@@ -127,16 +138,6 @@ export class GitNavView extends ItemView {
   private buildShell(): void {
     this.contentEl.empty();
     const root = createDiv("git-nav", this.contentEl);
-    // Tree | History sits with the list it switches, in the explorer's own
-    // toolbar shape (app.js ~3218382): nav-header > nav-buttons-container with
-    // clickable-icon nav-action-button entries, the current one .is-active.
-    // Two buttons rather than one flip icon — a sidebar shows its state.
-    const headerEl = createDiv("nav-header", root);
-    const buttonsEl = createDiv("nav-buttons-container", headerEl);
-    this.modeButtonEls = {
-      tree: this.createModeButton(buttonsEl, "tree", "lucide-list-tree", "Tree"),
-      history: this.createModeButton(buttonsEl, "history", "lucide-history", "History"),
-    };
     this.bodyEl = createDiv("git-nav-tree", root);
     this.bodyEl.addEventListener("scroll", () => this.maybeLoadMoreHistory(), { passive: true });
     this.footerEl = createDiv("git-nav-footer", root);
@@ -149,20 +150,6 @@ export class GitNavView extends ItemView {
         this.renderBody();
       });
     this.searchComponent.inputEl.setAttribute("aria-label", "Filter changed files");
-  }
-
-  private createModeButton(
-    parentEl: HTMLElement,
-    mode: GitNavMode,
-    icon: string,
-    label: string,
-  ): HTMLElement {
-    const buttonEl = createDiv("clickable-icon nav-action-button", parentEl);
-    setIcon(buttonEl, icon);
-    setTooltip(buttonEl, label);
-    buttonEl.setAttribute("aria-label", label);
-    buttonEl.addEventListener("click", () => this.app.git.reviewSession.setMode(mode));
-    return buttonEl;
   }
 
   private render(): void {
