@@ -6,7 +6,7 @@
  * 🔄 Self-reference: When this file changes, update this header
  */
 
-import { homedir } from "node:os";
+import { homedir, userInfo } from "node:os";
 import type { ElectronTerminalApi, PtyHandle, PtySpawnOptions } from "@app/shared/terminalApi";
 
 /**
@@ -46,7 +46,12 @@ export function createElectronTerminalApi(
   loadNodePty: () => NodePtyModule = () => require("node-pty") as NodePtyModule,
   platform: NodeJS.Platform = process.platform,
 ): ElectronTerminalApi {
-  const defaultShell = process.env.SHELL || (platform === "darwin" ? "/bin/zsh" : "/bin/bash");
+  // The LOGIN shell from passwd, the way Terminal.app and iTerm resolve it —
+  // not `$SHELL`, which is inherited from whatever launched the app. Started
+  // from a fish terminal, `$SHELL` is fish; started from Finder it is the
+  // login shell, and the same app opened two different shells.
+  const defaultShell =
+    userInfo().shell || process.env.SHELL || (platform === "darwin" ? "/bin/zsh" : "/bin/bash");
   return {
     available: platform === "darwin" || platform === "linux",
     platform,
