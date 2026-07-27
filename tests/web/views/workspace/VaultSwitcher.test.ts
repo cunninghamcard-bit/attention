@@ -63,7 +63,7 @@ describe("vault switcher menu", () => {
     const titles = [...menu!.querySelectorAll(".menu-item-title")].map((el) => el.textContent);
     expect(titles).toContain("demo");
     expect(titles).toContain("notes");
-    expect(titles).toContain("Manage vaults...");
+    expect(titles).toContain("Open folder...");
     const checked = menu!.querySelector(".menu-item.mod-checked .menu-item-title");
     expect(checked?.textContent).toBe("demo");
   });
@@ -80,15 +80,23 @@ describe("vault switcher menu", () => {
     expect(ipc.sendSync).toHaveBeenCalledWith("open-url", "https://help.obsidian.md/");
   });
 
-  it("opens the starter through the sync starter IPC from Manage vaults...", async () => {
+  it("opens a folder through the system picker, then vault-open", async () => {
     const ipc = installIpc();
+    ipc.invoke = vi.fn(async () => ["/vaults/picked"]);
     const { menu } = await openSwitcherMenu();
     const items = [...menu!.querySelectorAll<HTMLElement>(".menu-item")];
-    const manage = items.find(
-      (el) => el.querySelector(".menu-item-title")?.textContent === "Manage vaults...",
+    const open = items.find(
+      (el) => el.querySelector(".menu-item-title")?.textContent === "Open folder...",
     );
-    manage!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(ipc.sendSync).toHaveBeenCalledWith("starter");
+    open!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+    await Promise.resolve();
+    // No chooser screen in between: the OS picker IS the surface.
+    expect(ipc.invoke).toHaveBeenCalledWith("dialog:open", {
+      title: "Open folder",
+      directory: true,
+    });
+    expect(ipc.sendSync).toHaveBeenCalledWith("vault-open", "/vaults/picked", false);
   });
 
   it("opens the picked vault through the vault-open IPC and not for the current one", async () => {

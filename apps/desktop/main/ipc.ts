@@ -45,6 +45,7 @@ export interface IpcDeps {
   registry: VaultRegistry;
   vaultWindows: {
     openVault(id: string, focus?: boolean): unknown;
+    switchVault(webContentsId: number, id: string): boolean;
     isOpen(id: string): boolean;
     vaultIdForWebContents(webContentsId: number): string | null;
   };
@@ -55,9 +56,9 @@ export interface IpcDeps {
     documentsDir: string;
     sandboxVaultPath: string;
     defaultVaultPath: string;
+    /** Electron userData — the app's one config home. */
+    configHome: string;
   };
-  /** Open-or-focus the starter (vault chooser) window — real `pe()`. */
-  openStarter(): void;
   /** shell.trashItem — real `trash` handler. */
   trashItem(path: string): Promise<void>;
   /** shell.openExternal — real `open-url` for external schemes. */
@@ -106,7 +107,10 @@ export function createIpcHandlers(deps: IpcDeps): Record<string, IpcListener> {
     // --- Vault registry (sync) ---
     vault: (e) => {
       const id = vaultWindows.vaultIdForWebContents(e.sender.id);
-      e.returnValue = id ? { id, path: resolve(registry.vaults[id].path) } : {};
+      // `home` is where config lives — one directory for the whole app, never
+      // inside the opened folder. The renderer roots its JsonStore there.
+      const home = deps.paths.configHome;
+      e.returnValue = id ? { id, path: resolve(registry.vaults[id].path), home } : { home };
     },
     "vault-list": (e) => (e.returnValue = registry.vaults),
     "vault-open": (e, pathArg, createArg) => {
@@ -128,7 +132,9 @@ export function createIpcHandlers(deps: IpcDeps): Record<string, IpcListener> {
         e.returnValue = result.error;
         return;
       }
-      vaultWindows.openVault(result.id);
+      // A vault window switches in place; anything else (cold start, a URL)
+      // has no window to reuse and gets one.
+      if (!vaultWindows.switchVault(e.sender.id, result.id)) vaultWindows.openVault(result.id);
       e.returnValue = true;
     },
     "vault-remove": (e, pathArg) => {
@@ -138,13 +144,6 @@ export function createIpcHandlers(deps: IpcDeps): Record<string, IpcListener> {
       e.returnValue = registry.moveByPath(fromArg as string, toArg as string, (id) =>
         vaultWindows.isOpen(id),
       );
-    },
-
-    // Real: `ipcMain.on("starter", t => { t.returnValue = null; pe() })` —
-    // sync so openVaultChooser callers can `window.close()` right after.
-    starter: (e) => {
-      e.returnValue = null;
-      deps.openStarter();
     },
 
     // --- Actions ---

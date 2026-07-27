@@ -21,7 +21,7 @@ export interface ObsidianUrlDeps {
     mostRecentVaultId(): string | null;
     openAllPersisted(): number;
   };
-  /** Open the starter window (sync-setup / choose-vault). */
+  /** Ask for a folder (sync-setup / choose-vault): the system picker. */
   openStarter(): void;
   /** Show the "Vault not found" error. */
   showVaultNotFound(url: string): void;

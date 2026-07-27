@@ -1,17 +1,16 @@
 /**
- * Input: electron, @electron/remote/main, node:path, node:fs, ./window, ./starter-window, ./foundation-ipc, ./state, ./json-store, ./settings
+ * Input: electron, @electron/remote/main, node:path, node:fs, ./window, ./foundation-ipc, ./state, ./json-store, ./settings
  * Output: None
  * Pos: Application code
  *
  * 🔄 Self-reference: When this file changes, update this header
  */
 
-import { app, BrowserWindow, ipcMain, nativeImage, screen, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, screen, shell } from "electron";
 import { initialize as initializeRemote } from "@electron/remote/main";
 import { join } from "node:path";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { defaultPreloadPath } from "./window";
-import { isStarterOpen, openStarter } from "./starter-window";
 import { registerFoundationIpc } from "./foundation-ipc";
 import { mainState } from "./state";
 import { JsonStore } from "./json-store";
@@ -124,15 +123,31 @@ if (!gotLock) {
     // workbench wants its command surface always up); real Obsidian defaults
     // off behind Settings > General > Advanced. `cli: false` still gates.
     isCliEnabled: () => settings.cli !== false,
-    isStarterOpen,
     frameStyle: () => settings.frame ?? "hidden",
     iconPath: configuredIconPath,
   });
 
-  const openStarterWindow = () => openStarter({ preloadPath: defaultPreloadPath(here) });
+  /**
+   * Opening a folder is the system picker and nothing else — there is no vault
+   * chooser screen. Cancelling with no window open leaves the app with nothing
+   * to show and no way back to it, so it quits instead of idling invisibly.
+   */
+  const chooseFolder = (): void => {
+    void dialog
+      .showOpenDialog({ properties: ["openDirectory", "createDirectory"], buttonLabel: "Open" })
+      .then(({ filePaths }) => {
+        const chosen = filePaths[0];
+        if (!chosen) {
+          if (BrowserWindow.getAllWindows().length === 0) app.quit();
+          return;
+        }
+        const result = registry.registerPath(chosen);
+        if ("id" in result) vaultWindows.openVault(result.id);
+      });
+  };
 
   // Hermetic-test seam: E2E_VAULT_PATH pins a vault that is created and
-  // opened directly, so e2e runs land in a window without driving the starter.
+  // opened directly, so e2e runs land in a window without a folder picker.
   const ensureSeededVault = (): string | null => {
     const seededPath = process.env.E2E_VAULT_PATH;
     if (!seededPath) return null;
@@ -145,22 +160,22 @@ if (!gotLock) {
     return "id" in result ? result.id : null;
   };
 
-  // Real `ke()`: reopen every vault persisted as open; zero windows means the
-  // starter (vault chooser) comes up instead.
+  // Reopen every folder persisted as open; zero windows means the system
+  // folder picker comes up instead.
   const openStartupWindows = () => {
     const opened = vaultWindows.openAllPersisted();
     if (opened > 0 || BrowserWindow.getAllWindows().length > 0) return;
     const seededVaultId = ensureSeededVault();
     if (seededVaultId) vaultWindows.openVault(seededVaultId);
-    else openStarterWindow();
+    else chooseFolder();
   };
 
-  // Real `$e(url)` dispatch — sync-setup/choose-vault open the starter.
+  // URL dispatch — sync-setup/choose-vault land on the folder picker.
   const dispatchObsidianUrl = (url: string) =>
     handleObsidianUrl(url, {
       registry,
       vaultWindows,
-      openStarter: openStarterWindow,
+      openStarter: chooseFolder,
       showVaultNotFound: (u) => console.error(`No vault for URL ${u}`),
       isWindows: process.platform === "win32",
     });
@@ -178,8 +193,8 @@ if (!gotLock) {
         // (deliberate product divergence; set `cli: false` in obsidian.json to
         // disable, same persisted flag as real Obsidian).
         isCliEnabled: () => settings.cli !== false,
-        // Real second-instance-no-args behavior is `pe()` — the starter itself.
-        openStarter: openStarterWindow,
+        // Real second-instance-no-args behavior is `pe()` — the folder picker here.
+        openStarter: chooseFolder,
         handleUrl: (url) => {
           dispatchObsidianUrl(url);
           return `Processed URI ${url}`;
@@ -255,7 +270,6 @@ if (!gotLock) {
     registerIpcHandlers(ipcMain, {
       registry,
       vaultWindows,
-      openStarter: openStarterWindow,
       paths: {
         resources: resourcesDir,
         version: app.getVersion(),
@@ -263,6 +277,7 @@ if (!gotLock) {
         documentsDir: safePath("documents"),
         sandboxVaultPath: join(app.getPath("userData"), "Attention Sandbox"),
         defaultVaultPath: join(safePath("documents"), "Attention Vault"),
+        configHome: app.getPath("userData"),
       },
       trashItem: (p) => shell.trashItem(p),
       openExternal: (url) => void shell.openExternal(url),

@@ -31,6 +31,7 @@ const { FakeBrowserWindow, enableRemote } = vi.hoisted(() => {
       openDevTools: vi.fn(),
       isDevToolsOpened: () => false,
       setWindowOpenHandler: vi.fn(),
+      reload: vi.fn(),
     };
     private listeners = new Map<string, Array<(...args: unknown[]) => void>>();
 
@@ -126,14 +127,12 @@ let store: JsonStore;
 let registry: VaultRegistry;
 let manager: VaultWindowManager;
 let quitting: boolean;
-let starterOpen: boolean;
 let vaultId: string;
 
 beforeEach(() => {
   vi.useFakeTimers();
   FakeBrowserWindow.instances = [];
   quitting = false;
-  starterOpen = false;
   dir = fs.mkdtempSync(join(tmpdir(), "vault-windows-"));
   const vaultPath = join(dir, "Vault");
   fs.mkdirSync(vaultPath);
@@ -147,7 +146,6 @@ beforeEach(() => {
     displays: DISPLAYS,
     preloadPath: "/tmp/preload.cjs",
     isQuitting: () => quitting,
-    isStarterOpen: () => starterOpen,
   });
 });
 
@@ -200,18 +198,45 @@ describe("VaultWindowManager (real de/H/ve)", () => {
     expect((first as unknown as InstanceType<typeof FakeBrowserWindow>).focused).toBe(true);
   });
 
-  it("clears the open flag on close while the starter remains", () => {
+  it("clears the open flag on close while another window remains", () => {
+    const otherPath = join(dir, "Other");
+    fs.mkdirSync(otherPath);
+    const otherId = (registry.registerPath(otherPath) as { id: string }).id;
     manager.openVault(vaultId);
+    manager.openVault(otherId);
     expect(registry.vaults[vaultId].open).toBe(true);
-    starterOpen = true;
     FakeBrowserWindow.instances[0].close();
     expect(registry.vaults[vaultId].open).toBeUndefined();
-    expect(manager.openCount).toBe(0);
+    expect(manager.openCount).toBe(1);
+  });
+
+  it("switches a live window to another folder instead of opening a second one", () => {
+    const otherPath = join(dir, "Other");
+    fs.mkdirSync(otherPath);
+    const otherId = (registry.registerPath(otherPath) as { id: string }).id;
+    manager.openVault(vaultId);
+    const [win] = FakeBrowserWindow.instances;
+
+    expect(manager.switchVault(win.webContents.id, otherId)).toBe(true);
+
+    // One window, now pointing at the other folder: the renderer re-asks main
+    // which folder it is on reload, so nothing else has to know it changed.
+    expect(FakeBrowserWindow.instances).toHaveLength(1);
+    expect(win.webContents.reload).toHaveBeenCalledTimes(1);
+    expect(manager.vaultIdForWebContents(win.webContents.id)).toBe(otherId);
+    expect(registry.vaults[otherId].open).toBe(true);
+    expect(registry.vaults[vaultId].open).toBeUndefined();
+  });
+
+  it("declines to switch when the caller is not a folder window", () => {
+    manager.openVault(vaultId);
+    // Cold start and URL dispatch land here, and fall through to opening one.
+    expect(manager.switchVault(9999, vaultId)).toBe(false);
   });
 
   it("keeps the open flag when the app's last window closes (relaunch restores it)", () => {
-    // Real closed handler: no starter and no other vault window remain, so
-    // the persisted flag survives and the next launch reopens the vault.
+    // No other window remains, so the persisted flag survives and the next
+    // launch reopens the folder.
     manager.openVault(vaultId);
     FakeBrowserWindow.instances[0].close();
     expect(registry.vaults[vaultId].open).toBe(true);
@@ -220,7 +245,6 @@ describe("VaultWindowManager (real de/H/ve)", () => {
   it("keeps the open flag while quitting so relaunch restores windows", () => {
     manager.openVault(vaultId);
     quitting = true;
-    starterOpen = true;
     FakeBrowserWindow.instances[0].close();
     expect(registry.vaults[vaultId].open).toBe(true);
   });

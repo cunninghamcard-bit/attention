@@ -583,13 +583,15 @@ export class App {
     };
   }
 
+  /**
+   * Only the JsonStore's own paths: config lives once under the config home,
+   * never inside an opened folder, so a `${vault.configDir}/app.json` write
+   * can no longer happen. The store forwards its raw events into the vault's
+   * `raw` channel (see onload), which is how these still arrive.
+   */
   private isConfigReloadPath(path: string): boolean {
-    const configDir = this.vault.configDir;
     return (
-      path === `${configDir}/app.json` ||
-      path === `${configDir}/appearance.json` ||
-      path === this.jsonStore.path("app.json") ||
-      path === this.jsonStore.path("appearance.json")
+      path === this.jsonStore.path("app.json") || path === this.jsonStore.path("appearance.json")
     );
   }
 

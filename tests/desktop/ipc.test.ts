@@ -20,7 +20,7 @@ let openSet: Set<string>;
 let webContentsToVault: Map<number, string>;
 let trashItem: ReturnType<typeof vi.fn<(path: string) => Promise<void>>>;
 let openExternal: ReturnType<typeof vi.fn<(url: string) => void>>;
-let openStarter: ReturnType<typeof vi.fn<() => void>>;
+let switchVault: ReturnType<typeof vi.fn<(wcId: number, id: string) => boolean>>;
 let performRequest: ReturnType<typeof vi.fn<(p: RequestUrlParams) => Promise<RequestUrlResult>>>;
 let appearance: NonNullable<IpcDeps["appearance"]>;
 let handlers: Record<string, (event: IpcSyncEvent, ...args: unknown[]) => void>;
@@ -32,6 +32,7 @@ const PATHS: IpcDeps["paths"] = {
   documentsDir: "/documents",
   sandboxVaultPath: "/userData/Obsidian Sandbox",
   defaultVaultPath: "/documents/Obsidian Vault",
+  configHome: "/userData",
 };
 
 function makeEvent(senderId = 1): IpcSyncEvent & { replies: Array<[string, unknown]> } {
@@ -53,7 +54,8 @@ beforeEach(() => {
   webContentsToVault = new Map();
   trashItem = vi.fn<(path: string) => Promise<void>>(() => Promise.resolve());
   openExternal = vi.fn<(url: string) => void>();
-  openStarter = vi.fn<() => void>();
+  // Default: not a vault window, so vault-open falls through to openVault.
+  switchVault = vi.fn<(wcId: number, id: string) => boolean>(() => false);
   performRequest = vi.fn<(p: RequestUrlParams) => Promise<RequestUrlResult>>(() =>
     Promise.resolve({ status: 200, headers: {}, body: new ArrayBuffer(0) }),
   );
@@ -69,11 +71,11 @@ beforeEach(() => {
     registry,
     vaultWindows: {
       openVault,
+      switchVault,
       isOpen: (id) => openSet.has(id),
       vaultIdForWebContents: (wcId) => webContentsToVault.get(wcId) ?? null,
     },
     paths: PATHS,
-    openStarter,
     trashItem,
     openExternal,
     performRequest,
@@ -113,7 +115,7 @@ describe("IPC vault channels", () => {
     expect(event.returnValue).toBe(registry.vaults);
   });
 
-  it("vault maps the sender webContents to {id, path}, else {}", () => {
+  it("vault maps the sender webContents to {id, path, home}, else just the home", () => {
     const vaultPath = join(dir, "V");
     fs.mkdirSync(vaultPath);
     const { id } = registry.registerPath(vaultPath) as { id: string };
@@ -121,11 +123,12 @@ describe("IPC vault channels", () => {
 
     const known = makeEvent(7);
     handlers.vault(known);
-    expect(known.returnValue).toEqual({ id, path: resolve(vaultPath) });
+    // `home` rides along on every reply: config is the app's, not the folder's.
+    expect(known.returnValue).toEqual({ id, path: resolve(vaultPath), home: "/userData" });
 
     const unknown = makeEvent(99);
     handlers.vault(unknown);
-    expect(unknown.returnValue).toEqual({});
+    expect(unknown.returnValue).toEqual({ home: "/userData" });
   });
 
   it("vault-open registers and opens the window, returning true", () => {
@@ -172,11 +175,16 @@ describe("IPC vault channels", () => {
     expect(move.returnValue).toBe("EVAULTOPEN");
   });
 
-  it("starter opens the vault chooser and acks null (sync)", () => {
+  it("vault-open switches the calling window in place when it has one", () => {
+    const vaultPath = join(dir, "InPlace");
+    fs.mkdirSync(vaultPath);
+    switchVault.mockReturnValue(true);
     const event = makeEvent();
-    handlers.starter(event);
-    expect(openStarter).toHaveBeenCalledTimes(1);
-    expect(event.returnValue).toBeNull();
+    handlers["vault-open"](event, vaultPath, false);
+    expect(event.returnValue).toBe(true);
+    // The whole point: switching folders reuses the window it was asked from.
+    expect(switchVault).toHaveBeenCalledTimes(1);
+    expect(openVault).not.toHaveBeenCalled();
   });
 });
 

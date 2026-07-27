@@ -44,10 +44,9 @@ export default defineConfig({
     emptyOutDir: false,
     rollupOptions: {
       input: {
-        // Two pages, like the real app: the vault renderer (index.html) and
-        // the starter/vault-chooser page (starter.html).
+        // One page: the folder renderer. There is no vault-chooser page —
+        // opening a folder is the system picker.
         index: resolve(__dirname, "index.html"),
-        starter: resolve(__dirname, "starter.html"),
       },
     },
   },

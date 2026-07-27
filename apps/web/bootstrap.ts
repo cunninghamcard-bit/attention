@@ -126,26 +126,32 @@ async function seedCodeDemoFiles(app: App): Promise<void> {
  */
 function provideDesktopAdapter(parent: HTMLElement): void {
   const win = parent.ownerDocument.defaultView ?? window;
-  const vaultPath = resolveElectronVaultPath(win);
-  const adapter = vaultPath ? new FileSystemAdapter(vaultPath) : undefined;
-  provideAppAdapter(adapter);
-  // Vault config (core-plugins/app/appearance/workspace) persists into the
-  // vault's `.obsidian/` like real Obsidian — without this the JsonStore is
-  // memory-only and every setting evaporates on restart.
-  provideJsonStoreAdapter(adapter ? new FileSystemJsonStoreAdapter(adapter) : undefined);
+  const { path: vaultPath, home } = resolveElectronVault(win);
+  provideAppAdapter(vaultPath ? new FileSystemAdapter(vaultPath) : undefined);
+  // Config is the app's, not the folder's: `.obsidian/` lives once under the
+  // config home and NOTHING is written into an opened folder. Content and
+  // config are two adapters on two different roots from here on.
+  provideJsonStoreAdapter(
+    home ? new FileSystemJsonStoreAdapter(new FileSystemAdapter(home)) : undefined,
+  );
 }
 
-function resolveElectronVaultPath(win: Window): string | null {
+function resolveElectronVault(win: Window): { path: string | null; home: string | null } {
   try {
     const electron = (
       win as Window & {
         electron?: { ipcRenderer?: { sendSync?: (channel: string) => unknown } };
       }
     ).electron;
-    const info = electron?.ipcRenderer?.sendSync?.("vault") as { path?: string } | undefined;
-    if (info && typeof info.path === "string" && info.path.length > 0) return info.path;
+    const info = electron?.ipcRenderer?.sendSync?.("vault") as
+      | { path?: string; home?: string }
+      | undefined;
+    return {
+      path: typeof info?.path === "string" && info.path.length > 0 ? info.path : null,
+      home: typeof info?.home === "string" && info.home.length > 0 ? info.home : null,
+    };
   } catch {
     // Not running under Electron.
+    return { path: null, home: null };
   }
-  return null;
 }

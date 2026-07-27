@@ -828,7 +828,6 @@ describe("Rule: ipc surface freeze", () => {
       "resources",
       "set-icon",
       "set-menu",
-      "starter",
       "trash",
       "update-menu-items",
       "vault",

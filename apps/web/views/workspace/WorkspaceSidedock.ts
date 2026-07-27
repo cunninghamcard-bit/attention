@@ -251,11 +251,22 @@ export class WorkspaceSidedock extends WorkspaceSplit {
     menu.addSeparator();
     menu.addItem((item) =>
       item
-        // Real `gm.interface.manageVaults()` — opens the starter (vault
-        // chooser) singleton; the current vault window stays open.
-        .setTitle("Manage vaults...")
+        // No vault-chooser screen to manage anything in: opening a folder is
+        // the system picker, and the list above is the management surface.
+        .setTitle("Open folder...")
         .setIcon("open-vault")
-        .onClick(() => ipc.sendSync?.("starter")),
+        .onClick(() => {
+          void (async () => {
+            const paths = await ipc.invoke?.("dialog:open", {
+              title: "Open folder",
+              directory: true,
+            });
+            const path = Array.isArray(paths) && typeof paths[0] === "string" ? paths[0] : null;
+            if (!path) return;
+            if (ipc.sendSync?.("vault-open", path, false) !== true)
+              new Notice("Failed to open folder");
+          })();
+        }),
     );
     menu.setParentElement(switcherEl);
     menu.showAtMouseEvent(event);

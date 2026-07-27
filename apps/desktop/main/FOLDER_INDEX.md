@@ -18,7 +18,6 @@
 - `renderer-target.ts` - Exports APP_ORIGIN and 4 more
 - `session-hardening.ts` - Exports rewriteRequestHeaders and 3 more
 - `settings.ts` - Exports ObsidianSettings and 3 more
-- `starter-window.ts` - Exports StarterWindowDeps and 2 more
 - `state.ts` - Exports MainState and 1 more
 - `system-fonts.ts` - Exports listSystemFontFamilies
 - `vault-registry.ts` - Exports VaultEntry and 3 more

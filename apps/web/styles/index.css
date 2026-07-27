@@ -71,7 +71,6 @@
 @import "./features/search.css";
 @import "./features/tag-pane-canvas.css";
 @import "./features/webviewer-workspaces.css";
-@import "./workspace/starter-splash.css";
 @import "./base/platform-mobile.css";
 @import "./deviations/reading-view.css";
 @import "../views/code-view.css";
@@ -89,4 +88,3 @@
 @import "../builtin/github/github-nav.css";
 @import "../builtin/github/github-profile.css";
 @import "../builtin/git/review/git-review.css";
-@import "../app/starter/starter.css";

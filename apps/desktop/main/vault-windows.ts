@@ -23,6 +23,10 @@ import { buildObsActScript, type ObsidianAction } from "./obsidian-url";
 
 /** A vault window plus the mutable bookkeeping real Obsidian hangs off it. */
 interface TrackedWindow {
+  /** Mutable: switchVault re-points a live window at another vault, and the
+   * close/closed handlers below must follow it rather than the id they were
+   * created under. */
+  vaultId: string;
   win: BrowserWindow;
   state: WindowState;
   focusTime: number;
@@ -39,9 +43,6 @@ export interface VaultWindowDeps {
   // real `Xe` gates independently of `et`, since it is reachable from other
   // main-side paths. Absent (tests) means enabled.
   isCliEnabled?: () => boolean;
-  // Whether the starter (vault chooser) window is open — real `le` in the
-  // closed handler. Absent means no starter window exists.
-  isStarterOpen?: () => boolean;
   frameStyle?: () => string;
   iconPath?: () => string | undefined;
 }
@@ -93,7 +94,7 @@ export class VaultWindowManager {
       },
       ...bounds,
     });
-    const entry: TrackedWindow = { win, state, focusTime: Date.now(), loaded: false };
+    const entry: TrackedWindow = { vaultId, win, state, focusTime: Date.now(), loaded: false };
     this.tracked.set(vaultId, entry);
 
     enableRemote(win.webContents);
@@ -156,26 +157,59 @@ export class VaultWindowManager {
 
     win.on("close", (event) => {
       captureState();
-      saveWindowState(this.deps.store, vaultId, entry.state);
+      saveWindowState(this.deps.store, entry.vaultId, entry.state);
       // Real: 3s failsafe destroy unless the close was default-prevented.
       setTimeout(() => {
         if (!event.defaultPrevented && !win.isDestroyed()) win.destroy();
       }, 3000);
     });
     win.on("closed", () => {
-      this.tracked.delete(vaultId);
-      // Real closed handler: `!ye && (le || Object.keys(H).length > 0) &&
-      // Ke(e, !1)` — the persisted `open` flag is cleared only when the
-      // starter or another vault window remains. Closing the app's last
-      // window keeps the flag, so the next launch restores the same vault;
-      // closing while switching (starter open) forgets it.
-      const othersRemain = this.deps.isStarterOpen?.() || this.tracked.size > 0;
-      if (!this.deps.isQuitting() && othersRemain) this.deps.registry.setOpen(vaultId, false);
+      this.tracked.delete(entry.vaultId);
+      // The persisted `open` flag is cleared only while another window
+      // remains: closing the app's last window keeps it, so the next launch
+      // restores the same folder. (Real also kept it open while the starter
+      // window was up; there is no starter window here.)
+      if (!this.deps.isQuitting() && this.tracked.size > 0)
+        this.deps.registry.setOpen(entry.vaultId, false);
     });
 
     void win.loadURL(resolveRendererUrl()).then(reveal, reveal);
     this.deps.registry.setOpen(vaultId, true);
     return win;
+  }
+
+  /**
+   * Point an already-open window at another vault and reload it, instead of
+   * opening a second window. The renderer asks main which vault it is at boot
+   * (`sendSync("vault")`), so a reload is the whole switch — nothing in the
+   * renderer needs to know a vault can change under it.
+   *
+   * Returns false when the caller is not a vault window, which is how the
+   * cold-start and URL paths fall through to opening one.
+   */
+  switchVault(webContentsId: number, vaultId: string): boolean {
+    const currentId = this.vaultIdForWebContents(webContentsId);
+    if (!currentId) return false;
+    if (currentId === vaultId) return true;
+    const entry = this.tracked.get(currentId);
+    if (!entry || entry.win.isDestroyed()) return false;
+    // Already open elsewhere: focus that window rather than show one vault twice.
+    const existing = this.tracked.get(vaultId);
+    if (existing && !existing.win.isDestroyed()) {
+      if (existing.win.isMinimized()) existing.win.restore();
+      existing.win.focus();
+      return true;
+    }
+    // Bounds belong to the window the user is looking at, so they are saved
+    // under the vault being left and the live window keeps them.
+    saveWindowState(this.deps.store, currentId, entry.state);
+    this.tracked.delete(currentId);
+    entry.vaultId = vaultId;
+    this.tracked.set(vaultId, entry);
+    this.deps.registry.setOpen(currentId, false);
+    this.deps.registry.setOpen(vaultId, true);
+    entry.win.webContents.reload();
+    return true;
   }
 
   /**

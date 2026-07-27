@@ -1,6 +1,6 @@
 /**
  * Input: None
- * Output: APP_ORIGIN, APP_INDEX_URL, resolveRendererUrl, resolveStarterUrl, isDevRendererTarget
+ * Output: APP_ORIGIN, APP_INDEX_URL, resolveRendererUrl, isDevRendererTarget
  * Pos: Application code
  *
  * 🔄 Self-reference: When this file changes, update this header
@@ -22,17 +22,6 @@ export function resolveRendererUrl(env: NodeJS.ProcessEnv = process.env): string
   const devUrl = env.ELECTRON_RENDERER_URL;
   if (devUrl && devUrl.length > 0) return devUrl;
   return APP_INDEX_URL;
-}
-
-/**
- * The starter (vault chooser) page — real `se + "starter.html"`. Same dual
- * resolution as the index: Vite dev server page in development, `app://` in
- * production (starter.html is a second Vite entry).
- */
-export function resolveStarterUrl(env: NodeJS.ProcessEnv = process.env): string {
-  const devUrl = env.ELECTRON_RENDERER_URL;
-  if (devUrl && devUrl.length > 0) return new URL("starter.html", devUrl).href;
-  return `${APP_ORIGIN}starter.html`;
 }
 
 export function isDevRendererTarget(env: NodeJS.ProcessEnv = process.env): boolean {
