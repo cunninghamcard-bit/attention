@@ -1,5 +1,5 @@
 /**
- * Input: @pierre/diffs, ../../../app/App, ../../../core/Events, ../../../dom/dom, ../../../ui/Popover, ../../../views/ItemView, ../../../views/View, ../reviewSession, ./GitNavView
+ * Input: @pierre/diffs, ../../../app/App, ../../../core/Events, ../../../dom/dom, ../../../ui/Icon, ../../../ui/Popover, ../../../views/ItemView, ../../../views/View, ../reviewSession, ./GitNavView
  * Output: GitReviewSource, GitReviewView, openGitReview
  * Pos: Application code
  *
@@ -10,6 +10,7 @@ import { parseDiffFromFile } from "@pierre/diffs";
 import type { App } from "../../../app/App";
 import type { EventRef } from "../../../core/Events";
 import { createDiv } from "../../../dom/dom";
+import { setIcon } from "../../../ui/Icon";
 import { setTooltip } from "../../../ui/Popover";
 import { ItemView } from "../../../views/ItemView";
 import type { ViewStateResult } from "../../../views/View";
@@ -35,6 +36,7 @@ export class GitReviewView extends ItemView {
   private surface: ReviewSurface | null = null;
   private loadRequest = 0;
   private layoutActionEl: HTMLElement | null = null;
+  private collapseActionEl: HTMLElement | null = null;
 
   getViewType(): string {
     return GitReviewView.VIEW_TYPE;
@@ -60,6 +62,10 @@ export class GitReviewView extends ItemView {
     // reading-toggle idiom). Tree/History is not here: it belongs with the list
     // it switches, in the right git-nav leaf's own nav-header.
     this.addAction("lucide-rotate-ccw", "Refresh", () => void this.reloadReview());
+    this.collapseActionEl = this.addAction("lucide-chevrons-down-up", "Collapse all", () => {
+      this.surface?.toggleCollapseAll();
+      this.syncHeaderActions();
+    });
     this.layoutActionEl = this.addAction("lucide-columns", "Switch to split view", () => {
       this.surface?.toggleDiffStyle();
       this.syncHeaderActions();
@@ -83,6 +89,16 @@ export class GitReviewView extends ItemView {
   }
 
   private syncHeaderActions(): void {
+    if (this.collapseActionEl) {
+      // One flip control, the file explorer's convention: it names what the
+      // next click does, not what the list currently is.
+      const expanded = this.surface?.hasExpanded() ?? true;
+      setIcon(
+        this.collapseActionEl,
+        expanded ? "lucide-chevrons-down-up" : "lucide-chevrons-up-down",
+      );
+      setTooltip(this.collapseActionEl, expanded ? "Collapse all" : "Expand all");
+    }
     if (this.layoutActionEl) {
       const split = this.surface?.getDiffStyle() === "split";
       this.layoutActionEl.classList.toggle("is-active", split);

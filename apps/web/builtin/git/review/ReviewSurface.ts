@@ -149,6 +149,21 @@ export class ReviewSurface {
     props.onActivePathChange?.(this.activePath);
   }
 
+  /** True while any visible card is still open — what the collapse-all control
+   * flips on, the same test the file explorer's own toggle uses. */
+  hasExpanded(): boolean {
+    return this.visibleFiles().some((file) => !this.collapsed.has(file.path));
+  }
+
+  toggleCollapseAll(): void {
+    const files = this.visibleFiles();
+    if (this.hasExpanded()) for (const file of files) this.collapsed.add(file.path);
+    else for (const file of files) this.collapsed.delete(file.path);
+    // Items only: options are unchanged, so each card rebuilds on its own
+    // version and the list does not flash.
+    this.syncItems();
+  }
+
   /** A nav activation is an event, so repeating the current path scrolls again. */
   activatePath(path: string): void {
     if (!this.props.files.some((file) => file.path === path)) return;

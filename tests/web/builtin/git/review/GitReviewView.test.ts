@@ -242,6 +242,26 @@ describe("GitReviewView", () => {
     expect(view.contentEl.querySelector(".review-add-comment")).toBeNull();
   });
 
+  it("collapses and expands every card from one header control", async () => {
+    const { app } = await reviewApp();
+    await openGitReview(app);
+    const view = app.workspace.getLeavesOfType(GitReviewView.VIEW_TYPE)[0].view as GitReviewView;
+    await until(() => view.contentEl.querySelectorAll(".review-card-header").length === 2, "cards");
+
+    const toggle = view.actionsEl.querySelector(
+      '.view-action[aria-label="Collapse all"]',
+    ) as HTMLElement;
+    expect(toggle).not.toBeNull();
+
+    toggle.click();
+    // One control, and it names the next click: everything is closed, so the
+    // only thing left to offer is opening it again.
+    expect(view.actionsEl.querySelector('.view-action[aria-label="Expand all"]')).not.toBeNull();
+
+    (view.actionsEl.querySelector('.view-action[aria-label="Expand all"]') as HTMLElement).click();
+    expect(view.actionsEl.querySelector('.view-action[aria-label="Collapse all"]')).not.toBeNull();
+  });
+
   it("keeps Unified/Split in the leaf header and Tree/History out of it", async () => {
     const { app } = await reviewApp();
     await openGitReview(app);
