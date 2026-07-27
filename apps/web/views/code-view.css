@@ -1,6 +1,12 @@
+/* A reading surface establishes its own text size — .markdown-preview-view and
+ * .markdown-source-view do exactly this in app.css. Without it everything here
+ * inherits body's --font-ui-medium, which is a fixed 15px on desktop, so
+ * --code-size (0.875em) resolved to a constant and Appearance ▸ Font size moved
+ * markdown and nothing else. */
 .code-file-view {
   padding: 0;
   height: 100%;
+  font-size: var(--font-text-size);
 }
 .code-file-view .cm-editor {
   height: 100%;

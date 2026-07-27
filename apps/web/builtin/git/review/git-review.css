@@ -19,6 +19,11 @@
   --diffs-deletion-color: var(--color-red);
   --diffs-modified-color: var(--color-blue);
   --diffs-font-family: var(--font-monospace);
+  /* Same derivation markdown's code blocks use (--code-size is --font-smaller,
+     0.875em), resolved here against the text size rather than against body's
+     fixed UI size — pierre reads a length, not an em. */
+  --diffs-font-size: calc(var(--font-text-size) * 0.875);
+  --diffs-line-height: calc(var(--font-text-size) * 1.25);
   --diffs-header-font-family: var(--font-interface);
   /* body sets `user-select: none` (app.css) and that inherits through the
    * shadow boundary, so the diff text could be line-selected but never copied.
