@@ -93,7 +93,6 @@ export class ReviewSurface {
   private draftSeq = 0;
   private programmaticPath: string | null = null;
   private programmaticTimer: number | null = null;
-  private headerEls = new Map<string, HTMLElement>();
   private rowEls = new Map<string, HTMLElement>();
 
   constructor(container: HTMLElement, props: ReviewSurfaceProps) {
@@ -149,11 +148,13 @@ export class ReviewSurface {
   }
 
   /** Active-path sync is imperative class-toggling — a full CodeView
-   * re-render per scroll tick is exactly the jank this avoids. */
+   * re-render per scroll tick is exactly the jank this avoids.
+   *
+   * Only the nav rows take the mark. A card header is not a selectable row:
+   * every card in a scrolling list is equally "open", so painting one of them
+   * is-active reads as a selection the user never made — and the seed picks
+   * files[0], so it is always the top one. */
   private applyActivePath(): void {
-    for (const [path, header] of this.headerEls) {
-      header.classList.toggle("is-active", path === this.activePath);
-    }
     for (const [path, row] of this.rowEls) {
       row.classList.toggle("is-active", path === this.activePath);
     }
@@ -322,7 +323,6 @@ export class ReviewSurface {
   }
 
   private renderCodeView(): void {
-    this.headerEls.clear();
     if (this.props.files.length === 0) {
       this.codeRootEl.hidden = true;
       let empty = this.codeHostEl.querySelector<HTMLElement>(".review-empty-main");
@@ -382,6 +382,19 @@ export class ReviewSurface {
     };
   }
 
+  /**
+   * Push item state without touching the options. codeViewOptions() builds a
+   * fresh object every call — new closures, new unsafeCSS — and handing that to
+   * setOptions invalidates every record, so the whole list repaints and the
+   * cards you did not touch visibly flash. Items carry a version, which is what
+   * CodeView reconciles on: only the one whose collapsed flag moved rebuilds.
+   */
+  private syncItems(): void {
+    if (this.props.files.length === 0) return;
+    this.codeView.setItems(this.codeViewItems());
+    this.codeView.render(true);
+  }
+
   private codeViewItems(): CodeViewItem<CommentAnnotationMetadata>[] {
     return this.visibleFiles().map((file) => {
       const fileDrafts = this.drafts.filter((draft) => draft.path === file.path);
@@ -416,8 +429,6 @@ export class ReviewSurface {
     item.setCollapsible(true);
     item.setCollapsed(this.collapsed.has(path));
     const header = item.selfEl;
-    header.classList.toggle("is-active", this.activePath === path);
-    this.headerEls.set(path, header);
     item.innerEl.textContent = path;
     item.innerEl.setAttribute("title", path);
     const actionsEl = createSpan("tree-item-flair-outer review-card-actions");
@@ -472,7 +483,7 @@ export class ReviewSurface {
     item.onSelfClick = () => {
       if (this.collapsed.has(path)) this.collapsed.delete(path);
       else this.collapsed.add(path);
-      this.render();
+      this.syncItems();
     };
     item.onCollapseClick = () => {};
     return header;
@@ -573,7 +584,10 @@ export class ReviewSurface {
     }
     if (this.props.storageRoot) writeViewed(this.props.storageRoot, this.viewed);
     this.publishViewed();
-    this.render();
+    // The eye's own pressed state lives in the header, which the item rebuild
+    // re-renders; the sidebar row is repainted by publishViewed's listener.
+    this.renderSidebar();
+    this.syncItems();
   }
 
   private publishViewed(): void {
