@@ -1,5 +1,5 @@
 /**
- * Input: ../../app/App, ./reviewSession, @app/shared/gitApi
+ * Input: ../../app/App, ./GitAvatar, ./reviewSession, @app/shared/gitApi
  * Output: ElectronGitApi, GitExecResult, PrDraftComment, PrSummary, PrFileChange, PrComment, PrDetail, GitNumstatEntry, GitFileStatus, GitLogEntry
  * Pos: Application code
  *
@@ -7,6 +7,7 @@
  */
 
 import type { App } from "../../app/App";
+import { githubAvatarUrl } from "./GitAvatar";
 import { GitReviewSession } from "./reviewSession";
 import type { ElectronGitApi, GitExecResult } from "@app/shared/gitApi";
 
@@ -78,6 +79,7 @@ export interface GitLogEntry {
   hash: string;
   shortHash: string;
   author: string;
+  email?: string;
   avatarUrl?: string;
   date: string;
   subject: string;
@@ -298,8 +300,11 @@ export class GitService {
       .filter(Boolean)
       .map((line) => {
         const [hash, shortHash, author, email, date, subject] = line.split("\x1f");
-        const avatarUrl = email ? this.bridge?.gravatarUrl?.(email) : undefined;
-        return { hash, shortHash, author, avatarUrl, date, subject };
+        // The email alone resolves the avatar (see githubAvatarUrl) — no GitHub
+        // sign-in, no identity matching, no preload round-trip, and it works for
+        // co-authors, not just for whoever is logged in.
+        const avatarUrl = email ? githubAvatarUrl(email) : undefined;
+        return { hash, shortHash, author, email, avatarUrl, date, subject };
       })
       .filter((entry) => entry.hash && entry.subject !== undefined);
   }

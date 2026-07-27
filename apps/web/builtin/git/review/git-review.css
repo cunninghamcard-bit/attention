@@ -148,39 +148,60 @@
 
 /* Who wrote the commit under review, above its diffs. Composed from the
  * commit-meta components the history and log rows already use, so an author
- * reads the same everywhere. */
+ * reads the same everywhere — only bigger, because this is a header and not a
+ * row in a list of a hundred. */
 .review-source-header {
   display: flex;
   flex-direction: column;
-  gap: var(--size-2-2);
-  padding: var(--size-4-3);
+  gap: var(--size-4-3);
+  padding: var(--size-4-4) var(--size-4-4) var(--size-4-3);
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.review-source-meta {
+.review-source-identity {
   display: flex;
   align-items: center;
+  gap: var(--size-4-3);
+}
+
+/* The chip is sized for a list row (--icon-s). Here it anchors two lines of
+   identity, so it is parameterized up locally — the component keeps its own
+   color derivation and its own fallback. */
+.review-source-identity .git-avatar {
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+  font-size: var(--font-ui-medium);
+}
+
+.review-source-who {
+  display: flex;
+  flex-direction: column;
   gap: var(--size-2-1);
-  font-size: var(--font-ui-small);
-  color: var(--text-muted);
+  min-width: 0;
 }
 
-/* A button, so the SHA can be copied — but it reads as the same hash chip the
- * history rows show, not as a control. */
-.review-source-sha {
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin-inline-start: auto;
-  cursor: var(--cursor);
-}
-
-.review-source-sha:hover {
+.review-source-author {
+  font-weight: var(--font-semibold);
   color: var(--text-normal);
 }
 
+.review-source-when {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-source-copy {
+  margin-inline-start: auto;
+  flex: none;
+}
+
 .review-source-subject {
-  font-size: var(--font-ui-medium);
+  font-size: var(--font-ui-large);
+  line-height: var(--line-height-tight);
   color: var(--text-normal);
   white-space: pre-wrap;
 }

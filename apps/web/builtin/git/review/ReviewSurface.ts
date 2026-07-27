@@ -16,13 +16,14 @@ import { createDiv, createEl, createSpan } from "../../../dom/dom";
 import { composer } from "../../../ui/Composer";
 import { highlightWorkers } from "../../../ui/highlightWorkers";
 import { setIcon } from "../../../ui/Icon";
+import { setTooltip } from "../../../ui/Popover";
 import { Notice } from "../../../ui/Notice";
 import { setFileTypeIcon } from "../../../ui/FileTypeIcon";
 import { ProgressBarComponent, SearchComponent } from "../../../ui/Setting";
 import { TreeItem } from "../../../ui/TreeItem";
 import { writeClipboardText } from "../../../dom/Clipboard";
 import { renderGitAvatar } from "../GitAvatar";
-import { formatRelativeDate } from "../relativeDate";
+import { formatCommitDate } from "../relativeDate";
 import { DIFF_SEPARATOR_CSS } from "../diffSeparatorCss";
 import {
   isViewed,
@@ -73,6 +74,7 @@ export interface ReviewSurfaceProps {
     hash: string;
     shortHash: string;
     author: string;
+    email?: string;
     avatarUrl?: string;
     date: string;
     subject: string;
@@ -345,20 +347,32 @@ export class ReviewSurface {
     const commit = this.props.commit;
     this.sourceHeaderEl.toggle(Boolean(commit));
     if (!commit) return;
-    const metaEl = createDiv("review-source-meta", this.sourceHeaderEl);
-    const authorEl = createSpan("git-commit-author", metaEl);
-    renderGitAvatar(authorEl, commit.author, commit.avatarUrl);
-    createSpan({ text: ` · ${formatRelativeDate(commit.date)}` }, metaEl);
-    const hashEl = createEl(
+    const identityEl = createDiv("review-source-identity", this.sourceHeaderEl);
+    // The chip alone: this header lays the name out itself, on its own line
+    // above the date, with the chip spanning both.
+    renderGitAvatar(identityEl, commit.author, commit.avatarUrl, false);
+    const whoEl = createDiv("review-source-who", identityEl);
+    createDiv({ cls: "review-source-author", text: commit.author }, whoEl);
+    createDiv(
+      {
+        cls: "review-source-when",
+        text: commit.email
+          ? `${formatCommitDate(commit.date)} · ${commit.email}`
+          : formatCommitDate(commit.date),
+      },
+      whoEl,
+    );
+    const copyEl = createEl(
       "button",
       {
-        cls: "git-commit-hash review-source-sha",
-        attr: { type: "button", title: "Copy commit SHA", "aria-label": "Copy commit SHA" },
-        text: commit.shortHash,
+        cls: "clickable-icon review-source-copy",
+        attr: { type: "button", "aria-label": "Copy commit SHA" },
       },
-      metaEl,
+      identityEl,
     );
-    hashEl.addEventListener("click", () => {
+    setIcon(copyEl, "lucide-copy");
+    setTooltip(copyEl, "Copy commit SHA");
+    copyEl.addEventListener("click", () => {
       void writeClipboardText(commit.hash);
       new Notice("Copied commit SHA");
     });
