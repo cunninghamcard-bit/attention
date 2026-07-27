@@ -251,6 +251,16 @@ export const createResttyRenderer: TerminalRendererFactory = async (options) => 
         terminal: {
           renderer: "auto",
           fontSize: options.fontSize ?? 13,
+          // Powerline separators are EM-box glyphs meant to fill a cell edge to
+          // edge. restty's default sizing mode is "height" — fontSize read as
+          // ascender+descender+lineGap — which rasterizes them a hair short of
+          // the cell and leaves a seam between segments. "em" makes the glyph
+          // box and the cell agree.
+          fontSizeMode: "em",
+          // …and hinting so those edges land on whole pixels instead of
+          // half-covered ones. Off by default; a terminal grid is exactly the
+          // case it exists for.
+          fontHinting: true,
           fonts: families.length
             ? families.map((family) => ({ family, local: "prefer" as const }))
             : undefined,
