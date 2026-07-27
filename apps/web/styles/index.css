@@ -72,7 +72,6 @@
 @import "./features/tag-pane-canvas.css";
 @import "./features/webviewer-workspaces.css";
 @import "./base/platform-mobile.css";
-@import "./deviations/reading-view.css";
 @import "../views/code-view.css";
 @import "../builtin/terminal/terminal.css";
 @import "../ui/file-type-icon.css";

@@ -8,7 +8,7 @@ const pathSpecifier = "node:path";
  *  1. index.css is the single entry point and its import order IS the
  *     cascade — the faithful layers in legacy artifact order, then every
  *     own stylesheet (component styles under ui/, builtin/, views/, app/,
- *     plus the registered deviations under styles/deviations/).
+ *     plus any registered deviations under styles/deviations/).
  *  2. Every stylesheet — faithful under styles/ and own next to its
  *     component — is imported exactly once (no orphans, no doubles).
  *  3. The design tokens themes and plugins depend on stay defined.
@@ -26,7 +26,7 @@ const FAITHFUL_LAYERS = [
   "features/",
 ];
 
-// Own styles: component stylesheets living WITH their components, plus the
+// Own styles: component stylesheets living WITH their components, plus any
 // registered deviations under styles/deviations/ (one file per deviation,
 // each carrying its rationale — docs/architecture/style-deviations).
 const OWN_PREFIXES = ["deviations/", "../ui/", "../builtin/", "../views/", "../app/"];
@@ -140,9 +140,6 @@ const RESTYLE_ALLOWLIST = new Set([
   // VERDICT: the product brand deliberately replaces Obsidian's
   // splash-brand on the starter screen.
   "../app/starter/starter.css",
-  // VERDICT: CSS stand-in for Obsidian's runtime container sizing —
-  // measured and documented in the file header; reconstruction necessity.
-  "deviations/reading-view.css",
 ]);
 
 const CLASS_RE = /\.(-?[A-Za-z_][\w-]*)/g;
@@ -290,12 +287,14 @@ async function loadWallInputs(): Promise<{
       });
     });
   }
-  walkCss("apps/web/styles/deviations", (full) => {
-    ownSheets.push({
-      rel: path.relative("apps/web/styles", full),
-      css: fs.readFileSync(full, "utf8"),
+  if (fs.existsSync("apps/web/styles/deviations")) {
+    walkCss("apps/web/styles/deviations", (full) => {
+      ownSheets.push({
+        rel: path.relative("apps/web/styles", full),
+        css: fs.readFileSync(full, "utf8"),
+      });
     });
-  });
+  }
   return { faithfulClasses, faithfulTokens, ownSheets };
 }
 
@@ -304,6 +303,7 @@ async function load(specifier: string): Promise<unknown> {
 }
 
 interface FsModule {
+  existsSync(path: string): boolean;
   readFileSync(path: string, encoding: "utf8"): string;
   readdirSync(
     path: string,

@@ -191,6 +191,8 @@ describe("MarkdownView property key input", () => {
     expect(view.previewContainerEl.hidden).toBe(false);
     expect(view.editorContainerEl.style.display).toBe("");
     expect(view.previewContainerEl.style.display).toBe("none");
+    expect(view.previewContainerEl.style.width).toBe("100%");
+    expect(view.previewContainerEl.style.height).toBe("100%");
     expect(view.actionsEl.querySelectorAll(".markdown-toggle-view")).toHaveLength(1);
     expect(view.actionsEl.querySelector(".markdown-toggle-source-mode")).toBeNull();
     expect(view.modeButtonEl.getAttribute("aria-label")).toBe("Switch to reading view");
