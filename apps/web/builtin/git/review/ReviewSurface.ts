@@ -20,6 +20,9 @@ import { Notice } from "../../../ui/Notice";
 import { setFileTypeIcon } from "../../../ui/FileTypeIcon";
 import { ProgressBarComponent, SearchComponent } from "../../../ui/Setting";
 import { TreeItem } from "../../../ui/TreeItem";
+import { writeClipboardText } from "../../../dom/Clipboard";
+import { renderGitAvatar } from "../GitAvatar";
+import { formatRelativeDate } from "../relativeDate";
 import { DIFF_SEPARATOR_CSS } from "../diffSeparatorCss";
 import {
   isViewed,
@@ -64,6 +67,16 @@ export interface ReviewSurfaceProps {
   /** Local review only: the card header gets an "open file" action. The PR
    * surface omits it — its files are the remote head, not this working tree. */
   onOpenFile?(path: string): void;
+  /** Reviewing a commit: who wrote it and what it says, above the diffs. The
+   * working tree has no such header — there is no author and no message yet. */
+  commit?: {
+    hash: string;
+    shortHash: string;
+    author: string;
+    avatarUrl?: string;
+    date: string;
+    subject: string;
+  };
   onActivePathChange?(path: string | null): void;
   onViewedPathsChange?(paths: ReadonlySet<string>): void;
 }
@@ -77,6 +90,7 @@ export class ReviewSurface {
   private readonly rootEl: HTMLDivElement;
   private readonly sidebarEl: HTMLDivElement;
   private readonly toolbarEl: HTMLDivElement;
+  private readonly sourceHeaderEl: HTMLDivElement;
   private readonly codeHostEl: HTMLDivElement;
   private readonly codeRootEl: HTMLDivElement;
   private readonly footerEl: HTMLDivElement;
@@ -102,6 +116,7 @@ export class ReviewSurface {
     this.sidebarEl = createDiv("review-sidebar", this.rootEl);
     const main = createDiv("review-main", this.rootEl);
     this.toolbarEl = createDiv("review-toolbar", main);
+    this.sourceHeaderEl = createDiv("review-source-header", main);
     this.codeHostEl = createDiv("review-codeview-host", main);
     this.codeRootEl = createDiv("review-codeview", this.codeHostEl);
     this.footerEl = createDiv(undefined, main);
@@ -177,6 +192,7 @@ export class ReviewSurface {
 
   private render(): void {
     this.renderSidebar();
+    this.renderSourceHeader();
     this.renderToolbar();
     this.renderCodeView();
     this.renderFooter();
@@ -320,6 +336,33 @@ export class ReviewSurface {
       setIcon(refresh, "lucide-rotate-ccw");
       refresh.addEventListener("click", () => this.props.onRefresh?.());
     }
+  }
+
+  /** The commit's own metadata line, composed from the shared commit-meta
+   * components the history and log rows already use. */
+  private renderSourceHeader(): void {
+    this.sourceHeaderEl.empty();
+    const commit = this.props.commit;
+    this.sourceHeaderEl.toggle(Boolean(commit));
+    if (!commit) return;
+    const metaEl = createDiv("review-source-meta", this.sourceHeaderEl);
+    const authorEl = createSpan("git-commit-author", metaEl);
+    renderGitAvatar(authorEl, commit.author, commit.avatarUrl);
+    createSpan({ text: ` · ${formatRelativeDate(commit.date)}` }, metaEl);
+    const hashEl = createEl(
+      "button",
+      {
+        cls: "git-commit-hash review-source-sha",
+        attr: { type: "button", title: "Copy commit SHA", "aria-label": "Copy commit SHA" },
+        text: commit.shortHash,
+      },
+      metaEl,
+    );
+    hashEl.addEventListener("click", () => {
+      void writeClipboardText(commit.hash);
+      new Notice("Copied commit SHA");
+    });
+    createDiv({ cls: "review-source-subject", text: commit.subject }, this.sourceHeaderEl);
   }
 
   private renderCodeView(): void {

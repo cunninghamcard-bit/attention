@@ -13,6 +13,7 @@ import { createDiv } from "../../../dom/dom";
 import { setTooltip } from "../../../ui/Popover";
 import { ItemView } from "../../../views/ItemView";
 import type { ViewStateResult } from "../../../views/View";
+import type { GitLogEntry } from "../GitService";
 import type { GitNavMode, GitReviewSource, LocalGitReviewSource } from "../reviewSession";
 import { openGitNav } from "./GitNavView";
 import { fingerprintContents, statusFromPorcelain, type ReviewFile } from "./reviewModel";
@@ -132,8 +133,10 @@ export class GitReviewView extends ItemView {
           ? await loadWorkingTree(this.app)
           : await loadCommit(this.app, this.source.ref);
       if (request !== this.loadRequest) return;
+      const commit = await this.commitMeta();
+      if (request !== this.loadRequest) return;
       this.app.git.reviewSession.publishFiles(files.map(toFileSummary));
-      this.mountSurface(files);
+      this.mountSurface(files, commit);
     } catch (error) {
       if (request !== this.loadRequest) return;
       this.block(error instanceof Error ? error.message : String(error));
@@ -153,7 +156,17 @@ export class GitReviewView extends ItemView {
     createDiv({ cls: "review-empty review-empty-main", text: message }, this.contentEl);
   }
 
-  private mountSurface(files: ReviewFile[]): void {
+  /** The log entry for the commit under review, so the surface can show who
+   * wrote it. Absent for the working tree, and for a ref older than the log
+   * window — the header then simply does not render. */
+  private async commitMeta(): Promise<GitLogEntry | undefined> {
+    if (this.source.kind !== "commit") return undefined;
+    const ref = this.source.ref;
+    const log = await this.app.git.log();
+    return log.find((entry) => entry.hash === ref || entry.hash.startsWith(ref));
+  }
+
+  private mountSurface(files: ReviewFile[], commit?: GitLogEntry): void {
     this.surface?.destroy();
     this.contentEl.empty();
     const session = this.app.git.reviewSession;
@@ -164,6 +177,7 @@ export class GitReviewView extends ItemView {
       title:
         this.source.kind === "commit" ? `Commit ${this.source.ref.slice(0, 7)}` : "Working tree",
       subtitle: this.source.kind === "commit" ? this.source.subject : undefined,
+      commit,
       navMode: session.mode,
       hostControls: true,
       onRefresh: () => void this.reloadReview(),
