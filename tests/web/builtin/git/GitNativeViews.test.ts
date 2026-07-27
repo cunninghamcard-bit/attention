@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
-import { GitChangesView } from "@web/builtin/git/GitChangesView";
 import { GitLogView } from "@web/builtin/git/GitLogView";
 import type { ElectronGitApi, GitExecResult } from "@web/builtin/git/GitService";
 
@@ -35,7 +34,6 @@ function bridge(
     statusText: options.statusText ?? "",
     logText: options.logText ?? "",
     detailLoads: 0,
-    gravatarUrl: (email: string) => `https://www.gravatar.com/avatar/${email}`,
     async exec(args: string[]): Promise<GitExecResult> {
       if (args[0] === "rev-parse" && args.includes("--is-inside-work-tree")) {
         return { code: this.repo ? 0 : 1, stdout: this.repo ? "true\n" : "", stderr: "" };
@@ -74,75 +72,6 @@ async function settle(): Promise<void> {
 beforeEach(() => renderedDiffs.splice(0));
 
 describe("native Git views", () => {
-  it("nests Git Changes files under collapsible sections", async () => {
-    const fake = bridge({ statusText: "M  staged.ts\n M working.ts\n" });
-    const app = await appWithBridge(fake);
-    await app.vault.create("staged.ts", "staged\n");
-    await app.vault.create("working.ts", "working\n");
-    const leaf = app.workspace.getLeaf("tab");
-    await leaf.setViewState({ type: GitChangesView.VIEW_TYPE, active: true });
-    const view = leaf.view as GitChangesView;
-    await settle();
-
-    // Sections are collapsible TreeItem parents with a native collapse chevron.
-    const sections = view.contentEl.querySelectorAll(
-      ".git-changes-section-item.tree-item.nav-folder",
-    );
-    expect(sections).toHaveLength(2);
-    expect(
-      view.contentEl.querySelectorAll(".git-changes-section.tree-item-self.mod-collapsible"),
-    ).toHaveLength(2);
-    expect(
-      view.contentEl.querySelectorAll(".git-changes-section .nav-folder-collapse-indicator"),
-    ).toHaveLength(2);
-
-    // Each file row is nested inside its section's tree-item-children box.
-    expect(
-      view.contentEl.querySelectorAll(
-        ".git-changes-section-item > .tree-item-children > .git-changes-file.tree-item.nav-file",
-      ),
-    ).toHaveLength(2);
-    expect(view.contentEl.querySelectorAll(".git-changes-file-header.tree-item-self")).toHaveLength(
-      2,
-    );
-    expect(view.contentEl.querySelectorAll(".git-changes-file .file-type-icon")).toHaveLength(2);
-    expect(
-      view.contentEl.querySelectorAll(".git-changes-file-status.tree-item-flair"),
-    ).toHaveLength(2);
-    expect(view.contentEl.querySelectorAll(".git-changes-stage.clickable-icon")).toHaveLength(2);
-    expect(renderedDiffs).toHaveLength(2);
-
-    // Clicking a section header toggles its nested files (collapse state).
-    const section = sections[0];
-    const header = section.querySelector(".git-changes-section") as HTMLElement;
-    const children = section.querySelector(":scope > .tree-item-children") as HTMLElement;
-    expect(children.hidden).toBe(false);
-    header.click();
-    expect(children.hidden).toBe(true);
-  });
-
-  it("preserves Git Changes unavailable and empty states", async () => {
-    const fake = bridge();
-    const app = await appWithBridge(fake);
-    const leaf = app.workspace.getLeaf("tab");
-    await leaf.setViewState({ type: GitChangesView.VIEW_TYPE, active: true });
-    const view = leaf.view as GitChangesView;
-    await settle();
-    expect(view.contentEl.querySelector(".empty-state")?.textContent).toContain(
-      "Working tree clean",
-    );
-    expect(view.contentEl.querySelector(".git-changes-file")).toBeNull();
-
-    fake.repo = false;
-    await view.refresh();
-    expect(view.contentEl.querySelector(".empty-state")?.textContent).toContain(
-      "not a git repository",
-    );
-    expect((view.contentEl.querySelector(".git-header-row") as HTMLElement).style.display).toBe(
-      "none",
-    );
-  });
-
   it("renders Git commit avatars with initial fallback", async () => {
     const fake = bridge({
       logText:
@@ -160,7 +89,9 @@ describe("native Git views", () => {
     const avatar = header.querySelector(".git-avatar") as HTMLElement;
     const author = header.querySelector(".git-commit-author") as HTMLElement;
     const image = avatar.querySelector(".git-avatar-image") as HTMLImageElement;
-    expect(image.src).toBe("https://www.gravatar.com/avatar/card@example.com");
+    expect(image.src).toBe(
+      "https://avatars.githubusercontent.com/u/e?email=card%40example.com&s=80",
+    );
     expect(author.childNodes[1]?.textContent).toBe("Card");
     expect(header.querySelector(".git-log-meta")?.textContent).toContain("Card · abc123 ·");
     image.dispatchEvent(new Event("error"));

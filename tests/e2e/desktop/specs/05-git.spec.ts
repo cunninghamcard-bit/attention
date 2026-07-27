@@ -25,25 +25,6 @@ test("git changes view shows branch header and sections on a real repo", async (
 
   const { page } = await launchApp();
   await page.waitForSelector(".nav-file-title");
-  await page.evaluate(async () => {
-    const app = (window as unknown as { app: any }).app;
-    await app.workspace.getLeaf(true).setViewState({ type: "git-changes", active: true });
-  });
-
-  const header = page.locator(".git-header-row");
-  await expect(header).toBeVisible();
-  await expect(header.locator(".git-branch-pill")).toContainText("main");
-  await expect(header.locator(".git-sync-button")).toHaveCount(3);
-
-  await expect(page.locator(".git-changes-section", { hasText: "Changes" })).toBeVisible();
-  await expect(page.locator(".git-changes-file-name", { hasText: "Note.md" })).toBeVisible();
-  await expect(page.locator(".git-changes-file-name", { hasText: "Scratch.md" })).toBeVisible();
-  await expect(page.locator(".git-changes-discard").first()).toBeVisible();
-  // Commit authoring was removed — the changes view has no commit box.
-  await expect(page.locator(".git-commit-row")).toHaveCount(0);
-
-  await page.screenshot({ path: testInfo.outputPath("git-changes.png"), fullPage: true });
-
   // Codiff layout: vanilla review center with the Tree/History navigator on the right.
   await page.evaluate(() => {
     const app = (window as unknown as { app: any }).app;

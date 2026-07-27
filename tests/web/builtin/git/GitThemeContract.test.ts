@@ -6,11 +6,7 @@ describe("local Git theme contract", () => {
   it("bridges Obsidian theme tokens into git diff hosts", async () => {
     const source = await readProjectFile("apps/web/builtin/git/review/git-review.css");
 
-    for (const selector of [
-      ".git-review-view diffs-container",
-      ".git-changes-view diffs-container",
-      ".git-log-view diffs-container",
-    ]) {
+    for (const selector of [".git-review-view diffs-container", ".git-log-view diffs-container"]) {
       expect(source).toContain(selector);
     }
     for (const declaration of [
@@ -30,22 +26,14 @@ describe("local Git theme contract", () => {
   });
 
   it("keeps local git chrome free of literal palette colors", async () => {
-    const source = (
-      await Promise.all([
-        readProjectFile("apps/web/builtin/git/git-changes.css"),
-        readProjectFile("apps/web/builtin/git/review/git-review.css"),
-      ])
-    ).join("\n");
+    const source = await readProjectFile("apps/web/builtin/git/review/git-review.css");
 
     expect(source).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i);
     expect(source).not.toMatch(/primary theme/i);
   });
 
   it("refreshes mounted file diffs on css-change", async () => {
-    for (const path of [
-      "apps/web/builtin/git/GitChangesView.ts",
-      "apps/web/builtin/git/GitLogView.ts",
-    ]) {
+    for (const path of ["apps/web/builtin/git/GitLogView.ts"]) {
       const source = await readProjectFile(path);
       expect(source).toContain('workspace.on("css-change"');
       expect(source).toContain("diff.setThemeType(themeType)");
@@ -53,17 +41,14 @@ describe("local Git theme contract", () => {
   });
 
   it("contains Git styling to native primitives", async () => {
-    const [changes, history, log, nav, review, changeStyles, reviewStyles] = await Promise.all([
-      readProjectFile("apps/web/builtin/git/GitChangesView.ts"),
+    const [history, log, nav, review, reviewStyles] = await Promise.all([
       readProjectFile("apps/web/builtin/git/GitHistoryView.ts"),
       readProjectFile("apps/web/builtin/git/GitLogView.ts"),
       readProjectFile("apps/web/builtin/git/review/GitNavView.ts"),
       readProjectFile("apps/web/builtin/git/review/ReviewSurface.ts"),
-      readProjectFile("apps/web/builtin/git/git-changes.css"),
       readProjectFile("apps/web/builtin/git/review/git-review.css"),
     ]);
 
-    expect(changes).toContain("nav-file-title tappable is-clickable git-changes-file-header");
     expect(history).toContain('selfClass: "nav-file-title tappable git-history-row"');
     // The commit is a container (nav-folder); the file inside it is a file
     // (nav-file), so a theme's file-row treatment reaches it.
@@ -78,9 +63,6 @@ describe("local Git theme contract", () => {
     expect(review).toContain("nav-file-title tappable is-clickable review-file-row");
     expect(review).toContain("clickable-icon review-viewed");
     expect(review).not.toContain("review-status-dot");
-    expect(changeStyles).not.toMatch(
-      /\.git-(changes-file|history-entry|log-entry)\s*\{[^}]*border/s,
-    );
     for (const selector of [
       ".git-nav .git-nav-folder-row",
       ".git-nav .git-nav-file-row",

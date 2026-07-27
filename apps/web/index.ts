@@ -119,7 +119,6 @@ export * from "./builtin/terminal/TerminalAdapter";
 export * from "./builtin/terminal/ResttyTerminalRenderer";
 export * from "./builtin/git/GitService";
 export { GitHubService } from "./builtin/github/GitHubService";
-export * from "./builtin/git/GitChangesView";
 export * from "./builtin/git/GitHistoryView";
 export * from "./builtin/Bookmarks";
 export * from "./builtin/Slides";

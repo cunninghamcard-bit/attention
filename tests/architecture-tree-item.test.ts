@@ -27,7 +27,6 @@ const MIGRATED_VIEWS = [
   "builtin/BacklinksView.ts",
   "builtin/OutgoingLinksView.ts",
   "builtin/graph/GraphControls.ts",
-  "builtin/git/GitChangesView.ts",
   "builtin/git/GitLogView.ts",
   "builtin/git/GitHistoryView.ts",
   "builtin/git/review/GitNavView.ts",

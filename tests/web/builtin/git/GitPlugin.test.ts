@@ -16,10 +16,10 @@ async function readyApp(): Promise<App> {
 describe("git and github core plugins", () => {
   it("register their views and commands by default", async () => {
     const app = await readyApp();
-    expect(app.viewRegistry.getViewCreatorByType("git-changes")).toBeTruthy();
+    expect(app.viewRegistry.getViewCreatorByType("git-review")).toBeTruthy();
     expect(app.viewRegistry.getViewCreatorByType("git-nav")).toBeTruthy();
     expect(app.viewRegistry.getViewCreatorByType("github-nav")).toBeTruthy();
-    expect(app.commands.findCommand("git:open-changes")).toBeTruthy();
+    expect(app.commands.findCommand("git:review-changes")).toBeTruthy();
     expect(app.commands.findCommand("git:open-nav")).toBeTruthy();
     expect(app.commands.findCommand("github:open-workspace")).toBeTruthy();
   });
@@ -42,20 +42,22 @@ describe("git and github core plugins", () => {
 
   it("keeps the git surface free of commit affordances", async () => {
     const app = await readyApp();
-    // No dedicated commit view, no commit command — the git-changes view's
-    // missing commit box is asserted on the real DOM in the desktop e2e.
+    // Nothing writes to the index from the app: no commit view, no commit
+    // command, and no source-control view with stage/discard buttons. The
+    // review surface reads; authoring happens in the terminal.
     expect(app.viewRegistry.getViewCreatorByType("git-composer")).toBeFalsy();
     expect(app.commands.findCommand("git:open-commit")).toBeFalsy();
-    expect(app.viewRegistry.getViewCreatorByType("git-changes")).toBeTruthy();
+    expect(app.viewRegistry.getViewCreatorByType("git-changes")).toBeFalsy();
+    expect(app.commands.findCommand("git:open-changes")).toBeFalsy();
   });
 
   it("unregister the surface when toggled off", async () => {
     const app = await readyApp();
     await app.internalPlugins.disable("git", true);
-    expect(app.viewRegistry.getViewCreatorByType("git-changes")).toBeFalsy();
-    expect(app.commands.findCommand("git:open-changes")).toBeFalsy();
+    expect(app.viewRegistry.getViewCreatorByType("git-review")).toBeFalsy();
+    expect(app.commands.findCommand("git:review-changes")).toBeFalsy();
     await app.internalPlugins.enable("git", true);
-    expect(app.viewRegistry.getViewCreatorByType("git-changes")).toBeTruthy();
+    expect(app.viewRegistry.getViewCreatorByType("git-review")).toBeTruthy();
   });
 
   it("owns pull requests on the cloud side; local surface survives without it", async () => {
@@ -64,7 +66,6 @@ describe("git and github core plugins", () => {
     await app.internalPlugins.disable("github", true);
     expect(app.viewRegistry.getViewCreatorByType("github-nav")).toBeFalsy();
     expect(app.commands.findCommand("github:open-pull-requests")).toBeFalsy();
-    expect(app.viewRegistry.getViewCreatorByType("git-changes")).toBeTruthy();
     expect(app.viewRegistry.getViewCreatorByType("git-log")).toBeTruthy();
     expect(app.viewRegistry.getViewCreatorByType("git-review")).toBeTruthy();
   });

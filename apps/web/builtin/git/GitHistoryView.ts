@@ -166,7 +166,7 @@ export class GitHistoryView extends ItemView {
   private renderMessage(text: string): void {
     if (!this.listEl) return;
     const messageEl = this.listEl.ownerDocument.createElement("div");
-    messageEl.className = "empty-state git-changes-message";
+    messageEl.className = "empty-state";
     messageEl.textContent = text;
     this.listEl.appendChild(messageEl);
   }

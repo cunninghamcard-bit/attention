@@ -1,5 +1,5 @@
 /**
- * Input: ../../app/App, ../../plugin/InternalPlugin, ../../plugin/InternalPluginWrapper, ./GitChangesView, ./GitHistoryView, ./GitLogView, ./review/GitNavView, ./review/GitReviewView
+ * Input: ../../app/App, ../../plugin/InternalPlugin, ../../plugin/InternalPluginWrapper, ./GitHistoryView, ./GitLogView, ./review/GitNavView, ./review/GitReviewView
  * Output: createGitPluginDefinition
  * Pos: Application code
  *
@@ -9,7 +9,6 @@
 import type { App } from "../../app/App";
 import type { InternalPluginDefinition } from "../../plugin/InternalPlugin";
 import type { InternalPluginWrapper } from "../../plugin/InternalPluginWrapper";
-import { GitChangesView } from "./GitChangesView";
 import { GitHistoryView } from "./GitHistoryView";
 import { GitLogView } from "./GitLogView";
 import { GitNavView, openGitNav } from "./review/GitNavView";
@@ -27,23 +26,10 @@ export function createGitPluginDefinition(): InternalPluginDefinition {
     description: "Local source control for the vault: changes, commit log, history and review.",
     defaultOn: true,
     init(app: App, plugin: InternalPluginWrapper) {
-      plugin.registerViewType(GitChangesView.VIEW_TYPE, (leaf) => new GitChangesView(leaf));
       plugin.registerViewType(GitHistoryView.VIEW_TYPE, (leaf) => new GitHistoryView(leaf));
       plugin.registerViewType(GitLogView.VIEW_TYPE, (leaf) => new GitLogView(leaf));
       plugin.registerViewType(GitReviewView.VIEW_TYPE, (leaf) => new GitReviewView(leaf));
       plugin.registerViewType(GitNavView.VIEW_TYPE, (leaf) => new GitNavView(leaf));
-      plugin.registerGlobalCommand({
-        id: "git:open-changes",
-        name: "Open git changes",
-        icon: "lucide-file-diff",
-        checkCallback: (checking) => {
-          if (!app.git.isAvailable()) return false;
-          if (!checking) {
-            void app.workspace.getLeaf("tab").setViewState({ type: "git-changes", active: true });
-          }
-          return true;
-        },
-      });
       plugin.registerGlobalCommand({
         id: "git:review-changes",
         name: "Review working tree changes",

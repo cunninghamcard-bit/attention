@@ -6,7 +6,6 @@
 **Files**:
 - `BranchSwitchModal.ts` - Exports BranchEntry and 3 more
 - `GitAvatar.ts` - Exports renderGitAvatar
-- `GitChangesView.ts` - Exports GitChangesView
 - `GitHistoryView.ts` - Exports GitHistoryView and 1 more
 - `GitLogView.ts` - Exports CommitFileRow and 3 more
 - `GitPlugin.ts` - Exports createGitPluginDefinition

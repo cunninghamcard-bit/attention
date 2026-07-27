@@ -4,7 +4,6 @@
 /* Pierre renders inside a shadow root. Bridge its public custom properties to
  * Obsidian's live tokens on the host so community themes remain authoritative. */
 .git-review-view diffs-container,
-.git-changes-view diffs-container,
 .git-log-view diffs-container {
   --diffs-light-bg: var(--background-primary);
   --diffs-dark-bg: var(--background-primary);
