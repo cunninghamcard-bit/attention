@@ -45,7 +45,8 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
-/* The nav-external sidebar is [hidden], but display:flex would win over it. */
+/* This class is the whole mechanism for the nav-external layout: one column
+   above, no sidebar here. Nothing in TS hides the sidebar. */
 .review-surface.is-nav-external .review-sidebar {
   display: none;
 }
@@ -352,6 +353,13 @@
   height: 100%;
   min-height: 0;
   background-color: var(--background-secondary);
+}
+
+/* .nav-buttons-container centers its buttons (app.css) — right for the
+ * explorer's toolbar, wrong for a two-mode switch that should start where the
+ * list below it starts. Own class, so the faithful primitive keeps its paint. */
+.git-nav-modes {
+  justify-content: flex-start;
 }
 
 .git-nav-search-row {

@@ -213,19 +213,17 @@ describe("GitReviewView", () => {
     const { app } = await reviewApp();
     await openGitReview(app);
     const view = app.workspace.getLeavesOfType(GitReviewView.VIEW_TYPE)[0].view as GitReviewView;
-    // The switch rides the nav leaf's own view-header, the row the sidebar's
-    // other icons sit in — not a second icon row inside the content.
-    const navActions = (app.workspace.getLeavesOfType("git-nav")[0].view as ItemView).actionsEl;
-    const buttons = [...navActions.querySelectorAll(".view-action")].map((el) =>
+    const navEl = (app.workspace.getLeavesOfType("git-nav")[0].view as ItemView).contentEl;
+    const buttons = [...navEl.querySelectorAll(".nav-header .nav-action-button")].map((el) =>
       el.getAttribute("aria-label"),
     );
-    expect(buttons.slice(0, 2)).toEqual(["Tree", "History"]);
+    expect(buttons).toEqual(["Tree", "History"]);
     expect(app.git.reviewSession.mode).toBe("tree");
-    (navActions.querySelector('.view-action[aria-label="History"]') as HTMLElement).click();
+    (navEl.querySelector('.nav-action-button[aria-label="History"]') as HTMLElement).click();
     expect(app.git.reviewSession.mode).toBe("history");
     expect(
-      navActions
-        .querySelector('.view-action[aria-label="History"]')
+      navEl
+        .querySelector('.nav-action-button[aria-label="History"]')
         ?.classList.contains("is-active"),
     ).toBe(true);
     expect(view.contentEl.textContent).not.toMatch(/Walkthrough/i);
