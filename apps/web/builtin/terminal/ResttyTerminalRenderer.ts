@@ -192,12 +192,20 @@ function resolveTokenFontFamily(token: string): string {
   return family;
 }
 
+/**
+ * Entries that can never match a local font face: CSS keywords, and Obsidian's
+ * literal `"??"` placeholder for an unset override/theme font (the browser
+ * skips an unknown family silently; restty would enumerate the system fonts
+ * for it and warn).
+ */
+const NON_LOCAL_FAMILIES = new Set(["??", "monospace", "ui-monospace", "system-ui"]);
+
 /** A CSS font stack as an ordered list of families, unquoted and de-duped. */
 export function fontStackFamilies(stack: string): string[] {
   const seen = new Set<string>();
   for (const entry of stack.split(",")) {
     const family = entry.trim().replace(/^["']|["']$/g, "");
-    if (family) seen.add(family);
+    if (family && !NON_LOCAL_FAMILIES.has(family.toLowerCase())) seen.add(family);
   }
   return [...seen];
 }
@@ -240,9 +248,15 @@ export const createResttyRenderer: TerminalRendererFactory = async (options) => 
     },
   };
 
+  // Every family handed over is EAGERLY matched against Local Font Access
+  // and, when found, fully parsed and atlas-rasterized on the main thread —
+  // measured at ~400ms of main-thread block for a stock stack, more with big
+  // Nerd Fonts. The tail of the stack is only a safety net, so cap it at the
+  // user's pick plus two understudies; restty's built-in local nerd-font
+  // fallback still covers prompt icons.
   const families = fontStackFamilies(
     options.fontFamily || resolveTokenFontFamily("--font-monospace"),
-  );
+  ).slice(0, 3);
 
   return {
     mount(el) {

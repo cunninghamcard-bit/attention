@@ -154,6 +154,13 @@ export function createTerminalPluginDefinition(): InternalPluginDefinition {
         const bridge = (globalThis as { electronTerminal?: { available?: boolean } })
           .electronTerminal;
         if (!bridge?.available) return;
+        // Pre-warm Local Font Access at idle: the first enumeration costs
+        // ~0.5s on a large font library and Chromium caches it, so paying it
+        // here keeps that stall out of the first terminal open.
+        const host = globalThis as { queryLocalFonts?: () => Promise<unknown> };
+        (globalThis as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback?.(
+          () => void host.queryLocalFonts?.().catch(() => {}),
+        );
         if (app.workspace.getLeavesOfType(TERMINAL_VIEW_TYPE).length > 0) return;
         const leaf = app.workspace.getRightLeaf(false);
         if (leaf)

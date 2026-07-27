@@ -586,6 +586,10 @@ describe("MetadataCache", () => {
     const metadataCache = new MetadataCache(vault);
     const note = await vault.create("Notes/Target.md", "");
     const image = await vault.createBinary("Assets/image.png", new ArrayBuffer(1));
+    // The unique-name lookup is seeded by initialize and maintained by the
+    // vault event handlers from then on — the real app lifecycle. Later
+    // creates in this test flow through the "create" handler.
+    await metadataCache.initialize();
 
     expect(metadataCache.fileToLinktext(note, "Daily/Today.md", true)).toBe("Target");
     expect(metadataCache.fileToLinktext(note, "Daily/Today.md", false)).toBe("Target.md");
@@ -861,3 +865,66 @@ function toBuffer(source: string): ArrayBuffer {
 function waitForClean(metadataCache: MetadataCache): Promise<void> {
   return new Promise((resolve) => metadataCache.onCleanCache(resolve));
 }
+
+describe("metadata worker path", () => {
+  class FakeWorker {
+    static instances: FakeWorker[] = [];
+    readonly listeners = new Map<string, Array<(event: unknown) => void>>();
+    readonly posted: unknown[] = [];
+
+    constructor(
+      readonly url: URL,
+      readonly options?: unknown,
+    ) {
+      FakeWorker.instances.push(this);
+    }
+
+    addEventListener(name: string, listener: (event: unknown) => void): void {
+      const bucket = this.listeners.get(name) ?? [];
+      bucket.push(listener);
+      this.listeners.set(name, bucket);
+    }
+
+    postMessage(data: unknown): void {
+      this.posted.push(data);
+    }
+
+    emit(name: string, event: unknown): void {
+      for (const listener of this.listeners.get(name) ?? []) listener(event);
+    }
+  }
+
+  it("parses through the worker, and survives a worker crash by falling back inline", async () => {
+    FakeWorker.instances.length = 0;
+    vi.stubGlobal("Worker", FakeWorker);
+    try {
+      const metadataCache = new MetadataCache(new Vault());
+      const encode = (source: string) => new TextEncoder().encode(source).buffer as ArrayBuffer;
+
+      // Normal path: the buffer goes to the worker, the message resolves it.
+      const parsed = metadataCache.computeMetadataAsync(encode("# From worker"));
+      // work() runs behind the serial queue, so the worker appears asynchronously.
+      await vi.waitFor(() => expect(FakeWorker.instances).toHaveLength(1));
+      const worker = FakeWorker.instances[0];
+      expect(worker.url.href).toContain("metadata.worker");
+      await vi.waitFor(() => expect(worker.posted).toHaveLength(1));
+      const sentinel = { headings: [] };
+      worker.emit("message", { data: sentinel });
+      await expect(parsed).resolves.toBe(sentinel);
+
+      // A worker error rejects the in-flight file instead of hanging the queue…
+      const crashed = metadataCache.computeMetadataAsync(encode("# Crash"));
+      await vi.waitFor(() => expect(worker.posted).toHaveLength(2));
+      worker.emit("error", { message: "boom" });
+      await expect(crashed).rejects.toThrow("Metadata worker failed: boom");
+
+      // …and the dead worker is retired: the next parse runs inline (no new
+      // Worker constructed) and still produces real metadata.
+      const inline = await metadataCache.computeMetadataAsync(encode("# Inline heading"));
+      expect(FakeWorker.instances).toHaveLength(1);
+      expect(inline.headings?.[0]?.heading).toBe("Inline heading");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

@@ -134,9 +134,15 @@ export abstract class DataAdapter extends Events implements DataAdapterPort {
 
   async watch(handler: DataAdapterWatchHandler): Promise<() => void> {
     const refs = adapterWatchEvents.map((event) =>
-      this.on(event, (...args) =>
-        handler(event, String(args[0] ?? ""), args[1] == null ? undefined : String(args[1])),
-      ),
+      this.on(event, (...args) => {
+        const extra = args[1];
+        handler(
+          event,
+          String(args[0] ?? ""),
+          typeof extra === "string" ? extra : undefined,
+          extra !== null && typeof extra === "object" ? (extra as Partial<Stat>) : undefined,
+        );
+      }),
     );
     return () => refs.forEach((ref) => unregisterEventRef(ref));
   }

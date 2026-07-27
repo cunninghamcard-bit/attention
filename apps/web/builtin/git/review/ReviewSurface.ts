@@ -142,8 +142,10 @@ export class ReviewSurface {
     if (!this.activePath || !paths.has(this.activePath)) {
       this.activePath = props.files[0]?.path ?? null;
     }
+    // One mechanism: `is-nav-external` drops the grid to a single column AND
+    // hides the sidebar (git-review.css). A `hidden` attribute here did nothing
+    // — .review-sidebar's own `display: flex` outranks `[hidden]`.
     this.rootEl.classList.toggle("is-nav-external", props.showFileSidebar === false);
-    this.sidebarEl.hidden = props.showFileSidebar === false;
     this.render();
     this.publishViewed();
     props.onActivePathChange?.(this.activePath);
@@ -323,9 +325,12 @@ export class ReviewSurface {
   private renderToolbar(): void {
     // Local review: the leaf owns the controls in its view-header, so no bar.
     if (this.props.hostControls) {
-      this.toolbarEl.hidden = true;
+      // toggle, not `hidden`: .review-toolbar sets `display: flex`, which beats
+      // `[hidden]` and left an empty bar taking up height.
+      this.toolbarEl.toggle(false);
       return;
     }
+    this.toolbarEl.toggle(true);
     this.toolbarEl.empty();
     const controls = createDiv("review-toolbar-controls", this.toolbarEl);
     const isSplit = this.diffStyle === "split";

@@ -42,7 +42,10 @@ export class FileRecoveryController {
     this.options = normalizeOptions(await plugin.loadData<Partial<FileRecoveryOptions>>());
     plugin.addSettingTab(new FileRecoverySettingTab(this.app, this));
     plugin.registerEvent(this.app.vault.on("modify", (file) => void this.onFileChanged(file)));
-    plugin.registerEvent(this.app.vault.on("create", (file) => void this.onFileChanged(file)));
+    // No "create" listener: during startup every indexed file arrives as a
+    // create, which made this snapshot (a full vault.read per md file) run
+    // over the whole vault before first paint. A file a user actually touches
+    // is covered by modify/file-open.
     plugin.registerEvent(
       this.app.workspace.on("file-open", (file) => void this.onFileChanged(file)),
     );

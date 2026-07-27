@@ -24,7 +24,9 @@ export interface VaultAdapter {
   supportsEvents?: boolean;
   on?(name: string, handler: (...args: unknown[]) => void): EventRef;
   load?(): Promise<void>;
-  watch?(handler: (event: string, path: string, oldPath?: string) => void): Promise<() => void>;
+  watch?(
+    handler: (event: string, path: string, oldPath?: string, stat?: VaultAdapterStat) => void,
+  ): Promise<() => void>;
   watchHiddenRecursive?(path: string): Promise<() => void> | Promise<void>;
   exists?(path: string, sensitive?: boolean): Promise<boolean>;
   stat?(path: string): Promise<VaultAdapterStat | null>;
@@ -116,8 +118,8 @@ export class Vault extends Events {
     this.loaded = true;
     if (this.usesAdapterEvents()) {
       if (this.adapter?.watch)
-        this.unwatchAdapter = await this.adapter.watch((event, path, oldPath) =>
-          this.handleAdapterEvent(event, path, oldPath),
+        this.unwatchAdapter = await this.adapter.watch((event, path, oldPath, stat) =>
+          this.handleAdapterEvent(event, path, oldPath, stat),
         );
       else {
         this.bindAdapterEvents(this.adapter);
@@ -736,12 +738,7 @@ export class Vault extends Events {
       else if (this.adapter) await this.adapter.delete(file.path);
       return;
     }
-    const descendants =
-      file instanceof TFolder
-        ? this.getAllLoadedFiles().filter(
-            (item) => item.path === file.path || item.path.startsWith(`${file.path}/`),
-          )
-        : [file];
+    const descendants = this.collectSubtree(file);
     for (const item of descendants.sort((a, b) => b.path.length - a.path.length)) {
       this.invalidateCachedRead(item.path);
       if (this.adapter) await this.adapter.delete(item.path);
@@ -908,15 +905,12 @@ export class Vault extends Events {
 
   private attachToParent(file: TAbstractFile): void {
     if (file === this.root) return;
-    const parent = this.getDirectParent(file);
-    if (!parent) return;
-    if (!parent.children.includes(file)) {
-      this.addChild(file);
-      parent.children.sort((a, b) => {
-        const folderDelta = Number(b instanceof TFolder) - Number(a instanceof TFolder);
-        return folderDelta || a.name.localeCompare(b.name);
-      });
-    }
+    // Obsidian's addChild is a bare push — children stay in arrival order and
+    // every display surface sorts at render (as the file explorer does).
+    // addChild's own `parent === file.parent` check is the dedupe; scanning
+    // parent.children here (sort OR includes) is O(siblings) per insert and
+    // goes quadratic on the initial scan of a large folder.
+    this.addChild(file);
   }
 
   private bindAdapterEvents(adapter: VaultAdapter): void {
@@ -934,10 +928,15 @@ export class Vault extends Events {
     );
   }
 
-  private handleAdapterEvent(event: string, path: string, oldPath?: string): void {
+  private handleAdapterEvent(
+    event: string,
+    path: string,
+    oldPath?: string,
+    stat?: VaultAdapterStat,
+  ): void {
     if (event === "folder-created") this.handleAdapterCreate(path, "folder");
-    else if (event === "file-created") this.handleAdapterCreate(path, "file");
-    else if (event === "modified") this.handleAdapterModify(path);
+    else if (event === "file-created") this.handleAdapterCreate(path, "file", asAdapterStat(stat));
+    else if (event === "modified") this.handleAdapterModify(path, asAdapterStat(stat));
     else if (event === "folder-removed" || event === "file-removed") this.handleAdapterDelete(path);
     else if (event === "renamed") this.handleAdapterRename(path, oldPath ?? "");
     else if (event === "raw") {
@@ -984,12 +983,7 @@ export class Vault extends Events {
   private handleAdapterDelete(path: string): void {
     const file = this.getAbstractFileByPath(path);
     if (!file) return;
-    const descendants =
-      file instanceof TFolder
-        ? this.getAllLoadedFiles().filter(
-            (item) => item.path === file.path || item.path.startsWith(`${file.path}/`),
-          )
-        : [file];
+    const descendants = this.collectSubtree(file);
     for (const item of descendants.sort((a, b) => b.path.length - a.path.length)) {
       this.invalidateCachedRead(item.path);
       this.files.delete(item.path);
@@ -1004,12 +998,7 @@ export class Vault extends Events {
   private handleAdapterRename(path: string, oldPath: string): void {
     const file = this.getAbstractFileByPath(oldPath);
     if (!file) return;
-    const descendants =
-      file instanceof TFolder
-        ? this.getAllLoadedFiles().filter(
-            (item) => item.path === oldPath || item.path.startsWith(`${oldPath}/`),
-          )
-        : [file];
+    const descendants = this.collectSubtree(file);
     const records = descendants
       .sort((a, b) => a.path.length - b.path.length)
       .map((item) => ({
@@ -1110,12 +1099,7 @@ export class Vault extends Events {
   }
 
   private removeAfterExternalTrash(file: TAbstractFile): void {
-    const descendants =
-      file instanceof TFolder
-        ? this.getAllLoadedFiles().filter(
-            (item) => item.path === file.path || item.path.startsWith(`${file.path}/`),
-          )
-        : [file];
+    const descendants = this.collectSubtree(file);
     for (const item of descendants.sort((a, b) => b.path.length - a.path.length)) {
       this.invalidateCachedRead(item.path);
       this.files.delete(item.path);
@@ -1315,10 +1299,25 @@ export class Vault extends Events {
   }
 
   private collectDescendantPaths(file: TAbstractFile): string[] {
-    if (!(file instanceof TFolder)) return [file.path];
-    return this.getAllLoadedFiles()
-      .filter((item) => item.path === file.path || item.path.startsWith(`${file.path}/`))
-      .map((item) => item.path);
+    return this.collectSubtree(file).map((item) => item.path);
+  }
+
+  /**
+   * The subtree rooted at `file` (self included), via children recursion.
+   * The files map holds the WHOLE vault, and filtering it per delete/rename
+   * event made an external change burst (git checkout) O(events × vault).
+   */
+  private collectSubtree(file: TAbstractFile): TAbstractFile[] {
+    if (!(file instanceof TFolder)) return [file];
+    const out: TAbstractFile[] = [file];
+    const walk = (folder: TFolder): void => {
+      for (const child of folder.children) {
+        out.push(child);
+        if (child instanceof TFolder) walk(child);
+      }
+    };
+    walk(file);
+    return out;
   }
 
   private resolveAttachmentFolderPath(configuredPath: string, sourceFile: TFile | null): string {

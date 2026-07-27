@@ -1,5 +1,5 @@
 /**
- * Input: ./App, ../builtin/DailyNotes, ./MetadataIndexingNotice, ../vault/TAbstractFile
+ * Input: ./App, ../builtin/DailyNotes, ./MetadataIndexingNotice, ../ui/ProgressBar, ../vault/TAbstractFile
  * Output: AppLifecycle
  * Pos: Application code
  *
@@ -9,6 +9,7 @@
 import type { App } from "./App";
 import type { DailyNotesController } from "../builtin/DailyNotes";
 import { installSlowIndexingNotice, showIndexingNotice } from "./MetadataIndexingNotice";
+import { ProgressBar } from "../ui/ProgressBar";
 import { TFile } from "../vault/TAbstractFile";
 
 export class AppLifecycle {
@@ -19,28 +20,52 @@ export class AppLifecycle {
   async load(): Promise<void> {
     if (this.started) return;
     this.started = true;
-    await this.app.vault.setupConfig();
-    this.app.themes.loadDefaultTheme();
-    await this.app.customCss.load();
-    this.app.themes.applyConfiguredTheme();
-    this.app.appearance.applyFromConfig();
-    this.app.cssSnippets.applyEnabledSnippetsFromConfig();
-    await this.app.metadataTypeManager.load();
-    await this.app.corePluginsReady;
-    await this.app.hotkeys.load();
-    await this.app.pluginInstaller.initialize();
-    await this.app.vault.load();
-    this.app.hotkeys.registerListeners();
-    this.app.mobileBackButton.attach();
-    this.app.metadataTypeManager.registerListeners();
-    installSlowIndexingNotice(this.app.metadataCache);
-    await this.app.metadataCache.initialize();
-    showIndexingNotice(this.app.metadataCache);
-    await this.app.workspace.loadLayout();
-    await this.runOpeningBehavior();
-    if (!this.app.workspace.isLayoutReady()) this.app.workspace.markLayoutReady();
-    await this.app.workspace.waitForLayoutReadyCallbacks();
-    this.app.workspace.registerUriHook();
+    // The startup splash covers the whole awaited sequence, advancing through
+    // the real app's stage messages (loadingPlugins → loadingVault →
+    // loadingCache → loadingWorkspace). On failure it stays up with the
+    // failure message instead of hiding, as the real splash does.
+    const splash = ProgressBar.instance.setMessage("Loading plugins...").show();
+    try {
+      await this.app.vault.setupConfig();
+      this.app.themes.loadDefaultTheme();
+      await this.app.customCss.load();
+      this.app.themes.applyConfiguredTheme();
+      this.app.appearance.applyFromConfig();
+      this.app.cssSnippets.applyEnabledSnippetsFromConfig();
+      await this.app.metadataTypeManager.load();
+      await this.app.corePluginsReady;
+      await this.app.hotkeys.load();
+      await this.app.pluginInstaller.initialize();
+      splash.setMessage("Loading vault...");
+      // Startup-phase marks: the three awaits that gate first paint on a large
+      // vault. Read with performance.measure / the profiler; they cost nothing.
+      performance.mark("app:vault-load:start");
+      await this.app.vault.load();
+      performance.mark("app:vault-load:end");
+      this.app.hotkeys.registerListeners();
+      this.app.mobileBackButton.attach();
+      this.app.metadataTypeManager.registerListeners();
+      installSlowIndexingNotice(this.app.metadataCache);
+      splash.setMessage("Loading cache...");
+      performance.mark("app:metadata-init:start");
+      await this.app.metadataCache.initialize();
+      performance.mark("app:metadata-init:end");
+      showIndexingNotice(this.app.metadataCache);
+      splash.setMessage("Loading workspace...");
+      performance.mark("app:layout:start");
+      await this.app.workspace.loadLayout();
+      performance.mark("app:layout:end");
+      await this.runOpeningBehavior();
+      if (!this.app.workspace.isLayoutReady()) this.app.workspace.markLayoutReady();
+      await this.app.workspace.waitForLayoutReadyCallbacks();
+      this.app.workspace.registerUriHook();
+    } catch (error) {
+      splash.setMessage(
+        `Failed to load vault: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      throw error;
+    }
+    splash.hide();
     this.app.workspace.trigger("app-loaded");
   }
 

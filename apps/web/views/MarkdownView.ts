@@ -1370,7 +1370,9 @@ export class MarkdownView extends TextFileView {
   } {
     const containerEl = document.createElement("div");
     containerEl.className = "document-search-container";
-    containerEl.hidden = true;
+    // toggle, not `hidden`: `.document-search-container` sets `display: flex`,
+    // which outranks `[hidden]` — the search bar showed before it was opened.
+    containerEl.toggle(false);
 
     const searchEl = document.createElement("div");
     searchEl.className = "document-search";

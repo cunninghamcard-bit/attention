@@ -184,7 +184,10 @@ export class FontManagerModal extends ConfirmationModal {
         this.warningEl = button.extraSettingsEl;
         button.setIcon("lucide-alert-circle").setTooltip("Font not found");
         this.warningEl.classList.add("mod-warning");
-        this.warningEl.hidden = true;
+        // toggle, not `hidden`: extraSettingsEl is a `.clickable-icon`, whose
+        // `display: flex` outranks `[hidden]` — the warning stayed lit on the
+        // row permanently.
+        this.warningEl.toggle(false);
       })
       .addText((text) => {
         this.fontInput = text;
@@ -209,11 +212,16 @@ export class FontManagerModal extends ConfirmationModal {
     if (!this.warningEl) return;
     const trimmed = value.trim();
     if (!trimmed) {
-      this.warningEl.hidden = true;
+      this.warningEl.toggle(false);
       return;
     }
     const available = await fontAvailable(trimmed, this.contentEl.ownerDocument);
-    if (this.warningEl) this.warningEl.hidden = available;
+    // The probe awaits document.fonts.ready, so by the time it resolves the
+    // field may have been cleared or retyped — Add clears it. Only speak for
+    // the value still in the box, or a stale answer re-lights the warning over
+    // an empty field.
+    if (this.fontInput?.getValue().trim() !== trimmed) return;
+    this.warningEl?.toggle(!available);
   }
 
   private tryAddFont(): void {
@@ -223,7 +231,7 @@ export class FontManagerModal extends ConfirmationModal {
       this.display();
     }
     this.fontInput?.setValue("");
-    if (this.warningEl) this.warningEl.hidden = true;
+    this.warningEl?.toggle(false);
   }
 
   private display(): void {
@@ -420,19 +428,30 @@ export function parseFontFamilies(value: string): string[] {
 
 /** Source `Vee`: empty is available; otherwise wait for `document.fonts.ready`. */
 export async function fontAvailable(font: string, doc: Document = document): Promise<boolean> {
-  if (!font.trim()) return true;
+  const trimmed = font.trim();
+  if (!trimmed) return true;
   const fonts = (doc as Document & { fonts?: FontFaceSet }).fonts;
-  if (!fonts?.check) return true;
   try {
-    if (fonts.ready) await fonts.ready;
+    if (fonts?.ready) await fonts.ready;
   } catch {
-    // Font loading API unavailable or rejected — fall through to check.
+    // Font loading API unavailable or rejected — the canvas probe below stands
+    // on its own, it just may run before web fonts finish loading.
   }
-  try {
-    return fonts.check(`12px "${font}"`);
-  } catch {
-    return false;
-  }
+  // The OS catalog is authoritative, and it sees what the canvas probe cannot:
+  // fonts with no a-z0-9 glyphs to measure (Arabic, Syriac, Braille, dingbats).
+  // Checking it first is what keeps those from reading as "not found".
+  const catalog = await loadFontCatalog(doc);
+  if (catalog.some((name) => name.toLowerCase() === trimmed.toLowerCase())) return true;
+  // NOT document.fonts.check(): per spec it returns a vacuous TRUE for any
+  // family with no matching @font-face — it treats the name as a system font
+  // and assumes it resolves. Verified in Chromium: an invented name reports
+  // available, so EVERY font read as "found" and the warning never appeared.
+  // Measure instead, the same way the catalog does.
+  const ctx = doc.createElement("canvas").getContext?.("2d");
+  // No real canvas (jsdom): unmeasurable. Say nothing rather than claim a font
+  // the user actually has is missing.
+  if (!ctx) return true;
+  return filterInstalledFontsWithCanvas(doc, [trimmed]).length > 0;
 }
 
 /** Test/reset hook for the font catalog cache. */
@@ -445,13 +464,22 @@ async function loadFontCatalog(doc: Document): Promise<string[]> {
   if (cachedFontCatalog) return cachedFontCatalog;
   if (!fontCatalogLoad) {
     fontCatalogLoad = (async () => {
-      // Source: OS fonts via get-fonts + seed list, then canvas-filter installed ones.
+      // The OS list is authoritative and goes in UNFILTERED: a family the
+      // platform enumerates is installed, full stop. The canvas probe is only a
+      // guess for the seed names, and it structurally cannot see a font whose
+      // a-z0-9 have no glyphs — measured against this machine's 187 real
+      // families it dropped 18 of them (Geeza Pro, Noto Sans Syriac, Apple
+      // Braille, Zapf Dingbats …), i.e. every Arabic / non-Latin / symbol font.
+      // Filtering the OS list is how installed fonts went missing from search.
       const fromOs = await listSystemFontsFromBridge();
-      const candidates = uniqueFonts(["Inter", "Source Code Pro", ...fromOs, ...SEED_FONTS]);
-      const installed = filterInstalledFontsWithCanvas(doc, candidates);
-      cachedFontCatalog = (
-        installed.length > 0 ? installed : ["Inter", "Source Code Pro", ...fromOs]
-      ).sort((a, b) => a.localeCompare(b));
+      const guessed = filterInstalledFontsWithCanvas(
+        doc,
+        uniqueFonts(["Inter", "Source Code Pro", ...SEED_FONTS]),
+      );
+      const catalog = uniqueFonts([...fromOs, ...guessed]);
+      cachedFontCatalog = (catalog.length > 0 ? catalog : ["Inter", "Source Code Pro"]).sort(
+        (a, b) => a.localeCompare(b),
+      );
       return cachedFontCatalog;
     })();
   }
@@ -460,18 +488,25 @@ async function loadFontCatalog(doc: Document): Promise<string[]> {
 
 /** Renderer side of Obsidian's `get-fonts` seam (`ipcRenderer.invoke("get-fonts")`). */
 async function listSystemFontsFromBridge(): Promise<string[]> {
+  const invoke = (
+    globalThis as typeof globalThis & {
+      electron?: {
+        ipcRenderer?: { invoke?: (channel: string, ...args: unknown[]) => Promise<unknown> };
+      };
+    }
+  ).electron?.ipcRenderer?.invoke;
+  // No bridge at all is the browser build: an absent capability, not a failure.
+  // There the canvas-probed seed list is legitimately the whole catalog.
+  if (typeof invoke !== "function") return [];
   try {
-    const electron = (
-      globalThis as typeof globalThis & {
-        electron?: {
-          ipcRenderer?: { invoke?: (channel: string, ...args: unknown[]) => Promise<unknown> };
-        };
-      }
-    ).electron;
-    const fonts = await electron?.ipcRenderer?.invoke?.("get-fonts");
+    const fonts = await invoke("get-fonts");
     if (!Array.isArray(fonts)) return [];
     return fonts.map((font) => String(font).trim().replace(/^"|"$/g, "")).filter(Boolean);
-  } catch {
+  } catch (error) {
+    // Loud on purpose. Swallowing this is exactly what made a broken bundle
+    // look like a machine with no fonts installed — the picker quietly showed
+    // only its hardcoded seeds and nothing anywhere said why.
+    console.error("get-fonts failed; the font picker is limited to its seed list", error);
     return [];
   }
 }
@@ -495,22 +530,32 @@ function uniqueFonts(fonts: string[]): string[] {
   return out;
 }
 
+const FONT_PROBE_SAMPLE = "abcdefghijklmnopqrstuvwxyz0123456789";
+/**
+ * Three generics, not one. A family that IS the platform default for a generic
+ * paints identically to it — `"Menlo", monospace` measures exactly `monospace`
+ * on macOS — so a single monospace baseline silently drops the default of that
+ * generic, i.e. most monospace fonts, which are exactly the ones a terminal or
+ * a code block wants. A real font differs from at least one of the three.
+ */
+const FONT_PROBE_GENERICS = ["monospace", "sans-serif", "serif"] as const;
+
 function filterInstalledFontsWithCanvas(doc: Document, fonts: string[]): string[] {
   try {
-    const canvas = doc.createElement("canvas");
-    const ctx = canvas.getContext("2d");
+    const ctx = doc.createElement("canvas").getContext("2d");
     // Without a real canvas (jsdom/happy-dom), skip filtering and let the caller
     // fall back to OS list + anchors.
     if (!ctx) return [];
-    const sample = "abcdefghijklmnopqrstuvwxyz0123456789";
-    ctx.font = "72px monospace";
-    const baseline = ctx.measureText(sample).width;
-    const found: string[] = [];
-    for (const font of fonts) {
-      ctx.font = `72px "${font}", monospace`;
-      if (ctx.measureText(sample).width !== baseline) found.push(font);
-    }
-    return found;
+    const baselines = FONT_PROBE_GENERICS.map((generic) => {
+      ctx.font = `72px ${generic}`;
+      return ctx.measureText(FONT_PROBE_SAMPLE).width;
+    });
+    return fonts.filter((font) =>
+      FONT_PROBE_GENERICS.some((generic, index) => {
+        ctx.font = `72px "${font}", ${generic}`;
+        return ctx.measureText(FONT_PROBE_SAMPLE).width !== baselines[index];
+      }),
+    );
   } catch {
     return [];
   }

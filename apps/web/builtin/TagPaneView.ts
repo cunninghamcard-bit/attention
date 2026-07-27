@@ -31,9 +31,27 @@ export class TagPaneView extends ItemView {
 
   async onOpen(): Promise<void> {
     this.contentEl.classList.add("tag-pane");
-    this.registerEvent(this.app.metadataCache.on("changed", () => this.render()));
-    this.registerEvent(this.app.metadataCache.on("deleted", () => this.render()));
+    // Coalesce: initial indexing fires "changed" once per markdown file, and
+    // a render per event rebuilds the whole pane thousands of times.
+    this.registerEvent(this.app.metadataCache.on("changed", () => this.scheduleRender()));
+    this.registerEvent(this.app.metadataCache.on("deleted", () => this.scheduleRender()));
     this.render();
+  }
+
+  override async onClose(): Promise<void> {
+    if (this.renderTimer !== null) window.clearTimeout(this.renderTimer);
+    this.renderTimer = null;
+    await super.onClose();
+  }
+
+  private renderTimer: number | null = null;
+
+  private scheduleRender(): void {
+    if (this.renderTimer !== null) window.clearTimeout(this.renderTimer);
+    this.renderTimer = window.setTimeout(() => {
+      this.renderTimer = null;
+      this.render();
+    }, 250);
   }
 
   render(): void {

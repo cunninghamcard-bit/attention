@@ -27,7 +27,6 @@ function fakeGit(
     calls,
     ghCalls,
     ghInputs,
-    gravatarUrl: (email: string) => `https://www.gravatar.com/avatar/${email}`,
     async execGh(args: string[], _cwd: string, input?: string): Promise<GitExecResult> {
       ghCalls.push(args);
       ghInputs.push(input);
@@ -148,7 +147,8 @@ describe("GitService", () => {
     expect(log[0]).toMatchObject({
       shortHash: "aaa",
       author: "Card",
-      avatarUrl: "https://www.gravatar.com/avatar/card@example.com",
+      // Resolved from the email by GitHub, no bridge call and no sign-in.
+      avatarUrl: "https://avatars.githubusercontent.com/u/e?email=card%40example.com&s=80",
       subject: "first commit",
     });
     await expect(app.git.readFileAt("v1.0", "agent.ts")).resolves.toBe("tagged content\n");

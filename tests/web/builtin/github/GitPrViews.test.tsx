@@ -774,12 +774,18 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
     const fallback = [...nav.contentEl.querySelectorAll("button")].find(
       (element) => element.textContent === "Login with personal GitHub token",
     ) as HTMLButtonElement;
+    // Visibility, not the `hidden` attribute: .git-pr-token-form and
+    // .git-pr-device-state carry `display: flex`, which outranks `[hidden]`.
+    // Assert inline display and NOT isShown() — that returns false for any
+    // detached element, so on this unmounted view it would pass vacuously.
+    const deviceStateEl = (): HTMLElement | null =>
+      nav.contentEl.querySelector<HTMLElement>(".git-pr-device-state");
     fallback.click();
-    expect(login.hidden).toBe(true);
-    expect(nav.contentEl.querySelector<HTMLElement>(".git-pr-device-state")?.hidden).toBe(true);
+    expect(login.style.display).toBe("none");
+    expect(deviceStateEl()?.style.display).toBe("none");
     fallback.click();
-    expect(login.hidden).toBe(false);
-    expect(nav.contentEl.querySelector<HTMLElement>(".git-pr-device-state")?.hidden).toBe(false);
+    expect(login.style.display).toBe("");
+    expect(deviceStateEl()?.style.display).toBe("");
   });
 
   it("keeps personal-token login available without an OAuth client ID", async () => {
@@ -804,7 +810,7 @@ describe("PR views (cloud, ghostty-web calibrated)", () => {
       (element) => element.textContent === "Login with personal GitHub token",
     ) as HTMLButtonElement;
     fallback.click();
-    expect(login.hidden).toBe(true);
+    expect(login.style.display).toBe("none");
     expect(nav.contentEl.querySelector('input[type="password"]')).not.toBeNull();
   });
 });

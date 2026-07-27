@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { App } from "@web/app/App";
 import { AppearanceSettingTab } from "@web/builtin/AppearanceSettingTab";
 import { fontAvailable, resetFontCatalogForTests } from "@web/builtin/AppearanceModals";
@@ -187,13 +187,26 @@ describe("AppearanceSettingTab", () => {
   });
 
   it("describes configured font fallback status", async () => {
-    const fontsApi = {
-      ready: Promise.resolve(),
-      check: (query: string) => query.includes("Available Font"),
+    // Stub the canvas measurement, NOT document.fonts.check: per spec check()
+    // returns true for any family with no matching @font-face, so it cannot
+    // tell an installed font from an invented one (verified in Chromium).
+    // fontAvailable measures instead — a font is installed when it paints
+    // differently from at least one generic baseline.
+    const ctxStub = {
+      font: "",
+      measureText(): { width: number } {
+        return { width: this.font.includes("Available Font") ? 200 : 100 };
+      },
     };
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      ctxStub as unknown as CanvasRenderingContext2D,
+    );
+    onTestFinished(() => {
+      vi.restoreAllMocks();
+    });
     Object.defineProperty(document, "fonts", {
       configurable: true,
-      value: fontsApi,
+      value: { ready: Promise.resolve() },
     });
     expect(await fontAvailable("Available Font")).toBe(true);
     expect(await fontAvailable("Missing Font")).toBe(false);

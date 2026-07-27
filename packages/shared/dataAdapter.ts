@@ -34,7 +34,16 @@ export interface DataWriteOptions {
   mtime?: number;
 }
 
-export type DataAdapterWatchHandler = (event: string, path: string, oldPath?: string) => void;
+/**
+ * "renamed" carries the old path; "file-created"/"modified" carry the stat the
+ * adapter's reconcile already read, so consumers never need a second stat.
+ */
+export type DataAdapterWatchHandler = (
+  event: string,
+  path: string,
+  oldPath?: string,
+  stat?: Partial<Stat>,
+) => void;
 
 export interface DataAdapter {
   getName(): string;

@@ -1036,3 +1036,229 @@ func TestSchemaValidationCoercesStringToBool(t *testing.T) {
 		t.Errorf("tool received enabled = %v (%T), want true (bool)", receivedArgs["enabled"], receivedArgs["enabled"])
 	}
 }
+
+// TestLateToolUpdatesAreDroppedRaceFree is the updateGate regression test. The
+// tool leaks its update callback to a background goroutine that keeps calling
+// it long after Execute returned. Without the gate the parallel path's update
+// buffer is appended to while the batch consumer reads it — a data race the
+// detector catches — and late updates could surface after tool_execution_end.
+// With the gate, `go test -race` stays clean and every delivered update
+// precedes its call's end event.
+func TestLateToolUpdatesAreDroppedRaceFree(t *testing.T) {
+	hammerDone := make(chan struct{})
+
+	leaky := tool.Tool{
+		Tool: ai.Tool{Name: "leaky"},
+		Execute: func(_ context.Context, _ string, _ map[string]any, onUpdate tool.UpdateCallback) (tool.Result, error) {
+			onUpdate(tool.Result{Details: map[string]any{}})
+			go func() {
+				defer close(hammerDone)
+				for i := 0; i < 5000; i++ {
+					onUpdate(tool.Result{Details: map[string]any{}})
+				}
+			}()
+			return tool.Result{
+				Content: []ai.ContentBlock{{Type: ai.ContentText, Text: "done"}},
+				Details: map[string]any{},
+			}, nil
+		},
+	}
+
+	assistant := &ai.Message{
+		Role: ai.RoleAssistant,
+		Content: []ai.ContentBlock{{
+			Type:       ai.ContentToolCall,
+			ToolCallID: "call-1",
+			ToolName:   "leaky",
+		}},
+		StopReason: ai.StopReasonToolUse,
+	}
+
+	var order []EventType
+	batch, err := executeToolCallsParallel(
+		context.Background(),
+		&Context{Tools: []tool.Tool{leaky}},
+		assistant,
+		extractToolCalls(assistant),
+		basicConfig(),
+		func(event Event) error {
+			order = append(order, event.Type)
+			return nil
+		},
+	)
+	<-hammerDone
+	if err != nil {
+		t.Fatalf("executeToolCallsParallel: %v", err)
+	}
+	if len(batch.messages) != 1 {
+		t.Fatalf("messages = %d, want 1", len(batch.messages))
+	}
+
+	endSeen := false
+	for _, typ := range order {
+		if typ == ToolExecutionEnd {
+			endSeen = true
+		}
+		if typ == ToolExecutionUpdate && endSeen {
+			t.Fatal("tool_execution_update delivered after tool_execution_end")
+		}
+	}
+	if !endSeen {
+		t.Fatal("tool_execution_end never delivered")
+	}
+}
+
+// TestToolPanicBecomesErrorResult: a panicking tool must become an error tool
+// result, not a process crash — on the parallel path the panic would escape on
+// the tool's own goroutine, where nothing above can recover it.
+func TestToolPanicBecomesErrorResult(t *testing.T) {
+	bomb := tool.Tool{
+		Tool: ai.Tool{Name: "bomb"},
+		Execute: func(context.Context, string, map[string]any, tool.UpdateCallback) (tool.Result, error) {
+			panic("boom")
+		},
+	}
+
+	assistant := &ai.Message{
+		Role: ai.RoleAssistant,
+		Content: []ai.ContentBlock{{
+			Type:       ai.ContentToolCall,
+			ToolCallID: "call-1",
+			ToolName:   "bomb",
+		}},
+		StopReason: ai.StopReasonToolUse,
+	}
+
+	batch, err := executeToolCallsParallel(
+		context.Background(),
+		&Context{Tools: []tool.Tool{bomb}},
+		assistant,
+		extractToolCalls(assistant),
+		basicConfig(),
+		noopEmit,
+	)
+	if err != nil {
+		t.Fatalf("executeToolCallsParallel: %v", err)
+	}
+	if len(batch.messages) != 1 || !batch.messages[0].IsError {
+		t.Fatalf("want one error tool result, got %#v", batch.messages)
+	}
+}
+
+// TestEmitFailureLeavesNoOpenPairs fails the sink exactly once at every event
+// index of a full tool turn and asserts the end-of-run repairs hold no matter
+// where the failure lands: Run reports the error, and the delivered event
+// sequence still pairs every turn_start/turn_end and message_start/message_end
+// and carries exactly one agent_end. Tool start/end pairing is exempt: the
+// batch deliberately stops emitting after a sink failure, and its dropped End
+// halves are the documented ceiling.
+func TestEmitFailureLeavesNoOpenPairs(t *testing.T) {
+	assistantToolUse := &ai.Message{
+		Role: ai.RoleAssistant,
+		Content: []ai.ContentBlock{{
+			Type:       ai.ContentToolCall,
+			ToolCallID: "call-1",
+			ToolName:   "echo",
+		}},
+		StopReason: ai.StopReasonToolUse,
+	}
+	assistantStop := &ai.Message{
+		Role:       ai.RoleAssistant,
+		Content:    []ai.ContentBlock{{Type: ai.ContentText, Text: "done"}},
+		StopReason: ai.StopReasonStop,
+	}
+
+	twoStep := func() StreamFunc {
+		calls := 0
+		return func(ctx context.Context, m ai.Model, c ai.Context, o ai.SimpleStreamOptions) *ai.AssistantMessageEventStream {
+			calls++
+			msg := assistantToolUse
+			if calls > 1 {
+				msg = assistantStop
+			}
+			return completeStream(msg)(ctx, m, c, o)
+		}
+	}
+
+	echo := tool.Tool{
+		Tool: ai.Tool{Name: "echo"},
+		Execute: func(context.Context, string, map[string]any, tool.UpdateCallback) (tool.Result, error) {
+			return tool.Result{
+				Content: []ai.ContentBlock{{Type: ai.ContentText, Text: "ok"}},
+				Details: map[string]any{},
+			}, nil
+		},
+	}
+
+	cfg := Config{
+		Model:         ai.Model{ID: "test-model", Provider: "test-provider"},
+		ExecutionMode: tool.Sequential,
+		ConvertToLLM: func(messages []message.AgentMessage) ([]ai.Message, error) {
+			return message.DefaultConvertToLLM(messages)
+		},
+	}
+
+	failErr := errors.New("sink hiccup")
+	drive := func(failAt int) ([]EventType, error) {
+		var delivered []EventType
+		n := -1
+		sink := func(event Event) error {
+			n++
+			if n == failAt {
+				return failErr
+			}
+			delivered = append(delivered, event.Type)
+			return nil
+		}
+		_, err := Run(
+			context.Background(),
+			[]message.AgentMessage{ai.Message{Role: ai.RoleUser}},
+			Context{Tools: []tool.Tool{echo}},
+			cfg,
+			twoStep(),
+			sink,
+		)
+		return delivered, err
+	}
+
+	happy, err := drive(-1)
+	if err != nil {
+		t.Fatalf("happy path: %v", err)
+	}
+	total := len(happy)
+	if total < 12 {
+		t.Fatalf("happy path delivered %d events, expected a full tool turn: %v", total, happy)
+	}
+
+	for i := 0; i < total; i++ {
+		delivered, err := drive(i)
+		if !errors.Is(err, failErr) {
+			t.Fatalf("failAt=%d: Run error = %v, want sink hiccup", i, err)
+		}
+
+		var turnStarts, turnEnds, msgStarts, msgEnds, agentEnds int
+		for _, typ := range delivered {
+			switch typ {
+			case TurnStart:
+				turnStarts++
+			case TurnEnd:
+				turnEnds++
+			case MessageStart:
+				msgStarts++
+			case MessageEnd:
+				msgEnds++
+			case AgentEnd:
+				agentEnds++
+			}
+		}
+		if turnStarts != turnEnds {
+			t.Fatalf("failAt=%d: %d turn_start / %d turn_end (%v)", i, turnStarts, turnEnds, delivered)
+		}
+		if msgStarts != msgEnds {
+			t.Fatalf("failAt=%d: %d message_start / %d message_end (%v)", i, msgStarts, msgEnds, delivered)
+		}
+		if agentEnds != 1 {
+			t.Fatalf("failAt=%d: agent_end count = %d, want 1 (%v)", i, agentEnds, delivered)
+		}
+	}
+}

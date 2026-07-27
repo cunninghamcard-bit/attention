@@ -450,7 +450,9 @@ describe("Vault public file API", () => {
     Vault.recurseChildren(folder, (file) => seen.push(file.path));
     const copied = await vault.copy(folder, "Archive/Thread");
 
-    expect(seen).toEqual(["Thread", "Thread/a.md", "Thread/Sub", "Thread/Sub/b.md"]);
+    // Children keep arrival order (Obsidian's addChild is a bare push);
+    // recurseChildren's LIFO stack then visits them in reverse.
+    expect(seen).toEqual(["Thread", "Thread/Sub", "Thread/Sub/b.md", "Thread/a.md"]);
     expect(copied.path).toBe("Archive/Thread");
     await expect(vault.read(vault.getFileByPath("Archive/Thread/a.md")!)).resolves.toBe("A");
     await expect(vault.read(vault.getFileByPath("Archive/Thread/Sub/b.md")!)).resolves.toBe("B");
@@ -487,16 +489,19 @@ describe("Vault public file API", () => {
     await vault.create("Folder/Sub/b.txt", "");
     await vault.create("Folder/Sub/c.md", "");
 
+    // Traversal order is emergent (arrival-ordered children through a LIFO
+    // stack), deterministic for a fixed creation sequence but not sorted —
+    // display surfaces sort for themselves, as in Obsidian.
     expect(vault.getFiles().map((file) => file.path)).toEqual([
-      "Root.md",
-      "Folder/a.md",
       "Folder/Sub/c.md",
       "Folder/Sub/b.txt",
+      "Folder/a.md",
+      "Root.md",
     ]);
     expect(vault.getMarkdownFiles().map((file) => file.path)).toEqual([
-      "Root.md",
-      "Folder/a.md",
       "Folder/Sub/c.md",
+      "Folder/a.md",
+      "Root.md",
     ]);
   });
 
@@ -988,5 +993,31 @@ describe("Vault adapter stat threading", () => {
 
     expect(statSpy).toHaveBeenCalledWith("Legacy.md");
     expect(vault.getFileByPath("Legacy.md")?.stat).toMatchObject({ ctime: 7, mtime: 8, size: 9 });
+  });
+
+  it("threads stats through the adapter watch path without re-statting", async () => {
+    // The desktop FileSystemAdapter reaches the vault through DataAdapter.watch,
+    // not bindAdapterEvents. Dropping the entry there once meant a second
+    // fire-and-forget stat for every file of the initial scan.
+    class EventedAdapter extends InMemoryAdapter {
+      supportsEvents = true;
+    }
+    const adapter = new EventedAdapter();
+    const statSpy = vi.spyOn(adapter, "stat");
+    const vault = new Vault(adapter);
+    await vault.load();
+
+    adapter.trigger("file-created", "Note.md", { type: "file", ctime: 100, mtime: 111, size: 5 });
+    const file = vault.getFileByPath("Note.md");
+    expect(file?.stat).toEqual({ ctime: 100, mtime: 111, size: 5 });
+
+    adapter.trigger("modified", "Note.md", { type: "file", ctime: 100, mtime: 222, size: 9 });
+    await Promise.resolve();
+    expect(file?.stat).toEqual({ ctime: 100, mtime: 222, size: 9 });
+    expect(statSpy).not.toHaveBeenCalled();
+
+    adapter.trigger("renamed", "New.md", "Note.md");
+    expect(vault.getFileByPath("New.md")).not.toBeNull();
+    expect(vault.getFileByPath("Note.md")).toBeNull();
   });
 });

@@ -49,6 +49,21 @@ describe("FileExplorerView external folder drops", () => {
     ).toBe("markdown");
   });
 
+  it("renders rows sorted even though vault children keep arrival order", async () => {
+    // The vault no longer sorts folder children on insert (Obsidian parity);
+    // the explorer's render-time compareFiles is the only ordering left.
+    const app = new App(document.createElement("div"));
+    await app.vault.create("zeta.md", "");
+    await app.vault.createFolder("Beta");
+    await app.vault.create("alpha.md", "");
+    const view = await openFileExplorerView(app);
+
+    const paths = [
+      ...view.contentEl.querySelectorAll<HTMLElement>(".nav-folder-title, .nav-file-title"),
+    ].map((el) => el.dataset.path);
+    expect(paths).toEqual(["Beta", "alpha.md", "zeta.md"]);
+  });
+
   it("imports external dropped files into the target folder", async () => {
     const app = new App(document.createElement("div"));
     await app.vault.createFolder("Assets");

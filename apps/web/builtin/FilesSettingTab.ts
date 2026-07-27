@@ -64,7 +64,9 @@ export class FilesSettingTab implements SettingTab {
           dropdown.addOption("daily", "Daily note");
         dropdown.setValue(defaultOpenAction).onChange((value) => {
           defaultOpenAction = value;
-          if (defaultOpenFileSetting) defaultOpenFileSetting.settingEl.hidden = value !== "file";
+          // toggle, not `hidden`: `.setting-item` sets `display: flex`, an author
+          // rule that outranks `[hidden]`, so conditional rows never collapsed.
+          if (defaultOpenFileSetting) defaultOpenFileSetting.settingEl.toggle(value === "file");
           saveDefaultOpenAction();
         });
       });
@@ -75,7 +77,7 @@ export class FilesSettingTab implements SettingTab {
         defaultOpenFileInput = text.inputEl;
         text.setValue(defaultOpenFilePath).onChange(saveDefaultOpenAction);
       });
-    defaultOpenFileSetting.settingEl.hidden = defaultOpenAction !== "file";
+    defaultOpenFileSetting.settingEl.toggle(defaultOpenAction === "file");
 
     let newFileFolderSetting: Setting | null = null;
     new Setting(this.containerEl)
@@ -89,7 +91,7 @@ export class FilesSettingTab implements SettingTab {
           .setValue(this.app.vault.getConfig<string>("newFileLocation") ?? "root")
           .onChange((value) => {
             this.app.vault.setConfig("newFileLocation", value);
-            if (newFileFolderSetting) newFileFolderSetting.settingEl.hidden = value !== "folder";
+            if (newFileFolderSetting) newFileFolderSetting.settingEl.toggle(value === "folder");
           }),
       );
     newFileFolderSetting = new Setting(this.containerEl)
@@ -102,8 +104,9 @@ export class FilesSettingTab implements SettingTab {
           .setValue(path === "/" ? "" : path)
           .onChange((value) => this.app.vault.setConfig("newFileFolderPath", value || "/"));
       });
-    newFileFolderSetting.settingEl.hidden =
-      (this.app.vault.getConfig<string>("newFileLocation") ?? "root") !== "folder";
+    newFileFolderSetting.settingEl.toggle(
+      (this.app.vault.getConfig<string>("newFileLocation") ?? "root") === "folder",
+    );
 
     const defaultAttachmentFolder = "attachments";
     let attachmentModeSetting: Setting | null = null;
@@ -115,9 +118,9 @@ export class FilesSettingTab implements SettingTab {
       const value =
         attachmentModeSetting?.controlEl.querySelector<HTMLSelectElement>("select")?.value ??
         "root";
-      if (attachmentFolderSetting) attachmentFolderSetting.settingEl.hidden = value !== "folder";
+      if (attachmentFolderSetting) attachmentFolderSetting.settingEl.toggle(value === "folder");
       if (attachmentSubfolderSetting)
-        attachmentSubfolderSetting.settingEl.hidden = value !== "subfolder";
+        attachmentSubfolderSetting.settingEl.toggle(value === "subfolder");
     };
     const readAttachmentFolderPath = (): string => {
       const value =

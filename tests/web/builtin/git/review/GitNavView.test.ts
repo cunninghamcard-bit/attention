@@ -12,7 +12,6 @@ const FILES: ReviewFileSummary[] = [
 function fakeBridge(): ElectronGitApi {
   return {
     available: true,
-    gravatarUrl: (email: string) => `https://www.gravatar.com/avatar/${email}`,
     async exec(args: string[]): Promise<GitExecResult> {
       if (args[0] === "log") {
         return {

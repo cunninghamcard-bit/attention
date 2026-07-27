@@ -26,8 +26,12 @@
   justify-content: center;
   overflow: hidden;
   border-radius: 50%;
-  background-color: var(--background-modifier-hover);
-  color: var(--text-muted);
+  /* Locally parameterized, not globally redefined: renderGitAvatar sets these
+     to one of the token layer's semantic colors, derived from the author, so
+     two people never read as the same chip. The neutral default covers an
+     author-less row, and a real avatar image covers them entirely. */
+  background-color: var(--git-avatar-background, var(--background-modifier-hover));
+  color: var(--git-avatar-color, var(--text-muted));
   font-size: calc(var(--icon-s) * 0.55);
   line-height: 1;
   font-weight: var(--font-medium);

@@ -132,3 +132,45 @@ describe("AppLifecycle opening behavior", () => {
     }
   });
 });
+
+describe("AppLifecycle startup splash", () => {
+  it("covers the load with staged messages and hides on success", async () => {
+    const { ProgressBar } = await import("@web/ui/ProgressBar");
+    const messages: string[] = [];
+    const setMessage = vi.spyOn(ProgressBar.instance, "setMessage").mockImplementation(function (
+      this: unknown,
+      message: string,
+    ) {
+      messages.push(message);
+      return ProgressBar.instance;
+    });
+    const app = new App(document.createElement("div"));
+
+    await app.ready;
+
+    expect(messages).toEqual([
+      "Loading plugins...",
+      "Loading vault...",
+      "Loading cache...",
+      "Loading workspace...",
+    ]);
+    // Hidden after a successful load: detached, and the body class is gone.
+    expect(ProgressBar.instance.containerEl.isConnected).toBe(false);
+    expect(document.body.classList.contains("in-progress")).toBe(false);
+    setMessage.mockRestore();
+  });
+
+  it("keeps the splash up with the failure message when load throws", async () => {
+    const { ProgressBar } = await import("@web/ui/ProgressBar");
+    const app = new App(document.createElement("div"));
+    vi.spyOn(app.workspace, "loadLayout").mockRejectedValue(new Error("disk gone"));
+
+    await expect(app.ready).rejects.toThrow("disk gone");
+
+    expect(ProgressBar.instance.containerEl.isConnected).toBe(true);
+    expect(ProgressBar.instance.containerEl.textContent).toContain(
+      "Failed to load vault: disk gone",
+    );
+    ProgressBar.instance.hide();
+  });
+});

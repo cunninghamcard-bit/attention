@@ -22,8 +22,9 @@ describe("search", () => {
     const app = await seededApp();
     const out = await app.cli.handleCli(["search", "query=hello"]);
     // script.js matches the engine but only markdown files are searched; order
-    // is vault tree traversal (as real getMarkdownFiles), not the engine's path sort.
-    expect(out.split("\n")).toEqual(["Alpha.md", "Folder2/Trick.md", "Folder/Beta.md"]);
+    // is vault tree traversal (as real getMarkdownFiles) over arrival-ordered
+    // children — not the engine's path sort.
+    expect(out.split("\n")).toEqual(["Folder2/Trick.md", "Folder/Beta.md", "Alpha.md"]);
   });
 
   it("path= is a folder prefix: Folder does not match Folder2", async () => {
@@ -38,10 +39,10 @@ describe("search", () => {
 
   it("limit caps files in vault order; limit=0 means unlimited", async () => {
     const app = await seededApp();
-    expect(await app.cli.handleCli(["search", "query=hello", "limit=1"])).toBe("Alpha.md");
-    // Vault order, not engine path order (which would put Folder/Beta.md second).
+    expect(await app.cli.handleCli(["search", "query=hello", "limit=1"])).toBe("Folder2/Trick.md");
+    // Vault order, not engine path order (which would put Alpha.md first).
     expect(await app.cli.handleCli(["search", "query=hello", "limit=2"])).toBe(
-      "Alpha.md\nFolder2/Trick.md",
+      "Folder2/Trick.md\nFolder/Beta.md",
     );
     expect(
       (await app.cli.handleCli(["search", "query=hello", "limit=0"])).split("\n"),
@@ -52,7 +53,7 @@ describe("search", () => {
     const app = await seededApp();
     await app.vault.create("Hello.md", "no greeting in the body");
     expect(await app.cli.handleCli(["search", "query=hello"])).toBe(
-      "Hello.md\nAlpha.md\nFolder2/Trick.md\nFolder/Beta.md",
+      "Hello.md\nFolder2/Trick.md\nFolder/Beta.md\nAlpha.md",
     );
     expect(await app.cli.handleCli(["search", "query=hello", "total"])).toBe("4");
   });
@@ -115,8 +116,14 @@ describe("search:context", () => {
 
   it("repeats duplicate lines for multiple matches on one line; limit caps files not lines", async () => {
     const app = await seededApp();
+    // limit=1 keeps only the first file in vault order; Alpha.md (the one with
+    // the duplicate-line matches) is last now, so raise the cap to reach it.
     expect(await app.cli.handleCli(["search:context", "query=hello", "limit=1"])).toBe(
-      "Alpha.md:1: hello world hello\nAlpha.md:1: hello world hello\nAlpha.md:2: indented hello",
+      "Folder2/Trick.md:1: hello trick",
+    );
+    expect(await app.cli.handleCli(["search:context", "query=hello", "limit=3"])).toBe(
+      "Folder2/Trick.md:1: hello trick\nFolder/Beta.md:1: hello there\n" +
+        "Alpha.md:1: hello world hello\nAlpha.md:1: hello world hello\nAlpha.md:2: indented hello",
     );
   });
 

@@ -9,6 +9,7 @@ package agentloop
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -39,6 +40,61 @@ func Run(
 	return run(ctx, prompts, agCtx, config, stream, emit)
 }
 
+// pairingLedger tracks which Start events were delivered and answered by
+// their End, so a failed run can repair the pairing before agent_end. It is
+// only written for lifecycle events, which are all emitted from the loop
+// goroutine; tool-update events pass through without touching its fields.
+type pairingLedger struct {
+	emit     EventSink
+	turnOpen bool
+	msgOpen  bool
+	ended    bool
+}
+
+// sink wraps the consumer's sink, recording lifecycle events that were
+// actually delivered — a Start the consumer never accepted needs no repair.
+func (l *pairingLedger) sink() EventSink {
+	return func(event Event) error {
+		if err := l.emit(event); err != nil {
+			return err
+		}
+		switch event.Type {
+		case TurnStart:
+			l.turnOpen = true
+		case TurnEnd:
+			l.turnOpen = false
+		case MessageStart:
+			l.msgOpen = true
+		case MessageEnd:
+			l.msgOpen = false
+		case AgentEnd:
+			l.ended = true
+		}
+		return nil
+	}
+}
+
+// end is the failed run's epilogue: close an open message, then an open turn,
+// then announce agent_end — a consumer pairing Start/End events is never left
+// holding an open pair, and agent_end stays the guaranteed terminal event on
+// every path, as in pi's runLoop. Emit failures are ignored here: the outcome
+// is already decided and there is nowhere left to report one.
+func (l *pairingLedger) end(messages []message.AgentMessage) {
+	if l.ended {
+		return
+	}
+	l.ended = true
+	if l.msgOpen {
+		l.msgOpen = false
+		_ = l.emit(Event{Type: MessageEnd})
+	}
+	if l.turnOpen {
+		l.turnOpen = false
+		_ = l.emit(Event{Type: TurnEnd})
+	}
+	_ = l.emit(Event{Type: AgentEnd, Messages: messages})
+}
+
 func run(
 	ctx context.Context,
 	prompts []message.AgentMessage,
@@ -46,8 +102,16 @@ func run(
 	config Config,
 	stream StreamFunc,
 	emit EventSink,
-) ([]message.AgentMessage, error) {
+) (out []message.AgentMessage, err error) {
 	newMessages := make([]message.AgentMessage, 0, len(prompts))
+
+	ledger := &pairingLedger{emit: emit}
+	emit = ledger.sink()
+	defer func() {
+		if err != nil {
+			ledger.end(newMessages)
+		}
+	}()
 
 	currentContext := Context{
 		SystemPrompt: agCtx.SystemPrompt,
@@ -74,7 +138,7 @@ func run(
 		}
 	}
 
-	err := runLoop(ctx, &currentContext, &newMessages, config, stream, emit)
+	err = runLoop(ctx, &currentContext, &newMessages, config, stream, emit)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +165,7 @@ func continueRun(
 	config Config,
 	stream StreamFunc,
 	emit EventSink,
-) ([]message.AgentMessage, error) {
+) (out []message.AgentMessage, err error) {
 	if len(agCtx.Messages) == 0 {
 		return nil, errNoMessages
 	}
@@ -112,6 +176,14 @@ func continueRun(
 	}
 
 	newMessages := []message.AgentMessage{}
+
+	ledger := &pairingLedger{emit: emit}
+	emit = ledger.sink()
+	defer func() {
+		if err != nil {
+			ledger.end(newMessages)
+		}
+	}()
 	currentContext := Context{
 		SystemPrompt: agCtx.SystemPrompt,
 		Messages:     make([]message.AgentMessage, 0, len(agCtx.Messages)),
@@ -128,7 +200,7 @@ func continueRun(
 		return nil, err
 	}
 
-	err := runLoop(ctx, &currentContext, &newMessages, config, stream, emit)
+	err = runLoop(ctx, &currentContext, &newMessages, config, stream, emit)
 	if err != nil {
 		return nil, err
 	}
@@ -836,50 +908,74 @@ func prepareToolCall(
 	}
 }
 
+// updateGate scopes a tool's update callback to its Execute call. Two jobs:
+// late calls — a background goroutine that outlives Execute — are dropped
+// silently, and close waits out any in-flight delivery, so nothing appends to
+// the parallel batch's update buffer (or reaches the sink on the sequential
+// path) after the call is finalized. A mutex rather than an atomic flag
+// because of that second job. pi's executePreparedToolCall keeps the same
+// contract with acceptingUpdates + Promise.all (agent-loop.ts:672,694-695) and
+// needs no lock only because JS is single-threaded.
+type updateGate struct {
+	mu   sync.Mutex
+	open bool
+}
+
+// send runs fn unless the gate has closed.
+func (g *updateGate) send(fn func()) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if !g.open {
+		return
+	}
+	fn()
+}
+
+// close makes every later send a no-op, once any in-flight one has finished.
+func (g *updateGate) close() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.open = false
+}
+
 func executePreparedToolCall(
 	ctx context.Context,
 	prep preparedToolCall,
 	onUpdate func(Event) error,
 ) (executedToolCallOutcome, error) {
-	var (
-		updateErr   error
-		updateErrMu sync.Mutex
-	)
+	gate := &updateGate{open: true}
+	// The deferred close covers the panic path; the explicit close below is the
+	// normal fence. Closing before updateErr is read is what makes both halves
+	// of the update contract true: no update lands after Execute returns, and
+	// every in-flight one has landed before the caller emits tool_execution_end.
+	defer gate.close()
 
-	recordUpdateErr := func(err error) {
-		updateErrMu.Lock()
-		defer updateErrMu.Unlock()
-		if updateErr == nil {
-			updateErr = err
-		}
-	}
-	currentUpdateErr := func() error {
-		updateErrMu.Lock()
-		defer updateErrMu.Unlock()
-		return updateErr
-	}
+	var updateErr error // written only inside the gate, read only after close
 
 	callback := func(partial tool.Result) {
 		if onUpdate == nil {
 			return
 		}
-		err := onUpdate(Event{
-			Type:       ToolExecutionUpdate,
-			ToolCallID: prep.toolCall.ToolCallID,
-			ToolName:   prep.toolCall.ToolName,
-			// pi emits the assistant message's original arguments, not the
-			// validated/coerced ones (agent-loop.ts:644-649).
-			Args:          prep.toolCall.Arguments,
-			PartialResult: partial,
+		gate.send(func() {
+			err := onUpdate(Event{
+				Type:       ToolExecutionUpdate,
+				ToolCallID: prep.toolCall.ToolCallID,
+				ToolName:   prep.toolCall.ToolName,
+				// pi emits the assistant message's original arguments, not the
+				// validated/coerced ones (agent-loop.ts:644-649).
+				Args:          prep.toolCall.Arguments,
+				PartialResult: partial,
+			})
+			if err != nil && updateErr == nil {
+				updateErr = err
+			}
 		})
-		if err != nil {
-			recordUpdateErr(err)
-		}
 	}
 
-	result, execErr := prep.tl.Execute(ctx, prep.toolCall.ToolCallID, prep.args, callback)
-	if err := currentUpdateErr(); err != nil {
-		return executedToolCallOutcome{}, err
+	result, execErr := runToolExecute(ctx, prep, callback)
+	gate.close()
+	if updateErr != nil {
+		return executedToolCallOutcome{}, updateErr
 	}
 	if execErr != nil {
 		return executedToolCallOutcome{
@@ -888,6 +984,19 @@ func executePreparedToolCall(
 		}, nil
 	}
 	return executedToolCallOutcome{result: result, isError: result.IsError}, nil
+}
+
+// runToolExecute turns a panicking tool into an ordinary error result, so one
+// bad tool cannot take the process down: on the parallel path the panic would
+// escape on the tool's own goroutine, where no recover up the stack can catch
+// it.
+func runToolExecute(ctx context.Context, prep preparedToolCall, cb tool.UpdateCallback) (result tool.Result, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("tool %q panicked: %v", prep.toolCall.ToolName, r)
+		}
+	}()
+	return prep.tl.Execute(ctx, prep.toolCall.ToolCallID, prep.args, cb)
 }
 
 func finalizeExecutedToolCall(

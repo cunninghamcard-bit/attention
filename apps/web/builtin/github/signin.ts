@@ -77,7 +77,7 @@ export function renderGitHubSignIn(
         if (!container.contains(card)) return;
         deviceState = createDiv("git-pr-device-state", card);
         card.insertBefore(deviceState, tokenToggle);
-        deviceState.hidden = !tokenForm.hidden;
+        deviceState.toggle(!tokenMode);
         createEl(
           "p",
           { text: "Copy this code, then authorize this app in your browser." },
@@ -114,16 +114,26 @@ export function renderGitHubSignIn(
 
   const tokenToggle = button(card, "Login with personal GitHub token", "git-pr-signin-fallback");
   const tokenForm = createDiv("git-pr-token-form", card);
-  tokenForm.hidden = true;
+  // Visibility rides on display, not the `hidden` attribute: github-signin.css
+  // gives .git-pr-token-form / .git-pr-device-state `display: flex`, an author
+  // rule that outranks the UA's `[hidden] { display: none }` — so the token form
+  // sat on screen next to the OAuth button. `tokenMode` is the state now; the
+  // DOM is never read back to decide which half of the card shows.
+  let tokenMode = false;
+  const applyTokenMode = (): void => {
+    tokenForm.toggle(tokenMode);
+    oauth.toggle(!tokenMode);
+    configMessage?.toggle(!tokenMode);
+    deviceState?.toggle(!tokenMode);
+    tokenToggle.textContent = tokenMode
+      ? "Use GitHub browser login"
+      : "Login with personal GitHub token";
+  };
+  applyTokenMode();
   tokenToggle.addEventListener("click", () => {
-    tokenForm.hidden = !tokenForm.hidden;
-    oauth.hidden = !tokenForm.hidden;
-    if (configMessage) configMessage.hidden = !tokenForm.hidden;
-    if (deviceState) deviceState.hidden = !tokenForm.hidden;
+    tokenMode = !tokenMode;
     card.querySelector(".git-pr-signin-error")?.remove();
-    tokenToggle.textContent = tokenForm.hidden
-      ? "Login with personal GitHub token"
-      : "Use GitHub browser login";
+    applyTokenMode();
   });
   const createToken = button(tokenForm, "Create a token on GitHub", "git-pr-signin-token-link");
   createToken.addEventListener("click", () => openInSystemBrowser(GITHUB_TOKEN_URL));

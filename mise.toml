@@ -11,14 +11,24 @@
 node = "26.3.0"
 pnpm = "11.7.0"
 go = "1.26"
+# Pinned like every other tool (memoh does the same): an unpinned
+# golangci-lint resolves to a bare mise shim that refuses to run.
+"golangci-lint" = "2.11.3"
 
 [tasks.pnpm-install]
 description = "Install dependencies — pnpm (a preinstall hook enforces pnpm-only)"
 run = "pnpm install --frozen-lockfile"
 
+# Every Go task front-loads $GOROOT/bin. mise injects GOROOT for the pinned
+# toolchain but does NOT put it on $PATH, so a bare `go` resolves to whatever
+# the system has — a 1.26.4 `go` driving a 1.26.5 GOROOT, which fails as
+# `compile: version "go1.26.5" does not match go tool version "go1.26.4"`.
+# Prefixing PATH makes the pin authoritative inside the task, with no shell
+# activation and no `mise trust` (an `[env]` block would need both). It also
+# fixes golangci-lint, which shells out to `go` itself.
 [tasks.go-install]
 description = "Install Go dependencies"
-run = "go mod download"
+run = 'PATH="$GOROOT/bin:$PATH" go mod download'
 
 [tasks.setup]
 description = "Setup development environment"
@@ -39,10 +49,10 @@ run = "pnpm run lint"
 [tasks."lint:go"]
 description = "Go vet + golangci-lint over the kernel — BOTH modules. cmd/tui is a nested module; root-level `go`/golangci-lint never descend into it, so it gets its own invocation (same asymmetry test:go already handles)."
 run = [
-  "go vet ./...",
-  "go -C cmd/tui vet ./...",
-  "golangci-lint run ./...",
-  "cd cmd/tui && golangci-lint run -c ../../.golangci.yml ./...",
+  'PATH="$GOROOT/bin:$PATH" go vet ./...',
+  'PATH="$GOROOT/bin:$PATH" go -C cmd/tui vet ./...',
+  'PATH="$GOROOT/bin:$PATH" golangci-lint run ./...',
+  'cd cmd/tui && PATH="$GOROOT/bin:$PATH" golangci-lint run -c ../../.golangci.yml ./...',
 ]
 
 [tasks.format]
@@ -50,11 +60,11 @@ description = "Rewrite formatting, via vp (vendored trees excluded by .prettieri
 run = "pnpm exec vp fmt"
 
 [tasks.typecheck]
-description = "All three tsc lanes. Stays explicit: red-probed vp check and it passes a bare type error — its type stage does not engage this repo."
+description = "All three tsc lanes, cached (pure function of sources + tsconfig). Stays explicit: red-probed vp check and it passes a bare type error — its type stage does not engage this repo."
 run = [
-  "pnpm exec vp run typecheck",
-  "pnpm exec vp run typecheck:electron",
-  "pnpm exec vp run typecheck:tools",
+  "pnpm exec vp run --cache typecheck",
+  "pnpm exec vp run --cache typecheck:electron",
+  "pnpm exec vp run --cache typecheck:tools",
 ]
 
 [tasks.test]
@@ -63,23 +73,30 @@ run = "pnpm exec vp test"
 
 [tasks."test:go"]
 description = "Go kernel tests — root module plus the nested cmd/tui module"
-run = ["go test ./...", "go -C cmd/tui test ./..."]
+run = [
+  'PATH="$GOROOT/bin:$PATH" go test ./...',
+  'PATH="$GOROOT/bin:$PATH" go -C cmd/tui test ./...',
+]
 
 [tasks."test:e2e"]
 description = "Playwright end-to-end tests (web)"
 run = "pnpm exec vp run e2e"
 
+[tasks."test:e2e:desktop"]
+description = "Playwright end-to-end tests against the built Electron app. Requires `mise run web:build && mise run desktop:build` first — Playwright launches out/desktop/main.cjs, it does not build it."
+run = "pnpm exec vp run e2e:desktop"
+
 [tasks."web:build"]
-description = "Build apps/web via vp (Rolldown). vp only discovers the config from inside the package."
-run = "cd apps/web && pnpm exec vp build"
+description = "Build apps/web via vp (Rolldown), cached — a hit restores out/web, it does not merely replay the log."
+run = "pnpm exec vp run --cache build"
 
 [tasks."web:dev"]
 description = "Vite dev server via vp, from inside apps/web"
 run = "cd apps/web && pnpm exec vp dev"
 
 [tasks."api:build"]
-description = "Build the public API bundle and declarations (packcheck validates these artifacts)"
-run = "pnpm run build:api"
+description = "Build the public API bundle and declarations, cached (packcheck validates these artifacts)"
+run = "pnpm exec vp run --cache build:api"
 
 [tasks.packcheck]
 description = "Validate the @app/web package manifest against its built artifacts (publint + attw)"

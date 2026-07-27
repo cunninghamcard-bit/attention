@@ -359,7 +359,9 @@ export class GitNavView extends ItemView {
   private renderFooter(): void {
     if (!this.footerEl) return;
     this.footerEl.empty();
-    this.footerEl.hidden = this.mode !== "tree";
+    // toggle, not `hidden`: .git-nav-footer sets `display: flex`, which beats
+    // `[hidden]`, so the footer stayed visible (and padded) outside tree mode.
+    this.footerEl.toggle(this.mode === "tree");
     if (this.mode !== "tree") return;
     createSpan(
       {

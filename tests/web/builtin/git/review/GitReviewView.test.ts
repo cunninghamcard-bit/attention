@@ -284,9 +284,14 @@ describe("GitReviewView", () => {
     await until(() => view.contentEl.querySelectorAll("[data-item]").length === 2, "diff cards");
 
     expect(codeViews).toHaveLength(1);
+    // The sidebar is hidden by CSS alone (`.is-nav-external .review-sidebar`),
+    // which jsdom never applies — the class assertion above IS that check.
     expect(view.contentEl.querySelector(".review-surface.is-nav-external")).not.toBeNull();
-    expect((view.contentEl.querySelector(".review-sidebar") as HTMLElement).hidden).toBe(true);
-    expect((view.contentEl.querySelector(".review-toolbar") as HTMLElement).hidden).toBe(true);
+    // Inline display, not isShown(): that is false for any detached element,
+    // and this view is never mounted — the check would pass vacuously.
+    expect((view.contentEl.querySelector(".review-toolbar") as HTMLElement).style.display).toBe(
+      "none",
+    );
     expect(app.workspace.getLeavesOfType("git-nav")[0].getRoot()).toBe(app.workspace.rightSplit);
   });
 

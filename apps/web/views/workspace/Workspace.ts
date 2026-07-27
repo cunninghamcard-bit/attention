@@ -2927,8 +2927,17 @@ export class Workspace extends Events {
         ? rightSidedockTabs
         : (rootTopTabs?.last ?? this.getTopTabsFallback(this.rootSplit));
 
-    if (rightTarget) rightTarget.tabHeaderContainerEl.appendChild(this.rightSidebarToggleButtonEl);
-    else this.rightSidebarToggleButtonEl.remove();
+    // Mirror of the left button. Inside the right sidedock's own tab bar the
+    // button sits at the START — nearest the center, like the left one sits at
+    // its end. Obsidian's LTR placement is pure DOM order (only `.mod-rtl`
+    // reorders, via `order: 2` / `order: -1`), so getting the insertion side
+    // wrong is what pinned it against the window edge. Falling back to a root
+    // tab bar it goes last, same as before.
+    if (rightTarget) {
+      if (rightSidedockOpen && rightTarget === rightSidedockTabs)
+        rightTarget.tabHeaderContainerEl.prepend(this.rightSidebarToggleButtonEl);
+      else rightTarget.tabHeaderContainerEl.appendChild(this.rightSidebarToggleButtonEl);
+    } else this.rightSidebarToggleButtonEl.remove();
   }
 
   private getTopTabsFallback(item: WorkspaceItem): WorkspaceTabs | null {

@@ -58,7 +58,12 @@ export class ComboboxSuggest extends PopoverSuggest<ComboboxSuggestion> {
 
     this.iconEl = doc.createElement("div");
     this.iconEl.className = "combobox-button-icon";
-    this.iconEl.hidden = true;
+    // display, not `hidden`: `.combobox-button .combobox-button-icon` sets
+    // `display: flex`, which outranks `[hidden]` — the empty icon box kept its
+    // width next to every iconless value. Set inline rather than via the
+    // `toggle()` DOM extension: this is ui/, usable before
+    // installDomExtensions() has run (and its own tests never call it).
+    this.iconEl.style.display = "none";
     this.labelEl = doc.createElement("div");
     this.labelEl.className = "combobox-button-label";
     this.clearButtonEl = doc.createElement("div");
@@ -267,12 +272,8 @@ export class ComboboxSuggest extends PopoverSuggest<ComboboxSuggestion> {
     const value = this.value;
     this.labelEl.textContent = value?.display ?? value?.value ?? "";
     this.iconEl.replaceChildren();
-    if (value?.icon) {
-      setIcon(this.iconEl, value.icon);
-      this.iconEl.hidden = false;
-    } else {
-      this.iconEl.hidden = true;
-    }
+    if (value?.icon) setIcon(this.iconEl, value.icon);
+    this.iconEl.style.display = value?.icon ? "" : "none";
     this.buttonEl.classList.toggle("mod-clearable", this.clearable && value != null);
   }
 
