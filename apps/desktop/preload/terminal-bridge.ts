@@ -42,6 +42,22 @@ interface NodePtyModule {
   ): NodePtyProcess;
 }
 
+/**
+ * The LANG a real terminal emulator would hand the shell. An app launched
+ * from Finder inherits no locale at all, which drops zsh into the C locale:
+ * zle then books the prompt's UTF-8 glyphs by BYTE, its wrap model diverges
+ * from the rendered grid, and every redisplay that navigates (kill-line,
+ * wrapped-line repaints) paints over the prompt. Terminal.app and iTerm set
+ * LANG from the system locale for exactly this reason. An invalid computed
+ * locale just falls back to C — no worse than the unset status quo.
+ */
+export function defaultLang(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  if (env.LANG || env.LC_ALL || env.LC_CTYPE) return env.LANG;
+  const tag = Intl.DateTimeFormat().resolvedOptions().locale;
+  const match = /^([a-z]{2,3})(?:-.+)?-([A-Z]{2})$/.exec(tag);
+  return match ? `${match[1]}_${match[2]}.UTF-8` : "en_US.UTF-8";
+}
+
 export function createElectronTerminalApi(
   loadNodePty: () => NodePtyModule = () => require("node-pty") as NodePtyModule,
   platform: NodeJS.Platform = process.platform,
@@ -65,6 +81,7 @@ export function createElectronTerminalApi(
       const shell = options.shell || defaultShell;
       const cols = options.cols ?? 80;
       const rows = options.rows ?? 24;
+      const lang = defaultLang();
       const child = pty.spawn(shell, options.args ?? [], {
         name: "xterm-256color",
         cols,
@@ -75,8 +92,11 @@ export function createElectronTerminalApi(
           TERM: "xterm-256color",
           TERM_PROGRAM: "obsidian-agent-workspace",
           COLORTERM: "truecolor",
-          COLUMNS: String(cols),
-          LINES: String(rows),
+          ...(lang ? { LANG: lang } : {}),
+          // No COLUMNS/LINES: real terminals never export them. An exported
+          // COLUMNS pins anything that reads it (starship in a capture pipe)
+          // to the SPAWN-time width while zle tracks the live winsize; the
+          // winsize ioctl is the single source of truth.
         },
       });
       let killed = false;
