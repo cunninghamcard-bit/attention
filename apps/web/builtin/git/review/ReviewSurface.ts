@@ -1,5 +1,5 @@
 /**
- * Input: @pierre/diffs, ../../../dom/dom, ../../../ui/Composer, ../../../ui/highlightWorkers, ../../../ui/Icon, ../../../ui/Notice, ../../../ui/FileTypeIcon, ../../../ui/Setting, ../../../ui/TreeItem, ../diffSeparatorCss, ./reviewModel
+ * Input: @pierre/diffs, ../../../dom/dom, ../../../ui/Composer, ../../../ui/highlightWorkers, ../../../ui/Icon, ../../../ui/Notice, ../../../ui/FileTypeIcon, ../../../ui/Setting, ../../../ui/TreeItem, ../diffChromeCss, ./reviewModel
  * Output: ReviewSubmitOptions, ReviewSurfaceProps, ReviewSurface
  * Pos: Application code
  *
@@ -24,7 +24,7 @@ import { TreeItem } from "../../../ui/TreeItem";
 import { writeClipboardText } from "../../../dom/Clipboard";
 import { renderGitAvatar } from "../GitAvatar";
 import { formatCommitDate } from "../relativeDate";
-import { DIFF_SEPARATOR_CSS } from "../diffSeparatorCss";
+import { DIFF_CHROME_CSS } from "../diffChromeCss";
 import {
   isViewed,
   readDiffStyle,
@@ -424,7 +424,7 @@ export class ReviewSurface {
       expandUnchanged: false,
       expansionLineCount: 100,
       hunkSeparators: "line-info-basic",
-      unsafeCSS: DIFF_SEPARATOR_CSS,
+      unsafeCSS: DIFF_CHROME_CSS,
       itemMetrics: { diffHeaderHeight: 44 },
       layout: { gap: 12, paddingTop: 10, paddingBottom: 10 },
       lineHoverHighlight: "both",
