@@ -59,6 +59,27 @@ interface GuestWebContents {
   removeAllListeners?: (event: string) => void;
   setIgnoreMenuShortcuts?: (ignore: boolean) => void;
   isDestroyed?: () => boolean;
+  /** Suppresses Chromium's own menu so ours is the only one. */
+  noContextMenu?: boolean;
+  cut?: () => void;
+  paste?: () => void;
+  delete?: () => void;
+  selectAll?: () => void;
+}
+
+/**
+ * What Electron's `context-menu` event says about the click. This is the whole
+ * story for a guest right-click: the DOM it happened in is another process, so
+ * nothing here can be re-derived by looking at host elements.
+ */
+interface GuestContextMenuParams {
+  linkURL?: string;
+  srcURL?: string;
+  mediaType?: string;
+  selectionText?: string;
+  isEditable?: boolean;
+  x?: number;
+  y?: number;
 }
 
 /**
@@ -207,7 +228,9 @@ export class WebViewerController {
     new Notice(`Saved ${saved.savedPath}`);
   }
 
-  openLink(url: string, mode: "tab" | "split" | "browser" = "tab"): void {
+  /** `false` replaces the current leaf, matching `getLeaf`'s own vocabulary —
+   * the real context menu's plain "Open link" does exactly that. */
+  openLink(url: string, mode: PaneType | false | "browser" = "tab"): void {
     if (mode === "browser") {
       window.open(url, "_blank");
       return;
@@ -549,7 +572,158 @@ export class WebViewerView extends ItemView {
     // The guest's id only exists once it has attached, which `dom-ready` is the
     // first signal of; a reload fires it again, hence the once-only guard.
     this.adapter.webContents.on("dom-ready", () => this.configureWebContents());
+    this.adapter.webContents.on("context-menu", (params) =>
+      this.displayContextMenu((params ?? {}) as GuestContextMenuParams),
+    );
     return this.adapter;
+  }
+
+  /**
+   * The context menu for a right-click inside the page.
+   *
+   * Everything it offers comes from `params`, because the click happened in the
+   * guest's document: `event.target.closest("a")` finds nothing there, which is
+   * why the host-DOM handler this replaces could never show link or image items
+   * (and, the guest swallowing `contextmenu` outright, never opened at all).
+   * Group order and membership follow the real webviewer's
+   * `displayContextMenu` — link, then selection or editable, then image, then
+   * the bare-page group that only appears when the click hit nothing.
+   *
+   * Two of Obsidian's items are not here: "Bookmark link/page" wants the
+   * bookmarks modal, and "Copy image" wants a nativeImage on the clipboard.
+   */
+  private displayContextMenu(params: GuestContextMenuParams): void {
+    const menu = new Menu();
+    let empty = true;
+    const group = (): void => {
+      if (!empty) menu.addSeparator();
+      empty = false;
+    };
+
+    if (params.linkURL) {
+      const url = params.linkURL;
+      group();
+      const open = (mode: PaneType | false) => () => this.controller.openLink(url, mode);
+      menu.addItem((item) =>
+        item.setTitle("Open link").setIcon("lucide-globe").onClick(open(false)),
+      );
+      menu.addItem((item) => item.setTitle("Open link in new tab").onClick(open("tab")));
+      menu.addItem((item) => item.setTitle("Open link in new split").onClick(open("split")));
+      menu.addItem((item) => item.setTitle("Open link in new window").onClick(open("window")));
+      menu.addItem((item) =>
+        item
+          .setTitle("Open link in default browser")
+          .setIcon("lucide-external-link")
+          .onClick(() => window.open(url, "_blank")),
+      );
+      menu.addSeparator();
+      menu.addItem((item) =>
+        item
+          .setTitle("Copy link address")
+          .setIcon("lucide-copy")
+          .onClick(() => void navigator.clipboard?.writeText(url)),
+      );
+    }
+
+    const selection = params.selectionText ?? "";
+    if (selection) {
+      const contents = this.guestContents;
+      group();
+      menu.addItem((item) =>
+        item
+          .setTitle(`Search for "${truncateForMenu(selection)}"`)
+          .setIcon("lucide-search")
+          .onClick(() =>
+            this.controller.openLink(this.app.webViewer.normalizeUrl(selection), "tab"),
+          ),
+      );
+      menu.addItem((item) =>
+        item
+          .setTitle("Extract selection")
+          .setIcon("lucide-file-plus")
+          .onClick(
+            () => void this.controller.saveSelectionToVault(this.url, this.title, selection),
+          ),
+      );
+      menu.addSeparator();
+      menu.addItem((item) =>
+        item
+          .setTitle("Copy")
+          .setIcon("lucide-copy")
+          .onClick(() => void navigator.clipboard?.writeText(selection)),
+      );
+      if (params.isEditable) {
+        // Editing commands have to run in the guest — the selection lives in
+        // its document, so clipboard writes from here would target ours.
+        menu.addItem((item) => item.setTitle("Cut").onClick(() => contents?.cut?.()));
+        menu.addItem((item) => item.setTitle("Paste").onClick(() => contents?.paste?.()));
+        menu.addItem((item) => item.setTitle("Delete").onClick(() => contents?.delete?.()));
+        menu.addItem((item) => item.setTitle("Select all").onClick(() => contents?.selectAll?.()));
+      }
+    } else if (params.isEditable) {
+      const contents = this.guestContents;
+      group();
+      menu.addItem((item) => item.setTitle("Paste").onClick(() => contents?.paste?.()));
+      menu.addItem((item) => item.setTitle("Select all").onClick(() => contents?.selectAll?.()));
+    }
+
+    if (params.mediaType === "image" && params.srcURL) {
+      const src = params.srcURL;
+      group();
+      menu.addItem((item) =>
+        item
+          .setTitle("Save image to vault")
+          .setIcon("lucide-image-down")
+          .onClick(() => void this.controller.saveImageToVault(src)),
+      );
+      menu.addItem((item) =>
+        item
+          .setTitle("Copy image link")
+          .setIcon("lucide-copy")
+          .onClick(() => void navigator.clipboard?.writeText(src)),
+      );
+    }
+
+    // Only when the click landed on nothing in particular.
+    if (!selection && params.mediaType === "none" && !params.linkURL) {
+      const contents = this.guestContents;
+      group();
+      menu.addItem((item) =>
+        item
+          .setTitle("Back")
+          .setIcon("lucide-arrow-left")
+          .setDisabled(this.leaf.history.backHistory.length === 0)
+          .onClick(() => void this.leaf.history.back()),
+      );
+      menu.addItem((item) =>
+        item
+          .setTitle("Forward")
+          .setIcon("lucide-arrow-right")
+          .setDisabled(this.leaf.history.forwardHistory.length === 0)
+          .onClick(() => void this.leaf.history.forward()),
+      );
+      menu.addItem((item) =>
+        item
+          .setTitle("Reload")
+          .setIcon("lucide-rotate-cw")
+          .onClick(() => this.adapter?.reload()),
+      );
+      menu.addItem((item) =>
+        item
+          .setTitle("Open in default browser")
+          .setIcon("lucide-external-link")
+          .onClick(() => window.open(this.url, "_blank")),
+      );
+      menu.addItem((item) => item.setTitle("Select all").onClick(() => contents?.selectAll?.()));
+    }
+
+    // params.x/y are relative to the guest's viewport, so they only become
+    // screen coordinates once offset by where the guest element sits.
+    const rect = this.adapter?.element.getBoundingClientRect();
+    menu.showAtPosition({
+      x: (rect?.left ?? 0) + (params.x ?? 0),
+      y: (rect?.top ?? 0) + (params.y ?? 0),
+    });
   }
 
   /**
@@ -584,6 +758,8 @@ export class WebViewerView extends ItemView {
     const contents = remote?.webContents?.fromId(id);
     if (!contents) return;
     this.guestContents = contents;
+    // Chromium would otherwise raise its own menu alongside ours.
+    contents.noContextMenu = true;
     contents.on("before-input-event", (_event, input) => {
       if (input.type !== "keyDown" || contents.isDestroyed?.()) return;
       const handled = this.app.keymap.onKeyEvent(
@@ -1091,6 +1267,12 @@ export function createWebViewerPluginDefinition(): InternalPluginDefinition {
       controller?.onEnable(plugin);
     },
   };
+}
+
+/** The selection shown in "Search for …" — the real menu clips it at 15. */
+function truncateForMenu(text: string, limit = 15): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  return flat.length > limit ? `${flat.slice(0, limit)}…` : flat;
 }
 
 function titleFromUrl(url: string): string {

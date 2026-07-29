@@ -210,6 +210,17 @@ export class WebViewerElementAdapter {
       this.element.addEventListener("page-favicon-updated", (event) =>
         this.webContents.emit("page-favicon-updated", event),
       );
+      // The guest owns its own input, so a right-click inside the page never
+      // reaches the host document — this element event carrying `params` is the
+      // only place it surfaces (real webviewer: `addEventListener("context-menu",
+      // displayContextMenu)`). The params are the whole story: what was clicked
+      // is described there, not findable in host DOM.
+      this.element.addEventListener("context-menu", (event) =>
+        this.webContents.emit(
+          "context-menu",
+          (event as unknown as { params?: unknown }).params ?? {},
+        ),
+      );
     } else {
       this.element.addEventListener("load", () => {
         markReady();

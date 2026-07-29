@@ -247,3 +247,106 @@ describe("webviewer guest input", () => {
     await expect(openViewer(app)).resolves.toBeDefined();
   });
 });
+
+/**
+ * The other half of the same problem: a right-click inside the page never
+ * reaches the host document either, so the menu has to be driven by the
+ * `context-menu` event's `params` — the click's DOM is in another process and
+ * `closest("a[href]")` on this side can never see it.
+ */
+function menuTitles(): string[] {
+  return [...document.querySelectorAll(".menu-item-title")].map((el) => el.textContent ?? "");
+}
+
+function closeMenus(): void {
+  for (const el of document.querySelectorAll(".menu")) el.remove();
+}
+
+async function rightClick(app: App, params: Record<string, unknown>, url = "https://example.com/") {
+  const { view } = await openViewer(app, url);
+  const adapter = (
+    view as unknown as {
+      adapter: { webContents: { emit: (e: string, p: unknown) => void } };
+    }
+  ).adapter;
+  adapter.webContents.emit("context-menu", { mediaType: "none", x: 0, y: 0, ...params });
+  return view;
+}
+
+describe("webviewer guest context menu", () => {
+  afterEach(closeMenus);
+
+  it("offers the page group when the click hit nothing", async () => {
+    installFakeRemote();
+    const app = await createApp();
+    document.body.appendChild(app.containerEl);
+    await rightClick(app, {});
+
+    expect(menuTitles()).toEqual([
+      "Back",
+      "Forward",
+      "Reload",
+      "Open in default browser",
+      "Select all",
+    ]);
+    app.containerEl.remove();
+  });
+
+  it("offers the link group from params, which host DOM could never supply", async () => {
+    installFakeRemote();
+    const app = await createApp();
+    document.body.appendChild(app.containerEl);
+    await rightClick(app, { linkURL: "https://linked.example/page" });
+
+    expect(menuTitles()).toEqual([
+      "Open link",
+      "Open link in new tab",
+      "Open link in new split",
+      "Open link in new window",
+      "Open link in default browser",
+      "Copy link address",
+    ]);
+    app.containerEl.remove();
+  });
+
+  it("offers selection actions, with the query clipped the way the real menu clips it", async () => {
+    installFakeRemote();
+    const app = await createApp();
+    document.body.appendChild(app.containerEl);
+    await rightClick(app, { selectionText: "a rather long selection of text" });
+
+    expect(menuTitles()).toEqual(['Search for "a rather long s…"', "Extract selection", "Copy"]);
+    app.containerEl.remove();
+  });
+
+  it("adds the editing commands only when the click was in an editable field", async () => {
+    installFakeRemote();
+    const app = await createApp();
+    document.body.appendChild(app.containerEl);
+    await rightClick(app, { selectionText: "typed", isEditable: true });
+
+    expect(menuTitles()).toContain("Cut");
+    expect(menuTitles()).toContain("Paste");
+    app.containerEl.remove();
+  });
+
+  it("offers the image group, and drops the page group that only fits a bare click", async () => {
+    installFakeRemote();
+    const app = await createApp();
+    document.body.appendChild(app.containerEl);
+    await rightClick(app, { mediaType: "image", srcURL: "https://img.example/a.png" });
+
+    expect(menuTitles()).toEqual(["Save image to vault", "Copy image link"]);
+    app.containerEl.remove();
+  });
+
+  it("silences Chromium's own menu so only ours shows", async () => {
+    const { guest } = installFakeRemote();
+    const app = await createApp();
+    await openViewer(app);
+
+    expect(
+      (guest() as unknown as { contents: { noContextMenu?: boolean } }).contents.noContextMenu,
+    ).toBe(true);
+  });
+});

@@ -18,6 +18,9 @@ export type WebContentsBridgeEvent =
   | "did-navigate-in-page"
   | "page-favicon-updated"
   | "page-title-updated"
+  // Right-click inside the guest: the only place a guest context menu
+  // request surfaces, carrying Electron's `params`.
+  | "context-menu"
   | "destroyed";
 
 export type WebContentsBridgeHandler = (payload?: unknown) => void;
