@@ -1,7 +1,13 @@
 import { JSDOM } from "jsdom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { displayTooltip, HoverPopover, PopoverState, setTooltip } from "@web/ui/Popover";
+import {
+  displayTooltip,
+  hideTooltip,
+  HoverPopover,
+  PopoverState,
+  setTooltip,
+} from "@web/ui/Popover";
 
 let dom: JSDOM | null = null;
 
@@ -110,6 +116,29 @@ describe("tooltip API parity", () => {
     target.dispatchEvent(new Event("pointerout", { bubbles: true }));
 
     expect(document.body.querySelector(".tooltip")).toBeNull();
+  });
+
+  // Moving between an element's own children is not entering it. Without the
+  // relatedTarget guard the delay timer restarts on every internal hop, so a
+  // tooltip on anything with inner markup can be walked across forever and
+  // never appear.
+  it("does not restart the delay while the pointer moves inside the target", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(9_000_000_000_000);
+    const target = targetEl();
+    const inner = target.ownerDocument.createElement("span");
+    target.appendChild(inner);
+    setTooltip(target, "Hotkeys", { delay: 100 });
+
+    target.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
+    vi.advanceTimersByTime(60);
+
+    // A hop onto a child: relatedTarget is still inside, so this is ignored.
+    inner.dispatchEvent(new PointerEvent("pointerover", { bubbles: true, relatedTarget: target }));
+    vi.advanceTimersByTime(40);
+
+    expect(document.body.querySelector(".tooltip")?.textContent).toBe("Hotkeys");
+    hideTooltip();
   });
 });
 

@@ -399,9 +399,13 @@ export class Menu extends Component implements HistoryHandler {
       if (item.dom.contains(el)) {
         if (item instanceof MenuItem) {
           this.select(index);
+          // EVERY item goes through the 250ms path, including ones with no
+          // submenu. That grace is what makes a submenu usable: you have to be
+          // able to slide diagonally across a plain neighbouring item on the
+          // way to it, and closing on the first mouseover makes that
+          // impossible. Re-hovering the parent within the window cancels it.
           if (openSubmenu) this.openSubmenu(item);
-          else if (item.submenu) this.openSubmenuSoon(item);
-          else this.closeSubmenu();
+          else this.openSubmenuSoon(item);
         }
         return;
       }
@@ -426,10 +430,13 @@ export class Menu extends Component implements HistoryHandler {
   }
 
   openSubmenu(item: MenuItem): void {
-    if (item.disabled || !item.submenu) return;
+    if (item.disabled) return;
+    // An item with no submenu still lands here after the grace period, and
+    // closing whatever is open is exactly its job.
     if (this.currentSubmenu === item.submenu) return;
     this.clearSubmenuOpenTimer();
     this.closeSubmenu();
+    if (!item.submenu) return;
     this.currentSubmenu = item.submenu;
     item.submenu.parentMenu = this;
     const rect = item.dom.getBoundingClientRect();
@@ -496,8 +503,13 @@ export class Menu extends Component implements HistoryHandler {
     }
   }
 
+  /**
+   * A plain trailing-edge debounce, guard-free by design. Every decision lives
+   * in openSubmenu; bailing early here would leave a pending close scheduled,
+   * so returning to the parent would not cancel it and the submenu would shut
+   * under the pointer 250ms later.
+   */
   private openSubmenuSoon(item: MenuItem): void {
-    if (item.disabled || !item.submenu || this.currentSubmenu === item.submenu) return;
     this.clearSubmenuOpenTimer();
     const win = item.dom.ownerDocument.defaultView ?? window;
     this.submenuOpenTimer = win.setTimeout(() => {

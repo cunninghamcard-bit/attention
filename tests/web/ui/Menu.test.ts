@@ -139,6 +139,40 @@ describe("Menu Obsidian behavior", () => {
     expect(parent.classList.contains("has-active-menu")).toBe(false);
   });
 
+  // Sliding diagonally toward an open submenu passes over the plain items
+  // between — closing on the first mouseover of one makes a submenu
+  // unreachable. Every item goes through the same 250ms grace instead.
+  it("keeps an open submenu alive for 250ms when a plain item is hovered", () => {
+    vi.useFakeTimers();
+    const menu = new Menu(document);
+    menu.addItem((item) => item.setTitle("More").setSubmenu());
+    menu.addItem((item) => item.setTitle("Plain"));
+    const parent = menu.items[0] as MenuItem;
+    const plain = menu.items[1] as MenuItem;
+    menu.showAtPosition({ x: 0, y: 0 });
+
+    menu.selectElement(parent.dom, true);
+    expect(menu.currentSubmenu).toBe(parent.submenu);
+
+    // Hovering a plain neighbour does NOT tear it down straight away...
+    menu.selectElement(plain.dom, false);
+    expect(menu.currentSubmenu).toBe(parent.submenu);
+
+    // ...and coming back within the window cancels the pending close.
+    vi.advanceTimersByTime(200);
+    menu.selectElement(parent.dom, false);
+    vi.advanceTimersByTime(300);
+    expect(menu.currentSubmenu).toBe(parent.submenu);
+
+    // Settling on the plain item does close it, once the grace elapses.
+    menu.selectElement(plain.dom, false);
+    vi.advanceTimersByTime(300);
+    expect(menu.currentSubmenu).toBeNull();
+
+    menu.hide();
+    vi.useRealTimers();
+  });
+
   it("sorts explicit sections before the default section and inserts separators", () => {
     const menu = new Menu(document);
     menu.addSections(["navigation", "action", "danger"]);

@@ -476,8 +476,14 @@ function installTooltipListeners(doc: Document): void {
 
 function handleTooltipPointerOver(event: PointerEvent): void {
   const target = tooltipTargetFromEvent(event);
-  if (!target || getComputedStyle(target).getPropertyValue("--no-tooltip").trim() === "true")
-    return;
+  if (!target) return;
+  // Moving between an element's own children is not entering it. Without this
+  // the delay timer restarts on every internal hop, so a tooltip on anything
+  // with inner markup — an icon plus a label — can be walked across forever
+  // and never appear. The mirror of the check pointerout already makes below.
+  const related = event.relatedTarget;
+  if (related instanceof Node && target.contains(related)) return;
+  if (getComputedStyle(target).getPropertyValue("--no-tooltip").trim() === "true") return;
   const text = target.getAttribute("aria-label");
   if (!text) return;
 
