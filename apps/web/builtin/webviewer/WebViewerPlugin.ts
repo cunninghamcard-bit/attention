@@ -28,16 +28,32 @@ import type { OpenUrlDetail } from "../../app/ExternalLinks";
 import type { PaneType } from "../../views/workspace/Workspace";
 import { getActiveDocument } from "../../dom/ActiveDocument";
 
-type WebviewPopupListener = (event: unknown, url: string) => void;
+/** Payloads cross the IPC boundary untyped; each listener narrows its own. */
+type WebviewIpcListener = (event: unknown, payload: unknown) => void;
 
 interface WebviewPopupHost extends Window {
   electron?: {
     ipcRenderer?: {
-      on(channel: string, listener: WebviewPopupListener): void;
-      removeListener(channel: string, listener: WebviewPopupListener): void;
+      on(channel: string, listener: WebviewIpcListener): void;
+      removeListener(channel: string, listener: WebviewIpcListener): void;
     };
   };
 }
+
+/** One guest keystroke, as `before-input-event` describes it in main. */
+export interface WebviewGuestKey {
+  code: string;
+  key: string;
+  shift: boolean;
+  alt: boolean;
+  control: boolean;
+  meta: boolean;
+  isAutoRepeat: boolean;
+}
+
+/** The address bar's focus/select defer, matching the real webviewer's 100ms.
+ * Long enough that a mouse click's own caret placement lands first. */
+const ADDRESS_FOCUS_DELAY = 100;
 
 const WEBVIEWER_VIEW_TYPE = "webviewer";
 const WEBVIEWER_HISTORY_VIEW_TYPE = "webviewer-history";
@@ -67,6 +83,7 @@ export class WebViewerController {
     window.addEventListener("open-url", openUrlHandler);
     plugin.register(() => window.removeEventListener("open-url", openUrlHandler));
     this.registerWebviewPopups(plugin);
+    this.registerWebviewInput(plugin);
     const session = this.app.webViewer.getActiveSession();
     this.app.webViewer.bridge.createBrowserSession(
       session.partition,
@@ -93,9 +110,61 @@ export class WebViewerController {
   private registerWebviewPopups(plugin: InternalPluginWrapper): void {
     const ipc = (window as WebviewPopupHost).electron?.ipcRenderer;
     if (!ipc) return;
-    const onPopup = (_event: unknown, url: string): void => void this.openUrl(url, "tab");
+    const onPopup = (_event: unknown, url: unknown): void => {
+      if (typeof url === "string") void this.openUrl(url, "tab");
+    };
     ipc.on("webview-open-url", onPopup);
     plugin.register(() => ipc.removeListener("webview-open-url", onPopup));
+  }
+
+  /**
+   * Replays the keyboard and the click that a `<webview>` guest swallowed.
+   *
+   * The guest is a separate webContents, so nothing typed inside a page reaches
+   * this document — every hotkey is dead while the guest holds focus. Main
+   * forwards the guest's `before-input-event` here (`forwardWebviewInput`) and
+   * this hands it to the same `keymap.onKeyEvent` a real keydown would reach,
+   * so there is one keyboard entry point rather than a second dispatch path
+   * beside it. A guest mouseDown makes its leaf active, so the command that
+   * arrives next acts on the page the user just clicked.
+   */
+  private registerWebviewInput(plugin: InternalPluginWrapper): void {
+    const ipc = (window as WebviewPopupHost).electron?.ipcRenderer;
+    if (!ipc) return;
+    const onKey = (_event: unknown, payload: unknown): void => {
+      const key = payload as WebviewGuestKey | null;
+      if (!key || typeof key.key !== "string") return;
+      this.app.keymap.onKeyEvent(
+        new KeyboardEvent("keydown", {
+          code: key.code,
+          key: key.key,
+          shiftKey: key.shift,
+          altKey: key.alt,
+          ctrlKey: key.control,
+          metaKey: key.meta,
+          repeat: key.isAutoRepeat,
+        }),
+      );
+    };
+    const onFocus = (_event: unknown, payload: unknown): void => {
+      if (typeof payload !== "number") return;
+      const leaf = this.leafForWebContents(payload);
+      if (leaf) this.app.workspace.setActiveLeaf(leaf);
+    };
+    ipc.on("webview-input-key", onKey);
+    ipc.on("webview-input-focus", onFocus);
+    plugin.register(() => {
+      ipc.removeListener("webview-input-key", onKey);
+      ipc.removeListener("webview-input-focus", onFocus);
+    });
+  }
+
+  private leafForWebContents(webContentsId: number): WorkspaceLeaf | null {
+    for (const leaf of this.app.workspace.getLeavesOfType(WEBVIEWER_VIEW_TYPE)) {
+      const view = leaf.view;
+      if (view instanceof WebViewerView && view.webContentsId === webContentsId) return leaf;
+    }
+    return null;
   }
 
   /**
@@ -265,6 +334,14 @@ export class WebViewerView extends ItemView {
     addressEl.className = "webviewer-address";
     this.addressInputEl.type = "text";
     this.addressInputEl.spellcheck = false;
+    // Address-bar focus behaves like every browser's: the whole URL goes
+    // selected, so typing replaces it. The real one defers the select by
+    // 100ms and that delay is load-bearing — a click focuses first and places
+    // its caret second, so selecting synchronously would be undone by the
+    // click that asked for it.
+    this.addressInputEl.addEventListener("focus", () => {
+      window.setTimeout(() => this.addressInputEl.select(), ADDRESS_FOCUS_DELAY);
+    });
     this.addressInputEl.addEventListener("keydown", (event) => {
       // The suggest popover consumes Enter at the keymap layer while open;
       // this fires only with the popover closed.
@@ -318,9 +395,16 @@ export class WebViewerView extends ItemView {
     this.adapter = null;
   }
 
+  /** The guest's webContents id, or null before it attaches — how a forwarded
+   * guest input event finds the leaf it came from. */
+  get webContentsId(): number | null {
+    return this.adapter?.getWebContentsId() ?? null;
+  }
+
+  /** Focus only — the select comes from the input's own focus handler, so the
+   * command and a plain click end up in exactly the same state. */
   focusAddressBar(): void {
     this.addressInputEl.focus();
-    this.addressInputEl.select();
   }
 
   navigate(input: string): void {
@@ -340,6 +424,14 @@ export class WebViewerView extends ItemView {
     adapter.navigate(url, true);
     this.exitReaderMode();
     this.refreshHeader();
+    // Landing on the blank page puts the caret in the address bar — the real
+    // webviewer's displayBlank(), and what a browser does with a new tab.
+    // It belongs on the navigation path, not in applyMode: the view is born
+    // holding about:blank and only learns its real URL in setState, so a
+    // mode-based check would steal focus from every page tab on open.
+    if (url === "about:blank") {
+      window.setTimeout(() => this.focusAddressBar(), ADDRESS_FOCUS_DELAY);
+    }
   }
 
   /** Reader mode is per-page (real behavior): navigation returns to the web view. */

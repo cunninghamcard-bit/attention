@@ -17,7 +17,7 @@ import {
   type DisplayProvider,
   type WindowState,
 } from "./window-state";
-import { denyChildWindows, OBSIDIAN_WEB_PREFERENCES } from "./window";
+import { denyChildWindows, forwardWebviewInput, OBSIDIAN_WEB_PREFERENCES } from "./window";
 import { resolveRendererUrl } from "./renderer-target";
 import { buildObsActScript, type ObsidianAction } from "./obsidian-url";
 
@@ -99,6 +99,7 @@ export class VaultWindowManager {
 
     enableRemote(win.webContents);
     denyChildWindows(win);
+    forwardWebviewInput(win);
     win.setMenuBarVisibility(false);
 
     // Shown once the renderer is ready (real `t()`): apply maximize/devTools/

@@ -94,6 +94,47 @@ describe("WebViewerView structural parity", () => {
     expect(app.webViewer.listHistory()[0]?.url).toBe("https://typed.example");
   });
 
+  // Address-bar focus parity with the real webviewer: a blank viewer puts the
+  // caret in the address bar, and gaining focus selects the whole URL so
+  // typing replaces it. Both are deferred 100ms — a click focuses first and
+  // places its caret second, so a synchronous select would be undone. Real
+  // timers, because the deferred focus is armed while the leaf is still being
+  // opened, before a test could install fake ones.
+  // Two chained 100ms defers: the view focuses the input, focusing selects it.
+  const settleFocus = () => new Promise((resolve) => setTimeout(resolve, 260));
+
+  it("focuses the address bar when a blank viewer opens, and selects on focus", async () => {
+    const { app, view } = await createWebViewer("about:blank");
+    document.body.appendChild(app.containerEl);
+    const input = view.titleContainerEl.querySelector<HTMLInputElement>(
+      ".webviewer-address input",
+    )!;
+    input.value = "https://example.com/page";
+
+    expect(document.activeElement).not.toBe(input);
+    await settleFocus();
+    expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe(0);
+    expect(input.selectionEnd).toBe(input.value.length);
+
+    await view.onClose();
+    app.containerEl.remove();
+  });
+
+  it("leaves a page viewer's address bar unfocused on open", async () => {
+    const { app, view } = await createWebViewer("https://example.com/");
+    document.body.appendChild(app.containerEl);
+    const input = view.titleContainerEl.querySelector<HTMLInputElement>(
+      ".webviewer-address input",
+    )!;
+
+    await settleFocus();
+    expect(document.activeElement).not.toBe(input);
+
+    await view.onClose();
+    app.containerEl.remove();
+  });
+
   it("lists history when the about:blank address gains focus", async () => {
     const { app, view } = await createWebViewer("about:blank");
     document.body.appendChild(app.containerEl);
