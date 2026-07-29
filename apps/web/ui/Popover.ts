@@ -1,5 +1,5 @@
 /**
- * Input: ../dom/ActiveDocument, ../core/Component
+ * Input: ../dom/ActiveDocument, ../dom/Animate, ../core/Component
  * Output: HoverPopoverState, HoverParent, Point, HoverPopover, TooltipOptions, displayTooltip, setTooltip, hideTooltip
  * Pos: Application code
  *
@@ -7,6 +7,7 @@
  */
 
 import { getActiveDocument, getActiveWindow } from "../dom/ActiveDocument";
+import { AnimationSpec, animateEl } from "../dom/Animate";
 import { Component } from "../core/Component";
 
 export enum PopoverState {
@@ -165,12 +166,19 @@ export class HoverPopover extends Component {
     removePendingHover(this);
     addShownHover(this);
     this.load();
-    // Real Obsidian fades the popover in over 80ms with the anim-motion-swing
-    // easing (no-op under jsdom, which lacks Element.animate).
-    this.hoverEl.animate?.([{ opacity: 0 }, { opacity: 1 }], {
-      duration: 80,
-      easing: "cubic-bezier(0, 0.55, 0.45, 1)",
-    });
+    // Real Obsidian fades the popover in over 80ms, through the shared JS
+    // animator. The easing is the token, not its value: a theme is allowed to
+    // redefine --anim-motion-swing, and the Web Animations API cannot take a
+    // CSS variable for `easing`, so an inline transition is what follows it.
+    animateEl(
+      this.hoverEl,
+      new AnimationSpec({ duration: 80, fn: "var(--anim-motion-swing)" }).addProp(
+        "opacity",
+        "0",
+        "1",
+        "",
+      ),
+    );
     this.watchResize(this.hoverEl);
     stopHoverPollingIfIdle();
   }
