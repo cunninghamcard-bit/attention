@@ -1,11 +1,12 @@
 /**
- * Input: ../app/App, ../core/Component, ../dom/dom, ./MarkdownRenderer, ./MarkdownRenderChild, ./MarkdownPreviewSection, ./FoldManager, ./MarkdownTaskList, ../views/View
+ * Input: ../app/App, ../core/Component, ../dom/dom, ./MarkdownRenderer, ./MarkdownRenderChild, ./MarkdownPreviewSection, ./FoldManager, ./MarkdownTaskList, ../views/View, ../ui/Icon
  * Output: MarkdownPreviewRenderer
  * Pos: Application code
  *
  * 🔄 Self-reference: When this file changes, update this header
  */
 
+import { setIcon } from "../ui/Icon";
 import type { App } from "../app/App";
 import type { Component } from "../core/Component";
 import { removeChildren } from "../dom/dom";
@@ -67,6 +68,18 @@ export class MarkdownPreviewRenderer {
   ) {
     this.sourcePath = sourcePath;
     this.previewEl.classList.add("markdown-preview-view", "markdown-rendered");
+    // Both settings default true, and the faithful CSS reads them as an
+    // opt-IN class (`:not(.allow-fold-headings) { display: none }`): without
+    // this, the fold indicators stayed invisible unconditionally, regardless
+    // of the setting or of anything decorateHeadingSections built.
+    this.previewEl.classList.toggle(
+      "allow-fold-headings",
+      Boolean(this.app.vault.getConfig("foldHeading")),
+    );
+    this.previewEl.classList.toggle(
+      "allow-fold-lists",
+      Boolean(this.app.vault.getConfig("foldIndent")),
+    );
     const existingSizerEl = this.previewEl.querySelector<HTMLElement>(
       ":scope > .markdown-preview-sizer",
     );
@@ -407,9 +420,14 @@ export class MarkdownPreviewRenderer {
       },
     });
     const markdownSections = collectMarkdownSections(contentEl, this.text, frontmatterUsage);
-    this.applyHeadingFoldState(markdownSections);
+    // Decorate BEFORE applying fold state: setCollapsed toggles is-collapsed on
+    // the indicator it finds as a child of the section, and a re-render builds
+    // fresh elements with no indicator yet. Applying state first was a no-op
+    // on the very re-render that most needs it — the one right after a click,
+    // where the h1 kept its class but the arrow that shows it did not.
     this.decorateHeadingSections(markdownSections);
     this.decorateListSections(markdownSections);
+    this.applyHeadingFoldState(markdownSections);
     this.sections = [
       ...(this.header ? [this.header] : []),
       ...markdownSections,
@@ -847,6 +865,10 @@ export class MarkdownPreviewRenderer {
       const indicator = document.createElement("span");
       indicator.className = "heading-collapse-indicator collapse-indicator collapse-icon";
       indicator.setAttribute("aria-label", "Collapse heading");
+      // The arrow is the affordance AND the state: `.collapse-icon svg` is what
+      // app.css rotates 90deg on `.is-collapsed`, over 100ms. Without a real
+      // icon the span is empty, so there is nothing to see and nothing to turn.
+      setIcon(indicator, "right-triangle");
       section.el.prepend(indicator);
     }
   }
@@ -857,7 +879,8 @@ export class MarkdownPreviewRenderer {
         if (!li.querySelector(":scope > .list-collapse-indicator")) {
           const indicator = document.createElement("span");
           indicator.className = "list-collapse-indicator collapse-indicator collapse-icon";
-          indicator.dataset.icon = "right-triangle";
+          // Was a `data-icon` dataset key that nothing in the app ever read.
+          setIcon(indicator, "right-triangle");
           li.prepend(indicator);
         }
       }

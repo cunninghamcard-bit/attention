@@ -69,9 +69,18 @@ export class MarkdownPreviewSection {
     for (const range of this.highlightRanges ?? []) delete range.rects;
   }
 
+  /**
+   * Ported from app.js's `KL`, the same helper TreeItem's chevron uses:
+   * `is-collapsed` toggles on the section AND on its `.collapse-icon` child.
+   * The arrow rotation rule is `.collapse-icon.is-collapsed svg`, scoped to
+   * the icon itself — the class on an ancestor heading alone never matches
+   * it, so the arrow would silently stop turning while everything else
+   * (content hidden, aria state) still worked.
+   */
   setCollapsed(collapsed: boolean): void {
     this.headingCollapsed = collapsed;
     this.el.classList.toggle("is-collapsed", collapsed);
+    this.el.querySelector(":scope > .collapse-icon")?.classList.toggle("is-collapsed", collapsed);
   }
 }
 
