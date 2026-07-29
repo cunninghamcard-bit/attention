@@ -47,7 +47,6 @@ import { createMarkdownImporterPluginDefinition } from "./MarkdownImporter";
 import { createFileRecoveryPluginDefinition } from "./file-recovery/FileRecoveryPlugin";
 import { createWebViewerPluginDefinition } from "./webviewer/WebViewerPlugin";
 import { createTerminalPluginDefinition } from "./terminal/TerminalPlugin";
-import { createAgentPluginDefinition } from "./agent/AgentPlugin";
 import { createGitPluginDefinition } from "./git/GitPlugin";
 import { createGitHubPluginDefinition } from "./github/GitHubPlugin";
 import { openFileHistory } from "./git/GitHistoryView";
@@ -161,7 +160,6 @@ export const corePlugins: InternalPluginDefinition[] = [
   createFileRecoveryPluginDefinition(),
   createWebViewerPluginDefinition(),
   createTerminalPluginDefinition(),
-  createAgentPluginDefinition(),
   createGitPluginDefinition(),
   createGitHubPluginDefinition(),
   {
