@@ -18,6 +18,9 @@ interface TagTreeNode {
 
 export class TagPaneView extends ItemView {
   private collapsed = new Set<string>();
+  /** Live rows and their nodes, so a fold can act on the row that exists. */
+  private readonly tagItems = new Map<string, TreeItem>();
+  private readonly nodes = new Map<string, TagTreeNode>();
 
   getViewType(): string {
     return "tag";
@@ -68,12 +71,15 @@ export class TagPaneView extends ItemView {
     const root = buildTagTree(tags);
     const containerEl = this.contentEl.ownerDocument.createElement("div");
     containerEl.className = "tag-container tree-item-children";
+    this.tagItems.clear();
+    this.nodes.clear();
     for (const child of [...root.children.values()].sort(sortTagNodes))
       this.renderTagNode(child, containerEl);
     this.contentEl.appendChild(containerEl);
   }
 
   private renderTagNode(node: TagTreeNode, parentEl: HTMLElement): void {
+    this.nodes.set(node.tag, node);
     const hasChildren = node.children.size > 0;
     const isCollapsed = this.collapsed.has(node.tag);
     const item = new TreeItem(parentEl, {
@@ -83,6 +89,7 @@ export class TagPaneView extends ItemView {
       childrenClass: "tag-pane-tag-children",
     });
     item.el.dataset.tag = node.tag;
+    this.tagItems.set(node.tag, item);
     if (hasChildren) {
       item.setCollapsible(true);
       item.setCollapsed(isCollapsed);
@@ -113,10 +120,26 @@ export class TagPaneView extends ItemView {
     }
   }
 
+  /**
+   * Fold in place, like the file explorer: re-rendering here would destroy the
+   * row being folded, so its collapse could never animate. Children stay lazy —
+   * a tag collapsed at first paint has no subtree DOM until it first opens.
+   */
   private toggleTag(tag: string): void {
-    if (this.collapsed.has(tag)) this.collapsed.delete(tag);
-    else this.collapsed.add(tag);
-    this.render();
+    const collapsed = !this.collapsed.has(tag);
+    if (collapsed) this.collapsed.add(tag);
+    else this.collapsed.delete(tag);
+    const item = this.tagItems.get(tag);
+    const node = this.nodes.get(tag);
+    if (!item || !node) {
+      this.render();
+      return;
+    }
+    if (!collapsed && item.childrenEl.childElementCount === 0) {
+      for (const child of [...node.children.values()].sort(sortTagNodes))
+        this.renderTagNode(child, item.childrenEl);
+    }
+    void item.setCollapsed(collapsed, true);
   }
 
   private searchTag(tag: string): void {
