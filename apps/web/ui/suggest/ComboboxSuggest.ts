@@ -182,8 +182,10 @@ export class ComboboxSuggest extends PopoverSuggest<ComboboxSuggestion> {
   }
 
   override attachDom(): void {
-    const body = this.buttonEl.ownerDocument.body;
-    if (this.suggestEl.parentElement !== body) body.appendChild(this.suggestEl);
+    // Through the base, not around it: that is where the fade lives, and
+    // Obsidian's own override delegates to it on desktop for the same reason.
+    // The position resets stay here and run after it.
+    super.attachDom(this.buttonEl.ownerDocument);
     this.suggestEl.style.left = "";
     this.suggestEl.style.top = "";
   }

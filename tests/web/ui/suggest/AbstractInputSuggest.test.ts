@@ -102,6 +102,33 @@ describe("AbstractInputSuggest value element (real isTextValueElement)", () => {
 });
 
 describe("AbstractInputSuggest", () => {
+  // Every suggest popup fades in over 80ms, through the same animator call the
+  // hover popover makes. The easing is the TOKEN, not a copy of its value, so
+  // a theme redefining --anim-motion-swing moves these too.
+  it("fades the suggestion container in when it attaches", async () => {
+    const app = createApp();
+    const suggest = new FruitSuggest(app, inputEl());
+    suggest.values = ["apple"];
+
+    suggest.open();
+
+    const containerEl = document.body.querySelector<HTMLElement>(".suggestion-container")!;
+    expect(containerEl).not.toBeNull();
+    // `from` lands synchronously; the transition is armed on a later task.
+    expect(containerEl.style.opacity).toBe("0");
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(containerEl.style.transitionProperty).toBe("opacity");
+    expect(containerEl.style.transition).toContain("var(--anim-motion-swing)");
+    expect(containerEl.style.opacity).toBe("1");
+
+    // And it hands the element back to the stylesheet once it settles.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(containerEl.style.opacity).toBe("");
+    expect(containerEl.style.transition).toBe("");
+    suggest.close();
+  });
+
   it("keeps PopoverSuggest scope registration paired across close and repeated open", () => {
     const app = createApp();
     const suggest = new FruitSuggest(app, inputEl());

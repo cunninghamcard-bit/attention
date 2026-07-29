@@ -1,11 +1,12 @@
 /**
- * Input: ../../app/App, ../../dom/ActiveDocument, ../../app/hotkeys/Scope, ../../platform/Platform, ../ActiveCloseableRegistry, ./SuggestModal
+ * Input: ../../app/App, ../../dom/ActiveDocument, ../../app/hotkeys/Scope, ../../platform/Platform, ../ActiveCloseableRegistry, ./SuggestModal, ../../dom/Animate
  * Output: ISuggestOwner, PopoverSuggest, AbstractInputSuggest
  * Pos: Application code
  *
  * 🔄 Self-reference: When this file changes, update this header
  */
 
+import { AnimationSpec, animateEl } from "../../dom/Animate";
 import type { App } from "../../app/App";
 import { getActiveDocument } from "../../dom/ActiveDocument";
 import { Scope } from "../../app/hotkeys/Scope";
@@ -43,8 +44,23 @@ export abstract class PopoverSuggest<T> implements SuggestOwner<T> {
     this.close();
   }
 
+  /**
+   * Every suggest popup fades in over 80ms — the same call the hover popover
+   * makes, because it is the same protocol. Subclasses that override this
+   * should call super rather than re-appending, or their popup is the one
+   * surface in the app that still snaps in.
+   */
   attachDom(ownerDocument: Document = this.suggestEl.ownerDocument): void {
     ownerDocument.body.appendChild(this.suggestEl);
+    animateEl(
+      this.suggestEl,
+      new AnimationSpec({ duration: 80, fn: "var(--anim-motion-swing)" }).addProp(
+        "opacity",
+        "0",
+        "1",
+        "",
+      ),
+    );
   }
 
   detachDom(): void {

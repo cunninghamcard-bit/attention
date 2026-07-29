@@ -81,6 +81,10 @@ describe("ComboboxSuggest DOM parity", () => {
     expect(combobox.isOpen).toBe(true);
     expect(combobox.buttonEl.classList.contains("has-focus")).toBe(true);
     expect(combobox.suggestEl.parentElement).toBe(document.body);
+    // The override goes THROUGH the base rather than around it, so the dropdown
+    // gets the same fade every other suggest popup has. Re-appending here
+    // instead would silently make this the one popup that snaps in.
+    expect(combobox.suggestEl.style.opacity).toBe("0");
     expect(
       [...combobox.suggestInnerEl.querySelectorAll<HTMLElement>(".suggestion-item")].map(
         (item) => item.textContent,
