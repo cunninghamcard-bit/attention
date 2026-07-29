@@ -117,6 +117,8 @@ describe("MobileBackButtonController", () => {
     await controller.handleBackButton();
 
     expect(bridge.minimizeApp).toHaveBeenCalledTimes(1);
+    // The notice fades before it detaches, so its text outlives the hide call.
+    await new Promise((resolve) => setTimeout(resolve, 250));
     expect(document.body.textContent).not.toContain("Back again to exit");
   });
 

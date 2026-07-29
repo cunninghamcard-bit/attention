@@ -71,7 +71,7 @@ describe("Notice DOM parity", () => {
     expect(notice.noticesEl.parentElement).toBeNull();
   });
 
-  it("shares one outer container per window and removes it after the final notice", () => {
+  it("shares one outer container per window and removes it after the final notice", async () => {
     const first = new Notice("First", 0);
     const second = new Notice("Second", 0);
 
@@ -79,11 +79,15 @@ describe("Notice DOM parity", () => {
     expect([...first.noticesEl.children]).toEqual([first.containerEl, second.containerEl]);
 
     first.hide();
+    await new Promise((resolve) => setTimeout(resolve, 250));
 
     expect(second.noticesEl.parentElement).toBe(document.body);
     expect([...second.noticesEl.children]).toEqual([second.containerEl]);
 
     second.hide();
+    // A notice fades before it detaches. This test runs on REAL timers, so it
+    // has to wait real time.
+    await new Promise((resolve) => setTimeout(resolve, 250));
 
     expect(second.noticesEl.parentElement).toBeNull();
   });
@@ -96,6 +100,7 @@ describe("Notice DOM parity", () => {
     expect(notice.containerEl.parentElement).toBe(notice.noticesEl);
 
     notice.containerEl.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    vi.advanceTimersByTime(200);
 
     expect(notice.containerEl.parentElement).toBeNull();
   });
@@ -108,6 +113,7 @@ describe("Notice DOM parity", () => {
     expect(notice.containerEl.parentElement).toBe(notice.noticesEl);
 
     vi.advanceTimersByTime(1);
+    vi.advanceTimersByTime(200);
 
     expect(notice.containerEl.parentElement).toBeNull();
   });
@@ -127,6 +133,7 @@ describe("Notice DOM parity", () => {
     expect(notice.containerEl.parentElement).toBe(notice.noticesEl);
 
     vi.advanceTimersByTime(1);
+    vi.advanceTimersByTime(200);
 
     expect(notice.containerEl.parentElement).toBeNull();
   });

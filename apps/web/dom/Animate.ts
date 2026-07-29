@@ -77,6 +77,16 @@ let pendingStarts: (() => void)[] | null = null;
  * because it takes kebab-case. Assigning `""` clears the inline value, which
  * is how a spec hands a property back to the stylesheet.
  */
+function flushPendingStarts(): void {
+  const starts = pendingStarts;
+  if (!starts) return;
+  pendingStarts = null;
+  // Read a layout property to force the reflow that commits every `from` in
+  // this batch before any transition is armed.
+  void document.body.offsetHeight;
+  for (const start of starts) start();
+}
+
 function applyStyles(el: HTMLElement, styles: StyleMap): void {
   for (const prop of Object.keys(styles)) {
     (el.style as unknown as Record<string, string>)[prop] = styles[prop];
@@ -115,17 +125,13 @@ export function animateEl(el: HTMLElement, spec: AnimationSpec, complete?: () =>
   };
   running.set(el, record);
 
-  if (pendingStarts === null) {
-    pendingStarts = [];
-    setTimeout(() => {
-      // Read a layout property to force the reflow that commits every `from`
-      // in this batch before any transition is armed.
-      void document.body.offsetHeight;
-      const starts = pendingStarts ?? [];
-      pendingStarts = null;
-      for (const start of starts) start();
-    }, 0);
-  }
+  pendingStarts ??= [];
+  // One flush timer per animation, all draining the same queue: whichever
+  // fires first starts everything queued so far, so a batch still costs a
+  // single reflow. The redundancy is the point — a queue guarded by one timer
+  // strands permanently if that timer is ever discarded, and a stranded
+  // animation leaves its element pinned to the `from` styles forever.
+  setTimeout(flushPendingStarts, 0);
 
   pendingStarts.push(() => {
     el.style.transition = `all ${spec.duration}ms ${spec.fn}`;

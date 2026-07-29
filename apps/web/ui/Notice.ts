@@ -1,5 +1,5 @@
 /**
- * Input: ../dom/ActiveDocument
+ * Input: ../dom/ActiveDocument, ../dom/Animate
  * Output: Notice
  * Pos: Application code
  *
@@ -7,6 +7,7 @@
  */
 
 import { getActiveWindow } from "../dom/ActiveDocument";
+import { AnimationSpec, animateEl } from "../dom/Animate";
 
 const noticeContainers = new WeakMap<Window, HTMLElement>();
 
@@ -40,6 +41,12 @@ export class Notice {
     this.noticeEl = this.messageEl;
     this.containerEl.appendChild(this.messageEl);
     this.noticesEl.appendChild(this.containerEl);
+    // Slides in from off the right edge. `to` is "" rather than a zero
+    // translate, so the notice ends owning no inline transform at all.
+    animateEl(
+      this.containerEl,
+      new AnimationSpec().addProp("transform", "translateX(350px)", "", ""),
+    );
     this.setMessage(message);
     this.setAutoHide(timeout);
     this.containerEl.addEventListener("click", () => this.hide());
@@ -94,7 +101,24 @@ export class Notice {
   hide(): void {
     if (this.timerId !== -1) this.win.clearTimeout(this.timerId);
     this.timerId = -1;
-    this.containerEl.remove();
-    if (this.noticesEl.children.length === 0) this.noticesEl.remove();
+    const detach = (): void => {
+      this.containerEl.remove();
+      if (this.noticesEl.children.length === 0) this.noticesEl.remove();
+    };
+    if (!this.containerEl.isConnected) return detach();
+    // Fading alone would leave a hole that the notices below only close once
+    // this one detaches. Collapsing the top margin by this notice's own height
+    // (plus its own bottom margin) pulls the stack up in step with the fade.
+    const style = this.win.getComputedStyle(this.containerEl);
+    const marginBottom = Number.parseInt(style.marginBottom, 10);
+    let shift = -this.containerEl.offsetHeight;
+    if (!Number.isNaN(marginBottom)) shift -= marginBottom;
+    animateEl(
+      this.containerEl,
+      new AnimationSpec({ duration: 120 })
+        .addProp("opacity", "1", "0")
+        .addProp("marginTop", "0px", `${shift}px`),
+      detach,
+    );
   }
 }
