@@ -69,6 +69,17 @@ export class TerminalView extends ItemView {
     this.surfaceEl.className = "terminal-view-surface";
     this.contentEl.appendChild(this.surfaceEl);
     this.surfaceEl.addEventListener("contextmenu", (event) => this.showContextMenu(event));
+    // Copy-on-select, the way every native terminal behaves: releasing a drag
+    // puts the selection on the clipboard. It hangs off `pointerup`, not
+    // `mouseup` — restty's canvas preventDefaults the pointer stream, so the
+    // compatibility mouse events are never synthesized at all. The copy is
+    // deferred past the dispatch because restty commits the selection in its
+    // own handler, and the renderer owns that selection, so a click that
+    // selected nothing resolves false and never touches the clipboard.
+    this.surfaceEl.addEventListener("pointerup", (event) => {
+      if (event.button !== 0) return;
+      setTimeout(() => void this.renderer?.copySelection(), 0);
+    });
     this.surfaceEl.addEventListener("focusin", () => this.pushFocusScope());
     this.surfaceEl.addEventListener("focusout", () => this.popFocusScope());
     // System chords (Cmd+Q/H/M/`) belong to the native menu: stop them from
