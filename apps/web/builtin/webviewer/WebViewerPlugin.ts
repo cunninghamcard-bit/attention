@@ -244,6 +244,7 @@ export class WebViewerView extends ItemView {
   private adapterUrl = "";
   private faviconUrl: string | null = null;
   private loading = false;
+  private addressValueOnFocus = "";
   private guestContents: GuestWebContents | null = null;
   private readerResult: { url: string; title: string; markdown: string } | null = null;
   /** Last reader render, awaitable in tests. */
@@ -305,29 +306,33 @@ export class WebViewerView extends ItemView {
     addressEl.className = "webviewer-address";
     this.addressInputEl.type = "text";
     this.addressInputEl.spellcheck = false;
-    // Address-bar focus behaves like every browser's: the whole URL goes
-    // selected, so typing replaces it. The real one defers the select by
-    // 100ms and that delay is load-bearing — a click focuses first and places
-    // its caret second, so selecting synchronously would be undone by the
-    // click that asked for it.
-    this.addressInputEl.addEventListener("focus", () => {
-      window.setTimeout(() => this.addressInputEl.select(), ADDRESS_FOCUS_DELAY);
-    });
-    this.addressInputEl.addEventListener("keydown", (event) => {
-      // The suggest popover consumes Enter at the keymap layer while open;
-      // this fires only with the popover closed.
-      if (event.key === "Enter") {
-        event.preventDefault();
-        this.navigate(this.addressInputEl.value);
-        this.addressInputEl.blur();
-      } else if (event.key === "Escape") {
-        this.addressInputEl.value = this.url;
-        this.addressInputEl.blur();
-      }
-    });
     addressEl.appendChild(this.addressInputEl);
     this.titleContainerEl.appendChild(addressEl);
+    // Suggest first, then the input's own listeners — the real address bar's
+    // order, so on focus the suggest's listener runs before this one.
     this.suggest = new AddressBarSuggest(this.app, this.addressInputEl);
+    // Focus selects the whole URL, so typing replaces it. The 100ms defer is
+    // load-bearing: a click focuses first and places its caret second, so
+    // selecting synchronously would be undone by the click that asked for it.
+    // The value as of focus is what Escape restores — the current page URL is
+    // a different thing once the bar has been edited and left.
+    this.addressInputEl.addEventListener("focus", () => {
+      this.addressWindow().setTimeout(() => this.addressInputEl.select(), ADDRESS_FOCUS_DELAY);
+      this.addressValueOnFocus = this.addressInputEl.value;
+      this.suggest?.open();
+    });
+    // Escape only. Enter belongs to the suggest, which is open whenever the
+    // bar has focus: it selects the highlighted suggestion and navigates
+    // through `onSelect` below. A second Enter branch here would be a parallel
+    // navigation path the real address bar does not have. The first Escape is
+    // eaten by the suggest's own scope (it closes the popover); this one is
+    // what a second Escape reaches.
+    this.addressInputEl.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      this.addressInputEl.blur();
+      this.addressInputEl.value = this.addressValueOnFocus;
+    });
     this.suggest.onSelect((suggestion) => {
       this.suggest?.close();
       this.addressInputEl.blur();
@@ -374,6 +379,12 @@ export class WebViewerView extends ItemView {
     this.adapter = null;
   }
 
+  /** The window the address bar actually lives in. The real one schedules off
+   * `el.win` for the same reason: in a popped-out leaf that is not this one. */
+  private addressWindow(): Window {
+    return this.addressInputEl.ownerDocument.defaultView ?? window;
+  }
+
   /** Focus only — the select comes from the input's own focus handler, so the
    * command and a plain click end up in exactly the same state. */
   focusAddressBar(): void {
@@ -403,7 +414,7 @@ export class WebViewerView extends ItemView {
     // holding about:blank and only learns its real URL in setState, so a
     // mode-based check would steal focus from every page tab on open.
     if (url === "about:blank") {
-      window.setTimeout(() => this.focusAddressBar(), ADDRESS_FOCUS_DELAY);
+      this.addressWindow().setTimeout(() => this.focusAddressBar(), ADDRESS_FOCUS_DELAY);
     }
   }
 

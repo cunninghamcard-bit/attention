@@ -135,6 +135,61 @@ describe("WebViewerView structural parity", () => {
     app.containerEl.remove();
   });
 
+  // The real address bar's keydown handler is Escape-only, and what it restores
+  // is the value as of focus — not the current page URL, which is a different
+  // thing once the bar has been edited and left. The suggest is open whenever
+  // the bar has focus and its own scope answers Escape first by closing the
+  // popover, so restoring takes a second press.
+  it("restores the value the address bar had at focus, on the Escape after the suggest closes", async () => {
+    const { app, view } = await createWebViewer("https://example.com/");
+    document.body.appendChild(app.containerEl);
+    const input = view.titleContainerEl.querySelector<HTMLInputElement>(
+      ".webviewer-address input",
+    )!;
+    const escape = () =>
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+
+    // Leave an edit behind and come back to it, so the value at focus and the
+    // page URL differ — restoring `this.url` would pass an easier test.
+    input.focus();
+    input.value = "left-behind";
+    input.blur();
+    input.focus();
+    expect(document.querySelector(".webviewer-addressbar-suggestion")).not.toBeNull();
+    input.value = "half-typed";
+
+    escape(); // eaten by the suggest's scope — closes the popover
+    expect(document.querySelector(".webviewer-addressbar-suggestion")).toBeNull();
+    expect(input.value).toBe("half-typed");
+
+    escape(); // reaches the input now
+    expect(input.value).toBe("left-behind");
+    expect(view.url).toBe("https://example.com/");
+
+    await view.onClose();
+    app.containerEl.remove();
+  });
+
+  // Enter belongs to the suggest, which navigates through onSelect. A branch on
+  // the input would be a second navigation path the real address bar lacks.
+  it("navigates on Enter through the suggest, not through a handler on the input", async () => {
+    const { app, view } = await createWebViewer("https://example.com/");
+    document.body.appendChild(app.containerEl);
+    const input = view.titleContainerEl.querySelector<HTMLInputElement>(
+      ".webviewer-address input",
+    )!;
+
+    input.focus();
+    input.value = "typed.example";
+    input.dispatchEvent(new Event("input"));
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+    expect(view.url).toBe("https://typed.example");
+
+    await view.onClose();
+    app.containerEl.remove();
+  });
+
   it("lists history when the about:blank address gains focus", async () => {
     const { app, view } = await createWebViewer("about:blank");
     document.body.appendChild(app.containerEl);
