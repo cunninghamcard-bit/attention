@@ -7,7 +7,7 @@
  */
 
 import { createDiv, createSpan } from "../../dom/dom";
-import { AnimationSpec, animateEl } from "../../dom/Animate";
+import { AnimationSpec, animateEl, cancelAnimation } from "../../dom/Animate";
 import type {
   DragDropResult,
   DragSource,
@@ -652,17 +652,25 @@ function syncTabHeadersWithAnimation(
   });
 }
 
+/**
+ * Pinning `flex` is what makes the width half of this visible at all.
+ * `.workspace .mod-root .workspace-tab-header` is `flex: 1 1 0`, and a flex
+ * item's main size comes from its basis, not its width — so animating `width`
+ * on a header in the main bar does nothing until it is taken out of flex
+ * sizing. It is released on settle, handing the header back to the stylesheet.
+ */
 function animateTabHeaderInsertion(header: HTMLElement, animate: boolean): void {
   const width = getTabHeaderAnimationWidth(header);
-  if (!animate || width <= 0 || typeof header.animate !== "function") return;
-  header.animate(
-    [
-      { width: "0px", opacity: "0" },
-      { width: `${width}px`, opacity: "1" },
-    ],
-    {
-      duration: TAB_HEADER_ANIMATION_MS,
-      easing: "ease-in-out",
+  if (!animate || width <= 0) return;
+  cancelAnimation(header, true);
+  header.style.flex = "0 0 auto";
+  animateEl(
+    header,
+    new AnimationSpec({ duration: TAB_HEADER_ANIMATION_MS })
+      .addProp("width", "0", `${width}px`, "")
+      .addProp("opacity", "0", "1", ""),
+    () => {
+      header.style.flex = "";
     },
   );
 }
@@ -674,23 +682,22 @@ function animateTabHeaderRemoval(
 ): void {
   if (header.parentElement !== container) return;
   const width = getTabHeaderAnimationWidth(header);
-  if (!animate || width <= 0 || typeof header.animate !== "function") {
+  if (!animate || width <= 0) {
     header.remove();
     return;
   }
+  // The real header leaves with its leaf; a clone stands in so the gap it
+  // occupied closes over the same 200ms instead of collapsing instantly.
   const clone = header.cloneNode(true) as HTMLElement;
   header.replaceWith(clone);
-  const animation = clone.animate(
-    [
-      { width: `${width}px`, opacity: "1" },
-      { width: "0px", opacity: "0" },
-    ],
-    {
-      duration: TAB_HEADER_ANIMATION_MS,
-      easing: "ease-in-out",
-    },
+  clone.style.flex = "0 0 auto";
+  animateEl(
+    clone,
+    new AnimationSpec({ duration: TAB_HEADER_ANIMATION_MS })
+      .addProp("width", `${width}px`, "0", "")
+      .addProp("opacity", "1", "0", ""),
+    () => clone.remove(),
   );
-  animation.addEventListener("finish", () => clone.remove(), { once: true });
 }
 
 function getTabHeaderAnimationWidth(header: HTMLElement): number {

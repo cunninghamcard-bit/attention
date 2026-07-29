@@ -393,67 +393,50 @@ describe("Obsidian popout and tab list DOM", () => {
     }
   });
 
+  // Headers slide in and out through the shared animator, NOT the Web
+  // Animations API. The `flex` pin is the load-bearing part: the faithful rule
+  // `.workspace .mod-root .workspace-tab-header { flex: 1 1 0 }` makes a
+  // header's main size come from its basis, so an animated `width` is ignored
+  // until the header is taken out of flex sizing — and released again after.
   it("animates non-stacked tab header insertions and removals with width and opacity", async () => {
     const app = new App(document.createElement("div"));
     await app.ready;
     const tabs = app.workspace.rootSplit.children[0];
     if (!(tabs instanceof WorkspaceTabs)) throw new Error("Expected root tabs");
     forceShown(tabs.tabsInnerEl);
-    const animations: Array<{
-      target: HTMLElement;
-      keyframes: Keyframe[];
-      options: KeyframeAnimationOptions;
-    }> = [];
-    const originalAnimate = HTMLElement.prototype.animate;
-    Object.defineProperty(HTMLElement.prototype, "animate", {
-      configurable: true,
-      value(
-        this: HTMLElement,
-        keyframes: Keyframe[] | PropertyIndexedKeyframes | null,
-        options?: number | KeyframeAnimationOptions,
-      ) {
-        animations.push({
-          target: this,
-          keyframes: keyframes as Keyframe[],
-          options: options as KeyframeAnimationOptions,
-        });
-        return { addEventListener: () => {} } as unknown as Animation;
-      },
-    });
-    try {
-      const second = new WorkspaceLeaf(app.workspace);
-      setMetric(second.tabHeaderEl, "clientWidth", 88);
+    const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 300));
 
-      tabs.appendChild(second, false);
+    const second = new WorkspaceLeaf(app.workspace);
+    setMetric(second.tabHeaderEl, "clientWidth", 88);
 
-      expect(animations[0]?.target).toBe(second.tabHeaderEl);
-      expect(animations[0]?.keyframes).toEqual([
-        { width: "0px", opacity: "0" },
-        { width: "88px", opacity: "1" },
-      ]);
-      expect(animations[0]?.options.duration).toBe(200);
+    tabs.appendChild(second, false);
 
-      animations.length = 0;
-      second.detach();
-      app.workspace.updateLayout();
+    // Starts collapsed and out of the flex sizing.
+    expect(second.tabHeaderEl.style.flex).toBe("0 0 auto");
+    expect(second.tabHeaderEl.style.width).toBe("0px");
+    expect(second.tabHeaderEl.style.opacity).toBe("0");
 
-      expect(animations[0]?.target).not.toBe(second.tabHeaderEl);
-      expect(animations[0]?.target.className).toBe(second.tabHeaderEl.className);
-      expect(animations[0]?.keyframes).toEqual([
-        { width: "88px", opacity: "1" },
-        { width: "0px", opacity: "0" },
-      ]);
-      expect(animations[0]?.options.duration).toBe(200);
-    } finally {
-      if (originalAnimate) {
-        Object.defineProperty(HTMLElement.prototype, "animate", {
-          configurable: true,
-          value: originalAnimate,
-        });
-      } else {
-        delete (HTMLElement.prototype as Partial<typeof HTMLElement.prototype>).animate;
-      }
-    }
+    await settle();
+
+    // Settling hands every one of those back to the stylesheet.
+    expect(second.tabHeaderEl.style.flex).toBe("");
+    expect(second.tabHeaderEl.style.width).toBe("");
+    expect(second.tabHeaderEl.style.opacity).toBe("");
+
+    // Removal animates a STAND-IN clone: the real header leaves with its leaf,
+    // so the gap it occupied has to be closed by something else.
+    second.detach();
+    app.workspace.updateLayout();
+    const clone = [...tabs.tabsInnerEl.children].find(
+      (el) => el !== second.tabHeaderEl && el.className === second.tabHeaderEl.className,
+    ) as HTMLElement | undefined;
+    expect(clone).toBeDefined();
+    expect(clone?.style.flex).toBe("0 0 auto");
+    expect(clone?.style.width).toBe("88px");
+    expect(clone?.style.opacity).toBe("1");
+
+    await settle();
+    expect(clone?.isConnected).toBe(false);
   });
 
   it("computes Obsidian sliding tab styles and hides offscreen stacked leaves", async () => {
