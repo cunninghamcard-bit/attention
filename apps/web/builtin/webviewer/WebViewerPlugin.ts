@@ -1,5 +1,5 @@
 /**
- * Input: ../../app/App, ../../plugin/InternalPlugin, ../../app/cli/commands/wordcountWebCli, ../../plugin/InternalPluginWrapper, ../../ui/Notice, ../../ui/Modal, ../../ui/Menu, ../../ui/Setting, ../../views/ItemView, ../../views/workspace/WorkspaceLeaf
+ * Input: ../../app/App, ../../plugin/InternalPlugin, ../../app/cli/commands/wordcountWebCli, ../../plugin/InternalPluginWrapper, ../../ui/Notice, ../../ui/Modal, ../../ui/Menu, ../../ui/Setting, ../../views/ItemView, ../../views/workspace/WorkspaceLeaf, ../../dom/Clipboard
  * Output: WebViewerController, WebViewerView, createWebViewerPluginDefinition
  * Pos: Application code
  *
@@ -27,6 +27,7 @@ import type { ObsidianProtocolData } from "../../app/protocol/UriRouter";
 import type { OpenUrlDetail } from "../../app/ExternalLinks";
 import type { PaneType } from "../../views/workspace/Workspace";
 import { getActiveDocument } from "../../dom/ActiveDocument";
+import { writeClipboardImage } from "../../dom/Clipboard";
 
 /** Payloads cross the IPC boundary untyped; each listener narrows its own. */
 type WebviewIpcListener = (event: unknown, payload: unknown) => void;
@@ -221,6 +222,23 @@ export class WebViewerController {
   async saveImageToVault(url: string): Promise<void> {
     const saved = await this.app.webViewer.saveImageToVault(url);
     new Notice(`Saved ${saved.savedPath}`);
+  }
+
+  /**
+   * The picture itself onto the clipboard, not its address — what the real
+   * menu's "Copy image" does, by way of nativeImage. Success is silent there
+   * too; only the failure notice is ours, because a menu item that quietly
+   * does nothing is worse than one that says why.
+   */
+  async copyImageToClipboard(url: string): Promise<void> {
+    try {
+      const response = await fetch(url);
+      const mimeType = response.headers.get("content-type")?.split(";")[0]?.trim() ?? "image/png";
+      if (await writeClipboardImage(await response.arrayBuffer(), mimeType)) return;
+      new Notice("Could not copy that image");
+    } catch {
+      new Notice("Could not copy that image");
+    }
   }
 
   async saveSelectionToVault(url: string, title: string, selection: string): Promise<void> {
@@ -589,8 +607,8 @@ export class WebViewerView extends ItemView {
    * `displayContextMenu` — link, then selection or editable, then image, then
    * the bare-page group that only appears when the click hit nothing.
    *
-   * Two of Obsidian's items are not here: "Bookmark link/page" wants the
-   * bookmarks modal, and "Copy image" wants a nativeImage on the clipboard.
+   * One of Obsidian's items is not here: "Bookmark link/page" wants the
+   * bookmarks modal.
    */
   private displayContextMenu(params: GuestContextMenuParams): void {
     const menu = new Menu();
@@ -675,6 +693,12 @@ export class WebViewerView extends ItemView {
           .setTitle("Save image to vault")
           .setIcon("lucide-image-down")
           .onClick(() => void this.controller.saveImageToVault(src)),
+      );
+      menu.addItem((item) =>
+        item
+          .setTitle("Copy image")
+          .setIcon("lucide-image")
+          .onClick(() => void this.controller.copyImageToClipboard(src)),
       );
       menu.addItem((item) =>
         item

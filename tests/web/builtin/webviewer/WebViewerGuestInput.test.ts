@@ -336,7 +336,7 @@ describe("webviewer guest context menu", () => {
     document.body.appendChild(app.containerEl);
     await rightClick(app, { mediaType: "image", srcURL: "https://img.example/a.png" });
 
-    expect(menuTitles()).toEqual(["Save image to vault", "Copy image link"]);
+    expect(menuTitles()).toEqual(["Save image to vault", "Copy image", "Copy image link"]);
     app.containerEl.remove();
   });
 
