@@ -55,3 +55,44 @@ test("a tree item eases its children closed instead of snapping", async ({
   await page.waitForTimeout(400);
   expect(await detail()).toBe(-1);
 });
+
+// The file explorer used to rebuild its whole tree on every fold, so the row
+// being folded was destroyed before it could animate. Folding in place is what
+// makes the shared TreeItem animation reach the surface users actually touch.
+test("a file explorer folder folds in place instead of rebuilding the tree", async ({
+  launchApp,
+}) => {
+  const { page } = await launchApp();
+  await page.waitForSelector(".nav-file-title");
+
+  const childrenHeight = () =>
+    page.evaluate(() => {
+      const el = document.querySelector(".nav-folder > .nav-folder-children") as HTMLElement | null;
+      return el ? Math.round(el.getBoundingClientRect().height) : -1;
+    });
+
+  const openHeight = await childrenHeight();
+  expect(openHeight).toBeGreaterThan(0);
+
+  // The row identity must SURVIVE the fold — that is the structural claim.
+  await page.evaluate(() => {
+    const el = document.querySelector(".nav-folder-title") as HTMLElement;
+    el.dataset.identityProbe = "kept";
+    el.click();
+  });
+
+  const heights: number[] = [];
+  for (let index = 0; index < 10; index++) {
+    heights.push(await childrenHeight());
+    await page.waitForTimeout(20);
+  }
+  expect(heights.filter((h) => h > 0 && h < openHeight).length).toBeGreaterThan(0);
+
+  await page.waitForTimeout(400);
+  expect(await childrenHeight()).toBe(-1);
+  expect(
+    await page.evaluate(
+      () => (document.querySelector(".nav-folder-title") as HTMLElement).dataset.identityProbe,
+    ),
+  ).toBe("kept");
+});

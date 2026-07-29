@@ -56,6 +56,12 @@ const FILE_SORT_LABELS: Record<FileSortOrder, string> = {
 
 export class FileExplorerView extends ItemView {
   private collapsedFolders = new Set<string>();
+  /**
+   * The live tree row for each folder path. Folding is done ON these rows, so
+   * they have to outlive a toggle — rebuilding the tree would throw away the
+   * element the animation is running on.
+   */
+  private readonly folderItems = new Map<string, TreeItem>();
   /** Once true, we have seeded default-collapsed state for the current vault tree. */
   private collapseSeeded = false;
   private treeContainerEl: HTMLElement | null = null;
@@ -148,6 +154,7 @@ export class FileExplorerView extends ItemView {
 
     this.treeContainerEl ??= this.contentEl.appendChild(document.createElement("div"));
     this.treeContainerEl.replaceChildren();
+    this.folderItems.clear();
     const rootEl = document.createElement("div");
     rootEl.className = "nav-files-container node-insert-event";
     rootEl.addEventListener("contextmenu", (event) => {
@@ -308,7 +315,8 @@ export class FileExplorerView extends ItemView {
       collapseIcon: false,
     });
     item.setCollapsible(true);
-    item.setCollapsed(isCollapsed);
+    void item.setCollapsed(isCollapsed);
+    this.folderItems.set(folder.path, item);
     const { el: folderEl, selfEl: titleEl, childrenEl, innerEl: titleContentEl } = item;
     titleEl.dataset.path = folder.path;
     setIcon(item.iconEl, isCollapsed ? "lucide-folder-closed" : "lucide-folder-open");
@@ -607,10 +615,31 @@ export class FileExplorerView extends ItemView {
       : this.app.vault.getAvailablePath(`${prefix}${file.name}`, "");
   }
 
+  /**
+   * Fold in place. Rebuilding the whole tree here — which is what this used to
+   * do — destroys the very row being folded, so the collapse could never
+   * animate and every unrelated row was rebuilt to move one.
+   *
+   * Children are still built lazily, which is what keeps a large vault's first
+   * paint O(root): a folder that starts collapsed has no subtree DOM at all, so
+   * the first expand builds it, and later toggles just detach and re-attach it.
+   */
   private toggleFolder(folder: TFolder): void {
-    if (this.collapsedFolders.has(folder.path)) this.collapsedFolders.delete(folder.path);
-    else this.collapsedFolders.add(folder.path);
-    this.renderFileTree();
+    const collapsed = !this.collapsedFolders.has(folder.path);
+    if (collapsed) this.collapsedFolders.add(folder.path);
+    else this.collapsedFolders.delete(folder.path);
+    const item = this.folderItems.get(folder.path);
+    if (!item) {
+      this.renderFileTree();
+      return;
+    }
+    if (!collapsed && item.childrenEl.childElementCount === 0) {
+      for (const child of [...folder.children].sort(this.compareFiles))
+        this.renderTreeItem(child, item.childrenEl);
+    }
+    setIcon(item.iconEl, collapsed ? "lucide-folder-closed" : "lucide-folder-open");
+    void item.setCollapsed(collapsed, true);
+    this.updateCollapseAllButton();
   }
 
   private onFolderClick(folder: TFolder, event: MouseEvent): void {

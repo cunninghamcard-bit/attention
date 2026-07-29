@@ -129,6 +129,11 @@ export class TreeItem extends Component {
       this.collapsed = false;
     }
     this.selfEl.classList.toggle("mod-collapsible", value);
+    // aria-expanded reflects state, so it exists from the moment the row
+    // becomes collapsible. Setting it only inside setCollapsed left a freshly
+    // built, already-expanded row with no attribute at all.
+    if (value) this.selfEl.setAttribute("aria-expanded", String(!this.collapsed));
+    else this.selfEl.removeAttribute("aria-expanded");
   }
 
   /**
@@ -141,6 +146,10 @@ export class TreeItem extends Component {
    * which is what keeps a deep collapsed subtree out of layout entirely.
    */
   async setCollapsed(value: boolean, animate = false): Promise<void> {
+    // Obsidian early-returns when the value is unchanged. Without it a
+    // re-render that reasserts the current state replays the whole collapse,
+    // detaching and re-appending a children box nobody asked to move.
+    if (this.collapsed === value) return;
     this.collapsed = value;
     this.el.classList.toggle("is-collapsed", value);
     this.collapseEl?.classList.toggle("is-collapsed", value);
