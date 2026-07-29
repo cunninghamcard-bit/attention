@@ -278,8 +278,11 @@ export class ThemeMarketplaceModal extends CommunityModal<ThemeItem> {
     } else if (installed) {
       this.createActionButton(parentEl, "Use", "mod-cta", () => this.useTheme(item, id));
     } else {
+      // Themes use `is-loading` (the progress-bar sweep), not `mod-loading`
+      // (the spinner + blanked label the community PLUGIN modal uses) — app.js
+      // calls a different helper for this button specifically.
       this.createActionButton(parentEl, "Install and use", "mod-cta", (buttonEl) =>
-        withButtonLoading(buttonEl, () => this.installAndUse(item)),
+        withLoading(buttonEl, () => this.installAndUse(item)),
       );
     }
     if (id && installed)

@@ -1,5 +1,5 @@
 /**
- * Input: ../app/App, ../app/SettingRegistry, ../app/theme/AppearanceManager, ../ui/Setting, ../ui/Icon, ../ui/Notice, ./theme-market/ThemeMarketplaceModal, ./theme-market/ThemeMarketplace, ./AppearanceModals, ../platform/Platform
+ * Input: ../app/App, ../app/SettingRegistry, ../app/theme/AppearanceManager, ../ui/Setting, ../ui/Icon, ../ui/Notice, ../ui/CommunityModal, ./theme-market/ThemeMarketplaceModal, ./theme-market/ThemeMarketplace, ./AppearanceModals, ../platform/Platform
  * Output: AppearanceSettingTab
  * Pos: Application code
  *
@@ -10,6 +10,7 @@ import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import type { BaseTheme } from "../app/theme/AppearanceManager";
 import { Setting, SettingGroup } from "../ui/Setting";
+import { withLoading } from "../ui/CommunityModal";
 import { setIcon } from "../ui/Icon";
 import { Notice } from "../ui/Notice";
 import { ThemeMarketplaceModal } from "./theme-market/ThemeMarketplaceModal";
@@ -157,11 +158,13 @@ export class AppearanceSettingTab implements SettingTab {
             button
               .setButtonText("Update all themes")
               .setCta()
-              .onClick(() => this.updateAllThemes()),
+              .onClick(() => withLoading(this.containerEl, () => this.updateAllThemes())),
           );
       } else if (communityThemes.length) {
         setting.addButton((button) =>
-          button.setButtonText("Check for updates").onClick(() => this.checkThemeUpdates()),
+          button
+            .setButtonText("Check for updates")
+            .onClick(() => withLoading(this.containerEl, () => this.checkThemeUpdates())),
         );
       }
     });

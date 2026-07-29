@@ -234,7 +234,6 @@ export function ensureGraphStyles(): void {
   gap: 4px;
 }
 
-.graph-search-input,
 .graph-color-group-query {
   box-sizing: border-box;
   width: 100%;

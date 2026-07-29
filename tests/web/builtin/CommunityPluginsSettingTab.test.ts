@@ -243,17 +243,60 @@ describe("CommunityPluginsSettingTab", () => {
     const tab = new CommunityPluginsSettingTab(app);
     tab.display();
 
+    // is-loading lands on the TAB's own containerEl (not the button), which is
+    // what app.css's progress-bar sweep needs a containing block on — it is
+    // added synchronously by withLoading, before the update it wraps resolves.
     clickButton(tab.containerEl, "Check for updates");
+    expect(tab.containerEl.classList.contains("is-loading")).toBe(true);
     await flushAsync();
+    expect(tab.containerEl.classList.contains("is-loading")).toBe(false);
 
     expect(app.communityPlugins.get("updates")?.updateAvailable).toBe(true);
     expect(tab.containerEl.textContent).toContain("Update all");
 
     clickButton(tab.containerEl, "Update all");
+    expect(tab.containerEl.classList.contains("is-loading")).toBe(true);
     await flushAsync();
+    expect(tab.containerEl.classList.contains("is-loading")).toBe(false);
 
     expect(app.communityPlugins.get("updates")?.manifest.version).toBe("1.2.0");
     expect(app.communityPlugins.get("updates")?.updateAvailable).toBe(false);
+  });
+
+  it("shows the loading affordance on a single plugin's own row while it updates", async () => {
+    const app = new App(document.createElement("div"));
+    app.pluginSecurity.setCommunityPluginsEnabled(true);
+    await app.pluginInstaller.install({
+      manifest: { id: "solo", name: "Solo Plugin", version: "1.0.0" },
+      entry: "plugins/solo/main.js",
+      factory: (pluginApp, manifest) =>
+        ({ app: pluginApp, manifest, load: () => {}, unload: () => {} }) as never,
+    });
+    app.pluginMarketplace.registerEntry({
+      manifest: { id: "solo", name: "Solo Plugin", version: "1.1.0" },
+      package: {
+        manifest: { id: "solo", name: "Solo Plugin", version: "1.1.0" },
+        entry: "plugins/solo/main.js",
+        factory: (pluginApp, manifest) =>
+          ({ app: pluginApp, manifest, load: () => {}, unload: () => {} }) as never,
+      },
+    });
+
+    const tab = new CommunityPluginsSettingTab(app);
+    tab.display();
+    clickButton(tab.containerEl, "Check for updates");
+    await flushAsync();
+
+    const row = tab.containerEl.querySelector<HTMLElement>('[data-plugin-id="solo"]');
+    if (!row) throw new Error("missing plugin row");
+
+    clickButton(row, "Update");
+    // The row itself carries is-loading, not the whole tab — the bar sweeps
+    // across just that plugin.
+    expect(row.classList.contains("is-loading")).toBe(true);
+    expect(tab.containerEl.classList.contains("is-loading")).toBe(false);
+    await flushAsync();
+    expect(row.classList.contains("is-loading")).toBe(false);
   });
 });
 

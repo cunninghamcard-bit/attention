@@ -1,5 +1,5 @@
 /**
- * Input: ../../ui/TreeItem, ./GraphOptions
+ * Input: ../../ui/TreeItem, ../../ui/Setting, ./GraphOptions
  * Output: GraphControlsCallbacks, GraphControls
  * Pos: Application code
  *
@@ -7,6 +7,7 @@
  */
 
 import { TreeItem } from "../../ui/TreeItem";
+import { Setting } from "../../ui/Setting";
 import type { GraphPluginOptions } from "./GraphOptions";
 import { cssColorToGraphColor, graphColorToCss } from "./GraphOptions";
 
@@ -86,16 +87,18 @@ export class GraphControls {
 
   private renderFilters(parentEl: HTMLElement): void {
     const bodyEl = this.section(parentEl, "Filters", "filters");
-    this.searchInputEl = document.createElement("input");
-    this.searchInputEl.className = "search-input graph-search-input";
-    this.searchInputEl.type = "search";
-    this.searchInputEl.placeholder = "Search files...";
-    this.searchInputEl.value = this.options.filterOptions.query;
-    this.searchInputEl.addEventListener("input", () => {
-      this.options.filterOptions.query = this.searchInputEl?.value ?? "";
-      this.callbacks.onChange();
+    // The faithful row: a Setting wearing `mod-search-setting`, so it gets the
+    // same clear button and spacing app.css already ships for it — was a bare
+    // <input>, which meant those rules had nothing to select.
+    const searchSetting = new Setting(bodyEl).addSearch((search) => {
+      search.setPlaceholder("Search files...").setValue(this.options.filterOptions.query);
+      this.searchInputEl = search.inputEl;
+      search.onChange((value) => {
+        this.options.filterOptions.query = value;
+        this.callbacks.onChange();
+      });
     });
-    bodyEl.appendChild(this.searchInputEl);
+    searchSetting.settingEl.classList.add("mod-search-setting");
 
     if (this.callbacks.isLocal) {
       bodyEl.append(

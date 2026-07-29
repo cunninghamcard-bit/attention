@@ -1,5 +1,5 @@
 /**
- * Input: ../app/App, ../app/SettingRegistry, ../core/fuzzy, ../platform/Platform, ../search/SearchHelpers, ../ui/Icon, ../ui/Modal, ../ui/Notice, ../ui/Setting, ../plugin/CommunityPluginRegistry
+ * Input: ../app/App, ../app/SettingRegistry, ../core/fuzzy, ../platform/Platform, ../search/SearchHelpers, ../ui/CommunityModal, ../ui/Icon, ../ui/Modal, ../ui/Notice, ../ui/Setting, ../plugin/CommunityPluginRegistry
  * Output: CommunityPluginsSettingTab
  * Pos: Application code
  *
@@ -10,6 +10,7 @@ import type { App } from "../app/App";
 import type { SettingTab } from "../app/SettingRegistry";
 import { fuzzyMatch, prepareFuzzyQuery, type FuzzyMatch } from "../core/fuzzy";
 import { Platform } from "../platform/Platform";
+import { withLoading } from "../ui/CommunityModal";
 import { renderResults } from "../search/SearchHelpers";
 import { setIcon } from "../ui/Icon";
 import { ConfirmationModal } from "../ui/Modal";
@@ -97,20 +98,24 @@ export class CommunityPluginsSettingTab implements SettingTab {
             button
               .setCta()
               .setButtonText("Update all")
-              .onClick(async () => {
-                await this.app.pluginInstaller.updateAll();
-                this.display();
-              }),
+              .onClick(() =>
+                withLoading(this.containerEl, async () => {
+                  await this.app.pluginInstaller.updateAll();
+                  this.display();
+                }),
+              ),
           );
         } else if (installed.length > 0) {
           setting.addButton((button) =>
             button
               .setCta()
               .setButtonText("Check for updates")
-              .onClick(async () => {
-                await this.app.pluginInstaller.checkForUpdates();
-                this.display();
-              }),
+              .onClick(() =>
+                withLoading(this.containerEl, async () => {
+                  await this.app.pluginInstaller.checkForUpdates();
+                  this.display();
+                }),
+              ),
           );
         }
       });
@@ -292,10 +297,12 @@ export class CommunityPluginsSettingTab implements SettingTab {
           .setCta()
           .setButtonText("Update")
           .setTooltip(`Update to version ${record.latestVersion ?? entry?.manifest.version ?? ""}`)
-          .onClick(async () => {
-            await this.app.pluginInstaller.update(manifest.id);
-            this.display();
-          }),
+          .onClick(() =>
+            withLoading(setting.settingEl, async () => {
+              await this.app.pluginInstaller.update(manifest.id);
+              this.display();
+            }),
+          ),
       );
     }
 

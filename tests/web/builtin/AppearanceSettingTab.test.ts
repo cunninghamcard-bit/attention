@@ -132,12 +132,16 @@ describe("AppearanceSettingTab", () => {
     });
     tab.display();
 
+    // is-loading is added synchronously by withLoading, on the whole tab's
+    // containerEl, before the check/update it wraps ever resolves.
     clickSettingButton(tab.containerEl, "Current themes", "Check for updates");
+    expect(tab.containerEl.classList.contains("is-loading")).toBe(true);
     await vi.waitFor(() =>
       expect(findSetting(tab.containerEl, "Current themes").textContent).toContain(
         "1 update available",
       ),
     );
+    expect(tab.containerEl.classList.contains("is-loading")).toBe(false);
     clickSettingButton(tab.containerEl, "Current themes", "View updates");
     await vi.waitFor(() =>
       expect(document.body.querySelector(".modal.mod-community-theme")?.textContent).toContain(
@@ -145,7 +149,9 @@ describe("AppearanceSettingTab", () => {
       ),
     );
     clickSettingButton(tab.containerEl, "Current themes", "Update all themes");
+    expect(tab.containerEl.classList.contains("is-loading")).toBe(true);
     await vi.waitFor(() => expect(install).toHaveBeenCalledWith("Alpha"));
+    await vi.waitFor(() => expect(tab.containerEl.classList.contains("is-loading")).toBe(false));
   });
 
   it("toggles supported interface chrome", async () => {

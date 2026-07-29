@@ -176,8 +176,19 @@ describe("ThemeMarketplaceModal", () => {
     vi.spyOn(app.themeMarketplace, "downloadPackage").mockResolvedValue(themePackage("Alpha"));
 
     clickTheme(modal, "Alpha");
-    clickButton(modal.contentEl, "Install and use");
+    const button = [...modal.contentEl.querySelectorAll<HTMLElement>("button")].find(
+      (candidate) => candidate.textContent?.trim() === "Install and use",
+    );
+    if (!button) throw new Error("Install and use button not found");
+    button.click();
+    // Themes get `is-loading` (the progress-bar sweep on the button itself),
+    // NOT `mod-loading` (the spinner the community PLUGIN modal uses) — that
+    // is a different helper for a reason: the label stays legible while a
+    // theme installs.
+    expect(button.classList.contains("is-loading")).toBe(true);
+    expect(button.classList.contains("mod-loading")).toBe(false);
     await flushAsync();
+    expect(button.classList.contains("is-loading")).toBe(false);
 
     expect(app.vault.getConfig("cssTheme")).toBe("Alpha");
     expect(await app.vault.readText(".obsidian/themes/Alpha/theme.css")).toContain("alpha-marker");
