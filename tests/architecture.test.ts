@@ -394,7 +394,17 @@ describe("Rule: shared-contracts — the native seam is one typed contract", () 
 
     expect(findLaneViolations(root, forbidden)).toEqual([]);
     expect(findLaneViolations(tests, forbidden)).toEqual([]);
-    expect(readText("pnpm-lock.yaml")).not.toMatch(/^\s{2}(?:react|react-dom|vue|zod)@/m);
+    // The lockfile line is the stronger backstop, and it holds for the UI
+    // frameworks: a React or Vue resolution anywhere means something in the
+    // tree renders with one, which is the thing this rule exists to prevent.
+    // zod is enforced one level up instead, in the dependency table, because
+    // it now arrives transitively: the agent core plugin depends on pi's SDK,
+    // pi-ai depends on the official Anthropic/OpenAI/Google SDKs, and those
+    // carry zod as their schema type. Nothing of ours imports it.
+    expect(readText("pnpm-lock.yaml")).not.toMatch(/^\s{2}(?:react|react-dom|vue)@/m);
+    expect(findLaneViolations(JSON.parse(readText("apps/web/package.json")), forbidden)).toEqual(
+      [],
+    );
 
     // self-test
     expect(findLaneViolations({ dependencies: { react: "1" } }, forbidden)).toEqual(["react"]);
