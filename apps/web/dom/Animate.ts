@@ -63,9 +63,8 @@ interface RunningAnimation {
   settle: () => void;
   /** The real listener, so removing it actually removes it. */
   onTransitionEnd: (event: TransitionEvent) => void;
-  timer: number;
+  timer: ReturnType<typeof setTimeout> | undefined;
   complete?: () => void;
-  win: Window;
 }
 
 const running = new WeakMap<HTMLElement, RunningAnimation>();
@@ -95,7 +94,7 @@ export function cancelAnimation(el: HTMLElement, silent = false): void {
   el.style.transition = "";
   el.style.transitionProperty = "";
   applyStyles(el, record.spec.end);
-  record.win.clearTimeout(record.timer);
+  clearTimeout(record.timer);
   el.removeEventListener("transitionend", record.onTransitionEnd);
   if (!silent) record.complete?.();
 }
@@ -111,9 +110,8 @@ export function animateEl(el: HTMLElement, spec: AnimationSpec, complete?: () =>
     onTransitionEnd: (event: TransitionEvent) => {
       if (event.target === el) record.settle();
     },
-    timer: 0,
+    timer: undefined,
     complete,
-    win: el.win,
   };
   running.set(el, record);
 
@@ -134,7 +132,7 @@ export function animateEl(el: HTMLElement, spec: AnimationSpec, complete?: () =>
     el.style.transitionProperty = Object.keys(spec.from).join(", ");
     applyStyles(el, spec.to);
     el.addEventListener("transitionend", record.onTransitionEnd);
-    record.timer = record.win.setTimeout(record.settle, spec.duration + 50);
+    record.timer = setTimeout(record.settle, spec.duration + 50);
   });
 }
 

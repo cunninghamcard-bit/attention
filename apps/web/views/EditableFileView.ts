@@ -1,11 +1,12 @@
 /**
- * Input: ./FileView, ../vault/TAbstractFile, ../vault/FileNameValidation, ../ui/Menu
+ * Input: ./FileView, ../vault/TAbstractFile, ../vault/FileNameValidation, ../ui/Menu, ../dom/Animate
  * Output: EditableFileView
  * Pos: UI Layer - View templates
  *
  * 🔄 Self-reference: When this file changes, update this header
  */
 
+import { AnimationSpec, animateEl } from "../dom/Animate";
 import { FileView } from "./FileView";
 import type { TFile } from "../vault/TAbstractFile";
 import { validateRenameName, type RenameValidationResult } from "../vault/FileNameValidation";
@@ -78,16 +79,37 @@ export class EditableFileView extends FileView {
     selection?.addRange(range);
   }
 
+  /**
+   * Renaming gives the whole header over to the title, so the breadcrumb ahead
+   * of it folds away rather than vanishing. Its width has to be measured now,
+   * while it is still laid out, and it ends DETACHED — the `end` opacity of 0
+   * keeps it invisible if anything re-attaches it before the blur does.
+   */
   protected onHeaderTitleFocus(): void {
     this.fileBeingRenamed = this.file;
     this.titleEl.textContent = this.file?.basename ?? "";
-    this.titleParentEl.style.display = "none";
+    animateEl(
+      this.titleParentEl,
+      new AnimationSpec({ duration: 150 })
+        .addProp("opacity", "1", "0", "0")
+        .addProp("width", `${this.titleParentEl.clientWidth}px`, "0", ""),
+      () => this.titleParentEl.remove(),
+    );
   }
 
   protected async onHeaderTitleBlur(): Promise<void> {
     const saved = await this.saveHeaderTitle();
     if (!saved) this.titleEl.textContent = this.getDisplayText();
+    // Back in first, so the unfold has something to measure against.
     this.titleParentEl.style.display = "";
+    this.titleContainerEl.prepend(this.titleParentEl);
+    animateEl(
+      this.titleParentEl,
+      new AnimationSpec({ duration: 150 })
+        .addProp("opacity", "0", "1", "")
+        .addProp("width", "0", `${this.titleParentEl.clientWidth}px`, ""),
+    );
+    this.titleEl.scrollTo({ left: 0 });
     this.fileBeingRenamed = null;
   }
 
