@@ -254,7 +254,13 @@ describe("MarkdownPreviewRenderer", () => {
       expect(root.querySelector("ul.contains-task-list input.task-list-item-checkbox")).not.toBe(
         null,
       );
-      expect(root.querySelector("blockquote .callout.callout-note")?.textContent).toBe("Quote");
+      // Faithful contract: the blockquote is REPLACED by div.callout, and the
+      // type travels as data-callout — `callout-note` is a class app.css has
+      // never had, so every one of its 26 type rules missed the old DOM.
+      expect(root.querySelector("blockquote")).toBe(null);
+      expect(
+        root.querySelector('.callout[data-callout="note"] .callout-title-inner')?.textContent,
+      ).toBe("Quote");
       expect(root.querySelector("table tbody td")?.textContent).toBe("C");
       expect(processed).toEqual({
         source: "code",

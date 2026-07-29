@@ -4,6 +4,7 @@
 - Application code
 
 **Files**:
+- `Callouts.ts` - Exports CALLOUT_MARKER and 1 more
 - `FoldManager.ts` - Exports FoldRange and 2 more
 - `HtmlDropPreprocessor.ts` - Exports DetachedHtmlImage and 3 more
 - `HtmlToMarkdown.ts` - Exports htmlToMarkdown

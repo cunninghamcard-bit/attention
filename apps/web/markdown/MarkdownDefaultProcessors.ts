@@ -17,6 +17,7 @@ import {
   mimeForExtension,
 } from "../views/MediaViews";
 import { MarkdownRenderer, type MarkdownCodeBlockProcessor } from "./MarkdownRenderer";
+import { renderCallouts } from "./Callouts";
 
 export function registerMarkdownDefaultProcessors(app: App): void {
   registerCodeBlockPostProcessor("mermaid", async (source, el) => {
@@ -105,15 +106,7 @@ export function registerMarkdownDefaultProcessors(app: App): void {
     }
   }, -10);
 
-  MarkdownRenderer.registerPostProcessor((root) => {
-    for (const paragraph of root.querySelectorAll("p")) {
-      const text = paragraph.textContent ?? "";
-      const callout = text.match(/^\[!(\w+)\]\s*(.*)$/);
-      if (!callout) continue;
-      paragraph.classList.add("callout", `callout-${callout[1].toLowerCase()}`);
-      paragraph.textContent = callout[2] || callout[1];
-    }
-  });
+  MarkdownRenderer.registerPostProcessor(renderCallouts);
 
   MarkdownRenderer.registerPostProcessor((root, context) => {
     app.fixFileLinks(root, context.sourcePath);
