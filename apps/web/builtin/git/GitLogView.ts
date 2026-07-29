@@ -136,10 +136,10 @@ export class GitLogView extends ItemView {
     contentEl.append(subjectEl, metaEl);
     let loaded = false;
     const toggle = (): void => {
-      // .hidden is typed string | boolean (hidden="until-found"); it is only
-      // ever set to a real boolean here, so coerce for classList.toggle.
-      const expanding = Boolean(detailEl.hidden);
-      item.setCollapsed(!expanding);
+      // Read the item's own state, not the children box's: a collapsed tree
+      // item DETACHES its children, so `hidden` says nothing.
+      const expanding = item.collapsed;
+      void item.setCollapsed(!expanding, true);
       itemEl.classList.toggle("is-expanded", expanding);
       if (expanding && !loaded) {
         loaded = true;
@@ -193,8 +193,8 @@ export class GitLogView extends ItemView {
       nameEl.after(statEl);
       let diffLoaded = false;
       const toggle = (): void => {
-        const expanding = Boolean(diffHost.hidden);
-        item.setCollapsed(!expanding);
+        const expanding = item.collapsed;
+        void item.setCollapsed(!expanding, true);
         if (expanding && !diffLoaded) {
           diffLoaded = true;
           void this.renderFileDiff(entry.hash, row.path, diffHost);

@@ -27,20 +27,25 @@ describe("TreeItem", () => {
     expect(item.collapseEl).toBe(item.selfEl.firstElementChild);
   });
 
-  it("reflects collapsed state on the item, chevron and children", () => {
+  // Obsidian DETACHES a collapsed item's children rather than hiding them,
+  // which is what keeps a deep collapsed subtree out of layout entirely, and
+  // is why `collapsed` is the state to read — `childrenEl.hidden` says nothing.
+  it("reflects collapsed state on the item, chevron and children", async () => {
     const item = new TreeItem(document.createElement("div"));
     item.setCollapsible(true);
 
-    item.setCollapsed(true);
+    await item.setCollapsed(true);
     expect(item.el.matches(".is-collapsed")).toBe(true);
     expect(item.collapseEl?.matches(".is-collapsed")).toBe(true);
     expect(item.selfEl.getAttribute("aria-expanded")).toBe("false");
-    expect(item.childrenEl.hidden).toBe(true);
+    expect(item.collapsed).toBe(true);
+    expect(item.el.contains(item.childrenEl)).toBe(false);
 
-    item.setCollapsed(false);
+    await item.setCollapsed(false);
     expect(item.el.classList.contains("is-collapsed")).toBe(false);
     expect(item.selfEl.getAttribute("aria-expanded")).toBe("true");
-    expect(item.childrenEl.hidden).toBe(false);
+    expect(item.collapsed).toBe(false);
+    expect(item.el.contains(item.childrenEl)).toBe(true);
   });
 
   it("layers view classes onto the base structure", () => {

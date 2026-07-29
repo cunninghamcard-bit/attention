@@ -1,6 +1,6 @@
 /**
- * Input: None
- * Output: AnimationSpec, animateEl, cancelAnimation
+ * Input: ./dom
+ * Output: AnimationSpec, animateEl, cancelAnimation, expandEl, collapseEl, setElCollapsed, setChildrenCollapsed
  * Pos: Application code
  *
  * 🔄 Self-reference: When this file changes, update this header
@@ -31,6 +31,8 @@
  * animation hands the element back to the stylesheet: animate width to a
  * measured pixel value, end it at `""`, and the final state is the CSS one.
  */
+
+import { detach } from "./dom";
 
 type StyleMap = Record<string, string>;
 
@@ -134,4 +136,108 @@ export function animateEl(el: HTMLElement, spec: AnimationSpec, complete?: () =>
     el.addEventListener("transitionend", record.onTransitionEnd);
     record.timer = record.win.setTimeout(record.settle, spec.duration + 50);
   });
+}
+
+/**
+ * The vertical box metrics a height collapse interpolates, ported from app.js
+ * `hl`. Padding and margin ride along with height, or a collapsing box keeps
+ * its spacing and the row below it jumps.
+ */
+const COLLAPSE_METRICS = [
+  "height",
+  "paddingTop",
+  "paddingBottom",
+  "marginTop",
+  "marginBottom",
+] as const;
+
+/** app.js `dl` timing for the collapse pair. */
+const COLLAPSE_DURATION = 100;
+const COLLAPSE_EASING = "cubic-bezier(.02, .01, .47, 1)";
+
+/**
+ * The element's current metrics in pixels, ported from app.js `ml`. Zero
+ * values are DROPPED, not recorded as 0: a box with no padding should animate
+ * height alone, and listing a property that never changes only widens
+ * `transitionProperty` for nothing.
+ */
+function measureCollapseMetrics(el: HTMLElement): Record<string, number> {
+  const computed = window.getComputedStyle(el);
+  const metrics: Record<string, number> = {};
+  for (const prop of COLLAPSE_METRICS) {
+    const raw = computed[prop];
+    if (!raw || !raw.endsWith("px")) continue;
+    const value = Number.parseFloat(raw.slice(0, -2));
+    if (value !== 0) metrics[prop] = value;
+  }
+  return metrics;
+}
+
+function collapseSpec(el: HTMLElement, expanding: boolean): AnimationSpec {
+  const metrics = measureCollapseMetrics(el);
+  const spec = new AnimationSpec({ duration: COLLAPSE_DURATION, fn: COLLAPSE_EASING });
+  // Clipped for the whole run so the contents cannot spill out of a box that
+  // is shorter than they are, then released by the `end` stage.
+  spec.addProp("overflowY", "clip", "clip", "");
+  for (const prop of Object.keys(metrics)) {
+    const natural = `${metrics[prop]}px`;
+    spec.addProp(prop, expanding ? "0px" : natural, expanding ? natural : "0px", "");
+  }
+  return spec;
+}
+
+/** Grow an element from nothing to its natural box (app.js `bl`). */
+export function expandEl(el: HTMLElement): Promise<void> {
+  cancelAnimation(el);
+  return new Promise((resolve) => animateEl(el, collapseSpec(el, true), () => resolve()));
+}
+
+/** Shrink an element to nothing, keeping its natural box as the start (app.js `wl`). */
+export function collapseEl(el: HTMLElement): Promise<void> {
+  cancelAnimation(el);
+  return new Promise((resolve) => animateEl(el, collapseSpec(el, false), () => resolve()));
+}
+
+/**
+ * Collapse/expand an element in place, ported from app.js `kl`: it settles
+ * first, and the element is hidden only AFTER it has finished shrinking, so
+ * the animation is not cut off by `display: none`.
+ */
+export async function setElCollapsed(
+  el: HTMLElement,
+  collapsed: boolean,
+  animate: boolean,
+): Promise<void> {
+  cancelAnimation(el);
+  if (collapsed) {
+    if (animate) await collapseEl(el);
+    el.style.display = "none";
+  } else {
+    el.style.display = "";
+    if (animate) await expandEl(el);
+  }
+}
+
+/**
+ * The tree-item variant, ported from app.js `Cl`. Two differences from
+ * `setElCollapsed` and both are deliberate: the collapsed element is DETACHED
+ * rather than hidden — a tree's children box leaves the document, which is
+ * what keeps a deep collapsed tree out of layout entirely — and it is
+ * re-appended to `parent` on the way back. It also does NOT pre-settle, so a
+ * toggle mid-animation continues from where the box currently is.
+ */
+export async function setChildrenCollapsed(
+  el: HTMLElement,
+  parent: HTMLElement,
+  collapsed: boolean,
+  animate: boolean,
+): Promise<void> {
+  if (collapsed) {
+    if (animate) await collapseEl(el);
+    detach(el);
+  } else {
+    el.style.display = "";
+    parent.appendChild(el);
+    if (animate) await expandEl(el);
+  }
 }

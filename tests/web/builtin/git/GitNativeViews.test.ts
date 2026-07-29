@@ -97,7 +97,8 @@ describe("native Git views", () => {
     image.dispatchEvent(new Event("error"));
     expect(avatar.querySelector(".git-avatar-image")).toBeNull();
     expect(avatar.querySelector(".git-avatar-fallback")?.textContent).toBe("C");
-    expect((commit!.querySelector(".git-log-detail") as HTMLElement).hidden).toBe(true);
+    // Collapsed children are detached, not hidden, so the box is simply absent.
+    expect(commit!.querySelector(".git-log-detail")).toBeNull();
     header.click();
     await settle();
     // The changed file is a FILE (nav-file-title), collapsible to its diff — so a

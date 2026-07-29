@@ -1,5 +1,5 @@
 /**
- * Input: ../core/Component, ./Icon
+ * Input: ../core/Component, ../dom/Animate, ./Icon
  * Output: TreeItemOptions, TreeItem
  * Pos: Application code
  *
@@ -7,6 +7,7 @@
  */
 
 import { Component } from "../core/Component";
+import { setChildrenCollapsed } from "../dom/Animate";
 import { setIcon } from "./Icon";
 
 export interface TreeItemOptions {
@@ -48,7 +49,13 @@ export class TreeItem extends Component {
   readonly childrenEl: HTMLElement;
   collapseEl: HTMLElement | null = null;
   private collapsible = false;
-  private collapsed = false;
+  /**
+   * Public because collapsed-ness is STATE, and callers need it. It was
+   * private, so views inferred it from `childrenEl.hidden` — an implementation
+   * detail that stopped being true the moment the children box started being
+   * detached instead of hidden. Obsidian exposes it the same way.
+   */
+  collapsed = false;
   private readonly collapseClass: string;
   private readonly iconClass?: string;
   private readonly wantsCollapseIcon: boolean;
@@ -124,17 +131,25 @@ export class TreeItem extends Component {
     this.selfEl.classList.toggle("mod-collapsible", value);
   }
 
-  /** Reflect collapsed state on the item, the chevron and the children box. */
-  setCollapsed(value: boolean): void {
+  /**
+   * Reflect collapsed state on the item, the chevron and the children box.
+   *
+   * `animate` is off by default because most callers are restoring state —
+   * building a tree, applying a saved layout, collapse-all — and animating
+   * those would play every row at once. Only a direct chevron click asks for
+   * motion. The children box is DETACHED rather than hidden when collapsed,
+   * which is what keeps a deep collapsed subtree out of layout entirely.
+   */
+  async setCollapsed(value: boolean, animate = false): Promise<void> {
     this.collapsed = value;
     this.el.classList.toggle("is-collapsed", value);
     this.collapseEl?.classList.toggle("is-collapsed", value);
     this.selfEl.setAttribute("aria-expanded", String(!value));
-    this.childrenEl.hidden = value;
+    await setChildrenCollapsed(this.childrenEl, this.el, value, animate);
   }
 
-  toggleCollapsed(): void {
-    if (this.collapsible) this.setCollapsed(!this.collapsed);
+  async toggleCollapsed(animate = false): Promise<void> {
+    if (this.collapsible) await this.setCollapsed(!this.collapsed, animate);
   }
 
   /** Row-body click. Empty by default (Obsidian's `onSelfClick`); overridable. */
@@ -144,7 +159,7 @@ export class TreeItem extends Component {
   onCollapseClick(event: MouseEvent): void {
     if (event.button !== 0) return;
     event.preventDefault();
-    this.toggleCollapsed();
+    void this.toggleCollapsed(true);
   }
 
   override addChild<T extends Component>(child: T): T {
