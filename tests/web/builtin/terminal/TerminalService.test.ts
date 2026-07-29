@@ -7,7 +7,10 @@ import {
   type TerminalAdapter,
   type PtyHandle,
 } from "@web/builtin/terminal/TerminalAdapter";
-import type { TerminalRenderer } from "@web/builtin/terminal/ResttyTerminalRenderer";
+import type {
+  TerminalNotification,
+  TerminalRenderer,
+} from "@web/builtin/terminal/ResttyTerminalRenderer";
 import { Menu, MenuItem } from "@web/ui/Menu";
 
 class FakePty implements PtyHandle {
@@ -75,6 +78,7 @@ function fakeRenderer(): TerminalRenderer & {
   output: string[];
   inputCallback: ((data: string) => void) | null;
   resizeCallback: ((size: { cols: number; rows: number }) => void) | null;
+  notificationCallback: ((notification: TerminalNotification) => void) | null;
 } {
   const renderer = {
     output: [] as string[],
@@ -89,6 +93,10 @@ function fakeRenderer(): TerminalRenderer & {
     resizeCallback: null as ((size: { cols: number; rows: number }) => void) | null,
     onResize: (callback: (size: { cols: number; rows: number }) => void) => {
       renderer.resizeCallback = callback;
+    },
+    notificationCallback: null as ((notification: TerminalNotification) => void) | null,
+    onNotification: (callback: (notification: TerminalNotification) => void) => {
+      renderer.notificationCallback = callback;
     },
     copySelection: () => Promise.resolve(false),
     focus: () => {},

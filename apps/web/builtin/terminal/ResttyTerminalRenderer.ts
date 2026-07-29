@@ -24,6 +24,16 @@ import type { GhosttyTheme } from "restty";
 /** restty's color shape: byte components. Not exported from the package root. */
 type ThemeColor = { r: number; g: number; b: number };
 
+/**
+ * A notification the running program asked for (OSC 9 / OSC 777). Restated as
+ * our own shape rather than re-exporting restty's, so the app's notice path
+ * never depends on the package.
+ */
+export interface TerminalNotification {
+  title: string;
+  body: string;
+}
+
 export interface TerminalRendererOptions {
   fontFamily?: string;
   fontSize?: number;
@@ -41,6 +51,8 @@ export interface TerminalRenderer {
    * desynchronizes COLUMNS from the rendered grid and wraps prompts mid-glyph.
    */
   onResize(callback: (size: { cols: number; rows: number }) => void): void;
+  /** OSC 9 / OSC 777 from the running program. Unset, notifications are dropped. */
+  onNotification(callback: (notification: TerminalNotification) => void): void;
   copySelection(): Promise<boolean>;
   focus(): void;
   /** Repaint the palette from the current design tokens (appearance change). */
@@ -215,6 +227,7 @@ export const createResttyRenderer: TerminalRendererFactory = async (options) => 
 
   let onInput: ((data: string) => void) | null = null;
   let onResize: ((size: { cols: number; rows: number }) => void) | null = null;
+  let onNotification: ((notification: TerminalNotification) => void) | null = null;
   // Set by the transport when restty "connects": its own sink for shell output.
   let sink: ((data: string) => void) | null = null;
   let surface: InstanceType<typeof Restty> | null = null;
@@ -289,7 +302,15 @@ export const createResttyRenderer: TerminalRendererFactory = async (options) => 
           shortcuts: false,
           defaultContextMenu: false,
         },
-        services: { ptyTransport: transport },
+        services: {
+          ptyTransport: transport,
+          // Read through the closure, so registration order does not matter:
+          // the callback can be set before or after mount, like onInput.
+          callbacks: {
+            onDesktopNotification: ({ title, body }: TerminalNotification) =>
+              onNotification?.({ title, body }),
+          },
+        },
       });
       // Nothing to dial: the transport has no URL. This is what makes restty
       // consider the pane live and start pumping input through sendInput.
@@ -303,6 +324,9 @@ export const createResttyRenderer: TerminalRendererFactory = async (options) => 
     },
     onResize(callback) {
       onResize = callback;
+    },
+    onNotification(callback) {
+      onNotification = callback;
     },
     async copySelection() {
       return (await surface?.copySelectionToClipboard()) ?? false;

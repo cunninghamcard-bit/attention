@@ -1,5 +1,5 @@
 /**
- * Input: ../../views/ItemView, ../../views/View, ../../ui/Menu, ../../app/hotkeys/Scope, ./TerminalService, ./ResttyTerminalRenderer
+ * Input: ../../views/ItemView, ../../views/View, ../../ui/Menu, ../../ui/Notice, ../../app/hotkeys/Scope, ./TerminalService, ./ResttyTerminalRenderer
  * Output: TerminalView, isSystemChord, createTerminalFocusScope
  * Pos: Application code
  *
@@ -9,6 +9,7 @@
 import { ItemView } from "../../views/ItemView";
 import type { ViewStateResult } from "../../views/View";
 import { Menu } from "../../ui/Menu";
+import { Notice } from "../../ui/Notice";
 import { Scope } from "../../app/hotkeys/Scope";
 import { TERMINAL_VIEW_TYPE, type TTerminal } from "./TerminalService";
 import {
@@ -78,7 +79,7 @@ export class TerminalView extends ItemView {
     // selected nothing resolves false and never touches the clipboard.
     this.surfaceEl.addEventListener("pointerup", (event) => {
       if (event.button !== 0) return;
-      setTimeout(() => void this.renderer?.copySelection(), 0);
+      setTimeout(() => void this.copySelection(), 0);
     });
     this.surfaceEl.addEventListener("focusin", () => this.pushFocusScope());
     this.surfaceEl.addEventListener("focusout", () => this.popFocusScope());
@@ -194,6 +195,13 @@ export class TerminalView extends ItemView {
       this.renderer.onResize(({ cols, rows }) => {
         if (this.terminalId) this.app.terminals.resize(this.terminalId, cols, rows);
       });
+      // A program asking for a notification (OSC 9 / OSC 777) gets the app's
+      // own notice — the point of these is a long job reporting from a tab you
+      // are not looking at, so they use the full default timeout.
+      this.renderer.onNotification(({ title, body }) => {
+        const text = [title, body].filter(Boolean).join(" — ");
+        if (text) new Notice(text);
+      });
     }
     this.attachSession(id);
     this.renderer.focus();
@@ -215,6 +223,16 @@ export class TerminalView extends ItemView {
     this.detachExit = null;
   }
 
+  /**
+   * The one copy path, shared by the drag release and the context menu, so a
+   * copy confirms itself the same way however it was asked for. A shorter
+   * timeout than the default: this fires on every drag, and a confirmation
+   * that outlives the action it confirms reads as an alert.
+   */
+  private async copySelection(): Promise<void> {
+    if (await this.renderer?.copySelection()) new Notice("Copied to your clipboard", 1500);
+  }
+
   private showContextMenu(event: MouseEvent): void {
     event.preventDefault();
     const terminal = this.getTerminal();
@@ -225,7 +243,7 @@ export class TerminalView extends ItemView {
         .setTitle("Copy")
         .setIcon("lucide-copy")
         .onClick(() => {
-          void this.renderer?.copySelection();
+          void this.copySelection();
         }),
     );
     menu.addItem((item) =>

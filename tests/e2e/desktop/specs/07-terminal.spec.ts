@@ -42,6 +42,7 @@ test("terminal copies the selection on release, and leaves the clipboard alone o
   await page.mouse.click(box.x + 12, box.y + 200);
   await page.waitForTimeout(600);
   expect(await electronApp.evaluate(({ clipboard }) => clipboard.readText())).toBe("UNTOUCHED");
+  await expect(page.locator(".notice-container .notice")).toHaveCount(0);
 
   // Dragging across the echoed output copies it with no explicit copy action.
   await page.mouse.move(box.x + 4, box.y + 4);
@@ -52,4 +53,22 @@ test("terminal copies the selection on release, and leaves the clipboard alone o
   expect(await electronApp.evaluate(({ clipboard }) => clipboard.readText())).toContain(
     "COPYSELECTIONMARKER",
   );
+  await expect(page.locator(".notice-container .notice")).toHaveText("Copied to your clipboard");
+});
+
+// OSC 9 is how a long job reports from a tab nobody is looking at. Restty
+// parses it and hands it back through the runtime callbacks; without that
+// wiring it is silently dropped.
+test("terminal surfaces an OSC 9 notification as a notice", async ({ launchApp }) => {
+  const { page } = await launchApp();
+  await openTerminal(page);
+
+  await page.evaluate(async () => {
+    const w = window as unknown as Record<string, unknown>;
+    const app = (window as unknown as { app: any }).app;
+    app.terminals.write(w.__termId as string, "printf '\\033]9;backup finished\\007'\r");
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+  });
+
+  await expect(page.locator(".notice-container .notice")).toContainText("backup finished");
 });
