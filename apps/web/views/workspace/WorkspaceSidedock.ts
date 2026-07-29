@@ -1,5 +1,5 @@
 /**
- * Input: ./WorkspaceSplit, ../../ui/Icon, ./Workspace, ./WorkspaceItem, ../../ui/Menu, ../../ui/Notice, ../../ui/Popover, ../../dom/Clipboard
+ * Input: ./WorkspaceSplit, ../../dom/Animate, ../../ui/Icon, ./Workspace, ./WorkspaceItem, ../../ui/Menu, ../../ui/Notice, ../../ui/Popover, ../../dom/Clipboard
  * Output: WorkspaceSidedock
  * Pos: UI Layer - View templates
  *
@@ -7,6 +7,7 @@
  */
 
 import { WorkspaceSplit } from "./WorkspaceSplit";
+import { AnimationSpec, animateEl, cancelAnimation } from "../../dom/Animate";
 import { setIcon } from "../../ui/Icon";
 import type { Workspace } from "./Workspace";
 import type { WorkspaceItem } from "./WorkspaceItem";
@@ -16,6 +17,9 @@ import { setTooltip } from "../../ui/Popover";
 import { writeClipboardText } from "../../dom/Clipboard";
 
 const SIDEDOCK_MIN_WIDTH = 200;
+
+/** app.js `PD`: the one timing every sidedock slide uses. */
+const SIDEDOCK_ANIMATION = { duration: 140, fn: "var(--anim-motion-swing)" };
 
 export class WorkspaceSidedock extends WorkspaceSplit {
   collapsed = false;
@@ -106,8 +110,7 @@ export class WorkspaceSidedock extends WorkspaceSplit {
     if (this.collapsed) return;
     this.collapsed = true;
     this.containerEl.classList.add("is-sidedock-collapsed");
-    this.containerEl.style.width = "0px";
-    this.containerEl.style.display = "none";
+    this.animateWidth(false);
     this.resizeHandleEl.style.opacity = "0";
     this.workspace.containerEl.classList.remove(`is-${this.side}-sidedock-open`);
     const ribbon = this.side === "left" ? this.workspace.leftRibbon : this.workspace.rightRibbon;
@@ -124,8 +127,7 @@ export class WorkspaceSidedock extends WorkspaceSplit {
   expand(): void {
     if (!this.collapsed) return;
     this.collapsed = false;
-    this.containerEl.style.display = "";
-    this.containerEl.style.width = `${this.width ?? 300}px`;
+    this.animateWidth(true);
     this.resizeHandleEl.style.opacity = "1";
     this.containerEl.classList.remove("is-sidedock-collapsed");
     this.workspace.containerEl.classList.add(`is-${this.side}-sidedock-open`);
@@ -134,6 +136,45 @@ export class WorkspaceSidedock extends WorkspaceSplit {
     this.workspace.requestSaveLayout();
     if (this.workspace.rootSplit.children.length > 0) this.workspace.updateFrameless();
     this.workspace.requestResize();
+  }
+
+  /**
+   * Slide the dock rather than snapping it. Each child's `minWidth` is pinned
+   * at the full size for the duration, or the panes inside reflow to the
+   * shrinking container and the contents visibly crush on the way out;
+   * `overflow` is clamped so nothing spills while the box is narrower than its
+   * contents. Both are released on settle, with the resize the layout needs.
+   *
+   * Before layout is ready there is nothing on screen to animate, so the state
+   * is applied outright — that is the startup path, and animating it would
+   * play every restored dock at boot.
+   */
+  private animateWidth(expanding: boolean): void {
+    const size = `${this.width ?? 300}px`;
+    const childEls = this.children.map((child) => child.containerEl);
+    if (!this.workspace.layoutReady) {
+      this.containerEl.style.display = expanding ? "" : "none";
+      this.containerEl.style.width = expanding ? size : "0px";
+      return;
+    }
+    for (const el of childEls) el.style.minWidth = size;
+    if (expanding) this.containerEl.style.display = "";
+    cancelAnimation(this.containerEl, true);
+    this.containerEl.style.overflow = "hidden";
+    animateEl(
+      this.containerEl,
+      new AnimationSpec(SIDEDOCK_ANIMATION).addProp(
+        "width",
+        expanding ? "0px" : size,
+        expanding ? size : "0px",
+      ),
+      () => {
+        if (!expanding) this.containerEl.style.display = "none";
+        this.containerEl.style.overflow = "";
+        for (const el of childEls) el.style.minWidth = "";
+        this.workspace.requestResize();
+      },
+    );
   }
 
   setSize(width: number): void {

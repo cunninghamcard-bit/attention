@@ -21,6 +21,9 @@ function installBrowserStubs(): void {
   Object.defineProperty(window, "focus", { configurable: true, value: () => {} });
 }
 
+/** Past the animator's deferred start and its settle timer. */
+const settleAnimations = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 250));
+
 describe("Obsidian workspace DOM structure", () => {
   beforeEach(() => {
     document.body.className = "";
@@ -268,10 +271,13 @@ describe("Obsidian workspace DOM structure", () => {
     expect(leftSplit.containerEl.style.width).toBe("360px");
 
     leftSplit.collapse();
+    // State is immediate; the geometry SLIDES, so it lands when the animation
+    // settles rather than in the same frame.
     expect(leftSplit.collapsed).toBe(true);
     expect(leftSplit.width).toBe(360);
     expect(leftSplit.serialize()).toEqual(expect.objectContaining({ width: 360, collapsed: true }));
     expect(leftSplit.containerEl.classList.contains("is-sidedock-collapsed")).toBe(true);
+    await settleAnimations();
     expect(leftSplit.containerEl.style.width).toBe("0px");
     expect(leftSplit.containerEl.style.display).toBe("none");
     expect(leftSplit.resizeHandleEl.style.opacity).toBe("0");
@@ -280,6 +286,7 @@ describe("Obsidian workspace DOM structure", () => {
     leftSplit.expand();
     expect(leftSplit.collapsed).toBe(false);
     expect(leftSplit.containerEl.classList.contains("is-sidedock-collapsed")).toBe(false);
+    await settleAnimations();
     expect(leftSplit.containerEl.style.width).toBe("360px");
     expect(leftSplit.containerEl.style.display).toBe("");
     expect(leftSplit.resizeHandleEl.style.opacity).toBe("1");
