@@ -258,13 +258,19 @@ describe("AppCommands Obsidian file operation commands", () => {
     expect(view.getFoldInfo().folds.some((fold) => fold.from === 5)).toBe(true);
 
     expect(app.commands.executeCommandById("editor:unfold-all")).toBe(true);
-    expect(view.getFoldInfo().folds).toHaveLength(0);
+    // unfold-all clears the SOURCE folds but leaves the properties panel
+    // collapsed — both fold-all and unfold-all run setCollapse(true, false) in
+    // app.js, so the zero-line sentinel survives. Counter-intuitive on
+    // purpose; see the note in MarkdownView.unfoldAll.
+    expect(view.getFoldInfo().folds).toEqual([{ from: 0, to: 0 }]);
 
     expect(app.commands.executeCommandById("editor:fold-more")).toBe(true);
     expect(view.getFoldInfo().folds.length).toBeGreaterThan(0);
 
     expect(app.commands.executeCommandById("editor:fold-less")).toBe(true);
-    expect(view.getFoldInfo().folds).toHaveLength(0);
+    // Source folds gone again; the properties sentinel is still there, left
+    // by unfold-all above.
+    expect(view.getFoldInfo().folds).toEqual([{ from: 0, to: 0 }]);
   });
 
   it("routes Obsidian editor insert commands through markdown selection edits", async () => {

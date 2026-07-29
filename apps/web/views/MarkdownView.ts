@@ -517,7 +517,7 @@ export class MarkdownView extends TextFileView {
     const ranges = getSourceFoldRanges(this.getViewData());
     if (ranges.length === 0 && !this.canToggleFoldProperties()) return false;
     for (const range of ranges) this.sourceFoldLines.add(range.from);
-    if (this.canToggleFoldProperties()) this.metadataCollapsed = true;
+    if (this.canToggleFoldProperties()) this.setMetadataCollapse(true, false);
     this.render();
     this.onMarkdownFold();
     return true;
@@ -529,9 +529,16 @@ export class MarkdownView extends TextFileView {
       this.onMarkdownFold();
       return true;
     }
-    const hadFolds = this.sourceFoldLines.size > 0 || this.metadataCollapsed;
+    const hadFolds = this.sourceFoldLines.size > 0 || !this.metadataCollapsed;
     this.sourceFoldLines.clear();
-    this.metadataCollapsed = false;
+    // Yes, COLLAPSE — unfold-all closes the properties panel in Obsidian
+    // exactly as fold-all does. Both commands run
+    // `metadataEditor.setCollapse(!0, !1)`; the only thing that differs is the
+    // editor-side branch below. It reads like an upstream slip, but app.js is
+    // this project's spec and silently "correcting" it would be the invention
+    // this repo exists to avoid. Restored without animating or saving, which
+    // is what the `!1` second argument means.
+    if (this.canToggleFoldProperties()) this.setMetadataCollapse(true, false);
     this.render();
     this.onMarkdownFold();
     return hadFolds;

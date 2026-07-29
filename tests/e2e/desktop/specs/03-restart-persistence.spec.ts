@@ -22,9 +22,13 @@ test("restores the open tab across an app restart", async ({ launchApp, vaultPat
   await first.page.waitForTimeout(2_000);
   await first.close();
 
-  // The layout must be ON DISK between the two runs (vaultPath is the
-  // fixture-owned throwaway vault).
-  expect(existsSync(join(vaultPath, ".obsidian", "workspace.json"))).toBe(true);
+  // Deliberately NOT asserted here any more: `.obsidian/` in the opened folder.
+  // Config lives once under the app's config home and nothing is written into
+  // an opened folder (see provideDesktopAdapter in bootstrap.ts), so a
+  // workspace.json beside the notes would mean that boundary had broken. What
+  // matters is that the layout round-trips at all, which the relaunch below
+  // proves end to end.
+  expect(existsSync(join(vaultPath, ".obsidian", "workspace.json"))).toBe(false);
 
   const second = await launchApp();
   await expect(second.page.locator(".workspace-leaf .image-container img").first()).toBeVisible({

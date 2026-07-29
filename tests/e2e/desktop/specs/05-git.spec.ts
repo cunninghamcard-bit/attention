@@ -32,8 +32,10 @@ test("git changes view shows branch header and sections on a real repo", async (
   });
   await expect(page.locator(".git-review-view .review-surface")).toBeVisible();
   await expect(page.locator(".git-nav-view")).toBeVisible();
-  // Mode switches live in the center leaf's view-header; sidebar is a pure list.
-  await expect(page.locator('.view-action[aria-label="Switch to history"]')).toBeVisible();
+  // The history switch went with the source-control view (bf2beb8); asserting
+  // it is ABSENT keeps that removal honest rather than letting the old
+  // expectation rot. The split/unified toggle is still the review surface's.
+  await expect(page.locator('.view-action[aria-label="Switch to history"]')).toHaveCount(0);
   await expect(page.locator('.view-action[aria-label="Switch to split view"]')).toBeVisible();
   await expect(page.locator(".git-nav-view .git-nav-mode-toggle")).toHaveCount(0);
   await expect(page.locator(".git-nav-file-row", { hasText: "Note.md" })).toBeVisible();
