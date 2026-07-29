@@ -741,8 +741,14 @@ export class WebViewerView extends ItemView {
       menu.addItem((item) => item.setTitle("Select all").onClick(() => contents?.selectAll?.()));
     }
 
-    // params.x/y are relative to the guest's viewport, so they only become
-    // screen coordinates once offset by where the guest element sits.
+    // At the cursor, not at a computed point. `params.x/y` are in the guest's
+    // coordinate space, and reaching the host's means undoing the guest's zoom,
+    // the window's zoom and the device pixel ratio in the right order — the
+    // offset that arithmetic produced is what sent this menu to the wrong
+    // place. A native popup asks the OS where the pointer is, which is what the
+    // real webviewer's menu does. The positioned DOM menu stays as the fallback
+    // for when there is no native menu to pop.
+    if (menu.showAtCursor()) return;
     const rect = this.adapter?.element.getBoundingClientRect();
     menu.showAtPosition({
       x: (rect?.left ?? 0) + (params.x ?? 0),

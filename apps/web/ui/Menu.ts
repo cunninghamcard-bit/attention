@@ -466,7 +466,32 @@ export class Menu extends Component implements HistoryHandler {
     return menu;
   }
 
-  private showNativeMenu(position: MenuPosition, doc: Document): boolean {
+  /**
+   * Pops a native menu wherever the pointer already is, naming no coordinate.
+   *
+   * For a click that happened inside a `<webview>` guest there is no coordinate
+   * worth naming: the guest reports the position in its own space, and turning
+   * that into a host position means undoing the guest's zoom, the host's zoom
+   * and the device pixel ratio in the right order — arithmetic that is wrong
+   * the moment any of the three changes. A native popup asks the OS where the
+   * cursor is instead. Real Obsidian's webview menu does exactly this
+   * (`popup({window})`, no x/y).
+   *
+   * Returns false when there is no native menu to pop, so the caller can fall
+   * back to a positioned DOM menu.
+   */
+  showAtCursor(doc: Document = this.doc): boolean {
+    if (this.items.length === 0) return false;
+    if (!this.parentMenu) hideOtherTopMenus(doc, this);
+    this.unloadForShow();
+    this.sort();
+    this.hiding = false;
+    this.shownDoc = doc;
+    this.parentEl?.classList.add("has-active-menu");
+    return this.showNativeMenu(null, doc);
+  }
+
+  private showNativeMenu(position: MenuPosition | null, doc: Document): boolean {
     const win = doc.defaultView ?? window;
     const bridge = getElectronBridge(win);
     const remote = bridge?.remote;
@@ -479,8 +504,9 @@ export class Menu extends Component implements HistoryHandler {
     const webContents = remote.getCurrentWebContents();
     const zoom = Math.pow(1.2, webContents.getZoomLevel());
     nativeMenu.popup({
-      x: Math.round(position.x * zoom),
-      y: Math.round(position.y * zoom),
+      // Omitted entirely, not zeroed: Electron reads the cursor only when
+      // neither coordinate is given.
+      ...(position ? { x: Math.round(position.x * zoom), y: Math.round(position.y * zoom) } : null),
       window: remote.getCurrentWindow(),
       frame: this.showMacWritingTools ? webContents.focusedFrame : undefined,
     });
@@ -687,7 +713,8 @@ interface NativeMenuTemplateItem {
 
 interface NativeMenu {
   on?: (name: "menu-will-close", callback: () => void) => void;
-  popup: (options: { x: number; y: number; window: unknown; frame?: unknown }) => void;
+  /** x/y omitted means "at the cursor" — Electron's own default. */
+  popup: (options: { x?: number; y?: number; window: unknown; frame?: unknown }) => void;
 }
 
 interface MenuElectronBridge {

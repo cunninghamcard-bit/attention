@@ -6,7 +6,7 @@
  * 🔄 Self-reference: When this file changes, update this header
  */
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
 import type { WebViewerView } from "@web/builtin/webviewer/WebViewerPlugin";
 
@@ -348,5 +348,48 @@ describe("webviewer guest context menu", () => {
     expect(
       (guest() as unknown as { contents: { noContextMenu?: boolean } }).contents.noContextMenu,
     ).toBe(true);
+  });
+});
+
+describe("webviewer guest context menu position", () => {
+  afterEach(closeMenus);
+
+  // The guest reports the click in its own coordinate space, so any host
+  // position derived from it has to undo the guest's zoom, the window's zoom
+  // and the device pixel ratio in the right order. A native popup asks the OS
+  // where the pointer is instead, which is what the real webviewer's menu does.
+  it("pops the native menu at the cursor, naming no coordinate", async () => {
+    installFakeRemote();
+    const popup = vi.fn();
+    const electron = (window as unknown as { electron: Record<string, unknown> }).electron;
+    (electron.remote as Record<string, unknown>).Menu = {
+      buildFromTemplate: () => ({ on: () => {}, popup }),
+    };
+    (electron.remote as Record<string, unknown>).getCurrentWebContents = () => ({
+      getZoomLevel: () => 0,
+    });
+    (electron.remote as Record<string, unknown>).getCurrentWindow = () => ({});
+    const app = await createApp();
+    document.body.appendChild(app.containerEl);
+
+    await rightClick(app, { x: 300, y: 200 });
+
+    expect(popup).toHaveBeenCalledTimes(1);
+    const options = popup.mock.calls[0][0] as Record<string, unknown>;
+    expect("x" in options).toBe(false);
+    expect("y" in options).toBe(false);
+    expect(document.querySelector(".menu")).toBeNull();
+    app.containerEl.remove();
+  });
+
+  it("falls back to a positioned DOM menu when there is no native menu", async () => {
+    installFakeRemote();
+    const app = await createApp();
+    document.body.appendChild(app.containerEl);
+
+    await rightClick(app, { x: 300, y: 200 });
+
+    expect(document.querySelector(".menu")).not.toBeNull();
+    app.containerEl.remove();
   });
 });

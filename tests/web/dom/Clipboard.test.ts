@@ -59,7 +59,7 @@ describe("writeClipboardImage", () => {
   });
 
   it("falls back to the async clipboard when there is no Electron", async () => {
-    const write = vi.fn(async () => {});
+    const write = vi.fn(async (_items: unknown[]) => {});
     Object.defineProperty(navigator, "clipboard", { value: { write }, configurable: true });
     Object.defineProperty(window, "ClipboardItem", {
       value: class {
