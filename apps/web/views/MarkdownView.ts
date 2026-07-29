@@ -1,11 +1,12 @@
 /**
- * Input: ./TextFileView, ../markdown/MarkdownPreviewView, ../markdown/MarkdownPreviewRenderer, ../markdown/MarkdownTaskList, ../markdown/HtmlToMarkdown, ../markdown/HtmlDropPreprocessor, ../markdown/FoldManager, ../editor/Editor, ../editor/EditorView, ../editor/EditorStateField
+ * Input: ./TextFileView, ../markdown/MarkdownPreviewView, ../markdown/MarkdownPreviewRenderer, ../markdown/MarkdownTaskList, ../markdown/HtmlToMarkdown, ../markdown/HtmlDropPreprocessor, ../markdown/FoldManager, ../editor/Editor, ../editor/EditorView, ../editor/EditorStateField, ../dom/Animate
  * Output: MarkdownViewModeType, MarkdownMode, MarkdownSourceMode, MarkdownViewState, MarkdownSubView, MarkdownView, MarkdownEditView
  * Pos: UI Layer - View templates
  *
  * 🔄 Self-reference: When this file changes, update this header
  */
 
+import { setElCollapsed } from "../dom/Animate";
 import { TextFileView } from "./TextFileView";
 import { MarkdownPreviewView } from "../markdown/MarkdownPreviewView";
 import { MarkdownPreviewRenderer } from "../markdown/MarkdownPreviewRenderer";
@@ -124,6 +125,14 @@ export class MarkdownView extends TextFileView {
   private metadataDisplayOrder: string[] | null = null;
   private metadataCollapsed = false;
   private metadataPropertyListEl: HTMLElement | null = null;
+  /**
+   * The three elements the fold touches, kept because the fold happens ON them:
+   * re-rendering to reflect a collapse would destroy the very box being
+   * animated. Cleared whenever renderProperties rebuilds the panel.
+   */
+  private metadataHeadingEl: HTMLElement | null = null;
+  private metadataFoldEl: HTMLElement | null = null;
+  private metadataContentEl: HTMLElement | null = null;
   private pendingEmptyProperty = false;
   private readonly sourceFoldLines = new Set<number>();
   private scroll: unknown = null;
@@ -481,9 +490,7 @@ export class MarkdownView extends TextFileView {
 
   toggleFoldProperties(): boolean {
     if (!this.canToggleFoldProperties()) return false;
-    this.metadataCollapsed = !this.metadataCollapsed;
-    this.render();
-    this.onMarkdownFold();
+    this.setMetadataCollapse(!this.metadataCollapsed);
     return true;
   }
 
@@ -1776,6 +1783,9 @@ export class MarkdownView extends TextFileView {
 
   private renderProperties(): void {
     this.metadataContainerEl.replaceChildren();
+    this.metadataHeadingEl = null;
+    this.metadataFoldEl = null;
+    this.metadataContentEl = null;
     if (!this.canShowProperties() || !this.file || this.file.extension !== "md") {
       this.metadataContainerEl.hidden = true;
       return;
@@ -1820,10 +1830,15 @@ export class MarkdownView extends TextFileView {
     headerEl.addEventListener("mousedown", (event) => event.preventDefault());
     headerEl.addEventListener("keydown", (event) => this.handleMetadataHeadingKeydown(event));
     this.metadataContainerEl.appendChild(headerEl);
+    this.metadataHeadingEl = headerEl;
+    this.metadataFoldEl = foldEl;
 
     const contentEl = document.createElement("div");
     contentEl.className = "metadata-content";
-    contentEl.hidden = this.metadataCollapsed;
+    // `display`, not `hidden`: the collapse animation drives this box with
+    // inline styles, and hidden would fight them.
+    contentEl.style.display = this.metadataCollapsed ? "none" : "";
+    this.metadataContentEl = contentEl;
     const propertyListEl = document.createElement("div");
     propertyListEl.className = "metadata-properties";
     contentEl.appendChild(propertyListEl);
@@ -2345,12 +2360,30 @@ export class MarkdownView extends TextFileView {
     (this.metadataPropertyListEl ?? this.metadataContainerEl).appendChild(rowEl);
   }
 
-  private setMetadataCollapse(collapsed: boolean, save = true): void {
+  /**
+   * Fold the properties panel in place. This used to call renderProperties(),
+   * which replaces the panel's children — destroying the very content box the
+   * collapse animates, so it could only ever snap.
+   *
+   * `animateAndSave` gates BOTH the animation and the save, exactly as
+   * Obsidian's second parameter does: a restore (load, mode switch, fold-all)
+   * passes false and neither plays nor persists.
+   *
+   * Class order is Obsidian's and it is load-bearing on the way in: the
+   * container's `is-collapsed` hides every `.metadata-property` BEFORE the
+   * content box is measured, so collapsing eases only the residual height,
+   * while expanding removes the class first and eases the full height.
+   */
+  private setMetadataCollapse(collapsed: boolean, animateAndSave = true): void {
     if (this.metadataCollapsed === collapsed) return;
     this.metadataCollapsed = collapsed;
-    this.renderProperties();
-    this.metadataContainerEl.querySelector<HTMLElement>(".metadata-properties-heading")?.focus();
-    if (save) this.onMarkdownFold();
+    this.metadataContainerEl.classList.toggle("is-collapsed", collapsed);
+    this.metadataHeadingEl?.classList.toggle("is-collapsed", collapsed);
+    this.metadataFoldEl?.classList.toggle("is-collapsed", collapsed);
+    if (this.metadataContentEl)
+      void setElCollapsed(this.metadataContentEl, collapsed, animateAndSave);
+    this.metadataHeadingEl?.focus();
+    if (animateAndSave) this.onMarkdownFold();
   }
 
   onFoldChange(): void {

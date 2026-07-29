@@ -103,9 +103,13 @@ describe("MarkdownView property key input", () => {
 
     headingEl.click();
     expect(view.metadataContainerEl.classList.contains("is-collapsed")).toBe(true);
-    expect(view.metadataContainerEl.querySelector<HTMLElement>(".metadata-content")?.hidden).toBe(
-      true,
-    );
+    // The panel folds IN PLACE now, so the same content box survives and is
+    // hidden by display (what the collapse animation settles it to), not by
+    // the `hidden` attribute — which would fight the inline styles.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    expect(
+      view.metadataContainerEl.querySelector<HTMLElement>(".metadata-content")?.style.display,
+    ).toBe("none");
 
     headingEl = view.metadataContainerEl.querySelector<HTMLElement>(".metadata-properties-heading");
     contentEl = view.metadataContainerEl.querySelector<HTMLElement>(".metadata-content");
@@ -151,9 +155,11 @@ describe("MarkdownView property key input", () => {
     expect(view.getState()).not.toHaveProperty("foldInfo");
 
     view.setMode("preview");
-    expect(view.metadataContainerEl.querySelector<HTMLElement>(".metadata-content")?.hidden).toBe(
-      true,
-    );
+    // A mode switch RESTORES the fold: no animation, no save — so the content
+    // box is already display:none by the time the switch returns.
+    expect(
+      view.metadataContainerEl.querySelector<HTMLElement>(".metadata-content")?.style.display,
+    ).toBe("none");
 
     app.foldManager.save(file, { folds: [], lines: 4 });
     await view.setState({ mode: "source", source: true });
