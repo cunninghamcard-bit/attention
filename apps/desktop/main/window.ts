@@ -1,6 +1,6 @@
 /**
  * Input: electron, @electron/remote/main, node:path, ./renderer-target
- * Output: OBSIDIAN_WEB_PREFERENCES, CreateWindowOptions, createRendererWindow, denyChildWindows, forwardWebviewInput, defaultPreloadPath
+ * Output: OBSIDIAN_WEB_PREFERENCES, CreateWindowOptions, createRendererWindow, denyChildWindows, defaultPreloadPath
  * Pos: Application code
  *
  * 🔄 Self-reference: When this file changes, update this header
@@ -70,42 +70,6 @@ export function denyChildWindows(win: BrowserWindow): void {
   });
 }
 
-/**
- * Gives the app's keyboard back to the app while a `<webview>` guest has focus.
- *
- * A guest is its own webContents with its own event loop: keystrokes inside a
- * page the Web viewer is showing never reach the host document, so the
- * renderer's single `keydown` listener never sees them and every hotkey dies —
- * Cmd+W included, which is how this surfaced. `before-input-event` on the guest
- * is the only place those keys are visible to the app, so forward them and let
- * the renderer replay them into the one keymap. `input-event` does the same for
- * focus: a click inside a page has to make that leaf the active one, or the
- * commands that arrive next would act on whichever leaf was active before.
- *
- * Real Obsidian does both, in the web viewer's `configureWebContents`; it can
- * read the guest synchronously through `@electron/remote`, while this runs in
- * main and posts to the renderer, so our replay lands a tick later.
- */
-export function forwardWebviewInput(win: BrowserWindow): void {
-  win.webContents.on("did-attach-webview", (_event, guest) => {
-    guest.on("before-input-event", (_inputEvent, input) => {
-      if (input.type !== "keyDown" || guest.isDestroyed()) return;
-      win.webContents.send("webview-input-key", {
-        code: input.code,
-        key: input.key,
-        shift: input.shift,
-        alt: input.alt,
-        control: input.control,
-        meta: input.meta,
-        isAutoRepeat: input.isAutoRepeat,
-      });
-    });
-    guest.on("input-event", (_inputEvent, input) => {
-      if (input.type === "mouseDown") win.webContents.send("webview-input-focus", guest.id);
-    });
-  });
-}
-
 export function createRendererWindow(options: CreateWindowOptions): BrowserWindow {
   const win = new BrowserWindow({
     width: 1024,
@@ -128,7 +92,6 @@ export function createRendererWindow(options: CreateWindowOptions): BrowserWindo
   // `window.electronWindow` (minimize/maximize/isMaximized/... contract).
   enableRemote(win.webContents);
   denyChildWindows(win);
-  forwardWebviewInput(win);
 
   win.setMenuBarVisibility(false);
 

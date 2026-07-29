@@ -40,8 +40,9 @@ interface WebviewPopupHost extends Window {
   };
 }
 
-/** One guest keystroke, as `before-input-event` describes it in main. */
-export interface WebviewGuestKey {
+/** One guest keystroke, as Electron's `before-input-event` describes it. */
+interface GuestInputEvent {
+  type: string;
   code: string;
   key: string;
   shift: boolean;
@@ -49,6 +50,26 @@ export interface WebviewGuestKey {
   control: boolean;
   meta: boolean;
   isAutoRepeat: boolean;
+}
+
+/** The slice of a remote `WebContents` proxy this view drives. */
+interface GuestWebContents {
+  on(event: "before-input-event", listener: (event: unknown, input: GuestInputEvent) => void): void;
+  on(event: "input-event", listener: (event: unknown, input: { type: string }) => void): void;
+  removeAllListeners?: (event: string) => void;
+  setIgnoreMenuShortcuts?: (ignore: boolean) => void;
+  isDestroyed?: () => boolean;
+}
+
+/**
+ * `window.electron.remote` — the preload's `@electron/remote` surface, the
+ * shape real Obsidian's renderer carries. Absent in the browser build, where
+ * the guest is an `<iframe>` with no separate webContents to reach.
+ */
+interface WebviewRemoteHost extends Window {
+  electron?: {
+    remote?: { webContents?: { fromId(id: number): GuestWebContents | null } };
+  };
 }
 
 /** The address bar's focus/select defer, matching the real webviewer's 100ms.
@@ -83,7 +104,6 @@ export class WebViewerController {
     window.addEventListener("open-url", openUrlHandler);
     plugin.register(() => window.removeEventListener("open-url", openUrlHandler));
     this.registerWebviewPopups(plugin);
-    this.registerWebviewInput(plugin);
     const session = this.app.webViewer.getActiveSession();
     this.app.webViewer.bridge.createBrowserSession(
       session.partition,
@@ -115,56 +135,6 @@ export class WebViewerController {
     };
     ipc.on("webview-open-url", onPopup);
     plugin.register(() => ipc.removeListener("webview-open-url", onPopup));
-  }
-
-  /**
-   * Replays the keyboard and the click that a `<webview>` guest swallowed.
-   *
-   * The guest is a separate webContents, so nothing typed inside a page reaches
-   * this document — every hotkey is dead while the guest holds focus. Main
-   * forwards the guest's `before-input-event` here (`forwardWebviewInput`) and
-   * this hands it to the same `keymap.onKeyEvent` a real keydown would reach,
-   * so there is one keyboard entry point rather than a second dispatch path
-   * beside it. A guest mouseDown makes its leaf active, so the command that
-   * arrives next acts on the page the user just clicked.
-   */
-  private registerWebviewInput(plugin: InternalPluginWrapper): void {
-    const ipc = (window as WebviewPopupHost).electron?.ipcRenderer;
-    if (!ipc) return;
-    const onKey = (_event: unknown, payload: unknown): void => {
-      const key = payload as WebviewGuestKey | null;
-      if (!key || typeof key.key !== "string") return;
-      this.app.keymap.onKeyEvent(
-        new KeyboardEvent("keydown", {
-          code: key.code,
-          key: key.key,
-          shiftKey: key.shift,
-          altKey: key.alt,
-          ctrlKey: key.control,
-          metaKey: key.meta,
-          repeat: key.isAutoRepeat,
-        }),
-      );
-    };
-    const onFocus = (_event: unknown, payload: unknown): void => {
-      if (typeof payload !== "number") return;
-      const leaf = this.leafForWebContents(payload);
-      if (leaf) this.app.workspace.setActiveLeaf(leaf);
-    };
-    ipc.on("webview-input-key", onKey);
-    ipc.on("webview-input-focus", onFocus);
-    plugin.register(() => {
-      ipc.removeListener("webview-input-key", onKey);
-      ipc.removeListener("webview-input-focus", onFocus);
-    });
-  }
-
-  private leafForWebContents(webContentsId: number): WorkspaceLeaf | null {
-    for (const leaf of this.app.workspace.getLeavesOfType(WEBVIEWER_VIEW_TYPE)) {
-      const view = leaf.view;
-      if (view instanceof WebViewerView && view.webContentsId === webContentsId) return leaf;
-    }
-    return null;
   }
 
   /**
@@ -274,6 +244,7 @@ export class WebViewerView extends ItemView {
   private adapterUrl = "";
   private faviconUrl: string | null = null;
   private loading = false;
+  private guestContents: GuestWebContents | null = null;
   private readerResult: { url: string; title: string; markdown: string } | null = null;
   /** Last reader render, awaitable in tests. */
   readerRender: Promise<void> = Promise.resolve();
@@ -391,14 +362,16 @@ export class WebViewerView extends ItemView {
   async onClose(): Promise<void> {
     await super.onClose();
     this.suggest?.close();
+    // Obsidian never detaches these, because its view and its guest die
+    // together. Ours can outlive one guest — the view is rebuilt on layout
+    // restore — and a remote listener holds a reference across the process
+    // boundary, so a left-behind one is a leak that keeps replaying keys from
+    // a dead page.
+    this.guestContents?.removeAllListeners?.("before-input-event");
+    this.guestContents?.removeAllListeners?.("input-event");
+    this.guestContents = null;
     this.adapter?.destroy();
     this.adapter = null;
-  }
-
-  /** The guest's webContents id, or null before it attaches — how a forwarded
-   * guest input event finds the leaf it came from. */
-  get webContentsId(): number | null {
-    return this.adapter?.getWebContentsId() ?? null;
   }
 
   /** Focus only — the select comes from the input's own focus handler, so the
@@ -562,7 +535,62 @@ export class WebViewerView extends ItemView {
         this.refreshHeader();
       }
     });
+    // The guest's id only exists once it has attached, which `dom-ready` is the
+    // first signal of; a reload fires it again, hence the once-only guard.
+    this.adapter.webContents.on("dom-ready", () => this.configureWebContents());
     return this.adapter;
+  }
+
+  /**
+   * Gives the app's keyboard and its active-leaf back while the guest has focus.
+   *
+   * A `<webview>` guest is a separate webContents: nothing typed inside the page
+   * reaches this document, so the renderer's one `keydown` listener never sees
+   * it and every hotkey is dead — Cmd+W not closing the tab is how this
+   * surfaced. `before-input-event` on the guest is the only place those keys
+   * exist, and `@electron/remote` is what lets a renderer-side view reach the
+   * guest's webContents to subscribe. Keys go to the same `keymap.onKeyEvent` a
+   * real keydown reaches, so the keymap stays the one keyboard entry point. A
+   * guest mouseDown makes this leaf active, so whatever command arrives next
+   * acts on the page just clicked.
+   *
+   * Ported from the real webviewer's `configureWebContents`, including the
+   * `setIgnoreMenuShortcuts(!!handled)` that follows the dispatch — and that
+   * call is worth a warning. `onKeyEvent` returns `false` when it handled the
+   * key and `undefined` when it did not (ours and Obsidian's alike: app.js
+   * `return !1===n.handleKey(...)?(...,!1):void 0`), so `!!handled` is `false`
+   * either way and the call never actually ignores anything. It reads like an
+   * inverted boolean in Obsidian. It is ported as-is rather than "fixed",
+   * because flipping it changes observable behavior — native menu accelerators
+   * would stop firing inside a page for any key the app claims — and that is a
+   * deviation to take deliberately, not in passing.
+   */
+  private configureWebContents(): void {
+    if (this.guestContents) return;
+    const id = this.adapter?.getWebContentsId();
+    if (id == null) return;
+    const remote = (window as WebviewRemoteHost).electron?.remote;
+    const contents = remote?.webContents?.fromId(id);
+    if (!contents) return;
+    this.guestContents = contents;
+    contents.on("before-input-event", (_event, input) => {
+      if (input.type !== "keyDown" || contents.isDestroyed?.()) return;
+      const handled = this.app.keymap.onKeyEvent(
+        new KeyboardEvent("keydown", {
+          code: input.code,
+          key: input.key,
+          shiftKey: input.shift,
+          altKey: input.alt,
+          ctrlKey: input.control,
+          metaKey: input.meta,
+          repeat: input.isAutoRepeat,
+        }),
+      );
+      contents.setIgnoreMenuShortcuts?.(Boolean(handled));
+    });
+    contents.on("input-event", (_event, input) => {
+      if (input.type === "mouseDown") this.app.workspace.setActiveLeaf(this.leaf);
+    });
   }
 
   /** Guest-committed navigation (link clicks, redirects) syncs the view. */

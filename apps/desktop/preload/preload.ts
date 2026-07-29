@@ -7,7 +7,7 @@
  */
 
 import { ipcRenderer, shell, webFrame, webUtils } from "electron";
-import { getCurrentWindow } from "@electron/remote";
+import * as remote from "@electron/remote";
 import { installTerminalBridge } from "./terminal-bridge";
 import { installGitBridge } from "./git-bridge";
 
@@ -23,7 +23,15 @@ import { installGitBridge } from "./git-bridge";
  *   - `DesktopMenu`      → `window.electron.ipcRenderer.send("set-menu" | "update-menu-items")`
  *   - `App.ts`           → `window.electron.shell.showItemInFolder(path)`
  *   - `AttachmentImport` → `window.electron.webUtils.getPathForFile(file)`
+ *   - `Menu`             → `window.electron.remote.Menu.buildFromTemplate(...)`
+ *   - `WebViewerView`    → `window.electron.remote.webContents.fromId(guestId)`
  *   - `FrameDom`         → `window.electronWindow.{minimize,maximize,isMaximized,...}`
+ *
+ * `remote` is the whole `@electron/remote` surface, the shape real Obsidian's
+ * `window.electron` carries. It is what lets a renderer-side view reach a
+ * `<webview>` guest's own webContents — the guest is a separate webContents
+ * whose events (`before-input-event`) exist nowhere else — and it is what
+ * `Menu` has always probed for before falling back to its DOM menu.
  */
 
 export interface ElectronBridgeApi {
@@ -31,10 +39,11 @@ export interface ElectronBridgeApi {
   shell: typeof shell;
   webUtils: typeof webUtils;
   webFrame: typeof webFrame;
+  remote: typeof remote;
 }
 
 export function installElectronBridge(target: typeof globalThis): void {
-  const api: ElectronBridgeApi = { ipcRenderer, shell, webUtils, webFrame };
+  const api: ElectronBridgeApi = { ipcRenderer, shell, webUtils, webFrame, remote };
   // `window.electron` — the renderer's channel/shell entry point.
   Object.defineProperty(target, "electron", {
     value: api,
@@ -45,7 +54,7 @@ export function installElectronBridge(target: typeof globalThis): void {
   // `window.electronWindow` — remote proxy of this BrowserWindow, backing the
   // frameless titlebar controls (real Obsidian exposes it via `remote.enable`).
   Object.defineProperty(target, "electronWindow", {
-    value: getCurrentWindow(),
+    value: remote.getCurrentWindow(),
     configurable: true,
     enumerable: true,
     writable: false,
