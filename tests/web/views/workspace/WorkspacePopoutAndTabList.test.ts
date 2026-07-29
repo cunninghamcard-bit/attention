@@ -544,6 +544,10 @@ describe("Obsidian popout and tab list DOM", () => {
     );
 
     expect(tabs.hasLockedTabWidths).toBe(false);
+    // Unlocking eases the width back rather than dropping it, so the locked
+    // value survives until the animator arms the transition on the next task.
+    expect(second.tabHeaderEl.style.width).toBe("88px");
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(second.tabHeaderEl.style.width).toBe("");
   });
 

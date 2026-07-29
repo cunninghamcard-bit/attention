@@ -5,6 +5,7 @@
 
 **Files**:
 - `ActiveDocument.ts` - Exports getActiveWindow and 3 more
+- `Animate.ts` - Exports AnimationSpec and 2 more
 - `Clipboard.ts` - Exports readClipboardText and 1 more
 - `dom.ts` - Exports ClassValue and 15 more
 

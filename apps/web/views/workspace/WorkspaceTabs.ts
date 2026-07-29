@@ -1,5 +1,5 @@
 /**
- * Input: ../../dom/dom, ../../ui/drag/DragManager, ../../ui/Icon, ../../ui/Menu, ../../platform/Platform, ../../vault/TAbstractFile, ./WorkspaceParent, ./Workspace, ./WorkspaceItem, ./WorkspaceLeaf
+ * Input: ../../dom/dom, ../../dom/Animate, ../../ui/drag/DragManager, ../../ui/Icon, ../../ui/Menu, ../../platform/Platform, ../../vault/TAbstractFile, ./WorkspaceParent, ./Workspace, ./WorkspaceItem, ./WorkspaceLeaf
  * Output: WorkspaceTabInsertLocation, WorkspaceTabs
  * Pos: UI Layer - View templates
  *
@@ -7,6 +7,7 @@
  */
 
 import { createDiv, createSpan } from "../../dom/dom";
+import { AnimationSpec, animateEl } from "../../dom/Animate";
 import type {
   DragDropResult,
   DragSource,
@@ -496,12 +497,30 @@ export class WorkspaceTabs extends WorkspaceParent {
     });
   }
 
+  /**
+   * Closing a tab locks the remaining widths so the close buttons stay under
+   * the pointer; this is where they are given back. They do NOT snap: Obsidian
+   * eases each header from its locked width to its natural one over 250ms, so
+   * the bar settles instead of jumping. The natural width can only be measured
+   * at runtime, which is why this is an animation in app.js rather than a rule
+   * in app.css. With the bar hidden there is nothing to ease, so the width is
+   * simply dropped.
+   */
   unlockTabWidths(): void {
     if (!this.hasLockedTabWidths) return;
     this.hasLockedTabWidths = false;
-    for (const child of this.children) {
-      if (child instanceof WorkspaceLeaf) child.tabHeaderEl.style.width = "";
+    const leaves = this.children.filter((child) => child instanceof WorkspaceLeaf);
+    if (!this.tabHeaderContainerEl.isShown()) {
+      for (const leaf of leaves) leaf.tabHeaderEl.style.width = "";
+      return;
     }
+    const widths = leaves.map((leaf) => leaf.tabHeaderEl.clientWidth);
+    leaves.forEach((leaf, index) => {
+      animateEl(
+        leaf.tabHeaderEl,
+        new AnimationSpec({ duration: 250 }).addProp("width", `${widths[index]}px`, ""),
+      );
+    });
   }
 
   updateSlidingTabs(): void {
