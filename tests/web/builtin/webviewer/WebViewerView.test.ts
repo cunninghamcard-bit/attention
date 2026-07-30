@@ -102,6 +102,17 @@ describe("WebViewerView structural parity", () => {
   // opened, before a test could install fake ones.
   // Two chained 100ms defers: the view focuses the input, focusing selects it.
   const settleFocus = () => new Promise((resolve) => setTimeout(resolve, 260));
+  // Proving the defers DID land is a poll, not a sleep: 260ms clears two
+  // chained 100ms timers only while the machine is idle, and loses the race
+  // whenever the suite is running files in parallel. Proving they did NOT
+  // (the page-viewer case below) still needs a fixed wait — there is no
+  // condition to poll for an absence.
+  const waitUntil = async (condition: () => boolean, timeout = 2000) => {
+    const deadline = Date.now() + timeout;
+    while (!condition() && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  };
 
   it("focuses the address bar when a blank viewer opens, and selects on focus", async () => {
     const { app, view } = await createWebViewer("about:blank");
@@ -112,7 +123,7 @@ describe("WebViewerView structural parity", () => {
     input.value = "https://example.com/page";
 
     expect(document.activeElement).not.toBe(input);
-    await settleFocus();
+    await waitUntil(() => document.activeElement === input && input.selectionStart === 0);
     expect(document.activeElement).toBe(input);
     expect(input.selectionStart).toBe(0);
     expect(input.selectionEnd).toBe(input.value.length);

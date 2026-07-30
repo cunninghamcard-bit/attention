@@ -168,8 +168,17 @@ export class DesktopMenu {
           this.commandItem("app:toggle-left-sidebar", "Toggle left sidebar"),
           this.commandItem("app:toggle-right-sidebar", "Toggle right sidebar"),
           this.commandItem("app:toggle-ribbon", "Toggle ribbon"),
-          { type: "separator" },
-          { id: "reload", label: "Reload", role: "reload" },
+          // No `role: "reload"` here, and that is deliberate — main.js ships it
+          // only in dev builds (`...ue(l, () => [{role:"reload"}])`, the same
+          // `l` that swaps in icon-dev.png) and blanks forceReload's
+          // accelerator outright. The reason shows up the moment a <webview> is
+          // open: Electron's reload role targets
+          // `webContents.getFocusedWebContents()`, which returns the FIRST
+          // webContents of type "webview" that reports isFocused() — and a
+          // guest's isFocused() is the ROOT view's focus, so every guest in a
+          // focused window answers true. Cmd+R therefore reloads the
+          // oldest-living web viewer, never the one you are looking at.
+          { id: "developer-section", type: "separator" },
           { id: "toggle-devtools", label: "Toggle developer tools", role: "toggleDevTools" },
         ],
       },

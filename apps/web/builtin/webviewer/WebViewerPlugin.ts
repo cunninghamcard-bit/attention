@@ -179,13 +179,19 @@ export class WebViewerController {
     });
   }
 
+  /**
+   * The ACTIVE web viewer or nothing — every real webviewer command resolves
+   * its target with `app.workspace.getActiveViewOfType(WebViewerView)`. Falling
+   * back to "the first web viewer anywhere" fires the command at a tab the user
+   * is not looking at, which is the same wrong-target failure Electron's
+   * `role: "reload"` has (see DesktopMenu's View submenu).
+   */
   activeView(): WebViewerView | null {
-    if (this.app.workspace.activeLeaf?.view instanceof WebViewerView)
-      return this.app.workspace.activeLeaf.view;
-    for (const leaf of this.app.workspace.getLeavesOfType(WEBVIEWER_VIEW_TYPE)) {
-      if (leaf.view instanceof WebViewerView) return leaf.view;
-    }
-    return null;
+    return this.app.workspace.getActiveViewOfType(WebViewerView);
+  }
+
+  reload(): void {
+    this.activeView()?.reload();
   }
 
   focusAddressBar(): void {
@@ -337,7 +343,7 @@ export class WebViewerView extends ItemView {
     setIcon(this.reloadButtonEl, "lucide-rotate-cw");
     this.reloadButtonEl.addEventListener("click", () => {
       if (this.loading) this.adapter?.stop();
-      else this.adapter?.reload();
+      else this.reload();
     });
     reloadContainerEl.appendChild(this.reloadButtonEl);
     this.headerEl.insertBefore(reloadContainerEl, this.titleContainerEl);
@@ -470,6 +476,11 @@ export class WebViewerView extends ItemView {
     this.readerMode = !this.readerMode;
     this.applyMode();
     this.app.workspace.requestSaveLayout();
+  }
+
+  /** The one reload path: header button, page menu, and the refresh command. */
+  reload(): void {
+    this.adapter?.reload();
   }
 
   // Relative zoom against the LIVE factor, exactly like real Obsidian —
@@ -730,7 +741,7 @@ export class WebViewerView extends ItemView {
         item
           .setTitle("Reload")
           .setIcon("lucide-rotate-cw")
-          .onClick(() => this.adapter?.reload()),
+          .onClick(() => this.reload()),
       );
       menu.addItem((item) =>
         item
@@ -1248,6 +1259,22 @@ export function createWebViewerPluginDefinition(): InternalPluginDefinition {
         name: "Open Web viewer history",
         icon: "lucide-history",
         callback: () => controller?.openHistory(),
+      });
+      // Ours, not Obsidian's — the real app has no refresh command, because it
+      // ships no Cmd+R at all outside dev builds. Shaped like its neighbours:
+      // a checkCallback over the ACTIVE view, so Cmd+R is inert unless a web
+      // viewer is in front and can never reach into another tab.
+      plugin.registerGlobalCommand({
+        id: "webviewer:refresh",
+        name: "Refresh page",
+        icon: "lucide-rotate-cw",
+        hotkeys: [{ modifiers: ["Mod"], key: "R" }],
+        checkCallback: (checking) => {
+          const view = controller?.activeView();
+          if (!view) return false;
+          if (!checking) view.reload();
+          return true;
+        },
       });
       plugin.registerGlobalCommand({
         id: "webviewer:toggle-reader-mode",
