@@ -210,35 +210,20 @@ export class GraphView extends ItemView {
       });
   }
 
+  /**
+   * Through the shared `addAction`, which PREPENDS — that is what keeps More
+   * options pinned to the far right, and it is also the only route to a real
+   * svg icon and tooltip (the hand-rolled buttons here set `data-icon`, which
+   * nothing renders). Added back-to-front so they read search → reset →
+   * screenshot from the left.
+   */
   protected installActions(): void {
-    this.actionsEl.appendChild(
-      this.createActionButton("Search graph", "lucide-search", () => this.showSearch()),
-    );
-    this.actionsEl.appendChild(
-      this.createActionButton("Reset graph", "lucide-refresh-cw", () => {
-        this.renderer?.resetPan();
-        this.refresh();
-      }),
-    );
-    this.actionsEl.appendChild(
-      this.createActionButton("Copy graph screenshot", "lucide-camera", () =>
-        this.copyScreenshot(),
-      ),
-    );
-  }
-
-  protected createActionButton(
-    title: string,
-    icon: string,
-    callback: () => void,
-  ): HTMLButtonElement {
-    const button = document.createElement("button");
-    button.className = "view-action clickable-icon";
-    button.type = "button";
-    button.title = title;
-    button.dataset.icon = icon;
-    button.addEventListener("click", callback);
-    return button;
+    this.addAction("lucide-camera", "Copy graph screenshot", () => this.copyScreenshot());
+    this.addAction("lucide-refresh-cw", "Reset graph", () => {
+      this.renderer?.resetPan();
+      this.refresh();
+    });
+    this.addAction("lucide-search", "Search graph", () => this.showSearch());
   }
 
   protected getOuterEl(): HTMLElement {

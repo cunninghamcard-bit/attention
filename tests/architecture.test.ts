@@ -616,6 +616,36 @@ describe("Rule: builtin-roof — one core plugin per slice", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Rule: view-actions — one header-action protocol
+// ---------------------------------------------------------------------------
+
+describe("Rule: view-actions — More options stays pinned to the right", () => {
+  it("leaves the view-action button to ItemView.addAction alone", () => {
+    // `addAction` PREPENDS (app.js `t.prototype.addAction`), and More options is
+    // the first action ItemView creates — that ordering is the only thing
+    // keeping it at the far right of every header. A view that builds its own
+    // `view-action` button and appends it lands PAST More options, and skips
+    // setIcon/setTooltip on the way (MarkdownView's mode toggle and the graph
+    // header buttons both did, the latter rendering no icon at all).
+    const owner = `${WEB_SRC}/views/ItemView.ts`;
+    const offenders = listFilesRecursive(abs(WEB_SRC), [".ts"])
+      .map((fileAbs) => fileAbs.slice(ROOT.length + 1))
+      .filter((rel) => rel !== owner && hasViewActionClass(readText(rel)));
+
+    expect(offenders).toEqual([]);
+    // The detector reads class tokens, not substrings: `review-action` is a
+    // different component and must not trip it.
+    expect(hasViewActionClass('cls: "review-action mod-approve"')).toBe(false);
+    expect(hasViewActionClass('button.className = "view-action clickable-icon"')).toBe(true);
+  });
+});
+
+/** A `view-action` CLASS token — delimited, so `review-action` does not match. */
+function hasViewActionClass(source: string): boolean {
+  return /(^|[\s"'.`])view-action(?![\w-])/m.test(source);
+}
+
+// ---------------------------------------------------------------------------
 // Rule: retirement — museum code and legacy docs are gone
 // ---------------------------------------------------------------------------
 

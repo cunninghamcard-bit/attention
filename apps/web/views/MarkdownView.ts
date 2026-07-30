@@ -262,11 +262,17 @@ export class MarkdownView extends TextFileView {
     this.syncModeClasses();
     this.currentMode.show();
 
-    this.modeButtonEl = document.createElement("button");
-    this.modeButtonEl.className = "view-action clickable-icon markdown-toggle-view";
-    this.modeButtonEl.type = "button";
-    this.modeButtonEl.addEventListener("click", (event) => void this.onSwitchView(event));
-    this.actionsEl.append(this.modeButtonEl);
+    // Through addAction, exactly as app.js does it
+    // (`n.modeButtonEl = n.addAction("lucide-book-open", "", n.onSwitchView.bind(n))`).
+    // The primitive PREPENDS, which is the whole reason More options stays
+    // pinned to the far right — appending a hand-rolled button here pushed it
+    // to the left of the toggle. `updateButtons` sets the real icon and label.
+    this.modeButtonEl = this.addAction(
+      "lucide-book-open",
+      "",
+      (event) => void this.onSwitchView(event),
+    ) as HTMLButtonElement;
+    this.modeButtonEl.classList.add("markdown-toggle-view");
     this.updateModeButton();
   }
 

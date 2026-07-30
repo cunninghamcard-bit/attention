@@ -286,6 +286,15 @@ describe("MarkdownView public API parity", () => {
     expectSvgIcon(view.metadataContainerEl.querySelector<HTMLElement>(".metadata-property-delete"));
   });
 
+  it("keeps More options last in the header, behind the mode toggle", async () => {
+    const { view } = await openMarkdown("Alpha");
+
+    // app.js builds the toggle with `addAction`, which prepends — appending a
+    // hand-rolled button instead put More options to the LEFT of it.
+    expect(view.actionsEl.lastElementChild).toBe(view.moreOptionsButtonEl);
+    expect(view.actionsEl.firstElementChild).toBe(view.modeButtonEl);
+  });
+
   it("does not keep data-icon assignments in MarkdownView source", async () => {
     const fs = (await import("node:" + "fs")) as {
       readFileSync(path: string, encoding: "utf8"): string;
