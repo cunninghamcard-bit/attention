@@ -16,6 +16,7 @@ import { writeClipboardText } from "../dom/Clipboard";
 import { Notice } from "../ui/Notice";
 import { Menu } from "../ui/Menu";
 import { MoveFileModal } from "./MoveFileModal";
+import { VaultSwitcherModal } from "./VaultSwitcherModal";
 import type { TFile } from "../vault/TAbstractFile";
 import { WorkspaceTabs } from "../views/workspace/WorkspaceTabs";
 import { Platform } from "../platform/Platform";
@@ -954,6 +955,23 @@ export function registerAppCommands(app: App): void {
     icon: "lucide-settings",
     hotkeys: [{ modifiers: ["Mod"], key: "," }],
     callback: () => app.setting.open(),
+  });
+
+  // Real registers three vault commands; only this one has behavior left here.
+  // `app:open-vault` ("Manage vaults") calls `openVaultChooser()` — the
+  // separate starter window this app deleted on purpose, and Obsidian has no
+  // in-app management surface to port in its place. `app:open-another-vault`
+  // differs from this one only by opening a SECOND window, which the one-window
+  // model removed; see VaultSwitcherModal for why the flag went with it.
+  app.commands.addCommand({
+    id: "app:switch-vault",
+    name: "Change vault...",
+    icon: "vault",
+    checkCallback: (checking) => {
+      if (!Platform.isDesktopApp) return false;
+      if (!checking) new VaultSwitcherModal(app).open();
+      return true;
+    },
   });
 
   app.commands.addCommand({

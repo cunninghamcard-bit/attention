@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "@web/app/App";
+import { VaultSwitcherModal } from "@web/app/VaultSwitcherModal";
 
 // The bottom-left vault switcher mirrors the real click menu: registered
 // vaults by folder name, current one checked, vault-open IPC on selection,
@@ -106,5 +107,66 @@ describe("vault switcher menu", () => {
     const notes = items.find((el) => el.querySelector(".menu-item-title")?.textContent === "notes");
     notes!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(ipc.sendSync).toHaveBeenCalledWith("vault-open", "/vaults/notes", false);
+  });
+});
+
+// The command-palette side of the same registry: real's `app:switch-vault`
+// opens `new xD(app)` — a FuzzySuggestModal over `vault-list`, current vault
+// carrying the "Currently active" flair. Not a view, not a page.
+describe("Change vault... modal", () => {
+  async function openModal() {
+    const ipc = installIpc();
+    const app = new App(document.createElement("div"));
+    await app.ready;
+    const modal = new VaultSwitcherModal(app);
+    modal.open();
+    return { app, ipc, modal };
+  }
+
+  it("lists every registered vault by folder name and flairs the current one", async () => {
+    const { modal } = await openModal();
+
+    const rows = [...modal.resultContainerEl.querySelectorAll(".suggestion-item")];
+    expect(rows.map((el) => el.textContent)).toEqual(["demoCurrently active", "notes"]);
+    expect(rows[0].querySelector(".flair.mod-pop")?.textContent).toBe("Currently active");
+    expect(rows[1].querySelector(".flair.mod-pop")).toBeNull();
+
+    modal.close();
+  });
+
+  it("opens the chosen vault and leaves the current one alone", async () => {
+    const { ipc, modal } = await openModal();
+    ipc.sendSync.mockClear();
+
+    modal.onChooseItem({ path: "/vaults/demo", name: "demo", isCurrentVault: true });
+    expect(ipc.sendSync).not.toHaveBeenCalled();
+
+    modal.onChooseItem({ path: "/vaults/notes", name: "notes", isCurrentVault: false });
+    expect(ipc.sendSync).toHaveBeenCalledWith("vault-open", "/vaults/notes", false);
+
+    modal.close();
+  });
+
+  it("notices a refused open instead of failing silently", async () => {
+    const { ipc, modal } = await openModal();
+    ipc.sendSync.mockImplementation(() => "EBUSY");
+
+    modal.onChooseItem({ path: "/vaults/notes", name: "notes", isCurrentVault: false });
+
+    expect(document.body.querySelector(".notice")?.textContent).toBe("Failed to open vault.");
+    modal.close();
+  });
+
+  it("registers app:switch-vault, and not the second-window command it cannot honor", async () => {
+    const app = new App(document.createElement("div"));
+    await app.ready;
+
+    expect(app.commands.findCommand("app:switch-vault")).toMatchObject({
+      name: "Change vault...",
+      icon: "vault",
+    });
+    // `vault-open` always retargets the calling window (ipc.ts), so
+    // "Open vault..." would be this same command under another name.
+    expect(app.commands.findCommand("app:open-another-vault")).toBeUndefined();
   });
 });
