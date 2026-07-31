@@ -121,6 +121,19 @@ class TerminalSettingTab implements SettingTab {
           this.app.terminals.saveSettings({ scrollback: lines });
       }),
     );
+    new Setting(group.itemsEl)
+      .setName("Terminal server")
+      .setDesc(
+        "A restty-protocol PTY WebSocket, e.g. ws://localhost:8787/pty. Set, and shells are " +
+          "spawned there instead of locally — the only way the browser build gets a terminal " +
+          "at all. Leave empty for the local shell.",
+      )
+      .addText((text) =>
+        text
+          .setPlaceholder("ws://localhost:8787/pty")
+          .setValue(settings.remoteUrl)
+          .onChange((value) => this.app.terminals.saveSettings({ remoteUrl: value.trim() })),
+      );
   }
 
   hide(): void {

@@ -43,6 +43,8 @@ export interface TerminalSettings {
   fontFamily: string;
   fontSize: number;
   scrollback: number;
+  /** A restty-protocol PTY WebSocket. Empty means the local shell. */
+  remoteUrl: string;
 }
 
 const SETTINGS_KEY = "agent-workspace-terminal-settings";
@@ -66,13 +68,19 @@ export class TerminalService {
   private sessions = new Map<string, TerminalSession>();
   private counter = 0;
   /** Swappable for tests; resolved lazily so the bridge can install first. */
-  adapterFactory: () => TerminalAdapter = createTerminalAdapter;
+  adapterFactory: (remoteUrl: string) => TerminalAdapter = createTerminalAdapter;
   private adapterInstance: TerminalAdapter | null = null;
+  private adapterUrl = "";
 
   constructor(readonly app: App) {}
 
   get adapter(): TerminalAdapter {
-    this.adapterInstance ??= this.adapterFactory();
+    // Where the shell lives is a setting, so the cached adapter is only good
+    // while that setting has not moved.
+    const url = this.getSettings().remoteUrl;
+    if (this.adapterInstance && this.adapterUrl === url) return this.adapterInstance;
+    this.adapterUrl = url;
+    this.adapterInstance = this.adapterFactory(url);
     return this.adapterInstance;
   }
 
@@ -83,6 +91,7 @@ export class TerminalService {
       fontFamily: stored.fontFamily ?? "",
       fontSize: stored.fontSize ?? 15,
       scrollback: stored.scrollback ?? 10000,
+      remoteUrl: stored.remoteUrl ?? "",
     };
   }
 

@@ -17,6 +17,7 @@
  */
 
 import type { ElectronTerminalApi, PtyHandle } from "@app/shared/terminalApi";
+import { RemoteTerminalAdapter } from "./RemoteTerminalAdapter";
 
 export type { ElectronTerminalApi, PtyHandle };
 
@@ -94,7 +95,13 @@ export class UnsupportedTerminalAdapter implements TerminalAdapter {
   }
 }
 
-export function createTerminalAdapter(): TerminalAdapter {
+/**
+ * A configured server URL wins over the local bridge: asking for a remote PTY
+ * is explicit, and it is the only thing that gives the browser build a
+ * terminal at all. Empty (the default) keeps the desktop bridge.
+ */
+export function createTerminalAdapter(remoteUrl = ""): TerminalAdapter {
+  if (remoteUrl.trim()) return new RemoteTerminalAdapter(remoteUrl);
   const bridge = (globalThis as { electronTerminal?: ElectronTerminalApi }).electronTerminal;
   if (bridge?.available) return new DesktopTerminalAdapter(bridge);
   return new UnsupportedTerminalAdapter();
