@@ -35,6 +35,14 @@ import {
  * restty is a 4.2 MB bundle the renderer already loads on demand, so the
  * import stays dynamic: `spawn()` answers with a live handle immediately and
  * the queue drains once the module and the socket are both up.
+ *
+ * ponytail: client only, on purpose — this dials a PTY server somebody else
+ * runs. Hosting one is deferred, and the Go kernel is where it goes when it
+ * lands, not the Electron main process: a "connect and get a shell" endpoint
+ * is a real local attack surface (any process on the box, and depending on
+ * origin checks any page in a browser), so it needs a bind address and an auth
+ * story designed rather than inherited, and the kernel is the component that
+ * already owns headless lifetime.
  */
 
 /** The slice of restty's transport this drives — declared locally so the type
