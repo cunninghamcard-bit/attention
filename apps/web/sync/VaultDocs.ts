@@ -59,6 +59,7 @@ export class VaultDocs {
   private index = new Map<string, string>();
   private kinds = new Map<string, "file" | "folder">();
   private remoteListeners = new Set<(events: RemoteEvent[]) => void>();
+  private docSetListeners = new Set<() => void>();
 
   private constructor(
     private readonly module: Awaited<ReturnType<typeof loadLoro>>,
@@ -287,6 +288,22 @@ export class VaultDocs {
     return undefined;
   }
 
+  /** The tree doc itself — the SyncClient wraps it in a room adaptor. */
+  treeDocRef(): LoroDoc {
+    return this.treeDoc;
+  }
+
+  /** Instantiate (or fetch) a file's live text doc by node id. */
+  openTextDoc(id: string): Promise<LoroDoc> {
+    return this.liveTextDoc(id);
+  }
+
+  /** Fires after any tree change alters the doc set; reconcile idempotently. */
+  onDocSetChanged(listener: () => void): () => void {
+    this.docSetListeners.add(listener);
+    return () => this.docSetListeners.delete(listener);
+  }
+
   private async liveTextDoc(id: string): Promise<LoroDoc> {
     const existing = this.textDocs.get(id);
     if (existing) return existing;
@@ -327,6 +344,11 @@ export class VaultDocs {
 
   /** Recompute path→id from the tree; roots sorted for determinism. */
   private rebuildIndex(): void {
+    this.rebuildIndexCore();
+    for (const listener of this.docSetListeners) listener();
+  }
+
+  private rebuildIndexCore(): void {
     this.index = new Map();
     this.kinds = new Map();
     const walk = (node: LoroTreeNode, prefix: string) => {

@@ -29,13 +29,19 @@ function installAnimationFrame(target: Window): void {
   }
 }
 
-beforeEach(() => installAnimationFrame(window));
+// Node-environment suites (the sync e2e) have no window at all; every
+// dom-flavored patch below is jsdom-only.
+const hasWindow = typeof window !== "undefined";
+
+beforeEach(() => {
+  if (hasWindow) installAnimationFrame(window);
+});
 
 // Environment teardown deletes the injected own-properties while CodeMirror
 // measure timers may still be pending; a prototype-level fallback keeps late
 // timers from crashing the run (`this.win.requestAnimationFrame is not a
 // function` flake).
-const windowPrototype = Object.getPrototypeOf(window) as Window;
+const windowPrototype = hasWindow ? (Object.getPrototypeOf(window) as Window) : null;
 if (windowPrototype && !Object.getOwnPropertyDescriptor(windowPrototype, "requestAnimationFrame")) {
   try {
     installAnimationFrame(windowPrototype);

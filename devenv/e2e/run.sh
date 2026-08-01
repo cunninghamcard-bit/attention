@@ -28,3 +28,7 @@ done
 
 [ -d node_modules ] || npm install --no-audit --no-fund
 node sync.e2e.mjs
+
+# The multi-end acceptance: two full client replica stacks (the real
+# apps/web sync slice) converging through this very server.
+(cd "$ROOT" && TEST_SYNC_SERVER="$SERVER_URL" pnpm exec vitest run tests/web/sync/MultiEnd.e2e.test.ts)

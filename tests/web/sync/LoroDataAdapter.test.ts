@@ -160,3 +160,24 @@ describe("LoroDataAdapter beyond the contract", () => {
     expect(events.some((e) => e.event === "modified" && e.path === "shared/doc.md")).toBe(true);
   });
 });
+
+describe("FolderImport", () => {
+  it("ingests an existing vault: text as docs, binary as blobs", async () => {
+    const { importFolder } = await import("@web/sync/FolderImport");
+    const { InMemoryAdapter } = await import("@web/vault/DataAdapter");
+    const source = new InMemoryAdapter();
+    await source.write("note.md", "# imported");
+    await source.write("deep/config.json", "{}");
+    await source.writeBinary("deep/pic.png", new Uint8Array([1, 2, 3]).buffer.slice(0));
+
+    const target = await makeLoro();
+    const count = await importFolder(source, target);
+    expect(count).toBe(3);
+    expect(await target.read("note.md")).toBe("# imported");
+    expect(await target.read("deep/config.json")).toBe("{}");
+    expect([...new Uint8Array(await target.readBinary("deep/pic.png"))]).toEqual([1, 2, 3]);
+    // Text became a collaborative doc (a room), binary a blob reference.
+    expect(target.vaultDocs().idAtPath("note.md")).toBeDefined();
+    expect((await target.stat("deep/pic.png"))?.size).toBe(3);
+  });
+});
