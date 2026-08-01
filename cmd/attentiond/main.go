@@ -13,12 +13,19 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
+	"time"
 
+	"github.com/cunninghamcard-bit/Attention/internal/accounts"
 	"github.com/cunninghamcard-bit/Attention/internal/db"
+	"github.com/cunninghamcard-bit/Attention/internal/handlers"
+	"github.com/cunninghamcard-bit/Attention/internal/server"
+	"github.com/cunninghamcard-bit/Attention/internal/store"
+	"github.com/cunninghamcard-bit/Attention/internal/syncd"
 )
 
 func main() {
@@ -56,8 +63,6 @@ func databaseURL() string {
 	return "postgres://attention:attention@127.0.0.1:5433/attention?sslmode=disable"
 }
 
-// ponytail: S1 serve is a health endpoint over a live DB connection — proof
-// the binary boots against Postgres. The echo shell with real routes is S3.
 func runServe() {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	ctx := context.Background()
@@ -72,15 +77,30 @@ func runServe() {
 	if addr == "" {
 		addr = "127.0.0.1:8788"
 	}
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		if err := pool.Ping(r.Context()); err != nil {
-			http.Error(w, "db unreachable", http.StatusServiceUnavailable)
-			return
+	secret := os.Getenv("ATTENTIOND_JWT_SECRET")
+	if secret == "" {
+		// Dev fallback: sessions die with the process. Deployments set it.
+		buf := make([]byte, 32)
+		if _, err := rand.Read(buf); err != nil {
+			logger.Error("no entropy for jwt secret", slog.Any("error", err))
+			os.Exit(1)
 		}
-		fmt.Fprintln(w, "ok")
-	})
-	logger.Info("attentiond listening", slog.String("addr", addr))
-	if err := http.ListenAndServe(addr, nil); err != nil {
+		secret = hex.EncodeToString(buf)
+		logger.Warn("ATTENTIOND_JWT_SECRET not set; generated an ephemeral one")
+	}
+
+	st := store.New(pool)
+	acc := accounts.New(pool, secret, 24*time.Hour)
+	engine := syncd.New(st, accounts.SyncAuthorizer{Accounts: acc, Secret: secret}, logger)
+
+	srv := server.New(logger, addr, secret,
+		&handlers.HealthHandler{Ping: func() error { return pool.Ping(ctx) }},
+		&handlers.AuthHandler{Accounts: acc},
+		&handlers.VaultsHandler{Accounts: acc, Store: st},
+		&handlers.SyncHandler{Engine: engine},
+		&handlers.StaticHandler{Dir: os.Getenv("ATTENTIOND_WEB_DIST")},
+	)
+	if err := srv.Start(); err != nil {
 		logger.Error("server stopped", slog.Any("error", err))
 		os.Exit(1)
 	}

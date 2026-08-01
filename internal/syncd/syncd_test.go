@@ -196,6 +196,24 @@ func (c *client) recvPayloads(want int) [][]byte {
 	return out
 }
 
+// recvUntilContains reads until every wanted payload has been seen at least
+// once (duplicates tolerated — the transport is at-least-once).
+func (c *client) recvUntilContains(want [][]byte) {
+	c.t.Helper()
+	remaining := make(map[string]bool, len(want))
+	for _, w := range want {
+		remaining[string(w)] = true
+	}
+	for guard := 0; len(remaining) > 0 && guard < 32; guard++ {
+		for _, payload := range c.recvPayloads(1) {
+			delete(remaining, string(payload))
+		}
+	}
+	if len(remaining) > 0 {
+		c.t.Fatalf("payloads never arrived: %d missing", len(remaining))
+	}
+}
+
 func env(room string) lp.Envelope { return lp.Envelope{Crdt: lp.CrdtLoro, RoomID: room} }
 
 func TestJoinBackfillsSnapshotThenLog(t *testing.T) {
@@ -246,9 +264,16 @@ func TestUpdateIsStoredAckedAndBroadcast(t *testing.T) {
 	if ack, ok := a.recv().(*lp.Ack); !ok || ack.Status != lp.StatusOk || ack.RefID != batch {
 		t.Fatalf("want ok ack for batch, got %+v", ack)
 	}
-	got := b.recvPayloads(2)
-	if !bytes.Equal(got[0], []byte{1, 1}) || !bytes.Equal(got[1], []byte{2}) {
-		t.Fatalf("broadcast wrong: %v", got)
+	// Delivery is at-least-once BY DESIGN: join registers the peer before
+	// the backfill read (the reverse order would LOSE updates committed in
+	// between), so a concurrent push can arrive via both backfill and
+	// broadcast. Idempotent client import absorbs duplicates; the assertion
+	// here is containment, not exact sequence.
+	b.recvUntilContains([][]byte{{1, 1}, {2}})
+	// Persistence, by contrast, is strictly exactly-once.
+	state, err := h.store.RoomStateSince(context.Background(), h.vault, "doc", int16(lp.CrdtLoro), 0)
+	if err != nil || len(state.Log) != 2 {
+		t.Fatalf("store must hold exactly two updates: %+v %v", state.Log, err)
 	}
 
 	// Late joiner gets the same data from storage, not from luck.
