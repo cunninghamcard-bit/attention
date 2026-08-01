@@ -26,3 +26,5 @@ allowBuilds:
   # postinstall only stamps version files
   protobufjs: false
 
+minimumReleaseAgeExclude:
+  - loro-crdt@1.13.9

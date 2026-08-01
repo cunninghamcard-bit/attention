@@ -611,7 +611,10 @@ describe("Rule: builtin-roof — one core plugin per slice", () => {
       expect(builtinDirs.has(plugin), `builtin/${plugin} should exist`).toBe(true);
       expect(sourceDirs.includes(plugin), `${plugin} should not be a top-level dir`).toBe(false);
     }
-    expect(sourceDirs.length).toBeLessThanOrEqual(16);
+    // 17th: sync/ — the synced-vault replica layer (loro docs + persistence
+    // + LoroDataAdapter), a first-class module per the data-layer spec
+    // (docs/superpowers/specs/2026-08-02-data-layer-server-design.md).
+    expect(sourceDirs.length).toBeLessThanOrEqual(17);
   });
 });
 

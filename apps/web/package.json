@@ -41,6 +41,9 @@
     "@lezer/lr": "^1.4.10",
     "@pierre/diffs": "^1.2.12",
     "@pierre/trees": "1.0.0-beta.5",
+    "loro-adaptors": "0.6.1",
+    "loro-crdt": "1.13.9",
+    "loro-websocket": "0.6.2",
     "restty": "^0.2.6",
     "stream-markdown-parser": "1.0.9",
     "yaml": "^2.9.0"
