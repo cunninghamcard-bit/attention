@@ -92,5 +92,8 @@ if (new TextDecoder().decode(back) !== "attachment-bytes") throw new Error("blob
 console.log("SYNC_E2E_PASS");
 console.log("A:", JSON.stringify(a.getDoc().getText("content").toString()));
 console.log("C (late, from backfill):", JSON.stringify(c.getDoc().getText("content").toString()));
-clientA.close(); clientB.close(); clientC.close(); clientEvil.close();
+clientA.close();
+clientB.close();
+clientC.close();
+clientEvil.close();
 process.exit(0);
