@@ -8,6 +8,7 @@
 
 import { App, provideAppAdapter, provideJsonStoreAdapter } from "./app/App";
 import { FileSystemJsonStoreAdapter } from "./storage/FileSystemJsonStoreAdapter";
+import { connectSyncClient, loadSyncedAdapter } from "./sync/SyncBoot";
 import { FileSystemAdapter } from "./vault/FileSystemAdapter";
 import type { TFile } from "./vault/TAbstractFile";
 
@@ -54,11 +55,17 @@ declare global {
 }
 
 export async function bootstrap(parent: HTMLElement = document.body): Promise<App> {
-  provideDesktopAdapter(parent);
+  // A stored synced-vault choice wins over everything: the window opens ON
+  // the local replica (usable offline) and the sync client connects after
+  // boot. Otherwise the desktop/browser adapter decision stands unchanged.
+  const synced = await loadSyncedAdapter();
+  if (synced) provideAppAdapter(synced.adapter);
+  else provideDesktopAdapter(parent);
   const app = new App(parent);
   const win = parent.ownerDocument.defaultView ?? window;
   win.app = app;
   await app.ready;
+  if (synced) void connectSyncClient(synced);
 
   // Demo content seeds only a brand-new (empty) vault — an existing vault's
   // contents are the user's; real Obsidian never writes into an opened vault.

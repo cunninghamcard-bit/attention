@@ -17,6 +17,8 @@ import { Notice } from "../ui/Notice";
 import { Menu } from "../ui/Menu";
 import { MoveFileModal } from "./MoveFileModal";
 import { VaultSwitcherModal } from "./VaultSwitcherModal";
+import { openSyncedVaultFlow } from "../sync/SyncModals";
+import { sessionStore } from "../sync/SyncSession";
 import type { TFile } from "../vault/TAbstractFile";
 import { WorkspaceTabs } from "../views/workspace/WorkspaceTabs";
 import { Platform } from "../platform/Platform";
@@ -970,6 +972,31 @@ export function registerAppCommands(app: App): void {
     checkCallback: (checking) => {
       if (!Platform.isDesktopApp) return false;
       if (!checking) new VaultSwitcherModal(app).open();
+      return true;
+    },
+  });
+
+  // Ours, not Obsidian's — the synced-vault surface from the data-layer spec
+  // (docs/superpowers/specs/2026-08-02-data-layer-server-design.md). Real's
+  // Sync is a paid service configured in settings; this app's sync IS the
+  // vault kind, so it gets first-class open/sign-out commands instead.
+  app.commands.addCommand({
+    id: "app:open-synced-vault",
+    name: "Open synced vault...",
+    icon: "vault",
+    callback: () => openSyncedVaultFlow(app),
+  });
+
+  app.commands.addCommand({
+    id: "app:sync-sign-out",
+    name: "Sign out of sync server",
+    icon: "lucide-log-out",
+    checkCallback: (checking) => {
+      if (!sessionStore.session()) return false;
+      if (!checking) {
+        sessionStore.clear();
+        window.location.reload();
+      }
       return true;
     },
   });
