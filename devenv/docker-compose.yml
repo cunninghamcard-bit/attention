@@ -1,0 +1,24 @@
+# Development Postgres for attentiond (the Memoh devenv pattern).
+#   docker compose -f devenv/docker-compose.yml up -d
+# Storage tests read TEST_DATABASE_URL; this instance's URL is
+#   postgres://attention:attention@127.0.0.1:5433/attention?sslmode=disable
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: attention-postgres
+    environment:
+      POSTGRES_DB: attention
+      POSTGRES_USER: attention
+      POSTGRES_PASSWORD: attention
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U attention"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+volumes:
+  postgres_data:

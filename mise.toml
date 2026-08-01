@@ -14,6 +14,7 @@ go = "1.26"
 # Pinned like every other tool (memoh does the same): an unpinned
 # golangci-lint resolves to a bare mise shim that refuses to run.
 "golangci-lint" = "2.11.3"
+sqlc = "1.31.1"
 
 [tasks.pnpm-install]
 description = "Install dependencies — pnpm (a preinstall hook enforces pnpm-only)"
