@@ -44,6 +44,8 @@ apps/web/
 ├── plugin/        19  plugin runtime (internal track)
 ├── platform/      17  platform capabilities behind interfaces
 ├── markdown/      15  markdown pipeline
+├── sync/           8  the synced Home replica (loro docs + persistence)
+├── mount/          3  the multi-root workspace router
 ├── metadata/      10  the metadata cache          ┐
 ├── vault/          7  the vault                    │ kernel lane —
 ├── storage/        5  persistence                  │ imports nothing
@@ -112,6 +114,24 @@ the same engine, by design:
   surface for **community plugins only**. Because it exists solely for
   outside code, nothing inside the app may import it — the direction table's
   last row.
+
+## Deviations from Obsidian, at the level of structure
+
+Two, both product decisions rather than style choices, so they are recorded
+here rather than under `styles/deviations/`:
+
+- **One config home** — `.obsidian/` lives once under the app's data
+  directory and nothing is ever written into an opened folder or mount
+  (`docs/superpowers/specs/2026-07-27-single-config-home-design.md`).
+- **A multi-root workspace** — Obsidian is one vault per window; this app
+  mounts several roots into ONE namespace: `Home` (the synced replica where
+  产物 live, always present) plus any number of repositories, which git
+  owns and sync never touches. `mount/MountAdapter` routes by the first path
+  segment and re-emits child events under it, so everything above the
+  adapter seam — Vault, MetadataCache, search, links, the file tree —
+  keeps its single-namespace assumption, which is the faithful part. Roots
+  join and leave without a reload (the VS Code shape). Recorded in
+  `docs/superpowers/specs/2026-08-02-data-layer-server-design.md`.
 
 ## Enforced rules
 

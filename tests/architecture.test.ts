@@ -614,7 +614,9 @@ describe("Rule: builtin-roof — one core plugin per slice", () => {
     // 17th: sync/ — the synced-vault replica layer (loro docs + persistence
     // + LoroDataAdapter), a first-class module per the data-layer spec
     // (docs/superpowers/specs/2026-08-02-data-layer-server-design.md).
-    expect(sourceDirs.length).toBeLessThanOrEqual(17);
+    // 18th: mount/ — the multi-root workspace router (Home + repositories
+    // under one namespace), per the same spec's product model.
+    expect(sourceDirs.length).toBeLessThanOrEqual(18);
   });
 });
 

@@ -32,12 +32,14 @@ describe("application bootstrap", () => {
 
     expect(window.app).toBe(app);
     expect(document.body.querySelectorAll(":scope > .app-container")).toHaveLength(1);
-    expect(app.vault.getFileByPath("Welcome.md")).not.toBeNull();
-    expect(app.vault.getFileByPath("Plugin Architecture.md")).not.toBeNull();
+    // The workspace is multi-root: demo content seeds into Home, the one
+    // root this app writes to, so every path carries that mount.
+    expect(app.vault.getFileByPath("Home/Welcome.md")).not.toBeNull();
+    expect(app.vault.getFileByPath("Home/Plugin Architecture.md")).not.toBeNull();
     expect(app.workspace.activeLeaf?.view?.getViewType()).toBe("markdown");
     expect(
       (app.workspace.activeLeaf?.view as { file?: { path: string } | null } | null)?.file?.path,
-    ).toBe("Welcome.md");
+    ).toBe("Home/Welcome.md");
     expect(app.workspace.activeLeaf?.view?.getState()).toMatchObject({ mode: "preview" });
     expect(document.body.textContent).toContain("Attention");
   });

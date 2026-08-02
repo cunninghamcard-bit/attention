@@ -10,6 +10,8 @@ import type { App } from "../app/App";
 import { Modal } from "../ui/Modal";
 import { Setting } from "../ui/Setting";
 import { Notice } from "../ui/Notice";
+import { MountAdapter } from "../mount/MountAdapter";
+import { LOCAL_HOME_ID } from "../mount/MountBoot";
 import { importFolder } from "./FolderImport";
 import { LoroDataAdapter } from "./LoroDataAdapter";
 import { createSyncStore } from "./SyncStore";
@@ -104,6 +106,21 @@ async function enableSync(app: App, session: SyncSession): Promise<void> {
   const vault = vaults[0] ?? (await syncApi.createVault(session, "Home"));
   sessionStore.saveSession(session);
   sessionStore.saveVault(vault);
+
+  const adapter = app.vault.adapter;
+  if (adapter instanceof MountAdapter) {
+    // The workspace already has a Home replica; signing in binds it to the
+    // account. Its local contents carry over on reload — the replica is
+    // re-keyed to the account's vault id and the SyncClient pushes them.
+    if (vault.id !== LOCAL_HOME_ID) {
+      const local = await LoroDataAdapter.load(createSyncStore(LOCAL_HOME_ID), LOCAL_HOME_ID);
+      const bound = await LoroDataAdapter.load(createSyncStore(vault.id), vault.id);
+      await importFolder(local, bound);
+    }
+    new Notice(`Synced as ${session.email} — reloading…`);
+    window.location.reload();
+    return;
+  }
 
   if (await currentVaultIsGitRepo(app)) {
     new Notice(

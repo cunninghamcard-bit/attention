@@ -8,7 +8,9 @@
 
 import { App, provideAppAdapter, provideJsonStoreAdapter } from "./app/App";
 import { FileSystemJsonStoreAdapter } from "./storage/FileSystemJsonStoreAdapter";
-import { connectSyncClient, loadSyncedAdapter } from "./sync/SyncBoot";
+import { buildWorkspaceAdapter } from "./mount/MountBoot";
+import { HOME_MOUNT_NAME } from "./mount/MountRegistry";
+import { connectSyncClient } from "./sync/SyncBoot";
 import { FileSystemAdapter } from "./vault/FileSystemAdapter";
 import type { TFile } from "./vault/TAbstractFile";
 
@@ -55,31 +57,35 @@ declare global {
 }
 
 export async function bootstrap(parent: HTMLElement = document.body): Promise<App> {
-  // A window opened ON a folder is a working surface — a repo under git —
-  // and sync never touches it. The HOME vault (the synced replica) is what
-  // a folder-less window opens: the browser build always, the desktop when
-  // launched without a folder. Offline-usable; the sync client connects
-  // after boot.
+  // The workspace is multi-root: Home (the synced replica, always present)
+  // plus every remembered repository, each its own mount under one
+  // namespace. Launching ON a folder is the legacy single-vault path and
+  // still wins — that window IS that folder.
   const win0 = parent.ownerDocument.defaultView ?? window;
   const hasFolder = Boolean(resolveElectronVault(win0).path);
-  const synced = hasFolder ? null : await loadSyncedAdapter();
-  if (synced) provideAppAdapter(synced.adapter);
-  else provideDesktopAdapter(parent);
+  const workspace = hasFolder ? null : await buildWorkspaceAdapter();
+  if (workspace) {
+    provideAppAdapter(workspace.adapter);
+    provideConfigHomeStore(parent);
+  } else provideDesktopAdapter(parent);
   const app = new App(parent);
   const win = parent.ownerDocument.defaultView ?? window;
   win.app = app;
   await app.ready;
-  if (synced) void connectSyncClient(synced);
+  if (workspace?.synced) void connectSyncClient(workspace.synced);
 
   // Demo content seeds only a brand-new (empty) vault — an existing vault's
   // contents are the user's; real Obsidian never writes into an opened vault.
-  // A synced vault is never seeded: its emptiness may just mean the backfill
-  // hasn't arrived yet, and demo files pushed into the account's vault would
-  // merge into every device.
-  if (!synced && app.vault.getFiles().length === 0) {
-    const welcome = await ensureMarkdownFile(app, "Welcome.md", welcomeMarkdown);
-    await ensureMarkdownFile(app, "Plugin Architecture.md", pluginMarkdown);
-    await seedCodeDemoFiles(app);
+  // In a workspace the demo goes into Home (its only writable-by-us root),
+  // and only when Home is BOTH empty and not bound to an account: a signed-in
+  // Home may look empty merely because its backfill has not arrived, and demo
+  // files would then merge into every device.
+  const seedRoot = workspace ? `${HOME_MOUNT_NAME}/` : "";
+  const seedable = workspace ? !workspace.synced : true;
+  if (seedable && app.vault.getFiles().length === 0) {
+    const welcome = await ensureMarkdownFile(app, `${seedRoot}Welcome.md`, welcomeMarkdown);
+    await ensureMarkdownFile(app, `${seedRoot}Plugin Architecture.md`, pluginMarkdown);
+    await seedCodeDemoFiles(app, seedRoot);
     await app.workspace.openFile(welcome, { active: true, state: { mode: "preview" } });
   }
 
@@ -94,8 +100,8 @@ async function ensureMarkdownFile(app: App, path: string, markdown: string): Pro
 // The in-memory demo vault shows the agent-workspace surface: code files
 // open highlighted, extensionless files route to the code view, and global
 // search reaches all of them (try searching "needle").
-async function seedCodeDemoFiles(app: App): Promise<void> {
-  if (!app.vault.getFolderByPath("agent")) await app.vault.createFolder("agent");
+async function seedCodeDemoFiles(app: App, root = ""): Promise<void> {
+  if (!app.vault.getFolderByPath(`${root}agent`)) await app.vault.createFolder(`${root}agent`);
   const goSource = [
     "package main",
     "",
@@ -127,9 +133,10 @@ async function seedCodeDemoFiles(app: App): Promise<void> {
     'ENTRYPOINT ["server"]',
     "",
   ].join("\n");
-  if (!app.vault.getFileByPath("agent/server.go"))
-    await app.vault.create("agent/server.go", goSource);
-  if (!app.vault.getFileByPath("Dockerfile")) await app.vault.create("Dockerfile", dockerfile);
+  if (!app.vault.getFileByPath(`${root}agent/server.go`))
+    await app.vault.create(`${root}agent/server.go`, goSource);
+  if (!app.vault.getFileByPath(`${root}Dockerfile`))
+    await app.vault.create(`${root}Dockerfile`, dockerfile);
 }
 
 /**
@@ -140,11 +147,19 @@ async function seedCodeDemoFiles(app: App): Promise<void> {
  */
 function provideDesktopAdapter(parent: HTMLElement): void {
   const win = parent.ownerDocument.defaultView ?? window;
-  const { path: vaultPath, home } = resolveElectronVault(win);
+  const { path: vaultPath } = resolveElectronVault(win);
   provideAppAdapter(vaultPath ? new FileSystemAdapter(vaultPath) : undefined);
-  // Config is the app's, not the folder's: `.obsidian/` lives once under the
-  // config home and NOTHING is written into an opened folder. Content and
-  // config are two adapters on two different roots from here on.
+  provideConfigHomeStore(parent);
+}
+
+/**
+ * Config is the app's, not any folder's: `.obsidian/` lives once under the
+ * config home and NOTHING is written into an opened folder or mount. It is
+ * the same store whichever adapter backs the content.
+ */
+function provideConfigHomeStore(parent: HTMLElement): void {
+  const win = parent.ownerDocument.defaultView ?? window;
+  const { home } = resolveElectronVault(win);
   provideJsonStoreAdapter(
     home ? new FileSystemJsonStoreAdapter(new FileSystemAdapter(home)) : undefined,
   );

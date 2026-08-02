@@ -17,6 +17,8 @@ import { Notice } from "../ui/Notice";
 import { Menu } from "../ui/Menu";
 import { MoveFileModal } from "./MoveFileModal";
 import { VaultSwitcherModal } from "./VaultSwitcherModal";
+import { MountAdapter } from "../mount/MountAdapter";
+import { addRepositoryMount } from "../mount/MountBoot";
 import { openSyncFlow } from "../sync/SyncModals";
 import { sessionStore } from "../sync/SyncSession";
 import type { TFile } from "../vault/TAbstractFile";
@@ -981,6 +983,20 @@ export function registerAppCommands(app: App): void {
   // product model: sync is a property of THE vault, not a vault kind —
   // signing in means the current contents are synced from now on. No
   // vault picker exists anywhere.
+  // The multi-root workspace, VS Code's shape: repositories join and leave
+  // without a reload, Home is always mounted (docs/architecture).
+  app.commands.addCommand({
+    id: "app:add-folder-to-workspace",
+    name: "Add folder to workspace...",
+    icon: "lucide-folder-plus",
+    checkCallback: (checking) => {
+      const adapter = app.vault.adapter;
+      if (!(adapter instanceof MountAdapter) || !Platform.isDesktopApp) return false;
+      if (!checking) void addRepositoryMount(adapter);
+      return true;
+    },
+  });
+
   app.commands.addCommand({
     id: "app:sync-sign-in",
     name: "Sign in to sync...",
