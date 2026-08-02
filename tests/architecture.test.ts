@@ -866,10 +866,6 @@ describe("Rule: ipc surface freeze", () => {
       "trash",
       "update-menu-items",
       "vault",
-      "vault-list",
-      "vault-move",
-      "vault-open",
-      "vault-remove",
       "version",
       "window:set-fullscreen",
     ]);

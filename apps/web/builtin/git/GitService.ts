@@ -124,10 +124,56 @@ export class GitService {
     return Boolean(this.bridge?.available && this.baseDir());
   }
 
-  /** The vault folder git runs in; null for in-memory vaults. */
+  /**
+   * The repository this service targets. A single-folder adapter answers
+   * getBasePath directly (legacy shape, still what unit tests stub). In the
+   * multi-root workspace the target is a MOUNT: the one owning the active
+   * file when it is disk-backed, else the first disk-backed mount — git
+   * follows the repository you are working in. Home (the replica) has no
+   * base path and is never a repository.
+   *
+   * Every path crossing this service's API is a VAULT path (mount-prefixed);
+   * toRepo/fromRepo translate at the exec boundary so consumers never learn
+   * git's repo-relative spelling.
+   *
+   * ponytail: resolved per call — a status()→stage() pair spanning an
+   * active-file change can address different repos and the stage fails
+   * loudly; a pinned repo selection belongs to the future repo-UI design.
+   */
+  private repoMount(): { prefix: string; base: string } | null {
+    const adapter = this.app.vault.adapter;
+    const direct = (adapter as { getBasePath?: () => string }).getBasePath?.();
+    if (direct) return { prefix: "", base: direct };
+    const mounts = (
+      adapter as { getMounts?: () => ReadonlyArray<{ name: string; adapter: unknown }> }
+    )
+      .getMounts?.()
+      ?.map((mount) => ({
+        name: mount.name,
+        base: (mount.adapter as { getBasePath?: () => string }).getBasePath?.() ?? null,
+      }))
+      .filter((mount): mount is { name: string; base: string } => Boolean(mount.base));
+    if (!mounts || mounts.length === 0) return null;
+    const active = this.app.workspace.getActiveFile()?.path ?? "";
+    const owner = mounts.find((mount) => active.startsWith(`${mount.name}/`));
+    const chosen = owner ?? mounts[0];
+    return { prefix: `${chosen.name}/`, base: chosen.base };
+  }
+
+  /** The folder git runs in; null for in-memory vaults and repo-less workspaces. */
   baseDir(): string | null {
-    const adapter = this.app.vault.adapter as { getBasePath?: () => string };
-    return adapter.getBasePath?.() ?? null;
+    return this.repoMount()?.base ?? null;
+  }
+
+  /** Vault path → repo-relative path for git arguments. */
+  private toRepo(path: string): string {
+    const prefix = this.repoMount()?.prefix ?? "";
+    return prefix && path.startsWith(prefix) ? path.slice(prefix.length) : path;
+  }
+
+  /** Repo-relative path (git output) → vault path. */
+  private fromRepo(path: string): string {
+    return `${this.repoMount()?.prefix ?? ""}${path}`;
   }
 
   async isRepository(): Promise<boolean> {
@@ -148,7 +194,7 @@ export class GitService {
    * not a repository, or the file is untracked/new at HEAD.
    */
   async readHeadFile(path: string): Promise<string | null> {
-    const result = await this.exec(["show", `HEAD:${path}`]);
+    const result = await this.exec(["show", `HEAD:${this.toRepo(path)}`]);
     if (!result || result.code !== 0) return null;
     return result.stdout;
   }
@@ -163,19 +209,24 @@ export class GitService {
       .filter((line) => line.length > 3)
       .map((line) => ({
         status: line.slice(0, 2),
-        path: line.slice(3).trim().replace(/^"|"$/g, ""),
+        path: this.fromRepo(line.slice(3).trim().replace(/^"|"$/g, "")),
       }));
   }
 
   async stage(paths: string[]): Promise<boolean> {
     if (paths.length === 0) return true;
-    const result = await this.exec(["add", "--", ...paths]);
+    const result = await this.exec(["add", "--", ...paths.map((p) => this.toRepo(p))]);
     return result?.code === 0;
   }
 
   async unstage(paths: string[]): Promise<boolean> {
     if (paths.length === 0) return true;
-    const result = await this.exec(["restore", "--staged", "--", ...paths]);
+    const result = await this.exec([
+      "restore",
+      "--staged",
+      "--",
+      ...paths.map((p) => this.toRepo(p)),
+    ]);
     return result?.code === 0;
   }
 
@@ -264,10 +315,10 @@ export class GitService {
 
   /** Tracked worktree edits go through restore; untracked files through clean. */
   async discard(entries: GitFileStatus[]): Promise<boolean> {
-    const untracked = entries.filter((e) => e.status[0] === "?").map((e) => e.path);
+    const untracked = entries.filter((e) => e.status[0] === "?").map((e) => this.toRepo(e.path));
     const tracked = entries
       .filter((e) => e.status[0] !== "?" && e.status[1] !== " ")
-      .map((e) => e.path);
+      .map((e) => this.toRepo(e.path));
     let ok = true;
     if (tracked.length > 0)
       ok = (await this.exec(["restore", "--worktree", "--", ...tracked]))?.code === 0 && ok;
@@ -284,7 +335,7 @@ export class GitService {
 
   /** The staged (index) content of a file; null when nothing is staged. */
   async readIndexFile(path: string): Promise<string | null> {
-    const result = await this.exec(["show", `:0:${path}`]);
+    const result = await this.exec(["show", `:0:${this.toRepo(path)}`]);
     if (!result || result.code !== 0) return null;
     return result.stdout;
   }
@@ -292,7 +343,7 @@ export class GitService {
   /** Recent commits touching `path` (or the whole repo when omitted). */
   async log(path?: string, limit = 50): Promise<GitLogEntry[]> {
     const args = ["log", `-n${limit}`, "--format=%H%x1f%h%x1f%an%x1f%aE%x1f%aI%x1f%s"];
-    if (path) args.push("--follow", "--", path);
+    if (path) args.push("--follow", "--", this.toRepo(path));
     const result = await this.exec(args);
     if (!result || result.code !== 0) return [];
     return result.stdout
@@ -311,7 +362,7 @@ export class GitService {
 
   /** File content at an arbitrary ref; null when missing at that ref. */
   async readFileAt(ref: string, path: string): Promise<string | null> {
-    const result = await this.exec(["show", `${ref}:${path}`]);
+    const result = await this.exec(["show", `${ref}:${this.toRepo(path)}`]);
     if (!result || result.code !== 0) return null;
     return result.stdout;
   }
@@ -331,7 +382,7 @@ export class GitService {
       .map((line) => {
         const [added, deleted, ...rest] = line.split("\t");
         return {
-          path: rest.join("\t"),
+          path: this.fromRepo(rest.join("\t")),
           additions: Number(added) || 0,
           deletions: Number(deleted) || 0,
         };
@@ -349,7 +400,7 @@ export class GitService {
       .map((line) => {
         const [status, ...rest] = line.split("\t");
         // Rename lines are "R100\told\tnew" — review the new path.
-        return { status: status[0] ?? "M", path: rest[rest.length - 1] ?? "" };
+        return { status: status[0] ?? "M", path: this.fromRepo(rest[rest.length - 1] ?? "") };
       })
       .filter((entry) => entry.path);
   }

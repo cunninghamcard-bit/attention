@@ -1,22 +1,23 @@
 /**
- * Input: node:path, ./vault-registry, @app/shared/scheme
- * Output: ObsidianAction, ParsedObsidianUrl, parseObsidianUrl, ResolvedVault, resolveVaultForAction, buildObsActScript
+ * Input: @app/shared/scheme
+ * Output: ObsidianAction, ParsedObsidianUrl, parseObsidianUrl, buildObsActScript
  * Pos: Application code
  *
  * 🔄 Self-reference: When this file changes, update this header
  */
 
-import { resolve } from "node:path";
-import type { VaultRegistryData } from "./vault-registry";
 import { URL_SCHEME } from "@app/shared/scheme";
 
 /**
- * `obsidian://` URL parsing and routing — real `$e(url)` (reverse note
+ * `obsidian://` URL parsing — real `$e(url)`'s parse half (reverse note
  * "obsidian:// URL routing").
  *
- * The parse and vault-resolution are pure and tested here; the delivery into a
- * renderer via `window.OBS_ACT` is `VaultWindowManager.deliverAction`, and the
- * OS registration is in `obsidian-protocol.ts`.
+ * The parse is pure and tested here; the delivery into the workspace renderer
+ * via `window.OBS_ACT` is `WorkspaceWindow.deliverAction`, and the OS
+ * registration is in `obsidian-protocol.ts`. Real's vault-resolution half
+ * (resolveVaultForAction) died with the vault registry — one workspace window
+ * means there is nothing to resolve; `vault`/`path` params pass through to the
+ * renderer.
  */
 
 const PREFIX = URL_SCHEME;
@@ -87,59 +88,7 @@ export function parseObsidianUrl(
   return { kind: "action", action };
 }
 
-export interface ResolvedVault {
-  /** The action, with `file` filled in when resolved by path. */
-  action: ObsidianAction;
-  /** The target vault id, or null if none matched. */
-  vaultId: string | null;
-  /** When true the caller uses the most-recent vault (real `ve()`), opening one if none. */
-  useMostRecent: boolean;
-}
-
-/**
- * Real `$e` vault-resolution half: by longest matching vault path (setting the
- * relative `file`), else by vault name, else defer to the most-recent vault.
- */
-export function resolveVaultForAction(
-  action: ObsidianAction,
-  vaults: VaultRegistryData,
-): ResolvedVault {
-  if (typeof action.path === "string") {
-    const target = resolve(action.path);
-    let bestRoot = "";
-    let vaultId: string | null = null;
-    for (const id of Object.keys(vaults)) {
-      const root = vaults[id].path;
-      if (target.startsWith(root) && bestRoot.length < root.length) {
-        bestRoot = root;
-        vaultId = id;
-      }
-    }
-    const next = { ...action };
-    if (vaultId) next.file = target.substring(bestRoot.length);
-    return { action: next, vaultId, useMostRecent: false };
-  }
-  if (typeof action.vault === "string") {
-    let vaultId: string | null = null;
-    for (const id of Object.keys(vaults)) {
-      const path = vaults[id].path;
-      if (id === action.vault || basename(path).toUpperCase() === action.vault.toUpperCase()) {
-        vaultId = id;
-        break;
-      }
-    }
-    return { action, vaultId, useMostRecent: false };
-  }
-  return { action, vaultId: null, useMostRecent: true };
-}
-
 /** Real `it()` injection payload: install or queue `window.OBS_ACT`. */
 export function buildObsActScript(action: ObsidianAction): string {
   return `(function(){var w=window,o=${JSON.stringify(action)};if(typeof w.OBS_ACT === "function"){w.OBS_ACT(o)}else{w.OBS_ACT=o}})()`;
-}
-
-function basename(p: string): string {
-  const norm = p.replace(/[\\/]+$/, "");
-  const idx = Math.max(norm.lastIndexOf("/"), norm.lastIndexOf("\\"));
-  return idx >= 0 ? norm.substring(idx + 1) : norm;
 }

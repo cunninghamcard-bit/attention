@@ -267,7 +267,6 @@ export class Cli {
     }
     return (
       "Attention CLI\n\nUsage: attention <command> [options]\n\n" +
-      "Options:\n  vault=<name>          Target a specific vault by name\n\n" +
       "Notes:\n" +
       "  file resolves by name (like wikilinks), path is exact (folder/note.md)\n" +
       "  Most commands default to the active file when file/path is omitted\n" +

@@ -201,7 +201,6 @@ export * from "./platform/native/FileDialogService";
 export * from "./platform/native/WindowFrameController";
 export * from "./platform/shell/ShellIntegration";
 
-export * from "./vault/VaultManager";
 export * from "./builtin/file-recovery/RevisionHistory";
 export * from "./builtin/file-recovery/FileRecovery";
 export * from "./builtin/webviewer/WebViewerService";

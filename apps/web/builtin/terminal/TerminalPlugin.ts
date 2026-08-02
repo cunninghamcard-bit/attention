@@ -50,10 +50,13 @@ export class TerminalController {
   }
 
   private async openAt(file: TAbstractFile): Promise<void> {
-    const base = this.app.terminals.defaultCwd();
     const folder = file instanceof TFolder ? file.path : (file.parent?.path ?? "/");
-    const relative = folder === "/" ? "" : `/${folder}`;
-    await this.open(base ? `${base}${relative}` : undefined);
+    // The adapter maps vault paths to disk locations — per mount in the
+    // workspace, from the one base in a single-folder vault. An unchanged
+    // answer means no disk home (the replica, in-memory) → default cwd.
+    const adapter = this.app.vault.adapter;
+    const full = folder === "/" ? null : adapter.getFullPath(folder);
+    await this.open(full && full !== folder ? full : undefined);
   }
 }
 

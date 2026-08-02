@@ -10,7 +10,6 @@ import type { App } from "../app/App";
 import { Modal } from "../ui/Modal";
 import { Setting } from "../ui/Setting";
 import { Notice } from "../ui/Notice";
-import { MountAdapter } from "../mount/MountAdapter";
 import { LOCAL_HOME_ID } from "../mount/MountBoot";
 import { importFolder } from "./FolderImport";
 import { LoroDataAdapter } from "./LoroDataAdapter";
@@ -94,60 +93,26 @@ export class SyncLoginModal extends Modal {
 
 /**
  * The whole sign-in consequence: find or create the account's HOME vault —
- * the one synced place where 产物 live. A window opened on a git repository
- * is a working surface: git is its sync, so nothing is imported from it and
- * the window stays where it is. Anywhere else, the current contents seed
- * the home vault (offline into IndexedDB — the SyncClient pushes after the
- * reload, so a flaky network cannot half-sync the switch) and the window
- * reloads onto the replica.
+ * the one synced place where 产物 live. The workspace always has a Home
+ * replica; signing in binds it to the account. Its local contents carry over
+ * on reload — the replica is re-keyed to the account's vault id (offline into
+ * IndexedDB — the SyncClient pushes after the reload, so a flaky network
+ * cannot half-sync the switch). Repositories are never touched: git is their
+ * sync.
  */
-async function enableSync(app: App, session: SyncSession): Promise<void> {
+async function enableSync(_app: App, session: SyncSession): Promise<void> {
   const vaults = await syncApi.listVaults(session);
   const vault = vaults[0] ?? (await syncApi.createVault(session, "Home"));
   sessionStore.saveSession(session);
   sessionStore.saveVault(vault);
 
-  const adapter = app.vault.adapter;
-  if (adapter instanceof MountAdapter) {
-    // The workspace already has a Home replica; signing in binds it to the
-    // account. Its local contents carry over on reload — the replica is
-    // re-keyed to the account's vault id and the SyncClient pushes them.
-    if (vault.id !== LOCAL_HOME_ID) {
-      const local = await LoroDataAdapter.load(createSyncStore(LOCAL_HOME_ID), LOCAL_HOME_ID);
-      const bound = await LoroDataAdapter.load(createSyncStore(vault.id), vault.id);
-      await importFolder(local, bound);
-    }
-    new Notice(`Synced as ${session.email} — reloading…`);
-    window.location.reload();
-    return;
+  if (vault.id !== LOCAL_HOME_ID) {
+    const local = await LoroDataAdapter.load(createSyncStore(LOCAL_HOME_ID), LOCAL_HOME_ID);
+    const bound = await LoroDataAdapter.load(createSyncStore(vault.id), vault.id);
+    await importFolder(local, bound);
   }
-
-  if (await currentVaultIsGitRepo(app)) {
-    new Notice(
-      "Signed in. This folder stays under git — the home vault syncs in windows opened without a folder.",
-    );
-    return;
-  }
-
-  const notice = new Notice("Preparing sync…", 0);
-  try {
-    const replica = await LoroDataAdapter.load(createSyncStore(vault.id), vault.id);
-    const imported = await importFolder(app.vault.adapter, replica);
-    notice.setMessage(`Synced ${imported} files — reloading…`);
-  } finally {
-    notice.hide();
-  }
+  new Notice(`Synced as ${session.email} — reloading…`);
   window.location.reload();
-}
-
-/** Repos are recognized by their .git entry — hidden from the vault index,
- * but exists() checks the disk directly. */
-async function currentVaultIsGitRepo(app: App): Promise<boolean> {
-  try {
-    return (await app.vault.adapter.exists?.(".git")) ?? false;
-  } catch {
-    return false;
-  }
 }
 
 /** The command entry: already synced is a statement, not a picker. */

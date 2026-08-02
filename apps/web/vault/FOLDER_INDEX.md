@@ -10,6 +10,5 @@
 - `FileWatcher.ts` - Exports FileWatchEventType and 2 more
 - `TAbstractFile.ts` - Exports TAbstractFile and 3 more
 - `Vault.ts` - Exports VaultAdapterStat and 2 more
-- `VaultManager.ts` - Exports VaultRecord and 1 more
 
 🔄 **Self-reference**: When files in this folder change, update this index and PROJECT_INDEX.md

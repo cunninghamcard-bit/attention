@@ -131,7 +131,9 @@ export class MountAdapter extends DataAdapter {
 
   override getFullPath(path: string): string {
     const split = this.split(path);
-    if (!split || split.inner === "") return path;
+    if (!split) return path;
+    // A mount root maps to the child's own root — a repository's disk path —
+    // which is what "open terminal here" on the root needs.
     return split.mount.adapter.getFullPath(split.inner);
   }
 
@@ -188,10 +190,19 @@ export class MountAdapter extends DataAdapter {
    * Watching means watching every mount: each child's events are re-emitted
    * on this adapter with the mount name prefixed, so the Vault sees one
    * namespace. Mounts added later start watching immediately.
+   *
+   * Every watch() also announces every mount's existing contents — the
+   * FileSystemAdapter contract (announce-on-watch), honored here uniformly.
+   * Without it, a mount added BEFORE anyone watched (a boot-time registry
+   * mount) has already announced into the void and its files never reach the
+   * Vault; and a memory-backed child never announces at all. Children that
+   * do self-announce on their first watch double up — the Vault's reconcile
+   * absorbs the repeat against an unchanged stat.
    */
   override async watch(handler: Parameters<DataAdapter["watch"]>[0]): Promise<() => void> {
     const unwatchSelf = await super.watch(handler);
     await Promise.all(this.mounts.map((mount) => this.watchMount(mount)));
+    await Promise.all(this.mounts.map((mount) => this.announce(mount, "")));
     return () => {
       for (const unwatch of this.unwatchers.values()) unwatch();
       this.unwatchers.clear();

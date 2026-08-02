@@ -66,7 +66,6 @@ import { DragManager } from "../ui/drag/DragManager";
 import { ShellIntegration } from "../platform/shell/ShellIntegration";
 import { DesktopMain } from "../platform/desktop/DesktopMain";
 import { DesktopMenu } from "../platform/desktop/DesktopMenu";
-import { VaultManager } from "../vault/VaultManager";
 import { RevisionHistoryService } from "../builtin/file-recovery/RevisionHistory";
 import { FileRecoveryService } from "../builtin/file-recovery/FileRecovery";
 import { WebViewerService } from "../builtin/webviewer/WebViewerService";
@@ -168,7 +167,6 @@ export class App {
   readonly diagnostics = new DiagnosticsManager();
   readonly shell = new ShellIntegration();
   readonly desktopMain = new DesktopMain();
-  readonly vaults = new VaultManager(this);
   readonly revisions = new RevisionHistoryService(this);
   readonly fileRecovery = new FileRecoveryService(this);
   readonly webViewer = new WebViewerService(this);

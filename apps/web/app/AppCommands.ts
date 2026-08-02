@@ -16,7 +16,6 @@ import { writeClipboardText } from "../dom/Clipboard";
 import { Notice } from "../ui/Notice";
 import { Menu } from "../ui/Menu";
 import { MoveFileModal } from "./MoveFileModal";
-import { VaultSwitcherModal } from "./VaultSwitcherModal";
 import { MountAdapter } from "../mount/MountAdapter";
 import { addRepositoryMount } from "../mount/MountBoot";
 import { openSyncFlow } from "../sync/SyncModals";
@@ -961,22 +960,11 @@ export function registerAppCommands(app: App): void {
     callback: () => app.setting.open(),
   });
 
-  // Real registers three vault commands; only this one has behavior left here.
-  // `app:open-vault` ("Manage vaults") calls `openVaultChooser()` — the
-  // separate starter window this app deleted on purpose, and Obsidian has no
-  // in-app management surface to port in its place. `app:open-another-vault`
-  // differs from this one only by opening a SECOND window, which the one-window
-  // model removed; see VaultSwitcherModal for why the flag went with it.
-  app.commands.addCommand({
-    id: "app:switch-vault",
-    name: "Change vault...",
-    icon: "vault",
-    checkCallback: (checking) => {
-      if (!Platform.isDesktopApp) return false;
-      if (!checking) new VaultSwitcherModal(app).open();
-      return true;
-    },
-  });
+  // Real registers three vault commands (switch-vault, open-vault,
+  // open-another-vault); none is ported. They exist to move a window between
+  // registry vaults, and the workspace form has no registry and no second
+  // window — folders join and leave THE workspace instead. Deviation recorded
+  // in docs/architecture.md.
 
   // Ours, not Obsidian's — the sync surface from the data-layer spec
   // (docs/superpowers/specs/2026-08-02-data-layer-server-design.md). The

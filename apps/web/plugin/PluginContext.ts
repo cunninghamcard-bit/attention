@@ -15,7 +15,6 @@ export interface PluginContext {
   diagnostics: App["diagnostics"];
   shell: App["shell"];
   desktopMain: App["desktopMain"];
-  vaults: App["vaults"];
   revisions: App["revisions"];
   fileRecovery: App["fileRecovery"];
   themeMarketplace: App["themeMarketplace"];
@@ -68,7 +67,6 @@ export function createPluginContext(app: App): PluginContext {
     diagnostics: app.diagnostics,
     shell: app.shell,
     desktopMain: app.desktopMain,
-    vaults: app.vaults,
     revisions: app.revisions,
     fileRecovery: app.fileRecovery,
     themeMarketplace: app.themeMarketplace,

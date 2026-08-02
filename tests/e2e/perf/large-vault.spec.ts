@@ -55,7 +55,8 @@ function median(values: number[]): number {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
-test("per-click latency on a huge vault", async (_fixtures, testInfo) => {
+// oxlint-disable-next-line eslint/no-empty-pattern -- Playwright requires the object destructuring pattern for fixtures; this test uses none.
+test("per-click latency on a huge vault", async ({}, testInfo) => {
   test.setTimeout(600_000);
   const base = mkdtempSync(join(tmpdir(), "perf-vault-"));
   const vault = join(base, "vault");
@@ -65,7 +66,7 @@ test("per-click latency on a huge vault", async (_fixtures, testInfo) => {
 
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    E2E_VAULT_PATH: vault,
+    E2E_MOUNT_PATH: vault,
     E2E_USER_DATA: join(base, "userData"),
     E2E_CLI_SOCKET: join(base, "cli.sock"),
   };
@@ -91,9 +92,16 @@ test("per-click latency on a huge vault", async (_fixtures, testInfo) => {
       if (message.type() === "error") console.log(`CONSOLE-ERROR ${message.text().slice(0, 300)}`);
     });
     const launchStart = Date.now();
-    await expect(page.locator(".nav-folder-title", { hasText: "notes" }).first()).toBeVisible({
+    // The seeded folder is the "vault" mount of the workspace; expand it only
+    // if its contents are hidden (folders render expanded by default).
+    await expect(page.locator('.nav-folder-title[data-path="vault"]')).toBeVisible({
       timeout: 180_000,
     });
+    const notesTitle = page.locator(".nav-folder-title", { hasText: "notes" }).first();
+    if (!(await notesTitle.isVisible().catch(() => false))) {
+      await page.locator('.nav-folder-title[data-path="vault"]').click();
+    }
+    await expect(notesTitle).toBeVisible({ timeout: 180_000 });
     const vaultReadyMs = Date.now() - launchStart;
 
     // Long-task observer for the whole measured window.

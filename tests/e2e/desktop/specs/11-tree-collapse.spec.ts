@@ -65,34 +65,68 @@ test("a file explorer folder folds in place instead of rebuilding the tree", asy
   const { page } = await launchApp();
   await page.waitForSelector(".nav-file-title");
 
+  // Target the seeded mount's folder explicitly — the workspace tree also
+  // holds Home, whose collapsed state is not the one under test.
   const childrenHeight = () =>
     page.evaluate(() => {
-      const el = document.querySelector(".nav-folder > .nav-folder-children") as HTMLElement | null;
+      const title = document.querySelector('.nav-folder-title[data-path="vault"]');
+      const el = title
+        ?.closest(".nav-folder")
+        ?.querySelector(":scope > .nav-folder-children") as HTMLElement | null;
       return el ? Math.round(el.getBoundingClientRect().height) : -1;
     });
 
   const openHeight = await childrenHeight();
   expect(openHeight).toBeGreaterThan(0);
 
-  // The row identity must SURVIVE the fold — that is the structural claim.
-  await page.evaluate(() => {
-    const el = document.querySelector(".nav-folder-title") as HTMLElement;
-    el.dataset.identityProbe = "kept";
-    el.click();
+  // The boot burst (replica load, mount announces, Welcome render) can hold
+  // the main thread; animation progress is wall-clock, so a blocked renderer
+  // snaps through the ease. Fold only once frames flow again.
+  await page.evaluate(async () => {
+    await new Promise<void>((resolve) => {
+      let last = performance.now();
+      let calm = 0;
+      const tick = () => {
+        const now = performance.now();
+        calm = now - last < 30 ? calm + 1 : 0;
+        last = now;
+        if (calm >= 5) resolve();
+        else requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
   });
 
-  const heights: number[] = [];
-  for (let index = 0; index < 10; index++) {
-    heights.push(await childrenHeight());
-    await page.waitForTimeout(20);
-  }
+  // The row identity must SURVIVE the fold — that is the structural claim.
+  // Heights are sampled per frame IN PAGE: the fold eases over ~140ms, and
+  // evaluate round-trips can miss that whole window on a busy renderer.
+  const heights = await page.evaluate(async () => {
+    const title = document.querySelector('.nav-folder-title[data-path="vault"]') as HTMLElement;
+    title.dataset.identityProbe = "kept";
+    const samples: number[] = [];
+    let sampling = true;
+    const sample = () => {
+      const el = title
+        .closest(".nav-folder")
+        ?.querySelector(":scope > .nav-folder-children") as HTMLElement | null;
+      samples.push(el ? Math.round(el.getBoundingClientRect().height) : -1);
+      if (sampling) requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+    title.click();
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    sampling = false;
+    return samples;
+  });
   expect(heights.filter((h) => h > 0 && h < openHeight).length).toBeGreaterThan(0);
 
   await page.waitForTimeout(400);
   expect(await childrenHeight()).toBe(-1);
   expect(
     await page.evaluate(
-      () => (document.querySelector(".nav-folder-title") as HTMLElement).dataset.identityProbe,
+      () =>
+        (document.querySelector('.nav-folder-title[data-path="vault"]') as HTMLElement).dataset
+          .identityProbe,
     ),
   ).toBe("kept");
 });

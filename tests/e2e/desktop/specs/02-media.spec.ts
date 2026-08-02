@@ -8,7 +8,7 @@ import { expect, test } from "../fixtures/electronApp";
 test("opens an image from the file tree in the image view", async ({ app }) => {
   const { page } = app;
 
-  await openFromTree(page, "Pics/pic.png");
+  await openFromTree(page, "vault/Pics/pic.png");
 
   const img = page.locator(".workspace-leaf.mod-active .image-container img");
   await expect(img).toBeVisible({ timeout: 15_000 });
@@ -20,7 +20,7 @@ test("opens an image from the file tree in the image view", async ({ app }) => {
 test("renders the ![[...]] image embed inside markdown preview", async ({ app }) => {
   const { page } = app;
 
-  await page.locator('.nav-file-title[data-path="Note.md"]').click();
+  await page.locator('.nav-file-title[data-path="vault/Note.md"]').click();
   // Ensure reading view by ASSERTING the mode, not by blind-toggling — the
   // factory default is preview now, and a blind toggle would leave it.
   await page.evaluate(() => {
@@ -37,12 +37,14 @@ test("renders the ![[...]] image embed inside markdown preview", async ({ app })
 });
 
 // The tree renders folders expanded or collapsed; only toggle when the target
-// file is actually hidden (a blind folder click can collapse it).
+// file is actually hidden (a blind folder click can collapse it). The mount
+// root is already expanded by the fixture, so the immediate parent is the
+// folder left to open.
 async function openFromTree(page: import("@playwright/test").Page, path: string): Promise<void> {
   const file = page.locator(`.nav-file-title[data-path="${path}"]`);
   if (!(await file.isVisible().catch(() => false))) {
     await page
-      .locator(".nav-folder-title", { hasText: path.split("/")[0] })
+      .locator(".nav-folder-title", { hasText: path.split("/").at(-2) })
       .first()
       .click();
   }

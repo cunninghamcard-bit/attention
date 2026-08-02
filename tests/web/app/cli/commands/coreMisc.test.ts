@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { App } from "@web/app/App";
+import { App, provideAppAdapter } from "@web/app/App";
 import { Platform } from "@web/platform/Platform";
+import { InMemoryAdapter } from "@web/vault/DataAdapter";
+import { MountAdapter } from "@web/mount/MountAdapter";
 
 // Not yet wired into the App constructor (glue lands after all lanes), so each
 // test registers the batch itself and drives it through the faithful
@@ -13,15 +15,19 @@ async function seededApp(): Promise<App> {
   return app;
 }
 
-function installVaultRegistry(vaults: Record<string, { path: string; ts: number }>): void {
-  (globalThis as { electron?: unknown }).electron = {
-    ipcRenderer: {
-      sendSync: (channel: string) => {
-        if (channel !== "vault-list") throw new Error(`unexpected channel: ${channel}`);
-        return vaults;
-      },
-    },
-  };
+// The mounts command reads the workspace's roots straight off the adapter.
+async function workspaceApp(): Promise<App> {
+  const repo = new InMemoryAdapter();
+  (repo as unknown as { getBasePath(): string }).getBasePath = () => "/Users/u/attention";
+  provideAppAdapter(
+    new MountAdapter([
+      { name: "Home", adapter: new InMemoryAdapter() },
+      { name: "attention", adapter: repo },
+    ]),
+  );
+  const app = new App(document.createElement("div"));
+  await app.ready;
+  return app;
 }
 
 const originalVersion = Platform.version;
@@ -32,6 +38,7 @@ afterEach(() => {
   Platform.version = originalVersion;
   Platform.build = originalBuild;
   Platform.isMobile = originalIsMobile;
+  provideAppAdapter(undefined);
   delete (globalThis as { electron?: unknown }).electron;
 });
 
@@ -44,50 +51,27 @@ describe("version", () => {
   });
 });
 
-describe("vaults", () => {
-  it("lists basenames sorted by descending last-opened timestamp", async () => {
-    const app = await seededApp();
-    installVaultRegistry({
-      a: { path: "/Users/u/Beta", ts: 100 },
-      b: { path: "/Users/u/Alpha", ts: 300 },
-      c: { path: "/Users/u/Zed", ts: 200 },
-    });
-    expect(await app.cli.handleCli(["vaults"])).toBe("Alpha\nZed\nBeta");
+describe("mounts", () => {
+  it("lists the workspace's roots in mount order", async () => {
+    const app = await workspaceApp();
+    expect(await app.cli.handleCli(["mounts"])).toBe("Home\nattention");
   });
 
-  it("verbose appends the full path after a tab", async () => {
-    const app = await seededApp();
-    installVaultRegistry({
-      a: { path: "/Users/u/Beta", ts: 100 },
-      b: { path: "/Users/u/Alpha", ts: 300 },
-    });
-    expect(await app.cli.handleCli(["vaults", "verbose"])).toBe(
-      "Alpha\t/Users/u/Alpha\nBeta\t/Users/u/Beta",
+  it("verbose appends the base path after a tab; Home has none", async () => {
+    const app = await workspaceApp();
+    expect(await app.cli.handleCli(["mounts", "verbose"])).toBe(
+      "Home\t\nattention\t/Users/u/attention",
     );
   });
 
   it("total returns the bare count", async () => {
-    const app = await seededApp();
-    installVaultRegistry({
-      a: { path: "/Users/u/Beta", ts: 100 },
-      b: { path: "/Users/u/Alpha", ts: 300 },
-    });
-    expect(await app.cli.handleCli(["vaults", "total"])).toBe("2");
+    const app = await workspaceApp();
+    expect(await app.cli.handleCli(["mounts", "total"])).toBe("2");
   });
 
-  it("an empty registry yields an empty string", async () => {
+  it("throws when the vault has no mounts", async () => {
     const app = await seededApp();
-    installVaultRegistry({});
-    expect(await app.cli.handleCli(["vaults"])).toBe("");
-  });
-
-  it("throws the desktop-only string on mobile", async () => {
-    const app = await seededApp();
-    installVaultRegistry({});
-    Platform.isMobile = true;
-    await expect(app.cli.handleCli(["vaults"])).rejects.toBe(
-      "This command is only available on desktop.",
-    );
+    await expect(app.cli.handleCli(["mounts"])).rejects.toBe("This vault has no mounts.");
   });
 });
 

@@ -1,9 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as fs from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { JsonStore } from "@desktop/json-store";
-import { VaultRegistry } from "@desktop/vault-registry";
 import {
   createIpcHandlers,
   type IpcDeps,
@@ -11,16 +9,10 @@ import {
   type RequestUrlParams,
   type RequestUrlResult,
 } from "@desktop/ipc";
-import type { ObsidianSettings } from "@desktop/settings";
 
 let dir: string;
-let registry: VaultRegistry;
-let openVault: ReturnType<typeof vi.fn<(id: string, focus?: boolean) => unknown>>;
-let openSet: Set<string>;
-let webContentsToVault: Map<number, string>;
 let trashItem: ReturnType<typeof vi.fn<(path: string) => Promise<void>>>;
 let openExternal: ReturnType<typeof vi.fn<(url: string) => void>>;
-let switchVault: ReturnType<typeof vi.fn<(wcId: number, id: string) => boolean>>;
 let performRequest: ReturnType<typeof vi.fn<(p: RequestUrlParams) => Promise<RequestUrlResult>>>;
 let appearance: NonNullable<IpcDeps["appearance"]>;
 let handlers: Record<string, (event: IpcSyncEvent, ...args: unknown[]) => void>;
@@ -44,18 +36,21 @@ function makeEvent(senderId = 1): IpcSyncEvent & { replies: Array<[string, unkno
   };
 }
 
+function makeHandlers(extra: Partial<IpcDeps> = {}) {
+  return createIpcHandlers({
+    paths: PATHS,
+    trashItem,
+    openExternal,
+    performRequest,
+    appearance,
+    ...extra,
+  });
+}
+
 beforeEach(() => {
   dir = fs.mkdtempSync(join(tmpdir(), "ipc-"));
-  const store = new JsonStore(join(dir, "userData"));
-  const settings: ObsidianSettings = {};
-  registry = new VaultRegistry(settings, store, () => {});
-  openVault = vi.fn<(id: string, focus?: boolean) => unknown>();
-  openSet = new Set();
-  webContentsToVault = new Map();
   trashItem = vi.fn<(path: string) => Promise<void>>(() => Promise.resolve());
   openExternal = vi.fn<(url: string) => void>();
-  // Default: not a vault window, so vault-open falls through to openVault.
-  switchVault = vi.fn<(wcId: number, id: string) => boolean>(() => false);
   performRequest = vi.fn<(p: RequestUrlParams) => Promise<RequestUrlResult>>(() =>
     Promise.resolve({ status: 200, headers: {}, body: new ArrayBuffer(0) }),
   );
@@ -66,23 +61,7 @@ beforeEach(() => {
     setIcon: vi.fn((path) => (path ? "data:image/png;base64,updated" : null)),
     relaunch: vi.fn(),
   };
-
-  handlers = createIpcHandlers({
-    registry,
-    vaultWindows: {
-      openVault,
-      switchVault,
-      isOpen: (id) => openSet.has(id),
-      vaultIdForWebContents: (wcId) => webContentsToVault.get(wcId) ?? null,
-    },
-    paths: PATHS,
-    trashItem,
-    openExternal,
-    performRequest,
-    existsSync: fs.existsSync,
-    mkdirp: (p) => fs.mkdirSync(p, { recursive: true }),
-    appearance,
-  });
+  handlers = makeHandlers();
 });
 
 afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
@@ -105,86 +84,23 @@ describe("IPC env getters", () => {
   });
 });
 
-describe("IPC vault channels", () => {
-  it("vault-list returns the whole registry", () => {
-    const vaultPath = join(dir, "V");
-    fs.mkdirSync(vaultPath);
-    registry.registerPath(vaultPath);
+describe("IPC boot handshake", () => {
+  it("vault answers the config home for every window", () => {
+    // Real answered {id, path, home} — which folder this window IS. The
+    // workspace form has no per-window folder identity; home is the story.
     const event = makeEvent();
-    handlers["vault-list"](event);
-    expect(event.returnValue).toBe(registry.vaults);
+    handlers.vault(event);
+    expect(event.returnValue).toEqual({ home: "/userData" });
   });
 
-  it("vault maps the sender webContents to {id, path, home}, else just the home", () => {
-    const vaultPath = join(dir, "V");
-    fs.mkdirSync(vaultPath);
-    const { id } = registry.registerPath(vaultPath) as { id: string };
-    webContentsToVault.set(7, id);
-
-    const known = makeEvent(7);
-    handlers.vault(known);
-    // `home` rides along on every reply: config is the app's, not the folder's.
-    expect(known.returnValue).toEqual({ id, path: resolve(vaultPath), home: "/userData" });
-
-    const unknown = makeEvent(99);
-    handlers.vault(unknown);
-    expect(unknown.returnValue).toEqual({ home: "/userData" });
-  });
-
-  it("vault-open registers and opens the window, returning true", () => {
-    const vaultPath = join(dir, "New");
-    fs.mkdirSync(vaultPath);
+  it("vault carries the e2e mount seed when configured", () => {
+    const seeded = makeHandlers({ seedMounts: ["/tmp/repo-a", "/tmp/repo-b"] });
     const event = makeEvent();
-    handlers["vault-open"](event, vaultPath, false);
-    expect(event.returnValue).toBe(true);
-    expect(openVault).toHaveBeenCalledTimes(1);
-  });
-
-  it("vault-open with create=true mkdirs, or reports an existing vault", () => {
-    const vaultPath = join(dir, "Created");
-    const create = makeEvent();
-    handlers["vault-open"](create, vaultPath, true);
-    expect(create.returnValue).toBe(true);
-    expect(fs.existsSync(vaultPath)).toBe(true);
-
-    const again = makeEvent();
-    handlers["vault-open"](again, vaultPath, true);
-    expect(again.returnValue).toBe("Vault already exists");
-  });
-
-  it("vault-open surfaces the registry error string", () => {
-    const event = makeEvent();
-    handlers["vault-open"](event, join(dir, "missing"), false);
-    expect(event.returnValue).toBe("folder not found");
-    expect(openVault).not.toHaveBeenCalled();
-  });
-
-  it("vault-remove/vault-move respect the open guard", () => {
-    const vaultPath = join(dir, "Guarded");
-    fs.mkdirSync(vaultPath);
-    const { id } = registry.registerPath(vaultPath) as { id: string };
-    const resolved = registry.vaults[id].path;
-    openSet.add(id);
-
-    const remove = makeEvent();
-    handlers["vault-remove"](remove, resolved);
-    expect(remove.returnValue).toBe(false);
-
-    const move = makeEvent();
-    handlers["vault-move"](move, resolved, join(dir, "Moved"));
-    expect(move.returnValue).toBe("EVAULTOPEN");
-  });
-
-  it("vault-open switches the calling window in place when it has one", () => {
-    const vaultPath = join(dir, "InPlace");
-    fs.mkdirSync(vaultPath);
-    switchVault.mockReturnValue(true);
-    const event = makeEvent();
-    handlers["vault-open"](event, vaultPath, false);
-    expect(event.returnValue).toBe(true);
-    // The whole point: switching folders reuses the window it was asked from.
-    expect(switchVault).toHaveBeenCalledTimes(1);
-    expect(openVault).not.toHaveBeenCalled();
+    seeded.vault(event);
+    expect(event.returnValue).toEqual({
+      home: "/userData",
+      mounts: ["/tmp/repo-a", "/tmp/repo-b"],
+    });
   });
 });
 

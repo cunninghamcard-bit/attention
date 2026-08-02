@@ -123,14 +123,26 @@ here rather than under `styles/deviations/`:
 - **One config home** — `.obsidian/` lives once under the app's data
   directory and nothing is ever written into an opened folder or mount
   (`docs/superpowers/specs/2026-07-27-single-config-home-design.md`).
-- **A multi-root workspace** — Obsidian is one vault per window; this app
-  mounts several roots into ONE namespace: `Home` (the synced replica where
-  产物 live, always present) plus any number of repositories, which git
-  owns and sync never touches. `mount/MountAdapter` routes by the first path
-  segment and re-emits child events under it, so everything above the
-  adapter seam — Vault, MetadataCache, search, links, the file tree —
-  keeps its single-namespace assumption, which is the faithful part. Roots
-  join and leave without a reload (the VS Code shape). Recorded in
+- **A multi-root workspace, and it is the ONLY form** — Obsidian is one
+  vault per window, with a registry of vaults, a switcher, per-vault window
+  state, and vault-targeted CLI/URL routing. This app replaced that model
+  wholesale: ONE workspace window mounts several roots into ONE namespace —
+  `Home` (the synced replica where 产物 live, always present) plus any
+  number of repositories, which git owns and sync never touches.
+  `mount/MountAdapter` routes by the first path segment and re-emits child
+  events under it, so everything above the adapter seam — Vault,
+  MetadataCache, search, links, the file tree — keeps its single-namespace
+  assumption, which is the faithful part. Roots join and leave without a
+  reload (the VS Code shape). What the replacement deleted, deliberately:
+  the vault registry (`obsidian.json`'s `vaults` key), `switchVault` and
+  the vault-window map (one `WorkspaceWindow` keeps the faithful chrome,
+  geometry under the fixed `workspace` key), the switcher surfaces
+  (`app:switch-vault`, the sidedock vault menu — now the workspace menu),
+  CLI `vault=` / cwd / most-recent routing, and `attention://` vault
+  resolution (every action lands in THE window). The `vault` boot IPC
+  answers `{ home, mounts? }` — config home plus the e2e mount seed —
+  never a folder identity. Git and terminals resolve per MOUNT (the
+  repository owning the active file). Recorded in
   `docs/superpowers/specs/2026-08-02-data-layer-server-design.md`.
 
 ## Enforced rules

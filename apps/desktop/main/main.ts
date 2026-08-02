@@ -1,12 +1,12 @@
 /**
- * Input: electron, @electron/remote/main, node:path, node:fs, ./window, ./foundation-ipc, ./state, ./json-store, ./settings
+ * Input: electron, @electron/remote/main, node:path, node:fs, ./window, ./foundation-ipc, ./state, ./json-store, ./settings, ./workspace-window
  * Output: None
  * Pos: Application code
  *
  * 🔄 Self-reference: When this file changes, update this header
  */
 
-import { app, BrowserWindow, dialog, ipcMain, nativeImage, screen, shell } from "electron";
+import { app, BrowserWindow, ipcMain, nativeImage, screen, shell } from "electron";
 import { initialize as initializeRemote } from "@electron/remote/main";
 import { join } from "node:path";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -15,8 +15,7 @@ import { registerFoundationIpc } from "./foundation-ipc";
 import { mainState } from "./state";
 import { JsonStore } from "./json-store";
 import { loadSettings, saveSettings } from "./settings";
-import { VaultRegistry } from "./vault-registry";
-import { VaultWindowManager } from "./vault-windows";
+import { WorkspaceWindow } from "./workspace-window";
 import type { DisplayProvider } from "./window-state";
 import { createFileOrigin } from "./app-protocol";
 import { registerAppProtocol, registerAppSchemePrivileges } from "./app-protocol-register";
@@ -42,9 +41,9 @@ function cliArgvFromProcess(argv: string[]): string[] {
  * Electron main entry for the reconstructed Obsidian desktop app.
  *
  * Composition root: single-instance lock, app lifecycle, obsidian.json
- * settings + vault registry (L2), vault-window lifecycle (L3), the faithful
- * webPreferences and preload bridge (L0/L1). Later layers add the `app://`
- * protocol, the full IPC table, and `obsidian://` routing.
+ * settings, THE workspace window (one window, multi-root — the deviation
+ * recorded in docs/architecture.md), the faithful webPreferences and preload
+ * bridge, the `app://` protocol, the IPC table, and `attention://` routing.
  */
 
 // Bundled to `dist-electron/main.cjs`; `__dirname` therefore points at the
@@ -55,7 +54,7 @@ const here = __dirname;
 // (etc.), never the generic Electron dir and never anything of real Obsidian's.
 // Must run before the first app.getPath("userData").
 app.setName("Attention");
-// Hermetic-test seam (mirrors E2E_VAULT_PATH): an isolated userData also
+// Hermetic-test seam (mirrors E2E_MOUNT_PATH): an isolated userData also
 // isolates the single-instance lock, so e2e runs never touch the real profile.
 if (process.env.E2E_USER_DATA) app.setPath("userData", process.env.E2E_USER_DATA);
 
@@ -107,15 +106,12 @@ if (!gotLock) {
     app.dock?.setIcon(image);
     for (const win of BrowserWindow.getAllWindows()) win.setIcon(image);
   };
-  const registry = new VaultRegistry(settings, store, () => saveSettings(store, settings));
-
   const displays: DisplayProvider = {
     getPrimaryWorkArea: () => screen.getPrimaryDisplay().workArea,
     getAllWorkAreas: () => screen.getAllDisplays().map((d) => d.workArea),
   };
-  const vaultWindows = new VaultWindowManager({
+  const workspaceWindow = new WorkspaceWindow({
     store,
-    registry,
     displays,
     preloadPath: defaultPreloadPath(here),
     isQuitting: () => mainState.isQuitting,
@@ -127,79 +123,47 @@ if (!gotLock) {
     iconPath: configuredIconPath,
   });
 
-  /**
-   * Opening a folder is the system picker and nothing else — there is no vault
-   * chooser screen. Cancelling with no window open leaves the app with nothing
-   * to show and no way back to it, so it quits instead of idling invisibly.
-   */
-  const chooseFolder = (): void => {
-    void dialog
-      .showOpenDialog({ properties: ["openDirectory", "createDirectory"], buttonLabel: "Open" })
-      .then(({ filePaths }) => {
-        const chosen = filePaths[0];
-        if (!chosen) {
-          if (BrowserWindow.getAllWindows().length === 0) app.quit();
-          return;
-        }
-        const result = registry.registerPath(chosen);
-        if ("id" in result) vaultWindows.openVault(result.id);
-      });
-  };
+  // Hermetic-test seam: E2E_MOUNT_PATH pins folders (path-delimited) that the
+  // renderer mounts into the workspace at boot, so e2e runs land on real disk
+  // without any dialog. Created here so the seam is one env var, not a script.
+  const seedMounts = (process.env.E2E_MOUNT_PATH ?? "")
+    .split(":")
+    .filter(Boolean)
+    .map((path) => {
+      try {
+        mkdirSync(path, { recursive: true });
+      } catch (error) {
+        console.error(error);
+      }
+      return path;
+    });
 
-  // Hermetic-test seam: E2E_VAULT_PATH pins a vault that is created and
-  // opened directly, so e2e runs land in a window without a folder picker.
-  const ensureSeededVault = (): string | null => {
-    const seededPath = process.env.E2E_VAULT_PATH;
-    if (!seededPath) return null;
-    try {
-      mkdirSync(seededPath, { recursive: true });
-    } catch (error) {
-      console.error(error);
-    }
-    const result = registry.registerPath(seededPath);
-    return "id" in result ? result.id : null;
-  };
-
-  // Reopen every folder persisted as open; zero windows means the system
-  // folder picker comes up instead.
-  const openStartupWindows = () => {
-    const opened = vaultWindows.openAllPersisted();
-    if (opened > 0 || BrowserWindow.getAllWindows().length > 0) return;
-    const seededVaultId = ensureSeededVault();
-    if (seededVaultId) vaultWindows.openVault(seededVaultId);
-    else chooseFolder();
-  };
-
-  // URL dispatch — sync-setup/choose-vault land on the folder picker.
+  // URL dispatch — every action lands in THE window; the starter forms
+  // (sync-setup / choose-vault) just make sure it is up.
   const dispatchObsidianUrl = (url: string) =>
     handleObsidianUrl(url, {
-      registry,
-      vaultWindows,
-      openStarter: chooseFolder,
-      showVaultNotFound: (u) => console.error(`No vault for URL ${u}`),
+      deliverAction: (action) => workspaceWindow.deliverAction(action),
+      openStarter: () => void workspaceWindow.open(),
       isWindows: process.platform === "win32",
     });
 
-  // The CLI socket server (real `Ve`): dispatches each request to a vault
-  // renderer via `window.handleCli`. All transport lives in CliServer; the
-  // deps here are the app's real vault routing and window bridge.
+  // The CLI socket server (real `Ve`): dispatches each request to the
+  // workspace renderer via `window.handleCli`. All transport lives in
+  // CliServer; with one window there is no vault routing left to wire.
   const cliServer = new CliServer(
     (request) =>
       dispatchCli(request, {
-        getIdByName: (name) => registry.getIdByName(name),
-        getIdByContainedPath: (path) => registry.getIdByContainedPath(path),
-        mostRecentVaultId: () => vaultWindows.mostRecentVaultId(),
         // Real `C.cli` gate, kept verbatim in shape — but Attention defaults it ON
         // (deliberate product divergence; set `cli: false` in obsidian.json to
         // disable, same persisted flag as real Obsidian).
         isCliEnabled: () => settings.cli !== false,
-        // Real second-instance-no-args behavior is `pe()` — the folder picker here.
-        openStarter: chooseFolder,
+        // Real second-instance-no-args behavior is `pe()` — open THE window.
+        openStarter: () => void workspaceWindow.open(),
         handleUrl: (url) => {
           dispatchObsidianUrl(url);
           return `Processed URI ${url}`;
         },
-        executeCliRequest: (vaultId, argv) => vaultWindows.executeCliRequest(vaultId, argv),
+        executeCliRequest: (argv) => workspaceWindow.executeCliRequest(argv),
       }),
     defaultCliSocketPath(),
   );
@@ -247,7 +211,7 @@ if (!gotLock) {
 
   app.on("activate", () => {
     mainState.isQuitting = false;
-    if (BrowserWindow.getAllWindows().length === 0) openStartupWindows();
+    if (BrowserWindow.getAllWindows().length === 0) workspaceWindow.open();
   });
 
   void app.whenReady().then(() => {
@@ -265,11 +229,8 @@ if (!gotLock) {
     ipcMain.on("update-menu-items", (_event, items: Parameters<typeof updateMenuItems>[0]) => {
       updateMenuItems(items);
     });
-    registry.pruneMissing();
     registerFoundationIpc();
     registerIpcHandlers(ipcMain, {
-      registry,
-      vaultWindows,
       paths: {
         resources: resourcesDir,
         version: app.getVersion(),
@@ -282,8 +243,7 @@ if (!gotLock) {
       trashItem: (p) => shell.trashItem(p),
       openExternal: (url) => void shell.openExternal(url),
       performRequest: performNetRequest,
-      existsSync,
-      mkdirp: (p) => void mkdirSync(p, { recursive: true }),
+      seedMounts,
       appearance: {
         frame: (value) => {
           if (value) {
@@ -323,7 +283,7 @@ if (!gotLock) {
       onError: (error) => console.error(error),
     });
     applyCustomIcon();
-    openStartupWindows();
+    workspaceWindow.open();
     cliServer.start();
     if (pendingUrl) {
       dispatchObsidianUrl(pendingUrl);

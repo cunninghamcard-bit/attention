@@ -1,5 +1,5 @@
 /**
- * Input: ./json-store, ./vault-registry
+ * Input: ./json-store
  * Output: ObsidianSettings, SETTINGS_STORE_NAME, loadSettings, saveSettings
  * Pos: Application code
  *
@@ -7,7 +7,6 @@
  */
 
 import type { JsonStore } from "./json-store";
-import type { VaultRegistryData } from "./vault-registry";
 
 /**
  * `userData/obsidian.json` — the main-process settings object (real symbol `C`).
@@ -16,10 +15,12 @@ import type { VaultRegistryData } from "./vault-registry";
  * `updateDisabled`, `disableGpu`, `insider`, `cli`, `adblock`,
  * `adblockFrequency`, `icon`, `openSchemes`. Out-of-scope seams (updater, CLI,
  * adblock) keep their keys so a config written by real Obsidian round-trips
- * unmodified, but this reconstruction only acts on the in-scope ones.
+ * unmodified, but this reconstruction only acts on the in-scope ones. Real's
+ * `vaults` registry key is out-of-scope too now — the one-workspace-window
+ * form has no vault registry; an existing key rides along via the index
+ * signature, untouched.
  */
 export interface ObsidianSettings {
-  vaults?: VaultRegistryData;
   frame?: string;
   openSchemes?: Record<string, boolean>;
   // Out-of-scope seams, persisted verbatim:

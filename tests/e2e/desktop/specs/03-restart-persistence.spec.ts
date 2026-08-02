@@ -9,7 +9,7 @@ import { expect, test } from "../fixtures/electronApp";
 test("restores the open tab across an app restart", async ({ launchApp, vaultPath }) => {
   const first = await launchApp();
 
-  const file = first.page.locator('.nav-file-title[data-path="Pics/pic.png"]');
+  const file = first.page.locator('.nav-file-title[data-path="vault/Pics/pic.png"]');
   if (!(await file.isVisible().catch(() => false))) {
     await first.page.locator(".nav-folder-title", { hasText: "Pics" }).first().click();
   }

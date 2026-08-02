@@ -32,11 +32,17 @@ export interface WorkspaceBoot {
  * sign-in. */
 export const LOCAL_HOME_ID = "local-home";
 
-export async function buildWorkspaceAdapter(): Promise<WorkspaceBoot> {
+export async function buildWorkspaceAdapter(seedPaths: string[] = []): Promise<WorkspaceBoot> {
   const session = sessionStore.session();
   const vault = sessionStore.vault();
   const homeId = vault?.id ?? LOCAL_HOME_ID;
   const home = await LoroDataAdapter.load(createSyncStore(homeId), homeId);
+
+  // Seeded mounts (the desktop e2e seam) become registry records like any
+  // folder the user added — idempotent across relaunches in one profile.
+  for (const path of seedPaths) {
+    if (!mountRegistry.has(path)) mountRegistry.add(path);
+  }
 
   const adapter = new MountAdapter([{ name: HOME_MOUNT_NAME, adapter: home }]);
   for (const record of mountRegistry.list()) {

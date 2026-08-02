@@ -11,7 +11,7 @@ test("callouts render Obsidian's structure and fold on click", async ({ launchAp
   await page.evaluate(async () => {
     const app = (window as unknown as { app: any }).app;
     const file = await app.vault.create(
-      "Callout.md",
+      "Home/Callout.md",
       "> [!warning]- Heads up\n> body line one\n\n> [!note] Plain\n> not collapsible\n",
     );
     await app.workspace.getLeaf(false).openFile(file);

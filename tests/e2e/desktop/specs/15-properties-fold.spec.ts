@@ -10,7 +10,7 @@ test("the properties panel folds in place instead of re-rendering", async ({ lau
   await page.evaluate(async () => {
     const app = (window as unknown as { app: any }).app;
     const file = await app.vault.create(
-      "Props.md",
+      "Home/Props.md",
       "---\nstatus: open\ntags: a\n---\n\nbody text\n",
     );
     await app.workspace.getLeaf(false).openFile(file);

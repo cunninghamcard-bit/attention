@@ -10,7 +10,7 @@ test("reading-view fold arrows have an icon and rotate when collapsed", async ({
   await page.evaluate(async () => {
     const app = (window as unknown as { app: any }).app;
     const file = await app.vault.create(
-      "Fold.md",
+      "Home/Fold.md",
       "# Heading\n\nbody\n\n- item one\n  - nested\n",
     );
     const leaf = app.workspace.getLeaf(false);

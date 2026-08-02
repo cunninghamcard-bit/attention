@@ -32,6 +32,15 @@ export default defineConfig({
     port: Number(process.env.PORT) || 5173,
     strictPort: false,
   },
+  optimizeDeps: {
+    // loro-crdt is wasm-bindgen: its JS glue and wasm must be ONE module
+    // instance. Dep pre-bundling makes a second glue copy (the .vite/deps
+    // bundle) beside the raw @fs one the .wasm binds to, and every LoroDoc
+    // then dies with "Cannot read properties of undefined (reading 'memory')".
+    // Exclude the whole loro graph so dev serves it raw and shared; the
+    // production build has a single graph and never had the problem.
+    exclude: ["loro-crdt", "loro-websocket", "loro-adaptors"],
+  },
   build: {
     target: "es2022",
     outDir: rootDist,

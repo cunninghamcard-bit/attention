@@ -12,8 +12,11 @@ import { fileURLToPath } from "node:url";
 
 // Window-level desktop e2e fixture, after DeepChat's test/e2e architecture:
 // - `_electron.launch` drives the REAL built app (dist-electron/main.cjs)
-// - a throwaway vault + userData + CLI socket per test file (our existing
-//   E2E_* hermetic seams — the same pattern as DEEPCHAT_E2E_USER_DATA_DIR)
+// - a throwaway repository mount + userData + CLI socket per test file (the
+//   E2E_* hermetic seams — the same pattern as DEEPCHAT_E2E_USER_DATA_DIR).
+//   The app boots THE workspace (Home + mounts); E2E_MOUNT_PATH seeds the
+//   on-disk folder as a mount named "vault", so seeded paths live under
+//   `vault/…` in the tree while `vaultPath` stays the real disk root.
 // - `app` auto-launches/closes; `launchApp` is the factory that makes
 //   RESTART tests possible (close + relaunch inside one test)
 // - renderer console + pageerror output is captured and attached to every
@@ -76,7 +79,7 @@ export const test = base.extend<DesktopFixtures>({
     const base = dirname(vaultPath);
     const env = {
       ...process.env,
-      E2E_VAULT_PATH: vaultPath,
+      E2E_MOUNT_PATH: vaultPath,
       E2E_USER_DATA: join(base, "userData"),
       E2E_CLI_SOCKET: join(base, "cli.sock"),
     };
@@ -115,6 +118,14 @@ export const test = base.extend<DesktopFixtures>({
       // App-ready contract: the workspace shell and the file tree are up.
       await expect(page.locator(".workspace")).toBeVisible({ timeout: 30_000 });
       await expect(page.locator(".nav-files-container").first()).toBeVisible({ timeout: 30_000 });
+      // The seeded repository arrives as the "vault" mount. Expanding it (a
+      // fresh mount renders collapsed) doubles as the readiness gate for the
+      // mount's announced contents — specs then address `vault/…` paths.
+      const mountTitle = page.locator('.nav-folder-title[data-path="vault"]');
+      await expect(mountTitle).toBeVisible({ timeout: 30_000 });
+      const seededNote = page.locator('.nav-file-title[data-path="vault/Note.md"]');
+      if (!(await seededNote.isVisible().catch(() => false))) await mountTitle.click();
+      await expect(seededNote).toBeVisible({ timeout: 15_000 });
       instance.page = page;
       return instance;
     };

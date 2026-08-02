@@ -20,10 +20,9 @@
 - `settings.ts` - Exports ObsidianSettings and 3 more
 - `state.ts` - Exports MainState and 1 more
 - `system-fonts.ts` - Exports listSystemFontFamilies
-- `vault-registry.ts` - Exports VaultEntry and 3 more
-- `vault-windows.ts` - Exports VaultWindowDeps and 1 more
 - `vite.config.ts` - Exports default
 - `window-state.ts` - Exports WindowState and 5 more
 - `window.ts` - Exports OBSIDIAN_WEB_PREFERENCES and 3 more
+- `workspace-window.ts` - Exports WorkspaceWindowDeps and 1 more
 
 🔄 **Self-reference**: When files in this folder change, update this index and PROJECT_INDEX.md

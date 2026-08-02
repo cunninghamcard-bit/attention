@@ -29,14 +29,12 @@ export interface SyncChannels {
   "get-default-vault-path": { request: []; response: string };
   vault: {
     request: [];
-    // `home` is the app's one config directory and is always present; id/path
-    // are absent when the sender is not a folder window.
-    response: { id?: string; path?: string; home: string } | Record<string, never>;
+    // The boot handshake. `home` is the app's one config directory; `mounts`
+    // is the e2e seed seam (folders to mount into the workspace at boot).
+    // Real Obsidian answered {id, path} — which folder this window IS; the
+    // one-workspace-window form has no per-window folder identity.
+    response: { home: string; mounts?: string[] } | Record<string, never>;
   };
-  "vault-list": { request: []; response: Record<string, { path: string }> };
-  "vault-open": { request: [path: string, create?: boolean]; response: string | boolean };
-  "vault-remove": { request: [path: string]; response: boolean };
-  "vault-move": { request: [from: string, to: string]; response: boolean };
   trash: { request: [path: string]; response: boolean };
   "open-url": { request: [url: string]; response: void };
   "request-url": { request: [replyId: string, params: unknown]; response: void };

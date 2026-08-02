@@ -1,13 +1,11 @@
 /**
- * Input: node:path, ./vault-registry, @app/shared/ipc
+ * Input: @app/shared/ipc
  * Output: IpcSyncEvent, IpcListener, RequestUrlParams, RequestUrlResult, IpcDeps, createIpcHandlers, IpcMainLike, registerIpcHandlers
  * Pos: Application code
  *
  * 🔄 Self-reference: When this file changes, update this header
  */
 
-import { resolve } from "node:path";
-import type { VaultRegistry } from "./vault-registry";
 import type { IpcChannelName } from "@app/shared/ipc";
 
 /**
@@ -42,13 +40,6 @@ export type RequestUrlResult =
   | { error: unknown };
 
 export interface IpcDeps {
-  registry: VaultRegistry;
-  vaultWindows: {
-    openVault(id: string, focus?: boolean): unknown;
-    switchVault(webContentsId: number, id: string): boolean;
-    isOpen(id: string): boolean;
-    vaultIdForWebContents(webContentsId: number): string | null;
-  };
   paths: {
     resources: string;
     version: string;
@@ -65,8 +56,8 @@ export interface IpcDeps {
   openExternal(url: string): void;
   /** net.request wrapper — real `request-url`. */
   performRequest(params: RequestUrlParams): Promise<RequestUrlResult>;
-  existsSync(path: string): boolean;
-  mkdirp(path: string): void;
+  /** E2E seam: folders the renderer should mount at boot (E2E_MOUNT_PATH). */
+  seedMounts?: string[];
   appearance?: {
     frame(value?: "hidden" | "custom" | "native"): string;
     disableGpu(value?: boolean): boolean;
@@ -78,7 +69,7 @@ export interface IpcDeps {
 }
 
 export function createIpcHandlers(deps: IpcDeps): Record<string, IpcListener> {
-  const { registry, vaultWindows, paths } = deps;
+  const { paths } = deps;
   const report = (error: unknown) => deps.onError?.(error);
 
   return {
@@ -104,46 +95,14 @@ export function createIpcHandlers(deps: IpcDeps): Record<string, IpcListener> {
       e.returnValue = undefined;
     },
 
-    // --- Vault registry (sync) ---
+    // --- Boot handshake (sync) ---
+    // Real Obsidian's `vault` answer carried {id, path} — which folder this
+    // window IS. The workspace form (one window, multi-root) has no such
+    // identity: `home` is where config lives — one directory for the whole
+    // app, never inside any mount — and `mounts` is the e2e seed seam.
     vault: (e) => {
-      const id = vaultWindows.vaultIdForWebContents(e.sender.id);
-      // `home` is where config lives — one directory for the whole app, never
-      // inside the opened folder. The renderer roots its JsonStore there.
       const home = deps.paths.configHome;
-      e.returnValue = id ? { id, path: resolve(registry.vaults[id].path), home } : { home };
-    },
-    "vault-list": (e) => (e.returnValue = registry.vaults),
-    "vault-open": (e, pathArg, createArg) => {
-      const path = pathArg as string;
-      if (createArg) {
-        if (deps.existsSync(path)) {
-          e.returnValue = "Vault already exists";
-          return;
-        }
-        try {
-          deps.mkdirp(path);
-        } catch (error) {
-          e.returnValue = String(error);
-          return;
-        }
-      }
-      const result = registry.registerPath(path);
-      if ("error" in result) {
-        e.returnValue = result.error;
-        return;
-      }
-      // A vault window switches in place; anything else (cold start, a URL)
-      // has no window to reuse and gets one.
-      if (!vaultWindows.switchVault(e.sender.id, result.id)) vaultWindows.openVault(result.id);
-      e.returnValue = true;
-    },
-    "vault-remove": (e, pathArg) => {
-      e.returnValue = registry.removeByPath(pathArg as string, (id) => vaultWindows.isOpen(id));
-    },
-    "vault-move": (e, fromArg, toArg) => {
-      e.returnValue = registry.moveByPath(fromArg as string, toArg as string, (id) =>
-        vaultWindows.isOpen(id),
-      );
+      e.returnValue = deps.seedMounts?.length ? { home, mounts: deps.seedMounts } : { home };
     },
 
     // --- Actions ---

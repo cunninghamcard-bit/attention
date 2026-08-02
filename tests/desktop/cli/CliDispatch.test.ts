@@ -1,61 +1,34 @@
 import { describe, expect, it, vi } from "vitest";
 import { dispatchCli, type CliDispatchDeps } from "@desktop/cli/CliDispatch";
-import { routeVault } from "@desktop/cli/CliVaultRouter";
 
 function makeDeps(overrides: Partial<CliDispatchDeps> = {}): CliDispatchDeps {
   return {
-    getIdByName: (name) => (name === "Work" ? "vault-work" : null),
-    getIdByContainedPath: (path) => (path.startsWith("/vaults/notes") ? "vault-notes" : null),
-    mostRecentVaultId: () => "vault-recent",
     isCliEnabled: () => true,
     openStarter: vi.fn(),
     handleUrl: (url) => `Processed URI ${url}`,
-    executeCliRequest: vi.fn(async (vaultId, argv) => `ran ${vaultId} ${argv.join(",")}`),
+    executeCliRequest: vi.fn(async (argv) => `ran ${argv.join(",")}`),
     ...overrides,
   };
 }
 
-describe("routeVault", () => {
-  it("vault=<name> resolves by name and strips the prefix", () => {
-    const deps = makeDeps();
-    expect(routeVault(["vault=Work", "files"], "/anywhere", deps)).toEqual({
-      vaultId: "vault-work",
-      argv: ["files"],
-    });
-  });
-
-  it("falls back to the cwd's vault, then the most recent", () => {
-    const deps = makeDeps();
-    expect(routeVault(["files"], "/vaults/notes/sub", deps)).toEqual({
-      vaultId: "vault-notes",
-      argv: ["files"],
-    });
-    expect(routeVault(["files"], "/tmp", deps)).toEqual({
-      vaultId: "vault-recent",
-      argv: ["files"],
-    });
-  });
-});
-
 describe("dispatchCli", () => {
-  it("routes a command to the vault renderer", async () => {
+  it("runs a command in the workspace renderer", async () => {
+    // Real routed to a vault first (vault=<name> / cwd containment / most
+    // recent); the one-window form hands the argv straight over.
     const deps = makeDeps();
-    const out = await dispatchCli(
-      { argv: ["vault=Work", "files", "ext=ts"], tty: false, cwd: "/x" },
-      deps,
-    );
-    expect(out).toBe("ran vault-work files,ext=ts");
+    const out = await dispatchCli({ argv: ["files", "ext=ts"], tty: false, cwd: "/x" }, deps);
+    expect(out).toBe("ran files,ext=ts");
     expect(deps.openStarter).not.toHaveBeenCalled();
   });
 
-  it("opens the Starter on empty non-tty argv, then still dispatches (help)", async () => {
+  it("opens the workspace window on empty non-tty argv, then still dispatches (help)", async () => {
     const deps = makeDeps();
     await dispatchCli({ argv: [], tty: false, cwd: "/tmp" }, deps);
     expect(deps.openStarter).toHaveBeenCalledOnce();
-    expect(deps.executeCliRequest).toHaveBeenCalledWith("vault-recent", []);
+    expect(deps.executeCliRequest).toHaveBeenCalledWith([]);
   });
 
-  it("does not open the Starter for a tty request", async () => {
+  it("does not open the window for a tty request", async () => {
     const deps = makeDeps();
     await dispatchCli({ argv: [], tty: true, cwd: "/tmp" }, deps);
     expect(deps.openStarter).not.toHaveBeenCalled();

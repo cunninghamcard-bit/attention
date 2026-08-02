@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolve } from "node:path";
-import { buildObsActScript, parseObsidianUrl, resolveVaultForAction } from "@desktop/obsidian-url";
-import type { VaultRegistryData } from "@desktop/vault-registry";
+import { buildObsActScript, parseObsidianUrl } from "@desktop/obsidian-url";
 
 describe("parseObsidianUrl (real $e parse)", () => {
   it("rejects non-obsidian URLs", () => {
@@ -45,38 +43,6 @@ describe("parseObsidianUrl (real $e parse)", () => {
   it("defaults a valueless query param to 'true' and strips trailing slashes", () => {
     const parsed = parseObsidianUrl("attention://open/?flag");
     expect(parsed).toEqual({ kind: "action", action: { action: "open", flag: "true" } });
-  });
-});
-
-describe("resolveVaultForAction (real $e resolution)", () => {
-  const vaults: VaultRegistryData = {
-    a1: { path: resolve("/vaults/Alpha"), ts: 1 },
-    b2: { path: resolve("/vaults/Alpha Beta"), ts: 1 },
-  };
-
-  it("resolves by longest matching path and sets the relative file", () => {
-    const out = resolveVaultForAction(
-      { action: "open", path: resolve("/vaults/Alpha/n.md") },
-      vaults,
-    );
-    expect(out.vaultId).toBe("a1");
-    expect(out.action.file).toBe("/n.md");
-    expect(out.useMostRecent).toBe(false);
-  });
-
-  it("resolves by vault name (case-insensitive basename)", () => {
-    const out = resolveVaultForAction({ action: "open", vault: "alpha beta" }, vaults);
-    expect(out.vaultId).toBe("b2");
-  });
-
-  it("returns null vaultId for an unknown vault name", () => {
-    expect(resolveVaultForAction({ action: "open", vault: "ghost" }, vaults).vaultId).toBeNull();
-  });
-
-  it("defers to the most-recent vault when neither path nor vault is given", () => {
-    const out = resolveVaultForAction({ action: "search", query: "x" }, vaults);
-    expect(out.useMostRecent).toBe(true);
-    expect(out.vaultId).toBeNull();
   });
 });
 

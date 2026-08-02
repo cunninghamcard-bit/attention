@@ -6,8 +6,10 @@ import { tmpdir } from "node:os";
 const { FakeBrowserWindow, enableRemote } = vi.hoisted(() => {
   const enableRemote = vi.fn();
   /**
-   * A minimal in-memory BrowserWindow standing in for Electron's, with just the
-   * surface VaultWindowManager touches. Event emitter semantics included.
+   * A minimal in-memory BrowserWindow standing in for Electron's, with just
+   * the surface WorkspaceWindow touches. Event emitter semantics included,
+   * on the window and on its webContents (did-finish-load drives the CLI and
+   * OBS_ACT deferral).
    */
   class FakeBrowserWindow {
     static instances: FakeBrowserWindow[] = [];
@@ -26,8 +28,29 @@ const { FakeBrowserWindow, enableRemote } = vi.hoisted(() => {
     webContents = {
       id: FakeBrowserWindow.nextWebContentsId++,
       zoomLevel: 0,
-      on: vi.fn(),
-      executeJavaScript: vi.fn(() => Promise.resolve()),
+      listeners: new Map<string, Array<(...args: unknown[]) => void>>(),
+      on(event: string, handler: (...args: unknown[]) => void) {
+        const list = this.listeners.get(event) ?? [];
+        list.push(handler);
+        this.listeners.set(event, list);
+      },
+      once(event: string, handler: (...args: unknown[]) => void) {
+        const wrapped = (...args: unknown[]) => {
+          handler(...args);
+          this.listeners.set(
+            event,
+            (this.listeners.get(event) ?? []).filter((h) => h !== wrapped),
+          );
+        };
+        this.on(event, wrapped);
+      },
+      emit(event: string, ...args: unknown[]) {
+        // oxlint-disable-next-line unicorn/no-useless-spread -- Handlers may unsubscribe while emitting, so the fake preserves snapshot semantics.
+        for (const handler of [...(this.listeners.get(event) ?? [])]) handler(...args);
+      },
+      executeJavaScript: vi.fn<(script: string) => Promise<unknown>>(() =>
+        Promise.resolve(undefined),
+      ),
       openDevTools: vi.fn(),
       isDevToolsOpened: () => false,
       setWindowOpenHandler: vi.fn(),
@@ -112,10 +135,8 @@ vi.mock("electron", () => ({ BrowserWindow: FakeBrowserWindow }));
 vi.mock("@electron/remote/main", () => ({ enable: enableRemote, initialize: vi.fn() }));
 
 import { JsonStore } from "@desktop/json-store";
-import { VaultRegistry } from "@desktop/vault-registry";
-import { VaultWindowManager } from "@desktop/vault-windows";
+import { WorkspaceWindow } from "@desktop/workspace-window";
 import { saveWindowState, type DisplayProvider } from "@desktop/window-state";
-import type { ObsidianSettings } from "@desktop/settings";
 
 const DISPLAYS: DisplayProvider = {
   getPrimaryWorkArea: () => ({ x: 0, y: 25, width: 1512, height: 944 }),
@@ -124,28 +145,23 @@ const DISPLAYS: DisplayProvider = {
 
 let dir: string;
 let store: JsonStore;
-let registry: VaultRegistry;
-let manager: VaultWindowManager;
+let workspace: WorkspaceWindow;
 let quitting: boolean;
-let vaultId: string;
+let cliEnabled: boolean;
 
 beforeEach(() => {
   vi.useFakeTimers();
   FakeBrowserWindow.instances = [];
   quitting = false;
-  dir = fs.mkdtempSync(join(tmpdir(), "vault-windows-"));
-  const vaultPath = join(dir, "Vault");
-  fs.mkdirSync(vaultPath);
+  cliEnabled = true;
+  dir = fs.mkdtempSync(join(tmpdir(), "workspace-window-"));
   store = new JsonStore(join(dir, "userData"));
-  const settings: ObsidianSettings = {};
-  registry = new VaultRegistry(settings, store, () => {});
-  vaultId = (registry.registerPath(vaultPath) as { id: string }).id;
-  manager = new VaultWindowManager({
+  workspace = new WorkspaceWindow({
     store,
-    registry,
     displays: DISPLAYS,
     preloadPath: "/tmp/preload.cjs",
     isQuitting: () => quitting,
+    isCliEnabled: () => cliEnabled,
   });
 });
 
@@ -154,9 +170,9 @@ afterEach(() => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-describe("VaultWindowManager (real de/H/ve)", () => {
+describe("WorkspaceWindow", () => {
   it("creates a hidden frameless window with the faithful options", () => {
-    manager.openVault(vaultId);
+    workspace.open();
     const [win] = FakeBrowserWindow.instances;
     expect(win.options.show).toBe(false);
     expect(win.options.frame).toBe(false);
@@ -172,10 +188,9 @@ describe("VaultWindowManager (real de/H/ve)", () => {
     expect(win.loadedUrl).toBeTruthy();
   });
 
-  it("applies desktop appearance settings to vault windows", () => {
-    const configured = new VaultWindowManager({
+  it("applies desktop appearance settings", () => {
+    const configured = new WorkspaceWindow({
       store,
-      registry,
       displays: DISPLAYS,
       preloadPath: "/tmp/preload.cjs",
       isQuitting: () => quitting,
@@ -183,74 +198,33 @@ describe("VaultWindowManager (real de/H/ve)", () => {
       iconPath: () => "/tmp/custom-icon.png",
     });
 
-    configured.openVault(vaultId);
+    configured.open();
     const [win] = FakeBrowserWindow.instances;
     expect(win.options.frame).toBe(true);
     expect(win.options.titleBarStyle).toBeUndefined();
     expect(win.options.icon).toBe("/tmp/custom-icon.png");
   });
 
-  it("open-or-focus: a second openVault focuses instead of duplicating", () => {
-    const first = manager.openVault(vaultId);
-    const again = manager.openVault(vaultId);
+  it("open-or-focus: a second open focuses instead of duplicating", () => {
+    const first = workspace.open();
+    const again = workspace.open();
     expect(again).toBe(first);
     expect(FakeBrowserWindow.instances).toHaveLength(1);
     expect((first as unknown as InstanceType<typeof FakeBrowserWindow>).focused).toBe(true);
   });
 
-  it("clears the open flag on close while another window remains", () => {
-    const otherPath = join(dir, "Other");
-    fs.mkdirSync(otherPath);
-    const otherId = (registry.registerPath(otherPath) as { id: string }).id;
-    manager.openVault(vaultId);
-    manager.openVault(otherId);
-    expect(registry.vaults[vaultId].open).toBe(true);
+  it("reopens after the window closes", () => {
+    workspace.open();
     FakeBrowserWindow.instances[0].close();
-    expect(registry.vaults[vaultId].open).toBeUndefined();
-    expect(manager.openCount).toBe(1);
-  });
-
-  it("switches a live window to another folder instead of opening a second one", () => {
-    const otherPath = join(dir, "Other");
-    fs.mkdirSync(otherPath);
-    const otherId = (registry.registerPath(otherPath) as { id: string }).id;
-    manager.openVault(vaultId);
-    const [win] = FakeBrowserWindow.instances;
-
-    expect(manager.switchVault(win.webContents.id, otherId)).toBe(true);
-
-    // One window, now pointing at the other folder: the renderer re-asks main
-    // which folder it is on reload, so nothing else has to know it changed.
-    expect(FakeBrowserWindow.instances).toHaveLength(1);
-    expect(win.webContents.reload).toHaveBeenCalledTimes(1);
-    expect(manager.vaultIdForWebContents(win.webContents.id)).toBe(otherId);
-    expect(registry.vaults[otherId].open).toBe(true);
-    expect(registry.vaults[vaultId].open).toBeUndefined();
-  });
-
-  it("declines to switch when the caller is not a folder window", () => {
-    manager.openVault(vaultId);
-    // Cold start and URL dispatch land here, and fall through to opening one.
-    expect(manager.switchVault(9999, vaultId)).toBe(false);
-  });
-
-  it("keeps the open flag when the app's last window closes (relaunch restores it)", () => {
-    // No other window remains, so the persisted flag survives and the next
-    // launch reopens the folder.
-    manager.openVault(vaultId);
-    FakeBrowserWindow.instances[0].close();
-    expect(registry.vaults[vaultId].open).toBe(true);
-  });
-
-  it("keeps the open flag while quitting so relaunch restores windows", () => {
-    manager.openVault(vaultId);
-    quitting = true;
-    FakeBrowserWindow.instances[0].close();
-    expect(registry.vaults[vaultId].open).toBe(true);
+    expect(workspace.isOpen).toBe(false);
+    workspace.open();
+    expect(FakeBrowserWindow.instances).toHaveLength(2);
+    expect(workspace.isOpen).toBe(true);
   });
 
   it("restores saved bounds and applies maximize/zoom on reveal", () => {
-    saveWindowState(store, vaultId, {
+    // One window, one geometry file: state lives under the fixed key.
+    saveWindowState(store, "workspace", {
       x: 50,
       y: 60,
       width: 900,
@@ -258,7 +232,7 @@ describe("VaultWindowManager (real de/H/ve)", () => {
       isMaximized: true,
       zoom: 1.5,
     });
-    manager.openVault(vaultId);
+    workspace.open();
     const win = FakeBrowserWindow.instances[0];
     expect(win.options.x).toBe(50);
     expect(win.options.width).toBe(900);
@@ -270,18 +244,18 @@ describe("VaultWindowManager (real de/H/ve)", () => {
     );
   });
 
-  it("persists bounds on close (real o() capture)", () => {
-    manager.openVault(vaultId);
+  it("persists bounds on close under the fixed key (real o() capture)", () => {
+    workspace.open();
     const win = FakeBrowserWindow.instances[0];
     win.bounds = { x: 111, y: 222, width: 1000, height: 750 };
     win.close();
-    const saved = store.read<Record<string, unknown>>(vaultId, {});
+    const saved = store.read<Record<string, unknown>>("workspace", {});
     expect(saved.x).toBe(111);
     expect(saved.width).toBe(1000);
   });
 
   it("debounces resize/move captures at 100ms", () => {
-    manager.openVault(vaultId);
+    workspace.open();
     const win = FakeBrowserWindow.instances[0];
     win.bounds = { x: 1, y: 2, width: 640, height: 480 };
     win.emit("resize");
@@ -291,36 +265,56 @@ describe("VaultWindowManager (real de/H/ve)", () => {
     vi.advanceTimersByTime(100);
     // State captured in memory; persisted on close.
     win.close();
-    expect(store.read<Record<string, unknown>>(vaultId, {}).width).toBe(640);
+    expect(store.read<Record<string, unknown>>("workspace", {}).width).toBe(640);
   });
+});
 
-  it("tracks the most recently focused vault (real ve)", () => {
-    const secondPath = join(dir, "Vault2");
-    fs.mkdirSync(secondPath);
-    const secondId = (registry.registerPath(secondPath) as { id: string }).id;
-
-    vi.setSystemTime(1000);
-    manager.openVault(vaultId);
-    vi.setSystemTime(2000);
-    manager.openVault(secondId);
-    expect(manager.mostRecentVaultId()).toBe(secondId);
-
-    vi.setSystemTime(3000);
-    FakeBrowserWindow.instances[0].emit("focus");
-    expect(manager.mostRecentVaultId()).toBe(vaultId);
-  });
-
-  it("reopens persisted-open vaults (real ke)", () => {
-    registry.setOpen(vaultId, true);
-    expect(manager.openAllPersisted()).toBe(1);
-    expect(FakeBrowserWindow.instances).toHaveLength(1);
-    expect(manager.isOpen(vaultId)).toBe(true);
-  });
-
-  it("maps webContents ids back to vault ids (backs the vault IPC)", () => {
-    manager.openVault(vaultId);
+describe("WorkspaceWindow CLI + OBS_ACT delivery", () => {
+  it("runs handleCli in a loaded renderer and returns its text", async () => {
+    workspace.open();
     const win = FakeBrowserWindow.instances[0];
-    expect(manager.vaultIdForWebContents(win.webContents.id)).toBe(vaultId);
-    expect(manager.vaultIdForWebContents(99999)).toBeNull();
+    win.webContents.emit("did-finish-load");
+    win.webContents.executeJavaScript.mockResolvedValueOnce("help text");
+    await expect(workspace.executeCliRequest(["version"])).resolves.toBe("help text");
+    const script = win.webContents.executeJavaScript.mock.calls.at(-1)?.[0] as string;
+    expect(script).toContain('["version"]');
+    expect(script).toContain("window.handleCli");
+  });
+
+  it("opens the window for a CLI request and defers to did-finish-load", async () => {
+    // A request against a closed window OPENS it, exactly as a request
+    // against a closed vault did.
+    expect(workspace.isOpen).toBe(false);
+    const pending = workspace.executeCliRequest(["version"]);
+    expect(workspace.isOpen).toBe(true);
+    const win = FakeBrowserWindow.instances[0];
+    win.webContents.executeJavaScript.mockResolvedValueOnce("late");
+    win.webContents.emit("did-finish-load");
+    await expect(pending).resolves.toBe("late");
+  });
+
+  it("keeps gate ②: the disabled text without touching the renderer", async () => {
+    cliEnabled = false;
+    await expect(workspace.executeCliRequest(["version"])).resolves.toContain("not enabled");
+    expect(FakeBrowserWindow.instances).toHaveLength(0);
+  });
+
+  it("wraps a thrown string as Error: (the reference's catch clause)", async () => {
+    workspace.open();
+    const win = FakeBrowserWindow.instances[0];
+    win.webContents.emit("did-finish-load");
+    win.webContents.executeJavaScript.mockRejectedValueOnce("no such command");
+    await expect(workspace.executeCliRequest(["nope"])).resolves.toBe("Error: no such command");
+  });
+
+  it("delivers OBS_ACT to the window, deferring until loaded", () => {
+    workspace.deliverAction({ action: "open", file: "Home/Note.md" });
+    const win = FakeBrowserWindow.instances[0];
+    // Not loaded yet: nothing injected until did-finish-load.
+    expect(win.webContents.executeJavaScript).not.toHaveBeenCalled();
+    win.webContents.emit("did-finish-load");
+    const script = win.webContents.executeJavaScript.mock.calls.at(-1)?.[0] as string;
+    expect(script).toContain("OBS_ACT");
+    expect(script).toContain("Home/Note.md");
   });
 });

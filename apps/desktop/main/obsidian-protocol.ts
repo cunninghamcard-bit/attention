@@ -1,30 +1,28 @@
 /**
- * Input: ./obsidian-url, ./vault-registry, @app/shared/scheme
+ * Input: ./obsidian-url, @app/shared/scheme
  * Output: ObsidianUrlDeps, handleObsidianUrl, obsidianUrlFromArgv
  * Pos: Application code
  *
  * 🔄 Self-reference: When this file changes, update this header
  */
 
-import { parseObsidianUrl, resolveVaultForAction, type ObsidianAction } from "./obsidian-url";
-import type { VaultRegistry } from "./vault-registry";
+import { parseObsidianUrl, type ObsidianAction } from "./obsidian-url";
 import { URL_SCHEME } from "@app/shared/scheme";
 
 /**
- * `obsidian://` routing orchestrator — real `$e(url)` end to end, plus the OS
- * registration entry points.
+ * `obsidian://` routing orchestrator — real `$e(url)`, collapsed to the
+ * one-workspace-window form: parsing and OBS_ACT delivery are kept verbatim,
+ * but there is no vault to resolve — every action lands in THE window. Real's
+ * resolveVaultForAction (vault name match, longest-containing-path match,
+ * most-recent-focus fallback) died with the vault registry; an action's
+ * `vault`/`path` params ride along untouched for the renderer to interpret
+ * against its mounts.
  */
 export interface ObsidianUrlDeps {
-  registry: VaultRegistry;
-  vaultWindows: {
-    deliverAction(vaultId: string, action: ObsidianAction): void;
-    mostRecentVaultId(): string | null;
-    openAllPersisted(): number;
-  };
-  /** Ask for a folder (sync-setup / choose-vault): the system picker. */
+  /** Open-or-get the workspace window and inject the action. */
+  deliverAction(action: ObsidianAction): void;
+  /** The starter forms (sync-setup / choose-vault): ensure the window is up. */
   openStarter(): void;
-  /** Show the "Vault not found" error. */
-  showVaultNotFound(url: string): void;
   isWindows?: boolean;
 }
 
@@ -36,19 +34,7 @@ export function handleObsidianUrl(rawUrl: string, deps: ObsidianUrlDeps): void {
     deps.openStarter();
     return;
   }
-
-  const resolved = resolveVaultForAction(parsed.action, deps.registry.vaults);
-  let vaultId = resolved.vaultId;
-  if (resolved.useMostRecent) {
-    vaultId = deps.vaultWindows.mostRecentVaultId();
-    if (!vaultId) {
-      deps.vaultWindows.openAllPersisted();
-      vaultId = deps.vaultWindows.mostRecentVaultId();
-    }
-  }
-
-  if (vaultId) deps.vaultWindows.deliverAction(vaultId, resolved.action);
-  else deps.showVaultNotFound(rawUrl);
+  deps.deliverAction(parsed.action);
 }
 
 /** Extract a trailing `obsidian://` argument from a process argv (win/linux). */

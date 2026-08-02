@@ -57,32 +57,31 @@ declare global {
 }
 
 export async function bootstrap(parent: HTMLElement = document.body): Promise<App> {
-  // The workspace is multi-root: Home (the synced replica, always present)
-  // plus every remembered repository, each its own mount under one
-  // namespace. Launching ON a folder is the legacy single-vault path and
-  // still wins — that window IS that folder.
+  // The workspace is the ONLY form: Home (the synced replica, always present)
+  // plus every remembered repository, each its own mount under one namespace.
+  // Under Electron the boot handshake contributes the config home and the
+  // e2e-seeded mounts; in the browser it contributes nothing.
   const win0 = parent.ownerDocument.defaultView ?? window;
-  const hasFolder = Boolean(resolveElectronVault(win0).path);
-  const workspace = hasFolder ? null : await buildWorkspaceAdapter();
-  if (workspace) {
-    provideAppAdapter(workspace.adapter);
-    provideConfigHomeStore(parent);
-  } else provideDesktopAdapter(parent);
+  const workspace = await buildWorkspaceAdapter(resolveElectronBoot(win0).mounts);
+  provideAppAdapter(workspace.adapter);
+  provideConfigHomeStore(parent);
   const app = new App(parent);
   const win = parent.ownerDocument.defaultView ?? window;
   win.app = app;
   await app.ready;
-  if (workspace?.synced) void connectSyncClient(workspace.synced);
+  if (workspace.synced) void connectSyncClient(workspace.synced);
 
-  // Demo content seeds only a brand-new (empty) vault — an existing vault's
+  // Demo content seeds only a brand-new (empty) Home — an existing Home's
   // contents are the user's; real Obsidian never writes into an opened vault.
-  // In a workspace the demo goes into Home (its only writable-by-us root),
-  // and only when Home is BOTH empty and not bound to an account: a signed-in
-  // Home may look empty merely because its backfill has not arrived, and demo
-  // files would then merge into every device.
-  const seedRoot = workspace ? `${HOME_MOUNT_NAME}/` : "";
-  const seedable = workspace ? !workspace.synced : true;
-  if (seedable && app.vault.getFiles().length === 0) {
+  // Home is the workspace's only writable-by-us root, and it must also not be
+  // bound to an account: a signed-in Home may look empty merely because its
+  // backfill has not arrived, and demo files would then merge into every
+  // device.
+  const seedRoot = `${HOME_MOUNT_NAME}/`;
+  // Only Home decides: a mounted repository's files must not suppress the
+  // welcome content of a brand-new Home.
+  const homeIsEmpty = !app.vault.getFiles().some((file) => file.path.startsWith(seedRoot));
+  if (!workspace.synced && homeIsEmpty) {
     const welcome = await ensureMarkdownFile(app, `${seedRoot}Welcome.md`, welcomeMarkdown);
     await ensureMarkdownFile(app, `${seedRoot}Plugin Architecture.md`, pluginMarkdown);
     await seedCodeDemoFiles(app, seedRoot);
@@ -140,32 +139,24 @@ async function seedCodeDemoFiles(app: App, root = ""): Promise<void> {
 }
 
 /**
- * Under the Electron desktop shell the main process opens a real vault window
- * and answers the `vault` IPC with its folder path; back the vault with a
- * {@link FileSystemAdapter} so edits persist to disk. In the browser (no
- * `window.electron`), leave the App on its default in-memory adapter.
- */
-function provideDesktopAdapter(parent: HTMLElement): void {
-  const win = parent.ownerDocument.defaultView ?? window;
-  const { path: vaultPath } = resolveElectronVault(win);
-  provideAppAdapter(vaultPath ? new FileSystemAdapter(vaultPath) : undefined);
-  provideConfigHomeStore(parent);
-}
-
-/**
  * Config is the app's, not any folder's: `.obsidian/` lives once under the
  * config home and NOTHING is written into an opened folder or mount. It is
  * the same store whichever adapter backs the content.
  */
 function provideConfigHomeStore(parent: HTMLElement): void {
   const win = parent.ownerDocument.defaultView ?? window;
-  const { home } = resolveElectronVault(win);
+  const { home } = resolveElectronBoot(win);
   provideJsonStoreAdapter(
     home ? new FileSystemJsonStoreAdapter(new FileSystemAdapter(home)) : undefined,
   );
 }
 
-function resolveElectronVault(win: Window): { path: string | null; home: string | null } {
+/**
+ * The `vault` boot handshake, workspace form: `home` is the app's one config
+ * directory, `mounts` the e2e-seeded folders to mount at boot. The try/catch
+ * doubles as the "am I under Electron" probe — the browser gets nulls.
+ */
+function resolveElectronBoot(win: Window): { home: string | null; mounts: string[] } {
   try {
     const electron = (
       win as Window & {
@@ -173,14 +164,14 @@ function resolveElectronVault(win: Window): { path: string | null; home: string 
       }
     ).electron;
     const info = electron?.ipcRenderer?.sendSync?.("vault") as
-      | { path?: string; home?: string }
+      | { home?: string; mounts?: string[] }
       | undefined;
     return {
-      path: typeof info?.path === "string" && info.path.length > 0 ? info.path : null,
       home: typeof info?.home === "string" && info.home.length > 0 ? info.home : null,
+      mounts: Array.isArray(info?.mounts) ? info.mounts.filter((m) => typeof m === "string") : [],
     };
   } catch {
     // Not running under Electron.
-    return { path: null, home: null };
+    return { home: null, mounts: [] };
   }
 }

@@ -26,47 +26,41 @@ test("a new tab header grows in rather than appearing at full width", async ({ l
   await page.waitForTimeout(800);
   const before = await widths();
 
-  await page.evaluate(async () => {
+  // Sample INLINE states per frame IN PAGE while the new header animates. The
+  // pin is the discriminating fact: without it the animated width is ignored
+  // by flex layout entirely, so a run that never pins is a run where half the
+  // animation silently does nothing. Sampling stays in-page because evaluate
+  // round-trips can miss the whole 200ms window; and the new header is found
+  // by diffing, not by position — a workspace that boots with the Welcome tab
+  // active inserts the new header mid-bar, not at the end.
+  const pinned = await page.evaluate(async () => {
     const app = (window as unknown as { app: any }).app;
+    const headersNow = () => [
+      ...document.querySelectorAll<HTMLElement>(".mod-root .workspace-tab-header"),
+    ];
+    const preexisting = new Set(headersNow());
+    const samples: { flex: string; width: string; opacity: string }[] = [];
+    let sampling = true;
+    const sample = () => {
+      const el = headersNow().find((header) => !preexisting.has(header));
+      if (el)
+        samples.push({ flex: el.style.flex, width: el.style.width, opacity: el.style.opacity });
+      if (sampling) requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
     const file = app.vault.getFiles().find((f: any) => f.name === "Doc.md");
     await app.workspace.getLeaf("tab").openFile(file);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    sampling = false;
+    return samples;
   });
-
-  // Sample the new header's INLINE state while it is animating. The pin is the
-  // discriminating fact: without it the animated width is ignored by flex
-  // layout entirely, so a run that never pins is a run where half the
-  // animation silently does nothing.
-  const pinned: { flex: string; width: string; opacity: string }[] = [];
-  for (let index = 0; index < 10; index++) {
-    pinned.push(
-      await page.evaluate(() => {
-        const el = [...document.querySelectorAll<HTMLElement>(".mod-root .workspace-tab-header")].at(
-          -1,
-        );
-        return {
-          flex: el?.style.flex ?? "?",
-          width: el?.style.width ?? "?",
-          opacity: el?.style.opacity ?? "?",
-        };
-      }),
-    );
-    await page.waitForTimeout(20);
-  }
-  await page.waitForTimeout(500);
   const settled = await widths();
 
   expect(settled.length).toBe(before.length + 1);
-  expect(settled.at(-1)!).toBeGreaterThan(0);
+  expect(settled.every((width) => width > 0)).toBe(true);
   expect(pinned.filter((s) => s.flex === "0 0 auto").length).toBeGreaterThan(0);
-  expect(pinned.filter((s) => s.width !== "" && s.width !== "?").length).toBeGreaterThan(0);
+  expect(pinned.filter((s) => s.width !== "").length).toBeGreaterThan(0);
 
   // And it is handed back to the stylesheet: no inline flex/width left pinned.
-  expect(
-    await page.evaluate(() => {
-      const el = [...document.querySelectorAll<HTMLElement>(".mod-root .workspace-tab-header")].at(
-        -1,
-      )!;
-      return { flex: el.style.flex, width: el.style.width, opacity: el.style.opacity };
-    }),
-  ).toEqual({ flex: "", width: "", opacity: "" });
+  expect(pinned.at(-1)).toEqual({ flex: "", width: "", opacity: "" });
 });
