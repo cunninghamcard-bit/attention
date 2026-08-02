@@ -91,15 +91,26 @@ export class SyncLoginModal extends Modal {
 }
 
 /**
- * The whole sign-in consequence: find or create the account's vault, pull
- * the CURRENT contents into the replica, remember the decision, reload.
- * The import happens offline into IndexedDB; the SyncClient pushes it all
- * after the reload, so a flaky network cannot half-sync the switch.
+ * The whole sign-in consequence: find or create the account's HOME vault —
+ * the one synced place where 产物 live. A window opened on a git repository
+ * is a working surface: git is its sync, so nothing is imported from it and
+ * the window stays where it is. Anywhere else, the current contents seed
+ * the home vault (offline into IndexedDB — the SyncClient pushes after the
+ * reload, so a flaky network cannot half-sync the switch) and the window
+ * reloads onto the replica.
  */
 async function enableSync(app: App, session: SyncSession): Promise<void> {
   const vaults = await syncApi.listVaults(session);
-  const vault =
-    vaults[0] ?? (await syncApi.createVault(session, app.vault.getName() || "My Vault"));
+  const vault = vaults[0] ?? (await syncApi.createVault(session, "Home"));
+  sessionStore.saveSession(session);
+  sessionStore.saveVault(vault);
+
+  if (await currentVaultIsGitRepo(app)) {
+    new Notice(
+      "Signed in. This folder stays under git — the home vault syncs in windows opened without a folder.",
+    );
+    return;
+  }
 
   const notice = new Notice("Preparing sync…", 0);
   try {
@@ -109,9 +120,17 @@ async function enableSync(app: App, session: SyncSession): Promise<void> {
   } finally {
     notice.hide();
   }
-  sessionStore.saveSession(session);
-  sessionStore.saveVault(vault);
   window.location.reload();
+}
+
+/** Repos are recognized by their .git entry — hidden from the vault index,
+ * but exists() checks the disk directly. */
+async function currentVaultIsGitRepo(app: App): Promise<boolean> {
+  try {
+    return (await app.vault.adapter.exists?.(".git")) ?? false;
+  } catch {
+    return false;
+  }
 }
 
 /** The command entry: already synced is a statement, not a picker. */

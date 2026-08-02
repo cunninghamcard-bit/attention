@@ -55,10 +55,14 @@ declare global {
 }
 
 export async function bootstrap(parent: HTMLElement = document.body): Promise<App> {
-  // A stored synced-vault choice wins over everything: the window opens ON
-  // the local replica (usable offline) and the sync client connects after
-  // boot. Otherwise the desktop/browser adapter decision stands unchanged.
-  const synced = await loadSyncedAdapter();
+  // A window opened ON a folder is a working surface — a repo under git —
+  // and sync never touches it. The HOME vault (the synced replica) is what
+  // a folder-less window opens: the browser build always, the desktop when
+  // launched without a folder. Offline-usable; the sync client connects
+  // after boot.
+  const win0 = parent.ownerDocument.defaultView ?? window;
+  const hasFolder = Boolean(resolveElectronVault(win0).path);
+  const synced = hasFolder ? null : await loadSyncedAdapter();
   if (synced) provideAppAdapter(synced.adapter);
   else provideDesktopAdapter(parent);
   const app = new App(parent);
