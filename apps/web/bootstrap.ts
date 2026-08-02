@@ -69,7 +69,10 @@ export async function bootstrap(parent: HTMLElement = document.body): Promise<Ap
 
   // Demo content seeds only a brand-new (empty) vault — an existing vault's
   // contents are the user's; real Obsidian never writes into an opened vault.
-  if (app.vault.getFiles().length === 0) {
+  // A synced vault is never seeded: its emptiness may just mean the backfill
+  // hasn't arrived yet, and demo files pushed into the account's vault would
+  // merge into every device.
+  if (!synced && app.vault.getFiles().length === 0) {
     const welcome = await ensureMarkdownFile(app, "Welcome.md", welcomeMarkdown);
     await ensureMarkdownFile(app, "Plugin Architecture.md", pluginMarkdown);
     await seedCodeDemoFiles(app);

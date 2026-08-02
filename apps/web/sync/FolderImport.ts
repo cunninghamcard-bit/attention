@@ -6,7 +6,7 @@
  * 🔄 Self-reference: When this file changes, update this header
  */
 
-import type { DataAdapter } from "../vault/DataAdapter";
+import type { ListedFiles } from "../vault/DataAdapter";
 import type { LoroDataAdapter } from "./LoroDataAdapter";
 
 /**
@@ -41,18 +41,35 @@ function isTextPath(path: string): boolean {
   return TEXT_EXTENSIONS.has(path.slice(dot + 1).toLowerCase());
 }
 
+/** The slice of an adapter the import walks — shaped like the VaultAdapter
+ * port (loose list shape, optional stat/readBinary), so the CURRENT vault's
+ * adapter qualifies whatever it is; the DataAdapter class does trivially. */
+export interface ImportSource {
+  list(path: string): Promise<ListedFiles | string[]>;
+  stat?(path: string): Promise<{ ctime?: number; mtime?: number } | null>;
+  read(path: string): Promise<string>;
+  readBinary?(path: string): Promise<ArrayBuffer>;
+}
+
 /** Returns the number of files imported. */
 export async function importFolder(
-  source: DataAdapter,
+  source: ImportSource,
   target: LoroDataAdapter,
   path = "",
 ): Promise<number> {
   let imported = 0;
-  const { files, folders } = await source.list(path);
+  const listed = await source.list(path);
+  // A bare string[] listing has no folder information — everything in it is
+  // a file, which is exactly what such adapters mean by it.
+  const files = Array.isArray(listed) ? listed : listed.files;
+  const folders = Array.isArray(listed) ? [] : listed.folders;
   for (const file of files) {
-    const stat = await source.stat(file);
-    const options = stat ? { ctime: stat.ctime, mtime: stat.mtime } : undefined;
-    if (isTextPath(file)) {
+    const stat = (await source.stat?.(file)) ?? null;
+    const options =
+      stat && (stat.ctime !== undefined || stat.mtime !== undefined)
+        ? { ctime: stat.ctime, mtime: stat.mtime }
+        : undefined;
+    if (isTextPath(file) || !source.readBinary) {
       await target.write(file, await source.read(file), options);
     } else {
       await target.writeBinary(file, await source.readBinary(file), options);

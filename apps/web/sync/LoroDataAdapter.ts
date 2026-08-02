@@ -46,8 +46,40 @@ export class LoroDataAdapter extends DataAdapter {
     return this.docs;
   }
 
+  /** Vault.usesAdapterEvents gates on this; without it the Vault never
+   * registers watch, so neither boot announcements nor remote events reach
+   * the index. */
+  readonly supportsEvents = true;
+
   override getName(): string {
     return "Synced";
+  }
+
+  /** The FileSystemAdapter pattern: registering the watcher announces the
+   * existing contents through the same event pipeline, and that announce IS
+   * how the Vault builds its boot index for adapters that carry state. */
+  override async watch(handler: Parameters<DataAdapter["watch"]>[0]): Promise<() => void> {
+    const unwatch = await super.watch(handler);
+    this.announceExisting();
+    return unwatch;
+  }
+
+  private announceExisting(): void {
+    const paths = [...this.docs.paths()].sort((a, b) => a.split("/").length - b.split("/").length);
+    for (const path of paths) {
+      const data = this.docs.nodeData(path);
+      if (!data) continue;
+      if (data.kind === "folder") {
+        this.trigger("folder-created", path);
+      } else {
+        this.trigger("file-created", path, {
+          type: "file",
+          ctime: data.ctime,
+          mtime: data.mtime,
+          size: data.size,
+        });
+      }
+    }
   }
 
   async read(path: string): Promise<string> {
