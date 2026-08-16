@@ -284,7 +284,7 @@ function importsPortFromShared(relFile: string, port: string): boolean {
 // ---------------------------------------------------------------------------
 
 describe("Rule: monorepo-shape — one repo, three lanes", () => {
-  it("declares the monorepo layout with the kernel seated", () => {
+  it("declares the monorepo layout", () => {
     const packages = parseWorkspacePackages(readText("pnpm-workspace.yaml"));
 
     // The workspace lanes: app packages, shared packages, the tests lane.
@@ -297,11 +297,6 @@ describe("Rule: monorepo-shape — one repo, three lanes", () => {
 
     // No top-level src remains: the single-package layout is gone.
     expect(existsSync(abs("src"))).toBe(false);
-
-    // The Go kernel lane sits at the repo root, outside the pnpm workspace.
-    for (const kernelLane of ["cmd", "internal", "go.mod"]) {
-      expect(existsSync(abs(kernelLane)), `${kernelLane} should sit at the repo root`).toBe(true);
-    }
   });
 
   it("keeps the renderer free of shell imports", () => {
@@ -431,9 +426,8 @@ describe("Rule: perf-red-line — vault reads stay in-process", () => {
 
 describe("Rule: kernel-seam — the port is gone, the seat stays empty", () => {
   it("removes the kernel port and every reference", () => {
-    // The KernelApi port is deleted this ticket (owner override); its generated
-    // successor sits in @app/sdk, which stays an empty seat until the
-    // kernel-integration ticket.
+    // The KernelApi port and the Go kernel it spoke to are both deleted;
+    // @app/sdk stays a vacant seat, claimed by no client.
     const files = sourceFilesUnder(["apps", "packages"], [".ts", ".tsx"], false);
     const offenders = files.filter(
       (file) =>
@@ -457,14 +451,14 @@ describe("Rule: kernel-seam — the port is gone, the seat stays empty", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Rule: kernel-history — the subtree keeps its past
+// Rule: history — the relocated lanes keep their past
 // ---------------------------------------------------------------------------
 
-describe("Rule: kernel-history — the subtree keeps its past", () => {
-  it("keeps the kernel commit history reachable and blame honest", () => {
-    // log --follow on a kernel path reaches back past the merge: the kernel
-    // repository's own commits are on this branch, under their original hashes.
-    const log = execSync("git log --format=%s --follow -- cmd/along/main.go", {
+describe("Rule: history — the relocated lanes keep their past", () => {
+  it("keeps commit history reachable across the relocation and blame honest", () => {
+    // log --follow on a renderer path reaches back past the src -> apps/web
+    // split: the pre-split commits are on this branch, under their own hashes.
+    const log = execSync("git log --format=%s --follow -- apps/web/app/App.ts", {
       cwd: ROOT,
       encoding: "utf8",
     });
@@ -710,9 +704,7 @@ describe("Rule: architecture-docs — the new documentation set exists", () => {
   it("architecture doc and constitution declare their governed structure", () => {
     expect(existsSync(abs("docs", "architecture.md"))).toBe(true);
     const architectureDoc = readText("docs/architecture.md");
-    expect(architectureDoc).toMatch(
-      /governs `apps\/\*\*`, `packages\/\*\*`, and the Go kernel lanes\s+`cmd\/\*\*` \+ `internal\/\*\*`/,
-    );
+    expect(architectureDoc).toMatch(/governs `apps\/\*\*` and `packages\/\*\*`/);
     expect(architectureDoc).toMatch(/^#+.*direction table/im);
 
     expect(existsSync(abs("docs", "project.spec.md"))).toBe(true);

@@ -27,7 +27,7 @@ perf harness opens files in a 20,000-file vault at a 32ms median.
 
 ```bash
 mise run setup                  # pinned toolchain + all dependencies
-mise run lint && mise run typecheck && mise run test && mise run test:go
+mise run lint && mise run typecheck && mise run test
 
 # Direct package aliases after setup:
 pnpm dev       # web renderer via Vite at http://127.0.0.1:5173 (in-memory vault)
@@ -51,7 +51,6 @@ apps/web/builtin  core plugins: agent, github, terminal, graph, canvas, git, web
 docs/architecture.md      the real map — annotated tree, direction table, runtime topology, tradeoffs
 docs/architecture/        Spec-Driven Development records for structural work
 tests/e2e/                Playwright specs, including the large-vault perf harness
-cmd/ + internal/          the Go agent kernel (own module at the repo root)
 ```
 
 `docs/architecture.md` is the authoritative structural reference; start there

@@ -53,21 +53,20 @@ names.
 
 ## Toolchain: mise is the entry point, never the raw tool
 
-`mise.toml` pins Node/pnpm/Go and owns every task; `mise tasks` lists them
+`mise.toml` pins Node/pnpm and owns every task; `mise tasks` lists them
 with the caveats. pnpm still owns dependencies underneath, and vp (Vite+)
 fronts dev/test/build. Reach for a task, not the underlying binary — the
-tasks encode the asymmetries (the nested `cmd/tui` Go module needs its own
-vet/lint/test invocation; the three tsc lanes stay explicit because vp
+tasks encode the asymmetries (the three tsc lanes stay explicit because vp
 check's type stage does not engage this repo).
 
 | Task | Use it for |
 |---|---|
-| `mise run setup` | New machine: pnpm + Go deps |
+| `mise run setup` | New machine: pnpm deps |
 | `mise run dev` | Vite dev server on 127.0.0.1:5173 |
 | `mise run desktop:dev` | Electron against the dev server (HMR); starts one if 5173 is idle |
 | `mise run desktop:start` | Build web + Electron, launch the built app — verify a real build |
 | `mise run lint` / `format` | Lint is non-mutating and warnings fail it; `format` rewrites |
-| `mise run typecheck` / `test` / `test:go` | The three tsc lanes / vitest / both Go modules |
+| `mise run typecheck` / `test` | The three tsc lanes / vitest |
 | `mise run test:e2e` / `test:e2e:desktop` | Playwright, web / Electron |
 | `mise run gate` | The whole pre-handoff gate in one command |
 
@@ -89,40 +88,16 @@ Things that have bitten us here:
   green. `mise run cache:clean` when a cached result looks wrong.
 - **Never `vp check --fix`.** Its lint autofixes rewrite semantics. Use
   `mise run format`.
-- **A `[tools]` pin only wins if mise's paths outrank the system on `$PATH`.**
-  `mise run`/`mise exec` do load the pinned tools — the docs promise their
-  entries land "before the shim directory", and they do. The catch is that
-  mise positions them *relative to the shim directory*, so if that directory
-  sits after `/opt/homebrew/bin` (ours is 20th, Homebrew is 6th), the shell
-  finds the Homebrew `go`/`node`/`pnpm` first and the pins never apply. It
-  stays invisible while versions coincide — node and pnpm match today by luck.
-  Go drifted (system 1.26.4 vs pinned 1.26.5) and failed loudly, because mise
-  exports `GOROOT` regardless of `$PATH`: a 1.26.4 `go` driving a 1.26.5
-  GOROOT dies with `compile: version "go1.26.5" does not match go tool version
-  "go1.26.4"`. Hence every Go task runs `PATH="$GOROOT/bin:$PATH" go ...`,
-  which is self-consistent under any PATH order. Audit yours with
-  `mise exec -- sh -c 'echo $PATH' | tr : '\n' | grep -n -E 'homebrew/bin|mise'`;
-  `mise activate` is the real fix, since it prepends instead of positioning
-  against the shims. Also pin every tool a task calls — an unpinned
-  `golangci-lint` resolves to a shim that refuses to run.
-- **Never `vp check --fix`.** Its lint autofixes rewrite semantics. Use
-  `mise run format`.
 - **A `[tools]` pin only wins if mise's shims outrank the system on `$PATH`.**
   Unactivated (`mise doctor` → `activated: no`), mise works through its shim
   directory, and that directory sits *after* `/opt/homebrew/bin` on a typical
   machine. So a task body — which is `sh -c`, resolving commands off `$PATH` —
-  gets the Homebrew `go`/`node`/`pnpm`, not the pinned one; only tools Homebrew
-  lacks (golangci-lint) fall through to a shim. It stays invisible while the
-  versions coincide, which is exactly our situation for node and pnpm today.
-  Go is the one that drifted (system 1.26.4 vs pinned 1.26.5) and it fails
-  loudly, because mise *does* export `GOROOT` regardless of `$PATH`: a 1.26.4
-  `go` driving a 1.26.5 GOROOT dies with `compile: version "go1.26.5" does not
-  match go tool version "go1.26.4"`. Hence every Go task runs
-  `PATH="$GOROOT/bin:$PATH" go ...` — authoritative on any machine, with no
-  `mise activate` and no `mise trust` (an `[env] _.path` block needs both and
-  did not even take effect). Check with `mise exec -- sh -c 'go version'`.
-  Activating mise in your shell fixes node/pnpm the same way for everything
-  else; without it, treat those pins as documentation, not enforcement.
+  gets the Homebrew `node`/`pnpm`, not the pinned one. It stays invisible while
+  the versions coincide, which is exactly our situation today. Audit yours with
+  `mise exec -- sh -c 'echo $PATH' | tr : '\n' | grep -n -E 'homebrew/bin|mise'`;
+  `mise activate` is the real fix, since it prepends instead of positioning
+  against the shims. Without it, treat those pins as documentation, not
+  enforcement.
 - **A missing patch file breaks every `pnpm run`.** `patchedDependencies` in
   `pnpm-workspace.yaml` is verified before any script runs, so a deleted
   patch fails the script with ENOENT before it starts. Keep the two in sync.

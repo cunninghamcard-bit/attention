@@ -9,9 +9,8 @@ Project-level invariants that every goal contract inherits. This repository is
 a **monorepo for a server + web + desktop product**: the web product
 (`apps/web`, the faithful Obsidian-reconstruction renderer), the desktop
 shell (`apps/desktop`, Electron main + preload), the shared lanes
-(`packages/shared` contracts, `packages/sdk` an empty seat for the future
-kernel client), and the Go agent kernel at the repo root (`cmd/`, `internal/`
-— a spawned binary, never a pnpm workspace member). The constitution fixes
+(`packages/shared` contracts, `packages/sdk` a vacant manifest seat). The
+constitution fixes
 the toolchain, the fail-fast contract, the perf budget, and the layering
 walls once, so individual goals never re-litigate them.
 
@@ -43,9 +42,7 @@ walls once, so individual goals never re-litigate them.
   CONTRACTS once — `dataAdapter`, `gitApi`, `terminalApi`, the IPC channel
   table — imported by both app lanes, never re-declared per side;
   `packages/sdk` (`@app/sdk`) is an empty manifest seat. `tests/` is the
-  centralized test lane (`@app/tests`). The Go kernel lives at the repo root
-  with its own go.mod, merged with its history, and is NOT a workspace
-  member.
+  centralized test lane (`@app/tests`).
 - The native seam is ports-and-adapters: the shell fills the ports the
   renderer declares; the renderer never imports `apps/desktop` or `electron`.
   Plain TS interfaces, no zod/presenter/route layer, no UI framework.
@@ -55,14 +52,9 @@ walls once, so individual goals never re-litigate them.
 - Kernel direction rule: `vault/`, `metadata/`, and `storage/` import only
   from the kernel, `core`, `dom`, and `platform` — never upward.
 - Disk access stays in-process behind the `DataAdapter` seam in the renderer
-  (the perf red line) — never routed over IPC or the kernel. The kernel owns
-  the agent backend (and, in cloud, DB-as-truth) — NEVER the local vault fs,
-  NEVER block rendering.
+  (the perf red line) — never routed over IPC. NEVER block rendering.
 - Unit tests are centralized under `tests/` (workspace member), mirroring
   source paths; no test file lives next to source.
-- `cmd/tui` is a nested Go module with its own `go.mod`. Root-level `go`
-  commands do not descend into it; every gate that claims to cover the kernel
-  must invoke it explicitly (`go -C cmd/tui ...`).
 - The docs household is `docs/architecture.md` (the governed structure and the
   normative direction table) plus this constitution. Both are asserted by
   `tests/architecture.test.ts`; the previous goal-contract households under
@@ -76,13 +68,12 @@ walls once, so individual goals never re-litigate them.
 
 ## Completion Criteria
 
-Scenario: the workspace is a monorepo with the kernel seated at the root
-Test: declares the monorepo layout with the kernel seated
+Scenario: the workspace is a monorepo of three lanes
+Test: declares the monorepo layout
 Given the workspace configuration and the source tree
 When the workspace packages and top-level directories are read
 Then apps/desktop, apps/web, packages/shared and packages/sdk are workspace
-packages alongside tests, no top-level src remains, and cmd, internal and
-go.mod sit at the repo root
+packages alongside tests, and no top-level src remains
 
 Scenario: the dependency table stays framework-free
 Test: keeps zod presenters and UI frameworks out of the dependency table
