@@ -9,8 +9,6 @@
 import { describe, expect, it } from "vitest";
 import { DataAdapter, InMemoryAdapter } from "@web/vault/DataAdapter";
 import { MountAdapter } from "@web/mount/MountAdapter";
-import { LoroDataAdapter } from "@web/sync/LoroDataAdapter";
-import { MemorySyncStore } from "@web/sync/SyncStore";
 
 /**
  * The router carries the same DataAdapter contract the vault demands, so the
@@ -74,7 +72,7 @@ describe("DataAdapter contract through a mount", () => {
 
 describe("MountAdapter", () => {
   const makeThree = async () => {
-    const home = await LoroDataAdapter.load(new MemorySyncStore(), "home-vault");
+    const home = new InMemoryAdapter();
     const repoA = new InMemoryAdapter();
     const repoB = new InMemoryAdapter();
     const adapter = new MountAdapter([

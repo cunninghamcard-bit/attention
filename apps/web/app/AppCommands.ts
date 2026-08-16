@@ -18,8 +18,6 @@ import { Menu } from "../ui/Menu";
 import { MoveFileModal } from "./MoveFileModal";
 import { MountAdapter } from "../mount/MountAdapter";
 import { addRepositoryMount } from "../mount/MountBoot";
-import { openSyncFlow } from "../sync/SyncModals";
-import { sessionStore } from "../sync/SyncSession";
 import type { TFile } from "../vault/TAbstractFile";
 import { WorkspaceTabs } from "../views/workspace/WorkspaceTabs";
 import { Platform } from "../platform/Platform";
@@ -966,11 +964,6 @@ export function registerAppCommands(app: App): void {
   // window — folders join and leave THE workspace instead. Deviation recorded
   // in docs/architecture.md.
 
-  // Ours, not Obsidian's — the sync surface from the data-layer spec
-  // (docs/superpowers/specs/2026-08-02-data-layer-server-design.md). The
-  // product model: sync is a property of THE vault, not a vault kind —
-  // signing in means the current contents are synced from now on. No
-  // vault picker exists anywhere.
   // The multi-root workspace, VS Code's shape: repositories join and leave
   // without a reload, Home is always mounted (docs/architecture).
   app.commands.addCommand({
@@ -981,27 +974,6 @@ export function registerAppCommands(app: App): void {
       const adapter = app.vault.adapter;
       if (!(adapter instanceof MountAdapter) || !Platform.isDesktopApp) return false;
       if (!checking) void addRepositoryMount(adapter);
-      return true;
-    },
-  });
-
-  app.commands.addCommand({
-    id: "app:sync-sign-in",
-    name: "Sign in to sync...",
-    icon: "lucide-refresh-cw",
-    callback: () => openSyncFlow(app),
-  });
-
-  app.commands.addCommand({
-    id: "app:sync-sign-out",
-    name: "Sign out of sync server",
-    icon: "lucide-log-out",
-    checkCallback: (checking) => {
-      if (!sessionStore.session()) return false;
-      if (!checking) {
-        sessionStore.clear();
-        window.location.reload();
-      }
       return true;
     },
   });

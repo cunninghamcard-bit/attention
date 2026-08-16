@@ -1,5 +1,5 @@
 /**
- * Input: ./MountAdapter, ./MountRegistry, ../sync/SyncBoot, ../vault/FileSystemAdapter, ../ui/Notice
+ * Input: ./MountAdapter, ./MountRegistry, ../vault/FileSystemAdapter, ../vault/DataAdapter, ../ui/Notice
  * Output: buildWorkspaceAdapter, addRepositoryMount, WorkspaceBoot
  * Pos: Application code
  *
@@ -8,35 +8,21 @@
 
 import { Notice } from "../ui/Notice";
 import { FileSystemAdapter } from "../vault/FileSystemAdapter";
-import { LoroDataAdapter } from "../sync/LoroDataAdapter";
-import { createSyncStore } from "../sync/SyncStore";
-import { sessionStore } from "../sync/SyncSession";
-import type { SyncedBoot } from "../sync/SyncBoot";
+import { InMemoryAdapter } from "../vault/DataAdapter";
 import { MountAdapter } from "./MountAdapter";
 import { HOME_MOUNT_NAME, mountRegistry } from "./MountRegistry";
 
 /**
- * Boot assembly of the multi-root workspace: Home first (the synced replica,
- * always present), then every remembered repository as its own mount. The
- * home replica is local-first — it exists signed out too, keyed by a local
- * id, and signing in is what gives it an account's vault id and a server.
+ * Boot assembly of the multi-root workspace: Home first (always present, an
+ * in-memory root), then every remembered repository as its own mount.
  */
 
 export interface WorkspaceBoot {
   adapter: MountAdapter;
-  /** Present when Home is bound to an account — the SyncClient's input. */
-  synced: SyncedBoot | null;
 }
 
-/** The signed-out Home replica: local-first, adopted by the account on
- * sign-in. */
-export const LOCAL_HOME_ID = "local-home";
-
 export async function buildWorkspaceAdapter(seedPaths: string[] = []): Promise<WorkspaceBoot> {
-  const session = sessionStore.session();
-  const vault = sessionStore.vault();
-  const homeId = vault?.id ?? LOCAL_HOME_ID;
-  const home = await LoroDataAdapter.load(createSyncStore(homeId), homeId);
+  const home = new InMemoryAdapter();
 
   // Seeded mounts (the desktop e2e seam) become registry records like any
   // folder the user added — idempotent across relaunches in one profile.
@@ -57,8 +43,7 @@ export async function buildWorkspaceAdapter(seedPaths: string[] = []): Promise<W
     }
   }
 
-  const synced = session && vault ? { adapter: home, session, vault } : null;
-  return { adapter, synced };
+  return { adapter };
 }
 
 /** The "Add folder to workspace" action: pick, remember, mount live. */

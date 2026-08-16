@@ -9,10 +9,10 @@
 /**
  * Which repositories are mounted in this workspace, remembered across
  * launches. Read BEFORE the App exists (boot builds the adapter from it),
- * so it lives in plain localStorage like the sync session next door.
+ * so it lives in plain localStorage.
  *
  * Only repository mounts are recorded: Home is not a record, it is always
- * there — the one synced place, present whether or not you are signed in.
+ * there — the one fixed in-memory root, present at every launch.
  */
 
 export const HOME_MOUNT_NAME = "Home";

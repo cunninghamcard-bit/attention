@@ -15,9 +15,9 @@ import {
 
 /**
  * One vault, several roots — the VS Code multi-root shape. Each mount owns a
- * top-level name and routes to its own adapter: "Home" is the synced replica,
- * every repository is a FileSystemAdapter, and a remote workspace would slot
- * in the same way. Paths are `"<mount>/<inner>"`; this adapter strips the
+ * top-level name and routes to its own adapter: "Home" is a fixed in-memory
+ * root, every repository is a FileSystemAdapter, and a remote workspace would
+ * slot in the same way. Paths are `"<mount>/<inner>"`; this adapter strips the
  * prefix on the way down and re-adds it on events coming back up.
  *
  * The point is that everything ABOVE the adapter seam keeps assuming ONE

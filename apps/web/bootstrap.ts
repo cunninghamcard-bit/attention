@@ -10,7 +10,6 @@ import { App, provideAppAdapter, provideJsonStoreAdapter } from "./app/App";
 import { FileSystemJsonStoreAdapter } from "./storage/FileSystemJsonStoreAdapter";
 import { buildWorkspaceAdapter } from "./mount/MountBoot";
 import { HOME_MOUNT_NAME } from "./mount/MountRegistry";
-import { connectSyncClient } from "./sync/SyncBoot";
 import { FileSystemAdapter } from "./vault/FileSystemAdapter";
 import type { TFile } from "./vault/TAbstractFile";
 
@@ -57,7 +56,7 @@ declare global {
 }
 
 export async function bootstrap(parent: HTMLElement = document.body): Promise<App> {
-  // The workspace is the ONLY form: Home (the synced replica, always present)
+  // The workspace is the ONLY form: Home (an in-memory root, always present)
   // plus every remembered repository, each its own mount under one namespace.
   // Under Electron the boot handshake contributes the config home and the
   // e2e-seeded mounts; in the browser it contributes nothing.
@@ -69,19 +68,15 @@ export async function bootstrap(parent: HTMLElement = document.body): Promise<Ap
   const win = parent.ownerDocument.defaultView ?? window;
   win.app = app;
   await app.ready;
-  if (workspace.synced) void connectSyncClient(workspace.synced);
 
   // Demo content seeds only a brand-new (empty) Home — an existing Home's
   // contents are the user's; real Obsidian never writes into an opened vault.
-  // Home is the workspace's only writable-by-us root, and it must also not be
-  // bound to an account: a signed-in Home may look empty merely because its
-  // backfill has not arrived, and demo files would then merge into every
-  // device.
+  // Home is the workspace's only writable-by-us root.
   const seedRoot = `${HOME_MOUNT_NAME}/`;
   // Only Home decides: a mounted repository's files must not suppress the
   // welcome content of a brand-new Home.
   const homeIsEmpty = !app.vault.getFiles().some((file) => file.path.startsWith(seedRoot));
-  if (!workspace.synced && homeIsEmpty) {
+  if (homeIsEmpty) {
     const welcome = await ensureMarkdownFile(app, `${seedRoot}Welcome.md`, welcomeMarkdown);
     await ensureMarkdownFile(app, `${seedRoot}Plugin Architecture.md`, pluginMarkdown);
     await seedCodeDemoFiles(app, seedRoot);
