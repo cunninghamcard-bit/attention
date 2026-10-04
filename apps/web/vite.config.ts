@@ -1,7 +1,7 @@
 /**
  * Input: node:path, vite, rollup-plugin-visualizer
  * Output: default
- * Pos: Application code
+ * Pos: Renderer build and development configuration
  *
  * 🔄 Self-reference: When this file changes, update this header
  */
@@ -13,12 +13,12 @@ import { visualizer } from "rollup-plugin-visualizer";
 // The renderer is its own vite root (apps/web). Its bundle emits to the
 // single out/ roof at out/web, which the Electron main serves via the app://
 // protocol from the sibling out/desktop (join(here, "..", "web") in main.ts).
-const rootDist = resolve(__dirname, "../../out/web");
+const rootDist = resolve(import.meta.dirname, "../../out/web");
 
 export default defineConfig({
-  root: __dirname,
+  root: import.meta.dirname,
   // Static assets (fonts, scripts like /lib/readability.js) served verbatim.
-  publicDir: resolve(__dirname, "public"),
+  publicDir: resolve(import.meta.dirname, "public"),
   plugins: process.env.ANALYZE
     ? [
         visualizer({
@@ -31,15 +31,6 @@ export default defineConfig({
   server: {
     port: Number(process.env.PORT) || 5173,
     strictPort: false,
-  },
-  optimizeDeps: {
-    // loro-crdt is wasm-bindgen: its JS glue and wasm must be ONE module
-    // instance. Dep pre-bundling makes a second glue copy (the .vite/deps
-    // bundle) beside the raw @fs one the .wasm binds to, and every LoroDoc
-    // then dies with "Cannot read properties of undefined (reading 'memory')".
-    // Exclude the whole loro graph so dev serves it raw and shared; the
-    // production build has a single graph and never had the problem.
-    exclude: ["loro-crdt", "loro-websocket", "loro-adaptors"],
   },
   build: {
     target: "es2022",
@@ -55,7 +46,7 @@ export default defineConfig({
       input: {
         // One page: the folder renderer. There is no vault-chooser page —
         // opening a folder is the system picker.
-        index: resolve(__dirname, "index.html"),
+        index: resolve(import.meta.dirname, "index.html"),
       },
     },
   },

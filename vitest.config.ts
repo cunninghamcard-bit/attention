@@ -1,7 +1,7 @@
 /**
  * Input: node:path, vitest/config
  * Output: default
- * Pos: Application code
+ * Pos: Root configuration for the web and desktop test projects
  *
  * 🔄 Self-reference: When this file changes, update this header
  */
@@ -14,10 +14,10 @@ import { defineConfig } from "vitest/config";
 // (@app/shared rides here for the tests lane only — app lanes resolve it
 // via the package mechanism; see the root tsconfig note.)
 const alias = {
-  "@web": resolve(__dirname, "apps/web"),
-  "@desktop": resolve(__dirname, "apps/desktop/main"),
-  "@preload": resolve(__dirname, "apps/desktop/preload"),
-  "@app/shared": resolve(__dirname, "packages/shared"),
+  "@web": resolve(import.meta.dirname, "apps/web"),
+  "@desktop": resolve(import.meta.dirname, "apps/desktop/main"),
+  "@preload": resolve(import.meta.dirname, "apps/desktop/preload"),
+  "@app/shared": resolve(import.meta.dirname, "packages/shared"),
 };
 
 export default defineConfig({

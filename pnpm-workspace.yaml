@@ -1,7 +1,7 @@
 packages:
   # The monorepo lanes: the desktop shell and the web product under apps/, the
   # shared contracts and the sdk seat under packages/, plus the centralized
-  # test lane. The Go kernel at the repo root is NOT a workspace member.
+  # test lane.
   - apps/*
   - packages/*
   - tests

@@ -1,7 +1,7 @@
 /**
  * Input: node:path, vite, vite-plugin-dts
  * Output: default
- * Pos: Application code
+ * Pos: Public API bundle and declaration build configuration
  *
  * 🔄 Self-reference: When this file changes, update this header
  */
@@ -16,18 +16,18 @@ import dts from "vite-plugin-dts";
 export default defineConfig({
   plugins: [
     dts({
-      entryRoot: resolve(__dirname, "../.."),
-      outDirs: resolve(__dirname, "out/api"),
+      entryRoot: resolve(import.meta.dirname, "../.."),
+      outDirs: resolve(import.meta.dirname, "out/api"),
       bundleTypes: false,
-      tsconfigPath: resolve(__dirname, "tsconfig.api.json"),
+      tsconfigPath: resolve(import.meta.dirname, "tsconfig.api.json"),
     }),
   ],
   build: {
     target: "es2022",
-    outDir: resolve(__dirname, "out/api"),
+    outDir: resolve(import.meta.dirname, "out/api"),
     emptyOutDir: false,
     lib: {
-      entry: resolve(__dirname, "index.ts"),
+      entry: resolve(import.meta.dirname, "index.ts"),
       formats: ["es"],
       fileName: () => "index.js",
     },

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { App } from "@web/app/App";
+import { createTestApp } from "../../TestApp";
 import type { DragSource } from "@web/ui/drag/DragManager";
 import { isDropEffectAllowed } from "@web/ui/drag/DragManager";
 
@@ -20,7 +20,7 @@ describe("DragManager", () => {
   });
 
   it("shows action text, hover state, and overlay during preview, then clears them on leave", () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     const targetEl = document.createElement("div");
     const hoverEl = document.createElement("div");
     document.body.append(targetEl, hoverEl);
@@ -59,7 +59,7 @@ describe("DragManager", () => {
   });
 
   it("only writes dropEffect when the browser effectAllowed value permits it", () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     const targetEl = document.createElement("div");
     document.body.appendChild(targetEl);
     app.dragManager.handleDrop(targetEl, () => ({ action: "Copy", dropEffect: "copy" }));
@@ -77,7 +77,7 @@ describe("DragManager", () => {
   });
 
   it("clears preview state after external drops without an internal drag source", () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     const targetEl = document.createElement("div");
     const hoverEl = document.createElement("div");
     document.body.append(targetEl, hoverEl);

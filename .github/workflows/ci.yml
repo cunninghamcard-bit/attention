@@ -12,28 +12,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # The kernel-history wall follows the merged kernel commits; a
-          # shallow clone makes them unreachable and the wall reds.
+          # Architecture tests follow renderer history across the monorepo
+          # split, so the relocation commit must remain reachable.
           fetch-depth: 0
-      # mise is the single toolchain entry (node/pnpm/go pins from mise.toml);
-      # CI composes the same discrete mise tasks used by local workflows below
-      # (this file previously called typecheck:server and build:server, tasks
-      # that never existed in this tree).
+      # Use the pinned Node/pnpm toolchain and the same gate as local handoffs.
       - uses: jdx/mise-action@v2
       - run: mise run setup
         env:
           CI: "true"
-      - run: mise run lint
-      - run: mise run typecheck
       # The runner exports a real GITHUB_TOKEN; the service's env fallback
       # would pick it up and the refuses-without-a-token test could never
       # refuse. Tests run token-hermetic.
-      - run: mise run test
+      - run: mise run gate
         env:
           GITHUB_TOKEN: ""
-      - run: mise run test:go
       - run: mise run packcheck
-      - run: mise run web:build
-      - run: mise run desktop:build
       # Not here yet (documented follow-up): the electron e2e / perf
       # harness (needs xvfb + a display) — stays local-only for now.

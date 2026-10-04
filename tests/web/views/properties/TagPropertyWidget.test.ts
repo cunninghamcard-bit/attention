@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { App } from "@web/app/App";
+import { createTestApp } from "../../TestApp";
 import { MarkdownView } from "@web/views/MarkdownView";
 
 describe("TagPropertyWidget", () => {
@@ -17,7 +17,7 @@ describe("TagPropertyWidget", () => {
   });
 
   it("renders tags without a leading hash, marks invalid tags, and prevents hash-insensitive duplicates", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const source = await app.vault.create(
       "Note.md",
@@ -46,7 +46,7 @@ describe("TagPropertyWidget", () => {
   });
 
   it("tabs through existing tag suggestions before enter commits them", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const existing = await app.vault.create("Existing.md", "Body #project/beta");
     await app.metadataCache.computeFileMetadataAsync(existing);
@@ -81,7 +81,7 @@ describe("TagPropertyWidget", () => {
   });
 
   it("keeps the hash when completing hash-prefixed tag suggestions", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const existing = await app.vault.create("Existing.md", "Body #project/beta");
     await app.metadataCache.computeFileMetadataAsync(existing);
@@ -110,7 +110,7 @@ describe("TagPropertyWidget", () => {
   });
 
   it("edits existing tag pills using hash-insensitive duplicate rules", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const source = await app.vault.create(
       "Note.md",

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { App } from "@web/app/App";
+import { createTestApp } from "../../TestApp";
 import { MarkdownView } from "@web/views/MarkdownView";
 
 describe("AliasPropertyWidget", () => {
@@ -17,7 +17,7 @@ describe("AliasPropertyWidget", () => {
   });
 
   it("renders aliases as plain text pills, marks empty aliases invalid, and prevents exact duplicates", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const source = await app.vault.create(
       "Note.md",
@@ -49,7 +49,7 @@ describe("AliasPropertyWidget", () => {
   });
 
   it("commits aliases on blur but not comma or tab", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const source = await app.vault.create(
       "Note.md",
@@ -76,7 +76,7 @@ describe("AliasPropertyWidget", () => {
   });
 
   it("does not bind property link suggestions for aliases", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const source = await app.vault.create(
       "Note.md",
@@ -103,7 +103,7 @@ describe("AliasPropertyWidget", () => {
   });
 
   it("edits existing alias pills with enter, escape, blur, and duplicate highlighting", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const source = await app.vault.create(
       "Note.md",
@@ -145,7 +145,7 @@ describe("AliasPropertyWidget", () => {
       configurable: true,
       value: { writeText },
     });
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const source = await app.vault.create(
       "Note.md",

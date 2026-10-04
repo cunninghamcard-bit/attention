@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { App } from "@web/app/App";
+import { createTestApp } from "../../TestApp";
 import { MarkdownView } from "@web/views/MarkdownView";
 
 describe("PropertyLinkRenderer", () => {
@@ -17,7 +17,7 @@ describe("PropertyLinkRenderer", () => {
   });
 
   it("renders text property wikilinks as clickable internal metadata links", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const source = await app.vault.create(
       "Source.md",
@@ -47,7 +47,7 @@ describe("PropertyLinkRenderer", () => {
   });
 
   it("marks unresolved links and renders external property links", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const source = await app.vault.create(
       "Source.md",
@@ -70,7 +70,7 @@ describe("PropertyLinkRenderer", () => {
   });
 
   it("renders internal markdown links inside multi-value pills", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const source = await app.vault.create(
       "Source.md",

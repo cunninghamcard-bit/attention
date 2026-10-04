@@ -605,12 +605,9 @@ describe("Rule: builtin-roof — one core plugin per slice", () => {
       expect(builtinDirs.has(plugin), `builtin/${plugin} should exist`).toBe(true);
       expect(sourceDirs.includes(plugin), `${plugin} should not be a top-level dir`).toBe(false);
     }
-    // 17th: sync/ — the synced-vault replica layer (loro docs + persistence
-    // + LoroDataAdapter), a first-class module per the data-layer spec
-    // (docs/superpowers/specs/2026-08-02-data-layer-server-design.md).
-    // 18th: mount/ — the multi-root workspace router (Home + repositories
-    // under one namespace), per the same spec's product model.
-    expect(sourceDirs.length).toBeLessThanOrEqual(18);
+    // 17th: mount/ — the multi-root workspace router (Home + repositories
+    // under one namespace). The retired sync/ layer is no longer a module.
+    expect(sourceDirs.length).toBeLessThanOrEqual(17);
   });
 });
 

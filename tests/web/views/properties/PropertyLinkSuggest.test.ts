@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { App } from "@web/app/App";
+import { createTestApp } from "../../TestApp";
 import { MarkdownView } from "@web/views/MarkdownView";
 
 describe("PropertyLinkSuggest", () => {
@@ -17,7 +17,7 @@ describe("PropertyLinkSuggest", () => {
   });
 
   it("accepts property link suggestions as wikilinks even when markdown links are enabled", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const source = await app.vault.create(
       "Daily/Today.md",
@@ -45,7 +45,7 @@ describe("PropertyLinkSuggest", () => {
   });
 
   it("keeps property suggestions open for subpath continuation keys", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const source = await app.vault.create(
       "Daily/Today.md",
@@ -71,7 +71,7 @@ describe("PropertyLinkSuggest", () => {
   });
 
   it("writes missing block ids before committing a property link", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const source = await app.vault.create(
       "Source.md",

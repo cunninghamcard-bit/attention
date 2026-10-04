@@ -3,8 +3,8 @@
 Attention is a desktop agent workbench built on a clean-room
 reconstruction of Obsidian's frontend architecture. What began as a study of
 how Obsidian's bundled app is structured has grown into a working Electron
-application: a real vault, workspace and plugin runtime carrying a chat/agent
-view, a GitHub workspace, an embedded terminal and a web viewer.
+application: a real vault, workspace and plugin runtime carrying a GitHub
+workspace, an embedded terminal and a web viewer.
 
 It runs, and it is exercised by unit, integration and end-to-end suites. The
 perf harness opens files in a 20,000-file vault at a 32ms median.
@@ -12,22 +12,22 @@ perf harness opens files in a 20,000-file vault at a 32ms median.
 ## What this is
 
 - A pnpm monorepo: a **web app** (the product) and an **Electron desktop**
-  shell under apps/, shared contract packages under packages/, and the **Go
-  agent kernel** seated at the repo root — each app lane with its own
-  dependency table.
+  shell under apps/, shared contract packages under packages/, and a
+  centralized test lane — each app lane with its own dependency table.
 - A faithful reconstruction of Obsidian's core systems — Vault, Workspace,
   MetadataCache, the plugin lifecycle, themes and CSS-variable theming — and
   the dual-track plugin architecture: internal builtins use internal APIs; a
   separate public facade serves community plugins.
-- Grown past study into a real product surface: builtin "core plugins" for an
-  agent chat view, a GitHub workspace, a terminal, and graph/canvas/git/web
+- Grown past study into a real product surface: builtin "core plugins" for a
+  GitHub workspace, a terminal, and graph/canvas/git/web
   viewer panels, all registered like internal plugins.
 
 ## Quick start
 
 ```bash
 mise run setup                  # pinned toolchain + all dependencies
-mise run lint && mise run typecheck && mise run test
+mise run gate                   # lint, all typechecks, tests, web + desktop builds
+mise run packcheck              # build and validate the public API package
 
 # Direct package aliases after setup:
 pnpm dev       # web renderer via Vite at http://127.0.0.1:5173 (in-memory vault)
@@ -69,4 +69,3 @@ Attention was reconstructed from a behavioral study of Obsidian — its
 bundled app shape, public API names, DOM classes, and plugin extension points
 (the `decode-obsidian` reference tree). It contains no original Obsidian source
 code and is not affiliated with, endorsed by, or a product of Obsidian.
-probe

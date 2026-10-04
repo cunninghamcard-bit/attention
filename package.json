@@ -2,7 +2,7 @@
   "name": "attention",
   "version": "0.1.0",
   "private": true,
-  "description": "Monorepo orchestrator: apps/desktop shell, apps/web product, packages/* shared lanes, the Go kernel at the root. Toolchain entry is mise; the script names below are unchanged and forward into the lanes.",
+  "description": "Monorepo orchestrator: apps/desktop shell, apps/web product, and packages/* shared lanes. Toolchain entry is mise; the scripts forward into the lanes.",
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @app/web run dev",

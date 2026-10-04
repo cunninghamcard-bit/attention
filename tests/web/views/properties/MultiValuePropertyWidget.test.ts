@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { App } from "@web/app/App";
+import { createTestApp } from "../../TestApp";
 import { MarkdownView } from "@web/views/MarkdownView";
 
 describe("MultiValuePropertyWidget", () => {
@@ -17,7 +17,7 @@ describe("MultiValuePropertyWidget", () => {
   });
 
   it("renders multitext values as removable multi-select pills and commits typed entries", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const source = await app.vault.create(
       "Note.md",
@@ -61,7 +61,7 @@ describe("MultiValuePropertyWidget", () => {
   });
 
   it("adds accepted property link suggestions as multitext pills", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const source = await app.vault.create(
       "Daily/Today.md",
@@ -90,7 +90,7 @@ describe("MultiValuePropertyWidget", () => {
   });
 
   it("edits existing multitext pills and preserves wikilink normalization", async () => {
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     await app.ready;
     const source = await app.vault.create(
       "Note.md",

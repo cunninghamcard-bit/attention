@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { App } from "@web/app/App";
+import type { App } from "@web/app/App";
+import { createTestApp } from "../../TestApp";
 import { PrDetailView } from "@web/builtin/github/GitPrViews";
 import { GitHubNavView } from "@web/builtin/github/GitHubNavView";
 import { GitHubRepoView } from "@web/builtin/github/GitHubRepoView";
@@ -279,7 +280,7 @@ function rawPull(detail: PrSummary | PrDetail) {
 }
 
 async function appWithGit(isRepo = true): Promise<App> {
-  const app = new App(document.createElement("div"));
+  const app = createTestApp();
   app.git.bridgeFactory = () => fakeGitBridge(isRepo);
   (app.vault.adapter as { getBasePath?: () => string }).getBasePath = () => "/fake/vault";
   await app.ready;

@@ -1,7 +1,7 @@
 /**
  * Input: node:path, node:fs, vite, node:module
  * Output: default
- * Pos: Application code
+ * Pos: Electron main and preload build configuration
  *
  * 🔄 Self-reference: When this file changes, update this header
  */
@@ -22,7 +22,7 @@ import { builtinModules } from "node:module";
  * and the library (`../../web/vite.api.config.ts`).
  */
 const nodeBuiltins = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
-const desktopOut = resolve(__dirname, "../../../out/desktop");
+const desktopOut = resolve(import.meta.dirname, "../../../out/desktop");
 
 export default defineConfig({
   plugins: [
@@ -30,7 +30,7 @@ export default defineConfig({
       name: "copy-node-pty-runtime",
       closeBundle() {
         cpSync(
-          realpathSync(resolve(__dirname, "../node_modules/node-pty")),
+          realpathSync(resolve(import.meta.dirname, "../node_modules/node-pty")),
           resolve(desktopOut, "node_modules/node-pty"),
           { recursive: true },
         );
@@ -47,8 +47,8 @@ export default defineConfig({
     sourcemap: true,
     lib: {
       entry: {
-        main: resolve(__dirname, "main.ts"),
-        preload: resolve(__dirname, "../preload/preload.ts"),
+        main: resolve(import.meta.dirname, "main.ts"),
+        preload: resolve(import.meta.dirname, "../preload/preload.ts"),
       },
       formats: ["cjs"],
       fileName: (_format, entryName) => `${entryName}.cjs`,

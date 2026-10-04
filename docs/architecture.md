@@ -26,7 +26,7 @@ count.
 | Renderer | `apps/web` | 461 | The product — the faithful Obsidian reconstruction |
 | Shell | `apps/desktop` | 31 | Electron main + preload |
 | Contracts | `packages/shared`, `packages/sdk` | 12 | The typed seam between the two above |
-| Tests | `tests/**` | 230 | web / desktop / e2e / architecture |
+| Tests | `tests/**` | 231 | web / desktop / e2e / architecture |
 
 ## Directory map
 
@@ -119,7 +119,7 @@ here rather than under `styles/deviations/`:
 
 ## Enforced rules
 
-`tests/architecture.test.ts` (866 lines) fails CI on any of these:
+`tests/architecture.test.ts` fails CI on any of these:
 
 | Rule | Asserts |
 |---|---|
@@ -135,7 +135,7 @@ here rather than under `styles/deviations/`:
 | `architecture-docs` | this file and `project.spec.md` exist and declare their governed structure |
 | `name-agnostic code` | no retired product-name literals in `apps` / `packages` / `tests` / `scripts` |
 
-`tests/web/styles/StyleSystem.test.ts` (317 lines) additionally guards the
+`tests/web/styles/StyleSystem.test.ts` additionally guards the
 stylesheet layering: the exactly-once manifest, own-last import order, and the
 restyle/token walls. Faithful extracts under
 `styles/{tokens,base,components,features,workspace,editor}` must stay
