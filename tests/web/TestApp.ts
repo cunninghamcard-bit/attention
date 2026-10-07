@@ -11,7 +11,7 @@ export function createTestApp(): App {
   return app;
 }
 
-afterEach(async () => {
+export async function disposeTestApps(): Promise<void> {
   try {
     for (const app of apps) {
       // Some component tests only exercise synchronous construction. Startup
@@ -42,4 +42,6 @@ afterEach(async () => {
   } finally {
     apps.clear();
   }
-});
+}
+
+afterEach(disposeTestApps);

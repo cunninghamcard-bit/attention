@@ -58,7 +58,7 @@ and configuration. Update this table when the tracked structure changes.
 | `apps/desktop` | 31 |
 | `packages/shared` | 11 |
 | `packages/sdk` | 1 |
-| `tests` | 231 |
+| `tests` | 232 |
 | `scripts` | 3 |
 
 ## Development entry points

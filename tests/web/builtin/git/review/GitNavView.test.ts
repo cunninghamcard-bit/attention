@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { App } from "@web/app/App";
+import type { App } from "@web/app/App";
+import { createTestApp } from "../../../TestApp";
 import type { ElectronGitApi, GitExecResult, GitLogEntry } from "@web/builtin/git/GitService";
 import { GitNavView, openGitNav } from "@web/builtin/git/review/GitNavView";
 import type { ReviewFileSummary } from "@web/builtin/git/reviewSession";
@@ -26,7 +27,7 @@ function fakeBridge(): ElectronGitApi {
 }
 
 async function createApp(): Promise<App> {
-  const app = new App(document.createElement("div"));
+  const app = createTestApp();
   app.git.bridgeFactory = () => fakeBridge();
   (app.vault.adapter as { getBasePath?: () => string }).getBasePath = () => "/fake/vault";
   await app.ready;

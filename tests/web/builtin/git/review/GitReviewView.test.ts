@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { App } from "@web/app/App";
+import type { App } from "@web/app/App";
+import { createTestApp } from "../../../TestApp";
 import type { ElectronGitApi, GitExecResult } from "@web/builtin/git/GitService";
 
 interface FakeCodeViewHandle {
@@ -138,7 +139,7 @@ async function reviewApp(options: { numstat?: string } = {}): Promise<{
   app: App;
   bridge: ReturnType<typeof fakeBridge>;
 }> {
-  const app = new App(document.createElement("div"));
+  const app = createTestApp();
   const bridge = fakeBridge(options);
   app.git.bridgeFactory = () => bridge;
   (app.vault.adapter as { getBasePath?: () => string }).getBasePath = () => "/fake/vault";
@@ -392,7 +393,7 @@ describe("GitReviewView", () => {
         return { code: 0, stdout: "", stderr: "" };
       },
     };
-    const app = new App(document.createElement("div"));
+    const app = createTestApp();
     app.git.bridgeFactory = () => bridge;
     (app.vault.adapter as { getBasePath?: () => string }).getBasePath = () => "/fake/vault";
     await app.ready;

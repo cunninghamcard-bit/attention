@@ -26,7 +26,7 @@ count.
 | Renderer | `apps/web` | 461 | The product — the faithful Obsidian reconstruction |
 | Shell | `apps/desktop` | 31 | Electron main + preload |
 | Contracts | `packages/shared`, `packages/sdk` | 12 | The typed seam between the two above |
-| Tests | `tests/**` | 231 | web / desktop / e2e / architecture |
+| Tests | `tests/**` | 232 | web / desktop / e2e / architecture |
 
 ## Directory map
 
