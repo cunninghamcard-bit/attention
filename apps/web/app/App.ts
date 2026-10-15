@@ -70,6 +70,7 @@ import { RevisionHistoryService } from "../builtin/file-recovery/RevisionHistory
 import { FileRecoveryService } from "../builtin/file-recovery/FileRecovery";
 import { WebViewerService } from "../builtin/webviewer/WebViewerService";
 import { TerminalService } from "../builtin/terminal/TerminalService";
+import { LanguageServerService } from "../builtin/language-server/LanguageServerService";
 import { GitService } from "../builtin/git/GitService";
 import { GitHubService } from "../builtin/github/GitHubService";
 import { ThemeMarketplace } from "../builtin/theme-market/ThemeMarketplace";
@@ -171,6 +172,7 @@ export class App {
   readonly fileRecovery = new FileRecoveryService(this);
   readonly webViewer = new WebViewerService(this);
   readonly terminals = new TerminalService(this);
+  readonly languageServers = new LanguageServerService(this);
   readonly git = new GitService(this);
   readonly github = new GitHubService(this);
   readonly themeMarketplace = new ThemeMarketplace(undefined, this);

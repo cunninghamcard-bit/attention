@@ -32,8 +32,11 @@ export const CODE_EXTENSIONS = [
   "jsx",
   "mjs",
   "cjs",
+  "mts",
+  "cts",
   "go",
   "py",
+  "pyi",
   "rs",
   "java",
   "kt",
@@ -159,6 +162,7 @@ export class CodeFileView extends TextFileView {
   protected cm: EditorView | null = null;
   private readonly languageCompartment = new Compartment();
   private readonly wrapCompartment = new Compartment();
+  private readonly languageServerCompartment = new Compartment();
   private applyingViewData = false;
   private pendingReveal: { line: number; start: number; end: number } | null = null;
   wordWrap = false;
@@ -175,9 +179,21 @@ export class CodeFileView extends TextFileView {
       : "lucide-file-code";
   }
 
+  /** The live editor, for callers that drive it (language-server navigation). */
+  get editorView(): EditorView | null {
+    return this.cm;
+  }
+
   async onOpen(): Promise<void> {
     await super.onOpen();
     this.contentEl.classList.add("code-file-view");
+    // A server starting, stopping or being reconfigured changes what this
+    // editor should be attached to.
+    this.registerEvent(
+      this.app.workspace.on("language-server-change", () => {
+        if (this.file) void this.applyLanguageServer(this.file);
+      }),
+    );
     ensureRangeGeometry(this.contentEl.ownerDocument.defaultView ?? window);
     this.cm = new EditorView({
       parent: this.contentEl,
@@ -189,6 +205,25 @@ export class CodeFileView extends TextFileView {
     await super.onLoadFile(file);
     await this.applyLanguage(file.name);
     this.applyReveal();
+    // Not awaited: a server can take seconds to start, and the file is
+    // readable without it.
+    void this.applyLanguageServer(file);
+  }
+
+  override async onUnloadFile(file: TFile): Promise<void> {
+    // Detach BEFORE the document is swapped: left attached, the client would
+    // report the next file's content as an edit to this one.
+    this.cm?.dispatch({ effects: this.languageServerCompartment.reconfigure([]) });
+    await super.onUnloadFile(file);
+  }
+
+  /** Attach this editor to the file's language server, when there is one. */
+  private async applyLanguageServer(file: TFile): Promise<void> {
+    if (this.isLargeDocument()) return;
+    const extension = await this.app.languageServers.extensionFor(file);
+    // The view may have closed or moved to another file while the server started.
+    if (!this.cm || this.file !== file) return;
+    this.cm.dispatch({ effects: this.languageServerCompartment.reconfigure(extension ?? []) });
   }
 
   /** eState contract shared with MarkdownView: { line (0-based), matchStart, matchEnd }. */
@@ -305,6 +340,7 @@ export class CodeFileView extends TextFileView {
       syntaxHighlighting(themeHighlightStyle),
       this.languageCompartment.of([]),
       this.wrapCompartment.of(this.wordWrap ? EditorView.lineWrapping : []),
+      this.languageServerCompartment.of([]),
       EditorView.updateListener.of((update) => {
         if (!update.docChanged || this.applyingViewData) return;
         // Do not clone the full document into this.source on every edit —
@@ -327,7 +363,11 @@ export class CodeFileView extends TextFileView {
       this.app.workspace.trigger("code-symbols-change", this);
       return;
     }
-    const description = LanguageDescription.matchFilename(languages, filename);
+    // Type stubs are Python; language-data only knows the `.py` spelling.
+    const description = LanguageDescription.matchFilename(
+      languages,
+      filename.replace(/\.pyi$/i, ".py"),
+    );
     const support = description ? await description.load() : null;
     if (!this.cm) return;
     this.cm.dispatch({ effects: this.languageCompartment.reconfigure(support ?? []) });

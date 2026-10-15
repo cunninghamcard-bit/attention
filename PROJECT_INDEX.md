@@ -54,11 +54,11 @@ and configuration. Update this table when the tracked structure changes.
 
 | Lane | Tracked files |
 |---|---:|
-| `apps/web` | 461 |
-| `apps/desktop` | 31 |
-| `packages/shared` | 11 |
+| `apps/web` | 470 |
+| `apps/desktop` | 32 |
+| `packages/shared` | 12 |
 | `packages/sdk` | 1 |
-| `tests` | 232 |
+| `tests` | 239 |
 | `scripts` | 3 |
 
 ## Development entry points

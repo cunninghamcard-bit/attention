@@ -23,10 +23,10 @@ count.
 
 | Lane | Path | Files | What it is |
 |---|---|---|---|
-| Renderer | `apps/web` | 461 | The product — the faithful Obsidian reconstruction |
-| Shell | `apps/desktop` | 31 | Electron main + preload |
-| Contracts | `packages/shared`, `packages/sdk` | 12 | The typed seam between the two above |
-| Tests | `tests/**` | 232 | web / desktop / e2e / architecture |
+| Renderer | `apps/web` | 470 | The product — the faithful Obsidian reconstruction |
+| Shell | `apps/desktop` | 32 | Electron main + preload |
+| Contracts | `packages/shared`, `packages/sdk` | 13 | The typed seam between the two above |
+| Tests | `tests/**` | 239 | web / desktop / e2e / architecture |
 
 ## Directory map
 
@@ -34,7 +34,7 @@ count.
 
 ```
 apps/web/
-├── builtin/      131  feature slices (git, chat, terminal, search, …)
+├── builtin/      140  feature slices (git, chat, terminal, search, language servers, …)
 ├── app/           66  composition root, workspace, settings surface
 ├── styles/        57  faithful extracts + own component CSS + deviations/
 ├── views/         50  view classes seated in the workspace
@@ -61,7 +61,8 @@ apps/desktop/
 ├── main/     27  Electron main: composition root, windows, app:// protocol,
 │                 IPC table, native bridges (git, terminal, dialog, net, menu),
 │                 CLI socket server
-└── preload/   4  the preload bridge — installs the globals the renderer probes
+└── preload/   5  the preload bridge — installs the globals the renderer probes
+                  (and owns the git, terminal and language-server processes)
 ```
 
 ## Direction table (normative)

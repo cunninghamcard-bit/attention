@@ -74,6 +74,7 @@
 @import "./base/platform-mobile.css";
 @import "../views/code-view.css";
 @import "../builtin/terminal/terminal.css";
+@import "../builtin/language-server/language-server.css";
 @import "../ui/file-type-icon.css";
 @import "../ui/composer.css";
 @import "../builtin/file-explorer.css";
