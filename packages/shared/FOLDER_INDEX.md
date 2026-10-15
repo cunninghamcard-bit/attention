@@ -7,6 +7,7 @@
 - `dataAdapter.ts` - Exports ListedFiles and 4 more
 - `gitApi.ts` - Exports GitExecResult and 1 more
 - `ipc.ts` - Exports SyncChannels and 7 more
+- `lspApi.ts` - Exports LspSpawnOptions and 2 more
 - `menu.ts` - Exports SystemMenuItem
 - `scheme.ts` - Exports URL_SCHEME
 - `terminalApi.ts` - Exports PtySpawnOptions and 2 more

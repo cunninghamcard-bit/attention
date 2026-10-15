@@ -1,0 +1,52 @@
+/* The language-server hover tooltip inside the code view. It is drawn by
+ * @codemirror/lsp-client with its own light-on-white defaults, which know
+ * nothing of the app's theme — these rules re-express it in the app's tokens.
+ * Everything is scoped under `.code-file-view` (own), so no editor outside the
+ * code view is touched. */
+.code-file-view .cm-tooltip.cm-tooltip-hover {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-s);
+  color: var(--text-normal);
+  max-width: min(640px, 80vw);
+}
+.code-file-view .cm-lsp-documentation {
+  padding: var(--size-4-2) var(--size-4-3);
+  max-height: 320px;
+  overflow: auto;
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-small);
+  line-height: var(--line-height-tight);
+}
+.code-file-view .cm-lsp-documentation pre,
+.code-file-view .cm-lsp-documentation code {
+  font-family: var(--font-monospace);
+  font-size: var(--code-size);
+  white-space: pre-wrap;
+}
+.code-file-view .cm-lsp-documentation pre {
+  margin: var(--size-2-2) 0;
+}
+.code-file-view .cm-lsp-documentation p {
+  margin: var(--size-2-2) 0;
+}
+
+/* The References pane is built from the faithful backlink/search-result rows;
+ * those rows were made for prose, where the line number is an aside. For code
+ * the number is part of the address, so it is set apart from the line's text,
+ * and the text is shown in the code font. Scoped under `.language-references`
+ * (own). */
+.language-references .search-result-file-match-line {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  margin-inline-end: var(--size-4-2);
+}
+.language-references .search-result-file-match-text {
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+}
+
+.language-server-settings .setting-item-description {
+  white-space: pre-line;
+}

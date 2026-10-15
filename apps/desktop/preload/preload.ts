@@ -1,5 +1,5 @@
 /**
- * Input: electron, @electron/remote, ./terminal-bridge, ./git-bridge
+ * Input: electron, @electron/remote, ./terminal-bridge, ./git-bridge, ./lsp-bridge
  * Output: ElectronBridgeApi, installElectronBridge
  * Pos: Application code
  *
@@ -10,6 +10,7 @@ import { ipcRenderer, shell, webFrame, webUtils } from "electron";
 import * as remote from "@electron/remote";
 import { installTerminalBridge } from "./terminal-bridge";
 import { installGitBridge } from "./git-bridge";
+import { installLspBridge } from "./lsp-bridge";
 
 /**
  * Preload bridge — installs the exact globals the reconstructed renderer reads.
@@ -64,3 +65,4 @@ export function installElectronBridge(target: typeof globalThis): void {
 installElectronBridge(globalThis);
 installTerminalBridge(globalThis);
 installGitBridge(globalThis);
+installLspBridge(globalThis);
