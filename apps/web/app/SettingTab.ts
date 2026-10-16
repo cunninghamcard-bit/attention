@@ -584,15 +584,25 @@ export const SettingTab: { new (app: App, setting: SettingRegistry): SettingTabR
       if (desc) setting.setDesc(desc);
       setting.setClass("mod-page");
       setting.settingEl.tabIndex = 0;
+      // app.js re-renders the page on refresh and re-checks (h||p); this row refreshes in place,
+      // so the display value is created or removed whenever that condition flips.
       let displayValue: DisplayValueComponent | undefined;
-      if (getDisplayText(definition.displayValue) || getStatus(definition.status)) {
-        setting.addDisplayValue((component) => {
-          displayValue = component;
-        });
-      }
       const updateDisplayValue = () => {
+        const value = getDisplayText(definition.displayValue);
         const status = getStatus(definition.status);
-        displayValue?.setValue(getDisplayText(definition.displayValue)).setStatus(status);
+        if (value || status) {
+          if (!displayValue) {
+            setting.addDisplayValue((component) => {
+              displayValue = component;
+            });
+            if (displayValue) setting.controlEl.prepend(displayValue.valueEl);
+          }
+          displayValue?.setValue(value).setStatus(status);
+        } else if (displayValue) {
+          displayValue.setStatus(null);
+          displayValue.valueEl.remove();
+          displayValue = undefined;
+        }
         setting.settingEl.classList.toggle("mod-warning", status === "warning");
       };
       updateDisplayValue();

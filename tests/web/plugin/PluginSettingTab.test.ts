@@ -337,6 +337,52 @@ describe("PluginSettingTab", () => {
     expect(saveData).toHaveBeenLastCalledWith(plugin.settings);
   });
 
+  it("creates and removes a page row display value as refreshDomState changes it", async () => {
+    const app = new App(document.createElement("div"));
+    const plugin = new SettingsPlugin(app, {
+      id: "page-display-refresh",
+      name: "Page Display Refresh",
+      version: "1.0.0",
+    });
+    plugin.settings = {};
+    const tab = new DeclarativeSettingTab(app, plugin);
+    tab.pageDisplay = "";
+    tab.pageStatus = null;
+    app.setting.addSettingTab(tab);
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    new SettingsRenderer(app, host).render("page-display-refresh");
+    const detailRow = settingRow(host, "Agent detail");
+    expect(detailRow.querySelector(".setting-item-value")).toBeNull();
+
+    tab.pageDisplay = "Careful";
+    tab.pageStatus = "warning";
+    tab.refreshDomState();
+    const valueEl = detailRow.querySelector(".setting-item-value");
+    expect(valueEl?.textContent).toBe("Careful");
+    expect(valueEl?.nextElementSibling?.classList.contains("setting-item-status")).toBe(true);
+    expect(valueEl?.nextElementSibling?.classList.contains("mod-warning")).toBe(true);
+    expect(detailRow.classList.contains("mod-warning")).toBe(true);
+    expect(
+      detailRow
+        .querySelector(".setting-item-control")
+        ?.lastElementChild?.classList.contains("extra-setting-button"),
+    ).toBe(true);
+
+    tab.pageDisplay = "";
+    tab.pageStatus = null;
+    tab.refreshDomState();
+    expect(detailRow.querySelector(".setting-item-value")).toBeNull();
+    expect(detailRow.querySelector(".setting-item-status")).toBeNull();
+    expect(detailRow.classList.contains("mod-warning")).toBe(false);
+
+    tab.pageDisplay = "Fast";
+    tab.refreshDomState();
+    expect(detailRow.querySelectorAll(".setting-item-value")).toHaveLength(1);
+    expect(detailRow.querySelector(".setting-item-value")?.textContent).toBe("Fast");
+    host.remove();
+  });
+
   it("renders declarative plugin settings before falling back to imperative display", async () => {
     const app = new App(document.createElement("div"));
     const plugin = new SettingsPlugin(app, {
