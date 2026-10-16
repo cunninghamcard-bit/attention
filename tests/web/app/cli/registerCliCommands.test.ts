@@ -1,5 +1,14 @@
+import type { EditorView } from "@codemirror/view";
 import { describe, expect, it } from "vitest";
 import { App } from "@web/app/App";
+import { CodeFileView } from "@web/views/CodeFileView";
+import { MarkdownView } from "@web/views/MarkdownView";
+
+async function until(condition: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 200 && !condition(); attempt += 1)
+    await new Promise<void>((resolve) => setTimeout(resolve, 5));
+  expect(condition()).toBe(true);
+}
 
 // The core commands are registered by the App constructor; drive them through
 // the faithful `app.cli.handleCli` entry against a real (in-memory) vault.
@@ -67,6 +76,64 @@ describe("core CLI commands", () => {
     await expect(app.cli.handleCli(["open"])).rejects.toBe(
       "Missing required parameter: file or path",
     );
+  });
+
+  it("open line=/to= opens a passage and selects it, in code and markdown", async () => {
+    const app = await seededApp();
+    await app.vault.create(
+      "pkg/sched.py",
+      "import os\n\ndef run():\n    step()\n    done()\n\nrun()\n",
+    );
+    await app.vault.create("Long.md", "# Title\n\nfirst\nsecond\nthird\n");
+
+    expect(await app.cli.handleCli(["open", "path=pkg/sched.py", "line=3", "to=5"])).toBe(
+      "Opened: pkg/sched.py:3-5",
+    );
+    // The editor is private; tests reach it the way CodeFileView.test.ts does.
+    const cm = () =>
+      (app.workspace.getActiveViewOfType(CodeFileView) as unknown as { cm: EditorView }).cm;
+    const selected = () => {
+      const main = cm().state.selection.main;
+      return cm().state.sliceDoc(main.from, main.to);
+    };
+    await until(() => selected() !== "");
+    expect(selected()).toBe("def run():\n    step()\n    done()");
+
+    // One line: line= alone.
+    expect(await app.cli.handleCli(["open", "path=pkg/sched.py", "line=7"])).toBe(
+      "Opened: pkg/sched.py:7",
+    );
+    await until(() => selected() === "run()");
+
+    // Markdown opens in reading view by default: eState.line scrolls there,
+    // and there is nothing to select.
+    expect(await app.cli.handleCli(["open", "path=Long.md", "line=3", "to=4"])).toBe(
+      "Opened: Long.md:3-4",
+    );
+    expect(app.workspace.getActiveViewOfType(MarkdownView)?.getMode()).toBe("preview");
+
+    // In the editor, the passage is selected.
+    const getConfig = app.vault.getConfig.bind(app.vault);
+    app.vault.getConfig = ((key: string) =>
+      key === "defaultViewMode" ? "source" : getConfig(key)) as typeof app.vault.getConfig;
+    await app.cli.handleCli(["open", "path=Long.md", "newtab", "line=3", "to=4"]);
+    const markdown = app.workspace.getActiveViewOfType(MarkdownView)!;
+    expect(markdown.getMode()).toBe("source");
+    expect(markdown.editor.getSelection()).toBe("first\nsecond");
+  });
+
+  it("open rejects a line range it cannot honor", async () => {
+    const app = await seededApp();
+    await expect(app.cli.handleCli(["open", "file=Note", "line=0"])).rejects.toBe(
+      "Invalid line: 0",
+    );
+    await expect(app.cli.handleCli(["open", "file=Note", "line=x"])).rejects.toBe(
+      "Invalid line: x",
+    );
+    await expect(app.cli.handleCli(["open", "file=Note", "line=4", "to=2"])).rejects.toBe(
+      "Invalid to: 2",
+    );
+    await expect(app.cli.handleCli(["open", "file=Note", "to=2"])).rejects.toBe("to= needs line=");
   });
 
   it("command requires an id and reports unknown ids", async () => {

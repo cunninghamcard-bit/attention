@@ -160,7 +160,8 @@ export class CodeFileView extends TextFileView {
   private readonly languageCompartment = new Compartment();
   private readonly wrapCompartment = new Compartment();
   private applyingViewData = false;
-  private pendingReveal: { line: number; start: number; end: number } | null = null;
+  private pendingReveal: { line: number; start: number; end: number; endLine?: number } | null =
+    null;
   wordWrap = false;
 
   getViewType(): string {
@@ -191,17 +192,27 @@ export class CodeFileView extends TextFileView {
     this.applyReveal();
   }
 
-  /** eState contract shared with MarkdownView: { line (0-based), matchStart, matchEnd }. */
+  /**
+   * eState contract shared with MarkdownView: { line (0-based), matchStart, matchEnd }.
+   * `endLine` (0-based, inclusive) is this view's own addition: it selects whole lines
+   * from `line` through `endLine`, for a caller that points at a passage, not a word.
+   */
   override setEphemeralState(state: unknown): void {
     if (!state || typeof state !== "object") return;
-    const { line, matchStart, matchEnd } = state as {
+    const { line, matchStart, matchEnd, endLine } = state as {
       line?: unknown;
       matchStart?: unknown;
       matchEnd?: unknown;
+      endLine?: unknown;
     };
     const lineNumber = Number(line);
     if (!Number.isFinite(lineNumber)) return;
-    this.pendingReveal = { line: lineNumber, start: Number(matchStart), end: Number(matchEnd) };
+    this.pendingReveal = {
+      line: lineNumber,
+      start: Number(matchStart),
+      end: Number(matchEnd),
+      endLine: endLine === undefined ? undefined : Number(endLine),
+    };
     this.applyReveal();
   }
 
@@ -219,12 +230,19 @@ export class CodeFileView extends TextFileView {
     // The document may not be loaded yet when the ephemeral state arrives;
     // onLoadFile retries once the content is in.
     if (!this.cm || !this.pendingReveal || this.cm.state.doc.length === 0) return;
-    const { line, start, end } = this.pendingReveal;
+    const { line, start, end, endLine } = this.pendingReveal;
     this.pendingReveal = null;
     const doc = this.cm.state.doc;
-    const docLine = doc.line(Math.min(Math.max(line + 1, 1), doc.lines));
-    const from = Number.isFinite(start) ? Math.min(docLine.from + start, docLine.to) : docLine.from;
-    const to = Number.isFinite(end) ? Math.min(docLine.from + end, docLine.to) : from;
+    const clampLine = (zeroBased: number) =>
+      doc.line(Math.min(Math.max(zeroBased + 1, 1), doc.lines));
+    const docLine = clampLine(line);
+    let from = Number.isFinite(start) ? Math.min(docLine.from + start, docLine.to) : docLine.from;
+    let to = Number.isFinite(end) ? Math.min(docLine.from + end, docLine.to) : from;
+    if (endLine !== undefined && Number.isFinite(endLine) && endLine >= line) {
+      // A passage: whole lines, first through last.
+      from = docLine.from;
+      to = clampLine(endLine).to;
+    }
     this.cm.dispatch({
       selection: EditorSelection.range(from, to),
       effects: EditorView.scrollIntoView(from, { y: "center" }),

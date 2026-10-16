@@ -1,5 +1,5 @@
 /**
- * Input: ../../app/App, ./Cli, ../../vault/FileSystemAdapter, ../../vault/TAbstractFile, ../../vault/Vault, ./commands/coreMisc, ./commands/fileWrites, ./commands/graphLists, ./commands/metadata, ./commands/navigation
+ * Input: ../../app/App, ./Cli, ../../vault/FileSystemAdapter, ../../vault/TAbstractFile, ../../vault/Vault, ../../views/MarkdownView, ./commands/coreMisc, ./commands/fileWrites, ./commands/graphLists, ./commands/metadata, ./commands/navigation
  * Output: registerCliCommands
  * Pos: Application code
  *
@@ -11,6 +11,7 @@ import { alphaCompare } from "./Cli";
 import { FileSystemAdapter } from "../../vault/FileSystemAdapter";
 import { TFolder } from "../../vault/TAbstractFile";
 import { Vault } from "../../vault/Vault";
+import { MarkdownView } from "../../views/MarkdownView";
 import { registerCoreMiscCommands } from "./commands/coreMisc";
 import { registerFileWriteCommands } from "./commands/fileWrites";
 import { registerGraphListCommands } from "./commands/graphLists";
@@ -135,13 +136,32 @@ export function registerCliCommands(app: App): void {
       file: { value: "<name>", description: "File name" },
       path: { value: "<path>", description: "File path" },
       newtab: { description: "Open in new tab" },
+      line: { value: "<n>", description: "Scroll to this line (1-based) and select it" },
+      to: { value: "<n>", description: "With line=, select through this line (1-based)" },
     },
     // Real handler: NO active-file fallback (`tryResolveFile(t, !1)`) — bare
     // `open` throws "Missing required parameter: file or path".
+    // line=/to= are Attention's own: they let an agent open a passage, not
+    // just a file, through the eState every text view already honors.
     async (params) => {
       const file = cli.tryResolveFile(params, false);
-      await app.workspace.getLeaf(params.newtab ? "tab" : false).openFile(file, { active: true });
-      return `Opened: ${file.path}`;
+      const range = parseLineRange(params.line, params.to);
+      const leaf = app.workspace.getLeaf(params.newtab ? "tab" : false);
+      await leaf.openFile(file, {
+        active: true,
+        ...(range ? { eState: { line: range.from - 1, endLine: range.to - 1 } } : {}),
+      });
+      if (!range) return `Opened: ${file.path}`;
+      const view = leaf.view;
+      if (view instanceof MarkdownView && view.getMode() === "source") {
+        // The markdown editor scrolls to eState.line; the passage is selected here.
+        const last = Math.min(range.to, view.editor.lineCount()) - 1;
+        const anchor = { line: range.from - 1, ch: 0 };
+        const head = { line: last, ch: view.editor.getLine(last).length };
+        view.editor.setSelection(anchor, head);
+        view.editor.scrollIntoView({ from: anchor, to: head }, true);
+      }
+      return `Opened: ${file.path}:${range.from === range.to ? range.from : `${range.from}-${range.to}`}`;
     },
   );
 
@@ -172,4 +192,18 @@ export function registerCliCommands(app: App): void {
   registerGraphListCommands(app);
   registerNavigationCommands(app);
   registerCoreMiscCommands(app);
+}
+
+/** `line=` / `to=` as a 1-based inclusive range; null when `line=` is absent. */
+function parseLineRange(line: unknown, to: unknown): { from: number; to: number } | null {
+  if (line === undefined) {
+    if (to !== undefined) throw "to= needs line=";
+    return null;
+  }
+  const from = Number(line);
+  if (!Number.isInteger(from) || from < 1) throw `Invalid line: ${String(line)}`;
+  if (to === undefined) return { from, to: from };
+  const end = Number(to);
+  if (!Number.isInteger(end) || end < from) throw `Invalid to: ${String(to)}`;
+  return { from, to: end };
 }
