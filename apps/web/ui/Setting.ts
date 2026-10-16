@@ -131,8 +131,7 @@ export class ButtonComponent extends BaseComponent {
   }
 
   setWarning(): this {
-    this.buttonEl.classList.add("mod-warning");
-    return this;
+    return this.setDestructive().setCta();
   }
 
   setTooltip(text: string, options?: TooltipOptions): this {

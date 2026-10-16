@@ -56,10 +56,28 @@ describe("Setting components", () => {
     await Promise.resolve();
     expect(button.buttonEl.classList.contains("mod-loading")).toBe(false);
 
-    button.setLoading(true).setCta().setWarning().removeCta();
+    button.setLoading(true).setWarning();
     expect(button.buttonEl.classList.contains("mod-loading")).toBe(true);
-    expect(button.buttonEl.classList.contains("mod-warning")).toBe(true);
+    expect(button.buttonEl.classList.contains("mod-destructive")).toBe(true);
+    expect(button.buttonEl.classList.contains("mod-cta")).toBe(true);
+    expect(button.buttonEl.classList.contains("mod-warning")).toBe(false);
+
+    button.removeCta();
     expect(button.buttonEl.classList.contains("mod-cta")).toBe(false);
+    expect(button.buttonEl.classList.contains("mod-destructive")).toBe(true);
+  });
+
+  it("keeps the obsidian-light-ocr setWarning delete button destructive and clickable", async () => {
+    const onConfirm = vi.fn();
+    const setting = new Setting(parent()).addButton((button) =>
+      button.setButtonText("Delete").setWarning().onClick(onConfirm),
+    );
+    const buttonEl = setting.controlEl.querySelector("button");
+    if (!buttonEl) throw new Error("Missing delete button");
+
+    expect([...buttonEl.classList].sort()).toEqual(["mod-cta", "mod-destructive"]);
+    buttonEl.click();
+    await vi.waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(1));
   });
 
   it("creates SecretComponent as an Obsidian password input", () => {
