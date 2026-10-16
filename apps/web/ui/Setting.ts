@@ -120,6 +120,16 @@ export class ButtonComponent extends BaseComponent {
     return this;
   }
 
+  setDestructive(): this {
+    this.buttonEl.classList.add("mod-destructive");
+    return this;
+  }
+
+  removeDestructive(): this {
+    this.buttonEl.classList.remove("mod-destructive");
+    return this;
+  }
+
   setWarning(): this {
     this.buttonEl.classList.add("mod-warning");
     return this;
@@ -699,6 +709,37 @@ export class SliderComponent extends ValueComponent<number> {
   }
 }
 
+export class DisplayValueComponent {
+  valueEl: HTMLDivElement;
+  statusEl: HTMLDivElement | null = null;
+
+  constructor(containerEl: HTMLElement) {
+    this.valueEl = createDiv(containerEl, "setting-item-value");
+  }
+
+  setValue(value: string): this {
+    this.valueEl.textContent = value || "";
+    return this;
+  }
+
+  setStatus(status: "warning" | null): this {
+    if (!status) {
+      this.statusEl?.remove();
+      this.statusEl = null;
+      return this;
+    }
+    if (!this.statusEl) {
+      this.statusEl = createDetachedDiv(this.valueEl, "setting-item-status");
+      this.valueEl.after(this.statusEl);
+    }
+    if (status === "warning") {
+      this.statusEl.classList.add("mod-warning");
+      setComponentIcon(this.statusEl, "lucide-alert-triangle");
+    }
+    return this;
+  }
+}
+
 export class SettingGroup {
   groupEl: HTMLDivElement;
   headerEl: HTMLDivElement;
@@ -765,6 +806,7 @@ export class Setting {
   nameEl: HTMLDivElement;
   descEl: HTMLDivElement;
   controlEl: HTMLDivElement;
+  errorEl: HTMLDivElement | null = null;
   components: BaseComponent[] = [];
 
   constructor(parentEl: HTMLElement) {
@@ -773,6 +815,24 @@ export class Setting {
     this.nameEl = createDiv(this.infoEl, "setting-item-name");
     this.descEl = createDiv(this.infoEl, "setting-item-description");
     this.controlEl = createDiv(this.settingEl, "setting-item-control");
+  }
+
+  setErrorMessage(message?: string | null): this {
+    if (!message) {
+      if (this.errorEl) setVisible(this.errorEl, false);
+      this.settingEl.classList.remove("is-invalid");
+      return this;
+    }
+    this.errorEl ??= createDiv(this.controlEl, "setting-item-error");
+    this.errorEl.textContent = message;
+    setVisible(this.errorEl, true);
+    this.settingEl.classList.add("is-invalid");
+    return this;
+  }
+
+  addDisplayValue(cb: (component: DisplayValueComponent) => unknown): this {
+    cb(new DisplayValueComponent(this.controlEl));
+    return this;
   }
 
   setName(text: SettingText): this {

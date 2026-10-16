@@ -60,16 +60,6 @@ describe("Setting components", () => {
     expect(button.buttonEl.classList.contains("mod-loading")).toBe(true);
     expect(button.buttonEl.classList.contains("mod-warning")).toBe(true);
     expect(button.buttonEl.classList.contains("mod-cta")).toBe(false);
-
-    expect("setDestructive" in button).toBe(false);
-    expect("removeDestructive" in button).toBe(false);
-  });
-
-  it("does not expose non-Obsidian setting display or error helpers", () => {
-    const setting = new Setting(parent());
-
-    expect("setErrorMessage" in setting).toBe(false);
-    expect("addDisplayValue" in setting).toBe(false);
   });
 
   it("creates SecretComponent as an Obsidian password input", () => {

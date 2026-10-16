@@ -12,7 +12,13 @@ import {
   FilteredFolderInputSuggest,
   FullPathFileInputSuggest,
 } from "../ui/suggest/FileInputSuggest";
-import { Setting, SettingGroup, type ExtraButtonComponent, type SettingText } from "../ui/Setting";
+import {
+  Setting,
+  SettingGroup,
+  type DisplayValueComponent,
+  type ExtraButtonComponent,
+  type SettingText,
+} from "../ui/Setting";
 import { setIcon } from "../ui/Icon";
 import type { TFile, TFolder } from "../vault/TAbstractFile";
 
@@ -213,7 +219,7 @@ export abstract class SettingPage {
 
   constructor() {
     this.rootEl = document.createElement("div");
-    this.rootEl.className = "setting-page";
+    this.rootEl.className = "setting-page vertical-tab-content";
     this.titlebarEl = document.createElement("div");
     this.titlebarEl.className = "setting-page-titlebar";
     this.containerEl = document.createElement("div");
@@ -223,10 +229,7 @@ export abstract class SettingPage {
 
   abstract display(): void;
 
-  hide(): void {
-    this.containerEl.replaceChildren();
-    this.rootEl.remove();
-  }
+  hide(): void {}
 }
 
 // oxlint-disable-next-line typescript/no-unsafe-declaration-merging -- Obsidian compatibility requires the public interface to merge with the runtime constructor below.
@@ -297,21 +300,6 @@ function getStatus(
   value: "warning" | null | (() => "warning" | null) | undefined,
 ): "warning" | null {
   return typeof value === "function" ? value() : (value ?? null);
-}
-
-function setSettingErrorMessage(setting: Setting, text: string | null | undefined): void {
-  const message = text ?? "";
-  let errorEl = setting.infoEl.querySelector<HTMLDivElement>(":scope > .setting-item-error");
-  if (message && !errorEl) {
-    errorEl = setting.infoEl.ownerDocument.createElement("div");
-    errorEl.className = "setting-item-error";
-    setting.infoEl.appendChild(errorEl);
-  }
-  if (errorEl) {
-    errorEl.textContent = message;
-    errorEl.style.display = message ? "" : "none";
-  }
-  setting.settingEl.classList.toggle("is-invalid", message.length > 0);
 }
 
 function getSettingText(value: string | DocumentFragment | undefined): SettingText | undefined {
@@ -596,15 +584,15 @@ export const SettingTab: { new (app: App, setting: SettingRegistry): SettingTabR
       if (desc) setting.setDesc(desc);
       setting.setClass("mod-page");
       setting.settingEl.tabIndex = 0;
-      const displayValueEl = group.listEl.ownerDocument.createElement("div");
-      displayValueEl.className = "setting-item-display-value";
+      let displayValue: DisplayValueComponent | undefined;
+      setting.addDisplayValue((component) => {
+        displayValue = component;
+      });
       const updateDisplayValue = () => {
         const status = getStatus(definition.status);
-        displayValueEl.textContent = getDisplayText(definition.displayValue);
-        displayValueEl.classList.toggle("mod-warning", status === "warning");
+        displayValue?.setValue(getDisplayText(definition.displayValue)).setStatus(status);
         setting.settingEl.classList.toggle("mod-warning", status === "warning");
       };
-      setting.controlEl.appendChild(displayValueEl);
       updateDisplayValue();
       setting.addExtraButton((button) => button.setIcon("lucide-chevron-right"));
       const open = () => this.openPage(definition, path);
@@ -945,7 +933,7 @@ export const SettingTab: { new (app: App, setting: SettingRegistry): SettingTabR
       void Promise.resolve(control.validate?.(value))
         .then((message) => {
           const error = typeof message === "string" && message.length > 0 ? message : "";
-          setSettingErrorMessage(setting, error);
+          setting.setErrorMessage(error);
           if (error || !persist) return;
           return this.setControlValue(control.key, value);
         })
@@ -953,7 +941,7 @@ export const SettingTab: { new (app: App, setting: SettingRegistry): SettingTabR
           if (persist) this.refreshDomState();
         })
         .catch((error: unknown) => {
-          setSettingErrorMessage(setting, error instanceof Error ? error.message : String(error));
+          setting.setErrorMessage(error instanceof Error ? error.message : String(error));
         });
     }
 

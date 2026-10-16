@@ -489,10 +489,10 @@ describe("PluginSettingTab", () => {
     const plannerRow = settingRow(host, "Planner");
     const detailRow = settingRow(host, "Agent detail");
     expect(detailRow.classList.contains("mod-warning")).toBe(true);
-    expect(detailRow.querySelector(".setting-item-display-value")?.textContent).toBe("Careful");
-    expect(
-      detailRow.querySelector(".setting-item-display-value")?.classList.contains("mod-warning"),
-    ).toBe(true);
+    expect(detailRow.querySelector(".setting-item-value")?.textContent).toBe("Careful");
+    expect(detailRow.querySelector(".setting-item-status")?.classList.contains("mod-warning")).toBe(
+      true,
+    );
 
     dispatchDrag(plannerRow, detailRow);
     expect(tab.reorders).toEqual([[0, 2]]);
@@ -505,10 +505,8 @@ describe("PluginSettingTab", () => {
     tab.pageStatus = null;
     tab.refreshDomState();
     expect(detailRow.classList.contains("mod-warning")).toBe(false);
-    expect(detailRow.querySelector(".setting-item-display-value")?.textContent).toBe("Fast");
-    expect(
-      detailRow.querySelector(".setting-item-display-value")?.classList.contains("mod-warning"),
-    ).toBe(false);
+    expect(detailRow.querySelector(".setting-item-value")?.textContent).toBe("Fast");
+    expect(detailRow.querySelector(".setting-item-status")).toBeNull();
 
     detailRow.click();
     expect(host.querySelector(".setting-page-title")?.textContent).toBe("Agent detail");

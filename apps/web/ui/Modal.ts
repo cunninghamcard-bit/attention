@@ -230,11 +230,6 @@ export class ConfirmationButton extends ButtonComponent {
     return this;
   }
 
-  setDestructive(): this {
-    this.buttonEl.classList.add("mod-destructive");
-    return this;
-  }
-
   setCancel(): this {
     this.buttonEl.classList.add("mod-cancel");
     return this;
@@ -258,16 +253,14 @@ export class ConfirmationModal extends Modal {
     return this;
   }
 
-  addCheckbox(label: string, cb: (event: MouseEvent) => any | Promise<any>): this {
+  addCheckbox(label: string, cb: (checked: boolean) => unknown): this {
     const checkboxEl = this.containerEl.ownerDocument.createElement("label");
     checkboxEl.className = "mod-checkbox";
     const inputEl = this.containerEl.ownerDocument.createElement("input");
     inputEl.type = "checkbox";
     inputEl.tabIndex = -1;
     checkboxEl.append(inputEl, label);
-    inputEl.addEventListener("click", (event) => {
-      void cb(event);
-    });
+    inputEl.addEventListener("change", () => cb(inputEl.checked));
     this.buttonContainerEl.appendChild(checkboxEl);
     return this;
   }
@@ -308,10 +301,8 @@ export class ConfirmationModal extends Modal {
     return this;
   }
 
-  addCancelButton(callback?: () => unknown | Promise<unknown>): this {
-    return this.addButton("mod-cancel", "Cancel", () => {
-      callback?.();
-    });
+  addCancelButton(text?: string): this {
+    return this.addButton((button) => button.setButtonText(text ?? "Cancel").setCancel());
   }
 
   override open(): void {
