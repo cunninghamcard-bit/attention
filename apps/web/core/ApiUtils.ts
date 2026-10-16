@@ -13,7 +13,7 @@ import { preprocessHtmlDrop } from "../markdown/HtmlDropPreprocessor";
 import type { CachedMetadata } from "../metadata/MetadataCache";
 import { getActiveWindow } from "../dom/ActiveDocument";
 
-export const apiVersion = "1.12.7";
+export const apiVersion = "1.14.4";
 
 const MOMENT_VALUE = Symbol("moment-value");
 
