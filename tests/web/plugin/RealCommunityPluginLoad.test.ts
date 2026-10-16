@@ -91,23 +91,26 @@ describe("real community plugin builds load through createPluginRequire", () => 
   );
 
   it.each(loadsCleanly)(
-    "%s enables and runs onload without errors",
+    "%s enables, runs its real onload and logs no errors",
     async (_label, fixture) => {
       const { app, manifest, errors } = await enableAndCollectErrors(fixture);
 
       expect(errors).toEqual([]);
       expect(app.communityPlugins.get(manifest.id)?.error ?? null).toBeNull();
-      expect(app.plugins.getPlugin(manifest.id)).toBeInstanceOf(Plugin);
+      expect(fixture.onloadCommandIds?.length).toBeGreaterThan(0);
+      for (const id of fixture.onloadCommandIds ?? []) {
+        expect(app.commands.findCommand(id), `${id} registered by onload`).toBeTruthy();
+      }
     },
     60_000,
   );
 
-  it.fails.each(stillBroken)(
-    "%s still logs errors while enabling (known gap; drop knownGap once fixed)",
+  it.each(stillBroken)(
+    "%s still fails with its known gap (drop knownGap once fixed)",
     async (_label, fixture) => {
       const { errors } = await enableAndCollectErrors(fixture);
 
-      expect(errors).toEqual([]);
+      expect(errors.some((error) => fixture.knownGap?.error.test(error))).toBe(true);
     },
     60_000,
   );
