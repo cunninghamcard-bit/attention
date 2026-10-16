@@ -266,8 +266,6 @@ describe("App public plugin API", () => {
     const module = createObsidianPluginModule(app);
 
     expect(module).not.toHaveProperty("app");
-    expect(module).not.toHaveProperty("ConfirmationButton");
-    expect(module).not.toHaveProperty("ConfirmationModal");
     expect(module.Modal).toBeTypeOf("function");
   });
 

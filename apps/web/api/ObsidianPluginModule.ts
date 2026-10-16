@@ -7,7 +7,7 @@
  */
 
 import { App } from "../app/App";
-import { SettingTab } from "../app/SettingTab";
+import { SettingPage, SettingTab } from "../app/SettingTab";
 import { Component } from "../core/Component";
 import { Events } from "../core/Events";
 import { Editor } from "../editor/Editor";
@@ -45,7 +45,7 @@ import { EditorSuggest as EditorSuggestClass } from "../ui/suggest/EditorSuggest
 import { FuzzySuggestModal, SuggestModal } from "../ui/suggest/SuggestModal";
 import { Menu, MenuItem, MenuSeparator } from "../ui/Menu";
 import { addIcon, getIcon, getIconIds, removeIcon, setIcon as renderIcon } from "../ui/Icon";
-import { Modal } from "../ui/Modal";
+import { ConfirmationButton, ConfirmationModal, Modal } from "../ui/Modal";
 import { Notice } from "../ui/Notice";
 import { displayTooltip, HoverPopover, PopoverState, setTooltip } from "../ui/Popover";
 import {
@@ -148,10 +148,13 @@ export interface ObsidianPluginModule {
   PluginSettingTab: typeof PluginSettingTab;
   Notice: typeof Notice;
   Modal: typeof Modal;
+  ConfirmationModal: typeof ConfirmationModal;
+  ConfirmationButton: typeof ConfirmationButton;
   Menu: typeof Menu;
   MenuItem: typeof MenuItem;
   MenuSeparator: typeof MenuSeparator;
   SettingTab: typeof SettingTab;
+  SettingPage: typeof SettingPage;
   Setting: typeof Setting;
   ValueComponent: typeof ValueComponent;
   AbstractTextComponent: typeof AbstractTextComponent;
@@ -284,10 +287,13 @@ export function createObsidianPluginModule(app: App): ObsidianPluginModule {
     PluginSettingTab,
     Notice,
     Modal,
+    ConfirmationModal,
+    ConfirmationButton,
     Menu,
     MenuItem,
     MenuSeparator,
     SettingTab,
+    SettingPage,
     AbstractTextComponent,
     BaseComponent,
     ButtonComponent,

@@ -87,6 +87,10 @@ class SlowChild extends Component {
   }
 }
 
+async function flushAsync(): Promise<void> {
+  for (let i = 0; i < 5; i += 1) await Promise.resolve();
+}
+
 describe("Obsidian plugin API parity", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -255,7 +259,6 @@ describe("Obsidian plugin API parity", () => {
 
     expect(module.SettingTab).toBe(SettingTab);
     expect(new module.SettingTab(app, app.setting)).toBeInstanceOf(SettingTab);
-    expect("SettingPage" in module).toBe(false);
     expect("SimpleEditor" in module).toBe(false);
   });
 
@@ -296,11 +299,8 @@ describe("Obsidian plugin API parity", () => {
     expect(module.RenderContext).toBe(RenderContext);
     expect(module.HoverPopover).toBe(HoverPopover);
     expect(module.PopoverState).toBe(PopoverState);
-    expect("SettingPage" in module).toBe(false);
     expect(module.AbstractTextComponent).toBe(AbstractTextComponent);
     expect("DisplayValueComponent" in module).toBe(false);
-    expect("ConfirmationButton" in module).toBe(false);
-    expect("ConfirmationModal" in module).toBe(false);
     expect(module.SecretComponent).toBe(SecretComponent);
     expect(module.addIcon).toBe(addIcon);
     expect(module.getIcon).toBe(getIcon);
@@ -605,11 +605,13 @@ describe("Obsidian plugin API parity", () => {
     const module = createObsidianPluginModule(app);
     const bytes = new Uint8Array([0, 15, 16, 255]).buffer;
 
-    expect(module.apiVersion).toBe("1.12.7");
     expect(module.requireApiVersion("1.0.0")).toBe(true);
+    expect(module.requireApiVersion("1.13.0")).toBe(true);
+    expect(module.requireApiVersion("1.14.4")).toBe(true);
+    expect(module.requireApiVersion("1.14.5")).toBe(false);
     expect(module.requireApiVersion("99.0.0")).toBe(false);
     expect(module.requireApiVersion("v99.0.0")).toBe(true);
-    expect(module.requireApiVersion("1.12.7.0")).toBe(false);
+    expect(module.requireApiVersion("1.14.4.0")).toBe(false);
     const previousLanguage = navigator.language;
     Object.defineProperty(navigator, "language", { configurable: true, value: "zh" });
     expect(module.getLanguage).toBe(getLanguage);
@@ -981,5 +983,122 @@ describe("Obsidian plugin API parity", () => {
 
     expect(callback).not.toHaveBeenCalled();
     expect(app.workspace.editorExtensions).toEqual([]);
+  });
+
+  it("lets plugins subclass ConfirmationModal and drive ConfirmationButton like Obsidian 1.13", async () => {
+    const app = new App(document.createElement("div"));
+    const module = createObsidianPluginModule(app);
+    const checks: boolean[] = [];
+    let keepOpenClicks = 0;
+    class PluginConfirm extends module.ConfirmationModal {
+      constructor() {
+        super(app);
+        this.addCheckbox("Remember", (checked) => checks.push(checked))
+          .addButton((button) =>
+            button
+              .setButtonText("Stay")
+              .setDestructive()
+              .onClick(() => {
+                keepOpenClicks += 1;
+                return true;
+              }),
+          )
+          .addButton((button) => button.setButtonText("Go").setCta().setInitialFocus())
+          .addCancelButton("Dismiss");
+      }
+    }
+    const modal = new PluginConfirm();
+    modal.open();
+
+    const buttons = [...modal.buttonContainerEl.querySelectorAll("button")];
+    expect(buttons.map((button) => button.textContent)).toEqual(["Stay", "Go", "Dismiss"]);
+    expect(buttons[0].classList.contains("mod-destructive")).toBe(true);
+    expect(buttons[2].classList.contains("mod-cancel")).toBe(true);
+    expect(modal.containerEl.classList.contains("mod-confirmation")).toBe(true);
+    expect(modal.containerEl.isConnected).toBe(true);
+
+    const checkbox = modal.buttonContainerEl.querySelector<HTMLInputElement>(
+      "label.mod-checkbox input",
+    );
+    if (!checkbox) throw new Error("Missing confirmation checkbox");
+    checkbox.click();
+    expect(checks).toEqual([true]);
+
+    buttons[0].click();
+    await flushAsync();
+    expect(keepOpenClicks).toBe(1);
+    expect(modal.containerEl.isConnected).toBe(true);
+
+    buttons[2].click();
+    await flushAsync();
+    expect(modal.containerEl.isConnected).toBe(false);
+  });
+
+  it("toggles mod-destructive with ButtonComponent.setDestructive and removeDestructive", () => {
+    const module = createObsidianPluginModule(new App(document.createElement("div")));
+    const button = new module.ButtonComponent(document.createElement("div"));
+
+    button.setDestructive();
+    expect(button.buttonEl.classList.contains("mod-destructive")).toBe(true);
+    button.removeDestructive();
+    expect(button.buttonEl.classList.contains("mod-destructive")).toBe(false);
+  });
+
+  it("shows and clears Setting.setErrorMessage inside the control column", () => {
+    const module = createObsidianPluginModule(new App(document.createElement("div")));
+    const setting = new module.Setting(document.createElement("div")).setName("Path");
+    expect(setting.errorEl).toBeNull();
+
+    setting.setErrorMessage("Path must be relative");
+    const errorEl = setting.errorEl;
+    expect(errorEl?.parentElement).toBe(setting.controlEl);
+    expect(errorEl?.classList.contains("setting-item-error")).toBe(true);
+    expect(errorEl?.textContent).toBe("Path must be relative");
+    expect(setting.settingEl.classList.contains("is-invalid")).toBe(true);
+
+    setting.setErrorMessage(null);
+    expect(setting.errorEl).toBe(errorEl);
+    expect(errorEl?.style.display).toBe("none");
+    expect(setting.settingEl.classList.contains("is-invalid")).toBe(false);
+
+    setting.setErrorMessage("Still wrong");
+    expect(setting.controlEl.querySelectorAll(".setting-item-error")).toHaveLength(1);
+    expect(errorEl?.style.display).toBe("");
+  });
+
+  it("renders Setting.addDisplayValue with an optional warning status", () => {
+    const module = createObsidianPluginModule(new App(document.createElement("div")));
+    const setting = new module.Setting(document.createElement("div"));
+    let status: { setStatus(value: "warning" | null): unknown } | undefined;
+
+    setting.addDisplayValue((component) => {
+      status = component.setValue("3 agents").setStatus("warning");
+    });
+
+    const valueEl = setting.controlEl.querySelector(".setting-item-value");
+    expect(valueEl?.textContent).toBe("3 agents");
+    const statusEl = valueEl?.nextElementSibling;
+    expect(statusEl?.classList.contains("setting-item-status")).toBe(true);
+    expect(statusEl?.classList.contains("mod-warning")).toBe(true);
+
+    status?.setStatus(null);
+    expect(setting.controlEl.querySelector(".setting-item-status")).toBeNull();
+  });
+
+  it("lets plugins subclass SettingPage with Obsidian's page skeleton", () => {
+    const module = createObsidianPluginModule(new App(document.createElement("div")));
+    class PluginPage extends module.SettingPage {
+      display(): void {
+        this.containerEl.append("page body");
+      }
+    }
+    const page = new PluginPage();
+    page.display();
+
+    expect(page.rootEl.className).toBe("setting-page vertical-tab-content");
+    expect(page.titlebarEl.parentElement).toBe(page.rootEl);
+    expect(page.containerEl.classList.contains("setting-page-content")).toBe(true);
+    expect(page.containerEl.textContent).toBe("page body");
+    expect(page.title).toBe("");
   });
 });
