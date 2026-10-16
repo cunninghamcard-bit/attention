@@ -585,9 +585,11 @@ export const SettingTab: { new (app: App, setting: SettingRegistry): SettingTabR
       setting.setClass("mod-page");
       setting.settingEl.tabIndex = 0;
       let displayValue: DisplayValueComponent | undefined;
-      setting.addDisplayValue((component) => {
-        displayValue = component;
-      });
+      if (getDisplayText(definition.displayValue) || getStatus(definition.status)) {
+        setting.addDisplayValue((component) => {
+          displayValue = component;
+        });
+      }
       const updateDisplayValue = () => {
         const status = getStatus(definition.status);
         displayValue?.setValue(getDisplayText(definition.displayValue)).setStatus(status);

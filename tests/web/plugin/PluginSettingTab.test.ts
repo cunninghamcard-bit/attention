@@ -135,6 +135,11 @@ class DeclarativeSettingTab extends PluginSettingTab {
               };
             },
           },
+          {
+            type: "page",
+            name: "Plain page",
+            items: [],
+          },
         ],
       },
       {
@@ -486,6 +491,7 @@ describe("PluginSettingTab", () => {
       ?.click();
     expect(tab.addCount).toBe(1);
 
+    expect(settingRow(host, "Plain page").querySelector(".setting-item-value")).toBeNull();
     const plannerRow = settingRow(host, "Planner");
     const detailRow = settingRow(host, "Agent detail");
     expect(detailRow.classList.contains("mod-warning")).toBe(true);

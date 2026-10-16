@@ -716,7 +716,7 @@ export class DisplayValueComponent {
     this.valueEl = createDiv(containerEl, "setting-item-value");
   }
 
-  setValue(value: string): this {
+  setValue(value: string | null): this {
     this.valueEl.textContent = value || "";
     return this;
   }
