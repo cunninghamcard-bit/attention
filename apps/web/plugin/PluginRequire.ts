@@ -1,5 +1,5 @@
 /**
- * Input: @codemirror/autocomplete, @codemirror/collab, @codemirror/commands, @codemirror/language, @codemirror/lint, @codemirror/search, @codemirror/state, @codemirror/view, @lezer/common, @lezer/highlight
+ * Input: ../core/ApiUtils, @codemirror/autocomplete, @codemirror/collab, @codemirror/commands, @codemirror/language, @codemirror/lint, @codemirror/search, @codemirror/state, @codemirror/view, @lezer/common, @lezer/highlight
  * Output: PluginRequire, createPluginRequire
  * Pos: Application code
  *
@@ -19,6 +19,7 @@ import * as lezerHighlight from "@lezer/highlight";
 import * as lezerLr from "@lezer/lr";
 import type { App } from "../app/App";
 import { createObsidianPluginModule } from "../api/ObsidianPluginModule";
+import { moment } from "../core/ApiUtils";
 import { Notice } from "../ui/Notice";
 
 export type PluginRequire = (id: string) => unknown;
@@ -57,6 +58,9 @@ const DEPRECATED_CODEMIRROR_MODULES: Record<string, unknown> = {
 };
 
 export function createPluginRequire(app: App, pluginId: string): PluginRequire {
+  // Obsidian's `moment` export is `window.moment` (app.js: `LF=window.moment`), and plugins such as
+  // Tasks call the global directly.
+  (window as Window & { moment?: typeof moment }).moment ??= moment;
   return (id) => {
     if (hasOwn(DEPRECATED_CODEMIRROR_MODULES, id)) {
       console.error(

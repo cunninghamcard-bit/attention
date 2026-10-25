@@ -264,9 +264,7 @@ describe("Modal Obsidian base behavior", () => {
     const input = modal.buttonContainerEl.querySelector<HTMLInputElement>(".mod-checkbox input");
     input?.click();
     expect(input?.tabIndex).toBe(-1);
-    expect(checkbox).toHaveBeenCalledTimes(1);
-    expect(checkbox.mock.calls[0]?.[0]).toBeInstanceOf(MouseEvent);
-    expect(checkbox.mock.calls[0]?.[0].target).toBe(input);
+    expect(checkbox.mock.calls).toEqual([[true]]);
 
     const [detailsButton, deleteButton, cancelButton] = [
       ...modal.buttonContainerEl.querySelectorAll<HTMLButtonElement>("button"),
