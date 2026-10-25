@@ -354,11 +354,13 @@ describe("Rule: shared-contracts — the native seam is one typed contract", () 
   it("declares the native port contracts in shared", () => {
     const git = readText("packages/shared/gitApi.ts");
     const terminal = readText("packages/shared/terminalApi.ts");
+    const lsp = readText("packages/shared/lspApi.ts");
     const data = readText("packages/shared/dataAdapter.ts");
     const ipc = readText("packages/shared/ipc.ts");
 
     expect(git).toMatch(/export interface ElectronGitApi\b/);
     expect(terminal).toMatch(/export interface ElectronTerminalApi\b/);
+    expect(lsp).toMatch(/export interface ElectronLspApi\b/);
     expect(data).toMatch(/export interface DataAdapter\b/);
     // a typed IPC channel table: channel name → request/response types
     expect(ipc).toMatch(/export interface SyncChannels\b/);
@@ -380,6 +382,16 @@ describe("Rule: shared-contracts — the native seam is one typed contract", () 
     expect(
       importsPortFromShared("apps/desktop/preload/terminal-bridge.ts", "ElectronTerminalApi"),
     ).toBe(true);
+    // language-server port: same on both sides
+    expect(
+      importsPortFromShared(
+        "apps/web/builtin/language-server/LanguageServerService.ts",
+        "ElectronLspApi",
+      ),
+    ).toBe(true);
+    expect(importsPortFromShared("apps/desktop/preload/lsp-bridge.ts", "ElectronLspApi")).toBe(
+      true,
+    );
   });
 
   it("keeps zod presenters and UI frameworks out of the dependency table", () => {
@@ -591,6 +603,7 @@ describe("Rule: builtin-roof — one core plugin per slice", () => {
       "webviewer",
       "theme-market",
       "terminal",
+      "language-server",
     ];
     const builtinDirs = new Set(listTopLevelDirNames(abs(WEB_SRC, "builtin")));
     // `public/` holds static assets served verbatim (readability.js, fonts) — a

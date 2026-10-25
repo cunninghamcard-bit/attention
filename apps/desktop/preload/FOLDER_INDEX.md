@@ -5,6 +5,7 @@
 
 **Files**:
 - `git-bridge.ts` - Exports resolveGhBinary and 3 more
+- `lsp-bridge.ts` - Exports encodeLspFrame and 5 more
 - `preload.ts` - Exports ElectronBridgeApi and 1 more
 - `terminal-bridge.ts` - Exports createElectronTerminalApi and 1 more
 

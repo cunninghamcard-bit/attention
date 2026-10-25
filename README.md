@@ -47,7 +47,7 @@ Other entry points:
 ```text
 apps/web              the product: vault, workspace, metadata, plugin system, builtin views
 apps/desktop          Electron main + preload — a thin native shell (@app/desktop)
-apps/web/builtin  core plugins: agent, github, terminal, graph, canvas, git, webviewer, theme-market
+apps/web/builtin  core plugins: agent, github, terminal, graph, canvas, git, webviewer, theme-market, language-server
 docs/architecture.md      the real map — annotated tree, direction table, runtime topology, tradeoffs
 docs/architecture/        Spec-Driven Development records for structural work
 tests/e2e/                Playwright specs, including the large-vault perf harness
