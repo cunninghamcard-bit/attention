@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -22,6 +21,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	contract "github.com/cunninghamcard-bit/attention/native/contract/fs"
+	"github.com/cunninghamcard-bit/attention/native/internal/natural"
 )
 
 // debounce is how long changes gather before one batch is emitted.
@@ -67,17 +67,16 @@ func (s *Service) List(_ context.Context, dir string) ([]contract.Entry, error) 
 	return out, nil
 }
 
-// SortEntries orders directories first, then by name without case, then
-// by name.
+// SortEntries orders directories first, then by name in natural order
+// (without case, d2 before d10), as Zed does.
 func SortEntries(es []contract.Entry) {
 	sort.SliceStable(es, func(i, j int) bool {
 		a, b := es[i], es[j]
 		if a.Dir != b.Dir {
 			return a.Dir
 		}
-		la, lb := strings.ToLower(a.Name), strings.ToLower(b.Name)
-		if la != lb {
-			return la < lb
+		if natural.Less(a.Name, b.Name) != natural.Less(b.Name, a.Name) {
+			return natural.Less(a.Name, b.Name)
 		}
 		return a.Name < b.Name
 	})

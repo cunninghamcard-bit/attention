@@ -19,13 +19,13 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	"github.com/arcships/rutis/go/rutis"
 
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	contract "github.com/cunninghamcard-bit/attention/native/contract/project"
+	"github.com/cunninghamcard-bit/attention/native/internal/natural"
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 )
 
@@ -316,40 +316,6 @@ func searchFile(f contract.FileRef, re *regexp.Regexp, limit int, res *contract.
 	}
 }
 
-// NaturalLess orders strings without case and with digit runs by value, as
-// the TS CLI's Intl.Collator({numeric: true, sensitivity: "base"}).
-func NaturalLess(a, b string) bool {
-	ra, rb := []rune(strings.ToLower(a)), []rune(strings.ToLower(b))
-	i, j := 0, 0
-	for i < len(ra) && j < len(rb) {
-		if unicode.IsDigit(ra[i]) && unicode.IsDigit(rb[j]) {
-			si := i
-			for i < len(ra) && unicode.IsDigit(ra[i]) {
-				i++
-			}
-			sj := j
-			for j < len(rb) && unicode.IsDigit(rb[j]) {
-				j++
-			}
-			na := strings.TrimLeft(string(ra[si:i]), "0")
-			nb := strings.TrimLeft(string(rb[sj:j]), "0")
-			if len(na) != len(nb) {
-				return len(na) < len(nb)
-			}
-			if na != nb {
-				return na < nb
-			}
-			continue
-		}
-		if ra[i] != rb[j] {
-			return ra[i] < rb[j]
-		}
-		i++
-		j++
-	}
-	return len(ra)-i < len(rb)-j
-}
-
 func (s *Service) mountByID(id string) (contract.Mount, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -392,7 +358,7 @@ func (s *Service) commands() []actionsapi.Command {
 			if a.Has("total") {
 				return strconv.Itoa(len(out)), nil
 			}
-			sort.SliceStable(out, func(i, j int) bool { return NaturalLess(out[i], out[j]) })
+			sort.SliceStable(out, func(i, j int) bool { return natural.Less(out[i], out[j]) })
 			return strings.Join(out, "\n"), nil
 		}},
 		{ID: "mounts", CLI: true, Run: func(ctx context.Context, a actionsapi.Args) (string, error) {
