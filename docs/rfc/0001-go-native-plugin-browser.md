@@ -11,7 +11,7 @@ attention 从「Electron + TS 实现的 Obsidian 重建」改为**全 Go 实现�
 
 - 界面使用 mygo 的原生 UI（`ui` 包，由 GPU 绘制，没有 DOM）。网页通过 `ui.WebView` 嵌入。
 - 插件运行时使用 rutis。**没有特权内核**：外壳、布局、标签页、导航、索引和 CLI 服务端全部是插件。结构参照 deepseek-harness（下称 dsh）。
-- 内容模型从「Markdown vault」改为「以 URI 寻址的资源」。资源协议的 provider、tab type（显示某类地址的标签页）、extractor、index 都由插件提供，模型照搬 dsh。
+- 内容模型从「Markdown vault」改为「按地址读取的资源」。资源协议的 provider、tab type（显示某类地址的标签页）、extractor、index 都由插件提供，模型照搬 dsh。
 - agent 通过 attention CLI 操控应用。所有插件命令都会自动成为 CLI 子命令。
 
 不再兼容 Obsidian 插件 API，也不运行真实的 dsh 插件，dsh 只作为架构参考。
@@ -32,7 +32,7 @@ attention 从「Electron + TS 实现的 Obsidian 重建」改为**全 Go 实现�
 
 - G1：用一个 Go 二进制提供完整的桌面应用，Linux 优先，同时覆盖 macOS 和 Windows。
 - G2：所有功能都以插件形式接入，可以单独启用、停用或替换。
-- G3：以资源为中心的阅读体验，资源包括本地文件、网页、git 对象和插件自定义的 scheme。
+- G3：以资源为中心的阅读体验，资源包括本地文件、git 对象和插件自定义的协议；网页由 `web` 标签页显示。
 - G4：CLI 和现有 `{argv, tty, cwd}` socket 协议保持兼容，现有脚本和 agent 用法不用改。
 - G5：服务插件可以运行在独立进程里，用任意 rutis 支持的语言编写，支持热重载。
 
@@ -115,7 +115,7 @@ attention 从「Electron + TS 实现的 Obsidian 重建」改为**全 Go 实现�
 2. **每个功能分两半**（参照 dsh 的 `.` 和 `./client`）：
    - **服务插件**：不画界面，通过名字对外提供服务。可以运行在任意进程里，用任意语言编写。
    - **UI 插件**：运行在 mygo 进程里，用 Go 编写，往 slot 里贡献 `func(c *ui.Context)`，通过 `ctx.Use` 调用服务插件。
-3. **以资源为中心。** 所有可以打开的东西都是一个 URI。插件负责解析、呈现和抽取资源。
+3. **以资源为中心。** 所有可以打开的东西都有一个地址（资源地址或页面地址，§5.6）。插件负责解析、呈现和抽取资源。
 4. **命令即 CLI。** 命令是唯一的操作入口：快捷键、命令面板、菜单和 CLI 最终都调用同一个命令。
 5. **所有注册都可以撤销。** 每项贡献都通过 `Provide` 或 `Effect` 注册，插件卸载时自动撤销，所以热重载是安全的。热重载只适用于外置的服务插件；编译进本体的插件，代码一变就要重启整个 attention runtime。
 
@@ -246,13 +246,22 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 
 ### 5.6 资源、标签页与导航
 
-照搬 dsh 的资源模型（`docs/subsystems/client-resources.md`）和右侧栏的标签页系统（`docs/subsystems/sidebar-right.md`）。只有一处改动：**地址用真实的 URL**，因为 attention 是浏览器。
+照搬 dsh 的资源模型（`docs/subsystems/client-resources.md`）和右侧栏的标签页系统（`docs/subsystems/sidebar-right.md`），地址格式也和 dsh 一样。
 
 #### 地址
 
-- 地址一律是真实的 URL：网页用 `https://`；本地文件用 `file:///<绝对路径>`；插件自定义的协议用自己的 scheme，比如 `git://`、`gh://`；内部页面用 `attention://<kind>`，比如 `attention://settings`。
-- dsh 把所有资源都放在 `dsh-resource://<protocol>/…` 这一个 scheme 下面，由 host 部分区分协议。我们不这样做：**协议就是 URL 的 scheme**，地址栏里显示的就是这个地址本身。
-- 地址按字符串比较，规范化（大小写、编码、末尾斜杠）由协议的所有者负责，并由它提供 `AddressFor(...)` 和 `Parse(...)` 这类辅助函数，dsh 的 `fileAddressFor` 就是这个角色。
+和 dsh 一样分为两类：
+
+| 类别 | 格式 | 例子 | 说明 |
+|---|---|---|---|
+| **资源地址** | `attention-resource://<protocol>/<path>` | `attention-resource://file/mount/home/notes/a.md`、`attention-resource://file/absolute/etc/hosts`、`attention-resource://git/<repo>/<rev>/<path>` | 只有一个 scheme，host 部分就是协议名，也就是 provider 注册表的 key。路径的格式由协议自己定义。`file` 协议的路径以作用域开头：`mount/<挂载根 id>/<相对路径>`，或者 `absolute/<绝对路径>`（对应 dsh 的 `session/<id>` 和 `absolute`） |
+| **页面地址** | `attention://<kind>` | `attention://settings` | 按 kind 打开、没有对应资源的标签页，由 `OpenTab(kind)` 自动生成，调用方不需要自己拼（对应 dsh 的 `sidebar://<kind>`） |
+
+- **网页不是资源**：和 dsh 的 browser 一样，`https://…` 作为参数交给 `web` 这个 tab type，即 `OpenTab("web", Params{"url": …})`，内容由 WebView 自己加载。阅读模式和内容抽取需要读取网页内容时，由 `web` 插件内部处理，不经过资源模型。
+- 其他格式的地址，例如裸路径、`https://`，用 `UseResource` 读取时都是 `none`。
+- 这个方案的已知代价：资源地址只在 attention 内部有意义，复制到外面打不开；Markdown 里的 `file:///` 链接、网页里的 `https://` 链接，要先翻译成资源地址或者 `web` 的参数才能打开。先接受这些代价，等实际遇到问题再重构。
+- 地址按字符串比较，只接受小写的规范写法。路径的每一段按 URL 规则编码。规范化由协议的所有者负责，并由它提供 `AddressFor(...)` 和 `Parse(...)` 这类辅助函数，比如 `file` 协议的 `FileAddressFor(mountID, path)`，对应 dsh 的 `fileAddressFor`。
+- `navigation` 负责把链接翻译成地址：Markdown 里的相对链接和 `file:///` 链接，翻译成 `file` 资源地址；`http(s)://` 链接，翻译成 `OpenTab("web", …)`。
 
 #### resources：地址变成实时数据
 
@@ -280,7 +289,7 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 |---|---|
 | `ID` | 实现的身份，全局唯一，用来作为 `tab.body`、`tab.title` 这两个 slot 的 key |
 | `Kind` | 类型名，也就是 `OpenTab(kind)` 里用的名字。可以重复：插件可以接管内置的 kind |
-| `Patterns` | 能认领的地址 glob，比如 `https://**`、`file:///**/*.md`、`*.png` |
+| `Patterns` | 能认领的资源地址 glob。含 `:` 的 pattern 匹配整个地址，比如 `attention-resource://file/**`；不含 `:` 的匹配路径的任意一层，比如 `*.md`。按 kind 打开的页面类型不需要 pattern |
 | `Priority` | 三档之一：`Extension`（默认，最高，第三方插件用）> `Builtin`（内置）> `Fallback`（纯文本这类兜底查看器） |
 | `CanOpen(address)` | 可选，同步执行，用来否决某次 glob 匹配 |
 | `Title(address)` | 标签页上显示的文字，打开时取一次 |
@@ -296,11 +305,11 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 
 | kind | 优先级 | patterns | 实现 |
 |---|---|---|---|
-| `text` | Fallback | `file:///**` | 只读 `ui/editor`，带语法高亮 |
+| `text` | Fallback | `attention-resource://file/**` | 只读 `ui/editor`，带语法高亮 |
 | `markdown` | Builtin | `*.md` | `ui/markdown` 阅读视图 |
 | `image` | Builtin | `*.png` 等 | 图片查看 |
-| `web` | Builtin | `https://**`、`http://**` | `ui.WebView`，可以开多个实例 |
-| `settings` | Builtin | `attention://settings` | 设置页 |
+| `web` | Builtin | —（`OpenTab("web", {url})` 打开） | `ui.WebView`，可以开多个实例 |
+| `settings` | Builtin | —（`OpenTab("settings")` 打开） | 设置页 |
 
 #### navigation：唯一的打开入口
 
@@ -315,7 +324,7 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 
 - **extractor**（服务插件）：声明自己能处理的 content-type，输出 `Extract{Title, Links[], Tags[], Properties{}, Text}`。`markdown-extract` 负责原来 `metadata/` 里那些 Markdown 元数据；`html-extract` 负责网页的标题、链接和正文，它也是阅读模式的数据来源。
 - **index**（服务插件）：订阅资源的变化，调用 extractor，维护资源之间的链接图（含反链）、标签、属性和全文索引；提供查询接口给搜索、反链面板和 CLI。
-- 反链跨越资源类型：一个网页、一篇笔记、一个 PR 只要引用了同一个 URL，就能在反链里互相看到。
+- 反链跨越资源类型：一个网页、一篇笔记、一个 PR 只要引用了同一个 URL，就能在反链里互相看到。index 用规范化后的 URL 作为链接图的 key，与资源地址的格式无关。
 
 ### 5.7 服务划分
 
@@ -430,7 +439,7 @@ native/
 | markdown-extract | 服务 | 可外置 | extractor | — | P2 |
 | index | 服务 | 可外置 | `index` | extractor 系列 | P2 |
 | search / backlinks / outline | UI | 本体 | dock 面板 | index、workspace | P2 |
-| web | UI | 本体 | `https` 协议、tab type `web`、地址栏 | navigation | P3 |
+| web | UI | 本体 | tab type `web`、地址栏、网页内容的读取 | navigation | P3 |
 | html-extract | 服务 | 可外置 | extractor | — | P3 |
 | history / bookmarks | 服务 | 可外置 | `history`、`bookmarks` | — | P3 |
 | terminal | 服务 + UI | 服务可外置 | PTY、tab type `terminal` | workspace | P4 |

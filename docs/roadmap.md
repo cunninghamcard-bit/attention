@@ -88,7 +88,7 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 **目的**：完成从阅读器到浏览器的转变。
 
 **范围**
-- 插件：`web`（`https` 协议、tab type `web`、地址栏）、`html-extract`、`history`、`bookmarks`。
+- 插件：`web`（tab type `web`、地址栏、网页内容的读取）、`html-extract`、`history`、`bookmarks`。
 - 阅读模式：用 `html-extract` 抽取正文，交给 `markdown` tab type 原生排版。
 - 网页之间的链接，以及网页与本地资源之间的链接，都进入索引，反链可以跨资源类型。
 - CLI：`open url=…`、`read`（输出阅读模式抽取的正文），以及 `history`、`bookmarks` 系列命令。
@@ -106,7 +106,7 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 
 **范围**
 - `terminal`：PTY 服务，UI 采用 mygo 的终端组件，或者自己封装 creack/pty。
-- `git` 和 `git-ui`：按 RFC §5.4 设计。`git` 服务插件**必须能以独立进程运行**。提供 `git:` scheme、变更面板，diff 用 `ui/editor` 的 DiffView 显示。
+- `git` 和 `git-ui`：按 RFC §5.4 设计。`git` 服务插件**必须能以独立进程运行**。提供 `git` 资源协议（`attention-resource://git/…`）、变更面板，diff 用 `ui/editor` 的 DiffView 显示。
 - `webview-panel`：第三方 UI 的兜底方案。
 - `attention build --with`：xcaddy 风格的重编译工具，至少能跑通一个示例插件。
 - 写一份第三方服务插件示例，用 TS 或 Python 编写，演示「不用重新编译 attention 也能接入」。
