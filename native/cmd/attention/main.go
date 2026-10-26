@@ -1,157 +1,102 @@
-// Command attention is the P0 topology spike's binary. It has two modes
-// (RFC 0001 §5.3):
+// Command attention is the reader. One binary, three modes (RFC 0001 §5.3):
 //
-//   - launcher (run by the user): if an instance is running, act as the CLI
-//     client; otherwise write a rutis.json and exec rutis-host, which then
-//     starts this same binary as a Go runtime over fd:.
-//   - UI runtime (started by rutis-host): mygo on the main thread, rutis on a
-//     goroutine.
+//   - `--rutis-manifest`: rutis-host asks what plugins it holds;
+//   - a rutis channel (fd:, unix:, tcp:): the UI runtime, started by
+//     rutis-host — mygo on the main thread, the plugins on goroutines;
+//   - anything else: the launcher.
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"net"
 	"os"
-	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo"
-	"github.com/egoist/mygo/ui"
 
-	"github.com/cunninghamcard-bit/attention/native/spike"
+	"github.com/cunninghamcard-bit/attention/native/internal/launcher"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/cli"
+	"github.com/cunninghamcard-bit/attention/native/plugins/fs"
+	"github.com/cunninghamcard-bit/attention/native/plugins/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 )
+
+// plugins are every plugin this binary carries; the profile's rows pick
+// which run.
+var plugins = []*rutis.Definition{
+	shell.Plugin, actions.Plugin, cli.Plugin, fs.Plugin, project.Plugin, workspace.Plugin,
+}
 
 func main() {
 	args := os.Args[1:]
-	if isRuntime(args) {
-		runtimeMain(args)
-		return
-	}
-	launcher(args)
-}
-
-func isRuntime(args []string) bool {
-	if len(args) == 0 {
-		return false
-	}
-	a := args[0]
-	return a == "--rutis-manifest" || strings.HasPrefix(a, "fd:") || strings.HasPrefix(a, "unix:") || strings.HasPrefix(a, "tcp:")
-}
-
-var defs = []*rutis.Definition{spike.HelloPlugin, spike.UIPlugin, spike.CLIPlugin}
-
-func runtimeMain(args []string) {
-	if args[0] == "--rutis-manifest" {
-		if err := rutis.ServeArgs(args, defs...); err != nil {
+	switch {
+	case len(args) == 1 && args[0] == "--rutis-manifest":
+		if err := rutis.ServeArgs(args, plugins...); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		return
+	case len(args) > 0 && isChannel(args[0]):
+		os.Exit(runtimeMain(args))
+	default:
+		os.Exit(launcher.Run(args))
 	}
-	// stderr is a pipe to rutis-host. If the host dies, rutis unloads this
-	// runtime's rows by itself; a cleanup that logs must not be killed by
-	// SIGPIPE half way, so a write to the broken pipe returns EPIPE instead.
+}
+
+func isChannel(a string) bool {
+	return strings.HasPrefix(a, "fd:") || strings.HasPrefix(a, "unix:") || strings.HasPrefix(a, "tcp:")
+}
+
+// runtimeMain is the UI runtime. It is the carrier: mygo's run loop owns
+// the main thread; the window itself belongs to the shell plugin.
+func runtimeMain(args []string) int {
+	// stdout and stderr are pipes to rutis-host. If it dies, rutis unloads
+	// this runtime's rows by itself; a cleanup that logs must not die of
+	// SIGPIPE half way (spike finding 4).
 	signal.Ignore(syscall.SIGPIPE)
-	spike.Log("runtime: started with %q, parent pid %d", args, os.Getppid())
+
+	if os.Getenv("ATTENTION_PROFILE") == "headless" {
+		if err := rutis.ServeArgs(args, plugins...); err != nil {
+			fmt.Fprintln(os.Stderr, "attention:", err)
+			return 1
+		}
+		return 0
+	}
+
+	mygo.App.SetName("attention")
+	// Closing the last window must not quit by itself: the shell plugin
+	// quits when the user closes it, not when it is unloaded and reloaded.
+	mygo.App.OnWindowAllClosed(func() {})
 	ended := make(chan error, 1)
 	go func() {
-		err := rutis.ServeArgs(args, defs...)
-		spike.Log("runtime: rutis session ended, err=%v", err)
+		err := rutis.ServeArgs(args, plugins...)
 		ended <- err
+		// The host stopped the session: leave the run loop.
 		mygo.App.Quit()
 	}()
-	mygo.App.WhenReady(func() {
-		w := mygo.NewWindow(mygo.WindowOptions{Title: "attention P0 spike", Width: 900, Height: 600, Content: ui.View(spike.View)})
-		spike.SetWindow(w)
-		spike.Log("runtime: window open")
-		// SPIKE_AUTOQUIT=<seconds> stands in for the user closing the app.
-		if d, err := time.ParseDuration(os.Getenv("SPIKE_AUTOQUIT") + "s"); err == nil && d > 0 {
-			time.AfterFunc(d, func() { spike.Log("runtime: autoquit"); mygo.App.Quit() })
-		}
-	})
 	if err := mygo.App.Run(); err != nil {
-		spike.Log("runtime: App.Run error: %v", err)
+		fmt.Fprintln(os.Stderr, "attention:", err)
 	}
-	spike.Log("runtime: App.Run returned")
+	select {
+	case err := <-ended:
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "attention:", err)
+			return 1
+		}
+		return 0
+	default:
+	}
+	// The user closed the window: ask rutis-host (our parent) to stop, which
+	// unloads every plugin, ours included, then ends this session.
+	syscall.Kill(os.Getppid(), syscall.SIGTERM)
 	select {
 	case <-ended:
-		// The host ended the session (it is stopping): nothing more to do.
-	default:
-		// The user closed the window. SPIKE_SHUTDOWN picks how the host learns.
-		if os.Getenv("SPIKE_SHUTDOWN") == "sigterm-parent" {
-			spike.Log("runtime: sending SIGTERM to rutis-host (pid %d)", os.Getppid())
-			syscall.Kill(os.Getppid(), syscall.SIGTERM)
-			select {
-			case <-ended:
-			case <-time.After(15 * time.Second):
-				spike.Log("runtime: session did not end within 15s")
-			}
-		}
+	case <-time.After(15 * time.Second):
+		fmt.Fprintln(os.Stderr, "attention: rutis-host did not stop within 15s")
 	}
-	spike.Log("runtime: exiting")
-	os.Exit(0)
-}
-
-func launcher(args []string) {
-	if conn, err := net.Dial("unix", spike.SocketPath()); err == nil {
-		client(conn, args)
-		return
-	}
-	self, err := os.Executable()
-	must(err)
-	clock := filepath.Join(filepath.Dir(self), "clock")
-	dir, err := os.MkdirTemp("", "attention-host-")
-	must(err)
-	restart := os.Getenv("SPIKE_RESTART")
-	if restart == "" {
-		restart = "no"
-	}
-	config := map[string]any{
-		"format": 1,
-		"id":     "attention",
-		"runtimes": map[string]any{
-			"go": map[string]any{"binaries": []string{self, clock}, "start": "eager", "restart": restart},
-		},
-		"rows": []map[string]any{
-			{"id": "hello", "name": "go:hello"},
-			{"id": "clock", "name": "go:clock"},
-			{"id": "ui", "name": "go:ui"},
-			{"id": "cli", "name": "go:cli"},
-		},
-	}
-	data, err := json.MarshalIndent(config, "", "  ")
-	must(err)
-	path := filepath.Join(dir, "rutis.json")
-	must(os.WriteFile(path, data, 0o644))
-	host := os.Getenv("RUTIS_HOST")
-	if host == "" {
-		host, err = exec.LookPath("rutis-host")
-		must(err)
-	}
-	fmt.Fprintf(os.Stderr, "launcher: exec %s run %s\n", host, path)
-	must(syscall.Exec(host, []string{host, "run", path}, os.Environ()))
-}
-
-func client(conn net.Conn, args []string) {
-	defer conn.Close()
-	cwd, _ := os.Getwd()
-	line, err := json.Marshal(map[string]any{"argv": args, "tty": false, "cwd": cwd})
-	must(err)
-	_, err = conn.Write(append(line, '\n'))
-	must(err)
-	io.Copy(os.Stdout, conn)
-}
-
-func must(err error) {
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "attention:", err)
-		os.Exit(1)
-	}
+	return 0
 }
