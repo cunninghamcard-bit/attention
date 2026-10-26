@@ -105,7 +105,7 @@ attention 从「Electron + TS 实现的 Obsidian 重建」改为**全 Go 实现�
   - `mount/`（Home 加多个仓库的路由）；
   - `vault/`（文件模型）；
   - `builtin/terminal/RemoteTerminalAdapter.ts`（通过 WebSocket 传输 PTY）。
-- **DOM 视图层**：`views/` 约 1.6 万行，`ui/` 约 6.6k 行，CSS 约 1.7 万行。全部作废。
+- **DOM 视图层**：`views/` 约 1.6 万行，`ui/` 约 6.6k 行，CSS 约 1.7 万行。全部作废，**它们的视觉风格也不保留**（见 §5.10）。
 
 ## 5. 设计
 
@@ -277,7 +277,15 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 
 ### 5.10 UI 规范
 
-- 沿用 octogo 的设计体系：`ui/theme` 管 token，`ui/kit` 管组件，页面里不出现硬编码的颜色和尺寸，规范写在 `docs/STYLE.md`。
+- **视觉和组件风格全部采用 octogo 的风格，彻底放弃 Obsidian 那一套。** 具体废弃的是：
+  - 和 Obsidian `app.css` 逐字节一致的样式层；
+  - Obsidian 的类名语义（`nav-file`、`workspace-leaf` 等）；
+  - Obsidian 的尺寸规格和图标体系；
+  - `styles/deviations/` 的偏差记录机制，以及 `StyleSystem.test.ts` 的那些规则。
+
+  新代码里不出现任何「对照 Obsidian」的规则。新界面需要的组件如果 octogo 的 kit 里没有，就按 octogo 的 `docs/STYLE.md` 扩展 kit，而不是从 Obsidian 搬过来。
+- 沿用 octogo 的设计体系：`ui/theme` 管 token（Amp 的配色），`ui/kit` 管组件（封装 onevra），页面里不出现硬编码的颜色和尺寸，规范写在 `docs/STYLE.md`。
+- 仓库里 AGENTS.md 和 CLAUDE.md 开头那条最重要的规则是「忠实重建 Obsidian」，它只适用于迁移期间留作对照的 TS 代码。P0 时在 `native/AGENTS.md` 里写明 `native/` 遵循 octogo 的风格规范；到 P5，再把根目录的这两份文件整体重写。
 - **直接抽出共享模块**：把 octogo 的 `ui/theme`、`ui/kit`、`internal/keyboard`，以及 attention 用得上的通用组件（`filetree`、`markdown`、`code`、`navigation`）抽成一个独立的 Go module，octogo 和 attention 都依赖它。octogo 接下来不会有大改动，现在拆分不会和它的开发冲突，也避免了两份代码各自演化。
 - 抽取的原则：只移动代码、不改行为。octogo 改为依赖这个共享模块之后，它自己的测试和一致性检查必须继续通过。模块放在哪里（独立仓库，或者 octogo 仓库里的子 module）在 P0 时确定。
 

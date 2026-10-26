@@ -35,6 +35,7 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 - 插件：`slots`、`layout`、`fs`、`files-ui`、`commands`、`cli`。
 - 从 octogo 抽出共享 UI 模块（`theme`、`kit`、`keyboard`，以及通用组件），octogo 改为依赖它，attention 也依赖它（RFC §5.10）。
 - CLI 命令：`version`、`files`。
+- `native/AGENTS.md`：写明 `native/` 遵循 octogo 的 `docs/STYLE.md`，根目录 AGENTS.md 里的 Obsidian 重建规则不适用于这里（RFC §5.10）。
 
 **完成标准**
 - [ ] 启动后显示一个窗口，左侧文件树列出 `--mount` 指定的目录。外部创建或删除文件后，界面在 1 秒内更新。
@@ -121,7 +122,7 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 - 删除 `apps/`、`packages/`、Node 的测试流程、`pnpm-lock.yaml`，以及 mise 里所有 Node 相关的配置。
 - CI 改为 Go 流程：test、vet、一致性检查、CLI e2e、三个平台的构建。
 - 打包：mygo 的分发流程（Linux 上是 tar.gz 和 deb），连同 rutis-host 一起发布；评估 AppImage。
-- 重写 README、`docs/architecture.md`、`PROJECT_INDEX.md` 和 AGENTS.md。
+- 重写 README、`docs/architecture.md`、`PROJECT_INDEX.md`、AGENTS.md 和 CLAUDE.md，删除所有 Obsidian 重建相关的规则和样式文档。
 
 **完成标准**
 - [ ] 仓库里没有 Node 依赖，CI 全绿。
