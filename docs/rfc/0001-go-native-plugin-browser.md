@@ -278,7 +278,8 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 ### 5.10 UI 规范
 
 - 沿用 octogo 的设计体系：`ui/theme` 管 token，`ui/kit` 管组件，页面里不出现硬编码的颜色和尺寸，规范写在 `docs/STYLE.md`。
-- 迁移期间**先复制，后合并**：attention 先复制 octogo 的 `ui/theme`、`ui/kit`、`internal/keyboard` 以及用得上的组件，保持风格一致；等两边都稳定后，再抽成共享的 Go module。原因是 octogo 正在活跃开发，现在拆它会互相干扰。
+- **直接抽出共享模块**：把 octogo 的 `ui/theme`、`ui/kit`、`internal/keyboard`，以及 attention 用得上的通用组件（`filetree`、`markdown`、`code`、`navigation`）抽成一个独立的 Go module，octogo 和 attention 都依赖它。octogo 接下来不会有大改动，现在拆分不会和它的开发冲突，也避免了两份代码各自演化。
+- 抽取的原则：只移动代码、不改行为。octogo 改为依赖这个共享模块之后，它自己的测试和一致性检查必须继续通过。模块放在哪里（独立仓库，或者 octogo 仓库里的子 module）在 P0 时确定。
 
 ### 5.11 仓库组织
 
@@ -291,7 +292,6 @@ native/
   slotsapi/             slot key、props、进程内的注册表
   plugins/<feature>/    服务插件
   plugins/<feature>-ui/ UI 插件
-  kit/ theme/           从 octogo 复制过来
   profiles/default.json
 ```
 
@@ -355,7 +355,7 @@ native/
 
 ## 10. 未决问题
 
-1. octogo 的部件是先复制还是先抽成共享模块（§5.10 建议先复制）。需要用户确认。
+1. 共享 UI 模块放在哪里：独立仓库，还是 octogo 仓库里的子 module（§5.10）。在 P0 时确定。
 2. 代码放在 `native/` 目录、留在同一仓库（§5.11）。需要用户确认。
 3. slot 和服务契约要不要从一开始就按「可以对外发布的 SDK」来设计，例如做成 `attention/sdk` module？
 4. 跨进程的声明式 UI 协议要不要做、什么时候做（§5.9）。

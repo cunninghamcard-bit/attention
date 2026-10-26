@@ -33,7 +33,7 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
   - 主线程运行 `App.Run()`；
   - 按顺序关停。
 - 插件：`slots`、`layout`、`fs`、`files-ui`、`commands`、`cli`。
-- 从 octogo 复制 `theme`、`kit`，以及 `keyboard` 的最小子集。
+- 从 octogo 抽出共享 UI 模块（`theme`、`kit`、`keyboard`，以及通用组件），octogo 改为依赖它，attention 也依赖它（RFC §5.10）。
 - CLI 命令：`version`、`files`。
 
 **完成标准**
@@ -42,6 +42,7 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 - [ ] 关闭窗口后，rutis-host 和所有插件进程在关停期限内退出，没有残留进程。
 - [ ] 把 `fs` 插件改成独立进程运行，功能不变。这证明服务插件放在本体内或外置都一样。
 - [ ] 外置的 `fs` 在 `rutis-host dev` 下修改后自动重载，`files-ui` 能挂起后恢复，界面没有崩溃。（编译进本体的插件，重载时整个 attention runtime 都要重启，所以热重载只对外置插件有要求。）
+- [ ] octogo 改为依赖共享 UI 模块后，它的 `go test ./...` 和一致性检查全部通过，行为不变。
 - [ ] 记录启动时间、常驻内存、二进制体积，以及 rutis-host 的体积。
 - [ ] 写出 spike 报告 `docs/rfc/0001-spike-report.md`，结论只能是「拓扑成立」或「启用 R1 的某个退路」。
 
@@ -121,7 +122,6 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 - CI 改为 Go 流程：test、vet、一致性检查、CLI e2e、三个平台的构建。
 - 打包：mygo 的分发流程（Linux 上是 tar.gz 和 deb），连同 rutis-host 一起发布；评估 AppImage。
 - 重写 README、`docs/architecture.md`、`PROJECT_INDEX.md` 和 AGENTS.md。
-- 评估 octogo 共享模块的抽取（RFC 未决问题 1）。
 
 **完成标准**
 - [ ] 仓库里没有 Node 依赖，CI 全绿。
