@@ -56,6 +56,13 @@ func loadSession() (session, bool) {
 
 func (ws *Workspace) snapshot() session {
 	s := session{Active: ws.active, PanelOpen: ws.panelOpen, LeftWidth: ws.leftWidth, SplitPct: ws.splitPct}
+	if ws.restoring != nil {
+		// The saved tabs are not reopened yet (the mounts are loading): keep
+		// them rather than save an empty window over them.
+		s.Panes = ws.restoring
+		s.Active = ws.restoreActive
+		return s
+	}
 	for _, p := range ws.panes {
 		var sp sessionPane
 		for i, t := range p.tabs {

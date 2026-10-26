@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/arcships/rutis/go/rutis"
 
@@ -48,7 +49,10 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		}
 		ctx.Effect(actionCleanup(actionsapi.Register(actionsapi.Command{
 			ID: "version", CLI: true,
-			Run: func(context.Context, actionsapi.Args) (string, error) { return Version, nil },
+			// The TS CLI's shape: "<version> (installer <build>)".
+			Run: func(context.Context, actionsapi.Args) (string, error) {
+				return Version + " (installer " + Version + ")", nil
+			},
 		})))
 		ctx.Go(func(c context.Context) error {
 			// Unloading cancels c and waits for this task before the Effect
@@ -57,10 +61,17 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			for {
 				conn, err := ln.Accept()
 				if err != nil {
-					if errors.Is(err, net.ErrClosed) {
+					if errors.Is(err, net.ErrClosed) || c.Err() != nil {
 						return nil
 					}
-					return err
+					// A passing failure (EMFILE, …) must not end the listener.
+					dbg("cli: accept: %v", err)
+					select {
+					case <-c.Done():
+						return nil
+					case <-time.After(100 * time.Millisecond):
+					}
+					continue
 				}
 				go serve(c, conn)
 			}

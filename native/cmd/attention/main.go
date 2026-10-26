@@ -7,10 +7,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -61,6 +64,14 @@ func runtimeMain(args []string) int {
 	signal.Ignore(syscall.SIGPIPE)
 
 	if os.Getenv("ATTENTION_PROFILE") == "headless" {
+		// A signal to this process asks rutis-host to stop, as the window's
+		// quit does, so every plugin unloads instead of the process dying.
+		var once sync.Once
+		stop := func() { once.Do(func() { syscall.Kill(os.Getppid(), syscall.SIGTERM) }) }
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+		go func() { <-sigs; stop() }()
+		go watchLauncher(stop)
 		if err := rutis.ServeArgs(args, plugins...); err != nil {
 			fmt.Fprintln(os.Stderr, "attention:", err)
 			return 1
@@ -95,6 +106,7 @@ func runtimeMain(args []string) int {
 		sessionOver.Store(true)
 		mygo.App.Quit()
 	}()
+	go watchLauncher(mygo.App.Quit)
 	if err := mygo.App.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "attention:", err)
 	}
@@ -123,5 +135,23 @@ func runtimeMain(args []string) int {
 func debugf(format string, a ...any) {
 	if os.Getenv("ATTENTION_DEBUG") != "" {
 		fmt.Fprintf(os.Stderr, "[debug] "+format+"\n", a...)
+	}
+}
+
+// watchLauncher calls stop once the launcher (ATTENTION_LAUNCHER_PID) is
+// gone: it holds the single-instance lock, so without it another instance
+// could start beside this one.
+func watchLauncher(stop func()) {
+	pid, err := strconv.Atoi(os.Getenv("ATTENTION_LAUNCHER_PID"))
+	if err != nil || pid <= 1 {
+		return
+	}
+	for {
+		time.Sleep(500 * time.Millisecond)
+		if err := syscall.Kill(pid, 0); errors.Is(err, syscall.ESRCH) {
+			debugf("runtime: the launcher is gone, stopping")
+			stop()
+			return
+		}
 	}
 }

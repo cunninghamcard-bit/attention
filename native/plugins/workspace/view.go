@@ -49,6 +49,13 @@ func (ws *Workspace) view(c *ui.Context) {
 	if ws.palette != nil {
 		ws.paletteView(c)
 	}
+	// Dragging a divider changes the widths during the build: save them.
+	if ws.leftWidth != ws.seenLeft || ws.splitPct != ws.seenSplit {
+		ws.seenLeft, ws.seenSplit = ws.leftWidth, ws.splitPct
+		if ws.saveSoon != nil {
+			ws.saveSoon()
+		}
+	}
 }
 
 // shortcuts are Zed's defaults on Linux and Windows (Cmd on macOS).

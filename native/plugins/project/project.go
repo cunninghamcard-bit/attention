@@ -299,19 +299,21 @@ func searchFile(f contract.FileRef, re *regexp.Regexp, limit int, res *contract.
 	sc.Buffer(make([]byte, 64*1024), maxSearchSize)
 	for line := 1; sc.Scan(); line++ {
 		text := sc.Text()
-		loc := re.FindStringIndex(text)
-		if loc == nil {
+		locs := re.FindAllStringIndex(text, -1)
+		if locs == nil {
 			continue
 		}
 		shown := text
 		if len(shown) > maxLineBytes {
 			shown = shown[:maxLineBytes]
 		}
-		res.Matches = append(res.Matches, contract.Match{
-			Mount: f.Mount, Rel: f.Rel, Path: f.Path, Line: line, Col: loc[0] + 1, Len: loc[1] - loc[0], Text: shown,
-		})
-		if len(res.Matches) >= limit {
-			return
+		for _, loc := range locs {
+			res.Matches = append(res.Matches, contract.Match{
+				Mount: f.Mount, Rel: f.Rel, Path: f.Path, Line: line, Col: loc[0] + 1, Len: loc[1] - loc[0], Text: shown,
+			})
+			if len(res.Matches) >= limit {
+				return
+			}
 		}
 	}
 }
@@ -334,6 +336,10 @@ func (s *Service) commands() []actionsapi.Command {
 			listing, err := s.Files(ctx)
 			if err != nil {
 				return "", err
+			}
+			if listing.Truncated {
+				// An agent must not take a partial list for the whole.
+				return "", fmt.Errorf("The file listing stopped at its limit (%d files or %s); mount a narrower folder.", maxFiles, walkBudget)
 			}
 			folder := a.Params["folder"]
 			if folder != "" && !strings.HasSuffix(folder, "/") {

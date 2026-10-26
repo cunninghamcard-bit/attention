@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	neturl "net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -47,12 +48,15 @@ type Workspace struct {
 	rows         []treeRow
 	rowsDirty    bool
 	watching     map[string]int // directory -> our own watch count
+	watchOps     chan watchOp   // Watch/Unwatch calls, in the order made
 
 	panelOpen bool
 	leftWidth float32
 	panes     []*pane
 	active    int
 	splitPct  float32
+	seenLeft  float32 // the widths last saved, to notice a divider drag
+	seenSplit float32
 
 	palette *palette
 	notice  string // a workspace-wide message, as a watch error
@@ -70,10 +74,17 @@ type Workspace struct {
 type dirNode struct {
 	path     string
 	expanded bool
-	loaded   bool
+	loaded   bool // listed successfully at least once
 	loading  bool
+	dirty    bool // a change arrived while loading: list again after
+	watched  bool // we hold one watch on it
 	entries  []fscontract.Entry
 	err      string
+}
+
+type watchOp struct {
+	dir string
+	add bool
 }
 
 type treeRow struct {
@@ -117,15 +128,39 @@ type tab struct {
 type navTarget struct{ line, to int } // 1-based; to 0 means line alone
 
 func newWorkspace(ctx context.Context, fs fscontract.FS, project projectcontract.Project) *Workspace {
-	return &Workspace{
+	ws := &Workspace{
 		ctx: ctx, fs: fs, project: project,
 		dirs:      map[string]*dirNode{},
 		watching:  map[string]int{},
+		watchOps:  make(chan watchOp, 4096),
 		panelOpen: true,
 		leftWidth: 260,
 		panes:     []*pane{{}},
 		splitPct:  50,
 		rowsDirty: true,
+	}
+	go ws.runWatchOps()
+	return ws
+}
+
+// runWatchOps makes the fs calls of watch and unwatch one at a time, in the
+// order the main thread asked for them, so an Unwatch never overtakes the
+// Watch it undoes.
+func (ws *Workspace) runWatchOps() {
+	for {
+		select {
+		case <-ws.ctx.Done():
+			return
+		case op := <-ws.watchOps:
+			if !op.add {
+				_ = ws.fs.Unwatch(ws.ctx, op.dir)
+				continue
+			}
+			if err := ws.fs.Watch(ws.ctx, op.dir); err != nil && ws.ctx.Err() == nil {
+				msg := err.Error()
+				shellapi.Update(func() { ws.notice = msg })
+			}
+		}
 	}
 }
 
@@ -191,15 +226,9 @@ func (ws *Workspace) display(path string) string {
 
 func (ws *Workspace) watch(dir string) {
 	ws.watching[dir]++
-	if ws.watching[dir] > 1 {
-		return
+	if ws.watching[dir] == 1 {
+		ws.watchOps <- watchOp{dir: dir, add: true}
 	}
-	go func() {
-		if err := ws.fs.Watch(ws.ctx, dir); err != nil && ws.ctx.Err() == nil {
-			msg := err.Error()
-			shellapi.Update(func() { ws.notice = msg })
-		}
-	}()
 }
 
 func (ws *Workspace) unwatch(dir string) {
@@ -208,7 +237,7 @@ func (ws *Workspace) unwatch(dir string) {
 		return
 	case 1:
 		delete(ws.watching, dir)
-		go func() { _ = ws.fs.Unwatch(ws.ctx, dir) }()
+		ws.watchOps <- watchOp{dir: dir}
 	default:
 		ws.watching[dir]--
 	}
@@ -245,6 +274,7 @@ func (ws *Workspace) dir(path string) *dirNode {
 // loadDir lists d on a goroutine; an expanded, loaded directory is watched.
 func (ws *Workspace) loadDir(d *dirNode) {
 	if d.loading {
+		d.dirty = true
 		return
 	}
 	d.loading = true
@@ -261,12 +291,17 @@ func (ws *Workspace) loadDir(d *dirNode) {
 			} else {
 				d.err = ""
 				d.entries = entries
+				d.loaded = true
 			}
-			if !d.loaded && d.expanded && err == nil {
+			if d.expanded && !d.watched && err == nil {
+				d.watched = true
 				ws.watch(path)
 			}
-			d.loaded = err == nil
 			ws.rowsDirty = true
+			if d.dirty {
+				d.dirty = false
+				ws.loadDir(d)
+			}
 		})
 	}()
 }
@@ -275,13 +310,9 @@ func (ws *Workspace) toggleDir(path string) {
 	d := ws.dir(path)
 	d.expanded = !d.expanded
 	if d.expanded {
-		if d.loaded {
-			ws.watch(path)
-			ws.loadDir(d) // refresh what changed while collapsed
-		} else {
-			ws.loadDir(d)
-		}
-	} else if d.loaded {
+		ws.loadDir(d) // lists, or refreshes what changed while collapsed; watches once listed
+	} else if d.watched {
+		d.watched = false
 		ws.unwatch(path)
 	}
 	ws.rowsDirty = true
@@ -318,10 +349,13 @@ func (ws *Workspace) treeRows() []treeRow {
 
 // open shows path in the active pane, reusing a tab that already shows it,
 // and applies nav when given.
-func (ws *Workspace) open(path string, nav *navTarget) *tab {
+func (ws *Workspace) open(path string, nav *navTarget) *tab { return ws.openIn(path, nav, false) }
+
+// openIn is open; newTab opens another tab even when one shows path.
+func (ws *Workspace) openIn(path string, nav *navTarget, newTab bool) *tab {
 	p := ws.activePane()
 	for i, t := range p.tabs {
-		if t.kind != kindSearch && t.path == path {
+		if !newTab && t.kind != kindSearch && t.path == path {
 			p.active = i
 			if nav != nil {
 				t.nav = nav
@@ -536,9 +570,18 @@ func (ws *Workspace) followLink(from *tab, url string) {
 		openExternal(url)
 		return
 	}
-	p := strings.TrimPrefix(strings.TrimPrefix(url, "file://"), "file:")
-	if i := strings.IndexByte(p, '#'); i >= 0 {
+	p := url
+	if strings.HasPrefix(url, "file:") {
+		u, err := neturl.Parse(url)
+		if err != nil {
+			return
+		}
+		p = u.Path
+	} else if i := strings.IndexAny(p, "#?"); i >= 0 {
 		p = p[:i]
+	}
+	if decoded, err := neturl.PathUnescape(p); err == nil {
+		p = decoded
 	}
 	if !filepath.IsAbs(p) {
 		p = filepath.Join(filepath.Dir(from.path), p)

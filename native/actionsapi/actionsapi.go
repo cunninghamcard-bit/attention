@@ -121,12 +121,70 @@ func Lookup(id string) (Command, bool) {
 // RunCLI runs a CLI invocation: argv[0] is the command, the rest its
 // parameters.
 func RunCLI(ctx context.Context, argv []string, cwd string) (string, error) {
-	if len(argv) == 0 {
-		return "", fmt.Errorf("No command given.")
+	if len(argv) == 0 || argv[0] == "help" {
+		return Help(), nil
 	}
 	cmd, ok := Lookup(argv[0])
 	if !ok || !cmd.CLI {
-		return "", fmt.Errorf("Command %q not found.", argv[0])
+		msg := fmt.Sprintf("Command %q not found.", argv[0])
+		if s := suggest(argv[0]); len(s) > 0 {
+			msg += " Did you mean: " + strings.Join(s, ", ") + "?"
+		} else {
+			msg += " It may require a plugin to be enabled."
+		}
+		return "", fmt.Errorf("%s", msg)
 	}
 	return cmd.Run(ctx, ParseArgs(argv[1:], cwd))
+}
+
+// cliIDs are the CLI commands' names, sorted.
+func cliIDs() []string {
+	var ids []string
+	for _, c := range List() {
+		if c.CLI {
+			ids = append(ids, c.ID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+// Help lists the CLI commands.
+func Help() string {
+	return "Usage: attention <command> [key=value ...]\n\nCommands:\n  " + strings.Join(cliIDs(), "\n  ")
+}
+
+// suggest returns up to three CLI commands close to name: sharing a prefix
+// or a substring, or within two edits.
+func suggest(name string) []string {
+	var out []string
+	for _, id := range cliIDs() {
+		if strings.HasPrefix(id, name) || strings.Contains(id, name) || (len(name) > 2 && strings.Contains(name, id)) || distance(name, id) <= 2 {
+			out = append(out, id)
+		}
+		if len(out) == 3 {
+			break
+		}
+	}
+	return out
+}
+
+func distance(a, b string) int {
+	prev := make([]int, len(b)+1)
+	for j := range prev {
+		prev[j] = j
+	}
+	for i := 1; i <= len(a); i++ {
+		cur := make([]int, len(b)+1)
+		cur[0] = i
+		for j := 1; j <= len(b); j++ {
+			cost := 1
+			if a[i-1] == b[j-1] {
+				cost = 0
+			}
+			cur[j] = min(prev[j]+1, cur[j-1]+1, prev[j-1]+cost)
+		}
+		prev = cur
+	}
+	return prev[len(b)]
 }

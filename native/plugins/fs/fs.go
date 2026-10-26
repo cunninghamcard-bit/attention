@@ -125,14 +125,23 @@ func (s *Service) Read(_ context.Context, path string, max int64) (contract.File
 
 // ReadBytes reads a file of at most max bytes.
 func (s *Service) ReadBytes(_ context.Context, path string, max int64) ([]byte, error) {
-	st, err := os.Stat(path)
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	if max > 0 && st.Size() > max {
+	defer f.Close()
+	if max <= 0 {
+		return io.ReadAll(f)
+	}
+	// Read one byte past max: the file may have grown since any stat.
+	data, err := io.ReadAll(io.LimitReader(f, max+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > max {
 		return nil, fmt.Errorf("%s is larger than %d bytes", filepath.Base(path), max)
 	}
-	return os.ReadFile(path)
+	return data, nil
 }
 
 // Stat describes one path.

@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -171,7 +172,11 @@ func send(argv []string, out io.Writer) error {
 	}
 	defer conn.Close()
 	cwd, _ := os.Getwd()
-	line, err := json.Marshal(map[string]any{"argv": argv, "tty": false, "cwd": cwd})
+	tty := false
+	if st, err := os.Stdin.Stat(); err == nil {
+		tty = st.Mode()&os.ModeCharDevice != 0
+	}
+	line, err := json.Marshal(map[string]any{"argv": argv, "tty": tty, "cwd": cwd})
 	if err != nil {
 		return err
 	}
@@ -238,8 +243,11 @@ func runHost(opts Options) int {
 		fmt.Fprintln(os.Stderr, "attention: rutis-host not found (set RUTIS_HOST or put it beside attention):", err)
 		return 1
 	}
-	dir, err := os.MkdirTemp(paths.RuntimeDir(), "attention-host-")
-	if err != nil {
+	// One directory per instance, beside its socket: the lock is held, so
+	// whatever is there was left by a launcher that was killed.
+	dir := paths.SocketPath() + ".host"
+	os.RemoveAll(dir)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		fmt.Fprintln(os.Stderr, "attention:", err)
 		return 1
 	}
@@ -256,31 +264,42 @@ func runHost(opts Options) int {
 	}
 
 	cmd := exec.Command(host, "run", cfg)
-	cmd.Env = append(os.Environ(), "ATTENTION_PROFILE="+opts.Profile)
-	cmd.Stdout = os.Stdout
-	stderr, err := cmd.StderrPipe()
+	// The UI runtime watches the launcher and stops the app when it is gone
+	// (Pdeathsig cannot do it: Go delivers it twice, and a second signal
+	// makes rutis-host skip the cleanups).
+	cmd.Env = append(os.Environ(), "ATTENTION_PROFILE="+opts.Profile, "ATTENTION_LAUNCHER_PID="+strconv.Itoa(os.Getpid()))
+	// rutis-host gets a process group of its own, so a terminal's Ctrl-C
+	// reaches only the launcher, which turns it into one SIGTERM (a second
+	// signal would make the host skip cleanups).
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	// rutis-host writes to a file, not to a pipe of ours: if the launcher
+	// dies, a pipe would break, and the host's next status line would fail
+	// half way through stopping. The launcher follows the file instead.
+	logPath := filepath.Join(dir, "host.log")
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "attention:", err)
 		return 1
 	}
+	cmd.Stdout, cmd.Stderr = logFile, logFile
 	// Handle (not ignore) the signals: an ignored signal stays ignored in
 	// the child, and rutis-host must keep its own Ctrl-C handling.
 	sigs := make(chan os.Signal, 4)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer signal.Stop(sigs)
-	if err := cmd.Start(); err != nil {
+	err = cmd.Start()
+	logFile.Close() // the host holds its own descriptor
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "attention:", err)
 		return 1
 	}
 
 	gaveUp := make(chan struct{}, 1)
-	copied := make(chan struct{})
+	waited := make(chan error, 1)
+	go func() { waited <- cmd.Wait() }()
+	exited := make(chan error, 1)
 	go func() {
-		defer close(copied)
-		sc := bufio.NewScanner(stderr)
-		sc.Buffer(make([]byte, 64*1024), 1024*1024)
-		for sc.Scan() {
-			line := sc.Text()
+		err := follow(logPath, waited, func(line string) {
 			fmt.Fprintln(os.Stderr, line)
 			// rutis-host: "runtime go-attention: gave up after 5 restarts …"
 			if strings.Contains(line, "runtime go-attention: gave up") {
@@ -289,20 +308,21 @@ func runHost(opts Options) int {
 				default:
 				}
 			}
-		}
+		})
+		exited <- err
 	}()
-	exited := make(chan error, 1)
-	go func() { <-copied; exited <- cmd.Wait() }()
 
-	failed := false
+	failed, forwarded := false, false
 	for {
 		select {
-		case s := <-sigs:
-			// A terminal's Ctrl-C reaches rutis-host directly (same process
-			// group); forwarding it would be a second signal, which makes the
-			// host skip cleanups. Other signals are forwarded once.
-			if s != syscall.SIGINT {
+		case <-sigs:
+			// Ctrl-C, SIGTERM or SIGHUP: stop the host once. A second Ctrl-C
+			// is the user insisting, and is forwarded too.
+			if !forwarded {
+				forwarded = true
 				cmd.Process.Signal(syscall.SIGTERM)
+			} else {
+				cmd.Process.Signal(syscall.SIGINT)
 			}
 		case <-gaveUp:
 			failed = true
@@ -324,6 +344,43 @@ func runHost(opts Options) int {
 				code = 1
 			}
 			return code
+		}
+	}
+}
+
+// follow reads the lines appended to path until done yields, then reads
+// what is left, and returns done's value.
+func follow(path string, done <-chan error, line func(string)) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return <-done
+	}
+	defer f.Close()
+	r := bufio.NewReaderSize(f, 64*1024)
+	var partial string
+	drain := func() {
+		for {
+			chunk, err := r.ReadString('\n')
+			partial += chunk
+			if err != nil {
+				return // EOF: wait for more
+			}
+			line(strings.TrimRight(partial, "\r\n"))
+			partial = ""
+		}
+	}
+	tick := time.NewTicker(50 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		select {
+		case err := <-done:
+			drain()
+			if partial != "" {
+				line(partial)
+			}
+			return err
+		case <-tick.C:
+			drain()
 		}
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -41,13 +42,15 @@ func onMain[T any](ctx context.Context, fn func() (T, error)) (T, error) {
 		v, err := fn()
 		done <- result{v, err}
 	})
+	timer := time.NewTimer(10 * time.Second)
+	defer timer.Stop()
 	select {
 	case r := <-done:
 		return r.v, r.err
 	case <-ctx.Done():
 		var zero T
 		return zero, ctx.Err()
-	case <-time.After(10 * time.Second):
+	case <-timer.C:
 		var zero T
 		return zero, fmt.Errorf("the window did not respond")
 	}
@@ -75,18 +78,35 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 
 		// Saving: debounced, the snapshot taken on the main thread and the
 		// write done off it.
-		var saveMu sync.Mutex
+		// writeMu orders the writes, so the final save on unload is the
+		// last one; saveClosed stops the timer's saves after it.
+		var saveMu, writeMu sync.Mutex
 		var saveTimer *time.Timer
+		saveClosed := false
+		write := func(s session) {
+			writeMu.Lock()
+			defer writeMu.Unlock()
+			_ = saveSession(s)
+		}
 		ws.saveSoon = func() {
 			saveMu.Lock()
 			defer saveMu.Unlock()
+			if saveClosed {
+				return
+			}
 			if saveTimer != nil {
 				saveTimer.Stop()
 			}
 			saveTimer = time.AfterFunc(400*time.Millisecond, func() {
 				shellapi.Update(func() {
+					saveMu.Lock()
+					closed := saveClosed
+					saveMu.Unlock()
+					if closed {
+						return
+					}
 					s := ws.snapshot()
-					go func() { _ = saveSession(s) }()
+					go write(s)
 				})
 			})
 		}
@@ -144,10 +164,17 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 				defer fmt.Fprintln(os.Stderr, "[debug] workspace: cleanup end")
 			}
 			offRoot()
-			// Save the final layout; the shell is still loaded (we inject it).
+			// Save the final layout; the shell is still loaded (we inject it),
+			// and the run loop runs until every plugin has unloaded.
 			s, err := onMain(context.Background(), func() (session, error) { return ws.snapshot(), nil })
+			saveMu.Lock()
+			saveClosed = true
+			if saveTimer != nil {
+				saveTimer.Stop()
+			}
+			saveMu.Unlock()
 			if err == nil {
-				_ = saveSession(s)
+				write(s)
 			}
 			cancel()
 			return nil
@@ -203,16 +230,18 @@ func (ws *Workspace) commands() []actionsapi.Command {
 			mygo.App.Quit()
 			return "Quitting.", nil
 		}},
-		{ID: "tabs", CLI: true, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
+		{ID: "tabs", CLI: true, Run: func(ctx context.Context, a actionsapi.Args) (string, error) {
 			return onMain(ctx, func() (string, error) {
+				// The TS CLI's shape: "[<view type>] <display text>", then a tab
+				// ID with ids.
 				var lines []string
 				for _, p := range ws.panes {
 					for _, t := range p.tabs {
-						if t.kind == kindSearch {
-							lines = append(lines, "[search]\tSearch")
-						} else {
-							lines = append(lines, "[file]\t"+ws.display(t.path))
+						line := "[" + t.viewType() + "] " + t.displayText()
+						if a.Has("ids") {
+							line += "\t" + strconv.Itoa(t.id)
 						}
+						lines = append(lines, line)
 					}
 				}
 				return strings.Join(lines, "\n"), nil
@@ -221,15 +250,39 @@ func (ws *Workspace) commands() []actionsapi.Command {
 	}
 }
 
-// cliOpen is `open path=<path> [line=<n> [to=<n>]]`, with the TS CLI's
-// messages. path is "<mount>/<rel>", absolute, or relative to the caller's
-// working directory; file= is accepted as path=.
-func (ws *Workspace) cliOpen(ctx context.Context, a actionsapi.Args) (string, error) {
-	target := a.Params["path"]
-	if target == "" {
-		target = a.Params["file"]
+// viewType names a tab's view as the TS CLI's tabs does.
+func (t *tab) viewType() string {
+	switch t.kind {
+	case kindMarkdown:
+		return "markdown"
+	case kindImage:
+		return "image"
+	case kindSearch:
+		return "search"
 	}
-	if target == "" {
+	return "text"
+}
+
+// displayText is a tab's name as the TS CLI shows it: a note without its
+// extension, any other file by its base name.
+func (t *tab) displayText() string {
+	if t.kind == kindMarkdown {
+		return strings.TrimSuffix(t.title, filepath.Ext(t.title))
+	}
+	return t.title
+}
+
+// cliOpen is `open path=<path> | file=<name> [line=<n> [to=<n>]] [newtab]`,
+// with the TS CLI's messages. path= is exact: "<mount>/<rel>", absolute, or
+// relative to the caller's directory or a mount. file= resolves like a
+// wikilink: the extension may be left off (.md) and a bare name is found
+// anywhere in the mounts. The disk is read here, off the main thread.
+func (ws *Workspace) cliOpen(ctx context.Context, a actionsapi.Args) (string, error) {
+	path, byFile := a.Params["path"], false
+	if path == "" {
+		path, byFile = a.Params["file"], true
+	}
+	if path == "" {
 		return "", fmt.Errorf("Missing required parameter: file or path")
 	}
 	line, hasLine, err := a.Int("line")
@@ -246,20 +299,29 @@ func (ws *Workspace) cliOpen(ctx context.Context, a actionsapi.Args) (string, er
 	if hasTo && to < line {
 		return "", fmt.Errorf("Invalid to: %d", to)
 	}
+	mounts, err := ws.project.Mounts(ctx)
+	if err != nil {
+		return "", err
+	}
+	target := path
+	if byFile {
+		target, err = ws.resolveLink(ctx, mounts, path, a.Cwd)
+	} else {
+		target, err = resolvePath(mounts, path, a.Cwd)
+	}
+	if err != nil {
+		return "", err
+	}
 	return onMain(ctx, func() (string, error) {
-		path, ok := ws.resolve(target, a.Cwd)
-		if !ok {
-			return "", fmt.Errorf("File %q not found.", target)
-		}
 		var nav *navTarget
 		if hasLine {
 			nav = &navTarget{line: line, to: to}
 		}
-		ws.open(path, nav)
+		ws.openIn(target, nav, a.Has("newtab"))
 		if w := shellapi.Window(); w != nil {
 			w.Focus()
 		}
-		out := "Opened: " + ws.display(path)
+		out := "Opened: " + ws.display(target)
 		switch {
 		case hasTo && to != line:
 			out += fmt.Sprintf(":%d-%d", line, to)
@@ -270,35 +332,69 @@ func (ws *Workspace) cliOpen(ctx context.Context, a actionsapi.Args) (string, er
 	})
 }
 
-// resolve finds the file a CLI path names. It stats the disk; it runs on
-// the main thread only for the CLI's open, as one call.
-func (ws *Workspace) resolve(target, cwd string) (string, bool) {
-	isFile := func(p string) bool {
-		st, err := os.Stat(p)
-		return err == nil && !st.IsDir()
-	}
+// candidates are the places a CLI path may name: absolute, "<mount>/<rel>",
+// relative to the caller's directory, relative to each mount.
+func candidates(mounts []projectcontract.Mount, target, cwd string) []string {
 	if filepath.IsAbs(target) {
-		return filepath.Clean(target), isFile(target)
+		return []string{filepath.Clean(target)}
 	}
+	var out []string
 	if name, rel, ok := strings.Cut(target, "/"); ok {
-		for _, m := range ws.mounts {
+		for _, m := range mounts {
 			if m.Name == name {
-				p := filepath.Join(m.Path, filepath.FromSlash(rel))
-				if isFile(p) {
-					return p, true
-				}
+				out = append(out, filepath.Join(m.Path, filepath.FromSlash(rel)))
 			}
 		}
 	}
 	if cwd != "" {
-		if p := filepath.Join(cwd, target); isFile(p) {
-			return p, true
+		out = append(out, filepath.Join(cwd, target))
+	}
+	for _, m := range mounts {
+		out = append(out, filepath.Join(m.Path, filepath.FromSlash(target)))
+	}
+	return out
+}
+
+// resolvePath is path=: exact, as the TS CLI's.
+func resolvePath(mounts []projectcontract.Mount, target, cwd string) (string, error) {
+	for _, p := range candidates(mounts, target, cwd) {
+		st, err := os.Stat(p)
+		if err != nil {
+			continue
+		}
+		if st.IsDir() {
+			return "", fmt.Errorf("%q is a folder, not a file.", target)
+		}
+		return p, nil
+	}
+	return "", fmt.Errorf("File %q not found.", target)
+}
+
+// resolveLink is file=: a path with or without ".md" first, then the first
+// file anywhere in the mounts whose path ends with it, without case.
+func (ws *Workspace) resolveLink(ctx context.Context, mounts []projectcontract.Mount, link, cwd string) (string, error) {
+	tries := []string{link}
+	if filepath.Ext(link) == "" {
+		tries = append(tries, link+".md")
+	}
+	for _, t := range tries {
+		for _, p := range candidates(mounts, t, cwd) {
+			if st, err := os.Stat(p); err == nil && !st.IsDir() {
+				return p, nil
+			}
 		}
 	}
-	for _, m := range ws.mounts {
-		if p := filepath.Join(m.Path, filepath.FromSlash(target)); isFile(p) {
-			return p, true
+	listing, err := ws.project.Files(ctx)
+	if err != nil {
+		return "", err
+	}
+	for _, t := range tries {
+		want := "/" + strings.ToLower(filepath.ToSlash(t))
+		for _, f := range listing.Files {
+			if strings.HasSuffix("/"+strings.ToLower(f.Rel), want) {
+				return f.Path, nil
+			}
 		}
 	}
-	return "", false
+	return "", fmt.Errorf("File %q not found.", link)
 }
