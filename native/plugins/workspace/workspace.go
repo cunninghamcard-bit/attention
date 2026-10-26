@@ -412,8 +412,28 @@ func (t *tab) setText(f fscontract.File) {
 		t.ed = &editor.State{Buffer: buf, ReadOnly: true}
 		return
 	}
+	// Keep where the reader was: the first visible line and the carets,
+	// by line and column, clamped to the new text.
 	first, _ := t.ed.VisibleLines()
+	type caret struct{ anchor, head editor.Pos }
+	var carets []caret
+	for _, s := range t.ed.Selections() {
+		carets = append(carets, caret{t.ed.Buffer.Pos(s.Anchor), t.ed.Buffer.Pos(s.Head)})
+	}
 	t.ed.Buffer.Reset(f.Text)
+	clamp := func(p editor.Pos) int {
+		lines := t.ed.Buffer.LineCount()
+		p.Line = max(0, min(p.Line, lines-1))
+		p.Col = max(0, min(p.Col, len(t.ed.Buffer.Line(p.Line))))
+		return t.ed.Buffer.Offset(p)
+	}
+	if len(carets) > 0 {
+		sels := make([]editor.Selection, len(carets))
+		for i, c := range carets {
+			sels[i] = editor.Selection{Anchor: clamp(c.anchor), Head: clamp(c.head)}
+		}
+		t.ed.SetSelections(sels...)
+	}
 	if first > 0 {
 		t.ed.ScrollTo(min(first, max(0, t.ed.Buffer.LineCount()-1)))
 	}
