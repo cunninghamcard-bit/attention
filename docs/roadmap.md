@@ -8,7 +8,7 @@
 
 | 阶段 | 主题 | 产出 | 前置条件 |
 |---|---|---|---|
-| P0 | 地基 spike | 进程拓扑跑通：mygo、rutis-host、插件、CLI | — |
+| P0 | 地基 | P0a 拓扑 spike（已完成）；P0b 地基插件：窗口、文件树、CLI | — |
 | P1 | 阅读核心 | 打开挂载根，在标签页里阅读 Markdown、代码、图片 | P0 |
 | P2 | 索引与 CLI | 资源索引，搜索、反链；47 个 CLI 命令完成对齐 | P1 |
 | P3 | 浏览器 | 网页标签页、历史、书签、阅读模式 | P1（可以和 P2 并行；跨类型反链那一条验收依赖 P2） |
@@ -20,33 +20,46 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
             └──► P3 ─────────┴──► P5
 ```
 
-## P0：地基 spike
+## P0：地基
 
-**目的**：验证 RFC §5.3 的进程拓扑，排除风险 R1，确定之后整个代码库的结构。
+**目的**：验证 RFC §5.3 的进程拓扑，排除风险 R1，然后用真正的插件结构搭起地基。
+
+### P0a：拓扑 spike（已完成，2026-10-26）
+
+代码在分支 `spike/p0-topology` 的 `native/`，报告在同一分支的 `docs/rfc/0001-spike-report.md`。结论：**拓扑成立**（Linux/Wayland，mygo v0.6.4，rutis 0.17.1）。
+
+- [x] 启动器生成 `rutis.json` 并拉起 rutis-host；宿主用 `fd:3` 拉起 UI runtime；mygo 在主线程、`ServeArgs` 在 goroutine 上共存。
+- [x] 同进程调用（`Local()` 为 true，每次约 0.45µs）、跨进程调用（每次约 0.15–0.25ms）、跨进程回调都能用。
+- [x] 第二个进程里的 `attention version` 通过 CLI socket 拿到结果。
+- [x] 关窗（UI runtime 给宿主发 SIGTERM）、Ctrl-C、`kill -9` 宿主三种退出方式，所有插件的清理都执行，没有残留进程；`kill -9` UI runtime 时由宿主重新拉起。
+- [x] 外置插件热替换：换上新二进制、结束旧进程，宿主用新二进制重新拉起，依赖它的插件自动挂起再恢复，界面没有崩溃。
+- [x] 启动到窗口打开 228–392ms；UI runtime 约 117MB，rutis-host 约 10.5MB；`attention` 22MB，`rutis-host` 20MB。
+
+### P0b：地基插件
 
 **范围**
-- 前提：RFC §10 第 2 条（代码放在 `native/`）已确认。
-- `native/` 目录下的 Go module。mygo 和 rutis 锁定开工当天的最新版本（2026-10-26 时分别是 v0.6.4 和 0.17.1）。
-- `cmd/attention` 的两种模式（RFC §5.3）：
-  - 启动器模式：已有实例时作为 CLI 客户端；否则生成 `rutis.json`（UI runtime 设为 `"start": "eager"`、`"restart": "exit"`），exec `rutis-host run`；
-  - UI runtime 模式：主线程运行 `App.Run()`，goroutine 里运行 `ServeArgs(fd:…)`。
+- 前提：RFC §10 第 2 条（代码放在 `native/`）由用户确认。
+- 把 spike 的 `cmd/attention` 改成正式版本（RFC §5.3）：
+  - argv 三种模式：`--rutis-manifest`、rutis 通道、启动器；
+  - 启动器用 `flock` 做单实例锁，fork rutis-host 并等待，把宿主的退出码转换后返回；拿不到锁时作为 CLI 客户端，socket 还没就绪时重试几秒；
+  - UI runtime 忽略 SIGPIPE，关窗时给宿主发 SIGTERM，会话结束后调用 `App.Quit()`；
+  - `rutis.json` 用 `binaries` 列出二进制，`restart: "on-failure"`，每个插件一行；监控宿主输出里的 `gave up`。
+- 启动器参数 `--mount <目录>`（可以写多次）：写进 `project` 插件这一行的配置；不传时使用上次保存的挂载列表。
 - 插件：`slots`、`resources`、`workspace`（先只有左侧 dock 和一个中间区域）、`fs`（监听用 fsnotify）、`project`、`file-tree-ui`、`actions`、`cli`（RFC §6）。
-- 共享 UI：通过 `replace` 指令直接依赖 octogo 的 `ui/theme` 和 `omgui`，不复制代码；等 octogo 的 `refactor/host-contract` 合并后再抽成独立模块（RFC §5.12）。
+- 共享 UI：用 `git worktree` 把 attention-ui 钉在 `9cbbf61`，再 `replace`（RFC §5.12）。
 - CLI 命令：`version`、`files`。
-- `native/AGENTS.md`：写明 `native/` 遵循 octogo 的 `docs/STYLE.md`，根目录 AGENTS.md 里的 Obsidian 重建规则不适用于这里（RFC §5.12）。
+- `native/AGENTS.md`：写明 `native/` 遵循 octogo 的 `docs/STYLE.md`，根目录 AGENTS.md 里的 Obsidian 重建规则不适用于这里；写明插件规范：`ctx.Go` 的任务必须响应 ctx 取消（spike 发现 3）。
 
 **完成标准**
 - [ ] 启动后显示一个窗口，左侧文件树列出 `--mount` 指定的目录。外部创建或删除文件后，界面在 1 秒内更新。
-- [ ] `attention version` 和 `attention files` 在第二个进程里执行，输出正确。
-- [ ] 关闭窗口后，rutis-host 和所有插件进程在关停期限内退出，没有残留进程；本进程插件的 `Effect` 清理执行了一次。
-- [ ] 另外三种退出方式都要测：终端里按 Ctrl-C、`kill` rutis-host、`kill` UI runtime。每种都写清楚实际行为，不能留下残留进程。
-- [ ] 把 `fs` 插件改成独立进程运行，功能不变。这证明服务插件放在本体内或外置都一样。
-- [ ] 外置的 `fs` 修改后能热重载，`project` 和 `file-tree-ui` 挂起后能恢复，界面没有崩溃。先确认这能在启动器生成的同一份配置下做到（`rutis-host dev` 用的是插件目录里的 `rutis.dev.json`，和 `run` 不是同一套配置）；做不到就写清楚开发时的工作流。（编译进本体的插件，重载时整个 attention runtime 都要重启，所以热重载只对外置插件有要求。）
-- [ ] attention 通过 `replace` 使用 octogo 的 `ui/theme` 和 `omgui`，`native/` 自己的一致性检查（禁止硬编码颜色和尺寸）通过。
-- [ ] 记录启动时间、常驻内存、二进制体积，以及 rutis-host 的体积。
-- [ ] 写出 spike 报告 `docs/rfc/0001-spike-report.md`，结论只能是「拓扑成立」或「启用 R1 的某个退路」。
+- [ ] `attention version` 和 `attention files` 在第二个进程里执行。对同一个测试目录，`files` 的输出和 TS 版一致；不一致的地方写进 `docs/cli-deviations.md`。
+- [ ] 同时启动两个 `attention`，只会出现一个窗口和一个 rutis-host，另一个作为客户端正常拿到输出或报错退出。
+- [ ] spike 的五种退出方式在正式版本上重测，结果不能比 spike 差。
+- [ ] `fs` 插件改成独立进程运行，功能不变；用 spike 的方式热替换它，`project` 和 `file-tree-ui` 挂起后能恢复。
+- [ ] 每个服务插件都有 `rutistest` 测试。
+- [ ] `native/` 自己的一致性检查（禁止硬编码颜色和尺寸）通过。
 
-**不做**：tab type、navigation、索引、共享 UI 模块的抽取。
+**不做**：tab type、navigation、索引。
 
 ## P1：阅读核心
 
@@ -88,16 +101,16 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 **目的**：完成从阅读器到浏览器的转变。
 
 **范围**
-- 插件：`web-ui`（tab type `web`、地址栏、网页内容的读取和提交）、`html-extract`、`history`、`bookmarks`。
+- 插件：`web-ui`（tab type `web`、地址栏、网页内容的读取、「页面加载完成」事件）、`html-extract`、`web-index`（把网页提交给 index，依赖 P2）、`history`、`bookmarks`。
 - 每个 `web` 标签页的前进和后退走 WebView 引擎自己的历史（`Page.GoBack/GoForward`），和工作区的打开记录分开（RFC §5.6）。
 - 阅读模式：`web-ui` 在页面加载后用 `Page.Eval` 取出 HTML，交给 `html-extract` 抽取正文，再用 `ui/markdown` 原生排版。
 - 启用了 index 时，`web-ui` 把网页的抽取结果提交给 index，让网页之间、网页与本地资源之间的链接都进入链接图（依赖 P2）。
-- CLI：`open url=…`、`web:read url=…`（输出阅读模式抽取的正文；不能复用已有的 `read`），以及 `history`、`bookmarks` 系列命令。
+- CLI：打开网页继续用已有的 `web url=…`；新增 `web:read url=…`（输出阅读模式抽取的正文；不能复用已有的 `read`），以及 `history`、`bookmarks` 系列命令。
 - 确定正文抽取算法（RFC 未决问题 6）。
 
 **完成标准**
 - [ ] 多标签浏览网页：前进、后退、刷新、页内查找、下载都能用；原生弹层能正确盖在网页上面。
-- [ ] 准备 20 个代表性网站（新闻、文档站、博客、GitHub 页面……），阅读模式的抽取成功率达到 80% 以上，结果写进测试 fixture。
+- [ ] P3 开始时先提交一份 20 个代表性网站的名单（新闻、文档站、博客、GitHub 页面……），每个网站附上人工确认过的期望正文；阅读模式对这份名单的抽取成功率达到 80% 以上。
 - [ ] `attention web:read url=…` 输出干净的正文，agent 可以直接使用。
 - [ ] （P2 完成后验收）一篇本地笔记和一个网页引用同一个 URL 时，两边的反链都能看到对方。
 
