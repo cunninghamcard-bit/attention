@@ -32,29 +32,29 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
   - 在 goroutine 里调用 `ServeArgs(dial:…)`；
   - 主线程运行 `App.Run()`；
   - 按顺序关停。
-- 插件：`slots`、`layout`、`fs`、`files-ui`、`commands`、`cli`。
-- 从 octogo 抽出共享 UI 模块（`theme`、`kit`、`keyboard`，以及通用组件），octogo 改为依赖它，attention 也依赖它（RFC §5.10）。
+- 插件：`slots`、`resources`、`workspace`（先只有左侧 dock 和一个中间区域）、`fs`、`project`、`files`、`actions`、`cli`（RFC §6）。
+- 从 octogo 抽出共享 UI 模块（`theme`、`kit`、`keyboard`，以及通用组件），octogo 改为依赖它，attention 也依赖它（RFC §5.12）。
 - CLI 命令：`version`、`files`。
-- `native/AGENTS.md`：写明 `native/` 遵循 octogo 的 `docs/STYLE.md`，根目录 AGENTS.md 里的 Obsidian 重建规则不适用于这里（RFC §5.10）。
+- `native/AGENTS.md`：写明 `native/` 遵循 octogo 的 `docs/STYLE.md`，根目录 AGENTS.md 里的 Obsidian 重建规则不适用于这里（RFC §5.12）。
 
 **完成标准**
 - [ ] 启动后显示一个窗口，左侧文件树列出 `--mount` 指定的目录。外部创建或删除文件后，界面在 1 秒内更新。
 - [ ] `attention version` 和 `attention files` 在第二个进程里执行，输出正确。
 - [ ] 关闭窗口后，rutis-host 和所有插件进程在关停期限内退出，没有残留进程。
 - [ ] 把 `fs` 插件改成独立进程运行，功能不变。这证明服务插件放在本体内或外置都一样。
-- [ ] 外置的 `fs` 在 `rutis-host dev` 下修改后自动重载，`files-ui` 能挂起后恢复，界面没有崩溃。（编译进本体的插件，重载时整个 attention runtime 都要重启，所以热重载只对外置插件有要求。）
+- [ ] 外置的 `fs` 在 `rutis-host dev` 下修改后自动重载，`project` 和 `files` 能挂起后恢复，界面没有崩溃。（编译进本体的插件，重载时整个 attention runtime 都要重启，所以热重载只对外置插件有要求。）
 - [ ] octogo 改为依赖共享 UI 模块后，它的 `go test ./...` 和一致性检查全部通过，行为不变。
 - [ ] 记录启动时间、常驻内存、二进制体积，以及 rutis-host 的体积。
 - [ ] 写出 spike 报告 `docs/rfc/0001-spike-report.md`，结论只能是「拓扑成立」或「启用 R1 的某个退路」。
 
-**不做**：标签页、viewer、索引。
+**不做**：tab type、navigation、索引。
 
 ## P1：阅读核心
 
 **目的**：成为一个可以日常使用的本地资料阅读器。
 
 **范围**
-- 插件：`navigation`、`tabs`（多标签页，可以分屏）、`viewer-markdown`、`viewer-code`、`viewer-image`、`palette`（命令面板，以及按文件名的快速切换）。
+- 插件：`tab-types`、`navigation`、`settings`、tab type `text` / `markdown` / `image`、`palette`（命令面板，以及按文件名的快速切换）。`workspace` 补全分屏、多个 dock 和布局历史（RFC §5.6、§5.7）。
 - 挂载：Home 加多个仓库，语义与 `mount/` 一致；挂载列表持久化到配置主目录。
 - 标签页和分屏的布局状态，在重启后恢复。
 - 实测 `ui/markdown` 对 wikilink、嵌入、callout 的支持情况（风险 R6）。
@@ -65,7 +65,7 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 - [ ] 代码文件只读查看，有语法高亮，`open line= to=` 能定位并选中指定的行。
 - [ ] 文件在外部被修改后，已打开的标签页自动刷新，滚动位置保持不变。
 - [ ] 重启后标签页、分屏和挂载都能恢复。
-- [ ] 写一份 R6 的结论文档，说明 viewer-markdown 是否需要预处理，或者需要给 mygo 提 PR。
+- [ ] 写一份 R6 的结论文档，说明 `markdown` tab type 是否需要预处理，或者需要给 mygo 提 PR。
 
 ## P2：索引与 CLI 对齐
 
@@ -73,7 +73,7 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 
 **范围**
 - 插件：`markdown-extract`、`index`、`search-ui`、`backlinks-ui`、`outline-ui`、`files`（CLI 的文件写入命令）。
-- 按 RFC §5.7，把约 45 个 CLI 命令重新分配到各插件。
+- 按 RFC §5.9，把约 45 个 CLI 命令重新分配到各插件。
 - 把 `scripts/e2e-cli.mjs` 改成驱动 Go 二进制。
 - 确定 index 的存储方式（RFC 未决问题 5）。
 
@@ -88,8 +88,8 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 **目的**：完成从阅读器到浏览器的转变。
 
 **范围**
-- 插件：`web`（`https:` scheme、web viewer、地址栏）、`html-extract`、`history`、`bookmarks`。
-- 阅读模式：用 `html-extract` 抽取正文，交给 `viewer-markdown` 原生排版。
+- 插件：`web`（`https` 协议、tab type `web`、地址栏）、`html-extract`、`history`、`bookmarks`。
+- 阅读模式：用 `html-extract` 抽取正文，交给 `markdown` tab type 原生排版。
 - 网页之间的链接，以及网页与本地资源之间的链接，都进入索引，反链可以跨资源类型。
 - CLI：`open url=…`、`read`（输出阅读模式抽取的正文），以及 `history`、`bookmarks` 系列命令。
 - 确定正文抽取算法（RFC 未决问题 6）。
