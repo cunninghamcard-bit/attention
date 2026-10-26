@@ -130,9 +130,7 @@ func newWorkspace(ctx context.Context, fs fscontract.FS, project projectcontract
 		splitPct:       50,
 		isDark:         mygo.Theme.IsDark,
 	}
-	ws.watches = watchq.New(ctx, fs, shellapi.Update, func(_, msg string) {
-		shellapi.Update(func() { ws.notice = msg })
-	})
+	ws.watches = watchq.New(ctx, fs, shellapi.Update, func(_, msg string) { ws.notice = msg })
 	return ws
 }
 

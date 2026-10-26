@@ -63,14 +63,9 @@ type treeRow struct {
 
 func newTree(ctx context.Context, fs fscontract.FS) *Tree {
 	tr := &Tree{ctx: ctx, fs: fs, dirs: map[string]*dirNode{}, rowsDirty: true}
-	tr.watches = watchq.New(ctx, fs, shellapi.Update, func(dir, msg string) {
-		shellapi.Update(func() {
-			tr.notice = msg
-			if d := tr.dirs[dir]; d != nil {
-				d.watched = false
-			}
-		})
-	})
+	// A refused watch stays counted: collapsing gives it back and
+	// expanding again retries it (watchq).
+	tr.watches = watchq.New(ctx, fs, shellapi.Update, func(_, msg string) { tr.notice = msg })
 	return tr
 }
 
@@ -138,6 +133,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		rctx.Effect(func(context.Context) error {
 			offCmd()
 			off()
+			tr.watches.Close()
 			cancel()
 			return nil
 		})

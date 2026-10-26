@@ -176,6 +176,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			if err == nil {
 				write(s)
 			}
+			ws.watches.Close()
 			cancel()
 			return nil
 		})

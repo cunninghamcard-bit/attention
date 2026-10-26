@@ -149,11 +149,18 @@ func (s *Search) restore(data json.RawMessage) {
 	s.start()
 }
 
-// changed starts the debounce after the query changed.
+// changed starts the debounce after the query changed. A search still
+// running is for the old text: the seq moves on so its result is dropped,
+// as SearchView drops a stale searchId. An emptied field clears at once.
 func (s *Search) changed() {
 	if s.timer != nil {
 		s.timer.Stop()
 	}
+	if strings.TrimSpace(s.query) == "" {
+		s.start()
+		return
+	}
+	s.seq++
 	seq := s.seq
 	s.timer = time.AfterFunc(debounce, func() {
 		shellapi.Update(func() {
@@ -178,8 +185,8 @@ func (s *Search) start() {
 	s.results, s.err, s.limited, s.loading, s.dirty = nil, "", false, false, true
 	q := strings.TrimSpace(s.query)
 	s.ran = q
-	if q == "" {
-		return
+	if q == "" || s.ctx.Err() != nil {
+		return // nothing to search, or unloaded (a debounce fired late)
 	}
 	ctx, cancel := context.WithCancel(s.ctx)
 	s.cancel = cancel
