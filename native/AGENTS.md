@@ -14,9 +14,11 @@ The repo-root `AGENTS.md` / `CLAUDE.md` rule “reconstruct Obsidian byte-for-by
 - UI state only on the mygo main thread.
 - Work done on goroutines comes back through `shellapi.Update`.
 - Never do disk or service calls in a View function.
-- `onMain` must not be called from the main thread.
+- `shellapi.OnMain` must not be called from the main thread.
 
 ## rutis plugins
+
+- UI plugins contribute through `slotsapi` (dock panels, ribbon) and reach the workspace through `workspaceapi`; they inject `workspace` so rutis orders them after it.
 
 - Every `ctx.Go` task must return when its context is cancelled (unload waits for it before Effects run).
 - Register, then hand the off func to `ctx.Effect`.

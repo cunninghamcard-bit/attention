@@ -101,7 +101,9 @@ func TestFilesSkipsNodeModulesAndGit(t *testing.T) {
 	}
 }
 
-func TestSearchRegexCaseLimitAndMultipleMatches(t *testing.T) {
+// The service runs the SearchEngine.ts port (its own tests are in
+// searchengine_test.go): this covers the call through rutis.
+func TestSearchCaseLimitFiltersAndMultipleMatches(t *testing.T) {
 	root := t.TempDir()
 	write := func(name, body string) {
 		t.Helper()
@@ -109,55 +111,49 @@ func TestSearchRegexCaseLimitAndMultipleMatches(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write("re.txt", "cat\ncot\ncut\n")
-	write("dup.txt", "abc abc\n")
-	write("case.txt", "Foo foo FOO\n")
-	write("many.txt", "x\nx\nx\n")
+	write("dup.md", "abc abc\n")
+	write("case.md", "Foo foo FOO\n")
+	write("x1.md", "x\n")
+	write("x2.md", "x\n")
+	write("x3.md", "x\n")
 
 	loaded := loadProject(t, root)
-
-	var regex contract.SearchResult
-	call(t, loaded, "search", &regex, contract.Query{Text: "c.t", Regex: true})
-	if len(regex.Matches) != 3 {
-		t.Fatalf("regex c.t = %+v", regex.Matches)
+	search := func(q contract.Query) contract.SearchResult {
+		t.Helper()
+		var res contract.SearchResult
+		call(t, loaded, "search", &res, q)
+		return res
+	}
+	matches := func(res contract.SearchResult) int {
+		n := 0
+		for _, f := range res.Files {
+			n += len(f.Matches)
+		}
+		return n
 	}
 
-	var literal contract.SearchResult
-	call(t, loaded, "search", &literal, contract.Query{Text: "c.t"})
-	if len(literal.Matches) != 0 {
-		t.Fatalf("literal c.t = %+v", literal.Matches)
+	if res := search(contract.Query{Text: "foo"}); len(res.Files) != 1 || matches(res) != 3 {
+		t.Fatalf("case-insensitive foo = %+v", res)
+	}
+	if res := search(contract.Query{Text: "Foo", CaseSensitive: true}); matches(res) != 1 || res.Files[0].Matches[0].Col != 1 {
+		t.Fatalf("case-sensitive Foo = %+v", res)
+	}
+	if res := search(contract.Query{Text: "x", Limit: 2}); len(res.Files) != 2 || !res.Truncated {
+		t.Fatalf("limit 2 = %+v", res)
+	}
+	if res := search(contract.Query{Text: "file:case"}); len(res.Files) != 1 || res.Files[0].Rel != "case.md" || res.Files[0].ModTime == 0 {
+		t.Fatalf("file:case = %+v", res)
 	}
 
-	var insensitive contract.SearchResult
-	call(t, loaded, "search", &insensitive, contract.Query{Text: "foo"})
-	if len(insensitive.Matches) != 3 {
-		t.Fatalf("case-insensitive foo = %+v", insensitive.Matches)
+	multi := search(contract.Query{Text: "abc"})
+	if len(multi.Files) != 1 || matches(multi) != 2 {
+		t.Fatalf("two matches on one line = %+v", multi)
 	}
-
-	var sensitive contract.SearchResult
-	call(t, loaded, "search", &sensitive, contract.Query{Text: "Foo", CaseSensitive: true})
-	if len(sensitive.Matches) != 1 || sensitive.Matches[0].Col != 1 {
-		t.Fatalf("case-sensitive Foo = %+v", sensitive.Matches)
+	ms := multi.Files[0].Matches
+	if ms[0].Line != 1 || ms[1].Line != 1 || ms[0].Col == ms[1].Col {
+		t.Fatalf("want both on line 1 at distinct columns: %+v", ms)
 	}
-
-	var limited contract.SearchResult
-	call(t, loaded, "search", &limited, contract.Query{Text: "x", Limit: 2})
-	if len(limited.Matches) != 2 {
-		t.Fatalf("limit 2 = %+v", limited.Matches)
-	}
-
-	var multi contract.SearchResult
-	call(t, loaded, "search", &multi, contract.Query{Text: "abc"})
-	if len(multi.Matches) != 2 {
-		t.Fatalf("two matches on one line = %+v", multi.Matches)
-	}
-	if multi.Matches[0].Line != 1 || multi.Matches[1].Line != 1 {
-		t.Fatalf("want both on line 1: %+v", multi.Matches)
-	}
-	if multi.Matches[0].Col == multi.Matches[1].Col {
-		t.Fatalf("want distinct columns: %+v", multi.Matches)
-	}
-	for _, m := range multi.Matches {
+	for _, m := range ms {
 		if !strings.Contains(m.Text, "abc abc") {
 			t.Fatalf("line text = %q", m.Text)
 		}
