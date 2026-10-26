@@ -3,9 +3,11 @@ package workspace
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
@@ -247,9 +249,11 @@ func (ws *Workspace) loadDir(d *dirNode) {
 	}
 	d.loading = true
 	path := d.path
+	start := time.Now()
 	go func() {
 		entries, err := ws.fs.List(ws.ctx, path)
 		shellapi.Update(func() {
+			debugf("tree: listed %s (%d entries) in %s", path, len(entries), time.Since(start))
 			d.loading = false
 			if err != nil {
 				d.err = err.Error()
@@ -351,6 +355,7 @@ func (ws *Workspace) load(t *tab) {
 	}
 	t.loading = true
 	kind, path := t.kind, t.path
+	start := time.Now()
 	go func() {
 		var (
 			file fscontract.File
@@ -370,7 +375,10 @@ func (ws *Workspace) load(t *tab) {
 		} else {
 			file, err = ws.fs.Read(ws.ctx, path, maxTextBytes)
 		}
-		shellapi.Update(func() { ws.loaded(t, file, img, err) })
+		shellapi.Update(func() {
+			ws.loaded(t, file, img, err)
+			debugf("tab: loaded %s in %s", filepath.Base(path), time.Since(start))
+		})
 	}()
 }
 
@@ -606,5 +614,11 @@ func (ws *Workspace) changed() {
 		if w := shellapi.Window(); w != nil {
 			w.SetTitle(title)
 		}
+	}
+}
+
+func debugf(format string, a ...any) {
+	if os.Getenv("ATTENTION_DEBUG") != "" {
+		fmt.Fprintf(os.Stderr, "[debug] "+format+"\n", a...)
 	}
 }
