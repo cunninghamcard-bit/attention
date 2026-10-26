@@ -4,8 +4,6 @@
 package project
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -13,7 +11,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -52,12 +49,13 @@ type Service struct {
 	mounts []contract.Mount
 	save   bool
 	notify func()
+	engine *Engine
 }
 
 // New starts from the configured mounts, else the saved list, else the
 // home directory.
 func New(configured []string, save bool, notify func()) *Service {
-	s := &Service{save: save, notify: notify}
+	s := &Service{save: save, notify: notify, engine: NewEngine(nil)}
 	list := configured
 	if len(list) == 0 {
 		list = loadSaved()
@@ -239,83 +237,25 @@ func (s *Service) Files(ctx context.Context) (contract.Listing, error) {
 	return out, nil
 }
 
-// Search finds lines matching q in every text file the walk reaches.
+// Search runs attention's search engine over the mounts' files.
 func (s *Service) Search(ctx context.Context, q contract.Query) (contract.SearchResult, error) {
 	var res contract.SearchResult
-	if q.Text == "" {
-		return res, nil
-	}
-	pattern := q.Text
-	if !q.Regex {
-		pattern = regexp.QuoteMeta(pattern)
-	}
-	if !q.CaseSensitive {
-		pattern = "(?i)" + pattern
-	}
-	re, err := regexp.Compile(pattern)
-	if err != nil {
-		return res, fmt.Errorf("Invalid regular expression: %v", err)
-	}
-	limit := q.Limit
-	if limit <= 0 {
-		limit = 2000
-	}
 	listing, err := s.Files(ctx)
 	if err != nil {
 		return res, err
 	}
 	res.Truncated = listing.Truncated
-	for _, f := range listing.Files {
-		if ctx.Err() != nil {
-			return res, ctx.Err()
+	display := func(f contract.FileRef) string {
+		if m, ok := s.mountByID(f.Mount); ok {
+			return contract.Display(m, f.Rel)
 		}
-		if len(res.Matches) >= limit {
-			res.Truncated = true
-			break
-		}
-		res.Files++
-		searchFile(f, re, limit, &res)
+		return f.Rel
 	}
-	return res, nil
-}
-
-func searchFile(f contract.FileRef, re *regexp.Regexp, limit int, res *contract.SearchResult) {
-	st, err := os.Stat(f.Path)
-	if err != nil || st.Size() > maxSearchSize {
-		return
+	res.Files, err = s.engine.Search(ctx, listing.Files, display, q)
+	if q.Limit > 0 && len(res.Files) >= q.Limit {
+		res.Truncated = true
 	}
-	data, err := os.ReadFile(f.Path)
-	if err != nil {
-		return
-	}
-	head := data
-	if len(head) > 8000 {
-		head = head[:8000]
-	}
-	if bytes.IndexByte(head, 0) >= 0 {
-		return // binary
-	}
-	sc := bufio.NewScanner(bytes.NewReader(data))
-	sc.Buffer(make([]byte, 64*1024), maxSearchSize)
-	for line := 1; sc.Scan(); line++ {
-		text := sc.Text()
-		locs := re.FindAllStringIndex(text, -1)
-		if locs == nil {
-			continue
-		}
-		shown := text
-		if len(shown) > maxLineBytes {
-			shown = shown[:maxLineBytes]
-		}
-		for _, loc := range locs {
-			res.Matches = append(res.Matches, contract.Match{
-				Mount: f.Mount, Rel: f.Rel, Path: f.Path, Line: line, Col: loc[0] + 1, Len: loc[1] - loc[0], Text: shown,
-			})
-			if len(res.Matches) >= limit {
-				return
-			}
-		}
-	}
+	return res, err
 }
 
 func (s *Service) mountByID(id string) (contract.Mount, bool) {

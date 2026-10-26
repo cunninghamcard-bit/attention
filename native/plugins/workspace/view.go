@@ -13,6 +13,8 @@ import (
 
 	"github.com/cunninghamcard-bit/attention-ui/theme"
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
+
+	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 )
 
 var (
@@ -31,17 +33,28 @@ func themeFor(dark bool) *ui.Theme {
 	return t
 }
 
-// view is the window's root (RFC §5.8: it reads state, never the disk).
+// view is the window's root (RFC §5.8: it reads state, never the disk):
+// attention's frame — the ribbon, the left dock, the panes, the right
+// dock — over the status bar.
 func (ws *Workspace) view(c *ui.Context) {
 	c.SetTheme(themeFor(ws.isDark()))
 	t := c.Theme()
 	ws.shortcuts(c)
 	ui.Column(c).Fill().Background(t.Background).Children(func() {
 		ui.Row(c).Grow(1).FillWidth().AlignItems(ui.Stretch).Children(func() {
+			ws.ribbon(c)
+			center := func() {
+				ui.Row(c).Grow(1).Fill().AlignItems(ui.Stretch).Children(func() {
+					ws.paneGroup(c)
+					if ws.rightOpen {
+						ws.dock(c, slotsapi.Right)
+					}
+				})
+			}
 			if ws.panelOpen {
-				ui.Split(c, &ws.leftWidth, func() { ws.projectPanel(c) }, func() { ws.paneGroup(c) }).Grow(1)
+				ui.Split(c, &ws.leftWidth, func() { ws.dock(c, slotsapi.Left) }, center).Grow(1)
 			} else {
-				ws.paneGroup(c)
+				center()
 			}
 		})
 		ws.statusBar(c)
@@ -75,7 +88,7 @@ func (ws *Workspace) shortcuts(c *ui.Context) {
 	case c.Shortcut(ui.Cmd, ui.KeyO):
 		ws.openPalette(modeFiles)
 	case c.Shortcut(ui.Cmd|ui.Shift, ui.KeyF):
-		ws.openSearch()
+		ws.revealPanel("search")
 	case c.Shortcut(ui.Cmd, ui.KeyW):
 		ws.closeActiveTab()
 	case c.Shortcut(ui.Cmd, ui.KeyT):
@@ -89,8 +102,7 @@ func (ws *Workspace) shortcuts(c *ui.Context) {
 	case c.Shortcut(ui.Ctrl|ui.Shift, ui.KeyTab), c.Shortcut(ui.Cmd|ui.Shift, ui.KeyBracketLeft), c.Shortcut(ui.Ctrl, ui.KeyPageUp):
 		ws.cycleTab(-1)
 	case c.Shortcut(ui.Cmd, ui.KeyB):
-		ws.panelOpen = !ws.panelOpen
-		ws.changed()
+		ws.toggleLeft()
 	case c.Shortcut(ui.Cmd, ui.KeyBackslash):
 		ws.splitRight()
 	case c.Shortcut(ui.Cmd, ui.KeyE):
@@ -102,68 +114,76 @@ func (ws *Workspace) shortcuts(c *ui.Context) {
 	}
 }
 
-// ---- project panel ------------------------------------------------------------
+// ---- ribbon and docks ---------------------------------------------------------
 
-func (ws *Workspace) projectPanel(c *ui.Context) {
+// ribbon is attention's side ribbon: the registered actions, top down.
+func (ws *Workspace) ribbon(c *ui.Context) {
 	t := c.Theme()
-	rows := ws.treeRows()
-	current := ""
-	if tb := ws.activeTab(); tb != nil && tb.kind != kindSearch {
-		current = tb.path
+	ui.Column(c).Width(40).FillHeight().PaddingY(8).Gap(4).AlignItems(ui.Center).
+		Background(t.Surface).BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Children(func() {
+		for _, r := range slotsapi.Ribbon() {
+			run := r.Run
+			omgui.Button(c, omgui.ButtonProps{Label: r.Title, Icon: r.Icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall, OnClick: run}).
+				Key("ribbon:" + r.ID).Tooltip(r.Title)
+		}
+	})
+}
+
+// dock is a sidebar: a header with one icon per panel, then the shown
+// panel (attention's sidebar tab headers).
+func (ws *Workspace) dock(c *ui.Context, d slotsapi.Dock) {
+	t := c.Theme()
+	panels := slotsapi.Panels(d)
+	col := ui.Column(c).Fill().Background(t.Surface)
+	if d == slotsapi.Left {
+		col.BorderWidth(0, 1, 0, 0)
+	} else {
+		col.Width(ws.rightWidth).Shrink(0).BorderWidth(0, 0, 0, 1)
 	}
-	ui.Column(c).Fill().Background(t.Surface).BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Children(func() {
-		ui.Row(c).Padding(10, 12).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, "PROJECT").FontSize(11).Bold().TextColor(t.TextMuted).Grow(1)
-		})
-		if ws.notice != "" {
-			ui.Text(c, ws.notice).FontSize(11).TextColor(t.Warning).Padding(4, 12)
+	col.BorderColor(t.Border).Children(func() {
+		var shown *slotsapi.Panel
+		if d == slotsapi.Left {
+			shown = ws.shownLeft(panels)
+		} else if len(panels) > 0 {
+			shown = &panels[0]
 		}
-		if !ws.mountsLoaded {
-			ui.Text(c, "Loading…").TextColor(t.TextMuted).Padding(8, 12)
-			return
-		}
-		ui.List(c, nil, len(rows), func(i int) {
-			r := rows[i]
-			e := r.entry
-			row := omgui.SideRow(c, omgui.SideRowProps{Key: e.Path, Selected: !e.Dir && e.Path == current, Depth: r.depth})
-			if row.Clicked() {
-				if e.Dir {
-					ws.toggleDir(e.Path)
-				} else {
-					ws.open(e.Path, nil)
+		ui.Row(c).Height(38).Shrink(0).PaddingX(6).Gap(2).AlignItems(ui.Center).
+			BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
+			for i := range panels {
+				p := panels[i]
+				color := t.TextMuted
+				if shown != nil && shown.ID == p.ID {
+					color = t.Text
+				}
+				b := omgui.Button(c, omgui.ButtonProps{Label: p.Title, Icon: p.Icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall, IconColor: color}).
+					Key("panel:" + p.ID).Checked(shown != nil && shown.ID == p.ID).Tooltip(p.Title)
+				if b.Clicked() {
+					ws.revealPanel(p.ID)
 				}
 			}
-			row.Tooltip(ws.display(e.Path))
-			row.Children(func() {
-				if e.Dir {
-					d := ws.dirs[e.Path]
-					open := d != nil && d.expanded
-					chevron := lucide.ChevronRight()
-					if open {
-						chevron = lucide.ChevronDown()
-					}
-					ui.Icon(c, chevron).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
-					icon := lucide.Folder()
-					if open {
-						icon = lucide.FolderOpen()
-					}
-					ui.Icon(c, icon).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
-				} else {
-					ui.Box(c).Width(14).Shrink(0)
-					ui.Icon(c, fileIcon(e.Name)).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
-				}
-				label := ui.Text(c, e.Name).SingleLine().Ellipsis("…").Shrink(1).FontSize(13)
-				if r.mount != nil {
-					label.Bold()
-				}
-				if e.Dir {
-					if d := ws.dirs[e.Path]; d != nil && d.err != "" {
-						ui.Icon(c, lucide.TriangleAlert()).Size(12, 12).TextColor(t.Warning).Shrink(0).Tooltip(d.err)
-					}
-				}
-			})
-		}).Grow(1).FillWidth().PaddingY(4)
+		})
+		if shown == nil {
+			centered(c, "No panels")
+			return
+		}
+		ui.Column(c).Key("dock:" + shown.ID).Grow(1).FillWidth().MinHeight(0).Children(func() {
+			shown.View(c, slotsapi.PanelProps{Reveal: ws.reveals[shown.ID]})
+		})
 	})
+}
+
+// shownLeft is the left dock's shown panel: the chosen one while it is
+// registered, else the first.
+func (ws *Workspace) shownLeft(panels []slotsapi.Panel) *slotsapi.Panel {
+	for i := range panels {
+		if panels[i].ID == ws.leftPanel {
+			return &panels[i]
+		}
+	}
+	if len(panels) > 0 {
+		return &panels[0]
+	}
+	return nil
 }
 
 // ---- panes and tabs -----------------------------------------------------------
@@ -210,15 +230,11 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, paneIndex int, focused bool)
 					title += " (deleted)"
 				}
 				tip := tb.title
-				if tb.kind != kindSearch && tb.kind != kindEmpty {
-					tip = ws.display(tb.path)
-				}
 				icon := fileIcon(tb.title)
-				switch tb.kind {
-				case kindSearch:
-					icon = lucide.Search()
-				case kindEmpty:
+				if tb.kind == kindEmpty {
 					icon = lucide.Globe()
+				} else {
+					tip = ws.display(tb.path)
 				}
 				chip := omgui.TabChip(c, omgui.TabChipProps{
 					Key: fmt.Sprintf("tab-%d", tb.id), Title: title, Icon: icon, Tooltip: tip,
@@ -255,10 +271,6 @@ func (ws *Workspace) emptyPane(c *ui.Context) {
 
 func (ws *Workspace) tabBody(c *ui.Context, tb *tab) {
 	t := c.Theme()
-	if tb.kind == kindSearch {
-		ws.searchView(c, tb)
-		return
-	}
 	if tb.kind == kindEmpty {
 		ws.emptyPane(c)
 		return
@@ -333,17 +345,24 @@ func (ws *Workspace) statusBar(c *ui.Context) {
 	ui.Row(c).Height(26).FillWidth().PaddingX(10).Gap(14).AlignItems(ui.Center).
 		Background(t.Surface).BorderWidth(1, 0, 0, 0).BorderColor(t.Border).Children(func() {
 		if ui.Icon(c, lucide.PanelLeft()).Size(14, 14).TextColor(t.TextMuted).Tooltip("Toggle left sidebar (Ctrl B)").Clicked() {
-			ws.panelOpen = !ws.panelOpen
-			ws.changed()
+			ws.toggleLeft()
 		}
 		mounts := strconv.Itoa(len(ws.mounts)) + " folders"
 		if len(ws.mounts) == 1 {
 			mounts = ws.mounts[0].Name
 		}
 		ui.Text(c, mounts).FontSize(12).TextColor(t.TextMuted)
+		if ws.notice != "" {
+			ui.Icon(c, lucide.TriangleAlert()).Size(12, 12).TextColor(t.Warning).Tooltip(ws.notice)
+		}
 		ui.Box(c).Grow(1)
+		defer func() {
+			if ui.Icon(c, lucide.PanelRight()).Size(14, 14).TextColor(t.TextMuted).Tooltip("Toggle right sidebar").Clicked() {
+				ws.toggleRight()
+			}
+		}()
 		tb := ws.activeTab()
-		if tb == nil || tb.kind == kindSearch || tb.kind == kindEmpty {
+		if tb == nil || tb.kind == kindEmpty {
 			return
 		}
 		if tb.ed != nil && (tb.kind == kindText || tb.mdSource) {

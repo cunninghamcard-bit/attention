@@ -28,30 +28,40 @@ type Listing struct {
 	Truncated bool `json:"truncated"`
 }
 
-// Query is a project search.
+// Query is a project search in attention's query language
+// (apps/web/search/SearchEngine.ts): words, "quoted phrases", path:,
+// file:, tag:, line:(…), section:(…), [property], [property:value], ext:.
 type Query struct {
 	Text          string `json:"text"`
-	Regex         bool   `json:"regex"`
 	CaseSensitive bool   `json:"caseSensitive"`
-	Limit         int    `json:"limit"`
+	// PathPrefix keeps the files whose display path starts with it.
+	PathPrefix string `json:"pathPrefix,omitempty"`
+	// Limit stops after this many files (0: no limit).
+	Limit int `json:"limit"`
 }
 
-// Match is one matching line.
+// Match is one occurrence in a file.
 type Match struct {
-	Mount string `json:"mount"`
-	Rel   string `json:"rel"`
-	Path  string `json:"path"`
-	Line  int    `json:"line"` // 1-based
-	Col   int    `json:"col"`  // 1-based, in bytes
-	Len   int    `json:"len"`  // bytes matched
-	Text  string `json:"text"` // the line, trimmed to 400 bytes
+	Line int    `json:"line"` // 1-based
+	Col  int    `json:"col"`  // 1-based, in bytes
+	Len  int    `json:"len"`  // bytes matched
+	Text string `json:"text"` // the line, trimmed to 400 bytes
 }
 
-// SearchResult is a search's matches.
+// FileResult is a file that satisfies the query, with its matches (none
+// when the query only filters files, as file:beta).
+type FileResult struct {
+	Mount   string  `json:"mount"`
+	Rel     string  `json:"rel"`
+	Path    string  `json:"path"`
+	ModTime int64   `json:"modTime"` // Unix nanoseconds, for sorting
+	Matches []Match `json:"matches"`
+}
+
+// SearchResult is a search's files, sorted by display path naturally.
 type SearchResult struct {
-	Matches   []Match `json:"matches"`
-	Files     int     `json:"files"` // files searched
-	Truncated bool    `json:"truncated"`
+	Files     []FileResult `json:"files"`
+	Truncated bool         `json:"truncated"`
 }
 
 // MountsChangedEvent is emitted when a mount is added or removed.

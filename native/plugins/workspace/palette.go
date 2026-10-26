@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
-	"github.com/smallnest/uix/components/lucide"
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
@@ -367,12 +367,4 @@ func (ws *Workspace) paletteRows(c *ui.Context, p *palette) {
 }
 
 // fileIcon picks a lucide icon for a file name.
-func fileIcon(name string) *ui.SVG {
-	switch kindFor(name) {
-	case kindMarkdown:
-		return lucide.FileText()
-	case kindImage:
-		return lucide.Image()
-	}
-	return lucide.File()
-}
+func fileIcon(name string) *ui.SVG { return fileicon.For(name) }

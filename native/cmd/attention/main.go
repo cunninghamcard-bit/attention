@@ -24,8 +24,10 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/internal/launcher"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/cli"
+	"github.com/cunninghamcard-bit/attention/native/plugins/filetree"
 	"github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/search"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 )
@@ -34,6 +36,7 @@ import (
 // which run.
 var plugins = []*rutis.Definition{
 	shell.Plugin, actions.Plugin, cli.Plugin, fs.Plugin, project.Plugin, workspace.Plugin,
+	filetree.Plugin, search.Plugin,
 }
 
 func main() {

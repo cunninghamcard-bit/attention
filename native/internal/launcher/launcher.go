@@ -210,7 +210,9 @@ func Rows(profile string, mounts []string) []map[string]any {
 		return base
 	}
 	return append([]map[string]any{{"id": "shell", "name": "go:shell"}}, append(base,
-		map[string]any{"id": "workspace", "name": "go:workspace"})...)
+		map[string]any{"id": "workspace", "name": "go:workspace"},
+		map[string]any{"id": "filetree", "name": "go:filetree"},
+		map[string]any{"id": "search", "name": "go:search"})...)
 }
 
 // Config is the rutis.json for a run.

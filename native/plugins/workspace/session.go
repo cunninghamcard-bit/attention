@@ -13,7 +13,11 @@ type session struct {
 	Active    int           `json:"active"`
 	PanelOpen bool          `json:"panelOpen"`
 	LeftWidth float32       `json:"leftWidth"`
-	SplitPct  float32       `json:"splitPct"`
+	LeftPanel string        `json:"leftPanel,omitempty"`
+	// RightOpen and RightWidth are the right dock's.
+	RightOpen  bool    `json:"rightOpen,omitempty"`
+	RightWidth float32 `json:"rightWidth,omitempty"`
+	SplitPct   float32 `json:"splitPct"`
 	// Recent files and commands: the quick switcher's and the command
 	// palette's (attention keeps the latter in local storage).
 	RecentFiles    []string `json:"recentFiles,omitempty"`
@@ -21,7 +25,7 @@ type session struct {
 }
 
 type sessionPane struct {
-	Tabs   []string `json:"tabs"` // file paths; search tabs are not kept
+	Tabs   []string `json:"tabs"` // file paths; new tabs are not kept
 	Active int      `json:"active"`
 }
 
@@ -59,7 +63,8 @@ func loadSession() (session, bool) {
 }
 
 func (ws *Workspace) snapshot() session {
-	s := session{Active: ws.active, PanelOpen: ws.panelOpen, LeftWidth: ws.leftWidth, SplitPct: ws.splitPct,
+	s := session{Active: ws.active, PanelOpen: ws.panelOpen, LeftWidth: ws.leftWidth, LeftPanel: ws.leftPanel,
+		RightOpen: ws.rightOpen, RightWidth: ws.rightWidth, SplitPct: ws.splitPct,
 		RecentFiles: ws.recentFiles, RecentCommands: ws.recentCommands}
 	if ws.restoring != nil {
 		// The saved tabs are not reopened yet (the mounts are loading): keep
@@ -71,7 +76,7 @@ func (ws *Workspace) snapshot() session {
 	for _, p := range ws.panes {
 		var sp sessionPane
 		for i, t := range p.tabs {
-			if t.kind == kindSearch || t.kind == kindEmpty {
+			if t.kind == kindEmpty {
 				continue
 			}
 			if i == p.active {
@@ -98,6 +103,10 @@ func (ws *Workspace) restoreLayout(s session) {
 	if s.LeftWidth >= 120 {
 		ws.leftWidth = s.LeftWidth
 	}
+	if s.RightWidth >= 120 {
+		ws.rightWidth = s.RightWidth
+	}
+	ws.leftPanel, ws.rightOpen = s.LeftPanel, s.RightOpen
 	if s.SplitPct > 10 && s.SplitPct < 90 {
 		ws.splitPct = s.SplitPct
 	}

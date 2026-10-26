@@ -19,48 +19,23 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo"
+	"github.com/smallnest/uix/components/lucide"
 
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
+	"github.com/cunninghamcard-bit/attention/native/slotsapi"
+	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
-
-// onMain runs fn on the main thread and waits for it. It must not be called
-// from the main thread.
-func onMain[T any](ctx context.Context, fn func() (T, error)) (T, error) {
-	type result struct {
-		v   T
-		err error
-	}
-	if shellapi.Window() == nil {
-		var zero T
-		return zero, fmt.Errorf("the window is closed")
-	}
-	done := make(chan result, 1)
-	shellapi.Update(func() {
-		v, err := fn()
-		done <- result{v, err}
-	})
-	timer := time.NewTimer(10 * time.Second)
-	defer timer.Stop()
-	select {
-	case r := <-done:
-		return r.v, r.err
-	case <-ctx.Done():
-		var zero T
-		return zero, ctx.Err()
-	case <-timer.C:
-		var zero T
-		return zero, fmt.Errorf("the window did not respond")
-	}
-}
 
 func openExternal(url string) {
 	go func() { _ = mygo.Shell.OpenExternal(url) }()
 }
 
-// Plugin draws the window's content while loaded.
+// Plugin draws the window's content while loaded and provides "workspace",
+// which panel plugins inject to be ordered after it (they reach the
+// workspace through workspaceapi).
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   "workspace",
 	Inject: []string{"shell", "fs", "project", "actions"},
@@ -163,6 +138,18 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			return nil, nil
 		})
 
+		rctx.Provide("workspace", struct{}{})
+		offAPI := workspaceapi.Set(api{ws})
+		rctx.Effect(func(context.Context) error { offAPI(); return nil })
+
+		for _, r := range []slotsapi.RibbonItem{
+			{ID: "switcher", Title: "Open quick switcher", Icon: lucide.FileSearch(), Order: 0, Run: func() { ws.openPalette(modeFiles) }},
+			{ID: "command-palette", Title: "Open command palette", Icon: lucide.SquareTerminal(), Order: 1, Run: func() { ws.openPalette(modeCommands) }},
+		} {
+			off := slotsapi.RegisterRibbon(r)
+			rctx.Effect(func(context.Context) error { off(); return nil })
+		}
+
 		for _, cmd := range ws.commands() {
 			off := actionsapi.Register(cmd)
 			rctx.Effect(func(context.Context) error { off(); return nil })
@@ -185,7 +172,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 				saveTimer.Stop()
 			}
 			saveMu.Unlock()
-			s, err := onMain(effectCtx, func() (session, error) { return ws.snapshot(), nil })
+			s, err := shellapi.OnMain(effectCtx, func() (session, error) { return ws.snapshot(), nil })
 			if err == nil {
 				write(s)
 			}
@@ -198,11 +185,11 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 
 // commands are the workspace's palette and CLI commands. Run is always
 // called off the main thread (the palette starts a goroutine; the CLI runs
-// on its connection's), so it hops to the main thread with onMain.
+// on its connection's), so it hops to the main thread with shellapi.OnMain.
 func (ws *Workspace) commands() []actionsapi.Command {
 	ui := func(id, title, keys string, fn func()) actionsapi.Command {
 		return actionsapi.Command{ID: id, Title: title, Keys: keys, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			return onMain(ctx, func() (string, error) { fn(); return "", nil })
+			return shellapi.OnMain(ctx, func() (string, error) { fn(); return "", nil })
 		}}
 	}
 	gotos := make([]actionsapi.Command, 0, 8)
@@ -215,7 +202,6 @@ func (ws *Workspace) commands() []actionsapi.Command {
 		// the command; the rest are the reader's own.
 		ui("switcher:open", "Open quick switcher", "Ctrl O", func() { ws.openPalette(modeFiles) }),
 		ui("command-palette:open", "Open command palette", "Ctrl P", func() { ws.openPalette(modeCommands) }),
-		ui("global-search:open", "Search in all files", "Ctrl Shift F", func() { ws.openSearch() }),
 		ui("editor:go-to-line", "Go to line", "Ctrl G", func() { ws.openPalette(modeLine) }),
 		ui("workspace:close", "Close current tab", "Ctrl W", ws.closeActiveTab),
 		ui("workspace:new-tab", "Open new tab", "Ctrl T", ws.newTab),
@@ -224,7 +210,8 @@ func (ws *Workspace) commands() []actionsapi.Command {
 		ui("workspace:previous-tab", "Go to previous tab", "Ctrl Shift Tab", func() { ws.cycleTab(-1) }),
 		ui("workspace:goto-last-tab", "Go to last tab", "Ctrl 9", func() { ws.gotoTab(0) }),
 		ui("workspace:split-vertical", "Split right", "Ctrl \\", ws.splitRight),
-		ui("app:toggle-left-sidebar", "Toggle left sidebar", "Ctrl B", func() { ws.panelOpen = !ws.panelOpen; ws.changed() }),
+		ui("app:toggle-left-sidebar", "Toggle left sidebar", "Ctrl B", ws.toggleLeft),
+		ui("app:toggle-right-sidebar", "Toggle right sidebar", "", ws.toggleRight),
 		ui("markdown:toggle-preview", "Toggle reading view", "Ctrl E", func() {
 			if tb := ws.activeTab(); tb != nil && tb.kind == kindMarkdown {
 				tb.mdSource = !tb.mdSource
@@ -239,7 +226,7 @@ func (ws *Workspace) commands() []actionsapi.Command {
 			return "", err
 		}},
 		{ID: "focus", CLI: true, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			return onMain(ctx, func() (string, error) {
+			return shellapi.OnMain(ctx, func() (string, error) {
 				if w := shellapi.Window(); w != nil {
 					w.Show()
 					w.Focus()
@@ -255,7 +242,7 @@ func (ws *Workspace) commands() []actionsapi.Command {
 			return "Quitting.", nil
 		}},
 		{ID: "tabs", CLI: true, Run: func(ctx context.Context, a actionsapi.Args) (string, error) {
-			return onMain(ctx, func() (string, error) {
+			return shellapi.OnMain(ctx, func() (string, error) {
 				// The TS CLI's shape: "[<view type>] <display text>", then a tab
 				// ID with ids.
 				var lines []string
@@ -281,8 +268,6 @@ func (t *tab) viewType() string {
 		return "markdown"
 	case kindImage:
 		return "image"
-	case kindSearch:
-		return "search"
 	case kindEmpty:
 		return "empty"
 	}
@@ -338,10 +323,10 @@ func (ws *Workspace) cliOpen(ctx context.Context, a actionsapi.Args) (string, er
 	if err != nil {
 		return "", err
 	}
-	return onMain(ctx, func() (string, error) {
-		var nav *navTarget
+	return shellapi.OnMain(ctx, func() (string, error) {
+		var nav *workspaceapi.Nav
 		if hasLine {
-			nav = &navTarget{line: line, to: to}
+			nav = &workspaceapi.Nav{Line: line, To: to}
 		}
 		ws.openIn(target, nav, a.Has("newtab"))
 		if w := shellapi.Window(); w != nil {
@@ -424,3 +409,19 @@ func (ws *Workspace) resolveLink(ctx context.Context, mounts []projectcontract.M
 	}
 	return "", fmt.Errorf("File %q not found.", link)
 }
+
+// api is the workspace as workspaceapi.API.
+type api struct{ ws *Workspace }
+
+func (a api) Open(path string, nav *workspaceapi.Nav, newTab bool) { a.ws.openIn(path, nav, newTab) }
+
+func (a api) ActivePath() string {
+	if t := a.ws.activeTab(); t != nil && t.kind != kindEmpty {
+		return t.path
+	}
+	return ""
+}
+
+func (a api) Display(path string) string { return a.ws.display(path) }
+
+func (a api) RevealPanel(id string) { a.ws.revealPanel(id) }

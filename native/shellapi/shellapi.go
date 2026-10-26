@@ -9,7 +9,10 @@
 package shellapi
 
 import (
+	"context"
+	"fmt"
 	"sync"
+	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
@@ -92,4 +95,34 @@ func View(c *ui.Context) {
 	ui.Column(c).Fill().Center().Background(t.Background).Children(func() {
 		ui.Text(c, "Loading…").TextColor(t.TextMuted)
 	})
+}
+
+// OnMain runs fn on the main thread and waits for it. It must not be called
+// from the main thread.
+func OnMain[T any](ctx context.Context, fn func() (T, error)) (T, error) {
+	type result struct {
+		v   T
+		err error
+	}
+	if Window() == nil {
+		var zero T
+		return zero, fmt.Errorf("the window is closed")
+	}
+	done := make(chan result, 1)
+	Update(func() {
+		v, err := fn()
+		done <- result{v, err}
+	})
+	timer := time.NewTimer(10 * time.Second)
+	defer timer.Stop()
+	select {
+	case r := <-done:
+		return r.v, r.err
+	case <-ctx.Done():
+		var zero T
+		return zero, ctx.Err()
+	case <-timer.C:
+		var zero T
+		return zero, fmt.Errorf("the window did not respond")
+	}
 }

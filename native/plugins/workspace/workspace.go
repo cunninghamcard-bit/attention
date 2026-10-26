@@ -17,7 +17,10 @@ import (
 
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
+	"github.com/cunninghamcard-bit/attention/native/internal/watchq"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
+	"github.com/cunninghamcard-bit/attention/native/slotsapi"
+	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
 // Size limits for what a tab reads.
@@ -32,7 +35,6 @@ const (
 	kindText tabKind = iota
 	kindMarkdown
 	kindImage
-	kindSearch
 	kindEmpty // a new tab, until a file opens in it
 )
 
@@ -49,19 +51,19 @@ type Workspace struct {
 
 	mounts       []projectcontract.Mount
 	mountsLoaded bool
-	dirs         map[string]*dirNode
-	rows         []treeRow
-	rowsDirty    bool
-	watching     map[string]int // directory -> our own watch count
-	watchOps     chan watchOp   // Watch/Unwatch calls, in the order made
+	watches      *watchq.Queue // the open tabs' directories
 
-	panelOpen bool
-	leftWidth float32
-	panes     []*pane
-	active    int
-	splitPct  float32
-	seenLeft  float32 // the widths last saved, to notice a divider drag
-	seenSplit float32
+	panelOpen  bool
+	leftWidth  float32
+	leftPanel  string // the left dock's shown panel (slotsapi.Panel.ID)
+	reveals    map[string]int
+	rightOpen  bool
+	rightWidth float32
+	panes      []*pane
+	active     int
+	splitPct   float32
+	seenLeft   float32 // the widths last saved, to notice a divider drag
+	seenSplit  float32
 
 	palette *palette
 	notice  string // a workspace-wide message, as a watch error
@@ -80,29 +82,6 @@ type Workspace struct {
 	saveSoon       func()
 	isDark         func() bool // mygo.Theme.IsDark; tests replace it
 	title          string
-}
-
-type dirNode struct {
-	path     string
-	expanded bool
-	loaded   bool // listed successfully at least once
-	loading  bool
-	dirty    bool // a change arrived while loading: list again after
-	watched  bool // we hold one watch on it
-	entries  []fscontract.Entry
-	err      string
-}
-
-type watchOp struct {
-	dir string
-	add bool
-}
-
-type treeRow struct {
-	depth   int
-	entry   fscontract.Entry
-	mount   *projectcontract.Mount // set on a mount's root row
-	display string
 }
 
 type pane struct {
@@ -130,57 +109,25 @@ type tab struct {
 
 	img ui.ImageSource
 
-	search *searchState
-
-	// nav is a pending line=/to= for when the content arrives.
-	nav *navTarget
+	// nav is where to go once the content arrives.
+	nav *workspaceapi.Nav
 }
-
-type navTarget struct{ line, to int } // 1-based; to 0 means line alone
 
 func newWorkspace(ctx context.Context, fs fscontract.FS, project projectcontract.Project) *Workspace {
 	ws := &Workspace{
 		ctx: ctx, fs: fs, project: project,
-		dirs:      map[string]*dirNode{},
-		watching:  map[string]int{},
-		watchOps:  make(chan watchOp, 4096),
-		panelOpen: true,
-		leftWidth: 260,
-		panes:     []*pane{{}},
-		splitPct:  50,
-		rowsDirty: true,
-		isDark:    mygo.Theme.IsDark,
+		panelOpen:  true,
+		leftWidth:  260,
+		rightWidth: 260,
+		reveals:    map[string]int{},
+		panes:      []*pane{{}},
+		splitPct:   50,
+		isDark:     mygo.Theme.IsDark,
 	}
-	go ws.runWatchOps()
+	ws.watches = watchq.New(ctx, fs, shellapi.Update, func(_, msg string) {
+		shellapi.Update(func() { ws.notice = msg })
+	})
 	return ws
-}
-
-// runWatchOps makes the fs calls of watch and unwatch one at a time, in the
-// order the main thread asked for them, so an Unwatch never overtakes the
-// Watch it undoes.
-func (ws *Workspace) runWatchOps() {
-	for {
-		select {
-		case <-ws.ctx.Done():
-			return
-		case op := <-ws.watchOps:
-			if !op.add {
-				_ = ws.fs.Unwatch(ws.ctx, op.dir)
-				continue
-			}
-			if err := ws.fs.Watch(ws.ctx, op.dir); err != nil && ws.ctx.Err() == nil {
-				// Give the watch back, so expanding or opening again retries.
-				msg, dir := err.Error(), op.dir
-				shellapi.Update(func() {
-					ws.notice = msg
-					delete(ws.watching, dir)
-					if d := ws.dirs[dir]; d != nil {
-						d.watched = false
-					}
-				})
-			}
-		}
-	}
 }
 
 func kindFor(path string) tabKind {
@@ -241,137 +188,27 @@ func (ws *Workspace) display(path string) string {
 	return path
 }
 
-// ---- watching ---------------------------------------------------------------
-
-func (ws *Workspace) watch(dir string) {
-	ws.watching[dir]++
-	if ws.watching[dir] == 1 {
-		ws.send(watchOp{dir: dir, add: true})
-	}
-}
-
-func (ws *Workspace) unwatch(dir string) {
-	switch ws.watching[dir] {
-	case 0:
-		return
-	case 1:
-		delete(ws.watching, dir)
-		ws.send(watchOp{dir: dir})
-	default:
-		ws.watching[dir]--
-	}
-}
-
-// ---- tree -------------------------------------------------------------------
+// ---- mounts -----------------------------------------------------------------
 
 func (ws *Workspace) setMounts(ms []projectcontract.Mount) {
 	ws.mounts = ms
 	ws.mountsLoaded = true
-	for _, m := range ms {
-		d := ws.dir(m.Path)
-		if !d.expanded {
-			d.expanded = true
-			ws.loadDir(d)
-		}
-	}
-	ws.rowsDirty = true
 	if ws.restoring != nil {
 		ws.reopen(ws.restoring)
 		ws.restoring = nil
 	}
 }
 
-func (ws *Workspace) dir(path string) *dirNode {
-	d, ok := ws.dirs[path]
-	if !ok {
-		d = &dirNode{path: path}
-		ws.dirs[path] = d
-	}
-	return d
-}
-
-// loadDir lists d on a goroutine; an expanded, loaded directory is watched.
-func (ws *Workspace) loadDir(d *dirNode) {
-	if d.loading {
-		d.dirty = true
-		return
-	}
-	d.loading = true
-	path := d.path
-	start := time.Now()
-	go func() {
-		entries, err := ws.fs.List(ws.ctx, path)
-		shellapi.Update(func() {
-			debugf("tree: listed %s (%d entries) in %s", path, len(entries), time.Since(start))
-			d.loading = false
-			if err != nil {
-				d.err = err.Error()
-				d.entries = nil
-			} else {
-				d.err = ""
-				d.entries = entries
-				d.loaded = true
-			}
-			if d.expanded && !d.watched && err == nil {
-				d.watched = true
-				ws.watch(path)
-			}
-			ws.rowsDirty = true
-			if d.dirty {
-				d.dirty = false
-				ws.loadDir(d)
-			}
-		})
-	}()
-}
-
-func (ws *Workspace) toggleDir(path string) {
-	d := ws.dir(path)
-	d.expanded = !d.expanded
-	if d.expanded {
-		ws.loadDir(d) // lists, or refreshes what changed while collapsed; watches once listed
-	} else if d.watched {
-		d.watched = false
-		ws.unwatch(path)
-	}
-	ws.rowsDirty = true
-}
-
-func (ws *Workspace) treeRows() []treeRow {
-	if !ws.rowsDirty {
-		return ws.rows
-	}
-	ws.rows = ws.rows[:0]
-	var walk func(dir string, depth int)
-	walk = func(dir string, depth int) {
-		d := ws.dirs[dir]
-		if d == nil || !d.expanded {
-			return
-		}
-		for _, e := range d.entries {
-			ws.rows = append(ws.rows, treeRow{depth: depth, entry: e})
-			if e.Dir {
-				walk(e.Path, depth+1)
-			}
-		}
-	}
-	for i := range ws.mounts {
-		m := &ws.mounts[i]
-		ws.rows = append(ws.rows, treeRow{depth: 0, entry: fscontract.Entry{Name: m.Name, Path: m.Path, Dir: true}, mount: m})
-		walk(m.Path, 1)
-	}
-	ws.rowsDirty = false
-	return ws.rows
-}
-
 // ---- tabs -------------------------------------------------------------------
 
 // open shows path in the active pane, reusing a tab that already shows it,
 // and applies nav when given.
-func (ws *Workspace) open(path string, nav *navTarget) *tab { return ws.openIn(path, nav, false) }
+func (ws *Workspace) open(path string, nav *workspaceapi.Nav) *tab {
+	return ws.openIn(path, nav, false)
+}
 
 // openIn is open; newTab opens another tab even when one shows path.
-func (ws *Workspace) openIn(path string, nav *navTarget, newTab bool) *tab {
+func (ws *Workspace) openIn(path string, nav *workspaceapi.Nav, newTab bool) *tab {
 	p := ws.activePane()
 	// A file opens in the active new tab, as a browser's address does.
 	if cur := p.current(); cur != nil && cur.kind == kindEmpty && !newTab {
@@ -382,7 +219,7 @@ func (ws *Workspace) openIn(path string, nav *navTarget, newTab bool) *tab {
 		}
 	}
 	for i, t := range p.tabs {
-		if !newTab && t.kind != kindSearch && t.kind != kindEmpty && t.path == path {
+		if !newTab && t.kind != kindEmpty && t.path == path {
 			p.active = i
 			if nav != nil {
 				t.nav = nav
@@ -402,7 +239,7 @@ func (ws *Workspace) openIn(path string, nav *navTarget, newTab bool) *tab {
 	}
 	p.tabs = append(p.tabs[:at], append([]*tab{t}, p.tabs[at:]...)...)
 	p.active = at
-	ws.watch(filepath.Dir(path))
+	ws.watches.Watch(filepath.Dir(path))
 	ws.load(t)
 	ws.noteRecentFile(path)
 	ws.changed()
@@ -509,7 +346,8 @@ func (t *tab) setText(f fscontract.File) {
 	}
 }
 
-// applyNav moves the editor to the pending line=/to= once there is text.
+// applyNav moves the editor to the pending nav once there is text: a
+// match (Col, Len) is selected, else lines Line through To.
 func (ws *Workspace) applyNav(t *tab) {
 	if t.nav == nil || t.ed == nil {
 		return
@@ -519,14 +357,23 @@ func (ws *Workspace) applyNav(t *tab) {
 	}
 	n := *t.nav
 	t.nav = nil
-	lines := t.ed.Buffer.LineCount()
-	from := min(n.line, lines) - 1
-	to := from
-	if n.to > 0 {
-		to = min(n.to, lines) - 1
+	buf := t.ed.Buffer
+	lines := buf.LineCount()
+	from := max(1, min(n.Line, lines)) - 1
+	if n.Col > 0 {
+		text := buf.Line(from)
+		col := min(n.Col-1, len(text))
+		end := min(col+n.Len, len(text))
+		t.ed.GoTo(editor.Pos{Line: from, Col: col})
+		t.ed.Select(buf.Offset(editor.Pos{Line: from, Col: col}), buf.Offset(editor.Pos{Line: from, Col: end}))
+		return
 	}
-	start := t.ed.Buffer.Offset(editor.Pos{Line: from})
-	end := t.ed.Buffer.Offset(editor.Pos{Line: to, Col: len(t.ed.Buffer.Line(to))})
+	to := from
+	if n.To > 0 {
+		to = max(from, min(n.To, lines)-1)
+	}
+	start := buf.Offset(editor.Pos{Line: from})
+	end := buf.Offset(editor.Pos{Line: to, Col: len(buf.Line(to))})
 	t.ed.GoTo(editor.Pos{Line: from})
 	t.ed.Select(start, end)
 }
@@ -536,14 +383,8 @@ func (ws *Workspace) closeTab(p *pane, i int) {
 		return
 	}
 	t := p.tabs[i]
-	switch t.kind {
-	case kindSearch:
-		if t.search != nil && t.search.cancel != nil {
-			t.search.cancel()
-		}
-	case kindEmpty:
-	default:
-		ws.unwatch(filepath.Dir(t.path))
+	if t.kind != kindEmpty {
+		ws.watches.Unwatch(filepath.Dir(t.path))
 		ws.closed = append(ws.closed, t.path)
 		if len(ws.closed) > maxClosed {
 			ws.closed = ws.closed[len(ws.closed)-maxClosed:]
@@ -590,7 +431,7 @@ func (ws *Workspace) splitRight() {
 	t := ws.activeTab()
 	ws.panes = append(ws.panes, &pane{})
 	ws.active = 1
-	if t != nil && t.kind != kindSearch {
+	if t != nil && t.kind != kindEmpty {
 		ws.open(t.path, nil)
 	}
 	ws.changed()
@@ -627,25 +468,17 @@ func (ws *Workspace) followLink(from *tab, url string) {
 
 // ---- changes ----------------------------------------------------------------
 
-// applyBatch refreshes the listings and the open tabs a change touched. A
-// path removed or renamed away that exists again (an editor's atomic save
+// applyBatch refreshes the open tabs a change touched. A path removed or renamed away that exists again (an editor's atomic save
 // renames over it) reloads instead of going missing.
 func (ws *Workspace) applyBatch(b fscontract.Batch) {
-	dirs := map[string]bool{}
 	files := map[string]string{}
 	for _, c := range b.Changes {
-		dirs[filepath.Dir(c.Path)] = true
 		files[c.Path] = c.Op
-	}
-	for dir := range dirs {
-		if d := ws.dirs[dir]; d != nil && d.loaded && d.expanded {
-			ws.loadDir(d)
-		}
 	}
 	for _, p := range ws.panes {
 		for _, t := range p.tabs {
 			op, ok := files[t.path]
-			if !ok || t.kind == kindSearch {
+			if !ok || t.kind == kindEmpty {
 				continue
 			}
 			if op == "remove" || op == "rename" {
@@ -682,7 +515,7 @@ func (ws *Workspace) changed() {
 	}
 	title := "attention"
 	if t := ws.activeTab(); t != nil {
-		if t.kind == kindSearch || t.kind == kindEmpty {
+		if t.kind == kindEmpty {
 			title = t.title + " — attention"
 		} else {
 			title = ws.display(t.path) + " — attention"
@@ -736,11 +569,32 @@ func (ws *Workspace) gotoTab(n int) {
 	ws.changed()
 }
 
-// send queues a watch operation; after unload (ctx done) it is dropped
-// rather than block the main thread on a queue nobody reads.
-func (ws *Workspace) send(op watchOp) {
-	select {
-	case ws.watchOps <- op:
-	case <-ws.ctx.Done():
+func (ws *Workspace) toggleLeft() {
+	ws.panelOpen = !ws.panelOpen
+	ws.changed()
+}
+
+func (ws *Workspace) toggleRight() {
+	ws.rightOpen = !ws.rightOpen
+	ws.changed()
+}
+
+// revealPanel opens the dock holding the panel and shows it; its view
+// sees the reveal (PanelProps.Reveal) and focuses its input.
+func (ws *Workspace) revealPanel(id string) {
+	for _, d := range []slotsapi.Dock{slotsapi.Left, slotsapi.Right} {
+		for _, p := range slotsapi.Panels(d) {
+			if p.ID != id {
+				continue
+			}
+			if d == slotsapi.Left {
+				ws.panelOpen, ws.leftPanel = true, id
+			} else {
+				ws.rightOpen = true
+			}
+			ws.reveals[id]++
+			ws.changed()
+			return
+		}
 	}
 }

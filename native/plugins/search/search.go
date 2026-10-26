@@ -1,0 +1,423 @@
+// Package search is the search UI plugin: the left dock's Search panel, a
+// port of attention's global search view (apps/web/builtin/SearchView.ts)
+// over the project service's search.
+//
+// Left out for now: the operator suggestions under the field and "More
+// context" (the engine returns the matched line only).
+package search
+
+import (
+	"context"
+	"fmt"
+	"path"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/arcships/rutis/go/rutis"
+	"github.com/egoist/mygo/ui"
+	"github.com/smallnest/uix/components/lucide"
+
+	"github.com/cunninghamcard-bit/attention-ui/theme"
+	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
+	"github.com/cunninghamcard-bit/attention/native/actionsapi"
+	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
+	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
+	"github.com/cunninghamcard-bit/attention/native/internal/natural"
+	"github.com/cunninghamcard-bit/attention/native/shellapi"
+	"github.com/cunninghamcard-bit/attention/native/slotsapi"
+	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+)
+
+// PanelID is the Search panel's slot id.
+const PanelID = "search"
+
+// debounce is the wait after a keystroke before searching; attention
+// searches on every change, which the disk walk here cannot keep up with.
+const debounce = 250 * time.Millisecond
+
+// resultLimit stops a search after this many files.
+const resultLimit = 2000
+
+// sortOrders are SearchView's, less the created-time pair (Linux keeps no
+// creation time that fs reports).
+var sortOrders = []omgui.SelectOption{
+	{Value: "alphabetical", Label: "A to Z"},
+	{Value: "alphabeticalReverse", Label: "Z to A"},
+	{Value: "byModifiedTime", Label: "Modified time (new to old)"},
+	{Value: "byModifiedTimeReverse", Label: "Modified time (old to new)"},
+}
+
+// Search is the panel's state, on the main thread only.
+type Search struct {
+	ctx     context.Context
+	project projectcontract.Project
+
+	query         string
+	matchingCase  bool
+	showParams    bool
+	collapseAll   bool
+	explainSearch bool
+	sortOrder     string
+	sortOpen      bool
+
+	typed   string // the query as last seen, to notice typing
+	timer   *time.Timer
+	seq     int
+	cancel  context.CancelFunc
+	loading bool
+	err     string
+	ran     string // the query the results are for
+	results []projectcontract.FileResult
+	limited bool
+
+	collapsed map[string]bool // per file, flipped from collapseAll
+	rows      []row
+	dirty     bool
+	revealed  int
+}
+
+// row is a file title or one of its matches.
+type row struct {
+	file  *projectcontract.FileResult
+	match int // -1 on the file's title
+}
+
+// Plugin registers the Search panel while loaded.
+var Plugin = rutis.Define(rutis.Plugin[struct{}]{
+	Name:   "search",
+	Inject: []string{"shell", "actions", "project", "workspace"},
+	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		var project projectcontract.Project
+		if err := rctx.Use("project", &project); err != nil {
+			return err
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		s := &Search{ctx: ctx, project: project, sortOrder: "alphabetical", collapsed: map[string]bool{}}
+		off := slotsapi.RegisterPanel(slotsapi.Panel{
+			ID: PanelID, Title: "Search", Icon: lucide.Search(), Dock: slotsapi.Left, Order: 1,
+			View: s.view,
+		})
+		offCmd := actionsapi.Register(actionsapi.Command{ID: "global-search:open", Title: "Search in all files", Keys: "Ctrl Shift F", Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
+			return shellapi.OnMain(ctx, func() (string, error) {
+				if ws := workspaceapi.Get(); ws != nil {
+					ws.RevealPanel(PanelID)
+				}
+				return "", nil
+			})
+		}})
+		rctx.Effect(func(context.Context) error {
+			offCmd()
+			off()
+			cancel()
+			return nil
+		})
+		return nil
+	},
+})
+
+// changed starts the debounce after the query changed.
+func (s *Search) changed() {
+	if s.timer != nil {
+		s.timer.Stop()
+	}
+	seq := s.seq
+	s.timer = time.AfterFunc(debounce, func() {
+		shellapi.Update(func() {
+			if seq == s.seq {
+				s.start()
+			}
+		})
+	})
+}
+
+// start is SearchView.startSearch: an empty query clears the results.
+func (s *Search) start() {
+	if s.timer != nil {
+		s.timer.Stop()
+	}
+	if s.cancel != nil {
+		s.cancel()
+		s.cancel = nil
+	}
+	s.seq++
+	seq := s.seq
+	s.results, s.err, s.limited, s.loading, s.dirty = nil, "", false, false, true
+	q := strings.TrimSpace(s.query)
+	s.ran = q
+	if q == "" {
+		return
+	}
+	ctx, cancel := context.WithCancel(s.ctx)
+	s.cancel = cancel
+	s.loading = true
+	query := projectcontract.Query{Text: q, CaseSensitive: s.matchingCase, Limit: resultLimit}
+	go func() {
+		res, err := s.project.Search(ctx, query)
+		shellapi.Update(func() {
+			if seq != s.seq {
+				return // a newer search replaced this one
+			}
+			s.loading, s.cancel = false, nil
+			cancel()
+			if err != nil {
+				if ctx.Err() == nil {
+					s.err = err.Error()
+				}
+				return
+			}
+			s.results, s.limited = res.Files, res.Truncated
+			s.collapsed = map[string]bool{}
+			s.sort()
+		})
+	}()
+}
+
+// sort is SearchView.sortResults: by base name, ties by path.
+func (s *Search) sort() {
+	base := func(f projectcontract.FileResult) string {
+		name := path.Base(f.Rel)
+		return strings.ToLower(strings.TrimSuffix(name, path.Ext(name)))
+	}
+	byPath := func(a, b projectcontract.FileResult) bool {
+		return natural.Less(strings.ToLower(a.Path), strings.ToLower(b.Path))
+	}
+	sort.SliceStable(s.results, func(i, j int) bool {
+		a, b := s.results[i], s.results[j]
+		switch s.sortOrder {
+		case "alphabeticalReverse":
+			if base(a) != base(b) {
+				return natural.Less(base(b), base(a))
+			}
+			return byPath(b, a)
+		case "byModifiedTime":
+			if a.ModTime != b.ModTime {
+				return a.ModTime > b.ModTime
+			}
+		case "byModifiedTimeReverse":
+			if a.ModTime != b.ModTime {
+				return a.ModTime < b.ModTime
+			}
+		default:
+			if base(a) != base(b) {
+				return natural.Less(base(a), base(b))
+			}
+		}
+		return byPath(a, b)
+	})
+	s.dirty = true
+}
+
+func (s *Search) isCollapsed(f *projectcontract.FileResult) bool {
+	return s.collapseAll != s.collapsed[f.Path]
+}
+
+func (s *Search) flatten() []row {
+	if !s.dirty {
+		return s.rows
+	}
+	s.rows = s.rows[:0]
+	for i := range s.results {
+		f := &s.results[i]
+		s.rows = append(s.rows, row{file: f, match: -1})
+		if s.isCollapsed(f) {
+			continue
+		}
+		for m := range f.Matches {
+			s.rows = append(s.rows, row{file: f, match: m})
+		}
+	}
+	s.dirty = false
+	return s.rows
+}
+
+// open is SearchView.openResult: the match is selected in the file.
+func open(f *projectcontract.FileResult, m *projectcontract.Match) {
+	ws := workspaceapi.Get()
+	if ws == nil {
+		return
+	}
+	var nav *workspaceapi.Nav
+	if m != nil {
+		nav = &workspaceapi.Nav{Line: m.Line, Col: m.Col, Len: m.Len}
+	}
+	ws.Open(f.Path, nav, false)
+}
+
+func (s *Search) view(c *ui.Context, p slotsapi.PanelProps) {
+	t := c.Theme()
+	ws := workspaceapi.Get()
+	ui.Column(c).Fill().Children(func() {
+		ui.Row(c).Padding(8, 8, 4, 8).Gap(4).AlignItems(ui.Center).Children(func() {
+			ui.Box(c).Grow(1).Children(func() {
+				field := omgui.SearchField(c, &s.query, "Search...", false)
+				field.Label("Search")
+				if p.Reveal != s.revealed {
+					s.revealed = p.Reveal
+					field.Focus()
+				}
+				if field.Submitted() {
+					s.start()
+				} else if s.query != s.typed {
+					s.typed = s.query
+					s.changed()
+				}
+			})
+			if toggleIcon(c, lucide.CaseSensitive(), "Match case", s.matchingCase) {
+				s.matchingCase = !s.matchingCase
+				if strings.TrimSpace(s.query) != "" {
+					s.start()
+				}
+			}
+			if toggleIcon(c, lucide.SlidersHorizontal(), "Toggle search settings", s.showParams) {
+				s.showParams = !s.showParams
+			}
+		})
+		if s.showParams {
+			ui.Column(c).Children(func() {
+				setting(c, "Collapse results", &s.collapseAll, func() {
+					s.collapsed = map[string]bool{}
+					s.dirty = true
+				})
+				setting(c, "Explain search term", &s.explainSearch, nil)
+			})
+		}
+		if s.explainSearch && s.ran != "" {
+			ui.Text(c, "Search: "+s.ran).FontSize(12).TextColor(t.TextMuted).Padding(2, 12)
+		}
+		if s.err != "" {
+			ui.Text(c, s.err).FontSize(12).TextColor(t.Danger).Padding(4, 12)
+		}
+		if s.ran == "" {
+			return
+		}
+		ui.Row(c).Padding(4, 12).Gap(8).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, s.countText()).FontSize(12).TextColor(t.TextMuted).Grow(1).MinWidth(0).SingleLine().Ellipsis("…")
+			omgui.Select(c, omgui.SelectProps{
+				Key: "search-sort", Value: &s.sortOrder, Options: sortOrders, Open: &s.sortOpen,
+				Aria: "Sort order", Width: 120,
+				OnPick: func(string) { s.sort() },
+			})
+		})
+		if !s.loading && s.err == "" && len(s.results) == 0 {
+			ui.Text(c, "No matches found").TextColor(t.TextMuted).Padding(12)
+			return
+		}
+		rows := s.flatten()
+		ui.List(c, nil, len(rows), func(i int) {
+			r := rows[i]
+			f := r.file
+			if r.match < 0 {
+				s.fileRow(c, ws, f)
+				return
+			}
+			m := &f.Matches[r.match]
+			item := omgui.SideRow(c, omgui.SideRowProps{Key: fmt.Sprintf("m:%s:%d", f.Path, r.match), Depth: 2})
+			if item.Clicked() {
+				open(f, m)
+			}
+			item.Children(func() {
+				highlighted(c, m)
+			})
+		}).Grow(1).FillWidth().PaddingY(4)
+	})
+}
+
+// countText is SearchView.renderResults' count: a file that only passed
+// the filters counts one result.
+func (s *Search) countText() string {
+	if s.loading {
+		return "Searching…"
+	}
+	n := 0
+	for _, f := range s.results {
+		n += max(1, len(f.Matches))
+	}
+	out := fmt.Sprintf("%d result%s in %d file%s", n, plural(n), len(s.results), plural(len(s.results)))
+	if s.limited {
+		out += " (limited)"
+	}
+	return out
+}
+
+func plural(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
+}
+
+func (s *Search) fileRow(c *ui.Context, ws workspaceapi.API, f *projectcontract.FileResult) {
+	t := c.Theme()
+	name := f.Path
+	if ws != nil {
+		name = ws.Display(f.Path)
+	}
+	item := omgui.SideRow(c, omgui.SideRowProps{Key: "f:" + f.Path, Depth: 0})
+	if item.Clicked() {
+		var first *projectcontract.Match
+		if len(f.Matches) > 0 {
+			first = &f.Matches[0]
+		}
+		open(f, first)
+	}
+	item.Tooltip(name)
+	item.Children(func() {
+		if len(f.Matches) > 0 {
+			chevron := lucide.ChevronDown()
+			if s.isCollapsed(f) {
+				chevron = lucide.ChevronRight()
+			}
+			if ui.Icon(c, chevron).Size(14, 14).TextColor(t.TextMuted).Shrink(0).Cursor(ui.CursorPointer).Clicked() {
+				s.collapsed[f.Path] = !s.collapsed[f.Path]
+				s.dirty = true
+			}
+		} else {
+			ui.Box(c).Width(14).Shrink(0)
+		}
+		ui.Icon(c, fileicon.For(f.Rel)).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
+		ui.Text(c, name).FontSize(13).SingleLine().Ellipsis("…").Shrink(1)
+		if len(f.Matches) > 0 {
+			ui.Text(c, strconv.Itoa(len(f.Matches))).FontSize(11).TextColor(t.TextMuted).Shrink(0)
+		}
+	})
+}
+
+// highlighted is a match as "line: text" with the matched part marked
+// (SearchView.renderMatch).
+func highlighted(c *ui.Context, m *projectcontract.Match) {
+	t := c.Theme()
+	text := m.Text
+	from := min(max(0, m.Col-1), len(text))
+	to := min(from+m.Len, len(text))
+	spans := []ui.Span{{Text: strconv.Itoa(m.Line) + ": ", Color: t.TextMuted}}
+	if from > 0 {
+		spans = append(spans, ui.Span{Text: text[:from]})
+	}
+	spans = append(spans, ui.Span{Text: text[from:to], Background: t.Selection})
+	if to < len(text) {
+		spans = append(spans, ui.Span{Text: text[to:]})
+	}
+	ui.RichText(c, spans...).FontSize(12).Font(theme.MonoFont).SingleLine().Ellipsis("…").Shrink(1)
+}
+
+// toggleIcon is a clickable-icon with is-active: a ghost icon button in
+// the accent colour while on.
+func toggleIcon(c *ui.Context, icon *ui.SVG, tip string, on bool) bool {
+	color := ui.Color{}
+	if on {
+		color = c.Theme().Accent
+	}
+	b := omgui.Button(c, omgui.ButtonProps{Label: tip, Icon: icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall, IconColor: color})
+	return b.Checked(on).Tooltip(tip).Clicked()
+}
+
+func setting(c *ui.Context, label string, on *bool, changed func()) {
+	omgui.SettingsToggle(c, label, "", *on, false, func(v bool) {
+		*on = v
+		if changed != nil {
+			changed()
+		}
+	})
+}
