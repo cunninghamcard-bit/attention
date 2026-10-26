@@ -31,9 +31,9 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 - [x] 启动器生成 `rutis.json` 并拉起 rutis-host；宿主用 `fd:3` 拉起 UI runtime；mygo 在主线程、`ServeArgs` 在 goroutine 上共存。
 - [x] 同进程调用（`Local()` 为 true，每次约 0.45µs）、跨进程调用（每次约 0.15–0.25ms）、跨进程回调都能用。
 - [x] 第二个进程里的 `attention version` 通过 CLI socket 拿到结果。
-- [x] 关窗（UI runtime 给宿主发 SIGTERM）、Ctrl-C、`kill -9` 宿主三种退出方式，所有插件的清理都执行，没有残留进程；`kill -9` UI runtime 时由宿主重新拉起。
-- [x] 外置插件热替换：换上新二进制、结束旧进程，宿主用新二进制重新拉起，依赖它的插件自动挂起再恢复，界面没有崩溃。
-- [x] 启动到窗口打开 228–392ms；UI runtime 约 117MB，rutis-host 约 10.5MB；`attention` 22MB，`rutis-host` 20MB。
+- [x] 关窗（UI runtime 给宿主发 SIGTERM）、Ctrl-C 两种退出方式，所有插件的清理都执行，没有残留进程。`kill -9` 宿主时，UI runtime 里的清理全部执行（它忽略了 SIGPIPE），外置的 Go 插件的清理会因 SIGPIPE 丢失。`kill -9` UI runtime 时由宿主重新拉起。
+- [x] 外置插件热替换：换上新二进制、结束旧进程，宿主用新二进制重新拉起，依赖它的插件自动挂起再恢复，界面进程没有退出。代价是旧进程的清理不执行（RFC §5.3「平滑替换外置插件」）。
+- [x] 启动到窗口打开 228–392ms（grok 复现：从 UI runtime 第一行日志算 227–512ms，从启动器进程算 327–658ms）；UI runtime 约 117–127MB，rutis-host 约 10.5MB；`attention` 22MB，`rutis-host` 20MB。
 
 ### P0b：地基插件
 
@@ -44,9 +44,10 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
   - 启动器用 `flock` 做单实例锁，fork rutis-host 并等待，把宿主的退出码转换后返回；拿不到锁时作为 CLI 客户端，socket 还没就绪时重试几秒；
   - UI runtime 忽略 SIGPIPE，关窗时给宿主发 SIGTERM，会话结束后调用 `App.Quit()`；
   - `rutis.json` 用 `binaries` 列出二进制，`restart: "on-failure"`，每个插件一行；监控宿主输出里的 `gave up`。
-- 启动器参数 `--mount <目录>`（可以写多次）：写进 `project` 插件这一行的配置；不传时使用上次保存的挂载列表。
-- 插件：`slots`、`resources`、`workspace`（先只有左侧 dock 和一个中间区域）、`fs`（监听用 fsnotify）、`project`、`file-tree-ui`、`actions`、`cli`（RFC §6）。
-- 共享 UI：用 `git worktree` 把 attention-ui 钉在 `9cbbf61`，再 `replace`（RFC §5.12）。
+- 启动器参数 `--mount <目录>`（可以写多次）：写进 `project` 插件这一行的配置；不传时使用上次保存的挂载列表；第一次启动且没有传时，默认挂载 Home 目录。
+- 启动器参数 `--profile desktop|headless`，默认 `desktop`（RFC §5.10）。
+- 插件：`shell`、`slots`、`resources`、`workspace`（先只有左侧 dock 和一个中间区域）、`fs`（监听用 fsnotify，忽略 SIGPIPE）、`project`、`file-tree-ui`、`actions`、`cli`（RFC §6）。
+- 共享 UI：用 `git worktree` 把 attention-ui 钉在 `011a5a8`（含 `mount`），再 `replace`（RFC §5.12）。
 - CLI 命令：`version`、`files`。
 - `native/AGENTS.md`：写明 `native/` 遵循 octogo 的 `docs/STYLE.md`，根目录 AGENTS.md 里的 Obsidian 重建规则不适用于这里；写明插件规范：`ctx.Go` 的任务必须响应 ctx 取消（spike 发现 3）。
 
@@ -54,8 +55,17 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 - [ ] 启动后显示一个窗口，左侧文件树列出 `--mount` 指定的目录。外部创建或删除文件后，界面在 1 秒内更新。
 - [ ] `attention version` 和 `attention files` 在第二个进程里执行。对同一个测试目录，`files` 的输出和 TS 版一致；不一致的地方写进 `docs/cli-deviations.md`。
 - [ ] 同时启动两个 `attention`，只会出现一个窗口和一个 rutis-host，另一个作为客户端正常拿到输出或报错退出。
-- [ ] spike 的五种退出方式在正式版本上重测，结果不能比 spike 差。
-- [ ] `fs` 插件改成独立进程运行，功能不变；用 spike 的方式热替换它，`project` 和 `file-tree-ui` 挂起后能恢复。
+- [ ] 退出方式逐项重测，每项都要达到下表的预期：
+
+  | 方式 | 预期 |
+  |---|---|
+  | 关窗 | 所有插件的清理执行；宿主、启动器以 0 退出；没有残留进程和 socket |
+  | 终端 Ctrl-C | 同上 |
+  | `kill -9` 宿主 | UI runtime 和外置 `fs` 的清理都执行（两者都忽略 SIGPIPE）；启动器以非 0 退出；没有残留进程和 socket |
+  | `kill -9` UI runtime | 宿主重新拉起，窗口重新打开 |
+  | UI runtime 连续崩溃到宿主 `gave up` | 启动器结束宿主，以非 0 退出，没有残留进程 |
+- [ ] `fs` 插件改成独立进程运行，功能不变；按 RFC §5.3「平滑替换外置插件」的流程替换它：旧进程的清理执行，`project` 和 `file-tree-ui` 挂起后能恢复。
+- [ ] `--profile headless`：没有窗口、没有 mygo 的界面，`attention version` 和 `attention files` 照常可用，关停同样干净。
 - [ ] 每个服务插件都有 `rutistest` 测试。
 - [ ] `native/` 自己的一致性检查（禁止硬编码颜色和尺寸）通过。
 
@@ -72,7 +82,7 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 - 实测 `ui/markdown` 对 wikilink、嵌入、callout 的支持情况（风险 R6）。
 
 **完成标准**
-- [ ] 能打开一个约 2 万个文件的目录：文件树可以流畅滚动，打开文件的中位耗时不超过 50ms（原 TS 版本的 README 记录为 32ms，作为参照）。文件监听按 RFC R9 的策略只监听展开的目录，超过 inotify 上限时降级为手动刷新并提示，不能直接失败。
+- [ ] 能打开一个约 2 万个文件的目录：文件树滚动时帧时间的 p95 不超过 16ms（在 `shell` 里记录每次 build 加绘制的耗时），打开文件的中位耗时不超过 50ms（原 TS 版本的 README 记录为 32ms，作为参照）。文件监听按 RFC R9 的策略只监听展开的目录，超过 inotify 上限时降级为手动刷新并提示，不能直接失败。
 - [ ] Markdown 能正确渲染 CommonMark、GFM 表格和任务列表。
 - [ ] R6 门禁：`ui/markdown` 本身不支持 `[[wikilink]]`、`![[embed]]` 和 callout。P1 要么通过预处理让 wikilink 可以点击跳转，要么写明降级方式（例如显示为普通文本）。这一条不阻塞「能日常阅读」。
 - [ ] 代码文件只读查看，有语法高亮，`open line= to=` 能定位并选中指定的行。
@@ -92,7 +102,7 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 
 **完成标准**
 - [ ] CLI e2e 全部通过：socket 协议兼容；47 个命令的输出以 TS 版为基准逐条比对，不一致的全部写在 `docs/cli-deviations.md` 里，并且每一条都有理由。
-- [ ] 2 万文件规模下，首次建索引的耗时，以及单个文件变化后的增量更新耗时，都要记录。增量更新不超过 100ms。
+- [ ] 2 万文件规模下，首次建索引的耗时，以及单个文件变化后的增量更新耗时，都要记录。在选定的存储方式下，增量更新不超过 100ms；如果选定的存储做不到，在确定存储方式时重新给出这个指标并说明理由。
 - [ ] 反链、标签、属性、孤立文件等查询的结果，与 TS 版在同一个测试 vault 上一致。
 - [ ] 每个服务插件都有 `rutistest` 测试；UI 插件的界面用 mygo 的 UI 测试工具测试。
 
@@ -104,7 +114,7 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 - 插件：`web-ui`（tab type `web`、地址栏、网页内容的读取、「页面加载完成」事件）、`html-extract`、`web-index`（把网页提交给 index，依赖 P2）、`history`、`bookmarks`。
 - 每个 `web` 标签页的前进和后退走 WebView 引擎自己的历史（`Page.GoBack/GoForward`），和工作区的打开记录分开（RFC §5.6）。
 - 阅读模式：`web-ui` 在页面加载后用 `Page.Eval` 取出 HTML，交给 `html-extract` 抽取正文，再用 `ui/markdown` 原生排版。
-- 启用了 index 时，`web-ui` 把网页的抽取结果提交给 index，让网页之间、网页与本地资源之间的链接都进入链接图（依赖 P2）。
+- 启用了 index 时，由 `web-index` 插件订阅 `web-ui` 的「页面加载完成」事件，把网页的抽取结果提交给 index，让网页之间、网页与本地资源之间的链接都进入链接图（依赖 P2，RFC §5.6）。
 - CLI：打开网页继续用已有的 `web url=…`；新增 `web:read url=…`（输出阅读模式抽取的正文；不能复用已有的 `read`），以及 `history`、`bookmarks` 系列命令。
 - 确定正文抽取算法（RFC 未决问题 6）。
 

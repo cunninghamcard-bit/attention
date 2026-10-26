@@ -101,7 +101,7 @@ attention 从「Electron + TS 实现的 Obsidian 重建」改为**全 Go 实现�
 - 一个 mygo 原生 UI 写的 GitHub 客户端，约 18.5 万行 Go（含测试），Go 1.27.3。
 - 设计体系：`ui/theme`（Amp 的 token）；组件库在 `ui/components/ui`，包名 `omgui`（封装 onevra）。`docs/STYLE.md` 里写的 `ui/kit` 目录实际并不存在，以代码为准。页面里禁止出现硬编码的颜色和尺寸，由 `ui/consistency_test.go` 检查。
 - **哪些能直接复用**：`ui/theme` 和 `omgui` 是通用的。`internal/keyboard` 依赖 octogo 的 `internal/app` 配置；`ui/components/filetree` 的输入是 GitHub 的仓库文件节点；`ui/components/markdown` 走的是 GitHub README 的内容管线。这三者都**不是通用组件**，attention 的文件树和 Markdown 阅读改用 mygo 的原件（`ui.Tree`/`Outline`、`ui/markdown`）。
-- **共享模块 attention-ui**：用户已决定把通用组件抽成 `github.com/cunninghamcard-bit/attention-ui`，由负责 octogo 的会话完成。它暂时放在 octogo 仓库的 `attention-ui/` 子目录，自带 `go.mod`，以后拆成独立仓库时 import 路径不变。第一阶段（octogo 分支 `refactor/host-contract` 的提交 `9cbbf61`）包含 `attention-ui/theme` 和 `attention-ui/ui`（包名 `omgui`），两者不依赖 octogo 的任何包。第二阶段会加入 SplitPane、组件卸载回调 `mount`、code、editor、media、navigation（§5.12）。
+- **共享模块 attention-ui**：用户已决定把通用组件抽成 `github.com/cunninghamcard-bit/attention-ui`，由负责 octogo 的会话完成。它暂时放在 octogo 仓库的 `attention-ui/` 子目录，自带 `go.mod`，以后拆成独立仓库时 import 路径不变。第一阶段（octogo 分支 `refactor/host-contract` 的提交 `9cbbf61`）包含 `attention-ui/theme` 和 `attention-ui/ui`（包名 `omgui`），两者不依赖 octogo 的任何包。第二阶段陆续加入 SplitPane、组件卸载回调 `mount`（提交 `011a5a8`）、code、editor、media、navigation（§5.12）。
 - 已经处理好了单实例锁、托盘、退出流程等应用外壳的细节。
 
 ### 4.5 现有 attention 中可以迁移的部分
@@ -119,7 +119,7 @@ attention 从「Electron + TS 实现的 Obsidian 重建」改为**全 Go 实现�
 
 ### 5.1 原则
 
-1. **没有特权内核。** 二进制里只有引导代码：启动 mygo 主循环、接入 rutis、加载 profile。所有功能都是插件。
+1. **没有特权内核。** 二进制里只有一层很薄的「载体」：锁住主线程运行 mygo 的 `App.Run()`、接入 rutis。mygo 的运行循环必须在进程启动时占住主线程，也不能在运行中卸载，所以它属于载体；除此之外的一切都是插件，包括窗口本身（`shell` 插件，§5.7）。这和 dsh 一致：dsh 的 Electron 主进程是载体，不是插件，载体里运行的 profile 全是插件（§5.10）。
 2. **每个功能分两半**（参照 dsh 的 `.` 和 `./client`）：
    - **服务插件**：不画界面，通过名字对外提供服务。可以运行在任意进程里，用任意语言编写。
    - **UI 插件**：运行在 mygo 进程（UI runtime）里，用 Go 编写，可以注册 Go 闭包：slot 内容、tab type、资源 provider 等，通过 `ctx.Use` 调用服务插件。
@@ -132,7 +132,9 @@ attention 从「Electron + TS 实现的 Obsidian 重建」改为**全 Go 实现�
 | dsh | attention |
 |---|---|
 | Cordis Context + Loader | rutis（`rutis-host` 加 Go SDK） |
-| bundle、profile、`--patch` 多层配置 | profile：`rutis.json` 加上 UI 插件的启用清单 |
+| Electron 主进程（载体，`apps/desktop`） | UI runtime 的引导代码（载体）：主线程跑 `App.Run()`，goroutine 跑 `ServeArgs` |
+| 载体加进去的桌面插件（如 `desktopOffice`） | `shell` 插件（窗口）；以后的托盘、菜单、更新等也各自是插件 |
+| bundle（`base`、`web-app`、`headless`……）叠加成 profile | profile 层：`base`、`desktop`、`headless`（§5.10） |
 | host 插件，`@Remote` | 服务插件，`ctx.Provide(name, impl)` |
 | client 插件，React | UI 插件，`func(c *ui.Context)` |
 | `ctx.remote.ns.method()` | `ctx.Use("ns", &client)` |
@@ -161,6 +163,8 @@ attention（用户启动，启动器模式）
        └─ 外置的服务插件进程（Go、TS、Python……）
 ```
 
+**Windows**：没有 `fd:`，宿主用 `tcp:` 拉起 runtime，并通过环境变量 `RUTIS_CHANNEL_TOKEN` 传入令牌，`ServeArgs` 会处理。
+
 **argv 的三种模式**（`main` 按这个顺序判断）：
 1. `--rutis-manifest`：宿主在扫描二进制时调用，只打印插件清单后退出（`ServeArgs` 处理）。**不能落到启动器分支**，否则会再启动一个宿主。
 2. 第一个参数是 rutis 的通道（`fd:`、`unix:`、`tcp:`）：UI runtime 模式，原样调用 `ServeArgs(os.Args[1:], defs…)`。宿主实际传入的是 `fd:3 <project>`，没有 `--id`。
@@ -184,7 +188,7 @@ attention（用户启动，启动器模式）
 
 - `binaries` 只列出确定要用的二进制，不用 `dir`：用 `dir` 时，目录里所有带 rutis 标记的二进制都会被 `eager` 拉起来。
 - **每个插件都要有一行**。二进制里定义了插件，并不代表它会被加载；没有对应的行，宿主就不会调用它的 `Apply`。
-- `runtimes.go` 的 `start` 和 `restart` 对**所有** Go runtime 统一生效，不能分别设置。取 `"on-failure"`：外置 Go 插件崩溃时会被重新拉起（这也是热替换的机制），UI runtime 崩溃时窗口会重新打开。如果 UI runtime 在 5 分钟内崩溃 5 次，宿主会放弃重启，这时由启动器负责结束宿主（启动器从宿主的输出里能看到 `gave up` 这一行）。
+- `runtimes.go` 的 `start` 和 `restart` 对**所有** Go runtime 统一生效，不能分别设置。取 `"on-failure"`：外置 Go 插件崩溃时会被重新拉起（这也是热替换的机制），UI runtime 崩溃时窗口会重新打开。重启有退避（从 1 秒开始翻倍，最多 30 秒）；5 分钟内已经重启过 5 次又结束时，宿主放弃并打印 `gave up`。UI runtime 遇到这种情况时，由启动器负责结束宿主（启动器读宿主的输出）。
 
 **为什么启动器用 fork 而不是 exec**：启动器要一直持有单实例锁，并负责监控和退出码的转换。用 exec 的话，这些事都没有进程来做。
 
@@ -198,7 +202,9 @@ attention（用户启动，启动器模式）
 | UI runtime 被 `kill -9` | 宿主按 `on-failure` 重新拉起它，窗口重新打开；UI runtime 里的清理当然无法执行 |
 | 会话先结束（宿主正在停止） | `ServeArgs` 返回后，UI runtime 调用 `App.Quit()` 退出，否则宿主会等到关停期限后强行结束它 |
 
-**SIGPIPE**：UI runtime 和外置插件的 stdout、stderr 都是通往宿主的管道。宿主死后，清理时只要往 stderr 写日志，进程就会被 SIGPIPE 杀死，剩下的清理全部丢失（spike 实测）。所以 UI runtime 启动时要调用 `signal.Ignore(syscall.SIGPIPE)`。外置的 Go 插件也有同样的问题，这一点作为问题反馈给 rutis，请 Go SDK 默认处理。
+**SIGPIPE**：UI runtime 和外置插件的 stdout、stderr 都是通往宿主的管道。宿主死后，清理时只要往 stderr 写日志，进程就会被 SIGPIPE 杀死，剩下的清理全部丢失（spike 实测，grok 复现时用进程的信号掩码再次确认）。所以 UI runtime **和 attention 自己的外置 Go 插件**启动时都要调用 `signal.Ignore(syscall.SIGPIPE)`；第三方的外置 Go 插件做不到这一点，作为问题反馈给 rutis，请 Go SDK 默认处理。
+
+**平滑替换外置插件**：直接给插件进程发 SIGTERM，宿主会用新二进制把它拉起来，但旧进程的清理不会执行（fd 模式的 Go runtime 不处理 SIGTERM）。需要清理的插件按这个顺序替换：先在配置里禁用这一行并让宿主重新读取（SIGUSR1，这一行卸载，清理执行），换上新二进制并结束旧进程，再恢复这一行。P0b 实测这套流程。
 
 **不采用 `dial:` 拨入**：拨入循环只能靠信号停止，断线后会自动重连，关停顺序无法落地。
 
@@ -230,7 +236,7 @@ var Plugin = rutis.Define(rutis.Plugin[Config]{
 // plugins/git-ui：UI 插件，只能编译进本体
 var UI = rutis.Define(rutis.Plugin[struct{}]{
     Name:   "git-ui",
-    Inject: []string{"git", "slots"},
+    Inject: []string{"git", "slots", "workspace"},
     Apply: func(ctx *rutis.Ctx, _ struct{}) error {
         var git contract.Git
         var slots slotsapi.Slots
@@ -267,7 +273,7 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 - **声明即授权**：一个贡献在注册时声明它会渲染哪些子 slot，只有声明者能调用 `slots.Render(c, key, props)`。
 - **注册要等 slot 出现**：`slots.Inject(key, register)` 会等到 slot 被声明后再注册。slot 的所有者卸载时贡献自动撤销，所有者重新出现时自动重新注册。
 - **组件拿不到 ctx**：`View` 只接收 `*ui.Context` 和类型化的 props。需要的服务由插件在 `Apply` 里事先 `Use` 好，通过闭包捕获。
-- **闭包传递**：`slotsapi` 是一个编译进本体的 Go 包。`slots` 插件只通过 rutis `Provide` 一个占位服务，用来让其他插件按依赖关系挂起和恢复。真正的注册表由同一进程里的包级 registry 持有，按插件行 id 隔离，插件卸载时连同它注册的闭包一起清除。
+- **闭包传递**：`slotsapi` 是一个编译进本体的 Go 包。`slots` 插件只通过 rutis `Provide` 一个占位服务，用来让其他插件按依赖关系挂起和恢复。真正的注册表由同一进程里的包级 registry 持有。每次注册返回一个撤销函数，插件把它交给自己的 `Effect`（rutis 的 `Ctx` 不暴露行 id，所以注册表按「注册」而不是按「插件行」管理），插件卸载时撤销函数执行，闭包随之清除。
 
 **初始的 slot 清单**：
 
@@ -282,7 +288,7 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 | `tab.toolbar` | List | 当前标签页 | workspace |
 | `titlebar.item` | List | — | workspace |
 | `statusbar.item` | List | — | workspace |
-| `palette.source` | List | 查询 | palette |
+| `palette.source` | List | 查询 | palette-ui |
 | `settings.section` | List | — | settings |
 | `overlay` | List | — | slots |
 
@@ -373,9 +379,9 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 浏览器不一定需要索引，所以索引不放进核心，而是一组可选插件：
 
 - **extractors 注册表**（编译进本体的服务，和 `tabTypes` 同一种做法）：因为每个服务名只能有一个提供者，多个 extractor 不能都 `Provide("extractor")`。extractor 插件改为往 `extractors` 注册表里登记自己能处理的 content-type 和处理函数；处理函数可以在外置进程里，按引用跨进程传递。
-- **extractor**：输出 `Extract{Title, Links[], Tags[], Properties{}, Text}`。`markdown-extract` 负责原来 `metadata/` 里那些 Markdown 元数据；`html-extract` 负责网页的标题、链接和正文，它也是阅读模式的数据来源。
-- **index**（服务插件，注入 `extractors` 和 `resources`）：两类输入——订阅资源的变化，按 content-type 调用对应的 extractor；以及接收网页的抽取结果。
-- **网页进入索引**：由一个单独的 `web-index` 插件负责，它注入 `index`，订阅 `web` 发出的「页面加载完成」事件，抽取后调用 `index.SubmitPage(ctx, url, extract)`。不启用 index 的 profile 就不加载这个插件，`web-ui` 本身不依赖 index（rutis 没有「可选依赖」）。契约：URL 规范化后作为 key（去掉 fragment，scheme 和 host 小写）；同一个 URL 重复提交时覆盖旧结果；关闭标签页不会把页面从索引里删除，删除由 `history` 的清理负责。维护资源之间的链接图（含反链）、标签、属性和全文索引；提供查询接口给搜索、反链面板和 CLI。
+- **extractor**：输出 `Extract{Title, Links[], Tags[], Properties{}, Text, Markdown}`。`Text` 是纯文本，供全文搜索；`Markdown` 是可选的、整理过的正文，供阅读模式用 `ui/markdown` 排版。`markdown-extract` 负责原来 `metadata/` 里那些 Markdown 元数据；`html-extract` 负责网页的标题、链接和正文，并输出 `Markdown`，它是阅读模式的数据来源。
+- **index**（服务插件，注入 `extractors` 和 `fs`、`project`）：两类输入。一是本地文件：index 不逐个订阅资源（2 万个文件不能逐个 `Subscribe`），而是监听 `fs` 发出的批量变化事件 `fs/changed`（每个挂载根一批路径），按 content-type 调用对应的 extractor；首次建索引时遍历挂载根。二是网页的抽取结果（见下）。维护资源之间的链接图（含反链）、标签、属性和全文索引；提供查询接口给搜索、反链面板和 CLI。
+- **网页进入索引**：由一个单独的 `web-index` 插件负责，它注入 `index`，订阅 `web` 发出的「页面加载完成」事件，抽取后调用 `index.SubmitPage(ctx, url, extract)`。不启用 index 的 profile 就不加载这个插件，`web-ui` 本身不依赖 index（rutis 没有「可选依赖」）。契约：URL 规范化后作为 key（去掉 fragment，scheme 和 host 小写）；同一个 URL 重复提交时覆盖旧结果；关闭标签页不会把页面从索引里删除；用户清除浏览历史时，`history` 发出 `history/cleared` 事件，由 `web-index` 监听并从索引里删除对应的页面（`history` 本身不依赖 index）。
 - 反链跨越资源类型：一个网页、一篇笔记、一个 PR 只要引用了同一个 URL，就能在反链里互相看到。index 用规范化后的 URL 作为链接图的 key，与资源地址的格式无关。
 
 ### 5.7 服务划分
@@ -384,10 +390,11 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 
 | 服务 | 来源 | 职责 | 能否外置 |
 |---|---|---|---|
+| `shell` | dsh 的载体插件 | mygo 的窗口：开关窗口、窗口状态、`Window.Update` 投递、每个窗口一个 attention-ui `mount.Scope`。不加载它就是 headless | 否 |
 | `slots` | dsh | 声明 slot、授权、注入、撤销（§5.5） | 否 |
 | `resources` | dsh | 协议 provider 的注册，地址变成实时数据（§5.6） | 否；provider 本身可以外置 |
-| `project` | Zed（project、worktree） | 挂载根的注册表（Home 和各个仓库），取代原来的 vault 和 mount；注册 `file` 协议的 provider。这个 provider 只是一层薄适配：调用 `fs` 服务，把它的监听事件变成资源帧 | 否 |
-| `fs` | — | 文件读写、列目录、stat、监听。监听不能用 `mygo.WatchFiles`（它要求进程里有 mygo App），统一用 fsnotify（inotify），这样放在本体里和外置时行为一致 | 可以 |
+| `project` | Zed（project、worktree） | 挂载根的注册表（Home 和各个仓库），取代原来的 vault 和 mount。第一次启动、没有任何挂载时，默认挂载用户的 Home 目录；注册 `file` 协议的 provider。这个 provider 只是一层薄适配：调用 `fs` 服务，把它的监听事件变成资源帧 | 否 |
+| `fs` | — | 文件读写、列目录、stat、监听，并发出批量变化事件 `fs/changed`。监听不能用 `mygo.WatchFiles`（它要求进程里有 mygo App），统一用 fsnotify（inotify），这样放在本体里和外置时行为一致 | 可以 |
 | `workspace` | Zed（pane、dock）+ dsh（dockkit） | 中间的分屏树（pane 加标签页），左、右、下三个 dock 放面板，模态层；布局历史、撤销重做、持久化 | 否 |
 | `tabTypes` | dsh | tab type 注册表和认领排名（§5.6） | 否 |
 | `extractors` | — | extractor 注册表（§5.6） | 否；extractor 的处理函数可以外置 |
@@ -415,8 +422,8 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 **hook 的身份**：即时模式下 `View` 会在每次输入、`Invalidate` 或动画时重新执行，所以 `UseResource` 和 `UseCall` 必须能认出「这是同一次订阅、同一次调用」，否则每次重建都会重新发起请求。mygo 的 `c.Key` 只是给**下一个**控件设置 id，读不出当前组件所在的位置；mygo 也没有组件卸载的回调。所以：
 
 - 身份由调用方提供的 `key` 字符串（在同一个窗口里唯一，列表项要把 item 的 id 编进去）加上参数决定。两者都不变时复用上一次的结果；参数变化时取消旧的请求、发起新的。
-- `slotsapi` 在每一帧结束时，释放本帧没有出现过的 key（取消订阅和请求）。
-- attention-ui 计划提供组件卸载回调（`mount`），到时改用它来释放，不再依赖帧末对比。
+- 释放用 attention-ui 的 `mount` 包（octogo 提交 `011a5a8` 起提供）：`shell` 为每个窗口建一个 `mount.Scope`，每次 build 前后调用 `Begin()` 和 `end()`；`UseResource`/`UseCall` 在每次 build 里调用 `mount.Mount(key, release)`，组件消失后的第一次 build 结束时 `release` 被调用。判定以 build 为单位，一帧里可能有多次 build。
+- **隐藏的标签页**：没有在画的标签页不会调用 `Mount`，按上面的规则它的订阅会被释放。所以 `workspace` 给每个标签页一个自己的 `mount.Scope`：`KeepMounted` 的标签页在隐藏时不结束它的 scope，订阅保留，直到标签页关闭；其他标签页隐藏时释放，重新显示时再订阅（资源流本身由标签页的 pin 保住，不会中断）。
 
 服务插件不画界面，所以不受这些限制，按普通的 Go 并发方式编写即可。
 
@@ -424,6 +431,7 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 
 - `actions` 服务负责注册命令，每个命令包含 `{id, title, args schema, handler}`。命令可以由服务插件注册：handler 运行在插件自己的进程里，经过 rutis 调用。
 - `cli` 插件负责监听 socket，协议与现有实现**完全兼容**：一行 JSON `{argv, tty, cwd}`，响应是纯文本，socket 关闭表示结束。参数沿用 `key=value` 风格，比如 `open path=… line=3 to=5`。
+- **socket 路径**：Linux 上是 `$XDG_RUNTIME_DIR/attention-cli.sock`（没有时退回到配置主目录）；macOS 上是 `~/Library/Application Support/attention/cli.sock`；Windows 上用命名管道 `\\.\pipe\attention-cli`。
 - **单实例与 CLI 客户端**：不用 mygo 的 `App.RequestSingleInstanceLock()`，因为它在抢不到锁时只把参数交给第一个实例，不返回任何命令输出。改由启动器在生成配置之前 `flock` 一个锁文件：拿到锁就启动应用；拿不到就作为客户端连 CLI socket。如果正好碰上「锁已被持有，但 socket 还没开始监听」（应用正在启动），客户端重试几秒后再报错，不会再启动第二份宿主。
 - **所有命令自动成为 CLI 子命令**。命令 id 就是子命令名，比如 `backlinks`、`property:set`、`git:status`。
 - 原有 47 个命令，按资源模型重新归属到各个插件。P2 要交付一张完整的「47 个命令 → 插件」归属表，下面只是大类：
@@ -437,7 +445,11 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 
 ### 5.10 profile 与配置
 
-- 一个 profile 就是一份 rutis 配置（编译进本体的插件行，加上外部插件行），再加一份 UI 插件的启用清单。默认 profile 编译进二进制，用户的覆盖放在配置目录里。
+- 照搬 dsh 的 bundle 叠加：一个 profile 由几层插件行叠加而成，最后生成启动器写出的 `rutis.json`。内置三层：
+  - `base`：所有形态共用的服务插件：`fs`、`project`、`resources`、`actions`、`cli`、`settings`，以及启用时的 `index`、extractor 系列；
+  - `desktop`：在 `base` 之上加 `shell` 和全部 UI 插件，这是默认形态；
+  - `headless`：只有 `base`，没有窗口，CLI 照常可用，供 agent、服务器和 CI 使用（对应 dsh 的 `headless` bundle）。
+- 用户的覆盖（增删插件行、外部插件、插件配置）放在配置目录里，叠加在所选 profile 之上。
 - 配置位置是**新的决定**：只有一个配置主目录 `$XDG_CONFIG_HOME/attention/`（其他平台用对应的标准位置），布局由本 RFC 定义，不再使用 `.obsidian/` 的文件格式；不往用户打开的目录里写任何文件。「不往打开的目录里写」这个原则来自旧的 `docs/superpowers/specs/2026-07-27-single-config-home-design.md`，但那份规格里保留 `.obsidian/` 布局的部分不再适用。
 - 插件配置使用 rutis 的 schema。用户修改配置后，经 rutis 热更新。Go 写的插件在配置变化时会先卸载再重新加载。
 
@@ -446,7 +458,7 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 - **服务插件**：完全动态。安装就是往 profile 里加一行，由 rutis-host 负责拉起和热重载，支持 rutis 的所有语言（Go、TS、Python、Swift 等）。
 - **UI 插件**：Go 不能在运行时加载代码，所以只有两条路：
   1. 像 xcaddy 那样**挑选插件后重新编译**：提供 `attention build --with <module>` 生成自定义的二进制；
-  2. **webview slot 兜底**：插件提供一个 URL 或 HTML，由通用的 `webview-panel` UI 插件显示。这块界面是一扇嵌进去的窗，和原生界面不融合。
+  2. **webview slot 兜底**：插件提供一个 URL 或 HTML，由通用的 `webview-panel-ui` 插件显示。这块界面是一扇嵌进去的窗，和原生界面不融合。
 - 声明式的跨进程 UI 协议（插件发送视图树，由宿主绘制）不在本 RFC 范围内，见 §10。
 
 ### 5.12 UI 规范
@@ -461,7 +473,7 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 - 沿用 octogo 的设计体系：`attention-ui/theme` 管 token（Amp 的配色），`omgui`（`attention-ui/ui`，封装 onevra）管组件，页面里不出现硬编码的颜色和尺寸，规范写在 octogo 的 `docs/STYLE.md`。octogo 的 `consistency_test.go` 写死了 octogo 的目录，不能直接拿来检查 `native/`，attention 要写一份自己的。
 - 仓库里 AGENTS.md 和 CLAUDE.md 开头那条最重要的规则是「忠实重建 Obsidian」，它只适用于迁移期间留作对照的 TS 代码。P0 时在 `native/AGENTS.md` 里写明 `native/` 遵循 octogo 的风格规范；到 P5，再把根目录的这两份文件整体重写。
 - **共享模块 attention-ui**（§4.4）：所有通用组件都抽进去，由负责 octogo 的会话维护，attention 只读使用。
-  - attention 通过 `git worktree` 把 attention-ui 钉在一个具体提交上（目前是 `9cbbf61`），再用 `replace github.com/cunninghamcard-bit/attention-ui => <那个 worktree>/attention-ui` 引用，不跟随 octogo 的工作目录；升级时显式改提交号。
+  - attention 通过 `git worktree` 把 attention-ui 钉在一个具体提交上（目前是 `011a5a8`，包含 `mount`），再用 `replace github.com/cunninghamcard-bit/attention-ui => <那个 worktree>/attention-ui` 引用，不跟随 octogo 的工作目录；升级时显式改提交号。
   - 已知的现状：`omgui` 里仍有 GitHub 专用的色板（`GitHubGreen`、`ButtonMerge` 等），会一起编译进来；不影响使用，后续由 attention-ui 自己清理。
   - attention 需要而 attention-ui 里还没有的通用组件，向 attention-ui 提需求，不在 attention 里另写一套。文件树和 Markdown 阅读在 attention-ui 提供之前，先用 mygo 的原件（`ui.Tree`/`Outline`、`ui/markdown`）。
 
@@ -471,7 +483,7 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 
 ```
 native/
-  cmd/attention/        引导：启动器模式（CLI 客户端、生成 rutis.json、exec rutis-host）
+  cmd/attention/        引导：启动器模式（flock、CLI 客户端、生成 rutis.json、fork rutis-host 并等待）
                         和 UI runtime 模式（mygo 主循环 + ServeArgs(fd:)）
   contract/<feature>/   服务契约（纯类型）
   slotsapi/             插件接口包：slot key 和 props、UseResource/UseCall、
@@ -487,29 +499,30 @@ native/
 
 | 插件 | 半 | 进程 | 提供 | 依赖 | 阶段 |
 |---|---|---|---|---|---|
-| slots | UI | 本体 | `slots` | — | P0 |
+| shell | UI | 本体 | `shell`（窗口） | — | P0 |
+| slots | UI | 本体 | `slots` | shell | P0 |
 | resources | UI | 本体 | `resources` | slots | P0 |
 | workspace | UI | 本体 | `workspace`（dock、pane、标签页的宿主） | slots | P0 |
-| fs | 服务 | 可外置 | `fs` | — | P0 |
+| fs | 服务 | 可外置 | `fs`、`fs/changed` 事件；CLI 的 `files` 等文件命令 | actions | P0 |
 | project | UI | 本体 | `project`、`file` 协议 provider | fs、resources | P0 |
 | file-tree-ui | UI | 本体 | 左侧 dock 的文件树面板（Zed 的 project panel） | project、workspace、slots | P0 |
 | actions | 服务 | 本体 | `actions` | — | P0 |
-| cli | 服务 | 本体 | CLI socket | actions | P0 |
+| cli | 服务 | 本体 | CLI socket；`version` 命令 | actions | P0 |
 | tab-types | UI | 本体 | `tabTypes` | slots | P1 |
 | navigation | UI | 本体 | `navigation` | tabTypes、workspace | P1 |
 | settings | UI | 本体 | `settings`、tab type `settings` | slots、tabTypes | P1 |
 | text-ui / markdown-ui / image-ui | UI | 本体 | 对应的 tab type | tabTypes、resources、slots | P1 |
-| palette-ui | UI | 本体 | 命令面板、快速切换 | actions、navigation、slots | P1 |
+| palette-ui | UI | 本体 | 命令面板、快速切换；`palette.source` slot 的所有者 | actions、navigation、slots | P1 |
 | extractors | UI | 本体 | `extractors` 注册表 | — | P2 |
 | markdown-extract | 服务 | 可外置 | 往 `extractors` 登记 markdown | extractors | P2 |
-| index | 服务 | 可外置 | `index` | extractors、resources | P2 |
-| web-index | 服务 | 可外置 | 把网页提交给 index | index | P3 |
+| index | 服务 | 可外置 | `index` | extractors、fs、project | P2 |
+| web-index | 服务 | 可外置 | 把网页提交给 index；监听 `history/cleared` 删除页面 | index、extractors | P3 |
 | search-ui / backlinks-ui / outline-ui | UI | 本体 | dock 面板 | index、workspace、slots | P2 |
-| web-ui | UI | 本体 | tab type `web`、地址栏、网页内容的读取、「页面加载完成」事件 | tabTypes、navigation、slots | P3 |
+| web-ui | UI | 本体 | tab type `web`、地址栏、网页内容的读取、阅读模式、「页面加载完成」事件 | tabTypes、navigation、slots、extractors | P3 |
 | html-extract | 服务 | 可外置 | 往 `extractors` 登记 html | extractors | P3 |
 | history / bookmarks | 服务 | 可外置 | `history`、`bookmarks` | — | P3 |
 | terminal / terminal-ui | 服务 + UI | 服务可外置 | PTY、tab type `terminal` | tabTypes、workspace | P4 |
-| git / git-ui | 服务 + UI | 服务可外置 | `git` 资源协议、变更面板、diff | fs、resources、tabTypes、workspace | P4 |
+| git / git-ui | 服务 + UI | 服务可外置 | `git` 资源协议、变更面板、diff | git：fs、resources；git-ui：git、slots、workspace、tabTypes | P4 |
 | webview-panel-ui | UI | 本体 | 第三方 UI 兜底 | workspace、slots | P4 |
 
 这里的「半」指插件运行在哪一侧：标为 UI 的插件运行在 UI runtime 里，可以注册 Go 闭包（slot 内容、tab type、资源 provider、注册表），但不一定画界面；标为服务的插件不碰 UI，可以外置。命名约定：画界面的 UI 插件以 `-ui` 结尾；不画界面的基础 UI 插件（slots、resources、注册表）不加后缀。
@@ -550,7 +563,7 @@ native/
 ## 10. 未决问题
 
 1. 共享 UI 模块放在哪里：独立仓库，还是 octogo 仓库里的子 module（§5.12）。等 octogo 的重构合并后确定。
-2. 代码放在同一仓库的 `native/` 目录（§5.13）。P0 spike 已经先放在这里（分支 `spike/p0-topology`），正式定下来还需要用户确认。
+2. ~~代码位置~~：已由用户确认（2026-10-26），放在同一仓库的 `native/`（§5.13）。
 3. 插件接口包（`slotsapi` 和 `contract`）要不要从一开始就按「可以对外发布」来设计，也就是保持 API 稳定、单独做成一个 module，方便第三方插件依赖？
 4. 跨进程的声明式 UI 协议要不要做、什么时候做（§5.11）。
 5. index 的存储：纯内存、SQLite（mygo 有官方插件），还是交给插件自己决定？
