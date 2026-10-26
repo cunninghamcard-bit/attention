@@ -121,7 +121,7 @@ func Lookup(id string) (Command, bool) {
 // RunCLI runs a CLI invocation: argv[0] is the command, the rest its
 // parameters.
 func RunCLI(ctx context.Context, argv []string, cwd string) (string, error) {
-	if len(argv) == 0 || argv[0] == "help" {
+	if len(argv) == 0 || argv[0] == "help" || argv[0] == "--help" {
 		return Help(), nil
 	}
 	cmd, ok := Lookup(argv[0])
@@ -157,14 +157,21 @@ func Help() string {
 // suggest returns up to three CLI commands close to name: sharing a prefix
 // or a substring, or within two edits.
 func suggest(name string) []string {
-	var out []string
+	// Prefix matches first, then substrings, then near misses.
+	var prefix, sub, near []string
 	for _, id := range cliIDs() {
-		if strings.HasPrefix(id, name) || strings.Contains(id, name) || (len(name) > 2 && strings.Contains(name, id)) || distance(name, id) <= 2 {
-			out = append(out, id)
+		switch {
+		case strings.HasPrefix(id, name):
+			prefix = append(prefix, id)
+		case strings.Contains(id, name) || (len(name) > 2 && strings.Contains(name, id)):
+			sub = append(sub, id)
+		case distance(name, id) <= 2:
+			near = append(near, id)
 		}
-		if len(out) == 3 {
-			break
-		}
+	}
+	out := append(append(prefix, sub...), near...)
+	if len(out) > 3 {
+		out = out[:3]
 	}
 	return out
 }

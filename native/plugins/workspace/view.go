@@ -33,7 +33,7 @@ func themeFor(dark bool) *ui.Theme {
 
 // view is the window's root (RFC §5.8: it reads state, never the disk).
 func (ws *Workspace) view(c *ui.Context) {
-	c.SetTheme(themeFor(mygo.Theme.IsDark()))
+	c.SetTheme(themeFor(ws.isDark()))
 	t := c.Theme()
 	ws.shortcuts(c)
 	ui.Column(c).Fill().Background(t.Background).Children(func() {
@@ -58,32 +58,47 @@ func (ws *Workspace) view(c *ui.Context) {
 	}
 }
 
-// shortcuts are Zed's defaults on Linux and Windows (Cmd on macOS).
+// shortcuts are attention's defaults (apps/web: AppCommands, the command
+// palette, the quick switcher), Cmd on macOS and Ctrl elsewhere; the
+// editing ones do not apply to a reader. Keys attention leaves unbound get
+// ours: Ctrl Shift F, Ctrl B, Ctrl \, Ctrl E, Ctrl Q.
 func (ws *Workspace) shortcuts(c *ui.Context) {
+	digits := []ui.Key{ui.Key1, ui.Key2, ui.Key3, ui.Key4, ui.Key5, ui.Key6, ui.Key7, ui.Key8}
+	for i, k := range digits {
+		if c.Shortcut(ui.Cmd, k) {
+			ws.gotoTab(i + 1)
+		}
+	}
 	switch {
-	case c.Shortcut(ui.Cmd|ui.Shift, ui.KeyP):
-		ws.openPalette(modeCommands)
 	case c.Shortcut(ui.Cmd, ui.KeyP):
+		ws.openPalette(modeCommands)
+	case c.Shortcut(ui.Cmd, ui.KeyO):
 		ws.openPalette(modeFiles)
 	case c.Shortcut(ui.Cmd|ui.Shift, ui.KeyF):
 		ws.openSearch()
 	case c.Shortcut(ui.Cmd, ui.KeyW):
 		ws.closeActiveTab()
+	case c.Shortcut(ui.Cmd, ui.KeyT):
+		ws.newTab()
+	case c.Shortcut(ui.Cmd|ui.Shift, ui.KeyT):
+		ws.undoClose()
+	case c.Shortcut(ui.Cmd, ui.Key9):
+		ws.gotoTab(0)
+	case c.Shortcut(ui.Ctrl, ui.KeyTab), c.Shortcut(ui.Cmd|ui.Shift, ui.KeyBracketRight), c.Shortcut(ui.Ctrl, ui.KeyPageDown):
+		ws.cycleTab(1)
+	case c.Shortcut(ui.Ctrl|ui.Shift, ui.KeyTab), c.Shortcut(ui.Cmd|ui.Shift, ui.KeyBracketLeft), c.Shortcut(ui.Ctrl, ui.KeyPageUp):
+		ws.cycleTab(-1)
 	case c.Shortcut(ui.Cmd, ui.KeyB):
 		ws.panelOpen = !ws.panelOpen
 		ws.changed()
 	case c.Shortcut(ui.Cmd, ui.KeyBackslash):
 		ws.splitRight()
-	case c.Shortcut(ui.Ctrl, ui.KeyTab), c.Shortcut(ui.Ctrl, ui.KeyPageDown):
-		ws.cycleTab(1)
-	case c.Shortcut(ui.Ctrl|ui.Shift, ui.KeyTab), c.Shortcut(ui.Ctrl, ui.KeyPageUp):
-		ws.cycleTab(-1)
-	case c.Shortcut(ui.Cmd, ui.KeyQ):
-		mygo.App.Quit()
-	case c.Shortcut(ui.Cmd|ui.Shift, ui.KeyV):
+	case c.Shortcut(ui.Cmd, ui.KeyE):
 		if tb := ws.activeTab(); tb != nil && tb.kind == kindMarkdown {
 			tb.mdSource = !tb.mdSource
 		}
+	case c.Shortcut(ui.Cmd, ui.KeyQ):
+		mygo.App.Quit()
 	}
 }
 
@@ -194,13 +209,16 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, paneIndex int, focused bool)
 				if tb.missing {
 					title += " (deleted)"
 				}
-				tip := "Search"
-				if tb.kind != kindSearch {
+				tip := tb.title
+				if tb.kind != kindSearch && tb.kind != kindEmpty {
 					tip = ws.display(tb.path)
 				}
 				icon := fileIcon(tb.title)
-				if tb.kind == kindSearch {
+				switch tb.kind {
+				case kindSearch:
 					icon = lucide.Search()
+				case kindEmpty:
+					icon = lucide.Globe()
 				}
 				chip := omgui.TabChip(c, omgui.TabChipProps{
 					Key: fmt.Sprintf("tab-%d", tb.id), Title: title, Icon: icon, Tooltip: tip,
@@ -228,10 +246,10 @@ func (ws *Workspace) emptyPane(c *ui.Context) {
 	}
 	ui.Column(c).Grow(1).Fill().Center().Gap(10).Children(func() {
 		ui.Text(c, "attention").FontSize(22).Bold().TextColor(t.TextMuted)
-		hint("Open a file", "Ctrl P")
-		hint("Commands", "Ctrl Shift P")
-		hint("Search all files", "Ctrl Shift F")
-		hint("Toggle project panel", "Ctrl B")
+		hint("Open quick switcher", "Ctrl O")
+		hint("Open command palette", "Ctrl P")
+		hint("Search in all files", "Ctrl Shift F")
+		hint("Toggle left sidebar", "Ctrl B")
 	})
 }
 
@@ -239,6 +257,10 @@ func (ws *Workspace) tabBody(c *ui.Context, tb *tab) {
 	t := c.Theme()
 	if tb.kind == kindSearch {
 		ws.searchView(c, tb)
+		return
+	}
+	if tb.kind == kindEmpty {
+		ws.emptyPane(c)
 		return
 	}
 	if tb.missing {
@@ -310,7 +332,7 @@ func (ws *Workspace) statusBar(c *ui.Context) {
 	t := c.Theme()
 	ui.Row(c).Height(26).FillWidth().PaddingX(10).Gap(14).AlignItems(ui.Center).
 		Background(t.Surface).BorderWidth(1, 0, 0, 0).BorderColor(t.Border).Children(func() {
-		if ui.Icon(c, lucide.PanelLeft()).Size(14, 14).TextColor(t.TextMuted).Tooltip("Toggle project panel (Ctrl B)").Clicked() {
+		if ui.Icon(c, lucide.PanelLeft()).Size(14, 14).TextColor(t.TextMuted).Tooltip("Toggle left sidebar (Ctrl B)").Clicked() {
 			ws.panelOpen = !ws.panelOpen
 			ws.changed()
 		}
@@ -321,7 +343,7 @@ func (ws *Workspace) statusBar(c *ui.Context) {
 		ui.Text(c, mounts).FontSize(12).TextColor(t.TextMuted)
 		ui.Box(c).Grow(1)
 		tb := ws.activeTab()
-		if tb == nil || tb.kind == kindSearch {
+		if tb == nil || tb.kind == kindSearch || tb.kind == kindEmpty {
 			return
 		}
 		if tb.ed != nil && (tb.kind == kindText || tb.mdSource) {
@@ -333,7 +355,7 @@ func (ws *Workspace) statusBar(c *ui.Context) {
 			if tb.mdSource {
 				label = "Source"
 			}
-			if ui.Text(c, label).FontSize(12).TextColor(t.TextMuted).Tooltip("Toggle Markdown source (Ctrl Shift V)").Clicked() {
+			if ui.Text(c, label).FontSize(12).TextColor(t.TextMuted).Tooltip("Toggle reading view (Ctrl E)").Clicked() {
 				tb.mdSource = !tb.mdSource
 			}
 		}

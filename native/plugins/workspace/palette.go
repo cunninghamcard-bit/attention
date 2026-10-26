@@ -1,6 +1,8 @@
 package workspace
 
 import (
+	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -11,6 +13,8 @@ import (
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
+	"github.com/cunninghamcard-bit/attention/native/internal/fuzzy"
+	"github.com/cunninghamcard-bit/attention/native/internal/natural"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
 )
 
@@ -22,8 +26,15 @@ const (
 	modeLine
 )
 
-// maxResults is how many rows the palette shows.
-const maxResults = 60
+// maxResults is SuggestModal's limit (apps/web/ui/suggest/SuggestModal.ts).
+const maxResults = 100
+
+// maxRecentFiles and maxRecentCommands are the quick switcher's recent list
+// (getRecentFiles maxCount) and the command palette's recentCommands cap.
+const (
+	maxRecentFiles    = 10
+	maxRecentCommands = 100
+)
 
 type palette struct {
 	mode     paletteMode
@@ -32,8 +43,9 @@ type palette struct {
 	selected int
 	results  []int
 	commands []actionsapi.Command
-	names    []string // the file listing's display names
+	names    []string // the quick switcher's titles: display paths, .md dropped
 	paths    []string
+	recent   bool // results are the recent files (empty query)
 }
 
 func (ws *Workspace) openPalette(mode paletteMode) {
@@ -44,11 +56,7 @@ func (ws *Workspace) openPalette(mode paletteMode) {
 	p := &palette{mode: mode, ranked: "\x00"}
 	switch mode {
 	case modeCommands:
-		for _, c := range actionsapi.List() {
-			if c.Title != "" {
-				p.commands = append(p.commands, c)
-			}
-		}
+		p.commands = ws.paletteCommands()
 	case modeFiles:
 		ws.useListing(p)
 		ws.refreshFiles()
@@ -65,17 +73,87 @@ func (ws *Workspace) useListing(p *palette) {
 	for _, m := range ws.mounts {
 		byID[m.ID] = m
 	}
-	p.names = p.names[:0]
-	p.paths = p.paths[:0]
+	// QuickSwitcher.getItems: every file, sorted by path naturally, its
+	// text the path without ".md" (getQuickSwitcherFileTitle). The reader
+	// shows every file type (attention's showAllFileTypes).
+	type item struct{ title, path string }
+	items := make([]item, 0, len(ws.files.Files))
 	for _, f := range ws.files.Files {
 		m, ok := byID[f.Mount]
 		if !ok {
 			continue
 		}
-		p.names = append(p.names, projectcontract.Display(m, f.Rel))
-		p.paths = append(p.paths, f.Path)
+		items = append(items, item{switcherTitle(projectcontract.Display(m, f.Rel)), f.Path})
+	}
+	sort.SliceStable(items, func(i, j int) bool { return natural.Less(items[i].title, items[j].title) })
+	p.names, p.paths = p.names[:0], p.paths[:0]
+	for _, it := range items {
+		p.names = append(p.names, it.title)
+		p.paths = append(p.paths, it.path)
 	}
 	p.ranked = "\x00"
+}
+
+// switcherTitle is getQuickSwitcherFileTitle: a Markdown file without its
+// extension.
+func switcherTitle(display string) string {
+	if strings.EqualFold(filepath.Ext(display), ".md") {
+		return display[:len(display)-3]
+	}
+	return display
+}
+
+// paletteCommands is CommandPalette.getCommands: by name naturally, the
+// recently run ones first, most recent first.
+func (ws *Workspace) paletteCommands() []actionsapi.Command {
+	var cmds []actionsapi.Command
+	for _, c := range actionsapi.List() {
+		if c.Title != "" {
+			cmds = append(cmds, c)
+		}
+	}
+	sort.SliceStable(cmds, func(i, j int) bool { return natural.Less(cmds[i].Title, cmds[j].Title) })
+	order := map[string]int{}
+	for i, id := range ws.recentCommands {
+		order[id] = i + 1
+	}
+	rank := func(c actionsapi.Command) int {
+		if n, ok := order[c.ID]; ok {
+			return n
+		}
+		return len(order) + 1
+	}
+	sort.SliceStable(cmds, func(i, j int) bool { return rank(cmds[i]) < rank(cmds[j]) })
+	return cmds
+}
+
+// noteRecentCommand is CommandPalette.recordRecent.
+func (ws *Workspace) noteRecentCommand(id string) {
+	out := []string{id}
+	for _, r := range ws.recentCommands {
+		if r != id {
+			out = append(out, r)
+		}
+	}
+	if len(out) > maxRecentCommands {
+		out = out[:maxRecentCommands]
+	}
+	ws.recentCommands = out
+	ws.changed()
+}
+
+// noteRecentFile keeps the quick switcher's recent files, newest first.
+func (ws *Workspace) noteRecentFile(path string) {
+	out := []string{path}
+	for _, r := range ws.recentFiles {
+		if r != path {
+			out = append(out, r)
+		}
+	}
+	if len(out) > maxRecentFiles {
+		out = out[:maxRecentFiles]
+	}
+	ws.recentFiles = out
 }
 
 // refreshFiles walks the mounts again on a goroutine; the palette shows the
@@ -107,28 +185,53 @@ func (ws *Workspace) rerank(p *palette) {
 	}
 	p.ranked = p.query
 	p.selected = 0
+	p.recent = false
 	q := strings.TrimSpace(p.query)
+	indices := func(rs []fuzzy.Ranked) []int {
+		out := make([]int, len(rs))
+		for i, r := range rs {
+			out[i] = r.Index
+		}
+		return out
+	}
 	switch p.mode {
 	case modeFiles:
-		p.results = rank(q, len(p.names), func(i int) string { return p.names[i] }, maxResults)
+		if q == "" {
+			// QuickSwitcherModal.getSuggestions: no query shows the recent files.
+			p.recent = true
+			p.results = p.results[:0]
+			for _, path := range ws.recentFiles {
+				for i, candidate := range p.paths {
+					if candidate == path {
+						p.results = append(p.results, i)
+						break
+					}
+				}
+			}
+			return
+		}
+		p.results = indices(fuzzy.Rank(q, len(p.names), func(i int) string { return p.names[i] }, maxResults))
 	case modeCommands:
-		p.results = rank(q, len(p.commands), func(i int) string { return p.commands[i].Title }, maxResults)
+		p.results = indices(fuzzy.Rank(q, len(p.commands), func(i int) string { return p.commands[i].Title }, maxResults))
 	case modeLine:
 		p.results = nil
 	}
 }
 
-func (ws *Workspace) accept(p *palette) {
+// accept chooses the selected row; newTab is QuickSwitcher.choose's Mod
+// click or Mod+Enter.
+func (ws *Workspace) accept(p *palette, newTab bool) {
 	switch p.mode {
 	case modeFiles:
 		if p.selected < len(p.results) {
 			ws.palette = nil
-			ws.open(p.paths[p.results[p.selected]], nil)
+			ws.openIn(p.paths[p.results[p.selected]], nil, newTab)
 		}
 	case modeCommands:
 		if p.selected < len(p.results) {
 			cmd := p.commands[p.results[p.selected]]
 			ws.palette = nil
+			ws.noteRecentCommand(cmd.ID)
 			// Commands hop to the main thread themselves; run off it.
 			go func() { _, _ = cmd.Run(ws.ctx, actionsapi.Args{Params: map[string]string{}}) }()
 		}
@@ -174,6 +277,10 @@ func (ws *Workspace) paletteView(c *ui.Context) {
 	if c.Shortcut(0, ui.KeyUp) && p.selected > 0 {
 		p.selected--
 	}
+	if c.Shortcut(ui.Cmd, ui.KeyEnter) {
+		ws.accept(p, true)
+		return
+	}
 
 	placeholder := map[paletteMode]string{
 		modeFiles:    "Search files…",
@@ -192,7 +299,7 @@ func (ws *Workspace) paletteView(c *ui.Context) {
 		panel.Children(func() {
 			field := omgui.Field(c, &p.query, placeholder, false).AutoFocus().FillWidth()
 			if field.Submitted() {
-				ws.accept(p)
+				ws.accept(p, false)
 				return
 			}
 			switch p.mode {
@@ -216,8 +323,11 @@ func (ws *Workspace) paletteRows(c *ui.Context, p *palette) {
 	t := c.Theme()
 	if len(p.results) == 0 {
 		msg := "No matches"
-		if p.mode == modeFiles && ws.files == nil {
+		switch {
+		case p.mode == modeFiles && ws.files == nil:
 			msg = "Listing files…"
+		case p.recent:
+			msg = "No recent files"
 		}
 		ui.Text(c, msg).TextColor(t.TextMuted).FontSize(12).Padding(6, 8)
 		return
@@ -234,7 +344,7 @@ func (ws *Workspace) paletteRows(c *ui.Context, p *palette) {
 			omgui.CommandRow(c, omgui.CommandRowProps{
 				Key: "f:" + p.paths[idx], Label: base, Detail: dir, Icon: fileIcon(base),
 				Selected: i == p.selected,
-				OnClick:  func() { p.selected = i; ws.accept(p) },
+				OnClick:  func() { p.selected = i; ws.accept(p, false) },
 			})
 		case modeCommands:
 			cmd := p.commands[idx]
@@ -246,7 +356,7 @@ func (ws *Workspace) paletteRows(c *ui.Context, p *palette) {
 						ui.Text(c, keys).FontSize(12).TextColor(c.Theme().TextMuted)
 					}
 				},
-				OnClick: func() { p.selected = i; ws.accept(p) },
+				OnClick: func() { p.selected = i; ws.accept(p, false) },
 			})
 		}
 	}).MaxHeight(380).FillWidth()

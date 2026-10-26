@@ -68,9 +68,14 @@ func runtimeMain(args []string) int {
 		// quit does, so every plugin unloads instead of the process dying.
 		var once sync.Once
 		stop := func() { once.Do(func() { syscall.Kill(os.Getppid(), syscall.SIGTERM) }) }
-		sigs := make(chan os.Signal, 1)
+		sigs := make(chan os.Signal, 2)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-		go func() { <-sigs; stop() }()
+		go func() {
+			<-sigs
+			stop()
+			<-sigs // a second signal: the user insists
+			os.Exit(1)
+		}()
 		go watchLauncher(stop)
 		if err := rutis.ServeArgs(args, plugins...); err != nil {
 			fmt.Fprintln(os.Stderr, "attention:", err)
@@ -93,11 +98,16 @@ func runtimeMain(args []string) int {
 		if sessionOver.Load() {
 			return
 		}
-		e.PreventDefault()
 		if signalled.CompareAndSwap(false, true) {
 			debugf("runtime: quit requested, signalling rutis-host")
-			syscall.Kill(os.Getppid(), syscall.SIGTERM)
+			if err := syscall.Kill(os.Getppid(), syscall.SIGTERM); err != nil {
+				// No host to stop the session: let the quit through.
+				fmt.Fprintln(os.Stderr, "attention: cannot signal rutis-host:", err)
+				sessionOver.Store(true)
+				return
+			}
 		}
+		e.PreventDefault()
 	})
 	ended := make(chan error, 1)
 	go func() {
@@ -146,12 +156,35 @@ func watchLauncher(stop func()) {
 	if err != nil || pid <= 1 {
 		return
 	}
+	// A PID can be reused: the launcher is the process with this PID and
+	// the start time it had when we began.
+	started := startTime(pid)
 	for {
 		time.Sleep(500 * time.Millisecond)
-		if err := syscall.Kill(pid, 0); errors.Is(err, syscall.ESRCH) {
+		gone := errors.Is(syscall.Kill(pid, 0), syscall.ESRCH) || startTime(pid) != started
+		if gone {
 			debugf("runtime: the launcher is gone, stopping")
 			stop()
 			return
 		}
 	}
+}
+
+// startTime is the start time of a process, from /proc/<pid>/stat (field 22),
+// or "" where there is no /proc.
+func startTime(pid int) string {
+	data, err := os.ReadFile("/proc/" + strconv.Itoa(pid) + "/stat")
+	if err != nil {
+		return ""
+	}
+	// The command name (field 2) may hold spaces; fields count from after it.
+	s := string(data)
+	if i := strings.LastIndexByte(s, ')'); i >= 0 {
+		s = s[i+1:]
+	}
+	fields := strings.Fields(s)
+	if len(fields) < 20 {
+		return ""
+	}
+	return fields[19]
 }

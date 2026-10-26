@@ -51,6 +51,9 @@ func Parse(args []string) (Options, error) {
 			if err := o.set(name, value); err != nil {
 				return o, err
 			}
+		case a == "--help" || a == "-h":
+			o.Command = []string{"help"}
+			return o, nil
 		case strings.HasPrefix(a, "-"):
 			return o, fmt.Errorf("unknown flag %s", a)
 		default:
@@ -107,6 +110,10 @@ func Run(args []string) int {
 		return client(opts)
 	}
 	defer lock.Close()
+	if len(opts.Command) == 1 && opts.Command[0] == "help" {
+		fmt.Println(usage)
+		return 0
+	}
 	if len(opts.Command) > 0 {
 		fmt.Fprintln(os.Stderr, "Error: attention is not running.")
 		return 1
@@ -243,10 +250,11 @@ func runHost(opts Options) int {
 		fmt.Fprintln(os.Stderr, "attention: rutis-host not found (set RUTIS_HOST or put it beside attention):", err)
 		return 1
 	}
-	// One directory per instance, beside its socket: the lock is held, so
-	// whatever is there was left by a launcher that was killed.
-	dir := paths.SocketPath() + ".host"
-	os.RemoveAll(dir)
+	// One directory per launcher, beside the socket. Those of launchers no
+	// longer running were left by a kill; an instance whose launcher just
+	// died may still be stopping, so a live PID's directory is left alone.
+	clearStaleHostDirs()
+	dir := paths.SocketPath() + ".host-" + strconv.Itoa(os.Getpid())
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		fmt.Fprintln(os.Stderr, "attention:", err)
 		return 1
@@ -384,3 +392,23 @@ func follow(path string, done <-chan error, line func(string)) error {
 		}
 	}
 }
+
+func clearStaleHostDirs() {
+	prefix := paths.SocketPath() + ".host-"
+	matches, _ := filepath.Glob(prefix + "*")
+	for _, m := range matches {
+		pid, err := strconv.Atoi(strings.TrimPrefix(m, prefix))
+		if err != nil || pid == os.Getpid() {
+			continue
+		}
+		if err := syscall.Kill(pid, 0); errors.Is(err, syscall.ESRCH) {
+			os.RemoveAll(m)
+		}
+	}
+}
+
+const usage = `Usage:
+  attention [--profile desktop|headless] [--mount <dir>]... [<dir>]...
+      open the folders (the last ones when none is given)
+  attention <command> [key=value ...]
+      run a command in the running attention; "attention help" lists them`

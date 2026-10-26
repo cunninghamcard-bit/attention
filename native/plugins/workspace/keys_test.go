@@ -1,0 +1,121 @@
+package workspace
+
+import (
+	"context"
+	"testing"
+
+	"github.com/egoist/mygo/ui"
+
+	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
+	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
+)
+
+// A workspace over three notes, drawn by mygo's tester: the shortcuts and
+// the palette are driven by key presses, without a window or rutis.
+func testWorkspace(t *testing.T) (*Workspace, *ui.Tester) {
+	t.Helper()
+	m := projectcontract.Mount{ID: "m", Name: "m", Path: "/m"}
+	files := projectcontract.Listing{Files: []projectcontract.FileRef{
+		{Mount: "m", Rel: "alpha.md", Path: "/m/alpha.md"},
+		{Mount: "m", Rel: "beta.md", Path: "/m/beta.md"},
+		{Mount: "m", Rel: "gamma.md", Path: "/m/gamma.md"},
+	}}
+	fs := fsStub()
+	fs.Read = func(context.Context, string, int64) (fscontract.File, error) {
+		return fscontract.File{Text: "# note"}, nil
+	}
+	fs.List = func(context.Context, string) ([]fscontract.Entry, error) { return nil, nil }
+	project := projectStub()
+	project.Files = func(context.Context) (projectcontract.Listing, error) { return files, nil }
+	ws := newWorkspace(t.Context(), fs, project)
+	ws.isDark = func() bool { return false }
+	ws.setMounts([]projectcontract.Mount{m})
+	ws.files = &files
+	tt := ui.NewTester(ws.view, 1000, 700)
+	tt.Frame()
+	return ws, tt
+}
+
+func tabs(ws *Workspace) []string {
+	var out []string
+	for _, p := range ws.panes {
+		for _, t := range p.tabs {
+			out = append(out, t.viewType()+":"+t.displayText())
+		}
+	}
+	return out
+}
+
+func press(tt *ui.Tester, mods ui.Modifiers, key ui.Key) { tt.Key(mods, key); tt.Frame() }
+
+func TestQuickSwitcherOpensIntoTheNewTab(t *testing.T) {
+	ws, tt := testWorkspace(t)
+	press(tt, ui.Cmd, ui.KeyO)
+	if ws.palette == nil || ws.palette.mode != modeFiles {
+		t.Fatal("Ctrl O did not open the quick switcher")
+	}
+	tt.Type("alpha")
+	tt.Frame()
+	press(tt, 0, ui.KeyEnter)
+	if got := tabs(ws); len(got) != 1 || got[0] != "markdown:alpha" {
+		t.Fatalf("after opening alpha: %v", got)
+	}
+
+	press(tt, ui.Cmd, ui.KeyT)
+	if got := tabs(ws); len(got) != 2 || got[1] != "empty:New tab" {
+		t.Fatalf("after Ctrl T: %v", got)
+	}
+	press(tt, ui.Cmd, ui.KeyO)
+	tt.Type("gam")
+	tt.Frame()
+	press(tt, 0, ui.KeyEnter)
+	if got := tabs(ws); len(got) != 2 || got[1] != "markdown:gamma" {
+		t.Fatalf("gamma should open in the new tab: %v", got)
+	}
+}
+
+func TestCloseAndUndoClose(t *testing.T) {
+	ws, tt := testWorkspace(t)
+	ws.open("/m/alpha.md", nil)
+	ws.open("/m/beta.md", nil)
+	tt.Frame()
+	press(tt, ui.Cmd, ui.KeyW)
+	if got := tabs(ws); len(got) != 1 || got[0] != "markdown:alpha" {
+		t.Fatalf("after Ctrl W: %v", got)
+	}
+	press(tt, ui.Cmd|ui.Shift, ui.KeyT)
+	if got := tabs(ws); len(got) != 2 || got[1] != "markdown:beta" {
+		t.Fatalf("after Ctrl Shift T: %v", got)
+	}
+	press(tt, ui.Cmd, ui.Key1)
+	if ws.activeTab().displayText() != "alpha" {
+		t.Fatalf("Ctrl 1 activated %q", ws.activeTab().displayText())
+	}
+	press(tt, ui.Cmd, ui.Key9)
+	if ws.activeTab().displayText() != "beta" {
+		t.Fatalf("Ctrl 9 activated %q", ws.activeTab().displayText())
+	}
+}
+
+func TestQuickSwitcherEmptyQueryShowsRecentFiles(t *testing.T) {
+	ws, tt := testWorkspace(t)
+	ws.open("/m/gamma.md", nil)
+	ws.open("/m/alpha.md", nil)
+	press(tt, ui.Cmd, ui.KeyO)
+	ws.rerank(ws.palette)
+	var got []string
+	for _, i := range ws.palette.results {
+		got = append(got, ws.palette.names[i])
+	}
+	if len(got) != 2 || got[0] != "m/alpha" || got[1] != "m/gamma" {
+		t.Fatalf("recent files = %v, want newest first", got)
+	}
+}
+
+func TestCommandPaletteRunsAndRemembersCommands(t *testing.T) {
+	ws, tt := testWorkspace(t)
+	press(tt, ui.Cmd, ui.KeyP)
+	if ws.palette == nil || ws.palette.mode != modeCommands {
+		t.Fatal("Ctrl P did not open the command palette")
+	}
+}

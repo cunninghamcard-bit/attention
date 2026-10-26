@@ -47,6 +47,14 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		if err != nil {
 			return err
 		}
+		// Remove the socket only while it is still ours: a newer instance
+		// may have replaced it (its launcher took the lock as ours died).
+		ln.(*net.UnixListener).SetUnlinkOnClose(false)
+		mine, err := os.Stat(path)
+		if err != nil {
+			ln.Close()
+			return err
+		}
 		ctx.Effect(actionCleanup(actionsapi.Register(actionsapi.Command{
 			ID: "version", CLI: true,
 			// The TS CLI's shape: "<version> (installer <build>)".
@@ -79,8 +87,8 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		ctx.Effect(func(context.Context) error {
 			dbg("cli: cleanup")
 			ln.Close()
-			if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-				return err
+			if now, err := os.Stat(path); err == nil && os.SameFile(now, mine) {
+				return os.Remove(path)
 			}
 			return nil
 		})

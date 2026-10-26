@@ -88,6 +88,17 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			defer writeMu.Unlock()
 			_ = saveSession(s)
 		}
+		// writeTimed is the timer's write: dropped once the final save began.
+		writeTimed := func(s session) {
+			writeMu.Lock()
+			defer writeMu.Unlock()
+			saveMu.Lock()
+			closed := saveClosed
+			saveMu.Unlock()
+			if !closed {
+				_ = saveSession(s)
+			}
+		}
 		ws.saveSoon = func() {
 			saveMu.Lock()
 			defer saveMu.Unlock()
@@ -106,7 +117,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 						return
 					}
 					s := ws.snapshot()
-					go write(s)
+					go writeTimed(s)
 				})
 			})
 		}
@@ -158,7 +169,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		}
 
 		offRoot := shellapi.SetRoot(ws.view)
-		rctx.Effect(func(context.Context) error {
+		rctx.Effect(func(effectCtx context.Context) error {
 			if os.Getenv("ATTENTION_DEBUG") != "" {
 				fmt.Fprintln(os.Stderr, "[debug] workspace: cleanup start")
 				defer fmt.Fprintln(os.Stderr, "[debug] workspace: cleanup end")
@@ -166,13 +177,15 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			offRoot()
 			// Save the final layout; the shell is still loaded (we inject it),
 			// and the run loop runs until every plugin has unloaded.
-			s, err := onMain(context.Background(), func() (session, error) { return ws.snapshot(), nil })
+			// Close the timer's saves first: a snapshot it took earlier must
+			// not land after this one.
 			saveMu.Lock()
 			saveClosed = true
 			if saveTimer != nil {
 				saveTimer.Stop()
 			}
 			saveMu.Unlock()
+			s, err := onMain(effectCtx, func() (session, error) { return ws.snapshot(), nil })
 			if err == nil {
 				write(s)
 			}
@@ -192,21 +205,32 @@ func (ws *Workspace) commands() []actionsapi.Command {
 			return onMain(ctx, func() (string, error) { fn(); return "", nil })
 		}}
 	}
-	return []actionsapi.Command{
-		ui("file-finder:toggle", "File Finder: Toggle", "Ctrl P", func() { ws.openPalette(modeFiles) }),
-		ui("project-search:deploy", "Project Search: Deploy", "Ctrl Shift F", func() { ws.openSearch() }),
-		ui("go-to-line:toggle", "Go to Line: Toggle", "Ctrl G", func() { ws.openPalette(modeLine) }),
-		ui("pane:close-active-item", "Pane: Close Active Item", "Ctrl W", ws.closeActiveTab),
-		ui("pane:split-right", "Pane: Split Right", "Ctrl \\", ws.splitRight),
-		ui("pane:activate-next-item", "Pane: Activate Next Item", "Ctrl Tab", func() { ws.cycleTab(1) }),
-		ui("pane:activate-prev-item", "Pane: Activate Previous Item", "Ctrl Shift Tab", func() { ws.cycleTab(-1) }),
-		ui("project-panel:toggle", "Project Panel: Toggle", "Ctrl B", func() { ws.panelOpen = !ws.panelOpen; ws.changed() }),
-		ui("markdown:toggle-source", "Markdown: Toggle Source", "Ctrl Shift V", func() {
+	gotos := make([]actionsapi.Command, 0, 8)
+	for n := 1; n <= 8; n++ {
+		gotos = append(gotos, ui(fmt.Sprintf("workspace:goto-tab-%d", n), fmt.Sprintf("Go to tab %d", n), fmt.Sprintf("Ctrl %d", n), func() { ws.gotoTab(n) }))
+	}
+	return append(gotos, []actionsapi.Command{
+		// IDs, names and keys are attention's (apps/web/app/AppCommands.ts,
+		// CommandPalette.ts, QuickSwitcher.ts, CorePlugins.ts) where it has
+		// the command; the rest are the reader's own.
+		ui("switcher:open", "Open quick switcher", "Ctrl O", func() { ws.openPalette(modeFiles) }),
+		ui("command-palette:open", "Open command palette", "Ctrl P", func() { ws.openPalette(modeCommands) }),
+		ui("global-search:open", "Search in all files", "Ctrl Shift F", func() { ws.openSearch() }),
+		ui("editor:go-to-line", "Go to line", "Ctrl G", func() { ws.openPalette(modeLine) }),
+		ui("workspace:close", "Close current tab", "Ctrl W", ws.closeActiveTab),
+		ui("workspace:new-tab", "Open new tab", "Ctrl T", ws.newTab),
+		ui("workspace:undo-close-pane", "Undo close tab", "Ctrl Shift T", ws.undoClose),
+		ui("workspace:next-tab", "Go to next tab", "Ctrl Tab", func() { ws.cycleTab(1) }),
+		ui("workspace:previous-tab", "Go to previous tab", "Ctrl Shift Tab", func() { ws.cycleTab(-1) }),
+		ui("workspace:goto-last-tab", "Go to last tab", "Ctrl 9", func() { ws.gotoTab(0) }),
+		ui("workspace:split-vertical", "Split right", "Ctrl \\", ws.splitRight),
+		ui("app:toggle-left-sidebar", "Toggle left sidebar", "Ctrl B", func() { ws.panelOpen = !ws.panelOpen; ws.changed() }),
+		ui("markdown:toggle-preview", "Toggle reading view", "Ctrl E", func() {
 			if tb := ws.activeTab(); tb != nil && tb.kind == kindMarkdown {
 				tb.mdSource = !tb.mdSource
 			}
 		}),
-		{ID: "workspace:add-folder", Title: "Workspace: Add Folder to Project", Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
+		{ID: "workspace:add-folder", Title: "Add folder to workspace", Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
 			dirs, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: shellapi.Window(), Title: "Add Folder to Project", Directory: true})
 			if err != nil || len(dirs) == 0 {
 				return "", err
@@ -224,7 +248,7 @@ func (ws *Workspace) commands() []actionsapi.Command {
 			})
 		}},
 		{ID: "open", CLI: true, Run: ws.cliOpen},
-		{ID: "quit", Title: "Workspace: Quit", Keys: "Ctrl Q", CLI: true, Run: func(context.Context, actionsapi.Args) (string, error) {
+		{ID: "quit", Title: "Quit", Keys: "Ctrl Q", CLI: true, Run: func(context.Context, actionsapi.Args) (string, error) {
 			// The same path as the user closing the window: App.Run returns
 			// and the UI runtime asks rutis-host to stop.
 			mygo.App.Quit()
@@ -247,7 +271,7 @@ func (ws *Workspace) commands() []actionsapi.Command {
 				return strings.Join(lines, "\n"), nil
 			})
 		}},
-	}
+	}...)
 }
 
 // viewType names a tab's view as the TS CLI's tabs does.
@@ -259,6 +283,8 @@ func (t *tab) viewType() string {
 		return "image"
 	case kindSearch:
 		return "search"
+	case kindEmpty:
+		return "empty"
 	}
 	return "text"
 }

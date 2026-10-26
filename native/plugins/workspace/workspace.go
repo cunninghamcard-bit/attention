@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 	"github.com/egoist/mygo/ui/markdown"
@@ -32,7 +33,11 @@ const (
 	kindMarkdown
 	kindImage
 	kindSearch
+	kindEmpty // a new tab, until a file opens in it
 )
+
+// maxClosed is how many closed tabs Undo close tab can bring back.
+const maxClosed = 20
 
 // Workspace is the window's whole state. Every field is read and written on
 // the main thread only: work done on goroutines comes back through
@@ -64,11 +69,17 @@ type Workspace struct {
 	files     *projectcontract.Listing // last quick-open listing
 	filesBusy bool
 
-	nextTab       int
-	restoring     []sessionPane // tabs to reopen once the mounts are known
-	restoreActive int
-	saveSoon      func()
-	title         string
+	nextTab int
+	closed  []string // recently closed files, newest last
+	// The quick switcher's recent files and the command palette's recent
+	// commands, newest first.
+	recentFiles    []string
+	recentCommands []string
+	restoring      []sessionPane // tabs to reopen once the mounts are known
+	restoreActive  int
+	saveSoon       func()
+	isDark         func() bool // mygo.Theme.IsDark; tests replace it
+	title          string
 }
 
 type dirNode struct {
@@ -138,6 +149,7 @@ func newWorkspace(ctx context.Context, fs fscontract.FS, project projectcontract
 		panes:     []*pane{{}},
 		splitPct:  50,
 		rowsDirty: true,
+		isDark:    mygo.Theme.IsDark,
 	}
 	go ws.runWatchOps()
 	return ws
@@ -157,8 +169,15 @@ func (ws *Workspace) runWatchOps() {
 				continue
 			}
 			if err := ws.fs.Watch(ws.ctx, op.dir); err != nil && ws.ctx.Err() == nil {
-				msg := err.Error()
-				shellapi.Update(func() { ws.notice = msg })
+				// Give the watch back, so expanding or opening again retries.
+				msg, dir := err.Error(), op.dir
+				shellapi.Update(func() {
+					ws.notice = msg
+					delete(ws.watching, dir)
+					if d := ws.dirs[dir]; d != nil {
+						d.watched = false
+					}
+				})
 			}
 		}
 	}
@@ -227,7 +246,7 @@ func (ws *Workspace) display(path string) string {
 func (ws *Workspace) watch(dir string) {
 	ws.watching[dir]++
 	if ws.watching[dir] == 1 {
-		ws.watchOps <- watchOp{dir: dir, add: true}
+		ws.send(watchOp{dir: dir, add: true})
 	}
 }
 
@@ -237,7 +256,7 @@ func (ws *Workspace) unwatch(dir string) {
 		return
 	case 1:
 		delete(ws.watching, dir)
-		ws.watchOps <- watchOp{dir: dir}
+		ws.send(watchOp{dir: dir})
 	default:
 		ws.watching[dir]--
 	}
@@ -354,8 +373,16 @@ func (ws *Workspace) open(path string, nav *navTarget) *tab { return ws.openIn(p
 // openIn is open; newTab opens another tab even when one shows path.
 func (ws *Workspace) openIn(path string, nav *navTarget, newTab bool) *tab {
 	p := ws.activePane()
+	// A file opens in the active new tab, as a browser's address does.
+	if cur := p.current(); cur != nil && cur.kind == kindEmpty && !newTab {
+		p.tabs = append(p.tabs[:p.active], p.tabs[p.active+1:]...)
+		p.active = max(0, p.active-1)
+		if len(p.tabs) > 0 {
+			p.active = min(p.active, len(p.tabs)-1)
+		}
+	}
 	for i, t := range p.tabs {
-		if !newTab && t.kind != kindSearch && t.path == path {
+		if !newTab && t.kind != kindSearch && t.kind != kindEmpty && t.path == path {
 			p.active = i
 			if nav != nil {
 				t.nav = nav
@@ -377,6 +404,7 @@ func (ws *Workspace) openIn(path string, nav *navTarget, newTab bool) *tab {
 	p.active = at
 	ws.watch(filepath.Dir(path))
 	ws.load(t)
+	ws.noteRecentFile(path)
 	ws.changed()
 	return t
 }
@@ -508,10 +536,18 @@ func (ws *Workspace) closeTab(p *pane, i int) {
 		return
 	}
 	t := p.tabs[i]
-	if t.kind != kindSearch {
+	switch t.kind {
+	case kindSearch:
+		if t.search != nil && t.search.cancel != nil {
+			t.search.cancel()
+		}
+	case kindEmpty:
+	default:
 		ws.unwatch(filepath.Dir(t.path))
-	} else if t.search != nil && t.search.cancel != nil {
-		t.search.cancel()
+		ws.closed = append(ws.closed, t.path)
+		if len(ws.closed) > maxClosed {
+			ws.closed = ws.closed[len(ws.closed)-maxClosed:]
+		}
 	}
 	p.tabs = append(p.tabs[:i], p.tabs[i+1:]...)
 	if p.active > i || p.active >= len(p.tabs) {
@@ -646,8 +682,8 @@ func (ws *Workspace) changed() {
 	}
 	title := "attention"
 	if t := ws.activeTab(); t != nil {
-		if t.kind == kindSearch {
-			title = "Search — attention"
+		if t.kind == kindSearch || t.kind == kindEmpty {
+			title = t.title + " — attention"
 		} else {
 			title = ws.display(t.path) + " — attention"
 		}
@@ -663,5 +699,48 @@ func (ws *Workspace) changed() {
 func debugf(format string, a ...any) {
 	if os.Getenv("ATTENTION_DEBUG") != "" {
 		fmt.Fprintf(os.Stderr, "[debug] "+format+"\n", a...)
+	}
+}
+
+// newTab opens an empty tab after the active one.
+func (ws *Workspace) newTab() {
+	p := ws.activePane()
+	ws.nextTab++
+	t := &tab{id: ws.nextTab, kind: kindEmpty, title: "New tab"}
+	at := min(p.active+1, len(p.tabs))
+	p.tabs = append(p.tabs[:at], append([]*tab{t}, p.tabs[at:]...)...)
+	p.active = at
+	ws.changed()
+}
+
+// undoClose reopens the most recently closed file.
+func (ws *Workspace) undoClose() {
+	if n := len(ws.closed); n > 0 {
+		path := ws.closed[n-1]
+		ws.closed = ws.closed[:n-1]
+		ws.open(path, nil)
+	}
+}
+
+// gotoTab activates the n-th tab (1-based) of the active pane; n < 1 is
+// the last tab.
+func (ws *Workspace) gotoTab(n int) {
+	p := ws.activePane()
+	if len(p.tabs) == 0 {
+		return
+	}
+	if n < 1 || n > len(p.tabs) {
+		n = len(p.tabs)
+	}
+	p.active = n - 1
+	ws.changed()
+}
+
+// send queues a watch operation; after unload (ctx done) it is dropped
+// rather than block the main thread on a queue nobody reads.
+func (ws *Workspace) send(op watchOp) {
+	select {
+	case ws.watchOps <- op:
+	case <-ws.ctx.Done():
 	}
 }
