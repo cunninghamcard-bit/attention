@@ -32,6 +32,10 @@ func onMain[T any](ctx context.Context, fn func() (T, error)) (T, error) {
 		v   T
 		err error
 	}
+	if shellapi.Window() == nil {
+		var zero T
+		return zero, fmt.Errorf("the window is closed")
+	}
 	done := make(chan result, 1)
 	shellapi.Update(func() {
 		v, err := fn()
@@ -135,6 +139,10 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 
 		offRoot := shellapi.SetRoot(ws.view)
 		rctx.Effect(func(context.Context) error {
+			if os.Getenv("ATTENTION_DEBUG") != "" {
+				fmt.Fprintln(os.Stderr, "[debug] workspace: cleanup start")
+				defer fmt.Fprintln(os.Stderr, "[debug] workspace: cleanup end")
+			}
 			offRoot()
 			// Save the final layout; the shell is still loaded (we inject it).
 			s, err := onMain(context.Background(), func() (session, error) { return ws.snapshot(), nil })

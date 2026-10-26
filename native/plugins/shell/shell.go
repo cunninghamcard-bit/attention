@@ -34,8 +34,12 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			Height:  820,
 			Content: ui.View(shellapi.View),
 		})
-		w.OnClosed(func() {
+		// The user closing the window asks the app to quit and leaves the
+		// window up: plugins unloading next still post to the main thread
+		// through it. This plugin's own cleanup closes it.
+		w.OnClose(func(e *mygo.CloseEvent) {
 			if !unloading.Load() {
+				e.PreventDefault()
 				mygo.App.Quit()
 			}
 		})

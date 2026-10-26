@@ -66,6 +66,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			}
 		})
 		ctx.Effect(func(context.Context) error {
+			dbg("cli: cleanup")
 			ln.Close()
 			if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 				return err
@@ -100,4 +101,10 @@ func serve(ctx context.Context, conn net.Conn) {
 		out += "\n"
 	}
 	fmt.Fprint(conn, out)
+}
+
+func dbg(format string, a ...any) {
+	if os.Getenv("ATTENTION_DEBUG") != "" {
+		fmt.Fprintf(os.Stderr, "[debug] "+format+"\n", a...)
+	}
 }

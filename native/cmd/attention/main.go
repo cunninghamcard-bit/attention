@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -71,16 +72,34 @@ func runtimeMain(args []string) int {
 	// Closing the last window must not quit by itself: the shell plugin
 	// quits when the user closes it, not when it is unloaded and reloaded.
 	mygo.App.OnWindowAllClosed(func() {})
+	// Every quit — the window's close button, the quit command, Ctrl Q, a
+	// signal mygo turns into a quit — first asks rutis-host (our parent) to
+	// stop. The host unloads every plugin while the run loop still runs, so
+	// cleanups can post to the main thread; when the session has ended the
+	// quit goes through.
+	var sessionOver, signalled atomic.Bool
+	mygo.App.OnBeforeQuit(func(e *mygo.QuitEvent) {
+		if sessionOver.Load() {
+			return
+		}
+		e.PreventDefault()
+		if signalled.CompareAndSwap(false, true) {
+			debugf("runtime: quit requested, signalling rutis-host")
+			syscall.Kill(os.Getppid(), syscall.SIGTERM)
+		}
+	})
 	ended := make(chan error, 1)
 	go func() {
 		err := rutis.ServeArgs(args, plugins...)
 		ended <- err
-		// The host stopped the session: leave the run loop.
+		sessionOver.Store(true)
 		mygo.App.Quit()
 	}()
 	if err := mygo.App.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "attention:", err)
 	}
+	// App.Run returns only after the session ended (or the native loop
+	// died on its own, when the host is still to be told).
 	select {
 	case err := <-ended:
 		if err != nil {
@@ -90,13 +109,19 @@ func runtimeMain(args []string) int {
 		return 0
 	default:
 	}
-	// The user closed the window: ask rutis-host (our parent) to stop, which
-	// unloads every plugin, ours included, then ends this session.
-	syscall.Kill(os.Getppid(), syscall.SIGTERM)
+	if signalled.CompareAndSwap(false, true) {
+		syscall.Kill(os.Getppid(), syscall.SIGTERM)
+	}
 	select {
 	case <-ended:
 	case <-time.After(15 * time.Second):
 		fmt.Fprintln(os.Stderr, "attention: rutis-host did not stop within 15s")
 	}
 	return 0
+}
+
+func debugf(format string, a ...any) {
+	if os.Getenv("ATTENTION_DEBUG") != "" {
+		fmt.Fprintf(os.Stderr, "[debug] "+format+"\n", a...)
+	}
 }
