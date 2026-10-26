@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	neturl "net/url"
@@ -53,17 +54,21 @@ type Workspace struct {
 	mountsLoaded bool
 	watches      *watchq.Queue // the open tabs' directories
 
-	panelOpen  bool
-	leftWidth  float32
-	leftPanel  string // the left dock's shown panel (slotsapi.Panel.ID)
-	reveals    map[string]int
-	rightOpen  bool
-	rightWidth float32
-	panes      []*pane
-	active     int
-	splitPct   float32
-	seenLeft   float32 // the widths last saved, to notice a divider drag
-	seenSplit  float32
+	panelOpen bool
+	leftWidth float32
+	leftPanel string // the left dock's shown panel (slotsapi.Panel.ID)
+	reveals   map[string]int
+	// savedPanels are panel states from the session not handed over yet;
+	// restoredPanels the panels that got theirs (or had none).
+	savedPanels    map[string]json.RawMessage
+	restoredPanels map[string]bool
+	rightOpen      bool
+	rightWidth     float32
+	panes          []*pane
+	active         int
+	splitPct       float32
+	seenLeft       float32 // the widths last saved, to notice a divider drag
+	seenSplit      float32
 
 	palette *palette
 	notice  string // a workspace-wide message, as a watch error
@@ -116,13 +121,14 @@ type tab struct {
 func newWorkspace(ctx context.Context, fs fscontract.FS, project projectcontract.Project) *Workspace {
 	ws := &Workspace{
 		ctx: ctx, fs: fs, project: project,
-		panelOpen:  true,
-		leftWidth:  260,
-		rightWidth: 260,
-		reveals:    map[string]int{},
-		panes:      []*pane{{}},
-		splitPct:   50,
-		isDark:     mygo.Theme.IsDark,
+		panelOpen:      true,
+		leftWidth:      260,
+		rightWidth:     260,
+		reveals:        map[string]int{},
+		restoredPanels: map[string]bool{},
+		panes:          []*pane{{}},
+		splitPct:       50,
+		isDark:         mygo.Theme.IsDark,
 	}
 	ws.watches = watchq.New(ctx, fs, shellapi.Update, func(_, msg string) {
 		shellapi.Update(func() { ws.notice = msg })

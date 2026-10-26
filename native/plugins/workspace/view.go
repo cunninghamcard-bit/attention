@@ -166,6 +166,7 @@ func (ws *Workspace) dock(c *ui.Context, d slotsapi.Dock) {
 			centered(c, "No panels")
 			return
 		}
+		ws.restorePanel(shown)
 		ui.Column(c).Key("dock:" + shown.ID).Grow(1).FillWidth().MinHeight(0).Children(func() {
 			shown.View(c, slotsapi.PanelProps{Reveal: ws.reveals[shown.ID]})
 		})

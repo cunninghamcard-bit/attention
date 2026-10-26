@@ -8,6 +8,7 @@ package search
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path"
 	"sort"
@@ -97,7 +98,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		s := &Search{ctx: ctx, project: project, sortOrder: "alphabetical", collapsed: map[string]bool{}}
 		off := slotsapi.RegisterPanel(slotsapi.Panel{
 			ID: PanelID, Title: "Search", Icon: lucide.Search(), Dock: slotsapi.Left, Order: 1,
-			View: s.view,
+			View: s.view, State: s.state, Restore: s.restore,
 		})
 		offCmd := actionsapi.Register(actionsapi.Command{ID: "global-search:open", Title: "Search in all files", Keys: "Ctrl Shift F", Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
 			return shellapi.OnMain(ctx, func() (string, error) {
@@ -116,6 +117,37 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		return nil
 	},
 })
+
+// savedState is SearchView.getState's, less "More context".
+type savedState struct {
+	Query         string `json:"query"`
+	MatchingCase  bool   `json:"matchingCase"`
+	ExplainSearch bool   `json:"explainSearch"`
+	CollapseAll   bool   `json:"collapseAll"`
+	SortOrder     string `json:"sortOrder"`
+}
+
+func (s *Search) state() json.RawMessage {
+	data, _ := json.Marshal(savedState{Query: s.query, MatchingCase: s.matchingCase, ExplainSearch: s.explainSearch,
+		CollapseAll: s.collapseAll, SortOrder: s.sortOrder})
+	return data
+}
+
+// restore is SearchView.setState: it searches again.
+func (s *Search) restore(data json.RawMessage) {
+	var st savedState
+	if json.Unmarshal(data, &st) != nil {
+		return
+	}
+	s.query, s.typed = st.Query, st.Query
+	s.matchingCase, s.explainSearch, s.collapseAll = st.MatchingCase, st.ExplainSearch, st.CollapseAll
+	for _, o := range sortOrders {
+		if o.Value == st.SortOrder {
+			s.sortOrder = st.SortOrder
+		}
+	}
+	s.start()
+}
 
 // changed starts the debounce after the query changed.
 func (s *Search) changed() {

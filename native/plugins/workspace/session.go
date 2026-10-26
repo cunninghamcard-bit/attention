@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
+	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 )
 
 // session is what reopens the window as it was: panes, tabs, layout.
@@ -17,7 +18,9 @@ type session struct {
 	// RightOpen and RightWidth are the right dock's.
 	RightOpen  bool    `json:"rightOpen,omitempty"`
 	RightWidth float32 `json:"rightWidth,omitempty"`
-	SplitPct   float32 `json:"splitPct"`
+	// PanelStates are the panels' own states by panel ID.
+	PanelStates map[string]json.RawMessage `json:"panelStates,omitempty"`
+	SplitPct    float32                    `json:"splitPct"`
 	// Recent files and commands: the quick switcher's and the command
 	// palette's (attention keeps the latter in local storage).
 	RecentFiles    []string `json:"recentFiles,omitempty"`
@@ -65,7 +68,7 @@ func loadSession() (session, bool) {
 func (ws *Workspace) snapshot() session {
 	s := session{Active: ws.active, PanelOpen: ws.panelOpen, LeftWidth: ws.leftWidth, LeftPanel: ws.leftPanel,
 		RightOpen: ws.rightOpen, RightWidth: ws.rightWidth, SplitPct: ws.splitPct,
-		RecentFiles: ws.recentFiles, RecentCommands: ws.recentCommands}
+		RecentFiles: ws.recentFiles, RecentCommands: ws.recentCommands, PanelStates: ws.panelStates()}
 	if ws.restoring != nil {
 		// The saved tabs are not reopened yet (the mounts are loading): keep
 		// them rather than save an empty window over them.
@@ -107,6 +110,8 @@ func (ws *Workspace) restoreLayout(s session) {
 		ws.rightWidth = s.RightWidth
 	}
 	ws.leftPanel, ws.rightOpen = s.LeftPanel, s.RightOpen
+	// A panel drawn before the session arrived gets it on its next draw.
+	ws.savedPanels, ws.restoredPanels = s.PanelStates, map[string]bool{}
 	if s.SplitPct > 10 && s.SplitPct < 90 {
 		ws.splitPct = s.SplitPct
 	}
@@ -136,4 +141,38 @@ func (ws *Workspace) reopen(panes []sessionPane) {
 	}
 	ws.active = max(0, min(ws.restoreActive, len(ws.panes)-1))
 	ws.changed()
+}
+
+// panelStates are the registered panels' states, and the saved ones of
+// panels not restored yet (not drawn, or not loaded this run).
+func (ws *Workspace) panelStates() map[string]json.RawMessage {
+	out := map[string]json.RawMessage{}
+	for id, st := range ws.savedPanels {
+		out[id] = st
+	}
+	for _, d := range []slotsapi.Dock{slotsapi.Left, slotsapi.Right} {
+		for _, p := range slotsapi.Panels(d) {
+			if p.State != nil && ws.restoredPanels[p.ID] {
+				out[p.ID] = p.State()
+			}
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// restorePanel hands a panel its saved state once, before its first draw.
+func (ws *Workspace) restorePanel(p *slotsapi.Panel) {
+	if ws.restoredPanels[p.ID] {
+		return
+	}
+	ws.restoredPanels[p.ID] = true
+	if st, ok := ws.savedPanels[p.ID]; ok {
+		delete(ws.savedPanels, p.ID)
+		if p.Restore != nil {
+			p.Restore(st)
+		}
+	}
 }

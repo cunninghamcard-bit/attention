@@ -1,6 +1,7 @@
 package search
 
 import (
+	"context"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -80,17 +81,59 @@ func TestPanelOpensTheMatch(t *testing.T) {
 	ws := &fakeWorkspace{}
 	t.Cleanup(workspaceapi.Set(ws))
 	s := &Search{sortOrder: "alphabetical", results: results(), collapsed: map[string]bool{}, ran: "word", query: "word", typed: "word"}
+	s.ctx = t.Context()
+	searched := make(chan projectcontract.Query, 1)
+	s.project.Search = func(_ context.Context, q projectcontract.Query) (projectcontract.SearchResult, error) {
+		searched <- q
+		return projectcontract.SearchResult{}, nil
+	}
 	s.sort()
 	tt := ui.NewTester(func(c *ui.Context) { s.view(c, slotsapi.PanelProps{}) }, 400, 600)
 	tt.Frame()
 	if !tt.HasText("4 results in 3 files") {
 		t.Fatalf("texts: %v", tt.Texts())
 	}
+	if err := tt.Click("Match case"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !s.matchingCase {
+		t.Fatal("clicking Match case should turn it on")
+	}
+	if q := <-searched; !q.CaseSensitive || q.Text != "word" {
+		t.Fatalf("Match case searches again, case-sensitive: %+v", q)
+	}
+	// The result posts through shellapi.Update, which needs a window: the
+	// old results stay drawn meanwhile.
+	s.loading, s.results = false, results()
+	s.sort()
+	tt.Frame()
 	if err := tt.Click("m/b/Note 10.md"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
 	if len(ws.opens) != 1 || ws.opens[0].path != "/b/Note 10.md" || ws.opens[0].nav == nil || ws.opens[0].nav.Line != 3 || ws.opens[0].nav.Col != 5 {
 		t.Fatalf("a file row opens its first match: %+v", ws.opens)
+	}
+}
+
+func TestStateRestoresAndSearches(t *testing.T) {
+	a := &Search{query: "tag:x", matchingCase: true, collapseAll: true, sortOrder: "byModifiedTime"}
+	searched := make(chan projectcontract.Query, 1)
+	b := &Search{ctx: t.Context(), sortOrder: "alphabetical", collapsed: map[string]bool{}}
+	b.project.Search = func(_ context.Context, q projectcontract.Query) (projectcontract.SearchResult, error) {
+		searched <- q
+		return projectcontract.SearchResult{}, nil
+	}
+	b.restore(a.state())
+	if b.query != "tag:x" || !b.matchingCase || !b.collapseAll || b.sortOrder != "byModifiedTime" {
+		t.Fatalf("restored %+v", b)
+	}
+	if q := <-searched; q.Text != "tag:x" || !q.CaseSensitive {
+		t.Fatalf("restore searches again: %+v", q)
+	}
+	b.restore([]byte(`{"sortOrder":"byCreatedTime"}`))
+	if b.sortOrder != "byModifiedTime" {
+		t.Fatalf("an unknown sort order is ignored: %q", b.sortOrder)
 	}
 }

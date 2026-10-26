@@ -10,6 +10,7 @@
 package slotsapi
 
 import (
+	"encoding/json"
 	"sort"
 	"sync"
 
@@ -41,6 +42,11 @@ type Panel struct {
 	Dock  Dock
 	Order int // lower first
 	View  func(c *ui.Context, p PanelProps)
+	// State and Restore, both optional, carry the panel's state across
+	// runs in the session (an ItemView's getState and setState). Restore
+	// runs on the main thread before the panel is first drawn.
+	State   func() json.RawMessage
+	Restore func(json.RawMessage)
 }
 
 // RibbonItem is a ribbon contribution: an icon running an action.
