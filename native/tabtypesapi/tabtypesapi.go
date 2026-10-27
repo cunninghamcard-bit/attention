@@ -13,6 +13,7 @@
 package tabtypesapi
 
 import (
+	"cmp"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -174,9 +175,7 @@ type kindSlot struct {
 // ID, or one its kind cannot take (see kindSlot), is a wiring mistake and
 // panics.
 func Register(t TabType) (off func()) {
-	if t.Priority == 0 {
-		t.Priority = Extension
-	}
+	t.Priority = cmp.Or(t.Priority, Extension)
 	mu.Lock()
 	if ids[t.ID] {
 		mu.Unlock()

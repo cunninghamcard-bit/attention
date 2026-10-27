@@ -52,10 +52,12 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	},
 })
 
+type filesFn func(context.Context) (projectcontract.Listing, error)
+
 // Switcher is the source's state, on the main thread only.
 type Switcher struct {
 	ctx   context.Context
-	files func(context.Context) (projectcontract.Listing, error)
+	files filesFn
 	post  func(func())
 
 	listing *projectcontract.Listing // the last walk
@@ -67,7 +69,7 @@ type Switcher struct {
 
 // New is a switcher listing files with files and posting to the main
 // thread with post.
-func New(ctx context.Context, files func(context.Context) (projectcontract.Listing, error), post func(func())) *Switcher {
+func New(ctx context.Context, files filesFn, post func(func())) *Switcher {
 	return &Switcher{ctx: ctx, files: files, post: post}
 }
 

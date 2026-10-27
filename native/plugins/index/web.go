@@ -1,6 +1,7 @@
 package index
 
 import (
+	"cmp"
 	"context"
 	"sort"
 
@@ -103,9 +104,7 @@ func (s Service) URLBacklinks(ctx context.Context, url string) ([]indexcontract.
 	for _, p := range x.pages {
 		if ms := p.cites[key]; len(ms) > 0 {
 			display := p.title
-			if display == "" {
-				display = p.url
-			}
+			display = cmp.Or(display, p.url)
 			out = append(out, indexcontract.Backlink{URL: p.url, Display: display, Mentions: append([]indexcontract.Mention(nil), ms...)})
 		}
 	}

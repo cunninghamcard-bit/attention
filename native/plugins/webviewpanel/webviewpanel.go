@@ -6,6 +6,7 @@
 package webviewpanel
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"os"
@@ -110,9 +111,7 @@ func (s *Service) Register(_ context.Context, p Panel) error {
 	if p.ID == "" || p.URL == "" && p.HTML == "" {
 		return fmt.Errorf("a web view panel needs an id, and a url or html")
 	}
-	if p.Title == "" {
-		p.Title = p.ID
-	}
+	p.Title = cmp.Or(p.Title, p.ID)
 	icon := lucide.AppWindow()
 	if p.Icon != "" {
 		if svg, err := ui.ParseSVG([]byte(p.Icon)); err == nil {

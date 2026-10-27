@@ -7,6 +7,7 @@ package htmlextract
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -66,9 +67,7 @@ func Extract(html []byte, pageURL string) (Result, error) {
 	if title == "" {
 		title = strings.TrimSpace(art.SiteName())
 	}
-	if title == "" {
-		title = "Untitled"
-	}
+	title = cmp.Or(title, "Untitled")
 	return Result{Title: title, SiteName: site, URL: pageURL, Markdown: strings.TrimSpace(string(md))}, nil
 }
 

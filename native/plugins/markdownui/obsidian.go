@@ -1,6 +1,7 @@
 package markdownui
 
 import (
+	"cmp"
 	"context"
 	"net/url"
 	"path/filepath"
@@ -86,9 +87,7 @@ func rewriteInline(line string) string {
 			target, alias, _ := strings.Cut(inner, "|")
 			file, _, _ := strings.Cut(target, "#")
 			text := alias
-			if text == "" {
-				text = target
-			}
+			text = cmp.Or(text, target)
 			if embed && imageExt[strings.ToLower(filepath.Ext(file))] {
 				// ![[pic.png|300]]: the number is a width the view cannot take.
 				return "![" + file + "](" + embedScheme + url.PathEscape(file) + ")"

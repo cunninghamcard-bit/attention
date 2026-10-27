@@ -4,6 +4,7 @@
 package index
 
 import (
+	"cmp"
 	"context"
 	"net/url"
 	"strings"
@@ -76,8 +77,6 @@ func NormalizeURL(s string) (string, bool) {
 		return "", false
 	}
 	u.Fragment, u.RawFragment = "", ""
-	if u.Path == "" {
-		u.Path = "/"
-	}
+	u.Path = cmp.Or(u.Path, "/")
 	return u.String(), true
 }

@@ -6,6 +6,7 @@
 package webhistory
 
 import (
+	"cmp"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -107,9 +108,7 @@ func (h *History) Record(url, title string) {
 	if url == "" || url == "about:blank" {
 		return
 	}
-	if title == "" {
-		title = url
-	}
+	title = cmp.Or(title, url)
 	if len(h.entries) > 0 && h.entries[0].URL == url {
 		if h.entries[0].Title != title {
 			h.entries[0].Title = title

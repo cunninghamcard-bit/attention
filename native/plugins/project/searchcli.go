@@ -1,6 +1,7 @@
 package project
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -253,9 +254,7 @@ func plainWords(query string) []string {
 			continue
 		}
 		word := quoted
-		if word == "" {
-			word = plain
-		}
+		word = cmp.Or(word, plain)
 		if word != "" {
 			words = append(words, word)
 		}
