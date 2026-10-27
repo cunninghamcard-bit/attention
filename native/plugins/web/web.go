@@ -33,6 +33,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/internal/htmlextract"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
 	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
+	"github.com/cunninghamcard-bit/attention/native/webhistoryapi"
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
@@ -133,14 +134,13 @@ func Register() (off func()) {
 			if !live() || !tabtypesapi.WebAddress(address) {
 				return
 			}
-			pg.err, pg.reader = "", nil // reader mode is per page (exitReaderMode)
+			pg.err = ""
 			// The same page, the server's slash added, is no step to keep.
-			if strings.TrimSuffix(address, "/") == strings.TrimSuffix(pg.shown, "/") {
-				return
-			}
-			if address != pg.shown {
+			if strings.TrimSuffix(address, "/") != strings.TrimSuffix(pg.shown, "/") {
+				pg.reader = nil // reader mode is per page (exitReaderMode)
 				retarget(address, titleFromURL(address))
 			}
+			record(address, "")
 		}
 		pv := v.Page()
 		pg.offs = append(pg.offs,
@@ -157,6 +157,7 @@ func Register() (off func()) {
 					commit(address)
 					if live() && title != "" {
 						setTitle(title)
+						record(address, title)
 					}
 				})
 			}),
@@ -271,6 +272,14 @@ func Register() (off func()) {
 			}
 		},
 	})
+}
+
+// record notes a visit in the web history, when one is loaded
+// (WebViewerService.recordHistory).
+func record(address, title string) {
+	if h := webhistoryapi.Get(); h != nil && tabtypesapi.WebAddress(address) {
+		h.Record(address, title)
+	}
 }
 
 // navigate is WebViewerView.navigate: the page loads what the bar names,

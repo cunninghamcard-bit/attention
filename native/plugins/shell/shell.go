@@ -5,6 +5,7 @@ package shell
 
 import (
 	"context"
+	"os"
 	"sync/atomic"
 
 	"github.com/arcships/rutis/go/rutis"
@@ -28,12 +29,22 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name: "shell",
 	Apply: func(ctx *rutis.Ctx, _ struct{}) error {
 		var unloading atomic.Bool
+		// ATTENTION_HIDDEN runs the window in the background, for a test or
+		// an agent beside the user's own: it never takes the focus.
+		background := os.Getenv("ATTENTION_HIDDEN") != ""
 		w := mygo.NewWindow(mygo.WindowOptions{
 			Title:   "attention",
 			Width:   1280,
 			Height:  820,
 			Content: ui.View(shellapi.View),
+			Hidden:  background,
 		})
+		if background {
+			// Shown, so it draws and its web views load, but neither
+			// focused nor in the way.
+			w.ShowInactive()
+			w.Minimize()
+		}
 		// The user closing the window asks the app to quit and leaves the
 		// window up: plugins unloading next still post to the main thread
 		// through it. This plugin's own cleanup closes it.
