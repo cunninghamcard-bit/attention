@@ -7,24 +7,30 @@
 // reload button before it; Back and Forward are the tab's own history,
 // which the page's navigations join (handleCommittedNavigation).
 //
-// Left out for now: reader mode, the address suggestions, the context menu,
-// sessions.
+// Reader view shows the page's article as markdown
+// (WebViewerReader.extractFromPage), from the page as it is in the web
+// view, through internal/htmlextract.
+//
+// Left out for now: the address suggestions, the context menu, sessions.
 package web
 
 import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui/markdown"
 	"github.com/smallnest/uix/components/lucide"
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
+	"github.com/cunninghamcard-bit/attention/native/internal/htmlextract"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
 	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
@@ -44,6 +50,28 @@ type page struct {
 	shown   string // the address the bar last showed
 	offs    []func()
 	loading bool
+	// reader is the article Reader view shows, nil for the page;
+	// extracting is set while it is made.
+	reader     *htmlextract.Result
+	md         markdown.Options
+	extracting bool
+	focusBar   bool // Focus address bar asked for the caret
+}
+
+// pages are the tabs' pages by tab id, on the main thread only.
+var pages = map[int]*page{}
+
+// activePage is the active tab's page, nil when it shows no web page.
+func activePage() *page {
+	ws := workspaceapi.Get()
+	if ws == nil {
+		return nil
+	}
+	info, ok := ws.ActiveTab()
+	if !ok || info.Kind != Kind {
+		return nil
+	}
+	return pages[info.ID]
 }
 
 var (
@@ -77,7 +105,6 @@ func titleFromURL(address string) string {
 
 // Register adds the web tab type until off is called.
 func Register() (off func()) {
-	pages := map[int]*page{}
 	get := func(p tabtypesapi.Props) *page {
 		pg, ok := pages[p.Info.ID]
 		if ok {
@@ -106,7 +133,7 @@ func Register() (off func()) {
 			if !live() || !tabtypesapi.WebAddress(address) {
 				return
 			}
-			pg.err = ""
+			pg.err, pg.reader = "", nil // reader mode is per page (exitReaderMode)
 			// The same page, the server's slash added, is no step to keep.
 			if strings.TrimSuffix(address, "/") == strings.TrimSuffix(pg.shown, "/") {
 				return
@@ -166,7 +193,15 @@ func Register() (off func()) {
 				if pg.err != "" {
 					errorBanner(c, pg.err)
 				}
-				if pg.view != nil {
+				switch {
+				case pg.reader != nil:
+					pg.md.OnLink = func(u string) { navigate(pg, p, u) }
+					ui.Scroll(c).Key(fmt.Sprintf("reader-%d", p.Info.ID)).Grow(1).Fill().Children(func() {
+						ui.Column(c).PaddingX(48).PaddingY(32).MaxWidth(860).FillWidth().Children(func() {
+							markdown.View(c, "# "+pg.reader.Title+"\n\n"+pg.reader.Markdown, &pg.md)
+						})
+					})
+				case pg.view != nil:
 					ui.WebView(c, pg.view).Grow(1).FillWidth()
 				}
 			})
@@ -188,8 +223,7 @@ func Register() (off func()) {
 							pg.view.Page().Stop()
 							pg.loading = false
 						} else {
-							pg.err, pg.loading = "", true
-							pg.view.Page().Reload()
+							reload(pg)
 						}
 					}})
 				field := omgui.Field(c, &pg.typed, "Search or enter address", false).Label("Address").Grow(1).MinWidth(0)
@@ -205,10 +239,23 @@ func Register() (off func()) {
 					pg.typed = ""
 					field.Focus() // a new page puts the caret in the bar (displayBlank)
 				}
+				if pg.focusBar {
+					pg.focusBar = false
+					field.Focus()
+				}
 				if field.Submitted() {
 					navigate(pg, p, pg.typed)
 				}
 			})
+		},
+		Actions: func(c *ui.Context, p tabtypesapi.Props) {
+			pg := get(p)
+			label := "Reader view"
+			if pg.reader != nil {
+				label = "Web view"
+			}
+			omgui.Button(c, omgui.ButtonProps{Label: label, Icon: lucide.Glasses(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+				Disabled: pg.view == nil || pg.extracting, OnClick: func() { toggleReader(pg) }}).Tooltip(label)
 		},
 		Closed: func(id int) {
 			pg := pages[id]
@@ -234,11 +281,45 @@ func navigate(pg *page, p tabtypesapi.Props, input string) {
 	if pg.view == nil || address == p.Info.Address {
 		return
 	}
-	pg.err, pg.loading, pg.shown = "", true, address
+	pg.err, pg.loading, pg.shown, pg.reader = "", true, address, nil
 	p.Retarget(address, titleFromURL(address))
 	if err := pg.view.Page().LoadURL(address); err != nil {
 		pg.err, pg.loading = err.Error(), false
 	}
+}
+
+// toggleReader leaves Reader view, or enters it: the article of the page
+// as the web view has it, so a page its scripts made or a login shows
+// reads too.
+func toggleReader(pg *page) {
+	if pg.reader != nil {
+		pg.reader = nil
+		return
+	}
+	if pg.view == nil || pg.extracting {
+		return
+	}
+	pg.extracting = true
+	pv, from := pg.view.Page(), pg.shown
+	go func() {
+		var r htmlextract.Result
+		v, err := pv.Eval("document.documentElement.outerHTML")
+		html, _ := v.(string)
+		if err == nil {
+			r, err = htmlextract.Extract([]byte(html), pv.URL())
+		}
+		shellapi.Update(func() {
+			pg.extracting = false
+			debugf("web: reader %s: %q, %d bytes, err %v", from, r.Title, len(r.Markdown), err)
+			if err != nil {
+				pg.err = err.Error()
+				return
+			}
+			if pg.shown == from { // not since gone elsewhere
+				pg.reader = &r
+			}
+		})
+	}()
 }
 
 func errorBanner(c *ui.Context, text string) {
@@ -272,18 +353,73 @@ func cliWeb(ctx context.Context, a actionsapi.Args) (string, error) {
 	})
 }
 
-// Plugin registers the web tab type and the web command while loaded.
+// onPage is a command on the active tab's web page, which does nothing on
+// another tab (the TS controller's activeView).
+func onPage(id, title, keys string, fn func(pg *page)) actionsapi.Command {
+	main := func() {
+		if pg := activePage(); pg != nil {
+			fn(pg)
+		}
+	}
+	return actionsapi.Command{ID: id, Title: title, Keys: keys, CLI: true, Main: main,
+		Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
+			return shellapi.OnMain(ctx, func() (string, error) { main(); return "", nil })
+		}}
+}
+
+// reload is the reload button's Reload.
+func reload(pg *page) {
+	if pg.view != nil {
+		pg.err, pg.loading = "", true
+		pg.view.Page().Reload()
+	}
+}
+
+// openBlank is Open Web viewer: a new tab on the blank page, its caret in
+// the address bar.
+func openBlank() {
+	if ws := workspaceapi.Get(); ws != nil {
+		_ = ws.OpenResource("about:blank", workspaceapi.OpenOptions{Kind: Kind, NewTab: true})
+	}
+}
+
+// commands are the web viewer's (WebViewerPlugin's registerGlobalCommand).
+func commands() []actionsapi.Command {
+	return []actionsapi.Command{
+		{ID: "web", CLI: true, Flags: []string{"newtab"}, Run: cliWeb},
+		{ID: "webviewer:open", Title: "Open Web viewer", Main: openBlank, CLI: true,
+			Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
+				return shellapi.OnMain(ctx, func() (string, error) { openBlank(); return "", nil })
+			}},
+		onPage("webviewer:refresh", "Refresh page", "Ctrl R", reload),
+		onPage("webviewer:toggle-reader-mode", "Toggle reader mode", "", toggleReader),
+		onPage("webviewer:focus-address-bar", "Focus address bar", "", func(pg *page) { pg.focusBar = true }),
+	}
+}
+
+// Plugin registers the web tab type and its commands while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
 	Inject: []string{"shell", "workspace"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
 		off := Register()
-		offCmd := actionsapi.Register(actionsapi.Command{ID: "web", CLI: true, Flags: []string{"newtab"}, Run: cliWeb})
+		var offs []func()
+		for _, cmd := range commands() {
+			offs = append(offs, actionsapi.Register(cmd))
+		}
 		rctx.Effect(func(context.Context) error {
-			offCmd()
+			for _, o := range offs {
+				o()
+			}
 			shellapi.Update(off)
 			return nil
 		})
 		return nil
 	},
 })
+
+func debugf(format string, a ...any) {
+	if os.Getenv("ATTENTION_DEBUG") != "" {
+		fmt.Fprintf(os.Stderr, "[debug] "+format+"\n", a...)
+	}
+}
