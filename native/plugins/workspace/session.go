@@ -285,19 +285,25 @@ func (ws *Workspace) reopen(main *sessionNode) {
 	ws.changed()
 }
 
-// panelStates are the registered panels' states, and the saved ones of
-// panels not restored yet (not drawn, or not loaded this run).
+// panelStates are the registered panels' and overlays' states, and the
+// saved ones of those not restored yet (not drawn, or not loaded this run).
 func (ws *Workspace) panelStates() map[string]json.RawMessage {
 	out := map[string]json.RawMessage{}
 	for id, st := range ws.savedPanels {
 		out[id] = st
 	}
+	keep := func(id string, state func() json.RawMessage) {
+		if state != nil && ws.restoredPanels[id] {
+			out[id] = state()
+		}
+	}
 	for _, d := range []slotsapi.Dock{slotsapi.Left, slotsapi.Right} {
 		for _, p := range slotsapi.Panels(d) {
-			if p.State != nil && ws.restoredPanels[p.ID] {
-				out[p.ID] = p.State()
-			}
+			keep(p.ID, p.State)
 		}
+	}
+	for _, o := range slotsapi.Overlays() {
+		keep(o.ID, o.State)
 	}
 	if len(out) == 0 {
 		return nil
@@ -305,16 +311,17 @@ func (ws *Workspace) panelStates() map[string]json.RawMessage {
 	return out
 }
 
-// restorePanel hands a panel its saved state once, before its first draw.
-func (ws *Workspace) restorePanel(p *slotsapi.Panel) {
-	if ws.restoredPanels[p.ID] {
+// restoreState hands a panel or overlay its saved state once, before its
+// first draw.
+func (ws *Workspace) restoreState(id string, restore func(json.RawMessage)) {
+	if ws.restoredPanels[id] {
 		return
 	}
-	ws.restoredPanels[p.ID] = true
-	if st, ok := ws.savedPanels[p.ID]; ok {
-		delete(ws.savedPanels, p.ID)
-		if p.Restore != nil {
-			p.Restore(st)
+	ws.restoredPanels[id] = true
+	if st, ok := ws.savedPanels[id]; ok {
+		delete(ws.savedPanels, id)
+		if restore != nil {
+			restore(st)
 		}
 	}
 }

@@ -1,6 +1,7 @@
 // Package slotsapi is the in-process slot registry (RFC 0001 §5.5). The
 // first slots are dock.panel — the sidebars' panels, attention's left and
-// right side leaves — and the ribbon, attention's vertical action strip.
+// right side leaves — the ribbon, attention's vertical action strip, and
+// overlay, drawn over the window (modals, key handling).
 // UI plugins register in Apply and hand the returned off to ctx.Effect;
 // the registry is keyed by registration, not by plugin row (rutis's Ctx
 // has no row id).
@@ -59,11 +60,25 @@ type RibbonItem struct {
 	Run   func()
 }
 
+// Overlay is an overlay contribution (RFC §5.5's overlay slot): drawn
+// every frame over the window's content, after it, in Order. A modal draws
+// nothing while closed; one handling keys reads them here.
+type Overlay struct {
+	ID    string
+	Order int
+	View  func(c *ui.Context)
+	// State and Restore are a Panel's: carried across runs in the session,
+	// Restore before the first draw.
+	State   func() json.RawMessage
+	Restore func(json.RawMessage)
+}
+
 var (
-	mu     sync.Mutex
-	seq    int
-	panels = map[int]Panel{}
-	ribbon = map[int]RibbonItem{}
+	mu       sync.Mutex
+	seq      int
+	panels   = map[int]Panel{}
+	ribbon   = map[int]RibbonItem{}
+	overlays = map[int]Overlay{}
 )
 
 // RegisterPanel adds a panel until off is called. A second live panel with
@@ -138,6 +153,46 @@ func Ribbon() []RibbonItem {
 	out := make([]RibbonItem, 0, len(ribbon))
 	for _, r := range ribbon {
 		out = append(out, r)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Order != out[j].Order {
+			return out[i].Order < out[j].Order
+		}
+		return out[i].ID < out[j].ID
+	})
+	return out
+}
+
+// RegisterOverlay adds an overlay until off is called; a second live
+// overlay with the same ID panics.
+func RegisterOverlay(o Overlay) (off func()) {
+	mu.Lock()
+	for _, q := range overlays {
+		if q.ID == o.ID {
+			mu.Unlock()
+			panic("slots: overlay " + strconv.Quote(o.ID) + " is already registered")
+		}
+	}
+	seq++
+	id := seq
+	overlays[id] = o
+	mu.Unlock()
+	invalidate()
+	return func() {
+		mu.Lock()
+		delete(overlays, id)
+		mu.Unlock()
+		invalidate()
+	}
+}
+
+// Overlays lists the overlays by Order, then ID.
+func Overlays() []Overlay {
+	mu.Lock()
+	defer mu.Unlock()
+	out := make([]Overlay, 0, len(overlays))
+	for _, o := range overlays {
+		out = append(out, o)
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Order != out[j].Order {
