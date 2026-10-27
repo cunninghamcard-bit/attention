@@ -15,5 +15,19 @@ not listed is a defect.
 | `open` | the file in the active leaf (`getLeaf(false)`), a leaf already showing it revealed | the same: a tab anywhere showing it is revealed, else the active tab navigates to it | Workspace.openFile, ported |
 | `open file=` | Obsidian link resolution (`getFirstLinkpathDest`) | a path with or without `.md`, then the first file whose path ends with it, without case | no metadata cache; matches the common cases |
 | `help` / empty command | the TS help screen | a list of the reader's commands | the command set differs |
-| most commands (`read`, `create`, `tags`, `backlinks`, …) | present | not yet | the reader is P0b/P1; see docs/roadmap.md |
+| `vault` | the vault's name and path | `name`: the mounts' names joined by `, `; `path`: one line per mount | several roots, no vault |
+| `folders`, `folder path=/` | the vault root `/` among the folders | each mount root, as its name; `/` is not a folder | no vault root |
+| `create`, `move` without a mount prefix | at the vault root | under the first mount | the first mount plays the root |
+| `create template=` | the Templates plugin's | `Templates plugin is not enabled.` | no templates plugin yet |
+| `move`, `rename` | rewrite the links to the file (`fileManager.renameFile`) | the file only | not yet: the index can now say which notes link to it |
+| `file` | `created` is the birth time | the inode's change time | Go has no portable birth time |
+| `delete` | Electron's `shell.trashItem` | the freedesktop trash (`$XDG_DATA_HOME/Trash`) on Linux; `permanent` deletes | no Electron |
+| `create`, `random`, `search:open`, `tab:open`, `recents`, `workspace` | the window | need the window (`desktop`): headless says the window is closed or has no such command | headless has no workspace |
+| `search`, `search:context` | over `getMarkdownFiles()`, skipping ignored files | over the project's walk (its limits), no ignore list; a matched line is cut at 400 bytes | the project's search engine |
+| `commands`, `command` | palette commands that pass `checkCallback`; a failing command reports not found | every titled command; `command` runs any command with a Run and returns its error | one registry, no check callbacks |
+| `tab:open`, `workspace` | every tab group (sidebars, floating) and every item's id | the center's tab groups and tabs only | the docks are the layout's |
+| `links`, `backlinks`, `tags`, `outline`, … | the metadata cache, its links in code blocks counted | the index plugin; links, tags and definitions in fenced code are not counted | as Obsidian itself |
+| `unresolved` | sources in insertion order | sources sorted | no insertion order to keep |
+| `properties` (vault) | each property's type from the type manager | `type` is always `text` in json | no property types yet |
+| `property:set`, `property:remove`, `reload`, `workspaces`, `workspace:save`/`load`/`delete`, `web` | present | not yet | frontmatter writes, named layouts and the web viewer come later (roadmap P2, P3) |
 | `mount path=`, `focus`, `quit` | — | new | the reader's own; `quit` stops the app as closing its window does |
