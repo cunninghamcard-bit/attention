@@ -67,6 +67,12 @@ type Info struct {
 // Props are what the workspace gives a body.
 type Props struct {
 	Info Info
+	// Retarget, for a page that navigates itself (a web page), makes the
+	// tab show address under title in place, the address it showed kept
+	// in its history (an ItemView's navigation, WorkspaceLeaf's pushState).
+	Retarget func(address, title string)
+	// SetTitle renames the tab (a page's title came).
+	SetTitle func(title string)
 }
 
 // TabType is a tab type's definition and body.
@@ -89,6 +95,9 @@ type TabType struct {
 	// Actions, optional, draws the tab's buttons in its view header, left
 	// of More options (attention's ItemView.addAction).
 	Actions func(c *ui.Context, p Props)
+	// Header, optional, draws in the view header in place of the file's
+	// folders and name (the web viewer's reload button and address bar).
+	Header func(c *ui.Context, p Props)
 	// Menu, optional, is the tab's own items in More options
 	// (View.onPaneMenu).
 	Menu func(tabID int) []MenuItem
@@ -283,6 +292,20 @@ func PageAddress(kind string) string { return "attention://" + kind }
 func PageKind(address string) (string, bool) {
 	kind, ok := strings.CutPrefix(address, "attention://")
 	return kind, ok && kind != "" && !strings.Contains(kind, "/")
+}
+
+// WebAddress reports whether address is a web page's, which a tab shows
+// with no file: http(s) or about.
+func WebAddress(address string) bool {
+	scheme, _, ok := strings.Cut(address, ":")
+	if !ok {
+		return false
+	}
+	switch strings.ToLower(scheme) {
+	case "http", "https", "about":
+		return true
+	}
+	return false
 }
 
 // Match reports whether pattern matches address (see TabType.Patterns).

@@ -322,32 +322,42 @@ func (ws *Workspace) viewHeader(c *ui.Context, p *pane, tb *tab, props tabtypesa
 		}
 		navButton("Back", lucide.ArrowLeft(), -1, len(tb.back))
 		navButton("Forward", lucide.ArrowRight(), 1, len(tb.forward))
-		// The folders, then the name (FileView.renderBreadcrumbs), centered.
-		ui.Row(c).Grow(1).MinWidth(0).Justify(ui.Center).AlignItems(ui.Center).Gap(4).Children(func() {
-			var parts []string
-			if !tb.page() {
-				parts = strings.Split(ws.display(tb.path), "/")
-				parts = parts[:len(parts)-1]
-			}
-			for _, part := range parts {
-				if part == "" {
-					continue
-				}
-				ui.Text(c, part).FontSize(13).TextColor(t.TextMuted)
-				ui.Text(c, "/").FontSize(13).TextColor(t.TextMuted)
-			}
-			// The focused group's name is in the text colour, the others'
-			// muted, as attention's inactive view headers.
-			name := t.Text
-			if !focused {
-				name = t.TextMuted
-			}
-			ui.Text(c, tb.title).FontSize(13).TextColor(name).MaxLines(1)
-		})
+		if tt.Header != nil {
+			tt.Header(c, props)
+		} else {
+			ws.breadcrumbs(c, tb, focused)
+		}
 		if tt.Actions != nil {
 			tt.Actions(c, props)
 		}
 		omgui.IconMenu(c, omgui.IconMenuProps{Label: "More options", Icon: lucide.EllipsisVertical(), End: true, Items: ws.paneMenu(p, tb, tt)})
+	})
+}
+
+// breadcrumbs are the file's folders, then its name
+// (FileView.renderBreadcrumbs), centered.
+func (ws *Workspace) breadcrumbs(c *ui.Context, tb *tab, focused bool) {
+	t := c.Theme()
+	ui.Row(c).Grow(1).MinWidth(0).Justify(ui.Center).AlignItems(ui.Center).Gap(4).Children(func() {
+		var parts []string
+		if !tb.page() {
+			parts = strings.Split(ws.display(tb.path), "/")
+			parts = parts[:len(parts)-1]
+		}
+		for _, part := range parts {
+			if part == "" {
+				continue
+			}
+			ui.Text(c, part).FontSize(13).TextColor(t.TextMuted)
+			ui.Text(c, "/").FontSize(13).TextColor(t.TextMuted)
+		}
+		// The focused group's name is in the text colour, the others'
+		// muted, as attention's inactive view headers.
+		name := t.Text
+		if !focused {
+			name = t.TextMuted
+		}
+		ui.Text(c, tb.title).FontSize(13).TextColor(name).MaxLines(1)
 	})
 }
 

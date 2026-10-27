@@ -152,9 +152,34 @@ func (ws *Workspace) reclaim() {
 // the tab holds for its life.
 func (ws *Workspace) props(t *tab, focused bool) tabtypesapi.Props {
 	snap := resourcesapi.Get(t.address)
+	id := t.id
 	return tabtypesapi.Props{Info: tabtypesapi.Info{ID: t.id, Kind: t.kind, Address: t.address, Path: t.path,
 		Nav: t.nav, NavRevision: t.navRev, Version: snap.Version, Pending: snap.Status == resourcesapi.Loading,
-		Missing: missing(snap), Focused: focused}}
+		Missing: missing(snap), Focused: focused},
+		Retarget: func(address, title string) {
+			if t.id == id && t.page() && address != t.address {
+				ws.retarget(t, address, title)
+			}
+		},
+		SetTitle: func(title string) {
+			if t.id == id && t.page() && title != "" && title != t.title {
+				t.title = title
+				ws.changed()
+			}
+		},
+	}
+}
+
+// retarget makes t, a page, show address in place: the body keeps its
+// state and the tab its id; where it was goes to its back history, unless
+// it was the blank page (WebViewerView.handleCommittedNavigation,
+// pushCurrentToHistory).
+func (ws *Workspace) retarget(t *tab, address, title string) {
+	if t.address != "about:blank" {
+		t.record()
+	}
+	t.address, t.title, t.nav = address, title, nil
+	ws.changed()
 }
 
 // missing reports whether a snapshot says the file is gone.
@@ -261,8 +286,12 @@ func (ws *Workspace) openIn(path string, nav *workspaceapi.Nav, newTab bool) *ta
 	return t
 }
 
-// openResource opens a file address (workspaceapi.API.OpenResource).
+// openResource opens a file address, or a web page's
+// (workspaceapi.API.OpenResource).
 func (ws *Workspace) openResource(address string, o workspaceapi.OpenOptions) (*tab, error) {
+	if tabtypesapi.WebAddress(address) {
+		return ws.openAddress(address, "", o)
+	}
 	path, err := ws.pathOf(address)
 	if err != nil {
 		return nil, err
@@ -338,11 +367,12 @@ func (ws *Workspace) openAddress(address, path string, opts workspaceapi.OpenOpt
 // view state.
 type histState struct {
 	address, path, kind string
+	title               string // a page's, as it was
 	nav                 *workspaceapi.Nav
 }
 
 func (t *tab) state() histState {
-	return histState{address: t.address, path: t.path, kind: t.wantKind, nav: t.nav}
+	return histState{address: t.address, path: t.path, kind: t.wantKind, title: t.title, nav: t.nav}
 }
 
 // record keeps where t is in its back history before it navigates away,
@@ -375,9 +405,19 @@ func (ws *Workspace) show(t *tab, st histState) {
 		t.navRev = 1
 	}
 	if t.page() {
-		t.title = st.kind // until its type's Title names it
+		// Until its type's Title names it.
+		t.title = st.kind
+		if st.title != "" {
+			t.title = st.title
+		} else if t.title == "" {
+			t.title = st.address
+		}
 	}
+	title := t.title
 	ws.claim(t)
+	if st.title != "" {
+		t.title = title // the title it had there, not its type's guess
+	}
 	if !t.page() {
 		t.hold = resourcesapi.Hold(st.address)
 		ws.noteRecentFile(st.path)
@@ -385,11 +425,10 @@ func (ws *Workspace) show(t *tab, st histState) {
 	ws.changed()
 }
 
-// page reports whether t shows a page (tabtypesapi.PageAddress), not a
-// file.
+// page reports whether t shows a page (tabtypesapi.PageAddress) or a web
+// page, not a file.
 func (t *tab) page() bool {
-	_, ok := tabtypesapi.PageKind(t.address)
-	return !t.empty && ok
+	return !t.empty && t.path == ""
 }
 
 // entry is what the session and Undo close tab keep of t: its file, or a
@@ -405,6 +444,10 @@ func (t *tab) entry() string {
 func (ws *Workspace) openEntry(entry string) {
 	if kind, ok := tabtypesapi.PageKind(entry); ok {
 		_, _ = ws.openTab(kind, workspaceapi.OpenOptions{NewTab: true})
+		return
+	}
+	if tabtypesapi.WebAddress(entry) {
+		_, _ = ws.openAddress(entry, "", workspaceapi.OpenOptions{NewTab: true})
 		return
 	}
 	ws.openIn(entry, nil, true)

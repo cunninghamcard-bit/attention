@@ -120,7 +120,7 @@ func loadSession() (session, bool) {
 
 // keepTab reports whether a saved tab's path reopens.
 func keepTab(path string) bool {
-	if _, ok := tabtypesapi.PageKind(path); ok {
+	if _, ok := tabtypesapi.PageKind(path); ok || tabtypesapi.WebAddress(path) {
 		return true // a page, whose type may load later
 	}
 	st, err := os.Stat(path)
