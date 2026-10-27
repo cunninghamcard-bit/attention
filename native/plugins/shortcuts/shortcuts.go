@@ -143,7 +143,7 @@ func (s *Shortcuts) View(c *ui.Context) {
 // name or key. Read-only until overrides exist.
 func (s *Shortcuts) Hotkeys(c *ui.Context) {
 	t := c.Theme()
-	omgui.Field(c, &s.filter, "Filter…", false).FillWidth()
+	omgui.Field(c, &s.filter, "Search commands...", false).FillWidth()
 	q := strings.ToLower(strings.TrimSpace(s.filter))
 	omgui.SettingsSection(c, "", func() {
 		for _, cmd := range actionsapi.List() {
@@ -153,9 +153,9 @@ func (s *Shortcuts) Hotkeys(c *ui.Context) {
 			if q != "" && !strings.Contains(strings.ToLower(cmd.Title), q) && !strings.Contains(strings.ToLower(display(cmd.Keys)), q) {
 				continue
 			}
-			omgui.PreferenceRow(c, cmd.Title, "", func() {
+			omgui.PreferenceRow(c, cmd.Title, cmd.ID, func() {
 				if cmd.Keys == "" {
-					ui.Text(c, "Blank").FontSize(12).TextColor(t.TextMuted)
+					ui.Text(c, "No hotkey").FontSize(12).TextColor(t.TextMuted)
 					return
 				}
 				ui.Column(c).Gap(4).AlignItems(ui.End).Children(func() {
@@ -172,7 +172,8 @@ func (s *Shortcuts) Hotkeys(c *ui.Context) {
 func Register(ctx context.Context) (off func()) {
 	s := New(ctx)
 	offOverlay := slotsapi.RegisterOverlay(slotsapi.Overlay{ID: ID, Order: -1000, View: s.View})
-	offSection := slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "hotkeys", Title: "Hotkeys", Icon: lucide.Keyboard(), Order: 50, View: s.Hotkeys})
+	offSection := slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "hotkeys", Title: "Hotkeys", Icon: lucide.Keyboard(), Order: 50,
+		Keywords: []string{"keyboard", "shortcuts"}, View: s.Hotkeys})
 	return func() { offSection(); offOverlay() }
 }
 

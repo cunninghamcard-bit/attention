@@ -401,16 +401,25 @@ func Status(right bool) []StatusItem {
 	return out
 }
 
-// SettingsSection is a settings.section contribution (RFC §5.5, dsh's
-// settings.section): a page of the settings tab, listed in its sidebar by
+// SettingsSection is a settings.section contribution (RFC §5.5): a tab
+// of the settings modal, attention's SettingTab, listed in its group by
 // Order, then Title.
 type SettingsSection struct {
 	ID    string
 	Title string
 	Icon  *ui.SVG
+	// Group is the sidebar group: "" for Options, CorePlugins for a core
+	// plugin's own tab (SettingsRenderer's sections).
+	Group string
 	Order int
-	View  func(c *ui.Context)
+	// Keywords are what Search settings also finds the tab by, as the
+	// names of its settings.
+	Keywords []string
+	View     func(c *ui.Context)
 }
+
+// CorePlugins is the settings group of the core plugins' own tabs.
+const CorePlugins = "core-plugins"
 
 var sections = map[int]SettingsSection{}
 

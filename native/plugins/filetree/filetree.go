@@ -141,8 +141,9 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 				l.RevealPanel(PanelID)
 			}
 		}
-		offSection := slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "folders", Title: "Folders", Icon: lucide.FolderTree(), Order: 10,
-			View: func(c *ui.Context) { tr.folders(c, project.RemoveMount) }})
+		offSection := slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "files", Title: "Files and links", Icon: lucide.FolderTree(), Order: 10,
+			Keywords: []string{"folders", "mounts", "add folder"},
+			View:     func(c *ui.Context) { tr.folders(c, project.RemoveMount) }})
 		offCmd := actionsapi.Register(actionsapi.Command{ID: "file-explorer:open", Title: "Open file explorer", Main: reveal, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
 			return shellapi.OnMain(ctx, func() (string, error) { reveal(); return "", nil })
 		}})
