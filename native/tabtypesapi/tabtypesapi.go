@@ -51,6 +51,7 @@ type Info struct {
 	Kind    string
 	Address string
 	Path    string // the file, absolute
+	Title   string // the tab's title
 	// Nav is the last navigation; NavRevision bumps on every navigation,
 	// even one to the same place.
 	Nav         *Nav

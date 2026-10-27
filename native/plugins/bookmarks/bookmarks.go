@@ -284,7 +284,7 @@ func (b *Bookmarks) bookmarkCurrentViewMsg() (string, error) {
 		return "Bookmarked: " + item.displayTitle(), nil
 	}
 	if info.Kind == "webviewer" && info.Address != "" {
-		item := &Item{Type: "url", Ctime: nowCtime(), URL: info.Address, Title: info.Address}
+		item := &Item{Type: "url", Ctime: nowCtime(), URL: info.Address, Title: info.Title}
 		b.add(item)
 		return "Bookmarked: " + item.displayTitle(), nil
 	}

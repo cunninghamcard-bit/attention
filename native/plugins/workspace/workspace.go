@@ -153,7 +153,7 @@ func (ws *Workspace) reclaim() {
 func (ws *Workspace) props(t *tab, focused bool) tabtypesapi.Props {
 	snap := resourcesapi.Get(t.address)
 	id := t.id
-	return tabtypesapi.Props{Info: tabtypesapi.Info{ID: t.id, Kind: t.kind, Address: t.address, Path: t.path,
+	return tabtypesapi.Props{Info: tabtypesapi.Info{ID: t.id, Kind: t.kind, Address: t.address, Path: t.path, Title: t.title,
 		Nav: t.nav, NavRevision: t.navRev, Version: snap.Version, Pending: snap.Status == resourcesapi.Loading,
 		Missing: missing(snap), Focused: focused},
 		Retarget: func(address, title string) {
