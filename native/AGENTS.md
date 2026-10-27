@@ -7,6 +7,7 @@ The repo-root `AGENTS.md` / `CLAUDE.md` rule “reconstruct Obsidian byte-for-by
 ## Behaviour and UI
 
 - Port behaviour from the TS app in `apps/web`. Cite the TS file in a comment.
+- Never call `.Key()` on the element an `omgui.Button` / `IconMenu` returns: it rekeys the control and its `OnClick` never runs or its menu never opens. Key the parent, or use `.Clicked()` on a plain element.
 - Look comes from [attention-ui](https://github.com/cunninghamcard-bit/attention-ui) (octogo’s components). Follow octogo’s `docs/STYLE.md` (`octogo/docs/STYLE.md`): no literal colours or sizes in pages; use theme tokens and omgui components.
 
 ## Threading
