@@ -96,7 +96,7 @@ func (p *Palette) items(query string) []slotsapi.PaletteItem {
 	out := make([]slotsapi.PaletteItem, 0, len(idx))
 	for _, i := range idx {
 		cmd := p.commands[i]
-		out = append(out, slotsapi.PaletteItem{Key: "c:" + cmd.ID, Label: cmd.Title, Hint: shortcuts.Label(cmd.Keys),
+		out = append(out, slotsapi.PaletteItem{Key: "c:" + cmd.ID, Label: cmd.Title, Hint: shortcuts.EffectiveLabel(cmd),
 			Choose: func(bool) {
 				p.note(cmd.ID)
 				if cmd.Main != nil {

@@ -2,7 +2,8 @@
 // SettingsRenderer (apps/web/builtin/SettingsModal.ts, SettingsRenderer.ts):
 // a vertical tab header — Search settings, then the Options tabs and the
 // core plugins' tabs, the settings.section contributions — beside the
-// chosen tab, titled by it. It brings the General tab of its own.
+// chosen tab, titled by it. It brings the General tab of its own, and
+// loads and saves the configuration files (settingsapi).
 package settings
 
 import (
@@ -19,6 +20,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/plugins/cli"
+	"github.com/cunninghamcard-bit/attention/native/settingsapi"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 )
@@ -177,8 +179,14 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
 	Inject: []string{"shell", "actions"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		// The configuration it edits: read here, off the main thread.
+		settingsapi.Load(settingsapi.App, settingsapi.Appearance, settingsapi.Hotkeys)
 		_, off := Register()
-		rctx.Effect(func(context.Context) error { off(); return nil })
+		rctx.Effect(func(ctx context.Context) error {
+			off()
+			settingsapi.Flush(ctx)
+			return nil
+		})
 		return nil
 	},
 })

@@ -4,11 +4,13 @@
 // wired in a view. It draws no window chrome: an overlay reads the keys
 // each frame, and its Hotkeys settings section lists them.
 //
-// TODO: user overrides of the default bindings, as dsh's keybindings file.
+// The user's hotkeys override a command's defaults in hotkeys.json, as
+// attention's HotkeyManager keeps them.
 package shortcuts
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"sync"
 
@@ -19,6 +21,8 @@ import (
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
+	"github.com/cunninghamcard-bit/attention/native/internal/natural"
+	"github.com/cunninghamcard-bit/attention/native/settingsapi"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 )
 
@@ -43,14 +47,24 @@ var keyNames = map[string]ui.Key{
 }
 
 func init() {
+	for name, k := range lettersAndDigits() {
+		keyNames[name] = k
+	}
+}
+
+// lettersAndDigits are the letter and digit keys by name, as both Keys and
+// a Hotkey name them.
+func lettersAndDigits() map[string]ui.Key {
+	out := map[string]ui.Key{}
 	for i, k := range []ui.Key{ui.Key0, ui.Key1, ui.Key2, ui.Key3, ui.Key4, ui.Key5, ui.Key6, ui.Key7, ui.Key8, ui.Key9} {
-		keyNames[string(rune('0'+i))] = k
+		out[string(rune('0'+i))] = k
 	}
 	letters := []ui.Key{ui.KeyA, ui.KeyB, ui.KeyC, ui.KeyD, ui.KeyE, ui.KeyF, ui.KeyG, ui.KeyH, ui.KeyI, ui.KeyJ, ui.KeyK, ui.KeyL, ui.KeyM,
 		ui.KeyN, ui.KeyO, ui.KeyP, ui.KeyQ, ui.KeyR, ui.KeyS, ui.KeyT, ui.KeyU, ui.KeyV, ui.KeyW, ui.KeyX, ui.KeyY, ui.KeyZ}
 	for i, k := range letters {
-		keyNames[string(rune('A'+i))] = k
+		out[string(rune('A'+i))] = k
 	}
+	return out
 }
 
 // Parse reads a command's Keys (see actionsapi.Command.Keys); a
@@ -81,23 +95,20 @@ func Parse(keys string) []Binding {
 	return out
 }
 
-// Label is the first of a command's Keys as the palette shows it.
-func Label(keys string) string {
-	first, _, _ := strings.Cut(keys, ",")
-	return display(strings.TrimSpace(first))
-}
-
-// display is a combination as shown: Control as Ctrl, Comma as ",".
-func display(combo string) string {
-	return strings.NewReplacer("Control", "Ctrl", "Comma", ",").Replace(combo)
-}
-
 // Shortcuts binds the registered commands' keys.
 type Shortcuts struct {
 	ctx    context.Context
 	mu     sync.Mutex
 	parsed map[string][]Binding // by Keys
-	filter string               // the Hotkeys section's, main thread only
+	// effective are the commands' bindings by ID, for settings generation
+	// gen.
+	effective map[string][]Binding
+	gen       int
+	// The Hotkeys tab's, main thread only: its search, and the command
+	// whose next combination it records ("" for none).
+	filter    string
+	recording string
+	drawn     bool // the Hotkeys tab was drawn since the last frame
 }
 
 // New binds keys for commands whose Run runs under ctx.
@@ -105,7 +116,7 @@ func New(ctx context.Context) *Shortcuts {
 	return &Shortcuts{ctx: ctx, parsed: map[string][]Binding{}}
 }
 
-func (s *Shortcuts) bindings(keys string) []Binding {
+func (s *Shortcuts) defaults(keys string) []Binding {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	b, ok := s.parsed[keys]
@@ -116,14 +127,76 @@ func (s *Shortcuts) bindings(keys string) []Binding {
 	return b
 }
 
+// bindings are cmd's effective combinations: hotkeys.json's, else its
+// Keys; read again when the settings change.
+func (s *Shortcuts) bindings(cmd actionsapi.Command) []Binding {
+	if g := settingsapi.Generation(); g != s.gen || s.effective == nil {
+		s.gen, s.effective = g, map[string][]Binding{}
+	}
+	if b, ok := s.effective[cmd.ID]; ok {
+		return b
+	}
+	var out []Binding
+	if !Overridden(cmd.ID) {
+		out = s.defaults(cmd.Keys)
+	} else {
+		for _, h := range Effective(cmd) {
+			if b, ok := h.binding(); ok {
+				out = append(out, b)
+			}
+		}
+	}
+	s.effective[cmd.ID] = out
+	return out
+}
+
+// recordMods are the modifier sets a recorded combination may hold.
+var recordMods = func() []ui.Modifiers {
+	var out []ui.Modifiers
+	for m := ui.Modifiers(0); m <= ui.Shift|ui.Ctrl|ui.Alt|ui.Super; m++ {
+		if m&^(ui.Shift|ui.Ctrl|ui.Alt|ui.Super) == 0 {
+			out = append(out, m)
+		}
+	}
+	return out
+}()
+
+// record takes the combination pressed this frame for the recorded
+// command, as HotkeysSettingTab.recordHotkey's keydown: Escape cancels,
+// anything else is added to its hotkeys. No command runs meanwhile.
+func (s *Shortcuts) record(c *ui.Context) {
+	if c.Shortcut(0, ui.KeyEscape) {
+		s.recording = ""
+		return
+	}
+	for _, m := range recordMods {
+		for k := range hotkeyNames {
+			if k == ui.KeyEscape && m == 0 || !c.Shortcut(m, k) {
+				continue
+			}
+			if cmd, ok := actionsapi.Lookup(s.recording); ok {
+				settingsapi.Set(settingsapi.Hotkeys, cmd.ID, append(Effective(cmd), hotkeyOf(Binding{Mods: m, Key: k})))
+			}
+			s.recording = ""
+			return
+		}
+	}
+}
+
 // View runs the command of every combination pressed this frame: Main on
-// the main thread, else Run on a goroutine.
+// the main thread, else Run on a goroutine. (The settings modal keeps the
+// keys from it while open: the Hotkeys tab records in the modal.)
 func (s *Shortcuts) View(c *ui.Context) {
+	// Recording ends with the tab: the modal closed, another tab shown.
+	if !s.drawn {
+		s.recording = ""
+	}
+	s.drawn = false
 	for _, cmd := range actionsapi.List() {
-		if cmd.Keys == "" || cmd.Main == nil && cmd.Run == nil {
+		if cmd.Main == nil && cmd.Run == nil {
 			continue
 		}
-		for _, b := range s.bindings(cmd.Keys) {
+		for _, b := range s.bindings(cmd) {
 			if !c.Shortcut(b.Mods, b.Key) {
 				continue
 			}
@@ -138,34 +211,92 @@ func (s *Shortcuts) View(c *ui.Context) {
 	}
 }
 
-// Hotkeys is the Hotkeys settings section (attention's Hotkeys tab, dsh's
-// ui-shortcuts reference): every titled command and its keys, filtered by
-// name or key. Read-only until overrides exist.
+// matches is getMatchingCommands: every word of the query in the
+// command's name or ID.
+func matches(cmd actionsapi.Command, query string) bool {
+	hay := strings.ToLower(cmd.Title + " " + cmd.ID)
+	for _, w := range strings.Fields(strings.ToLower(query)) {
+		if !strings.Contains(hay, w) {
+			return false
+		}
+	}
+	return true
+}
+
+// Hotkeys is the Hotkeys tab (attention's HotkeysSettingTab): every
+// titled command, its hotkeys each with a remove button and its
+// conflicts, Add hotkey, and Restore default hotkeys once overridden.
 func (s *Shortcuts) Hotkeys(c *ui.Context) {
 	t := c.Theme()
+	// The modal keeps keys from the window's shortcuts: record here, in it.
+	s.drawn = true
+	if s.recording != "" {
+		s.record(c)
+	}
 	omgui.Field(c, &s.filter, "Search commands...", false).FillWidth()
-	q := strings.ToLower(strings.TrimSpace(s.filter))
+	cmds := actionsapi.List()
+	sort.SliceStable(cmds, func(i, j int) bool { return natural.Less(cmds[i].Title, cmds[j].Title) })
 	omgui.SettingsSection(c, "", func() {
-		for _, cmd := range actionsapi.List() {
-			if cmd.Title == "" {
-				continue
-			}
-			if q != "" && !strings.Contains(strings.ToLower(cmd.Title), q) && !strings.Contains(strings.ToLower(display(cmd.Keys)), q) {
+		for _, cmd := range cmds {
+			if cmd.Title == "" || !matches(cmd, s.filter) {
 				continue
 			}
 			omgui.PreferenceRow(c, cmd.Title, cmd.ID, func() {
-				if cmd.Keys == "" {
-					ui.Text(c, "No hotkey").FontSize(12).TextColor(t.TextMuted)
-					return
-				}
-				ui.Column(c).Gap(4).AlignItems(ui.End).Children(func() {
-					for _, combo := range strings.Split(cmd.Keys, ",") {
-						omgui.ShortcutCaps(c, strings.Fields(display(combo)))
+				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+					hs := Effective(cmd)
+					if len(hs) == 0 {
+						ui.Text(c, "No hotkey").FontSize(12).TextColor(t.TextMuted)
+					}
+					for i, h := range hs {
+						s.hotkeyChip(c, cmd, hs, i, h)
+					}
+					label, icon := "Add hotkey", lucide.Plus()
+					if s.recording == cmd.ID {
+						label = "Press keys..."
+					}
+					omgui.Button(c, omgui.ButtonProps{Label: label, Icon: icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+						IconColor: recordingColor(t, s.recording == cmd.ID), OnClick: func() { s.recording = cmd.ID }}).Tooltip(label)
+					if Overridden(cmd.ID) {
+						omgui.Button(c, omgui.ButtonProps{Label: "Restore default hotkeys", Icon: lucide.RefreshCw(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+							OnClick: func() { settingsapi.Unset(settingsapi.Hotkeys, cmd.ID) }}).Tooltip("Restore default hotkeys")
 					}
 				})
 			})
 		}
 	})
+}
+
+// hotkeyChip is a hotkey: its caps, warned and titled with what it
+// conflicts with, and Remove hotkey.
+func (s *Shortcuts) hotkeyChip(c *ui.Context, cmd actionsapi.Command, hs []Hotkey, i int, h Hotkey) {
+	t := c.Theme()
+	conflicts := Conflicts(cmd, h)
+	chip := ui.Row(c).Gap(2).AlignItems(ui.Center)
+	if len(conflicts) > 0 {
+		names := make([]string, len(conflicts))
+		for j, o := range conflicts {
+			names[j] = o.Title
+		}
+		chip.Tooltip("Conflicts with " + strings.Join(names, ", "))
+	}
+	chip.Children(func() {
+		if len(conflicts) > 0 {
+			ui.Icon(c, lucide.TriangleAlert()).Size(12, 12).TextColor(t.Warning)
+		}
+		omgui.ShortcutCaps(c, strings.Split(Format(h), " + "))
+		omgui.Button(c, omgui.ButtonProps{Label: "Remove hotkey", Icon: lucide.X(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+			OnClick: func() {
+				rest := append(append([]Hotkey{}, hs[:i]...), hs[i+1:]...)
+				settingsapi.Set(settingsapi.Hotkeys, cmd.ID, rest)
+			}}).Tooltip("Remove hotkey")
+	})
+}
+
+func recordingColor(t *ui.Theme, on bool) ui.Color {
+	if on {
+		return t.Accent
+	}
+	return ui.Color{}
 }
 
 // Register binds keys and adds the Hotkeys section until off is called.

@@ -12,7 +12,9 @@ import (
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
+	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	"github.com/cunninghamcard-bit/attention/native/layoutapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 )
@@ -135,6 +137,11 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
 	p.chips = p.chips[:0]
 	header := ui.Row(c).Height(38).Shrink(0).FillWidth().Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).
 		AlignItems(ui.Center).PaddingX(4).Gap(2).Children(func() {
+		// With the ribbon hidden, the left dock's toggle leads the top-left
+		// group's tabs (updateSidebarTogglePlacement).
+		if l := layoutapi.Get(); l != nil && !l.RibbonShown() && ws.isTopLeft(p) {
+			layoutapi.ToggleButton(c, slotsapi.Left)
+		}
 		ui.ScrollHorizontal(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
 			ui.Row(c).PaddingX(6).Gap(2).AlignItems(ui.Center).FillHeight().Children(func() {
 				for j, tb := range p.tabs {
@@ -237,6 +244,14 @@ func nativeMenu(m *ui.Menu, items []omgui.MenuItem) {
 	}
 }
 
+// isTopLeft reports whether p is the center's top-left group.
+func (ws *Workspace) isTopLeft(p *pane) bool {
+	rs := map[*pane]rect{}
+	ws.root.rects(rect{0, 0, 1, 1}, rs)
+	r := rs[p]
+	return r.top < 1e-6 && r.left < 1e-6
+}
+
 // isTopRight reports whether p is the center's top-right group.
 func (ws *Workspace) isTopRight(p *pane) bool {
 	rs := map[*pane]rect{}
@@ -247,19 +262,22 @@ func (ws *Workspace) isTopRight(p *pane) bool {
 
 func (ws *Workspace) emptyPane(c *ui.Context) {
 	t := c.Theme()
-	hint := func(label, keys string) {
+	// A command's name and its first hotkey, as the user set them.
+	hint := func(id string) {
+		cmd, ok := actionsapi.Lookup(id)
+		if !ok {
+			return
+		}
 		ui.Row(c).Gap(24).Children(func() {
-			ui.Text(c, label).TextColor(t.TextMuted).Width(160)
-			ui.Text(c, keys).TextColor(t.TextMuted)
+			ui.Text(c, cmd.Title).TextColor(t.TextMuted).Width(160)
+			ui.Text(c, shortcuts.EffectiveLabel(cmd)).TextColor(t.TextMuted)
 		})
 	}
 	ui.Column(c).Grow(1).Fill().Center().Gap(10).Children(func() {
 		ui.Text(c, "attention").FontSize(22).Bold().TextColor(t.TextMuted)
-		hint("Open quick switcher", "Ctrl O")
-		hint("Open command palette", "Ctrl P")
-		hint("Search in all files", "Ctrl Shift F")
-		hint("Toggle left sidebar", "Ctrl B")
-		hint("Toggle right sidebar", "Ctrl Alt B")
+		for _, id := range []string{"switcher:open", "command-palette:open", "global-search:open", "app:toggle-left-sidebar", "app:toggle-right-sidebar"} {
+			hint(id)
+		}
 	})
 }
 

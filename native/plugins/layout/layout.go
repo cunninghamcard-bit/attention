@@ -23,6 +23,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/internal/persist"
 	"github.com/cunninghamcard-bit/attention/native/layoutapi"
+	"github.com/cunninghamcard-bit/attention/native/settingsapi"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 )
@@ -202,11 +203,56 @@ func (l *Layout) ShownPanel(d slotsapi.Dock) string {
 	return ""
 }
 
+// RibbonShown is attention's showRibbon (layoutapi.API), true by default.
+func (l *Layout) RibbonShown() bool {
+	show := true
+	settingsapi.Get(settingsapi.Appearance, "showRibbon", &show)
+	return show
+}
+
+// dark is the base color scheme: attention's theme, "moonstone" light,
+// "obsidian" dark, else the system's.
+func (l *Layout) dark() bool {
+	var theme string
+	settingsapi.Get(settingsapi.Appearance, "theme", &theme)
+	switch theme {
+	case "moonstone":
+		return false
+	case "obsidian":
+		return true
+	}
+	return l.IsDark()
+}
+
+// appearance is the Appearance tab (AppearanceSettingTab): the base color
+// scheme and, under Interface, Show ribbon.
+func (l *Layout) appearance(c *ui.Context) {
+	omgui.SettingsSection(c, "", func() {
+		omgui.PreferenceRow(c, "Base color scheme", "Choose the color scheme used by the app.", func() {
+			theme := "system"
+			settingsapi.Get(settingsapi.Appearance, "theme", &theme)
+			v := theme
+			omgui.Select(c, omgui.SelectProps{Key: "base-color-scheme", Value: &v, Width: 180, Options: []omgui.SelectOption{
+				{Value: "system", Label: "Adapt to system"}, {Value: "moonstone", Label: "Light"}, {Value: "obsidian", Label: "Dark"},
+			}})
+			if v != theme {
+				settingsapi.Set(settingsapi.Appearance, "theme", v)
+			}
+		})
+	})
+	omgui.SettingsSection(c, "Interface", func() {
+		show := l.RibbonShown()
+		omgui.SettingsToggle(c, "Show ribbon", "Display the ribbon on the left side of the window.", show, false, func(on bool) {
+			settingsapi.Set(settingsapi.Appearance, "showRibbon", on)
+		})
+	})
+}
+
 // View is the window's root (RFC §5.8: it reads state, never the disk):
 // the ribbon, the left dock, the center, the right dock, over the status
 // bar; the overlays below Order zero before it all, the rest after.
 func (l *Layout) View(c *ui.Context) {
-	c.SetTheme(themeFor(l.IsDark()))
+	c.SetTheme(themeFor(l.dark()))
 	t := c.Theme()
 	overlays := slotsapi.Overlays()
 	for _, o := range overlays {
@@ -217,7 +263,9 @@ func (l *Layout) View(c *ui.Context) {
 	}
 	ui.Column(c).Fill().Background(t.Background).Children(func() {
 		ui.Row(c).Grow(1).FillWidth().AlignItems(ui.Stretch).Children(func() {
-			l.ribbon(c)
+			if l.RibbonShown() {
+				l.ribbon(c)
+			}
 			middle := func() {
 				ui.Row(c).Grow(1).Fill().AlignItems(ui.Stretch).Children(func() {
 					ui.Column(c).Grow(1).Fill().Children(func() {
@@ -368,7 +416,10 @@ func (l *Layout) commands() []actionsapi.Command {
 // Register makes l the window's root, the layout API and its commands
 // until off is called.
 func Register(l *Layout) (off func()) {
-	offs := []func(){shellapi.SetRoot(l.View), layoutapi.Set(l)}
+	offs := []func(){shellapi.SetRoot(l.View), layoutapi.Set(l),
+		slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "appearance", Title: "Appearance", Icon: lucide.Palette(), Order: 20,
+			Keywords: []string{"base color scheme", "theme", "dark", "light", "show ribbon"}, View: l.appearance}),
+	}
 	for _, cmd := range l.commands() {
 		offs = append(offs, actionsapi.Register(cmd))
 	}

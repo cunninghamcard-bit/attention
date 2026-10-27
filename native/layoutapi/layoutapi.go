@@ -21,6 +21,9 @@ type API interface {
 	Open(d slotsapi.Dock) bool
 	// Toggle opens or closes a dock.
 	Toggle(d slotsapi.Dock)
+	// RibbonShown reports whether the ribbon is drawn (Show ribbon); while
+	// it is not, the left dock's toggle sits in the top-left tab header.
+	RibbonShown() bool
 }
 
 var (
