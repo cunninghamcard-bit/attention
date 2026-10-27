@@ -224,27 +224,31 @@ func (l *Layout) dark() bool {
 	return l.IsDark()
 }
 
-// appearance is the Appearance tab (AppearanceSettingTab): the base color
-// scheme and, under Interface, Show ribbon.
+// appearance is the General page's Appearance row (dsh's ui-theme
+// AppearanceRow): System, Light or Dark.
 func (l *Layout) appearance(c *ui.Context) {
-	omgui.SettingsSection(c, "", func() {
-		omgui.PreferenceRow(c, "Base color scheme", "Choose the color scheme used by the app.", func() {
-			theme := "system"
-			settingsapi.Get(settingsapi.Appearance, "theme", &theme)
-			v := theme
-			omgui.Select(c, omgui.SelectProps{Key: "base-color-scheme", Value: &v, Width: 180, Options: []omgui.SelectOption{
-				{Value: "system", Label: "Adapt to system"}, {Value: "moonstone", Label: "Light"}, {Value: "obsidian", Label: "Dark"},
-			}})
-			if v != theme {
-				settingsapi.Set(settingsapi.Appearance, "theme", v)
-			}
-		})
+	omgui.PreferenceRow(c, "Appearance", "", func() {
+		theme := "system"
+		settingsapi.Get(settingsapi.Appearance, "theme", &theme)
+		v := theme
+		omgui.Select(c, omgui.SelectProps{Key: "appearance", Value: &v, Width: 160, Options: []omgui.SelectOption{
+			{Value: "system", Label: "System"}, {Value: "moonstone", Label: "Light"}, {Value: "obsidian", Label: "Dark"},
+		}})
+		if v != theme {
+			settingsapi.Set(settingsapi.Appearance, "theme", v)
+		}
 	})
-	omgui.SettingsSection(c, "Interface", func() {
+}
+
+// ribbonRow is the General page's Show ribbon row.
+func (l *Layout) ribbonRow(c *ui.Context) {
+	omgui.PreferenceRow(c, "Show ribbon", "", func() {
 		show := l.RibbonShown()
-		omgui.SettingsToggle(c, "Show ribbon", "Display the ribbon on the left side of the window.", show, false, func(on bool) {
+		on := show
+		ui.Switch(c, &on)
+		if on != show {
 			settingsapi.Set(settingsapi.Appearance, "showRibbon", on)
-		})
+		}
 	})
 }
 
@@ -417,8 +421,8 @@ func (l *Layout) commands() []actionsapi.Command {
 // until off is called.
 func Register(l *Layout) (off func()) {
 	offs := []func(){shellapi.SetRoot(l.View), layoutapi.Set(l),
-		slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "appearance", Title: "Appearance", Icon: lucide.Palette(), Order: 20,
-			Keywords: []string{"base color scheme", "theme", "dark", "light", "show ribbon"}, View: l.appearance}),
+		slotsapi.RegisterGeneralItem(slotsapi.GeneralItem{ID: "appearance", Order: 0, View: l.appearance}),
+		slotsapi.RegisterGeneralItem(slotsapi.GeneralItem{ID: "show-ribbon", Order: 10, View: l.ribbonRow}),
 	}
 	for _, cmd := range l.commands() {
 		offs = append(offs, actionsapi.Register(cmd))

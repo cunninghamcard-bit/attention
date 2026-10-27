@@ -1,28 +1,23 @@
 // Package shortcuts is the shortcuts UI plugin (dsh's
 // @deepseek-ai/dsh-client-shortcuts): it binds every command's Keys, so a
 // feature plugin declares its shortcuts with its commands and none is
-// wired in a view. It draws no window chrome: an overlay reads the keys
-// each frame, and its Hotkeys settings section lists them.
+// wired in a view. An overlay reads the keys each frame; the keyboard
+// shortcuts reference (dsh's ui-shortcuts) lists and edits them.
 //
-// The user's hotkeys override a command's defaults in hotkeys.json, as
-// attention's HotkeyManager keeps them.
+// The user's bindings override a command's defaults in hotkeys.json.
 package shortcuts
 
 import (
 	"context"
-	"sort"
 	"strings"
 	"sync"
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
-
-	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	"github.com/cunninghamcard-bit/attention/native/internal/natural"
 	"github.com/cunninghamcard-bit/attention/native/settingsapi"
+	"github.com/cunninghamcard-bit/attention/native/shellapi"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 )
 
@@ -104,11 +99,14 @@ type Shortcuts struct {
 	// gen.
 	effective map[string][]Binding
 	gen       int
-	// The Hotkeys tab's, main thread only: its search, and the command
-	// whose next combination it records ("" for none).
-	filter    string
-	recording string
-	drawn     bool // the Hotkeys tab was drawn since the last frame
+	// The reference's, main thread only: open, its search, the command
+	// whose next combination it records ("" for none) and why the last
+	// was refused, and Restore all defaults' confirmation.
+	refOpen    bool
+	filter     string
+	recording  string
+	recordErr  string
+	confirming bool
 }
 
 // New binds keys for commands whose Run runs under ctx.
@@ -162,11 +160,12 @@ var recordMods = func() []ui.Modifiers {
 }()
 
 // record takes the combination pressed this frame for the recorded
-// command, as HotkeysSettingTab.recordHotkey's keydown: Escape cancels,
-// anything else is added to its hotkeys. No command runs meanwhile.
+// command, as dsh's inline recorder: Escape cancels; a combination
+// another command holds is refused, the recorder saying by whom, and
+// recording goes on; any other becomes the command's binding.
 func (s *Shortcuts) record(c *ui.Context) {
 	if c.Shortcut(0, ui.KeyEscape) {
-		s.recording = ""
+		s.recording, s.recordErr = "", ""
 		return
 	}
 	for _, m := range recordMods {
@@ -174,24 +173,27 @@ func (s *Shortcuts) record(c *ui.Context) {
 			if k == ui.KeyEscape && m == 0 || !c.Shortcut(m, k) {
 				continue
 			}
-			if cmd, ok := actionsapi.Lookup(s.recording); ok {
-				settingsapi.Set(settingsapi.Hotkeys, cmd.ID, append(Effective(cmd), hotkeyOf(Binding{Mods: m, Key: k})))
+			cmd, ok := actionsapi.Lookup(s.recording)
+			if !ok {
+				s.recording = ""
+				return
 			}
-			s.recording = ""
+			h := hotkeyOf(Binding{Mods: m, Key: k})
+			if others := Conflicts(cmd, h); len(others) > 0 {
+				s.recordErr = Format(h) + " is used by " + others[0].Title
+				return
+			}
+			settingsapi.Set(settingsapi.Hotkeys, cmd.ID, []Hotkey{h})
+			s.recording, s.recordErr = "", ""
 			return
 		}
 	}
 }
 
 // View runs the command of every combination pressed this frame: Main on
-// the main thread, else Run on a goroutine. (The settings modal keeps the
-// keys from it while open: the Hotkeys tab records in the modal.)
+// the main thread, else Run on a goroutine. A modal dialog open keeps the
+// keys from it; the reference records in its own.
 func (s *Shortcuts) View(c *ui.Context) {
-	// Recording ends with the tab: the modal closed, another tab shown.
-	if !s.drawn {
-		s.recording = ""
-	}
-	s.drawn = false
 	for _, cmd := range actionsapi.List() {
 		if cmd.Main == nil && cmd.Run == nil {
 			continue
@@ -211,101 +213,28 @@ func (s *Shortcuts) View(c *ui.Context) {
 	}
 }
 
-// matches is getMatchingCommands: every word of the query in the
-// command's name or ID.
-func matches(cmd actionsapi.Command, query string) bool {
-	hay := strings.ToLower(cmd.Title + " " + cmd.ID)
-	for _, w := range strings.Fields(strings.ToLower(query)) {
-		if !strings.Contains(hay, w) {
-			return false
-		}
-	}
-	return true
-}
+// referenceID is the command opening the reference (dsh's Mod+/).
+const referenceID = "app:keyboard-shortcuts"
 
-// Hotkeys is the Hotkeys tab (attention's HotkeysSettingTab): every
-// titled command, its hotkeys each with a remove button and its
-// conflicts, Add hotkey, and Restore default hotkeys once overridden.
-func (s *Shortcuts) Hotkeys(c *ui.Context) {
-	t := c.Theme()
-	// The modal keeps keys from the window's shortcuts: record here, in it.
-	s.drawn = true
-	if s.recording != "" {
-		s.record(c)
-	}
-	omgui.Field(c, &s.filter, "Search commands...", false).FillWidth()
-	cmds := actionsapi.List()
-	sort.SliceStable(cmds, func(i, j int) bool { return natural.Less(cmds[i].Title, cmds[j].Title) })
-	omgui.SettingsSection(c, "", func() {
-		for _, cmd := range cmds {
-			if cmd.Title == "" || !matches(cmd, s.filter) {
-				continue
-			}
-			omgui.PreferenceRow(c, cmd.Title, cmd.ID, func() {
-				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
-					hs := Effective(cmd)
-					if len(hs) == 0 {
-						ui.Text(c, "No hotkey").FontSize(12).TextColor(t.TextMuted)
-					}
-					for i, h := range hs {
-						s.hotkeyChip(c, cmd, hs, i, h)
-					}
-					label, icon := "Add hotkey", lucide.Plus()
-					if s.recording == cmd.ID {
-						label = "Press keys..."
-					}
-					omgui.Button(c, omgui.ButtonProps{Label: label, Icon: icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
-						IconColor: recordingColor(t, s.recording == cmd.ID), OnClick: func() { s.recording = cmd.ID }}).Tooltip(label)
-					if Overridden(cmd.ID) {
-						omgui.Button(c, omgui.ButtonProps{Label: "Restore default hotkeys", Icon: lucide.RefreshCw(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
-							OnClick: func() { settingsapi.Unset(settingsapi.Hotkeys, cmd.ID) }}).Tooltip("Restore default hotkeys")
-					}
-				})
-			})
-		}
-	})
-}
-
-// hotkeyChip is a hotkey: its caps, warned and titled with what it
-// conflicts with, and Remove hotkey.
-func (s *Shortcuts) hotkeyChip(c *ui.Context, cmd actionsapi.Command, hs []Hotkey, i int, h Hotkey) {
-	t := c.Theme()
-	conflicts := Conflicts(cmd, h)
-	chip := ui.Row(c).Gap(2).AlignItems(ui.Center)
-	if len(conflicts) > 0 {
-		names := make([]string, len(conflicts))
-		for j, o := range conflicts {
-			names[j] = o.Title
-		}
-		chip.Tooltip("Conflicts with " + strings.Join(names, ", "))
-	}
-	chip.Children(func() {
-		if len(conflicts) > 0 {
-			ui.Icon(c, lucide.TriangleAlert()).Size(12, 12).TextColor(t.Warning)
-		}
-		omgui.ShortcutCaps(c, strings.Split(Format(h), " + "))
-		omgui.Button(c, omgui.ButtonProps{Label: "Remove hotkey", Icon: lucide.X(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
-			OnClick: func() {
-				rest := append(append([]Hotkey{}, hs[:i]...), hs[i+1:]...)
-				settingsapi.Set(settingsapi.Hotkeys, cmd.ID, rest)
-			}}).Tooltip("Remove hotkey")
-	})
-}
-
-func recordingColor(t *ui.Theme, on bool) ui.Color {
-	if on {
-		return t.Accent
-	}
-	return ui.Color{}
-}
-
-// Register binds keys and adds the Hotkeys section until off is called.
+// Register binds keys, adds the reference with its command and its
+// General row, until off is called.
 func Register(ctx context.Context) (off func()) {
 	s := New(ctx)
-	offOverlay := slotsapi.RegisterOverlay(slotsapi.Overlay{ID: ID, Order: -1000, View: s.View})
-	offSection := slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "hotkeys", Title: "Hotkeys", Icon: lucide.Keyboard(), Order: 50,
-		Keywords: []string{"keyboard", "shortcuts"}, View: s.Hotkeys})
-	return func() { offSection(); offOverlay() }
+	toggle := func() { s.refOpen = !s.refOpen }
+	offs := []func(){
+		slotsapi.RegisterOverlay(slotsapi.Overlay{ID: ID, Order: -1000, View: s.View}),
+		slotsapi.RegisterOverlay(slotsapi.Overlay{ID: "keyboard-shortcuts", Order: 20, View: s.referenceView}),
+		slotsapi.RegisterGeneralItem(slotsapi.GeneralItem{ID: "keyboard-shortcuts", Order: 20, View: s.shortcutsRow}),
+		actionsapi.Register(actionsapi.Command{ID: referenceID, Title: "Keyboard shortcuts", Keys: "Ctrl /", Main: toggle,
+			Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
+				return shellapi.OnMain(ctx, func() (string, error) { s.refOpen = true; return "", nil })
+			}}),
+	}
+	return func() {
+		for i := len(offs) - 1; i >= 0; i-- {
+			offs[i]()
+		}
+	}
 }
 
 // Plugin binds the commands' keys while loaded.

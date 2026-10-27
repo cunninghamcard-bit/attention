@@ -401,25 +401,66 @@ func Status(right bool) []StatusItem {
 	return out
 }
 
-// SettingsSection is a settings.section contribution (RFC §5.5): a tab
-// of the settings modal, attention's SettingTab, listed in its group by
+// SettingsSection is a settings.section contribution (RFC §5.5, dsh's
+// settings.section): a page of the settings panel, in its navigation by
 // Order, then Title.
 type SettingsSection struct {
 	ID    string
 	Title string
 	Icon  *ui.SVG
-	// Group is the sidebar group: "" for Options, CorePlugins for a core
-	// plugin's own tab (SettingsRenderer's sections).
-	Group string
 	Order int
-	// Keywords are what Search settings also finds the tab by, as the
-	// names of its settings.
-	Keywords []string
-	View     func(c *ui.Context)
+	View  func(c *ui.Context)
 }
 
-// CorePlugins is the settings group of the core plugins' own tabs.
-const CorePlugins = "core-plugins"
+// GeneralItem is a settings.general.item contribution (dsh's): a row of
+// the General page, by Order. Its plugin owns its copy and behavior.
+type GeneralItem struct {
+	ID    string
+	Order int
+	View  func(c *ui.Context)
+}
+
+var general = map[int]GeneralItem{}
+
+// RegisterGeneralItem adds a General row until off is called; a second
+// live row with the same ID panics.
+func RegisterGeneralItem(g GeneralItem) (off func()) {
+	mu.Lock()
+	for _, q := range general {
+		if q.ID == g.ID {
+			mu.Unlock()
+			panic("slots: general item " + strconv.Quote(g.ID) + " is already registered")
+		}
+	}
+	seq++
+	id := seq
+	general[id] = g
+	mu.Unlock()
+	invalidate()
+	return func() {
+		mu.Lock()
+		delete(general, id)
+		mu.Unlock()
+		invalidate()
+	}
+}
+
+// GeneralItems lists the General rows by Order, then ID.
+func GeneralItems() []GeneralItem {
+	mu.Lock()
+	defer mu.Unlock()
+	out := make([]GeneralItem, 0, len(general))
+	for _, g := range general {
+		out = append(out, g)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Order != out[j].Order {
+			return out[i].Order < out[j].Order
+		}
+		return out[i].ID < out[j].ID
+	})
+	return out
+}
 
 var sections = map[int]SettingsSection{}
 
