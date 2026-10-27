@@ -7,13 +7,12 @@ package actions
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/arcships/rutis/go/rutis"
 
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	"github.com/cunninghamcard-bit/attention/native/internal/natural"
+	"github.com/cunninghamcard-bit/attention/native/internal/clifmt"
 )
 
 // Info describes a command to another process.
@@ -72,7 +71,7 @@ func cliCommands() actionsapi.Command {
 			}
 			ids = append(ids, c.ID)
 		}
-		sort.Slice(ids, func(i, j int) bool { return natural.Less(ids[i], ids[j]) })
+		clifmt.Sort(ids)
 		return strings.Join(ids, "\n"), nil
 	}}
 }
