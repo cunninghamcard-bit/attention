@@ -29,5 +29,8 @@ not listed is a defect.
 | `links`, `backlinks`, `tags`, `outline`, … | the metadata cache, its links in code blocks counted | the index plugin; links, tags and definitions in fenced code are not counted | as Obsidian itself |
 | `unresolved` | sources in insertion order | sources sorted | no insertion order to keep |
 | `properties` (vault) | each property's type from the type manager | `type` is always `text` in json | no property types yet |
-| `property:set`, `property:remove`, `reload`, `workspaces`, `workspace:save`/`load`/`delete`, `web` | present | not yet | frontmatter writes, named layouts and the web viewer come later (roadmap P2, P3) |
+| `property:set` | records the type (`list` as `multitext`) in the type manager | parses by `type=` and records nothing | no property type registry |
+| `property:set` without `value=` | the dispatcher refuses it (required flag) | writes `""` | no required-flag dispatcher |
+| `backlinks` pane, `outline` pane | unlinked mentions; a code file's symbols | linked mentions only; headings only | not yet |
+| `reload`, `workspaces`, `workspace:save`/`load`/`delete`, `web` | present | not yet | reloading the UI runtime, named layouts and the web viewer come later (roadmap P3) |
 | `mount path=`, `focus`, `quit` | — | new | the reader's own; `quit` stops the app as closing its window does |
