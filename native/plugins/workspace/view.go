@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"sync"
 
@@ -62,9 +63,9 @@ func (ws *Workspace) view(c *ui.Context) {
 	if ws.palette != nil {
 		ws.paletteView(c)
 	}
-	// Dragging a divider changes the widths during the build: save them.
-	if ws.leftWidth != ws.seenLeft || ws.splitPct != ws.seenSplit {
-		ws.seenLeft, ws.seenSplit = ws.leftWidth, ws.splitPct
+	// Dragging a divider changes the width during the build: save it.
+	if ws.leftWidth != ws.seenLeft {
+		ws.seenLeft = ws.leftWidth
 		if ws.saveSoon != nil {
 			ws.saveSoon()
 		}
@@ -74,7 +75,7 @@ func (ws *Workspace) view(c *ui.Context) {
 // shortcuts are attention's defaults (apps/web: AppCommands, the command
 // palette, the quick switcher), Cmd on macOS and Ctrl elsewhere; the
 // editing ones do not apply to a reader. Keys attention leaves unbound get
-// ours: Ctrl Shift F, Ctrl B, Ctrl \, Ctrl Q. A tab type's own keys are its
+// ours: Ctrl Shift F, Ctrl B, Ctrl Alt B, Ctrl \, Ctrl Q. A tab type's own keys are its
 // body's (markdown's Ctrl E).
 func (ws *Workspace) shortcuts(c *ui.Context) {
 	digits := []ui.Key{ui.Key1, ui.Key2, ui.Key3, ui.Key4, ui.Key5, ui.Key6, ui.Key7, ui.Key8}
@@ -102,10 +103,12 @@ func (ws *Workspace) shortcuts(c *ui.Context) {
 		ws.cycleTab(1)
 	case c.Shortcut(ui.Ctrl|ui.Shift, ui.KeyTab), c.Shortcut(ui.Cmd|ui.Shift, ui.KeyBracketLeft), c.Shortcut(ui.Ctrl, ui.KeyPageUp):
 		ws.cycleTab(-1)
+	case c.Shortcut(ui.Cmd|ui.Alt, ui.KeyB):
+		ws.toggleRight()
 	case c.Shortcut(ui.Cmd, ui.KeyB):
 		ws.toggleLeft()
 	case c.Shortcut(ui.Cmd, ui.KeyBackslash):
-		ws.splitRight()
+		ws.split(vertical)
 	case c.Shortcut(ui.Cmd, ui.KeyQ):
 		mygo.App.Quit()
 	}
@@ -138,12 +141,11 @@ func (ws *Workspace) dock(c *ui.Context, d slotsapi.Dock) {
 		col.Width(ws.rightWidth).Shrink(0).BorderWidth(0, 0, 0, 1)
 	}
 	col.BorderColor(t.Border).Children(func() {
-		var shown *slotsapi.Panel
-		if d == slotsapi.Left {
-			shown = ws.shownLeft(panels)
-		} else if len(panels) > 0 {
-			shown = &panels[0]
+		want := ws.leftPanel
+		if d == slotsapi.Right {
+			want = ws.rightPanel
 		}
+		shown := shownPanel(panels, want)
 		ui.Row(c).Height(38).Shrink(0).PaddingX(6).Gap(2).AlignItems(ui.Center).
 			BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
 			for i := range panels {
@@ -170,11 +172,11 @@ func (ws *Workspace) dock(c *ui.Context, d slotsapi.Dock) {
 	})
 }
 
-// shownLeft is the left dock's shown panel: the chosen one while it is
+// shownPanel is a dock's shown panel: the chosen one while it is
 // registered, else the first.
-func (ws *Workspace) shownLeft(panels []slotsapi.Panel) *slotsapi.Panel {
+func shownPanel(panels []slotsapi.Panel, want string) *slotsapi.Panel {
 	for i := range panels {
-		if panels[i].ID == ws.leftPanel {
+		if panels[i].ID == want {
 			return &panels[i]
 		}
 	}
@@ -186,38 +188,89 @@ func (ws *Workspace) shownLeft(panels []slotsapi.Panel) *slotsapi.Panel {
 
 // ---- panes and tabs -----------------------------------------------------------
 
+// paneGroup is the center: the layout tree's splits and tab groups.
 func (ws *Workspace) paneGroup(c *ui.Context) {
-	if len(ws.panes) == 1 {
-		ws.paneView(c, 0)
-		return
-	}
-	ui.SplitPercent(c, &ws.splitPct, func() { ws.paneView(c, 0) }, func() { ws.paneView(c, 1) }).Grow(1)
+	ui.Column(c).Grow(1).Fill().Children(func() { ws.splitView(c, ws.root) })
 }
 
-func (ws *Workspace) paneView(c *ui.Context, i int) {
-	t := c.Theme()
-	p := ws.panes[i]
-	focused := i == ws.active
-	col := ui.Column(c).Key(fmt.Sprintf("pane-%d", i)).Grow(1).Fill()
-	if len(ws.panes) > 1 && i == 1 {
-		col.BorderWidth(0, 0, 0, 1).BorderColor(t.Border)
+// splitView draws n. mygo's splits take two children, so a split of more
+// is drawn nested: child k against the rest, pcts[k] being child k's
+// percentage of what is left from it on. A divider dragged during the
+// build moves pcts, which become the children's shares again.
+func (ws *Workspace) splitView(c *ui.Context, n *node) {
+	if n.group != nil {
+		ws.paneView(c, n.group)
+		return
 	}
-	if col.Clicked() && !focused {
-		ws.active = i
-		ws.changed()
+	if len(n.children) == 1 {
+		ws.splitView(c, n.children[0])
+		return
+	}
+	shares := n.shares()
+	if len(n.pcts) != len(shares)-1 {
+		n.pcts = make([]float32, len(shares)-1)
+	}
+	rest := float32(100)
+	for k := range n.pcts {
+		n.pcts[k] = shares[k] / rest * 100
+		rest -= shares[k]
+	}
+	set := append([]float32(nil), n.pcts...)
+	ws.splitFrom(c, n, 0)
+	moved := false
+	for k := range set {
+		moved = moved || math.Abs(float64(set[k]-n.pcts[k])) > 0.01
+	}
+	if !moved {
+		return
+	}
+	rest = 100
+	for k, ch := range n.children {
+		if k == len(n.pcts) {
+			ch.dim = rest
+			break
+		}
+		ch.dim = n.pcts[k] / 100 * rest
+		rest -= ch.dim
+	}
+	if ws.saveSoon != nil {
+		ws.saveSoon()
+	}
+}
+
+func (ws *Workspace) splitFrom(c *ui.Context, n *node, k int) {
+	if k == len(n.children)-1 {
+		ws.splitView(c, n.children[k])
+		return
+	}
+	first := func() { ws.splitView(c, n.children[k]) }
+	rest := func() { ws.splitFrom(c, n, k+1) }
+	if n.dir == horizontal {
+		ui.SplitVerticalPercent(c, &n.pcts[k], first, rest).Grow(1).Fill()
+	} else {
+		ui.SplitPercent(c, &n.pcts[k], first, rest).Grow(1).Fill()
+	}
+}
+
+func (ws *Workspace) paneView(c *ui.Context, p *pane) {
+	focused := p == ws.activePane()
+	alone := len(ws.groups()) == 1
+	col := ui.Column(c).Key(fmt.Sprintf("group-%d", p.id)).Grow(1).Fill()
+	if col.Clicked() {
+		ws.focusGroup(p)
 	}
 	col.Children(func() {
-		ws.tabBar(c, p, i, focused)
+		ws.tabBar(c, p, focused || alone)
 		tb := p.current()
 		if tb == nil {
 			ws.emptyPane(c)
 			return
 		}
-		ws.tabBody(c, tb, focused || len(ws.panes) == 1)
+		ws.tabBody(c, tb, focused || alone)
 	})
 }
 
-func (ws *Workspace) tabBar(c *ui.Context, p *pane, paneIndex int, focused bool) {
+func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
 	t := c.Theme()
 	ui.ScrollHorizontal(c).Height(38).FillWidth().Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
 		ui.Row(c).PaddingX(6).Gap(2).AlignItems(ui.Center).FillHeight().Children(func() {
@@ -236,13 +289,13 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, paneIndex int, focused bool)
 				}
 				chip := omgui.TabChip(c, omgui.TabChipProps{
 					Key: fmt.Sprintf("tab-%d", tb.id), Title: title, Icon: icon, Tooltip: tip,
-					Selected:   j == p.active && (focused || len(ws.panes) == 1),
+					Selected:   j == p.active && focused,
 					CloseLabel: "Close " + tb.title,
 					OnClose:    func() { ws.closeTab(p, j) },
 				})
 				if chip.Clicked() {
 					p.active = j
-					ws.active = paneIndex
+					ws.activeGroup = p
 					ws.changed()
 				}
 			}
@@ -264,6 +317,7 @@ func (ws *Workspace) emptyPane(c *ui.Context) {
 		hint("Open command palette", "Ctrl P")
 		hint("Search in all files", "Ctrl Shift F")
 		hint("Toggle left sidebar", "Ctrl B")
+		hint("Toggle right sidebar", "Ctrl Alt B")
 	})
 }
 
@@ -319,7 +373,7 @@ func (ws *Workspace) statusBar(c *ui.Context) {
 		}
 		ui.Box(c).Grow(1)
 		defer func() {
-			if ui.Icon(c, lucide.PanelRight()).Size(14, 14).TextColor(t.TextMuted).Tooltip("Toggle right sidebar").Clicked() {
+			if ui.Icon(c, lucide.PanelRight()).Size(14, 14).TextColor(t.TextMuted).Tooltip("Toggle right sidebar (Ctrl Alt B)").Clicked() {
 				ws.toggleRight()
 			}
 		}()

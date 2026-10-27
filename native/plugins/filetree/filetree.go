@@ -131,7 +131,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		})
 
 		off := slotsapi.RegisterPanel(slotsapi.Panel{
-			ID: PanelID, Title: "Files", Icon: lucide.Folder(), Dock: slotsapi.Left, Order: 0,
+			ID: PanelID, Title: "Files", Icon: lucide.Folder(), Dock: slotsapi.Right, Order: 0,
 			View:  func(c *ui.Context, _ slotsapi.PanelProps) { tr.view(c) },
 			State: tr.state, Restore: tr.restore,
 		})

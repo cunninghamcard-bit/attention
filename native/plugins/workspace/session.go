@@ -9,19 +9,24 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 )
 
-// session is what reopens the window as it was: panes, tabs, layout.
+// session is what reopens the window as it was: tab groups, tabs, layout.
 type session struct {
-	Panes     []sessionPane `json:"panes"`
-	Active    int           `json:"active"`
+	// Main is the center's layout tree (attention's layout "main").
+	Main *sessionNode `json:"main,omitempty"`
+	// Panes, Active and SplitPct are the layout before the tree: at most
+	// two groups side by side. Read, never written.
+	Panes     []sessionPane `json:"panes,omitempty"`
+	Active    int           `json:"active,omitempty"`
+	SplitPct  float32       `json:"splitPct,omitempty"`
 	PanelOpen bool          `json:"panelOpen"`
 	LeftWidth float32       `json:"leftWidth"`
 	LeftPanel string        `json:"leftPanel,omitempty"`
-	// RightOpen and RightWidth are the right dock's.
+	// RightOpen, RightWidth and RightPanel are the right dock's.
 	RightOpen  bool    `json:"rightOpen,omitempty"`
 	RightWidth float32 `json:"rightWidth,omitempty"`
+	RightPanel string  `json:"rightPanel,omitempty"`
 	// PanelStates are the panels' own states by panel ID.
 	PanelStates map[string]json.RawMessage `json:"panelStates,omitempty"`
-	SplitPct    float32                    `json:"splitPct"`
 	// Recent files and commands: the quick switcher's and the command
 	// palette's (attention keeps the latter in local storage).
 	RecentFiles    []string `json:"recentFiles,omitempty"`
@@ -31,6 +36,73 @@ type session struct {
 type sessionPane struct {
 	Tabs   []string `json:"tabs"` // file paths; new tabs are not kept
 	Active int      `json:"active"`
+}
+
+// sessionNode is a split or a tab group, as attention serializes its
+// layout (WorkspaceSplit.serialize, WorkspaceItem.serialize).
+type sessionNode struct {
+	Type      string        `json:"type"` // "split" or "tabs"
+	Direction direction     `json:"direction,omitempty"`
+	Dimension float32       `json:"dimension,omitempty"`
+	Children  []sessionNode `json:"children,omitempty"`
+	// A tab group's files, its active tab, and whether it had the focus.
+	Tabs    []string `json:"tabs,omitempty"`
+	Active  int      `json:"active,omitempty"`
+	Focused bool     `json:"focused,omitempty"`
+}
+
+// keptTree is sn without the tabs that do not reopen (keepTab) and the
+// groups and splits left empty; nil when nothing is left.
+func keptTree(sn sessionNode) *sessionNode {
+	if sn.Type != "split" {
+		kept := sn
+		kept.Tabs, kept.Active = nil, 0
+		for i, path := range sn.Tabs {
+			if keepTab(path) {
+				if i == sn.Active {
+					kept.Active = len(kept.Tabs)
+				}
+				kept.Tabs = append(kept.Tabs, path)
+			}
+		}
+		if len(kept.Tabs) == 0 {
+			return nil
+		}
+		return &kept
+	}
+	kept := sn
+	kept.Children = nil
+	for _, ch := range sn.Children {
+		if k := keptTree(ch); k != nil {
+			kept.Children = append(kept.Children, *k)
+		}
+	}
+	if len(kept.Children) == 0 {
+		return nil
+	}
+	return &kept
+}
+
+// legacyTree is the layout before the tree as one: the panes side by side.
+func legacyTree(s session) *sessionNode {
+	if len(s.Panes) == 0 {
+		return nil
+	}
+	root := sessionNode{Type: "split", Direction: vertical}
+	for i, p := range s.Panes {
+		if i > 1 {
+			break
+		}
+		g := sessionNode{Type: "tabs", Tabs: p.Tabs, Active: p.Active, Focused: i == s.Active}
+		if len(s.Panes) > 1 && s.SplitPct > 10 && s.SplitPct < 90 {
+			g.Dimension = s.SplitPct
+			if i == 1 {
+				g.Dimension = 100 - s.SplitPct
+			}
+		}
+		root.Children = append(root.Children, g)
+	}
+	return &root
 }
 
 // loadSession reads the saved session. A deleted file whose directory is
@@ -47,24 +119,13 @@ func loadSession() (session, bool) {
 	if json.Unmarshal(data, &s) != nil {
 		return session{}, false
 	}
-	var panes []sessionPane
-	for _, p := range s.Panes {
-		var kept sessionPane
-		for i, path := range p.Tabs {
-			if keepTab(path) {
-				if i == p.Active {
-					kept.Active = len(kept.Tabs)
-				}
-				kept.Tabs = append(kept.Tabs, path)
-			}
-		}
-		if len(kept.Tabs) > 0 {
-			panes = append(panes, kept)
-		}
+	if s.Main == nil {
+		s.Main = legacyTree(s)
+		s.RightOpen = true // the file tree moved to the right dock
 	}
-	s.Panes = panes
-	if s.Active >= len(panes) {
-		s.Active = 0
+	s.Panes = nil
+	if s.Main != nil {
+		s.Main = keptTree(*s.Main)
 	}
 	return s, true
 }
@@ -80,30 +141,40 @@ func keepTab(path string) bool {
 }
 
 func (ws *Workspace) snapshot() session {
-	s := session{Active: ws.active, PanelOpen: ws.panelOpen, LeftWidth: ws.leftWidth, LeftPanel: ws.leftPanel,
-		RightOpen: ws.rightOpen, RightWidth: ws.rightWidth, SplitPct: ws.splitPct,
+	s := session{PanelOpen: ws.panelOpen, LeftWidth: ws.leftWidth, LeftPanel: ws.leftPanel,
+		RightOpen: ws.rightOpen, RightWidth: ws.rightWidth, RightPanel: ws.rightPanel,
 		RecentFiles: ws.recentFiles, RecentCommands: ws.recentCommands, PanelStates: ws.panelStates()}
 	if ws.restoring != nil {
 		// The saved tabs are not reopened yet (the mounts are loading): keep
 		// them rather than save an empty window over them.
-		s.Panes = ws.restoring
-		s.Active = ws.restoreActive
+		s.Main = ws.restoring
 		return s
 	}
-	for _, p := range ws.panes {
-		var sp sessionPane
-		for i, t := range p.tabs {
+	main := ws.serialize(ws.root)
+	s.Main = &main
+	return s
+}
+
+// serialize is n as the session keeps it; new tabs are not kept.
+func (ws *Workspace) serialize(n *node) sessionNode {
+	if n.group != nil {
+		sn := sessionNode{Type: "tabs", Dimension: n.dim, Focused: n.group == ws.activePane()}
+		for i, t := range n.group.tabs {
 			if t.empty {
 				continue
 			}
-			if i == p.active {
-				sp.Active = len(sp.Tabs)
+			if i == n.group.active {
+				sn.Active = len(sn.Tabs)
 			}
-			sp.Tabs = append(sp.Tabs, t.path)
+			sn.Tabs = append(sn.Tabs, t.path)
 		}
-		s.Panes = append(s.Panes, sp)
+		return sn
 	}
-	return s
+	sn := sessionNode{Type: "split", Direction: n.dir, Dimension: n.dim}
+	for _, ch := range n.children {
+		sn.Children = append(sn.Children, ws.serialize(ch))
+	}
+	return sn
 }
 
 func saveSession(s session) error {
@@ -123,37 +194,94 @@ func (ws *Workspace) restoreLayout(s session) {
 	if s.RightWidth >= 120 {
 		ws.rightWidth = s.RightWidth
 	}
-	ws.leftPanel, ws.rightOpen = s.LeftPanel, s.RightOpen
+	ws.leftPanel, ws.rightPanel = s.LeftPanel, s.RightPanel
 	// A panel drawn before the session arrived gets it on its next draw.
 	ws.savedPanels, ws.restoredPanels = s.PanelStates, map[string]bool{}
-	if s.SplitPct > 10 && s.SplitPct < 90 {
-		ws.splitPct = s.SplitPct
+	if s.Main == nil {
+		s.Main = legacyTree(s)
+		s.RightOpen = true // the file tree moved to the right dock
 	}
-	ws.panelOpen = s.PanelOpen || len(s.Panes) == 0
+	ws.panelOpen = s.PanelOpen || s.Main == nil
+	ws.rightOpen = s.RightOpen || s.Main == nil
 	ws.recentFiles, ws.recentCommands = s.RecentFiles, s.RecentCommands
-	ws.restoring = s.Panes
-	ws.restoreActive = s.Active
+	ws.restoring = s.Main
 	if ws.mountsLoaded {
 		ws.reopen(ws.restoring)
 		ws.restoring = nil
 	}
 }
 
-func (ws *Workspace) reopen(panes []sessionPane) {
-	for i, sp := range panes {
-		if i > 1 {
-			break // at most two panes
+// reopen builds the saved layout tree and opens its tabs. Tabs opened
+// before it (by the CLI, while the mounts loaded) stay: the saved tabs
+// then open beside them, in the focused group.
+func (ws *Workspace) reopen(main *sessionNode) {
+	if main == nil {
+		return
+	}
+	type saved struct {
+		p  *pane
+		sn sessionNode
+	}
+	var groups []saved
+	var build func(sn sessionNode) *node
+	build = func(sn sessionNode) *node {
+		if sn.Type != "split" {
+			p := ws.newPane()
+			groups = append(groups, saved{p, sn})
+			n := newGroupNode(p)
+			n.dim = sn.Dimension
+			return n
 		}
-		for len(ws.panes) <= i {
-			ws.panes = append(ws.panes, &pane{})
+		n := &node{dir: sn.Direction, dim: sn.Dimension}
+		if n.dir != horizontal {
+			n.dir = vertical
 		}
-		ws.active = i
-		for _, path := range sp.Tabs {
+		for _, ch := range sn.Children {
+			n.insert(-1, build(ch))
+		}
+		return n
+	}
+	hasTabs := false
+	for _, g := range ws.groups() {
+		hasTabs = hasTabs || len(g.tabs) > 0
+	}
+	if !hasTabs {
+		root := build(*main)
+		if root.group != nil {
+			root = &node{dir: vertical}
+			root.insert(0, groups[0].p.node)
+			groups[0].p.node.dim = 0
+		}
+		root.dim = 0
+		ws.root = root
+	} else {
+		var flat func(sn sessionNode)
+		flat = func(sn sessionNode) {
+			if sn.Type != "split" {
+				groups = append(groups, saved{ws.activePane(), sn})
+			}
+			for _, ch := range sn.Children {
+				flat(ch)
+			}
+		}
+		flat(*main)
+	}
+	var focus *pane
+	for _, g := range groups {
+		ws.activeGroup = g.p
+		for _, path := range g.sn.Tabs {
 			ws.open(path, nil)
 		}
-		ws.panes[i].active = min(sp.Active, max(0, len(ws.panes[i].tabs)-1))
+		if !hasTabs {
+			g.p.active = min(g.sn.Active, max(0, len(g.p.tabs)-1))
+		}
+		if g.sn.Focused {
+			focus = g.p
+		}
 	}
-	ws.active = max(0, min(ws.restoreActive, len(ws.panes)-1))
+	if focus != nil {
+		ws.activeGroup = focus
+	}
 	ws.changed()
 }
 

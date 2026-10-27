@@ -42,7 +42,7 @@ func testWorkspace(t *testing.T) (*Workspace, *ui.Tester) {
 	ws.setMounts([]projectcontract.Mount{m})
 	ws.files = &files
 	t.Cleanup(func() {
-		for _, p := range ws.panes {
+		for _, p := range ws.groups() {
 			for _, tb := range p.tabs {
 				if tb.hold != nil {
 					tb.hold()
@@ -57,7 +57,7 @@ func testWorkspace(t *testing.T) (*Workspace, *ui.Tester) {
 
 func tabs(ws *Workspace) []string {
 	var out []string
-	for _, p := range ws.panes {
+	for _, p := range ws.groups() {
 		for _, t := range p.tabs {
 			out = append(out, t.viewType()+":"+t.displayText())
 		}

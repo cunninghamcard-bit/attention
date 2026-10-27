@@ -43,11 +43,12 @@ type Workspace struct {
 	restoredPanels map[string]bool
 	rightOpen      bool
 	rightWidth     float32
-	panes          []*pane
-	active         int
-	splitPct       float32
-	seenLeft       float32 // the widths last saved, to notice a divider drag
-	seenSplit      float32
+	rightPanel     string // the right dock's shown panel
+	// root is the center's layout: tab groups in splits (tree.go).
+	root        *node
+	activeGroup *pane
+	nextGroup   int
+	seenLeft    float32 // the width last saved, to notice a divider drag
 
 	palette *palette
 	notice  string // a workspace-wide message, as a watch error
@@ -61,15 +62,17 @@ type Workspace struct {
 	// commands, newest first.
 	recentFiles    []string
 	recentCommands []string
-	restoring      []sessionPane // tabs to reopen once the mounts are known
-	restoreActive  int
+	restoring      *sessionNode // the layout to reopen once the mounts are known
 	saveSoon       func()
 	isDark         func() bool // mygo.Theme.IsDark; tests replace it
 	title          string
 	typesGen       int // the tab type registry's generation last claimed against
 }
 
+// pane is a tab group (attention's WorkspaceTabs).
 type pane struct {
+	id     int // unique for the run; keys its view
+	node   *node
 	tabs   []*tab
 	active int
 }
@@ -101,15 +104,22 @@ func newWorkspace(ctx context.Context, fs fscontract.FS, project projectcontract
 	ws := &Workspace{
 		ctx: ctx, fs: fs, project: project,
 		panelOpen:      true,
+		rightOpen:      true, // the file tree's, as Zed's project panel
 		leftWidth:      260,
 		rightWidth:     260,
 		reveals:        map[string]int{},
 		restoredPanels: map[string]bool{},
-		panes:          []*pane{{}},
-		splitPct:       50,
+		root:           &node{dir: vertical},
 		isDark:         mygo.Theme.IsDark,
 	}
+	ws.root.insert(0, newGroupNode(ws.newPane()))
 	return ws
+}
+
+// newPane is an empty tab group, not in the tree yet.
+func (ws *Workspace) newPane() *pane {
+	ws.nextGroup++
+	return &pane{id: ws.nextGroup}
 }
 
 // addressOf is path's resource address: under its mount, else absolute.
@@ -150,7 +160,7 @@ func (ws *Workspace) reclaim() {
 		return
 	}
 	ws.typesGen = gen
-	for _, p := range ws.panes {
+	for _, p := range ws.groups() {
 		for _, t := range p.tabs {
 			if !t.empty {
 				ws.claim(t)
@@ -176,11 +186,25 @@ func missing(s resourcesapi.Snapshot) bool {
 // isMissing reports whether t's file is gone.
 func (t *tab) isMissing() bool { return !t.empty && missing(resourcesapi.Get(t.address)) }
 
+// activePane is the focused tab group: the last one focused while it is in
+// the tree, else the first.
 func (ws *Workspace) activePane() *pane {
-	if ws.active >= len(ws.panes) {
-		ws.active = len(ws.panes) - 1
+	gs := ws.groups()
+	for _, g := range gs {
+		if g == ws.activeGroup {
+			return g
+		}
 	}
-	return ws.panes[ws.active]
+	ws.activeGroup = gs[0]
+	return gs[0]
+}
+
+// focusGroup makes g the focused tab group.
+func (ws *Workspace) focusGroup(g *pane) {
+	if g != nil && g != ws.activeGroup {
+		ws.activeGroup = g
+		ws.changed()
+	}
 }
 
 func (p *pane) current() *tab {
@@ -218,7 +242,7 @@ func (ws *Workspace) setMounts(ms []projectcontract.Mount) {
 	ws.mounts = ms
 	ws.mountsLoaded = true
 	// A file opened before the mounts were known gets its mount address.
-	for _, p := range ws.panes {
+	for _, p := range ws.groups() {
 		for _, t := range p.tabs {
 			if a := ws.addressOf(t.path); !t.empty && a != t.address {
 				t.hold()
@@ -325,15 +349,10 @@ func (ws *Workspace) closeTab(p *pane, i int) {
 	if p.active > i || p.active >= len(p.tabs) {
 		p.active = max(0, p.active-1)
 	}
-	// An empty second pane closes.
-	if len(p.tabs) == 0 && len(ws.panes) > 1 {
-		for j, q := range ws.panes {
-			if q == p {
-				ws.panes = append(ws.panes[:j], ws.panes[j+1:]...)
-				break
-			}
-		}
-		ws.active = 0
+	// A tab group closes with its last tab, unless it is the last one
+	// (WorkspaceTabs.removeChild).
+	if len(p.tabs) == 0 {
+		ws.removeGroup(p)
 	}
 	ws.changed()
 }
@@ -351,21 +370,62 @@ func (ws *Workspace) cycleTab(delta int) {
 	}
 }
 
-// splitRight opens a second pane showing the active tab's file, or moves the
-// focus between the two panes when there are two.
-func (ws *Workspace) splitRight() {
-	if len(ws.panes) > 1 {
-		ws.active = 1 - ws.active
-		ws.changed()
-		return
-	}
+// split puts a new tab group beside the focused one in dir and shows the
+// active tab's file in it, as attention's Split right and Split down
+// (Workspace.duplicateLeaf); an empty tab is duplicated as an empty tab.
+func (ws *Workspace) split(dir direction) {
 	t := ws.activeTab()
-	ws.panes = append(ws.panes, &pane{})
-	ws.active = 1
-	if t != nil && !t.empty {
-		ws.open(t.path, nil)
+	g := ws.splitGroup(ws.activePane(), dir, false)
+	ws.activeGroup = g
+	switch {
+	case t == nil || t.empty:
+		ws.newTab()
+	default:
+		ws.openAddress(t.address, t.path, workspaceapi.OpenOptions{Nav: t.nav, Kind: t.wantKind})
 	}
 	ws.changed()
+}
+
+// focusDirection focuses the tab group beside the focused one, as
+// attention's Navigate tab left/right/above/below.
+func (ws *Workspace) focusDirection(dir string) {
+	ws.focusGroup(ws.adjacent(ws.activePane(), dir))
+}
+
+// closeTabGroup closes every tab of the focused group (Close tab group).
+func (ws *Workspace) closeTabGroup() {
+	p := ws.activePane()
+	n := len(p.tabs)
+	for i := n - 1; i >= 0; i-- {
+		ws.closeTab(p, i)
+	}
+}
+
+// closeOthersInGroup closes the focused group's other tabs (Close others
+// in tab group).
+func (ws *Workspace) closeOthersInGroup() {
+	p := ws.activePane()
+	keep := p.current()
+	for i := len(p.tabs) - 1; i >= 0; i-- {
+		if p.tabs[i] != keep {
+			ws.closeTab(p, i)
+		}
+	}
+}
+
+// closeOthers closes every other tab in every group (Close other tabs).
+func (ws *Workspace) closeOthers() {
+	keep := ws.activeTab()
+	if keep == nil {
+		return
+	}
+	for _, g := range ws.groups() {
+		for i := len(g.tabs) - 1; i >= 0; i-- {
+			if g.tabs[i] != keep {
+				ws.closeTab(g, i)
+			}
+		}
+	}
 }
 
 // ---- changes ----------------------------------------------------------------
@@ -452,7 +512,7 @@ func (ws *Workspace) revealPanel(id string) {
 			if d == slotsapi.Left {
 				ws.panelOpen, ws.leftPanel = true, id
 			} else {
-				ws.rightOpen = true
+				ws.rightOpen, ws.rightPanel = true, id
 			}
 			ws.reveals[id]++
 			ws.changed()

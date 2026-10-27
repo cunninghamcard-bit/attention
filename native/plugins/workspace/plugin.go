@@ -1,5 +1,5 @@
-// Package workspace is the workspace UI plugin: the Zed-looking reader —
-// the ribbon, the docks' panels, tabbed panes with a split whose bodies
+// Package workspace is the workspace UI plugin: the reader's frame —
+// the ribbon, the docks' panels, tab groups in splits (tree.go) whose bodies
 // are the tab types' (tabtypesapi), quick open, the command palette, the
 // status bar — and the CLI's open and tabs.
 //
@@ -199,9 +199,17 @@ func (ws *Workspace) commands() []actionsapi.Command {
 		ui("workspace:next-tab", "Go to next tab", "Ctrl Tab", func() { ws.cycleTab(1) }),
 		ui("workspace:previous-tab", "Go to previous tab", "Ctrl Shift Tab", func() { ws.cycleTab(-1) }),
 		ui("workspace:goto-last-tab", "Go to last tab", "Ctrl 9", func() { ws.gotoTab(0) }),
-		ui("workspace:split-vertical", "Split right", "Ctrl \\", ws.splitRight),
+		ui("workspace:split-vertical", "Split right", "Ctrl \\", func() { ws.split(vertical) }),
+		ui("workspace:split-horizontal", "Split down", "", func() { ws.split(horizontal) }),
+		ui("editor:focus-top", "Navigate tab above", "", func() { ws.focusDirection("top") }),
+		ui("editor:focus-bottom", "Navigate tab below", "", func() { ws.focusDirection("bottom") }),
+		ui("editor:focus-left", "Navigate tab left", "", func() { ws.focusDirection("left") }),
+		ui("editor:focus-right", "Navigate tab right", "", func() { ws.focusDirection("right") }),
+		ui("workspace:close-others", "Close other tabs", "", ws.closeOthers),
+		ui("workspace:close-tab-group", "Close tab group", "", ws.closeTabGroup),
+		ui("workspace:close-others-tab-group", "Close others in tab group", "", ws.closeOthersInGroup),
 		ui("app:toggle-left-sidebar", "Toggle left sidebar", "Ctrl B", ws.toggleLeft),
-		ui("app:toggle-right-sidebar", "Toggle right sidebar", "", ws.toggleRight),
+		ui("app:toggle-right-sidebar", "Toggle right sidebar", "Ctrl Alt B", ws.toggleRight),
 		{ID: "workspace:add-folder", Title: "Add folder to workspace", Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
 			dirs, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: shellapi.Window(), Title: "Add Folder to Project", Directory: true})
 			if err != nil || len(dirs) == 0 {
@@ -231,7 +239,7 @@ func (ws *Workspace) commands() []actionsapi.Command {
 				// The TS CLI's shape: "[<view type>] <display text>", then a tab
 				// ID with ids.
 				var lines []string
-				for _, p := range ws.panes {
+				for _, p := range ws.groups() {
 					for _, t := range p.tabs {
 						line := "[" + t.viewType() + "] " + t.displayText()
 						if a.Has("ids") {
