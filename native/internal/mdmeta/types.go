@@ -16,6 +16,8 @@ type Metadata struct {
 	Footnotes           []Footnote        `json:"footnotes"`
 	FootnoteRefs        []Footnote        `json:"footnoteRefs"`
 	Tags                []Tag             `json:"tags"`
+	// URLs are the http(s) addresses it names (urls.go), the reader's own.
+	URLs []Link `json:"urls,omitempty"`
 }
 
 // Loc is a line/column/offset cursor.

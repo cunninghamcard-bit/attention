@@ -238,7 +238,8 @@ func Rows(profile string, mounts []string) []map[string]any {
 		map[string]any{"id": "markdown-ui", "name": "go:markdown-ui"},
 		map[string]any{"id": "image-ui", "name": "go:image-ui"},
 		map[string]any{"id": "web", "name": "go:web"},
-		map[string]any{"id": "web-history", "name": "go:web-history"})...)
+		map[string]any{"id": "web-history", "name": "go:web-history"},
+		map[string]any{"id": "web-index", "name": "go:web-index"})...)
 }
 
 // Config is the rutis.json for a run.

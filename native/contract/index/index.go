@@ -3,7 +3,11 @@
 // cache. Paths are absolute; a note's display path is the CLI's.
 package index
 
-import "context"
+import (
+	"context"
+	"net/url"
+	"strings"
+)
 
 // Mention is one link from a source note to the asked file, with its line
 // for context (the backlinks pane's match).
@@ -14,10 +18,12 @@ type Mention struct {
 	Text string `json:"text"` // the line
 }
 
-// Backlink is a note linking to the asked file.
+// Backlink is a note linking to the asked file, or a note or web page
+// citing the asked URL.
 type Backlink struct {
-	Path     string    `json:"path"`    // absolute
-	Display  string    `json:"display"` // "<mount>/<rel>"
+	Path     string    `json:"path"`          // absolute; "" for a web page
+	URL      string    `json:"url,omitempty"` // a web page's
+	Display  string    `json:"display"`       // "<mount>/<rel>"
 	Mentions []Mention `json:"mentions"`
 }
 
@@ -36,8 +42,42 @@ const ChangedEvent = "index/changed"
 type Index struct {
 	// Backlinks are the notes linking to path, sorted by display path.
 	Backlinks func(ctx context.Context, path string) ([]Backlink, error)
+	// URLBacklinks are the notes and web pages citing url (NormalizeURL),
+	// sorted by display: the link graph across resource types (RFC §5.6).
+	URLBacklinks func(ctx context.Context, url string) ([]Backlink, error)
+	// SubmitPage indexes a web page's article, replacing what it had for
+	// the same URL (the web-index plugin's).
+	SubmitPage func(ctx context.Context, page Page) error
+	// RemovePages drops the web pages of urls, every page for none.
+	RemovePages func(ctx context.Context, urls []string) error
 	// Headings are path's headings in order; none for a file not a note.
 	Headings func(ctx context.Context, path string) ([]Heading, error)
 	// Generation changes whenever the index does.
 	Generation func(ctx context.Context) (int, error)
+}
+
+// Page is a web page's article as the index takes it.
+type Page struct {
+	URL      string `json:"url"`
+	Title    string `json:"title"`
+	Markdown string `json:"markdown"`
+}
+
+// NormalizeURL is the key a URL has in the link graph: its fragment
+// dropped, its scheme and host lowercased, an empty path "/"; false for an
+// address that is not http(s).
+func NormalizeURL(s string) (string, bool) {
+	u, err := url.Parse(strings.TrimSpace(s))
+	if err != nil || u.Host == "" {
+		return "", false
+	}
+	u.Scheme, u.Host = strings.ToLower(u.Scheme), strings.ToLower(u.Host)
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return "", false
+	}
+	u.Fragment, u.RawFragment = "", ""
+	if u.Path == "" {
+		u.Path = "/"
+	}
+	return u.String(), true
 }

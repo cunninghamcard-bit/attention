@@ -65,6 +65,7 @@ func Parse(source string) Metadata {
 		Footnotes:           collectFootnotes(source),
 		FootnoteRefs:        collectFootnoteRefs(source),
 		Tags:                collectTags(lines, offsets, fences, frontmatterPosition),
+		URLs:                collectURLs(lines, offsets, fences),
 	}
 	for _, match := range contentRefs {
 		item := Link{

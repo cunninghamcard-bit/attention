@@ -22,6 +22,7 @@ import (
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
+	webcontract "github.com/cunninghamcard-bit/attention/native/contract/web"
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/internal/persist"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
@@ -44,6 +45,7 @@ const maxEntries = 1000
 type History struct {
 	entries []webhistoryapi.Entry
 	save    func()
+	cleared func() // emits webcontract.HistoryClearedEvent
 }
 
 type file struct {
@@ -94,9 +96,13 @@ func (h *History) Remove(id string) {
 	}
 }
 
+// Clear is clearHistory; the pages leave the index with it (web-index).
 func (h *History) Clear() {
 	h.entries = nil
 	h.save()
+	if h.cleared != nil {
+		h.cleared()
+	}
 }
 
 // view is the history page (WebViewerHistoryView.render): each visit's
@@ -185,6 +191,11 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		}
 		saver := persist.New(path, func() any { return file{Entries: h.List()} })
 		h.save = saver.Soon
+		// A service of no methods: who injects it hears its events
+		// (web-index, webcontract.HistoryClearedEvent).
+		rctx.Provide("web-history", struct{}{})
+		emitCtx, cancel := context.WithCancel(context.Background())
+		h.cleared = func() { go func() { _ = rctx.Emit(emitCtx, webcontract.HistoryClearedEvent) }() }
 		openPage := func() {
 			if ws := workspaceapi.Get(); ws != nil {
 				_ = ws.OpenTab(Kind, workspaceapi.OpenOptions{})
@@ -212,6 +223,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			for _, off := range offs {
 				off()
 			}
+			cancel()
 			saver.Final(ctx)
 			return nil
 		})

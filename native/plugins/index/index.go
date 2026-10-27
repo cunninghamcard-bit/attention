@@ -21,6 +21,7 @@ import (
 	"time"
 
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
+	indexcontract "github.com/cunninghamcard-bit/attention/native/contract/index"
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 	"github.com/cunninghamcard-bit/attention/native/internal/mdmeta"
 )
@@ -56,8 +57,12 @@ type Index struct {
 	// resolved and unresolved are resolvedLinks and unresolvedLinks: per
 	// source, the target (a path, or an unresolved linkpath) and its count.
 	resolved, unresolved map[string]map[string]int
-	built                chan struct{} // closed after the first build
-	builtOnce            sync.Once
+	// noteURLs are the http(s) addresses each note cites, pages the web
+	// pages submitted, both by normalized URL (web.go).
+	noteURLs  map[string]map[string][]indexcontract.Mention
+	pages     map[string]*webPage
+	built     chan struct{} // closed after the first build
+	builtOnce sync.Once
 	// gen counts the changes; OnChange, optional, runs after each, off
 	// the lock.
 	gen      int
@@ -67,7 +72,8 @@ type Index struct {
 // New is an index over project's mounts, reading notes through fs.
 func New(fs fscontract.FS, project projectcontract.Project) *Index {
 	return &Index{fs: fs, project: project, files: map[string]*file{}, byAbs: map[string]string{}, look: lookup{},
-		resolved: map[string]map[string]int{}, unresolved: map[string]map[string]int{}, built: make(chan struct{})}
+		resolved: map[string]map[string]int{}, unresolved: map[string]map[string]int{}, built: make(chan struct{}),
+		noteURLs: map[string]map[string][]indexcontract.Mention{}, pages: map[string]*webPage{}}
 }
 
 // Ready waits for the first build.
@@ -247,6 +253,7 @@ func (x *Index) Changed(ctx context.Context, b fscontract.Batch) {
 				x.look.remove(u.f.display)
 				delete(x.resolved, u.f.display)
 				delete(x.unresolved, u.f.display)
+				delete(x.noteURLs, u.f.display)
 				names[linkName(u.f.display)] = true
 			}
 			continue
@@ -294,6 +301,7 @@ func related(links map[string]int, names map[string]bool) bool {
 func (x *Index) resolveAll() {
 	x.resolved = map[string]map[string]int{}
 	x.unresolved = map[string]map[string]int{}
+	x.noteURLs = map[string]map[string][]indexcontract.Mention{}
 	for path := range x.files {
 		x.resolveOne(path)
 	}
@@ -305,8 +313,10 @@ func (x *Index) resolveOne(path string) {
 	if f == nil || f.meta == nil {
 		delete(x.resolved, path)
 		delete(x.unresolved, path)
+		delete(x.noteURLs, path)
 		return
 	}
+	x.citeNote(path, f.meta)
 	res, unres := map[string]int{}, map[string]int{}
 	for _, link := range refs(f.meta) {
 		lp := stripSubpath(link)

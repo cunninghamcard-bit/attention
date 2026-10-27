@@ -30,6 +30,7 @@ import (
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
+	webcontract "github.com/cunninghamcard-bit/attention/native/contract/web"
 	"github.com/cunninghamcard-bit/attention/native/internal/htmlextract"
 	"github.com/cunninghamcard-bit/attention/native/settingsapi"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
@@ -154,7 +155,9 @@ func titleFromURL(address string) string {
 }
 
 // Register adds the web tab type until off is called.
-func Register() (off func()) {
+// loaded, when set, takes each page that finished loading: its article
+// (webcontract.PageLoadedEvent).
+func Register(loaded func(webcontract.Page)) (off func()) {
 	get := func(p tabtypesapi.Props) *page {
 		pg, ok := pages[p.Info.ID]
 		if ok {
@@ -214,7 +217,12 @@ func Register() (off func()) {
 			pv.OnDownloadDone(func(d *mygo.Download) {
 				shellapi.Update(func() { pg.downloaded = d })
 			}),
-			pv.OnDidFinishLoad(func() { shellapi.Update(func() { pg.loading = false }) }),
+			pv.OnDidFinishLoad(func() {
+				shellapi.Update(func() { pg.loading = false })
+				if loaded != nil {
+					go announce(pv, loaded)
+				}
+			}),
 			pv.OnDidFailLoad(func(e *mygo.LoadError) {
 				shellapi.Update(func() {
 					pg.loading = false
@@ -337,6 +345,26 @@ func Register() (off func()) {
 			}
 		},
 	})
+}
+
+// announce hands loaded the article of the page pv shows, an http(s) one.
+// Off the main thread.
+func announce(pv *mygo.Page, loaded func(webcontract.Page)) {
+	address := pv.URL()
+	if !strings.HasPrefix(address, "http://") && !strings.HasPrefix(address, "https://") {
+		return
+	}
+	v, err := pv.Eval("document.documentElement.outerHTML")
+	html, _ := v.(string)
+	if err != nil || html == "" {
+		return
+	}
+	r, err := htmlextract.Extract([]byte(html), address)
+	if err != nil {
+		debugf("web: no article for %s: %v", address, err)
+		return
+	}
+	loaded(webcontract.Page{URL: address, Title: r.Title, Markdown: r.Markdown})
 }
 
 // record notes a visit in the web history, when one is loaded
@@ -573,7 +601,11 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Inject: []string{"shell", "workspace"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
 		settingsapi.Load(configFile)
-		off := Register()
+		// A service of no methods: who injects it hears its events
+		// (web-index, webcontract.PageLoadedEvent).
+		rctx.Provide("web", struct{}{})
+		emitCtx, cancel := context.WithCancel(context.Background())
+		off := Register(func(p webcontract.Page) { _ = rctx.Emit(emitCtx, webcontract.PageLoadedEvent, p) })
 		offs := []func(){slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "webviewer", Title: "Web viewer", Icon: lucide.Globe(),
 			Group: slotsapi.CorePlugins, Keywords: []string{"Search engine", "Clear browsing data", "history"}, View: settingTab})}
 		for _, cmd := range commands() {
@@ -583,6 +615,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			for _, o := range offs {
 				o()
 			}
+			cancel()
 			shellapi.Update(off)
 			return nil
 		})

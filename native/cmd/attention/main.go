@@ -48,6 +48,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/textui"
 	"github.com/cunninghamcard-bit/attention/native/plugins/web"
 	"github.com/cunninghamcard-bit/attention/native/plugins/webhistory"
+	"github.com/cunninghamcard-bit/attention/native/plugins/webindex"
 	"github.com/cunninghamcard-bit/attention/native/plugins/webread"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 )
@@ -58,7 +59,7 @@ var plugins = []*rutis.Definition{
 	shell.Plugin, actions.Plugin, cli.Plugin, fs.Plugin, project.Plugin, fileresource.Plugin, index.Plugin, layout.Plugin, workspace.Plugin,
 	shortcuts.Plugin, palette.Plugin, switcher.Plugin, commandpalette.Plugin, gotoline.Plugin, settings.Plugin,
 	filetree.Plugin, search.Plugin, backlinks.Plugin, outline.Plugin, bookmarks.Plugin, textui.Plugin, markdownui.Plugin, imageui.Plugin,
-	web.Plugin, webread.Plugin, webhistory.Plugin,
+	web.Plugin, webread.Plugin, webhistory.Plugin, webindex.Plugin,
 }
 
 func main() {

@@ -3,6 +3,9 @@
 // (apps/web/builtin/BacklinksView.ts) over the index service's linked
 // mentions.
 //
+// On a web page's tab it lists the notes and pages citing its URL
+// (indexcontract URLBacklinks), the reader's own.
+//
 // Left out: Unlinked mentions (the TS view renders that section empty).
 package backlinks
 
@@ -39,7 +42,8 @@ type Pane struct {
 	ctx context.Context
 	idx indexcontract.Index
 
-	want      string // the active path last seen
+	want      string // the active path, or web page's URL, last seen
+	web       bool   // want is a URL
 	seq       int
 	cancel    context.CancelFunc
 	loading   bool
@@ -125,16 +129,19 @@ func (p *Pane) restore(data json.RawMessage) {
 
 // sync starts a fetch when the active path moved. Called from View.
 func (p *Pane) sync() {
-	path := ""
+	path, web := "", false
 	if ws := workspaceapi.Get(); ws != nil {
 		if info, ok := ws.ActiveTab(); ok {
 			path = info.Path
+			if path == "" && info.Kind == webKind {
+				path, web = info.Address, true
+			}
 		}
 	}
 	if path == p.want {
 		return
 	}
-	p.want = path
+	p.want, p.web = path, web
 	p.fetch()
 }
 
@@ -148,7 +155,7 @@ func (p *Pane) fetch() {
 	p.seq++
 	seq := p.seq
 	p.results, p.err, p.loading, p.dirty = nil, "", false, true
-	path := p.want
+	path, web := p.want, p.web
 	if path == "" || p.ctx.Err() != nil {
 		return
 	}
@@ -156,7 +163,11 @@ func (p *Pane) fetch() {
 	p.cancel = cancel
 	p.loading = true
 	go func() {
-		res, err := p.idx.Backlinks(ctx, path)
+		backlinks := p.idx.Backlinks
+		if web {
+			backlinks = p.idx.URLBacklinks
+		}
+		res, err := backlinks(ctx, path)
 		shellapi.Update(func() {
 			if seq != p.seq {
 				return
@@ -183,7 +194,7 @@ func (p *Pane) flatten() []row {
 	for i := range p.results {
 		b := &p.results[i]
 		p.rows = append(p.rows, row{src: b, mention: -1})
-		if p.collapsed[b.Path] {
+		if p.collapsed[b.Path+b.URL] {
 			continue
 		}
 		for m := range b.Mentions {
@@ -202,11 +213,21 @@ func (p *Pane) mentionCount() int {
 	return n
 }
 
-func open(path string, m *indexcontract.Mention) {
+// webKind is the web viewer's tab kind.
+const webKind = "webviewer"
+
+// open shows a backlink's source: a note at the mention, a web page in a
+// web tab.
+func open(b *indexcontract.Backlink, m *indexcontract.Mention) {
 	ws := workspaceapi.Get()
 	if ws == nil {
 		return
 	}
+	if b.URL != "" {
+		_ = ws.OpenResource(b.URL, workspaceapi.OpenOptions{Kind: webKind})
+		return
+	}
+	path := b.Path
 	var nav *workspaceapi.Nav
 	if m != nil {
 		// Mention.Line/Col are 0-based; Nav is 1-based (tabtypesapi.Nav).
@@ -246,9 +267,9 @@ func (p *Pane) view(c *ui.Context, _ slotsapi.PanelProps) {
 				return
 			}
 			m := &b.Mentions[r.mention]
-			item := omgui.SideRow(c, omgui.SideRowProps{Key: fmt.Sprintf("m:%s:%d", b.Path, r.mention), Depth: 2})
+			item := omgui.SideRow(c, omgui.SideRowProps{Key: fmt.Sprintf("m:%s%s:%d", b.Path, b.URL, r.mention), Depth: 2})
 			if item.Clicked() {
-				open(b.Path, m)
+				open(b, m)
 			}
 			item.Children(func() {
 				highlighted(c, m)
@@ -259,29 +280,33 @@ func (p *Pane) view(c *ui.Context, _ slotsapi.PanelProps) {
 
 func (p *Pane) fileRow(c *ui.Context, b *indexcontract.Backlink) {
 	t := c.Theme()
-	item := omgui.SideRow(c, omgui.SideRowProps{Key: "f:" + b.Path, Depth: 0})
+	item := omgui.SideRow(c, omgui.SideRowProps{Key: "f:" + b.Path + b.URL, Depth: 0})
 	if item.Clicked() {
 		var first *indexcontract.Mention
 		if len(b.Mentions) > 0 {
 			first = &b.Mentions[0]
 		}
-		open(b.Path, first)
+		open(b, first)
 	}
 	item.Tooltip(b.Display)
 	item.Children(func() {
 		if len(b.Mentions) > 0 {
 			chevron := lucide.ChevronDown()
-			if p.collapsed[b.Path] {
+			if p.collapsed[b.Path+b.URL] {
 				chevron = lucide.ChevronRight()
 			}
 			if ui.Icon(c, chevron).Size(14, 14).TextColor(t.TextMuted).Shrink(0).Cursor(ui.CursorPointer).Clicked() {
-				p.collapsed[b.Path] = !p.collapsed[b.Path]
+				p.collapsed[b.Path+b.URL] = !p.collapsed[b.Path+b.URL]
 				p.dirty = true
 			}
 		} else {
 			ui.Box(c).Width(14).Shrink(0)
 		}
-		ui.Icon(c, fileicon.For(b.Display)).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
+		icon := fileicon.For(b.Display)
+		if b.URL != "" {
+			icon = lucide.Globe()
+		}
+		ui.Icon(c, icon).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
 		ui.Text(c, b.Display).FontSize(13).SingleLine().Ellipsis("…").Shrink(1)
 		if len(b.Mentions) > 0 {
 			ui.Text(c, strconv.Itoa(len(b.Mentions))).FontSize(11).TextColor(t.TextMuted).Shrink(0)

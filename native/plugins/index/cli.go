@@ -114,6 +114,9 @@ func (x *Index) meta(path string) *mdmeta.Metadata {
 // cliBacklinks is backlinks: the sources linking to the file, total the
 // SUM of their links (graphLists.ts).
 func (x *Index) cliBacklinks(ctx context.Context, a actionsapi.Args) (string, error) {
+	if u := a.Params["url"]; u != "" {
+		return x.cliURLBacklinks(ctx, a, u)
+	}
 	target, err := x.resolveFile(ctx, a, true)
 	if err != nil {
 		return "", err
@@ -148,6 +151,38 @@ func (x *Index) cliBacklinks(ctx context.Context, a actionsapi.Args) (string, er
 	rows := make([][]string, len(entries))
 	for i, e := range entries {
 		rows[i] = []string{e.path, strconv.Itoa(e.count)}
+	}
+	return clifmt.Table(header, rows, a.Params["format"]), nil
+}
+
+// cliURLBacklinks is backlinks url=: the notes (by path) and web pages
+// (by URL) citing it, the reader's own.
+func (x *Index) cliURLBacklinks(ctx context.Context, a actionsapi.Args, u string) (string, error) {
+	bs, err := Service{x}.URLBacklinks(ctx, u)
+	if err != nil {
+		return "", err
+	}
+	if a.Has("total") {
+		sum := 0
+		for _, b := range bs {
+			sum += len(b.Mentions)
+		}
+		return strconv.Itoa(sum), nil
+	}
+	if len(bs) == 0 {
+		return "No backlinks found.", nil
+	}
+	header := []string{"file"}
+	if a.Has("counts") {
+		header = append(header, "count")
+	}
+	rows := make([][]string, len(bs))
+	for i, b := range bs {
+		name := b.Display
+		if b.URL != "" {
+			name = b.URL
+		}
+		rows[i] = []string{name, strconv.Itoa(len(b.Mentions))}
 	}
 	return clifmt.Table(header, rows, a.Params["format"]), nil
 }
