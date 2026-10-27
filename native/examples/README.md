@@ -33,7 +33,8 @@ names are lowerCamel:
 
 - `actions`: `register(command, run)` adds a command to the palette and
   the CLI. `command` is `{id, title, keys, cli, flags}`. `run(params, cwd)`
-  is called across the process and returns the command's output.
+  is called across the process and returns the command's output. `params`
+  holds the CLI's `key=value` pairs; a bare flag's value is `"true"`.
   `unregister(id)` removes it. See `hello-py/hello.py`; then
   `attention hello name=Ada`.
 - `webview-panels`: `register({id, title, dock, url | html, icon})` shows

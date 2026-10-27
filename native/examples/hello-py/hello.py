@@ -20,10 +20,9 @@ inject = ["actions"]
 async def apply(ctx, config):
     actions = ctx.use("actions")
 
-    def hello(*args):
-        # The CLI's parameters, then its working folder.
-        params = args[-2] if len(args) >= 2 else {}
-        name = (params or {}).get("name") or "world"
+    def hello(params, cwd):
+        # The CLI's parameters (a bare flag's value is "true"), and its folder.
+        name = params.get("name") or "world"
         return f"Hello, {name}! (from Python)"
 
     await actions.register({"id": "hello", "title": "Say hello", "cli": True, "flags": []}, hello)

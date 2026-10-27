@@ -8,6 +8,7 @@ package webviewpanel
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/arcships/rutis/go/rutis"
@@ -112,6 +113,8 @@ func (pn *panel) draw(c *ui.Context) {
 			if pn.spec.URL == "" {
 				v.Page().LoadHTML(pn.spec.HTML, "")
 			}
+			id := pn.spec.ID
+			v.Page().OnDidFinishLoad(func() { debugf("webview-panel: %s loaded", id) })
 		}
 	}
 	if pn.err != "" {
@@ -141,3 +144,9 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		return nil
 	},
 })
+
+func debugf(format string, a ...any) {
+	if os.Getenv("ATTENTION_DEBUG") != "" {
+		fmt.Fprintf(os.Stderr, "[debug] "+format+"\n", a...)
+	}
+}
