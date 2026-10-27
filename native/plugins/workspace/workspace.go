@@ -466,7 +466,11 @@ func (ws *Workspace) split(dir direction) {
 	case t == nil || t.empty:
 		ws.newTab()
 	default:
-		ws.openAddress(t.address, t.path, workspaceapi.OpenOptions{Nav: t.nav, Kind: t.wantKind})
+		// A tab of its own, though the file is open beside it
+		// (duplicateLeaf), with the tab's history.
+		if d, err := ws.openAddress(t.address, t.path, workspaceapi.OpenOptions{Nav: t.nav, Kind: t.wantKind, NewTab: true}); err == nil {
+			d.back, d.forward = append([]histState(nil), t.back...), append([]histState(nil), t.forward...)
+		}
 	}
 	ws.changed()
 }
@@ -495,6 +499,13 @@ func (ws *Workspace) closeOthersInGroup() {
 		if p.tabs[i] != keep {
 			ws.closeTab(p, i)
 		}
+	}
+}
+
+// closeAll closes p's tabs (the tab list's Close all).
+func (ws *Workspace) closeAll(p *pane) {
+	for i := len(p.tabs) - 1; i >= 0; i-- {
+		ws.closeTab(p, i)
 	}
 }
 

@@ -126,6 +126,9 @@ func (ws *Workspace) ribbon(c *ui.Context) {
 	t := c.Theme()
 	ui.Column(c).Width(40).FillHeight().PaddingY(8).Gap(4).AlignItems(ui.Center).
 		Background(t.Surface).BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Children(func() {
+		// With the ribbon shown, the left sidebar's toggle tops it
+		// (updateSidebarTogglePlacement).
+		ws.sidebarToggle(c, slotsapi.Left)
 		for _, r := range slotsapi.Ribbon() {
 			run := r.Run
 			// No Key on the element: it rekeys the button and loses OnClick.
@@ -154,6 +157,11 @@ func (ws *Workspace) dock(c *ui.Context, d slotsapi.Dock) {
 		shown := shownPanel(panels, want)
 		ui.Row(c).Height(38).Shrink(0).PaddingX(6).Gap(2).AlignItems(ui.Center).
 			BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
+			// The right sidebar's toggle sits at the start of its header,
+			// nearest the center.
+			if d == slotsapi.Right {
+				ws.sidebarToggle(c, slotsapi.Right)
+			}
 			for i := range panels {
 				p := panels[i]
 				color := t.TextMuted
@@ -202,41 +210,43 @@ func (ws *Workspace) paneGroup(c *ui.Context) {
 // splitView draws n. mygo's splits take two children, so a split of more
 // is drawn nested: child k against the rest, pcts[k] being child k's
 // percentage of what is left from it on. A divider dragged during the
-// build moves pcts, which become the children's shares again.
+// build moves pcts, which become the children's shares again. A click
+// during the build may change the tree (closing a group's last tab), so
+// the build walks a copy of the children and leaves the shares alone when
+// they changed: the next frame draws the new tree.
 func (ws *Workspace) splitView(c *ui.Context, n *node) {
 	if n.group != nil {
 		ws.paneView(c, n.group)
 		return
 	}
-	if len(n.children) == 1 {
-		ws.splitView(c, n.children[0])
+	kids := append([]*node(nil), n.children...)
+	if len(kids) == 1 {
+		ws.splitView(c, kids[0])
 		return
 	}
 	shares := n.shares()
-	if len(n.pcts) != len(shares)-1 {
-		n.pcts = make([]float32, len(shares)-1)
-	}
+	pcts := make([]float32, len(kids)-1)
 	rest := float32(100)
-	for k := range n.pcts {
-		n.pcts[k] = shares[k] / rest * 100
+	for k := range pcts {
+		pcts[k] = shares[k] / rest * 100
 		rest -= shares[k]
 	}
-	set := append([]float32(nil), n.pcts...)
-	ws.splitFrom(c, n, 0)
+	set := append([]float32(nil), pcts...)
+	ws.splitFrom(c, n, kids, pcts, 0)
 	moved := false
 	for k := range set {
-		moved = moved || math.Abs(float64(set[k]-n.pcts[k])) > 0.01
+		moved = moved || math.Abs(float64(set[k]-pcts[k])) > 0.01
 	}
-	if !moved {
+	if !moved || len(n.children) != len(kids) {
 		return
 	}
 	rest = 100
-	for k, ch := range n.children {
-		if k == len(n.pcts) {
+	for k, ch := range kids {
+		if k == len(pcts) {
 			ch.dim = rest
 			break
 		}
-		ch.dim = n.pcts[k] / 100 * rest
+		ch.dim = pcts[k] / 100 * rest
 		rest -= ch.dim
 	}
 	if ws.saveSoon != nil {
@@ -244,17 +254,17 @@ func (ws *Workspace) splitView(c *ui.Context, n *node) {
 	}
 }
 
-func (ws *Workspace) splitFrom(c *ui.Context, n *node, k int) {
-	if k == len(n.children)-1 {
-		ws.splitView(c, n.children[k])
+func (ws *Workspace) splitFrom(c *ui.Context, n *node, kids []*node, pcts []float32, k int) {
+	if k == len(kids)-1 {
+		ws.splitView(c, kids[k])
 		return
 	}
-	first := func() { ws.splitView(c, n.children[k]) }
-	rest := func() { ws.splitFrom(c, n, k+1) }
+	first := func() { ws.splitView(c, kids[k]) }
+	rest := func() { ws.splitFrom(c, n, kids, pcts, k+1) }
 	if n.dir == horizontal {
-		ui.SplitVerticalPercent(c, &n.pcts[k], first, rest).Grow(1).Fill()
+		ui.SplitVerticalPercent(c, &pcts[k], first, rest).Grow(1).Fill()
 	} else {
-		ui.SplitPercent(c, &n.pcts[k], first, rest).Grow(1).Fill()
+		ui.SplitPercent(c, &pcts[k], first, rest).Grow(1).Fill()
 	}
 }
 
@@ -276,37 +286,132 @@ func (ws *Workspace) paneView(c *ui.Context, p *pane) {
 	})
 }
 
+// tabBar is a group's tab header (WorkspaceTabs): the tabs, New tab, then
+// the tab list; the top-right group carries the right sidebar's toggle
+// while that sidebar is closed (updateSidebarTogglePlacement).
 func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
 	t := c.Theme()
-	ui.ScrollHorizontal(c).Height(38).FillWidth().Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-		ui.Row(c).PaddingX(6).Gap(2).AlignItems(ui.Center).FillHeight().Children(func() {
-			for j, tb := range p.tabs {
-				j, tb := j, tb
-				title := tb.title
-				if tb.isMissing() {
-					title += " (deleted)"
+	ui.Row(c).Height(38).Shrink(0).FillWidth().Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).
+		AlignItems(ui.Center).PaddingX(4).Gap(2).Children(func() {
+		ui.ScrollHorizontal(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
+			ui.Row(c).PaddingX(6).Gap(2).AlignItems(ui.Center).FillHeight().Children(func() {
+				for j, tb := range p.tabs {
+					ws.tabChip(c, p, j, tb)
 				}
-				tip := tb.title
-				icon := fileIcon(tb.title)
-				if tb.empty {
-					icon = lucide.Globe()
-				} else {
-					tip = ws.display(tb.path)
-				}
-				chip := omgui.TabChip(c, omgui.TabChipProps{
-					Key: fmt.Sprintf("tab-%d", tb.id), Title: title, Icon: icon, Tooltip: tip,
-					Selected:   j == p.active && focused,
-					CloseLabel: "Close " + tb.title,
-					OnClose:    func() { ws.closeTab(p, j) },
-				})
-				if chip.Clicked() {
-					p.active = j
-					ws.activeGroup = p
-					ws.changed()
-				}
-			}
+				omgui.Button(c, omgui.ButtonProps{Label: "New tab", Icon: lucide.Plus(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+					OnClick: func() { ws.activeGroup = p; ws.newTab() }}).Tooltip("New tab")
+			})
 		})
+		omgui.IconMenu(c, omgui.IconMenuProps{Label: "Tab list", Icon: lucide.ChevronDown(), End: true, Items: ws.tabListMenu(p)})
+		if !ws.rightOpen && ws.isTopRight(p) {
+			ws.sidebarToggle(c, slotsapi.Right)
+		}
 	})
+}
+
+func (ws *Workspace) tabChip(c *ui.Context, p *pane, j int, tb *tab) {
+	title := tb.title
+	if tb.isMissing() {
+		title += " (deleted)"
+	}
+	tip := tb.title
+	icon := fileIcon(tb.title)
+	if tb.empty {
+		icon = lucide.Globe()
+	} else {
+		tip = ws.display(tb.path)
+	}
+	// Each group shows its active tab, as attention's is-active.
+	chip := omgui.TabChip(c, omgui.TabChipProps{
+		Key: fmt.Sprintf("tab-%d", tb.id), Title: title, Icon: icon, Tooltip: tip,
+		Selected:   j == p.active,
+		CloseLabel: "Close " + tb.title,
+		OnClose:    func() { ws.closeTab(p, j) },
+	})
+	chip.ContextMenu(func(m *ui.Menu) { nativeMenu(m, ws.tabMenu(p, tb)) })
+	if chip.Clicked() {
+		p.active = j
+		ws.activeGroup = p
+		ws.changed()
+	}
+}
+
+// tabListMenu is the tab list (WorkspaceTabs.showTabListMenu): Close all,
+// then the group's tabs, the active one checked.
+func (ws *Workspace) tabListMenu(p *pane) []omgui.MenuItem {
+	items := []omgui.MenuItem{
+		{Label: "Close all", Icon: lucide.X(), OnClick: func() { ws.closeAll(p) }},
+		{Separator: true},
+	}
+	for j, tb := range p.tabs {
+		j := j
+		items = append(items, omgui.MenuItem{Label: tb.title, Icon: fileIcon(tb.title), Checked: j == p.active,
+			OnClick: func() { p.active, ws.activeGroup = j, p; ws.changed() }})
+	}
+	return items
+}
+
+// tabMenu is a tab's context menu: View.onTabMenu's close items, then More
+// options' (WorkspaceLeaf.onOpenTabHeaderMenu).
+func (ws *Workspace) tabMenu(p *pane, tb *tab) []omgui.MenuItem {
+	at := func() int { return p.indexOf(tb) }
+	items := []omgui.MenuItem{{Label: "Close", Icon: lucide.X(), OnClick: func() { ws.closeTab(p, at()) }}}
+	if len(p.tabs) > 1 {
+		items = append(items, omgui.MenuItem{Label: "Close others", Icon: lucide.X(), OnClick: func() {
+			p.active, ws.activeGroup = at(), p
+			ws.closeOthersInGroup()
+		}})
+	}
+	if at() < len(p.tabs)-1 {
+		items = append(items, omgui.MenuItem{Label: "Close tabs to the right", Icon: lucide.X(), OnClick: func() {
+			for i := len(p.tabs) - 1; i > at(); i-- {
+				ws.closeTab(p, i)
+			}
+		}})
+	}
+	if len(p.tabs) > 1 {
+		items = append(items, omgui.MenuItem{Label: "Close all", Icon: lucide.X(), OnClick: func() { ws.closeAll(p) }})
+	}
+	if tb.empty {
+		return items
+	}
+	tt, _ := tabtypesapi.Get(tb.typeID)
+	return append(append(items, omgui.MenuItem{Separator: true}), ws.paneMenu(p, tb, tt)...)
+}
+
+// nativeMenu fills a context menu with items.
+func nativeMenu(m *ui.Menu, items []omgui.MenuItem) {
+	for _, it := range items {
+		if it.Separator {
+			m.Separator()
+			continue
+		}
+		if m.Item(it.Label).Checked(it.Checked).Disabled(it.Disabled).Chosen() && it.OnClick != nil {
+			it.OnClick()
+		}
+	}
+}
+
+// isTopRight reports whether p is the center's top-right group.
+func (ws *Workspace) isTopRight(p *pane) bool {
+	rs := map[*pane]rect{}
+	ws.root.rects(rect{0, 0, 1, 1}, rs)
+	r := rs[p]
+	return r.top < 1e-6 && r.right > 1-1e-6
+}
+
+// sidebarToggle is a sidebar's toggle button, Collapse while it is open and
+// Expand while closed (createSidebarToggleButton).
+func (ws *Workspace) sidebarToggle(c *ui.Context, d slotsapi.Dock) {
+	open, icon, toggle := ws.panelOpen, lucide.PanelLeft(), ws.toggleLeft
+	if d == slotsapi.Right {
+		open, icon, toggle = ws.rightOpen, lucide.PanelRight(), ws.toggleRight
+	}
+	tip := "Expand"
+	if open {
+		tip = "Collapse"
+	}
+	omgui.Button(c, omgui.ButtonProps{Label: tip, Icon: icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall, OnClick: toggle}).Tooltip(tip)
 }
 
 func (ws *Workspace) emptyPane(c *ui.Context) {
@@ -337,7 +442,7 @@ func (ws *Workspace) tabBody(c *ui.Context, p *pane, tb *tab, focused bool) {
 	}
 	tt, ok := tabtypesapi.Get(tb.typeID)
 	props := ws.props(tb, focused)
-	ws.viewHeader(c, p, tb, props, tt)
+	ws.viewHeader(c, p, tb, props, tt, focused)
 	if tb.isMissing() {
 		banner(c, "This file was deleted or moved. The last loaded content is shown.", t.Warning)
 	}
@@ -351,7 +456,7 @@ func (ws *Workspace) tabBody(c *ui.Context, p *pane, tb *tab, focused bool) {
 // viewHeader is the tab's header, attention's ItemView header: Back and
 // Forward, the file's folders and name, the tab type's actions and More
 // options.
-func (ws *Workspace) viewHeader(c *ui.Context, p *pane, tb *tab, props tabtypesapi.Props, tt tabtypesapi.TabType) {
+func (ws *Workspace) viewHeader(c *ui.Context, p *pane, tb *tab, props tabtypesapi.Props, tt tabtypesapi.TabType, focused bool) {
 	t := c.Theme()
 	ui.Row(c).Key(fmt.Sprintf("header-%d", p.id)).Height(38).Shrink(0).FillWidth().PaddingX(8).Gap(2).AlignItems(ui.Center).
 		BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
@@ -378,7 +483,13 @@ func (ws *Workspace) viewHeader(c *ui.Context, p *pane, tb *tab, props tabtypesa
 				ui.Text(c, part).FontSize(13).TextColor(t.TextMuted)
 				ui.Text(c, "/").FontSize(13).TextColor(t.TextMuted)
 			}
-			ui.Text(c, tb.title).FontSize(13).TextColor(t.Text).MaxLines(1)
+			// The focused group's name is in the text colour, the others'
+			// muted, as attention's inactive view headers.
+			name := t.Text
+			if !focused {
+				name = t.TextMuted
+			}
+			ui.Text(c, tb.title).FontSize(13).TextColor(name).MaxLines(1)
 		})
 		if tt.Actions != nil {
 			tt.Actions(c, props)
@@ -435,9 +546,6 @@ func (ws *Workspace) statusBar(c *ui.Context) {
 	t := c.Theme()
 	ui.Row(c).Height(26).FillWidth().PaddingX(10).Gap(14).AlignItems(ui.Center).
 		Background(t.Surface).BorderWidth(1, 0, 0, 0).BorderColor(t.Border).Children(func() {
-		if ui.Icon(c, lucide.PanelLeft()).Size(14, 14).TextColor(t.TextMuted).Tooltip("Toggle left sidebar (Ctrl B)").Clicked() {
-			ws.toggleLeft()
-		}
 		mounts := strconv.Itoa(len(ws.mounts)) + " folders"
 		if len(ws.mounts) == 1 {
 			mounts = ws.mounts[0].Name
@@ -447,11 +555,6 @@ func (ws *Workspace) statusBar(c *ui.Context) {
 			ui.Icon(c, lucide.TriangleAlert()).Size(12, 12).TextColor(t.Warning).Tooltip(ws.notice)
 		}
 		ui.Box(c).Grow(1)
-		defer func() {
-			if ui.Icon(c, lucide.PanelRight()).Size(14, 14).TextColor(t.TextMuted).Tooltip("Toggle right sidebar (Ctrl Alt B)").Clicked() {
-				ws.toggleRight()
-			}
-		}()
 		tb := ws.activeTab()
 		if tb == nil || tb.empty {
 			return

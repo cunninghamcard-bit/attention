@@ -24,8 +24,6 @@ type node struct {
 	// dim is the share of the parent split, in percent; 0 is unset, and a
 	// split with an unset child shares equally (WorkspaceItem.setDimension).
 	dim float32
-	// pcts are the view's divider positions (see splitView).
-	pcts []float32
 }
 
 func newGroupNode(p *pane) *node {

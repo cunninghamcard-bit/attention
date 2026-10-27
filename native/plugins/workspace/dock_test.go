@@ -105,7 +105,8 @@ func TestPanelStateRoundTrips(t *testing.T) {
 }
 
 // Regression: a Key set on the IconMenu's element left More options never
-// opening.
+// opening; and Split right revealed the tab it duplicates, leaving the new
+// group empty.
 func TestMoreOptionsOpensAndSplits(t *testing.T) {
 	ws, tt := testWorkspace(t)
 	ws.open("/m/alpha.md", nil)
@@ -117,8 +118,8 @@ func TestMoreOptionsOpensAndSplits(t *testing.T) {
 	if err := tt.Click("Split right"); err != nil {
 		t.Fatalf("More options should list Split right: %v (%v)", err, tt.Texts())
 	}
-	if len(ws.groups()) != 2 {
-		t.Fatalf("Split right should make a second group: %d", len(ws.groups()))
+	if gs := ws.groups(); len(gs) != 2 || len(gs[1].tabs) != 1 || gs[1].tabs[0].path != "/m/alpha.md" || ws.activePane() != gs[1] {
+		t.Fatalf("Split right should show alpha in a second, focused group: %v", tabs(ws))
 	}
 }
 
@@ -140,5 +141,27 @@ func TestRibbonAndBackButtonsRun(t *testing.T) {
 	}
 	if got := tabs(ws); len(got) != 1 || got[0] != "markdown:alpha" {
 		t.Fatalf("Back should return the tab to alpha: %v", got)
+	}
+}
+
+// Regression: closing a group's last tab from a click during the build
+// changed the tree splitView was walking, and it panicked.
+func TestClosingAGroupFromItsTabListDoesNotPanic(t *testing.T) {
+	ws, tt := testWorkspace(t)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+	ws.open("/m/alpha.md", nil)
+	ws.openIn("/m/beta.md", nil, true)
+	ws.split(vertical)
+	ws.toggleRight()
+	tt.Frame()
+	if err := tt.Click("Tab list"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.Click("Close all"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if len(ws.groups()) != 1 {
+		t.Fatalf("Close all should close the group: %d groups", len(ws.groups()))
 	}
 }
