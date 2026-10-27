@@ -9,6 +9,7 @@
 package workspaceapi
 
 import (
+	"context"
 	"sync"
 
 	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
@@ -26,8 +27,15 @@ type OpenOptions struct {
 	Kind string
 }
 
-// API is the workspace, called on the main thread only.
+// API is the workspace, called on the main thread only, ResolveLink
+// excepted.
 type API interface {
+	// ResolveLink is the file a link names, as the CLI's open file= finds
+	// it: a path from dir with or without ".md", else the first file of
+	// the mounts whose path ends with it, without case (attention's
+	// getFirstLinkpathDest, roughly). It reads the disk: call it off the
+	// main thread.
+	ResolveLink(ctx context.Context, link, dir string) (string, error)
 	// OpenResource shows a resource address: the tab that shows it as the
 	// same kind, else the active tab navigates to it (a new tab with
 	// NewTab). An address that is no file under a known mount or absolute,

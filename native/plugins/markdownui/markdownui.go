@@ -39,6 +39,9 @@ type doc struct {
 	source bool // the source instead of the reading view
 	md     markdown.Options
 	dir    string // md's image directory
+	// raw is the text last rewritten (obsidian.go), view what the reading
+	// view reads.
+	raw, view string
 }
 
 // Viewer is the markdown tab type's state, on the main thread only.
@@ -58,7 +61,7 @@ func (v *Viewer) doc(p tabtypesapi.Props) *doc {
 		from := p.Info.Path
 		d.dir = dir
 		d.md.OnLink = func(url string) { followLink(from, url) }
-		d.md.LoadImage = markdown.FileImages(dir)
+		d.md.LoadImage = loadImage(from)
 	}
 	return d
 }
@@ -96,7 +99,10 @@ func (v *Viewer) body(c *ui.Context, p tabtypesapi.Props) {
 	if !d.source {
 		ui.Scroll(c).Key(fmt.Sprintf("md-%d", p.Info.ID)).Grow(1).Fill().Children(func() {
 			ui.Column(c).PaddingX(48).PaddingY(32).MaxWidth(860).FillWidth().Children(func() {
-				markdown.View(c, d.Ed.Buffer.String(), &d.md)
+				if raw := d.Ed.Buffer.String(); raw != d.raw || d.view == "" && raw != "" {
+					d.raw, d.view = raw, rewrite(raw)
+				}
+				markdown.View(c, d.view, &d.md)
 			})
 		})
 		return
@@ -193,6 +199,13 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 // file, a #fragment does nothing here, other schemes open outside.
 func followLink(from, url string) {
 	if strings.HasPrefix(url, "#") {
+		return
+	}
+	if name, ok := strings.CutPrefix(url, linkScheme); ok {
+		if n, err := neturl.PathUnescape(name); err == nil {
+			name = n
+		}
+		openLink(from, name) // a wikilink: a name to find
 		return
 	}
 	if strings.Contains(url, "://") && !strings.HasPrefix(url, "file://") {

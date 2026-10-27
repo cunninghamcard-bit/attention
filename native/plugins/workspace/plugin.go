@@ -371,6 +371,14 @@ func (a api) ActiveTab() (tabtypesapi.Info, bool) {
 
 func (a api) Display(path string) string { return a.ws.display(path) }
 
+func (a api) ResolveLink(ctx context.Context, link, dir string) (string, error) {
+	mounts, err := a.ws.project.Mounts(ctx)
+	if err != nil {
+		return "", err
+	}
+	return a.ws.resolveLink(ctx, mounts, link, dir)
+}
+
 func (a api) RecentFiles() []string { return append([]string(nil), a.ws.recentFiles...) }
 
 // copyPath copies the active tab's path: as the CLI shows it, or absolute.

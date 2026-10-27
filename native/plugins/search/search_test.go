@@ -22,11 +22,12 @@ type fakeWorkspace struct{ opens []opened }
 func (f *fakeWorkspace) Open(path string, nav *workspaceapi.Nav, _ bool) {
 	f.opens = append(f.opens, opened{path, nav})
 }
-func (f *fakeWorkspace) OpenResource(string, workspaceapi.OpenOptions) error { return nil }
-func (f *fakeWorkspace) ActivePath() string                                  { return "" }
-func (f *fakeWorkspace) Display(path string) string                          { return "m" + path }
-func (f *fakeWorkspace) RecentFiles() []string                               { return nil }
-func (f *fakeWorkspace) OpenTab(string, workspaceapi.OpenOptions) error      { return nil }
+func (f *fakeWorkspace) OpenResource(string, workspaceapi.OpenOptions) error         { return nil }
+func (f *fakeWorkspace) ActivePath() string                                          { return "" }
+func (f *fakeWorkspace) Display(path string) string                                  { return "m" + path }
+func (f *fakeWorkspace) RecentFiles() []string                                       { return nil }
+func (f *fakeWorkspace) OpenTab(string, workspaceapi.OpenOptions) error              { return nil }
+func (f *fakeWorkspace) ResolveLink(context.Context, string, string) (string, error) { return "", nil }
 func (f *fakeWorkspace) ActiveTab() (tabtypesapi.Info, bool) {
 	return tabtypesapi.Info{}, false
 }

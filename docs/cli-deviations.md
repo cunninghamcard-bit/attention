@@ -12,6 +12,7 @@ not listed is a defect.
 | `version` | `<Obsidian version> (installer <build>)` | `<reader version> (installer <reader version>)` | same shape; there is no separate installer build yet |
 | `tabs` | `[<view type>] <display text>` with Obsidian view types | the same shape with the reader's view types: `markdown`, `text`, `image`, `search` | the reader's views |
 | `open` | `newtab` opens a new leaf | `newtab` opens another tab in the active pane | same intent |
+| `open` | the file in the active leaf (`getLeaf(false)`), a leaf already showing it revealed | the same: a tab anywhere showing it is revealed, else the active tab navigates to it | Workspace.openFile, ported |
 | `open file=` | Obsidian link resolution (`getFirstLinkpathDest`) | a path with or without `.md`, then the first file whose path ends with it, without case | no metadata cache; matches the common cases |
 | `help` / empty command | the TS help screen | a list of the reader's commands | the command set differs |
 | most commands (`read`, `create`, `tags`, `backlinks`, …) | present | not yet | the reader is P0b/P1; see docs/roadmap.md |
