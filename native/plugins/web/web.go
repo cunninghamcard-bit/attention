@@ -57,6 +57,15 @@ type page struct {
 	md         markdown.Options
 	extracting bool
 	focusBar   bool // Focus address bar asked for the caret
+	// The find bar: shown, its text, the matches for found, and whether
+	// it should take the caret.
+	finding   bool
+	query     string
+	found     string
+	res       mygo.FindResult
+	findFocus bool
+	// downloaded is the last download's file, or why it failed.
+	downloaded *mygo.Download
 }
 
 // pages are the tabs' pages by tab id, on the main thread only.
@@ -138,6 +147,7 @@ func Register() (off func()) {
 			// The same page, the server's slash added, is no step to keep.
 			if strings.TrimSuffix(address, "/") != strings.TrimSuffix(pg.shown, "/") {
 				pg.reader = nil // reader mode is per page (exitReaderMode)
+				pg.found, pg.res = "", mygo.FindResult{}
 				retarget(address, titleFromURL(address))
 			}
 			record(address, "")
@@ -160,6 +170,9 @@ func Register() (off func()) {
 						record(address, title)
 					}
 				})
+			}),
+			pv.OnDownloadDone(func(d *mygo.Download) {
+				shellapi.Update(func() { pg.downloaded = d })
 			}),
 			pv.OnDidFinishLoad(func() { shellapi.Update(func() { pg.loading = false }) }),
 			pv.OnDidFailLoad(func(e *mygo.LoadError) {
@@ -191,20 +204,32 @@ func Register() (off func()) {
 		Body: func(c *ui.Context, p tabtypesapi.Props) {
 			pg := get(p)
 			ui.Column(c).Grow(1).Fill().Children(func() {
+				if pg.finding {
+					findBar(c, pg)
+				}
 				if pg.err != "" {
 					errorBanner(c, pg.err)
 				}
-				switch {
-				case pg.reader != nil:
-					pg.md.OnLink = func(u string) { navigate(pg, p, u) }
-					ui.Scroll(c).Key(fmt.Sprintf("reader-%d", p.Info.ID)).Grow(1).Fill().Children(func() {
-						ui.Column(c).PaddingX(48).PaddingY(32).MaxWidth(860).FillWidth().Children(func() {
-							markdown.View(c, "# "+pg.reader.Title+"\n\n"+pg.reader.Markdown, &pg.md)
-						})
-					})
-				case pg.view != nil:
-					ui.WebView(c, pg.view).Grow(1).FillWidth()
+				if pg.downloaded != nil {
+					downloadBanner(c, pg)
 				}
+				// Reader view covers the web view rather than take its place:
+				// the native view hidden and shown again at each switch
+				// left its last picture behind for a moment.
+				ui.Box(c).Grow(1).FillWidth().Children(func() {
+					if pg.view != nil {
+						ui.WebView(c, pg.view).Fill()
+					}
+					if pg.reader != nil {
+						pg.md.OnLink = func(u string) { navigate(pg, p, u) }
+						ui.Scroll(c).Key(fmt.Sprintf("reader-%d", p.Info.ID)).Absolute().Top(0).Left(0).Right(0).Bottom(0).
+							Background(c.Theme().Background).Children(func() {
+							ui.Column(c).PaddingX(48).PaddingY(32).MaxWidth(860).FillWidth().Children(func() {
+								markdown.View(c, "# "+pg.reader.Title+"\n\n"+pg.reader.Markdown, &pg.md)
+							})
+						})
+					}
+				})
 			})
 		},
 		Header: func(c *ui.Context, p tabtypesapi.Props) {
@@ -331,6 +356,101 @@ func toggleReader(pg *page) {
 	}()
 }
 
+// findBar is the page's find bar, as Obsidian's document search bar: the
+// text, which match of how many, previous, next, close. Enter goes to the
+// next match, Shift Enter the previous, Escape closes it.
+func findBar(c *ui.Context, pg *page) {
+	t := c.Theme()
+	ui.Row(c).Padding(4, 8).Gap(4).AlignItems(ui.Center).Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
+		field := omgui.Field(c, &pg.query, "Find...", false).Label("Find in page").Width(260)
+		if pg.findFocus {
+			pg.findFocus = false
+			field.Focus()
+		}
+		focused := field.Focused()
+		switch {
+		case focused && c.Shortcut(0, ui.KeyEscape):
+			closeFind(pg)
+			return
+		case focused && c.Shortcut(ui.Shift, ui.KeyEnter):
+			find(pg, true)
+		case field.Submitted():
+			find(pg, false)
+		case pg.query != pg.found:
+			find(pg, false)
+		}
+		count := ""
+		switch {
+		case pg.found == "":
+		case pg.res.Matches == 0:
+			count = "No results"
+		default:
+			count = fmt.Sprintf("%d / %d", pg.res.Active, pg.res.Matches)
+		}
+		ui.Text(c, count).FontSize(12).TextColor(t.TextMuted).Shrink(0)
+		ui.Box(c).Grow(1)
+		button := func(label string, icon *ui.SVG, fn func()) {
+			omgui.Button(c, omgui.ButtonProps{Label: label, Icon: icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+				IconColor: t.Text, OnClick: fn}).Tooltip(label)
+		}
+		button("Previous", lucide.ArrowUp(), func() { find(pg, true) })
+		button("Next", lucide.ArrowDown(), func() { find(pg, false) })
+		button("Close", lucide.X(), func() { closeFind(pg) })
+	})
+}
+
+// find highlights pg.query in the page: the next match, or the previous
+// one with back; the search starts over when the text changed.
+func find(pg *page, back bool) {
+	if pg.view == nil {
+		return
+	}
+	q, again := pg.query, pg.query == pg.found
+	pg.found = q
+	pv := pg.view.Page()
+	if q == "" {
+		pg.res = mygo.FindResult{}
+		go pv.StopFindInPage()
+		return
+	}
+	go func() {
+		res, err := pv.FindInPage(q, mygo.FindOptions{Backward: back, FindNext: again})
+		shellapi.Update(func() {
+			if err == nil && pg.found == q {
+				pg.res = res
+			}
+		})
+	}()
+}
+
+func closeFind(pg *page) {
+	pg.finding, pg.found, pg.res = false, "", mygo.FindResult{}
+	if pg.view != nil {
+		go pg.view.Page().StopFindInPage()
+	}
+}
+
+// downloadBanner says where the last download went, or why it failed.
+func downloadBanner(c *ui.Context, pg *page) {
+	t := c.Theme()
+	d := pg.downloaded
+	ui.Row(c).Padding(4, 12).Gap(8).AlignItems(ui.Center).Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
+		icon, color, text := lucide.Download(), t.TextMuted, "Downloaded "+d.Path
+		if d.Err != nil {
+			icon, color, text = lucide.TriangleAlert(), t.Danger, "Download failed: "+d.Err.Error()
+		}
+		ui.Icon(c, icon).Size(14, 14).TextColor(color).Shrink(0)
+		ui.Text(c, text).FontSize(12).SingleLine().Ellipsis("…").Shrink(1)
+		ui.Box(c).Grow(1)
+		if d.Err == nil {
+			omgui.Button(c, omgui.ButtonProps{Label: "Show in folder", Variant: omgui.ButtonGhost,
+				OnClick: func() { go mygo.Shell.ShowItemInFolder(d.Path) }})
+		}
+		omgui.Button(c, omgui.ButtonProps{Label: "Dismiss", Icon: lucide.X(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+			IconColor: t.Text, OnClick: func() { pg.downloaded = nil }})
+	})
+}
+
 func errorBanner(c *ui.Context, text string) {
 	t := c.Theme()
 	ui.Row(c).Padding(6, 12).Gap(8).AlignItems(ui.Center).Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
@@ -402,6 +522,7 @@ func commands() []actionsapi.Command {
 			}},
 		onPage("webviewer:refresh", "Refresh page", "Ctrl R", reload),
 		onPage("webviewer:toggle-reader-mode", "Toggle reader mode", "", toggleReader),
+		onPage("webviewer:find", "Find in page", "Ctrl F", func(pg *page) { pg.finding, pg.findFocus = true, true }),
 		onPage("webviewer:focus-address-bar", "Focus address bar", "", func(pg *page) { pg.focusBar = true }),
 	}
 }
