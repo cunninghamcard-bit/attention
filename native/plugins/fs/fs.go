@@ -205,7 +205,7 @@ func (s *Service) Stat(ctx context.Context, path string) (contract.Entry, error)
 	e := contract.Entry{Name: filepath.Base(path), Path: path, Dir: st.IsDir(), Size: st.Size(), ModTime: st.ModTime().UnixNano()}
 	if sys, ok := st.Sys().(*syscall.Stat_t); ok {
 		e.Inode = uint64(sys.Ino)
-		e.CTime = sys.Ctim.Nano()
+		e.CTime = ctime(sys)
 	}
 	return e, nil
 }
