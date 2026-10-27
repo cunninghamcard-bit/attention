@@ -55,3 +55,7 @@ GUI tests use mygo’s `ui.NewTester` in-process. Never send synthetic keystroke
 ## Commits
 
 Conventional, lowercase subject (commitlint).
+
+## Gates
+
+Before every commit, from `native/`: `gofmt -l .` prints nothing, `go vet ./...` and `go test ./...` pass, and `GOWORK=off asl -forwarder=false ./...` reports nothing (also with `GOOS=darwin`). `asl` is CMGS/asl's layout checker (`go install` it; it lands in `$(go env GOPATH)/bin`). The project hook `.claude/hooks/asl-gate.sh` enforces it on commits, and the `/code` skill (`.claude/skills/code`) holds the style rules it checks.
