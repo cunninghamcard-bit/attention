@@ -189,15 +189,15 @@ func (s *Shortcuts) View(c *ui.Context) {
 	// Last frame's capture; a terminal still focused sets it again as
 	// this frame builds it (this overlay builds first).
 	captured := actionsapi.Captured()
-	actionsapi.SetCapture(false)
+	actionsapi.SetCapture(nil)
 	for _, cmd := range actionsapi.List() {
 		if cmd.Main == nil && cmd.Run == nil {
 			continue
 		}
 		for _, b := range s.bindings(cmd) {
-			// A focused terminal keeps the keys but Super's (actionsapi
-			// SetCapture).
-			if captured && b.Mods&ui.Super == 0 {
+			// A focused terminal keeps the keys but Super's and those of
+			// the commands it skips (actionsapi SetCapture).
+			if captured != nil && b.Mods&ui.Super == 0 && !captured[cmd.ID] {
 				continue
 			}
 			if !c.Shortcut(b.Mods, b.Key) {

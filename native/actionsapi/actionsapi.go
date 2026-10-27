@@ -220,15 +220,17 @@ func distance(a, b string) int {
 	return prev[len(b)]
 }
 
-// capture is set while an element that takes the keys as they are — a
-// terminal — has the focus: the window's shortcuts then leave it every
-// combination but Super's (attention's terminal focus scope). It is
-// updated as the frame builds, main thread only.
-var capture bool
+// capture, while an element that takes the keys as they are — a
+// terminal — has the focus, is the commands whose shortcuts still reach
+// the window (VS Code's terminal.integrated.commandsToSkipShell); every
+// other combination but Super's goes to the element. nil while none has
+// the focus. It is updated as the frame builds, main thread only.
+var capture map[string]bool
 
-// SetCapture says whether such an element has the focus, for the frame.
-func SetCapture(on bool) { capture = on }
+// SetCapture says such an element has the focus for the frame, and which
+// commands keep their shortcuts; nil for none.
+func SetCapture(skipShell map[string]bool) { capture = skipShell }
 
-// Captured reports whether one had it as the last frame built; the
-// shortcuts plugin reads it, then clears it for the frame to set again.
-func Captured() bool { return capture }
+// Captured is what the last frame built set; the shortcuts plugin reads
+// it, then clears it for the frame to set again.
+func Captured() map[string]bool { return capture }

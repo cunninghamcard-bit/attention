@@ -4,8 +4,10 @@
 // in a pseudo-terminal: a tab per shell, the user's login shell in the
 // active file's folder, Open terminal (Ctrl J), and the Terminal settings tab.
 //
-// While a terminal has the focus, the window's shortcuts leave it its keys
-// (actionsapi.SetCapture), as the TS view's focus scope does.
+// While a terminal has the focus it takes the keys, but those of the
+// commands in skipShell, which stay the window's, as VS Code's
+// terminal.integrated.commandsToSkipShell (actionsapi.SetCapture). Its
+// title is the one the program sets (OSC 0 and 2), as terminals show it.
 //
 // Left out: Default location (always a new tab), the remote terminal
 // server, Open terminal here in the file menu.
@@ -17,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/plugins/terminal"
@@ -43,6 +46,18 @@ const (
 // configFile is the Terminal settings' file.
 const configFile = "terminal"
 
+// skipShell are the commands whose shortcuts reach the window from a
+// focused terminal: VS Code's DEFAULT_COMMANDS_TO_SKIP_SHELL, as far as the
+// reader has them. Keys a shell lives by (Ctrl W, Ctrl G, Ctrl \, Alt and
+// the arrows) are not among them.
+var skipShell = map[string]bool{
+	"command-palette:open": true, "switcher:open": true, "global-search:open": true, "app:open-settings": true,
+	"app:toggle-left-sidebar": true, "app:toggle-right-sidebar": true, "terminal:open": true, "quit": true,
+	"workspace:next-tab": true, "workspace:previous-tab": true, "workspace:undo-close-pane": true, "workspace:goto-last-tab": true,
+	"workspace:goto-tab-1": true, "workspace:goto-tab-2": true, "workspace:goto-tab-3": true, "workspace:goto-tab-4": true,
+	"workspace:goto-tab-5": true, "workspace:goto-tab-6": true, "workspace:goto-tab-7": true, "workspace:goto-tab-8": true,
+}
+
 // session is a tab's shell: its terminal, or why there is none.
 type session struct {
 	term   *terminal.Terminal
@@ -50,6 +65,8 @@ type session struct {
 	exited bool
 	code   int
 	dir    string
+	// setTitle renames the tab, from the last frame's props.
+	setTitle func(string)
 }
 
 // Terminals are the tabs' sessions, on the main thread only.
@@ -99,11 +116,27 @@ func font() terminal.Font {
 	return f
 }
 
+// shell is the Shell setting: the program and its arguments, the login
+// shell when empty (as VS Code's default profile).
+func shell() []string {
+	var cmd string
+	settingsapi.Get(configFile, "shell", &cmd)
+	return strings.Fields(cmd)
+}
+
 // start runs a shell for s (TerminalService.spawnInto).
 func (t *Terminals) start(s *session) {
 	term, err := terminal.New(terminal.Options{
-		Dir:  s.dir,
-		Font: font(),
+		Command: shell(),
+		Dir:     s.dir,
+		Font:    font(),
+		OnTitle: func(title string) {
+			shellapi.Update(func() {
+				if s.setTitle != nil && title != "" {
+					s.setTitle(title)
+				}
+			})
+		},
 		OnExit: func(code int) {
 			shellapi.Update(func() { s.exited, s.code = true, code })
 		},
@@ -137,6 +170,7 @@ func (t *Terminals) get(id int) *session {
 // shell exited, a Restart.
 func (t *Terminals) body(c *ui.Context, p tabtypesapi.Props) {
 	s := t.get(p.Info.ID)
+	s.setTitle = p.SetTitle
 	th := c.Theme()
 	ui.Column(c).Grow(1).Fill().Children(func() {
 		if s.err != "" {
@@ -167,7 +201,7 @@ func (t *Terminals) body(c *ui.Context, p tabtypesapi.Props) {
 			view.AutoFocus()
 		}
 		if view.Focused() {
-			actionsapi.SetCapture(true)
+			actionsapi.SetCapture(skipShell)
 		}
 	})
 }
@@ -181,19 +215,21 @@ func (t *Terminals) closed(id int) {
 	}
 }
 
-// title is getDisplayText: Terminal — the shell's name.
-func title(string) string {
-	shell := filepath.Base(os.Getenv("SHELL"))
-	if shell == "." || shell == "" {
-		return "Terminal"
-	}
-	return "Terminal — " + shell
-}
+// title is a terminal's until its program sets one.
+func title(string) string { return "Terminal" }
 
-// settingTab is TerminalSettingTab: the font. There is no shell setting:
-// the login shell from $SHELL runs, with the user's own dotfiles.
+// settingTab is TerminalSettingTab: the shell, the font.
 func settingTab(c *ui.Context) {
 	omgui.SettingsSection(c, "Terminal", func() {
+		omgui.PreferenceRow(c, "Shell", "The program a new terminal runs, with its arguments; empty for your login shell.", func() {
+			var cur string
+			settingsapi.Get(configFile, "shell", &cur)
+			v := cur
+			omgui.Field(c, &v, "login shell", false).Width(220)
+			if v != cur {
+				settingsapi.Set(configFile, "shell", v)
+			}
+		})
 		omgui.PreferenceRow(c, "Font family", "A font family, or a comma-separated list; empty for the system's monospaced font.", func() {
 			var cur string
 			settingsapi.Get(configFile, "fontFamily", &cur)
@@ -241,7 +277,7 @@ func Register() (off func()) {
 				return shellapi.OnMain(ctx, func() (string, error) { t.open(dir); return "Opened terminal", nil })
 			}}),
 		slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "terminal", Title: "Terminal", Icon: lucide.SquareTerminal(),
-			Group: slotsapi.CorePlugins, Keywords: []string{"Font family", "Font size"}, View: settingTab}),
+			Group: slotsapi.CorePlugins, Keywords: []string{"Shell", "Font family", "Font size"}, View: settingTab}),
 	}
 	return func() {
 		for i := len(offs) - 1; i >= 0; i-- {
