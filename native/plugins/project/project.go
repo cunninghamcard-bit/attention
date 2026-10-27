@@ -336,7 +336,7 @@ func (s *Service) commands() []actionsapi.Command {
 			}
 			return "Mounted: " + m.Name + "\t" + m.Path, nil
 		}},
-	}, s.fileCommands()...)
+	}, append(s.fileCommands(), s.searchCommands()...)...)
 }
 
 // Plugin provides "project".

@@ -32,6 +32,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/gotoline"
 	"github.com/cunninghamcard-bit/attention/native/plugins/imageui"
+	"github.com/cunninghamcard-bit/attention/native/plugins/index"
 	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
 	"github.com/cunninghamcard-bit/attention/native/plugins/markdownui"
 	"github.com/cunninghamcard-bit/attention/native/plugins/palette"
@@ -48,7 +49,7 @@ import (
 // plugins are every plugin this binary carries; the profile's rows pick
 // which run.
 var plugins = []*rutis.Definition{
-	shell.Plugin, actions.Plugin, cli.Plugin, fs.Plugin, project.Plugin, fileresource.Plugin, layout.Plugin, workspace.Plugin,
+	shell.Plugin, actions.Plugin, cli.Plugin, fs.Plugin, project.Plugin, fileresource.Plugin, index.Plugin, layout.Plugin, workspace.Plugin,
 	shortcuts.Plugin, palette.Plugin, switcher.Plugin, commandpalette.Plugin, gotoline.Plugin, settings.Plugin,
 	filetree.Plugin, search.Plugin, textui.Plugin, markdownui.Plugin, imageui.Plugin,
 }

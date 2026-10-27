@@ -94,6 +94,7 @@ func (s *Service) Trash(ctx context.Context, path string) error {
 		}
 	}
 	committed = true
+	s.noteOp(abs, "remove")
 	return nil
 }
 

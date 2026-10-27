@@ -14,7 +14,11 @@ func (s *Service) Write(ctx context.Context, path string, data []byte) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	asked, op := path, "write"
 	mode := os.FileMode(0o644)
+	if _, err := os.Lstat(path); err != nil {
+		op = "create"
+	}
 	if target, err := filepath.EvalSymlinks(path); err == nil {
 		path = target
 		if st, err := os.Stat(path); err == nil {
@@ -44,8 +48,10 @@ func (s *Service) Write(ctx context.Context, path string, data []byte) error {
 	}
 	if err != nil {
 		os.Remove(tmp)
+		return err
 	}
-	return err
+	s.noteOp(asked, op)
+	return nil
 }
 
 // Append writes data at the end of an existing file.
@@ -61,6 +67,9 @@ func (s *Service) Append(ctx context.Context, path string, data []byte) error {
 	if cerr := f.Close(); err == nil {
 		err = cerr
 	}
+	if err == nil {
+		s.noteOp(path, "write")
+	}
 	return err
 }
 
@@ -69,7 +78,11 @@ func (s *Service) Mkdir(ctx context.Context, path string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	return os.MkdirAll(path, 0o755)
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		return err
+	}
+	s.noteOp(path, "create")
+	return nil
 }
 
 // Rename moves oldpath to newpath.
@@ -77,7 +90,12 @@ func (s *Service) Rename(ctx context.Context, oldpath, newpath string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	return os.Rename(oldpath, newpath)
+	if err := os.Rename(oldpath, newpath); err != nil {
+		return err
+	}
+	s.noteOp(oldpath, "rename")
+	s.noteOp(newpath, "create")
+	return nil
 }
 
 // Remove permanently deletes path.
@@ -85,5 +103,9 @@ func (s *Service) Remove(ctx context.Context, path string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	return os.Remove(path)
+	if err := os.Remove(path); err != nil {
+		return err
+	}
+	s.noteOp(path, "remove")
+	return nil
 }

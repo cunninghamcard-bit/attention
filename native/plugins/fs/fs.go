@@ -286,12 +286,22 @@ func (s *Service) note(ev fsnotify.Event) {
 	default:
 		return // chmod only
 	}
+	s.noteOp(ev.Name, op)
+}
+
+// noteOp queues a change of path for the next batch. The service's own
+// writes queue theirs too, so fs/changed reports a write the CLI did in a
+// folder nothing watches.
+func (s *Service) noteOp(path, op string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if prev, ok := s.pending[ev.Name]; ok && prev == "create" && op == "write" {
+	if s.pending == nil {
+		return // a Service not made by New, as a test's
+	}
+	if prev, ok := s.pending[path]; ok && prev == "create" && op == "write" {
 		op = "create"
 	}
-	s.pending[ev.Name] = op
+	s.pending[path] = op
 	if s.timer == nil {
 		s.timer = time.AfterFunc(debounce, s.flush)
 	}

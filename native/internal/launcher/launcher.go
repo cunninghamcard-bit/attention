@@ -213,6 +213,7 @@ func Rows(profile string, mounts []string) []map[string]any {
 		{"id": "cli", "name": "go:cli"},
 		{"id": "fs", "name": "go:fs"},
 		project,
+		{"id": "index", "name": "go:index"},
 	}
 	if profile == "headless" {
 		return base

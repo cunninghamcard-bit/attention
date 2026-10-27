@@ -267,3 +267,7 @@ func trimStart(s string) string {
 func isSpace(b byte) bool {
 	return b == ' ' || b == '\t' || b == '\n' || b == '\r' || b == '\f' || b == '\v'
 }
+
+// Keys are the frontmatter's keys in the order the note writes them (the
+// TS object's key order).
+func (p ParsedFrontmatter) Keys() []string { return append([]string(nil), p.keys...) }

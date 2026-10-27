@@ -1,0 +1,295 @@
+// Package index is the index plugin (RFC 0001 §5.6, P2): attention's
+// MetadataCache over the mounts — every file by path and name, each
+// note's parsed metadata (internal/mdmeta), and the resolved and
+// unresolved links between them — and the CLI's commands on it
+// (apps/web/app/cli/commands/graphLists.ts, metadata.ts,
+// linksOutlineCli.ts, wordcountWebCli.ts).
+//
+// The index is held in memory and built when the plugin loads (RFC open
+// question 5): a walk of the mounts, the notes read through fs. It follows
+// fs/changed for the folders fs watches, and walks again every
+// rescanEvery for the rest (fs watches only what the reader shows, R9).
+package index
+
+import (
+	"context"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"sync"
+	"time"
+
+	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
+	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
+	"github.com/cunninghamcard-bit/attention/native/internal/mdmeta"
+)
+
+const (
+	// maxNote is the largest note read; a larger one is indexed as a file
+	// with no metadata.
+	maxNote = 4 << 20
+	// rescanEvery is how often the whole mounts are walked again.
+	rescanEvery = 2 * time.Minute
+)
+
+// file is an indexed file.
+type file struct {
+	display string // "<mount>/<rel>", the CLI's path
+	abs     string
+	md      bool
+	meta    *mdmeta.Metadata // nil for a file not a note, or unread
+	size    int64
+	mod     int64
+}
+
+// Index is the metadata cache. Its methods are safe for concurrent use.
+type Index struct {
+	fs      fscontract.FS
+	project projectcontract.Project
+
+	mu     sync.RWMutex
+	files  map[string]*file // by display path
+	byAbs  map[string]string
+	look   lookup
+	mounts []projectcontract.Mount
+	// resolved and unresolved are resolvedLinks and unresolvedLinks: per
+	// source, the target (a path, or an unresolved linkpath) and its count.
+	resolved, unresolved map[string]map[string]int
+	built                chan struct{} // closed after the first build
+	builtOnce            sync.Once
+}
+
+// New is an index over project's mounts, reading notes through fs.
+func New(fs fscontract.FS, project projectcontract.Project) *Index {
+	return &Index{fs: fs, project: project, files: map[string]*file{}, byAbs: map[string]string{}, look: lookup{},
+		resolved: map[string]map[string]int{}, unresolved: map[string]map[string]int{}, built: make(chan struct{})}
+}
+
+// Ready waits for the first build.
+func (x *Index) Ready(ctx context.Context) error {
+	select {
+	case <-x.built:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// Build walks the mounts and reads every note whose size or time changed
+// since the last walk, then resolves the links again.
+func (x *Index) Build(ctx context.Context) error {
+	defer x.builtOnce.Do(func() { close(x.built) })
+	mounts, err := x.project.Mounts(ctx)
+	if err != nil {
+		return err
+	}
+	listing, err := x.project.Files(ctx)
+	if err != nil {
+		return err
+	}
+	byID := map[string]projectcontract.Mount{}
+	for _, m := range mounts {
+		byID[m.ID] = m
+	}
+	x.mu.RLock()
+	old := x.files
+	x.mu.RUnlock()
+	next := make(map[string]*file, len(listing.Files))
+	var notes []*file
+	for _, f := range listing.Files {
+		m, ok := byID[f.Mount]
+		if !ok {
+			continue
+		}
+		nf := &file{display: projectcontract.Display(m, f.Rel), abs: f.Path, md: isNote(f.Path)}
+		if prev, ok := old[nf.display]; ok {
+			nf.meta, nf.size, nf.mod = prev.meta, prev.size, prev.mod
+		}
+		next[nf.display] = nf
+		if nf.md {
+			notes = append(notes, nf)
+		}
+	}
+	x.readNotes(ctx, notes)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	x.mu.Lock()
+	x.mounts = mounts
+	x.files = next
+	x.byAbs = make(map[string]string, len(next))
+	x.look = lookup{}
+	for _, f := range next {
+		x.byAbs[f.abs] = f.display
+		x.look.add(f.display)
+	}
+	x.resolveAll()
+	x.mu.Unlock()
+	return nil
+}
+
+func isNote(path string) bool { return strings.EqualFold(filepath.Ext(path), ".md") }
+
+// readNotes parses the notes whose size or modification time moved, on a
+// few goroutines.
+func (x *Index) readNotes(ctx context.Context, notes []*file) {
+	work := make(chan *file)
+	var wg sync.WaitGroup
+	for range runtime.NumCPU() {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for f := range work {
+				x.readNote(ctx, f)
+			}
+		}()
+	}
+	for _, f := range notes {
+		if ctx.Err() != nil {
+			break
+		}
+		work <- f
+	}
+	close(work)
+	wg.Wait()
+}
+
+// readNote parses f when it changed since it was read.
+func (x *Index) readNote(ctx context.Context, f *file) {
+	st, err := x.fs.Stat(ctx, f.abs)
+	if err != nil {
+		f.meta = nil
+		return
+	}
+	if f.meta != nil && st.Size == f.size && st.ModTime == f.mod {
+		return
+	}
+	f.size, f.mod = st.Size, st.ModTime
+	if st.Size > maxNote {
+		f.meta = nil
+		return
+	}
+	data, err := x.fs.ReadBytes(ctx, f.abs, maxNote)
+	if err != nil {
+		f.meta = nil
+		return
+	}
+	m := mdmeta.Parse(string(data))
+	f.meta = &m
+}
+
+// Changed takes fs/changed: notes written are read again, files removed
+// leave, files created join, and the links resolve again.
+func (x *Index) Changed(ctx context.Context, b fscontract.Batch) {
+	x.mu.RLock()
+	mounts := x.mounts
+	x.mu.RUnlock()
+	type update struct {
+		f    *file
+		gone bool
+	}
+	var updates []update
+	for _, c := range b.Changes {
+		m, rel, ok := projectcontract.MountOf(mounts, c.Path)
+		if !ok || rel == "." {
+			continue
+		}
+		st, err := x.fs.Stat(ctx, c.Path)
+		display := projectcontract.Display(m, rel)
+		if err != nil {
+			updates = append(updates, update{f: &file{display: display, abs: c.Path}, gone: true})
+			continue
+		}
+		if st.Dir {
+			continue // its files come with the next walk
+		}
+		f := &file{display: display, abs: c.Path, md: isNote(c.Path)}
+		x.mu.RLock()
+		if prev, ok := x.files[display]; ok {
+			f.meta, f.size, f.mod = prev.meta, prev.size, prev.mod
+		}
+		x.mu.RUnlock()
+		if f.md {
+			x.readNote(ctx, f)
+		}
+		updates = append(updates, update{f: f})
+	}
+	if len(updates) == 0 {
+		return
+	}
+	x.mu.Lock()
+	defer x.mu.Unlock()
+	for _, u := range updates {
+		if u.gone {
+			if _, ok := x.files[u.f.display]; ok {
+				delete(x.files, u.f.display)
+				delete(x.byAbs, u.f.abs)
+				x.look.remove(u.f.display)
+			}
+			continue
+		}
+		x.files[u.f.display] = u.f
+		x.byAbs[u.f.abs] = u.f.display
+		x.look.add(u.f.display)
+	}
+	x.resolveAll()
+}
+
+// resolveAll is resolveLinks for every note. Called with mu held.
+func (x *Index) resolveAll() {
+	x.resolved = map[string]map[string]int{}
+	x.unresolved = map[string]map[string]int{}
+	for path, f := range x.files {
+		if f.meta == nil {
+			continue
+		}
+		res, unres := map[string]int{}, map[string]int{}
+		for _, link := range refs(f.meta) {
+			lp := stripSubpath(link)
+			if dest, ok := x.look.first(lp, path, x.isMD); ok {
+				res[dest]++
+			} else {
+				unres[unresolvedKey(lp)]++
+			}
+		}
+		x.resolved[path], x.unresolved[path] = res, unres
+	}
+}
+
+// isMD reports whether path is an indexed note. Called with mu held.
+func (x *Index) isMD(path string) bool {
+	f, ok := x.files[path]
+	return ok && f.md
+}
+
+// refs is iterateRefsForCache: the frontmatter links, the links, the
+// embeds.
+func refs(m *mdmeta.Metadata) []string {
+	out := make([]string, 0, len(m.FrontmatterLinks)+len(m.Links)+len(m.Embeds))
+	for _, l := range m.FrontmatterLinks {
+		out = append(out, l.Link)
+	}
+	for _, l := range m.Links {
+		out = append(out, l.Link)
+	}
+	for _, l := range m.Embeds {
+		out = append(out, l.Link)
+	}
+	return out
+}
+
+// Run builds the index, then walks the mounts again every rescanEvery,
+// until ctx ends.
+func (x *Index) Run(ctx context.Context) error {
+	_ = x.Build(ctx)
+	t := time.NewTicker(rescanEvery)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-t.C:
+			_ = x.Build(ctx)
+		}
+	}
+}
