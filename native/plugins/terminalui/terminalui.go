@@ -17,6 +17,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -116,12 +118,49 @@ func font() terminal.Font {
 	return f
 }
 
-// shell is the Shell setting: the program and its arguments, the login
-// shell when empty (as VS Code's default profile).
+// shell is the Shell setting, else the login shell from the user database
+// rather than an inherited $SHELL (as Alacritty), else nil for mygo's own.
 func shell() []string {
 	var cmd string
 	settingsapi.Get(configFile, "shell", &cmd)
-	return strings.Fields(cmd)
+	if fields := strings.Fields(cmd); len(fields) > 0 {
+		return fields
+	}
+	if sh := loginShell(); sh != "" {
+		return []string{sh, "-l"}
+	}
+	return nil
+}
+
+func loginShell() string {
+	u, err := user.Current()
+	if err != nil {
+		return ""
+	}
+	entry := ""
+	if data, err := os.ReadFile("/etc/passwd"); err == nil {
+		for line := range strings.Lines(string(data)) {
+			if f := strings.Split(strings.TrimSpace(line), ":"); len(f) == 7 && f[2] == u.Uid {
+				entry = line
+				break
+			}
+		}
+	}
+	if entry == "" {
+		out, err := exec.Command("getent", "passwd", u.Uid).Output()
+		if err != nil {
+			return ""
+		}
+		entry = string(out)
+	}
+	f := strings.Split(strings.TrimSpace(entry), ":")
+	if len(f) != 7 {
+		return ""
+	}
+	if st, err := os.Stat(f[6]); err != nil || st.IsDir() || st.Mode()&0o111 == 0 {
+		return ""
+	}
+	return f[6]
 }
 
 // start runs a shell for s (TerminalService.spawnInto).
