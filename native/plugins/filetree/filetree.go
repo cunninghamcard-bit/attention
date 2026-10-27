@@ -24,6 +24,7 @@ import (
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
 	"github.com/cunninghamcard-bit/attention/native/internal/watchq"
+	"github.com/cunninghamcard-bit/attention/native/layoutapi"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
@@ -135,13 +136,13 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			View:  func(c *ui.Context, _ slotsapi.PanelProps) { tr.view(c) },
 			State: tr.state, Restore: tr.restore,
 		})
-		offCmd := actionsapi.Register(actionsapi.Command{ID: "file-explorer:open", Title: "Open file explorer", Keys: "", Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			return shellapi.OnMain(ctx, func() (string, error) {
-				if ws := workspaceapi.Get(); ws != nil {
-					ws.RevealPanel(PanelID)
-				}
-				return "", nil
-			})
+		reveal := func() {
+			if l := layoutapi.Get(); l != nil {
+				l.RevealPanel(PanelID)
+			}
+		}
+		offCmd := actionsapi.Register(actionsapi.Command{ID: "file-explorer:open", Title: "Open file explorer", Main: reveal, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
+			return shellapi.OnMain(ctx, func() (string, error) { reveal(); return "", nil })
 		}})
 		rctx.Effect(func(context.Context) error {
 			offCmd()

@@ -42,8 +42,6 @@ type API interface {
 	ActiveTab() (tabtypesapi.Info, bool)
 	// Display is a path as the reader shows it: "<mount>/<rel>".
 	Display(path string) string
-	// RevealPanel opens the dock holding the panel and shows the panel.
-	RevealPanel(id string)
 	// RecentFiles are the files opened last, newest first (the quick
 	// switcher's recent list).
 	RecentFiles() []string

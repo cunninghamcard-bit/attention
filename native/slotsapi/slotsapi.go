@@ -315,3 +315,88 @@ func TakePaletteRequest() string {
 	paletteReq = ""
 	return id
 }
+
+// center is the workspace.center slot (RFC §5.5): the one view between the
+// docks.
+var center struct {
+	id   int
+	view func(c *ui.Context)
+}
+
+// SetCenter makes view the center until off is called; the last set wins.
+func SetCenter(view func(c *ui.Context)) (off func()) {
+	mu.Lock()
+	seq++
+	id := seq
+	center.id, center.view = id, view
+	mu.Unlock()
+	invalidate()
+	return func() {
+		mu.Lock()
+		if center.id == id {
+			center.id, center.view = 0, nil
+		}
+		mu.Unlock()
+		invalidate()
+	}
+}
+
+// Center is the center's view, nil for none.
+func Center() func(c *ui.Context) {
+	mu.Lock()
+	defer mu.Unlock()
+	return center.view
+}
+
+// StatusItem is a statusbar.item contribution: drawn in the status bar,
+// on the left or the right, in Order.
+type StatusItem struct {
+	ID    string
+	Right bool
+	Order int
+	View  func(c *ui.Context)
+}
+
+var status = map[int]StatusItem{}
+
+// RegisterStatus adds a status bar item until off is called; a second live
+// item with the same ID panics.
+func RegisterStatus(s StatusItem) (off func()) {
+	mu.Lock()
+	for _, q := range status {
+		if q.ID == s.ID {
+			mu.Unlock()
+			panic("slots: status item " + strconv.Quote(s.ID) + " is already registered")
+		}
+	}
+	seq++
+	id := seq
+	status[id] = s
+	mu.Unlock()
+	invalidate()
+	return func() {
+		mu.Lock()
+		delete(status, id)
+		mu.Unlock()
+		invalidate()
+	}
+}
+
+// Status lists one side's status bar items by Order, then ID.
+func Status(right bool) []StatusItem {
+	mu.Lock()
+	defer mu.Unlock()
+	var out []StatusItem
+	for _, s := range status {
+		if s.Right == right {
+			out = append(out, s)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Order != out[j].Order {
+			return out[i].Order < out[j].Order
+		}
+		return out[i].ID < out[j].ID
+	})
+	return out
+}

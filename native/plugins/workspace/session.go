@@ -6,31 +6,19 @@ import (
 	"path/filepath"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 )
 
-// session is what reopens the window as it was: tab groups, tabs, layout.
+// session is what reopens the center as it was: tab groups and tabs (the
+// docks and the panels' states are the layout plugin's).
 type session struct {
 	// Main is the center's layout tree (attention's layout "main").
 	Main *sessionNode `json:"main,omitempty"`
 	// Panes, Active and SplitPct are the layout before the tree: at most
 	// two groups side by side. Read, never written.
-	Panes     []sessionPane `json:"panes,omitempty"`
-	Active    int           `json:"active,omitempty"`
-	SplitPct  float32       `json:"splitPct,omitempty"`
-	PanelOpen bool          `json:"panelOpen"`
-	LeftWidth float32       `json:"leftWidth"`
-	LeftPanel string        `json:"leftPanel,omitempty"`
-	// RightOpen, RightWidth and RightPanel are the right dock's.
-	RightOpen  bool    `json:"rightOpen,omitempty"`
-	RightWidth float32 `json:"rightWidth,omitempty"`
-	RightPanel string  `json:"rightPanel,omitempty"`
-	// PanelStates are the panels' own states by panel ID.
-	PanelStates map[string]json.RawMessage `json:"panelStates,omitempty"`
-	RecentFiles []string                   `json:"recentFiles,omitempty"`
-	// RecentCommands are the command palette's from before it kept them in
-	// PanelStates. Read, never written.
-	RecentCommands []string `json:"recentCommands,omitempty"`
+	Panes       []sessionPane `json:"panes,omitempty"`
+	Active      int           `json:"active,omitempty"`
+	SplitPct    float32       `json:"splitPct,omitempty"`
+	RecentFiles []string      `json:"recentFiles,omitempty"`
 }
 
 type sessionPane struct {
@@ -121,7 +109,6 @@ func loadSession() (session, bool) {
 	}
 	if s.Main == nil {
 		s.Main = legacyTree(s)
-		s.RightOpen = true // the file tree moved to the right dock
 	}
 	s.Panes = nil
 	if s.Main != nil {
@@ -141,9 +128,7 @@ func keepTab(path string) bool {
 }
 
 func (ws *Workspace) snapshot() session {
-	s := session{PanelOpen: ws.panelOpen, LeftWidth: ws.leftWidth, LeftPanel: ws.leftPanel,
-		RightOpen: ws.rightOpen, RightWidth: ws.rightWidth, RightPanel: ws.rightPanel,
-		RecentFiles: ws.recentFiles, PanelStates: ws.panelStates()}
+	s := session{RecentFiles: ws.recentFiles}
 	if ws.restoring != nil {
 		// The saved tabs are not reopened yet (the mounts are loading): keep
 		// them rather than save an empty window over them.
@@ -177,39 +162,13 @@ func (ws *Workspace) serialize(n *node) sessionNode {
 	return sn
 }
 
-func saveSession(s session) error {
-	data, err := json.MarshalIndent(s, "", "  ")
-	if err != nil {
-		return err
-	}
-	return paths.WriteFileAtomic(paths.SessionPath(), data)
-}
-
 // restoreLayout applies the saved layout; the tabs reopen once the mounts
 // are known (setMounts).
 func (ws *Workspace) restoreLayout(s session) {
-	if s.LeftWidth >= 120 {
-		ws.leftWidth = s.LeftWidth
-	}
-	if s.RightWidth >= 120 {
-		ws.rightWidth = s.RightWidth
-	}
-	ws.leftPanel, ws.rightPanel = s.LeftPanel, s.RightPanel
-	// A panel drawn before the session arrived gets it on its next draw.
-	ws.savedPanels, ws.restoredPanels = s.PanelStates, map[string]bool{}
 	if s.Main == nil {
 		s.Main = legacyTree(s)
-		s.RightOpen = true // the file tree moved to the right dock
 	}
-	ws.panelOpen = s.PanelOpen || s.Main == nil
-	ws.rightOpen = s.RightOpen || s.Main == nil
 	ws.recentFiles = s.RecentFiles
-	if _, ok := ws.savedPanels["command-palette"]; !ok && len(s.RecentCommands) > 0 {
-		if ws.savedPanels == nil {
-			ws.savedPanels = map[string]json.RawMessage{}
-		}
-		ws.savedPanels["command-palette"], _ = json.Marshal(s.RecentCommands)
-	}
 	ws.restoring = s.Main
 	if ws.mountsLoaded {
 		ws.reopen(ws.restoring)
@@ -289,45 +248,4 @@ func (ws *Workspace) reopen(main *sessionNode) {
 		ws.activeGroup = focus
 	}
 	ws.changed()
-}
-
-// panelStates are the registered panels' and overlays' states, and the
-// saved ones of those not restored yet (not drawn, or not loaded this run).
-func (ws *Workspace) panelStates() map[string]json.RawMessage {
-	out := map[string]json.RawMessage{}
-	for id, st := range ws.savedPanels {
-		out[id] = st
-	}
-	keep := func(id string, state func() json.RawMessage) {
-		if state != nil && ws.restoredPanels[id] {
-			out[id] = state()
-		}
-	}
-	for _, d := range []slotsapi.Dock{slotsapi.Left, slotsapi.Right} {
-		for _, p := range slotsapi.Panels(d) {
-			keep(p.ID, p.State)
-		}
-	}
-	for _, o := range slotsapi.Overlays() {
-		keep(o.ID, o.State)
-	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
-}
-
-// restoreState hands a panel or overlay its saved state once, before its
-// first draw.
-func (ws *Workspace) restoreState(id string, restore func(json.RawMessage)) {
-	if ws.restoredPanels[id] {
-		return
-	}
-	ws.restoredPanels[id] = true
-	if st, ok := ws.savedPanels[id]; ok {
-		delete(ws.savedPanels, id)
-		if restore != nil {
-			restore(st)
-		}
-	}
 }

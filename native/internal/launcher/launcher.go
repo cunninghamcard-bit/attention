@@ -211,6 +211,7 @@ func Rows(profile string, mounts []string) []map[string]any {
 	}
 	return append([]map[string]any{{"id": "shell", "name": "go:shell"}}, append(base,
 		map[string]any{"id": "fileresource", "name": "go:fileresource"},
+		map[string]any{"id": "layout", "name": "go:layout"},
 		map[string]any{"id": "workspace", "name": "go:workspace"},
 		map[string]any{"id": "shortcuts", "name": "go:shortcuts"},
 		map[string]any{"id": "palette", "name": "go:palette"},

@@ -7,19 +7,21 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 	"github.com/cunninghamcard-bit/attention/native/plugins/commandpalette"
 	"github.com/cunninghamcard-bit/attention/native/plugins/gotoline"
+	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
 	"github.com/cunninghamcard-bit/attention/native/plugins/palette"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
 	"github.com/cunninghamcard-bit/attention/native/plugins/switcher"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
-// testPalette is testWorkspace's palette.
-var testPalette *palette.Palette
+// testPalette and testLayout are testWorkspace's palette and layout.
+var (
+	testPalette *palette.Palette
+	testLayout  *layout.Layout
+)
 
 // A workspace over three notes, drawn by mygo's tester: the shortcuts and
 // the palette are driven by key presses, without a window or rutis.
@@ -48,14 +50,13 @@ func testWorkspace(t *testing.T) (*Workspace, *ui.Tester) {
 	project.Files = func(context.Context) (projectcontract.Listing, error) { return files, nil }
 	viewers(t, t.Context(), fs)
 	ws := newWorkspace(t.Context(), fs, project)
-	ws.isDark = func() bool { return false }
 	ws.setMounts([]projectcontract.Mount{m})
-	// What the profile loads beside it: the API, the commands, their
+	// What the profile loads beside it: the layout around it, the
 	// shortcuts, the palette and its sources.
-	t.Cleanup(workspaceapi.Set(api{ws}))
-	for _, cmd := range ws.commands() {
-		t.Cleanup(actionsapi.Register(cmd))
-	}
+	t.Cleanup(Register(ws))
+	testLayout = layout.New()
+	testLayout.IsDark = func() bool { return false }
+	t.Cleanup(layout.Register(testLayout))
 	t.Cleanup(shortcuts.Register(t.Context()))
 	var off func()
 	testPalette, off = palette.Register()
@@ -75,7 +76,7 @@ func testWorkspace(t *testing.T) (*Workspace, *ui.Tester) {
 			}
 		}
 	})
-	tt := ui.NewTester(ws.view, 1000, 700)
+	tt := ui.NewTester(testLayout.View, 1000, 700)
 	tt.Frame()
 	return ws, tt
 }

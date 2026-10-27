@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -29,9 +28,10 @@ func TestDockShowsFirstPanelAndRevealsByShortcut(t *testing.T) {
 	var searchReveals int
 	panel(t, "file-explorer", 0, "tree body", nil)
 	panel(t, "search", 1, "search body", &searchReveals)
-	ws, tt := testWorkspace(t)
+	_, tt := testWorkspace(t)
+	l := testLayout
 	// The search plugin's command, which owns Ctrl Shift F.
-	t.Cleanup(actionsapi.Register(actionsapi.Command{ID: "global-search:open", Keys: "Ctrl Shift F", Main: func() { ws.revealPanel("search") }}))
+	t.Cleanup(actionsapi.Register(actionsapi.Command{ID: "global-search:open", Keys: "Ctrl Shift F", Main: func() { l.RevealPanel("search") }}))
 	if !tt.HasText("tree body") || tt.HasText("search body") {
 		t.Fatalf("the left dock should show the first panel: %v", tt.Texts())
 	}
@@ -39,18 +39,18 @@ func TestDockShowsFirstPanelAndRevealsByShortcut(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if ws.leftPanel != "search" || !tt.HasText("search body") {
-		t.Fatalf("clicking the header icon should show search: %q %v", ws.leftPanel, tt.Texts())
+	if l.ShownPanel(slotsapi.Left) != "search" || !tt.HasText("search body") {
+		t.Fatalf("clicking the header icon should show search: %q %v", l.ShownPanel(slotsapi.Left), tt.Texts())
 	}
 	press(tt, ui.Cmd, ui.KeyB)
-	if ws.panelOpen || tt.HasText("tree body") {
+	if l.Open(slotsapi.Left) || tt.HasText("tree body") {
 		t.Fatal("Ctrl B should close the left dock")
 	}
 	press(tt, ui.Cmd|ui.Shift, ui.KeyF)
-	if !ws.panelOpen || !tt.HasText("search body") || searchReveals != 2 {
+	if !l.Open(slotsapi.Left) || !tt.HasText("search body") || searchReveals != 2 {
 		t.Fatalf("Ctrl Shift F should open the dock on search (reveals %d): %v", searchReveals, tt.Texts())
 	}
-	if s := ws.snapshot(); s.LeftPanel != "search" {
+	if s := l.Snapshot(); s.LeftPanel != "search" {
 		t.Fatalf("the session keeps the shown panel: %q", s.LeftPanel)
 	}
 }
@@ -79,31 +79,6 @@ func TestOpenWithMatchSelectsIt(t *testing.T) {
 	tt.Frame()
 	if got := testMD.Selected(tb.id); got != "note" || !testMD.Source(tb.id) {
 		t.Fatalf("re-navigation selected %q (source %v)", got, testMD.Source(tb.id))
-	}
-}
-
-func TestPanelStateRoundTrips(t *testing.T) {
-	var got string
-	off := slotsapi.RegisterPanel(slotsapi.Panel{ID: "search", Title: "search", Icon: lucide.Search(), Dock: slotsapi.Left,
-		View:    func(c *ui.Context, _ slotsapi.PanelProps) { ui.Text(c, "body") },
-		State:   func() json.RawMessage { data, _ := json.Marshal(got + "-saved"); return data },
-		Restore: func(st json.RawMessage) { got = string(st) },
-	})
-	t.Cleanup(off)
-	ws, _ := testWorkspace(t)
-	// A state for a panel not loaded this run is kept as it was.
-	ws.restoreLayout(session{PanelStates: map[string]json.RawMessage{"search": json.RawMessage(`"q"`), "gone": json.RawMessage(`1`)}})
-	if s := ws.snapshot(); string(s.PanelStates["search"]) != `"q"` {
-		t.Fatalf("before the first draw the saved state is kept: %s", s.PanelStates["search"])
-	}
-	tt := ui.NewTester(ws.view, 1000, 700)
-	tt.Frame()
-	if got != `"q"` {
-		t.Fatalf("Restore got %q", got)
-	}
-	s := ws.snapshot()
-	if string(s.PanelStates["search"]) != `"\"q\"-saved"` || string(s.PanelStates["gone"]) != `1` {
-		t.Fatalf("panel states = %s / %s", s.PanelStates["search"], s.PanelStates["gone"])
 	}
 }
 
@@ -155,7 +130,7 @@ func TestClosingAGroupFromItsTabListDoesNotPanic(t *testing.T) {
 	ws.open("/m/alpha.md", nil)
 	ws.openIn("/m/beta.md", nil, true)
 	ws.split(vertical)
-	ws.toggleRight()
+	testLayout.Toggle(slotsapi.Right)
 	tt.Frame()
 	if err := tt.Click("Tab list"); err != nil {
 		t.Fatal(err)

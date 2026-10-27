@@ -2,20 +2,17 @@ package workspace
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 	"github.com/cunninghamcard-bit/attention/native/resourcesapi"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
@@ -23,9 +20,9 @@ import (
 // maxClosed is how many closed tabs Undo close tab can bring back.
 const maxClosed = 20
 
-// Workspace is the window's whole state. Every field is read and written on
-// the main thread only: work done on goroutines comes back through
-// shellapi.Update (RFC §5.8).
+// Workspace is the center's state: the tab groups, their tabs, the files
+// they show. Every field is read and written on the main thread only: work
+// done on goroutines comes back through shellapi.Update (RFC §5.8).
 type Workspace struct {
 	ctx     context.Context
 	fs      fscontract.FS
@@ -34,24 +31,10 @@ type Workspace struct {
 	mounts       []projectcontract.Mount
 	mountsLoaded bool
 
-	panelOpen bool
-	leftWidth float32
-	leftPanel string // the left dock's shown panel (slotsapi.Panel.ID)
-	reveals   map[string]int
-	// savedPanels are panel states from the session not handed over yet;
-	// restoredPanels the panels that got theirs (or had none).
-	savedPanels    map[string]json.RawMessage
-	restoredPanels map[string]bool
-	rightOpen      bool
-	rightWidth     float32
-	rightPanel     string // the right dock's shown panel
 	// root is the center's layout: tab groups in splits (tree.go).
 	root        *node
 	activeGroup *pane
 	nextGroup   int
-	seenLeft    float32 // the width last saved, to notice a divider drag
-
-	notice string // a workspace-wide message, as a watch error
 
 	nextTab int
 	closed  []string // recently closed files, newest last
@@ -60,7 +43,6 @@ type Workspace struct {
 	recentFiles []string
 	restoring   *sessionNode // the layout to reopen once the mounts are known
 	saveSoon    func()
-	isDark      func() bool // mygo.Theme.IsDark; tests replace it
 	title       string
 	typesGen    int // the tab type registry's generation last claimed against
 }
@@ -107,14 +89,7 @@ type tab struct {
 func newWorkspace(ctx context.Context, fs fscontract.FS, project projectcontract.Project) *Workspace {
 	ws := &Workspace{
 		ctx: ctx, fs: fs, project: project,
-		panelOpen:      true,
-		rightOpen:      true, // the file tree's, as Zed's project panel
-		leftWidth:      260,
-		rightWidth:     260,
-		reveals:        map[string]int{},
-		restoredPanels: map[string]bool{},
-		root:           &node{dir: vertical},
-		isDark:         mygo.Theme.IsDark,
+		root: &node{dir: vertical},
 	}
 	ws.root.insert(0, newGroupNode(ws.newPane()))
 	return ws
@@ -594,34 +569,4 @@ func (ws *Workspace) gotoTab(n int) {
 	}
 	p.active = n - 1
 	ws.changed()
-}
-
-func (ws *Workspace) toggleLeft() {
-	ws.panelOpen = !ws.panelOpen
-	ws.changed()
-}
-
-func (ws *Workspace) toggleRight() {
-	ws.rightOpen = !ws.rightOpen
-	ws.changed()
-}
-
-// revealPanel opens the dock holding the panel and shows it; its view
-// sees the reveal (PanelProps.Reveal) and focuses its input.
-func (ws *Workspace) revealPanel(id string) {
-	for _, d := range []slotsapi.Dock{slotsapi.Left, slotsapi.Right} {
-		for _, p := range slotsapi.Panels(d) {
-			if p.ID != id {
-				continue
-			}
-			if d == slotsapi.Left {
-				ws.panelOpen, ws.leftPanel = true, id
-			} else {
-				ws.rightOpen, ws.rightPanel = true, id
-			}
-			ws.reveals[id]++
-			ws.changed()
-			return
-		}
-	}
 }

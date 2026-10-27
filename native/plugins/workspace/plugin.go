@@ -1,7 +1,7 @@
-// Package workspace is the workspace UI plugin: the reader's frame —
-// the ribbon, the docks' panels, tab groups in splits (tree.go) whose bodies
-// are the tab types' (tabtypesapi), the overlays (the palette, the
-// shortcuts), the status bar — and the CLI's open and tabs.
+// Package workspace is the workspace UI plugin: the window's center (the
+// layout plugin draws the rest) — tab groups in splits (tree.go), their
+// tabs, whose bodies are the tab types' (tabtypesapi), the view and tab
+// headers, the session of open tabs — and the CLI's open and tabs.
 //
 // TODO(RFC §5.6–§5.7): opening goes through navigation.
 package workspace
@@ -13,8 +13,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo"
@@ -22,7 +20,10 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
+	"github.com/cunninghamcard-bit/attention/native/internal/paths"
+	"github.com/cunninghamcard-bit/attention/native/internal/persist"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
+	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
@@ -31,9 +32,28 @@ func openExternal(url string) {
 	go func() { _ = mygo.Shell.OpenExternal(url) }()
 }
 
-// Plugin draws the window's content while loaded and provides "workspace",
-// which panel plugins inject to be ordered after it (they reach the
-// workspace through workspaceapi).
+// Register makes ws the center (the workspace.center slot), with its
+// status bar items, its API and its commands, until off is called.
+func Register(ws *Workspace) (off func()) {
+	offs := []func(){
+		slotsapi.SetCenter(ws.view),
+		slotsapi.RegisterStatus(slotsapi.StatusItem{ID: "workspace-mounts", View: ws.mountsStatus}),
+		slotsapi.RegisterStatus(slotsapi.StatusItem{ID: "workspace-tab", Right: true, View: ws.tabStatus}),
+		workspaceapi.Set(api{ws}),
+	}
+	for _, cmd := range ws.commands() {
+		offs = append(offs, actionsapi.Register(cmd))
+	}
+	return func() {
+		for i := len(offs) - 1; i >= 0; i-- {
+			offs[i]()
+		}
+	}
+}
+
+// Plugin is the center while loaded and provides "workspace", which panel
+// plugins inject to be ordered after it (they reach the workspace through
+// workspaceapi).
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   "workspace",
 	Inject: []string{"shell", "fs", "project", "actions"},
@@ -48,54 +68,10 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		}
 		ctx, cancel := context.WithCancel(context.Background())
 		ws := newWorkspace(ctx, fs, project)
+		saver := persist.New(paths.SessionPath(), func() any { return ws.snapshot() })
+		ws.saveSoon = saver.Soon
 
-		// Saving: debounced, the snapshot taken on the main thread and the
-		// write done off it.
-		// writeMu orders the writes, so the final save on unload is the
-		// last one; saveClosed stops the timer's saves after it.
-		var saveMu, writeMu sync.Mutex
-		var saveTimer *time.Timer
-		saveClosed := false
-		write := func(s session) {
-			writeMu.Lock()
-			defer writeMu.Unlock()
-			_ = saveSession(s)
-		}
-		// writeTimed is the timer's write: dropped once the final save began.
-		writeTimed := func(s session) {
-			writeMu.Lock()
-			defer writeMu.Unlock()
-			saveMu.Lock()
-			closed := saveClosed
-			saveMu.Unlock()
-			if !closed {
-				_ = saveSession(s)
-			}
-		}
-		ws.saveSoon = func() {
-			saveMu.Lock()
-			defer saveMu.Unlock()
-			if saveClosed {
-				return
-			}
-			if saveTimer != nil {
-				saveTimer.Stop()
-			}
-			saveTimer = time.AfterFunc(400*time.Millisecond, func() {
-				shellapi.Update(func() {
-					saveMu.Lock()
-					closed := saveClosed
-					saveMu.Unlock()
-					if closed {
-						return
-					}
-					s := ws.snapshot()
-					go writeTimed(s)
-				})
-			})
-		}
-
-		// Restore the layout, then the mounts (which reopen the tabs).
+		// Restore the tree, then the mounts (which reopen the tabs).
 		saved, ok := loadSession()
 		shellapi.Update(func() {
 			if ok {
@@ -112,49 +88,22 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			}()
 		}
 		reloadMounts()
-
-		rctx.On(fscontract.WatchErrorEvent, func(_ context.Context, args ...any) (any, error) {
-			if len(args) > 0 {
-				msg := fmt.Sprint(args[0])
-				shellapi.Update(func() { ws.notice = msg })
-			}
-			return nil, nil
-		})
 		rctx.On(projectcontract.MountsChangedEvent, func(context.Context, ...any) (any, error) {
 			reloadMounts()
 			return nil, nil
 		})
 
 		rctx.Provide("workspace", struct{}{})
-		offAPI := workspaceapi.Set(api{ws})
-		rctx.Effect(func(context.Context) error { offAPI(); return nil })
-
-		for _, cmd := range ws.commands() {
-			off := actionsapi.Register(cmd)
-			rctx.Effect(func(context.Context) error { off(); return nil })
-		}
-
-		offRoot := shellapi.SetRoot(ws.view)
+		off := Register(ws)
 		rctx.Effect(func(effectCtx context.Context) error {
 			if os.Getenv("ATTENTION_DEBUG") != "" {
 				fmt.Fprintln(os.Stderr, "[debug] workspace: cleanup start")
 				defer fmt.Fprintln(os.Stderr, "[debug] workspace: cleanup end")
 			}
-			offRoot()
-			// Save the final layout; the shell is still loaded (we inject it),
-			// and the run loop runs until every plugin has unloaded.
-			// Close the timer's saves first: a snapshot it took earlier must
-			// not land after this one.
-			saveMu.Lock()
-			saveClosed = true
-			if saveTimer != nil {
-				saveTimer.Stop()
-			}
-			saveMu.Unlock()
-			s, err := shellapi.OnMain(effectCtx, func() (session, error) { return ws.snapshot(), nil })
-			if err == nil {
-				write(s)
-			}
+			off()
+			// The final save; the run loop runs until every plugin has
+			// unloaded.
+			saver.Final(effectCtx)
 			cancel()
 			return nil
 		})
@@ -203,8 +152,6 @@ func (ws *Workspace) commands() []actionsapi.Command {
 		ui("workspace:close-others", "Close other tabs", "", ws.closeOthers),
 		ui("workspace:close-tab-group", "Close tab group", "", ws.closeTabGroup),
 		ui("workspace:close-others-tab-group", "Close others in tab group", "", ws.closeOthersInGroup),
-		ui("app:toggle-left-sidebar", "Toggle left sidebar", "Ctrl B", ws.toggleLeft),
-		ui("app:toggle-right-sidebar", "Toggle right sidebar", "Ctrl Alt B", ws.toggleRight),
 		{ID: "workspace:add-folder", Title: "Add folder to workspace", Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
 			dirs, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: shellapi.Window(), Title: "Add Folder to Project", Directory: true})
 			if err != nil || len(dirs) == 0 {
@@ -424,8 +371,6 @@ func (a api) ActiveTab() (tabtypesapi.Info, bool) {
 }
 
 func (a api) Display(path string) string { return a.ws.display(path) }
-
-func (a api) RevealPanel(id string) { a.ws.revealPanel(id) }
 
 func (a api) RecentFiles() []string { return append([]string(nil), a.ws.recentFiles...) }
 

@@ -5,166 +5,23 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/smallnest/uix/components/lucide"
 
-	"github.com/cunninghamcard-bit/attention-ui/theme"
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
+	"github.com/cunninghamcard-bit/attention/native/layoutapi"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 )
 
-var (
-	themesMu sync.Mutex
-	themes   = map[bool]*ui.Theme{}
-)
-
-func themeFor(dark bool) *ui.Theme {
-	themesMu.Lock()
-	defer themesMu.Unlock()
-	t, ok := themes[dark]
-	if !ok {
-		t = theme.For(dark, "default")
-		themes[dark] = t
-	}
-	return t
-}
-
-// view is the window's root (RFC §5.8: it reads state, never the disk):
-// attention's frame — the ribbon, the left dock, the panes, the right
-// dock — over the status bar.
+// view is the center (RFC §5.8: it reads state, never the disk): the
+// layout tree's splits and tab groups.
 func (ws *Workspace) view(c *ui.Context) {
-	c.SetTheme(themeFor(ws.isDark()))
-	t := c.Theme()
 	ws.reclaim()
-	overlays := slotsapi.Overlays()
-	for _, o := range overlays {
-		if o.Order < 0 {
-			ws.restoreState(o.ID, o.Restore)
-			o.View(c)
-		}
-	}
-	ui.Column(c).Fill().Background(t.Background).Children(func() {
-		ui.Row(c).Grow(1).FillWidth().AlignItems(ui.Stretch).Children(func() {
-			ws.ribbon(c)
-			center := func() {
-				ui.Row(c).Grow(1).Fill().AlignItems(ui.Stretch).Children(func() {
-					ws.paneGroup(c)
-					if ws.rightOpen {
-						ws.dock(c, slotsapi.Right)
-					}
-				})
-			}
-			if ws.panelOpen {
-				ui.Split(c, &ws.leftWidth, func() { ws.dock(c, slotsapi.Left) }, center).Grow(1)
-			} else {
-				center()
-			}
-		})
-		ws.statusBar(c)
-	})
-	// A palette source carries its state like a panel.
-	for _, s := range slotsapi.PaletteSources() {
-		ws.restoreState(s.ID, s.Restore)
-	}
-	for _, o := range overlays {
-		if o.Order >= 0 {
-			ws.restoreState(o.ID, o.Restore)
-			o.View(c)
-		}
-	}
-	// Dragging a divider changes the width during the build: save it.
-	if ws.leftWidth != ws.seenLeft {
-		ws.seenLeft = ws.leftWidth
-		if ws.saveSoon != nil {
-			ws.saveSoon()
-		}
-	}
-}
-
-// ---- ribbon and docks ---------------------------------------------------------
-
-// ribbon is attention's side ribbon: the registered actions, top down.
-func (ws *Workspace) ribbon(c *ui.Context) {
-	t := c.Theme()
-	ui.Column(c).Width(40).FillHeight().PaddingY(8).Gap(4).AlignItems(ui.Center).
-		Background(t.Surface).BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Children(func() {
-		// With the ribbon shown, the left sidebar's toggle tops it
-		// (updateSidebarTogglePlacement).
-		ws.sidebarToggle(c, slotsapi.Left)
-		for _, r := range slotsapi.Ribbon() {
-			run := r.Run
-			// No Key on the element: it rekeys the button and loses OnClick.
-			omgui.Button(c, omgui.ButtonProps{Label: r.Title, Icon: r.Icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall, OnClick: run}).
-				Tooltip(r.Title)
-		}
-	})
-}
-
-// dock is a sidebar: a header with one icon per panel, then the shown
-// panel (attention's sidebar tab headers).
-func (ws *Workspace) dock(c *ui.Context, d slotsapi.Dock) {
-	t := c.Theme()
-	panels := slotsapi.Panels(d)
-	col := ui.Column(c).Fill().Background(t.Surface)
-	if d == slotsapi.Left {
-		col.BorderWidth(0, 1, 0, 0)
-	} else {
-		col.Width(ws.rightWidth).Shrink(0).BorderWidth(0, 0, 0, 1)
-	}
-	col.BorderColor(t.Border).Children(func() {
-		want := ws.leftPanel
-		if d == slotsapi.Right {
-			want = ws.rightPanel
-		}
-		shown := shownPanel(panels, want)
-		ui.Row(c).Height(38).Shrink(0).PaddingX(6).Gap(2).AlignItems(ui.Center).
-			BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-			// The right sidebar's toggle sits at the start of its header,
-			// nearest the center.
-			if d == slotsapi.Right {
-				ws.sidebarToggle(c, slotsapi.Right)
-			}
-			for i := range panels {
-				p := panels[i]
-				color := t.TextMuted
-				if shown != nil && shown.ID == p.ID {
-					color = t.Text
-				}
-				b := omgui.Button(c, omgui.ButtonProps{Label: p.Title, Icon: p.Icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall, IconColor: color}).
-					Key("panel:" + p.ID).Checked(shown != nil && shown.ID == p.ID).Tooltip(p.Title)
-				if b.Clicked() {
-					ws.revealPanel(p.ID)
-				}
-			}
-		})
-		if shown == nil {
-			centered(c, "No panels")
-			return
-		}
-		ws.restoreState(shown.ID, shown.Restore)
-		ui.Column(c).Key("dock:" + shown.ID).Grow(1).FillWidth().MinHeight(0).Children(func() {
-			shown.View(c, slotsapi.PanelProps{Reveal: ws.reveals[shown.ID]})
-		})
-	})
-}
-
-// shownPanel is a dock's shown panel: the chosen one while it is
-// registered, else the first.
-func shownPanel(panels []slotsapi.Panel, want string) *slotsapi.Panel {
-	for i := range panels {
-		if panels[i].ID == want {
-			return &panels[i]
-		}
-	}
-	if len(panels) > 0 {
-		return &panels[0]
-	}
-	return nil
+	ws.paneGroup(c)
 }
 
 // ---- panes and tabs -----------------------------------------------------------
@@ -288,8 +145,8 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
 			})
 		})
 		omgui.IconMenu(c, omgui.IconMenuProps{Label: "Tab list", Icon: lucide.ChevronDown(), End: true, Items: ws.tabListMenu(p)})
-		if !ws.rightOpen && ws.isTopRight(p) {
-			ws.sidebarToggle(c, slotsapi.Right)
+		if l := layoutapi.Get(); l != nil && !l.Open(slotsapi.Right) && ws.isTopRight(p) {
+			layoutapi.ToggleButton(c, slotsapi.Right)
 		}
 	})
 	if dragged, ok := ui.Drop[*tab](header); ok {
@@ -388,20 +245,6 @@ func (ws *Workspace) isTopRight(p *pane) bool {
 	ws.root.rects(rect{0, 0, 1, 1}, rs)
 	r := rs[p]
 	return r.top < 1e-6 && r.right > 1-1e-6
-}
-
-// sidebarToggle is a sidebar's toggle button, Collapse while it is open and
-// Expand while closed (createSidebarToggleButton).
-func (ws *Workspace) sidebarToggle(c *ui.Context, d slotsapi.Dock) {
-	open, icon, toggle := ws.panelOpen, lucide.PanelLeft(), ws.toggleLeft
-	if d == slotsapi.Right {
-		open, icon, toggle = ws.rightOpen, lucide.PanelRight(), ws.toggleRight
-	}
-	tip := "Expand"
-	if open {
-		tip = "Collapse"
-	}
-	omgui.Button(c, omgui.ButtonProps{Label: tip, Icon: icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall, OnClick: toggle}).Tooltip(tip)
 }
 
 func (ws *Workspace) emptyPane(c *ui.Context) {
@@ -532,26 +375,25 @@ func centered(c *ui.Context, text string) {
 
 // ---- status bar ---------------------------------------------------------------
 
-func (ws *Workspace) statusBar(c *ui.Context) {
-	t := c.Theme()
-	ui.Row(c).Height(26).FillWidth().PaddingX(10).Gap(14).AlignItems(ui.Center).
-		Background(t.Surface).BorderWidth(1, 0, 0, 0).BorderColor(t.Border).Children(func() {
-		mounts := strconv.Itoa(len(ws.mounts)) + " folders"
-		if len(ws.mounts) == 1 {
-			mounts = ws.mounts[0].Name
-		}
-		ui.Text(c, mounts).FontSize(12).TextColor(t.TextMuted)
-		if ws.notice != "" {
-			ui.Icon(c, lucide.TriangleAlert()).Size(12, 12).TextColor(t.Warning).Tooltip(ws.notice)
-		}
-		ui.Box(c).Grow(1)
-		tb := ws.activeTab()
-		if tb == nil || tb.empty {
-			return
-		}
-		if tt, ok := tabtypesapi.Get(tb.typeID); ok && tt.Status != nil {
-			tt.Status(c, ws.props(tb, true))
-		}
-		ui.Text(c, "Read-only").FontSize(12).TextColor(t.TextMuted)
-	})
+// mountsStatus is the status bar's mounts: the one folder's name, or how
+// many.
+func (ws *Workspace) mountsStatus(c *ui.Context) {
+	mounts := strconv.Itoa(len(ws.mounts)) + " folders"
+	if len(ws.mounts) == 1 {
+		mounts = ws.mounts[0].Name
+	}
+	ui.Text(c, mounts).FontSize(12).TextColor(c.Theme().TextMuted)
+}
+
+// tabStatus is the active tab's status bar items: its type's, then
+// Read-only.
+func (ws *Workspace) tabStatus(c *ui.Context) {
+	tb := ws.activeTab()
+	if tb == nil || tb.empty {
+		return
+	}
+	if tt, ok := tabtypesapi.Get(tb.typeID); ok && tt.Status != nil {
+		tt.Status(c, ws.props(tb, true))
+	}
+	ui.Text(c, "Read-only").FontSize(12).TextColor(c.Theme().TextMuted)
 }

@@ -45,8 +45,11 @@ func LockPath() string { return SocketPath() + ".lock" }
 // MountsPath keeps the last mount list.
 func MountsPath() string { return filepath.Join(ConfigDir(), "mounts.json") }
 
-// SessionPath keeps the open tabs and layout.
+// SessionPath keeps the open tabs (the workspace's).
 func SessionPath() string { return filepath.Join(ConfigDir(), "session.json") }
+
+// LayoutPath keeps the docks and the panels' states (the layout's).
+func LayoutPath() string { return filepath.Join(ConfigDir(), "layout.json") }
 
 // WriteFileAtomic writes data to a temporary file beside path and renames
 // it over path, so a crash never leaves a half-written file.
