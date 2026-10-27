@@ -68,6 +68,15 @@ func TestOpenWithMatchSelectsIt(t *testing.T) {
 	if !testMD.Source(tb.id) {
 		t.Fatal("a match in markdown is shown in the source")
 	}
+	// Again on the open tab, as a search result click: applied as it draws.
+	testMD.Toggle(tb.id)
+	if again := ws.open("/m/alpha.md", &workspaceapi.Nav{Line: 1, Col: 3, Len: 4}); again != tb {
+		t.Fatal("the open tab is reused")
+	}
+	tt.Frame()
+	if got := testMD.Selected(tb.id); got != "note" || !testMD.Source(tb.id) {
+		t.Fatalf("re-navigation selected %q (source %v)", got, testMD.Source(tb.id))
+	}
 }
 
 func TestPanelStateRoundTrips(t *testing.T) {

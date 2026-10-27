@@ -15,12 +15,14 @@ package tabtypesapi
 import (
 	"net/url"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/egoist/mygo/ui"
 
+	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
 )
 
@@ -71,7 +73,8 @@ type TabType struct {
 	Kind string // what OpenTab names; several types may share one
 	// Patterns are the addresses it claims: one with a ":" matches the
 	// whole address ("**" any number of segments), one without matches any
-	// segment of the address's path, without case ("*.md").
+	// layer of the path the address names, without case ("*.md"; for a
+	// file address, not its scope or mount id).
 	Patterns []string
 	Priority Priority
 	CanOpen  func(address string) bool // optional veto of a pattern match
@@ -207,20 +210,37 @@ func Match(pattern, address string) bool {
 	if strings.Contains(pattern, ":") {
 		return matchSegments(strings.Split(pattern, "/"), strings.Split(address, "/"))
 	}
-	_, rest, ok := strings.Cut(address, "://")
-	if !ok {
-		return false
-	}
 	pattern = strings.ToLower(pattern)
-	for _, seg := range strings.Split(rest, "/") {
-		if s, err := url.PathUnescape(seg); err == nil {
-			seg = s
-		}
+	for _, seg := range pathSegments(address) {
 		if ok, _ := path.Match(pattern, strings.ToLower(seg)); ok {
 			return true
 		}
 	}
 	return false
+}
+
+// pathSegments are the layers of the path an address names: a file
+// address's path under its mount or the root, without the protocol, the
+// scope or the mount id; another protocol's segments after its name.
+func pathSegments(address string) []string {
+	if a, ok := fscontract.ParseAddress(address); ok {
+		p := a.Rel
+		if a.Abs != "" {
+			p = strings.TrimPrefix(filepath.ToSlash(a.Abs), "/")
+		}
+		return strings.Split(p, "/")
+	}
+	_, rest, ok := strings.Cut(address, "://")
+	if !ok {
+		return nil
+	}
+	segs := strings.Split(rest, "/")[1:]
+	for i, seg := range segs {
+		if s, err := url.PathUnescape(seg); err == nil {
+			segs[i] = s
+		}
+	}
+	return segs
 }
 
 // matchSegments is a glob over "/"-separated segments: "**" matches any

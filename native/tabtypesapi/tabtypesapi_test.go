@@ -15,6 +15,10 @@ func TestMatch(t *testing.T) {
 		{"*.md", "attention-resource://file/mount/m/a%20b.md", true},
 		{"*.md", "attention-resource://file/mount/m/a.mdx", false},
 		{"*.md", "not an address.md", false},
+		{"*.md", "attention-resource://file/mount/notes.md/a.go", false},
+		{"*.md", "attention-resource://file/absolute/home/x.md/a.go", true},
+		{"docs", "attention-resource://file/mount/m/docs/a.go", true},
+		{"file", "attention-resource://file/mount/m/a.go", false},
 	} {
 		if got := Match(c.pattern, c.address); got != c.want {
 			t.Errorf("Match(%q, %q) = %v", c.pattern, c.address, got)
