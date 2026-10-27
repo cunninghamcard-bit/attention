@@ -224,7 +224,7 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, paneIndex int, focused bool)
 			for j, tb := range p.tabs {
 				j, tb := j, tb
 				title := tb.title
-				if tb.missing {
+				if tb.isMissing() {
 					title += " (deleted)"
 				}
 				tip := tb.title
@@ -275,7 +275,7 @@ func (ws *Workspace) tabBody(c *ui.Context, tb *tab, focused bool) {
 		ws.emptyPane(c)
 		return
 	}
-	if tb.missing {
+	if tb.isMissing() {
 		banner(c, "This file was deleted or moved. The last loaded content is shown.", t.Warning)
 	}
 	tt, ok := tabtypesapi.Get(tb.typeID)

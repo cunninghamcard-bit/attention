@@ -87,8 +87,14 @@ func TestFramesPerTabKind(t *testing.T) {
 	save(t, tt, "5-binary")
 	open("/m/big.txt", nil)
 	save(t, tt, "6-toolarge")
-	tb := open("/m/gone.txt", nil)
-	tb.missing = true
+	open("/m/gone.txt", nil)
+	// The file provider comes and finds gone.txt deleted: a frame for each
+	// of the six tabs.
+	testMissing = map[string]bool{"/m/gone.txt": true}
+	files := fileProvider(t)
+	for range 6 {
+		files.frames.next(t)
+	}
 	save(t, tt, "7-missing")
 	ws.open("/m/loading.txt", nil)
 	save(t, tt, "8-loading")

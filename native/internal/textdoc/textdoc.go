@@ -47,22 +47,19 @@ type Doc struct {
 	navWant int
 	// OnNav, optional, runs when a navigation is applied.
 	OnNav func()
-	// missing is called when the read finds the file gone.
-	missing func()
 }
 
 // Sync reads the file when the tab's Version moved and applies a new
 // navigation; the body calls it every frame.
 func (l *Loader) Sync(d *Doc, p tabtypesapi.Props) {
 	d.Path = p.Info.Path
-	d.missing = p.MarkMissing
 	if p.Info.NavRevision != d.navWant {
 		d.navWant, d.nav = p.Info.NavRevision, p.Info.Nav
 		d.applyNav()
 	}
 	// A change during a read is read once that read is back: the frame it
 	// redraws syncs again.
-	if !d.loading && (!d.loaded || p.Info.Version != d.version) {
+	if !d.loading && !p.Info.Pending && (!d.loaded || p.Info.Version != d.version) {
 		d.version = p.Info.Version
 		l.load(d)
 	}
@@ -81,9 +78,6 @@ func (l *Loader) load(d *Doc) {
 			if err != nil {
 				if errors.Is(err, os.ErrNotExist) {
 					d.Gone = true
-					if d.missing != nil {
-						d.missing()
-					}
 				} else {
 					d.Err = err.Error()
 				}

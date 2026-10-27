@@ -44,7 +44,7 @@ func Register(ctx context.Context, fs fscontract.FS, post func(func())) (off fun
 	docs := map[int]*doc{}
 	load := func(d *doc, p tabtypesapi.Props) {
 		d.loading, d.loaded, d.version = true, true, p.Info.Version
-		path, missing := p.Info.Path, p.MarkMissing
+		path := p.Info.Path
 		start := time.Now()
 		go func() {
 			var img ui.ImageSource
@@ -62,9 +62,6 @@ func Register(ctx context.Context, fs fscontract.FS, post func(func())) (off fun
 				switch {
 				case errors.Is(err, os.ErrNotExist):
 					d.gone = true
-					if missing != nil {
-						missing()
-					}
 				case err != nil:
 					d.err = err.Error()
 				default:
@@ -82,7 +79,7 @@ func Register(ctx context.Context, fs fscontract.FS, post func(func())) (off fun
 				d = &doc{}
 				docs[p.Info.ID] = d
 			}
-			if !d.loading && (!d.loaded || d.version != p.Info.Version) {
+			if !d.loading && !p.Info.Pending && (!d.loaded || d.version != p.Info.Version) {
 				load(d, p)
 			}
 			switch {

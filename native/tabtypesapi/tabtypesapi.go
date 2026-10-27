@@ -4,10 +4,10 @@
 // Body in the tab.body slot, keyed by the type's ID, not its kind, so a
 // plugin taking over a kind keeps working.
 //
-// Until the resources service lands (RFC §5.6 "resources"), the workspace
-// stands in for it: it watches the open tabs' files and hands each body a
-// Version that bumps on change and a Missing flag. A viewer reads through
-// the fs service itself and never subscribes to fs changes.
+// A tab holds its address in resourcesapi for its life; the workspace hands
+// each body the resource's Version, which bumps when the file changes, and
+// a Missing flag. A viewer reads through the fs service itself and never
+// subscribes to fs changes.
 //
 // Views run on the main thread (RFC §5.8).
 package tabtypesapi
@@ -55,9 +55,11 @@ type Info struct {
 	// even one to the same place.
 	Nav         *Nav
 	NavRevision int
-	// Version bumps when the file changed on disk; Missing is set while it
-	// is deleted or moved away.
+	// Version bumps when the file changed on disk; Pending is set until
+	// its first state is known, and a body waits to read it; Missing is set
+	// while it is deleted or moved away.
 	Version int
+	Pending bool
 	Missing bool
 	Focused bool // the tab is its pane's active one in the focused pane
 }
@@ -65,8 +67,6 @@ type Info struct {
 // Props are what the workspace gives a body.
 type Props struct {
 	Info Info
-	// MarkMissing tells the workspace the body found the file gone.
-	MarkMissing func()
 }
 
 // TabType is a tab type's definition and body.

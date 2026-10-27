@@ -116,17 +116,6 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		}
 		reloadMounts()
 
-		rctx.On(fscontract.ChangedEvent, func(_ context.Context, args ...any) (any, error) {
-			if len(args) == 0 {
-				return nil, nil
-			}
-			b, err := fscontract.DecodeBatch(args[0])
-			if err != nil {
-				return nil, err
-			}
-			shellapi.Update(func() { ws.applyBatch(b) })
-			return nil, nil
-		})
 		rctx.On(fscontract.WatchErrorEvent, func(_ context.Context, args ...any) (any, error) {
 			if len(args) > 0 {
 				msg := fmt.Sprint(args[0])
@@ -177,7 +166,6 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			if err == nil {
 				write(s)
 			}
-			ws.watches.Close()
 			cancel()
 			return nil
 		})

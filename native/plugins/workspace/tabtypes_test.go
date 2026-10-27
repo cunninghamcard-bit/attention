@@ -6,6 +6,8 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
+	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
+	"github.com/cunninghamcard-bit/attention/native/resourcesapi"
 	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
@@ -62,8 +64,14 @@ func TestTypesComingAndGoingReclaimTabs(t *testing.T) {
 
 func TestAChangeReloadsTheBody(t *testing.T) {
 	ws, tt := testWorkspace(t)
+	files := fileProvider(t)
 	testFiles = map[string]fscontract.File{"/m/main.go": {Text: "package one"}}
 	tb := ws.open("/m/main.go", nil)
+	tt.Frame()
+	if !tt.HasText("Loading…") {
+		t.Fatal("the body waits for the file's first state")
+	}
+	files.frames.next(t)
 	tt.Frame()
 	testPosts.next(t)
 	tt.Frame()
@@ -71,38 +79,51 @@ func TestAChangeReloadsTheBody(t *testing.T) {
 		t.Fatalf("first read: %d lines", lines)
 	}
 	testFiles["/m/main.go"] = fscontract.File{Text: "package two\n\nfunc f() {}"}
-	ws.applyBatch(fscontract.Batch{Changes: []fscontract.Change{{Path: "/m/main.go", Op: "write"}}})
+	files.send(tb.address)
+	files.frames.next(t)
 	tt.Frame()
 	testPosts.next(t)
 	tt.Frame()
 	if _, lines, _ := ws.lines(tb); lines != 3 {
 		t.Fatalf("after the change: %d lines", lines)
 	}
+	testMissing = map[string]bool{"/m/main.go": true}
+	files.send(tb.address)
+	files.frames.next(t)
+	tt.Frame()
+	if !tb.isMissing() || !tt.HasText("This file was deleted or moved. The last loaded content is shown.") {
+		t.Fatalf("deleted: %v", tt.Texts())
+	}
+	ws.closeActiveTab()
+	if resourcesapi.Get(tb.address).Status != resourcesapi.None {
+		t.Fatal("a closed tab no longer holds its address")
+	}
 }
 
 func TestAFileNeverReadShowsItIsGone(t *testing.T) {
 	ws, tt := testWorkspace(t)
+	files := fileProvider(t)
 	testMissing = map[string]bool{"/m/gone.go": true}
 	tb := ws.open("/m/gone.go", nil)
+	files.frames.next(t)
 	tt.Frame()
 	testPosts.next(t)
 	tt.Frame()
-	if !tb.missing || !tt.HasText("This file does not exist.") || tt.HasText("Loading…") {
-		t.Fatalf("missing %v: %v", tb.missing, tt.Texts())
+	if !tb.isMissing() || !tt.HasText("This file does not exist.") || tt.HasText("Loading…") {
+		t.Fatalf("missing %v: %v", tb.isMissing(), tt.Texts())
 	}
 }
 
-func TestAReadFromAnEarlierClaimDoesNotMarkTheTab(t *testing.T) {
-	ws, tt := testWorkspace(t)
-	testMissing = map[string]bool{"/m/alpha.md": true}
+func TestAMountMovesTheHoldToTheMountAddress(t *testing.T) {
+	ws, _ := testWorkspace(t)
+	ws.setMounts(nil)
 	tb := ws.open("/m/alpha.md", nil)
-	tt.Frame() // markdown-ui starts its read
-	defer tabtypesapi.Register(tabtypesapi.TabType{ID: "ext-md", Kind: "markdown", Patterns: []string{"*.md"},
-		Body: func(*ui.Context, tabtypesapi.Props) {}})()
-	tt.Frame()
-	testPosts.next(t) // the markdown read comes back
-	if tb.typeID != "ext-md" || tb.missing {
-		t.Fatalf("%s missing %v: the old viewer's read marked the tab", tb.typeID, tb.missing)
+	abs := tb.address
+	ws.setMounts([]projectcontract.Mount{{ID: "m", Name: "m", Path: "/m"}})
+	files := fileProvider(t)
+	files.frames.next(t)
+	if tb.address == abs || resourcesapi.Get(abs).Status != resourcesapi.None || resourcesapi.Get(tb.address).Status != resourcesapi.Live {
+		t.Fatalf("%s held %v, %s held %v", abs, resourcesapi.Get(abs).Status, tb.address, resourcesapi.Get(tb.address).Status)
 	}
 }
 

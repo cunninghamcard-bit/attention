@@ -41,6 +41,15 @@ func testWorkspace(t *testing.T) (*Workspace, *ui.Tester) {
 	ws.isDark = func() bool { return false }
 	ws.setMounts([]projectcontract.Mount{m})
 	ws.files = &files
+	t.Cleanup(func() {
+		for _, p := range ws.panes {
+			for _, tb := range p.tabs {
+				if tb.hold != nil {
+					tb.hold()
+				}
+			}
+		}
+	})
 	tt := ui.NewTester(ws.view, 1000, 700)
 	tt.Frame()
 	return ws, tt

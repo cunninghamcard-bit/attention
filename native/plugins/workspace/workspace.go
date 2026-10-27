@@ -3,6 +3,7 @@ package workspace
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,7 +12,7 @@ import (
 
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
-	"github.com/cunninghamcard-bit/attention/native/internal/watchq"
+	"github.com/cunninghamcard-bit/attention/native/resourcesapi"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
@@ -31,7 +32,6 @@ type Workspace struct {
 
 	mounts       []projectcontract.Mount
 	mountsLoaded bool
-	watches      *watchq.Queue // the open tabs' directories
 
 	panelOpen bool
 	leftWidth float32
@@ -88,15 +88,13 @@ type tab struct {
 	// closed is the claiming type's Closed, kept from the claim: by the
 	// time a type is gone from the registry it can no longer be looked up.
 	closed  func(tabID int)
-	claims  int // bumps on every change of claim
 	address string
 	path    string
 	title   string
 
-	missing bool // the file was deleted or moved away
-	version int  // bumps when the file changes
-	nav     *workspaceapi.Nav
-	navRev  int
+	hold   func() // releases the address's resource (resourcesapi.Hold)
+	nav    *workspaceapi.Nav
+	navRev int
 }
 
 func newWorkspace(ctx context.Context, fs fscontract.FS, project projectcontract.Project) *Workspace {
@@ -111,7 +109,6 @@ func newWorkspace(ctx context.Context, fs fscontract.FS, project projectcontract
 		splitPct:       50,
 		isDark:         mygo.Theme.IsDark,
 	}
-	ws.watches = watchq.New(ctx, fs, shellapi.Update, func(_, msg string) { ws.notice = msg })
 	return ws
 }
 
@@ -126,7 +123,6 @@ func (ws *Workspace) claim(t *tab) {
 		return
 	}
 	ws.release(t)
-	t.claims++
 	if !ok {
 		t.kind, t.typeID = "", ""
 		return
@@ -163,20 +159,22 @@ func (ws *Workspace) reclaim() {
 	}
 }
 
-// props are what t's body is given.
+// props are what t's body is given: its address's resource state, which
+// the tab holds for its life.
 func (ws *Workspace) props(t *tab, focused bool) tabtypesapi.Props {
-	claims := t.claims
-	return tabtypesapi.Props{
-		Info: tabtypesapi.Info{ID: t.id, Kind: t.kind, Address: t.address, Path: t.path,
-			Nav: t.nav, NavRevision: t.navRev, Version: t.version, Missing: t.missing, Focused: focused},
-		// A read started under an earlier claim is not this body's to report.
-		MarkMissing: func() {
-			if t.claims == claims {
-				t.missing = true
-			}
-		},
-	}
+	snap := resourcesapi.Get(t.address)
+	return tabtypesapi.Props{Info: tabtypesapi.Info{ID: t.id, Kind: t.kind, Address: t.address, Path: t.path,
+		Nav: t.nav, NavRevision: t.navRev, Version: snap.Version, Pending: snap.Status == resourcesapi.Loading,
+		Missing: missing(snap), Focused: focused}}
 }
+
+// missing reports whether a snapshot says the file is gone.
+func missing(s resourcesapi.Snapshot) bool {
+	return s.Status == resourcesapi.Failed && errors.Is(s.Err, os.ErrNotExist)
+}
+
+// isMissing reports whether t's file is gone.
+func (t *tab) isMissing() bool { return !t.empty && missing(resourcesapi.Get(t.address)) }
 
 func (ws *Workspace) activePane() *pane {
 	if ws.active >= len(ws.panes) {
@@ -222,8 +220,9 @@ func (ws *Workspace) setMounts(ms []projectcontract.Mount) {
 	// A file opened before the mounts were known gets its mount address.
 	for _, p := range ws.panes {
 		for _, t := range p.tabs {
-			if !t.empty {
-				t.address = ws.addressOf(t.path)
+			if a := ws.addressOf(t.path); !t.empty && a != t.address {
+				t.hold()
+				t.address, t.hold = a, resourcesapi.Hold(a)
 				ws.claim(t)
 			}
 		}
@@ -303,7 +302,7 @@ func (ws *Workspace) openAddress(address, path string, opts workspaceapi.OpenOpt
 	}
 	p.tabs = append(p.tabs[:at], append([]*tab{t}, p.tabs[at:]...)...)
 	p.active = at
-	ws.watches.Watch(filepath.Dir(path))
+	t.hold = resourcesapi.Hold(address)
 	ws.noteRecentFile(path)
 	ws.changed()
 	return t, nil
@@ -316,7 +315,7 @@ func (ws *Workspace) closeTab(p *pane, i int) {
 	t := p.tabs[i]
 	if !t.empty {
 		ws.release(t)
-		ws.watches.Unwatch(filepath.Dir(t.path))
+		t.hold()
 		ws.closed = append(ws.closed, t.path)
 		if len(ws.closed) > maxClosed {
 			ws.closed = ws.closed[len(ws.closed)-maxClosed:]
@@ -370,46 +369,6 @@ func (ws *Workspace) splitRight() {
 }
 
 // ---- changes ----------------------------------------------------------------
-
-// applyBatch refreshes the open tabs a change touched. A path removed or renamed away that exists again (an editor's atomic save
-// renames over it) reloads instead of going missing.
-func (ws *Workspace) applyBatch(b fscontract.Batch) {
-	files := map[string]string{}
-	for _, c := range b.Changes {
-		files[c.Path] = c.Op
-	}
-	for _, p := range ws.panes {
-		for _, t := range p.tabs {
-			op, ok := files[t.path]
-			if !ok || t.empty {
-				continue
-			}
-			if op == "remove" || op == "rename" {
-				ws.recheck(t)
-				continue
-			}
-			t.missing = false
-			t.version++
-		}
-	}
-}
-
-// recheck reloads a tab whose file still exists and marks it missing
-// otherwise.
-func (ws *Workspace) recheck(t *tab) {
-	path := t.path
-	go func() {
-		_, err := ws.fs.Stat(ws.ctx, path)
-		shellapi.Update(func() {
-			if err != nil {
-				t.missing = true
-				return
-			}
-			t.missing = false
-			t.version++
-		})
-	}()
-}
 
 // changed notes a layout change: the window title and the saved session.
 func (ws *Workspace) changed() {
