@@ -41,7 +41,13 @@ func (ws *Workspace) view(c *ui.Context) {
 	c.SetTheme(themeFor(ws.isDark()))
 	t := c.Theme()
 	ws.reclaim()
-	ws.shortcuts(c)
+	overlays := slotsapi.Overlays()
+	for _, o := range overlays {
+		if o.Order < 0 {
+			ws.restoreState(o.ID, o.Restore)
+			o.View(c)
+		}
+	}
 	ui.Column(c).Fill().Background(t.Background).Children(func() {
 		ui.Row(c).Grow(1).FillWidth().AlignItems(ui.Stretch).Children(func() {
 			ws.ribbon(c)
@@ -64,9 +70,11 @@ func (ws *Workspace) view(c *ui.Context) {
 	if ws.palette != nil {
 		ws.paletteView(c)
 	}
-	for _, o := range slotsapi.Overlays() {
-		ws.restoreState(o.ID, o.Restore)
-		o.View(c)
+	for _, o := range overlays {
+		if o.Order >= 0 {
+			ws.restoreState(o.ID, o.Restore)
+			o.View(c)
+		}
 	}
 	// Dragging a divider changes the width during the build: save it.
 	if ws.leftWidth != ws.seenLeft {
@@ -74,52 +82,6 @@ func (ws *Workspace) view(c *ui.Context) {
 		if ws.saveSoon != nil {
 			ws.saveSoon()
 		}
-	}
-}
-
-// shortcuts are attention's defaults (apps/web: AppCommands, the command
-// palette, the quick switcher), Cmd on macOS and Ctrl elsewhere; the
-// editing ones do not apply to a reader. Keys attention leaves unbound get
-// ours: Ctrl Shift F, Ctrl B, Ctrl Alt B, Ctrl \, Ctrl Q, Alt Left and
-// Right. A tab type's own keys are its body's (markdown's Ctrl E).
-func (ws *Workspace) shortcuts(c *ui.Context) {
-	digits := []ui.Key{ui.Key1, ui.Key2, ui.Key3, ui.Key4, ui.Key5, ui.Key6, ui.Key7, ui.Key8}
-	for i, k := range digits {
-		if c.Shortcut(ui.Cmd, k) {
-			ws.gotoTab(i + 1)
-		}
-	}
-	switch {
-	case c.Shortcut(ui.Cmd, ui.KeyP):
-		ws.openPalette(modeCommands)
-	case c.Shortcut(ui.Cmd, ui.KeyO):
-		ws.openPalette(modeFiles)
-	case c.Shortcut(ui.Cmd|ui.Shift, ui.KeyF):
-		ws.revealPanel("search")
-	case c.Shortcut(ui.Cmd, ui.KeyW):
-		ws.closeActiveTab()
-	case c.Shortcut(ui.Cmd, ui.KeyT):
-		ws.newTab()
-	case c.Shortcut(ui.Cmd|ui.Shift, ui.KeyT):
-		ws.undoClose()
-	case c.Shortcut(ui.Cmd, ui.Key9):
-		ws.gotoTab(0)
-	case c.Shortcut(ui.Ctrl, ui.KeyTab), c.Shortcut(ui.Cmd|ui.Shift, ui.KeyBracketRight), c.Shortcut(ui.Ctrl, ui.KeyPageDown):
-		ws.cycleTab(1)
-	case c.Shortcut(ui.Ctrl|ui.Shift, ui.KeyTab), c.Shortcut(ui.Cmd|ui.Shift, ui.KeyBracketLeft), c.Shortcut(ui.Ctrl, ui.KeyPageUp):
-		ws.cycleTab(-1)
-	case c.Shortcut(ui.Alt, ui.KeyLeft):
-		ws.goHistory(ws.activeTab(), -1)
-	case c.Shortcut(ui.Alt, ui.KeyRight):
-		ws.goHistory(ws.activeTab(), 1)
-	case c.Shortcut(ui.Cmd|ui.Alt, ui.KeyB):
-		ws.toggleRight()
-	case c.Shortcut(ui.Cmd, ui.KeyB):
-		ws.toggleLeft()
-	case c.Shortcut(ui.Cmd, ui.KeyBackslash):
-		ws.split(vertical)
-	case c.Shortcut(ui.Cmd, ui.KeyQ):
-		mygo.App.Quit()
 	}
 }
 

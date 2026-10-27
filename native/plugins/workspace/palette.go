@@ -14,6 +14,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
 	"github.com/cunninghamcard-bit/attention/native/internal/fuzzy"
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
 	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
@@ -361,7 +362,7 @@ func (ws *Workspace) paletteRows(c *ui.Context, p *palette) {
 			})
 		case modeCommands:
 			cmd := p.commands[idx]
-			keys := cmd.Keys
+			keys := shortcuts.Label(cmd.Keys)
 			omgui.CommandRow(c, omgui.CommandRowProps{
 				Key: "c:" + cmd.ID, Label: cmd.Title, Selected: i == p.selected,
 				Trailing: func(c *ui.Context) {

@@ -61,8 +61,9 @@ type RibbonItem struct {
 }
 
 // Overlay is an overlay contribution (RFC §5.5's overlay slot): drawn
-// every frame over the window's content, after it, in Order. A modal draws
-// nothing while closed; one handling keys reads them here.
+// every frame over the window's content in Order, those below zero before
+// the content (key handlers, whose commands then show in the same frame),
+// the others after it. A modal draws nothing while closed.
 type Overlay struct {
 	ID    string
 	Order int

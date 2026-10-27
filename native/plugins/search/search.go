@@ -100,7 +100,12 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			ID: PanelID, Title: "Search", Icon: lucide.Search(), Dock: slotsapi.Left, Order: 1,
 			View: s.view, State: s.state, Restore: s.restore,
 		})
-		offCmd := actionsapi.Register(actionsapi.Command{ID: "global-search:open", Title: "Search in all files", Keys: "Ctrl Shift F", Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
+		reveal := func() {
+			if ws := workspaceapi.Get(); ws != nil {
+				ws.RevealPanel(PanelID)
+			}
+		}
+		offCmd := actionsapi.Register(actionsapi.Command{ID: "global-search:open", Title: "Search in all files", Keys: "Ctrl Shift F", Main: reveal, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
 			return shellapi.OnMain(ctx, func() (string, error) {
 				if ws := workspaceapi.Get(); ws != nil {
 					ws.RevealPanel(PanelID)

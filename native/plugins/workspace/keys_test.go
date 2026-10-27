@@ -7,8 +7,11 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
+	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
 // A workspace over three notes, drawn by mygo's tester: the shortcuts and
@@ -41,6 +44,12 @@ func testWorkspace(t *testing.T) (*Workspace, *ui.Tester) {
 	ws.isDark = func() bool { return false }
 	ws.setMounts([]projectcontract.Mount{m})
 	ws.files = &files
+	// What the plugin wires: the API, the commands, their shortcuts.
+	t.Cleanup(workspaceapi.Set(api{ws}))
+	for _, cmd := range ws.commands() {
+		t.Cleanup(actionsapi.Register(cmd))
+	}
+	t.Cleanup(shortcuts.Register(t.Context()))
 	t.Cleanup(func() {
 		for _, p := range ws.groups() {
 			for _, tb := range p.tabs {

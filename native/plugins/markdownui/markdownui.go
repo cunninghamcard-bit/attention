@@ -90,9 +90,6 @@ func (v *Viewer) Selected(id int) string {
 func (v *Viewer) body(c *ui.Context, p tabtypesapi.Props) {
 	d := v.doc(p)
 	v.l.Sync(&d.Doc, p)
-	if p.Info.Focused && c.Shortcut(ui.Cmd, ui.KeyE) {
-		d.source = !d.source
-	}
 	if d.Placeholder(c) {
 		return
 	}
@@ -140,7 +137,20 @@ func (v *Viewer) menu(id int) []tabtypesapi.MenuItem {
 // function on the main thread.
 func Register(ctx context.Context, fs fscontract.FS, post func(func())) (v *Viewer, off func()) {
 	v = &Viewer{l: &textdoc.Loader{Ctx: ctx, FS: fs, Post: post}, docs: map[int]*doc{}}
-	off = tabtypesapi.Register(tabtypesapi.TabType{
+	// Toggle reading view (markdown:toggle-preview, Ctrl E) on the active
+	// tab, when it is a markdown one.
+	toggle := func() {
+		if ws := workspaceapi.Get(); ws != nil {
+			if tab, ok := ws.ActiveTab(); ok && tab.Kind == Kind {
+				v.Toggle(tab.ID)
+			}
+		}
+	}
+	offCmd := actionsapi.Register(actionsapi.Command{ID: "markdown:toggle-preview", Title: "Toggle reading view", Keys: "Ctrl E", Main: toggle,
+		Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
+			return shellapi.OnMain(ctx, func() (string, error) { toggle(); return "", nil })
+		}})
+	offType := tabtypesapi.Register(tabtypesapi.TabType{
 		ID: ID, Kind: Kind, Priority: tabtypesapi.Builtin,
 		Patterns: []string{"*.md", "*.markdown", "*.mdx"},
 		Body:     v.body,
@@ -155,7 +165,7 @@ func Register(ctx context.Context, fs fscontract.FS, post func(func())) (v *View
 			return 0, 0, false
 		},
 	})
-	return v, off
+	return v, func() { offCmd(); offType() }
 }
 
 // Plugin registers the markdown tab type and its toggle command while
@@ -169,20 +179,8 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			return err
 		}
 		ctx, cancel := context.WithCancel(context.Background())
-		v, off := Register(ctx, fs, shellapi.Update)
-		offCmd := actionsapi.Register(actionsapi.Command{ID: "markdown:toggle-preview", Title: "Toggle reading view", Keys: "Ctrl E",
-			Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-				return shellapi.OnMain(ctx, func() (string, error) {
-					if ws := workspaceapi.Get(); ws != nil {
-						if tab, ok := ws.ActiveTab(); ok && tab.Kind == Kind {
-							v.Toggle(tab.ID)
-						}
-					}
-					return "", nil
-				})
-			}})
+		_, off := Register(ctx, fs, shellapi.Update)
 		rctx.Effect(func(context.Context) error {
-			offCmd()
 			off()
 			cancel()
 			return nil

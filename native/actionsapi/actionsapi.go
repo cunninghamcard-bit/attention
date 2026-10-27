@@ -56,10 +56,19 @@ func ParseArgs(tokens []string, cwd string) Args {
 type Command struct {
 	ID    string // also the CLI command name
 	Title string // shown in the palette; empty keeps it out of the palette
-	Keys  string // shortcut hint shown in the palette, as "Ctrl+P"
+	// Keys are its default shortcuts, comma-separated, as "Ctrl Shift T"
+	// or "Control Tab, Ctrl PageDown": Ctrl is the platform's command key
+	// (attention's Mod: Command on macOS), Control the Control key itself.
+	// The shortcuts plugin binds them; the palette shows the first.
+	Keys string
 	// CLI makes the command reachable from the CLI.
 	CLI bool
+	// Run runs it off the main thread (the palette, the CLI).
 	Run func(ctx context.Context, args Args) (string, error)
+	// Main, optional, runs it on the main thread: a shortcut calls it in
+	// the frame its key was pressed, where one without it runs Run on a
+	// goroutine.
+	Main func()
 }
 
 var (

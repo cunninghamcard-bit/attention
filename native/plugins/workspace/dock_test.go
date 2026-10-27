@@ -7,6 +7,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/smallnest/uix/components/lucide"
 
+	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
@@ -29,6 +30,8 @@ func TestDockShowsFirstPanelAndRevealsByShortcut(t *testing.T) {
 	panel(t, "file-explorer", 0, "tree body", nil)
 	panel(t, "search", 1, "search body", &searchReveals)
 	ws, tt := testWorkspace(t)
+	// The search plugin's command, which owns Ctrl Shift F.
+	t.Cleanup(actionsapi.Register(actionsapi.Command{ID: "global-search:open", Keys: "Ctrl Shift F", Main: func() { ws.revealPanel("search") }}))
 	if !tt.HasText("tree body") || tt.HasText("search body") {
 		t.Fatalf("the left dock should show the first panel: %v", tt.Texts())
 	}

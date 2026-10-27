@@ -178,7 +178,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 // on its connection's), so it hops to the main thread with shellapi.OnMain.
 func (ws *Workspace) commands() []actionsapi.Command {
 	ui := func(id, title, keys string, fn func()) actionsapi.Command {
-		return actionsapi.Command{ID: id, Title: title, Keys: keys, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
+		return actionsapi.Command{ID: id, Title: title, Keys: keys, Main: fn, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
 			return shellapi.OnMain(ctx, func() (string, error) { fn(); return "", nil })
 		}}
 	}
@@ -196,8 +196,8 @@ func (ws *Workspace) commands() []actionsapi.Command {
 		ui("workspace:close", "Close current tab", "Ctrl W", ws.closeActiveTab),
 		ui("workspace:new-tab", "Open new tab", "Ctrl T", ws.newTab),
 		ui("workspace:undo-close-pane", "Undo close tab", "Ctrl Shift T", ws.undoClose),
-		ui("workspace:next-tab", "Go to next tab", "Ctrl Tab", func() { ws.cycleTab(1) }),
-		ui("workspace:previous-tab", "Go to previous tab", "Ctrl Shift Tab", func() { ws.cycleTab(-1) }),
+		ui("workspace:next-tab", "Go to next tab", "Control Tab, Ctrl Shift ], Control PageDown", func() { ws.cycleTab(1) }),
+		ui("workspace:previous-tab", "Go to previous tab", "Control Shift Tab, Ctrl Shift [, Control PageUp", func() { ws.cycleTab(-1) }),
 		ui("workspace:goto-last-tab", "Go to last tab", "Ctrl 9", func() { ws.gotoTab(0) }),
 		ui("workspace:go-back", "Navigate back", "Alt Left", func() { ws.goHistory(ws.activeTab(), -1) }),
 		ui("workspace:go-forward", "Navigate forward", "Alt Right", func() { ws.goHistory(ws.activeTab(), 1) }),
@@ -236,7 +236,7 @@ func (ws *Workspace) commands() []actionsapi.Command {
 			})
 		}},
 		{ID: "open", CLI: true, Run: ws.cliOpen},
-		{ID: "quit", Title: "Quit", Keys: "Ctrl Q", CLI: true, Run: func(context.Context, actionsapi.Args) (string, error) {
+		{ID: "quit", Title: "Quit", Keys: "Ctrl Q", CLI: true, Main: func() { mygo.App.Quit() }, Run: func(context.Context, actionsapi.Args) (string, error) {
 			// The same path as the user closing the window: App.Run returns
 			// and the UI runtime asks rutis-host to stop.
 			mygo.App.Quit()
