@@ -6,9 +6,11 @@ package filetree
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -34,6 +36,7 @@ const PanelID = "file-explorer"
 type Tree struct {
 	ctx     context.Context
 	fs      fscontract.FS
+	post    func(func())
 	watches *watchq.Queue
 
 	mounts       []projectcontract.Mount
@@ -42,6 +45,15 @@ type Tree struct {
 	rows         []treeRow
 	rowsDirty    bool
 	notice       string // a watch error
+	// pendingExpanded are session-restored paths to open once they appear
+	// as a mount or in a listing. Restore may run before mounts arrive;
+	// we do not stat.
+	pendingExpanded map[string]bool
+}
+
+// savedState is the Files panel's session: which directories are open.
+type savedState struct {
+	Expanded []string `json:"expanded"`
 }
 
 type dirNode struct {
@@ -61,11 +73,11 @@ type treeRow struct {
 	mount *projectcontract.Mount // set on a mount's root row
 }
 
-func newTree(ctx context.Context, fs fscontract.FS) *Tree {
-	tr := &Tree{ctx: ctx, fs: fs, dirs: map[string]*dirNode{}, rowsDirty: true}
+func newTree(ctx context.Context, fs fscontract.FS, post func(func())) *Tree {
+	tr := &Tree{ctx: ctx, fs: fs, post: post, dirs: map[string]*dirNode{}, rowsDirty: true}
 	// A refused watch stays counted: collapsing gives it back and
 	// expanding again retries it (watchq).
-	tr.watches = watchq.New(ctx, fs, shellapi.Update, func(_, msg string) { tr.notice = msg })
+	tr.watches = watchq.New(ctx, fs, post, func(_, msg string) { tr.notice = msg })
 	return tr
 }
 
@@ -83,7 +95,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			return err
 		}
 		ctx, cancel := context.WithCancel(context.Background())
-		tr := newTree(ctx, fs)
+		tr := newTree(ctx, fs, shellapi.Update)
 
 		reloadMounts := func() {
 			go func() {
@@ -120,7 +132,8 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 
 		off := slotsapi.RegisterPanel(slotsapi.Panel{
 			ID: PanelID, Title: "Files", Icon: lucide.Folder(), Dock: slotsapi.Left, Order: 0,
-			View: func(c *ui.Context, _ slotsapi.PanelProps) { tr.view(c) },
+			View:  func(c *ui.Context, _ slotsapi.PanelProps) { tr.view(c) },
+			State: tr.state, Restore: tr.restore,
 		})
 		offCmd := actionsapi.Register(actionsapi.Command{ID: "file-explorer:open", Title: "Open file explorer", Keys: "", Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
 			return shellapi.OnMain(ctx, func() (string, error) {
@@ -161,6 +174,7 @@ func (tr *Tree) setMounts(ms []projectcontract.Mount) {
 			tr.loadDir(d)
 		}
 	}
+	tr.applyPending()
 	tr.rowsDirty = true
 }
 
@@ -189,6 +203,69 @@ func (tr *Tree) dir(path string) *dirNode {
 	return d
 }
 
+func (tr *Tree) state() json.RawMessage {
+	seen := map[string]bool{}
+	expanded := []string{}
+	for p, d := range tr.dirs {
+		if d.expanded {
+			expanded = append(expanded, p)
+			seen[p] = true
+		}
+	}
+	for p := range tr.pendingExpanded {
+		if !seen[p] {
+			expanded = append(expanded, p)
+		}
+	}
+	sort.Strings(expanded)
+	data, _ := json.Marshal(savedState{Expanded: expanded})
+	return data
+}
+
+// restore remembers expanded paths until those directories become known.
+func (tr *Tree) restore(data json.RawMessage) {
+	var st savedState
+	if json.Unmarshal(data, &st) != nil {
+		return
+	}
+	tr.pendingExpanded = map[string]bool{}
+	for _, p := range st.Expanded {
+		if p != "" {
+			tr.pendingExpanded[p] = true
+		}
+	}
+	tr.applyPending()
+}
+
+func (tr *Tree) applyPending() {
+	for _, m := range tr.mounts {
+		tr.expandIfPending(m.Path)
+	}
+	for _, d := range tr.dirs {
+		for _, e := range d.entries {
+			if e.Dir {
+				tr.expandIfPending(e.Path)
+			}
+		}
+	}
+}
+
+// expandIfPending opens a restored path that has just become known, as a
+// user toggle would: loadDir lists and watches it.
+func (tr *Tree) expandIfPending(path string) {
+	if !tr.pendingExpanded[path] {
+		return
+	}
+	delete(tr.pendingExpanded, path)
+	d := tr.dir(path)
+	if d.expanded {
+		return
+	}
+	d.expanded = true
+	tr.loadDir(d)
+	tr.rowsDirty = true
+}
+
 // loadDir lists d on a goroutine; an expanded, loaded directory is watched.
 func (tr *Tree) loadDir(d *dirNode) {
 	if d.loading {
@@ -200,7 +277,7 @@ func (tr *Tree) loadDir(d *dirNode) {
 	start := time.Now()
 	go func() {
 		entries, err := tr.fs.List(tr.ctx, path)
-		shellapi.Update(func() {
+		tr.post(func() {
 			debugf("tree: listed %s (%d entries) in %s", path, len(entries), time.Since(start))
 			if tr.dirs[path] != d {
 				return // forgotten meanwhile (its mount was removed)
@@ -213,6 +290,11 @@ func (tr *Tree) loadDir(d *dirNode) {
 				d.err = ""
 				d.entries = entries
 				d.loaded = true
+				for _, e := range entries {
+					if e.Dir {
+						tr.expandIfPending(e.Path)
+					}
+				}
 			}
 			if d.expanded && !d.watched && err == nil {
 				d.watched = true
