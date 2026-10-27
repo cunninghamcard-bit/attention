@@ -141,8 +141,9 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 				l.RevealPanel(PanelID)
 			}
 		}
-		offSection := slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "folders", Title: "Folders", Icon: lucide.FolderTree(), Order: 10,
-			View: func(c *ui.Context) { tr.folders(c, project.RemoveMount) }})
+		offSection := slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "file", Title: "Files and links", Icon: lucide.FolderCog(), Order: 10,
+			Keywords: []string{"Folders", "mount"},
+			View:     func(c *ui.Context) { tr.folders(c, project.RemoveMount) }})
 		offCmd := actionsapi.Register(actionsapi.Command{ID: "file-explorer:open", Title: "Open file explorer", Main: reveal, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
 			return shellapi.OnMain(ctx, func() (string, error) { reveal(); return "", nil })
 		}})
@@ -443,7 +444,8 @@ func debugf(format string, a ...any) {
 	}
 }
 
-// folders is the Folders settings section: the mounts, each removable, and
+// folders is the Files and links tab (FilesSettingTab), which holds only
+// the folders in the workspace: the mounts, each removable, and
 // Add folder (workspace:add-folder). The tree follows the project's
 // mounts-changed event.
 func (tr *Tree) folders(c *ui.Context, remove func(context.Context, string) error) {

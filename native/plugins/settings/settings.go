@@ -1,14 +1,14 @@
-// Package settings is the settings panel, dsh's ui-settings-general
-// shell (packages/client/ui-settings-general): a modal of two columns, the
-// Settings title over the navigation of the settings.section pages beside
-// the chosen page, with Close and the header's Open configuration folder.
-// It brings the General page — the settings.general.item rows, then the
-// current version — and loads and saves the configuration files
-// (settingsapi).
+// Package settings is the settings modal, attention's SettingsModal and
+// SettingsRenderer (apps/web/builtin/SettingsModal.ts, SettingsRenderer.ts):
+// a vertical tab header — Search settings, then the Options tabs and the
+// core plugins' tabs, the settings.section contributions — beside the
+// chosen tab, whose name is the modal's title. It brings the General tab
+// of its own, and loads and saves the configuration files (settingsapi).
 package settings
 
 import (
 	"context"
+	"strings"
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo"
@@ -28,19 +28,23 @@ import (
 // ID is the plugin's and its overlay's.
 const ID = "settings"
 
-// Settings is the panel's state, on the main thread only.
+// Settings is the modal's state, on the main thread only.
 type Settings struct {
 	open  bool
-	shown string // the chosen page's ID
+	query string // Search settings
+	shown string // the chosen tab's ID, kept while closed (lastTabId)
 }
 
-// Open opens the panel on page id ("" for General).
+// Open opens the modal on tab id, or on the last tab for ""
+// (SettingRegistry.open).
 func (s *Settings) Open(id string) {
 	s.open = true
-	s.shown = id
+	if id != "" {
+		s.shown = id
+	}
 }
 
-// Toggle is app:open-settings: it opens the panel, or closes it.
+// Toggle is app:open-settings: it opens the modal, or closes it.
 func (s *Settings) Toggle() {
 	if s.open {
 		s.open = false
@@ -49,95 +53,128 @@ func (s *Settings) Toggle() {
 	s.Open("")
 }
 
-// View draws the panel while it is open: dsh's 800-wide panel, its height
-// the window's less 24 above and below, at most 800.
+// matches is SettingsRenderer.matchesTab: the query in the tab's name, its
+// id or the names of its settings.
+func matches(sec slotsapi.SettingsSection, query string) bool {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return true
+	}
+	for _, text := range append([]string{sec.Title, sec.ID}, sec.Keywords...) {
+		if strings.Contains(strings.ToLower(text), q) {
+			return true
+		}
+	}
+	return false
+}
+
+// View draws the modal while it is open.
 func (s *Settings) View(c *ui.Context) {
 	if !s.open {
 		return
 	}
-	sections := slotsapi.SettingsSections()
-	var cur *slotsapi.SettingsSection
-	for i := range sections {
-		if sections[i].ID == s.shown {
-			cur = &sections[i]
+	var options, core []slotsapi.SettingsSection
+	for _, sec := range slotsapi.SettingsSections() {
+		if !matches(sec, s.query) {
+			continue
+		}
+		if sec.Group == slotsapi.CorePlugins {
+			core = append(core, sec)
+		} else {
+			options = append(options, sec)
 		}
 	}
-	// A page gone with its plugin, or none chosen: the first.
-	if cur == nil && len(sections) > 0 {
-		cur = &sections[0]
+	all := append(append([]slotsapi.SettingsSection(nil), options...), core...)
+	var cur *slotsapi.SettingsSection
+	for i := range all {
+		if all[i].ID == s.shown {
+			cur = &all[i]
+		}
+	}
+	// A search that hides the shown tab, or a tab gone with its plugin:
+	// the first that matches (findFirstMatchingTab).
+	if cur == nil && len(all) > 0 {
+		cur, s.shown = &all[0], all[0].ID
+	}
+	title := "Settings"
+	if cur != nil {
+		title = cur.Title
 	}
 	_, winH := c.Size()
-	h := min(float32(800), winH-48)
-	omgui.Dialog(c, omgui.DialogProps{Open: &s.open, Key: ID, Width: 800, MaxHeight: h, Body: func(c *ui.Context) {
+	h := min(float32(680), winH-48)
+	omgui.Dialog(c, omgui.DialogProps{Open: &s.open, Key: ID, Title: title, Width: 960, MaxHeight: h, Body: func(c *ui.Context) {
 		// The modal keeps the window's shortcuts from it: the Settings
 		// shortcut closes it from here.
 		if c.Shortcut(ui.Cmd, ui.KeyComma) {
 			s.open = false
 			return
 		}
-		s.body(c, sections, cur, h-48)
+		s.body(c, options, core, cur, h-80)
 	}})
 }
 
-func (s *Settings) body(c *ui.Context, sections []slotsapi.SettingsSection, cur *slotsapi.SettingsSection, h float32) {
+func (s *Settings) body(c *ui.Context, options, core []slotsapi.SettingsSection, cur *slotsapi.SettingsSection, h float32) {
 	t := c.Theme()
 	ui.Row(c).FillWidth().Height(h).AlignItems(ui.Stretch).Children(func() {
-		// The 188-wide rail: the title, then a 40-high cell per page.
-		ui.Column(c).Width(188).Shrink(0).FillHeight().Gap(4).Children(func() {
-			ui.Text(c, "Settings").FontSize(16).FontWeight(500).Padding(2, 12, 12, 12)
+		// The vertical tab header.
+		ui.Column(c).Width(210).Shrink(0).FillHeight().Gap(8).BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Padding(0, 8, 0, 0).Children(func() {
+			omgui.SearchField(c, &s.query, "Search settings", false).Label("Search settings").FillWidth()
 			ui.Scroll(c).Grow(1).FillWidth().Children(func() {
-				ui.Column(c).FillWidth().Gap(4).Children(func() {
-					for _, sec := range sections {
-						id := sec.ID
-						if omgui.SidebarItem(c, omgui.SidebarItemProps{Key: "settings:" + id, Label: sec.Title, Icon: sec.Icon,
-							Selected: cur != nil && id == cur.ID, Height: 40}).Clicked() {
-							s.shown = id
-						}
-					}
+				ui.Column(c).FillWidth().Gap(2).Children(func() {
+					s.group(c, "Options", options)
+					s.group(c, "Core plugins", core)
 				})
 			})
 		})
-		ui.Column(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
-			// The header: the actions, left of the dialog's Close.
-			ui.Row(c).FillWidth().Height(36).Shrink(0).Justify(ui.End).AlignItems(ui.Start).Padding(0, 40, 0, 0).Children(func() {
-				omgui.Button(c, omgui.ButtonProps{Label: "Open configuration folder", Variant: omgui.ButtonGhost, OnClick: func() {
-					dir := paths.ConfigDir()
-					go func() { _ = mygo.Shell.OpenPath(dir) }()
-				}})
-			})
-			ui.Scroll(c).Grow(1).Fill().Children(func() {
-				ui.Column(c).FillWidth().Padding(0, 16, 16, 24).Gap(16).Children(func() {
-					if cur == nil {
-						ui.Text(c, "No settings").TextColor(t.TextMuted)
-						return
-					}
-					cur.View(c)
-				})
+		// The vertical tab content.
+		ui.Scroll(c).Grow(1).Fill().Children(func() {
+			ui.Column(c).FillWidth().Padding(4, 24, 24, 24).Gap(16).Children(func() {
+				if cur == nil {
+					ui.Text(c, "No settings match.").TextColor(t.TextMuted)
+					return
+				}
+				cur.View(c)
 			})
 		})
 	})
 }
 
-// general is the General page: the rows plugins contribute, then the
-// current version (dsh's GeneralSection and CurrentVersionRow).
-func general(c *ui.Context) {
-	omgui.SettingsSection(c, "", func() {
-		for _, item := range slotsapi.GeneralItems() {
-			item.View(c)
+// group is a header group: its title, then a nav item per tab
+// (createHeaderGroup); a group with no tab is left out.
+func (s *Settings) group(c *ui.Context, title string, secs []slotsapi.SettingsSection) {
+	if len(secs) == 0 {
+		return
+	}
+	ui.Box(c).Padding(6, 8).Children(func() { omgui.SectionLabel(c, title) })
+	for _, sec := range secs {
+		id := sec.ID
+		if omgui.SidebarItem(c, omgui.SidebarItemProps{Key: "settings:" + id, Label: sec.Title, Icon: sec.Icon, Selected: id == s.shown}).Clicked() {
+			s.shown = id
 		}
-		omgui.PreferenceRow(c, "Current version", "", func() {
-			ui.Text(c, cli.Version).FontSize(13).TextColor(c.Theme().TextMuted)
+	}
+}
+
+// general is the General tab: the version and the configuration folder.
+func general(c *ui.Context) {
+	omgui.SettingsSection(c, "App", func() {
+		omgui.PreferenceRow(c, "Current version", cli.Version, nil)
+		omgui.PreferenceRow(c, "Configuration folder", paths.ConfigDir(), func() {
+			omgui.Button(c, omgui.ButtonProps{Label: "Open", Variant: omgui.ButtonSecondary, OnClick: func() {
+				dir := paths.ConfigDir()
+				go func() { _ = mygo.Shell.OpenPath(dir) }()
+			}})
 		})
 	})
 }
 
-// Register adds the panel, its General page, its command and its ribbon
+// Register adds the modal, its General tab, its command and its ribbon
 // icon until off is called.
 func Register() (s *Settings, off func()) {
-	s = &Settings{}
+	s = &Settings{shown: "general"}
 	offs := []func(){
 		slotsapi.RegisterOverlay(slotsapi.Overlay{ID: ID, Order: 10, View: s.View}),
-		slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "general", Title: "General", Icon: lucide.SlidersHorizontal(), Order: 0, View: general}),
+		slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "general", Title: "General", Icon: lucide.SlidersHorizontal(), Order: 0,
+			Keywords: []string{"Current version", "Configuration folder"}, View: general}),
 		actionsapi.Register(actionsapi.Command{ID: "app:open-settings", Title: "Open settings", Keys: "Ctrl Comma", Main: s.Toggle,
 			Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
 				return shellapi.OnMain(ctx, func() (string, error) { s.Open(""); return "", nil })
@@ -151,7 +188,7 @@ func Register() (s *Settings, off func()) {
 	}
 }
 
-// Plugin is the settings panel while loaded.
+// Plugin is the settings modal while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
 	Inject: []string{"shell", "actions"},

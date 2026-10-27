@@ -14,10 +14,10 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
+	"github.com/smallnest/uix/components/lucide"
 
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	"github.com/cunninghamcard-bit/attention/native/settingsapi"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 )
 
@@ -99,14 +99,10 @@ type Shortcuts struct {
 	// gen.
 	effective map[string][]Binding
 	gen       int
-	// The reference's, main thread only: open, its search, the command
-	// whose next combination it records ("" for none) and why the last
-	// was refused, and Restore all defaults' confirmation.
-	refOpen    bool
-	filter     string
-	recording  string
-	recordErr  string
-	confirming bool
+	// The Hotkeys tab's, main thread only: its search, and the command
+	// whose next combination it records ("" for none).
+	filter    string
+	recording string
 }
 
 // New binds keys for commands whose Run runs under ctx.
@@ -160,12 +156,11 @@ var recordMods = func() []ui.Modifiers {
 }()
 
 // record takes the combination pressed this frame for the recorded
-// command, as dsh's inline recorder: Escape cancels; a combination
-// another command holds is refused, the recorder saying by whom, and
-// recording goes on; any other becomes the command's binding.
+// command (HotkeysSettingTab.recordHotkey): Escape cancels; any other
+// joins the command's hotkeys, even one another command has.
 func (s *Shortcuts) record(c *ui.Context) {
 	if c.Shortcut(0, ui.KeyEscape) {
-		s.recording, s.recordErr = "", ""
+		s.recording = ""
 		return
 	}
 	for _, m := range recordMods {
@@ -178,13 +173,10 @@ func (s *Shortcuts) record(c *ui.Context) {
 				s.recording = ""
 				return
 			}
+			// recordHotkey: the combination joins the command's hotkeys.
 			h := hotkeyOf(Binding{Mods: m, Key: k})
-			if others := Conflicts(cmd, h); len(others) > 0 {
-				s.recordErr = Format(h) + " is used by " + others[0].Title
-				return
-			}
-			settingsapi.Set(settingsapi.Hotkeys, cmd.ID, []Hotkey{h})
-			s.recording, s.recordErr = "", ""
+			settingsapi.Set(settingsapi.Hotkeys, cmd.ID, append(Effective(cmd), h))
+			s.recording = ""
 			return
 		}
 	}
@@ -213,22 +205,14 @@ func (s *Shortcuts) View(c *ui.Context) {
 	}
 }
 
-// referenceID is the command opening the reference (dsh's Mod+/).
-const referenceID = "app:keyboard-shortcuts"
-
-// Register binds keys, adds the reference with its command and its
-// General row, until off is called.
+// Register binds keys and adds the Hotkeys settings tab until off is
+// called.
 func Register(ctx context.Context) (off func()) {
 	s := New(ctx)
-	toggle := func() { s.refOpen = !s.refOpen }
 	offs := []func(){
 		slotsapi.RegisterOverlay(slotsapi.Overlay{ID: ID, Order: -1000, View: s.View}),
-		slotsapi.RegisterOverlay(slotsapi.Overlay{ID: "keyboard-shortcuts", Order: 20, View: s.referenceView}),
-		slotsapi.RegisterGeneralItem(slotsapi.GeneralItem{ID: "keyboard-shortcuts", Order: 20, View: s.shortcutsRow}),
-		actionsapi.Register(actionsapi.Command{ID: referenceID, Title: "Keyboard shortcuts", Keys: "Ctrl /", Main: toggle,
-			Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-				return shellapi.OnMain(ctx, func() (string, error) { s.refOpen = true; return "", nil })
-			}}),
+		slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "hotkeys", Title: "Hotkeys", Icon: lucide.Keyboard(), Order: 30,
+			Keywords: []string{"Search commands", "Add hotkey", "Restore default hotkeys"}, View: s.hotkeysTab}),
 	}
 	return func() {
 		for i := len(offs) - 1; i >= 0; i-- {

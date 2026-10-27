@@ -31,7 +31,9 @@ import (
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	"github.com/cunninghamcard-bit/attention/native/internal/htmlextract"
+	"github.com/cunninghamcard-bit/attention/native/settingsapi"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
+	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 	"github.com/cunninghamcard-bit/attention/native/webhistoryapi"
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
@@ -102,7 +104,45 @@ func NormalizeURL(input string) string {
 	case domain.MatchString(s):
 		return "https://" + s
 	}
-	return "https://duckduckgo.com/?q=" + url.QueryEscape(s)
+	engine := "https://duckduckgo.com/?q="
+	if searchEngine() == "google" {
+		engine = "https://www.google.com/search?q="
+	}
+	return engine + url.QueryEscape(s)
+}
+
+// configFile is the web viewer's settings file (its plugin data,
+// webviewer.json).
+const configFile = "webviewer"
+
+// searchEngine is the Search engine setting: "duckduckgo" or "google".
+func searchEngine() string {
+	engine := "duckduckgo"
+	settingsapi.Get(configFile, "searchEngine", &engine)
+	return engine
+}
+
+// settingTab is the Web viewer settings tab (WebViewerSettingTab): Search
+// engine, and Clear browsing data for the history. Opening external URLs,
+// ad blocking, the save path and sessions are not ported.
+func settingTab(c *ui.Context) {
+	omgui.SettingsSection(c, "Web viewer", func() {
+		omgui.PreferenceRow(c, "Search engine", "Used when the address bar input is not a URL.", func() {
+			cur := searchEngine()
+			v := cur
+			omgui.Select(c, omgui.SelectProps{Key: "web-search-engine", Value: &v, Width: 160, Options: []omgui.SelectOption{
+				{Value: "duckduckgo", Label: "DuckDuckGo"}, {Value: "google", Label: "Google"},
+			}})
+			if v != cur {
+				settingsapi.Set(configFile, "searchEngine", v)
+			}
+		})
+		omgui.PreferenceRow(c, "Clear browsing data", "Clear local Web viewer history.", func() {
+			h := webhistoryapi.Get()
+			omgui.Button(c, omgui.ButtonProps{Label: "Clear history", Variant: omgui.ButtonSecondary, Disabled: h == nil || len(h.List()) == 0,
+				OnClick: func() { h.Clear() }})
+		})
+	})
 }
 
 // titleFromURL is a page's title until its own comes: its host.
@@ -532,8 +572,10 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
 	Inject: []string{"shell", "workspace"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		settingsapi.Load(configFile)
 		off := Register()
-		var offs []func()
+		offs := []func(){slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "webviewer", Title: "Web viewer", Icon: lucide.Globe(),
+			Group: slotsapi.CorePlugins, Keywords: []string{"Search engine", "Clear browsing data", "history"}, View: settingTab})}
 		for _, cmd := range commands() {
 			offs = append(offs, actionsapi.Register(cmd))
 		}
