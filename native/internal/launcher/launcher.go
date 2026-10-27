@@ -333,7 +333,12 @@ func runHost(opts Options) int {
 			return 1
 		}
 	}
-	data, err := json.MarshalIndent(ConfigSeparate(self, services, opts.Profile, opts.Mounts, separate), "", "  ")
+	config := ConfigSeparate(self, services, opts.Profile, opts.Mounts, separate)
+	if err := withThirdParty(config, ThirdPartyPath()); err != nil {
+		fmt.Fprintln(os.Stderr, "attention:", err)
+		return 1
+	}
+	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "attention:", err)
 		return 1
