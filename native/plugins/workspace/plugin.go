@@ -170,12 +170,6 @@ func (ws *Workspace) commands() []actionsapi.Command {
 			})
 		}},
 		{ID: "open", CLI: true, Run: ws.cliOpen},
-		{ID: "quit", Title: "Quit", Keys: "Ctrl Q", CLI: true, Main: func() { mygo.App.Quit() }, Run: func(context.Context, actionsapi.Args) (string, error) {
-			// The same path as the user closing the window: App.Run returns
-			// and the UI runtime asks rutis-host to stop.
-			mygo.App.Quit()
-			return "Quitting.", nil
-		}},
 		{ID: "tabs", CLI: true, Run: func(ctx context.Context, a actionsapi.Args) (string, error) {
 			return shellapi.OnMain(ctx, func() (string, error) {
 				// The TS CLI's shape: "[<view type>] <display text>", then a tab

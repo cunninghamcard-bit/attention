@@ -19,6 +19,7 @@ import (
 	"github.com/arcships/rutis/go/rutis"
 
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
+	"github.com/cunninghamcard-bit/attention/native/internal/lifecycle"
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 )
 
@@ -55,6 +56,9 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			ln.Close()
 			return err
 		}
+		// quit is here, loaded in every profile, as closing the window:
+		// headless has no window, and no workspace.
+		ctx.Effect(actionCleanup(actionsapi.Register(QuitCommand())))
 		ctx.Effect(actionCleanup(actionsapi.Register(actionsapi.Command{
 			ID: "version", CLI: true,
 			// The TS CLI's shape: "<version> (installer <build>)".
@@ -126,4 +130,17 @@ func dbg(format string, a ...any) {
 	if os.Getenv("ATTENTION_DEBUG") != "" {
 		fmt.Fprintf(os.Stderr, "[debug] "+format+"\n", a...)
 	}
+}
+
+// QuitCommand is quit (Ctrl Q, the CLI's quit): the same path as the
+// user closing the window, through the runtime's lifecycle.
+func QuitCommand() actionsapi.Command {
+	return actionsapi.Command{ID: "quit", Title: "Quit", Keys: "Ctrl Q", CLI: true,
+		Main: func() { lifecycle.Quit() },
+		Run: func(context.Context, actionsapi.Args) (string, error) {
+			if !lifecycle.Quit() {
+				return "", fmt.Errorf("This runtime cannot quit.")
+			}
+			return "Quitting.", nil
+		}}
 }

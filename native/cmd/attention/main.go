@@ -22,6 +22,7 @@ import (
 	"github.com/egoist/mygo"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/launcher"
+	"github.com/cunninghamcard-bit/attention/native/internal/lifecycle"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/cli"
 	"github.com/cunninghamcard-bit/attention/native/plugins/commandpalette"
@@ -92,6 +93,7 @@ func runtimeMain(args []string) int {
 			os.Exit(1)
 		}()
 		go watchLauncher(stop)
+		lifecycle.SetQuit(stop)
 		if err := rutis.ServeArgs(args, plugins...); err != nil {
 			fmt.Fprintln(os.Stderr, "attention:", err)
 			return 1
@@ -132,6 +134,8 @@ func runtimeMain(args []string) int {
 		mygo.App.Quit()
 	}()
 	go watchLauncher(mygo.App.Quit)
+	// Every quit goes through mygo's, which asks rutis-host first.
+	lifecycle.SetQuit(func() { mygo.App.Quit() })
 	if err := mygo.App.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "attention:", err)
 	}
