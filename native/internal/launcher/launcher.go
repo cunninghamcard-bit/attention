@@ -190,8 +190,16 @@ func send(argv []string, out io.Writer) error {
 	if _, err := conn.Write(append(line, '\n')); err != nil {
 		return err
 	}
-	_, err = io.Copy(out, conn)
-	return err
+	return copyOut(out, conn)
+}
+
+// copyOut copies the answer out. A reader gone (attention files | head)
+// wants no more: that is no error, as a tool killed by SIGPIPE says none.
+func copyOut(out io.Writer, in io.Reader) error {
+	if _, err := io.Copy(out, in); err != nil && !errors.Is(err, syscall.EPIPE) {
+		return err
+	}
+	return nil
 }
 
 // Rows returns the plugin rows of a profile (RFC 0001 §5.10).
