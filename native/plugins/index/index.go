@@ -219,41 +219,89 @@ func (x *Index) Changed(ctx context.Context, b fscontract.Batch) {
 	}
 	x.mu.Lock()
 	defer x.mu.Unlock()
+	// Names that came or went may change what other notes' links resolve
+	// to (MetadataCache.updateRelatedLinks); a note written resolves its
+	// own links again (resolveLinks).
+	names := map[string]bool{}
+	var written []string
 	for _, u := range updates {
 		if u.gone {
 			if _, ok := x.files[u.f.display]; ok {
 				delete(x.files, u.f.display)
 				delete(x.byAbs, u.f.abs)
 				x.look.remove(u.f.display)
+				delete(x.resolved, u.f.display)
+				delete(x.unresolved, u.f.display)
+				names[linkName(u.f.display)] = true
 			}
 			continue
+		}
+		if _, known := x.files[u.f.display]; !known {
+			names[linkName(u.f.display)] = true
 		}
 		x.files[u.f.display] = u.f
 		x.byAbs[u.f.abs] = u.f.display
 		x.look.add(u.f.display)
+		written = append(written, u.f.display)
 	}
-	x.resolveAll()
+	for _, p := range written {
+		x.resolveOne(p)
+	}
+	if len(names) == 0 {
+		return
+	}
+	for src := range x.files {
+		if related(x.resolved[src], names) || related(x.unresolved[src], names) {
+			x.resolveOne(src)
+		}
+	}
+}
+
+// linkName is the name a link may give a file: its base name, lowercased,
+// without .md.
+func linkName(path string) string {
+	n := strings.ToLower(basename(path))
+	return strings.TrimSuffix(n, ".md")
+}
+
+// related is hasRelatedLink: whether a source's link record names one of
+// names.
+func related(links map[string]int, names map[string]bool) bool {
+	for target := range links {
+		if names[linkName(target)] {
+			return true
+		}
+	}
+	return false
 }
 
 // resolveAll is resolveLinks for every note. Called with mu held.
 func (x *Index) resolveAll() {
 	x.resolved = map[string]map[string]int{}
 	x.unresolved = map[string]map[string]int{}
-	for path, f := range x.files {
-		if f.meta == nil {
-			continue
-		}
-		res, unres := map[string]int{}, map[string]int{}
-		for _, link := range refs(f.meta) {
-			lp := stripSubpath(link)
-			if dest, ok := x.look.first(lp, path, x.isMD); ok {
-				res[dest]++
-			} else {
-				unres[unresolvedKey(lp)]++
-			}
-		}
-		x.resolved[path], x.unresolved[path] = res, unres
+	for path := range x.files {
+		x.resolveOne(path)
 	}
+}
+
+// resolveOne is resolveLinks for one note. Called with mu held.
+func (x *Index) resolveOne(path string) {
+	f := x.files[path]
+	if f == nil || f.meta == nil {
+		delete(x.resolved, path)
+		delete(x.unresolved, path)
+		return
+	}
+	res, unres := map[string]int{}, map[string]int{}
+	for _, link := range refs(f.meta) {
+		lp := stripSubpath(link)
+		if dest, ok := x.look.first(lp, path, x.isMD); ok {
+			res[dest]++
+		} else {
+			unres[unresolvedKey(lp)]++
+		}
+	}
+	x.resolved[path], x.unresolved[path] = res, unres
 }
 
 // isMD reports whether path is an indexed note. Called with mu held.
