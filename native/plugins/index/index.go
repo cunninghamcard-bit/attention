@@ -3,7 +3,8 @@
 // note's parsed metadata (internal/mdmeta), and the resolved and
 // unresolved links between them — and the CLI's commands on it
 // (apps/web/app/cli/commands/graphLists.ts, metadata.ts,
-// linksOutlineCli.ts, wordcountWebCli.ts).
+// linksOutlineCli.ts, wordcountWebCli.ts), including property:set and
+// property:remove.
 //
 // The index is held in memory and built when the plugin loads (RFC open
 // question 5): a walk of the mounts, the notes read through fs. It follows

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -18,8 +20,8 @@ import (
 )
 
 // commands are the CLI's commands on the index, ported from attention's
-// (apps/web/app/cli/commands/): graphLists.ts, metadata.ts (the reading
-// ones), linksOutlineCli.ts, wordcountWebCli.ts.
+// (apps/web/app/cli/commands/): graphLists.ts, metadata.ts,
+// linksOutlineCli.ts, wordcountWebCli.ts.
 func (x *Index) commands() []actionsapi.Command {
 	// Each takes the bare flags its TS registration declares.
 	cmd := func(id string, run func(context.Context, actionsapi.Args) (string, error), flags ...string) actionsapi.Command {
@@ -41,6 +43,8 @@ func (x *Index) commands() []actionsapi.Command {
 		cmd("tag", x.cliTag, "total", "verbose"),
 		cmd("properties", x.cliProperties, "total", "counts", "active"),
 		cmd("property:read", x.cliPropertyRead),
+		cmd("property:set", x.cliPropertySet),
+		cmd("property:remove", x.cliPropertyRemove),
 		cmd("aliases", x.cliAliases, "total", "verbose", "active"),
 		cmd("wordcount", x.cliWordcount, "words", "characters"),
 	}
@@ -636,6 +640,168 @@ func (x *Index) cliPropertyRead(ctx context.Context, a actionsapi.Args) (string,
 		return "(empty)", nil
 	}
 	return valueText(v, ", "), nil
+}
+
+var (
+	propertyDateRe     = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+	propertyDatetimeRe = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$`)
+)
+
+// cliPropertySet is property:set: parse the value, write the frontmatter
+// (metadata.ts). The property type registry (metadataTypeManager.setType)
+// does not exist in the reader: a type= flag is used only to parse the
+// value.
+func (x *Index) cliPropertySet(ctx context.Context, a actionsapi.Args) (string, error) {
+	name := a.Params["name"]
+	if name == "" {
+		return "", fmt.Errorf("Missing required parameter: name")
+	}
+	path, err := x.resolveFile(ctx, a, true)
+	if err != nil {
+		return "", err
+	}
+	raw := a.Params["value"]
+	parsed, err := parsePropertyValue(raw, a.Params["type"])
+	if err != nil {
+		return "", err
+	}
+	if err := x.processFrontMatter(ctx, path, func(fm *mdmeta.FrontmatterMap) {
+		fm.Set(name, parsed)
+	}); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Set %s: %s", name, raw), nil
+}
+
+// cliPropertyRemove is property:remove: drop the key and rewrite, with no
+// existence check (metadata.ts).
+func (x *Index) cliPropertyRemove(ctx context.Context, a actionsapi.Args) (string, error) {
+	name := a.Params["name"]
+	if name == "" {
+		return "", fmt.Errorf("Missing required parameter: name")
+	}
+	path, err := x.resolveFile(ctx, a, true)
+	if err != nil {
+		return "", err
+	}
+	if err := x.processFrontMatter(ctx, path, func(fm *mdmeta.FrontmatterMap) {
+		fm.Delete(name)
+	}); err != nil {
+		return "", err
+	}
+	return "Removed: " + name, nil
+}
+
+// processFrontMatter is FileManager.processFrontMatter: read the note,
+// mutate its mapping, write it back. A non-markdown file is left alone.
+func (x *Index) processFrontMatter(ctx context.Context, path string, update func(*mdmeta.FrontmatterMap)) error {
+	x.mu.RLock()
+	f, ok := x.files[path]
+	var abs string
+	var md bool
+	if ok {
+		abs, md = f.abs, f.md
+	}
+	x.mu.RUnlock()
+	if !ok {
+		return fmt.Errorf("File %q not found.", path)
+	}
+	if !md {
+		return nil
+	}
+	data, err := x.fs.ReadBytes(ctx, abs, 0)
+	if err != nil {
+		return err
+	}
+	next := mdmeta.ProcessFrontMatter(string(data), update)
+	return x.fs.Write(ctx, abs, []byte(next))
+}
+
+// parsePropertyValue is property:set's value parse: a JSON array wins
+// regardless of type=; otherwise number|checkbox|list|date|datetime.
+func parsePropertyValue(raw, typ string) (any, error) {
+	if strings.HasPrefix(raw, "[") && strings.HasSuffix(raw, "]") {
+		var jsonVal any
+		if err := json.Unmarshal([]byte(raw), &jsonVal); err == nil {
+			if arr, ok := jsonVal.([]any); ok {
+				return arr, nil
+			}
+		}
+		return raw, nil
+	}
+	switch typ {
+	case "number":
+		n, ok := jsNumber(raw)
+		if !ok {
+			return nil, fmt.Errorf("Invalid number: %s", raw)
+		}
+		return n, nil
+	case "checkbox":
+		return raw == "true" || raw == "1", nil
+	case "list":
+		parts := strings.Split(raw, ",")
+		out := make([]any, len(parts))
+		for i, p := range parts {
+			out[i] = strings.TrimSpace(p)
+		}
+		return out, nil
+	case "date":
+		if !propertyDateRe.MatchString(raw) {
+			return nil, fmt.Errorf("Invalid date format. Use YYYY-MM-DD")
+		}
+		return raw, nil
+	case "datetime":
+		if !propertyDatetimeRe.MatchString(raw) {
+			return nil, fmt.Errorf("Invalid datetime format. Use YYYY-MM-DDTHH:mm or YYYY-MM-DDTHH:mm:ss")
+		}
+		return raw, nil
+	}
+	return raw, nil
+}
+
+// jsNumber is JavaScript Number(raw) enough for property:set: trim, empty
+// is 0, hex/bin/oct, Infinity; NaN is a miss.
+func jsNumber(raw string) (float64, bool) {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return 0, true
+	}
+	if n, err := strconv.ParseFloat(s, 64); err == nil {
+		if math.IsNaN(n) {
+			return 0, false
+		}
+		return n, true
+	}
+	if n, ok := parsePrefixedInt(s, "0x", 16); ok {
+		return n, true
+	}
+	if n, ok := parsePrefixedInt(s, "0b", 2); ok {
+		return n, true
+	}
+	if n, ok := parsePrefixedInt(s, "0o", 8); ok {
+		return n, true
+	}
+	return 0, false
+}
+
+func parsePrefixedInt(s, prefix string, base int) (float64, bool) {
+	sign := 1.0
+	t := s
+	switch {
+	case strings.HasPrefix(t, "+"):
+		t = t[1:]
+	case strings.HasPrefix(t, "-"):
+		sign = -1
+		t = t[1:]
+	}
+	if len(t) < len(prefix)+1 || !strings.EqualFold(t[:len(prefix)], prefix) {
+		return 0, false
+	}
+	u, err := strconv.ParseUint(t[len(prefix):], base, 64)
+	if err != nil {
+		return 0, false
+	}
+	return sign * float64(u), true
 }
 
 // cliAliases is aliases: a file's, or every alias with its notes
