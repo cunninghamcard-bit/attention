@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/egoist/mygo"
 
@@ -117,12 +116,7 @@ func newWorkspace(ctx context.Context, fs fscontract.FS, project projectcontract
 }
 
 // addressOf is path's resource address: under its mount, else absolute.
-func (ws *Workspace) addressOf(path string) string {
-	if m, rel, ok := ws.mountOf(path); ok && rel != "." {
-		return fscontract.AddressFor(m.ID, rel)
-	}
-	return fscontract.AbsoluteAddress(path)
-}
+func (ws *Workspace) addressOf(path string) string { return projectcontract.AddressOf(ws.mounts, path) }
 
 // claim gives t the tab type that shows its address now.
 func (ws *Workspace) claim(t *tab) {
@@ -206,19 +200,7 @@ func (ws *Workspace) activeTab() *tab { return ws.activePane().current() }
 
 // mountOf returns the mount holding path and path relative to it.
 func (ws *Workspace) mountOf(path string) (projectcontract.Mount, string, bool) {
-	best := -1
-	for i, m := range ws.mounts {
-		if path == m.Path || strings.HasPrefix(path, m.Path+string(filepath.Separator)) {
-			if best < 0 || len(m.Path) > len(ws.mounts[best].Path) {
-				best = i
-			}
-		}
-	}
-	if best < 0 {
-		return projectcontract.Mount{}, "", false
-	}
-	rel, _ := filepath.Rel(ws.mounts[best].Path, path)
-	return ws.mounts[best], filepath.ToSlash(rel), true
+	return projectcontract.MountOf(ws.mounts, path)
 }
 
 // display is a path as the CLI and the tabs' tooltips show it.
@@ -277,24 +259,7 @@ func (ws *Workspace) openResource(address string, o workspaceapi.OpenOptions) (*
 
 // pathOf is the file a file address names.
 func (ws *Workspace) pathOf(address string) (string, error) {
-	a, ok := fscontract.ParseAddress(address)
-	if !ok {
-		return "", fmt.Errorf("%q is not a file address", address)
-	}
-	if a.Abs != "" {
-		return filepath.Clean(a.Abs), nil
-	}
-	for _, m := range ws.mounts {
-		if m.ID != a.Mount {
-			continue
-		}
-		p := filepath.Join(m.Path, filepath.FromSlash(a.Rel))
-		if p != m.Path && !strings.HasPrefix(p, m.Path+string(filepath.Separator)) {
-			return "", fmt.Errorf("%q is outside its mount", address)
-		}
-		return p, nil
-	}
-	return "", fmt.Errorf("%q names no mount", address)
+	return projectcontract.PathOf(ws.mounts, address)
 }
 
 // openAddress opens path, whose canonical address is address.

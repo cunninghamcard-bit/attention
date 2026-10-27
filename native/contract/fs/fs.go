@@ -18,6 +18,10 @@ type Entry struct {
 	Path string `json:"path"` // absolute
 	Dir  bool   `json:"dir"`
 	Size int64  `json:"size"`
+	// ModTime (Unix nanoseconds) and Inode, 0 where unknown, are filled by
+	// Stat: with Size they tell one version of a file from the next.
+	ModTime int64  `json:"modTime,omitempty"`
+	Inode   uint64 `json:"inode,omitempty"`
 }
 
 // File is a read text file. Binary and TooLarge files carry no Text.

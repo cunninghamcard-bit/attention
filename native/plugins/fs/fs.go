@@ -228,7 +228,11 @@ func (s *Service) Stat(ctx context.Context, path string) (contract.Entry, error)
 	if err != nil {
 		return contract.Entry{}, err
 	}
-	return contract.Entry{Name: filepath.Base(path), Path: path, Dir: st.IsDir(), Size: st.Size()}, nil
+	e := contract.Entry{Name: filepath.Base(path), Path: path, Dir: st.IsDir(), Size: st.Size(), ModTime: st.ModTime().UnixNano()}
+	if sys, ok := st.Sys().(*syscall.Stat_t); ok {
+		e.Inode = uint64(sys.Ino)
+	}
+	return e, nil
 }
 
 // Watch reports changes to the entries of dir (not deeper) as
