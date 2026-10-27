@@ -1,6 +1,6 @@
 // Package project is the project plugin (RFC 0001 §5.7): the mounted roots,
-// their file listing for quick open, project search, and the CLI's files
-// and mounts commands. The mount list persists in the config home.
+// their file listing for quick open, project search, and the CLI's file
+// and folder commands. The mount list persists in the config home.
 package project
 
 import (
@@ -50,6 +50,7 @@ type Service struct {
 	save   bool
 	notify func()
 	engine *Engine
+	fs     fscontract.FS
 }
 
 // New starts from the configured mounts, else the saved list, else the
@@ -269,9 +270,9 @@ func (s *Service) mountByID(id string) (contract.Mount, bool) {
 	return contract.Mount{}, false
 }
 
-// commands are the CLI's files, mounts and mount.
+// commands are the CLI's files, mounts, mount, and the file commands.
 func (s *Service) commands() []actionsapi.Command {
-	return []actionsapi.Command{
+	return append([]actionsapi.Command{
 		{ID: "files", CLI: true, Run: func(ctx context.Context, a actionsapi.Args) (string, error) {
 			listing, err := s.Files(ctx)
 			if err != nil {
@@ -335,7 +336,7 @@ func (s *Service) commands() []actionsapi.Command {
 			}
 			return "Mounted: " + m.Name + "\t" + m.Path, nil
 		}},
-	}
+	}, s.fileCommands()...)
 }
 
 // Plugin provides "project".
@@ -343,8 +344,13 @@ var Plugin = rutis.Define(rutis.Plugin[Config]{
 	Name:   "project",
 	Inject: []string{"actions", "fs"},
 	Apply: func(ctx *rutis.Ctx, cfg Config) error {
+		var fs fscontract.FS
+		if err := ctx.Use("fs", &fs); err != nil {
+			return err
+		}
 		emitCtx, cancel := context.WithCancel(context.Background())
 		svc := New(cfg.Mounts, true, func() { _ = ctx.Emit(emitCtx, contract.MountsChangedEvent) })
+		svc.fs = fs
 		ctx.Provide("project", svc)
 		for _, cmd := range svc.commands() {
 			off := actionsapi.Register(cmd)
