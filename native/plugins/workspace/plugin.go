@@ -1,7 +1,8 @@
 // Package workspace is the workspace UI plugin: the window's center (the
 // layout plugin draws the rest) — tab groups in splits (tree.go), their
 // tabs, whose bodies are the tab types' (tabtypesapi), the view and tab
-// headers, the session of open tabs — and the CLI's open and tabs.
+// headers, the session of open tabs — and the CLI's open, tabs, recents,
+// tab:open and workspace.
 //
 // TODO(RFC §5.6–§5.7): opening goes through navigation.
 package workspace
@@ -188,6 +189,9 @@ func (ws *Workspace) commands() []actionsapi.Command {
 				return strings.Join(lines, "\n"), nil
 			})
 		}},
+		{ID: "recents", CLI: true, Run: ws.cliRecents},
+		{ID: "tab:open", CLI: true, Run: ws.cliTabOpen},
+		{ID: "workspace", CLI: true, Run: ws.cliWorkspace},
 	}...)
 }
 
