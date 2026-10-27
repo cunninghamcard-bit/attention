@@ -50,12 +50,12 @@ const configFile = "terminal"
 
 // skipShell are the commands whose shortcuts reach the window from a
 // focused terminal: VS Code's DEFAULT_COMMANDS_TO_SKIP_SHELL, as far as the
-// reader has them. Keys a shell lives by (Ctrl W, Ctrl G, Ctrl \, Alt and
-// the arrows) are not among them.
+// reader has them, and the tab's own Close and New tab. Ctrl G, Ctrl \ and
+// Alt with the arrows stay the shell's.
 var skipShell = map[string]bool{
 	"command-palette:open": true, "switcher:open": true, "global-search:open": true, "app:open-settings": true,
 	"app:toggle-left-sidebar": true, "app:toggle-right-sidebar": true, "terminal:open": true, "quit": true,
-	"workspace:next-tab": true, "workspace:previous-tab": true, "workspace:undo-close-pane": true, "workspace:goto-last-tab": true,
+	"workspace:close": true, "workspace:new-tab": true, "workspace:next-tab": true, "workspace:previous-tab": true, "workspace:undo-close-pane": true, "workspace:goto-last-tab": true,
 	"workspace:goto-tab-1": true, "workspace:goto-tab-2": true, "workspace:goto-tab-3": true, "workspace:goto-tab-4": true,
 	"workspace:goto-tab-5": true, "workspace:goto-tab-6": true, "workspace:goto-tab-7": true, "workspace:goto-tab-8": true,
 }
