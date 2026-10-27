@@ -60,6 +60,14 @@ type page struct {
 	md         markdown.Options
 	extracting bool
 	focusBar   bool // Focus address bar asked for the caret
+	// The address bar's suggestions (suggest.go): shown, the list shown
+	// last, the highlighted one; whether the bar had the caret, and the
+	// text it last held.
+	suggesting bool
+	suggested  []suggestion
+	selected   int
+	barFocused bool
+	lastTyped  string
 	// The find bar: shown, its text, the matches for found, and whether
 	// it should take the caret.
 	finding   bool
@@ -317,9 +325,27 @@ func Register(loaded func(webcontract.Page)) (off func()) {
 					pg.focusBar = false
 					field.Focus()
 				}
-				if field.Submitted() {
-					navigate(pg, p, pg.typed)
+				// The suggestions open as the bar takes the caret, and again
+				// as its text changes.
+				focused := field.Focused()
+				if focused && (!pg.barFocused || pg.typed != pg.lastTyped) {
+					pg.suggesting, pg.selected = true, 0
 				}
+				pg.barFocused, pg.lastTyped = focused, pg.typed
+				open := func(u string) {
+					navigate(pg, p, u)
+					// The bar now shows where it went: no text typed.
+					pg.suggesting, pg.lastTyped = false, pg.typed
+				}
+				if field.Submitted() {
+					// Enter belongs to the suggestions while they show.
+					if pg.suggesting && pg.selected >= 0 && pg.selected < len(pg.suggested) {
+						open(pg.suggested[pg.selected].url)
+					} else {
+						open(pg.typed)
+					}
+				}
+				suggestPanel(c, pg, field, open)
 			})
 		},
 		Actions: func(c *ui.Context, p tabtypesapi.Props) {

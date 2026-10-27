@@ -21,6 +21,7 @@ import (
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
+	"github.com/cunninghamcard-bit/attention/native/bookmarksapi"
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/internal/persist"
@@ -134,7 +135,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			ID: PanelID, Title: "Bookmarks", Icon: lucide.Bookmark(), Dock: slotsapi.Left, Order: 2,
 			View: b.view, State: b.state, Restore: b.restore,
 		})
-		offs := []func(){off}
+		offs := []func(){off, bookmarksapi.Set(b)}
 		for _, cmd := range b.commands() {
 			offs = append(offs, actionsapi.Register(cmd))
 		}
@@ -148,6 +149,28 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		return nil
 	},
 })
+
+// URLs are the url bookmarks, groups' included (bookmarksapi).
+func (b *Bookmarks) URLs() []bookmarksapi.URL {
+	var out []bookmarksapi.URL
+	var walk func([]*Item)
+	walk = func(items []*Item) {
+		for _, it := range items {
+			switch it.Type {
+			case "url":
+				title := it.Title
+				if title == "" {
+					title = it.URL
+				}
+				out = append(out, bookmarksapi.URL{Title: title, URL: it.URL})
+			case "group":
+				walk(it.Items)
+			}
+		}
+	}
+	walk(b.items)
+	return out
+}
 
 func cloneItems(items []*Item) []*Item {
 	if items == nil {
