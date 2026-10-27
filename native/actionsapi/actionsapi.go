@@ -17,11 +17,37 @@ import (
 	"sync"
 )
 
+var (
+	mu       sync.Mutex
+	commands = map[string]*entry{}
+	seq      int
+
+	// capture, while an element that takes the keys as they are — a
+	// terminal — has the focus, is the commands whose shortcuts still reach
+	// the window (VS Code's terminal.integrated.commandsToSkipShell); every
+	// other combination but Super's goes to the element. nil while none has
+	// the focus. It is updated as the frame builds, main thread only.
+	capture map[string]bool
+)
+
 // Args are a CLI invocation's parameters: key=value, and a bare token as
 // "true", as the existing CLI parses them.
 type Args struct {
 	Params map[string]string
 	Cwd    string
+}
+
+// ParseArgs reads CLI tokens after the command name.
+func ParseArgs(tokens []string, cwd string) Args {
+	a := Args{Params: map[string]string{}, Cwd: cwd}
+	for _, t := range tokens {
+		if k, v, ok := strings.Cut(t, "="); ok {
+			a.Params[k] = v
+		} else {
+			a.Params[t] = "true"
+		}
+	}
+	return a
 }
 
 // Has reports whether a parameter was given.
@@ -38,19 +64,6 @@ func (a Args) Int(key string) (int, bool, error) {
 		return 0, true, fmt.Errorf("Invalid %s: %s", key, v)
 	}
 	return n, true, nil
-}
-
-// ParseArgs reads CLI tokens after the command name.
-func ParseArgs(tokens []string, cwd string) Args {
-	a := Args{Params: map[string]string{}, Cwd: cwd}
-	for _, t := range tokens {
-		if k, v, ok := strings.Cut(t, "="); ok {
-			a.Params[k] = v
-		} else {
-			a.Params[t] = "true"
-		}
-	}
-	return a
 }
 
 // Command is one action.
@@ -76,11 +89,16 @@ type Command struct {
 	Main func()
 }
 
-var (
-	mu       sync.Mutex
-	commands = map[string]*entry{}
-	seq      int
-)
+// Lookup returns a command by ID.
+func Lookup(id string) (Command, bool) {
+	mu.Lock()
+	defer mu.Unlock()
+	e, ok := commands[id]
+	if !ok {
+		return Command{}, false
+	}
+	return e.cmd, true
+}
 
 type entry struct {
 	cmd Command
@@ -121,17 +139,6 @@ func List() []Command {
 	return out
 }
 
-// Lookup returns a command by ID.
-func Lookup(id string) (Command, bool) {
-	mu.Lock()
-	defer mu.Unlock()
-	e, ok := commands[id]
-	if !ok {
-		return Command{}, false
-	}
-	return e.cmd, true
-}
-
 // RunCLI runs a CLI invocation: argv[0] is the command, the rest its
 // parameters.
 func RunCLI(ctx context.Context, argv []string, cwd string) (string, error) {
@@ -161,6 +168,19 @@ func RunCLI(ctx context.Context, argv []string, cwd string) (string, error) {
 	return cmd.Run(ctx, ParseArgs(argv[1:], cwd))
 }
 
+// Help lists the CLI commands.
+func Help() string {
+	return "Usage: attention <command> [key=value ...]\n\nCommands:\n  " + strings.Join(cliIDs(), "\n  ")
+}
+
+// SetCapture says such an element has the focus for the frame, and which
+// commands keep their shortcuts; nil for none.
+func SetCapture(skipShell map[string]bool) { capture = skipShell }
+
+// Captured is what the last frame built set; the shortcuts plugin reads
+// it, then clears it for the frame to set again.
+func Captured() map[string]bool { return capture }
+
 // cliIDs are the CLI commands' names, sorted.
 func cliIDs() []string {
 	var ids []string
@@ -171,11 +191,6 @@ func cliIDs() []string {
 	}
 	sort.Strings(ids)
 	return ids
-}
-
-// Help lists the CLI commands.
-func Help() string {
-	return "Usage: attention <command> [key=value ...]\n\nCommands:\n  " + strings.Join(cliIDs(), "\n  ")
 }
 
 // suggest returns up to three CLI commands close to name: sharing a prefix
@@ -219,18 +234,3 @@ func distance(a, b string) int {
 	}
 	return prev[len(b)]
 }
-
-// capture, while an element that takes the keys as they are — a
-// terminal — has the focus, is the commands whose shortcuts still reach
-// the window (VS Code's terminal.integrated.commandsToSkipShell); every
-// other combination but Super's goes to the element. nil while none has
-// the focus. It is updated as the frame builds, main thread only.
-var capture map[string]bool
-
-// SetCapture says such an element has the focus for the frame, and which
-// commands keep their shortcuts; nil for none.
-func SetCapture(skipShell map[string]bool) { capture = skipShell }
-
-// Captured is what the last frame built set; the shortcuts plugin reads
-// it, then clears it for the frame to set again.
-func Captured() map[string]bool { return capture }

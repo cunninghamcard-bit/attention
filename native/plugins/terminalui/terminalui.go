@@ -38,27 +38,41 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
-// ID is the plugin's and its type's; Kind the tab kind
-// (TERMINAL_VIEW_TYPE).
 const (
+	// ID is the plugin's and its type's; Kind the tab kind
+	// (TERMINAL_VIEW_TYPE).
 	ID   = "terminal-ui"
 	Kind = "terminal"
+
+	// configFile is the Terminal settings' file.
+	configFile = "terminal"
 )
 
-// configFile is the Terminal settings' file.
-const configFile = "terminal"
+var (
+	// skipShell are the commands whose shortcuts reach the window from a
+	// focused terminal: VS Code's DEFAULT_COMMANDS_TO_SKIP_SHELL, as far as the
+	// reader has them, and the tab's own Close and New tab. Ctrl G, Ctrl \ and
+	// Alt with the arrows stay the shell's.
+	skipShell = map[string]bool{
+		"command-palette:open": true, "switcher:open": true, "global-search:open": true, "app:open-settings": true,
+		"app:toggle-left-sidebar": true, "app:toggle-right-sidebar": true, "terminal:open": true, "quit": true,
+		"workspace:close": true, "workspace:new-tab": true, "workspace:next-tab": true, "workspace:previous-tab": true, "workspace:undo-close-pane": true, "workspace:goto-last-tab": true,
+		"workspace:goto-tab-1": true, "workspace:goto-tab-2": true, "workspace:goto-tab-3": true, "workspace:goto-tab-4": true,
+		"workspace:goto-tab-5": true, "workspace:goto-tab-6": true, "workspace:goto-tab-7": true, "workspace:goto-tab-8": true,
+	}
 
-// skipShell are the commands whose shortcuts reach the window from a
-// focused terminal: VS Code's DEFAULT_COMMANDS_TO_SKIP_SHELL, as far as the
-// reader has them, and the tab's own Close and New tab. Ctrl G, Ctrl \ and
-// Alt with the arrows stay the shell's.
-var skipShell = map[string]bool{
-	"command-palette:open": true, "switcher:open": true, "global-search:open": true, "app:open-settings": true,
-	"app:toggle-left-sidebar": true, "app:toggle-right-sidebar": true, "terminal:open": true, "quit": true,
-	"workspace:close": true, "workspace:new-tab": true, "workspace:next-tab": true, "workspace:previous-tab": true, "workspace:undo-close-pane": true, "workspace:goto-last-tab": true,
-	"workspace:goto-tab-1": true, "workspace:goto-tab-2": true, "workspace:goto-tab-3": true, "workspace:goto-tab-4": true,
-	"workspace:goto-tab-5": true, "workspace:goto-tab-6": true, "workspace:goto-tab-7": true, "workspace:goto-tab-8": true,
-}
+	// Plugin is the terminal while loaded.
+	Plugin = rutis.Define(rutis.Plugin[struct{}]{
+		Name:   ID,
+		Inject: []string{"shell", "workspace"},
+		Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+			settingsapi.Load(configFile)
+			off := Register()
+			rctx.Effect(func(context.Context) error { off(); return nil })
+			return nil
+		},
+	})
+)
 
 // session is a tab's shell: its terminal, or why there is none.
 type session struct {
@@ -96,85 +110,6 @@ func (t *Terminals) open(dir string) {
 	}
 	t.pending = dir
 	_ = ws.OpenResource(t.address(), workspaceapi.OpenOptions{Kind: Kind, NewTab: true})
-}
-
-// defaultDir is the active file's folder, else the home folder (the TS
-// defaultCwd is the vault's; the reader has no one folder).
-func defaultDir() string {
-	if ws := workspaceapi.Get(); ws != nil {
-		if info, ok := ws.ActiveTab(); ok && info.Path != "" {
-			return filepath.Dir(info.Path)
-		}
-	}
-	home, _ := os.UserHomeDir()
-	return home
-}
-
-// font is the Terminal settings' font.
-func font() terminal.Font {
-	var f terminal.Font
-	settingsapi.Get(configFile, "fontFamily", &f.Family)
-	settingsapi.Get(configFile, "fontSize", &f.Size)
-	return f
-}
-
-// shell is the Shell setting, else the login shell from the user database
-// rather than an inherited $SHELL (as Alacritty), else nil for mygo's own.
-func shell() []string {
-	var cmd string
-	settingsapi.Get(configFile, "shell", &cmd)
-	if fields := strings.Fields(cmd); len(fields) > 0 {
-		return fields
-	}
-	if sh := loginShell(); sh != "" {
-		return []string{sh, "-l"}
-	}
-	return nil
-}
-
-func loginShell() string {
-	u, err := user.Current()
-	if err != nil {
-		return ""
-	}
-	entry := ""
-	if data, err := os.ReadFile("/etc/passwd"); err == nil {
-		for line := range strings.Lines(string(data)) {
-			if f := strings.Split(strings.TrimSpace(line), ":"); len(f) == 7 && f[2] == u.Uid {
-				entry = line
-				break
-			}
-		}
-	}
-	if entry == "" {
-		out, err := exec.Command("getent", "passwd", u.Uid).Output()
-		if err != nil {
-			return ""
-		}
-		entry = string(out)
-	}
-	f := strings.Split(strings.TrimSpace(entry), ":")
-	if len(f) != 7 {
-		return ""
-	}
-	if st, err := os.Stat(f[6]); err != nil || st.IsDir() || st.Mode()&0o111 == 0 {
-		return ""
-	}
-	return f[6]
-}
-
-// keybinds are the Ctrl C and Ctrl V setting's, on by default: Ctrl C
-// copies a selection and without one interrupts, as Windows Terminal.
-func keybinds() []terminal.Keybind {
-	on := true
-	settingsapi.Get(configFile, "ctrlCopyPaste", &on)
-	if !on {
-		return nil
-	}
-	return []terminal.Keybind{
-		{Mods: ui.Ctrl, Key: ui.KeyC, Action: terminal.ActionCopy, Performable: true},
-		{Mods: ui.Ctrl, Key: ui.KeyV, Action: terminal.ActionPaste},
-	}
 }
 
 // start runs a shell for s (TerminalService.spawnInto).
@@ -269,6 +204,117 @@ func (t *Terminals) closed(id int) {
 	}
 }
 
+// Register adds the terminal tab type, its command and settings tab until
+// off is called.
+func Register() (off func()) {
+	t := &Terminals{sessions: map[int]*session{}}
+	openHere := func() { t.open("") }
+	offs := []func(){
+		tabtypesapi.Register(tabtypesapi.TabType{ID: ID, Kind: Kind, Priority: tabtypesapi.Builtin,
+			Patterns: []string{"attention://terminal/*"}, Title: title, Icon: lucide.SquareTerminal(),
+			Body: t.body, Closed: t.closed}),
+		actionsapi.Register(actionsapi.Command{ID: "terminal:open", Title: "Open terminal", Keys: "Ctrl J", Main: openHere, CLI: true,
+			Run: func(ctx context.Context, a actionsapi.Args) (string, error) {
+				dir := a.Params["path"]
+				if dir != "" && !filepath.IsAbs(dir) {
+					dir = filepath.Join(a.Cwd, dir)
+				}
+				return shellapi.OnMain(ctx, func() (string, error) { t.open(dir); return "Opened terminal", nil })
+			}}),
+		slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "terminal", Title: "Terminal", Icon: lucide.SquareTerminal(),
+			Group: slotsapi.CorePlugins, Keywords: []string{"Shell", "Copy and paste", "Font family", "Font size"}, View: settingTab}),
+	}
+	return func() {
+		for i := len(offs) - 1; i >= 0; i-- {
+			offs[i]()
+		}
+		shellapi.Update(func() {
+			for id := range t.sessions {
+				t.closed(id)
+			}
+		})
+	}
+}
+
+// defaultDir is the active file's folder, else the home folder (the TS
+// defaultCwd is the vault's; the reader has no one folder).
+func defaultDir() string {
+	if ws := workspaceapi.Get(); ws != nil {
+		if info, ok := ws.ActiveTab(); ok && info.Path != "" {
+			return filepath.Dir(info.Path)
+		}
+	}
+	home, _ := os.UserHomeDir()
+	return home
+}
+
+// font is the Terminal settings' font.
+func font() terminal.Font {
+	var f terminal.Font
+	settingsapi.Get(configFile, "fontFamily", &f.Family)
+	settingsapi.Get(configFile, "fontSize", &f.Size)
+	return f
+}
+
+// shell is the Shell setting, else the login shell from the user database
+// rather than an inherited $SHELL (as Alacritty), else nil for mygo's own.
+func shell() []string {
+	var cmd string
+	settingsapi.Get(configFile, "shell", &cmd)
+	if fields := strings.Fields(cmd); len(fields) > 0 {
+		return fields
+	}
+	if sh := loginShell(); sh != "" {
+		return []string{sh, "-l"}
+	}
+	return nil
+}
+
+func loginShell() string {
+	u, err := user.Current()
+	if err != nil {
+		return ""
+	}
+	entry := ""
+	if data, err := os.ReadFile("/etc/passwd"); err == nil {
+		for line := range strings.Lines(string(data)) {
+			if f := strings.Split(strings.TrimSpace(line), ":"); len(f) == 7 && f[2] == u.Uid {
+				entry = line
+				break
+			}
+		}
+	}
+	if entry == "" {
+		out, err := exec.Command("getent", "passwd", u.Uid).Output()
+		if err != nil {
+			return ""
+		}
+		entry = string(out)
+	}
+	f := strings.Split(strings.TrimSpace(entry), ":")
+	if len(f) != 7 {
+		return ""
+	}
+	if st, err := os.Stat(f[6]); err != nil || st.IsDir() || st.Mode()&0o111 == 0 {
+		return ""
+	}
+	return f[6]
+}
+
+// keybinds are the Ctrl C and Ctrl V setting's, on by default: Ctrl C
+// copies a selection and without one interrupts, as Windows Terminal.
+func keybinds() []terminal.Keybind {
+	on := true
+	settingsapi.Get(configFile, "ctrlCopyPaste", &on)
+	if !on {
+		return nil
+	}
+	return []terminal.Keybind{
+		{Mods: ui.Ctrl, Key: ui.KeyC, Action: terminal.ActionCopy, Performable: true},
+		{Mods: ui.Ctrl, Key: ui.KeyV, Action: terminal.ActionPaste},
+	}
+}
+
 // title is a terminal's until its program sets one.
 func title(string) string { return "Terminal" }
 
@@ -322,50 +368,6 @@ func settingTab(c *ui.Context) {
 		})
 	})
 }
-
-// Register adds the terminal tab type, its command and settings tab until
-// off is called.
-func Register() (off func()) {
-	t := &Terminals{sessions: map[int]*session{}}
-	openHere := func() { t.open("") }
-	offs := []func(){
-		tabtypesapi.Register(tabtypesapi.TabType{ID: ID, Kind: Kind, Priority: tabtypesapi.Builtin,
-			Patterns: []string{"attention://terminal/*"}, Title: title, Icon: lucide.SquareTerminal(),
-			Body: t.body, Closed: t.closed}),
-		actionsapi.Register(actionsapi.Command{ID: "terminal:open", Title: "Open terminal", Keys: "Ctrl J", Main: openHere, CLI: true,
-			Run: func(ctx context.Context, a actionsapi.Args) (string, error) {
-				dir := a.Params["path"]
-				if dir != "" && !filepath.IsAbs(dir) {
-					dir = filepath.Join(a.Cwd, dir)
-				}
-				return shellapi.OnMain(ctx, func() (string, error) { t.open(dir); return "Opened terminal", nil })
-			}}),
-		slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "terminal", Title: "Terminal", Icon: lucide.SquareTerminal(),
-			Group: slotsapi.CorePlugins, Keywords: []string{"Shell", "Copy and paste", "Font family", "Font size"}, View: settingTab}),
-	}
-	return func() {
-		for i := len(offs) - 1; i >= 0; i-- {
-			offs[i]()
-		}
-		shellapi.Update(func() {
-			for id := range t.sessions {
-				t.closed(id)
-			}
-		})
-	}
-}
-
-// Plugin is the terminal while loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   ID,
-	Inject: []string{"shell", "workspace"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		settingsapi.Load(configFile)
-		off := Register()
-		rctx.Effect(func(context.Context) error { off(); return nil })
-		return nil
-	},
-})
 
 func debugf(format string, a ...any) {
 	if os.Getenv("ATTENTION_DEBUG") != "" {
