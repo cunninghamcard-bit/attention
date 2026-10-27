@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/ui"
 
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
@@ -75,6 +76,11 @@ type pane struct {
 	node   *node
 	tabs   []*tab
 	active int
+	// The view's last frame: the tab chips' boxes, the body's, and where
+	// a tab dragged over the body would land ("" for none; drag.go).
+	chips      []ui.Rect
+	bodyBounds ui.Rect
+	dropSide   string
 }
 
 // tab is a tab's identity and what the workspace knows of its file; the

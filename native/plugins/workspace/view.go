@@ -277,12 +277,29 @@ func (ws *Workspace) paneView(c *ui.Context, p *pane) {
 	}
 	col.Children(func() {
 		ws.tabBar(c, p, focused || alone)
-		tb := p.current()
-		if tb == nil {
-			ws.emptyPane(c)
-			return
+		side := p.dropSide
+		body := ui.Column(c).Grow(1).Fill().MinHeight(0).Children(func() {
+			if tb := p.current(); tb == nil {
+				ws.emptyPane(c)
+			} else {
+				ws.tabBody(c, p, tb, focused || alone)
+			}
+			if side != "" {
+				b := p.bodyBounds
+				dropOverlay(c, side, b.W, b.H)
+			}
+		})
+		// The overlay follows the drag a frame behind: where it lands is
+		// known once the body has its box.
+		p.dropSide, p.bodyBounds = "", body.Bounds()
+		if _, over := ui.DragOver[*tab](body); over {
+			x, y, _ := body.PointerPosition()
+			p.dropSide = dropSide(x, y, p.bodyBounds.W, p.bodyBounds.H)
 		}
-		ws.tabBody(c, p, tb, focused || alone)
+		if dragged, ok := ui.Drop[*tab](body); ok {
+			x, y, _ := body.PointerPosition()
+			ws.dropOn(dragged, p, dropSide(x, y, p.bodyBounds.W, p.bodyBounds.H))
+		}
 	})
 }
 
@@ -291,7 +308,8 @@ func (ws *Workspace) paneView(c *ui.Context, p *pane) {
 // while that sidebar is closed (updateSidebarTogglePlacement).
 func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
 	t := c.Theme()
-	ui.Row(c).Height(38).Shrink(0).FillWidth().Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).
+	p.chips = p.chips[:0]
+	header := ui.Row(c).Height(38).Shrink(0).FillWidth().Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).
 		AlignItems(ui.Center).PaddingX(4).Gap(2).Children(func() {
 		ui.ScrollHorizontal(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
 			ui.Row(c).PaddingX(6).Gap(2).AlignItems(ui.Center).FillHeight().Children(func() {
@@ -307,6 +325,9 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
 			ws.sidebarToggle(c, slotsapi.Right)
 		}
 	})
+	if dragged, ok := ui.Drop[*tab](header); ok {
+		ws.moveTab(dragged, p, insertIndex(p, header))
+	}
 }
 
 func (ws *Workspace) tabChip(c *ui.Context, p *pane, j int, tb *tab) {
@@ -329,6 +350,8 @@ func (ws *Workspace) tabChip(c *ui.Context, p *pane, j int, tb *tab) {
 		OnClose:    func() { ws.closeTab(p, j) },
 	})
 	chip.ContextMenu(func(m *ui.Menu) { nativeMenu(m, ws.tabMenu(p, tb)) })
+	chip.Drag(tb)
+	p.chips = append(p.chips, chip.Bounds())
 	if chip.Clicked() {
 		p.active = j
 		ws.activeGroup = p
