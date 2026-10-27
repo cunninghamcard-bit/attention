@@ -278,7 +278,7 @@ func (t *tab) displayText() string {
 	return t.title
 }
 
-// cliOpen is `open path=<path> | file=<name> [line=<n> [to=<n>]] [newtab]`,
+// cliOpen is `open path=<path> | file=<name> [line=<n> [to=<n>]] [kind=<kind>] [newtab]`,
 // with the TS CLI's messages. path= is exact: "<mount>/<rel>", absolute, or
 // relative to the caller's directory or a mount. file= resolves like a
 // wikilink: the extension may be left off (.md) and a bare name is found
@@ -323,7 +323,10 @@ func (ws *Workspace) cliOpen(ctx context.Context, a actionsapi.Args) (string, er
 		if hasLine {
 			nav = &workspaceapi.Nav{Line: line, To: to}
 		}
-		ws.openIn(target, nav, a.Has("newtab"))
+		opts := workspaceapi.OpenOptions{Nav: nav, NewTab: a.Has("newtab"), Kind: a.Params["kind"]}
+		if _, err := ws.openAddress(ws.addressOf(target), target, opts); err != nil {
+			return "", err
+		}
 		if w := shellapi.Window(); w != nil {
 			w.Focus()
 		}
@@ -409,6 +412,11 @@ func (ws *Workspace) resolveLink(ctx context.Context, mounts []projectcontract.M
 type api struct{ ws *Workspace }
 
 func (a api) Open(path string, nav *workspaceapi.Nav, newTab bool) { a.ws.openIn(path, nav, newTab) }
+
+func (a api) OpenResource(address string, o workspaceapi.OpenOptions) error {
+	_, err := a.ws.openResource(address, o)
+	return err
+}
 
 func (a api) ActivePath() string {
 	if t := a.ws.activeTab(); t != nil && !t.empty {

@@ -7,6 +7,7 @@ import (
 
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
+	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
 func TestTabsAreClaimedByAddress(t *testing.T) {
@@ -102,5 +103,41 @@ func TestAReadFromAnEarlierClaimDoesNotMarkTheTab(t *testing.T) {
 	testPosts.next(t) // the markdown read comes back
 	if tb.typeID != "ext-md" || tb.missing {
 		t.Fatalf("%s missing %v: the old viewer's read marked the tab", tb.typeID, tb.missing)
+	}
+}
+
+func TestOpenResourceAsAKindKeepsTheKind(t *testing.T) {
+	ws, tt := testWorkspace(t)
+	md := ws.open("/m/alpha.md", nil)
+	asText, err := ws.openResource(fscontract.AddressFor("m", "alpha.md"), workspaceapi.OpenOptions{Kind: "text"})
+	if err != nil || asText == md || asText.typeID != "text-ui" {
+		t.Fatalf("a markdown file opened as text is a tab of its own: %v %v", asText, err)
+	}
+	tabtypesapi.Register(tabtypesapi.TabType{ID: "other", Kind: "other", Patterns: []string{"*.md"}})()
+	tt.Frame()
+	if asText.kind != "text" || md.kind != "markdown" {
+		t.Fatalf("after a reclaim: %s and %s", asText.kind, md.kind)
+	}
+	if again, _ := ws.openResource(fscontract.AbsoluteAddress("/m/alpha.md"), workspaceapi.OpenOptions{}); again != md {
+		t.Fatal("an absolute address under a mount is the mount's address, and its tab")
+	}
+}
+
+func TestOpenResourceRefusesWhatItCannotOpen(t *testing.T) {
+	ws, _ := testWorkspace(t)
+	before := len(ws.activePane().tabs)
+	for _, c := range []struct{ address, kind string }{
+		{"garbage", ""},
+		{"attention-resource://git/r/a.md", ""},
+		{fscontract.AddressFor("nope", "a.md"), ""},
+		{fscontract.AddressFor("m", "../etc/passwd"), ""},
+		{fscontract.AddressFor("m", "alpha.md"), "no-such-kind"},
+	} {
+		if _, err := ws.openResource(c.address, workspaceapi.OpenOptions{Kind: c.kind}); err == nil {
+			t.Errorf("%s as %q opened", c.address, c.kind)
+		}
+	}
+	if len(ws.activePane().tabs) != before {
+		t.Fatal("a refused open made a tab")
 	}
 }

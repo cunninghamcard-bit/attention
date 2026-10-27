@@ -84,6 +84,8 @@ type tab struct {
 	// address; the tab's identity is (kind, address).
 	kind   string
 	typeID string
+	// wantKind is the kind the tab was opened as, "" for the best claim.
+	wantKind string
 	// closed is the claiming type's Closed, kept from the claim: by the
 	// time a type is gone from the registry it can no longer be looked up.
 	closed  func(tabID int)
@@ -124,7 +126,7 @@ func (ws *Workspace) addressOf(path string) string {
 
 // claim gives t the tab type that shows its address now.
 func (ws *Workspace) claim(t *tab) {
-	tt, ok := tabtypesapi.Claim(t.address, "")
+	tt, ok := tabtypesapi.Claim(t.address, t.wantKind)
 	if ok && tt.ID == t.typeID {
 		t.closed = tt.Closed // the same type, perhaps registered again
 		return
@@ -260,6 +262,49 @@ func (ws *Workspace) open(path string, nav *workspaceapi.Nav) *tab {
 
 // openIn is open; newTab opens another tab even when one shows path.
 func (ws *Workspace) openIn(path string, nav *workspaceapi.Nav, newTab bool) *tab {
+	t, _ := ws.openAddress(ws.addressOf(path), path, workspaceapi.OpenOptions{Nav: nav, NewTab: newTab})
+	return t
+}
+
+// openResource opens a file address (workspaceapi.API.OpenResource).
+func (ws *Workspace) openResource(address string, o workspaceapi.OpenOptions) (*tab, error) {
+	path, err := ws.pathOf(address)
+	if err != nil {
+		return nil, err
+	}
+	return ws.openAddress(ws.addressOf(path), path, o)
+}
+
+// pathOf is the file a file address names.
+func (ws *Workspace) pathOf(address string) (string, error) {
+	a, ok := fscontract.ParseAddress(address)
+	if !ok {
+		return "", fmt.Errorf("%q is not a file address", address)
+	}
+	if a.Abs != "" {
+		return filepath.Clean(a.Abs), nil
+	}
+	for _, m := range ws.mounts {
+		if m.ID != a.Mount {
+			continue
+		}
+		p := filepath.Join(m.Path, filepath.FromSlash(a.Rel))
+		if p != m.Path && !strings.HasPrefix(p, m.Path+string(filepath.Separator)) {
+			return "", fmt.Errorf("%q is outside its mount", address)
+		}
+		return p, nil
+	}
+	return "", fmt.Errorf("%q names no mount", address)
+}
+
+// openAddress opens path, whose canonical address is address.
+func (ws *Workspace) openAddress(address, path string, opts workspaceapi.OpenOptions) (*tab, error) {
+	if opts.Kind != "" {
+		if _, ok := tabtypesapi.Claim(address, opts.Kind); !ok {
+			return nil, fmt.Errorf("no tab type of kind %q opens %q", opts.Kind, address)
+		}
+	}
+	nav, newTab := opts.Nav, opts.NewTab
 	p := ws.activePane()
 	// A file opens in the active new tab, as a browser's address does.
 	if cur := p.current(); cur != nil && cur.empty && !newTab {
@@ -269,7 +314,7 @@ func (ws *Workspace) openIn(path string, nav *workspaceapi.Nav, newTab bool) *ta
 			p.active = min(p.active, len(p.tabs)-1)
 		}
 	}
-	t := &tab{address: ws.addressOf(path), path: path, title: filepath.Base(path)}
+	t := &tab{address: address, path: path, title: filepath.Base(path), wantKind: opts.Kind}
 	ws.claim(t)
 	for i, o := range p.tabs {
 		if !newTab && !o.empty && o.kind == t.kind && o.address == t.address {
@@ -279,7 +324,7 @@ func (ws *Workspace) openIn(path string, nav *workspaceapi.Nav, newTab bool) *ta
 				o.navRev++
 			}
 			ws.changed()
-			return o
+			return o, nil
 		}
 	}
 	ws.nextTab++
@@ -296,7 +341,7 @@ func (ws *Workspace) openIn(path string, nav *workspaceapi.Nav, newTab bool) *ta
 	ws.watches.Watch(filepath.Dir(path))
 	ws.noteRecentFile(path)
 	ws.changed()
-	return t
+	return t, nil
 }
 
 func (ws *Workspace) closeTab(p *pane, i int) {

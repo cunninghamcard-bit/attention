@@ -3,7 +3,9 @@
 // display paths, revealing a panel. Panel plugins inject the "workspace"
 // service so rutis orders them after it, then call Get on the main thread.
 //
-// TODO(RFC §5.6): opening becomes navigation.OpenResource.
+// OpenResource is the one way in (dsh's sidebarRight.openResource); Open
+// is it for a path. TODO(RFC §5.6): OpenTab and page addresses
+// (attention://<kind>) come with the first page type.
 package workspaceapi
 
 import (
@@ -15,9 +17,24 @@ import (
 // Nav is where to put the reader in the opened file (tabtypesapi.Nav).
 type Nav = tabtypesapi.Nav
 
+// OpenOptions are how a resource opens.
+type OpenOptions struct {
+	Nav    *Nav
+	NewTab bool // another tab even when one shows the resource
+	// Kind, optional, names the tab type to show it with; its patterns are
+	// not consulted, its CanOpen is. A tab keeps it across reclaims.
+	Kind string
+}
+
 // API is the workspace, called on the main thread only.
 type API interface {
-	// Open shows path in the active pane (a new tab with newTab).
+	// OpenResource shows a resource address in the active pane, focusing
+	// the tab that shows it as the same kind. An address that is no file
+	// under a known mount or absolute, or a Kind that does not open it, is
+	// an error and opens nothing; a file no type claims opens a tab that
+	// says so.
+	OpenResource(address string, o OpenOptions) error
+	// Open is OpenResource for path (a new tab with newTab).
 	Open(path string, nav *Nav, newTab bool)
 	// ActivePath is the active tab's file, "" for none.
 	ActivePath() string

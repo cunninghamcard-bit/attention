@@ -18,7 +18,7 @@ The repo-root `AGENTS.md` / `CLAUDE.md` rule “reconstruct Obsidian byte-for-by
 
 ## rutis plugins
 
-- UI plugins contribute through `slotsapi` (dock panels, ribbon) and reach the workspace through `workspaceapi`; they inject `workspace` so rutis orders them after it.
+- UI plugins contribute through `slotsapi` (dock panels, ribbon) and reach the workspace through `workspaceapi`; they inject `workspace` so rutis orders them after it. Opening goes through `OpenResource(address, opts)` (`Open(path)` for a path); a bad address or a `Kind` that won't open it is an error and makes no tab.
 - Viewers are tab types (`tabtypesapi`, RFC §5.6): a pattern over resource addresses (`fscontract.AddressFor` / `AbsoluteAddress`), a tier, a `Body` keyed by the type's ID. Tab identity is `(kind, address)`. As in dsh's registry: an ID registers once, a kind holds at most a Builtin and an Extension (the Extension in force, a Fallback alone), an unnamed `Priority` is Extension; breaking these panics. Panel and ribbon IDs register once too. They don't inject `workspace`: the workspace reclaims its tabs whenever the registry's generation changes.
 - A viewer keeps per-tab state by `Info.ID`, drops it in `Closed` (called when the tab closes or moves to another type, even one unloaded), and reads its file when `Info.Version` moves. It never subscribes to fs changes: the workspace watches and bumps `Version` (a stand-in for the resources service).
 - Constructors take a `post func(func())` (`shellapi.Update` in the plugin): tests pass a channel, since `shellapi.Update` holds posts until a window exists.
