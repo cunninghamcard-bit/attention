@@ -102,7 +102,8 @@ func Register() (off func()) {
 		// commit is handleCommittedNavigation: the tab moves to where the
 		// page went, the address it showed kept in its history.
 		commit := func(address string) {
-			if !live() || address == "" {
+			// A blob:, data: or javascript: page is no address a tab keeps.
+			if !live() || !tabtypesapi.WebAddress(address) {
 				return
 			}
 			pg.err = ""

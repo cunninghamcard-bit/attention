@@ -32,5 +32,7 @@ not listed is a defect.
 | `property:set` | records the type (`list` as `multitext`) in the type manager | parses by `type=` and records nothing | no property type registry |
 | `property:set` without `value=` | the dispatcher refuses it (required flag) | writes `""` | no required-flag dispatcher |
 | `backlinks` pane, `outline` pane | unlinked mentions; a code file's symbols | linked mentions only; headings only | not yet |
-| `reload`, `workspaces`, `workspace:save`/`load`/`delete`, `web` | present | not yet | reloading the UI runtime, named layouts and the web viewer come later (roadmap P3) |
+| `reload`, `workspaces`, `workspace:save`/`load`/`delete` | present | not yet | reloading the UI runtime and named layouts come later |
+| `web` | replaces the active leaf's view | the same, but a tab already showing the URL is revealed; needs the window (`desktop`) | openResource, as `open` |
+| any command, just after launch | registered when the app is ready | registered as its plugin loads: the socket answers before every plugin has (a script waits for `commands` to list it) | plugins load one by one |
 | `mount path=`, `focus`, `quit` | — | new | the reader's own; `quit` stops the app as closing its window does |
