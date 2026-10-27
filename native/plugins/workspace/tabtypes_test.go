@@ -18,13 +18,13 @@ func TestTabsAreClaimedByAddress(t *testing.T) {
 	if md.kind != "markdown" || md.typeID != "markdown-ui" || md.address != fscontract.AddressFor("m", "alpha.md") {
 		t.Fatalf("alpha.md = %s %s %s", md.kind, md.typeID, md.address)
 	}
-	if tb := ws.open("/m/main.go", nil); tb.kind != "text" {
+	if tb := ws.openIn("/m/main.go", nil, true); tb.kind != "text" {
 		t.Fatalf("main.go opened as %q", tb.kind)
 	}
-	if tb := ws.open("/m/pic.PNG", nil); tb.kind != "image" {
+	if tb := ws.openIn("/m/pic.PNG", nil, true); tb.kind != "image" {
 		t.Fatalf("pic.PNG opened as %q", tb.kind)
 	}
-	if tb := ws.open("/elsewhere/x.txt", nil); tb.address != fscontract.AbsoluteAddress("/elsewhere/x.txt") {
+	if tb := ws.openIn("/elsewhere/x.txt", nil, true); tb.address != fscontract.AbsoluteAddress("/elsewhere/x.txt") {
 		t.Fatalf("a file outside the mounts = %s", tb.address)
 	}
 	if again := ws.open("/m/alpha.md", nil); again != md || len(ws.activePane().tabs) != 4 {
@@ -49,7 +49,7 @@ func TestTypesComingAndGoingReclaimTabs(t *testing.T) {
 	if tb.typeID != "markdown-ui" {
 		t.Fatalf("its viewer gone, the tab goes back to the builtin: %s", tb.typeID)
 	}
-	tb2 := ws.open("/m/beta.md", nil)
+	tb2 := ws.openIn("/m/beta.md", nil, true)
 	off = tabtypesapi.Register(tabtypesapi.TabType{ID: "ext-md", Kind: "markdown", Priority: tabtypesapi.Extension, Patterns: []string{"*.md"},
 		Body:   func(c *ui.Context, _ tabtypesapi.Props) {},
 		Closed: func(id int) { closed = append(closed, id) },
@@ -130,7 +130,7 @@ func TestAMountMovesTheHoldToTheMountAddress(t *testing.T) {
 func TestOpenResourceAsAKindKeepsTheKind(t *testing.T) {
 	ws, tt := testWorkspace(t)
 	md := ws.open("/m/alpha.md", nil)
-	asText, err := ws.openResource(fscontract.AddressFor("m", "alpha.md"), workspaceapi.OpenOptions{Kind: "text"})
+	asText, err := ws.openResource(fscontract.AddressFor("m", "alpha.md"), workspaceapi.OpenOptions{Kind: "text", NewTab: true})
 	if err != nil || asText == md || asText.typeID != "text-ui" {
 		t.Fatalf("a markdown file opened as text is a tab of its own: %v %v", asText, err)
 	}

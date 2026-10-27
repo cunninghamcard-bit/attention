@@ -84,11 +84,25 @@ type TabType struct {
 	Body     func(c *ui.Context, p Props)
 	// Status, optional, draws the tab's status bar items.
 	Status func(c *ui.Context, p Props)
+	// Actions, optional, draws the tab's buttons in its view header, left
+	// of More options (attention's ItemView.addAction).
+	Actions func(c *ui.Context, p Props)
+	// Menu, optional, is the tab's own items in More options
+	// (View.onPaneMenu).
+	Menu func(tabID int) []MenuItem
 	// Closed, optional, drops a closed tab's state.
 	Closed func(tabID int)
 	// Lines, optional, is a text tab's caret line (1-based) and line
 	// count, false before its text is loaded: Go to line works on it.
 	Lines func(tabID int) (cur, lines int, ok bool)
+}
+
+// MenuItem is an entry a tab type adds to its tab's More options.
+type MenuItem struct {
+	Title   string
+	Icon    *ui.SVG
+	Checked bool
+	Run     func()
 }
 
 // kindSlot is a kind's registrations: the one in force and the one it

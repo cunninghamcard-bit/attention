@@ -98,6 +98,9 @@ type tab struct {
 	hold   func() // releases the address's resource (resourcesapi.Hold)
 	nav    *workspaceapi.Nav
 	navRev int
+	// back and forward are where the tab was and went back from, the
+	// nearest last (WorkspaceLeaf.backHistory, forwardHistory).
+	back, forward []histState
 }
 
 func newWorkspace(ctx context.Context, fs fscontract.FS, project projectcontract.Project) *Workspace {
@@ -207,6 +210,15 @@ func (ws *Workspace) focusGroup(g *pane) {
 	}
 }
 
+func (p *pane) indexOf(t *tab) int {
+	for i, o := range p.tabs {
+		if o == t {
+			return i
+		}
+	}
+	return p.active
+}
+
 func (p *pane) current() *tab {
 	if len(p.tabs) == 0 {
 		return nil
@@ -259,13 +271,12 @@ func (ws *Workspace) setMounts(ms []projectcontract.Mount) {
 
 // ---- tabs -------------------------------------------------------------------
 
-// open shows path in the active pane, reusing a tab that already shows it,
-// and applies nav when given.
+// open shows path (see openAddress) and applies nav when given.
 func (ws *Workspace) open(path string, nav *workspaceapi.Nav) *tab {
 	return ws.openIn(path, nav, false)
 }
 
-// openIn is open; newTab opens another tab even when one shows path.
+// openIn is open; newTab opens it in a new tab even when one shows path.
 func (ws *Workspace) openIn(path string, nav *workspaceapi.Nav, newTab bool) *tab {
 	t, _ := ws.openAddress(ws.addressOf(path), path, workspaceapi.OpenOptions{Nav: nav, NewTab: newTab})
 	return t
@@ -285,7 +296,11 @@ func (ws *Workspace) pathOf(address string) (string, error) {
 	return projectcontract.PathOf(ws.mounts, address)
 }
 
-// openAddress opens path, whose canonical address is address.
+// openAddress opens path, whose canonical address is address, as
+// attention's Workspace.openFile: a tab anywhere that shows it already is
+// revealed; else the active tab navigates to it, keeping where it was in
+// its history (WorkspaceLeaf.recordHistory); newTab opens it in a new tab
+// after the active one instead (getLeaf("tab")).
 func (ws *Workspace) openAddress(address, path string, opts workspaceapi.OpenOptions) (*tab, error) {
 	if opts.Kind != "" {
 		if _, ok := tabtypesapi.Claim(address, opts.Kind); !ok {
@@ -293,43 +308,113 @@ func (ws *Workspace) openAddress(address, path string, opts workspaceapi.OpenOpt
 		}
 	}
 	nav, newTab := opts.Nav, opts.NewTab
-	p := ws.activePane()
-	// A file opens in the active new tab, as a browser's address does.
-	if cur := p.current(); cur != nil && cur.empty && !newTab {
-		p.tabs = append(p.tabs[:p.active], p.tabs[p.active+1:]...)
-		p.active = max(0, p.active-1)
-		if len(p.tabs) > 0 {
-			p.active = min(p.active, len(p.tabs)-1)
+	st := histState{address: address, path: path, kind: opts.Kind, nav: nav}
+	if !newTab {
+		kind := ""
+		if tt, ok := tabtypesapi.Claim(address, opts.Kind); ok {
+			kind = tt.Kind
 		}
-	}
-	t := &tab{address: address, path: path, title: filepath.Base(path), wantKind: opts.Kind}
-	ws.claim(t)
-	for i, o := range p.tabs {
-		if !newTab && !o.empty && o.kind == t.kind && o.address == t.address {
-			p.active = i
-			if nav != nil {
-				o.nav = nav
-				o.navRev++
+		for _, g := range ws.groups() {
+			for i, o := range g.tabs {
+				if !o.empty && o.kind == kind && o.address == address {
+					g.active, ws.activeGroup = i, g
+					if nav != nil {
+						o.nav = nav
+						o.navRev++
+					}
+					ws.changed()
+					return o, nil
+				}
 			}
-			ws.changed()
-			return o, nil
 		}
 	}
-	ws.nextTab++
-	t.id = ws.nextTab
-	if nav != nil {
-		t.nav, t.navRev = nav, 1
+	p := ws.activePane()
+	if cur := p.current(); cur != nil && !newTab {
+		if !cur.empty {
+			cur.record()
+		}
+		ws.show(cur, st)
+		return cur, nil
 	}
+	t := &tab{}
 	at := p.active + 1
 	if len(p.tabs) == 0 {
 		at = 0
 	}
 	p.tabs = append(p.tabs[:at], append([]*tab{t}, p.tabs[at:]...)...)
 	p.active = at
-	t.hold = resourcesapi.Hold(address)
-	ws.noteRecentFile(path)
-	ws.changed()
+	ws.show(t, st)
 	return t, nil
+}
+
+// histState is where a tab was: what WorkspaceLeaf's history keeps of a
+// view state.
+type histState struct {
+	address, path, kind string
+	nav                 *workspaceapi.Nav
+}
+
+func (t *tab) state() histState {
+	return histState{address: t.address, path: t.path, kind: t.wantKind, nav: t.nav}
+}
+
+// record keeps where t is in its back history before it navigates away,
+// unless it is there already (WorkspaceLeaf.recordHistory).
+func (t *tab) record() {
+	st := t.state()
+	if n := len(t.back); n > 0 && t.back[n-1].address == st.address && t.back[n-1].kind == st.kind {
+		return
+	}
+	t.back = append(t.back, st)
+	t.forward = nil
+}
+
+// show makes t show st: its old type lets go of it and its old address is
+// released, and it takes a new id, so the type that claims it starts
+// afresh.
+func (ws *Workspace) show(t *tab, st histState) {
+	ws.release(t)
+	if t.hold != nil {
+		t.hold()
+	}
+	ws.nextTab++
+	t.id = ws.nextTab
+	t.empty = false
+	t.address, t.path, t.wantKind = st.address, st.path, st.kind
+	t.title = filepath.Base(st.path)
+	t.kind, t.typeID = "", ""
+	t.nav, t.navRev = st.nav, 0
+	if st.nav != nil {
+		t.navRev = 1
+	}
+	ws.claim(t)
+	t.hold = resourcesapi.Hold(st.address)
+	ws.noteRecentFile(st.path)
+	ws.changed()
+}
+
+// goHistory moves t delta steps through its history
+// (WorkspaceLeaf.goHistory).
+func (ws *Workspace) goHistory(t *tab, delta int) {
+	if t == nil || t.empty {
+		return
+	}
+	next, moved := t.state(), false
+	for ; delta > 0 && len(t.forward) > 0; delta-- {
+		st := t.forward[len(t.forward)-1]
+		t.forward = t.forward[:len(t.forward)-1]
+		t.back = append(t.back, next)
+		next, moved = st, true
+	}
+	for ; delta < 0 && len(t.back) > 0; delta++ {
+		st := t.back[len(t.back)-1]
+		t.back = t.back[:len(t.back)-1]
+		t.forward = append(t.forward, next)
+		next, moved = st, true
+	}
+	if moved {
+		ws.show(t, next)
+	}
 }
 
 func (ws *Workspace) closeTab(p *pane, i int) {
@@ -473,7 +558,7 @@ func (ws *Workspace) undoClose() {
 	if n := len(ws.closed); n > 0 {
 		path := ws.closed[n-1]
 		ws.closed = ws.closed[:n-1]
-		ws.open(path, nil)
+		ws.openIn(path, nil, true)
 	}
 }
 

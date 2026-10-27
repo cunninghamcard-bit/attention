@@ -70,7 +70,7 @@ func TestFramesPerTabKind(t *testing.T) {
 	pic := goldenPNG()
 	testBytes = pic
 	open := func(path string, nav *workspaceapi.Nav) *tab {
-		tb := ws.open(path, nav)
+		tb := ws.openIn(path, nav, true)
 		tt.Frame()
 		testPosts.next(t)
 		return tb

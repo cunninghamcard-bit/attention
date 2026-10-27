@@ -96,7 +96,7 @@ func TestQuickSwitcherOpensIntoTheNewTab(t *testing.T) {
 func TestCloseAndUndoClose(t *testing.T) {
 	ws, tt := testWorkspace(t)
 	ws.open("/m/alpha.md", nil)
-	ws.open("/m/beta.md", nil)
+	ws.openIn("/m/beta.md", nil, true)
 	tt.Frame()
 	press(tt, ui.Cmd, ui.KeyW)
 	if got := tabs(ws); len(got) != 1 || got[0] != "markdown:alpha" {

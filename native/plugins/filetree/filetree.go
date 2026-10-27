@@ -394,7 +394,8 @@ func (tr *Tree) view(c *ui.Context) {
 				if e.Dir {
 					tr.toggleDir(e.Path)
 				} else if ws != nil {
-					ws.Open(e.Path, nil, false)
+					// Mod-click opens a new tab (attention's Keymap.isModEvent).
+					ws.Open(e.Path, nil, row.ClickModifiers()&ui.Cmd != 0)
 				}
 			}
 			if ws != nil {

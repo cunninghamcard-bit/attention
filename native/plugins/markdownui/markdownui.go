@@ -16,6 +16,9 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 	"github.com/egoist/mygo/ui/markdown"
+	"github.com/smallnest/uix/components/lucide"
+
+	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
@@ -106,18 +109,31 @@ func (v *Viewer) body(c *ui.Context, p tabtypesapi.Props) {
 
 func (v *Viewer) status(c *ui.Context, p tabtypesapi.Props) {
 	d := v.doc(p)
-	t := c.Theme()
 	if d.source {
 		d.Cursor(c)
 	}
-	label := "Preview"
-	if d.source {
-		label = "Source"
-	}
-	if ui.Text(c, label).FontSize(12).TextColor(t.TextMuted).Tooltip("Toggle reading view (Ctrl E)").Clicked() {
-		d.source = !d.source
-	}
 	d.Language(c)
+}
+
+// actions is the view header's mode button, as MarkdownView's
+// (updateButtons): it names the view it switches to.
+func (v *Viewer) actions(c *ui.Context, p tabtypesapi.Props) {
+	d := v.doc(p)
+	label, icon := "Switch to source view", lucide.Code()
+	if d.source {
+		label, icon = "Switch to reading view", lucide.BookOpen()
+	}
+	omgui.Button(c, omgui.ButtonProps{Label: label, Icon: icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+		OnClick: func() { d.source = !d.source }}).Tooltip(label + " (Ctrl E)")
+}
+
+// menu is More options' Toggle reading view (MarkdownView.onPaneMenu).
+func (v *Viewer) menu(id int) []tabtypesapi.MenuItem {
+	d, ok := v.docs[id]
+	if !ok {
+		return nil
+	}
+	return []tabtypesapi.MenuItem{{Title: "Toggle reading view", Icon: lucide.BookOpen(), Checked: !d.source, Run: func() { d.source = !d.source }}}
 }
 
 // Register adds the markdown tab type until off is called; post runs a
@@ -129,6 +145,8 @@ func Register(ctx context.Context, fs fscontract.FS, post func(func())) (v *View
 		Patterns: []string{"*.md", "*.markdown", "*.mdx"},
 		Body:     v.body,
 		Status:   v.status,
+		Actions:  v.actions,
+		Menu:     v.menu,
 		Closed:   func(id int) { delete(v.docs, id) },
 		Lines: func(id int) (int, int, bool) {
 			if d, ok := v.docs[id]; ok {

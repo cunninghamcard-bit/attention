@@ -103,3 +103,42 @@ func TestPanelStateRoundTrips(t *testing.T) {
 		t.Fatalf("panel states = %s / %s", s.PanelStates["search"], s.PanelStates["gone"])
 	}
 }
+
+// Regression: a Key set on the IconMenu's element left More options never
+// opening.
+func TestMoreOptionsOpensAndSplits(t *testing.T) {
+	ws, tt := testWorkspace(t)
+	ws.open("/m/alpha.md", nil)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+	tt.Frame()
+	if err := tt.Click("More options"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.Click("Split right"); err != nil {
+		t.Fatalf("More options should list Split right: %v (%v)", err, tt.Texts())
+	}
+	if len(ws.groups()) != 2 {
+		t.Fatalf("Split right should make a second group: %d", len(ws.groups()))
+	}
+}
+
+// Regression: a Key set on the ribbon button's element left its OnClick
+// never running, and the header's Back the same.
+func TestRibbonAndBackButtonsRun(t *testing.T) {
+	ran := false
+	off := slotsapi.RegisterRibbon(slotsapi.RibbonItem{ID: "x", Title: "Do it", Icon: lucide.Folder(), Run: func() { ran = true }})
+	t.Cleanup(off)
+	ws, tt := testWorkspace(t)
+	if err := tt.Click("Do it"); err != nil || !ran {
+		t.Fatalf("the ribbon button should run: %v", err)
+	}
+	ws.open("/m/alpha.md", nil)
+	ws.open("/m/beta.md", nil)
+	tt.Frame()
+	if err := tt.Click("Back"); err != nil {
+		t.Fatal(err)
+	}
+	if got := tabs(ws); len(got) != 1 || got[0] != "markdown:alpha" {
+		t.Fatalf("Back should return the tab to alpha: %v", got)
+	}
+}

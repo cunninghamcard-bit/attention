@@ -270,7 +270,7 @@ func (ws *Workspace) reopen(main *sessionNode) {
 	for _, g := range groups {
 		ws.activeGroup = g.p
 		for _, path := range g.sn.Tabs {
-			ws.open(path, nil)
+			ws.openIn(path, nil, true)
 		}
 		if !hasTabs {
 			g.p.active = min(g.sn.Active, max(0, len(g.p.tabs)-1))

@@ -199,6 +199,14 @@ func (ws *Workspace) commands() []actionsapi.Command {
 		ui("workspace:next-tab", "Go to next tab", "Ctrl Tab", func() { ws.cycleTab(1) }),
 		ui("workspace:previous-tab", "Go to previous tab", "Ctrl Shift Tab", func() { ws.cycleTab(-1) }),
 		ui("workspace:goto-last-tab", "Go to last tab", "Ctrl 9", func() { ws.gotoTab(0) }),
+		ui("workspace:go-back", "Navigate back", "Alt Left", func() { ws.goHistory(ws.activeTab(), -1) }),
+		ui("workspace:go-forward", "Navigate forward", "Alt Right", func() { ws.goHistory(ws.activeTab(), 1) }),
+		ui("workspace:copy-path", "Copy path", "", func() { ws.copyPath(false) }),
+		ui("workspace:copy-full-path", "Copy absolute path", "", func() { ws.copyPath(true) }),
+		ui("open-with-default-app:open", "Open in default app", "", func() { ws.withActiveFile(mygo.Shell.OpenPath) }),
+		ui("open-with-default-app:show", "Show in system explorer", "", func() {
+			ws.withActiveFile(func(path string) error { mygo.Shell.ShowItemInFolder(path); return nil })
+		}),
 		ui("workspace:split-vertical", "Split right", "Ctrl \\", func() { ws.split(vertical) }),
 		ui("workspace:split-horizontal", "Split down", "", func() { ws.split(horizontal) }),
 		ui("editor:focus-top", "Navigate tab above", "", func() { ws.focusDirection("top") }),
@@ -431,3 +439,22 @@ func (a api) ActiveTab() (tabtypesapi.Info, bool) {
 func (a api) Display(path string) string { return a.ws.display(path) }
 
 func (a api) RevealPanel(id string) { a.ws.revealPanel(id) }
+
+// copyPath copies the active tab's path: as the CLI shows it, or absolute.
+func (ws *Workspace) copyPath(absolute bool) {
+	if t := ws.activeTab(); t != nil && !t.empty {
+		if absolute {
+			mygo.Clipboard.WriteText(t.path)
+		} else {
+			mygo.Clipboard.WriteText(ws.display(t.path))
+		}
+	}
+}
+
+// withActiveFile runs fn on the active tab's path off the main thread.
+func (ws *Workspace) withActiveFile(fn func(path string) error) {
+	if t := ws.activeTab(); t != nil && !t.empty {
+		path := t.path
+		go func() { _ = fn(path) }()
+	}
+}

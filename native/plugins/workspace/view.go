@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/egoist/mygo"
@@ -75,8 +76,8 @@ func (ws *Workspace) view(c *ui.Context) {
 // shortcuts are attention's defaults (apps/web: AppCommands, the command
 // palette, the quick switcher), Cmd on macOS and Ctrl elsewhere; the
 // editing ones do not apply to a reader. Keys attention leaves unbound get
-// ours: Ctrl Shift F, Ctrl B, Ctrl Alt B, Ctrl \, Ctrl Q. A tab type's own keys are its
-// body's (markdown's Ctrl E).
+// ours: Ctrl Shift F, Ctrl B, Ctrl Alt B, Ctrl \, Ctrl Q, Alt Left and
+// Right. A tab type's own keys are its body's (markdown's Ctrl E).
 func (ws *Workspace) shortcuts(c *ui.Context) {
 	digits := []ui.Key{ui.Key1, ui.Key2, ui.Key3, ui.Key4, ui.Key5, ui.Key6, ui.Key7, ui.Key8}
 	for i, k := range digits {
@@ -103,6 +104,10 @@ func (ws *Workspace) shortcuts(c *ui.Context) {
 		ws.cycleTab(1)
 	case c.Shortcut(ui.Ctrl|ui.Shift, ui.KeyTab), c.Shortcut(ui.Cmd|ui.Shift, ui.KeyBracketLeft), c.Shortcut(ui.Ctrl, ui.KeyPageUp):
 		ws.cycleTab(-1)
+	case c.Shortcut(ui.Alt, ui.KeyLeft):
+		ws.goHistory(ws.activeTab(), -1)
+	case c.Shortcut(ui.Alt, ui.KeyRight):
+		ws.goHistory(ws.activeTab(), 1)
 	case c.Shortcut(ui.Cmd|ui.Alt, ui.KeyB):
 		ws.toggleRight()
 	case c.Shortcut(ui.Cmd, ui.KeyB):
@@ -123,8 +128,9 @@ func (ws *Workspace) ribbon(c *ui.Context) {
 		Background(t.Surface).BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Children(func() {
 		for _, r := range slotsapi.Ribbon() {
 			run := r.Run
+			// No Key on the element: it rekeys the button and loses OnClick.
 			omgui.Button(c, omgui.ButtonProps{Label: r.Title, Icon: r.Icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall, OnClick: run}).
-				Key("ribbon:" + r.ID).Tooltip(r.Title)
+				Tooltip(r.Title)
 		}
 	})
 }
@@ -266,7 +272,7 @@ func (ws *Workspace) paneView(c *ui.Context, p *pane) {
 			ws.emptyPane(c)
 			return
 		}
-		ws.tabBody(c, tb, focused || alone)
+		ws.tabBody(c, p, tb, focused || alone)
 	})
 }
 
@@ -323,21 +329,90 @@ func (ws *Workspace) emptyPane(c *ui.Context) {
 
 // tabBody draws the tab's type's body (the tab.body slot, keyed by the
 // type's ID), under a banner while the file is missing.
-func (ws *Workspace) tabBody(c *ui.Context, tb *tab, focused bool) {
+func (ws *Workspace) tabBody(c *ui.Context, p *pane, tb *tab, focused bool) {
 	t := c.Theme()
 	if tb.empty {
 		ws.emptyPane(c)
 		return
 	}
+	tt, ok := tabtypesapi.Get(tb.typeID)
+	props := ws.props(tb, focused)
+	ws.viewHeader(c, p, tb, props, tt)
 	if tb.isMissing() {
 		banner(c, "This file was deleted or moved. The last loaded content is shown.", t.Warning)
 	}
-	tt, ok := tabtypesapi.Get(tb.typeID)
 	if !ok {
 		centered(c, "No viewer for this file.")
 		return
 	}
-	tt.Body(c, ws.props(tb, focused))
+	tt.Body(c, props)
+}
+
+// viewHeader is the tab's header, attention's ItemView header: Back and
+// Forward, the file's folders and name, the tab type's actions and More
+// options.
+func (ws *Workspace) viewHeader(c *ui.Context, p *pane, tb *tab, props tabtypesapi.Props, tt tabtypesapi.TabType) {
+	t := c.Theme()
+	ui.Row(c).Key(fmt.Sprintf("header-%d", p.id)).Height(38).Shrink(0).FillWidth().PaddingX(8).Gap(2).AlignItems(ui.Center).
+		BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
+		navButton := func(label string, icon *ui.SVG, delta int, n int) {
+			// Disabled draws the icon muted, as attention's aria-disabled
+			// clickable-icon; enabled draws it in the text colour.
+			color := t.Text
+			if n == 0 {
+				color = ui.Color{}
+			}
+			omgui.Button(c, omgui.ButtonProps{Label: label, Icon: icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+				Disabled: n == 0, IconColor: color, OnClick: func() { ws.activeGroup = p; ws.goHistory(tb, delta) }}).
+				Tooltip(label)
+		}
+		navButton("Back", lucide.ArrowLeft(), -1, len(tb.back))
+		navButton("Forward", lucide.ArrowRight(), 1, len(tb.forward))
+		// The folders, then the name (FileView.renderBreadcrumbs), centered.
+		ui.Row(c).Grow(1).MinWidth(0).Justify(ui.Center).AlignItems(ui.Center).Gap(4).Children(func() {
+			parts := strings.Split(ws.display(tb.path), "/")
+			for _, part := range parts[:len(parts)-1] {
+				if part == "" {
+					continue
+				}
+				ui.Text(c, part).FontSize(13).TextColor(t.TextMuted)
+				ui.Text(c, "/").FontSize(13).TextColor(t.TextMuted)
+			}
+			ui.Text(c, tb.title).FontSize(13).TextColor(t.Text).MaxLines(1)
+		})
+		if tt.Actions != nil {
+			tt.Actions(c, props)
+		}
+		omgui.IconMenu(c, omgui.IconMenuProps{Label: "More options", Icon: lucide.EllipsisVertical(), End: true, Items: ws.paneMenu(p, tb, tt)})
+	})
+}
+
+// paneMenu is More options: the tab type's items, then attention's pane
+// and file items (ItemView.onPaneMenu, the workspace's file-menu).
+func (ws *Workspace) paneMenu(p *pane, tb *tab, tt tabtypesapi.TabType) []omgui.MenuItem {
+	var items []omgui.MenuItem
+	if tt.Menu != nil {
+		for _, it := range tt.Menu(tb.id) {
+			items = append(items, omgui.MenuItem{Label: it.Title, Icon: it.Icon, Checked: it.Checked, OnClick: it.Run})
+		}
+		if len(items) > 0 {
+			items = append(items, omgui.MenuItem{Separator: true})
+		}
+	}
+	split := func(dir direction) func() {
+		return func() { ws.activeGroup, p.active = p, p.indexOf(tb); ws.split(dir) }
+	}
+	path := tb.path
+	return append(items,
+		omgui.MenuItem{Label: "Split right", Icon: lucide.SeparatorVertical(), OnClick: split(vertical)},
+		omgui.MenuItem{Label: "Split down", Icon: lucide.SeparatorHorizontal(), OnClick: split(horizontal)},
+		omgui.MenuItem{Separator: true},
+		omgui.MenuItem{Label: "Copy path", Icon: lucide.Copy(), OnClick: func() { mygo.Clipboard.WriteText(ws.display(path)) }},
+		omgui.MenuItem{Label: "Copy absolute path", Icon: lucide.HardDrive(), OnClick: func() { mygo.Clipboard.WriteText(path) }},
+		omgui.MenuItem{Separator: true},
+		omgui.MenuItem{Label: "Open in default app", Icon: lucide.ArrowUpRight(), OnClick: func() { go func() { _ = mygo.Shell.OpenPath(path) }() }},
+		omgui.MenuItem{Label: "Show in system explorer", Icon: lucide.Files(), OnClick: func() { go mygo.Shell.ShowItemInFolder(path) }},
+	)
 }
 
 func banner(c *ui.Context, text string, color ui.Color) {
