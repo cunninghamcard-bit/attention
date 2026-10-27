@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
+	"github.com/cunninghamcard-bit/attention/native/pluginreg"
 )
 
 // Options are the launcher's parsed arguments.
@@ -203,7 +204,7 @@ func copyOut(out io.Writer, in io.Reader) error {
 }
 
 // Rows returns the plugin rows of a profile (RFC 0001 §5.10).
-func Rows(profile string, mounts []string) []map[string]any {
+func Rows(profile string, mounts []string) (rows []map[string]any) {
 	project := map[string]any{"id": "project", "name": "go:project"}
 	if len(mounts) > 0 {
 		project["config"] = map[string]any{"mounts": mounts}
@@ -216,9 +217,21 @@ func Rows(profile string, mounts []string) []map[string]any {
 		{"id": "index", "name": "go:index"},
 		{"id": "web-read", "name": "go:web-read"},
 	}
+	// The plugins compiled in with attention (pluginreg): a service
+	// plugin's row in every profile, a UI plugin's on the desktop.
+	var ui []map[string]any
+	for _, e := range pluginreg.List() {
+		row := map[string]any{"id": e.Def.Name(), "name": "go:" + e.Def.Name()}
+		if e.Side == pluginreg.UI {
+			ui = append(ui, row)
+		} else {
+			base = append(base, row)
+		}
+	}
 	if profile == "headless" {
 		return base
 	}
+	defer func() { rows = append(rows, ui...) }()
 	return append([]map[string]any{{"id": "shell", "name": "go:shell"}}, append(base,
 		map[string]any{"id": "fileresource", "name": "go:fileresource"},
 		map[string]any{"id": "layout", "name": "go:layout"},
