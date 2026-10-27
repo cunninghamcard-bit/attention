@@ -21,8 +21,9 @@ import (
 // (apps/web/app/cli/commands/): graphLists.ts, metadata.ts (the reading
 // ones), linksOutlineCli.ts, wordcountWebCli.ts.
 func (x *Index) commands() []actionsapi.Command {
-	cmd := func(id string, run func(context.Context, actionsapi.Args) (string, error)) actionsapi.Command {
-		return actionsapi.Command{ID: id, CLI: true, Run: func(ctx context.Context, a actionsapi.Args) (string, error) {
+	// Each takes the bare flags its TS registration declares.
+	cmd := func(id string, run func(context.Context, actionsapi.Args) (string, error), flags ...string) actionsapi.Command {
+		return actionsapi.Command{ID: id, CLI: true, Flags: flags, Run: func(ctx context.Context, a actionsapi.Args) (string, error) {
 			if err := x.Ready(ctx); err != nil {
 				return "", err
 			}
@@ -30,18 +31,18 @@ func (x *Index) commands() []actionsapi.Command {
 		}}
 	}
 	return []actionsapi.Command{
-		cmd("backlinks", x.cliBacklinks),
-		cmd("unresolved", x.cliUnresolved),
-		cmd("orphans", x.cliOrphans),
-		cmd("deadends", x.cliDeadends),
-		cmd("links", x.cliLinks),
-		cmd("outline", x.cliOutline),
-		cmd("tags", x.cliTags),
-		cmd("tag", x.cliTag),
-		cmd("properties", x.cliProperties),
+		cmd("backlinks", x.cliBacklinks, "counts", "total"),
+		cmd("unresolved", x.cliUnresolved, "total", "counts", "verbose"),
+		cmd("orphans", x.cliOrphans, "total", "all"),
+		cmd("deadends", x.cliDeadends, "total", "all"),
+		cmd("links", x.cliLinks, "total"),
+		cmd("outline", x.cliOutline, "total"),
+		cmd("tags", x.cliTags, "total", "counts", "active"),
+		cmd("tag", x.cliTag, "total", "verbose"),
+		cmd("properties", x.cliProperties, "total", "counts", "active"),
 		cmd("property:read", x.cliPropertyRead),
-		cmd("aliases", x.cliAliases),
-		cmd("wordcount", x.cliWordcount),
+		cmd("aliases", x.cliAliases, "total", "verbose", "active"),
+		cmd("wordcount", x.cliWordcount, "words", "characters"),
 	}
 }
 

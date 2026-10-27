@@ -10,6 +10,7 @@ package actionsapi
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -64,6 +65,9 @@ type Command struct {
 	Keys string
 	// CLI makes the command reachable from the CLI.
 	CLI bool
+	// Flags are the bare flags the command takes (total, counts, …): the
+	// CLI reads tags:total as tags total for one of them.
+	Flags []string
 	// Run runs it off the main thread (the palette, the CLI).
 	Run func(ctx context.Context, args Args) (string, error)
 	// Main, optional, runs it on the main thread: a shortcut calls it in
@@ -135,6 +139,16 @@ func RunCLI(ctx context.Context, argv []string, cwd string) (string, error) {
 		return Help(), nil
 	}
 	cmd, ok := Lookup(argv[0])
+	// The colon fallback (Cli.handleCli): tags:total with no such command
+	// is tags with total, when tags takes the flag total.
+	if !ok || !cmd.CLI {
+		if i := strings.LastIndexByte(argv[0], ':'); i > 0 {
+			if parent, found := Lookup(argv[0][:i]); found && parent.CLI && slices.Contains(parent.Flags, argv[0][i+1:]) {
+				args := append([]string{argv[0][i+1:]}, argv[1:]...)
+				return parent.Run(ctx, ParseArgs(args, cwd))
+			}
+		}
+	}
 	if !ok || !cmd.CLI {
 		msg := fmt.Sprintf("Command %q not found.", argv[0])
 		if s := suggest(argv[0]); len(s) > 0 {
