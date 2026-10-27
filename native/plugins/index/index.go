@@ -57,6 +57,10 @@ type Index struct {
 	resolved, unresolved map[string]map[string]int
 	built                chan struct{} // closed after the first build
 	builtOnce            sync.Once
+	// gen counts the changes; OnChange, optional, runs after each, off
+	// the lock.
+	gen      int
+	OnChange func()
 }
 
 // New is an index over project's mounts, reading notes through fs.
@@ -124,8 +128,16 @@ func (x *Index) Build(ctx context.Context) error {
 		x.look.add(f.display)
 	}
 	x.resolveAll()
+	x.gen++
 	x.mu.Unlock()
+	x.changed()
 	return nil
+}
+
+func (x *Index) changed() {
+	if x.OnChange != nil {
+		x.OnChange()
+	}
 }
 
 func isNote(path string) bool { return strings.EqualFold(filepath.Ext(path), ".md") }
@@ -217,8 +229,10 @@ func (x *Index) Changed(ctx context.Context, b fscontract.Batch) {
 	if len(updates) == 0 {
 		return
 	}
+	defer x.changed()
 	x.mu.Lock()
 	defer x.mu.Unlock()
+	x.gen++
 	// Names that came or went may change what other notes' links resolve
 	// to (MetadataCache.updateRelatedLinks); a note written resolves its
 	// own links again (resolveLinks).

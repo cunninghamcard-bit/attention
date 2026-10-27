@@ -7,11 +7,13 @@ import (
 
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
+	indexcontract "github.com/cunninghamcard-bit/attention/native/contract/index"
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 )
 
 // Plugin indexes the mounts while loaded: it builds the index in the
-// background, follows fs/changed and the mounts, and adds its commands.
+// background, follows fs/changed and the mounts, provides "index"
+// (contract/index) and adds its commands.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   "index",
 	Inject: []string{"actions", "fs", "project"},
@@ -25,6 +27,10 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			return err
 		}
 		x := New(fs, project)
+		emitCtx, cancel := context.WithCancel(context.Background())
+		x.OnChange = func() { _ = rctx.Emit(emitCtx, indexcontract.ChangedEvent) }
+		rctx.Effect(func(context.Context) error { cancel(); return nil })
+		rctx.Provide("index", Service{x})
 		rctx.Go(x.Run)
 		rctx.On(fscontract.ChangedEvent, func(ctx context.Context, args ...any) (any, error) {
 			if len(args) == 0 {
