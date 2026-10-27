@@ -295,6 +295,13 @@ func (tr *Tree) loadDir(d *dirNode) {
 						tr.expandIfPending(e.Path)
 					}
 				}
+				// A restored child this listing lacks is gone: forget it,
+				// or the session keeps it forever.
+				for p := range tr.pendingExpanded {
+					if filepath.Dir(p) == path {
+						delete(tr.pendingExpanded, p)
+					}
+				}
 			}
 			if d.expanded && !d.watched && err == nil {
 				d.watched = true

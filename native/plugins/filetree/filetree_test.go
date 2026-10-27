@@ -84,6 +84,9 @@ func TestRestoreThenSetMountsExpands(t *testing.T) {
 	if _, ok := tr.dirs["/a/gone"]; ok {
 		t.Fatal("a path that never appeared is not created")
 	}
+	if got := string(tr.state()); got != `{"expanded":["/a","/a/b"]}` {
+		t.Fatalf("a restored path its parent's listing lacks is forgotten: %s", got)
+	}
 	if d := tr.dirs["/a/z"]; d != nil && d.expanded {
 		t.Fatal("a directory that was not restored stays collapsed")
 	}
