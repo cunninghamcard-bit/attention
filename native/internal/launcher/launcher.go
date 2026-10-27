@@ -24,6 +24,19 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/pluginreg"
 )
 
+const (
+	// ServicesName is the name of the services binary: this one, linked under
+	// a name of its own, which rutis runs as a runtime of its own (one binary,
+	// one process: RFC §5.3, external plugins).
+	ServicesName = "attention-services"
+
+	usage = `Usage:
+  attention [--profile desktop|headless] [--mount <dir>]... [<dir>]...
+      open the folders (the last ones when none is given)
+  attention <command> [key=value ...]
+      run a command in the running attention; "attention help" lists them`
+)
+
 // Options are the launcher's parsed arguments.
 type Options struct {
 	Mounts  []string // absolute directories to open
@@ -122,6 +135,98 @@ func Run(args []string) int {
 	return runHost(opts)
 }
 
+// Rows returns the plugin rows of a profile (RFC 0001 §5.10).
+func Rows(profile string, mounts []string) (rows []map[string]any) {
+	project := map[string]any{"id": "project", "name": "go:project"}
+	if len(mounts) > 0 {
+		project["config"] = map[string]any{"mounts": mounts}
+	}
+	base := []map[string]any{
+		{"id": "actions", "name": "go:actions"},
+		{"id": "cli", "name": "go:cli"},
+		{"id": "fs", "name": "go:fs"},
+		project,
+		{"id": "index", "name": "go:index"},
+		{"id": "web-read", "name": "go:web-read"},
+	}
+	// The plugins compiled in with attention (pluginreg): a service
+	// plugin's row in every profile, a UI plugin's on the desktop.
+	var ui []map[string]any
+	for _, e := range pluginreg.List() {
+		row := map[string]any{"id": e.Def.Name(), "name": "go:" + e.Def.Name()}
+		if e.Side == pluginreg.UI {
+			ui = append(ui, row)
+		} else {
+			base = append(base, row)
+		}
+	}
+	if profile == "headless" {
+		return base
+	}
+	defer func() { rows = append(rows, ui...) }()
+	return append([]map[string]any{{"id": "shell", "name": "go:shell"}}, append(base,
+		map[string]any{"id": "fileresource", "name": "go:fileresource"},
+		map[string]any{"id": "layout", "name": "go:layout"},
+		map[string]any{"id": "workspace", "name": "go:workspace"},
+		map[string]any{"id": "shortcuts", "name": "go:shortcuts"},
+		map[string]any{"id": "palette", "name": "go:palette"},
+		map[string]any{"id": "switcher", "name": "go:switcher"},
+		map[string]any{"id": "command-palette", "name": "go:command-palette"},
+		map[string]any{"id": "go-to-line", "name": "go:go-to-line"},
+		map[string]any{"id": "settings", "name": "go:settings"},
+		map[string]any{"id": "filetree", "name": "go:filetree"},
+		map[string]any{"id": "search", "name": "go:search"},
+		map[string]any{"id": "backlinks-ui", "name": "go:backlinks-ui"},
+		map[string]any{"id": "outline-ui", "name": "go:outline-ui"},
+		map[string]any{"id": "bookmarks", "name": "go:bookmarks"},
+		map[string]any{"id": "text-ui", "name": "go:text-ui"},
+		map[string]any{"id": "markdown-ui", "name": "go:markdown-ui"},
+		map[string]any{"id": "image-ui", "name": "go:image-ui"},
+		map[string]any{"id": "web", "name": "go:web"},
+		map[string]any{"id": "web-history", "name": "go:web-history"},
+		map[string]any{"id": "web-index", "name": "go:web-index"},
+		map[string]any{"id": "webview-panel-ui", "name": "go:webview-panel-ui"},
+		map[string]any{"id": "terminal-ui", "name": "go:terminal-ui"})...)
+}
+
+// Config is the rutis.json for a run.
+func Config(self string, profile string, mounts []string) map[string]any {
+	return ConfigSeparate(self, "", profile, mounts, nil)
+}
+
+// ConfigSeparate is Config with the plugins named in separate run by the
+// services binary at services, in a process of their own. Every row then
+// names its binary (go-attention:<plugin>), as rutis asks when two hold
+// the plugin.
+func ConfigSeparate(self, services, profile string, mounts []string, separate []string) map[string]any {
+	rows := Rows(profile, mounts)
+	binaries := []string{self}
+	if len(separate) > 0 && services != "" {
+		binaries = append(binaries, services)
+		apart := map[string]bool{}
+		for _, p := range separate {
+			apart[p] = true
+		}
+		for _, row := range rows {
+			name, _ := row["name"].(string)
+			plugin := strings.TrimPrefix(name, "go:")
+			bin := "go-" + filepath.Base(self)
+			if apart[plugin] {
+				bin = "go-" + ServicesName
+			}
+			row["name"] = bin + ":" + plugin
+		}
+	}
+	return map[string]any{
+		"format": 1,
+		"id":     "attention",
+		"runtimes": map[string]any{
+			"go": map[string]any{"binaries": binaries, "start": "eager", "restart": "on-failure"},
+		},
+		"rows": rows,
+	}
+}
+
 // acquire takes the single-instance lock without blocking: nil, nil when
 // another launcher holds it. The descriptor is close-on-exec, so only this
 // process holds it, for as long as it runs.
@@ -201,103 +306,6 @@ func copyOut(out io.Writer, in io.Reader) error {
 		return err
 	}
 	return nil
-}
-
-// Rows returns the plugin rows of a profile (RFC 0001 §5.10).
-func Rows(profile string, mounts []string) (rows []map[string]any) {
-	project := map[string]any{"id": "project", "name": "go:project"}
-	if len(mounts) > 0 {
-		project["config"] = map[string]any{"mounts": mounts}
-	}
-	base := []map[string]any{
-		{"id": "actions", "name": "go:actions"},
-		{"id": "cli", "name": "go:cli"},
-		{"id": "fs", "name": "go:fs"},
-		project,
-		{"id": "index", "name": "go:index"},
-		{"id": "web-read", "name": "go:web-read"},
-	}
-	// The plugins compiled in with attention (pluginreg): a service
-	// plugin's row in every profile, a UI plugin's on the desktop.
-	var ui []map[string]any
-	for _, e := range pluginreg.List() {
-		row := map[string]any{"id": e.Def.Name(), "name": "go:" + e.Def.Name()}
-		if e.Side == pluginreg.UI {
-			ui = append(ui, row)
-		} else {
-			base = append(base, row)
-		}
-	}
-	if profile == "headless" {
-		return base
-	}
-	defer func() { rows = append(rows, ui...) }()
-	return append([]map[string]any{{"id": "shell", "name": "go:shell"}}, append(base,
-		map[string]any{"id": "fileresource", "name": "go:fileresource"},
-		map[string]any{"id": "layout", "name": "go:layout"},
-		map[string]any{"id": "workspace", "name": "go:workspace"},
-		map[string]any{"id": "shortcuts", "name": "go:shortcuts"},
-		map[string]any{"id": "palette", "name": "go:palette"},
-		map[string]any{"id": "switcher", "name": "go:switcher"},
-		map[string]any{"id": "command-palette", "name": "go:command-palette"},
-		map[string]any{"id": "go-to-line", "name": "go:go-to-line"},
-		map[string]any{"id": "settings", "name": "go:settings"},
-		map[string]any{"id": "filetree", "name": "go:filetree"},
-		map[string]any{"id": "search", "name": "go:search"},
-		map[string]any{"id": "backlinks-ui", "name": "go:backlinks-ui"},
-		map[string]any{"id": "outline-ui", "name": "go:outline-ui"},
-		map[string]any{"id": "bookmarks", "name": "go:bookmarks"},
-		map[string]any{"id": "text-ui", "name": "go:text-ui"},
-		map[string]any{"id": "markdown-ui", "name": "go:markdown-ui"},
-		map[string]any{"id": "image-ui", "name": "go:image-ui"},
-		map[string]any{"id": "web", "name": "go:web"},
-		map[string]any{"id": "web-history", "name": "go:web-history"},
-		map[string]any{"id": "web-index", "name": "go:web-index"},
-		map[string]any{"id": "webview-panel-ui", "name": "go:webview-panel-ui"},
-		map[string]any{"id": "terminal-ui", "name": "go:terminal-ui"})...)
-}
-
-// Config is the rutis.json for a run.
-func Config(self string, profile string, mounts []string) map[string]any {
-	return ConfigSeparate(self, "", profile, mounts, nil)
-}
-
-// ServicesName is the name of the services binary: this one, linked under
-// a name of its own, which rutis runs as a runtime of its own (one binary,
-// one process: RFC §5.3, external plugins).
-const ServicesName = "attention-services"
-
-// ConfigSeparate is Config with the plugins named in separate run by the
-// services binary at services, in a process of their own. Every row then
-// names its binary (go-attention:<plugin>), as rutis asks when two hold
-// the plugin.
-func ConfigSeparate(self, services, profile string, mounts []string, separate []string) map[string]any {
-	rows := Rows(profile, mounts)
-	binaries := []string{self}
-	if len(separate) > 0 && services != "" {
-		binaries = append(binaries, services)
-		apart := map[string]bool{}
-		for _, p := range separate {
-			apart[p] = true
-		}
-		for _, row := range rows {
-			name, _ := row["name"].(string)
-			plugin := strings.TrimPrefix(name, "go:")
-			bin := "go-" + filepath.Base(self)
-			if apart[plugin] {
-				bin = "go-" + ServicesName
-			}
-			row["name"] = bin + ":" + plugin
-		}
-	}
-	return map[string]any{
-		"format": 1,
-		"id":     "attention",
-		"runtimes": map[string]any{
-			"go": map[string]any{"binaries": binaries, "start": "eager", "restart": "on-failure"},
-		},
-		"rows": rows,
-	}
 }
 
 func hostBinary(self string) (string, error) {
@@ -499,9 +507,3 @@ func clearStaleHostDirs() {
 		}
 	}
 }
-
-const usage = `Usage:
-  attention [--profile desktop|headless] [--mount <dir>]... [<dir>]...
-      open the folders (the last ones when none is given)
-  attention <command> [key=value ...]
-      run a command in the running attention; "attention help" lists them`

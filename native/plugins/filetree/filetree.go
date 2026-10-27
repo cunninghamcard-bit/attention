@@ -33,55 +33,6 @@ import (
 // PanelID is the Files panel's slot id.
 const PanelID = "file-explorer"
 
-// Tree is the panel's state, on the main thread only.
-type Tree struct {
-	ctx     context.Context
-	fs      fscontract.FS
-	post    func(func())
-	watches *watchq.Queue
-
-	mounts       []projectcontract.Mount
-	mountsLoaded bool
-	dirs         map[string]*dirNode
-	rows         []treeRow
-	rowsDirty    bool
-	notice       string // a watch error
-	// pendingExpanded are session-restored paths to open once they appear
-	// as a mount or in a listing. Restore may run before mounts arrive;
-	// we do not stat.
-	pendingExpanded map[string]bool
-}
-
-// savedState is the Files panel's session: which directories are open.
-type savedState struct {
-	Expanded []string `json:"expanded"`
-}
-
-type dirNode struct {
-	path     string
-	expanded bool
-	loaded   bool // listed successfully at least once
-	loading  bool
-	dirty    bool // a change arrived while loading: list again after
-	watched  bool // we hold one watch on it
-	entries  []fscontract.Entry
-	err      string
-}
-
-type treeRow struct {
-	depth int
-	entry fscontract.Entry
-	mount *projectcontract.Mount // set on a mount's root row
-}
-
-func newTree(ctx context.Context, fs fscontract.FS, post func(func())) *Tree {
-	tr := &Tree{ctx: ctx, fs: fs, post: post, dirs: map[string]*dirNode{}, rowsDirty: true}
-	// A refused watch stays counted: collapsing gives it back and
-	// expanding again retries it (watchq).
-	tr.watches = watchq.New(ctx, fs, post, func(_, msg string) { tr.notice = msg })
-	return tr
-}
-
 // Plugin registers the Files panel while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   "filetree",
@@ -159,6 +110,33 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	},
 })
 
+// Tree is the panel's state, on the main thread only.
+type Tree struct {
+	ctx     context.Context
+	fs      fscontract.FS
+	post    func(func())
+	watches *watchq.Queue
+
+	mounts       []projectcontract.Mount
+	mountsLoaded bool
+	dirs         map[string]*dirNode
+	rows         []treeRow
+	rowsDirty    bool
+	notice       string // a watch error
+	// pendingExpanded are session-restored paths to open once they appear
+	// as a mount or in a listing. Restore may run before mounts arrive;
+	// we do not stat.
+	pendingExpanded map[string]bool
+}
+
+func newTree(ctx context.Context, fs fscontract.FS, post func(func())) *Tree {
+	tr := &Tree{ctx: ctx, fs: fs, post: post, dirs: map[string]*dirNode{}, rowsDirty: true}
+	// A refused watch stays counted: collapsing gives it back and
+	// expanding again retries it (watchq).
+	tr.watches = watchq.New(ctx, fs, post, func(_, msg string) { tr.notice = msg })
+	return tr
+}
+
 func (tr *Tree) setMounts(ms []projectcontract.Mount) {
 	keep := map[string]bool{}
 	for _, m := range ms {
@@ -193,10 +171,6 @@ func (tr *Tree) forget(root string) {
 			delete(tr.dirs, p)
 		}
 	}
-}
-
-func isUnder(path, dir string) bool {
-	return strings.HasPrefix(path, dir+string(filepath.Separator))
 }
 
 func (tr *Tree) dir(path string) *dirNode {
@@ -438,12 +412,6 @@ func (tr *Tree) view(c *ui.Context) {
 	})
 }
 
-func debugf(format string, a ...any) {
-	if os.Getenv("ATTENTION_DEBUG") != "" {
-		fmt.Fprintf(os.Stderr, "[debug] "+format+"\n", a...)
-	}
-}
-
 // folders is the Files and links tab (FilesSettingTab), which holds only
 // the folders in the workspace: the mounts, each removable, and
 // Add folder (workspace:add-folder). The tree follows the project's
@@ -468,4 +436,36 @@ func (tr *Tree) folders(c *ui.Context, remove func(context.Context, string) erro
 			go func() { _, _ = cmd.Run(tr.ctx, actionsapi.Args{Params: map[string]string{}}) }()
 		}
 	}})
+}
+
+// savedState is the Files panel's session: which directories are open.
+type savedState struct {
+	Expanded []string `json:"expanded"`
+}
+
+type dirNode struct {
+	path     string
+	expanded bool
+	loaded   bool // listed successfully at least once
+	loading  bool
+	dirty    bool // a change arrived while loading: list again after
+	watched  bool // we hold one watch on it
+	entries  []fscontract.Entry
+	err      string
+}
+
+type treeRow struct {
+	depth int
+	entry fscontract.Entry
+	mount *projectcontract.Mount // set on a mount's root row
+}
+
+func isUnder(path, dir string) bool {
+	return strings.HasPrefix(path, dir+string(filepath.Separator))
+}
+
+func debugf(format string, a ...any) {
+	if os.Getenv("ATTENTION_DEBUG") != "" {
+		fmt.Fprintf(os.Stderr, "[debug] "+format+"\n", a...)
+	}
 }

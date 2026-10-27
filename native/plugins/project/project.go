@@ -35,8 +35,32 @@ const (
 	maxLineBytes  = 400
 )
 
-// skipDirs are left out of quick open and search walks (not of the tree).
-var skipDirs = map[string]bool{"node_modules": true}
+var (
+	// skipDirs are left out of quick open and search walks (not of the tree).
+	skipDirs = map[string]bool{"node_modules": true}
+
+	// Plugin provides "project".
+	Plugin = rutis.Define(rutis.Plugin[Config]{
+		Name:   "project",
+		Inject: []string{"actions", "fs"},
+		Apply: func(ctx *rutis.Ctx, cfg Config) error {
+			var fs fscontract.FS
+			if err := ctx.Use("fs", &fs); err != nil {
+				return err
+			}
+			emitCtx, cancel := context.WithCancel(context.Background())
+			svc := New(cfg.Mounts, true, func() { _ = ctx.Emit(emitCtx, contract.MountsChangedEvent) })
+			svc.fs = fs
+			ctx.Provide("project", svc)
+			for _, cmd := range svc.commands() {
+				off := actionsapi.Register(cmd)
+				ctx.Effect(func(context.Context) error { off(); return nil })
+			}
+			ctx.Effect(func(context.Context) error { cancel(); return nil })
+			return nil
+		},
+	})
+)
 
 // Config is the project row's configuration: the launcher's --mount list.
 type Config struct {
@@ -71,84 +95,6 @@ func New(configured []string, save bool, notify func()) *Service {
 	}
 	s.persist()
 	return s
-}
-
-func loadSaved() []string {
-	data, err := os.ReadFile(paths.MountsPath())
-	if err != nil {
-		return nil
-	}
-	var saved struct {
-		Mounts []string `json:"mounts"`
-	}
-	if json.Unmarshal(data, &saved) != nil {
-		return nil
-	}
-	var out []string
-	for _, p := range saved.Mounts {
-		if st, err := os.Stat(p); err == nil && st.IsDir() {
-			out = append(out, p)
-		}
-	}
-	return out
-}
-
-func (s *Service) persist() {
-	if !s.save {
-		return
-	}
-	s.mu.Lock()
-	list := make([]string, len(s.mounts))
-	for i, m := range s.mounts {
-		list[i] = m.Path
-	}
-	s.mu.Unlock()
-	data, _ := json.MarshalIndent(map[string]any{"mounts": list}, "", "  ")
-	_ = paths.WriteFileAtomic(paths.MountsPath(), data)
-}
-
-// add appends a mount unless its path is already mounted; s.mu is not held.
-func (s *Service) add(path string) (contract.Mount, error) {
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		return contract.Mount{}, err
-	}
-	abs = filepath.Clean(abs)
-	st, err := os.Stat(abs)
-	if err != nil {
-		return contract.Mount{}, err
-	}
-	if !st.IsDir() {
-		return contract.Mount{}, fmt.Errorf("%s is not a directory", abs)
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for _, m := range s.mounts {
-		if m.Path == abs {
-			return m, nil
-		}
-	}
-	name := filepath.Base(abs)
-	if home, err := os.UserHomeDir(); err == nil && filepath.Clean(home) == abs {
-		name = "Home"
-	}
-	base, n := name, 2
-	for s.nameTaken(name) {
-		name = base + "-" + strconv.Itoa(n)
-		n++
-	}
-	m := contract.Mount{ID: name, Name: name, Path: abs}
-	s.mounts = append(s.mounts, m)
-	return m, nil
-}
-
-func (s *Service) nameTaken(name string) bool {
-	for _, m := range s.mounts {
-		if m.Name == name {
-			return true
-		}
-	}
-	return false
 }
 
 // Mounts lists the mounts in order.
@@ -259,6 +205,64 @@ func (s *Service) Search(ctx context.Context, q contract.Query) (contract.Search
 	return res, err
 }
 
+func (s *Service) persist() {
+	if !s.save {
+		return
+	}
+	s.mu.Lock()
+	list := make([]string, len(s.mounts))
+	for i, m := range s.mounts {
+		list[i] = m.Path
+	}
+	s.mu.Unlock()
+	data, _ := json.MarshalIndent(map[string]any{"mounts": list}, "", "  ")
+	_ = paths.WriteFileAtomic(paths.MountsPath(), data)
+}
+
+// add appends a mount unless its path is already mounted; s.mu is not held.
+func (s *Service) add(path string) (contract.Mount, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return contract.Mount{}, err
+	}
+	abs = filepath.Clean(abs)
+	st, err := os.Stat(abs)
+	if err != nil {
+		return contract.Mount{}, err
+	}
+	if !st.IsDir() {
+		return contract.Mount{}, fmt.Errorf("%s is not a directory", abs)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, m := range s.mounts {
+		if m.Path == abs {
+			return m, nil
+		}
+	}
+	name := filepath.Base(abs)
+	if home, err := os.UserHomeDir(); err == nil && filepath.Clean(home) == abs {
+		name = "Home"
+	}
+	base, n := name, 2
+	for s.nameTaken(name) {
+		name = base + "-" + strconv.Itoa(n)
+		n++
+	}
+	m := contract.Mount{ID: name, Name: name, Path: abs}
+	s.mounts = append(s.mounts, m)
+	return m, nil
+}
+
+func (s *Service) nameTaken(name string) bool {
+	for _, m := range s.mounts {
+		if m.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Service) mountByID(id string) (contract.Mount, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -339,24 +343,22 @@ func (s *Service) commands() []actionsapi.Command {
 	}, append(s.fileCommands(), s.searchCommands()...)...)
 }
 
-// Plugin provides "project".
-var Plugin = rutis.Define(rutis.Plugin[Config]{
-	Name:   "project",
-	Inject: []string{"actions", "fs"},
-	Apply: func(ctx *rutis.Ctx, cfg Config) error {
-		var fs fscontract.FS
-		if err := ctx.Use("fs", &fs); err != nil {
-			return err
-		}
-		emitCtx, cancel := context.WithCancel(context.Background())
-		svc := New(cfg.Mounts, true, func() { _ = ctx.Emit(emitCtx, contract.MountsChangedEvent) })
-		svc.fs = fs
-		ctx.Provide("project", svc)
-		for _, cmd := range svc.commands() {
-			off := actionsapi.Register(cmd)
-			ctx.Effect(func(context.Context) error { off(); return nil })
-		}
-		ctx.Effect(func(context.Context) error { cancel(); return nil })
+func loadSaved() []string {
+	data, err := os.ReadFile(paths.MountsPath())
+	if err != nil {
 		return nil
-	},
-})
+	}
+	var saved struct {
+		Mounts []string `json:"mounts"`
+	}
+	if json.Unmarshal(data, &saved) != nil {
+		return nil
+	}
+	var out []string
+	for _, p := range saved.Mounts {
+		if st, err := os.Stat(p); err == nil && st.IsDir() {
+			out = append(out, p)
+		}
+	}
+	return out
+}

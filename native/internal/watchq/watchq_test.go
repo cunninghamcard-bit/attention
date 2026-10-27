@@ -10,73 +10,6 @@ import (
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 )
 
-// fakeFS records the calls and refuses watches while refuse is set.
-type fakeFS struct {
-	mu     sync.Mutex
-	calls  []string
-	held   map[string]int
-	refuse bool
-}
-
-func (f *fakeFS) contract() fscontract.FS {
-	return fscontract.FS{
-		Watch: func(_ context.Context, dir string) error {
-			f.mu.Lock()
-			defer f.mu.Unlock()
-			f.calls = append(f.calls, "watch "+dir)
-			if f.refuse {
-				return errors.New("no space")
-			}
-			f.held[dir]++
-			return nil
-		},
-		Unwatch: func(_ context.Context, dir string) error {
-			f.mu.Lock()
-			defer f.mu.Unlock()
-			f.calls = append(f.calls, "unwatch "+dir)
-			f.held[dir]--
-			return nil
-		},
-	}
-}
-
-func (f *fakeFS) holding() map[string]int {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	out := map[string]int{}
-	for k, v := range f.held {
-		if v != 0 {
-			out[k] = v
-		}
-	}
-	return out
-}
-
-// main is the test's main thread: posts queue here and pump runs them.
-type main struct{ fns chan func() }
-
-func (m *main) post(fn func()) { m.fns <- fn }
-
-// pump runs posts until none arrives for a while.
-func (m *main) pump() {
-	for {
-		select {
-		case fn := <-m.fns:
-			fn()
-		case <-time.After(50 * time.Millisecond):
-			return
-		}
-	}
-}
-
-func setup(t *testing.T) (*Queue, *fakeFS, *main, *[]string) {
-	f := &fakeFS{held: map[string]int{}}
-	m := &main{fns: make(chan func(), 64)}
-	var fails []string
-	q := New(t.Context(), f.contract(), m.post, func(dir, _ string) { fails = append(fails, dir) })
-	return q, f, m, &fails
-}
-
 func TestCountsOneWatchPerDirectory(t *testing.T) {
 	q, f, m, _ := setup(t)
 	q.Watch("/a")
@@ -174,5 +107,72 @@ func TestCloseGivesBackEveryWatch(t *testing.T) {
 	q.Watch("/c")
 	if q.Watching("/c") {
 		t.Fatal("Watch after Close should do nothing")
+	}
+}
+
+// fakeFS records the calls and refuses watches while refuse is set.
+type fakeFS struct {
+	mu     sync.Mutex
+	calls  []string
+	held   map[string]int
+	refuse bool
+}
+
+func setup(t *testing.T) (*Queue, *fakeFS, *main, *[]string) {
+	f := &fakeFS{held: map[string]int{}}
+	m := &main{fns: make(chan func(), 64)}
+	var fails []string
+	q := New(t.Context(), f.contract(), m.post, func(dir, _ string) { fails = append(fails, dir) })
+	return q, f, m, &fails
+}
+
+func (f *fakeFS) contract() fscontract.FS {
+	return fscontract.FS{
+		Watch: func(_ context.Context, dir string) error {
+			f.mu.Lock()
+			defer f.mu.Unlock()
+			f.calls = append(f.calls, "watch "+dir)
+			if f.refuse {
+				return errors.New("no space")
+			}
+			f.held[dir]++
+			return nil
+		},
+		Unwatch: func(_ context.Context, dir string) error {
+			f.mu.Lock()
+			defer f.mu.Unlock()
+			f.calls = append(f.calls, "unwatch "+dir)
+			f.held[dir]--
+			return nil
+		},
+	}
+}
+
+func (f *fakeFS) holding() map[string]int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := map[string]int{}
+	for k, v := range f.held {
+		if v != 0 {
+			out[k] = v
+		}
+	}
+	return out
+}
+
+// main is the test's main thread: posts queue here and pump runs them.
+type main struct{ fns chan func() }
+
+func (m *main) post(fn func()) { m.fns <- fn }
+
+// pump runs posts until none arrives for a while.
+func (m *main) pump() {
+	for {
+		select {
+		case fn := <-m.fns:
+			fn()
+		case <-time.After(50 * time.Millisecond):
+			return
+		}
 	}
 }

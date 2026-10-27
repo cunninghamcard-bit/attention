@@ -23,76 +23,6 @@ var (
 	testLayout  *layout.Layout
 )
 
-// A workspace over three notes, drawn by mygo's tester: the shortcuts and
-// the palette are driven by key presses, without a window or rutis.
-func testWorkspace(t *testing.T) (*Workspace, *ui.Tester) {
-	t.Helper()
-	m := projectcontract.Mount{ID: "m", Name: "m", Path: "/m"}
-	files := projectcontract.Listing{Files: []projectcontract.FileRef{
-		{Mount: "m", Rel: "alpha.md", Path: "/m/alpha.md"},
-		{Mount: "m", Rel: "beta.md", Path: "/m/beta.md"},
-		{Mount: "m", Rel: "gamma.md", Path: "/m/gamma.md"},
-	}}
-	fs := fsStub()
-	testText, testFiles, testMissing = "# note", nil, nil
-	fs.Read = func(_ context.Context, path string, _ int64) (fscontract.File, error) {
-		if testMissing[path] {
-			return fscontract.File{}, os.ErrNotExist
-		}
-		if f, ok := testFiles[path]; ok {
-			return f, nil
-		}
-		return fscontract.File{Text: testText}, nil
-	}
-	fs.ReadBytes = func(context.Context, string, int64) ([]byte, error) { return testBytes, nil }
-	fs.List = func(context.Context, string) ([]fscontract.Entry, error) { return nil, nil }
-	project := projectStub()
-	project.Files = func(context.Context) (projectcontract.Listing, error) { return files, nil }
-	viewers(t, t.Context(), fs)
-	ws := newWorkspace(t.Context(), fs, project)
-	ws.setMounts([]projectcontract.Mount{m})
-	// What the profile loads beside it: the layout around it, the
-	// shortcuts, the palette and its sources.
-	t.Cleanup(Register(ws))
-	testLayout = layout.New()
-	testLayout.IsDark = func() bool { return false }
-	t.Cleanup(layout.Register(testLayout))
-	t.Cleanup(shortcuts.Register(t.Context()))
-	var off func()
-	testPalette, off = palette.Register()
-	t.Cleanup(off)
-	// The listing is set here; a refresh's walk is dropped.
-	sw := switcher.New(t.Context(), project.Files, func(func()) {})
-	sw.SetListing(files)
-	t.Cleanup(switcher.Register(sw))
-	t.Cleanup(commandpalette.Register(commandpalette.New(t.Context())))
-	t.Cleanup(gotoline.Register())
-	t.Cleanup(func() {
-		for _, p := range ws.groups() {
-			for _, tb := range p.tabs {
-				if tb.hold != nil {
-					tb.hold()
-				}
-			}
-		}
-	})
-	tt := ui.NewTester(testLayout.View, 1000, 700)
-	tt.Frame()
-	return ws, tt
-}
-
-func tabs(ws *Workspace) []string {
-	var out []string
-	for _, p := range ws.groups() {
-		for _, t := range p.tabs {
-			out = append(out, t.viewType()+":"+t.displayText())
-		}
-	}
-	return out
-}
-
-func press(tt *ui.Tester, mods ui.Modifiers, key ui.Key) { tt.Key(mods, key); tt.Frame() }
-
 func TestQuickSwitcherOpensIntoTheNewTab(t *testing.T) {
 	ws, tt := testWorkspace(t)
 	press(tt, ui.Cmd, ui.KeyO)
@@ -163,3 +93,73 @@ func TestCommandPaletteRunsAndRemembersCommands(t *testing.T) {
 		t.Fatal("Ctrl P did not open the command palette")
 	}
 }
+
+// A workspace over three notes, drawn by mygo's tester: the shortcuts and
+// the palette are driven by key presses, without a window or rutis.
+func testWorkspace(t *testing.T) (*Workspace, *ui.Tester) {
+	t.Helper()
+	m := projectcontract.Mount{ID: "m", Name: "m", Path: "/m"}
+	files := projectcontract.Listing{Files: []projectcontract.FileRef{
+		{Mount: "m", Rel: "alpha.md", Path: "/m/alpha.md"},
+		{Mount: "m", Rel: "beta.md", Path: "/m/beta.md"},
+		{Mount: "m", Rel: "gamma.md", Path: "/m/gamma.md"},
+	}}
+	fs := fsStub()
+	testText, testFiles, testMissing = "# note", nil, nil
+	fs.Read = func(_ context.Context, path string, _ int64) (fscontract.File, error) {
+		if testMissing[path] {
+			return fscontract.File{}, os.ErrNotExist
+		}
+		if f, ok := testFiles[path]; ok {
+			return f, nil
+		}
+		return fscontract.File{Text: testText}, nil
+	}
+	fs.ReadBytes = func(context.Context, string, int64) ([]byte, error) { return testBytes, nil }
+	fs.List = func(context.Context, string) ([]fscontract.Entry, error) { return nil, nil }
+	project := projectStub()
+	project.Files = func(context.Context) (projectcontract.Listing, error) { return files, nil }
+	viewers(t, t.Context(), fs)
+	ws := newWorkspace(t.Context(), fs, project)
+	ws.setMounts([]projectcontract.Mount{m})
+	// What the profile loads beside it: the layout around it, the
+	// shortcuts, the palette and its sources.
+	t.Cleanup(Register(ws))
+	testLayout = layout.New()
+	testLayout.IsDark = func() bool { return false }
+	t.Cleanup(layout.Register(testLayout))
+	t.Cleanup(shortcuts.Register(t.Context()))
+	var off func()
+	testPalette, off = palette.Register()
+	t.Cleanup(off)
+	// The listing is set here; a refresh's walk is dropped.
+	sw := switcher.New(t.Context(), project.Files, func(func()) {})
+	sw.SetListing(files)
+	t.Cleanup(switcher.Register(sw))
+	t.Cleanup(commandpalette.Register(commandpalette.New(t.Context())))
+	t.Cleanup(gotoline.Register())
+	t.Cleanup(func() {
+		for _, p := range ws.groups() {
+			for _, tb := range p.tabs {
+				if tb.hold != nil {
+					tb.hold()
+				}
+			}
+		}
+	})
+	tt := ui.NewTester(testLayout.View, 1000, 700)
+	tt.Frame()
+	return ws, tt
+}
+
+func tabs(ws *Workspace) []string {
+	var out []string
+	for _, p := range ws.groups() {
+		for _, t := range p.tabs {
+			out = append(out, t.viewType()+":"+t.displayText())
+		}
+	}
+	return out
+}
+
+func press(tt *ui.Tester, mods ui.Modifiers, key ui.Key) { tt.Key(mods, key); tt.Frame() }

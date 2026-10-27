@@ -9,8 +9,22 @@ import (
 	"errors"
 )
 
-// ErrTooLarge is returned by ReadBytes when the file is larger than max.
-var ErrTooLarge = errors.New("file too large")
+const (
+	// ChangedEvent is emitted with one Batch per debounce window.
+	ChangedEvent = "fs/changed"
+
+	// WatchErrorEvent is emitted with a message when the system refuses a
+	// watch (inotify limits) or reports an error.
+	WatchErrorEvent = "fs/watch-error"
+)
+
+var (
+	// ErrTooLarge is returned by ReadBytes when the file is larger than max.
+	ErrTooLarge = errors.New("file too large")
+
+	// Excluded are names never listed, as Zed's default file_scan_exclusions.
+	Excluded = map[string]bool{".git": true, ".svn": true, ".hg": true, "CVS": true, ".DS_Store": true, "Thumbs.db": true}
+)
 
 // Entry is one item of a directory listing.
 type Entry struct {
@@ -48,12 +62,20 @@ type Batch struct {
 	Changes []Change `json:"changes"`
 }
 
-// ChangedEvent is emitted with one Batch per debounce window.
-const ChangedEvent = "fs/changed"
-
-// WatchErrorEvent is emitted with a message when the system refuses a
-// watch (inotify limits) or reports an error.
-const WatchErrorEvent = "fs/watch-error"
+// DecodeBatch reads an event argument as a Batch, whether it arrived as the
+// original value (same process) or as decoded data (another process).
+func DecodeBatch(arg any) (Batch, error) {
+	if b, ok := arg.(Batch); ok {
+		return b, nil
+	}
+	data, err := json.Marshal(arg)
+	if err != nil {
+		return Batch{}, err
+	}
+	var b Batch
+	err = json.Unmarshal(data, &b)
+	return b, err
+}
 
 // FS is the client side of the service.
 type FS struct {
@@ -78,21 +100,3 @@ type FS struct {
 	// $XDG_DATA_HOME/Trash/files and a matching .trashinfo).
 	Trash func(ctx context.Context, path string) error
 }
-
-// DecodeBatch reads an event argument as a Batch, whether it arrived as the
-// original value (same process) or as decoded data (another process).
-func DecodeBatch(arg any) (Batch, error) {
-	if b, ok := arg.(Batch); ok {
-		return b, nil
-	}
-	data, err := json.Marshal(arg)
-	if err != nil {
-		return Batch{}, err
-	}
-	var b Batch
-	err = json.Unmarshal(data, &b)
-	return b, err
-}
-
-// Excluded are names never listed, as Zed's default file_scan_exclusions.
-var Excluded = map[string]bool{".git": true, ".svn": true, ".hg": true, "CVS": true, ".DS_Store": true, "Thumbs.db": true}

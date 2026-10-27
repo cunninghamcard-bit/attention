@@ -20,6 +20,46 @@ import (
 
 const unwatchTimeout = 2 * time.Second
 
+// Plugin registers the file protocol while loaded.
+var Plugin = rutis.Define(rutis.Plugin[struct{}]{
+	Name:   "fileresource",
+	Inject: []string{"shell", "fs", "project"},
+	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		var fs fscontract.FS
+		var project projectcontract.Project
+		if err := rctx.Use("fs", &fs); err != nil {
+			return err
+		}
+		if err := rctx.Use("project", &project); err != nil {
+			return err
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		p := New(ctx, fs, project.Mounts)
+		off := resourcesapi.Register(resourcesapi.Provider{Protocol: "file", Open: p.Open})
+		rctx.On(fscontract.ChangedEvent, func(_ context.Context, args ...any) (any, error) {
+			if len(args) == 0 {
+				return nil, nil
+			}
+			b, err := fscontract.DecodeBatch(args[0])
+			if err != nil {
+				return nil, err
+			}
+			p.Changed(b)
+			return nil, nil
+		})
+		rctx.On(projectcontract.MountsChangedEvent, func(context.Context, ...any) (any, error) {
+			p.MountsChanged()
+			return nil, nil
+		})
+		rctx.Effect(func(context.Context) error {
+			off()
+			cancel()
+			return nil
+		})
+		return nil
+	},
+})
+
 // Provider streams file addresses as live fs.Entry values. Open, Changed
 // and MountsChanged are safe for concurrent use; nothing here runs on the
 // main thread.
@@ -32,20 +72,6 @@ type Provider struct {
 	mounts  []projectcontract.Mount
 	loaded  bool
 	streams map[*stream]struct{}
-}
-
-type stream struct {
-	poke chan struct{}
-	path string // last resolved path; Provider.mu
-}
-
-type lastFrame struct {
-	has   bool
-	ok    bool
-	size  int64
-	mod   int64
-	inode uint64
-	err   string
 }
 
 // New starts a mounts fetch in the background. Until that fetch (or a
@@ -215,6 +241,27 @@ func (p *Provider) emitStat(ctx context.Context, path string, resolveErr error, 
 	emitDiff(emit, last, e, nil)
 }
 
+type stream struct {
+	poke chan struct{}
+	path string // last resolved path; Provider.mu
+}
+
+func (s *stream) signal() {
+	select {
+	case s.poke <- struct{}{}:
+	default:
+	}
+}
+
+type lastFrame struct {
+	has   bool
+	ok    bool
+	size  int64
+	mod   int64
+	inode uint64
+	err   string
+}
+
 // The registry bumps Version on every Live frame, so duplicates stop here.
 func emitDiff(emit func(any, error), last *lastFrame, v any, err error) {
 	if err != nil {
@@ -233,53 +280,6 @@ func emitDiff(emit func(any, error), last *lastFrame, v any, err error) {
 	emit(e, nil)
 }
 
-func (s *stream) signal() {
-	select {
-	case s.poke <- struct{}{}:
-	default:
-	}
-}
-
 func isUnder(path, dir string) bool {
 	return strings.HasPrefix(path, dir+string(filepath.Separator))
 }
-
-// Plugin registers the file protocol while loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   "fileresource",
-	Inject: []string{"shell", "fs", "project"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var fs fscontract.FS
-		var project projectcontract.Project
-		if err := rctx.Use("fs", &fs); err != nil {
-			return err
-		}
-		if err := rctx.Use("project", &project); err != nil {
-			return err
-		}
-		ctx, cancel := context.WithCancel(context.Background())
-		p := New(ctx, fs, project.Mounts)
-		off := resourcesapi.Register(resourcesapi.Provider{Protocol: "file", Open: p.Open})
-		rctx.On(fscontract.ChangedEvent, func(_ context.Context, args ...any) (any, error) {
-			if len(args) == 0 {
-				return nil, nil
-			}
-			b, err := fscontract.DecodeBatch(args[0])
-			if err != nil {
-				return nil, err
-			}
-			p.Changed(b)
-			return nil, nil
-		})
-		rctx.On(projectcontract.MountsChangedEvent, func(context.Context, ...any) (any, error) {
-			p.MountsChanged()
-			return nil, nil
-		})
-		rctx.Effect(func(context.Context) error {
-			off()
-			cancel()
-			return nil
-		})
-		return nil
-	},
-})

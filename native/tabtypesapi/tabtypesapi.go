@@ -27,15 +27,24 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
 )
 
-// Priority is a claim's tier; a higher tier wins. A type that names none
-// is an Extension (dsh's DEFAULT_BAND).
-type Priority int
-
 const (
 	Fallback  Priority = iota + 1 // a viewer for anything, as plain text
 	Builtin                       // the reader's own viewers
 	Extension                     // other plugins'
 )
+
+var (
+	mu    sync.Mutex
+	seq   int
+	gen   int
+	types = map[int]TabType{}
+	ids   = map[string]bool{}
+	kinds = map[string]*kindSlot{}
+)
+
+// Priority is a claim's tier; a higher tier wins. A type that names none
+// is an Extension (dsh's DEFAULT_BAND).
+type Priority int
 
 // Nav is where to put the reader in the opened file, 1-based. Line alone
 // selects the line; Col (in bytes) and Len select a match within it; To
@@ -109,6 +118,42 @@ type TabType struct {
 	Lines func(tabID int) (cur, lines int, ok bool)
 }
 
+// Get is the type registered under id, in force or shadowed.
+func Get(id string) (TabType, bool) {
+	mu.Lock()
+	defer mu.Unlock()
+	for _, t := range types {
+		if t.ID == id {
+			return t, true
+		}
+	}
+	return TabType{}, false
+}
+
+// Claim is the type that shows address: the best candidate, or with kind
+// the kind's type in force, its patterns not consulted (naming the kind is
+// the decision) but its CanOpen still is.
+func Claim(address, kind string) (TabType, bool) {
+	if kind == "" {
+		cs := Candidates(address)
+		if len(cs) == 0 {
+			return TabType{}, false
+		}
+		return cs[0], true
+	}
+	mu.Lock()
+	slot := kinds[kind]
+	var t TabType
+	if slot != nil {
+		t = types[slot.inForce]
+	}
+	mu.Unlock()
+	if slot == nil || (t.CanOpen != nil && !t.CanOpen(address)) {
+		return TabType{}, false
+	}
+	return t, true
+}
+
 // MenuItem is an entry a tab type adds to its tab's More options.
 type MenuItem struct {
 	Title   string
@@ -123,21 +168,6 @@ type MenuItem struct {
 // Port of dsh's KindSlot (ui-sidebar-right/src/client/tab-registry.ts).
 type kindSlot struct {
 	inForce, shadowed int // registration keys; shadowed 0 for none
-}
-
-var (
-	mu    sync.Mutex
-	seq   int
-	gen   int
-	types = map[int]TabType{}
-	ids   = map[string]bool{}
-	kinds = map[string]*kindSlot{}
-)
-
-// coexists reports whether a type of tier p may join slot.
-func coexists(slot *kindSlot, p Priority) bool {
-	held := types[slot.inForce].Priority
-	return p != Fallback && held != Fallback && held != p && slot.shadowed == 0
 }
 
 // Register adds a tab type until off is called. A second type with the same
@@ -201,28 +231,6 @@ func Generation() int {
 	return gen
 }
 
-// Get is the type registered under id, in force or shadowed.
-func Get(id string) (TabType, bool) {
-	mu.Lock()
-	defer mu.Unlock()
-	for _, t := range types {
-		if t.ID == id {
-			return t, true
-		}
-	}
-	return TabType{}, false
-}
-
-// active is each kind's type in force, oldest first. Called with mu held.
-func active() []int {
-	keys := make([]int, 0, len(kinds))
-	for _, slot := range kinds {
-		keys = append(keys, slot.inForce)
-	}
-	sort.Ints(keys)
-	return keys
-}
-
 // Candidates are the types in force that can show address, best first: by
 // tier, then by the longest matching pattern, then by registration.
 func Candidates(address string) []TabType {
@@ -258,30 +266,6 @@ func Candidates(address string) []TabType {
 		}
 	}
 	return out
-}
-
-// Claim is the type that shows address: the best candidate, or with kind
-// the kind's type in force, its patterns not consulted (naming the kind is
-// the decision) but its CanOpen still is.
-func Claim(address, kind string) (TabType, bool) {
-	if kind == "" {
-		cs := Candidates(address)
-		if len(cs) == 0 {
-			return TabType{}, false
-		}
-		return cs[0], true
-	}
-	mu.Lock()
-	slot := kinds[kind]
-	var t TabType
-	if slot != nil {
-		t = types[slot.inForce]
-	}
-	mu.Unlock()
-	if slot == nil || (t.CanOpen != nil && !t.CanOpen(address)) {
-		return TabType{}, false
-	}
-	return t, true
 }
 
 // PageAddress is the address of the page of kind, a tab that shows no
@@ -328,6 +312,22 @@ func Match(pattern, address string) bool {
 		}
 	}
 	return false
+}
+
+// coexists reports whether a type of tier p may join slot.
+func coexists(slot *kindSlot, p Priority) bool {
+	held := types[slot.inForce].Priority
+	return p != Fallback && held != Fallback && held != p && slot.shadowed == 0
+}
+
+// active is each kind's type in force, oldest first. Called with mu held.
+func active() []int {
+	keys := make([]int, 0, len(kinds))
+	for _, slot := range kinds {
+		keys = append(keys, slot.inForce)
+	}
+	sort.Ints(keys)
+	return keys
 }
 
 // pathSegments are the layers of the path an address names: a file

@@ -22,10 +22,6 @@ import (
 
 var errWalkLimit = errors.New("walk limit")
 
-func walkLimitErr() error {
-	return fmt.Errorf("The file listing stopped at its limit (%d files or %s); mount a narrower folder.", maxFiles, walkBudget)
-}
-
 // fileCommands are the TS CLI's vault/folder/file/read/write/random
 // commands, registered here because project owns the mounts.
 func (s *Service) fileCommands() []actionsapi.Command {
@@ -625,73 +621,8 @@ func (s *Service) display(ctx context.Context, abs string) string {
 	return displayPath(mounts, abs)
 }
 
-func displayPath(mounts []contract.Mount, abs string) string {
-	if m, rel, ok := contract.MountOf(mounts, abs); ok {
-		if rel == "." {
-			return m.Name
-		}
-		return contract.Display(m, rel)
-	}
-	return abs
-}
-
-func mountPaths(mounts []contract.Mount) []string {
-	out := make([]string, len(mounts))
-	for i, m := range mounts {
-		out[i] = m.Path
-	}
-	return out
-}
-
-type treeStats struct {
-	files, folders int
-	size           int64
-}
-
-type walker struct {
-	s        *Service
-	ctx      context.Context
-	deadline time.Time
-	nfiles   int
-}
-
 func (s *Service) newWalker(ctx context.Context) *walker {
 	return &walker{s: s, ctx: ctx, deadline: time.Now().Add(walkBudget)}
-}
-
-func (w *walker) dir(path string, fn func(fscontract.Entry) error) error {
-	if err := w.ctx.Err(); err != nil {
-		return err
-	}
-	if w.nfiles >= maxFiles || time.Now().After(w.deadline) {
-		return errWalkLimit
-	}
-	entries, err := w.s.fs.List(w.ctx, path)
-	if err != nil {
-		return err
-	}
-	for _, e := range entries {
-		if e.Dir && skipDirs[e.Name] {
-			continue
-		}
-		if !e.Dir {
-			if w.nfiles >= maxFiles || time.Now().After(w.deadline) {
-				return errWalkLimit
-			}
-			w.nfiles++
-		}
-		if err := fn(e); err != nil {
-			return err
-		}
-		if e.Dir {
-			if err := w.dir(e.Path, fn); err != nil {
-				if errors.Is(err, errWalkLimit) || errors.Is(err, context.Canceled) {
-					return err
-				}
-			}
-		}
-	}
-	return nil
 }
 
 func (s *Service) stats(ctx context.Context, roots []string) (treeStats, error) {
@@ -736,6 +667,75 @@ func (s *Service) listFolders(ctx context.Context, mounts []contract.Mount, star
 		}
 	}
 	return out, nil
+}
+
+type treeStats struct {
+	files, folders int
+	size           int64
+}
+
+type walker struct {
+	s        *Service
+	ctx      context.Context
+	deadline time.Time
+	nfiles   int
+}
+
+func (w *walker) dir(path string, fn func(fscontract.Entry) error) error {
+	if err := w.ctx.Err(); err != nil {
+		return err
+	}
+	if w.nfiles >= maxFiles || time.Now().After(w.deadline) {
+		return errWalkLimit
+	}
+	entries, err := w.s.fs.List(w.ctx, path)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.Dir && skipDirs[e.Name] {
+			continue
+		}
+		if !e.Dir {
+			if w.nfiles >= maxFiles || time.Now().After(w.deadline) {
+				return errWalkLimit
+			}
+			w.nfiles++
+		}
+		if err := fn(e); err != nil {
+			return err
+		}
+		if e.Dir {
+			if err := w.dir(e.Path, fn); err != nil {
+				if errors.Is(err, errWalkLimit) || errors.Is(err, context.Canceled) {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func walkLimitErr() error {
+	return fmt.Errorf("The file listing stopped at its limit (%d files or %s); mount a narrower folder.", maxFiles, walkBudget)
+}
+
+func displayPath(mounts []contract.Mount, abs string) string {
+	if m, rel, ok := contract.MountOf(mounts, abs); ok {
+		if rel == "." {
+			return m.Name
+		}
+		return contract.Display(m, rel)
+	}
+	return abs
+}
+
+func mountPaths(mounts []contract.Mount) []string {
+	out := make([]string, len(mounts))
+	for i, m := range mounts {
+		out[i] = m.Path
+	}
+	return out
 }
 
 func tabbed(rows [][2]string) string {

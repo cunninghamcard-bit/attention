@@ -24,11 +24,33 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
-// ID is the plugin's name and its palette source's.
-const ID = "switcher"
+const (
+	// ID is the plugin's name and its palette source's.
+	ID = "switcher"
 
-// maxResults is SuggestModal's limit (apps/web/ui/suggest/SuggestModal.ts).
-const maxResults = 100
+	// maxResults is SuggestModal's limit (apps/web/ui/suggest/SuggestModal.ts).
+	maxResults = 100
+)
+
+// Plugin is the quick switcher while loaded.
+var Plugin = rutis.Define(rutis.Plugin[struct{}]{
+	Name:   ID,
+	Inject: []string{"shell", "project", "actions", "workspace"},
+	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		var project projectcontract.Project
+		if err := rctx.Use("project", &project); err != nil {
+			return err
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		off := Register(New(ctx, project.Files, shellapi.Update))
+		rctx.Effect(func(context.Context) error {
+			off()
+			cancel()
+			return nil
+		})
+		return nil
+	},
+})
 
 // Switcher is the source's state, on the main thread only.
 type Switcher struct {
@@ -53,6 +75,31 @@ func New(ctx context.Context, files func(context.Context) (projectcontract.Listi
 func (s *Switcher) SetListing(l projectcontract.Listing) {
 	s.listing = &l
 	s.useListing()
+}
+
+// Source is the switcher's palette source.
+func (s *Switcher) Source() slotsapi.PaletteSource {
+	return slotsapi.PaletteSource{
+		ID: ID, Placeholder: "Search files…",
+		Open:       s.refresh,
+		Items:      s.items,
+		Generation: func() int { return s.gen },
+		Empty: func(query string) string {
+			switch {
+			case s.listing == nil:
+				return "Listing files…"
+			case strings.TrimSpace(query) == "":
+				return "No recent files"
+			}
+			return "No matches"
+		},
+		Footer: func(c *ui.Context, _ string) {
+			if s.listing != nil && s.listing.Truncated {
+				ui.Text(c, "Listing stopped at its limit; narrow the mounts for a complete list.").
+					TextColor(c.Theme().TextMuted).FontSize(11).Padding(4, 8)
+			}
+		},
+	}
 }
 
 // refresh walks the mounts again on a goroutine; the last walk shows
@@ -96,15 +143,6 @@ func (s *Switcher) useListing() {
 	s.gen++
 }
 
-// title is getQuickSwitcherFileTitle: a Markdown file without its
-// extension.
-func title(display string) string {
-	if strings.EqualFold(filepath.Ext(display), ".md") {
-		return display[:len(display)-3]
-	}
-	return display
-}
-
 func (s *Switcher) item(i int) slotsapi.PaletteItem {
 	name, path := s.names[i], s.paths[i]
 	base, dir := name, ""
@@ -145,34 +183,6 @@ func (s *Switcher) items(query string) []slotsapi.PaletteItem {
 	return out
 }
 
-// Source is the switcher's palette source.
-func (s *Switcher) Source() slotsapi.PaletteSource {
-	return slotsapi.PaletteSource{
-		ID: ID, Placeholder: "Search files…",
-		Open:       s.refresh,
-		Items:      s.items,
-		Generation: func() int { return s.gen },
-		Empty: func(query string) string {
-			switch {
-			case s.listing == nil:
-				return "Listing files…"
-			case strings.TrimSpace(query) == "":
-				return "No recent files"
-			}
-			return "No matches"
-		},
-		Footer: func(c *ui.Context, _ string) {
-			if s.listing != nil && s.listing.Truncated {
-				ui.Text(c, "Listing stopped at its limit; narrow the mounts for a complete list.").
-					TextColor(c.Theme().TextMuted).FontSize(11).Padding(4, 8)
-			}
-		},
-	}
-}
-
-// open is switcher:open: the palette on the switcher.
-func open() { slotsapi.OpenPalette(ID) }
-
 // Register adds the source, its command and its ribbon icon until off is
 // called.
 func Register(s *Switcher) (off func()) {
@@ -191,22 +201,14 @@ func Register(s *Switcher) (off func()) {
 	}
 }
 
-// Plugin is the quick switcher while loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   ID,
-	Inject: []string{"shell", "project", "actions", "workspace"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var project projectcontract.Project
-		if err := rctx.Use("project", &project); err != nil {
-			return err
-		}
-		ctx, cancel := context.WithCancel(context.Background())
-		off := Register(New(ctx, project.Files, shellapi.Update))
-		rctx.Effect(func(context.Context) error {
-			off()
-			cancel()
-			return nil
-		})
-		return nil
-	},
-})
+// title is getQuickSwitcherFileTitle: a Markdown file without its
+// extension.
+func title(display string) string {
+	if strings.EqualFold(filepath.Ext(display), ".md") {
+		return display[:len(display)-3]
+	}
+	return display
+}
+
+// open is switcher:open: the palette on the switcher.
+func open() { slotsapi.OpenPalette(ID) }

@@ -21,15 +21,31 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 )
 
-// ID is the plugin's name and its palette source's.
-const ID = "command-palette"
-
-// maxResults is SuggestModal's limit; maxRecent CommandPalette's
-// recentCommands cap.
 const (
+	// ID is the plugin's name and its palette source's.
+	ID = "command-palette"
+
+	// maxResults is SuggestModal's limit; maxRecent CommandPalette's
+	// recentCommands cap.
 	maxResults = 100
 	maxRecent  = 100
 )
+
+// Plugin is the command palette while loaded.
+var Plugin = rutis.Define(rutis.Plugin[struct{}]{
+	Name:   ID,
+	Inject: []string{"shell", "actions"},
+	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		off := Register(New(ctx))
+		rctx.Effect(func(context.Context) error {
+			off()
+			cancel()
+			return nil
+		})
+		return nil
+	},
+})
 
 // Palette is the source's state, on the main thread only.
 type Palette struct {
@@ -43,6 +59,22 @@ func New(ctx context.Context) *Palette { return &Palette{ctx: ctx} }
 
 // Recent are the recently run commands' IDs, most recent first.
 func (p *Palette) Recent() []string { return p.recent }
+
+// Source is the command palette's source; its state is the recent
+// commands.
+func (p *Palette) Source() slotsapi.PaletteSource {
+	return slotsapi.PaletteSource{
+		ID: ID, Placeholder: "Execute a command…",
+		Open:  p.load,
+		Items: p.items,
+		Empty: func(string) string { return "No matches" },
+		State: func() json.RawMessage {
+			b, _ := json.Marshal(p.recent)
+			return b
+		},
+		Restore: func(st json.RawMessage) { _ = json.Unmarshal(st, &p.recent) },
+	}
+}
 
 // load is CommandPalette.getCommands: by name naturally, the recently run
 // ones first, most recent first.
@@ -109,25 +141,6 @@ func (p *Palette) items(query string) []slotsapi.PaletteItem {
 	return out
 }
 
-// Source is the command palette's source; its state is the recent
-// commands.
-func (p *Palette) Source() slotsapi.PaletteSource {
-	return slotsapi.PaletteSource{
-		ID: ID, Placeholder: "Execute a command…",
-		Open:  p.load,
-		Items: p.items,
-		Empty: func(string) string { return "No matches" },
-		State: func() json.RawMessage {
-			b, _ := json.Marshal(p.recent)
-			return b
-		},
-		Restore: func(st json.RawMessage) { _ = json.Unmarshal(st, &p.recent) },
-	}
-}
-
-// open is command-palette:open.
-func open() { slotsapi.OpenPalette(ID) }
-
 // Register adds the source, its command and its ribbon icon until off is
 // called.
 func Register(p *Palette) (off func()) {
@@ -146,18 +159,5 @@ func Register(p *Palette) (off func()) {
 	}
 }
 
-// Plugin is the command palette while loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   ID,
-	Inject: []string{"shell", "actions"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		ctx, cancel := context.WithCancel(context.Background())
-		off := Register(New(ctx))
-		rctx.Effect(func(context.Context) error {
-			off()
-			cancel()
-			return nil
-		})
-		return nil
-	},
-})
+// open is command-palette:open.
+func open() { slotsapi.OpenPalette(ID) }

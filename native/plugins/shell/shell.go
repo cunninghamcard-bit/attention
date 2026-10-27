@@ -15,13 +15,6 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
 )
 
-// Shell is the "shell" service. Its only method exists so the service has a
-// shape; UI plugins inject it for ordering and use shellapi in-process.
-type Shell struct{}
-
-// Ready reports that the window is up.
-func (Shell) Ready(context.Context) (bool, error) { return shellapi.Window() != nil, nil }
-
 // Plugin opens the window when it loads and closes it when it unloads. The
 // user closing the window quits the app (the UI runtime then asks
 // rutis-host to stop); the plugin unloading does not.
@@ -65,3 +58,10 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		return nil
 	},
 })
+
+// Shell is the "shell" service. Its only method exists so the service has a
+// shape; UI plugins inject it for ordering and use shellapi in-process.
+type Shell struct{}
+
+// Ready reports that the window is up.
+func (Shell) Ready(context.Context) (bool, error) { return shellapi.Window() != nil, nil }

@@ -32,24 +32,58 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
-// PanelID is the Search panel's slot id.
-const PanelID = "search"
+const (
+	// PanelID is the Search panel's slot id.
+	PanelID = "search"
 
-// debounce is the wait after a keystroke before searching; attention
-// searches on every change, which the disk walk here cannot keep up with.
-const debounce = 250 * time.Millisecond
+	// debounce is the wait after a keystroke before searching; attention
+	// searches on every change, which the disk walk here cannot keep up with.
+	debounce = 250 * time.Millisecond
 
-// resultLimit stops a search after this many files.
-const resultLimit = 2000
+	// resultLimit stops a search after this many files.
+	resultLimit = 2000
+)
 
-// sortOrders are SearchView's, less the created-time pair (Linux keeps no
-// creation time that fs reports).
-var sortOrders = []omgui.SelectOption{
-	{Value: "alphabetical", Label: "A to Z"},
-	{Value: "alphabeticalReverse", Label: "Z to A"},
-	{Value: "byModifiedTime", Label: "Modified time (new to old)"},
-	{Value: "byModifiedTimeReverse", Label: "Modified time (old to new)"},
-}
+var (
+	// sortOrders are SearchView's, less the created-time pair (Linux keeps no
+	// creation time that fs reports).
+	sortOrders = []omgui.SelectOption{
+		{Value: "alphabetical", Label: "A to Z"},
+		{Value: "alphabeticalReverse", Label: "Z to A"},
+		{Value: "byModifiedTime", Label: "Modified time (new to old)"},
+		{Value: "byModifiedTimeReverse", Label: "Modified time (old to new)"},
+	}
+
+	// Plugin registers the Search panel while loaded.
+	Plugin = rutis.Define(rutis.Plugin[struct{}]{
+		Name:   "search",
+		Inject: []string{"shell", "actions", "project", "workspace"},
+		Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+			var project projectcontract.Project
+			if err := rctx.Use("project", &project); err != nil {
+				return err
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			s := &Search{ctx: ctx, project: project, sortOrder: "alphabetical", collapsed: map[string]bool{}}
+			off := slotsapi.RegisterPanel(slotsapi.Panel{
+				ID: PanelID, Title: "Search", Icon: lucide.Search(), Dock: slotsapi.Left, Order: 1,
+				View: s.view, State: s.state, Restore: s.restore,
+			})
+			offs := []func(){off}
+			for _, cmd := range s.commands() {
+				offs = append(offs, actionsapi.Register(cmd))
+			}
+			rctx.Effect(func(context.Context) error {
+				for i := len(offs) - 1; i >= 0; i-- {
+					offs[i]()
+				}
+				cancel()
+				return nil
+			})
+			return nil
+		},
+	})
+)
 
 // Search is the panel's state, on the main thread only.
 type Search struct {
@@ -78,51 +112,6 @@ type Search struct {
 	rows      []row
 	dirty     bool
 	revealed  int
-}
-
-// row is a file title or one of its matches.
-type row struct {
-	file  *projectcontract.FileResult
-	match int // -1 on the file's title
-}
-
-// Plugin registers the Search panel while loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   "search",
-	Inject: []string{"shell", "actions", "project", "workspace"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var project projectcontract.Project
-		if err := rctx.Use("project", &project); err != nil {
-			return err
-		}
-		ctx, cancel := context.WithCancel(context.Background())
-		s := &Search{ctx: ctx, project: project, sortOrder: "alphabetical", collapsed: map[string]bool{}}
-		off := slotsapi.RegisterPanel(slotsapi.Panel{
-			ID: PanelID, Title: "Search", Icon: lucide.Search(), Dock: slotsapi.Left, Order: 1,
-			View: s.view, State: s.state, Restore: s.restore,
-		})
-		offs := []func(){off}
-		for _, cmd := range s.commands() {
-			offs = append(offs, actionsapi.Register(cmd))
-		}
-		rctx.Effect(func(context.Context) error {
-			for i := len(offs) - 1; i >= 0; i-- {
-				offs[i]()
-			}
-			cancel()
-			return nil
-		})
-		return nil
-	},
-})
-
-// savedState is SearchView.getState's, less "More context".
-type savedState struct {
-	Query         string `json:"query"`
-	MatchingCase  bool   `json:"matchingCase"`
-	ExplainSearch bool   `json:"explainSearch"`
-	CollapseAll   bool   `json:"collapseAll"`
-	SortOrder     string `json:"sortOrder"`
 }
 
 func (s *Search) state() json.RawMessage {
@@ -275,19 +264,6 @@ func (s *Search) flatten() []row {
 	return s.rows
 }
 
-// open is SearchView.openResult: the match is selected in the file.
-func open(f *projectcontract.FileResult, m *projectcontract.Match) {
-	ws := workspaceapi.Get()
-	if ws == nil {
-		return
-	}
-	var nav *workspaceapi.Nav
-	if m != nil {
-		nav = &workspaceapi.Nav{Line: m.Line, Col: m.Col, Len: m.Len}
-	}
-	ws.Open(f.Path, nav, false)
-}
-
 func (s *Search) view(c *ui.Context, p slotsapi.PanelProps) {
 	t := c.Theme()
 	ws := workspaceapi.Get()
@@ -384,13 +360,6 @@ func (s *Search) countText() string {
 	return out
 }
 
-func plural(n int) string {
-	if n == 1 {
-		return ""
-	}
-	return "s"
-}
-
 func (s *Search) fileRow(c *ui.Context, ws workspaceapi.API, f *projectcontract.FileResult) {
 	t := c.Theme()
 	name := f.Path
@@ -425,6 +394,41 @@ func (s *Search) fileRow(c *ui.Context, ws workspaceapi.API, f *projectcontract.
 			ui.Text(c, strconv.Itoa(len(f.Matches))).FontSize(11).TextColor(t.TextMuted).Shrink(0)
 		}
 	})
+}
+
+// row is a file title or one of its matches.
+type row struct {
+	file  *projectcontract.FileResult
+	match int // -1 on the file's title
+}
+
+// savedState is SearchView.getState's, less "More context".
+type savedState struct {
+	Query         string `json:"query"`
+	MatchingCase  bool   `json:"matchingCase"`
+	ExplainSearch bool   `json:"explainSearch"`
+	CollapseAll   bool   `json:"collapseAll"`
+	SortOrder     string `json:"sortOrder"`
+}
+
+// open is SearchView.openResult: the match is selected in the file.
+func open(f *projectcontract.FileResult, m *projectcontract.Match) {
+	ws := workspaceapi.Get()
+	if ws == nil {
+		return
+	}
+	var nav *workspaceapi.Nav
+	if m != nil {
+		nav = &workspaceapi.Nav{Line: m.Line, Col: m.Col, Len: m.Len}
+	}
+	ws.Open(f.Path, nav, false)
+}
+
+func plural(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
 }
 
 // highlighted is a match as "line: text" with the matched part marked

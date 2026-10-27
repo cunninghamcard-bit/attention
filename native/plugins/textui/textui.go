@@ -23,6 +23,26 @@ const (
 	Kind = "text"
 )
 
+// Plugin registers the text tab type while loaded.
+var Plugin = rutis.Define(rutis.Plugin[struct{}]{
+	Name:   ID,
+	Inject: []string{"shell", "fs"},
+	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		var fs fscontract.FS
+		if err := rctx.Use("fs", &fs); err != nil {
+			return err
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		off := Register(ctx, fs, shellapi.Update)
+		rctx.Effect(func(context.Context) error {
+			off()
+			cancel()
+			return nil
+		})
+		return nil
+	},
+})
+
 // Register adds the text tab type until off is called; post runs a
 // function on the main thread.
 func Register(ctx context.Context, fs fscontract.FS, post func(func())) (off func()) {
@@ -56,23 +76,3 @@ func Register(ctx context.Context, fs fscontract.FS, post func(func())) (off fun
 		Lines:  func(id int) (int, int, bool) { return docs[id].Lines() },
 	})
 }
-
-// Plugin registers the text tab type while loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   ID,
-	Inject: []string{"shell", "fs"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var fs fscontract.FS
-		if err := rctx.Use("fs", &fs); err != nil {
-			return err
-		}
-		ctx, cancel := context.WithCancel(context.Background())
-		off := Register(ctx, fs, shellapi.Update)
-		rctx.Effect(func(context.Context) error {
-			off()
-			cancel()
-			return nil
-		})
-		return nil
-	},
-})

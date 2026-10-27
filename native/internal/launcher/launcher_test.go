@@ -6,10 +6,6 @@ import (
 	"testing"
 )
 
-type closedPipe struct{}
-
-func (closedPipe) Write([]byte) (int, error) { return 0, syscall.EPIPE }
-
 // Regression: `attention files | head` printed "Error: … broken pipe"
 // once head had read its lines.
 func TestAClosedReaderIsNoError(t *testing.T) {
@@ -17,3 +13,7 @@ func TestAClosedReaderIsNoError(t *testing.T) {
 		t.Fatalf("copy to a closed pipe: %v", err)
 	}
 }
+
+type closedPipe struct{}
+
+func (closedPipe) Write([]byte) (int, error) { return 0, syscall.EPIPE }

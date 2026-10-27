@@ -10,29 +10,23 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/settingsapi"
 )
 
-// Hotkey is attention's Hotkey (apps/web/app/hotkeys/Keymap.ts) as
-// hotkeys.json keeps it: modifiers Mod (the platform's command key), Ctrl,
-// Meta, Alt, Shift, and a key named as KeyboardEvent.key names it.
-type Hotkey struct {
-	Modifiers []string `json:"modifiers"`
-	Key       string   `json:"key,omitempty"`
-}
+var (
+	// hotkeyKeys are the key names a Hotkey uses; letters and digits are
+	// added by init.
+	hotkeyKeys = map[string]ui.Key{
+		"Enter": ui.KeyEnter, "Escape": ui.KeyEscape, "Backspace": ui.KeyBackspace, "Tab": ui.KeyTab,
+		"Space": ui.KeySpace, "Delete": ui.KeyDelete, "Insert": ui.KeyInsert, "Home": ui.KeyHome, "End": ui.KeyEnd,
+		"PageUp": ui.KeyPageUp, "PageDown": ui.KeyPageDown, "ArrowLeft": ui.KeyLeft, "ArrowRight": ui.KeyRight,
+		"ArrowUp": ui.KeyUp, "ArrowDown": ui.KeyDown, "-": ui.KeyMinus, "=": ui.KeyEqual, ",": ui.KeyComma, ".": ui.KeyPeriod,
+		"/": ui.KeySlash, ";": ui.KeySemicolon, "'": ui.KeyQuote, "[": ui.KeyBracketLeft, "]": ui.KeyBracketRight,
+		"\\": ui.KeyBackslash, "`": ui.KeyBackquote,
+		"F1": ui.KeyF1, "F2": ui.KeyF2, "F3": ui.KeyF3, "F4": ui.KeyF4, "F5": ui.KeyF5, "F6": ui.KeyF6,
+		"F7": ui.KeyF7, "F8": ui.KeyF8, "F9": ui.KeyF9, "F10": ui.KeyF10, "F11": ui.KeyF11, "F12": ui.KeyF12,
+	}
 
-// hotkeyKeys are the key names a Hotkey uses; letters and digits are
-// added by init.
-var hotkeyKeys = map[string]ui.Key{
-	"Enter": ui.KeyEnter, "Escape": ui.KeyEscape, "Backspace": ui.KeyBackspace, "Tab": ui.KeyTab,
-	"Space": ui.KeySpace, "Delete": ui.KeyDelete, "Insert": ui.KeyInsert, "Home": ui.KeyHome, "End": ui.KeyEnd,
-	"PageUp": ui.KeyPageUp, "PageDown": ui.KeyPageDown, "ArrowLeft": ui.KeyLeft, "ArrowRight": ui.KeyRight,
-	"ArrowUp": ui.KeyUp, "ArrowDown": ui.KeyDown, "-": ui.KeyMinus, "=": ui.KeyEqual, ",": ui.KeyComma, ".": ui.KeyPeriod,
-	"/": ui.KeySlash, ";": ui.KeySemicolon, "'": ui.KeyQuote, "[": ui.KeyBracketLeft, "]": ui.KeyBracketRight,
-	"\\": ui.KeyBackslash, "`": ui.KeyBackquote,
-	"F1": ui.KeyF1, "F2": ui.KeyF2, "F3": ui.KeyF3, "F4": ui.KeyF4, "F5": ui.KeyF5, "F6": ui.KeyF6,
-	"F7": ui.KeyF7, "F8": ui.KeyF8, "F9": ui.KeyF9, "F10": ui.KeyF10, "F11": ui.KeyF11, "F12": ui.KeyF12,
-}
-
-// hotkeyNames names each key a Hotkey can hold.
-var hotkeyNames = map[ui.Key]string{}
+	// hotkeyNames names each key a Hotkey can hold.
+	hotkeyNames = map[ui.Key]string{}
+)
 
 func init() {
 	for name, k := range lettersAndDigits() {
@@ -41,6 +35,37 @@ func init() {
 	for name, k := range hotkeyKeys {
 		hotkeyNames[k] = name
 	}
+}
+
+// Hotkey is attention's Hotkey (apps/web/app/hotkeys/Keymap.ts) as
+// hotkeys.json keeps it: modifiers Mod (the platform's command key), Ctrl,
+// Meta, Alt, Shift, and a key named as KeyboardEvent.key names it.
+type Hotkey struct {
+	Modifiers []string `json:"modifiers"`
+	Key       string   `json:"key,omitempty"`
+}
+
+// hotkeyOf is b as a Hotkey: the platform's command key as Mod.
+func hotkeyOf(b Binding) Hotkey {
+	h := Hotkey{Key: hotkeyNames[b.Key], Modifiers: []string{}}
+	m := b.Mods
+	if m&ui.Cmd != 0 {
+		h.Modifiers = append(h.Modifiers, "Mod")
+		m &^= ui.Cmd
+	}
+	if m&ui.Ctrl != 0 {
+		h.Modifiers = append(h.Modifiers, "Ctrl")
+	}
+	if m&ui.Super != 0 {
+		h.Modifiers = append(h.Modifiers, "Meta")
+	}
+	if m&ui.Alt != 0 {
+		h.Modifiers = append(h.Modifiers, "Alt")
+	}
+	if m&ui.Shift != 0 {
+		h.Modifiers = append(h.Modifiers, "Shift")
+	}
+	return h
 }
 
 // binding is the combination h names, false for a key it cannot.
@@ -65,29 +90,6 @@ func (h Hotkey) binding() (Binding, bool) {
 		}
 	}
 	return b, true
-}
-
-// hotkeyOf is b as a Hotkey: the platform's command key as Mod.
-func hotkeyOf(b Binding) Hotkey {
-	h := Hotkey{Key: hotkeyNames[b.Key], Modifiers: []string{}}
-	m := b.Mods
-	if m&ui.Cmd != 0 {
-		h.Modifiers = append(h.Modifiers, "Mod")
-		m &^= ui.Cmd
-	}
-	if m&ui.Ctrl != 0 {
-		h.Modifiers = append(h.Modifiers, "Ctrl")
-	}
-	if m&ui.Super != 0 {
-		h.Modifiers = append(h.Modifiers, "Meta")
-	}
-	if m&ui.Alt != 0 {
-		h.Modifiers = append(h.Modifiers, "Alt")
-	}
-	if m&ui.Shift != 0 {
-		h.Modifiers = append(h.Modifiers, "Shift")
-	}
-	return h
 }
 
 // Defaults are a command's default hotkeys, from its Keys.
@@ -143,9 +145,6 @@ func EffectiveLabel(cmd actionsapi.Command) string {
 	return ""
 }
 
-// signature is hotkeySignature: the binding, modifiers in any order.
-func signature(h Hotkey) (Binding, bool) { return h.binding() }
-
 // Conflicts are the other commands that a hotkey of cmd's also triggers
 // (getHotkeyConflicts).
 func Conflicts(cmd actionsapi.Command, h Hotkey) []actionsapi.Command {
@@ -167,3 +166,6 @@ func Conflicts(cmd actionsapi.Command, h Hotkey) []actionsapi.Command {
 	}
 	return out
 }
+
+// signature is hotkeySignature: the binding, modifiers in any order.
+func signature(h Hotkey) (Binding, bool) { return h.binding() }

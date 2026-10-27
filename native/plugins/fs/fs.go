@@ -25,8 +25,40 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
 )
 
-// debounce is how long changes gather before one batch is emitted.
-const debounce = 75 * time.Millisecond
+const (
+	// debounce is how long changes gather before one batch is emitted.
+	debounce = 75 * time.Millisecond
+
+	// sniff is how much of a file decides whether it is binary.
+	sniff = 8000
+
+	// chunkSize is how much Read and ReadBytes copy between ctx checks.
+	chunkSize = 64 << 10
+)
+
+// Plugin provides "fs".
+var Plugin = rutis.Define(rutis.Plugin[struct{}]{
+	Name: "fs",
+	Apply: func(ctx *rutis.Ctx, _ struct{}) error {
+		// Events go out on a context of this plugin's own, not a caller's.
+		emitCtx, cancel := context.WithCancel(context.Background())
+		svc, err := New(
+			func(b contract.Batch) { _ = ctx.Emit(emitCtx, contract.ChangedEvent, b) },
+			func(msg string) { _ = ctx.Emit(emitCtx, contract.WatchErrorEvent, msg) },
+		)
+		if err != nil {
+			cancel()
+			return err
+		}
+		ctx.Go(svc.Run)
+		ctx.Provide("fs", svc)
+		ctx.Effect(func(context.Context) error {
+			cancel()
+			return svc.Close()
+		})
+		return nil
+	},
+})
 
 // Service implements the fs contract.
 type Service struct {
@@ -38,6 +70,16 @@ type Service struct {
 	timer   *time.Timer
 	emit    func(contract.Batch)
 	report  func(string)
+}
+
+// New makes a service with its own watcher; emit receives the batches and
+// report the watch errors.
+func New(emit func(contract.Batch), report func(string)) (*Service, error) {
+	w, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, err
+	}
+	return &Service{watcher: w, watched: map[string]int{}, pending: map[string]string{}, emit: emit, report: report}, nil
 }
 
 // List lists a directory: directories first, then files, each by name
@@ -70,27 +112,6 @@ func (s *Service) List(ctx context.Context, dir string) ([]contract.Entry, error
 	SortEntries(out)
 	return out, nil
 }
-
-// SortEntries orders directories first, then by name in natural order
-// (without case, d2 before d10), as Zed does.
-func SortEntries(es []contract.Entry) {
-	sort.SliceStable(es, func(i, j int) bool {
-		a, b := es[i], es[j]
-		if a.Dir != b.Dir {
-			return a.Dir
-		}
-		if natural.Less(a.Name, b.Name) != natural.Less(b.Name, a.Name) {
-			return natural.Less(a.Name, b.Name)
-		}
-		return a.Name < b.Name
-	})
-}
-
-// sniff is how much of a file decides whether it is binary.
-const sniff = 8000
-
-// chunkSize is how much Read and ReadBytes copy between ctx checks.
-const chunkSize = 64 << 10
 
 // Read reads a text file of at most max bytes. A larger file comes back
 // TooLarge and a file with a NUL byte in its first 8000 bytes Binary, both
@@ -144,10 +165,6 @@ func (s *Service) Read(ctx context.Context, path string, max int64) (contract.Fi
 	return out, nil
 }
 
-func tooLarge(path string, max int64) error {
-	return fmt.Errorf("%s is larger than %d bytes: %w", filepath.Base(path), max, contract.ErrTooLarge)
-}
-
 // ReadBytes reads a file of at most max bytes. A larger file returns
 // contract.ErrTooLarge. It returns ctx.Err() once ctx is done.
 func (s *Service) ReadBytes(ctx context.Context, path string, max int64) ([]byte, error) {
@@ -174,50 +191,6 @@ func (s *Service) ReadBytes(ctx context.Context, path string, max int64) ([]byte
 		return nil, tooLarge(path, max)
 	}
 	return data, err
-}
-
-// readChunks copies r in chunkSize pieces. max < 0 means no size limit;
-// otherwise more than max bytes is contract.ErrTooLarge. ctx is checked
-// before each piece.
-func readChunks(ctx context.Context, r io.Reader, max int64) ([]byte, error) {
-	var buf bytes.Buffer
-	chunk := make([]byte, chunkSize)
-	var taken int64
-	unlimited := max < 0
-	limit := max
-	if !unlimited {
-		limit = max + 1
-	}
-	for {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		toRead := chunk
-		if !unlimited {
-			remain := limit - taken
-			if remain <= 0 {
-				break
-			}
-			if remain < int64(len(toRead)) {
-				toRead = chunk[:remain]
-			}
-		}
-		n, err := r.Read(toRead)
-		if n > 0 {
-			buf.Write(toRead[:n])
-			taken += int64(n)
-		}
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-	if !unlimited && taken > max {
-		return nil, contract.ErrTooLarge
-	}
-	return buf.Bytes(), nil
 }
 
 // Stat describes one path.
@@ -272,6 +245,40 @@ func (s *Service) Unwatch(_ context.Context, dir string) error {
 	return nil
 }
 
+// Run delivers the watcher's events until ctx ends.
+func (s *Service) Run(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case ev, ok := <-s.watcher.Events:
+			if !ok {
+				return nil
+			}
+			s.note(ev)
+		case err, ok := <-s.watcher.Errors:
+			if !ok {
+				return nil
+			}
+			if s.report != nil {
+				s.report(err.Error())
+			}
+		}
+	}
+}
+
+// Close stops the watcher.
+func (s *Service) Close() error {
+	s.mu.Lock()
+	if s.timer != nil {
+		s.timer.Stop()
+		s.timer = nil
+	}
+	s.emit = nil
+	s.mu.Unlock()
+	return s.watcher.Close()
+}
+
 func (s *Service) note(ev fsnotify.Event) {
 	op := ""
 	switch {
@@ -323,70 +330,65 @@ func (s *Service) flush() {
 	}
 }
 
-// New makes a service with its own watcher; emit receives the batches and
-// report the watch errors.
-func New(emit func(contract.Batch), report func(string)) (*Service, error) {
-	w, err := fsnotify.NewWatcher()
-	if err != nil {
-		return nil, err
-	}
-	return &Service{watcher: w, watched: map[string]int{}, pending: map[string]string{}, emit: emit, report: report}, nil
+// SortEntries orders directories first, then by name in natural order
+// (without case, d2 before d10), as Zed does.
+func SortEntries(es []contract.Entry) {
+	sort.SliceStable(es, func(i, j int) bool {
+		a, b := es[i], es[j]
+		if a.Dir != b.Dir {
+			return a.Dir
+		}
+		if natural.Less(a.Name, b.Name) != natural.Less(b.Name, a.Name) {
+			return natural.Less(a.Name, b.Name)
+		}
+		return a.Name < b.Name
+	})
 }
 
-// Run delivers the watcher's events until ctx ends.
-func (s *Service) Run(ctx context.Context) error {
+func tooLarge(path string, max int64) error {
+	return fmt.Errorf("%s is larger than %d bytes: %w", filepath.Base(path), max, contract.ErrTooLarge)
+}
+
+// readChunks copies r in chunkSize pieces. max < 0 means no size limit;
+// otherwise more than max bytes is contract.ErrTooLarge. ctx is checked
+// before each piece.
+func readChunks(ctx context.Context, r io.Reader, max int64) ([]byte, error) {
+	var buf bytes.Buffer
+	chunk := make([]byte, chunkSize)
+	var taken int64
+	unlimited := max < 0
+	limit := max
+	if !unlimited {
+		limit = max + 1
+	}
 	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case ev, ok := <-s.watcher.Events:
-			if !ok {
-				return nil
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		toRead := chunk
+		if !unlimited {
+			remain := limit - taken
+			if remain <= 0 {
+				break
 			}
-			s.note(ev)
-		case err, ok := <-s.watcher.Errors:
-			if !ok {
-				return nil
-			}
-			if s.report != nil {
-				s.report(err.Error())
+			if remain < int64(len(toRead)) {
+				toRead = chunk[:remain]
 			}
 		}
-	}
-}
-
-// Close stops the watcher.
-func (s *Service) Close() error {
-	s.mu.Lock()
-	if s.timer != nil {
-		s.timer.Stop()
-		s.timer = nil
-	}
-	s.emit = nil
-	s.mu.Unlock()
-	return s.watcher.Close()
-}
-
-// Plugin provides "fs".
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name: "fs",
-	Apply: func(ctx *rutis.Ctx, _ struct{}) error {
-		// Events go out on a context of this plugin's own, not a caller's.
-		emitCtx, cancel := context.WithCancel(context.Background())
-		svc, err := New(
-			func(b contract.Batch) { _ = ctx.Emit(emitCtx, contract.ChangedEvent, b) },
-			func(msg string) { _ = ctx.Emit(emitCtx, contract.WatchErrorEvent, msg) },
-		)
+		n, err := r.Read(toRead)
+		if n > 0 {
+			buf.Write(toRead[:n])
+			taken += int64(n)
+		}
+		if errors.Is(err, io.EOF) {
+			break
+		}
 		if err != nil {
-			cancel()
-			return err
+			return nil, err
 		}
-		ctx.Go(svc.Run)
-		ctx.Provide("fs", svc)
-		ctx.Effect(func(context.Context) error {
-			cancel()
-			return svc.Close()
-		})
-		return nil
-	},
-})
+	}
+	if !unlimited && taken > max {
+		return nil, contract.ErrTooLarge
+	}
+	return buf.Bytes(), nil
+}

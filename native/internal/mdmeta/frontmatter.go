@@ -6,16 +6,20 @@ import (
 	"strings"
 )
 
-// frontmatterRe ports FRONTMATTER_RE from apps/web/metadata/Frontmatter.ts.
-var frontmatterRe = regexp.MustCompile(`(?s)^---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n)?`)
-
 var (
+	// frontmatterRe ports FRONTMATTER_RE from apps/web/metadata/Frontmatter.ts.
+	frontmatterRe = regexp.MustCompile(`(?s)^---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n)?`)
+
 	yamlKeyRe  = regexp.MustCompile(`^([^:#][^:]*):(?:\s*(.*))?$`)
 	yamlListRe = regexp.MustCompile(`^\s*-\s*`)
 	yamlItemRe = regexp.MustCompile(`^\s*-\s*(.*)$`)
 	yamlIndent = regexp.MustCompile(`^\s+`)
 	yamlNumber = regexp.MustCompile(`^-?\d+(?:\.\d+)?$`)
 )
+
+// Keys are the frontmatter's keys in the order the note writes them (the
+// TS object's key order).
+func (p ParsedFrontmatter) Keys() []string { return append([]string(nil), p.keys...) }
 
 // ParseFrontmatter reads a leading YAML-subset --- block.
 // It ports parseFrontmatter from apps/web/metadata/Frontmatter.ts.
@@ -267,7 +271,3 @@ func trimStart(s string) string {
 func isSpace(b byte) bool {
 	return b == ' ' || b == '\t' || b == '\n' || b == '\r' || b == '\f' || b == '\v'
 }
-
-// Keys are the frontmatter's keys in the order the note writes them (the
-// TS object's key order).
-func (p ParsedFrontmatter) Keys() []string { return append([]string(nil), p.keys...) }

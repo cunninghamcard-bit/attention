@@ -231,19 +231,6 @@ func (ws *Workspace) tabMenu(p *pane, tb *tab) []omgui.MenuItem {
 	return append(append(items, omgui.MenuItem{Separator: true}), ws.paneMenu(p, tb, tt)...)
 }
 
-// nativeMenu fills a context menu with items.
-func nativeMenu(m *ui.Menu, items []omgui.MenuItem) {
-	for _, it := range items {
-		if it.Separator {
-			m.Separator()
-			continue
-		}
-		if m.Item(it.Label).Checked(it.Checked).Disabled(it.Disabled).Chosen() && it.OnClick != nil {
-			it.OnClick()
-		}
-	}
-}
-
 // isTopLeft reports whether p is the center's top-left group.
 func (ws *Workspace) isTopLeft(p *pane) bool {
 	rs := map[*pane]rect{}
@@ -394,20 +381,6 @@ func (ws *Workspace) paneMenu(p *pane, tb *tab, tt tabtypesapi.TabType) []omgui.
 	)
 }
 
-func banner(c *ui.Context, text string, color ui.Color) {
-	t := c.Theme()
-	ui.Row(c).Padding(6, 12).Gap(8).AlignItems(ui.Center).Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-		ui.Icon(c, lucide.TriangleAlert()).Size(14, 14).TextColor(color)
-		ui.Text(c, text).FontSize(12)
-	})
-}
-
-func centered(c *ui.Context, text string) {
-	ui.Column(c).Grow(1).Fill().Center().Children(func() {
-		ui.Text(c, text).TextColor(c.Theme().TextMuted)
-	})
-}
-
 // ---- status bar ---------------------------------------------------------------
 
 // mountsStatus is the status bar's mounts: the one folder's name, or how
@@ -443,4 +416,31 @@ func (ws *Workspace) tabIcon(tb *tab) *ui.SVG {
 		return tt.Icon
 	}
 	return fileIcon(tb.title)
+}
+
+// nativeMenu fills a context menu with items.
+func nativeMenu(m *ui.Menu, items []omgui.MenuItem) {
+	for _, it := range items {
+		if it.Separator {
+			m.Separator()
+			continue
+		}
+		if m.Item(it.Label).Checked(it.Checked).Disabled(it.Disabled).Chosen() && it.OnClick != nil {
+			it.OnClick()
+		}
+	}
+}
+
+func banner(c *ui.Context, text string, color ui.Color) {
+	t := c.Theme()
+	ui.Row(c).Padding(6, 12).Gap(8).AlignItems(ui.Center).Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
+		ui.Icon(c, lucide.TriangleAlert()).Size(14, 14).TextColor(color)
+		ui.Text(c, text).FontSize(12)
+	})
+}
+
+func centered(c *ui.Context, text string) {
+	ui.Column(c).Grow(1).Fill().Center().Children(func() {
+		ui.Text(c, text).TextColor(c.Theme().TextMuted)
+	})
 }

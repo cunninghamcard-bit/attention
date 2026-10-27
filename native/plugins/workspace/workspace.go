@@ -47,45 +47,6 @@ type Workspace struct {
 	typesGen    int // the tab type registry's generation last claimed against
 }
 
-// pane is a tab group (attention's WorkspaceTabs).
-type pane struct {
-	id     int // unique for the run; keys its view
-	node   *node
-	tabs   []*tab
-	active int
-	// The view's last frame: the tab chips' boxes, the body's, and where
-	// a tab dragged over the body would land ("" for none; drag.go).
-	chips      []ui.Rect
-	bodyBounds ui.Rect
-	dropSide   string
-}
-
-// tab is a tab's identity and what the workspace knows of its file; the
-// content is its tab type's (tabtypesapi).
-type tab struct {
-	id    int
-	empty bool // a new tab, until a file opens in it
-	// kind and typeID are the claiming tab type's, "" while none claims the
-	// address; the tab's identity is (kind, address).
-	kind   string
-	typeID string
-	// wantKind is the kind the tab was opened as, "" for the best claim.
-	wantKind string
-	// closed is the claiming type's Closed, kept from the claim: by the
-	// time a type is gone from the registry it can no longer be looked up.
-	closed  func(tabID int)
-	address string
-	path    string
-	title   string
-
-	hold   func() // releases the address's resource (resourcesapi.Hold)
-	nav    *workspaceapi.Nav
-	navRev int
-	// back and forward are where the tab was and went back from, the
-	// nearest last (WorkspaceLeaf.backHistory, forwardHistory).
-	back, forward []histState
-}
-
 func newWorkspace(ctx context.Context, fs fscontract.FS, project projectcontract.Project) *Workspace {
 	ws := &Workspace{
 		ctx: ctx, fs: fs, project: project,
@@ -182,14 +143,6 @@ func (ws *Workspace) retarget(t *tab, address, title string) {
 	ws.changed()
 }
 
-// missing reports whether a snapshot says the file is gone.
-func missing(s resourcesapi.Snapshot) bool {
-	return s.Status == resourcesapi.Failed && errors.Is(s.Err, os.ErrNotExist)
-}
-
-// isMissing reports whether t's file is gone.
-func (t *tab) isMissing() bool { return !t.empty && missing(resourcesapi.Get(t.address)) }
-
 // activePane is the focused tab group: the last one focused while it is in
 // the tree, else the first.
 func (ws *Workspace) activePane() *pane {
@@ -209,25 +162,6 @@ func (ws *Workspace) focusGroup(g *pane) {
 		ws.activeGroup = g
 		ws.changed()
 	}
-}
-
-func (p *pane) indexOf(t *tab) int {
-	for i, o := range p.tabs {
-		if o == t {
-			return i
-		}
-	}
-	return p.active
-}
-
-func (p *pane) current() *tab {
-	if len(p.tabs) == 0 {
-		return nil
-	}
-	if p.active >= len(p.tabs) {
-		p.active = len(p.tabs) - 1
-	}
-	return p.tabs[p.active]
 }
 
 // activeTab is the active pane's active tab, or nil.
@@ -363,29 +297,6 @@ func (ws *Workspace) openAddress(address, path string, opts workspaceapi.OpenOpt
 	return t, nil
 }
 
-// histState is where a tab was: what WorkspaceLeaf's history keeps of a
-// view state.
-type histState struct {
-	address, path, kind string
-	title               string // a page's, as it was
-	nav                 *workspaceapi.Nav
-}
-
-func (t *tab) state() histState {
-	return histState{address: t.address, path: t.path, kind: t.wantKind, title: t.title, nav: t.nav}
-}
-
-// record keeps where t is in its back history before it navigates away,
-// unless it is there already (WorkspaceLeaf.recordHistory).
-func (t *tab) record() {
-	st := t.state()
-	if n := len(t.back); n > 0 && t.back[n-1].address == st.address && t.back[n-1].kind == st.kind {
-		return
-	}
-	t.back = append(t.back, st)
-	t.forward = nil
-}
-
 // show makes t show st: its old type lets go of it and its old address is
 // released, and it takes a new id, so the type that claims it starts
 // afresh.
@@ -423,21 +334,6 @@ func (ws *Workspace) show(t *tab, st histState) {
 		ws.noteRecentFile(st.path)
 	}
 	ws.changed()
-}
-
-// page reports whether t shows a page (tabtypesapi.PageAddress) or a web
-// page, not a file.
-func (t *tab) page() bool {
-	return !t.empty && t.path == ""
-}
-
-// entry is what the session and Undo close tab keep of t: its file, or a
-// page's address.
-func (t *tab) entry() string {
-	if t.page() {
-		return t.address
-	}
-	return t.path
 }
 
 // openEntry reopens an entry in a new tab.
@@ -632,12 +528,6 @@ func (ws *Workspace) changed() {
 	}
 }
 
-func debugf(format string, a ...any) {
-	if os.Getenv("ATTENTION_DEBUG") != "" {
-		fmt.Fprintf(os.Stderr, "[debug] "+format+"\n", a...)
-	}
-}
-
 // newTab opens an empty tab after the active one.
 func (ws *Workspace) newTab() {
 	p := ws.activePane()
@@ -670,4 +560,114 @@ func (ws *Workspace) gotoTab(n int) {
 	}
 	p.active = n - 1
 	ws.changed()
+}
+
+// pane is a tab group (attention's WorkspaceTabs).
+type pane struct {
+	id     int // unique for the run; keys its view
+	node   *node
+	tabs   []*tab
+	active int
+	// The view's last frame: the tab chips' boxes, the body's, and where
+	// a tab dragged over the body would land ("" for none; drag.go).
+	chips      []ui.Rect
+	bodyBounds ui.Rect
+	dropSide   string
+}
+
+func (p *pane) indexOf(t *tab) int {
+	for i, o := range p.tabs {
+		if o == t {
+			return i
+		}
+	}
+	return p.active
+}
+
+func (p *pane) current() *tab {
+	if len(p.tabs) == 0 {
+		return nil
+	}
+	if p.active >= len(p.tabs) {
+		p.active = len(p.tabs) - 1
+	}
+	return p.tabs[p.active]
+}
+
+// tab is a tab's identity and what the workspace knows of its file; the
+// content is its tab type's (tabtypesapi).
+type tab struct {
+	id    int
+	empty bool // a new tab, until a file opens in it
+	// kind and typeID are the claiming tab type's, "" while none claims the
+	// address; the tab's identity is (kind, address).
+	kind   string
+	typeID string
+	// wantKind is the kind the tab was opened as, "" for the best claim.
+	wantKind string
+	// closed is the claiming type's Closed, kept from the claim: by the
+	// time a type is gone from the registry it can no longer be looked up.
+	closed  func(tabID int)
+	address string
+	path    string
+	title   string
+
+	hold   func() // releases the address's resource (resourcesapi.Hold)
+	nav    *workspaceapi.Nav
+	navRev int
+	// back and forward are where the tab was and went back from, the
+	// nearest last (WorkspaceLeaf.backHistory, forwardHistory).
+	back, forward []histState
+}
+
+// isMissing reports whether t's file is gone.
+func (t *tab) isMissing() bool { return !t.empty && missing(resourcesapi.Get(t.address)) }
+
+func (t *tab) state() histState {
+	return histState{address: t.address, path: t.path, kind: t.wantKind, title: t.title, nav: t.nav}
+}
+
+// record keeps where t is in its back history before it navigates away,
+// unless it is there already (WorkspaceLeaf.recordHistory).
+func (t *tab) record() {
+	st := t.state()
+	if n := len(t.back); n > 0 && t.back[n-1].address == st.address && t.back[n-1].kind == st.kind {
+		return
+	}
+	t.back = append(t.back, st)
+	t.forward = nil
+}
+
+// page reports whether t shows a page (tabtypesapi.PageAddress) or a web
+// page, not a file.
+func (t *tab) page() bool {
+	return !t.empty && t.path == ""
+}
+
+// entry is what the session and Undo close tab keep of t: its file, or a
+// page's address.
+func (t *tab) entry() string {
+	if t.page() {
+		return t.address
+	}
+	return t.path
+}
+
+// histState is where a tab was: what WorkspaceLeaf's history keeps of a
+// view state.
+type histState struct {
+	address, path, kind string
+	title               string // a page's, as it was
+	nav                 *workspaceapi.Nav
+}
+
+// missing reports whether a snapshot says the file is gone.
+func missing(s resourcesapi.Snapshot) bool {
+	return s.Status == resourcesapi.Failed && errors.Is(s.Err, os.ErrNotExist)
+}
+
+func debugf(format string, a ...any) {
+	if os.Getenv("ATTENTION_DEBUG") != "" {
+		fmt.Fprintf(os.Stderr, "[debug] "+format+"\n", a...)
+	}
 }

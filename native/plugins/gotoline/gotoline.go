@@ -21,6 +21,43 @@ import (
 // ID is the plugin's name and its palette source's.
 const ID = "go-to-line"
 
+// Plugin is Go to line while loaded.
+var Plugin = rutis.Define(rutis.Plugin[struct{}]{
+	Name:   ID,
+	Inject: []string{"shell", "actions", "workspace"},
+	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		off := Register()
+		rctx.Effect(func(context.Context) error { off(); return nil })
+		return nil
+	},
+})
+
+// Source is Go to line's palette source: no rows, the line count under the
+// field.
+func Source() slotsapi.PaletteSource {
+	return slotsapi.PaletteSource{
+		ID: ID, Placeholder: "Go to line (line or line:column)…",
+		Submit: submit,
+		Footer: func(c *ui.Context, _ string) {
+			hint := "No text file is active"
+			if _, cur, lines, ok := active(); ok {
+				hint = "Current line " + strconv.Itoa(cur) + " of " + strconv.Itoa(lines)
+			}
+			ui.Text(c, hint).TextColor(c.Theme().TextMuted).FontSize(12).Padding(6, 8)
+		},
+	}
+}
+
+// Register adds the source and its command until off is called.
+func Register() (off func()) {
+	offSrc := slotsapi.RegisterPaletteSource(Source())
+	offCmd := actionsapi.Register(actionsapi.Command{ID: "editor:go-to-line", Title: "Go to line", Keys: "Ctrl G", Main: open,
+		Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
+			return shellapi.OnMain(ctx, func() (string, error) { open(); return "", nil })
+		}})
+	return func() { offCmd(); offSrc() }
+}
+
 // active is the active tab and its caret line and line count, from its tab
 // type; ok is false with no text tab active.
 func active() (info tabtypesapi.Info, cur, lines int, ok bool) {
@@ -68,41 +105,4 @@ func submit(query string) bool {
 	return ws.OpenResource(info.Address, workspaceapi.OpenOptions{Kind: info.Kind, Nav: &workspaceapi.Nav{Line: line, Col: col}}) == nil
 }
 
-// Source is Go to line's palette source: no rows, the line count under the
-// field.
-func Source() slotsapi.PaletteSource {
-	return slotsapi.PaletteSource{
-		ID: ID, Placeholder: "Go to line (line or line:column)…",
-		Submit: submit,
-		Footer: func(c *ui.Context, _ string) {
-			hint := "No text file is active"
-			if _, cur, lines, ok := active(); ok {
-				hint = "Current line " + strconv.Itoa(cur) + " of " + strconv.Itoa(lines)
-			}
-			ui.Text(c, hint).TextColor(c.Theme().TextMuted).FontSize(12).Padding(6, 8)
-		},
-	}
-}
-
 func open() { slotsapi.OpenPalette(ID) }
-
-// Register adds the source and its command until off is called.
-func Register() (off func()) {
-	offSrc := slotsapi.RegisterPaletteSource(Source())
-	offCmd := actionsapi.Register(actionsapi.Command{ID: "editor:go-to-line", Title: "Go to line", Keys: "Ctrl G", Main: open,
-		Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			return shellapi.OnMain(ctx, func() (string, error) { open(); return "", nil })
-		}})
-	return func() { offCmd(); offSrc() }
-}
-
-// Plugin is Go to line while loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   ID,
-	Inject: []string{"shell", "actions", "workspace"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		off := Register()
-		rctx.Effect(func(context.Context) error { off(); return nil })
-		return nil
-	},
-})

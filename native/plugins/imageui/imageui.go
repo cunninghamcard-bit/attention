@@ -20,14 +20,34 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 )
 
-// ID is the type's id; Kind its kind.
 const (
+	// ID is the type's id; Kind its kind.
 	ID   = "image-ui"
 	Kind = "image"
+
+	// MaxBytes is the largest image read.
+	MaxBytes = 50 << 20
 )
 
-// MaxBytes is the largest image read.
-const MaxBytes = 50 << 20
+// Plugin registers the image tab type while loaded.
+var Plugin = rutis.Define(rutis.Plugin[struct{}]{
+	Name:   ID,
+	Inject: []string{"shell", "fs"},
+	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		var fs fscontract.FS
+		if err := rctx.Use("fs", &fs); err != nil {
+			return err
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		off := Register(ctx, fs, shellapi.Update)
+		rctx.Effect(func(context.Context) error {
+			off()
+			cancel()
+			return nil
+		})
+		return nil
+	},
+})
 
 type doc struct {
 	img     ui.ImageSource
@@ -103,26 +123,6 @@ func Register(ctx context.Context, fs fscontract.FS, post func(func())) (off fun
 		Closed: func(id int) { delete(docs, id) },
 	})
 }
-
-// Plugin registers the image tab type while loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   ID,
-	Inject: []string{"shell", "fs"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var fs fscontract.FS
-		if err := rctx.Use("fs", &fs); err != nil {
-			return err
-		}
-		ctx, cancel := context.WithCancel(context.Background())
-		off := Register(ctx, fs, shellapi.Update)
-		rctx.Effect(func(context.Context) error {
-			off()
-			cancel()
-			return nil
-		})
-		return nil
-	},
-})
 
 func debugf(format string, a ...any) {
 	if os.Getenv("ATTENTION_DEBUG") != "" {

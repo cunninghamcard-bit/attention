@@ -34,18 +34,35 @@ const ID = "layout"
 var (
 	themesMu sync.Mutex
 	themes   = map[bool]*ui.Theme{}
-)
 
-func themeFor(dark bool) *ui.Theme {
-	themesMu.Lock()
-	defer themesMu.Unlock()
-	t, ok := themes[dark]
-	if !ok {
-		t = theme.For(dark, "default")
-		themes[dark] = t
-	}
-	return t
-}
+	// Plugin arranges the window while loaded.
+	Plugin = rutis.Define(rutis.Plugin[struct{}]{
+		Name:   ID,
+		Inject: []string{"shell", "actions"},
+		Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+			l := New()
+			saver := persist.New(paths.LayoutPath(), func() any { return l.Snapshot() })
+			l.SaveSoon = saver.Soon
+			if s, ok := load(); ok {
+				shellapi.Update(func() { l.Restore(s) })
+			}
+			rctx.On(fscontract.WatchErrorEvent, func(_ context.Context, args ...any) (any, error) {
+				if len(args) > 0 {
+					msg := fmt.Sprint(args[0])
+					shellapi.Update(func() { l.notice = msg })
+				}
+				return nil, nil
+			})
+			off := Register(l)
+			rctx.Effect(func(ctx context.Context) error {
+				off()
+				saver.Final(ctx)
+				return nil
+			})
+			return nil
+		},
+	})
+)
 
 // state is what the layout keeps across runs. Its fields have the names
 // the workspace's session gave them, which it is read from once.
@@ -59,6 +76,35 @@ type state struct {
 	// PanelStates are the panels', overlays' and palette sources' own
 	// states by ID.
 	PanelStates map[string]json.RawMessage `json:"panelStates,omitempty"`
+}
+
+// load reads the last run's state: the layout's file, else the docks the
+// workspace's session kept before there was a layout.
+func load() (state, bool) {
+	var s state
+	if persist.Load(paths.LayoutPath(), &s) {
+		return s, true
+	}
+	var old struct {
+		state
+		Main           json.RawMessage `json:"main"`
+		RecentCommands []string        `json:"recentCommands"`
+	}
+	if !persist.Load(paths.SessionPath(), &old) {
+		return s, false
+	}
+	if old.Main == nil {
+		old.RightOpen = true // a session from before the file tree moved right
+	}
+	// The command palette's recent commands, from before its source kept
+	// them.
+	if _, ok := old.PanelStates["command-palette"]; !ok && len(old.RecentCommands) > 0 {
+		if old.PanelStates == nil {
+			old.PanelStates = map[string]json.RawMessage{}
+		}
+		old.PanelStates["command-palette"], _ = json.Marshal(old.RecentCommands)
+	}
+	return old.state, true
 }
 
 // Layout is the window's arrangement. Every field is read and written on
@@ -86,12 +132,6 @@ type Layout struct {
 func New() *Layout {
 	return &Layout{leftOpen: true, rightOpen: true, leftWidth: 260, rightWidth: 260,
 		reveals: map[string]int{}, restored: map[string]bool{}, IsDark: mygo.Theme.IsDark}
-}
-
-func (l *Layout) changed() {
-	if l.SaveSoon != nil {
-		l.SaveSoon()
-	}
 }
 
 // Restore applies a saved state.
@@ -136,21 +176,6 @@ func (l *Layout) Snapshot() state {
 		s.PanelStates = out
 	}
 	return s
-}
-
-// restore hands a contribution its saved state once, before its first
-// draw.
-func (l *Layout) restore(id string, fn func(json.RawMessage)) {
-	if l.restored[id] {
-		return
-	}
-	l.restored[id] = true
-	if st, ok := l.saved[id]; ok {
-		delete(l.saved, id)
-		if fn != nil {
-			fn(st)
-		}
-	}
 }
 
 // Open reports whether a dock is open (layoutapi.API).
@@ -210,6 +235,81 @@ func (l *Layout) RibbonShown() bool {
 	return show
 }
 
+// View is the window's root (RFC §5.8: it reads state, never the disk):
+// the ribbon, the left dock, the center, the right dock, over the status
+// bar; the overlays below Order zero before it all, the rest after.
+func (l *Layout) View(c *ui.Context) {
+	c.SetTheme(themeFor(l.dark()))
+	t := c.Theme()
+	overlays := slotsapi.Overlays()
+	for _, o := range overlays {
+		if o.Order < 0 {
+			l.restore(o.ID, o.Restore)
+			o.View(c)
+		}
+	}
+	ui.Column(c).Fill().Background(t.Background).Children(func() {
+		ui.Row(c).Grow(1).FillWidth().AlignItems(ui.Stretch).Children(func() {
+			if l.RibbonShown() {
+				l.ribbon(c)
+			}
+			middle := func() {
+				ui.Row(c).Grow(1).Fill().AlignItems(ui.Stretch).Children(func() {
+					ui.Column(c).Grow(1).Fill().Children(func() {
+						if view := slotsapi.Center(); view != nil {
+							view(c)
+						}
+					})
+					if l.rightOpen {
+						l.dock(c, slotsapi.Right)
+					}
+				})
+			}
+			if l.leftOpen {
+				ui.Split(c, &l.leftWidth, func() { l.dock(c, slotsapi.Left) }, middle).Grow(1)
+			} else {
+				middle()
+			}
+		})
+		l.statusBar(c)
+	})
+	for _, src := range slotsapi.PaletteSources() {
+		l.restore(src.ID, src.Restore)
+	}
+	for _, o := range overlays {
+		if o.Order >= 0 {
+			l.restore(o.ID, o.Restore)
+			o.View(c)
+		}
+	}
+	// Dragging a divider changes the width during the build: save it.
+	if l.leftWidth != l.seenLeft {
+		l.seenLeft = l.leftWidth
+		l.changed()
+	}
+}
+
+func (l *Layout) changed() {
+	if l.SaveSoon != nil {
+		l.SaveSoon()
+	}
+}
+
+// restore hands a contribution its saved state once, before its first
+// draw.
+func (l *Layout) restore(id string, fn func(json.RawMessage)) {
+	if l.restored[id] {
+		return
+	}
+	l.restored[id] = true
+	if st, ok := l.saved[id]; ok {
+		delete(l.saved, id)
+		if fn != nil {
+			fn(st)
+		}
+	}
+}
+
 // dark is the base color scheme: attention's theme, "moonstone" light,
 // "obsidian" dark, else the system's.
 func (l *Layout) dark() bool {
@@ -263,60 +363,6 @@ func (l *Layout) ribbonRow(c *ui.Context) {
 			settingsapi.Set(settingsapi.Appearance, "showRibbon", on)
 		}
 	})
-}
-
-// View is the window's root (RFC §5.8: it reads state, never the disk):
-// the ribbon, the left dock, the center, the right dock, over the status
-// bar; the overlays below Order zero before it all, the rest after.
-func (l *Layout) View(c *ui.Context) {
-	c.SetTheme(themeFor(l.dark()))
-	t := c.Theme()
-	overlays := slotsapi.Overlays()
-	for _, o := range overlays {
-		if o.Order < 0 {
-			l.restore(o.ID, o.Restore)
-			o.View(c)
-		}
-	}
-	ui.Column(c).Fill().Background(t.Background).Children(func() {
-		ui.Row(c).Grow(1).FillWidth().AlignItems(ui.Stretch).Children(func() {
-			if l.RibbonShown() {
-				l.ribbon(c)
-			}
-			middle := func() {
-				ui.Row(c).Grow(1).Fill().AlignItems(ui.Stretch).Children(func() {
-					ui.Column(c).Grow(1).Fill().Children(func() {
-						if view := slotsapi.Center(); view != nil {
-							view(c)
-						}
-					})
-					if l.rightOpen {
-						l.dock(c, slotsapi.Right)
-					}
-				})
-			}
-			if l.leftOpen {
-				ui.Split(c, &l.leftWidth, func() { l.dock(c, slotsapi.Left) }, middle).Grow(1)
-			} else {
-				middle()
-			}
-		})
-		l.statusBar(c)
-	})
-	for _, src := range slotsapi.PaletteSources() {
-		l.restore(src.ID, src.Restore)
-	}
-	for _, o := range overlays {
-		if o.Order >= 0 {
-			l.restore(o.ID, o.Restore)
-			o.View(c)
-		}
-	}
-	// Dragging a divider changes the width during the build: save it.
-	if l.leftWidth != l.seenLeft {
-		l.seenLeft = l.leftWidth
-		l.changed()
-	}
 }
 
 // ribbon is attention's side ribbon: the left dock's toggle atop it
@@ -384,20 +430,6 @@ func (l *Layout) dock(c *ui.Context, d slotsapi.Dock) {
 	})
 }
 
-// shownPanel is a dock's shown panel: the chosen one while it is
-// registered, else the first.
-func shownPanel(panels []slotsapi.Panel, want string) *slotsapi.Panel {
-	for i := range panels {
-		if panels[i].ID == want {
-			return &panels[i]
-		}
-	}
-	if len(panels) > 0 {
-		return &panels[0]
-	}
-	return nil
-}
-
 // statusBar draws the status items, the left ones, a watch error's icon,
 // then the right ones.
 func (l *Layout) statusBar(c *ui.Context) {
@@ -448,59 +480,27 @@ func Register(l *Layout) (off func()) {
 	}
 }
 
-// load reads the last run's state: the layout's file, else the docks the
-// workspace's session kept before there was a layout.
-func load() (state, bool) {
-	var s state
-	if persist.Load(paths.LayoutPath(), &s) {
-		return s, true
+func themeFor(dark bool) *ui.Theme {
+	themesMu.Lock()
+	defer themesMu.Unlock()
+	t, ok := themes[dark]
+	if !ok {
+		t = theme.For(dark, "default")
+		themes[dark] = t
 	}
-	var old struct {
-		state
-		Main           json.RawMessage `json:"main"`
-		RecentCommands []string        `json:"recentCommands"`
-	}
-	if !persist.Load(paths.SessionPath(), &old) {
-		return s, false
-	}
-	if old.Main == nil {
-		old.RightOpen = true // a session from before the file tree moved right
-	}
-	// The command palette's recent commands, from before its source kept
-	// them.
-	if _, ok := old.PanelStates["command-palette"]; !ok && len(old.RecentCommands) > 0 {
-		if old.PanelStates == nil {
-			old.PanelStates = map[string]json.RawMessage{}
-		}
-		old.PanelStates["command-palette"], _ = json.Marshal(old.RecentCommands)
-	}
-	return old.state, true
+	return t
 }
 
-// Plugin arranges the window while loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   ID,
-	Inject: []string{"shell", "actions"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		l := New()
-		saver := persist.New(paths.LayoutPath(), func() any { return l.Snapshot() })
-		l.SaveSoon = saver.Soon
-		if s, ok := load(); ok {
-			shellapi.Update(func() { l.Restore(s) })
+// shownPanel is a dock's shown panel: the chosen one while it is
+// registered, else the first.
+func shownPanel(panels []slotsapi.Panel, want string) *slotsapi.Panel {
+	for i := range panels {
+		if panels[i].ID == want {
+			return &panels[i]
 		}
-		rctx.On(fscontract.WatchErrorEvent, func(_ context.Context, args ...any) (any, error) {
-			if len(args) > 0 {
-				msg := fmt.Sprint(args[0])
-				shellapi.Update(func() { l.notice = msg })
-			}
-			return nil, nil
-		})
-		off := Register(l)
-		rctx.Effect(func(ctx context.Context) error {
-			off()
-			saver.Final(ctx)
-			return nil
-		})
-		return nil
-	},
-})
+	}
+	if len(panels) > 0 {
+		return &panels[0]
+	}
+	return nil
+}

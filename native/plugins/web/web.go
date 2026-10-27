@@ -40,10 +40,50 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
-// ID is the type's id; Kind its kind (WEBVIEWER_VIEW_TYPE).
 const (
+	// ID is the type's id; Kind its kind (WEBVIEWER_VIEW_TYPE).
 	ID   = "web"
 	Kind = "webviewer"
+
+	// configFile is the web viewer's settings file (its plugin data,
+	// webviewer.json).
+	configFile = "webviewer"
+)
+
+var (
+	// pages are the tabs' pages by tab id, on the main thread only.
+	pages = map[int]*page{}
+
+	scheme = regexp.MustCompile(`(?i)^(https?|file|about):`)
+	domain = regexp.MustCompile(`(?i)^[\w.-]+\.[a-z]{2,}(?:/.*)?$`)
+
+	// Plugin registers the web tab type and its commands while loaded.
+	Plugin = rutis.Define(rutis.Plugin[struct{}]{
+		Name:   ID,
+		Inject: []string{"shell", "workspace"},
+		Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+			settingsapi.Load(configFile)
+			// A service of no methods: who injects it hears its events
+			// (web-index, webcontract.PageLoadedEvent).
+			rctx.Provide("web", struct{}{})
+			emitCtx, cancel := context.WithCancel(context.Background())
+			off := Register(func(p webcontract.Page) { _ = rctx.Emit(emitCtx, webcontract.PageLoadedEvent, p) })
+			offs := []func(){slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "webviewer", Title: "Web viewer", Icon: lucide.Globe(),
+				Group: slotsapi.CorePlugins, Keywords: []string{"Search engine", "Clear browsing data", "history"}, View: settingTab})}
+			for _, cmd := range commands() {
+				offs = append(offs, actionsapi.Register(cmd))
+			}
+			rctx.Effect(func(context.Context) error {
+				for _, o := range offs {
+					o()
+				}
+				cancel()
+				shellapi.Update(off)
+				return nil
+			})
+			return nil
+		},
+	})
 )
 
 // page is a tab's web view and what its header shows.
@@ -79,9 +119,6 @@ type page struct {
 	downloaded *mygo.Download
 }
 
-// pages are the tabs' pages by tab id, on the main thread only.
-var pages = map[int]*page{}
-
 // activePage is the active tab's page, nil when it shows no web page.
 func activePage() *page {
 	ws := workspaceapi.Get()
@@ -94,11 +131,6 @@ func activePage() *page {
 	}
 	return pages[info.ID]
 }
-
-var (
-	scheme = regexp.MustCompile(`(?i)^(https?|file|about):`)
-	domain = regexp.MustCompile(`(?i)^[\w.-]+\.[a-z]{2,}(?:/.*)?$`)
-)
 
 // NormalizeURL is what the address bar opens for input
 // (WebViewerService.normalizeUrl): the blank page for nothing, a URL as
@@ -118,48 +150,6 @@ func NormalizeURL(input string) string {
 		engine = "https://www.google.com/search?q="
 	}
 	return engine + url.QueryEscape(s)
-}
-
-// configFile is the web viewer's settings file (its plugin data,
-// webviewer.json).
-const configFile = "webviewer"
-
-// searchEngine is the Search engine setting: "duckduckgo" or "google".
-func searchEngine() string {
-	engine := "duckduckgo"
-	settingsapi.Get(configFile, "searchEngine", &engine)
-	return engine
-}
-
-// settingTab is the Web viewer settings tab (WebViewerSettingTab): Search
-// engine, and Clear browsing data for the history. Opening external URLs,
-// ad blocking, the save path and sessions are not ported.
-func settingTab(c *ui.Context) {
-	omgui.SettingsSection(c, "Web viewer", func() {
-		omgui.PreferenceRow(c, "Search engine", "Used when the address bar input is not a URL.", func() {
-			cur := searchEngine()
-			v := cur
-			omgui.Select(c, omgui.SelectProps{Key: "web-search-engine", Value: &v, Width: 160, Options: []omgui.SelectOption{
-				{Value: "duckduckgo", Label: "DuckDuckGo"}, {Value: "google", Label: "Google"},
-			}})
-			if v != cur {
-				settingsapi.Set(configFile, "searchEngine", v)
-			}
-		})
-		omgui.PreferenceRow(c, "Clear browsing data", "Clear local Web viewer history.", func() {
-			h := webhistoryapi.Get()
-			omgui.Button(c, omgui.ButtonProps{Label: "Clear history", Variant: omgui.ButtonSecondary, Disabled: h == nil || len(h.List()) == 0,
-				OnClick: func() { h.Clear() }})
-		})
-	})
-}
-
-// titleFromURL is a page's title until its own comes: its host.
-func titleFromURL(address string) string {
-	if u, err := url.Parse(address); err == nil && u.Hostname() != "" {
-		return u.Hostname()
-	}
-	return address
 }
 
 // Register adds the web tab type until off is called.
@@ -371,6 +361,44 @@ func Register(loaded func(webcontract.Page)) (off func()) {
 			}
 		},
 	})
+}
+
+// searchEngine is the Search engine setting: "duckduckgo" or "google".
+func searchEngine() string {
+	engine := "duckduckgo"
+	settingsapi.Get(configFile, "searchEngine", &engine)
+	return engine
+}
+
+// settingTab is the Web viewer settings tab (WebViewerSettingTab): Search
+// engine, and Clear browsing data for the history. Opening external URLs,
+// ad blocking, the save path and sessions are not ported.
+func settingTab(c *ui.Context) {
+	omgui.SettingsSection(c, "Web viewer", func() {
+		omgui.PreferenceRow(c, "Search engine", "Used when the address bar input is not a URL.", func() {
+			cur := searchEngine()
+			v := cur
+			omgui.Select(c, omgui.SelectProps{Key: "web-search-engine", Value: &v, Width: 160, Options: []omgui.SelectOption{
+				{Value: "duckduckgo", Label: "DuckDuckGo"}, {Value: "google", Label: "Google"},
+			}})
+			if v != cur {
+				settingsapi.Set(configFile, "searchEngine", v)
+			}
+		})
+		omgui.PreferenceRow(c, "Clear browsing data", "Clear local Web viewer history.", func() {
+			h := webhistoryapi.Get()
+			omgui.Button(c, omgui.ButtonProps{Label: "Clear history", Variant: omgui.ButtonSecondary, Disabled: h == nil || len(h.List()) == 0,
+				OnClick: func() { h.Clear() }})
+		})
+	})
+}
+
+// titleFromURL is a page's title until its own comes: its host.
+func titleFromURL(address string) string {
+	if u, err := url.Parse(address); err == nil && u.Hostname() != "" {
+		return u.Hostname()
+	}
+	return address
 }
 
 // announce hands loaded the article of the page pv shows, an http(s) one.
@@ -620,34 +648,6 @@ func commands() []actionsapi.Command {
 		onPage("webviewer:focus-address-bar", "Focus address bar", "", func(pg *page) { pg.focusBar = true }),
 	}
 }
-
-// Plugin registers the web tab type and its commands while loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   ID,
-	Inject: []string{"shell", "workspace"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		settingsapi.Load(configFile)
-		// A service of no methods: who injects it hears its events
-		// (web-index, webcontract.PageLoadedEvent).
-		rctx.Provide("web", struct{}{})
-		emitCtx, cancel := context.WithCancel(context.Background())
-		off := Register(func(p webcontract.Page) { _ = rctx.Emit(emitCtx, webcontract.PageLoadedEvent, p) })
-		offs := []func(){slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "webviewer", Title: "Web viewer", Icon: lucide.Globe(),
-			Group: slotsapi.CorePlugins, Keywords: []string{"Search engine", "Clear browsing data", "history"}, View: settingTab})}
-		for _, cmd := range commands() {
-			offs = append(offs, actionsapi.Register(cmd))
-		}
-		rctx.Effect(func(context.Context) error {
-			for _, o := range offs {
-				o()
-			}
-			cancel()
-			shellapi.Update(off)
-			return nil
-		})
-		return nil
-	},
-})
 
 func debugf(format string, a ...any) {
 	if os.Getenv("ATTENTION_DEBUG") != "" {

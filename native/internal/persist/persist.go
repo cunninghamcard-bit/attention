@@ -30,22 +30,6 @@ func New(path string, snapshot func() any) *Saver {
 	return &Saver{path: path, snapshot: snapshot}
 }
 
-// Load reads path into v; false when it is missing or unreadable.
-func Load(path string, v any) bool {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return false
-	}
-	return json.Unmarshal(data, v) == nil
-}
-
-func (s *Saver) save(v any) {
-	data, err := json.MarshalIndent(v, "", "  ")
-	if err == nil {
-		_ = paths.WriteFileAtomic(s.path, data)
-	}
-}
-
 // Soon saves within 400 ms, once for a burst of changes.
 func (s *Saver) Soon() {
 	s.mu.Lock()
@@ -73,12 +57,6 @@ func (s *Saver) Soon() {
 	})
 }
 
-func (s *Saver) isClosed() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.closed
-}
-
 // Final stops the pending saves and saves once more, the snapshot taken on
 // the main thread (the shell is still loaded: its users inject it).
 func (s *Saver) Final(ctx context.Context) {
@@ -95,4 +73,26 @@ func (s *Saver) Final(ctx context.Context) {
 	s.write.Lock()
 	defer s.write.Unlock()
 	s.save(v)
+}
+
+func (s *Saver) save(v any) {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err == nil {
+		_ = paths.WriteFileAtomic(s.path, data)
+	}
+}
+
+func (s *Saver) isClosed() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.closed
+}
+
+// Load reads path into v; false when it is missing or unreadable.
+func Load(path string, v any) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	return json.Unmarshal(data, v) == nil
 }

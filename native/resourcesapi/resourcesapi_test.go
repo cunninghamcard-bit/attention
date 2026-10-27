@@ -7,48 +7,6 @@ import (
 	"time"
 )
 
-// stub is a provider whose streams the test drives.
-type stub struct {
-	opened chan string
-	emits  map[string]func(any, error)
-	closed chan string
-}
-
-func newStub(t *testing.T) (*stub, chan func()) {
-	t.Helper()
-	posts := make(chan func(), 16)
-	t.Cleanup(SetPost(func(f func()) { posts <- f }))
-	s := &stub{opened: make(chan string, 4), emits: map[string]func(any, error){}, closed: make(chan string, 4)}
-	t.Cleanup(Register(Provider{Protocol: "test", Open: func(ctx context.Context, address string, emit func(any, error)) {
-		s.opened <- address
-		mu.Lock()
-		s.emits[address] = emit
-		mu.Unlock()
-		<-ctx.Done()
-		s.closed <- address
-	}}))
-	return s, posts
-}
-
-func (s *stub) emit(address string, v any, err error) {
-	mu.Lock()
-	e := s.emits[address]
-	mu.Unlock()
-	e(v, err)
-}
-
-func wait[T any](t *testing.T, c chan T) T {
-	t.Helper()
-	select {
-	case v := <-c:
-		return v
-	case <-time.After(5 * time.Second):
-		t.Fatal("timed out")
-	}
-	var zero T
-	return zero
-}
-
 const a = "attention-resource://test/a"
 
 func TestHoldStreamsAndTheLastReleaseCloses(t *testing.T) {
@@ -120,4 +78,46 @@ func TestProtocol(t *testing.T) {
 			t.Errorf("Protocol(%q) = %q", address, got)
 		}
 	}
+}
+
+// stub is a provider whose streams the test drives.
+type stub struct {
+	opened chan string
+	emits  map[string]func(any, error)
+	closed chan string
+}
+
+func newStub(t *testing.T) (*stub, chan func()) {
+	t.Helper()
+	posts := make(chan func(), 16)
+	t.Cleanup(SetPost(func(f func()) { posts <- f }))
+	s := &stub{opened: make(chan string, 4), emits: map[string]func(any, error){}, closed: make(chan string, 4)}
+	t.Cleanup(Register(Provider{Protocol: "test", Open: func(ctx context.Context, address string, emit func(any, error)) {
+		s.opened <- address
+		mu.Lock()
+		s.emits[address] = emit
+		mu.Unlock()
+		<-ctx.Done()
+		s.closed <- address
+	}}))
+	return s, posts
+}
+
+func (s *stub) emit(address string, v any, err error) {
+	mu.Lock()
+	e := s.emits[address]
+	mu.Unlock()
+	e(v, err)
+}
+
+func wait[T any](t *testing.T, c chan T) T {
+	t.Helper()
+	select {
+	case v := <-c:
+		return v
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out")
+	}
+	var zero T
+	return zero
 }

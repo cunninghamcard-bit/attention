@@ -2,14 +2,14 @@ package workspace
 
 import "math"
 
-// direction is a split's, named as attention's: vertical puts its children
-// side by side (a vertical divider), horizontal stacks them.
-type direction string
-
 const (
 	vertical   direction = "vertical"
 	horizontal direction = "horizontal"
 )
+
+// direction is a split's, named as attention's: vertical puts its children
+// side by side (a vertical divider), horizontal stacks them.
+type direction string
 
 // node is the center's layout tree: a split of nodes, or a tab group (a
 // leaf of the tree). Port of attention's WorkspaceSplit, WorkspaceTabs and
@@ -117,6 +117,28 @@ func (n *node) groups(out []*pane) []*pane {
 	return out
 }
 
+// rects lay the tree out in the unit square, by its shares.
+func (n *node) rects(r rect, out map[*pane]rect) {
+	if n.group != nil {
+		out[n.group] = r
+		return
+	}
+	at := 0.0
+	for i, s := range n.shares() {
+		f := float64(s) / 100
+		cr := r
+		if n.dir == horizontal {
+			h := r.bottom - r.top
+			cr.top, cr.bottom = r.top+at*h, r.top+(at+f)*h
+		} else {
+			w := r.right - r.left
+			cr.left, cr.right = r.left+at*w, r.left+(at+f)*w
+		}
+		n.children[i].rects(cr, out)
+		at += f
+	}
+}
+
 // groups are the center's tab groups, in order.
 func (ws *Workspace) groups() []*pane { return ws.root.groups(nil) }
 
@@ -165,31 +187,6 @@ func (ws *Workspace) removeGroup(g *pane) {
 	}
 }
 
-// rect is a group's place in the center, in units of the center's size.
-type rect struct{ left, top, right, bottom float64 }
-
-// rects lay the tree out in the unit square, by its shares.
-func (n *node) rects(r rect, out map[*pane]rect) {
-	if n.group != nil {
-		out[n.group] = r
-		return
-	}
-	at := 0.0
-	for i, s := range n.shares() {
-		f := float64(s) / 100
-		cr := r
-		if n.dir == horizontal {
-			h := r.bottom - r.top
-			cr.top, cr.bottom = r.top+at*h, r.top+(at+f)*h
-		} else {
-			w := r.right - r.left
-			cr.left, cr.right = r.left+at*w, r.left+(at+f)*w
-		}
-		n.children[i].rects(cr, out)
-		at += f
-	}
-}
-
 // adjacent is the group nearest g in a direction ("top", "bottom", "left",
 // "right"), or nil (Workspace.getAdjacentLeafInDirection, over the tree's
 // layout rather than the DOM's rects).
@@ -210,6 +207,9 @@ func (ws *Workspace) adjacent(g *pane, dir string) *pane {
 	}
 	return best
 }
+
+// rect is a group's place in the center, in units of the center's size.
+type rect struct{ left, top, right, bottom float64 }
 
 // directionalScore is attention's getDirectionalLeafScore: the gap along
 // the direction, the gap across it, the distance between centers across it.

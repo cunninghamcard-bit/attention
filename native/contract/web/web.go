@@ -5,13 +5,15 @@ package web
 
 import "encoding/json"
 
-// PageLoadedEvent is emitted by the web plugin when a page finished
-// loading, with its Page.
-const PageLoadedEvent = "web/page-loaded"
+const (
+	// PageLoadedEvent is emitted by the web plugin when a page finished
+	// loading, with its Page.
+	PageLoadedEvent = "web/page-loaded"
 
-// HistoryClearedEvent is emitted by the web-history plugin when its
-// history was cleared, with no arguments.
-const HistoryClearedEvent = "web-history/cleared"
+	// HistoryClearedEvent is emitted by the web-history plugin when its
+	// history was cleared, with no arguments.
+	HistoryClearedEvent = "web-history/cleared"
+)
 
 // Page is a loaded page's article (internal/htmlextract), as markdown.
 type Page struct {

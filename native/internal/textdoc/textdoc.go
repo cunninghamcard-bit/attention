@@ -30,25 +30,6 @@ type Loader struct {
 	Post func(func())
 }
 
-// Doc is one tab's text, on the main thread only.
-type Doc struct {
-	Path string
-	File fscontract.File
-	Ed   *editor.State // nil until loaded, and for binary and too large files
-	Err  string
-	// Gone is set while the last read found no file.
-	Gone bool
-
-	loaded  bool
-	loading bool
-	version int // the Version last read (or being read)
-	navRev  int // the NavRevision last applied
-	nav     *tabtypesapi.Nav
-	navWant int
-	// OnNav, optional, runs when a navigation is applied.
-	OnNav func()
-}
-
 // Sync reads the file when the tab's Version moved and applies a new
 // navigation; the body calls it every frame.
 func (l *Loader) Sync(d *Doc, p tabtypesapi.Props) {
@@ -89,6 +70,74 @@ func (l *Loader) load(d *Doc) {
 			}
 		})
 	}()
+}
+
+// Doc is one tab's text, on the main thread only.
+type Doc struct {
+	Path string
+	File fscontract.File
+	Ed   *editor.State // nil until loaded, and for binary and too large files
+	Err  string
+	// Gone is set while the last read found no file.
+	Gone bool
+
+	loaded  bool
+	loading bool
+	version int // the Version last read (or being read)
+	navRev  int // the NavRevision last applied
+	nav     *tabtypesapi.Nav
+	navWant int
+	// OnNav, optional, runs when a navigation is applied.
+	OnNav func()
+}
+
+// Placeholder draws what stands in for the text, and reports whether it
+// drew one: the error, a binary or too large file, a file never read and
+// gone, or loading.
+func (d *Doc) Placeholder(c *ui.Context) bool {
+	switch {
+	case d.Err != "":
+		Centered(c, d.Err)
+	case d.File.Binary:
+		Centered(c, "This is a binary file and is not shown.")
+	case d.File.TooLarge:
+		Centered(c, fmt.Sprintf("This file is %s, larger than the %s shown.", Size(d.File.Size), Size(MaxBytes)))
+	case d.Ed == nil && d.Gone:
+		Centered(c, "This file does not exist.")
+	case d.Ed == nil:
+		Centered(c, "Loading…")
+	default:
+		return false
+	}
+	return true
+}
+
+// Lines is the caret's line (1-based) and the line count, false before
+// there is text.
+func (d *Doc) Lines() (cur, lines int, ok bool) {
+	if d == nil || d.Ed == nil {
+		return 0, 0, false
+	}
+	return d.Ed.CursorPos().Line + 1, d.Ed.Buffer.LineCount(), true
+}
+
+// Cursor draws the caret's line and column in the status bar.
+func (d *Doc) Cursor(c *ui.Context) {
+	if d.Ed != nil {
+		pos := d.Ed.CursorPos()
+		ui.Text(c, fmt.Sprintf("%d:%d", pos.Line+1, pos.Col+1)).FontSize(12).TextColor(c.Theme().TextMuted)
+	}
+}
+
+// Language draws the text's language in the status bar.
+func (d *Doc) Language(c *ui.Context) {
+	lang := "Plain Text"
+	if d.Ed != nil {
+		if l := d.Ed.Buffer.Language(); l != nil {
+			lang = l.Name
+		}
+	}
+	ui.Text(c, lang).FontSize(12).TextColor(c.Theme().TextMuted)
 }
 
 // setText puts the file's text in the tab, keeping the first visible line
@@ -161,55 +210,6 @@ func (d *Doc) applyNav() {
 	end := buf.Offset(editor.Pos{Line: to, Col: len(buf.Line(to))})
 	d.Ed.GoTo(editor.Pos{Line: from})
 	d.Ed.Select(start, end)
-}
-
-// Placeholder draws what stands in for the text, and reports whether it
-// drew one: the error, a binary or too large file, a file never read and
-// gone, or loading.
-func (d *Doc) Placeholder(c *ui.Context) bool {
-	switch {
-	case d.Err != "":
-		Centered(c, d.Err)
-	case d.File.Binary:
-		Centered(c, "This is a binary file and is not shown.")
-	case d.File.TooLarge:
-		Centered(c, fmt.Sprintf("This file is %s, larger than the %s shown.", Size(d.File.Size), Size(MaxBytes)))
-	case d.Ed == nil && d.Gone:
-		Centered(c, "This file does not exist.")
-	case d.Ed == nil:
-		Centered(c, "Loading…")
-	default:
-		return false
-	}
-	return true
-}
-
-// Lines is the caret's line (1-based) and the line count, false before
-// there is text.
-func (d *Doc) Lines() (cur, lines int, ok bool) {
-	if d == nil || d.Ed == nil {
-		return 0, 0, false
-	}
-	return d.Ed.CursorPos().Line + 1, d.Ed.Buffer.LineCount(), true
-}
-
-// Cursor draws the caret's line and column in the status bar.
-func (d *Doc) Cursor(c *ui.Context) {
-	if d.Ed != nil {
-		pos := d.Ed.CursorPos()
-		ui.Text(c, fmt.Sprintf("%d:%d", pos.Line+1, pos.Col+1)).FontSize(12).TextColor(c.Theme().TextMuted)
-	}
-}
-
-// Language draws the text's language in the status bar.
-func (d *Doc) Language(c *ui.Context) {
-	lang := "Plain Text"
-	if d.Ed != nil {
-		if l := d.Ed.Buffer.Language(); l != nil {
-			lang = l.Name
-		}
-	}
-	ui.Text(c, lang).FontSize(12).TextColor(c.Theme().TextMuted)
 }
 
 // Centered draws a muted message in the middle of the tab.

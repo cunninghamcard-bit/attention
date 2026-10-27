@@ -15,42 +15,11 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
-func goldenPNG() []byte {
-	img := image.NewRGBA(image.Rect(0, 0, 64, 48))
-	for y := 0; y < 48; y++ {
-		for x := 0; x < 64; x++ {
-			img.Set(x, y, color.RGBA{uint8(x * 4), uint8(y * 5), 128, 255})
-		}
-	}
-	var b bytes.Buffer
-	_ = png.Encode(&b, img)
-	return b.Bytes()
-}
+const (
+	goText = "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"hello\")\n}\n"
 
-// save writes the frame to $GOLDEN_DIR/<name>.png, or, when the file is
-// already there, fails unless the frame is the same bytes: run once on one
-// commit and again on another to compare them.
-func save(t *testing.T, tt *ui.Tester, name string) {
-	t.Helper()
-	tt.Frame()
-	var b bytes.Buffer
-	if err := png.Encode(&b, tt.Image()); err != nil {
-		t.Fatal(err)
-	}
-	file := filepath.Join(os.Getenv("GOLDEN_DIR"), name+".png")
-	if old, err := os.ReadFile(file); err == nil {
-		if !bytes.Equal(old, b.Bytes()) {
-			t.Errorf("frame %s differs from %s", name, file)
-		}
-		return
-	}
-	if err := os.WriteFile(file, b.Bytes(), 0o644); err != nil {
-		t.Fatal(err)
-	}
-}
-
-const goText = "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"hello\")\n}\n"
-const mdText = "# Title\n\nSome *body* text with a [link](other.md).\n\n- one\n- two\n\n```go\nx := 1\n```\n"
+	mdText = "# Title\n\nSome *body* text with a [link](other.md).\n\n- one\n- two\n\n```go\nx := 1\n```\n"
+)
 
 // TestFramesPerTabKind draws every tab kind's states (slice 4's acceptance
 // check: the viewers' move out of the workspace kept them byte-identical).
@@ -100,4 +69,38 @@ func TestFramesPerTabKind(t *testing.T) {
 	save(t, tt, "8-loading")
 	ws.newTab()
 	save(t, tt, "9-newtab")
+}
+
+func goldenPNG() []byte {
+	img := image.NewRGBA(image.Rect(0, 0, 64, 48))
+	for y := 0; y < 48; y++ {
+		for x := 0; x < 64; x++ {
+			img.Set(x, y, color.RGBA{uint8(x * 4), uint8(y * 5), 128, 255})
+		}
+	}
+	var b bytes.Buffer
+	_ = png.Encode(&b, img)
+	return b.Bytes()
+}
+
+// save writes the frame to $GOLDEN_DIR/<name>.png, or, when the file is
+// already there, fails unless the frame is the same bytes: run once on one
+// commit and again on another to compare them.
+func save(t *testing.T, tt *ui.Tester, name string) {
+	t.Helper()
+	tt.Frame()
+	var b bytes.Buffer
+	if err := png.Encode(&b, tt.Image()); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(os.Getenv("GOLDEN_DIR"), name+".png")
+	if old, err := os.ReadFile(file); err == nil {
+		if !bytes.Equal(old, b.Bytes()) {
+			t.Errorf("frame %s differs from %s", name, file)
+		}
+		return
+	}
+	if err := os.WriteFile(file, b.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }

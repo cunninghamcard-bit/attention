@@ -19,6 +19,11 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
+var (
+	propertyDateRe     = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+	propertyDatetimeRe = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$`)
+)
+
 // commands are the CLI's commands on the index, ported from attention's
 // (apps/web/app/cli/commands/): graphLists.ts, metadata.ts,
 // linksOutlineCli.ts, wordcountWebCli.ts.
@@ -395,14 +400,6 @@ func (x *Index) cliOutline(ctx context.Context, a actionsapi.Args) (string, erro
 	return clifmt.Tree(build(roots), ""), nil
 }
 
-// fileTags are a note's tags (getAllTags).
-func fileTags(m *mdmeta.Metadata) []string {
-	if m == nil {
-		return nil
-	}
-	return mdmeta.AllTags(*m)
-}
-
 // vaultTags is MetadataCache.getTags: every tag's count, a nested tag also
 // counting toward its parents, casings merged under the one counted most.
 func (x *Index) vaultTags() map[string]int {
@@ -453,26 +450,6 @@ func (x *Index) vaultTags() map[string]int {
 		out[e.tag] = e.count
 	}
 	return out
-}
-
-// validTag is isValidTag: "#" then no punctuation or space, not all
-// digits.
-func validTag(tag string) bool {
-	if len(tag) < 2 || tag[0] != '#' {
-		return false
-	}
-	digits := true
-	for _, r := range tag[1:] {
-		switch {
-		case r >= 0x2000 && r <= 0x206F, r >= 0x2E00 && r <= 0x2E7F,
-			strings.ContainsRune("'!\"#$%&()*+,.:;<=>?@^`{|}~[]\\", r), r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == '\f' || r == '\v':
-			return false
-		}
-		if r < '0' || r > '9' {
-			digits = false
-		}
-	}
-	return !digits
 }
 
 // cliTags is tags: the vault's tags, or one file's, sorted by name or
@@ -677,11 +654,6 @@ func (x *Index) cliPropertyRead(ctx context.Context, a actionsapi.Args) (string,
 	return valueText(v, ", "), nil
 }
 
-var (
-	propertyDateRe     = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
-	propertyDatetimeRe = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$`)
-)
-
 // cliPropertySet is property:set: parse the value, write the frontmatter
 // (metadata.ts). The property type registry (metadataTypeManager.setType)
 // does not exist in the reader: a type= flag is used only to parse the
@@ -750,93 +722,6 @@ func (x *Index) processFrontMatter(ctx context.Context, path string, update func
 	}
 	next := mdmeta.ProcessFrontMatter(string(data), update)
 	return x.fs.Write(ctx, abs, []byte(next))
-}
-
-// parsePropertyValue is property:set's value parse: a JSON array wins
-// regardless of type=; otherwise number|checkbox|list|date|datetime.
-func parsePropertyValue(raw, typ string) (any, error) {
-	if strings.HasPrefix(raw, "[") && strings.HasSuffix(raw, "]") {
-		var jsonVal any
-		if err := json.Unmarshal([]byte(raw), &jsonVal); err == nil {
-			if arr, ok := jsonVal.([]any); ok {
-				return arr, nil
-			}
-		}
-		return raw, nil
-	}
-	switch typ {
-	case "number":
-		n, ok := jsNumber(raw)
-		if !ok {
-			return nil, fmt.Errorf("Invalid number: %s", raw)
-		}
-		return n, nil
-	case "checkbox":
-		return raw == "true" || raw == "1", nil
-	case "list":
-		parts := strings.Split(raw, ",")
-		out := make([]any, len(parts))
-		for i, p := range parts {
-			out[i] = strings.TrimSpace(p)
-		}
-		return out, nil
-	case "date":
-		if !propertyDateRe.MatchString(raw) {
-			return nil, fmt.Errorf("Invalid date format. Use YYYY-MM-DD")
-		}
-		return raw, nil
-	case "datetime":
-		if !propertyDatetimeRe.MatchString(raw) {
-			return nil, fmt.Errorf("Invalid datetime format. Use YYYY-MM-DDTHH:mm or YYYY-MM-DDTHH:mm:ss")
-		}
-		return raw, nil
-	}
-	return raw, nil
-}
-
-// jsNumber is JavaScript Number(raw) enough for property:set: trim, empty
-// is 0, hex/bin/oct, Infinity; NaN is a miss.
-func jsNumber(raw string) (float64, bool) {
-	s := strings.TrimSpace(raw)
-	if s == "" {
-		return 0, true
-	}
-	if n, err := strconv.ParseFloat(s, 64); err == nil {
-		if math.IsNaN(n) {
-			return 0, false
-		}
-		return n, true
-	}
-	if n, ok := parsePrefixedInt(s, "0x", 16); ok {
-		return n, true
-	}
-	if n, ok := parsePrefixedInt(s, "0b", 2); ok {
-		return n, true
-	}
-	if n, ok := parsePrefixedInt(s, "0o", 8); ok {
-		return n, true
-	}
-	return 0, false
-}
-
-func parsePrefixedInt(s, prefix string, base int) (float64, bool) {
-	sign := 1.0
-	t := s
-	switch {
-	case strings.HasPrefix(t, "+"):
-		t = t[1:]
-	case strings.HasPrefix(t, "-"):
-		sign = -1
-		t = t[1:]
-	}
-	if len(t) < len(prefix)+1 || !strings.EqualFold(t[:len(prefix)], prefix) {
-		return 0, false
-	}
-	u, err := strconv.ParseUint(t[len(prefix):], base, 64)
-	if err != nil {
-		return 0, false
-	}
-	return sign * float64(u), true
 }
 
 // cliAliases is aliases: a file's, or every alias with its notes
@@ -937,6 +822,121 @@ func (x *Index) frontmatterKeys(ctx context.Context, path string, m *mdmeta.Meta
 		}
 	}
 	return keys, nil
+}
+
+// fileTags are a note's tags (getAllTags).
+func fileTags(m *mdmeta.Metadata) []string {
+	if m == nil {
+		return nil
+	}
+	return mdmeta.AllTags(*m)
+}
+
+// validTag is isValidTag: "#" then no punctuation or space, not all
+// digits.
+func validTag(tag string) bool {
+	if len(tag) < 2 || tag[0] != '#' {
+		return false
+	}
+	digits := true
+	for _, r := range tag[1:] {
+		switch {
+		case r >= 0x2000 && r <= 0x206F, r >= 0x2E00 && r <= 0x2E7F,
+			strings.ContainsRune("'!\"#$%&()*+,.:;<=>?@^`{|}~[]\\", r), r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == '\f' || r == '\v':
+			return false
+		}
+		if r < '0' || r > '9' {
+			digits = false
+		}
+	}
+	return !digits
+}
+
+// parsePropertyValue is property:set's value parse: a JSON array wins
+// regardless of type=; otherwise number|checkbox|list|date|datetime.
+func parsePropertyValue(raw, typ string) (any, error) {
+	if strings.HasPrefix(raw, "[") && strings.HasSuffix(raw, "]") {
+		var jsonVal any
+		if err := json.Unmarshal([]byte(raw), &jsonVal); err == nil {
+			if arr, ok := jsonVal.([]any); ok {
+				return arr, nil
+			}
+		}
+		return raw, nil
+	}
+	switch typ {
+	case "number":
+		n, ok := jsNumber(raw)
+		if !ok {
+			return nil, fmt.Errorf("Invalid number: %s", raw)
+		}
+		return n, nil
+	case "checkbox":
+		return raw == "true" || raw == "1", nil
+	case "list":
+		parts := strings.Split(raw, ",")
+		out := make([]any, len(parts))
+		for i, p := range parts {
+			out[i] = strings.TrimSpace(p)
+		}
+		return out, nil
+	case "date":
+		if !propertyDateRe.MatchString(raw) {
+			return nil, fmt.Errorf("Invalid date format. Use YYYY-MM-DD")
+		}
+		return raw, nil
+	case "datetime":
+		if !propertyDatetimeRe.MatchString(raw) {
+			return nil, fmt.Errorf("Invalid datetime format. Use YYYY-MM-DDTHH:mm or YYYY-MM-DDTHH:mm:ss")
+		}
+		return raw, nil
+	}
+	return raw, nil
+}
+
+// jsNumber is JavaScript Number(raw) enough for property:set: trim, empty
+// is 0, hex/bin/oct, Infinity; NaN is a miss.
+func jsNumber(raw string) (float64, bool) {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return 0, true
+	}
+	if n, err := strconv.ParseFloat(s, 64); err == nil {
+		if math.IsNaN(n) {
+			return 0, false
+		}
+		return n, true
+	}
+	if n, ok := parsePrefixedInt(s, "0x", 16); ok {
+		return n, true
+	}
+	if n, ok := parsePrefixedInt(s, "0b", 2); ok {
+		return n, true
+	}
+	if n, ok := parsePrefixedInt(s, "0o", 8); ok {
+		return n, true
+	}
+	return 0, false
+}
+
+func parsePrefixedInt(s, prefix string, base int) (float64, bool) {
+	sign := 1.0
+	t := s
+	switch {
+	case strings.HasPrefix(t, "+"):
+		t = t[1:]
+	case strings.HasPrefix(t, "-"):
+		sign = -1
+		t = t[1:]
+	}
+	if len(t) < len(prefix)+1 || !strings.EqualFold(t[:len(prefix)], prefix) {
+		return 0, false
+	}
+	u, err := strconv.ParseUint(t[len(prefix):], base, 64)
+	if err != nil {
+		return 0, false
+	}
+	return sign * float64(u), true
 }
 
 // valueText is a frontmatter value as String() prints it, a list joined

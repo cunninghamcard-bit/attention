@@ -23,60 +23,6 @@ type Result struct {
 	Matches []Match
 }
 
-// Query is a prepared fuzzy query.
-type Query struct {
-	Query  string
-	Tokens []string
-	Fuzzy  []string
-}
-
-// isPunctuation is PUNCTUATION_RE: the general punctuation and supplemental
-// punctuation blocks, and ASCII punctuation.
-func isPunctuation(r rune) bool {
-	if r >= 0x2000 && r <= 0x206F || r >= 0x2E00 && r <= 0x2E7F {
-		return true
-	}
-	return strings.ContainsRune("\\'!\"#$%&()*+,-./:;<=>?@[]^_`{|}~", r)
-}
-
-// isCJK is CJK_RE.
-func isCJK(r rune) bool {
-	return r >= 0x0F00 && r <= 0x0FFF || r >= 0x3040 && r <= 0x30FF || r >= 0x3400 && r <= 0x4DBF ||
-		r >= 0x4E00 && r <= 0x9FFF || r >= 0xF900 && r <= 0xFAFF || r >= 0xFF66 && r <= 0xFF9F
-}
-
-// Prepare splits a query into tokens (words, and each punctuation or CJK
-// character alone) and into single characters for the fuzzy fallback.
-func Prepare(query string) Query {
-	lower := []rune(strings.ToLower(query))
-	q := Query{Query: query}
-	start := 0
-	for i, r := range lower {
-		switch {
-		case unicode.IsSpace(r):
-			if start != i {
-				q.Tokens = append(q.Tokens, string(lower[start:i]))
-			}
-			start = i + 1
-		case isPunctuation(r) || isCJK(r):
-			if start != i {
-				q.Tokens = append(q.Tokens, string(lower[start:i]))
-			}
-			q.Tokens = append(q.Tokens, string(r))
-			start = i + 1
-		}
-	}
-	if start != len(lower) {
-		q.Tokens = append(q.Tokens, string(lower[start:]))
-	}
-	for _, r := range lower {
-		if r != ' ' {
-			q.Fuzzy = append(q.Fuzzy, string(r))
-		}
-	}
-	return q
-}
-
 // Search matches a prepared query against text: its tokens in order first,
 // then its characters in order, each at a word start.
 func Search(q Query, text string) *Result {
@@ -87,25 +33,6 @@ func Search(q Query, text string) *Result {
 		return r
 	}
 	return matchTokens(q.Fuzzy, q.Query, text, true)
-}
-
-func indexFrom(text, token []rune, from int) int {
-	if from < 0 {
-		from = 0
-	}
-	for i := from; i+len(token) <= len(text); i++ {
-		match := true
-		for j := range token {
-			if text[i+j] != token[j] {
-				match = false
-				break
-			}
-		}
-		if match {
-			return i
-		}
-	}
-	return -1
 }
 
 func matchTokens(tokens []string, query, text string, strictStart bool) *Result {
@@ -151,6 +78,51 @@ func matchTokens(tokens []string, query, text string, strictStart bool) *Result 
 	return &Result{Matches: matches, Score: score(matches, len([]rune(query)), len(lower), skipped)}
 }
 
+// Query is a prepared fuzzy query.
+type Query struct {
+	Query  string
+	Tokens []string
+	Fuzzy  []string
+}
+
+// Prepare splits a query into tokens (words, and each punctuation or CJK
+// character alone) and into single characters for the fuzzy fallback.
+func Prepare(query string) Query {
+	lower := []rune(strings.ToLower(query))
+	q := Query{Query: query}
+	start := 0
+	for i, r := range lower {
+		switch {
+		case unicode.IsSpace(r):
+			if start != i {
+				q.Tokens = append(q.Tokens, string(lower[start:i]))
+			}
+			start = i + 1
+		case isPunctuation(r) || isCJK(r):
+			if start != i {
+				q.Tokens = append(q.Tokens, string(lower[start:i]))
+			}
+			q.Tokens = append(q.Tokens, string(r))
+			start = i + 1
+		}
+	}
+	if start != len(lower) {
+		q.Tokens = append(q.Tokens, string(lower[start:]))
+	}
+	for _, r := range lower {
+		if r != ' ' {
+			q.Fuzzy = append(q.Fuzzy, string(r))
+		}
+	}
+	return q
+}
+
+// Ranked is one item that matched.
+type Ranked struct {
+	Index  int
+	Result *Result
+}
+
 // PrepareSimple is prepareSimpleSearch: every space-separated word must
 // occur somewhere, all occurrences highlighted.
 func PrepareSimple(query string) func(text string) *Result {
@@ -175,6 +147,58 @@ func PrepareSimple(query string) func(text string) *Result {
 		matches = merge(matches)
 		return &Result{Matches: matches, Score: score(matches, len([]rune(query)), len([]rune(text)), 0)}
 	}
+}
+
+// Rank is FuzzySuggestModal.getSuggestions with sortSearchResults: the
+// items whose text matches, best score first, ties in item order, at most
+// limit (0 for all).
+func Rank(query string, n int, text func(i int) string, limit int) []Ranked {
+	q := Prepare(strings.TrimSpace(query))
+	var out []Ranked
+	for i := 0; i < n; i++ {
+		if r := Search(q, text(i)); r != nil {
+			out = append(out, Ranked{i, r})
+		}
+	}
+	sort.SliceStable(out, func(a, b int) bool { return out[a].Result.Score > out[b].Result.Score })
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out
+}
+
+// isPunctuation is PUNCTUATION_RE: the general punctuation and supplemental
+// punctuation blocks, and ASCII punctuation.
+func isPunctuation(r rune) bool {
+	if r >= 0x2000 && r <= 0x206F || r >= 0x2E00 && r <= 0x2E7F {
+		return true
+	}
+	return strings.ContainsRune("\\'!\"#$%&()*+,-./:;<=>?@[]^_`{|}~", r)
+}
+
+// isCJK is CJK_RE.
+func isCJK(r rune) bool {
+	return r >= 0x0F00 && r <= 0x0FFF || r >= 0x3040 && r <= 0x30FF || r >= 0x3400 && r <= 0x4DBF ||
+		r >= 0x4E00 && r <= 0x9FFF || r >= 0xF900 && r <= 0xFAFF || r >= 0xFF66 && r <= 0xFF9F
+}
+
+func indexFrom(text, token []rune, from int) int {
+	if from < 0 {
+		from = 0
+	}
+	for i := from; i+len(token) <= len(text); i++ {
+		match := true
+		for j := range token {
+			if text[i+j] != token[j] {
+				match = false
+				break
+			}
+		}
+		if match {
+			return i
+		}
+	}
+	return -1
 }
 
 func score(matches []Match, queryLen, textLen, skipped int) float64 {
@@ -215,30 +239,6 @@ func merge(matches []Match) []Match {
 		} else if prev[1] < m[1] {
 			prev[1] = m[1]
 		}
-	}
-	return out
-}
-
-// Ranked is one item that matched.
-type Ranked struct {
-	Index  int
-	Result *Result
-}
-
-// Rank is FuzzySuggestModal.getSuggestions with sortSearchResults: the
-// items whose text matches, best score first, ties in item order, at most
-// limit (0 for all).
-func Rank(query string, n int, text func(i int) string, limit int) []Ranked {
-	q := Prepare(strings.TrimSpace(query))
-	var out []Ranked
-	for i := 0; i < n; i++ {
-		if r := Search(q, text(i)); r != nil {
-			out = append(out, Ranked{i, r})
-		}
-	}
-	sort.SliceStable(out, func(a, b int) bool { return out[a].Result.Score > out[b].Result.Score })
-	if limit > 0 && len(out) > limit {
-		out = out[:limit]
 	}
 	return out
 }

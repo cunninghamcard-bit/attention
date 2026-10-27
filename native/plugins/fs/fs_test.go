@@ -15,28 +15,6 @@ import (
 	contract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 )
 
-func newService(t *testing.T) *Service {
-	t.Helper()
-	svc, err := New(nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = svc.Close() })
-	return svc
-}
-
-func loadFS(t *testing.T) *rutistest.Loaded {
-	t.Helper()
-	return rutistest.Load(t, Plugin, nil, nil)
-}
-
-func call(t *testing.T, loaded *rutistest.Loaded, method string, result any, args ...any) {
-	t.Helper()
-	if err := loaded.Service("fs").Call(t.Context(), method, result, args...); err != nil {
-		t.Fatalf("%s: %v", method, err)
-	}
-}
-
 func TestListSortsDirsFirstInNaturalOrder(t *testing.T) {
 	dir := t.TempDir()
 	for _, name := range []string{"d10", "D2", "sub"} {
@@ -247,5 +225,27 @@ func TestWriteKeepsTheModeAndTheLink(t *testing.T) {
 	data, _ := os.ReadFile(note)
 	if st.Mode().Perm() != 0o755 || string(data) != "b" {
 		t.Fatalf("note: mode %v, %q", st.Mode().Perm(), data)
+	}
+}
+
+func newService(t *testing.T) *Service {
+	t.Helper()
+	svc, err := New(nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.Close() })
+	return svc
+}
+
+func loadFS(t *testing.T) *rutistest.Loaded {
+	t.Helper()
+	return rutistest.Load(t, Plugin, nil, nil)
+}
+
+func call(t *testing.T, loaded *rutistest.Loaded, method string, result any, args ...any) {
+	t.Helper()
+	if err := loaded.Service("fs").Call(t.Context(), method, result, args...); err != nil {
+		t.Fatalf("%s: %v", method, err)
 	}
 }

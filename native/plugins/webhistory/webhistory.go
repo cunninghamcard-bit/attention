@@ -31,31 +31,74 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
-// ID is the plugin's name; Kind the history page's
-// (WEBVIEWER_HISTORY_VIEW_TYPE).
 const (
+	// ID is the plugin's name; Kind the history page's
+	// (WEBVIEWER_HISTORY_VIEW_TYPE).
 	ID   = "web-history"
 	Kind = "webviewer-history"
+
+	// maxEntries is how many visits are kept.
+	maxEntries = 1000
 )
 
-// maxEntries is how many visits are kept.
-const maxEntries = 1000
+// Plugin installs the history, its page and commands while loaded.
+var Plugin = rutis.Define(rutis.Plugin[struct{}]{
+	Name:   ID,
+	Inject: []string{"shell", "workspace"},
+	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		path := filepath.Join(paths.ConfigDir(), "web-history.json")
+		h := &History{}
+		var f file
+		if persist.Load(path, &f) {
+			h.entries = f.Entries
+		}
+		saver := persist.New(path, func() any { return file{Entries: h.List()} })
+		h.save = saver.Soon
+		// A service of no methods: who injects it hears its events
+		// (web-index, webcontract.HistoryClearedEvent).
+		rctx.Provide("web-history", struct{}{})
+		emitCtx, cancel := context.WithCancel(context.Background())
+		h.cleared = func() { go func() { _ = rctx.Emit(emitCtx, webcontract.HistoryClearedEvent) }() }
+		openPage := func() {
+			if ws := workspaceapi.Get(); ws != nil {
+				_ = ws.OpenTab(Kind, workspaceapi.OpenOptions{})
+			}
+		}
+		offs := []func(){
+			webhistoryapi.Set(h),
+			tabtypesapi.Register(tabtypesapi.TabType{ID: ID, Kind: Kind, Priority: tabtypesapi.Builtin,
+				Title: func(string) string { return "Web viewer history" }, Icon: lucide.Clock(), Body: h.view}),
+			actionsapi.Register(actionsapi.Command{ID: "webviewer:open-history", Title: "Open Web viewer history", Main: openPage, CLI: true,
+				Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
+					return shellapi.OnMain(ctx, func() (string, error) { openPage(); return "", nil })
+				}}),
+			actionsapi.Register(actionsapi.Command{ID: "web:history", CLI: true, Run: h.cliHistory}),
+			actionsapi.Register(actionsapi.Command{ID: "web:history:clear", CLI: true,
+				Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
+					return shellapi.OnMain(ctx, func() (string, error) {
+						n := len(h.entries)
+						h.Clear()
+						return "Cleared " + strconv.Itoa(n) + " history entries.", nil
+					})
+				}}),
+		}
+		rctx.Effect(func(ctx context.Context) error {
+			for _, off := range offs {
+				off()
+			}
+			cancel()
+			saver.Final(ctx)
+			return nil
+		})
+		return nil
+	},
+})
 
 // History is the store, on the main thread only.
 type History struct {
 	entries []webhistoryapi.Entry
 	save    func()
 	cleared func() // emits webcontract.HistoryClearedEvent
-}
-
-type file struct {
-	Entries []webhistoryapi.Entry `json:"entries"`
-}
-
-func newID() string {
-	var b [16]byte
-	_, _ = rand.Read(b[:])
-	return hex.EncodeToString(b[:])
 }
 
 // Record is recordHistory. Unlike it, a title given for the newest entry
@@ -140,13 +183,6 @@ func (h *History) view(c *ui.Context, _ tabtypesapi.Props) {
 	}).Grow(1).Fill().PaddingY(4)
 }
 
-// open is the controller's open: the page in a new tab.
-func open(url string) {
-	if ws := workspaceapi.Get(); ws != nil {
-		_ = ws.OpenResource(url, workspaceapi.OpenOptions{Kind: "webviewer", NewTab: true})
-	}
-}
-
 // cliHistory is `web:history [limit=<n>] [format=json]`, newest first:
 // each visit's address and title, tab-separated.
 func (h *History) cliHistory(ctx context.Context, a actionsapi.Args) (string, error) {
@@ -178,55 +214,19 @@ func (h *History) cliHistory(ctx context.Context, a actionsapi.Args) (string, er
 	return b.String(), nil
 }
 
-// Plugin installs the history, its page and commands while loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   ID,
-	Inject: []string{"shell", "workspace"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		path := filepath.Join(paths.ConfigDir(), "web-history.json")
-		h := &History{}
-		var f file
-		if persist.Load(path, &f) {
-			h.entries = f.Entries
-		}
-		saver := persist.New(path, func() any { return file{Entries: h.List()} })
-		h.save = saver.Soon
-		// A service of no methods: who injects it hears its events
-		// (web-index, webcontract.HistoryClearedEvent).
-		rctx.Provide("web-history", struct{}{})
-		emitCtx, cancel := context.WithCancel(context.Background())
-		h.cleared = func() { go func() { _ = rctx.Emit(emitCtx, webcontract.HistoryClearedEvent) }() }
-		openPage := func() {
-			if ws := workspaceapi.Get(); ws != nil {
-				_ = ws.OpenTab(Kind, workspaceapi.OpenOptions{})
-			}
-		}
-		offs := []func(){
-			webhistoryapi.Set(h),
-			tabtypesapi.Register(tabtypesapi.TabType{ID: ID, Kind: Kind, Priority: tabtypesapi.Builtin,
-				Title: func(string) string { return "Web viewer history" }, Icon: lucide.Clock(), Body: h.view}),
-			actionsapi.Register(actionsapi.Command{ID: "webviewer:open-history", Title: "Open Web viewer history", Main: openPage, CLI: true,
-				Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-					return shellapi.OnMain(ctx, func() (string, error) { openPage(); return "", nil })
-				}}),
-			actionsapi.Register(actionsapi.Command{ID: "web:history", CLI: true, Run: h.cliHistory}),
-			actionsapi.Register(actionsapi.Command{ID: "web:history:clear", CLI: true,
-				Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-					return shellapi.OnMain(ctx, func() (string, error) {
-						n := len(h.entries)
-						h.Clear()
-						return "Cleared " + strconv.Itoa(n) + " history entries.", nil
-					})
-				}}),
-		}
-		rctx.Effect(func(ctx context.Context) error {
-			for _, off := range offs {
-				off()
-			}
-			cancel()
-			saver.Final(ctx)
-			return nil
-		})
-		return nil
-	},
-})
+type file struct {
+	Entries []webhistoryapi.Entry `json:"entries"`
+}
+
+func newID() string {
+	var b [16]byte
+	_, _ = rand.Read(b[:])
+	return hex.EncodeToString(b[:])
+}
+
+// open is the controller's open: the page in a new tab.
+func open(url string) {
+	if ws := workspaceapi.Get(); ws != nil {
+		_ = ws.OpenResource(url, workspaceapi.OpenOptions{Kind: "webviewer", NewTab: true})
+	}
+}

@@ -17,6 +17,20 @@ import (
 // ID is the plugin's name.
 const ID = "web-read"
 
+// Plugin registers web:read while loaded.
+var Plugin = rutis.Define(rutis.Plugin[struct{}]{
+	Name:   ID,
+	Inject: []string{"actions"},
+	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		off := actionsapi.Register(actionsapi.Command{ID: "web:read", CLI: true, Run: read})
+		rctx.Effect(func(context.Context) error {
+			off()
+			return nil
+		})
+		return nil
+	},
+})
+
 // read is `web:read url=<url>`: the page's title, its address after
 // redirects, its article; a URL with no scheme goes over https, as web's.
 func read(ctx context.Context, a actionsapi.Args) (string, error) {
@@ -37,17 +51,3 @@ func read(ctx context.Context, a actionsapi.Args) (string, error) {
 	}
 	return strings.TrimSuffix(r.Document(), "\n"), nil
 }
-
-// Plugin registers web:read while loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   ID,
-	Inject: []string{"actions"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		off := actionsapi.Register(actionsapi.Command{ID: "web:read", CLI: true, Run: read})
-		rctx.Effect(func(context.Context) error {
-			off()
-			return nil
-		})
-		return nil
-	},
-})

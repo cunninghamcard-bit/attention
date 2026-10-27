@@ -42,49 +42,6 @@ func (b *Bookmarks) cliList(ctx context.Context, a actionsapi.Args) (string, err
 	})
 }
 
-func countItems(items []*Item) int {
-	n := 0
-	for _, it := range items {
-		n++
-		if it.Type == "group" {
-			n += countItems(it.Items)
-		}
-	}
-	return n
-}
-
-func listLines(items []*Item, depth int, verbose bool) []string {
-	indent := strings.Repeat("\t", depth)
-	var lines []string
-	for _, it := range items {
-		line := indent
-		if verbose {
-			line += it.Type + ": "
-		}
-		line += it.displayTitle()
-		lines = append(lines, line)
-		if it.Type == "group" {
-			lines = append(lines, listLines(it.Items, depth+1, verbose)...)
-		}
-	}
-	return lines
-}
-
-func tableRows(items []*Item) [][]string {
-	var rows [][]string
-	var walk func([]*Item)
-	walk = func(items []*Item) {
-		for _, it := range items {
-			rows = append(rows, []string{it.Type, it.displayTitle()})
-			if it.Type == "group" {
-				walk(it.Items)
-			}
-		}
-	}
-	walk(items)
-	return rows
-}
-
 // cliAdd is `bookmark file=<path> [subpath=] | folder=<path> | search=<query> | url=<url>  [title=]`.
 func (b *Bookmarks) cliAdd(ctx context.Context, a actionsapi.Args) (string, error) {
 	file, folder := a.Params["file"], a.Params["folder"]
@@ -156,4 +113,47 @@ func (b *Bookmarks) resolveFolder(ctx context.Context, target, cwd string) (stri
 		return p, nil
 	}
 	return "", fmt.Errorf("Folder %q not found.", target)
+}
+
+func countItems(items []*Item) int {
+	n := 0
+	for _, it := range items {
+		n++
+		if it.Type == "group" {
+			n += countItems(it.Items)
+		}
+	}
+	return n
+}
+
+func listLines(items []*Item, depth int, verbose bool) []string {
+	indent := strings.Repeat("\t", depth)
+	var lines []string
+	for _, it := range items {
+		line := indent
+		if verbose {
+			line += it.Type + ": "
+		}
+		line += it.displayTitle()
+		lines = append(lines, line)
+		if it.Type == "group" {
+			lines = append(lines, listLines(it.Items, depth+1, verbose)...)
+		}
+	}
+	return lines
+}
+
+func tableRows(items []*Item) [][]string {
+	var rows [][]string
+	var walk func([]*Item)
+	walk = func(items []*Item) {
+		for _, it := range items {
+			rows = append(rows, []string{it.Type, it.displayTitle()})
+			if it.Type == "group" {
+				walk(it.Items)
+			}
+		}
+	}
+	walk(items)
+	return rows
 }

@@ -18,30 +18,26 @@ import (
 // operators (path:, file:, tag:, line:, section:, [property], ext:, plugin
 // operators), plain and quoted words, every text file.
 
-// searchableExtensions is SEARCHABLE_EXTENSIONS: md and canvas plus
-// CODE_EXTENSIONS (apps/web/views/CodeFileView.ts); "" is a file without an
-// extension (Dockerfile, Makefile, dotfiles).
-var searchableExtensions = func() map[string]bool {
-	m := map[string]bool{}
-	for _, e := range []string{"md", "canvas",
-		"ts", "tsx", "js", "jsx", "mjs", "cjs", "go", "py", "rs", "java", "kt", "swift", "rb", "php", "lua",
-		"c", "h", "cc", "cpp", "hpp", "cs", "sh", "bash", "zsh", "fish", "json", "jsonc", "yaml", "yml",
-		"toml", "xml", "css", "scss", "less", "html", "vue", "svelte", "sql", "graphql", "proto",
-		"dockerfile", "txt", "log", "csv", "ini", "conf", "base", ""} {
-		m[e] = true
-	}
-	return m
-}()
+var (
+	// searchableExtensions is SEARCHABLE_EXTENSIONS: md and canvas plus
+	// CODE_EXTENSIONS (apps/web/views/CodeFileView.ts); "" is a file without an
+	// extension (Dockerfile, Makefile, dotfiles).
+	searchableExtensions = func() map[string]bool {
+		m := map[string]bool{}
+		for _, e := range []string{"md", "canvas",
+			"ts", "tsx", "js", "jsx", "mjs", "cjs", "go", "py", "rs", "java", "kt", "swift", "rb", "php", "lua",
+			"c", "h", "cc", "cpp", "hpp", "cs", "sh", "bash", "zsh", "fish", "json", "jsonc", "yaml", "yml",
+			"toml", "xml", "css", "scss", "less", "html", "vue", "svelte", "sql", "graphql", "proto",
+			"dockerfile", "txt", "log", "csv", "ini", "conf", "base", ""} {
+			m[e] = true
+		}
+		return m
+	}()
 
-// extension is TFile.extension: after the last dot of the name, without a
-// leading dot counting (".env" has none).
-func extension(name string) string {
-	i := strings.LastIndexByte(name, '.')
-	if i <= 0 {
-		return ""
-	}
-	return strings.ToLower(name[i+1:])
-}
+	builtinOperators = map[string]bool{"path": true, "file": true, "tag": true, "line": true, "section": true}
+
+	tokenPattern = regexp.MustCompile(`\[([^\]]+)\]|(\w+):(?:\(([^)]*)\)|"([^"]*)"|(\S*))|"([^"]*)"|(\S+)`)
+)
 
 // Meta is what the metadata cache knows of a file: its tags (without "#"),
 // frontmatter and heading lines. The metadata index is roadmap P2; until it
@@ -58,8 +54,6 @@ type Operator struct {
 	Name, Token, Description string
 	Filter                   func(f contract.FileRef, value string) bool
 }
-
-var builtinOperators = map[string]bool{"path": true, "file": true, "tag": true, "line": true, "section": true}
 
 // Engine is SearchEngine.
 type Engine struct {
@@ -97,94 +91,6 @@ func (e *Engine) UnregisterOperator(name string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	delete(e.operators, name)
-}
-
-type propertyTerm struct {
-	key   string
-	value *string
-}
-
-type customTerm struct{ operator, value string }
-
-type parsedQuery struct {
-	words, pathTerms, fileTerms, tagTerms []string
-	propertyTerms                         []propertyTerm
-	lineGroups, sectionGroups             [][]string
-	customTerms                           []customTerm
-}
-
-func (p parsedQuery) empty() bool {
-	return len(p.words)+len(p.pathTerms)+len(p.fileTerms)+len(p.tagTerms)+len(p.propertyTerms)+
-		len(p.lineGroups)+len(p.sectionGroups)+len(p.customTerms) == 0
-}
-
-var tokenPattern = regexp.MustCompile(`\[([^\]]+)\]|(\w+):(?:\(([^)]*)\)|"([^"]*)"|(\S*))|"([^"]*)"|(\S+)`)
-
-// parse is parseSearchQuery.
-func (e *Engine) parse(query string) parsedQuery {
-	e.mu.Lock()
-	registered := func(name string) bool { _, ok := e.operators[name]; return ok }
-	defer e.mu.Unlock()
-	var p parsedQuery
-	for _, m := range tokenPattern.FindAllStringSubmatchIndex(query, -1) {
-		group := func(i int) (string, bool) {
-			if m[2*i] < 0 {
-				return "", false
-			}
-			return query[m[2*i]:m[2*i+1]], true
-		}
-		full, _ := group(0)
-		if property, ok := group(1); ok {
-			if k, v, has := strings.Cut(property, ":"); has {
-				val := strings.TrimSpace(v)
-				p.propertyTerms = append(p.propertyTerms, propertyTerm{strings.TrimSpace(k), &val})
-			} else {
-				p.propertyTerms = append(p.propertyTerms, propertyTerm{strings.TrimSpace(property), nil})
-			}
-			continue
-		}
-		if operator, ok := group(2); ok {
-			if !builtinOperators[operator] && !registered(operator) {
-				// "release:notes" with no such operator is a plain keyword.
-				p.words = append(p.words, full)
-				continue
-			}
-			value := ""
-			for _, i := range []int{3, 4, 5} {
-				if v, ok := group(i); ok {
-					value = v
-					break
-				}
-			}
-			words := strings.Fields(value)
-			if len(words) == 0 {
-				continue
-			}
-			switch operator {
-			case "path":
-				p.pathTerms = append(p.pathTerms, strings.TrimSpace(value))
-			case "file":
-				p.fileTerms = append(p.fileTerms, strings.TrimSpace(value))
-			case "tag":
-				for _, w := range words {
-					p.tagTerms = append(p.tagTerms, strings.TrimPrefix(w, "#"))
-				}
-			case "line":
-				p.lineGroups = append(p.lineGroups, words)
-			case "section":
-				p.sectionGroups = append(p.sectionGroups, words)
-			default:
-				p.customTerms = append(p.customTerms, customTerm{operator, strings.TrimSpace(value)})
-			}
-			continue
-		}
-		if w, ok := group(6); ok && w != "" {
-			p.words = append(p.words, w)
-		} else if w, ok := group(7); ok && w != "" {
-			p.words = append(p.words, w)
-		}
-	}
-	return p
 }
 
 // Search is SearchEngine.search over a file listing: the files passing the
@@ -260,13 +166,71 @@ func (e *Engine) Search(ctx context.Context, files []contract.FileRef, display f
 	return results, nil
 }
 
-// splitLines is source.split(/\r?\n/).
-func splitLines(s string) []string {
-	lines := strings.Split(s, "\n")
-	for i, l := range lines {
-		lines[i] = strings.TrimSuffix(l, "\r")
+// parse is parseSearchQuery.
+func (e *Engine) parse(query string) parsedQuery {
+	e.mu.Lock()
+	registered := func(name string) bool { _, ok := e.operators[name]; return ok }
+	defer e.mu.Unlock()
+	var p parsedQuery
+	for _, m := range tokenPattern.FindAllStringSubmatchIndex(query, -1) {
+		group := func(i int) (string, bool) {
+			if m[2*i] < 0 {
+				return "", false
+			}
+			return query[m[2*i]:m[2*i+1]], true
+		}
+		full, _ := group(0)
+		if property, ok := group(1); ok {
+			if k, v, has := strings.Cut(property, ":"); has {
+				val := strings.TrimSpace(v)
+				p.propertyTerms = append(p.propertyTerms, propertyTerm{strings.TrimSpace(k), &val})
+			} else {
+				p.propertyTerms = append(p.propertyTerms, propertyTerm{strings.TrimSpace(property), nil})
+			}
+			continue
+		}
+		if operator, ok := group(2); ok {
+			if !builtinOperators[operator] && !registered(operator) {
+				// "release:notes" with no such operator is a plain keyword.
+				p.words = append(p.words, full)
+				continue
+			}
+			value := ""
+			for _, i := range []int{3, 4, 5} {
+				if v, ok := group(i); ok {
+					value = v
+					break
+				}
+			}
+			words := strings.Fields(value)
+			if len(words) == 0 {
+				continue
+			}
+			switch operator {
+			case "path":
+				p.pathTerms = append(p.pathTerms, strings.TrimSpace(value))
+			case "file":
+				p.fileTerms = append(p.fileTerms, strings.TrimSpace(value))
+			case "tag":
+				for _, w := range words {
+					p.tagTerms = append(p.tagTerms, strings.TrimPrefix(w, "#"))
+				}
+			case "line":
+				p.lineGroups = append(p.lineGroups, words)
+			case "section":
+				p.sectionGroups = append(p.sectionGroups, words)
+			default:
+				p.customTerms = append(p.customTerms, customTerm{operator, strings.TrimSpace(value)})
+			}
+			continue
+		}
+		if w, ok := group(6); ok && w != "" {
+			p.words = append(p.words, w)
+		} else if w, ok := group(7); ok && w != "" {
+			p.words = append(p.words, w)
+		}
 	}
-	return lines
+	return p
 }
 
 func (e *Engine) passesFileFilters(f contract.FileRef, shown, name string, p parsedQuery, fold func(string) string) bool {
@@ -390,6 +354,44 @@ func (e *Engine) matchContent(f contract.FileRef, lines, haystacks []string, p p
 		return matches[i].Col < matches[j].Col
 	})
 	return dedupe(matches), true
+}
+
+type propertyTerm struct {
+	key   string
+	value *string
+}
+
+type customTerm struct{ operator, value string }
+
+type parsedQuery struct {
+	words, pathTerms, fileTerms, tagTerms []string
+	propertyTerms                         []propertyTerm
+	lineGroups, sectionGroups             [][]string
+	customTerms                           []customTerm
+}
+
+func (p parsedQuery) empty() bool {
+	return len(p.words)+len(p.pathTerms)+len(p.fileTerms)+len(p.tagTerms)+len(p.propertyTerms)+
+		len(p.lineGroups)+len(p.sectionGroups)+len(p.customTerms) == 0
+}
+
+// extension is TFile.extension: after the last dot of the name, without a
+// leading dot counting (".env" has none).
+func extension(name string) string {
+	i := strings.LastIndexByte(name, '.')
+	if i <= 0 {
+		return ""
+	}
+	return strings.ToLower(name[i+1:])
+}
+
+// splitLines is source.split(/\r?\n/).
+func splitLines(s string) []string {
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		lines[i] = strings.TrimSuffix(l, "\r")
+	}
+	return lines
 }
 
 // sectionRanges is sectionRangesOf: one range before the first heading and

@@ -37,7 +37,40 @@ const (
 	PanelID = "bookmarks"
 )
 
-func storePath() string { return filepath.Join(paths.ConfigDir(), "bookmarks.json") }
+// Plugin registers the Bookmarks panel while loaded.
+var Plugin = rutis.Define(rutis.Plugin[struct{}]{
+	Name:   ID,
+	Inject: []string{"shell", "project", "workspace"},
+	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		var project projectcontract.Project
+		if err := rctx.Use("project", &project); err != nil {
+			return err
+		}
+		b := &Bookmarks{project: project, items: []*Item{}, collapsed: map[string]bool{}}
+		saver := persist.New(storePath(), func() any { return Data{Items: cloneItems(b.items)} })
+		b.saveSoon = saver.Soon
+		var data Data
+		if persist.Load(storePath(), &data) && data.Items != nil {
+			b.items = data.Items
+		}
+		off := slotsapi.RegisterPanel(slotsapi.Panel{
+			ID: PanelID, Title: "Bookmarks", Icon: lucide.Bookmark(), Dock: slotsapi.Left, Order: 2,
+			View: b.view, State: b.state, Restore: b.restore,
+		})
+		offs := []func(){off, bookmarksapi.Set(b)}
+		for _, cmd := range b.commands() {
+			offs = append(offs, actionsapi.Register(cmd))
+		}
+		rctx.Effect(func(ctx context.Context) error {
+			for i := len(offs) - 1; i >= 0; i-- {
+				offs[i]()
+			}
+			saver.Final(ctx)
+			return nil
+		})
+		return nil
+	},
+})
 
 // Data is BookmarksData: the on-disk file.
 type Data struct {
@@ -99,6 +132,34 @@ func (it *Item) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// displayTitle is getBookmarkTitle (apps/web/builtin/Bookmarks.ts). File
+// and folder paths without a title use the mount-prefixed display path.
+func (it *Item) displayTitle() string {
+	switch it.Type {
+	case "file":
+		if it.Title != "" {
+			return it.Title
+		}
+		return displayPath(it.Path) + it.Subpath
+	case "folder":
+		if it.Title != "" {
+			return it.Title
+		}
+		return displayPath(it.Path)
+	case "search":
+		if it.Title != "" {
+			return it.Title
+		}
+		return "Search: " + it.Query
+	case "url":
+		if it.Title != "" {
+			return it.Title
+		}
+		return it.URL
+	}
+	return it.Title
+}
+
 // Bookmarks is the panel's state, on the main thread only.
 type Bookmarks struct {
 	project  projectcontract.Project
@@ -108,47 +169,6 @@ type Bookmarks struct {
 	collapsed map[string]bool
 	rows      []row
 }
-
-type row struct {
-	item  *Item
-	depth int
-	key   string
-}
-
-// Plugin registers the Bookmarks panel while loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   ID,
-	Inject: []string{"shell", "project", "workspace"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var project projectcontract.Project
-		if err := rctx.Use("project", &project); err != nil {
-			return err
-		}
-		b := &Bookmarks{project: project, items: []*Item{}, collapsed: map[string]bool{}}
-		saver := persist.New(storePath(), func() any { return Data{Items: cloneItems(b.items)} })
-		b.saveSoon = saver.Soon
-		var data Data
-		if persist.Load(storePath(), &data) && data.Items != nil {
-			b.items = data.Items
-		}
-		off := slotsapi.RegisterPanel(slotsapi.Panel{
-			ID: PanelID, Title: "Bookmarks", Icon: lucide.Bookmark(), Dock: slotsapi.Left, Order: 2,
-			View: b.view, State: b.state, Restore: b.restore,
-		})
-		offs := []func(){off, bookmarksapi.Set(b)}
-		for _, cmd := range b.commands() {
-			offs = append(offs, actionsapi.Register(cmd))
-		}
-		rctx.Effect(func(ctx context.Context) error {
-			for i := len(offs) - 1; i >= 0; i-- {
-				offs[i]()
-			}
-			saver.Final(ctx)
-			return nil
-		})
-		return nil
-	},
-})
 
 // URLs are the url bookmarks, groups' included (bookmarksapi).
 func (b *Bookmarks) URLs() []bookmarksapi.URL {
@@ -170,30 +190,6 @@ func (b *Bookmarks) URLs() []bookmarksapi.URL {
 	}
 	walk(b.items)
 	return out
-}
-
-func cloneItems(items []*Item) []*Item {
-	if items == nil {
-		return []*Item{}
-	}
-	out := make([]*Item, len(items))
-	for i, it := range items {
-		c := *it
-		if len(it.raw) > 0 {
-			c.raw = append(json.RawMessage(nil), it.raw...)
-		}
-		if len(it.Options) > 0 {
-			c.Options = append(json.RawMessage(nil), it.Options...)
-		}
-		c.Items = cloneItems(it.Items)
-		out[i] = &c
-	}
-	return out
-}
-
-// savedState is which groups the user collapsed.
-type savedState struct {
-	Collapsed []string `json:"collapsed"`
 }
 
 func (b *Bookmarks) state() json.RawMessage {
@@ -261,34 +257,6 @@ func (b *Bookmarks) remove(target *Item) {
 		b.saveSoon()
 	}
 }
-
-func removeItem(items []*Item, target *Item) []*Item {
-	var out []*Item
-	for _, it := range items {
-		if it == target {
-			continue
-		}
-		if it.Type == "group" {
-			it.Items = removeItem(it.Items, target)
-		}
-		out = append(out, it)
-	}
-	return out
-}
-
-func containsPath(items []*Item, path string) bool {
-	for _, it := range items {
-		if (it.Type == "file" || it.Type == "folder") && it.Path == path {
-			return true
-		}
-		if it.Type == "group" && containsPath(it.Items, path) {
-			return true
-		}
-	}
-	return false
-}
-
-func nowCtime() int64 { return time.Now().UnixMilli() }
 
 func (b *Bookmarks) bookmarkCurrentView() { _, _ = b.bookmarkCurrentViewMsg() }
 
@@ -372,18 +340,6 @@ func (b *Bookmarks) open(item *Item) {
 	}
 }
 
-func revealSearch(query string) {
-	if cmd, ok := actionsapi.Lookup("search:open"); ok && cmd.Run != nil {
-		go func() {
-			_, _ = cmd.Run(context.Background(), actionsapi.Args{Params: map[string]string{"query": query}})
-		}()
-		return
-	}
-	if l := layoutapi.Get(); l != nil {
-		l.RevealPanel("search")
-	}
-}
-
 func (b *Bookmarks) flatten() []row {
 	b.rows = b.rows[:0]
 	var walk func([]*Item, int, string)
@@ -448,32 +404,76 @@ func (b *Bookmarks) itemRow(c *ui.Context, r row) {
 	}
 }
 
-// displayTitle is getBookmarkTitle (apps/web/builtin/Bookmarks.ts). File
-// and folder paths without a title use the mount-prefixed display path.
-func (it *Item) displayTitle() string {
-	switch it.Type {
-	case "file":
-		if it.Title != "" {
-			return it.Title
-		}
-		return displayPath(it.Path) + it.Subpath
-	case "folder":
-		if it.Title != "" {
-			return it.Title
-		}
-		return displayPath(it.Path)
-	case "search":
-		if it.Title != "" {
-			return it.Title
-		}
-		return "Search: " + it.Query
-	case "url":
-		if it.Title != "" {
-			return it.Title
-		}
-		return it.URL
+type row struct {
+	item  *Item
+	depth int
+	key   string
+}
+
+// savedState is which groups the user collapsed.
+type savedState struct {
+	Collapsed []string `json:"collapsed"`
+}
+
+func storePath() string { return filepath.Join(paths.ConfigDir(), "bookmarks.json") }
+
+func cloneItems(items []*Item) []*Item {
+	if items == nil {
+		return []*Item{}
 	}
-	return it.Title
+	out := make([]*Item, len(items))
+	for i, it := range items {
+		c := *it
+		if len(it.raw) > 0 {
+			c.raw = append(json.RawMessage(nil), it.raw...)
+		}
+		if len(it.Options) > 0 {
+			c.Options = append(json.RawMessage(nil), it.Options...)
+		}
+		c.Items = cloneItems(it.Items)
+		out[i] = &c
+	}
+	return out
+}
+
+func removeItem(items []*Item, target *Item) []*Item {
+	var out []*Item
+	for _, it := range items {
+		if it == target {
+			continue
+		}
+		if it.Type == "group" {
+			it.Items = removeItem(it.Items, target)
+		}
+		out = append(out, it)
+	}
+	return out
+}
+
+func containsPath(items []*Item, path string) bool {
+	for _, it := range items {
+		if (it.Type == "file" || it.Type == "folder") && it.Path == path {
+			return true
+		}
+		if it.Type == "group" && containsPath(it.Items, path) {
+			return true
+		}
+	}
+	return false
+}
+
+func nowCtime() int64 { return time.Now().UnixMilli() }
+
+func revealSearch(query string) {
+	if cmd, ok := actionsapi.Lookup("search:open"); ok && cmd.Run != nil {
+		go func() {
+			_, _ = cmd.Run(context.Background(), actionsapi.Args{Params: map[string]string{"query": query}})
+		}()
+		return
+	}
+	if l := layoutapi.Get(); l != nil {
+		l.RevealPanel("search")
+	}
 }
 
 func displayPath(path string) string {

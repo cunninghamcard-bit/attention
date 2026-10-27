@@ -16,6 +16,23 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/internal/clifmt"
 )
 
+var (
+	remoteMu sync.Mutex
+	remote   = map[string]func(){} // the remote commands' offs, by ID
+
+	// Plugin provides "actions" and the CLI's commands and command.
+	Plugin = rutis.Define(rutis.Plugin[struct{}]{
+		Name: "actions",
+		Apply: func(ctx *rutis.Ctx, _ struct{}) error {
+			ctx.Provide("actions", Service{})
+			ctx.Effect(dropRemote)
+			ctx.Effect(actionCleanup(actionsapi.Register(cliCommands())))
+			ctx.Effect(actionCleanup(actionsapi.Register(cliCommand())))
+			return nil
+		},
+	})
+)
+
 // Info describes a command to another process.
 type Info struct {
 	ID    string `json:"id"`
@@ -41,25 +58,6 @@ func (Service) List(context.Context) ([]Info, error) {
 	}
 	return out, nil
 }
-
-// Remote is a command another process registers: a third party's plugin
-// in any of rutis's languages (RFC 0001 §5.11).
-type Remote struct {
-	ID    string   `json:"id"`
-	Title string   `json:"title"` // empty keeps it out of the palette
-	Keys  string   `json:"keys"`
-	CLI   bool     `json:"cli"`
-	Flags []string `json:"flags"`
-}
-
-// RunFunc runs a remote command, in its process: the CLI's parameters
-// (a bare flag's value is "true") and its working folder.
-type RunFunc func(ctx context.Context, params map[string]string, cwd string) (string, error)
-
-var (
-	remoteMu sync.Mutex
-	remote   = map[string]func(){} // the remote commands' offs, by ID
-)
 
 // Register adds cmd, which run runs, until Unregister or the actions
 // plugin unloads; a second command with its ID replaces it.
@@ -97,6 +95,20 @@ func (Service) Unregister(_ context.Context, id string) error {
 	return nil
 }
 
+// Remote is a command another process registers: a third party's plugin
+// in any of rutis's languages (RFC 0001 §5.11).
+type Remote struct {
+	ID    string   `json:"id"`
+	Title string   `json:"title"` // empty keeps it out of the palette
+	Keys  string   `json:"keys"`
+	CLI   bool     `json:"cli"`
+	Flags []string `json:"flags"`
+}
+
+// RunFunc runs a remote command, in its process: the CLI's parameters
+// (a bare flag's value is "true") and its working folder.
+type RunFunc func(ctx context.Context, params map[string]string, cwd string) (string, error)
+
 // dropRemote removes every remote command.
 func dropRemote(context.Context) error {
 	remoteMu.Lock()
@@ -108,18 +120,6 @@ func dropRemote(context.Context) error {
 	}
 	return nil
 }
-
-// Plugin provides "actions" and the CLI's commands and command.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name: "actions",
-	Apply: func(ctx *rutis.Ctx, _ struct{}) error {
-		ctx.Provide("actions", Service{})
-		ctx.Effect(dropRemote)
-		ctx.Effect(actionCleanup(actionsapi.Register(cliCommands())))
-		ctx.Effect(actionCleanup(actionsapi.Register(cliCommand())))
-		return nil
-	},
-})
 
 func actionCleanup(off func()) func(context.Context) error {
 	return func(context.Context) error { off(); return nil }

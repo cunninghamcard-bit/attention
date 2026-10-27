@@ -10,6 +10,11 @@ import (
 	"strings"
 )
 
+var (
+	yamlQuoteSpecial = regexp.MustCompile("[:#[\\]{},&*?|\\-<>=!%@`]")
+	yamlQuoteSpace   = regexp.MustCompile(`^\s|\s$`)
+)
+
 // FrontmatterMap is an insertion-ordered YAML-subset mapping. It ports the
 // Record<string, PropertyValue> that apps/web/metadata/Frontmatter.ts mutates.
 type FrontmatterMap struct {
@@ -19,6 +24,49 @@ type FrontmatterMap struct {
 
 func newFrontmatterMap() *FrontmatterMap {
 	return &FrontmatterMap{vals: map[string]any{}}
+}
+
+func orderedFrontmatter(parsed ParsedFrontmatter) *FrontmatterMap {
+	if !parsed.Valid || !parsed.HasFrontmatter {
+		return newFrontmatterMap()
+	}
+	return parseOrderedYamlSubset(parsed.Raw)
+}
+
+func parseOrderedYamlSubset(raw string) *FrontmatterMap {
+	values := newFrontmatterMap()
+	lines := splitCRLF(raw)
+	index := 0
+	for index < len(lines) {
+		line := lines[index]
+		index++
+		if strings.TrimSpace(line) == "" || strings.HasPrefix(trimStart(line), "#") {
+			continue
+		}
+		keyMatch := yamlKeyRe.FindStringSubmatch(line)
+		if keyMatch == nil {
+			continue
+		}
+		key := strings.TrimSpace(keyMatch[1])
+		rest := ""
+		if len(keyMatch) > 2 {
+			rest = keyMatch[2]
+		}
+		if strings.TrimSpace(rest) != "" {
+			values.Set(key, parseScalarOrInlineArray(strings.TrimSpace(rest)))
+			continue
+		}
+		var childLines []string
+		for index < len(lines) {
+			if !yamlIndent.MatchString(lines[index]) {
+				break
+			}
+			childLines = append(childLines, strings.TrimPrefix(lines[index], "  "))
+			index++
+		}
+		values.Set(key, parseOrderedIndentedBlock(childLines))
+	}
+	return values
 }
 
 // Set assigns key, keeping its place if it already exists and appending if not.
@@ -61,6 +109,11 @@ func (m *FrontmatterMap) assign(src *FrontmatterMap) {
 	for _, k := range src.keys {
 		m.Set(k, src.vals[k])
 	}
+}
+
+type kv struct {
+	key   string
+	value any
 }
 
 // SetFrontmatterProperty writes one property, dropping it when value is null
@@ -114,31 +167,6 @@ func ProcessFrontMatter(source string, handler func(*FrontmatterMap)) string {
 	})
 }
 
-func orderedFrontmatter(parsed ParsedFrontmatter) *FrontmatterMap {
-	if !parsed.Valid || !parsed.HasFrontmatter {
-		return newFrontmatterMap()
-	}
-	return parseOrderedYamlSubset(parsed.Raw)
-}
-
-func writeFrontmatter(body string, values *FrontmatterMap) string {
-	block := SerializeFrontmatter(values)
-	if block == "" {
-		return stripOneLeadingNL(body)
-	}
-	return block + body
-}
-
-func stripOneLeadingNL(body string) string {
-	if strings.HasPrefix(body, "\r\n") {
-		return body[2:]
-	}
-	if strings.HasPrefix(body, "\n") {
-		return body[1:]
-	}
-	return body
-}
-
 // SerializeFrontmatter is the --- block for values, or "" when there is
 // nothing to write. Empty arrays are omitted; key order is kept.
 // It ports serializeFrontmatter from apps/web/metadata/Frontmatter.ts.
@@ -164,40 +192,22 @@ func SerializeFrontmatter(values *FrontmatterMap) string {
 	return strings.Join(lines, "\n")
 }
 
-func parseOrderedYamlSubset(raw string) *FrontmatterMap {
-	values := newFrontmatterMap()
-	lines := splitCRLF(raw)
-	index := 0
-	for index < len(lines) {
-		line := lines[index]
-		index++
-		if strings.TrimSpace(line) == "" || strings.HasPrefix(trimStart(line), "#") {
-			continue
-		}
-		keyMatch := yamlKeyRe.FindStringSubmatch(line)
-		if keyMatch == nil {
-			continue
-		}
-		key := strings.TrimSpace(keyMatch[1])
-		rest := ""
-		if len(keyMatch) > 2 {
-			rest = keyMatch[2]
-		}
-		if strings.TrimSpace(rest) != "" {
-			values.Set(key, parseScalarOrInlineArray(strings.TrimSpace(rest)))
-			continue
-		}
-		var childLines []string
-		for index < len(lines) {
-			if !yamlIndent.MatchString(lines[index]) {
-				break
-			}
-			childLines = append(childLines, strings.TrimPrefix(lines[index], "  "))
-			index++
-		}
-		values.Set(key, parseOrderedIndentedBlock(childLines))
+func writeFrontmatter(body string, values *FrontmatterMap) string {
+	block := SerializeFrontmatter(values)
+	if block == "" {
+		return stripOneLeadingNL(body)
 	}
-	return values
+	return block + body
+}
+
+func stripOneLeadingNL(body string) string {
+	if strings.HasPrefix(body, "\r\n") {
+		return body[2:]
+	}
+	if strings.HasPrefix(body, "\n") {
+		return body[1:]
+	}
+	return body
 }
 
 func parseOrderedIndentedBlock(lines []string) any {
@@ -294,11 +304,6 @@ func indentLines(lines []string, spaces int) []string {
 	}
 	return out
 }
-
-var (
-	yamlQuoteSpecial = regexp.MustCompile("[:#[\\]{},&*?|\\-<>=!%@`]")
-	yamlQuoteSpace   = regexp.MustCompile(`^\s|\s$`)
-)
 
 func quoteIfNeeded(value any) string {
 	switch t := value.(type) {
@@ -401,11 +406,6 @@ func asSlice(value any) ([]any, bool) {
 		return out, true
 	}
 	return nil, false
-}
-
-type kv struct {
-	key   string
-	value any
 }
 
 func objectEntries(value any) ([]kv, bool) {

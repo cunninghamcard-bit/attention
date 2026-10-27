@@ -30,29 +30,6 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
-func openExternal(url string) {
-	go func() { _ = mygo.Shell.OpenExternal(url) }()
-}
-
-// Register makes ws the center (the workspace.center slot), with its
-// status bar items, its API and its commands, until off is called.
-func Register(ws *Workspace) (off func()) {
-	offs := []func(){
-		slotsapi.SetCenter(ws.view),
-		slotsapi.RegisterStatus(slotsapi.StatusItem{ID: "workspace-mounts", View: ws.mountsStatus}),
-		slotsapi.RegisterStatus(slotsapi.StatusItem{ID: "workspace-tab", Right: true, View: ws.tabStatus}),
-		workspaceapi.Set(api{ws}),
-	}
-	for _, cmd := range ws.commands() {
-		offs = append(offs, actionsapi.Register(cmd))
-	}
-	return func() {
-		for i := len(offs) - 1; i >= 0; i-- {
-			offs[i]()
-		}
-	}
-}
-
 // Plugin is the center while loaded and provides "workspace", which panel
 // plugins inject to be ordered after it (they reach the workspace through
 // workspaceapi).
@@ -195,26 +172,6 @@ func (ws *Workspace) commands() []actionsapi.Command {
 	}...)
 }
 
-// viewType names a tab's view as the TS CLI's tabs does: its kind.
-func (t *tab) viewType() string {
-	switch {
-	case t.empty:
-		return "empty"
-	case t.kind == "":
-		return "none"
-	}
-	return t.kind
-}
-
-// displayText is a tab's name as the TS CLI shows it: a note without its
-// extension, any other file by its base name.
-func (t *tab) displayText() string {
-	if t.kind == "markdown" {
-		return strings.TrimSuffix(t.title, filepath.Ext(t.title))
-	}
-	return t.title
-}
-
 // cliOpen is `open path=<path> | file=<name> [line=<n> [to=<n>]] [kind=<kind>] [newtab]`,
 // with the TS CLI's messages. path= is exact: "<mount>/<rel>", absolute, or
 // relative to the caller's directory or a mount. file= resolves like a
@@ -278,6 +235,45 @@ func (ws *Workspace) cliOpen(ctx context.Context, a actionsapi.Args) (string, er
 	})
 }
 
+// copyPath copies the active tab's path: as the CLI shows it, or absolute.
+func (ws *Workspace) copyPath(absolute bool) {
+	if t := ws.activeTab(); t != nil && !t.empty && !t.page() {
+		if absolute {
+			mygo.Clipboard.WriteText(t.path)
+		} else {
+			mygo.Clipboard.WriteText(ws.display(t.path))
+		}
+	}
+}
+
+// withActiveFile runs fn on the active tab's path off the main thread.
+func (ws *Workspace) withActiveFile(fn func(path string) error) {
+	if t := ws.activeTab(); t != nil && !t.empty && !t.page() {
+		path := t.path
+		go func() { _ = fn(path) }()
+	}
+}
+
+// viewType names a tab's view as the TS CLI's tabs does: its kind.
+func (t *tab) viewType() string {
+	switch {
+	case t.empty:
+		return "empty"
+	case t.kind == "":
+		return "none"
+	}
+	return t.kind
+}
+
+// displayText is a tab's name as the TS CLI shows it: a note without its
+// extension, any other file by its base name.
+func (t *tab) displayText() string {
+	if t.kind == "markdown" {
+		return strings.TrimSuffix(t.title, filepath.Ext(t.title))
+	}
+	return t.title
+}
+
 // api is the workspace as workspaceapi.API.
 type api struct{ ws *Workspace }
 
@@ -319,21 +315,25 @@ func (a api) ResolveLink(ctx context.Context, link, dir string) (string, error) 
 
 func (a api) RecentFiles() []string { return append([]string(nil), a.ws.recentFiles...) }
 
-// copyPath copies the active tab's path: as the CLI shows it, or absolute.
-func (ws *Workspace) copyPath(absolute bool) {
-	if t := ws.activeTab(); t != nil && !t.empty && !t.page() {
-		if absolute {
-			mygo.Clipboard.WriteText(t.path)
-		} else {
-			mygo.Clipboard.WriteText(ws.display(t.path))
+// Register makes ws the center (the workspace.center slot), with its
+// status bar items, its API and its commands, until off is called.
+func Register(ws *Workspace) (off func()) {
+	offs := []func(){
+		slotsapi.SetCenter(ws.view),
+		slotsapi.RegisterStatus(slotsapi.StatusItem{ID: "workspace-mounts", View: ws.mountsStatus}),
+		slotsapi.RegisterStatus(slotsapi.StatusItem{ID: "workspace-tab", Right: true, View: ws.tabStatus}),
+		workspaceapi.Set(api{ws}),
+	}
+	for _, cmd := range ws.commands() {
+		offs = append(offs, actionsapi.Register(cmd))
+	}
+	return func() {
+		for i := len(offs) - 1; i >= 0; i-- {
+			offs[i]()
 		}
 	}
 }
 
-// withActiveFile runs fn on the active tab's path off the main thread.
-func (ws *Workspace) withActiveFile(fn func(path string) error) {
-	if t := ws.activeTab(); t != nil && !t.empty && !t.page() {
-		path := t.path
-		go func() { _ = fn(path) }()
-	}
+func openExternal(url string) {
+	go func() { _ = mygo.Shell.OpenExternal(url) }()
 }

@@ -16,6 +16,9 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/internal/clipath"
 )
 
+// cliTokenRe is the tokenizer in searchCli.ts plainWords.
+var cliTokenRe = regexp.MustCompile(`(\[[^\]]+\])|(\w+):(?:\([^)]*\)|"[^"]*"|\S*)|"([^"]*)"|(\S+)`)
+
 // The CLI's search and search:context (apps/web/app/cli/commands/searchCli.ts),
 // the project's: they run headless too, where no Search panel is loaded.
 // search:open, which shows the panel, is the search plugin's.
@@ -29,27 +32,6 @@ type searcher interface {
 
 // searchCLI runs the search commands over a project.
 type searchCLI struct{ project searcher }
-
-// searchCommands are search and search:context.
-func (s *Service) searchCommands() []actionsapi.Command {
-	c := searchCLI{s}
-	return []actionsapi.Command{
-		{ID: "search", CLI: true, Run: c.cliSearch},
-		{ID: "search:context", CLI: true, Run: c.cliSearchContext},
-	}
-}
-
-// cliResult is CliSearchResult: a file and its matches for the CLI.
-type cliResult struct {
-	File    string     `json:"file"`
-	Matches []cliMatch `json:"matches"`
-}
-
-// cliMatch is CliSearchMatch: 1-based line, trimmed text.
-type cliMatch struct {
-	Line int    `json:"line"`
-	Text string `json:"text"`
-}
 
 // cliSearch is `search query=<text> [path=<folder>] [limit=<n>] [total] [case] [format=text|json]`.
 func (c searchCLI) cliSearch(ctx context.Context, a actionsapi.Args) (string, error) {
@@ -179,12 +161,33 @@ func (c searchCLI) searchVault(ctx context.Context, query, folder, cwd string, c
 	return out, nil
 }
 
+// searchCommands are search and search:context.
+func (s *Service) searchCommands() []actionsapi.Command {
+	c := searchCLI{s}
+	return []actionsapi.Command{
+		{ID: "search", CLI: true, Run: c.cliSearch},
+		{ID: "search:context", CLI: true, Run: c.cliSearchContext},
+	}
+}
+
+// cliResult is CliSearchResult: a file and its matches for the CLI.
+type cliResult struct {
+	File    string     `json:"file"`
+	Matches []cliMatch `json:"matches"`
+}
+
 func formatHit(shown string, f contract.FileResult) cliResult {
 	matches := make([]cliMatch, 0, len(f.Matches))
 	for _, m := range f.Matches {
 		matches = append(matches, cliMatch{Line: m.Line, Text: strings.TrimSpace(m.Text)})
 	}
 	return cliResult{File: shown, Matches: matches}
+}
+
+// cliMatch is CliSearchMatch: 1-based line, trimmed text.
+type cliMatch struct {
+	Line int    `json:"line"`
+	Text string `json:"text"`
 }
 
 func allContain(name string, words []string) bool {
@@ -259,9 +262,6 @@ func plainWords(query string) []string {
 	}
 	return words
 }
-
-// cliTokenRe is the tokenizer in searchCli.ts plainWords.
-var cliTokenRe = regexp.MustCompile(`(\[[^\]]+\])|(\w+):(?:\([^)]*\)|"[^"]*"|\S*)|"([^"]*)"|(\S+)`)
 
 func limitN(a actionsapi.Args) int {
 	v := a.Params["limit"]

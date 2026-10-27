@@ -28,11 +28,49 @@ import (
 // ID is the plugin's and its overlay's.
 const ID = "settings"
 
+// Plugin is the settings modal while loaded.
+var Plugin = rutis.Define(rutis.Plugin[struct{}]{
+	Name:   ID,
+	Inject: []string{"shell", "actions"},
+	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		// The configuration it edits: read here, off the main thread.
+		settingsapi.Load(settingsapi.App, settingsapi.Appearance, settingsapi.Hotkeys)
+		_, off := Register()
+		rctx.Effect(func(ctx context.Context) error {
+			off()
+			settingsapi.Flush(ctx)
+			return nil
+		})
+		return nil
+	},
+})
+
 // Settings is the modal's state, on the main thread only.
 type Settings struct {
 	open  bool
 	query string // Search settings
 	shown string // the chosen tab's ID, kept while closed (lastTabId)
+}
+
+// Register adds the modal, its General tab, its command and its ribbon
+// icon until off is called.
+func Register() (s *Settings, off func()) {
+	s = &Settings{shown: "general"}
+	offs := []func(){
+		slotsapi.RegisterOverlay(slotsapi.Overlay{ID: ID, Order: 10, View: s.View}),
+		slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "general", Title: "General", Icon: lucide.SlidersHorizontal(), Order: 0,
+			Keywords: []string{"Current version", "Configuration folder"}, View: general}),
+		actionsapi.Register(actionsapi.Command{ID: "app:open-settings", Title: "Open settings", Keys: "Ctrl Comma", Main: s.Toggle,
+			Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
+				return shellapi.OnMain(ctx, func() (string, error) { s.Open(""); return "", nil })
+			}}),
+		slotsapi.RegisterRibbon(slotsapi.RibbonItem{ID: ID, Title: "Settings", Icon: lucide.Settings(), Order: 100, Run: func() { s.Open("") }}),
+	}
+	return s, func() {
+		for i := len(offs) - 1; i >= 0; i-- {
+			offs[i]()
+		}
+	}
 }
 
 // Open opens the modal on tab id, or on the last tab for ""
@@ -51,21 +89,6 @@ func (s *Settings) Toggle() {
 		return
 	}
 	s.Open("")
-}
-
-// matches is SettingsRenderer.matchesTab: the query in the tab's name, its
-// id or the names of its settings.
-func matches(sec slotsapi.SettingsSection, query string) bool {
-	q := strings.ToLower(strings.TrimSpace(query))
-	if q == "" {
-		return true
-	}
-	for _, text := range append([]string{sec.Title, sec.ID}, sec.Keywords...) {
-		if strings.Contains(strings.ToLower(text), q) {
-			return true
-		}
-	}
-	return false
 }
 
 // View draws the modal while it is open.
@@ -154,6 +177,21 @@ func (s *Settings) group(c *ui.Context, title string, secs []slotsapi.SettingsSe
 	}
 }
 
+// matches is SettingsRenderer.matchesTab: the query in the tab's name, its
+// id or the names of its settings.
+func matches(sec slotsapi.SettingsSection, query string) bool {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return true
+	}
+	for _, text := range append([]string{sec.Title, sec.ID}, sec.Keywords...) {
+		if strings.Contains(strings.ToLower(text), q) {
+			return true
+		}
+	}
+	return false
+}
+
 // general is the General tab: the version and the configuration folder.
 func general(c *ui.Context) {
 	omgui.SettingsSection(c, "App", func() {
@@ -166,41 +204,3 @@ func general(c *ui.Context) {
 		})
 	})
 }
-
-// Register adds the modal, its General tab, its command and its ribbon
-// icon until off is called.
-func Register() (s *Settings, off func()) {
-	s = &Settings{shown: "general"}
-	offs := []func(){
-		slotsapi.RegisterOverlay(slotsapi.Overlay{ID: ID, Order: 10, View: s.View}),
-		slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "general", Title: "General", Icon: lucide.SlidersHorizontal(), Order: 0,
-			Keywords: []string{"Current version", "Configuration folder"}, View: general}),
-		actionsapi.Register(actionsapi.Command{ID: "app:open-settings", Title: "Open settings", Keys: "Ctrl Comma", Main: s.Toggle,
-			Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-				return shellapi.OnMain(ctx, func() (string, error) { s.Open(""); return "", nil })
-			}}),
-		slotsapi.RegisterRibbon(slotsapi.RibbonItem{ID: ID, Title: "Settings", Icon: lucide.Settings(), Order: 100, Run: func() { s.Open("") }}),
-	}
-	return s, func() {
-		for i := len(offs) - 1; i >= 0; i-- {
-			offs[i]()
-		}
-	}
-}
-
-// Plugin is the settings modal while loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   ID,
-	Inject: []string{"shell", "actions"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		// The configuration it edits: read here, off the main thread.
-		settingsapi.Load(settingsapi.App, settingsapi.Appearance, settingsapi.Hotkeys)
-		_, off := Register()
-		rctx.Effect(func(ctx context.Context) error {
-			off()
-			settingsapi.Flush(ctx)
-			return nil
-		})
-		return nil
-	},
-})

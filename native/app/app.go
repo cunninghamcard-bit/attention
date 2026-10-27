@@ -70,16 +70,6 @@ var plugins = []*rutis.Definition{
 	web.Plugin, webread.Plugin, webhistory.Plugin, webindex.Plugin, webviewpanel.Plugin, terminalui.Plugin,
 }
 
-// all are the plugins carried: attention's, then those compiled in with
-// it (pluginreg).
-func all() []*rutis.Definition {
-	out := append([]*rutis.Definition(nil), plugins...)
-	for _, e := range pluginreg.List() {
-		out = append(out, e.Def)
-	}
-	return out
-}
-
 // Main runs attention.
 func Main() {
 	args := os.Args[1:]
@@ -96,6 +86,16 @@ func Main() {
 	default:
 		os.Exit(launcher.Run(args))
 	}
+}
+
+// all are the plugins carried: attention's, then those compiled in with
+// it (pluginreg).
+func all() []*rutis.Definition {
+	out := append([]*rutis.Definition(nil), plugins...)
+	for _, e := range pluginreg.List() {
+		out = append(out, e.Def)
+	}
+	return out
 }
 
 func isChannel(a string) bool {

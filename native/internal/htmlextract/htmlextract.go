@@ -21,8 +21,15 @@ import (
 	"golang.org/x/net/html"
 )
 
-// MaxPage is the largest page read.
-const MaxPage = 10 << 20
+const (
+	// MaxPage is the largest page read.
+	MaxPage = 10 << 20
+
+	// userAgent is a browser's, as a site serves the page a reader sees.
+	userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"
+)
+
+var client = &http.Client{Timeout: 30 * time.Second}
 
 // Result is a page's article (WebViewerReaderResult).
 type Result struct {
@@ -65,33 +72,10 @@ func Extract(html []byte, pageURL string) (Result, error) {
 	return Result{Title: title, SiteName: site, URL: pageURL, Markdown: strings.TrimSpace(string(md))}, nil
 }
 
-// absolutize resolves n's links and images against the page
-// (absolutizeUrl): a "#note" link is the page's, not the site's.
-func absolutize(n *html.Node, base *url.URL) {
-	if n.Type == html.ElementNode {
-		for i, a := range n.Attr {
-			if a.Key != "href" && a.Key != "src" {
-				continue
-			}
-			if ref, err := url.Parse(strings.TrimSpace(a.Val)); err == nil {
-				n.Attr[i].Val = base.ResolveReference(ref).String()
-			}
-		}
-	}
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		absolutize(c, base)
-	}
-}
-
 // Document is r as a note: its title, its source, its article.
 func (r Result) Document() string {
 	return fmt.Sprintf("# %s\n\nSource: %s\n\n%s\n", r.Title, r.URL, r.Markdown)
 }
-
-// userAgent is a browser's, as a site serves the page a reader sees.
-const userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"
-
-var client = &http.Client{Timeout: 30 * time.Second}
 
 // Fetch GETs address, up to MaxPage, and says where it ended after
 // redirects.
@@ -115,4 +99,22 @@ func Fetch(ctx context.Context, address string) (html []byte, final string, err 
 	}
 	html, err = io.ReadAll(io.LimitReader(resp.Body, MaxPage))
 	return html, resp.Request.URL.String(), err
+}
+
+// absolutize resolves n's links and images against the page
+// (absolutizeUrl): a "#note" link is the page's, not the site's.
+func absolutize(n *html.Node, base *url.URL) {
+	if n.Type == html.ElementNode {
+		for i, a := range n.Attr {
+			if a.Key != "href" && a.Key != "src" {
+				continue
+			}
+			if ref, err := url.Parse(strings.TrimSpace(a.Val)); err == nil {
+				n.Attr[i].Val = base.ResolveReference(ref).String()
+			}
+		}
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		absolutize(c, base)
+	}
 }

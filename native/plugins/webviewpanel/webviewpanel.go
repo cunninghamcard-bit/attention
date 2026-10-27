@@ -24,6 +24,27 @@ import (
 // ID is the plugin's name.
 const ID = "webview-panel-ui"
 
+// Plugin provides "webview-panels" while loaded.
+var Plugin = rutis.Define(rutis.Plugin[struct{}]{
+	Name:   ID,
+	Inject: []string{"shell"},
+	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		s := &Service{panels: map[string]*panel{}}
+		rctx.Provide("webview-panels", s)
+		rctx.Effect(func(context.Context) error {
+			s.mu.Lock()
+			panels := s.panels
+			s.panels = map[string]*panel{}
+			s.mu.Unlock()
+			for _, pn := range panels {
+				pn.close()
+			}
+			return nil
+		})
+		return nil
+	},
+})
+
 // Panel is a panel another process asks for.
 type Panel struct {
 	ID    string `json:"id"`
@@ -41,6 +62,40 @@ type panel struct {
 	off  func()
 	view *mygo.WebView
 	err  string
+}
+
+func (pn *panel) close() {
+	pn.off()
+	shellapi.Update(func() {
+		if pn.view != nil {
+			pn.view.Destroy()
+			pn.view = nil
+		}
+	})
+}
+
+// draw shows the panel's web view, making it the first time. Main thread.
+func (pn *panel) draw(c *ui.Context) {
+	if pn.view == nil && pn.err == "" {
+		w := shellapi.Window()
+		if w == nil {
+			pn.err = "No window to show the panel in."
+		} else if v, err := w.NewWebView(mygo.WebViewOptions{URL: pn.spec.URL}); err != nil {
+			pn.err = err.Error()
+		} else {
+			pn.view = v
+			if pn.spec.URL == "" {
+				v.Page().LoadHTML(pn.spec.HTML, "")
+			}
+			id := pn.spec.ID
+			v.Page().OnDidFinishLoad(func() { debugf("webview-panel: %s loaded", id) })
+		}
+	}
+	if pn.err != "" {
+		textdoc.Centered(c, pn.err)
+		return
+	}
+	ui.WebView(c, pn.view).Fill()
 }
 
 // Service is the "webview-panels" service.
@@ -89,61 +144,6 @@ func (s *Service) Unregister(_ context.Context, id string) error {
 	}
 	return nil
 }
-
-func (pn *panel) close() {
-	pn.off()
-	shellapi.Update(func() {
-		if pn.view != nil {
-			pn.view.Destroy()
-			pn.view = nil
-		}
-	})
-}
-
-// draw shows the panel's web view, making it the first time. Main thread.
-func (pn *panel) draw(c *ui.Context) {
-	if pn.view == nil && pn.err == "" {
-		w := shellapi.Window()
-		if w == nil {
-			pn.err = "No window to show the panel in."
-		} else if v, err := w.NewWebView(mygo.WebViewOptions{URL: pn.spec.URL}); err != nil {
-			pn.err = err.Error()
-		} else {
-			pn.view = v
-			if pn.spec.URL == "" {
-				v.Page().LoadHTML(pn.spec.HTML, "")
-			}
-			id := pn.spec.ID
-			v.Page().OnDidFinishLoad(func() { debugf("webview-panel: %s loaded", id) })
-		}
-	}
-	if pn.err != "" {
-		textdoc.Centered(c, pn.err)
-		return
-	}
-	ui.WebView(c, pn.view).Fill()
-}
-
-// Plugin provides "webview-panels" while loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   ID,
-	Inject: []string{"shell"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		s := &Service{panels: map[string]*panel{}}
-		rctx.Provide("webview-panels", s)
-		rctx.Effect(func(context.Context) error {
-			s.mu.Lock()
-			panels := s.panels
-			s.panels = map[string]*panel{}
-			s.mu.Unlock()
-			for _, pn := range panels {
-				pn.close()
-			}
-			return nil
-		})
-		return nil
-	},
-})
 
 func debugf(format string, a ...any) {
 	if os.Getenv("ATTENTION_DEBUG") != "" {

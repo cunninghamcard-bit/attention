@@ -18,6 +18,17 @@ import (
 // ID is the plugin's name and its overlay's.
 const ID = "palette"
 
+// Plugin draws the palette while loaded.
+var Plugin = rutis.Define(rutis.Plugin[struct{}]{
+	Name:   ID,
+	Inject: []string{"shell"},
+	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		_, off := Register()
+		rctx.Effect(func(context.Context) error { off(); return nil })
+		return nil
+	},
+})
+
 // Palette is the modal's state, on the main thread only.
 type Palette struct {
 	open     string // the shown source's ID, "" while closed
@@ -28,11 +39,68 @@ type Palette struct {
 	selected int
 }
 
+// Register draws the palette until off is called.
+func Register() (p *Palette, off func()) {
+	p = &Palette{}
+	return p, slotsapi.RegisterOverlay(slotsapi.Overlay{ID: ID, Order: 0, View: p.View})
+}
+
 // Open reports the shown source's ID, "" while closed.
 func (p *Palette) Open() string { return p.open }
 
 // Items are the rows shown.
 func (p *Palette) Items() []slotsapi.PaletteItem { return p.items }
+
+// View draws the palette while it is open.
+func (p *Palette) View(c *ui.Context) {
+	if id := slotsapi.TakePaletteRequest(); id != "" {
+		p.show(id)
+	}
+	if p.open == "" {
+		return
+	}
+	src, ok := slotsapi.LookupPaletteSource(p.open)
+	if !ok {
+		p.close() // its plugin unloaded
+		return
+	}
+	t := c.Theme()
+	if c.Shortcut(0, ui.KeyEscape) {
+		p.close()
+		return
+	}
+	p.rerank(src)
+	if c.Shortcut(0, ui.KeyDown) && p.selected+1 < len(p.items) {
+		p.selected++
+	}
+	if c.Shortcut(0, ui.KeyUp) && p.selected > 0 {
+		p.selected--
+	}
+	if c.Shortcut(ui.Cmd, ui.KeyEnter) {
+		p.accept(src, true)
+		return
+	}
+	// A full-window layer: a click outside the panel closes it.
+	layer := ui.Column(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).AlignItems(ui.Center)
+	if layer.Clicked() {
+		p.close()
+	}
+	layer.Children(func() {
+		panel := ui.Column(c).Key("palette").MarginY(64).Width(600).MaxHeight(440).
+			Background(t.Background).Radius(10).BorderWidth(1).BorderColor(t.Border).Padding(6).Gap(4)
+		panel.Children(func() {
+			field := omgui.Field(c, &p.query, src.Placeholder, false).AutoFocus().FillWidth()
+			if field.Submitted() {
+				p.accept(src, false)
+				return
+			}
+			p.rows(c, src)
+			if src.Footer != nil {
+				src.Footer(c, p.query)
+			}
+		})
+	})
+}
 
 func (p *Palette) close() { p.open = "" }
 
@@ -88,57 +156,6 @@ func (p *Palette) accept(src slotsapi.PaletteSource, newTab bool) {
 	}
 }
 
-// View draws the palette while it is open.
-func (p *Palette) View(c *ui.Context) {
-	if id := slotsapi.TakePaletteRequest(); id != "" {
-		p.show(id)
-	}
-	if p.open == "" {
-		return
-	}
-	src, ok := slotsapi.LookupPaletteSource(p.open)
-	if !ok {
-		p.close() // its plugin unloaded
-		return
-	}
-	t := c.Theme()
-	if c.Shortcut(0, ui.KeyEscape) {
-		p.close()
-		return
-	}
-	p.rerank(src)
-	if c.Shortcut(0, ui.KeyDown) && p.selected+1 < len(p.items) {
-		p.selected++
-	}
-	if c.Shortcut(0, ui.KeyUp) && p.selected > 0 {
-		p.selected--
-	}
-	if c.Shortcut(ui.Cmd, ui.KeyEnter) {
-		p.accept(src, true)
-		return
-	}
-	// A full-window layer: a click outside the panel closes it.
-	layer := ui.Column(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).AlignItems(ui.Center)
-	if layer.Clicked() {
-		p.close()
-	}
-	layer.Children(func() {
-		panel := ui.Column(c).Key("palette").MarginY(64).Width(600).MaxHeight(440).
-			Background(t.Background).Radius(10).BorderWidth(1).BorderColor(t.Border).Padding(6).Gap(4)
-		panel.Children(func() {
-			field := omgui.Field(c, &p.query, src.Placeholder, false).AutoFocus().FillWidth()
-			if field.Submitted() {
-				p.accept(src, false)
-				return
-			}
-			p.rows(c, src)
-			if src.Footer != nil {
-				src.Footer(c, p.query)
-			}
-		})
-	})
-}
-
 func (p *Palette) rows(c *ui.Context, src slotsapi.PaletteSource) {
 	t := c.Theme()
 	if len(p.items) == 0 {
@@ -160,20 +177,3 @@ func (p *Palette) rows(c *ui.Context, src slotsapi.PaletteSource) {
 		omgui.CommandRow(c, props)
 	}).MaxHeight(380).FillWidth()
 }
-
-// Register draws the palette until off is called.
-func Register() (p *Palette, off func()) {
-	p = &Palette{}
-	return p, slotsapi.RegisterOverlay(slotsapi.Overlay{ID: ID, Order: 0, View: p.View})
-}
-
-// Plugin draws the palette while loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   ID,
-	Inject: []string{"shell"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		_, off := Register()
-		rctx.Effect(func(context.Context) error { off(); return nil })
-		return nil
-	},
-})

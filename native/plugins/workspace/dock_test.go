@@ -11,19 +11,6 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
-// panel registers a left panel drawing body, counting its reveals.
-func panel(t *testing.T, id string, order int, body string, reveals *int) {
-	t.Helper()
-	off := slotsapi.RegisterPanel(slotsapi.Panel{ID: id, Title: id, Icon: lucide.Folder(), Dock: slotsapi.Left, Order: order,
-		View: func(c *ui.Context, p slotsapi.PanelProps) {
-			if reveals != nil {
-				*reveals = p.Reveal
-			}
-			ui.Text(c, body)
-		}})
-	t.Cleanup(off)
-}
-
 func TestDockShowsFirstPanelAndRevealsByShortcut(t *testing.T) {
 	var searchReveals int
 	panel(t, "file-explorer", 0, "tree body", nil)
@@ -142,4 +129,17 @@ func TestClosingAGroupFromItsTabListDoesNotPanic(t *testing.T) {
 	if len(ws.groups()) != 1 {
 		t.Fatalf("Close all should close the group: %d groups", len(ws.groups()))
 	}
+}
+
+// panel registers a left panel drawing body, counting its reveals.
+func panel(t *testing.T, id string, order int, body string, reveals *int) {
+	t.Helper()
+	off := slotsapi.RegisterPanel(slotsapi.Panel{ID: id, Title: id, Icon: lucide.Folder(), Dock: slotsapi.Left, Order: order,
+		View: func(c *ui.Context, p slotsapi.PanelProps) {
+			if reveals != nil {
+				*reveals = p.Reveal
+			}
+			ui.Text(c, body)
+		}})
+	t.Cleanup(off)
 }

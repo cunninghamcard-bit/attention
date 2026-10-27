@@ -13,32 +13,6 @@ import (
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 )
 
-// stub is a stand-in for the injected "actions" service.
-type stub struct{}
-
-func (stub) Ready(context.Context) error { return nil }
-
-func loadProject(t *testing.T, mounts ...string) *rutistest.Loaded {
-	t.Helper()
-	t.Setenv("ATTENTION_CONFIG_DIR", t.TempDir())
-	fs, err := fsplugin.New(nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = fs.Close() })
-	return rutistest.Load(t, Plugin, Config{Mounts: mounts}, map[string]any{
-		"actions": stub{},
-		"fs":      fs,
-	})
-}
-
-func call(t *testing.T, loaded *rutistest.Loaded, method string, result any, args ...any) {
-	t.Helper()
-	if err := loaded.Service("project").Call(t.Context(), method, result, args...); err != nil {
-		t.Fatalf("%s: %v", method, err)
-	}
-}
-
 func TestConfigMountsAddAndRemove(t *testing.T) {
 	root := t.TempDir()
 	extra := t.TempDir()
@@ -163,5 +137,31 @@ func TestSearchCaseLimitFiltersAndMultipleMatches(t *testing.T) {
 		if !strings.Contains(m.Text, "abc abc") {
 			t.Fatalf("line text = %q", m.Text)
 		}
+	}
+}
+
+// stub is a stand-in for the injected "actions" service.
+type stub struct{}
+
+func (stub) Ready(context.Context) error { return nil }
+
+func loadProject(t *testing.T, mounts ...string) *rutistest.Loaded {
+	t.Helper()
+	t.Setenv("ATTENTION_CONFIG_DIR", t.TempDir())
+	fs, err := fsplugin.New(nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = fs.Close() })
+	return rutistest.Load(t, Plugin, Config{Mounts: mounts}, map[string]any{
+		"actions": stub{},
+		"fs":      fs,
+	})
+}
+
+func call(t *testing.T, loaded *rutistest.Loaded, method string, result any, args ...any) {
+	t.Helper()
+	if err := loaded.Service("project").Call(t.Context(), method, result, args...); err != nil {
+		t.Fatalf("%s: %v", method, err)
 	}
 }

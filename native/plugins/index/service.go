@@ -61,27 +61,6 @@ func (s Service) Backlinks(ctx context.Context, path string) ([]indexcontract.Ba
 	return out, nil
 }
 
-// linkAt is a link of a note and where it is.
-type linkAt struct {
-	link           string
-	line, col, len int
-}
-
-// linksOf are f's links and embeds with their places. Called with mu held.
-func linksOf(f *file) []linkAt {
-	if f == nil || f.meta == nil {
-		return nil
-	}
-	var out []linkAt
-	for _, ls := range [][]mdmeta.Link{f.meta.Links, f.meta.Embeds} {
-		for _, l := range ls {
-			out = append(out, linkAt{link: l.Link, line: l.Position.Start.Line, col: l.Position.Start.Col,
-				len: l.Position.End.Offset - l.Position.Start.Offset})
-		}
-	}
-	return out
-}
-
 // Headings are path's headings.
 func (s Service) Headings(ctx context.Context, path string) ([]indexcontract.Heading, error) {
 	x := s.x
@@ -106,4 +85,25 @@ func (s Service) Generation(context.Context) (int, error) {
 	s.x.mu.RLock()
 	defer s.x.mu.RUnlock()
 	return s.x.gen, nil
+}
+
+// linkAt is a link of a note and where it is.
+type linkAt struct {
+	link           string
+	line, col, len int
+}
+
+// linksOf are f's links and embeds with their places. Called with mu held.
+func linksOf(f *file) []linkAt {
+	if f == nil || f.meta == nil {
+		return nil
+	}
+	var out []linkAt
+	for _, ls := range [][]mdmeta.Link{f.meta.Links, f.meta.Embeds} {
+		for _, l := range ls {
+			out = append(out, linkAt{link: l.Link, line: l.Position.Start.Line, col: l.Position.Start.Col,
+				len: l.Position.End.Offset - l.Position.Start.Offset})
+		}
+	}
+	return out
 }

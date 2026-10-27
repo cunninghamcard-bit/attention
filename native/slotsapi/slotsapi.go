@@ -21,13 +21,38 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
 )
 
-// Dock is a sidebar.
-type Dock int
-
 const (
 	Left Dock = iota
 	Right
+
+	Options     SettingsGroup = 0 // the app's own tabs
+	CorePlugins SettingsGroup = 1 // a plugin's tab
 )
+
+var (
+	mu       sync.Mutex
+	seq      int
+	panels   = map[int]Panel{}
+	ribbon   = map[int]RibbonItem{}
+	overlays = map[int]Overlay{}
+
+	sources    = map[int]PaletteSource{}
+	paletteReq string // the source OpenPalette asked for, until taken
+
+	// center is the workspace.center slot (RFC §5.5): the one view between the
+	// docks.
+	center struct {
+		id   int
+		view func(c *ui.Context)
+	}
+
+	status = map[int]StatusItem{}
+
+	sections = map[int]SettingsSection{}
+)
+
+// Dock is a sidebar.
+type Dock int
 
 // PanelProps are what the workspace gives a panel's view.
 type PanelProps struct {
@@ -74,13 +99,80 @@ type Overlay struct {
 	Restore func(json.RawMessage)
 }
 
-var (
-	mu       sync.Mutex
-	seq      int
-	panels   = map[int]Panel{}
-	ribbon   = map[int]RibbonItem{}
-	overlays = map[int]Overlay{}
-)
+// PaletteSource is a palette.source contribution (RFC §5.5): one of the
+// palette's modes (attention's quick switcher, command palette, go to
+// line). The palette plugin draws it; OpenPalette opens it.
+type PaletteSource struct {
+	ID          string
+	Placeholder string
+	// Open, optional, runs when the palette opens on the source.
+	Open func()
+	// Items are the rows for query, best first. The palette asks again
+	// when the query or Generation changes.
+	Items func(query string) []PaletteItem
+	// Generation, optional, changes when Items would change for the same
+	// query (a file listing arrived).
+	Generation func() int
+	// Empty is the message with no rows for query.
+	Empty func(query string) string
+	// Submit, optional, is Enter with no row: true closes the palette.
+	Submit func(query string) bool
+	// Footer, optional, draws under the rows.
+	Footer func(c *ui.Context, query string)
+	// State and Restore are a Panel's.
+	State   func() json.RawMessage
+	Restore func(json.RawMessage)
+}
+
+// LookupPaletteSource looks a source up by ID.
+func LookupPaletteSource(id string) (PaletteSource, bool) {
+	mu.Lock()
+	defer mu.Unlock()
+	for _, s := range sources {
+		if s.ID == id {
+			return s, true
+		}
+	}
+	return PaletteSource{}, false
+}
+
+// PaletteItem is a palette row.
+type PaletteItem struct {
+	Key    string
+	Label  string
+	Detail string // muted, after the label
+	Icon   *ui.SVG
+	Hint   string // trailing, as a shortcut
+	// Choose runs the row; newTab is Mod Enter or a Mod click.
+	Choose func(newTab bool)
+}
+
+// StatusItem is a statusbar.item contribution: drawn in the status bar,
+// on the left or the right, in Order.
+type StatusItem struct {
+	ID    string
+	Right bool
+	Order int
+	View  func(c *ui.Context)
+}
+
+// SettingsGroup is the header group a settings tab is listed in
+// (SettingsRenderer's options and core-plugins sections).
+type SettingsGroup int
+
+// SettingsSection is a settings.section contribution (RFC §5.5): a tab of
+// the settings modal (attention's SettingTab), in its group by Order,
+// then Title. Search settings matches its Title and Keywords, the names
+// of the settings it holds (SettingsRenderer.matchesTab).
+type SettingsSection struct {
+	ID       string
+	Title    string
+	Icon     *ui.SVG
+	Group    SettingsGroup
+	Order    int
+	Keywords []string
+	View     func(c *ui.Context)
+}
 
 // RegisterPanel adds a panel until off is called. A second live panel with
 // the same ID is a wiring mistake and panics (dsh throws on a cell taken).
@@ -204,53 +296,6 @@ func Overlays() []Overlay {
 	return out
 }
 
-func invalidate() {
-	if w := shellapi.Window(); w != nil {
-		w.Invalidate()
-	}
-}
-
-// PaletteSource is a palette.source contribution (RFC §5.5): one of the
-// palette's modes (attention's quick switcher, command palette, go to
-// line). The palette plugin draws it; OpenPalette opens it.
-type PaletteSource struct {
-	ID          string
-	Placeholder string
-	// Open, optional, runs when the palette opens on the source.
-	Open func()
-	// Items are the rows for query, best first. The palette asks again
-	// when the query or Generation changes.
-	Items func(query string) []PaletteItem
-	// Generation, optional, changes when Items would change for the same
-	// query (a file listing arrived).
-	Generation func() int
-	// Empty is the message with no rows for query.
-	Empty func(query string) string
-	// Submit, optional, is Enter with no row: true closes the palette.
-	Submit func(query string) bool
-	// Footer, optional, draws under the rows.
-	Footer func(c *ui.Context, query string)
-	// State and Restore are a Panel's.
-	State   func() json.RawMessage
-	Restore func(json.RawMessage)
-}
-
-// PaletteItem is a palette row.
-type PaletteItem struct {
-	Key    string
-	Label  string
-	Detail string // muted, after the label
-	Icon   *ui.SVG
-	Hint   string // trailing, as a shortcut
-	// Choose runs the row; newTab is Mod Enter or a Mod click.
-	Choose func(newTab bool)
-}
-
-var (
-	sources    = map[int]PaletteSource{}
-	paletteReq string // the source OpenPalette asked for, until taken
-)
-
 // RegisterPaletteSource adds a palette source until off is called; a second
 // live source with the same ID panics.
 func RegisterPaletteSource(s PaletteSource) (off func()) {
@@ -286,18 +331,6 @@ func PaletteSources() []PaletteSource {
 	return out
 }
 
-// LookupPaletteSource looks a source up by ID.
-func LookupPaletteSource(id string) (PaletteSource, bool) {
-	mu.Lock()
-	defer mu.Unlock()
-	for _, s := range sources {
-		if s.ID == id {
-			return s, true
-		}
-	}
-	return PaletteSource{}, false
-}
-
 // OpenPalette asks the palette to open on source id; asked again while
 // open on it, the palette closes. Main thread only.
 func OpenPalette(id string) {
@@ -314,13 +347,6 @@ func TakePaletteRequest() string {
 	id := paletteReq
 	paletteReq = ""
 	return id
-}
-
-// center is the workspace.center slot (RFC §5.5): the one view between the
-// docks.
-var center struct {
-	id   int
-	view func(c *ui.Context)
 }
 
 // SetCenter makes view the center until off is called; the last set wins.
@@ -347,17 +373,6 @@ func Center() func(c *ui.Context) {
 	defer mu.Unlock()
 	return center.view
 }
-
-// StatusItem is a statusbar.item contribution: drawn in the status bar,
-// on the left or the right, in Order.
-type StatusItem struct {
-	ID    string
-	Right bool
-	Order int
-	View  func(c *ui.Context)
-}
-
-var status = map[int]StatusItem{}
 
 // RegisterStatus adds a status bar item until off is called; a second live
 // item with the same ID panics.
@@ -401,31 +416,6 @@ func Status(right bool) []StatusItem {
 	return out
 }
 
-// SettingsGroup is the header group a settings tab is listed in
-// (SettingsRenderer's options and core-plugins sections).
-type SettingsGroup int
-
-const (
-	Options     SettingsGroup = iota // the app's own tabs
-	CorePlugins                      // a plugin's tab
-)
-
-// SettingsSection is a settings.section contribution (RFC §5.5): a tab of
-// the settings modal (attention's SettingTab), in its group by Order,
-// then Title. Search settings matches its Title and Keywords, the names
-// of the settings it holds (SettingsRenderer.matchesTab).
-type SettingsSection struct {
-	ID       string
-	Title    string
-	Icon     *ui.SVG
-	Group    SettingsGroup
-	Order    int
-	Keywords []string
-	View     func(c *ui.Context)
-}
-
-var sections = map[int]SettingsSection{}
-
 // RegisterSettingsSection adds a settings section until off is called; a
 // second live section with the same ID panics.
 func RegisterSettingsSection(s SettingsSection) (off func()) {
@@ -464,4 +454,10 @@ func SettingsSections() []SettingsSection {
 		return out[i].Title < out[j].Title
 	})
 	return out
+}
+
+func invalidate() {
+	if w := shellapi.Window(); w != nil {
+		w.Invalidate()
+	}
 }

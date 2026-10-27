@@ -34,6 +34,27 @@ const (
 	Kind = "markdown"
 )
 
+// Plugin registers the markdown tab type and its toggle command while
+// loaded.
+var Plugin = rutis.Define(rutis.Plugin[struct{}]{
+	Name:   ID,
+	Inject: []string{"shell", "fs", "actions"},
+	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		var fs fscontract.FS
+		if err := rctx.Use("fs", &fs); err != nil {
+			return err
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		_, off := Register(ctx, fs, shellapi.Update)
+		rctx.Effect(func(context.Context) error {
+			off()
+			cancel()
+			return nil
+		})
+		return nil
+	},
+})
+
 type doc struct {
 	textdoc.Doc
 	source bool // the source instead of the reading view
@@ -50,20 +71,39 @@ type Viewer struct {
 	docs map[int]*doc
 }
 
-func (v *Viewer) doc(p tabtypesapi.Props) *doc {
-	d, ok := v.docs[p.Info.ID]
-	if !ok {
-		d = &doc{}
-		d.OnNav = func() { d.source = true } // a passage is shown in the source
-		v.docs[p.Info.ID] = d
+// Register adds the markdown tab type until off is called; post runs a
+// function on the main thread.
+func Register(ctx context.Context, fs fscontract.FS, post func(func())) (v *Viewer, off func()) {
+	v = &Viewer{l: &textdoc.Loader{Ctx: ctx, FS: fs, Post: post}, docs: map[int]*doc{}}
+	// Toggle reading view (markdown:toggle-preview, Ctrl E) on the active
+	// tab, when it is a markdown one.
+	toggle := func() {
+		if ws := workspaceapi.Get(); ws != nil {
+			if tab, ok := ws.ActiveTab(); ok && tab.Kind == Kind {
+				v.Toggle(tab.ID)
+			}
+		}
 	}
-	if dir := filepath.Dir(p.Info.Path); dir != d.dir {
-		from := p.Info.Path
-		d.dir = dir
-		d.md.OnLink = func(url string) { followLink(from, url) }
-		d.md.LoadImage = loadImage(from)
-	}
-	return d
+	offCmd := actionsapi.Register(actionsapi.Command{ID: "markdown:toggle-preview", Title: "Toggle reading view", Keys: "Ctrl E", Main: toggle,
+		Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
+			return shellapi.OnMain(ctx, func() (string, error) { toggle(); return "", nil })
+		}})
+	offType := tabtypesapi.Register(tabtypesapi.TabType{
+		ID: ID, Kind: Kind, Priority: tabtypesapi.Builtin,
+		Patterns: []string{"*.md", "*.markdown", "*.mdx"},
+		Body:     v.body,
+		Status:   v.status,
+		Actions:  v.actions,
+		Menu:     v.menu,
+		Closed:   func(id int) { delete(v.docs, id) },
+		Lines: func(id int) (int, int, bool) {
+			if d, ok := v.docs[id]; ok {
+				return d.Lines()
+			}
+			return 0, 0, false
+		},
+	})
+	return v, func() { offCmd(); offType() }
 }
 
 // Toggle switches tab id between the reading view and the source.
@@ -88,6 +128,22 @@ func (v *Viewer) Selected(id int) string {
 	}
 	from, to := min(sels[0].Anchor, sels[0].Head), max(sels[0].Anchor, sels[0].Head)
 	return d.Ed.Buffer.String()[from:to]
+}
+
+func (v *Viewer) doc(p tabtypesapi.Props) *doc {
+	d, ok := v.docs[p.Info.ID]
+	if !ok {
+		d = &doc{}
+		d.OnNav = func() { d.source = true } // a passage is shown in the source
+		v.docs[p.Info.ID] = d
+	}
+	if dir := filepath.Dir(p.Info.Path); dir != d.dir {
+		from := p.Info.Path
+		d.dir = dir
+		d.md.OnLink = func(url string) { followLink(from, url) }
+		d.md.LoadImage = loadImage(from)
+	}
+	return d
 }
 
 func (v *Viewer) body(c *ui.Context, p tabtypesapi.Props) {
@@ -138,62 +194,6 @@ func (v *Viewer) menu(id int) []tabtypesapi.MenuItem {
 	}
 	return []tabtypesapi.MenuItem{{Title: "Toggle reading view", Icon: lucide.BookOpen(), Checked: !d.source, Run: func() { d.source = !d.source }}}
 }
-
-// Register adds the markdown tab type until off is called; post runs a
-// function on the main thread.
-func Register(ctx context.Context, fs fscontract.FS, post func(func())) (v *Viewer, off func()) {
-	v = &Viewer{l: &textdoc.Loader{Ctx: ctx, FS: fs, Post: post}, docs: map[int]*doc{}}
-	// Toggle reading view (markdown:toggle-preview, Ctrl E) on the active
-	// tab, when it is a markdown one.
-	toggle := func() {
-		if ws := workspaceapi.Get(); ws != nil {
-			if tab, ok := ws.ActiveTab(); ok && tab.Kind == Kind {
-				v.Toggle(tab.ID)
-			}
-		}
-	}
-	offCmd := actionsapi.Register(actionsapi.Command{ID: "markdown:toggle-preview", Title: "Toggle reading view", Keys: "Ctrl E", Main: toggle,
-		Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			return shellapi.OnMain(ctx, func() (string, error) { toggle(); return "", nil })
-		}})
-	offType := tabtypesapi.Register(tabtypesapi.TabType{
-		ID: ID, Kind: Kind, Priority: tabtypesapi.Builtin,
-		Patterns: []string{"*.md", "*.markdown", "*.mdx"},
-		Body:     v.body,
-		Status:   v.status,
-		Actions:  v.actions,
-		Menu:     v.menu,
-		Closed:   func(id int) { delete(v.docs, id) },
-		Lines: func(id int) (int, int, bool) {
-			if d, ok := v.docs[id]; ok {
-				return d.Lines()
-			}
-			return 0, 0, false
-		},
-	})
-	return v, func() { offCmd(); offType() }
-}
-
-// Plugin registers the markdown tab type and its toggle command while
-// loaded.
-var Plugin = rutis.Define(rutis.Plugin[struct{}]{
-	Name:   ID,
-	Inject: []string{"shell", "fs", "actions"},
-	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var fs fscontract.FS
-		if err := rctx.Use("fs", &fs); err != nil {
-			return err
-		}
-		ctx, cancel := context.WithCancel(context.Background())
-		_, off := Register(ctx, fs, shellapi.Update)
-		rctx.Effect(func(context.Context) error {
-			off()
-			cancel()
-			return nil
-		})
-		return nil
-	},
-})
 
 // followLink opens a markdown link: a relative path or file: URL as a
 // file, a #fragment does nothing here, other schemes open outside.

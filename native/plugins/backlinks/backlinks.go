@@ -31,34 +31,14 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
-// ID is the plugin's name; PanelID the slot id (BacklinksView.getViewType).
 const (
+	// ID is the plugin's name; PanelID the slot id (BacklinksView.getViewType).
 	ID      = "backlinks-ui"
 	PanelID = "backlink"
+
+	// webKind is the web viewer's tab kind.
+	webKind = "webviewer"
 )
-
-// Pane is the panel's state, on the main thread only.
-type Pane struct {
-	ctx context.Context
-	idx indexcontract.Index
-
-	want      string // the active path, or web page's URL, last seen
-	web       bool   // want is a URL
-	seq       int
-	cancel    context.CancelFunc
-	loading   bool
-	err       string
-	results   []indexcontract.Backlink
-	collapsed map[string]bool // per source note
-	rows      []row
-	dirty     bool
-}
-
-// row is a source title or one of its mentions.
-type row struct {
-	src     *indexcontract.Backlink
-	mention int // -1 on the source's title
-}
 
 // Plugin registers the Backlinks panel while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
@@ -97,9 +77,21 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	},
 })
 
-// savedState is which source files the user collapsed.
-type savedState struct {
-	Collapsed []string `json:"collapsed"`
+// Pane is the panel's state, on the main thread only.
+type Pane struct {
+	ctx context.Context
+	idx indexcontract.Index
+
+	want      string // the active path, or web page's URL, last seen
+	web       bool   // want is a URL
+	seq       int
+	cancel    context.CancelFunc
+	loading   bool
+	err       string
+	results   []indexcontract.Backlink
+	collapsed map[string]bool // per source note
+	rows      []row
+	dirty     bool
 }
 
 func (p *Pane) state() json.RawMessage {
@@ -213,29 +205,6 @@ func (p *Pane) mentionCount() int {
 	return n
 }
 
-// webKind is the web viewer's tab kind.
-const webKind = "webviewer"
-
-// open shows a backlink's source: a note at the mention, a web page in a
-// web tab.
-func open(b *indexcontract.Backlink, m *indexcontract.Mention) {
-	ws := workspaceapi.Get()
-	if ws == nil {
-		return
-	}
-	if b.URL != "" {
-		_ = ws.OpenResource(b.URL, workspaceapi.OpenOptions{Kind: webKind})
-		return
-	}
-	path := b.Path
-	var nav *workspaceapi.Nav
-	if m != nil {
-		// Mention.Line/Col are 0-based; Nav is 1-based (tabtypesapi.Nav).
-		nav = &workspaceapi.Nav{Line: m.Line + 1, Col: m.Col + 1, Len: m.Len}
-	}
-	ws.Open(path, nav, false)
-}
-
 func (p *Pane) view(c *ui.Context, _ slotsapi.PanelProps) {
 	p.sync()
 	t := c.Theme()
@@ -312,6 +281,37 @@ func (p *Pane) fileRow(c *ui.Context, b *indexcontract.Backlink) {
 			ui.Text(c, strconv.Itoa(len(b.Mentions))).FontSize(11).TextColor(t.TextMuted).Shrink(0)
 		}
 	})
+}
+
+// row is a source title or one of its mentions.
+type row struct {
+	src     *indexcontract.Backlink
+	mention int // -1 on the source's title
+}
+
+// savedState is which source files the user collapsed.
+type savedState struct {
+	Collapsed []string `json:"collapsed"`
+}
+
+// open shows a backlink's source: a note at the mention, a web page in a
+// web tab.
+func open(b *indexcontract.Backlink, m *indexcontract.Mention) {
+	ws := workspaceapi.Get()
+	if ws == nil {
+		return
+	}
+	if b.URL != "" {
+		_ = ws.OpenResource(b.URL, workspaceapi.OpenOptions{Kind: webKind})
+		return
+	}
+	path := b.Path
+	var nav *workspaceapi.Nav
+	if m != nil {
+		// Mention.Line/Col are 0-based; Nav is 1-based (tabtypesapi.Nav).
+		nav = &workspaceapi.Nav{Line: m.Line + 1, Col: m.Col + 1, Len: m.Len}
+	}
+	ws.Open(path, nav, false)
 }
 
 // highlighted is a mention as "line: text" with the link marked

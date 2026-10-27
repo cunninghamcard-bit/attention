@@ -141,62 +141,6 @@ func (x *Index) Build(ctx context.Context) error {
 	return nil
 }
 
-func (x *Index) changed() {
-	if x.OnChange != nil {
-		x.OnChange()
-	}
-}
-
-func isNote(path string) bool { return strings.EqualFold(filepath.Ext(path), ".md") }
-
-// readNotes parses the notes whose size or modification time moved, on a
-// few goroutines.
-func (x *Index) readNotes(ctx context.Context, notes []*file) {
-	work := make(chan *file)
-	var wg sync.WaitGroup
-	for range runtime.NumCPU() {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for f := range work {
-				x.readNote(ctx, f)
-			}
-		}()
-	}
-	for _, f := range notes {
-		if ctx.Err() != nil {
-			break
-		}
-		work <- f
-	}
-	close(work)
-	wg.Wait()
-}
-
-// readNote parses f when it changed since it was read.
-func (x *Index) readNote(ctx context.Context, f *file) {
-	st, err := x.fs.Stat(ctx, f.abs)
-	if err != nil {
-		f.meta = nil
-		return
-	}
-	if f.meta != nil && st.Size == f.size && st.ModTime == f.mod {
-		return
-	}
-	f.size, f.mod = st.Size, st.ModTime
-	if st.Size > maxNote {
-		f.meta = nil
-		return
-	}
-	data, err := x.fs.ReadBytes(ctx, f.abs, maxNote)
-	if err != nil {
-		f.meta = nil
-		return
-	}
-	m := mdmeta.Parse(string(data))
-	f.meta = &m
-}
-
 // Changed takes fs/changed: notes written are read again, files removed
 // leave, files created join, and the links resolve again.
 func (x *Index) Changed(ctx context.Context, b fscontract.Batch) {
@@ -279,22 +223,74 @@ func (x *Index) Changed(ctx context.Context, b fscontract.Batch) {
 	}
 }
 
-// linkName is the name a link may give a file: its base name, lowercased,
-// without .md.
-func linkName(path string) string {
-	n := strings.ToLower(basename(path))
-	return strings.TrimSuffix(n, ".md")
-}
-
-// related is hasRelatedLink: whether a source's link record names one of
-// names.
-func related(links map[string]int, names map[string]bool) bool {
-	for target := range links {
-		if names[linkName(target)] {
-			return true
+// Run builds the index, then walks the mounts again every rescanEvery,
+// until ctx ends.
+func (x *Index) Run(ctx context.Context) error {
+	_ = x.Build(ctx)
+	t := time.NewTicker(rescanEvery)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-t.C:
+			_ = x.Build(ctx)
 		}
 	}
-	return false
+}
+
+func (x *Index) changed() {
+	if x.OnChange != nil {
+		x.OnChange()
+	}
+}
+
+// readNotes parses the notes whose size or modification time moved, on a
+// few goroutines.
+func (x *Index) readNotes(ctx context.Context, notes []*file) {
+	work := make(chan *file)
+	var wg sync.WaitGroup
+	for range runtime.NumCPU() {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for f := range work {
+				x.readNote(ctx, f)
+			}
+		}()
+	}
+	for _, f := range notes {
+		if ctx.Err() != nil {
+			break
+		}
+		work <- f
+	}
+	close(work)
+	wg.Wait()
+}
+
+// readNote parses f when it changed since it was read.
+func (x *Index) readNote(ctx context.Context, f *file) {
+	st, err := x.fs.Stat(ctx, f.abs)
+	if err != nil {
+		f.meta = nil
+		return
+	}
+	if f.meta != nil && st.Size == f.size && st.ModTime == f.mod {
+		return
+	}
+	f.size, f.mod = st.Size, st.ModTime
+	if st.Size > maxNote {
+		f.meta = nil
+		return
+	}
+	data, err := x.fs.ReadBytes(ctx, f.abs, maxNote)
+	if err != nil {
+		f.meta = nil
+		return
+	}
+	m := mdmeta.Parse(string(data))
+	f.meta = &m
 }
 
 // resolveAll is resolveLinks for every note. Called with mu held.
@@ -335,6 +331,26 @@ func (x *Index) isMD(path string) bool {
 	return ok && f.md
 }
 
+func isNote(path string) bool { return strings.EqualFold(filepath.Ext(path), ".md") }
+
+// linkName is the name a link may give a file: its base name, lowercased,
+// without .md.
+func linkName(path string) string {
+	n := strings.ToLower(basename(path))
+	return strings.TrimSuffix(n, ".md")
+}
+
+// related is hasRelatedLink: whether a source's link record names one of
+// names.
+func related(links map[string]int, names map[string]bool) bool {
+	for target := range links {
+		if names[linkName(target)] {
+			return true
+		}
+	}
+	return false
+}
+
 // refs is iterateRefsForCache: the frontmatter links, the links, the
 // embeds.
 func refs(m *mdmeta.Metadata) []string {
@@ -349,20 +365,4 @@ func refs(m *mdmeta.Metadata) []string {
 		out = append(out, l.Link)
 	}
 	return out
-}
-
-// Run builds the index, then walks the mounts again every rescanEvery,
-// until ctx ends.
-func (x *Index) Run(ctx context.Context) error {
-	_ = x.Build(ctx)
-	t := time.NewTicker(rescanEvery)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-t.C:
-			_ = x.Build(ctx)
-		}
-	}
 }

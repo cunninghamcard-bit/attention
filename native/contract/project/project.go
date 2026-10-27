@@ -4,6 +4,9 @@ package project
 
 import "context"
 
+// MountsChangedEvent is emitted when a mount is added or removed.
+const MountsChangedEvent = "project/mounts-changed"
+
 // Mount is one opened root directory.
 type Mount struct {
 	ID   string `json:"id"`
@@ -17,9 +20,6 @@ type FileRef struct {
 	Rel   string `json:"rel"`   // slash-separated, relative to the mount
 	Path  string `json:"path"`  // absolute
 }
-
-// Display is how the CLI and quick open show a file: "<mount name>/<rel>".
-func Display(m Mount, rel string) string { return m.Name + "/" + rel }
 
 // Listing is a walk of every mount's files.
 type Listing struct {
@@ -64,9 +64,6 @@ type SearchResult struct {
 	Truncated bool         `json:"truncated"`
 }
 
-// MountsChangedEvent is emitted when a mount is added or removed.
-const MountsChangedEvent = "project/mounts-changed"
-
 // Project is the client side of the service.
 type Project struct {
 	Mounts      func(ctx context.Context) ([]Mount, error)
@@ -75,3 +72,6 @@ type Project struct {
 	Files       func(ctx context.Context) (Listing, error)
 	Search      func(ctx context.Context, q Query) (SearchResult, error)
 }
+
+// Display is how the CLI and quick open show a file: "<mount name>/<rel>".
+func Display(m Mount, rel string) string { return m.Name + "/" + rel }

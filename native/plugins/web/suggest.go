@@ -12,6 +12,8 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/webhistoryapi"
 )
 
+var typedURL = regexp.MustCompile(`(?i)^https?://`)
+
 // The address bar's suggestions, attention's WebViewerAddressSuggest
 // (apps/web/builtin/webviewer/WebViewerAddressSuggest.ts) and its
 // AddressBarSuggest popover.
@@ -23,7 +25,18 @@ type suggestion struct {
 	score      int
 }
 
-var typedURL = regexp.MustCompile(`(?i)^https?://`)
+// icon is the suggestion's (AddressBarSuggest.renderSuggestion).
+func (s suggestion) icon() *ui.SVG {
+	switch s.kind {
+	case "search":
+		return lucide.Search()
+	case "history":
+		return lucide.Clock()
+	case "bookmark":
+		return lucide.Bookmark()
+	}
+	return lucide.Globe()
+}
 
 // suggestions are getSuggestions: the blank page, the history, the url
 // bookmarks, by URL once, those the input matches best first, and what
@@ -104,19 +117,6 @@ func fuzzyScore(query, text string) int {
 		index += found + len(string(r))
 	}
 	return score
-}
-
-// icon is the suggestion's (AddressBarSuggest.renderSuggestion).
-func (s suggestion) icon() *ui.SVG {
-	switch s.kind {
-	case "search":
-		return lucide.Search()
-	case "history":
-		return lucide.Clock()
-	case "bookmark":
-		return lucide.Bookmark()
-	}
-	return lucide.Globe()
 }
 
 // suggestPanel is the popover under the address bar while it has the

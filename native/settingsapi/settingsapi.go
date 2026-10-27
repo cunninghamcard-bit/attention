@@ -87,17 +87,6 @@ func Unset(file, key string) {
 	invalidate()
 }
 
-func saver(file string) *persist.Saver {
-	mu.Lock()
-	defer mu.Unlock()
-	s, ok := savers[file]
-	if !ok {
-		s = persist.New(Path(file), func() any { return Keys(file) })
-		savers[file] = s
-	}
-	return s
-}
-
 // Flush writes the files with pending saves now (on unload); later sets
 // save afresh.
 func Flush(ctx context.Context) {
@@ -129,6 +118,17 @@ func Load(names ...string) {
 		mu.Unlock()
 		invalidate()
 	})
+}
+
+func saver(file string) *persist.Saver {
+	mu.Lock()
+	defer mu.Unlock()
+	s, ok := savers[file]
+	if !ok {
+		s = persist.New(Path(file), func() any { return Keys(file) })
+		savers[file] = s
+	}
+	return s
 }
 
 func invalidate() {
