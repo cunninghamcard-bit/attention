@@ -1,6 +1,7 @@
 // Package search is the search UI plugin: the left dock's Search panel, a
 // port of attention's global search view (apps/web/builtin/SearchView.ts)
-// over the project service's search.
+// over the project service's search, and the CLI's search, search:context
+// and search:open (apps/web/app/cli/commands/searchCli.ts).
 //
 // Left out for now: the operator suggestions under the field and "More
 // context" (the engine returns the matched line only).
@@ -26,7 +27,6 @@ import (
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
-	"github.com/cunninghamcard-bit/attention/native/layoutapi"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
@@ -101,17 +101,14 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			ID: PanelID, Title: "Search", Icon: lucide.Search(), Dock: slotsapi.Left, Order: 1,
 			View: s.view, State: s.state, Restore: s.restore,
 		})
-		reveal := func() {
-			if l := layoutapi.Get(); l != nil {
-				l.RevealPanel(PanelID)
-			}
+		offs := []func(){off}
+		for _, cmd := range s.commands() {
+			offs = append(offs, actionsapi.Register(cmd))
 		}
-		offCmd := actionsapi.Register(actionsapi.Command{ID: "global-search:open", Title: "Search in all files", Keys: "Ctrl Shift F", Main: reveal, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			return shellapi.OnMain(ctx, func() (string, error) { reveal(); return "", nil })
-		}})
 		rctx.Effect(func(context.Context) error {
-			offCmd()
-			off()
+			for i := len(offs) - 1; i >= 0; i-- {
+				offs[i]()
+			}
 			cancel()
 			return nil
 		})
@@ -147,6 +144,12 @@ func (s *Search) restore(data json.RawMessage) {
 			s.sortOrder = st.SortOrder
 		}
 	}
+	s.start()
+}
+
+// setQuery is SearchView.setQuery: the field shows query and a search runs.
+func (s *Search) setQuery(query string) {
+	s.query, s.typed = query, query
 	s.start()
 }
 
