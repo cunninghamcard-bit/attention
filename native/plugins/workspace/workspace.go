@@ -289,7 +289,7 @@ func (ws *Workspace) openIn(path string, nav *workspaceapi.Nav, newTab bool) *ta
 // openResource opens a file address, or a web page's
 // (workspaceapi.API.OpenResource).
 func (ws *Workspace) openResource(address string, o workspaceapi.OpenOptions) (*tab, error) {
-	if tabtypesapi.WebAddress(address) {
+	if tabtypesapi.Resourceless(address) {
 		return ws.openAddress(address, "", o)
 	}
 	path, err := ws.pathOf(address)
@@ -446,7 +446,7 @@ func (ws *Workspace) openEntry(entry string) {
 		_, _ = ws.openTab(kind, workspaceapi.OpenOptions{NewTab: true})
 		return
 	}
-	if tabtypesapi.WebAddress(entry) {
+	if tabtypesapi.Resourceless(entry) {
 		_, _ = ws.openAddress(entry, "", workspaceapi.OpenOptions{NewTab: true})
 		return
 	}

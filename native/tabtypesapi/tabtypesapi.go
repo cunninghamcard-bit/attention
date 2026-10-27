@@ -295,6 +295,13 @@ func PageKind(address string) (string, bool) {
 	return kind, ok && kind != "" && !strings.Contains(kind, "/")
 }
 
+// Resourceless reports whether address names no file: a web page's, or
+// one of attention's own (attention://<kind>, attention://terminal/3), which
+// its tab type claims by pattern.
+func Resourceless(address string) bool {
+	return WebAddress(address) || strings.HasPrefix(address, "attention://")
+}
+
 // WebAddress reports whether address is a web page's, which a tab shows
 // with no file: http(s) or about.
 func WebAddress(address string) bool {

@@ -186,11 +186,20 @@ func (s *Shortcuts) record(c *ui.Context) {
 // the main thread, else Run on a goroutine. A modal dialog open keeps the
 // keys from it; the reference records in its own.
 func (s *Shortcuts) View(c *ui.Context) {
+	// Last frame's capture; a terminal still focused sets it again as
+	// this frame builds it (this overlay builds first).
+	captured := actionsapi.Captured()
+	actionsapi.SetCapture(false)
 	for _, cmd := range actionsapi.List() {
 		if cmd.Main == nil && cmd.Run == nil {
 			continue
 		}
 		for _, b := range s.bindings(cmd) {
+			// A focused terminal keeps the keys but Super's (actionsapi
+			// SetCapture).
+			if captured && b.Mods&ui.Super == 0 {
+				continue
+			}
 			if !c.Shortcut(b.Mods, b.Key) {
 				continue
 			}

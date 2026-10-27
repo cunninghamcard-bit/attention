@@ -219,3 +219,16 @@ func distance(a, b string) int {
 	}
 	return prev[len(b)]
 }
+
+// capture is set while an element that takes the keys as they are — a
+// terminal — has the focus: the window's shortcuts then leave it every
+// combination but Super's (attention's terminal focus scope). It is
+// updated as the frame builds, main thread only.
+var capture bool
+
+// SetCapture says whether such an element has the focus, for the frame.
+func SetCapture(on bool) { capture = on }
+
+// Captured reports whether one had it as the last frame built; the
+// shortcuts plugin reads it, then clears it for the frame to set again.
+func Captured() bool { return capture }

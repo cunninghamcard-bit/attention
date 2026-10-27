@@ -51,6 +51,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
 	"github.com/cunninghamcard-bit/attention/native/plugins/switcher"
+	"github.com/cunninghamcard-bit/attention/native/plugins/terminalui"
 	"github.com/cunninghamcard-bit/attention/native/plugins/textui"
 	"github.com/cunninghamcard-bit/attention/native/plugins/web"
 	"github.com/cunninghamcard-bit/attention/native/plugins/webhistory"
@@ -66,7 +67,7 @@ var plugins = []*rutis.Definition{
 	shell.Plugin, actions.Plugin, cli.Plugin, fs.Plugin, project.Plugin, fileresource.Plugin, index.Plugin, layout.Plugin, workspace.Plugin,
 	shortcuts.Plugin, palette.Plugin, switcher.Plugin, commandpalette.Plugin, gotoline.Plugin, settings.Plugin,
 	filetree.Plugin, search.Plugin, backlinks.Plugin, outline.Plugin, bookmarks.Plugin, textui.Plugin, markdownui.Plugin, imageui.Plugin,
-	web.Plugin, webread.Plugin, webhistory.Plugin, webindex.Plugin, webviewpanel.Plugin,
+	web.Plugin, webread.Plugin, webhistory.Plugin, webindex.Plugin, webviewpanel.Plugin, terminalui.Plugin,
 }
 
 // all are the plugins carried: attention's, then those compiled in with
