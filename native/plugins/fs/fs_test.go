@@ -181,6 +181,89 @@ func TestStat(t *testing.T) {
 	}
 }
 
+func TestWriteAppendMkdirRenameRemove(t *testing.T) {
+	dir := t.TempDir()
+	svc := newService(t)
+	ctx := t.Context()
+
+	sub := filepath.Join(dir, "a", "b")
+	if err := svc.Mkdir(ctx, sub); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(sub, "note.md")
+	if err := svc.Write(ctx, path, []byte("hello")); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil || string(got) != "hello" {
+		t.Fatalf("write = %q, %v", got, err)
+	}
+	if err := svc.Write(ctx, path, []byte("replaced")); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Append(ctx, path, []byte("!")); err != nil {
+		t.Fatal(err)
+	}
+	got, err = os.ReadFile(path)
+	if err != nil || string(got) != "replaced!" {
+		t.Fatalf("append = %q, %v", got, err)
+	}
+
+	moved := filepath.Join(sub, "renamed.md")
+	if err := svc.Rename(ctx, path, moved); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("old path still there: %v", err)
+	}
+	if err := svc.Remove(ctx, moved); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(moved); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("remove left the file: %v", err)
+	}
+}
+
+func TestTrashFreedesktop(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dir)
+	svc := newService(t)
+	src := filepath.Join(t.TempDir(), "gone.md")
+	if err := os.WriteFile(src, []byte("bye"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Trash(t.Context(), src); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(src); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("source still there: %v", err)
+	}
+	trashed := filepath.Join(dir, "Trash", "files", "gone.md")
+	got, err := os.ReadFile(trashed)
+	if err != nil || string(got) != "bye" {
+		t.Fatalf("trashed = %q, %v", got, err)
+	}
+	info, err := os.ReadFile(filepath.Join(dir, "Trash", "info", "gone.md.trashinfo"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(info)
+	if !strings.HasPrefix(text, "[Trash Info]\n") || !strings.Contains(text, "Path=") || !strings.Contains(text, "DeletionDate=") {
+		t.Fatalf("trashinfo = %q", text)
+	}
+
+	src2 := filepath.Join(t.TempDir(), "gone.md")
+	if err := os.WriteFile(src2, []byte("two"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Trash(t.Context(), src2); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "Trash", "files", "gone.md.2")); err != nil {
+		t.Fatalf("collision name: %v", err)
+	}
+}
+
 func TestWatchEmitsChangedThenUnwatch(t *testing.T) {
 	dir := t.TempDir()
 	loaded := loadFS(t)

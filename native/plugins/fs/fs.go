@@ -1,7 +1,8 @@
-// Package fs is the fs service plugin (RFC 0001 §5.7): listing, reading and
-// watching files. Watching uses fsnotify, never mygo.WatchFiles, so the
-// plugin behaves the same in the UI runtime and in a process of its own.
-// Only directories someone asked for are watched (RFC R9).
+// Package fs is the fs service plugin (RFC 0001 §5.7): listing, reading,
+// writing and watching files. Watching uses fsnotify, never mygo.WatchFiles,
+// so the plugin behaves the same in the UI runtime and in a process of its
+// own. Only directories someone asked for are watched (RFC R9). Writes do
+// not emit events; the watcher reports them.
 package fs
 
 import (
@@ -231,6 +232,7 @@ func (s *Service) Stat(ctx context.Context, path string) (contract.Entry, error)
 	e := contract.Entry{Name: filepath.Base(path), Path: path, Dir: st.IsDir(), Size: st.Size(), ModTime: st.ModTime().UnixNano()}
 	if sys, ok := st.Sys().(*syscall.Stat_t); ok {
 		e.Inode = uint64(sys.Ino)
+		e.CTime = sys.Ctim.Nano()
 	}
 	return e, nil
 }

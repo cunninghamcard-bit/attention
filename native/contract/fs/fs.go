@@ -20,8 +20,11 @@ type Entry struct {
 	Size int64  `json:"size"`
 	// ModTime (Unix nanoseconds) and Inode, 0 where unknown, are filled by
 	// Stat: with Size they tell one version of a file from the next.
-	ModTime int64  `json:"modTime,omitempty"`
-	Inode   uint64 `json:"inode,omitempty"`
+	ModTime int64 `json:"modTime,omitempty"`
+	// CTime is the inode change time (Unix nanoseconds), 0 where unknown.
+	// Stat fills it; List may leave it empty.
+	CTime int64  `json:"ctime,omitempty"`
+	Inode uint64 `json:"inode,omitempty"`
 }
 
 // File is a read text file. Binary and TooLarge files carry no Text.
@@ -60,6 +63,20 @@ type FS struct {
 	Stat      func(ctx context.Context, path string) (Entry, error)
 	Watch     func(ctx context.Context, dir string) error
 	Unwatch   func(ctx context.Context, dir string) error
+	// Write creates or replaces path atomically (a sibling temp file, then
+	// rename), creating parent directories.
+	Write func(ctx context.Context, path string, data []byte) error
+	// Append writes data at the end of an existing file.
+	Append func(ctx context.Context, path string, data []byte) error
+	// Mkdir creates path and any missing parents.
+	Mkdir func(ctx context.Context, path string) error
+	// Rename moves oldpath to newpath. The destination's parent must exist.
+	Rename func(ctx context.Context, oldpath, newpath string) error
+	// Remove permanently deletes path (a file, or an empty directory).
+	Remove func(ctx context.Context, path string) error
+	// Trash moves path to the system trash (the freedesktop trash on Linux:
+	// $XDG_DATA_HOME/Trash/files and a matching .trashinfo).
+	Trash func(ctx context.Context, path string) error
 }
 
 // DecodeBatch reads an event argument as a Batch, whether it arrived as the
