@@ -12,6 +12,7 @@ package slotsapi
 import (
 	"encoding/json"
 	"sort"
+	"strconv"
 	"sync"
 
 	"github.com/egoist/mygo/ui"
@@ -65,9 +66,16 @@ var (
 	ribbon = map[int]RibbonItem{}
 )
 
-// RegisterPanel adds a panel until off is called.
+// RegisterPanel adds a panel until off is called. A second live panel with
+// the same ID is a wiring mistake and panics (dsh throws on a cell taken).
 func RegisterPanel(p Panel) (off func()) {
 	mu.Lock()
+	for _, q := range panels {
+		if q.ID == p.ID {
+			mu.Unlock()
+			panic("slots: panel " + strconv.Quote(p.ID) + " is already registered")
+		}
+	}
 	seq++
 	id := seq
 	panels[id] = p
@@ -100,9 +108,16 @@ func Panels(d Dock) []Panel {
 	return out
 }
 
-// RegisterRibbon adds a ribbon item until off is called.
+// RegisterRibbon adds a ribbon item until off is called; a second live item
+// with the same ID panics.
 func RegisterRibbon(r RibbonItem) (off func()) {
 	mu.Lock()
+	for _, q := range ribbon {
+		if q.ID == r.ID {
+			mu.Unlock()
+			panic("slots: ribbon item " + strconv.Quote(r.ID) + " is already registered")
+		}
+	}
 	seq++
 	id := seq
 	ribbon[id] = r

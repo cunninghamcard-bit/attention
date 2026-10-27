@@ -3,6 +3,7 @@ package workspace
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
@@ -32,8 +33,11 @@ type sessionPane struct {
 	Active int      `json:"active"`
 }
 
-// loadSession reads the saved session, dropping files that are gone. It
-// reads the disk and runs off the main thread.
+// loadSession reads the saved session. A deleted file whose directory is
+// still there comes back as a missing tab, which shows the file if it
+// returns (as a browser keeps a tab whose page is gone); directories and
+// files whose directory is gone are dropped. It reads the disk and runs off
+// the main thread.
 func loadSession() (session, bool) {
 	data, err := os.ReadFile(paths.SessionPath())
 	if err != nil {
@@ -47,7 +51,7 @@ func loadSession() (session, bool) {
 	for _, p := range s.Panes {
 		var kept sessionPane
 		for i, path := range p.Tabs {
-			if st, err := os.Stat(path); err == nil && !st.IsDir() {
+			if keepTab(path) {
 				if i == p.Active {
 					kept.Active = len(kept.Tabs)
 				}
@@ -63,6 +67,16 @@ func loadSession() (session, bool) {
 		s.Active = 0
 	}
 	return s, true
+}
+
+// keepTab reports whether a saved tab's path reopens.
+func keepTab(path string) bool {
+	st, err := os.Stat(path)
+	if err == nil {
+		return !st.IsDir()
+	}
+	dir, err := os.Stat(filepath.Dir(path))
+	return err == nil && dir.IsDir()
 }
 
 func (ws *Workspace) snapshot() session {

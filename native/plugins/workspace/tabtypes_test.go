@@ -54,8 +54,8 @@ func TestTypesComingAndGoingReclaimTabs(t *testing.T) {
 	defer off()
 	tt.Frame()
 	ws.closeActiveTab()
-	if len(closed) != 1 || closed[0] != tb2.id {
-		t.Fatalf("closing a tab tells its type: %v", closed)
+	if len(closed) != 2 || closed[0] != tb.id || closed[1] != tb2.id {
+		t.Fatalf("a type is told of a tab gone from it, by unloading or closing: %v", closed)
 	}
 }
 
@@ -76,5 +76,31 @@ func TestAChangeReloadsTheBody(t *testing.T) {
 	tt.Frame()
 	if _, lines, _ := ws.lines(tb); lines != 3 {
 		t.Fatalf("after the change: %d lines", lines)
+	}
+}
+
+func TestAFileNeverReadShowsItIsGone(t *testing.T) {
+	ws, tt := testWorkspace(t)
+	testMissing = map[string]bool{"/m/gone.go": true}
+	tb := ws.open("/m/gone.go", nil)
+	tt.Frame()
+	testPosts.next(t)
+	tt.Frame()
+	if !tb.missing || !tt.HasText("This file does not exist.") || tt.HasText("Loading…") {
+		t.Fatalf("missing %v: %v", tb.missing, tt.Texts())
+	}
+}
+
+func TestAReadFromAnEarlierClaimDoesNotMarkTheTab(t *testing.T) {
+	ws, tt := testWorkspace(t)
+	testMissing = map[string]bool{"/m/alpha.md": true}
+	tb := ws.open("/m/alpha.md", nil)
+	tt.Frame() // markdown-ui starts its read
+	defer tabtypesapi.Register(tabtypesapi.TabType{ID: "ext-md", Kind: "markdown", Patterns: []string{"*.md"},
+		Body: func(*ui.Context, tabtypesapi.Props) {}})()
+	tt.Frame()
+	testPosts.next(t) // the markdown read comes back
+	if tb.typeID != "ext-md" || tb.missing {
+		t.Fatalf("%s missing %v: the old viewer's read marked the tab", tb.typeID, tb.missing)
 	}
 }

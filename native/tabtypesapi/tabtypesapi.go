@@ -17,6 +17,7 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -26,13 +27,14 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
 )
 
-// Priority is a claim's tier; a higher tier wins.
+// Priority is a claim's tier; a higher tier wins. A type that names none
+// is an Extension (dsh's DEFAULT_BAND).
 type Priority int
 
 const (
-	Fallback  Priority = iota // a viewer for anything, as plain text
-	Builtin                   // the reader's own viewers
-	Extension                 // other plugins'
+	Fallback  Priority = iota + 1 // a viewer for anything, as plain text
+	Builtin                       // the reader's own viewers
+	Extension                     // other plugins'
 )
 
 // Nav is where to put the reader in the opened file, 1-based. Line alone
@@ -70,13 +72,13 @@ type Props struct {
 // TabType is a tab type's definition and body.
 type TabType struct {
 	ID   string // unique; the tab.body key
-	Kind string // what OpenTab names; several types may share one
+	Kind string // what OpenTab names; a Builtin and an Extension may share one
 	// Patterns are the addresses it claims: one with a ":" matches the
 	// whole address ("**" any number of segments), one without matches any
 	// layer of the path the address names, without case ("*.md"; for a
 	// file address, not its scope or mount id).
 	Patterns []string
-	Priority Priority
+	Priority Priority                  // zero: Extension
 	CanOpen  func(address string) bool // optional veto of a pattern match
 	Title    func(address string) string
 	Body     func(c *ui.Context, p Props)
@@ -89,28 +91,80 @@ type TabType struct {
 	Lines func(tabID int) (cur, lines int, ok bool)
 }
 
+// kindSlot is a kind's registrations: the one in force and the one it
+// shadows. A Builtin and an Extension pair up once, the Extension in
+// force; a Fallback shares its kind with nothing.
+// Port of dsh's KindSlot (ui-sidebar-right/src/client/tab-registry.ts).
+type kindSlot struct {
+	inForce, shadowed int // registration keys; shadowed 0 for none
+}
+
 var (
 	mu    sync.Mutex
 	seq   int
 	gen   int
 	types = map[int]TabType{}
+	ids   = map[string]bool{}
+	kinds = map[string]*kindSlot{}
 )
 
-// Register adds a tab type until off is called.
+// coexists reports whether a type of tier p may join slot.
+func coexists(slot *kindSlot, p Priority) bool {
+	held := types[slot.inForce].Priority
+	return p != Fallback && held != Fallback && held != p && slot.shadowed == 0
+}
+
+// Register adds a tab type until off is called. A second type with the same
+// ID, or one its kind cannot take (see kindSlot), is a wiring mistake and
+// panics.
 func Register(t TabType) (off func()) {
+	if t.Priority == 0 {
+		t.Priority = Extension
+	}
 	mu.Lock()
+	if ids[t.ID] {
+		mu.Unlock()
+		panic("tabtypes: tab type id " + strconv.Quote(t.ID) + " is already registered")
+	}
+	slot := kinds[t.Kind]
+	if slot != nil && !coexists(slot, t.Priority) {
+		mu.Unlock()
+		panic("tabtypes: tab kind " + strconv.Quote(t.Kind) + " is already registered")
+	}
 	seq++
 	id := seq
 	types[id] = t
+	ids[t.ID] = true
+	switch {
+	case slot == nil:
+		kinds[t.Kind] = &kindSlot{inForce: id}
+	case t.Priority > types[slot.inForce].Priority:
+		slot.shadowed, slot.inForce = slot.inForce, id
+	default:
+		slot.shadowed = id
+	}
 	gen++
 	mu.Unlock()
 	invalidate()
+	var once sync.Once
 	return func() {
-		mu.Lock()
-		delete(types, id)
-		gen++
-		mu.Unlock()
-		invalidate()
+		once.Do(func() {
+			mu.Lock()
+			slot := kinds[t.Kind]
+			switch {
+			case slot.inForce != id:
+				slot.shadowed = 0
+			case slot.shadowed == 0:
+				delete(kinds, t.Kind)
+			default:
+				slot.inForce, slot.shadowed = slot.shadowed, 0
+			}
+			delete(types, id)
+			delete(ids, t.ID)
+			gen++
+			mu.Unlock()
+			invalidate()
+		})
 	}
 }
 
@@ -121,30 +175,30 @@ func Generation() int {
 	return gen
 }
 
-// Get is the type registered under id.
+// Get is the type registered under id, in force or shadowed.
 func Get(id string) (TabType, bool) {
 	mu.Lock()
 	defer mu.Unlock()
-	for _, k := range order() {
-		if types[k].ID == id {
-			return types[k], true
+	for _, t := range types {
+		if t.ID == id {
+			return t, true
 		}
 	}
 	return TabType{}, false
 }
 
-// order is the registrations' keys, oldest first. Called with mu held.
-func order() []int {
-	keys := make([]int, 0, len(types))
-	for k := range types {
-		keys = append(keys, k)
+// active is each kind's type in force, oldest first. Called with mu held.
+func active() []int {
+	keys := make([]int, 0, len(kinds))
+	for _, slot := range kinds {
+		keys = append(keys, slot.inForce)
 	}
 	sort.Ints(keys)
 	return keys
 }
 
-// Candidates are the types that can show address, best first: by tier,
-// then by the longest matching pattern, then by registration.
+// Candidates are the types in force that can show address, best first: by
+// tier, then by the longest matching pattern, then by registration.
 func Candidates(address string) []TabType {
 	mu.Lock()
 	type cand struct {
@@ -152,7 +206,7 @@ func Candidates(address string) []TabType {
 		score int
 	}
 	var cs []cand
-	for _, k := range order() {
+	for _, k := range active() {
 		t := types[k]
 		best := -1
 		for _, p := range t.Patterns {
@@ -181,7 +235,8 @@ func Candidates(address string) []TabType {
 }
 
 // Claim is the type that shows address: the best candidate, or with kind
-// the kind's current implementation (the highest tier, then the latest).
+// the kind's type in force, its patterns not consulted (naming the kind is
+// the decision) but its CanOpen still is.
 func Claim(address, kind string) (TabType, bool) {
 	if kind == "" {
 		cs := Candidates(address)
@@ -191,18 +246,16 @@ func Claim(address, kind string) (TabType, bool) {
 		return cs[0], true
 	}
 	mu.Lock()
-	var found *TabType
-	for _, k := range order() {
-		t := types[k]
-		if t.Kind == kind && (found == nil || t.Priority >= found.Priority) {
-			found = &t
-		}
+	slot := kinds[kind]
+	var t TabType
+	if slot != nil {
+		t = types[slot.inForce]
 	}
 	mu.Unlock()
-	if found == nil || (found.CanOpen != nil && !found.CanOpen(address)) {
+	if slot == nil || (t.CanOpen != nil && !t.CanOpen(address)) {
 		return TabType{}, false
 	}
-	return *found, true
+	return t, true
 }
 
 // Match reports whether pattern matches address (see TabType.Patterns).

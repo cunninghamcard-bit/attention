@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -21,8 +22,11 @@ func testWorkspace(t *testing.T) (*Workspace, *ui.Tester) {
 		{Mount: "m", Rel: "gamma.md", Path: "/m/gamma.md"},
 	}}
 	fs := fsStub()
-	testText, testFiles = "# note", nil
+	testText, testFiles, testMissing = "# note", nil, nil
 	fs.Read = func(_ context.Context, path string, _ int64) (fscontract.File, error) {
+		if testMissing[path] {
+			return fscontract.File{}, os.ErrNotExist
+		}
 		if f, ok := testFiles[path]; ok {
 			return f, nil
 		}

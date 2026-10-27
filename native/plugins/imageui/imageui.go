@@ -32,6 +32,7 @@ const MaxBytes = 50 << 20
 type doc struct {
 	img     ui.ImageSource
 	err     string
+	gone    bool // the last read found no file
 	loaded  bool
 	loading bool
 	version int
@@ -60,13 +61,14 @@ func Register(ctx context.Context, fs fscontract.FS, post func(func())) (off fun
 				d.loading = false
 				switch {
 				case errors.Is(err, os.ErrNotExist):
+					d.gone = true
 					if missing != nil {
 						missing()
 					}
 				case err != nil:
 					d.err = err.Error()
 				default:
-					d.err, d.img = "", img
+					d.err, d.gone, d.img = "", false, img
 				}
 			})
 		}()
@@ -86,6 +88,8 @@ func Register(ctx context.Context, fs fscontract.FS, post func(func())) (off fun
 			switch {
 			case d.err != "":
 				textdoc.Centered(c, d.err)
+			case d.img == nil && d.gone:
+				textdoc.Centered(c, "This file does not exist.")
 			case d.img == nil:
 				textdoc.Centered(c, "Loading…")
 			default:

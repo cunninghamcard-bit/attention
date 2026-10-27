@@ -36,6 +36,8 @@ type Doc struct {
 	File fscontract.File
 	Ed   *editor.State // nil until loaded, and for binary and too large files
 	Err  string
+	// Gone is set while the last read found no file.
+	Gone bool
 
 	loaded  bool
 	loading bool
@@ -78,6 +80,7 @@ func (l *Loader) load(d *Doc) {
 			d.loading = false
 			if err != nil {
 				if errors.Is(err, os.ErrNotExist) {
+					d.Gone = true
 					if d.missing != nil {
 						d.missing()
 					}
@@ -85,7 +88,7 @@ func (l *Loader) load(d *Doc) {
 					d.Err = err.Error()
 				}
 			} else {
-				d.Err = ""
+				d.Err, d.Gone = "", false
 				d.File = file
 				d.setText(file)
 				d.applyNav()
@@ -167,7 +170,8 @@ func (d *Doc) applyNav() {
 }
 
 // Placeholder draws what stands in for the text, and reports whether it
-// drew one: the error, a binary or too large file, or loading.
+// drew one: the error, a binary or too large file, a file never read and
+// gone, or loading.
 func (d *Doc) Placeholder(c *ui.Context) bool {
 	switch {
 	case d.Err != "":
@@ -176,6 +180,8 @@ func (d *Doc) Placeholder(c *ui.Context) bool {
 		Centered(c, "This is a binary file and is not shown.")
 	case d.File.TooLarge:
 		Centered(c, fmt.Sprintf("This file is %s, larger than the %s shown.", Size(d.File.Size), Size(MaxBytes)))
+	case d.Ed == nil && d.Gone:
+		Centered(c, "This file does not exist.")
 	case d.Ed == nil:
 		Centered(c, "Loading…")
 	default:

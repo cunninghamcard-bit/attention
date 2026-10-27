@@ -82,8 +82,12 @@ type tab struct {
 	empty bool // a new tab, until a file opens in it
 	// kind and typeID are the claiming tab type's, "" while none claims the
 	// address; the tab's identity is (kind, address).
-	kind    string
-	typeID  string
+	kind   string
+	typeID string
+	// closed is the claiming type's Closed, kept from the claim: by the
+	// time a type is gone from the registry it can no longer be looked up.
+	closed  func(tabID int)
+	claims  int // bumps on every change of claim
 	address string
 	path    string
 	title   string
@@ -121,14 +125,17 @@ func (ws *Workspace) addressOf(path string) string {
 // claim gives t the tab type that shows its address now.
 func (ws *Workspace) claim(t *tab) {
 	tt, ok := tabtypesapi.Claim(t.address, "")
+	if ok && tt.ID == t.typeID {
+		t.closed = tt.Closed // the same type, perhaps registered again
+		return
+	}
+	ws.release(t)
+	t.claims++
 	if !ok {
 		t.kind, t.typeID = "", ""
 		return
 	}
-	if t.typeID != "" && t.typeID != tt.ID {
-		ws.release(t)
-	}
-	t.kind, t.typeID = tt.Kind, tt.ID
+	t.kind, t.typeID, t.closed = tt.Kind, tt.ID, tt.Closed
 	if tt.Title != nil {
 		t.title = tt.Title(t.address)
 	}
@@ -136,8 +143,9 @@ func (ws *Workspace) claim(t *tab) {
 
 // release tells t's tab type that t is gone from it.
 func (ws *Workspace) release(t *tab) {
-	if tt, ok := tabtypesapi.Get(t.typeID); ok && tt.Closed != nil {
-		tt.Closed(t.id)
+	if t.closed != nil {
+		t.closed(t.id)
+		t.closed = nil
 	}
 }
 
@@ -161,10 +169,16 @@ func (ws *Workspace) reclaim() {
 
 // props are what t's body is given.
 func (ws *Workspace) props(t *tab, focused bool) tabtypesapi.Props {
+	claims := t.claims
 	return tabtypesapi.Props{
 		Info: tabtypesapi.Info{ID: t.id, Kind: t.kind, Address: t.address, Path: t.path,
 			Nav: t.nav, NavRevision: t.navRev, Version: t.version, Missing: t.missing, Focused: focused},
-		MarkMissing: func() { t.missing = true },
+		// A read started under an earlier claim is not this body's to report.
+		MarkMissing: func() {
+			if t.claims == claims {
+				t.missing = true
+			}
+		},
 	}
 }
 
@@ -226,6 +240,7 @@ func (ws *Workspace) setMounts(ms []projectcontract.Mount) {
 		for _, t := range p.tabs {
 			if !t.empty {
 				t.address = ws.addressOf(t.path)
+				ws.claim(t)
 			}
 		}
 	}

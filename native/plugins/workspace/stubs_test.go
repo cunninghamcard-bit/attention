@@ -39,11 +39,12 @@ func (p posts) next(t *testing.T) {
 }
 
 var (
-	testText  string                     // what the stub fs reads
-	testFiles map[string]fscontract.File // and for these paths
-	testBytes []byte                     // what it reads as bytes
-	testPosts posts
-	testMD    *markdownui.Viewer
+	testText    string                     // what the stub fs reads
+	testFiles   map[string]fscontract.File // and for these paths
+	testMissing map[string]bool            // which it finds gone
+	testBytes   []byte                     // what it reads as bytes
+	testPosts   posts
+	testMD      *markdownui.Viewer
 )
 
 // viewers registers the reader's tab types for the test.
