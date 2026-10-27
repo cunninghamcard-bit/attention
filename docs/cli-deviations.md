@@ -35,4 +35,6 @@ not listed is a defect.
 | `reload`, `workspaces`, `workspace:save`/`load`/`delete` | present | not yet | reloading the UI runtime and named layouts come later |
 | `web` | replaces the active leaf's view | the same, but a tab already showing the URL is revealed; needs the window (`desktop`) | openResource, as `open` |
 | any command, just after launch | registered when the app is ready | registered as its plugin loads: the socket answers before every plugin has (a script waits for `commands` to list it) | plugins load one by one |
+| `bookmarks [total] [verbose] [format=json\|tsv\|csv]`, `bookmark file=\|folder=\|search=\|url= [title=] [subpath=]` | — (Obsidian's CLI has them; the TS app does not) | new; `bookmarks.json` in the config folder keeps absolute paths; a url bookmark opens in a web tab, a search one in the search panel, a folder one only reveals the file tree; a heading `subpath` opens the file at its top | no vault; the reader is the browser |
+| `web:read url=`, `web:history [limit=] [format=json]`, `web:history:clear` | — | new: a page's article as markdown (headless too), the web viewer's history (`web-history.json`) | the reader's own (roadmap P3) |
 | `mount path=`, `focus`, `quit` | — | new | the reader's own; `quit` stops the app as closing its window does |
