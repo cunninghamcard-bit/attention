@@ -209,3 +209,109 @@ func invalidate() {
 		w.Invalidate()
 	}
 }
+
+// PaletteSource is a palette.source contribution (RFC §5.5): one of the
+// palette's modes (attention's quick switcher, command palette, go to
+// line). The palette plugin draws it; OpenPalette opens it.
+type PaletteSource struct {
+	ID          string
+	Placeholder string
+	// Open, optional, runs when the palette opens on the source.
+	Open func()
+	// Items are the rows for query, best first. The palette asks again
+	// when the query or Generation changes.
+	Items func(query string) []PaletteItem
+	// Generation, optional, changes when Items would change for the same
+	// query (a file listing arrived).
+	Generation func() int
+	// Empty is the message with no rows for query.
+	Empty func(query string) string
+	// Submit, optional, is Enter with no row: true closes the palette.
+	Submit func(query string) bool
+	// Footer, optional, draws under the rows.
+	Footer func(c *ui.Context, query string)
+	// State and Restore are a Panel's.
+	State   func() json.RawMessage
+	Restore func(json.RawMessage)
+}
+
+// PaletteItem is a palette row.
+type PaletteItem struct {
+	Key    string
+	Label  string
+	Detail string // muted, after the label
+	Icon   *ui.SVG
+	Hint   string // trailing, as a shortcut
+	// Choose runs the row; newTab is Mod Enter or a Mod click.
+	Choose func(newTab bool)
+}
+
+var (
+	sources    = map[int]PaletteSource{}
+	paletteReq string // the source OpenPalette asked for, until taken
+)
+
+// RegisterPaletteSource adds a palette source until off is called; a second
+// live source with the same ID panics.
+func RegisterPaletteSource(s PaletteSource) (off func()) {
+	mu.Lock()
+	for _, q := range sources {
+		if q.ID == s.ID {
+			mu.Unlock()
+			panic("slots: palette source " + strconv.Quote(s.ID) + " is already registered")
+		}
+	}
+	seq++
+	id := seq
+	sources[id] = s
+	mu.Unlock()
+	invalidate()
+	return func() {
+		mu.Lock()
+		delete(sources, id)
+		mu.Unlock()
+		invalidate()
+	}
+}
+
+// PaletteSources lists the palette sources by ID.
+func PaletteSources() []PaletteSource {
+	mu.Lock()
+	defer mu.Unlock()
+	out := make([]PaletteSource, 0, len(sources))
+	for _, s := range sources {
+		out = append(out, s)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out
+}
+
+// LookupPaletteSource looks a source up by ID.
+func LookupPaletteSource(id string) (PaletteSource, bool) {
+	mu.Lock()
+	defer mu.Unlock()
+	for _, s := range sources {
+		if s.ID == id {
+			return s, true
+		}
+	}
+	return PaletteSource{}, false
+}
+
+// OpenPalette asks the palette to open on source id; asked again while
+// open on it, the palette closes. Main thread only.
+func OpenPalette(id string) {
+	mu.Lock()
+	paletteReq = id
+	mu.Unlock()
+	invalidate()
+}
+
+// TakePaletteRequest is the palette's: the source last asked for, once.
+func TakePaletteRequest() string {
+	mu.Lock()
+	defer mu.Unlock()
+	id := paletteReq
+	paletteReq = ""
+	return id
+}

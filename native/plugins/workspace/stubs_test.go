@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"context"
+	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 	"os"
 	"sync"
 	"testing"
@@ -96,4 +97,16 @@ func (f *fileStub) send(address string) {
 		return
 	}
 	emit(fscontract.Entry{Path: "/m/" + a.Rel}, nil)
+}
+
+// lines is t's caret line and line count, from its tab type.
+func (ws *Workspace) lines(t *tab) (cur, lines int, ok bool) {
+	if t == nil || t.empty {
+		return 0, 0, false
+	}
+	tt, found := tabtypesapi.Get(t.typeID)
+	if !found || tt.Lines == nil {
+		return 0, 0, false
+	}
+	return tt.Lines(t.id)
 }

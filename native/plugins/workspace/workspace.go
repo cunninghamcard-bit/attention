@@ -51,23 +51,18 @@ type Workspace struct {
 	nextGroup   int
 	seenLeft    float32 // the width last saved, to notice a divider drag
 
-	palette *palette
-	notice  string // a workspace-wide message, as a watch error
-
-	files     *projectcontract.Listing // last quick-open listing
-	filesBusy bool
+	notice string // a workspace-wide message, as a watch error
 
 	nextTab int
 	closed  []string // recently closed files, newest last
-	// The quick switcher's recent files and the command palette's recent
-	// commands, newest first.
-	recentFiles    []string
-	recentCommands []string
-	restoring      *sessionNode // the layout to reopen once the mounts are known
-	saveSoon       func()
-	isDark         func() bool // mygo.Theme.IsDark; tests replace it
-	title          string
-	typesGen       int // the tab type registry's generation last claimed against
+	// recentFiles are the files opened last, newest first: the quick
+	// switcher's recent list (workspaceapi.RecentFiles).
+	recentFiles []string
+	restoring   *sessionNode // the layout to reopen once the mounts are known
+	saveSoon    func()
+	isDark      func() bool // mygo.Theme.IsDark; tests replace it
+	title       string
+	typesGen    int // the tab type registry's generation last claimed against
 }
 
 // pane is a tab group (attention's WorkspaceTabs).
@@ -320,7 +315,15 @@ func (ws *Workspace) openAddress(address, path string, opts workspaceapi.OpenOpt
 		if tt, ok := tabtypesapi.Claim(address, opts.Kind); ok {
 			kind = tt.Kind
 		}
-		for _, g := range ws.groups() {
+		// The focused group first, so its tab wins over another group's.
+		gs := ws.groups()
+		focus := ws.activePane()
+		for i, g := range gs {
+			if g == focus {
+				gs[0], gs[i] = gs[i], gs[0]
+			}
+		}
+		for _, g := range gs {
 			for i, o := range g.tabs {
 				if !o.empty && o.kind == kind && o.address == address {
 					g.active, ws.activeGroup = i, g

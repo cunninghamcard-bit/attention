@@ -26,6 +26,7 @@ func (f *fakeWorkspace) OpenResource(string, workspaceapi.OpenOptions) error { r
 func (f *fakeWorkspace) ActivePath() string                                  { return "" }
 func (f *fakeWorkspace) Display(path string) string                          { return "m" + path }
 func (f *fakeWorkspace) RevealPanel(string)                                  {}
+func (f *fakeWorkspace) RecentFiles() []string                               { return nil }
 func (f *fakeWorkspace) ActiveTab() (tabtypesapi.Info, bool) {
 	return tabtypesapi.Info{}, false
 }

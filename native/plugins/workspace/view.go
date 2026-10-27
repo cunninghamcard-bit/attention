@@ -67,8 +67,9 @@ func (ws *Workspace) view(c *ui.Context) {
 		})
 		ws.statusBar(c)
 	})
-	if ws.palette != nil {
-		ws.paletteView(c)
+	// A palette source carries its state like a panel.
+	for _, s := range slotsapi.PaletteSources() {
+		ws.restoreState(s.ID, s.Restore)
 	}
 	for _, o := range overlays {
 		if o.Order >= 0 {

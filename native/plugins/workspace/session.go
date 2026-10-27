@@ -27,9 +27,9 @@ type session struct {
 	RightPanel string  `json:"rightPanel,omitempty"`
 	// PanelStates are the panels' own states by panel ID.
 	PanelStates map[string]json.RawMessage `json:"panelStates,omitempty"`
-	// Recent files and commands: the quick switcher's and the command
-	// palette's (attention keeps the latter in local storage).
-	RecentFiles    []string `json:"recentFiles,omitempty"`
+	RecentFiles []string                   `json:"recentFiles,omitempty"`
+	// RecentCommands are the command palette's from before it kept them in
+	// PanelStates. Read, never written.
 	RecentCommands []string `json:"recentCommands,omitempty"`
 }
 
@@ -143,7 +143,7 @@ func keepTab(path string) bool {
 func (ws *Workspace) snapshot() session {
 	s := session{PanelOpen: ws.panelOpen, LeftWidth: ws.leftWidth, LeftPanel: ws.leftPanel,
 		RightOpen: ws.rightOpen, RightWidth: ws.rightWidth, RightPanel: ws.rightPanel,
-		RecentFiles: ws.recentFiles, RecentCommands: ws.recentCommands, PanelStates: ws.panelStates()}
+		RecentFiles: ws.recentFiles, PanelStates: ws.panelStates()}
 	if ws.restoring != nil {
 		// The saved tabs are not reopened yet (the mounts are loading): keep
 		// them rather than save an empty window over them.
@@ -203,7 +203,13 @@ func (ws *Workspace) restoreLayout(s session) {
 	}
 	ws.panelOpen = s.PanelOpen || s.Main == nil
 	ws.rightOpen = s.RightOpen || s.Main == nil
-	ws.recentFiles, ws.recentCommands = s.RecentFiles, s.RecentCommands
+	ws.recentFiles = s.RecentFiles
+	if _, ok := ws.savedPanels["command-palette"]; !ok && len(s.RecentCommands) > 0 {
+		if ws.savedPanels == nil {
+			ws.savedPanels = map[string]json.RawMessage{}
+		}
+		ws.savedPanels["command-palette"], _ = json.Marshal(s.RecentCommands)
+	}
 	ws.restoring = s.Main
 	if ws.mountsLoaded {
 		ws.reopen(ws.restoring)

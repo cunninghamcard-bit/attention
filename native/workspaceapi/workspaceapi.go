@@ -28,11 +28,11 @@ type OpenOptions struct {
 
 // API is the workspace, called on the main thread only.
 type API interface {
-	// OpenResource shows a resource address in the active pane, focusing
-	// the tab that shows it as the same kind. An address that is no file
-	// under a known mount or absolute, or a Kind that does not open it, is
-	// an error and opens nothing; a file no type claims opens a tab that
-	// says so.
+	// OpenResource shows a resource address: the tab that shows it as the
+	// same kind, else the active tab navigates to it (a new tab with
+	// NewTab). An address that is no file under a known mount or absolute,
+	// or a Kind that does not open it, is an error and opens nothing; a
+	// file no type claims opens a tab that says so.
 	OpenResource(address string, o OpenOptions) error
 	// Open is OpenResource for path (a new tab with newTab).
 	Open(path string, nav *Nav, newTab bool)
@@ -44,6 +44,9 @@ type API interface {
 	Display(path string) string
 	// RevealPanel opens the dock holding the panel and shows the panel.
 	RevealPanel(id string)
+	// RecentFiles are the files opened last, newest first (the quick
+	// switcher's recent list).
+	RecentFiles() []string
 }
 
 var (

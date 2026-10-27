@@ -1,10 +1,9 @@
 // Package workspace is the workspace UI plugin: the reader's frame —
 // the ribbon, the docks' panels, tab groups in splits (tree.go) whose bodies
-// are the tab types' (tabtypesapi), quick open, the command palette, the
-// status bar — and the CLI's open and tabs.
+// are the tab types' (tabtypesapi), the overlays (the palette, the
+// shortcuts), the status bar — and the CLI's open and tabs.
 //
-// TODO(RFC §5.6–§5.7): the palette becomes a slot, opening goes through
-// navigation.
+// TODO(RFC §5.6–§5.7): opening goes through navigation.
 package workspace
 
 import (
@@ -19,13 +18,11 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo"
-	"github.com/smallnest/uix/components/lucide"
 
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
@@ -132,14 +129,6 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		offAPI := workspaceapi.Set(api{ws})
 		rctx.Effect(func(context.Context) error { offAPI(); return nil })
 
-		for _, r := range []slotsapi.RibbonItem{
-			{ID: "switcher", Title: "Open quick switcher", Icon: lucide.FileSearch(), Order: 0, Run: func() { ws.openPalette(modeFiles) }},
-			{ID: "command-palette", Title: "Open command palette", Icon: lucide.SquareTerminal(), Order: 1, Run: func() { ws.openPalette(modeCommands) }},
-		} {
-			off := slotsapi.RegisterRibbon(r)
-			rctx.Effect(func(context.Context) error { off(); return nil })
-		}
-
 		for _, cmd := range ws.commands() {
 			off := actionsapi.Register(cmd)
 			rctx.Effect(func(context.Context) error { off(); return nil })
@@ -173,9 +162,10 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	},
 })
 
-// commands are the workspace's palette and CLI commands. Run is always
-// called off the main thread (the palette starts a goroutine; the CLI runs
-// on its connection's), so it hops to the main thread with shellapi.OnMain.
+// commands are the workspace's palette and CLI commands. Main runs them
+// on the main thread (a shortcut, the palette); Run off it (the CLI, on
+// its connection's goroutine), hopping to the main thread with
+// shellapi.OnMain.
 func (ws *Workspace) commands() []actionsapi.Command {
 	ui := func(id, title, keys string, fn func()) actionsapi.Command {
 		return actionsapi.Command{ID: id, Title: title, Keys: keys, Main: fn, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
@@ -190,9 +180,6 @@ func (ws *Workspace) commands() []actionsapi.Command {
 		// IDs, names and keys are attention's (apps/web/app/AppCommands.ts,
 		// CommandPalette.ts, QuickSwitcher.ts, CorePlugins.ts) where it has
 		// the command; the rest are the reader's own.
-		ui("switcher:open", "Open quick switcher", "Ctrl O", func() { ws.openPalette(modeFiles) }),
-		ui("command-palette:open", "Open command palette", "Ctrl P", func() { ws.openPalette(modeCommands) }),
-		ui("editor:go-to-line", "Go to line", "Ctrl G", func() { ws.openPalette(modeLine) }),
 		ui("workspace:close", "Close current tab", "Ctrl W", ws.closeActiveTab),
 		ui("workspace:new-tab", "Open new tab", "Ctrl T", ws.newTab),
 		ui("workspace:undo-close-pane", "Undo close tab", "Ctrl Shift T", ws.undoClose),
@@ -439,6 +426,8 @@ func (a api) ActiveTab() (tabtypesapi.Info, bool) {
 func (a api) Display(path string) string { return a.ws.display(path) }
 
 func (a api) RevealPanel(id string) { a.ws.revealPanel(id) }
+
+func (a api) RecentFiles() []string { return append([]string(nil), a.ws.recentFiles...) }
 
 // copyPath copies the active tab's path: as the CLI shows it, or absolute.
 func (ws *Workspace) copyPath(absolute bool) {

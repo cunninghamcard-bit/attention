@@ -10,9 +10,16 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/commandpalette"
+	"github.com/cunninghamcard-bit/attention/native/plugins/gotoline"
+	"github.com/cunninghamcard-bit/attention/native/plugins/palette"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
+	"github.com/cunninghamcard-bit/attention/native/plugins/switcher"
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
+
+// testPalette is testWorkspace's palette.
+var testPalette *palette.Palette
 
 // A workspace over three notes, drawn by mygo's tester: the shortcuts and
 // the palette are driven by key presses, without a window or rutis.
@@ -43,13 +50,22 @@ func testWorkspace(t *testing.T) (*Workspace, *ui.Tester) {
 	ws := newWorkspace(t.Context(), fs, project)
 	ws.isDark = func() bool { return false }
 	ws.setMounts([]projectcontract.Mount{m})
-	ws.files = &files
-	// What the plugin wires: the API, the commands, their shortcuts.
+	// What the profile loads beside it: the API, the commands, their
+	// shortcuts, the palette and its sources.
 	t.Cleanup(workspaceapi.Set(api{ws}))
 	for _, cmd := range ws.commands() {
 		t.Cleanup(actionsapi.Register(cmd))
 	}
 	t.Cleanup(shortcuts.Register(t.Context()))
+	var off func()
+	testPalette, off = palette.Register()
+	t.Cleanup(off)
+	// The listing is set here; a refresh's walk is dropped.
+	sw := switcher.New(t.Context(), project.Files, func(func()) {})
+	sw.SetListing(files)
+	t.Cleanup(switcher.Register(sw))
+	t.Cleanup(commandpalette.Register(commandpalette.New(t.Context())))
+	t.Cleanup(gotoline.Register())
 	t.Cleanup(func() {
 		for _, p := range ws.groups() {
 			for _, tb := range p.tabs {
@@ -79,7 +95,7 @@ func press(tt *ui.Tester, mods ui.Modifiers, key ui.Key) { tt.Key(mods, key); tt
 func TestQuickSwitcherOpensIntoTheNewTab(t *testing.T) {
 	ws, tt := testWorkspace(t)
 	press(tt, ui.Cmd, ui.KeyO)
-	if ws.palette == nil || ws.palette.mode != modeFiles {
+	if testPalette.Open() != switcher.ID {
 		t.Fatal("Ctrl O did not open the quick switcher")
 	}
 	tt.Type("alpha")
@@ -130,10 +146,9 @@ func TestQuickSwitcherEmptyQueryShowsRecentFiles(t *testing.T) {
 	ws.open("/m/gamma.md", nil)
 	ws.open("/m/alpha.md", nil)
 	press(tt, ui.Cmd, ui.KeyO)
-	ws.rerank(ws.palette)
 	var got []string
-	for _, i := range ws.palette.results {
-		got = append(got, ws.palette.names[i])
+	for _, it := range testPalette.Items() {
+		got = append(got, it.Detail+"/"+it.Label)
 	}
 	if len(got) != 2 || got[0] != "m/alpha" || got[1] != "m/gamma" {
 		t.Fatalf("recent files = %v, want newest first", got)
@@ -141,9 +156,9 @@ func TestQuickSwitcherEmptyQueryShowsRecentFiles(t *testing.T) {
 }
 
 func TestCommandPaletteRunsAndRemembersCommands(t *testing.T) {
-	ws, tt := testWorkspace(t)
+	_, tt := testWorkspace(t)
 	press(tt, ui.Cmd, ui.KeyP)
-	if ws.palette == nil || ws.palette.mode != modeCommands {
+	if testPalette.Open() != commandpalette.ID {
 		t.Fatal("Ctrl P did not open the command palette")
 	}
 }

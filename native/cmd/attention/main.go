@@ -24,15 +24,19 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/internal/launcher"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/cli"
+	"github.com/cunninghamcard-bit/attention/native/plugins/commandpalette"
 	"github.com/cunninghamcard-bit/attention/native/plugins/fileresource"
 	"github.com/cunninghamcard-bit/attention/native/plugins/filetree"
 	"github.com/cunninghamcard-bit/attention/native/plugins/fs"
+	"github.com/cunninghamcard-bit/attention/native/plugins/gotoline"
 	"github.com/cunninghamcard-bit/attention/native/plugins/imageui"
 	"github.com/cunninghamcard-bit/attention/native/plugins/markdownui"
+	"github.com/cunninghamcard-bit/attention/native/plugins/palette"
 	"github.com/cunninghamcard-bit/attention/native/plugins/project"
 	"github.com/cunninghamcard-bit/attention/native/plugins/search"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
+	"github.com/cunninghamcard-bit/attention/native/plugins/switcher"
 	"github.com/cunninghamcard-bit/attention/native/plugins/textui"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 )
@@ -41,7 +45,8 @@ import (
 // which run.
 var plugins = []*rutis.Definition{
 	shell.Plugin, actions.Plugin, cli.Plugin, fs.Plugin, project.Plugin, fileresource.Plugin, workspace.Plugin,
-	shortcuts.Plugin, filetree.Plugin, search.Plugin, textui.Plugin, markdownui.Plugin, imageui.Plugin,
+	shortcuts.Plugin, palette.Plugin, switcher.Plugin, commandpalette.Plugin, gotoline.Plugin,
+	filetree.Plugin, search.Plugin, textui.Plugin, markdownui.Plugin, imageui.Plugin,
 }
 
 func main() {
