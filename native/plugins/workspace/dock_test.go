@@ -7,7 +7,6 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/smallnest/uix/components/lucide"
 
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
@@ -54,20 +53,19 @@ func TestDockShowsFirstPanelAndRevealsByShortcut(t *testing.T) {
 }
 
 func TestOpenWithMatchSelectsIt(t *testing.T) {
-	ws, _ := testWorkspace(t)
+	ws, tt := testWorkspace(t)
+	testText = "# note\nfirst match here"
 	tb := ws.open("/m/alpha.md", &workspaceapi.Nav{Line: 2, Col: 7, Len: 5})
-	// The read's result comes back through shellapi.Update, which needs a
-	// window: hand it over directly.
-	ws.loaded(tb, fscontract.File{Text: "# note\nfirst match here"}, nil, nil)
-	sels := tb.ed.Selections()
-	if len(sels) != 1 {
-		t.Fatalf("selections = %v", sels)
+	tt.Frame() // the body starts the read
+	testPosts.next(t)
+	tt.Frame()
+	if tb.kind != "markdown" {
+		t.Fatalf("alpha.md opened as %q", tb.kind)
 	}
-	from, to := min(sels[0].Anchor, sels[0].Head), max(sels[0].Anchor, sels[0].Head)
-	if got := tb.ed.Buffer.String()[from:to]; got != "match" {
+	if got := testMD.Selected(tb.id); got != "match" {
 		t.Fatalf("selected %q, want the match", got)
 	}
-	if !tb.mdSource {
+	if !testMD.Source(tb.id) {
 		t.Fatal("a match in markdown is shown in the source")
 	}
 }

@@ -3,18 +3,17 @@
 // display paths, revealing a panel. Panel plugins inject the "workspace"
 // service so rutis orders them after it, then call Get on the main thread.
 //
-// TODO(RFC §5.6): opening becomes navigation.OpenResource over tab types.
+// TODO(RFC §5.6): opening becomes navigation.OpenResource.
 package workspaceapi
 
-import "sync"
+import (
+	"sync"
 
-// Nav is where to put the reader in the opened file, 1-based. Line alone
-// selects the line; Col and Len select a match within it; To selects lines
-// Line through To.
-type Nav struct {
-	Line, To int
-	Col, Len int
-}
+	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
+)
+
+// Nav is where to put the reader in the opened file (tabtypesapi.Nav).
+type Nav = tabtypesapi.Nav
 
 // API is the workspace, called on the main thread only.
 type API interface {
@@ -22,6 +21,8 @@ type API interface {
 	Open(path string, nav *Nav, newTab bool)
 	// ActivePath is the active tab's file, "" for none.
 	ActivePath() string
+	// ActiveTab is the active tab, false for none or a new tab.
+	ActiveTab() (tabtypesapi.Info, bool)
 	// Display is a path as the reader shows it: "<mount>/<rel>".
 	Display(path string) string
 	// RevealPanel opens the dock holding the panel and shows the panel.

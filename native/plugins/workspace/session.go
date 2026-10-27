@@ -79,7 +79,7 @@ func (ws *Workspace) snapshot() session {
 	for _, p := range ws.panes {
 		var sp sessionPane
 		for i, t := range p.tabs {
-			if t.kind == kindEmpty {
+			if t.empty {
 				continue
 			}
 			if i == p.active {

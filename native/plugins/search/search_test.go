@@ -8,6 +8,7 @@ import (
 
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
+	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
@@ -24,6 +25,9 @@ func (f *fakeWorkspace) Open(path string, nav *workspaceapi.Nav, _ bool) {
 func (f *fakeWorkspace) ActivePath() string         { return "" }
 func (f *fakeWorkspace) Display(path string) string { return "m" + path }
 func (f *fakeWorkspace) RevealPanel(string)         {}
+func (f *fakeWorkspace) ActiveTab() (tabtypesapi.Info, bool) {
+	return tabtypesapi.Info{}, false
+}
 
 func results() []projectcontract.FileResult {
 	return []projectcontract.FileResult{

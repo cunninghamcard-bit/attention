@@ -7,14 +7,13 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
-	"github.com/egoist/mygo/ui/editor"
-	"github.com/egoist/mygo/ui/markdown"
 	"github.com/smallnest/uix/components/lucide"
 
 	"github.com/cunninghamcard-bit/attention-ui/theme"
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
+	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 )
 
 var (
@@ -39,6 +38,7 @@ func themeFor(dark bool) *ui.Theme {
 func (ws *Workspace) view(c *ui.Context) {
 	c.SetTheme(themeFor(ws.isDark()))
 	t := c.Theme()
+	ws.reclaim()
 	ws.shortcuts(c)
 	ui.Column(c).Fill().Background(t.Background).Children(func() {
 		ui.Row(c).Grow(1).FillWidth().AlignItems(ui.Stretch).Children(func() {
@@ -74,7 +74,8 @@ func (ws *Workspace) view(c *ui.Context) {
 // shortcuts are attention's defaults (apps/web: AppCommands, the command
 // palette, the quick switcher), Cmd on macOS and Ctrl elsewhere; the
 // editing ones do not apply to a reader. Keys attention leaves unbound get
-// ours: Ctrl Shift F, Ctrl B, Ctrl \, Ctrl E, Ctrl Q.
+// ours: Ctrl Shift F, Ctrl B, Ctrl \, Ctrl Q. A tab type's own keys are its
+// body's (markdown's Ctrl E).
 func (ws *Workspace) shortcuts(c *ui.Context) {
 	digits := []ui.Key{ui.Key1, ui.Key2, ui.Key3, ui.Key4, ui.Key5, ui.Key6, ui.Key7, ui.Key8}
 	for i, k := range digits {
@@ -105,10 +106,6 @@ func (ws *Workspace) shortcuts(c *ui.Context) {
 		ws.toggleLeft()
 	case c.Shortcut(ui.Cmd, ui.KeyBackslash):
 		ws.splitRight()
-	case c.Shortcut(ui.Cmd, ui.KeyE):
-		if tb := ws.activeTab(); tb != nil && tb.kind == kindMarkdown {
-			tb.mdSource = !tb.mdSource
-		}
 	case c.Shortcut(ui.Cmd, ui.KeyQ):
 		mygo.App.Quit()
 	}
@@ -216,7 +213,7 @@ func (ws *Workspace) paneView(c *ui.Context, i int) {
 			ws.emptyPane(c)
 			return
 		}
-		ws.tabBody(c, tb)
+		ws.tabBody(c, tb, focused || len(ws.panes) == 1)
 	})
 }
 
@@ -232,7 +229,7 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, paneIndex int, focused bool)
 				}
 				tip := tb.title
 				icon := fileIcon(tb.title)
-				if tb.kind == kindEmpty {
+				if tb.empty {
 					icon = lucide.Globe()
 				} else {
 					tip = ws.display(tb.path)
@@ -270,49 +267,23 @@ func (ws *Workspace) emptyPane(c *ui.Context) {
 	})
 }
 
-func (ws *Workspace) tabBody(c *ui.Context, tb *tab) {
+// tabBody draws the tab's type's body (the tab.body slot, keyed by the
+// type's ID), under a banner while the file is missing.
+func (ws *Workspace) tabBody(c *ui.Context, tb *tab, focused bool) {
 	t := c.Theme()
-	if tb.kind == kindEmpty {
+	if tb.empty {
 		ws.emptyPane(c)
 		return
 	}
 	if tb.missing {
 		banner(c, "This file was deleted or moved. The last loaded content is shown.", t.Warning)
 	}
-	switch {
-	case tb.err != "":
-		centered(c, tb.err)
-		return
-	case tb.kind == kindImage:
-		if tb.img == nil {
-			centered(c, "Loading…")
-			return
-		}
-		ui.Scroll(c).Grow(1).Fill().Children(func() {
-			ui.Column(c).Padding(16).Center().FillWidth().Children(func() {
-				ui.Image(c, tb.img).Fit(ui.Contain).MaxWidthPercent(100)
-			})
-		})
-		return
-	case tb.file.Binary:
-		centered(c, "This is a binary file and is not shown.")
-		return
-	case tb.file.TooLarge:
-		centered(c, fmt.Sprintf("This file is %s, larger than the %s shown.", size(tb.file.Size), size(maxTextBytes)))
-		return
-	case tb.ed == nil:
-		centered(c, "Loading…")
+	tt, ok := tabtypesapi.Get(tb.typeID)
+	if !ok {
+		centered(c, "No viewer for this file.")
 		return
 	}
-	if tb.kind == kindMarkdown && !tb.mdSource {
-		ui.Scroll(c).Key(fmt.Sprintf("md-%d", tb.id)).Grow(1).Fill().Children(func() {
-			ui.Column(c).PaddingX(48).PaddingY(32).MaxWidth(860).FillWidth().Children(func() {
-				markdown.View(c, tb.ed.Buffer.String(), &tb.md)
-			})
-		})
-		return
-	}
-	editor.View(c, tb.ed).Key(fmt.Sprintf("ed-%d", tb.id)).Grow(1).Fill()
+	tt.Body(c, ws.props(tb, focused))
 }
 
 func banner(c *ui.Context, text string, color ui.Color) {
@@ -327,16 +298,6 @@ func centered(c *ui.Context, text string) {
 	ui.Column(c).Grow(1).Fill().Center().Children(func() {
 		ui.Text(c, text).TextColor(c.Theme().TextMuted)
 	})
-}
-
-func size(n int64) string {
-	switch {
-	case n >= 1<<20:
-		return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
-	case n >= 1<<10:
-		return fmt.Sprintf("%.1f KB", float64(n)/(1<<10))
-	}
-	return strconv.FormatInt(n, 10) + " B"
 }
 
 // ---- status bar ---------------------------------------------------------------
@@ -363,32 +324,12 @@ func (ws *Workspace) statusBar(c *ui.Context) {
 			}
 		}()
 		tb := ws.activeTab()
-		if tb == nil || tb.kind == kindEmpty {
+		if tb == nil || tb.empty {
 			return
 		}
-		if tb.ed != nil && (tb.kind == kindText || tb.mdSource) {
-			pos := tb.ed.CursorPos()
-			ui.Text(c, fmt.Sprintf("%d:%d", pos.Line+1, pos.Col+1)).FontSize(12).TextColor(t.TextMuted)
+		if tt, ok := tabtypesapi.Get(tb.typeID); ok && tt.Status != nil {
+			tt.Status(c, ws.props(tb, true))
 		}
-		if tb.kind == kindMarkdown {
-			label := "Preview"
-			if tb.mdSource {
-				label = "Source"
-			}
-			if ui.Text(c, label).FontSize(12).TextColor(t.TextMuted).Tooltip("Toggle reading view (Ctrl E)").Clicked() {
-				tb.mdSource = !tb.mdSource
-			}
-		}
-		lang := "Plain Text"
-		if tb.ed != nil {
-			if l := tb.ed.Buffer.Language(); l != nil {
-				lang = l.Name
-			}
-		}
-		if tb.kind == kindImage {
-			lang = "Image"
-		}
-		ui.Text(c, lang).FontSize(12).TextColor(t.TextMuted)
 		ui.Text(c, "Read-only").FontSize(12).TextColor(t.TextMuted)
 	})
 }

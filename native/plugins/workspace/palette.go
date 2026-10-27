@@ -1,21 +1,22 @@
 package workspace
 
 import (
-	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/egoist/mygo/ui/editor"
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
+	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
 	"github.com/cunninghamcard-bit/attention/native/internal/fuzzy"
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
+	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
+	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
 type paletteMode int
@@ -238,12 +239,25 @@ func (ws *Workspace) accept(p *palette, newTab bool) {
 	case modeLine:
 		line, col, ok := parseLineCol(p.query)
 		t := ws.activeTab()
-		if !ok || t == nil || t.ed == nil {
+		if _, _, has := ws.lines(t); !ok || !has {
 			return
 		}
 		ws.palette = nil
-		t.ed.GoTo(editor.Pos{Line: min(line, t.ed.Buffer.LineCount()) - 1, Col: max(0, col-1)})
+		t.nav = &workspaceapi.Nav{Line: line, Col: col}
+		t.navRev++
 	}
+}
+
+// lines is t's caret line and line count, from its tab type.
+func (ws *Workspace) lines(t *tab) (cur, lines int, ok bool) {
+	if t == nil || t.empty {
+		return 0, 0, false
+	}
+	tt, found := tabtypesapi.Get(t.typeID)
+	if !found || tt.Lines == nil {
+		return 0, 0, false
+	}
+	return tt.Lines(t.id)
 }
 
 // parseLineCol reads "12" or "12:5".
@@ -305,11 +319,10 @@ func (ws *Workspace) paletteView(c *ui.Context) {
 			switch p.mode {
 			case modeLine:
 				hint := "Type a line number"
-				if tb := ws.activeTab(); tb == nil || tb.ed == nil {
+				if cur, lines, ok := ws.lines(ws.activeTab()); !ok {
 					hint = "No text file is active"
 				} else {
-					pos := tb.ed.CursorPos()
-					hint = "Current line " + strconv.Itoa(pos.Line+1) + " of " + strconv.Itoa(tb.ed.Buffer.LineCount())
+					hint = "Current line " + strconv.Itoa(cur) + " of " + strconv.Itoa(lines)
 				}
 				ui.Text(c, hint).TextColor(t.TextMuted).FontSize(12).Padding(6, 8)
 			default:

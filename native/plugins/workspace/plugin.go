@@ -1,10 +1,10 @@
 // Package workspace is the workspace UI plugin: the Zed-looking reader —
-// project panel, tabbed panes with a split, read-only text, Markdown and
-// image views, quick open, the command palette, project search, the status
-// bar — and the CLI's open and tabs.
+// the ribbon, the docks' panels, tabbed panes with a split whose bodies
+// are the tab types' (tabtypesapi), quick open, the command palette, the
+// status bar — and the CLI's open and tabs.
 //
-// TODO(RFC §5.5–§5.7): tab bodies, panels and the palette become slot,
-// tabTypes and navigation contributions once there are other UI plugins.
+// TODO(RFC §5.6–§5.7): the palette becomes a slot, opening goes through
+// navigation.
 package workspace
 
 import (
@@ -26,6 +26,7 @@ import (
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
+	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
 )
 
@@ -213,11 +214,6 @@ func (ws *Workspace) commands() []actionsapi.Command {
 		ui("workspace:split-vertical", "Split right", "Ctrl \\", ws.splitRight),
 		ui("app:toggle-left-sidebar", "Toggle left sidebar", "Ctrl B", ws.toggleLeft),
 		ui("app:toggle-right-sidebar", "Toggle right sidebar", "", ws.toggleRight),
-		ui("markdown:toggle-preview", "Toggle reading view", "Ctrl E", func() {
-			if tb := ws.activeTab(); tb != nil && tb.kind == kindMarkdown {
-				tb.mdSource = !tb.mdSource
-			}
-		}),
 		{ID: "workspace:add-folder", Title: "Add folder to workspace", Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
 			dirs, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: shellapi.Window(), Title: "Add Folder to Project", Directory: true})
 			if err != nil || len(dirs) == 0 {
@@ -262,23 +258,21 @@ func (ws *Workspace) commands() []actionsapi.Command {
 	}...)
 }
 
-// viewType names a tab's view as the TS CLI's tabs does.
+// viewType names a tab's view as the TS CLI's tabs does: its kind.
 func (t *tab) viewType() string {
-	switch t.kind {
-	case kindMarkdown:
-		return "markdown"
-	case kindImage:
-		return "image"
-	case kindEmpty:
+	switch {
+	case t.empty:
 		return "empty"
+	case t.kind == "":
+		return "none"
 	}
-	return "text"
+	return t.kind
 }
 
 // displayText is a tab's name as the TS CLI shows it: a note without its
 // extension, any other file by its base name.
 func (t *tab) displayText() string {
-	if t.kind == kindMarkdown {
+	if t.kind == "markdown" {
 		return strings.TrimSuffix(t.title, filepath.Ext(t.title))
 	}
 	return t.title
@@ -417,10 +411,17 @@ type api struct{ ws *Workspace }
 func (a api) Open(path string, nav *workspaceapi.Nav, newTab bool) { a.ws.openIn(path, nav, newTab) }
 
 func (a api) ActivePath() string {
-	if t := a.ws.activeTab(); t != nil && t.kind != kindEmpty {
+	if t := a.ws.activeTab(); t != nil && !t.empty {
 		return t.path
 	}
 	return ""
+}
+
+func (a api) ActiveTab() (tabtypesapi.Info, bool) {
+	if t := a.ws.activeTab(); t != nil && !t.empty {
+		return a.ws.props(t, true).Info, true
+	}
+	return tabtypesapi.Info{}, false
 }
 
 func (a api) Display(path string) string { return a.ws.display(path) }

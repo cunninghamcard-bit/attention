@@ -3,40 +3,20 @@ package workspace
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	neturl "net/url"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/egoist/mygo"
-	"github.com/egoist/mygo/ui"
-	"github.com/egoist/mygo/ui/editor"
-	"github.com/egoist/mygo/ui/markdown"
 
 	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 	"github.com/cunninghamcard-bit/attention/native/internal/watchq"
 	"github.com/cunninghamcard-bit/attention/native/shellapi"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
+	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
-)
-
-// Size limits for what a tab reads.
-const (
-	maxTextBytes  = 8 << 20
-	maxImageBytes = 50 << 20
-)
-
-type tabKind int
-
-const (
-	kindText tabKind = iota
-	kindMarkdown
-	kindImage
-	kindEmpty // a new tab, until a file opens in it
 )
 
 // maxClosed is how many closed tabs Undo close tab can bring back.
@@ -87,6 +67,7 @@ type Workspace struct {
 	saveSoon       func()
 	isDark         func() bool // mygo.Theme.IsDark; tests replace it
 	title          string
+	typesGen       int // the tab type registry's generation last claimed against
 }
 
 type pane struct {
@@ -94,28 +75,23 @@ type pane struct {
 	active int
 }
 
+// tab is a tab's identity and what the workspace knows of its file; the
+// content is its tab type's (tabtypesapi).
 type tab struct {
 	id    int
-	kind  tabKind
-	path  string
-	title string
+	empty bool // a new tab, until a file opens in it
+	// kind and typeID are the claiming tab type's, "" while none claims the
+	// address; the tab's identity is (kind, address).
+	kind    string
+	typeID  string
+	address string
+	path    string
+	title   string
 
-	loading bool
-	err     string
 	missing bool // the file was deleted or moved away
-	notice  string
-	reloads int // reload requests while a load was running
-
-	file fscontract.File
-	ed   *editor.State // text, and markdown's source view
-
-	mdSource bool // markdown shows its source instead of the rendered view
-	md       markdown.Options
-
-	img ui.ImageSource
-
-	// nav is where to go once the content arrives.
-	nav *workspaceapi.Nav
+	version int  // bumps when the file changes
+	nav     *workspaceapi.Nav
+	navRev  int
 }
 
 func newWorkspace(ctx context.Context, fs fscontract.FS, project projectcontract.Project) *Workspace {
@@ -134,14 +110,62 @@ func newWorkspace(ctx context.Context, fs fscontract.FS, project projectcontract
 	return ws
 }
 
-func kindFor(path string) tabKind {
-	switch strings.ToLower(filepath.Ext(path)) {
-	case ".md", ".markdown", ".mdx":
-		return kindMarkdown
-	case ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg":
-		return kindImage
+// addressOf is path's resource address: under its mount, else absolute.
+func (ws *Workspace) addressOf(path string) string {
+	if m, rel, ok := ws.mountOf(path); ok && rel != "." {
+		return fscontract.AddressFor(m.ID, rel)
 	}
-	return kindText
+	return fscontract.AbsoluteAddress(path)
+}
+
+// claim gives t the tab type that shows its address now.
+func (ws *Workspace) claim(t *tab) {
+	tt, ok := tabtypesapi.Claim(t.address, "")
+	if !ok {
+		t.kind, t.typeID = "", ""
+		return
+	}
+	if t.typeID != "" && t.typeID != tt.ID {
+		ws.release(t)
+	}
+	t.kind, t.typeID = tt.Kind, tt.ID
+	if tt.Title != nil {
+		t.title = tt.Title(t.address)
+	}
+}
+
+// release tells t's tab type that t is gone from it.
+func (ws *Workspace) release(t *tab) {
+	if tt, ok := tabtypesapi.Get(t.typeID); ok && tt.Closed != nil {
+		tt.Closed(t.id)
+	}
+}
+
+// reclaim claims every tab again when tab types came or went: a tab
+// opened before its viewer loaded, or whose viewer unloaded, finds its
+// type (RFC §5.5: contributions come back with their plugin).
+func (ws *Workspace) reclaim() {
+	gen := tabtypesapi.Generation()
+	if gen == ws.typesGen {
+		return
+	}
+	ws.typesGen = gen
+	for _, p := range ws.panes {
+		for _, t := range p.tabs {
+			if !t.empty {
+				ws.claim(t)
+			}
+		}
+	}
+}
+
+// props are what t's body is given.
+func (ws *Workspace) props(t *tab, focused bool) tabtypesapi.Props {
+	return tabtypesapi.Props{
+		Info: tabtypesapi.Info{ID: t.id, Kind: t.kind, Address: t.address, Path: t.path,
+			Nav: t.nav, NavRevision: t.navRev, Version: t.version, Missing: t.missing, Focused: focused},
+		MarkMissing: func() { t.missing = true },
+	}
 }
 
 func (ws *Workspace) activePane() *pane {
@@ -197,6 +221,14 @@ func (ws *Workspace) display(path string) string {
 func (ws *Workspace) setMounts(ms []projectcontract.Mount) {
 	ws.mounts = ms
 	ws.mountsLoaded = true
+	// A file opened before the mounts were known gets its mount address.
+	for _, p := range ws.panes {
+		for _, t := range p.tabs {
+			if !t.empty {
+				t.address = ws.addressOf(t.path)
+			}
+		}
+	}
 	if ws.restoring != nil {
 		ws.reopen(ws.restoring)
 		ws.restoring = nil
@@ -215,28 +247,31 @@ func (ws *Workspace) open(path string, nav *workspaceapi.Nav) *tab {
 func (ws *Workspace) openIn(path string, nav *workspaceapi.Nav, newTab bool) *tab {
 	p := ws.activePane()
 	// A file opens in the active new tab, as a browser's address does.
-	if cur := p.current(); cur != nil && cur.kind == kindEmpty && !newTab {
+	if cur := p.current(); cur != nil && cur.empty && !newTab {
 		p.tabs = append(p.tabs[:p.active], p.tabs[p.active+1:]...)
 		p.active = max(0, p.active-1)
 		if len(p.tabs) > 0 {
 			p.active = min(p.active, len(p.tabs)-1)
 		}
 	}
-	for i, t := range p.tabs {
-		if !newTab && t.kind != kindEmpty && t.path == path {
+	t := &tab{address: ws.addressOf(path), path: path, title: filepath.Base(path)}
+	ws.claim(t)
+	for i, o := range p.tabs {
+		if !newTab && !o.empty && o.kind == t.kind && o.address == t.address {
 			p.active = i
 			if nav != nil {
-				t.nav = nav
-				ws.applyNav(t)
+				o.nav = nav
+				o.navRev++
 			}
 			ws.changed()
-			return t
+			return o
 		}
 	}
 	ws.nextTab++
-	t := &tab{id: ws.nextTab, kind: kindFor(path), path: path, title: filepath.Base(path), nav: nav}
-	t.md.OnLink = func(url string) { ws.followLink(t, url) }
-	t.md.LoadImage = markdown.FileImages(filepath.Dir(path))
+	t.id = ws.nextTab
+	if nav != nil {
+		t.nav, t.navRev = nav, 1
+	}
 	at := p.active + 1
 	if len(p.tabs) == 0 {
 		at = 0
@@ -244,142 +279,9 @@ func (ws *Workspace) openIn(path string, nav *workspaceapi.Nav, newTab bool) *ta
 	p.tabs = append(p.tabs[:at], append([]*tab{t}, p.tabs[at:]...)...)
 	p.active = at
 	ws.watches.Watch(filepath.Dir(path))
-	ws.load(t)
 	ws.noteRecentFile(path)
 	ws.changed()
 	return t
-}
-
-// load reads t's content on a goroutine.
-func (ws *Workspace) load(t *tab) {
-	if t.loading {
-		t.reloads++
-		return
-	}
-	t.loading = true
-	kind, path := t.kind, t.path
-	start := time.Now()
-	go func() {
-		var (
-			file fscontract.File
-			img  ui.ImageSource
-			err  error
-		)
-		if kind == kindImage {
-			var data []byte
-			data, err = ws.fs.ReadBytes(ws.ctx, path, maxImageBytes)
-			if err == nil {
-				if strings.EqualFold(filepath.Ext(path), ".svg") {
-					img, err = ui.ParseSVG(data)
-				} else {
-					img, err = ui.DecodeBitmap(data)
-				}
-			}
-		} else {
-			file, err = ws.fs.Read(ws.ctx, path, maxTextBytes)
-		}
-		shellapi.Update(func() {
-			ws.loaded(t, file, img, err)
-			debugf("tab: loaded %s in %s", filepath.Base(path), time.Since(start))
-		})
-	}()
-}
-
-func (ws *Workspace) loaded(t *tab, file fscontract.File, img ui.ImageSource, err error) {
-	t.loading = false
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			t.missing = true
-		} else {
-			t.err = err.Error()
-		}
-	} else {
-		t.err, t.missing = "", false
-		switch t.kind {
-		case kindImage:
-			t.img = img
-		default:
-			t.file = file
-			t.setText(file)
-			ws.applyNav(t)
-		}
-	}
-	if t.reloads > 0 {
-		t.reloads = 0
-		ws.load(t)
-	}
-}
-
-// setText puts the file's text in the tab, keeping the first visible line
-// when the text is replaced on a refresh.
-func (t *tab) setText(f fscontract.File) {
-	if f.Binary || f.TooLarge {
-		t.ed = nil
-		return
-	}
-	if t.ed == nil {
-		buf := editor.NewBuffer(f.Text)
-		buf.SetLanguage(editor.LanguageFor(t.path))
-		t.ed = &editor.State{Buffer: buf, ReadOnly: true}
-		return
-	}
-	// Keep where the reader was: the first visible line and the carets,
-	// by line and column, clamped to the new text.
-	first, _ := t.ed.VisibleLines()
-	type caret struct{ anchor, head editor.Pos }
-	var carets []caret
-	for _, s := range t.ed.Selections() {
-		carets = append(carets, caret{t.ed.Buffer.Pos(s.Anchor), t.ed.Buffer.Pos(s.Head)})
-	}
-	t.ed.Buffer.Reset(f.Text)
-	clamp := func(p editor.Pos) int {
-		lines := t.ed.Buffer.LineCount()
-		p.Line = max(0, min(p.Line, lines-1))
-		p.Col = max(0, min(p.Col, len(t.ed.Buffer.Line(p.Line))))
-		return t.ed.Buffer.Offset(p)
-	}
-	if len(carets) > 0 {
-		sels := make([]editor.Selection, len(carets))
-		for i, c := range carets {
-			sels[i] = editor.Selection{Anchor: clamp(c.anchor), Head: clamp(c.head)}
-		}
-		t.ed.SetSelections(sels...)
-	}
-	if first > 0 {
-		t.ed.ScrollTo(min(first, max(0, t.ed.Buffer.LineCount()-1)))
-	}
-}
-
-// applyNav moves the editor to the pending nav once there is text: a
-// match (Col, Len) is selected, else lines Line through To.
-func (ws *Workspace) applyNav(t *tab) {
-	if t.nav == nil || t.ed == nil {
-		return
-	}
-	if t.kind == kindMarkdown {
-		t.mdSource = true // a passage is shown in the source
-	}
-	n := *t.nav
-	t.nav = nil
-	buf := t.ed.Buffer
-	lines := buf.LineCount()
-	from := max(1, min(n.Line, lines)) - 1
-	if n.Col > 0 {
-		text := buf.Line(from)
-		col := min(n.Col-1, len(text))
-		end := min(col+n.Len, len(text))
-		t.ed.GoTo(editor.Pos{Line: from, Col: col})
-		t.ed.Select(buf.Offset(editor.Pos{Line: from, Col: col}), buf.Offset(editor.Pos{Line: from, Col: end}))
-		return
-	}
-	to := from
-	if n.To > 0 {
-		to = max(from, min(n.To, lines)-1)
-	}
-	start := buf.Offset(editor.Pos{Line: from})
-	end := buf.Offset(editor.Pos{Line: to, Col: len(buf.Line(to))})
-	t.ed.GoTo(editor.Pos{Line: from})
-	t.ed.Select(start, end)
 }
 
 func (ws *Workspace) closeTab(p *pane, i int) {
@@ -387,7 +289,8 @@ func (ws *Workspace) closeTab(p *pane, i int) {
 		return
 	}
 	t := p.tabs[i]
-	if t.kind != kindEmpty {
+	if !t.empty {
+		ws.release(t)
 		ws.watches.Unwatch(filepath.Dir(t.path))
 		ws.closed = append(ws.closed, t.path)
 		if len(ws.closed) > maxClosed {
@@ -435,39 +338,10 @@ func (ws *Workspace) splitRight() {
 	t := ws.activeTab()
 	ws.panes = append(ws.panes, &pane{})
 	ws.active = 1
-	if t != nil && t.kind != kindEmpty {
+	if t != nil && !t.empty {
 		ws.open(t.path, nil)
 	}
 	ws.changed()
-}
-
-// followLink opens a markdown link: a relative path or file: URL as a
-// file, a #fragment does nothing here, other schemes open outside.
-func (ws *Workspace) followLink(from *tab, url string) {
-	if strings.HasPrefix(url, "#") {
-		return
-	}
-	if strings.Contains(url, "://") && !strings.HasPrefix(url, "file://") {
-		openExternal(url)
-		return
-	}
-	p := url
-	if strings.HasPrefix(url, "file:") {
-		u, err := neturl.Parse(url)
-		if err != nil {
-			return
-		}
-		p = u.Path
-	} else if i := strings.IndexAny(p, "#?"); i >= 0 {
-		p = p[:i]
-	}
-	if decoded, err := neturl.PathUnescape(p); err == nil {
-		p = decoded
-	}
-	if !filepath.IsAbs(p) {
-		p = filepath.Join(filepath.Dir(from.path), p)
-	}
-	ws.open(filepath.Clean(p), nil)
 }
 
 // ---- changes ----------------------------------------------------------------
@@ -482,7 +356,7 @@ func (ws *Workspace) applyBatch(b fscontract.Batch) {
 	for _, p := range ws.panes {
 		for _, t := range p.tabs {
 			op, ok := files[t.path]
-			if !ok || t.kind == kindEmpty {
+			if !ok || t.empty {
 				continue
 			}
 			if op == "remove" || op == "rename" {
@@ -490,7 +364,7 @@ func (ws *Workspace) applyBatch(b fscontract.Batch) {
 				continue
 			}
 			t.missing = false
-			ws.load(t)
+			t.version++
 		}
 	}
 }
@@ -507,7 +381,7 @@ func (ws *Workspace) recheck(t *tab) {
 				return
 			}
 			t.missing = false
-			ws.load(t)
+			t.version++
 		})
 	}()
 }
@@ -519,7 +393,7 @@ func (ws *Workspace) changed() {
 	}
 	title := "attention"
 	if t := ws.activeTab(); t != nil {
-		if t.kind == kindEmpty {
+		if t.empty {
 			title = t.title + " — attention"
 		} else {
 			title = ws.display(t.path) + " — attention"
@@ -543,7 +417,7 @@ func debugf(format string, a ...any) {
 func (ws *Workspace) newTab() {
 	p := ws.activePane()
 	ws.nextTab++
-	t := &tab{id: ws.nextTab, kind: kindEmpty, title: "New tab"}
+	t := &tab{id: ws.nextTab, empty: true, title: "New tab"}
 	at := min(p.active+1, len(p.tabs))
 	p.tabs = append(p.tabs[:at], append([]*tab{t}, p.tabs[at:]...)...)
 	p.active = at

@@ -21,12 +21,18 @@ func testWorkspace(t *testing.T) (*Workspace, *ui.Tester) {
 		{Mount: "m", Rel: "gamma.md", Path: "/m/gamma.md"},
 	}}
 	fs := fsStub()
-	fs.Read = func(context.Context, string, int64) (fscontract.File, error) {
-		return fscontract.File{Text: "# note"}, nil
+	testText, testFiles = "# note", nil
+	fs.Read = func(_ context.Context, path string, _ int64) (fscontract.File, error) {
+		if f, ok := testFiles[path]; ok {
+			return f, nil
+		}
+		return fscontract.File{Text: testText}, nil
 	}
+	fs.ReadBytes = func(context.Context, string, int64) ([]byte, error) { return testBytes, nil }
 	fs.List = func(context.Context, string) ([]fscontract.Entry, error) { return nil, nil }
 	project := projectStub()
 	project.Files = func(context.Context) (projectcontract.Listing, error) { return files, nil }
+	viewers(t, t.Context(), fs)
 	ws := newWorkspace(t.Context(), fs, project)
 	ws.isDark = func() bool { return false }
 	ws.setMounts([]projectcontract.Mount{m})
