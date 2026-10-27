@@ -1,7 +1,8 @@
 // Package shortcuts is the shortcuts UI plugin (dsh's
 // @deepseek-ai/dsh-client-shortcuts): it binds every command's Keys, so a
 // feature plugin declares its shortcuts with its commands and none is
-// wired in a view. It draws nothing; an overlay reads the keys each frame.
+// wired in a view. It draws no window chrome: an overlay reads the keys
+// each frame, and its Hotkeys settings section lists them.
 //
 // TODO: user overrides of the default bindings, as dsh's keybindings file.
 package shortcuts
@@ -13,6 +14,9 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
+	"github.com/smallnest/uix/components/lucide"
+
+	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	"github.com/cunninghamcard-bit/attention/native/slotsapi"
@@ -31,7 +35,7 @@ var keyNames = map[string]ui.Key{
 	"Enter": ui.KeyEnter, "Escape": ui.KeyEscape, "Backspace": ui.KeyBackspace, "Tab": ui.KeyTab,
 	"Space": ui.KeySpace, "Delete": ui.KeyDelete, "Insert": ui.KeyInsert, "Home": ui.KeyHome, "End": ui.KeyEnd,
 	"PageUp": ui.KeyPageUp, "PageDown": ui.KeyPageDown, "Left": ui.KeyLeft, "Right": ui.KeyRight,
-	"Up": ui.KeyUp, "Down": ui.KeyDown, "-": ui.KeyMinus, "=": ui.KeyEqual, ",": ui.KeyComma, ".": ui.KeyPeriod,
+	"Up": ui.KeyUp, "Down": ui.KeyDown, "-": ui.KeyMinus, "=": ui.KeyEqual, "Comma": ui.KeyComma, ".": ui.KeyPeriod,
 	"/": ui.KeySlash, ";": ui.KeySemicolon, "'": ui.KeyQuote, "[": ui.KeyBracketLeft, "]": ui.KeyBracketRight,
 	"\\": ui.KeyBackslash, "`": ui.KeyBackquote,
 	"F1": ui.KeyF1, "F2": ui.KeyF2, "F3": ui.KeyF3, "F4": ui.KeyF4, "F5": ui.KeyF5, "F6": ui.KeyF6,
@@ -80,7 +84,12 @@ func Parse(keys string) []Binding {
 // Label is the first of a command's Keys as the palette shows it.
 func Label(keys string) string {
 	first, _, _ := strings.Cut(keys, ",")
-	return strings.ReplaceAll(strings.TrimSpace(first), "Control", "Ctrl")
+	return display(strings.TrimSpace(first))
+}
+
+// display is a combination as shown: Control as Ctrl, Comma as ",".
+func display(combo string) string {
+	return strings.NewReplacer("Control", "Ctrl", "Comma", ",").Replace(combo)
 }
 
 // Shortcuts binds the registered commands' keys.
@@ -88,6 +97,7 @@ type Shortcuts struct {
 	ctx    context.Context
 	mu     sync.Mutex
 	parsed map[string][]Binding // by Keys
+	filter string               // the Hotkeys section's, main thread only
 }
 
 // New binds keys for commands whose Run runs under ctx.
@@ -128,10 +138,42 @@ func (s *Shortcuts) View(c *ui.Context) {
 	}
 }
 
-// Register binds keys until off is called.
+// Hotkeys is the Hotkeys settings section (attention's Hotkeys tab, dsh's
+// ui-shortcuts reference): every titled command and its keys, filtered by
+// name or key. Read-only until overrides exist.
+func (s *Shortcuts) Hotkeys(c *ui.Context) {
+	t := c.Theme()
+	omgui.Field(c, &s.filter, "Filter…", false).FillWidth()
+	q := strings.ToLower(strings.TrimSpace(s.filter))
+	omgui.SettingsSection(c, "", func() {
+		for _, cmd := range actionsapi.List() {
+			if cmd.Title == "" {
+				continue
+			}
+			if q != "" && !strings.Contains(strings.ToLower(cmd.Title), q) && !strings.Contains(strings.ToLower(display(cmd.Keys)), q) {
+				continue
+			}
+			omgui.PreferenceRow(c, cmd.Title, "", func() {
+				if cmd.Keys == "" {
+					ui.Text(c, "Blank").FontSize(12).TextColor(t.TextMuted)
+					return
+				}
+				ui.Column(c).Gap(4).AlignItems(ui.End).Children(func() {
+					for _, combo := range strings.Split(cmd.Keys, ",") {
+						omgui.ShortcutCaps(c, strings.Fields(display(combo)))
+					}
+				})
+			})
+		}
+	})
+}
+
+// Register binds keys and adds the Hotkeys section until off is called.
 func Register(ctx context.Context) (off func()) {
 	s := New(ctx)
-	return slotsapi.RegisterOverlay(slotsapi.Overlay{ID: ID, Order: -1000, View: s.View})
+	offOverlay := slotsapi.RegisterOverlay(slotsapi.Overlay{ID: ID, Order: -1000, View: s.View})
+	offSection := slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "hotkeys", Title: "Hotkeys", Icon: lucide.Keyboard(), Order: 50, View: s.Hotkeys})
+	return func() { offSection(); offOverlay() }
 }
 
 // Plugin binds the commands' keys while loaded.

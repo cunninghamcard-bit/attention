@@ -81,7 +81,9 @@ type TabType struct {
 	Priority Priority                  // zero: Extension
 	CanOpen  func(address string) bool // optional veto of a pattern match
 	Title    func(address string) string
-	Body     func(c *ui.Context, p Props)
+	// Icon, optional, is the tab's icon; a file's follows its name.
+	Icon *ui.SVG
+	Body func(c *ui.Context, p Props)
 	// Status, optional, draws the tab's status bar items.
 	Status func(c *ui.Context, p Props)
 	// Actions, optional, draws the tab's buttons in its view header, left
@@ -270,6 +272,17 @@ func Claim(address, kind string) (TabType, bool) {
 		return TabType{}, false
 	}
 	return t, true
+}
+
+// PageAddress is the address of the page of kind, a tab that shows no
+// resource (RFC §5.6 page addresses, dsh's sidebar://<kind>): OpenTab
+// opens it, its type claims it by kind.
+func PageAddress(kind string) string { return "attention://" + kind }
+
+// PageKind is the kind a page address names, false for another address.
+func PageKind(address string) (string, bool) {
+	kind, ok := strings.CutPrefix(address, "attention://")
+	return kind, ok && kind != "" && !strings.Contains(kind, "/")
 }
 
 // Match reports whether pattern matches address (see TabType.Patterns).

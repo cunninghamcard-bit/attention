@@ -58,7 +58,8 @@ type Command struct {
 	Title string // shown in the palette; empty keeps it out of the palette
 	// Keys are its default shortcuts, comma-separated, as "Ctrl Shift T"
 	// or "Control Tab, Ctrl PageDown": Ctrl is the platform's command key
-	// (attention's Mod: Command on macOS), Control the Control key itself.
+	// (attention's Mod: Command on macOS), Control the Control key itself;
+	// the comma key is Comma, since a comma separates the combinations.
 	// The shortcuts plugin binds them; the palette shows the first.
 	Keys string
 	// CLI makes the command reachable from the CLI.

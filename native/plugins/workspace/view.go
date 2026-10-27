@@ -160,10 +160,8 @@ func (ws *Workspace) tabChip(c *ui.Context, p *pane, j int, tb *tab) {
 		title += " (deleted)"
 	}
 	tip := tb.title
-	icon := fileIcon(tb.title)
-	if tb.empty {
-		icon = lucide.Globe()
-	} else {
+	icon := ws.tabIcon(tb)
+	if !tb.empty && !tb.page() {
 		tip = ws.display(tb.path)
 	}
 	// Each group shows its active tab, as attention's is-active.
@@ -192,7 +190,7 @@ func (ws *Workspace) tabListMenu(p *pane) []omgui.MenuItem {
 	}
 	for j, tb := range p.tabs {
 		j := j
-		items = append(items, omgui.MenuItem{Label: tb.title, Icon: fileIcon(tb.title), Checked: j == p.active,
+		items = append(items, omgui.MenuItem{Label: tb.title, Icon: ws.tabIcon(tb), Checked: j == p.active,
 			OnClick: func() { p.active, ws.activeGroup = j, p; ws.changed() }})
 	}
 	return items
@@ -308,8 +306,12 @@ func (ws *Workspace) viewHeader(c *ui.Context, p *pane, tb *tab, props tabtypesa
 		navButton("Forward", lucide.ArrowRight(), 1, len(tb.forward))
 		// The folders, then the name (FileView.renderBreadcrumbs), centered.
 		ui.Row(c).Grow(1).MinWidth(0).Justify(ui.Center).AlignItems(ui.Center).Gap(4).Children(func() {
-			parts := strings.Split(ws.display(tb.path), "/")
-			for _, part := range parts[:len(parts)-1] {
+			var parts []string
+			if !tb.page() {
+				parts = strings.Split(ws.display(tb.path), "/")
+				parts = parts[:len(parts)-1]
+			}
+			for _, part := range parts {
 				if part == "" {
 					continue
 				}
@@ -347,9 +349,14 @@ func (ws *Workspace) paneMenu(p *pane, tb *tab, tt tabtypesapi.TabType) []omgui.
 		return func() { ws.activeGroup, p.active = p, p.indexOf(tb); ws.split(dir) }
 	}
 	path := tb.path
-	return append(items,
+	items = append(items,
 		omgui.MenuItem{Label: "Split right", Icon: lucide.SeparatorVertical(), OnClick: split(vertical)},
 		omgui.MenuItem{Label: "Split down", Icon: lucide.SeparatorHorizontal(), OnClick: split(horizontal)},
+	)
+	if tb.page() {
+		return items
+	}
+	return append(items,
 		omgui.MenuItem{Separator: true},
 		omgui.MenuItem{Label: "Copy path", Icon: lucide.Copy(), OnClick: func() { mygo.Clipboard.WriteText(ws.display(path)) }},
 		omgui.MenuItem{Label: "Copy absolute path", Icon: lucide.HardDrive(), OnClick: func() { mygo.Clipboard.WriteText(path) }},
@@ -389,11 +396,23 @@ func (ws *Workspace) mountsStatus(c *ui.Context) {
 // Read-only.
 func (ws *Workspace) tabStatus(c *ui.Context) {
 	tb := ws.activeTab()
-	if tb == nil || tb.empty {
+	if tb == nil || tb.empty || tb.page() {
 		return
 	}
 	if tt, ok := tabtypesapi.Get(tb.typeID); ok && tt.Status != nil {
 		tt.Status(c, ws.props(tb, true))
 	}
 	ui.Text(c, "Read-only").FontSize(12).TextColor(c.Theme().TextMuted)
+}
+
+// tabIcon is a tab's icon: its type's, a file's by its name, a new tab's
+// globe.
+func (ws *Workspace) tabIcon(tb *tab) *ui.SVG {
+	if tb.empty {
+		return lucide.Globe()
+	}
+	if tt, ok := tabtypesapi.Get(tb.typeID); ok && tt.Icon != nil {
+		return tt.Icon
+	}
+	return fileIcon(tb.title)
 }

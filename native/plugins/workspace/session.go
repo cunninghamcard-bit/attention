@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
+	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 )
 
 // session is what reopens the center as it was: tab groups and tabs (the
@@ -119,6 +120,9 @@ func loadSession() (session, bool) {
 
 // keepTab reports whether a saved tab's path reopens.
 func keepTab(path string) bool {
+	if _, ok := tabtypesapi.PageKind(path); ok {
+		return true // a page, whose type may load later
+	}
 	st, err := os.Stat(path)
 	if err == nil {
 		return !st.IsDir()
@@ -151,7 +155,7 @@ func (ws *Workspace) serialize(n *node) sessionNode {
 			if i == n.group.active {
 				sn.Active = len(sn.Tabs)
 			}
-			sn.Tabs = append(sn.Tabs, t.path)
+			sn.Tabs = append(sn.Tabs, t.entry())
 		}
 		return sn
 	}
@@ -235,7 +239,7 @@ func (ws *Workspace) reopen(main *sessionNode) {
 	for _, g := range groups {
 		ws.activeGroup = g.p
 		for _, path := range g.sn.Tabs {
-			ws.openIn(path, nil, true)
+			ws.openEntry(path)
 		}
 		if !hasTabs {
 			g.p.active = min(g.sn.Active, max(0, len(g.p.tabs)-1))

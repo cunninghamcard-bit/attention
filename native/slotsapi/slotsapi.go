@@ -400,3 +400,56 @@ func Status(right bool) []StatusItem {
 	})
 	return out
 }
+
+// SettingsSection is a settings.section contribution (RFC §5.5, dsh's
+// settings.section): a page of the settings tab, listed in its sidebar by
+// Order, then Title.
+type SettingsSection struct {
+	ID    string
+	Title string
+	Icon  *ui.SVG
+	Order int
+	View  func(c *ui.Context)
+}
+
+var sections = map[int]SettingsSection{}
+
+// RegisterSettingsSection adds a settings section until off is called; a
+// second live section with the same ID panics.
+func RegisterSettingsSection(s SettingsSection) (off func()) {
+	mu.Lock()
+	for _, q := range sections {
+		if q.ID == s.ID {
+			mu.Unlock()
+			panic("slots: settings section " + strconv.Quote(s.ID) + " is already registered")
+		}
+	}
+	seq++
+	id := seq
+	sections[id] = s
+	mu.Unlock()
+	invalidate()
+	return func() {
+		mu.Lock()
+		delete(sections, id)
+		mu.Unlock()
+		invalidate()
+	}
+}
+
+// SettingsSections lists the settings sections by Order, then Title.
+func SettingsSections() []SettingsSection {
+	mu.Lock()
+	defer mu.Unlock()
+	out := make([]SettingsSection, 0, len(sections))
+	for _, s := range sections {
+		out = append(out, s)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Order != out[j].Order {
+			return out[i].Order < out[j].Order
+		}
+		return out[i].Title < out[j].Title
+	})
+	return out
+}

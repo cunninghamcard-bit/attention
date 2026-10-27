@@ -232,7 +232,10 @@ func (ws *Workspace) setMounts(ms []projectcontract.Mount) {
 	// A file opened before the mounts were known gets its mount address.
 	for _, p := range ws.groups() {
 		for _, t := range p.tabs {
-			if a := ws.addressOf(t.path); !t.empty && a != t.address {
+			if t.empty || t.page() {
+				continue
+			}
+			if a := ws.addressOf(t.path); a != t.address {
 				t.hold()
 				t.address, t.hold = a, resourcesapi.Hold(a)
 				ws.claim(t)
@@ -366,15 +369,68 @@ func (ws *Workspace) show(t *tab, st histState) {
 	t.empty = false
 	t.address, t.path, t.wantKind = st.address, st.path, st.kind
 	t.title = filepath.Base(st.path)
-	t.kind, t.typeID = "", ""
+	t.kind, t.typeID, t.hold = "", "", nil
 	t.nav, t.navRev = st.nav, 0
 	if st.nav != nil {
 		t.navRev = 1
 	}
+	if t.page() {
+		t.title = st.kind // until its type's Title names it
+	}
 	ws.claim(t)
-	t.hold = resourcesapi.Hold(st.address)
-	ws.noteRecentFile(st.path)
+	if !t.page() {
+		t.hold = resourcesapi.Hold(st.address)
+		ws.noteRecentFile(st.path)
+	}
 	ws.changed()
+}
+
+// page reports whether t shows a page (tabtypesapi.PageAddress), not a
+// file.
+func (t *tab) page() bool {
+	_, ok := tabtypesapi.PageKind(t.address)
+	return !t.empty && ok
+}
+
+// entry is what the session and Undo close tab keep of t: its file, or a
+// page's address.
+func (t *tab) entry() string {
+	if t.page() {
+		return t.address
+	}
+	return t.path
+}
+
+// openEntry reopens an entry in a new tab.
+func (ws *Workspace) openEntry(entry string) {
+	if kind, ok := tabtypesapi.PageKind(entry); ok {
+		_, _ = ws.openTab(kind, workspaceapi.OpenOptions{NewTab: true})
+		return
+	}
+	ws.openIn(entry, nil, true)
+}
+
+// openTab shows the page of kind (workspaceapi.API.OpenTab): its tab, or
+// a new one — a page never takes the place of the file the active tab
+// shows (dsh's openTab).
+func (ws *Workspace) openTab(kind string, o workspaceapi.OpenOptions) (*tab, error) {
+	o.Kind = kind
+	address := tabtypesapi.PageAddress(kind)
+	if !o.NewTab {
+		for _, g := range ws.groups() {
+			for i, t := range g.tabs {
+				if t.address == address && t.kind == kind {
+					g.active, ws.activeGroup = i, g
+					ws.changed()
+					return t, nil
+				}
+			}
+		}
+	}
+	if cur := ws.activePane().current(); cur == nil || !cur.empty {
+		o.NewTab = true // a new tab, unless the active one is new
+	}
+	return ws.openAddress(address, "", o)
 }
 
 // goHistory moves t delta steps through its history
@@ -408,8 +464,10 @@ func (ws *Workspace) closeTab(p *pane, i int) {
 	t := p.tabs[i]
 	if !t.empty {
 		ws.release(t)
-		t.hold()
-		ws.closed = append(ws.closed, t.path)
+		if t.hold != nil {
+			t.hold()
+		}
+		ws.closed = append(ws.closed, t.entry())
 		if len(ws.closed) > maxClosed {
 			ws.closed = ws.closed[len(ws.closed)-maxClosed:]
 		}
@@ -517,7 +575,7 @@ func (ws *Workspace) changed() {
 	}
 	title := "attention"
 	if t := ws.activeTab(); t != nil {
-		if t.empty {
+		if t.empty || t.page() {
 			title = t.title + " — attention"
 		} else {
 			title = ws.display(t.path) + " — attention"
@@ -551,9 +609,9 @@ func (ws *Workspace) newTab() {
 // undoClose reopens the most recently closed file.
 func (ws *Workspace) undoClose() {
 	if n := len(ws.closed); n > 0 {
-		path := ws.closed[n-1]
+		entry := ws.closed[n-1]
 		ws.closed = ws.closed[:n-1]
-		ws.openIn(path, nil, true)
+		ws.openEntry(entry)
 	}
 }
 

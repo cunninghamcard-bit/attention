@@ -218,6 +218,7 @@ func Rows(profile string, mounts []string) []map[string]any {
 		map[string]any{"id": "switcher", "name": "go:switcher"},
 		map[string]any{"id": "command-palette", "name": "go:command-palette"},
 		map[string]any{"id": "go-to-line", "name": "go:go-to-line"},
+		map[string]any{"id": "settings", "name": "go:settings"},
 		map[string]any{"id": "filetree", "name": "go:filetree"},
 		map[string]any{"id": "search", "name": "go:search"},
 		map[string]any{"id": "text-ui", "name": "go:text-ui"},

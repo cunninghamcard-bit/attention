@@ -36,6 +36,10 @@ type API interface {
 	OpenResource(address string, o OpenOptions) error
 	// Open is OpenResource for path (a new tab with newTab).
 	Open(path string, nav *Nav, newTab bool)
+	// OpenTab shows the page of kind (tabtypesapi.PageAddress) as
+	// OpenResource shows an address; a kind no type registers is an
+	// error.
+	OpenTab(kind string, o OpenOptions) error
 	// ActivePath is the active tab's file, "" for none.
 	ActivePath() string
 	// ActiveTab is the active tab, false for none or a new tab.

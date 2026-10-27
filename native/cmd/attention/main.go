@@ -35,6 +35,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/palette"
 	"github.com/cunninghamcard-bit/attention/native/plugins/project"
 	"github.com/cunninghamcard-bit/attention/native/plugins/search"
+	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
 	"github.com/cunninghamcard-bit/attention/native/plugins/switcher"
@@ -46,7 +47,7 @@ import (
 // which run.
 var plugins = []*rutis.Definition{
 	shell.Plugin, actions.Plugin, cli.Plugin, fs.Plugin, project.Plugin, fileresource.Plugin, layout.Plugin, workspace.Plugin,
-	shortcuts.Plugin, palette.Plugin, switcher.Plugin, commandpalette.Plugin, gotoline.Plugin,
+	shortcuts.Plugin, palette.Plugin, switcher.Plugin, commandpalette.Plugin, gotoline.Plugin, settings.Plugin,
 	filetree.Plugin, search.Plugin, textui.Plugin, markdownui.Plugin, imageui.Plugin,
 }
 

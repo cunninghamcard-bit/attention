@@ -141,10 +141,13 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 				l.RevealPanel(PanelID)
 			}
 		}
+		offSection := slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "folders", Title: "Folders", Icon: lucide.FolderTree(), Order: 10,
+			View: func(c *ui.Context) { tr.folders(c, project.RemoveMount) }})
 		offCmd := actionsapi.Register(actionsapi.Command{ID: "file-explorer:open", Title: "Open file explorer", Main: reveal, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
 			return shellapi.OnMain(ctx, func() (string, error) { reveal(); return "", nil })
 		}})
 		rctx.Effect(func(context.Context) error {
+			offSection()
 			offCmd()
 			off()
 			tr.watches.Close()
@@ -438,4 +441,29 @@ func debugf(format string, a ...any) {
 	if os.Getenv("ATTENTION_DEBUG") != "" {
 		fmt.Fprintf(os.Stderr, "[debug] "+format+"\n", a...)
 	}
+}
+
+// folders is the Folders settings section: the mounts, each removable, and
+// Add folder (workspace:add-folder). The tree follows the project's
+// mounts-changed event.
+func (tr *Tree) folders(c *ui.Context, remove func(context.Context, string) error) {
+	t := c.Theme()
+	omgui.SettingsSection(c, "Folders in the workspace", func() {
+		if len(tr.mounts) == 0 {
+			ui.Text(c, "No folders").FontSize(12).TextColor(t.TextMuted)
+		}
+		for _, m := range tr.mounts {
+			id := m.ID
+			omgui.PreferenceRow(c, m.Name, m.Path, func() {
+				omgui.Button(c, omgui.ButtonProps{Label: "Remove", Variant: omgui.ButtonSecondary, OnClick: func() {
+					go func() { _ = remove(tr.ctx, id) }()
+				}})
+			})
+		}
+	})
+	omgui.Button(c, omgui.ButtonProps{Label: "Add folder", Icon: lucide.FolderPlus(), Variant: omgui.ButtonSecondary, OnClick: func() {
+		if cmd, ok := actionsapi.Lookup("workspace:add-folder"); ok {
+			go func() { _, _ = cmd.Run(tr.ctx, actionsapi.Args{Params: map[string]string{}}) }()
+		}
+	}})
 }

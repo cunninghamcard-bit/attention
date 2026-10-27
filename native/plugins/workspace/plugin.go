@@ -351,6 +351,11 @@ type api struct{ ws *Workspace }
 
 func (a api) Open(path string, nav *workspaceapi.Nav, newTab bool) { a.ws.openIn(path, nav, newTab) }
 
+func (a api) OpenTab(kind string, o workspaceapi.OpenOptions) error {
+	_, err := a.ws.openTab(kind, o)
+	return err
+}
+
 func (a api) OpenResource(address string, o workspaceapi.OpenOptions) error {
 	_, err := a.ws.openResource(address, o)
 	return err
@@ -376,7 +381,7 @@ func (a api) RecentFiles() []string { return append([]string(nil), a.ws.recentFi
 
 // copyPath copies the active tab's path: as the CLI shows it, or absolute.
 func (ws *Workspace) copyPath(absolute bool) {
-	if t := ws.activeTab(); t != nil && !t.empty {
+	if t := ws.activeTab(); t != nil && !t.empty && !t.page() {
 		if absolute {
 			mygo.Clipboard.WriteText(t.path)
 		} else {
@@ -387,7 +392,7 @@ func (ws *Workspace) copyPath(absolute bool) {
 
 // withActiveFile runs fn on the active tab's path off the main thread.
 func (ws *Workspace) withActiveFile(fn func(path string) error) {
-	if t := ws.activeTab(); t != nil && !t.empty {
+	if t := ws.activeTab(); t != nil && !t.empty && !t.page() {
 		path := t.path
 		go func() { _ = fn(path) }()
 	}
