@@ -163,12 +163,27 @@ func loginShell() string {
 	return f[6]
 }
 
+// keybinds are the Ctrl C and Ctrl V setting's, on by default: Ctrl C
+// copies a selection and without one interrupts, as Windows Terminal.
+func keybinds() []terminal.Keybind {
+	on := true
+	settingsapi.Get(configFile, "ctrlCopyPaste", &on)
+	if !on {
+		return nil
+	}
+	return []terminal.Keybind{
+		{Mods: ui.Ctrl, Key: ui.KeyC, Action: terminal.ActionCopy, Performable: true},
+		{Mods: ui.Ctrl, Key: ui.KeyV, Action: terminal.ActionPaste},
+	}
+}
+
 // start runs a shell for s (TerminalService.spawnInto).
 func (t *Terminals) start(s *session) {
 	term, err := terminal.New(terminal.Options{
-		Command: shell(),
-		Dir:     s.dir,
-		Font:    font(),
+		Command:  shell(),
+		Dir:      s.dir,
+		Font:     font(),
+		Keybinds: keybinds(),
 		OnTitle: func(title string) {
 			shellapi.Update(func() {
 				if s.setTitle != nil && title != "" {
@@ -269,6 +284,16 @@ func settingTab(c *ui.Context) {
 				settingsapi.Set(configFile, "shell", v)
 			}
 		})
+		omgui.PreferenceRow(c, "Copy and paste with Ctrl C and Ctrl V",
+			"Ctrl C copies the selection, and interrupts without one; Ctrl V pastes. Off: Ctrl Shift C and Ctrl Shift V only.", func() {
+				on := true
+				settingsapi.Get(configFile, "ctrlCopyPaste", &on)
+				v := on
+				ui.Switch(c, &v)
+				if v != on {
+					settingsapi.Set(configFile, "ctrlCopyPaste", v)
+				}
+			})
 		omgui.PreferenceRow(c, "Font family", "A font family, or a comma-separated list; empty for the system's monospaced font.", func() {
 			var cur string
 			settingsapi.Get(configFile, "fontFamily", &cur)
@@ -316,7 +341,7 @@ func Register() (off func()) {
 				return shellapi.OnMain(ctx, func() (string, error) { t.open(dir); return "Opened terminal", nil })
 			}}),
 		slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "terminal", Title: "Terminal", Icon: lucide.SquareTerminal(),
-			Group: slotsapi.CorePlugins, Keywords: []string{"Shell", "Font family", "Font size"}, View: settingTab}),
+			Group: slotsapi.CorePlugins, Keywords: []string{"Shell", "Copy and paste", "Font family", "Font size"}, View: settingTab}),
 	}
 	return func() {
 		for i := len(offs) - 1; i >= 0; i-- {
