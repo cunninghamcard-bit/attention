@@ -236,13 +236,44 @@ func Rows(profile string, mounts []string) []map[string]any {
 
 // Config is the rutis.json for a run.
 func Config(self string, profile string, mounts []string) map[string]any {
+	return ConfigSeparate(self, "", profile, mounts, nil)
+}
+
+// ServicesName is the name of the services binary: this one, linked under
+// a name of its own, which rutis runs as a runtime of its own (one binary,
+// one process: RFC §5.3, external plugins).
+const ServicesName = "attention-services"
+
+// ConfigSeparate is Config with the plugins named in separate run by the
+// services binary at services, in a process of their own. Every row then
+// names its binary (go-attention:<plugin>), as rutis asks when two hold
+// the plugin.
+func ConfigSeparate(self, services, profile string, mounts []string, separate []string) map[string]any {
+	rows := Rows(profile, mounts)
+	binaries := []string{self}
+	if len(separate) > 0 && services != "" {
+		binaries = append(binaries, services)
+		apart := map[string]bool{}
+		for _, p := range separate {
+			apart[p] = true
+		}
+		for _, row := range rows {
+			name, _ := row["name"].(string)
+			plugin := strings.TrimPrefix(name, "go:")
+			bin := "go-" + filepath.Base(self)
+			if apart[plugin] {
+				bin = "go-" + ServicesName
+			}
+			row["name"] = bin + ":" + plugin
+		}
+	}
 	return map[string]any{
 		"format": 1,
 		"id":     "attention",
 		"runtimes": map[string]any{
-			"go": map[string]any{"binaries": []string{self}, "start": "eager", "restart": "on-failure"},
+			"go": map[string]any{"binaries": binaries, "start": "eager", "restart": "on-failure"},
 		},
-		"rows": Rows(profile, mounts),
+		"rows": rows,
 	}
 }
 
@@ -281,7 +312,20 @@ func runHost(opts Options) int {
 		return 1
 	}
 	defer os.RemoveAll(dir)
-	data, err := json.MarshalIndent(Config(self, opts.Profile, opts.Mounts), "", "  ")
+	// ATTENTION_SEPARATE (plugins, comma-separated) runs those plugins in
+	// the services binary's process, a link to this one in the run's
+	// directory: an external plugin, as a third party's would run.
+	var separate []string
+	services := ""
+	if v := os.Getenv("ATTENTION_SEPARATE"); v != "" {
+		separate = strings.Split(v, ",")
+		services = filepath.Join(dir, ServicesName)
+		if err := os.Symlink(self, services); err != nil {
+			fmt.Fprintln(os.Stderr, "attention:", err)
+			return 1
+		}
+	}
+	data, err := json.MarshalIndent(ConfigSeparate(self, services, opts.Profile, opts.Mounts, separate), "", "  ")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "attention:", err)
 		return 1

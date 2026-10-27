@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -79,7 +80,9 @@ func runtimeMain(args []string) int {
 	// SIGPIPE half way (spike finding 4).
 	signal.Ignore(syscall.SIGPIPE)
 
-	if os.Getenv("ATTENTION_PROFILE") == "headless" {
+	// The services binary (launcher.ServicesName) serves plugins with no
+	// window, as headless does.
+	if os.Getenv("ATTENTION_PROFILE") == "headless" || filepath.Base(os.Args[0]) == launcher.ServicesName {
 		// A signal to this process asks rutis-host to stop, as the window's
 		// quit does, so every plugin unloads instead of the process dying.
 		var once sync.Once
