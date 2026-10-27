@@ -3,6 +3,7 @@ package fs
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,16 @@ import (
 
 	contract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 )
+
+func newService(t *testing.T) *Service {
+	t.Helper()
+	svc, err := New(nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = svc.Close() })
+	return svc
+}
 
 func loadFS(t *testing.T) *rutistest.Loaded {
 	t.Helper()
@@ -123,6 +134,29 @@ func TestReadBytesLimit(t *testing.T) {
 	err := loaded.Service("fs").Call(t.Context(), "readBytes", &got, path, int64(10))
 	if err == nil || !strings.Contains(err.Error(), "larger than 10 bytes") {
 		t.Fatalf("readBytes over limit: %v", err)
+	}
+
+	_, err = newService(t).ReadBytes(t.Context(), path, 10)
+	if !errors.Is(err, contract.ErrTooLarge) {
+		t.Fatalf("ReadBytes oversize: %v", err)
+	}
+}
+
+func TestReadCancelledContext(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "note.md")
+	if err := os.WriteFile(path, []byte("hello"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	svc := newService(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	if _, err := svc.Read(ctx, path, 1024); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Read cancelled: %v", err)
+	}
+	if _, err := svc.ReadBytes(ctx, path, 1024); !errors.Is(err, context.Canceled) {
+		t.Fatalf("ReadBytes cancelled: %v", err)
 	}
 }
 

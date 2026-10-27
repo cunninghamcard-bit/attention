@@ -41,7 +41,10 @@ type Service struct {
 
 // List lists a directory: directories first, then files, each by name
 // without case, skipping contract.Excluded.
-func (s *Service) List(_ context.Context, dir string) ([]contract.Entry, error) {
+func (s *Service) List(ctx context.Context, dir string) ([]contract.Entry, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	items, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -85,10 +88,16 @@ func SortEntries(es []contract.Entry) {
 // sniff is how much of a file decides whether it is binary.
 const sniff = 8000
 
+// chunkSize is how much Read and ReadBytes copy between ctx checks.
+const chunkSize = 64 << 10
+
 // Read reads a text file of at most max bytes. A larger file comes back
 // TooLarge and a file with a NUL byte in its first 8000 bytes Binary, both
-// without text.
-func (s *Service) Read(_ context.Context, path string, max int64) (contract.File, error) {
+// without text. It returns ctx.Err() once ctx is done.
+func (s *Service) Read(ctx context.Context, path string, max int64) (contract.File, error) {
+	if err := ctx.Err(); err != nil {
+		return contract.File{}, err
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return contract.File{}, err
@@ -102,6 +111,9 @@ func (s *Service) Read(_ context.Context, path string, max int64) (contract.File
 		return contract.File{}, fmt.Errorf("%s is a directory", path)
 	}
 	out := contract.File{Path: path, Size: st.Size(), ModTime: st.ModTime().UnixNano()}
+	if err := ctx.Err(); err != nil {
+		return contract.File{}, err
+	}
 	head := make([]byte, sniff)
 	n, err := io.ReadFull(f, head)
 	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, io.EOF) {
@@ -111,11 +123,19 @@ func (s *Service) Read(_ context.Context, path string, max int64) (contract.File
 		out.Binary = true
 		return out, nil
 	}
-	if max > 0 && st.Size() > max {
+	if max > 0 && (st.Size() > max || int64(n) > max) {
 		out.TooLarge = true
 		return out, nil
 	}
-	rest, err := io.ReadAll(f)
+	budget := int64(-1)
+	if max > 0 {
+		budget = max - int64(n)
+	}
+	rest, err := readChunks(ctx, f, budget)
+	if errors.Is(err, contract.ErrTooLarge) {
+		out.TooLarge = true
+		return out, nil
+	}
 	if err != nil {
 		return contract.File{}, err
 	}
@@ -123,29 +143,87 @@ func (s *Service) Read(_ context.Context, path string, max int64) (contract.File
 	return out, nil
 }
 
-// ReadBytes reads a file of at most max bytes.
-func (s *Service) ReadBytes(_ context.Context, path string, max int64) ([]byte, error) {
+func tooLarge(path string, max int64) error {
+	return fmt.Errorf("%s is larger than %d bytes: %w", filepath.Base(path), max, contract.ErrTooLarge)
+}
+
+// ReadBytes reads a file of at most max bytes. A larger file returns
+// contract.ErrTooLarge. It returns ctx.Err() once ctx is done.
+func (s *Service) ReadBytes(ctx context.Context, path string, max int64) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 	if max <= 0 {
-		return io.ReadAll(f)
+		return readChunks(ctx, f, -1)
 	}
-	// Read one byte past max: the file may have grown since any stat.
-	data, err := io.ReadAll(io.LimitReader(f, max+1))
+	st, err := f.Stat()
 	if err != nil {
 		return nil, err
 	}
-	if int64(len(data)) > max {
-		return nil, fmt.Errorf("%s is larger than %d bytes", filepath.Base(path), max)
+	if st.Size() > max {
+		return nil, tooLarge(path, max)
 	}
-	return data, nil
+	data, err := readChunks(ctx, f, max)
+	if errors.Is(err, contract.ErrTooLarge) {
+		return nil, tooLarge(path, max)
+	}
+	return data, err
+}
+
+// readChunks copies r in chunkSize pieces. max < 0 means no size limit;
+// otherwise more than max bytes is contract.ErrTooLarge. ctx is checked
+// before each piece.
+func readChunks(ctx context.Context, r io.Reader, max int64) ([]byte, error) {
+	var buf bytes.Buffer
+	chunk := make([]byte, chunkSize)
+	var taken int64
+	unlimited := max < 0
+	limit := max
+	if !unlimited {
+		limit = max + 1
+	}
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		toRead := chunk
+		if !unlimited {
+			remain := limit - taken
+			if remain <= 0 {
+				break
+			}
+			if remain < int64(len(toRead)) {
+				toRead = chunk[:remain]
+			}
+		}
+		n, err := r.Read(toRead)
+		if n > 0 {
+			buf.Write(toRead[:n])
+			taken += int64(n)
+		}
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	if !unlimited && taken > max {
+		return nil, contract.ErrTooLarge
+	}
+	return buf.Bytes(), nil
 }
 
 // Stat describes one path.
-func (s *Service) Stat(_ context.Context, path string) (contract.Entry, error) {
+func (s *Service) Stat(ctx context.Context, path string) (contract.Entry, error) {
+	if err := ctx.Err(); err != nil {
+		return contract.Entry{}, err
+	}
 	st, err := os.Stat(path)
 	if err != nil {
 		return contract.Entry{}, err

@@ -6,7 +6,11 @@ package fs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 )
+
+// ErrTooLarge is returned by ReadBytes when the file is larger than max.
+var ErrTooLarge = errors.New("file too large")
 
 // Entry is one item of a directory listing.
 type Entry struct {
