@@ -4,10 +4,10 @@
 // in a pseudo-terminal: a tab per shell, the user's login shell in the
 // active file's folder, Open terminal (Ctrl J), and the Terminal settings tab.
 //
-// While a terminal has the focus it takes the keys, but those of the
-// commands in skipShell, which stay the window's, as VS Code's
-// terminal.integrated.commandsToSkipShell (actionsapi.SetCapture). Its
-// title is the one the program sets (OSC 0 and 2), as terminals show it.
+// While a terminal has the focus, Control and a letter are its, as in
+// gorex: the window's commands bound to them take Shift too there, and
+// Control Shift C and V copy and paste (actionsapi.SetCapture). Its title
+// is the one the program sets (OSC 0 and 2), as terminals show it.
 //
 // Left out: Default location (always a new tab), the remote terminal
 // server, Open terminal here in the file menu.
@@ -49,18 +49,6 @@ const (
 )
 
 var (
-	// skipShell are the commands whose shortcuts reach the window from a
-	// focused terminal: VS Code's DEFAULT_COMMANDS_TO_SKIP_SHELL, as far as the
-	// reader has them, and the tab's own Close and New tab. Ctrl G, Ctrl \ and
-	// Alt with the arrows stay the shell's.
-	skipShell = map[string]bool{
-		"command-palette:open": true, "switcher:open": true, "global-search:open": true, "app:open-settings": true,
-		"app:toggle-left-sidebar": true, "app:toggle-right-sidebar": true, "terminal:open": true, "quit": true,
-		"workspace:close": true, "workspace:new-tab": true, "workspace:next-tab": true, "workspace:previous-tab": true, "workspace:undo-close-pane": true, "workspace:goto-last-tab": true,
-		"workspace:goto-tab-1": true, "workspace:goto-tab-2": true, "workspace:goto-tab-3": true, "workspace:goto-tab-4": true,
-		"workspace:goto-tab-5": true, "workspace:goto-tab-6": true, "workspace:goto-tab-7": true, "workspace:goto-tab-8": true,
-	}
-
 	// Plugin is the terminal while loaded.
 	Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		Name:   ID,
@@ -115,10 +103,9 @@ func (t *Terminals) open(dir string) {
 // start runs a shell for s (TerminalService.spawnInto).
 func (t *Terminals) start(s *session) {
 	term, err := terminal.New(terminal.Options{
-		Command:  shell(),
-		Dir:      s.dir,
-		Font:     font(),
-		Keybinds: keybinds(),
+		Command: shell(),
+		Dir:     s.dir,
+		Font:    font(),
 		OnTitle: func(title string) {
 			shellapi.Update(func() {
 				if s.setTitle != nil && title != "" {
@@ -190,7 +177,7 @@ func (t *Terminals) body(c *ui.Context, p tabtypesapi.Props) {
 			view.AutoFocus()
 		}
 		if view.Focused() {
-			actionsapi.SetCapture(skipShell)
+			actionsapi.SetCapture(true)
 		}
 	})
 }
@@ -301,20 +288,6 @@ func loginShell() string {
 	return f[6]
 }
 
-// keybinds are the Ctrl C and Ctrl V setting's, on by default: Ctrl C
-// copies a selection and without one interrupts, as Windows Terminal.
-func keybinds() []terminal.Keybind {
-	on := true
-	settingsapi.Get(configFile, "ctrlCopyPaste", &on)
-	if !on {
-		return nil
-	}
-	return []terminal.Keybind{
-		{Mods: ui.Ctrl, Key: ui.KeyC, Action: terminal.ActionCopy, Performable: true},
-		{Mods: ui.Ctrl, Key: ui.KeyV, Action: terminal.ActionPaste},
-	}
-}
-
 // title is a terminal's until its program sets one.
 func title(string) string { return "Terminal" }
 
@@ -330,16 +303,6 @@ func settingTab(c *ui.Context) {
 				settingsapi.Set(configFile, "shell", v)
 			}
 		})
-		omgui.PreferenceRow(c, "Copy and paste with Ctrl C and Ctrl V",
-			"Ctrl C copies the selection, and interrupts without one; Ctrl V pastes. Off: Ctrl Shift C and Ctrl Shift V only.", func() {
-				on := true
-				settingsapi.Get(configFile, "ctrlCopyPaste", &on)
-				v := on
-				ui.Switch(c, &v)
-				if v != on {
-					settingsapi.Set(configFile, "ctrlCopyPaste", v)
-				}
-			})
 		omgui.PreferenceRow(c, "Font family", "A font family, or a comma-separated list; empty for the system's monospaced font.", func() {
 			var cur string
 			settingsapi.Get(configFile, "fontFamily", &cur)

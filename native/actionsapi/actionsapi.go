@@ -22,12 +22,11 @@ var (
 	commands = map[string]*entry{}
 	seq      int
 
-	// capture, while an element that takes the keys as they are — a
-	// terminal — has the focus, is the commands whose shortcuts still reach
-	// the window (VS Code's terminal.integrated.commandsToSkipShell); every
-	// other combination but Super's goes to the element. nil while none has
-	// the focus. It is updated as the frame builds, main thread only.
-	capture map[string]bool
+	// capture is set while an element that takes the keys as they are — a
+	// terminal — has the focus: Control and a letter are its, as in
+	// gorex, and the window's commands bound to them take Shift too. It is
+	// updated as the frame builds, main thread only.
+	capture bool
 )
 
 // Args are a CLI invocation's parameters: key=value, and a bare token as
@@ -173,13 +172,12 @@ func Help() string {
 	return "Usage: attention <command> [key=value ...]\n\nCommands:\n  " + strings.Join(cliIDs(), "\n  ")
 }
 
-// SetCapture says such an element has the focus for the frame, and which
-// commands keep their shortcuts; nil for none.
-func SetCapture(skipShell map[string]bool) { capture = skipShell }
+// SetCapture says whether such an element has the focus for the frame.
+func SetCapture(on bool) { capture = on }
 
 // Captured is what the last frame built set; the shortcuts plugin reads
 // it, then clears it for the frame to set again.
-func Captured() map[string]bool { return capture }
+func Captured() bool { return capture }
 
 // cliIDs are the CLI commands' names, sorted.
 func cliIDs() []string {

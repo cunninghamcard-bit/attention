@@ -103,16 +103,27 @@ func (s *Shortcuts) View(c *ui.Context) {
 	// Last frame's capture; a terminal still focused sets it again as
 	// this frame builds it (this overlay builds first).
 	captured := actionsapi.Captured()
-	actionsapi.SetCapture(nil)
-	for _, cmd := range actionsapi.List() {
+	actionsapi.SetCapture(false)
+	cmds := actionsapi.List()
+	var taken map[Binding]bool
+	if captured {
+		taken = map[Binding]bool{}
+		for _, cmd := range cmds {
+			for _, b := range s.bindings(cmd) {
+				taken[b] = true
+			}
+		}
+	}
+	for _, cmd := range cmds {
 		if cmd.Main == nil && cmd.Run == nil {
 			continue
 		}
 		for _, b := range s.bindings(cmd) {
-			// A focused terminal keeps the keys but Super's and those of
-			// the commands it skips (actionsapi SetCapture).
-			if captured != nil && b.Mods&ui.Super == 0 && !captured[cmd.ID] {
-				continue
+			if captured {
+				var ok bool
+				if b, ok = inTerminal(b, taken); !ok {
+					continue
+				}
 			}
 			if !c.Shortcut(b.Mods, b.Key) {
 				continue
@@ -126,6 +137,46 @@ func (s *Shortcuts) View(c *ui.Context) {
 			break
 		}
 	}
+}
+
+// inTerminal is b while a terminal has the focus, as gorex has it
+// elsewhere than on macOS: Control and a letter, or a key that types a
+// control character, are the terminal's, so a command bound to Control and
+// a letter takes Shift too, unless another command or the terminal has
+// that; false when the terminal keeps b.
+func inTerminal(b Binding, taken map[Binding]bool) (Binding, bool) {
+	if !terminalKeeps(b) {
+		return b, true
+	}
+	if b.Mods != ui.Ctrl || b.Key < ui.KeyA || b.Key > ui.KeyZ {
+		return b, false
+	}
+	alt := Binding{Mods: ui.Ctrl | ui.Shift, Key: b.Key}
+	if terminalKeeps(alt) || taken[alt] {
+		return b, false
+	}
+	return alt, true
+}
+
+// terminalKeeps reports whether a focused terminal takes b: Control and a
+// letter or a control character's key, its zoom, and its own Control
+// Shift combinations (mygo plugins/terminal keybind.go): copy, paste,
+// select all and clear.
+func terminalKeeps(b Binding) bool {
+	switch b.Mods {
+	case ui.Ctrl:
+		switch b.Key {
+		case ui.KeyBracketLeft, ui.KeyBracketRight, ui.KeyBackslash, ui.KeySpace, ui.KeyEqual, ui.KeyMinus, ui.Key0:
+			return true
+		}
+		return b.Key >= ui.KeyA && b.Key <= ui.KeyZ
+	case ui.Ctrl | ui.Shift:
+		switch b.Key {
+		case ui.KeyC, ui.KeyV, ui.KeyA, ui.KeyK, ui.KeyEqual:
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Shortcuts) defaults(keys string) []Binding {
