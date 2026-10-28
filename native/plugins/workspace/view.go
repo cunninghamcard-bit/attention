@@ -22,6 +22,7 @@ import (
 // view is the center (RFC §5.8: it reads state, never the disk): the
 // layout tree's splits and tab groups.
 func (ws *Workspace) view(c *ui.Context) {
+	ws.flush()
 	ws.reclaim()
 	ws.paneGroup(c)
 }
@@ -36,10 +37,7 @@ func (ws *Workspace) paneGroup(c *ui.Context) {
 // splitView draws n. mygo's splits take two children, so a split of more
 // is drawn nested: child k against the rest, pcts[k] being child k's
 // percentage of what is left from it on. A divider dragged during the
-// build moves pcts, which become the children's shares again. A click
-// during the build may change the tree (closing a group's last tab), so
-// the build walks a copy of the children and leaves the shares alone when
-// they changed: the next frame draws the new tree.
+// build moves pcts, which become the children's shares again.
 func (ws *Workspace) splitView(c *ui.Context, n *node) {
 	if n.group != nil {
 		ws.paneView(c, n.group)
@@ -124,7 +122,8 @@ func (ws *Workspace) paneView(c *ui.Context, p *pane) {
 		}
 		if dragged, ok := ui.Drop[*tab](body); ok {
 			x, y, _ := body.PointerPosition()
-			ws.dropOn(dragged, p, dropSide(x, y, p.bodyBounds.W, p.bodyBounds.H))
+			side := dropSide(x, y, p.bodyBounds.W, p.bodyBounds.H)
+			ws.later(func() { ws.dropOn(dragged, p, side) })
 		}
 	})
 }
@@ -148,7 +147,7 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
 					ws.tabChip(c, p, j, tb)
 				}
 				omgui.Button(c, omgui.ButtonProps{Label: "New tab", Icon: lucide.Plus(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
-					OnClick: func() { ws.activeGroup = p; ws.newTab() }}).Tooltip("New tab")
+					OnClick: func() { ws.later(func() { ws.activeGroup = p; ws.newTab() }) }}).Tooltip("New tab")
 			})
 		})
 		omgui.IconMenu(c, omgui.IconMenuProps{Label: "Tab list", Icon: lucide.ChevronDown(), End: true, Items: ws.tabListMenu(p)})
@@ -157,7 +156,8 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
 		}
 	})
 	if dragged, ok := ui.Drop[*tab](header); ok {
-		ws.moveTab(dragged, p, insertIndex(p, header))
+		at := insertIndex(p, header)
+		ws.later(func() { ws.moveTab(dragged, p, at) })
 	}
 }
 
@@ -176,7 +176,7 @@ func (ws *Workspace) tabChip(c *ui.Context, p *pane, j int, tb *tab) {
 		Key: fmt.Sprintf("tab-%d", tb.id), Title: title, Icon: icon, Tooltip: tip,
 		Selected:   j == p.active,
 		CloseLabel: "Close " + tb.title,
-		OnClose:    func() { ws.closeTab(p, j) },
+		OnClose:    func() { ws.later(func() { ws.closeTabs([]*tab{tb}) }) },
 	})
 	chip.ContextMenu(func(m *ui.Menu) { nativeMenu(m, ws.tabMenu(p, tb)) })
 	chip.Drag(tb)
@@ -192,7 +192,7 @@ func (ws *Workspace) tabChip(c *ui.Context, p *pane, j int, tb *tab) {
 // then the group's tabs, the active one checked.
 func (ws *Workspace) tabListMenu(p *pane) []omgui.MenuItem {
 	items := []omgui.MenuItem{
-		{Label: "Close all", Icon: lucide.X(), OnClick: func() { ws.closeAll(p) }},
+		{Label: "Close all", Icon: lucide.X(), OnClick: ws.closeAllLater(p)},
 		{Separator: true},
 	}
 	for j, tb := range p.tabs {
@@ -206,29 +206,45 @@ func (ws *Workspace) tabListMenu(p *pane) []omgui.MenuItem {
 // tabMenu is a tab's context menu: View.onTabMenu's close items, then More
 // options' (WorkspaceLeaf.onOpenTabHeaderMenu).
 func (ws *Workspace) tabMenu(p *pane, tb *tab) []omgui.MenuItem {
-	at := func() int { return p.indexOf(tb) }
-	items := []omgui.MenuItem{{Label: "Close", Icon: lucide.X(), OnClick: func() { ws.closeTab(p, at()) }}}
-	if len(p.tabs) > 1 {
-		items = append(items, omgui.MenuItem{Label: "Close others", Icon: lucide.X(), OnClick: func() {
-			p.active, ws.activeGroup = at(), p
-			ws.closeOthersInGroup()
-		}})
+	at := p.indexOf(tb)
+	closing := func(ts func() []*tab) func() {
+		return func() {
+			ts := append([]*tab(nil), ts()...)
+			ws.later(func() { ws.closeTabs(ts) })
+		}
 	}
-	if at() < len(p.tabs)-1 {
-		items = append(items, omgui.MenuItem{Label: "Close tabs to the right", Icon: lucide.X(), OnClick: func() {
-			for i := len(p.tabs) - 1; i > at(); i-- {
-				ws.closeTab(p, i)
+	items := []omgui.MenuItem{{Label: "Close", Icon: lucide.X(), OnClick: closing(func() []*tab { return []*tab{tb} })}}
+	if len(p.tabs) > 1 {
+		items = append(items, omgui.MenuItem{Label: "Close others", Icon: lucide.X(), OnClick: closing(func() []*tab {
+			var others []*tab
+			for _, o := range p.tabs {
+				if o != tb {
+					others = append(others, o)
+				}
 			}
-		}})
+			return others
+		})})
+	}
+	if at < len(p.tabs)-1 {
+		items = append(items, omgui.MenuItem{Label: "Close tabs to the right", Icon: lucide.X(), OnClick: closing(func() []*tab {
+			return p.tabs[p.indexOf(tb)+1:]
+		})})
 	}
 	if len(p.tabs) > 1 {
-		items = append(items, omgui.MenuItem{Label: "Close all", Icon: lucide.X(), OnClick: func() { ws.closeAll(p) }})
+		items = append(items, omgui.MenuItem{Label: "Close all", Icon: lucide.X(), OnClick: ws.closeAllLater(p)})
 	}
 	if tb.empty {
 		return items
 	}
 	tt, _ := tabtypesapi.Get(tb.typeID)
 	return append(append(items, omgui.MenuItem{Separator: true}), ws.paneMenu(p, tb, tt)...)
+}
+
+func (ws *Workspace) closeAllLater(p *pane) func() {
+	return func() {
+		ts := append([]*tab(nil), p.tabs...)
+		ws.later(func() { ws.closeTabs(ts) })
+	}
 }
 
 // isTopLeft reports whether p is the center's top-left group.
@@ -304,7 +320,7 @@ func (ws *Workspace) viewHeader(c *ui.Context, p *pane, tb *tab, props tabtypesa
 				color = ui.Color{}
 			}
 			omgui.Button(c, omgui.ButtonProps{Label: label, Icon: icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
-				Disabled: n == 0, IconColor: color, OnClick: func() { ws.activeGroup = p; ws.goHistory(tb, delta) }}).
+				Disabled: n == 0, IconColor: color, OnClick: func() { ws.later(func() { ws.activeGroup = p; ws.goHistory(tb, delta) }) }}).
 				Tooltip(label)
 		}
 		navButton("Back", lucide.ArrowLeft(), -1, len(tb.back))
@@ -361,7 +377,14 @@ func (ws *Workspace) paneMenu(p *pane, tb *tab, tt tabtypesapi.TabType) []omgui.
 		}
 	}
 	split := func(dir direction) func() {
-		return func() { ws.activeGroup, p.active = p, p.indexOf(tb); ws.split(dir) }
+		return func() {
+			ws.later(func() {
+				if g := ws.groupOf(tb); g != nil {
+					ws.activeGroup, g.active = g, g.indexOf(tb)
+					ws.split(dir)
+				}
+			})
+		}
 	}
 	path := tb.path
 	items = append(items,

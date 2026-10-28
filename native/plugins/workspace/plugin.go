@@ -96,8 +96,9 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 // shellapi.OnMain.
 func (ws *Workspace) commands() []actionsapi.Command {
 	ui := func(id, title, keys string, fn func()) actionsapi.Command {
-		return actionsapi.Command{ID: id, Title: title, Keys: keys, Main: fn, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			return shellapi.OnMain(ctx, func() (string, error) { fn(); return "", nil })
+		run := func() { ws.flush(); fn() }
+		return actionsapi.Command{ID: id, Title: title, Keys: keys, Main: run, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
+			return shellapi.OnMain(ctx, func() (string, error) { run(); return "", nil })
 		}}
 	}
 	gotos := make([]actionsapi.Command, 0, 8)

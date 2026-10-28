@@ -43,6 +43,7 @@ type Workspace struct {
 	recentFiles []string
 	restoring   *sessionNode // the layout to reopen once the mounts are known
 	saveSoon    func()
+	queue       []func()
 	title       string
 	typesGen    int // the tab type registry's generation last claimed against
 }
@@ -141,6 +142,34 @@ func (ws *Workspace) retarget(t *tab, address, title string) {
 	}
 	t.address, t.title, t.nav = address, title, nil
 	ws.changed()
+}
+
+// later runs fn, a change to the tree, when the next frame starts.
+func (ws *Workspace) later(fn func()) {
+	ws.queue = append(ws.queue, fn)
+	if w := shellapi.Window(); w != nil {
+		w.Invalidate()
+	}
+}
+
+// flush runs the queued changes in order.
+func (ws *Workspace) flush() {
+	for len(ws.queue) > 0 {
+		fns := ws.queue
+		ws.queue = nil
+		for _, fn := range fns {
+			fn()
+		}
+	}
+}
+
+// closeTabs closes ts, those still open, last first.
+func (ws *Workspace) closeTabs(ts []*tab) {
+	for k := len(ts) - 1; k >= 0; k-- {
+		if g := ws.groupOf(ts[k]); g != nil {
+			ws.closeTab(g, g.indexOf(ts[k]))
+		}
+	}
 }
 
 // activePane is the focused tab group: the last one focused while it is in

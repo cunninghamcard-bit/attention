@@ -132,6 +132,7 @@ func keepTab(path string) bool {
 }
 
 func (ws *Workspace) snapshot() session {
+	ws.flush()
 	s := session{RecentFiles: ws.recentFiles}
 	if ws.restoring != nil {
 		// The saved tabs are not reopened yet (the mounts are loading): keep
