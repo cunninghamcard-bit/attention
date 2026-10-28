@@ -123,24 +123,24 @@ func (s *Settings) View(c *ui.Context) {
 	if cur != nil {
 		title = cur.Title
 	}
-	_, winH := c.Size()
-	h := min(float32(680), winH-48)
-	omgui.Dialog(c, omgui.DialogProps{Open: &s.open, Key: ID, Title: title, Width: 960, MaxHeight: h, Body: func(c *ui.Context) {
+	winW, winH := c.Size()
+	w, h := min(winW*0.9, 1100), min(winH*0.85, 1000)
+	omgui.Dialog(c, omgui.DialogProps{Open: &s.open, Key: ID, Title: title, Width: w, MaxHeight: h, Body: func(c *ui.Context) {
 		// The modal keeps the window's shortcuts from it: the Settings
 		// shortcut closes it from here.
 		if c.Shortcut(ui.Cmd, ui.KeyComma) {
 			s.open = false
 			return
 		}
-		s.body(c, options, core, cur, h-80)
+		s.body(c, options, core, cur, w, h-80)
 	}})
 }
 
-func (s *Settings) body(c *ui.Context, options, core []slotsapi.SettingsSection, cur *slotsapi.SettingsSection, h float32) {
+func (s *Settings) body(c *ui.Context, options, core []slotsapi.SettingsSection, cur *slotsapi.SettingsSection, w, h float32) {
 	t := c.Theme()
 	ui.Row(c).FillWidth().Height(h).AlignItems(ui.Stretch).Children(func() {
-		// The vertical tab header.
-		ui.Column(c).Width(210).Shrink(0).FillHeight().Gap(8).BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Padding(0, 8, 0, 0).Children(func() {
+		// The vertical tab header: 25% of the modal, 180 to 250px.
+		ui.Column(c).Width(min(max(w*0.25, 180), 250)).Shrink(0).FillHeight().Gap(8).BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Padding(0, 8, 0, 0).Children(func() {
 			omgui.SearchField(c, &s.query, "Search settings", false).Label("Search settings").FillWidth()
 			ui.Scroll(c).Grow(1).FillWidth().Children(func() {
 				ui.Column(c).FillWidth().Gap(2).Children(func() {
