@@ -1,7 +1,7 @@
 # 路线图：attention Go 原生重写
 
-- 依据：[RFC 0001](rfc/0001-go-native-plugin-browser.md)
-- 更新：2026-10-28
+- 依据：[RFC 0001](rfc/0001-go-native-plugin-browser.md) · [产品线规划](product.md)
+- 更新：2026-11-01
 - 原则：每个阶段结束时，都要有一个**能用的二进制**和**客观的完成标准**。下一个阶段只在上一个阶段的标准全部满足后开始。
 
 ## 总览

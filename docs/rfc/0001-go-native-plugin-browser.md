@@ -1,9 +1,10 @@
 # RFC 0001：attention 重写为 Go 原生、一切皆插件的阅读型浏览器
 
-- 状态：Draft
+- 状态：Draft（含 2026-11-01 架构与产品线决议更新）
 - 日期：2026-10-26
 - 范围：整个产品，包括 apps/web、apps/desktop 和 packages/shared
 - 路线图：[docs/roadmap.md](../roadmap.md)
+- 产品线与定位：[docs/product.md](../product.md)
 
 ## 1. 摘要
 
@@ -513,15 +514,35 @@ native/
 - **GitHub**：不迁移。octogo 负责 GitHub 相关功能。以后可以把 octogo 的功能整理成服务插件和 UI 插件接进 attention，需要另写 RFC。
 - **单一配置主目录**：「不往打开的目录里写文件」的原则继续有效，但配置的布局是新的决定（§5.10）。
 
-## 10. 未决问题
+## 10. 未决问题与 2026-11-01 架构决议
 
-1. 共享 UI 模块放在哪里：独立仓库，还是 octogo 仓库里的子 module（§5.12）。等 octogo 的重构合并后确定。
-2. 代码放在 `native/` 目录、留在同一仓库（§5.13）。需要用户确认。
-3. 插件接口包（`slotsapi` 和 `contract`）要不要从一开始就按「可以对外发布」来设计，也就是保持 API 稳定、单独做成一个 module，方便第三方插件依赖？
-4. 跨进程的声明式 UI 协议要不要做、什么时候做（§5.11）。
-5. index 的存储：纯内存、SQLite（mygo 有官方插件），还是交给插件自己决定？
-6. 阅读模式的正文抽取算法：Go 版的 readability，还是让插件实现？
-7. 多窗口：dsh 和 octogo 都是单窗口。attention 要不要支持多窗口？slot 的作用范围是否需要包含窗口？
+### 10.1 已决定的架构与产品边界（2026-11-01）
+
+1. **产品线分阶段推进（见 [docs/product.md](../product.md)）**：
+   - **近期重心（V1）**：先做成简单、干净、好用的原生编辑器与阅读器，不急于引入复杂的子 Agent 或重型交互。
+   - **中远期愿景（V2 / V3）**：打造「编辑器界的浏览器（以文件 Tab 为自然单元、自带所属 Project 与文件夹列上下文）」与「AI 带着人读真实原文（外部 Agent 负责搜索、网页检索、代码调研与终端实验，向编辑器推送原文锚定卡片，用户通过类似 Slack / 左右滑方式分拣阅读）」。
+2. **编辑器读写与保存模型**：
+   - 去掉 `internal/textdoc` 中的 `ReadOnly: true` 限制。
+   - 采用 **Obsidian 式无感自动保存**：编辑状态变化后防抖（约 1~2 秒）自动通过 `fs.Write` 写回磁盘，同时支持 `Ctrl+S` / `Cmd+S` 立即写回；不强求传统的脏标记（dirty dot）确认流，并在写回时记录文件版本/内容摘要以抑制 `fsnotify` 触发自身二次重读。
+3. **同进程插件接线与消除 10 个 `*api` 全局单例包**：
+   - 现状根因：`go/rutis` 在同进程调用（`s.Local() == true`）时仍强制走 `convert.ToPeerArgs` 序列化，且 `Service.bind` 只接受函数结构体，导致无法直接传递 Go 接口与 `func(c *ui.Context)` 闭包，迫使 `native/` 拆出了 `shellapi`、`layoutapi`、`workspaceapi`、`slotsapi`、`tabtypesapi` 等 10 个进程级全局单例包。
+   - 决议：推动上游 `arcships/rutis` 在 `s.Local() == true` 时支持进程内 Go 接口与闭包直接透传（零序列化），使本进程插件直接通过 `rctx.Provide` / `rctx.Use` 注入 Go 接口，逐步收敛并淘汰顶层 `*api` 全局包。
+4. **外壳底座（Workbench Shell）与 4 类标准扩展点**：
+   - 参考 Zed 的 `workspace` 设计，将窗口主循环、顶栏/左右下 Dock 容器、中间分屏与标签树、快捷键分发与设置收敛为内聚的 **Workbench Shell 底座**。
+   - 业务插件与第三方编译插件（`attention build --with`）统一围绕 4 个正交扩展点接入：**`TabType`**、**`Slot`**（`Panel`、`Ribbon`、`StatusBar`、`Overlay`、`PaletteSource`、`SettingsSection`）、**`Command`**、**`Resource`**，公共契约统一收敛到 `contract/`。
+5. **保留并固化内存级 `MetadataCache`（替代泛化 `extractors` 与 SQLite 索引）**：
+   - 放弃 §5.6 中未落地的跨进程 `extractors` 注册表以及本地 SQLite 索引库方案。
+   - 正式保留当前 `internal/mdmeta` + `plugins/index` 的**纯内存增量 `MetadataCache` 抽象**（参考 Obsidian `CachedMetadata`）：在内存中维护标题大纲（Headings）、行号定位、双链解析（`resolvedLinks` / `unresolvedLinks`）、反链（Backlinks）、标签（Tags）、Frontmatter 属性以及网页 URL 跨类型反链。
+
+### 10.2 早期未决问题状态对照
+
+1. 共享 UI 模块放在哪里：已独立为 `github.com/cunninghamcard-bit/attention-ui`（当前通过 `replace` 引用）。
+2. 代码放在 `native/` 目录、留在同一仓库（§5.13）：已确认并落地。
+3. 插件接口包（`contract`）对外稳定：随 `*api` 全局包收敛一并归入 `contract/`。
+4. 跨进程的声明式 UI 协议要不要做、什么时候做（§5.11）：暂不做，优先使用编译期 `build --with` 与 `webview-panel` 兜底。
+5. index 的存储：**已决定采用纯内存增量 `MetadataCache`**（见 §10.1 第 5 条）。
+6. 阅读模式的正文抽取算法：已在 `internal/htmlextract` 实现内置抽取。
+7. 多窗口：当前保持单窗口模型，多项目并行优先通过 V2 的「顶层浏览器式 Tab（Tab-as-a-Project）」承载。
 
 ## 11. 验证
 
