@@ -18,7 +18,7 @@ attention 从「Electron + TS 实现的 Obsidian 重建」改为**全 Go 实现�
 
 ## 2. 动机
 
-1. **产品定位变了。** attention 要成为一个能接入 agent、以阅读和查看为主的浏览器，不再是 Markdown 编辑器。编辑能力降级：不做 LSP，也不做实时预览编辑。
+1. **产品定位变了。** attention 要成为一个能接入 agent、以阅读和查看为主的浏览器，不再是 Markdown 编辑器。编辑能力降级：不做 LSP，也不做实时预览。只读不是产品要求：源码和纯文本标签应能改字并写回文件。当前代码仍是 `ReadOnly`，这一条还没改。
 2. **现有架构的负担。**
    - `apps/web/app/App.ts` 一次性构造约 60 个服务，`app.workspace` 在 `apps/web` 里被引用约 550 次，`app.vault` 约 410 次。
    - 内置插件通过 `plugin.app.X` 随意访问其他服务，功能之间没有边界。
@@ -40,7 +40,7 @@ attention 从「Electron + TS 实现的 Obsidian 重建」改为**全 Go 实现�
 
 - 兼容 Obsidian 插件 API、社区插件、主题市场。
 - 运行真实的 dsh 插件（它们的 client 半是 React 加 DOM，host 半是 Node）。
-- Markdown 编辑器体验：实时预览、LSP、补全。文件写入只保留 CLI 命令。
+- Markdown 编辑器体验：实时预览、LSP、补全。阅读视图本身不编辑。源码和纯文本的只读要去掉，修改写回文件；CLI 的写入命令仍在。代码还没改。
 - 内置 agent 对话界面，以及 MCP 接入。agent 统一走 CLI，以后另写 RFC。
 - 在本 RFC 里迁移 GitHub 和 git review。GitHub 由 octogo 负责；git 以插件形式重新设计，见 §9。
 - 嵌入 JS 引擎（moejs 等）。rutis 官方也明确不嵌入 JS 引擎。
@@ -325,8 +325,8 @@ var UI = rutis.Define(rutis.Plugin[struct{}]{
 
 | kind | 优先级 | patterns | 实现 |
 |---|---|---|---|
-| `text` | Fallback | `attention-resource://file/**` | 只读 `ui/editor`，带语法高亮 |
-| `markdown` | Builtin | `*.md` | `ui/markdown` 阅读视图 |
+| `text` | Fallback | `attention-resource://file/**` | `ui/editor`，带语法高亮。决定改为可编辑并写回；代码仍是只读 |
+| `markdown` | Builtin | `*.md` | `ui/markdown` 阅读视图。源码决定改为可编辑并写回；代码仍是只读 |
 | `image` | Builtin | `*.png` 等 | 图片查看 |
 | `web` | Builtin | —（`OpenTab("web", {url})` 打开） | `ui.WebView`，可以开多个实例 |
 | `settings` | Builtin | —（`OpenTab("settings")` 打开） | 设置页 |

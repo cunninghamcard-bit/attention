@@ -1,24 +1,32 @@
 # 路线图：attention Go 原生重写
 
 - 依据：[RFC 0001](rfc/0001-go-native-plugin-browser.md)
-- 更新：2026-10-26
+- 更新：2026-10-28
 - 原则：每个阶段结束时，都要有一个**能用的二进制**和**客观的完成标准**。下一个阶段只在上一个阶段的标准全部满足后开始。
 
 ## 总览
 
-| 阶段 | 主题 | 产出 | 前置条件 |
-|---|---|---|---|
-| P0 | 地基 spike | 进程拓扑跑通：mygo、rutis-host、插件、CLI | — |
-| P1 | 阅读核心 | 打开挂载根，在标签页里阅读 Markdown、代码、图片 | P0 |
-| P2 | 索引与 CLI | 资源索引，搜索、反链；47 个 CLI 命令完成对齐 | P1 |
-| P3 | 浏览器 | 网页标签页、历史、书签、阅读模式 | P1（可以和 P2 并行；跨类型反链那一条验收依赖 P2） |
-| P4 | 工作台插件 | 终端、git、第三方插件通道 | P2 |
-| P5 | 收尾 | 删除 Electron 和 TS，完成打包发布 | P2、P3、P4 |
+| 阶段 | 主题 | 产出 | 前置条件 | 现状 |
+|---|---|---|---|---|
+| P0 | 地基 spike | 进程拓扑跑通：mygo、rutis-host、插件、CLI | — | 完成。证据是 spike 报告 |
+| P1 | 阅读核心 | 打开挂载根，在标签页里阅读 Markdown、代码、图片 | P0 | 功能在阅读器里。2 万文件的性能没有记录 |
+| P2 | 索引与 CLI | 资源索引，搜索、反链；47 个 CLI 命令完成对齐 | P1 | 索引和偏差表在。e2e 与增量耗时没有验收 |
+| P3 | 浏览器 | 网页标签页、历史、书签、阅读模式 | P1（可以和 P2 并行；跨类型反链那一条验收依赖 P2） | 网页标签在用。20 个站点的抽取成功率没有测 |
+| P4 | 工作台插件 | 终端、git、第三方插件通道 | P2 | 终端、`build --with`、Python 示例在。没有 git 插件 |
+| P5 | 收尾 | 删除 Electron 和 TS，完成打包发布 | P2、P3、P4 | 未开始 |
 
 ```
 P0 ──► P1 ──┬──► P2 ──► P4 ──┐
             └──► P3 ─────────┴──► P5
 ```
+
+## 现状（2026-10-28，`feat/native-reader`）
+
+P0 已结案：拓扑成立，阅读器建在这份结论上。当前二进制里已经有 P1 的阅读、P2 的索引和 CLI、P3 的网页标签，以及 P4 的终端和 `build --with`。还没过的门禁是性能数字、CLI e2e、正文抽取成功率、git 插件，以及删掉 Node。
+
+勾选表示这条已经有代码或当时的记录。没有勾的是还没测、或测过但不满足原文。
+
+和 P0 开工时锁定的版本相比，阅读器现在用的是 mygo `v0.7.2-0.20261028073710-642005fd4978`（含 #865 的帧调度修复），共享 UI 是 `attention-ui` 的 replace，不再直接 replace octogo。
 
 ## P0：地基 spike
 
@@ -35,16 +43,17 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 - CLI 命令：`version`、`files`。
 - `native/AGENTS.md`：写明 `native/` 遵循 octogo 的 `docs/STYLE.md`，根目录 AGENTS.md 里的 Obsidian 重建规则不适用于这里（RFC §5.12）。
 
-**完成标准**
-- [ ] 启动后显示一个窗口，左侧文件树列出 `--mount` 指定的目录。外部创建或删除文件后，界面在 1 秒内更新。
-- [ ] `attention version` 和 `attention files` 在第二个进程里执行，输出正确。
-- [ ] 关闭窗口后，rutis-host 和所有插件进程在关停期限内退出，没有残留进程；本进程插件的 `Effect` 清理执行了一次。
-- [ ] 另外三种退出方式都要测：终端里按 Ctrl-C、`kill` rutis-host、`kill` UI runtime。每种都写清楚实际行为，不能留下残留进程。
-- [ ] 把 `fs` 插件改成独立进程运行，功能不变。这证明服务插件放在本体内或外置都一样。
-- [ ] 外置的 `fs` 修改后能热重载，`project` 和 `file-tree-ui` 挂起后能恢复，界面没有崩溃。先确认这能在启动器生成的同一份配置下做到（`rutis-host dev` 用的是插件目录里的 `rutis.dev.json`，和 `run` 不是同一套配置）；做不到就写清楚开发时的工作流。（编译进本体的插件，重载时整个 attention runtime 都要重启，所以热重载只对外置插件有要求。）
-- [ ] attention 通过 `replace` 使用 octogo 的 `ui/theme` 和 `omgui`，`native/` 自己的一致性检查（禁止硬编码颜色和尺寸）通过。
-- [ ] 记录启动时间、常驻内存、二进制体积，以及 rutis-host 的体积。
-- [ ] 写出 spike 报告 `docs/rfc/0001-spike-report.md`，结论只能是「拓扑成立」或「启用 R1 的某个退路」。
+**完成标准**（证据：[spike 报告](rfc/0001-spike-report.md)，2026-10-26，分支 `spike/p0-topology`。阅读器分支没有把这几条重跑一遍。）
+
+- [x] 启动后显示一个窗口，左侧文件树列出 `--mount` 指定的目录。外部创建或删除文件后，界面在 1 秒内更新。
+- [x] `attention version` 和 `attention files` 在第二个进程里执行，输出正确。
+- [x] 关闭窗口后，rutis-host 和所有插件进程在关停期限内退出，没有残留进程；本进程插件的 `Effect` 清理执行了一次。
+- [x] 另外三种退出方式都要测：终端里按 Ctrl-C、`kill` rutis-host、`kill` UI runtime。每种都写清楚实际行为，不能留下残留进程。报告里的推荐关停是关窗时给宿主发 SIGTERM；`restart: "exit"` 会跳过 UI 进程里的清理。
+- [x] 把 `fs` 插件改成独立进程运行，功能不变。这证明服务插件放在本体内或外置都一样。
+- [x] 外置的 `fs` 修改后能热重载，`project` 和 `file-tree-ui` 挂起后能恢复，界面没有崩溃。先确认这能在启动器生成的同一份配置下做到（`rutis-host dev` 用的是插件目录里的 `rutis.dev.json`，和 `run` 不是同一套配置）；做不到就写清楚开发时的工作流。（编译进本体的插件，重载时整个 attention runtime 都要重启，所以热重载只对外置插件有要求。）报告写明 `run` 下可以热替换，开发时可以不用 `dev`。
+- [x] attention 通过 `replace` 使用 octogo 的 `ui/theme` 和 `omgui`，`native/` 自己的一致性检查（禁止硬编码颜色和尺寸）通过。阅读器后来改成 replace `attention-ui`。
+- [x] 记录启动时间、常驻内存、二进制体积，以及 rutis-host 的体积。
+- [x] 写出 spike 报告 `docs/rfc/0001-spike-report.md`，结论只能是「拓扑成立」或「启用 R1 的某个退路」。结论是拓扑成立。
 
 **不做**：tab type、navigation、索引、共享 UI 模块的抽取。
 
@@ -59,13 +68,13 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 - 实测 `ui/markdown` 对 wikilink、嵌入、callout 的支持情况（风险 R6）。
 
 **完成标准**
-- [ ] 能打开一个约 2 万个文件的目录：文件树可以流畅滚动，打开文件的中位耗时不超过 50ms（原 TS 版本的 README 记录为 32ms，作为参照）。文件监听按 RFC R9 的策略只监听展开的目录，超过 inotify 上限时降级为手动刷新并提示，不能直接失败。
-- [ ] Markdown 能正确渲染 CommonMark、GFM 表格和任务列表。
-- [ ] R6 门禁：`ui/markdown` 本身不支持 `[[wikilink]]`、`![[embed]]` 和 callout。P1 要么通过预处理让 wikilink 可以点击跳转，要么写明降级方式（例如显示为普通文本）。这一条不阻塞「能日常阅读」。
-- [ ] 代码文件只读查看，有语法高亮，`open line= to=` 能定位并选中指定的行。
-- [ ] 文件在外部被修改后，已打开的标签页自动刷新，滚动位置保持不变。
-- [ ] 重启后标签页、分屏和挂载都能恢复。
-- [ ] 写一份 R6 的结论文档，说明 `markdown` tab type 是否需要预处理，或者需要给 mygo 提 PR。
+- [ ] 能打开一个约 2 万个文件的目录：文件树可以流畅滚动，打开文件的中位耗时不超过 50ms（原 TS 版本的 README 记录为 32ms，作为参照）。文件监听按 RFC R9 的策略只监听展开的目录，超过 inotify 上限时降级为手动刷新并提示，不能直接失败。监听上限的降级在 `plugins/fs` 里；2 万文件的耗时没有记录。
+- [x] Markdown 能正确渲染 CommonMark、GFM 表格和任务列表。见 [R6](rfc/0001-r6-markdown.md)。
+- [x] R6 门禁：`ui/markdown` 本身不支持 `[[wikilink]]`、`![[embed]]` 和 callout。P1 要么通过预处理让 wikilink 可以点击跳转，要么写明降级方式（例如显示为普通文本）。这一条不阻塞「能日常阅读」。`plugins/markdownui/obsidian.go` 在送进视图前改写 wikilink 和图片嵌入；callout 降级成带标题的引用，笔记嵌入降级成链接。
+- [x] 代码文件只读查看，有语法高亮，`open line= to=` 能定位并选中指定的行。`plugins/textui` 用 `ui/editor` 只读打开；`open` 的 `line=` / `to=` 在 `plugins/workspace`。只读不保留：源码和纯文本改为可编辑并写回，代码还没改。
+- [ ] 文件在外部被修改后，已打开的标签页自动刷新，滚动位置保持不变。监听在；滚动位置保持没有验收记录。
+- [x] 重启后标签页、分屏和挂载都能恢复。`plugins/workspace/session.go`。
+- [x] 写一份 R6 的结论文档，说明 `markdown` tab type 是否需要预处理，或者需要给 mygo 提 PR。即 `docs/rfc/0001-r6-markdown.md`：要预处理；callout 和嵌入还要给 mygo 提 PR。
 
 ## P2：索引与 CLI 对齐
 
@@ -78,10 +87,10 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 - 确定 index 的存储方式（RFC 未决问题 5）。
 
 **完成标准**
-- [ ] CLI e2e 全部通过：socket 协议兼容；47 个命令的输出以 TS 版为基准逐条比对，不一致的全部写在 `docs/cli-deviations.md` 里，并且每一条都有理由。
-- [ ] 2 万文件规模下，首次建索引的耗时，以及单个文件变化后的增量更新耗时，都要记录。增量更新不超过 100ms。
-- [ ] 反链、标签、属性、孤立文件等查询的结果，与 TS 版在同一个测试 vault 上一致。
-- [ ] 每个服务插件都有 `rutistest` 测试；UI 插件的界面用 mygo 的 UI 测试工具测试。
+- [ ] CLI e2e 全部通过：socket 协议兼容；47 个命令的输出以 TS 版为基准逐条比对，不一致的全部写在 `docs/cli-deviations.md` 里，并且每一条都有理由。Go 侧驱动在 `scripts/e2e-cli-native.mjs`，偏差表已写；这次更新没有重跑 e2e，所以不把「全部通过」勾上。阅读器还多了 `web`、`web:read`、`web:history`、`bookmarks`、`mount`、`quit`、`build --with`。
+- [ ] 2 万文件规模下，首次建索引的耗时，以及单个文件变化后的增量更新耗时，都要记录。增量更新不超过 100ms。索引插件在 `plugins/index`，耗时没有记录。
+- [ ] 反链、标签、属性、孤立文件等查询的结果，与 TS 版在同一个测试 vault 上一致。命令在；偏差表写了代码块里的链接不计、属性没有类型、反链面板没有未链接提及。
+- [ ] 每个服务插件都有 `rutistest` 测试；UI 插件的界面用 mygo 的 UI 测试工具测试。一部分插件有 `go test`，不是每个服务插件都有 `rutistest`。
 
 ## P3：浏览器
 
@@ -96,10 +105,10 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 - 确定正文抽取算法（RFC 未决问题 6）。
 
 **完成标准**
-- [ ] 多标签浏览网页：前进、后退、刷新、页内查找、下载都能用；原生弹层能正确盖在网页上面。
-- [ ] 准备 20 个代表性网站（新闻、文档站、博客、GitHub 页面……），阅读模式的抽取成功率达到 80% 以上，结果写进测试 fixture。
-- [ ] `attention web:read url=…` 输出干净的正文，agent 可以直接使用。
-- [ ] （P2 完成后验收）一篇本地笔记和一个网页引用同一个 URL 时，两边的反链都能看到对方。
+- [x] 多标签浏览网页：前进、后退、刷新、页内查找、下载都能用；原生弹层能正确盖在网页上面。在 `plugins/web`：前进后退走页面自己的历史，刷新是 Ctrl+R，页内查找是 Ctrl+F，下载结果有一条横幅。弹层那一半没有单独的验收记录。地址栏建议在 `plugins/web/suggest.go`；包注释里「先不做建议」已经过时。
+- [ ] 准备 20 个代表性网站（新闻、文档站、博客、GitHub 页面……），阅读模式的抽取成功率达到 80% 以上，结果写进测试 fixture。阅读模式和 `web:read` 用 `internal/htmlextract`。没有这 20 个站点的 fixture。
+- [x] `attention web:read url=…` 输出干净的正文，agent 可以直接使用。命令在 `plugins/webread`，无窗口也能跑。
+- [ ] （P2 完成后验收）一篇本地笔记和一个网页引用同一个 URL 时，两边的反链都能看到对方。`plugins/webindex` 会把网页抽取结果交给 index。P2 的一致性验收还没过。
 
 ## P4：工作台插件与第三方通道
 
@@ -113,9 +122,11 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
 - 写一份第三方服务插件示例，用 TS 或 Python 编写，演示「不用重新编译 attention 也能接入」。
 
 **完成标准**
-- [ ] git 服务插件以外部进程运行，并且能热重载；它崩溃时 git-ui 能挂起后恢复，主程序不受影响。
-- [ ] 外部的 TS 或 Python 服务插件注册的命令，可以通过 CLI 调用。
-- [ ] 用 `attention build --with ./examples/hello-ui` 生成的二进制，界面里出现示例插件的面板。
+- [ ] git 服务插件以外部进程运行，并且能热重载；它崩溃时 git-ui 能挂起后恢复，主程序不受影响。`native/plugins` 里没有 git 插件。
+- [ ] 外部的 TS 或 Python 服务插件注册的命令，可以通过 CLI 调用。Python 示例和接入说明在 `native/examples/README.md`。没有一次「CLI 调到示例命令」的记录。
+- [ ] 用 `attention build --with ./examples/hello-ui` 生成的二进制，界面里出现示例插件的面板。命令在 `native/internal/buildcmd`，示例在 `native/examples/hello-ui`。没有跑过生成后的界面验收。
+
+终端在 `plugins/terminalui`：用 mygo 的 `plugins/terminal`，一个标签一个 shell，Ctrl+J 打开。还没有独立的 `terminal` 服务插件；默认位置、远程终端、文件菜单里的「在此打开终端」没做。`plugins/webviewpanel` 是第三方 UI 的 WebView 面板。
 
 ## P5：收尾
 
