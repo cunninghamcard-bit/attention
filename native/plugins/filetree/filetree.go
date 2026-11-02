@@ -462,27 +462,7 @@ func (tr *Tree) view(c *ui.Context) {
 			r := rows[i]
 			e := r.entry
 			selected := !e.Dir && e.Path == current
-			indent := float32(r.depth) * 16
-			row := ui.Row(c).Key(e.Path).Height(rowH).AlignSelf(ui.Stretch).MinWidth(0).
-				Padding(0, 8, 0, 8+indent).Gap(6).AlignItems(ui.Center).Radius(4).
-				Focusable().Role(ui.RoleButton).Checked(selected).Cursor(ui.CursorPointer)
-			hovered := row.Hovered()
-			switch {
-			case selected:
-				row.Background(t.SurfacePressed)
-			case hovered:
-				row.Background(t.SurfaceHover)
-			}
-			if r.depth > 0 && app.ShowGuides {
-				depth := r.depth
-				guideColor := t.Border.Alpha(0.75)
-				row.DrawOver(func(p *ui.Painter, rc ui.Rect) {
-					for d := range depth {
-						gx := rc.X + 15 + float32(d)*16
-						p.Fill(ui.Rect{X: gx, Y: rc.Y, W: 1, H: rc.H}, guideColor, 0)
-					}
-				})
-			}
+			row := aui.SideRow(c, aui.SideRowProps{Key: e.Path, Selected: selected, Depth: r.depth, Height: rowH, Guides: app.ShowGuides})
 			if row.Clicked() {
 				if e.Dir {
 					tr.toggleDir(e.Path)
@@ -499,12 +479,7 @@ func (tr *Tree) view(c *ui.Context) {
 					d := tr.dirs[e.Path]
 					open := d != nil && d.expanded
 					if !tr.app.Icons().Show {
-						deg := float32(0)
-						if open {
-							deg = 90
-						}
-						chev := ui.Icon(c, icon.Must("chevron-right")).Size(12, 12).TextColor(t.TextMuted).Shrink(0)
-						chev.Rotate(chev.AnimateTo("turn", deg, ui.Snappy))
+						aui.Disclosure(c, open, 12)
 					} else {
 						tr.app.Icons().Render(c, e.Name, true, open, t.Dark, 15)
 					}
@@ -515,13 +490,9 @@ func (tr *Tree) view(c *ui.Context) {
 						tr.app.Icons().Render(c, e.Name, false, false, t.Dark, 15)
 					}
 				}
-				fg := t.TextMuted
-				if selected || hovered || r.mount != nil {
-					fg = t.Text
-				}
-				label := ui.Text(c, e.Name).SingleLine().Ellipsis("…").Shrink(1).FontSize(13).LineHeight(1.35).TextColor(fg)
+				label := ui.Text(c, e.Name).SingleLine().Ellipsis("…").Shrink(1).FontSize(13).LineHeight(1.35)
 				if r.mount != nil {
-					label.FontWeight(600)
+					label.FontWeight(600).TextColor(t.Text)
 				} else if selected {
 					label.FontWeight(500)
 				}

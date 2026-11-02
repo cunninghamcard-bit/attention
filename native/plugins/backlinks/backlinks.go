@@ -284,11 +284,7 @@ func (p *Pane) fileRow(c *ui.Context, b *indexplugin.Backlink) {
 	item.Tooltip(b.Display)
 	item.Children(func() {
 		if len(b.Mentions) > 0 {
-			chevron := icon.Must("chevron-down")
-			if p.collapsed[b.Path+b.URL] {
-				chevron = icon.Must("chevron-right")
-			}
-			if ui.Icon(c, chevron).Size(14, 14).TextColor(t.TextMuted).Shrink(0).Cursor(ui.CursorPointer).Clicked() {
+			if aui.Disclosure(c, !p.collapsed[b.Path+b.URL], 14).Clicked() {
 				p.collapsed[b.Path+b.URL] = !p.collapsed[b.Path+b.URL]
 				p.dirty = true
 			}

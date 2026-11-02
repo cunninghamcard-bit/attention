@@ -416,11 +416,7 @@ func (s *Search) fileRow(c *ui.Context, f *projectplugin.FileResult) {
 	item.Tooltip(name)
 	item.Children(func() {
 		if len(f.Matches) > 0 {
-			chevron := icon.Must("chevron-down")
-			if s.isCollapsed(f) {
-				chevron = icon.Must("chevron-right")
-			}
-			if ui.Icon(c, chevron).Size(14, 14).TextColor(t.TextMuted).Shrink(0).Cursor(ui.CursorPointer).Clicked() {
+			if aui.Disclosure(c, !s.isCollapsed(f), 14).Clicked() {
 				s.collapsed[f.Path] = !s.collapsed[f.Path]
 				s.dirty = true
 			}

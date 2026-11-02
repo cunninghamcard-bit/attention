@@ -7,6 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
 	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
@@ -106,7 +107,6 @@ func (v *viewer) suggestions(input string) []suggestion {
 // caret: Up and Down move the highlight, Enter (the bar's submit) opens
 // the highlighted one, a click opens one.
 func (v *viewer) suggestPanel(c *ui.Context, pg *page, field ui.Element, open func(url string)) {
-	t := c.Theme()
 	if !pg.suggesting {
 		return
 	}
@@ -131,24 +131,16 @@ func (v *viewer) suggestPanel(c *ui.Context, pg *page, field ui.Element, open fu
 		}
 		return true
 	})
-	ui.PopoverBase(c, field, &pg.suggesting, func(panel ui.Element) {
-		panel.Width(field.Bounds().W).Background(t.Surface).BorderWidth(1).BorderColor(t.Border).Radius(8).Padding(4).Shadow(0, 4, 16, 0, ui.RGBA(0, 0, 0, 0.16))
+	aui.Popover(c, field, &pg.suggesting, func(panel ui.Element) {
+		panel.Width(field.Bounds().W)
 		ui.Column(c).FillWidth().Gap(1).Children(func() {
 			for i, s := range list {
-				row := ui.Row(c).Key("suggest:" + s.kind + s.url).FillWidth().Height(32).PaddingX(8).Gap(8).Radius(6).AlignItems(ui.Center).Cursor(ui.CursorPointer)
-				if i == pg.selected || row.Hovered() {
-					row.Background(t.SurfaceHover)
+				label, detail := s.url, ""
+				if s.title != "" {
+					label, detail = s.title, s.url
 				}
-				if row.Clicked() {
-					open(s.url)
-				}
-				row.Children(func() {
-					ui.Icon(c, s.icon()).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
-					if s.title != "" {
-						ui.Text(c, s.title).FontSize(13).SingleLine().Ellipsis("…").Shrink(1)
-					}
-					ui.Text(c, s.url).FontSize(12).TextColor(t.TextMuted).SingleLine().Ellipsis("…").Shrink(2)
-				})
+				aui.CommandRow(c, aui.CommandRowProps{Key: "suggest:" + s.kind + s.url, Label: label, Detail: detail,
+					Icon: s.icon(), Selected: i == pg.selected, OnClick: func() { open(s.url) }})
 			}
 		})
 	})

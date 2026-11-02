@@ -206,55 +206,10 @@ func (ws *Workspace) tabChip(c *ui.Context, p *pane, j int, tb *tab) {
 			iconColor = icons.Color(tb.title, t.Dark)
 		}
 	}
-	selected := j == p.active
-	chip := ui.Row(c).Key(fmt.Sprintf("tab-%d", tb.id)).Shrink(0).
-		AlignItems(ui.Center).Cursor(ui.CursorPointer).
-		Focusable().Role(ui.RoleTab).Checked(selected).Label(title).Tooltip(tip)
-	hovered := chip.Hovered()
-	fg := t.TextMuted
-	weight := 400
-	if selected {
-		fg = t.Text
-		weight = 500
-		chip.Height(34).Radius(6, 6, 0, 0).Background(t.Background).
-			BorderWidth(1, 1, 0, 1).BorderColor(t.Border)
-	} else {
-		chip.Height(30).Margin(0, 0, 2, 0).Radius(4)
-		if hovered {
-			fg = t.Text
-			chip.Background(t.SurfaceHover)
-		} else if j+1 < len(p.tabs) && j+1 != p.active {
-			divColor := t.Border
-			chip.DrawOver(func(painter *ui.Painter, rc ui.Rect) {
-				painter.Fill(ui.Rect{X: rc.X + rc.W, Y: rc.Y + (rc.H-14)/2, W: 1, H: 14}, divColor, 0)
-			})
-		}
-	}
-	chip.TextColor(fg)
-	chip.Children(func() {
-		ui.Row(c).MaxWidth(160).MinWidth(0).Shrink(0).Padding(0, 6, 0, 10).Gap(6).AlignItems(ui.Center).Children(func() {
-			if glyph != nil {
-				ic := ui.Icon(c, glyph).Size(14, 14).Shrink(0)
-				if iconColor.A > 0 {
-					ic.TextColor(iconColor)
-				} else {
-					ic.TextColor(fg)
-				}
-			}
-			ui.Text(c, title).FontSize(12.5).LineHeight(1.3).FontWeight(weight).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
-		})
-		xbtn := ui.ButtonBase(c).Label("Close "+tb.title).Size(20, 20).
-			Radius(4).Margin(0, 4, 0, 0).Shrink(0).AlignItems(ui.Center).
-			Justify(ui.Center).Cursor(ui.CursorPointer)
-		if xbtn.Hovered() {
-			xbtn.Background(t.SurfaceHover)
-		}
-		xbtn.OnClick(func() { ws.later(func() { ws.closeTabs([]*tab{tb}) }) })
-		xbtn.Children(func() {
-			if selected || hovered || xbtn.Hovered() {
-				ui.Icon(c, icon.Must("x")).Size(12, 12).TextColor(t.TextMuted)
-			}
-		})
+	chip := aui.TabChip(c, aui.TabChipProps{
+		Key: fmt.Sprintf("tab-%d", tb.id), Title: title, Tooltip: tip, Icon: glyph, IconColor: iconColor,
+		Selected: j == p.active, Divider: j+1 < len(p.tabs) && j+1 != p.active,
+		CloseLabel: "Close " + tb.title, OnClose: func() { ws.later(func() { ws.closeTabs([]*tab{tb}) }) },
 	})
 	chip.ContextMenu(func(m *ui.Menu) { nativeMenu(m, ws.tabMenu(p, tb)) })
 	chip.Drag(tb)
@@ -364,18 +319,8 @@ func (ws *Workspace) emptyPane(c *ui.Context) {
 		if label != "" {
 			text += " (" + label + ")"
 		}
-		btn := ui.ButtonBase(c).Key("empty-" + id).Label(cmd.Title).Height(32).PaddingX(12).Radius(6).
-			AlignItems(ui.Center).Justify(ui.Center).Cursor(ui.CursorPointer)
-		fg := t.Accent
-		if btn.Hovered() {
-			fg = t.AccentHover
-			btn.Background(t.SurfaceHover)
-		}
-		if btn.Clicked() && cmd.Main != nil {
-			cmd.Main()
-		}
-		btn.Children(func() {
-			ui.Text(c, text).FontSize(14).TextColor(fg)
+		ui.Row(c).Key("empty-" + id).Children(func() {
+			aui.Button(c, aui.ButtonProps{Label: text, Variant: aui.ButtonLink, OnClick: cmd.Main})
 		})
 	}
 	ui.Column(c).Grow(1).Fill().Background(t.Background).Center().Gap(6).Children(func() {

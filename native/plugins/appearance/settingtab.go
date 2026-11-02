@@ -181,11 +181,7 @@ func (a *Appearance) selectSpec(label, desc, key, cur string, opts []aui.SelectO
 
 func (a *Appearance) switchSpec(label, desc, key string, cur bool) rowSpec {
 	return rowSpec{label: label, desc: desc, control: func(c *ui.Context) {
-		on := cur
-		ui.Switch(c, &on)
-		if on != cur {
-			a.set.Set(settings.Appearance, key, on)
-		}
+		aui.Switch(c, label, cur, func(on bool) { a.set.Set(settings.Appearance, key, on) })
 	}}
 }
 

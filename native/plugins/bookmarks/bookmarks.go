@@ -427,11 +427,7 @@ func (b *Bookmarks) itemRow(c *ui.Context, r row) {
 	moreClicked := false
 	item.Children(func() {
 		if it.Type == "group" {
-			chevron := icon.Must("chevron-down")
-			if b.collapsed[r.key] {
-				chevron = icon.Must("chevron-right")
-			}
-			if ui.Icon(c, chevron).Size(14, 14).TextColor(t.TextMuted).Shrink(0).Cursor(ui.CursorPointer).Clicked() {
+			if aui.Disclosure(c, !b.collapsed[r.key], 14).Clicked() {
 				chevronClicked = true
 				b.collapsed[r.key] = !b.collapsed[r.key]
 			}
