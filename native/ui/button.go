@@ -13,6 +13,8 @@ const (
 	ButtonGhost
 	// ButtonDanger is the solid danger action.
 	ButtonDanger
+	// ButtonLink is accent text with no face until the pointer is over it.
+	ButtonLink
 
 	// ButtonSM is a 32 DIP labelled button; the zero value.
 	ButtonSM ButtonSize = 0
@@ -77,8 +79,13 @@ func Button(c *ui.Context, p ButtonProps) ui.Element {
 	case b.Hovered():
 		face = hover
 	}
-	if p.Variant == ButtonGhost && !p.Disabled && (b.Hovered() || b.Pressed()) {
-		fg = t.Text
+	if !p.Disabled && (b.Hovered() || b.Pressed()) {
+		switch p.Variant {
+		case ButtonGhost:
+			fg = t.Text
+		case ButtonLink:
+			fg = t.AccentHover
+		}
 	}
 	if p.Variant == ButtonSecondary {
 		b.Border(1, t.Border)
@@ -107,6 +114,8 @@ func buttonPaint(t *ui.Theme, v ButtonVariant) (face, hover, pressed, fg ui.Colo
 		return control(t), t.SurfaceHover, t.SurfacePressed, t.Text
 	case ButtonGhost:
 		return ui.Color{}, t.SurfaceHover, t.SurfacePressed, t.TextMuted
+	case ButtonLink:
+		return ui.Color{}, t.SurfaceHover, t.SurfacePressed, t.Accent
 	case ButtonDanger:
 		return t.Danger, t.Danger.Mix(t.Text, 0.1), t.Danger.Mix(t.Text, 0.2), ui.Hex("#ffffff")
 	default:

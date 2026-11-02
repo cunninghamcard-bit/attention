@@ -73,7 +73,7 @@ func Select(c *ui.Context, p SelectProps) ui.Element {
 			ui.Icon(c, icon.Must("chevron-down")).Size(12, 12).Rotate(turn).TextColor(t.TextMuted).Shrink(0)
 		})
 		sel.Popup(func(panel ui.Element) {
-			floating(c, panel).MinWidth(max(p.Width, 160))
+			Floating(c, panel).MinWidth(max(p.Width, 160))
 			ui.Column(c).FillWidth().Gap(2).FocusGroup(ui.Vertical).Children(func() {
 				for _, o := range p.Options {
 					c.Key(o.Value)
@@ -114,14 +114,22 @@ func SettingsToggle(c *ui.Context, label, description string, on, disabled bool,
 				ui.Text(c, description).FontSize(smallSize).TextColor(t.TextMuted)
 			}
 		})
-		value := on
-		sw := ui.Switch(c, &value).Label(label).Shrink(0)
 		if disabled {
-			sw.Disabled(true)
+			Switch(c, label, on, nil).Shrink(0).Disabled(true)
+			return
 		}
-		if value != on && changed != nil && !disabled {
-			changed(value)
-		}
+		Switch(c, label, on, changed).Shrink(0)
 	})
 	return row
+}
+
+// Switch draws MyGo's switch named label, showing on; changed runs with
+// the new value when the user flips it.
+func Switch(c *ui.Context, label string, on bool, changed func(bool)) ui.Element {
+	value := on
+	sw := ui.Switch(c, &value).Label(label)
+	if value != on && changed != nil {
+		changed(value)
+	}
+	return sw
 }

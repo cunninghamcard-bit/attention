@@ -42,6 +42,15 @@ type DialogProps struct {
 	Body      func(c *ui.Context)
 }
 
+// Floating styles panel as a popover face: padded, rounded, opaque, with
+// a hairline and a soft drop, easing in on first build.
+func Floating(c *ui.Context, panel ui.Element) ui.Element {
+	t := c.Theme()
+	panel.Padding(4).Radius(t.Radius).Clip().Background(control(t)).Border(1, t.Border).
+		Shadow(0, 6, 16, 0, Shade(0.12))
+	return Arrive(panel, ui.Pose{Y: -4, Fade: 1}, 0)
+}
+
 // IconMenu draws the button and, while open, the menu under it. The
 // element returned is the button.
 func IconMenu(c *ui.Context, p IconMenuProps) ui.Element {
@@ -59,7 +68,7 @@ func IconMenu(c *ui.Context, p IconMenuProps) ui.Element {
 			if p.End {
 				panel.AttachTo(b, ui.AnchorBottomEnd, ui.AnchorTopEnd)
 			}
-			floating(c, panel.Margin(6, 0, 0, 0)).MinWidth(176).Role(ui.RoleMenu)
+			Floating(c, panel.Margin(6, 0, 0, 0)).MinWidth(176).Role(ui.RoleMenu)
 			ui.Column(c).FillWidth().Gap(2).FocusGroup(ui.Vertical).Children(func() {
 				for i, it := range p.Items {
 					menuEntry(c, i, it, func() { *open = false })
@@ -109,15 +118,6 @@ func Dialog(c *ui.Context, p DialogProps) ui.Element {
 		})
 	})
 	return host
-}
-
-// floating styles panel as a popover face: padded, rounded, opaque, with
-// a hairline and a soft drop, easing in on first build.
-func floating(c *ui.Context, panel ui.Element) ui.Element {
-	t := c.Theme()
-	panel.Padding(4).Radius(t.Radius).Clip().Background(control(t)).Border(1, t.Border).
-		Shadow(0, 6, 16, 0, Shade(0.12))
-	return Arrive(panel, ui.Pose{Y: -4, Fade: 1}, 0)
 }
 
 func menuEntry(c *ui.Context, key int, it MenuItem, done func()) {
