@@ -1,7 +1,7 @@
 # 路线图：attention Go 原生重写
 
 - 依据：[RFC 0001](rfc/0001-go-native-plugin-browser.md) · [产品线规划](product.md)
-- 更新：2026-11-01
+- 更新：2026-11-02
 - 原则：每个阶段结束时，都要有一个**能用的二进制**和**客观的完成标准**。下一个阶段只在上一个阶段的标准全部满足后开始。
 
 ## 总览
@@ -20,13 +20,28 @@ P0 ──► P1 ──┬──► P2 ──► P4 ──┐
             └──► P3 ─────────┴──► P5
 ```
 
-## 现状（2026-10-28，`feat/native-reader`）
+## 现状（2026-11-02，`main` @ `d91400c`）
 
-P0 已结案：拓扑成立，阅读器建在这份结论上。当前二进制里已经有 P1 的阅读、P2 的索引和 CLI、P3 的网页标签，以及 P4 的终端和 `build --with`。还没过的门禁是性能数字、CLI e2e、正文抽取成功率、git 插件，以及删掉 Node。
+P0 已结案：拓扑成立。阅读器分支已经合进 `main`。当前二进制带 32 个插件（RFC §6），有 P1 的阅读、P2 的索引和 CLI、P3 的网页标签、P4 的终端和 `build --with`。还没过的门禁是性能数字、CLI e2e、正文抽取成功率、git 插件，以及删掉 Node。
 
 勾选表示这条已经有代码或当时的记录。没有勾的是还没测、或测过但不满足原文。
 
-和 P0 开工时锁定的版本相比，阅读器现在用的是 mygo `v0.7.2-0.20261028073710-642005fd4978`（含 #865 的帧调度修复），共享 UI 是 `attention-ui` 的 replace，不再直接 replace octogo。
+依赖版本：mygo `v0.7.2-0.20261028073710-642005fd4978`（含 #865 的帧调度修复）；rutis `v0.19.4-0.20261102025122-f581e25d5f6d`（v0.20 发版前的提交，支持同进程直接传 Go 值）；共享 UI 是 `attention-ui`，`replace` 到本地的 `../../octogo/attention-ui`。
+
+2026-11-02 RFC §5、§6 按代码改写。改写时把代码和原稿的差别分成两类：代码有意换了做法的，写进 RFC 正文；设计仍然有效、代码还没做到的，列在下面。
+
+## RFC 中尚未实现的设计
+
+这些条目在 RFC 里标为「未实现」。每条注明归属的阶段。
+
+| 设计 | RFC 位置 | 现状 | 阶段 |
+|---|---|---|---|
+| 源码和纯文本可编辑，防抖自动保存，Ctrl S 立即写回，写回时抑制自身触发的重读 | §10.1 第 2 条 | `internal/textdoc/textdoc.go` 仍是 `ReadOnly: true`；`fs.Write` 已有 | P1 |
+| 独立的 `navigation` 插件：唯一的打开入口、链接翻译、布局历史的撤销和重做 | §5.6「打开与导航」 | 入口在 `*workspace.Workspace` 上；`plugins/workspace/plugin.go:7` 有 TODO；没有布局历史 | P1 |
+| 文件类 CLI 命令归 `fs` 插件 | §5.9 | 在 `plugins/project/cli.go`，因为要先解析挂载根和相对路径 | P2 |
+| 外置进程里的资源 provider（跨进程订阅） | §5.6「resources」 | 只有进程内的 `file` provider | P4（随 `git` 协议） |
+| `git` / `git-ui`，`git` 资源协议 | §6、§9 | 没有 | P4 |
+| `terminal` 服务插件（PTY 可外置） | §6 | PTY 在 `terminal-ui` 里 | P4 |
 
 ## P0：地基 spike
 
@@ -62,7 +77,7 @@ P0 已结案：拓扑成立，阅读器建在这份结论上。当前二进制�
 **目的**：成为一个可以日常使用的本地资料阅读器。
 
 **范围**
-- 插件：`tab-types`、`navigation`、`settings`、`text-ui` / `markdown-ui` / `image-ui`、`palette-ui`（命令面板，以及按文件名的快速切换）。`workspace` 补全分屏、多个 dock 和布局历史（RFC §5.6、§5.7）。
+- 插件：`tab-types`（已并入 `workspace`）、`navigation`（未实现，见上表）、`settings`、`text-ui` / `markdown-ui` / `image-ui`、`palette-ui`（命令面板，以及按文件名的快速切换）。`workspace` 补全分屏、多个 dock 和布局历史（RFC §5.6、§5.7）。
 - 挂载：Home 加多个仓库，语义与 `mount/` 一致；挂载列表持久化到配置主目录。
 - 标签页和分屏的布局状态，在重启后恢复。
 - 实测 `ui/markdown` 对 wikilink、嵌入、callout 的支持情况（风险 R6）。
@@ -81,7 +96,7 @@ P0 已结案：拓扑成立，阅读器建在这份结论上。当前二进制�
 **目的**：建立资源模型的索引层；完成 CLI 对齐后，agent 就能通过 CLI 全面操控 attention。
 
 **范围**
-- 插件：`extractors`、`markdown-extract`、`index`、`search-ui`、`backlinks-ui`、`outline-ui`；`fs` 补全 CLI 的文件类命令。
+- 插件：`extractors`、`markdown-extract`（这两个按 RFC §10.1 第 5 条不做）、`index`、`search-ui`、`backlinks-ui`、`outline-ui`；`fs` 补全 CLI 的文件类命令（现在在 `project`，见上表）。
 - 按 RFC §5.9，交付「47 个 CLI 命令 → 插件」的完整归属表，并逐个实现。
 - 改造 `scripts/e2e-cli.mjs`：去掉写死的 `electron` 和 `out/desktop/main.cjs`，改为启动 Go 二进制，环境变量也相应调整。
 - 确定 index 的存储方式（RFC 未决问题 5）。
@@ -97,8 +112,8 @@ P0 已结案：拓扑成立，阅读器建在这份结论上。当前二进制�
 **目的**：完成从阅读器到浏览器的转变。
 
 **范围**
-- 插件：`web-ui`（tab type `web`、地址栏、网页内容的读取和提交）、`html-extract`、`history`、`bookmarks`。
-- 每个 `web` 标签页的前进和后退走 WebView 引擎自己的历史（`Page.GoBack/GoForward`），和工作区的打开记录分开（RFC §5.6）。
+- 插件：`web-ui`（tab type `web`、地址栏、网页内容的读取和提交）、`html-extract`、`history`、`bookmarks`。实际落地为 `web`、`web-read`、`web-history`、`web-index`、`bookmarks` 五个插件，抽取是 `internal/htmlextract`（RFC §6）。
+- 每个 `web` 标签页的前进和后退走 WebView 引擎自己的历史（`Page.GoBack/GoForward`），和工作区的打开记录分开（RFC §5.6）。实际做法：前进后退是标签页自己的历史，网页里的导航提交后记入这条历史（`handleCommittedNavigation`），见 RFC §5.6「打开与导航」。
 - 阅读模式：`web-ui` 在页面加载后用 `Page.Eval` 取出 HTML，交给 `html-extract` 抽取正文，再用 `ui/markdown` 原生排版。
 - 启用了 index 时，`web-ui` 把网页的抽取结果提交给 index，让网页之间、网页与本地资源之间的链接都进入链接图（依赖 P2）。
 - CLI：`open url=…`、`web:read url=…`（输出阅读模式抽取的正文；不能复用已有的 `read`），以及 `history`、`bookmarks` 系列命令。
@@ -116,7 +131,7 @@ P0 已结案：拓扑成立，阅读器建在这份结论上。当前二进制�
 
 **范围**
 - `terminal` 和 `terminal-ui`：优先使用 mygo 官方的 `plugins/terminal`（自带 PTY，界面是原生的）；如果它不能满足插件化的拆分，再考虑自己封装 PTY。
-- `git` 和 `git-ui`：按 RFC §5.4 设计。`git` 服务插件**必须能以独立进程运行**。提供 `git` 资源协议（`attention-resource://git/…`）、变更面板，diff 用 `ui/editor` 的 DiffView 显示。
+- `git` 和 `git-ui`：按 RFC §5.1 第 2 条和 §5.4 的写法设计。`git` 服务插件**必须能以独立进程运行**。提供 `git` 资源协议（`attention-resource://git/…`）、变更面板，diff 用 `ui/editor` 的 DiffView 显示。
 - `webview-panel-ui`：第三方 UI 的兜底方案。
 - `attention build --with`：xcaddy 风格的重编译工具，至少能跑通一个示例插件。
 - 写一份第三方服务插件示例，用 TS 或 Python 编写，演示「不用重新编译 attention 也能接入」。
