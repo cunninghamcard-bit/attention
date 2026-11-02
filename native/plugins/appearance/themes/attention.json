@@ -4,6 +4,17 @@
     {
       "name": "Attention Light",
       "appearance": "light",
+      "colors": {
+        "background": "#fafafa",
+        "surface": "#fcfcfc",
+        "border": "#89898933",
+        "text": "#0c0c0c",
+        "textMuted": "#595959",
+        "accent": "#181818",
+        "danger": "#c44f4a",
+        "warning": "#a07013",
+        "success": "#2f8052"
+      },
       "syntax": {
         "comment": "#737373",
         "keyword": "#d32a61",
@@ -19,6 +30,17 @@
     {
       "name": "Attention Dark",
       "appearance": "dark",
+      "colors": {
+        "background": "#0c0c0c",
+        "surface": "#0c0c0c",
+        "border": "#89898933",
+        "text": "#fafafa",
+        "textMuted": "#a3a3a3",
+        "accent": "#eeeeee",
+        "danger": "#d67670",
+        "warning": "#d6a038",
+        "success": "#54b879"
+      },
       "syntax": {
         "comment": "#737373",
         "keyword": "#ff678d",

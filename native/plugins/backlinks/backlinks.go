@@ -20,7 +20,6 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/smallnest/uix/components/lucide"
 
-	"github.com/cunninghamcard-bit/attention-ui/theme"
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
@@ -353,5 +352,5 @@ func highlighted(c *ui.Context, m *indexplugin.Mention) {
 	if to < len(text) {
 		spans = append(spans, ui.Span{Text: text[to:]})
 	}
-	ui.RichText(c, spans...).FontSize(12).Font(theme.MonoFont).SingleLine().Ellipsis("…").Shrink(1)
+	ui.RichText(c, spans...).FontSize(12).Font(appearance.MonoFont).SingleLine().Ellipsis("…").Shrink(1)
 }

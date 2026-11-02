@@ -5,9 +5,15 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 	"github.com/egoist/mygo/ui/markdown"
-
-	"github.com/cunninghamcard-bit/attention-ui/theme"
 )
+
+// accentSchemes are the preset accents of the "accent" setting.
+var accentSchemes = map[string]ui.Color{
+	"ocean":  ui.Hex("#1f3a7a"),
+	"forest": ui.Hex("#1f5a3a"),
+	"rose":   ui.Hex("#8a2e4a"),
+	"amber":  ui.Hex("#7a5a1f"),
+}
 
 // built are the widget themes one Theme and the settings make.
 type built struct {
@@ -24,20 +30,25 @@ func build(t Theme, s Settings) built {
 }
 
 func buildUI(t Theme, s Settings) *ui.Theme {
-	u := theme.For(t.Dark, s.Accent)
-	if c := t.Colors; c != nil {
-		u.Background, u.Surface, u.Border = c.Background, c.Surface, c.Border
-		u.Text, u.TextMuted = c.Text, c.TextMuted
-		u.SurfaceHover = mix(c.Surface, c.Text, 0.06)
-		u.SurfacePressed = mix(c.Surface, c.Text, 0.12)
-		u.Danger, u.Warning, u.Success = c.Danger, c.Warning, c.Success
-		u.Scrollbar = c.Border
-		u.Inverse, u.InverseText = c.Text, c.Background
-		if s.Accent == "default" {
-			applyAccent(u, c.Accent)
-		}
-		u.Selection = u.Accent.Alpha(0.25)
+	u := ui.LightTheme()
+	if t.Dark {
+		u = ui.DarkTheme()
 	}
+	c := t.Colors
+	u.Background, u.Surface, u.Border = c.Background, c.Surface, c.Border
+	u.Text, u.TextMuted = c.Text, c.TextMuted
+	u.SurfaceHover = mix(c.Surface, c.Text, 0.06)
+	u.SurfacePressed = mix(c.Surface, c.Text, 0.12)
+	u.Danger, u.Warning, u.Success = c.Danger, c.Warning, c.Success
+	u.Scrollbar = c.Border
+	u.Inverse, u.InverseText = c.Text, c.Background
+	u.Radius, u.Spacing, u.FontSize, u.ScrollbarWidth = 8, 8, 14, 4
+	accent := c.Accent
+	if a, ok := accentSchemes[s.Accent]; ok {
+		accent = a
+	}
+	applyAccent(u, accent)
+	u.Selection = u.Accent.Alpha(0.25)
 	if c, ok := parseColor(s.AccentColor); ok {
 		applyAccent(u, c)
 	}
@@ -61,15 +72,13 @@ func buildUI(t Theme, s Settings) *ui.Theme {
 
 func buildEditor(t Theme, u *ui.Theme, s Settings) *editor.Theme {
 	ed := editor.DefaultTheme(u)
-	if t.Colors != nil {
-		ed.Error, ed.Warning, ed.Info, ed.Hint = u.Danger, u.Warning, u.Accent, u.TextMuted
-		ed.Added, ed.Deleted, ed.Modified = u.Success, u.Danger, u.Warning
-		ed.Tokens[editor.TokenHeading].Color = u.Text
-		ed.Tokens[editor.TokenLink].Color = u.Accent
-		ed.Tokens[editor.TokenInserted].Color = u.Success
-		ed.Tokens[editor.TokenDeleted].Color = u.Danger
-		ed.Tokens[editor.TokenInvalid].Color = u.Danger
-	}
+	ed.Error, ed.Warning, ed.Info, ed.Hint = u.Danger, u.Warning, u.Accent, u.TextMuted
+	ed.Added, ed.Deleted, ed.Modified = u.Success, u.Danger, u.Warning
+	ed.Tokens[editor.TokenHeading].Color = u.Text
+	ed.Tokens[editor.TokenLink].Color = u.Accent
+	ed.Tokens[editor.TokenInserted].Color = u.Success
+	ed.Tokens[editor.TokenDeleted].Color = u.Danger
+	ed.Tokens[editor.TokenInvalid].Color = u.Danger
 	set := func(c ui.Color, kinds ...editor.TokenKind) {
 		if c == (ui.Color{}) {
 			return

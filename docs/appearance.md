@@ -10,7 +10,7 @@
 
 | 组 | 内容 | 必填 |
 |---|---|---|
-| `colors` | `background`、`surface`、`border`、`text`、`textMuted`、`accent`、`danger`、`warning`、`success` | 要么九个都写，要么整组不写。不写就用 attention-ui 自己的配色 |
+| `colors` | `background`、`surface`、`border`、`text`、`textMuted`、`accent`、`danger`、`warning`、`success` | 九个都要写 |
 | `syntax` | `comment`、`keyword`、`string`、`number`、`function`、`type`、`variable`、`punctuation`、`tag` | 可选，缺的键用编辑器默认色 |
 | `terminal` | ANSI 0–15，16 个 | 可选，缺了用 mygo 终端的默认色 |
 
@@ -34,7 +34,7 @@
 
 全部由上面的颜色算出，代码在 `build.go`：
 
-- 界面（`ui.Theme`）：hover、pressed 是 `surface` 往 `text` 混 6% 和 12%；accentHover、accentPressed 是 `accent` 调亮、调暗；accentText 按 `accent` 的亮度取黑字或白字；focus 是 `accent` 35% 透明；选区是 `accent` 25% 透明；滚动条用 `border`。attention-ui 的额外 token（`theme.Ext`）在背景不是它自己的配色时，也从这些字段推导，所以换主题时整个界面一起变。
+- 界面（`ui.Theme`）：hover、pressed 是 `surface` 往 `text` 混 6% 和 12%；accentHover、accentPressed 是 `accent` 调亮、调暗；accentText 按 `accent` 的亮度取黑字或白字；focus 是 `accent` 35% 透明；选区是 `accent` 25% 透明；滚动条用 `border`。`native/ui` 的组件只读 `ui.Theme`，所以换主题时整个界面一起变。
 - 编辑器（`editor.Theme`）：从 `editor.DefaultTheme(ui 主题)` 起，诊断和 diff 颜色用 `danger`、`warning`、`success`，标题用 `text`，链接用 `accent`，`syntax` 的九个颜色覆盖对应的词法类别。
 - Markdown 阅读视图：从界面和编辑器主题取色，字体和字号来自设置。
 - 终端：前景、背景取 `text`、`background`，16 色取 `terminal`。
@@ -57,14 +57,14 @@
 
 ## 主题从哪里来
 
-- 内置：`native/plugins/appearance/themes/`。`Attention Light/Dark` 不写 `colors`，用 attention-ui 的配色，只带语法色；另有 One 和 Ayu。
+- 内置：`native/plugins/appearance/themes/`：`Attention Light/Dark`（原 attention-ui 的配色）、One 和 Ayu。
 - 用户：`<配置目录>/themes/*.json`，设置页的 Themes folder 一行可以打开和重新读取，读不了的文件在那一行列出原因。
 
 ## 设置
 
 `appearance.json` 里的键：
 
-- 主题：`theme`（`system`、`moonstone`、`obsidian`）、`lightTheme`、`darkTheme`、`accent`（attention-ui 的五种强调色方案）、`accentColor`（自定义强调色，优先于主题和方案）、`iconTheme`。
+- 主题：`theme`（`system`、`moonstone`、`obsidian`）、`lightTheme`、`darkTheme`、`accent`（`default` 用主题的强调色，另有 `ocean`、`forest`、`rose`、`amber` 四种预设）、`accentColor`（自定义强调色，优先于主题和方案）、`iconTheme`。
 - 字体：`interfaceFontFamily`、`textFontFamily`、`monospaceFontFamily`、`baseFontSize`、`editorFontSize`。
 - 编辑器：`lineHeight`（`comfortable`、`standard`、`custom` 加 `customLineHeight`）、`tabSize`、`italicComments`、`showLineNumbers`、`showIndentGuides`。
 - 界面：`showRibbon`、`showViewHeader`、`showInlineTitle`、`showTabBar`、`showFileIcons`、`treeDensity`、`spacing`、`radius`、`scrollbarWidth`。

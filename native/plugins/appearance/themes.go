@@ -42,10 +42,9 @@ var (
 // Theme is one color theme: what a theme file holds, and nothing else.
 // Sizes and fonts are Settings; every other color is derived (build.go).
 type Theme struct {
-	Name string
-	Dark bool
-	// Colors is nil for attention-ui's own palette.
-	Colors   *Colors
+	Name     string
+	Dark     bool
+	Colors   Colors
 	Syntax   Syntax
 	Terminal *[16]ui.Color
 }
@@ -89,15 +88,12 @@ func (tj themeJSON) theme() (Theme, error) {
 	if t.Name == "" || tj.Appearance != "light" && tj.Appearance != "dark" {
 		return t, fmt.Errorf("a theme needs a name and an appearance of light or dark")
 	}
-	if tj.Colors != nil {
-		t.Colors = &Colors{}
-		for i, dst := range t.Colors.fields() {
-			c, ok := parseColor(tj.Colors[colorKeys[i]])
-			if !ok {
-				return t, fmt.Errorf("colors.%s is missing or not #rrggbb[aa]", colorKeys[i])
-			}
-			*dst = c
+	for i, dst := range t.Colors.fields() {
+		c, ok := parseColor(tj.Colors[colorKeys[i]])
+		if !ok {
+			return t, fmt.Errorf("colors.%s is missing or not #rrggbb[aa]", colorKeys[i])
 		}
+		*dst = c
 	}
 	for i, dst := range t.Syntax.fields() {
 		*dst, _ = parseColor(tj.Syntax[syntaxKeys[i]])
