@@ -4,7 +4,7 @@
 // mentions.
 //
 // On a web page's tab it lists the notes and pages citing its URL
-// (indexcontract URLBacklinks), the reader's own.
+// (index.Index URLBacklinks), the reader's own.
 //
 // Left out: Unlinked mentions (the TS view renders that section empty).
 package backlinks
@@ -22,13 +22,13 @@ import (
 
 	"github.com/cunninghamcard-bit/attention-ui/theme"
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	indexcontract "github.com/cunninghamcard-bit/attention/native/contract/index"
 	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
-	"github.com/cunninghamcard-bit/attention/native/layoutapi"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	indexplugin "github.com/cunninghamcard-bit/attention/native/plugins/index"
+	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 )
 
 const (
@@ -43,29 +43,47 @@ const (
 // Plugin registers the Backlinks panel while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "index", "workspace"},
+	Inject: []string{"shell", "slots", "layout", "workspace", "index", "actions"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var idx indexcontract.Index
+		var (
+			sh  *shell.Shell
+			sl  *slots.Registry
+			lyt *layout.Layout
+			ws  *workspace.Workspace
+			idx indexplugin.Index
+			act *actions.Service
+		)
+		if err := rctx.Use("shell", &sh); err != nil {
+			return err
+		}
+		if err := rctx.Use("slots", &sl); err != nil {
+			return err
+		}
+		if err := rctx.Use("layout", &lyt); err != nil {
+			return err
+		}
+		if err := rctx.Use("workspace", &ws); err != nil {
+			return err
+		}
 		if err := rctx.Use("index", &idx); err != nil {
 			return err
 		}
+		if err := rctx.Use("actions", &act); err != nil {
+			return err
+		}
 		ctx, cancel := context.WithCancel(context.Background())
-		p := &Pane{ctx: ctx, idx: idx, collapsed: map[string]bool{}}
-		off := slotsapi.RegisterPanel(slotsapi.Panel{
-			ID: PanelID, Title: "Backlinks", Icon: lucide.Link(), Dock: slotsapi.Right, Order: 1,
+		p := &Pane{ctx: ctx, sh: sh, ws: ws, idx: idx, collapsed: map[string]bool{}}
+		off := sl.RegisterPanel(slots.Panel{
+			ID: PanelID, Title: "Backlinks", Icon: lucide.Link(), Dock: slots.Right, Order: 1,
 			View: p.view, State: p.state, Restore: p.restore,
 		})
-		rctx.On(indexcontract.ChangedEvent, func(context.Context, ...any) (any, error) {
-			shellapi.Update(p.fetch)
+		rctx.On(indexplugin.ChangedEvent, func(context.Context, ...any) (any, error) {
+			sh.Update(p.fetch)
 			return nil, nil
 		})
-		reveal := func() {
-			if l := layoutapi.Get(); l != nil {
-				l.RevealPanel(PanelID)
-			}
-		}
-		offCmd := actionsapi.Register(actionsapi.Command{ID: "backlink:open", Title: "Open backlinks", Main: reveal, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			return shellapi.OnMain(ctx, func() (string, error) { reveal(); return "", nil })
+		reveal := func() { lyt.RevealPanel(PanelID) }
+		offCmd := act.Add(actions.Command{ID: "backlink:open", Title: "Open backlinks", Main: reveal, Run: func(ctx context.Context, _ actions.Args) (string, error) {
+			return shell.OnMain(ctx, sh, func() (string, error) { reveal(); return "", nil })
 		}})
 		rctx.Effect(func(context.Context) error {
 			offCmd()
@@ -80,7 +98,9 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 // Pane is the panel's state, on the main thread only.
 type Pane struct {
 	ctx context.Context
-	idx indexcontract.Index
+	sh  *shell.Shell
+	ws  *workspace.Workspace
+	idx indexplugin.Index
 
 	want      string // the active path, or web page's URL, last seen
 	web       bool   // want is a URL
@@ -88,7 +108,7 @@ type Pane struct {
 	cancel    context.CancelFunc
 	loading   bool
 	err       string
-	results   []indexcontract.Backlink
+	results   []indexplugin.Backlink
 	collapsed map[string]bool // per source note
 	rows      []row
 	dirty     bool
@@ -122,8 +142,8 @@ func (p *Pane) restore(data json.RawMessage) {
 // sync starts a fetch when the active path moved. Called from View.
 func (p *Pane) sync() {
 	path, web := "", false
-	if ws := workspaceapi.Get(); ws != nil {
-		if info, ok := ws.ActiveTab(); ok {
+	if p.ws != nil {
+		if info, ok := p.ws.ActiveTab(); ok {
 			path = info.Path
 			if path == "" && info.Kind == webKind {
 				path, web = info.Address, true
@@ -160,7 +180,7 @@ func (p *Pane) fetch() {
 			backlinks = p.idx.URLBacklinks
 		}
 		res, err := backlinks(ctx, path)
-		shellapi.Update(func() {
+		p.sh.Update(func() {
 			if seq != p.seq {
 				return
 			}
@@ -205,7 +225,7 @@ func (p *Pane) mentionCount() int {
 	return n
 }
 
-func (p *Pane) view(c *ui.Context, _ slotsapi.PanelProps) {
+func (p *Pane) view(c *ui.Context, _ slots.PanelProps) {
 	p.sync()
 	t := c.Theme()
 	ui.Column(c).Fill().Children(func() {
@@ -238,7 +258,7 @@ func (p *Pane) view(c *ui.Context, _ slotsapi.PanelProps) {
 			m := &b.Mentions[r.mention]
 			item := omgui.SideRow(c, omgui.SideRowProps{Key: fmt.Sprintf("m:%s%s:%d", b.Path, b.URL, r.mention), Depth: 2})
 			if item.Clicked() {
-				open(b, m)
+				p.open(b, m)
 			}
 			item.Children(func() {
 				highlighted(c, m)
@@ -247,15 +267,15 @@ func (p *Pane) view(c *ui.Context, _ slotsapi.PanelProps) {
 	})
 }
 
-func (p *Pane) fileRow(c *ui.Context, b *indexcontract.Backlink) {
+func (p *Pane) fileRow(c *ui.Context, b *indexplugin.Backlink) {
 	t := c.Theme()
 	item := omgui.SideRow(c, omgui.SideRowProps{Key: "f:" + b.Path + b.URL, Depth: 0})
 	if item.Clicked() {
-		var first *indexcontract.Mention
+		var first *indexplugin.Mention
 		if len(b.Mentions) > 0 {
 			first = &b.Mentions[0]
 		}
-		open(b, first)
+		p.open(b, first)
 	}
 	item.Tooltip(b.Display)
 	item.Children(func() {
@@ -283,9 +303,28 @@ func (p *Pane) fileRow(c *ui.Context, b *indexcontract.Backlink) {
 	})
 }
 
+// open shows a backlink's source: a note at the mention, a web page in a
+// web tab.
+func (p *Pane) open(b *indexplugin.Backlink, m *indexplugin.Mention) {
+	if p.ws == nil {
+		return
+	}
+	if b.URL != "" {
+		_ = p.ws.OpenResource(b.URL, workspace.OpenOptions{Kind: webKind})
+		return
+	}
+	path := b.Path
+	var nav *workspace.Nav
+	if m != nil {
+		// Mention.Line/Col are 0-based; Nav is 1-based (tabtypes.Nav).
+		nav = &workspace.Nav{Line: m.Line + 1, Col: m.Col + 1, Len: m.Len}
+	}
+	p.ws.Open(path, nav, false)
+}
+
 // row is a source title or one of its mentions.
 type row struct {
-	src     *indexcontract.Backlink
+	src     *indexplugin.Backlink
 	mention int // -1 on the source's title
 }
 
@@ -294,29 +333,9 @@ type savedState struct {
 	Collapsed []string `json:"collapsed"`
 }
 
-// open shows a backlink's source: a note at the mention, a web page in a
-// web tab.
-func open(b *indexcontract.Backlink, m *indexcontract.Mention) {
-	ws := workspaceapi.Get()
-	if ws == nil {
-		return
-	}
-	if b.URL != "" {
-		_ = ws.OpenResource(b.URL, workspaceapi.OpenOptions{Kind: webKind})
-		return
-	}
-	path := b.Path
-	var nav *workspaceapi.Nav
-	if m != nil {
-		// Mention.Line/Col are 0-based; Nav is 1-based (tabtypesapi.Nav).
-		nav = &workspaceapi.Nav{Line: m.Line + 1, Col: m.Col + 1, Len: m.Len}
-	}
-	ws.Open(path, nav, false)
-}
-
 // highlighted is a mention as "line: text" with the link marked
 // (BacklinksView.appendHighlightedText). Col is 0-based bytes in Text.
-func highlighted(c *ui.Context, m *indexcontract.Mention) {
+func highlighted(c *ui.Context, m *indexplugin.Mention) {
 	t := c.Theme()
 	text := m.Text
 	from := min(max(0, m.Col), len(text))

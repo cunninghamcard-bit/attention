@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 )
 
 // MountOf is the mount path is under, the longest one, and path relative
@@ -30,15 +30,15 @@ func MountOf(ms []Mount, path string) (Mount, string, bool) {
 // mount's root itself too).
 func AddressOf(ms []Mount, path string) string {
 	if m, rel, ok := MountOf(ms, path); ok && rel != "." {
-		return fscontract.AddressFor(m.ID, rel)
+		return fsplugin.AddressFor(m.ID, rel)
 	}
-	return fscontract.AbsoluteAddress(path)
+	return fsplugin.AbsoluteAddress(path)
 }
 
 // PathOf is the file a file address names. An address that is no file
 // address, names no mount in ms, or leaves its mount, is an error.
 func PathOf(ms []Mount, address string) (string, error) {
-	a, ok := fscontract.ParseAddress(address)
+	a, ok := fsplugin.ParseAddress(address)
 	if !ok {
 		return "", fmt.Errorf("%q is not a file address", address)
 	}

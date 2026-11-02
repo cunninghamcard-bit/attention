@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	codeberg.org/readeck/go-readability/v2 v2.1.3
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2
-	github.com/arcships/rutis/go/rutis v0.17.1
+	github.com/arcships/rutis/go/rutis v0.19.4-0.20261102025122-f581e25d5f6d
 	github.com/cunninghamcard-bit/attention-ui v0.0.0-00010101000000-000000000000
 	github.com/egoist/mygo v0.7.2-0.20261028073710-642005fd4978
 	github.com/fsnotify/fsnotify v1.9.0
@@ -27,4 +27,4 @@ require (
 	golang.org/x/text v0.43.0 // indirect
 )
 
-replace github.com/cunninghamcard-bit/attention-ui => /home/cc/Projects/attention-ui-pin/attention-ui
+replace github.com/cunninghamcard-bit/attention-ui => ../../octogo/attention-ui

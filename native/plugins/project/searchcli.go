@@ -12,9 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	contract "github.com/cunninghamcard-bit/attention/native/contract/project"
-	"github.com/cunninghamcard-bit/attention/native/internal/clipath"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 )
 
 // cliTokenRe is the tokenizer in searchCli.ts plainWords.
@@ -24,18 +22,27 @@ var cliTokenRe = regexp.MustCompile(`(\[[^\]]+\])|(\w+):(?:\([^)]*\)|"[^"]*"|\S*
 // the project's: they run headless too, where no Search panel is loaded.
 // search:open, which shows the panel, is the search plugin's.
 
+// searchCommands are search and search:context.
+func (s *Service) searchCommands() []actions.Command {
+	c := searchCLI{s}
+	return []actions.Command{
+		{ID: "search", CLI: true, Run: c.cliSearch},
+		{ID: "search:context", CLI: true, Run: c.cliSearchContext},
+	}
+}
+
 // searcher is what the commands need of the project.
 type searcher interface {
-	Mounts(ctx context.Context) ([]contract.Mount, error)
-	Search(ctx context.Context, q contract.Query) (contract.SearchResult, error)
-	Files(ctx context.Context) (contract.Listing, error)
+	Mounts(ctx context.Context) ([]Mount, error)
+	Search(ctx context.Context, q Query) (SearchResult, error)
+	Files(ctx context.Context) (Listing, error)
 }
 
 // searchCLI runs the search commands over a project.
 type searchCLI struct{ project searcher }
 
 // cliSearch is `search query=<text> [path=<folder>] [limit=<n>] [total] [case] [format=text|json]`.
-func (c searchCLI) cliSearch(ctx context.Context, a actionsapi.Args) (string, error) {
+func (c searchCLI) cliSearch(ctx context.Context, a actions.Args) (string, error) {
 	query := a.Params["query"]
 	if query == "" {
 		return "", fmt.Errorf("Missing required parameter: query")
@@ -72,7 +79,7 @@ func (c searchCLI) cliSearch(ctx context.Context, a actionsapi.Args) (string, er
 }
 
 // cliSearchContext is `search:context query=<text> [path=<folder>] [limit=<n>] [case] [format=text|json]`.
-func (c searchCLI) cliSearchContext(ctx context.Context, a actionsapi.Args) (string, error) {
+func (c searchCLI) cliSearchContext(ctx context.Context, a actions.Args) (string, error) {
 	query := a.Params["query"]
 	if query == "" {
 		return "", fmt.Errorf("Missing required parameter: query")
@@ -114,7 +121,7 @@ func (c searchCLI) searchVault(ctx context.Context, query, folder, cwd string, c
 		return nil, err
 	}
 	prefix := folderPrefix(mounts, folder, cwd)
-	res, err := c.project.Search(ctx, contract.Query{
+	res, err := c.project.Search(ctx, Query{
 		Text: query, CaseSensitive: caseSensitive, PathPrefix: prefix,
 	})
 	if err != nil {
@@ -124,11 +131,11 @@ func (c searchCLI) searchVault(ctx context.Context, query, folder, cwd string, c
 	if err != nil {
 		return nil, err
 	}
-	byID := make(map[string]contract.Mount, len(mounts))
+	byID := make(map[string]Mount, len(mounts))
 	for _, m := range mounts {
 		byID[m.ID] = m
 	}
-	byPath := make(map[string]contract.FileResult, len(res.Files))
+	byPath := make(map[string]FileResult, len(res.Files))
 	for _, f := range res.Files {
 		byPath[f.Path] = f
 	}
@@ -143,7 +150,7 @@ func (c searchCLI) searchVault(ctx context.Context, query, folder, cwd string, c
 	for _, f := range listing.Files {
 		shown := f.Rel
 		if m, ok := byID[f.Mount]; ok {
-			shown = contract.Display(m, f.Rel)
+			shown = Display(m, f.Rel)
 		}
 		if !strings.EqualFold(path.Ext(f.Rel), ".md") {
 			continue
@@ -162,33 +169,24 @@ func (c searchCLI) searchVault(ctx context.Context, query, folder, cwd string, c
 	return out, nil
 }
 
-// searchCommands are search and search:context.
-func (s *Service) searchCommands() []actionsapi.Command {
-	c := searchCLI{s}
-	return []actionsapi.Command{
-		{ID: "search", CLI: true, Run: c.cliSearch},
-		{ID: "search:context", CLI: true, Run: c.cliSearchContext},
-	}
-}
-
 // cliResult is CliSearchResult: a file and its matches for the CLI.
 type cliResult struct {
 	File    string     `json:"file"`
 	Matches []cliMatch `json:"matches"`
 }
 
-func formatHit(shown string, f contract.FileResult) cliResult {
+// cliMatch is CliSearchMatch: 1-based line, trimmed text.
+type cliMatch struct {
+	Line int    `json:"line"`
+	Text string `json:"text"`
+}
+
+func formatHit(shown string, f FileResult) cliResult {
 	matches := make([]cliMatch, 0, len(f.Matches))
 	for _, m := range f.Matches {
 		matches = append(matches, cliMatch{Line: m.Line, Text: strings.TrimSpace(m.Text)})
 	}
 	return cliResult{File: shown, Matches: matches}
-}
-
-// cliMatch is CliSearchMatch: 1-based line, trimmed text.
-type cliMatch struct {
-	Line int    `json:"line"`
-	Text string `json:"text"`
 }
 
 func allContain(name string, words []string) bool {
@@ -202,12 +200,12 @@ func allContain(name string, words []string) bool {
 
 // folderPrefix is path=: a display-path folder prefix with a trailing slash,
 // so "Folder" does not match "Folder2". When the folder exists, it is
-// resolved through clipath.Candidates; otherwise the token is used as-is.
-func folderPrefix(mounts []contract.Mount, target, cwd string) string {
+// resolved through Candidates; otherwise the token is used as-is.
+func folderPrefix(mounts []Mount, target, cwd string) string {
 	if target == "" {
 		return ""
 	}
-	for _, p := range clipath.Candidates(mounts, target, cwd) {
+	for _, p := range Candidates(mounts, target, cwd) {
 		st, err := os.Stat(p)
 		if err != nil || !st.IsDir() {
 			continue
@@ -222,7 +220,7 @@ func folderPrefix(mounts []contract.Mount, target, cwd string) string {
 			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 				continue
 			}
-			shown := contract.Display(m, filepath.ToSlash(rel))
+			shown := Display(m, filepath.ToSlash(rel))
 			if !strings.HasSuffix(shown, "/") {
 				shown += "/"
 			}
@@ -262,7 +260,7 @@ func plainWords(query string) []string {
 	return words
 }
 
-func limitN(a actionsapi.Args) int {
+func limitN(a actions.Args) int {
 	v := a.Params["limit"]
 	if v == "" {
 		return 0

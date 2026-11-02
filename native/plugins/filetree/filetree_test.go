@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
-	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
+	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
 )
 
 func TestStateAfterToggle(t *testing.T) {
@@ -50,11 +50,11 @@ func TestRestoreThenSetMountsExpands(t *testing.T) {
 
 type posts chan func()
 
-func testTree(t *testing.T, listings map[string][]fscontract.Entry) (*Tree, posts) {
+func testTree(t *testing.T, listings map[string][]fsplugin.Entry) (*Tree, posts) {
 	t.Helper()
 	p := make(posts, 64)
-	fs := fscontract.FS{
-		List: func(_ context.Context, dir string) ([]fscontract.Entry, error) {
+	fs := fsplugin.FS{
+		List: func(_ context.Context, dir string) ([]fsplugin.Entry, error) {
 			return listings[dir], nil
 		},
 		Watch:   func(context.Context, string) error { return nil },
@@ -75,12 +75,12 @@ func (p posts) next(t *testing.T) {
 	}
 }
 
-func mountA() []projectcontract.Mount {
-	return []projectcontract.Mount{{ID: "a", Name: "a", Path: "/a"}}
+func mountA() []projectplugin.Mount {
+	return []projectplugin.Mount{{ID: "a", Name: "a", Path: "/a"}}
 }
 
-func listingsAB() map[string][]fscontract.Entry {
-	return map[string][]fscontract.Entry{
+func listingsAB() map[string][]fsplugin.Entry {
+	return map[string][]fsplugin.Entry{
 		"/a": {
 			{Name: "b", Path: "/a/b", Dir: true},
 			{Name: "z", Path: "/a/z", Dir: true},

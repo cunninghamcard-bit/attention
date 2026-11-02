@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 )
 
 type op struct {
@@ -21,7 +21,7 @@ type op struct {
 // thread only.
 type Queue struct {
 	ctx    context.Context
-	fs     fscontract.FS
+	fs     fsplugin.FS
 	counts map[string]int
 	// gens is the generation of each directory's last add sent; failed
 	// holds the directories whose last add fs refused: they are counted
@@ -39,8 +39,8 @@ type Queue struct {
 }
 
 // New starts the queue's sender; it stops with ctx or Close. post runs a
-// function on the main thread (shellapi.Update).
-func New(ctx context.Context, fs fscontract.FS, post func(func()), onFail func(dir, msg string)) *Queue {
+// function on the main thread (sh.Update).
+func New(ctx context.Context, fs fsplugin.FS, post func(func()), onFail func(dir, msg string)) *Queue {
 	q := &Queue{ctx: ctx, fs: fs, counts: map[string]int{}, gens: map[string]int{}, failed: map[string]bool{},
 		ops: make(chan op, 4096), done: make(chan struct{}), onFail: onFail, post: post}
 	go q.run()

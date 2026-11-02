@@ -10,8 +10,9 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 
-	indexcontract "github.com/cunninghamcard-bit/attention/native/contract/index"
-	webcontract "github.com/cunninghamcard-bit/attention/native/contract/web"
+	"github.com/cunninghamcard-bit/attention/native/plugins/index"
+	"github.com/cunninghamcard-bit/attention/native/plugins/web"
+	"github.com/cunninghamcard-bit/attention/native/plugins/webhistory"
 )
 
 // ID is the plugin's name.
@@ -22,21 +23,21 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
 	Inject: []string{"index", "web", "web-history"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var idx indexcontract.Index
+		var idx index.Index
 		if err := rctx.Use("index", &idx); err != nil {
 			return err
 		}
-		rctx.On(webcontract.PageLoadedEvent, func(ctx context.Context, args ...any) (any, error) {
+		rctx.On(web.PageLoadedEvent, func(ctx context.Context, args ...any) (any, error) {
 			if len(args) == 0 {
 				return nil, nil
 			}
-			p, err := webcontract.DecodePage(args[0])
+			p, err := web.DecodePage(args[0])
 			if err != nil {
 				return nil, err
 			}
-			return nil, idx.SubmitPage(ctx, indexcontract.Page{URL: p.URL, Title: p.Title, Markdown: p.Markdown})
+			return nil, idx.SubmitPage(ctx, index.Page{URL: p.URL, Title: p.Title, Markdown: p.Markdown})
 		})
-		rctx.On(webcontract.HistoryClearedEvent, func(ctx context.Context, _ ...any) (any, error) {
+		rctx.On(webhistory.ClearedEvent, func(ctx context.Context, _ ...any) (any, error) {
 			return nil, idx.RemovePages(ctx, nil)
 		})
 		return nil

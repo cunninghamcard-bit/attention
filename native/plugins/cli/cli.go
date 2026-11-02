@@ -1,7 +1,4 @@
-// Package cli is the CLI plugin (RFC 0001 §5.9): it listens on the socket
-// the launcher's client connects to, with the existing wire format — one
-// JSON line {argv, tty, cwd}, a plain-text reply, the socket closing to end
-// it — and runs the invocation as a command.
+// Package cli is the CLI plugin (RFC 0001 §5.9).
 package cli
 
 import (
@@ -18,9 +15,9 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	"github.com/cunninghamcard-bit/attention/native/internal/lifecycle"
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 )
 
 var (
@@ -32,38 +29,33 @@ var (
 		Name:   "cli",
 		Inject: []string{"actions"},
 		Apply: func(ctx *rutis.Ctx, _ struct{}) error {
+			var act *actions.Service
+			if err := ctx.Use("actions", &act); err != nil {
+				return err
+			}
 			path := paths.SocketPath()
 			if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 				return err
 			}
-			// The launcher's lock guarantees no other instance owns the path; a
-			// file there is left over from a crash.
 			os.Remove(path)
 			ln, err := net.Listen("unix", path)
 			if err != nil {
 				return err
 			}
-			// Remove the socket only while it is still ours: a newer instance
-			// may have replaced it (its launcher took the lock as ours died).
 			ln.(*net.UnixListener).SetUnlinkOnClose(false)
 			mine, err := os.Stat(path)
 			if err != nil {
 				ln.Close()
 				return err
 			}
-			// quit is here, loaded in every profile, as closing the window:
-			// headless has no window, and no workspace.
-			ctx.Effect(actionCleanup(actionsapi.Register(QuitCommand())))
-			ctx.Effect(actionCleanup(actionsapi.Register(actionsapi.Command{
+			ctx.Effect(actionCleanup(act.Add(QuitCommand())))
+			ctx.Effect(actionCleanup(act.Add(actions.Command{
 				ID: "version", CLI: true,
-				// The TS CLI's shape: "<version> (installer <build>)".
-				Run: func(context.Context, actionsapi.Args) (string, error) {
+				Run: func(context.Context, actions.Args) (string, error) {
 					return Version + " (installer " + Version + ")", nil
 				},
 			})))
 			ctx.Go(func(c context.Context) error {
-				// Unloading cancels c and waits for this task before the Effect
-				// runs: Accept has to be unblocked from here.
 				go func() { <-c.Done(); ln.Close() }()
 				for {
 					conn, err := ln.Accept()
@@ -71,7 +63,6 @@ var (
 						if errors.Is(err, net.ErrClosed) || c.Err() != nil {
 							return nil
 						}
-						// A passing failure (EMFILE, …) must not end the listener.
 						dbg("cli: accept: %v", err)
 						select {
 						case <-c.Done():
@@ -80,7 +71,7 @@ var (
 						}
 						continue
 					}
-					go serve(c, conn)
+					go serve(c, act, conn)
 				}
 			})
 			ctx.Effect(func(context.Context) error {
@@ -102,12 +93,11 @@ type request struct {
 	Cwd  string   `json:"cwd"`
 }
 
-// QuitCommand is quit (Ctrl Q, the CLI's quit): the same path as the
-// user closing the window, through the runtime's lifecycle.
-func QuitCommand() actionsapi.Command {
-	return actionsapi.Command{ID: "quit", Title: "Quit", Keys: "Ctrl Q", CLI: true,
+// QuitCommand is quit (Ctrl Q, the CLI's quit).
+func QuitCommand() actions.Command {
+	return actions.Command{ID: "quit", Title: "Quit", Keys: "Ctrl Q", CLI: true,
 		Main: func() { lifecycle.Quit() },
-		Run: func(context.Context, actionsapi.Args) (string, error) {
+		Run: func(context.Context, actions.Args) (string, error) {
 			if !lifecycle.Quit() {
 				return "", fmt.Errorf("This runtime cannot quit.")
 			}
@@ -119,18 +109,22 @@ func actionCleanup(off func()) func(context.Context) error {
 	return func(context.Context) error { off(); return nil }
 }
 
-func serve(ctx context.Context, conn net.Conn) {
+func serve(ctx context.Context, act *actions.Service, conn net.Conn) {
 	defer conn.Close()
+	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
+	defer stop()
+	_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	line, err := bufio.NewReader(conn).ReadBytes('\n')
 	if err != nil {
 		return
 	}
+	_ = conn.SetReadDeadline(time.Time{})
 	var req request
 	if err := json.Unmarshal(line, &req); err != nil {
 		fmt.Fprintln(conn, "Error: malformed request")
 		return
 	}
-	out, err := actionsapi.RunCLI(ctx, req.Argv, req.Cwd)
+	out, err := act.RunCLI(ctx, req.Argv, req.Cwd)
 	if err != nil {
 		fmt.Fprintf(conn, "Error: %s\n", err)
 		return

@@ -15,24 +15,24 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
-	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
+	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 )
 
 // MaxBytes is the most a text tab reads.
 const MaxBytes = 8 << 20
 
 // Loader reads documents; post runs a function on the main thread
-// (shellapi.Update; tests hand their own).
+// (shell.Update; tests hand their own).
 type Loader struct {
 	Ctx  context.Context
-	FS   fscontract.FS
+	FS   fsplugin.FS
 	Post func(func())
 }
 
 // Sync reads the file when the tab's Version moved and applies a new
 // navigation; the body calls it every frame.
-func (l *Loader) Sync(d *Doc, p tabtypesapi.Props) {
+func (l *Loader) Sync(d *Doc, p tabtypes.Props) {
 	d.Path = p.Info.Path
 	if p.Info.NavRevision != d.navWant {
 		d.navWant, d.nav = p.Info.NavRevision, p.Info.Nav
@@ -75,7 +75,7 @@ func (l *Loader) load(d *Doc) {
 // Doc is one tab's text, on the main thread only.
 type Doc struct {
 	Path string
-	File fscontract.File
+	File fsplugin.File
 	Ed   *editor.State // nil until loaded, and for binary and too large files
 	Err  string
 	// Gone is set while the last read found no file.
@@ -85,7 +85,7 @@ type Doc struct {
 	loading bool
 	version int // the Version last read (or being read)
 	navRev  int // the NavRevision last applied
-	nav     *tabtypesapi.Nav
+	nav     *tabtypes.Nav
 	navWant int
 	// OnNav, optional, runs when a navigation is applied.
 	OnNav func()
@@ -142,7 +142,7 @@ func (d *Doc) Language(c *ui.Context) {
 
 // setText puts the file's text in the tab, keeping the first visible line
 // when the text is replaced on a refresh.
-func (d *Doc) setText(f fscontract.File) {
+func (d *Doc) setText(f fsplugin.File) {
 	if f.Binary || f.TooLarge {
 		d.Ed = nil
 		return

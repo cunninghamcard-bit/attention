@@ -1,10 +1,5 @@
 // Package shortcuts is the shortcuts UI plugin (dsh's
-// @deepseek-ai/dsh-client-shortcuts): it binds every command's Keys, so a
-// feature plugin declares its shortcuts with its commands and none is
-// wired in a view. An overlay reads the keys each frame; the keyboard
-// shortcuts reference (dsh's ui-shortcuts) lists and edits them.
-//
-// The user's bindings override a command's defaults in hotkeys.json.
+// @deepseek-ai/dsh-client-shortcuts).
 package shortcuts
 
 import (
@@ -16,27 +11,32 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/smallnest/uix/components/lucide"
 
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	"github.com/cunninghamcard-bit/attention/native/settingsapi"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 )
 
 // ID is the plugin's name and its overlay's.
 const ID = "shortcuts"
 
 var (
-	keyNames = map[string]ui.Key{
-		"Enter": ui.KeyEnter, "Escape": ui.KeyEscape, "Backspace": ui.KeyBackspace, "Tab": ui.KeyTab,
-		"Space": ui.KeySpace, "Delete": ui.KeyDelete, "Insert": ui.KeyInsert, "Home": ui.KeyHome, "End": ui.KeyEnd,
-		"PageUp": ui.KeyPageUp, "PageDown": ui.KeyPageDown, "Left": ui.KeyLeft, "Right": ui.KeyRight,
-		"Up": ui.KeyUp, "Down": ui.KeyDown, "-": ui.KeyMinus, "=": ui.KeyEqual, "Comma": ui.KeyComma, ".": ui.KeyPeriod,
-		"/": ui.KeySlash, ";": ui.KeySemicolon, "'": ui.KeyQuote, "[": ui.KeyBracketLeft, "]": ui.KeyBracketRight,
-		"\\": ui.KeyBackslash, "`": ui.KeyBackquote,
-		"F1": ui.KeyF1, "F2": ui.KeyF2, "F3": ui.KeyF3, "F4": ui.KeyF4, "F5": ui.KeyF5, "F6": ui.KeyF6,
-		"F7": ui.KeyF7, "F8": ui.KeyF8, "F9": ui.KeyF9, "F10": ui.KeyF10, "F11": ui.KeyF11, "F12": ui.KeyF12,
-	}
+	keyNames = func() map[string]ui.Key {
+		m := map[string]ui.Key{
+			"Enter": ui.KeyEnter, "Escape": ui.KeyEscape, "Backspace": ui.KeyBackspace, "Tab": ui.KeyTab,
+			"Space": ui.KeySpace, "Delete": ui.KeyDelete, "Insert": ui.KeyInsert, "Home": ui.KeyHome, "End": ui.KeyEnd,
+			"PageUp": ui.KeyPageUp, "PageDown": ui.KeyPageDown, "Left": ui.KeyLeft, "Right": ui.KeyRight,
+			"Up": ui.KeyUp, "Down": ui.KeyDown, "-": ui.KeyMinus, "=": ui.KeyEqual, "Comma": ui.KeyComma, ".": ui.KeyPeriod,
+			"/": ui.KeySlash, ";": ui.KeySemicolon, "'": ui.KeyQuote, "[": ui.KeyBracketLeft, "]": ui.KeyBracketRight,
+			"\\": ui.KeyBackslash, "`": ui.KeyBackquote,
+			"F1": ui.KeyF1, "F2": ui.KeyF2, "F3": ui.KeyF3, "F4": ui.KeyF4, "F5": ui.KeyF5, "F6": ui.KeyF6,
+			"F7": ui.KeyF7, "F8": ui.KeyF8, "F9": ui.KeyF9, "F10": ui.KeyF10, "F11": ui.KeyF11, "F12": ui.KeyF12,
+		}
+		for name, k := range lettersAndDigits() {
+			m[name] = k
+		}
+		return m
+	}()
 
-	// recordMods are the modifier sets a recorded combination may hold.
 	recordMods = func() []ui.Modifiers {
 		var out []ui.Modifiers
 		for m := ui.Modifiers(0); m <= ui.Shift|ui.Ctrl|ui.Alt|ui.Super; m++ {
@@ -50,10 +50,23 @@ var (
 	// Plugin binds the commands' keys while loaded.
 	Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		Name:   ID,
-		Inject: []string{"shell", "actions"},
+		Inject: []string{"slots", "actions", "settings"},
 		Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+			var sl *slots.Registry
+			var act *actions.Service
+			var set *settings.Settings
+			if err := rctx.Use("slots", &sl); err != nil {
+				return err
+			}
+			if err := rctx.Use("actions", &act); err != nil {
+				return err
+			}
+			if err := rctx.Use("settings", &set); err != nil {
+				return err
+			}
 			ctx, cancel := context.WithCancel(context.Background())
-			off := Register(ctx)
+			s, off := Register(ctx, sl, act, set)
+			rctx.Provide("shortcuts", s)
 			rctx.Effect(func(context.Context) error {
 				off()
 				cancel()
@@ -64,12 +77,6 @@ var (
 	})
 )
 
-func init() {
-	for name, k := range lettersAndDigits() {
-		keyNames[name] = k
-	}
-}
-
 // Binding is one parsed key combination.
 type Binding struct {
 	Mods ui.Modifiers
@@ -78,33 +85,58 @@ type Binding struct {
 
 // Shortcuts binds the registered commands' keys.
 type Shortcuts struct {
-	ctx    context.Context
-	mu     sync.Mutex
-	parsed map[string][]Binding // by Keys
-	// effective are the commands' bindings by ID, for settings generation
-	// gen.
+	ctx       context.Context
+	actions   *actions.Service
+	settings  *settings.Settings
+	mu        sync.Mutex
+	parsed    map[string][]Binding
 	effective map[string][]Binding
 	gen       int
-	// The Hotkeys tab's, main thread only: its search, and the command
-	// whose next combination it records ("" for none).
+	capture   bool
 	filter    string
 	recording string
 }
 
 // New binds keys for commands whose Run runs under ctx.
-func New(ctx context.Context) *Shortcuts {
-	return &Shortcuts{ctx: ctx, parsed: map[string][]Binding{}}
+func New(ctx context.Context, act *actions.Service, set *settings.Settings) *Shortcuts {
+	return &Shortcuts{ctx: ctx, actions: act, settings: set, parsed: map[string][]Binding{}}
 }
 
-// View runs the command of every combination pressed this frame: Main on
-// the main thread, else Run on a goroutine. A modal dialog open keeps the
-// keys from it; the reference records in its own.
+// Register binds keys and adds the Hotkeys settings tab until off is called.
+func Register(ctx context.Context, sl *slots.Registry, act *actions.Service, set *settings.Settings) (s *Shortcuts, off func()) {
+	s = New(ctx, act, set)
+	offs := []func(){
+		sl.RegisterOverlay(slots.Overlay{ID: ID, Order: -1000, View: s.View}),
+		sl.RegisterSettingsSection(slots.SettingsSection{ID: "hotkeys", Title: "Hotkeys", Icon: lucide.Keyboard(), Order: 30,
+			Keywords: []string{"Search commands", "Add hotkey", "Restore default hotkeys"}, View: s.hotkeysTab}),
+	}
+	return s, func() {
+		for i := len(offs) - 1; i >= 0; i-- {
+			offs[i]()
+		}
+	}
+}
+
+// SetCapture says whether a key-capturing element (like a terminal) has focus for the frame.
+func (s *Shortcuts) SetCapture(on bool) {
+	if s != nil {
+		s.capture = on
+	}
+}
+
+// Captured reports whether the last frame built had key capture enabled.
+func (s *Shortcuts) Captured() bool {
+	if s == nil {
+		return false
+	}
+	return s.capture
+}
+
+// View runs the command of every combination pressed this frame.
 func (s *Shortcuts) View(c *ui.Context) {
-	// Last frame's capture; a terminal still focused sets it again as
-	// this frame builds it (this overlay builds first).
-	captured := actionsapi.Captured()
-	actionsapi.SetCapture(false)
-	cmds := actionsapi.List()
+	captured := s.Captured()
+	s.SetCapture(false)
+	cmds := s.actions.Commands()
 	var taken map[Binding]bool
 	if captured {
 		taken = map[Binding]bool{}
@@ -132,51 +164,11 @@ func (s *Shortcuts) View(c *ui.Context) {
 				cmd.Main()
 			} else {
 				run := cmd.Run
-				go func() { _, _ = run(s.ctx, actionsapi.Args{Params: map[string]string{}}) }()
+				go func() { _, _ = run(s.ctx, actions.Args{Params: map[string]string{}}) }()
 			}
 			break
 		}
 	}
-}
-
-// inTerminal is b while a terminal has the focus, as gorex has it
-// elsewhere than on macOS: Control and a letter, or a key that types a
-// control character, are the terminal's, so a command bound to Control and
-// a letter takes Shift too, unless another command or the terminal has
-// that; false when the terminal keeps b.
-func inTerminal(b Binding, taken map[Binding]bool) (Binding, bool) {
-	if !terminalKeeps(b) {
-		return b, true
-	}
-	if b.Mods != ui.Ctrl || b.Key < ui.KeyA || b.Key > ui.KeyZ {
-		return b, false
-	}
-	alt := Binding{Mods: ui.Ctrl | ui.Shift, Key: b.Key}
-	if terminalKeeps(alt) || taken[alt] {
-		return b, false
-	}
-	return alt, true
-}
-
-// terminalKeeps reports whether a focused terminal takes b: Control and a
-// letter or a control character's key, its zoom, and its own Control
-// Shift combinations (mygo plugins/terminal keybind.go): copy, paste,
-// select all and clear.
-func terminalKeeps(b Binding) bool {
-	switch b.Mods {
-	case ui.Ctrl:
-		switch b.Key {
-		case ui.KeyBracketLeft, ui.KeyBracketRight, ui.KeyBackslash, ui.KeySpace, ui.KeyEqual, ui.KeyMinus, ui.Key0:
-			return true
-		}
-		return b.Key >= ui.KeyA && b.Key <= ui.KeyZ
-	case ui.Ctrl | ui.Shift:
-		switch b.Key {
-		case ui.KeyC, ui.KeyV, ui.KeyA, ui.KeyK, ui.KeyEqual:
-			return true
-		}
-	}
-	return false
 }
 
 func (s *Shortcuts) defaults(keys string) []Binding {
@@ -190,20 +182,18 @@ func (s *Shortcuts) defaults(keys string) []Binding {
 	return b
 }
 
-// bindings are cmd's effective combinations: hotkeys.json's, else its
-// Keys; read again when the settings change.
-func (s *Shortcuts) bindings(cmd actionsapi.Command) []Binding {
-	if g := settingsapi.Generation(); g != s.gen || s.effective == nil {
+func (s *Shortcuts) bindings(cmd actions.Command) []Binding {
+	if g := s.settings.Generation(); g != s.gen || s.effective == nil {
 		s.gen, s.effective = g, map[string][]Binding{}
 	}
 	if b, ok := s.effective[cmd.ID]; ok {
 		return b
 	}
 	var out []Binding
-	if !Overridden(cmd.ID) {
+	if !s.Overridden(cmd.ID) {
 		out = s.defaults(cmd.Keys)
 	} else {
-		for _, h := range Effective(cmd) {
+		for _, h := range s.Effective(cmd) {
 			if b, ok := h.binding(); ok {
 				out = append(out, b)
 			}
@@ -213,9 +203,6 @@ func (s *Shortcuts) bindings(cmd actionsapi.Command) []Binding {
 	return out
 }
 
-// record takes the combination pressed this frame for the recorded
-// command (HotkeysSettingTab.recordHotkey): Escape cancels; any other
-// joins the command's hotkeys, even one another command has.
 func (s *Shortcuts) record(c *ui.Context) {
 	if c.Shortcut(0, ui.KeyEscape) {
 		s.recording = ""
@@ -226,22 +213,20 @@ func (s *Shortcuts) record(c *ui.Context) {
 			if k == ui.KeyEscape && m == 0 || !c.Shortcut(m, k) {
 				continue
 			}
-			cmd, ok := actionsapi.Lookup(s.recording)
-			if !ok {
+			cmd := s.actions.Lookup(s.recording)
+			if cmd == nil {
 				s.recording = ""
 				return
 			}
-			// recordHotkey: the combination joins the command's hotkeys.
 			h := hotkeyOf(Binding{Mods: m, Key: k})
-			settingsapi.Set(settingsapi.Hotkeys, cmd.ID, append(Effective(cmd), h))
+			s.settings.Set(settings.Hotkeys, cmd.ID, append(s.Effective(*cmd), h))
 			s.recording = ""
 			return
 		}
 	}
 }
 
-// Parse reads a command's Keys (see actionsapi.Command.Keys); a
-// combination naming an unknown key or no key is left out.
+// Parse reads a command's Keys.
 func Parse(keys string) []Binding {
 	var out []Binding
 	for _, combo := range strings.Split(keys, ",") {
@@ -268,24 +253,37 @@ func Parse(keys string) []Binding {
 	return out
 }
 
-// Register binds keys and adds the Hotkeys settings tab until off is
-// called.
-func Register(ctx context.Context) (off func()) {
-	s := New(ctx)
-	offs := []func(){
-		slotsapi.RegisterOverlay(slotsapi.Overlay{ID: ID, Order: -1000, View: s.View}),
-		slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "hotkeys", Title: "Hotkeys", Icon: lucide.Keyboard(), Order: 30,
-			Keywords: []string{"Search commands", "Add hotkey", "Restore default hotkeys"}, View: s.hotkeysTab}),
+func inTerminal(b Binding, taken map[Binding]bool) (Binding, bool) {
+	if !terminalKeeps(b) {
+		return b, true
 	}
-	return func() {
-		for i := len(offs) - 1; i >= 0; i-- {
-			offs[i]()
-		}
+	if b.Mods != ui.Ctrl || b.Key < ui.KeyA || b.Key > ui.KeyZ {
+		return b, false
 	}
+	alt := Binding{Mods: ui.Ctrl | ui.Shift, Key: b.Key}
+	if terminalKeeps(alt) || taken[alt] {
+		return b, false
+	}
+	return alt, true
 }
 
-// lettersAndDigits are the letter and digit keys by name, as both Keys and
-// a Hotkey name them.
+func terminalKeeps(b Binding) bool {
+	switch b.Mods {
+	case ui.Ctrl:
+		switch b.Key {
+		case ui.KeyBracketLeft, ui.KeyBracketRight, ui.KeyBackslash, ui.KeySpace, ui.KeyEqual, ui.KeyMinus, ui.Key0:
+			return true
+		}
+		return b.Key >= ui.KeyA && b.Key <= ui.KeyZ
+	case ui.Ctrl | ui.Shift:
+		switch b.Key {
+		case ui.KeyC, ui.KeyV, ui.KeyA, ui.KeyK, ui.KeyEqual:
+			return true
+		}
+	}
+	return false
+}
+
 func lettersAndDigits() map[string]ui.Key {
 	out := map[string]ui.Key{}
 	for i, k := range []ui.Key{ui.Key0, ui.Key1, ui.Key2, ui.Key3, ui.Key4, ui.Key5, ui.Key6, ui.Key7, ui.Key8, ui.Key9} {

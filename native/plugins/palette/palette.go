@@ -1,8 +1,4 @@
-// Package palette is the palette UI plugin (RFC 0001 §6 palette-ui): the
-// modal over the window that the palette.source plugins fill — attention's
-// SuggestModal (apps/web/ui/suggest/SuggestModal.ts) with the quick
-// switcher's, the command palette's and go to line's rows. It owns the
-// field, the selection and the keys; a source owns its rows.
+// Package palette is the palette UI plugin (RFC 0001 §6 palette-ui).
 package palette
 
 import (
@@ -12,7 +8,8 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
+
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 )
 
 // ID is the plugin's name and its overlay's.
@@ -21,9 +18,13 @@ const ID = "palette"
 // Plugin draws the palette while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell"},
+	Inject: []string{"slots"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		_, off := Register()
+		var sl *slots.Registry
+		if err := rctx.Use("slots", &sl); err != nil {
+			return err
+		}
+		_, off := Register(sl)
 		rctx.Effect(func(context.Context) error { off(); return nil })
 		return nil
 	},
@@ -31,37 +32,38 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 
 // Palette is the modal's state, on the main thread only.
 type Palette struct {
-	open     string // the shown source's ID, "" while closed
+	slots    *slots.Registry
+	open     string
 	query    string
-	ranked   string // the query the items are for
-	gen      int    // the source's Generation they are for
-	items    []slotsapi.PaletteItem
+	ranked   string
+	gen      int
+	items    []slots.PaletteItem
 	selected int
 }
 
 // Register draws the palette until off is called.
-func Register() (p *Palette, off func()) {
-	p = &Palette{}
-	return p, slotsapi.RegisterOverlay(slotsapi.Overlay{ID: ID, Order: 0, View: p.View})
+func Register(sl *slots.Registry) (p *Palette, off func()) {
+	p = &Palette{slots: sl}
+	return p, sl.RegisterOverlay(slots.Overlay{ID: ID, Order: 0, View: p.View})
 }
 
 // Open reports the shown source's ID, "" while closed.
 func (p *Palette) Open() string { return p.open }
 
 // Items are the rows shown.
-func (p *Palette) Items() []slotsapi.PaletteItem { return p.items }
+func (p *Palette) Items() []slots.PaletteItem { return p.items }
 
 // View draws the palette while it is open.
 func (p *Palette) View(c *ui.Context) {
-	if id := slotsapi.TakePaletteRequest(); id != "" {
+	if id := p.slots.TakePaletteRequest(); id != "" {
 		p.show(id)
 	}
 	if p.open == "" {
 		return
 	}
-	src, ok := slotsapi.LookupPaletteSource(p.open)
-	if !ok {
-		p.close() // its plugin unloaded
+	src := p.slots.LookupPaletteSource(p.open)
+	if src == nil {
+		p.close()
 		return
 	}
 	t := c.Theme()
@@ -69,7 +71,7 @@ func (p *Palette) View(c *ui.Context) {
 		p.close()
 		return
 	}
-	p.rerank(src)
+	p.rerank(*src)
 	if c.Shortcut(0, ui.KeyDown) && p.selected+1 < len(p.items) {
 		p.selected++
 	}
@@ -77,10 +79,9 @@ func (p *Palette) View(c *ui.Context) {
 		p.selected--
 	}
 	if c.Shortcut(ui.Cmd, ui.KeyEnter) {
-		p.accept(src, true)
+		p.accept(*src, true)
 		return
 	}
-	// A full-window layer: a click outside the panel closes it.
 	layer := ui.Column(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).AlignItems(ui.Center)
 	if layer.Clicked() {
 		p.close()
@@ -91,10 +92,10 @@ func (p *Palette) View(c *ui.Context) {
 		panel.Children(func() {
 			field := omgui.Field(c, &p.query, src.Placeholder, false).AutoFocus().FillWidth()
 			if field.Submitted() {
-				p.accept(src, false)
+				p.accept(*src, false)
 				return
 			}
-			p.rows(c, src)
+			p.rows(c, *src)
 			if src.Footer != nil {
 				src.Footer(c, p.query)
 			}
@@ -104,15 +105,13 @@ func (p *Palette) View(c *ui.Context) {
 
 func (p *Palette) close() { p.open = "" }
 
-// show opens source id, or closes the palette when it shows id already
-// (the same shortcut toggles it).
 func (p *Palette) show(id string) {
 	if p.open == id {
 		p.close()
 		return
 	}
-	src, ok := slotsapi.LookupPaletteSource(id)
-	if !ok {
+	src := p.slots.LookupPaletteSource(id)
+	if src == nil {
 		return
 	}
 	p.open, p.query, p.ranked, p.selected, p.items = id, "", "\x00", 0, nil
@@ -121,8 +120,7 @@ func (p *Palette) show(id string) {
 	}
 }
 
-// rerank asks the source again when the query or its generation changed.
-func (p *Palette) rerank(src slotsapi.PaletteSource) {
+func (p *Palette) rerank(src slots.PaletteSource) {
 	gen := 0
 	if src.Generation != nil {
 		gen = src.Generation()
@@ -141,8 +139,7 @@ func (p *Palette) rerank(src slotsapi.PaletteSource) {
 	p.selected = min(p.selected, max(0, len(p.items)-1))
 }
 
-// accept chooses the selected row, or submits the query without one.
-func (p *Palette) accept(src slotsapi.PaletteSource, newTab bool) {
+func (p *Palette) accept(src slots.PaletteSource, newTab bool) {
 	if p.selected < len(p.items) {
 		it := p.items[p.selected]
 		p.close()
@@ -156,7 +153,7 @@ func (p *Palette) accept(src slotsapi.PaletteSource, newTab bool) {
 	}
 }
 
-func (p *Palette) rows(c *ui.Context, src slotsapi.PaletteSource) {
+func (p *Palette) rows(c *ui.Context, src slots.PaletteSource) {
 	t := c.Theme()
 	if len(p.items) == 0 {
 		if src.Empty != nil {

@@ -11,24 +11,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
-	contract "github.com/cunninghamcard-bit/attention/native/contract/project"
-	"github.com/cunninghamcard-bit/attention/native/internal/clipath"
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 )
 
 var errWalkLimit = errors.New("walk limit")
 
 // fileCommands are the TS CLI's vault/folder/file/read/write/random
 // commands, registered here because project owns the mounts.
-func (s *Service) fileCommands() []actionsapi.Command {
-	cmd := func(id string, run func(context.Context, actionsapi.Args) (string, error)) actionsapi.Command {
-		return actionsapi.Command{ID: id, CLI: true, Run: run}
+func (s *Service) fileCommands() []actions.Command {
+	cmd := func(id string, run func(context.Context, actions.Args) (string, error)) actions.Command {
+		return actions.Command{ID: id, CLI: true, Run: run}
 	}
-	return []actionsapi.Command{
+	return []actions.Command{
 		cmd("vault", s.cliVault),
 		cmd("folder", s.cliFolder),
 		cmd("folders", s.cliFolders),
@@ -49,7 +45,7 @@ func (s *Service) fileCommands() []actionsapi.Command {
 // apps/web/app/cli/registerCliCommands.ts. There is no vault: name is the
 // mounts' names joined with ", ", and path lists every mount's absolute
 // path (one line, or one `path` row each in the full report).
-func (s *Service) cliVault(ctx context.Context, a actionsapi.Args) (string, error) {
+func (s *Service) cliVault(ctx context.Context, a actions.Args) (string, error) {
 	mounts, err := s.Mounts(ctx)
 	if err != nil {
 		return "", err
@@ -99,7 +95,7 @@ func (s *Service) cliVault(ctx context.Context, a actionsapi.Args) (string, erro
 
 // cliFolder is `folder path=<path> [info=files|folders|size]`, from
 // apps/web/app/cli/commands/coreMisc.ts.
-func (s *Service) cliFolder(ctx context.Context, a actionsapi.Args) (string, error) {
+func (s *Service) cliFolder(ctx context.Context, a actions.Args) (string, error) {
 	p := a.Params["path"]
 	if p == "" {
 		return "", fmt.Errorf("Missing required parameter: path\nUsage: folder path=<folder-path> [info=files|folders|size]")
@@ -131,7 +127,7 @@ func (s *Service) cliFolder(ctx context.Context, a actionsapi.Args) (string, err
 // cliFolders is `folders [folder=<path>] [total]`, from
 // apps/web/app/cli/registerCliCommands.ts. The start folder is included, as
 // recurseChildren visits it.
-func (s *Service) cliFolders(ctx context.Context, a actionsapi.Args) (string, error) {
+func (s *Service) cliFolders(ctx context.Context, a actions.Args) (string, error) {
 	mounts, err := s.Mounts(ctx)
 	if err != nil {
 		return "", err
@@ -159,7 +155,7 @@ func (s *Service) cliFolders(ctx context.Context, a actionsapi.Args) (string, er
 
 // cliFile is `file [file=<name>] [path=<path>]`, from
 // apps/web/app/cli/commands/coreMisc.ts. created/modified are epoch-ms.
-func (s *Service) cliFile(ctx context.Context, a actionsapi.Args) (string, error) {
+func (s *Service) cliFile(ctx context.Context, a actions.Args) (string, error) {
 	abs, err := s.resolveFile(ctx, a, true)
 	if err != nil {
 		return "", err
@@ -181,7 +177,7 @@ func (s *Service) cliFile(ctx context.Context, a actionsapi.Args) (string, error
 
 // cliRead is `read [file=<name>] [path=<path>]`, from
 // apps/web/app/cli/registerCliCommands.ts.
-func (s *Service) cliRead(ctx context.Context, a actionsapi.Args) (string, error) {
+func (s *Service) cliRead(ctx context.Context, a actions.Args) (string, error) {
 	abs, err := s.resolveFile(ctx, a, true)
 	if err != nil {
 		return "", err
@@ -195,7 +191,7 @@ func (s *Service) cliRead(ctx context.Context, a actionsapi.Args) (string, error
 
 // cliCreate is `create [name=] [path=] [content=] [template=] [overwrite] [open] [newtab]`,
 // from apps/web/app/cli/commands/fileWrites.ts.
-func (s *Service) cliCreate(ctx context.Context, a actionsapi.Args) (string, error) {
+func (s *Service) cliCreate(ctx context.Context, a actions.Args) (string, error) {
 	if strings.Contains(a.Params["name"], "/") {
 		return "", fmt.Errorf("name cannot contain \"/\". Use path for a full file path.")
 	}
@@ -264,7 +260,7 @@ func (s *Service) cliCreate(ctx context.Context, a actionsapi.Args) (string, err
 
 // cliAppend is `append [file=] [path=] content= [inline]`, from
 // apps/web/app/cli/commands/fileWrites.ts.
-func (s *Service) cliAppend(ctx context.Context, a actionsapi.Args) (string, error) {
+func (s *Service) cliAppend(ctx context.Context, a actions.Args) (string, error) {
 	abs, err := s.resolveFile(ctx, a, true)
 	if err != nil {
 		return "", err
@@ -288,7 +284,7 @@ func (s *Service) cliAppend(ctx context.Context, a actionsapi.Args) (string, err
 // cliPrepend is `prepend [file=] [path=] content= [inline]`, from
 // apps/web/app/cli/commands/fileWrites.ts. Insertion is after a terminated
 // YAML frontmatter block (Xx() in the TS source).
-func (s *Service) cliPrepend(ctx context.Context, a actionsapi.Args) (string, error) {
+func (s *Service) cliPrepend(ctx context.Context, a actions.Args) (string, error) {
 	abs, err := s.resolveFile(ctx, a, true)
 	if err != nil {
 		return "", err
@@ -319,7 +315,7 @@ func (s *Service) cliPrepend(ctx context.Context, a actionsapi.Args) (string, er
 // cliMove is `move [file=] [path=] to=`, from
 // apps/web/app/cli/commands/fileWrites.ts. A to= with a dot anywhere is a
 // full file path; otherwise it is a folder, keeping the filename.
-func (s *Service) cliMove(ctx context.Context, a actionsapi.Args) (string, error) {
+func (s *Service) cliMove(ctx context.Context, a actions.Args) (string, error) {
 	if a.Params["to"] == "" {
 		return "", fmt.Errorf("Missing required parameter: to\nUsage: move to=<folder> or to=<path>")
 	}
@@ -349,7 +345,7 @@ func (s *Service) cliMove(ctx context.Context, a actionsapi.Args) (string, error
 
 // cliRename is `rename [file=] [path=] name=`, from
 // apps/web/app/cli/commands/fileWrites.ts.
-func (s *Service) cliRename(ctx context.Context, a actionsapi.Args) (string, error) {
+func (s *Service) cliRename(ctx context.Context, a actions.Args) (string, error) {
 	if a.Params["name"] == "" {
 		return "", fmt.Errorf("Missing required parameter: name\nUsage: rename name=<new name>")
 	}
@@ -376,7 +372,7 @@ func (s *Service) cliRename(ctx context.Context, a actionsapi.Args) (string, err
 // cliDelete is `delete [file=] [path=] [permanent]`, from
 // apps/web/app/cli/commands/fileWrites.ts. Without permanent it uses the
 // system trash (fs.Trash), not a configured trash preference.
-func (s *Service) cliDelete(ctx context.Context, a actionsapi.Args) (string, error) {
+func (s *Service) cliDelete(ctx context.Context, a actions.Args) (string, error) {
 	abs, err := s.resolveFile(ctx, a, true)
 	if err != nil {
 		return "", err
@@ -399,7 +395,7 @@ func (s *Service) cliDelete(ctx context.Context, a actionsapi.Args) (string, err
 
 // cliRandom is `random [folder=] [newtab]`, from
 // apps/web/app/cli/commands/navigation.ts.
-func (s *Service) cliRandom(ctx context.Context, a actionsapi.Args) (string, error) {
+func (s *Service) cliRandom(ctx context.Context, a actions.Args) (string, error) {
 	f, disp, err := s.randomMarkdown(ctx, a.Params["folder"])
 	if err != nil {
 		return "", err
@@ -415,7 +411,7 @@ func (s *Service) cliRandom(ctx context.Context, a actionsapi.Args) (string, err
 
 // cliRandomRead is `random:read [folder=]`, from
 // apps/web/app/cli/commands/navigation.ts.
-func (s *Service) cliRandomRead(ctx context.Context, a actionsapi.Args) (string, error) {
+func (s *Service) cliRandomRead(ctx context.Context, a actions.Args) (string, error) {
 	f, disp, err := s.randomMarkdown(ctx, a.Params["folder"])
 	if err != nil {
 		return "", err
@@ -430,15 +426,15 @@ func (s *Service) cliRandomRead(ctx context.Context, a actionsapi.Args) (string,
 	return disp + "\n\n" + string(data), nil
 }
 
-func (s *Service) randomMarkdown(ctx context.Context, folder string) (contract.FileRef, string, error) {
+func (s *Service) randomMarkdown(ctx context.Context, folder string) (FileRef, string, error) {
 	listing, err := s.Files(ctx)
 	if err != nil {
-		return contract.FileRef{}, "", err
+		return FileRef{}, "", err
 	}
 	if folder != "" && !strings.HasSuffix(folder, "/") {
 		folder += "/"
 	}
-	var picks []contract.FileRef
+	var picks []FileRef
 	var displays []string
 	for _, f := range listing.Files {
 		if !strings.EqualFold(filepath.Ext(f.Rel), ".md") {
@@ -448,7 +444,7 @@ func (s *Service) randomMarkdown(ctx context.Context, folder string) (contract.F
 		if !ok {
 			continue
 		}
-		p := contract.Display(m, f.Rel)
+		p := Display(m, f.Rel)
 		if folder != "" && !strings.HasPrefix(p, folder) {
 			continue
 		}
@@ -456,22 +452,22 @@ func (s *Service) randomMarkdown(ctx context.Context, folder string) (contract.F
 		displays = append(displays, p)
 	}
 	if len(picks) == 0 {
-		return contract.FileRef{}, "", nil
+		return FileRef{}, "", nil
 	}
 	i := rand.IntN(len(picks))
 	return picks[i], displays[i], nil
 }
 
-func (s *Service) resolveFile(ctx context.Context, a actionsapi.Args, allowActive bool) (string, error) {
+func (s *Service) resolveFile(ctx context.Context, a actions.Args, allowActive bool) (string, error) {
 	mounts, err := s.Mounts(ctx)
 	if err != nil {
 		return "", err
 	}
 	if p := a.Params["path"]; p != "" {
-		return clipath.Path(mounts, p, a.Cwd)
+		return ResolvePath(mounts, p, a.Cwd)
 	}
 	if f := a.Params["file"]; f != "" {
-		return clipath.Link(ctx, s.Files, mounts, f, a.Cwd)
+		return ResolveLink(ctx, s.Files, mounts, f, a.Cwd)
 	}
 	if allowActive {
 		if abs := s.activePath(ctx); abs != "" {
@@ -493,7 +489,7 @@ func (s *Service) resolveFolder(ctx context.Context, target, cwd string, fileIsE
 			return m.Path, nil
 		}
 	}
-	for _, p := range clipath.Candidates(mounts, target, cwd) {
+	for _, p := range Candidates(mounts, target, cwd) {
 		e, err := s.fs.Stat(ctx, p)
 		if err != nil {
 			continue
@@ -510,16 +506,10 @@ func (s *Service) resolveFolder(ctx context.Context, target, cwd string, fileIsE
 }
 
 func (s *Service) activePath(ctx context.Context) string {
-	if workspaceapi.Get() == nil || shellapi.Window() == nil {
+	if s.act == nil {
 		return ""
 	}
-	p, err := shellapi.OnMain(ctx, func() (string, error) {
-		api := workspaceapi.Get()
-		if api == nil {
-			return "", nil
-		}
-		return api.ActivePath(), nil
-	})
+	p, err := s.act.ActiveFile(ctx)
 	if err != nil {
 		return ""
 	}
@@ -527,25 +517,10 @@ func (s *Service) activePath(ctx context.Context) string {
 }
 
 func (s *Service) openPath(ctx context.Context, abs string, newTab bool) error {
-	mounts, err := s.Mounts(ctx)
-	if err != nil {
-		return err
+	if s.act == nil {
+		return fmt.Errorf("the window is closed")
 	}
-	addr := contract.AddressOf(mounts, abs)
-	_, err = shellapi.OnMain(ctx, func() (string, error) {
-		api := workspaceapi.Get()
-		if api == nil {
-			return "", fmt.Errorf("the window is closed")
-		}
-		if err := api.OpenResource(addr, workspaceapi.OpenOptions{NewTab: newTab}); err != nil {
-			return "", err
-		}
-		if w := shellapi.Window(); w != nil {
-			w.Focus()
-		}
-		return "", nil
-	})
-	return err
+	return s.act.OpenPath(ctx, abs, newTab)
 }
 
 func (s *Service) writeTarget(ctx context.Context, target string) (string, error) {
@@ -581,7 +556,7 @@ func (s *Service) writeTarget(ctx context.Context, target string) (string, error
 		}
 	}
 	abs = filepath.Clean(abs)
-	if _, _, ok := contract.MountOf(mounts, abs); !ok {
+	if _, _, ok := MountOf(mounts, abs); !ok {
 		return "", fmt.Errorf("Path %q is outside the mounts.", target)
 	}
 	return abs, nil
@@ -592,7 +567,7 @@ func (s *Service) requireInside(ctx context.Context, abs string) error {
 	if err != nil {
 		return err
 	}
-	if _, _, ok := contract.MountOf(mounts, abs); !ok {
+	if _, _, ok := MountOf(mounts, abs); !ok {
 		return fmt.Errorf("Path %q is outside the mounts.", abs)
 	}
 	return nil
@@ -629,7 +604,7 @@ func (s *Service) stats(ctx context.Context, roots []string) (treeStats, error) 
 	w := s.newWalker(ctx)
 	var st treeStats
 	for _, root := range roots {
-		err := w.dir(root, func(e fscontract.Entry) error {
+		err := w.dir(root, func(e fsplugin.Entry) error {
 			if e.Dir {
 				st.folders++
 			} else {
@@ -648,12 +623,12 @@ func (s *Service) stats(ctx context.Context, roots []string) (treeStats, error) 
 	return st, nil
 }
 
-func (s *Service) listFolders(ctx context.Context, mounts []contract.Mount, starts []string) ([]string, error) {
+func (s *Service) listFolders(ctx context.Context, mounts []Mount, starts []string) ([]string, error) {
 	w := s.newWalker(ctx)
 	var out []string
 	for _, start := range starts {
 		out = append(out, displayPath(mounts, start))
-		err := w.dir(start, func(e fscontract.Entry) error {
+		err := w.dir(start, func(e fsplugin.Entry) error {
 			if e.Dir {
 				out = append(out, displayPath(mounts, e.Path))
 			}
@@ -681,7 +656,7 @@ type walker struct {
 	nfiles   int
 }
 
-func (w *walker) dir(path string, fn func(fscontract.Entry) error) error {
+func (w *walker) dir(path string, fn func(fsplugin.Entry) error) error {
 	if err := w.ctx.Err(); err != nil {
 		return err
 	}
@@ -720,17 +695,17 @@ func walkLimitErr() error {
 	return fmt.Errorf("The file listing stopped at its limit (%d files or %s); mount a narrower folder.", maxFiles, walkBudget)
 }
 
-func displayPath(mounts []contract.Mount, abs string) string {
-	if m, rel, ok := contract.MountOf(mounts, abs); ok {
+func displayPath(mounts []Mount, abs string) string {
+	if m, rel, ok := MountOf(mounts, abs); ok {
 		if rel == "." {
 			return m.Name
 		}
-		return contract.Display(m, rel)
+		return Display(m, rel)
 	}
 	return abs
 }
 
-func mountPaths(mounts []contract.Mount) []string {
+func mountPaths(mounts []Mount) []string {
 	out := make([]string, len(mounts))
 	for i, m := range mounts {
 		out[i] = m.Path

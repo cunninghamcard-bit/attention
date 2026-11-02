@@ -2,31 +2,30 @@ package workspace
 
 import (
 	"context"
-	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
 	"os"
 	"sync"
 	"testing"
 	"time"
 
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
-	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/imageui"
 	"github.com/cunninghamcard-bit/attention/native/plugins/markdownui"
+	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/resources"
 	"github.com/cunninghamcard-bit/attention/native/plugins/textui"
-	"github.com/cunninghamcard-bit/attention/native/resourcesapi"
 )
 
 var (
-	testText    string                     // what the stub fs reads
-	testFiles   map[string]fscontract.File // and for these paths
-	testMissing map[string]bool            // which it finds gone
-	testBytes   []byte                     // what it reads as bytes
+	testText    string                   // what the stub fs reads
+	testFiles   map[string]fsplugin.File // and for these paths
+	testMissing map[string]bool          // which it finds gone
+	testBytes   []byte                   // what it reads as bytes
 	testPosts   posts
 	testMD      *markdownui.Viewer
 )
 
 // posts collects the viewers' main-thread posts: without a window,
-// shellapi.Update would hold them until one opens.
+// shell.Shell.Update would hold them until one opens.
 type posts chan func()
 
 func (p posts) post(fn func()) { p <- fn }
@@ -51,11 +50,11 @@ type fileStub struct {
 	frames posts
 }
 
-func fileProvider(t *testing.T) *fileStub {
+func fileProvider(t *testing.T, ws *Workspace) *fileStub {
 	t.Helper()
 	f := &fileStub{emits: map[string]func(any, error){}, frames: make(posts, 64)}
-	t.Cleanup(resourcesapi.SetPost(f.frames.post))
-	t.Cleanup(resourcesapi.Register(resourcesapi.Provider{Protocol: "file",
+	t.Cleanup(ws.res.SetPost(f.frames.post))
+	t.Cleanup(ws.res.Register(resources.Provider{Protocol: "file",
 		Open: func(ctx context.Context, address string, emit func(any, error)) {
 			f.mu.Lock()
 			f.emits[address] = emit
@@ -71,12 +70,12 @@ func (f *fileStub) send(address string) {
 	f.mu.Lock()
 	emit := f.emits[address]
 	f.mu.Unlock()
-	a, _ := fscontract.ParseAddress(address)
+	a, _ := fsplugin.ParseAddress(address)
 	if testMissing["/m/"+a.Rel] {
 		emit(nil, os.ErrNotExist)
 		return
 	}
-	emit(fscontract.Entry{Path: "/m/" + a.Rel}, nil)
+	emit(fsplugin.Entry{Path: "/m/" + a.Rel}, nil)
 }
 
 // lines is t's caret line and line count, from its tab type.
@@ -84,29 +83,29 @@ func (ws *Workspace) lines(t *tab) (cur, lines int, ok bool) {
 	if t == nil || t.empty {
 		return 0, 0, false
 	}
-	tt, found := tabtypesapi.Get(t.typeID)
+	tt, found := ws.tabTypes.Get(t.typeID)
 	if !found || tt.Lines == nil {
 		return 0, 0, false
 	}
 	return tt.Lines(t.id)
 }
 
-func fsStub() fscontract.FS {
-	return fscontract.FS{
+func fsStub() fsplugin.FS {
+	return fsplugin.FS{
 		Watch:   func(context.Context, string) error { return nil },
 		Unwatch: func(context.Context, string) error { return nil },
 	}
 }
 
-func projectStub() projectcontract.Project { return projectcontract.Project{} }
+func projectStub() projectplugin.Project { return projectplugin.Project{} }
 
 // viewers registers the reader's tab types for the test.
-func viewers(t *testing.T, ctx context.Context, fs fscontract.FS) {
+func viewers(t *testing.T, ctx context.Context, ws *Workspace, fs fsplugin.FS) {
 	t.Helper()
 	testPosts = make(posts, 64)
-	t.Cleanup(textui.Register(ctx, fs, testPosts.post))
+	t.Cleanup(textui.Register(ctx, fs, ws.tabTypes, testPosts.post))
 	var off func()
-	testMD, off = markdownui.Register(ctx, fs, testPosts.post)
+	testMD, off = markdownui.Register(ctx, fs, ws.sh, ws.act, ws.tabTypes, ws, testPosts.post)
 	t.Cleanup(off)
-	t.Cleanup(imageui.Register(ctx, fs, testPosts.post))
+	t.Cleanup(imageui.Register(ctx, fs, ws.tabTypes, testPosts.post))
 }

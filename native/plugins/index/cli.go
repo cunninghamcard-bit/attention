@@ -11,12 +11,10 @@ import (
 	"strings"
 	"unicode/utf16"
 
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	"github.com/cunninghamcard-bit/attention/native/internal/clifmt"
-	"github.com/cunninghamcard-bit/attention/native/internal/clipath"
 	"github.com/cunninghamcard-bit/attention/native/internal/mdmeta"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/project"
 )
 
 var (
@@ -27,17 +25,17 @@ var (
 // commands are the CLI's commands on the index, ported from attention's
 // (apps/web/app/cli/commands/): graphLists.ts, metadata.ts,
 // linksOutlineCli.ts, wordcountWebCli.ts.
-func (x *Index) commands() []actionsapi.Command {
+func (x *Cache) commands() []actions.Command {
 	// Each takes the bare flags its TS registration declares.
-	cmd := func(id string, run func(context.Context, actionsapi.Args) (string, error), flags ...string) actionsapi.Command {
-		return actionsapi.Command{ID: id, CLI: true, Flags: flags, Run: func(ctx context.Context, a actionsapi.Args) (string, error) {
+	cmd := func(id string, run func(context.Context, actions.Args) (string, error), flags ...string) actions.Command {
+		return actions.Command{ID: id, CLI: true, Flags: flags, Run: func(ctx context.Context, a actions.Args) (string, error) {
 			if err := x.Ready(ctx); err != nil {
 				return "", err
 			}
 			return run(ctx, a)
 		}}
 	}
-	return []actionsapi.Command{
+	return []actions.Command{
 		cmd("backlinks", x.cliBacklinks, "counts", "total"),
 		cmd("unresolved", x.cliUnresolved, "total", "counts", "verbose"),
 		cmd("orphans", x.cliOrphans, "total", "all"),
@@ -57,7 +55,7 @@ func (x *Index) commands() []actionsapi.Command {
 
 // resolveFile is Cli.tryResolveFile: path= exactly, file= as a link (from
 // no source), else the active file; the result is a display path.
-func (x *Index) resolveFile(ctx context.Context, a actionsapi.Args, activeFallback bool) (string, error) {
+func (x *Cache) resolveFile(ctx context.Context, a actions.Args, activeFallback bool) (string, error) {
 	if p := a.Params["path"]; p != "" {
 		x.mu.RLock()
 		_, known := x.files[p]
@@ -66,7 +64,7 @@ func (x *Index) resolveFile(ctx context.Context, a actionsapi.Args, activeFallba
 		if known {
 			return p, nil
 		}
-		abs, err := clipath.Path(mounts, p, a.Cwd)
+		abs, err := project.ResolvePath(mounts, p, a.Cwd)
 		if err != nil {
 			return "", err
 		}
@@ -84,12 +82,10 @@ func (x *Index) resolveFile(ctx context.Context, a actionsapi.Args, activeFallba
 	if !activeFallback {
 		return "", fmt.Errorf("Missing required parameter: file or path")
 	}
-	active, _ := shellapi.OnMain(ctx, func() (string, error) {
-		if ws := workspaceapi.Get(); ws != nil {
-			return ws.ActivePath(), nil
-		}
-		return "", nil
-	})
+	var active string
+	if x.act != nil {
+		active, _ = x.act.ActiveFile(ctx)
+	}
 	if active == "" {
 		return "", fmt.Errorf("No active file. Use file=<name> or path=<path> to specify a file.")
 	}
@@ -97,7 +93,7 @@ func (x *Index) resolveFile(ctx context.Context, a actionsapi.Args, activeFallba
 }
 
 // displayOf is an absolute path's display path, if indexed.
-func (x *Index) displayOf(abs, asked string) (string, error) {
+func (x *Cache) displayOf(abs, asked string) (string, error) {
 	x.mu.RLock()
 	defer x.mu.RUnlock()
 	if d, ok := x.byAbs[abs]; ok {
@@ -107,7 +103,7 @@ func (x *Index) displayOf(abs, asked string) (string, error) {
 }
 
 // meta is a note's metadata, nil for none.
-func (x *Index) meta(path string) *mdmeta.Metadata {
+func (x *Cache) meta(path string) *mdmeta.Metadata {
 	x.mu.RLock()
 	defer x.mu.RUnlock()
 	if f, ok := x.files[path]; ok {
@@ -118,7 +114,7 @@ func (x *Index) meta(path string) *mdmeta.Metadata {
 
 // cliBacklinks is backlinks: the sources linking to the file, total the
 // SUM of their links (graphLists.ts).
-func (x *Index) cliBacklinks(ctx context.Context, a actionsapi.Args) (string, error) {
+func (x *Cache) cliBacklinks(ctx context.Context, a actions.Args) (string, error) {
 	if u := a.Params["url"]; u != "" {
 		return x.cliURLBacklinks(ctx, a, u)
 	}
@@ -162,7 +158,7 @@ func (x *Index) cliBacklinks(ctx context.Context, a actionsapi.Args) (string, er
 
 // cliURLBacklinks is backlinks url=: the notes (by path) and web pages
 // (by URL) citing it, the reader's own.
-func (x *Index) cliURLBacklinks(ctx context.Context, a actionsapi.Args, u string) (string, error) {
+func (x *Cache) cliURLBacklinks(ctx context.Context, a actions.Args, u string) (string, error) {
 	bs, err := Service{x}.URLBacklinks(ctx, u)
 	if err != nil {
 		return "", err
@@ -194,7 +190,7 @@ func (x *Index) cliURLBacklinks(ctx context.Context, a actionsapi.Args, u string
 
 // cliUnresolved is unresolved: link texts no file answers, total the
 // number of DISTINCT texts; verbose wins over counts (graphLists.ts).
-func (x *Index) cliUnresolved(_ context.Context, a actionsapi.Args) (string, error) {
+func (x *Cache) cliUnresolved(_ context.Context, a actions.Args) (string, error) {
 	type entry struct {
 		sources []string
 		count   int
@@ -245,7 +241,7 @@ func (x *Index) cliUnresolved(_ context.Context, a actionsapi.Args) (string, err
 }
 
 // allPaths are the indexed files' paths, sorted.
-func (x *Index) allPaths(keep func(path string) bool) []string {
+func (x *Cache) allPaths(keep func(path string) bool) []string {
 	x.mu.RLock()
 	defer x.mu.RUnlock()
 	var out []string
@@ -260,7 +256,7 @@ func (x *Index) allPaths(keep func(path string) bool) []string {
 
 // cliOrphans is orphans: every file no note links to (graphLists.ts;
 // all is declared and, as there, ignored).
-func (x *Index) cliOrphans(_ context.Context, a actionsapi.Args) (string, error) {
+func (x *Cache) cliOrphans(_ context.Context, a actions.Args) (string, error) {
 	x.mu.RLock()
 	targets := map[string]bool{}
 	for _, ts := range x.resolved {
@@ -280,7 +276,7 @@ func (x *Index) cliOrphans(_ context.Context, a actionsapi.Args) (string, error)
 }
 
 // cliDeadends is deadends: every file with no RESOLVED outgoing link.
-func (x *Index) cliDeadends(_ context.Context, a actionsapi.Args) (string, error) {
+func (x *Cache) cliDeadends(_ context.Context, a actions.Args) (string, error) {
 	out := x.allPaths(func(p string) bool { return len(x.resolved[p]) == 0 })
 	if a.Has("total") {
 		return strconv.Itoa(len(out)), nil
@@ -294,7 +290,7 @@ func (x *Index) cliDeadends(_ context.Context, a actionsapi.Args) (string, error
 // cliLinks is links: the file's frontmatter links, links and embeds,
 // resolved from it or marked unresolved, distinct, sorted
 // (linksOutlineCli.ts).
-func (x *Index) cliLinks(ctx context.Context, a actionsapi.Args) (string, error) {
+func (x *Cache) cliLinks(ctx context.Context, a actions.Args) (string, error) {
 	path, err := x.resolveFile(ctx, a, true)
 	if err != nil {
 		return "", err
@@ -330,7 +326,7 @@ func (x *Index) cliLinks(ctx context.Context, a actionsapi.Args) (string, error)
 
 // cliOutline is outline: the note's headings as a tree, md or json; the
 // empty check before total, as there (linksOutlineCli.ts).
-func (x *Index) cliOutline(ctx context.Context, a actionsapi.Args) (string, error) {
+func (x *Cache) cliOutline(ctx context.Context, a actions.Args) (string, error) {
 	path, err := x.resolveFile(ctx, a, true)
 	if err != nil {
 		return "", err
@@ -402,7 +398,7 @@ func (x *Index) cliOutline(ctx context.Context, a actionsapi.Args) (string, erro
 
 // vaultTags is MetadataCache.getTags: every tag's count, a nested tag also
 // counting toward its parents, casings merged under the one counted most.
-func (x *Index) vaultTags() map[string]int {
+func (x *Cache) vaultTags() map[string]int {
 	counts := map[string]int{}
 	var count func(tag string)
 	count = func(tag string) {
@@ -454,7 +450,7 @@ func (x *Index) vaultTags() map[string]int {
 
 // cliTags is tags: the vault's tags, or one file's, sorted by name or
 // count, as a table (metadata.ts).
-func (x *Index) cliTags(ctx context.Context, a actionsapi.Args) (string, error) {
+func (x *Cache) cliTags(ctx context.Context, a actions.Args) (string, error) {
 	var counts map[string]int
 	if a.Has("active") || a.Params["file"] != "" || a.Params["path"] != "" {
 		path, err := x.resolveFile(ctx, a, true)
@@ -497,7 +493,7 @@ func (x *Index) cliTags(ctx context.Context, a actionsapi.Args) (string, error) 
 
 // cliTag is tag name=<tag>: its count, or the notes holding it, matched
 // without case (metadata.ts).
-func (x *Index) cliTag(_ context.Context, a actionsapi.Args) (string, error) {
+func (x *Cache) cliTag(_ context.Context, a actions.Args) (string, error) {
 	name := a.Params["name"]
 	if name == "" {
 		return "", fmt.Errorf("Missing required parameter: name\nUsage: tag name=<tag>")
@@ -533,7 +529,7 @@ func (x *Index) cliTag(_ context.Context, a actionsapi.Args) (string, error) {
 
 // cliProperties is properties: one file's frontmatter (yaml, json, tsv),
 // or the vault's property names with their counts (metadata.ts).
-func (x *Index) cliProperties(ctx context.Context, a actionsapi.Args) (string, error) {
+func (x *Cache) cliProperties(ctx context.Context, a actions.Args) (string, error) {
 	if a.Has("active") || a.Params["file"] != "" || a.Params["path"] != "" {
 		path, err := x.resolveFile(ctx, a, true)
 		if err != nil {
@@ -625,7 +621,7 @@ func (x *Index) cliProperties(ctx context.Context, a actionsapi.Args) (string, e
 
 // cliPropertyRead is property:read: one value, a list a line each,
 // "(empty)" for none (metadata.ts).
-func (x *Index) cliPropertyRead(ctx context.Context, a actionsapi.Args) (string, error) {
+func (x *Cache) cliPropertyRead(ctx context.Context, a actions.Args) (string, error) {
 	name := a.Params["name"]
 	if name == "" {
 		return "", fmt.Errorf("Missing required parameter: name")
@@ -658,7 +654,7 @@ func (x *Index) cliPropertyRead(ctx context.Context, a actionsapi.Args) (string,
 // (metadata.ts). The property type registry (metadataTypeManager.setType)
 // does not exist in the reader: a type= flag is used only to parse the
 // value.
-func (x *Index) cliPropertySet(ctx context.Context, a actionsapi.Args) (string, error) {
+func (x *Cache) cliPropertySet(ctx context.Context, a actions.Args) (string, error) {
 	name := a.Params["name"]
 	if name == "" {
 		return "", fmt.Errorf("Missing required parameter: name")
@@ -682,7 +678,7 @@ func (x *Index) cliPropertySet(ctx context.Context, a actionsapi.Args) (string, 
 
 // cliPropertyRemove is property:remove: drop the key and rewrite, with no
 // existence check (metadata.ts).
-func (x *Index) cliPropertyRemove(ctx context.Context, a actionsapi.Args) (string, error) {
+func (x *Cache) cliPropertyRemove(ctx context.Context, a actions.Args) (string, error) {
 	name := a.Params["name"]
 	if name == "" {
 		return "", fmt.Errorf("Missing required parameter: name")
@@ -701,7 +697,7 @@ func (x *Index) cliPropertyRemove(ctx context.Context, a actionsapi.Args) (strin
 
 // processFrontMatter is FileManager.processFrontMatter: read the note,
 // mutate its mapping, write it back. A non-markdown file is left alone.
-func (x *Index) processFrontMatter(ctx context.Context, path string, update func(*mdmeta.FrontmatterMap)) error {
+func (x *Cache) processFrontMatter(ctx context.Context, path string, update func(*mdmeta.FrontmatterMap)) error {
 	x.mu.RLock()
 	f, ok := x.files[path]
 	var abs string
@@ -726,7 +722,7 @@ func (x *Index) processFrontMatter(ctx context.Context, path string, update func
 
 // cliAliases is aliases: a file's, or every alias with its notes
 // (metadata.ts).
-func (x *Index) cliAliases(ctx context.Context, a actionsapi.Args) (string, error) {
+func (x *Cache) cliAliases(ctx context.Context, a actions.Args) (string, error) {
 	if a.Has("active") || a.Params["file"] != "" || a.Params["path"] != "" {
 		path, err := x.resolveFile(ctx, a, true)
 		if err != nil {
@@ -778,7 +774,7 @@ func (x *Index) cliAliases(ctx context.Context, a actionsapi.Args) (string, erro
 
 // cliWordcount is wordcount: the note's words, and its characters as the
 // UTF-16 length of the text past its frontmatter (wordcountWebCli.ts).
-func (x *Index) cliWordcount(ctx context.Context, a actionsapi.Args) (string, error) {
+func (x *Cache) cliWordcount(ctx context.Context, a actions.Args) (string, error) {
 	path, err := x.resolveFile(ctx, a, true)
 	if err != nil {
 		return "", err
@@ -787,9 +783,12 @@ func (x *Index) cliWordcount(ctx context.Context, a actionsapi.Args) (string, er
 		return "", fmt.Errorf("Word count is only available for markdown files.")
 	}
 	x.mu.RLock()
-	abs := x.files[path].abs
+	f := x.files[path]
 	x.mu.RUnlock()
-	data, err := x.fs.ReadBytes(ctx, abs, maxNote)
+	if f == nil {
+		return "", fmt.Errorf("File %q not found.", path)
+	}
+	data, err := x.fs.ReadBytes(ctx, f.abs, maxNote)
 	if err != nil {
 		return "", err
 	}
@@ -807,11 +806,14 @@ func (x *Index) cliWordcount(ctx context.Context, a actionsapi.Args) (string, er
 
 // frontmatterKeys are the note's frontmatter keys in the order it writes
 // them, as the TS's object keeps them: read from the note again.
-func (x *Index) frontmatterKeys(ctx context.Context, path string, m *mdmeta.Metadata) ([]string, error) {
+func (x *Cache) frontmatterKeys(ctx context.Context, path string, m *mdmeta.Metadata) ([]string, error) {
 	x.mu.RLock()
-	abs := x.files[path].abs
+	f := x.files[path]
 	x.mu.RUnlock()
-	data, err := x.fs.ReadBytes(ctx, abs, maxNote)
+	if f == nil {
+		return nil, fmt.Errorf("File %q not found.", path)
+	}
+	data, err := x.fs.ReadBytes(ctx, f.abs, maxNote)
 	if err != nil {
 		return nil, err
 	}

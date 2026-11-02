@@ -11,11 +11,12 @@ import (
 	"time"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 )
 
 // Saver writes snapshot() to path.
 type Saver struct {
+	sh       *shell.Shell
 	path     string
 	snapshot func() any // on the main thread
 
@@ -26,8 +27,8 @@ type Saver struct {
 }
 
 // New is a saver of snapshot to path.
-func New(path string, snapshot func() any) *Saver {
-	return &Saver{path: path, snapshot: snapshot}
+func New(sh *shell.Shell, path string, snapshot func() any) *Saver {
+	return &Saver{sh: sh, path: path, snapshot: snapshot}
 }
 
 // Soon saves within 400 ms, once for a burst of changes.
@@ -41,7 +42,7 @@ func (s *Saver) Soon() {
 		s.timer.Stop()
 	}
 	s.timer = time.AfterFunc(400*time.Millisecond, func() {
-		shellapi.Update(func() {
+		s.sh.Update(func() {
 			if s.isClosed() {
 				return
 			}
@@ -66,7 +67,7 @@ func (s *Saver) Final(ctx context.Context) {
 		s.timer.Stop()
 	}
 	s.mu.Unlock()
-	v, err := shellapi.OnMain(ctx, func() (any, error) { return s.snapshot(), nil })
+	v, err := shell.OnMain(ctx, s.sh, func() (any, error) { return s.snapshot(), nil })
 	if err != nil {
 		return
 	}

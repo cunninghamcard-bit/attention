@@ -23,13 +23,14 @@ import (
 
 	"github.com/cunninghamcard-bit/attention-ui/theme"
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
+	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 )
 
 const (
@@ -57,21 +58,43 @@ var (
 	// Plugin registers the Search panel while loaded.
 	Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		Name:   "search",
-		Inject: []string{"shell", "actions", "project", "workspace"},
+		Inject: []string{"shell", "slots", "layout", "workspace", "project", "actions"},
 		Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-			var project projectcontract.Project
+			var (
+				sh      *shell.Shell
+				sl      *slots.Registry
+				lyt     *layout.Layout
+				ws      *workspace.Workspace
+				project projectplugin.Project
+				act     *actions.Service
+			)
+			if err := rctx.Use("shell", &sh); err != nil {
+				return err
+			}
+			if err := rctx.Use("slots", &sl); err != nil {
+				return err
+			}
+			if err := rctx.Use("layout", &lyt); err != nil {
+				return err
+			}
+			if err := rctx.Use("workspace", &ws); err != nil {
+				return err
+			}
 			if err := rctx.Use("project", &project); err != nil {
 				return err
 			}
+			if err := rctx.Use("actions", &act); err != nil {
+				return err
+			}
 			ctx, cancel := context.WithCancel(context.Background())
-			s := &Search{ctx: ctx, project: project, sortOrder: "alphabetical", collapsed: map[string]bool{}}
-			off := slotsapi.RegisterPanel(slotsapi.Panel{
-				ID: PanelID, Title: "Search", Icon: lucide.Search(), Dock: slotsapi.Left, Order: 1,
+			s := &Search{ctx: ctx, sh: sh, lyt: lyt, ws: ws, project: project, sortOrder: "alphabetical", collapsed: map[string]bool{}}
+			off := sl.RegisterPanel(slots.Panel{
+				ID: PanelID, Title: "Search", Icon: lucide.Search(), Dock: slots.Left, Order: 1,
 				View: s.view, State: s.state, Restore: s.restore,
 			})
 			offs := []func(){off}
 			for _, cmd := range s.commands() {
-				offs = append(offs, actionsapi.Register(cmd))
+				offs = append(offs, act.Add(cmd))
 			}
 			rctx.Effect(func(context.Context) error {
 				for i := len(offs) - 1; i >= 0; i-- {
@@ -85,10 +108,19 @@ var (
 	})
 )
 
+// Workspace is the file opening and path display the search panel uses.
+type Workspace interface {
+	Open(path string, nav *workspace.Nav, newTab bool)
+	Display(path string) string
+}
+
 // Search is the panel's state, on the main thread only.
 type Search struct {
 	ctx     context.Context
-	project projectcontract.Project
+	sh      *shell.Shell
+	lyt     *layout.Layout
+	ws      Workspace
+	project projectplugin.Project
 
 	query         string
 	matchingCase  bool
@@ -105,7 +137,7 @@ type Search struct {
 	loading bool
 	err     string
 	ran     string // the query the results are for
-	results []projectcontract.FileResult
+	results []projectplugin.FileResult
 	limited bool
 
 	collapsed map[string]bool // per file, flipped from collapseAll
@@ -156,11 +188,13 @@ func (s *Search) changed() {
 	s.seq++
 	seq := s.seq
 	s.timer = time.AfterFunc(debounce, func() {
-		shellapi.Update(func() {
-			if seq == s.seq {
-				s.start()
-			}
-		})
+		if s.sh != nil {
+			s.sh.Update(func() {
+				if seq == s.seq {
+					s.start()
+				}
+			})
+		}
 	})
 }
 
@@ -184,10 +218,13 @@ func (s *Search) start() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	s.cancel = cancel
 	s.loading = true
-	query := projectcontract.Query{Text: q, CaseSensitive: s.matchingCase, Limit: resultLimit}
+	query := projectplugin.Query{Text: q, CaseSensitive: s.matchingCase, Limit: resultLimit}
 	go func() {
 		res, err := s.project.Search(ctx, query)
-		shellapi.Update(func() {
+		if s.sh == nil {
+			return
+		}
+		s.sh.Update(func() {
 			if seq != s.seq {
 				return // a newer search replaced this one
 			}
@@ -208,11 +245,11 @@ func (s *Search) start() {
 
 // sort is SearchView.sortResults: by base name, ties by path.
 func (s *Search) sort() {
-	base := func(f projectcontract.FileResult) string {
+	base := func(f projectplugin.FileResult) string {
 		name := path.Base(f.Rel)
 		return strings.ToLower(strings.TrimSuffix(name, path.Ext(name)))
 	}
-	byPath := func(a, b projectcontract.FileResult) bool {
+	byPath := func(a, b projectplugin.FileResult) bool {
 		return natural.Less(strings.ToLower(a.Path), strings.ToLower(b.Path))
 	}
 	sort.SliceStable(s.results, func(i, j int) bool {
@@ -241,7 +278,7 @@ func (s *Search) sort() {
 	s.dirty = true
 }
 
-func (s *Search) isCollapsed(f *projectcontract.FileResult) bool {
+func (s *Search) isCollapsed(f *projectplugin.FileResult) bool {
 	return s.collapseAll != s.collapsed[f.Path]
 }
 
@@ -264,9 +301,8 @@ func (s *Search) flatten() []row {
 	return s.rows
 }
 
-func (s *Search) view(c *ui.Context, p slotsapi.PanelProps) {
+func (s *Search) view(c *ui.Context, p slots.PanelProps) {
 	t := c.Theme()
-	ws := workspaceapi.Get()
 	ui.Column(c).Fill().Children(func() {
 		ui.Row(c).Padding(8, 8, 4, 8).Gap(4).AlignItems(ui.Center).Children(func() {
 			ui.Box(c).Grow(1).Children(func() {
@@ -328,13 +364,13 @@ func (s *Search) view(c *ui.Context, p slotsapi.PanelProps) {
 			r := rows[i]
 			f := r.file
 			if r.match < 0 {
-				s.fileRow(c, ws, f)
+				s.fileRow(c, f)
 				return
 			}
 			m := &f.Matches[r.match]
 			item := omgui.SideRow(c, omgui.SideRowProps{Key: fmt.Sprintf("m:%s:%d", f.Path, r.match), Depth: 2})
 			if item.Clicked() {
-				open(f, m)
+				s.open(f, m)
 			}
 			item.Children(func() {
 				highlighted(c, m)
@@ -360,19 +396,19 @@ func (s *Search) countText() string {
 	return out
 }
 
-func (s *Search) fileRow(c *ui.Context, ws workspaceapi.API, f *projectcontract.FileResult) {
+func (s *Search) fileRow(c *ui.Context, f *projectplugin.FileResult) {
 	t := c.Theme()
 	name := f.Path
-	if ws != nil {
-		name = ws.Display(f.Path)
+	if s.ws != nil {
+		name = s.ws.Display(f.Path)
 	}
 	item := omgui.SideRow(c, omgui.SideRowProps{Key: "f:" + f.Path, Depth: 0})
 	if item.Clicked() {
-		var first *projectcontract.Match
+		var first *projectplugin.Match
 		if len(f.Matches) > 0 {
 			first = &f.Matches[0]
 		}
-		open(f, first)
+		s.open(f, first)
 	}
 	item.Tooltip(name)
 	item.Children(func() {
@@ -396,9 +432,21 @@ func (s *Search) fileRow(c *ui.Context, ws workspaceapi.API, f *projectcontract.
 	})
 }
 
+// open is SearchView.openResult: the match is selected in the file.
+func (s *Search) open(f *projectplugin.FileResult, m *projectplugin.Match) {
+	if s.ws == nil {
+		return
+	}
+	var nav *workspace.Nav
+	if m != nil {
+		nav = &workspace.Nav{Line: m.Line, Col: m.Col, Len: m.Len}
+	}
+	s.ws.Open(f.Path, nav, false)
+}
+
 // row is a file title or one of its matches.
 type row struct {
-	file  *projectcontract.FileResult
+	file  *projectplugin.FileResult
 	match int // -1 on the file's title
 }
 
@@ -411,19 +459,6 @@ type savedState struct {
 	SortOrder     string `json:"sortOrder"`
 }
 
-// open is SearchView.openResult: the match is selected in the file.
-func open(f *projectcontract.FileResult, m *projectcontract.Match) {
-	ws := workspaceapi.Get()
-	if ws == nil {
-		return
-	}
-	var nav *workspaceapi.Nav
-	if m != nil {
-		nav = &workspaceapi.Nav{Line: m.Line, Col: m.Col, Len: m.Len}
-	}
-	ws.Open(f.Path, nav, false)
-}
-
 func plural(n int) string {
 	if n == 1 {
 		return ""
@@ -433,7 +468,7 @@ func plural(n int) string {
 
 // highlighted is a match as "line: text" with the matched part marked
 // (SearchView.renderMatch).
-func highlighted(c *ui.Context, m *projectcontract.Match) {
+func highlighted(c *ui.Context, m *projectplugin.Match) {
 	t := c.Theme()
 	text := m.Text
 	from := min(max(0, m.Col-1), len(text))

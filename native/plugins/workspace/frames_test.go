@@ -11,8 +11,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 )
 
 const (
@@ -29,7 +28,7 @@ func TestFramesPerTabKind(t *testing.T) {
 		t.Skip()
 	}
 	ws, tt := testWorkspace(t)
-	testFiles = map[string]fscontract.File{
+	testFiles = map[string]fsplugin.File{
 		"/m/main.go":  {Text: goText},
 		"/m/alpha.md": {Text: mdText},
 		"/m/blob.bin": {Binary: true},
@@ -38,13 +37,13 @@ func TestFramesPerTabKind(t *testing.T) {
 	}
 	pic := goldenPNG()
 	testBytes = pic
-	open := func(path string, nav *workspaceapi.Nav) *tab {
+	open := func(path string, nav *Nav) *tab {
 		tb := ws.openIn(path, nav, true)
 		tt.Frame()
 		testPosts.next(t)
 		return tb
 	}
-	open("/m/main.go", &workspaceapi.Nav{Line: 5, To: 6})
+	open("/m/main.go", &Nav{Line: 5, To: 6})
 	save(t, tt, "1-text-nav")
 	open("/m/alpha.md", nil)
 	save(t, tt, "2-markdown")
@@ -60,7 +59,7 @@ func TestFramesPerTabKind(t *testing.T) {
 	// The file provider comes and finds gone.txt deleted: a frame for each
 	// of the six tabs.
 	testMissing = map[string]bool{"/m/gone.txt": true}
-	files := fileProvider(t)
+	files := fileProvider(t, ws)
 	for range 6 {
 		files.frames.next(t)
 	}

@@ -47,9 +47,9 @@ A Go service binary joins rutis's Go runtime: put its path in
 ## A native UI plugin: `attention build --with`
 
 Go loads no code at run time, so a native UI plugin is compiled in. Its
-module's `init` adds the plugin with `pluginreg.Add(Plugin, pluginreg.UI)`
-(or `pluginreg.Service`). It may use every in-process API (`slotsapi`,
-`tabtypesapi`, `workspaceapi`, `actionsapi`, …). Then:
+module exports `var Plugin = rutis.Define(...)`, which `attention build`
+passes to `app.Main`. It may inject any in-process service (`shell`,
+`slots`, `tabTypes`, `workspace`, `actions`, …) via `rctx.Use`. Then:
 
 ```sh
 attention build --with example.com/attention-hello-ui=./examples/hello-ui -o ./attention-hello

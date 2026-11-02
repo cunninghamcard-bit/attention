@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/arcships/rutis/go/rutis/rutistest"
-
-	contract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 )
 
 func TestListSortsDirsFirstInNaturalOrder(t *testing.T) {
@@ -35,7 +33,7 @@ func TestListSortsDirsFirstInNaturalOrder(t *testing.T) {
 	}
 
 	loaded := loadFS(t)
-	var entries []contract.Entry
+	var entries []Entry
 	call(t, loaded, "list", &entries, dir)
 
 	var names []string
@@ -76,19 +74,19 @@ func TestReadTextBinaryAndTooLarge(t *testing.T) {
 
 	loaded := loadFS(t)
 
-	var text contract.File
+	var text File
 	call(t, loaded, "read", &text, textPath, int64(1024))
 	if text.Text != "hello\n" || text.Binary || text.TooLarge || text.Size != 6 {
 		t.Fatalf("text = %+v", text)
 	}
 
-	var bin contract.File
+	var bin File
 	call(t, loaded, "read", &bin, binPath, int64(1024))
 	if !bin.Binary || bin.Text != "" || bin.TooLarge {
 		t.Fatalf("binary = %+v", bin)
 	}
 
-	var large contract.File
+	var large File
 	call(t, loaded, "read", &large, bigPath, int64(10))
 	if !large.TooLarge || large.Text != "" || large.Binary || large.Size != 100 {
 		t.Fatalf("too large = %+v", large)
@@ -115,7 +113,7 @@ func TestReadBytesLimit(t *testing.T) {
 	}
 
 	_, err = newService(t).ReadBytes(t.Context(), path, 10)
-	if !errors.Is(err, contract.ErrTooLarge) {
+	if !errors.Is(err, ErrTooLarge) {
 		t.Fatalf("ReadBytes oversize: %v", err)
 	}
 }
@@ -146,13 +144,13 @@ func TestStat(t *testing.T) {
 	}
 	loaded := loadFS(t)
 
-	var file contract.Entry
+	var file Entry
 	call(t, loaded, "stat", &file, path)
 	if file.Name != "note.md" || file.Path != path || file.Dir || file.Size != 2 {
 		t.Fatalf("file stat = %+v", file)
 	}
 
-	var folder contract.Entry
+	var folder Entry
 	call(t, loaded, "stat", &folder, dir)
 	if folder.Name != filepath.Base(dir) || folder.Path != dir || !folder.Dir {
 		t.Fatalf("dir stat = %+v", folder)
@@ -163,12 +161,12 @@ func TestWatchEmitsChangedThenUnwatch(t *testing.T) {
 	dir := t.TempDir()
 	loaded := loadFS(t)
 
-	got := make(chan contract.Batch, 4)
-	off := loaded.On(contract.ChangedEvent, func(_ context.Context, args ...any) (any, error) {
+	got := make(chan Batch, 4)
+	off := loaded.On(ChangedEvent, func(_ context.Context, args ...any) (any, error) {
 		if len(args) == 0 {
 			return nil, nil
 		}
-		b, err := contract.DecodeBatch(args[0])
+		b, err := DecodeBatch(args[0])
 		if err != nil {
 			return nil, err
 		}

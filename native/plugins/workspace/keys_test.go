@@ -7,20 +7,25 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
-	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/commandpalette"
-	"github.com/cunninghamcard-bit/attention/native/plugins/gotoline"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
 	"github.com/cunninghamcard-bit/attention/native/plugins/palette"
+	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/resources"
+	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/switcher"
 )
 
-// testPalette and testLayout are testWorkspace's palette and layout.
+// testPalette, testLayout and testSlots are testWorkspace's palette, layout and slots.
 var (
 	testPalette *palette.Palette
 	testLayout  *layout.Layout
+	testSlots   *slots.Registry
 )
 
 func TestQuickSwitcherOpensIntoTheNewTab(t *testing.T) {
@@ -98,46 +103,53 @@ func TestCommandPaletteRunsAndRemembersCommands(t *testing.T) {
 // the palette are driven by key presses, without a window or rutis.
 func testWorkspace(t *testing.T) (*Workspace, *ui.Tester) {
 	t.Helper()
-	m := projectcontract.Mount{ID: "m", Name: "m", Path: "/m"}
-	files := projectcontract.Listing{Files: []projectcontract.FileRef{
+	m := projectplugin.Mount{ID: "m", Name: "m", Path: "/m"}
+	files := projectplugin.Listing{Files: []projectplugin.FileRef{
 		{Mount: "m", Rel: "alpha.md", Path: "/m/alpha.md"},
 		{Mount: "m", Rel: "beta.md", Path: "/m/beta.md"},
 		{Mount: "m", Rel: "gamma.md", Path: "/m/gamma.md"},
 	}}
 	fs := fsStub()
 	testText, testFiles, testMissing = "# note", nil, nil
-	fs.Read = func(_ context.Context, path string, _ int64) (fscontract.File, error) {
+	fs.Read = func(_ context.Context, path string, _ int64) (fsplugin.File, error) {
 		if testMissing[path] {
-			return fscontract.File{}, os.ErrNotExist
+			return fsplugin.File{}, os.ErrNotExist
 		}
 		if f, ok := testFiles[path]; ok {
 			return f, nil
 		}
-		return fscontract.File{Text: testText}, nil
+		return fsplugin.File{Text: testText}, nil
 	}
 	fs.ReadBytes = func(context.Context, string, int64) ([]byte, error) { return testBytes, nil }
-	fs.List = func(context.Context, string) ([]fscontract.Entry, error) { return nil, nil }
+	fs.List = func(context.Context, string) ([]fsplugin.Entry, error) { return nil, nil }
 	project := projectStub()
-	project.Files = func(context.Context) (projectcontract.Listing, error) { return files, nil }
-	viewers(t, t.Context(), fs)
-	ws := newWorkspace(t.Context(), fs, project)
-	ws.setMounts([]projectcontract.Mount{m})
+	project.Files = func(context.Context) (projectplugin.Listing, error) { return files, nil }
+
+	sh := shell.New()
+	sl := ensureSlots(t)
+	res := resources.New(sh.Update, sh.Invalidate)
+	act := actions.New()
+	set := settings.New(sh, sl)
+	sc, offSC := shortcuts.Register(t.Context(), sl, act, set)
+	t.Cleanup(offSC)
+	testLayout = layout.New(sh, sl, set)
+	testLayout.IsDark = func() bool { return false }
+
+	ws := newWorkspace(t.Context(), sh, sl, res, testLayout, sc, act, fs, project)
+	viewers(t, t.Context(), ws, fs)
+	ws.setMounts([]projectplugin.Mount{m})
 	// What the profile loads beside it: the layout around it, the
 	// shortcuts, the palette and its sources.
 	t.Cleanup(Register(ws))
-	testLayout = layout.New()
-	testLayout.IsDark = func() bool { return false }
-	t.Cleanup(layout.Register(testLayout))
-	t.Cleanup(shortcuts.Register(t.Context()))
+	t.Cleanup(layout.Register(testLayout, sh, sl, act))
 	var off func()
-	testPalette, off = palette.Register()
+	testPalette, off = palette.Register(sl)
 	t.Cleanup(off)
 	// The listing is set here; a refresh's walk is dropped.
-	sw := switcher.New(t.Context(), project.Files, func(func()) {})
+	sw := switcher.New(t.Context(), ws, project.Files, func(func()) {})
 	sw.SetListing(files)
-	t.Cleanup(switcher.Register(sw))
-	t.Cleanup(commandpalette.Register(commandpalette.New(t.Context())))
-	t.Cleanup(gotoline.Register())
+	t.Cleanup(switcher.Register(sw, sh, sl, act))
+	t.Cleanup(commandpalette.Register(commandpalette.New(t.Context(), act, sc), sh, sl, act))
 	t.Cleanup(func() {
 		for _, p := range ws.groups() {
 			for _, tb := range p.tabs {
@@ -163,3 +175,12 @@ func tabs(ws *Workspace) []string {
 }
 
 func press(tt *ui.Tester, mods ui.Modifiers, key ui.Key) { tt.Key(mods, key); tt.Frame() }
+
+func ensureSlots(t *testing.T) *slots.Registry {
+	t.Helper()
+	if testSlots == nil {
+		testSlots = slots.New(func() {})
+		t.Cleanup(func() { testSlots = nil })
+	}
+	return testSlots
+}

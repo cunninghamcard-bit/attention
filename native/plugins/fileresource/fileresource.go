@@ -1,6 +1,4 @@
-// Package fileresource is the file protocol's resource provider (RFC 0001
-// §5.6): an address streams a live fs.Entry from Stat, refreshed by
-// fs/changed and remounts.
+// Package fileresource is the file protocol's resource provider (RFC 0001 §5.6).
 package fileresource
 
 import (
@@ -13,9 +11,9 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
-	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
-	"github.com/cunninghamcard-bit/attention/native/resourcesapi"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
+	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/resources"
 )
 
 const unwatchTimeout = 2 * time.Second
@@ -23,10 +21,14 @@ const unwatchTimeout = 2 * time.Second
 // Plugin registers the file protocol while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   "fileresource",
-	Inject: []string{"shell", "fs", "project"},
+	Inject: []string{"resources", "fs", "project"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var fs fscontract.FS
-		var project projectcontract.Project
+		var res *resources.Registry
+		var fs fsplugin.FS
+		var project projectplugin.Project
+		if err := rctx.Use("resources", &res); err != nil {
+			return err
+		}
 		if err := rctx.Use("fs", &fs); err != nil {
 			return err
 		}
@@ -35,19 +37,19 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		}
 		ctx, cancel := context.WithCancel(context.Background())
 		p := New(ctx, fs, project.Mounts)
-		off := resourcesapi.Register(resourcesapi.Provider{Protocol: "file", Open: p.Open})
-		rctx.On(fscontract.ChangedEvent, func(_ context.Context, args ...any) (any, error) {
+		off := res.Register(resources.Provider{Protocol: "file", Open: p.Open})
+		rctx.On(fsplugin.ChangedEvent, func(_ context.Context, args ...any) (any, error) {
 			if len(args) == 0 {
 				return nil, nil
 			}
-			b, err := fscontract.DecodeBatch(args[0])
+			b, err := fsplugin.DecodeBatch(args[0])
 			if err != nil {
 				return nil, err
 			}
 			p.Changed(b)
 			return nil, nil
 		})
-		rctx.On(projectcontract.MountsChangedEvent, func(context.Context, ...any) (any, error) {
+		rctx.On(projectplugin.MountsChangedEvent, func(context.Context, ...any) (any, error) {
 			p.MountsChanged()
 			return nil, nil
 		})
@@ -60,31 +62,35 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	},
 })
 
-// Provider streams file addresses as live fs.Entry values. Open, Changed
-// and MountsChanged are safe for concurrent use; nothing here runs on the
-// main thread.
+type lastFrame struct {
+	has   bool
+	ok    bool
+	size  int64
+	mod   int64
+	inode uint64
+	err   string
+}
+
+// Provider streams file addresses as live fs.Entry values.
 type Provider struct {
 	ctx   context.Context
-	fs    fscontract.FS
-	fetch func(context.Context) ([]projectcontract.Mount, error)
+	fs    fsplugin.FS
+	fetch func(context.Context) ([]projectplugin.Mount, error)
 
 	mu      sync.Mutex
-	mounts  []projectcontract.Mount
+	mounts  []projectplugin.Mount
 	loaded  bool
 	streams map[*stream]struct{}
 }
 
-// New starts a mounts fetch in the background. Until that fetch (or a
-// later MountsChanged) completes, Open of a mount address waits.
-func New(ctx context.Context, fs fscontract.FS, mounts func(context.Context) ([]projectcontract.Mount, error)) *Provider {
+// New starts a mounts fetch in the background.
+func New(ctx context.Context, fs fsplugin.FS, mounts func(context.Context) ([]projectplugin.Mount, error)) *Provider {
 	p := &Provider{ctx: ctx, fs: fs, fetch: mounts, streams: map[*stream]struct{}{}}
 	go p.loadMounts()
 	return p
 }
 
-// Open streams address until ctx is done, then returns. Each loop
-// re-resolves, re-stats, and waits for a poke; stats of one stream are
-// serial so a late Stat cannot overwrite a newer one.
+// Open streams address until ctx is done, then returns.
 func (p *Provider) Open(ctx context.Context, address string, emit func(any, error)) {
 	s := &stream{poke: make(chan struct{}, 1)}
 	p.mu.Lock()
@@ -136,9 +142,8 @@ func (p *Provider) Open(ctx context.Context, address string, emit func(any, erro
 	}
 }
 
-// Changed pokes streams whose path is a changed path, or under one (a
-// parent removed or renamed).
-func (p *Provider) Changed(b fscontract.Batch) {
+// Changed pokes streams whose path is a changed path, or under one.
+func (p *Provider) Changed(b fsplugin.Batch) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	for s := range p.streams {
@@ -167,7 +172,7 @@ func (p *Provider) loadMounts() {
 		return
 	}
 	if err == nil {
-		p.mounts = append([]projectcontract.Mount(nil), ms...)
+		p.mounts = append([]projectplugin.Mount(nil), ms...)
 	}
 	p.loaded = true
 	for s := range p.streams {
@@ -176,7 +181,7 @@ func (p *Provider) loadMounts() {
 }
 
 func (p *Provider) resolve(address string) (path string, wait bool, err error) {
-	a, ok := fscontract.ParseAddress(address)
+	a, ok := fsplugin.ParseAddress(address)
 	if !ok {
 		return "", false, fmt.Errorf("%q is not a file address", address)
 	}
@@ -191,7 +196,7 @@ func (p *Provider) resolve(address string) (path string, wait bool, err error) {
 	p.mu.Lock()
 	mounts := p.mounts
 	p.mu.Unlock()
-	path, err = projectcontract.PathOf(mounts, address)
+	path, err = projectplugin.PathOf(mounts, address)
 	return path, false, err
 }
 
@@ -243,7 +248,7 @@ func (p *Provider) emitStat(ctx context.Context, path string, resolveErr error, 
 
 type stream struct {
 	poke chan struct{}
-	path string // last resolved path; Provider.mu
+	path string
 }
 
 func (s *stream) signal() {
@@ -253,16 +258,6 @@ func (s *stream) signal() {
 	}
 }
 
-type lastFrame struct {
-	has   bool
-	ok    bool
-	size  int64
-	mod   int64
-	inode uint64
-	err   string
-}
-
-// The registry bumps Version on every Live frame, so duplicates stop here.
 func emitDiff(emit func(any, error), last *lastFrame, v any, err error) {
 	if err != nil {
 		if last.has && !last.ok && last.err == err.Error() {
@@ -272,7 +267,7 @@ func emitDiff(emit func(any, error), last *lastFrame, v any, err error) {
 		emit(nil, err)
 		return
 	}
-	e, _ := v.(fscontract.Entry)
+	e, _ := v.(fsplugin.Entry)
 	if last.has && last.ok && last.size == e.Size && last.mod == e.ModTime && last.inode == e.Inode {
 		return
 	}

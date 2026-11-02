@@ -6,11 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	"github.com/cunninghamcard-bit/attention/native/internal/clifmt"
-	"github.com/cunninghamcard-bit/attention/native/internal/clipath"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 )
 
 // recents, tab:open and workspace are the TS CLI's
@@ -18,8 +17,8 @@ import (
 // workspace hops to the main thread, as tabs does.
 
 // cliRecents is `recents [total]`: the files opened last, newest first.
-func (ws *Workspace) cliRecents(ctx context.Context, a actionsapi.Args) (string, error) {
-	return shellapi.OnMain(ctx, func() (string, error) {
+func (ws *Workspace) cliRecents(ctx context.Context, a actions.Args) (string, error) {
+	return shell.OnMain(ctx, ws.sh, func() (string, error) {
 		files := ws.recentFiles
 		if a.Has("total") {
 			return strconv.Itoa(len(files)), nil
@@ -37,19 +36,19 @@ func (ws *Workspace) cliRecents(ctx context.Context, a actionsapi.Args) (string,
 
 // cliTabOpen is `tab:open [group=<id>] [file=<path>] [view=<type>]`: a new
 // tab, then a file (openAddress) or a page of kind (openTab).
-func (ws *Workspace) cliTabOpen(ctx context.Context, a actionsapi.Args) (string, error) {
+func (ws *Workspace) cliTabOpen(ctx context.Context, a actions.Args) (string, error) {
 	var path string
 	if file := a.Params["file"]; file != "" {
 		mounts, err := ws.project.Mounts(ctx)
 		if err != nil {
 			return "", err
 		}
-		path, err = clipath.Link(ctx, ws.project.Files, mounts, file, a.Cwd)
+		path, err = projectplugin.ResolveLink(ctx, ws.project.Files, mounts, file, a.Cwd)
 		if err != nil {
 			return "", err
 		}
 	}
-	return shellapi.OnMain(ctx, func() (string, error) {
+	return shell.OnMain(ctx, ws.sh, func() (string, error) {
 		if g := a.Params["group"]; g != "" {
 			p := ws.findTabGroup(g)
 			if p == nil {
@@ -58,13 +57,13 @@ func (ws *Workspace) cliTabOpen(ctx context.Context, a actionsapi.Args) (string,
 			ws.activeGroup = p
 		}
 		if path != "" {
-			if _, err := ws.openAddress(ws.addressOf(path), path, workspaceapi.OpenOptions{NewTab: true}); err != nil {
+			if _, err := ws.openAddress(ws.addressOf(path), path, OpenOptions{NewTab: true}); err != nil {
 				return "", err
 			}
 			return "Opened: " + a.Params["file"], nil
 		}
 		if view := a.Params["view"]; view != "" {
-			if _, err := ws.openTab(view, workspaceapi.OpenOptions{NewTab: true}); err != nil {
+			if _, err := ws.openTab(view, OpenOptions{NewTab: true}); err != nil {
 				return "", err
 			}
 			return "Opened view: " + view, nil
@@ -86,8 +85,8 @@ func (ws *Workspace) findTabGroup(id string) *pane {
 }
 
 // cliWorkspace is `workspace [ids]`: the center's split/tabs tree.
-func (ws *Workspace) cliWorkspace(ctx context.Context, a actionsapi.Args) (string, error) {
-	return shellapi.OnMain(ctx, func() (string, error) {
+func (ws *Workspace) cliWorkspace(ctx context.Context, a actions.Args) (string, error) {
+	return shell.OnMain(ctx, ws.sh, func() (string, error) {
 		ids := a.Has("ids")
 		children := make([]clifmt.Node, 0, len(ws.root.children))
 		for _, c := range ws.root.children {

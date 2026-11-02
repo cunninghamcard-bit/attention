@@ -20,8 +20,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/arcships/rutis/go/rutis"
+
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
-	"github.com/cunninghamcard-bit/attention/native/pluginreg"
 )
 
 const (
@@ -109,7 +110,7 @@ func (o *Options) set(flag, value string) error {
 }
 
 // Run is the launcher; it returns the process's exit code.
-func Run(args []string) int {
+func Run(args []string, extra ...*rutis.Definition) int {
 	opts, err := Parse(args)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "attention:", err)
@@ -132,11 +133,11 @@ func Run(args []string) int {
 		fmt.Fprintln(os.Stderr, "Error: attention is not running.")
 		return 1
 	}
-	return runHost(opts)
+	return runHost(opts, extra...)
 }
 
 // Rows returns the plugin rows of a profile (RFC 0001 §5.10).
-func Rows(profile string, mounts []string) (rows []map[string]any) {
+func Rows(profile string, mounts []string, extra ...*rutis.Definition) (rows []map[string]any) {
 	project := map[string]any{"id": "project", "name": "go:project"}
 	if len(mounts) > 0 {
 		project["config"] = map[string]any{"mounts": mounts}
@@ -149,22 +150,14 @@ func Rows(profile string, mounts []string) (rows []map[string]any) {
 		{"id": "index", "name": "go:index"},
 		{"id": "web-read", "name": "go:web-read"},
 	}
-	// The plugins compiled in with attention (pluginreg): a service
-	// plugin's row in every profile, a UI plugin's on the desktop.
-	var ui []map[string]any
-	for _, e := range pluginreg.List() {
-		row := map[string]any{"id": e.Def.Name(), "name": "go:" + e.Def.Name()}
-		if e.Side == pluginreg.UI {
-			ui = append(ui, row)
-		} else {
-			base = append(base, row)
-		}
-	}
 	if profile == "headless" {
 		return base
 	}
-	defer func() { rows = append(rows, ui...) }()
-	return append([]map[string]any{{"id": "shell", "name": "go:shell"}}, append(base,
+	out := append([]map[string]any{
+		{"id": "shell", "name": "go:shell"},
+		{"id": "slots", "name": "go:slots"},
+		{"id": "resources", "name": "go:resources"},
+	}, append(base,
 		map[string]any{"id": "fileresource", "name": "go:fileresource"},
 		map[string]any{"id": "layout", "name": "go:layout"},
 		map[string]any{"id": "workspace", "name": "go:workspace"},
@@ -187,19 +180,23 @@ func Rows(profile string, mounts []string) (rows []map[string]any) {
 		map[string]any{"id": "web-index", "name": "go:web-index"},
 		map[string]any{"id": "webview-panel-ui", "name": "go:webview-panel-ui"},
 		map[string]any{"id": "terminal-ui", "name": "go:terminal-ui"})...)
+	for _, d := range extra {
+		out = append(out, map[string]any{"id": d.Name(), "name": "go:" + d.Name()})
+	}
+	return out
 }
 
 // Config is the rutis.json for a run.
-func Config(self string, profile string, mounts []string) map[string]any {
-	return ConfigSeparate(self, "", profile, mounts, nil)
+func Config(self string, profile string, mounts []string, extra ...*rutis.Definition) map[string]any {
+	return ConfigSeparate(self, "", profile, mounts, nil, extra...)
 }
 
 // ConfigSeparate is Config with the plugins named in separate run by the
 // services binary at services, in a process of their own. Every row then
 // names its binary (go-attention:<plugin>), as rutis asks when two hold
 // the plugin.
-func ConfigSeparate(self, services, profile string, mounts []string, separate []string) map[string]any {
-	rows := Rows(profile, mounts)
+func ConfigSeparate(self, services, profile string, mounts []string, separate []string, extra ...*rutis.Definition) map[string]any {
+	rows := Rows(profile, mounts, extra...)
 	binaries := []string{self}
 	if len(separate) > 0 && services != "" {
 		binaries = append(binaries, services)
@@ -319,7 +316,7 @@ func hostBinary(self string) (string, error) {
 	return exec.LookPath("rutis-host")
 }
 
-func runHost(opts Options) int {
+func runHost(opts Options, extra ...*rutis.Definition) int {
 	self, err := os.Executable()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "attention:", err)
@@ -356,7 +353,7 @@ func runHost(opts Options) int {
 			return 1
 		}
 	}
-	config := ConfigSeparate(self, services, opts.Profile, opts.Mounts, separate)
+	config := ConfigSeparate(self, services, opts.Profile, opts.Mounts, separate, extra...)
 	if err := withThirdParty(config, ThirdPartyPath()); err != nil {
 		fmt.Fprintln(os.Stderr, "attention:", err)
 		return 1

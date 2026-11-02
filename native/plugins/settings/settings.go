@@ -1,14 +1,13 @@
-// Package settings is the settings modal, attention's SettingsModal and
-// SettingsRenderer (apps/web/builtin/SettingsModal.ts, SettingsRenderer.ts):
-// a vertical tab header — Search settings, then the Options tabs and the
-// core plugins' tabs, the settings.section contributions — beside the
-// chosen tab, whose name is the modal's title. It brings the General tab
-// of its own, and loads and saves the configuration files (settingsapi).
+// Package settings is the settings modal and configuration store plugin
+// (RFC 0001 §5.7, apps/web/builtin/SettingsModal.ts, SettingsRenderer.ts).
 package settings
 
 import (
 	"context"
+	"encoding/json"
+	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo"
@@ -17,54 +16,87 @@ import (
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
+	"github.com/cunninghamcard-bit/attention/native/internal/persist"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/cli"
-	"github.com/cunninghamcard-bit/attention/native/settingsapi"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 )
 
-// ID is the plugin's and its overlay's.
-const ID = "settings"
+const (
+	ID = "settings"
 
-// Plugin is the settings modal while loaded.
+	App        = "app"
+	Appearance = "appearance"
+	Hotkeys    = "hotkeys"
+)
+
+// Plugin is the settings modal and store while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "actions"},
+	Inject: []string{"shell", "slots", "actions"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		// The configuration it edits: read here, off the main thread.
-		settingsapi.Load(settingsapi.App, settingsapi.Appearance, settingsapi.Hotkeys)
-		_, off := Register()
+		var sh *shell.Shell
+		var sl *slots.Registry
+		var act *actions.Service
+		if err := rctx.Use("shell", &sh); err != nil {
+			return err
+		}
+		if err := rctx.Use("slots", &sl); err != nil {
+			return err
+		}
+		if err := rctx.Use("actions", &act); err != nil {
+			return err
+		}
+		s, off := Register(sh, sl, act)
+		s.Load(App, Appearance, Hotkeys)
+		rctx.Provide("settings", s)
 		rctx.Effect(func(ctx context.Context) error {
 			off()
-			settingsapi.Flush(ctx)
+			s.Flush(ctx)
 			return nil
 		})
 		return nil
 	},
 })
 
-// Settings is the modal's state, on the main thread only.
+// Settings is the configuration store and modal state.
 type Settings struct {
-	open  bool
-	query string // Search settings
-	shown string // the chosen tab's ID, kept while closed (lastTabId)
+	sh     *shell.Shell
+	slots  *slots.Registry
+	mu     sync.Mutex
+	files  map[string]map[string]json.RawMessage
+	savers map[string]*persist.Saver
+	gen    int
+	open   bool
+	query  string
+	shown  string
 }
 
-// Register adds the modal, its General tab, its command and its ribbon
-// icon until off is called.
-func Register() (s *Settings, off func()) {
-	s = &Settings{shown: "general"}
+// New creates an empty Settings store.
+func New(sh *shell.Shell, sl *slots.Registry) *Settings {
+	return &Settings{
+		sh:     sh,
+		slots:  sl,
+		files:  map[string]map[string]json.RawMessage{},
+		savers: map[string]*persist.Saver{},
+		shown:  "general",
+	}
+}
+
+// Register adds the modal, its General tab, its command and its ribbon icon.
+func Register(sh *shell.Shell, sl *slots.Registry, act *actions.Service) (s *Settings, off func()) {
+	s = New(sh, sl)
 	offs := []func(){
-		slotsapi.RegisterOverlay(slotsapi.Overlay{ID: ID, Order: 10, View: s.View}),
-		slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "general", Title: "General", Icon: lucide.SlidersHorizontal(), Order: 0,
+		sl.RegisterOverlay(slots.Overlay{ID: ID, Order: 10, View: s.View}),
+		sl.RegisterSettingsSection(slots.SettingsSection{ID: "general", Title: "General", Icon: lucide.SlidersHorizontal(), Order: 0,
 			Keywords: []string{"Current version", "Configuration folder"}, View: general}),
-		actionsapi.Register(actionsapi.Command{ID: "app:open-settings", Title: "Open settings", Keys: "Ctrl Comma", Main: s.Toggle,
-			Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-				return shellapi.OnMain(ctx, func() (string, error) { s.Open(""); return "", nil })
+		act.Add(actions.Command{ID: "app:open-settings", Title: "Open settings", Keys: "Ctrl Comma", Main: s.Toggle,
+			Run: func(ctx context.Context, _ actions.Args) (string, error) {
+				return shell.OnMain(ctx, sh, func() (string, error) { s.Open(""); return "", nil })
 			}}),
-		slotsapi.RegisterRibbon(slotsapi.RibbonItem{ID: ID, Title: "Settings", Icon: lucide.Settings(), Order: 100, Run: func() { s.Open("") }}),
+		sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Settings", Icon: lucide.Settings(), Order: 100, Run: func() { s.Open("") }}),
 	}
 	return s, func() {
 		for i := len(offs) - 1; i >= 0; i-- {
@@ -73,8 +105,112 @@ func Register() (s *Settings, off func()) {
 	}
 }
 
-// Open opens the modal on tab id, or on the last tab for ""
-// (SettingRegistry.open).
+// Generation changes whenever a value is set or a file loaded.
+func (s *Settings) Generation() int {
+	if s == nil {
+		return 0
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.gen
+}
+
+// Get reads key of file into v; false when it is unset or not v's type.
+func (s *Settings) Get(file, key string, v any) bool {
+	if s == nil {
+		return false
+	}
+	s.mu.Lock()
+	raw, ok := s.files[file][key]
+	s.mu.Unlock()
+	return ok && json.Unmarshal(raw, v) == nil
+}
+
+// Keys are file's keys and values.
+func (s *Settings) Keys(file string) map[string]json.RawMessage {
+	if s == nil {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make(map[string]json.RawMessage, len(s.files[file]))
+	for k, v := range s.files[file] {
+		out[k] = v
+	}
+	return out
+}
+
+// Set sets key of file to v and saves the file soon.
+func (s *Settings) Set(file, key string, v any) {
+	if s == nil {
+		return
+	}
+	raw, err := json.Marshal(v)
+	if err != nil {
+		return
+	}
+	s.mu.Lock()
+	if s.files[file] == nil {
+		s.files[file] = map[string]json.RawMessage{}
+	}
+	s.files[file][key] = raw
+	s.gen++
+	s.mu.Unlock()
+	s.saver(file).Soon()
+	s.sh.Invalidate()
+}
+
+// Unset removes key of file and saves the file soon.
+func (s *Settings) Unset(file, key string) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	delete(s.files[file], key)
+	s.gen++
+	s.mu.Unlock()
+	s.saver(file).Soon()
+	s.sh.Invalidate()
+}
+
+// Flush writes the files with pending saves now (on unload).
+func (s *Settings) Flush(ctx context.Context) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	pending := s.savers
+	s.savers = map[string]*persist.Saver{}
+	s.mu.Unlock()
+	for _, sv := range pending {
+		sv.Final(ctx)
+	}
+}
+
+// Load reads the files from disk off the main thread and installs them on it.
+func (s *Settings) Load(names ...string) {
+	if s == nil {
+		return
+	}
+	read := map[string]map[string]json.RawMessage{}
+	for _, f := range names {
+		var m map[string]json.RawMessage
+		if persist.Load(Path(f), &m) && m != nil {
+			read[f] = m
+		}
+	}
+	s.sh.Update(func() {
+		s.mu.Lock()
+		for f, m := range read {
+			s.files[f] = m
+		}
+		s.gen++
+		s.mu.Unlock()
+		s.sh.Invalidate()
+	})
+}
+
+// Open opens the modal on tab id, or on the last tab for "".
 func (s *Settings) Open(id string) {
 	s.open = true
 	if id != "" {
@@ -82,7 +218,7 @@ func (s *Settings) Open(id string) {
 	}
 }
 
-// Toggle is app:open-settings: it opens the modal, or closes it.
+// Toggle opens or closes the modal.
 func (s *Settings) Toggle() {
 	if s.open {
 		s.open = false
@@ -96,26 +232,24 @@ func (s *Settings) View(c *ui.Context) {
 	if !s.open {
 		return
 	}
-	var options, core []slotsapi.SettingsSection
-	for _, sec := range slotsapi.SettingsSections() {
+	var options, core []slots.SettingsSection
+	for _, sec := range s.slots.SettingsSections() {
 		if !matches(sec, s.query) {
 			continue
 		}
-		if sec.Group == slotsapi.CorePlugins {
+		if sec.Group == slots.CorePlugins {
 			core = append(core, sec)
 		} else {
 			options = append(options, sec)
 		}
 	}
-	all := append(append([]slotsapi.SettingsSection(nil), options...), core...)
-	var cur *slotsapi.SettingsSection
+	all := append(append([]slots.SettingsSection(nil), options...), core...)
+	var cur *slots.SettingsSection
 	for i := range all {
 		if all[i].ID == s.shown {
 			cur = &all[i]
 		}
 	}
-	// A search that hides the shown tab, or a tab gone with its plugin:
-	// the first that matches (findFirstMatchingTab).
 	if cur == nil && len(all) > 0 {
 		cur, s.shown = &all[0], all[0].ID
 	}
@@ -126,8 +260,6 @@ func (s *Settings) View(c *ui.Context) {
 	winW, winH := c.Size()
 	w, h := min(winW*0.9, 1100), min(winH*0.85, 1000)
 	omgui.Dialog(c, omgui.DialogProps{Open: &s.open, Key: ID, Title: title, Width: w, MaxHeight: h, Body: func(c *ui.Context) {
-		// The modal keeps the window's shortcuts from it: the Settings
-		// shortcut closes it from here.
 		if c.Shortcut(ui.Cmd, ui.KeyComma) {
 			s.open = false
 			return
@@ -136,10 +268,20 @@ func (s *Settings) View(c *ui.Context) {
 	}})
 }
 
-func (s *Settings) body(c *ui.Context, options, core []slotsapi.SettingsSection, cur *slotsapi.SettingsSection, w, h float32) {
+func (s *Settings) saver(file string) *persist.Saver {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sv, ok := s.savers[file]
+	if !ok {
+		sv = persist.New(s.sh, Path(file), func() any { return s.Keys(file) })
+		s.savers[file] = sv
+	}
+	return sv
+}
+
+func (s *Settings) body(c *ui.Context, options, core []slots.SettingsSection, cur *slots.SettingsSection, w, h float32) {
 	t := c.Theme()
 	ui.Row(c).FillWidth().Height(h).AlignItems(ui.Stretch).Children(func() {
-		// The vertical tab header: 25% of the modal, 180 to 250px.
 		ui.Column(c).Width(min(max(w*0.25, 180), 250)).Shrink(0).FillHeight().Gap(8).BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Padding(0, 8, 0, 0).Children(func() {
 			omgui.SearchField(c, &s.query, "Search settings", false).Label("Search settings").FillWidth()
 			ui.Scroll(c).Grow(1).FillWidth().Children(func() {
@@ -149,7 +291,6 @@ func (s *Settings) body(c *ui.Context, options, core []slotsapi.SettingsSection,
 				})
 			})
 		})
-		// The vertical tab content.
 		ui.Scroll(c).Grow(1).Fill().Children(func() {
 			ui.Column(c).FillWidth().Padding(4, 24, 24, 24).Gap(16).Children(func() {
 				if cur == nil {
@@ -162,9 +303,7 @@ func (s *Settings) body(c *ui.Context, options, core []slotsapi.SettingsSection,
 	})
 }
 
-// group is a header group: its title, then a nav item per tab
-// (createHeaderGroup); a group with no tab is left out.
-func (s *Settings) group(c *ui.Context, title string, secs []slotsapi.SettingsSection) {
+func (s *Settings) group(c *ui.Context, title string, secs []slots.SettingsSection) {
 	if len(secs) == 0 {
 		return
 	}
@@ -177,9 +316,10 @@ func (s *Settings) group(c *ui.Context, title string, secs []slotsapi.SettingsSe
 	}
 }
 
-// matches is SettingsRenderer.matchesTab: the query in the tab's name, its
-// id or the names of its settings.
-func matches(sec slotsapi.SettingsSection, query string) bool {
+// Path is a configuration file's path.
+func Path(file string) string { return filepath.Join(paths.ConfigDir(), file+".json") }
+
+func matches(sec slots.SettingsSection, query string) bool {
 	q := strings.ToLower(strings.TrimSpace(query))
 	if q == "" {
 		return true
@@ -192,7 +332,6 @@ func matches(sec slotsapi.SettingsSection, query string) bool {
 	return false
 }
 
-// general is the General tab: the version and the configuration folder.
 func general(c *ui.Context) {
 	omgui.SettingsSection(c, "App", func() {
 		omgui.PreferenceRow(c, "Current version", cli.Version, nil)

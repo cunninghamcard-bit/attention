@@ -18,8 +18,8 @@ import (
 	"github.com/smallnest/uix/components/lucide"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 )
 
 // ID is the plugin's name.
@@ -28,9 +28,17 @@ const ID = "webview-panel-ui"
 // Plugin provides "webview-panels" while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell"},
+	Inject: []string{"shell", "slots"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		s := &Service{panels: map[string]*panel{}}
+		var sh *shell.Shell
+		var sl *slots.Registry
+		if err := rctx.Use("shell", &sh); err != nil {
+			return err
+		}
+		if err := rctx.Use("slots", &sl); err != nil {
+			return err
+		}
+		s := &Service{sh: sh, sl: sl, panels: map[string]*panel{}}
 		rctx.Provide("webview-panels", s)
 		rctx.Effect(func(context.Context) error {
 			s.mu.Lock()
@@ -59,6 +67,7 @@ type Panel struct {
 
 // panel is a registered panel and its web view, made when first drawn.
 type panel struct {
+	sh   *shell.Shell
 	spec Panel
 	off  func()
 	view *mygo.WebView
@@ -67,7 +76,7 @@ type panel struct {
 
 func (pn *panel) close() {
 	pn.off()
-	shellapi.Update(func() {
+	pn.sh.Update(func() {
 		if pn.view != nil {
 			pn.view.Destroy()
 			pn.view = nil
@@ -78,7 +87,7 @@ func (pn *panel) close() {
 // draw shows the panel's web view, making it the first time. Main thread.
 func (pn *panel) draw(c *ui.Context) {
 	if pn.view == nil && pn.err == "" {
-		w := shellapi.Window()
+		w := pn.sh.Window()
 		if w == nil {
 			pn.err = "No window to show the panel in."
 		} else if v, err := w.NewWebView(mygo.WebViewOptions{URL: pn.spec.URL}); err != nil {
@@ -101,6 +110,8 @@ func (pn *panel) draw(c *ui.Context) {
 
 // Service is the "webview-panels" service.
 type Service struct {
+	sh     *shell.Shell
+	sl     *slots.Registry
 	mu     sync.Mutex
 	panels map[string]*panel
 }
@@ -118,15 +129,18 @@ func (s *Service) Register(_ context.Context, p Panel) error {
 			icon = svg
 		}
 	}
-	dock := slotsapi.Right
+	dock := slots.Right
 	if p.Dock == "left" {
-		dock = slotsapi.Left
+		dock = slots.Left
 	}
-	pn := &panel{spec: p}
-	_ = s.Unregister(context.Background(), p.ID)
-	pn.off = slotsapi.RegisterPanel(slotsapi.Panel{ID: "webview:" + p.ID, Title: p.Title, Icon: icon, Dock: dock, Order: 100 + p.Order,
-		View: func(c *ui.Context, _ slotsapi.PanelProps) { pn.draw(c) }})
+	pn := &panel{sh: s.sh, spec: p}
 	s.mu.Lock()
+	old := s.panels[p.ID]
+	if old != nil {
+		old.close()
+	}
+	pn.off = s.sl.RegisterPanel(slots.Panel{ID: "webview:" + p.ID, Title: p.Title, Icon: icon, Dock: dock, Order: 100 + p.Order,
+		View: func(c *ui.Context, _ slots.PanelProps) { pn.draw(c) }})
 	s.panels[p.ID] = pn
 	s.mu.Unlock()
 	return nil

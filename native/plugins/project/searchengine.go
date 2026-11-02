@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	contract "github.com/cunninghamcard-bit/attention/native/contract/project"
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
 )
 
@@ -52,24 +51,24 @@ type Meta struct {
 // Operator is SearchOperatorDefinition: a plugin's own file filter.
 type Operator struct {
 	Name, Token, Description string
-	Filter                   func(f contract.FileRef, value string) bool
+	Filter                   func(f FileRef, value string) bool
 }
 
 // Engine is SearchEngine.
 type Engine struct {
 	mu        sync.Mutex
 	operators map[string]Operator
-	metaFor   func(f contract.FileRef) Meta
+	metaFor   func(f FileRef) Meta
 }
 
 // NewEngine registers ext:, as the TS constructor does.
-func NewEngine(meta func(contract.FileRef) Meta) *Engine {
+func NewEngine(meta func(FileRef) Meta) *Engine {
 	if meta == nil {
-		meta = func(contract.FileRef) Meta { return Meta{} }
+		meta = func(FileRef) Meta { return Meta{} }
 	}
 	e := &Engine{operators: map[string]Operator{}, metaFor: meta}
 	_ = e.RegisterOperator(Operator{Name: "ext", Token: "ext:", Description: "match file extension",
-		Filter: func(f contract.FileRef, value string) bool {
+		Filter: func(f FileRef, value string) bool {
 			return extension(path.Base(f.Rel)) == strings.TrimPrefix(value, ".")
 		}})
 	return e
@@ -96,7 +95,7 @@ func (e *Engine) UnregisterOperator(name string) {
 // Search is SearchEngine.search over a file listing: the files passing the
 // filters, with their matches when the query has content terms. Results
 // are sorted by display path naturally.
-func (e *Engine) Search(ctx context.Context, files []contract.FileRef, display func(contract.FileRef) string, q contract.Query) ([]contract.FileResult, error) {
+func (e *Engine) Search(ctx context.Context, files []FileRef, display func(FileRef) string, q Query) ([]FileResult, error) {
 	raw := strings.TrimSpace(q.Text)
 	if raw == "" {
 		return nil, nil
@@ -112,7 +111,7 @@ func (e *Engine) Search(ctx context.Context, files []contract.FileRef, display f
 		return nil, nil
 	}
 	hasContent := len(parsed.words)+len(parsed.lineGroups)+len(parsed.sectionGroups) > 0
-	var results []contract.FileResult
+	var results []FileResult
 	for _, f := range files {
 		if ctx.Err() != nil {
 			return results, ctx.Err()
@@ -134,7 +133,7 @@ func (e *Engine) Search(ctx context.Context, files []contract.FileRef, display f
 		}
 		mtime := st.ModTime().UnixNano()
 		if !hasContent {
-			results = append(results, contract.FileResult{Mount: f.Mount, Rel: f.Rel, Path: f.Path, ModTime: mtime})
+			results = append(results, FileResult{Mount: f.Mount, Rel: f.Rel, Path: f.Path, ModTime: mtime})
 			if q.Limit > 0 && len(results) >= q.Limit {
 				break
 			}
@@ -153,15 +152,15 @@ func (e *Engine) Search(ctx context.Context, files []contract.FileRef, display f
 			haystacks[i] = fold(l)
 		}
 		if matches, ok := e.matchContent(f, lines, haystacks, parsed); ok {
-			results = append(results, contract.FileResult{Mount: f.Mount, Rel: f.Rel, Path: f.Path, ModTime: mtime, Matches: matches})
+			results = append(results, FileResult{Mount: f.Mount, Rel: f.Rel, Path: f.Path, ModTime: mtime, Matches: matches})
 		}
 		if q.Limit > 0 && len(results) >= q.Limit {
 			break
 		}
 	}
 	sort.SliceStable(results, func(i, j int) bool {
-		return natural.Less(display(contract.FileRef{Mount: results[i].Mount, Rel: results[i].Rel}),
-			display(contract.FileRef{Mount: results[j].Mount, Rel: results[j].Rel}))
+		return natural.Less(display(FileRef{Mount: results[i].Mount, Rel: results[i].Rel}),
+			display(FileRef{Mount: results[j].Mount, Rel: results[j].Rel}))
 	})
 	return results, nil
 }
@@ -233,7 +232,7 @@ func (e *Engine) parse(query string) parsedQuery {
 	return p
 }
 
-func (e *Engine) passesFileFilters(f contract.FileRef, shown, name string, p parsedQuery, fold func(string) string) bool {
+func (e *Engine) passesFileFilters(f FileRef, shown, name string, p parsedQuery, fold func(string) string) bool {
 	for _, t := range p.pathTerms {
 		if !strings.Contains(fold(shown), t) {
 			return false
@@ -284,8 +283,8 @@ func (e *Engine) passesFileFilters(f contract.FileRef, shown, name string, p par
 	return true
 }
 
-func (e *Engine) matchContent(f contract.FileRef, lines, haystacks []string, p parsedQuery) ([]contract.Match, bool) {
-	var matches []contract.Match
+func (e *Engine) matchContent(f FileRef, lines, haystacks []string, p parsedQuery) ([]Match, bool) {
+	var matches []Match
 	for _, w := range p.words {
 		found := collect(lines, haystacks, w, 0, len(haystacks))
 		if len(found) == 0 {
@@ -415,9 +414,9 @@ func sectionRanges(starts []int, lineCount int) [][2]int {
 }
 
 // collect is collectWordMatches. Lines are reported 1-based and columns in
-// bytes, as contract.Match has them.
-func collect(lines, haystacks []string, word string, from, to int) []contract.Match {
-	var out []contract.Match
+// bytes, as Match has them.
+func collect(lines, haystacks []string, word string, from, to int) []Match {
+	var out []Match
 	for i := from; i < to; i++ {
 		h := haystacks[i]
 		for cursor := 0; cursor <= len(h); {
@@ -430,14 +429,14 @@ func collect(lines, haystacks []string, word string, from, to int) []contract.Ma
 			if len(text) > maxLineBytes {
 				text = text[:maxLineBytes]
 			}
-			out = append(out, contract.Match{Line: i + 1, Col: start + 1, Len: len(word), Text: text})
+			out = append(out, Match{Line: i + 1, Col: start + 1, Len: len(word), Text: text})
 			cursor = max(start+len(word), start+1)
 		}
 	}
 	return out
 }
 
-func dedupe(ms []contract.Match) []contract.Match {
+func dedupe(ms []Match) []Match {
 	seen := map[[3]int]bool{}
 	out := ms[:0]
 	for _, m := range ms {

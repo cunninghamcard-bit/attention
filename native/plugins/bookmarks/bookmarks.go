@@ -20,15 +20,14 @@ import (
 	"github.com/smallnest/uix/components/lucide"
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	"github.com/cunninghamcard-bit/attention/native/bookmarksapi"
-	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/internal/persist"
-	"github.com/cunninghamcard-bit/attention/native/layoutapi"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
+	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 )
 
 // ID is the plugin's name; PanelID the slot id (BookmarksView.getViewType).
@@ -40,37 +39,67 @@ const (
 // Plugin registers the Bookmarks panel while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "project", "workspace"},
+	Inject: []string{"shell", "slots", "layout", "workspace", "project", "actions"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var project projectcontract.Project
+		var (
+			sh      *shell.Shell
+			sl      *slots.Registry
+			lyt     *layout.Layout
+			ws      *workspace.Workspace
+			project projectplugin.Project
+			act     *actions.Service
+		)
+		if err := rctx.Use("shell", &sh); err != nil {
+			return err
+		}
+		if err := rctx.Use("slots", &sl); err != nil {
+			return err
+		}
+		if err := rctx.Use("layout", &lyt); err != nil {
+			return err
+		}
+		if err := rctx.Use("workspace", &ws); err != nil {
+			return err
+		}
 		if err := rctx.Use("project", &project); err != nil {
 			return err
 		}
-		b := &Bookmarks{project: project, items: []*Item{}, collapsed: map[string]bool{}}
-		saver := persist.New(storePath(), func() any { return Data{Items: cloneItems(b.items)} })
+		if err := rctx.Use("actions", &act); err != nil {
+			return err
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		b := &Bookmarks{ctx: ctx, sh: sh, lyt: lyt, ws: ws, act: act, project: project, items: []*Item{}, collapsed: map[string]bool{}}
+		saver := persist.New(sh, storePath(), func() any { return Data{Items: cloneItems(b.items)} })
 		b.saveSoon = saver.Soon
 		var data Data
 		if persist.Load(storePath(), &data) && data.Items != nil {
 			b.items = data.Items
 		}
-		off := slotsapi.RegisterPanel(slotsapi.Panel{
-			ID: PanelID, Title: "Bookmarks", Icon: lucide.Bookmark(), Dock: slotsapi.Left, Order: 2,
+		rctx.Provide("bookmarks", b)
+		off := sl.RegisterPanel(slots.Panel{
+			ID: PanelID, Title: "Bookmarks", Icon: lucide.Bookmark(), Dock: slots.Left, Order: 2,
 			View: b.view, State: b.state, Restore: b.restore,
 		})
-		offs := []func(){off, bookmarksapi.Set(b)}
+		offs := []func(){off}
 		for _, cmd := range b.commands() {
-			offs = append(offs, actionsapi.Register(cmd))
+			offs = append(offs, act.Add(cmd))
 		}
-		rctx.Effect(func(ctx context.Context) error {
+		rctx.Effect(func(effectCtx context.Context) error {
 			for i := len(offs) - 1; i >= 0; i-- {
 				offs[i]()
 			}
-			saver.Final(ctx)
+			saver.Final(effectCtx)
+			cancel()
 			return nil
 		})
 		return nil
 	},
 })
+
+// URL is a url bookmark (or one inside a group).
+type URL struct {
+	Title, URL string
+}
 
 // Data is BookmarksData: the on-disk file.
 type Data struct {
@@ -134,18 +163,18 @@ func (it *Item) MarshalJSON() ([]byte, error) {
 
 // displayTitle is getBookmarkTitle (apps/web/builtin/Bookmarks.ts). File
 // and folder paths without a title use the mount-prefixed display path.
-func (it *Item) displayTitle() string {
+func (it *Item) displayTitle(ws *workspace.Workspace) string {
 	switch it.Type {
 	case "file":
 		if it.Title != "" {
 			return it.Title
 		}
-		return displayPath(it.Path) + it.Subpath
+		return displayPath(ws, it.Path) + it.Subpath
 	case "folder":
 		if it.Title != "" {
 			return it.Title
 		}
-		return displayPath(it.Path)
+		return displayPath(ws, it.Path)
 	case "search":
 		if it.Title != "" {
 			return it.Title
@@ -160,9 +189,25 @@ func (it *Item) displayTitle() string {
 	return it.Title
 }
 
+type row struct {
+	item  *Item
+	depth int
+	key   string
+}
+
+// savedState is which groups the user collapsed.
+type savedState struct {
+	Collapsed []string `json:"collapsed"`
+}
+
 // Bookmarks is the panel's state, on the main thread only.
 type Bookmarks struct {
-	project  projectcontract.Project
+	ctx      context.Context
+	sh       *shell.Shell
+	lyt      *layout.Layout
+	ws       *workspace.Workspace
+	act      *actions.Service
+	project  projectplugin.Project
 	items    []*Item
 	saveSoon func()
 
@@ -170,9 +215,9 @@ type Bookmarks struct {
 	rows      []row
 }
 
-// URLs are the url bookmarks, groups' included (bookmarksapi).
-func (b *Bookmarks) URLs() []bookmarksapi.URL {
-	var out []bookmarksapi.URL
+// URLs are the url bookmarks, groups' included.
+func (b *Bookmarks) URLs() []URL {
+	var out []URL
 	var walk func([]*Item)
 	walk = func(items []*Item) {
 		for _, it := range items {
@@ -182,7 +227,7 @@ func (b *Bookmarks) URLs() []bookmarksapi.URL {
 				if title == "" {
 					title = it.URL
 				}
-				out = append(out, bookmarksapi.URL{Title: title, URL: it.URL})
+				out = append(out, URL{Title: title, URL: it.URL})
 			case "group":
 				walk(it.Items)
 			}
@@ -217,23 +262,23 @@ func (b *Bookmarks) restore(data json.RawMessage) {
 	}
 }
 
-func (b *Bookmarks) commands() []actionsapi.Command {
+func (b *Bookmarks) commands() []actions.Command {
 	reveal := func() {
-		if l := layoutapi.Get(); l != nil {
-			l.RevealPanel(PanelID)
+		if b.lyt != nil {
+			b.lyt.RevealPanel(PanelID)
 		}
 	}
-	ui := func(id, title string, fn func()) actionsapi.Command {
-		return actionsapi.Command{ID: id, Title: title, CLI: true, Main: fn, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			return shellapi.OnMain(ctx, func() (string, error) { fn(); return "", nil })
+	ui := func(id, title string, fn func()) actions.Command {
+		return actions.Command{ID: id, Title: title, CLI: true, Main: fn, Run: func(ctx context.Context, _ actions.Args) (string, error) {
+			return shell.OnMain(ctx, b.sh, func() (string, error) { fn(); return "", nil })
 		}}
 	}
-	return []actionsapi.Command{
+	return []actions.Command{
 		ui("bookmarks:open", "Show bookmarks", reveal),
 		{ID: "bookmarks:bookmark-current-view", Title: "Bookmark current view", CLI: true,
 			Main: b.bookmarkCurrentView,
-			Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-				return shellapi.OnMain(ctx, func() (string, error) { return b.bookmarkCurrentViewMsg() })
+			Run: func(ctx context.Context, _ actions.Args) (string, error) {
+				return shell.OnMain(ctx, b.sh, func() (string, error) { return b.bookmarkCurrentViewMsg() })
 			}},
 		ui("bookmarks:unbookmark-current-view", "Unbookmark current view", b.unbookmarkCurrentView),
 		{ID: "bookmarks", CLI: true, Flags: []string{"total", "verbose"}, Run: b.cliList},
@@ -261,33 +306,31 @@ func (b *Bookmarks) remove(target *Item) {
 func (b *Bookmarks) bookmarkCurrentView() { _, _ = b.bookmarkCurrentViewMsg() }
 
 func (b *Bookmarks) bookmarkCurrentViewMsg() (string, error) {
-	ws := workspaceapi.Get()
-	if ws == nil {
+	if b.ws == nil {
 		return "", nil
 	}
-	info, ok := ws.ActiveTab()
+	info, ok := b.ws.ActiveTab()
 	if !ok {
 		return "", nil
 	}
 	if info.Path != "" {
 		item := &Item{Type: "file", Ctime: nowCtime(), Path: info.Path}
 		b.add(item)
-		return "Bookmarked: " + item.displayTitle(), nil
+		return "Bookmarked: " + item.displayTitle(b.ws), nil
 	}
 	if info.Kind == "webviewer" && info.Address != "" {
 		item := &Item{Type: "url", Ctime: nowCtime(), URL: info.Address, Title: info.Title}
 		b.add(item)
-		return "Bookmarked: " + item.displayTitle(), nil
+		return "Bookmarked: " + item.displayTitle(b.ws), nil
 	}
 	return "", nil
 }
 
 func (b *Bookmarks) unbookmarkCurrentView() {
-	ws := workspaceapi.Get()
-	if ws == nil {
+	if b.ws == nil {
 		return
 	}
-	info, ok := ws.ActiveTab()
+	info, ok := b.ws.ActiveTab()
 	if !ok {
 		return
 	}
@@ -323,19 +366,19 @@ func (b *Bookmarks) unbookmarkCurrentView() {
 func (b *Bookmarks) open(item *Item) {
 	switch item.Type {
 	case "file":
-		if ws := workspaceapi.Get(); ws != nil {
+		if b.ws != nil {
 			// A heading subpath (#…) has no Nav equivalent without the index.
-			ws.Open(item.Path, nil, false)
+			b.ws.Open(item.Path, nil, false)
 		}
 	case "folder":
-		if l := layoutapi.Get(); l != nil {
-			l.RevealPanel("file-explorer")
+		if b.lyt != nil {
+			b.lyt.RevealPanel("file-explorer")
 		}
 	case "search":
-		revealSearch(item.Query)
+		b.revealSearch(item.Query)
 	case "url":
-		if ws := workspaceapi.Get(); ws != nil {
-			_ = ws.OpenResource(item.URL, workspaceapi.OpenOptions{Kind: "webviewer"})
+		if b.ws != nil {
+			_ = b.ws.OpenResource(item.URL, workspace.OpenOptions{Kind: "webviewer"})
 		}
 	}
 }
@@ -356,7 +399,7 @@ func (b *Bookmarks) flatten() []row {
 	return b.rows
 }
 
-func (b *Bookmarks) view(c *ui.Context, _ slotsapi.PanelProps) {
+func (b *Bookmarks) view(c *ui.Context, _ slots.PanelProps) {
 	t := c.Theme()
 	ui.Column(c).Fill().Children(func() {
 		if len(b.items) == 0 {
@@ -389,7 +432,7 @@ func (b *Bookmarks) itemRow(c *ui.Context, r row) {
 		} else {
 			ui.Icon(c, itemIcon(it)).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
 		}
-		ui.Text(c, it.displayTitle()).FontSize(13).SingleLine().Ellipsis("…").Shrink(1)
+		ui.Text(c, it.displayTitle(b.ws)).FontSize(13).SingleLine().Ellipsis("…").Shrink(1)
 		more := omgui.IconMenu(c, omgui.IconMenuProps{
 			Label: "More", Icon: lucide.EllipsisVertical(), End: true,
 			Items: []omgui.MenuItem{{
@@ -404,15 +447,22 @@ func (b *Bookmarks) itemRow(c *ui.Context, r row) {
 	}
 }
 
-type row struct {
-	item  *Item
-	depth int
-	key   string
-}
-
-// savedState is which groups the user collapsed.
-type savedState struct {
-	Collapsed []string `json:"collapsed"`
+func (b *Bookmarks) revealSearch(query string) {
+	if b.act != nil {
+		if cmd := b.act.Lookup("search:open"); cmd != nil && cmd.Run != nil {
+			ctx := b.ctx
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			go func() {
+				_, _ = cmd.Run(ctx, actions.Args{Params: map[string]string{"query": query}})
+			}()
+			return
+		}
+	}
+	if b.lyt != nil {
+		b.lyt.RevealPanel("search")
+	}
 }
 
 func storePath() string { return filepath.Join(paths.ConfigDir(), "bookmarks.json") }
@@ -464,20 +514,8 @@ func containsPath(items []*Item, path string) bool {
 
 func nowCtime() int64 { return time.Now().UnixMilli() }
 
-func revealSearch(query string) {
-	if cmd, ok := actionsapi.Lookup("search:open"); ok && cmd.Run != nil {
-		go func() {
-			_, _ = cmd.Run(context.Background(), actionsapi.Args{Params: map[string]string{"query": query}})
-		}()
-		return
-	}
-	if l := layoutapi.Get(); l != nil {
-		l.RevealPanel("search")
-	}
-}
-
-func displayPath(path string) string {
-	if ws := workspaceapi.Get(); ws != nil {
+func displayPath(ws *workspace.Workspace, path string) string {
+	if ws != nil {
 		return ws.Display(path)
 	}
 	return path

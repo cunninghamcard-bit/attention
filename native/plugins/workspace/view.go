@@ -12,11 +12,8 @@ import (
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	"github.com/cunninghamcard-bit/attention/native/layoutapi"
-	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
-	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 )
 
 // view is the center (RFC §5.8: it reads state, never the disk): the
@@ -138,8 +135,8 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
 		AlignItems(ui.Center).PaddingX(4).Gap(2).Children(func() {
 		// With the ribbon hidden, the left dock's toggle leads the top-left
 		// group's tabs (updateSidebarTogglePlacement).
-		if l := layoutapi.Get(); l != nil && !l.RibbonShown() && ws.isTopLeft(p) {
-			layoutapi.ToggleButton(c, slotsapi.Left)
+		if l := ws.lyt; l != nil && !l.RibbonShown() && ws.isTopLeft(p) {
+			l.ToggleButton(c, slots.Left)
 		}
 		ui.ScrollHorizontal(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
 			ui.Row(c).PaddingX(6).Gap(2).AlignItems(ui.Center).FillHeight().Children(func() {
@@ -151,8 +148,8 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
 			})
 		})
 		omgui.IconMenu(c, omgui.IconMenuProps{Label: "Tab list", Icon: lucide.ChevronDown(), End: true, Items: ws.tabListMenu(p)})
-		if l := layoutapi.Get(); l != nil && !l.Open(slotsapi.Right) && ws.isTopRight(p) {
-			layoutapi.ToggleButton(c, slotsapi.Right)
+		if l := ws.lyt; l != nil && !l.Open(slots.Right) && ws.isTopRight(p) {
+			l.ToggleButton(c, slots.Right)
 		}
 	})
 	if dragged, ok := ui.Drop[*tab](header); ok {
@@ -236,7 +233,7 @@ func (ws *Workspace) tabMenu(p *pane, tb *tab) []omgui.MenuItem {
 	if tb.empty {
 		return items
 	}
-	tt, _ := tabtypesapi.Get(tb.typeID)
+	tt, _ := ws.tabTypes.Get(tb.typeID)
 	return append(append(items, omgui.MenuItem{Separator: true}), ws.paneMenu(p, tb, tt)...)
 }
 
@@ -267,13 +264,17 @@ func (ws *Workspace) emptyPane(c *ui.Context) {
 	t := c.Theme()
 	// A command's name and its first hotkey, as the user set them.
 	hint := func(id string) {
-		cmd, ok := actionsapi.Lookup(id)
-		if !ok {
+		cmd := ws.act.Lookup(id)
+		if cmd == nil {
 			return
+		}
+		var label string
+		if ws.sc != nil {
+			label = ws.sc.EffectiveLabel(*cmd)
 		}
 		ui.Row(c).Gap(24).Children(func() {
 			ui.Text(c, cmd.Title).TextColor(t.TextMuted).Width(160)
-			ui.Text(c, shortcuts.EffectiveLabel(cmd)).TextColor(t.TextMuted)
+			ui.Text(c, label).TextColor(t.TextMuted)
 		})
 	}
 	ui.Column(c).Grow(1).Fill().Center().Gap(10).Children(func() {
@@ -292,7 +293,7 @@ func (ws *Workspace) tabBody(c *ui.Context, p *pane, tb *tab, focused bool) {
 		ws.emptyPane(c)
 		return
 	}
-	tt, ok := tabtypesapi.Get(tb.typeID)
+	tt, ok := ws.tabTypes.Get(tb.typeID)
 	props := ws.props(tb, focused)
 	ws.viewHeader(c, p, tb, props, tt, focused)
 	if tb.isMissing() {
@@ -308,7 +309,7 @@ func (ws *Workspace) tabBody(c *ui.Context, p *pane, tb *tab, focused bool) {
 // viewHeader is the tab's header, attention's ItemView header: Back and
 // Forward, the file's folders and name, the tab type's actions and More
 // options.
-func (ws *Workspace) viewHeader(c *ui.Context, p *pane, tb *tab, props tabtypesapi.Props, tt tabtypesapi.TabType, focused bool) {
+func (ws *Workspace) viewHeader(c *ui.Context, p *pane, tb *tab, props tabtypes.Props, tt tabtypes.TabType, focused bool) {
 	t := c.Theme()
 	ui.Row(c).Key(fmt.Sprintf("header-%d", p.id)).Height(38).Shrink(0).FillWidth().PaddingX(8).Gap(2).AlignItems(ui.Center).
 		BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
@@ -366,7 +367,7 @@ func (ws *Workspace) breadcrumbs(c *ui.Context, tb *tab, focused bool) {
 
 // paneMenu is More options: the tab type's items, then attention's pane
 // and file items (ItemView.onPaneMenu, the workspace's file-menu).
-func (ws *Workspace) paneMenu(p *pane, tb *tab, tt tabtypesapi.TabType) []omgui.MenuItem {
+func (ws *Workspace) paneMenu(p *pane, tb *tab, tt tabtypes.TabType) []omgui.MenuItem {
 	var items []omgui.MenuItem
 	if tt.Menu != nil {
 		for _, it := range tt.Menu(tb.id) {
@@ -423,7 +424,7 @@ func (ws *Workspace) tabStatus(c *ui.Context) {
 	if tb == nil || tb.empty || tb.page() {
 		return
 	}
-	if tt, ok := tabtypesapi.Get(tb.typeID); ok && tt.Status != nil {
+	if tt, ok := ws.tabTypes.Get(tb.typeID); ok && tt.Status != nil {
 		tt.Status(c, ws.props(tb, true))
 	}
 	ui.Text(c, "Read-only").FontSize(12).TextColor(c.Theme().TextMuted)
@@ -435,7 +436,7 @@ func (ws *Workspace) tabIcon(tb *tab) *ui.SVG {
 	if tb.empty {
 		return lucide.Globe()
 	}
-	if tt, ok := tabtypesapi.Get(tb.typeID); ok && tt.Icon != nil {
+	if tt, ok := ws.tabTypes.Get(tb.typeID); ok && tt.Icon != nil {
 		return tt.Icon
 	}
 	return fileIcon(tb.title)

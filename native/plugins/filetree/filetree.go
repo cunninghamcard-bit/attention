@@ -19,15 +19,15 @@ import (
 	"github.com/smallnest/uix/components/lucide"
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
-	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
 	"github.com/cunninghamcard-bit/attention/native/internal/watchq"
-	"github.com/cunninghamcard-bit/attention/native/layoutapi"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
+	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
+	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 )
 
 // PanelID is the Files panel's slot id.
@@ -36,67 +36,90 @@ const PanelID = "file-explorer"
 // Plugin registers the Files panel while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   "filetree",
-	Inject: []string{"shell", "actions", "fs", "project", "workspace"},
+	Inject: []string{"shell", "slots", "layout", "workspace", "fs", "project", "actions"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var fs fscontract.FS
-		var project projectcontract.Project
+		var (
+			sh      *shell.Shell
+			sl      *slots.Registry
+			lyt     *layout.Layout
+			ws      *workspace.Workspace
+			fs      fsplugin.FS
+			project projectplugin.Project
+			act     *actions.Service
+		)
+		if err := rctx.Use("shell", &sh); err != nil {
+			return err
+		}
+		if err := rctx.Use("slots", &sl); err != nil {
+			return err
+		}
+		if err := rctx.Use("layout", &lyt); err != nil {
+			return err
+		}
+		if err := rctx.Use("workspace", &ws); err != nil {
+			return err
+		}
 		if err := rctx.Use("fs", &fs); err != nil {
 			return err
 		}
 		if err := rctx.Use("project", &project); err != nil {
 			return err
 		}
+		if err := rctx.Use("actions", &act); err != nil {
+			return err
+		}
 		ctx, cancel := context.WithCancel(context.Background())
-		tr := newTree(ctx, fs, shellapi.Update)
+		tr := newTree(ctx, fs, sh.Update)
+		tr.ws = ws
+		tr.act = act
 
 		reloadMounts := func() {
 			go func() {
 				ms, err := project.Mounts(ctx)
 				if err != nil {
+					if ctx.Err() == nil {
+						sh.Update(func() { tr.mountsLoaded, tr.notice = true, err.Error() })
+					}
 					return
 				}
-				shellapi.Update(func() { tr.setMounts(ms) })
+				sh.Update(func() { tr.setMounts(ms) })
 			}()
 		}
 		reloadMounts()
-		rctx.On(projectcontract.MountsChangedEvent, func(context.Context, ...any) (any, error) {
+		rctx.On(projectplugin.MountsChangedEvent, func(context.Context, ...any) (any, error) {
 			reloadMounts()
 			return nil, nil
 		})
-		rctx.On(fscontract.ChangedEvent, func(_ context.Context, args ...any) (any, error) {
+		rctx.On(fsplugin.ChangedEvent, func(_ context.Context, args ...any) (any, error) {
 			if len(args) == 0 {
 				return nil, nil
 			}
-			b, err := fscontract.DecodeBatch(args[0])
+			b, err := fsplugin.DecodeBatch(args[0])
 			if err != nil {
 				return nil, err
 			}
-			shellapi.Update(func() { tr.applyBatch(b) })
+			sh.Update(func() { tr.applyBatch(b) })
 			return nil, nil
 		})
-		rctx.On(fscontract.WatchErrorEvent, func(_ context.Context, args ...any) (any, error) {
+		rctx.On(fsplugin.WatchErrorEvent, func(_ context.Context, args ...any) (any, error) {
 			if len(args) > 0 {
 				msg := fmt.Sprint(args[0])
-				shellapi.Update(func() { tr.notice = msg })
+				sh.Update(func() { tr.notice = msg })
 			}
 			return nil, nil
 		})
 
-		off := slotsapi.RegisterPanel(slotsapi.Panel{
-			ID: PanelID, Title: "Files", Icon: lucide.Folder(), Dock: slotsapi.Right, Order: 0,
-			View:  func(c *ui.Context, _ slotsapi.PanelProps) { tr.view(c) },
+		off := sl.RegisterPanel(slots.Panel{
+			ID: PanelID, Title: "Files", Icon: lucide.Folder(), Dock: slots.Right, Order: 0,
+			View:  func(c *ui.Context, _ slots.PanelProps) { tr.view(c) },
 			State: tr.state, Restore: tr.restore,
 		})
-		reveal := func() {
-			if l := layoutapi.Get(); l != nil {
-				l.RevealPanel(PanelID)
-			}
-		}
-		offSection := slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "file", Title: "Files and links", Icon: lucide.FolderCog(), Order: 10,
+		reveal := func() { lyt.RevealPanel(PanelID) }
+		offSection := sl.RegisterSettingsSection(slots.SettingsSection{ID: "file", Title: "Files and links", Icon: lucide.FolderCog(), Order: 10,
 			Keywords: []string{"Folders", "mount"},
 			View:     func(c *ui.Context) { tr.folders(c, project.RemoveMount) }})
-		offCmd := actionsapi.Register(actionsapi.Command{ID: "file-explorer:open", Title: "Open file explorer", Main: reveal, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			return shellapi.OnMain(ctx, func() (string, error) { reveal(); return "", nil })
+		offCmd := act.Add(actions.Command{ID: "file-explorer:open", Title: "Open file explorer", Main: reveal, Run: func(ctx context.Context, _ actions.Args) (string, error) {
+			return shell.OnMain(ctx, sh, func() (string, error) { reveal(); return "", nil })
 		}})
 		rctx.Effect(func(context.Context) error {
 			offSection()
@@ -113,11 +136,13 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 // Tree is the panel's state, on the main thread only.
 type Tree struct {
 	ctx     context.Context
-	fs      fscontract.FS
+	fs      fsplugin.FS
+	ws      *workspace.Workspace
+	act     *actions.Service
 	post    func(func())
 	watches *watchq.Queue
 
-	mounts       []projectcontract.Mount
+	mounts       []projectplugin.Mount
 	mountsLoaded bool
 	dirs         map[string]*dirNode
 	rows         []treeRow
@@ -129,7 +154,7 @@ type Tree struct {
 	pendingExpanded map[string]bool
 }
 
-func newTree(ctx context.Context, fs fscontract.FS, post func(func())) *Tree {
+func newTree(ctx context.Context, fs fsplugin.FS, post func(func())) *Tree {
 	tr := &Tree{ctx: ctx, fs: fs, post: post, dirs: map[string]*dirNode{}, rowsDirty: true}
 	// A refused watch stays counted: collapsing gives it back and
 	// expanding again retries it (watchq).
@@ -137,7 +162,7 @@ func newTree(ctx context.Context, fs fscontract.FS, post func(func())) *Tree {
 	return tr
 }
 
-func (tr *Tree) setMounts(ms []projectcontract.Mount) {
+func (tr *Tree) setMounts(ms []projectplugin.Mount) {
 	keep := map[string]bool{}
 	for _, m := range ms {
 		keep[m.Path] = true
@@ -308,7 +333,7 @@ func (tr *Tree) toggleDir(path string) {
 }
 
 // applyBatch lists again the expanded directories a change touched.
-func (tr *Tree) applyBatch(b fscontract.Batch) {
+func (tr *Tree) applyBatch(b fsplugin.Batch) {
 	seen := map[string]bool{}
 	for _, c := range b.Changes {
 		dir := filepath.Dir(c.Path)
@@ -342,7 +367,7 @@ func (tr *Tree) treeRows() []treeRow {
 	}
 	for i := range tr.mounts {
 		m := &tr.mounts[i]
-		tr.rows = append(tr.rows, treeRow{depth: 0, entry: fscontract.Entry{Name: m.Name, Path: m.Path, Dir: true}, mount: m})
+		tr.rows = append(tr.rows, treeRow{depth: 0, entry: fsplugin.Entry{Name: m.Name, Path: m.Path, Dir: true}, mount: m})
 		walk(m.Path, 1)
 	}
 	tr.rowsDirty = false
@@ -351,7 +376,7 @@ func (tr *Tree) treeRows() []treeRow {
 
 func (tr *Tree) view(c *ui.Context) {
 	t := c.Theme()
-	ws := workspaceapi.Get()
+	ws := tr.ws
 	rows := tr.treeRows()
 	current := ""
 	if ws != nil {
@@ -426,14 +451,22 @@ func (tr *Tree) folders(c *ui.Context, remove func(context.Context, string) erro
 			id := m.ID
 			omgui.PreferenceRow(c, m.Name, m.Path, func() {
 				omgui.Button(c, omgui.ButtonProps{Label: "Remove", Variant: omgui.ButtonSecondary, OnClick: func() {
-					go func() { _ = remove(tr.ctx, id) }()
+					go func() {
+						if err := remove(tr.ctx, id); err != nil && tr.ctx.Err() == nil {
+							tr.post(func() { tr.notice = err.Error() })
+						}
+					}()
 				}})
 			})
 		}
 	})
 	omgui.Button(c, omgui.ButtonProps{Label: "Add folder", Icon: lucide.FolderPlus(), Variant: omgui.ButtonSecondary, OnClick: func() {
-		if cmd, ok := actionsapi.Lookup("workspace:add-folder"); ok {
-			go func() { _, _ = cmd.Run(tr.ctx, actionsapi.Args{Params: map[string]string{}}) }()
+		if cmd := tr.act.Lookup("workspace:add-folder"); cmd != nil {
+			go func() {
+				if _, err := cmd.Run(tr.ctx, actions.Args{Params: map[string]string{}}); err != nil && tr.ctx.Err() == nil {
+					tr.post(func() { tr.notice = err.Error() })
+				}
+			}()
 		}
 	}})
 }
@@ -450,14 +483,14 @@ type dirNode struct {
 	loading  bool
 	dirty    bool // a change arrived while loading: list again after
 	watched  bool // we hold one watch on it
-	entries  []fscontract.Entry
+	entries  []fsplugin.Entry
 	err      string
 }
 
 type treeRow struct {
 	depth int
-	entry fscontract.Entry
-	mount *projectcontract.Mount // set on a mount's root row
+	entry fsplugin.Entry
+	mount *projectplugin.Mount // set on a mount's root row
 }
 
 func isUnder(path, dir string) bool {

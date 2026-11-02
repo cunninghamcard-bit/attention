@@ -1,6 +1,4 @@
-// Package textui is the text tab type (RFC 0001 §5.6): any file, read-only
-// in ui/editor with syntax highlighting. It is the Fallback viewer: a file
-// no other type claims opens here.
+// Package textui is the text tab type (RFC 0001 §5.6).
 package textui
 
 import (
@@ -11,13 +9,12 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 )
 
-// ID is the type's id; Kind its kind.
 const (
 	ID   = "text-ui"
 	Kind = "text"
@@ -26,14 +23,22 @@ const (
 // Plugin registers the text tab type while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "fs"},
+	Inject: []string{"shell", "tabTypes", "fs"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var fs fscontract.FS
+		var sh *shell.Shell
+		var tt *tabtypes.Registry
+		var fs fsplugin.FS
+		if err := rctx.Use("shell", &sh); err != nil {
+			return err
+		}
+		if err := rctx.Use("tabTypes", &tt); err != nil {
+			return err
+		}
 		if err := rctx.Use("fs", &fs); err != nil {
 			return err
 		}
 		ctx, cancel := context.WithCancel(context.Background())
-		off := Register(ctx, fs, shellapi.Update)
+		off := Register(ctx, fs, tt, sh.Update)
 		rctx.Effect(func(context.Context) error {
 			off()
 			cancel()
@@ -43,9 +48,8 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	},
 })
 
-// Register adds the text tab type until off is called; post runs a
-// function on the main thread.
-func Register(ctx context.Context, fs fscontract.FS, post func(func())) (off func()) {
+// Register adds the text tab type until off is called.
+func Register(ctx context.Context, fs fsplugin.FS, tt *tabtypes.Registry, post func(func())) (off func()) {
 	l := &textdoc.Loader{Ctx: ctx, FS: fs, Post: post}
 	docs := map[int]*textdoc.Doc{}
 	doc := func(id int) *textdoc.Doc {
@@ -56,10 +60,10 @@ func Register(ctx context.Context, fs fscontract.FS, post func(func())) (off fun
 		}
 		return d
 	}
-	return tabtypesapi.Register(tabtypesapi.TabType{
-		ID: ID, Kind: Kind, Priority: tabtypesapi.Fallback,
+	return tt.Register(tabtypes.TabType{
+		ID: ID, Kind: Kind, Priority: tabtypes.Fallback,
 		Patterns: []string{"attention-resource://file/**"},
-		Body: func(c *ui.Context, p tabtypesapi.Props) {
+		Body: func(c *ui.Context, p tabtypes.Props) {
 			d := doc(p.Info.ID)
 			l.Sync(d, p)
 			if d.Placeholder(c) {
@@ -67,7 +71,7 @@ func Register(ctx context.Context, fs fscontract.FS, post func(func())) (off fun
 			}
 			editor.View(c, d.Ed).Key(fmt.Sprintf("ed-%d", p.Info.ID)).Grow(1).Fill()
 		},
-		Status: func(c *ui.Context, p tabtypesapi.Props) {
+		Status: func(c *ui.Context, p tabtypes.Props) {
 			d := doc(p.Info.ID)
 			d.Cursor(c)
 			d.Language(c)

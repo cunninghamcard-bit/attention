@@ -12,6 +12,13 @@ import (
 // other; each segment escaped as a URL path segment.
 const addressPrefix = "attention-resource://file/"
 
+// Address is a parsed file address: Mount and Rel, or Abs.
+type Address struct {
+	Mount string
+	Rel   string // "/"-separated
+	Abs   string
+}
+
 // AddressFor is the address of rel ("/"-separated) under the mount.
 func AddressFor(mountID, rel string) string {
 	return addressPrefix + "mount/" + url.PathEscape(mountID) + "/" + escape(rel)
@@ -20,13 +27,6 @@ func AddressFor(mountID, rel string) string {
 // AbsoluteAddress is the address of an absolute path.
 func AbsoluteAddress(path string) string {
 	return addressPrefix + "absolute/" + escape(strings.TrimPrefix(filepath.ToSlash(path), "/"))
-}
-
-// Address is a parsed file address: Mount and Rel, or Abs.
-type Address struct {
-	Mount string
-	Rel   string // "/"-separated
-	Abs   string
 }
 
 // ParseAddress parses a file address.

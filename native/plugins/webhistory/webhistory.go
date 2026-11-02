@@ -22,14 +22,12 @@ import (
 	"github.com/smallnest/uix/components/lucide"
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	webcontract "github.com/cunninghamcard-bit/attention/native/contract/web"
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/internal/persist"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
-	"github.com/cunninghamcard-bit/attention/native/webhistoryapi"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
+	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 )
 
 const (
@@ -38,6 +36,10 @@ const (
 	ID   = "web-history"
 	Kind = "webviewer-history"
 
+	// ClearedEvent is emitted by the web-history plugin when its history
+	// was cleared, with no arguments.
+	ClearedEvent = "web-history/cleared"
+
 	// maxEntries is how many visits are kept.
 	maxEntries = 1000
 )
@@ -45,38 +47,53 @@ const (
 // Plugin installs the history, its page and commands while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "workspace"},
+	Inject: []string{"shell", "tabTypes", "workspace", "actions"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		var (
+			sh  *shell.Shell
+			tt  *tabtypes.Registry
+			ws  *workspace.Workspace
+			act *actions.Service
+		)
+		if err := rctx.Use("shell", &sh); err != nil {
+			return err
+		}
+		if err := rctx.Use("tabTypes", &tt); err != nil {
+			return err
+		}
+		if err := rctx.Use("workspace", &ws); err != nil {
+			return err
+		}
+		if err := rctx.Use("actions", &act); err != nil {
+			return err
+		}
 		path := filepath.Join(paths.ConfigDir(), "web-history.json")
-		h := &History{}
+		h := &History{sh: sh, ws: ws}
 		var f file
 		if persist.Load(path, &f) {
 			h.entries = f.Entries
 		}
-		saver := persist.New(path, func() any { return file{Entries: h.List()} })
+		saver := persist.New(sh, path, func() any { return file{Entries: h.List()} })
 		h.save = saver.Soon
-		// A service of no methods: who injects it hears its events
-		// (web-index, webcontract.HistoryClearedEvent).
-		rctx.Provide("web-history", struct{}{})
+		rctx.Provide("web-history", h)
 		emitCtx, cancel := context.WithCancel(context.Background())
-		h.cleared = func() { go func() { _ = rctx.Emit(emitCtx, webcontract.HistoryClearedEvent) }() }
+		h.cleared = func() { go func() { _ = rctx.Emit(emitCtx, ClearedEvent) }() }
 		openPage := func() {
-			if ws := workspaceapi.Get(); ws != nil {
-				_ = ws.OpenTab(Kind, workspaceapi.OpenOptions{})
+			if ws != nil {
+				_ = ws.OpenTab(Kind, workspace.OpenOptions{})
 			}
 		}
 		offs := []func(){
-			webhistoryapi.Set(h),
-			tabtypesapi.Register(tabtypesapi.TabType{ID: ID, Kind: Kind, Priority: tabtypesapi.Builtin,
+			tt.Register(tabtypes.TabType{ID: ID, Kind: Kind, Priority: tabtypes.Builtin,
 				Title: func(string) string { return "Web viewer history" }, Icon: lucide.Clock(), Body: h.view}),
-			actionsapi.Register(actionsapi.Command{ID: "webviewer:open-history", Title: "Open Web viewer history", Main: openPage, CLI: true,
-				Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-					return shellapi.OnMain(ctx, func() (string, error) { openPage(); return "", nil })
+			act.Add(actions.Command{ID: "webviewer:open-history", Title: "Open Web viewer history", Main: openPage, CLI: true,
+				Run: func(ctx context.Context, _ actions.Args) (string, error) {
+					return shell.OnMain(ctx, sh, func() (string, error) { openPage(); return "", nil })
 				}}),
-			actionsapi.Register(actionsapi.Command{ID: "web:history", CLI: true, Run: h.cliHistory}),
-			actionsapi.Register(actionsapi.Command{ID: "web:history:clear", CLI: true,
-				Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-					return shellapi.OnMain(ctx, func() (string, error) {
+			act.Add(actions.Command{ID: "web:history", CLI: true, Run: h.cliHistory}),
+			act.Add(actions.Command{ID: "web:history:clear", CLI: true,
+				Run: func(ctx context.Context, _ actions.Args) (string, error) {
+					return shell.OnMain(ctx, sh, func() (string, error) {
 						n := len(h.entries)
 						h.Clear()
 						return "Cleared " + strconv.Itoa(n) + " history entries.", nil
@@ -95,11 +112,25 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	},
 })
 
+// Entry is one visit in web-history.json (WebViewerHistoryEntry).
+type Entry struct {
+	ID        string `json:"id"`
+	URL       string `json:"url"`
+	Title     string `json:"title"`
+	VisitedAt string `json:"visitedAt"`
+}
+
+type file struct {
+	Entries []Entry `json:"entries"`
+}
+
 // History is the store, on the main thread only.
 type History struct {
-	entries []webhistoryapi.Entry
+	sh      *shell.Shell
+	ws      *workspace.Workspace
+	entries []Entry
 	save    func()
-	cleared func() // emits webcontract.HistoryClearedEvent
+	cleared func() // emits ClearedEvent
 }
 
 // Record is recordHistory. Unlike it, a title given for the newest entry
@@ -116,16 +147,16 @@ func (h *History) Record(url, title string) {
 		}
 		return
 	}
-	e := webhistoryapi.Entry{ID: newID(), URL: url, Title: title, VisitedAt: time.Now().UTC().Format(time.RFC3339)}
-	h.entries = append([]webhistoryapi.Entry{e}, h.entries...)
+	e := Entry{ID: newID(), URL: url, Title: title, VisitedAt: time.Now().UTC().Format(time.RFC3339)}
+	h.entries = append([]Entry{e}, h.entries...)
 	if len(h.entries) > maxEntries {
 		h.entries = h.entries[:maxEntries]
 	}
 	h.save()
 }
 
-func (h *History) List() []webhistoryapi.Entry {
-	return append([]webhistoryapi.Entry(nil), h.entries...)
+func (h *History) List() []Entry {
+	return append([]Entry(nil), h.entries...)
 }
 
 func (h *History) Remove(id string) {
@@ -150,7 +181,7 @@ func (h *History) Clear() {
 // view is the history page (WebViewerHistoryView.render): each visit's
 // title and address; a click opens it in a new tab, a right click copies
 // or removes it.
-func (h *History) view(c *ui.Context, _ tabtypesapi.Props) {
+func (h *History) view(c *ui.Context, _ tabtypes.Props) {
 	t := c.Theme()
 	if len(h.entries) == 0 {
 		ui.Column(c).Grow(1).Fill().Padding(12).Children(func() {
@@ -163,7 +194,7 @@ func (h *History) view(c *ui.Context, _ tabtypesapi.Props) {
 		e := entries[i]
 		row := omgui.SideRow(c, omgui.SideRowProps{Key: "h:" + e.ID})
 		if row.Clicked() {
-			open(e.URL)
+			h.open(e.URL)
 		}
 		row.ContextMenu(func(m *ui.Menu) {
 			if m.Item("Copy URL").Chosen() {
@@ -184,12 +215,12 @@ func (h *History) view(c *ui.Context, _ tabtypesapi.Props) {
 
 // cliHistory is `web:history [limit=<n>] [format=json]`, newest first:
 // each visit's address and title, tab-separated.
-func (h *History) cliHistory(ctx context.Context, a actionsapi.Args) (string, error) {
+func (h *History) cliHistory(ctx context.Context, a actions.Args) (string, error) {
 	limit, _, err := a.Int("limit")
 	if err != nil {
 		return "", err
 	}
-	entries, err := shellapi.OnMain(ctx, func() ([]webhistoryapi.Entry, error) { return h.List(), nil })
+	entries, err := shell.OnMain(ctx, h.sh, func() ([]Entry, error) { return h.List(), nil })
 	if err != nil {
 		return "", err
 	}
@@ -213,19 +244,15 @@ func (h *History) cliHistory(ctx context.Context, a actionsapi.Args) (string, er
 	return b.String(), nil
 }
 
-type file struct {
-	Entries []webhistoryapi.Entry `json:"entries"`
+// open is the controller's open: the page in a new tab.
+func (h *History) open(url string) {
+	if h.ws != nil {
+		_ = h.ws.OpenResource(url, workspace.OpenOptions{Kind: "webviewer", NewTab: true})
+	}
 }
 
 func newID() string {
 	var b [16]byte
 	_, _ = rand.Read(b[:])
 	return hex.EncodeToString(b[:])
-}
-
-// open is the controller's open: the page in a new tab.
-func open(url string) {
-	if ws := workspaceapi.Get(); ws != nil {
-		_ = ws.OpenResource(url, workspaceapi.OpenOptions{Kind: "webviewer", NewTab: true})
-	}
 }

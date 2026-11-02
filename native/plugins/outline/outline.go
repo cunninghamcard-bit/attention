@@ -15,12 +15,12 @@ import (
 	"github.com/smallnest/uix/components/lucide"
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	indexcontract "github.com/cunninghamcard-bit/attention/native/contract/index"
-	"github.com/cunninghamcard-bit/attention/native/layoutapi"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	indexplugin "github.com/cunninghamcard-bit/attention/native/plugins/index"
+	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 )
 
 // ID is the plugin's name; PanelID the slot id (OutlineView.getViewType).
@@ -29,46 +29,50 @@ const (
 	PanelID = "outline"
 )
 
-// Pane is the panel's state, on the main thread only.
-type Pane struct {
-	ctx context.Context
-	idx indexcontract.Index
-
-	want     string // the active path last seen
-	path     string // the path the headings are for
-	seq      int
-	cancel   context.CancelFunc
-	loading  bool
-	err      string
-	headings []indexcontract.Heading
-}
-
 // Plugin registers the Outline panel while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "index", "workspace"},
+	Inject: []string{"shell", "slots", "layout", "workspace", "index", "actions"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var idx indexcontract.Index
+		var (
+			sh  *shell.Shell
+			sl  *slots.Registry
+			lyt *layout.Layout
+			ws  *workspace.Workspace
+			idx indexplugin.Index
+			act *actions.Service
+		)
+		if err := rctx.Use("shell", &sh); err != nil {
+			return err
+		}
+		if err := rctx.Use("slots", &sl); err != nil {
+			return err
+		}
+		if err := rctx.Use("layout", &lyt); err != nil {
+			return err
+		}
+		if err := rctx.Use("workspace", &ws); err != nil {
+			return err
+		}
 		if err := rctx.Use("index", &idx); err != nil {
 			return err
 		}
+		if err := rctx.Use("actions", &act); err != nil {
+			return err
+		}
 		ctx, cancel := context.WithCancel(context.Background())
-		p := &Pane{ctx: ctx, idx: idx}
-		off := slotsapi.RegisterPanel(slotsapi.Panel{
-			ID: PanelID, Title: "Outline", Icon: lucide.List(), Dock: slotsapi.Right, Order: 2,
+		p := &Pane{ctx: ctx, sh: sh, ws: ws, idx: idx}
+		off := sl.RegisterPanel(slots.Panel{
+			ID: PanelID, Title: "Outline", Icon: lucide.List(), Dock: slots.Right, Order: 2,
 			View: p.view,
 		})
-		rctx.On(indexcontract.ChangedEvent, func(context.Context, ...any) (any, error) {
-			shellapi.Update(p.fetch)
+		rctx.On(indexplugin.ChangedEvent, func(context.Context, ...any) (any, error) {
+			sh.Update(p.fetch)
 			return nil, nil
 		})
-		reveal := func() {
-			if l := layoutapi.Get(); l != nil {
-				l.RevealPanel(PanelID)
-			}
-		}
-		offCmd := actionsapi.Register(actionsapi.Command{ID: "outline:open", Title: "Open outline", Main: reveal, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			return shellapi.OnMain(ctx, func() (string, error) { reveal(); return "", nil })
+		reveal := func() { lyt.RevealPanel(PanelID) }
+		offCmd := act.Add(actions.Command{ID: "outline:open", Title: "Open outline", Main: reveal, Run: func(ctx context.Context, _ actions.Args) (string, error) {
+			return shell.OnMain(ctx, sh, func() (string, error) { reveal(); return "", nil })
 		}})
 		rctx.Effect(func(context.Context) error {
 			offCmd()
@@ -80,11 +84,27 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	},
 })
 
+// Pane is the panel's state, on the main thread only.
+type Pane struct {
+	ctx context.Context
+	sh  *shell.Shell
+	ws  *workspace.Workspace
+	idx indexplugin.Index
+
+	want     string // the active path last seen
+	path     string // the path the headings are for
+	seq      int
+	cancel   context.CancelFunc
+	loading  bool
+	err      string
+	headings []indexplugin.Heading
+}
+
 // sync starts a fetch when the active path moved. Called from View.
 func (p *Pane) sync() {
 	path := ""
-	if ws := workspaceapi.Get(); ws != nil {
-		if info, ok := ws.ActiveTab(); ok {
+	if p.ws != nil {
+		if info, ok := p.ws.ActiveTab(); ok {
 			path = info.Path
 		}
 	}
@@ -114,7 +134,7 @@ func (p *Pane) fetch() {
 	p.loading = true
 	go func() {
 		hs, err := p.idx.Headings(ctx, path)
-		shellapi.Update(func() {
+		p.sh.Update(func() {
 			if seq != p.seq {
 				return
 			}
@@ -131,7 +151,7 @@ func (p *Pane) fetch() {
 	}()
 }
 
-func (p *Pane) view(c *ui.Context, _ slotsapi.PanelProps) {
+func (p *Pane) view(c *ui.Context, _ slots.PanelProps) {
 	p.sync()
 	t := c.Theme()
 	ui.Column(c).Fill().Children(func() {
@@ -161,9 +181,9 @@ func (p *Pane) view(c *ui.Context, _ slotsapi.PanelProps) {
 			}
 			item := omgui.SideRow(c, omgui.SideRowProps{Key: fmt.Sprintf("h:%d:%d", h.Line, i), Depth: depth})
 			if item.Clicked() {
-				if ws := workspaceapi.Get(); ws != nil {
-					// Heading.Line is 0-based; Nav is 1-based (tabtypesapi.Nav).
-					ws.Open(path, &workspaceapi.Nav{Line: h.Line + 1}, false)
+				if p.ws != nil {
+					// Heading.Line is 0-based; Nav is 1-based (tabtypes.Nav).
+					p.ws.Open(path, &workspace.Nav{Line: h.Line + 1}, false)
 				}
 			}
 			item.Children(func() {

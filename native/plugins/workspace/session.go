@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
-	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 )
 
 // session is what reopens the center as it was: tab groups and tabs (the
@@ -120,7 +120,7 @@ func loadSession() (session, bool) {
 
 // keepTab reports whether a saved tab's path reopens.
 func keepTab(path string) bool {
-	if _, ok := tabtypesapi.PageKind(path); ok || tabtypesapi.WebAddress(path) {
+	if _, ok := tabtypes.PageKind(path); ok || tabtypes.WebAddress(path) {
 		return true // a page, whose type may load later
 	}
 	st, err := os.Stat(path)

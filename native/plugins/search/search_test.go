@@ -6,10 +6,9 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
-	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 )
 
 func TestSortOrders(t *testing.T) {
@@ -50,16 +49,15 @@ func TestCountAndCollapse(t *testing.T) {
 
 func TestPanelOpensTheMatch(t *testing.T) {
 	ws := &fakeWorkspace{}
-	t.Cleanup(workspaceapi.Set(ws))
-	s := &Search{sortOrder: "alphabetical", results: results(), collapsed: map[string]bool{}, ran: "word", query: "word", typed: "word"}
+	s := &Search{ws: ws, sortOrder: "alphabetical", results: results(), collapsed: map[string]bool{}, ran: "word", query: "word", typed: "word"}
 	s.ctx = t.Context()
-	searched := make(chan projectcontract.Query, 1)
-	s.project.Search = func(_ context.Context, q projectcontract.Query) (projectcontract.SearchResult, error) {
+	searched := make(chan projectplugin.Query, 1)
+	s.project.Search = func(_ context.Context, q projectplugin.Query) (projectplugin.SearchResult, error) {
 		searched <- q
-		return projectcontract.SearchResult{}, nil
+		return projectplugin.SearchResult{}, nil
 	}
 	s.sort()
-	tt := ui.NewTester(func(c *ui.Context) { s.view(c, slotsapi.PanelProps{}) }, 400, 600)
+	tt := ui.NewTester(func(c *ui.Context) { s.view(c, slots.PanelProps{}) }, 400, 600)
 	tt.Frame()
 	if !tt.HasText("4 results in 3 files") {
 		t.Fatalf("texts: %v", tt.Texts())
@@ -74,7 +72,7 @@ func TestPanelOpensTheMatch(t *testing.T) {
 	if q := <-searched; !q.CaseSensitive || q.Text != "word" {
 		t.Fatalf("Match case searches again, case-sensitive: %+v", q)
 	}
-	// The result posts through shellapi.Update, which needs a window: the
+	// The result posts through shell.Shell.Update, which needs a window: the
 	// old results stay drawn meanwhile.
 	s.loading, s.results = false, results()
 	s.sort()
@@ -90,11 +88,11 @@ func TestPanelOpensTheMatch(t *testing.T) {
 
 func TestStateRestoresAndSearches(t *testing.T) {
 	a := &Search{query: "tag:x", matchingCase: true, collapseAll: true, sortOrder: "byModifiedTime"}
-	searched := make(chan projectcontract.Query, 1)
+	searched := make(chan projectplugin.Query, 1)
 	b := &Search{ctx: t.Context(), sortOrder: "alphabetical", collapsed: map[string]bool{}}
-	b.project.Search = func(_ context.Context, q projectcontract.Query) (projectcontract.SearchResult, error) {
+	b.project.Search = func(_ context.Context, q projectplugin.Query) (projectplugin.SearchResult, error) {
 		searched <- q
-		return projectcontract.SearchResult{}, nil
+		return projectplugin.SearchResult{}, nil
 	}
 	b.restore(a.state())
 	if b.query != "tag:x" || !b.matchingCase || !b.collapseAll || b.sortOrder != "byModifiedTime" {
@@ -111,36 +109,22 @@ func TestStateRestoresAndSearches(t *testing.T) {
 
 type opened struct {
 	path string
-	nav  *workspaceapi.Nav
+	nav  *workspace.Nav
 }
 
 type fakeWorkspace struct{ opens []opened }
 
-func (f *fakeWorkspace) Open(path string, nav *workspaceapi.Nav, _ bool) {
+func (f *fakeWorkspace) Open(path string, nav *workspace.Nav, _ bool) {
 	f.opens = append(f.opens, opened{path, nav})
 }
 
-func (f *fakeWorkspace) OpenResource(string, workspaceapi.OpenOptions) error { return nil }
-
-func (f *fakeWorkspace) ActivePath() string { return "" }
-
 func (f *fakeWorkspace) Display(path string) string { return "m" + path }
 
-func (f *fakeWorkspace) RecentFiles() []string { return nil }
-
-func (f *fakeWorkspace) OpenTab(string, workspaceapi.OpenOptions) error { return nil }
-
-func (f *fakeWorkspace) ResolveLink(context.Context, string, string) (string, error) { return "", nil }
-
-func (f *fakeWorkspace) ActiveTab() (tabtypesapi.Info, bool) {
-	return tabtypesapi.Info{}, false
-}
-
-func results() []projectcontract.FileResult {
-	return []projectcontract.FileResult{
-		{Rel: "b/Note 10.md", Path: "/b/Note 10.md", ModTime: 1, Matches: []projectcontract.Match{{Line: 3, Col: 5, Len: 4, Text: "the word here"}}},
+func results() []projectplugin.FileResult {
+	return []projectplugin.FileResult{
+		{Rel: "b/Note 10.md", Path: "/b/Note 10.md", ModTime: 1, Matches: []projectplugin.Match{{Line: 3, Col: 5, Len: 4, Text: "the word here"}}},
 		{Rel: "a/note 2.md", Path: "/a/note 2.md", ModTime: 3},
-		{Rel: "c/zeta.md", Path: "/c/zeta.md", ModTime: 2, Matches: []projectcontract.Match{{Line: 1, Col: 1, Len: 3, Text: "abc"}, {Line: 9, Col: 40, Len: 3, Text: "cut"}}},
+		{Rel: "c/zeta.md", Path: "/c/zeta.md", ModTime: 2, Matches: []projectplugin.Match{{Line: 1, Col: 1, Len: 3, Text: "abc"}, {Line: 9, Col: 40, Len: 3, Text: "cut"}}},
 	}
 }
 

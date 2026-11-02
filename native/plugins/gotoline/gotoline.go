@@ -11,11 +11,11 @@ import (
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
 
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
-	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
+	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 )
 
 // ID is the plugin's name and its palette source's.
@@ -24,9 +24,31 @@ const ID = "go-to-line"
 // Plugin is Go to line while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "actions", "workspace"},
+	Inject: []string{"shell", "slots", "tabTypes", "workspace", "actions"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		off := Register()
+		var (
+			sh  *shell.Shell
+			sl  *slots.Registry
+			tt  *tabtypes.Registry
+			ws  *workspace.Workspace
+			act *actions.Service
+		)
+		if err := rctx.Use("shell", &sh); err != nil {
+			return err
+		}
+		if err := rctx.Use("slots", &sl); err != nil {
+			return err
+		}
+		if err := rctx.Use("tabTypes", &tt); err != nil {
+			return err
+		}
+		if err := rctx.Use("workspace", &ws); err != nil {
+			return err
+		}
+		if err := rctx.Use("actions", &act); err != nil {
+			return err
+		}
+		off := Register(sh, sl, tt, ws, act)
 		rctx.Effect(func(context.Context) error { off(); return nil })
 		return nil
 	},
@@ -34,13 +56,13 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 
 // Source is Go to line's palette source: no rows, the line count under the
 // field.
-func Source() slotsapi.PaletteSource {
-	return slotsapi.PaletteSource{
+func Source(tt *tabtypes.Registry, ws *workspace.Workspace) slots.PaletteSource {
+	return slots.PaletteSource{
 		ID: ID, Placeholder: "Go to line (line or line:column)…",
-		Submit: submit,
+		Submit: func(query string) bool { return submit(tt, ws, query) },
 		Footer: func(c *ui.Context, _ string) {
 			hint := "No text file is active"
-			if _, cur, lines, ok := active(); ok {
+			if _, cur, lines, ok := active(tt, ws); ok {
 				hint = "Current line " + strconv.Itoa(cur) + " of " + strconv.Itoa(lines)
 			}
 			ui.Text(c, hint).TextColor(c.Theme().TextMuted).FontSize(12).Padding(6, 8)
@@ -49,27 +71,27 @@ func Source() slotsapi.PaletteSource {
 }
 
 // Register adds the source and its command until off is called.
-func Register() (off func()) {
-	offSrc := slotsapi.RegisterPaletteSource(Source())
-	offCmd := actionsapi.Register(actionsapi.Command{ID: "editor:go-to-line", Title: "Go to line", Keys: "Ctrl G", Main: open,
-		Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			return shellapi.OnMain(ctx, func() (string, error) { open(); return "", nil })
+func Register(sh *shell.Shell, sl *slots.Registry, tt *tabtypes.Registry, ws *workspace.Workspace, act *actions.Service) (off func()) {
+	open := func() { sl.OpenPalette(ID) }
+	offSrc := sl.RegisterPaletteSource(Source(tt, ws))
+	offCmd := act.Add(actions.Command{ID: "editor:go-to-line", Title: "Go to line", Keys: "Ctrl G", Main: open,
+		Run: func(ctx context.Context, _ actions.Args) (string, error) {
+			return shell.OnMain(ctx, sh, func() (string, error) { open(); return "", nil })
 		}})
 	return func() { offCmd(); offSrc() }
 }
 
 // active is the active tab and its caret line and line count, from its tab
 // type; ok is false with no text tab active.
-func active() (info tabtypesapi.Info, cur, lines int, ok bool) {
-	ws := workspaceapi.Get()
-	if ws == nil {
+func active(ttReg *tabtypes.Registry, ws *workspace.Workspace) (info tabtypes.Info, cur, lines int, ok bool) {
+	if ws == nil || ttReg == nil {
 		return info, 0, 0, false
 	}
 	info, ok = ws.ActiveTab()
 	if !ok {
 		return info, 0, 0, false
 	}
-	tt, found := tabtypesapi.Claim(info.Address, info.Kind)
+	tt, found := ttReg.Claim(info.Address, info.Kind)
 	if !found || tt.Lines == nil {
 		return info, 0, 0, false
 	}
@@ -95,14 +117,11 @@ func parse(s string) (line, col int, ok bool) {
 }
 
 // submit moves the active text tab to the query's line.
-func submit(query string) bool {
+func submit(tt *tabtypes.Registry, ws *workspace.Workspace, query string) bool {
 	line, col, ok := parse(query)
-	info, _, _, has := active()
+	info, _, _, has := active(tt, ws)
 	if !ok || !has {
 		return false
 	}
-	ws := workspaceapi.Get()
-	return ws.OpenResource(info.Address, workspaceapi.OpenOptions{Kind: info.Kind, Nav: &workspaceapi.Nav{Line: line, Col: col}}) == nil
+	return ws.OpenResource(info.Address, workspace.OpenOptions{Kind: info.Kind, Nav: &workspace.Nav{Line: line, Col: col}}) == nil
 }
-
-func open() { slotsapi.OpenPalette(ID) }

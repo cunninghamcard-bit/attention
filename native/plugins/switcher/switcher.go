@@ -14,14 +14,14 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/smallnest/uix/components/lucide"
 
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
 	"github.com/cunninghamcard-bit/attention/native/internal/fuzzy"
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 )
 
 const (
@@ -35,14 +35,32 @@ const (
 // Plugin is the quick switcher while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "project", "actions", "workspace"},
+	Inject: []string{"shell", "slots", "workspace", "project", "actions"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var project projectcontract.Project
+		var (
+			sh      *shell.Shell
+			sl      *slots.Registry
+			ws      Workspace
+			project projectplugin.Project
+			act     *actions.Service
+		)
+		if err := rctx.Use("shell", &sh); err != nil {
+			return err
+		}
+		if err := rctx.Use("slots", &sl); err != nil {
+			return err
+		}
+		if err := rctx.Use("workspace", &ws); err != nil {
+			return err
+		}
 		if err := rctx.Use("project", &project); err != nil {
 			return err
 		}
+		if err := rctx.Use("actions", &act); err != nil {
+			return err
+		}
 		ctx, cancel := context.WithCancel(context.Background())
-		off := Register(New(ctx, project.Files, shellapi.Update))
+		off := Register(New(ctx, ws, project.Files, sh.Update), sh, sl, act)
 		rctx.Effect(func(context.Context) error {
 			off()
 			cancel()
@@ -52,15 +70,23 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	},
 })
 
-type filesFn func(context.Context) (projectcontract.Listing, error)
+// Workspace is the file opening and recent-file state the switcher uses.
+type Workspace interface {
+	Open(path string, nav *tabtypes.Nav, newTab bool)
+	Display(path string) string
+	RecentFiles() []string
+}
+
+type filesFn func(context.Context) (projectplugin.Listing, error)
 
 // Switcher is the source's state, on the main thread only.
 type Switcher struct {
 	ctx   context.Context
+	ws    Workspace
 	files filesFn
 	post  func(func())
 
-	listing *projectcontract.Listing // the last walk
+	listing *projectplugin.Listing // the last walk
 	busy    bool
 	gen     int
 	names   []string // titles: display paths, .md dropped
@@ -69,19 +95,19 @@ type Switcher struct {
 
 // New is a switcher listing files with files and posting to the main
 // thread with post.
-func New(ctx context.Context, files filesFn, post func(func())) *Switcher {
-	return &Switcher{ctx: ctx, files: files, post: post}
+func New(ctx context.Context, ws Workspace, files filesFn, post func(func())) *Switcher {
+	return &Switcher{ctx: ctx, ws: ws, files: files, post: post}
 }
 
 // SetListing uses a walk of the mounts (a test's, or one done elsewhere).
-func (s *Switcher) SetListing(l projectcontract.Listing) {
+func (s *Switcher) SetListing(l projectplugin.Listing) {
 	s.listing = &l
 	s.useListing()
 }
 
 // Source is the switcher's palette source.
-func (s *Switcher) Source() slotsapi.PaletteSource {
-	return slotsapi.PaletteSource{
+func (s *Switcher) Source() slots.PaletteSource {
+	return slots.PaletteSource{
 		ID: ID, Placeholder: "Search files…",
 		Open:       s.refresh,
 		Items:      s.items,
@@ -126,13 +152,12 @@ func (s *Switcher) refresh() {
 // naturally, its text the path without ".md" (getQuickSwitcherFileTitle).
 // The reader shows every file type (attention's showAllFileTypes).
 func (s *Switcher) useListing() {
-	ws := workspaceapi.Get()
 	type item struct{ title, path string }
 	items := make([]item, 0, len(s.listing.Files))
 	for _, f := range s.listing.Files {
 		display := f.Path
-		if ws != nil {
-			display = ws.Display(f.Path)
+		if s.ws != nil {
+			display = s.ws.Display(f.Path)
 		}
 		items = append(items, item{title(display), f.Path})
 	}
@@ -145,31 +170,30 @@ func (s *Switcher) useListing() {
 	s.gen++
 }
 
-func (s *Switcher) item(i int) slotsapi.PaletteItem {
+func (s *Switcher) item(i int) slots.PaletteItem {
 	name, path := s.names[i], s.paths[i]
 	base, dir := name, ""
 	if k := strings.LastIndexByte(name, '/'); k >= 0 {
 		base, dir = name[k+1:], name[:k]
 	}
-	return slotsapi.PaletteItem{Key: "f:" + path, Label: base, Detail: dir, Icon: fileicon.For(base),
+	return slots.PaletteItem{Key: "f:" + path, Label: base, Detail: dir, Icon: fileicon.For(base),
 		Choose: func(newTab bool) {
-			if ws := workspaceapi.Get(); ws != nil {
-				ws.Open(path, nil, newTab)
+			if s.ws != nil {
+				s.ws.Open(path, nil, newTab)
 			}
 		}}
 }
 
 // items are QuickSwitcherModal.getSuggestions: the recent files with no
 // query, else the files ranked against it.
-func (s *Switcher) items(query string) []slotsapi.PaletteItem {
+func (s *Switcher) items(query string) []slots.PaletteItem {
 	q := strings.TrimSpace(query)
-	var out []slotsapi.PaletteItem
+	var out []slots.PaletteItem
 	if q == "" {
-		ws := workspaceapi.Get()
-		if ws == nil {
+		if s.ws == nil {
 			return nil
 		}
-		for _, path := range ws.RecentFiles() {
+		for _, path := range s.ws.RecentFiles() {
 			for i, candidate := range s.paths {
 				if candidate == path {
 					out = append(out, s.item(i))
@@ -187,14 +211,15 @@ func (s *Switcher) items(query string) []slotsapi.PaletteItem {
 
 // Register adds the source, its command and its ribbon icon until off is
 // called.
-func Register(s *Switcher) (off func()) {
+func Register(s *Switcher, sh *shell.Shell, sl *slots.Registry, act *actions.Service) (off func()) {
+	open := func() { sl.OpenPalette(ID) }
 	offs := []func(){
-		slotsapi.RegisterPaletteSource(s.Source()),
-		actionsapi.Register(actionsapi.Command{ID: "switcher:open", Title: "Open quick switcher", Keys: "Ctrl O", Main: open,
-			Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-				return shellapi.OnMain(ctx, func() (string, error) { open(); return "", nil })
+		sl.RegisterPaletteSource(s.Source()),
+		act.Add(actions.Command{ID: "switcher:open", Title: "Open quick switcher", Keys: "Ctrl O", Main: open,
+			Run: func(ctx context.Context, _ actions.Args) (string, error) {
+				return shell.OnMain(ctx, sh, func() (string, error) { open(); return "", nil })
 			}}),
-		slotsapi.RegisterRibbon(slotsapi.RibbonItem{ID: ID, Title: "Open quick switcher", Icon: lucide.FileSearch(), Order: 0, Run: open}),
+		sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Open quick switcher", Icon: lucide.FileSearch(), Order: 0, Run: open}),
 	}
 	return func() {
 		for _, off := range offs {
@@ -211,6 +236,3 @@ func title(display string) string {
 	}
 	return display
 }
-
-// open is switcher:open: the palette on the switcher.
-func open() { slotsapi.OpenPalette(ID) }

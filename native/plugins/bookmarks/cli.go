@@ -8,18 +8,19 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	"github.com/cunninghamcard-bit/attention/native/internal/clifmt"
-	"github.com/cunninghamcard-bit/attention/native/internal/clipath"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 )
 
 const addUsage = "Usage: bookmark file=<path> [subpath=] | folder=<path> | search=<query> | url=<url>  [title=]"
 
 // cliList is `bookmarks [total] [verbose] [format=json|tsv|csv]`. TS has
 // none; the shape is Obsidian's CLI.
-func (b *Bookmarks) cliList(ctx context.Context, a actionsapi.Args) (string, error) {
-	return shellapi.OnMain(ctx, func() (string, error) {
+func (b *Bookmarks) cliList(ctx context.Context, a actions.Args) (string, error) {
+	return shell.OnMain(ctx, b.sh, func() (string, error) {
 		if a.Has("total") {
 			return strconv.Itoa(countItems(b.items)), nil
 		}
@@ -35,15 +36,15 @@ func (b *Bookmarks) cliList(ctx context.Context, a actionsapi.Args) (string, err
 			return "No bookmarks found.", nil
 		}
 		if format == "tsv" || format == "csv" {
-			rows := tableRows(b.items)
+			rows := tableRows(b.items, b.ws)
 			return clifmt.Table([]string{"type", "title"}, rows, format), nil
 		}
-		return strings.Join(listLines(b.items, 0, a.Has("verbose")), "\n"), nil
+		return strings.Join(listLines(b.items, 0, a.Has("verbose"), b.ws), "\n"), nil
 	})
 }
 
 // cliAdd is `bookmark file=<path> [subpath=] | folder=<path> | search=<query> | url=<url>  [title=]`.
-func (b *Bookmarks) cliAdd(ctx context.Context, a actionsapi.Args) (string, error) {
+func (b *Bookmarks) cliAdd(ctx context.Context, a actions.Args) (string, error) {
 	file, folder := a.Params["file"], a.Params["folder"]
 	search, url := a.Params["search"], a.Params["url"]
 	n := 0
@@ -75,9 +76,9 @@ func (b *Bookmarks) cliAdd(ctx context.Context, a actionsapi.Args) (string, erro
 	default:
 		item.Type, item.URL = "url", url
 	}
-	return shellapi.OnMain(ctx, func() (string, error) {
+	return shell.OnMain(ctx, b.sh, func() (string, error) {
 		b.add(item)
-		return "Bookmarked: " + item.displayTitle(), nil
+		return "Bookmarked: " + item.displayTitle(b.ws), nil
 	})
 }
 
@@ -86,11 +87,11 @@ func (b *Bookmarks) resolveFile(ctx context.Context, file, cwd string) (string, 
 	if err != nil {
 		return "", err
 	}
-	return clipath.Link(ctx, b.project.Files, mounts, file, cwd)
+	return projectplugin.ResolveLink(ctx, b.project.Files, mounts, file, cwd)
 }
 
-// resolveFolder is path= resolution for a directory. clipath.Path rejects
-// folders, so this walks clipath.Candidates the same way and keeps dirs.
+// resolveFolder is path= resolution for a directory. projectplugin.ResolvePath rejects
+// folders, so this walks projectplugin.Candidates the same way and keeps dirs.
 func (b *Bookmarks) resolveFolder(ctx context.Context, target, cwd string) (string, error) {
 	mounts, err := b.project.Mounts(ctx)
 	if err != nil {
@@ -102,7 +103,7 @@ func (b *Bookmarks) resolveFolder(ctx context.Context, target, cwd string) (stri
 			return m.Path, nil
 		}
 	}
-	for _, p := range clipath.Candidates(mounts, target, cwd) {
+	for _, p := range projectplugin.Candidates(mounts, target, cwd) {
 		st, err := os.Stat(p)
 		if err != nil {
 			continue
@@ -126,7 +127,7 @@ func countItems(items []*Item) int {
 	return n
 }
 
-func listLines(items []*Item, depth int, verbose bool) []string {
+func listLines(items []*Item, depth int, verbose bool, ws *workspace.Workspace) []string {
 	indent := strings.Repeat("\t", depth)
 	var lines []string
 	for _, it := range items {
@@ -134,21 +135,21 @@ func listLines(items []*Item, depth int, verbose bool) []string {
 		if verbose {
 			line += it.Type + ": "
 		}
-		line += it.displayTitle()
+		line += it.displayTitle(ws)
 		lines = append(lines, line)
 		if it.Type == "group" {
-			lines = append(lines, listLines(it.Items, depth+1, verbose)...)
+			lines = append(lines, listLines(it.Items, depth+1, verbose, ws)...)
 		}
 	}
 	return lines
 }
 
-func tableRows(items []*Item) [][]string {
+func tableRows(items []*Item, ws *workspace.Workspace) [][]string {
 	var rows [][]string
 	var walk func([]*Item)
 	walk = func(items []*Item) {
 		for _, it := range items {
-			rows = append(rows, []string{it.Type, it.displayTitle()})
+			rows = append(rows, []string{it.Type, it.displayTitle(ws)})
 			if it.Type == "group" {
 				walk(it.Items)
 			}

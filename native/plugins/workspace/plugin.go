@@ -1,6 +1,6 @@
 // Package workspace is the workspace UI plugin: the window's center (the
 // layout plugin draws the rest) — tab groups in splits (tree.go), their
-// tabs, whose bodies are the tab types' (tabtypesapi), the view and tab
+// tabs, whose bodies are the tab types' (tabtypes), the view and tab
 // headers, the session of open tabs — and the CLI's open, tabs, recents,
 // tab:open and workspace.
 //
@@ -18,41 +18,68 @@ import (
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo"
 
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
-	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
-	"github.com/cunninghamcard-bit/attention/native/internal/clipath"
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/internal/persist"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
-	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
+	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
+	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/resources"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 )
 
-// Plugin is the center while loaded and provides "workspace", which panel
-// plugins inject to be ordered after it (they reach the workspace through
-// workspaceapi).
+// Plugin is the center while loaded and provides "tabTypes" and "workspace".
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   "workspace",
-	Inject: []string{"shell", "fs", "project", "actions"},
+	Inject: []string{"shell", "slots", "resources", "layout", "shortcuts", "fs", "project", "actions"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var fs fscontract.FS
-		var project projectcontract.Project
+		var (
+			sh      *shell.Shell
+			sl      *slots.Registry
+			res     *resources.Registry
+			lyt     *layout.Layout
+			sc      *shortcuts.Shortcuts
+			fs      fsplugin.FS
+			project projectplugin.Project
+			act     *actions.Service
+		)
+		if err := rctx.Use("shell", &sh); err != nil {
+			return err
+		}
+		if err := rctx.Use("slots", &sl); err != nil {
+			return err
+		}
+		if err := rctx.Use("resources", &res); err != nil {
+			return err
+		}
+		if err := rctx.Use("layout", &lyt); err != nil {
+			return err
+		}
+		if err := rctx.Use("shortcuts", &sc); err != nil {
+			return err
+		}
 		if err := rctx.Use("fs", &fs); err != nil {
 			return err
 		}
 		if err := rctx.Use("project", &project); err != nil {
 			return err
 		}
+		if err := rctx.Use("actions", &act); err != nil {
+			return err
+		}
 		ctx, cancel := context.WithCancel(context.Background())
-		ws := newWorkspace(ctx, fs, project)
-		saver := persist.New(paths.SessionPath(), func() any { return ws.snapshot() })
+		ws := newWorkspace(ctx, sh, sl, res, lyt, sc, act, fs, project)
+		rctx.Provide("tabTypes", ws.tabTypes)
+		rctx.Provide("workspace", ws)
+		saver := persist.New(sh, paths.SessionPath(), func() any { return ws.snapshot() })
 		ws.saveSoon = saver.Soon
 
 		// Restore the tree, then the mounts (which reopen the tabs).
 		saved, ok := loadSession()
-		shellapi.Update(func() {
+		sh.Update(func() {
 			if ok {
 				ws.restoreLayout(saved)
 			}
@@ -63,16 +90,15 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 				if err != nil {
 					return
 				}
-				shellapi.Update(func() { ws.setMounts(ms) })
+				sh.Update(func() { ws.setMounts(ms) })
 			}()
 		}
 		reloadMounts()
-		rctx.On(projectcontract.MountsChangedEvent, func(context.Context, ...any) (any, error) {
+		rctx.On(projectplugin.MountsChangedEvent, func(context.Context, ...any) (any, error) {
 			reloadMounts()
 			return nil, nil
 		})
 
-		rctx.Provide("workspace", struct{}{})
 		off := Register(ws)
 		rctx.Effect(func(effectCtx context.Context) error {
 			if os.Getenv("ATTENTION_DEBUG") != "" {
@@ -90,22 +116,87 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	},
 })
 
+// Nav is where to put the caret or what to select after opening a file.
+type Nav = tabtypes.Nav
+
+// OpenOptions are OpenResource's and OpenTab's options.
+type OpenOptions struct {
+	Nav    *Nav
+	NewTab bool
+	// Kind is the tab kind to open as ("text", "markdown", ...), "" for
+	// the highest-priority claim.
+	Kind string
+}
+
+// Open shows path in the workspace (reusing an open tab for it, or in the
+// active tab; in a new tab when newTab is true) and applies nav when given.
+func (ws *Workspace) Open(path string, nav *Nav, newTab bool) {
+	ws.openIn(path, nav, newTab)
+}
+
+// OpenTab shows the page of kind (an address-less tab type such as
+// terminal): its open tab, or a new one.
+func (ws *Workspace) OpenTab(kind string, o OpenOptions) error {
+	_, err := ws.openTab(kind, o)
+	return err
+}
+
+// OpenResource shows address in the workspace (as Open does for a path).
+func (ws *Workspace) OpenResource(address string, o OpenOptions) error {
+	_, err := ws.openResource(address, o)
+	return err
+}
+
+// ActivePath is the active tab's file path, or "" when no file is active.
+func (ws *Workspace) ActivePath() string {
+	if t := ws.activeTab(); t != nil && !t.empty {
+		return t.path
+	}
+	return ""
+}
+
+// ActiveTab is the active tab, or ok false when none is active or the
+// active tab is an empty new tab.
+func (ws *Workspace) ActiveTab() (tabtypes.Info, bool) {
+	if t := ws.activeTab(); t != nil && !t.empty {
+		return ws.props(t, true).Info, true
+	}
+	return tabtypes.Info{}, false
+}
+
+// Display is path as the workspace shows it: "<mount>/<rel>" under a mount,
+// else path.
+func (ws *Workspace) Display(path string) string { return ws.display(path) }
+
+// ResolveLink resolves a Markdown link or [[wikilink]] target from a file
+// in dir against the mounts, off the main thread.
+func (ws *Workspace) ResolveLink(ctx context.Context, link, dir string) (string, error) {
+	mounts, err := ws.project.Mounts(ctx)
+	if err != nil {
+		return "", err
+	}
+	return projectplugin.ResolveLink(ctx, ws.project.Files, mounts, link, dir)
+}
+
+// RecentFiles are the files opened last, newest first.
+func (ws *Workspace) RecentFiles() []string { return append([]string(nil), ws.recentFiles...) }
+
 // commands are the workspace's palette and CLI commands. Main runs them
 // on the main thread (a shortcut, the palette); Run off it (the CLI, on
 // its connection's goroutine), hopping to the main thread with
-// shellapi.OnMain.
-func (ws *Workspace) commands() []actionsapi.Command {
-	ui := func(id, title, keys string, fn func()) actionsapi.Command {
+// shell.OnMain.
+func (ws *Workspace) commands() []actions.Command {
+	ui := func(id, title, keys string, fn func()) actions.Command {
 		run := func() { ws.flush(); fn() }
-		return actionsapi.Command{ID: id, Title: title, Keys: keys, Main: run, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			return shellapi.OnMain(ctx, func() (string, error) { run(); return "", nil })
+		return actions.Command{ID: id, Title: title, Keys: keys, Main: run, Run: func(ctx context.Context, _ actions.Args) (string, error) {
+			return shell.OnMain(ctx, ws.sh, func() (string, error) { run(); return "", nil })
 		}}
 	}
-	gotos := make([]actionsapi.Command, 0, 8)
+	gotos := make([]actions.Command, 0, 8)
 	for n := 1; n <= 8; n++ {
 		gotos = append(gotos, ui(fmt.Sprintf("workspace:goto-tab-%d", n), fmt.Sprintf("Go to tab %d", n), fmt.Sprintf("Ctrl %d", n), func() { ws.gotoTab(n) }))
 	}
-	return append(gotos, []actionsapi.Command{
+	return append(gotos, []actions.Command{
 		// IDs, names and keys are attention's (apps/web/app/AppCommands.ts,
 		// CommandPalette.ts, QuickSwitcher.ts, CorePlugins.ts) where it has
 		// the command; the rest are the reader's own.
@@ -132,17 +223,17 @@ func (ws *Workspace) commands() []actionsapi.Command {
 		ui("workspace:close-others", "Close other tabs", "", ws.closeOthers),
 		ui("workspace:close-tab-group", "Close tab group", "", ws.closeTabGroup),
 		ui("workspace:close-others-tab-group", "Close others in tab group", "", ws.closeOthersInGroup),
-		{ID: "workspace:add-folder", Title: "Add folder to workspace", Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			dirs, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: shellapi.Window(), Title: "Add Folder to Project", Directory: true})
+		{ID: "workspace:add-folder", Title: "Add folder to workspace", Run: func(ctx context.Context, _ actions.Args) (string, error) {
+			dirs, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: ws.sh.Window(), Title: "Add Folder to Project", Directory: true})
 			if err != nil || len(dirs) == 0 {
 				return "", err
 			}
 			_, err = ws.project.AddMount(ctx, dirs[0])
 			return "", err
 		}},
-		{ID: "focus", CLI: true, Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			return shellapi.OnMain(ctx, func() (string, error) {
-				if w := shellapi.Window(); w != nil {
+		{ID: "focus", CLI: true, Run: func(ctx context.Context, _ actions.Args) (string, error) {
+			return shell.OnMain(ctx, ws.sh, func() (string, error) {
+				if w := ws.sh.Window(); w != nil {
 					w.Show()
 					w.Focus()
 				}
@@ -150,8 +241,8 @@ func (ws *Workspace) commands() []actionsapi.Command {
 			})
 		}},
 		{ID: "open", CLI: true, Run: ws.cliOpen},
-		{ID: "tabs", CLI: true, Run: func(ctx context.Context, a actionsapi.Args) (string, error) {
-			return shellapi.OnMain(ctx, func() (string, error) {
+		{ID: "tabs", CLI: true, Run: func(ctx context.Context, a actions.Args) (string, error) {
+			return shell.OnMain(ctx, ws.sh, func() (string, error) {
 				// The TS CLI's shape: "[<view type>] <display text>", then a tab
 				// ID with ids.
 				var lines []string
@@ -178,7 +269,7 @@ func (ws *Workspace) commands() []actionsapi.Command {
 // relative to the caller's directory or a mount. file= resolves like a
 // wikilink: the extension may be left off (.md) and a bare name is found
 // anywhere in the mounts. The disk is read here, off the main thread.
-func (ws *Workspace) cliOpen(ctx context.Context, a actionsapi.Args) (string, error) {
+func (ws *Workspace) cliOpen(ctx context.Context, a actions.Args) (string, error) {
 	path, byFile := a.Params["path"], false
 	if path == "" {
 		path, byFile = a.Params["file"], true
@@ -206,23 +297,23 @@ func (ws *Workspace) cliOpen(ctx context.Context, a actionsapi.Args) (string, er
 	}
 	target := path
 	if byFile {
-		target, err = clipath.Link(ctx, ws.project.Files, mounts, path, a.Cwd)
+		target, err = projectplugin.ResolveLink(ctx, ws.project.Files, mounts, path, a.Cwd)
 	} else {
-		target, err = clipath.Path(mounts, path, a.Cwd)
+		target, err = projectplugin.ResolvePath(mounts, path, a.Cwd)
 	}
 	if err != nil {
 		return "", err
 	}
-	return shellapi.OnMain(ctx, func() (string, error) {
-		var nav *workspaceapi.Nav
+	return shell.OnMain(ctx, ws.sh, func() (string, error) {
+		var nav *Nav
 		if hasLine {
-			nav = &workspaceapi.Nav{Line: line, To: to}
+			nav = &Nav{Line: line, To: to}
 		}
-		opts := workspaceapi.OpenOptions{Nav: nav, NewTab: a.Has("newtab"), Kind: a.Params["kind"]}
+		opts := OpenOptions{Nav: nav, NewTab: a.Has("newtab"), Kind: a.Params["kind"]}
 		if _, err := ws.openAddress(ws.addressOf(target), target, opts); err != nil {
 			return "", err
 		}
-		if w := shellapi.Window(); w != nil {
+		if w := ws.sh.Window(); w != nil {
 			w.Focus()
 		}
 		out := "Opened: " + ws.display(target)
@@ -275,58 +366,36 @@ func (t *tab) displayText() string {
 	return t.title
 }
 
-// api is the workspace as workspaceapi.API.
-type api struct{ ws *Workspace }
-
-func (a api) Open(path string, nav *workspaceapi.Nav, newTab bool) { a.ws.openIn(path, nav, newTab) }
-
-func (a api) OpenTab(kind string, o workspaceapi.OpenOptions) error {
-	_, err := a.ws.openTab(kind, o)
-	return err
-}
-
-func (a api) OpenResource(address string, o workspaceapi.OpenOptions) error {
-	_, err := a.ws.openResource(address, o)
-	return err
-}
-
-func (a api) ActivePath() string {
-	if t := a.ws.activeTab(); t != nil && !t.empty {
-		return t.path
-	}
-	return ""
-}
-
-func (a api) ActiveTab() (tabtypesapi.Info, bool) {
-	if t := a.ws.activeTab(); t != nil && !t.empty {
-		return a.ws.props(t, true).Info, true
-	}
-	return tabtypesapi.Info{}, false
-}
-
-func (a api) Display(path string) string { return a.ws.display(path) }
-
-func (a api) ResolveLink(ctx context.Context, link, dir string) (string, error) {
-	mounts, err := a.ws.project.Mounts(ctx)
-	if err != nil {
-		return "", err
-	}
-	return clipath.Link(ctx, a.ws.project.Files, mounts, link, dir)
-}
-
-func (a api) RecentFiles() []string { return append([]string(nil), a.ws.recentFiles...) }
-
 // Register makes ws the center (the workspace.center slot), with its
-// status bar items, its API and its commands, until off is called.
+// status bar items, its actions hooks and its commands, until off is called.
 func Register(ws *Workspace) (off func()) {
 	offs := []func(){
-		slotsapi.SetCenter(ws.view),
-		slotsapi.RegisterStatus(slotsapi.StatusItem{ID: "workspace-mounts", View: ws.mountsStatus}),
-		slotsapi.RegisterStatus(slotsapi.StatusItem{ID: "workspace-tab", Right: true, View: ws.tabStatus}),
-		workspaceapi.Set(api{ws}),
+		ws.sl.SetCenter(ws.view),
+		ws.sl.RegisterStatus(slots.StatusItem{ID: "workspace-mounts", View: ws.mountsStatus}),
+		ws.sl.RegisterStatus(slots.StatusItem{ID: "workspace-tab", Right: true, View: ws.tabStatus}),
+		ws.act.SetActiveFile(func(ctx context.Context) (string, error) {
+			if ws.sh.Window() == nil {
+				return "", nil
+			}
+			return shell.OnMain(ctx, ws.sh, func() (string, error) {
+				return ws.ActivePath(), nil
+			})
+		}),
+		ws.act.SetOpenPath(func(ctx context.Context, path string, newTab bool) error {
+			_, err := shell.OnMain(ctx, ws.sh, func() (string, error) {
+				if err := ws.OpenResource(ws.addressOf(path), OpenOptions{NewTab: newTab}); err != nil {
+					return "", err
+				}
+				if w := ws.sh.Window(); w != nil {
+					w.Focus()
+				}
+				return "", nil
+			})
+			return err
+		}),
 	}
 	for _, cmd := range ws.commands() {
-		offs = append(offs, actionsapi.Register(cmd))
+		offs = append(offs, ws.act.Add(cmd))
 	}
 	return func() {
 		for i := len(offs) - 1; i >= 0; i-- {

@@ -7,9 +7,6 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/smallnest/uix/components/lucide"
-
-	"github.com/cunninghamcard-bit/attention/native/bookmarksapi"
-	"github.com/cunninghamcard-bit/attention/native/webhistoryapi"
 )
 
 var typedURL = regexp.MustCompile(`(?i)^https?://`)
@@ -41,7 +38,7 @@ func (s suggestion) icon() *ui.SVG {
 // suggestions are getSuggestions: the blank page, the history, the url
 // bookmarks, by URL once, those the input matches best first, and what
 // the input itself opens on top unless a candidate is it exactly.
-func suggestions(input string) []suggestion {
+func (v *viewer) suggestions(input string) []suggestion {
 	raw := strings.TrimSpace(input)
 	query := strings.ToLower(raw)
 	var cands []suggestion
@@ -57,14 +54,18 @@ func suggestions(input string) []suggestion {
 		cands = append(cands, s)
 	}
 	add(suggestion{kind: "about", title: "Blank", url: "about:blank"}, false)
-	if h := webhistoryapi.Get(); h != nil {
-		for _, e := range h.List() {
-			add(suggestion{kind: "history", title: e.Title, url: e.URL}, false)
+	if v.hist != nil {
+		if h := v.hist(); h != nil {
+			for _, e := range h.List() {
+				add(suggestion{kind: "history", title: e.Title, url: e.URL}, false)
+			}
 		}
 	}
-	if b := bookmarksapi.Get(); b != nil {
-		for _, u := range b.URLs() {
-			add(suggestion{kind: "bookmark", title: u.Title, url: u.URL}, true)
+	if v.bm != nil {
+		if b := v.bm(); b != nil {
+			for _, u := range b.URLs() {
+				add(suggestion{kind: "bookmark", title: u.Title, url: u.URL}, true)
+			}
 		}
 	}
 	var out []suggestion
@@ -94,40 +95,21 @@ func suggestions(input string) []suggestion {
 		case dot != -1 && dot != len(first)-1:
 			out = append([]suggestion{{kind: "typed", url: "https://" + raw, score: 100}}, out...)
 		default:
-			out = append([]suggestion{{kind: "search", title: raw, url: NormalizeURL(raw), score: 100}}, out...)
+			out = append([]suggestion{{kind: "search", title: raw, url: v.normalizeURL(raw), score: 100}}, out...)
 		}
 	}
 	return out[:min(len(out), 20)]
 }
 
-// fuzzyScore is the TS fuzzyScore: the query within the text, else its
-// letters in order, closer ones scoring more; 0 for no match.
-func fuzzyScore(query, text string) int {
-	hay, needle := strings.ToLower(text), strings.ToLower(query)
-	if strings.Contains(hay, needle) {
-		return 80 + min(len(needle), 20)
-	}
-	index, score := 0, 0
-	for _, r := range needle {
-		found := strings.IndexRune(hay[index:], r)
-		if found < 0 {
-			return 0
-		}
-		score += max(1, 12-found)
-		index += found + len(string(r))
-	}
-	return score
-}
-
 // suggestPanel is the popover under the address bar while it has the
 // caret: Up and Down move the highlight, Enter (the bar's submit) opens
 // the highlighted one, a click opens one.
-func suggestPanel(c *ui.Context, pg *page, field ui.Element, open func(url string)) {
+func (v *viewer) suggestPanel(c *ui.Context, pg *page, field ui.Element, open func(url string)) {
 	t := c.Theme()
 	if !pg.suggesting {
 		return
 	}
-	list := suggestions(pg.typed)
+	list := v.suggestions(pg.typed)
 	pg.suggested = list
 	if pg.selected >= len(list) {
 		pg.selected = len(list) - 1
@@ -169,4 +151,23 @@ func suggestPanel(c *ui.Context, pg *page, field ui.Element, open func(url strin
 			}
 		})
 	})
+}
+
+// fuzzyScore is the TS fuzzyScore: the query within the text, else its
+// letters in order, closer ones scoring more; 0 for no match.
+func fuzzyScore(query, text string) int {
+	hay, needle := strings.ToLower(text), strings.ToLower(query)
+	if strings.Contains(hay, needle) {
+		return 80 + min(len(needle), 20)
+	}
+	index, score := 0, 0
+	for _, r := range needle {
+		found := strings.IndexRune(hay[index:], r)
+		if found < 0 {
+			return 0
+		}
+		score += max(1, 12-found)
+		index += found + len(string(r))
+	}
+	return score
 }

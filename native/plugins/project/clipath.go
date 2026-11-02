@@ -1,7 +1,4 @@
-// Package clipath resolves the file a CLI command names, as attention's
-// CLI does (apps/web/app/cli/Cli.ts): path= exactly, file= as a link.
-// It reads the disk: call it off the main thread.
-package clipath
+package project
 
 import (
 	"context"
@@ -9,13 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
 )
 
 // Candidates are the places a CLI path may name: absolute, "<mount>/<rel>",
 // relative to the caller's directory, relative to each mount.
-func Candidates(mounts []projectcontract.Mount, target, cwd string) []string {
+func Candidates(mounts []Mount, target, cwd string) []string {
 	if filepath.IsAbs(target) {
 		return []string{filepath.Clean(target)}
 	}
@@ -36,8 +31,8 @@ func Candidates(mounts []projectcontract.Mount, target, cwd string) []string {
 	return out
 }
 
-// Path is path=: exact, as the TS CLI's.
-func Path(mounts []projectcontract.Mount, target, cwd string) (string, error) {
+// ResolvePath is path=: exact, as the TS CLI's.
+func ResolvePath(mounts []Mount, target, cwd string) (string, error) {
 	for _, p := range Candidates(mounts, target, cwd) {
 		st, err := os.Stat(p)
 		if err != nil {
@@ -51,10 +46,10 @@ func Path(mounts []projectcontract.Mount, target, cwd string) (string, error) {
 	return "", fmt.Errorf("File %q not found.", target)
 }
 
-// Link is file=: a path with or without ".md" first, then the first file
-// anywhere in the mounts whose path ends with it, without case; files is
-// the project's listing.
-func Link(ctx context.Context, files func(context.Context) (projectcontract.Listing, error), mounts []projectcontract.Mount, link, cwd string) (string, error) {
+// ResolveLink is file=: a path with or without ".md" first, then the first
+// file anywhere in the mounts whose path ends with it, without case; files
+// is the project's listing.
+func ResolveLink(ctx context.Context, files func(context.Context) (Listing, error), mounts []Mount, link, cwd string) (string, error) {
 	tries := []string{link}
 	if filepath.Ext(link) == "" {
 		tries = append(tries, link+".md")

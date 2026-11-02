@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
-	contract "github.com/cunninghamcard-bit/attention/native/contract/project"
 )
 
 func TestPathNarrows(t *testing.T) {
@@ -18,7 +16,7 @@ func TestPathNarrows(t *testing.T) {
 
 func TestFileNarrowsWithoutKeywords(t *testing.T) {
 	files, display := fixture(t)
-	res, _ := NewEngine(nil).Search(t.Context(), files, display, contract.Query{Text: "file:beta"})
+	res, _ := NewEngine(nil).Search(t.Context(), files, display, Query{Text: "file:beta"})
 	if len(res) != 1 || res[0].Rel != "notes/beta.md" || len(res[0].Matches) != 0 {
 		t.Fatalf("got %+v", res)
 	}
@@ -44,7 +42,7 @@ func TestUnknownOperatorIsAKeyword(t *testing.T) {
 
 func TestCustomOperators(t *testing.T) {
 	e := NewEngine(nil)
-	err := e.RegisterOperator(Operator{Name: "agent", Token: "agent:", Filter: func(f contract.FileRef, v string) bool {
+	err := e.RegisterOperator(Operator{Name: "agent", Token: "agent:", Filter: func(f FileRef, v string) bool {
 		return strings.HasPrefix(f.Rel, v+"/")
 	}})
 	if err != nil {
@@ -78,7 +76,7 @@ func TestMetadataOperatorsWaitForTheIndex(t *testing.T) {
 // files. tag:, [property] and section: need the metadata index (roadmap
 // P2) and are skipped until it exists.
 
-func fixture(t *testing.T) ([]contract.FileRef, func(contract.FileRef) string) {
+func fixture(t *testing.T) ([]FileRef, func(FileRef) string) {
 	t.Helper()
 	dir := t.TempDir()
 	files := map[string]string{
@@ -87,7 +85,7 @@ func fixture(t *testing.T) ([]contract.FileRef, func(contract.FileRef) string) {
 		"agent/server.go": "package main\n// needle in code\n",
 		"notes/link.md":   "see release:notes for details\n",
 	}
-	var refs []contract.FileRef
+	var refs []FileRef
 	for rel, body := range files {
 		p := filepath.Join(dir, filepath.FromSlash(rel))
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
@@ -96,15 +94,15 @@ func fixture(t *testing.T) ([]contract.FileRef, func(contract.FileRef) string) {
 		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		refs = append(refs, contract.FileRef{Mount: "v", Rel: rel, Path: p})
+		refs = append(refs, FileRef{Mount: "v", Rel: rel, Path: p})
 	}
-	return refs, func(f contract.FileRef) string { return f.Rel }
+	return refs, func(f FileRef) string { return f.Rel }
 }
 
 func searchPaths(t *testing.T, e *Engine, query string) []string {
 	t.Helper()
 	files, display := fixture(t)
-	res, err := e.Search(t.Context(), files, display, contract.Query{Text: query})
+	res, err := e.Search(t.Context(), files, display, Query{Text: query})
 	if err != nil {
 		t.Fatal(err)
 	}

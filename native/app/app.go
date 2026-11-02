@@ -14,7 +14,6 @@ import (
 
 	"fmt"
 	"github.com/cunninghamcard-bit/attention/native/internal/buildcmd"
-	"github.com/cunninghamcard-bit/attention/native/pluginreg"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -26,6 +25,7 @@ import (
 	"time"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/arcships/rutis/go/rutis/advanced"
 	"github.com/egoist/mygo"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/launcher"
@@ -46,10 +46,12 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/outline"
 	"github.com/cunninghamcard-bit/attention/native/plugins/palette"
 	"github.com/cunninghamcard-bit/attention/native/plugins/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/resources"
 	"github.com/cunninghamcard-bit/attention/native/plugins/search"
 	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/switcher"
 	"github.com/cunninghamcard-bit/attention/native/plugins/terminalui"
 	"github.com/cunninghamcard-bit/attention/native/plugins/textui"
@@ -64,37 +66,34 @@ import (
 // plugins are every plugin this binary carries; the profile's rows pick
 // which run.
 var plugins = []*rutis.Definition{
-	shell.Plugin, actions.Plugin, cli.Plugin, fs.Plugin, project.Plugin, fileresource.Plugin, index.Plugin, layout.Plugin, workspace.Plugin,
+	shell.Plugin, slots.Plugin, resources.Plugin, actions.Plugin, cli.Plugin, fs.Plugin, project.Plugin, fileresource.Plugin, index.Plugin, layout.Plugin, workspace.Plugin,
 	shortcuts.Plugin, palette.Plugin, switcher.Plugin, commandpalette.Plugin, gotoline.Plugin, settings.Plugin,
 	filetree.Plugin, search.Plugin, backlinks.Plugin, outline.Plugin, bookmarks.Plugin, textui.Plugin, markdownui.Plugin, imageui.Plugin,
 	web.Plugin, webread.Plugin, webhistory.Plugin, webindex.Plugin, webviewpanel.Plugin, terminalui.Plugin,
 }
 
-// Main runs attention.
-func Main() {
+// Main runs attention, including any extra plugins compiled in via `attention build --with`.
+func Main(extra ...*rutis.Definition) {
 	args := os.Args[1:]
 	switch {
 	case len(args) > 0 && args[0] == "build":
 		os.Exit(buildcmd.Run(args[1:]))
 	case len(args) == 1 && args[0] == "--rutis-manifest":
-		if err := rutis.ServeArgs(args, all()...); err != nil {
+		if err := advanced.ServeArgs(args, all(extra...)...); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 	case len(args) > 0 && isChannel(args[0]):
-		os.Exit(runtimeMain(args))
+		os.Exit(runtimeMain(args, extra...))
 	default:
-		os.Exit(launcher.Run(args))
+		os.Exit(launcher.Run(args, extra...))
 	}
 }
 
-// all are the plugins carried: attention's, then those compiled in with
-// it (pluginreg).
-func all() []*rutis.Definition {
-	out := append([]*rutis.Definition(nil), plugins...)
-	for _, e := range pluginreg.List() {
-		out = append(out, e.Def)
-	}
+func all(extra ...*rutis.Definition) []*rutis.Definition {
+	out := make([]*rutis.Definition, 0, len(plugins)+len(extra))
+	out = append(out, plugins...)
+	out = append(out, extra...)
 	return out
 }
 
@@ -104,7 +103,7 @@ func isChannel(a string) bool {
 
 // runtimeMain is the UI runtime. It is the carrier: mygo's run loop owns
 // the main thread; the window itself belongs to the shell plugin.
-func runtimeMain(args []string) int {
+func runtimeMain(args []string, extra ...*rutis.Definition) int {
 	// stdout and stderr are pipes to rutis-host. If it dies, rutis unloads
 	// this runtime's rows by itself; a cleanup that logs must not die of
 	// SIGPIPE half way (spike finding 4).
@@ -127,7 +126,7 @@ func runtimeMain(args []string) int {
 		}()
 		go watchLauncher(stop)
 		lifecycle.SetQuit(stop)
-		if err := rutis.ServeArgs(args, all()...); err != nil {
+		if err := advanced.ServeArgs(args, all(extra...)...); err != nil {
 			fmt.Fprintln(os.Stderr, "attention:", err)
 			return 1
 		}
@@ -161,7 +160,7 @@ func runtimeMain(args []string) int {
 	})
 	ended := make(chan error, 1)
 	go func() {
-		err := rutis.ServeArgs(args, all()...)
+		err := advanced.ServeArgs(args, all(extra...)...)
 		ended <- err
 		sessionOver.Store(true)
 		mygo.App.Quit()

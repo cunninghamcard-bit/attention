@@ -13,12 +13,12 @@ import (
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/smallnest/uix/components/lucide"
 
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
 	"github.com/cunninghamcard-bit/attention/native/internal/fuzzy"
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 )
 
 const (
@@ -34,10 +34,28 @@ const (
 // Plugin is the command palette while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "actions"},
+	Inject: []string{"shell", "slots", "actions", "shortcuts"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
+		var (
+			sh  *shell.Shell
+			sl  *slots.Registry
+			act *actions.Service
+			sc  *shortcuts.Shortcuts
+		)
+		if err := rctx.Use("shell", &sh); err != nil {
+			return err
+		}
+		if err := rctx.Use("slots", &sl); err != nil {
+			return err
+		}
+		if err := rctx.Use("actions", &act); err != nil {
+			return err
+		}
+		if err := rctx.Use("shortcuts", &sc); err != nil {
+			return err
+		}
 		ctx, cancel := context.WithCancel(context.Background())
-		off := Register(New(ctx))
+		off := Register(New(ctx, act, sc), sh, sl, act)
 		rctx.Effect(func(context.Context) error {
 			off()
 			cancel()
@@ -50,20 +68,24 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 // Palette is the source's state, on the main thread only.
 type Palette struct {
 	ctx      context.Context
+	act      *actions.Service
+	sc       *shortcuts.Shortcuts
 	recent   []string // command IDs, most recent first
-	commands []actionsapi.Command
+	commands []actions.Command
 }
 
 // New is a command palette running commands under ctx.
-func New(ctx context.Context) *Palette { return &Palette{ctx: ctx} }
+func New(ctx context.Context, act *actions.Service, sc *shortcuts.Shortcuts) *Palette {
+	return &Palette{ctx: ctx, act: act, sc: sc}
+}
 
 // Recent are the recently run commands' IDs, most recent first.
 func (p *Palette) Recent() []string { return p.recent }
 
 // Source is the command palette's source; its state is the recent
 // commands.
-func (p *Palette) Source() slotsapi.PaletteSource {
-	return slotsapi.PaletteSource{
+func (p *Palette) Source() slots.PaletteSource {
+	return slots.PaletteSource{
 		ID: ID, Placeholder: "Execute a command…",
 		Open:  p.load,
 		Items: p.items,
@@ -80,7 +102,7 @@ func (p *Palette) Source() slotsapi.PaletteSource {
 // ones first, most recent first.
 func (p *Palette) load() {
 	p.commands = p.commands[:0]
-	for _, c := range actionsapi.List() {
+	for _, c := range p.act.Commands() {
 		if c.Title != "" {
 			p.commands = append(p.commands, c)
 		}
@@ -90,7 +112,7 @@ func (p *Palette) load() {
 	for i, id := range p.recent {
 		order[id] = i + 1
 	}
-	rank := func(c actionsapi.Command) int {
+	rank := func(c actions.Command) int {
 		if n, ok := order[c.ID]; ok {
 			return n
 		}
@@ -113,7 +135,7 @@ func (p *Palette) note(id string) {
 	p.recent = out
 }
 
-func (p *Palette) items(query string) []slotsapi.PaletteItem {
+func (p *Palette) items(query string) []slots.PaletteItem {
 	q := strings.TrimSpace(query)
 	idx := make([]int, 0, len(p.commands))
 	if q == "" {
@@ -125,17 +147,21 @@ func (p *Palette) items(query string) []slotsapi.PaletteItem {
 			idx = append(idx, r.Index)
 		}
 	}
-	out := make([]slotsapi.PaletteItem, 0, len(idx))
+	out := make([]slots.PaletteItem, 0, len(idx))
 	for _, i := range idx {
 		cmd := p.commands[i]
-		out = append(out, slotsapi.PaletteItem{Key: "c:" + cmd.ID, Label: cmd.Title, Hint: shortcuts.EffectiveLabel(cmd),
+		var hint string
+		if p.sc != nil {
+			hint = p.sc.EffectiveLabel(cmd)
+		}
+		out = append(out, slots.PaletteItem{Key: "c:" + cmd.ID, Label: cmd.Title, Hint: hint,
 			Choose: func(bool) {
 				p.note(cmd.ID)
 				if cmd.Main != nil {
 					cmd.Main()
 					return
 				}
-				go func() { _, _ = cmd.Run(p.ctx, actionsapi.Args{Params: map[string]string{}}) }()
+				go func() { _, _ = cmd.Run(p.ctx, actions.Args{Params: map[string]string{}}) }()
 			}})
 	}
 	return out
@@ -143,14 +169,15 @@ func (p *Palette) items(query string) []slotsapi.PaletteItem {
 
 // Register adds the source, its command and its ribbon icon until off is
 // called.
-func Register(p *Palette) (off func()) {
+func Register(p *Palette, sh *shell.Shell, sl *slots.Registry, act *actions.Service) (off func()) {
+	open := func() { sl.OpenPalette(ID) }
 	offs := []func(){
-		slotsapi.RegisterPaletteSource(p.Source()),
-		actionsapi.Register(actionsapi.Command{ID: "command-palette:open", Title: "Open command palette", Keys: "Ctrl P", Main: open,
-			Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-				return shellapi.OnMain(ctx, func() (string, error) { open(); return "", nil })
+		sl.RegisterPaletteSource(p.Source()),
+		act.Add(actions.Command{ID: "command-palette:open", Title: "Open command palette", Keys: "Ctrl P", Main: open,
+			Run: func(ctx context.Context, _ actions.Args) (string, error) {
+				return shell.OnMain(ctx, sh, func() (string, error) { open(); return "", nil })
 			}}),
-		slotsapi.RegisterRibbon(slotsapi.RibbonItem{ID: ID, Title: "Open command palette", Icon: lucide.SquareTerminal(), Order: 1, Run: open}),
+		sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Open command palette", Icon: lucide.SquareTerminal(), Order: 1, Run: open}),
 	}
 	return func() {
 		for _, off := range offs {
@@ -158,6 +185,3 @@ func Register(p *Palette) (off func()) {
 		}
 	}
 }
-
-// open is command-palette:open.
-func open() { slotsapi.OpenPalette(ID) }

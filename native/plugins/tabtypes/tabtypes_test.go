@@ -1,4 +1,4 @@
-package tabtypesapi
+package tabtypes
 
 import "testing"
 
@@ -27,11 +27,12 @@ func TestMatch(t *testing.T) {
 }
 
 func TestClaimRanksByTierThenPatternThenOrder(t *testing.T) {
+	r := New(nil)
 	const md = "attention-resource://file/mount/m/a.md"
 	offs := []func(){
-		Register(TabType{ID: "text", Kind: "text", Priority: Fallback, Patterns: []string{"attention-resource://file/**"}}),
-		Register(TabType{ID: "md", Kind: "markdown", Priority: Builtin, Patterns: []string{"*.md"}}),
-		Register(TabType{ID: "notes", Kind: "notes", Priority: Builtin, Patterns: []string{"attention-resource://file/**/*.md"}}),
+		r.Register(TabType{ID: "text", Kind: "text", Priority: Fallback, Patterns: []string{"attention-resource://file/**"}}),
+		r.Register(TabType{ID: "md", Kind: "markdown", Priority: Builtin, Patterns: []string{"*.md"}}),
+		r.Register(TabType{ID: "notes", Kind: "notes", Priority: Builtin, Patterns: []string{"attention-resource://file/**/*.md"}}),
 	}
 	defer func() {
 		for _, off := range offs {
@@ -39,55 +40,57 @@ func TestClaimRanksByTierThenPatternThenOrder(t *testing.T) {
 		}
 	}()
 	var ids []string
-	for _, c := range Candidates(md) {
+	for _, c := range r.Candidates(md) {
 		ids = append(ids, c.ID)
 	}
 	if len(ids) != 3 || ids[0] != "notes" || ids[1] != "md" || ids[2] != "text" {
 		t.Fatalf("candidates = %v", ids)
 	}
-	if tt, ok := Claim("attention-resource://file/mount/m/a.go", ""); !ok || tt.ID != "text" {
+	if tt, ok := r.Claim("attention-resource://file/mount/m/a.go", ""); !ok || tt.ID != "text" {
 		t.Fatalf("a .go file claims %v %v", tt.ID, ok)
 	}
-	if tt, ok := Claim("attention-resource://file/mount/m/a.go", "markdown"); !ok || tt.ID != "md" {
+	if tt, ok := r.Claim("attention-resource://file/mount/m/a.go", "markdown"); !ok || tt.ID != "md" {
 		t.Fatalf("by kind, the patterns are not consulted: %v %v", tt.ID, ok)
 	}
-	gen := Generation()
+	gen := r.Generation()
 	offs[2]()
 	offs = offs[:2]
-	if Generation() == gen {
+	if r.Generation() == gen {
 		t.Fatal("removing a type changes the generation")
 	}
 }
 
 func TestAnExtensionShadowsTheBuiltinOfItsKind(t *testing.T) {
+	r := New(nil)
 	const md = "attention-resource://file/mount/m/a.md"
-	offBuiltin := Register(TabType{ID: "md", Kind: "markdown", Priority: Builtin, Patterns: []string{"*.md"}})
+	offBuiltin := r.Register(TabType{ID: "md", Kind: "markdown", Priority: Builtin, Patterns: []string{"*.md"}})
 	defer offBuiltin()
-	offExt := Register(TabType{ID: "ext", Kind: "markdown", Patterns: []string{"*.md"}, CanOpen: func(string) bool { return false }})
-	if tt, _ := Get("ext"); tt.Priority != Extension {
+	offExt := r.Register(TabType{ID: "ext", Kind: "markdown", Patterns: []string{"*.md"}, CanOpen: func(string) bool { return false }})
+	if tt, _ := r.Get("ext"); tt.Priority != Extension {
 		t.Fatalf("a type naming no tier is an Extension: %v", tt.Priority)
 	}
-	if cs := Candidates(md); len(cs) != 0 {
+	if cs := r.Candidates(md); len(cs) != 0 {
 		t.Fatalf("the shadowed builtin is no candidate: %v", cs)
 	}
-	if _, ok := Claim(md, "markdown"); ok {
+	if _, ok := r.Claim(md, "markdown"); ok {
 		t.Fatal("the extension in force vetoes, and the kind does not open")
 	}
 	offExt()
 	offExt()
-	if tt, ok := Claim(md, "markdown"); !ok || tt.ID != "md" {
+	if tt, ok := r.Claim(md, "markdown"); !ok || tt.ID != "md" {
 		t.Fatalf("the builtin resumes: %v %v", tt.ID, ok)
 	}
 }
 
 func TestWiringMistakesPanic(t *testing.T) {
-	off := Register(TabType{ID: "md", Kind: "markdown", Priority: Builtin})
+	r := New(nil)
+	off := r.Register(TabType{ID: "md", Kind: "markdown", Priority: Builtin})
 	defer off()
-	offText := Register(TabType{ID: "text", Kind: "text", Priority: Fallback})
+	offText := r.Register(TabType{ID: "text", Kind: "text", Priority: Fallback})
 	defer offText()
-	offExt := Register(TabType{ID: "ext", Kind: "markdown"})
+	offExt := r.Register(TabType{ID: "ext", Kind: "markdown"})
 	defer offExt()
-	offSolo := Register(TabType{ID: "solo", Kind: "solo", Priority: Builtin})
+	offSolo := r.Register(TabType{ID: "solo", Kind: "solo", Priority: Builtin})
 	defer offSolo()
 	for name, tt := range map[string]TabType{
 		"the same id":              {ID: "md", Kind: "other", Priority: Builtin},
@@ -101,7 +104,7 @@ func TestWiringMistakesPanic(t *testing.T) {
 					t.Errorf("%s does not panic", name)
 				}
 			}()
-			Register(tt)()
+			r.Register(tt)()
 		}()
 	}
 }

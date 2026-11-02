@@ -1,5 +1,4 @@
-// Package imageui is the image tab type (RFC 0001 §5.6): bitmaps and SVG,
-// fitted to the tab.
+// Package imageui is the image tab type (RFC 0001 §5.6).
 package imageui
 
 import (
@@ -14,32 +13,37 @@ import (
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
 
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 )
 
 const (
-	// ID is the type's id; Kind its kind.
-	ID   = "image-ui"
-	Kind = "image"
-
-	// MaxBytes is the largest image read.
+	ID       = "image-ui"
+	Kind     = "image"
 	MaxBytes = 50 << 20
 )
 
 // Plugin registers the image tab type while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "fs"},
+	Inject: []string{"shell", "tabTypes", "fs"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var fs fscontract.FS
+		var sh *shell.Shell
+		var tt *tabtypes.Registry
+		var fs fsplugin.FS
+		if err := rctx.Use("shell", &sh); err != nil {
+			return err
+		}
+		if err := rctx.Use("tabTypes", &tt); err != nil {
+			return err
+		}
 		if err := rctx.Use("fs", &fs); err != nil {
 			return err
 		}
 		ctx, cancel := context.WithCancel(context.Background())
-		off := Register(ctx, fs, shellapi.Update)
+		off := Register(ctx, fs, tt, sh.Update)
 		rctx.Effect(func(context.Context) error {
 			off()
 			cancel()
@@ -52,17 +56,16 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 type doc struct {
 	img     ui.ImageSource
 	err     string
-	gone    bool // the last read found no file
+	gone    bool
 	loaded  bool
 	loading bool
 	version int
 }
 
-// Register adds the image tab type until off is called; post runs a
-// function on the main thread.
-func Register(ctx context.Context, fs fscontract.FS, post func(func())) (off func()) {
+// Register adds the image tab type until off is called.
+func Register(ctx context.Context, fs fsplugin.FS, tt *tabtypes.Registry, post func(func())) (off func()) {
 	docs := map[int]*doc{}
-	load := func(d *doc, p tabtypesapi.Props) {
+	load := func(d *doc, p tabtypes.Props) {
 		d.loading, d.loaded, d.version = true, true, p.Info.Version
 		path := p.Info.Path
 		start := time.Now()
@@ -90,10 +93,10 @@ func Register(ctx context.Context, fs fscontract.FS, post func(func())) (off fun
 			})
 		}()
 	}
-	return tabtypesapi.Register(tabtypesapi.TabType{
-		ID: ID, Kind: Kind, Priority: tabtypesapi.Builtin,
+	return tt.Register(tabtypes.TabType{
+		ID: ID, Kind: Kind, Priority: tabtypes.Builtin,
 		Patterns: []string{"*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp", "*.webp", "*.svg"},
-		Body: func(c *ui.Context, p tabtypesapi.Props) {
+		Body: func(c *ui.Context, p tabtypes.Props) {
 			d, ok := docs[p.Info.ID]
 			if !ok {
 				d = &doc{}
@@ -117,7 +120,7 @@ func Register(ctx context.Context, fs fscontract.FS, post func(func())) (off fun
 				})
 			}
 		},
-		Status: func(c *ui.Context, _ tabtypesapi.Props) {
+		Status: func(c *ui.Context, _ tabtypes.Props) {
 			ui.Text(c, "Image").FontSize(12).TextColor(c.Theme().TextMuted)
 		},
 		Closed: func(id int) { delete(docs, id) },

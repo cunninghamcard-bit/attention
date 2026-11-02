@@ -9,22 +9,14 @@ import (
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	"github.com/cunninghamcard-bit/attention/native/settingsapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
 )
 
-// The Hotkeys settings tab, attention's HotkeysSettingTab
-// (apps/web/builtin/HotkeysSettingTab.ts): every titled command, its name
-// and id, its hotkeys each with Remove hotkey, Add hotkey, which records
-// the next combination, and Restore default hotkeys once it has been
-// changed. A hotkey another command also has is marked, not refused.
-
-// matching is getMatchingCommands: the titled commands whose name and id
-// hold every word of the query, by name.
-func matching(query string) []actionsapi.Command {
+func (s *Shortcuts) matching(query string) []actions.Command {
 	tokens := strings.Fields(strings.ToLower(query))
-	var out []actionsapi.Command
-	for _, cmd := range actionsapi.List() {
+	var out []actions.Command
+	for _, cmd := range s.actions.Commands() {
 		if cmd.Title == "" {
 			continue
 		}
@@ -41,30 +33,27 @@ func matching(query string) []actionsapi.Command {
 	return out
 }
 
-// hotkeysTab draws the tab.
 func (s *Shortcuts) hotkeysTab(c *ui.Context) {
-	// The modal keeps the window's shortcuts from it: record here.
 	if s.recording != "" {
 		s.record(c)
 	}
 	omgui.SettingsSection(c, "Hotkeys", func() {
 		omgui.SearchField(c, &s.filter, "Search commands...", false).Label("Search commands").FillWidth()
-		for _, cmd := range matching(s.filter) {
+		for _, cmd := range s.matching(s.filter) {
 			omgui.PreferenceRow(c, cmd.Title, cmd.ID, func() { s.commandHotkeys(c, cmd) })
 		}
 	})
 }
 
-// commandHotkeys is renderCommandHotkeys.
-func (s *Shortcuts) commandHotkeys(c *ui.Context, cmd actionsapi.Command) {
+func (s *Shortcuts) commandHotkeys(c *ui.Context, cmd actions.Command) {
 	t := c.Theme()
-	hs := Effective(cmd)
+	hs := s.Effective(cmd)
 	ui.Row(c).Gap(4).AlignItems(ui.Center).Children(func() {
 		if len(hs) == 0 {
 			ui.Text(c, "No hotkey").FontSize(12).TextColor(t.TextMuted)
 		}
 		for i, h := range hs {
-			conflicts := Conflicts(cmd, h)
+			conflicts := s.Conflicts(cmd, h)
 			chip := ui.Row(c).Key("hotkey:"+cmd.ID+":"+Format(h)).Height(24).Padding(0, 2, 0, 8).Gap(2).Radius(6).
 				Background(t.Surface).AlignItems(ui.Center)
 			if len(conflicts) > 0 {
@@ -77,7 +66,7 @@ func (s *Shortcuts) commandHotkeys(c *ui.Context, cmd actionsapi.Command) {
 			chip.Children(func() {
 				ui.Text(c, Format(h)).FontSize(12).SingleLine()
 				omgui.Button(c, omgui.ButtonProps{Label: "Remove hotkey", Icon: lucide.X(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
-					OnClick: func() { removeAt(cmd, i) }}).Tooltip("Remove hotkey")
+					OnClick: func() { s.removeAt(cmd, i) }}).Tooltip("Remove hotkey")
 			})
 		}
 		label, color := "Add hotkey", t.Text
@@ -86,19 +75,17 @@ func (s *Shortcuts) commandHotkeys(c *ui.Context, cmd actionsapi.Command) {
 		}
 		omgui.Button(c, omgui.ButtonProps{Label: label, Icon: lucide.Plus(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
 			IconColor: color, OnClick: func() { s.recording = cmd.ID }}).Tooltip(label)
-		if Overridden(cmd.ID) {
+		if s.Overridden(cmd.ID) {
 			omgui.Button(c, omgui.ButtonProps{Label: "Restore default hotkeys", Icon: lucide.RefreshCw(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
-				IconColor: t.Accent, OnClick: func() { settingsapi.Unset(settingsapi.Hotkeys, cmd.ID) }}).Tooltip("Restore default hotkeys")
+				IconColor: t.Accent, OnClick: func() { s.settings.Unset(settings.Hotkeys, cmd.ID) }}).Tooltip("Restore default hotkeys")
 		}
 	})
 }
 
-// removeAt is removeHotkeyAt: cmd's hotkeys less the i-th, kept as its
-// override.
-func removeAt(cmd actionsapi.Command, i int) {
-	hs := Effective(cmd)
+func (s *Shortcuts) removeAt(cmd actions.Command, i int) {
+	hs := s.Effective(cmd)
 	if i >= len(hs) {
 		return
 	}
-	settingsapi.Set(settingsapi.Hotkeys, cmd.ID, append(append([]Hotkey{}, hs[:i]...), hs[i+1:]...))
+	s.settings.Set(settings.Hotkeys, cmd.ID, append(append([]Hotkey{}, hs[:i]...), hs[i+1:]...))
 }

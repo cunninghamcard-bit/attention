@@ -1,7 +1,5 @@
-// Package markdownui is the markdown tab type (RFC 0001 §5.6): the
-// ui/markdown reading view, with the source in ui/editor a toggle away
-// (Ctrl E, attention's markdown:toggle-preview). A navigation to a line
-// shows the source, where the passage is.
+// Package markdownui is the markdown tab type (RFC 0001 §5.6, port of
+// apps/web/builtin/MarkdownView.ts).
 package markdownui
 
 import (
@@ -20,32 +18,45 @@ import (
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
 	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 )
 
-// ID is the type's id; Kind its kind.
 const (
 	ID   = "markdown-ui"
 	Kind = "markdown"
 )
 
-// Plugin registers the markdown tab type and its toggle command while
-// loaded.
+// Plugin registers the markdown tab type and its toggle command while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "fs", "actions"},
+	Inject: []string{"shell", "tabTypes", "workspace", "fs", "actions"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-		var fs fscontract.FS
+		var sh *shell.Shell
+		var tt *tabtypes.Registry
+		var ws Navigator
+		var fs fsplugin.FS
+		var act *actions.Service
+		if err := rctx.Use("shell", &sh); err != nil {
+			return err
+		}
+		if err := rctx.Use("tabTypes", &tt); err != nil {
+			return err
+		}
+		if err := rctx.Use("workspace", &ws); err != nil {
+			return err
+		}
 		if err := rctx.Use("fs", &fs); err != nil {
 			return err
 		}
+		if err := rctx.Use("actions", &act); err != nil {
+			return err
+		}
 		ctx, cancel := context.WithCancel(context.Background())
-		_, off := Register(ctx, fs, shellapi.Update)
+		_, off := Register(ctx, fs, sh, act, tt, ws, sh.Update)
 		rctx.Effect(func(context.Context) error {
 			off()
 			cancel()
@@ -55,41 +66,44 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	},
 })
 
+// Navigator is the workspace interface used by the markdown viewer.
+type Navigator interface {
+	ActiveTab() (tabtypes.Info, bool)
+	Open(path string, nav *tabtypes.Nav, newTab bool)
+	ResolveLink(ctx context.Context, link, dir string) (string, error)
+}
+
 type doc struct {
 	textdoc.Doc
-	source bool // the source instead of the reading view
-	md     markdown.Options
-	dir    string // md's image directory
-	// raw is the text last rewritten (obsidian.go), view what the reading
-	// view reads.
+	source    bool
+	md        markdown.Options
+	dir       string
 	raw, view string
 }
 
 // Viewer is the markdown tab type's state, on the main thread only.
 type Viewer struct {
 	l    *textdoc.Loader
+	ws   Navigator
 	docs map[int]*doc
 }
 
-// Register adds the markdown tab type until off is called; post runs a
-// function on the main thread.
-func Register(ctx context.Context, fs fscontract.FS, post func(func())) (v *Viewer, off func()) {
-	v = &Viewer{l: &textdoc.Loader{Ctx: ctx, FS: fs, Post: post}, docs: map[int]*doc{}}
-	// Toggle reading view (markdown:toggle-preview, Ctrl E) on the active
-	// tab, when it is a markdown one.
+// Register adds the markdown tab type until off is called.
+func Register(ctx context.Context, fs fsplugin.FS, sh *shell.Shell, act *actions.Service, tt *tabtypes.Registry, ws Navigator, post func(func())) (v *Viewer, off func()) {
+	v = &Viewer{l: &textdoc.Loader{Ctx: ctx, FS: fs, Post: post}, ws: ws, docs: map[int]*doc{}}
 	toggle := func() {
-		if ws := workspaceapi.Get(); ws != nil {
-			if tab, ok := ws.ActiveTab(); ok && tab.Kind == Kind {
+		if v.ws != nil {
+			if tab, ok := v.ws.ActiveTab(); ok && tab.Kind == Kind {
 				v.Toggle(tab.ID)
 			}
 		}
 	}
-	offCmd := actionsapi.Register(actionsapi.Command{ID: "markdown:toggle-preview", Title: "Toggle reading view", Keys: "Ctrl E", Main: toggle,
-		Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			return shellapi.OnMain(ctx, func() (string, error) { toggle(); return "", nil })
+	offCmd := act.Add(actions.Command{ID: "markdown:toggle-preview", Title: "Toggle reading view", Keys: "Ctrl E", Main: toggle,
+		Run: func(ctx context.Context, _ actions.Args) (string, error) {
+			return shell.OnMain(ctx, sh, func() (string, error) { toggle(); return "", nil })
 		}})
-	offType := tabtypesapi.Register(tabtypesapi.TabType{
-		ID: ID, Kind: Kind, Priority: tabtypesapi.Builtin,
+	offType := tt.Register(tabtypes.TabType{
+		ID: ID, Kind: Kind, Priority: tabtypes.Builtin,
 		Patterns: []string{"*.md", "*.markdown", "*.mdx"},
 		Body:     v.body,
 		Status:   v.status,
@@ -130,23 +144,23 @@ func (v *Viewer) Selected(id int) string {
 	return d.Ed.Buffer.String()[from:to]
 }
 
-func (v *Viewer) doc(p tabtypesapi.Props) *doc {
+func (v *Viewer) doc(p tabtypes.Props) *doc {
 	d, ok := v.docs[p.Info.ID]
 	if !ok {
 		d = &doc{}
-		d.OnNav = func() { d.source = true } // a passage is shown in the source
+		d.OnNav = func() { d.source = true }
 		v.docs[p.Info.ID] = d
 	}
 	if dir := filepath.Dir(p.Info.Path); dir != d.dir {
 		from := p.Info.Path
 		d.dir = dir
-		d.md.OnLink = func(url string) { followLink(from, url) }
-		d.md.LoadImage = loadImage(from)
+		d.md.OnLink = func(url string) { v.followLink(from, url) }
+		d.md.LoadImage = v.loadImage(from)
 	}
 	return d
 }
 
-func (v *Viewer) body(c *ui.Context, p tabtypesapi.Props) {
+func (v *Viewer) body(c *ui.Context, p tabtypes.Props) {
 	d := v.doc(p)
 	v.l.Sync(&d.Doc, p)
 	if d.Placeholder(c) {
@@ -166,7 +180,7 @@ func (v *Viewer) body(c *ui.Context, p tabtypesapi.Props) {
 	editor.View(c, d.Ed).Key(fmt.Sprintf("ed-%d", p.Info.ID)).Grow(1).Fill()
 }
 
-func (v *Viewer) status(c *ui.Context, p tabtypesapi.Props) {
+func (v *Viewer) status(c *ui.Context, p tabtypes.Props) {
 	d := v.doc(p)
 	if d.source {
 		d.Cursor(c)
@@ -174,9 +188,7 @@ func (v *Viewer) status(c *ui.Context, p tabtypesapi.Props) {
 	d.Language(c)
 }
 
-// actions is the view header's mode button, as MarkdownView's
-// (updateButtons): it names the view it switches to.
-func (v *Viewer) actions(c *ui.Context, p tabtypesapi.Props) {
+func (v *Viewer) actions(c *ui.Context, p tabtypes.Props) {
 	d := v.doc(p)
 	label, icon := "Switch to source view", lucide.Code()
 	if d.source {
@@ -186,18 +198,15 @@ func (v *Viewer) actions(c *ui.Context, p tabtypesapi.Props) {
 		OnClick: func() { d.source = !d.source }}).Tooltip(label + " (Ctrl E)")
 }
 
-// menu is More options' Toggle reading view (MarkdownView.onPaneMenu).
-func (v *Viewer) menu(id int) []tabtypesapi.MenuItem {
+func (v *Viewer) menu(id int) []tabtypes.MenuItem {
 	d, ok := v.docs[id]
 	if !ok {
 		return nil
 	}
-	return []tabtypesapi.MenuItem{{Title: "Toggle reading view", Icon: lucide.BookOpen(), Checked: !d.source, Run: func() { d.source = !d.source }}}
+	return []tabtypes.MenuItem{{Title: "Toggle reading view", Icon: lucide.BookOpen(), Checked: !d.source, Run: func() { d.source = !d.source }}}
 }
 
-// followLink opens a markdown link: a relative path or file: URL as a
-// file, a #fragment does nothing here, other schemes open outside.
-func followLink(from, url string) {
+func (v *Viewer) followLink(from, url string) {
 	if strings.HasPrefix(url, "#") {
 		return
 	}
@@ -205,7 +214,7 @@ func followLink(from, url string) {
 		if n, err := neturl.PathUnescape(name); err == nil {
 			name = n
 		}
-		openLink(from, name) // a wikilink: a name to find
+		v.openLink(from, name)
 		return
 	}
 	if strings.Contains(url, "://") && !strings.HasPrefix(url, "file://") {
@@ -228,7 +237,7 @@ func followLink(from, url string) {
 	if !filepath.IsAbs(p) {
 		p = filepath.Join(filepath.Dir(from), p)
 	}
-	if ws := workspaceapi.Get(); ws != nil {
-		ws.Open(filepath.Clean(p), nil, false)
+	if v.ws != nil {
+		v.ws.Open(filepath.Clean(p), nil, false)
 	}
 }

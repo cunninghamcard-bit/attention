@@ -1,7 +1,6 @@
 package project
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,7 +8,7 @@ import (
 
 	"github.com/arcships/rutis/go/rutis/rutistest"
 
-	contract "github.com/cunninghamcard-bit/attention/native/contract/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 )
 
@@ -18,13 +17,13 @@ func TestConfigMountsAddAndRemove(t *testing.T) {
 	extra := t.TempDir()
 	loaded := loadProject(t, root)
 
-	var mounts []contract.Mount
+	var mounts []Mount
 	call(t, loaded, "mounts", &mounts)
 	if len(mounts) != 1 || mounts[0].Path != root {
 		t.Fatalf("config mounts = %+v, want %s", mounts, root)
 	}
 
-	var added contract.Mount
+	var added Mount
 	call(t, loaded, "addMount", &added, extra)
 	if added.Path != extra {
 		t.Fatalf("addMount = %+v", added)
@@ -59,7 +58,7 @@ func TestFilesSkipsNodeModulesAndGit(t *testing.T) {
 	write(".git/config", "skip")
 
 	loaded := loadProject(t, root)
-	var listing contract.Listing
+	var listing Listing
 	call(t, loaded, "files", &listing)
 
 	var rels []string
@@ -98,13 +97,13 @@ func TestSearchCaseLimitFiltersAndMultipleMatches(t *testing.T) {
 	write("x3.md", "x\n")
 
 	loaded := loadProject(t, root)
-	search := func(q contract.Query) contract.SearchResult {
+	search := func(q Query) SearchResult {
 		t.Helper()
-		var res contract.SearchResult
+		var res SearchResult
 		call(t, loaded, "search", &res, q)
 		return res
 	}
-	matches := func(res contract.SearchResult) int {
+	matches := func(res SearchResult) int {
 		n := 0
 		for _, f := range res.Files {
 			n += len(f.Matches)
@@ -112,20 +111,20 @@ func TestSearchCaseLimitFiltersAndMultipleMatches(t *testing.T) {
 		return n
 	}
 
-	if res := search(contract.Query{Text: "foo"}); len(res.Files) != 1 || matches(res) != 3 {
+	if res := search(Query{Text: "foo"}); len(res.Files) != 1 || matches(res) != 3 {
 		t.Fatalf("case-insensitive foo = %+v", res)
 	}
-	if res := search(contract.Query{Text: "Foo", CaseSensitive: true}); matches(res) != 1 || res.Files[0].Matches[0].Col != 1 {
+	if res := search(Query{Text: "Foo", CaseSensitive: true}); matches(res) != 1 || res.Files[0].Matches[0].Col != 1 {
 		t.Fatalf("case-sensitive Foo = %+v", res)
 	}
-	if res := search(contract.Query{Text: "x", Limit: 2}); len(res.Files) != 2 || !res.Truncated {
+	if res := search(Query{Text: "x", Limit: 2}); len(res.Files) != 2 || !res.Truncated {
 		t.Fatalf("limit 2 = %+v", res)
 	}
-	if res := search(contract.Query{Text: "file:case"}); len(res.Files) != 1 || res.Files[0].Rel != "case.md" || res.Files[0].ModTime == 0 {
+	if res := search(Query{Text: "file:case"}); len(res.Files) != 1 || res.Files[0].Rel != "case.md" || res.Files[0].ModTime == 0 {
 		t.Fatalf("file:case = %+v", res)
 	}
 
-	multi := search(contract.Query{Text: "abc"})
+	multi := search(Query{Text: "abc"})
 	if len(multi.Files) != 1 || matches(multi) != 2 {
 		t.Fatalf("two matches on one line = %+v", multi)
 	}
@@ -140,11 +139,6 @@ func TestSearchCaseLimitFiltersAndMultipleMatches(t *testing.T) {
 	}
 }
 
-// stub is a stand-in for the injected "actions" service.
-type stub struct{}
-
-func (stub) Ready(context.Context) error { return nil }
-
 func loadProject(t *testing.T, mounts ...string) *rutistest.Loaded {
 	t.Helper()
 	t.Setenv("ATTENTION_CONFIG_DIR", t.TempDir())
@@ -154,7 +148,7 @@ func loadProject(t *testing.T, mounts ...string) *rutistest.Loaded {
 	}
 	t.Cleanup(func() { _ = fs.Close() })
 	return rutistest.Load(t, Plugin, Config{Mounts: mounts}, map[string]any{
-		"actions": stub{},
+		"actions": actions.New(),
 		"fs":      fs,
 	})
 }

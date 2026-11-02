@@ -9,12 +9,15 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
-	projectcontract "github.com/cunninghamcard-bit/attention/native/contract/project"
-	"github.com/cunninghamcard-bit/attention/native/resourcesapi"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
+	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
+	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
+	"github.com/cunninghamcard-bit/attention/native/plugins/resources"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 )
 
 // maxClosed is how many closed tabs Undo close tab can bring back.
@@ -22,13 +25,20 @@ const maxClosed = 20
 
 // Workspace is the center's state: the tab groups, their tabs, the files
 // they show. Every field is read and written on the main thread only: work
-// done on goroutines comes back through shellapi.Update (RFC §5.8).
+// done on goroutines comes back through shell.Shell.Update (RFC §5.8).
 type Workspace struct {
-	ctx     context.Context
-	fs      fscontract.FS
-	project projectcontract.Project
+	ctx      context.Context
+	sh       *shell.Shell
+	sl       *slots.Registry
+	res      *resources.Registry
+	lyt      *layout.Layout
+	sc       *shortcuts.Shortcuts
+	act      *actions.Service
+	tabTypes *tabtypes.Registry
+	fs       fsplugin.FS
+	project  projectplugin.Project
 
-	mounts       []projectcontract.Mount
+	mounts       []projectplugin.Mount
 	mountsLoaded bool
 
 	// root is the center's layout: tab groups in splits (tree.go).
@@ -39,7 +49,7 @@ type Workspace struct {
 	nextTab int
 	closed  []string // recently closed files, newest last
 	// recentFiles are the files opened last, newest first: the quick
-	// switcher's recent list (workspaceapi.RecentFiles).
+	// switcher's recent list (Workspace.RecentFiles).
 	recentFiles []string
 	restoring   *sessionNode // the layout to reopen once the mounts are known
 	saveSoon    func()
@@ -48,9 +58,33 @@ type Workspace struct {
 	typesGen    int // the tab type registry's generation last claimed against
 }
 
-func newWorkspace(ctx context.Context, fs fscontract.FS, project projectcontract.Project) *Workspace {
+func newWorkspace(
+	ctx context.Context,
+	sh *shell.Shell,
+	sl *slots.Registry,
+	res *resources.Registry,
+	lyt *layout.Layout,
+	sc *shortcuts.Shortcuts,
+	act *actions.Service,
+	fs fsplugin.FS,
+	project projectplugin.Project,
+) *Workspace {
+	if sh == nil {
+		sh = shell.New()
+	}
+	if sl == nil {
+		sl = slots.New(sh.Invalidate)
+	}
+	if res == nil {
+		res = resources.New(sh.Update, sh.Invalidate)
+	}
+	if act == nil {
+		act = actions.New()
+	}
 	ws := &Workspace{
-		ctx: ctx, fs: fs, project: project,
+		ctx: ctx, sh: sh, sl: sl, res: res, lyt: lyt, sc: sc, act: act,
+		tabTypes: tabtypes.New(sh.Invalidate),
+		fs:       fs, project: project,
 		root: &node{dir: vertical},
 	}
 	ws.root.insert(0, newGroupNode(ws.newPane()))
@@ -64,11 +98,11 @@ func (ws *Workspace) newPane() *pane {
 }
 
 // addressOf is path's resource address: under its mount, else absolute.
-func (ws *Workspace) addressOf(path string) string { return projectcontract.AddressOf(ws.mounts, path) }
+func (ws *Workspace) addressOf(path string) string { return projectplugin.AddressOf(ws.mounts, path) }
 
 // claim gives t the tab type that shows its address now.
 func (ws *Workspace) claim(t *tab) {
-	tt, ok := tabtypesapi.Claim(t.address, t.wantKind)
+	tt, ok := ws.tabTypes.Claim(t.address, t.wantKind)
 	if ok && tt.ID == t.typeID {
 		t.closed = tt.Closed // the same type, perhaps registered again
 		return
@@ -96,7 +130,7 @@ func (ws *Workspace) release(t *tab) {
 // opened before its viewer loaded, or whose viewer unloaded, finds its
 // type (RFC §5.5: contributions come back with their plugin).
 func (ws *Workspace) reclaim() {
-	gen := tabtypesapi.Generation()
+	gen := ws.tabTypes.Generation()
 	if gen == ws.typesGen {
 		return
 	}
@@ -112,11 +146,11 @@ func (ws *Workspace) reclaim() {
 
 // props are what t's body is given: its address's resource state, which
 // the tab holds for its life.
-func (ws *Workspace) props(t *tab, focused bool) tabtypesapi.Props {
-	snap := resourcesapi.Get(t.address)
+func (ws *Workspace) props(t *tab, focused bool) tabtypes.Props {
+	snap := ws.res.Get(t.address)
 	id := t.id
-	return tabtypesapi.Props{Info: tabtypesapi.Info{ID: t.id, Kind: t.kind, Address: t.address, Path: t.path, Title: t.title,
-		Nav: t.nav, NavRevision: t.navRev, Version: snap.Version, Pending: snap.Status == resourcesapi.Loading,
+	return tabtypes.Props{Info: tabtypes.Info{ID: t.id, Kind: t.kind, Address: t.address, Path: t.path, Title: t.title,
+		Nav: t.nav, NavRevision: t.navRev, Version: snap.Version, Pending: snap.Status == resources.Loading,
 		Missing: missing(snap), Focused: focused},
 		Retarget: func(address, title string) {
 			if t.id == id && t.page() && address != t.address {
@@ -147,7 +181,7 @@ func (ws *Workspace) retarget(t *tab, address, title string) {
 // later runs fn, a change to the tree, when the next frame starts.
 func (ws *Workspace) later(fn func()) {
 	ws.queue = append(ws.queue, fn)
-	if w := shellapi.Window(); w != nil {
+	if w := ws.sh.Window(); w != nil {
 		w.Invalidate()
 	}
 }
@@ -197,8 +231,8 @@ func (ws *Workspace) focusGroup(g *pane) {
 func (ws *Workspace) activeTab() *tab { return ws.activePane().current() }
 
 // mountOf returns the mount holding path and path relative to it.
-func (ws *Workspace) mountOf(path string) (projectcontract.Mount, string, bool) {
-	return projectcontract.MountOf(ws.mounts, path)
+func (ws *Workspace) mountOf(path string) (projectplugin.Mount, string, bool) {
+	return projectplugin.MountOf(ws.mounts, path)
 }
 
 // display is a path as the CLI and the tabs' tooltips show it.
@@ -207,14 +241,14 @@ func (ws *Workspace) display(path string) string {
 		if rel == "." {
 			return m.Name
 		}
-		return projectcontract.Display(m, rel)
+		return projectplugin.Display(m, rel)
 	}
 	return path
 }
 
 // ---- mounts -----------------------------------------------------------------
 
-func (ws *Workspace) setMounts(ms []projectcontract.Mount) {
+func (ws *Workspace) setMounts(ms []projectplugin.Mount) {
 	ws.mounts = ms
 	ws.mountsLoaded = true
 	// A file opened before the mounts were known gets its mount address.
@@ -225,7 +259,7 @@ func (ws *Workspace) setMounts(ms []projectcontract.Mount) {
 			}
 			if a := ws.addressOf(t.path); a != t.address {
 				t.hold()
-				t.address, t.hold = a, resourcesapi.Hold(a)
+				t.address, t.hold = a, ws.res.Hold(a)
 				ws.claim(t)
 			}
 		}
@@ -239,20 +273,20 @@ func (ws *Workspace) setMounts(ms []projectcontract.Mount) {
 // ---- tabs -------------------------------------------------------------------
 
 // open shows path (see openAddress) and applies nav when given.
-func (ws *Workspace) open(path string, nav *workspaceapi.Nav) *tab {
+func (ws *Workspace) open(path string, nav *Nav) *tab {
 	return ws.openIn(path, nav, false)
 }
 
 // openIn is open; newTab opens it in a new tab even when one shows path.
-func (ws *Workspace) openIn(path string, nav *workspaceapi.Nav, newTab bool) *tab {
-	t, _ := ws.openAddress(ws.addressOf(path), path, workspaceapi.OpenOptions{Nav: nav, NewTab: newTab})
+func (ws *Workspace) openIn(path string, nav *Nav, newTab bool) *tab {
+	t, _ := ws.openAddress(ws.addressOf(path), path, OpenOptions{Nav: nav, NewTab: newTab})
 	return t
 }
 
 // openResource opens a file address, or a web page's
-// (workspaceapi.API.OpenResource).
-func (ws *Workspace) openResource(address string, o workspaceapi.OpenOptions) (*tab, error) {
-	if tabtypesapi.Resourceless(address) {
+// (Workspace.OpenResource).
+func (ws *Workspace) openResource(address string, o OpenOptions) (*tab, error) {
+	if tabtypes.Resourceless(address) {
 		return ws.openAddress(address, "", o)
 	}
 	path, err := ws.pathOf(address)
@@ -264,7 +298,7 @@ func (ws *Workspace) openResource(address string, o workspaceapi.OpenOptions) (*
 
 // pathOf is the file a file address names.
 func (ws *Workspace) pathOf(address string) (string, error) {
-	return projectcontract.PathOf(ws.mounts, address)
+	return projectplugin.PathOf(ws.mounts, address)
 }
 
 // openAddress opens path, whose canonical address is address, as
@@ -272,9 +306,9 @@ func (ws *Workspace) pathOf(address string) (string, error) {
 // revealed; else the active tab navigates to it, keeping where it was in
 // its history (WorkspaceLeaf.recordHistory); newTab opens it in a new tab
 // after the active one instead (getLeaf("tab")).
-func (ws *Workspace) openAddress(address, path string, opts workspaceapi.OpenOptions) (*tab, error) {
+func (ws *Workspace) openAddress(address, path string, opts OpenOptions) (*tab, error) {
 	if opts.Kind != "" {
-		if _, ok := tabtypesapi.Claim(address, opts.Kind); !ok {
+		if _, ok := ws.tabTypes.Claim(address, opts.Kind); !ok {
 			return nil, fmt.Errorf("no tab type of kind %q opens %q", opts.Kind, address)
 		}
 	}
@@ -282,7 +316,7 @@ func (ws *Workspace) openAddress(address, path string, opts workspaceapi.OpenOpt
 	st := histState{address: address, path: path, kind: opts.Kind, nav: nav}
 	if !newTab {
 		kind := ""
-		if tt, ok := tabtypesapi.Claim(address, opts.Kind); ok {
+		if tt, ok := ws.tabTypes.Claim(address, opts.Kind); ok {
 			kind = tt.Kind
 		}
 		// The focused group first, so its tab wins over another group's.
@@ -315,7 +349,7 @@ func (ws *Workspace) openAddress(address, path string, opts workspaceapi.OpenOpt
 		ws.show(cur, st)
 		return cur, nil
 	}
-	t := &tab{}
+	t := &tab{ws: ws}
 	at := p.active + 1
 	if len(p.tabs) == 0 {
 		at = 0
@@ -359,7 +393,7 @@ func (ws *Workspace) show(t *tab, st histState) {
 		t.title = title // the title it had there, not its type's guess
 	}
 	if !t.page() {
-		t.hold = resourcesapi.Hold(st.address)
+		t.hold = ws.res.Hold(st.address)
 		ws.noteRecentFile(st.path)
 	}
 	ws.changed()
@@ -367,23 +401,23 @@ func (ws *Workspace) show(t *tab, st histState) {
 
 // openEntry reopens an entry in a new tab.
 func (ws *Workspace) openEntry(entry string) {
-	if kind, ok := tabtypesapi.PageKind(entry); ok {
-		_, _ = ws.openTab(kind, workspaceapi.OpenOptions{NewTab: true})
+	if kind, ok := tabtypes.PageKind(entry); ok {
+		_, _ = ws.openTab(kind, OpenOptions{NewTab: true})
 		return
 	}
-	if tabtypesapi.Resourceless(entry) {
-		_, _ = ws.openAddress(entry, "", workspaceapi.OpenOptions{NewTab: true})
+	if tabtypes.Resourceless(entry) {
+		_, _ = ws.openAddress(entry, "", OpenOptions{NewTab: true})
 		return
 	}
 	ws.openIn(entry, nil, true)
 }
 
-// openTab shows the page of kind (workspaceapi.API.OpenTab): its tab, or
+// openTab shows the page of kind (Workspace.OpenTab): its tab, or
 // a new one — a page never takes the place of the file the active tab
 // shows (dsh's openTab).
-func (ws *Workspace) openTab(kind string, o workspaceapi.OpenOptions) (*tab, error) {
+func (ws *Workspace) openTab(kind string, o OpenOptions) (*tab, error) {
 	o.Kind = kind
-	address := tabtypesapi.PageAddress(kind)
+	address := tabtypes.PageAddress(kind)
 	if !o.NewTab {
 		for _, g := range ws.groups() {
 			for i, t := range g.tabs {
@@ -478,7 +512,7 @@ func (ws *Workspace) split(dir direction) {
 	default:
 		// A tab of its own, though the file is open beside it
 		// (duplicateLeaf), with the tab's history.
-		if d, err := ws.openAddress(t.address, t.path, workspaceapi.OpenOptions{Nav: t.nav, Kind: t.wantKind, NewTab: true}); err == nil {
+		if d, err := ws.openAddress(t.address, t.path, OpenOptions{Nav: t.nav, Kind: t.wantKind, NewTab: true}); err == nil {
 			d.back, d.forward = append([]histState(nil), t.back...), append([]histState(nil), t.forward...)
 		}
 	}
@@ -551,7 +585,7 @@ func (ws *Workspace) changed() {
 	}
 	if title != ws.title {
 		ws.title = title
-		if w := shellapi.Window(); w != nil {
+		if w := ws.sh.Window(); w != nil {
 			w.SetTitle(title)
 		}
 	}
@@ -561,7 +595,7 @@ func (ws *Workspace) changed() {
 func (ws *Workspace) newTab() {
 	p := ws.activePane()
 	ws.nextTab++
-	t := &tab{id: ws.nextTab, empty: true, title: "New tab"}
+	t := &tab{ws: ws, id: ws.nextTab, empty: true, title: "New tab"}
 	at := min(p.active+1, len(p.tabs))
 	p.tabs = append(p.tabs[:at], append([]*tab{t}, p.tabs[at:]...)...)
 	p.active = at
@@ -624,8 +658,9 @@ func (p *pane) current() *tab {
 }
 
 // tab is a tab's identity and what the workspace knows of its file; the
-// content is its tab type's (tabtypesapi).
+// content is its tab type's (tabtypes).
 type tab struct {
+	ws    *Workspace
 	id    int
 	empty bool // a new tab, until a file opens in it
 	// kind and typeID are the claiming tab type's, "" while none claims the
@@ -641,8 +676,8 @@ type tab struct {
 	path    string
 	title   string
 
-	hold   func() // releases the address's resource (resourcesapi.Hold)
-	nav    *workspaceapi.Nav
+	hold   func() // releases the address's resource (resources.Hold)
+	nav    *Nav
 	navRev int
 	// back and forward are where the tab was and went back from, the
 	// nearest last (WorkspaceLeaf.backHistory, forwardHistory).
@@ -650,7 +685,9 @@ type tab struct {
 }
 
 // isMissing reports whether t's file is gone.
-func (t *tab) isMissing() bool { return !t.empty && missing(resourcesapi.Get(t.address)) }
+func (t *tab) isMissing() bool {
+	return !t.empty && t.ws != nil && missing(t.ws.res.Get(t.address))
+}
 
 func (t *tab) state() histState {
 	return histState{address: t.address, path: t.path, kind: t.wantKind, title: t.title, nav: t.nav}
@@ -667,7 +704,7 @@ func (t *tab) record() {
 	t.forward = nil
 }
 
-// page reports whether t shows a page (tabtypesapi.PageAddress) or a web
+// page reports whether t shows a page (tabtypes.PageAddress) or a web
 // page, not a file.
 func (t *tab) page() bool {
 	return !t.empty && t.path == ""
@@ -687,12 +724,12 @@ func (t *tab) entry() string {
 type histState struct {
 	address, path, kind string
 	title               string // a page's, as it was
-	nav                 *workspaceapi.Nav
+	nav                 *Nav
 }
 
 // missing reports whether a snapshot says the file is gone.
-func missing(s resourcesapi.Snapshot) bool {
-	return s.Status == resourcesapi.Failed && errors.Is(s.Err, os.ErrNotExist)
+func missing(s resources.Snapshot) bool {
+	return s.Status == resources.Failed && errors.Is(s.Err, os.ErrNotExist)
 }
 
 func debugf(format string, a ...any) {

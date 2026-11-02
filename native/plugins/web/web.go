@@ -16,6 +16,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -29,15 +30,15 @@ import (
 	"github.com/smallnest/uix/components/lucide"
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
-	"github.com/cunninghamcard-bit/attention/native/actionsapi"
-	webcontract "github.com/cunninghamcard-bit/attention/native/contract/web"
 	"github.com/cunninghamcard-bit/attention/native/internal/htmlextract"
-	"github.com/cunninghamcard-bit/attention/native/settingsapi"
-	"github.com/cunninghamcard-bit/attention/native/shellapi"
-	"github.com/cunninghamcard-bit/attention/native/slotsapi"
-	"github.com/cunninghamcard-bit/attention/native/tabtypesapi"
-	"github.com/cunninghamcard-bit/attention/native/webhistoryapi"
-	"github.com/cunninghamcard-bit/attention/native/workspaceapi"
+	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/bookmarks"
+	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
+	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
+	"github.com/cunninghamcard-bit/attention/native/plugins/webhistory"
+	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 )
 
 const (
@@ -45,46 +46,95 @@ const (
 	ID   = "web"
 	Kind = "webviewer"
 
+	// PageLoadedEvent is emitted by the web plugin when a page finished
+	// loading, with its Page.
+	PageLoadedEvent = "web/page-loaded"
+
 	// configFile is the web viewer's settings file (its plugin data,
 	// webviewer.json).
 	configFile = "webviewer"
 )
 
 var (
-	// pages are the tabs' pages by tab id, on the main thread only.
-	pages = map[int]*page{}
-
 	scheme = regexp.MustCompile(`(?i)^(https?|file|about):`)
 	domain = regexp.MustCompile(`(?i)^[\w.-]+\.[a-z]{2,}(?:/.*)?$`)
 
 	// Plugin registers the web tab type and its commands while loaded.
 	Plugin = rutis.Define(rutis.Plugin[struct{}]{
-		Name:   ID,
-		Inject: []string{"shell", "workspace"},
+		Name:     ID,
+		Inject:   []string{"shell", "slots", "tabTypes", "workspace", "actions", "settings"},
+		Optional: []string{"bookmarks", "web-history"},
 		Apply: func(rctx *rutis.Ctx, _ struct{}) error {
-			settingsapi.Load(configFile)
+			var (
+				sh  *shell.Shell
+				sl  *slots.Registry
+				tt  *tabtypes.Registry
+				ws  *workspace.Workspace
+				act *actions.Service
+				set *settings.Settings
+			)
+			if err := rctx.Use("shell", &sh); err != nil {
+				return err
+			}
+			if err := rctx.Use("slots", &sl); err != nil {
+				return err
+			}
+			if err := rctx.Use("tabTypes", &tt); err != nil {
+				return err
+			}
+			if err := rctx.Use("workspace", &ws); err != nil {
+				return err
+			}
+			if err := rctx.Use("actions", &act); err != nil {
+				return err
+			}
+			if err := rctx.Use("settings", &set); err != nil {
+				return err
+			}
+			v := &viewer{
+				sh: sh, sl: sl, tt: tt, ws: ws, act: act, set: set,
+				bm: func() *bookmarks.Bookmarks {
+					var b *bookmarks.Bookmarks
+					_, _ = rctx.Get("bookmarks", &b)
+					return b
+				},
+				hist: func() *webhistory.History {
+					var h *webhistory.History
+					_, _ = rctx.Get("web-history", &h)
+					return h
+				},
+				pages: map[int]*page{},
+			}
+			set.Load(configFile)
 			// A service of no methods: who injects it hears its events
-			// (web-index, webcontract.PageLoadedEvent).
+			// (web-index, PageLoadedEvent).
 			rctx.Provide("web", struct{}{})
 			emitCtx, cancel := context.WithCancel(context.Background())
-			off := Register(func(p webcontract.Page) { _ = rctx.Emit(emitCtx, webcontract.PageLoadedEvent, p) })
-			offs := []func(){slotsapi.RegisterSettingsSection(slotsapi.SettingsSection{ID: "webviewer", Title: "Web viewer", Icon: lucide.Globe(),
-				Group: slotsapi.CorePlugins, Keywords: []string{"Search engine", "Clear browsing data", "history"}, View: settingTab})}
-			for _, cmd := range commands() {
-				offs = append(offs, actionsapi.Register(cmd))
+			off := v.register(func(p Page) { _ = rctx.Emit(emitCtx, PageLoadedEvent, p) })
+			offs := []func(){sl.RegisterSettingsSection(slots.SettingsSection{ID: "webviewer", Title: "Web viewer", Icon: lucide.Globe(),
+				Group: slots.CorePlugins, Keywords: []string{"Search engine", "Clear browsing data", "history"}, View: v.settingTab})}
+			for _, cmd := range v.commands() {
+				offs = append(offs, act.Add(cmd))
 			}
 			rctx.Effect(func(context.Context) error {
 				for _, o := range offs {
 					o()
 				}
 				cancel()
-				shellapi.Update(off)
+				sh.Update(off)
 				return nil
 			})
 			return nil
 		},
 	})
 )
+
+// Page is a loaded page's article (internal/htmlextract), as markdown.
+type Page struct {
+	URL      string `json:"url"`
+	Title    string `json:"title"`
+	Markdown string `json:"markdown"`
+}
 
 // page is a tab's web view and what its header shows.
 type page struct {
@@ -119,69 +169,64 @@ type page struct {
 	downloaded *mygo.Download
 }
 
+type viewer struct {
+	sh    *shell.Shell
+	sl    *slots.Registry
+	tt    *tabtypes.Registry
+	ws    *workspace.Workspace
+	act   *actions.Service
+	set   *settings.Settings
+	bm    func() *bookmarks.Bookmarks
+	hist  func() *webhistory.History
+	pages map[int]*page
+}
+
 // activePage is the active tab's page, nil when it shows no web page.
-func activePage() *page {
-	ws := workspaceapi.Get()
-	if ws == nil {
+func (v *viewer) activePage() *page {
+	if v.ws == nil {
 		return nil
 	}
-	info, ok := ws.ActiveTab()
+	info, ok := v.ws.ActiveTab()
 	if !ok || info.Kind != Kind {
 		return nil
 	}
-	return pages[info.ID]
+	return v.pages[info.ID]
 }
 
-// NormalizeURL is what the address bar opens for input
-// (WebViewerService.normalizeUrl): the blank page for nothing, a URL as
-// it is, a domain over https, anything else a search.
-func NormalizeURL(input string) string {
-	s := strings.TrimSpace(input)
-	switch {
-	case s == "":
-		return "about:blank"
-	case scheme.MatchString(s):
-		return s
-	case domain.MatchString(s):
-		return "https://" + s
-	}
-	engine := "https://duckduckgo.com/?q="
-	if searchEngine() == "google" {
-		engine = "https://www.google.com/search?q="
-	}
-	return engine + url.QueryEscape(s)
+func (v *viewer) normalizeURL(input string) string {
+	return normalizeURL(input, v.searchEngine())
 }
 
-// Register adds the web tab type until off is called.
+// register adds the web tab type until off is called.
 // loaded, when set, takes each page that finished loading: its article
-// (webcontract.PageLoadedEvent).
-func Register(loaded func(webcontract.Page)) (off func()) {
-	get := func(p tabtypesapi.Props) *page {
-		pg, ok := pages[p.Info.ID]
+// (PageLoadedEvent).
+func (v *viewer) register(loaded func(Page)) (off func()) {
+	get := func(p tabtypes.Props) *page {
+		pg, ok := v.pages[p.Info.ID]
 		if ok {
 			return pg
 		}
 		pg = &page{typed: p.Info.Address, shown: p.Info.Address}
-		pages[p.Info.ID] = pg
-		w := shellapi.Window()
+		v.pages[p.Info.ID] = pg
+		w := v.sh.Window()
 		if w == nil {
 			pg.err = "No window to show the page in."
 			return pg
 		}
-		v, err := w.NewWebView(mygo.WebViewOptions{URL: p.Info.Address})
+		wv, err := w.NewWebView(mygo.WebViewOptions{URL: p.Info.Address})
 		if err != nil {
 			pg.err = err.Error()
 			return pg
 		}
-		pg.view = v
+		pg.view = wv
 		pg.loading = true
 		id, retarget, setTitle := p.Info.ID, p.Retarget, p.SetTitle
-		live := func() bool { return pages[id] == pg }
+		live := func() bool { return v.pages[id] == pg }
 		// commit is handleCommittedNavigation: the tab moves to where the
 		// page went, the address it showed kept in its history.
 		commit := func(address string) {
 			// A blob:, data: or javascript: page is no address a tab keeps.
-			if !live() || !tabtypesapi.WebAddress(address) {
+			if !live() || !tabtypes.WebAddress(address) {
 				return
 			}
 			pg.err = ""
@@ -191,38 +236,38 @@ func Register(loaded func(webcontract.Page)) (off func()) {
 				pg.found, pg.res = "", mygo.FindResult{}
 				retarget(address, titleFromURL(address))
 			}
-			record(address, "")
+			v.record(address, "")
 		}
-		pv := v.Page()
+		pv := wv.Page()
 		pg.offs = append(pg.offs,
 			pv.OnDidNavigate(func(address string) {
-				shellapi.Update(func() { pg.loading = true; commit(address) })
+				v.sh.Update(func() { pg.loading = true; commit(address) })
 			}),
 			pv.OnPageTitleUpdated(func(e *mygo.TitleEvent) {
 				e.PreventDefault() // the window's title is the workspace's
 				title := e.Title
 				address := pv.URL()
-				shellapi.Update(func() {
+				v.sh.Update(func() {
 					// A page that moved itself (history.pushState) says so
 					// only by its URL.
 					commit(address)
 					if live() && title != "" {
 						setTitle(title)
-						record(address, title)
+						v.record(address, title)
 					}
 				})
 			}),
 			pv.OnDownloadDone(func(d *mygo.Download) {
-				shellapi.Update(func() { pg.downloaded = d })
+				v.sh.Update(func() { pg.downloaded = d })
 			}),
 			pv.OnDidFinishLoad(func() {
-				shellapi.Update(func() { pg.loading = false })
+				v.sh.Update(func() { pg.loading = false })
 				if loaded != nil {
 					go announce(pv, loaded)
 				}
 			}),
 			pv.OnDidFailLoad(func(e *mygo.LoadError) {
-				shellapi.Update(func() {
+				v.sh.Update(func() {
 					pg.loading = false
 					// A cancelled load is a navigation going on (ERR_ABORTED).
 					if live() && !strings.Contains(strings.ToLower(e.Description), "cancel") {
@@ -233,25 +278,25 @@ func Register(loaded func(webcontract.Page)) (off func()) {
 		)
 		// A link that asks for another window opens in a new tab.
 		pv.SetWindowOpenHandler(func(req mygo.WindowOpenRequest) *mygo.WindowOptions {
-			shellapi.Update(func() {
-				if ws := workspaceapi.Get(); ws != nil && tabtypesapi.WebAddress(req.URL) {
-					_ = ws.OpenResource(req.URL, workspaceapi.OpenOptions{NewTab: true})
+			v.sh.Update(func() {
+				if v.ws != nil && tabtypes.WebAddress(req.URL) {
+					_ = v.ws.OpenResource(req.URL, workspace.OpenOptions{NewTab: true})
 				}
 			})
 			return nil
 		})
 		return pg
 	}
-	return tabtypesapi.Register(tabtypesapi.TabType{
-		ID: ID, Kind: Kind, Priority: tabtypesapi.Builtin,
+	return v.tt.Register(tabtypes.TabType{
+		ID: ID, Kind: Kind, Priority: tabtypes.Builtin,
 		Patterns: []string{"https://**", "http://**", "about:**"},
 		Title:    titleFromURL,
 		Icon:     lucide.Globe(),
-		Body: func(c *ui.Context, p tabtypesapi.Props) {
+		Body: func(c *ui.Context, p tabtypes.Props) {
 			pg := get(p)
 			ui.Column(c).Grow(1).Fill().Children(func() {
 				if pg.finding {
-					findBar(c, pg)
+					v.findBar(c, pg)
 				}
 				if pg.err != "" {
 					errorBanner(c, pg.err)
@@ -267,7 +312,7 @@ func Register(loaded func(webcontract.Page)) (off func()) {
 						ui.WebView(c, pg.view).Fill()
 					}
 					if pg.reader != nil {
-						pg.md.OnLink = func(u string) { navigate(pg, p, u) }
+						pg.md.OnLink = func(u string) { v.navigate(pg, p, u) }
 						ui.Scroll(c).Key(fmt.Sprintf("reader-%d", p.Info.ID)).Absolute().Top(0).Left(0).Right(0).Bottom(0).
 							Background(c.Theme().Background).Children(func() {
 							ui.Column(c).PaddingX(48).PaddingY(32).MaxWidth(860).FillWidth().Children(func() {
@@ -278,7 +323,7 @@ func Register(loaded func(webcontract.Page)) (off func()) {
 				})
 			})
 		},
-		Header: func(c *ui.Context, p tabtypesapi.Props) {
+		Header: func(c *ui.Context, p tabtypes.Props) {
 			pg := get(p)
 			t := c.Theme()
 			ui.Row(c).Grow(1).MinWidth(0).Gap(4).AlignItems(ui.Center).Children(func() {
@@ -323,7 +368,7 @@ func Register(loaded func(webcontract.Page)) (off func()) {
 				}
 				pg.barFocused, pg.lastTyped = focused, pg.typed
 				open := func(u string) {
-					navigate(pg, p, u)
+					v.navigate(pg, p, u)
 					// The bar now shows where it went: no text typed.
 					pg.suggesting, pg.lastTyped = false, pg.typed
 				}
@@ -335,24 +380,24 @@ func Register(loaded func(webcontract.Page)) (off func()) {
 						open(pg.typed)
 					}
 				}
-				suggestPanel(c, pg, field, open)
+				v.suggestPanel(c, pg, field, open)
 			})
 		},
-		Actions: func(c *ui.Context, p tabtypesapi.Props) {
+		Actions: func(c *ui.Context, p tabtypes.Props) {
 			pg := get(p)
 			label := "Reader view"
 			if pg.reader != nil {
 				label = "Web view"
 			}
 			omgui.Button(c, omgui.ButtonProps{Label: label, Icon: lucide.Glasses(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
-				Disabled: pg.view == nil || pg.extracting, OnClick: func() { toggleReader(pg) }}).Tooltip(label)
+				Disabled: pg.view == nil || pg.extracting, OnClick: func() { v.toggleReader(pg) }}).Tooltip(label)
 		},
 		Closed: func(id int) {
-			pg := pages[id]
+			pg := v.pages[id]
 			if pg == nil {
 				return
 			}
-			delete(pages, id)
+			delete(v.pages, id)
 			for _, off := range pg.offs {
 				off()
 			}
@@ -364,75 +409,55 @@ func Register(loaded func(webcontract.Page)) (off func()) {
 }
 
 // searchEngine is the Search engine setting: "duckduckgo" or "google".
-func searchEngine() string {
+func (v *viewer) searchEngine() string {
 	engine := "duckduckgo"
-	settingsapi.Get(configFile, "searchEngine", &engine)
+	if v.set != nil {
+		v.set.Get(configFile, "searchEngine", &engine)
+	}
 	return engine
 }
 
 // settingTab is the Web viewer settings tab (WebViewerSettingTab): Search
 // engine, and Clear browsing data for the history. Opening external URLs,
 // ad blocking, the save path and sessions are not ported.
-func settingTab(c *ui.Context) {
+func (v *viewer) settingTab(c *ui.Context) {
 	omgui.SettingsSection(c, "Web viewer", func() {
 		omgui.PreferenceRow(c, "Search engine", "Used when the address bar input is not a URL.", func() {
-			cur := searchEngine()
-			v := cur
-			omgui.Select(c, omgui.SelectProps{Key: "web-search-engine", Value: &v, Width: 160, Options: []omgui.SelectOption{
+			cur := v.searchEngine()
+			val := cur
+			omgui.Select(c, omgui.SelectProps{Key: "web-search-engine", Value: &val, Width: 160, Options: []omgui.SelectOption{
 				{Value: "duckduckgo", Label: "DuckDuckGo"}, {Value: "google", Label: "Google"},
 			}})
-			if v != cur {
-				settingsapi.Set(configFile, "searchEngine", v)
+			if val != cur && v.set != nil {
+				v.set.Set(configFile, "searchEngine", val)
 			}
 		})
 		omgui.PreferenceRow(c, "Clear browsing data", "Clear local Web viewer history.", func() {
-			h := webhistoryapi.Get()
+			var h *webhistory.History
+			if v.hist != nil {
+				h = v.hist()
+			}
 			omgui.Button(c, omgui.ButtonProps{Label: "Clear history", Variant: omgui.ButtonSecondary, Disabled: h == nil || len(h.List()) == 0,
 				OnClick: func() { h.Clear() }})
 		})
 	})
 }
 
-// titleFromURL is a page's title until its own comes: its host.
-func titleFromURL(address string) string {
-	if u, err := url.Parse(address); err == nil && u.Hostname() != "" {
-		return u.Hostname()
-	}
-	return address
-}
-
-// announce hands loaded the article of the page pv shows, an http(s) one.
-// Off the main thread.
-func announce(pv *mygo.Page, loaded func(webcontract.Page)) {
-	address := pv.URL()
-	if !strings.HasPrefix(address, "http://") && !strings.HasPrefix(address, "https://") {
-		return
-	}
-	v, err := pv.Eval("document.documentElement.outerHTML")
-	html, _ := v.(string)
-	if err != nil || html == "" {
-		return
-	}
-	r, err := htmlextract.Extract([]byte(html), address)
-	if err != nil {
-		debugf("web: no article for %s: %v", address, err)
-		return
-	}
-	loaded(webcontract.Page{URL: address, Title: r.Title, Markdown: r.Markdown})
-}
-
 // record notes a visit in the web history, when one is loaded
 // (WebViewerService.recordHistory).
-func record(address, title string) {
-	if h := webhistoryapi.Get(); h != nil && tabtypesapi.WebAddress(address) {
+func (v *viewer) record(address, title string) {
+	if v.hist == nil || !tabtypes.WebAddress(address) {
+		return
+	}
+	if h := v.hist(); h != nil {
 		h.Record(address, title)
 	}
 }
 
 // navigate is WebViewerView.navigate: the page loads what the bar names,
 // the address it showed kept in the tab's history.
-func navigate(pg *page, p tabtypesapi.Props, input string) {
-	address := NormalizeURL(input)
+func (v *viewer) navigate(pg *page, p tabtypes.Props, input string) {
+	address := v.normalizeURL(input)
 	pg.typed = address
 	if pg.view == nil || address == p.Info.Address {
 		return
@@ -447,7 +472,7 @@ func navigate(pg *page, p tabtypesapi.Props, input string) {
 // toggleReader leaves Reader view, or enters it: the article of the page
 // as the web view has it, so a page its scripts made or a login shows
 // reads too.
-func toggleReader(pg *page) {
+func (v *viewer) toggleReader(pg *page) {
 	if pg.reader != nil {
 		pg.reader = nil
 		return
@@ -459,12 +484,12 @@ func toggleReader(pg *page) {
 	pv, from := pg.view.Page(), pg.shown
 	go func() {
 		var r htmlextract.Result
-		v, err := pv.Eval("document.documentElement.outerHTML")
-		html, _ := v.(string)
+		val, err := pv.Eval("document.documentElement.outerHTML")
+		html, _ := val.(string)
 		if err == nil {
 			r, err = htmlextract.Extract([]byte(html), pv.URL())
 		}
-		shellapi.Update(func() {
+		v.sh.Update(func() {
 			pg.extracting = false
 			debugf("web: reader %s: %q, %d bytes, err %v", from, r.Title, len(r.Markdown), err)
 			if err != nil {
@@ -481,7 +506,7 @@ func toggleReader(pg *page) {
 // findBar is the page's find bar, as Obsidian's document search bar: the
 // text, which match of how many, previous, next, close. Enter goes to the
 // next match, Shift Enter the previous, Escape closes it.
-func findBar(c *ui.Context, pg *page) {
+func (v *viewer) findBar(c *ui.Context, pg *page) {
 	t := c.Theme()
 	ui.Row(c).Padding(4, 8).Gap(4).AlignItems(ui.Center).Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
 		field := omgui.Field(c, &pg.query, "Find...", false).Label("Find in page").Width(260)
@@ -495,11 +520,11 @@ func findBar(c *ui.Context, pg *page) {
 			closeFind(pg)
 			return
 		case focused && c.Shortcut(ui.Shift, ui.KeyEnter):
-			find(pg, true)
+			v.find(pg, true)
 		case field.Submitted():
-			find(pg, false)
+			v.find(pg, false)
 		case pg.query != pg.found:
-			find(pg, false)
+			v.find(pg, false)
 		}
 		count := ""
 		switch {
@@ -515,15 +540,15 @@ func findBar(c *ui.Context, pg *page) {
 			omgui.Button(c, omgui.ButtonProps{Label: label, Icon: icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
 				IconColor: t.Text, OnClick: fn}).Tooltip(label)
 		}
-		button("Previous", lucide.ArrowUp(), func() { find(pg, true) })
-		button("Next", lucide.ArrowDown(), func() { find(pg, false) })
+		button("Previous", lucide.ArrowUp(), func() { v.find(pg, true) })
+		button("Next", lucide.ArrowDown(), func() { v.find(pg, false) })
 		button("Close", lucide.X(), func() { closeFind(pg) })
 	})
 }
 
 // find highlights pg.query in the page: the next match, or the previous
 // one with back; the search starts over when the text changed.
-func find(pg *page, back bool) {
+func (v *viewer) find(pg *page, back bool) {
 	if pg.view == nil {
 		return
 	}
@@ -537,12 +562,137 @@ func find(pg *page, back bool) {
 	}
 	go func() {
 		res, err := pv.FindInPage(q, mygo.FindOptions{Backward: back, FindNext: again})
-		shellapi.Update(func() {
+		v.sh.Update(func() {
 			if err == nil && pg.found == q {
 				pg.res = res
 			}
 		})
 	}()
+}
+
+// cliWeb is `web url=<url> [newtab]` (registerWebCliHandlers): a URL with
+// no scheme goes over https.
+func (v *viewer) cliWeb(ctx context.Context, a actions.Args) (string, error) {
+	address := a.Params["url"]
+	if address == "" {
+		return "", fmt.Errorf("Missing required parameter: url\nUsage: web url=<url>")
+	}
+	if !strings.Contains(address, "://") {
+		address = "https://" + address
+	}
+	newTab := a.Has("newtab")
+	return shell.OnMain(ctx, v.sh, func() (string, error) {
+		if v.ws == nil {
+			return "", fmt.Errorf("No workspace to open %s in.", address)
+		}
+		if err := v.ws.OpenResource(address, workspace.OpenOptions{Kind: Kind, NewTab: newTab}); err != nil {
+			return "", err
+		}
+		return "Opened: " + address, nil
+	})
+}
+
+// onPage is a command on the active tab's web page, which does nothing on
+// another tab (the TS controller's activeView).
+func (v *viewer) onPage(id, title, keys string, fn func(pg *page)) actions.Command {
+	main := func() {
+		if pg := v.activePage(); pg != nil {
+			fn(pg)
+		}
+	}
+	return actions.Command{ID: id, Title: title, Keys: keys, CLI: true, Main: main,
+		Run: func(ctx context.Context, _ actions.Args) (string, error) {
+			return shell.OnMain(ctx, v.sh, func() (string, error) { main(); return "", nil })
+		}}
+}
+
+// openBlank is Open Web viewer: a new tab on the blank page, its caret in
+// the address bar.
+func (v *viewer) openBlank() {
+	if v.ws != nil {
+		_ = v.ws.OpenResource("about:blank", workspace.OpenOptions{Kind: Kind, NewTab: true})
+	}
+}
+
+// commands are the web viewer's (WebViewerPlugin's registerGlobalCommand).
+func (v *viewer) commands() []actions.Command {
+	return []actions.Command{
+		{ID: "web", CLI: true, Flags: []string{"newtab"}, Run: v.cliWeb},
+		{ID: "webviewer:open", Title: "Open Web viewer", Main: v.openBlank, CLI: true,
+			Run: func(ctx context.Context, _ actions.Args) (string, error) {
+				return shell.OnMain(ctx, v.sh, func() (string, error) { v.openBlank(); return "", nil })
+			}},
+		v.onPage("webviewer:refresh", "Refresh page", "Ctrl R", reload),
+		v.onPage("webviewer:toggle-reader-mode", "Toggle reader mode", "", v.toggleReader),
+		v.onPage("webviewer:find", "Find in page", "Ctrl F", func(pg *page) { pg.finding, pg.findFocus = true, true }),
+		v.onPage("webviewer:focus-address-bar", "Focus address bar", "", func(pg *page) { pg.focusBar = true }),
+	}
+}
+
+// DecodePage is an event's Page, in process or across one.
+func DecodePage(arg any) (Page, error) {
+	if p, ok := arg.(Page); ok {
+		return p, nil
+	}
+	data, err := json.Marshal(arg)
+	if err != nil {
+		return Page{}, err
+	}
+	var p Page
+	err = json.Unmarshal(data, &p)
+	return p, err
+}
+
+// NormalizeURL is what the address bar opens for input
+// (WebViewerService.normalizeUrl): the blank page for nothing, a URL as
+// it is, a domain over https, anything else a search.
+func NormalizeURL(input string) string {
+	return normalizeURL(input, "duckduckgo")
+}
+
+func normalizeURL(input, engineName string) string {
+	s := strings.TrimSpace(input)
+	switch {
+	case s == "":
+		return "about:blank"
+	case scheme.MatchString(s):
+		return s
+	case domain.MatchString(s):
+		return "https://" + s
+	}
+	engine := "https://duckduckgo.com/?q="
+	if engineName == "google" {
+		engine = "https://www.google.com/search?q="
+	}
+	return engine + url.QueryEscape(s)
+}
+
+// titleFromURL is a page's title until its own comes: its host.
+func titleFromURL(address string) string {
+	if u, err := url.Parse(address); err == nil && u.Hostname() != "" {
+		return u.Hostname()
+	}
+	return address
+}
+
+// announce hands loaded the article of the page pv shows, an http(s) one.
+// Off the main thread.
+func announce(pv *mygo.Page, loaded func(Page)) {
+	address := pv.URL()
+	if !strings.HasPrefix(address, "http://") && !strings.HasPrefix(address, "https://") {
+		return
+	}
+	v, err := pv.Eval("document.documentElement.outerHTML")
+	html, _ := v.(string)
+	if err != nil || html == "" {
+		return
+	}
+	r, err := htmlextract.Extract([]byte(html), address)
+	if err != nil {
+		debugf("web: no article for %s: %v", address, err)
+		return
+	}
+	loaded(Page{URL: address, Title: r.Title, Markdown: r.Markdown})
 }
 
 func closeFind(pg *page) {
@@ -581,71 +731,11 @@ func errorBanner(c *ui.Context, text string) {
 	})
 }
 
-// cliWeb is `web url=<url> [newtab]` (registerWebCliHandlers): a URL with
-// no scheme goes over https.
-func cliWeb(ctx context.Context, a actionsapi.Args) (string, error) {
-	address := a.Params["url"]
-	if address == "" {
-		return "", fmt.Errorf("Missing required parameter: url\nUsage: web url=<url>")
-	}
-	if !strings.Contains(address, "://") {
-		address = "https://" + address
-	}
-	newTab := a.Has("newtab")
-	return shellapi.OnMain(ctx, func() (string, error) {
-		ws := workspaceapi.Get()
-		if ws == nil {
-			return "", fmt.Errorf("No workspace to open %s in.", address)
-		}
-		if err := ws.OpenResource(address, workspaceapi.OpenOptions{Kind: Kind, NewTab: newTab}); err != nil {
-			return "", err
-		}
-		return "Opened: " + address, nil
-	})
-}
-
-// onPage is a command on the active tab's web page, which does nothing on
-// another tab (the TS controller's activeView).
-func onPage(id, title, keys string, fn func(pg *page)) actionsapi.Command {
-	main := func() {
-		if pg := activePage(); pg != nil {
-			fn(pg)
-		}
-	}
-	return actionsapi.Command{ID: id, Title: title, Keys: keys, CLI: true, Main: main,
-		Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-			return shellapi.OnMain(ctx, func() (string, error) { main(); return "", nil })
-		}}
-}
-
 // reload is the reload button's Reload.
 func reload(pg *page) {
 	if pg.view != nil {
 		pg.err, pg.loading = "", true
 		pg.view.Page().Reload()
-	}
-}
-
-// openBlank is Open Web viewer: a new tab on the blank page, its caret in
-// the address bar.
-func openBlank() {
-	if ws := workspaceapi.Get(); ws != nil {
-		_ = ws.OpenResource("about:blank", workspaceapi.OpenOptions{Kind: Kind, NewTab: true})
-	}
-}
-
-// commands are the web viewer's (WebViewerPlugin's registerGlobalCommand).
-func commands() []actionsapi.Command {
-	return []actionsapi.Command{
-		{ID: "web", CLI: true, Flags: []string{"newtab"}, Run: cliWeb},
-		{ID: "webviewer:open", Title: "Open Web viewer", Main: openBlank, CLI: true,
-			Run: func(ctx context.Context, _ actionsapi.Args) (string, error) {
-				return shellapi.OnMain(ctx, func() (string, error) { openBlank(); return "", nil })
-			}},
-		onPage("webviewer:refresh", "Refresh page", "Ctrl R", reload),
-		onPage("webviewer:toggle-reader-mode", "Toggle reader mode", "", toggleReader),
-		onPage("webviewer:find", "Find in page", "Ctrl F", func(pg *page) { pg.finding, pg.findFocus = true, true }),
-		onPage("webviewer:focus-address-bar", "Focus address bar", "", func(pg *page) { pg.focusBar = true }),
 	}
 }
 

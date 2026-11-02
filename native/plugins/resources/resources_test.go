@@ -1,8 +1,9 @@
-package resourcesapi
+package resources
 
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 )
@@ -10,20 +11,21 @@ import (
 const a = "attention-resource://test/a"
 
 func TestHoldStreamsAndTheLastReleaseCloses(t *testing.T) {
-	s, posts := newStub(t)
-	r1 := Hold(a)
-	r2 := Hold(a)
-	if wait(t, s.opened) != a || Get(a).Status != Loading {
-		t.Fatalf("held: %+v", Get(a))
+	reg := New(nil, nil)
+	s, posts := newStub(t, reg)
+	r1 := reg.Hold(a)
+	r2 := reg.Hold(a)
+	if wait(t, s.opened) != a || reg.Get(a).Status != Loading {
+		t.Fatalf("held: %+v", reg.Get(a))
 	}
 	s.emit(a, "one", nil)
 	wait(t, posts)()
-	if g := Get(a); g.Status != Live || g.Value != "one" || g.Version != 1 {
+	if g := reg.Get(a); g.Status != Live || g.Value != "one" || g.Version != 1 {
 		t.Fatalf("live: %+v", g)
 	}
 	s.emit(a, nil, errors.New("gone"))
 	wait(t, posts)()
-	if g := Get(a); g.Status != Failed || g.Value != "one" || g.Err == nil || g.Version != 1 {
+	if g := reg.Get(a); g.Status != Failed || g.Value != "one" || g.Err == nil || g.Version != 1 {
 		t.Fatalf("a failure keeps the value: %+v", g)
 	}
 	r1()
@@ -39,32 +41,34 @@ func TestHoldStreamsAndTheLastReleaseCloses(t *testing.T) {
 	if wait(t, s.closed) != a {
 		t.Fatal("the last release closes the stream")
 	}
-	post() // a frame posted before the release
-	if g := Get(a); g.Status != None {
+	post()
+	if g := reg.Get(a); g.Status != None {
 		t.Fatalf("released: %+v", g)
 	}
 }
 
 func TestAProviderComingLateServesWhatIsHeld(t *testing.T) {
-	release := Hold(a)
+	reg := New(nil, nil)
+	release := reg.Hold(a)
 	defer release()
-	if Get(a).Status != None {
+	if reg.Get(a).Status != None {
 		t.Fatal("no provider: None")
 	}
-	s, _ := newStub(t)
-	if wait(t, s.opened) != a || Get(a).Status != Loading {
-		t.Fatalf("the provider opens what is held: %+v", Get(a))
+	s, _ := newStub(t, reg)
+	if wait(t, s.opened) != a || reg.Get(a).Status != Loading {
+		t.Fatalf("the provider opens what is held: %+v", reg.Get(a))
 	}
 }
 
 func TestASecondProviderPanics(t *testing.T) {
-	newStub(t)
+	reg := New(nil, nil)
+	newStub(t, reg)
 	defer func() {
 		if recover() == nil {
 			t.Fatal("a second provider for a protocol does not panic")
 		}
 	}()
-	Register(Provider{Protocol: "test"})
+	reg.Register(Provider{Protocol: "test"})
 }
 
 func TestProtocol(t *testing.T) {
@@ -80,23 +84,23 @@ func TestProtocol(t *testing.T) {
 	}
 }
 
-// stub is a provider whose streams the test drives.
 type stub struct {
+	mu     sync.Mutex
 	opened chan string
 	emits  map[string]func(any, error)
 	closed chan string
 }
 
-func newStub(t *testing.T) (*stub, chan func()) {
+func newStub(t *testing.T, reg *Registry) (*stub, chan func()) {
 	t.Helper()
 	posts := make(chan func(), 16)
-	t.Cleanup(SetPost(func(f func()) { posts <- f }))
+	t.Cleanup(reg.SetPost(func(f func()) { posts <- f }))
 	s := &stub{opened: make(chan string, 4), emits: map[string]func(any, error){}, closed: make(chan string, 4)}
-	t.Cleanup(Register(Provider{Protocol: "test", Open: func(ctx context.Context, address string, emit func(any, error)) {
+	t.Cleanup(reg.Register(Provider{Protocol: "test", Open: func(ctx context.Context, address string, emit func(any, error)) {
 		s.opened <- address
-		mu.Lock()
+		s.mu.Lock()
 		s.emits[address] = emit
-		mu.Unlock()
+		s.mu.Unlock()
 		<-ctx.Done()
 		s.closed <- address
 	}}))
@@ -104,9 +108,9 @@ func newStub(t *testing.T) (*stub, chan func()) {
 }
 
 func (s *stub) emit(address string, v any, err error) {
-	mu.Lock()
+	s.mu.Lock()
 	e := s.emits[address]
-	mu.Unlock()
+	s.mu.Unlock()
 	e(v, err)
 }
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	fscontract "github.com/cunninghamcard-bit/attention/native/contract/fs"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 )
 
 func TestCountsOneWatchPerDirectory(t *testing.T) {
@@ -126,8 +126,8 @@ func setup(t *testing.T) (*Queue, *fakeFS, *main, *[]string) {
 	return q, f, m, &fails
 }
 
-func (f *fakeFS) contract() fscontract.FS {
-	return fscontract.FS{
+func (f *fakeFS) contract() fsplugin.FS {
+	return fsplugin.FS{
 		Watch: func(_ context.Context, dir string) error {
 			f.mu.Lock()
 			defer f.mu.Unlock()
