@@ -15,6 +15,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 
+	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 )
@@ -112,23 +113,21 @@ func (d *Doc) Placeholder(c *ui.Context) bool {
 	return true
 }
 
-// View draws the document's read-only editor with Zed One Light / One Dark
-// styling and comfortable line height.
-func (d *Doc) View(c *ui.Context, id int) {
+// View draws the document's read-only editor in th, as s sets it.
+func (d *Doc) View(c *ui.Context, id int, th *editor.Theme, s appearance.Settings) {
 	if d == nil || d.Ed == nil {
 		return
 	}
-	app := CurrentAppearance()
-	d.Ed.Theme = CodeTheme(c.Theme().Dark)
-	d.Ed.Font = ui.Font{Family: app.EffectiveMonoFont(), Size: app.EffectiveEditorFontSize()}
-	d.Ed.LineHeight = app.EffectiveLineHeight()
-	d.Ed.TabSize = app.EffectiveTabSize()
-	if app.ShowLineNums {
+	d.Ed.Theme = th
+	d.Ed.Font = ui.Font{Family: s.EffectiveMonoFont(), Size: s.EffectiveEditorFontSize()}
+	d.Ed.LineHeight = s.EffectiveLineHeight()
+	d.Ed.TabSize = s.EffectiveTabSize()
+	if s.ShowLineNums {
 		d.Ed.LineNumbers = editor.LineNumbersOn
 	} else {
 		d.Ed.LineNumbers = editor.LineNumbersOff
 	}
-	d.Ed.NoIndentGuides = !app.ShowGuides
+	d.Ed.NoIndentGuides = !s.ShowGuides
 	editor.View(c, d.Ed).Key(fmt.Sprintf("ed-%d", id)).Grow(1).Fill()
 }
 
@@ -173,8 +172,6 @@ func (d *Doc) setText(f fsplugin.File) {
 		d.Ed = &editor.State{
 			Buffer:          buf,
 			ReadOnly:        true,
-			Font:            ui.Font{Family: MonoFont, Size: CodeFontSize},
-			LineHeight:      CodeLineHeight,
 			NoScrollPastEnd: true,
 		}
 		return

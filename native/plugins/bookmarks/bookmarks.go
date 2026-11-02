@@ -20,10 +20,10 @@ import (
 	"github.com/smallnest/uix/components/lucide"
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
-	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/internal/persist"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
 	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
@@ -40,7 +40,7 @@ const (
 // Plugin registers the Bookmarks panel while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "slots", "layout", "workspace", "project", "actions"},
+	Inject: []string{"shell", "slots", "layout", "workspace", "project", "actions", "appearance"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
 		var (
 			sh      *shell.Shell
@@ -49,6 +49,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			ws      *workspace.Workspace
 			project projectplugin.Project
 			act     *actions.Service
+			app     *appearance.Appearance
 		)
 		if err := rctx.Use("shell", &sh); err != nil {
 			return err
@@ -68,8 +69,11 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		if err := rctx.Use("actions", &act); err != nil {
 			return err
 		}
+		if err := rctx.Use("appearance", &app); err != nil {
+			return err
+		}
 		ctx, cancel := context.WithCancel(context.Background())
-		b := &Bookmarks{ctx: ctx, sh: sh, lyt: lyt, ws: ws, act: act, project: project, items: []*Item{}, collapsed: map[string]bool{}}
+		b := &Bookmarks{app: app, ctx: ctx, sh: sh, lyt: lyt, ws: ws, act: act, project: project, items: []*Item{}, collapsed: map[string]bool{}}
 		saver := persist.New(sh, storePath(), func() any { return Data{Items: cloneItems(b.items)} })
 		b.saveSoon = saver.Soon
 		var data Data
@@ -203,6 +207,7 @@ type savedState struct {
 
 // Bookmarks is the panel's state, on the main thread only.
 type Bookmarks struct {
+	app      *appearance.Appearance
 	ctx      context.Context
 	sh       *shell.Shell
 	lyt      *layout.Layout
@@ -431,7 +436,7 @@ func (b *Bookmarks) itemRow(c *ui.Context, r row) {
 				b.collapsed[r.key] = !b.collapsed[r.key]
 			}
 		} else if (it.Type == "file" && it.Subpath == "") || it.Type == "folder" {
-			fileicon.Render(c, filepath.Base(it.Path), it.Type == "folder", false, t.Dark, 15)
+			b.app.Icons().Render(c, filepath.Base(it.Path), it.Type == "folder", false, t.Dark, 15)
 		} else {
 			ui.Icon(c, itemIcon(it)).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
 		}

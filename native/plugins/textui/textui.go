@@ -8,6 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
+	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
@@ -21,11 +22,12 @@ const (
 // Plugin registers the text tab type while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "tabTypes", "fs"},
+	Inject: []string{"shell", "tabTypes", "fs", "appearance"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
 		var sh *shell.Shell
 		var tt *tabtypes.Registry
 		var fs fsplugin.FS
+		var app *appearance.Appearance
 		if err := rctx.Use("shell", &sh); err != nil {
 			return err
 		}
@@ -35,8 +37,11 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		if err := rctx.Use("fs", &fs); err != nil {
 			return err
 		}
+		if err := rctx.Use("appearance", &app); err != nil {
+			return err
+		}
 		ctx, cancel := context.WithCancel(context.Background())
-		off := Register(ctx, fs, tt, sh.Update)
+		off := Register(ctx, fs, tt, app, sh.Update)
 		rctx.Effect(func(context.Context) error {
 			off()
 			cancel()
@@ -47,7 +52,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 })
 
 // Register adds the text tab type until off is called.
-func Register(ctx context.Context, fs fsplugin.FS, tt *tabtypes.Registry, post func(func())) (off func()) {
+func Register(ctx context.Context, fs fsplugin.FS, tt *tabtypes.Registry, app *appearance.Appearance, post func(func())) (off func()) {
 	l := &textdoc.Loader{Ctx: ctx, FS: fs, Post: post}
 	docs := map[int]*textdoc.Doc{}
 	doc := func(id int) *textdoc.Doc {
@@ -67,7 +72,7 @@ func Register(ctx context.Context, fs fsplugin.FS, tt *tabtypes.Registry, post f
 			if d.Placeholder(c) {
 				return
 			}
-			d.View(c, p.Info.ID)
+			d.View(c, p.Info.ID, app.Editor(c.Theme().Dark), app.Settings())
 		},
 		Status: func(c *ui.Context, p tabtypes.Props) {
 			d := doc(p.Info.ID)

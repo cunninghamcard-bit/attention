@@ -12,8 +12,6 @@ import (
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
-	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
-	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 )
@@ -99,7 +97,7 @@ func (ws *Workspace) paneView(c *ui.Context, p *pane) {
 		ws.focusGroup(p)
 	}
 	col.Children(func() {
-		if textdoc.CurrentAppearance().ShowTabBar {
+		if ws.app.Settings().ShowTabBar {
 			ws.tabBar(c, p, focused || alone)
 		}
 		side := p.dropSide
@@ -203,10 +201,10 @@ func (ws *Workspace) tabChip(c *ui.Context, p *pane, j int, tb *tab) {
 		icon = nil
 	} else if !tb.page() {
 		tip = ws.display(tb.path)
-		if !fileicon.Shown() {
+		if icons := ws.app.Icons(); !icons.Show {
 			icon = nil
 		} else {
-			iconColor = fileicon.Color(tb.title, t.Dark)
+			iconColor = icons.Color(tb.title, t.Dark)
 		}
 	}
 	selected := j == p.active
@@ -399,7 +397,7 @@ func (ws *Workspace) tabBody(c *ui.Context, p *pane, tb *tab, focused bool) {
 	}
 	tt, ok := ws.tabTypes.Get(tb.typeID)
 	props := ws.props(tb, focused)
-	app := textdoc.CurrentAppearance()
+	app := ws.app.Settings()
 	if app.ShowViewHeader {
 		ws.viewHeader(c, p, tb, props, tt, focused)
 	}
@@ -472,7 +470,7 @@ func (ws *Workspace) breadcrumbs(c *ui.Context, tb *tab, focused bool) {
 			name = t.TextMuted
 		}
 		if !tb.empty && !tb.page() {
-			fileicon.Render(c, tb.title, false, false, t.Dark, 14)
+			ws.app.Icons().Render(c, tb.title, false, false, t.Dark, 14)
 		}
 		ui.Text(c, tb.title).FontSize(13).TextColor(name).MaxLines(1)
 	})
@@ -552,7 +550,7 @@ func (ws *Workspace) tabIcon(tb *tab) *ui.SVG {
 	if tt, ok := ws.tabTypes.Get(tb.typeID); ok && tt.Icon != nil {
 		return tt.Icon
 	}
-	return fileIcon(tb.title)
+	return ws.app.Icons().For(tb.title)
 }
 
 // nativeMenu fills a context menu with items.

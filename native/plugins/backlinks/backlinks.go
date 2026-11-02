@@ -22,8 +22,8 @@ import (
 
 	"github.com/cunninghamcard-bit/attention-ui/theme"
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
-	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	indexplugin "github.com/cunninghamcard-bit/attention/native/plugins/index"
 	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
@@ -43,7 +43,7 @@ const (
 // Plugin registers the Backlinks panel while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "slots", "layout", "workspace", "index", "actions"},
+	Inject: []string{"shell", "slots", "layout", "workspace", "index", "actions", "appearance"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
 		var (
 			sh  *shell.Shell
@@ -52,6 +52,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			ws  *workspace.Workspace
 			idx indexplugin.Index
 			act *actions.Service
+			app *appearance.Appearance
 		)
 		if err := rctx.Use("shell", &sh); err != nil {
 			return err
@@ -71,8 +72,11 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		if err := rctx.Use("actions", &act); err != nil {
 			return err
 		}
+		if err := rctx.Use("appearance", &app); err != nil {
+			return err
+		}
 		ctx, cancel := context.WithCancel(context.Background())
-		p := &Pane{ctx: ctx, sh: sh, ws: ws, idx: idx, collapsed: map[string]bool{}}
+		p := &Pane{app: app, ctx: ctx, sh: sh, ws: ws, idx: idx, collapsed: map[string]bool{}}
 		off := sl.RegisterPanel(slots.Panel{
 			ID: PanelID, Title: "Backlinks", Icon: lucide.Link(), Dock: slots.Right, Order: 1,
 			View: p.view, State: p.state, Restore: p.restore,
@@ -97,6 +101,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 
 // Pane is the panel's state, on the main thread only.
 type Pane struct {
+	app *appearance.Appearance
 	ctx context.Context
 	sh  *shell.Shell
 	ws  *workspace.Workspace
@@ -294,7 +299,7 @@ func (p *Pane) fileRow(c *ui.Context, b *indexplugin.Backlink) {
 		if b.URL != "" {
 			ui.Icon(c, lucide.Globe()).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
 		} else {
-			fileicon.Render(c, b.Display, false, false, t.Dark, 15)
+			p.app.Icons().Render(c, b.Display, false, false, t.Dark, 15)
 		}
 		ui.Text(c, b.Display).FontSize(13).SingleLine().Ellipsis("…").Shrink(1)
 		if len(b.Mentions) > 0 {

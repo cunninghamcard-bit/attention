@@ -10,6 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
 	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
@@ -34,6 +35,7 @@ type Workspace struct {
 	lyt      *layout.Layout
 	sc       *shortcuts.Shortcuts
 	act      *actions.Service
+	app      *appearance.Appearance
 	tabTypes *tabtypes.Registry
 	fs       fsplugin.FS
 	project  projectplugin.Project
@@ -66,6 +68,7 @@ func newWorkspace(
 	lyt *layout.Layout,
 	sc *shortcuts.Shortcuts,
 	act *actions.Service,
+	app *appearance.Appearance,
 	fs fsplugin.FS,
 	project projectplugin.Project,
 ) *Workspace {
@@ -81,8 +84,11 @@ func newWorkspace(
 	if act == nil {
 		act = actions.New()
 	}
+	if app == nil {
+		app = appearance.New(nil, "", sh.Update)
+	}
 	ws := &Workspace{
-		ctx: ctx, sh: sh, sl: sl, res: res, lyt: lyt, sc: sc, act: act,
+		ctx: ctx, sh: sh, sl: sl, res: res, lyt: lyt, sc: sc, act: act, app: app,
 		tabTypes: tabtypes.New(sh.Invalidate),
 		fs:       fs, project: project,
 		root: &node{dir: vertical},

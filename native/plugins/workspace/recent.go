@@ -1,11 +1,5 @@
 package workspace
 
-import (
-	"github.com/egoist/mygo/ui"
-
-	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
-)
-
 // maxRecentFiles is the quick switcher's recent list (getRecentFiles
 // maxCount).
 const maxRecentFiles = 10
@@ -23,6 +17,3 @@ func (ws *Workspace) noteRecentFile(path string) {
 	}
 	ws.recentFiles = out
 }
-
-// fileIcon picks a lucide icon for a file name.
-func fileIcon(name string) *ui.SVG { return fileicon.For(name) }

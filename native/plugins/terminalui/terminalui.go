@@ -31,6 +31,7 @@ import (
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
@@ -52,7 +53,7 @@ const (
 // Plugin is the terminal while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "slots", "tabTypes", "workspace", "actions", "settings", "shortcuts"},
+	Inject: []string{"shell", "slots", "tabTypes", "workspace", "actions", "settings", "shortcuts", "appearance"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
 		var (
 			sh  *shell.Shell
@@ -62,6 +63,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			act *actions.Service
 			set *settings.Settings
 			sc  *shortcuts.Shortcuts
+			app *appearance.Appearance
 		)
 		if err := rctx.Use("shell", &sh); err != nil {
 			return err
@@ -84,8 +86,11 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		if err := rctx.Use("shortcuts", &sc); err != nil {
 			return err
 		}
+		if err := rctx.Use("appearance", &app); err != nil {
+			return err
+		}
 		set.Load(configFile)
-		off := Register(sh, sl, tt, ws, act, set, sc)
+		off := Register(sh, sl, tt, ws, act, set, sc, app)
 		rctx.Effect(func(context.Context) error { off(); return nil })
 		return nil
 	},
@@ -99,6 +104,8 @@ type session struct {
 	exited   bool
 	code     int
 	dir      string
+	themed   *terminal.Terminal
+	themeGen int
 	// setTitle renames the tab, from the last frame's props.
 	setTitle func(string)
 }
@@ -109,6 +116,7 @@ type Terminals struct {
 	ws       *workspace.Workspace
 	set      *settings.Settings
 	sc       *shortcuts.Shortcuts
+	app      *appearance.Appearance
 	sessions map[int]*session
 	next     int
 	pending  string // the folder the next terminal starts in
@@ -228,6 +236,10 @@ func (t *Terminals) body(c *ui.Context, p tabtypes.Props) {
 			textdoc.Centered(c, "Starting…")
 			return
 		}
+		if gen := t.app.Generation(); s.themed != s.term || s.themeGen != gen {
+			s.term.SetTheme(t.app.Terminal(false), t.app.Terminal(true))
+			s.themed, s.themeGen = s.term, gen
+		}
 		view := terminal.View(c, s.term).Key(fmt.Sprintf("term-%d", id)).Grow(1).Fill()
 		if p.Info.Focused && !s.exited {
 			view.AutoFocus()
@@ -312,8 +324,8 @@ func (t *Terminals) settingTab(c *ui.Context) {
 
 // Register adds the terminal tab type, its command and settings tab until
 // off is called.
-func Register(sh *shell.Shell, sl *slots.Registry, tt *tabtypes.Registry, ws *workspace.Workspace, act *actions.Service, set *settings.Settings, sc *shortcuts.Shortcuts) (off func()) {
-	t := &Terminals{sh: sh, ws: ws, set: set, sc: sc, sessions: map[int]*session{}}
+func Register(sh *shell.Shell, sl *slots.Registry, tt *tabtypes.Registry, ws *workspace.Workspace, act *actions.Service, set *settings.Settings, sc *shortcuts.Shortcuts, app *appearance.Appearance) (off func()) {
+	t := &Terminals{sh: sh, ws: ws, set: set, sc: sc, app: app, sessions: map[int]*session{}}
 	openHere := func() { t.open("") }
 	offs := []func(){
 		tt.Register(tabtypes.TabType{ID: ID, Kind: Kind, Priority: tabtypes.Builtin,

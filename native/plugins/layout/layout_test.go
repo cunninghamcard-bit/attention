@@ -7,6 +7,8 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/smallnest/uix/components/lucide"
 
+	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
+	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 )
 
@@ -19,8 +21,9 @@ func TestPanelStateRoundTrips(t *testing.T) {
 		Restore: func(st json.RawMessage) { got = string(st) },
 	})
 	t.Cleanup(off)
-	l := New(nil, sl, nil)
-	l.IsDark = func() bool { return false }
+	app := appearance.New(settings.New(nil, sl), t.TempDir(), func(f func()) { f() })
+	app.IsDark = func() bool { return false }
+	l := New(nil, sl, app)
 	l.Restore(state{PanelOpen: true, PanelStates: map[string]json.RawMessage{"search": json.RawMessage(`"q"`), "gone": json.RawMessage(`1`)}})
 	if s := l.Snapshot(); string(s.PanelStates["search"]) != `"q"` {
 		t.Fatalf("before the first draw the saved state is kept: %s", s.PanelStates["search"])

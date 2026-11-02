@@ -19,6 +19,7 @@ import (
 
 	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
@@ -32,13 +33,14 @@ const (
 // Plugin registers the markdown tab type and its toggle command while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "tabTypes", "workspace", "fs", "actions"},
+	Inject: []string{"shell", "tabTypes", "workspace", "fs", "actions", "appearance"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
 		var sh *shell.Shell
 		var tt *tabtypes.Registry
 		var ws Navigator
 		var fs fsplugin.FS
 		var act *actions.Service
+		var app *appearance.Appearance
 		if err := rctx.Use("shell", &sh); err != nil {
 			return err
 		}
@@ -54,8 +56,11 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		if err := rctx.Use("actions", &act); err != nil {
 			return err
 		}
+		if err := rctx.Use("appearance", &app); err != nil {
+			return err
+		}
 		ctx, cancel := context.WithCancel(context.Background())
-		_, off := Register(ctx, fs, sh, act, tt, ws, sh.Update)
+		_, off := Register(ctx, fs, sh, act, tt, ws, app, sh.Update)
 		rctx.Effect(func(context.Context) error {
 			off()
 			cancel()
@@ -84,12 +89,13 @@ type doc struct {
 type Viewer struct {
 	l    *textdoc.Loader
 	ws   Navigator
+	app  *appearance.Appearance
 	docs map[int]*doc
 }
 
 // Register adds the markdown tab type until off is called.
-func Register(ctx context.Context, fs fsplugin.FS, sh *shell.Shell, act *actions.Service, tt *tabtypes.Registry, ws Navigator, post func(func())) (v *Viewer, off func()) {
-	v = &Viewer{l: &textdoc.Loader{Ctx: ctx, FS: fs, Post: post}, ws: ws, docs: map[int]*doc{}}
+func Register(ctx context.Context, fs fsplugin.FS, sh *shell.Shell, act *actions.Service, tt *tabtypes.Registry, ws Navigator, app *appearance.Appearance, post func(func())) (v *Viewer, off func()) {
+	v = &Viewer{l: &textdoc.Loader{Ctx: ctx, FS: fs, Post: post}, ws: ws, app: app, docs: map[int]*doc{}}
 	toggle := func() {
 		if v.ws != nil {
 			if tab, ok := v.ws.ActiveTab(); ok && tab.Kind == Kind {
@@ -166,7 +172,7 @@ func (v *Viewer) body(c *ui.Context, p tabtypes.Props) {
 		return
 	}
 	if !d.source {
-		d.md.Theme = textdoc.MarkdownTheme(c.Theme().Dark)
+		d.md.Theme = v.app.Markdown(c.Theme().Dark)
 		ui.Scroll(c).Key(fmt.Sprintf("md-%d", p.Info.ID)).Grow(1).Fill().Children(func() {
 			ui.Column(c).PaddingX(48).PaddingY(32).MaxWidth(860).FillWidth().Children(func() {
 				if raw := d.Ed.Buffer.String(); raw != d.raw || d.view == "" && raw != "" {
@@ -177,7 +183,7 @@ func (v *Viewer) body(c *ui.Context, p tabtypes.Props) {
 		})
 		return
 	}
-	d.View(c, p.Info.ID)
+	d.View(c, p.Info.ID, v.app.Editor(c.Theme().Dark), v.app.Settings())
 }
 
 func (v *Viewer) status(c *ui.Context, p tabtypes.Props) {

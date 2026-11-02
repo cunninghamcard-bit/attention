@@ -340,7 +340,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 | `tabTypes` | workspace | `*tabtypes.Registry` | §5.6 | UI runtime |
 | `settings` | settings | `*settings.Settings` | 设置模态框；`app`、`appearance`、`hotkeys` 三个 JSON 文件的 `Get`/`Set`（§5.10） | UI runtime |
 | `shortcuts` | shortcuts | `*shortcuts.Shortcuts` | 按命令的 `Keys` 绑定快捷键，读取 `hotkeys.json` 的覆盖；`SetCapture` 让终端拿到 Control 加字母 | UI runtime |
-| `appearance` | appearance | `*appearance.Manager` | 主题、字体、字号、行高等外观设置（[docs/appearance.md](../appearance.md)） | UI runtime |
+| `appearance` | appearance | `*appearance.Appearance` | 解析 `appearance.json`、读取主题文件，构建界面、编辑器、Markdown、终端四个主题，提供文件图标设置（[docs/appearance.md](../appearance.md)） | UI runtime |
 | `actions` | actions | `*actions.Service` | 命令注册表；外部进程通过 `register` / `unregister` / `run` / `list` 调用（§5.9） | UI runtime 和 headless |
 | `fs` | fs | `fs.FS` | 列目录、读、写、追加、建目录、改名、删除、移到回收站、stat、按目录监听（fsnotify，只监听有人要的目录，R9） | headless；可外置 |
 | `project` | project | `project.Project` | 挂载根（`mounts.json`）、文件列表、项目搜索；文件和文件夹类 CLI 命令 | headless |
@@ -426,8 +426,8 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 
 - 视觉和组件风格采用 octogo 的风格，不再对照 Obsidian。废弃的是：与 Obsidian `app.css` 逐字节一致的样式层、Obsidian 的类名语义和尺寸规格、`styles/deviations/` 和 `StyleSystem.test.ts` 的规则。
 - 共享 UI 模块已经独立为 `github.com/cunninghamcard-bit/attention-ui`（从 octogo 的 `ui/theme` 和 `omgui` 抽出），`native/go.mod` 用 `replace` 指向本地的 `../../octogo/attention-ui`。页面里不出现硬编码的颜色和尺寸，规范见 octogo 的 `docs/STYLE.md`。
-- **主题**：`internal/textdoc/theme.go` 读取 Zed 格式的 JSON 主题，内置 `attention`、`one`、`ayu` 三套（`internal/textdoc/themes/`），用户主题放在 `<配置目录>/themes/`。同一份主题生成界面的 `*ui.Theme` 和编辑器的 `editor.Palette`。外观设置在 `appearance` 插件，设计见 [docs/appearance.md](../appearance.md)。
-- **文件图标**：`internal/fileicon` 内置 `@pierre/trees` 的 57 个 SVG 图标和语义色板，按文件名、后缀匹配；文件树、标签页、快速切换和搜索共用。
+- **主题**：只有颜色：9 个界面色、9 个语法色、可选的终端 16 色，其余颜色由代码推导。`appearance` 插件读取内置主题（`plugins/appearance/themes/`）和 `<配置目录>/themes/`，也接受 Zed 主题文件里映射得到的那部分键。同一份主题生成 `*ui.Theme`、`*editor.Theme`、`*markdown.Theme` 和终端主题。设计见 [docs/appearance.md](../appearance.md)。
+- **文件图标**：`internal/fileicon` 内置 `@pierre/trees` 的 57 个 SVG 图标和语义色板，按文件名、后缀匹配。`fileicon.Theme` 是一个值，由 `appearance.Icons()` 给出；文件树、标签页、快速切换、搜索、书签和反链用它画图标。
 - 正文字体跟随系统（fontconfig 的 sans-serif），不在主题里写死。
 - 根目录 AGENTS.md / CLAUDE.md 的「忠实重建 Obsidian」规则只适用于 TS 代码；`native/AGENTS.md` 写明了这一点。到 P5 再整体重写根目录的这两份文件。
 
@@ -442,7 +442,7 @@ native/
                       二进制也调用它
   plugins/<feature>/  每个插件一个包，契约类型和事件常量也在里面
   internal/           不对外的共享代码：launcher、buildcmd、lifecycle、paths、
-                      persist、watchq、textdoc（含主题）、mdmeta、htmlextract、
+                      persist、watchq、textdoc、mdmeta、htmlextract、
                       fileicon、fuzzy、natural、clifmt
   examples/           第三方插件示例：hello-py、hello-ui
   bin/                本地构建产物
@@ -468,28 +468,28 @@ native/
 | `index` | index | `index` | actions、fs、project | 两者 |
 | `web-read` | webread | — | actions | 两者 |
 | `fileresource` | fileresource | `file` 协议 provider | resources、fs、project | desktop |
-| `layout` | layout | `layout` | shell、slots、actions、settings | desktop |
-| `workspace` | workspace | `workspace`、`tabTypes` | shell、slots、resources、layout、shortcuts、fs、project、actions | desktop |
+| `layout` | layout | `layout` | shell、slots、actions、appearance | desktop |
+| `workspace` | workspace | `workspace`、`tabTypes` | shell、slots、resources、layout、shortcuts、fs、project、actions、appearance | desktop |
 | `shortcuts` | shortcuts | `shortcuts` | slots、actions、settings | desktop |
 | `palette` | palette | — | slots | desktop |
-| `switcher` | switcher | — | shell、slots、workspace、project、actions | desktop |
+| `switcher` | switcher | — | shell、slots、workspace、project、actions、appearance | desktop |
 | `command-palette` | commandpalette | — | shell、slots、actions、shortcuts | desktop |
 | `go-to-line` | gotoline | — | shell、slots、tabTypes、workspace、actions | desktop |
 | `settings` | settings | `settings` | shell、slots、actions | desktop |
 | `appearance` | appearance | `appearance` | shell、slots、settings、actions | desktop |
-| `filetree` | filetree | — | shell、slots、layout、workspace、fs、project、actions | desktop |
-| `search` | search | — | shell、slots、layout、workspace、project、actions | desktop |
-| `backlinks-ui` | backlinks | — | shell、slots、layout、workspace、index、actions | desktop |
+| `filetree` | filetree | — | shell、slots、layout、workspace、fs、project、actions、appearance | desktop |
+| `search` | search | — | shell、slots、layout、workspace、project、actions、appearance | desktop |
+| `backlinks-ui` | backlinks | — | shell、slots、layout、workspace、index、actions、appearance | desktop |
 | `outline-ui` | outline | — | shell、slots、layout、workspace、index、actions | desktop |
-| `bookmarks` | bookmarks | `bookmarks` | shell、slots、layout、workspace、project、actions | desktop |
-| `text-ui` | textui | tab type `text` | shell、tabTypes、fs | desktop |
-| `markdown-ui` | markdownui | tab type `markdown` | shell、tabTypes、workspace、fs、actions | desktop |
+| `bookmarks` | bookmarks | `bookmarks` | shell、slots、layout、workspace、project、actions、appearance | desktop |
+| `text-ui` | textui | tab type `text` | shell、tabTypes、fs、appearance | desktop |
+| `markdown-ui` | markdownui | tab type `markdown` | shell、tabTypes、workspace、fs、actions、appearance | desktop |
 | `image-ui` | imageui | tab type `image` | shell、tabTypes、fs | desktop |
 | `web` | web | `web`、tab type `webviewer` | shell、slots、tabTypes、workspace、actions、settings | desktop |
 | `web-history` | webhistory | `web-history`、tab type `webviewer-history` | shell、tabTypes、workspace、actions | desktop |
 | `web-index` | webindex | — | index、web、web-history | desktop |
 | `webview-panel-ui` | webviewpanel | `webview-panels` | shell、slots | desktop |
-| `terminal-ui` | terminalui | tab type `terminal` | shell、slots、tabTypes、workspace、actions、settings、shortcuts | desktop |
+| `terminal-ui` | terminalui | tab type `terminal` | shell、slots、tabTypes、workspace、actions、settings、shortcuts、appearance | desktop |
 
 原稿清单里有、代码里没有的：
 

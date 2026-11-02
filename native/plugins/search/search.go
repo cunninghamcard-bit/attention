@@ -23,9 +23,9 @@ import (
 
 	"github.com/cunninghamcard-bit/attention-ui/theme"
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
-	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
 	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
@@ -58,7 +58,7 @@ var (
 	// Plugin registers the Search panel while loaded.
 	Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		Name:   "search",
-		Inject: []string{"shell", "slots", "layout", "workspace", "project", "actions"},
+		Inject: []string{"shell", "slots", "layout", "workspace", "project", "actions", "appearance"},
 		Apply: func(rctx *rutis.Ctx, _ struct{}) error {
 			var (
 				sh      *shell.Shell
@@ -67,6 +67,7 @@ var (
 				ws      *workspace.Workspace
 				project projectplugin.Project
 				act     *actions.Service
+				app     *appearance.Appearance
 			)
 			if err := rctx.Use("shell", &sh); err != nil {
 				return err
@@ -86,8 +87,11 @@ var (
 			if err := rctx.Use("actions", &act); err != nil {
 				return err
 			}
+			if err := rctx.Use("appearance", &app); err != nil {
+				return err
+			}
 			ctx, cancel := context.WithCancel(context.Background())
-			s := &Search{ctx: ctx, sh: sh, lyt: lyt, ws: ws, project: project, sortOrder: "alphabetical", collapsed: map[string]bool{}}
+			s := &Search{app: app, ctx: ctx, sh: sh, lyt: lyt, ws: ws, project: project, sortOrder: "alphabetical", collapsed: map[string]bool{}}
 			off := sl.RegisterPanel(slots.Panel{
 				ID: PanelID, Title: "Search", Icon: lucide.Search(), Dock: slots.Left, Order: 1,
 				View: s.view, State: s.state, Restore: s.restore,
@@ -116,6 +120,7 @@ type Workspace interface {
 
 // Search is the panel's state, on the main thread only.
 type Search struct {
+	app     *appearance.Appearance
 	ctx     context.Context
 	sh      *shell.Shell
 	lyt     *layout.Layout
@@ -424,7 +429,7 @@ func (s *Search) fileRow(c *ui.Context, f *projectplugin.FileResult) {
 		} else {
 			ui.Box(c).Width(14).Shrink(0)
 		}
-		fileicon.Render(c, f.Rel, false, false, t.Dark, 15)
+		s.app.Icons().Render(c, f.Rel, false, false, t.Dark, 15)
 		ui.Text(c, name).FontSize(13).SingleLine().Ellipsis("…").Shrink(1)
 		if len(f.Matches) > 0 {
 			ui.Text(c, strconv.Itoa(len(f.Matches))).FontSize(11).TextColor(t.TextMuted).Shrink(0)

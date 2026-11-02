@@ -21,6 +21,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/internal/persist"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
 	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
@@ -34,7 +35,7 @@ import (
 // Plugin is the center while loaded and provides "tabTypes" and "workspace".
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   "workspace",
-	Inject: []string{"shell", "slots", "resources", "layout", "shortcuts", "fs", "project", "actions"},
+	Inject: []string{"shell", "slots", "resources", "layout", "shortcuts", "fs", "project", "actions", "appearance"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
 		var (
 			sh      *shell.Shell
@@ -45,6 +46,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			fs      fsplugin.FS
 			project projectplugin.Project
 			act     *actions.Service
+			app     *appearance.Appearance
 		)
 		if err := rctx.Use("shell", &sh); err != nil {
 			return err
@@ -70,8 +72,11 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		if err := rctx.Use("actions", &act); err != nil {
 			return err
 		}
+		if err := rctx.Use("appearance", &app); err != nil {
+			return err
+		}
 		ctx, cancel := context.WithCancel(context.Background())
-		ws := newWorkspace(ctx, sh, sl, res, lyt, sc, act, fs, project)
+		ws := newWorkspace(ctx, sh, sl, res, lyt, sc, act, app, fs, project)
 		rctx.Provide("tabTypes", ws.tabTypes)
 		rctx.Provide("workspace", ws)
 		saver := persist.New(sh, paths.SessionPath(), func() any { return ws.snapshot() })

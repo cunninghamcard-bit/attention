@@ -5,46 +5,23 @@ package fileicon
 import (
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/smallnest/uix/components/lucide"
 )
 
-var (
-	modeMu    sync.RWMutex
-	showIcons = true
-	iconMode  = "pierre"
-)
-
-// SetMode updates the global file icon visibility and theme ("pierre" or "zed").
-func SetMode(show bool, theme string) {
-	modeMu.Lock()
-	showIcons = show
-	if theme == "zed" || theme == "pierre" {
-		iconMode = theme
-	} else {
-		iconMode = "pierre"
-	}
-	modeMu.Unlock()
-}
-
-// Shown reports whether file icons are currently enabled.
-func Shown() bool {
-	modeMu.RLock()
-	defer modeMu.RUnlock()
-	return showIcons
+// Theme is which icons files get: none unless Show, else the Name set ("pierre" or "zed").
+type Theme struct {
+	Show bool
+	Name string
 }
 
 // Render draws a file or folder icon at size (in DIPs) when file icons are enabled.
-func Render(c *ui.Context, name string, dir, open, dark bool, size float32) {
-	modeMu.RLock()
-	show, mode := showIcons, iconMode
-	modeMu.RUnlock()
-	if !show {
+func (t Theme) Render(c *ui.Context, name string, dir, open, dark bool, size float32) {
+	if !t.Show {
 		return
 	}
-	if mode == "zed" {
+	if t.Name == "zed" {
 		if dir {
 			ui.Icon(c, Folder(name, open)).Size(size, size).TextColor(FolderColor(open, dark)).Shrink(0)
 			return
@@ -63,23 +40,17 @@ func Render(c *ui.Context, name string, dir, open, dark bool, size float32) {
 	ui.Icon(c, PierreSVG(name)).Size(size, size).TextColor(PierreColor(name, dark)).Shrink(0)
 }
 
-// For is the icon of a file named name under the active icon theme.
-func For(name string) *ui.SVG {
-	modeMu.RLock()
-	mode := iconMode
-	modeMu.RUnlock()
-	if mode == "zed" {
+// For is the icon of a file named name.
+func (t Theme) For(name string) *ui.SVG {
+	if t.Name == "zed" {
 		return zedFor(name)
 	}
 	return PierreSVG(name)
 }
 
-// Color returns the icon tint for a file named name under the active icon theme.
-func Color(name string, dark bool) ui.Color {
-	modeMu.RLock()
-	mode := iconMode
-	modeMu.RUnlock()
-	if mode == "zed" {
+// Color returns the icon tint for a file named name.
+func (t Theme) Color(name string, dark bool) ui.Color {
+	if t.Name == "zed" {
 		return zedColor(name, dark)
 	}
 	return PierreColor(name, dark)

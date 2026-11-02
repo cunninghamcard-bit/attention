@@ -1,0 +1,35 @@
+{
+  "name": "Attention",
+  "themes": [
+    {
+      "name": "Attention Light",
+      "appearance": "light",
+      "syntax": {
+        "comment": "#737373",
+        "keyword": "#d32a61",
+        "string": "#199f43",
+        "number": "#1ca1c7",
+        "function": "#693acf",
+        "type": "#a631be",
+        "variable": "#222222",
+        "punctuation": "#5c5c5c",
+        "tag": "#199f43"
+      }
+    },
+    {
+      "name": "Attention Dark",
+      "appearance": "dark",
+      "syntax": {
+        "comment": "#737373",
+        "keyword": "#ff678d",
+        "string": "#5ecc71",
+        "number": "#68cdf2",
+        "function": "#9d6afb",
+        "type": "#d568ea",
+        "variable": "#dadada",
+        "punctuation": "#b3b3b3",
+        "tag": "#5ecc71"
+      }
+    }
+  ]
+}

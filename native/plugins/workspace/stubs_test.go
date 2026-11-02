@@ -103,9 +103,9 @@ func projectStub() projectplugin.Project { return projectplugin.Project{} }
 func viewers(t *testing.T, ctx context.Context, ws *Workspace, fs fsplugin.FS) {
 	t.Helper()
 	testPosts = make(posts, 64)
-	t.Cleanup(textui.Register(ctx, fs, ws.tabTypes, testPosts.post))
+	t.Cleanup(textui.Register(ctx, fs, ws.tabTypes, ws.app, testPosts.post))
 	var off func()
-	testMD, off = markdownui.Register(ctx, fs, ws.sh, ws.act, ws.tabTypes, ws, testPosts.post)
+	testMD, off = markdownui.Register(ctx, fs, ws.sh, ws.act, ws.tabTypes, ws, ws.app, testPosts.post)
 	t.Cleanup(off)
 	t.Cleanup(imageui.Register(ctx, fs, ws.tabTypes, testPosts.post))
 }

@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/arcships/rutis/go/rutis"
-	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/smallnest/uix/components/lucide"
 
@@ -15,11 +14,9 @@ import (
 
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/internal/persist"
-	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
-	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 )
@@ -31,12 +28,12 @@ var (
 	// Plugin arranges the window while loaded.
 	Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		Name:   ID,
-		Inject: []string{"shell", "slots", "actions", "settings"},
+		Inject: []string{"shell", "slots", "actions", "appearance"},
 		Apply: func(rctx *rutis.Ctx, _ struct{}) error {
 			var sh *shell.Shell
 			var sl *slots.Registry
 			var act *actions.Service
-			var set *settings.Settings
+			var app *appearance.Appearance
 			if err := rctx.Use("shell", &sh); err != nil {
 				return err
 			}
@@ -46,10 +43,10 @@ var (
 			if err := rctx.Use("actions", &act); err != nil {
 				return err
 			}
-			if err := rctx.Use("settings", &set); err != nil {
+			if err := rctx.Use("appearance", &app); err != nil {
 				return err
 			}
-			l := New(sh, sl, set)
+			l := New(sh, sl, app)
 			saver := persist.New(sh, paths.LayoutPath(), func() any { return l.Snapshot() })
 			l.SaveSoon = saver.Soon
 			if s, ok := load(); ok {
@@ -88,7 +85,7 @@ type state struct {
 type Layout struct {
 	sh                    *shell.Shell
 	slots                 *slots.Registry
-	settings              *settings.Settings
+	app                   *appearance.Appearance
 	leftOpen, rightOpen   bool
 	leftWidth, rightWidth float32
 	leftPanel, rightPanel string
@@ -99,15 +96,14 @@ type Layout struct {
 	notice                string
 
 	SaveSoon func()
-	IsDark   func() bool
 }
 
 // New is the first run's layout: left dock open, right dock collapsed (Workspace.ts).
-func New(sh *shell.Shell, sl *slots.Registry, set *settings.Settings) *Layout {
+func New(sh *shell.Shell, sl *slots.Registry, app *appearance.Appearance) *Layout {
 	return &Layout{
-		sh: sh, slots: sl, settings: set,
+		sh: sh, slots: sl, app: app,
 		leftOpen: true, rightOpen: false, leftWidth: 260, rightWidth: 260,
-		reveals: map[string]int{}, restored: map[string]bool{}, IsDark: mygo.Theme.IsDark,
+		reveals: map[string]int{}, restored: map[string]bool{},
 	}
 }
 
@@ -222,11 +218,7 @@ func (l *Layout) ShownPanel(d slots.Dock) string {
 
 // RibbonShown is attention's showRibbon, true by default.
 func (l *Layout) RibbonShown() bool {
-	show := true
-	if l != nil {
-		l.settings.Get(settings.Appearance, "showRibbon", &show)
-	}
-	return show
+	return l == nil || l.app.Settings().ShowRibbon
 }
 
 // LeftHeaderSpace is the horizontal inset for the window's left title-bar
@@ -268,10 +260,7 @@ func (l *Layout) ToggleButton(c *ui.Context, d slots.Dock) {
 
 // View is the window's root.
 func (l *Layout) View(c *ui.Context) {
-	if l.settings != nil {
-		textdoc.SetAppearance(appearance.LoadFrom(l.settings))
-	}
-	c.SetTheme(textdoc.UITheme(l.dark()))
+	c.SetTheme(l.app.UI())
 	t := c.Theme()
 	overlays := l.slots.Overlays()
 	for _, o := range overlays {
@@ -337,18 +326,6 @@ func (l *Layout) restore(id string, fn func(json.RawMessage)) {
 			fn(st)
 		}
 	}
-}
-
-func (l *Layout) dark() bool {
-	var themeName string
-	l.settings.Get(settings.Appearance, "theme", &themeName)
-	switch themeName {
-	case "moonstone":
-		return false
-	case "obsidian":
-		return true
-	}
-	return l.IsDark()
 }
 
 func (l *Layout) ribbon(c *ui.Context) {

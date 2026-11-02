@@ -8,6 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	"github.com/cunninghamcard-bit/attention/native/plugins/commandpalette"
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
@@ -132,10 +133,11 @@ func testWorkspace(t *testing.T) (*Workspace, *ui.Tester) {
 	set := settings.New(sh, sl)
 	sc, offSC := shortcuts.Register(t.Context(), sl, act, set)
 	t.Cleanup(offSC)
-	testLayout = layout.New(sh, sl, set)
-	testLayout.IsDark = func() bool { return false }
+	app := appearance.New(set, t.TempDir(), sh.Update)
+	app.IsDark = func() bool { return false }
+	testLayout = layout.New(sh, sl, app)
 
-	ws := newWorkspace(t.Context(), sh, sl, res, testLayout, sc, act, fs, project)
+	ws := newWorkspace(t.Context(), sh, sl, res, testLayout, sc, act, app, fs, project)
 	viewers(t, t.Context(), ws, fs)
 	ws.setMounts([]projectplugin.Mount{m})
 	// What the profile loads beside it: the layout around it, the
@@ -146,7 +148,7 @@ func testWorkspace(t *testing.T) (*Workspace, *ui.Tester) {
 	testPalette, off = palette.Register(sl)
 	t.Cleanup(off)
 	// The listing is set here; a refresh's walk is dropped.
-	sw := switcher.New(t.Context(), ws, project.Files, func(func()) {})
+	sw := switcher.New(t.Context(), ws, app, project.Files, func(func()) {})
 	sw.SetListing(files)
 	t.Cleanup(switcher.Register(sw, sh, sl, act))
 	t.Cleanup(commandpalette.Register(commandpalette.New(t.Context(), act, sc), sh, sl, act))

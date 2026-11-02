@@ -14,10 +14,10 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/smallnest/uix/components/lucide"
 
-	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
 	"github.com/cunninghamcard-bit/attention/native/internal/fuzzy"
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
@@ -35,7 +35,7 @@ const (
 // Plugin is the quick switcher while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "slots", "workspace", "project", "actions"},
+	Inject: []string{"shell", "slots", "workspace", "project", "actions", "appearance"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
 		var (
 			sh      *shell.Shell
@@ -43,6 +43,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			ws      Workspace
 			project projectplugin.Project
 			act     *actions.Service
+			app     *appearance.Appearance
 		)
 		if err := rctx.Use("shell", &sh); err != nil {
 			return err
@@ -59,8 +60,11 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		if err := rctx.Use("actions", &act); err != nil {
 			return err
 		}
+		if err := rctx.Use("appearance", &app); err != nil {
+			return err
+		}
 		ctx, cancel := context.WithCancel(context.Background())
-		off := Register(New(ctx, ws, project.Files, sh.Update), sh, sl, act)
+		off := Register(New(ctx, ws, app, project.Files, sh.Update), sh, sl, act)
 		rctx.Effect(func(context.Context) error {
 			off()
 			cancel()
@@ -81,6 +85,7 @@ type filesFn func(context.Context) (projectplugin.Listing, error)
 
 // Switcher is the source's state, on the main thread only.
 type Switcher struct {
+	app   *appearance.Appearance
 	ctx   context.Context
 	ws    Workspace
 	files filesFn
@@ -95,8 +100,8 @@ type Switcher struct {
 
 // New is a switcher listing files with files and posting to the main
 // thread with post.
-func New(ctx context.Context, ws Workspace, files filesFn, post func(func())) *Switcher {
-	return &Switcher{ctx: ctx, ws: ws, files: files, post: post}
+func New(ctx context.Context, ws Workspace, app *appearance.Appearance, files filesFn, post func(func())) *Switcher {
+	return &Switcher{app: app, ctx: ctx, ws: ws, files: files, post: post}
 }
 
 // SetListing uses a walk of the mounts (a test's, or one done elsewhere).
@@ -176,7 +181,7 @@ func (s *Switcher) item(i int) slots.PaletteItem {
 	if k := strings.LastIndexByte(name, '/'); k >= 0 {
 		base, dir = name[k+1:], name[:k]
 	}
-	return slots.PaletteItem{Key: "f:" + path, Label: base, Detail: dir, Icon: fileicon.For(base),
+	return slots.PaletteItem{Key: "f:" + path, Label: base, Detail: dir, Icon: s.app.Icons().For(base),
 		Choose: func(newTab bool) {
 			if s.ws != nil {
 				s.ws.Open(path, nil, newTab)

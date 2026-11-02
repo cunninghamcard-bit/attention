@@ -19,10 +19,9 @@ import (
 	"github.com/smallnest/uix/components/lucide"
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
-	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
-	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
 	"github.com/cunninghamcard-bit/attention/native/internal/watchq"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
 	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
@@ -37,7 +36,7 @@ const PanelID = "file-explorer"
 // Plugin registers the Files panel while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   "filetree",
-	Inject: []string{"shell", "slots", "layout", "workspace", "fs", "project", "actions"},
+	Inject: []string{"shell", "slots", "layout", "workspace", "fs", "project", "actions", "appearance"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
 		var (
 			sh      *shell.Shell
@@ -47,6 +46,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			fs      fsplugin.FS
 			project projectplugin.Project
 			act     *actions.Service
+			app     *appearance.Appearance
 		)
 		if err := rctx.Use("shell", &sh); err != nil {
 			return err
@@ -69,10 +69,14 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		if err := rctx.Use("actions", &act); err != nil {
 			return err
 		}
+		if err := rctx.Use("appearance", &app); err != nil {
+			return err
+		}
 		ctx, cancel := context.WithCancel(context.Background())
 		tr := newTree(ctx, fs, sh.Update)
 		tr.ws = ws
 		tr.act = act
+		tr.app = app
 
 		reloadMounts := func() {
 			go func() {
@@ -136,6 +140,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 
 // Tree is the panel's state, on the main thread only.
 type Tree struct {
+	app     *appearance.Appearance
 	ctx     context.Context
 	fs      fsplugin.FS
 	ws      *workspace.Workspace
@@ -448,7 +453,7 @@ func (tr *Tree) view(c *ui.Context) {
 			ui.Text(c, "Loading…").TextColor(t.TextMuted).Padding(8, 12)
 			return
 		}
-		app := textdoc.CurrentAppearance()
+		app := tr.app.Settings()
 		rowH := float32(26)
 		if app.TreeDensity == "comfortable" {
 			rowH = 30
@@ -493,7 +498,7 @@ func (tr *Tree) view(c *ui.Context) {
 				if e.Dir {
 					d := tr.dirs[e.Path]
 					open := d != nil && d.expanded
-					if !fileicon.Shown() {
+					if !tr.app.Icons().Show {
 						deg := float32(0)
 						if open {
 							deg = 90
@@ -501,13 +506,13 @@ func (tr *Tree) view(c *ui.Context) {
 						chev := ui.Icon(c, lucide.ChevronRight()).Size(12, 12).TextColor(t.TextMuted).Shrink(0)
 						chev.Rotate(chev.AnimateTo("turn", deg, ui.Snappy))
 					} else {
-						fileicon.Render(c, e.Name, true, open, t.Dark, 15)
+						tr.app.Icons().Render(c, e.Name, true, open, t.Dark, 15)
 					}
 				} else {
-					if !fileicon.Shown() {
+					if !tr.app.Icons().Show {
 						ui.Box(c).Width(12).Shrink(0)
 					} else {
-						fileicon.Render(c, e.Name, false, false, t.Dark, 15)
+						tr.app.Icons().Render(c, e.Name, false, false, t.Dark, 15)
 					}
 				}
 				fg := t.TextMuted
