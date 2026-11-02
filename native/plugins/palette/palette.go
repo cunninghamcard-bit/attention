@@ -82,22 +82,35 @@ func (p *Palette) View(c *ui.Context) {
 		p.accept(*src, true)
 		return
 	}
-	layer := ui.Column(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).AlignItems(ui.Center)
+	layer := ui.Column(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).AlignItems(ui.Center).
+		Background(ui.RGBA(0, 0, 0, 0.25))
 	if layer.Clicked() {
 		p.close()
 	}
 	layer.Children(func() {
-		panel := ui.Column(c).Key("palette").MarginY(64).Width(600).MaxHeight(440).
-			Background(t.Background).Radius(10).BorderWidth(1).BorderColor(t.Border).Padding(6).Gap(4)
+		panel := ui.Column(c).Key("palette").MarginY(72).Width(640).MaxHeight(460).
+			Radius(12).Clip()
+		omgui.Frost(c, panel)
+		panel.Background(t.Background).BorderWidth(1).BorderColor(t.Border)
 		panel.Children(func() {
-			field := omgui.Field(c, &p.query, src.Placeholder, false).AutoFocus().FillWidth()
-			if field.Submitted() {
-				p.accept(*src, false)
+			submitted := false
+			ui.Row(c).FillWidth().Padding(10, 12).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
+				field := omgui.Field(c, &p.query, src.Placeholder, false).AutoFocus().FillWidth()
+				if field.Submitted() {
+					p.accept(*src, false)
+					submitted = true
+				}
+			})
+			if submitted {
 				return
 			}
-			p.rows(c, *src)
+			ui.Column(c).FillWidth().Padding(6).Children(func() {
+				p.rows(c, *src)
+			})
 			if src.Footer != nil {
-				src.Footer(c, p.query)
+				ui.Row(c).FillWidth().Padding(6, 12).BorderWidth(1, 0, 0, 0).BorderColor(t.Border).Children(func() {
+					src.Footer(c, p.query)
+				})
 			}
 		})
 	})

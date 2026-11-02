@@ -23,11 +23,14 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		var unloading atomic.Bool
 		background := os.Getenv("ATTENTION_HIDDEN") != ""
 		w := mygo.NewWindow(mygo.WindowOptions{
-			Title:   "attention",
-			Width:   1280,
-			Height:  820,
-			Content: ui.View(sh.View),
-			Hidden:  background,
+			Title:                "attention",
+			Width:                1280,
+			Height:               820,
+			TitleBarStyle:        mygo.TitleBarHidden,
+			TrafficLightPosition: &mygo.Point{X: 19, Y: 12},
+			TitleBarHeight:       38,
+			Content:              ui.View(sh.View),
+			Hidden:               background,
 		})
 		if background {
 			w.ShowInactive()

@@ -258,13 +258,13 @@ func (s *Settings) View(c *ui.Context) {
 		title = cur.Title
 	}
 	winW, winH := c.Size()
-	w, h := min(winW*0.9, 1100), min(winH*0.85, 1000)
-	omgui.Dialog(c, omgui.DialogProps{Open: &s.open, Key: ID, Title: title, Width: w, MaxHeight: h, Body: func(c *ui.Context) {
+	w, h := min(winW*0.9, 900), min(winH*0.85, 700)
+	omgui.Dialog(c, omgui.DialogProps{Open: &s.open, Key: ID, Title: title, Width: w, MaxHeight: h, Flush: true, Body: func(c *ui.Context) {
 		if c.Shortcut(ui.Cmd, ui.KeyComma) {
 			s.open = false
 			return
 		}
-		s.body(c, options, core, cur, w, h-80)
+		s.body(c, options, core, cur, w, h)
 	}})
 }
 
@@ -281,8 +281,9 @@ func (s *Settings) saver(file string) *persist.Saver {
 
 func (s *Settings) body(c *ui.Context, options, core []slots.SettingsSection, cur *slots.SettingsSection, w, h float32) {
 	t := c.Theme()
-	ui.Row(c).FillWidth().Height(h).AlignItems(ui.Stretch).Children(func() {
-		ui.Column(c).Width(min(max(w*0.25, 180), 250)).Shrink(0).FillHeight().Gap(8).BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Padding(0, 8, 0, 0).Children(func() {
+	ui.Row(c).FillWidth().Height(h).AlignItems(ui.Stretch).Background(t.Background).Children(func() {
+		ui.Column(c).Width(min(max(w*0.25, 190), 230)).Shrink(0).FillHeight().Gap(8).
+			Background(t.Surface).BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Padding(12).Children(func() {
 			omgui.SearchField(c, &s.query, "Search settings", false).Label("Search settings").FillWidth()
 			ui.Scroll(c).Grow(1).FillWidth().Children(func() {
 				ui.Column(c).FillWidth().Gap(2).Children(func() {
@@ -291,8 +292,8 @@ func (s *Settings) body(c *ui.Context, options, core []slots.SettingsSection, cu
 				})
 			})
 		})
-		ui.Scroll(c).Grow(1).Fill().Children(func() {
-			ui.Column(c).FillWidth().Padding(4, 24, 24, 24).Gap(16).Children(func() {
+		ui.Scroll(c).Grow(1).Fill().Background(t.Background).Children(func() {
+			ui.Column(c).FillWidth().Padding(28, 36, 36, 36).Gap(20).Children(func() {
 				if cur == nil {
 					ui.Text(c, "No settings match.").TextColor(t.TextMuted)
 					return

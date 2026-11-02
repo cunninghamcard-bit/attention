@@ -329,6 +329,7 @@ func Register(sh *shell.Shell, sl *slots.Registry, tt *tabtypes.Registry, ws *wo
 			}}),
 		sl.RegisterSettingsSection(slots.SettingsSection{ID: "terminal", Title: "Terminal", Icon: lucide.SquareTerminal(),
 			Group: slots.CorePlugins, Keywords: []string{"Shell", "Copy and paste", "Font family", "Font size"}, View: t.settingTab}),
+		sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Open terminal", Icon: lucide.SquareTerminal(), Order: 5, Run: openHere}),
 	}
 	return func() {
 		for i := len(offs) - 1; i >= 0; i-- {

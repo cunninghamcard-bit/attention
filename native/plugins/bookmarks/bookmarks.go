@@ -20,6 +20,7 @@ import (
 	"github.com/smallnest/uix/components/lucide"
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
+	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/internal/persist"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
@@ -429,6 +430,8 @@ func (b *Bookmarks) itemRow(c *ui.Context, r row) {
 				chevronClicked = true
 				b.collapsed[r.key] = !b.collapsed[r.key]
 			}
+		} else if (it.Type == "file" && it.Subpath == "") || it.Type == "folder" {
+			fileicon.Render(c, filepath.Base(it.Path), it.Type == "folder", false, t.Dark, 15)
 		} else {
 			ui.Icon(c, itemIcon(it)).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
 		}

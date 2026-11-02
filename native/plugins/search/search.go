@@ -424,7 +424,7 @@ func (s *Search) fileRow(c *ui.Context, f *projectplugin.FileResult) {
 		} else {
 			ui.Box(c).Width(14).Shrink(0)
 		}
-		ui.Icon(c, fileicon.For(f.Rel)).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
+		fileicon.Render(c, f.Rel, false, false, t.Dark, 15)
 		ui.Text(c, name).FontSize(13).SingleLine().Ellipsis("…").Shrink(1)
 		if len(f.Matches) > 0 {
 			ui.Text(c, strconv.Itoa(len(f.Matches))).FontSize(11).TextColor(t.TextMuted).Shrink(0)

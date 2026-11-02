@@ -12,7 +12,6 @@ import (
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
-	"github.com/egoist/mygo/ui/editor"
 	"github.com/egoist/mygo/ui/markdown"
 	"github.com/smallnest/uix/components/lucide"
 
@@ -167,6 +166,7 @@ func (v *Viewer) body(c *ui.Context, p tabtypes.Props) {
 		return
 	}
 	if !d.source {
+		d.md.Theme = textdoc.MarkdownTheme(c.Theme().Dark)
 		ui.Scroll(c).Key(fmt.Sprintf("md-%d", p.Info.ID)).Grow(1).Fill().Children(func() {
 			ui.Column(c).PaddingX(48).PaddingY(32).MaxWidth(860).FillWidth().Children(func() {
 				if raw := d.Ed.Buffer.String(); raw != d.raw || d.view == "" && raw != "" {
@@ -177,7 +177,7 @@ func (v *Viewer) body(c *ui.Context, p tabtypes.Props) {
 		})
 		return
 	}
-	editor.View(c, d.Ed).Key(fmt.Sprintf("ed-%d", p.Info.ID)).Grow(1).Fill()
+	d.View(c, p.Info.ID)
 }
 
 func (v *Viewer) status(c *ui.Context, p tabtypes.Props) {

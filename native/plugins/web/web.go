@@ -111,8 +111,11 @@ var (
 			rctx.Provide("web", struct{}{})
 			emitCtx, cancel := context.WithCancel(context.Background())
 			off := v.register(func(p Page) { _ = rctx.Emit(emitCtx, PageLoadedEvent, p) })
-			offs := []func(){sl.RegisterSettingsSection(slots.SettingsSection{ID: "webviewer", Title: "Web viewer", Icon: lucide.Globe(),
-				Group: slots.CorePlugins, Keywords: []string{"Search engine", "Clear browsing data", "history"}, View: v.settingTab})}
+			offs := []func(){
+				sl.RegisterSettingsSection(slots.SettingsSection{ID: "webviewer", Title: "Web viewer", Icon: lucide.Globe(),
+					Group: slots.CorePlugins, Keywords: []string{"Search engine", "Clear browsing data", "history"}, View: v.settingTab}),
+				sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Open Web viewer", Icon: lucide.Globe(), Order: 6, Run: v.openBlank}),
+			}
 			for _, cmd := range v.commands() {
 				offs = append(offs, act.Add(cmd))
 			}

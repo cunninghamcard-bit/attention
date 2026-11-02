@@ -20,6 +20,7 @@ import (
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
+	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
 	"github.com/cunninghamcard-bit/attention/native/internal/watchq"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
@@ -110,7 +111,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		})
 
 		off := sl.RegisterPanel(slots.Panel{
-			ID: PanelID, Title: "Files", Icon: lucide.Folder(), Dock: slots.Right, Order: 0,
+			ID: PanelID, Title: "Files", Icon: lucide.Folder(), Dock: slots.Left, Order: 0,
 			View:  func(c *ui.Context, _ slots.PanelProps) { tr.view(c) },
 			State: tr.state, Restore: tr.restore,
 		})
@@ -332,6 +333,38 @@ func (tr *Tree) toggleDir(path string) {
 	tr.rowsDirty = true
 }
 
+func (tr *Tree) allCollapsed() bool {
+	for _, d := range tr.dirs {
+		if d.expanded {
+			return false
+		}
+	}
+	return true
+}
+
+func (tr *Tree) toggleCollapseAll(collapse bool) {
+	if collapse {
+		for _, d := range tr.dirs {
+			if d.expanded {
+				d.expanded = false
+				if d.watched {
+					d.watched = false
+					tr.watches.Unwatch(d.path)
+				}
+			}
+		}
+	} else {
+		for _, m := range tr.mounts {
+			d := tr.dir(m.Path)
+			if !d.expanded {
+				d.expanded = true
+				tr.loadDir(d)
+			}
+		}
+	}
+	tr.rowsDirty = true
+}
+
 // applyBatch lists again the expanded directories a change touched.
 func (tr *Tree) applyBatch(b fsplugin.Batch) {
 	seen := map[string]bool{}
@@ -383,6 +416,31 @@ func (tr *Tree) view(c *ui.Context) {
 		current = ws.ActivePath()
 	}
 	ui.Column(c).Fill().Children(func() {
+		allCollapsed := tr.allCollapsed()
+		collapseIcon := lucide.ChevronsDownUp()
+		collapseTip := "Collapse all"
+		if allCollapsed {
+			collapseIcon = lucide.ChevronsUpDown()
+			collapseTip = "Expand all"
+		}
+		ui.Row(c).FillWidth().Padding(6, 8, 2, 8).Gap(2).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
+			omgui.Button(c, omgui.ButtonProps{
+				Label: "Add folder", Icon: lucide.FolderPlus(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+				OnClick: func() {
+					if cmd := tr.act.Lookup("workspace:add-folder"); cmd != nil {
+						go func() {
+							if _, err := cmd.Run(tr.ctx, actions.Args{Params: map[string]string{}}); err != nil && tr.ctx.Err() == nil {
+								tr.post(func() { tr.notice = err.Error() })
+							}
+						}()
+					}
+				},
+			}).Tooltip("Add folder to workspace")
+			omgui.Button(c, omgui.ButtonProps{
+				Label: collapseTip, Icon: collapseIcon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+				OnClick: func() { tr.toggleCollapseAll(!allCollapsed) },
+			}).Tooltip(collapseTip)
+		})
 		if tr.notice != "" {
 			ui.Text(c, tr.notice).FontSize(11).TextColor(t.Warning).Padding(4, 12)
 		}
@@ -390,10 +448,36 @@ func (tr *Tree) view(c *ui.Context) {
 			ui.Text(c, "Loading…").TextColor(t.TextMuted).Padding(8, 12)
 			return
 		}
+		app := textdoc.CurrentAppearance()
+		rowH := float32(26)
+		if app.TreeDensity == "comfortable" {
+			rowH = 30
+		}
 		ui.List(c, nil, len(rows), func(i int) {
 			r := rows[i]
 			e := r.entry
-			row := omgui.SideRow(c, omgui.SideRowProps{Key: e.Path, Selected: !e.Dir && e.Path == current, Depth: r.depth})
+			selected := !e.Dir && e.Path == current
+			indent := float32(r.depth) * 16
+			row := ui.Row(c).Key(e.Path).Height(rowH).AlignSelf(ui.Stretch).MinWidth(0).
+				Padding(0, 8, 0, 8+indent).Gap(6).AlignItems(ui.Center).Radius(4).
+				Focusable().Role(ui.RoleButton).Checked(selected).Cursor(ui.CursorPointer)
+			hovered := row.Hovered()
+			switch {
+			case selected:
+				row.Background(t.SurfacePressed)
+			case hovered:
+				row.Background(t.SurfaceHover)
+			}
+			if r.depth > 0 && app.ShowGuides {
+				depth := r.depth
+				guideColor := t.Border.Alpha(0.75)
+				row.DrawOver(func(p *ui.Painter, rc ui.Rect) {
+					for d := range depth {
+						gx := rc.X + 15 + float32(d)*16
+						p.Fill(ui.Rect{X: gx, Y: rc.Y, W: 1, H: rc.H}, guideColor, 0)
+					}
+				})
+			}
 			if row.Clicked() {
 				if e.Dir {
 					tr.toggleDir(e.Path)
@@ -409,23 +493,32 @@ func (tr *Tree) view(c *ui.Context) {
 				if e.Dir {
 					d := tr.dirs[e.Path]
 					open := d != nil && d.expanded
-					chevron := lucide.ChevronRight()
-					if open {
-						chevron = lucide.ChevronDown()
+					if !fileicon.Shown() {
+						deg := float32(0)
+						if open {
+							deg = 90
+						}
+						chev := ui.Icon(c, lucide.ChevronRight()).Size(12, 12).TextColor(t.TextMuted).Shrink(0)
+						chev.Rotate(chev.AnimateTo("turn", deg, ui.Snappy))
+					} else {
+						fileicon.Render(c, e.Name, true, open, t.Dark, 15)
 					}
-					ui.Icon(c, chevron).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
-					icon := lucide.Folder()
-					if open {
-						icon = lucide.FolderOpen()
-					}
-					ui.Icon(c, icon).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
 				} else {
-					ui.Box(c).Width(14).Shrink(0)
-					ui.Icon(c, fileicon.For(e.Name)).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
+					if !fileicon.Shown() {
+						ui.Box(c).Width(12).Shrink(0)
+					} else {
+						fileicon.Render(c, e.Name, false, false, t.Dark, 15)
+					}
 				}
-				label := ui.Text(c, e.Name).SingleLine().Ellipsis("…").Shrink(1).FontSize(13)
+				fg := t.TextMuted
+				if selected || hovered || r.mount != nil {
+					fg = t.Text
+				}
+				label := ui.Text(c, e.Name).SingleLine().Ellipsis("…").Shrink(1).FontSize(13).LineHeight(1.35).TextColor(fg)
 				if r.mount != nil {
-					label.Bold()
+					label.FontWeight(600)
+				} else if selected {
+					label.FontWeight(500)
 				}
 				if e.Dir {
 					if d := tr.dirs[e.Path]; d != nil && d.err != "" {
@@ -433,7 +526,7 @@ func (tr *Tree) view(c *ui.Context) {
 					}
 				}
 			})
-		}).Grow(1).FillWidth().PaddingY(4)
+		}).Grow(1).FillWidth().Padding(4, 6)
 	})
 }
 

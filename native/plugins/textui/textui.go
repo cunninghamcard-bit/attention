@@ -3,11 +3,9 @@ package textui
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
-	"github.com/egoist/mygo/ui/editor"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
@@ -69,7 +67,7 @@ func Register(ctx context.Context, fs fsplugin.FS, tt *tabtypes.Registry, post f
 			if d.Placeholder(c) {
 				return
 			}
-			editor.View(c, d.Ed).Key(fmt.Sprintf("ed-%d", p.Info.ID)).Grow(1).Fill()
+			d.View(c, p.Info.ID)
 		},
 		Status: func(c *ui.Context, p tabtypes.Props) {
 			d := doc(p.Info.ID)

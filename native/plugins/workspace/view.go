@@ -12,6 +12,8 @@ import (
 
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
+	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
+	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 )
@@ -97,7 +99,9 @@ func (ws *Workspace) paneView(c *ui.Context, p *pane) {
 		ws.focusGroup(p)
 	}
 	col.Children(func() {
-		ws.tabBar(c, p, focused || alone)
+		if textdoc.CurrentAppearance().ShowTabBar {
+			ws.tabBar(c, p, focused || alone)
+		}
 		side := p.dropSide
 		body := ui.Column(c).Grow(1).Fill().MinHeight(0).Children(func() {
 			if tb := p.current(); tb == nil {
@@ -131,20 +135,48 @@ func (ws *Workspace) paneView(c *ui.Context, p *pane) {
 func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
 	t := c.Theme()
 	p.chips = p.chips[:0]
-	header := ui.Row(c).Height(38).Shrink(0).FillWidth().Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).
-		AlignItems(ui.Center).PaddingX(4).Gap(2).Children(func() {
-		// With the ribbon hidden, the left dock's toggle leads the top-left
-		// group's tabs (updateSidebarTogglePlacement).
-		if l := ws.lyt; l != nil && !l.RibbonShown() && ws.isTopLeft(p) {
+	padLeft, padRight := float32(4), float32(4)
+	if l := ws.lyt; l != nil {
+		if !l.Open(slots.Left) && ws.isTopLeft(p) {
+			padLeft += l.LeftHeaderSpace(c)
+		}
+		if !l.Open(slots.Right) && ws.isTopRight(p) {
+			padRight += c.TitleBar().Right
+		}
+	}
+	header := ui.Row(c).Height(38).Shrink(0).FillWidth().Background(t.Surface).
+		AlignItems(ui.Center).Padding(0, padRight, 0, padLeft).Gap(2)
+	borderColor := t.Border
+	bgColor := t.Background
+	header.DrawOver(func(painter *ui.Painter, rc ui.Rect) {
+		y := rc.Y + rc.H - 1
+		painter.Fill(ui.Rect{X: rc.X, Y: y, W: rc.W, H: 1}, borderColor, 0)
+		if p.active >= 0 && p.active < len(p.chips) {
+			ab := p.chips[p.active]
+			if ab.W > 2 {
+				painter.Fill(ui.Rect{X: ab.X + 1, Y: y, W: ab.W - 2, H: 1}, bgColor, 0)
+			}
+		}
+	})
+	if ws.isTop(p) {
+		header.DragWindow()
+	}
+	header.Children(func() {
+		// When the left dock is closed and the toggle belongs in the header
+		// (ribbon hidden or macOS traffic lights in the corner), it leads the
+		// top-left group's tabs (updateSidebarTogglePlacement).
+		if l := ws.lyt; l != nil && !l.Open(slots.Left) && l.LeftToggleInHeader(c) && ws.isTopLeft(p) {
 			l.ToggleButton(c, slots.Left)
 		}
 		ui.ScrollHorizontal(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
-			ui.Row(c).PaddingX(6).Gap(2).AlignItems(ui.Center).FillHeight().Children(func() {
+			ui.Row(c).Padding(4, 6, 0, 6).Gap(2).AlignItems(ui.End).FillHeight().Children(func() {
 				for j, tb := range p.tabs {
 					ws.tabChip(c, p, j, tb)
 				}
-				omgui.Button(c, omgui.ButtonProps{Label: "New tab", Icon: lucide.Plus(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
-					OnClick: func() { ws.later(func() { ws.activeGroup = p; ws.newTab() }) }}).Tooltip("New tab")
+				ui.Row(c).Height(32).AlignItems(ui.Center).Children(func() {
+					omgui.Button(c, omgui.ButtonProps{Label: "New tab", Icon: lucide.Plus(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+						OnClick: func() { ws.later(func() { ws.activeGroup = p; ws.newTab() }) }}).Tooltip("New tab")
+				})
 			})
 		})
 		omgui.IconMenu(c, omgui.IconMenuProps{Label: "Tab list", Icon: lucide.ChevronDown(), End: true, Items: ws.tabListMenu(p)})
@@ -159,21 +191,73 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
 }
 
 func (ws *Workspace) tabChip(c *ui.Context, p *pane, j int, tb *tab) {
+	t := c.Theme()
 	title := tb.title
 	if tb.isMissing() {
 		title += " (deleted)"
 	}
 	tip := tb.title
 	icon := ws.tabIcon(tb)
-	if !tb.empty && !tb.page() {
+	var iconColor ui.Color
+	if tb.empty {
+		icon = nil
+	} else if !tb.page() {
 		tip = ws.display(tb.path)
+		if !fileicon.Shown() {
+			icon = nil
+		} else {
+			iconColor = fileicon.Color(tb.title, t.Dark)
+		}
 	}
-	// Each group shows its active tab, as attention's is-active.
-	chip := omgui.TabChip(c, omgui.TabChipProps{
-		Key: fmt.Sprintf("tab-%d", tb.id), Title: title, Icon: icon, Tooltip: tip,
-		Selected:   j == p.active,
-		CloseLabel: "Close " + tb.title,
-		OnClose:    func() { ws.later(func() { ws.closeTabs([]*tab{tb}) }) },
+	selected := j == p.active
+	chip := ui.Row(c).Key(fmt.Sprintf("tab-%d", tb.id)).Shrink(0).
+		AlignItems(ui.Center).Cursor(ui.CursorPointer).
+		Focusable().Role(ui.RoleTab).Checked(selected).Label(title).Tooltip(tip)
+	hovered := chip.Hovered()
+	fg := t.TextMuted
+	weight := 400
+	if selected {
+		fg = t.Text
+		weight = 500
+		chip.Height(34).Radius(6, 6, 0, 0).Background(t.Background).
+			BorderWidth(1, 1, 0, 1).BorderColor(t.Border)
+	} else {
+		chip.Height(30).Margin(0, 0, 2, 0).Radius(4)
+		if hovered {
+			fg = t.Text
+			chip.Background(t.SurfaceHover)
+		} else if j+1 < len(p.tabs) && j+1 != p.active {
+			divColor := t.Border
+			chip.DrawOver(func(painter *ui.Painter, rc ui.Rect) {
+				painter.Fill(ui.Rect{X: rc.X + rc.W, Y: rc.Y + (rc.H-14)/2, W: 1, H: 14}, divColor, 0)
+			})
+		}
+	}
+	chip.TextColor(fg)
+	chip.Children(func() {
+		ui.Row(c).MaxWidth(160).MinWidth(0).Shrink(0).Padding(0, 6, 0, 10).Gap(6).AlignItems(ui.Center).Children(func() {
+			if icon != nil {
+				ic := ui.Icon(c, icon).Size(14, 14).Shrink(0)
+				if iconColor.A > 0 {
+					ic.TextColor(iconColor)
+				} else {
+					ic.TextColor(fg)
+				}
+			}
+			ui.Text(c, title).FontSize(12.5).LineHeight(1.3).FontWeight(weight).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
+		})
+		xbtn := ui.ButtonBase(c).Label("Close "+tb.title).Size(20, 20).
+			Radius(4).Margin(0, 4, 0, 0).Shrink(0).AlignItems(ui.Center).
+			Justify(ui.Center).Cursor(ui.CursorPointer)
+		if xbtn.Hovered() {
+			xbtn.Background(t.SurfaceHover)
+		}
+		xbtn.OnClick(func() { ws.later(func() { ws.closeTabs([]*tab{tb}) }) })
+		xbtn.Children(func() {
+			if selected || hovered || xbtn.Hovered() {
+				ui.Icon(c, lucide.X()).Size(12, 12).TextColor(t.TextMuted)
+			}
+		})
 	})
 	chip.ContextMenu(func(m *ui.Menu) { nativeMenu(m, ws.tabMenu(p, tb)) })
 	chip.Drag(tb)
@@ -244,6 +328,13 @@ func (ws *Workspace) closeAllLater(p *pane) func() {
 	}
 }
 
+// isTop reports whether p is along the center's top edge.
+func (ws *Workspace) isTop(p *pane) bool {
+	rs := map[*pane]rect{}
+	ws.root.rects(rect{0, 0, 1, 1}, rs)
+	return rs[p].top < 1e-6
+}
+
 // isTopLeft reports whether p is the center's top-left group.
 func (ws *Workspace) isTopLeft(p *pane) bool {
 	rs := map[*pane]rect{}
@@ -262,7 +353,7 @@ func (ws *Workspace) isTopRight(p *pane) bool {
 
 func (ws *Workspace) emptyPane(c *ui.Context) {
 	t := c.Theme()
-	// A command's name and its first hotkey, as the user set them.
+	// A command's name and its first hotkey, as the user set them (EmptyView.ts).
 	hint := func(id string) {
 		cmd := ws.act.Lookup(id)
 		if cmd == nil {
@@ -272,13 +363,26 @@ func (ws *Workspace) emptyPane(c *ui.Context) {
 		if ws.sc != nil {
 			label = ws.sc.EffectiveLabel(*cmd)
 		}
-		ui.Row(c).Gap(24).Children(func() {
-			ui.Text(c, cmd.Title).TextColor(t.TextMuted).Width(160)
-			ui.Text(c, label).TextColor(t.TextMuted)
+		text := cmd.Title
+		if label != "" {
+			text += " (" + label + ")"
+		}
+		btn := ui.ButtonBase(c).Key("empty-" + id).Label(cmd.Title).Height(32).PaddingX(12).Radius(6).
+			AlignItems(ui.Center).Justify(ui.Center).Cursor(ui.CursorPointer)
+		fg := t.Accent
+		if btn.Hovered() {
+			fg = t.AccentHover
+			btn.Background(t.SurfaceHover)
+		}
+		if btn.Clicked() && cmd.Main != nil {
+			cmd.Main()
+		}
+		btn.Children(func() {
+			ui.Text(c, text).FontSize(14).TextColor(fg)
 		})
 	}
-	ui.Column(c).Grow(1).Fill().Center().Gap(10).Children(func() {
-		ui.Text(c, "attention").FontSize(22).Bold().TextColor(t.TextMuted)
+	ui.Column(c).Grow(1).Fill().Background(t.Background).Center().Gap(6).Children(func() {
+		ui.Text(c, "No file is open").FontSize(18).FontWeight(600).TextColor(t.Text).Margin(0, 0, 8, 0)
 		for _, id := range []string{"switcher:open", "command-palette:open", "global-search:open", "app:toggle-left-sidebar", "app:toggle-right-sidebar"} {
 			hint(id)
 		}
@@ -295,13 +399,19 @@ func (ws *Workspace) tabBody(c *ui.Context, p *pane, tb *tab, focused bool) {
 	}
 	tt, ok := ws.tabTypes.Get(tb.typeID)
 	props := ws.props(tb, focused)
-	ws.viewHeader(c, p, tb, props, tt, focused)
+	app := textdoc.CurrentAppearance()
+	if app.ShowViewHeader {
+		ws.viewHeader(c, p, tb, props, tt, focused)
+	}
 	if tb.isMissing() {
 		banner(c, "This file was deleted or moved. The last loaded content is shown.", t.Warning)
 	}
 	if !ok {
 		centered(c, "No viewer for this file.")
 		return
+	}
+	if app.ShowInline && !tb.page() {
+		ui.Text(c, tb.title).FontSize(22).Bold().TextColor(t.Text).Padding(16, 24, 4, 24)
 	}
 	tt.Body(c, props)
 }
@@ -311,8 +421,8 @@ func (ws *Workspace) tabBody(c *ui.Context, p *pane, tb *tab, focused bool) {
 // options.
 func (ws *Workspace) viewHeader(c *ui.Context, p *pane, tb *tab, props tabtypes.Props, tt tabtypes.TabType, focused bool) {
 	t := c.Theme()
-	ui.Row(c).Key(fmt.Sprintf("header-%d", p.id)).Height(38).Shrink(0).FillWidth().PaddingX(8).Gap(2).AlignItems(ui.Center).
-		BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
+	ui.Row(c).Key(fmt.Sprintf("header-%d", p.id)).Height(36).Shrink(0).FillWidth().PaddingX(8).Gap(2).AlignItems(ui.Center).
+		Background(t.Background).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
 		navButton := func(label string, icon *ui.SVG, delta int, n int) {
 			// Disabled draws the icon muted, as attention's aria-disabled
 			// clickable-icon; enabled draws it in the text colour.
@@ -360,6 +470,9 @@ func (ws *Workspace) breadcrumbs(c *ui.Context, tb *tab, focused bool) {
 		name := t.Text
 		if !focused {
 			name = t.TextMuted
+		}
+		if !tb.empty && !tb.page() {
+			fileicon.Render(c, tb.title, false, false, t.Dark, 14)
 		}
 		ui.Text(c, tb.title).FontSize(13).TextColor(name).MaxLines(1)
 	})

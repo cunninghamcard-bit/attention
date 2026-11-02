@@ -112,6 +112,26 @@ func (d *Doc) Placeholder(c *ui.Context) bool {
 	return true
 }
 
+// View draws the document's read-only editor with Zed One Light / One Dark
+// styling and comfortable line height.
+func (d *Doc) View(c *ui.Context, id int) {
+	if d == nil || d.Ed == nil {
+		return
+	}
+	app := CurrentAppearance()
+	d.Ed.Theme = CodeTheme(c.Theme().Dark)
+	d.Ed.Font = ui.Font{Family: app.EffectiveMonoFont(), Size: app.EffectiveEditorFontSize()}
+	d.Ed.LineHeight = app.EffectiveLineHeight()
+	d.Ed.TabSize = app.EffectiveTabSize()
+	if app.ShowLineNums {
+		d.Ed.LineNumbers = editor.LineNumbersOn
+	} else {
+		d.Ed.LineNumbers = editor.LineNumbersOff
+	}
+	d.Ed.NoIndentGuides = !app.ShowGuides
+	editor.View(c, d.Ed).Key(fmt.Sprintf("ed-%d", id)).Grow(1).Fill()
+}
+
 // Lines is the caret's line (1-based) and the line count, false before
 // there is text.
 func (d *Doc) Lines() (cur, lines int, ok bool) {
@@ -150,7 +170,13 @@ func (d *Doc) setText(f fsplugin.File) {
 	if d.Ed == nil {
 		buf := editor.NewBuffer(f.Text)
 		buf.SetLanguage(editor.LanguageFor(d.Path))
-		d.Ed = &editor.State{Buffer: buf, ReadOnly: true}
+		d.Ed = &editor.State{
+			Buffer:          buf,
+			ReadOnly:        true,
+			Font:            ui.Font{Family: MonoFont, Size: CodeFontSize},
+			LineHeight:      CodeLineHeight,
+			NoScrollPastEnd: true,
+		}
 		return
 	}
 	// Keep where the reader was: the first visible line and the carets,

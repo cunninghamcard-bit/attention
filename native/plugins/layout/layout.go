@@ -5,19 +5,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/smallnest/uix/components/lucide"
 
-	"github.com/cunninghamcard-bit/attention-ui/theme"
 	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/internal/persist"
+	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
@@ -28,9 +28,6 @@ import (
 const ID = "layout"
 
 var (
-	themesMu sync.Mutex
-	themes   = map[bool]*ui.Theme{}
-
 	// Plugin arranges the window while loaded.
 	Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		Name:   ID,
@@ -105,11 +102,11 @@ type Layout struct {
 	IsDark   func() bool
 }
 
-// New is the first run's layout: both docks open.
+// New is the first run's layout: left dock open, right dock collapsed (Workspace.ts).
 func New(sh *shell.Shell, sl *slots.Registry, set *settings.Settings) *Layout {
 	return &Layout{
 		sh: sh, slots: sl, settings: set,
-		leftOpen: true, rightOpen: true, leftWidth: 260, rightWidth: 260,
+		leftOpen: true, rightOpen: false, leftWidth: 260, rightWidth: 260,
 		reveals: map[string]int{}, restored: map[string]bool{}, IsDark: mygo.Theme.IsDark,
 	}
 }
@@ -124,6 +121,11 @@ func (l *Layout) Restore(s state) {
 	}
 	l.leftOpen, l.rightOpen = s.PanelOpen, s.RightOpen
 	l.leftPanel, l.rightPanel = s.LeftPanel, s.RightPanel
+	if l.rightPanel == "file-explorer" {
+		l.leftPanel = "file-explorer"
+		l.rightPanel = ""
+		l.rightOpen = false
+	}
 	l.saved, l.restored = s.PanelStates, map[string]bool{}
 }
 
@@ -227,6 +229,26 @@ func (l *Layout) RibbonShown() bool {
 	return show
 }
 
+// LeftHeaderSpace is the horizontal inset for the window's left title-bar
+// controls after subtracting the ribbon's width when shown (--frame-left-space).
+func (l *Layout) LeftHeaderSpace(c *ui.Context) float32 {
+	left := c.TitleBar().Left
+	if left <= 0 {
+		return 0
+	}
+	space := max(left, 80)
+	if l.RibbonShown() {
+		space = max(0, space-44)
+	}
+	return space
+}
+
+// LeftToggleInHeader reports whether the left sidebar toggle button belongs in
+// a header bar instead of the ribbon (updateSidebarTogglePlacement).
+func (l *Layout) LeftToggleInHeader(c *ui.Context) bool {
+	return !l.RibbonShown() || c.TitleBar().Left > 0
+}
+
 // ToggleButton draws a dock's toggle button.
 func (l *Layout) ToggleButton(c *ui.Context, d slots.Dock) {
 	if l == nil {
@@ -246,7 +268,10 @@ func (l *Layout) ToggleButton(c *ui.Context, d slots.Dock) {
 
 // View is the window's root.
 func (l *Layout) View(c *ui.Context) {
-	c.SetTheme(themeFor(l.dark()))
+	if l.settings != nil {
+		textdoc.SetAppearance(appearance.LoadFrom(l.settings))
+	}
+	c.SetTheme(textdoc.UITheme(l.dark()))
 	t := c.Theme()
 	overlays := l.slots.Overlays()
 	for _, o := range overlays {
@@ -326,49 +351,38 @@ func (l *Layout) dark() bool {
 	return l.IsDark()
 }
 
-func (l *Layout) appearance(c *ui.Context) {
-	omgui.SettingsSection(c, "", func() {
-		l.colorScheme(c)
-	})
-	omgui.SettingsSection(c, "Interface", func() {
-		l.ribbonRow(c)
-	})
-}
-
-func (l *Layout) colorScheme(c *ui.Context) {
-	omgui.PreferenceRow(c, "Base color scheme", "Choose the color scheme used by the app.", func() {
-		themeName := "system"
-		l.settings.Get(settings.Appearance, "theme", &themeName)
-		v := themeName
-		omgui.Select(c, omgui.SelectProps{Key: "appearance", Value: &v, Width: 160, Options: []omgui.SelectOption{
-			{Value: "system", Label: "Adapt to system"}, {Value: "moonstone", Label: "Light"}, {Value: "obsidian", Label: "Dark"},
-		}})
-		if v != themeName {
-			l.settings.Set(settings.Appearance, "theme", v)
-		}
-	})
-}
-
-func (l *Layout) ribbonRow(c *ui.Context) {
-	omgui.PreferenceRow(c, "Show ribbon", "Display the ribbon on the left side of the window.", func() {
-		show := l.RibbonShown()
-		on := show
-		ui.Switch(c, &on)
-		if on != show {
-			l.settings.Set(settings.Appearance, "showRibbon", on)
-		}
-	})
-}
-
 func (l *Layout) ribbon(c *ui.Context) {
 	t := c.Theme()
-	ui.Column(c).Width(40).FillHeight().PaddingY(8).Gap(4).AlignItems(ui.Center).
-		Background(t.Surface).BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Children(func() {
-		l.ToggleButton(c, slots.Left)
-		for _, r := range l.slots.Ribbon() {
-			omgui.Button(c, omgui.ButtonProps{Label: r.Title, Icon: r.Icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall, OnClick: r.Run}).
-				Tooltip(r.Title)
-		}
+	ribbonBg := t.Surface
+	if !l.leftOpen {
+		ribbonBg = t.Background
+	}
+	ui.Column(c).Width(44).FillHeight().AlignItems(ui.Center).
+		Background(ribbonBg).BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Children(func() {
+		ui.Row(c).Height(38).Shrink(0).FillWidth().Center().
+			Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).DragWindow().Children(func() {
+			if !l.LeftToggleInHeader(c) {
+				l.ToggleButton(c, slots.Left)
+			}
+		})
+		ui.Column(c).Grow(1).FillWidth().PaddingY(8).Gap(4).AlignItems(ui.Center).Children(func() {
+			items := l.slots.Ribbon()
+			for _, r := range items {
+				if r.Order >= 100 {
+					continue
+				}
+				omgui.Button(c, omgui.ButtonProps{Label: r.Title, Icon: r.Icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall, OnClick: r.Run}).
+					Tooltip(r.Title)
+			}
+			ui.Box(c).Grow(1)
+			for _, r := range items {
+				if r.Order < 100 {
+					continue
+				}
+				omgui.Button(c, omgui.ButtonProps{Label: r.Title, Icon: r.Icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall, OnClick: r.Run}).
+					Tooltip(r.Title)
+			}
+		})
 	})
 }
 
@@ -387,20 +401,34 @@ func (l *Layout) dock(c *ui.Context, d slots.Dock) {
 			want = l.rightPanel
 		}
 		shown := shownPanel(panels, want)
-		ui.Row(c).Height(38).Shrink(0).PaddingX(6).Gap(2).AlignItems(ui.Center).
-			BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
+		padLeft, padRight := float32(6), float32(6)
+		if d == slots.Left {
+			padLeft += l.LeftHeaderSpace(c)
+		} else {
+			padRight += c.TitleBar().Right
+		}
+		ui.Row(c).Height(38).Shrink(0).FillWidth().Padding(0, padRight, 0, padLeft).Gap(2).AlignItems(ui.Center).
+			BorderWidth(0, 0, 1, 0).BorderColor(t.Border).DragWindow().Children(func() {
 			if d == slots.Right {
 				l.ToggleButton(c, slots.Right)
 			}
 			for i := range panels {
 				p := panels[i]
+				active := shown != nil && shown.ID == p.ID
 				color := t.TextMuted
-				if shown != nil && shown.ID == p.ID {
+				if active {
 					color = t.Text
 				}
-				omgui.Button(c, omgui.ButtonProps{Label: p.Title, Icon: p.Icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+				btn := omgui.Button(c, omgui.ButtonProps{Label: p.Title, Icon: p.Icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
 					IconColor: color, OnClick: func() { l.RevealPanel(p.ID) }}).
-					Checked(shown != nil && shown.ID == p.ID).Tooltip(p.Title)
+					Checked(active).Tooltip(p.Title)
+				if active {
+					btn.Background(t.SurfaceHover)
+				}
+			}
+			if d == slots.Left && l.LeftToggleInHeader(c) {
+				ui.Box(c).Grow(1)
+				l.ToggleButton(c, slots.Left)
 			}
 		})
 		if shown == nil {
@@ -418,7 +446,7 @@ func (l *Layout) dock(c *ui.Context, d slots.Dock) {
 
 func (l *Layout) statusBar(c *ui.Context) {
 	t := c.Theme()
-	ui.Row(c).Height(26).FillWidth().PaddingX(10).Gap(14).AlignItems(ui.Center).
+	ui.Row(c).Height(24).FillWidth().PaddingX(10).Gap(12).AlignItems(ui.Center).
 		Background(t.Surface).BorderWidth(1, 0, 0, 0).BorderColor(t.Border).Children(func() {
 		for _, s := range l.slots.Status(false) {
 			s.View(c)
@@ -446,11 +474,9 @@ func (l *Layout) commands(sh *shell.Shell) []actions.Command {
 }
 
 // Register makes l the window's root and registers its commands until off is called.
-func Register(l *Layout, sh *shell.Shell, sl *slots.Registry, act *actions.Service) (off func()) {
+func Register(l *Layout, sh *shell.Shell, _ *slots.Registry, act *actions.Service) (off func()) {
 	offs := []func(){
 		sh.SetRoot(l.View),
-		sl.RegisterSettingsSection(slots.SettingsSection{ID: "appearance", Title: "Appearance", Icon: lucide.Palette(), Order: 20,
-			Keywords: []string{"Base color scheme", "Interface", "Show ribbon"}, View: l.appearance}),
 	}
 	for _, cmd := range l.commands(sh) {
 		offs = append(offs, act.Add(cmd))
@@ -485,17 +511,6 @@ func load() (state, bool) {
 		old.PanelStates["command-palette"], _ = json.Marshal(old.RecentCommands)
 	}
 	return old.state, true
-}
-
-func themeFor(dark bool) *ui.Theme {
-	themesMu.Lock()
-	defer themesMu.Unlock()
-	t, ok := themes[dark]
-	if !ok {
-		t = theme.For(dark, "default")
-		themes[dark] = t
-	}
-	return t
 }
 
 func shownPanel(panels []slots.Panel, want string) *slots.Panel {

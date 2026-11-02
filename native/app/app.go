@@ -31,6 +31,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/internal/launcher"
 	"github.com/cunninghamcard-bit/attention/native/internal/lifecycle"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	"github.com/cunninghamcard-bit/attention/native/plugins/backlinks"
 	"github.com/cunninghamcard-bit/attention/native/plugins/bookmarks"
 	"github.com/cunninghamcard-bit/attention/native/plugins/cli"
@@ -67,7 +68,7 @@ import (
 // which run.
 var plugins = []*rutis.Definition{
 	shell.Plugin, slots.Plugin, resources.Plugin, actions.Plugin, cli.Plugin, fs.Plugin, project.Plugin, fileresource.Plugin, index.Plugin, layout.Plugin, workspace.Plugin,
-	shortcuts.Plugin, palette.Plugin, switcher.Plugin, commandpalette.Plugin, gotoline.Plugin, settings.Plugin,
+	shortcuts.Plugin, palette.Plugin, switcher.Plugin, commandpalette.Plugin, gotoline.Plugin, settings.Plugin, appearance.Plugin,
 	filetree.Plugin, search.Plugin, backlinks.Plugin, outline.Plugin, bookmarks.Plugin, textui.Plugin, markdownui.Plugin, imageui.Plugin,
 	web.Plugin, webread.Plugin, webhistory.Plugin, webindex.Plugin, webviewpanel.Plugin, terminalui.Plugin,
 }

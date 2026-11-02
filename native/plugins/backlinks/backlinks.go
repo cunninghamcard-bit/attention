@@ -291,11 +291,11 @@ func (p *Pane) fileRow(c *ui.Context, b *indexplugin.Backlink) {
 		} else {
 			ui.Box(c).Width(14).Shrink(0)
 		}
-		icon := fileicon.For(b.Display)
 		if b.URL != "" {
-			icon = lucide.Globe()
+			ui.Icon(c, lucide.Globe()).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
+		} else {
+			fileicon.Render(c, b.Display, false, false, t.Dark, 15)
 		}
-		ui.Icon(c, icon).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
 		ui.Text(c, b.Display).FontSize(13).SingleLine().Ellipsis("…").Shrink(1)
 		if len(b.Mentions) > 0 {
 			ui.Text(c, strconv.Itoa(len(b.Mentions))).FontSize(11).TextColor(t.TextMuted).Shrink(0)
