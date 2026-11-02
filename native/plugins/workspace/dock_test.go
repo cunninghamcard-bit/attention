@@ -25,15 +25,15 @@ func TestDockShowsFirstPanelAndRevealsByShortcut(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if l.ShownPanel(slots.Left) != "search" || !tt.HasText("search body") {
-		t.Fatalf("clicking the header icon should show search: %q %v", l.ShownPanel(slots.Left), tt.Texts())
+	if l.ShownPanel(slots.Sidebar) != "search" || !tt.HasText("search body") {
+		t.Fatalf("clicking the header icon should show search: %q %v", l.ShownPanel(slots.Sidebar), tt.Texts())
 	}
 	press(tt, ui.Cmd, ui.KeyB)
-	if l.Open(slots.Left) || tt.HasText("tree body") {
+	if l.Open(slots.Sidebar) || tt.HasText("tree body") {
 		t.Fatal("Ctrl B should close the left dock")
 	}
 	press(tt, ui.Cmd|ui.Shift, ui.KeyF)
-	if !l.Open(slots.Left) || !tt.HasText("search body") || searchReveals != 2 {
+	if !l.Open(slots.Sidebar) || !tt.HasText("search body") || searchReveals != 2 {
 		t.Fatalf("Ctrl Shift F should open the dock on search (reveals %d): %v", searchReveals, tt.Texts())
 	}
 	if s := l.Snapshot(); s.LeftPanel != "search" {
@@ -87,16 +87,10 @@ func TestMoreOptionsOpensAndSplits(t *testing.T) {
 	}
 }
 
-// Regression: a Key set on the ribbon button's element left its OnClick
-// never running, and the header's Back the same.
-func TestRibbonAndBackButtonsRun(t *testing.T) {
-	ran := false
-	off := ensureSlots(t).RegisterRibbon(slots.RibbonItem{ID: "x", Title: "Do it", Icon: icon.Must("folder"), Run: func() { ran = true }})
-	t.Cleanup(off)
+// Regression: a Key set on the header's Back button left its OnClick
+// never running.
+func TestBackButtonRuns(t *testing.T) {
 	ws, tt := testWorkspace(t)
-	if err := tt.Click("Do it"); err != nil || !ran {
-		t.Fatalf("the ribbon button should run: %v", err)
-	}
 	ws.open("/m/alpha.md", nil)
 	ws.open("/m/beta.md", nil)
 	tt.Frame()
@@ -116,7 +110,7 @@ func TestClosingAGroupFromItsTabListDoesNotPanic(t *testing.T) {
 	ws.open("/m/alpha.md", nil)
 	ws.openIn("/m/beta.md", nil, true)
 	ws.split(vertical)
-	testLayout.Toggle(slots.Right)
+	testLayout.Toggle(slots.Context)
 	tt.Frame()
 	if err := tt.Click("Tab list"); err != nil {
 		t.Fatal(err)
@@ -133,7 +127,7 @@ func TestClosingAGroupFromItsTabListDoesNotPanic(t *testing.T) {
 // panel registers a left panel drawing body, counting its reveals.
 func panel(t *testing.T, id string, order int, body string, reveals *int) {
 	t.Helper()
-	off := ensureSlots(t).RegisterPanel(slots.Panel{ID: id, Title: id, Icon: icon.Must("folder"), Dock: slots.Left, Order: order,
+	off := ensureSlots(t).RegisterPanel(slots.Panel{ID: id, Title: id, Icon: icon.Must("folder"), Dock: slots.Sidebar, Order: order,
 		View: func(c *ui.Context, p slots.PanelProps) {
 			if reveals != nil {
 				*reveals = p.Reveal

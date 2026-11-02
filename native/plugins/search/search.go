@@ -92,7 +92,7 @@ var (
 			ctx, cancel := context.WithCancel(context.Background())
 			s := &Search{app: app, ctx: ctx, sh: sh, lyt: lyt, ws: ws, project: project, sortOrder: "alphabetical", collapsed: map[string]bool{}}
 			off := sl.RegisterPanel(slots.Panel{
-				ID: PanelID, Title: "Search", Icon: icon.Must("search"), Dock: slots.Left, Order: 1,
+				ID: PanelID, Title: "Search", Icon: icon.Must("search"), Dock: slots.Sidebar, Order: 1,
 				View: s.view, State: s.state, Restore: s.restore,
 			})
 			offs := []func(){off}

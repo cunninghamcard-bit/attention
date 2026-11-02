@@ -14,8 +14,10 @@ import (
 )
 
 const (
-	Left Dock = iota
-	Right
+	// Sidebar is the left sidebar: one panel at a time, picked in its footer.
+	Sidebar Dock = iota
+	// Context is the right column: every panel a collapsible section.
+	Context
 
 	Options     SettingsGroup = 0
 	CorePlugins SettingsGroup = 1
@@ -35,7 +37,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	},
 })
 
-// Dock is a sidebar.
+// Dock is where a panel shows.
 type Dock int
 
 // PanelProps are what the workspace gives a panel's view.
@@ -53,15 +55,6 @@ type Panel struct {
 	View    func(c *ui.Context, p PanelProps)
 	State   func() json.RawMessage
 	Restore func(json.RawMessage)
-}
-
-// RibbonItem is a ribbon contribution: an icon running an action.
-type RibbonItem struct {
-	ID    string
-	Title string
-	Icon  *ui.SVG
-	Order int
-	Run   func()
 }
 
 // Overlay is an overlay contribution (RFC §5.5's overlay slot).
@@ -125,7 +118,6 @@ type Registry struct {
 	inv        func()
 	seq        int
 	panels     map[int]Panel
-	ribbon     map[int]RibbonItem
 	overlays   map[int]Overlay
 	sources    map[int]PaletteSource
 	paletteReq string
@@ -140,7 +132,6 @@ func New(inv func()) *Registry {
 	return &Registry{
 		inv:      inv,
 		panels:   map[int]Panel{},
-		ribbon:   map[int]RibbonItem{},
 		overlays: map[int]Overlay{},
 		sources:  map[int]PaletteSource{},
 		status:   map[int]StatusItem{},
@@ -201,51 +192,6 @@ func (r *Registry) Panels(d Dock) []Panel {
 		if p.Dock == d {
 			out = append(out, p)
 		}
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Order != out[j].Order {
-			return out[i].Order < out[j].Order
-		}
-		return out[i].ID < out[j].ID
-	})
-	return out
-}
-
-// RegisterRibbon adds a ribbon item until off is called.
-func (r *Registry) RegisterRibbon(item RibbonItem) (off func()) {
-	if r == nil {
-		return func() {}
-	}
-	r.mu.Lock()
-	for _, q := range r.ribbon {
-		if q.ID == item.ID {
-			r.mu.Unlock()
-			panic("slots: ribbon item " + strconv.Quote(item.ID) + " is already registered")
-		}
-	}
-	r.seq++
-	id := r.seq
-	r.ribbon[id] = item
-	r.mu.Unlock()
-	r.invalidate()
-	return func() {
-		r.mu.Lock()
-		delete(r.ribbon, id)
-		r.mu.Unlock()
-		r.invalidate()
-	}
-}
-
-// Ribbon lists the ribbon items by Order, then ID.
-func (r *Registry) Ribbon() []RibbonItem {
-	if r == nil {
-		return nil
-	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	out := make([]RibbonItem, 0, len(r.ribbon))
-	for _, item := range r.ribbon {
-		out = append(out, item)
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Order != out[j].Order {

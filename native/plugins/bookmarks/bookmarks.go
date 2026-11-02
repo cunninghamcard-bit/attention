@@ -82,7 +82,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		}
 		rctx.Provide("bookmarks", b)
 		off := sl.RegisterPanel(slots.Panel{
-			ID: PanelID, Title: "Bookmarks", Icon: icon.Must("bookmark"), Dock: slots.Left, Order: 2,
+			ID: PanelID, Title: "Bookmarks", Icon: icon.Must("bookmark"), Dock: slots.Sidebar, Order: 2,
 			View: b.view, State: b.state, Restore: b.restore,
 		})
 		offs := []func(){off}

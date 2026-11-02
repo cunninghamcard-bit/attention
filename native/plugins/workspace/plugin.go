@@ -376,7 +376,6 @@ func (t *tab) displayText() string {
 func Register(ws *Workspace) (off func()) {
 	offs := []func(){
 		ws.sl.SetCenter(ws.view),
-		ws.sl.RegisterStatus(slots.StatusItem{ID: "workspace-mounts", View: ws.mountsStatus}),
 		ws.sl.RegisterStatus(slots.StatusItem{ID: "workspace-tab", Right: true, View: ws.tabStatus}),
 		ws.act.SetActiveFile(func(ctx context.Context) (string, error) {
 			if ws.sh.Window() == nil {

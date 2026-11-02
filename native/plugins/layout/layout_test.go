@@ -15,7 +15,7 @@ import (
 func TestPanelStateRoundTrips(t *testing.T) {
 	sl := slots.New(nil)
 	var got string
-	off := sl.RegisterPanel(slots.Panel{ID: "search", Title: "search", Icon: icon.Must("search"), Dock: slots.Left,
+	off := sl.RegisterPanel(slots.Panel{ID: "search", Title: "search", Icon: icon.Must("search"), Dock: slots.Sidebar,
 		View:    func(c *ui.Context, _ slots.PanelProps) { ui.Text(c, "body") },
 		State:   func() json.RawMessage { data, _ := json.Marshal(got + "-saved"); return data },
 		Restore: func(st json.RawMessage) { got = string(st) },

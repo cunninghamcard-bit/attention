@@ -3,7 +3,6 @@ package workspace
 import (
 	"fmt"
 	"math"
-	"strconv"
 	"strings"
 
 	"github.com/egoist/mygo"
@@ -134,10 +133,10 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
 	p.chips = p.chips[:0]
 	padLeft, padRight := float32(4), float32(4)
 	if l := ws.lyt; l != nil {
-		if !l.Open(slots.Left) && ws.isTopLeft(p) {
+		if !l.Open(slots.Sidebar) && ws.isTopLeft(p) {
 			padLeft += l.LeftHeaderSpace(c)
 		}
-		if !l.Open(slots.Right) && ws.isTopRight(p) {
+		if !l.Open(slots.Context) && ws.isTopRight(p) {
 			padRight += c.TitleBar().Right
 		}
 	}
@@ -159,11 +158,8 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
 		header.DragWindow()
 	}
 	header.Children(func() {
-		// When the left dock is closed and the toggle belongs in the header
-		// (ribbon hidden or macOS traffic lights in the corner), it leads the
-		// top-left group's tabs (updateSidebarTogglePlacement).
-		if l := ws.lyt; l != nil && !l.Open(slots.Left) && l.LeftToggleInHeader(c) && ws.isTopLeft(p) {
-			l.ToggleButton(c, slots.Left)
+		if l := ws.lyt; l != nil && !l.Open(slots.Sidebar) && ws.isTopLeft(p) {
+			l.ToggleButton(c, slots.Sidebar)
 		}
 		ui.ScrollHorizontal(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
 			ui.Row(c).Padding(4, 6, 0, 6).Gap(2).AlignItems(ui.End).FillHeight().Children(func() {
@@ -177,8 +173,8 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
 			})
 		})
 		aui.IconMenu(c, aui.IconMenuProps{Label: "Tab list", Icon: icon.Must("chevron-down"), End: true, Items: ws.tabListMenu(p)})
-		if l := ws.lyt; l != nil && !l.Open(slots.Right) && ws.isTopRight(p) {
-			l.ToggleButton(c, slots.Right)
+		if l := ws.lyt; l != nil && !l.Open(slots.Context) && ws.isTopRight(p) {
+			l.ToggleButton(c, slots.Context)
 		}
 	})
 	if dragged, ok := ui.Drop[*tab](header); ok {
@@ -461,16 +457,6 @@ func (ws *Workspace) paneMenu(p *pane, tb *tab, tt tabtypes.TabType) []aui.MenuI
 }
 
 // ---- status bar ---------------------------------------------------------------
-
-// mountsStatus is the status bar's mounts: the one folder's name, or how
-// many.
-func (ws *Workspace) mountsStatus(c *ui.Context) {
-	mounts := strconv.Itoa(len(ws.mounts)) + " folders"
-	if len(ws.mounts) == 1 {
-		mounts = ws.mounts[0].Name
-	}
-	ui.Text(c, mounts).FontSize(12).TextColor(c.Theme().TextMuted)
-}
 
 // tabStatus is the active tab's status bar items: its type's, then
 // Read-only.

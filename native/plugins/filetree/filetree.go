@@ -115,7 +115,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		})
 
 		off := sl.RegisterPanel(slots.Panel{
-			ID: PanelID, Title: "Files", Icon: icon.Must("folder"), Dock: slots.Left, Order: 0,
+			ID: PanelID, Title: "Files", Icon: icon.Must("folder"), Dock: slots.Context, Order: 0,
 			View:  func(c *ui.Context, _ slots.PanelProps) { tr.view(c) },
 			State: tr.state, Restore: tr.restore,
 		})

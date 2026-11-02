@@ -63,7 +63,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		ctx, cancel := context.WithCancel(context.Background())
 		p := &Pane{ctx: ctx, sh: sh, ws: ws, idx: idx}
 		off := sl.RegisterPanel(slots.Panel{
-			ID: PanelID, Title: "Outline", Icon: icon.Must("list"), Dock: slots.Right, Order: 2,
+			ID: PanelID, Title: "Outline", Icon: icon.Must("list"), Dock: slots.Context, Order: 1,
 			View: p.view,
 		})
 		rctx.On(indexplugin.ChangedEvent, func(context.Context, ...any) (any, error) {

@@ -129,9 +129,9 @@ func (s *Service) Register(_ context.Context, p Panel) error {
 			icon = svg
 		}
 	}
-	dock := slots.Right
+	dock := slots.Context
 	if p.Dock == "left" {
-		dock = slots.Left
+		dock = slots.Sidebar
 	}
 	pn := &panel{sh: s.sh, spec: p}
 	s.mu.Lock()

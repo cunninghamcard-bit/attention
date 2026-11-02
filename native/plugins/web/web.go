@@ -114,7 +114,6 @@ var (
 			offs := []func(){
 				sl.RegisterSettingsSection(slots.SettingsSection{ID: "webviewer", Title: "Web viewer", Icon: icon.Must("globe"),
 					Group: slots.CorePlugins, Keywords: []string{"Search engine", "Clear browsing data", "history"}, View: v.settingTab}),
-				sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Open Web viewer", Icon: icon.Must("globe"), Order: 6, Run: v.openBlank}),
 			}
 			for _, cmd := range v.commands() {
 				offs = append(offs, act.Add(cmd))

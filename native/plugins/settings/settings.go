@@ -95,7 +95,6 @@ func Register(sh *shell.Shell, sl *slots.Registry, act *actions.Service) (s *Set
 			Run: func(ctx context.Context, _ actions.Args) (string, error) {
 				return shell.OnMain(ctx, sh, func() (string, error) { s.Open(""); return "", nil })
 			}}),
-		sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Settings", Icon: icon.Must("settings"), Order: 100, Run: func() { s.Open("") }}),
 	}
 	return s, func() {
 		for i := len(offs) - 1; i >= 0; i-- {

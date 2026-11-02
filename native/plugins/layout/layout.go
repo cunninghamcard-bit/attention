@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
@@ -76,18 +78,21 @@ type state struct {
 	LeftPanel   string                     `json:"leftPanel,omitempty"`
 	RightOpen   bool                       `json:"rightOpen"`
 	RightWidth  float32                    `json:"rightWidth,omitempty"`
-	RightPanel  string                     `json:"rightPanel,omitempty"`
+	Collapsed   []string                   `json:"collapsed,omitempty"`
 	PanelStates map[string]json.RawMessage `json:"panelStates,omitempty"`
 }
 
-// Layout is the window's arrangement.
+// Layout is the window's arrangement (RFC 0003 §3): the sidebar, the
+// content card, and the context column.
 type Layout struct {
 	sh                    *shell.Shell
 	slots                 *slots.Registry
 	app                   *appearance.Appearance
+	act                   *actions.Service
 	leftOpen, rightOpen   bool
 	leftWidth, rightWidth float32
-	leftPanel, rightPanel string
+	leftPanel             string
+	collapsed             map[string]bool
 	reveals               map[string]int
 	saved                 map[string]json.RawMessage
 	restored              map[string]bool
@@ -97,12 +102,13 @@ type Layout struct {
 	SaveSoon func()
 }
 
-// New is the first run's layout: left dock open, right dock collapsed (Workspace.ts).
+// New is the first run's layout: the sidebar open, the context column
+// closed.
 func New(sh *shell.Shell, sl *slots.Registry, app *appearance.Appearance) *Layout {
 	return &Layout{
 		sh: sh, slots: sl, app: app,
-		leftOpen: true, rightOpen: false, leftWidth: 260, rightWidth: 260,
-		reveals: map[string]int{}, restored: map[string]bool{},
+		leftOpen: true, rightOpen: false, leftWidth: 248, rightWidth: 280,
+		collapsed: map[string]bool{}, reveals: map[string]int{}, restored: map[string]bool{},
 	}
 }
 
@@ -114,12 +120,10 @@ func (l *Layout) Restore(s state) {
 	if s.RightWidth >= 120 {
 		l.rightWidth = s.RightWidth
 	}
-	l.leftOpen, l.rightOpen = s.PanelOpen, s.RightOpen
-	l.leftPanel, l.rightPanel = s.LeftPanel, s.RightPanel
-	if l.rightPanel == "file-explorer" {
-		l.leftPanel = "file-explorer"
-		l.rightPanel = ""
-		l.rightOpen = false
+	l.leftOpen, l.rightOpen, l.leftPanel = s.PanelOpen, s.RightOpen, s.LeftPanel
+	l.collapsed = map[string]bool{}
+	for _, id := range s.Collapsed {
+		l.collapsed[id] = true
 	}
 	l.saved, l.restored = s.PanelStates, map[string]bool{}
 }
@@ -127,17 +131,23 @@ func (l *Layout) Restore(s state) {
 // Snapshot is the state to save.
 func (l *Layout) Snapshot() state {
 	s := state{PanelOpen: l.leftOpen, LeftWidth: l.leftWidth, LeftPanel: l.leftPanel,
-		RightOpen: l.rightOpen, RightWidth: l.rightWidth, RightPanel: l.rightPanel}
-	out := map[string]json.RawMessage{}
-	for id, st := range l.saved {
-		out[id] = st
+		RightOpen: l.rightOpen, RightWidth: l.rightWidth}
+	for id, shut := range l.collapsed {
+		if shut {
+			s.Collapsed = append(s.Collapsed, id)
+		}
+	}
+	slices.Sort(s.Collapsed)
+	out := maps.Clone(l.saved)
+	if out == nil {
+		out = map[string]json.RawMessage{}
 	}
 	keep := func(id string, st func() json.RawMessage) {
 		if st != nil && l.restored[id] {
 			out[id] = st()
 		}
 	}
-	for _, d := range []slots.Dock{slots.Left, slots.Right} {
+	for _, d := range []slots.Dock{slots.Sidebar, slots.Context} {
 		for _, p := range l.slots.Panels(d) {
 			keep(p.ID, p.State)
 		}
@@ -154,23 +164,23 @@ func (l *Layout) Snapshot() state {
 	return s
 }
 
-// Open reports whether a dock is open.
+// Open reports whether the sidebar or the context column is open.
 func (l *Layout) Open(d slots.Dock) bool {
 	if l == nil {
 		return false
 	}
-	if d == slots.Right {
+	if d == slots.Context {
 		return l.rightOpen
 	}
 	return l.leftOpen
 }
 
-// Toggle opens or closes a dock.
+// Toggle opens or closes the sidebar or the context column.
 func (l *Layout) Toggle(d slots.Dock) {
 	if l == nil {
 		return
 	}
-	if d == slots.Right {
+	if d == slots.Context {
 		l.rightOpen = !l.rightOpen
 	} else {
 		l.leftOpen = !l.leftOpen
@@ -178,20 +188,22 @@ func (l *Layout) Toggle(d slots.Dock) {
 	l.changed()
 }
 
-// RevealPanel opens the dock holding the panel and shows it.
+// RevealPanel shows the panel: a sidebar panel becomes the shown one, a
+// context section expands; either way its side opens.
 func (l *Layout) RevealPanel(id string) {
 	if l == nil {
 		return
 	}
-	for _, d := range []slots.Dock{slots.Left, slots.Right} {
+	for _, d := range []slots.Dock{slots.Sidebar, slots.Context} {
 		for _, p := range l.slots.Panels(d) {
 			if p.ID != id {
 				continue
 			}
-			if d == slots.Left {
+			if d == slots.Sidebar {
 				l.leftOpen, l.leftPanel = true, id
 			} else {
-				l.rightOpen, l.rightPanel = true, id
+				l.rightOpen = true
+				delete(l.collapsed, id)
 			}
 			l.reveals[id]++
 			l.changed()
@@ -200,53 +212,34 @@ func (l *Layout) RevealPanel(id string) {
 	}
 }
 
-// ShownPanel is the ID of a dock's shown panel, "" for none.
+// ShownPanel is the ID of the sidebar's shown panel, "" for none; the
+// context column shows all of its panels.
 func (l *Layout) ShownPanel(d slots.Dock) string {
-	if l == nil {
+	if l == nil || d != slots.Sidebar {
 		return ""
 	}
-	want := l.leftPanel
-	if d == slots.Right {
-		want = l.rightPanel
-	}
-	if p := shownPanel(l.slots.Panels(d), want); p != nil {
+	if p := shownPanel(l.slots.Panels(d), l.leftPanel); p != nil {
 		return p.ID
 	}
 	return ""
 }
 
-// RibbonShown is attention's showRibbon, true by default.
-func (l *Layout) RibbonShown() bool {
-	return l == nil || l.app.Settings().ShowRibbon
-}
-
-// LeftHeaderSpace is the horizontal inset for the window's left title-bar
-// controls after subtracting the ribbon's width when shown (--frame-left-space).
+// LeftHeaderSpace is the room a header at the window's top-left leaves
+// for the window controls.
 func (l *Layout) LeftHeaderSpace(c *ui.Context) float32 {
-	left := c.TitleBar().Left
-	if left <= 0 {
-		return 0
+	if left := c.TitleBar().Left; left > 0 {
+		return max(left, 80)
 	}
-	space := max(left, 80)
-	if l.RibbonShown() {
-		space = max(0, space-44)
-	}
-	return space
+	return 0
 }
 
-// LeftToggleInHeader reports whether the left sidebar toggle button belongs in
-// a header bar instead of the ribbon (updateSidebarTogglePlacement).
-func (l *Layout) LeftToggleInHeader(c *ui.Context) bool {
-	return !l.RibbonShown() || c.TitleBar().Left > 0
-}
-
-// ToggleButton draws a dock's toggle button.
+// ToggleButton draws the sidebar's or the context column's toggle.
 func (l *Layout) ToggleButton(c *ui.Context, d slots.Dock) {
 	if l == nil {
 		return
 	}
 	glyph := icon.Must("panel-left")
-	if d == slots.Right {
+	if d == slots.Context {
 		glyph = icon.Must("panel-right")
 	}
 	tip := "Expand"
@@ -268,30 +261,14 @@ func (l *Layout) View(c *ui.Context) {
 			o.View(c)
 		}
 	}
-	ui.Column(c).Fill().Background(t.Background).Children(func() {
-		ui.Row(c).Grow(1).FillWidth().AlignItems(ui.Stretch).Children(func() {
-			if l.RibbonShown() {
-				l.ribbon(c)
-			}
-			middle := func() {
-				ui.Row(c).Grow(1).Fill().AlignItems(ui.Stretch).Children(func() {
-					ui.Column(c).Grow(1).Fill().Children(func() {
-						if view := l.slots.Center(); view != nil {
-							view(c)
-						}
-					})
-					if l.rightOpen {
-						l.dock(c, slots.Right)
-					}
-				})
-			}
-			if l.leftOpen {
-				ui.Split(c, &l.leftWidth, func() { l.dock(c, slots.Left) }, middle).Grow(1)
-			} else {
-				middle()
-			}
-		})
-		l.statusBar(c)
+	ui.Row(c).Fill().Background(t.Surface).AlignItems(ui.Stretch).Children(func() {
+		if l.leftOpen {
+			l.sidebar(c)
+		}
+		l.card(c)
+		if l.rightOpen {
+			l.context(c)
+		}
 	})
 	for _, src := range l.slots.PaletteSources() {
 		l.restore(src.ID, src.Restore)
@@ -327,67 +304,67 @@ func (l *Layout) restore(id string, fn func(json.RawMessage)) {
 	}
 }
 
-func (l *Layout) ribbon(c *ui.Context) {
+// card is the content card: the center slot on the page color, inset
+// from the window's tint.
+func (l *Layout) card(c *ui.Context) {
 	t := c.Theme()
-	ribbonBg := t.Surface
-	if !l.leftOpen {
-		ribbonBg = t.Background
+	gap := t.Spacing
+	left, right := gap, gap
+	if l.leftOpen {
+		left = 0
 	}
-	ui.Column(c).Width(44).FillHeight().AlignItems(ui.Center).
-		Background(ribbonBg).BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Children(func() {
-		ui.Row(c).Height(38).Shrink(0).FillWidth().Center().
-			Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).DragWindow().Children(func() {
-			if !l.LeftToggleInHeader(c) {
-				l.ToggleButton(c, slots.Left)
-			}
-		})
-		ui.Column(c).Grow(1).FillWidth().PaddingY(8).Gap(4).AlignItems(ui.Center).Children(func() {
-			items := l.slots.Ribbon()
-			for _, r := range items {
-				if r.Order >= 100 {
-					continue
-				}
-				aui.Button(c, aui.ButtonProps{Label: r.Title, Icon: r.Icon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall, OnClick: r.Run}).
-					Tooltip(r.Title)
-			}
-			ui.Box(c).Grow(1)
-			for _, r := range items {
-				if r.Order < 100 {
-					continue
-				}
-				aui.Button(c, aui.ButtonProps{Label: r.Title, Icon: r.Icon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall, OnClick: r.Run}).
-					Tooltip(r.Title)
-			}
-		})
+	if l.rightOpen {
+		right = gap / 2
+	}
+	card := ui.Column(c).Grow(1).MinWidth(0).MinHeight(0).Margin(gap, right, gap, left).Radius(t.Radius).Clip().
+		Background(t.Background).Shadow(0, 1, 4, 0, aui.Shade(0.08))
+	if t.Dark {
+		card.Border(1, aui.Wash(t, 0.08))
+	}
+	card.Children(func() {
+		if view := l.slots.Center(); view != nil {
+			view(c)
+		}
 	})
 }
 
-func (l *Layout) dock(c *ui.Context, d slots.Dock) {
+// sidebar is the left column: window controls and its toggle, the shown
+// panel, the status line, and the footer that picks the panel. Its edge
+// resizes it with no line drawn, which mygo's Split always draws.
+func (l *Layout) sidebar(c *ui.Context) {
 	t := c.Theme()
-	panels := l.slots.Panels(d)
-	col := ui.Column(c).Fill().Background(t.Surface)
-	if d == slots.Left {
-		col.BorderWidth(0, 1, 0, 0)
-	} else {
-		col.Width(l.rightWidth).Shrink(0).BorderWidth(0, 0, 0, 1)
-	}
-	col.BorderColor(t.Border).Children(func() {
-		want := l.leftPanel
-		if d == slots.Right {
-			want = l.rightPanel
+	panels := l.slots.Panels(slots.Sidebar)
+	shown := shownPanel(panels, l.leftPanel)
+	ui.Column(c).Width(l.leftWidth).Shrink(0).FillHeight().Padding(0, 0, t.Spacing, t.Spacing).Children(func() {
+		edge := ui.Box(c).Key("sidebar:edge").Absolute().Top(0).Bottom(0).Right(-6).Width(8).Cursor(ui.CursorResizeEW)
+		if dx, _, held := edge.Dragged(); held && dx != 0 {
+			l.leftWidth = min(max(l.leftWidth+dx, 180), 480)
 		}
-		shown := shownPanel(panels, want)
-		padLeft, padRight := float32(6), float32(6)
-		if d == slots.Left {
-			padLeft += l.LeftHeaderSpace(c)
+		ui.Row(c).Height(40).Shrink(0).FillWidth().Padding(0, 4, 0, l.LeftHeaderSpace(c)).AlignItems(ui.Center).
+			DragWindow().Children(func() {
+			ui.Box(c).Grow(1)
+			l.ToggleButton(c, slots.Sidebar)
+		})
+		if shown == nil {
+			ui.Box(c).Grow(1)
 		} else {
-			padRight += c.TitleBar().Right
+			l.restore(shown.ID, shown.Restore)
+			ui.Column(c).Key("sidebar:" + shown.ID).Grow(1).FillWidth().MinHeight(0).Children(func() {
+				shown.View(c, slots.PanelProps{Reveal: l.reveals[shown.ID]})
+			})
 		}
-		ui.Row(c).Height(38).Shrink(0).FillWidth().Padding(0, padRight, 0, padLeft).Gap(2).AlignItems(ui.Center).
-			BorderWidth(0, 0, 1, 0).BorderColor(t.Border).DragWindow().Children(func() {
-			if d == slots.Right {
-				l.ToggleButton(c, slots.Right)
+		ui.Row(c).Height(24).Shrink(0).FillWidth().PaddingX(8).Gap(10).AlignItems(ui.Center).Children(func() {
+			for _, s := range l.slots.Status(true) {
+				s.View(c)
 			}
+			if l.notice != "" {
+				ui.Icon(c, icon.Must("triangle-alert")).Size(12, 12).TextColor(t.Warning).Tooltip(l.notice)
+			}
+		})
+		ui.Row(c).Height(36).Shrink(0).FillWidth().Gap(2).AlignItems(ui.Center).Children(func() {
+			aui.Button(c, aui.ButtonProps{Label: "Settings", Icon: icon.Must("settings"), Variant: aui.ButtonGhost,
+				Size: aui.ButtonIconSmall, OnClick: l.openSettings}).Tooltip("Settings")
+			ui.Box(c).Grow(1)
 			for i := range panels {
 				p := panels[i]
 				active := shown != nil && shown.ID == p.ID
@@ -395,46 +372,75 @@ func (l *Layout) dock(c *ui.Context, d slots.Dock) {
 				if active {
 					color = t.Text
 				}
-				btn := aui.Button(c, aui.ButtonProps{Label: p.Title, Icon: p.Icon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-					IconColor: color, OnClick: func() { l.RevealPanel(p.ID) }}).
+				btn := aui.Button(c, aui.ButtonProps{Label: p.Title, Icon: p.Icon, Variant: aui.ButtonGhost,
+					Size: aui.ButtonIconSmall, IconColor: color, OnClick: func() { l.RevealPanel(p.ID) }}).
 					Checked(active).Tooltip(p.Title)
 				if active {
-					btn.Background(t.SurfaceHover)
+					btn.Background(aui.Wash(t, 0.08))
 				}
 			}
-			if d == slots.Left && l.LeftToggleInHeader(c) {
-				ui.Box(c).Grow(1)
-				l.ToggleButton(c, slots.Left)
-			}
-		})
-		if shown == nil {
-			ui.Column(c).Grow(1).Fill().Center().Children(func() {
-				ui.Text(c, "No panels").TextColor(t.TextMuted)
-			})
-			return
-		}
-		l.restore(shown.ID, shown.Restore)
-		ui.Column(c).Key("dock:" + shown.ID).Grow(1).FillWidth().MinHeight(0).Children(func() {
-			shown.View(c, slots.PanelProps{Reveal: l.reveals[shown.ID]})
 		})
 	})
 }
 
-func (l *Layout) statusBar(c *ui.Context) {
+// context is the right column: every context panel as a section that
+// folds, in one card.
+func (l *Layout) context(c *ui.Context) {
 	t := c.Theme()
-	ui.Row(c).Height(24).FillWidth().PaddingX(10).Gap(12).AlignItems(ui.Center).
-		Background(t.Surface).BorderWidth(1, 0, 0, 0).BorderColor(t.Border).Children(func() {
-		for _, s := range l.slots.Status(false) {
-			s.View(c)
+	panels := l.slots.Panels(slots.Context)
+	ui.Column(c).Width(l.rightWidth).Shrink(0).FillHeight().Padding(0, t.Spacing, t.Spacing, t.Spacing/2).Children(func() {
+		ui.Row(c).Height(40).Shrink(0).FillWidth().Padding(0, c.TitleBar().Right, 0, 0).AlignItems(ui.Center).
+			DragWindow().Children(func() {
+			ui.Box(c).Grow(1)
+			l.ToggleButton(c, slots.Context)
+		})
+		card := ui.Column(c).Grow(1).FillWidth().MinHeight(0).Radius(t.Radius).Clip().Background(t.Background).
+			Shadow(0, 1, 4, 0, aui.Shade(0.08)).Dividers(1, aui.Wash(t, 0.06))
+		if t.Dark {
+			card.Border(1, aui.Wash(t, 0.08))
 		}
-		if l.notice != "" {
-			ui.Icon(c, icon.Must("triangle-alert")).Size(12, 12).TextColor(t.Warning).Tooltip(l.notice)
-		}
-		ui.Box(c).Grow(1)
-		for _, s := range l.slots.Status(true) {
-			s.View(c)
-		}
+		card.Children(func() {
+			for i := range panels {
+				l.section(c, panels[i])
+			}
+		})
 	})
+}
+
+func (l *Layout) section(c *ui.Context, p slots.Panel) {
+	open := !l.collapsed[p.ID]
+	col := ui.Column(c).Key("context:" + p.ID).FillWidth().MinHeight(0)
+	if open {
+		col.Grow(1)
+	}
+	col.Children(func() {
+		head := ui.Row(c).Height(32).Shrink(0).FillWidth().PaddingX(10).Gap(6).AlignItems(ui.Center).
+			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(p.Title).Checked(open)
+		head.Children(func() {
+			aui.Disclosure(c, open, 12)
+			aui.SectionLabel(c, p.Title)
+		})
+		if head.Clicked() {
+			l.collapsed[p.ID] = open
+			l.changed()
+		}
+		if !open {
+			return
+		}
+		l.restore(p.ID, p.Restore)
+		ui.Column(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
+			p.View(c, slots.PanelProps{Reveal: l.reveals[p.ID]})
+		})
+	})
+}
+
+func (l *Layout) openSettings() {
+	if l.act == nil {
+		return
+	}
+	if cmd := l.act.Lookup("app:open-settings"); cmd != nil && cmd.Main != nil {
+		cmd.Main()
+	}
 }
 
 func (l *Layout) commands(sh *shell.Shell) []actions.Command {
@@ -444,13 +450,14 @@ func (l *Layout) commands(sh *shell.Shell) []actions.Command {
 		}}
 	}
 	return []actions.Command{
-		cmd("app:toggle-left-sidebar", "Toggle left sidebar", "Ctrl B", func() { l.Toggle(slots.Left) }),
-		cmd("app:toggle-right-sidebar", "Toggle right sidebar", "Ctrl Alt B", func() { l.Toggle(slots.Right) }),
+		cmd("app:toggle-left-sidebar", "Toggle left sidebar", "Ctrl B", func() { l.Toggle(slots.Sidebar) }),
+		cmd("app:toggle-right-sidebar", "Toggle right sidebar", "Ctrl Alt B", func() { l.Toggle(slots.Context) }),
 	}
 }
 
 // Register makes l the window's root and registers its commands until off is called.
 func Register(l *Layout, sh *shell.Shell, _ *slots.Registry, act *actions.Service) (off func()) {
+	l.act = act
 	offs := []func(){
 		sh.SetRoot(l.View),
 	}
