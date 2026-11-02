@@ -9,13 +9,13 @@ import (
 )
 
 const (
-	sideRowHeight float32 = 26
+	sideRowHeight float32 = 28
 	indentStep    float32 = 16
 )
 
 // SideRowProps is a tree or panel row the caller fills: Key keeps its
 // hover across rebuilds, Depth indents it one step per level, Height
-// overrides the 26 DIP row, and Guides draws a hairline per level.
+// overrides the 28 DIP row, and Guides draws a hairline per level.
 type SideRowProps struct {
 	Key      any
 	Selected bool
@@ -55,12 +55,13 @@ func SideRow(c *ui.Context, p SideRowProps) ui.Element {
 	fg, wash := t.TextMuted, ui.Color{}
 	switch {
 	case p.Selected:
-		fg, wash = t.Text, t.SurfacePressed
+		fg, wash = t.Text, Raised(t)
+		row.Shadow(0, 1, 2, 0, Shade(0.08))
 	case row.Hovered():
-		fg, wash = t.Text, t.SurfaceHover
+		fg, wash = t.Text, Wash(t, 0.06)
 	}
 	if p.Guides && depth > 0 {
-		line := t.Border.Alpha(0.75)
+		line := Wash(t, 0.1)
 		row.DrawOver(func(painter *ui.Painter, r ui.Rect) {
 			for d := range depth {
 				painter.Fill(ui.Rect{X: r.X + 15 + float32(d)*indentStep, Y: r.Y, W: 1, H: r.H}, line, 0)
@@ -89,7 +90,7 @@ func Disclosure(c *ui.Context, open bool, size float32) ui.Element {
 // Clicked.
 func SidebarItem(c *ui.Context, p SidebarItemProps) ui.Element {
 	t := c.Theme()
-	b := ui.ButtonBase(c).Label(p.Label).Checked(p.Selected).FillWidth().Height(28).PaddingX(8).Gap(8).
+	b := ui.ButtonBase(c).Label(p.Label).Checked(p.Selected).FillWidth().Height(32).PaddingX(10).Gap(8).
 		Radius(controlRadius(t)).AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer)
 	if p.Key != nil {
 		b.Key(p.Key)
@@ -97,9 +98,10 @@ func SidebarItem(c *ui.Context, p SidebarItemProps) ui.Element {
 	fg, wash, weight := t.TextMuted, ui.Color{}, 400
 	switch {
 	case p.Selected:
-		fg, wash, weight = t.Text, t.SurfaceHover, 500
+		fg, wash, weight = t.Text, Raised(t), 500
+		b.Shadow(0, 1, 2, 0, Shade(0.08))
 	case b.Hovered():
-		fg, wash = t.Text, t.SurfaceHover
+		fg, wash = t.Text, Wash(t, 0.06)
 	}
 	b.Background(Face(c, b, "aui.nav", wash)).TextColor(fg)
 	b.Children(func() {
@@ -114,11 +116,14 @@ func SidebarItem(c *ui.Context, p SidebarItemProps) ui.Element {
 // CommandRow draws a single-line palette row.
 func CommandRow(c *ui.Context, p CommandRowProps) ui.Element {
 	t := c.Theme()
-	b := ui.ButtonBase(c).Key(p.Key).Label(p.Label).FillWidth().Height(controlHeight).PaddingX(8).
-		Radius(t.Radius).Gap(8).AlignItems(ui.Center).Cursor(ui.CursorPointer)
+	b := ui.ButtonBase(c).Key(p.Key).Label(p.Label).FillWidth().Height(36).PaddingX(10).
+		Radius(t.Radius).Gap(10).AlignItems(ui.Center).Cursor(ui.CursorPointer)
 	wash := ui.Color{}
-	if p.Selected || b.Hovered() {
-		wash = t.SurfaceHover
+	switch {
+	case p.Selected:
+		wash = t.Accent.Alpha(0.16)
+	case b.Hovered():
+		wash = Wash(t, 0.06)
 	}
 	b.Background(Face(c, b, "aui.command", wash)).TextColor(t.Text)
 	b.Children(func() {

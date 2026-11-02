@@ -37,12 +37,12 @@ func buildUI(t Theme, s Settings) *ui.Theme {
 	c := t.Colors
 	u.Background, u.Surface, u.Border = c.Background, c.Surface, c.Border
 	u.Text, u.TextMuted = c.Text, c.TextMuted
-	u.SurfaceHover = mix(c.Surface, c.Text, 0.06)
-	u.SurfacePressed = mix(c.Surface, c.Text, 0.12)
+	u.SurfaceHover = c.Text.Alpha(0.06)
+	u.SurfacePressed = c.Text.Alpha(0.1)
 	u.Danger, u.Warning, u.Success = c.Danger, c.Warning, c.Success
 	u.Scrollbar = c.Border
 	u.Inverse, u.InverseText = c.Text, c.Background
-	u.Radius, u.Spacing, u.FontSize, u.ScrollbarWidth = 8, 8, 14, 4
+	u.Radius, u.Spacing, u.FontSize, u.ScrollbarWidth = 10, 8, 14, 4
 	accent := c.Accent
 	if a, ok := accentSchemes[s.Accent]; ok {
 		accent = a
@@ -168,9 +168,4 @@ func applyAccent(t *ui.Theme, c ui.Color) {
 	} else {
 		t.AccentText = ui.Hex("#fafafa")
 	}
-}
-
-func mix(a, b ui.Color, f float32) ui.Color {
-	ch := func(x, y uint8) uint8 { return uint8(float32(x) + (float32(y)-float32(x))*f) }
-	return ui.Color{R: ch(a.R, b.R), G: ch(a.G, b.G), B: ch(a.B, b.B), A: a.A}
 }

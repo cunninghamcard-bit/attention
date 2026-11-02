@@ -46,7 +46,7 @@ func Select(c *ui.Context, p SelectProps) ui.Element {
 			}
 		}
 		trigger = sel.Trigger.Height(controlHeight).Radius(controlRadius(t)).PaddingX(9).Gap(8).
-			AlignItems(ui.Center).Justify(ui.SpaceBetween).Cursor(ui.CursorPointer).Border(1, t.Border).
+			AlignItems(ui.Center).Justify(ui.SpaceBetween).Cursor(ui.CursorPointer).
 			Label(cmp.Or(p.Aria, shown))
 		if p.Width > 0 {
 			trigger.Width(p.Width)
@@ -56,9 +56,9 @@ func Select(c *ui.Context, p SelectProps) ui.Element {
 		case p.Disabled:
 			trigger.Disabled(true)
 		case sel.Open():
-			face = t.SurfacePressed
+			face = Wash(t, 0.12)
 		case trigger.Hovered():
-			face = t.SurfaceHover
+			face = Wash(t, 0.09)
 		}
 		trigger.Background(Face(c, trigger, "aui.select", face)).TextColor(t.Text)
 		turn := float32(0)
@@ -77,11 +77,11 @@ func Select(c *ui.Context, p SelectProps) ui.Element {
 			ui.Column(c).FillWidth().Gap(2).FocusGroup(ui.Vertical).Children(func() {
 				for _, o := range p.Options {
 					c.Key(o.Value)
-					item := sel.Item(o.Value).FillWidth().Height(28).PaddingX(8).Gap(8).Radius(controlRadius(t)).
+					item := sel.Item(o.Value).FillWidth().Height(itemHeight).PaddingX(8).Gap(8).Radius(controlRadius(t)).
 						AlignItems(ui.Center).Cursor(ui.CursorPointer)
 					wash := ui.Color{}
 					if item.Highlighted() || item.Hovered() {
-						wash = t.SurfaceHover
+						wash = Wash(t, 0.07)
 					}
 					item.Background(Face(c, item, "aui.option", wash)).TextColor(t.Text).Children(func() {
 						ui.Text(c, cmp.Or(o.Label, o.Value)).FontSize(smallSize).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)

@@ -7,7 +7,7 @@ import (
 const (
 	// ButtonPrimary is the accent action; the zero value.
 	ButtonPrimary ButtonVariant = iota
-	// ButtonSecondary is the control face with a hairline ring.
+	// ButtonSecondary is a translucent fill.
 	ButtonSecondary
 	// ButtonGhost has no face until the pointer is over it.
 	ButtonGhost
@@ -62,9 +62,12 @@ func Button(c *ui.Context, p ButtonProps) ui.Element {
 		b.Size(24, 24)
 		glyph = iconSmall
 	default:
-		b.Height(controlHeight).PaddingX(12)
+		b.Height(controlHeight).PaddingX(14)
 		if p.Icon != nil {
-			b.PaddingX(10)
+			b.PaddingX(12)
+		}
+		if p.Variant != ButtonGhost && p.Variant != ButtonLink {
+			b.Radius(controlHeight / 2)
 		}
 	}
 	if iconOnly && p.Label != "" {
@@ -87,9 +90,6 @@ func Button(c *ui.Context, p ButtonProps) ui.Element {
 			fg = t.AccentHover
 		}
 	}
-	if p.Variant == ButtonSecondary {
-		b.Border(1, t.Border)
-	}
 	b.Background(Face(c, b, "aui.button", face)).TextColor(fg)
 	b.Children(func() {
 		if p.Icon != nil {
@@ -111,11 +111,11 @@ func Button(c *ui.Context, p ButtonProps) ui.Element {
 func buttonPaint(t *ui.Theme, v ButtonVariant) (face, hover, pressed, fg ui.Color) {
 	switch v {
 	case ButtonSecondary:
-		return control(t), t.SurfaceHover, t.SurfacePressed, t.Text
+		return Wash(t, 0.06), Wash(t, 0.1), Wash(t, 0.14), t.Text
 	case ButtonGhost:
-		return ui.Color{}, t.SurfaceHover, t.SurfacePressed, t.TextMuted
+		return ui.Color{}, Wash(t, 0.06), Wash(t, 0.1), t.TextMuted
 	case ButtonLink:
-		return ui.Color{}, t.SurfaceHover, t.SurfacePressed, t.Accent
+		return ui.Color{}, Wash(t, 0.06), Wash(t, 0.1), t.Accent
 	case ButtonDanger:
 		return t.Danger, t.Danger.Mix(t.Text, 0.1), t.Danger.Mix(t.Text, 0.2), ui.Hex("#ffffff")
 	default:

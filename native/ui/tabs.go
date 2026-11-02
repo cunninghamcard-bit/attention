@@ -21,8 +21,8 @@ type TabChipProps struct {
 	OnClose    func()
 }
 
-// TabChip draws a tab: the selected one a raised card open at the bottom,
-// the others flat pills. The element returned is the tab, for the caller's
+// TabChip draws a tab: the selected one a raised card, the others flat
+// pills. The element returned is the tab, for the caller's
 // click, drag and context menu (port of the workspace's tab strip).
 func TabChip(c *ui.Context, p TabChipProps) ui.Element {
 	t := c.Theme()
@@ -33,14 +33,14 @@ func TabChip(c *ui.Context, p TabChipProps) ui.Element {
 	switch {
 	case p.Selected:
 		fg, weight = t.Text, 500
-		chip.Height(34).Radius(6, 6, 0, 0).Background(t.Background).BorderWidth(1, 1, 0, 1).BorderColor(t.Border)
+		chip.Height(30).Margin(0, 0, 2, 0).Radius(controlRadius(t)).Background(Raised(t)).Shadow(0, 1, 2, 0, Shade(0.08))
 	case hovered:
 		fg = t.Text
-		chip.Height(30).Margin(0, 0, 2, 0).Radius(4).Background(t.SurfaceHover)
+		chip.Height(30).Margin(0, 0, 2, 0).Radius(controlRadius(t)).Background(Wash(t, 0.06))
 	default:
-		chip.Height(30).Margin(0, 0, 2, 0).Radius(4)
+		chip.Height(30).Margin(0, 0, 2, 0).Radius(controlRadius(t))
 		if p.Divider {
-			line := t.Border
+			line := Wash(t, 0.1)
 			chip.DrawOver(func(painter *ui.Painter, r ui.Rect) {
 				painter.Fill(ui.Rect{X: r.X + r.W, Y: r.Y + (r.H-14)/2, W: 1, H: 14}, line, 0)
 			})
@@ -65,7 +65,7 @@ func TabChip(c *ui.Context, p TabChipProps) ui.Element {
 			AlignItems(ui.Center).Justify(ui.Center).Cursor(ui.CursorPointer)
 		wash := ui.Color{}
 		if x.Hovered() {
-			wash = t.SurfaceHover
+			wash = Wash(t, 0.08)
 		}
 		x.Background(Face(c, x, "aui.tabclose", wash))
 		if p.OnClose != nil {

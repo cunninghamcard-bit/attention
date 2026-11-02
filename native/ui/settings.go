@@ -5,7 +5,7 @@ import (
 )
 
 // SettingsSection is a settings group: a caption, then body's rows in one
-// hairline card, divided (omgui's PreferenceSection).
+// raised card, divided (omgui's PreferenceSection).
 func SettingsSection(c *ui.Context, title string, body func()) ui.Element {
 	t := c.Theme()
 	col := ui.Column(c).FillWidth().Gap(8)
@@ -13,8 +13,8 @@ func SettingsSection(c *ui.Context, title string, body func()) ui.Element {
 		if title != "" {
 			SectionLabel(c, title).PaddingX(8)
 		}
-		ui.Column(c).FillWidth().PaddingX(16).Radius(t.Radius).Border(1, t.Border).Background(control(t)).
-			Dividers(1, t.Border).Children(body)
+		ui.Column(c).FillWidth().PaddingX(16).Radius(t.Radius+2).Background(Raised(t)).
+			Shadow(0, 1, 3, 0, Shade(0.06)).Dividers(1, Wash(t, 0.06)).Children(body)
 	})
 	return col
 }

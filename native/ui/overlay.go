@@ -51,12 +51,11 @@ func Popover(c *ui.Context, anchor ui.Element, open *bool, body func(panel ui.El
 	})
 }
 
-// floating styles panel as a popover face: padded, rounded, opaque, with
-// a hairline and a soft drop, easing in on first build.
+// Floating styles panel as a popover face: padded frosted glass, easing
+// in on first build.
 func Floating(c *ui.Context, panel ui.Element) ui.Element {
 	t := c.Theme()
-	panel.Padding(4).Radius(t.Radius).Clip().Background(control(t)).Border(1, t.Border).
-		Shadow(0, 6, 16, 0, Shade(0.12))
+	Frost(c, panel.Padding(5).Clip(), t.Radius+2)
 	return Arrive(panel, ui.Pose{Y: -4, Fade: 1}, 0)
 }
 
@@ -100,8 +99,8 @@ func Dialog(c *ui.Context, p DialogProps) ui.Element {
 		ui.DialogBase(c, p.Open, func(back, panel ui.Element) {
 			Arrive(back.Background(Shade(0.32)), ui.Pose{Fade: 1}, 0)
 			w := cmp.Or(p.Width, 440)
-			panel.Width(w).MaxWidth(w).Radius(t.Radius*1.5).Clip().Background(t.Background).
-				Border(1, t.Border).Shadow(0, 16, 40, 0, Shade(0.24))
+			panel.Width(w).MaxWidth(w).Radius(t.Radius+4).Clip().Background(t.Background).
+				Shadow(0, 24, 64, 0, Shade(0.28))
 			if p.MaxHeight > 0 {
 				panel.MaxHeight(p.MaxHeight)
 			}
@@ -132,10 +131,10 @@ func Dialog(c *ui.Context, p DialogProps) ui.Element {
 func menuEntry(c *ui.Context, key int, it MenuItem, done func()) {
 	t := c.Theme()
 	if it.Separator {
-		ui.Box(c).Key(key).Height(1).FillWidth().Margin(4, 0).Background(t.Border)
+		ui.Box(c).Key(key).Height(1).FillWidth().Margin(4, 6).Background(Wash(t, 0.08))
 		return
 	}
-	b := ui.ButtonBase(c).Key(key).FillWidth().Height(28).PaddingX(8).Radius(controlRadius(t)).Gap(8).
+	b := ui.ButtonBase(c).Key(key).FillWidth().Height(itemHeight).PaddingX(8).Radius(controlRadius(t)).Gap(8).
 		AlignItems(ui.Center).Cursor(ui.CursorPointer).Label(it.Label).Role(ui.RoleMenuItem)
 	fg, wash := t.Text, ui.Color{}
 	if it.Danger {
@@ -145,7 +144,7 @@ func menuEntry(c *ui.Context, key int, it MenuItem, done func()) {
 		b.Disabled(true)
 		fg = t.TextMuted
 	} else if b.Hovered() || b.Focused() {
-		wash = t.SurfaceHover
+		wash = Wash(t, 0.07)
 	}
 	b.Background(Face(c, b, "aui.item", wash)).TextColor(fg)
 	b.Children(func() {

@@ -123,7 +123,7 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 					{Value: "comfortable", Label: "Comfortable (30px)"},
 				}),
 				a.numberSpec("Spacing", "Base layout spacing unit in DIPs (4–16).", "spacing", float64(s.Spacing), 8, 4, 16),
-				a.numberSpec("Corner radius", "Control and card corner radius in DIPs (0–16).", "radius", float64(s.Radius), 8, 0, 16),
+				a.numberSpec("Corner radius", "Control and card corner radius in DIPs (0–16).", "radius", float64(s.Radius), 10, 0, 16),
 				a.numberSpec("Scrollbar width", "Scrollbar thumb thickness in DIPs (2–12).", "scrollbarWidth", float64(s.ScrollbarWidth), 4, 2, 12),
 			},
 		},

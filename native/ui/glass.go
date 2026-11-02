@@ -49,16 +49,17 @@ func Fragment(dst vec4, pos vec2) vec4 {
 type glassMatch struct{ key string }
 
 // Frost paints el as a frosted pane: the backdrop blurred and tinted by
-// the surface, a hairline and a drop. el keeps its children and layout;
-// radius is its corner. Where the window draws on the CPU, the pane is
-// the opaque surface. Cost: one backdrop blur pass a frame per pane.
+// the raised face, a faint edge and a drop. el keeps its children and
+// layout; radius is its corner. Where the window draws on the CPU, the
+// pane is the opaque face. Cost: one backdrop blur pass a frame per pane.
 func Frost(c *ui.Context, el ui.Element, radius float32) ui.Element {
 	t := c.Theme()
-	tint := t.Surface.Alpha(0.72)
-	return el.Radius(radius).Border(1, t.Border).Shadow(0, 12, 32, 0, Shade(0.18)).
+	face := Raised(t)
+	tint := face.Alpha(0.78)
+	return el.Radius(radius).Border(1, Wash(t, 0.06)).Shadow(0, 12, 32, 0, Shade(0.18)).
 		Draw(func(p *ui.Painter, r ui.Rect) {
 			if !p.Accelerated() {
-				p.Fill(r, t.Surface, radius)
+				p.Fill(r, face, radius)
 				return
 			}
 			frost.Draw(p, r, shader.Options{BackdropBlur: 16, Radius: radius, Uniforms: map[string]any{"Tint": tint}})
@@ -71,7 +72,7 @@ func Frost(c *ui.Context, el ui.Element, radius float32) ui.Element {
 func LiquidGlass(c *ui.Context, el ui.Element, radius float32) ui.Element {
 	t := c.Theme()
 	tint := t.Surface.Alpha(0.45)
-	return el.Radius(radius).Border(1, t.Border.Alpha(0.5)).Shadow(0, 8, 24, 0, Shade(0.16)).
+	return el.Radius(radius).Shadow(0, 8, 24, 0, Shade(0.16)).
 		Draw(func(p *ui.Painter, r ui.Rect) {
 			if !p.Accelerated() {
 				p.Fill(r, t.Surface, radius)

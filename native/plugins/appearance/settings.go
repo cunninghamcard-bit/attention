@@ -72,7 +72,7 @@ func DefaultSettings() Settings {
 		ShowFileIcons:  true,
 		TreeDensity:    "standard",
 		Spacing:        8,
-		Radius:         8,
+		Radius:         10,
 		ScrollbarWidth: 4,
 	}
 }
