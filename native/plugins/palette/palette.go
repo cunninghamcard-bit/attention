@@ -7,9 +7,8 @@ import (
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
 
-	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
-
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
 )
 
 // ID is the plugin's name and its overlay's.
@@ -88,14 +87,12 @@ func (p *Palette) View(c *ui.Context) {
 		p.close()
 	}
 	layer.Children(func() {
-		panel := ui.Column(c).Key("palette").MarginY(72).Width(640).MaxHeight(460).
-			Radius(12).Clip()
-		omgui.Frost(c, panel)
-		panel.Background(t.Background).BorderWidth(1).BorderColor(t.Border)
+		panel := ui.Column(c).Key("palette").MarginY(72).Width(640).MaxHeight(460).Clip()
+		aui.Frost(c, panel, 12)
 		panel.Children(func() {
 			submitted := false
 			ui.Row(c).FillWidth().Padding(10, 12).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-				field := omgui.Field(c, &p.query, src.Placeholder, false).AutoFocus().FillWidth()
+				field := aui.Field(c, &p.query, src.Placeholder, false).AutoFocus().FillWidth()
 				if field.Submitted() {
 					p.accept(*src, false)
 					submitted = true
@@ -179,11 +176,11 @@ func (p *Palette) rows(c *ui.Context, src slots.PaletteSource) {
 	ui.List(c, nil, len(p.items), func(i int) {
 		it := p.items[i]
 		hint := it.Hint
-		props := omgui.CommandRowProps{Key: it.Key, Label: it.Label, Detail: it.Detail, Icon: it.Icon, Selected: i == p.selected,
+		props := aui.CommandRowProps{Key: it.Key, Label: it.Label, Detail: it.Detail, Icon: it.Icon, Selected: i == p.selected,
 			OnClick: func() { p.selected = i; p.accept(src, false) }}
 		if hint != "" {
 			props.Trailing = func(c *ui.Context) { ui.Text(c, hint).FontSize(12).TextColor(c.Theme().TextMuted) }
 		}
-		omgui.CommandRow(c, props)
+		aui.CommandRow(c, props)
 	}).MaxHeight(380).FillWidth()
 }

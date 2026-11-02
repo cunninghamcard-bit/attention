@@ -26,9 +26,7 @@ import (
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
 
-	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
@@ -38,6 +36,8 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -216,14 +216,14 @@ func (t *Terminals) body(c *ui.Context, p tabtypes.Props) {
 			ui.Column(c).Grow(1).Fill().Center().Gap(8).Children(func() {
 				ui.Text(c, "Terminal unavailable").FontWeight(600)
 				ui.Text(c, s.err).FontSize(12).TextColor(th.TextMuted)
-				omgui.Button(c, omgui.ButtonProps{Label: "Retry", Variant: omgui.ButtonSecondary, OnClick: func() { t.start(id, s) }})
+				aui.Button(c, aui.ButtonProps{Label: "Retry", Variant: aui.ButtonSecondary, OnClick: func() { t.start(id, s) }})
 			})
 			return
 		}
 		if s.exited {
 			ui.Row(c).Padding(6, 12).Gap(8).AlignItems(ui.Center).Background(th.Surface).BorderWidth(0, 0, 1, 0).BorderColor(th.Border).Children(func() {
 				ui.Text(c, fmt.Sprintf("Shell exited with code %d.", s.code)).FontSize(12).Grow(1)
-				omgui.Button(c, omgui.ButtonProps{Label: "Restart", Variant: omgui.ButtonSecondary, OnClick: func() {
+				aui.Button(c, aui.ButtonProps{Label: "Restart", Variant: aui.ButtonSecondary, OnClick: func() {
 					if s.term != nil {
 						_ = s.term.Close()
 						s.term = nil
@@ -283,26 +283,26 @@ func (t *Terminals) font() terminal.Font {
 
 // settingTab is TerminalSettingTab: the shell, the font.
 func (t *Terminals) settingTab(c *ui.Context) {
-	omgui.SettingsSection(c, "Terminal", func() {
-		omgui.PreferenceRow(c, "Shell", "The program a new terminal runs, with its arguments; empty for your login shell.", func() {
+	aui.SettingsSection(c, "Terminal", func() {
+		aui.PreferenceRow(c, "Shell", "The program a new terminal runs, with its arguments; empty for your login shell.", func() {
 			var cur string
 			t.set.Get(configFile, "shell", &cur)
 			v := cur
-			omgui.Field(c, &v, "login shell", false).Width(220)
+			aui.Field(c, &v, "login shell", false).Width(220)
 			if v != cur {
 				t.set.Set(configFile, "shell", v)
 			}
 		})
-		omgui.PreferenceRow(c, "Font family", "A font family, or a comma-separated list; empty for the system's monospaced font.", func() {
+		aui.PreferenceRow(c, "Font family", "A font family, or a comma-separated list; empty for the system's monospaced font.", func() {
 			var cur string
 			t.set.Get(configFile, "fontFamily", &cur)
 			v := cur
-			omgui.Field(c, &v, "monospace", false).Width(220)
+			aui.Field(c, &v, "monospace", false).Width(220)
 			if v != cur {
 				t.set.Set(configFile, "fontFamily", v)
 			}
 		})
-		omgui.PreferenceRow(c, "Font size", "In points; empty for 13.", func() {
+		aui.PreferenceRow(c, "Font size", "In points; empty for 13.", func() {
 			var size float32
 			t.set.Get(configFile, "fontSize", &size)
 			cur := ""
@@ -310,7 +310,7 @@ func (t *Terminals) settingTab(c *ui.Context) {
 				cur = strconv.FormatFloat(float64(size), 'f', -1, 32)
 			}
 			v := cur
-			omgui.Field(c, &v, "13", false).Width(80)
+			aui.Field(c, &v, "13", false).Width(80)
 			if v != cur {
 				if n, err := strconv.ParseFloat(v, 32); err == nil && n > 0 {
 					t.set.Set(configFile, "fontSize", float32(n))
@@ -329,7 +329,7 @@ func Register(sh *shell.Shell, sl *slots.Registry, tt *tabtypes.Registry, ws *wo
 	openHere := func() { t.open("") }
 	offs := []func(){
 		tt.Register(tabtypes.TabType{ID: ID, Kind: Kind, Priority: tabtypes.Builtin,
-			Patterns: []string{"attention://terminal/*"}, Title: title, Icon: lucide.SquareTerminal(),
+			Patterns: []string{"attention://terminal/*"}, Title: title, Icon: icon.Must("square-terminal"),
 			Body: t.body, Closed: t.closed}),
 		act.Add(actions.Command{ID: "terminal:open", Title: "Open terminal", Keys: "Ctrl J", Main: openHere, CLI: true,
 			Run: func(ctx context.Context, a actions.Args) (string, error) {
@@ -339,9 +339,9 @@ func Register(sh *shell.Shell, sl *slots.Registry, tt *tabtypes.Registry, ws *wo
 				}
 				return shell.OnMain(ctx, sh, func() (string, error) { t.open(dir); return "Opened terminal", nil })
 			}}),
-		sl.RegisterSettingsSection(slots.SettingsSection{ID: "terminal", Title: "Terminal", Icon: lucide.SquareTerminal(),
+		sl.RegisterSettingsSection(slots.SettingsSection{ID: "terminal", Title: "Terminal", Icon: icon.Must("square-terminal"),
 			Group: slots.CorePlugins, Keywords: []string{"Shell", "Copy and paste", "Font family", "Font size"}, View: t.settingTab}),
-		sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Open terminal", Icon: lucide.SquareTerminal(), Order: 5, Run: openHere}),
+		sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Open terminal", Icon: icon.Must("square-terminal"), Order: 5, Run: openHere}),
 	}
 	return func() {
 		for i := len(offs) - 1; i >= 0; i-- {

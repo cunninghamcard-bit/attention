@@ -12,9 +12,6 @@ import (
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
-
-	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/internal/persist"
@@ -22,6 +19,8 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/cli"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -90,13 +89,13 @@ func Register(sh *shell.Shell, sl *slots.Registry, act *actions.Service) (s *Set
 	s = New(sh, sl)
 	offs := []func(){
 		sl.RegisterOverlay(slots.Overlay{ID: ID, Order: 10, View: s.View}),
-		sl.RegisterSettingsSection(slots.SettingsSection{ID: "general", Title: "General", Icon: lucide.SlidersHorizontal(), Order: 0,
+		sl.RegisterSettingsSection(slots.SettingsSection{ID: "general", Title: "General", Icon: icon.Must("sliders-horizontal"), Order: 0,
 			Keywords: []string{"Current version", "Configuration folder"}, View: general}),
 		act.Add(actions.Command{ID: "app:open-settings", Title: "Open settings", Keys: "Ctrl Comma", Main: s.Toggle,
 			Run: func(ctx context.Context, _ actions.Args) (string, error) {
 				return shell.OnMain(ctx, sh, func() (string, error) { s.Open(""); return "", nil })
 			}}),
-		sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Settings", Icon: lucide.Settings(), Order: 100, Run: func() { s.Open("") }}),
+		sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Settings", Icon: icon.Must("settings"), Order: 100, Run: func() { s.Open("") }}),
 	}
 	return s, func() {
 		for i := len(offs) - 1; i >= 0; i-- {
@@ -259,7 +258,7 @@ func (s *Settings) View(c *ui.Context) {
 	}
 	winW, winH := c.Size()
 	w, h := min(winW*0.9, 900), min(winH*0.85, 700)
-	omgui.Dialog(c, omgui.DialogProps{Open: &s.open, Key: ID, Title: title, Width: w, MaxHeight: h, Flush: true, Body: func(c *ui.Context) {
+	aui.Dialog(c, aui.DialogProps{Open: &s.open, Key: ID, Title: title, Width: w, MaxHeight: h, Flush: true, Body: func(c *ui.Context) {
 		if c.Shortcut(ui.Cmd, ui.KeyComma) {
 			s.open = false
 			return
@@ -284,7 +283,7 @@ func (s *Settings) body(c *ui.Context, options, core []slots.SettingsSection, cu
 	ui.Row(c).FillWidth().Height(h).AlignItems(ui.Stretch).Background(t.Background).Children(func() {
 		ui.Column(c).Width(min(max(w*0.25, 190), 230)).Shrink(0).FillHeight().Gap(8).
 			Background(t.Surface).BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Padding(12).Children(func() {
-			omgui.SearchField(c, &s.query, "Search settings", false).Label("Search settings").FillWidth()
+			aui.SearchField(c, &s.query, "Search settings", false).Label("Search settings").FillWidth()
 			ui.Scroll(c).Grow(1).FillWidth().Children(func() {
 				ui.Column(c).FillWidth().Gap(2).Children(func() {
 					s.group(c, "Options", options)
@@ -308,10 +307,10 @@ func (s *Settings) group(c *ui.Context, title string, secs []slots.SettingsSecti
 	if len(secs) == 0 {
 		return
 	}
-	ui.Box(c).Padding(6, 8).Children(func() { omgui.SectionLabel(c, title) })
+	ui.Box(c).Padding(6, 8).Children(func() { aui.SectionLabel(c, title) })
 	for _, sec := range secs {
 		id := sec.ID
-		if omgui.SidebarItem(c, omgui.SidebarItemProps{Key: "settings:" + id, Label: sec.Title, Icon: sec.Icon, Selected: id == s.shown}).Clicked() {
+		if aui.SidebarItem(c, aui.SidebarItemProps{Key: "settings:" + id, Label: sec.Title, Icon: sec.Icon, Selected: id == s.shown}).Clicked() {
 			s.shown = id
 		}
 	}
@@ -334,10 +333,10 @@ func matches(sec slots.SettingsSection, query string) bool {
 }
 
 func general(c *ui.Context) {
-	omgui.SettingsSection(c, "App", func() {
-		omgui.PreferenceRow(c, "Current version", cli.Version, nil)
-		omgui.PreferenceRow(c, "Configuration folder", paths.ConfigDir(), func() {
-			omgui.Button(c, omgui.ButtonProps{Label: "Open", Variant: omgui.ButtonSecondary, OnClick: func() {
+	aui.SettingsSection(c, "App", func() {
+		aui.PreferenceRow(c, "Current version", cli.Version, nil)
+		aui.PreferenceRow(c, "Configuration folder", paths.ConfigDir(), func() {
+			aui.Button(c, aui.ButtonProps{Label: "Open", Variant: aui.ButtonSecondary, OnClick: func() {
 				dir := paths.ConfigDir()
 				go func() { _ = mygo.Shell.OpenPath(dir) }()
 			}})

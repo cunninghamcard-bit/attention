@@ -5,17 +5,17 @@ import (
 	"testing"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 func TestPanelStateRoundTrips(t *testing.T) {
 	sl := slots.New(nil)
 	var got string
-	off := sl.RegisterPanel(slots.Panel{ID: "search", Title: "search", Icon: lucide.Search(), Dock: slots.Left,
+	off := sl.RegisterPanel(slots.Panel{ID: "search", Title: "search", Icon: icon.Must("search"), Dock: slots.Left,
 		View:    func(c *ui.Context, _ slots.PanelProps) { ui.Text(c, "body") },
 		State:   func() json.RawMessage { data, _ := json.Marshal(got + "-saved"); return data },
 		Restore: func(st json.RawMessage) { got = string(st) },

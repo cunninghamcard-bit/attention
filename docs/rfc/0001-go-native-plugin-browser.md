@@ -425,7 +425,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 ### 5.12 UI 规范
 
 - 视觉和组件风格采用 octogo 的风格，不再对照 Obsidian。废弃的是：与 Obsidian `app.css` 逐字节一致的样式层、Obsidian 的类名语义和尺寸规格、`styles/deviations/` 和 `StyleSystem.test.ts` 的规则。
-- 共享 UI 模块已经独立为 `github.com/cunninghamcard-bit/attention-ui`（从 octogo 的 `ui/theme` 和 `omgui` 抽出），`native/go.mod` 用 `replace` 指向本地的 `../../octogo/attention-ui`。页面里不出现硬编码的颜色和尺寸，规范见 octogo 的 `docs/STYLE.md`。
+- 组件库是仓库内的 `native/ui`（调用处别名 `aui`，图标在 `native/ui/icon`），按 [RFC 0002](0002-crychic-ui.md) 从 CrychicUI 和原 attention-ui 的 omgui 内化而来；`native/go.mod` 不再依赖 `attention-ui`、`smallnest/uix`、`onevra`，也没有 `replace`。组件只读 `ui.Theme` 取色，页面里不出现硬编码的颜色。
 - **主题**：只有颜色：9 个界面色、9 个语法色、可选的终端 16 色，其余颜色由代码推导。`appearance` 插件读取内置主题（`plugins/appearance/themes/`）和 `<配置目录>/themes/`，也接受 Zed 主题文件里映射得到的那部分键。同一份主题生成 `*ui.Theme`、`*editor.Theme`、`*markdown.Theme` 和终端主题。设计见 [docs/appearance.md](../appearance.md)。
 - **文件图标**：`internal/fileicon` 内置 `@pierre/trees` 的 57 个 SVG 图标和语义色板，按文件名、后缀匹配。`fileicon.Theme` 是一个值，由 `appearance.Icons()` 给出；文件树、标签页、快速切换、搜索、书签和反链用它画图标。
 - 正文字体跟随系统（fontconfig 的 sans-serif），不在主题里写死。
@@ -558,7 +558,7 @@ native/
 
 ### 10.2 早期未决问题状态对照
 
-1. 共享 UI 模块放在哪里：已独立为 `github.com/cunninghamcard-bit/attention-ui`（当前通过 `replace` 引用）。
+1. 共享 UI 模块放在哪里：内化为仓库内的 `native/ui/`（[RFC 0002](0002-crychic-ui.md)）。
 2. 代码放在 `native/` 目录、留在同一仓库（§5.13）：已确认并落地。
 3. 插件接口包（`contract`）对外稳定：不再有 `contract/`。第三方插件 import 提供服务的插件包（`plugins/slots`、`plugins/actions` 等），这些包的导出类型就是对外接口（§10.1 第 3 条）。
 4. 跨进程的声明式 UI 协议要不要做、什么时候做（§5.11）：暂不做，优先使用编译期 `build --with` 与 `webview-panel` 兜底。

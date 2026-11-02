@@ -7,7 +7,8 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
+
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // Theme is which icons files get: none unless Show, else the Name set ("pierre" or "zed").
@@ -30,9 +31,9 @@ func (t Theme) Render(c *ui.Context, name string, dir, open, dark bool, size flo
 		return
 	}
 	if dir {
-		svg := lucide.FolderClosed()
+		svg := icon.Must("folder-closed")
 		if open {
-			svg = lucide.FolderOpen()
+			svg = icon.Must("folder-open")
 		}
 		ui.Icon(c, svg).Size(size, size).TextColor(c.Theme().TextMuted).Shrink(0)
 		return
@@ -59,15 +60,15 @@ func (t Theme) Color(name string, dark bool) ui.Color {
 // Folder returns the icon for a directory named name.
 func Folder(name string, open bool) *ui.SVG {
 	if open {
-		return lucide.FolderOpen()
+		return icon.Must("folder-open")
 	}
 	switch strings.ToLower(filepath.Base(name)) {
 	case ".git", ".github":
-		return lucide.FolderGit2()
+		return icon.Must("folder-git-2")
 	case ".claude", ".vscode", ".idea", "config", "configs":
-		return lucide.FolderCog()
+		return icon.Must("folder-cog")
 	}
-	return lucide.Folder()
+	return icon.Must("folder")
 }
 
 // FolderColor returns the Zed One Light or One Dark icon tint for a folder.
@@ -88,46 +89,46 @@ func zedFor(name string) *ui.SVG {
 	base := strings.ToLower(filepath.Base(name))
 	switch base {
 	case "dockerfile", "containerfile":
-		return lucide.FileBox()
+		return icon.Must("file-box")
 	case "makefile", "justfile", "taskfile.yml", "taskfile.yaml":
-		return lucide.FileTerminal()
+		return icon.Must("file-terminal")
 	case "license", "license.md", "license.txt", "copying":
-		return lucide.FileBadge()
+		return icon.Must("file-badge")
 	case "go.sum", "cargo.lock", "package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb":
-		return lucide.FileLock()
+		return icon.Must("file-lock")
 	case ".gitignore", ".gitattributes", ".gitmodules":
-		return lucide.FileDiff()
+		return icon.Must("file-diff")
 	}
 	switch strings.ToLower(filepath.Ext(base)) {
 	case ".md", ".markdown", ".mdx", ".txt", ".rst", ".adoc":
-		return lucide.FileText()
+		return icon.Must("file-text")
 	case ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg", ".ico", ".avif":
-		return lucide.Image()
+		return icon.Must("image")
 	case ".json", ".jsonc", ".json5", ".graphql", ".gql":
-		return lucide.FileBraces()
+		return icon.Must("file-braces")
 	case ".toml", ".yaml", ".yml", ".ini", ".conf", ".cfg", ".env", ".properties":
-		return lucide.FileSliders()
+		return icon.Must("file-sliders")
 	case ".sh", ".bash", ".zsh", ".fish", ".ps1", ".bat", ".cmd":
-		return lucide.FileTerminal()
+		return icon.Must("file-terminal")
 	case ".lock", ".sum":
-		return lucide.FileLock()
+		return icon.Must("file-lock")
 	case ".sql", ".sqlite", ".db":
-		return lucide.Database()
+		return icon.Must("database")
 	case ".csv", ".tsv", ".xlsx", ".xls":
-		return lucide.FileSpreadsheet()
+		return icon.Must("file-spreadsheet")
 	case ".zip", ".tar", ".gz", ".tgz", ".bz2", ".xz", ".7z", ".zst":
-		return lucide.FileArchive()
+		return icon.Must("file-archive")
 	case ".go", ".rs", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
 		".py", ".rb", ".java", ".kt", ".swift", ".c", ".h", ".cc", ".cpp", ".hpp",
 		".cs", ".php", ".lua", ".zig", ".elixir", ".ex", ".exs", ".erl", ".hs",
 		".ml", ".scala", ".dart", ".R", ".vue", ".svelte", ".astro",
 		".html", ".htm", ".css", ".scss", ".less", ".xml", ".proto":
-		return lucide.FileCode()
+		return icon.Must("file-code")
 	}
 	if strings.HasPrefix(base, ".env") || strings.HasSuffix(base, "rc") {
-		return lucide.FileSliders()
+		return icon.Must("file-sliders")
 	}
-	return lucide.File()
+	return icon.Must("file")
 }
 
 func zedColor(name string, dark bool) ui.Color {

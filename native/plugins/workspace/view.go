@@ -8,12 +8,11 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
-
-	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // view is the center (RFC §5.8: it reads state, never the disk): the
@@ -172,12 +171,12 @@ func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
 					ws.tabChip(c, p, j, tb)
 				}
 				ui.Row(c).Height(32).AlignItems(ui.Center).Children(func() {
-					omgui.Button(c, omgui.ButtonProps{Label: "New tab", Icon: lucide.Plus(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+					aui.Button(c, aui.ButtonProps{Label: "New tab", Icon: icon.Must("plus"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
 						OnClick: func() { ws.later(func() { ws.activeGroup = p; ws.newTab() }) }}).Tooltip("New tab")
 				})
 			})
 		})
-		omgui.IconMenu(c, omgui.IconMenuProps{Label: "Tab list", Icon: lucide.ChevronDown(), End: true, Items: ws.tabListMenu(p)})
+		aui.IconMenu(c, aui.IconMenuProps{Label: "Tab list", Icon: icon.Must("chevron-down"), End: true, Items: ws.tabListMenu(p)})
 		if l := ws.lyt; l != nil && !l.Open(slots.Right) && ws.isTopRight(p) {
 			l.ToggleButton(c, slots.Right)
 		}
@@ -195,14 +194,14 @@ func (ws *Workspace) tabChip(c *ui.Context, p *pane, j int, tb *tab) {
 		title += " (deleted)"
 	}
 	tip := tb.title
-	icon := ws.tabIcon(tb)
+	glyph := ws.tabIcon(tb)
 	var iconColor ui.Color
 	if tb.empty {
-		icon = nil
+		glyph = nil
 	} else if !tb.page() {
 		tip = ws.display(tb.path)
 		if icons := ws.app.Icons(); !icons.Show {
-			icon = nil
+			glyph = nil
 		} else {
 			iconColor = icons.Color(tb.title, t.Dark)
 		}
@@ -234,8 +233,8 @@ func (ws *Workspace) tabChip(c *ui.Context, p *pane, j int, tb *tab) {
 	chip.TextColor(fg)
 	chip.Children(func() {
 		ui.Row(c).MaxWidth(160).MinWidth(0).Shrink(0).Padding(0, 6, 0, 10).Gap(6).AlignItems(ui.Center).Children(func() {
-			if icon != nil {
-				ic := ui.Icon(c, icon).Size(14, 14).Shrink(0)
+			if glyph != nil {
+				ic := ui.Icon(c, glyph).Size(14, 14).Shrink(0)
 				if iconColor.A > 0 {
 					ic.TextColor(iconColor)
 				} else {
@@ -253,7 +252,7 @@ func (ws *Workspace) tabChip(c *ui.Context, p *pane, j int, tb *tab) {
 		xbtn.OnClick(func() { ws.later(func() { ws.closeTabs([]*tab{tb}) }) })
 		xbtn.Children(func() {
 			if selected || hovered || xbtn.Hovered() {
-				ui.Icon(c, lucide.X()).Size(12, 12).TextColor(t.TextMuted)
+				ui.Icon(c, icon.Must("x")).Size(12, 12).TextColor(t.TextMuted)
 			}
 		})
 	})
@@ -269,14 +268,14 @@ func (ws *Workspace) tabChip(c *ui.Context, p *pane, j int, tb *tab) {
 
 // tabListMenu is the tab list (WorkspaceTabs.showTabListMenu): Close all,
 // then the group's tabs, the active one checked.
-func (ws *Workspace) tabListMenu(p *pane) []omgui.MenuItem {
-	items := []omgui.MenuItem{
-		{Label: "Close all", Icon: lucide.X(), OnClick: ws.closeAllLater(p)},
+func (ws *Workspace) tabListMenu(p *pane) []aui.MenuItem {
+	items := []aui.MenuItem{
+		{Label: "Close all", Icon: icon.Must("x"), OnClick: ws.closeAllLater(p)},
 		{Separator: true},
 	}
 	for j, tb := range p.tabs {
 		j := j
-		items = append(items, omgui.MenuItem{Label: tb.title, Icon: ws.tabIcon(tb), Checked: j == p.active,
+		items = append(items, aui.MenuItem{Label: tb.title, Icon: ws.tabIcon(tb), Checked: j == p.active,
 			OnClick: func() { p.active, ws.activeGroup = j, p; ws.changed() }})
 	}
 	return items
@@ -284,7 +283,7 @@ func (ws *Workspace) tabListMenu(p *pane) []omgui.MenuItem {
 
 // tabMenu is a tab's context menu: View.onTabMenu's close items, then More
 // options' (WorkspaceLeaf.onOpenTabHeaderMenu).
-func (ws *Workspace) tabMenu(p *pane, tb *tab) []omgui.MenuItem {
+func (ws *Workspace) tabMenu(p *pane, tb *tab) []aui.MenuItem {
 	at := p.indexOf(tb)
 	closing := func(ts func() []*tab) func() {
 		return func() {
@@ -292,9 +291,9 @@ func (ws *Workspace) tabMenu(p *pane, tb *tab) []omgui.MenuItem {
 			ws.later(func() { ws.closeTabs(ts) })
 		}
 	}
-	items := []omgui.MenuItem{{Label: "Close", Icon: lucide.X(), OnClick: closing(func() []*tab { return []*tab{tb} })}}
+	items := []aui.MenuItem{{Label: "Close", Icon: icon.Must("x"), OnClick: closing(func() []*tab { return []*tab{tb} })}}
 	if len(p.tabs) > 1 {
-		items = append(items, omgui.MenuItem{Label: "Close others", Icon: lucide.X(), OnClick: closing(func() []*tab {
+		items = append(items, aui.MenuItem{Label: "Close others", Icon: icon.Must("x"), OnClick: closing(func() []*tab {
 			var others []*tab
 			for _, o := range p.tabs {
 				if o != tb {
@@ -305,18 +304,18 @@ func (ws *Workspace) tabMenu(p *pane, tb *tab) []omgui.MenuItem {
 		})})
 	}
 	if at < len(p.tabs)-1 {
-		items = append(items, omgui.MenuItem{Label: "Close tabs to the right", Icon: lucide.X(), OnClick: closing(func() []*tab {
+		items = append(items, aui.MenuItem{Label: "Close tabs to the right", Icon: icon.Must("x"), OnClick: closing(func() []*tab {
 			return p.tabs[p.indexOf(tb)+1:]
 		})})
 	}
 	if len(p.tabs) > 1 {
-		items = append(items, omgui.MenuItem{Label: "Close all", Icon: lucide.X(), OnClick: ws.closeAllLater(p)})
+		items = append(items, aui.MenuItem{Label: "Close all", Icon: icon.Must("x"), OnClick: ws.closeAllLater(p)})
 	}
 	if tb.empty {
 		return items
 	}
 	tt, _ := ws.tabTypes.Get(tb.typeID)
-	return append(append(items, omgui.MenuItem{Separator: true}), ws.paneMenu(p, tb, tt)...)
+	return append(append(items, aui.MenuItem{Separator: true}), ws.paneMenu(p, tb, tt)...)
 }
 
 func (ws *Workspace) closeAllLater(p *pane) func() {
@@ -428,12 +427,12 @@ func (ws *Workspace) viewHeader(c *ui.Context, p *pane, tb *tab, props tabtypes.
 			if n == 0 {
 				color = ui.Color{}
 			}
-			omgui.Button(c, omgui.ButtonProps{Label: label, Icon: icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+			aui.Button(c, aui.ButtonProps{Label: label, Icon: icon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
 				Disabled: n == 0, IconColor: color, OnClick: func() { ws.later(func() { ws.activeGroup = p; ws.goHistory(tb, delta) }) }}).
 				Tooltip(label)
 		}
-		navButton("Back", lucide.ArrowLeft(), -1, len(tb.back))
-		navButton("Forward", lucide.ArrowRight(), 1, len(tb.forward))
+		navButton("Back", icon.Must("arrow-left"), -1, len(tb.back))
+		navButton("Forward", icon.Must("arrow-right"), 1, len(tb.forward))
 		if tt.Header != nil {
 			tt.Header(c, props)
 		} else {
@@ -442,7 +441,7 @@ func (ws *Workspace) viewHeader(c *ui.Context, p *pane, tb *tab, props tabtypes.
 		if tt.Actions != nil {
 			tt.Actions(c, props)
 		}
-		omgui.IconMenu(c, omgui.IconMenuProps{Label: "More options", Icon: lucide.EllipsisVertical(), End: true, Items: ws.paneMenu(p, tb, tt)})
+		aui.IconMenu(c, aui.IconMenuProps{Label: "More options", Icon: icon.Must("ellipsis-vertical"), End: true, Items: ws.paneMenu(p, tb, tt)})
 	})
 }
 
@@ -478,14 +477,14 @@ func (ws *Workspace) breadcrumbs(c *ui.Context, tb *tab, focused bool) {
 
 // paneMenu is More options: the tab type's items, then attention's pane
 // and file items (ItemView.onPaneMenu, the workspace's file-menu).
-func (ws *Workspace) paneMenu(p *pane, tb *tab, tt tabtypes.TabType) []omgui.MenuItem {
-	var items []omgui.MenuItem
+func (ws *Workspace) paneMenu(p *pane, tb *tab, tt tabtypes.TabType) []aui.MenuItem {
+	var items []aui.MenuItem
 	if tt.Menu != nil {
 		for _, it := range tt.Menu(tb.id) {
-			items = append(items, omgui.MenuItem{Label: it.Title, Icon: it.Icon, Checked: it.Checked, OnClick: it.Run})
+			items = append(items, aui.MenuItem{Label: it.Title, Icon: it.Icon, Checked: it.Checked, OnClick: it.Run})
 		}
 		if len(items) > 0 {
-			items = append(items, omgui.MenuItem{Separator: true})
+			items = append(items, aui.MenuItem{Separator: true})
 		}
 	}
 	split := func(dir direction) func() {
@@ -500,19 +499,19 @@ func (ws *Workspace) paneMenu(p *pane, tb *tab, tt tabtypes.TabType) []omgui.Men
 	}
 	path := tb.path
 	items = append(items,
-		omgui.MenuItem{Label: "Split right", Icon: lucide.SeparatorVertical(), OnClick: split(vertical)},
-		omgui.MenuItem{Label: "Split down", Icon: lucide.SeparatorHorizontal(), OnClick: split(horizontal)},
+		aui.MenuItem{Label: "Split right", Icon: icon.Must("separator-vertical"), OnClick: split(vertical)},
+		aui.MenuItem{Label: "Split down", Icon: icon.Must("separator-horizontal"), OnClick: split(horizontal)},
 	)
 	if tb.page() {
 		return items
 	}
 	return append(items,
-		omgui.MenuItem{Separator: true},
-		omgui.MenuItem{Label: "Copy path", Icon: lucide.Copy(), OnClick: func() { mygo.Clipboard.WriteText(ws.display(path)) }},
-		omgui.MenuItem{Label: "Copy absolute path", Icon: lucide.HardDrive(), OnClick: func() { mygo.Clipboard.WriteText(path) }},
-		omgui.MenuItem{Separator: true},
-		omgui.MenuItem{Label: "Open in default app", Icon: lucide.ArrowUpRight(), OnClick: func() { go func() { _ = mygo.Shell.OpenPath(path) }() }},
-		omgui.MenuItem{Label: "Show in system explorer", Icon: lucide.Files(), OnClick: func() { go mygo.Shell.ShowItemInFolder(path) }},
+		aui.MenuItem{Separator: true},
+		aui.MenuItem{Label: "Copy path", Icon: icon.Must("copy"), OnClick: func() { mygo.Clipboard.WriteText(ws.display(path)) }},
+		aui.MenuItem{Label: "Copy absolute path", Icon: icon.Must("hard-drive"), OnClick: func() { mygo.Clipboard.WriteText(path) }},
+		aui.MenuItem{Separator: true},
+		aui.MenuItem{Label: "Open in default app", Icon: icon.Must("arrow-up-right"), OnClick: func() { go func() { _ = mygo.Shell.OpenPath(path) }() }},
+		aui.MenuItem{Label: "Show in system explorer", Icon: icon.Must("files"), OnClick: func() { go mygo.Shell.ShowItemInFolder(path) }},
 	)
 }
 
@@ -545,7 +544,7 @@ func (ws *Workspace) tabStatus(c *ui.Context) {
 // globe.
 func (ws *Workspace) tabIcon(tb *tab) *ui.SVG {
 	if tb.empty {
-		return lucide.Globe()
+		return icon.Must("globe")
 	}
 	if tt, ok := ws.tabTypes.Get(tb.typeID); ok && tt.Icon != nil {
 		return tt.Icon
@@ -554,7 +553,7 @@ func (ws *Workspace) tabIcon(tb *tab) *ui.SVG {
 }
 
 // nativeMenu fills a context menu with items.
-func nativeMenu(m *ui.Menu, items []omgui.MenuItem) {
+func nativeMenu(m *ui.Menu, items []aui.MenuItem) {
 	for _, it := range items {
 		if it.Separator {
 			m.Separator()
@@ -569,7 +568,7 @@ func nativeMenu(m *ui.Menu, items []omgui.MenuItem) {
 func banner(c *ui.Context, text string, color ui.Color) {
 	t := c.Theme()
 	ui.Row(c).Padding(6, 12).Gap(8).AlignItems(ui.Center).Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-		ui.Icon(c, lucide.TriangleAlert()).Size(14, 14).TextColor(color)
+		ui.Icon(c, icon.Must("triangle-alert")).Size(14, 14).TextColor(color)
 		ui.Text(c, text).FontSize(12)
 	})
 }

@@ -12,7 +12,6 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/fuzzy"
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
@@ -22,6 +21,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -224,7 +224,7 @@ func Register(s *Switcher, sh *shell.Shell, sl *slots.Registry, act *actions.Ser
 			Run: func(ctx context.Context, _ actions.Args) (string, error) {
 				return shell.OnMain(ctx, sh, func() (string, error) { open(); return "", nil })
 			}}),
-		sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Open quick switcher", Icon: lucide.FileSearch(), Order: 0, Run: open}),
+		sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Open quick switcher", Icon: icon.Must("file-search"), Order: 0, Run: open}),
 	}
 	return func() {
 		for _, off := range offs {

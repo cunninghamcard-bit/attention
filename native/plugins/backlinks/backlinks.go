@@ -18,9 +18,7 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
 
-	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	indexplugin "github.com/cunninghamcard-bit/attention/native/plugins/index"
@@ -28,6 +26,8 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -77,7 +77,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		ctx, cancel := context.WithCancel(context.Background())
 		p := &Pane{app: app, ctx: ctx, sh: sh, ws: ws, idx: idx, collapsed: map[string]bool{}}
 		off := sl.RegisterPanel(slots.Panel{
-			ID: PanelID, Title: "Backlinks", Icon: lucide.Link(), Dock: slots.Right, Order: 1,
+			ID: PanelID, Title: "Backlinks", Icon: icon.Must("link"), Dock: slots.Right, Order: 1,
 			View: p.view, State: p.state, Restore: p.restore,
 		})
 		rctx.On(indexplugin.ChangedEvent, func(context.Context, ...any) (any, error) {
@@ -260,7 +260,7 @@ func (p *Pane) view(c *ui.Context, _ slots.PanelProps) {
 				return
 			}
 			m := &b.Mentions[r.mention]
-			item := omgui.SideRow(c, omgui.SideRowProps{Key: fmt.Sprintf("m:%s%s:%d", b.Path, b.URL, r.mention), Depth: 2})
+			item := aui.SideRow(c, aui.SideRowProps{Key: fmt.Sprintf("m:%s%s:%d", b.Path, b.URL, r.mention), Depth: 2})
 			if item.Clicked() {
 				p.open(b, m)
 			}
@@ -273,7 +273,7 @@ func (p *Pane) view(c *ui.Context, _ slots.PanelProps) {
 
 func (p *Pane) fileRow(c *ui.Context, b *indexplugin.Backlink) {
 	t := c.Theme()
-	item := omgui.SideRow(c, omgui.SideRowProps{Key: "f:" + b.Path + b.URL, Depth: 0})
+	item := aui.SideRow(c, aui.SideRowProps{Key: "f:" + b.Path + b.URL, Depth: 0})
 	if item.Clicked() {
 		var first *indexplugin.Mention
 		if len(b.Mentions) > 0 {
@@ -284,9 +284,9 @@ func (p *Pane) fileRow(c *ui.Context, b *indexplugin.Backlink) {
 	item.Tooltip(b.Display)
 	item.Children(func() {
 		if len(b.Mentions) > 0 {
-			chevron := lucide.ChevronDown()
+			chevron := icon.Must("chevron-down")
 			if p.collapsed[b.Path+b.URL] {
-				chevron = lucide.ChevronRight()
+				chevron = icon.Must("chevron-right")
 			}
 			if ui.Icon(c, chevron).Size(14, 14).TextColor(t.TextMuted).Shrink(0).Cursor(ui.CursorPointer).Clicked() {
 				p.collapsed[b.Path+b.URL] = !p.collapsed[b.Path+b.URL]
@@ -296,7 +296,7 @@ func (p *Pane) fileRow(c *ui.Context, b *indexplugin.Backlink) {
 			ui.Box(c).Width(14).Shrink(0)
 		}
 		if b.URL != "" {
-			ui.Icon(c, lucide.Globe()).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
+			ui.Icon(c, icon.Must("globe")).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
 		} else {
 			p.app.Icons().Render(c, b.Display, false, false, t.Dark, 15)
 		}

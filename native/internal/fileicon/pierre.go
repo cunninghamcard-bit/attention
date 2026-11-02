@@ -7,7 +7,8 @@ import (
 	"sync"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
+
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 var (
@@ -268,9 +269,9 @@ var (
 func Pierre(name string, dir, open, _ bool) *ui.SVG {
 	if dir {
 		if open {
-			return lucide.FolderOpen()
+			return icon.Must("folder-open")
 		}
-		return lucide.FolderClosed()
+		return icon.Must("folder-closed")
 	}
 	return PierreSVG(name)
 }

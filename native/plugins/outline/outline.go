@@ -12,15 +12,15 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
 
-	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	indexplugin "github.com/cunninghamcard-bit/attention/native/plugins/index"
 	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // ID is the plugin's name; PanelID the slot id (OutlineView.getViewType).
@@ -63,7 +63,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		ctx, cancel := context.WithCancel(context.Background())
 		p := &Pane{ctx: ctx, sh: sh, ws: ws, idx: idx}
 		off := sl.RegisterPanel(slots.Panel{
-			ID: PanelID, Title: "Outline", Icon: lucide.List(), Dock: slots.Right, Order: 2,
+			ID: PanelID, Title: "Outline", Icon: icon.Must("list"), Dock: slots.Right, Order: 2,
 			View: p.view,
 		})
 		rctx.On(indexplugin.ChangedEvent, func(context.Context, ...any) (any, error) {
@@ -179,7 +179,7 @@ func (p *Pane) view(c *ui.Context, _ slots.PanelProps) {
 			if depth < 0 {
 				depth = 0
 			}
-			item := omgui.SideRow(c, omgui.SideRowProps{Key: fmt.Sprintf("h:%d:%d", h.Line, i), Depth: depth})
+			item := aui.SideRow(c, aui.SideRowProps{Key: fmt.Sprintf("h:%d:%d", h.Line, i), Depth: depth})
 			if item.Clicked() {
 				if p.ws != nil {
 					// Heading.Line is 0-based; Nav is 1-based (tabtypes.Nav).

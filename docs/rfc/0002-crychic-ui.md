@@ -1,6 +1,6 @@
 # RFC 0002：采用 shadcn/ui 模式将 CrychicUI 按需内化至 `native/ui` 并移除外部 UI 库依赖
 
-- 状态：Draft
+- 状态：已实施（2026-11-02，见 §6）
 - 日期：2026-11-02
 - 范围：`native/ui`（新建）、`native/plugins/*`、`native/internal/textdoc`、`native/internal/fileicon`、`native/go.mod`
 - 关联文档：[RFC 0001](0001-go-native-plugin-browser.md) · [产品线规划](../product.md) · [外观系统](../appearance.md)
@@ -83,13 +83,13 @@ native/
 
 ## 4. 主题、图标与组件迁移方案
 
-### 4.1 移除 `attention-ui/theme`，统一至 `internal/textdoc/theme.go`
+### 4.1 移除 `attention-ui/theme`，配色归 `appearance` 插件
 
-- 目前全库仅在 [`internal/textdoc/theme.go`](../../native/internal/textdoc/theme.go)、[`plugins/search`](../../native/plugins/search/search.go) 和 [`plugins/backlinks`](../../native/plugins/backlinks/backlinks.go) 中引用了 `attention-ui/theme`（`theme.For` 与 `theme.MonoFont`）。
+- 外观重写后 `internal/textdoc/theme.go` 已删除，主题状态只在 [`plugins/appearance`](../../native/plugins/appearance)（见 [外观系统](../appearance.md)）。
 - 迁移方式：
-  1. 将 `theme.For(dark, k.accent)` 的基础调色板逻辑直接内聚进 [`internal/textdoc/theme.go`](../../native/internal/textdoc/theme.go)（基于 `ui.LightTheme()` / `ui.DarkTheme()` 构建，叠加内置 `themes/*.json` 的 `Attention Light` / `Attention Dark` / `Ayu` / `One`）；
-  2. `search` 与 `backlinks` 中的 `theme.MonoFont` 统一改为 `textdoc.MonoFont`；
-  3. 彻底删除对 `github.com/cunninghamcard-bit/attention-ui/theme` 的依赖。
+  1. `theme.For` 的亮/暗配色写进内置主题 `themes/attention.json` 的 `colors`，每个主题都必须带九个界面色；`build.go` 从 `ui.LightTheme()` / `ui.DarkTheme()` 起算，四种预设强调色（ocean、forest、rose、amber）内联在 `build.go`；
+  2. `search` 与 `backlinks` 中的 `theme.MonoFont` 改为 `appearance.MonoFont`；
+  3. 删除对 `github.com/cunninghamcard-bit/attention-ui/theme` 的依赖。
 
 ### 4.2 图标迁移（`uix/components/lucide` → `native/ui/icon`）
 
@@ -135,3 +135,16 @@ native/
 - `native/go.mod` 中不再包含 `attention-ui`、`smallnest/uix`、`oneo-me/onevra`，且不存在任何本地路径 `replace` 指令；
 - `cd native && gofmt -l . && go vet ./... && go test ./...` 全部通过；
 - `cd native && GOWORK=off asl -forwarder=false ./...` 布局静态检查全部通过。
+
+---
+
+## 6. 实施结果
+
+和上文设计不同的地方：
+
+- **包名**：`native/ui` 的包名是 `ui`，包内直接 import mygo 的 `ui`；插件里以 `aui` 别名引用，mygo 的 `ui` 不改名。
+- **图标**：只内化在用的 66 个 Lucide SVG，不搬整套 2159 个；`icon.Must` 之外没有 `Filled`。`icon_test.go` 扫描 `native/` 下所有 `icon.Must("…")` 字面量，确认都在 `svg/` 里。
+- **组件来源**：`icon`、`Arrive`、`Frost` 的着色器和 `Select`（基于 mygo 的 `SelectBase`）取自 CrychicUI；`Button`、输入框、菜单、行、设置行沿用 omgui 的调用形状，改成只读 `ui.Theme`（不再有 `theme.Ext` 的额外 token），调用处只改了包名。
+- **动效**：浮层只有入场（`Arrive`），没有 omgui 的退场状态机；去掉了按压缩放和音效。
+- **玻璃**：`glass.go` 有 `Frost`（模糊加着色）、`LiquidGlass`（边缘折射加顶部高光）和 `Segmented`（胶囊分段器，选中的胶囊用 `ElementTransition.Match` 滑动）。CPU 渲染（`p.Accelerated()` 为假，包括 `ui.Tester`）时退回不透明的 surface。命令面板改用 `Frost`。
+- **验收**：`native/go.mod` 已无 `attention-ui`、`smallnest/uix`、`oneo-me/onevra` 和 `replace`；gofmt、vet、test、asl 全部通过。

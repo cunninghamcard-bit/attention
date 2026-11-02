@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/arcships/rutis/go/rutis"
-	"github.com/smallnest/uix/components/lucide"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/fuzzy"
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
@@ -19,6 +18,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -177,7 +177,7 @@ func Register(p *Palette, sh *shell.Shell, sl *slots.Registry, act *actions.Serv
 			Run: func(ctx context.Context, _ actions.Args) (string, error) {
 				return shell.OnMain(ctx, sh, func() (string, error) { open(); return "", nil })
 			}}),
-		sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Open command palette", Icon: lucide.SquareTerminal(), Order: 1, Run: open}),
+		sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Open command palette", Icon: icon.Must("square-terminal"), Order: 1, Run: open}),
 	}
 	return func() {
 		for _, off := range offs {

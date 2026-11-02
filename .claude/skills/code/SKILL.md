@@ -32,8 +32,8 @@ the same change. Pure moves and file splits are not exempt.
    `debugf`, gated by `ATTENTION_DEBUG`, to stderr. Errors are returned to
    the caller, wrapped with `%w`; a goroutine that cannot return one reports
    it where the user sees it (a banner, the CLI's output), never silently.
-4. **Imports** — three groups: stdlib / external (rutis, mygo, uix, …) /
-   attention (`attention-ui` and `attention/native`).
+4. **Imports** — three groups: stdlib / external (rutis, mygo, …) /
+   attention (`attention/native`, including `native/ui`).
 5. **Context** — no `context.TODO()`; propagate the caller's `ctx`; a
    plugin's long-lived work takes the plugin's context (cancelled in its
    `Effect`).

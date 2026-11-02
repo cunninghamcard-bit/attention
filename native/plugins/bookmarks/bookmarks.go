@@ -17,9 +17,7 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
 
-	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/internal/persist"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
@@ -29,6 +27,8 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // ID is the plugin's name; PanelID the slot id (BookmarksView.getViewType).
@@ -82,7 +82,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		}
 		rctx.Provide("bookmarks", b)
 		off := sl.RegisterPanel(slots.Panel{
-			ID: PanelID, Title: "Bookmarks", Icon: lucide.Bookmark(), Dock: slots.Left, Order: 2,
+			ID: PanelID, Title: "Bookmarks", Icon: icon.Must("bookmark"), Dock: slots.Left, Order: 2,
 			View: b.view, State: b.state, Restore: b.restore,
 		})
 		offs := []func(){off}
@@ -422,14 +422,14 @@ func (b *Bookmarks) view(c *ui.Context, _ slots.PanelProps) {
 func (b *Bookmarks) itemRow(c *ui.Context, r row) {
 	t := c.Theme()
 	it := r.item
-	item := omgui.SideRow(c, omgui.SideRowProps{Key: r.key, Depth: r.depth})
+	item := aui.SideRow(c, aui.SideRowProps{Key: r.key, Depth: r.depth})
 	chevronClicked := false
 	moreClicked := false
 	item.Children(func() {
 		if it.Type == "group" {
-			chevron := lucide.ChevronDown()
+			chevron := icon.Must("chevron-down")
 			if b.collapsed[r.key] {
-				chevron = lucide.ChevronRight()
+				chevron = icon.Must("chevron-right")
 			}
 			if ui.Icon(c, chevron).Size(14, 14).TextColor(t.TextMuted).Shrink(0).Cursor(ui.CursorPointer).Clicked() {
 				chevronClicked = true
@@ -441,9 +441,9 @@ func (b *Bookmarks) itemRow(c *ui.Context, r row) {
 			ui.Icon(c, itemIcon(it)).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
 		}
 		ui.Text(c, it.displayTitle(b.ws)).FontSize(13).SingleLine().Ellipsis("…").Shrink(1)
-		more := omgui.IconMenu(c, omgui.IconMenuProps{
-			Label: "More", Icon: lucide.EllipsisVertical(), End: true,
-			Items: []omgui.MenuItem{{
+		more := aui.IconMenu(c, aui.IconMenuProps{
+			Label: "More", Icon: icon.Must("ellipsis-vertical"), End: true,
+			Items: []aui.MenuItem{{
 				Label: "Remove bookmark", Danger: true,
 				OnClick: func() { b.remove(it) },
 			}},
@@ -534,17 +534,17 @@ func itemIcon(it *Item) *ui.SVG {
 	switch it.Type {
 	case "file":
 		if it.Subpath != "" {
-			return lucide.Heading()
+			return icon.Must("heading")
 		}
-		return lucide.File()
+		return icon.Must("file")
 	case "folder":
-		return lucide.Folder()
+		return icon.Must("folder")
 	case "search":
-		return lucide.Search()
+		return icon.Must("search")
 	case "graph":
-		return lucide.GitFork()
+		return icon.Must("git-fork")
 	case "url":
-		return lucide.Globe()
+		return icon.Must("globe")
 	}
-	return lucide.Bookmark()
+	return icon.Must("bookmark")
 }

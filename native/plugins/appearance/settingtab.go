@@ -7,9 +7,8 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
-	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
-
 	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
 )
 
 type tab struct {
@@ -34,9 +33,9 @@ func (a *Appearance) View(c *ui.Context) {
 		a.tab = tab{accent: s.AccentColor, iface: s.InterfaceFont, text: s.TextFont, mono: s.MonospaceFont, init: true}
 	}
 	for _, sec := range a.sections(s) {
-		omgui.SettingsSection(c, sec.title, func() {
+		aui.SettingsSection(c, sec.title, func() {
 			for _, r := range sec.rows {
-				omgui.PreferenceRow(c, r.label, r.desc, func() { r.control(c) })
+				aui.PreferenceRow(c, r.label, r.desc, func() { r.control(c) })
 			}
 		})
 	}
@@ -58,7 +57,7 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 		{
 			title: "Theme",
 			rows: []rowSpec{
-				a.selectSpec("Base color scheme", "Choose the color scheme used by the app.", "theme", s.Theme, []omgui.SelectOption{
+				a.selectSpec("Base color scheme", "Choose the color scheme used by the app.", "theme", s.Theme, []aui.SelectOption{
 					{Value: "system", Label: "Adapt to system"},
 					{Value: "moonstone", Label: "Light"},
 					{Value: "obsidian", Label: "Dark"},
@@ -70,7 +69,7 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 					desc:    strings.Join(append([]string{a.dir}, a.cat.errs...), "\n"),
 					control: a.themesFolder,
 				},
-				a.selectSpec("Accent scheme", "Preset accent palette for controls and focus rings.", "accent", s.Accent, []omgui.SelectOption{
+				a.selectSpec("Accent scheme", "Preset accent palette for controls and focus rings.", "accent", s.Accent, []aui.SelectOption{
 					{Value: "default", Label: "Default"},
 					{Value: "ocean", Label: "Ocean"},
 					{Value: "forest", Label: "Forest"},
@@ -82,7 +81,7 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 					desc:    "Hex override (#RRGGBB) used for primary controls and highlights.",
 					control: func(c *ui.Context) { a.accentField(c, s) },
 				},
-				a.selectSpec("File icon theme", "Icon style for the file explorer, tabs, and search results.", "iconTheme", s.IconTheme, []omgui.SelectOption{
+				a.selectSpec("File icon theme", "Icon style for the file explorer, tabs, and search results.", "iconTheme", s.IconTheme, []aui.SelectOption{
 					{Value: "pierre", Label: "Pierre (Colored)"},
 					{Value: "zed", Label: "Zed (Minimal)"},
 				}),
@@ -101,7 +100,7 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 		{
 			title: "Editor",
 			rows: []rowSpec{
-				a.selectSpec("Line height", "Vertical rhythm for code buffers (Zed comfortable = 1.618).", "lineHeight", s.LineHeightMode, []omgui.SelectOption{
+				a.selectSpec("Line height", "Vertical rhythm for code buffers (Zed comfortable = 1.618).", "lineHeight", s.LineHeightMode, []aui.SelectOption{
 					{Value: "comfortable", Label: "Comfortable (1.618)"},
 					{Value: "standard", Label: "Standard (1.3)"},
 				}),
@@ -119,7 +118,7 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 				a.switchSpec("Show inline title", "Display the filename as an editable title inside the document.", "showInlineTitle", s.ShowInline),
 				a.switchSpec("Show tab bar", "Display the tab strip at the top of each pane.", "showTabBar", s.ShowTabBar),
 				a.switchSpec("Show file icons", "Display file and folder icons in the file tree and tabs.", "showFileIcons", s.ShowFileIcons),
-				a.selectSpec("File tree density", "Row height in the Files sidebar panel.", "treeDensity", s.TreeDensity, []omgui.SelectOption{
+				a.selectSpec("File tree density", "Row height in the Files sidebar panel.", "treeDensity", s.TreeDensity, []aui.SelectOption{
 					{Value: "standard", Label: "Standard (26px)"},
 					{Value: "comfortable", Label: "Comfortable (30px)"},
 				}),
@@ -133,8 +132,8 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 
 func (a *Appearance) themesFolder(c *ui.Context) {
 	ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-		omgui.Button(c, omgui.ButtonProps{Label: "Reload", Variant: omgui.ButtonGhost, Size: omgui.ButtonSM, OnClick: a.Reload})
-		omgui.Button(c, omgui.ButtonProps{Label: "Open", Variant: omgui.ButtonSecondary, Size: omgui.ButtonSM, OnClick: func() {
+		aui.Button(c, aui.ButtonProps{Label: "Reload", Variant: aui.ButtonGhost, Size: aui.ButtonSM, OnClick: a.Reload})
+		aui.Button(c, aui.ButtonProps{Label: "Open", Variant: aui.ButtonSecondary, Size: aui.ButtonSM, OnClick: func() {
 			dir := a.dir
 			go func() {
 				_ = os.MkdirAll(dir, 0o755)
@@ -153,7 +152,7 @@ func (a *Appearance) accentField(c *ui.Context, s Settings) {
 		}
 		ui.Box(c).Size(20, 20).Radius(6).Background(swatch).Border(1, t.Border)
 		prev := a.tab.accent
-		omgui.Field(c, &a.tab.accent, "#526fff", false).Width(110)
+		aui.Field(c, &a.tab.accent, "#526fff", false).Width(110)
 		if a.tab.accent != prev {
 			if _, ok := parseColor(a.tab.accent); ok {
 				a.set.Set(settings.Appearance, "accentColor", strings.TrimSpace(a.tab.accent))
@@ -162,7 +161,7 @@ func (a *Appearance) accentField(c *ui.Context, s Settings) {
 			}
 		}
 		if s.AccentColor != "" {
-			omgui.Button(c, omgui.ButtonProps{Label: "Reset", Variant: omgui.ButtonGhost, Size: omgui.ButtonSM, OnClick: func() {
+			aui.Button(c, aui.ButtonProps{Label: "Reset", Variant: aui.ButtonGhost, Size: aui.ButtonSM, OnClick: func() {
 				a.tab.accent = ""
 				a.set.Unset(settings.Appearance, "accentColor")
 			}})
@@ -170,10 +169,10 @@ func (a *Appearance) accentField(c *ui.Context, s Settings) {
 	})
 }
 
-func (a *Appearance) selectSpec(label, desc, key, cur string, opts []omgui.SelectOption) rowSpec {
+func (a *Appearance) selectSpec(label, desc, key, cur string, opts []aui.SelectOption) rowSpec {
 	return rowSpec{label: label, desc: desc, control: func(c *ui.Context) {
 		v := cur
-		omgui.Select(c, omgui.SelectProps{Key: "appearance:" + key, Value: &v, Width: 176, Options: opts})
+		aui.Select(c, aui.SelectProps{Key: "appearance:" + key, Value: &v, Width: 176, Options: opts})
 		if v != cur {
 			a.set.Set(settings.Appearance, key, v)
 		}
@@ -194,7 +193,7 @@ func (a *Appearance) fontSpec(label, desc, key string, draft *string, cur, place
 	return rowSpec{label: label, desc: desc, control: func(c *ui.Context) {
 		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 			prev := *draft
-			omgui.Field(c, draft, placeholder, false).Width(220)
+			aui.Field(c, draft, placeholder, false).Width(220)
 			if *draft != prev {
 				if *draft == "" {
 					a.set.Unset(settings.Appearance, key)
@@ -203,7 +202,7 @@ func (a *Appearance) fontSpec(label, desc, key string, draft *string, cur, place
 				}
 			}
 			if cur != "" {
-				omgui.Button(c, omgui.ButtonProps{Label: "Reset", Variant: omgui.ButtonGhost, Size: omgui.ButtonSM, OnClick: func() {
+				aui.Button(c, aui.ButtonProps{Label: "Reset", Variant: aui.ButtonGhost, Size: aui.ButtonSM, OnClick: func() {
 					*draft = ""
 					a.set.Unset(settings.Appearance, key)
 				}})
@@ -216,7 +215,7 @@ func (a *Appearance) numberSpec(label, desc, key string, cur, def, low, high flo
 	return rowSpec{label: label, desc: desc, control: func(c *ui.Context) {
 		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 			v := cur
-			omgui.NumberField(c, &v, low, high, label, func(next float64) {
+			aui.NumberField(c, &v, low, high, label, func(next float64) {
 				if key == "tabSize" {
 					a.set.Set(settings.Appearance, key, int(next))
 				} else {
@@ -224,7 +223,7 @@ func (a *Appearance) numberSpec(label, desc, key string, cur, def, low, high flo
 				}
 			})
 			if cur != def {
-				omgui.Button(c, omgui.ButtonProps{Label: "Reset", Variant: omgui.ButtonGhost, Size: omgui.ButtonSM, OnClick: func() {
+				aui.Button(c, aui.ButtonProps{Label: "Reset", Variant: aui.ButtonGhost, Size: aui.ButtonSM, OnClick: func() {
 					a.set.Unset(settings.Appearance, key)
 				}})
 			}
@@ -232,11 +231,11 @@ func (a *Appearance) numberSpec(label, desc, key string, cur, def, low, high flo
 	}}
 }
 
-func (a *Appearance) themeOptions(dark bool) []omgui.SelectOption {
+func (a *Appearance) themeOptions(dark bool) []aui.SelectOption {
 	names := a.cat.names(dark)
-	opts := make([]omgui.SelectOption, 0, len(names))
+	opts := make([]aui.SelectOption, 0, len(names))
 	for _, n := range names {
-		opts = append(opts, omgui.SelectOption{Value: n, Label: n})
+		opts = append(opts, aui.SelectOption{Value: n, Label: n})
 	}
 	return opts
 }

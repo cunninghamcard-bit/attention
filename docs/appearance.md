@@ -57,7 +57,7 @@
 
 ## 主题从哪里来
 
-- 内置：`native/plugins/appearance/themes/`：`Attention Light/Dark`（原 attention-ui 的配色）、One 和 Ayu。
+- 内置：`native/plugins/appearance/themes/`：`Attention Light/Dark`（沿用原 attention-ui 的配色值）、One 和 Ayu。
 - 用户：`<配置目录>/themes/*.json`，设置页的 Themes folder 一行可以打开和重新读取，读不了的文件在那一行列出原因。
 
 ## 设置

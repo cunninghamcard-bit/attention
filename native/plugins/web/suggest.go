@@ -6,7 +6,8 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
+
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 var typedURL = regexp.MustCompile(`(?i)^https?://`)
@@ -26,13 +27,13 @@ type suggestion struct {
 func (s suggestion) icon() *ui.SVG {
 	switch s.kind {
 	case "search":
-		return lucide.Search()
+		return icon.Must("search")
 	case "history":
-		return lucide.Clock()
+		return icon.Must("clock")
 	case "bookmark":
-		return lucide.Bookmark()
+		return icon.Must("bookmark")
 	}
-	return lucide.Globe()
+	return icon.Must("globe")
 }
 
 // suggestions are getSuggestions: the blank page, the history, the url

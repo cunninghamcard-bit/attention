@@ -14,7 +14,6 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 	"github.com/egoist/mygo/ui/markdown"
-	"github.com/smallnest/uix/components/lucide"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/fileicon"
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
@@ -22,6 +21,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // ID is the plugin's name.
@@ -87,7 +87,7 @@ func New(set *settings.Settings, dir string, post func(func())) *Appearance {
 func (a *Appearance) Register(sh *shell.Shell, sl *slots.Registry, act *actions.Service) (off func()) {
 	offs := []func(){
 		sl.RegisterSettingsSection(slots.SettingsSection{
-			ID: ID, Title: "Appearance", Icon: lucide.Palette(), Order: 20,
+			ID: ID, Title: "Appearance", Icon: icon.Must("palette"), Order: 20,
 			Keywords: a.keywords(), View: a.View,
 		}),
 	}

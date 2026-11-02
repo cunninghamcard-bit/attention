@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 func TestDockShowsFirstPanelAndRevealsByShortcut(t *testing.T) {
@@ -91,7 +91,7 @@ func TestMoreOptionsOpensAndSplits(t *testing.T) {
 // never running, and the header's Back the same.
 func TestRibbonAndBackButtonsRun(t *testing.T) {
 	ran := false
-	off := ensureSlots(t).RegisterRibbon(slots.RibbonItem{ID: "x", Title: "Do it", Icon: lucide.Folder(), Run: func() { ran = true }})
+	off := ensureSlots(t).RegisterRibbon(slots.RibbonItem{ID: "x", Title: "Do it", Icon: icon.Must("folder"), Run: func() { ran = true }})
 	t.Cleanup(off)
 	ws, tt := testWorkspace(t)
 	if err := tt.Click("Do it"); err != nil || !ran {
@@ -133,7 +133,7 @@ func TestClosingAGroupFromItsTabListDoesNotPanic(t *testing.T) {
 // panel registers a left panel drawing body, counting its reveals.
 func panel(t *testing.T, id string, order int, body string, reveals *int) {
 	t.Helper()
-	off := ensureSlots(t).RegisterPanel(slots.Panel{ID: id, Title: id, Icon: lucide.Folder(), Dock: slots.Left, Order: order,
+	off := ensureSlots(t).RegisterPanel(slots.Panel{ID: id, Title: id, Icon: icon.Must("folder"), Dock: slots.Left, Order: order,
 		View: func(c *ui.Context, p slots.PanelProps) {
 			if reveals != nil {
 				*reveals = p.Reveal

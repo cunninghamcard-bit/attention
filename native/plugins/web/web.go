@@ -27,9 +27,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
-	"github.com/smallnest/uix/components/lucide"
 
-	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/internal/htmlextract"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/bookmarks"
@@ -39,6 +37,8 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 	"github.com/cunninghamcard-bit/attention/native/plugins/webhistory"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -112,9 +112,9 @@ var (
 			emitCtx, cancel := context.WithCancel(context.Background())
 			off := v.register(func(p Page) { _ = rctx.Emit(emitCtx, PageLoadedEvent, p) })
 			offs := []func(){
-				sl.RegisterSettingsSection(slots.SettingsSection{ID: "webviewer", Title: "Web viewer", Icon: lucide.Globe(),
+				sl.RegisterSettingsSection(slots.SettingsSection{ID: "webviewer", Title: "Web viewer", Icon: icon.Must("globe"),
 					Group: slots.CorePlugins, Keywords: []string{"Search engine", "Clear browsing data", "history"}, View: v.settingTab}),
-				sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Open Web viewer", Icon: lucide.Globe(), Order: 6, Run: v.openBlank}),
+				sl.RegisterRibbon(slots.RibbonItem{ID: ID, Title: "Open Web viewer", Icon: icon.Must("globe"), Order: 6, Run: v.openBlank}),
 			}
 			for _, cmd := range v.commands() {
 				offs = append(offs, act.Add(cmd))
@@ -294,7 +294,7 @@ func (v *viewer) register(loaded func(Page)) (off func()) {
 		ID: ID, Kind: Kind, Priority: tabtypes.Builtin,
 		Patterns: []string{"https://**", "http://**", "about:**"},
 		Title:    titleFromURL,
-		Icon:     lucide.Globe(),
+		Icon:     icon.Must("globe"),
 		Body: func(c *ui.Context, p tabtypes.Props) {
 			pg := get(p)
 			ui.Column(c).Grow(1).Fill().Children(func() {
@@ -330,11 +330,11 @@ func (v *viewer) register(loaded func(Page)) (off func()) {
 			pg := get(p)
 			t := c.Theme()
 			ui.Row(c).Grow(1).MinWidth(0).Gap(4).AlignItems(ui.Center).Children(func() {
-				label, icon := "Reload", lucide.RotateCw()
+				label, glyph := "Reload", icon.Must("rotate-cw")
 				if pg.loading {
-					label, icon = "Stop", lucide.X()
+					label, glyph = "Stop", icon.Must("x")
 				}
-				omgui.Button(c, omgui.ButtonProps{Label: label, Icon: icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+				aui.Button(c, aui.ButtonProps{Label: label, Icon: glyph, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
 					IconColor: t.Text, OnClick: func() {
 						if pg.view == nil {
 							return
@@ -346,7 +346,7 @@ func (v *viewer) register(loaded func(Page)) (off func()) {
 							reload(pg)
 						}
 					}})
-				field := omgui.Field(c, &pg.typed, "Search or enter address", false).Label("Address").Grow(1).MinWidth(0)
+				field := aui.Field(c, &pg.typed, "Search or enter address", false).Label("Address").Grow(1).MinWidth(0)
 				// The bar follows the page while it is not being typed in
 				// (syncAddressInput).
 				if p.Info.Address != pg.shown {
@@ -392,7 +392,7 @@ func (v *viewer) register(loaded func(Page)) (off func()) {
 			if pg.reader != nil {
 				label = "Web view"
 			}
-			omgui.Button(c, omgui.ButtonProps{Label: label, Icon: lucide.Glasses(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+			aui.Button(c, aui.ButtonProps{Label: label, Icon: icon.Must("glasses"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
 				Disabled: pg.view == nil || pg.extracting, OnClick: func() { v.toggleReader(pg) }}).Tooltip(label)
 		},
 		Closed: func(id int) {
@@ -424,23 +424,23 @@ func (v *viewer) searchEngine() string {
 // engine, and Clear browsing data for the history. Opening external URLs,
 // ad blocking, the save path and sessions are not ported.
 func (v *viewer) settingTab(c *ui.Context) {
-	omgui.SettingsSection(c, "Web viewer", func() {
-		omgui.PreferenceRow(c, "Search engine", "Used when the address bar input is not a URL.", func() {
+	aui.SettingsSection(c, "Web viewer", func() {
+		aui.PreferenceRow(c, "Search engine", "Used when the address bar input is not a URL.", func() {
 			cur := v.searchEngine()
 			val := cur
-			omgui.Select(c, omgui.SelectProps{Key: "web-search-engine", Value: &val, Width: 160, Options: []omgui.SelectOption{
+			aui.Select(c, aui.SelectProps{Key: "web-search-engine", Value: &val, Width: 160, Options: []aui.SelectOption{
 				{Value: "duckduckgo", Label: "DuckDuckGo"}, {Value: "google", Label: "Google"},
 			}})
 			if val != cur && v.set != nil {
 				v.set.Set(configFile, "searchEngine", val)
 			}
 		})
-		omgui.PreferenceRow(c, "Clear browsing data", "Clear local Web viewer history.", func() {
+		aui.PreferenceRow(c, "Clear browsing data", "Clear local Web viewer history.", func() {
 			var h *webhistory.History
 			if v.hist != nil {
 				h = v.hist()
 			}
-			omgui.Button(c, omgui.ButtonProps{Label: "Clear history", Variant: omgui.ButtonSecondary, Disabled: h == nil || len(h.List()) == 0,
+			aui.Button(c, aui.ButtonProps{Label: "Clear history", Variant: aui.ButtonSecondary, Disabled: h == nil || len(h.List()) == 0,
 				OnClick: func() { h.Clear() }})
 		})
 	})
@@ -512,7 +512,7 @@ func (v *viewer) toggleReader(pg *page) {
 func (v *viewer) findBar(c *ui.Context, pg *page) {
 	t := c.Theme()
 	ui.Row(c).Padding(4, 8).Gap(4).AlignItems(ui.Center).Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-		field := omgui.Field(c, &pg.query, "Find...", false).Label("Find in page").Width(260)
+		field := aui.Field(c, &pg.query, "Find...", false).Label("Find in page").Width(260)
 		if pg.findFocus {
 			pg.findFocus = false
 			field.Focus()
@@ -540,12 +540,12 @@ func (v *viewer) findBar(c *ui.Context, pg *page) {
 		ui.Text(c, count).FontSize(12).TextColor(t.TextMuted).Shrink(0)
 		ui.Box(c).Grow(1)
 		button := func(label string, icon *ui.SVG, fn func()) {
-			omgui.Button(c, omgui.ButtonProps{Label: label, Icon: icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+			aui.Button(c, aui.ButtonProps{Label: label, Icon: icon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
 				IconColor: t.Text, OnClick: fn}).Tooltip(label)
 		}
-		button("Previous", lucide.ArrowUp(), func() { v.find(pg, true) })
-		button("Next", lucide.ArrowDown(), func() { v.find(pg, false) })
-		button("Close", lucide.X(), func() { closeFind(pg) })
+		button("Previous", icon.Must("arrow-up"), func() { v.find(pg, true) })
+		button("Next", icon.Must("arrow-down"), func() { v.find(pg, false) })
+		button("Close", icon.Must("x"), func() { closeFind(pg) })
 	})
 }
 
@@ -710,18 +710,18 @@ func downloadBanner(c *ui.Context, pg *page) {
 	t := c.Theme()
 	d := pg.downloaded
 	ui.Row(c).Padding(4, 12).Gap(8).AlignItems(ui.Center).Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-		icon, color, text := lucide.Download(), t.TextMuted, "Downloaded "+d.Path
+		glyph, color, text := icon.Must("download"), t.TextMuted, "Downloaded "+d.Path
 		if d.Err != nil {
-			icon, color, text = lucide.TriangleAlert(), t.Danger, "Download failed: "+d.Err.Error()
+			glyph, color, text = icon.Must("triangle-alert"), t.Danger, "Download failed: "+d.Err.Error()
 		}
-		ui.Icon(c, icon).Size(14, 14).TextColor(color).Shrink(0)
+		ui.Icon(c, glyph).Size(14, 14).TextColor(color).Shrink(0)
 		ui.Text(c, text).FontSize(12).SingleLine().Ellipsis("…").Shrink(1)
 		ui.Box(c).Grow(1)
 		if d.Err == nil {
-			omgui.Button(c, omgui.ButtonProps{Label: "Show in folder", Variant: omgui.ButtonGhost,
+			aui.Button(c, aui.ButtonProps{Label: "Show in folder", Variant: aui.ButtonGhost,
 				OnClick: func() { go mygo.Shell.ShowItemInFolder(d.Path) }})
 		}
-		omgui.Button(c, omgui.ButtonProps{Label: "Dismiss", Icon: lucide.X(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+		aui.Button(c, aui.ButtonProps{Label: "Dismiss", Icon: icon.Must("x"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
 			IconColor: t.Text, OnClick: func() { pg.downloaded = nil }})
 	})
 }
@@ -729,7 +729,7 @@ func downloadBanner(c *ui.Context, pg *page) {
 func errorBanner(c *ui.Context, text string) {
 	t := c.Theme()
 	ui.Row(c).Padding(6, 12).Gap(8).AlignItems(ui.Center).Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-		ui.Icon(c, lucide.TriangleAlert()).Size(14, 14).TextColor(t.Danger)
+		ui.Icon(c, icon.Must("triangle-alert")).Size(14, 14).TextColor(t.Danger)
 		ui.Text(c, text).FontSize(12)
 	})
 }

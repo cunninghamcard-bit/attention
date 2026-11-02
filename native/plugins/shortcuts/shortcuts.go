@@ -9,11 +9,11 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // ID is the plugin's name and its overlay's.
@@ -107,7 +107,7 @@ func Register(ctx context.Context, sl *slots.Registry, act *actions.Service, set
 	s = New(ctx, act, set)
 	offs := []func(){
 		sl.RegisterOverlay(slots.Overlay{ID: ID, Order: -1000, View: s.View}),
-		sl.RegisterSettingsSection(slots.SettingsSection{ID: "hotkeys", Title: "Hotkeys", Icon: lucide.Keyboard(), Order: 30,
+		sl.RegisterSettingsSection(slots.SettingsSection{ID: "hotkeys", Title: "Hotkeys", Icon: icon.Must("keyboard"), Order: 30,
 			Keywords: []string{"Search commands", "Add hotkey", "Restore default hotkeys"}, View: s.hotkeysTab}),
 	}
 	return s, func() {

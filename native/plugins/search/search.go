@@ -19,9 +19,7 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
 
-	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
@@ -30,6 +28,8 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -47,7 +47,7 @@ const (
 var (
 	// sortOrders are SearchView's, less the created-time pair (Linux keeps no
 	// creation time that fs reports).
-	sortOrders = []omgui.SelectOption{
+	sortOrders = []aui.SelectOption{
 		{Value: "alphabetical", Label: "A to Z"},
 		{Value: "alphabeticalReverse", Label: "Z to A"},
 		{Value: "byModifiedTime", Label: "Modified time (new to old)"},
@@ -92,7 +92,7 @@ var (
 			ctx, cancel := context.WithCancel(context.Background())
 			s := &Search{app: app, ctx: ctx, sh: sh, lyt: lyt, ws: ws, project: project, sortOrder: "alphabetical", collapsed: map[string]bool{}}
 			off := sl.RegisterPanel(slots.Panel{
-				ID: PanelID, Title: "Search", Icon: lucide.Search(), Dock: slots.Left, Order: 1,
+				ID: PanelID, Title: "Search", Icon: icon.Must("search"), Dock: slots.Left, Order: 1,
 				View: s.view, State: s.state, Restore: s.restore,
 			})
 			offs := []func(){off}
@@ -132,7 +132,6 @@ type Search struct {
 	collapseAll   bool
 	explainSearch bool
 	sortOrder     string
-	sortOpen      bool
 
 	typed   string // the query as last seen, to notice typing
 	timer   *time.Timer
@@ -310,7 +309,7 @@ func (s *Search) view(c *ui.Context, p slots.PanelProps) {
 	ui.Column(c).Fill().Children(func() {
 		ui.Row(c).Padding(8, 8, 4, 8).Gap(4).AlignItems(ui.Center).Children(func() {
 			ui.Box(c).Grow(1).Children(func() {
-				field := omgui.SearchField(c, &s.query, "Search...", false)
+				field := aui.SearchField(c, &s.query, "Search...", false)
 				field.Label("Search")
 				if p.Reveal != s.revealed {
 					s.revealed = p.Reveal
@@ -323,13 +322,13 @@ func (s *Search) view(c *ui.Context, p slots.PanelProps) {
 					s.changed()
 				}
 			})
-			if toggleIcon(c, lucide.CaseSensitive(), "Match case", s.matchingCase) {
+			if toggleIcon(c, icon.Must("case-sensitive"), "Match case", s.matchingCase) {
 				s.matchingCase = !s.matchingCase
 				if strings.TrimSpace(s.query) != "" {
 					s.start()
 				}
 			}
-			if toggleIcon(c, lucide.SlidersHorizontal(), "Toggle search settings", s.showParams) {
+			if toggleIcon(c, icon.Must("sliders-horizontal"), "Toggle search settings", s.showParams) {
 				s.showParams = !s.showParams
 			}
 		})
@@ -353,8 +352,8 @@ func (s *Search) view(c *ui.Context, p slots.PanelProps) {
 		}
 		ui.Row(c).Padding(4, 12).Gap(8).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, s.countText()).FontSize(12).TextColor(t.TextMuted).Grow(1).MinWidth(0).SingleLine().Ellipsis("…")
-			omgui.Select(c, omgui.SelectProps{
-				Key: "search-sort", Value: &s.sortOrder, Options: sortOrders, Open: &s.sortOpen,
+			aui.Select(c, aui.SelectProps{
+				Key: "search-sort", Value: &s.sortOrder, Options: sortOrders,
 				Aria: "Sort order", Width: 120,
 				OnPick: func(string) { s.sort() },
 			})
@@ -372,7 +371,7 @@ func (s *Search) view(c *ui.Context, p slots.PanelProps) {
 				return
 			}
 			m := &f.Matches[r.match]
-			item := omgui.SideRow(c, omgui.SideRowProps{Key: fmt.Sprintf("m:%s:%d", f.Path, r.match), Depth: 2})
+			item := aui.SideRow(c, aui.SideRowProps{Key: fmt.Sprintf("m:%s:%d", f.Path, r.match), Depth: 2})
 			if item.Clicked() {
 				s.open(f, m)
 			}
@@ -406,7 +405,7 @@ func (s *Search) fileRow(c *ui.Context, f *projectplugin.FileResult) {
 	if s.ws != nil {
 		name = s.ws.Display(f.Path)
 	}
-	item := omgui.SideRow(c, omgui.SideRowProps{Key: "f:" + f.Path, Depth: 0})
+	item := aui.SideRow(c, aui.SideRowProps{Key: "f:" + f.Path, Depth: 0})
 	if item.Clicked() {
 		var first *projectplugin.Match
 		if len(f.Matches) > 0 {
@@ -417,9 +416,9 @@ func (s *Search) fileRow(c *ui.Context, f *projectplugin.FileResult) {
 	item.Tooltip(name)
 	item.Children(func() {
 		if len(f.Matches) > 0 {
-			chevron := lucide.ChevronDown()
+			chevron := icon.Must("chevron-down")
 			if s.isCollapsed(f) {
-				chevron = lucide.ChevronRight()
+				chevron = icon.Must("chevron-right")
 			}
 			if ui.Icon(c, chevron).Size(14, 14).TextColor(t.TextMuted).Shrink(0).Cursor(ui.CursorPointer).Clicked() {
 				s.collapsed[f.Path] = !s.collapsed[f.Path]
@@ -495,12 +494,12 @@ func toggleIcon(c *ui.Context, icon *ui.SVG, tip string, on bool) bool {
 	if on {
 		color = c.Theme().Accent
 	}
-	b := omgui.Button(c, omgui.ButtonProps{Label: tip, Icon: icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall, IconColor: color})
+	b := aui.Button(c, aui.ButtonProps{Label: tip, Icon: icon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall, IconColor: color})
 	return b.Checked(on).Tooltip(tip).Clicked()
 }
 
 func setting(c *ui.Context, label string, on *bool, changed func()) {
-	omgui.SettingsToggle(c, label, "", *on, false, func(v bool) {
+	aui.SettingsToggle(c, label, "", *on, false, func(v bool) {
 		*on = v
 		if changed != nil {
 			changed()

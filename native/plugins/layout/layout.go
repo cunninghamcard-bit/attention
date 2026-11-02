@@ -8,9 +8,6 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
-
-	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/internal/persist"
@@ -19,6 +16,8 @@ import (
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // ID is the plugin's name.
@@ -246,15 +245,15 @@ func (l *Layout) ToggleButton(c *ui.Context, d slots.Dock) {
 	if l == nil {
 		return
 	}
-	icon := lucide.PanelLeft()
+	glyph := icon.Must("panel-left")
 	if d == slots.Right {
-		icon = lucide.PanelRight()
+		glyph = icon.Must("panel-right")
 	}
 	tip := "Expand"
 	if l.Open(d) {
 		tip = "Collapse"
 	}
-	omgui.Button(c, omgui.ButtonProps{Label: tip, Icon: icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+	aui.Button(c, aui.ButtonProps{Label: tip, Icon: glyph, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
 		OnClick: func() { l.Toggle(d) }}).Tooltip(tip)
 }
 
@@ -348,7 +347,7 @@ func (l *Layout) ribbon(c *ui.Context) {
 				if r.Order >= 100 {
 					continue
 				}
-				omgui.Button(c, omgui.ButtonProps{Label: r.Title, Icon: r.Icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall, OnClick: r.Run}).
+				aui.Button(c, aui.ButtonProps{Label: r.Title, Icon: r.Icon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall, OnClick: r.Run}).
 					Tooltip(r.Title)
 			}
 			ui.Box(c).Grow(1)
@@ -356,7 +355,7 @@ func (l *Layout) ribbon(c *ui.Context) {
 				if r.Order < 100 {
 					continue
 				}
-				omgui.Button(c, omgui.ButtonProps{Label: r.Title, Icon: r.Icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall, OnClick: r.Run}).
+				aui.Button(c, aui.ButtonProps{Label: r.Title, Icon: r.Icon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall, OnClick: r.Run}).
 					Tooltip(r.Title)
 			}
 		})
@@ -396,7 +395,7 @@ func (l *Layout) dock(c *ui.Context, d slots.Dock) {
 				if active {
 					color = t.Text
 				}
-				btn := omgui.Button(c, omgui.ButtonProps{Label: p.Title, Icon: p.Icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+				btn := aui.Button(c, aui.ButtonProps{Label: p.Title, Icon: p.Icon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
 					IconColor: color, OnClick: func() { l.RevealPanel(p.ID) }}).
 					Checked(active).Tooltip(p.Title)
 				if active {
@@ -429,7 +428,7 @@ func (l *Layout) statusBar(c *ui.Context) {
 			s.View(c)
 		}
 		if l.notice != "" {
-			ui.Icon(c, lucide.TriangleAlert()).Size(12, 12).TextColor(t.Warning).Tooltip(l.notice)
+			ui.Icon(c, icon.Must("triangle-alert")).Size(12, 12).TextColor(t.Warning).Tooltip(l.notice)
 		}
 		ui.Box(c).Grow(1)
 		for _, s := range l.slots.Status(true) {

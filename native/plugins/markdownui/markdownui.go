@@ -13,9 +13,6 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
-	"github.com/smallnest/uix/components/lucide"
-
-	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
@@ -23,6 +20,8 @@ import (
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -196,11 +195,11 @@ func (v *Viewer) status(c *ui.Context, p tabtypes.Props) {
 
 func (v *Viewer) actions(c *ui.Context, p tabtypes.Props) {
 	d := v.doc(p)
-	label, icon := "Switch to source view", lucide.Code()
+	label, glyph := "Switch to source view", icon.Must("code")
 	if d.source {
-		label, icon = "Switch to reading view", lucide.BookOpen()
+		label, glyph = "Switch to reading view", icon.Must("book-open")
 	}
-	omgui.Button(c, omgui.ButtonProps{Label: label, Icon: icon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+	aui.Button(c, aui.ButtonProps{Label: label, Icon: glyph, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
 		OnClick: func() { d.source = !d.source }}).Tooltip(label + " (Ctrl E)")
 }
 
@@ -209,7 +208,7 @@ func (v *Viewer) menu(id int) []tabtypes.MenuItem {
 	if !ok {
 		return nil
 	}
-	return []tabtypes.MenuItem{{Title: "Toggle reading view", Icon: lucide.BookOpen(), Checked: !d.source, Run: func() { d.source = !d.source }}}
+	return []tabtypes.MenuItem{{Title: "Toggle reading view", Icon: icon.Must("book-open"), Checked: !d.source, Run: func() { d.source = !d.source }}}
 }
 
 func (v *Viewer) followLink(from, url string) {

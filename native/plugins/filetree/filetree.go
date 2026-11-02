@@ -16,9 +16,7 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
 
-	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/internal/watchq"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
@@ -28,6 +26,8 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // PanelID is the Files panel's slot id.
@@ -115,12 +115,12 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		})
 
 		off := sl.RegisterPanel(slots.Panel{
-			ID: PanelID, Title: "Files", Icon: lucide.Folder(), Dock: slots.Left, Order: 0,
+			ID: PanelID, Title: "Files", Icon: icon.Must("folder"), Dock: slots.Left, Order: 0,
 			View:  func(c *ui.Context, _ slots.PanelProps) { tr.view(c) },
 			State: tr.state, Restore: tr.restore,
 		})
 		reveal := func() { lyt.RevealPanel(PanelID) }
-		offSection := sl.RegisterSettingsSection(slots.SettingsSection{ID: "file", Title: "Files and links", Icon: lucide.FolderCog(), Order: 10,
+		offSection := sl.RegisterSettingsSection(slots.SettingsSection{ID: "file", Title: "Files and links", Icon: icon.Must("folder-cog"), Order: 10,
 			Keywords: []string{"Folders", "mount"},
 			View:     func(c *ui.Context) { tr.folders(c, project.RemoveMount) }})
 		offCmd := act.Add(actions.Command{ID: "file-explorer:open", Title: "Open file explorer", Main: reveal, Run: func(ctx context.Context, _ actions.Args) (string, error) {
@@ -422,15 +422,15 @@ func (tr *Tree) view(c *ui.Context) {
 	}
 	ui.Column(c).Fill().Children(func() {
 		allCollapsed := tr.allCollapsed()
-		collapseIcon := lucide.ChevronsDownUp()
+		collapseIcon := icon.Must("chevrons-down-up")
 		collapseTip := "Collapse all"
 		if allCollapsed {
-			collapseIcon = lucide.ChevronsUpDown()
+			collapseIcon = icon.Must("chevrons-up-down")
 			collapseTip = "Expand all"
 		}
 		ui.Row(c).FillWidth().Padding(6, 8, 2, 8).Gap(2).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
-			omgui.Button(c, omgui.ButtonProps{
-				Label: "Add folder", Icon: lucide.FolderPlus(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+			aui.Button(c, aui.ButtonProps{
+				Label: "Add folder", Icon: icon.Must("folder-plus"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
 				OnClick: func() {
 					if cmd := tr.act.Lookup("workspace:add-folder"); cmd != nil {
 						go func() {
@@ -441,8 +441,8 @@ func (tr *Tree) view(c *ui.Context) {
 					}
 				},
 			}).Tooltip("Add folder to workspace")
-			omgui.Button(c, omgui.ButtonProps{
-				Label: collapseTip, Icon: collapseIcon, Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+			aui.Button(c, aui.ButtonProps{
+				Label: collapseTip, Icon: collapseIcon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
 				OnClick: func() { tr.toggleCollapseAll(!allCollapsed) },
 			}).Tooltip(collapseTip)
 		})
@@ -503,7 +503,7 @@ func (tr *Tree) view(c *ui.Context) {
 						if open {
 							deg = 90
 						}
-						chev := ui.Icon(c, lucide.ChevronRight()).Size(12, 12).TextColor(t.TextMuted).Shrink(0)
+						chev := ui.Icon(c, icon.Must("chevron-right")).Size(12, 12).TextColor(t.TextMuted).Shrink(0)
 						chev.Rotate(chev.AnimateTo("turn", deg, ui.Snappy))
 					} else {
 						tr.app.Icons().Render(c, e.Name, true, open, t.Dark, 15)
@@ -527,7 +527,7 @@ func (tr *Tree) view(c *ui.Context) {
 				}
 				if e.Dir {
 					if d := tr.dirs[e.Path]; d != nil && d.err != "" {
-						ui.Icon(c, lucide.TriangleAlert()).Size(12, 12).TextColor(t.Warning).Shrink(0).Tooltip(d.err)
+						ui.Icon(c, icon.Must("triangle-alert")).Size(12, 12).TextColor(t.Warning).Shrink(0).Tooltip(d.err)
 					}
 				}
 			})
@@ -541,14 +541,14 @@ func (tr *Tree) view(c *ui.Context) {
 // mounts-changed event.
 func (tr *Tree) folders(c *ui.Context, remove func(context.Context, string) error) {
 	t := c.Theme()
-	omgui.SettingsSection(c, "Folders in the workspace", func() {
+	aui.SettingsSection(c, "Folders in the workspace", func() {
 		if len(tr.mounts) == 0 {
 			ui.Text(c, "No folders").FontSize(12).TextColor(t.TextMuted)
 		}
 		for _, m := range tr.mounts {
 			id := m.ID
-			omgui.PreferenceRow(c, m.Name, m.Path, func() {
-				omgui.Button(c, omgui.ButtonProps{Label: "Remove", Variant: omgui.ButtonSecondary, OnClick: func() {
+			aui.PreferenceRow(c, m.Name, m.Path, func() {
+				aui.Button(c, aui.ButtonProps{Label: "Remove", Variant: aui.ButtonSecondary, OnClick: func() {
 					go func() {
 						if err := remove(tr.ctx, id); err != nil && tr.ctx.Err() == nil {
 							tr.post(func() { tr.notice = err.Error() })
@@ -558,7 +558,7 @@ func (tr *Tree) folders(c *ui.Context, remove func(context.Context, string) erro
 			})
 		}
 	})
-	omgui.Button(c, omgui.ButtonProps{Label: "Add folder", Icon: lucide.FolderPlus(), Variant: omgui.ButtonSecondary, OnClick: func() {
+	aui.Button(c, aui.ButtonProps{Label: "Add folder", Icon: icon.Must("folder-plus"), Variant: aui.ButtonSecondary, OnClick: func() {
 		if cmd := tr.act.Lookup("workspace:add-folder"); cmd != nil {
 			go func() {
 				if _, err := cmd.Run(tr.ctx, actions.Args{Params: map[string]string{}}); err != nil && tr.ctx.Err() == nil {

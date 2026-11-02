@@ -19,15 +19,15 @@ import (
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
 
-	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/internal/persist"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -85,7 +85,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		}
 		offs := []func(){
 			tt.Register(tabtypes.TabType{ID: ID, Kind: Kind, Priority: tabtypes.Builtin,
-				Title: func(string) string { return "Web viewer history" }, Icon: lucide.Clock(), Body: h.view}),
+				Title: func(string) string { return "Web viewer history" }, Icon: icon.Must("clock"), Body: h.view}),
 			act.Add(actions.Command{ID: "webviewer:open-history", Title: "Open Web viewer history", Main: openPage, CLI: true,
 				Run: func(ctx context.Context, _ actions.Args) (string, error) {
 					return shell.OnMain(ctx, sh, func() (string, error) { openPage(); return "", nil })
@@ -192,7 +192,7 @@ func (h *History) view(c *ui.Context, _ tabtypes.Props) {
 	entries := h.entries
 	ui.List(c, nil, len(entries), func(i int) {
 		e := entries[i]
-		row := omgui.SideRow(c, omgui.SideRowProps{Key: "h:" + e.ID})
+		row := aui.SideRow(c, aui.SideRowProps{Key: "h:" + e.ID})
 		if row.Clicked() {
 			h.open(e.URL)
 		}
@@ -206,7 +206,7 @@ func (h *History) view(c *ui.Context, _ tabtypes.Props) {
 		})
 		row.Tooltip(e.URL)
 		row.Children(func() {
-			ui.Icon(c, lucide.Globe()).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
+			ui.Icon(c, icon.Must("globe")).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
 			ui.RichText(c, ui.Span{Text: e.Title}, ui.Span{Text: " — " + e.URL, Color: t.TextMuted}).
 				FontSize(13).SingleLine().Ellipsis("…").Shrink(1)
 		})

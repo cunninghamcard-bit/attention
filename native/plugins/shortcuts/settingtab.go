@@ -5,12 +5,11 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
-
-	omgui "github.com/cunninghamcard-bit/attention-ui/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 func (s *Shortcuts) matching(query string) []actions.Command {
@@ -37,10 +36,10 @@ func (s *Shortcuts) hotkeysTab(c *ui.Context) {
 	if s.recording != "" {
 		s.record(c)
 	}
-	omgui.SettingsSection(c, "Hotkeys", func() {
-		omgui.SearchField(c, &s.filter, "Search commands...", false).Label("Search commands").FillWidth()
+	aui.SettingsSection(c, "Hotkeys", func() {
+		aui.SearchField(c, &s.filter, "Search commands...", false).Label("Search commands").FillWidth()
 		for _, cmd := range s.matching(s.filter) {
-			omgui.PreferenceRow(c, cmd.Title, cmd.ID, func() { s.commandHotkeys(c, cmd) })
+			aui.PreferenceRow(c, cmd.Title, cmd.ID, func() { s.commandHotkeys(c, cmd) })
 		}
 	})
 }
@@ -65,7 +64,7 @@ func (s *Shortcuts) commandHotkeys(c *ui.Context, cmd actions.Command) {
 			}
 			chip.Children(func() {
 				ui.Text(c, Format(h)).FontSize(12).SingleLine()
-				omgui.Button(c, omgui.ButtonProps{Label: "Remove hotkey", Icon: lucide.X(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+				aui.Button(c, aui.ButtonProps{Label: "Remove hotkey", Icon: icon.Must("x"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
 					OnClick: func() { s.removeAt(cmd, i) }}).Tooltip("Remove hotkey")
 			})
 		}
@@ -73,10 +72,10 @@ func (s *Shortcuts) commandHotkeys(c *ui.Context, cmd actions.Command) {
 		if s.recording == cmd.ID {
 			label, color = "Press keys...", t.Accent
 		}
-		omgui.Button(c, omgui.ButtonProps{Label: label, Icon: lucide.Plus(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+		aui.Button(c, aui.ButtonProps{Label: label, Icon: icon.Must("plus"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
 			IconColor: color, OnClick: func() { s.recording = cmd.ID }}).Tooltip(label)
 		if s.Overridden(cmd.ID) {
-			omgui.Button(c, omgui.ButtonProps{Label: "Restore default hotkeys", Icon: lucide.RefreshCw(), Variant: omgui.ButtonGhost, Size: omgui.ButtonIconSmall,
+			aui.Button(c, aui.ButtonProps{Label: "Restore default hotkeys", Icon: icon.Must("refresh-cw"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
 				IconColor: t.Accent, OnClick: func() { s.settings.Unset(settings.Hotkeys, cmd.ID) }}).Tooltip("Restore default hotkeys")
 		}
 	})

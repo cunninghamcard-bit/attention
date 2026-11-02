@@ -11,12 +11,12 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
-	"github.com/smallnest/uix/components/lucide"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // Plugin adds the panel and its command while loaded.
@@ -44,7 +44,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		}
 		clicks := 0
 		offPanel := sl.RegisterPanel(slots.Panel{
-			ID: "hello", Title: "Hello", Icon: lucide.Hand(), Dock: slots.Left, Order: 9,
+			ID: "hello", Title: "Hello", Icon: icon.Must("hand"), Dock: slots.Left, Order: 9,
 			View: func(c *ui.Context, _ slots.PanelProps) {
 				ui.Column(c).Fill().Padding(12).Gap(8).Children(func() {
 					ui.Text(c, "Hello from a plugin built in with attention build.")
