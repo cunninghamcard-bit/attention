@@ -1,17 +1,27 @@
 package ui
 
 import (
+	"cmp"
+
 	"github.com/egoist/mygo/ui"
+
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
-const sideRowHeight float32 = 26
+const (
+	sideRowHeight float32 = 26
+	indentStep    float32 = 16
+)
 
 // SideRowProps is a tree or panel row the caller fills: Key keeps its
-// hover across rebuilds, Depth indents it one step per level.
+// hover across rebuilds, Depth indents it one step per level, Height
+// overrides the 26 DIP row, and Guides draws a hairline per level.
 type SideRowProps struct {
 	Key      any
 	Selected bool
 	Depth    int
+	Height   float32
+	Guides   bool
 }
 
 // SidebarItemProps is a navigation row: an icon and a label.
@@ -38,14 +48,41 @@ type CommandRowProps struct {
 // caller, who reads Clicked or attaches a menu after it returns.
 func SideRow(c *ui.Context, p SideRowProps) ui.Element {
 	t := c.Theme()
-	row := ui.Row(c).Key(p.Key).Height(sideRowHeight).AlignSelf(ui.Stretch).MinWidth(0).
-		Margin(0, 0, 0, float32(max(p.Depth, 0))*12).PaddingX(8).Gap(6).AlignItems(ui.Center).
+	depth := max(p.Depth, 0)
+	row := ui.Row(c).Key(p.Key).Height(cmp.Or(p.Height, sideRowHeight)).AlignSelf(ui.Stretch).MinWidth(0).
+		Padding(0, 8, 0, 8+float32(depth)*indentStep).Gap(6).AlignItems(ui.Center).
 		Radius(controlRadius(t)).Focusable().Role(ui.RoleButton).Checked(p.Selected).Cursor(ui.CursorPointer)
 	fg, wash := t.TextMuted, ui.Color{}
-	if p.Selected || row.Hovered() {
+	switch {
+	case p.Selected:
+		fg, wash = t.Text, t.SurfacePressed
+	case row.Hovered():
 		fg, wash = t.Text, t.SurfaceHover
 	}
+	if p.Guides && depth > 0 {
+		line := t.Border.Alpha(0.75)
+		row.DrawOver(func(painter *ui.Painter, r ui.Rect) {
+			for d := range depth {
+				painter.Fill(ui.Rect{X: r.X + 15 + float32(d)*indentStep, Y: r.Y, W: 1, H: r.H}, line, 0)
+			}
+		})
+	}
 	return row.Background(Face(c, row, "aui.siderow", wash)).TextColor(fg).FontSize(labelSize)
+}
+
+// Disclosure is the chevron of a row that expands: it points right, and
+// turns down while open. The element returned reports Clicked.
+func Disclosure(c *ui.Context, open bool, size float32) ui.Element {
+	turn := float32(0)
+	if open {
+		turn = 90
+	}
+	chev := ui.Icon(c, icon.Must("chevron-right")).Size(size, size).TextColor(c.Theme().TextMuted).Shrink(0).
+		Cursor(ui.CursorPointer)
+	if !reduced(c) {
+		turn = chev.AnimateTo("aui.turn", turn, ui.Snappy)
+	}
+	return chev.Rotate(turn)
 }
 
 // SidebarItem draws a navigation row; the element returned reports

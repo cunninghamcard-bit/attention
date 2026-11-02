@@ -42,7 +42,16 @@ type DialogProps struct {
 	Body      func(c *ui.Context)
 }
 
-// Floating styles panel as a popover face: padded, rounded, opaque, with
+// Popover draws body in a floating panel under anchor while *open; a
+// press outside or Escape closes it.
+func Popover(c *ui.Context, anchor ui.Element, open *bool, body func(panel ui.Element)) ui.Element {
+	return ui.PopoverBase(c, anchor, open, func(panel ui.Element) {
+		Floating(c, panel.Margin(6, 0, 0, 0))
+		body(panel)
+	})
+}
+
+// floating styles panel as a popover face: padded, rounded, opaque, with
 // a hairline and a soft drop, easing in on first build.
 func Floating(c *ui.Context, panel ui.Element) ui.Element {
 	t := c.Theme()
@@ -64,11 +73,11 @@ func IconMenu(c *ui.Context, p IconMenuProps) ui.Element {
 		if !*open {
 			return
 		}
-		ui.PopoverBase(c, b, open, func(panel ui.Element) {
+		Popover(c, b, open, func(panel ui.Element) {
 			if p.End {
 				panel.AttachTo(b, ui.AnchorBottomEnd, ui.AnchorTopEnd)
 			}
-			Floating(c, panel.Margin(6, 0, 0, 0)).MinWidth(176).Role(ui.RoleMenu)
+			panel.MinWidth(176).Role(ui.RoleMenu)
 			ui.Column(c).FillWidth().Gap(2).FocusGroup(ui.Vertical).Children(func() {
 				for i, it := range p.Items {
 					menuEntry(c, i, it, func() { *open = false })
