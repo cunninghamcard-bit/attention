@@ -99,12 +99,23 @@ func Select(c *ui.Context, p SelectProps) ui.Element {
 	return trigger
 }
 
-// SettingsToggle is a settings row whose control is a switch: the label
-// and description at the start, the switch at the end.
+// SettingsToggle is a compact row: the label (a click on it toggles too)
+// and an optional description at the start, a switch at the end.
 func SettingsToggle(c *ui.Context, label, description string, on, disabled bool, changed func(bool)) ui.Element {
-	return PreferenceRow(c, label, description, func() {
+	t := c.Theme()
+	row := ui.Row(c).FillWidth().MinHeight(controlHeight).PaddingX(8).Gap(12).AlignItems(ui.Center)
+	row.Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+			text := ui.Text(c, label).FontSize(labelSize)
+			if changed != nil && !disabled {
+				text.Cursor(ui.CursorPointer).OnClick(func() { changed(!on) })
+			}
+			if description != "" {
+				ui.Text(c, description).FontSize(smallSize).TextColor(t.TextMuted)
+			}
+		})
 		value := on
-		sw := ui.Switch(c, &value).Label(label)
+		sw := ui.Switch(c, &value).Label(label).Shrink(0)
 		if disabled {
 			sw.Disabled(true)
 		}
@@ -112,4 +123,5 @@ func SettingsToggle(c *ui.Context, label, description string, on, disabled bool,
 			changed(value)
 		}
 	})
+	return row
 }
