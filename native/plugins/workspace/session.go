@@ -22,19 +22,7 @@ type session struct {
 	// items, 1-based, 0 when the list's is.
 	Pinned        []sessionNode `json:"pinned,omitempty"`
 	PinnedCurrent int           `json:"pinnedCurrent,omitempty"`
-	// Main, Panes, Active and SplitPct are the layouts before the list:
-	// attention's tree, and before it at most two groups side by side.
-	// Read, never written.
-	Main        *sessionNode  `json:"main,omitempty"`
-	Panes       []sessionPane `json:"panes,omitempty"`
-	Active      int           `json:"active,omitempty"`
-	SplitPct    float32       `json:"splitPct,omitempty"`
-	RecentFiles []string      `json:"recentFiles,omitempty"`
-}
-
-type sessionPane struct {
-	Tabs   []string `json:"tabs"` // file paths; new tabs are not kept
-	Active int      `json:"active"`
+	RecentFiles   []string      `json:"recentFiles,omitempty"`
 }
 
 // sessionNode is a split or a tab group, as attention serializes its
@@ -88,28 +76,6 @@ func keptTree(sn sessionNode) *sessionNode {
 	return &kept
 }
 
-// legacyTree is the layout before the tree as one: the panes side by side.
-func legacyTree(s session) *sessionNode {
-	if len(s.Panes) == 0 {
-		return nil
-	}
-	root := sessionNode{Type: "split", Direction: vertical}
-	for i, p := range s.Panes {
-		if i > 1 {
-			break
-		}
-		g := sessionNode{Type: "tabs", Tabs: p.Tabs, Active: p.Active, Focused: i == s.Active}
-		if len(s.Panes) > 1 && s.SplitPct > 10 && s.SplitPct < 90 {
-			g.Dimension = s.SplitPct
-			if i == 1 {
-				g.Dimension = 100 - s.SplitPct
-			}
-		}
-		root.Children = append(root.Children, g)
-	}
-	return &root
-}
-
 // loadSession reads the saved session. A deleted file whose directory is
 // still there comes back as a missing tab, which shows the file if it
 // returns (as a browser keeps a tab whose page is gone); directories and
@@ -124,7 +90,6 @@ func loadSession() (session, bool) {
 	if json.Unmarshal(data, &s) != nil {
 		return session{}, false
 	}
-	migrate(&s)
 	var kept []sessionNode
 	current := 0
 	for i, it := range s.Items {
@@ -137,68 +102,6 @@ func loadSession() (session, bool) {
 	}
 	s.Items, s.Current = kept, current
 	return s, true
-}
-
-// migrate turns a session from before the list into one: a tree of
-// several groups becomes a split of their active tabs, shown, followed by
-// their other tabs one item each; a single group, its tabs one item each.
-func migrate(s *session) {
-	if s.Items != nil {
-		return
-	}
-	tree := s.Main
-	if tree == nil {
-		tree = legacyTree(*s)
-	}
-	s.Main, s.Panes = nil, nil
-	if tree == nil {
-		return
-	}
-	var leaves []sessionNode
-	var walk func(sn sessionNode)
-	walk = func(sn sessionNode) {
-		if sn.Type != "split" {
-			leaves = append(leaves, sn)
-		}
-		for _, ch := range sn.Children {
-			walk(ch)
-		}
-	}
-	walk(*tree)
-	one := func(path string) sessionNode {
-		return sessionNode{Type: "split", Direction: vertical, Children: []sessionNode{{Type: "tabs", Tabs: []string{path}}}}
-	}
-	if len(leaves) == 1 {
-		for _, path := range leaves[0].Tabs {
-			s.Items = append(s.Items, one(path))
-		}
-		s.Current = leaves[0].Active
-		return
-	}
-	var actives func(sn sessionNode) sessionNode
-	actives = func(sn sessionNode) sessionNode {
-		if sn.Type != "split" {
-			if len(sn.Tabs) > 0 {
-				sn.Tabs = []string{sn.Tabs[min(max(sn.Active, 0), len(sn.Tabs)-1)]}
-			}
-			sn.Active = 0
-			return sn
-		}
-		kids := make([]sessionNode, len(sn.Children))
-		for i, ch := range sn.Children {
-			kids[i] = actives(ch)
-		}
-		sn.Children = kids
-		return sn
-	}
-	s.Items, s.Current = []sessionNode{actives(*tree)}, 0
-	for _, g := range leaves {
-		for i, path := range g.Tabs {
-			if i != g.Active {
-				s.Items = append(s.Items, one(path))
-			}
-		}
-	}
 }
 
 // keepTab reports whether a saved tab's path reopens.
@@ -280,7 +183,6 @@ func (ws *Workspace) serialize(n *node) sessionNode {
 // restoreLayout applies the saved list; the tabs reopen once the mounts
 // are known (setMounts).
 func (ws *Workspace) restoreLayout(s session) {
-	migrate(&s)
 	ws.recentFiles = s.RecentFiles
 	ws.restorePins(s.Pinned)
 	ws.restoring = &s

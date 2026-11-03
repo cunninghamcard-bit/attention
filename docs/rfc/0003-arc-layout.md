@@ -165,7 +165,7 @@ RFC 0001 §5.12 已经决定视觉不再对照 Obsidian，但窗口骨架和组�
   - 数据模型从分屏树改成列表（见 §4）；
   - 对外的 `OpenResource`、`OpenTab`、标签类型的契约不变。
 - **`project`**：`Mount` 加 `Color`；新增「哪个项目包含这个路径」的查询。
-- **设置**：删除 `showRibbon`、`showTabBar`、`showViewHeader`，读到旧值就忽略。
+- **设置**：删除 `showRibbon`、`showTabBar`、`showViewHeader`。
 - **文档**
   - `native/AGENTS.md`：「Port behaviour from the TS app」改成只管行为，窗口结构和组件画法以本 RFC 为准；
   - RFC 0001 §5.12：补一句指向本 RFC；
@@ -173,11 +173,13 @@ RFC 0001 §5.12 已经决定视觉不再对照 Obsidian，但窗口骨架和组�
 
 ## 8. 分步实施
 
+项目还没有用户，也没有上线：存储格式和设置直接换成新的，不写迁移，也不兼容旧值。
+
 每一步单独提交，每一步都能运行，都要过 gofmt、vet、测试、asl 和 CLI 端到端测试，再截图核对。
 
 1. `native/ui` 按 §5 重画现有组件，`build.go` 改推导规则。
 2. `layout`：画成左侧栏、内容卡片、右侧上下文栏，删掉图标栏和状态栏；`slots` 改成 `Sidebar` 和 `Context` 两个位置。
-3. `workspace`：数据模型改成列表；加上标签面板、地址栏和状态行；迁移 `session.json`。
+3. `workspace`：数据模型改成列表；加上标签面板、地址栏和状态行；`session.json` 直接换成新格式。
 4. 项目颜色、上下文栏的三段（文件树跟随当前标签）。
 5. 标签文件夹。
 6. Omnibox 合并模式和起始页。
@@ -194,5 +196,5 @@ RFC 0001 §5.12 已经决定视觉不再对照 Obsidian，但窗口骨架和组�
    - 固定区存进 `session.json`。
 3. **书签并入固定区。**
    - 书签就是固定的标签，书签分组就是文件夹；书签面板删掉。
-   - 现有 `bookmarks.json` 第一次启动时迁移进固定区，之后不再读写它。
+   - 不再读写 `bookmarks.json`。
    - `bookmark` CLI 命令保留，改为读写固定区。

@@ -21,7 +21,7 @@ func TestAppearanceSyncAndThemeFiles(t *testing.T) {
 
 	sl := slots.New(nil)
 	set := settings.New(nil, sl)
-	set.Set(settings.Appearance, "theme", "moonstone")
+	set.Set(settings.Appearance, "theme", "light")
 	set.Set(settings.Appearance, "lightTheme", "One Light")
 	set.Set(settings.Appearance, "iconTheme", "zed")
 	set.Set(settings.Appearance, "showFileIcons", false)
@@ -29,7 +29,7 @@ func TestAppearanceSyncAndThemeFiles(t *testing.T) {
 	a := New(set, dir, func(f func()) { f() })
 	a.IsDark = func() bool { return true }
 	if a.Dark() {
-		t.Fatal("expected moonstone theme to be light")
+		t.Fatal("expected the light theme to be light")
 	}
 	if a.Icons().Show {
 		t.Fatal("expected file icons hidden")

@@ -8,7 +8,7 @@ import (
 
 func TestSnapshotKeepsTabsStillToRestore(t *testing.T) {
 	ws := newWorkspace(t.Context(), nil, nil, nil, nil, nil, nil, nil, fsStub(), projectStub())
-	ws.restoreLayout(session{Panes: []sessionPane{{Tabs: []string{"/x/a.md"}}}})
+	ws.restoreLayout(session{Items: []sessionNode{{Type: "split", Direction: vertical, Children: []sessionNode{{Type: "tabs", Tabs: []string{"/x/a.md"}}}}}})
 	s := ws.snapshot()
 	if len(s.Items) != 1 || len(s.Items[0].Children) != 1 || len(s.Items[0].Children[0].Tabs) != 1 || s.Items[0].Children[0].Tabs[0] != "/x/a.md" {
 		t.Fatalf("snapshot before the mounts loaded = %+v, want the pending tabs", s)

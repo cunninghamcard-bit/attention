@@ -59,8 +59,8 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 			rows: []rowSpec{
 				a.selectSpec("Base color scheme", "Choose the color scheme used by the app.", "theme", s.Theme, []aui.SelectOption{
 					{Value: "system", Label: "Adapt to system"},
-					{Value: "moonstone", Label: "Light"},
-					{Value: "obsidian", Label: "Dark"},
+					{Value: "light", Label: "Light"},
+					{Value: "dark", Label: "Dark"},
 				}),
 				a.selectSpec("Light theme", "Color theme in light mode.", "lightTheme", s.LightTheme, a.themeOptions(false)),
 				a.selectSpec("Dark theme", "Color theme in dark mode.", "darkTheme", s.DarkTheme, a.themeOptions(true)),

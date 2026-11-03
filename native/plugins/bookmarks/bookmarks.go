@@ -1,22 +1,13 @@
 // Package bookmarks is the bookmarks plugin: since RFC 0003 §9 a bookmark
 // is a pinned tab and a bookmark group a pinned folder, so it keeps only
-// the bookmark commands, over the workspace's pinned area, and moves an
-// old bookmarks.json (apps/web/builtin/Bookmarks.ts) into it once.
+// the bookmark commands, over the workspace's pinned area.
 package bookmarks
 
 import (
-	"cmp"
 	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io/fs"
-	"os"
-	"path/filepath"
 
 	"github.com/arcships/rutis/go/rutis"
 
-	"github.com/cunninghamcard-bit/attention/native/internal/paths"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
 	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
@@ -57,12 +48,6 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		}
 		b := &Bookmarks{sh: sh, lyt: lyt, ws: ws, project: project}
 		rctx.Provide("bookmarks", b)
-		// After the workspace's restore, which sh.Update queued first.
-		sh.Update(func() {
-			if err := b.migrate(storePath()); err != nil {
-				fmt.Fprintf(os.Stderr, "bookmarks: %v\n", err)
-			}
-		})
 		var offs []func()
 		for _, cmd := range b.commands() {
 			offs = append(offs, act.Add(cmd))
@@ -82,16 +67,13 @@ type URL struct {
 	Title, URL string
 }
 
-// Item is a bookmark as bookmarks.json kept it (BookmarkItem), and as the
-// bookmarks CLI prints the pinned area: a "file", a "url", or a "group" of
-// them.
+// Item is a bookmark as the bookmarks CLI prints the pinned area
+// (BookmarkItem): a "file", a "url", or a "group" of them.
 type Item struct {
 	Type  string  `json:"type"`
-	Ctime int64   `json:"ctime,omitempty"`
 	Path  string  `json:"path,omitempty"`
 	Title string  `json:"title,omitempty"`
 	URL   string  `json:"url,omitempty"`
-	Query string  `json:"query,omitempty"`
 	Items []*Item `json:"items,omitempty"`
 }
 
@@ -159,54 +141,3 @@ func (b *Bookmarks) commands() []actions.Command {
 		{ID: "bookmark", CLI: true, Run: b.cliAdd},
 	}
 }
-
-// migrate pins what an old bookmarks.json at file holds, once: files and
-// web pages, groups as folders. The file is then renamed, kept whole; the
-// kinds a pin cannot hold (folders, searches, graphs) are counted.
-func (b *Bookmarks) migrate(file string) error {
-	data, err := os.ReadFile(file)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("read %s: %w", file, err)
-	}
-	var saved struct {
-		Items []*Item `json:"items"`
-	}
-	if err := json.Unmarshal(data, &saved); err != nil {
-		return fmt.Errorf("parse %s: %w", file, err)
-	}
-	skipped := 0
-	var walk func(items []*Item, folder string)
-	walk = func(items []*Item, folder string) {
-		for _, it := range items {
-			switch it.Type {
-			case "file":
-				b.ws.PinEntry(it.Path, "", folder)
-			case "url":
-				b.ws.PinEntry(it.URL, it.Title, folder)
-			case "group":
-				walk(it.Items, folderFor(folder, it.Title))
-			default:
-				skipped++
-			}
-		}
-	}
-	walk(saved.Items, "")
-	if err := os.Rename(file, file+".migrated"); err != nil {
-		return fmt.Errorf("keep %s: %w", file, err)
-	}
-	if skipped > 0 {
-		return fmt.Errorf("%d bookmarks pin no tab (folders, searches, graphs) and stay in %s.migrated", skipped, file)
-	}
-	return nil
-}
-
-// folderFor is the folder a group pins into: the outermost group's, as
-// folders do not nest.
-func folderFor(outer, title string) string {
-	return cmp.Or(outer, title, "Bookmarks")
-}
-
-func storePath() string { return filepath.Join(paths.ConfigDir(), "bookmarks.json") }

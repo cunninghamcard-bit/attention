@@ -127,9 +127,9 @@ func (a *Appearance) Generation() int {
 // Dark reports whether the window is dark: the base scheme, or the system's.
 func (a *Appearance) Dark() bool {
 	switch a.Settings().Theme {
-	case "moonstone":
+	case "light":
 		return false
-	case "obsidian":
+	case "dark":
 		return true
 	}
 	return a.IsDark()
@@ -168,12 +168,12 @@ func (a *Appearance) Reload() {
 	}()
 }
 
-// ToggleTheme switches between light ("moonstone") and dark ("obsidian").
+// ToggleTheme switches between light and dark.
 func (a *Appearance) ToggleTheme() {
 	if a.Dark() {
-		a.set.Set(settings.Appearance, "theme", "moonstone")
+		a.set.Set(settings.Appearance, "theme", "light")
 	} else {
-		a.set.Set(settings.Appearance, "theme", "obsidian")
+		a.set.Set(settings.Appearance, "theme", "dark")
 	}
 }
 
