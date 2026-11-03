@@ -21,11 +21,15 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 )
 
-// maxClosed is how many closed tabs Undo close tab can bring back.
-const maxClosed = 20
+const (
+	// maxClosed is how many closed tabs Undo close tab can bring back.
+	maxClosed = 20
+	// maxCards is how many cards a split shows side by side, as Arc's.
+	maxCards = 4
+)
 
-// Workspace is the center's state: the tab groups, their tabs, the files
-// they show. Every field is read and written on the main thread only: work
+// Workspace is the center's state: the sidebar's list of items, each a
+// tab or a split of tabs side by side (RFC 0003 §4), the files they show. Every field is read and written on the main thread only: work
 // done on goroutines comes back through shell.Shell.Update (RFC §5.8).
 type Workspace struct {
 	ctx      context.Context
@@ -43,7 +47,9 @@ type Workspace struct {
 	mounts       []projectplugin.Mount
 	mountsLoaded bool
 
-	// root is the center's layout: tab groups in splits (tree.go).
+	// items are the sidebar's list, each a layout tree whose cards
+	// (panes) hold one tab each (tree.go); root is the one shown.
+	items       []*node
 	root        *node
 	activeGroup *pane
 	nextGroup   int
@@ -53,7 +59,7 @@ type Workspace struct {
 	// recentFiles are the files opened last, newest first: the quick
 	// switcher's recent list (Workspace.RecentFiles).
 	recentFiles []string
-	restoring   *sessionNode // the layout to reopen once the mounts are known
+	restoring   *session // the list to reopen once the mounts are known
 	saveSoon    func()
 	queue       []func()
 	title       string
@@ -91,9 +97,9 @@ func newWorkspace(
 		ctx: ctx, sh: sh, sl: sl, res: res, lyt: lyt, sc: sc, act: act, app: app,
 		tabTypes: tabtypes.New(sh.Invalidate),
 		fs:       fs, project: project,
-		root: &node{dir: vertical},
 	}
-	ws.root.insert(0, newGroupNode(ws.newPane()))
+	ws.root = ws.newItem()
+	ws.items = []*node{ws.root}
 	return ws
 }
 
@@ -141,7 +147,7 @@ func (ws *Workspace) reclaim() {
 		return
 	}
 	ws.typesGen = gen
-	for _, p := range ws.groups() {
+	for _, p := range ws.allGroups() {
 		for _, t := range p.tabs {
 			if !t.empty {
 				ws.claim(t)
@@ -258,7 +264,7 @@ func (ws *Workspace) setMounts(ms []projectplugin.Mount) {
 	ws.mounts = ms
 	ws.mountsLoaded = true
 	// A file opened before the mounts were known gets its mount address.
-	for _, p := range ws.groups() {
+	for _, p := range ws.allGroups() {
 		for _, t := range p.tabs {
 			if t.empty || t.page() {
 				continue
@@ -310,8 +316,8 @@ func (ws *Workspace) pathOf(address string) (string, error) {
 // openAddress opens path, whose canonical address is address, as
 // attention's Workspace.openFile: a tab anywhere that shows it already is
 // revealed; else the active tab navigates to it, keeping where it was in
-// its history (WorkspaceLeaf.recordHistory); newTab opens it in a new tab
-// after the active one instead (getLeaf("tab")).
+// its history (WorkspaceLeaf.recordHistory); newTab opens it in a new item
+// after the shown one instead (getLeaf("tab")).
 func (ws *Workspace) openAddress(address, path string, opts OpenOptions) (*tab, error) {
 	if opts.Kind != "" {
 		if _, ok := ws.tabTypes.Claim(address, opts.Kind); !ok {
@@ -325,8 +331,9 @@ func (ws *Workspace) openAddress(address, path string, opts OpenOptions) (*tab, 
 		if tt, ok := ws.tabTypes.Claim(address, opts.Kind); ok {
 			kind = tt.Kind
 		}
-		// The focused group first, so its tab wins over another group's.
-		gs := ws.groups()
+		// The focused card first, then the shown item's, so their tab
+		// wins over another item's.
+		gs := append(ws.groups(), ws.allGroups()...)
 		focus := ws.activePane()
 		for i, g := range gs {
 			if g == focus {
@@ -336,7 +343,8 @@ func (ws *Workspace) openAddress(address, path string, opts OpenOptions) (*tab, 
 		for _, g := range gs {
 			for i, o := range g.tabs {
 				if !o.empty && o.kind == kind && o.address == address {
-					g.active, ws.activeGroup = i, g
+					g.active = i
+					ws.selectGroup(g)
 					if nav != nil {
 						o.nav = nav
 						o.navRev++
@@ -356,12 +364,7 @@ func (ws *Workspace) openAddress(address, path string, opts OpenOptions) (*tab, 
 		return cur, nil
 	}
 	t := &tab{ws: ws}
-	at := p.active + 1
-	if len(p.tabs) == 0 {
-		at = 0
-	}
-	p.tabs = append(p.tabs[:at], append([]*tab{t}, p.tabs[at:]...)...)
-	p.active = at
+	ws.place(t)
 	ws.show(t, st)
 	return t, nil
 }
@@ -425,10 +428,11 @@ func (ws *Workspace) openTab(kind string, o OpenOptions) (*tab, error) {
 	o.Kind = kind
 	address := tabtypes.PageAddress(kind)
 	if !o.NewTab {
-		for _, g := range ws.groups() {
+		for _, g := range ws.allGroups() {
 			for i, t := range g.tabs {
 				if t.address == address && t.kind == kind {
-					g.active, ws.activeGroup = i, g
+					g.active = i
+					ws.selectGroup(g)
 					ws.changed()
 					return t, nil
 				}
@@ -484,8 +488,7 @@ func (ws *Workspace) closeTab(p *pane, i int) {
 	if p.active > i || p.active >= len(p.tabs) {
 		p.active = max(0, p.active-1)
 	}
-	// A tab group closes with its last tab, unless it is the last one
-	// (WorkspaceTabs.removeChild).
+	// A card closes with its tab, and an item with its last card.
 	if len(p.tabs) == 0 {
 		ws.removeGroup(p)
 	}
@@ -497,18 +500,23 @@ func (ws *Workspace) closeActiveTab() {
 	ws.closeTab(p, p.active)
 }
 
+// cycleTab shows the item delta places along the list, wrapping.
 func (ws *Workspace) cycleTab(delta int) {
-	p := ws.activePane()
-	if n := len(p.tabs); n > 1 {
-		p.active = ((p.active+delta)%n + n) % n
-		ws.changed()
+	items := ws.shownItems()
+	if n := len(items); n > 1 {
+		i := max(0, indexOf(items, ws.root))
+		ws.selectItem(items[((i+delta)%n+n)%n])
 	}
 }
 
-// split puts a new tab group beside the focused one in dir and shows the
+// split puts a new card beside the focused one in dir and shows the
 // active tab's file in it, as attention's Split right and Split down
 // (Workspace.duplicateLeaf); an empty tab is duplicated as an empty tab.
+// An item holds at most maxCards.
 func (ws *Workspace) split(dir direction) {
+	if len(ws.groups()) >= maxCards {
+		return
+	}
 	t := ws.activeTab()
 	g := ws.splitGroup(ws.activePane(), dir, false)
 	ws.activeGroup = g
@@ -531,41 +539,38 @@ func (ws *Workspace) focusDirection(dir string) {
 	ws.focusGroup(ws.adjacent(ws.activePane(), dir))
 }
 
-// closeTabGroup closes every tab of the focused group (Close tab group).
+// closeTabGroup closes the shown item: every card of a split (Close tab
+// group).
 func (ws *Workspace) closeTabGroup() {
-	p := ws.activePane()
-	n := len(p.tabs)
-	for i := n - 1; i >= 0; i-- {
-		ws.closeTab(p, i)
+	var ts []*tab
+	for _, g := range ws.groups() {
+		ts = append(ts, g.tabs...)
 	}
+	ws.closeTabs(ts)
 }
 
-// closeOthersInGroup closes the focused group's other tabs (Close others
-// in tab group).
+// closeOthersInGroup closes the shown split's other cards (Close others in
+// tab group).
 func (ws *Workspace) closeOthersInGroup() {
-	p := ws.activePane()
-	keep := p.current()
-	for i := len(p.tabs) - 1; i >= 0; i-- {
-		if p.tabs[i] != keep {
-			ws.closeTab(p, i)
+	keep := ws.activeTab()
+	var ts []*tab
+	for _, g := range ws.groups() {
+		for _, t := range g.tabs {
+			if t != keep {
+				ts = append(ts, t)
+			}
 		}
 	}
+	ws.closeTabs(ts)
 }
 
-// closeAll closes p's tabs (the tab list's Close all).
-func (ws *Workspace) closeAll(p *pane) {
-	for i := len(p.tabs) - 1; i >= 0; i-- {
-		ws.closeTab(p, i)
-	}
-}
-
-// closeOthers closes every other tab in every group (Close other tabs).
+// closeOthers closes every other tab of every item (Close other tabs).
 func (ws *Workspace) closeOthers() {
 	keep := ws.activeTab()
 	if keep == nil {
 		return
 	}
-	for _, g := range ws.groups() {
+	for _, g := range ws.allGroups() {
 		for i := len(g.tabs) - 1; i >= 0; i-- {
 			if g.tabs[i] != keep {
 				ws.closeTab(g, i)
@@ -597,15 +602,21 @@ func (ws *Workspace) changed() {
 	}
 }
 
-// newTab opens an empty tab after the active one.
+// newTab opens an empty tab: a new item after the shown one.
 func (ws *Workspace) newTab() {
-	p := ws.activePane()
 	ws.nextTab++
-	t := &tab{ws: ws, id: ws.nextTab, empty: true, title: "New tab"}
-	at := min(p.active+1, len(p.tabs))
-	p.tabs = append(p.tabs[:at], append([]*tab{t}, p.tabs[at:]...)...)
-	p.active = at
+	ws.place(&tab{ws: ws, id: ws.nextTab, empty: true, title: "New tab"})
 	ws.changed()
+}
+
+// place puts t, a new tab, in the focused card when it has none (a split
+// just made, or the empty window), else in a new item after the shown one.
+func (ws *Workspace) place(t *tab) {
+	p := ws.activePane()
+	if len(p.tabs) > 0 {
+		p = ws.addItem(indexOf(ws.items, ws.root) + 1)
+	}
+	p.tabs, p.active = []*tab{t}, 0
 }
 
 // undoClose reopens the most recently closed file.
@@ -617,29 +628,27 @@ func (ws *Workspace) undoClose() {
 	}
 }
 
-// gotoTab activates the n-th tab (1-based) of the active pane; n < 1 is
-// the last tab.
+// gotoTab shows the n-th item (1-based) of the list; n < 1 is the last.
 func (ws *Workspace) gotoTab(n int) {
-	p := ws.activePane()
-	if len(p.tabs) == 0 {
+	items := ws.shownItems()
+	if len(items) == 0 {
 		return
 	}
-	if n < 1 || n > len(p.tabs) {
-		n = len(p.tabs)
+	if n < 1 || n > len(items) {
+		n = len(items)
 	}
-	p.active = n - 1
-	ws.changed()
+	ws.selectItem(items[n-1])
 }
 
-// pane is a tab group (attention's WorkspaceTabs).
+// pane is a card: one tab shown in the content area (attention's
+// WorkspaceTabs, held to a single tab).
 type pane struct {
 	id     int // unique for the run; keys its view
 	node   *node
 	tabs   []*tab
 	active int
-	// The view's last frame: the tab chips' boxes, the body's, and where
-	// a tab dragged over the body would land ("" for none; drag.go).
-	chips      []ui.Rect
+	// The view's last frame: the body's box, and where a tab dragged over
+	// it would land ("" for none; drag.go).
 	bodyBounds ui.Rect
 	dropSide   string
 }

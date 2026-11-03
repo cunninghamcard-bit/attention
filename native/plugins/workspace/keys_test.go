@@ -168,7 +168,7 @@ func testWorkspace(t *testing.T) (*Workspace, *ui.Tester) {
 
 func tabs(ws *Workspace) []string {
 	var out []string
-	for _, p := range ws.groups() {
+	for _, p := range ws.allGroups() {
 		for _, t := range p.tabs {
 			out = append(out, t.viewType()+":"+t.displayText())
 		}

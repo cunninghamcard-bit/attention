@@ -304,27 +304,39 @@ func (l *Layout) restore(id string, fn func(json.RawMessage)) {
 	}
 }
 
-// card is the content card: the center slot on the page color, inset
-// from the window's tint.
+// card is the content area, inset from the window's tint: the center
+// draws its cards in it (aui.Card). With the sidebar closed, a strip
+// above it keeps the window controls and the toggles.
 func (l *Layout) card(c *ui.Context) {
 	t := c.Theme()
 	gap := t.Spacing
-	left, right := gap, gap
+	left, right, top := gap, gap, gap
 	if l.leftOpen {
-		left = 0
+		left = gap / 2
 	}
 	if l.rightOpen {
 		right = gap / 2
 	}
-	card := ui.Column(c).Grow(1).MinWidth(0).MinHeight(0).Margin(gap, right, gap, left).Radius(t.Radius).Clip().
-		Background(t.Background).Shadow(0, 1, 4, 0, aui.Shade(0.08))
-	if t.Dark {
-		card.Border(1, aui.Wash(t, 0.08))
-	}
-	card.Children(func() {
-		if view := l.slots.Center(); view != nil {
-			view(c)
+	ui.Column(c).Grow(1).MinWidth(0).MinHeight(0).Children(func() {
+		if !l.leftOpen {
+			top = 0
+			ui.Row(c).Height(36).Shrink(0).FillWidth().Padding(0, gap, 0, max(l.LeftHeaderSpace(c), gap)).Gap(2).
+				AlignItems(ui.Center).DragWindow().Children(func() {
+				l.ToggleButton(c, slots.Sidebar)
+				if nav := l.slots.Head().Nav; nav != nil {
+					nav(c)
+				}
+				ui.Box(c).Grow(1)
+				if !l.rightOpen {
+					l.ToggleButton(c, slots.Context)
+				}
+			})
 		}
+		ui.Column(c).Grow(1).MinWidth(0).MinHeight(0).Margin(top, right, gap, left).Children(func() {
+			if view := l.slots.Center(); view != nil {
+				view(c)
+			}
+		})
 	})
 }
 
@@ -335,16 +347,26 @@ func (l *Layout) sidebar(c *ui.Context) {
 	t := c.Theme()
 	panels := l.slots.Panels(slots.Sidebar)
 	shown := shownPanel(panels, l.leftPanel)
-	ui.Column(c).Width(l.leftWidth).Shrink(0).FillHeight().Padding(0, 0, t.Spacing, t.Spacing).Children(func() {
+	ui.Column(c).Width(l.leftWidth).Shrink(0).FillHeight().Padding(0, t.Spacing/2, t.Spacing, t.Spacing).Children(func() {
 		edge := ui.Box(c).Key("sidebar:edge").Absolute().Top(0).Bottom(0).Right(-6).Width(8).Cursor(ui.CursorResizeEW)
 		if dx, _, held := edge.Dragged(); held && dx != 0 {
 			l.leftWidth = min(max(l.leftWidth+dx, 180), 480)
 		}
-		ui.Row(c).Height(40).Shrink(0).FillWidth().Padding(0, 4, 0, l.LeftHeaderSpace(c)).AlignItems(ui.Center).
+		head := l.slots.Head()
+		ui.Row(c).Height(40).Shrink(0).FillWidth().Padding(0, 4, 0, l.LeftHeaderSpace(c)).Gap(2).AlignItems(ui.Center).
 			DragWindow().Children(func() {
+			if head.Nav != nil {
+				head.Nav(c)
+			}
 			ui.Box(c).Grow(1)
+			if !l.rightOpen {
+				l.ToggleButton(c, slots.Context)
+			}
 			l.ToggleButton(c, slots.Sidebar)
 		})
+		if head.Bar != nil {
+			ui.Row(c).Shrink(0).FillWidth().Padding(0, 4, 8, 0).Children(func() { head.Bar(c) })
+		}
 		if shown == nil {
 			ui.Box(c).Grow(1)
 		} else {
@@ -394,12 +416,7 @@ func (l *Layout) context(c *ui.Context) {
 			ui.Box(c).Grow(1)
 			l.ToggleButton(c, slots.Context)
 		})
-		card := ui.Column(c).Grow(1).FillWidth().MinHeight(0).Radius(t.Radius).Clip().Background(t.Background).
-			Shadow(0, 1, 4, 0, aui.Shade(0.08)).Dividers(1, aui.Wash(t, 0.06))
-		if t.Dark {
-			card.Border(1, aui.Wash(t, 0.08))
-		}
-		card.Children(func() {
+		aui.Card(c, ui.Column(c).Grow(1).FillWidth().MinHeight(0).Dividers(1, aui.Wash(t, 0.06))).Children(func() {
 			for i := range panels {
 				l.section(c, panels[i])
 			}

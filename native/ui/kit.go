@@ -44,6 +44,17 @@ func Arrive(e ui.Element, from ui.Pose, delay time.Duration) ui.Element {
 	return e.Translate(from.X*p, from.Y*p).Scale(k, k).Opacity(1 - from.Fade*p)
 }
 
+// Card styles el as a content card: the page color over the window's
+// tint, rounded, with a soft drop and, in a dark theme, a faint edge.
+func Card(c *ui.Context, el ui.Element) ui.Element {
+	t := c.Theme()
+	el.Radius(t.Radius).Clip().Background(t.Background).Shadow(0, 1, 4, 0, Shade(0.08))
+	if t.Dark {
+		el.Border(1, Wash(t, 0.08))
+	}
+	return el
+}
+
 // Raised is the face of a selected row or a card: the page color in a
 // light theme, a lifted surface in a dark one.
 func Raised(t *ui.Theme) ui.Color {

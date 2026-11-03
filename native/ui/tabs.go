@@ -6,68 +6,81 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
-// TabChipProps is one tab of a tab strip. Divider draws a hairline after
-// an unselected tab; CloseLabel names the close button, which OnClose
-// runs.
-type TabChipProps struct {
+const tabRowHeight float32 = 34
+
+// TabRowProps is one tab of the sidebar's list. Dot is the tab's project
+// color, the zero color for none; CloseLabel names the close button, which
+// OnClose runs.
+type TabRowProps struct {
 	Key        any
 	Title      string
 	Tooltip    string
 	Icon       *ui.SVG
 	IconColor  ui.Color
+	Dot        ui.Color
 	Selected   bool
-	Divider    bool
+	Muted      bool
 	CloseLabel string
 	OnClose    func()
 }
 
-// TabChip draws a tab: the selected one a raised card, the others flat
-// pills. The element returned is the tab, for the caller's
-// click, drag and context menu (port of the workspace's tab strip).
-func TabChip(c *ui.Context, p TabChipProps) ui.Element {
+// SplitPart is one tab of a split row.
+type SplitPart struct {
+	Key       any
+	Title     string
+	Icon      *ui.SVG
+	IconColor ui.Color
+	Focused   bool
+}
+
+// AddressBarProps is the sidebar's address bar. Prefix and Name are the
+// address, the prefix muted; Body, when set, draws instead of them (a web
+// page's own field). Trailing draws at the end; OnClick runs on a press on
+// the address.
+type AddressBarProps struct {
+	Prefix   string
+	Name     string
+	Icon     *ui.SVG
+	Locked   bool
+	Body     func()
+	Trailing func()
+	OnClick  func()
+}
+
+// TabRow draws a tab of the sidebar's list: the selected one a raised
+// card. The element returned is the row, for the caller's click, drag and
+// context menu.
+func TabRow(c *ui.Context, p TabRowProps) ui.Element {
 	t := c.Theme()
-	chip := ui.Row(c).Key(p.Key).Shrink(0).AlignItems(ui.Center).Cursor(ui.CursorPointer).
-		Focusable().Role(ui.RoleTab).Checked(p.Selected).Label(p.Title).Tooltip(p.Tooltip)
-	hovered := chip.Hovered()
-	fg, weight := t.TextMuted, 400
+	row := ui.Row(c).Key(p.Key).Height(tabRowHeight).AlignSelf(ui.Stretch).MinWidth(0).Padding(0, 4, 0, 10).Gap(8).
+		AlignItems(ui.Center).Radius(controlRadius(t)).Cursor(ui.CursorPointer).Focusable().Role(ui.RoleTab).
+		Checked(p.Selected).Label(p.Title).Tooltip(p.Tooltip)
+	hovered := row.Hovered()
+	fg, wash := t.Text, ui.Color{}
 	switch {
 	case p.Selected:
-		fg, weight = t.Text, 500
-		chip.Height(30).Margin(0, 0, 2, 0).Radius(controlRadius(t)).Background(Raised(t)).Shadow(0, 1, 2, 0, Shade(0.08))
+		wash = Raised(t)
+		row.Shadow(0, 1, 2, 0, Shade(0.08))
 	case hovered:
-		fg = t.Text
-		chip.Height(30).Margin(0, 0, 2, 0).Radius(controlRadius(t)).Background(Wash(t, 0.06))
-	default:
-		chip.Height(30).Margin(0, 0, 2, 0).Radius(controlRadius(t))
-		if p.Divider {
-			line := Wash(t, 0.1)
-			chip.DrawOver(func(painter *ui.Painter, r ui.Rect) {
-				painter.Fill(ui.Rect{X: r.X + r.W, Y: r.Y + (r.H-14)/2, W: 1, H: 14}, line, 0)
-			})
-		}
+		wash = Wash(t, 0.06)
 	}
-	chip.TextColor(fg)
-	chip.Children(func() {
-		ui.Row(c).MaxWidth(160).MinWidth(0).Shrink(0).Padding(0, 6, 0, 10).Gap(6).AlignItems(ui.Center).Children(func() {
-			if p.Icon != nil {
-				ink := fg
-				if p.IconColor.A > 0 {
-					ink = p.IconColor
-				}
-				ui.Icon(c, p.Icon).Size(iconSmall, iconSmall).Shrink(0).TextColor(ink)
-			}
-			ui.Text(c, p.Title).FontSize(12.5).LineHeight(1.3).FontWeight(weight).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
-		})
+	if p.Muted && !p.Selected {
+		fg = t.TextMuted
+	}
+	row.Background(Face(c, row, "aui.tabrow", wash)).TextColor(fg)
+	row.Children(func() {
+		tabFace(c, p.Dot, p.Icon, p.IconColor, fg)
+		ui.Text(c, p.Title).FontSize(labelSize).FontWeight(500).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
 		if p.CloseLabel == "" {
 			return
 		}
-		x := ui.ButtonBase(c).Label(p.CloseLabel).Size(20, 20).Radius(4).Margin(0, 4, 0, 0).Shrink(0).
+		x := ui.ButtonBase(c).Label(p.CloseLabel).Size(24, 24).Radius(6).Shrink(0).
 			AlignItems(ui.Center).Justify(ui.Center).Cursor(ui.CursorPointer)
-		wash := ui.Color{}
+		face := ui.Color{}
 		if x.Hovered() {
-			wash = Wash(t, 0.08)
+			face = Wash(t, 0.08)
 		}
-		x.Background(Face(c, x, "aui.tabclose", wash))
+		x.Background(Face(c, x, "aui.tabclose", face))
 		if p.OnClose != nil {
 			x.OnClick(p.OnClose)
 		}
@@ -77,5 +90,103 @@ func TabChip(c *ui.Context, p TabChipProps) ui.Element {
 			}
 		})
 	})
-	return chip
+	return row
+}
+
+// SplitRow draws a split in the sidebar's list: its tabs side by side in
+// one row, the focused one raised while the split is selected. It returns
+// the row and each part, for the caller's clicks, drags and menus.
+func SplitRow(c *ui.Context, key any, selected bool, parts []SplitPart) (ui.Element, []ui.Element) {
+	t := c.Theme()
+	row := ui.Row(c).Key(key).Height(tabRowHeight).AlignSelf(ui.Stretch).MinWidth(0).Padding(3).Gap(3).
+		AlignItems(ui.Stretch).Radius(controlRadius(t)).Role(ui.RoleGroup)
+	wash := ui.Color{}
+	switch {
+	case selected:
+		wash = Wash(t, 0.06)
+	case row.Hovered():
+		wash = Wash(t, 0.04)
+	}
+	row.Background(Face(c, row, "aui.splitrow", wash))
+	out := make([]ui.Element, 0, len(parts))
+	row.Children(func() {
+		for _, sp := range parts {
+			part := ui.Row(c).Key(sp.Key).Width(0).Grow(1).MinWidth(0).PaddingX(7).Gap(6).AlignItems(ui.Center).
+				Radius(max(controlRadius(t)-3, 0)).Cursor(ui.CursorPointer).Focusable().Role(ui.RoleTab).
+				Checked(selected && sp.Focused).Label(sp.Title).Tooltip(sp.Title)
+			face := ui.Color{}
+			switch {
+			case selected && sp.Focused:
+				face = Raised(t)
+				part.Shadow(0, 1, 2, 0, Shade(0.08))
+			case part.Hovered():
+				face = Wash(t, 0.06)
+			}
+			part.Background(Face(c, part, "aui.splitpart", face)).TextColor(t.Text)
+			part.Children(func() {
+				tabFace(c, ui.Color{}, sp.Icon, sp.IconColor, t.Text)
+				ui.Text(c, sp.Title).FontSize(smallSize).FontWeight(500).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
+			})
+			out = append(out, part)
+		}
+	})
+	return row, out
+}
+
+// AddressBar draws the address bar: a translucent pill with the address,
+// a lock for a file shown read-only, and Trailing at its end.
+func AddressBar(c *ui.Context, p AddressBarProps) ui.Element {
+	t := c.Theme()
+	bar := ui.Row(c).Key("aui.address").FillWidth().Height(tabRowHeight).Padding(0, 3, 0, 10).Gap(6).
+		AlignItems(ui.Center).Radius(controlRadius(t))
+	face := Wash(t, 0.06)
+	if p.Body == nil && bar.Hovered() {
+		face = Wash(t, 0.09)
+	}
+	bar.Background(Face(c, bar, "aui.address", face)).TextColor(t.Text)
+	bar.Children(func() {
+		if p.Body != nil {
+			ui.Row(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Children(p.Body)
+		} else {
+			text := ui.Row(c).Grow(1).MinWidth(0).FillHeight().Gap(6).AlignItems(ui.Center).Cursor(ui.CursorPointer).
+				Role(ui.RoleButton).Label(p.Prefix + p.Name)
+			text.Children(func() {
+				if p.Locked {
+					ui.Icon(c, icon.Must("file-lock")).Size(iconSmall, iconSmall).TextColor(t.TextMuted).Shrink(0).
+						Tooltip("Read-only")
+				} else if p.Icon != nil {
+					ui.Icon(c, p.Icon).Size(iconSmall, iconSmall).TextColor(t.TextMuted).Shrink(0)
+				}
+				ui.Row(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Children(func() {
+					if p.Prefix != "" {
+						ui.Text(c, p.Prefix).FontSize(smallSize).TextColor(t.TextMuted).SingleLine().Ellipsis("…").
+							Shrink(1).MinWidth(0)
+					}
+					ui.Text(c, p.Name).FontSize(smallSize).FontWeight(500).SingleLine().Ellipsis("…").Shrink(0).MaxWidth(160)
+				})
+			})
+			if p.OnClick != nil && text.Clicked() {
+				p.OnClick()
+			}
+		}
+		if p.Trailing != nil {
+			ui.Row(c).Shrink(0).AlignItems(ui.Center).Children(p.Trailing)
+		}
+	})
+	return bar
+}
+
+// tabFace is a tab's project dot and icon.
+func tabFace(c *ui.Context, dot ui.Color, glyph *ui.SVG, glyphColor, fg ui.Color) {
+	if dot.A > 0 {
+		ui.Box(c).Size(6, 6).Radius(3).Background(dot).Shrink(0)
+	}
+	if glyph == nil {
+		return
+	}
+	ink := fg
+	if glyphColor.A > 0 {
+		ink = glyphColor
+	}
+	ui.Icon(c, glyph).Size(iconSize, iconSize).Shrink(0).TextColor(ink)
 }

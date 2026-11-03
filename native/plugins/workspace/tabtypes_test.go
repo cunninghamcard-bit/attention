@@ -26,7 +26,7 @@ func TestTabsAreClaimedByAddress(t *testing.T) {
 	if tb := ws.openIn("/elsewhere/x.txt", nil, true); tb.address != fsplugin.AbsoluteAddress("/elsewhere/x.txt") {
 		t.Fatalf("a file outside the mounts = %s", tb.address)
 	}
-	if again := ws.open("/m/alpha.md", nil); again != md || len(ws.activePane().tabs) != 4 {
+	if again := ws.open("/m/alpha.md", nil); again != md || len(ws.allGroups()) != 4 || ws.activeTab() != md {
 		t.Fatal("the same (kind, address) focuses its tab")
 	}
 }

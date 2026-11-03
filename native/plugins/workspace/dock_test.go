@@ -12,14 +12,13 @@ import (
 
 func TestDockShowsFirstPanelAndRevealsByShortcut(t *testing.T) {
 	var searchReveals int
-	panel(t, "file-explorer", 0, "tree body", nil)
 	panel(t, "search", 1, "search body", &searchReveals)
 	ws, tt := testWorkspace(t)
 	l := testLayout
 	// The search plugin's command, which owns Ctrl Shift F.
 	t.Cleanup(ws.act.Add(actions.Command{ID: "global-search:open", Keys: "Ctrl Shift F", Main: func() { l.RevealPanel("search") }}))
-	if !tt.HasText("tree body") || tt.HasText("search body") {
-		t.Fatalf("the left dock should show the first panel: %v", tt.Texts())
+	if l.ShownPanel(slots.Sidebar) != TabsPanelID || tt.HasText("search body") {
+		t.Fatalf("the sidebar should show the first panel, the tabs: %q %v", l.ShownPanel(slots.Sidebar), tt.Texts())
 	}
 	if err := tt.Click("search"); err != nil {
 		t.Fatal(err)
@@ -29,7 +28,7 @@ func TestDockShowsFirstPanelAndRevealsByShortcut(t *testing.T) {
 		t.Fatalf("clicking the header icon should show search: %q %v", l.ShownPanel(slots.Sidebar), tt.Texts())
 	}
 	press(tt, ui.Cmd, ui.KeyB)
-	if l.Open(slots.Sidebar) || tt.HasText("tree body") {
+	if l.Open(slots.Sidebar) || tt.HasText("search body") {
 		t.Fatal("Ctrl B should close the left dock")
 	}
 	press(tt, ui.Cmd|ui.Shift, ui.KeyF)
@@ -102,25 +101,21 @@ func TestBackButtonRuns(t *testing.T) {
 	}
 }
 
-// Regression: closing a group's last tab from a click during the build
-// changed the tree splitView was walking, and it panicked.
-func TestClosingAGroupFromItsTabListDoesNotPanic(t *testing.T) {
+// Regression: closing a tab from a click during the build changed the
+// tree splitView was walking, and it panicked.
+func TestClosingATabFromItsRowDoesNotPanic(t *testing.T) {
 	ws, tt := testWorkspace(t)
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
 	ws.open("/m/alpha.md", nil)
 	ws.openIn("/m/beta.md", nil, true)
 	ws.split(vertical)
-	testLayout.Toggle(slots.Context)
 	tt.Frame()
-	if err := tt.Click("Tab list"); err != nil {
-		t.Fatal(err)
-	}
-	if err := tt.Click("Close all"); err != nil {
+	if err := tt.Click("Close alpha.md"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if len(ws.groups()) != 1 {
-		t.Fatalf("Close all should close the group: %d groups", len(ws.groups()))
+	if got := tabs(ws); len(got) != 2 || len(ws.groups()) != 2 {
+		t.Fatalf("the split of beta should be left, shown: %v, %d cards", got, len(ws.groups()))
 	}
 }
 

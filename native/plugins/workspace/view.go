@@ -2,7 +2,6 @@ package workspace
 
 import (
 	"fmt"
-	"math"
 	"strings"
 
 	"github.com/egoist/mygo"
@@ -15,24 +14,16 @@ import (
 )
 
 // view is the center (RFC §5.8: it reads state, never the disk): the
-// layout tree's splits and tab groups.
+// shown item's cards, side by side as its tree splits them.
 func (ws *Workspace) view(c *ui.Context) {
 	ws.flush()
 	ws.reclaim()
-	ws.paneGroup(c)
+	ui.Column(c).Grow(1).Fill().MinWidth(0).MinHeight(0).Children(func() { ws.splitView(c, ws.root) })
 }
 
-// ---- panes and tabs -----------------------------------------------------------
-
-// paneGroup is the center: the layout tree's splits and tab groups.
-func (ws *Workspace) paneGroup(c *ui.Context) {
-	ui.Column(c).Grow(1).Fill().Children(func() { ws.splitView(c, ws.root) })
-}
-
-// splitView draws n. mygo's splits take two children, so a split of more
-// is drawn nested: child k against the rest, pcts[k] being child k's
-// percentage of what is left from it on. A divider dragged during the
-// build moves pcts, which become the children's shares again.
+// splitView draws n: a card, or its children as cards with a gap between
+// them, sized by their shares; dragging a gap moves the share across it.
+// mygo's splits draw a line in the gap, which cards do not want.
 func (ws *Workspace) splitView(c *ui.Context, n *node) {
 	if n.group != nil {
 		ws.paneView(c, n.group)
@@ -43,61 +34,82 @@ func (ws *Workspace) splitView(c *ui.Context, n *node) {
 		ws.splitView(c, kids[0])
 		return
 	}
+	across := n.dir != horizontal
+	box := ui.Column(c)
+	if across {
+		box = ui.Row(c)
+	}
+	box.Key(fmt.Sprintf("split-%p", n)).Grow(1).Fill().MinWidth(0).MinHeight(0)
+	gap := c.Theme().Spacing
+	b := box.Bounds()
+	total := b.H
+	if across {
+		total = b.W
+	}
+	total -= gap * float32(len(kids)-1)
 	shares := n.shares()
-	pcts := make([]float32, len(kids)-1)
-	rest := float32(100)
-	for k := range pcts {
-		pcts[k] = shares[k] / rest * 100
-		rest -= shares[k]
+	box.Children(func() {
+		for i, ch := range kids {
+			if i > 0 {
+				ws.gapHandle(c, n, kids, shares, i, total, across)
+			}
+			cell := ui.Column(c).Key(fmt.Sprintf("cell-%p", ch)).Grow(shares[i]).MinWidth(0).MinHeight(0)
+			if across {
+				cell.Width(0).FillHeight()
+			} else {
+				cell.Height(0).FillWidth()
+			}
+			cell.Children(func() { ws.splitView(c, ch) })
+		}
+	})
+}
+
+// gapHandle is the gap before kids[i]: dragged, it moves share between
+// kids[i-1] and kids[i], each keeping at least a tenth.
+func (ws *Workspace) gapHandle(c *ui.Context, n *node, kids []*node, shares []float32, i int, total float32, across bool) {
+	gap := c.Theme().Spacing
+	h := ui.Box(c).Key(fmt.Sprintf("gap-%p-%d", n, i)).Shrink(0)
+	if across {
+		h.Width(gap).FillHeight().Cursor(ui.CursorResizeEW)
+	} else {
+		h.Height(gap).FillWidth().Cursor(ui.CursorResizeNS)
 	}
-	set := append([]float32(nil), pcts...)
-	ws.splitFrom(c, n, kids, pcts, 0)
-	moved := false
-	for k := range set {
-		moved = moved || math.Abs(float64(set[k]-pcts[k])) > 0.01
+	dx, dy, held := h.Dragged()
+	d := dy
+	if across {
+		d = dx
 	}
-	if !moved || len(n.children) != len(kids) {
+	if !held || d == 0 || total <= 0 {
 		return
 	}
-	rest = 100
+	moved := d / total * 100
+	a, z := shares[i-1]+moved, shares[i]-moved
+	if a < 10 || z < 10 {
+		return
+	}
+	shares[i-1], shares[i] = a, z
 	for k, ch := range kids {
-		if k == len(pcts) {
-			ch.dim = rest
-			break
-		}
-		ch.dim = pcts[k] / 100 * rest
-		rest -= ch.dim
+		ch.dim = shares[k]
 	}
 	if ws.saveSoon != nil {
 		ws.saveSoon()
 	}
 }
 
-func (ws *Workspace) splitFrom(c *ui.Context, n *node, kids []*node, pcts []float32, k int) {
-	if k == len(kids)-1 {
-		ws.splitView(c, kids[k])
-		return
-	}
-	first := func() { ws.splitView(c, kids[k]) }
-	rest := func() { ws.splitFrom(c, n, kids, pcts, k+1) }
-	if n.dir == horizontal {
-		ui.SplitVerticalPercent(c, &pcts[k], first, rest).Grow(1).Fill()
-	} else {
-		ui.SplitPercent(c, &pcts[k], first, rest).Grow(1).Fill()
-	}
-}
-
+// paneView is a card: its tab's body, or the empty page, and where a tab
+// dragged over it would land. In a split the focused card is ringed.
 func (ws *Workspace) paneView(c *ui.Context, p *pane) {
+	t := c.Theme()
 	focused := p == ws.activePane()
 	alone := len(ws.groups()) == 1
-	col := ui.Column(c).Key(fmt.Sprintf("group-%d", p.id)).Grow(1).Fill()
-	if col.Clicked() {
+	card := aui.Card(c, ui.Column(c).Key(fmt.Sprintf("group-%d", p.id)).Grow(1).Fill().MinWidth(0).MinHeight(0))
+	if focused && !alone {
+		card.Border(2, t.Accent.Alpha(0.5))
+	}
+	if card.Clicked() {
 		ws.focusGroup(p)
 	}
-	col.Children(func() {
-		if ws.app.Settings().ShowTabBar {
-			ws.tabBar(c, p, focused || alone)
-		}
+	card.Children(func() {
 		side := p.dropSide
 		body := ui.Column(c).Grow(1).Fill().MinHeight(0).Children(func() {
 			if tb := p.current(); tb == nil {
@@ -125,178 +137,183 @@ func (ws *Workspace) paneView(c *ui.Context, p *pane) {
 	})
 }
 
-// tabBar is a group's tab header (WorkspaceTabs): the tabs, New tab, then
-// the tab list; the top-right group carries the right sidebar's toggle
-// while that sidebar is closed (updateSidebarTogglePlacement).
-func (ws *Workspace) tabBar(c *ui.Context, p *pane, focused bool) {
+// tabsPanel is the sidebar's list (RFC 0003 §4): New tab, then every item,
+// a tab or a split; a row dropped on another goes before it, one dropped
+// below the list goes last.
+func (ws *Workspace) tabsPanel(c *ui.Context, _ slots.PanelProps) {
 	t := c.Theme()
-	p.chips = p.chips[:0]
-	padLeft, padRight := float32(4), float32(4)
-	if l := ws.lyt; l != nil {
-		if !l.Open(slots.Sidebar) && ws.isTopLeft(p) {
-			padLeft += l.LeftHeaderSpace(c)
+	ui.Column(c).Fill().MinHeight(0).Gap(2).Children(func() {
+		if aui.SidebarItem(c, aui.SidebarItemProps{Key: "new-tab", Label: "New tab", Icon: icon.Must("plus")}).Clicked() {
+			ws.later(ws.newTab)
 		}
-		if !l.Open(slots.Context) && ws.isTopRight(p) {
-			padRight += c.TitleBar().Right
-		}
-	}
-	header := ui.Row(c).Height(38).Shrink(0).FillWidth().Background(t.Surface).
-		AlignItems(ui.Center).Padding(0, padRight, 0, padLeft).Gap(2)
-	borderColor := t.Border
-	bgColor := t.Background
-	header.DrawOver(func(painter *ui.Painter, rc ui.Rect) {
-		y := rc.Y + rc.H - 1
-		painter.Fill(ui.Rect{X: rc.X, Y: y, W: rc.W, H: 1}, borderColor, 0)
-		if p.active >= 0 && p.active < len(p.chips) {
-			ab := p.chips[p.active]
-			if ab.W > 2 {
-				painter.Fill(ui.Rect{X: ab.X + 1, Y: y, W: ab.W - 2, H: 1}, bgColor, 0)
-			}
-		}
-	})
-	if ws.isTop(p) {
-		header.DragWindow()
-	}
-	header.Children(func() {
-		if l := ws.lyt; l != nil && !l.Open(slots.Sidebar) && ws.isTopLeft(p) {
-			l.ToggleButton(c, slots.Sidebar)
-		}
-		ui.ScrollHorizontal(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
-			ui.Row(c).Padding(4, 6, 0, 6).Gap(2).AlignItems(ui.End).FillHeight().Children(func() {
-				for j, tb := range p.tabs {
-					ws.tabChip(c, p, j, tb)
+		ui.Box(c).Height(1).Shrink(0).FillWidth().Margin(4, 8).Background(aui.Wash(t, 0.08))
+		ui.Scroll(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
+			ui.Column(c).FillWidth().Gap(2).Children(func() {
+				for _, it := range ws.shownItems() {
+					ws.itemRow(c, it)
 				}
-				ui.Row(c).Height(32).AlignItems(ui.Center).Children(func() {
-					aui.Button(c, aui.ButtonProps{Label: "New tab", Icon: icon.Must("plus"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-						OnClick: func() { ws.later(func() { ws.activeGroup = p; ws.newTab() }) }}).Tooltip("New tab")
-				})
+				end := ui.Box(c).Key("tabs-end").FillWidth().Height(48)
+				if dragged, ok := ui.Drop[*tab](end); ok {
+					ws.later(func() { ws.moveToList(dragged, len(ws.items)) })
+				}
 			})
 		})
-		aui.IconMenu(c, aui.IconMenuProps{Label: "Tab list", Icon: icon.Must("chevron-down"), End: true, Items: ws.tabListMenu(p)})
-		if l := ws.lyt; l != nil && !l.Open(slots.Context) && ws.isTopRight(p) {
-			l.ToggleButton(c, slots.Context)
-		}
 	})
-	if dragged, ok := ui.Drop[*tab](header); ok {
-		at := insertIndex(p, header)
-		ws.later(func() { ws.moveTab(dragged, p, at) })
+}
+
+// itemRow is one item of the list: a tab's row, or a split's.
+func (ws *Workspace) itemRow(c *ui.Context, it *node) {
+	var cards []*pane
+	for _, g := range it.groups(nil) {
+		if len(g.tabs) > 0 {
+			cards = append(cards, g)
+		}
+	}
+	selected := it == ws.root
+	hook := func(el ui.Element, g *pane) {
+		tb := g.tabs[0]
+		el.Drag(tb)
+		el.ContextMenu(func(m *ui.Menu) { nativeMenu(m, ws.tabMenu(g, tb)) })
+		if el.Clicked() {
+			ws.selectGroup(g)
+		}
+	}
+	var row ui.Element
+	if len(cards) == 1 {
+		g := cards[0]
+		tb := g.tabs[0]
+		title, tip, glyph, color := ws.face(c, tb)
+		row = aui.TabRow(c, aui.TabRowProps{Key: fmt.Sprintf("tab-%d", tb.id), Title: title, Tooltip: tip,
+			Icon: glyph, IconColor: color, Selected: selected, Muted: tb.isMissing(),
+			CloseLabel: "Close " + tb.title, OnClose: func() { ws.later(func() { ws.closeTabs([]*tab{tb}) }) }})
+		hook(row, g)
+	} else {
+		parts := make([]aui.SplitPart, len(cards))
+		focus := ws.activePane()
+		for k, g := range cards {
+			title, _, glyph, color := ws.face(c, g.tabs[0])
+			parts[k] = aui.SplitPart{Key: fmt.Sprintf("tab-%d", g.tabs[0].id), Title: title, Icon: glyph, IconColor: color,
+				Focused: g == focus}
+		}
+		var els []ui.Element
+		row, els = aui.SplitRow(c, fmt.Sprintf("split-row-%p", it), selected, parts)
+		for k, el := range els {
+			hook(el, cards[k])
+		}
+	}
+	if dragged, ok := ui.Drop[*tab](row); ok {
+		at := indexOf(ws.items, it)
+		ws.later(func() { ws.moveToList(dragged, at) })
 	}
 }
 
-func (ws *Workspace) tabChip(c *ui.Context, p *pane, j int, tb *tab) {
-	t := c.Theme()
-	title := tb.title
+// face is how tb shows in the list: its title, tooltip, icon and the
+// icon's color (the zero color follows the text).
+func (ws *Workspace) face(c *ui.Context, tb *tab) (title, tip string, glyph *ui.SVG, color ui.Color) {
+	title, tip = tb.title, tb.title
 	if tb.isMissing() {
 		title += " (deleted)"
 	}
-	tip := tb.title
-	glyph := ws.tabIcon(tb)
-	var iconColor ui.Color
 	if tb.empty {
-		glyph = nil
-	} else if !tb.page() {
+		return title, tip, icon.Must("globe"), ui.Color{}
+	}
+	glyph = ws.tabIcon(tb)
+	if !tb.page() {
 		tip = ws.display(tb.path)
 		if icons := ws.app.Icons(); !icons.Show {
 			glyph = nil
 		} else {
-			iconColor = icons.Color(tb.title, t.Dark)
+			color = icons.Color(tb.title, c.Theme().Dark)
 		}
 	}
-	chip := aui.TabChip(c, aui.TabChipProps{
-		Key: fmt.Sprintf("tab-%d", tb.id), Title: title, Tooltip: tip, Icon: glyph, IconColor: iconColor,
-		Selected: j == p.active, Divider: j+1 < len(p.tabs) && j+1 != p.active,
-		CloseLabel: "Close " + tb.title, OnClose: func() { ws.later(func() { ws.closeTabs([]*tab{tb}) }) },
-	})
-	chip.ContextMenu(func(m *ui.Menu) { nativeMenu(m, ws.tabMenu(p, tb)) })
-	chip.Drag(tb)
-	p.chips = append(p.chips, chip.Bounds())
-	if chip.Clicked() {
-		p.active = j
-		ws.activeGroup = p
-		ws.changed()
-	}
+	return title, tip, glyph, color
 }
 
-// tabListMenu is the tab list (WorkspaceTabs.showTabListMenu): Close all,
-// then the group's tabs, the active one checked.
-func (ws *Workspace) tabListMenu(p *pane) []aui.MenuItem {
-	items := []aui.MenuItem{
-		{Label: "Close all", Icon: icon.Must("x"), OnClick: ws.closeAllLater(p)},
-		{Separator: true},
+// headNav is Back and Forward for the active tab, beside the window
+// controls.
+func (ws *Workspace) headNav(c *ui.Context) {
+	t := c.Theme()
+	tb := ws.activeTab()
+	button := func(label string, glyph *ui.SVG, delta, n int) {
+		// Disabled draws the icon muted, as attention's aria-disabled
+		// clickable-icon; enabled draws it in the text colour.
+		color := t.Text
+		if n == 0 {
+			color = ui.Color{}
+		}
+		aui.Button(c, aui.ButtonProps{Label: label, Icon: glyph, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
+			Disabled: n == 0, IconColor: color, OnClick: func() { ws.later(func() { ws.goHistory(tb, delta) }) }}).
+			Tooltip(label)
 	}
-	for j, tb := range p.tabs {
-		j := j
-		items = append(items, aui.MenuItem{Label: tb.title, Icon: ws.tabIcon(tb), Checked: j == p.active,
-			OnClick: func() { p.active, ws.activeGroup = j, p; ws.changed() }})
+	back, forward := 0, 0
+	if tb != nil {
+		back, forward = len(tb.back), len(tb.forward)
 	}
-	return items
+	button("Back", icon.Must("arrow-left"), -1, back)
+	button("Forward", icon.Must("arrow-right"), 1, forward)
 }
 
-// tabMenu is a tab's context menu: View.onTabMenu's close items, then More
+// addressBar is the active tab's address: its folders muted, then its
+// name (FileView.renderBreadcrumbs), or its type's own Header; then its
+// type's Actions and More options. A press on the address opens the quick
+// switcher.
+func (ws *Workspace) addressBar(c *ui.Context) {
+	props := aui.AddressBarProps{OnClick: func() { ws.sl.OpenPalette("switcher") }}
+	tb := ws.activeTab()
+	if tb == nil || tb.empty {
+		props.Name, props.Icon = "Search or open a file", icon.Must("search")
+		aui.AddressBar(c, props)
+		return
+	}
+	p := ws.activePane()
+	tt, ok := ws.tabTypes.Get(tb.typeID)
+	tp := ws.props(tb, true)
+	if ok && tt.Header != nil {
+		props.Body = func() { tt.Header(c, tp) }
+	}
+	if tb.page() {
+		props.Name, props.Icon = tb.title, ws.tabIcon(tb)
+	} else {
+		parts := strings.Split(ws.display(tb.path), "/")
+		if len(parts) > 1 {
+			props.Prefix = strings.Join(parts[:len(parts)-1], "/") + "/"
+		}
+		props.Name, props.Locked = tb.title, true
+	}
+	props.Trailing = func() {
+		if ok && tt.Actions != nil {
+			tt.Actions(c, tp)
+		}
+		aui.IconMenu(c, aui.IconMenuProps{Label: "More options", Icon: icon.Must("ellipsis-vertical"), End: true,
+			Items: ws.paneMenu(p, tb, tt)})
+	}
+	aui.AddressBar(c, props)
+}
+
+// tabMenu is a tab's context menu: Close and Close others, then More
 // options' (WorkspaceLeaf.onOpenTabHeaderMenu).
 func (ws *Workspace) tabMenu(p *pane, tb *tab) []aui.MenuItem {
-	at := p.indexOf(tb)
-	closing := func(ts func() []*tab) func() {
-		return func() {
-			ts := append([]*tab(nil), ts()...)
-			ws.later(func() { ws.closeTabs(ts) })
-		}
-	}
-	items := []aui.MenuItem{{Label: "Close", Icon: icon.Must("x"), OnClick: closing(func() []*tab { return []*tab{tb} })}}
-	if len(p.tabs) > 1 {
-		items = append(items, aui.MenuItem{Label: "Close others", Icon: icon.Must("x"), OnClick: closing(func() []*tab {
+	items := []aui.MenuItem{{Label: "Close", Icon: icon.Must("x"), OnClick: func() {
+		ws.later(func() { ws.closeTabs([]*tab{tb}) })
+	}}}
+	if len(ws.allGroups()) > 1 {
+		items = append(items, aui.MenuItem{Label: "Close others", Icon: icon.Must("x"), OnClick: func() {
 			var others []*tab
-			for _, o := range p.tabs {
-				if o != tb {
-					others = append(others, o)
+			for _, g := range ws.allGroups() {
+				for _, o := range g.tabs {
+					if o != tb {
+						others = append(others, o)
+					}
 				}
 			}
-			return others
-		})})
-	}
-	if at < len(p.tabs)-1 {
-		items = append(items, aui.MenuItem{Label: "Close tabs to the right", Icon: icon.Must("x"), OnClick: closing(func() []*tab {
-			return p.tabs[p.indexOf(tb)+1:]
-		})})
-	}
-	if len(p.tabs) > 1 {
-		items = append(items, aui.MenuItem{Label: "Close all", Icon: icon.Must("x"), OnClick: ws.closeAllLater(p)})
+			ws.later(func() { ws.closeTabs(others) })
+		}})
 	}
 	if tb.empty {
 		return items
 	}
 	tt, _ := ws.tabTypes.Get(tb.typeID)
 	return append(append(items, aui.MenuItem{Separator: true}), ws.paneMenu(p, tb, tt)...)
-}
-
-func (ws *Workspace) closeAllLater(p *pane) func() {
-	return func() {
-		ts := append([]*tab(nil), p.tabs...)
-		ws.later(func() { ws.closeTabs(ts) })
-	}
-}
-
-// isTop reports whether p is along the center's top edge.
-func (ws *Workspace) isTop(p *pane) bool {
-	rs := map[*pane]rect{}
-	ws.root.rects(rect{0, 0, 1, 1}, rs)
-	return rs[p].top < 1e-6
-}
-
-// isTopLeft reports whether p is the center's top-left group.
-func (ws *Workspace) isTopLeft(p *pane) bool {
-	rs := map[*pane]rect{}
-	ws.root.rects(rect{0, 0, 1, 1}, rs)
-	r := rs[p]
-	return r.top < 1e-6 && r.left < 1e-6
-}
-
-// isTopRight reports whether p is the center's top-right group.
-func (ws *Workspace) isTopRight(p *pane) bool {
-	rs := map[*pane]rect{}
-	ws.root.rects(rect{0, 0, 1, 1}, rs)
-	r := rs[p]
-	return r.top < 1e-6 && r.right > 1-1e-6
 }
 
 func (ws *Workspace) emptyPane(c *ui.Context) {
@@ -338,9 +355,6 @@ func (ws *Workspace) tabBody(c *ui.Context, p *pane, tb *tab, focused bool) {
 	tt, ok := ws.tabTypes.Get(tb.typeID)
 	props := ws.props(tb, focused)
 	app := ws.app.Settings()
-	if app.ShowViewHeader {
-		ws.viewHeader(c, p, tb, props, tt, focused)
-	}
 	if tb.isMissing() {
 		banner(c, "This file was deleted or moved. The last loaded content is shown.", t.Warning)
 	}
@@ -352,68 +366,6 @@ func (ws *Workspace) tabBody(c *ui.Context, p *pane, tb *tab, focused bool) {
 		ui.Text(c, tb.title).FontSize(22).Bold().TextColor(t.Text).Padding(16, 24, 4, 24)
 	}
 	tt.Body(c, props)
-}
-
-// viewHeader is the tab's header, attention's ItemView header: Back and
-// Forward, the file's folders and name, the tab type's actions and More
-// options.
-func (ws *Workspace) viewHeader(c *ui.Context, p *pane, tb *tab, props tabtypes.Props, tt tabtypes.TabType, focused bool) {
-	t := c.Theme()
-	ui.Row(c).Key(fmt.Sprintf("header-%d", p.id)).Height(36).Shrink(0).FillWidth().PaddingX(8).Gap(2).AlignItems(ui.Center).
-		Background(t.Background).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-		navButton := func(label string, icon *ui.SVG, delta int, n int) {
-			// Disabled draws the icon muted, as attention's aria-disabled
-			// clickable-icon; enabled draws it in the text colour.
-			color := t.Text
-			if n == 0 {
-				color = ui.Color{}
-			}
-			aui.Button(c, aui.ButtonProps{Label: label, Icon: icon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-				Disabled: n == 0, IconColor: color, OnClick: func() { ws.later(func() { ws.activeGroup = p; ws.goHistory(tb, delta) }) }}).
-				Tooltip(label)
-		}
-		navButton("Back", icon.Must("arrow-left"), -1, len(tb.back))
-		navButton("Forward", icon.Must("arrow-right"), 1, len(tb.forward))
-		if tt.Header != nil {
-			tt.Header(c, props)
-		} else {
-			ws.breadcrumbs(c, tb, focused)
-		}
-		if tt.Actions != nil {
-			tt.Actions(c, props)
-		}
-		aui.IconMenu(c, aui.IconMenuProps{Label: "More options", Icon: icon.Must("ellipsis-vertical"), End: true, Items: ws.paneMenu(p, tb, tt)})
-	})
-}
-
-// breadcrumbs are the file's folders, then its name
-// (FileView.renderBreadcrumbs), centered.
-func (ws *Workspace) breadcrumbs(c *ui.Context, tb *tab, focused bool) {
-	t := c.Theme()
-	ui.Row(c).Grow(1).MinWidth(0).Justify(ui.Center).AlignItems(ui.Center).Gap(4).Children(func() {
-		var parts []string
-		if !tb.page() {
-			parts = strings.Split(ws.display(tb.path), "/")
-			parts = parts[:len(parts)-1]
-		}
-		for _, part := range parts {
-			if part == "" {
-				continue
-			}
-			ui.Text(c, part).FontSize(13).TextColor(t.TextMuted)
-			ui.Text(c, "/").FontSize(13).TextColor(t.TextMuted)
-		}
-		// The focused group's name is in the text colour, the others'
-		// muted, as attention's inactive view headers.
-		name := t.Text
-		if !focused {
-			name = t.TextMuted
-		}
-		if !tb.empty && !tb.page() {
-			ws.app.Icons().Render(c, tb.title, false, false, t.Dark, 14)
-		}
-		ui.Text(c, tb.title).FontSize(13).TextColor(name).MaxLines(1)
-	})
 }
 
 // paneMenu is More options: the tab type's items, then attention's pane
@@ -458,8 +410,7 @@ func (ws *Workspace) paneMenu(p *pane, tb *tab, tt tabtypes.TabType) []aui.MenuI
 
 // ---- status bar ---------------------------------------------------------------
 
-// tabStatus is the active tab's status bar items: its type's, then
-// Read-only.
+// tabStatus is the active tab's status items, its type's.
 func (ws *Workspace) tabStatus(c *ui.Context) {
 	tb := ws.activeTab()
 	if tb == nil || tb.empty || tb.page() {
@@ -468,7 +419,6 @@ func (ws *Workspace) tabStatus(c *ui.Context) {
 	if tt, ok := ws.tabTypes.Get(tb.typeID); ok && tt.Status != nil {
 		tt.Status(c, ws.props(tb, true))
 	}
-	ui.Text(c, "Read-only").FontSize(12).TextColor(c.Theme().TextMuted)
 }
 
 // tabIcon is a tab's icon: its type's, a file's by its name, a new tab's

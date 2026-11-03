@@ -30,7 +30,11 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
+	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
+
+// TabsPanelID is the sidebar panel listing the tabs.
+const TabsPanelID = "tabs"
 
 // Plugin is the center while loaded and provides "tabTypes" and "workspace".
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
@@ -251,7 +255,7 @@ func (ws *Workspace) commands() []actions.Command {
 				// The TS CLI's shape: "[<view type>] <display text>", then a tab
 				// ID with ids.
 				var lines []string
-				for _, p := range ws.groups() {
+				for _, p := range ws.allGroups() {
 					for _, t := range p.tabs {
 						line := "[" + t.viewType() + "] " + t.displayText()
 						if a.Has("ids") {
@@ -371,11 +375,15 @@ func (t *tab) displayText() string {
 	return t.title
 }
 
-// Register makes ws the center (the workspace.center slot), with its
-// status bar items, its actions hooks and its commands, until off is called.
+// Register makes ws the center (the workspace.center slot), with the
+// sidebar's head and its list of tabs, its status items, its actions hooks
+// and its commands, until off is called.
 func Register(ws *Workspace) (off func()) {
 	offs := []func(){
 		ws.sl.SetCenter(ws.view),
+		ws.sl.SetSidebarHead(slots.SidebarHead{Nav: ws.headNav, Bar: ws.addressBar}),
+		ws.sl.RegisterPanel(slots.Panel{ID: TabsPanelID, Title: "Tabs", Icon: icon.Must("files"), Dock: slots.Sidebar,
+			Order: -10, View: ws.tabsPanel}),
 		ws.sl.RegisterStatus(slots.StatusItem{ID: "workspace-tab", Right: true, View: ws.tabStatus}),
 		ws.act.SetActiveFile(func(ctx context.Context) (string, error) {
 			if ws.sh.Window() == nil {

@@ -1,6 +1,9 @@
 package workspace
 
-import "math"
+import (
+	"math"
+	"slices"
+)
 
 const (
 	vertical   direction = "vertical"
@@ -11,9 +14,10 @@ const (
 // side by side (a vertical divider), horizontal stacks them.
 type direction string
 
-// node is the center's layout tree: a split of nodes, or a tab group (a
-// leaf of the tree). Port of attention's WorkspaceSplit, WorkspaceTabs and
-// WorkspaceParent (apps/web/views/workspace).
+// node is an item's layout tree: a split of nodes, or a card (a leaf of
+// the tree); an item's root is a split. Port of attention's
+// WorkspaceSplit, WorkspaceTabs and WorkspaceParent
+// (apps/web/views/workspace).
 type node struct {
 	parent *node
 	// A split's direction and children.
@@ -139,8 +143,78 @@ func (n *node) rects(r rect, out map[*pane]rect) {
 	}
 }
 
-// groups are the center's tab groups, in order.
+// groups are the shown item's cards, in order.
 func (ws *Workspace) groups() []*pane { return ws.root.groups(nil) }
+
+// allGroups are every item's cards, in the list's order.
+func (ws *Workspace) allGroups() []*pane {
+	var out []*pane
+	for _, it := range ws.items {
+		out = it.groups(out)
+	}
+	return out
+}
+
+// shownItems are the items the sidebar lists: those holding a tab.
+func (ws *Workspace) shownItems() []*node {
+	var out []*node
+	for _, it := range ws.items {
+		if slices.ContainsFunc(it.groups(nil), func(p *pane) bool { return len(p.tabs) > 0 }) {
+			out = append(out, it)
+		}
+	}
+	return out
+}
+
+// newItem is an item holding one empty card, not in the list yet.
+func (ws *Workspace) newItem() *node {
+	root := &node{dir: vertical}
+	root.insert(0, newGroupNode(ws.newPane()))
+	return root
+}
+
+// addItem puts a new item at i in the list and shows it; its card is
+// returned.
+func (ws *Workspace) addItem(i int) *pane {
+	it := ws.newItem()
+	i = max(0, min(i, len(ws.items)))
+	ws.items = slices.Insert(ws.items, i, it)
+	ws.selectItem(it)
+	return it.children[0].group
+}
+
+// selectItem shows it, focusing its first card unless the focus is in it.
+func (ws *Workspace) selectItem(it *node) {
+	if ws.root == it {
+		return
+	}
+	ws.root = it
+	ws.activeGroup = nil
+	ws.changed()
+}
+
+// selectGroup shows g's item and focuses g.
+func (ws *Workspace) selectGroup(g *pane) {
+	ws.selectItem(rootOf(g.node))
+	ws.focusGroup(g)
+}
+
+// removeItem takes it out of the list; the item before it shows when it
+// was shown, and an empty list keeps one empty item.
+func (ws *Workspace) removeItem(it *node) {
+	i := indexOf(ws.items, it)
+	if i < 0 {
+		return
+	}
+	ws.items = slices.Delete(ws.items, i, i+1)
+	if len(ws.items) == 0 {
+		ws.items = []*node{ws.newItem()}
+	}
+	if ws.root == it {
+		ws.root = ws.items[max(0, min(i-1, len(ws.items)-1))]
+		ws.activeGroup = nil
+	}
+}
 
 // splitGroup puts a new tab group beside g in dir, after it or before:
 // beside it in its split when that runs in dir, halving g's share, else in
@@ -176,12 +250,15 @@ func (ws *Workspace) splitGroup(g *pane, dir direction, before bool) *pane {
 	return next
 }
 
-// removeGroup takes g out of the tree, unless it is the last group.
+// removeGroup takes g out of its item, and the item out of the list with
+// its last card.
 func (ws *Workspace) removeGroup(g *pane) {
-	if len(ws.groups()) <= 1 {
-		return
+	root := rootOf(g.node)
+	if len(root.groups(nil)) <= 1 {
+		ws.removeItem(root)
+	} else {
+		g.node.parent.remove(g.node)
 	}
-	g.node.parent.remove(g.node)
 	if ws.activeGroup == g {
 		ws.activeGroup = nil
 	}
@@ -257,3 +334,14 @@ func less(a, b [3]float64) bool {
 	}
 	return false
 }
+
+// rootOf is the root of n's tree: its item.
+func rootOf(n *node) *node {
+	for n.parent != nil {
+		n = n.parent
+	}
+	return n
+}
+
+// indexOf is it's place in items, or -1.
+func indexOf(items []*node, it *node) int { return slices.Index(items, it) }

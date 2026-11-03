@@ -76,7 +76,7 @@ func (ws *Workspace) cliTabOpen(ctx context.Context, a actions.Args) (string, er
 // findTabGroup is the pane whose id is id, or nil. Only tab groups match,
 // as the TS CLI's findTabGroup (a split id does not).
 func (ws *Workspace) findTabGroup(id string) *pane {
-	for _, g := range ws.groups() {
+	for _, g := range ws.allGroups() {
 		if strconv.Itoa(g.id) == id {
 			return g
 		}
@@ -84,13 +84,18 @@ func (ws *Workspace) findTabGroup(id string) *pane {
 	return nil
 }
 
-// cliWorkspace is `workspace [ids]`: the center's split/tabs tree.
+// cliWorkspace is `workspace [ids]`: the list's items, a tab as a tab
+// group of one, a split as its split/tabs tree.
 func (ws *Workspace) cliWorkspace(ctx context.Context, a actions.Args) (string, error) {
 	return shell.OnMain(ctx, ws.sh, func() (string, error) {
 		ids := a.Has("ids")
-		children := make([]clifmt.Node, 0, len(ws.root.children))
-		for _, c := range ws.root.children {
-			children = append(children, ws.mapAscii(c, ids))
+		var children []clifmt.Node
+		for _, it := range ws.shownItems() {
+			n := it
+			if len(it.children) == 1 {
+				n = it.children[0]
+			}
+			children = append(children, ws.mapAscii(n, ids))
 		}
 		return clifmt.TreeWithRoot("main", children), nil
 	})

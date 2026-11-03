@@ -57,6 +57,13 @@ type Panel struct {
 	Restore func(json.RawMessage)
 }
 
+// SidebarHead is what the center draws at the sidebar's top: Nav beside
+// the window controls (back and forward), Bar under them (the address bar).
+type SidebarHead struct {
+	Nav func(c *ui.Context)
+	Bar func(c *ui.Context)
+}
+
 // Overlay is an overlay contribution (RFC §5.5's overlay slot).
 type Overlay struct {
 	ID      string
@@ -123,6 +130,8 @@ type Registry struct {
 	paletteReq string
 	centerID   int
 	centerView func(c *ui.Context)
+	headID     int
+	head       SidebarHead
 	status     map[int]StatusItem
 	sections   map[int]SettingsSection
 }
@@ -339,6 +348,38 @@ func (r *Registry) Center() func(c *ui.Context) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.centerView
+}
+
+// SetSidebarHead makes h the sidebar's head until off is called; the last
+// set wins.
+func (r *Registry) SetSidebarHead(h SidebarHead) (off func()) {
+	if r == nil {
+		return func() {}
+	}
+	r.mu.Lock()
+	r.seq++
+	id := r.seq
+	r.headID, r.head = id, h
+	r.mu.Unlock()
+	r.invalidate()
+	return func() {
+		r.mu.Lock()
+		if r.headID == id {
+			r.headID, r.head = 0, SidebarHead{}
+		}
+		r.mu.Unlock()
+		r.invalidate()
+	}
+}
+
+// Head is the sidebar's head; its fields are nil for none.
+func (r *Registry) Head() SidebarHead {
+	if r == nil {
+		return SidebarHead{}
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.head
 }
 
 // RegisterStatus adds a status bar item until off is called.
