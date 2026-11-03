@@ -77,6 +77,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		tr.ws = ws
 		tr.act = act
 		tr.app = app
+		tr.project = project
 
 		reloadMounts := func() {
 			go func() {
@@ -115,7 +116,8 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		})
 
 		off := sl.RegisterPanel(slots.Panel{
-			ID: PanelID, Title: "Files", Icon: icon.Must("folder"), Dock: slots.Context, Order: 0,
+			ID: PanelID, Title: "Project", Icon: icon.Must("folder"), Dock: slots.Context, Order: 0,
+			Heading: tr.heading, Actions: tr.actions,
 			View:  func(c *ui.Context, _ slots.PanelProps) { tr.view(c) },
 			State: tr.state, Restore: tr.restore,
 		})
@@ -145,6 +147,7 @@ type Tree struct {
 	fs      fsplugin.FS
 	ws      *workspace.Workspace
 	act     *actions.Service
+	project projectplugin.Project
 	post    func(func())
 	watches *watchq.Queue
 
@@ -154,6 +157,8 @@ type Tree struct {
 	rows         []treeRow
 	rowsDirty    bool
 	notice       string // a watch error
+	shown        string // the mount of the active tab's file, "" for every mount
+	active       string // the active tab's file, as last followed
 	// pendingExpanded are session-restored paths to open once they appear
 	// as a mount or in a listing. Restore may run before mounts arrive;
 	// we do not stat.
@@ -405,8 +410,13 @@ func (tr *Tree) treeRows() []treeRow {
 	}
 	for i := range tr.mounts {
 		m := &tr.mounts[i]
-		tr.rows = append(tr.rows, treeRow{depth: 0, entry: fsplugin.Entry{Name: m.Name, Path: m.Path, Dir: true}, mount: m})
-		walk(m.Path, 1)
+		switch {
+		case tr.shown == "":
+			tr.rows = append(tr.rows, treeRow{depth: 0, entry: fsplugin.Entry{Name: m.Name, Path: m.Path, Dir: true}, mount: m})
+			walk(m.Path, 1)
+		case m.Path == tr.shown:
+			walk(m.Path, 0)
+		}
 	}
 	tr.rowsDirty = false
 	return tr.rows
@@ -415,37 +425,12 @@ func (tr *Tree) treeRows() []treeRow {
 func (tr *Tree) view(c *ui.Context) {
 	t := c.Theme()
 	ws := tr.ws
-	rows := tr.treeRows()
 	current := ""
 	if ws != nil {
 		current = ws.ActivePath()
 	}
+	tr.follow(current)
 	ui.Column(c).Fill().Children(func() {
-		allCollapsed := tr.allCollapsed()
-		collapseIcon := icon.Must("chevrons-down-up")
-		collapseTip := "Collapse all"
-		if allCollapsed {
-			collapseIcon = icon.Must("chevrons-up-down")
-			collapseTip = "Expand all"
-		}
-		ui.Row(c).FillWidth().Padding(6, 8, 2, 8).Gap(2).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
-			aui.Button(c, aui.ButtonProps{
-				Label: "Add folder", Icon: icon.Must("folder-plus"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-				OnClick: func() {
-					if cmd := tr.act.Lookup("workspace:add-folder"); cmd != nil {
-						go func() {
-							if _, err := cmd.Run(tr.ctx, actions.Args{Params: map[string]string{}}); err != nil && tr.ctx.Err() == nil {
-								tr.post(func() { tr.notice = err.Error() })
-							}
-						}()
-					}
-				},
-			}).Tooltip("Add folder to workspace")
-			aui.Button(c, aui.ButtonProps{
-				Label: collapseTip, Icon: collapseIcon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-				OnClick: func() { tr.toggleCollapseAll(!allCollapsed) },
-			}).Tooltip(collapseTip)
-		})
 		if tr.notice != "" {
 			ui.Text(c, tr.notice).FontSize(11).TextColor(t.Warning).Padding(4, 12)
 		}
@@ -453,6 +438,7 @@ func (tr *Tree) view(c *ui.Context) {
 			ui.Text(c, "Loading…").TextColor(t.TextMuted).Padding(8, 12)
 			return
 		}
+		rows := tr.treeRows()
 		app := tr.app.Settings()
 		rowH := float32(26)
 		if app.TreeDensity == "comfortable" {
@@ -474,7 +460,15 @@ func (tr *Tree) view(c *ui.Context) {
 			if ws != nil {
 				row.Tooltip(ws.Display(e.Path))
 			}
+			if r.mount != nil {
+				m := *r.mount
+				row.ContextMenu(func(menu *ui.Menu) { tr.colorMenu(menu, m) })
+			}
 			row.Children(func() {
+				if r.mount != nil {
+					col, _ := aui.ParseColor(r.mount.Color)
+					aui.Dot(c, col)
+				}
 				if e.Dir {
 					d := tr.dirs[e.Path]
 					open := d != nil && d.expanded
@@ -519,6 +513,7 @@ func (tr *Tree) folders(c *ui.Context, remove func(context.Context, string) erro
 		for _, m := range tr.mounts {
 			id := m.ID
 			aui.PreferenceRow(c, m.Name, m.Path, func() {
+				tr.swatches(c, m)
 				aui.Button(c, aui.ButtonProps{Label: "Remove", Variant: aui.ButtonSecondary, OnClick: func() {
 					go func() {
 						if err := remove(tr.ctx, id); err != nil && tr.ctx.Err() == nil {
@@ -538,6 +533,141 @@ func (tr *Tree) folders(c *ui.Context, remove func(context.Context, string) erro
 			}()
 		}
 	}})
+}
+
+// follow shows the project of the active tab's file, current, and opens
+// the folders down to it when it changes; a page, which belongs to no
+// project, shows every mount.
+func (tr *Tree) follow(current string) {
+	if !tr.mountsLoaded {
+		return
+	}
+	shown := ""
+	if m, _, ok := projectplugin.MountOf(tr.mounts, current); ok {
+		shown = m.Path
+	}
+	if shown != tr.shown {
+		tr.shown = shown
+		tr.rowsDirty = true
+	}
+	if current == tr.active {
+		return
+	}
+	tr.active = current
+	if shown == "" {
+		return
+	}
+	for dir := filepath.Dir(current); dir == shown || isUnder(dir, shown); dir = filepath.Dir(dir) {
+		if d := tr.dir(dir); !d.expanded {
+			d.expanded = true
+			tr.loadDir(d)
+			tr.rowsDirty = true
+		}
+		if dir == shown {
+			break
+		}
+	}
+}
+
+// shownMount is the mount the tree shows, ok false while it shows every
+// mount.
+func (tr *Tree) shownMount() (projectplugin.Mount, bool) {
+	for _, m := range tr.mounts {
+		if m.Path == tr.shown {
+			return m, true
+		}
+	}
+	return projectplugin.Mount{}, false
+}
+
+// heading is the section's header: the shown project's dot and name, a
+// menu of its colors on right click.
+func (tr *Tree) heading(c *ui.Context) {
+	m, ok := tr.shownMount()
+	if !ok {
+		aui.SectionLabel(c, "Projects")
+		return
+	}
+	col, _ := aui.ParseColor(m.Color)
+	ui.Row(c).Grow(1).MinWidth(0).Gap(8).AlignItems(ui.Center).ContextMenu(func(menu *ui.Menu) { tr.colorMenu(menu, m) }).
+		Children(func() {
+			aui.Dot(c, col)
+			ui.Text(c, m.Name).FontSize(13).FontWeight(600).SingleLine().Ellipsis("…").Shrink(1).MinWidth(0)
+		})
+}
+
+// actions are the section's Add folder and Collapse all.
+func (tr *Tree) actions(c *ui.Context) {
+	allCollapsed := tr.allCollapsed()
+	collapseIcon := icon.Must("chevrons-down-up")
+	collapseTip := "Collapse all"
+	if allCollapsed {
+		collapseIcon = icon.Must("chevrons-up-down")
+		collapseTip = "Expand all"
+	}
+	aui.Button(c, aui.ButtonProps{
+		Label: "Add folder", Icon: icon.Must("folder-plus"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
+		OnClick: func() {
+			if cmd := tr.act.Lookup("workspace:add-folder"); cmd != nil {
+				go func() {
+					if _, err := cmd.Run(tr.ctx, actions.Args{Params: map[string]string{}}); err != nil && tr.ctx.Err() == nil {
+						tr.post(func() { tr.notice = err.Error() })
+					}
+				}()
+			}
+		},
+	}).Tooltip("Add folder to workspace")
+	aui.Button(c, aui.ButtonProps{
+		Label: collapseTip, Icon: collapseIcon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
+		OnClick: func() { tr.toggleCollapseAll(!allCollapsed) },
+	}).Tooltip(collapseTip)
+}
+
+// colorMenu is a project's Color submenu: the presets, then Default.
+func (tr *Tree) colorMenu(menu *ui.Menu, m projectplugin.Mount) {
+	menu.Submenu("Color", func(sub *ui.Menu) {
+		for _, sw := range projectplugin.Palette {
+			if sub.Item(sw.Name).Checked(m.Color == sw.Color).Chosen() {
+				tr.setColor(m.ID, sw.Color)
+			}
+		}
+		sub.Separator()
+		if sub.Item("Default").Chosen() {
+			tr.setColor(m.ID, "")
+		}
+	})
+}
+
+// swatches are a project's preset colors in Settings, the current one
+// ringed.
+func (tr *Tree) swatches(c *ui.Context, m projectplugin.Mount) {
+	t := c.Theme()
+	ui.Row(c).Gap(4).AlignItems(ui.Center).Children(func() {
+		for _, sw := range projectplugin.Palette {
+			col, _ := aui.ParseColor(sw.Color)
+			b := ui.ButtonBase(c).Key("swatch:"+m.ID+sw.Color).Label(sw.Name).Tooltip(sw.Name).Size(18, 18).Radius(9).
+				Background(col).Cursor(ui.CursorPointer)
+			if m.Color == sw.Color {
+				b.Border(2, t.Text)
+			}
+			if b.Clicked() {
+				tr.setColor(m.ID, sw.Color)
+			}
+		}
+	})
+}
+
+// setColor sets a project's color off the main thread; the tree follows
+// the mounts-changed event.
+func (tr *Tree) setColor(id, color string) {
+	if tr.project.SetMountColor == nil {
+		return
+	}
+	go func() {
+		if err := tr.project.SetMountColor(tr.ctx, id, color); err != nil && tr.ctx.Err() == nil {
+			tr.post(func() { tr.notice = err.Error() })
+		}
+	}()
 }
 
 // savedState is the Files panel's session: which directories are open.

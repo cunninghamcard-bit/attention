@@ -8,10 +8,11 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
 )
 
 var (
@@ -89,19 +90,19 @@ func (tj themeJSON) theme() (Theme, error) {
 		return t, fmt.Errorf("a theme needs a name and an appearance of light or dark")
 	}
 	for i, dst := range t.Colors.fields() {
-		c, ok := parseColor(tj.Colors[colorKeys[i]])
+		c, ok := aui.ParseColor(tj.Colors[colorKeys[i]])
 		if !ok {
 			return t, fmt.Errorf("colors.%s is missing or not #rrggbb[aa]", colorKeys[i])
 		}
 		*dst = c
 	}
 	for i, dst := range t.Syntax.fields() {
-		*dst, _ = parseColor(tj.Syntax[syntaxKeys[i]])
+		*dst, _ = aui.ParseColor(tj.Syntax[syntaxKeys[i]])
 	}
 	if len(tj.Terminal) == 16 {
 		var term [16]ui.Color
 		for i, raw := range tj.Terminal {
-			c, ok := parseColor(raw)
+			c, ok := aui.ParseColor(raw)
 			if !ok {
 				return t, fmt.Errorf("terminal[%d] is not #rrggbb[aa]", i)
 			}
@@ -225,22 +226,4 @@ func fromZed(tj themeJSON) themeJSON {
 		out.Terminal = nil
 	}
 	return out
-}
-
-func parseColor(raw string) (ui.Color, bool) {
-	h := strings.TrimPrefix(strings.TrimSpace(raw), "#")
-	if len(h) == 3 {
-		h = string([]byte{h[0], h[0], h[1], h[1], h[2], h[2]})
-	}
-	if len(h) != 6 && len(h) != 8 {
-		return ui.Color{}, false
-	}
-	v, err := strconv.ParseUint(h, 16, 32)
-	if err != nil {
-		return ui.Color{}, false
-	}
-	if len(h) == 6 {
-		v = v<<8 | 0xff
-	}
-	return ui.Color{R: uint8(v >> 24), G: uint8(v >> 16), B: uint8(v >> 8), A: uint8(v)}, true
 }

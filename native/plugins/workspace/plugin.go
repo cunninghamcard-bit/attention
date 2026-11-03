@@ -381,7 +381,7 @@ func (t *tab) displayText() string {
 func Register(ws *Workspace) (off func()) {
 	offs := []func(){
 		ws.sl.SetCenter(ws.view),
-		ws.sl.SetSidebarHead(slots.SidebarHead{Nav: ws.headNav, Bar: ws.addressBar}),
+		ws.sl.SetChrome(slots.Chrome{Nav: ws.headNav, Bar: ws.addressBar, Tint: ws.tint}),
 		ws.sl.RegisterPanel(slots.Panel{ID: TabsPanelID, Title: "Tabs", Icon: icon.Must("files"), Dock: slots.Sidebar,
 			Order: -10, View: ws.tabsPanel}),
 		ws.sl.RegisterStatus(slots.StatusItem{ID: "workspace-tab", Right: true, View: ws.tabStatus}),

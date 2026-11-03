@@ -4,13 +4,17 @@
 package project
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -40,6 +44,15 @@ const (
 var (
 	// skipDirs are left out of quick open and search walks (not of the tree).
 	skipDirs = map[string]bool{"node_modules": true}
+
+	// Palette is the preset project colors (RFC 0003 §5); a mount gets one
+	// by its name until the user picks another.
+	Palette = []Swatch{
+		{"Red", "#e5484d"}, {"Orange", "#f76b15"}, {"Amber", "#e2a336"}, {"Green", "#46a758"},
+		{"Teal", "#12a594"}, {"Blue", "#0090ff"}, {"Purple", "#8e4ec6"}, {"Pink", "#d6409f"},
+	}
+
+	hexColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 	// Plugin provides "project".
 	Plugin = rutis.Define(rutis.Plugin[Config]{
@@ -76,6 +89,14 @@ type Mount struct {
 	ID   string `json:"id"`
 	Name string `json:"name"` // the display prefix of its files: "<Name>/<rel>"
 	Path string `json:"path"` // absolute
+	// Color is the project's color, "#rrggbb".
+	Color string `json:"color"`
+}
+
+// Swatch is a preset project color.
+type Swatch struct {
+	Name  string
+	Color string // "#rrggbb"
 }
 
 // FileRef is one file under a mount.
@@ -133,8 +154,11 @@ type Project struct {
 	Mounts      func(ctx context.Context) ([]Mount, error)
 	AddMount    func(ctx context.Context, path string) (Mount, error)
 	RemoveMount func(ctx context.Context, id string) error
-	Files       func(ctx context.Context) (Listing, error)
-	Search      func(ctx context.Context, q Query) (SearchResult, error)
+	// SetMountColor sets a mount's color, "#rrggbb"; "" puts back its
+	// preset.
+	SetMountColor func(ctx context.Context, id, color string) error
+	Files         func(ctx context.Context) (Listing, error)
+	Search        func(ctx context.Context, q Query) (SearchResult, error)
 }
 
 // Config is the project row's configuration: the launcher's --mount list.
@@ -142,10 +166,17 @@ type Config struct {
 	Mounts []string `json:"mounts,omitempty"`
 }
 
+// savedMount is one entry of mounts.json.
+type savedMount struct {
+	Path  string `json:"path"`
+	Color string `json:"color,omitempty"`
+}
+
 // Service implements the project service.
 type Service struct {
 	mu     sync.Mutex
 	mounts []Mount
+	colors map[string]string // saved colors by path, for mounts added later
 	save   bool
 	notify func()
 	engine *Engine
@@ -156,10 +187,14 @@ type Service struct {
 // New starts from the configured mounts, else the saved list, else the
 // home directory.
 func New(configured []string, save bool, notify func()) *Service {
-	s := &Service{save: save, notify: notify, engine: NewEngine(nil)}
+	s := &Service{save: save, notify: notify, engine: NewEngine(nil), colors: map[string]string{}}
+	saved := loadSaved()
 	list := configured
-	if len(list) == 0 {
-		list = loadSaved()
+	for _, m := range saved {
+		s.colors[m.Path] = m.Color
+		if len(configured) == 0 {
+			list = append(list, m.Path)
+		}
 	}
 	if len(list) == 0 {
 		if home, err := os.UserHomeDir(); err == nil {
@@ -207,6 +242,28 @@ func (s *Service) RemoveMount(_ context.Context, id string) error {
 		return fmt.Errorf("Mount %q not found.", id)
 	}
 	s.mounts = append(s.mounts[:idx], s.mounts[idx+1:]...)
+	s.mu.Unlock()
+	s.persist()
+	if s.notify != nil {
+		s.notify()
+	}
+	return nil
+}
+
+// SetMountColor sets a mount's color, "#rrggbb"; "" puts back its preset.
+func (s *Service) SetMountColor(_ context.Context, id, color string) error {
+	if color != "" && !hexColor.MatchString(color) {
+		return fmt.Errorf("Invalid color %q: use #rrggbb.", color)
+	}
+	s.mu.Lock()
+	i := slices.IndexFunc(s.mounts, func(m Mount) bool { return m.ID == id })
+	if i < 0 {
+		s.mu.Unlock()
+		return fmt.Errorf("Mount %q not found.", id)
+	}
+	m := &s.mounts[i]
+	m.Color = cmp.Or(strings.ToLower(color), PresetColor(m.Name))
+	s.colors[m.Path] = m.Color
 	s.mu.Unlock()
 	s.persist()
 	if s.notify != nil {
@@ -286,9 +343,9 @@ func (s *Service) persist() {
 		return
 	}
 	s.mu.Lock()
-	list := make([]string, len(s.mounts))
+	list := make([]savedMount, len(s.mounts))
 	for i, m := range s.mounts {
-		list[i] = m.Path
+		list[i] = savedMount{Path: m.Path, Color: m.Color}
 	}
 	s.mu.Unlock()
 	data, _ := json.MarshalIndent(map[string]any{"mounts": list}, "", "  ")
@@ -325,7 +382,11 @@ func (s *Service) add(path string) (Mount, error) {
 		name = base + "-" + strconv.Itoa(n)
 		n++
 	}
-	m := Mount{ID: name, Name: name, Path: abs}
+	color := s.colors[abs]
+	if !hexColor.MatchString(color) {
+		color = PresetColor(name)
+	}
+	m := Mount{ID: name, Name: name, Path: abs, Color: color}
 	s.mounts = append(s.mounts, m)
 	return m, nil
 }
@@ -422,21 +483,34 @@ func (s *Service) commands() []actions.Command {
 // Display is how the CLI and quick open show a file: "<mount name>/<rel>".
 func Display(m Mount, rel string) string { return m.Name + "/" + rel }
 
-func loadSaved() []string {
+// PresetColor is the preset color a project named name gets.
+func PresetColor(name string) string {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(name))
+	return Palette[h.Sum32()%uint32(len(Palette))].Color
+}
+
+// loadSaved reads mounts.json: a list of {path, color}, or of bare paths
+// as before project colors.
+func loadSaved() []savedMount {
 	data, err := os.ReadFile(paths.MountsPath())
 	if err != nil {
 		return nil
 	}
 	var saved struct {
-		Mounts []string `json:"mounts"`
+		Mounts []json.RawMessage `json:"mounts"`
 	}
 	if json.Unmarshal(data, &saved) != nil {
 		return nil
 	}
-	var out []string
-	for _, p := range saved.Mounts {
-		if st, err := os.Stat(p); err == nil && st.IsDir() {
-			out = append(out, p)
+	var out []savedMount
+	for _, raw := range saved.Mounts {
+		var m savedMount
+		if json.Unmarshal(raw, &m.Path) != nil && json.Unmarshal(raw, &m) != nil {
+			continue
+		}
+		if st, err := os.Stat(m.Path); err == nil && st.IsDir() {
+			out = append(out, m)
 		}
 	}
 	return out

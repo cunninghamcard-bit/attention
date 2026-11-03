@@ -147,14 +147,14 @@ func (a *Appearance) accentField(c *ui.Context, s Settings) {
 	t := c.Theme()
 	ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 		swatch := t.Accent
-		if col, ok := parseColor(a.tab.accent); ok {
+		if col, ok := aui.ParseColor(a.tab.accent); ok {
 			swatch = col
 		}
 		ui.Box(c).Size(20, 20).Radius(6).Background(swatch).Border(1, t.Border)
 		prev := a.tab.accent
 		aui.Field(c, &a.tab.accent, "#526fff", false).Width(110)
 		if a.tab.accent != prev {
-			if _, ok := parseColor(a.tab.accent); ok {
+			if _, ok := aui.ParseColor(a.tab.accent); ok {
 				a.set.Set(settings.Appearance, "accentColor", strings.TrimSpace(a.tab.accent))
 			} else if a.tab.accent == "" {
 				a.set.Unset(settings.Appearance, "accentColor")

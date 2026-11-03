@@ -30,6 +30,7 @@ type SplitPart struct {
 	Title     string
 	Icon      *ui.SVG
 	IconColor ui.Color
+	Dot       ui.Color
 	Focused   bool
 }
 
@@ -124,7 +125,7 @@ func SplitRow(c *ui.Context, key any, selected bool, parts []SplitPart) (ui.Elem
 			}
 			part.Background(Face(c, part, "aui.splitpart", face)).TextColor(t.Text)
 			part.Children(func() {
-				tabFace(c, ui.Color{}, sp.Icon, sp.IconColor, t.Text)
+				tabFace(c, sp.Dot, sp.Icon, sp.IconColor, t.Text)
 				ui.Text(c, sp.Title).FontSize(smallSize).FontWeight(500).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
 			})
 			out = append(out, part)
@@ -176,11 +177,16 @@ func AddressBar(c *ui.Context, p AddressBarProps) ui.Element {
 	return bar
 }
 
+// Dot draws a project's color dot, nothing for the zero color.
+func Dot(c *ui.Context, color ui.Color) {
+	if color.A > 0 {
+		ui.Box(c).Size(6, 6).Radius(3).Background(color).Shrink(0)
+	}
+}
+
 // tabFace is a tab's project dot and icon.
 func tabFace(c *ui.Context, dot ui.Color, glyph *ui.SVG, glyphColor, fg ui.Color) {
-	if dot.A > 0 {
-		ui.Box(c).Size(6, 6).Radius(3).Background(dot).Shrink(0)
-	}
+	Dot(c, dot)
 	if glyph == nil {
 		return
 	}

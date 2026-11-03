@@ -47,21 +47,28 @@ type PanelProps struct {
 
 // Panel is a dock.panel contribution.
 type Panel struct {
-	ID      string
-	Title   string
-	Icon    *ui.SVG
-	Dock    Dock
-	Order   int
+	ID    string
+	Title string
+	Icon  *ui.SVG
+	Dock  Dock
+	Order int
+	// Heading and Actions are a Context section's header: Heading draws
+	// in place of Title, Actions at the end while the section is open.
+	Heading func(c *ui.Context)
+	Actions func(c *ui.Context)
 	View    func(c *ui.Context, p PanelProps)
 	State   func() json.RawMessage
 	Restore func(json.RawMessage)
 }
 
-// SidebarHead is what the center draws at the sidebar's top: Nav beside
-// the window controls (back and forward), Bar under them (the address bar).
-type SidebarHead struct {
-	Nav func(c *ui.Context)
-	Bar func(c *ui.Context)
+// Chrome is what the center adds to the window around it: Nav beside the
+// window controls (back and forward), Bar under them (the address bar),
+// and Tint, the color the window's surface leans to (the active tab's
+// project), the zero color for none.
+type Chrome struct {
+	Nav  func(c *ui.Context)
+	Bar  func(c *ui.Context)
+	Tint func() ui.Color
 }
 
 // Overlay is an overlay contribution (RFC §5.5's overlay slot).
@@ -131,7 +138,7 @@ type Registry struct {
 	centerID   int
 	centerView func(c *ui.Context)
 	headID     int
-	head       SidebarHead
+	head       Chrome
 	status     map[int]StatusItem
 	sections   map[int]SettingsSection
 }
@@ -350,9 +357,9 @@ func (r *Registry) Center() func(c *ui.Context) {
 	return r.centerView
 }
 
-// SetSidebarHead makes h the sidebar's head until off is called; the last
-// set wins.
-func (r *Registry) SetSidebarHead(h SidebarHead) (off func()) {
+// SetChrome makes h the window's chrome until off is called; the last set
+// wins.
+func (r *Registry) SetChrome(h Chrome) (off func()) {
 	if r == nil {
 		return func() {}
 	}
@@ -365,17 +372,17 @@ func (r *Registry) SetSidebarHead(h SidebarHead) (off func()) {
 	return func() {
 		r.mu.Lock()
 		if r.headID == id {
-			r.headID, r.head = 0, SidebarHead{}
+			r.headID, r.head = 0, Chrome{}
 		}
 		r.mu.Unlock()
 		r.invalidate()
 	}
 }
 
-// Head is the sidebar's head; its fields are nil for none.
-func (r *Registry) Head() SidebarHead {
+// Chrome is the window's chrome; its fields are nil for none.
+func (r *Registry) Chrome() Chrome {
 	if r == nil {
-		return SidebarHead{}
+		return Chrome{}
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()

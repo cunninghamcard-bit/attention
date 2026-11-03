@@ -5,6 +5,8 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 	"github.com/egoist/mygo/ui/markdown"
+
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
 )
 
 // accentSchemes are the preset accents of the "accent" setting.
@@ -49,7 +51,7 @@ func buildUI(t Theme, s Settings) *ui.Theme {
 	}
 	applyAccent(u, accent)
 	u.Selection = u.Accent.Alpha(0.25)
-	if c, ok := parseColor(s.AccentColor); ok {
+	if c, ok := aui.ParseColor(s.AccentColor); ok {
 		applyAccent(u, c)
 	}
 	if s.InterfaceFont != "" {

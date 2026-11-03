@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"time"
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/egoist/mygo/ui"
@@ -98,6 +99,7 @@ type Layout struct {
 	restored              map[string]bool
 	seenLeft              float32
 	notice                string
+	tinted                ui.Theme // the window's theme with the project's surface
 
 	SaveSoon func()
 }
@@ -252,8 +254,8 @@ func (l *Layout) ToggleButton(c *ui.Context, d slots.Dock) {
 
 // View is the window's root.
 func (l *Layout) View(c *ui.Context) {
-	c.SetTheme(l.app.UI())
-	t := c.Theme()
+	base := l.app.UI()
+	c.SetTheme(base)
 	overlays := l.slots.Overlays()
 	for _, o := range overlays {
 		if o.Order < 0 {
@@ -261,14 +263,21 @@ func (l *Layout) View(c *ui.Context) {
 			o.View(c)
 		}
 	}
-	ui.Row(c).Fill().Background(t.Surface).AlignItems(ui.Stretch).Children(func() {
+	root := ui.Row(c).Fill().AlignItems(ui.Stretch)
+	l.tinted = *base
+	l.tinted.Surface = root.AnimateColor("tint", l.surface(base), ui.Animation{Duration: 240 * time.Millisecond})
+	root.Background(l.tinted.Surface).Children(func() {
+		c.SetTheme(&l.tinted)
 		if l.leftOpen {
 			l.sidebar(c)
 		}
+		c.SetTheme(base)
 		l.card(c)
+		c.SetTheme(&l.tinted)
 		if l.rightOpen {
 			l.context(c)
 		}
+		c.SetTheme(base)
 	})
 	for _, src := range l.slots.PaletteSources() {
 		l.restore(src.ID, src.Restore)
@@ -283,6 +292,25 @@ func (l *Layout) View(c *ui.Context) {
 		l.seenLeft = l.leftWidth
 		l.changed()
 	}
+}
+
+// surface is the window's surface: the theme's, mixed toward the active
+// tab's project color (RFC 0003 §5), more in a dark theme where a light
+// mix reads weaker.
+func (l *Layout) surface(t *ui.Theme) ui.Color {
+	tint := l.slots.Chrome().Tint
+	if tint == nil {
+		return t.Surface
+	}
+	col := tint()
+	if col.A == 0 {
+		return t.Surface
+	}
+	amount := float32(0.12)
+	if t.Dark {
+		amount = 0.18
+	}
+	return t.Surface.Mix(col, amount)
 }
 
 func (l *Layout) changed() {
@@ -323,7 +351,7 @@ func (l *Layout) card(c *ui.Context) {
 			ui.Row(c).Height(36).Shrink(0).FillWidth().Padding(0, gap, 0, max(l.LeftHeaderSpace(c), gap)).Gap(2).
 				AlignItems(ui.Center).DragWindow().Children(func() {
 				l.ToggleButton(c, slots.Sidebar)
-				if nav := l.slots.Head().Nav; nav != nil {
+				if nav := l.slots.Chrome().Nav; nav != nil {
 					nav(c)
 				}
 				ui.Box(c).Grow(1)
@@ -352,7 +380,7 @@ func (l *Layout) sidebar(c *ui.Context) {
 		if dx, _, held := edge.Dragged(); held && dx != 0 {
 			l.leftWidth = min(max(l.leftWidth+dx, 180), 480)
 		}
-		head := l.slots.Head()
+		head := l.slots.Chrome()
 		ui.Row(c).Height(40).Shrink(0).FillWidth().Padding(0, 4, 0, l.LeftHeaderSpace(c)).Gap(2).AlignItems(ui.Center).
 			DragWindow().Children(func() {
 			if head.Nav != nil {
@@ -431,16 +459,25 @@ func (l *Layout) section(c *ui.Context, p slots.Panel) {
 		col.Grow(1)
 	}
 	col.Children(func() {
-		head := ui.Row(c).Height(32).Shrink(0).FillWidth().PaddingX(10).Gap(6).AlignItems(ui.Center).
-			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(p.Title).Checked(open)
-		head.Children(func() {
-			aui.Disclosure(c, open, 12)
-			aui.SectionLabel(c, p.Title)
+		ui.Row(c).Height(32).Shrink(0).FillWidth().Padding(0, 6, 0, 10).AlignItems(ui.Center).Children(func() {
+			head := ui.Row(c).Grow(1).MinWidth(0).FillHeight().Gap(6).AlignItems(ui.Center).
+				Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(p.Title).Checked(open)
+			head.Children(func() {
+				aui.Disclosure(c, open, 12)
+				if p.Heading != nil {
+					p.Heading(c)
+				} else {
+					aui.SectionLabel(c, p.Title)
+				}
+			})
+			if head.Clicked() {
+				l.collapsed[p.ID] = open
+				l.changed()
+			}
+			if open && p.Actions != nil {
+				ui.Row(c).Shrink(0).Gap(2).AlignItems(ui.Center).Children(func() { p.Actions(c) })
+			}
 		})
-		if head.Clicked() {
-			l.collapsed[p.ID] = open
-			l.changed()
-		}
 		if !open {
 			return
 		}

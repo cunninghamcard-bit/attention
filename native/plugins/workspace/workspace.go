@@ -19,6 +19,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
 )
 
 const (
@@ -245,6 +246,26 @@ func (ws *Workspace) activeTab() *tab { return ws.activePane().current() }
 // mountOf returns the mount holding path and path relative to it.
 func (ws *Workspace) mountOf(path string) (projectplugin.Mount, string, bool) {
 	return projectplugin.MountOf(ws.mounts, path)
+}
+
+// projectOf is the project t belongs to: the mount its file is under. A
+// page, such as a web tab, belongs to none.
+func (ws *Workspace) projectOf(t *tab) (projectplugin.Mount, bool) {
+	if t == nil || t.empty || t.path == "" {
+		return projectplugin.Mount{}, false
+	}
+	m, _, ok := ws.mountOf(t.path)
+	return m, ok
+}
+
+// projectColor is the color of t's project, the zero color for none.
+func (ws *Workspace) projectColor(t *tab) ui.Color {
+	m, ok := ws.projectOf(t)
+	if !ok {
+		return ui.Color{}
+	}
+	col, _ := aui.ParseColor(m.Color)
+	return col
 }
 
 // display is a path as the CLI and the tabs' tooltips show it.

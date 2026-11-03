@@ -184,7 +184,7 @@ func (ws *Workspace) itemRow(c *ui.Context, it *node) {
 		tb := g.tabs[0]
 		title, tip, glyph, color := ws.face(c, tb)
 		row = aui.TabRow(c, aui.TabRowProps{Key: fmt.Sprintf("tab-%d", tb.id), Title: title, Tooltip: tip,
-			Icon: glyph, IconColor: color, Selected: selected, Muted: tb.isMissing(),
+			Icon: glyph, IconColor: color, Dot: ws.projectColor(tb), Selected: selected, Muted: tb.isMissing(),
 			CloseLabel: "Close " + tb.title, OnClose: func() { ws.later(func() { ws.closeTabs([]*tab{tb}) }) }})
 		hook(row, g)
 	} else {
@@ -193,7 +193,7 @@ func (ws *Workspace) itemRow(c *ui.Context, it *node) {
 		for k, g := range cards {
 			title, _, glyph, color := ws.face(c, g.tabs[0])
 			parts[k] = aui.SplitPart{Key: fmt.Sprintf("tab-%d", g.tabs[0].id), Title: title, Icon: glyph, IconColor: color,
-				Focused: g == focus}
+				Dot: ws.projectColor(g.tabs[0]), Focused: g == focus}
 		}
 		var els []ui.Element
 		row, els = aui.SplitRow(c, fmt.Sprintf("split-row-%p", it), selected, parts)
@@ -228,6 +228,9 @@ func (ws *Workspace) face(c *ui.Context, tb *tab) (title, tip string, glyph *ui.
 	}
 	return title, tip, glyph, color
 }
+
+// tint is the window's tint: the active tab's project color.
+func (ws *Workspace) tint() ui.Color { return ws.projectColor(ws.activeTab()) }
 
 // headNav is Back and Forward for the active tab, beside the window
 // controls.
