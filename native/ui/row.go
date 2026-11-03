@@ -52,16 +52,17 @@ func SideRow(c *ui.Context, p SideRowProps) ui.Element {
 	row := ui.Row(c).Key(p.Key).Height(cmp.Or(p.Height, sideRowHeight)).AlignSelf(ui.Stretch).MinWidth(0).
 		Padding(0, 8, 0, 8+float32(depth)*indentStep).Gap(6).AlignItems(ui.Center).
 		Radius(controlRadius(t)).Focusable().Role(ui.RoleButton).Checked(p.Selected).Cursor(ui.CursorPointer)
+	k := TokensOf(c)
 	fg, wash := t.TextMuted, ui.Color{}
 	switch {
 	case p.Selected:
-		fg, wash = t.Text, Raised(t)
-		row.Shadow(0, 1, 2, 0, Shade(0.08))
+		fg, wash = t.Text, k.TabRowSelected
+		k.TabRowShadow.On(row)
 	case row.Hovered():
-		fg, wash = t.Text, Wash(t, 0.06)
+		fg, wash = t.Text, k.TabRowHover
 	}
 	if p.Guides && depth > 0 {
-		line := Wash(t, 0.1)
+		line := k.BorderSubtle
 		row.DrawOver(func(painter *ui.Painter, r ui.Rect) {
 			for d := range depth {
 				painter.Fill(ui.Rect{X: r.X + 15 + float32(d)*indentStep, Y: r.Y, W: 1, H: r.H}, line, 0)
@@ -95,13 +96,14 @@ func SidebarItem(c *ui.Context, p SidebarItemProps) ui.Element {
 	if p.Key != nil {
 		b.Key(p.Key)
 	}
+	k := TokensOf(c)
 	fg, wash, weight := t.TextMuted, ui.Color{}, 400
 	switch {
 	case p.Selected:
-		fg, wash, weight = t.Text, Raised(t), 500
-		b.Shadow(0, 1, 2, 0, Shade(0.08))
+		fg, wash, weight = t.Text, k.TabRowSelected, 500
+		k.TabRowShadow.On(b)
 	case b.Hovered():
-		fg, wash = t.Text, Wash(t, 0.06)
+		fg, wash = t.Text, k.TabRowHover
 	}
 	b.Background(Face(c, b, "aui.nav", wash)).TextColor(fg)
 	b.Children(func() {
@@ -121,9 +123,9 @@ func CommandRow(c *ui.Context, p CommandRowProps) ui.Element {
 	wash := ui.Color{}
 	switch {
 	case p.Selected:
-		wash = t.Accent.Alpha(0.16)
+		wash = TokensOf(c).FillAccent
 	case b.Hovered():
-		wash = Wash(t, 0.06)
+		wash = TokensOf(c).FillHover
 	}
 	b.Background(Face(c, b, "aui.command", wash)).TextColor(t.Text)
 	b.Children(func() {

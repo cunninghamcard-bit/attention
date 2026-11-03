@@ -47,41 +47,22 @@ func Arrive(e ui.Element, from ui.Pose, delay time.Duration) ui.Element {
 // Card styles el as a content card: the page color over the window's
 // tint, rounded, with a soft drop and, in a dark theme, a faint edge.
 func Card(c *ui.Context, el ui.Element) ui.Element {
-	t := c.Theme()
-	el.Radius(t.Radius).Clip().Background(t.Background).Shadow(0, 1, 4, 0, Shade(0.08))
+	t, k := c.Theme(), TokensOf(c)
+	k.CardShadow.On(el.Radius(t.Radius).Clip().Background(k.BgPage))
 	if t.Dark {
-		el.Border(1, Wash(t, 0.08))
+		el.Border(1, k.CardBorder)
 	}
 	return el
 }
-
-// Raised is the face of a selected row or a card: the page color in a
-// light theme, a lifted surface in a dark one.
-func Raised(t *ui.Theme) ui.Color {
-	if t.Dark {
-		return t.Surface.Mix(t.Text, 0.12)
-	}
-	return t.Background
-}
-
-// Shade is black at alpha a, for shadows.
-func Shade(a float32) ui.Color { return ui.RGBA(0, 0, 0, a) }
-
-// Wash is the text color at alpha a: the overlay of a hovered or pressed
-// face, readable over any window tint.
-func Wash(t *ui.Theme, a float32) ui.Color { return t.Text.Alpha(a) }
 
 func reduced(c *ui.Context) bool { return c.Preferences().ReduceMotion }
 
 func controlRadius(t *ui.Theme) float32 { return max(t.Radius-2, 0) }
 
-// control is the face of a field or a select: a translucent fill.
-func control(t *ui.Theme) ui.Color { return Wash(t, 0.05) }
-
 // ring is the edge of a focused field.
-func ring(e ui.Element, t *ui.Theme, focused bool) ui.Element {
+func ring(e ui.Element, k *Tokens, focused bool) ui.Element {
 	if focused {
-		return e.Border(2, t.Focus)
+		return e.Border(2, k.BorderFocus)
 	}
 	return e.BorderWidth(0)
 }

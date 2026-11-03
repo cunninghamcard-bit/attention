@@ -100,12 +100,11 @@ func (ws *Workspace) gapHandle(c *ui.Context, n *node, kids []*node, shares []fl
 // paneView is a card: its tab's body, or the empty page, and where a tab
 // dragged over it would land. In a split the focused card is ringed.
 func (ws *Workspace) paneView(c *ui.Context, p *pane) {
-	t := c.Theme()
 	focused := p == ws.activePane()
 	alone := len(ws.groups()) == 1
 	card := aui.Card(c, ui.Column(c).Key(fmt.Sprintf("group-%d", p.id)).Grow(1).Fill().MinWidth(0).MinHeight(0))
 	if focused && !alone {
-		card.Border(2, t.Accent.Alpha(0.5))
+		card.Border(2, aui.TokensOf(c).AccentBorder)
 	}
 	if card.Clicked() {
 		ws.focusGroup(p)
@@ -143,7 +142,6 @@ func (ws *Workspace) paneView(c *ui.Context, p *pane) {
 // another goes before it, one dropped on a folder into it, one dropped
 // below an area at its end.
 func (ws *Workspace) tabsPanel(c *ui.Context, _ slots.PanelProps) {
-	t := c.Theme()
 	ui.Scroll(c).Fill().MinHeight(0).Children(func() {
 		ui.Column(c).FillWidth().Gap(2).Children(func() {
 			for _, p := range ws.pins {
@@ -162,7 +160,7 @@ func (ws *Workspace) tabsPanel(c *ui.Context, _ slots.PanelProps) {
 			if aui.SidebarItem(c, aui.SidebarItemProps{Key: "new-tab", Label: "New tab", Icon: icon.Must("plus")}).Clicked() {
 				ws.sl.OpenPalette(omniboxNewID)
 			}
-			ui.Box(c).Height(1).Shrink(0).FillWidth().Margin(4, 8).Background(aui.Wash(t, 0.08))
+			ui.Box(c).Height(1).Shrink(0).FillWidth().Margin(4, 8).Background(aui.TokensOf(c).BorderSubtle)
 			for _, it := range ws.shownItems() {
 				ws.itemRow(c, it, 0)
 			}
@@ -176,7 +174,7 @@ func (ws *Workspace) tabsPanel(c *ui.Context, _ slots.PanelProps) {
 func (ws *Workspace) dropEnd(c *ui.Context, key string, height float32, to func() spot) {
 	end := ui.Box(c).Key(key).FillWidth().Height(height).Radius(6)
 	if _, over := ui.DragOver[*pane](end); over {
-		end.Background(aui.Wash(c.Theme(), 0.08))
+		end.Background(aui.TokensOf(c).FillAccent)
 	}
 	if dragged, ok := ui.Drop[*pane](end); ok {
 		ws.later(func() { ws.moveCard(dragged, to()) })

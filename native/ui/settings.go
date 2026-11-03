@@ -13,8 +13,9 @@ func SettingsSection(c *ui.Context, title string, body func()) ui.Element {
 		if title != "" {
 			SectionLabel(c, title).PaddingX(8)
 		}
-		ui.Column(c).FillWidth().PaddingX(16).Radius(t.Radius+2).Background(Raised(t)).
-			Shadow(0, 1, 3, 0, Shade(0.06)).Dividers(1, Wash(t, 0.06)).Children(body)
+		k := TokensOf(c)
+		k.ShadowSmall.On(ui.Column(c).FillWidth().PaddingX(16).Radius(t.Radius+2).Background(k.BgRaised)).
+			Dividers(1, k.BorderSubtle).Children(body)
 	})
 	return col
 }

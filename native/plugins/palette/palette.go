@@ -82,7 +82,7 @@ func (p *Palette) View(c *ui.Context) {
 		return
 	}
 	layer := ui.Column(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).AlignItems(ui.Center).
-		Background(aui.Shade(0.25))
+		Background(aui.TokensOf(c).Scrim)
 	if layer.Clicked() {
 		p.close()
 	}

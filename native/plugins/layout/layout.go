@@ -100,6 +100,7 @@ type Layout struct {
 	seenLeft              float32
 	notice                string
 	tinted                ui.Theme // the window's theme with the project's surface
+	tintedTokens          aui.Tokens
 
 	SaveSoon func()
 }
@@ -264,9 +265,11 @@ func (l *Layout) View(c *ui.Context) {
 		}
 	}
 	root := ui.Row(c).Fill().AlignItems(ui.Stretch)
-	l.tinted = *base
-	l.tinted.Surface = root.AnimateColor("tint", l.surface(base), ui.Animation{Duration: 240 * time.Millisecond})
-	root.Background(l.tinted.Surface).Children(func() {
+	l.tinted, l.tintedTokens = *base, *aui.TokensFor(base)
+	window := root.AnimateColor("tint", l.surface(base), ui.Animation{Duration: 240 * time.Millisecond})
+	l.tinted.Surface, l.tintedTokens.BgWindow = window, window
+	aui.Register(&l.tinted, &l.tintedTokens)
+	root.Background(window).Children(func() {
 		c.SetTheme(&l.tinted)
 		if l.leftOpen {
 			l.sidebar(c)
@@ -298,19 +301,20 @@ func (l *Layout) View(c *ui.Context) {
 // tab's project color (RFC 0003 §5), more in a dark theme where a light
 // mix reads weaker.
 func (l *Layout) surface(t *ui.Theme) ui.Color {
+	window := aui.TokensFor(t).BgWindow
 	tint := l.slots.Chrome().Tint
 	if tint == nil {
-		return t.Surface
+		return window
 	}
 	col := tint()
 	if col.A == 0 {
-		return t.Surface
+		return window
 	}
 	amount := float32(0.12)
 	if t.Dark {
 		amount = 0.18
 	}
-	return t.Surface.Mix(col, amount)
+	return window.Mix(col, amount)
 }
 
 func (l *Layout) changed() {
@@ -426,7 +430,7 @@ func (l *Layout) sidebar(c *ui.Context) {
 					Size: aui.ButtonIconSmall, IconColor: color, OnClick: func() { l.RevealPanel(p.ID) }}).
 					Checked(active).Tooltip(p.Title)
 				if active {
-					btn.Background(aui.Wash(t, 0.08))
+					btn.Background(aui.TokensOf(c).FillSelected)
 				}
 			}
 		})
@@ -444,7 +448,7 @@ func (l *Layout) context(c *ui.Context) {
 			ui.Box(c).Grow(1)
 			l.ToggleButton(c, slots.Context)
 		})
-		aui.Card(c, ui.Column(c).Grow(1).FillWidth().MinHeight(0).Dividers(1, aui.Wash(t, 0.06))).Children(func() {
+		aui.Card(c, ui.Column(c).Grow(1).FillWidth().MinHeight(0).Dividers(1, aui.TokensOf(c).BorderSubtle)).Children(func() {
 			for i := range panels {
 				l.section(c, panels[i])
 			}

@@ -51,14 +51,15 @@ func Select(c *ui.Context, p SelectProps) ui.Element {
 		if p.Width > 0 {
 			trigger.Width(p.Width)
 		}
-		face := control(t)
+		k := TokensOf(c)
+		face := k.BgField
 		switch {
 		case p.Disabled:
 			trigger.Disabled(true)
 		case sel.Open():
-			face = Wash(t, 0.12)
+			face = k.FillPressed
 		case trigger.Hovered():
-			face = Wash(t, 0.09)
+			face = k.FieldHover
 		}
 		trigger.Background(Face(c, trigger, "aui.select", face)).TextColor(t.Text)
 		turn := float32(0)
@@ -81,7 +82,7 @@ func Select(c *ui.Context, p SelectProps) ui.Element {
 						AlignItems(ui.Center).Cursor(ui.CursorPointer)
 					wash := ui.Color{}
 					if item.Highlighted() || item.Hovered() {
-						wash = Wash(t, 0.07)
+						wash = k.MenuItem
 					}
 					item.Background(Face(c, item, "aui.option", wash)).TextColor(t.Text).Children(func() {
 						ui.Text(c, cmp.Or(o.Label, o.Value)).FontSize(smallSize).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)

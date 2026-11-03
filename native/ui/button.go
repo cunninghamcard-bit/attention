@@ -73,7 +73,7 @@ func Button(c *ui.Context, p ButtonProps) ui.Element {
 	if iconOnly && p.Label != "" {
 		b.Label(p.Label)
 	}
-	face, hover, pressed, fg := buttonPaint(t, p.Variant)
+	face, hover, pressed, fg := buttonPaint(t, TokensOf(c), p.Variant)
 	switch {
 	case p.Disabled:
 		b.Disabled(true)
@@ -108,17 +108,17 @@ func Button(c *ui.Context, p ButtonProps) ui.Element {
 	return b
 }
 
-func buttonPaint(t *ui.Theme, v ButtonVariant) (face, hover, pressed, fg ui.Color) {
+func buttonPaint(t *ui.Theme, k *Tokens, v ButtonVariant) (face, hover, pressed, fg ui.Color) {
 	switch v {
 	case ButtonSecondary:
-		return Wash(t, 0.06), Wash(t, 0.1), Wash(t, 0.14), t.Text
+		return k.ButtonSecondary, k.ButtonSecondaryHover, k.ButtonSecondaryPressed, t.Text
 	case ButtonGhost:
-		return ui.Color{}, Wash(t, 0.06), Wash(t, 0.1), t.TextMuted
+		return ui.Color{}, k.FillHover, k.FillPressed, t.TextMuted
 	case ButtonLink:
-		return ui.Color{}, Wash(t, 0.06), Wash(t, 0.1), t.Accent
+		return ui.Color{}, k.FillHover, k.FillPressed, k.TextLink
 	case ButtonDanger:
-		return t.Danger, t.Danger.Mix(t.Text, 0.1), t.Danger.Mix(t.Text, 0.2), ui.Hex("#ffffff")
+		return k.ErrorFill, k.ButtonDangerHover, k.ButtonDangerPressed, k.TextOnAccent
 	default:
-		return t.Accent, t.AccentHover, t.AccentPressed, t.AccentText
+		return k.AccentFill, k.AccentFillHover, k.AccentFillPressed, k.TextOnAccent
 	}
 }

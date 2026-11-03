@@ -53,16 +53,14 @@ type glassMatch struct{ key string }
 // layout; radius is its corner. Where the window draws on the CPU, the
 // pane is the opaque face. Cost: one backdrop blur pass a frame per pane.
 func Frost(c *ui.Context, el ui.Element, radius float32) ui.Element {
-	t := c.Theme()
-	face := Raised(t)
-	tint := face.Alpha(0.78)
-	return el.Radius(radius).Border(1, Wash(t, 0.06)).Shadow(0, 12, 32, 0, Shade(0.18)).
+	k := TokensOf(c)
+	return k.ShadowMedium.On(el.Radius(radius).Border(1, k.BorderSubtle)).
 		Draw(func(p *ui.Painter, r ui.Rect) {
 			if !p.Accelerated() {
-				p.Fill(r, face, radius)
+				p.Fill(r, k.BgOverlay, radius)
 				return
 			}
-			frost.Draw(p, r, shader.Options{BackdropBlur: 16, Radius: radius, Uniforms: map[string]any{"Tint": tint}})
+			frost.Draw(p, r, shader.Options{BackdropBlur: 16, Radius: radius, Uniforms: map[string]any{"Tint": k.GlassTint}})
 		})
 }
 
@@ -70,16 +68,15 @@ func Frost(c *ui.Context, el ui.Element, radius float32) ui.Element {
 // toward the edge and a lit top rim. Cost: as Frost, plus a few ALU ops a
 // pixel.
 func LiquidGlass(c *ui.Context, el ui.Element, radius float32) ui.Element {
-	t := c.Theme()
-	tint := t.Surface.Alpha(0.45)
-	return el.Radius(radius).Shadow(0, 8, 24, 0, Shade(0.16)).
+	k := TokensOf(c)
+	return k.ShadowMedium.On(el.Radius(radius)).
 		Draw(func(p *ui.Painter, r ui.Rect) {
 			if !p.Accelerated() {
-				p.Fill(r, t.Surface, radius)
+				p.Fill(r, k.BgWindow, radius)
 				return
 			}
 			liquid.Draw(p, r, shader.Options{BackdropBlur: 6, Radius: radius,
-				Uniforms: map[string]any{"Tint": tint, "Radius": radius, "Bend": float32(6)}})
+				Uniforms: map[string]any{"Tint": k.GlassTrack, "Radius": radius, "Bend": float32(6)}})
 		})
 }
 
@@ -101,8 +98,8 @@ func Segmented(c *ui.Context, key string, labels []string, selected *int) ui.Ele
 			}
 			seg.TextColor(fg).Children(func() {
 				if i == *selected {
-					pill := ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Radius(999).
-						Background(t.Background.Alpha(0.85)).Shadow(0, 1, 3, 0, Shade(0.12))
+					pill := TokensOf(c).ShadowSmall.On(ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Radius(999).
+						Background(TokensOf(c).SegmentPill))
 					pill.Transition(ui.ElementTransition{Animation: &ui.Snappy, Match: glassMatch{key}})
 				}
 				ui.Text(c, label).FontSize(smallSize).FontWeight(500).SingleLine()

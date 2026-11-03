@@ -93,14 +93,13 @@ func Dialog(c *ui.Context, p DialogProps) ui.Element {
 	if p.Open == nil {
 		return ui.Element{}
 	}
-	t := c.Theme()
+	t, k := c.Theme(), TokensOf(c)
 	host := ui.Box(c).Key("aui.dialog:" + cmp.Or(p.Key, p.Title)).Absolute()
 	host.Children(func() {
 		ui.DialogBase(c, p.Open, func(back, panel ui.Element) {
-			Arrive(back.Background(Shade(0.32)), ui.Pose{Fade: 1}, 0)
+			Arrive(back.Background(k.Scrim), ui.Pose{Fade: 1}, 0)
 			w := cmp.Or(p.Width, 440)
-			panel.Width(w).MaxWidth(w).Radius(t.Radius+4).Clip().Background(t.Background).
-				Shadow(0, 24, 64, 0, Shade(0.28))
+			k.ShadowLarge.On(panel.Width(w).MaxWidth(w).Radius(t.Radius + 4).Clip().Background(k.BgPage))
 			if p.MaxHeight > 0 {
 				panel.MaxHeight(p.MaxHeight)
 			}
@@ -129,22 +128,22 @@ func Dialog(c *ui.Context, p DialogProps) ui.Element {
 }
 
 func menuEntry(c *ui.Context, key int, it MenuItem, done func()) {
-	t := c.Theme()
+	t, k := c.Theme(), TokensOf(c)
 	if it.Separator {
-		ui.Box(c).Key(key).Height(1).FillWidth().Margin(4, 6).Background(Wash(t, 0.08))
+		ui.Box(c).Key(key).Height(1).FillWidth().Margin(4, 6).Background(k.BorderSubtle)
 		return
 	}
 	b := ui.ButtonBase(c).Key(key).FillWidth().Height(itemHeight).PaddingX(8).Radius(controlRadius(t)).Gap(8).
 		AlignItems(ui.Center).Cursor(ui.CursorPointer).Label(it.Label).Role(ui.RoleMenuItem)
 	fg, wash := t.Text, ui.Color{}
 	if it.Danger {
-		fg = t.Danger
+		fg = k.Error
 	}
 	if it.Disabled {
 		b.Disabled(true)
 		fg = t.TextMuted
 	} else if b.Hovered() || b.Focused() {
-		wash = Wash(t, 0.07)
+		wash = k.MenuItem
 	}
 	b.Background(Face(c, b, "aui.item", wash)).TextColor(fg)
 	b.Children(func() {

@@ -58,13 +58,14 @@ func TabRow(c *ui.Context, p TabRowProps) ui.Element {
 		AlignItems(ui.Center).Radius(controlRadius(t)).Cursor(ui.CursorPointer).Focusable().Role(ui.RoleTab).
 		Checked(p.Selected).Label(p.Title).Tooltip(p.Tooltip)
 	hovered := row.Hovered()
+	k := TokensOf(c)
 	fg, wash := t.Text, ui.Color{}
 	switch {
 	case p.Selected:
-		wash = Raised(t)
-		row.Shadow(0, 1, 2, 0, Shade(0.08))
+		wash = k.TabRowSelected
+		k.TabRowShadow.On(row)
 	case hovered:
-		wash = Wash(t, 0.06)
+		wash = k.TabRowHover
 	}
 	if p.Muted && !p.Selected {
 		fg = t.TextMuted
@@ -80,7 +81,7 @@ func TabRow(c *ui.Context, p TabRowProps) ui.Element {
 			AlignItems(ui.Center).Justify(ui.Center).Cursor(ui.CursorPointer)
 		face := ui.Color{}
 		if x.Hovered() {
-			face = Wash(t, 0.08)
+			face = k.FillHover
 		}
 		x.Background(Face(c, x, "aui.tabclose", face))
 		if p.OnClose != nil {
@@ -102,12 +103,13 @@ func SplitRow(c *ui.Context, key any, selected bool, parts []SplitPart) (ui.Elem
 	t := c.Theme()
 	row := ui.Row(c).Key(key).Height(tabRowHeight).AlignSelf(ui.Stretch).MinWidth(0).Padding(3).Gap(3).
 		AlignItems(ui.Stretch).Radius(controlRadius(t)).Role(ui.RoleGroup)
+	k := TokensOf(c)
 	wash := ui.Color{}
 	switch {
 	case selected:
-		wash = Wash(t, 0.06)
+		wash = k.SplitRowSelected
 	case row.Hovered():
-		wash = Wash(t, 0.04)
+		wash = k.SplitRowHover
 	}
 	row.Background(Face(c, row, "aui.splitrow", wash))
 	out := make([]ui.Element, 0, len(parts))
@@ -119,10 +121,10 @@ func SplitRow(c *ui.Context, key any, selected bool, parts []SplitPart) (ui.Elem
 			face := ui.Color{}
 			switch {
 			case selected && sp.Focused:
-				face = Raised(t)
-				part.Shadow(0, 1, 2, 0, Shade(0.08))
+				face = k.TabRowSelected
+				k.TabRowShadow.On(part)
 			case part.Hovered():
-				face = Wash(t, 0.06)
+				face = k.TabRowHover
 			}
 			part.Background(Face(c, part, "aui.splitpart", face)).TextColor(t.Text)
 			part.Children(func() {
@@ -145,9 +147,10 @@ func AddressBar(c *ui.Context, p AddressBarProps) ui.Element {
 	}
 	bar := ui.Row(c).Key(key).FillWidth().Height(tabRowHeight).Padding(0, 3, 0, 10).Gap(6).
 		AlignItems(ui.Center).Radius(controlRadius(t))
-	face := Wash(t, 0.06)
+	k := TokensOf(c)
+	face := k.AddressBar
 	if p.Body == nil && bar.Hovered() {
-		face = Wash(t, 0.09)
+		face = k.AddressBarHover
 	}
 	bar.Background(Face(c, bar, "aui.address", face)).TextColor(t.Text)
 	bar.Children(func() {

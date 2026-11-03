@@ -4,6 +4,8 @@ import (
 	"slices"
 
 	"github.com/egoist/mygo/ui"
+
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
 )
 
 // Moving a tab by dragging its row: onto the sidebar's list to put it
@@ -81,8 +83,8 @@ func (ws *Workspace) dropOn(from, target *pane, side string) {
 
 // dropOverlay shows where a tab dragged over a w×h body would land.
 func dropOverlay(c *ui.Context, side string, w, h float32) {
-	t := c.Theme()
-	o := ui.Box(c).Absolute().Background(t.Accent.Alpha(0.12)).BorderWidth(2, 2, 2, 2).BorderColor(t.Accent.Alpha(0.6))
+	k := aui.TokensOf(c)
+	o := ui.Box(c).Absolute().Background(k.FillAccent).BorderWidth(2, 2, 2, 2).BorderColor(k.AccentBorder)
 	third := func(v float32) float32 { return max(v/3, 40) }
 	switch side {
 	case "left":

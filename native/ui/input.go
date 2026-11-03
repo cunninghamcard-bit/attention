@@ -20,8 +20,8 @@ func Field(c *ui.Context, value *string, placeholder string, disabled bool) ui.E
 		e.Label(placeholder)
 	}
 	e.FillWidth().Height(controlHeight).MinHeight(controlHeight).PaddingX(10).PaddingY(0).
-		Radius(controlRadius(t)).FontSize(labelSize).Background(control(t)).TextColor(t.Text)
-	ring(e, t, e.Focused())
+		Radius(controlRadius(t)).FontSize(labelSize).Background(TokensOf(c).BgField).TextColor(t.Text)
+	ring(e, TokensOf(c), e.Focused())
 	if disabled {
 		e.Disabled(true).TextColor(t.TextMuted)
 	}
@@ -32,10 +32,10 @@ func Field(c *ui.Context, value *string, placeholder string, disabled bool) ui.E
 // returned is the text input.
 func SearchField(c *ui.Context, value *string, placeholder string, disabled bool) ui.Element {
 	t := c.Theme()
-	box := ui.Row(c).FillWidth().Height(controlHeight).Radius(controlRadius(t)).Background(control(t)).
+	box := ui.Row(c).FillWidth().Height(controlHeight).Radius(controlRadius(t)).Background(TokensOf(c).BgField).
 		AlignItems(ui.Center).PaddingX(10).Gap(8)
 	focused := ui.Local(box, "focused", func() bool { return false })
-	ring(box, t, *focused)
+	ring(box, TokensOf(c), *focused)
 	var input ui.Element
 	box.Children(func() {
 		ui.Icon(c, icon.Must("search")).Size(iconSmall, iconSmall).TextColor(t.TextMuted).Shrink(0)
@@ -59,7 +59,7 @@ func SearchField(c *ui.Context, value *string, placeholder string, disabled bool
 func NumberField(c *ui.Context, value *float64, low, high float64, label string, changed func(float64)) ui.Element {
 	t := c.Theme()
 	row := ui.Row(c).Key(label).Width(112).Height(controlHeight).PaddingX(4).Radius(controlRadius(t)).
-		Background(control(t)).AlignItems(ui.Center)
+		Background(TokensOf(c).BgField).AlignItems(ui.Center)
 	format := func(n float64) string { return strconv.FormatFloat(n, 'f', 0, 64) }
 	draft := ui.Local(row, "draft", func() string { return format(*value) })
 	wasFocused := ui.Local(row, "focused", func() bool { return false })
