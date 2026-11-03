@@ -39,6 +39,7 @@ type SplitPart struct {
 // page's own field). Trailing draws at the end; OnClick runs on a press on
 // the address.
 type AddressBarProps struct {
+	Key      any // "aui.address" when nil
 	Prefix   string
 	Name     string
 	Icon     *ui.SVG
@@ -138,7 +139,11 @@ func SplitRow(c *ui.Context, key any, selected bool, parts []SplitPart) (ui.Elem
 // a lock for a file shown read-only, and Trailing at its end.
 func AddressBar(c *ui.Context, p AddressBarProps) ui.Element {
 	t := c.Theme()
-	bar := ui.Row(c).Key("aui.address").FillWidth().Height(tabRowHeight).Padding(0, 3, 0, 10).Gap(6).
+	key := p.Key
+	if key == nil {
+		key = "aui.address"
+	}
+	bar := ui.Row(c).Key(key).FillWidth().Height(tabRowHeight).Padding(0, 3, 0, 10).Gap(6).
 		AlignItems(ui.Center).Radius(controlRadius(t))
 	face := Wash(t, 0.06)
 	if p.Body == nil && bar.Hovered() {

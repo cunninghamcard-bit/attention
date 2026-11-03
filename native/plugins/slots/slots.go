@@ -135,6 +135,7 @@ type Registry struct {
 	overlays   map[int]Overlay
 	sources    map[int]PaletteSource
 	paletteReq string
+	paletteQry string
 	centerID   int
 	centerView func(c *ui.Context)
 	headID     int
@@ -304,26 +305,30 @@ func (r *Registry) PaletteSources() []PaletteSource {
 }
 
 // OpenPalette asks the palette to open on source id.
-func (r *Registry) OpenPalette(id string) {
+func (r *Registry) OpenPalette(id string) { r.OpenPaletteQuery(id, "") }
+
+// OpenPaletteQuery asks the palette to open on source id with query typed.
+func (r *Registry) OpenPaletteQuery(id, query string) {
 	if r == nil {
 		return
 	}
 	r.mu.Lock()
-	r.paletteReq = id
+	r.paletteReq, r.paletteQry = id, query
 	r.mu.Unlock()
 	r.invalidate()
 }
 
-// TakePaletteRequest is the palette's: the source last asked for, once.
-func (r *Registry) TakePaletteRequest() string {
+// TakePaletteRequest is the palette's: the source last asked for and its
+// query, once.
+func (r *Registry) TakePaletteRequest() (id, query string) {
 	if r == nil {
-		return ""
+		return "", ""
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	id := r.paletteReq
-	r.paletteReq = ""
-	return id
+	id, query = r.paletteReq, r.paletteQry
+	r.paletteReq, r.paletteQry = "", ""
+	return id, query
 }
 
 // SetCenter makes view the center until off is called; the last set wins.

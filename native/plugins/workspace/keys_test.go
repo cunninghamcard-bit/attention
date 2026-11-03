@@ -42,9 +42,10 @@ func TestQuickSwitcherOpensIntoTheNewTab(t *testing.T) {
 		t.Fatalf("after opening alpha: %v", got)
 	}
 
-	press(tt, ui.Cmd, ui.KeyT)
+	ws.newTab()
+	tt.Frame()
 	if got := tabs(ws); len(got) != 2 || got[1] != "empty:New tab" {
-		t.Fatalf("after Ctrl T: %v", got)
+		t.Fatalf("after New tab: %v", got)
 	}
 	press(tt, ui.Cmd, ui.KeyO)
 	tt.Type("gam")

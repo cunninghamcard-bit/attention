@@ -54,8 +54,8 @@ func (p *Palette) Items() []slots.PaletteItem { return p.items }
 
 // View draws the palette while it is open.
 func (p *Palette) View(c *ui.Context) {
-	if id := p.slots.TakePaletteRequest(); id != "" {
-		p.show(id)
+	if id, query := p.slots.TakePaletteRequest(); id != "" {
+		p.show(id, query)
 	}
 	if p.open == "" {
 		return
@@ -115,8 +115,8 @@ func (p *Palette) View(c *ui.Context) {
 
 func (p *Palette) close() { p.open = "" }
 
-func (p *Palette) show(id string) {
-	if p.open == id {
+func (p *Palette) show(id, query string) {
+	if p.open == id && query == "" {
 		p.close()
 		return
 	}
@@ -124,7 +124,7 @@ func (p *Palette) show(id string) {
 	if src == nil {
 		return
 	}
-	p.open, p.query, p.ranked, p.selected, p.items = id, "", "\x00", 0, nil
+	p.open, p.query, p.ranked, p.selected, p.items = id, query, "\x00", 0, nil
 	if src.Open != nil {
 		src.Open()
 	}

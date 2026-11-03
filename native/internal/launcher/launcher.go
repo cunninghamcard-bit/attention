@@ -165,6 +165,7 @@ func Rows(profile string, mounts []string, extra ...*rutis.Definition) (rows []m
 		map[string]any{"id": "palette", "name": "go:palette"},
 		map[string]any{"id": "switcher", "name": "go:switcher"},
 		map[string]any{"id": "command-palette", "name": "go:command-palette"},
+		map[string]any{"id": "omnibox", "name": "go:omnibox"},
 		map[string]any{"id": "go-to-line", "name": "go:go-to-line"},
 		map[string]any{"id": "settings", "name": "go:settings"},
 		map[string]any{"id": "appearance", "name": "go:appearance"},

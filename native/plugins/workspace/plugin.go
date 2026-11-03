@@ -33,8 +33,17 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
-// TabsPanelID is the sidebar panel listing the tabs.
-const TabsPanelID = "tabs"
+const (
+	// TabsPanelID is the sidebar panel listing the tabs.
+	TabsPanelID = "tabs"
+
+	// tabsSourceID is the palette source of the open tabs; omniboxID and
+	// omniboxNewID are the omnibox plugin's, in the active tab and in a
+	// new one.
+	tabsSourceID = "tabs"
+	omniboxID    = "omnibox"
+	omniboxNewID = "omnibox-new"
+)
 
 // Plugin is the center while loaded and provides "tabTypes" and "workspace".
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
@@ -210,7 +219,7 @@ func (ws *Workspace) commands() []actions.Command {
 		// CommandPalette.ts, QuickSwitcher.ts, CorePlugins.ts) where it has
 		// the command; the rest are the reader's own.
 		ui("workspace:close", "Close current tab", "Ctrl W", ws.closeActiveTab),
-		ui("workspace:new-tab", "Open new tab", "Ctrl T", ws.newTab),
+		ui("workspace:new-tab", "Open new tab", "", ws.newTab),
 		ui("workspace:undo-close-pane", "Undo close tab", "Ctrl Shift T", ws.undoClose),
 		ui("workspace:next-tab", "Go to next tab", "Control Tab, Ctrl Shift ], Control PageDown", func() { ws.cycleTab(1) }),
 		ui("workspace:previous-tab", "Go to previous tab", "Control Shift Tab, Ctrl Shift [, Control PageUp", func() { ws.cycleTab(-1) }),
@@ -387,6 +396,7 @@ func Register(ws *Workspace) (off func()) {
 		ws.sl.SetChrome(slots.Chrome{Nav: ws.headNav, Bar: ws.addressBar, Tint: ws.tint}),
 		ws.sl.RegisterPanel(slots.Panel{ID: TabsPanelID, Title: "Tabs", Icon: icon.Must("files"), Dock: slots.Sidebar,
 			Order: -10, View: ws.tabsPanel}),
+		ws.sl.RegisterPaletteSource(ws.tabsSource()),
 		ws.sl.RegisterStatus(slots.StatusItem{ID: "workspace-tab", Right: true, View: ws.tabStatus}),
 		ws.act.SetActiveFile(func(ctx context.Context) (string, error) {
 			if ws.sh.Window() == nil {

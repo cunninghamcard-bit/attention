@@ -114,7 +114,7 @@ func (ws *Workspace) paneView(c *ui.Context, p *pane) {
 		side := p.dropSide
 		body := ui.Column(c).Grow(1).Fill().MinHeight(0).Children(func() {
 			if tb := p.current(); tb == nil {
-				ws.emptyPane(c)
+				ws.startPage(c)
 			} else {
 				ws.tabBody(c, p, tb, focused || alone)
 			}
@@ -160,7 +160,7 @@ func (ws *Workspace) tabsPanel(c *ui.Context, _ slots.PanelProps) {
 			}
 			ws.dropEnd(c, "pins-end", 10, func() spot { return spot{pinned: true, i: len(ws.pins)} })
 			if aui.SidebarItem(c, aui.SidebarItemProps{Key: "new-tab", Label: "New tab", Icon: icon.Must("plus")}).Clicked() {
-				ws.later(ws.newTab)
+				ws.sl.OpenPalette(omniboxNewID)
 			}
 			ui.Box(c).Height(1).Shrink(0).FillWidth().Margin(4, 8).Background(aui.Wash(t, 0.08))
 			for _, it := range ws.shownItems() {
@@ -407,7 +407,7 @@ func (ws *Workspace) headNav(c *ui.Context) {
 // type's Actions and More options. A press on the address opens the quick
 // switcher.
 func (ws *Workspace) addressBar(c *ui.Context) {
-	props := aui.AddressBarProps{OnClick: func() { ws.sl.OpenPalette("switcher") }}
+	props := aui.AddressBarProps{OnClick: func() { ws.sl.OpenPalette(omniboxID) }}
 	tb := ws.activeTab()
 	if tb == nil || tb.empty {
 		props.Name, props.Icon = "Search or open a file", icon.Must("search")
@@ -465,40 +465,12 @@ func (ws *Workspace) tabMenu(p *pane, tb *tab) []aui.MenuItem {
 	return append(append(items, aui.MenuItem{Separator: true}), ws.paneMenu(p, tb, tt)...)
 }
 
-func (ws *Workspace) emptyPane(c *ui.Context) {
-	t := c.Theme()
-	// A command's name and its first hotkey, as the user set them (EmptyView.ts).
-	hint := func(id string) {
-		cmd := ws.act.Lookup(id)
-		if cmd == nil {
-			return
-		}
-		var label string
-		if ws.sc != nil {
-			label = ws.sc.EffectiveLabel(*cmd)
-		}
-		text := cmd.Title
-		if label != "" {
-			text += " (" + label + ")"
-		}
-		ui.Row(c).Key("empty-" + id).Children(func() {
-			aui.Button(c, aui.ButtonProps{Label: text, Variant: aui.ButtonLink, OnClick: cmd.Main})
-		})
-	}
-	ui.Column(c).Grow(1).Fill().Background(t.Background).Center().Gap(6).Children(func() {
-		ui.Text(c, "No file is open").FontSize(18).FontWeight(600).TextColor(t.Text).Margin(0, 0, 8, 0)
-		for _, id := range []string{"switcher:open", "command-palette:open", "global-search:open", "app:toggle-left-sidebar", "app:toggle-right-sidebar"} {
-			hint(id)
-		}
-	})
-}
-
 // tabBody draws the tab's type's body (the tab.body slot, keyed by the
 // type's ID), under a banner while the file is missing.
 func (ws *Workspace) tabBody(c *ui.Context, p *pane, tb *tab, focused bool) {
 	t := c.Theme()
 	if tb.empty {
-		ws.emptyPane(c)
+		ws.startPage(c)
 		return
 	}
 	tt, ok := ws.tabTypes.Get(tb.typeID)

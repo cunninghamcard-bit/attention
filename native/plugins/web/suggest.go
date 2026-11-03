@@ -7,6 +7,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
 	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
@@ -144,6 +146,32 @@ func (v *viewer) suggestPanel(c *ui.Context, pg *page, field ui.Element, open fu
 			}
 		})
 	})
+}
+
+// source is the suggestions as a palette source, for the omnibox: what
+// the input opens, then the history and the pinned pages that match.
+func (v *viewer) source() slots.PaletteSource {
+	return slots.PaletteSource{ID: ID, Items: v.paletteItems}
+}
+
+func (v *viewer) paletteItems(query string) []slots.PaletteItem {
+	var out []slots.PaletteItem
+	for _, s := range v.suggestions(query) {
+		label, detail := s.url, ""
+		switch {
+		case s.kind == "about":
+			continue
+		case s.kind == "search":
+			label = "Search the web for “" + s.title + "”"
+		case s.title != "":
+			label, detail = s.title, s.url
+		}
+		out = append(out, slots.PaletteItem{Key: "web:" + s.kind + s.url, Label: label, Detail: detail, Icon: s.icon(),
+			Choose: func(newTab bool) {
+				_ = v.ws.OpenResource(s.url, workspace.OpenOptions{Kind: Kind, NewTab: newTab})
+			}})
+	}
+	return out
 }
 
 // fuzzyScore is the TS fuzzyScore: the query within the text, else its
