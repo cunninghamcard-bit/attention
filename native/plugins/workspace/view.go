@@ -308,13 +308,13 @@ func (ws *Workspace) rowMenu(it *node, g *pane) []aui.MenuItem {
 		aui.MenuItem{Separator: true},
 		aui.MenuItem{Label: "Move to new folder", Icon: icon.Must("folder-plus"), OnClick: later(func() {
 			f := ws.newFolder()
-			ws.moveCard(g, spot{pinned: true, folder: f})
+			ws.moveItem(it, spot{pinned: true, folder: f})
 		})},
 	)
 	for _, p := range ws.pins {
 		if f := p.folder; f != nil {
 			items = append(items, aui.MenuItem{Label: "Move to " + f.title, Icon: icon.Must("folder"), OnClick: later(func() {
-				ws.moveCard(g, spot{pinned: true, folder: f, i: len(f.items)})
+				ws.moveItem(it, spot{pinned: true, folder: f, i: len(f.items)})
 			})})
 		}
 	}

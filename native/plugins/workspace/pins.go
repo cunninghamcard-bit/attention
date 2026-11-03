@@ -224,13 +224,21 @@ func (ws *Workspace) insertAt(it *node, s spot) {
 // p is one card of a split, it leaves the split for an item of its own.
 func (ws *Workspace) moveCard(p *pane, to spot) {
 	it := rootOf(p.node)
-	if len(it.groups(nil)) > 1 {
-		p.node.parent.remove(p.node)
-		own := &node{dir: vertical}
-		own.insert(0, p.node)
-		ws.insertAt(own, to)
-		it = own
-	} else if from, ok := ws.detach(it); ok {
+	if len(it.groups(nil)) == 1 {
+		ws.moveItem(it, to)
+		ws.focusGroup(p)
+		return
+	}
+	p.node.parent.remove(p.node)
+	own := &node{dir: vertical}
+	own.insert(0, p.node)
+	ws.insertAt(own, to)
+	ws.showItem(own)
+	ws.focusGroup(p)
+}
+
+func (ws *Workspace) moveItem(it *node, to spot) {
+	if from, ok := ws.detach(it); ok {
 		if from.pinned == to.pinned && from.folder == to.folder && from.i < to.i {
 			to.i--
 		}
@@ -240,8 +248,6 @@ func (ws *Workspace) moveCard(p *pane, to spot) {
 		ws.items = []*node{ws.newItem()}
 	}
 	ws.showItem(it)
-	ws.focusGroup(p)
-	ws.changed()
 }
 
 // showItem shows it, opening the cards parked in it.
@@ -261,20 +267,6 @@ func (ws *Workspace) showItem(it *node) {
 	}
 	if !slices.Contains(gs, ws.activeGroup) {
 		ws.activeGroup = gs[0]
-	}
-	ws.changed()
-}
-
-// unload closes a pinned item's tabs, which stay in the list to reopen,
-// and shows another item when it was shown.
-func (ws *Workspace) unload(it *node) {
-	for _, g := range it.groups(nil) {
-		for len(g.tabs) > 0 {
-			ws.closeTab(g, len(g.tabs)-1)
-		}
-	}
-	if ws.root == it {
-		ws.selectItem(ws.fallback())
 	}
 	ws.changed()
 }
@@ -309,16 +301,13 @@ func (ws *Workspace) fallback() *node {
 // pinItem moves it to the end of the pinned area; unpinItem moves it to
 // the top of the list below.
 func (ws *Workspace) pinItem(it *node) {
-	ws.moveCard(it.groups(nil)[0], spot{pinned: true, i: len(ws.pins)})
+	if ws.firstEntry(it) != "" {
+		ws.moveItem(it, spot{pinned: true, i: len(ws.pins)})
+	}
 }
 
 func (ws *Workspace) unpinItem(it *node) {
-	if from, ok := ws.detach(it); ok && from.pinned {
-		ws.insertAt(it, spot{i: 0})
-		ws.showItem(it)
-	} else if ok {
-		ws.insertAt(it, from)
-	}
+	ws.moveItem(it, spot{i: 0})
 }
 
 // newFolder adds an empty folder at the end of the pinned area and starts
