@@ -85,19 +85,39 @@ func (ws *Workspace) findTabGroup(id string) *pane {
 }
 
 // cliWorkspace is `workspace [ids]`: the list's items, a tab as a tab
-// group of one, a split as its split/tabs tree.
+// group of one, a split as its split/tabs tree; above them, when there
+// are pins, the pinned area, a folder as "folder:<name>".
 func (ws *Workspace) cliWorkspace(ctx context.Context, a actions.Args) (string, error) {
 	return shell.OnMain(ctx, ws.sh, func() (string, error) {
 		ids := a.Has("ids")
-		var children []clifmt.Node
-		for _, it := range ws.shownItems() {
+		item := func(it *node) clifmt.Node {
 			n := it
 			if len(it.children) == 1 {
 				n = it.children[0]
 			}
-			children = append(children, ws.mapAscii(n, ids))
+			return ws.mapAscii(n, ids)
 		}
-		return clifmt.TreeWithRoot("main", children), nil
+		var children []clifmt.Node
+		for _, it := range ws.shownItems() {
+			children = append(children, item(it))
+		}
+		out := clifmt.TreeWithRoot("main", children)
+		if len(ws.pins) == 0 {
+			return out, nil
+		}
+		var pinned []clifmt.Node
+		for _, p := range ws.pins {
+			if p.folder == nil {
+				pinned = append(pinned, item(p.item))
+				continue
+			}
+			f := clifmt.Node{Label: "folder:" + p.folder.title}
+			for _, it := range p.folder.items {
+				f.Children = append(f.Children, item(it))
+			}
+			pinned = append(pinned, f)
+		}
+		return clifmt.TreeWithRoot("pinned", pinned) + "\n" + out, nil
 	})
 }
 
@@ -111,6 +131,9 @@ func (ws *Workspace) mapAscii(n *node, ids bool) clifmt.Node {
 			label += " (" + strconv.Itoa(n.group.id) + ")"
 		}
 		children := make([]clifmt.Node, 0, len(n.group.tabs))
+		if pk := n.group.parked; pk != nil {
+			children = append(children, clifmt.Node{Label: "[parked] " + parkedTitle(*pk)})
+		}
 		for _, t := range n.group.tabs {
 			tl := "[" + t.viewType() + "] " + t.displayText()
 			if ids {

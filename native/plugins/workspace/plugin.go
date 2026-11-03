@@ -223,6 +223,9 @@ func (ws *Workspace) commands() []actions.Command {
 		ui("open-with-default-app:show", "Show in system explorer", "", func() {
 			ws.withActiveFile(func(path string) error { mygo.Shell.ShowItemInFolder(path); return nil })
 		}),
+		ui("workspace:toggle-pin", "Pin or unpin current tab", "", ws.TogglePin),
+		ui("workspace:new-folder", "New pinned folder", "", func() { ws.newFolder() }),
+		ui("workspace:organize-by-project", "Organize tabs by project", "", ws.organizeByProject),
 		ui("workspace:split-vertical", "Split right", "Ctrl \\", func() { ws.split(vertical) }),
 		ui("workspace:split-horizontal", "Split down", "", func() { ws.split(horizontal) }),
 		ui("editor:focus-top", "Navigate tab above", "", func() { ws.focusDirection("top") }),

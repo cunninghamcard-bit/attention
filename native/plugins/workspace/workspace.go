@@ -1,11 +1,13 @@
 package workspace
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/egoist/mygo/ui"
 
@@ -54,6 +56,11 @@ type Workspace struct {
 	root        *node
 	activeGroup *pane
 	nextGroup   int
+	// pins are the pinned area above the list (pins.go); renaming is the
+	// folder whose name is being edited, renameDraft the name so far.
+	pins        []*pin
+	renaming    *folder
+	renameDraft string
 
 	nextTab int
 	closed  []string // recently closed files, newest last
@@ -375,9 +382,20 @@ func (ws *Workspace) openAddress(address, path string, opts OpenOptions) (*tab, 
 				}
 			}
 		}
+		if it := ws.pinnedEntry(cmp.Or(path, address)); it != nil && opts.Kind == "" {
+			ws.showItem(it)
+			if o := ws.activeTab(); o != nil && o.address == address {
+				if nav != nil {
+					o.nav = nav
+					o.navRev++
+				}
+				return o, nil
+			}
+		}
 	}
 	p := ws.activePane()
-	if cur := p.current(); cur != nil && !newTab {
+	// A pinned tab keeps its file: another one opens in a tab of its own.
+	if cur := p.current(); cur != nil && !newTab && !ws.isPinned(ws.root) {
 		if !cur.empty {
 			cur.record()
 		}
@@ -509,9 +527,17 @@ func (ws *Workspace) closeTab(p *pane, i int) {
 	if p.active > i || p.active >= len(p.tabs) {
 		p.active = max(0, p.active-1)
 	}
-	// A card closes with its tab, and an item with its last card.
+	// A card closes with its tab, and an item with its last card; a
+	// pinned card parks instead, to reopen from the list.
 	if len(p.tabs) == 0 {
-		ws.removeGroup(p)
+		if it := rootOf(p.node); !t.empty && ws.isPinned(it) {
+			p.parked = &parked{entry: t.entry(), title: t.title}
+			if it == ws.root && !slices.ContainsFunc(it.groups(nil), func(g *pane) bool { return len(g.tabs) > 0 }) {
+				ws.selectItem(ws.fallback())
+			}
+		} else {
+			ws.removeGroup(p)
+		}
 	}
 	ws.changed()
 }
@@ -523,10 +549,10 @@ func (ws *Workspace) closeActiveTab() {
 
 // cycleTab shows the item delta places along the list, wrapping.
 func (ws *Workspace) cycleTab(delta int) {
-	items := ws.shownItems()
+	items := ws.listedItems()
 	if n := len(items); n > 1 {
 		i := max(0, indexOf(items, ws.root))
-		ws.selectItem(items[((i+delta)%n+n)%n])
+		ws.showItem(items[((i+delta)%n+n)%n])
 	}
 }
 
@@ -634,7 +660,7 @@ func (ws *Workspace) newTab() {
 // just made, or the empty window), else in a new item after the shown one.
 func (ws *Workspace) place(t *tab) {
 	p := ws.activePane()
-	if len(p.tabs) > 0 {
+	if len(p.tabs) > 0 || p.parked != nil {
 		p = ws.addItem(indexOf(ws.items, ws.root) + 1)
 	}
 	p.tabs, p.active = []*tab{t}, 0
@@ -651,14 +677,14 @@ func (ws *Workspace) undoClose() {
 
 // gotoTab shows the n-th item (1-based) of the list; n < 1 is the last.
 func (ws *Workspace) gotoTab(n int) {
-	items := ws.shownItems()
+	items := ws.listedItems()
 	if len(items) == 0 {
 		return
 	}
 	if n < 1 || n > len(items) {
 		n = len(items)
 	}
-	ws.selectItem(items[n-1])
+	ws.showItem(items[n-1])
 }
 
 // pane is a card: one tab shown in the content area (attention's
@@ -668,6 +694,8 @@ type pane struct {
 	node   *node
 	tabs   []*tab
 	active int
+	// parked is what a pinned card with no tab reopens (pins.go).
+	parked *parked
 	// The view's last frame: the body's box, and where a tab dragged over
 	// it would land ("" for none; drag.go).
 	bodyBounds ui.Rect

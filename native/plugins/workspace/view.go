@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/egoist/mygo"
@@ -125,11 +126,11 @@ func (ws *Workspace) paneView(c *ui.Context, p *pane) {
 		// The overlay follows the drag a frame behind: where it lands is
 		// known once the body has its box.
 		p.dropSide, p.bodyBounds = "", body.Bounds()
-		if _, over := ui.DragOver[*tab](body); over {
+		if _, over := ui.DragOver[*pane](body); over {
 			x, y, _ := body.PointerPosition()
 			p.dropSide = dropSide(x, y, p.bodyBounds.W, p.bodyBounds.H)
 		}
-		if dragged, ok := ui.Drop[*tab](body); ok {
+		if dragged, ok := ui.Drop[*pane](body); ok {
 			x, y, _ := body.PointerPosition()
 			side := dropSide(x, y, p.bodyBounds.W, p.bodyBounds.H)
 			ws.later(func() { ws.dropOn(dragged, p, side) })
@@ -137,74 +138,219 @@ func (ws *Workspace) paneView(c *ui.Context, p *pane) {
 	})
 }
 
-// tabsPanel is the sidebar's list (RFC 0003 §4): New tab, then every item,
-// a tab or a split; a row dropped on another goes before it, one dropped
-// below the list goes last.
+// tabsPanel is the sidebar's list (RFC 0003 §4, §9): the pinned area,
+// its folders and items; New tab; then the list's items. A row dropped on
+// another goes before it, one dropped on a folder into it, one dropped
+// below an area at its end.
 func (ws *Workspace) tabsPanel(c *ui.Context, _ slots.PanelProps) {
 	t := c.Theme()
-	ui.Column(c).Fill().MinHeight(0).Gap(2).Children(func() {
-		if aui.SidebarItem(c, aui.SidebarItemProps{Key: "new-tab", Label: "New tab", Icon: icon.Must("plus")}).Clicked() {
-			ws.later(ws.newTab)
-		}
-		ui.Box(c).Height(1).Shrink(0).FillWidth().Margin(4, 8).Background(aui.Wash(t, 0.08))
-		ui.Scroll(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
-			ui.Column(c).FillWidth().Gap(2).Children(func() {
-				for _, it := range ws.shownItems() {
-					ws.itemRow(c, it)
+	ui.Scroll(c).Fill().MinHeight(0).Children(func() {
+		ui.Column(c).FillWidth().Gap(2).Children(func() {
+			for _, p := range ws.pins {
+				if p.folder == nil {
+					ws.itemRow(c, p.item, 0)
+					continue
 				}
-				end := ui.Box(c).Key("tabs-end").FillWidth().Height(48)
-				if dragged, ok := ui.Drop[*tab](end); ok {
-					ws.later(func() { ws.moveToList(dragged, len(ws.items)) })
+				ws.folderRow(c, p.folder)
+				if !p.folder.closed {
+					for _, it := range p.folder.items {
+						ws.itemRow(c, it, 1)
+					}
 				}
-			})
+			}
+			ws.dropEnd(c, "pins-end", 10, func() spot { return spot{pinned: true, i: len(ws.pins)} })
+			if aui.SidebarItem(c, aui.SidebarItemProps{Key: "new-tab", Label: "New tab", Icon: icon.Must("plus")}).Clicked() {
+				ws.later(ws.newTab)
+			}
+			ui.Box(c).Height(1).Shrink(0).FillWidth().Margin(4, 8).Background(aui.Wash(t, 0.08))
+			for _, it := range ws.shownItems() {
+				ws.itemRow(c, it, 0)
+			}
+			ws.dropEnd(c, "tabs-end", 48, func() spot { return spot{i: len(ws.items)} })
 		})
 	})
 }
 
-// itemRow is one item of the list: a tab's row, or a split's.
-func (ws *Workspace) itemRow(c *ui.Context, it *node) {
+// dropEnd is the room below an area of the list, where a dropped row
+// goes to.
+func (ws *Workspace) dropEnd(c *ui.Context, key string, height float32, to func() spot) {
+	end := ui.Box(c).Key(key).FillWidth().Height(height).Radius(6)
+	if _, over := ui.DragOver[*pane](end); over {
+		end.Background(aui.Wash(c.Theme(), 0.08))
+	}
+	if dragged, ok := ui.Drop[*pane](end); ok {
+		ws.later(func() { ws.moveCard(dragged, to()) })
+	}
+}
+
+// folderRow is a folder of the pinned area: a click folds it, its menu
+// renames or deletes it, a row dropped on it goes in.
+func (ws *Workspace) folderRow(c *ui.Context, f *folder) {
+	t := c.Theme()
+	key := fmt.Sprintf("folder-%p", f)
+	if ws.renaming == f {
+		ui.Row(c).Key(key).Height(34).FillWidth().PaddingX(6).AlignItems(ui.Center).Children(func() {
+			field := aui.Field(c, &ws.renameDraft, "Folder name", false).AutoFocus().FillWidth()
+			switch {
+			case field.Submitted():
+				if name := strings.TrimSpace(ws.renameDraft); name != "" {
+					f.title = name
+				}
+				ws.renaming = nil
+				ws.changed()
+			case c.Shortcut(0, ui.KeyEscape):
+				ws.renaming = nil
+			}
+		})
+		return
+	}
+	row := aui.SideRow(c, aui.SideRowProps{Key: key, Height: 34})
+	row.Label(f.title).Children(func() {
+		aui.Disclosure(c, !f.closed, 12)
+		ink := t.TextMuted
+		if col, ok := aui.ParseColor(f.color); ok {
+			ink = col
+		}
+		glyph := icon.Must("folder")
+		if !f.closed {
+			glyph = icon.Must("folder-open")
+		}
+		ui.Icon(c, glyph).Size(16, 16).TextColor(ink).Shrink(0)
+		ui.Text(c, f.title).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
+	})
+	row.ContextMenu(func(m *ui.Menu) {
+		nativeMenu(m, []aui.MenuItem{
+			{Label: "Rename", OnClick: func() { ws.renaming, ws.renameDraft = f, f.title }},
+			{Label: "Delete folder", OnClick: func() { ws.later(func() { ws.deleteFolder(f) }) }},
+		})
+	})
+	if row.Clicked() {
+		f.closed = !f.closed
+		ws.changed()
+	}
+	if dragged, ok := ui.Drop[*pane](row); ok {
+		ws.later(func() { ws.moveCard(dragged, spot{pinned: true, folder: f, i: len(f.items)}) })
+	}
+}
+
+// itemRow is one item of the list, depth folders in: a tab's row, or a
+// split's. A pinned tab's close parks it.
+func (ws *Workspace) itemRow(c *ui.Context, it *node, depth int) {
 	var cards []*pane
 	for _, g := range it.groups(nil) {
-		if len(g.tabs) > 0 {
+		if len(g.tabs) > 0 || g.parked != nil {
 			cards = append(cards, g)
 		}
 	}
+	if len(cards) == 0 {
+		return
+	}
 	selected := it == ws.root
 	hook := func(el ui.Element, g *pane) {
-		tb := g.tabs[0]
-		el.Drag(tb)
-		el.ContextMenu(func(m *ui.Menu) { nativeMenu(m, ws.tabMenu(g, tb)) })
+		el.Drag(g)
+		el.ContextMenu(func(m *ui.Menu) { nativeMenu(m, ws.rowMenu(it, g)) })
 		if el.Clicked() {
-			ws.selectGroup(g)
+			ws.later(func() {
+				ws.showItem(it)
+				ws.focusGroup(g)
+			})
 		}
 	}
 	var row ui.Element
-	if len(cards) == 1 {
-		g := cards[0]
-		tb := g.tabs[0]
-		title, tip, glyph, color := ws.face(c, tb)
-		row = aui.TabRow(c, aui.TabRowProps{Key: fmt.Sprintf("tab-%d", tb.id), Title: title, Tooltip: tip,
-			Icon: glyph, IconColor: color, Dot: ws.projectColor(tb), Selected: selected, Muted: tb.isMissing(),
-			CloseLabel: "Close " + tb.title, OnClose: func() { ws.later(func() { ws.closeTabs([]*tab{tb}) }) }})
-		hook(row, g)
-	} else {
+	ui.Column(c).FillWidth().Padding(0, 0, 0, float32(depth)*14).Children(func() {
+		if len(cards) == 1 {
+			g := cards[0]
+			f := ws.cardFace(c, g)
+			props := aui.TabRowProps{Key: fmt.Sprintf("card-%d", g.id), Title: f.title, Tooltip: f.tip,
+				Icon: f.glyph, IconColor: f.color, Dot: f.dot, Selected: selected, Muted: f.missing}
+			if g.parked == nil {
+				props.CloseLabel = "Close " + f.title
+				props.OnClose = func() { ws.later(func() { ws.closeTabs(slices.Clone(g.tabs)) }) }
+			}
+			row = aui.TabRow(c, props)
+			hook(row, g)
+			return
+		}
 		parts := make([]aui.SplitPart, len(cards))
 		focus := ws.activePane()
 		for k, g := range cards {
-			title, _, glyph, color := ws.face(c, g.tabs[0])
-			parts[k] = aui.SplitPart{Key: fmt.Sprintf("tab-%d", g.tabs[0].id), Title: title, Icon: glyph, IconColor: color,
-				Dot: ws.projectColor(g.tabs[0]), Focused: g == focus}
+			f := ws.cardFace(c, g)
+			parts[k] = aui.SplitPart{Key: fmt.Sprintf("card-%d", g.id), Title: f.title, Icon: f.glyph, IconColor: f.color,
+				Dot: f.dot, Focused: g == focus}
 		}
 		var els []ui.Element
 		row, els = aui.SplitRow(c, fmt.Sprintf("split-row-%p", it), selected, parts)
 		for k, el := range els {
 			hook(el, cards[k])
 		}
+	})
+	if dragged, ok := ui.Drop[*pane](row); ok {
+		if at, ok := ws.locate(it); ok {
+			ws.later(func() { ws.moveCard(dragged, at) })
+		}
 	}
-	if dragged, ok := ui.Drop[*tab](row); ok {
-		at := indexOf(ws.items, it)
-		ws.later(func() { ws.moveToList(dragged, at) })
+}
+
+// rowMenu is a row's menu: its tab's, then pinning and the folders it can
+// move to.
+func (ws *Workspace) rowMenu(it *node, g *pane) []aui.MenuItem {
+	var items []aui.MenuItem
+	if tb := g.current(); tb != nil {
+		items = append(ws.tabMenu(g, tb), aui.MenuItem{Separator: true})
 	}
+	later := func(fn func()) func() { return func() { ws.later(fn) } }
+	if !ws.isPinned(it) {
+		return append(items, aui.MenuItem{Label: "Pin", Icon: icon.Must("bookmark"), OnClick: later(func() { ws.pinItem(it) })})
+	}
+	items = append(items,
+		aui.MenuItem{Label: "Unpin", Icon: icon.Must("arrow-down"), OnClick: later(func() { ws.unpinItem(it) })},
+		aui.MenuItem{Label: "Remove from pinned", Icon: icon.Must("x"), Danger: true, OnClick: later(func() { ws.forget(it) })},
+		aui.MenuItem{Separator: true},
+		aui.MenuItem{Label: "Move to new folder", Icon: icon.Must("folder-plus"), OnClick: later(func() {
+			f := ws.newFolder()
+			ws.moveCard(g, spot{pinned: true, folder: f})
+		})},
+	)
+	for _, p := range ws.pins {
+		if f := p.folder; f != nil {
+			items = append(items, aui.MenuItem{Label: "Move to " + f.title, Icon: icon.Must("folder"), OnClick: later(func() {
+				ws.moveCard(g, spot{pinned: true, folder: f, i: len(f.items)})
+			})})
+		}
+	}
+	return items
+}
+
+// rowFace is how a card shows in the list.
+type rowFace struct {
+	title, tip string
+	glyph      *ui.SVG
+	color, dot ui.Color
+	missing    bool
+}
+
+// cardFace is how card g shows in the list: its tab's face, or, parked,
+// what it reopens.
+func (ws *Workspace) cardFace(c *ui.Context, g *pane) rowFace {
+	if pk := g.parked; pk != nil {
+		f := rowFace{title: parkedTitle(*pk), tip: pk.entry, glyph: icon.Must("globe")}
+		if m, ok := ws.parkedProject(*pk); ok {
+			f.tip = ws.display(pk.entry)
+			f.dot, _ = aui.ParseColor(m.Color)
+		}
+		if _, page := tabtypes.PageKind(pk.entry); !page && !tabtypes.WebAddress(pk.entry) {
+			if icons := ws.app.Icons(); icons.Show {
+				f.glyph, f.color = icons.For(f.title), icons.Color(f.title, c.Theme().Dark)
+			} else {
+				f.glyph = nil
+			}
+		}
+		return f
+	}
+	tb := g.current()
+	f := rowFace{dot: ws.projectColor(tb), missing: tb.isMissing()}
+	f.title, f.tip, f.glyph, f.color = ws.face(c, tb)
+	return f
 }
 
 // face is how tb shows in the list: its title, tooltip, icon and the

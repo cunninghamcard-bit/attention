@@ -52,40 +52,14 @@ func (ws *Workspace) groupOf(t *tab) *pane {
 	return nil
 }
 
-// moveToList puts t at i in the sidebar's list and shows it: its item
-// moves there, or, when t is one card of a split, it leaves the split for
-// an item of its own. The tab keeps its type, its address and its history.
-func (ws *Workspace) moveToList(t *tab, i int) {
-	from := ws.groupOf(t)
-	if from == nil {
+// dropOn moves card from onto target's card at side: near an edge it
+// joins the shown item as a new card on that side; at the center it only
+// shows. A parked card, which has no tab to move, is refused.
+func (ws *Workspace) dropOn(from, target *pane, side string) {
+	if from == target || len(from.tabs) == 0 {
 		return
 	}
-	it := rootOf(from.node)
-	if len(it.groups(nil)) == 1 {
-		at := indexOf(ws.items, it)
-		if at < i {
-			i--
-		}
-		ws.items = slices.Delete(ws.items, at, at+1)
-		ws.items = slices.Insert(ws.items, max(0, min(i, len(ws.items))), it)
-		ws.selectGroup(from)
-		ws.changed()
-		return
-	}
-	from.tabs = nil
-	ws.removeGroup(from)
-	p := ws.addItem(i)
-	p.tabs, p.active = []*tab{t}, 0
-	ws.changed()
-}
-
-// dropOn moves t onto target's card at side: near an edge it joins the
-// shown item as a new card on that side; at the center it only shows.
-func (ws *Workspace) dropOn(t *tab, target *pane, side string) {
-	from := ws.groupOf(t)
-	if from == nil || from == target {
-		return
-	}
+	t := from.tabs[0]
 	if side == "center" {
 		ws.selectGroup(from)
 		return

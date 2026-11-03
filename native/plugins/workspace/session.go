@@ -17,6 +17,11 @@ type session struct {
 	// tab (RFC 0003 §4); Current is the one shown.
 	Items   []sessionNode `json:"items,omitempty"`
 	Current int           `json:"current,omitempty"`
+	// Pinned is the pinned area above the list, items and folders, every
+	// card reopening parked; PinnedCurrent is the shown one among its
+	// items, 1-based, 0 when the list's is.
+	Pinned        []sessionNode `json:"pinned,omitempty"`
+	PinnedCurrent int           `json:"pinnedCurrent,omitempty"`
 	// Main, Panes, Active and SplitPct are the layouts before the list:
 	// attention's tree, and before it at most two groups side by side.
 	// Read, never written.
@@ -33,9 +38,10 @@ type sessionPane struct {
 }
 
 // sessionNode is a split or a tab group, as attention serializes its
-// layout (WorkspaceSplit.serialize, WorkspaceItem.serialize).
+// layout (WorkspaceSplit.serialize, WorkspaceItem.serialize), or a folder
+// of the pinned area.
 type sessionNode struct {
-	Type      string        `json:"type"` // "split" or "tabs"
+	Type      string        `json:"type"` // "split", "tabs" or "folder"
 	Direction direction     `json:"direction,omitempty"`
 	Dimension float32       `json:"dimension,omitempty"`
 	Children  []sessionNode `json:"children,omitempty"`
@@ -43,6 +49,11 @@ type sessionNode struct {
 	Tabs    []string `json:"tabs,omitempty"`
 	Active  int      `json:"active,omitempty"`
 	Focused bool     `json:"focused,omitempty"`
+	// Title is a tab group's page's title, or a folder's name; Color and
+	// Closed are a folder's, whose items are its Children.
+	Title  string `json:"title,omitempty"`
+	Color  string `json:"color,omitempty"`
+	Closed bool   `json:"closed,omitempty"`
 }
 
 // keptTree is sn without the tabs that do not reopen (keepTab) and the
@@ -206,12 +217,24 @@ func keepTab(path string) bool {
 func (ws *Workspace) snapshot() session {
 	ws.flush()
 	s := session{RecentFiles: ws.recentFiles}
+	for _, p := range ws.pins {
+		if p.folder == nil {
+			s.Pinned = append(s.Pinned, ws.serialize(p.item))
+			continue
+		}
+		f := sessionNode{Type: "folder", Title: p.folder.title, Color: p.folder.color, Closed: p.folder.closed}
+		for _, it := range p.folder.items {
+			f.Children = append(f.Children, ws.serialize(it))
+		}
+		s.Pinned = append(s.Pinned, f)
+	}
 	if ws.restoring != nil {
 		// The saved tabs are not reopened yet (the mounts are loading): keep
 		// them rather than save an empty window over them.
-		s.Items, s.Current = ws.restoring.Items, ws.restoring.Current
+		s.Items, s.Current, s.PinnedCurrent = ws.restoring.Items, ws.restoring.Current, ws.restoring.PinnedCurrent
 		return s
 	}
+	s.PinnedCurrent = indexOf(ws.pinnedItems(), ws.root) + 1
 	for _, it := range ws.items {
 		sn := ws.serialize(it)
 		if !hasTabs(sn) {
@@ -229,6 +252,10 @@ func (ws *Workspace) snapshot() session {
 func (ws *Workspace) serialize(n *node) sessionNode {
 	if n.group != nil {
 		sn := sessionNode{Type: "tabs", Dimension: n.dim, Focused: n.group == ws.activeGroup}
+		if pk := n.group.parked; pk != nil {
+			sn.Tabs, sn.Title = []string{pk.entry}, pk.title
+			return sn
+		}
 		for i, t := range n.group.tabs {
 			if t.empty {
 				continue
@@ -237,6 +264,9 @@ func (ws *Workspace) serialize(n *node) sessionNode {
 				sn.Active = len(sn.Tabs)
 			}
 			sn.Tabs = append(sn.Tabs, t.entry())
+			if t.page() {
+				sn.Title = t.title
+			}
 		}
 		return sn
 	}
@@ -252,6 +282,7 @@ func (ws *Workspace) serialize(n *node) sessionNode {
 func (ws *Workspace) restoreLayout(s session) {
 	migrate(&s)
 	ws.recentFiles = s.RecentFiles
+	ws.restorePins(s.Pinned)
 	ws.restoring = &s
 	if ws.mountsLoaded {
 		ws.reopen(ws.restoring)
@@ -263,11 +294,21 @@ func (ws *Workspace) restoreLayout(s session) {
 // Tabs opened before it (by the CLI, while the mounts loaded) stay shown,
 // the saved items listed after theirs.
 func (ws *Workspace) reopen(s *session) {
-	if s == nil || len(s.Items) == 0 {
+	if s == nil {
+		return
+	}
+	fresh := len(ws.shownItems()) == 0
+	if fresh && s.PinnedCurrent > 0 {
+		defer func() {
+			if items := ws.pinnedItems(); s.PinnedCurrent <= len(items) {
+				ws.showItem(items[s.PinnedCurrent-1])
+			}
+		}()
+	}
+	if len(s.Items) == 0 {
 		return
 	}
 	shown, focus := ws.root, ws.activeGroup
-	fresh := len(ws.shownItems()) == 0
 	if fresh {
 		ws.items = nil
 	}
@@ -331,6 +372,82 @@ func (ws *Workspace) reopen(s *session) {
 	}
 	ws.root, ws.activeGroup = shown, focus
 	ws.changed()
+}
+
+// restorePins puts the saved pinned area in place, every card parked,
+// before the pins already there (bookmarks pinned while it loaded), less
+// those it holds too.
+func (ws *Workspace) restorePins(saved []sessionNode) {
+	before := ws.pins
+	ws.pins = nil
+	for _, sn := range saved {
+		if sn.Type != "folder" {
+			if it := ws.parkedItem(sn); it != nil {
+				ws.pins = append(ws.pins, &pin{item: it})
+			}
+			continue
+		}
+		f := &folder{title: sn.Title, color: sn.Color, closed: sn.Closed}
+		for _, ch := range sn.Children {
+			if it := ws.parkedItem(ch); it != nil {
+				f.items = append(f.items, it)
+			}
+		}
+		ws.pins = append(ws.pins, &pin{folder: f})
+	}
+	for _, p := range before {
+		if p.folder != nil || ws.pinnedEntry(ws.firstEntry(p.item)) == nil {
+			ws.pins = append(ws.pins, p)
+		}
+	}
+}
+
+// parkedItem is the item sn keeps, its cards parked on their tabs; nil
+// when none has one. A pinned file is kept even while its disk is away.
+func (ws *Workspace) parkedItem(sn sessionNode) *node {
+	var build func(sn sessionNode) *node
+	build = func(sn sessionNode) *node {
+		if sn.Type != "split" {
+			if len(sn.Tabs) == 0 {
+				return nil
+			}
+			p := ws.newPane()
+			p.parked = &parked{entry: sn.Tabs[min(max(sn.Active, 0), len(sn.Tabs)-1)], title: sn.Title}
+			n := newGroupNode(p)
+			n.dim = sn.Dimension
+			return n
+		}
+		n := &node{dir: sn.Direction, dim: sn.Dimension}
+		if n.dir != horizontal {
+			n.dir = vertical
+		}
+		for _, ch := range sn.Children {
+			if k := build(ch); k != nil {
+				n.insert(-1, k)
+			}
+		}
+		if len(n.children) == 0 {
+			return nil
+		}
+		return n
+	}
+	root := build(sn)
+	if root == nil {
+		return nil
+	}
+	if root.group != nil {
+		wrap := &node{dir: vertical}
+		wrap.insert(0, root)
+		root = wrap
+	}
+	root.dim = 0
+	return root
+}
+
+// firstEntry is what its first card shows or reopens.
+func (ws *Workspace) firstEntry(it *node) string {
+	entry, _ := ws.cardEntry(it.groups(nil)[0])
+	return entry
 }
 
 // hasTabs reports whether sn keeps a tab.

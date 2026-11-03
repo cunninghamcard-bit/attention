@@ -1,60 +1,46 @@
-// Package bookmarks is the Bookmarks core plugin: the left dock's
-// Bookmarks panel, a port of attention's Bookmarks
-// (apps/web/builtin/Bookmarks.ts).
-//
-// Left out: graph bookmarks (kept if already in the file), starring
-// migration, drag-and-drop, multi-select, bookmark-current-search /
-// heading / all-tabs, and the tab header's mod-bookmarked class.
+// Package bookmarks is the bookmarks plugin: since RFC 0003 §9 a bookmark
+// is a pinned tab and a bookmark group a pinned folder, so it keeps only
+// the bookmark commands, over the workspace's pinned area, and moves an
+// old bookmarks.json (apps/web/builtin/Bookmarks.ts) into it once.
 package bookmarks
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
-	"sort"
-	"strconv"
-	"time"
 
 	"github.com/arcships/rutis/go/rutis"
-	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
-	"github.com/cunninghamcard-bit/attention/native/internal/persist"
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
-	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	"github.com/cunninghamcard-bit/attention/native/plugins/layout"
 	projectplugin "github.com/cunninghamcard-bit/attention/native/plugins/project"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
-	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
-	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
-// ID is the plugin's name; PanelID the slot id (BookmarksView.getViewType).
-const (
-	ID      = "bookmarks"
-	PanelID = "bookmarks"
-)
+// ID is the plugin's name.
+const ID = "bookmarks"
 
-// Plugin registers the Bookmarks panel while loaded.
+// Plugin provides "bookmarks" while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 	Name:   ID,
-	Inject: []string{"shell", "slots", "layout", "workspace", "project", "actions", "appearance"},
+	Inject: []string{"shell", "layout", "workspace", "project", "actions"},
 	Apply: func(rctx *rutis.Ctx, _ struct{}) error {
 		var (
 			sh      *shell.Shell
-			sl      *slots.Registry
 			lyt     *layout.Layout
 			ws      *workspace.Workspace
 			project projectplugin.Project
 			act     *actions.Service
-			app     *appearance.Appearance
 		)
 		if err := rctx.Use("shell", &sh); err != nil {
-			return err
-		}
-		if err := rctx.Use("slots", &sl); err != nil {
 			return err
 		}
 		if err := rctx.Use("layout", &lyt); err != nil {
@@ -69,478 +55,158 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		if err := rctx.Use("actions", &act); err != nil {
 			return err
 		}
-		if err := rctx.Use("appearance", &app); err != nil {
-			return err
-		}
-		ctx, cancel := context.WithCancel(context.Background())
-		b := &Bookmarks{app: app, ctx: ctx, sh: sh, lyt: lyt, ws: ws, act: act, project: project, items: []*Item{}, collapsed: map[string]bool{}}
-		saver := persist.New(sh, storePath(), func() any { return Data{Items: cloneItems(b.items)} })
-		b.saveSoon = saver.Soon
-		var data Data
-		if persist.Load(storePath(), &data) && data.Items != nil {
-			b.items = data.Items
-		}
+		b := &Bookmarks{sh: sh, lyt: lyt, ws: ws, project: project}
 		rctx.Provide("bookmarks", b)
-		off := sl.RegisterPanel(slots.Panel{
-			ID: PanelID, Title: "Bookmarks", Icon: icon.Must("bookmark"), Dock: slots.Sidebar, Order: 2,
-			View: b.view, State: b.state, Restore: b.restore,
+		// After the workspace's restore, which sh.Update queued first.
+		sh.Update(func() {
+			if err := b.migrate(storePath()); err != nil {
+				fmt.Fprintf(os.Stderr, "bookmarks: %v\n", err)
+			}
 		})
-		offs := []func(){off}
+		var offs []func()
 		for _, cmd := range b.commands() {
 			offs = append(offs, act.Add(cmd))
 		}
-		rctx.Effect(func(effectCtx context.Context) error {
+		rctx.Effect(func(context.Context) error {
 			for i := len(offs) - 1; i >= 0; i-- {
 				offs[i]()
 			}
-			saver.Final(effectCtx)
-			cancel()
 			return nil
 		})
 		return nil
 	},
 })
 
-// URL is a url bookmark (or one inside a group).
+// URL is a pinned web page.
 type URL struct {
 	Title, URL string
 }
 
-// Data is BookmarksData: the on-disk file.
-type Data struct {
-	Items []*Item `json:"items"`
-}
-
-// Item is BookmarkItem (apps/web/builtin/Bookmarks.ts). Unknown types
-// (graph, and anything else) keep their original JSON so a save does not
-// drop them. File and folder paths are absolute (the reader has mounts).
+// Item is a bookmark as bookmarks.json kept it (BookmarkItem), and as the
+// bookmarks CLI prints the pinned area: a "file", a "url", or a "group" of
+// them.
 type Item struct {
-	Type    string          `json:"type"`
-	Ctime   int64           `json:"ctime"`
-	Path    string          `json:"path,omitempty"`
-	Subpath string          `json:"subpath,omitempty"`
-	Title   string          `json:"title,omitempty"`
-	URL     string          `json:"url,omitempty"`
-	Query   string          `json:"query,omitempty"`
-	Items   []*Item         `json:"items,omitempty"`
-	Options json.RawMessage `json:"options,omitempty"`
-	raw     json.RawMessage
+	Type  string  `json:"type"`
+	Ctime int64   `json:"ctime,omitempty"`
+	Path  string  `json:"path,omitempty"`
+	Title string  `json:"title,omitempty"`
+	URL   string  `json:"url,omitempty"`
+	Query string  `json:"query,omitempty"`
+	Items []*Item `json:"items,omitempty"`
 }
 
-func (it *Item) UnmarshalJSON(data []byte) error {
-	type wire Item
-	var w wire
-	if err := json.Unmarshal(data, &w); err != nil {
-		return err
-	}
-	*it = Item(w)
-	switch it.Type {
-	case "file", "folder", "group", "url", "search":
-		return nil
-	}
-	it.raw = append(json.RawMessage(nil), data...)
-	return nil
-}
-
-func (it *Item) MarshalJSON() ([]byte, error) {
-	if it == nil {
-		return []byte("null"), nil
-	}
-	if len(it.raw) > 0 {
-		return it.raw, nil
-	}
-	type wire struct {
-		Type    string          `json:"type"`
-		Ctime   int64           `json:"ctime"`
-		Path    string          `json:"path,omitempty"`
-		Subpath string          `json:"subpath,omitempty"`
-		Title   string          `json:"title,omitempty"`
-		URL     string          `json:"url,omitempty"`
-		Query   string          `json:"query,omitempty"`
-		Items   []*Item         `json:"items,omitempty"`
-		Options json.RawMessage `json:"options,omitempty"`
-	}
-	return json.Marshal(wire{
-		Type: it.Type, Ctime: it.Ctime, Path: it.Path, Subpath: it.Subpath,
-		Title: it.Title, URL: it.URL, Query: it.Query, Items: it.Items, Options: it.Options,
-	})
-}
-
-// displayTitle is getBookmarkTitle (apps/web/builtin/Bookmarks.ts). File
-// and folder paths without a title use the mount-prefixed display path.
-func (it *Item) displayTitle(ws *workspace.Workspace) string {
-	switch it.Type {
-	case "file":
-		if it.Title != "" {
-			return it.Title
-		}
-		return displayPath(ws, it.Path) + it.Subpath
-	case "folder":
-		if it.Title != "" {
-			return it.Title
-		}
-		return displayPath(ws, it.Path)
-	case "search":
-		if it.Title != "" {
-			return it.Title
-		}
-		return "Search: " + it.Query
-	case "url":
-		if it.Title != "" {
-			return it.Title
-		}
-		return it.URL
-	}
-	return it.Title
-}
-
-type row struct {
-	item  *Item
-	depth int
-	key   string
-}
-
-// savedState is which groups the user collapsed.
-type savedState struct {
-	Collapsed []string `json:"collapsed"`
-}
-
-// Bookmarks is the panel's state, on the main thread only.
+// Bookmarks is the "bookmarks" service, on the main thread only.
 type Bookmarks struct {
-	app      *appearance.Appearance
-	ctx      context.Context
-	sh       *shell.Shell
-	lyt      *layout.Layout
-	ws       *workspace.Workspace
-	act      *actions.Service
-	project  projectplugin.Project
-	items    []*Item
-	saveSoon func()
-
-	collapsed map[string]bool
-	rows      []row
+	sh      *shell.Shell
+	lyt     *layout.Layout
+	ws      *workspace.Workspace
+	project projectplugin.Project
 }
 
-// URLs are the url bookmarks, groups' included.
+// URLs are the pinned web pages, folders' included.
 func (b *Bookmarks) URLs() []URL {
 	var out []URL
-	var walk func([]*Item)
-	walk = func(items []*Item) {
-		for _, it := range items {
-			switch it.Type {
-			case "url":
-				title := it.Title
-				if title == "" {
-					title = it.URL
-				}
-				out = append(out, URL{Title: title, URL: it.URL})
-			case "group":
-				walk(it.Items)
+	var walk func([]workspace.Pin)
+	walk = func(pins []workspace.Pin) {
+		for _, p := range pins {
+			if p.Folder != "" {
+				walk(p.Pins)
+			} else if tabtypes.WebAddress(p.Entry) {
+				out = append(out, URL{Title: p.Title, URL: p.Entry})
 			}
 		}
 	}
-	walk(b.items)
+	walk(b.ws.Pins())
 	return out
 }
 
-func (b *Bookmarks) state() json.RawMessage {
-	var collapsed []string
-	for key, on := range b.collapsed {
-		if on {
-			collapsed = append(collapsed, key)
+// items is the pinned area in bookmarks' terms.
+func (b *Bookmarks) items() []*Item {
+	var conv func([]workspace.Pin) []*Item
+	conv = func(pins []workspace.Pin) []*Item {
+		out := []*Item{}
+		for _, p := range pins {
+			switch {
+			case p.Folder != "":
+				out = append(out, &Item{Type: "group", Title: p.Folder, Items: conv(p.Pins)})
+			case tabtypes.WebAddress(p.Entry):
+				out = append(out, &Item{Type: "url", URL: p.Entry, Title: p.Title})
+			default:
+				out = append(out, &Item{Type: "file", Path: p.Entry})
+			}
 		}
+		return out
 	}
-	sort.Strings(collapsed)
-	data, _ := json.Marshal(savedState{Collapsed: collapsed})
-	return data
-}
-
-func (b *Bookmarks) restore(data json.RawMessage) {
-	var st savedState
-	if json.Unmarshal(data, &st) != nil {
-		return
-	}
-	b.collapsed = map[string]bool{}
-	for _, key := range st.Collapsed {
-		if key != "" {
-			b.collapsed[key] = true
-		}
-	}
+	return conv(b.ws.Pins())
 }
 
 func (b *Bookmarks) commands() []actions.Command {
-	reveal := func() {
-		if b.lyt != nil {
-			b.lyt.RevealPanel(PanelID)
-		}
+	onMain := func(fn func() (string, error)) func(context.Context, actions.Args) (string, error) {
+		return func(ctx context.Context, _ actions.Args) (string, error) { return shell.OnMain(ctx, b.sh, fn) }
 	}
-	ui := func(id, title string, fn func()) actions.Command {
-		return actions.Command{ID: id, Title: title, CLI: true, Main: fn, Run: func(ctx context.Context, _ actions.Args) (string, error) {
-			return shell.OnMain(ctx, b.sh, func() (string, error) { fn(); return "", nil })
-		}}
+	reveal := func() (string, error) {
+		b.lyt.RevealPanel(workspace.TabsPanelID)
+		return "", nil
 	}
+	pin := func() (string, error) { b.ws.SetPinned(true); return "", nil }
+	unpin := func() (string, error) { b.ws.SetPinned(false); return "", nil }
+	main := func(fn func() (string, error)) func() { return func() { _, _ = fn() } }
 	return []actions.Command{
-		ui("bookmarks:open", "Show bookmarks", reveal),
-		{ID: "bookmarks:bookmark-current-view", Title: "Bookmark current view", CLI: true,
-			Main: b.bookmarkCurrentView,
-			Run: func(ctx context.Context, _ actions.Args) (string, error) {
-				return shell.OnMain(ctx, b.sh, func() (string, error) { return b.bookmarkCurrentViewMsg() })
-			}},
-		ui("bookmarks:unbookmark-current-view", "Unbookmark current view", b.unbookmarkCurrentView),
+		{ID: "bookmarks:open", Title: "Show bookmarks", CLI: true, Main: main(reveal), Run: onMain(reveal)},
+		{ID: "bookmarks:bookmark-current-view", Title: "Bookmark current view", CLI: true, Main: main(pin), Run: onMain(pin)},
+		{ID: "bookmarks:unbookmark-current-view", Title: "Unbookmark current view", CLI: true, Main: main(unpin), Run: onMain(unpin)},
 		{ID: "bookmarks", CLI: true, Flags: []string{"total", "verbose"}, Run: b.cliList},
 		{ID: "bookmark", CLI: true, Run: b.cliAdd},
 	}
 }
 
-func (b *Bookmarks) add(item *Item) {
-	if item.Type == "file" && containsPath(b.items, item.Path) {
-		return
+// migrate pins what an old bookmarks.json at file holds, once: files and
+// web pages, groups as folders. The file is then renamed, kept whole; the
+// kinds a pin cannot hold (folders, searches, graphs) are counted.
+func (b *Bookmarks) migrate(file string) error {
+	data, err := os.ReadFile(file)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
 	}
-	b.items = append(b.items, item)
-	if b.saveSoon != nil {
-		b.saveSoon()
+	if err != nil {
+		return fmt.Errorf("read %s: %w", file, err)
 	}
-}
-
-func (b *Bookmarks) remove(target *Item) {
-	b.items = removeItem(b.items, target)
-	if b.saveSoon != nil {
-		b.saveSoon()
+	var saved struct {
+		Items []*Item `json:"items"`
 	}
-}
-
-func (b *Bookmarks) bookmarkCurrentView() { _, _ = b.bookmarkCurrentViewMsg() }
-
-func (b *Bookmarks) bookmarkCurrentViewMsg() (string, error) {
-	if b.ws == nil {
-		return "", nil
+	if err := json.Unmarshal(data, &saved); err != nil {
+		return fmt.Errorf("parse %s: %w", file, err)
 	}
-	info, ok := b.ws.ActiveTab()
-	if !ok {
-		return "", nil
-	}
-	if info.Path != "" {
-		item := &Item{Type: "file", Ctime: nowCtime(), Path: info.Path}
-		b.add(item)
-		return "Bookmarked: " + item.displayTitle(b.ws), nil
-	}
-	if info.Kind == "webviewer" && info.Address != "" {
-		item := &Item{Type: "url", Ctime: nowCtime(), URL: info.Address, Title: info.Title}
-		b.add(item)
-		return "Bookmarked: " + item.displayTitle(b.ws), nil
-	}
-	return "", nil
-}
-
-func (b *Bookmarks) unbookmarkCurrentView() {
-	if b.ws == nil {
-		return
-	}
-	info, ok := b.ws.ActiveTab()
-	if !ok {
-		return
-	}
-	if info.Path != "" {
-		var out []*Item
-		for _, it := range b.items {
-			if it.Type == "file" && it.Path == info.Path {
-				continue
-			}
-			out = append(out, it)
-		}
-		b.items = out
-		if b.saveSoon != nil {
-			b.saveSoon()
-		}
-		return
-	}
-	if info.Kind == "webviewer" && info.Address != "" {
-		var out []*Item
-		for _, it := range b.items {
-			if it.Type == "url" && it.URL == info.Address {
-				continue
-			}
-			out = append(out, it)
-		}
-		b.items = out
-		if b.saveSoon != nil {
-			b.saveSoon()
-		}
-	}
-}
-
-func (b *Bookmarks) open(item *Item) {
-	switch item.Type {
-	case "file":
-		if b.ws != nil {
-			// A heading subpath (#…) has no Nav equivalent without the index.
-			b.ws.Open(item.Path, nil, false)
-		}
-	case "folder":
-		if b.lyt != nil {
-			b.lyt.RevealPanel("file-explorer")
-		}
-	case "search":
-		b.revealSearch(item.Query)
-	case "url":
-		if b.ws != nil {
-			_ = b.ws.OpenResource(item.URL, workspace.OpenOptions{Kind: "webviewer"})
-		}
-	}
-}
-
-func (b *Bookmarks) flatten() []row {
-	b.rows = b.rows[:0]
-	var walk func([]*Item, int, string)
-	walk = func(items []*Item, depth int, prefix string) {
-		for i, it := range items {
-			key := prefix + strconv.Itoa(i)
-			b.rows = append(b.rows, row{item: it, depth: depth, key: key})
-			if it.Type == "group" && !b.collapsed[key] {
-				walk(it.Items, depth+1, key+".")
+	skipped := 0
+	var walk func(items []*Item, folder string)
+	walk = func(items []*Item, folder string) {
+		for _, it := range items {
+			switch it.Type {
+			case "file":
+				b.ws.PinEntry(it.Path, "", folder)
+			case "url":
+				b.ws.PinEntry(it.URL, it.Title, folder)
+			case "group":
+				walk(it.Items, folderFor(folder, it.Title))
+			default:
+				skipped++
 			}
 		}
 	}
-	walk(b.items, 0, "")
-	return b.rows
+	walk(saved.Items, "")
+	if err := os.Rename(file, file+".migrated"); err != nil {
+		return fmt.Errorf("keep %s: %w", file, err)
+	}
+	if skipped > 0 {
+		return fmt.Errorf("%d bookmarks pin no tab (folders, searches, graphs) and stay in %s.migrated", skipped, file)
+	}
+	return nil
 }
 
-func (b *Bookmarks) view(c *ui.Context, _ slots.PanelProps) {
-	t := c.Theme()
-	ui.Column(c).Fill().Children(func() {
-		if len(b.items) == 0 {
-			ui.Text(c, "No bookmarks").TextColor(t.TextMuted).Padding(12)
-			return
-		}
-		rows := b.flatten()
-		ui.List(c, nil, len(rows), func(i int) {
-			b.itemRow(c, rows[i])
-		}).Grow(1).FillWidth().PaddingY(4)
-	})
-}
-
-func (b *Bookmarks) itemRow(c *ui.Context, r row) {
-	t := c.Theme()
-	it := r.item
-	item := aui.SideRow(c, aui.SideRowProps{Key: r.key, Depth: r.depth})
-	chevronClicked := false
-	moreClicked := false
-	item.Children(func() {
-		if it.Type == "group" {
-			if aui.Disclosure(c, !b.collapsed[r.key], 14).Clicked() {
-				chevronClicked = true
-				b.collapsed[r.key] = !b.collapsed[r.key]
-			}
-		} else if (it.Type == "file" && it.Subpath == "") || it.Type == "folder" {
-			b.app.Icons().Render(c, filepath.Base(it.Path), it.Type == "folder", false, t.Dark, 15)
-		} else {
-			ui.Icon(c, itemIcon(it)).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
-		}
-		ui.Text(c, it.displayTitle(b.ws)).FontSize(13).SingleLine().Ellipsis("…").Shrink(1)
-		more := aui.IconMenu(c, aui.IconMenuProps{
-			Label: "More", Icon: icon.Must("ellipsis-vertical"), End: true,
-			Items: []aui.MenuItem{{
-				Label: "Remove bookmark", Danger: true,
-				OnClick: func() { b.remove(it) },
-			}},
-		})
-		moreClicked = more.Clicked() || (item.Clicked() && more.Hovered())
-	})
-	if item.Clicked() && !chevronClicked && !moreClicked {
-		b.open(it)
-	}
-}
-
-func (b *Bookmarks) revealSearch(query string) {
-	if b.act != nil {
-		if cmd := b.act.Lookup("search:open"); cmd != nil && cmd.Run != nil {
-			ctx := b.ctx
-			if ctx == nil {
-				ctx = context.Background()
-			}
-			go func() {
-				_, _ = cmd.Run(ctx, actions.Args{Params: map[string]string{"query": query}})
-			}()
-			return
-		}
-	}
-	if b.lyt != nil {
-		b.lyt.RevealPanel("search")
-	}
+// folderFor is the folder a group pins into: the outermost group's, as
+// folders do not nest.
+func folderFor(outer, title string) string {
+	return cmp.Or(outer, title, "Bookmarks")
 }
 
 func storePath() string { return filepath.Join(paths.ConfigDir(), "bookmarks.json") }
-
-func cloneItems(items []*Item) []*Item {
-	if items == nil {
-		return []*Item{}
-	}
-	out := make([]*Item, len(items))
-	for i, it := range items {
-		c := *it
-		if len(it.raw) > 0 {
-			c.raw = append(json.RawMessage(nil), it.raw...)
-		}
-		if len(it.Options) > 0 {
-			c.Options = append(json.RawMessage(nil), it.Options...)
-		}
-		c.Items = cloneItems(it.Items)
-		out[i] = &c
-	}
-	return out
-}
-
-func removeItem(items []*Item, target *Item) []*Item {
-	var out []*Item
-	for _, it := range items {
-		if it == target {
-			continue
-		}
-		if it.Type == "group" {
-			it.Items = removeItem(it.Items, target)
-		}
-		out = append(out, it)
-	}
-	return out
-}
-
-func containsPath(items []*Item, path string) bool {
-	for _, it := range items {
-		if (it.Type == "file" || it.Type == "folder") && it.Path == path {
-			return true
-		}
-		if it.Type == "group" && containsPath(it.Items, path) {
-			return true
-		}
-	}
-	return false
-}
-
-func nowCtime() int64 { return time.Now().UnixMilli() }
-
-func displayPath(ws *workspace.Workspace, path string) string {
-	if ws != nil {
-		return ws.Display(path)
-	}
-	return path
-}
-
-// itemIcon is getBookmarkIcon (apps/web/builtin/Bookmarks.ts).
-func itemIcon(it *Item) *ui.SVG {
-	switch it.Type {
-	case "file":
-		if it.Subpath != "" {
-			return icon.Must("heading")
-		}
-		return icon.Must("file")
-	case "folder":
-		return icon.Must("folder")
-	case "search":
-		return icon.Must("search")
-	case "graph":
-		return icon.Must("git-fork")
-	case "url":
-		return icon.Must("globe")
-	}
-	return icon.Must("bookmark")
-}

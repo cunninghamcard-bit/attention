@@ -149,6 +149,9 @@ func (ws *Workspace) groups() []*pane { return ws.root.groups(nil) }
 // allGroups are every item's cards, in the list's order.
 func (ws *Workspace) allGroups() []*pane {
 	var out []*pane
+	for _, it := range ws.pinnedItems() {
+		out = it.groups(out)
+	}
 	for _, it := range ws.items {
 		out = it.groups(out)
 	}
@@ -202,16 +205,18 @@ func (ws *Workspace) selectGroup(g *pane) {
 // removeItem takes it out of the list; the item before it shows when it
 // was shown, and an empty list keeps one empty item.
 func (ws *Workspace) removeItem(it *node) {
-	i := indexOf(ws.items, it)
-	if i < 0 {
+	from, ok := ws.detach(it)
+	if !ok {
 		return
 	}
-	ws.items = slices.Delete(ws.items, i, i+1)
 	if len(ws.items) == 0 {
 		ws.items = []*node{ws.newItem()}
 	}
 	if ws.root == it {
-		ws.root = ws.items[max(0, min(i-1, len(ws.items)-1))]
+		ws.root = ws.fallback()
+		if !from.pinned {
+			ws.root = ws.items[max(0, min(from.i-1, len(ws.items)-1))]
+		}
 		ws.activeGroup = nil
 	}
 }

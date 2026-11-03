@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -15,70 +15,65 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 )
 
-const addUsage = "Usage: bookmark file=<path> [subpath=] | folder=<path> | search=<query> | url=<url>  [title=]"
+const addUsage = "Usage: bookmark file=<path> | url=<url>  [title=] [folder=]"
 
-// cliList is `bookmarks [total] [verbose] [format=json|tsv|csv]`. TS has
-// none; the shape is Obsidian's CLI.
+// cliList is `bookmarks [total] [verbose] [format=json|tsv|csv]`: the
+// pinned area. TS has none; the shape is Obsidian's CLI.
 func (b *Bookmarks) cliList(ctx context.Context, a actions.Args) (string, error) {
 	return shell.OnMain(ctx, b.sh, func() (string, error) {
+		items := b.items()
 		if a.Has("total") {
-			return strconv.Itoa(countItems(b.items)), nil
+			return strconv.Itoa(countItems(items)), nil
 		}
 		format := a.Params["format"]
 		if format == "json" {
-			data, err := json.MarshalIndent(b.items, "", "  ")
+			data, err := json.MarshalIndent(items, "", "  ")
 			if err != nil {
 				return "", err
 			}
 			return string(data), nil
 		}
-		if len(b.items) == 0 {
+		if len(items) == 0 {
 			return "No bookmarks found.", nil
 		}
 		if format == "tsv" || format == "csv" {
-			rows := tableRows(b.items, b.ws)
-			return clifmt.Table([]string{"type", "title"}, rows, format), nil
+			return clifmt.Table([]string{"type", "title"}, tableRows(items, b.ws), format), nil
 		}
-		return strings.Join(listLines(b.items, 0, a.Has("verbose"), b.ws), "\n"), nil
+		return strings.Join(listLines(items, 0, a.Has("verbose"), b.ws), "\n"), nil
 	})
 }
 
-// cliAdd is `bookmark file=<path> [subpath=] | folder=<path> | search=<query> | url=<url>  [title=]`.
+// cliAdd is `bookmark file=<path> | url=<url>  [title=]`: it pins the file
+// or the page, in the folder named folder= when given. A pin holds a tab,
+// so folder= and search= bookmarks are gone (docs/cli-deviations.md).
 func (b *Bookmarks) cliAdd(ctx context.Context, a actions.Args) (string, error) {
-	file, folder := a.Params["file"], a.Params["folder"]
-	search, url := a.Params["search"], a.Params["url"]
-	n := 0
-	for _, s := range []string{file, folder, search, url} {
-		if s != "" {
-			n++
-		}
+	if a.Params["search"] != "" || a.Has("search") {
+		return "", fmt.Errorf("Search bookmarks are no longer kept: a bookmark is a pinned tab.")
 	}
-	if n != 1 {
+	file, url := a.Params["file"], a.Params["url"]
+	if (file == "") == (url == "") {
 		return "", fmt.Errorf("%s", addUsage)
 	}
-	title := a.Params["title"]
-	item := &Item{Ctime: nowCtime(), Title: title}
-	switch {
-	case file != "":
+	entry, title := url, a.Params["title"]
+	if file != "" {
 		abs, err := b.resolveFile(ctx, file, a.Cwd)
 		if err != nil {
 			return "", err
 		}
-		item.Type, item.Path, item.Subpath = "file", abs, a.Params["subpath"]
-	case folder != "":
-		abs, err := b.resolveFolder(ctx, folder, a.Cwd)
-		if err != nil {
-			return "", err
-		}
-		item.Type, item.Path = "folder", abs
-	case search != "":
-		item.Type, item.Query = "search", search
-	default:
-		item.Type, item.URL = "url", url
+		entry = abs
 	}
 	return shell.OnMain(ctx, b.sh, func() (string, error) {
-		b.add(item)
-		return "Bookmarked: " + item.displayTitle(b.ws), nil
+		name := title
+		if name == "" {
+			name = entry
+			if file != "" {
+				name = b.ws.Display(entry)
+			}
+		}
+		if !b.ws.PinEntry(entry, title, a.Params["folder"]) {
+			return "Already bookmarked: " + name, nil
+		}
+		return "Bookmarked: " + name, nil
 	})
 }
 
@@ -88,32 +83,6 @@ func (b *Bookmarks) resolveFile(ctx context.Context, file, cwd string) (string, 
 		return "", err
 	}
 	return projectplugin.ResolveLink(ctx, b.project.Files, mounts, file, cwd)
-}
-
-// resolveFolder is path= resolution for a directory. projectplugin.ResolvePath rejects
-// folders, so this walks projectplugin.Candidates the same way and keeps dirs.
-func (b *Bookmarks) resolveFolder(ctx context.Context, target, cwd string) (string, error) {
-	mounts, err := b.project.Mounts(ctx)
-	if err != nil {
-		return "", err
-	}
-	target = strings.TrimSuffix(target, "/")
-	for _, m := range mounts {
-		if m.Name == target {
-			return m.Path, nil
-		}
-	}
-	for _, p := range projectplugin.Candidates(mounts, target, cwd) {
-		st, err := os.Stat(p)
-		if err != nil {
-			continue
-		}
-		if !st.IsDir() {
-			return "", fmt.Errorf("%q is a file, not a folder.", target)
-		}
-		return p, nil
-	}
-	return "", fmt.Errorf("Folder %q not found.", target)
 }
 
 func countItems(items []*Item) int {
@@ -157,4 +126,18 @@ func tableRows(items []*Item, ws *workspace.Workspace) [][]string {
 	}
 	walk(items)
 	return rows
+}
+
+// displayTitle is how the CLI names a bookmark (getBookmarkTitle): its
+// title, else a file's display path or a page's URL.
+func (it *Item) displayTitle(ws *workspace.Workspace) string {
+	switch {
+	case it.Title != "":
+		return it.Title
+	case it.Type == "file" && ws != nil:
+		return ws.Display(it.Path)
+	case it.Type == "file":
+		return filepath.Base(it.Path)
+	}
+	return it.URL
 }
