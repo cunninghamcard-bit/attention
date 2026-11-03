@@ -32,7 +32,7 @@
       "name": "Attention Light",
       "appearance": "light",
       "palette": { "neutral.0": "#ffffff", "…": "…", "accent": "#181818" },
-      "tokens": { "text.link": "blue" },
+      "tokens": { "text.link": "blue", "accent.fillHover": "neutral.80" },
       "components": { "addressBar.bg": "fill.selected" },
       "editor": { "syntax": { "keyword": { "color": "#d32a61" } } },
       "terminal": { "terminal.ansi.red": "#c44f4a" }
@@ -45,7 +45,7 @@
 
 - 我们的主题里 `editor` 和 `terminal` 两部分，键与 Zed 主题 `style` 里同名的键相同；`syntax` 的每项有 `color`、`font_style`、`font_weight`（600 及以上算粗体）。
 - 主题目录里的 Zed 主题文件（有 `style` 的）只当编辑器配色读，不出现在界面主题列表里。
-- 设置 `editorTheme` 选一个家族（文件的 `name`，如 `One`），按当前亮暗取其中对应的那个；空表示跟随界面主题自己的 `editor` 部分；都没有时从界面 token 推。
+- 设置 `editorTheme` 选一个家族（文件的 `name`，如 `One`），按当前亮暗取其中对应的那个；一个家族每种亮暗只取文件里的第一个，后面的不读（Ayu 的 Mirage 排在 Ayu Dark 之后，因此不可选）；空表示跟随界面主题自己的 `editor` 部分；都没有时从界面 token 推。
 - 读哪些键、25 种 token 怎么对应，见 RFC 0004 §6。
 
 ## 主题从哪里来

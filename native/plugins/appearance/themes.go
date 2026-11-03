@@ -169,8 +169,11 @@ func (cat *catalog) add(file string, data []byte) {
 			maps.Copy(style, tj.Editor)
 			maps.Copy(style, tj.Terminal)
 		}
-		dark := tj.Appearance == "dark"
-		cat.schemes[schemeKey{family, dark}] = Scheme{Family: family, Name: tj.Name, Dark: dark, style: style}
+		key := schemeKey{family, tj.Appearance == "dark"}
+		if _, taken := cat.schemes[key]; taken {
+			continue
+		}
+		cat.schemes[key] = Scheme{Family: family, Name: tj.Name, Dark: key.dark, style: style}
 	}
 }
 

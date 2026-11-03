@@ -8,7 +8,7 @@ The repo-root `AGENTS.md` / `CLAUDE.md` rule “reconstruct Obsidian byte-for-by
 
 - Port behaviour from the TS app in `apps/web`. Cite the TS file in a comment. This covers behaviour only: the window's structure and how components are drawn follow docs/rfc/0003-arc-layout.md (the Arc-style sidebar, content card and context column), not the TS app.
 - Never call `.Key()` on the element an `aui.Button` / `IconMenu` returns: it rekeys the control and its `OnClick` never runs or its menu never opens. Key the parent, or use `.Clicked()` on a plain element.
-- Components come from `native/ui` (imported as `aui`; icons from `native/ui/icon`), vendored per docs/rfc/0002-crychic-ui.md. Pages compose them and read colours from `c.Theme()`; no literal colours in pages. A missing capability is added to `native/ui`, not hand-rolled in a plugin.
+- Components come from `native/ui` (imported as `aui`; icons from `native/ui/icon`), vendored per docs/rfc/0002-crychic-ui.md. Pages compose them and read colours from `aui.TokensOf(c)` (docs/rfc/0004-theme-tokens.md); `c.Theme()` only for the fields it projects (`Text`, `TextMuted`, `Accent` …); no literal colours or ad hoc alphas in pages. A missing capability is added to `native/ui`, not hand-rolled in a plugin.
 
 ## Threading
 

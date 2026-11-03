@@ -27,7 +27,10 @@
         "accent": "#181818"
       },
       "tokens": {
-        "text.link": "blue"
+        "text.link": "blue",
+        "accent.fill": "accent",
+        "accent.fillHover": "neutral.80",
+        "accent.fillPressed": "neutral.100"
       },
       "editor": {
         "syntax": {
@@ -99,7 +102,10 @@
         "accent": "#eeeeee"
       },
       "tokens": {
-        "text.link": "blue"
+        "text.link": "blue",
+        "accent.fill": "accent",
+        "accent.fillHover": "neutral.80",
+        "accent.fillPressed": "neutral.70"
       },
       "editor": {
         "syntax": {
