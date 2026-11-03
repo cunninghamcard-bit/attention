@@ -9,51 +9,57 @@ import (
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
 )
 
-// accentSchemes are the preset accents of the "accent" setting.
-var accentSchemes = map[string]ui.Color{
-	"ocean":  ui.Hex("#1f3a7a"),
-	"forest": ui.Hex("#1f5a3a"),
-	"rose":   ui.Hex("#8a2e4a"),
-	"amber":  ui.Hex("#7a5a1f"),
-}
+var (
+	// zedSyntax are the Zed syntax keys of each token kind, the first a
+	// scheme sets winning (RFC 0004 §6).
+	zedSyntax = map[editor.TokenKind][]string{
+		editor.TokenKeyword: {"keyword"}, editor.TokenType: {"type"}, editor.TokenFunction: {"function"},
+		editor.TokenVariable: {"variable"}, editor.TokenProperty: {"property"},
+		editor.TokenConstant: {"constant", "boolean"}, editor.TokenNumber: {"number"}, editor.TokenString: {"string"},
+		editor.TokenEscape: {"string.escape", "string.special"}, editor.TokenRegexp: {"string.regex"},
+		editor.TokenComment: {"comment"}, editor.TokenOperator: {"operator"}, editor.TokenPunctuation: {"punctuation"},
+		editor.TokenTag: {"tag"}, editor.TokenAttribute: {"attribute"}, editor.TokenMeta: {"preproc", "attribute"},
+		editor.TokenHeading: {"title"}, editor.TokenEmphasis: {"emphasis"}, editor.TokenStrong: {"emphasis.strong"},
+		editor.TokenLink: {"link_text", "link_uri"}, editor.TokenCode: {"text.literal"},
+		editor.TokenInserted: {"diff.plus"}, editor.TokenDeleted: {"diff.minus"},
+	}
+	ansiNames = [...]string{"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"}
+)
 
-// built are the widget themes one Theme and the settings make.
+// built are the widget themes one Theme, its editor colors and the
+// settings make; errs are the token overrides that did not resolve.
 type built struct {
 	ui       *ui.Theme
+	tokens   *aui.Tokens
 	editor   *editor.Theme
 	markdown *markdown.Theme
 	terminal *terminal.Theme
+	errs     []string
 }
 
-func build(t Theme, s Settings) built {
-	u := buildUI(t, s)
-	ed := buildEditor(t, u, s)
-	return built{ui: u, editor: ed, markdown: buildMarkdown(u, ed, s), terminal: buildTerminal(t, u)}
+func build(t Theme, sch *Scheme, s Settings) built {
+	accent, _ := aui.ParseColor(s.AccentColor)
+	k, errs := tokens(t, accent)
+	u := project(k, t.Dark, s)
+	ed := buildEditor(u, k, sch, s)
+	return built{ui: u, tokens: k, editor: ed, markdown: buildMarkdown(k, ed, sch, s),
+		terminal: buildTerminal(k, sch, t.Dark), errs: errs}
 }
 
-func buildUI(t Theme, s Settings) *ui.Theme {
+// project is the *ui.Theme MyGo's widgets read: the tokens it has fields
+// for (RFC 0004 §8), and the sizes and font of the settings.
+func project(k *aui.Tokens, dark bool, s Settings) *ui.Theme {
 	u := ui.LightTheme()
-	if t.Dark {
+	if dark {
 		u = ui.DarkTheme()
 	}
-	c := t.Colors
-	u.Background, u.Surface, u.Border = c.Background, c.Surface, c.Border
-	u.Text, u.TextMuted = c.Text, c.TextMuted
-	u.SurfaceHover = c.Text.Alpha(0.06)
-	u.SurfacePressed = c.Text.Alpha(0.1)
-	u.Danger, u.Warning, u.Success = c.Danger, c.Warning, c.Success
-	u.Scrollbar = c.Border
-	u.Inverse, u.InverseText = c.Text, c.Background
+	u.Background, u.Surface, u.SurfaceHover, u.SurfacePressed = k.BgPage, k.BgWindow, k.FillHover, k.FillPressed
+	u.Border, u.Text, u.TextMuted = k.Border, k.Text, k.TextSecondary
+	u.Accent, u.AccentHover, u.AccentPressed, u.AccentText = k.AccentFill, k.AccentFillHover, k.AccentFillPressed, k.TextOnAccent
+	u.Danger, u.Warning, u.Success = k.Error, k.Warning, k.Success
+	u.Selection, u.Focus, u.Scrollbar = k.Selection, k.BorderFocus, k.Scrollbar
+	u.Inverse, u.InverseText = k.BgInverse, k.TextInverse
 	u.Radius, u.Spacing, u.FontSize, u.ScrollbarWidth = 10, 8, 14, 4
-	accent := c.Accent
-	if a, ok := accentSchemes[s.Accent]; ok {
-		accent = a
-	}
-	applyAccent(u, accent)
-	u.Selection = u.Accent.Alpha(0.25)
-	if c, ok := aui.ParseColor(s.AccentColor); ok {
-		applyAccent(u, c)
-	}
 	if s.InterfaceFont != "" {
 		u.Font = s.InterfaceFont
 	}
@@ -72,41 +78,104 @@ func buildUI(t Theme, s Settings) *ui.Theme {
 	return u
 }
 
-func buildEditor(t Theme, u *ui.Theme, s Settings) *editor.Theme {
+func buildEditor(u *ui.Theme, k *aui.Tokens, sch *Scheme, s Settings) *editor.Theme {
 	ed := editor.DefaultTheme(u)
-	ed.Error, ed.Warning, ed.Info, ed.Hint = u.Danger, u.Warning, u.Accent, u.TextMuted
-	ed.Added, ed.Deleted, ed.Modified = u.Success, u.Danger, u.Warning
-	ed.Tokens[editor.TokenHeading].Color = u.Text
-	ed.Tokens[editor.TokenLink].Color = u.Accent
-	ed.Tokens[editor.TokenInserted].Color = u.Success
-	ed.Tokens[editor.TokenDeleted].Color = u.Danger
-	ed.Tokens[editor.TokenInvalid].Color = u.Danger
-	set := func(c ui.Color, kinds ...editor.TokenKind) {
-		if c == (ui.Color{}) {
-			return
-		}
-		for _, k := range kinds {
-			ed.Tokens[k].Color = c
-		}
+	ed.LineNumber = k.TextTertiary
+	ed.Error, ed.Warning, ed.Info, ed.Hint = k.Error, k.Warning, k.Info, k.TextTertiary
+	ed.Added, ed.Deleted, ed.Modified = k.Success, k.Error, k.Warning
+	ed.Tokens[editor.TokenHeading].Color = k.Text
+	ed.Tokens[editor.TokenLink].Color = k.TextLink
+	ed.Tokens[editor.TokenInserted].Color = k.Success
+	ed.Tokens[editor.TokenDeleted].Color = k.Error
+	ed.Tokens[editor.TokenInvalid].Color = k.Error
+	if sch != nil {
+		applyZed(ed, sch.style)
 	}
-	sy := t.Syntax
-	set(sy.Comment, editor.TokenComment)
-	set(sy.Keyword, editor.TokenKeyword, editor.TokenMeta)
-	set(sy.String, editor.TokenString, editor.TokenEscape, editor.TokenRegexp, editor.TokenCode)
-	set(sy.Number, editor.TokenNumber, editor.TokenConstant)
-	set(sy.Function, editor.TokenFunction)
-	set(sy.Type, editor.TokenType)
-	set(sy.Variable, editor.TokenVariable, editor.TokenProperty, editor.TokenAttribute)
-	set(sy.Punctuation, editor.TokenPunctuation, editor.TokenOperator)
-	set(sy.Tag, editor.TokenTag)
-	ed.Tokens[editor.TokenComment].Italic = s.ItalicComments
+	ed.Tokens[editor.TokenComment].Italic = ed.Tokens[editor.TokenComment].Italic || s.ItalicComments
 	ed.Tokens[editor.TokenHeading].Bold = true
 	ed.Tokens[editor.TokenStrong].Bold = true
 	ed.Tokens[editor.TokenEmphasis].Italic = true
 	return ed
 }
 
-func buildMarkdown(u *ui.Theme, ed *editor.Theme, s Settings) *markdown.Theme {
+// applyZed sets what a Zed style sets of ed (RFC 0004 §6).
+func applyZed(ed *editor.Theme, style map[string]any) {
+	for _, f := range []struct {
+		key string
+		dst *ui.Color
+	}{
+		{"editor.background", &ed.Background}, {"editor.foreground", &ed.Text},
+		{"editor.line_number", &ed.LineNumber}, {"editor.active_line_number", &ed.ActiveLineNumber},
+		{"editor.active_line.background", &ed.ActiveLine},
+		{"editor.document_highlight.bracket_background", &ed.MatchingBracket},
+		{"search.match_background", &ed.Match}, {"editor.document_highlight.read_background", &ed.Occurrence},
+		{"editor.indent_guide", &ed.IndentGuide}, {"editor.indent_guide_active", &ed.ActiveIndentGuide},
+		{"editor.wrap_guide", &ed.WrapGuide}, {"editor.invisible", &ed.Whitespace},
+		{"error", &ed.Error}, {"warning", &ed.Warning}, {"info", &ed.Info}, {"hint", &ed.Hint},
+		{"created", &ed.Added}, {"deleted", &ed.Deleted}, {"modified", &ed.Modified},
+	} {
+		if c, ok := zedColor(style[f.key]); ok {
+			*f.dst = c
+		}
+	}
+	if _, ok := zedColor(style["search.match_background"]); ok {
+		ed.CurrentMatch = ed.Match.Alpha(2)
+	}
+	if players, ok := style["players"].([]any); ok && len(players) > 0 {
+		if p, ok := players[0].(map[string]any); ok {
+			if c, ok := zedColor(p["cursor"]); ok {
+				ed.Cursor = c
+			}
+			if c, ok := zedColor(p["selection"]); ok {
+				ed.Selection, ed.InactiveSelection = c, c.Alpha(0.5)
+			}
+		}
+	}
+	if _, ok := zedColor(style["editor.foreground"]); ok {
+		ed.Tokens[editor.TokenText].Color = ed.Text
+	}
+	for kind, status := range map[editor.TokenKind]string{
+		editor.TokenInserted: "created", editor.TokenDeleted: "deleted", editor.TokenInvalid: "error",
+	} {
+		if c, ok := zedColor(style[status]); ok {
+			ed.Tokens[kind].Color = c
+		}
+	}
+	syntax, _ := style["syntax"].(map[string]any)
+	for kind, keys := range zedSyntax {
+		for _, key := range keys {
+			if st, ok := zedHighlight(syntax[key]); ok {
+				ed.Tokens[kind] = st
+				break
+			}
+		}
+	}
+}
+
+// zedHighlight reads a Zed syntax style: its color, italic font_style,
+// and a font_weight of 600 or more as bold.
+func zedHighlight(v any) (editor.TokenStyle, bool) {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return editor.TokenStyle{}, false
+	}
+	c, ok := zedColor(m["color"])
+	if !ok {
+		return editor.TokenStyle{}, false
+	}
+	weight, _ := m["font_weight"].(float64)
+	return editor.TokenStyle{Color: c, Italic: m["font_style"] == "italic", Bold: weight >= 600}, true
+}
+
+func zedColor(v any) (ui.Color, bool) {
+	s, ok := v.(string)
+	if !ok {
+		return ui.Color{}, false
+	}
+	return aui.ParseColor(s)
+}
+
+func buildMarkdown(k *aui.Tokens, ed *editor.Theme, sch *Scheme, s Settings) *markdown.Theme {
 	size := s.BaseFontSize
 	if size <= 0 {
 		size = 14.5
@@ -115,28 +184,35 @@ func buildMarkdown(u *ui.Theme, ed *editor.Theme, s Settings) *markdown.Theme {
 	if code == (ui.Color{}) {
 		code = ed.Text
 	}
+	block := k.FillHover.Over(k.BgPage)
+	if sch != nil {
+		if c, ok := zedColor(sch.style["editor.background"]); ok {
+			block = c
+		}
+	}
 	return &markdown.Theme{
 		FontSize:            size,
 		Font:                s.TextFont,
 		CodeFont:            s.EffectiveMonoFont(),
 		LineHeight:          1.65,
 		CodeLineHeight:      1.55,
-		Text:                ed.Text,
-		Muted:               u.TextMuted,
-		Link:                u.Accent,
-		Strong:              ed.Text,
+		Text:                k.Text,
+		Muted:               k.TextSecondary,
+		Link:                k.TextLink,
+		Strong:              k.Text,
 		StrongWeight:        600,
 		Code:                code,
-		CodeBackground:      u.SurfaceHover,
+		CodeBackground:      k.FillHover,
 		CodeSize:            0.875,
-		QuoteBar:            u.Border,
-		QuoteText:           u.TextMuted,
-		Rule:                u.Border,
-		CodeBlockBackground: u.Surface,
-		CodeBlockBorder:     u.Border,
-		TableBorder:         u.Border,
-		TableHeader:         u.Surface,
-		Checkbox:            u.Accent,
+		QuoteBar:            k.Border,
+		QuoteText:           k.TextSecondary,
+		Rule:                k.Border,
+		CodeBlockBackground: block,
+		CodeBlockBorder:     k.BorderSubtle,
+		TableBorder:         k.Border,
+		TableHeader:         k.FillHover.Over(k.BgPage),
+		Mark:                k.Highlight,
+		Checkbox:            k.AccentFill,
 		BlockSpacing:        0.8,
 		ItemSpacing:         0.3,
 		ListIndent:          1.6,
@@ -147,27 +223,41 @@ func buildMarkdown(u *ui.Theme, ed *editor.Theme, s Settings) *markdown.Theme {
 	}
 }
 
-func buildTerminal(t Theme, u *ui.Theme) *terminal.Theme {
+func buildTerminal(k *aui.Tokens, sch *Scheme, dark bool) *terminal.Theme {
 	term := terminal.LightTheme()
-	if t.Dark {
+	if dark {
 		term = terminal.DarkTheme()
 	}
-	term.Foreground, term.Background = u.Text, u.Background
-	if t.Terminal != nil {
-		term.Palette = *t.Terminal
+	term.Foreground, term.Background = k.Text, k.BgPage
+	if sch == nil {
+		return term
 	}
+	for _, f := range []struct {
+		keys []string
+		dst  *ui.Color
+	}{
+		{[]string{"terminal.foreground", "editor.foreground"}, &term.Foreground},
+		{[]string{"terminal.background", "editor.background"}, &term.Background},
+	} {
+		for _, key := range f.keys {
+			if c, ok := zedColor(sch.style[key]); ok {
+				*f.dst = c
+				break
+			}
+		}
+	}
+	var palette [16]ui.Color
+	for i := range palette {
+		prefix := "terminal.ansi."
+		if i >= 8 {
+			prefix = "terminal.ansi.bright_"
+		}
+		c, ok := zedColor(sch.style[prefix+ansiNames[i%8]])
+		if !ok {
+			return term
+		}
+		palette[i] = c
+	}
+	term.Palette = palette
 	return term
-}
-
-func applyAccent(t *ui.Theme, c ui.Color) {
-	r, g, b := int(c.R), int(c.G), int(c.B)
-	t.Accent = c
-	t.AccentHover = ui.RGBA(uint8(min(255, r+18)), uint8(min(255, g+18)), uint8(min(255, b+18)), 1)
-	t.AccentPressed = ui.RGBA(uint8(max(0, r-18)), uint8(max(0, g-18)), uint8(max(0, b-18)), 1)
-	t.Focus = ui.RGBA(c.R, c.G, c.B, 0.35)
-	if (r*299+g*587+b*114)/1000 >= 160 {
-		t.AccentText = ui.Hex("#0c0c0c")
-	} else {
-		t.AccentText = ui.Hex("#fafafa")
-	}
 }

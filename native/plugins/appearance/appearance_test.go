@@ -22,7 +22,7 @@ func TestAppearanceSyncAndThemeFiles(t *testing.T) {
 	sl := slots.New(nil)
 	set := settings.New(nil, sl)
 	set.Set(settings.Appearance, "theme", "light")
-	set.Set(settings.Appearance, "lightTheme", "One Light")
+	set.Set(settings.Appearance, "editorTheme", "One")
 	set.Set(settings.Appearance, "iconTheme", "zed")
 	set.Set(settings.Appearance, "showFileIcons", false)
 
@@ -41,16 +41,16 @@ func TestAppearanceSyncAndThemeFiles(t *testing.T) {
 		editor.TokenFunction: "#5b79e3",
 	} {
 		if got := ct.Tokens[k].Color; got != ui.Hex(want) {
-			t.Fatalf("One Light token %d = %+v, want %s", k, got, want)
+			t.Fatalf("One light token %d = %+v, want %s", k, got, want)
 		}
 	}
 
-	set.Set(settings.Appearance, "lightTheme", "Custom Light")
+	set.Set(settings.Appearance, "editorTheme", "Custom")
 	if got := a.Editor(false).Tokens[editor.TokenKeyword].Color; got != ui.Hex("#aa00bb") {
-		t.Fatalf("Custom Light keyword color = %+v, want #aa00bb", got)
+		t.Fatalf("Custom keyword color = %+v, want #aa00bb", got)
 	}
-	if got := a.UI().Background; got != ui.Hex("#fefefe") {
-		t.Fatalf("Custom Light background = %+v, want #fefefe", got)
+	if got := a.UI().Background; got != ui.Hex("#ffffff") {
+		t.Fatalf("background under Zed editor colors = %+v, want Attention Light's page #ffffff", got)
 	}
 
 	tt := ui.NewTester(a.View, 900, 900)

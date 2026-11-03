@@ -2,6 +2,7 @@ package appearance
 
 import (
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/egoist/mygo"
@@ -64,21 +65,15 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 				}),
 				a.selectSpec("Light theme", "Color theme in light mode.", "lightTheme", s.LightTheme, a.themeOptions(false)),
 				a.selectSpec("Dark theme", "Color theme in dark mode.", "darkTheme", s.DarkTheme, a.themeOptions(true)),
+				a.selectSpec("Editor colors", "Colors of code, from a theme of ours or a Zed theme file.", "editorTheme", s.EditorTheme, a.editorOptions()),
 				{
 					label:   "Themes folder",
-					desc:    strings.Join(append([]string{a.dir}, a.cat.errs...), "\n"),
+					desc:    strings.Join(slices.Concat([]string{a.dir}, a.cat.errs, a.of(false).errs, a.of(true).errs), "\n"),
 					control: a.themesFolder,
 				},
-				a.selectSpec("Accent scheme", "Preset accent palette for controls and focus rings.", "accent", s.Accent, []aui.SelectOption{
-					{Value: "default", Label: "Default"},
-					{Value: "ocean", Label: "Ocean"},
-					{Value: "forest", Label: "Forest"},
-					{Value: "rose", Label: "Rose"},
-					{Value: "amber", Label: "Amber"},
-				}),
 				{
-					label:   "Custom accent color",
-					desc:    "Hex override (#RRGGBB) used for primary controls and highlights.",
+					label:   "Accent color",
+					desc:    "Hex color (#RRGGBB) in place of the theme's accent; its button and hover shades follow.",
 					control: func(c *ui.Context) { a.accentField(c, s) },
 				},
 				a.selectSpec("File icon theme", "Icon style for the file explorer, tabs, and search results.", "iconTheme", s.IconTheme, []aui.SelectOption{
@@ -222,6 +217,14 @@ func (a *Appearance) numberSpec(label, desc, key string, cur, def, low, high flo
 			}
 		})
 	}}
+}
+
+func (a *Appearance) editorOptions() []aui.SelectOption {
+	opts := []aui.SelectOption{{Value: "", Label: "Follow the interface theme"}}
+	for _, f := range a.cat.families() {
+		opts = append(opts, aui.SelectOption{Value: f, Label: f})
+	}
+	return opts
 }
 
 func (a *Appearance) themeOptions(dark bool) []aui.SelectOption {

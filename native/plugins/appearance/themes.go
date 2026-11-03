@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -15,59 +17,34 @@ import (
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
 )
 
-var (
-	//go:embed themes/*.json
-	builtinThemes embed.FS
+//go:embed themes/*.json themes/zed/*.json
+var builtinThemes embed.FS
 
-	colorKeys  = [...]string{"background", "surface", "border", "text", "textMuted", "accent", "danger", "warning", "success"}
-	syntaxKeys = [...]string{"comment", "keyword", "string", "number", "function", "type", "variable", "punctuation", "tag"}
-	// zedColors and zedSyntax import a Zed theme: the first key a theme sets wins.
-	zedColors = [len(colorKeys)][]string{
-		{"editor.background", "background"},
-		{"panel.background", "surface.background", "elevated_surface.background"},
-		{"border.variant", "border"},
-		{"text", "editor.foreground"},
-		{"text.muted", "text.placeholder"},
-		{"text.accent", "border.focused"},
-		{"error", "version_control.deleted"},
-		{"warning", "version_control.modified"},
-		{"success", "created", "version_control.added"},
-	}
-	zedSyntax = [len(syntaxKeys)][]string{
-		{"comment"}, {"keyword"}, {"string"}, {"number", "constant"}, {"function"},
-		{"type"}, {"variable", "property"}, {"punctuation", "operator"}, {"tag"},
-	}
-	ansiNames = [...]string{"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"}
-)
-
-// Theme is one color theme: what a theme file holds, and nothing else.
-// Sizes and fonts are Settings; every other color is derived (build.go).
+// Theme is one interface theme as its file holds it: the palette and the
+// token overrides (RFC 0004 §3–§5, §7). family is its file's name, which
+// its own editor colors go by.
 type Theme struct {
-	Name     string
-	Dark     bool
-	Colors   Colors
-	Syntax   Syntax
-	Terminal *[16]ui.Color
+	Name       string
+	Dark       bool
+	family     string
+	palette    map[string]ui.Color
+	tokens     map[string]string
+	components map[string]string
 }
 
-// Colors are a theme's interface colors.
-type Colors struct {
-	Background, Surface, Border, Text, TextMuted ui.Color
-	Accent, Danger, Warning, Success             ui.Color
+// Scheme is the editor and terminal colors of a theme, in Zed's style keys
+// (RFC 0004 §6): a Zed theme file's, or the editor and terminal parts of
+// one of ours.
+type Scheme struct {
+	Family string
+	Name   string
+	Dark   bool
+	style  map[string]any
 }
 
-func (c *Colors) fields() [len(colorKeys)]*ui.Color {
-	return [...]*ui.Color{&c.Background, &c.Surface, &c.Border, &c.Text, &c.TextMuted, &c.Accent, &c.Danger, &c.Warning, &c.Success}
-}
-
-// Syntax are a theme's code colors; a zero color keeps the editor's default.
-type Syntax struct {
-	Comment, Keyword, String, Number, Function ui.Color
-	Type, Variable, Punctuation, Tag           ui.Color
-}
-
-func (s *Syntax) fields() [len(syntaxKeys)]*ui.Color {
-	return [...]*ui.Color{&s.Comment, &s.Keyword, &s.String, &s.Number, &s.Function, &s.Type, &s.Variable, &s.Punctuation, &s.Tag}
+type schemeKey struct {
+	family string
+	dark   bool
 }
 
 type themeFile struct {
@@ -76,54 +53,67 @@ type themeFile struct {
 }
 
 type themeJSON struct {
-	Name       string            `json:"name"`
-	Appearance string            `json:"appearance"`
-	Colors     map[string]string `json:"colors"`
-	Syntax     map[string]string `json:"syntax"`
-	Terminal   []string          `json:"terminal"`
-	Style      map[string]any    `json:"style"`
+	Name       string                     `json:"name"`
+	Appearance string                     `json:"appearance"`
+	Palette    map[string]json.RawMessage `json:"palette"`
+	Tokens     map[string]string          `json:"tokens"`
+	Components map[string]string          `json:"components"`
+	Editor     map[string]any             `json:"editor"`
+	Terminal   map[string]any             `json:"terminal"`
+	Style      map[string]any             `json:"style"`
 }
 
-func (tj themeJSON) theme() (Theme, error) {
-	t := Theme{Name: tj.Name, Dark: tj.Appearance == "dark"}
-	if t.Name == "" || tj.Appearance != "light" && tj.Appearance != "dark" {
-		return t, fmt.Errorf("a theme needs a name and an appearance of light or dark")
-	}
-	for i, dst := range t.Colors.fields() {
-		c, ok := aui.ParseColor(tj.Colors[colorKeys[i]])
+func (tj themeJSON) theme(family string) (Theme, error) {
+	t := Theme{Name: tj.Name, Dark: tj.Appearance == "dark", family: family, palette: map[string]ui.Color{},
+		tokens: tj.Tokens, components: tj.Components}
+	for _, key := range paletteKeys {
+		raw, ok := tj.Palette[key]
 		if !ok {
-			return t, fmt.Errorf("colors.%s is missing or not #rrggbb[aa]", colorKeys[i])
+			return t, fmt.Errorf("palette.%s is missing", key)
 		}
-		*dst = c
-	}
-	for i, dst := range t.Syntax.fields() {
-		*dst, _ = aui.ParseColor(tj.Syntax[syntaxKeys[i]])
-	}
-	if len(tj.Terminal) == 16 {
-		var term [16]ui.Color
-		for i, raw := range tj.Terminal {
-			c, ok := aui.ParseColor(raw)
-			if !ok {
-				return t, fmt.Errorf("terminal[%d] is not #rrggbb[aa]", i)
-			}
-			term[i] = c
+		c, err := paletteColor(raw)
+		if err != nil {
+			return t, fmt.Errorf("palette.%s: %w", key, err)
 		}
-		t.Terminal = &term
+		t.palette[key] = c
 	}
 	return t, nil
 }
 
+// paletteColor reads "#rrggbb[aa]", or, for the accent, {"h", "s", "l"}
+// with s and l in percent.
+func paletteColor(raw json.RawMessage) (ui.Color, error) {
+	var hex string
+	if json.Unmarshal(raw, &hex) == nil {
+		if c, ok := aui.ParseColor(hex); ok {
+			return c, nil
+		}
+		return ui.Color{}, fmt.Errorf("%q is not #rrggbb[aa]", hex)
+	}
+	var hsl struct{ H, S, L *float64 }
+	if json.Unmarshal(raw, &hsl) != nil || hsl.H == nil || hsl.S == nil || hsl.L == nil {
+		return ui.Color{}, fmt.Errorf("%s is neither #rrggbb[aa] nor {h, s, l}", raw)
+	}
+	return fromHSL(*hsl.H, *hsl.S/100, *hsl.L/100, 255), nil
+}
+
 type catalog struct {
-	themes map[string]Theme
-	errs   []string
+	themes  map[string]Theme
+	schemes map[schemeKey]Scheme
+	errs    []string
 }
 
 func loadCatalog(userDir string) catalog {
-	cat := catalog{themes: map[string]Theme{}}
-	entries, _ := fs.ReadDir(builtinThemes, "themes")
-	for _, e := range entries {
-		if data, err := builtinThemes.ReadFile("themes/" + e.Name()); err == nil {
-			cat.add(e.Name(), data)
+	cat := catalog{themes: map[string]Theme{}, schemes: map[schemeKey]Scheme{}}
+	for _, dir := range [...]string{"themes", "themes/zed"} {
+		entries, _ := fs.ReadDir(builtinThemes, dir)
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+				continue
+			}
+			if data, err := builtinThemes.ReadFile(path.Join(dir, e.Name())); err == nil {
+				cat.add(e.Name(), data)
+			}
 		}
 	}
 	userEntries, err := os.ReadDir(userDir)
@@ -134,8 +124,7 @@ func loadCatalog(userDir string) catalog {
 		if e.IsDir() || !strings.HasSuffix(strings.ToLower(e.Name()), ".json") {
 			continue
 		}
-		path := filepath.Join(userDir, e.Name())
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(filepath.Join(userDir, e.Name()))
 		if err != nil {
 			cat.errs = append(cat.errs, err.Error())
 			continue
@@ -151,21 +140,37 @@ func (cat *catalog) add(file string, data []byte) {
 		cat.errs = append(cat.errs, fmt.Sprintf("%s: %v", file, err))
 		return
 	}
+	family := f.Name
+	if family == "" {
+		family = strings.TrimSuffix(file, filepath.Ext(file))
+	}
 	for _, raw := range f.Themes {
 		var tj themeJSON
 		if err := json.Unmarshal(raw, &tj); err != nil {
 			cat.errs = append(cat.errs, fmt.Sprintf("%s: %v", file, err))
 			continue
 		}
-		if tj.Style != nil {
-			tj = fromZed(tj)
-		}
-		t, err := tj.theme()
-		if err != nil {
-			cat.errs = append(cat.errs, fmt.Sprintf("%s: %s: %v", file, tj.Name, err))
+		if tj.Name == "" || tj.Appearance != "light" && tj.Appearance != "dark" {
+			cat.errs = append(cat.errs, fmt.Sprintf("%s: a theme needs a name and an appearance of light or dark", file))
 			continue
 		}
-		cat.themes[t.Name] = t
+		style := tj.Style
+		if style == nil {
+			t, err := tj.theme(family)
+			if err != nil {
+				cat.errs = append(cat.errs, fmt.Sprintf("%s: %s: %v", file, tj.Name, err))
+				continue
+			}
+			cat.themes[t.Name] = t
+			if tj.Editor == nil && tj.Terminal == nil {
+				continue
+			}
+			style = map[string]any{}
+			maps.Copy(style, tj.Editor)
+			maps.Copy(style, tj.Terminal)
+		}
+		dark := tj.Appearance == "dark"
+		cat.schemes[schemeKey{family, dark}] = Scheme{Family: family, Name: tj.Name, Dark: dark, style: style}
 	}
 }
 
@@ -180,6 +185,18 @@ func (cat catalog) names(dark bool) []string {
 	return names
 }
 
+// families are the editor color families there are.
+func (cat catalog) families() []string {
+	var out []string
+	for k := range cat.schemes {
+		if !slices.Contains(out, k.family) {
+			out = append(out, k.family)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
 func (cat catalog) theme(name string, dark bool) Theme {
 	if t, ok := cat.themes[name]; ok && t.Dark == dark {
 		return t
@@ -190,40 +207,12 @@ func (cat catalog) theme(name string, dark bool) Theme {
 	return cat.themes[DefaultLightTheme]
 }
 
-func fromZed(tj themeJSON) themeJSON {
-	str := func(m map[string]any, key string) string {
-		switch v := m[key].(type) {
-		case string:
-			return v
-		case map[string]any:
-			s, _ := v["color"].(string)
-			return s
-		}
-		return ""
+// scheme is the editor colors for t: family's of t's appearance, else
+// t's own; ok is false when neither has any.
+func (cat catalog) scheme(family string, t Theme) (Scheme, bool) {
+	if s, ok := cat.schemes[schemeKey{family, t.Dark}]; ok && family != "" {
+		return s, true
 	}
-	first := func(m map[string]any, keys []string) string {
-		for _, k := range keys {
-			if s := str(m, k); s != "" {
-				return s
-			}
-		}
-		return ""
-	}
-	out := themeJSON{Name: tj.Name, Appearance: tj.Appearance, Colors: map[string]string{}, Syntax: map[string]string{}}
-	for i, keys := range zedColors {
-		out.Colors[colorKeys[i]] = first(tj.Style, keys)
-	}
-	syntax, _ := tj.Style["syntax"].(map[string]any)
-	for i, keys := range zedSyntax {
-		out.Syntax[syntaxKeys[i]] = first(syntax, keys)
-	}
-	for _, prefix := range [...]string{"terminal.ansi.", "terminal.ansi.bright_"} {
-		for _, n := range ansiNames {
-			out.Terminal = append(out.Terminal, str(tj.Style, prefix+n))
-		}
-	}
-	if slices.Contains(out.Terminal, "") {
-		out.Terminal = nil
-	}
-	return out
+	s, ok := cat.schemes[schemeKey{t.family, t.Dark}]
+	return s, ok
 }

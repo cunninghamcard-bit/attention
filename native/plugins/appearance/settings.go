@@ -26,8 +26,8 @@ type Settings struct {
 	Theme          string
 	LightTheme     string
 	DarkTheme      string
-	Accent         string
 	AccentColor    string
+	EditorTheme    string
 	IconTheme      string
 	InterfaceFont  string
 	TextFont       string
@@ -54,7 +54,6 @@ func DefaultSettings() Settings {
 		Theme:          "system",
 		LightTheme:     DefaultLightTheme,
 		DarkTheme:      DefaultDarkTheme,
-		Accent:         "default",
 		IconTheme:      "pierre",
 		BaseFontSize:   14,
 		EditorFontSize: CodeFontSize,
@@ -116,7 +115,7 @@ func load(set *settings.Settings) Settings {
 		"theme":               &s.Theme,
 		"lightTheme":          &s.LightTheme,
 		"darkTheme":           &s.DarkTheme,
-		"accent":              &s.Accent,
+		"editorTheme":         &s.EditorTheme,
 		"accentColor":         &s.AccentColor,
 		"iconTheme":           &s.IconTheme,
 		"interfaceFontFamily": &s.InterfaceFont,

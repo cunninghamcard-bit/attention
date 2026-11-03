@@ -1,6 +1,6 @@
 # RFC 0004：主题分层与 token
 
-- 状态：草案
+- 状态：已实施（2026-11-03）
 - 日期：2026-11-03
 - 代码：`native/plugins/appearance`、`native/ui`
 - 取代：[docs/appearance.md](../appearance.md) 的「主题里有什么」「其余颜色怎么来」「Zed 主题」三节
@@ -88,6 +88,7 @@ TS 版 attention 沿用 Obsidian 的 CSS 变量，分三层：基础色板（`--
 | **强调** | | |
 | `accent.fill` | 主按钮、开关、勾选 | `accent.1` |
 | `accent.fillHover` | 主按钮悬停 | `accent.2` |
+| `accent.fillPressed` | 主按钮按下 | `accent` |
 | `accent.border` | 拖放目标的边、聚焦卡片的边 | `accent@0.55` |
 | **状态色** | | |
 | `status.error`、`status.warning`、`status.success`、`status.info` | 文字和图标 | `red`、`orange`、`green`、`blue` |
@@ -98,7 +99,7 @@ TS 版 attention 沿用 Obsidian 的 CSS 变量，分三层：基础色板（`--
 | `scrollbar` | 滚动条 | `neutral.100@0.25` |
 | `scrim` | 模态框背后的遮罩 | `#000@0.32` |
 | `shadow.small` | 选中的标签行、设置分组 | `0 1 2 #000@0.08` |
-| `shadow.medium` | 卡片、玻璃面板 | `0 8 24 #000@0.16` |
+| `shadow.medium` | 玻璃面板、弹出层 | `0 12 32 #000@0.18` |
 | `shadow.large` | 模态框、菜单 | `0 24 64 #000@0.28` |
 
 阴影 token 写成 `x y blur color`，因为 `ui.Element.Shadow` 要这四个值。
@@ -110,12 +111,16 @@ TS 版 attention 沿用 Obsidian 的 CSS 变量，分三层：基础色板（`--
 | token | 默认值 |
 |---|---|
 | `tabRow.selected`、`tabRow.selectedShadow`、`tabRow.hover` | `bg.raised`、`shadow.small`、`fill.hover` |
-| `splitRow.selected`、`splitRow.hover` | `fill.selected`、`fill.hover@0.66` |
-| `addressBar.bg`、`addressBar.hover` | `fill.hover`、`fill.pressed` |
-| `card.border`（只在暗色主题画） | `border.subtle` |
-| `button.secondary`、`.hover`、`.pressed` | `fill.hover`、`fill.pressed`、`neutral.100@0.14` |
+| `splitRow.selected`、`splitRow.hover` | `fill.hover`、`fill.hover@0.66` |
+| `addressBar.bg`、`addressBar.hover` | `fill.hover`、`fill.hover` 往 `fill.pressed` 混 75% |
+| `card.border`（只在暗色主题画）、`card.shadow` | `border.subtle`、`0 1 4` 加 `shadow.small` 的颜色 |
+| `field.hover` | 同 `addressBar.hover` |
+| `button.secondary`、`.hover`、`.pressed` | `fill.hover`、`fill.pressed`、`fill.pressed@1.4` |
+| `button.danger.hover`、`.pressed` | `status.errorFill` 往正文色混 10%、20% |
 | `menu.itemHover` | `fill.hover` |
-| `glass.bg` | `bg.raised@0.78` |
+| `glass.bg`、`glass.track`、`segment.pill` | `bg.overlay@0.78`、`bg.window@0.45`、`bg.page@0.85` |
+
+默认值写在 `native/ui` 的 `ComponentTokens`，主题的 `components` 在它之后覆盖。
 
 ## 6. 编辑器和终端：Zed 的键
 
@@ -148,7 +153,7 @@ TS 版 attention 沿用 Obsidian 的 CSS 变量，分三层：基础色板（`--
 | Tag、Attribute、Meta | `tag`；`attribute`；`preproc`：`attribute` |
 | Heading、Emphasis、Strong | `title`；`emphasis`；`emphasis.strong` |
 | Link、Code | `link_text`：`link_uri`；`text.literal` |
-| Inserted、Deleted、Invalid | `created`；`deleted`；`error` |
+| Inserted、Deleted、Invalid | `diff.plus`：`created`；`diff.minus`：`deleted`；`error` |
 
 终端用 `terminal.background`、`terminal.foreground`、`terminal.ansi.*` 和 `terminal.ansi.bright_*`。
 
@@ -192,14 +197,14 @@ mygo 的 `c.Theme()` 返回固定字段的 `*ui.Theme`，`SetTheme` 对之后创
 
 | | A：按 `*ui.Theme` 指针登记 | B：组件参数里显式传 `*Tokens` |
 |---|---|---|
-| 做法 | `appearance` 每建一套主题，把 `*ui.Theme` 和对应的 `*aui.Tokens` 一起登记到 `native/ui`；组件用 `aui.Tokens(c)` 按 `c.Theme()` 查 | 每个组件的 Props 加一个 `Tokens` 字段，调用方一路传下去 |
+| 做法 | `appearance` 每建一套主题，把 `*ui.Theme` 和对应的 `*aui.Tokens` 一起登记到 `native/ui`；组件用 `aui.TokensOf(c)` 按 `c.Theme()` 查 | 每个组件的 Props 加一个 `Tokens` 字段，调用方一路传下去 |
 | 亮暗嵌套（亮色窗口里的暗色终端） | 能用：子树 `SetTheme` 换了指针，查到的就是那一套 | 能用，但每个调用点都要拿对 |
 | 改动面 | 只改 `native/ui` 和 `appearance` | 所有画界面的插件都要改 |
 | 没登记的主题（测试、示例） | 从 `*ui.Theme` 推一套默认 token | 调用方必须给 |
 
-选 A。`*ui.Theme` 变成 token 的投影：`Background` = `bg.page`，`Surface` = `bg.field`，`Border` = `border.default`，`Text` = `text.primary`，`TextMuted` = `text.secondary`，`Accent` = `accent.fill`，`AccentHover` = `accent.fillHover`，`AccentText` = `text.onAccent`，`Selection` = `selection`，`Focus` = `border.focus`，`Inverse` = `bg.inverse`，`Scrollbar` = `scrollbar`。mygo 自己的控件（`TextInput`、`Scroll` 等）只看到这些字段，照常工作。
+选 A。`*ui.Theme` 变成 token 的投影：`Background` = `bg.page`，`Surface` = `bg.window`（`layout` 用它画窗口底色），`SurfaceHover` = `fill.hover`，`SurfacePressed` = `fill.pressed`，`Border` = `border.default`，`Text` = `text.primary`，`TextMuted` = `text.secondary`，`Accent` = `accent.fill`，`AccentHover` = `accent.fillHover`，`AccentText` = `text.onAccent`，`Selection` = `selection`，`Focus` = `border.focus`，`Inverse` = `bg.inverse`，`Scrollbar` = `scrollbar`。mygo 自己的控件（`TextInput`、`Scroll` 等）只看到这些字段，照常工作。
 
-登记表只在主线程读写。每帧的开销是一次 map 查找。
+登记表只在主线程读写。每帧的开销是一次 map 查找。`layout` 给侧栏用的染了项目色的副本每帧连同改过 `bg.window` 的 token 一起登记。
 
 ## 9. 现有颜色的去处
 
@@ -222,13 +227,14 @@ mygo 的 `c.Theme()` 返回固定字段的 `*ui.Theme`，`SetTheme` 对之后创
 ## 10. 设置项
 
 - 保留：`theme`（`system`、`light`、`dark`）、`lightTheme`、`darkTheme`、`accentColor`、`iconTheme`。
-- 新增：`editorTheme`：空表示跟随界面主题，否则是一个编辑器配色的名字（来自我们的主题或 Zed 主题文件）。
+- 新增：`editorTheme`：空表示跟随界面主题，否则是一个编辑器配色家族的名字（主题文件的 `name`，如 `One`），按当前亮暗取其中对应的那个。
 - 删除：`accent`（四个预设方案）。
 
 ## 11. 内置主题
 
 - `Attention Light`、`Attention Dark`：改写成新格式，写全色板。
-- `One`、`Ayu`：改成 Zed 原样的主题文件，只作编辑器配色。
+- `One`、`Ayu`：改成 Zed 原样的主题文件（`themes/zed/`，MIT，许可证同目录），只作编辑器配色。
+- 两个 Attention 主题的强调色是黑白色，链接用 `tokens` 覆盖成 `blue`。
 
 ## 12. 分步实施
 

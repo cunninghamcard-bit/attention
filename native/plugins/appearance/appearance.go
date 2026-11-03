@@ -21,6 +21,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
+	aui "github.com/cunninghamcard-bit/attention/native/ui"
 	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
@@ -213,7 +214,16 @@ func (a *Appearance) of(dark bool) built {
 		i, name = 1, a.cur.DarkTheme
 	}
 	if at := a.gen + a.catGen; a.built[i].ui == nil || a.builtAt[i] != at {
-		a.built[i] = build(a.cat.theme(name, dark), a.cur)
+		t := a.cat.theme(name, dark)
+		var sch *Scheme
+		if s, ok := a.cat.scheme(a.cur.EditorTheme, t); ok {
+			sch = &s
+		}
+		if old := a.built[i].ui; old != nil {
+			aui.Unregister(old)
+		}
+		a.built[i] = build(t, sch, a.cur)
+		aui.Register(a.built[i].ui, a.built[i].tokens)
 		a.builtAt[i] = at
 	}
 	return a.built[i]
