@@ -119,6 +119,7 @@ TS 版 attention 沿用 Obsidian 的 CSS 变量，分三层：基础色板（`--
 | `button.danger.hover`、`.pressed` | `status.errorFill` 往正文色混 10%、20% |
 | `menu.itemHover` | `fill.hover` |
 | `glass.bg`、`glass.track`、`segment.pill` | `bg.overlay@0.78`、`bg.window@0.45`、`bg.page@0.85` |
+| `switch.off`、`switch.on`、`switch.knob`、`switch.knobOn` | `border.default` 往正文色混 15%、`accent.fill`、白色、`text.onAccent` |
 
 默认值写在 `native/ui` 的 `ComponentTokens`，主题的 `components` 在它之后覆盖。
 

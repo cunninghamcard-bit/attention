@@ -249,8 +249,8 @@ func (l *Layout) ToggleButton(c *ui.Context, d slots.Dock) {
 	if l.Open(d) {
 		tip = "Collapse"
 	}
-	aui.Button(c, aui.ButtonProps{Label: tip, Icon: glyph, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-		OnClick: func() { l.Toggle(d) }}).Tooltip(tip)
+	aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: tip, Icon: glyph, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
+		OnClick: func() { l.Toggle(d) }}), tip)
 }
 
 // View is the window's root.
@@ -412,12 +412,12 @@ func (l *Layout) sidebar(c *ui.Context) {
 				head.Status(c)
 			}
 			if l.notice != "" {
-				ui.Icon(c, icon.Must("triangle-alert")).Size(12, 12).TextColor(t.Warning).Tooltip(l.notice)
+				aui.Tooltip(c, ui.Icon(c, icon.Must("triangle-alert")).Size(12, 12).TextColor(t.Warning), l.notice)
 			}
 		})
 		ui.Row(c).Height(36).Shrink(0).FillWidth().Gap(2).AlignItems(ui.Center).Children(func() {
-			aui.Button(c, aui.ButtonProps{Label: "Settings", Icon: icon.Must("settings"), Variant: aui.ButtonGhost,
-				Size: aui.ButtonIconSmall, OnClick: l.openSettings}).Tooltip("Settings")
+			aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: "Settings", Icon: icon.Must("settings"), Variant: aui.ButtonGhost,
+				Size: aui.ButtonIconSmall, OnClick: l.openSettings}), "Settings")
 			ui.Box(c).Grow(1)
 			for i := range panels {
 				p := panels[i]
@@ -428,7 +428,8 @@ func (l *Layout) sidebar(c *ui.Context) {
 				}
 				btn := aui.Button(c, aui.ButtonProps{Label: p.Title, Icon: p.Icon, Variant: aui.ButtonGhost,
 					Size: aui.ButtonIconSmall, IconColor: color, OnClick: func() { l.RevealPanel(p.ID) }}).
-					Checked(active).Tooltip(p.Title)
+					Checked(active)
+				aui.Tooltip(c, btn, p.Title)
 				if active {
 					btn.Background(aui.TokensOf(c).FillSelected)
 				}

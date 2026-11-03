@@ -199,8 +199,8 @@ func (v *Viewer) actions(c *ui.Context, p tabtypes.Props) {
 	if d.source {
 		label, glyph = "Switch to reading view", icon.Must("book-open")
 	}
-	aui.Button(c, aui.ButtonProps{Label: label, Icon: glyph, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-		OnClick: func() { d.source = !d.source }}).Tooltip(label + " (Ctrl E)")
+	aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: label, Icon: glyph, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
+		OnClick: func() { d.source = !d.source }}), label+" (Ctrl E)")
 }
 
 func (v *Viewer) menu(id int) []tabtypes.MenuItem {

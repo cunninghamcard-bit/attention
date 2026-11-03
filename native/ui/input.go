@@ -15,7 +15,7 @@ import (
 // placeholder is also its accessible name.
 func Field(c *ui.Context, value *string, placeholder string, disabled bool) ui.Element {
 	t := c.Theme()
-	e := ui.TextInput(c, value).Placeholder(placeholder)
+	e := ui.TextInputBase(c, value).Placeholder(placeholder)
 	if placeholder != "" {
 		e.Label(placeholder)
 	}
@@ -39,9 +39,8 @@ func SearchField(c *ui.Context, value *string, placeholder string, disabled bool
 	var input ui.Element
 	box.Children(func() {
 		ui.Icon(c, icon.Must("search")).Size(iconSmall, iconSmall).TextColor(t.TextMuted).Shrink(0)
-		input = ui.TextInput(c, value).Placeholder(placeholder).FillWidth().Height(controlHeight-2).
-			MinHeight(controlHeight-2).Padding(0).FontSize(labelSize).TextColor(t.Text).
-			BorderWidth(0, 0, 0, 0).Background(ui.Color{})
+		input = ui.TextInputBase(c, value).Placeholder(placeholder).FillWidth().Height(controlHeight - 2).
+			MinHeight(controlHeight - 2).Padding(0).FontSize(labelSize).TextColor(t.Text)
 		if placeholder != "" {
 			input.Label(placeholder)
 		}
@@ -77,8 +76,8 @@ func NumberField(c *ui.Context, value *float64, low, high float64, label string,
 	row.Children(func() {
 		Button(c, ButtonProps{Label: "Decrease " + label, Icon: icon.Must("minus"), Size: ButtonIconTiny, Variant: ButtonGhost,
 			Disabled: *value <= low, OnClick: func() { set(*value - 1) }})
-		field = ui.TextInput(c, draft).Label(label).Grow(1).MinWidth(0).Height(controlHeight-2).Padding(0, 4).
-			FontSize(labelSize).TextColor(t.Text).TextAlign(ui.Center).Background(ui.Color{}).BorderWidth(0)
+		field = ui.TextInputBase(c, draft).Label(label).Grow(1).MinWidth(0).Height(controlHeight-2).Padding(0, 4).
+			FontSize(labelSize).TextColor(t.Text).TextAlign(ui.Center)
 		field.OnChange(func() {
 			if n, err := strconv.ParseFloat(strings.TrimSpace(*draft), 64); err == nil && n >= low && n <= high {
 				set(n)

@@ -60,23 +60,24 @@ func (s *Shortcuts) commandHotkeys(c *ui.Context, cmd actions.Command) {
 				for j, o := range conflicts {
 					names[j] = o.Title
 				}
-				chip.BorderWidth(1).BorderColor(t.Danger).Tooltip("Conflicts with " + strings.Join(names, ", "))
+				aui.Tooltip(c, chip.BorderWidth(1).BorderColor(t.Danger), "Conflicts with "+strings.Join(names, ", "))
 			}
 			chip.Children(func() {
 				ui.Text(c, Format(h)).FontSize(12).SingleLine()
-				aui.Button(c, aui.ButtonProps{Label: "Remove hotkey", Icon: icon.Must("x"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-					OnClick: func() { s.removeAt(cmd, i) }}).Tooltip("Remove hotkey")
+				aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: "Remove hotkey", Icon: icon.Must("x"), Variant: aui.ButtonGhost,
+					Size: aui.ButtonIconSmall, OnClick: func() { s.removeAt(cmd, i) }}), "Remove hotkey")
 			})
 		}
 		label, color := "Add hotkey", t.Text
 		if s.recording == cmd.ID {
 			label, color = "Press keys...", t.Accent
 		}
-		aui.Button(c, aui.ButtonProps{Label: label, Icon: icon.Must("plus"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-			IconColor: color, OnClick: func() { s.recording = cmd.ID }}).Tooltip(label)
+		aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: label, Icon: icon.Must("plus"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
+			IconColor: color, OnClick: func() { s.recording = cmd.ID }}), label)
 		if s.Overridden(cmd.ID) {
-			aui.Button(c, aui.ButtonProps{Label: "Restore default hotkeys", Icon: icon.Must("refresh-cw"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-				IconColor: t.Accent, OnClick: func() { s.settings.Unset(settings.Hotkeys, cmd.ID) }}).Tooltip("Restore default hotkeys")
+			aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: "Restore default hotkeys", Icon: icon.Must("refresh-cw"),
+				Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall, IconColor: t.Accent,
+				OnClick: func() { s.settings.Unset(settings.Hotkeys, cmd.ID) }}), "Restore default hotkeys")
 		}
 	})
 }

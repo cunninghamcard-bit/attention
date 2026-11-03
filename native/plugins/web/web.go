@@ -392,8 +392,8 @@ func (v *viewer) register(loaded func(Page)) (off func()) {
 			if pg.reader != nil {
 				label = "Web view"
 			}
-			aui.Button(c, aui.ButtonProps{Label: label, Icon: icon.Must("glasses"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-				Disabled: pg.view == nil || pg.extracting, OnClick: func() { v.toggleReader(pg) }}).Tooltip(label)
+			aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: label, Icon: icon.Must("glasses"), Variant: aui.ButtonGhost,
+				Size: aui.ButtonIconSmall, Disabled: pg.view == nil || pg.extracting, OnClick: func() { v.toggleReader(pg) }}), label)
 		},
 		Closed: func(id int) {
 			pg := v.pages[id]
@@ -540,8 +540,8 @@ func (v *viewer) findBar(c *ui.Context, pg *page) {
 		ui.Text(c, count).FontSize(12).TextColor(t.TextMuted).Shrink(0)
 		ui.Box(c).Grow(1)
 		button := func(label string, icon *ui.SVG, fn func()) {
-			aui.Button(c, aui.ButtonProps{Label: label, Icon: icon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-				IconColor: t.Text, OnClick: fn}).Tooltip(label)
+			aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: label, Icon: icon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
+				IconColor: t.Text, OnClick: fn}), label)
 		}
 		button("Previous", icon.Must("arrow-up"), func() { v.find(pg, true) })
 		button("Next", icon.Must("arrow-down"), func() { v.find(pg, false) })

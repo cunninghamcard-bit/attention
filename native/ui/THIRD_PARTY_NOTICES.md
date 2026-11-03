@@ -1,6 +1,6 @@
 # Third-party notices
 
-## CrychicUI (icon, kit, fx/frosted, choice, overlay)
+## CrychicUI (icon, kit, fx/frosted, choice, overlay, input)
 
 Adapted from https://github.com/ELY-Open-Source/CrychicUI at bf15ddf6600a.
 

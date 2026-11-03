@@ -204,7 +204,7 @@ func (h *History) view(c *ui.Context, _ tabtypes.Props) {
 				h.Remove(e.ID)
 			}
 		})
-		row.Tooltip(e.URL)
+		aui.Tooltip(c, row, e.URL)
 		row.Children(func() {
 			ui.Icon(c, icon.Must("globe")).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
 			ui.RichText(c, ui.Span{Text: e.Title}, ui.Span{Text: " — " + e.URL, Color: t.TextMuted}).

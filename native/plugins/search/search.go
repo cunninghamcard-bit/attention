@@ -413,7 +413,7 @@ func (s *Search) fileRow(c *ui.Context, f *projectplugin.FileResult) {
 		}
 		s.open(f, first)
 	}
-	item.Tooltip(name)
+	aui.Tooltip(c, item, name)
 	item.Children(func() {
 		if len(f.Matches) > 0 {
 			if aui.Disclosure(c, !s.isCollapsed(f), 14).Clicked() {
@@ -491,7 +491,7 @@ func toggleIcon(c *ui.Context, icon *ui.SVG, tip string, on bool) bool {
 		color = c.Theme().Accent
 	}
 	b := aui.Button(c, aui.ButtonProps{Label: tip, Icon: icon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall, IconColor: color})
-	return b.Checked(on).Tooltip(tip).Clicked()
+	return aui.Tooltip(c, b.Checked(on), tip).Clicked()
 }
 
 func setting(c *ui.Context, label string, on *bool, changed func()) {

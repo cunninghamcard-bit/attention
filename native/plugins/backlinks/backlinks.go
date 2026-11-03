@@ -281,7 +281,7 @@ func (p *Pane) fileRow(c *ui.Context, b *indexplugin.Backlink) {
 		}
 		p.open(b, first)
 	}
-	item.Tooltip(b.Display)
+	aui.Tooltip(c, item, b.Display)
 	item.Children(func() {
 		if len(b.Mentions) > 0 {
 			if aui.Disclosure(c, !p.collapsed[b.Path+b.URL], 14).Clicked() {

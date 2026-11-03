@@ -458,7 +458,7 @@ func (tr *Tree) view(c *ui.Context) {
 				}
 			}
 			if ws != nil {
-				row.Tooltip(ws.Display(e.Path))
+				aui.Tooltip(c, row, ws.Display(e.Path))
 			}
 			if r.mount != nil {
 				m := *r.mount
@@ -492,7 +492,7 @@ func (tr *Tree) view(c *ui.Context) {
 				}
 				if e.Dir {
 					if d := tr.dirs[e.Path]; d != nil && d.err != "" {
-						ui.Icon(c, icon.Must("triangle-alert")).Size(12, 12).TextColor(t.Warning).Shrink(0).Tooltip(d.err)
+						aui.Tooltip(c, ui.Icon(c, icon.Must("triangle-alert")).Size(12, 12).TextColor(t.Warning).Shrink(0), d.err)
 					}
 				}
 			})
@@ -605,7 +605,7 @@ func (tr *Tree) actions(c *ui.Context) {
 		collapseIcon = icon.Must("chevrons-up-down")
 		collapseTip = "Expand all"
 	}
-	aui.Button(c, aui.ButtonProps{
+	aui.Tooltip(c, aui.Button(c, aui.ButtonProps{
 		Label: "Add folder", Icon: icon.Must("folder-plus"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
 		OnClick: func() {
 			if cmd := tr.act.Lookup("workspace:add-folder"); cmd != nil {
@@ -616,11 +616,11 @@ func (tr *Tree) actions(c *ui.Context) {
 				}()
 			}
 		},
-	}).Tooltip("Add folder to workspace")
-	aui.Button(c, aui.ButtonProps{
+	}), "Add folder to workspace")
+	aui.Tooltip(c, aui.Button(c, aui.ButtonProps{
 		Label: collapseTip, Icon: collapseIcon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
 		OnClick: func() { tr.toggleCollapseAll(!allCollapsed) },
-	}).Tooltip(collapseTip)
+	}), collapseTip)
 }
 
 // colorMenu is a project's Color submenu: the presets, then Default.
@@ -645,8 +645,9 @@ func (tr *Tree) swatches(c *ui.Context, m projectplugin.Mount) {
 	ui.Row(c).Gap(4).AlignItems(ui.Center).Children(func() {
 		for _, sw := range projectplugin.Palette {
 			col, _ := aui.ParseColor(sw.Color)
-			b := ui.ButtonBase(c).Key("swatch:"+m.ID+sw.Color).Label(sw.Name).Tooltip(sw.Name).Size(18, 18).Radius(9).
+			b := ui.ButtonBase(c).Key("swatch:"+m.ID+sw.Color).Label(sw.Name).Size(18, 18).Radius(9).
 				Background(col).Cursor(ui.CursorPointer)
+			aui.Tooltip(c, b, sw.Name)
 			if m.Color == sw.Color {
 				b.Border(2, t.Text)
 			}
