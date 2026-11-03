@@ -233,9 +233,8 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 
 | 贡献 | 注册 | 谁来画 |
 |---|---|---|
-| `Panel`：左、右 dock 的面板（`slots.Left` / `slots.Right`） | `RegisterPanel` | layout |
-| `RibbonItem` | `RegisterRibbon` | layout |
-| `StatusItem`：状态栏左侧或右侧 | `RegisterStatus` | layout |
+| `Panel`：左侧栏的面板或右侧上下文栏的段（`slots.Sidebar` / `slots.Context`） | `RegisterPanel` | layout |
+| `Chrome`：中间区域的所有者加在窗口上的部分：后退前进、地址栏、状态行、窗口底色 | `SetChrome` | layout（所有者是 workspace） |
 | `Overlay`：窗口级浮层（模态框等）；`Order` 小于 0 的画在内容之前 | `RegisterOverlay` | layout |
 | `PaletteSource`：浮层面板的一种模式，用 `OpenPalette(id)` 打开 | `RegisterPaletteSource` | palette |
 | `SettingsSection`：设置里的一个标签，分 `Options` 和 `CorePlugins` 两组，`Keywords` 供设置搜索 | `RegisterSettingsSection` | settings |
@@ -335,7 +334,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 | `shell` | shell | `*shell.Shell` | 窗口、根视图、`Update` 投递到主线程、`Invalidate` | UI runtime |
 | `slots` | slots | `*slots.Registry` | §5.5 | UI runtime |
 | `resources` | resources | `*resources.Registry` | §5.6 | UI runtime |
-| `layout` | layout | `*layout.Layout` | ribbon、左右 dock、中间区域、状态栏、浮层的绘制；dock 和面板状态存 `layout.json`；`RevealPanel`、`Toggle` | UI runtime |
+| `layout` | layout | `*layout.Layout` | 左侧栏、内容卡片、右侧上下文栏、浮层的绘制；侧栏和面板状态存 `layout.json`；`RevealPanel`、`Toggle` | UI runtime |
 | `workspace` | workspace | `*workspace.Workspace` | 中间区域：分屏树、标签组、标签页、视图头、`session.json`；打开入口和标签页历史（§5.6）；`open`、`tabs`、`recents`、`tab:open`、`workspace` 命令 | UI runtime |
 | `tabTypes` | workspace | `*tabtypes.Registry` | §5.6 | UI runtime |
 | `settings` | settings | `*settings.Settings` | 设置模态框；`app`、`appearance`、`hotkeys` 三个 JSON 文件的 `Get`/`Set`（§5.10） | UI runtime |
@@ -429,6 +428,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 - **主题**：只有颜色：9 个界面色、9 个语法色、可选的终端 16 色，其余颜色由代码推导。`appearance` 插件读取内置主题（`plugins/appearance/themes/`）和 `<配置目录>/themes/`，也接受 Zed 主题文件里映射得到的那部分键。同一份主题生成 `*ui.Theme`、`*editor.Theme`、`*markdown.Theme` 和终端主题。设计见 [docs/appearance.md](../appearance.md)。
 - **文件图标**：`internal/fileicon` 内置 `@pierre/trees` 的 57 个 SVG 图标和语义色板，按文件名、后缀匹配。`fileicon.Theme` 是一个值，由 `appearance.Icons()` 给出；文件树、标签页、快速切换、搜索、书签和反链用它画图标。
 - 正文字体跟随系统（fontconfig 的 sans-serif），不在主题里写死。
+- **窗口结构**：Arc 式的左侧栏、内容卡片和右侧上下文栏，标签列表、地址栏、Omnibox 和起始页，以 [RFC 0003](0003-arc-layout.md) 为准；本节和 §5.5 的 slot 表与它不一致时，以 RFC 0003 为准。
 - 根目录 AGENTS.md / CLAUDE.md 的「忠实重建 Obsidian」规则只适用于 TS 代码；`native/AGENTS.md` 写明了这一点。到 P5 再整体重写根目录的这两份文件。
 
 ### 5.13 仓库组织
@@ -550,7 +550,7 @@ native/
    - 原决议：推动上游 rutis 支持同进程直接透传，再把 `*api` 包收敛进 `contract/`。
    - 实际落地（`4e19197`）：rutis 已支持同进程直接传 Go 值（锁定版本见 §5.3）。`*api` 包、`contract/` 和 `pluginreg` 全部删除，没有收进 `contract/`；每个插件直接 `rctx.Provide` 自己的 Go 类型，契约类型和事件常量放在提供方的插件包里，使用方 import 那个包（§5.2、§5.4）。
 4. **外壳底座（Workbench Shell）与 4 类标准扩展点**：
-   - 参考 Zed 的 `workspace` 设计，把窗口、dock、中间分屏与标签树、快捷键分发与设置做成内聚的外壳。现在由 `shell`（窗口、主线程投递）、`layout`（ribbon、dock、状态栏、浮层）、`workspace`（中间区域）、`shortcuts`、`settings` 五个插件分担（§5.7）。
+   - 参考 Zed 的 `workspace` 设计，把窗口、dock、中间分屏与标签树、快捷键分发与设置做成内聚的外壳。现在由 `shell`（窗口、主线程投递）、`layout`（左侧栏、上下文栏、浮层）、`workspace`（中间区域）、`shortcuts`、`settings` 五个插件分担（§5.7）。
    - 业务插件与第三方编译插件（`attention build --with`）围绕 4 个扩展点接入：**`TabType`**（`tabtypes.TabType`）、**`Slot`**（`slots.Registry` 的 `Panel`、`Ribbon`、`Status`、`Overlay`、`PaletteSource`、`SettingsSection`）、**`Command`**（`actions.Command`）、**`Resource`**（`resources.Provider`）。公共类型放在各自的插件包里，不设 `contract/`（第 3 条）。
 5. **保留并固化内存级 `MetadataCache`（替代泛化 `extractors` 与 SQLite 索引）**：
    - 放弃原稿 §5.6 中未落地的跨进程 `extractors` 注册表以及本地 SQLite 索引库方案。现行设计见 §5.6「索引」。

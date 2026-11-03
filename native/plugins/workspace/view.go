@@ -404,13 +404,13 @@ func (ws *Workspace) headNav(c *ui.Context) {
 
 // addressBar is the active tab's address: its folders muted, then its
 // name (FileView.renderBreadcrumbs), or its type's own Header; then its
-// type's Actions and More options. A press on the address opens the quick
-// switcher.
+// type's Actions and More options. A press on the address opens the
+// omnibox.
 func (ws *Workspace) addressBar(c *ui.Context) {
 	props := aui.AddressBarProps{OnClick: func() { ws.sl.OpenPalette(omniboxID) }}
 	tb := ws.activeTab()
 	if tb == nil || tb.empty {
-		props.Name, props.Icon = "Search or open a file", icon.Must("search")
+		props.Name, props.Icon = "Search or enter address", icon.Must("search")
 		aui.AddressBar(c, props)
 		return
 	}
@@ -529,7 +529,7 @@ func (ws *Workspace) paneMenu(p *pane, tb *tab, tt tabtypes.TabType) []aui.MenuI
 	)
 }
 
-// ---- status bar ---------------------------------------------------------------
+// ---- status line ------------------------------------------------------------
 
 // tabStatus is the active tab's status items, its type's.
 func (ws *Workspace) tabStatus(c *ui.Context) {

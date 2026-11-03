@@ -388,16 +388,15 @@ func (t *tab) displayText() string {
 }
 
 // Register makes ws the center (the workspace.center slot), with the
-// sidebar's head and its list of tabs, its status items, its actions hooks
+// sidebar's head, status line and list of tabs, its actions hooks
 // and its commands, until off is called.
 func Register(ws *Workspace) (off func()) {
 	offs := []func(){
 		ws.sl.SetCenter(ws.view),
-		ws.sl.SetChrome(slots.Chrome{Nav: ws.headNav, Bar: ws.addressBar, Tint: ws.tint}),
+		ws.sl.SetChrome(slots.Chrome{Nav: ws.headNav, Bar: ws.addressBar, Status: ws.tabStatus, Tint: ws.tint}),
 		ws.sl.RegisterPanel(slots.Panel{ID: TabsPanelID, Title: "Tabs", Icon: icon.Must("files"), Dock: slots.Sidebar,
 			Order: -10, View: ws.tabsPanel}),
 		ws.sl.RegisterPaletteSource(ws.tabsSource()),
-		ws.sl.RegisterStatus(slots.StatusItem{ID: "workspace-tab", Right: true, View: ws.tabStatus}),
 		ws.act.SetActiveFile(func(ctx context.Context) (string, error) {
 			if ws.sh.Window() == nil {
 				return "", nil

@@ -40,10 +40,7 @@ type Settings struct {
 	ItalicComments bool
 	ShowLineNums   bool
 	ShowGuides     bool
-	ShowRibbon     bool
-	ShowViewHeader bool
 	ShowInline     bool
-	ShowTabBar     bool
 	ShowFileIcons  bool
 	TreeDensity    string
 	Spacing        float32
@@ -66,9 +63,6 @@ func DefaultSettings() Settings {
 		CustomLineH:    1.5,
 		ShowLineNums:   true,
 		ShowGuides:     true,
-		ShowRibbon:     true,
-		ShowViewHeader: true,
-		ShowTabBar:     true,
 		ShowFileIcons:  true,
 		TreeDensity:    "standard",
 		Spacing:        8,
@@ -136,10 +130,7 @@ func load(set *settings.Settings) Settings {
 		"italicComments":      &s.ItalicComments,
 		"showLineNumbers":     &s.ShowLineNums,
 		"showIndentGuides":    &s.ShowGuides,
-		"showRibbon":          &s.ShowRibbon,
-		"showViewHeader":      &s.ShowViewHeader,
 		"showInlineTitle":     &s.ShowInline,
-		"showTabBar":          &s.ShowTabBar,
 		"showFileIcons":       &s.ShowFileIcons,
 		"treeDensity":         &s.TreeDensity,
 		"spacing":             &s.Spacing,

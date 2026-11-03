@@ -404,8 +404,8 @@ func (l *Layout) sidebar(c *ui.Context) {
 			})
 		}
 		ui.Row(c).Height(24).Shrink(0).FillWidth().PaddingX(8).Gap(10).AlignItems(ui.Center).Children(func() {
-			for _, s := range l.slots.Status(true) {
-				s.View(c)
+			if head.Status != nil {
+				head.Status(c)
 			}
 			if l.notice != "" {
 				ui.Icon(c, icon.Must("triangle-alert")).Size(12, 12).TextColor(t.Warning).Tooltip(l.notice)

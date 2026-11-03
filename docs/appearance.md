@@ -67,7 +67,7 @@
 - 主题：`theme`（`system`、`moonstone`、`obsidian`）、`lightTheme`、`darkTheme`、`accent`（`default` 用主题的强调色，另有 `ocean`、`forest`、`rose`、`amber` 四种预设）、`accentColor`（自定义强调色，优先于主题和方案）、`iconTheme`。
 - 字体：`interfaceFontFamily`、`textFontFamily`、`monospaceFontFamily`、`baseFontSize`、`editorFontSize`。
 - 编辑器：`lineHeight`（`comfortable`、`standard`、`custom` 加 `customLineHeight`）、`tabSize`、`italicComments`、`showLineNumbers`、`showIndentGuides`。
-- 界面：`showRibbon`、`showViewHeader`、`showInlineTitle`、`showTabBar`、`showFileIcons`、`treeDensity`、`spacing`、`radius`、`scrollbarWidth`。
+- 界面：`showInlineTitle`、`showFileIcons`、`treeDensity`、`spacing`、`radius`、`scrollbarWidth`。
 
 ## 代码结构
 

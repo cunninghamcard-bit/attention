@@ -63,12 +63,14 @@ type Panel struct {
 
 // Chrome is what the center adds to the window around it: Nav beside the
 // window controls (back and forward), Bar under them (the address bar),
-// and Tint, the color the window's surface leans to (the active tab's
-// project), the zero color for none.
+// Status in the sidebar's status line (the active tab's), and Tint, the
+// color the window's surface leans to (the active tab's project), the zero
+// color for none.
 type Chrome struct {
-	Nav  func(c *ui.Context)
-	Bar  func(c *ui.Context)
-	Tint func() ui.Color
+	Nav    func(c *ui.Context)
+	Bar    func(c *ui.Context)
+	Status func(c *ui.Context)
+	Tint   func() ui.Color
 }
 
 // Overlay is an overlay contribution (RFC §5.5's overlay slot).
@@ -104,14 +106,6 @@ type PaletteItem struct {
 	Choose func(newTab bool)
 }
 
-// StatusItem is a statusbar.item contribution.
-type StatusItem struct {
-	ID    string
-	Right bool
-	Order int
-	View  func(c *ui.Context)
-}
-
 // SettingsGroup is the header group a settings tab is listed in.
 type SettingsGroup int
 
@@ -140,7 +134,6 @@ type Registry struct {
 	centerView func(c *ui.Context)
 	headID     int
 	head       Chrome
-	status     map[int]StatusItem
 	sections   map[int]SettingsSection
 }
 
@@ -151,7 +144,6 @@ func New(inv func()) *Registry {
 		panels:   map[int]Panel{},
 		overlays: map[int]Overlay{},
 		sources:  map[int]PaletteSource{},
-		status:   map[int]StatusItem{},
 		sections: map[int]SettingsSection{},
 	}
 }
@@ -392,53 +384,6 @@ func (r *Registry) Chrome() Chrome {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.head
-}
-
-// RegisterStatus adds a status bar item until off is called.
-func (r *Registry) RegisterStatus(s StatusItem) (off func()) {
-	if r == nil {
-		return func() {}
-	}
-	r.mu.Lock()
-	for _, q := range r.status {
-		if q.ID == s.ID {
-			r.mu.Unlock()
-			panic("slots: status item " + strconv.Quote(s.ID) + " is already registered")
-		}
-	}
-	r.seq++
-	id := r.seq
-	r.status[id] = s
-	r.mu.Unlock()
-	r.invalidate()
-	return func() {
-		r.mu.Lock()
-		delete(r.status, id)
-		r.mu.Unlock()
-		r.invalidate()
-	}
-}
-
-// Status lists one side's status bar items by Order, then ID.
-func (r *Registry) Status(right bool) []StatusItem {
-	if r == nil {
-		return nil
-	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	var out []StatusItem
-	for _, s := range r.status {
-		if s.Right == right {
-			out = append(out, s)
-		}
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Order != out[j].Order {
-			return out[i].Order < out[j].Order
-		}
-		return out[i].ID < out[j].ID
-	})
-	return out
 }
 
 // RegisterSettingsSection adds a settings section until off is called.

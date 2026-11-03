@@ -1,7 +1,6 @@
 // Package switcher is the quick switcher (attention's QuickSwitcher core
 // plugin, apps/web/builtin/QuickSwitcher.ts): a palette source over every
-// file of the mounts, the recent files with no query, and its command and
-// ribbon icon.
+// file of the mounts, the recent files with no query, and its command.
 package switcher
 
 import (
@@ -213,8 +212,7 @@ func (s *Switcher) items(query string) []slots.PaletteItem {
 	return out
 }
 
-// Register adds the source, its command and its ribbon icon until off is
-// called.
+// Register adds the source and its command until off is called.
 func Register(s *Switcher, sh *shell.Shell, sl *slots.Registry, act *actions.Service) (off func()) {
 	open := func() { sl.OpenPalette(ID) }
 	offs := []func(){

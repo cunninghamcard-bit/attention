@@ -1,7 +1,7 @@
 // Package commandpalette is the command palette (attention's
 // CommandPalette core plugin, apps/web/builtin/CommandPalette.ts): a
 // palette source over every titled command, the recently run ones first,
-// and its command and ribbon icon.
+// and its command.
 package commandpalette
 
 import (
@@ -166,8 +166,7 @@ func (p *Palette) items(query string) []slots.PaletteItem {
 	return out
 }
 
-// Register adds the source, its command and its ribbon icon until off is
-// called.
+// Register adds the source and its command until off is called.
 func Register(p *Palette, sh *shell.Shell, sl *slots.Registry, act *actions.Service) (off func()) {
 	open := func() { sl.OpenPalette(ID) }
 	offs := []func(){

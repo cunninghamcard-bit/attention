@@ -3,8 +3,8 @@
 // (apps/web/builtin/webviewer/WebViewerPlugin.ts), and the CLI's web
 // (apps/web/app/cli/commands/wordcountWebCli.ts).
 //
-// The address bar takes the place of the title in the view header, with a
-// reload button before it; Back and Forward are the tab's own history,
+// The page's address shows in the sidebar's address bar, with a reload
+// button before it; Back and Forward are the tab's own history,
 // which the page's navigations join (handleCommittedNavigation).
 //
 // Reader view shows the page's article as markdown

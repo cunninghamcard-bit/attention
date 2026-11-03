@@ -113,10 +113,7 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 		{
 			title: "Interface",
 			rows: []rowSpec{
-				a.switchSpec("Show ribbon", "Display the vertical action ribbon on the left edge.", "showRibbon", s.ShowRibbon),
-				a.switchSpec("Show view header", "Display the breadcrumb header bar above the active pane.", "showViewHeader", s.ShowViewHeader),
 				a.switchSpec("Show inline title", "Display the filename as an editable title inside the document.", "showInlineTitle", s.ShowInline),
-				a.switchSpec("Show tab bar", "Display the tab strip at the top of each pane.", "showTabBar", s.ShowTabBar),
 				a.switchSpec("Show file icons", "Display file and folder icons in the file tree and tabs.", "showFileIcons", s.ShowFileIcons),
 				a.selectSpec("File tree density", "Row height in the Files sidebar panel.", "treeDensity", s.TreeDensity, []aui.SelectOption{
 					{Value: "standard", Label: "Standard (26px)"},

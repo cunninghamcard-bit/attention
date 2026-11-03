@@ -84,7 +84,7 @@ func New(sh *shell.Shell, sl *slots.Registry) *Settings {
 	}
 }
 
-// Register adds the modal, its General tab, its command and its ribbon icon.
+// Register adds the modal, its General tab and its command.
 func Register(sh *shell.Shell, sl *slots.Registry, act *actions.Service) (s *Settings, off func()) {
 	s = New(sh, sl)
 	offs := []func(){
