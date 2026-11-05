@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -136,6 +137,9 @@ func runtimeMain(args []string, extra ...*rutis.Definition) int {
 	}
 
 	mygo.App.SetName("attention")
+	if runtime.GOOS == "darwin" {
+		mygo.App.SetMenu(appMenu())
+	}
 	// Closing the last window must not quit by itself: the shell plugin
 	// quits when the user closes it, not when it is unloaded and reloaded.
 	mygo.App.OnWindowAllClosed(func() {})
@@ -193,6 +197,19 @@ func runtimeMain(args []string, extra ...*rutis.Definition) int {
 		fmt.Fprintln(os.Stderr, "attention: rutis-host did not stop within 15s")
 	}
 	return 0
+}
+
+// appMenu is mygo's default macOS menu bar but for Close Window, which
+// takes Shift: Cmd W is the app's Close current tab (workspace:close), and
+// a menu's key equivalent would take it first.
+func appMenu() *mygo.Menu {
+	return mygo.NewMenu([]*mygo.MenuItem{
+		{Role: mygo.RoleAppMenu},
+		{Label: "File", Submenu: []*mygo.MenuItem{{Role: mygo.RoleClose, Accelerator: "CmdOrCtrl+Shift+W"}}},
+		{Role: mygo.RoleEditMenu},
+		{Role: mygo.RoleViewMenu},
+		{Role: mygo.RoleWindowMenu},
+	})
 }
 
 func debugf(format string, a ...any) {
