@@ -8,16 +8,14 @@ import (
 
 const tabRowHeight float32 = 34
 
-// TabRowProps is one tab of the sidebar's list. Dot is the tab's project
-// color, the zero color for none; CloseLabel names the close button, which
-// OnClose runs.
+// TabRowProps is one tab of the sidebar's list. CloseLabel names the close
+// button, which OnClose runs.
 type TabRowProps struct {
 	Key        any
 	Title      string
 	Tooltip    string
 	Icon       *ui.SVG
 	IconColor  ui.Color
-	Dot        ui.Color
 	Selected   bool
 	Muted      bool
 	CloseLabel string
@@ -31,7 +29,6 @@ type SplitPart struct {
 	Title      string
 	Icon       *ui.SVG
 	IconColor  ui.Color
-	Dot        ui.Color
 	Focused    bool
 	CloseLabel string
 	OnClose    func()
@@ -76,7 +73,7 @@ func TabRow(c *ui.Context, p TabRowProps) ui.Element {
 	}
 	row.Background(Face(c, row, "aui.tabrow", wash)).TextColor(fg)
 	row.Children(func() {
-		tabFace(c, p.Dot, p.Icon, p.IconColor, fg)
+		tabFace(c, p.Icon, p.IconColor, fg)
 		ui.Text(c, p.Title).FontSize(labelSize).FontWeight(500).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
 		closeButton(c, p.CloseLabel, p.OnClose, 24, p.Selected || hovered)
 	})
@@ -117,7 +114,7 @@ func SplitRow(c *ui.Context, key any, selected bool, parts []SplitPart) (ui.Elem
 			part.Background(Face(c, part, "aui.splitpart", face)).TextColor(t.Text)
 			shown := (selected && sp.Focused) || part.Hovered()
 			part.Children(func() {
-				tabFace(c, sp.Dot, sp.Icon, sp.IconColor, t.Text)
+				tabFace(c, sp.Icon, sp.IconColor, t.Text)
 				ui.Text(c, sp.Title).FontSize(smallSize).FontWeight(500).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
 				closeButton(c, sp.CloseLabel, sp.OnClose, 20, shown)
 			})
@@ -182,9 +179,8 @@ func Dot(c *ui.Context, color ui.Color) {
 	}
 }
 
-// tabFace is a tab's project dot and icon.
-func tabFace(c *ui.Context, dot ui.Color, glyph *ui.SVG, glyphColor, fg ui.Color) {
-	Dot(c, dot)
+// tabFace is a tab's icon.
+func tabFace(c *ui.Context, glyph *ui.SVG, glyphColor, fg ui.Color) {
 	if glyph == nil {
 		return
 	}

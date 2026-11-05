@@ -275,7 +275,7 @@ func (ws *Workspace) itemRow(c *ui.Context, it *node, depth int) {
 			g := cards[0]
 			f := ws.cardFace(c, g)
 			props := aui.TabRowProps{Key: fmt.Sprintf("card-%d", g.id), Title: f.title, Tooltip: f.tip,
-				Icon: f.glyph, IconColor: f.color, Dot: f.dot, Selected: selected, Muted: f.missing}
+				Icon: f.glyph, IconColor: f.color, Selected: selected, Muted: f.missing}
 			if g.parked == nil {
 				props.CloseLabel = "Close " + f.title
 				props.OnClose = func() { ws.later(func() { ws.closeTabs(slices.Clone(g.tabs)) }) }
@@ -289,7 +289,7 @@ func (ws *Workspace) itemRow(c *ui.Context, it *node, depth int) {
 		for k, g := range cards {
 			f := ws.cardFace(c, g)
 			parts[k] = aui.SplitPart{Key: fmt.Sprintf("card-%d", g.id), Title: f.title, Icon: f.glyph, IconColor: f.color,
-				Dot: f.dot, Focused: g == focus}
+				Focused: g == focus}
 			if g.parked == nil {
 				parts[k].CloseLabel = "Close " + f.title
 				parts[k].OnClose = func() { ws.later(func() { ws.closeTabs(slices.Clone(g.tabs)) }) }
@@ -342,7 +342,7 @@ func (ws *Workspace) rowMenu(it *node, g *pane) []aui.MenuItem {
 type rowFace struct {
 	title, tip string
 	glyph      *ui.SVG
-	color, dot ui.Color
+	color      ui.Color
 	missing    bool
 }
 
@@ -351,9 +351,8 @@ type rowFace struct {
 func (ws *Workspace) cardFace(c *ui.Context, g *pane) rowFace {
 	if pk := g.parked; pk != nil {
 		f := rowFace{title: parkedTitle(*pk), tip: pk.entry, glyph: icon.Must("globe")}
-		if m, ok := ws.parkedProject(*pk); ok {
+		if _, ok := ws.parkedProject(*pk); ok {
 			f.tip = ws.display(pk.entry)
-			f.dot, _ = aui.ParseColor(m.Color)
 		}
 		if _, page := tabtypes.PageKind(pk.entry); !page && !tabtypes.WebAddress(pk.entry) {
 			if icons := ws.app.Icons(); icons.Show {
@@ -365,7 +364,7 @@ func (ws *Workspace) cardFace(c *ui.Context, g *pane) rowFace {
 		return f
 	}
 	tb := g.current()
-	f := rowFace{dot: ws.projectColor(tb), missing: tb.isMissing()}
+	f := rowFace{missing: tb.isMissing()}
 	f.title, f.tip, f.glyph, f.color = ws.face(c, tb)
 	return f
 }
