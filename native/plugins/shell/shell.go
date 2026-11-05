@@ -27,8 +27,8 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 			Width:                1280,
 			Height:               820,
 			TitleBarStyle:        mygo.TitleBarHidden,
-			TrafficLightPosition: &mygo.Point{X: 19, Y: 12},
-			TitleBarHeight:       38,
+			TrafficLightPosition: &mygo.Point{X: 19, Y: 9},
+			TitleBarHeight:       30,
 			Content:              ui.View(sh.View),
 			Hidden:               background,
 		})

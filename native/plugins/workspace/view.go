@@ -407,7 +407,7 @@ func (ws *Workspace) headNav(c *ui.Context) {
 		if n == 0 {
 			color = ui.Color{}
 		}
-		aui.Button(c, aui.ButtonProps{Label: label, Icon: glyph, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
+		aui.Button(c, aui.ButtonProps{Label: label, Icon: glyph, Variant: aui.ButtonGhost, Size: aui.ButtonIconTiny,
 			Disabled: n == 0, IconColor: color, OnClick: func() { ws.later(func() { ws.goHistory(tb, delta) }) }}).
 			Tooltip(label)
 	}

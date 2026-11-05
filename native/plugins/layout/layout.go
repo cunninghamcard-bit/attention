@@ -28,8 +28,8 @@ const (
 	ID = "layout"
 	// headerHeight is the band above the cards: window controls, the
 	// toggles and the nav buttons.
-	headerHeight = 40
-	toggleSize   = 28
+	headerHeight = 30
+	toggleSize   = 24
 )
 
 var (
@@ -253,7 +253,7 @@ func (l *Layout) ToggleButton(c *ui.Context, d slots.Dock) ui.Element {
 		tip = "Collapse"
 	}
 	return aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: tip, Icon: glyph, Variant: aui.ButtonGhost,
-		Size: aui.ButtonIconSmall, OnClick: func() { l.Toggle(d) }}), tip)
+		Size: aui.ButtonIconTiny, OnClick: func() { l.Toggle(d) }}), tip)
 }
 
 // View is the window's root.
