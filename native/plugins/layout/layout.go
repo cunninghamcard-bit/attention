@@ -23,8 +23,14 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
-// ID is the plugin's name.
-const ID = "layout"
+const (
+	// ID is the plugin's name.
+	ID = "layout"
+	// headerHeight is the band above the cards: window controls, the
+	// toggles and the nav buttons.
+	headerHeight = 40
+	toggleSize   = 28
+)
 
 var (
 	// Plugin arranges the window while loaded.
@@ -237,10 +243,7 @@ func (l *Layout) LeftHeaderSpace(c *ui.Context) float32 {
 }
 
 // ToggleButton draws the sidebar's or the context column's toggle.
-func (l *Layout) ToggleButton(c *ui.Context, d slots.Dock) {
-	if l == nil {
-		return
-	}
+func (l *Layout) ToggleButton(c *ui.Context, d slots.Dock) ui.Element {
 	glyph := icon.Must("panel-left")
 	if d == slots.Context {
 		glyph = icon.Must("panel-right")
@@ -249,8 +252,8 @@ func (l *Layout) ToggleButton(c *ui.Context, d slots.Dock) {
 	if l.Open(d) {
 		tip = "Collapse"
 	}
-	aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: tip, Icon: glyph, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-		OnClick: func() { l.Toggle(d) }}), tip)
+	return aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: tip, Icon: glyph, Variant: aui.ButtonGhost,
+		Size: aui.ButtonIconSmall, OnClick: func() { l.Toggle(d) }}), tip)
 }
 
 // View is the window's root.
@@ -280,6 +283,7 @@ func (l *Layout) View(c *ui.Context) {
 		if l.rightOpen {
 			l.context(c)
 		}
+		l.toggles(c)
 		c.SetTheme(base)
 	})
 	for _, src := range l.slots.PaletteSources() {
@@ -295,6 +299,25 @@ func (l *Layout) View(c *ui.Context) {
 		l.seenLeft = l.leftWidth
 		l.changed()
 	}
+}
+
+// toggles are the two toggles at the window's top corners, where they
+// stay whether their column is open or not, so a click never moves them.
+func (l *Layout) toggles(c *ui.Context) {
+	top := float32(headerHeight-toggleSize) / 2
+	l.ToggleButton(c, slots.Sidebar).Absolute().Top(top).Left(l.toggleLeft(c))
+	l.ToggleButton(c, slots.Context).Absolute().Top(top).Right(l.toggleRight(c))
+}
+
+// toggleLeft is the sidebar toggle's left edge: past the window controls.
+func (l *Layout) toggleLeft(c *ui.Context) float32 {
+	return max(l.LeftHeaderSpace(c), c.Theme().Spacing)
+}
+
+// toggleRight is the context toggle's right edge: inside the window
+// controls on the right, where a system has them.
+func (l *Layout) toggleRight(c *ui.Context) float32 {
+	return c.Theme().Spacing + c.TitleBar().Right
 }
 
 // surface is the window's surface: the theme's, mixed toward the active
@@ -337,12 +360,12 @@ func (l *Layout) restore(id string, fn func(json.RawMessage)) {
 }
 
 // card is the content area, inset from the window's tint: the center
-// draws its cards in it (aui.Card). With the sidebar closed, a strip
-// above it keeps the window controls and the toggles.
+// draws its cards in it (aui.Card), below a band level with the columns'
+// headers that holds the nav buttons while the sidebar is closed.
 func (l *Layout) card(c *ui.Context) {
 	t := c.Theme()
 	gap := t.Spacing
-	left, right, top := gap, gap, gap
+	left, right := gap, gap
 	if l.leftOpen {
 		left = gap / 2
 	}
@@ -350,21 +373,16 @@ func (l *Layout) card(c *ui.Context) {
 		right = gap / 2
 	}
 	ui.Column(c).Grow(1).MinWidth(0).MinHeight(0).Children(func() {
+		band := ui.Row(c).Height(headerHeight).Shrink(0).FillWidth().Gap(2).AlignItems(ui.Center).DragWindow()
 		if !l.leftOpen {
-			top = 0
-			ui.Row(c).Height(36).Shrink(0).FillWidth().Padding(0, gap, 0, max(l.LeftHeaderSpace(c), gap)).Gap(2).
-				AlignItems(ui.Center).DragWindow().Children(func() {
-				l.ToggleButton(c, slots.Sidebar)
-				if nav := l.slots.Chrome().Nav; nav != nil {
-					nav(c)
-				}
-				ui.Box(c).Grow(1)
-				if !l.rightOpen {
-					l.ToggleButton(c, slots.Context)
-				}
-			})
+			band.Padding(0, 0, 0, l.toggleLeft(c)+toggleSize+2)
 		}
-		ui.Column(c).Grow(1).MinWidth(0).MinHeight(0).Margin(top, right, gap, left).Children(func() {
+		band.Children(func() {
+			if nav := l.slots.Chrome().Nav; nav != nil && !l.leftOpen {
+				nav(c)
+			}
+		})
+		ui.Column(c).Grow(1).MinWidth(0).MinHeight(0).Margin(0, right, gap, left).Children(func() {
 			if view := l.slots.Center(); view != nil {
 				view(c)
 			}
@@ -385,16 +403,11 @@ func (l *Layout) sidebar(c *ui.Context) {
 			l.leftWidth = min(max(l.leftWidth+dx, 180), 480)
 		}
 		head := l.slots.Chrome()
-		ui.Row(c).Height(40).Shrink(0).FillWidth().Padding(0, 4, 0, l.LeftHeaderSpace(c)).Gap(2).AlignItems(ui.Center).
-			DragWindow().Children(func() {
+		ui.Row(c).Height(headerHeight).Shrink(0).FillWidth().Padding(0, 4, 0, l.toggleLeft(c)+toggleSize+2-t.Spacing).Gap(2).
+			AlignItems(ui.Center).DragWindow().Children(func() {
 			if head.Nav != nil {
 				head.Nav(c)
 			}
-			ui.Box(c).Grow(1)
-			if !l.rightOpen {
-				l.ToggleButton(c, slots.Context)
-			}
-			l.ToggleButton(c, slots.Sidebar)
 		})
 		if head.Bar != nil {
 			ui.Row(c).Shrink(0).FillWidth().Padding(0, 4, 8, 0).Children(func() { head.Bar(c) })
@@ -444,11 +457,7 @@ func (l *Layout) context(c *ui.Context) {
 	t := c.Theme()
 	panels := l.slots.Panels(slots.Context)
 	ui.Column(c).Width(l.rightWidth).Shrink(0).FillHeight().Padding(0, t.Spacing, t.Spacing, t.Spacing/2).Children(func() {
-		ui.Row(c).Height(40).Shrink(0).FillWidth().Padding(0, c.TitleBar().Right, 0, 0).AlignItems(ui.Center).
-			DragWindow().Children(func() {
-			ui.Box(c).Grow(1)
-			l.ToggleButton(c, slots.Context)
-		})
+		ui.Row(c).Height(headerHeight).Shrink(0).FillWidth().DragWindow()
 		aui.Card(c, ui.Column(c).Grow(1).FillWidth().MinHeight(0).Dividers(1, aui.TokensOf(c).BorderSubtle)).Children(func() {
 			for i := range panels {
 				l.section(c, panels[i])
