@@ -144,12 +144,21 @@ type OpenOptions struct {
 	// Kind is the tab kind to open as ("text", "markdown", ...), "" for
 	// the highest-priority claim.
 	Kind string
+	// KeepActive opens it in a new tab rather than in the active one,
+	// unless that is an empty new tab; a tab showing it is still revealed.
+	KeepActive bool
 }
 
 // Open shows path in the workspace (reusing an open tab for it, or in the
 // active tab; in a new tab when newTab is true) and applies nav when given.
 func (ws *Workspace) Open(path string, nav *Nav, newTab bool) {
 	ws.openIn(path, nav, newTab)
+}
+
+// OpenBeside shows path as Open does, but in a new tab rather than in the
+// active one, as a click in the file tree does.
+func (ws *Workspace) OpenBeside(path string) {
+	ws.openAddress(ws.addressOf(path), path, OpenOptions{KeepActive: true})
 }
 
 // OpenTab shows the page of kind (an address-less tab type such as

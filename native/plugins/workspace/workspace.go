@@ -395,7 +395,7 @@ func (ws *Workspace) openAddress(address, path string, opts OpenOptions) (*tab, 
 	}
 	p := ws.activePane()
 	// A pinned tab keeps its file: another one opens in a tab of its own.
-	if cur := p.current(); cur != nil && !newTab && !ws.isPinned(ws.root) {
+	if cur := p.current(); cur != nil && !newTab && !(opts.KeepActive && !cur.empty) && !ws.isPinned(ws.root) {
 		if !cur.empty {
 			cur.record()
 		}
