@@ -6,6 +6,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
+	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
@@ -83,6 +84,35 @@ func TestMoreOptionsOpensAndSplits(t *testing.T) {
 	}
 	if gs := ws.groups(); len(gs) != 2 || len(gs[1].tabs) != 1 || gs[1].tabs[0].path != "/m/alpha.md" || ws.activePane() != gs[1] {
 		t.Fatalf("Split right should show alpha in a second, focused group: %v", tabs(ws))
+	}
+}
+
+// Regression: a click on a card's editor, which takes the press, left
+// the other card focused.
+func TestAClickInACardsBodyFocusesIt(t *testing.T) {
+	ws, tt := testWorkspace(t)
+	files := fileProvider(t, ws)
+	testFiles = map[string]fsplugin.File{"/m/main.go": {Text: "package main"}}
+	ws.open("/m/main.go", nil)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+	tt.Frame()
+	files.frames.next(t)
+	tt.Frame()
+	testPosts.next(t)
+	tt.Frame()
+	if err := tt.Click("More options"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.Click("Split right"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	gs := ws.groups()
+	b := gs[0].bodyBounds
+	tt.ClickAt(b.X+b.W/2, b.Y+b.H/2)
+	tt.Frame()
+	if ws.activePane() != gs[0] {
+		t.Fatalf("a click in the left card's editor should focus it")
 	}
 }
 

@@ -20,6 +20,23 @@ func (ws *Workspace) view(c *ui.Context) {
 	ws.flush()
 	ws.reclaim()
 	ui.Column(c).Grow(1).Fill().MinWidth(0).MinHeight(0).Children(func() { ws.splitView(c, ws.root) })
+	ws.focusPressed()
+}
+
+// focusPressed focuses the card a press went down in, the one card that
+// did not see it outside: a click on an editor or a web view's page
+// focuses its card as one on the card's chrome does.
+func (ws *Workspace) focusPressed() {
+	gs := ws.groups()
+	if !slices.ContainsFunc(gs, func(g *pane) bool { return g.pressedOutside }) {
+		return
+	}
+	for _, g := range gs {
+		if !g.pressedOutside {
+			ws.focusGroup(g)
+			return
+		}
+	}
 }
 
 // splitView draws n: a card, or its children as cards with a gap between
@@ -106,9 +123,7 @@ func (ws *Workspace) paneView(c *ui.Context, p *pane) {
 	if focused && !alone {
 		card.Border(2, aui.TokensOf(c).AccentBorder)
 	}
-	if card.Clicked() {
-		ws.focusGroup(p)
-	}
+	p.pressedOutside = card.PressedOutside()
 	card.Children(func() {
 		side := p.dropSide
 		body := ui.Column(c).Grow(1).Fill().MinHeight(0).Children(func() {

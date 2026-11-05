@@ -700,6 +700,8 @@ type pane struct {
 	// it would land ("" for none; drag.go).
 	bodyBounds ui.Rect
 	dropSide   string
+	// pressedOutside is whether a press went down outside the card.
+	pressedOutside bool
 }
 
 func (p *pane) indexOf(t *tab) int {
