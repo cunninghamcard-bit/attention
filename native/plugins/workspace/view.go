@@ -290,6 +290,10 @@ func (ws *Workspace) itemRow(c *ui.Context, it *node, depth int) {
 			f := ws.cardFace(c, g)
 			parts[k] = aui.SplitPart{Key: fmt.Sprintf("card-%d", g.id), Title: f.title, Icon: f.glyph, IconColor: f.color,
 				Dot: f.dot, Focused: g == focus}
+			if g.parked == nil {
+				parts[k].CloseLabel = "Close " + f.title
+				parts[k].OnClose = func() { ws.later(func() { ws.closeTabs(slices.Clone(g.tabs)) }) }
+			}
 		}
 		var els []ui.Element
 		row, els = aui.SplitRow(c, fmt.Sprintf("split-row-%p", it), selected, parts)

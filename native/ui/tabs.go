@@ -24,14 +24,17 @@ type TabRowProps struct {
 	OnClose    func()
 }
 
-// SplitPart is one tab of a split row.
+// SplitPart is one tab of a split row. CloseLabel names its close button,
+// which OnClose runs.
 type SplitPart struct {
-	Key       any
-	Title     string
-	Icon      *ui.SVG
-	IconColor ui.Color
-	Dot       ui.Color
-	Focused   bool
+	Key        any
+	Title      string
+	Icon       *ui.SVG
+	IconColor  ui.Color
+	Dot        ui.Color
+	Focused    bool
+	CloseLabel string
+	OnClose    func()
 }
 
 // AddressBarProps is the sidebar's address bar. Prefix and Name are the
@@ -75,24 +78,7 @@ func TabRow(c *ui.Context, p TabRowProps) ui.Element {
 	row.Children(func() {
 		tabFace(c, p.Dot, p.Icon, p.IconColor, fg)
 		ui.Text(c, p.Title).FontSize(labelSize).FontWeight(500).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
-		if p.CloseLabel == "" {
-			return
-		}
-		x := ui.ButtonBase(c).Label(p.CloseLabel).Size(24, 24).Radius(6).Shrink(0).
-			AlignItems(ui.Center).Justify(ui.Center).Cursor(ui.CursorPointer)
-		face := ui.Color{}
-		if x.Hovered() {
-			face = k.FillHover
-		}
-		x.Background(Face(c, x, "aui.tabclose", face))
-		if p.OnClose != nil {
-			x.OnClick(p.OnClose)
-		}
-		x.Children(func() {
-			if p.Selected || hovered || x.Hovered() {
-				ui.Icon(c, icon.Must("x")).Size(12, 12).TextColor(t.TextMuted)
-			}
-		})
+		closeButton(c, p.CloseLabel, p.OnClose, 24, p.Selected || hovered)
 	})
 	return row
 }
@@ -116,7 +102,7 @@ func SplitRow(c *ui.Context, key any, selected bool, parts []SplitPart) (ui.Elem
 	out := make([]ui.Element, 0, len(parts))
 	row.Children(func() {
 		for _, sp := range parts {
-			part := ui.Row(c).Key(sp.Key).Width(0).Grow(1).MinWidth(0).PaddingX(7).Gap(6).AlignItems(ui.Center).
+			part := ui.Row(c).Key(sp.Key).Width(0).Grow(1).MinWidth(0).Padding(0, 2, 0, 7).Gap(6).AlignItems(ui.Center).
 				Radius(max(controlRadius(t)-3, 0)).Cursor(ui.CursorPointer).Focusable().Role(ui.RoleTab).
 				Checked(selected && sp.Focused).Label(sp.Title)
 			Tooltip(c, part, sp.Title)
@@ -129,9 +115,11 @@ func SplitRow(c *ui.Context, key any, selected bool, parts []SplitPart) (ui.Elem
 				face = k.TabRowHover
 			}
 			part.Background(Face(c, part, "aui.splitpart", face)).TextColor(t.Text)
+			shown := (selected && sp.Focused) || part.Hovered()
 			part.Children(func() {
 				tabFace(c, sp.Dot, sp.Icon, sp.IconColor, t.Text)
 				ui.Text(c, sp.Title).FontSize(smallSize).FontWeight(500).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
+				closeButton(c, sp.CloseLabel, sp.OnClose, 20, shown)
 			})
 			out = append(out, part)
 		}
@@ -205,4 +193,28 @@ func tabFace(c *ui.Context, dot ui.Color, glyph *ui.SVG, glyphColor, fg ui.Color
 		ink = glyphColor
 	}
 	ui.Icon(c, glyph).Size(iconSize, iconSize).Shrink(0).TextColor(ink)
+}
+
+// closeButton is a row's close button, its x drawn while shown or hovered;
+// none when label is empty.
+func closeButton(c *ui.Context, label string, onClose func(), size float32, shown bool) {
+	if label == "" {
+		return
+	}
+	t, k := c.Theme(), TokensOf(c)
+	x := ui.ButtonBase(c).Label(label).Size(size, size).Radius(6).Shrink(0).
+		AlignItems(ui.Center).Justify(ui.Center).Cursor(ui.CursorPointer)
+	face := ui.Color{}
+	if x.Hovered() {
+		face = k.FillHover
+	}
+	x.Background(Face(c, x, "aui.tabclose", face))
+	if onClose != nil {
+		x.OnClick(onClose)
+	}
+	x.Children(func() {
+		if shown || x.Hovered() {
+			ui.Icon(c, icon.Must("x")).Size(12, 12).TextColor(t.TextMuted)
+		}
+	})
 }
