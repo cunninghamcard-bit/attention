@@ -229,7 +229,7 @@
 
 ### 7.1 接入
 
-- 主 AI 是外部 agent，通过 ACP 接入，先接 Claude Code 和 Codex。在设置里选用哪个。
+- 主 AI 是外部 agent，不用 ACP 接入。候选是 dim，接入方式由 RFC 0007 定，依据见调研 `docs/research/lsp-agent/README.md` §3.6。
 - 给 agent 的工具就是现有的 CLI 命令（`open`、`read`、`search`、`files` 等），加上一段提示词。不另做一套工具。
 
 ### 7.2 线程
@@ -361,4 +361,4 @@ RFC 0004 的界面主题文件（色板加语义 token）不再保留。界面�
 4. 文件操作（§6.2）和 Other（§6.3）。
 5. 项目主页（§5.2）。
 6. 主题（§8）。依赖 RFC 0005 的 ACard token。
-7. AI：ACP 接入、线程、推送、选中提问（§7）。
+7. AI：线程、推送、选中提问（§7）。接入方式等 RFC 0007。
