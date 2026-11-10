@@ -174,6 +174,24 @@ func (ws *Workspace) OpenResource(address string, o OpenOptions) error {
 	return err
 }
 
+// OpenSplit shows address beside the focused card (RFC 0006 §7.3): the
+// tab that shows it already, else a new tab in the card to the right,
+// splitting the focused card when none is there.
+func (ws *Workspace) OpenSplit(address string, o OpenOptions) error {
+	if ws.showing(address, o.Kind) {
+		return ws.OpenResource(address, o)
+	}
+	if g := ws.adjacent(ws.activePane(), "right"); g != nil {
+		ws.activeGroup = g
+	} else if len(ws.groups()) < maxCards {
+		ws.activeGroup = ws.splitGroup(ws.activePane(), vertical, false)
+	}
+	o.NewTab = true
+	_, err := ws.openResource(address, o)
+	ws.changed()
+	return err
+}
+
 // ActivePath is the active tab's file path, or "" when no file is active.
 func (ws *Workspace) ActivePath() string {
 	if t := ws.activeTab(); t != nil && !t.empty {
@@ -189,6 +207,12 @@ func (ws *Workspace) ActiveTab() (tabtypes.Info, bool) {
 		return ws.props(t, true).Info, true
 	}
 	return tabtypes.Info{}, false
+}
+
+// Project is the project (mount) holding path, false outside every one.
+func (ws *Workspace) Project(path string) (projectplugin.Mount, bool) {
+	m, _, ok := ws.mountOf(path)
+	return m, ok
 }
 
 // Display is path as the workspace shows it: "<mount>/<rel>" under a mount,

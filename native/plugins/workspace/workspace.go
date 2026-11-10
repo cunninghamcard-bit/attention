@@ -336,6 +336,19 @@ func (ws *Workspace) openResource(address string, o OpenOptions) (*tab, error) {
 	return ws.openAddress(ws.addressOf(path), path, o)
 }
 
+// showing reports whether a tab in any card shows address, as kind when
+// kind is set.
+func (ws *Workspace) showing(address, kind string) bool {
+	for _, g := range ws.allGroups() {
+		for _, t := range g.tabs {
+			if !t.empty && t.address == address && (kind == "" || t.kind == kind) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // pathOf is the file a file address names.
 func (ws *Workspace) pathOf(address string) (string, error) {
 	return projectplugin.PathOf(ws.mounts, address)
