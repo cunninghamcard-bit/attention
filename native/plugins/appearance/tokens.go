@@ -111,7 +111,6 @@ var (
 		"card.border":       func(k *aui.Tokens) *ui.Color { return &k.CardBorder },
 		"menu.itemHover":    func(k *aui.Tokens) *ui.Color { return &k.MenuItem },
 		"glass.bg":          func(k *aui.Tokens) *ui.Color { return &k.GlassTint },
-		"glass.track":       func(k *aui.Tokens) *ui.Color { return &k.GlassTrack },
 	}
 
 	componentShadows = map[string]func(*aui.Tokens) *aui.Shadow{
