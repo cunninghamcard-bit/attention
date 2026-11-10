@@ -349,7 +349,8 @@ func (v *viewer) register(loaded func(Page)) (off func()) {
 					}
 				}
 				var field ui.Element
-				ui.Column(c).Grow(1).MinWidth(0).Children(func() {
+				bar := ui.Column(c).Grow(1).MinWidth(0)
+				bar.Children(func() {
 					field = input.Input(c, &pg.typed, input.InputProps{Placeholder: "Search or enter address"}).Label("Address")
 				})
 				// The bar follows the page while it is not being typed in
@@ -388,7 +389,7 @@ func (v *viewer) register(loaded func(Page)) (off func()) {
 						open(pg.typed)
 					}
 				}
-				v.suggestPanel(c, pg, field, open)
+				v.suggestPanel(c, pg, bar, field, open)
 			})
 		},
 		Actions: func(c *ui.Context, p tabtypes.Props) {

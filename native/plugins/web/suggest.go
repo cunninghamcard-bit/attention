@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/cunninghamcard-bit/acard-ui/components/popover"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
@@ -107,8 +108,10 @@ func (v *viewer) suggestions(input string) []suggestion {
 
 // suggestPanel is the popover under the address bar while it has the
 // caret: Up and Down move the highlight, Enter (the bar's submit) opens
-// the highlighted one, a click opens one.
-func (v *viewer) suggestPanel(c *ui.Context, pg *page, field ui.Element, open func(url string)) {
+// the highlighted one, a click opens one. It hangs from bar, the column
+// around field, which a press on the field does not click, so the press
+// that gives the field the caret does not toggle the popover shut.
+func (v *viewer) suggestPanel(c *ui.Context, pg *page, bar, field ui.Element, open func(url string)) {
 	if !pg.suggesting {
 		return
 	}
@@ -133,19 +136,21 @@ func (v *viewer) suggestPanel(c *ui.Context, pg *page, field ui.Element, open fu
 		}
 		return true
 	})
-	aui.Popover(c, field, &pg.suggesting, func(panel ui.Element) {
-		panel.Width(field.Bounds().W)
-		ui.Column(c).FillWidth().Gap(1).Children(func() {
-			for i, s := range list {
-				label, detail := s.url, ""
-				if s.title != "" {
-					label, detail = s.title, s.url
+	w := bar.Bounds().W
+	popover.Popover(c, bar, &pg.suggesting, popover.PopoverProps{Label: "Suggestions",
+		Panel: func(panel ui.Element) ui.Element { return panel.Width(w).MinWidth(w).MaxWidth(w).Padding(5) },
+		Content: func() {
+			ui.Column(c).FillWidth().Gap(1).Children(func() {
+				for i, s := range list {
+					label, detail := s.url, ""
+					if s.title != "" {
+						label, detail = s.title, s.url
+					}
+					aui.CommandRow(c, aui.CommandRowProps{Key: "suggest:" + s.kind + s.url, Label: label, Detail: detail,
+						Icon: s.icon(), Selected: i == pg.selected, OnClick: func() { open(s.url) }})
 				}
-				aui.CommandRow(c, aui.CommandRowProps{Key: "suggest:" + s.kind + s.url, Label: label, Detail: detail,
-					Icon: s.icon(), Selected: i == pg.selected, OnClick: func() { open(s.url) }})
-			}
-		})
-	})
+			})
+		}})
 }
 
 // source is the suggestions as a palette source, for the omnibox: what

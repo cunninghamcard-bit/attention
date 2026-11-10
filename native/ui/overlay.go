@@ -4,6 +4,7 @@ import (
 	"cmp"
 
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
+	"github.com/cunninghamcard-bit/acard-ui/components/popover"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/ui/icon"
@@ -43,23 +44,6 @@ type DialogProps struct {
 	Body      func(c *ui.Context)
 }
 
-// Popover draws body in a floating panel under anchor while *open; a
-// press outside or Escape closes it.
-func Popover(c *ui.Context, anchor ui.Element, open *bool, body func(panel ui.Element)) ui.Element {
-	return ui.PopoverBase(c, anchor, open, func(panel ui.Element) {
-		Floating(c, panel.Margin(6, 0, 0, 0))
-		body(panel)
-	})
-}
-
-// Floating styles panel as a popover face: padded frosted glass, easing
-// in on first build.
-func Floating(c *ui.Context, panel ui.Element) ui.Element {
-	t := c.Theme()
-	Frost(c, panel.Padding(5).Clip(), t.Radius+2)
-	return Arrive(panel, ui.Pose{Y: -4, Fade: 1}, 0)
-}
-
 // IconMenu draws the button and, while open, the menu under it. The
 // element returned is the button.
 func IconMenu(c *ui.Context, p IconMenuProps) ui.Element {
@@ -68,23 +52,19 @@ func IconMenu(c *ui.Context, p IconMenuProps) ui.Element {
 		b = button.Button(c, button.ButtonProps{Label: p.Label, Variant: button.ButtonGhost, Size: button.ButtonSm, AnchorsPopup: true,
 			Children: func() { ui.Icon(c, p.Icon).Size(iconSmall, iconSmall) }}).Width(28).PaddingX(0)
 		open := ui.Local(b, "open", func() bool { return false })
-		if b.Clicked() {
-			*open = !*open
+		align := popover.PopoverStart
+		if p.End {
+			align = popover.PopoverEnd
 		}
-		if !*open {
-			return
-		}
-		Popover(c, b, open, func(panel ui.Element) {
-			if p.End {
-				panel.AttachTo(b, ui.AnchorBottomEnd, ui.AnchorTopEnd)
-			}
-			panel.MinWidth(176).Role(ui.RoleMenu)
-			ui.Column(c).FillWidth().Gap(2).FocusGroup(ui.Vertical).Children(func() {
-				for i, it := range p.Items {
-					menuEntry(c, i, it, func() { *open = false })
-				}
-			})
-		})
+		popover.Popover(c, b, open, popover.PopoverProps{Label: p.Label, Align: align,
+			Panel: func(panel ui.Element) ui.Element { return panel.MinWidth(176).Padding(5).Role(ui.RoleMenu) },
+			Content: func() {
+				ui.Column(c).FillWidth().Gap(2).FocusGroup(ui.Vertical).Children(func() {
+					for i, it := range p.Items {
+						menuEntry(c, i, it, func() { *open = false })
+					}
+				})
+			}})
 	})
 	return b
 }
