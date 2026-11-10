@@ -78,14 +78,11 @@ type Navigator interface {
 
 type doc struct {
 	textdoc.Doc
-	source    bool
-	md        markdown.Options
-	dir       string
-	raw, view string
-	// reading is the reading view's element as last built, for its
-	// selection; drawn is false until it has been built.
-	reading ui.Element
-	drawn   bool
+	source       bool
+	md           markdown.Options
+	dir          string
+	raw, view    string
+	readingPicks []string
 }
 
 // Viewer is the markdown tab type's state, on the main thread only.
@@ -163,16 +160,7 @@ func (v *Viewer) selection(id int) (tabtypes.Selection, bool) {
 	if d.source {
 		return d.Doc.Selection()
 	}
-	if !d.drawn {
-		return tabtypes.Selection{}, false
-	}
-	var texts []string
-	for _, part := range d.reading.SelectedTexts() {
-		r := []rune(part.Text)
-		if t := string(r[max(0, part.Start):min(len(r), part.End)]); strings.TrimSpace(t) != "" {
-			texts = append(texts, t)
-		}
-	}
+	texts := d.readingPicks
 	if len(texts) == 0 {
 		return tabtypes.Selection{}, false
 	}
@@ -216,7 +204,7 @@ func (v *Viewer) body(c *ui.Context, p tabtypes.Props) {
 				if raw := d.Ed.Buffer.String(); raw != d.raw || d.view == "" && raw != "" {
 					d.raw, d.view = raw, rewrite(raw)
 				}
-				d.reading, d.drawn = markdown.View(c, d.view, &d.md), true
+				d.readingPicks = picks(markdown.View(c, d.view, &d.md))
 			})
 		})
 		return
@@ -284,4 +272,15 @@ func (v *Viewer) followLink(from, url string) {
 	if v.ws != nil {
 		v.ws.Open(filepath.Clean(p), nil, false)
 	}
+}
+
+func picks(reading ui.Element) []string {
+	var texts []string
+	for _, part := range reading.SelectedTexts() {
+		r := []rune(part.Text)
+		if t := string(r[max(0, part.Start):min(len(r), part.End)]); strings.TrimSpace(t) != "" {
+			texts = append(texts, t)
+		}
+	}
+	return texts
 }
