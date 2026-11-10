@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"time"
 
+	"github.com/cunninghamcard-bit/acard-ui/tokens"
 	"github.com/egoist/mygo/ui"
 )
 
@@ -65,4 +66,11 @@ func ring(e ui.Element, k *Tokens, focused bool) ui.Element {
 		return e.Border(2, k.BorderFocus)
 	}
 	return e.BorderWidth(0)
+}
+
+func shadow(el ui.Element, shadows []tokens.Shadow) ui.Element {
+	for _, s := range shadows {
+		el = el.Shadow(s.X, s.Y, s.Blur, s.Spread, s.Color)
+	}
+	return el
 }

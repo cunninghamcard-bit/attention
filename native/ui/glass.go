@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/cunninghamcard-bit/acard-ui/tokens"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/shader"
 )
@@ -49,11 +50,11 @@ func Fragment(dst vec4, pos vec2) vec4 {
 // layout; radius is its corner. Where the window draws on the CPU, the
 // pane is the opaque face. Cost: one backdrop blur pass a frame per pane.
 func Frost(c *ui.Context, el ui.Element, radius float32) ui.Element {
-	k := TokensOf(c)
-	return k.ShadowMedium.On(el.Radius(radius).Border(1, k.BorderSubtle)).
+	tok, k := tokens.TokensOf(c), TokensOf(c)
+	return shadow(el.Radius(radius).Border(1, tok.BorderSubtle), tok.ShadowRaised).
 		Draw(func(p *ui.Painter, r ui.Rect) {
 			if !p.Accelerated() {
-				p.Fill(r, k.BgOverlay, radius)
+				p.Fill(r, tok.SurfaceRaised, radius)
 				return
 			}
 			frost.Draw(p, r, shader.Options{BackdropBlur: 16, Radius: radius, Uniforms: map[string]any{"Tint": k.GlassTint}})
@@ -65,7 +66,7 @@ func Frost(c *ui.Context, el ui.Element, radius float32) ui.Element {
 // pixel.
 func LiquidGlass(c *ui.Context, el ui.Element, radius float32) ui.Element {
 	k := TokensOf(c)
-	return k.ShadowMedium.On(el.Radius(radius)).
+	return shadow(el.Radius(radius), tokens.TokensOf(c).ShadowRaised).
 		Draw(func(p *ui.Painter, r ui.Rect) {
 			if !p.Accelerated() {
 				p.Fill(r, k.BgWindow, radius)
