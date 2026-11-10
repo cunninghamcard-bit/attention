@@ -56,3 +56,26 @@ func TestAppearanceSyncAndThemeFiles(t *testing.T) {
 	tt := ui.NewTester(a.View, 900, 900)
 	tt.Frame()
 }
+
+func TestSettingsGroupsStayRaised(t *testing.T) {
+	a := New(settings.New(nil, slots.New(nil)), t.TempDir(), func(f func()) { f() })
+	for _, dark := range []bool{false, true} {
+		a.IsDark = func() bool { return dark }
+		tt := ui.NewTester(func(c *ui.Context) {
+			c.SetTheme(a.UI())
+			ui.Column(c).Fill().Background(a.UI().Background).Padding(16).Children(func() { a.View(c) })
+		}, 760, 720)
+		tt.SetDark(dark)
+		tt.Frame()
+		r, ok := tt.Find("Base color scheme")
+		if !ok {
+			t.Fatalf("dark=%v: no Base color scheme row", dark)
+		}
+		got, want := tt.Image().RGBAAt(int(r.X)-6, int(r.Y+r.H/2)), a.of(dark).tokens.BgRaised
+		if d := max(diff(got.R, want.R), diff(got.G, want.G), diff(got.B, want.B)); d > 2 {
+			t.Fatalf("dark=%v: settings group = %v, want the raised surface %v", dark, got, want)
+		}
+	}
+}
+
+func diff(a, b uint8) uint8 { return max(a, b) - min(a, b) }
