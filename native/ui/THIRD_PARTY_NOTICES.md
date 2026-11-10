@@ -1,6 +1,6 @@
 # Third-party notices
 
-## CrychicUI (icon, kit, fx/frosted, choice, overlay, input)
+## CrychicUI (icon, kit, fx/frosted, overlay, input)
 
 Adapted from https://github.com/ELY-Open-Source/CrychicUI at bf15ddf6600a.
 
@@ -28,13 +28,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## attention-ui omgui (button, input, menu, rows, settings)
+## attention-ui omgui (input, menu, rows, settings)
 
 Ported from github.com/cunninghamcard-bit/attention-ui, by the same authors as this repository.
 
 ## Lucide icons 1.58.0 (icon/svg)
 
-Copied from CrychicUI's icon/svg (npm lucide-static 1.58.0), only the icons attention uses. Source: https://lucide.dev
+Copied from CrychicUI's icon/svg (npm lucide-static 1.58.0), only the icons attention uses that acard-ui's icon package lacks. Source: https://lucide.dev
 
 ```text
 ISC License
