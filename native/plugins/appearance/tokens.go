@@ -109,7 +109,6 @@ var (
 		"addressBar.bg":     func(k *aui.Tokens) *ui.Color { return &k.AddressBar },
 		"addressBar.hover":  func(k *aui.Tokens) *ui.Color { return &k.AddressBarHover },
 		"card.border":       func(k *aui.Tokens) *ui.Color { return &k.CardBorder },
-		"field.hover":       func(k *aui.Tokens) *ui.Color { return &k.FieldHover },
 		"menu.itemHover":    func(k *aui.Tokens) *ui.Color { return &k.MenuItem },
 		"glass.bg":          func(k *aui.Tokens) *ui.Color { return &k.GlassTint },
 		"glass.track":       func(k *aui.Tokens) *ui.Color { return &k.GlassTrack },

@@ -1,17 +1,21 @@
 package appearance
 
 import (
+	"cmp"
 	"os"
 	"slices"
 	"strings"
 
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
+	"github.com/cunninghamcard-bit/acard-ui/components/selectmenu"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
 )
+
+const followInterface = "follow-interface"
 
 type tab struct {
 	accent, iface, text, mono string
@@ -59,14 +63,14 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 		{
 			title: "Theme",
 			rows: []rowSpec{
-				a.selectSpec("Base color scheme", "Choose the color scheme used by the app.", "theme", s.Theme, []aui.SelectOption{
+				a.selectSpec("Base color scheme", "Choose the color scheme used by the app.", "theme", s.Theme, []selectmenu.SelectOption{
 					{Value: "system", Label: "Adapt to system"},
 					{Value: "light", Label: "Light"},
 					{Value: "dark", Label: "Dark"},
 				}),
 				a.selectSpec("Light theme", "Color theme in light mode.", "lightTheme", s.LightTheme, a.themeOptions(false)),
 				a.selectSpec("Dark theme", "Color theme in dark mode.", "darkTheme", s.DarkTheme, a.themeOptions(true)),
-				a.selectSpec("Editor colors", "Colors of code, from a theme of ours or a Zed theme file.", "editorTheme", s.EditorTheme, a.editorOptions()),
+				a.selectSpec("Editor colors", "Colors of code, from a theme of ours or a Zed theme file.", "editorTheme", cmp.Or(s.EditorTheme, followInterface), a.editorOptions()),
 				{
 					label:   "Themes folder",
 					desc:    strings.Join(slices.Concat([]string{a.dir}, a.cat.errs, a.of(false).errs, a.of(true).errs), "\n"),
@@ -77,7 +81,7 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 					desc:    "Hex color (#RRGGBB) in place of the theme's accent; its button and hover shades follow.",
 					control: func(c *ui.Context) { a.accentField(c, s) },
 				},
-				a.selectSpec("File icon theme", "Icon style for the file explorer, tabs, and search results.", "iconTheme", s.IconTheme, []aui.SelectOption{
+				a.selectSpec("File icon theme", "Icon style for the file explorer, tabs, and search results.", "iconTheme", s.IconTheme, []selectmenu.SelectOption{
 					{Value: "pierre", Label: "Pierre (Colored)"},
 					{Value: "zed", Label: "Zed (Minimal)"},
 				}),
@@ -96,7 +100,7 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 		{
 			title: "Editor",
 			rows: []rowSpec{
-				a.selectSpec("Line height", "Vertical rhythm for code buffers (Zed comfortable = 1.618).", "lineHeight", s.LineHeightMode, []aui.SelectOption{
+				a.selectSpec("Line height", "Vertical rhythm for code buffers (Zed comfortable = 1.618).", "lineHeight", s.LineHeightMode, []selectmenu.SelectOption{
 					{Value: "comfortable", Label: "Comfortable (1.618)"},
 					{Value: "standard", Label: "Standard (1.3)"},
 				}),
@@ -111,7 +115,7 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 			rows: []rowSpec{
 				a.switchSpec("Show inline title", "Display the filename as an editable title inside the document.", "showInlineTitle", s.ShowInline),
 				a.switchSpec("Show file icons", "Display file and folder icons in the file tree and tabs.", "showFileIcons", s.ShowFileIcons),
-				a.selectSpec("File tree density", "Row height in the Files sidebar panel.", "treeDensity", s.TreeDensity, []aui.SelectOption{
+				a.selectSpec("File tree density", "Row height in the Files sidebar panel.", "treeDensity", s.TreeDensity, []selectmenu.SelectOption{
 					{Value: "standard", Label: "Standard (26px)"},
 					{Value: "comfortable", Label: "Comfortable (30px)"},
 				}),
@@ -166,11 +170,14 @@ func (a *Appearance) accentField(c *ui.Context, s Settings) {
 	})
 }
 
-func (a *Appearance) selectSpec(label, desc, key, cur string, opts []aui.SelectOption) rowSpec {
+func (a *Appearance) selectSpec(label, desc, key, cur string, opts []selectmenu.SelectOption) rowSpec {
 	return rowSpec{label: label, desc: desc, control: func(c *ui.Context) {
 		v := cur
-		aui.Select(c, aui.SelectProps{Key: "appearance:" + key, Value: &v, Width: 176, Options: opts})
+		selectmenu.Select(c.Key("appearance:"+key), &v, selectmenu.SelectProps{Options: opts}).Label(label).Width(176)
 		if v != cur {
+			if v == followInterface {
+				v = ""
+			}
 			a.set.Set(settings.Appearance, key, v)
 		}
 	}}
@@ -224,19 +231,19 @@ func (a *Appearance) numberSpec(label, desc, key string, cur, def, low, high flo
 	}}
 }
 
-func (a *Appearance) editorOptions() []aui.SelectOption {
-	opts := []aui.SelectOption{{Value: "", Label: "Follow the interface theme"}}
+func (a *Appearance) editorOptions() []selectmenu.SelectOption {
+	opts := []selectmenu.SelectOption{{Value: followInterface, Label: "Follow the interface theme"}}
 	for _, f := range a.cat.families() {
-		opts = append(opts, aui.SelectOption{Value: f, Label: f})
+		opts = append(opts, selectmenu.SelectOption{Value: f, Label: f})
 	}
 	return opts
 }
 
-func (a *Appearance) themeOptions(dark bool) []aui.SelectOption {
+func (a *Appearance) themeOptions(dark bool) []selectmenu.SelectOption {
 	names := a.cat.names(dark)
-	opts := make([]aui.SelectOption, 0, len(names))
+	opts := make([]selectmenu.SelectOption, 0, len(names))
 	for _, n := range names {
-		opts = append(opts, aui.SelectOption{Value: n, Label: n})
+		opts = append(opts, selectmenu.SelectOption{Value: n, Label: n})
 	}
 	return opts
 }

@@ -19,6 +19,7 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
+	"github.com/cunninghamcard-bit/acard-ui/components/selectmenu"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
@@ -48,7 +49,7 @@ const (
 var (
 	// sortOrders are SearchView's, less the created-time pair (Linux keeps no
 	// creation time that fs reports).
-	sortOrders = []aui.SelectOption{
+	sortOrders = []selectmenu.SelectOption{
 		{Value: "alphabetical", Label: "A to Z"},
 		{Value: "alphabeticalReverse", Label: "Z to A"},
 		{Value: "byModifiedTime", Label: "Modified time (new to old)"},
@@ -353,11 +354,10 @@ func (s *Search) view(c *ui.Context, p slots.PanelProps) {
 		}
 		ui.Row(c).Padding(4, 12).Gap(8).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, s.countText()).FontSize(12).TextColor(t.TextMuted).Grow(1).MinWidth(0).SingleLine().Ellipsis("…")
-			aui.Select(c, aui.SelectProps{
-				Key: "search-sort", Value: &s.sortOrder, Options: sortOrders,
-				Aria: "Sort order", Width: 120,
-				OnPick: func(string) { s.sort() },
-			})
+			if selectmenu.Select(c.Key("search-sort"), &s.sortOrder, selectmenu.SelectProps{Options: sortOrders}).
+				Label("Sort order").Width(120).Changed() {
+				s.sort()
+			}
 		})
 		if !s.loading && s.err == "" && len(s.results) == 0 {
 			ui.Text(c, "No matches found").TextColor(t.TextMuted).Padding(12)

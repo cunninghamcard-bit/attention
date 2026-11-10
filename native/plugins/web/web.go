@@ -25,6 +25,7 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
+	"github.com/cunninghamcard-bit/acard-ui/components/selectmenu"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
@@ -432,9 +433,9 @@ func (v *viewer) settingTab(c *ui.Context) {
 		aui.PreferenceRow(c, "Search engine", "Used when the address bar input is not a URL.", func() {
 			cur := v.searchEngine()
 			val := cur
-			aui.Select(c, aui.SelectProps{Key: "web-search-engine", Value: &val, Width: 160, Options: []aui.SelectOption{
+			selectmenu.Select(c.Key("web-search-engine"), &val, selectmenu.SelectProps{Options: []selectmenu.SelectOption{
 				{Value: "duckduckgo", Label: "DuckDuckGo"}, {Value: "google", Label: "Google"},
-			}})
+			}}).Label("Search engine").Width(160)
 			if val != cur && v.set != nil {
 				v.set.Set(configFile, "searchEngine", val)
 			}

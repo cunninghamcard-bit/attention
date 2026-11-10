@@ -21,20 +21,20 @@ func (s Shadow) On(el ui.Element) ui.Element { return el.Shadow(s.X, s.Y, s.Blur
 // then the component tokens for the few components that differ from
 // them. A *ui.Theme is their projection for MyGo's own widgets.
 type Tokens struct {
-	BgWindow, BgPage, BgRaised, BgOverlay, BgField, BgInverse     ui.Color
-	Text, TextSecondary, TextTertiary, TextOnAccent, TextInverse  ui.Color
-	TextLink                                                      ui.Color
-	BorderSubtle, Border, BorderStrong, BorderFocus               ui.Color
-	FillHover, FillPressed, FillSelected, FillAccent              ui.Color
-	AccentFill, AccentFillHover, AccentFillPressed, AccentBorder  ui.Color
-	Error, Warning, Success, Info, ErrorFill                      ui.Color
-	Selection, Highlight, Scrollbar, Scrim                        ui.Color
-	ShadowSmall, ShadowMedium, ShadowLarge                        Shadow
-	TabRowSelected, TabRowHover, SplitRowSelected, SplitRowHover  ui.Color
-	TabRowShadow, CardShadow                                      Shadow
-	AddressBar, AddressBarHover, CardBorder, FieldHover, MenuItem ui.Color
-	GlassTint, GlassTrack                                         ui.Color
-	SegmentPill, SwitchOff, SwitchOn, SwitchKnob, SwitchKnobOn    ui.Color
+	BgWindow, BgPage, BgRaised, BgOverlay, BgField, BgInverse    ui.Color
+	Text, TextSecondary, TextTertiary, TextOnAccent, TextInverse ui.Color
+	TextLink                                                     ui.Color
+	BorderSubtle, Border, BorderStrong, BorderFocus              ui.Color
+	FillHover, FillPressed, FillSelected, FillAccent             ui.Color
+	AccentFill, AccentFillHover, AccentFillPressed, AccentBorder ui.Color
+	Error, Warning, Success, Info, ErrorFill                     ui.Color
+	Selection, Highlight, Scrollbar, Scrim                       ui.Color
+	ShadowSmall, ShadowMedium, ShadowLarge                       Shadow
+	TabRowSelected, TabRowHover, SplitRowSelected, SplitRowHover ui.Color
+	TabRowShadow, CardShadow                                     Shadow
+	AddressBar, AddressBarHover, CardBorder, MenuItem            ui.Color
+	GlassTint, GlassTrack                                        ui.Color
+	SegmentPill, SwitchOff, SwitchOn, SwitchKnob, SwitchKnobOn   ui.Color
 }
 
 // Register makes tok the tokens of t, for TokensOf, until Unregister;
@@ -90,7 +90,7 @@ func ComponentTokens(k *Tokens) {
 	k.SplitRowSelected, k.SplitRowHover = k.FillHover, k.FillHover.Alpha(0.66)
 	k.AddressBar, k.AddressBarHover = k.FillHover, k.FillHover.Mix(k.FillPressed, 0.75)
 	k.CardBorder, k.CardShadow = k.BorderSubtle, Shadow{Y: 1, Blur: 4, Color: k.ShadowSmall.Color}
-	k.FieldHover, k.MenuItem = k.AddressBarHover, k.FillHover
+	k.MenuItem = k.FillHover
 	k.GlassTint, k.GlassTrack, k.SegmentPill = k.BgOverlay.Alpha(0.78), k.BgWindow.Alpha(0.45), k.BgPage.Alpha(0.85)
 	k.SwitchOff, k.SwitchOn = k.Border.Mix(k.Text, 0.15), k.AccentFill
 	k.SwitchKnob, k.SwitchKnobOn = ui.RGBA(255, 255, 255, 1), k.TextOnAccent
