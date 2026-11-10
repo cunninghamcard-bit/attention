@@ -5,11 +5,13 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/cunninghamcard-bit/acard-ui/components/button"
+	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // selectionBar floats over the window while the active tab has a
@@ -23,10 +25,14 @@ func (ch *Chat) selectionBar(c *ui.Context) {
 	bar := ui.Row(c).Key("chat:selection-bar").Absolute().Bottom(28).Right(28).Gap(4).Padding(4).Radius(12).
 		Background(k.BgRaised).AlignItems(ui.Center)
 	k.ShadowMedium.On(bar).Children(func() {
-		aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: "Ask", Icon: icon.Must("sparkles"), Variant: aui.ButtonGhost, Size: aui.ButtonSM,
-			OnClick: func() { ch.askSelection(true) }}), "Ask about the selection ("+shortcut()+")")
-		aui.Button(c, aui.ButtonProps{Label: "Add to thread", Icon: icon.Must("plus"), Variant: aui.ButtonGhost, Size: aui.ButtonSM,
-			OnClick: func() { ch.askSelection(false) }})
+		ask := labelled(c, button.ButtonGhost, button.ButtonSm, icon.Sparkles, "Ask")
+		tooltip.Tooltip(c, ask, tooltip.TooltipProps{Text: "Ask about the selection (" + shortcut() + ")"})
+		if ask.Clicked() {
+			ch.askSelection(true)
+		}
+		if labelled(c, button.ButtonGhost, button.ButtonSm, icon.Plus, "Add to thread").Clicked() {
+			ch.askSelection(false)
+		}
 	})
 }
 

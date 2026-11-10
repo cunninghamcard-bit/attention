@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/dim"
@@ -24,7 +25,6 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -107,7 +107,7 @@ func (ch *Chat) Register(sh *shell.Shell, sl *slots.Registry, act *actions.Servi
 			ID: ID, Kind: Kind, Priority: tabtypes.Builtin,
 			Patterns: []string{AddressPrefix + "*"},
 			Title:    ch.title,
-			Icon:     icon.Must("message-circle"),
+			Icon:     icon.MessageCircle.SVG(),
 			Body:     ch.body,
 			Closed:   func(int) {},
 		}),

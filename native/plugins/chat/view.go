@@ -8,6 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cunninghamcard-bit/acard-ui/components/button"
+	"github.com/cunninghamcard-bit/acard-ui/components/input"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
 
@@ -16,7 +19,6 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -62,7 +64,7 @@ func (ch *Chat) messages(c *ui.Context, l *live) {
 	th := c.Theme()
 	if len(l.messages) == 0 && l.sent == "" && !l.loading {
 		ui.Column(c).FillWidth().Gap(6).Padding(64, 0, 0, 0).AlignItems(ui.Center).Children(func() {
-			ui.Icon(c, icon.Must("sparkles")).Size(22, 22).TextColor(th.TextMuted)
+			ui.Icon(c, icon.Sparkles.SVG()).Size(22, 22).TextColor(th.TextMuted)
 			ui.Text(c, "Ask dim about "+filepath.Base(l.thread.Cwd)).FontSize(15).TextColor(th.Text)
 			ui.Text(c, "Select text in a file and press "+shortcut()+" to quote it here.").FontSize(12).TextColor(th.TextMuted)
 		})
@@ -92,12 +94,11 @@ func (ch *Chat) messages(c *ui.Context, l *live) {
 	}
 	if l.err != "" {
 		ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
-			ui.Icon(c, icon.Must("triangle-alert")).Size(14, 14).TextColor(aui.TokensOf(c).Error).Shrink(0)
+			ui.Icon(c, icon.TriangleAlert.SVG()).Size(14, 14).TextColor(aui.TokensOf(c).Error).Shrink(0)
 			ui.Text(c, l.err).FontSize(12).TextColor(aui.TokensOf(c).Error).Grow(1)
-			if l.thread.SessionID != "" && !l.loading {
-				aui.Button(c, aui.ButtonProps{Label: "Retry", Variant: aui.ButtonGhost, Size: aui.ButtonSM, OnClick: func() {
-					l.err, l.loaded = "", false
-				}})
+			if l.thread.SessionID != "" && !l.loading && button.Button(c, button.ButtonProps{Variant: button.ButtonGhost, Size: button.ButtonSm,
+				LabelKey: "Retry", Children: func() { ui.Text(c, "Retry") }}).Clicked() {
+				l.err, l.loaded = "", false
 			}
 		})
 	}
@@ -115,11 +116,11 @@ func (ch *Chat) reply(c *ui.Context, l *live, i int, m dim.Message, live bool) {
 				label = "Thinking…"
 			}
 			ui.Row(c).Key(fmt.Sprintf("think-%d", i)).Gap(4).AlignItems(ui.Center).Cursor(ui.CursorPointer).Unselectable().Children(func() {
-				glyph := "chevron-right"
+				glyph := icon.ChevronRight
 				if open {
-					glyph = "chevron-down"
+					glyph = icon.ChevronDown
 				}
-				ui.Icon(c, icon.Must(glyph)).Size(12, 12).TextColor(th.TextMuted)
+				ui.Icon(c, glyph.SVG()).Size(12, 12).TextColor(th.TextMuted)
 				ui.Text(c, label).FontSize(12).TextColor(th.TextMuted)
 			}).OnClick(func() { l.open[i] = !open })
 			if open {
@@ -148,16 +149,23 @@ func (ch *Chat) reply(c *ui.Context, l *live, i int, m dim.Message, live bool) {
 func (ch *Chat) composer(c *ui.Context, l *live) {
 	th := c.Theme()
 	k := aui.TokensOf(c)
-	ui.Column(c).FillWidth().Gap(8).Padding(10).Radius(14).Background(k.BgField).Children(func() {
+	ui.Column(c).FillWidth().Gap(8).Children(func() {
 		if l.quote != "" {
-			ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Start).Children(func() {
+			ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Start).Padding(8, 10).Radius(10).Background(k.BgField).Children(func() {
 				ui.Text(c, clip(l.quote, maxQuote)).FontSize(12).TextColor(th.TextMuted).Wrap().Grow(1)
-				aui.Button(c, aui.ButtonProps{Icon: icon.Must("x"), Variant: aui.ButtonGhost, Size: aui.ButtonIconTiny,
-					OnClick: func() { l.quote = "" }})
+				x := button.Button(c, button.ButtonProps{Label: "Remove the quote", Variant: button.ButtonGhost, Size: button.ButtonSm,
+					Children: func() { ui.Icon(c, icon.X.SVG()).Size(12, 12) }}).Size(24, 24).MinHeight(24).PaddingX(0).Shrink(0)
+				if x.Clicked() {
+					l.quote = ""
+				}
 			})
 		}
 		ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
-			field := aui.Field(c, &l.draft, "Ask about "+filepath.Base(l.thread.Cwd)+"…", false)
+			var field ui.Element
+			ui.Column(c).Grow(1).MinWidth(0).Children(func() {
+				field = input.Input(c, &l.draft, input.InputProps{Placeholder: "Ask about " + filepath.Base(l.thread.Cwd) + "…"}).
+					Label("Ask dim")
+			})
 			if l.focus {
 				field.Focus()
 				l.focus = false
@@ -165,13 +173,13 @@ func (ch *Chat) composer(c *ui.Context, l *live) {
 			if field.Submitted() {
 				ch.send(l)
 			}
+			label, glyph, act := "Send", icon.Send, func() { ch.send(l) }
 			if l.running && !l.busy {
-				aui.Button(c, aui.ButtonProps{Label: "Stop", Icon: icon.Must("square"), Variant: aui.ButtonSecondary,
-					OnClick: func() { ch.stop(l) }})
-				return
+				label, glyph, act = "Stop", icon.Square, func() { ch.stop(l) }
 			}
-			aui.Button(c, aui.ButtonProps{Label: "Send", Icon: icon.Must("send"), Variant: aui.ButtonSecondary,
-				OnClick: func() { ch.send(l) }})
+			if labelled(c, button.ButtonSecondary, "", glyph, label).Clicked() {
+				act()
+			}
 		})
 	})
 }
@@ -192,7 +200,7 @@ func (ch *Chat) threadItems(query string) []slots.PaletteItem {
 	out := make([]slots.PaletteItem, 0, len(picked))
 	for _, t := range picked {
 		out = append(out, slots.PaletteItem{Key: "thread:" + t.ID, Label: ch.title(AddressPrefix + t.ID),
-			Detail: filepath.Base(t.Cwd) + " · " + ago(t.Used), Icon: icon.Must("message-circle"), Hint: "Open thread",
+			Detail: filepath.Base(t.Cwd) + " · " + ago(t.Used), Icon: icon.MessageCircle.SVG(), Hint: "Open thread",
 			Choose: func(bool) { ch.openThread(t, false) }})
 	}
 	return out
@@ -204,6 +212,13 @@ func userBubble(c *ui.Context, text string) {
 		ui.Text(c, text).Wrap().MaxWidth(columnWidth*0.8).Padding(10, 14).Radius(14).
 			Background(k.BgField).TextColor(c.Theme().Text)
 	})
+}
+
+func labelled(c *ui.Context, variant button.ButtonVariant, size button.ButtonSize, glyph icon.Icon, label string) ui.Element {
+	return button.Button(c, button.ButtonProps{Variant: variant, Size: size, LabelKey: label, Children: func() {
+		ui.Icon(c, glyph.SVG()).Size(14, 14)
+		ui.Text(c, label)
+	}})
 }
 
 // compact is names without repeats, in first-use order.
