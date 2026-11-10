@@ -114,14 +114,12 @@ TS 版 attention 沿用 Obsidian 的 CSS 变量，分三层：基础色板（`--
 | `splitRow.selected`、`splitRow.hover` | `fill.hover`、`fill.hover@0.66` |
 | `addressBar.bg`、`addressBar.hover` | `fill.hover`、`fill.hover` 往 `fill.pressed` 混 75% |
 | `card.border`（只在暗色主题画）、`card.shadow` | `border.subtle`、`0 1 4` 加 `shadow.small` 的颜色 |
-| `field.hover` | 同 `addressBar.hover` |
-| `button.secondary`、`.hover`、`.pressed` | `fill.hover`、`fill.pressed`、`fill.pressed@1.4` |
-| `button.danger.hover`、`.pressed` | `status.errorFill` 往正文色混 10%、20% |
 | `menu.itemHover` | `fill.hover` |
-| `glass.bg`、`glass.track`、`segment.pill` | `bg.overlay@0.78`、`bg.window@0.45`、`bg.page@0.85` |
-| `switch.off`、`switch.on`、`switch.knob`、`switch.knobOn` | `border.default` 往正文色混 15%、`accent.fill`、白色、`text.onAccent` |
+| `glass.bg` | `bg.overlay@0.78` |
 
 默认值写在 `native/ui` 的 `ComponentTokens`，主题的 `components` 在它之后覆盖。
+
+按钮、开关、输入框和分段控件换成 ACard 组件后（issue #7），这些组件的颜色由 ACard 的 token 决定。原来的 `field.hover`、`button.*`、`switch.*`、`segment.pill`、`glass.track` 已经删除。
 
 ## 6. 编辑器和终端：Zed 的键
 
@@ -212,7 +210,7 @@ mygo 的 `c.Theme()` 返回固定字段的 `*ui.Theme`，`SetTheme` 对之后创
 | 现在 | 改成 |
 |---|---|
 | `Wash(t, 0.04/0.05/0.06/0.07/0.09)` 用作悬停 | `fill.hover` 或对应组件 token |
-| `Wash(t, 0.08/0.1/0.12/0.14)` 用作按下、选中 | `fill.pressed`、`fill.selected`、`button.secondary.pressed` |
+| `Wash(t, 0.08/0.1/0.12/0.14)` 用作按下、选中 | `fill.pressed`、`fill.selected` |
 | `Wash(t, 0.06/0.08/0.1)` 用作分隔线、描边 | `border.subtle` |
 | `Raised(t)` | `bg.raised` |
 | `Shade(0.06/0.08)` + 偏移 | `shadow.small` |
