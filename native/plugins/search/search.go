@@ -21,6 +21,7 @@ import (
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/cunninghamcard-bit/acard-ui/components/selectmenu"
 	"github.com/cunninghamcard-bit/acard-ui/components/toggleswitch"
+	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
@@ -415,7 +416,7 @@ func (s *Search) fileRow(c *ui.Context, f *projectplugin.FileResult) {
 		}
 		s.open(f, first)
 	}
-	aui.Tooltip(c, item, name)
+	tooltip.Tooltip(c, item, tooltip.TooltipProps{Text: name})
 	item.Children(func() {
 		if len(f.Matches) > 0 {
 			if aui.Disclosure(c, !s.isCollapsed(f), 14).Clicked() {
@@ -494,7 +495,8 @@ func toggleIcon(c *ui.Context, glyph *ui.SVG, tip string, on bool) bool {
 			ic.TextColor(c.Theme().Accent)
 		}
 	}}).Width(28).PaddingX(0).Checked(on)
-	return aui.Tooltip(c, b, tip).Clicked()
+	tooltip.Tooltip(c, b, tooltip.TooltipProps{Text: tip})
+	return b.Clicked()
 }
 
 func setting(c *ui.Context, label string, on *bool, changed func()) {

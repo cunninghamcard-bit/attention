@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
+	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
@@ -61,7 +62,7 @@ func (s *Shortcuts) commandHotkeys(c *ui.Context, cmd actions.Command) {
 				for j, o := range conflicts {
 					names[j] = o.Title
 				}
-				aui.Tooltip(c, chip.BorderWidth(1).BorderColor(t.Danger), "Conflicts with "+strings.Join(names, ", "))
+				tooltip.Tooltip(c, chip.BorderWidth(1).BorderColor(t.Danger), tooltip.TooltipProps{Text: "Conflicts with " + strings.Join(names, ", ")})
 			}
 			chip.Children(func() {
 				ui.Text(c, Format(h)).FontSize(12).SingleLine()
@@ -70,7 +71,7 @@ func (s *Shortcuts) commandHotkeys(c *ui.Context, cmd actions.Command) {
 				if remove.Clicked() {
 					s.removeAt(cmd, i)
 				}
-				aui.Tooltip(c, remove, "Remove hotkey")
+				tooltip.Tooltip(c, remove, tooltip.TooltipProps{Text: "Remove hotkey"})
 			})
 		}
 		label, color := "Add hotkey", t.Text
@@ -82,7 +83,7 @@ func (s *Shortcuts) commandHotkeys(c *ui.Context, cmd actions.Command) {
 		if add.Clicked() {
 			s.recording = cmd.ID
 		}
-		aui.Tooltip(c, add, label)
+		tooltip.Tooltip(c, add, tooltip.TooltipProps{Text: label})
 		if s.Overridden(cmd.ID) {
 			restore := button.Button(c, button.ButtonProps{Label: "Restore default hotkeys", Variant: button.ButtonGhost,
 				Size:     button.ButtonSm,
@@ -90,7 +91,7 @@ func (s *Shortcuts) commandHotkeys(c *ui.Context, cmd actions.Command) {
 			if restore.Clicked() {
 				s.settings.Unset(settings.Hotkeys, cmd.ID)
 			}
-			aui.Tooltip(c, restore, "Restore default hotkeys")
+			tooltip.Tooltip(c, restore, tooltip.TooltipProps{Text: "Restore default hotkeys"})
 		}
 	})
 }

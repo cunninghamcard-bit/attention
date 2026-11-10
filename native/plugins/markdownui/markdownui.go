@@ -11,6 +11,7 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
+	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
@@ -21,7 +22,6 @@ import (
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
-	aui "github.com/cunninghamcard-bit/attention/native/ui"
 	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
@@ -232,7 +232,7 @@ func (v *Viewer) actions(c *ui.Context, p tabtypes.Props) {
 	if b.Clicked() {
 		d.source = !d.source
 	}
-	aui.Tooltip(c, b, label+" (Ctrl E)")
+	tooltip.Tooltip(c, b, tooltip.TooltipProps{Text: label + " (Ctrl E)"})
 }
 
 func (v *Viewer) menu(id int) []tabtypes.MenuItem {

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/ui/icon"
@@ -57,7 +58,9 @@ func TabRow(c *ui.Context, p TabRowProps) ui.Element {
 	row := ui.Row(c).Key(p.Key).Height(tabRowHeight).AlignSelf(ui.Stretch).MinWidth(0).Padding(0, 4, 0, 10).Gap(8).
 		AlignItems(ui.Center).Radius(controlRadius(t)).Cursor(ui.CursorPointer).Focusable().Role(ui.RoleTab).
 		Checked(p.Selected).Label(p.Title)
-	Tooltip(c, row, p.Tooltip)
+	if p.Tooltip != "" {
+		tooltip.Tooltip(c, row, tooltip.TooltipProps{Text: p.Tooltip})
+	}
 	hovered := row.Hovered()
 	k := TokensOf(c)
 	fg, wash := t.Text, ui.Color{}
@@ -102,7 +105,9 @@ func SplitRow(c *ui.Context, key any, selected bool, parts []SplitPart) (ui.Elem
 			part := ui.Row(c).Key(sp.Key).Width(0).Grow(1).MinWidth(0).Padding(0, 2, 0, 7).Gap(6).AlignItems(ui.Center).
 				Radius(max(controlRadius(t)-3, 0)).Cursor(ui.CursorPointer).Focusable().Role(ui.RoleTab).
 				Checked(selected && sp.Focused).Label(sp.Title)
-			Tooltip(c, part, sp.Title)
+			if sp.Title != "" {
+				tooltip.Tooltip(c, part, tooltip.TooltipProps{Text: sp.Title})
+			}
 			face := ui.Color{}
 			switch {
 			case selected && sp.Focused:
@@ -148,8 +153,8 @@ func AddressBar(c *ui.Context, p AddressBarProps) ui.Element {
 				Role(ui.RoleButton).Label(p.Prefix + p.Name)
 			text.Children(func() {
 				if p.Locked {
-					ui.Icon(c, icon.Must("file-lock")).Size(iconSmall, iconSmall).TextColor(t.TextMuted).Shrink(0).
-						Tooltip("Read-only")
+					lock := ui.Icon(c, icon.Must("file-lock")).Size(iconSmall, iconSmall).TextColor(t.TextMuted).Shrink(0)
+					tooltip.Tooltip(c, lock, tooltip.TooltipProps{Text: "Read-only"})
 				} else if p.Icon != nil {
 					ui.Icon(c, p.Icon).Size(iconSmall, iconSmall).TextColor(t.TextMuted).Shrink(0)
 				}

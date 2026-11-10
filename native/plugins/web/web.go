@@ -27,6 +27,7 @@ import (
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/cunninghamcard-bit/acard-ui/components/input"
 	"github.com/cunninghamcard-bit/acard-ui/components/selectmenu"
+	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
@@ -402,7 +403,7 @@ func (v *viewer) register(loaded func(Page)) (off func()) {
 			if reader.Clicked() {
 				v.toggleReader(pg)
 			}
-			aui.Tooltip(c, reader, label)
+			tooltip.Tooltip(c, reader, tooltip.TooltipProps{Text: label})
 		},
 		Closed: func(id int) {
 			pg := v.pages[id]
@@ -559,7 +560,7 @@ func (v *viewer) findBar(c *ui.Context, pg *page) {
 			if b.Clicked() {
 				fn()
 			}
-			aui.Tooltip(c, b, label)
+			tooltip.Tooltip(c, b, tooltip.TooltipProps{Text: label})
 		}
 		findButton("Previous", icon.Must("arrow-up"), func() { v.find(pg, true) })
 		findButton("Next", icon.Must("arrow-down"), func() { v.find(pg, false) })

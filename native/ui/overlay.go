@@ -60,23 +60,6 @@ func Floating(c *ui.Context, panel ui.Element) ui.Element {
 	return Arrive(panel, ui.Pose{Y: -4, Fade: 1}, 0)
 }
 
-// Tooltip gives anchor a tip of s on MyGo's TooltipBase, in the inverse
-// face (CrychicUI's overlay.RichTooltip, one line), and describes anchor
-// with s; it returns anchor.
-func Tooltip(c *ui.Context, anchor ui.Element, s string) ui.Element {
-	if s == "" {
-		return anchor
-	}
-	anchor.Description(s)
-	t, k := c.Theme(), TokensOf(c)
-	ui.TooltipBase(c, anchor, func(tip ui.Element) {
-		k.ShadowSmall.On(tip.MaxWidth(320).Padding(5, 8).Radius(controlRadius(t)).Background(k.BgInverse).
-			TextColor(k.TextInverse).FontSize(smallSize))
-		Arrive(tip, ui.Pose{Y: 2, Fade: 1}, 0).Children(func() { ui.Text(c, s) })
-	})
-	return anchor
-}
-
 // IconMenu draws the button and, while open, the menu under it. The
 // element returned is the button.
 func IconMenu(c *ui.Context, p IconMenuProps) ui.Element {

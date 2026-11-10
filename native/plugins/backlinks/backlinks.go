@@ -17,6 +17,7 @@ import (
 	"strconv"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
@@ -281,7 +282,7 @@ func (p *Pane) fileRow(c *ui.Context, b *indexplugin.Backlink) {
 		}
 		p.open(b, first)
 	}
-	aui.Tooltip(c, item, b.Display)
+	tooltip.Tooltip(c, item, tooltip.TooltipProps{Text: b.Display})
 	item.Children(func() {
 		if len(b.Mentions) > 0 {
 			if aui.Disclosure(c, !p.collapsed[b.Path+b.URL], 14).Clicked() {

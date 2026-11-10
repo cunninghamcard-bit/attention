@@ -16,6 +16,7 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
+	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/watchq"
@@ -461,7 +462,7 @@ func (tr *Tree) view(c *ui.Context) {
 				}
 			}
 			if ws != nil {
-				aui.Tooltip(c, row, ws.Display(e.Path))
+				tooltip.Tooltip(c, row, tooltip.TooltipProps{Text: ws.Display(e.Path)})
 			}
 			if r.mount != nil {
 				m := *r.mount
@@ -495,7 +496,7 @@ func (tr *Tree) view(c *ui.Context) {
 				}
 				if e.Dir {
 					if d := tr.dirs[e.Path]; d != nil && d.err != "" {
-						aui.Tooltip(c, ui.Icon(c, icon.Must("triangle-alert")).Size(12, 12).TextColor(t.Warning).Shrink(0), d.err)
+						tooltip.Tooltip(c, ui.Icon(c, icon.Must("triangle-alert")).Size(12, 12).TextColor(t.Warning).Shrink(0), tooltip.TooltipProps{Text: d.err})
 					}
 				}
 			})
@@ -624,13 +625,13 @@ func (tr *Tree) actions(c *ui.Context) {
 			}()
 		}
 	}
-	aui.Tooltip(c, add, "Add folder to workspace")
+	tooltip.Tooltip(c, add, tooltip.TooltipProps{Text: "Add folder to workspace"})
 	collapse := button.Button(c, button.ButtonProps{Label: collapseTip, Variant: button.ButtonGhost, Size: button.ButtonSm,
 		Children: func() { ui.Icon(c, collapseIcon).Size(14, 14) }}).Width(28).PaddingX(0)
 	if collapse.Clicked() {
 		tr.toggleCollapseAll(!allCollapsed)
 	}
-	aui.Tooltip(c, collapse, collapseTip)
+	tooltip.Tooltip(c, collapse, tooltip.TooltipProps{Text: collapseTip})
 }
 
 // colorMenu is a project's Color submenu: the presets, then Default.
@@ -657,7 +658,7 @@ func (tr *Tree) swatches(c *ui.Context, m projectplugin.Mount) {
 			col, _ := aui.ParseColor(sw.Color)
 			b := ui.ButtonBase(c).Key("swatch:"+m.ID+sw.Color).Label(sw.Name).Size(18, 18).Radius(9).
 				Background(col).Cursor(ui.CursorPointer)
-			aui.Tooltip(c, b, sw.Name)
+			tooltip.Tooltip(c, b, tooltip.TooltipProps{Text: sw.Name})
 			if m.Color == sw.Color {
 				b.Border(2, t.Text)
 			}

@@ -13,6 +13,7 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
+	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
 	"github.com/cunninghamcard-bit/acard-ui/tokens"
 	"github.com/egoist/mygo/ui"
 
@@ -262,7 +263,8 @@ func (l *Layout) ToggleButton(c *ui.Context, d slots.Dock) ui.Element {
 	if b.Clicked() {
 		l.Toggle(d)
 	}
-	return aui.Tooltip(c, b, tip)
+	tooltip.Tooltip(c, b, tooltip.TooltipProps{Text: tip})
+	return b
 }
 
 // View is the window's root.
@@ -435,7 +437,7 @@ func (l *Layout) sidebar(c *ui.Context) {
 				head.Status(c)
 			}
 			if l.notice != "" {
-				aui.Tooltip(c, ui.Icon(c, icon.Must("triangle-alert")).Size(12, 12).TextColor(t.Warning), l.notice)
+				tooltip.Tooltip(c, ui.Icon(c, icon.Must("triangle-alert")).Size(12, 12).TextColor(t.Warning), tooltip.TooltipProps{Text: l.notice})
 			}
 		})
 		ui.Row(c).Height(36).Shrink(0).FillWidth().Gap(2).AlignItems(ui.Center).Children(func() {
@@ -444,7 +446,7 @@ func (l *Layout) sidebar(c *ui.Context) {
 			if settings.Clicked() {
 				l.openSettings()
 			}
-			aui.Tooltip(c, settings, "Settings")
+			tooltip.Tooltip(c, settings, tooltip.TooltipProps{Text: "Settings"})
 			ui.Box(c).Grow(1)
 			for i := range panels {
 				p := panels[i]
@@ -459,7 +461,7 @@ func (l *Layout) sidebar(c *ui.Context) {
 				if btn.Clicked() {
 					l.RevealPanel(p.ID)
 				}
-				aui.Tooltip(c, btn, p.Title)
+				tooltip.Tooltip(c, btn, tooltip.TooltipProps{Text: p.Title})
 				if active {
 					btn.Background(aui.TokensOf(c).FillSelected)
 				}

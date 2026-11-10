@@ -7,6 +7,7 @@ import (
 
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/cunninghamcard-bit/acard-ui/components/input"
+	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
@@ -413,7 +414,8 @@ func (ws *Workspace) headNav(c *ui.Context) {
 				if n > 0 {
 					ic.TextColor(t.Text)
 				}
-			}}).Size(24, 24).MinHeight(24).PaddingX(0).Tooltip(label)
+			}}).Size(24, 24).MinHeight(24).PaddingX(0)
+		tooltip.Tooltip(c, b, tooltip.TooltipProps{Text: label})
 		if b.Clicked() {
 			ws.later(func() { ws.goHistory(tb, delta) })
 		}

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
@@ -204,7 +205,7 @@ func (h *History) view(c *ui.Context, _ tabtypes.Props) {
 				h.Remove(e.ID)
 			}
 		})
-		aui.Tooltip(c, row, e.URL)
+		tooltip.Tooltip(c, row, tooltip.TooltipProps{Text: e.URL})
 		row.Children(func() {
 			ui.Icon(c, icon.Must("globe")).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
 			ui.RichText(c, ui.Span{Text: e.Title}, ui.Span{Text: " — " + e.URL, Color: t.TextMuted}).
