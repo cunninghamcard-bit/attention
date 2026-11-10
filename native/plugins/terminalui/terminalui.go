@@ -25,6 +25,7 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
+	"github.com/cunninghamcard-bit/acard-ui/components/input"
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
 
@@ -293,7 +294,9 @@ func (t *Terminals) settingTab(c *ui.Context) {
 			var cur string
 			t.set.Get(configFile, "shell", &cur)
 			v := cur
-			aui.Field(c, &v, "login shell", false).Width(220)
+			ui.Column(c).Width(220).Children(func() {
+				input.Input(c, &v, input.InputProps{Placeholder: "login shell"}).Label("Shell")
+			})
 			if v != cur {
 				t.set.Set(configFile, "shell", v)
 			}
@@ -302,7 +305,9 @@ func (t *Terminals) settingTab(c *ui.Context) {
 			var cur string
 			t.set.Get(configFile, "fontFamily", &cur)
 			v := cur
-			aui.Field(c, &v, "monospace", false).Width(220)
+			ui.Column(c).Width(220).Children(func() {
+				input.Input(c, &v, input.InputProps{Placeholder: "monospace"}).Label("Font family")
+			})
 			if v != cur {
 				t.set.Set(configFile, "fontFamily", v)
 			}
@@ -315,7 +320,9 @@ func (t *Terminals) settingTab(c *ui.Context) {
 				cur = strconv.FormatFloat(float64(size), 'f', -1, 32)
 			}
 			v := cur
-			aui.Field(c, &v, "13", false).Width(80)
+			ui.Column(c).Width(80).Children(func() {
+				input.Input(c, &v, input.InputProps{Placeholder: "13"}).Label("Font size")
+			})
 			if v != cur {
 				if n, err := strconv.ParseFloat(v, 32); err == nil && n > 0 {
 					t.set.Set(configFile, "fontSize", float32(n))

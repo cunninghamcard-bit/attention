@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/cunninghamcard-bit/acard-ui/components/input"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
@@ -92,11 +93,13 @@ func (p *Palette) View(c *ui.Context) {
 		panel.Children(func() {
 			submitted := false
 			ui.Row(c).FillWidth().Padding(10, 12).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-				field := aui.Field(c, &p.query, src.Placeholder, false).AutoFocus().FillWidth()
-				if field.Submitted() {
-					p.accept(*src, false)
-					submitted = true
-				}
+				ui.Column(c).Grow(1).MinWidth(0).Children(func() {
+					field := input.Input(c, &p.query, input.InputProps{Placeholder: src.Placeholder}).Label(src.Placeholder).AutoFocus()
+					if field.Submitted() {
+						p.accept(*src, false)
+						submitted = true
+					}
+				})
 			})
 			if submitted {
 				return

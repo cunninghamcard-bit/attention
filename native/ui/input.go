@@ -11,24 +11,6 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
-// Field draws a single-line text input on the control face. The element
-// returned is the input, so a caller can read Submitted or mark it;
-// placeholder is also its accessible name.
-func Field(c *ui.Context, value *string, placeholder string, disabled bool) ui.Element {
-	t := c.Theme()
-	e := ui.TextInputBase(c, value).Placeholder(placeholder)
-	if placeholder != "" {
-		e.Label(placeholder)
-	}
-	e.FillWidth().Height(controlHeight).MinHeight(controlHeight).PaddingX(10).PaddingY(0).
-		Radius(controlRadius(t)).FontSize(labelSize).Background(TokensOf(c).BgField).TextColor(t.Text)
-	ring(e, TokensOf(c), e.Focused())
-	if disabled {
-		e.Disabled(true).TextColor(t.TextMuted)
-	}
-	return e
-}
-
 // SearchField draws a field with a magnifier at its start. The element
 // returned is the text input.
 func SearchField(c *ui.Context, value *string, placeholder string, disabled bool) ui.Element {

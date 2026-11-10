@@ -25,6 +25,7 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
+	"github.com/cunninghamcard-bit/acard-ui/components/input"
 	"github.com/cunninghamcard-bit/acard-ui/components/selectmenu"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
@@ -346,7 +347,10 @@ func (v *viewer) register(loaded func(Page)) (off func()) {
 						reload(pg)
 					}
 				}
-				field := aui.Field(c, &pg.typed, "Search or enter address", false).Label("Address").Grow(1).MinWidth(0)
+				var field ui.Element
+				ui.Column(c).Grow(1).MinWidth(0).Children(func() {
+					field = input.Input(c, &pg.typed, input.InputProps{Placeholder: "Search or enter address"}).Label("Address")
+				})
 				// The bar follows the page while it is not being typed in
 				// (syncAddressInput).
 				if p.Info.Address != pg.shown {
@@ -519,7 +523,10 @@ func (v *viewer) toggleReader(pg *page) {
 func (v *viewer) findBar(c *ui.Context, pg *page) {
 	t := c.Theme()
 	ui.Row(c).Padding(4, 8).Gap(4).AlignItems(ui.Center).Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-		field := aui.Field(c, &pg.query, "Find...", false).Label("Find in page").Width(260)
+		var field ui.Element
+		ui.Column(c).Width(260).Children(func() {
+			field = input.Input(c, &pg.query, input.InputProps{Placeholder: "Find..."}).Label("Find in page")
+		})
 		if pg.findFocus {
 			pg.findFocus = false
 			field.Focus()

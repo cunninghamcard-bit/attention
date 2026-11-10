@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
+	"github.com/cunninghamcard-bit/acard-ui/components/input"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
@@ -204,7 +205,10 @@ func (ws *Workspace) folderRow(c *ui.Context, f *folder) {
 	key := fmt.Sprintf("folder-%p", f)
 	if ws.renaming == f {
 		ui.Row(c).Key(key).Height(34).FillWidth().PaddingX(6).AlignItems(ui.Center).Children(func() {
-			field := aui.Field(c, &ws.renameDraft, "Folder name", false).AutoFocus().FillWidth()
+			var field ui.Element
+			ui.Column(c).Grow(1).MinWidth(0).Children(func() {
+				field = input.Input(c, &ws.renameDraft, input.InputProps{Placeholder: "Folder name"}).Label("Folder name").AutoFocus()
+			})
 			switch {
 			case field.Submitted():
 				if name := strings.TrimSpace(ws.renameDraft); name != "" {

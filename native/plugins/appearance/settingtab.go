@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
+	"github.com/cunninghamcard-bit/acard-ui/components/input"
 	"github.com/cunninghamcard-bit/acard-ui/components/selectmenu"
 	"github.com/cunninghamcard-bit/acard-ui/components/toggleswitch"
 	"github.com/egoist/mygo"
@@ -154,7 +155,9 @@ func (a *Appearance) accentField(c *ui.Context, s Settings) {
 		}
 		ui.Box(c).Size(20, 20).Radius(6).Background(swatch).Border(1, t.Border)
 		prev := a.tab.accent
-		aui.Field(c, &a.tab.accent, "#526fff", false).Width(110)
+		ui.Column(c).Width(110).Children(func() {
+			input.Input(c, &a.tab.accent, input.InputProps{Placeholder: "#526fff"}).Label("Accent color")
+		})
 		if a.tab.accent != prev {
 			if _, ok := aui.ParseColor(a.tab.accent); ok {
 				a.set.Set(settings.Appearance, "accentColor", strings.TrimSpace(a.tab.accent))
@@ -197,7 +200,9 @@ func (a *Appearance) fontSpec(label, desc, key string, draft *string, cur, place
 	return rowSpec{label: label, desc: desc, control: func(c *ui.Context) {
 		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 			prev := *draft
-			aui.Field(c, draft, placeholder, false).Width(220)
+			ui.Column(c).Width(220).Children(func() {
+				input.Input(c, draft, input.InputProps{Placeholder: placeholder}).Label(label)
+			})
 			if *draft != prev {
 				if *draft == "" {
 					a.set.Unset(settings.Appearance, key)
