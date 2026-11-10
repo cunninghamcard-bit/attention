@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/arcships/rutis/go/rutis"
+	acard "github.com/cunninghamcard-bit/acard-ui/tokens"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
@@ -221,9 +222,11 @@ func (a *Appearance) of(dark bool) built {
 		}
 		if old := a.built[i].ui; old != nil {
 			aui.Unregister(old)
+			acard.Unregister(old)
 		}
 		a.built[i] = build(t, sch, a.cur)
 		aui.Register(a.built[i].ui, a.built[i].tokens)
+		acard.Register(a.built[i].ui, a.built[i].acard)
 		a.builtAt[i] = at
 	}
 	return a.built[i]

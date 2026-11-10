@@ -1,6 +1,7 @@
 package appearance
 
 import (
+	acard "github.com/cunninghamcard-bit/acard-ui/tokens"
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
@@ -31,6 +32,7 @@ var (
 type built struct {
 	ui       *ui.Theme
 	tokens   *aui.Tokens
+	acard    *acard.Tokens
 	editor   *editor.Theme
 	markdown *markdown.Theme
 	terminal *terminal.Theme
@@ -42,7 +44,7 @@ func build(t Theme, sch *Scheme, s Settings) built {
 	k, errs := tokens(t, accent)
 	u := project(k, t.Dark, s)
 	ed := buildEditor(u, k, sch, s)
-	return built{ui: u, tokens: k, editor: ed, markdown: buildMarkdown(k, ed, sch, s),
+	return built{ui: u, tokens: k, acard: acardOf(k, u), editor: ed, markdown: buildMarkdown(k, ed, sch, s),
 		terminal: buildTerminal(k, sch, t.Dark), errs: errs}
 }
 

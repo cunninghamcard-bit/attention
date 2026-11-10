@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/cunninghamcard-bit/acard-ui/tokens"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
@@ -109,6 +110,7 @@ type Layout struct {
 	notice                string
 	tinted                ui.Theme // the window's theme with the project's surface
 	tintedTokens          aui.Tokens
+	tintedACard           tokens.Tokens
 
 	SaveSoon func()
 }
@@ -270,10 +272,11 @@ func (l *Layout) View(c *ui.Context) {
 		}
 	}
 	root := ui.Row(c).Fill().AlignItems(ui.Stretch)
-	l.tinted, l.tintedTokens = *base, *aui.TokensFor(base)
+	l.tinted, l.tintedTokens, l.tintedACard = *base, *aui.TokensFor(base), *tokens.TokensOf(c)
 	window := root.AnimateColor("tint", l.surface(base), ui.Animation{Duration: 240 * time.Millisecond})
 	l.tinted.Surface, l.tintedTokens.BgWindow = window, window
 	aui.Register(&l.tinted, &l.tintedTokens)
+	tokens.Register(&l.tinted, &l.tintedACard)
 	root.Background(window).Children(func() {
 		c.SetTheme(&l.tinted)
 		if l.leftOpen {
