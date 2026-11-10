@@ -21,12 +21,15 @@ const (
 // motion.
 func acardOf(k *aui.Tokens, u *ui.Theme) *acard.Tokens {
 	tok := acard.NewTokens(u.Dark, acard.AccentNeutral)
-	// The muted surface is acard's hover face; RFC 0003 §5 makes a hover a
-	// translucent wash, which reads over a project's tint too.
-	tok.Background, tok.Surface, tok.SurfaceRaised = k.BgPage, k.BgRaised, k.BgOverlay
+	// RFC 0003 §5 draws fields, selects and secondary buttons as a
+	// translucent wash with no border, and menus as a shadow with none: the
+	// surface acard fills a control with is the field wash, and the borders
+	// acard draws around controls and panels are clear. The muted surface
+	// is acard's hover face, a wash too, which reads over a project's tint.
+	tok.Background, tok.Surface, tok.SurfaceRaised = k.BgPage, k.BgField, k.BgOverlay
 	tok.SurfaceMuted = k.FillHover
 	tok.Foreground, tok.TextSecondary, tok.TextMuted = k.Text, k.TextSecondary, k.TextTertiary
-	tok.Border, tok.BorderSubtle, tok.BorderStrong = k.Border, k.BorderSubtle, k.BorderStrong
+	tok.Border, tok.BorderSubtle, tok.BorderStrong = k.Border.Alpha(0), k.BorderSubtle, k.BorderStrong.Alpha(0)
 
 	// Arc's strong accent stands further from the page than the accent: the
 	// raw accent under accentSteps' lighter face on a light page, the hover
