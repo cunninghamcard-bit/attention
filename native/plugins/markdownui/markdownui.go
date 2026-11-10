@@ -82,6 +82,10 @@ type doc struct {
 	md        markdown.Options
 	dir       string
 	raw, view string
+	// reading is the reading view's element as last built, for its
+	// selection; drawn is false until it has been built.
+	reading ui.Element
+	drawn   bool
 }
 
 // Viewer is the markdown tab type's state, on the main thread only.
@@ -120,6 +124,7 @@ func Register(ctx context.Context, fs fsplugin.FS, sh *shell.Shell, act *actions
 			}
 			return 0, 0, false
 		},
+		Selection: v.selection,
 	})
 	return v, func() { offCmd(); offType() }
 }
@@ -146,6 +151,40 @@ func (v *Viewer) Selected(id int) string {
 	}
 	from, to := min(sels[0].Anchor, sels[0].Head), max(sels[0].Anchor, sels[0].Head)
 	return d.Ed.Buffer.String()[from:to]
+}
+
+// selection is tab id's selected text: the source's with its lines, or
+// the reading view's, placed in the file where its ends occur verbatim.
+func (v *Viewer) selection(id int) (tabtypes.Selection, bool) {
+	d, ok := v.docs[id]
+	if !ok {
+		return tabtypes.Selection{}, false
+	}
+	if d.source {
+		return d.Doc.Selection()
+	}
+	if !d.drawn {
+		return tabtypes.Selection{}, false
+	}
+	var texts []string
+	for _, part := range d.reading.SelectedTexts() {
+		r := []rune(part.Text)
+		if t := string(r[max(0, part.Start):min(len(r), part.End)]); strings.TrimSpace(t) != "" {
+			texts = append(texts, t)
+		}
+	}
+	if len(texts) == 0 {
+		return tabtypes.Selection{}, false
+	}
+	sel := tabtypes.Selection{Text: strings.Join(texts, "\n\n")}
+	if at := strings.Index(d.raw, texts[0]); at >= 0 {
+		sel.From = 1 + strings.Count(d.raw[:at], "\n")
+		sel.To = sel.From
+		if end := strings.Index(d.raw[at:], texts[len(texts)-1]); end >= 0 {
+			sel.To = 1 + strings.Count(d.raw[:at+end], "\n")
+		}
+	}
+	return sel, true
 }
 
 func (v *Viewer) doc(p tabtypes.Props) *doc {
@@ -177,7 +216,7 @@ func (v *Viewer) body(c *ui.Context, p tabtypes.Props) {
 				if raw := d.Ed.Buffer.String(); raw != d.raw || d.view == "" && raw != "" {
 					d.raw, d.view = raw, rewrite(raw)
 				}
-				markdown.View(c, d.view, &d.md)
+				d.reading, d.drawn = markdown.View(c, d.view, &d.md), true
 			})
 		})
 		return

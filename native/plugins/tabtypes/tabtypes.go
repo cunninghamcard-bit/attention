@@ -31,6 +31,13 @@ type Nav struct {
 	Col, Len int
 }
 
+// Selection is the text selected in a tab and the 1-based lines it spans,
+// From and To 0 when the view cannot place it in its file.
+type Selection struct {
+	Text     string
+	From, To int
+}
+
 // Info is a tab as its body sees it.
 type Info struct {
 	ID          int
@@ -77,6 +84,9 @@ type TabType struct {
 	Menu     func(tabID int) []MenuItem
 	Closed   func(tabID int)
 	Lines    func(tabID int) (cur, lines int, ok bool)
+	// Selection is the tab's selected text, ok false with none, for
+	// asking a thread about it (RFC 0006 §7.4).
+	Selection func(tabID int) (sel Selection, ok bool)
 }
 
 type kindSlot struct {

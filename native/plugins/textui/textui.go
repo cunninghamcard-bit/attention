@@ -79,7 +79,8 @@ func Register(ctx context.Context, fs fsplugin.FS, tt *tabtypes.Registry, app *a
 			d.Cursor(c)
 			d.Language(c)
 		},
-		Closed: func(id int) { delete(docs, id) },
-		Lines:  func(id int) (int, int, bool) { return docs[id].Lines() },
+		Closed:    func(id int) { delete(docs, id) },
+		Lines:     func(id int) (int, int, bool) { return docs[id].Lines() },
+		Selection: func(id int) (tabtypes.Selection, bool) { return docs[id].Selection() },
 	})
 }

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -89,7 +90,9 @@ type Doc struct {
 	nav     *tabtypes.Nav
 	navWant int
 	// OnNav, optional, runs when a navigation is applied.
-	OnNav func()
+	OnNav  func()
+	selKey [2]int
+	sel    tabtypes.Selection
 }
 
 // Placeholder draws what stands in for the text, and reports whether it
@@ -129,6 +132,25 @@ func (d *Doc) View(c *ui.Context, id int, th *editor.Theme, s appearance.Setting
 	}
 	d.Ed.NoIndentGuides = !s.ShowGuides
 	editor.View(c, d.Ed).Key(fmt.Sprintf("ed-%d", id)).Grow(1).Fill()
+}
+
+// Selection is the selected text and its lines, false with nothing
+// selected; the lines are counted again only when the selection moves.
+func (d *Doc) Selection() (tabtypes.Selection, bool) {
+	if d == nil || d.Ed == nil {
+		return tabtypes.Selection{}, false
+	}
+	s := d.Ed.Selection()
+	if s.Empty() {
+		return tabtypes.Selection{}, false
+	}
+	if key := [2]int{s.Start(), s.End()}; key != d.selKey || d.sel.Text == "" {
+		text := d.Ed.Buffer.Slice(s.Start(), s.End())
+		from := 1 + strings.Count(d.Ed.Buffer.Slice(0, s.Start()), "\n")
+		d.selKey = key
+		d.sel = tabtypes.Selection{Text: text, From: from, To: from + strings.Count(strings.TrimSuffix(text, "\n"), "\n")}
+	}
+	return d.sel, true
 }
 
 // Lines is the caret's line (1-based) and the line count, false before
