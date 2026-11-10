@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
@@ -64,20 +65,32 @@ func (s *Shortcuts) commandHotkeys(c *ui.Context, cmd actions.Command) {
 			}
 			chip.Children(func() {
 				ui.Text(c, Format(h)).FontSize(12).SingleLine()
-				aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: "Remove hotkey", Icon: icon.Must("x"), Variant: aui.ButtonGhost,
-					Size: aui.ButtonIconSmall, OnClick: func() { s.removeAt(cmd, i) }}), "Remove hotkey")
+				remove := button.Button(c, button.ButtonProps{Label: "Remove hotkey", Variant: button.ButtonGhost, Size: button.ButtonSm,
+					Children: func() { ui.Icon(c, icon.Must("x")).Size(14, 14) }}).Width(28).PaddingX(0)
+				if remove.Clicked() {
+					s.removeAt(cmd, i)
+				}
+				aui.Tooltip(c, remove, "Remove hotkey")
 			})
 		}
 		label, color := "Add hotkey", t.Text
 		if s.recording == cmd.ID {
 			label, color = "Press keys...", t.Accent
 		}
-		aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: label, Icon: icon.Must("plus"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-			IconColor: color, OnClick: func() { s.recording = cmd.ID }}), label)
+		add := button.Button(c, button.ButtonProps{Label: label, Variant: button.ButtonGhost, Size: button.ButtonSm,
+			Children: func() { ui.Icon(c, icon.Must("plus")).Size(14, 14).TextColor(color) }}).Width(28).PaddingX(0)
+		if add.Clicked() {
+			s.recording = cmd.ID
+		}
+		aui.Tooltip(c, add, label)
 		if s.Overridden(cmd.ID) {
-			aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: "Restore default hotkeys", Icon: icon.Must("refresh-cw"),
-				Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall, IconColor: t.Accent,
-				OnClick: func() { s.settings.Unset(settings.Hotkeys, cmd.ID) }}), "Restore default hotkeys")
+			restore := button.Button(c, button.ButtonProps{Label: "Restore default hotkeys", Variant: button.ButtonGhost,
+				Size:     button.ButtonSm,
+				Children: func() { ui.Icon(c, icon.Must("refresh-cw")).Size(14, 14).TextColor(t.Accent) }}).Width(28).PaddingX(0)
+			if restore.Clicked() {
+				s.settings.Unset(settings.Hotkeys, cmd.ID)
+			}
+			aui.Tooltip(c, restore, "Restore default hotkeys")
 		}
 	})
 }

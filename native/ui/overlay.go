@@ -3,6 +3,7 @@ package ui
 import (
 	"cmp"
 
+	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/ui/icon"
@@ -81,7 +82,8 @@ func Tooltip(c *ui.Context, anchor ui.Element, s string) ui.Element {
 func IconMenu(c *ui.Context, p IconMenuProps) ui.Element {
 	var b ui.Element
 	ui.Row(c).Key("aui.menu:" + p.Label).Shrink(0).Children(func() {
-		b = Button(c, ButtonProps{Label: p.Label, Icon: p.Icon, Variant: ButtonGhost, Size: ButtonIconSmall})
+		b = button.Button(c, button.ButtonProps{Label: p.Label, Variant: button.ButtonGhost, Size: button.ButtonSm, AnchorsPopup: true,
+			Children: func() { ui.Icon(c, p.Icon).Size(iconSmall, iconSmall) }}).Width(28).PaddingX(0)
 		open := ui.Local(b, "open", func() bool { return false })
 		if b.Clicked() {
 			*open = !*open
@@ -126,8 +128,11 @@ func Dialog(c *ui.Context, p DialogProps) ui.Element {
 					if p.Body != nil {
 						p.Body(c)
 					}
-					Button(c, ButtonProps{Label: "Close", Icon: icon.Must("x"), Size: ButtonIconSmall, Variant: ButtonGhost,
-						OnClick: func() { *p.Open = false }}).Absolute().Top(10).Right(10)
+					if button.Button(c, button.ButtonProps{Label: "Close", Variant: button.ButtonGhost, Size: button.ButtonSm,
+						Children: func() { ui.Icon(c, icon.Must("x")).Size(iconSmall, iconSmall) }}).
+						Width(28).PaddingX(0).Absolute().Top(10).Right(10).Clicked() {
+						*p.Open = false
+					}
 					return
 				}
 				ui.Column(c).FillWidth().Padding(20).Gap(12).Children(func() {

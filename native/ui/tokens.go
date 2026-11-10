@@ -33,8 +33,7 @@ type Tokens struct {
 	TabRowSelected, TabRowHover, SplitRowSelected, SplitRowHover  ui.Color
 	TabRowShadow, CardShadow                                      Shadow
 	AddressBar, AddressBarHover, CardBorder, FieldHover, MenuItem ui.Color
-	ButtonSecondary, ButtonSecondaryHover, ButtonSecondaryPressed ui.Color
-	ButtonDangerHover, ButtonDangerPressed, GlassTint, GlassTrack ui.Color
+	GlassTint, GlassTrack                                         ui.Color
 	SegmentPill, SwitchOff, SwitchOn, SwitchKnob, SwitchKnobOn    ui.Color
 }
 
@@ -92,9 +91,6 @@ func ComponentTokens(k *Tokens) {
 	k.AddressBar, k.AddressBarHover = k.FillHover, k.FillHover.Mix(k.FillPressed, 0.75)
 	k.CardBorder, k.CardShadow = k.BorderSubtle, Shadow{Y: 1, Blur: 4, Color: k.ShadowSmall.Color}
 	k.FieldHover, k.MenuItem = k.AddressBarHover, k.FillHover
-	k.ButtonSecondary, k.ButtonSecondaryHover = k.FillHover, k.FillPressed
-	k.ButtonSecondaryPressed = k.FillPressed.Alpha(1.4)
-	k.ButtonDangerHover, k.ButtonDangerPressed = k.ErrorFill.Mix(k.Text, 0.1), k.ErrorFill.Mix(k.Text, 0.2)
 	k.GlassTint, k.GlassTrack, k.SegmentPill = k.BgOverlay.Alpha(0.78), k.BgWindow.Alpha(0.45), k.BgPage.Alpha(0.85)
 	k.SwitchOff, k.SwitchOn = k.Border.Mix(k.Text, 0.15), k.AccentFill
 	k.SwitchKnob, k.SwitchKnobOn = ui.RGBA(255, 255, 255, 1), k.TextOnAccent

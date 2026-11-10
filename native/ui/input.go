@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/ui/icon"
@@ -72,10 +73,16 @@ func NumberField(c *ui.Context, value *float64, low, high float64, label string,
 			}
 		}
 	}
+	step := func(name, glyph string, disabled bool) bool {
+		return button.Button(c, button.ButtonProps{Label: name + " " + label, Variant: button.ButtonGhost, Size: button.ButtonSm,
+			Disabled: disabled, Children: func() { ui.Icon(c, icon.Must(glyph)).Size(iconSmall, iconSmall) }}).
+			Size(24, 24).MinHeight(24).PaddingX(0).Clicked()
+	}
 	var field ui.Element
 	row.Children(func() {
-		Button(c, ButtonProps{Label: "Decrease " + label, Icon: icon.Must("minus"), Size: ButtonIconTiny, Variant: ButtonGhost,
-			Disabled: *value <= low, OnClick: func() { set(*value - 1) }})
+		if step("Decrease", "minus", *value <= low) {
+			set(*value - 1)
+		}
 		field = ui.TextInputBase(c, draft).Label(label).Grow(1).MinWidth(0).Height(controlHeight-2).Padding(0, 4).
 			FontSize(labelSize).TextColor(t.Text).TextAlign(ui.Center)
 		field.OnChange(func() {
@@ -103,8 +110,9 @@ func NumberField(c *ui.Context, value *float64, low, high float64, label string,
 			k.SetText(*draft)
 			return true
 		})
-		Button(c, ButtonProps{Label: "Increase " + label, Icon: icon.Must("plus"), Size: ButtonIconTiny, Variant: ButtonGhost,
-			Disabled: *value >= high, OnClick: func() { set(*value + 1) }})
+		if step("Increase", "plus", *value >= high) {
+			set(*value + 1)
+		}
 		focused := field.Focused()
 		if *wasFocused && !focused {
 			commit()

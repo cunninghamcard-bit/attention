@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
@@ -485,13 +486,14 @@ func highlighted(c *ui.Context, m *projectplugin.Match) {
 
 // toggleIcon is a clickable-icon with is-active: a ghost icon button in
 // the accent colour while on.
-func toggleIcon(c *ui.Context, icon *ui.SVG, tip string, on bool) bool {
-	color := ui.Color{}
-	if on {
-		color = c.Theme().Accent
-	}
-	b := aui.Button(c, aui.ButtonProps{Label: tip, Icon: icon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall, IconColor: color})
-	return aui.Tooltip(c, b.Checked(on), tip).Clicked()
+func toggleIcon(c *ui.Context, glyph *ui.SVG, tip string, on bool) bool {
+	b := button.Button(c, button.ButtonProps{Label: tip, Variant: button.ButtonGhost, Size: button.ButtonSm, Children: func() {
+		ic := ui.Icon(c, glyph).Size(14, 14)
+		if on {
+			ic.TextColor(c.Theme().Accent)
+		}
+	}}).Width(28).PaddingX(0).Checked(on)
+	return aui.Tooltip(c, b, tip).Clicked()
 }
 
 func setting(c *ui.Context, label string, on *bool, changed func()) {

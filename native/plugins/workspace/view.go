@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
@@ -399,23 +400,26 @@ func (ws *Workspace) tint() ui.Color { return ws.projectColor(ws.activeTab()) }
 func (ws *Workspace) headNav(c *ui.Context) {
 	t := c.Theme()
 	tb := ws.activeTab()
-	button := func(label string, glyph *ui.SVG, delta, n int) {
+	nav := func(label string, glyph *ui.SVG, delta, n int) {
 		// Disabled draws the icon muted, as attention's aria-disabled
 		// clickable-icon; enabled draws it in the text colour.
-		color := t.Text
-		if n == 0 {
-			color = ui.Color{}
+		b := button.Button(c, button.ButtonProps{Label: label, Variant: button.ButtonGhost, Size: button.ButtonSm, Disabled: n == 0,
+			Children: func() {
+				ic := ui.Icon(c, glyph).Size(14, 14)
+				if n > 0 {
+					ic.TextColor(t.Text)
+				}
+			}}).Size(24, 24).MinHeight(24).PaddingX(0).Tooltip(label)
+		if b.Clicked() {
+			ws.later(func() { ws.goHistory(tb, delta) })
 		}
-		aui.Button(c, aui.ButtonProps{Label: label, Icon: glyph, Variant: aui.ButtonGhost, Size: aui.ButtonIconTiny,
-			Disabled: n == 0, IconColor: color, OnClick: func() { ws.later(func() { ws.goHistory(tb, delta) }) }}).
-			Tooltip(label)
 	}
 	back, forward := 0, 0
 	if tb != nil {
 		back, forward = len(tb.back), len(tb.forward)
 	}
-	button("Back", icon.Must("arrow-left"), -1, back)
-	button("Forward", icon.Must("arrow-right"), 1, forward)
+	nav("Back", icon.Must("arrow-left"), -1, back)
+	nav("Forward", icon.Must("arrow-right"), 1, forward)
 }
 
 // addressBar is the active tab's address: its folders muted, then its

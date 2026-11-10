@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/watchq"
@@ -516,17 +517,22 @@ func (tr *Tree) folders(c *ui.Context, remove func(context.Context, string) erro
 			id := m.ID
 			aui.PreferenceRow(c, m.Name, m.Path, func() {
 				tr.swatches(c, m)
-				aui.Button(c, aui.ButtonProps{Label: "Remove", Variant: aui.ButtonSecondary, OnClick: func() {
+				if button.Button(c, button.ButtonProps{Variant: button.ButtonSecondary, LabelKey: "Remove",
+					Children: func() { ui.Text(c, "Remove") }}).Clicked() {
 					go func() {
 						if err := remove(tr.ctx, id); err != nil && tr.ctx.Err() == nil {
 							tr.post(func() { tr.notice = err.Error() })
 						}
 					}()
-				}})
+				}
 			})
 		}
 	})
-	aui.Button(c, aui.ButtonProps{Label: "Add folder", Icon: icon.Must("folder-plus"), Variant: aui.ButtonSecondary, OnClick: func() {
+	add := button.Button(c, button.ButtonProps{Variant: button.ButtonSecondary, LabelKey: "Add folder", Children: func() {
+		ui.Icon(c, icon.Must("folder-plus")).Size(16, 16)
+		ui.Text(c, "Add folder")
+	}})
+	if add.Clicked() {
 		if cmd := tr.act.Lookup("workspace:add-folder"); cmd != nil {
 			go func() {
 				if _, err := cmd.Run(tr.ctx, actions.Args{Params: map[string]string{}}); err != nil && tr.ctx.Err() == nil {
@@ -534,7 +540,7 @@ func (tr *Tree) folders(c *ui.Context, remove func(context.Context, string) erro
 				}
 			}()
 		}
-	}})
+	}
 }
 
 // follow shows the project of the active tab's file, current, and opens
@@ -607,22 +613,24 @@ func (tr *Tree) actions(c *ui.Context) {
 		collapseIcon = icon.Must("chevrons-up-down")
 		collapseTip = "Expand all"
 	}
-	aui.Tooltip(c, aui.Button(c, aui.ButtonProps{
-		Label: "Add folder", Icon: icon.Must("folder-plus"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-		OnClick: func() {
-			if cmd := tr.act.Lookup("workspace:add-folder"); cmd != nil {
-				go func() {
-					if _, err := cmd.Run(tr.ctx, actions.Args{Params: map[string]string{}}); err != nil && tr.ctx.Err() == nil {
-						tr.post(func() { tr.notice = err.Error() })
-					}
-				}()
-			}
-		},
-	}), "Add folder to workspace")
-	aui.Tooltip(c, aui.Button(c, aui.ButtonProps{
-		Label: collapseTip, Icon: collapseIcon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-		OnClick: func() { tr.toggleCollapseAll(!allCollapsed) },
-	}), collapseTip)
+	add := button.Button(c, button.ButtonProps{Label: "Add folder", Variant: button.ButtonGhost, Size: button.ButtonSm,
+		Children: func() { ui.Icon(c, icon.Must("folder-plus")).Size(14, 14) }}).Width(28).PaddingX(0)
+	if add.Clicked() {
+		if cmd := tr.act.Lookup("workspace:add-folder"); cmd != nil {
+			go func() {
+				if _, err := cmd.Run(tr.ctx, actions.Args{Params: map[string]string{}}); err != nil && tr.ctx.Err() == nil {
+					tr.post(func() { tr.notice = err.Error() })
+				}
+			}()
+		}
+	}
+	aui.Tooltip(c, add, "Add folder to workspace")
+	collapse := button.Button(c, button.ButtonProps{Label: collapseTip, Variant: button.ButtonGhost, Size: button.ButtonSm,
+		Children: func() { ui.Icon(c, collapseIcon).Size(14, 14) }}).Width(28).PaddingX(0)
+	if collapse.Clicked() {
+		tr.toggleCollapseAll(!allCollapsed)
+	}
+	aui.Tooltip(c, collapse, collapseTip)
 }
 
 // colorMenu is a project's Color submenu: the presets, then Default.

@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
@@ -334,18 +335,16 @@ func (v *viewer) register(loaded func(Page)) (off func()) {
 				if pg.loading {
 					label, glyph = "Stop", icon.Must("x")
 				}
-				aui.Button(c, aui.ButtonProps{Label: label, Icon: glyph, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-					IconColor: t.Text, OnClick: func() {
-						if pg.view == nil {
-							return
-						}
-						if pg.loading {
-							pg.view.Page().Stop()
-							pg.loading = false
-						} else {
-							reload(pg)
-						}
-					}})
+				reloadButton := button.Button(c, button.ButtonProps{Label: label, Variant: button.ButtonGhost, Size: button.ButtonSm,
+					Children: func() { ui.Icon(c, glyph).Size(14, 14).TextColor(t.Text) }}).Width(28).PaddingX(0)
+				if reloadButton.Clicked() && pg.view != nil {
+					if pg.loading {
+						pg.view.Page().Stop()
+						pg.loading = false
+					} else {
+						reload(pg)
+					}
+				}
 				field := aui.Field(c, &pg.typed, "Search or enter address", false).Label("Address").Grow(1).MinWidth(0)
 				// The bar follows the page while it is not being typed in
 				// (syncAddressInput).
@@ -392,8 +391,13 @@ func (v *viewer) register(loaded func(Page)) (off func()) {
 			if pg.reader != nil {
 				label = "Web view"
 			}
-			aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: label, Icon: icon.Must("glasses"), Variant: aui.ButtonGhost,
-				Size: aui.ButtonIconSmall, Disabled: pg.view == nil || pg.extracting, OnClick: func() { v.toggleReader(pg) }}), label)
+			reader := button.Button(c, button.ButtonProps{Label: label, Variant: button.ButtonGhost, Size: button.ButtonSm,
+				Disabled: pg.view == nil || pg.extracting,
+				Children: func() { ui.Icon(c, icon.Must("glasses")).Size(14, 14) }}).Width(28).PaddingX(0)
+			if reader.Clicked() {
+				v.toggleReader(pg)
+			}
+			aui.Tooltip(c, reader, label)
 		},
 		Closed: func(id int) {
 			pg := v.pages[id]
@@ -440,8 +444,10 @@ func (v *viewer) settingTab(c *ui.Context) {
 			if v.hist != nil {
 				h = v.hist()
 			}
-			aui.Button(c, aui.ButtonProps{Label: "Clear history", Variant: aui.ButtonSecondary, Disabled: h == nil || len(h.List()) == 0,
-				OnClick: func() { h.Clear() }})
+			if button.Button(c, button.ButtonProps{Variant: button.ButtonSecondary, Disabled: h == nil || len(h.List()) == 0,
+				LabelKey: "Clear history", Children: func() { ui.Text(c, "Clear history") }}).Clicked() {
+				h.Clear()
+			}
 		})
 	})
 }
@@ -539,13 +545,17 @@ func (v *viewer) findBar(c *ui.Context, pg *page) {
 		}
 		ui.Text(c, count).FontSize(12).TextColor(t.TextMuted).Shrink(0)
 		ui.Box(c).Grow(1)
-		button := func(label string, icon *ui.SVG, fn func()) {
-			aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: label, Icon: icon, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-				IconColor: t.Text, OnClick: fn}), label)
+		findButton := func(label string, glyph *ui.SVG, fn func()) {
+			b := button.Button(c, button.ButtonProps{Label: label, Variant: button.ButtonGhost, Size: button.ButtonSm,
+				Children: func() { ui.Icon(c, glyph).Size(14, 14).TextColor(t.Text) }}).Width(28).PaddingX(0)
+			if b.Clicked() {
+				fn()
+			}
+			aui.Tooltip(c, b, label)
 		}
-		button("Previous", icon.Must("arrow-up"), func() { v.find(pg, true) })
-		button("Next", icon.Must("arrow-down"), func() { v.find(pg, false) })
-		button("Close", icon.Must("x"), func() { closeFind(pg) })
+		findButton("Previous", icon.Must("arrow-up"), func() { v.find(pg, true) })
+		findButton("Next", icon.Must("arrow-down"), func() { v.find(pg, false) })
+		findButton("Close", icon.Must("x"), func() { closeFind(pg) })
 	})
 }
 
@@ -718,11 +728,15 @@ func downloadBanner(c *ui.Context, pg *page) {
 		ui.Text(c, text).FontSize(12).SingleLine().Ellipsis("…").Shrink(1)
 		ui.Box(c).Grow(1)
 		if d.Err == nil {
-			aui.Button(c, aui.ButtonProps{Label: "Show in folder", Variant: aui.ButtonGhost,
-				OnClick: func() { go mygo.Shell.ShowItemInFolder(d.Path) }})
+			if button.Button(c, button.ButtonProps{Variant: button.ButtonGhost, LabelKey: "Show in folder",
+				Children: func() { ui.Text(c, "Show in folder") }}).Clicked() {
+				go mygo.Shell.ShowItemInFolder(d.Path)
+			}
 		}
-		aui.Button(c, aui.ButtonProps{Label: "Dismiss", Icon: icon.Must("x"), Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-			IconColor: t.Text, OnClick: func() { pg.downloaded = nil }})
+		if button.Button(c, button.ButtonProps{Label: "Dismiss", Variant: button.ButtonGhost, Size: button.ButtonSm,
+			Children: func() { ui.Icon(c, icon.Must("x")).Size(14, 14).TextColor(t.Text) }}).Width(28).PaddingX(0).Clicked() {
+			pg.downloaded = nil
+		}
 	})
 }
 

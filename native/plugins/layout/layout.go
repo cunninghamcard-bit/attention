@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/cunninghamcard-bit/acard-ui/tokens"
 	"github.com/egoist/mygo/ui"
 
@@ -256,8 +257,12 @@ func (l *Layout) ToggleButton(c *ui.Context, d slots.Dock) ui.Element {
 	if l.Open(d) {
 		tip = "Collapse"
 	}
-	return aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: tip, Icon: glyph, Variant: aui.ButtonGhost,
-		Size: aui.ButtonIconTiny, OnClick: func() { l.Toggle(d) }}), tip)
+	b := button.Button(c, button.ButtonProps{Label: tip, Variant: button.ButtonGhost, Size: button.ButtonSm,
+		Children: func() { ui.Icon(c, glyph).Size(14, 14) }}).Size(24, 24).MinHeight(24).PaddingX(0)
+	if b.Clicked() {
+		l.Toggle(d)
+	}
+	return aui.Tooltip(c, b, tip)
 }
 
 // View is the window's root.
@@ -434,8 +439,12 @@ func (l *Layout) sidebar(c *ui.Context) {
 			}
 		})
 		ui.Row(c).Height(36).Shrink(0).FillWidth().Gap(2).AlignItems(ui.Center).Children(func() {
-			aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: "Settings", Icon: icon.Must("settings"), Variant: aui.ButtonGhost,
-				Size: aui.ButtonIconSmall, OnClick: l.openSettings}), "Settings")
+			settings := button.Button(c, button.ButtonProps{Label: "Settings", Variant: button.ButtonGhost, Size: button.ButtonSm,
+				Children: func() { ui.Icon(c, icon.Must("settings")).Size(14, 14) }}).Width(28).PaddingX(0)
+			if settings.Clicked() {
+				l.openSettings()
+			}
+			aui.Tooltip(c, settings, "Settings")
 			ui.Box(c).Grow(1)
 			for i := range panels {
 				p := panels[i]
@@ -444,9 +453,12 @@ func (l *Layout) sidebar(c *ui.Context) {
 				if active {
 					color = t.Text
 				}
-				btn := aui.Button(c, aui.ButtonProps{Label: p.Title, Icon: p.Icon, Variant: aui.ButtonGhost,
-					Size: aui.ButtonIconSmall, IconColor: color, OnClick: func() { l.RevealPanel(p.ID) }}).
+				btn := button.Button(c, button.ButtonProps{Label: p.Title, Variant: button.ButtonGhost, Size: button.ButtonSm,
+					Children: func() { ui.Icon(c, p.Icon).Size(14, 14).TextColor(color) }}).Width(28).PaddingX(0).
 					Checked(active)
+				if btn.Clicked() {
+					l.RevealPanel(p.ID)
+				}
 				aui.Tooltip(c, btn, p.Title)
 				if active {
 					btn.Background(aui.TokensOf(c).FillSelected)

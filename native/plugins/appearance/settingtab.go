@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
@@ -124,14 +125,18 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 
 func (a *Appearance) themesFolder(c *ui.Context) {
 	ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-		aui.Button(c, aui.ButtonProps{Label: "Reload", Variant: aui.ButtonGhost, Size: aui.ButtonSM, OnClick: a.Reload})
-		aui.Button(c, aui.ButtonProps{Label: "Open", Variant: aui.ButtonSecondary, Size: aui.ButtonSM, OnClick: func() {
+		if button.Button(c, button.ButtonProps{Variant: button.ButtonGhost, LabelKey: "Reload",
+			Children: func() { ui.Text(c, "Reload") }}).Clicked() {
+			a.Reload()
+		}
+		if button.Button(c, button.ButtonProps{Variant: button.ButtonSecondary, LabelKey: "Open",
+			Children: func() { ui.Text(c, "Open") }}).Clicked() {
 			dir := a.dir
 			go func() {
 				_ = os.MkdirAll(dir, 0o755)
 				_ = mygo.Shell.OpenPath(dir)
 			}()
-		}})
+		}
 	})
 }
 
@@ -153,10 +158,10 @@ func (a *Appearance) accentField(c *ui.Context, s Settings) {
 			}
 		}
 		if s.AccentColor != "" {
-			aui.Button(c, aui.ButtonProps{Label: "Reset", Variant: aui.ButtonGhost, Size: aui.ButtonSM, OnClick: func() {
+			if resetButton(c).Clicked() {
 				a.tab.accent = ""
 				a.set.Unset(settings.Appearance, "accentColor")
-			}})
+			}
 		}
 	})
 }
@@ -190,10 +195,10 @@ func (a *Appearance) fontSpec(label, desc, key string, draft *string, cur, place
 				}
 			}
 			if cur != "" {
-				aui.Button(c, aui.ButtonProps{Label: "Reset", Variant: aui.ButtonGhost, Size: aui.ButtonSM, OnClick: func() {
+				if resetButton(c).Clicked() {
 					*draft = ""
 					a.set.Unset(settings.Appearance, key)
-				}})
+				}
 			}
 		})
 	}}
@@ -211,9 +216,9 @@ func (a *Appearance) numberSpec(label, desc, key string, cur, def, low, high flo
 				}
 			})
 			if cur != def {
-				aui.Button(c, aui.ButtonProps{Label: "Reset", Variant: aui.ButtonGhost, Size: aui.ButtonSM, OnClick: func() {
+				if resetButton(c).Clicked() {
 					a.set.Unset(settings.Appearance, key)
-				}})
+				}
 			}
 		})
 	}}
@@ -234,4 +239,9 @@ func (a *Appearance) themeOptions(dark bool) []aui.SelectOption {
 		opts = append(opts, aui.SelectOption{Value: n, Label: n})
 	}
 	return opts
+}
+
+func resetButton(c *ui.Context) ui.Element {
+	return button.Button(c, button.ButtonProps{Variant: button.ButtonGhost, LabelKey: "Reset",
+		Children: func() { ui.Text(c, "Reset") }})
 }

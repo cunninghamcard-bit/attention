@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
@@ -335,10 +336,11 @@ func general(c *ui.Context) {
 	aui.SettingsSection(c, "App", func() {
 		aui.PreferenceRow(c, "Current version", cli.Version, nil)
 		aui.PreferenceRow(c, "Configuration folder", paths.ConfigDir(), func() {
-			aui.Button(c, aui.ButtonProps{Label: "Open", Variant: aui.ButtonSecondary, OnClick: func() {
+			if button.Button(c, button.ButtonProps{Variant: button.ButtonSecondary, LabelKey: "Open",
+				Children: func() { ui.Text(c, "Open") }}).Clicked() {
 				dir := paths.ConfigDir()
 				go func() { _ = mygo.Shell.OpenPath(dir) }()
-			}})
+			}
 		})
 	})
 }

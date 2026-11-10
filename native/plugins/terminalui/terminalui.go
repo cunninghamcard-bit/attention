@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
 
@@ -216,20 +217,24 @@ func (t *Terminals) body(c *ui.Context, p tabtypes.Props) {
 			ui.Column(c).Grow(1).Fill().Center().Gap(8).Children(func() {
 				ui.Text(c, "Terminal unavailable").FontWeight(600)
 				ui.Text(c, s.err).FontSize(12).TextColor(th.TextMuted)
-				aui.Button(c, aui.ButtonProps{Label: "Retry", Variant: aui.ButtonSecondary, OnClick: func() { t.start(id, s) }})
+				if button.Button(c, button.ButtonProps{Variant: button.ButtonSecondary, LabelKey: "Retry",
+					Children: func() { ui.Text(c, "Retry") }}).Clicked() {
+					t.start(id, s)
+				}
 			})
 			return
 		}
 		if s.exited {
 			ui.Row(c).Padding(6, 12).Gap(8).AlignItems(ui.Center).Background(th.Surface).BorderWidth(0, 0, 1, 0).BorderColor(th.Border).Children(func() {
 				ui.Text(c, fmt.Sprintf("Shell exited with code %d.", s.code)).FontSize(12).Grow(1)
-				aui.Button(c, aui.ButtonProps{Label: "Restart", Variant: aui.ButtonSecondary, OnClick: func() {
+				if button.Button(c, button.ButtonProps{Variant: button.ButtonSecondary, LabelKey: "Restart",
+					Children: func() { ui.Text(c, "Restart") }}).Clicked() {
 					if s.term != nil {
 						_ = s.term.Close()
 						s.term = nil
 					}
 					t.start(id, s)
-				}})
+				}
 			})
 		}
 		if s.term == nil {

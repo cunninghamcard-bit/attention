@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/fuzzy"
@@ -40,8 +41,13 @@ func (ws *Workspace) startPage(c *ui.Context) {
 					ui.Row(c).FillWidth().Wrap().Gap(8).PaddingX(6).Children(func() {
 						for _, m := range ws.mounts {
 							col, _ := aui.ParseColor(m.Color)
-							aui.Button(c, aui.ButtonProps{Label: m.Name, Icon: icon.Must("folder"), IconColor: col,
-								Variant: aui.ButtonSecondary, OnClick: func() { ws.sl.OpenPaletteQuery(omniboxID, m.Name+"/") }})
+							project := button.Button(c, button.ButtonProps{Variant: button.ButtonSecondary, LabelKey: m.Name, Children: func() {
+								ui.Icon(c, icon.Must("folder")).Size(16, 16).TextColor(col)
+								ui.Text(c, m.Name)
+							}})
+							if project.Clicked() {
+								ws.sl.OpenPaletteQuery(omniboxID, m.Name+"/")
+							}
 						}
 					})
 				}

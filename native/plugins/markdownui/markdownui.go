@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
@@ -226,8 +227,12 @@ func (v *Viewer) actions(c *ui.Context, p tabtypes.Props) {
 	if d.source {
 		label, glyph = "Switch to reading view", icon.Must("book-open")
 	}
-	aui.Tooltip(c, aui.Button(c, aui.ButtonProps{Label: label, Icon: glyph, Variant: aui.ButtonGhost, Size: aui.ButtonIconSmall,
-		OnClick: func() { d.source = !d.source }}), label+" (Ctrl E)")
+	b := button.Button(c, button.ButtonProps{Label: label, Variant: button.ButtonGhost, Size: button.ButtonSm,
+		Children: func() { ui.Icon(c, glyph).Size(14, 14) }}).Width(28).PaddingX(0)
+	if b.Clicked() {
+		d.source = !d.source
+	}
+	aui.Tooltip(c, b, label+" (Ctrl E)")
 }
 
 func (v *Viewer) menu(id int) []tabtypes.MenuItem {
