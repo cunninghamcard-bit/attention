@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"os"
+	"path/filepath"
 	"slices"
 	"time"
 
@@ -520,6 +522,7 @@ func (l *Layout) commands(sh *shell.Shell) []actions.Command {
 	return []actions.Command{
 		cmd("app:toggle-left-sidebar", "Toggle left sidebar", "Ctrl B", func() { l.Toggle(slots.Sidebar) }),
 		cmd("app:toggle-right-sidebar", "Toggle right sidebar", "Ctrl Alt B", func() { l.Toggle(slots.Context) }),
+		{ID: "screenshot", CLI: true, Run: func(_ context.Context, a actions.Args) (string, error) { return screenshot(sh, a.Params["path"]) }},
 	}
 }
 
@@ -574,4 +577,25 @@ func shownPanel(panels []slots.Panel, want string) *slots.Panel {
 		return &panels[0]
 	}
 	return nil
+}
+
+// screenshot writes the window's content as a PNG to path (`screenshot
+// path=…`), which needs no screen recording permission. CapturePage hops
+// to the main thread itself, so it runs here, off it.
+func screenshot(sh *shell.Shell, path string) (string, error) {
+	if !filepath.IsAbs(path) {
+		return "", fmt.Errorf("Missing required parameter: path=<absolute .png path>")
+	}
+	w := sh.Window()
+	if w == nil {
+		return "", fmt.Errorf("No window is open.")
+	}
+	data, err := w.CapturePage()
+	if err != nil {
+		return "", fmt.Errorf("capture the window: %w", err)
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return "", fmt.Errorf("write screenshot: %w", err)
+	}
+	return "Saved: " + path, nil
 }
