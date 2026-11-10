@@ -44,10 +44,6 @@ func Fragment(dst vec4, pos vec2) vec4 {
 `)
 )
 
-// glassMatch is the identity a Segmented pill keeps as it moves between
-// segments.
-type glassMatch struct{ key string }
-
 // Frost paints el as a frosted pane: the backdrop blurred and tinted by
 // the raised face, a faint edge and a drop. el keeps its children and
 // layout; radius is its corner. Where the window draws on the CPU, the
@@ -78,36 +74,4 @@ func LiquidGlass(c *ui.Context, el ui.Element, radius float32) ui.Element {
 			liquid.Draw(p, r, shader.Options{BackdropBlur: 6, Radius: radius,
 				Uniforms: map[string]any{"Tint": k.GlassTrack, "Radius": radius, "Bend": float32(6)}})
 		})
-}
-
-// Segmented draws pill tabs on a liquid glass track; the selected pill
-// glides to a new choice. key names the control and keeps the pill's
-// identity; *selected is an index into labels.
-func Segmented(c *ui.Context, key string, labels []string, selected *int) ui.Element {
-	t := c.Theme()
-	track := ui.Row(c).Key(key).Padding(3).Gap(2).AlignItems(ui.Center).Role(ui.RoleTabList).Label(key)
-	LiquidGlass(c, track, 999)
-	track.Children(func() {
-		for i, label := range labels {
-			c.Key(i)
-			seg := ui.ButtonBase(c).Height(26).PaddingX(12).Radius(999).Role(ui.RoleTab).Checked(i == *selected).
-				Label(label).Cursor(ui.CursorPointer).AlignItems(ui.Center).Justify(ui.Center)
-			fg := t.TextMuted
-			if i == *selected || seg.Hovered() {
-				fg = t.Text
-			}
-			seg.TextColor(fg).Children(func() {
-				if i == *selected {
-					pill := TokensOf(c).ShadowSmall.On(ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Radius(999).
-						Background(TokensOf(c).SegmentPill))
-					pill.Transition(ui.ElementTransition{Animation: &ui.Snappy, Match: glassMatch{key}})
-				}
-				ui.Text(c, label).FontSize(smallSize).FontWeight(500).SingleLine()
-			})
-			if seg.Clicked() {
-				*selected = i
-			}
-		}
-	})
-	return track
 }

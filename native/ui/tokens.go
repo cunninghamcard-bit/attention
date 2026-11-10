@@ -34,7 +34,6 @@ type Tokens struct {
 	TabRowShadow, CardShadow                                     Shadow
 	AddressBar, AddressBarHover, CardBorder, MenuItem            ui.Color
 	GlassTint, GlassTrack                                        ui.Color
-	SegmentPill                                                  ui.Color
 }
 
 // Register makes tok the tokens of t, for TokensOf, until Unregister;
@@ -91,5 +90,5 @@ func ComponentTokens(k *Tokens) {
 	k.AddressBar, k.AddressBarHover = k.FillHover, k.FillHover.Mix(k.FillPressed, 0.75)
 	k.CardBorder, k.CardShadow = k.BorderSubtle, Shadow{Y: 1, Blur: 4, Color: k.ShadowSmall.Color}
 	k.MenuItem = k.FillHover
-	k.GlassTint, k.GlassTrack, k.SegmentPill = k.BgOverlay.Alpha(0.78), k.BgWindow.Alpha(0.45), k.BgPage.Alpha(0.85)
+	k.GlassTint, k.GlassTrack = k.BgOverlay.Alpha(0.78), k.BgWindow.Alpha(0.45)
 }
