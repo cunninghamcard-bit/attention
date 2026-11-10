@@ -8,12 +8,14 @@ github.com/andybalholm/cascadia v1.3.4 h1:vM2lgh0Vru9Vwyfm4cQqWP2HHMW0u0+2PAW7Q3
 github.com/andybalholm/cascadia v1.3.4/go.mod h1:BLRmbRjpEtNKieZOCCvYj4RqN+KRA41GBe/5O+G93kM=
 github.com/arcships/rutis/go/rutis v0.19.4-0.20261102025122-f581e25d5f6d h1:Pj+ybSzSrQ5h6UCS2LaIGMR96vvwnB4OyvK2wClMQQA=
 github.com/arcships/rutis/go/rutis v0.19.4-0.20261102025122-f581e25d5f6d/go.mod h1:cJscMrYVCQ5AaQJjM39IPkk15A6GnBLfpo6XiZ9PT2M=
+github.com/cunninghamcard-bit/acard-ui v0.0.0-20261110152323-de4c8c6ba201 h1:zKYdE1gb+86/bj8hlhEDSKlP9aANO9kAeNDaRUh5+J8=
+github.com/cunninghamcard-bit/acard-ui v0.0.0-20261110152323-de4c8c6ba201/go.mod h1:YVBgCMeBrFcra6HP7vj/hsr/qLEpFqD11yGkjEZeKRY=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/ebitengine/purego v0.11.1 h1:2zpWRSQNVKN4eKsKO9eM1ILDgWfYMY9GwqRmK6XeQ/0=
 github.com/ebitengine/purego v0.11.1/go.mod h1:DCHPP08djqhNSoTfImcnHYQRZmd0qhakvrozqaEYhGQ=
-github.com/egoist/mygo v0.7.2-0.20261028073710-642005fd4978 h1:sJbhFSUMG6UVu1+q/2pT75agAsFkBKOdhT6FmCZ20mc=
-github.com/egoist/mygo v0.7.2-0.20261028073710-642005fd4978/go.mod h1:dVav53PwF2xEotjf4oA5lTY2Jp2exgzyjLhbSXhbMwE=
+github.com/egoist/mygo v0.7.5-0.20261104191142-c9438876cbd1 h1:KiTCJXLX2e0BEJ/NzQz2M2VF0uOY5UbTV7jCyTLZXbE=
+github.com/egoist/mygo v0.7.5-0.20261104191142-c9438876cbd1/go.mod h1:dVav53PwF2xEotjf4oA5lTY2Jp2exgzyjLhbSXhbMwE=
 github.com/fsnotify/fsnotify v1.9.0 h1:2Ml+OJNzbYCTzsxtv8vKSFD9PbJjmhYF14k/jKC7S9k=
 github.com/fsnotify/fsnotify v1.9.0/go.mod h1:8jBTzvmWwFyi3Pb8djgCCO5IBqzKJ/Jwo8TRcHyHii0=
 github.com/go-shiori/dom v0.0.0-20230515143342-73569d674e1c h1:wpkoddUomPfHiOziHZixGO5ZBS73cKqVzZipfrLmO1w=
