@@ -150,5 +150,5 @@ func CommandRow(c *ui.Context, p CommandRowProps) ui.Element {
 
 // SectionLabel is a group caption: small, medium weight, muted.
 func SectionLabel(c *ui.Context, text string) ui.Element {
-	return ui.Text(c, text).FontSize(captionSize).FontWeight(500).TextColor(c.Theme().TextMuted).SingleLine()
+	return ui.Text(c, text).FontSize(captionSize).FontWeight(500).TextColor(tokens.TokensOf(c).TextSecondary).SingleLine()
 }
