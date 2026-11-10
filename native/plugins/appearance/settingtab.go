@@ -8,6 +8,7 @@ import (
 
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/cunninghamcard-bit/acard-ui/components/selectmenu"
+	"github.com/cunninghamcard-bit/acard-ui/components/toggleswitch"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
@@ -185,7 +186,10 @@ func (a *Appearance) selectSpec(label, desc, key, cur string, opts []selectmenu.
 
 func (a *Appearance) switchSpec(label, desc, key string, cur bool) rowSpec {
 	return rowSpec{label: label, desc: desc, control: func(c *ui.Context) {
-		aui.Switch(c, label, cur, func(on bool) { a.set.Set(settings.Appearance, key, on) })
+		on := cur
+		if toggleswitch.Switch(c, &on, toggleswitch.SwitchProps{}).Label(label).Changed() {
+			a.set.Set(settings.Appearance, key, on)
+		}
 	}}
 }
 

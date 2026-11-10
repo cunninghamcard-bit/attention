@@ -113,10 +113,6 @@ var (
 		"glass.bg":          func(k *aui.Tokens) *ui.Color { return &k.GlassTint },
 		"glass.track":       func(k *aui.Tokens) *ui.Color { return &k.GlassTrack },
 		"segment.pill":      func(k *aui.Tokens) *ui.Color { return &k.SegmentPill },
-		"switch.off":        func(k *aui.Tokens) *ui.Color { return &k.SwitchOff },
-		"switch.on":         func(k *aui.Tokens) *ui.Color { return &k.SwitchOn },
-		"switch.knob":       func(k *aui.Tokens) *ui.Color { return &k.SwitchKnob },
-		"switch.knobOn":     func(k *aui.Tokens) *ui.Color { return &k.SwitchKnobOn },
 	}
 
 	componentShadows = map[string]func(*aui.Tokens) *aui.Shadow{

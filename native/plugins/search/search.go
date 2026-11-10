@@ -20,6 +20,7 @@ import (
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/cunninghamcard-bit/acard-ui/components/selectmenu"
+	"github.com/cunninghamcard-bit/acard-ui/components/toggleswitch"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
@@ -497,10 +498,7 @@ func toggleIcon(c *ui.Context, glyph *ui.SVG, tip string, on bool) bool {
 }
 
 func setting(c *ui.Context, label string, on *bool, changed func()) {
-	aui.SettingsToggle(c, label, "", *on, false, func(v bool) {
-		*on = v
-		if changed != nil {
-			changed()
-		}
-	})
+	if toggleswitch.Switch(c, on, toggleswitch.SwitchProps{Label: label}).PaddingX(8).Changed() && changed != nil {
+		changed()
+	}
 }
