@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	acard "github.com/cunninghamcard-bit/acard-ui/tokens"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/terminal"
@@ -23,7 +24,6 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // ID is the plugin's name.
@@ -89,7 +89,7 @@ func New(set *settings.Settings, dir string, post func(func())) *Appearance {
 func (a *Appearance) Register(sh *shell.Shell, sl *slots.Registry, act *actions.Service) (off func()) {
 	offs := []func(){
 		sl.RegisterSettingsSection(slots.SettingsSection{
-			ID: ID, Title: "Appearance", Icon: icon.Must("palette"), Order: 20,
+			ID: ID, Title: "Appearance", Icon: icon.Palette.SVG(), Order: 20,
 			Keywords: a.keywords(), View: a.View,
 		}),
 	}

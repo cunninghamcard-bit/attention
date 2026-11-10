@@ -22,6 +22,7 @@ import (
 	"github.com/cunninghamcard-bit/acard-ui/components/selectmenu"
 	"github.com/cunninghamcard-bit/acard-ui/components/toggleswitch"
 	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/natural"
@@ -33,7 +34,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
+	auiicon "github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -96,7 +97,7 @@ var (
 			ctx, cancel := context.WithCancel(context.Background())
 			s := &Search{app: app, ctx: ctx, sh: sh, lyt: lyt, ws: ws, project: project, sortOrder: "alphabetical", collapsed: map[string]bool{}}
 			off := sl.RegisterPanel(slots.Panel{
-				ID: PanelID, Title: "Search", Icon: icon.Must("search"), Dock: slots.Sidebar, Order: 1,
+				ID: PanelID, Title: "Search", Icon: icon.Search.SVG(), Dock: slots.Sidebar, Order: 1,
 				View: s.view, State: s.state, Restore: s.restore,
 			})
 			offs := []func(){off}
@@ -326,13 +327,13 @@ func (s *Search) view(c *ui.Context, p slots.PanelProps) {
 					s.changed()
 				}
 			})
-			if toggleIcon(c, icon.Must("case-sensitive"), "Match case", s.matchingCase) {
+			if toggleIcon(c, auiicon.Must("case-sensitive"), "Match case", s.matchingCase) {
 				s.matchingCase = !s.matchingCase
 				if strings.TrimSpace(s.query) != "" {
 					s.start()
 				}
 			}
-			if toggleIcon(c, icon.Must("sliders-horizontal"), "Toggle search settings", s.showParams) {
+			if toggleIcon(c, auiicon.Must("sliders-horizontal"), "Toggle search settings", s.showParams) {
 				s.showParams = !s.showParams
 			}
 		})

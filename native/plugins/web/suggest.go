@@ -6,12 +6,13 @@ import (
 	"strings"
 
 	"github.com/cunninghamcard-bit/acard-ui/components/popover"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
+	auiicon "github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 var typedURL = regexp.MustCompile(`(?i)^https?://`)
@@ -31,13 +32,13 @@ type suggestion struct {
 func (s suggestion) icon() *ui.SVG {
 	switch s.kind {
 	case "search":
-		return icon.Must("search")
+		return icon.Search.SVG()
 	case "history":
-		return icon.Must("clock")
+		return icon.Clock.SVG()
 	case "bookmark":
-		return icon.Must("bookmark")
+		return auiicon.Must("bookmark")
 	}
-	return icon.Must("globe")
+	return icon.Globe.SVG()
 }
 
 // suggestions are getSuggestions: the blank page, the history, the url

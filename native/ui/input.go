@@ -6,9 +6,8 @@ import (
 	"strings"
 
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/ui"
-
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // SearchField draws a field with a magnifier at its start. The element
@@ -21,7 +20,7 @@ func SearchField(c *ui.Context, value *string, placeholder string, disabled bool
 	ring(box, TokensOf(c), *focused)
 	var input ui.Element
 	box.Children(func() {
-		ui.Icon(c, icon.Must("search")).Size(iconSmall, iconSmall).TextColor(t.TextMuted).Shrink(0)
+		ui.Icon(c, icon.Search.SVG()).Size(iconSmall, iconSmall).TextColor(t.TextMuted).Shrink(0)
 		input = ui.TextInputBase(c, value).Placeholder(placeholder).FillWidth().Height(controlHeight - 2).
 			MinHeight(controlHeight - 2).Padding(0).FontSize(labelSize).TextColor(t.Text)
 		if placeholder != "" {
@@ -55,14 +54,14 @@ func NumberField(c *ui.Context, value *float64, low, high float64, label string,
 			}
 		}
 	}
-	step := func(name, glyph string, disabled bool) bool {
+	step := func(name string, glyph *ui.SVG, disabled bool) bool {
 		return button.Button(c, button.ButtonProps{Label: name + " " + label, Variant: button.ButtonGhost, Size: button.ButtonSm,
-			Disabled: disabled, Children: func() { ui.Icon(c, icon.Must(glyph)).Size(iconSmall, iconSmall) }}).
+			Disabled: disabled, Children: func() { ui.Icon(c, glyph).Size(iconSmall, iconSmall) }}).
 			Size(24, 24).MinHeight(24).PaddingX(0).Clicked()
 	}
 	var field ui.Element
 	row.Children(func() {
-		if step("Decrease", "minus", *value <= low) {
+		if step("Decrease", icon.Minus.SVG(), *value <= low) {
 			set(*value - 1)
 		}
 		field = ui.TextInputBase(c, draft).Label(label).Grow(1).MinWidth(0).Height(controlHeight-2).Padding(0, 4).
@@ -92,7 +91,7 @@ func NumberField(c *ui.Context, value *float64, low, high float64, label string,
 			k.SetText(*draft)
 			return true
 		})
-		if step("Increase", "plus", *value >= high) {
+		if step("Increase", icon.Plus.SVG(), *value >= high) {
 			set(*value + 1)
 		}
 		focused := field.Focused()

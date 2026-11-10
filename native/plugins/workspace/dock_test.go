@@ -3,12 +3,12 @@ package workspace
 import (
 	"testing"
 
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 func TestDockShowsFirstPanelAndRevealsByShortcut(t *testing.T) {
@@ -152,7 +152,7 @@ func TestClosingATabFromItsRowDoesNotPanic(t *testing.T) {
 // panel registers a left panel drawing body, counting its reveals.
 func panel(t *testing.T, id string, order int, body string, reveals *int) {
 	t.Helper()
-	off := ensureSlots(t).RegisterPanel(slots.Panel{ID: id, Title: id, Icon: icon.Must("folder"), Dock: slots.Sidebar, Order: order,
+	off := ensureSlots(t).RegisterPanel(slots.Panel{ID: id, Title: id, Icon: icon.Folder.SVG(), Dock: slots.Sidebar, Order: order,
 		View: func(c *ui.Context, p slots.PanelProps) {
 			if reveals != nil {
 				*reveals = p.Reveal

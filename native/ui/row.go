@@ -3,10 +3,9 @@ package ui
 import (
 	"cmp"
 
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/cunninghamcard-bit/acard-ui/tokens"
 	"github.com/egoist/mygo/ui"
-
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -80,7 +79,7 @@ func Disclosure(c *ui.Context, open bool, size float32) ui.Element {
 	if open {
 		turn = 90
 	}
-	chev := ui.Icon(c, icon.Must("chevron-right")).Size(size, size).TextColor(c.Theme().TextMuted).Shrink(0).
+	chev := ui.Icon(c, icon.ChevronRight.SVG()).Size(size, size).TextColor(c.Theme().TextMuted).Shrink(0).
 		Cursor(ui.CursorPointer)
 	if !reduced(c) {
 		turn = chev.AnimateTo("aui.turn", turn, ui.Snappy)

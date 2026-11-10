@@ -14,6 +14,7 @@ import (
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/cunninghamcard-bit/acard-ui/tokens"
 	"github.com/egoist/mygo/ui"
 
@@ -25,7 +26,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
+	auiicon "github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -250,9 +251,9 @@ func (l *Layout) LeftHeaderSpace(c *ui.Context) float32 {
 
 // ToggleButton draws the sidebar's or the context column's toggle.
 func (l *Layout) ToggleButton(c *ui.Context, d slots.Dock) ui.Element {
-	glyph := icon.Must("panel-left")
+	glyph := auiicon.Must("panel-left")
 	if d == slots.Context {
-		glyph = icon.Must("panel-right")
+		glyph = auiicon.Must("panel-right")
 	}
 	tip := "Expand"
 	if l.Open(d) {
@@ -437,12 +438,12 @@ func (l *Layout) sidebar(c *ui.Context) {
 				head.Status(c)
 			}
 			if l.notice != "" {
-				tooltip.Tooltip(c, ui.Icon(c, icon.Must("triangle-alert")).Size(12, 12).TextColor(t.Warning), tooltip.TooltipProps{Text: l.notice})
+				tooltip.Tooltip(c, ui.Icon(c, icon.TriangleAlert.SVG()).Size(12, 12).TextColor(t.Warning), tooltip.TooltipProps{Text: l.notice})
 			}
 		})
 		ui.Row(c).Height(36).Shrink(0).FillWidth().Gap(2).AlignItems(ui.Center).Children(func() {
 			settings := button.Button(c, button.ButtonProps{Label: "Settings", Variant: button.ButtonGhost, Size: button.ButtonSm,
-				Children: func() { ui.Icon(c, icon.Must("settings")).Size(14, 14) }}).Width(28).PaddingX(0)
+				Children: func() { ui.Icon(c, icon.Settings.SVG()).Size(14, 14) }}).Width(28).PaddingX(0)
 			if settings.Clicked() {
 				l.openSettings()
 			}

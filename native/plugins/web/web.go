@@ -28,6 +28,7 @@ import (
 	"github.com/cunninghamcard-bit/acard-ui/components/input"
 	"github.com/cunninghamcard-bit/acard-ui/components/selectmenu"
 	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
@@ -42,7 +43,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/webhistory"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
+	auiicon "github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -116,7 +117,7 @@ var (
 			emitCtx, cancel := context.WithCancel(context.Background())
 			off := v.register(func(p Page) { _ = rctx.Emit(emitCtx, PageLoadedEvent, p) })
 			offs := []func(){
-				sl.RegisterSettingsSection(slots.SettingsSection{ID: "webviewer", Title: "Web viewer", Icon: icon.Must("globe"),
+				sl.RegisterSettingsSection(slots.SettingsSection{ID: "webviewer", Title: "Web viewer", Icon: icon.Globe.SVG(),
 					Group: slots.CorePlugins, Keywords: []string{"Search engine", "Clear browsing data", "history"}, View: v.settingTab}),
 				sl.RegisterPaletteSource(v.source()),
 			}
@@ -298,7 +299,7 @@ func (v *viewer) register(loaded func(Page)) (off func()) {
 		ID: ID, Kind: Kind, Priority: tabtypes.Builtin,
 		Patterns: []string{"https://**", "http://**", "about:**"},
 		Title:    titleFromURL,
-		Icon:     icon.Must("globe"),
+		Icon:     icon.Globe.SVG(),
 		Body: func(c *ui.Context, p tabtypes.Props) {
 			pg := get(p)
 			ui.Column(c).Grow(1).Fill().Children(func() {
@@ -334,9 +335,9 @@ func (v *viewer) register(loaded func(Page)) (off func()) {
 			pg := get(p)
 			t := c.Theme()
 			ui.Row(c).Grow(1).MinWidth(0).Gap(4).AlignItems(ui.Center).Children(func() {
-				label, glyph := "Reload", icon.Must("rotate-cw")
+				label, glyph := "Reload", icon.RotateCw.SVG()
 				if pg.loading {
-					label, glyph = "Stop", icon.Must("x")
+					label, glyph = "Stop", icon.X.SVG()
 				}
 				reloadButton := button.Button(c, button.ButtonProps{Label: label, Variant: button.ButtonGhost, Size: button.ButtonSm,
 					Children: func() { ui.Icon(c, glyph).Size(14, 14).TextColor(t.Text) }}).Width(28).PaddingX(0)
@@ -400,7 +401,7 @@ func (v *viewer) register(loaded func(Page)) (off func()) {
 			}
 			reader := button.Button(c, button.ButtonProps{Label: label, Variant: button.ButtonGhost, Size: button.ButtonSm,
 				Disabled: pg.view == nil || pg.extracting,
-				Children: func() { ui.Icon(c, icon.Must("glasses")).Size(14, 14) }}).Width(28).PaddingX(0)
+				Children: func() { ui.Icon(c, auiicon.Must("glasses")).Size(14, 14) }}).Width(28).PaddingX(0)
 			if reader.Clicked() {
 				v.toggleReader(pg)
 			}
@@ -563,9 +564,9 @@ func (v *viewer) findBar(c *ui.Context, pg *page) {
 			}
 			tooltip.Tooltip(c, b, tooltip.TooltipProps{Text: label})
 		}
-		findButton("Previous", icon.Must("arrow-up"), func() { v.find(pg, true) })
-		findButton("Next", icon.Must("arrow-down"), func() { v.find(pg, false) })
-		findButton("Close", icon.Must("x"), func() { closeFind(pg) })
+		findButton("Previous", icon.ArrowUp.SVG(), func() { v.find(pg, true) })
+		findButton("Next", icon.ArrowDown.SVG(), func() { v.find(pg, false) })
+		findButton("Close", icon.X.SVG(), func() { closeFind(pg) })
 	})
 }
 
@@ -730,9 +731,9 @@ func downloadBanner(c *ui.Context, pg *page) {
 	t := c.Theme()
 	d := pg.downloaded
 	ui.Row(c).Padding(4, 12).Gap(8).AlignItems(ui.Center).Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-		glyph, color, text := icon.Must("download"), t.TextMuted, "Downloaded "+d.Path
+		glyph, color, text := icon.Download.SVG(), t.TextMuted, "Downloaded "+d.Path
 		if d.Err != nil {
-			glyph, color, text = icon.Must("triangle-alert"), t.Danger, "Download failed: "+d.Err.Error()
+			glyph, color, text = icon.TriangleAlert.SVG(), t.Danger, "Download failed: "+d.Err.Error()
 		}
 		ui.Icon(c, glyph).Size(14, 14).TextColor(color).Shrink(0)
 		ui.Text(c, text).FontSize(12).SingleLine().Ellipsis("…").Shrink(1)
@@ -744,7 +745,7 @@ func downloadBanner(c *ui.Context, pg *page) {
 			}
 		}
 		if button.Button(c, button.ButtonProps{Label: "Dismiss", Variant: button.ButtonGhost, Size: button.ButtonSm,
-			Children: func() { ui.Icon(c, icon.Must("x")).Size(14, 14).TextColor(t.Text) }}).Width(28).PaddingX(0).Clicked() {
+			Children: func() { ui.Icon(c, icon.X.SVG()).Size(14, 14).TextColor(t.Text) }}).Width(28).PaddingX(0).Clicked() {
 			pg.downloaded = nil
 		}
 	})
@@ -753,7 +754,7 @@ func downloadBanner(c *ui.Context, pg *page) {
 func errorBanner(c *ui.Context, text string) {
 	t := c.Theme()
 	ui.Row(c).Padding(6, 12).Gap(8).AlignItems(ui.Center).Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-		ui.Icon(c, icon.Must("triangle-alert")).Size(14, 14).TextColor(t.Danger)
+		ui.Icon(c, icon.TriangleAlert.SVG()).Size(14, 14).TextColor(t.Danger)
 		ui.Text(c, text).FontSize(12)
 	})
 }

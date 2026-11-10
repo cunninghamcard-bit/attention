@@ -17,6 +17,7 @@ import (
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/watchq"
@@ -29,7 +30,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
+	auiicon "github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // PanelID is the Files panel's slot id.
@@ -118,13 +119,13 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		})
 
 		off := sl.RegisterPanel(slots.Panel{
-			ID: PanelID, Title: "Project", Icon: icon.Must("folder"), Dock: slots.Context, Order: 0,
+			ID: PanelID, Title: "Project", Icon: icon.Folder.SVG(), Dock: slots.Context, Order: 0,
 			Heading: tr.heading, Actions: tr.actions,
 			View:  func(c *ui.Context, _ slots.PanelProps) { tr.view(c) },
 			State: tr.state, Restore: tr.restore,
 		})
 		reveal := func() { lyt.RevealPanel(PanelID) }
-		offSection := sl.RegisterSettingsSection(slots.SettingsSection{ID: "file", Title: "Files and links", Icon: icon.Must("folder-cog"), Order: 10,
+		offSection := sl.RegisterSettingsSection(slots.SettingsSection{ID: "file", Title: "Files and links", Icon: auiicon.Must("folder-cog"), Order: 10,
 			Keywords: []string{"Folders", "mount"},
 			View:     func(c *ui.Context) { tr.folders(c, project.RemoveMount) }})
 		offCmd := act.Add(actions.Command{ID: "file-explorer:open", Title: "Open file explorer", Main: reveal, Run: func(ctx context.Context, _ actions.Args) (string, error) {
@@ -496,7 +497,7 @@ func (tr *Tree) view(c *ui.Context) {
 				}
 				if e.Dir {
 					if d := tr.dirs[e.Path]; d != nil && d.err != "" {
-						tooltip.Tooltip(c, ui.Icon(c, icon.Must("triangle-alert")).Size(12, 12).TextColor(t.Warning).Shrink(0), tooltip.TooltipProps{Text: d.err})
+						tooltip.Tooltip(c, ui.Icon(c, icon.TriangleAlert.SVG()).Size(12, 12).TextColor(t.Warning).Shrink(0), tooltip.TooltipProps{Text: d.err})
 					}
 				}
 			})
@@ -530,7 +531,7 @@ func (tr *Tree) folders(c *ui.Context, remove func(context.Context, string) erro
 		}
 	})
 	add := button.Button(c, button.ButtonProps{Variant: button.ButtonSecondary, LabelKey: "Add folder", Children: func() {
-		ui.Icon(c, icon.Must("folder-plus")).Size(16, 16)
+		ui.Icon(c, auiicon.Must("folder-plus")).Size(16, 16)
 		ui.Text(c, "Add folder")
 	}})
 	if add.Clicked() {
@@ -608,14 +609,14 @@ func (tr *Tree) heading(c *ui.Context) {
 // actions are the section's Add folder and Collapse all.
 func (tr *Tree) actions(c *ui.Context) {
 	allCollapsed := tr.allCollapsed()
-	collapseIcon := icon.Must("chevrons-down-up")
+	collapseIcon := icon.ChevronsDownUp.SVG()
 	collapseTip := "Collapse all"
 	if allCollapsed {
-		collapseIcon = icon.Must("chevrons-up-down")
+		collapseIcon = icon.ChevronsUpDown.SVG()
 		collapseTip = "Expand all"
 	}
 	add := button.Button(c, button.ButtonProps{Label: "Add folder", Variant: button.ButtonGhost, Size: button.ButtonSm,
-		Children: func() { ui.Icon(c, icon.Must("folder-plus")).Size(14, 14) }}).Width(28).PaddingX(0)
+		Children: func() { ui.Icon(c, auiicon.Must("folder-plus")).Size(14, 14) }}).Width(28).PaddingX(0)
 	if add.Clicked() {
 		if cmd := tr.act.Lookup("workspace:add-folder"); cmd != nil {
 			go func() {

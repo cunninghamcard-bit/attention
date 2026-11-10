@@ -3,10 +3,11 @@ package ui
 import (
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/cunninghamcard-bit/acard-ui/tokens"
 	"github.com/egoist/mygo/ui"
 
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
+	auiicon "github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const tabRowHeight float32 = 34
@@ -155,7 +156,7 @@ func AddressBar(c *ui.Context, p AddressBarProps) ui.Element {
 				Role(ui.RoleButton).Label(p.Prefix + p.Name)
 			text.Children(func() {
 				if p.Locked {
-					lock := ui.Icon(c, icon.Must("file-lock")).Size(iconSmall, iconSmall).TextColor(tok.TextSecondary).Shrink(0)
+					lock := ui.Icon(c, auiicon.Must("file-lock")).Size(iconSmall, iconSmall).TextColor(tok.TextSecondary).Shrink(0)
 					tooltip.Tooltip(c, lock, tooltip.TooltipProps{Text: "Read-only"})
 				} else if p.Icon != nil {
 					ui.Icon(c, p.Icon).Size(iconSmall, iconSmall).TextColor(tok.TextSecondary).Shrink(0)
@@ -206,7 +207,7 @@ func closeButton(c *ui.Context, label string, onClose func(), size float32, show
 	}
 	x := button.Button(c, button.ButtonProps{Label: label, Variant: button.ButtonGhost, Size: button.ButtonSm, Children: func() {
 		if shown {
-			ui.Icon(c, icon.Must("x")).Size(12, 12)
+			ui.Icon(c, icon.X.SVG()).Size(12, 12)
 		}
 	}}).Size(size, size).MinHeight(size).PaddingX(0).Radius(6).Shrink(0)
 	if onClose != nil && x.Clicked() {

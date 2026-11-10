@@ -21,7 +21,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
+	auiicon "github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -90,7 +90,7 @@ func Register(sh *shell.Shell, sl *slots.Registry, act *actions.Service) (s *Set
 	s = New(sh, sl)
 	offs := []func(){
 		sl.RegisterOverlay(slots.Overlay{ID: ID, Order: 10, View: s.View}),
-		sl.RegisterSettingsSection(slots.SettingsSection{ID: "general", Title: "General", Icon: icon.Must("sliders-horizontal"), Order: 0,
+		sl.RegisterSettingsSection(slots.SettingsSection{ID: "general", Title: "General", Icon: auiicon.Must("sliders-horizontal"), Order: 0,
 			Keywords: []string{"Current version", "Configuration folder"}, View: general}),
 		act.Add(actions.Command{ID: "app:open-settings", Title: "Open settings", Keys: "Ctrl Comma", Main: s.Toggle,
 			Run: func(ctx context.Context, _ actions.Args) (string, error) {

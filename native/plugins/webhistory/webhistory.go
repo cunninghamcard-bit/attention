@@ -18,6 +18,7 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
@@ -28,7 +29,6 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -86,7 +86,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		}
 		offs := []func(){
 			tt.Register(tabtypes.TabType{ID: ID, Kind: Kind, Priority: tabtypes.Builtin,
-				Title: func(string) string { return "Web viewer history" }, Icon: icon.Must("clock"), Body: h.view}),
+				Title: func(string) string { return "Web viewer history" }, Icon: icon.Clock.SVG(), Body: h.view}),
 			act.Add(actions.Command{ID: "webviewer:open-history", Title: "Open Web viewer history", Main: openPage, CLI: true,
 				Run: func(ctx context.Context, _ actions.Args) (string, error) {
 					return shell.OnMain(ctx, sh, func() (string, error) { openPage(); return "", nil })
@@ -207,7 +207,7 @@ func (h *History) view(c *ui.Context, _ tabtypes.Props) {
 		})
 		tooltip.Tooltip(c, row, tooltip.TooltipProps{Text: e.URL})
 		row.Children(func() {
-			ui.Icon(c, icon.Must("globe")).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
+			ui.Icon(c, icon.Globe.SVG()).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
 			ui.RichText(c, ui.Span{Text: e.Title}, ui.Span{Text: " — " + e.URL, Color: t.TextMuted}).
 				FontSize(13).SingleLine().Ellipsis("…").Shrink(1)
 		})

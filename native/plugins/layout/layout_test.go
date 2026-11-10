@@ -4,18 +4,18 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 func TestPanelStateRoundTrips(t *testing.T) {
 	sl := slots.New(nil)
 	var got string
-	off := sl.RegisterPanel(slots.Panel{ID: "search", Title: "search", Icon: icon.Must("search"), Dock: slots.Sidebar,
+	off := sl.RegisterPanel(slots.Panel{ID: "search", Title: "search", Icon: icon.Search.SVG(), Dock: slots.Sidebar,
 		View:    func(c *ui.Context, _ slots.PanelProps) { ui.Text(c, "body") },
 		State:   func() json.RawMessage { data, _ := json.Marshal(got + "-saved"); return data },
 		Restore: func(st json.RawMessage) { got = string(st) },

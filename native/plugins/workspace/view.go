@@ -8,13 +8,14 @@ import (
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/cunninghamcard-bit/acard-ui/components/input"
 	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
+	auiicon "github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // view is the center (RFC §5.8: it reads state, never the disk): the
@@ -175,7 +176,7 @@ func (ws *Workspace) tabsPanel(c *ui.Context, _ slots.PanelProps) {
 				}
 			}
 			ws.dropEnd(c, "pins-end", 10, func() spot { return spot{pinned: true, i: len(ws.pins)} })
-			if aui.SidebarItem(c, aui.SidebarItemProps{Key: "new-tab", Label: "New tab", Icon: icon.Must("plus")}).Clicked() {
+			if aui.SidebarItem(c, aui.SidebarItemProps{Key: "new-tab", Label: "New tab", Icon: icon.Plus.SVG()}).Clicked() {
 				ws.sl.OpenPalette(omniboxNewID)
 			}
 			ui.Box(c).Height(1).Shrink(0).FillWidth().Margin(4, 8).Background(aui.TokensOf(c).BorderSubtle)
@@ -230,9 +231,9 @@ func (ws *Workspace) folderRow(c *ui.Context, f *folder) {
 		if col, ok := aui.ParseColor(f.color); ok {
 			ink = col
 		}
-		glyph := icon.Must("folder")
+		glyph := icon.Folder.SVG()
 		if !f.closed {
-			glyph = icon.Must("folder-open")
+			glyph = icon.FolderOpen.SVG()
 		}
 		ui.Icon(c, glyph).Size(16, 16).TextColor(ink).Shrink(0)
 		ui.Text(c, f.title).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
@@ -323,20 +324,20 @@ func (ws *Workspace) rowMenu(it *node, g *pane) []aui.MenuItem {
 	}
 	later := func(fn func()) func() { return func() { ws.later(fn) } }
 	if !ws.isPinned(it) {
-		return append(items, aui.MenuItem{Label: "Pin", Icon: icon.Must("bookmark"), OnClick: later(func() { ws.pinItem(it) })})
+		return append(items, aui.MenuItem{Label: "Pin", Icon: auiicon.Must("bookmark"), OnClick: later(func() { ws.pinItem(it) })})
 	}
 	items = append(items,
-		aui.MenuItem{Label: "Unpin", Icon: icon.Must("arrow-down"), OnClick: later(func() { ws.unpinItem(it) })},
-		aui.MenuItem{Label: "Remove from pinned", Icon: icon.Must("x"), Danger: true, OnClick: later(func() { ws.forget(it) })},
+		aui.MenuItem{Label: "Unpin", Icon: icon.ArrowDown.SVG(), OnClick: later(func() { ws.unpinItem(it) })},
+		aui.MenuItem{Label: "Remove from pinned", Icon: icon.X.SVG(), Danger: true, OnClick: later(func() { ws.forget(it) })},
 		aui.MenuItem{Separator: true},
-		aui.MenuItem{Label: "Move to new folder", Icon: icon.Must("folder-plus"), OnClick: later(func() {
+		aui.MenuItem{Label: "Move to new folder", Icon: auiicon.Must("folder-plus"), OnClick: later(func() {
 			f := ws.newFolder()
 			ws.moveItem(it, spot{pinned: true, folder: f})
 		})},
 	)
 	for _, p := range ws.pins {
 		if f := p.folder; f != nil {
-			items = append(items, aui.MenuItem{Label: "Move to " + f.title, Icon: icon.Must("folder"), OnClick: later(func() {
+			items = append(items, aui.MenuItem{Label: "Move to " + f.title, Icon: icon.Folder.SVG(), OnClick: later(func() {
 				ws.moveItem(it, spot{pinned: true, folder: f, i: len(f.items)})
 			})})
 		}
@@ -356,7 +357,7 @@ type rowFace struct {
 // what it reopens.
 func (ws *Workspace) cardFace(c *ui.Context, g *pane) rowFace {
 	if pk := g.parked; pk != nil {
-		f := rowFace{title: parkedTitle(*pk), tip: pk.entry, glyph: icon.Must("globe")}
+		f := rowFace{title: parkedTitle(*pk), tip: pk.entry, glyph: icon.Globe.SVG()}
 		if _, ok := ws.parkedProject(*pk); ok {
 			f.tip = ws.display(pk.entry)
 		}
@@ -383,7 +384,7 @@ func (ws *Workspace) face(c *ui.Context, tb *tab) (title, tip string, glyph *ui.
 		title += " (deleted)"
 	}
 	if tb.empty {
-		return title, tip, icon.Must("globe"), ui.Color{}
+		return title, tip, icon.Globe.SVG(), ui.Color{}
 	}
 	glyph = ws.tabIcon(tb)
 	if !tb.page() {
@@ -424,8 +425,8 @@ func (ws *Workspace) headNav(c *ui.Context) {
 	if tb != nil {
 		back, forward = len(tb.back), len(tb.forward)
 	}
-	nav("Back", icon.Must("arrow-left"), -1, back)
-	nav("Forward", icon.Must("arrow-right"), 1, forward)
+	nav("Back", icon.ArrowLeft.SVG(), -1, back)
+	nav("Forward", icon.ArrowRight.SVG(), 1, forward)
 }
 
 // addressBar is the active tab's address: its folders muted, then its
@@ -436,7 +437,7 @@ func (ws *Workspace) addressBar(c *ui.Context) {
 	props := aui.AddressBarProps{OnClick: func() { ws.sl.OpenPalette(omniboxID) }}
 	tb := ws.activeTab()
 	if tb == nil || tb.empty {
-		props.Name, props.Icon = "Search or enter address", icon.Must("search")
+		props.Name, props.Icon = "Search or enter address", icon.Search.SVG()
 		aui.AddressBar(c, props)
 		return
 	}
@@ -459,7 +460,7 @@ func (ws *Workspace) addressBar(c *ui.Context) {
 		if ok && tt.Actions != nil {
 			tt.Actions(c, tp)
 		}
-		aui.IconMenu(c, aui.IconMenuProps{Label: "More options", Icon: icon.Must("ellipsis-vertical"), End: true,
+		aui.IconMenu(c, aui.IconMenuProps{Label: "More options", Icon: auiicon.Must("ellipsis-vertical"), End: true,
 			Items: ws.paneMenu(p, tb, tt)})
 	}
 	aui.AddressBar(c, props)
@@ -468,11 +469,11 @@ func (ws *Workspace) addressBar(c *ui.Context) {
 // tabMenu is a tab's context menu: Close and Close others, then More
 // options' (WorkspaceLeaf.onOpenTabHeaderMenu).
 func (ws *Workspace) tabMenu(p *pane, tb *tab) []aui.MenuItem {
-	items := []aui.MenuItem{{Label: "Close", Icon: icon.Must("x"), OnClick: func() {
+	items := []aui.MenuItem{{Label: "Close", Icon: icon.X.SVG(), OnClick: func() {
 		ws.later(func() { ws.closeTabs([]*tab{tb}) })
 	}}}
 	if len(ws.allGroups()) > 1 {
-		items = append(items, aui.MenuItem{Label: "Close others", Icon: icon.Must("x"), OnClick: func() {
+		items = append(items, aui.MenuItem{Label: "Close others", Icon: icon.X.SVG(), OnClick: func() {
 			var others []*tab
 			for _, g := range ws.allGroups() {
 				for _, o := range g.tabs {
@@ -539,19 +540,19 @@ func (ws *Workspace) paneMenu(p *pane, tb *tab, tt tabtypes.TabType) []aui.MenuI
 	}
 	path := tb.path
 	items = append(items,
-		aui.MenuItem{Label: "Split right", Icon: icon.Must("separator-vertical"), OnClick: split(vertical)},
-		aui.MenuItem{Label: "Split down", Icon: icon.Must("separator-horizontal"), OnClick: split(horizontal)},
+		aui.MenuItem{Label: "Split right", Icon: auiicon.Must("separator-vertical"), OnClick: split(vertical)},
+		aui.MenuItem{Label: "Split down", Icon: auiicon.Must("separator-horizontal"), OnClick: split(horizontal)},
 	)
 	if tb.page() {
 		return items
 	}
 	return append(items,
 		aui.MenuItem{Separator: true},
-		aui.MenuItem{Label: "Copy path", Icon: icon.Must("copy"), OnClick: func() { mygo.Clipboard.WriteText(ws.display(path)) }},
-		aui.MenuItem{Label: "Copy absolute path", Icon: icon.Must("hard-drive"), OnClick: func() { mygo.Clipboard.WriteText(path) }},
+		aui.MenuItem{Label: "Copy path", Icon: icon.Copy.SVG(), OnClick: func() { mygo.Clipboard.WriteText(ws.display(path)) }},
+		aui.MenuItem{Label: "Copy absolute path", Icon: auiicon.Must("hard-drive"), OnClick: func() { mygo.Clipboard.WriteText(path) }},
 		aui.MenuItem{Separator: true},
-		aui.MenuItem{Label: "Open in default app", Icon: icon.Must("arrow-up-right"), OnClick: func() { go func() { _ = mygo.Shell.OpenPath(path) }() }},
-		aui.MenuItem{Label: "Show in system explorer", Icon: icon.Must("files"), OnClick: func() { go mygo.Shell.ShowItemInFolder(path) }},
+		aui.MenuItem{Label: "Open in default app", Icon: icon.ArrowUpRight.SVG(), OnClick: func() { go func() { _ = mygo.Shell.OpenPath(path) }() }},
+		aui.MenuItem{Label: "Show in system explorer", Icon: icon.Files.SVG(), OnClick: func() { go mygo.Shell.ShowItemInFolder(path) }},
 	)
 }
 
@@ -572,7 +573,7 @@ func (ws *Workspace) tabStatus(c *ui.Context) {
 // globe.
 func (ws *Workspace) tabIcon(tb *tab) *ui.SVG {
 	if tb.empty {
-		return icon.Must("globe")
+		return icon.Globe.SVG()
 	}
 	if tt, ok := ws.tabTypes.Get(tb.typeID); ok && tt.Icon != nil {
 		return tt.Icon
@@ -596,7 +597,7 @@ func nativeMenu(m *ui.Menu, items []aui.MenuItem) {
 func banner(c *ui.Context, text string, color ui.Color) {
 	t := c.Theme()
 	ui.Row(c).Padding(6, 12).Gap(8).AlignItems(ui.Center).Background(t.Surface).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
-		ui.Icon(c, icon.Must("triangle-alert")).Size(14, 14).TextColor(color)
+		ui.Icon(c, icon.TriangleAlert.SVG()).Size(14, 14).TextColor(color)
 		ui.Text(c, text).FontSize(12)
 	})
 }

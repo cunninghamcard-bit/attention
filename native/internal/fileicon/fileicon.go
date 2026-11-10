@@ -6,9 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/ui"
 
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
+	auiicon "github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // Theme is which icons files get: none unless Show, else the Name set ("pierre" or "zed").
@@ -31,9 +32,9 @@ func (t Theme) Render(c *ui.Context, name string, dir, open, dark bool, size flo
 		return
 	}
 	if dir {
-		svg := icon.Must("folder-closed")
+		svg := auiicon.Must("folder-closed")
 		if open {
-			svg = icon.Must("folder-open")
+			svg = icon.FolderOpen.SVG()
 		}
 		ui.Icon(c, svg).Size(size, size).TextColor(c.Theme().TextMuted).Shrink(0)
 		return
@@ -60,15 +61,15 @@ func (t Theme) Color(name string, dark bool) ui.Color {
 // Folder returns the icon for a directory named name.
 func Folder(name string, open bool) *ui.SVG {
 	if open {
-		return icon.Must("folder-open")
+		return icon.FolderOpen.SVG()
 	}
 	switch strings.ToLower(filepath.Base(name)) {
 	case ".git", ".github":
-		return icon.Must("folder-git-2")
+		return auiicon.Must("folder-git-2")
 	case ".claude", ".vscode", ".idea", "config", "configs":
-		return icon.Must("folder-cog")
+		return auiicon.Must("folder-cog")
 	}
-	return icon.Must("folder")
+	return icon.Folder.SVG()
 }
 
 // FolderColor returns the Zed One Light or One Dark icon tint for a folder.
@@ -89,46 +90,46 @@ func zedFor(name string) *ui.SVG {
 	base := strings.ToLower(filepath.Base(name))
 	switch base {
 	case "dockerfile", "containerfile":
-		return icon.Must("file-box")
+		return auiicon.Must("file-box")
 	case "makefile", "justfile", "taskfile.yml", "taskfile.yaml":
-		return icon.Must("file-terminal")
+		return auiicon.Must("file-terminal")
 	case "license", "license.md", "license.txt", "copying":
-		return icon.Must("file-badge")
+		return auiicon.Must("file-badge")
 	case "go.sum", "cargo.lock", "package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb":
-		return icon.Must("file-lock")
+		return auiicon.Must("file-lock")
 	case ".gitignore", ".gitattributes", ".gitmodules":
-		return icon.Must("file-diff")
+		return auiicon.Must("file-diff")
 	}
 	switch strings.ToLower(filepath.Ext(base)) {
 	case ".md", ".markdown", ".mdx", ".txt", ".rst", ".adoc":
-		return icon.Must("file-text")
+		return icon.FileText.SVG()
 	case ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg", ".ico", ".avif":
-		return icon.Must("image")
+		return icon.Image.SVG()
 	case ".json", ".jsonc", ".json5", ".graphql", ".gql":
-		return icon.Must("file-braces")
+		return auiicon.Must("file-braces")
 	case ".toml", ".yaml", ".yml", ".ini", ".conf", ".cfg", ".env", ".properties":
-		return icon.Must("file-sliders")
+		return auiicon.Must("file-sliders")
 	case ".sh", ".bash", ".zsh", ".fish", ".ps1", ".bat", ".cmd":
-		return icon.Must("file-terminal")
+		return auiicon.Must("file-terminal")
 	case ".lock", ".sum":
-		return icon.Must("file-lock")
+		return auiicon.Must("file-lock")
 	case ".sql", ".sqlite", ".db":
-		return icon.Must("database")
+		return icon.Database.SVG()
 	case ".csv", ".tsv", ".xlsx", ".xls":
-		return icon.Must("file-spreadsheet")
+		return icon.FileSpreadsheet.SVG()
 	case ".zip", ".tar", ".gz", ".tgz", ".bz2", ".xz", ".7z", ".zst":
-		return icon.Must("file-archive")
+		return icon.FileArchive.SVG()
 	case ".go", ".rs", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
 		".py", ".rb", ".java", ".kt", ".swift", ".c", ".h", ".cc", ".cpp", ".hpp",
 		".cs", ".php", ".lua", ".zig", ".elixir", ".ex", ".exs", ".erl", ".hs",
 		".ml", ".scala", ".dart", ".R", ".vue", ".svelte", ".astro",
 		".html", ".htm", ".css", ".scss", ".less", ".xml", ".proto":
-		return icon.Must("file-code")
+		return auiicon.Must("file-code")
 	}
 	if strings.HasPrefix(base, ".env") || strings.HasSuffix(base, "rc") {
-		return icon.Must("file-sliders")
+		return auiicon.Must("file-sliders")
 	}
-	return icon.Must("file")
+	return icon.File.SVG()
 }
 
 func zedColor(name string, dark bool) ui.Color {

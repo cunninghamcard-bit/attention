@@ -13,13 +13,13 @@ import (
 	"sync"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/textdoc"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // ID is the plugin's name.
@@ -123,7 +123,7 @@ func (s *Service) Register(_ context.Context, p Panel) error {
 		return fmt.Errorf("a web view panel needs an id, and a url or html")
 	}
 	p.Title = cmp.Or(p.Title, p.ID)
-	icon := icon.Must("app-window")
+	icon := icon.AppWindow.SVG()
 	if p.Icon != "" {
 		if svg, err := ui.ParseSVG([]byte(p.Icon)); err == nil {
 			icon = svg

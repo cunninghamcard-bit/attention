@@ -6,12 +6,12 @@ import (
 
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
 	"github.com/cunninghamcard-bit/attention/native/plugins/settings"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 func (s *Shortcuts) matching(query string) []actions.Command {
@@ -67,7 +67,7 @@ func (s *Shortcuts) commandHotkeys(c *ui.Context, cmd actions.Command) {
 			chip.Children(func() {
 				ui.Text(c, Format(h)).FontSize(12).SingleLine()
 				remove := button.Button(c, button.ButtonProps{Label: "Remove hotkey", Variant: button.ButtonGhost, Size: button.ButtonSm,
-					Children: func() { ui.Icon(c, icon.Must("x")).Size(14, 14) }}).Width(28).PaddingX(0)
+					Children: func() { ui.Icon(c, icon.X.SVG()).Size(14, 14) }}).Width(28).PaddingX(0)
 				if remove.Clicked() {
 					s.removeAt(cmd, i)
 				}
@@ -79,7 +79,7 @@ func (s *Shortcuts) commandHotkeys(c *ui.Context, cmd actions.Command) {
 			label, color = "Press keys...", t.Accent
 		}
 		add := button.Button(c, button.ButtonProps{Label: label, Variant: button.ButtonGhost, Size: button.ButtonSm,
-			Children: func() { ui.Icon(c, icon.Must("plus")).Size(14, 14).TextColor(color) }}).Width(28).PaddingX(0)
+			Children: func() { ui.Icon(c, icon.Plus.SVG()).Size(14, 14).TextColor(color) }}).Width(28).PaddingX(0)
 		if add.Clicked() {
 			s.recording = cmd.ID
 		}
@@ -87,7 +87,7 @@ func (s *Shortcuts) commandHotkeys(c *ui.Context, cmd actions.Command) {
 		if s.Overridden(cmd.ID) {
 			restore := button.Button(c, button.ButtonProps{Label: "Restore default hotkeys", Variant: button.ButtonGhost,
 				Size:     button.ButtonSm,
-				Children: func() { ui.Icon(c, icon.Must("refresh-cw")).Size(14, 14).TextColor(t.Accent) }}).Width(28).PaddingX(0)
+				Children: func() { ui.Icon(c, icon.RefreshCw.SVG()).Size(14, 14).TextColor(t.Accent) }}).Width(28).PaddingX(0)
 			if restore.Clicked() {
 				s.settings.Unset(settings.Hotkeys, cmd.ID)
 			}

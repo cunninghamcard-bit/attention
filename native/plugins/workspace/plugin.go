@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
@@ -30,7 +31,6 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -427,7 +427,7 @@ func Register(ws *Workspace) (off func()) {
 	offs := []func(){
 		ws.sl.SetCenter(ws.view),
 		ws.sl.SetChrome(slots.Chrome{Nav: ws.headNav, Bar: ws.addressBar, Status: ws.tabStatus, Tint: ws.tint}),
-		ws.sl.RegisterPanel(slots.Panel{ID: TabsPanelID, Title: "Tabs", Icon: icon.Must("files"), Dock: slots.Sidebar,
+		ws.sl.RegisterPanel(slots.Panel{ID: TabsPanelID, Title: "Tabs", Icon: icon.Files.SVG(), Dock: slots.Sidebar,
 			Order: -10, View: ws.tabsPanel}),
 		ws.sl.RegisterPaletteSource(ws.tabsSource()),
 		ws.act.SetActiveFile(func(ctx context.Context) (string, error) {

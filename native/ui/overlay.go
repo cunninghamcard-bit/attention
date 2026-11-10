@@ -5,9 +5,8 @@ import (
 
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/cunninghamcard-bit/acard-ui/components/popover"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/ui"
-
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // MenuItem is one entry of a menu; Separator draws a hairline and ignores
@@ -92,7 +91,7 @@ func Dialog(c *ui.Context, p DialogProps) ui.Element {
 						p.Body(c)
 					}
 					if button.Button(c, button.ButtonProps{Label: "Close", Variant: button.ButtonGhost, Size: button.ButtonSm,
-						Children: func() { ui.Icon(c, icon.Must("x")).Size(iconSmall, iconSmall) }}).
+						Children: func() { ui.Icon(c, icon.X.SVG()).Size(iconSmall, iconSmall) }}).
 						Width(28).PaddingX(0).Absolute().Top(10).Right(10).Clicked() {
 						*p.Open = false
 					}
@@ -137,7 +136,7 @@ func menuEntry(c *ui.Context, key int, it MenuItem, done func()) {
 		}
 		ui.Text(c, it.Label).FontSize(smallSize).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
 		if it.Checked {
-			ui.Icon(c, icon.Must("check")).Size(iconSmall, iconSmall).Shrink(0)
+			ui.Icon(c, icon.Check.SVG()).Size(iconSmall, iconSmall).Shrink(0)
 		}
 	})
 	if !it.Disabled && b.Clicked() {

@@ -18,6 +18,7 @@ import (
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
@@ -28,7 +29,6 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -78,7 +78,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		ctx, cancel := context.WithCancel(context.Background())
 		p := &Pane{app: app, ctx: ctx, sh: sh, ws: ws, idx: idx, collapsed: map[string]bool{}}
 		off := sl.RegisterPanel(slots.Panel{
-			ID: PanelID, Title: "Backlinks", Icon: icon.Must("link"), Dock: slots.Context, Order: 2,
+			ID: PanelID, Title: "Backlinks", Icon: icon.Link.SVG(), Dock: slots.Context, Order: 2,
 			View: p.view, State: p.state, Restore: p.restore,
 		})
 		rctx.On(indexplugin.ChangedEvent, func(context.Context, ...any) (any, error) {
@@ -293,7 +293,7 @@ func (p *Pane) fileRow(c *ui.Context, b *indexplugin.Backlink) {
 			ui.Box(c).Width(14).Shrink(0)
 		}
 		if b.URL != "" {
-			ui.Icon(c, icon.Must("globe")).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
+			ui.Icon(c, icon.Globe.SVG()).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
 		} else {
 			p.app.Icons().Render(c, b.Display, false, false, t.Dark, 15)
 		}

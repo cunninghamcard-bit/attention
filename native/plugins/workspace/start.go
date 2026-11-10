@@ -7,13 +7,13 @@ import (
 	"strings"
 
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/fuzzy"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // startPage is what a tab with nothing open shows (RFC 0003 §3): the
@@ -24,7 +24,7 @@ func (ws *Workspace) startPage(c *ui.Context) {
 	ui.Scroll(c).Grow(1).Fill().Background(t.Background).Children(func() {
 		ui.Column(c).FillWidth().AlignItems(ui.Center).Padding(96, 24, 24, 24).Children(func() {
 			ui.Column(c).FillWidth().MaxWidth(560).Gap(10).Children(func() {
-				aui.AddressBar(c, aui.AddressBarProps{Key: "start:omnibox", Icon: icon.Must("search"),
+				aui.AddressBar(c, aui.AddressBarProps{Key: "start:omnibox", Icon: icon.Search.SVG(),
 					Prefix: "Search tabs, files and commands, or enter a URL…", OnClick: func() { ws.sl.OpenPalette(omniboxID) }})
 				if recent := ws.recentFiles[:min(len(ws.recentFiles), 8)]; len(recent) > 0 {
 					aui.SectionLabel(c, "Recent").Margin(14, 10, 0, 10)
@@ -42,7 +42,7 @@ func (ws *Workspace) startPage(c *ui.Context) {
 						for _, m := range ws.mounts {
 							col, _ := aui.ParseColor(m.Color)
 							project := button.Button(c, button.ButtonProps{Variant: button.ButtonSecondary, LabelKey: m.Name, Children: func() {
-								ui.Icon(c, icon.Must("folder")).Size(16, 16).TextColor(col)
+								ui.Icon(c, icon.Folder.SVG()).Size(16, 16).TextColor(col)
 								ui.Text(c, m.Name)
 							}})
 							if project.Clicked() {
@@ -89,7 +89,7 @@ func (ws *Workspace) tabItems(query string) []slots.PaletteItem {
 	for _, r := range fuzzy.Rank(query, len(cards), func(i int) string { return cards[i].text }, 20) {
 		cd := cards[r.Index]
 		entry, title := ws.cardEntry(cd.g)
-		glyph := icon.Must("globe")
+		glyph := icon.Globe.SVG()
 		switch t := cd.g.current(); {
 		case t != nil:
 			glyph = ws.tabIcon(t)

@@ -12,6 +12,7 @@ import (
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
@@ -22,7 +23,6 @@ import (
 	fsplugin "github.com/cunninghamcard-bit/attention/native/plugins/fs"
 	"github.com/cunninghamcard-bit/attention/native/plugins/shell"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -223,9 +223,9 @@ func (v *Viewer) status(c *ui.Context, p tabtypes.Props) {
 
 func (v *Viewer) actions(c *ui.Context, p tabtypes.Props) {
 	d := v.doc(p)
-	label, glyph := "Switch to source view", icon.Must("code")
+	label, glyph := "Switch to source view", icon.Code.SVG()
 	if d.source {
-		label, glyph = "Switch to reading view", icon.Must("book-open")
+		label, glyph = "Switch to reading view", icon.BookOpen.SVG()
 	}
 	b := button.Button(c, button.ButtonProps{Label: label, Variant: button.ButtonGhost, Size: button.ButtonSm,
 		Children: func() { ui.Icon(c, glyph).Size(14, 14) }}).Width(28).PaddingX(0)
@@ -240,7 +240,7 @@ func (v *Viewer) menu(id int) []tabtypes.MenuItem {
 	if !ok {
 		return nil
 	}
-	return []tabtypes.MenuItem{{Title: "Toggle reading view", Icon: icon.Must("book-open"), Checked: !d.source, Run: func() { d.source = !d.source }}}
+	return []tabtypes.MenuItem{{Title: "Toggle reading view", Icon: icon.BookOpen.SVG(), Checked: !d.source, Run: func() { d.source = !d.source }}}
 }
 
 func (v *Viewer) followLink(from, url string) {

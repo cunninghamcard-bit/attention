@@ -1,5 +1,5 @@
-// Package icon embeds the Lucide icons attention draws, parsed on first
-// use (port of CrychicUI's icon package, cut to the icons in use).
+// Package icon embeds the Lucide icons attention draws that acard-ui's
+// icon package lacks, parsed on first use (port of CrychicUI's icon).
 package icon
 
 import (

@@ -6,9 +6,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/ui"
 
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
+	auiicon "github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 var (
@@ -269,9 +270,9 @@ var (
 func Pierre(name string, dir, open, _ bool) *ui.SVG {
 	if dir {
 		if open {
-			return icon.Must("folder-open")
+			return icon.FolderOpen.SVG()
 		}
-		return icon.Must("folder-closed")
+		return auiicon.Must("folder-closed")
 	}
 	return PierreSVG(name)
 }

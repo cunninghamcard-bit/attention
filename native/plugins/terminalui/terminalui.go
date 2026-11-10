@@ -26,6 +26,7 @@ import (
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/cunninghamcard-bit/acard-ui/components/input"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
 
@@ -39,7 +40,6 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 const (
@@ -341,7 +341,7 @@ func Register(sh *shell.Shell, sl *slots.Registry, tt *tabtypes.Registry, ws *wo
 	openHere := func() { t.open("") }
 	offs := []func(){
 		tt.Register(tabtypes.TabType{ID: ID, Kind: Kind, Priority: tabtypes.Builtin,
-			Patterns: []string{"attention://terminal/*"}, Title: title, Icon: icon.Must("square-terminal"),
+			Patterns: []string{"attention://terminal/*"}, Title: title, Icon: icon.SquareTerminal.SVG(),
 			Body: t.body, Closed: t.closed}),
 		act.Add(actions.Command{ID: "terminal:open", Title: "Open terminal", Keys: "Ctrl J", Main: openHere, CLI: true,
 			Run: func(ctx context.Context, a actions.Args) (string, error) {
@@ -351,7 +351,7 @@ func Register(sh *shell.Shell, sl *slots.Registry, tt *tabtypes.Registry, ws *wo
 				}
 				return shell.OnMain(ctx, sh, func() (string, error) { t.open(dir); return "Opened terminal", nil })
 			}}),
-		sl.RegisterSettingsSection(slots.SettingsSection{ID: "terminal", Title: "Terminal", Icon: icon.Must("square-terminal"),
+		sl.RegisterSettingsSection(slots.SettingsSection{ID: "terminal", Title: "Terminal", Icon: icon.SquareTerminal.SVG(),
 			Group: slots.CorePlugins, Keywords: []string{"Shell", "Copy and paste", "Font family", "Font size"}, View: t.settingTab}),
 	}
 	return func() {

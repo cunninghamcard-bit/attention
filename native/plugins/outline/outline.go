@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/arcships/rutis/go/rutis"
+	"github.com/cunninghamcard-bit/acard-ui/icon"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/plugins/actions"
@@ -20,7 +21,6 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/workspace"
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
-	"github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
 // ID is the plugin's name; PanelID the slot id (OutlineView.getViewType).
@@ -63,7 +63,7 @@ var Plugin = rutis.Define(rutis.Plugin[struct{}]{
 		ctx, cancel := context.WithCancel(context.Background())
 		p := &Pane{ctx: ctx, sh: sh, ws: ws, idx: idx}
 		off := sl.RegisterPanel(slots.Panel{
-			ID: PanelID, Title: "Outline", Icon: icon.Must("list"), Dock: slots.Context, Order: 1,
+			ID: PanelID, Title: "Outline", Icon: icon.List.SVG(), Dock: slots.Context, Order: 1,
 			View: p.view,
 		})
 		rctx.On(indexplugin.ChangedEvent, func(context.Context, ...any) (any, error) {
