@@ -181,7 +181,8 @@ func Rows(profile string, mounts []string, extra ...*rutis.Definition) (rows []m
 		map[string]any{"id": "web-history", "name": "go:web-history"},
 		map[string]any{"id": "web-index", "name": "go:web-index"},
 		map[string]any{"id": "webview-panel-ui", "name": "go:webview-panel-ui"},
-		map[string]any{"id": "terminal-ui", "name": "go:terminal-ui"})...)
+		map[string]any{"id": "terminal-ui", "name": "go:terminal-ui"},
+		map[string]any{"id": "chat-ui", "name": "go:chat-ui"})...)
 	for _, d := range extra {
 		out = append(out, map[string]any{"id": d.Name(), "name": "go:" + d.Name()})
 	}

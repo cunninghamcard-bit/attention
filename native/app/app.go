@@ -35,6 +35,7 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/appearance"
 	"github.com/cunninghamcard-bit/attention/native/plugins/backlinks"
 	"github.com/cunninghamcard-bit/attention/native/plugins/bookmarks"
+	"github.com/cunninghamcard-bit/attention/native/plugins/chat"
 	"github.com/cunninghamcard-bit/attention/native/plugins/cli"
 	"github.com/cunninghamcard-bit/attention/native/plugins/commandpalette"
 	"github.com/cunninghamcard-bit/attention/native/plugins/fileresource"
@@ -72,7 +73,7 @@ var plugins = []*rutis.Definition{
 	shell.Plugin, slots.Plugin, resources.Plugin, actions.Plugin, cli.Plugin, fs.Plugin, project.Plugin, fileresource.Plugin, index.Plugin, layout.Plugin, workspace.Plugin,
 	shortcuts.Plugin, palette.Plugin, switcher.Plugin, commandpalette.Plugin, omnibox.Plugin, gotoline.Plugin, settings.Plugin, appearance.Plugin,
 	filetree.Plugin, search.Plugin, backlinks.Plugin, outline.Plugin, bookmarks.Plugin, textui.Plugin, markdownui.Plugin, imageui.Plugin,
-	web.Plugin, webread.Plugin, webhistory.Plugin, webindex.Plugin, webviewpanel.Plugin, terminalui.Plugin,
+	web.Plugin, webread.Plugin, webhistory.Plugin, webindex.Plugin, webviewpanel.Plugin, terminalui.Plugin, chat.Plugin,
 }
 
 // Main runs attention, including any extra plugins compiled in via `attention build --with`.
