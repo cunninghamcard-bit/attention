@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
+	"github.com/cunninghamcard-bit/acard-ui/tokens"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/ui/icon"
@@ -54,16 +56,16 @@ type AddressBarProps struct {
 // card. The element returned is the row, for the caller's click, drag and
 // context menu.
 func TabRow(c *ui.Context, p TabRowProps) ui.Element {
-	t := c.Theme()
+	tok := tokens.TokensOf(c)
 	row := ui.Row(c).Key(p.Key).Height(tabRowHeight).AlignSelf(ui.Stretch).MinWidth(0).Padding(0, 4, 0, 10).Gap(8).
-		AlignItems(ui.Center).Radius(controlRadius(t)).Cursor(ui.CursorPointer).Focusable().Role(ui.RoleTab).
+		AlignItems(ui.Center).Radius(tok.RadiusControl).Cursor(ui.CursorPointer).Focusable().Role(ui.RoleTab).
 		Checked(p.Selected).Label(p.Title)
 	if p.Tooltip != "" {
 		tooltip.Tooltip(c, row, tooltip.TooltipProps{Text: p.Tooltip})
 	}
 	hovered := row.Hovered()
 	k := TokensOf(c)
-	fg, wash := t.Text, ui.Color{}
+	fg, wash := tok.Foreground, ui.Color{}
 	switch {
 	case p.Selected:
 		wash = k.TabRowSelected
@@ -72,12 +74,12 @@ func TabRow(c *ui.Context, p TabRowProps) ui.Element {
 		wash = k.TabRowHover
 	}
 	if p.Muted && !p.Selected {
-		fg = t.TextMuted
+		fg = tok.TextSecondary
 	}
 	row.Background(Face(c, row, "aui.tabrow", wash)).TextColor(fg)
 	row.Children(func() {
 		tabFace(c, p.Icon, p.IconColor, fg)
-		ui.Text(c, p.Title).FontSize(labelSize).FontWeight(500).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
+		ui.Text(c, p.Title).FontSize(tok.TextSm).FontWeight(500).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
 		closeButton(c, p.CloseLabel, p.OnClose, 24, p.Selected || hovered)
 	})
 	return row
@@ -87,9 +89,9 @@ func TabRow(c *ui.Context, p TabRowProps) ui.Element {
 // one row, the focused one raised while the split is selected. It returns
 // the row and each part, for the caller's clicks, drags and menus.
 func SplitRow(c *ui.Context, key any, selected bool, parts []SplitPart) (ui.Element, []ui.Element) {
-	t := c.Theme()
+	tok := tokens.TokensOf(c)
 	row := ui.Row(c).Key(key).Height(tabRowHeight).AlignSelf(ui.Stretch).MinWidth(0).Padding(3).Gap(3).
-		AlignItems(ui.Stretch).Radius(controlRadius(t)).Role(ui.RoleGroup)
+		AlignItems(ui.Stretch).Radius(tok.RadiusControl).Role(ui.RoleGroup)
 	k := TokensOf(c)
 	wash := ui.Color{}
 	switch {
@@ -103,7 +105,7 @@ func SplitRow(c *ui.Context, key any, selected bool, parts []SplitPart) (ui.Elem
 	row.Children(func() {
 		for _, sp := range parts {
 			part := ui.Row(c).Key(sp.Key).Width(0).Grow(1).MinWidth(0).Padding(0, 2, 0, 7).Gap(6).AlignItems(ui.Center).
-				Radius(max(controlRadius(t)-3, 0)).Cursor(ui.CursorPointer).Focusable().Role(ui.RoleTab).
+				Radius(max(tok.RadiusControl-3, 0)).Cursor(ui.CursorPointer).Focusable().Role(ui.RoleTab).
 				Checked(selected && sp.Focused).Label(sp.Title)
 			if sp.Title != "" {
 				tooltip.Tooltip(c, part, tooltip.TooltipProps{Text: sp.Title})
@@ -116,11 +118,11 @@ func SplitRow(c *ui.Context, key any, selected bool, parts []SplitPart) (ui.Elem
 			case part.Hovered():
 				face = k.TabRowHover
 			}
-			part.Background(Face(c, part, "aui.splitpart", face)).TextColor(t.Text)
+			part.Background(Face(c, part, "aui.splitpart", face)).TextColor(tok.Foreground)
 			shown := (selected && sp.Focused) || part.Hovered()
 			part.Children(func() {
-				tabFace(c, sp.Icon, sp.IconColor, t.Text)
-				ui.Text(c, sp.Title).FontSize(smallSize).FontWeight(500).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
+				tabFace(c, sp.Icon, sp.IconColor, tok.Foreground)
+				ui.Text(c, sp.Title).FontSize(tok.TextXs).FontWeight(500).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
 				closeButton(c, sp.CloseLabel, sp.OnClose, 20, shown)
 			})
 			out = append(out, part)
@@ -132,19 +134,19 @@ func SplitRow(c *ui.Context, key any, selected bool, parts []SplitPart) (ui.Elem
 // AddressBar draws the address bar: a translucent pill with the address,
 // a lock for a file shown read-only, and Trailing at its end.
 func AddressBar(c *ui.Context, p AddressBarProps) ui.Element {
-	t := c.Theme()
+	tok := tokens.TokensOf(c)
 	key := p.Key
 	if key == nil {
 		key = "aui.address"
 	}
 	bar := ui.Row(c).Key(key).FillWidth().Height(tabRowHeight).Padding(0, 3, 0, 10).Gap(6).
-		AlignItems(ui.Center).Radius(controlRadius(t))
+		AlignItems(ui.Center).Radius(tok.RadiusControl)
 	k := TokensOf(c)
 	face := k.AddressBar
 	if p.Body == nil && bar.Hovered() {
 		face = k.AddressBarHover
 	}
-	bar.Background(Face(c, bar, "aui.address", face)).TextColor(t.Text)
+	bar.Background(Face(c, bar, "aui.address", face)).TextColor(tok.Foreground)
 	bar.Children(func() {
 		if p.Body != nil {
 			ui.Row(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Children(p.Body)
@@ -153,17 +155,17 @@ func AddressBar(c *ui.Context, p AddressBarProps) ui.Element {
 				Role(ui.RoleButton).Label(p.Prefix + p.Name)
 			text.Children(func() {
 				if p.Locked {
-					lock := ui.Icon(c, icon.Must("file-lock")).Size(iconSmall, iconSmall).TextColor(t.TextMuted).Shrink(0)
+					lock := ui.Icon(c, icon.Must("file-lock")).Size(iconSmall, iconSmall).TextColor(tok.TextSecondary).Shrink(0)
 					tooltip.Tooltip(c, lock, tooltip.TooltipProps{Text: "Read-only"})
 				} else if p.Icon != nil {
-					ui.Icon(c, p.Icon).Size(iconSmall, iconSmall).TextColor(t.TextMuted).Shrink(0)
+					ui.Icon(c, p.Icon).Size(iconSmall, iconSmall).TextColor(tok.TextSecondary).Shrink(0)
 				}
 				ui.Row(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Children(func() {
 					if p.Prefix != "" {
-						ui.Text(c, p.Prefix).FontSize(smallSize).TextColor(t.TextMuted).SingleLine().Ellipsis("…").
+						ui.Text(c, p.Prefix).FontSize(tok.TextXs).TextColor(tok.TextSecondary).SingleLine().Ellipsis("…").
 							Shrink(1).MinWidth(0)
 					}
-					ui.Text(c, p.Name).FontSize(smallSize).FontWeight(500).SingleLine().Ellipsis("…").Shrink(0).MaxWidth(160)
+					ui.Text(c, p.Name).FontSize(tok.TextXs).FontWeight(500).SingleLine().Ellipsis("…").Shrink(0).MaxWidth(160)
 				})
 			})
 			if p.OnClick != nil && text.Clicked() {
@@ -196,26 +198,18 @@ func tabFace(c *ui.Context, glyph *ui.SVG, glyphColor, fg ui.Color) {
 	ui.Icon(c, glyph).Size(iconSize, iconSize).Shrink(0).TextColor(ink)
 }
 
-// closeButton is a row's close button, its x drawn while shown or hovered;
-// none when label is empty.
+// closeButton is a row's close button, its x drawn while shown; none when
+// label is empty.
 func closeButton(c *ui.Context, label string, onClose func(), size float32, shown bool) {
 	if label == "" {
 		return
 	}
-	t, k := c.Theme(), TokensOf(c)
-	x := ui.ButtonBase(c).Label(label).Size(size, size).Radius(6).Shrink(0).
-		AlignItems(ui.Center).Justify(ui.Center).Cursor(ui.CursorPointer)
-	face := ui.Color{}
-	if x.Hovered() {
-		face = k.FillHover
-	}
-	x.Background(Face(c, x, "aui.tabclose", face))
-	if onClose != nil {
-		x.OnClick(onClose)
-	}
-	x.Children(func() {
-		if shown || x.Hovered() {
-			ui.Icon(c, icon.Must("x")).Size(12, 12).TextColor(t.TextMuted)
+	x := button.Button(c, button.ButtonProps{Label: label, Variant: button.ButtonGhost, Size: button.ButtonSm, Children: func() {
+		if shown {
+			ui.Icon(c, icon.Must("x")).Size(12, 12)
 		}
-	})
+	}}).Size(size, size).MinHeight(size).PaddingX(0).Radius(6).Shrink(0)
+	if onClose != nil && x.Clicked() {
+		onClose()
+	}
 }

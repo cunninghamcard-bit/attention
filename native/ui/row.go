@@ -3,6 +3,7 @@ package ui
 import (
 	"cmp"
 
+	"github.com/cunninghamcard-bit/acard-ui/tokens"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/ui/icon"
@@ -47,29 +48,29 @@ type CommandRowProps struct {
 // SideRow draws a borderless pill row and leaves its contents to the
 // caller, who reads Clicked or attaches a menu after it returns.
 func SideRow(c *ui.Context, p SideRowProps) ui.Element {
-	t := c.Theme()
+	tok := tokens.TokensOf(c)
 	depth := max(p.Depth, 0)
 	row := ui.Row(c).Key(p.Key).Height(cmp.Or(p.Height, sideRowHeight)).AlignSelf(ui.Stretch).MinWidth(0).
 		Padding(0, 8, 0, 8+float32(depth)*indentStep).Gap(6).AlignItems(ui.Center).
-		Radius(controlRadius(t)).Focusable().Role(ui.RoleButton).Checked(p.Selected).Cursor(ui.CursorPointer)
+		Radius(tok.RadiusControl).Focusable().Role(ui.RoleButton).Checked(p.Selected).Cursor(ui.CursorPointer)
 	k := TokensOf(c)
-	fg, wash := t.TextMuted, ui.Color{}
+	fg, wash := tok.TextSecondary, ui.Color{}
 	switch {
 	case p.Selected:
-		fg, wash = t.Text, k.TabRowSelected
+		fg, wash = tok.Foreground, k.TabRowSelected
 		k.TabRowShadow.On(row)
 	case row.Hovered():
-		fg, wash = t.Text, k.TabRowHover
+		fg, wash = tok.Foreground, k.TabRowHover
 	}
 	if p.Guides && depth > 0 {
-		line := k.BorderSubtle
+		line := tok.BorderSubtle
 		row.DrawOver(func(painter *ui.Painter, r ui.Rect) {
 			for d := range depth {
 				painter.Fill(ui.Rect{X: r.X + 15 + float32(d)*indentStep, Y: r.Y, W: 1, H: r.H}, line, 0)
 			}
 		})
 	}
-	return row.Background(Face(c, row, "aui.siderow", wash)).TextColor(fg).FontSize(labelSize)
+	return row.Background(Face(c, row, "aui.siderow", wash)).TextColor(fg).FontSize(tok.TextSm)
 }
 
 // Disclosure is the chevron of a row that expands: it points right, and
@@ -90,51 +91,51 @@ func Disclosure(c *ui.Context, open bool, size float32) ui.Element {
 // SidebarItem draws a navigation row; the element returned reports
 // Clicked.
 func SidebarItem(c *ui.Context, p SidebarItemProps) ui.Element {
-	t := c.Theme()
-	b := ui.ButtonBase(c).Label(p.Label).Checked(p.Selected).FillWidth().Height(32).PaddingX(10).Gap(8).
-		Radius(controlRadius(t)).AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer)
+	tok := tokens.TokensOf(c)
+	b := ui.ButtonBase(c).Label(p.Label).Checked(p.Selected).FillWidth().Height(tok.ControlHeightMd).PaddingX(10).Gap(8).
+		Radius(tok.RadiusControl).AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer)
 	if p.Key != nil {
 		b.Key(p.Key)
 	}
 	k := TokensOf(c)
-	fg, wash, weight := t.TextMuted, ui.Color{}, 400
+	fg, wash, weight := tok.TextSecondary, ui.Color{}, 400
 	switch {
 	case p.Selected:
-		fg, wash, weight = t.Text, k.TabRowSelected, 500
+		fg, wash, weight = tok.Foreground, k.TabRowSelected, 500
 		k.TabRowShadow.On(b)
 	case b.Hovered():
-		fg, wash = t.Text, k.TabRowHover
+		fg, wash = tok.Foreground, k.TabRowHover
 	}
 	b.Background(Face(c, b, "aui.nav", wash)).TextColor(fg)
 	b.Children(func() {
 		if p.Icon != nil {
 			ui.Icon(c, p.Icon).Size(iconSize, iconSize).Shrink(0)
 		}
-		ui.Text(c, p.Label).FontSize(labelSize).FontWeight(weight).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
+		ui.Text(c, p.Label).FontSize(tok.TextSm).FontWeight(weight).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
 	})
 	return b
 }
 
 // CommandRow draws a single-line palette row.
 func CommandRow(c *ui.Context, p CommandRowProps) ui.Element {
-	t := c.Theme()
-	b := ui.ButtonBase(c).Key(p.Key).Label(p.Label).FillWidth().Height(36).PaddingX(10).
-		Radius(t.Radius).Gap(10).AlignItems(ui.Center).Cursor(ui.CursorPointer)
+	tok := tokens.TokensOf(c)
+	b := ui.ButtonBase(c).Key(p.Key).Label(p.Label).FillWidth().Height(tok.ControlHeightLg).PaddingX(10).
+		Radius(c.Theme().Radius).Gap(10).AlignItems(ui.Center).Cursor(ui.CursorPointer)
 	wash := ui.Color{}
 	switch {
 	case p.Selected:
-		wash = TokensOf(c).FillAccent
+		wash = tok.AccentSubtle
 	case b.Hovered():
-		wash = TokensOf(c).FillHover
+		wash = tok.SurfaceMuted
 	}
-	b.Background(Face(c, b, "aui.command", wash)).TextColor(t.Text)
+	b.Background(Face(c, b, "aui.command", wash)).TextColor(tok.Foreground)
 	b.Children(func() {
 		if p.Icon != nil {
-			ui.Icon(c, p.Icon).Size(iconSize, iconSize).Shrink(0).TextColor(t.TextMuted)
+			ui.Icon(c, p.Icon).Size(iconSize, iconSize).Shrink(0).TextColor(tok.TextSecondary)
 		}
-		ui.Text(c, p.Label).FontSize(14).SingleLine().Ellipsis("…").Shrink(1).MinWidth(0)
+		ui.Text(c, p.Label).FontSize(tok.TextBase).SingleLine().Ellipsis("…").Shrink(1).MinWidth(0)
 		if p.Detail != "" {
-			ui.Text(c, p.Detail).FontSize(smallSize).TextColor(t.TextMuted).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0)
+			ui.Text(c, p.Detail).FontSize(tok.TextXs).TextColor(tok.TextSecondary).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0)
 		}
 		ui.Box(c).Grow(1)
 		if p.Trailing != nil {
