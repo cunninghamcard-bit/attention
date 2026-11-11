@@ -81,7 +81,7 @@ func buildEditor(u *ui.Theme, k *aui.Tokens, t Theme, s Settings) *editor.Theme 
 	ed.Background, ed.Text, ed.Cursor = k.BgPage, b[5], b[5]
 	ed.LineNumber, ed.ActiveLineNumber, ed.ActiveLine = t.color("grey"), t.color("white"), t.color("black2")
 	ed.Selection, ed.InactiveSelection = b[2], b[2].Alpha(0.6)
-	ed.Match, ed.CurrentMatch, ed.Occurrence = b[0xA].Alpha(0.3), b[9].Alpha(0.45), t.color("one_bg3")
+	ed.Match, ed.CurrentMatch, ed.Occurrence = b[0xA].Alpha(0.3), b[9].Alpha(0.45), b[2].Alpha(0.6)
 	ed.MatchingBracket = t.color("grey")
 	ed.IndentGuide, ed.ActiveIndentGuide, ed.WrapGuide = t.color("line"), t.color("grey"), t.color("line")
 	ed.Whitespace = b[3]

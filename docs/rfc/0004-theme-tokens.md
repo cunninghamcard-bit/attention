@@ -100,7 +100,7 @@ ACard 组件的 token（`acard.go` 的 `acardOf`）也从这些 token 映射：`
 | 当前行 | `black2` | |
 | 选区 | `base02`；编辑器没焦点时 `base02@0.6` | |
 | 搜索匹配、当前匹配 | `base0A@0.3`、`base09@0.45` | base46 是整块底色并把字改成 `base01`；我们的编辑器只画底色、字保留语法色，所以加透明度 |
-| 同名引用 | `one_bg3` | `LspReferenceText` |
+| 和选中文字相同的其他文字 | `base02@0.6` | base46 的 `LspReferenceText` 是 `one_bg3`，比选区 `base02` 还深；这里比选区淡 |
 | 配对括号 | `grey` | |
 | 缩进线、当前作用域的缩进线、换行参考线 | `line`、`grey`、`line` | |
 | 空白符 | `base03` | |
