@@ -399,8 +399,6 @@ func (ws *Workspace) face(c *ui.Context, tb *tab) (title, tip string, glyph *ui.
 }
 
 // tint is the window's tint: the active tab's project color.
-func (ws *Workspace) tint() ui.Color { return ws.projectColor(ws.activeTab()) }
-
 // headNav is Back and Forward for the active tab, beside the window
 // controls.
 func (ws *Workspace) headNav(c *ui.Context) {

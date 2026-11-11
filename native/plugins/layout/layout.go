@@ -9,13 +9,11 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"time"
 
 	"github.com/arcships/rutis/go/rutis"
 	"github.com/cunninghamcard-bit/acard-ui/components/button"
 	"github.com/cunninghamcard-bit/acard-ui/components/tooltip"
 	"github.com/cunninghamcard-bit/acard-ui/icon"
-	"github.com/cunninghamcard-bit/acard-ui/tokens"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/cunninghamcard-bit/attention/native/internal/paths"
@@ -111,9 +109,6 @@ type Layout struct {
 	restored              map[string]bool
 	seenLeft              float32
 	notice                string
-	tinted                ui.Theme // the window's theme with the project's surface
-	tintedTokens          aui.Tokens
-	tintedACard           tokens.Tokens
 
 	SaveSoon func()
 }
@@ -279,25 +274,15 @@ func (l *Layout) View(c *ui.Context) {
 			o.View(c)
 		}
 	}
-	root := ui.Row(c).Fill().AlignItems(ui.Stretch)
-	l.tinted, l.tintedTokens, l.tintedACard = *base, *aui.TokensFor(base), *tokens.TokensOf(c)
-	window := root.AnimateColor("tint", l.surface(base), ui.Animation{Duration: 240 * time.Millisecond})
-	l.tinted.Surface, l.tintedTokens.BgWindow = window, window
-	aui.Register(&l.tinted, &l.tintedTokens)
-	tokens.Register(&l.tinted, &l.tintedACard)
-	root.Background(window).Children(func() {
-		c.SetTheme(&l.tinted)
+	ui.Row(c).Fill().AlignItems(ui.Stretch).Background(aui.TokensFor(base).BgWindow).Children(func() {
 		if l.leftOpen {
 			l.sidebar(c)
 		}
-		c.SetTheme(base)
 		l.card(c)
-		c.SetTheme(&l.tinted)
 		if l.rightOpen {
 			l.context(c)
 		}
 		l.toggles(c)
-		c.SetTheme(base)
 	})
 	for _, src := range l.slots.PaletteSources() {
 		l.restore(src.ID, src.Restore)
@@ -331,26 +316,6 @@ func (l *Layout) toggleLeft(c *ui.Context) float32 {
 // controls on the right, where a system has them.
 func (l *Layout) toggleRight(c *ui.Context) float32 {
 	return c.Theme().Spacing + c.TitleBar().Right
-}
-
-// surface is the window's surface: the theme's, mixed toward the active
-// tab's project color (RFC 0003 §5), more in a dark theme where a light
-// mix reads weaker.
-func (l *Layout) surface(t *ui.Theme) ui.Color {
-	window := aui.TokensFor(t).BgWindow
-	tint := l.slots.Chrome().Tint
-	if tint == nil {
-		return window
-	}
-	col := tint()
-	if col.A == 0 {
-		return window
-	}
-	amount := float32(0.12)
-	if t.Dark {
-		amount = 0.18
-	}
-	return window.Mix(col, amount)
 }
 
 func (l *Layout) changed() {

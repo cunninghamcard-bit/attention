@@ -21,7 +21,6 @@ import (
 	"github.com/cunninghamcard-bit/attention/native/plugins/shortcuts"
 	"github.com/cunninghamcard-bit/attention/native/plugins/slots"
 	"github.com/cunninghamcard-bit/attention/native/plugins/tabtypes"
-	aui "github.com/cunninghamcard-bit/attention/native/ui"
 )
 
 const (
@@ -263,16 +262,6 @@ func (ws *Workspace) projectOf(t *tab) (projectplugin.Mount, bool) {
 	}
 	m, _, ok := ws.mountOf(t.path)
 	return m, ok
-}
-
-// projectColor is the color of t's project, the zero color for none.
-func (ws *Workspace) projectColor(t *tab) ui.Color {
-	m, ok := ws.projectOf(t)
-	if !ok {
-		return ui.Color{}
-	}
-	col, _ := aui.ParseColor(m.Color)
-	return col
 }
 
 // display is a path as the CLI and the tabs' tooltips show it.
