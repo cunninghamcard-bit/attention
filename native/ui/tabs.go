@@ -180,13 +180,6 @@ func AddressBar(c *ui.Context, p AddressBarProps) ui.Element {
 	return bar
 }
 
-// Dot draws a project's color dot, nothing for the zero color.
-func Dot(c *ui.Context, color ui.Color) {
-	if color.A > 0 {
-		ui.Box(c).Size(6, 6).Radius(3).Background(color).Shrink(0)
-	}
-}
-
 // tabFace is a tab's icon.
 func tabFace(c *ui.Context, glyph *ui.SVG, glyphColor, fg ui.Color) {
 	if glyph == nil {
