@@ -63,14 +63,11 @@ type Panel struct {
 
 // Chrome is what the center adds to the window around it: Nav beside the
 // window controls (back and forward), Bar under them (the address bar),
-// Status in the sidebar's status line (the active tab's), and Tint, the
-// color the window's surface leans to (the active tab's project), the zero
-// color for none.
+// and Status in the sidebar's status line (the active tab's).
 type Chrome struct {
 	Nav    func(c *ui.Context)
 	Bar    func(c *ui.Context)
 	Status func(c *ui.Context)
-	Tint   func() ui.Color
 }
 
 // Overlay is an overlay contribution (RFC §5.5's overlay slot).

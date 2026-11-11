@@ -15,7 +15,7 @@ const (
 
 // SideRowProps is a tree or panel row the caller fills: Key keeps its
 // hover across rebuilds, Depth indents it one step per level, Height
-// overrides the 28 DIP row, and Guides draws a hairline per level.
+// overrides the 28 DIP compact row, and Guides draws a hairline per level.
 type SideRowProps struct {
 	Key      any
 	Selected bool
@@ -49,7 +49,7 @@ type CommandRowProps struct {
 func SideRow(c *ui.Context, p SideRowProps) ui.Element {
 	tok := tokens.TokensOf(c)
 	depth := max(p.Depth, 0)
-	row := ui.Row(c).Key(p.Key).Height(cmp.Or(p.Height, sideRowHeight)).AlignSelf(ui.Stretch).MinWidth(0).
+	row := ui.Row(c).Key(p.Key).Height(cmp.Or(p.Height, sideRowHeight)+TokensOf(c).RowStep).AlignSelf(ui.Stretch).MinWidth(0).
 		Padding(0, 8, 0, 8+float32(depth)*indentStep).Gap(6).AlignItems(ui.Center).
 		Radius(tok.RadiusControl).Focusable().Role(ui.RoleButton).Checked(p.Selected).Cursor(ui.CursorPointer)
 	k := TokensOf(c)

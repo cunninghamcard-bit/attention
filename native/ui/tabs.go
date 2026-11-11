@@ -58,7 +58,7 @@ type AddressBarProps struct {
 // context menu.
 func TabRow(c *ui.Context, p TabRowProps) ui.Element {
 	tok := tokens.TokensOf(c)
-	row := ui.Row(c).Key(p.Key).Height(tabRowHeight).AlignSelf(ui.Stretch).MinWidth(0).Padding(0, 4, 0, 10).Gap(8).
+	row := ui.Row(c).Key(p.Key).Height(tabRowHeight+TokensOf(c).RowStep).AlignSelf(ui.Stretch).MinWidth(0).Padding(0, 4, 0, 10).Gap(8).
 		AlignItems(ui.Center).Radius(tok.RadiusControl).Cursor(ui.CursorPointer).Focusable().Role(ui.RoleTab).
 		Checked(p.Selected).Label(p.Title)
 	if p.Tooltip != "" {
@@ -91,7 +91,7 @@ func TabRow(c *ui.Context, p TabRowProps) ui.Element {
 // the row and each part, for the caller's clicks, drags and menus.
 func SplitRow(c *ui.Context, key any, selected bool, parts []SplitPart) (ui.Element, []ui.Element) {
 	tok := tokens.TokensOf(c)
-	row := ui.Row(c).Key(key).Height(tabRowHeight).AlignSelf(ui.Stretch).MinWidth(0).Padding(3).Gap(3).
+	row := ui.Row(c).Key(key).Height(tabRowHeight + TokensOf(c).RowStep).AlignSelf(ui.Stretch).MinWidth(0).Padding(3).Gap(3).
 		AlignItems(ui.Stretch).Radius(tok.RadiusControl).Role(ui.RoleGroup)
 	k := TokensOf(c)
 	wash := ui.Color{}
@@ -140,7 +140,7 @@ func AddressBar(c *ui.Context, p AddressBarProps) ui.Element {
 	if key == nil {
 		key = "aui.address"
 	}
-	bar := ui.Row(c).Key(key).FillWidth().Height(tabRowHeight).Padding(0, 3, 0, 10).Gap(6).
+	bar := ui.Row(c).Key(key).FillWidth().Height(tabRowHeight+TokensOf(c).RowStep).Padding(0, 3, 0, 10).Gap(6).
 		AlignItems(ui.Center).Radius(tok.RadiusControl)
 	k := TokensOf(c)
 	face := k.AddressBar
@@ -178,13 +178,6 @@ func AddressBar(c *ui.Context, p AddressBarProps) ui.Element {
 		}
 	})
 	return bar
-}
-
-// Dot draws a project's color dot, nothing for the zero color.
-func Dot(c *ui.Context, color ui.Color) {
-	if color.A > 0 {
-		ui.Box(c).Size(6, 6).Radius(3).Background(color).Shrink(0)
-	}
 }
 
 // tabFace is a tab's icon.

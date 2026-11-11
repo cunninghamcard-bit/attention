@@ -33,8 +33,12 @@ import (
 	auiicon "github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
-// PanelID is the Files panel's slot id.
-const PanelID = "file-explorer"
+const (
+	// PanelID is the Files panel's slot id.
+	PanelID = "file-explorer"
+	// treeRowHeight is a file tree row's compact height.
+	treeRowHeight float32 = 26
+)
 
 // Plugin registers the Files panel while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
@@ -443,15 +447,11 @@ func (tr *Tree) view(c *ui.Context) {
 		}
 		rows := tr.treeRows()
 		app := tr.app.Settings()
-		rowH := float32(26)
-		if app.TreeDensity == "comfortable" {
-			rowH = 30
-		}
 		ui.List(c, nil, len(rows), func(i int) {
 			r := rows[i]
 			e := r.entry
 			selected := !e.Dir && e.Path == current
-			row := aui.SideRow(c, aui.SideRowProps{Key: e.Path, Selected: selected, Depth: r.depth, Height: rowH, Guides: app.ShowGuides})
+			row := aui.SideRow(c, aui.SideRowProps{Key: e.Path, Selected: selected, Depth: r.depth, Height: treeRowHeight, Guides: app.ShowGuides})
 			if row.Clicked() {
 				if e.Dir {
 					tr.toggleDir(e.Path)
@@ -470,10 +470,6 @@ func (tr *Tree) view(c *ui.Context) {
 				row.ContextMenu(func(menu *ui.Menu) { tr.colorMenu(menu, m) })
 			}
 			row.Children(func() {
-				if r.mount != nil {
-					col, _ := aui.ParseColor(r.mount.Color)
-					aui.Dot(c, col)
-				}
 				if e.Dir {
 					d := tr.dirs[e.Path]
 					open := d != nil && d.expanded
@@ -590,18 +586,16 @@ func (tr *Tree) shownMount() (projectplugin.Mount, bool) {
 	return projectplugin.Mount{}, false
 }
 
-// heading is the section's header: the shown project's dot and name, a
-// menu of its colors on right click.
+// heading is the section's header: the shown project's name, a menu of
+// its colors on right click.
 func (tr *Tree) heading(c *ui.Context) {
 	m, ok := tr.shownMount()
 	if !ok {
 		aui.SectionLabel(c, "Projects")
 		return
 	}
-	col, _ := aui.ParseColor(m.Color)
 	ui.Row(c).Grow(1).MinWidth(0).Gap(8).AlignItems(ui.Center).ContextMenu(func(menu *ui.Menu) { tr.colorMenu(menu, m) }).
 		Children(func() {
-			aui.Dot(c, col)
 			ui.Text(c, m.Name).FontSize(13).FontWeight(600).SingleLine().Ellipsis("…").Shrink(1).MinWidth(0)
 		})
 }

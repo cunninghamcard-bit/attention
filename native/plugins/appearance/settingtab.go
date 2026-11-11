@@ -1,7 +1,6 @@
 package appearance
 
 import (
-	"cmp"
 	"os"
 	"slices"
 	"strings"
@@ -17,11 +16,9 @@ import (
 	aui "github.com/cunninghamcard-bit/attention/native/ui"
 )
 
-const followInterface = "follow-interface"
-
 type tab struct {
-	accent, iface, text, mono string
-	init                      bool
+	iface, text, mono string
+	init              bool
 }
 
 type rowSpec struct {
@@ -38,7 +35,7 @@ type sectionSpec struct {
 func (a *Appearance) View(c *ui.Context) {
 	s := a.Settings()
 	if !a.tab.init {
-		a.tab = tab{accent: s.AccentColor, iface: s.InterfaceFont, text: s.TextFont, mono: s.MonospaceFont, init: true}
+		a.tab = tab{iface: s.InterfaceFont, text: s.TextFont, mono: s.MonospaceFont, init: true}
 	}
 	for _, sec := range a.sections(s) {
 		aui.SettingsSection(c, sec.title, func() {
@@ -72,16 +69,10 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 				}),
 				a.selectSpec("Light theme", "Color theme in light mode.", "lightTheme", s.LightTheme, a.themeOptions(false)),
 				a.selectSpec("Dark theme", "Color theme in dark mode.", "darkTheme", s.DarkTheme, a.themeOptions(true)),
-				a.selectSpec("Editor colors", "Colors of code, from a theme of ours or a Zed theme file.", "editorTheme", cmp.Or(s.EditorTheme, followInterface), a.editorOptions()),
 				{
 					label:   "Themes folder",
-					desc:    strings.Join(slices.Concat([]string{a.dir}, a.cat.errs, a.of(false).errs, a.of(true).errs), "\n"),
+					desc:    strings.Join(slices.Concat([]string{a.dir}, a.cat.errs), "\n"),
 					control: a.themesFolder,
-				},
-				{
-					label:   "Accent color",
-					desc:    "Hex color (#RRGGBB) in place of the theme's accent; its button and hover shades follow.",
-					control: func(c *ui.Context) { a.accentField(c, s) },
 				},
 				a.selectSpec("File icon theme", "Icon style for the file explorer, tabs, and search results.", "iconTheme", s.IconTheme, []selectmenu.SelectOption{
 					{Value: "pierre", Label: "Pierre (Colored)"},
@@ -117,11 +108,11 @@ func (a *Appearance) sections(s Settings) []sectionSpec {
 			rows: []rowSpec{
 				a.switchSpec("Show inline title", "Display the filename as an editable title inside the document.", "showInlineTitle", s.ShowInline),
 				a.switchSpec("Show file icons", "Display file and folder icons in the file tree and tabs.", "showFileIcons", s.ShowFileIcons),
-				a.selectSpec("File tree density", "Row height in the Files sidebar panel.", "treeDensity", s.TreeDensity, []selectmenu.SelectOption{
-					{Value: "standard", Label: "Standard (26px)"},
-					{Value: "comfortable", Label: "Comfortable (30px)"},
+				a.selectSpec("Density", "Height of controls and rows, room around content, and line height in reading views.", "density", s.Density, []selectmenu.SelectOption{
+					{Value: "compact", Label: "Compact"},
+					{Value: "comfortable", Label: "Comfortable"},
+					{Value: "spacious", Label: "Spacious"},
 				}),
-				a.numberSpec("Spacing", "Base layout spacing unit in DIPs (4–16).", "spacing", float64(s.Spacing), 8, 4, 16),
 				a.numberSpec("Corner radius", "Control and card corner radius in DIPs (0–16).", "radius", float64(s.Radius), 10, 0, 16),
 				a.numberSpec("Scrollbar width", "Scrollbar thumb thickness in DIPs (2–12).", "scrollbarWidth", float64(s.ScrollbarWidth), 4, 2, 12),
 			},
@@ -146,42 +137,11 @@ func (a *Appearance) themesFolder(c *ui.Context) {
 	})
 }
 
-func (a *Appearance) accentField(c *ui.Context, s Settings) {
-	t := c.Theme()
-	ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-		swatch := t.Accent
-		if col, ok := aui.ParseColor(a.tab.accent); ok {
-			swatch = col
-		}
-		ui.Box(c).Size(20, 20).Radius(6).Background(swatch).Border(1, t.Border)
-		prev := a.tab.accent
-		ui.Column(c).Width(110).Children(func() {
-			input.Input(c, &a.tab.accent, input.InputProps{Placeholder: "#526fff"}).Label("Accent color")
-		})
-		if a.tab.accent != prev {
-			if _, ok := aui.ParseColor(a.tab.accent); ok {
-				a.set.Set(settings.Appearance, "accentColor", strings.TrimSpace(a.tab.accent))
-			} else if a.tab.accent == "" {
-				a.set.Unset(settings.Appearance, "accentColor")
-			}
-		}
-		if s.AccentColor != "" {
-			if resetButton(c).Clicked() {
-				a.tab.accent = ""
-				a.set.Unset(settings.Appearance, "accentColor")
-			}
-		}
-	})
-}
-
 func (a *Appearance) selectSpec(label, desc, key, cur string, opts []selectmenu.SelectOption) rowSpec {
 	return rowSpec{label: label, desc: desc, control: func(c *ui.Context) {
 		v := cur
 		selectmenu.Select(c.Key("appearance:"+key), &v, selectmenu.SelectProps{Options: opts}).Label(label).Width(176)
 		if v != cur {
-			if v == followInterface {
-				v = ""
-			}
 			a.set.Set(settings.Appearance, key, v)
 		}
 	}}
@@ -238,14 +198,6 @@ func (a *Appearance) numberSpec(label, desc, key string, cur, def, low, high flo
 			}
 		})
 	}}
-}
-
-func (a *Appearance) editorOptions() []selectmenu.SelectOption {
-	opts := []selectmenu.SelectOption{{Value: followInterface, Label: "Follow the interface theme"}}
-	for _, f := range a.cat.families() {
-		opts = append(opts, selectmenu.SelectOption{Value: f, Label: f})
-	}
-	return opts
 }
 
 func (a *Appearance) themeOptions(dark bool) []selectmenu.SelectOption {

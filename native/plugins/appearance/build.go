@@ -11,24 +11,20 @@ import (
 )
 
 var (
-	// zedSyntax are the Zed syntax keys of each token kind, the first a
-	// scheme sets winning (RFC 0004 §6).
-	zedSyntax = map[editor.TokenKind][]string{
-		editor.TokenKeyword: {"keyword"}, editor.TokenType: {"type"}, editor.TokenFunction: {"function"},
-		editor.TokenVariable: {"variable"}, editor.TokenProperty: {"property"},
-		editor.TokenConstant: {"constant", "boolean"}, editor.TokenNumber: {"number"}, editor.TokenString: {"string"},
-		editor.TokenEscape: {"string.escape", "string.special"}, editor.TokenRegexp: {"string.regex"},
-		editor.TokenComment: {"comment"}, editor.TokenOperator: {"operator"}, editor.TokenPunctuation: {"punctuation"},
-		editor.TokenTag: {"tag"}, editor.TokenAttribute: {"attribute"}, editor.TokenMeta: {"preproc", "attribute"},
-		editor.TokenHeading: {"title"}, editor.TokenEmphasis: {"emphasis"}, editor.TokenStrong: {"emphasis.strong"},
-		editor.TokenLink: {"link_text", "link_uri"}, editor.TokenCode: {"text.literal"},
-		editor.TokenInserted: {"diff.plus"}, editor.TokenDeleted: {"diff.minus"},
+	// syntax are the base_16 colors of the kinds of tokens, as base46's
+	// integrations/syntax.lua and treesitter.lua color them (attention#11).
+	syntax = map[editor.TokenKind]int{
+		editor.TokenText: 5, editor.TokenKeyword: 0xE, editor.TokenFunction: 0xD,
+		editor.TokenType: 0xA, editor.TokenTag: 0xA, editor.TokenAttribute: 0xA, editor.TokenMeta: 0xA,
+		editor.TokenString: 0xB, editor.TokenNumber: 9, editor.TokenConstant: 9, editor.TokenProperty: 8,
+		editor.TokenEscape: 0xC, editor.TokenRegexp: 0xC, editor.TokenVariable: 5, editor.TokenOperator: 5,
+		editor.TokenPunctuation: 0xF, editor.TokenHeading: 0xD, editor.TokenLink: 8, editor.TokenCode: 9,
 	}
-	ansiNames = [...]string{"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"}
+	// ansi are the base_16 colors of the 16 ANSI colors, base46's term.lua.
+	ansi = [16]int{1, 8, 0xB, 0xA, 0xD, 0xE, 0xC, 5, 3, 8, 0xB, 0xA, 0xD, 0xE, 0xC, 7}
 )
 
-// built are the widget themes one Theme, its editor colors and the
-// settings make; errs are the token overrides that did not resolve.
+// built are the widget themes one Theme and the settings make.
 type built struct {
 	ui       *ui.Theme
 	tokens   *aui.Tokens
@@ -36,21 +32,20 @@ type built struct {
 	editor   *editor.Theme
 	markdown *markdown.Theme
 	terminal *terminal.Theme
-	errs     []string
 }
 
-func build(t Theme, sch *Scheme, s Settings) built {
-	accent, _ := aui.ParseColor(s.AccentColor)
-	k, errs := tokens(t, accent)
-	u := project(k, t.Dark, s)
-	ed := buildEditor(u, k, sch, s)
-	return built{ui: u, tokens: k, acard: acardOf(k, u), editor: ed, markdown: buildMarkdown(k, ed, sch, s),
-		terminal: buildTerminal(k, sch, t.Dark), errs: errs}
+func build(t Theme, s Settings) built {
+	d := s.density()
+	k := tokens(t, d)
+	u := project(k, t.Dark, s, d)
+	ed := buildEditor(u, k, t, s)
+	return built{ui: u, tokens: k, acard: acardOf(k, u, d), editor: ed, markdown: buildMarkdown(k, ed, s, d),
+		terminal: buildTerminal(k, t)}
 }
 
 // project is the *ui.Theme MyGo's widgets read: the tokens it has fields
 // for (RFC 0004 §8), and the sizes and font of the settings.
-func project(k *aui.Tokens, dark bool, s Settings) *ui.Theme {
+func project(k *aui.Tokens, dark bool, s Settings, d density) *ui.Theme {
 	u := ui.LightTheme()
 	if dark {
 		u = ui.DarkTheme()
@@ -61,15 +56,12 @@ func project(k *aui.Tokens, dark bool, s Settings) *ui.Theme {
 	u.Danger, u.Warning, u.Success = k.Error, k.Warning, k.Success
 	u.Selection, u.Focus, u.Scrollbar = k.Selection, k.BorderFocus, k.Scrollbar
 	u.Inverse, u.InverseText = k.BgInverse, k.TextInverse
-	u.Radius, u.Spacing, u.FontSize, u.ScrollbarWidth = 10, 8, 14, 4
+	u.Radius, u.Spacing, u.FontSize, u.ScrollbarWidth = 10, d.spacing, 14, 4
 	if s.InterfaceFont != "" {
 		u.Font = s.InterfaceFont
 	}
 	if s.BaseFontSize >= 10 && s.BaseFontSize <= 30 {
 		u.FontSize = s.BaseFontSize
-	}
-	if s.Spacing >= 2 && s.Spacing <= 16 {
-		u.Spacing = s.Spacing
 	}
 	if s.Radius >= 0 && s.Radius <= 20 {
 		u.Radius = s.Radius
@@ -80,136 +72,58 @@ func project(k *aui.Tokens, dark bool, s Settings) *ui.Theme {
 	return u
 }
 
-func buildEditor(u *ui.Theme, k *aui.Tokens, sch *Scheme, s Settings) *editor.Theme {
+// buildEditor is the code editor's theme: attention#11's table over
+// base_16 and base_30, from base46's Neovim highlights, on the page so
+// that a buffer and its card are one surface.
+func buildEditor(u *ui.Theme, k *aui.Tokens, t Theme, s Settings) *editor.Theme {
+	b := t.base16
 	ed := editor.DefaultTheme(u)
-	ed.LineNumber = k.TextTertiary
-	ed.Error, ed.Warning, ed.Info, ed.Hint = k.Error, k.Warning, k.Info, k.TextTertiary
-	ed.Added, ed.Deleted, ed.Modified = k.Success, k.Error, k.Warning
-	ed.Tokens[editor.TokenHeading].Color = k.Text
-	ed.Tokens[editor.TokenLink].Color = k.TextLink
-	ed.Tokens[editor.TokenInserted].Color = k.Success
-	ed.Tokens[editor.TokenDeleted].Color = k.Error
-	ed.Tokens[editor.TokenInvalid].Color = k.Error
-	if sch != nil {
-		applyZed(ed, sch.style)
+	ed.Background, ed.Text, ed.Cursor = k.BgPage, b[5], b[5]
+	ed.LineNumber, ed.ActiveLineNumber, ed.ActiveLine = t.color("grey"), t.color("white"), t.color("black2")
+	ed.Selection, ed.InactiveSelection = b[2], b[2].Alpha(0.6)
+	ed.Match, ed.CurrentMatch, ed.Occurrence = b[0xA].Alpha(0.3), b[9].Alpha(0.45), b[2].Alpha(0.6)
+	ed.MatchingBracket = t.color("grey")
+	ed.IndentGuide, ed.ActiveIndentGuide, ed.WrapGuide = t.color("line"), t.color("grey"), t.color("line")
+	ed.Whitespace = b[3]
+	ed.Error, ed.Warning, ed.Info, ed.Hint = t.color("red"), t.color("yellow"), t.color("green"), t.color("purple")
+	ed.Added, ed.Deleted, ed.Modified = t.color("green"), t.color("red"), t.color("yellow")
+	clear(ed.Tokens[:])
+	for kind, i := range syntax {
+		ed.Tokens[kind].Color = b[i]
 	}
-	ed.Tokens[editor.TokenComment].Italic = ed.Tokens[editor.TokenComment].Italic || s.ItalicComments
+	ed.Tokens[editor.TokenComment] = editor.TokenStyle{Color: t.color("grey_fg"), Italic: s.ItalicComments}
+	ed.Tokens[editor.TokenInserted].Color = t.color("green")
+	ed.Tokens[editor.TokenDeleted].Color = t.color("red")
+	ed.Tokens[editor.TokenInvalid].Color = t.color("red")
 	ed.Tokens[editor.TokenHeading].Bold = true
 	ed.Tokens[editor.TokenStrong].Bold = true
 	ed.Tokens[editor.TokenEmphasis].Italic = true
 	return ed
 }
 
-// applyZed sets what a Zed style sets of ed (RFC 0004 §6).
-func applyZed(ed *editor.Theme, style map[string]any) {
-	for _, f := range []struct {
-		key string
-		dst *ui.Color
-	}{
-		{"editor.background", &ed.Background}, {"editor.foreground", &ed.Text},
-		{"editor.line_number", &ed.LineNumber}, {"editor.active_line_number", &ed.ActiveLineNumber},
-		{"editor.active_line.background", &ed.ActiveLine},
-		{"editor.document_highlight.bracket_background", &ed.MatchingBracket},
-		{"search.match_background", &ed.Match}, {"editor.document_highlight.read_background", &ed.Occurrence},
-		{"editor.indent_guide", &ed.IndentGuide}, {"editor.indent_guide_active", &ed.ActiveIndentGuide},
-		{"editor.wrap_guide", &ed.WrapGuide}, {"editor.invisible", &ed.Whitespace},
-		{"error", &ed.Error}, {"warning", &ed.Warning}, {"info", &ed.Info}, {"hint", &ed.Hint},
-		{"created", &ed.Added}, {"deleted", &ed.Deleted}, {"modified", &ed.Modified},
-	} {
-		if c, ok := zedColor(style[f.key]); ok {
-			*f.dst = c
-		}
-	}
-	if _, ok := zedColor(style["search.match_background"]); ok {
-		ed.CurrentMatch = ed.Match.Alpha(2)
-	}
-	if players, ok := style["players"].([]any); ok && len(players) > 0 {
-		if p, ok := players[0].(map[string]any); ok {
-			if c, ok := zedColor(p["cursor"]); ok {
-				ed.Cursor = c
-			}
-			if c, ok := zedColor(p["selection"]); ok {
-				ed.Selection, ed.InactiveSelection = c, c.Alpha(0.5)
-			}
-		}
-	}
-	if _, ok := zedColor(style["editor.foreground"]); ok {
-		ed.Tokens[editor.TokenText].Color = ed.Text
-	}
-	for kind, status := range map[editor.TokenKind]string{
-		editor.TokenInserted: "created", editor.TokenDeleted: "deleted", editor.TokenInvalid: "error",
-	} {
-		if c, ok := zedColor(style[status]); ok {
-			ed.Tokens[kind].Color = c
-		}
-	}
-	syntax, _ := style["syntax"].(map[string]any)
-	for kind, keys := range zedSyntax {
-		for _, key := range keys {
-			if st, ok := zedHighlight(syntax[key]); ok {
-				ed.Tokens[kind] = st
-				break
-			}
-		}
-	}
-}
-
-// zedHighlight reads a Zed syntax style: its color, italic font_style,
-// and a font_weight of 600 or more as bold.
-func zedHighlight(v any) (editor.TokenStyle, bool) {
-	m, ok := v.(map[string]any)
-	if !ok {
-		return editor.TokenStyle{}, false
-	}
-	c, ok := zedColor(m["color"])
-	if !ok {
-		return editor.TokenStyle{}, false
-	}
-	weight, _ := m["font_weight"].(float64)
-	return editor.TokenStyle{Color: c, Italic: m["font_style"] == "italic", Bold: weight >= 600}, true
-}
-
-func zedColor(v any) (ui.Color, bool) {
-	s, ok := v.(string)
-	if !ok {
-		return ui.Color{}, false
-	}
-	return aui.ParseColor(s)
-}
-
-func buildMarkdown(k *aui.Tokens, ed *editor.Theme, sch *Scheme, s Settings) *markdown.Theme {
+func buildMarkdown(k *aui.Tokens, ed *editor.Theme, s Settings, d density) *markdown.Theme {
 	size := s.BaseFontSize
 	if size <= 0 {
 		size = 14.5
-	}
-	code := ed.Tokens[editor.TokenCode].Color
-	if code == (ui.Color{}) {
-		code = ed.Text
-	}
-	block := k.FillHover.Over(k.BgPage)
-	if sch != nil {
-		if c, ok := zedColor(sch.style["editor.background"]); ok {
-			block = c
-		}
 	}
 	return &markdown.Theme{
 		FontSize:            size,
 		Font:                s.TextFont,
 		CodeFont:            s.EffectiveMonoFont(),
-		LineHeight:          1.65,
+		LineHeight:          d.lineHeight,
 		CodeLineHeight:      1.55,
 		Text:                k.Text,
 		Muted:               k.TextSecondary,
 		Link:                k.TextLink,
 		Strong:              k.Text,
 		StrongWeight:        600,
-		Code:                code,
+		Code:                ed.Tokens[editor.TokenCode].Color,
 		CodeBackground:      k.FillHover,
 		CodeSize:            0.875,
 		QuoteBar:            k.Border,
 		QuoteText:           k.TextSecondary,
 		Rule:                k.Border,
-		CodeBlockBackground: block,
+		CodeBlockBackground: k.FillHover.Over(k.BgPage),
 		CodeBlockBorder:     k.BorderSubtle,
 		TableBorder:         k.Border,
 		TableHeader:         k.FillHover.Over(k.BgPage),
@@ -225,41 +139,16 @@ func buildMarkdown(k *aui.Tokens, ed *editor.Theme, sch *Scheme, s Settings) *ma
 	}
 }
 
-func buildTerminal(k *aui.Tokens, sch *Scheme, dark bool) *terminal.Theme {
+// buildTerminal is the terminal's theme: base46's term.lua colors on the
+// page.
+func buildTerminal(k *aui.Tokens, t Theme) *terminal.Theme {
 	term := terminal.LightTheme()
-	if dark {
+	if t.Dark {
 		term = terminal.DarkTheme()
 	}
-	term.Foreground, term.Background = k.Text, k.BgPage
-	if sch == nil {
-		return term
+	term.Foreground, term.Background = t.base16[5], k.BgPage
+	for i, b := range ansi {
+		term.Palette[i] = t.base16[b]
 	}
-	for _, f := range []struct {
-		keys []string
-		dst  *ui.Color
-	}{
-		{[]string{"terminal.foreground", "editor.foreground"}, &term.Foreground},
-		{[]string{"terminal.background", "editor.background"}, &term.Background},
-	} {
-		for _, key := range f.keys {
-			if c, ok := zedColor(sch.style[key]); ok {
-				*f.dst = c
-				break
-			}
-		}
-	}
-	var palette [16]ui.Color
-	for i := range palette {
-		prefix := "terminal.ansi."
-		if i >= 8 {
-			prefix = "terminal.ansi.bright_"
-		}
-		c, ok := zedColor(sch.style[prefix+ansiNames[i%8]])
-		if !ok {
-			return term
-		}
-		palette[i] = c
-	}
-	term.Palette = palette
 	return term
 }

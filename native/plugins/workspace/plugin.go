@@ -426,7 +426,7 @@ func (t *tab) displayText() string {
 func Register(ws *Workspace) (off func()) {
 	offs := []func(){
 		ws.sl.SetCenter(ws.view),
-		ws.sl.SetChrome(slots.Chrome{Nav: ws.headNav, Bar: ws.addressBar, Status: ws.tabStatus, Tint: ws.tint}),
+		ws.sl.SetChrome(slots.Chrome{Nav: ws.headNav, Bar: ws.addressBar, Status: ws.tabStatus}),
 		ws.sl.RegisterPanel(slots.Panel{ID: TabsPanelID, Title: "Tabs", Icon: icon.Files.SVG(), Dock: slots.Sidebar,
 			Order: -10, View: ws.tabsPanel}),
 		ws.sl.RegisterPaletteSource(ws.tabsSource()),

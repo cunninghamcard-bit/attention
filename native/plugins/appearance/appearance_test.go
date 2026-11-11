@@ -1,6 +1,7 @@
 package appearance
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -14,43 +15,50 @@ import (
 
 func TestAppearanceSyncAndThemeFiles(t *testing.T) {
 	dir := t.TempDir()
-	zed := `{"name":"Custom","author":"test","themes":[{"name":"Custom Light","appearance":"light","style":{"editor.background":"#fefefe","panel.background":"#f0f0f0","border.variant":"#dddddd","text":"#112233","text.muted":"#667788","text.accent":"#0055ff","error":"#cc0000","warning":"#cc8800","success":"#008800","syntax":{"keyword":{"color":"#aa00bb"}}}}]}`
-	if err := os.WriteFile(filepath.Join(dir, "custom.json"), []byte(zed), 0o644); err != nil {
+	data, err := builtinThemes.ReadFile("themes/base46/one_light.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var custom map[string]any
+	if err := json.Unmarshal(data, &custom); err != nil {
+		t.Fatal(err)
+	}
+	custom["name"] = "custom"
+	custom["base_16"].(map[string]any)["base0E"] = "#aa00bb"
+	if data, err = json.Marshal(custom); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "custom.json"), data, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	sl := slots.New(nil)
 	set := settings.New(nil, sl)
 	set.Set(settings.Appearance, "theme", "light")
-	set.Set(settings.Appearance, "editorTheme", "One")
 	set.Set(settings.Appearance, "iconTheme", "zed")
 	set.Set(settings.Appearance, "showFileIcons", false)
 
 	a := New(set, dir, func(f func()) { f() })
 	a.IsDark = func() bool { return true }
+	if len(a.cat.errs) > 0 {
+		t.Fatalf("catalog errors: %v", a.cat.errs)
+	}
+	if light, dark := len(a.ThemeNames(false)), len(a.ThemeNames(true)); light != 22 || dark != 77 {
+		t.Fatalf("themes = %d light, %d dark, want base46's 21 and 77 and the custom one", light, dark)
+	}
 	if a.Dark() {
 		t.Fatal("expected the light theme to be light")
 	}
 	if a.Icons().Show {
 		t.Fatal("expected file icons hidden")
 	}
-	ct := a.Editor(false)
-	for k, want := range map[editor.TokenKind]string{
-		editor.TokenVariable: "#242529",
-		editor.TokenKeyword:  "#a449ab",
-		editor.TokenFunction: "#5b79e3",
-	} {
-		if got := ct.Tokens[k].Color; got != ui.Hex(want) {
-			t.Fatalf("One light token %d = %+v, want %s", k, got, want)
-		}
+	if got := a.Editor(false).Tokens[editor.TokenKeyword].Color; got != ui.Hex("#a626a4") {
+		t.Fatalf("one_light keyword color = %+v, want base0E #a626a4", got)
 	}
 
-	set.Set(settings.Appearance, "editorTheme", "Custom")
+	set.Set(settings.Appearance, "lightTheme", "custom")
 	if got := a.Editor(false).Tokens[editor.TokenKeyword].Color; got != ui.Hex("#aa00bb") {
-		t.Fatalf("Custom keyword color = %+v, want #aa00bb", got)
-	}
-	if got := a.UI().Background; got != ui.Hex("#ffffff") {
-		t.Fatalf("background under Zed editor colors = %+v, want Attention Light's page #ffffff", got)
+		t.Fatalf("custom keyword color = %+v, want #aa00bb", got)
 	}
 
 	tt := ui.NewTester(a.View, 900, 900)
