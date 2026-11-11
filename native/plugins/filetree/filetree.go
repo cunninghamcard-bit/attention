@@ -33,8 +33,12 @@ import (
 	auiicon "github.com/cunninghamcard-bit/attention/native/ui/icon"
 )
 
-// PanelID is the Files panel's slot id.
-const PanelID = "file-explorer"
+const (
+	// PanelID is the Files panel's slot id.
+	PanelID = "file-explorer"
+	// treeRowHeight is a file tree row's compact height.
+	treeRowHeight float32 = 26
+)
 
 // Plugin registers the Files panel while loaded.
 var Plugin = rutis.Define(rutis.Plugin[struct{}]{
@@ -443,15 +447,11 @@ func (tr *Tree) view(c *ui.Context) {
 		}
 		rows := tr.treeRows()
 		app := tr.app.Settings()
-		rowH := float32(26)
-		if app.TreeDensity == "comfortable" {
-			rowH = 30
-		}
 		ui.List(c, nil, len(rows), func(i int) {
 			r := rows[i]
 			e := r.entry
 			selected := !e.Dir && e.Path == current
-			row := aui.SideRow(c, aui.SideRowProps{Key: e.Path, Selected: selected, Depth: r.depth, Height: rowH, Guides: app.ShowGuides})
+			row := aui.SideRow(c, aui.SideRowProps{Key: e.Path, Selected: selected, Depth: r.depth, Height: treeRowHeight, Guides: app.ShowGuides})
 			if row.Clicked() {
 				if e.Dir {
 					tr.toggleDir(e.Path)

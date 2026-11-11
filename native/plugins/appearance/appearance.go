@@ -1,5 +1,5 @@
-// Package appearance is the appearance plugin: appearance.json, the color
-// themes, and the widget themes built from them (docs/appearance.md,
+// Package appearance is the appearance plugin: appearance.json, the base46
+// color themes, and the widget themes built from them (docs/appearance.md,
 // apps/web/core/AppearanceManager.ts, apps/web/builtin/AppearanceSettingTab.ts).
 package appearance
 
@@ -216,15 +216,11 @@ func (a *Appearance) of(dark bool) built {
 	}
 	if at := a.gen + a.catGen; a.built[i].ui == nil || a.builtAt[i] != at {
 		t := a.cat.theme(name, dark)
-		var sch *Scheme
-		if s, ok := a.cat.scheme(a.cur.EditorTheme, t); ok {
-			sch = &s
-		}
 		if old := a.built[i].ui; old != nil {
 			aui.Unregister(old)
 			acard.Unregister(old)
 		}
-		a.built[i] = build(t, sch, a.cur)
+		a.built[i] = build(t, a.cur)
 		aui.Register(a.built[i].ui, a.built[i].tokens)
 		acard.Register(a.built[i].ui, a.built[i].acard)
 		a.builtAt[i] = at

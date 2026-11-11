@@ -34,6 +34,9 @@ type Tokens struct {
 	TabRowShadow, CardShadow                                     Shadow
 	AddressBar, AddressBarHover, CardBorder, MenuItem            ui.Color
 	GlassTint                                                    ui.Color
+	// RowStep is how many DIPs taller than compact a row and a control
+	// are at the window's density (0 in a compact one).
+	RowStep float32
 }
 
 // Register makes tok the tokens of t, for TokensOf, until Unregister;
