@@ -116,6 +116,7 @@ TreeView 现在每行只有箭头、图标、名字，没有行尾的位置。�
 
 - 起始页的「Add project…」；
 - Omnibox 的 `Add project…` 命令（现有的 `workspace:add-folder` 改名）；
+- 侧栏底栏的 `＋` 菜单；
 - 从 Finder 把目录拖进侧栏；
 - 打开项目外的文件时，右栏顶部的「Add as project」（§6.3）。
 
@@ -178,12 +179,12 @@ TreeView 现在每行只有箭头、图标、名字，没有行尾的位置。�
 - 重名时提示，不覆盖。
 - 这些操作都要有对应的 CLI 命令，AI 可以调。
 
-现有的 CLI（`project/cli.go`）和上表不一致的地方，实现时要改：
+现有的 CLI（`project/cli.go`）和上表不一致的地方：
 
-- `delete` 带 `permanent` 参数时直接删掉（`fs.Remove`），不进废纸篓；
+- `delete` 带 `permanent` 参数时直接删掉（`fs.Remove`），不进废纸篓。这个参数留不留，待定；
 - `move`、`rename` 只检查目标是否在项目外，然后直接 `os.Rename`，目标已经存在时会被覆盖；
-- 移动、改名以后，打开它的标签不跟着改路径，`workspace` 不处理文件改名；
-- 没有 Duplicate、Copy path、Reveal in Finder、Open in terminal 对应的命令。
+- 移动、改名以后，打开它的标签不跟着改路径，没有插件处理文件改名；
+- 没有 Duplicate、Copy path、Reveal in Finder 对应的命令。Open in terminal 可以用现有的 `terminal:open`，它带 `path` 参数。
 
 ### 6.3 Other 里的文件
 
@@ -387,7 +388,7 @@ AI 调 `open` 打开原文时：
 |---|---|
 | `workspace` | 侧栏的标签列表、按项目分组和标签归位、Tab group、固定标签、关闭和撤销关闭（§3、§4）；起始页（§9） |
 | `project` | 项目的添加、改名、排序、固定、移除，项目菜单（§5.1、§5.3），Add as project（§6.3）；文件操作的 CLI 命令（现有的在 `cli.go`） |
-| `fs` | 文件操作的执行。删除是移到废纸篓，撤销提示由发起删除的 `filemenu` 弹出。现有的 `trash.go` 只写 freedesktop 的废纸篓（`$XDG_DATA_HOME/Trash`），macOS 上不进系统废纸篓；`Trash` 只返回错误，不返回文件放到了哪里，撤销要先拿到这个位置 |
+| `fs` | 文件操作的执行。删除是移到废纸篓，撤销提示由发起删除的 `filemenu` 弹出。现有的 `trash.go` 只写 freedesktop 的废纸篓（`$XDG_DATA_HOME/Trash`），macOS 上不进系统废纸篓，要不要改待定；`Trash` 只返回错误，不返回文件放到了哪里，撤销要先拿到这个位置 |
 | `filetree` | 右栏的文件树，以及 Other 里文件所在的目录（§6.1、§6.3）。右键菜单交给 `filemenu` |
 | `outline` | 大纲，标出正在读的章节 |
 | `backlinks` | 反向链接，没有时显示空状态 |
