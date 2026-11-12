@@ -379,3 +379,54 @@ RFC 0004 的界面主题文件（色板加语义 token）不再保留。界面�
 5. 文件夹页和项目主页（§6.5、§5.2）。
 6. 主题（§8）。依赖 RFC 0005 的 ACard token。
 7. AI：线程、推送、选中提问（§7）。接入方式等 RFC 0007。
+
+每一步的代码放进 §14 列出的插件。第 4 步新建 `filemenu`，第 5 步新建 `folderpage` 和 `git`。`icons`、`fileicons`、`pagepreview` 不依赖其他步骤，可以先做。
+
+## 14. 插件划分
+
+依据：
+
+- `native/AGENTS.md`：一个功能一个插件，照 dsh 的插件清单那样拆。
+- TS 版已经拆成内置插件的功能（`apps/web/builtin/`、`apps/web/builtin/CorePlugins.ts`），native 照 TS 拆。
+
+### 14.1 新插件
+
+| 插件 | 内容 | 依据 |
+|---|---|---|
+| `folderpage` | 文件夹页和项目主页（§5.2、§6.5）。是一种标签类型，地址是 `folder:<绝对路径>` | 查看器都是标签类型（AGENTS.md）。TS 版没有这个功能，要新做 |
+| `pagepreview` | 鼠标悬停在链接上时，弹出目标文件的预览。阅读视图里直接悬停就弹，编辑器里要按住 Cmd | TS 的 `PagePreview.ts`，默认值照它的 `DEFAULT_HOVER_SOURCES` |
+| `filemenu` | 文件和目录的右键菜单（§6.2），文件树、文件夹页、标签头都用这一个 | TS 的 `workspace-file-menu`：订阅 `file-menu`、`files-menu` 事件，往菜单里加操作 |
+| `git` | 项目主页的分支和未提交改动数（§5.2），以及文件树里改动文件的标记 | TS 的 `builtin/git/` 是独立插件 |
+| `icons` | 图标注册表：按名字取图标，插件可以注册自己的图标 | TS 的 `ui/Icon.ts`：`addIcon`、`getIcon`、`getIconIds`、`setIcon` |
+| `fileicons` | 文件图标主题（pierre、zed）：按文件名给出图标和颜色 | 现在是 `native/internal/fileicon`，主题选项在 `appearance` 里，还不是插件 |
+
+### 14.2 图标
+
+- 现在 native 的图标分在三处，没有按名字注册的入口，插件和命令引用不了别的插件的图标：
+  - acard-ui 的 `icon`：Lucide 图标；
+  - `native/ui/icon`：acard-ui 还缺的 Lucide 图标；
+  - `native/internal/fileicon`：文件图标。
+- `icons`：Lucide 图标从 acard-ui 取。acard-ui 还没有的，暂时从 `native/ui/icon` 取，补进 acard-ui 以后删掉。
+- `fileicons`：把 `internal/fileicon`，以及「File icon theme」「Show file icons」两个设置项搬进来。文件树、标签、快速切换、搜索、文件夹页都从它取文件图标。
+- 网站图标由 `web` 插件取。TS 的 web viewer 也是自己监听 `page-favicon-updated` 拿图标的。
+- `tabtypes` 现在每种标签类型只有一个图标（`Icon *ui.SVG`）。改成可以按标签地址给图标：
+  - 文件：取自 `fileicons`；
+  - 网页：网站自己的图标，还没取到时用地球图标；
+  - Chat、文件夹页、起始页：取自 `icons`。
+
+### 14.3 已有插件的分工
+
+| 插件 | 本 RFC 里归它的 |
+|---|---|
+| `workspace` | 侧栏的标签列表、按项目分组和标签归位、Tab group、固定标签、关闭和撤销关闭（§3、§4）；起始页（§9） |
+| `project` | 项目的添加、改名、排序、固定、移除，项目菜单（§5.1、§5.3），Add as project（§6.3）；文件操作的 CLI 命令（现有的在 `cli.go`） |
+| `fs` | 文件操作的执行。删除是移到废纸篓（现有的 `trash.go`），撤销提示由发起删除的 `filemenu` 弹出 |
+| `filetree` | 右栏的文件树，以及 Other 里文件所在的目录（§6.1、§6.3）。右键菜单交给 `filemenu` |
+| `outline` | 大纲，标出正在读的章节 |
+| `backlinks` | 反向链接，没有时显示空状态 |
+| `chat` | 线程、推送、选中提问（§7） |
+| `omnibox` | §9 新增的结果和命令 |
+| `appearance` | 亮暗和主题（§8） |
+
+- 起始页的三列由 `workspace` 开一个 slot，项目、最近文件、最近线程分别由 `project`、`workspace`、`chat` 注册。
+- 拼音全拼和首字母匹配放进 `native/internal/fuzzy`，Omnibox、快速切换、搜索一起用。
